@@ -8,7 +8,6 @@ import { inferReviewOutcomeFromWordRecord, rebuildBasicStateFromWordRecords } fr
 import {
   classificationToReviewOutcome,
   inferLegacyReviewOutcome,
-  rebuildBasicStateFromLegacy,
   scheduleBasicReview,
 } from '../../src/review/scheduler'
 import { WordTelemetryCollector, readWordTelemetry } from '../../src/review/telemetry'
@@ -131,7 +130,7 @@ test.describe('review data model', () => {
       reviewCount: 0,
       lapseCount: 0,
       cleanStreak: 0,
-      stateVersion: 1,
+      stateVersion: 2,
       schedulerState: {
         kind: 'basic-v1',
         stage: 0,
@@ -373,29 +372,6 @@ test.describe('basic cross-session scheduler', () => {
     expect(inferLegacyReviewOutcome(1)).toBe('hard')
     expect(inferLegacyReviewOutcome(2)).toBe('again')
     expect(inferLegacyReviewOutcome(8)).toBe('again')
-  })
-})
-
-
-test.describe('legacy scheduler bootstrap', () => {
-  test('replays historical records in chronological order before current adaptive evidence', () => {
-    const day = 24 * 60 * 60
-    const rebuilt = rebuildBasicStateFromLegacy('cet4', 'apple', [
-      { timeStamp: 1000 + 4 * day, wrongCount: 0 },
-      { timeStamp: 1000, wrongCount: 2 },
-      { timeStamp: 1000 + day, wrongCount: 0 },
-    ])
-
-    expect(rebuilt).toBeDefined()
-    expect(rebuilt?.reviewCount).toBe(3)
-    expect(rebuilt?.lapseCount).toBe(1)
-    expect(rebuilt?.cleanStreak).toBe(2)
-    expect(rebuilt?.lastReviewedAt).toBe(1000 + 4 * day)
-    expect(rebuilt?.schedulerState).toEqual({
-      kind: 'basic-v1',
-      stage: 2,
-      intervalDays: 7,
-    })
   })
 })
 
@@ -840,5 +816,72 @@ test.describe('scheduler-aware review priority', () => {
     ]
 
     expect(rankDueReviewCandidates(candidates, states).map((item) => item.word)).toEqual(['alpha', 'beta'])
+  })
+})
+
+
+test.describe('legacy import scheduler regression', () => {
+  test('ignores legacy clean practice when rebuilding an imported historical error word', () => {
+    const day = 24 * 60 * 60
+    const records: IWordRecord[] = [
+      {
+        id: 1,
+        word: 'receive',
+        timeStamp: 1000,
+        dict: 'cet4',
+        chapter: 0,
+        timing: [120, 150],
+        wrongCount: 2,
+        mistakes: { 3: ['i'], 4: ['e'] },
+      },
+      {
+        id: 2,
+        word: 'receive',
+        timeStamp: 1000 + 20 * day,
+        dict: 'cet4',
+        chapter: 0,
+        timing: [100, 110],
+        wrongCount: 0,
+        mistakes: {},
+      },
+    ]
+
+    expect(inferReviewOutcomeFromWordRecord(records[1], [records[0]])).toBeUndefined()
+
+    const rebuilt = rebuildBasicStateFromWordRecords('cet4', 'receive', records)
+
+    expect(rebuilt).toBeDefined()
+    expect(rebuilt?.reviewCount).toBe(1)
+    expect(rebuilt?.lapseCount).toBe(1)
+    expect(rebuilt?.lastReviewedAt).toBe(1000)
+    expect(rebuilt?.nextReviewAt).toBe(1000 + day)
+    expect(rebuilt?.stateVersion).toBe(2)
+  })
+
+  test('does not create scheduler state from legacy clean-only practice', () => {
+    const records: IWordRecord[] = [
+      {
+        id: 1,
+        word: 'apple',
+        timeStamp: 1000,
+        dict: 'cet4',
+        chapter: 0,
+        timing: [90, 100],
+        wrongCount: 0,
+        mistakes: {},
+      },
+      {
+        id: 2,
+        word: 'apple',
+        timeStamp: 2000,
+        dict: 'cet4',
+        chapter: 0,
+        timing: [80, 90],
+        wrongCount: 0,
+        mistakes: {},
+      },
+    ]
+
+    expect(rebuildBasicStateFromWordRecords('cet4', 'apple', records)).toBeUndefined()
   })
 })
