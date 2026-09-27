@@ -210,6 +210,7 @@ export type ReviewDictionaryDiagnostics = {
   telemetryCoverage: number
   stateCount: number
   dueCount: number
+  attentionUncertainCount: number
   causeCounts: Record<'clean' | 'recall' | 'spelling' | 'motor' | 'uncertain', number>
   basicStageCounts: Record<string, number>
 }
@@ -236,6 +237,7 @@ export function buildReviewDictionaryDiagnostics(input: {
     }
   }
 
+  let attentionUncertainCount = 0
   const causeCounts: ReviewDictionaryDiagnostics['causeCounts'] = {
     clean: 0,
     recall: 0,
@@ -258,6 +260,9 @@ export function buildReviewDictionaryDiagnostics(input: {
       history: priorHistory,
     })
     causeCounts[classification.cause] += 1
+    if (classification.attentionUncertain) {
+      attentionUncertainCount += 1
+    }
   }
 
   const basicStageCounts: Record<string, number> = {}
@@ -277,6 +282,7 @@ export function buildReviewDictionaryDiagnostics(input: {
     telemetryCoverage: input.records.length > 0 ? telemetryRecordCount / input.records.length : 0,
     stateCount: input.states.length,
     dueCount: input.states.filter((state) => state.nextReviewAt <= input.now).length,
+    attentionUncertainCount,
     causeCounts,
     basicStageCounts,
   }
