@@ -71,7 +71,7 @@ export function classifyTypingError(input: {
   let spelling =
     0.15 +
     0.45 * features.repeatedWrongPositionRatio +
-    0.2 * normalize(features.maxInterKeyMs, typingClassifierPolicy.fastInterKeyMs, 1200) +
+    0.2 * normalize(features.maxInterKeyMs, typingClassifierPolicy.fastInterKeyMs, typingClassifierPolicy.slowInterKeyMs) +
     0.2 * historyDominantRatio +
     0.1 * historyFailureRate
 
@@ -81,6 +81,10 @@ export function classifyTypingError(input: {
     (firstKey !== undefined && firstKey <= typingClassifierPolicy.fastFirstKeyMs ? 0.15 : 0) +
     (features.averageInterKeyMs !== undefined && features.averageInterKeyMs <= typingClassifierPolicy.fastInterKeyMs ? 0.1 : 0) +
     (features.wrongAttemptCount === 1 ? 0.15 : 0)
+
+  if (features.adjacentWrongRatio >= typingClassifierPolicy.motorAdjacentRatio) {
+    motor += 0.1
+  }
 
   if (features.repeatedWrongPositionRatio >= 0.75 && features.wrongAttemptCount >= 2) {
     motor -= 0.2
