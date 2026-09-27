@@ -35,6 +35,7 @@ export function rebuildBasicStateFromWordRecords(
   dict: string,
   word: string,
   records: IWordRecord[],
+  options?: { legacyDueAt?: number },
 ): IReviewWordState | undefined {
   const sortedRecords = [...records].sort((a, b) => a.timeStamp - b.timeStamp)
   let state: IReviewWordState | undefined
@@ -53,6 +54,17 @@ export function rebuildBasicStateFromWordRecords(
     }
 
     priorRecords.push(record)
+  }
+
+  if (state && options?.legacyDueAt !== undefined) {
+    const hasAdaptiveTelemetry = sortedRecords.some((record) => readWordTelemetry(record) !== undefined)
+    if (!hasAdaptiveTelemetry) {
+      state = {
+        ...state,
+        nextReviewAt: options.legacyDueAt,
+        updatedAt: options.legacyDueAt,
+      }
+    }
   }
 
   return state
