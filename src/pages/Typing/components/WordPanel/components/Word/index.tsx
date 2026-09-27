@@ -16,7 +16,11 @@ import { classifyTypingError } from '@/review/classifier'
 import type { TypingErrorClassification } from '@/review/classifier'
 import type { WordHistorySummary } from '@/review/features'
 import { loadWordHistorySummary } from '@/review/history'
-import { LearningContextCollector, summarizeAnswerVisibility } from '@/review/learning-context'
+import {
+  LearningContextCollector,
+  calculateAnswerVisibleRatio,
+  summarizeAnswerVisibility,
+} from '@/review/learning-context'
 import { applyReviewOutcome } from '@/review/repository'
 import { classificationToReviewOutcome } from '@/review/scheduler'
 import { WordTelemetryCollector } from '@/review/telemetry'
@@ -32,6 +36,7 @@ import {
 import type { Word } from '@/typings'
 import { CTRL, getUtcStringForMixpanel } from '@/utils'
 import { useSaveWordRecord } from '@/utils/db'
+import type { PronunciationCue } from '@/utils/db/record'
 import { useAtomValue } from 'jotai'
 import { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -44,7 +49,19 @@ export type WordFinishResult = {
   classification: TypingErrorClassification
 }
 
-export default function WordComponent({ word, onFinish }: { word: Word; onFinish: (result: WordFinishResult) => void }) {
+type WordComponentProps = {
+  word: Word
+  onFinish: (result: WordFinishResult) => void
+  meaningVisible: boolean
+  phoneticVisible: boolean
+}
+
+export default function WordComponent({
+  word,
+  onFinish,
+  meaningVisible,
+  phoneticVisible,
+}: WordComponentProps) {
   // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
   const { state, dispatch } = useContext(TypingContext)!
   const [wordState, setWordState] = useImmer<WordState>(structuredClone(initialWordState))
@@ -67,6 +84,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
   const wordPronunciationIconRef = useRef<WordPronunciationIconRef>(null)
   const telemetryCollectorRef = useRef(new WordTelemetryCollector())
   const learningContextCollectorRef = useRef(new LearningContextCollector())
+  const previousMeaningVisibleRef = useRef(meaningVisible)
   const historySummaryRef = useRef<WordHistorySummary | undefined>(undefined)
 
   useEffect(() => {
@@ -99,8 +117,12 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
 
     learningContextCollectorRef.current.reset({
       answerVisibilityAtStart: summarizeAnswerVisibility(initialLetterVisibility),
+      answerVisibleRatioAtStart: calculateAnswerVisibleRatio(initialLetterVisibility),
+      meaningVisibleAtStart: meaningVisible,
+      phoneticVisibleAtStart: phoneticVisible,
       pronunciationEnabledAtStart: pronunciationIsOpen,
     })
+    previousMeaningVisibleRef.current = meaningVisible
 
     setWordState(newWordState)
     // Capture start-of-word conditions only. Mid-word config changes belong to
@@ -113,6 +135,43 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
       telemetryCollectorRef.current.markReady(Date.now())
     }
   }, [state.isTyping, word])
+
+  useEffect(() => {
+    const pause = () => telemetryCollectorRef.current.pause(Date.now())
+    const resumeIfActive = () => {
+      if (!document.hidden && document.hasFocus()) {
+        telemetryCollectorRef.current.resume(Date.now())
+      }
+    }
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        pause()
+      } else {
+        resumeIfActive()
+      }
+    }
+
+    window.addEventListener('blur', pause)
+    window.addEventListener('focus', resumeIfActive)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    if (document.hidden || !document.hasFocus()) {
+      pause()
+    }
+
+    return () => {
+      window.removeEventListener('blur', pause)
+      window.removeEventListener('focus', resumeIfActive)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [word])
+
+  useEffect(() => {
+    if (meaningVisible && !previousMeaningVisibleRef.current) {
+      learningContextCollectorRef.current.recordMeaningReveal()
+    }
+    previousMeaningVisibleRef.current = meaningVisible
+  }, [meaningVisible, word])
 
   useEffect(() => {
     let cancelled = false
@@ -139,8 +198,9 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
         case 'add':
           if (wordState.hasWrong) return
 
-          learningContextCollectorRef.current.recordInputStarted()
-          telemetryCollectorRef.current.recordKey(Date.now())
+          const now = Date.now()
+          learningContextCollectorRef.current.recordInputStarted(now)
+          telemetryCollectorRef.current.recordKey(now)
 
           if (updateAction.value === ' ') {
             updateAction.event.preventDefault()
@@ -164,18 +224,18 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
   const handleHoverWord = useCallback(
     (checked: boolean) => {
       if (checked && isShowAnswerOnHover && wordDictationConfig.isOpen) {
-        learningContextCollectorRef.current.recordAnswerReveal()
+        learningContextCollectorRef.current.recordAnswerReveal(Date.now())
       }
       setIsHoveringWord(checked)
     },
     [isShowAnswerOnHover, wordDictationConfig.isOpen],
   )
 
-  const playPronunciation = useCallback(() => {
+  const playPronunciation = useCallback((cue: PronunciationCue) => {
     const play = wordPronunciationIconRef.current?.play
     if (!play) return
 
-    learningContextCollectorRef.current.recordPronunciationPlayed()
+    learningContextCollectorRef.current.recordPronunciationPlayed(cue)
     play()
   }, [])
 
@@ -200,7 +260,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
     'ctrl+j',
     () => {
       if (state.isTyping) {
-        playPronunciation()
+        playPronunciation('requested')
       }
     },
     [state.isTyping],
@@ -209,7 +269,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
 
   useEffect(() => {
     if (wordState.inputWord.length === 0 && state.isTyping) {
-      playPronunciation()
+      playPronunciation('automatic')
     }
   }, [state.isTyping, wordState.inputWord.length, wordPronunciationIconRef.current?.play])
 
@@ -341,6 +401,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
         word: word.name,
         wrongCount: wordState.wrongCount,
         telemetry,
+        learningContext,
         history: historySummaryRef.current,
       })
 
@@ -417,7 +478,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
           {pronunciationIsOpen && (
             <div
               className="absolute -right-12 top-1/2 h-9 w-9 -translate-y-1/2 transform "
-              onClickCapture={() => learningContextCollectorRef.current.recordPronunciationPlayed()}
+              onClickCapture={() => learningContextCollectorRef.current.recordPronunciationPlayed('requested')}
             >
               <Tooltip content={`快捷键${CTRL} + J`}>
                 <WordPronunciationIcon word={word} lang={currentLanguage} ref={wordPronunciationIconRef} className="h-full w-full" />
