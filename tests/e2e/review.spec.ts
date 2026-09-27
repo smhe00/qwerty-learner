@@ -122,8 +122,8 @@ test.describe('review data model', () => {
   })
 
 
-  test('reads both nested and early top-level telemetry shapes', () => {
-    const nested: IWordRecord = {
+  test('reads nested optional telemetry', () => {
+    const record: IWordRecord = {
       word: 'apple',
       timeStamp: 1,
       dict: 'cet4',
@@ -137,21 +137,8 @@ test.describe('review data model', () => {
         attempts: [{ startLatencyMs: 240, durationMs: 300, correctPrefixLength: 5, result: 'clean' }],
       },
     }
-    const earlyTopLevel: IWordRecord = {
-      word: 'banana',
-      timeStamp: 2,
-      dict: 'cet4',
-      chapter: 0,
-      timing: [100],
-      wrongCount: 0,
-      mistakes: {},
-      telemetryVersion: 1,
-      firstKeyLatencyMs: 360,
-      attempts: [{ startLatencyMs: 360, durationMs: 400, correctPrefixLength: 6, result: 'clean' }],
-    }
 
-    expect(readWordTelemetry(nested)?.firstKeyLatencyMs).toBe(240)
-    expect(readWordTelemetry(earlyTopLevel)?.firstKeyLatencyMs).toBe(360)
+    expect(readWordTelemetry(record)?.firstKeyLatencyMs).toBe(240)
   })
 
   test('keeps learning context optional and records semantic assistance events', () => {
@@ -300,12 +287,14 @@ test.describe('typing error classification', () => {
         timing: [100],
         wrongCount: 1,
         mistakes: { 3: ['i'] },
+        typingTelemetry: {
         telemetryVersion: 1,
         firstKeyLatencyMs: 500,
         attempts: [
           { startLatencyMs: 500, durationMs: 900, correctPrefixLength: 3, result: 'wrong', wrongIndex: 3, wrongKey: 'i' },
           { startLatencyMs: 200, durationMs: 1000, correctPrefixLength: 7, result: 'clean' },
         ],
+        },
       },
     ])
 
@@ -538,6 +527,7 @@ test.describe('review diagnostics', () => {
         timing: [160, 180, 760],
         wrongCount: 2,
         mistakes: { 3: ['i', 'i'] },
+        typingTelemetry: {
         telemetryVersion: 1,
         firstKeyLatencyMs: 450,
         attempts: [
@@ -566,6 +556,7 @@ test.describe('review diagnostics', () => {
             result: 'clean',
           },
         ],
+        },
       },
     ]
 
@@ -620,6 +611,7 @@ test.describe('review dictionary diagnostics', () => {
         timing: [90, 100],
         wrongCount: 0,
         mistakes: {},
+        typingTelemetry: {
         telemetryVersion: 1,
         firstKeyLatencyMs: 180,
         attempts: [
@@ -631,6 +623,7 @@ test.describe('review dictionary diagnostics', () => {
             interKeyIntervalsMs: [90, 100, 95, 85],
           },
         ],
+        },
       },
       {
         id: 2,
@@ -697,6 +690,7 @@ test.describe('review state rebuild fidelity', () => {
       timing: [90, 80, 100, 85],
       wrongCount: 1,
       mistakes: { 4: ['r'] },
+      typingTelemetry: {
       telemetryVersion: 1,
       firstKeyLatencyMs: 180,
       attempts: [
@@ -717,6 +711,7 @@ test.describe('review state rebuild fidelity', () => {
           interKeyIntervalsMs: [85, 90, 95, 80],
         },
       ],
+      },
     }
 
     expect(inferReviewOutcomeFromWordRecord(legacy, [])).toBe('hard')
@@ -745,6 +740,7 @@ test.describe('review state rebuild fidelity', () => {
         timing: [90, 80, 100, 85],
         wrongCount: 1,
         mistakes: { 4: ['r'] },
+        typingTelemetry: {
         telemetryVersion: 1,
         firstKeyLatencyMs: 180,
         attempts: [
@@ -764,6 +760,7 @@ test.describe('review state rebuild fidelity', () => {
             result: 'clean',
           },
         ],
+        },
       },
     ]
 
@@ -1013,6 +1010,7 @@ test.describe('legacy migration due-now semantics', () => {
         timing: [90, 100],
         wrongCount: 0,
         mistakes: {},
+        typingTelemetry: {
         telemetryVersion: 1,
         firstKeyLatencyMs: 180,
         attempts: [
@@ -1024,6 +1022,7 @@ test.describe('legacy migration due-now semantics', () => {
             interKeyIntervalsMs: [90, 100, 95, 85],
           },
         ],
+        },
       },
     ]
 
