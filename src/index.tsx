@@ -28,6 +28,24 @@ if (process.env.NODE_ENV === 'production') {
 
 function Root() {
   const darkMode = useAtomValue(isOpenDarkModeAtom)
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+
+    let active = true
+    let cleanup: (() => void) | undefined
+
+    void import('@/review/devtools').then(({ installReviewDevtools }) => {
+      if (active) {
+        cleanup = installReviewDevtools()
+      }
+    })
+
+    return () => {
+      active = false
+      cleanup?.()
+    }
+  }, [])
   useEffect(() => {
     darkMode ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark')
   }, [darkMode])
