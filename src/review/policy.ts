@@ -3,7 +3,7 @@ export const typingClassifierPolicy = {
   longFirstKeyMs: 1800,
   veryLongFirstKeyMs: 3000,
   fastInterKeyMs: 250,
-  slowInterKeyMs: 700,
+  slowInterKeyMs: 1200,
   motorAdjacentRatio: 0.75,
   uncertainConfidence: 0.5,
   uncertainMargin: 0.1,
