@@ -103,6 +103,9 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
     })
 
     setWordState(newWordState)
+    // Capture start-of-word conditions only. Mid-word config changes belong to
+    // the next observation rather than retroactively changing this one.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [word, setWordState])
 
   useEffect(() => {
