@@ -5,6 +5,7 @@ import { rankReviewCandidates } from '../../src/review/priority'
 import {
   classificationToReviewOutcome,
   inferLegacyReviewOutcome,
+  rebuildBasicStateFromLegacy,
   scheduleBasicReview,
 } from '../../src/review/scheduler'
 import { WordTelemetryCollector, readWordTelemetry } from '../../src/review/telemetry'
@@ -367,5 +368,27 @@ test.describe('basic cross-session scheduler', () => {
     expect(inferLegacyReviewOutcome(1)).toBe('hard')
     expect(inferLegacyReviewOutcome(2)).toBe('again')
     expect(inferLegacyReviewOutcome(8)).toBe('again')
+  })
+})
+
+
+test.describe('legacy scheduler bootstrap', () => {
+  test('replays historical records in chronological order before current adaptive evidence', () => {
+    const rebuilt = rebuildBasicStateFromLegacy('cet4', 'apple', [
+      { timeStamp: 3000, wrongCount: 0 },
+      { timeStamp: 1000, wrongCount: 2 },
+      { timeStamp: 2000, wrongCount: 0 },
+    ])
+
+    expect(rebuilt).toBeDefined()
+    expect(rebuilt?.reviewCount).toBe(3)
+    expect(rebuilt?.lapseCount).toBe(1)
+    expect(rebuilt?.cleanStreak).toBe(2)
+    expect(rebuilt?.lastReviewedAt).toBe(3000)
+    expect(rebuilt?.schedulerState).toEqual({
+      kind: 'basic-v1',
+      stage: 2,
+      intervalDays: 7,
+    })
   })
 })

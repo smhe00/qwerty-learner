@@ -1,4 +1,4 @@
-import { inferLegacyReviewOutcome, scheduleBasicReview } from './scheduler'
+import { rebuildBasicStateFromLegacy, scheduleBasicReview } from './scheduler'
 import { createInitialReviewWordState } from './types'
 import type { IReviewWordState, ReviewOutcome } from './types'
 import { db } from '@/utils/db'
@@ -34,10 +34,23 @@ export async function applyReviewOutcome(
   word: string,
   outcome: ReviewOutcome,
   now: number,
+  currentWordRecordId?: number,
 ): Promise<IReviewWordState> {
-  return db.transaction('rw', db.reviewWordStates, async () => {
+  return db.transaction('rw', db.wordRecords, db.reviewWordStates, async () => {
     const existing = await getReviewWordState(dict, word)
-    const current = existing ?? createInitialReviewWordState(dict, word, now)
+    let current = existing
+
+    if (!current) {
+      const priorRecords = await db.wordRecords
+        .where('word')
+        .equals(word)
+        .and((record) => record.dict === dict && record.id !== currentWordRecordId)
+        .toArray()
+
+      current =
+        rebuildBasicStateFromLegacy(dict, word, priorRecords) ??
+        createInitialReviewWordState(dict, word, now)
+    }
 
     if (current.schedulerState.kind !== 'basic-v1') {
       return current
@@ -81,18 +94,8 @@ export async function bootstrapReviewWordStatesForDictionary(dict: string): Prom
     let createdCount = 0
 
     for (const [word, wordRecords] of recordsByWord) {
-      const sortedRecords = [...wordRecords].sort((a, b) => a.timeStamp - b.timeStamp)
-      const firstRecord = sortedRecords[0]
-      if (!firstRecord) continue
-
-      let state = createInitialReviewWordState(dict, word, firstRecord.timeStamp)
-      for (const record of sortedRecords) {
-        state = scheduleBasicReview({
-          state,
-          outcome: inferLegacyReviewOutcome(record.wrongCount),
-          now: record.timeStamp,
-        })
-      }
+      const state = rebuildBasicStateFromLegacy(dict, word, wordRecords)
+      if (!state) continue
 
       await db.reviewWordStates.put(state)
       createdCount += 1

@@ -23,6 +23,7 @@ export interface WordRecordTelemetry {
 }
 
 export interface IWordRecord {
+  id?: number
   word: string
   timeStamp: number
   // 正常章节为 dictKey, 其他功能则为对应的类型
@@ -48,6 +49,7 @@ export interface LetterMistakes {
 }
 
 export class WordRecord implements IWordRecord {
+  id?: number
   word: string
   timeStamp: number
   dict: string

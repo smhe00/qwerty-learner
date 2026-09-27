@@ -318,7 +318,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
       // })
       const persistResult = async () => {
         try {
-          await saveWordRecord({
+          const wordRecordId = await saveWordRecord({
             word: word.name,
             wrongCount: wordState.wrongCount,
             letterTimeArray: wordState.letterTimeArray,
@@ -326,12 +326,15 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
             telemetry,
           })
 
-          await applyReviewOutcome(
-            currentDictInfo.id,
-            word.name,
-            classificationToReviewOutcome(classification),
-            Math.floor(Date.now() / 1000),
-          )
+          if (wordRecordId > 0) {
+            await applyReviewOutcome(
+              currentDictInfo.id,
+              word.name,
+              classificationToReviewOutcome(classification),
+              Math.floor(Date.now() / 1000),
+              wordRecordId,
+            )
+          }
         } catch (error) {
           console.error('failed to persist review learning state', error)
         } finally {
