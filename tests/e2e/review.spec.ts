@@ -417,3 +417,44 @@ test.describe('due review selection', () => {
     expect(filterDueReviewCandidates(candidates, dueStates).map((item) => item.word)).toEqual(['banana', 'orange'])
   })
 })
+
+
+test.describe('same-session scheduling safety', () => {
+  test('does not advance interval when a clean reinforcement happens before the word is due', () => {
+    let state = createInitialReviewWordState('cet4', 'apple', 1000)
+
+    state = scheduleBasicReview({ state, outcome: 'again', now: 1000 })
+    expect(state.schedulerState).toEqual({
+      kind: 'basic-v1',
+      stage: 0,
+      intervalDays: 1,
+    })
+
+    state = scheduleBasicReview({ state, outcome: 'good', now: 1300 })
+    expect(state.schedulerState).toEqual({
+      kind: 'basic-v1',
+      stage: 0,
+      intervalDays: 1,
+    })
+
+    state = scheduleBasicReview({ state, outcome: 'good', now: state.nextReviewAt })
+    expect(state.schedulerState).toEqual({
+      kind: 'basic-v1',
+      stage: 1,
+      intervalDays: 3,
+    })
+  })
+
+  test('normal immediate word loops do not inflate the spaced interval', () => {
+    let state = createInitialReviewWordState('cet4', 'banana', 1000)
+    state = scheduleBasicReview({ state, outcome: 'good', now: 1000 })
+    state = scheduleBasicReview({ state, outcome: 'good', now: 1010 })
+    state = scheduleBasicReview({ state, outcome: 'good', now: 1020 })
+
+    expect(state.schedulerState).toEqual({
+      kind: 'basic-v1',
+      stage: 0,
+      intervalDays: 1,
+    })
+  })
+})
