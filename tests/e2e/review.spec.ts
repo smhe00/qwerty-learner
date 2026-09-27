@@ -3,7 +3,12 @@ import { classifyTypingError } from '../../src/review/classifier'
 import { buildReviewDictionaryDiagnostics, buildReviewWordDiagnostics } from '../../src/review/diagnostics'
 import { filterDueReviewCandidates } from '../../src/review/due'
 import { summarizeWordHistory } from '../../src/review/features'
-import { LearningContextCollector, readLearningContext, summarizeAnswerVisibility } from '../../src/review/learning-context'
+import {
+  LearningContextCollector,
+  calculateAnswerVisibleRatio,
+  readLearningContext,
+  summarizeAnswerVisibility,
+} from '../../src/review/learning-context'
 import { rankDueReviewCandidates, rankReviewCandidates } from '../../src/review/priority'
 import { inferReviewOutcomeFromWordRecord, rebuildBasicStateFromWordRecords } from '../../src/review/rebuild'
 import {
@@ -84,7 +89,7 @@ test.describe('review data model', () => {
     collector.recordClean(2, 2150)
 
     expect(collector.snapshot()).toEqual({
-      telemetryVersion: 1,
+      telemetryVersion: 2,
       firstKeyLatencyMs: 300,
       attempts: [
         {
@@ -132,7 +137,7 @@ test.describe('review data model', () => {
       wrongCount: 0,
       mistakes: {},
       typingTelemetry: {
-          telemetryVersion: 1,
+          telemetryVersion: 2,
           firstKeyLatencyMs: 240,
           attempts: [{ startLatencyMs: 240, durationMs: 300, correctPrefixLength: 5, result: 'clean' }],
       },
@@ -153,26 +158,127 @@ test.describe('review data model', () => {
     }
     expect(readLearningContext(legacy)).toBeUndefined()
 
+    const visibility = [false, true, false, true]
     const collector = new LearningContextCollector()
     collector.reset({
-      answerVisibilityAtStart: summarizeAnswerVisibility([false, false, false]),
+      answerVisibilityAtStart: summarizeAnswerVisibility(visibility),
+      answerVisibleRatioAtStart: calculateAnswerVisibleRatio(visibility),
+      meaningVisibleAtStart: false,
+      phoneticVisibleAtStart: true,
       pronunciationEnabledAtStart: true,
     })
-    collector.recordAnswerReveal()
-    collector.recordInputStarted()
-    collector.recordAnswerReveal()
-    collector.recordPronunciationPlayed()
+    collector.recordAnswerReveal(1000)
+    collector.recordMeaningReveal()
+    collector.recordPronunciationPlayed('automatic')
+    collector.recordInputStarted(1400)
+    collector.recordAnswerReveal(1600)
+    collector.recordPronunciationPlayed('requested')
 
     expect(collector.snapshot()).toEqual({
       version: 1,
-      answerVisibilityAtStart: 'hidden',
+      answerVisibilityAtStart: 'partial',
+      answerVisibleRatioAtStart: 0.5,
       answerRevealed: true,
       revealedBeforeFirstKey: true,
       revealCount: 2,
+      lastAnswerRevealToFirstKeyMs: 400,
+      meaningVisibleAtStart: false,
+      meaningRevealed: true,
+      meaningRevealedBeforeFirstKey: true,
+      meaningRevealCount: 1,
+      phoneticVisibleAtStart: true,
       pronunciationEnabledAtStart: true,
       pronunciationPlayed: true,
-      pronunciationPlayCount: 1,
+      pronunciationPlayedBeforeFirstKey: true,
+      pronunciationPlayCount: 2,
+      pronunciationAutomaticPlayCount: 1,
+      pronunciationRequestedPlayCount: 1,
     })
+  })
+
+  test('excludes background pauses from active typing latency', () => {
+    const collector = new WordTelemetryCollector()
+    collector.resetWord()
+    collector.markReady(1000)
+
+    collector.pause(1200)
+    collector.resume(31200)
+    collector.recordKey(31500)
+    collector.recordClean(1, 31600)
+
+    expect(collector.snapshot()).toEqual({
+      telemetryVersion: 2,
+      firstKeyLatencyMs: 500,
+      attempts: [
+        {
+          startLatencyMs: 500,
+          durationMs: 100,
+          correctPrefixLength: 1,
+          result: 'clean',
+          interKeyIntervalsMs: [],
+        },
+      ],
+      backgroundPauseMs: 30000,
+      backgroundPauseCount: 1,
+    })
+  })
+
+  test('marks unexplained long foreground idle as attention-uncertain', () => {
+    const classification = classifyTypingError({
+      word: 'apple',
+      wrongCount: 0,
+      telemetry: {
+        telemetryVersion: 2,
+        firstKeyLatencyMs: 20000,
+        attempts: [
+          {
+            startLatencyMs: 20000,
+            durationMs: 500,
+            correctPrefixLength: 5,
+            result: 'clean',
+          },
+        ],
+      },
+      learningContext: {
+        version: 1,
+        answerVisibilityAtStart: 'hidden',
+        meaningVisibleAtStart: true,
+        pronunciationPlayedBeforeFirstKey: false,
+        revealedBeforeFirstKey: false,
+        meaningRevealedBeforeFirstKey: false,
+      },
+    })
+
+    expect(classification.cause).toBe('clean')
+    expect(classification.attentionUncertain).toBe(true)
+    expect(classificationToReviewOutcome(classification)).toBe('hard')
+  })
+
+  test('does not call a long pre-input pause inattentive when the learner actively requested a cue', () => {
+    const classification = classifyTypingError({
+      word: 'apple',
+      wrongCount: 0,
+      telemetry: {
+        telemetryVersion: 2,
+        firstKeyLatencyMs: 20000,
+        attempts: [
+          {
+            startLatencyMs: 20000,
+            durationMs: 500,
+            correctPrefixLength: 5,
+            result: 'clean',
+          },
+        ],
+      },
+      learningContext: {
+        version: 1,
+        pronunciationPlayedBeforeFirstKey: true,
+        pronunciationRequestedPlayCount: 1,
+      },
+    })
+
+    expect(classification.attentionUncertain).toBeUndefined()
+    expect(classificationToReviewOutcome(classification)).toBe('good')
   })
 
   test('creates a scheduler-neutral initial per-word review state', () => {
@@ -202,7 +308,7 @@ test.describe('typing error classification', () => {
       word: 'apple',
       wrongCount: 1,
       telemetry: {
-        telemetryVersion: 1,
+        telemetryVersion: 2,
         firstKeyLatencyMs: 180,
         attempts: [
           {
@@ -234,7 +340,7 @@ test.describe('typing error classification', () => {
       word: 'necessary',
       wrongCount: 3,
       telemetry: {
-        telemetryVersion: 1,
+        telemetryVersion: 2,
         firstKeyLatencyMs: 3600,
         attempts: [
           { startLatencyMs: 3600, durationMs: 1000, correctPrefixLength: 1, result: 'wrong', wrongIndex: 1, wrongKey: 'x' },
@@ -254,7 +360,7 @@ test.describe('typing error classification', () => {
       word: 'receive',
       wrongCount: 2,
       telemetry: {
-        telemetryVersion: 1,
+        telemetryVersion: 2,
         firstKeyLatencyMs: 450,
         attempts: [
           { startLatencyMs: 450, durationMs: 900, correctPrefixLength: 3, result: 'wrong', wrongIndex: 3, wrongKey: 'i', interKeyIntervalsMs: [180, 190, 800] },
@@ -288,7 +394,7 @@ test.describe('typing error classification', () => {
         wrongCount: 1,
         mistakes: { 3: ['i'] },
         typingTelemetry: {
-          telemetryVersion: 1,
+          telemetryVersion: 2,
           firstKeyLatencyMs: 500,
           attempts: [
             { startLatencyMs: 500, durationMs: 900, correctPrefixLength: 3, result: 'wrong', wrongIndex: 3, wrongKey: 'i' },
@@ -310,7 +416,7 @@ test.describe('typing history evidence', () => {
   test('does not treat a single wrong position as a repeated spelling pattern', async () => {
     const { extractTypingBehaviorFeatures } = await import('../../src/review/features')
     const features = extractTypingBehaviorFeatures('apple', 1, {
-      telemetryVersion: 1,
+      telemetryVersion: 2,
       firstKeyLatencyMs: 200,
       attempts: [
         { startLatencyMs: 200, durationMs: 300, correctPrefixLength: 4, result: 'wrong', wrongIndex: 4, wrongKey: 'r' },
@@ -323,7 +429,7 @@ test.describe('typing history evidence', () => {
 
   test('repeated same-position history strengthens spelling evidence versus diffuse history', () => {
     const baseTelemetry = {
-      telemetryVersion: 1 as const,
+      telemetryVersion: 2 as const,
       firstKeyLatencyMs: 700,
       attempts: [
         { startLatencyMs: 700, durationMs: 900, correctPrefixLength: 3, result: 'wrong' as const, wrongIndex: 3, wrongKey: 'i', interKeyIntervalsMs: [180, 190, 800] },
@@ -528,7 +634,7 @@ test.describe('review diagnostics', () => {
         wrongCount: 2,
         mistakes: { 3: ['i', 'i'] },
         typingTelemetry: {
-          telemetryVersion: 1,
+          telemetryVersion: 2,
           firstKeyLatencyMs: 450,
           attempts: [
             {
@@ -612,7 +718,7 @@ test.describe('review dictionary diagnostics', () => {
         wrongCount: 0,
         mistakes: {},
         typingTelemetry: {
-          telemetryVersion: 1,
+          telemetryVersion: 2,
           firstKeyLatencyMs: 180,
           attempts: [
             {
@@ -691,7 +797,7 @@ test.describe('review state rebuild fidelity', () => {
       wrongCount: 1,
       mistakes: { 4: ['r'] },
       typingTelemetry: {
-        telemetryVersion: 1,
+        telemetryVersion: 2,
         firstKeyLatencyMs: 180,
         attempts: [
           {
@@ -741,7 +847,7 @@ test.describe('review state rebuild fidelity', () => {
         wrongCount: 1,
         mistakes: { 4: ['r'] },
         typingTelemetry: {
-          telemetryVersion: 1,
+          telemetryVersion: 2,
           firstKeyLatencyMs: 180,
           attempts: [
             {
@@ -1011,7 +1117,7 @@ test.describe('legacy migration due-now semantics', () => {
         wrongCount: 0,
         mistakes: {},
         typingTelemetry: {
-          telemetryVersion: 1,
+          telemetryVersion: 2,
           firstKeyLatencyMs: 180,
           attempts: [
             {
