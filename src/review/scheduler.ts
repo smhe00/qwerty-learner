@@ -20,6 +20,7 @@ export interface ReviewSchedulerAdapter {
  * concrete FSRS implementation.
  */
 export function classificationToReviewOutcome(classification: TypingErrorClassification): ReviewOutcome {
+  if (classification.attentionUncertain) return 'hard'
   if (classification.cause === 'recall') return 'again'
   if (classification.cause === 'spelling') return 'hard'
   if (classification.cause === 'uncertain') return 'hard'
