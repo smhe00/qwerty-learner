@@ -1,6 +1,6 @@
 import { rebuildBasicStateFromWordRecords } from './rebuild'
 import { scheduleBasicReview } from './scheduler'
-import { createInitialReviewWordState } from './types'
+import { CURRENT_REVIEW_STATE_VERSION, createInitialReviewWordState } from './types'
 import type { IReviewWordState, ReviewOutcome } from './types'
 import { db } from '@/utils/db'
 
@@ -41,7 +41,7 @@ export async function applyReviewOutcome(
     const existing = await getReviewWordState(dict, word)
     let current = existing
 
-    if (!current) {
+    if (!current || current.stateVersion !== CURRENT_REVIEW_STATE_VERSION) {
       const priorRecords = await db.wordRecords
         .where('word')
         .equals(word)
@@ -79,7 +79,12 @@ export async function bootstrapReviewWordStatesForDictionary(dict: string): Prom
       db.reviewWordStates.where('dict').equals(dict).toArray(),
     ])
 
-    const existingWords = new Set(existingStates.map((state) => state.word))
+    const hasStaleState = existingStates.some((state) => state.stateVersion !== CURRENT_REVIEW_STATE_VERSION)
+    if (hasStaleState) {
+      await db.reviewWordStates.where('dict').equals(dict).delete()
+    }
+
+    const existingWords = hasStaleState ? new Set<string>() : new Set(existingStates.map((state) => state.word))
     const recordsByWord = new Map<string, typeof records>()
 
     for (const record of records) {
