@@ -6,6 +6,7 @@ import { readWordTelemetry } from './telemetry'
 import type { TypingErrorClassification } from './classifier'
 import type { IReviewWordState } from './types'
 import { db } from '@/utils/db'
+import type { IWordRecord } from '@/utils/db/record'
 
 export type ReviewDiagnosticLatestRecord = {
   id?: number
@@ -37,11 +38,11 @@ export function buildReviewWordDiagnostics(input: {
   dict: string
   word: string
   now: number
-  records: Awaited<ReturnType<typeof db.wordRecords.toArray>>
+  records: IWordRecord[]
   state?: IReviewWordState
 }): ReviewWordDiagnostics {
   const records = [...input.records].sort((a, b) => a.timeStamp - b.timeStamp)
-  const latest = records.at(-1)
+  const latest = records.length > 0 ? records[records.length - 1] : undefined
   const priorRecords = latest ? records.slice(0, -1) : []
   const history = summarizeWordHistory(records)
 
