@@ -32,7 +32,7 @@ export async function exportDatabase(callback: (exportProgress: ExportProgress) 
 }
 
 export async function importDatabase(onStart: () => void, callback: (importProgress: ImportProgress) => boolean) {
-  const [pako] = await Promise.all([import('pako'), import('dexie-export-import')])
+  const [pako, { peakImportFile }] = await Promise.all([import('pako'), import('dexie-export-import')])
 
   const input = document.createElement('input')
   input.type = 'file'
@@ -46,6 +46,8 @@ export async function importDatabase(onStart: () => void, callback: (importProgr
     const compressed = await file.arrayBuffer()
     const json = pako.ungzip(compressed, { to: 'string' })
     const blob = new Blob([json])
+    const importMeta = await peakImportFile(blob)
+    const hasReviewWordStates = importMeta.data.tables.some((table) => table.name === 'reviewWordStates')
 
     await db.import(blob, {
       acceptVersionDiff: true,
@@ -58,6 +60,12 @@ export async function importDatabase(onStart: () => void, callback: (importProgr
         return callback({ totalRows, completedRows, done })
       },
     })
+
+    // A v3 backup has no derived review state. Clear any local v4 state so it
+    // can be rebuilt lazily from the imported WordRecord source of truth.
+    if (!hasReviewWordStates) {
+      await db.reviewWordStates.clear()
+    }
 
     const [wordCount, chapterCount] = await Promise.all([db.wordRecords.count(), db.chapterRecords.count()])
     recordDataAction({ type: 'import', size: file.size, wordCount, chapterCount })

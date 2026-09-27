@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test'
 import { rankReviewCandidates } from '../../src/review/priority'
+import { WordTelemetryCollector, readWordTelemetry } from '../../src/review/telemetry'
+import { createInitialReviewWordState } from '../../src/review/types'
+import type { IWordRecord } from '../../src/utils/db/record'
 import {
   MAX_REINFORCEMENT_GAP,
   MIN_REINFORCEMENT_GAP,
@@ -49,5 +52,79 @@ test.describe('review domain', () => {
 
     expect(plan.insertedAt).toBeNull()
     expect(plan.queue).toBe(queue)
+  })
+})
+
+
+test.describe('review data model', () => {
+  test('collects failed and clean attempts without changing legacy timing semantics', () => {
+    const collector = new WordTelemetryCollector()
+    collector.resetWord()
+    collector.markReady(1000)
+
+    collector.recordKey(1300)
+    collector.recordKey(1400)
+    collector.recordWrong(1, 1, 'x', 1450)
+
+    collector.startNextAttempt(1800)
+    collector.recordKey(2000)
+    collector.recordKey(2100)
+    collector.recordClean(2, 2150)
+
+    expect(collector.snapshot()).toEqual({
+      telemetryVersion: 1,
+      firstKeyLatencyMs: 300,
+      attempts: [
+        {
+          startLatencyMs: 300,
+          durationMs: 150,
+          correctPrefixLength: 1,
+          result: 'wrong',
+          wrongIndex: 1,
+          wrongKey: 'x',
+          interKeyIntervalsMs: [100],
+        },
+        {
+          startLatencyMs: 200,
+          durationMs: 150,
+          correctPrefixLength: 2,
+          result: 'clean',
+          interKeyIntervalsMs: [100],
+        },
+      ],
+    })
+  })
+
+  test('treats legacy WordRecord rows without telemetry as valid legacy data', () => {
+    const legacyRecord: IWordRecord = {
+      word: 'apple',
+      timeStamp: 1,
+      dict: 'cet4',
+      chapter: 0,
+      timing: [100, 120],
+      wrongCount: 1,
+      mistakes: { 2: ['x'] },
+    }
+
+    expect(readWordTelemetry(legacyRecord)).toBeUndefined()
+  })
+
+  test('creates a scheduler-neutral initial per-word review state', () => {
+    expect(createInitialReviewWordState('cet4', 'apple', 1000)).toEqual({
+      dict: 'cet4',
+      word: 'apple',
+      createdAt: 1000,
+      updatedAt: 1000,
+      nextReviewAt: 1000,
+      reviewCount: 0,
+      lapseCount: 0,
+      cleanStreak: 0,
+      stateVersion: 1,
+      schedulerState: {
+        kind: 'basic-v1',
+        stage: 0,
+        intervalDays: 0,
+      },
+    })
   })
 })

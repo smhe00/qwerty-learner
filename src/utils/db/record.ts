@@ -1,6 +1,27 @@
 import { getUTCUnixTimestamp } from '../index'
 import type { Word } from '@/typings'
 
+export type WordAttemptResult = 'clean' | 'wrong'
+
+export interface WordAttemptRecord {
+  // Time from the attempt becoming ready to the first input key.
+  startLatencyMs: number
+  // Time from the first input key until this attempt succeeds or fails.
+  durationMs: number
+  // Number of correct prefix characters before the attempt ended.
+  correctPrefixLength: number
+  result: WordAttemptResult
+  wrongIndex?: number
+  wrongKey?: string
+  interKeyIntervalsMs?: number[]
+}
+
+export interface WordRecordTelemetry {
+  telemetryVersion: 1
+  firstKeyLatencyMs: number
+  attempts: WordAttemptRecord[]
+}
+
 export interface IWordRecord {
   word: string
   timeStamp: number
@@ -14,6 +35,11 @@ export interface IWordRecord {
   wrongCount: number
   // 每个字母被错误输入成什么, index 为字母的索引, 数组内为错误的 e.key
   mistakes: LetterMistakes
+
+  // Optional raw telemetry added in DB v4. Old records intentionally remain valid.
+  telemetryVersion?: 1
+  firstKeyLatencyMs?: number
+  attempts?: WordAttemptRecord[]
 }
 
 export interface LetterMistakes {
@@ -29,8 +55,19 @@ export class WordRecord implements IWordRecord {
   timing: number[]
   wrongCount: number
   mistakes: LetterMistakes
+  telemetryVersion?: 1
+  firstKeyLatencyMs?: number
+  attempts?: WordAttemptRecord[]
 
-  constructor(word: string, dict: string, chapter: number | null, timing: number[], wrongCount: number, mistakes: LetterMistakes) {
+  constructor(
+    word: string,
+    dict: string,
+    chapter: number | null,
+    timing: number[],
+    wrongCount: number,
+    mistakes: LetterMistakes,
+    telemetry?: WordRecordTelemetry,
+  ) {
     this.word = word
     this.timeStamp = getUTCUnixTimestamp()
     this.dict = dict
@@ -38,6 +75,12 @@ export class WordRecord implements IWordRecord {
     this.timing = timing
     this.wrongCount = wrongCount
     this.mistakes = mistakes
+
+    if (telemetry) {
+      this.telemetryVersion = telemetry.telemetryVersion
+      this.firstKeyLatencyMs = telemetry.firstKeyLatencyMs
+      this.attempts = telemetry.attempts
+    }
   }
 
   get totalTime() {

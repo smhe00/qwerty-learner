@@ -1,5 +1,13 @@
-import type { IChapterRecord, IReviewRecord, IRevisionDictRecord, IWordRecord, LetterMistakes } from './record'
+import type {
+  IChapterRecord,
+  IReviewRecord,
+  IRevisionDictRecord,
+  IWordRecord,
+  LetterMistakes,
+  WordRecordTelemetry,
+} from './record'
 import { ChapterRecord, ReviewRecord, WordRecord } from './record'
+import type { IReviewWordState } from '@/review/types'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import type { TypingState } from '@/pages/Typing/store/type'
 import { currentChapterAtom, currentDictIdAtom, isReviewModeAtom } from '@/store'
@@ -12,6 +20,7 @@ class RecordDB extends Dexie {
   wordRecords!: Table<IWordRecord, number>
   chapterRecords!: Table<IChapterRecord, number>
   reviewRecords!: Table<IReviewRecord, number>
+  reviewWordStates!: Table<IReviewWordState, number>
 
   revisionDictRecords!: Table<IRevisionDictRecord, number>
   revisionWordRecords!: Table<IWordRecord, number>
@@ -30,6 +39,12 @@ class RecordDB extends Dexie {
       wordRecords: '++id,word,timeStamp,dict,chapter,wrongCount,[dict+chapter]',
       chapterRecords: '++id,timeStamp,dict,chapter,time,[dict+chapter]',
       reviewRecords: '++id,dict,createTime,isFinished',
+    })
+    this.version(4).stores({
+      wordRecords: '++id,word,timeStamp,dict,chapter,wrongCount,[dict+chapter]',
+      chapterRecords: '++id,timeStamp,dict,chapter,time,[dict+chapter]',
+      reviewRecords: '++id,dict,createTime,isFinished',
+      reviewWordStates: '++id,&[dict+word],dict,word,nextReviewAt,[dict+nextReviewAt],lastReviewedAt',
     })
   }
 }
@@ -90,11 +105,13 @@ export function useSaveWordRecord() {
       wrongCount,
       letterTimeArray,
       letterMistake,
+      telemetry,
     }: {
       word: string
       wrongCount: number
       letterTimeArray: number[]
       letterMistake: LetterMistakes
+      telemetry?: WordRecordTelemetry
     }) => {
       const timing = []
       for (let i = 1; i < letterTimeArray.length; i++) {
@@ -102,7 +119,7 @@ export function useSaveWordRecord() {
         timing.push(diff)
       }
 
-      const wordRecord = new WordRecord(word, dictID, isRevision ? -1 : currentChapter, timing, wrongCount, letterMistake)
+      const wordRecord = new WordRecord(word, dictID, isRevision ? -1 : currentChapter, timing, wrongCount, letterMistake, telemetry)
 
       let dbID = -1
       try {

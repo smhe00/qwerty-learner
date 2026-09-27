@@ -12,6 +12,7 @@ import { WordPronunciationIcon } from '@/components/WordPronunciationIcon'
 import { EXPLICIT_SPACE } from '@/constants'
 import useKeySounds from '@/hooks/useKeySounds'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
+import { WordTelemetryCollector } from '@/review/telemetry'
 import {
   currentChapterAtom,
   currentDictInfoAtom,
@@ -55,9 +56,12 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
 
   const [showTipAlert, setShowTipAlert] = useState(false)
   const wordPronunciationIconRef = useRef<WordPronunciationIconRef>(null)
+  const telemetryCollectorRef = useRef(new WordTelemetryCollector())
 
   useEffect(() => {
     // run only when word changes
+    telemetryCollectorRef.current.resetWord()
+
     let headword = ''
     try {
       headword = word.name.replace(new RegExp(' ', 'g'), EXPLICIT_SPACE)
@@ -75,11 +79,19 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
     setWordState(newWordState)
   }, [word, setWordState])
 
+  useEffect(() => {
+    if (state.isTyping) {
+      telemetryCollectorRef.current.markReady(Date.now())
+    }
+  }, [state.isTyping, word.name])
+
   const updateInput = useCallback(
     (updateAction: WordUpdateAction) => {
       switch (updateAction.type) {
         case 'add':
           if (wordState.hasWrong) return
+
+          telemetryCollectorRef.current.recordKey(Date.now())
 
           if (updateAction.value === ' ') {
             updateAction.event.preventDefault()
@@ -197,6 +209,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
 
       if (inputLength >= wordState.displayWord.length) {
         // 完成输入时
+        telemetryCollectorRef.current.recordClean(inputLength, Date.now())
         setWordState((state) => {
           state.letterStates[inputLength - 1] = 'correct'
           state.isFinished = true
@@ -214,6 +227,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
     } else {
       // 出错时
       playBeepSound()
+      telemetryCollectorRef.current.recordWrong(inputLength - 1, inputLength - 1, inputChar, Date.now())
       setWordState((state) => {
         state.letterStates[inputLength - 1] = 'wrong'
         state.hasWrong = true
@@ -246,6 +260,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
           state.letterStates = new Array(state.letterStates.length).fill('normal')
           state.hasWrong = false
         })
+        telemetryCollectorRef.current.startNextAttempt(Date.now())
       }, 300)
 
       return () => {
@@ -271,6 +286,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
         wrongCount: wordState.wrongCount,
         letterTimeArray: wordState.letterTimeArray,
         letterMistake: wordState.letterMistake,
+        telemetry: telemetryCollectorRef.current.snapshot(),
       })
 
       onFinish({ wrongCount: wordState.wrongCount })
