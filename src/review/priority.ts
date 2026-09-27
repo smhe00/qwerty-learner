@@ -1,3 +1,5 @@
+import type { IReviewWordState } from './types'
+
 export type ReviewPriorityCandidate = {
   errorCount: number
   latestErrorTime: number
@@ -20,14 +22,12 @@ export function rankReviewCandidates<T extends ReviewPriorityCandidate>(candidat
 }
 
 
-import type { IReviewWordState } from './types'
-
 export type DueReviewPriorityCandidate = ReviewPriorityCandidate & {
   word: string
 }
 
 function basicStage(state: IReviewWordState | undefined): number {
-  if (!state) return Number.MAX_SAFE_INTEGER
+  if (!state) return Number.POSITIVE_INFINITY
   if (state.schedulerState.kind === 'basic-v1') return state.schedulerState.stage
 
   // FSRS states use a different scale; do not fabricate a cross-algorithm
@@ -64,7 +64,7 @@ export function rankDueReviewCandidates<T extends DueReviewPriorityCandidate>(
     const errorDiff = b.errorCount - a.errorCount
     if (errorDiff !== 0) return errorDiff
 
-    const dueDiff = (stateA?.nextReviewAt ?? Number.MAX_SAFE_INTEGER) - (stateB?.nextReviewAt ?? Number.MAX_SAFE_INTEGER)
+    const dueDiff = (stateA?.nextReviewAt ?? Number.POSITIVE_INFINITY) - (stateB?.nextReviewAt ?? Number.POSITIVE_INFINITY)
     if (dueDiff !== 0) return dueDiff
 
     return b.latestErrorTime - a.latestErrorTime
