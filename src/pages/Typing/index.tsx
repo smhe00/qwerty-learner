@@ -14,7 +14,6 @@ import { DonateCard } from '@/components/DonateCard'
 import Header from '@/components/Header'
 import Tooltip from '@/components/Tooltip'
 import { idDictionaryMap } from '@/resources/dictionary'
-import { installReviewDevtools } from '@/review/devtools'
 import { currentChapterAtom, currentDictIdAtom, isReviewModeAtom, randomConfigAtom, reviewModeInfoAtom } from '@/store'
 import { IsDesktop, isLegal } from '@/utils'
 import { useSaveChapterRecord } from '@/utils/db'
@@ -39,7 +38,21 @@ const App: React.FC = () => {
   const isReviewMode = useAtomValue(isReviewModeAtom)
 
   useEffect(() => {
-    return installReviewDevtools()
+    if (!import.meta.env.DEV) return
+
+    let active = true
+    let cleanup: (() => void) | undefined
+
+    void import('@/review/devtools').then(({ installReviewDevtools }) => {
+      if (active) {
+        cleanup = installReviewDevtools()
+      }
+    })
+
+    return () => {
+      active = false
+      cleanup?.()
+    }
   }, [])
 
   useEffect(() => {
