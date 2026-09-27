@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { classifyTypingError } from '../../src/review/classifier'
-import { buildReviewWordDiagnostics } from '../../src/review/diagnostics'
+import { buildReviewDictionaryDiagnostics, buildReviewWordDiagnostics } from '../../src/review/diagnostics'
 import { filterDueReviewCandidates } from '../../src/review/due'
 import { summarizeWordHistory } from '../../src/review/features'
 import { rankReviewCandidates } from '../../src/review/priority'
@@ -557,5 +557,73 @@ test.describe('review diagnostics', () => {
     expect(diagnostic.due).toBe(true)
     expect(diagnostic.secondsUntilDue).toBe(0)
     expect(diagnostic.latestRecord).toBeUndefined()
+  })
+})
+
+
+test.describe('review dictionary diagnostics', () => {
+  test('summarizes telemetry coverage, causes, due count and scheduler stages', () => {
+    const records: IWordRecord[] = [
+      {
+        id: 1,
+        word: 'apple',
+        timeStamp: 1000,
+        dict: 'cet4',
+        chapter: 0,
+        timing: [90, 100],
+        wrongCount: 0,
+        mistakes: {},
+        telemetryVersion: 1,
+        firstKeyLatencyMs: 180,
+        attempts: [
+          {
+            startLatencyMs: 180,
+            durationMs: 400,
+            correctPrefixLength: 5,
+            result: 'clean',
+            interKeyIntervalsMs: [90, 100, 95, 85],
+          },
+        ],
+      },
+      {
+        id: 2,
+        word: 'receive',
+        timeStamp: 1100,
+        dict: 'cet4',
+        chapter: 0,
+        timing: [180, 200],
+        wrongCount: 2,
+        mistakes: { 3: ['i', 'i'] },
+      },
+    ]
+
+    const states = [
+      {
+        ...createInitialReviewWordState('cet4', 'apple', 1000),
+        nextReviewAt: 900,
+        schedulerState: { kind: 'basic-v1' as const, stage: 1, intervalDays: 3 },
+      },
+      {
+        ...createInitialReviewWordState('cet4', 'receive', 1000),
+        nextReviewAt: 3000,
+        schedulerState: { kind: 'basic-v1' as const, stage: 0, intervalDays: 1 },
+      },
+    ]
+
+    const diagnostic = buildReviewDictionaryDiagnostics({
+      dict: 'cet4',
+      now: 1200,
+      records,
+      states,
+    })
+
+    expect(diagnostic.wordRecordCount).toBe(2)
+    expect(diagnostic.uniqueWordCount).toBe(2)
+    expect(diagnostic.telemetryRecordCount).toBe(1)
+    expect(diagnostic.telemetryCoverage).toBe(0.5)
+    expect(diagnostic.stateCount).toBe(2)
+    expect(diagnostic.dueCount).toBe(1)
+    expect(diagnostic.basicStageCounts).toEqual({ 0: 1, 1: 1 })
+    expect(Object.values(diagnostic.causeCounts).reduce((sum, count) => sum + count, 0)).toBe(2)
   })
 })
