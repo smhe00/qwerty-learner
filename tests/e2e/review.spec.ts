@@ -239,3 +239,58 @@ test.describe('typing error classification', () => {
     expect(summary.dominantWrongIndexRatio).toBe(1)
   })
 })
+
+
+test.describe('typing history evidence', () => {
+  test('does not treat a single wrong position as a repeated spelling pattern', async () => {
+    const { extractTypingBehaviorFeatures } = await import('../../src/review/features')
+    const features = extractTypingBehaviorFeatures('apple', 1, {
+      telemetryVersion: 1,
+      firstKeyLatencyMs: 200,
+      attempts: [
+        { startLatencyMs: 200, durationMs: 300, correctPrefixLength: 4, result: 'wrong', wrongIndex: 4, wrongKey: 'r' },
+        { startLatencyMs: 150, durationMs: 350, correctPrefixLength: 5, result: 'clean' },
+      ],
+    })
+
+    expect(features.repeatedWrongPositionRatio).toBe(0)
+  })
+
+  test('repeated same-position history strengthens spelling evidence versus diffuse history', () => {
+    const baseTelemetry = {
+      telemetryVersion: 1 as const,
+      firstKeyLatencyMs: 700,
+      attempts: [
+        { startLatencyMs: 700, durationMs: 900, correctPrefixLength: 3, result: 'wrong' as const, wrongIndex: 3, wrongKey: 'i', interKeyIntervalsMs: [180, 190, 800] },
+        { startLatencyMs: 300, durationMs: 850, correctPrefixLength: 3, result: 'wrong' as const, wrongIndex: 3, wrongKey: 'i', interKeyIntervalsMs: [160, 180, 760] },
+        { startLatencyMs: 250, durationMs: 900, correctPrefixLength: 7, result: 'clean' as const },
+      ],
+    }
+
+    const diffuse = classifyTypingError({
+      word: 'receive',
+      wrongCount: 2,
+      telemetry: baseTelemetry,
+      history: {
+        recordCount: 5,
+        failedRecordCount: 3,
+        failureRate: 0.6,
+        dominantWrongIndexRatio: 0.2,
+      },
+    })
+    const fixed = classifyTypingError({
+      word: 'receive',
+      wrongCount: 2,
+      telemetry: baseTelemetry,
+      history: {
+        recordCount: 5,
+        failedRecordCount: 3,
+        failureRate: 0.6,
+        dominantWrongIndex: 3,
+        dominantWrongIndexRatio: 1,
+      },
+    })
+
+    expect(fixed.scores.spelling).toBeGreaterThan(diffuse.scores.spelling)
+  })
+})
