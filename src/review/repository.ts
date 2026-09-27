@@ -1,4 +1,5 @@
-import { rebuildBasicStateFromLegacy, scheduleBasicReview } from './scheduler'
+import { rebuildBasicStateFromWordRecords } from './rebuild'
+import { scheduleBasicReview } from './scheduler'
 import { createInitialReviewWordState } from './types'
 import type { IReviewWordState, ReviewOutcome } from './types'
 import { db } from '@/utils/db'
@@ -48,7 +49,7 @@ export async function applyReviewOutcome(
         .toArray()
 
       current =
-        rebuildBasicStateFromLegacy(dict, word, priorRecords) ??
+        rebuildBasicStateFromWordRecords(dict, word, priorRecords) ??
         createInitialReviewWordState(dict, word, now)
     }
 
@@ -94,7 +95,7 @@ export async function bootstrapReviewWordStatesForDictionary(dict: string): Prom
     let createdCount = 0
 
     for (const [word, wordRecords] of recordsByWord) {
-      const state = rebuildBasicStateFromLegacy(dict, word, wordRecords)
+      const state = rebuildBasicStateFromWordRecords(dict, word, wordRecords)
       if (!state) continue
 
       await db.reviewWordStates.put(state)
@@ -102,5 +103,34 @@ export async function bootstrapReviewWordStatesForDictionary(dict: string): Prom
     }
 
     return createdCount
+  })
+}
+
+
+export async function rebuildReviewWordStatesForDictionary(dict: string): Promise<number> {
+  return db.transaction('rw', db.wordRecords, db.reviewWordStates, async () => {
+    const records = await db.wordRecords.where('dict').equals(dict).toArray()
+    const recordsByWord = new Map<string, typeof records>()
+
+    for (const record of records) {
+      const group = recordsByWord.get(record.word)
+      if (group) {
+        group.push(record)
+      } else {
+        recordsByWord.set(record.word, [record])
+      }
+    }
+
+    await db.reviewWordStates.where('dict').equals(dict).delete()
+
+    let rebuiltCount = 0
+    for (const [word, wordRecords] of recordsByWord) {
+      const state = rebuildBasicStateFromWordRecords(dict, word, wordRecords)
+      if (!state) continue
+      await db.reviewWordStates.put(state)
+      rebuiltCount += 1
+    }
+
+    return rebuiltCount
   })
 }

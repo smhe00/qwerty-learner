@@ -4,6 +4,7 @@ import { buildReviewDictionaryDiagnostics, buildReviewWordDiagnostics } from '..
 import { filterDueReviewCandidates } from '../../src/review/due'
 import { summarizeWordHistory } from '../../src/review/features'
 import { rankReviewCandidates } from '../../src/review/priority'
+import { inferReviewOutcomeFromWordRecord, rebuildBasicStateFromWordRecords } from '../../src/review/rebuild'
 import {
   classificationToReviewOutcome,
   inferLegacyReviewOutcome,
@@ -627,5 +628,106 @@ test.describe('review dictionary diagnostics', () => {
     expect(diagnostic.dueCount).toBe(1)
     expect(diagnostic.basicStageCounts).toEqual({ 0: 1, 1: 1 })
     expect(Object.values(diagnostic.causeCounts).reduce((sum, count) => sum + count, 0)).toBe(2)
+  })
+})
+
+
+test.describe('review state rebuild fidelity', () => {
+  test('uses adaptive telemetry for new records but conservative mapping for legacy rows', () => {
+    const legacy: IWordRecord = {
+      word: 'apple',
+      timeStamp: 1000,
+      dict: 'cet4',
+      chapter: 0,
+      timing: [100],
+      wrongCount: 1,
+      mistakes: { 4: ['r'] },
+    }
+
+    const motorLike: IWordRecord = {
+      id: 2,
+      word: 'apple',
+      timeStamp: 2000,
+      dict: 'cet4',
+      chapter: -1,
+      timing: [90, 80, 100, 85],
+      wrongCount: 1,
+      mistakes: { 4: ['r'] },
+      telemetryVersion: 1,
+      firstKeyLatencyMs: 180,
+      attempts: [
+        {
+          startLatencyMs: 180,
+          durationMs: 300,
+          correctPrefixLength: 4,
+          result: 'wrong',
+          wrongIndex: 4,
+          wrongKey: 'r',
+          interKeyIntervalsMs: [90, 80, 100, 85],
+        },
+        {
+          startLatencyMs: 120,
+          durationMs: 350,
+          correctPrefixLength: 5,
+          result: 'clean',
+          interKeyIntervalsMs: [85, 90, 95, 80],
+        },
+      ],
+    }
+
+    expect(inferReviewOutcomeFromWordRecord(legacy, [])).toBe('hard')
+    expect(inferReviewOutcomeFromWordRecord(motorLike, [legacy])).toBe('good')
+  })
+
+  test('rebuilds deterministic basic state from mixed legacy and telemetry records', () => {
+    const day = 24 * 60 * 60
+    const records: IWordRecord[] = [
+      {
+        id: 1,
+        word: 'apple',
+        timeStamp: 1000,
+        dict: 'cet4',
+        chapter: 0,
+        timing: [100],
+        wrongCount: 2,
+        mistakes: { 1: ['x'], 3: ['v'] },
+      },
+      {
+        id: 2,
+        word: 'apple',
+        timeStamp: 1000 + day,
+        dict: 'cet4',
+        chapter: -1,
+        timing: [90, 80, 100, 85],
+        wrongCount: 1,
+        mistakes: { 4: ['r'] },
+        telemetryVersion: 1,
+        firstKeyLatencyMs: 180,
+        attempts: [
+          {
+            startLatencyMs: 180,
+            durationMs: 300,
+            correctPrefixLength: 4,
+            result: 'wrong',
+            wrongIndex: 4,
+            wrongKey: 'r',
+            interKeyIntervalsMs: [90, 80, 100, 85],
+          },
+          {
+            startLatencyMs: 120,
+            durationMs: 350,
+            correctPrefixLength: 5,
+            result: 'clean',
+          },
+        ],
+      },
+    ]
+
+    const rebuilt = rebuildBasicStateFromWordRecords('cet4', 'apple', records)
+
+    expect(rebuilt?.reviewCount).toBe(2)
+    expect(rebuilt?.lapseCount).toBe(1)
+    expect(rebuilt?.lastOutcome).toBe('good')
+    expect(rebuilt?.schedulerState.kind).toBe('basic-v1')
   })
 })
