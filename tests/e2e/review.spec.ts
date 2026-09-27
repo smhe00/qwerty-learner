@@ -132,9 +132,9 @@ test.describe('review data model', () => {
       wrongCount: 0,
       mistakes: {},
       typingTelemetry: {
-        telemetryVersion: 1,
-        firstKeyLatencyMs: 240,
-        attempts: [{ startLatencyMs: 240, durationMs: 300, correctPrefixLength: 5, result: 'clean' }],
+          telemetryVersion: 1,
+          firstKeyLatencyMs: 240,
+          attempts: [{ startLatencyMs: 240, durationMs: 300, correctPrefixLength: 5, result: 'clean' }],
       },
     }
 
@@ -288,12 +288,12 @@ test.describe('typing error classification', () => {
         wrongCount: 1,
         mistakes: { 3: ['i'] },
         typingTelemetry: {
-        telemetryVersion: 1,
-        firstKeyLatencyMs: 500,
-        attempts: [
-          { startLatencyMs: 500, durationMs: 900, correctPrefixLength: 3, result: 'wrong', wrongIndex: 3, wrongKey: 'i' },
-          { startLatencyMs: 200, durationMs: 1000, correctPrefixLength: 7, result: 'clean' },
-        ],
+          telemetryVersion: 1,
+          firstKeyLatencyMs: 500,
+          attempts: [
+            { startLatencyMs: 500, durationMs: 900, correctPrefixLength: 3, result: 'wrong', wrongIndex: 3, wrongKey: 'i' },
+            { startLatencyMs: 200, durationMs: 1000, correctPrefixLength: 7, result: 'clean' },
+          ],
         },
       },
     ])
@@ -528,34 +528,34 @@ test.describe('review diagnostics', () => {
         wrongCount: 2,
         mistakes: { 3: ['i', 'i'] },
         typingTelemetry: {
-        telemetryVersion: 1,
-        firstKeyLatencyMs: 450,
-        attempts: [
-          {
-            startLatencyMs: 450,
-            durationMs: 900,
-            correctPrefixLength: 3,
-            result: 'wrong',
-            wrongIndex: 3,
-            wrongKey: 'i',
-            interKeyIntervalsMs: [160, 180, 760],
-          },
-          {
-            startLatencyMs: 300,
-            durationMs: 850,
-            correctPrefixLength: 3,
-            result: 'wrong',
-            wrongIndex: 3,
-            wrongKey: 'i',
-            interKeyIntervalsMs: [170, 190, 740],
-          },
-          {
-            startLatencyMs: 250,
-            durationMs: 900,
-            correctPrefixLength: 7,
-            result: 'clean',
-          },
-        ],
+          telemetryVersion: 1,
+          firstKeyLatencyMs: 450,
+          attempts: [
+            {
+              startLatencyMs: 450,
+              durationMs: 900,
+              correctPrefixLength: 3,
+              result: 'wrong',
+              wrongIndex: 3,
+              wrongKey: 'i',
+              interKeyIntervalsMs: [160, 180, 760],
+            },
+            {
+              startLatencyMs: 300,
+              durationMs: 850,
+              correctPrefixLength: 3,
+              result: 'wrong',
+              wrongIndex: 3,
+              wrongKey: 'i',
+              interKeyIntervalsMs: [170, 190, 740],
+            },
+            {
+              startLatencyMs: 250,
+              durationMs: 900,
+              correctPrefixLength: 7,
+              result: 'clean',
+            },
+          ],
         },
       },
     ]
@@ -612,17 +612,17 @@ test.describe('review dictionary diagnostics', () => {
         wrongCount: 0,
         mistakes: {},
         typingTelemetry: {
-        telemetryVersion: 1,
-        firstKeyLatencyMs: 180,
-        attempts: [
-          {
-            startLatencyMs: 180,
-            durationMs: 400,
-            correctPrefixLength: 5,
-            result: 'clean',
-            interKeyIntervalsMs: [90, 100, 95, 85],
-          },
-        ],
+          telemetryVersion: 1,
+          firstKeyLatencyMs: 180,
+          attempts: [
+            {
+              startLatencyMs: 180,
+              durationMs: 400,
+              correctPrefixLength: 5,
+              result: 'clean',
+              interKeyIntervalsMs: [90, 100, 95, 85],
+            },
+          ],
         },
       },
       {
@@ -691,26 +691,26 @@ test.describe('review state rebuild fidelity', () => {
       wrongCount: 1,
       mistakes: { 4: ['r'] },
       typingTelemetry: {
-      telemetryVersion: 1,
-      firstKeyLatencyMs: 180,
-      attempts: [
-        {
-          startLatencyMs: 180,
-          durationMs: 300,
-          correctPrefixLength: 4,
-          result: 'wrong',
-          wrongIndex: 4,
-          wrongKey: 'r',
-          interKeyIntervalsMs: [90, 80, 100, 85],
-        },
-        {
-          startLatencyMs: 120,
-          durationMs: 350,
-          correctPrefixLength: 5,
-          result: 'clean',
-          interKeyIntervalsMs: [85, 90, 95, 80],
-        },
-      ],
+        telemetryVersion: 1,
+        firstKeyLatencyMs: 180,
+        attempts: [
+          {
+            startLatencyMs: 180,
+            durationMs: 300,
+            correctPrefixLength: 4,
+            result: 'wrong',
+            wrongIndex: 4,
+            wrongKey: 'r',
+            interKeyIntervalsMs: [90, 80, 100, 85],
+          },
+          {
+            startLatencyMs: 120,
+            durationMs: 350,
+            correctPrefixLength: 5,
+            result: 'clean',
+            interKeyIntervalsMs: [85, 90, 95, 80],
+          },
+        ],
       },
     }
 
@@ -741,25 +741,25 @@ test.describe('review state rebuild fidelity', () => {
         wrongCount: 1,
         mistakes: { 4: ['r'] },
         typingTelemetry: {
-        telemetryVersion: 1,
-        firstKeyLatencyMs: 180,
-        attempts: [
-          {
-            startLatencyMs: 180,
-            durationMs: 300,
-            correctPrefixLength: 4,
-            result: 'wrong',
-            wrongIndex: 4,
-            wrongKey: 'r',
-            interKeyIntervalsMs: [90, 80, 100, 85],
-          },
-          {
-            startLatencyMs: 120,
-            durationMs: 350,
-            correctPrefixLength: 5,
-            result: 'clean',
-          },
-        ],
+          telemetryVersion: 1,
+          firstKeyLatencyMs: 180,
+          attempts: [
+            {
+              startLatencyMs: 180,
+              durationMs: 300,
+              correctPrefixLength: 4,
+              result: 'wrong',
+              wrongIndex: 4,
+              wrongKey: 'r',
+              interKeyIntervalsMs: [90, 80, 100, 85],
+            },
+            {
+              startLatencyMs: 120,
+              durationMs: 350,
+              correctPrefixLength: 5,
+              result: 'clean',
+            },
+          ],
         },
       },
     ]
@@ -1011,17 +1011,17 @@ test.describe('legacy migration due-now semantics', () => {
         wrongCount: 0,
         mistakes: {},
         typingTelemetry: {
-        telemetryVersion: 1,
-        firstKeyLatencyMs: 180,
-        attempts: [
-          {
-            startLatencyMs: 180,
-            durationMs: 400,
-            correctPrefixLength: 5,
-            result: 'clean',
-            interKeyIntervalsMs: [90, 100, 95, 85],
-          },
-        ],
+          telemetryVersion: 1,
+          firstKeyLatencyMs: 180,
+          attempts: [
+            {
+              startLatencyMs: 180,
+              durationMs: 400,
+              correctPrefixLength: 5,
+              result: 'clean',
+              interKeyIntervalsMs: [90, 100, 95, 85],
+            },
+          ],
         },
       },
     ]
