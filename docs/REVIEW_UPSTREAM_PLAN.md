@@ -161,3 +161,17 @@ Before each new review milestone:
 5. keep review-domain logic in `src/review/`;
 6. avoid unrelated formatting or refactors;
 7. keep each upstream candidate PR independently understandable and testable.
+
+## Implemented data foundation (v0.1)
+
+The feature branch now contains the storage foundation required for later adaptive scheduling:
+
+- `WordRecord` keeps all legacy fields unchanged and adds optional raw telemetry only.
+- telemetry v1 records first-key latency plus failed/clean attempt timing and error position/key.
+- Dexie schema v4 adds `reviewWordStates` with a unique `[dict+word]` identity and a `[dict+nextReviewAt]` due-query index.
+- `reviewRecords` and `chapterRecords` remain structurally unchanged.
+- old WordRecord rows without telemetry remain valid.
+- importing a backup without `reviewWordStates` clears any stale derived review state so it can later be rebuilt from imported WordRecords.
+- scheduler state is versioned and separated from raw typing evidence; no FSRS behavior is enabled yet.
+
+This keeps `wordRecords` as the historical source of truth and `reviewWordStates` as rebuildable scheduler state.
