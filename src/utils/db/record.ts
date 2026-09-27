@@ -23,6 +23,8 @@ export interface WordRecordTelemetry {
   attempts: WordAttemptRecord[]
   backgroundPauseMs?: number
   backgroundPauseCount?: number
+  backgroundPauseBeforeFirstKeyMs?: number
+  backgroundPauseBeforeFirstKeyCount?: number
 }
 
 export type AnswerVisibility = 'full' | 'partial' | 'hidden'
