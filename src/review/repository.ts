@@ -49,7 +49,7 @@ export async function applyReviewOutcome(
         .toArray()
 
       current =
-        rebuildBasicStateFromWordRecords(dict, word, priorRecords) ??
+        rebuildBasicStateFromWordRecords(dict, word, priorRecords, { legacyDueAt: now }) ??
         createInitialReviewWordState(dict, word, now)
     }
 
@@ -72,7 +72,10 @@ export async function applyReviewOutcome(
   })
 }
 
-export async function bootstrapReviewWordStatesForDictionary(dict: string): Promise<number> {
+export async function bootstrapReviewWordStatesForDictionary(
+  dict: string,
+  legacyDueAt = Math.floor(Date.now() / 1000),
+): Promise<number> {
   return db.transaction('rw', db.wordRecords, db.reviewWordStates, async () => {
     const [records, existingStates] = await Promise.all([
       db.wordRecords.where('dict').equals(dict).toArray(),
@@ -100,7 +103,7 @@ export async function bootstrapReviewWordStatesForDictionary(dict: string): Prom
     let createdCount = 0
 
     for (const [word, wordRecords] of recordsByWord) {
-      const state = rebuildBasicStateFromWordRecords(dict, word, wordRecords)
+      const state = rebuildBasicStateFromWordRecords(dict, word, wordRecords, { legacyDueAt })
       if (!state) continue
 
       await db.reviewWordStates.put(state)
@@ -112,7 +115,10 @@ export async function bootstrapReviewWordStatesForDictionary(dict: string): Prom
 }
 
 
-export async function rebuildReviewWordStatesForDictionary(dict: string): Promise<number> {
+export async function rebuildReviewWordStatesForDictionary(
+  dict: string,
+  legacyDueAt = Math.floor(Date.now() / 1000),
+): Promise<number> {
   return db.transaction('rw', db.wordRecords, db.reviewWordStates, async () => {
     const records = await db.wordRecords.where('dict').equals(dict).toArray()
     const recordsByWord = new Map<string, typeof records>()
@@ -130,7 +136,7 @@ export async function rebuildReviewWordStatesForDictionary(dict: string): Promis
 
     let rebuiltCount = 0
     for (const [word, wordRecords] of recordsByWord) {
-      const state = rebuildBasicStateFromWordRecords(dict, word, wordRecords)
+      const state = rebuildBasicStateFromWordRecords(dict, word, wordRecords, { legacyDueAt })
       if (!state) continue
       await db.reviewWordStates.put(state)
       rebuiltCount += 1
