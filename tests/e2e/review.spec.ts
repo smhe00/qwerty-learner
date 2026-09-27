@@ -130,7 +130,7 @@ test.describe('review data model', () => {
       reviewCount: 0,
       lapseCount: 0,
       cleanStreak: 0,
-      stateVersion: 2,
+      stateVersion: 3,
       schedulerState: {
         kind: 'basic-v1',
         stage: 0,
@@ -883,5 +883,87 @@ test.describe('legacy import scheduler regression', () => {
     ]
 
     expect(rebuildBasicStateFromWordRecords('cet4', 'apple', records)).toBeUndefined()
+  })
+})
+
+
+test.describe('legacy migration due-now semantics', () => {
+  test('marks a legacy historical error word due immediately on first migration', () => {
+    const day = 24 * 60 * 60
+    const now = 1000 + 200 * day
+    const records: IWordRecord[] = [
+      {
+        id: 1,
+        word: 'receive',
+        timeStamp: 1000,
+        dict: 'cet4',
+        chapter: 0,
+        timing: [120, 140],
+        wrongCount: 1,
+        mistakes: { 3: ['i'] },
+      },
+      {
+        id: 2,
+        word: 'receive',
+        timeStamp: 1000 + 20 * day,
+        dict: 'cet4',
+        chapter: 0,
+        timing: [100, 110],
+        wrongCount: 0,
+        mistakes: {},
+      },
+    ]
+
+    const rebuilt = rebuildBasicStateFromWordRecords('cet4', 'receive', records, {
+      legacyDueAt: now,
+    })
+
+    expect(rebuilt).toBeDefined()
+    expect(rebuilt?.nextReviewAt).toBe(now)
+    expect(rebuilt?.stateVersion).toBe(3)
+  })
+
+  test('does not override schedule when adaptive telemetry already exists', () => {
+    const now = 1000000
+    const records: IWordRecord[] = [
+      {
+        id: 1,
+        word: 'apple',
+        timeStamp: 1000,
+        dict: 'cet4',
+        chapter: 0,
+        timing: [100],
+        wrongCount: 1,
+        mistakes: { 4: ['r'] },
+      },
+      {
+        id: 2,
+        word: 'apple',
+        timeStamp: 900000,
+        dict: 'cet4',
+        chapter: -1,
+        timing: [90, 100],
+        wrongCount: 0,
+        mistakes: {},
+        telemetryVersion: 1,
+        firstKeyLatencyMs: 180,
+        attempts: [
+          {
+            startLatencyMs: 180,
+            durationMs: 400,
+            correctPrefixLength: 5,
+            result: 'clean',
+            interKeyIntervalsMs: [90, 100, 95, 85],
+          },
+        ],
+      },
+    ]
+
+    const rebuilt = rebuildBasicStateFromWordRecords('cet4', 'apple', records, {
+      legacyDueAt: now,
+    })
+
+    expect(rebuilt).toBeDefined()
+    expect(rebuilt?.nextReviewAt).not.toBe(now)
   })
 })
