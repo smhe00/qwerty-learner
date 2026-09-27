@@ -1,5 +1,6 @@
 import { classifyTypingError } from './classifier'
 import { summarizeWordHistory } from './features'
+import { readLearningContext } from './learning-context'
 import { classificationToReviewOutcome, inferLegacyReviewOutcome, scheduleBasicReview } from './scheduler'
 import { readWordTelemetry } from './telemetry'
 import { createInitialReviewWordState } from './types'
@@ -25,6 +26,7 @@ export function inferReviewOutcomeFromWordRecord(
     word: record.word,
     wrongCount: record.wrongCount,
     telemetry,
+    learningContext: readLearningContext(record),
     history: summarizeWordHistory(priorRecords),
   })
 
