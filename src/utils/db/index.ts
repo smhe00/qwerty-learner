@@ -3,6 +3,7 @@ import type {
   IReviewRecord,
   IRevisionDictRecord,
   IWordRecord,
+  LearningContextV1,
   LetterMistakes,
   WordRecordTelemetry,
 } from './record'
@@ -106,12 +107,14 @@ export function useSaveWordRecord() {
       letterTimeArray,
       letterMistake,
       telemetry,
+      learningContext,
     }: {
       word: string
       wrongCount: number
       letterTimeArray: number[]
       letterMistake: LetterMistakes
       telemetry?: WordRecordTelemetry
+      learningContext?: LearningContextV1
     }) => {
       const timing = []
       for (let i = 1; i < letterTimeArray.length; i++) {
@@ -119,7 +122,16 @@ export function useSaveWordRecord() {
         timing.push(diff)
       }
 
-      const wordRecord = new WordRecord(word, dictID, isRevision ? -1 : currentChapter, timing, wrongCount, letterMistake, telemetry)
+      const wordRecord = new WordRecord(
+        word,
+        dictID,
+        isRevision ? -1 : currentChapter,
+        timing,
+        wrongCount,
+        letterMistake,
+        telemetry,
+        learningContext,
+      )
 
       let dbID = -1
       try {
