@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { classifyTypingError } from '../../src/review/classifier'
+import { buildReviewWordDiagnostics } from '../../src/review/diagnostics'
 import { filterDueReviewCandidates } from '../../src/review/due'
 import { summarizeWordHistory } from '../../src/review/features'
 import { rankReviewCandidates } from '../../src/review/priority'
@@ -461,5 +462,100 @@ test.describe('same-session scheduling safety', () => {
       stage: 0,
       intervalDays: 1,
     })
+  })
+})
+
+
+test.describe('review diagnostics', () => {
+  test('explains latest evidence without mutating scheduler state', () => {
+    const state = {
+      ...createInitialReviewWordState('cet4', 'receive', 1000),
+      nextReviewAt: 2000,
+      reviewCount: 2,
+    }
+    const records: IWordRecord[] = [
+      {
+        id: 1,
+        word: 'receive',
+        timeStamp: 1000,
+        dict: 'cet4',
+        chapter: 0,
+        timing: [100, 120],
+        wrongCount: 1,
+        mistakes: { 3: ['i'] },
+      },
+      {
+        id: 2,
+        word: 'receive',
+        timeStamp: 1500,
+        dict: 'cet4',
+        chapter: -1,
+        timing: [160, 180, 760],
+        wrongCount: 2,
+        mistakes: { 3: ['i', 'i'] },
+        telemetryVersion: 1,
+        firstKeyLatencyMs: 450,
+        attempts: [
+          {
+            startLatencyMs: 450,
+            durationMs: 900,
+            correctPrefixLength: 3,
+            result: 'wrong',
+            wrongIndex: 3,
+            wrongKey: 'i',
+            interKeyIntervalsMs: [160, 180, 760],
+          },
+          {
+            startLatencyMs: 300,
+            durationMs: 850,
+            correctPrefixLength: 3,
+            result: 'wrong',
+            wrongIndex: 3,
+            wrongKey: 'i',
+            interKeyIntervalsMs: [170, 190, 740],
+          },
+          {
+            startLatencyMs: 250,
+            durationMs: 900,
+            correctPrefixLength: 7,
+            result: 'clean',
+          },
+        ],
+      },
+    ]
+
+    const diagnostic = buildReviewWordDiagnostics({
+      dict: 'cet4',
+      word: 'receive',
+      now: 1600,
+      records,
+      state,
+    })
+
+    expect(diagnostic.due).toBe(false)
+    expect(diagnostic.secondsUntilDue).toBe(400)
+    expect(diagnostic.latestRecord?.telemetryAvailable).toBe(true)
+    expect(diagnostic.latestFeatures?.repeatedWrongPositionRatio).toBe(1)
+    expect(diagnostic.latestClassification).toBeDefined()
+    expect(diagnostic.state).toEqual(state)
+  })
+
+  test('reports a due state deterministically from supplied time', () => {
+    const state = {
+      ...createInitialReviewWordState('cet4', 'apple', 1000),
+      nextReviewAt: 1500,
+    }
+
+    const diagnostic = buildReviewWordDiagnostics({
+      dict: 'cet4',
+      word: 'apple',
+      now: 1500,
+      records: [],
+      state,
+    })
+
+    expect(diagnostic.due).toBe(true)
+    expect(diagnostic.secondsUntilDue).toBe(0)
+    expect(diagnostic.latestRecord).toBeUndefined()
   })
 })
