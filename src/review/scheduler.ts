@@ -102,30 +102,3 @@ export function inferLegacyReviewOutcome(wrongCount: number): ReviewOutcome {
   if (wrongCount === 1) return 'hard'
   return 'good'
 }
-
-
-export type LegacyReviewEvidence = {
-  timeStamp: number
-  wrongCount: number
-}
-
-export function rebuildBasicStateFromLegacy(
-  dict: string,
-  word: string,
-  records: LegacyReviewEvidence[],
-): IReviewWordState | undefined {
-  const sortedRecords = [...records].sort((a, b) => a.timeStamp - b.timeStamp)
-  const firstRecord = sortedRecords[0]
-  if (!firstRecord) return undefined
-
-  let state = createInitialReviewWordState(dict, word, firstRecord.timeStamp)
-  for (const record of sortedRecords) {
-    state = scheduleBasicReview({
-      state,
-      outcome: inferLegacyReviewOutcome(record.wrongCount),
-      now: record.timeStamp,
-    })
-  }
-
-  return state
-}
