@@ -99,7 +99,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
 
     learningContextCollectorRef.current.reset({
       answerVisibilityAtStart: summarizeAnswerVisibility(initialLetterVisibility),
-      pronunciationAvailable: pronunciationIsOpen,
+      pronunciationEnabledAtStart: pronunciationIsOpen,
     })
 
     setWordState(newWordState)
