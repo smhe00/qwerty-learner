@@ -113,22 +113,11 @@ export class WordTelemetryCollector {
 }
 
 /**
- * Reads v1 telemetry only when all required v1 fields are present.
- * Legacy WordRecord rows simply return undefined.
+ * Reads optional nested typing telemetry. Original qwerty-learner rows simply
+ * return undefined.
  */
 export function readWordTelemetry(record: IWordRecord): WordRecordTelemetry | undefined {
-  const nested = record.typingTelemetry
-  if (nested?.telemetryVersion === 1 && nested.firstKeyLatencyMs !== undefined && nested.attempts) {
-    return nested
-  }
-
-  if (record.telemetryVersion !== 1 || record.firstKeyLatencyMs === undefined || !record.attempts) {
-    return undefined
-  }
-
-  return {
-    telemetryVersion: 1,
-    firstKeyLatencyMs: record.firstKeyLatencyMs,
-    attempts: record.attempts,
-  }
+  const telemetry = record.typingTelemetry
+  if (telemetry?.telemetryVersion !== 1) return undefined
+  return telemetry
 }
