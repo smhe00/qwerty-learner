@@ -17,23 +17,42 @@ export interface WordAttemptRecord {
 }
 
 export interface WordRecordTelemetry {
-  telemetryVersion: 1
+  telemetryVersion: 2
+  // Active foreground time only; background/blur pauses are excluded.
   firstKeyLatencyMs: number
   attempts: WordAttemptRecord[]
+  backgroundPauseMs?: number
+  backgroundPauseCount?: number
 }
 
 export type AnswerVisibility = 'full' | 'partial' | 'hidden'
+export type PronunciationCue = 'automatic' | 'requested'
 
 export interface LearningContextV1 {
   version: 1
-  // Semantic description of how much of the answer was visible before input.
+
+  // Orthographic cue strength.
   answerVisibilityAtStart?: AnswerVisibility
+  answerVisibleRatioAtStart?: number
   answerRevealed?: boolean
   revealedBeforeFirstKey?: boolean
   revealCount?: number
+  lastAnswerRevealToFirstKeyMs?: number
+
+  // Semantic cue strength.
+  meaningVisibleAtStart?: boolean
+  meaningRevealed?: boolean
+  meaningRevealedBeforeFirstKey?: boolean
+  meaningRevealCount?: number
+
+  // Phonological cue strength.
+  phoneticVisibleAtStart?: boolean
   pronunciationEnabledAtStart?: boolean
   pronunciationPlayed?: boolean
+  pronunciationPlayedBeforeFirstKey?: boolean
   pronunciationPlayCount?: number
+  pronunciationAutomaticPlayCount?: number
+  pronunciationRequestedPlayCount?: number
 }
 
 export interface IWordRecord {
