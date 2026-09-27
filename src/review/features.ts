@@ -69,8 +69,9 @@ export function extractTypingBehaviorFeatures(
   for (const index of wrongPositions) {
     positionCounts.set(index, (positionCounts.get(index) ?? 0) + 1)
   }
+  const dominantPositionCount = wrongPositions.length > 0 ? Math.max(...Array.from(positionCounts.values())) : 0
   const repeatedAtDominantPosition =
-    wrongPositions.length > 0 ? Math.max(...Array.from(positionCounts.values())) / wrongPositions.length : 0
+    wrongPositions.length >= 2 && dominantPositionCount >= 2 ? dominantPositionCount / wrongPositions.length : 0
 
   const adjacentWrongCount = wrongAttempts.filter((attempt) =>
     areQwertyNeighbors(attempt.wrongIndex === undefined ? undefined : word[attempt.wrongIndex], attempt.wrongKey),
