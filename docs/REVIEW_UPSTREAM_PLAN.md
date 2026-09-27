@@ -167,7 +167,7 @@ Before each new review milestone:
 The feature branch now contains the storage foundation required for later adaptive scheduling:
 
 - `WordRecord` keeps all legacy fields unchanged and adds optional raw telemetry only.
-- telemetry v1 records first-key latency plus failed/clean attempt timing and error position/key.
+- telemetry v2 records active-foreground first-key latency plus failed/clean attempt timing, error position/key, and background-pause metadata.
 - Dexie schema v4 adds `reviewWordStates` with a unique `[dict+word]` identity and a `[dict+nextReviewAt]` due-query index.
 - `reviewRecords` and `chapterRecords` remain structurally unchanged.
 - old WordRecord rows without telemetry remain valid.
@@ -305,7 +305,12 @@ than particular UI controls:
 
 - answer visibility at the start of the observation;
 - whether the answer was revealed and whether reveal happened before first input;
-- whether pronunciation was enabled at the start and whether it was actually played.
+- answer visibility ratio, reveal timing, and whether reveal happened before first input;
+- whether the meaning was initially visible or revealed before first input;
+- whether phonetics were visible;
+- whether pronunciation was enabled, whether it played before first input, and whether playback was automatic or user-requested.
+
+Background/hidden-tab time is excluded from typing latency. Very long foreground idle without an explanatory learning interaction is marked as `attentionUncertain`; it is not asserted to be distraction or forgetting, and the scheduler treats that evidence conservatively.
 
 The UI only records these events. Classifier and scheduler behavior remains
 unchanged until these signals are calibrated against future independent
