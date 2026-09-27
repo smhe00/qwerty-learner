@@ -38,10 +38,17 @@ function toIso(unixSeconds: number | undefined): string | undefined {
   return new Date(unixSeconds * 1000).toISOString()
 }
 
-function buildEvidenceTags(features: TypingBehaviorFeatures | undefined): string[] {
+function buildEvidenceTags(
+  features: TypingBehaviorFeatures | undefined,
+  classification?: TypingErrorClassification,
+): string[] {
   if (!features) return []
 
   const tags: string[] = []
+
+  if (classification?.attentionUncertain) {
+    tags.push('attention-uncertain')
+  }
 
   if (features.firstKeyLatencyMs !== undefined) {
     if (features.firstKeyLatencyMs >= typingClassifierPolicy.veryLongFirstKeyMs) {
@@ -107,6 +114,7 @@ export function buildReviewWordDiagnostics(input: {
       word: latest.word,
       wrongCount: latest.wrongCount,
       telemetry,
+      learningContext: readLearningContext(latest),
       history: priorHistory,
     })
 
@@ -134,7 +142,7 @@ export function buildReviewWordDiagnostics(input: {
     latestRecord,
     latestClassification,
     latestFeatures,
-    evidenceTags: buildEvidenceTags(latestFeatures),
+    evidenceTags: buildEvidenceTags(latestFeatures, latestClassification),
   }
 }
 
@@ -246,6 +254,7 @@ export function buildReviewDictionaryDiagnostics(input: {
       word,
       wrongCount: latest.wrongCount,
       telemetry: readWordTelemetry(latest),
+      learningContext: readLearningContext(latest),
       history: priorHistory,
     })
     causeCounts[classification.cause] += 1
