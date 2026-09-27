@@ -537,6 +537,7 @@ test.describe('review diagnostics', () => {
     expect(diagnostic.latestRecord?.telemetryAvailable).toBe(true)
     expect(diagnostic.latestFeatures?.repeatedWrongPositionRatio).toBe(1)
     expect(diagnostic.latestClassification).toBeDefined()
+    expect(diagnostic.evidenceTags).toContain('repeated-same-position')
     expect(diagnostic.state).toEqual(state)
   })
 
@@ -557,6 +558,7 @@ test.describe('review diagnostics', () => {
     expect(diagnostic.due).toBe(true)
     expect(diagnostic.secondsUntilDue).toBe(0)
     expect(diagnostic.latestRecord).toBeUndefined()
+    expect(diagnostic.evidenceTags).toEqual([])
   })
 })
 
