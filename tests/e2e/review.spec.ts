@@ -337,10 +337,12 @@ test.describe('basic cross-session scheduler', () => {
     let state = createInitialReviewWordState('cet4', 'apple', 1000)
     const intervals: number[] = []
 
+    let now = 1000
     for (let i = 0; i < 6; i++) {
-      state = scheduleBasicReview({ state, outcome: 'good', now: 1000 + i * 100 })
+      state = scheduleBasicReview({ state, outcome: 'good', now })
       if (state.schedulerState.kind !== 'basic-v1') throw new Error('unexpected scheduler')
       intervals.push(state.schedulerState.intervalDays)
+      now = state.nextReviewAt
     }
 
     expect(intervals).toEqual([1, 3, 7, 14, 30, 30])
@@ -375,17 +377,18 @@ test.describe('basic cross-session scheduler', () => {
 
 test.describe('legacy scheduler bootstrap', () => {
   test('replays historical records in chronological order before current adaptive evidence', () => {
+    const day = 24 * 60 * 60
     const rebuilt = rebuildBasicStateFromLegacy('cet4', 'apple', [
-      { timeStamp: 3000, wrongCount: 0 },
+      { timeStamp: 1000 + 4 * day, wrongCount: 0 },
       { timeStamp: 1000, wrongCount: 2 },
-      { timeStamp: 2000, wrongCount: 0 },
+      { timeStamp: 1000 + day, wrongCount: 0 },
     ])
 
     expect(rebuilt).toBeDefined()
     expect(rebuilt?.reviewCount).toBe(3)
     expect(rebuilt?.lapseCount).toBe(1)
     expect(rebuilt?.cleanStreak).toBe(2)
-    expect(rebuilt?.lastReviewedAt).toBe(3000)
+    expect(rebuilt?.lastReviewedAt).toBe(1000 + 4 * day)
     expect(rebuilt?.schedulerState).toEqual({
       kind: 'basic-v1',
       stage: 2,
@@ -430,12 +433,14 @@ test.describe('same-session scheduling safety', () => {
       intervalDays: 1,
     })
 
+    const originalDue = state.nextReviewAt
     state = scheduleBasicReview({ state, outcome: 'good', now: 1300 })
     expect(state.schedulerState).toEqual({
       kind: 'basic-v1',
       stage: 0,
       intervalDays: 1,
     })
+    expect(state.nextReviewAt).toBe(originalDue)
 
     state = scheduleBasicReview({ state, outcome: 'good', now: state.nextReviewAt })
     expect(state.schedulerState).toEqual({
