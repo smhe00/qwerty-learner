@@ -41,6 +41,7 @@ export function scheduleBasicReview(input: ReviewScheduleInput): IReviewWordStat
   }
 
   const isFirstReview = input.state.reviewCount === 0
+  const isDue = isFirstReview || input.now >= input.state.nextReviewAt
   let nextStage = current.stage
 
   if (input.outcome === 'again') {
@@ -48,9 +49,17 @@ export function scheduleBasicReview(input: ReviewScheduleInput): IReviewWordStat
   } else if (input.outcome === 'hard') {
     nextStage = Math.max(0, isFirstReview ? 0 : current.stage)
   } else if (input.outcome === 'easy') {
-    nextStage = isFirstReview ? 1 : Math.min(current.stage + 2, basicReviewIntervalsDays.length - 1)
+    nextStage = isFirstReview
+      ? 1
+      : isDue
+        ? Math.min(current.stage + 2, basicReviewIntervalsDays.length - 1)
+        : current.stage
   } else {
-    nextStage = isFirstReview ? 0 : Math.min(current.stage + 1, basicReviewIntervalsDays.length - 1)
+    nextStage = isFirstReview
+      ? 0
+      : isDue
+        ? Math.min(current.stage + 1, basicReviewIntervalsDays.length - 1)
+        : current.stage
   }
 
   const intervalDays = intervalForStage(nextStage)
