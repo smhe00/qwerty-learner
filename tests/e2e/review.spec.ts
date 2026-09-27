@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import { classifyTypingError } from '../../src/review/classifier'
 import { summarizeWordHistory } from '../../src/review/features'
 import { rankReviewCandidates } from '../../src/review/priority'
+import { classificationToReviewOutcome } from '../../src/review/scheduler'
 import { WordTelemetryCollector, readWordTelemetry } from '../../src/review/telemetry'
 import { createInitialReviewWordState } from '../../src/review/types'
 import type { IWordRecord } from '../../src/utils/db/record'
@@ -292,5 +293,34 @@ test.describe('typing history evidence', () => {
     })
 
     expect(fixed.scores.spelling).toBeGreaterThan(diffuse.scores.spelling)
+  })
+})
+
+
+test.describe('review scheduler adapter boundary', () => {
+  test('maps typing causes to scheduler outcomes without binding to FSRS', () => {
+    expect(
+      classificationToReviewOutcome({
+        cause: 'recall',
+        confidence: 0.8,
+        scores: { recall: 0.8, spelling: 0.1, motor: 0.1 },
+      }),
+    ).toBe('again')
+
+    expect(
+      classificationToReviewOutcome({
+        cause: 'spelling',
+        confidence: 0.8,
+        scores: { recall: 0.1, spelling: 0.8, motor: 0.1 },
+      }),
+    ).toBe('hard')
+
+    expect(
+      classificationToReviewOutcome({
+        cause: 'motor',
+        confidence: 0.8,
+        scores: { recall: 0.1, spelling: 0.1, motor: 0.8 },
+      }),
+    ).toBe('good')
   })
 })

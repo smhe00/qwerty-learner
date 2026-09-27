@@ -175,3 +175,27 @@ The feature branch now contains the storage foundation required for later adapti
 - scheduler state is versioned and separated from raw typing evidence; no FSRS behavior is enabled yet.
 
 This keeps `wordRecords` as the historical source of truth and `reviewWordStates` as rebuildable scheduler state.
+
+
+## Adaptive typing classification
+
+The current feature branch now classifies a failed typing attempt using transparent raw evidence:
+
+- first-key latency;
+- number of failed attempts;
+- repeated wrong position;
+- QWERTY-adjacent wrong key ratio;
+- inter-key timing;
+- historical failure rate;
+- historical dominant wrong position.
+
+The classifier produces probabilistic `recall / spelling / motor` scores plus an `uncertain` state. Same-session reinforcement now uses the classification:
+
+- recall-like failure -> return after 3 words;
+- spelling-like failure -> return after 4 words;
+- uncertain failure -> return after 5 words;
+- motor-like slip -> return after 7 words.
+
+Historical evidence is loaded asynchronously and sample-count weighted. A single historical record therefore has limited influence, while repeated same-position errors become stronger spelling evidence.
+
+A scheduler adapter boundary is defined separately from the classifier. The branch intentionally does not add `ts-fsrs` yet: the currently maintained package requires Node.js 20+, while the upstream project's existing CI still targets Node 18. A runtime/toolchain upgrade should be handled separately before adopting the maintained FSRS package.
