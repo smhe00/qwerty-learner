@@ -15,3 +15,6 @@ export const reinforcementGapByCause = {
   uncertain: 5,
   motor: 7,
 } as const
+
+
+export const basicReviewIntervalsDays = [1, 3, 7, 14, 30] as const

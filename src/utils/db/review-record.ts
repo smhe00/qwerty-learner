@@ -2,6 +2,7 @@ import { db } from '.'
 import { ReviewRecord } from './record'
 import type { TErrorWordData } from '@/pages/Gallery-N/hooks/useErrorWords'
 import { rankReviewCandidates } from '@/review/priority'
+import { bootstrapReviewWordStatesForDictionary } from '@/review/repository'
 import type { Word } from '@/typings'
 import { useEffect, useState } from 'react'
 
@@ -28,6 +29,7 @@ async function getReviewRecords(dictID: string): Promise<ReviewRecord | undefine
 }
 
 export async function generateNewWordReviewRecord(dictID: string, errorData: TErrorWordData[]) {
+  await bootstrapReviewWordStatesForDictionary(dictID)
   const sortedWords: Word[] = rankReviewCandidates(errorData).map((item) => item.originData)
 
   const record = new ReviewRecord(dictID, sortedWords)

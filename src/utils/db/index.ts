@@ -129,8 +129,9 @@ export function useSaveWordRecord() {
       }
       if (dispatch) {
         dbID > 0 && dispatch({ type: TypingStateActionType.ADD_WORD_RECORD_ID, payload: dbID })
-        dispatch({ type: TypingStateActionType.SET_IS_SAVING_RECORD, payload: false })
       }
+
+      return dbID
     },
     [currentChapter, dictID, dispatch, isRevision],
   )

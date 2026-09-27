@@ -16,6 +16,8 @@ import { classifyTypingError } from '@/review/classifier'
 import type { TypingErrorClassification } from '@/review/classifier'
 import type { WordHistorySummary } from '@/review/features'
 import { loadWordHistorySummary } from '@/review/history'
+import { applyReviewOutcome } from '@/review/repository'
+import { classificationToReviewOutcome } from '@/review/scheduler'
 import { WordTelemetryCollector } from '@/review/telemetry'
 import {
   currentChapterAtom,
@@ -314,15 +316,31 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
       //   countCorrect: wordState.correctCount,
       //   countTypo: wordState.wrongCount,
       // })
-      saveWordRecord({
-        word: word.name,
-        wrongCount: wordState.wrongCount,
-        letterTimeArray: wordState.letterTimeArray,
-        letterMistake: wordState.letterMistake,
-        telemetry,
-      })
+      const persistResult = async () => {
+        try {
+          await saveWordRecord({
+            word: word.name,
+            wrongCount: wordState.wrongCount,
+            letterTimeArray: wordState.letterTimeArray,
+            letterMistake: wordState.letterMistake,
+            telemetry,
+          })
 
-      onFinish({ wrongCount: wordState.wrongCount, classification })
+          await applyReviewOutcome(
+            currentDictInfo.id,
+            word.name,
+            classificationToReviewOutcome(classification),
+            Math.floor(Date.now() / 1000),
+          )
+        } catch (error) {
+          console.error('failed to persist review learning state', error)
+        } finally {
+          dispatch({ type: TypingStateActionType.SET_IS_SAVING_RECORD, payload: false })
+          onFinish({ wrongCount: wordState.wrongCount, classification })
+        }
+      }
+
+      void persistResult()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wordState.isFinished])

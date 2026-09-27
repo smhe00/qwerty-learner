@@ -2,7 +2,11 @@ import { expect, test } from '@playwright/test'
 import { classifyTypingError } from '../../src/review/classifier'
 import { summarizeWordHistory } from '../../src/review/features'
 import { rankReviewCandidates } from '../../src/review/priority'
-import { classificationToReviewOutcome } from '../../src/review/scheduler'
+import {
+  classificationToReviewOutcome,
+  inferLegacyReviewOutcome,
+  scheduleBasicReview,
+} from '../../src/review/scheduler'
 import { WordTelemetryCollector, readWordTelemetry } from '../../src/review/telemetry'
 import { createInitialReviewWordState } from '../../src/review/types'
 import type { IWordRecord } from '../../src/utils/db/record'
@@ -322,5 +326,46 @@ test.describe('review scheduler adapter boundary', () => {
         scores: { recall: 0.1, spelling: 0.1, motor: 0.8 },
       }),
     ).toBe('good')
+  })
+})
+
+
+test.describe('basic cross-session scheduler', () => {
+  test('advances through 1/3/7/14/30 day intervals on good outcomes', () => {
+    let state = createInitialReviewWordState('cet4', 'apple', 1000)
+    const intervals: number[] = []
+
+    for (let i = 0; i < 6; i++) {
+      state = scheduleBasicReview({ state, outcome: 'good', now: 1000 + i * 100 })
+      if (state.schedulerState.kind !== 'basic-v1') throw new Error('unexpected scheduler')
+      intervals.push(state.schedulerState.intervalDays)
+    }
+
+    expect(intervals).toEqual([1, 3, 7, 14, 30, 30])
+    expect(state.reviewCount).toBe(6)
+    expect(state.cleanStreak).toBe(6)
+  })
+
+  test('again resets the interval and increments lapse count', () => {
+    let state = createInitialReviewWordState('cet4', 'apple', 1000)
+    state = scheduleBasicReview({ state, outcome: 'good', now: 1000 })
+    state = scheduleBasicReview({ state, outcome: 'good', now: 2000 })
+    state = scheduleBasicReview({ state, outcome: 'again', now: 3000 })
+
+    expect(state.schedulerState).toEqual({
+      kind: 'basic-v1',
+      stage: 0,
+      intervalDays: 1,
+    })
+    expect(state.lapseCount).toBe(1)
+    expect(state.cleanStreak).toBe(0)
+    expect(state.lastOutcome).toBe('again')
+  })
+
+  test('legacy records map conservatively to scheduler outcomes', () => {
+    expect(inferLegacyReviewOutcome(0)).toBe('good')
+    expect(inferLegacyReviewOutcome(1)).toBe('hard')
+    expect(inferLegacyReviewOutcome(2)).toBe('again')
+    expect(inferLegacyReviewOutcome(8)).toBe('again')
   })
 })
