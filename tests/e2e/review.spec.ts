@@ -3,6 +3,7 @@ import { classifyTypingError } from '../../src/review/classifier'
 import { buildReviewDictionaryDiagnostics, buildReviewWordDiagnostics } from '../../src/review/diagnostics'
 import { filterDueReviewCandidates } from '../../src/review/due'
 import { summarizeWordHistory } from '../../src/review/features'
+import { LearningContextCollector, readLearningContext, summarizeAnswerVisibility } from '../../src/review/learning-context'
 import { rankDueReviewCandidates, rankReviewCandidates } from '../../src/review/priority'
 import { inferReviewOutcomeFromWordRecord, rebuildBasicStateFromWordRecords } from '../../src/review/rebuild'
 import {
@@ -118,6 +119,73 @@ test.describe('review data model', () => {
     }
 
     expect(readWordTelemetry(legacyRecord)).toBeUndefined()
+  })
+
+
+  test('reads both nested and early top-level telemetry shapes', () => {
+    const nested: IWordRecord = {
+      word: 'apple',
+      timeStamp: 1,
+      dict: 'cet4',
+      chapter: 0,
+      timing: [100],
+      wrongCount: 0,
+      mistakes: {},
+      typingTelemetry: {
+        telemetryVersion: 1,
+        firstKeyLatencyMs: 240,
+        attempts: [{ startLatencyMs: 240, durationMs: 300, correctPrefixLength: 5, result: 'clean' }],
+      },
+    }
+    const earlyTopLevel: IWordRecord = {
+      word: 'banana',
+      timeStamp: 2,
+      dict: 'cet4',
+      chapter: 0,
+      timing: [100],
+      wrongCount: 0,
+      mistakes: {},
+      telemetryVersion: 1,
+      firstKeyLatencyMs: 360,
+      attempts: [{ startLatencyMs: 360, durationMs: 400, correctPrefixLength: 6, result: 'clean' }],
+    }
+
+    expect(readWordTelemetry(nested)?.firstKeyLatencyMs).toBe(240)
+    expect(readWordTelemetry(earlyTopLevel)?.firstKeyLatencyMs).toBe(360)
+  })
+
+  test('keeps learning context optional and records semantic assistance events', () => {
+    const legacy: IWordRecord = {
+      word: 'apple',
+      timeStamp: 1,
+      dict: 'cet4',
+      chapter: 0,
+      timing: [],
+      wrongCount: 0,
+      mistakes: {},
+    }
+    expect(readLearningContext(legacy)).toBeUndefined()
+
+    const collector = new LearningContextCollector()
+    collector.reset({
+      answerVisibilityAtStart: summarizeAnswerVisibility([false, false, false]),
+      pronunciationAvailable: true,
+    })
+    collector.recordAnswerReveal()
+    collector.recordInputStarted()
+    collector.recordAnswerReveal()
+    collector.recordPronunciationPlayed()
+
+    expect(collector.snapshot()).toEqual({
+      version: 1,
+      answerVisibilityAtStart: 'hidden',
+      answerRevealed: true,
+      revealedBeforeFirstKey: true,
+      revealCount: 2,
+      pronunciationAvailable: true,
+      pronunciationPlayed: true,
+      pronunciationPlayCount: 1,
+    })
   })
 
   test('creates a scheduler-neutral initial per-word review state', () => {
@@ -855,7 +923,7 @@ test.describe('legacy import scheduler regression', () => {
     expect(rebuilt?.lapseCount).toBe(1)
     expect(rebuilt?.lastReviewedAt).toBe(1000)
     expect(rebuilt?.nextReviewAt).toBe(1000 + day)
-    expect(rebuilt?.stateVersion).toBe(2)
+    expect(rebuilt?.stateVersion).toBe(3)
   })
 
   test('does not create scheduler state from legacy clean-only practice', () => {
