@@ -1,6 +1,7 @@
 import { classifyTypingError } from './classifier'
 import { extractTypingBehaviorFeatures, summarizeWordHistory } from './features'
 import type { TypingBehaviorFeatures, WordHistorySummary } from './features'
+import { typingClassifierPolicy } from './policy'
 import { getDueReviewWordStates, getReviewWordState } from './repository'
 import { readWordTelemetry } from './telemetry'
 import type { TypingErrorClassification } from './classifier'
@@ -27,12 +28,57 @@ export type ReviewWordDiagnostics = {
   latestRecord?: ReviewDiagnosticLatestRecord
   latestClassification?: TypingErrorClassification
   latestFeatures?: TypingBehaviorFeatures
+  evidenceTags: string[]
 }
 
 function toIso(unixSeconds: number | undefined): string | undefined {
   if (unixSeconds === undefined) return undefined
   return new Date(unixSeconds * 1000).toISOString()
 }
+
+function buildEvidenceTags(features: TypingBehaviorFeatures | undefined): string[] {
+  if (!features) return []
+
+  const tags: string[] = []
+
+  if (features.firstKeyLatencyMs !== undefined) {
+    if (features.firstKeyLatencyMs >= typingClassifierPolicy.veryLongFirstKeyMs) {
+      tags.push('very-long-first-key')
+    } else if (features.firstKeyLatencyMs >= typingClassifierPolicy.longFirstKeyMs) {
+      tags.push('long-first-key')
+    } else if (features.firstKeyLatencyMs <= typingClassifierPolicy.fastFirstKeyMs) {
+      tags.push('fast-first-key')
+    }
+  }
+
+  if (features.repeatedWrongPositionRatio >= 0.75 && features.wrongAttemptCount >= 2) {
+    tags.push('repeated-same-position')
+  }
+
+  if (features.adjacentWrongRatio >= typingClassifierPolicy.motorAdjacentRatio) {
+    tags.push('adjacent-key-errors')
+  }
+
+  if (features.maxInterKeyMs !== undefined && features.maxInterKeyMs >= typingClassifierPolicy.slowInterKeyMs) {
+    tags.push('long-within-word-pause')
+  }
+
+  if ((features.history?.recordCount ?? 0) >= 3) {
+    if ((features.history?.failureRate ?? 0) >= 0.6) {
+      tags.push('high-historical-failure-rate')
+    }
+    if ((features.history?.dominantWrongIndexRatio ?? 0) >= 0.7) {
+      tags.push('stable-historical-error-position')
+    }
+  }
+
+  if (features.wrongAttemptCount >= 3 && features.uniqueWrongPositionCount >= 2) {
+    tags.push('multiple-varied-failures')
+  }
+
+  return tags
+}
+
 
 export function buildReviewWordDiagnostics(input: {
   dict: string
@@ -85,6 +131,7 @@ export function buildReviewWordDiagnostics(input: {
     latestRecord,
     latestClassification,
     latestFeatures,
+    evidenceTags: buildEvidenceTags(latestFeatures),
   }
 }
 
