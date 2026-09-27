@@ -132,7 +132,11 @@ export default function WordComponent({
 
   useEffect(() => {
     if (state.isTyping) {
-      telemetryCollectorRef.current.markReady(Date.now())
+      const now = Date.now()
+      if (document.hidden || !document.hasFocus()) {
+        telemetryCollectorRef.current.pause(now)
+      }
+      telemetryCollectorRef.current.markReady(now)
     }
   }, [state.isTyping, word])
 
