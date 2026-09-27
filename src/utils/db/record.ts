@@ -51,16 +51,14 @@ export interface IWordRecord {
   // 每个字母被错误输入成什么, index 为字母的索引, 数组内为错误的 e.key
   mistakes: LetterMistakes
 
-  // Preferred additive v4+ representation for typing evidence.
+  // Preferred additive representation for new typing evidence.
   typingTelemetry?: WordRecordTelemetry
 
   // Legacy additive telemetry shape kept readable for records already written by
   // early spaced-review builds. New records should use typingTelemetry instead.
-  typingTelemetry?: WordRecordTelemetry
   telemetryVersion?: 1
   firstKeyLatencyMs?: number
   attempts?: WordAttemptRecord[]
-  learningContext?: LearningContextV1
 
   // Optional semantic learning conditions. Absence means "unknown", never false.
   learningContext?: LearningContextV1
@@ -80,9 +78,11 @@ export class WordRecord implements IWordRecord {
   timing: number[]
   wrongCount: number
   mistakes: LetterMistakes
+  typingTelemetry?: WordRecordTelemetry
   telemetryVersion?: 1
   firstKeyLatencyMs?: number
   attempts?: WordAttemptRecord[]
+  learningContext?: LearningContextV1
 
   constructor(
     word: string,
