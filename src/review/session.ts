@@ -1,6 +1,9 @@
 export const MIN_REINFORCEMENT_GAP = 3
 export const MAX_REINFORCEMENT_GAP = 7
 
+import type { TypingErrorClassification } from './classifier'
+import { reinforcementGapByCause } from './policy'
+
 export type NamedReviewItem = {
   name: string
 }
@@ -49,4 +52,18 @@ export function scheduleReinforcement<T extends NamedReviewItem>(
   nextQueue.splice(insertedAt, 0, word)
 
   return { queue: nextQueue, insertedAt }
+}
+
+export function getAdaptiveReinforcementGap(
+  wrongCount: number,
+  classification?: TypingErrorClassification,
+): number {
+  if (!classification || classification.cause === 'clean') {
+    return getReinforcementGap(wrongCount)
+  }
+
+  if (classification.cause === 'recall') return reinforcementGapByCause.recall
+  if (classification.cause === 'spelling') return reinforcementGapByCause.spelling
+  if (classification.cause === 'motor') return reinforcementGapByCause.motor
+  return reinforcementGapByCause.uncertain
 }

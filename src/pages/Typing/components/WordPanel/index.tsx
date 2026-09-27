@@ -7,7 +7,7 @@ import Translation from './components/Translation'
 import WordComponent from './components/Word'
 import type { WordFinishResult } from './components/Word'
 import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
-import { getReinforcementGap, scheduleReinforcement } from '@/review/session'
+import { MAX_REINFORCEMENT_GAP, getAdaptiveReinforcementGap, scheduleReinforcement } from '@/review/session'
 import { isReviewModeAtom, isShowPrevAndNextWordAtom, loopWordConfigAtom, phoneticConfigAtom, reviewModeInfoAtom } from '@/store'
 import type { Word } from '@/typings'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -22,6 +22,7 @@ export default function WordPanel() {
   const [wordComponentKey, setWordComponentKey] = useState(0)
   const [currentWordExerciseCount, setCurrentWordExerciseCount] = useState(0)
   const [currentReviewWrongCount, setCurrentReviewWrongCount] = useState(0)
+  const [currentReviewGap, setCurrentReviewGap] = useState(MAX_REINFORCEMENT_GAP)
   const { times: loopWordTimes } = useAtomValue(loopWordConfigAtom)
   const currentWord = state.chapterData.words[state.chapterData.index]
   const nextWord = state.chapterData.words[state.chapterData.index + 1] as Word | undefined
@@ -68,8 +69,10 @@ export default function WordPanel() {
   )
 
   const onFinish = useCallback(
-    ({ wrongCount }: WordFinishResult) => {
+    ({ wrongCount, classification }: WordFinishResult) => {
       const accumulatedWrongCount = currentReviewWrongCount + wrongCount
+      const attemptGap = wrongCount > 0 ? getAdaptiveReinforcementGap(wrongCount, classification) : MAX_REINFORCEMENT_GAP
+      const reinforcementGap = Math.min(currentReviewGap, attemptGap)
       const hasMoreLoopExercises = currentWordExerciseCount < loopWordTimes - 1
       const hasNextWord = state.chapterData.index < state.chapterData.words.length - 1
       const needsReinforcement = isReviewMode && accumulatedWrongCount > 0 && currentWord !== undefined
@@ -80,12 +83,14 @@ export default function WordPanel() {
           setCurrentWordExerciseCount((old) => old + 1)
           if (isReviewMode) {
             setCurrentReviewWrongCount(accumulatedWrongCount)
+            setCurrentReviewGap(reinforcementGap)
           }
           dispatch({ type: TypingStateActionType.LOOP_CURRENT_WORD })
           reloadCurrentWordComponent()
         } else {
           setCurrentWordExerciseCount(0)
           setCurrentReviewWrongCount(0)
+          setCurrentReviewGap(MAX_REINFORCEMENT_GAP)
 
           if (isReviewMode) {
             let insertWord: { index: number; word: typeof currentWord } | undefined
@@ -95,7 +100,7 @@ export default function WordPanel() {
                 state.chapterData.words,
                 state.chapterData.index,
                 currentWord,
-                getReinforcementGap(accumulatedWrongCount),
+                reinforcementGap,
               )
 
               if (plan.insertedAt !== null) {
@@ -127,6 +132,7 @@ export default function WordPanel() {
     },
     [
       currentReviewWrongCount,
+      currentReviewGap,
       currentWordExerciseCount,
       loopWordTimes,
       state.chapterData.index,

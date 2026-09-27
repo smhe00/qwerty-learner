@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test'
+import { classifyTypingError } from '../../src/review/classifier'
+import { summarizeWordHistory } from '../../src/review/features'
 import { rankReviewCandidates } from '../../src/review/priority'
 import { WordTelemetryCollector, readWordTelemetry } from '../../src/review/telemetry'
 import { createInitialReviewWordState } from '../../src/review/types'
@@ -6,6 +8,7 @@ import type { IWordRecord } from '../../src/utils/db/record'
 import {
   MAX_REINFORCEMENT_GAP,
   MIN_REINFORCEMENT_GAP,
+  getAdaptiveReinforcementGap,
   getReinforcementGap,
   scheduleReinforcement,
 } from '../../src/review/session'
@@ -126,5 +129,113 @@ test.describe('review data model', () => {
         intervalDays: 0,
       },
     })
+  })
+})
+
+
+test.describe('typing error classification', () => {
+  test('classifies a fast adjacent-key single error as motor-like', () => {
+    const classification = classifyTypingError({
+      word: 'apple',
+      wrongCount: 1,
+      telemetry: {
+        telemetryVersion: 1,
+        firstKeyLatencyMs: 180,
+        attempts: [
+          {
+            startLatencyMs: 180,
+            durationMs: 300,
+            correctPrefixLength: 4,
+            result: 'wrong',
+            wrongIndex: 4,
+            wrongKey: 'r',
+            interKeyIntervalsMs: [90, 80, 100, 85],
+          },
+          {
+            startLatencyMs: 120,
+            durationMs: 350,
+            correctPrefixLength: 5,
+            result: 'clean',
+            interKeyIntervalsMs: [85, 90, 95, 80],
+          },
+        ],
+      },
+    })
+
+    expect(classification.cause).toBe('motor')
+    expect(getAdaptiveReinforcementGap(1, classification)).toBe(7)
+  })
+
+  test('classifies long retrieval latency with varied failures as recall-like', () => {
+    const classification = classifyTypingError({
+      word: 'necessary',
+      wrongCount: 3,
+      telemetry: {
+        telemetryVersion: 1,
+        firstKeyLatencyMs: 3600,
+        attempts: [
+          { startLatencyMs: 3600, durationMs: 1000, correctPrefixLength: 1, result: 'wrong', wrongIndex: 1, wrongKey: 'x' },
+          { startLatencyMs: 900, durationMs: 1300, correctPrefixLength: 3, result: 'wrong', wrongIndex: 3, wrongKey: 'v' },
+          { startLatencyMs: 700, durationMs: 1400, correctPrefixLength: 5, result: 'wrong', wrongIndex: 5, wrongKey: 'b' },
+          { startLatencyMs: 600, durationMs: 1600, correctPrefixLength: 9, result: 'clean' },
+        ],
+      },
+    })
+
+    expect(classification.cause).toBe('recall')
+    expect(getAdaptiveReinforcementGap(3, classification)).toBe(3)
+  })
+
+  test('classifies repeated same-position errors as spelling-like', () => {
+    const classification = classifyTypingError({
+      word: 'receive',
+      wrongCount: 2,
+      telemetry: {
+        telemetryVersion: 1,
+        firstKeyLatencyMs: 450,
+        attempts: [
+          { startLatencyMs: 450, durationMs: 900, correctPrefixLength: 3, result: 'wrong', wrongIndex: 3, wrongKey: 'i', interKeyIntervalsMs: [180, 190, 800] },
+          { startLatencyMs: 300, durationMs: 850, correctPrefixLength: 3, result: 'wrong', wrongIndex: 3, wrongKey: 'i', interKeyIntervalsMs: [160, 180, 760] },
+          { startLatencyMs: 250, durationMs: 900, correctPrefixLength: 7, result: 'clean', interKeyIntervalsMs: [170, 180, 200, 190, 180, 170] },
+        ],
+      },
+    })
+
+    expect(classification.cause).toBe('spelling')
+    expect(getAdaptiveReinforcementGap(2, classification)).toBe(4)
+  })
+
+  test('summarizes repeated historical error positions from legacy and telemetry records', () => {
+    const summary = summarizeWordHistory([
+      {
+        word: 'receive',
+        timeStamp: 1,
+        dict: 'cet4',
+        chapter: 0,
+        timing: [100],
+        wrongCount: 1,
+        mistakes: { 3: ['i'] },
+      },
+      {
+        word: 'receive',
+        timeStamp: 2,
+        dict: 'cet4',
+        chapter: -1,
+        timing: [100],
+        wrongCount: 1,
+        mistakes: { 3: ['i'] },
+        telemetryVersion: 1,
+        firstKeyLatencyMs: 500,
+        attempts: [
+          { startLatencyMs: 500, durationMs: 900, correctPrefixLength: 3, result: 'wrong', wrongIndex: 3, wrongKey: 'i' },
+          { startLatencyMs: 200, durationMs: 1000, correctPrefixLength: 7, result: 'clean' },
+        ],
+      },
+    ])
+
+    expect(summary.recordCount).toBe(2)
+    expect(summary.failureRate).toBe(1)
+    expect(summary.dominantWrongIndex).toBe(3)
+    expect(summary.dominantWrongIndexRatio).toBe(1)
   })
 })

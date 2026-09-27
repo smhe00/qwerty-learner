@@ -12,6 +12,8 @@ import { WordPronunciationIcon } from '@/components/WordPronunciationIcon'
 import { EXPLICIT_SPACE } from '@/constants'
 import useKeySounds from '@/hooks/useKeySounds'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
+import { classifyTypingError } from '@/review/classifier'
+import type { TypingErrorClassification } from '@/review/classifier'
 import { WordTelemetryCollector } from '@/review/telemetry'
 import {
   currentChapterAtom,
@@ -34,6 +36,7 @@ const vowelLetters = ['A', 'E', 'I', 'O', 'U']
 
 export type WordFinishResult = {
   wrongCount: number
+  classification: TypingErrorClassification
 }
 
 export default function WordComponent({ word, onFinish }: { word: Word; onFinish: (result: WordFinishResult) => void }) {
@@ -272,6 +275,12 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
   useEffect(() => {
     if (wordState.isFinished) {
       dispatch({ type: TypingStateActionType.SET_IS_SAVING_RECORD, payload: true })
+      const telemetry = telemetryCollectorRef.current.snapshot()
+      const classification = classifyTypingError({
+        word: word.name,
+        wrongCount: wordState.wrongCount,
+        telemetry,
+      })
 
       // wordLogUploader({
       //   headword: word.name,
@@ -286,10 +295,10 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
         wrongCount: wordState.wrongCount,
         letterTimeArray: wordState.letterTimeArray,
         letterMistake: wordState.letterMistake,
-        telemetry: telemetryCollectorRef.current.snapshot(),
+        telemetry,
       })
 
-      onFinish({ wrongCount: wordState.wrongCount })
+      onFinish({ wrongCount: wordState.wrongCount, classification })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wordState.isFinished])
