@@ -27,6 +27,8 @@ export class WordTelemetryCollector {
   private totalPausedMs = 0
   private backgroundPauseMs = 0
   private backgroundPauseCount = 0
+  private backgroundPauseBeforeFirstKeyMs = 0
+  private backgroundPauseBeforeFirstKeyCount = 0
 
   resetWord() {
     this.wordReadyAtMs = null
@@ -39,6 +41,8 @@ export class WordTelemetryCollector {
     this.totalPausedMs = 0
     this.backgroundPauseMs = 0
     this.backgroundPauseCount = 0
+    this.backgroundPauseBeforeFirstKeyMs = 0
+    this.backgroundPauseBeforeFirstKeyCount = 0
   }
 
   pause(nowMs: number) {
@@ -53,6 +57,10 @@ export class WordTelemetryCollector {
     const pauseDuration = Math.max(0, nowMs - this.pauseStartedAtMs)
     this.totalPausedMs += pauseDuration
     this.backgroundPauseMs += pauseDuration
+    if (this.firstKeyLatencyMs === undefined) {
+      this.backgroundPauseBeforeFirstKeyMs += pauseDuration
+      this.backgroundPauseBeforeFirstKeyCount += 1
+    }
     this.pauseStartedAtMs = null
   }
 
@@ -109,6 +117,8 @@ export class WordTelemetryCollector {
       })),
       backgroundPauseMs: this.backgroundPauseMs || undefined,
       backgroundPauseCount: this.backgroundPauseCount || undefined,
+      backgroundPauseBeforeFirstKeyMs: this.backgroundPauseBeforeFirstKeyMs || undefined,
+      backgroundPauseBeforeFirstKeyCount: this.backgroundPauseBeforeFirstKeyCount || undefined,
     }
   }
 
