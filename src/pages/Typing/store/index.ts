@@ -72,6 +72,10 @@ export type TypingStateAction =
       type: TypingStateActionType.NEXT_WORD
       payload?: {
         updateReviewRecord?: (state: TypingState) => void
+        insertWord?: {
+          index: number
+          word: WordWithIndex
+        }
       }
     }
   | { type: TypingStateActionType.LOOP_CURRENT_WORD }
@@ -131,11 +135,30 @@ export const typingReducer = (state: TypingState, action: TypingStateAction) => 
       break
     }
     case TypingStateActionType.NEXT_WORD: {
+      if (action.payload?.insertWord) {
+        const insertAt = Math.min(
+          state.chapterData.words.length,
+          Math.max(state.chapterData.index + 1, action.payload.insertWord.index),
+        )
+        state.chapterData.words.splice(insertAt, 0, { ...action.payload.insertWord.word, index: insertAt })
+        state.chapterData.userInputLogs.splice(insertAt, 0, {
+          ...structuredClone(initialUserInputLog),
+          index: insertAt,
+        })
+
+        state.chapterData.words.forEach((word, index) => {
+          word.index = index
+        })
+        state.chapterData.userInputLogs.forEach((log, index) => {
+          log.index = index
+        })
+      }
+
       state.chapterData.index += 1
       state.chapterData.wordCount += 1
       state.isShowSkip = false
 
-      if (action?.payload?.updateReviewRecord) {
+      if (action.payload?.updateReviewRecord) {
         action.payload.updateReviewRecord(state)
       }
       break

@@ -28,12 +28,22 @@ export function useWordList(): UseWordListResult {
   const isFirstChapter = !isReviewMode && currentDictInfo.id === 'cet4' && currentChapter === 0
   const { data: wordList, error, isLoading } = useSWR(currentDictInfo.url, wordListFetcher)
 
+  // The Typing reducer owns the live review queue. Rehydrate it only when the
+  // review session identity changes; persisting a reinforced queue must not
+  // reset the active typing state.
+  const reviewSessionIdentity = reviewRecord ? String(reviewRecord.id ?? reviewRecord.createTime) : 'none'
+  const reviewWords = useMemo(
+    () => reviewRecord?.words ?? [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reviewSessionIdentity],
+  )
+
   const words: WordWithIndex[] = useMemo(() => {
     let newWords: Word[]
     if (isFirstChapter) {
       newWords = firstChapter
     } else if (isReviewMode) {
-      newWords = reviewRecord?.words ?? []
+      newWords = reviewWords
     } else if (wordList) {
       newWords = wordList.slice(currentChapter * CHAPTER_LENGTH, (currentChapter + 1) * CHAPTER_LENGTH)
     } else {
@@ -56,7 +66,7 @@ export function useWordList(): UseWordListResult {
         trans,
       }
     })
-  }, [isFirstChapter, isReviewMode, wordList, reviewRecord?.words, currentChapter])
+  }, [isFirstChapter, isReviewMode, wordList, reviewWords, currentChapter])
 
   return { words, isLoading, error }
 }
