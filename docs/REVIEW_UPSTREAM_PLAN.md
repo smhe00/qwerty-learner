@@ -282,35 +282,34 @@ This ordering is designed to remain explainable until real telemetry volume is s
 
 ## Additive evidence compatibility
 
-New learning evidence must remain additive and optional so existing qwerty-learner
-records and backups continue to work.
+New learning evidence is additive and optional so **official upstream
+qwerty-learner records and backups** remain valid without migration.
 
-The preferred record shape is now:
+The canonical record shape is:
 
 ```ts
 IWordRecord {
-  // original fields remain unchanged
+  // original upstream fields remain unchanged
   typingTelemetry?: WordRecordTelemetry
   learningContext?: LearningContextV1
 }
 ```
 
-Early spaced-review builds wrote typing telemetry directly on `IWordRecord`
-(`telemetryVersion`, `firstKeyLatencyMs`, `attempts`). Those fields remain
-readable for compatibility, but new records use the nested `typingTelemetry`
-object. All review logic must use `readWordTelemetry(record)` rather than
-reading either representation directly.
+There is deliberately only one representation for new typing evidence:
+`typingTelemetry`. Experimental pre-baseline shapes are not migrated or
+special-cased; if encountered, their extra properties are simply ignored.
 
 `learningContext` is versioned and optional. Missing context means
 **unknown**, not false. Its fields describe semantic learning conditions rather
-than UI controls:
+than particular UI controls:
 
 - answer visibility at the start of the observation;
 - whether the answer was revealed and whether reveal happened before first input;
-- whether pronunciation was available and actually played.
+- whether pronunciation was enabled at the start and whether it was actually played.
 
-The UI only records these events. Classifier and scheduler behavior is unchanged
-until these signals are calibrated against future independent retrieval.
+The UI only records these events. Classifier and scheduler behavior remains
+unchanged until these signals are calibrated against future independent
+retrieval.
 
 No Dexie schema-version bump is required for these optional properties because
 they are not IndexedDB indexes; they are additive values on existing
