@@ -1,13 +1,14 @@
 import { extractTypingBehaviorFeatures } from './features'
 import type { WordHistorySummary } from './features'
 import { typingClassifierPolicy } from './policy'
-import type { WordRecordTelemetry } from '@/utils/db/record'
+import type { LearningContextV1, WordRecordTelemetry } from '@/utils/db/record'
 
 export type TypingErrorCause = 'clean' | 'recall' | 'spelling' | 'motor' | 'uncertain'
 
 export type TypingErrorClassification = {
   cause: TypingErrorCause
   confidence: number
+  attentionUncertain?: boolean
   scores: {
     recall: number
     spelling: number
@@ -45,17 +46,28 @@ export function classifyTypingError(input: {
   word: string
   wrongCount: number
   telemetry?: WordRecordTelemetry
+  learningContext?: LearningContextV1
   history?: WordHistorySummary
 }): TypingErrorClassification {
+  const features = extractTypingBehaviorFeatures(input.word, input.wrongCount, input.telemetry, input.history)
+  const hadPreInputLearningInteraction =
+    input.learningContext?.revealedBeforeFirstKey === true ||
+    input.learningContext?.meaningRevealedBeforeFirstKey === true ||
+    input.learningContext?.pronunciationPlayedBeforeFirstKey === true
+
+  const attentionUncertain =
+    ((features.firstKeyLatencyMs ?? 0) >= typingClassifierPolicy.attentionUncertainFirstKeyMs &&
+      !hadPreInputLearningInteraction) ||
+    ((features.maxInterKeyMs ?? 0) >= typingClassifierPolicy.attentionUncertainInterKeyMs)
+
   if (input.wrongCount <= 0) {
     return {
       cause: 'clean',
-      confidence: 1,
+      confidence: attentionUncertain ? 0.4 : 1,
+      attentionUncertain: attentionUncertain || undefined,
       scores: { recall: 0, spelling: 0, motor: 0 },
     }
   }
-
-  const features = extractTypingBehaviorFeatures(input.word, input.wrongCount, input.telemetry, input.history)
   const firstKey = features.firstKeyLatencyMs
   const historySampleWeight = Math.min(1, (features.history?.recordCount ?? 0) / 5)
   const historyFailureRate = (features.history?.failureRate ?? 0) * historySampleWeight
@@ -107,10 +119,16 @@ export function classifyTypingError(input: {
   const runnerUpScore = ranked[1][1]
 
   if (
+    attentionUncertain ||
     winnerScore < typingClassifierPolicy.uncertainConfidence ||
     winnerScore - runnerUpScore < typingClassifierPolicy.uncertainMargin
   ) {
-    return { cause: 'uncertain', confidence: winnerScore, scores }
+    return {
+      cause: 'uncertain',
+      confidence: attentionUncertain ? Math.min(winnerScore, 0.49) : winnerScore,
+      attentionUncertain: attentionUncertain || undefined,
+      scores,
+    }
   }
 
   return {
