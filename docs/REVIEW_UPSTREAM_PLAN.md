@@ -278,3 +278,40 @@ Due-session ordering is scheduler-aware and intentionally uses lexicographic rul
 5. more recent historical error as the final tie breaker.
 
 This ordering is designed to remain explainable until real telemetry volume is sufficient to justify learned weights.
+
+
+## Additive evidence compatibility
+
+New learning evidence must remain additive and optional so existing qwerty-learner
+records and backups continue to work.
+
+The preferred record shape is now:
+
+```ts
+IWordRecord {
+  // original fields remain unchanged
+  typingTelemetry?: WordRecordTelemetry
+  learningContext?: LearningContextV1
+}
+```
+
+Early spaced-review builds wrote typing telemetry directly on `IWordRecord`
+(`telemetryVersion`, `firstKeyLatencyMs`, `attempts`). Those fields remain
+readable for compatibility, but new records use the nested `typingTelemetry`
+object. All review logic must use `readWordTelemetry(record)` rather than
+reading either representation directly.
+
+`learningContext` is versioned and optional. Missing context means
+**unknown**, not false. Its fields describe semantic learning conditions rather
+than UI controls:
+
+- answer visibility at the start of the observation;
+- whether the answer was revealed and whether reveal happened before first input;
+- whether pronunciation was available and actually played.
+
+The UI only records these events. Classifier and scheduler behavior is unchanged
+until these signals are calibrated against future independent retrieval.
+
+No Dexie schema-version bump is required for these optional properties because
+they are not IndexedDB indexes; they are additive values on existing
+`wordRecords` objects.
