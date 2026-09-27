@@ -204,6 +204,12 @@ export default function WordPanel() {
     return isShowTranslation || state.isTransVisible
   }, [isShowTranslation, state.isTransVisible])
 
+  const phoneticVisible = useMemo(() => {
+    if (!phoneticConfig.isOpen || !currentWord) return false
+    const phonetic = phoneticConfig.type === 'us' ? currentWord.usphone : currentWord.ukphone
+    return Boolean(phonetic && phonetic.length > 1)
+  }, [currentWord, phoneticConfig.isOpen, phoneticConfig.type])
+
   return (
     <div className="container flex h-full w-full flex-col items-center justify-center">
       <div className="container flex h-24 w-full shrink-0 grow-0 justify-between px-12 pt-10">
@@ -227,7 +233,13 @@ export default function WordPanel() {
               </div>
             )}
             <div className="relative">
-              <WordComponent word={currentWord} onFinish={onFinish} key={wordComponentKey} />
+              <WordComponent
+                word={currentWord}
+                onFinish={onFinish}
+                meaningVisible={shouldShowTranslation}
+                phoneticVisible={phoneticVisible}
+                key={wordComponentKey}
+              />
               {phoneticConfig.isOpen && <Phonetic word={currentWord} />}
               <Translation
                 trans={currentWord.trans.join('；')}
