@@ -141,3 +141,101 @@ export async function getDueReviewDiagnostics(
       schedulerState: state.schedulerState,
     }))
 }
+
+
+export type ReviewDictionaryDiagnostics = {
+  dict: string
+  now: number
+  wordRecordCount: number
+  uniqueWordCount: number
+  telemetryRecordCount: number
+  telemetryCoverage: number
+  stateCount: number
+  dueCount: number
+  causeCounts: Record<'clean' | 'recall' | 'spelling' | 'motor' | 'uncertain', number>
+  basicStageCounts: Record<string, number>
+}
+
+export function buildReviewDictionaryDiagnostics(input: {
+  dict: string
+  now: number
+  records: IWordRecord[]
+  states: IReviewWordState[]
+}): ReviewDictionaryDiagnostics {
+  const recordsByWord = new Map<string, IWordRecord[]>()
+  let telemetryRecordCount = 0
+
+  for (const record of input.records) {
+    if (readWordTelemetry(record)) {
+      telemetryRecordCount += 1
+    }
+
+    const group = recordsByWord.get(record.word)
+    if (group) {
+      group.push(record)
+    } else {
+      recordsByWord.set(record.word, [record])
+    }
+  }
+
+  const causeCounts: ReviewDictionaryDiagnostics['causeCounts'] = {
+    clean: 0,
+    recall: 0,
+    spelling: 0,
+    motor: 0,
+    uncertain: 0,
+  }
+
+  for (const [word, records] of recordsByWord) {
+    const sorted = [...records].sort((a, b) => a.timeStamp - b.timeStamp)
+    const latest = sorted.length > 0 ? sorted[sorted.length - 1] : undefined
+    if (!latest) continue
+
+    const priorHistory = summarizeWordHistory(sorted.slice(0, -1))
+    const classification = classifyTypingError({
+      word,
+      wrongCount: latest.wrongCount,
+      telemetry: readWordTelemetry(latest),
+      history: priorHistory,
+    })
+    causeCounts[classification.cause] += 1
+  }
+
+  const basicStageCounts: Record<string, number> = {}
+  for (const state of input.states) {
+    if (state.schedulerState.kind === 'basic-v1') {
+      const key = String(state.schedulerState.stage)
+      basicStageCounts[key] = (basicStageCounts[key] ?? 0) + 1
+    }
+  }
+
+  return {
+    dict: input.dict,
+    now: input.now,
+    wordRecordCount: input.records.length,
+    uniqueWordCount: recordsByWord.size,
+    telemetryRecordCount,
+    telemetryCoverage: input.records.length > 0 ? telemetryRecordCount / input.records.length : 0,
+    stateCount: input.states.length,
+    dueCount: input.states.filter((state) => state.nextReviewAt <= input.now).length,
+    causeCounts,
+    basicStageCounts,
+  }
+}
+
+export async function getReviewDictionaryDiagnostics(
+  dict: string,
+  now = Math.floor(Date.now() / 1000),
+): Promise<ReviewDictionaryDiagnostics> {
+  const [records, states] = await Promise.all([
+    db.wordRecords.where('dict').equals(dict).toArray(),
+    db.reviewWordStates.where('dict').equals(dict).toArray(),
+  ])
+
+  return buildReviewDictionaryDiagnostics({
+    dict,
+    now,
+    records,
+    states,
+  })
+}
