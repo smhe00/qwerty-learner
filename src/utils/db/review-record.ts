@@ -1,9 +1,11 @@
 import { db } from '.'
 import { ReviewRecord } from './record'
 import type { TErrorWordData } from '@/pages/Gallery-N/hooks/useErrorWords'
+import { filterDueReviewCandidates } from '@/review/due'
 import { rankReviewCandidates } from '@/review/priority'
-import { bootstrapReviewWordStatesForDictionary } from '@/review/repository'
+import { bootstrapReviewWordStatesForDictionary, getDueReviewWordStates } from '@/review/repository'
 import type { Word } from '@/typings'
+import { getUTCUnixTimestamp } from '@/utils'
 import { useEffect, useState } from 'react'
 
 export function useGetLatestReviewRecord(dictID: string) {
@@ -30,7 +32,14 @@ async function getReviewRecords(dictID: string): Promise<ReviewRecord | undefine
 
 export async function generateNewWordReviewRecord(dictID: string, errorData: TErrorWordData[]) {
   await bootstrapReviewWordStatesForDictionary(dictID)
-  const sortedWords: Word[] = rankReviewCandidates(errorData).map((item) => item.originData)
+
+  const dueStates = await getDueReviewWordStates(dictID, getUTCUnixTimestamp())
+  const dueErrorData = filterDueReviewCandidates(errorData, dueStates)
+  const sortedWords: Word[] = rankReviewCandidates(dueErrorData).map((item) => item.originData)
+
+  if (sortedWords.length === 0) {
+    return undefined
+  }
 
   const record = new ReviewRecord(dictID, sortedWords)
 

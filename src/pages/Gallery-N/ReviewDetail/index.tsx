@@ -21,6 +21,11 @@ export function ReviewDetail({ errorData, dict }: { errorData: TErrorWordData[];
     setCurrentChapter(-1)
 
     const record = await generateNewWordReviewRecord(dict.id, errorData)
+    if (!record) {
+      alert('当前没有到期需要复习的错词')
+      return
+    }
+
     setReviewModeInfo({ isReviewMode: true, reviewRecord: record })
     navigate('/')
   }

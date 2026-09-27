@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { classifyTypingError } from '../../src/review/classifier'
+import { filterDueReviewCandidates } from '../../src/review/due'
 import { summarizeWordHistory } from '../../src/review/features'
 import { rankReviewCandidates } from '../../src/review/priority'
 import {
@@ -390,5 +391,29 @@ test.describe('legacy scheduler bootstrap', () => {
       stage: 2,
       intervalDays: 7,
     })
+  })
+})
+
+
+test.describe('due review selection', () => {
+  test('keeps only error candidates whose per-word state is due', () => {
+    const candidates = [
+      { word: 'apple', errorCount: 3, latestErrorTime: 100 },
+      { word: 'banana', errorCount: 2, latestErrorTime: 200 },
+      { word: 'orange', errorCount: 1, latestErrorTime: 300 },
+    ]
+
+    const dueStates = [
+      {
+        ...createInitialReviewWordState('cet4', 'banana', 1),
+        nextReviewAt: 10,
+      },
+      {
+        ...createInitialReviewWordState('cet4', 'orange', 1),
+        nextReviewAt: 20,
+      },
+    ]
+
+    expect(filterDueReviewCandidates(candidates, dueStates).map((item) => item.word)).toEqual(['banana', 'orange'])
   })
 })
