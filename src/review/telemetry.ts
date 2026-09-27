@@ -51,7 +51,7 @@ export class WordTelemetryCollector {
     this.keyTimesMs.push(nowMs)
   }
 
-  recordWrong(correctPrefixLength: number, wrongIndex: number, wrongKey: string, endedAtMs: number) {
+  recordWrong(correctPrefixLength: number, wrongIndex: number, wrongKey: string | undefined, endedAtMs: number) {
     this.closeAttempt('wrong', correctPrefixLength, endedAtMs, wrongIndex, wrongKey)
   }
 
@@ -102,7 +102,9 @@ export class WordTelemetryCollector {
 
     if (result === 'wrong') {
       attempt.wrongIndex = wrongIndex
-      attempt.wrongKey = wrongKey
+      if (wrongKey !== undefined) {
+        attempt.wrongKey = wrongKey
+      }
     }
 
     this.attempts.push(attempt)
