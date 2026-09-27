@@ -257,3 +257,24 @@ The API is loaded dynamically only when `import.meta.env.DEV` is true. Productio
 `stats(dict)` reports telemetry coverage, latest per-word classification distribution, due count, and basic scheduler stage distribution. This is intended for threshold calibration with real user data before replacing the transparent classifier with a learned model.
 
 Scheduler state is explicitly rebuildable. New telemetry records are replayed through the full classifier and scheduler mapping; legacy rows without telemetry fall back to conservative `wrongCount` mapping. `rebuildReviewWordStatesForDictionary(dict)` can therefore reconstruct the derived table from `wordRecords` without treating `reviewWordStates` as irreplaceable source data.
+
+
+## P1 scheduling semantics
+
+The basic scheduler now distinguishes immediate learning repetitions from independent long-term reviews using a 30-minute learning window.
+
+- immediate reinforcement does not advance interval stage;
+- immediate reinforcement does not inflate `reviewCount`, `cleanStreak`, or `lapseCount`;
+- early successful practice preserves the existing due date;
+- an early failure outside the learning window is treated as meaningful forgetting and resets the schedule to the 1-day stage;
+- raw `WordRecord` events are still preserved for every completed attempt.
+
+Due-session ordering is scheduler-aware and intentionally uses lexicographic rules rather than opaque weights:
+
+1. higher `lapseCount`;
+2. weaker current basic stage;
+3. higher historical error count;
+4. earlier `nextReviewAt` (more overdue);
+5. more recent historical error as the final tie breaker.
+
+This ordering is designed to remain explainable until real telemetry volume is sufficient to justify learned weights.
