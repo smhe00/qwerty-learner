@@ -3,7 +3,7 @@ import { classifyTypingError } from '../../src/review/classifier'
 import { buildReviewDictionaryDiagnostics, buildReviewWordDiagnostics } from '../../src/review/diagnostics'
 import { filterDueReviewCandidates } from '../../src/review/due'
 import { summarizeWordHistory } from '../../src/review/features'
-import { rankReviewCandidates } from '../../src/review/priority'
+import { rankDueReviewCandidates, rankReviewCandidates } from '../../src/review/priority'
 import { inferReviewOutcomeFromWordRecord, rebuildBasicStateFromWordRecords } from '../../src/review/rebuild'
 import {
   classificationToReviewOutcome,
@@ -771,5 +771,74 @@ test.describe('same-session long-term counters', () => {
       intervalDays: 1,
     })
     expect(state.nextReviewAt).toBe(laterButStillEarly + day)
+  })
+})
+
+
+test.describe('scheduler-aware review priority', () => {
+  test('prioritizes lapse history, weak stage, error count, then overdue time', () => {
+    const candidates = [
+      { word: 'alpha', errorCount: 10, latestErrorTime: 400 },
+      { word: 'beta', errorCount: 2, latestErrorTime: 300 },
+      { word: 'gamma', errorCount: 5, latestErrorTime: 200 },
+      { word: 'delta', errorCount: 8, latestErrorTime: 100 },
+    ]
+
+    const states = [
+      {
+        ...createInitialReviewWordState('cet4', 'alpha', 1),
+        nextReviewAt: 10,
+        lapseCount: 0,
+        schedulerState: { kind: 'basic-v1' as const, stage: 3, intervalDays: 14 },
+      },
+      {
+        ...createInitialReviewWordState('cet4', 'beta', 1),
+        nextReviewAt: 20,
+        lapseCount: 2,
+        schedulerState: { kind: 'basic-v1' as const, stage: 1, intervalDays: 3 },
+      },
+      {
+        ...createInitialReviewWordState('cet4', 'gamma', 1),
+        nextReviewAt: 30,
+        lapseCount: 2,
+        schedulerState: { kind: 'basic-v1' as const, stage: 0, intervalDays: 1 },
+      },
+      {
+        ...createInitialReviewWordState('cet4', 'delta', 1),
+        nextReviewAt: 40,
+        lapseCount: 2,
+        schedulerState: { kind: 'basic-v1' as const, stage: 0, intervalDays: 1 },
+      },
+    ]
+
+    expect(rankDueReviewCandidates(candidates, states).map((item) => item.word)).toEqual([
+      'delta',
+      'gamma',
+      'beta',
+      'alpha',
+    ])
+  })
+
+  test('uses older due time when stronger signals tie', () => {
+    const candidates = [
+      { word: 'alpha', errorCount: 2, latestErrorTime: 500 },
+      { word: 'beta', errorCount: 2, latestErrorTime: 600 },
+    ]
+    const states = [
+      {
+        ...createInitialReviewWordState('cet4', 'alpha', 1),
+        nextReviewAt: 10,
+        lapseCount: 1,
+        schedulerState: { kind: 'basic-v1' as const, stage: 1, intervalDays: 3 },
+      },
+      {
+        ...createInitialReviewWordState('cet4', 'beta', 1),
+        nextReviewAt: 20,
+        lapseCount: 1,
+        schedulerState: { kind: 'basic-v1' as const, stage: 1, intervalDays: 3 },
+      },
+    ]
+
+    expect(rankDueReviewCandidates(candidates, states).map((item) => item.word)).toEqual(['alpha', 'beta'])
   })
 })
