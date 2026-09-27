@@ -199,3 +199,35 @@ The classifier produces probabilistic `recall / spelling / motor` scores plus an
 Historical evidence is loaded asynchronously and sample-count weighted. A single historical record therefore has limited influence, while repeated same-position errors become stronger spelling evidence.
 
 A scheduler adapter boundary is defined separately from the classifier. The branch intentionally does not add `ts-fsrs` yet: the currently maintained package requires Node.js 20+, while the upstream project's existing CI still targets Node 18. A runtime/toolchain upgrade should be handled separately before adopting the maintained FSRS package.
+
+
+## Basic cross-session scheduler
+
+The feature branch now contains a working `basic-v1` cross-session scheduler backed by `reviewWordStates`.
+
+Current intervals:
+
+```text
+1 day -> 3 days -> 7 days -> 14 days -> 30 days
+```
+
+Key semantics:
+
+- `again` resets the state to the 1-day stage and increments `lapseCount`;
+- `hard` keeps the current stage;
+- `good` advances one stage only when the word is actually due;
+- `easy` can advance two stages only when the word is actually due;
+- same-session reinforcement or normal immediate word loops do not advance the spaced interval;
+- early practice does not push the existing due date later;
+- current typing classification maps recall-like errors to `again`, spelling/uncertain errors to `hard`, and motor-like slips / clean attempts to `good`.
+
+Every completed word now writes the original `WordRecord` first, then updates the derived `reviewWordState`. If no state exists, historical WordRecords for that `[dict+word]` are replayed before applying the current adaptive outcome, so imported legacy history is not silently discarded.
+
+Starting a new Review session now:
+
+1. lazily bootstraps missing per-word states for the dictionary;
+2. queries `reviewWordStates` where `nextReviewAt <= now`;
+3. intersects those due states with the dictionary's historical error words;
+4. builds the existing virtual ReviewRecord only from due error words.
+
+The existing Gallery/Review entry point and unfinished-session resume behavior remain unchanged.
