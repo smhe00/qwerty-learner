@@ -1,19 +1,21 @@
 import { classifyTypingError } from './classifier'
 import { extractTypingBehaviorFeatures, summarizeWordHistory } from './features'
 import type { TypingBehaviorFeatures, WordHistorySummary } from './features'
+import { readLearningContext } from './learning-context'
 import { typingClassifierPolicy } from './policy'
 import { getDueReviewWordStates, getReviewWordState } from './repository'
 import { readWordTelemetry } from './telemetry'
 import type { TypingErrorClassification } from './classifier'
 import type { IReviewWordState } from './types'
 import { db } from '@/utils/db'
-import type { IWordRecord } from '@/utils/db/record'
+import type { IWordRecord, LearningContextV1 } from '@/utils/db/record'
 
 export type ReviewDiagnosticLatestRecord = {
   id?: number
   timeStamp: number
   wrongCount: number
   telemetryAvailable: boolean
+  learningContext?: LearningContextV1
 }
 
 export type ReviewWordDiagnostics = {
@@ -113,6 +115,7 @@ export function buildReviewWordDiagnostics(input: {
       timeStamp: latest.timeStamp,
       wrongCount: latest.wrongCount,
       telemetryAvailable: telemetry !== undefined,
+      learningContext: readLearningContext(latest),
     }
   }
 
