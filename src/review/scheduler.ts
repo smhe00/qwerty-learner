@@ -1,5 +1,5 @@
 import type { TypingErrorClassification } from './classifier'
-import { basicReviewIntervalsDays } from './policy'
+import { basicReviewIntervalsDays, sameSessionWindowSeconds } from './policy'
 import { createInitialReviewWordState } from './types'
 import type { BasicSchedulerState, IReviewWordState, ReviewOutcome, ReviewSchedulerState } from './types'
 
@@ -42,6 +42,11 @@ export function scheduleBasicReview(input: ReviewScheduleInput): IReviewWordStat
 
   const isFirstReview = input.state.reviewCount === 0
   const isDue = isFirstReview || input.now >= input.state.nextReviewAt
+  const secondsSinceLastReview =
+    input.state.lastReviewedAt === undefined ? undefined : Math.max(0, input.now - input.state.lastReviewedAt)
+  const isSameSession =
+    !isFirstReview && secondsSinceLastReview !== undefined && secondsSinceLastReview <= sameSessionWindowSeconds
+  const countsAsLongTermReview = isDue || (input.outcome === 'again' && !isSameSession)
   let nextStage = current.stage
 
   if (input.outcome === 'again') {
@@ -63,7 +68,7 @@ export function scheduleBasicReview(input: ReviewScheduleInput): IReviewWordStat
   }
 
   const intervalDays = intervalForStage(nextStage)
-  const keepExistingDueDate = !isDue && input.outcome !== 'again'
+  const shouldReschedule = isDue || (input.outcome === 'again' && !isSameSession)
   const nextSchedulerState: BasicSchedulerState = {
     kind: 'basic-v1',
     stage: nextStage,
@@ -74,10 +79,14 @@ export function scheduleBasicReview(input: ReviewScheduleInput): IReviewWordStat
     ...input.state,
     updatedAt: input.now,
     lastReviewedAt: input.now,
-    nextReviewAt: keepExistingDueDate ? input.state.nextReviewAt : input.now + intervalDays * DAY_SECONDS,
-    reviewCount: input.state.reviewCount + 1,
-    lapseCount: input.state.lapseCount + (input.outcome === 'again' ? 1 : 0),
-    cleanStreak: input.outcome === 'again' ? 0 : input.state.cleanStreak + 1,
+    nextReviewAt: shouldReschedule ? input.now + intervalDays * DAY_SECONDS : input.state.nextReviewAt,
+    reviewCount: input.state.reviewCount + (countsAsLongTermReview ? 1 : 0),
+    lapseCount: input.state.lapseCount + (countsAsLongTermReview && input.outcome === 'again' ? 1 : 0),
+    cleanStreak: countsAsLongTermReview
+      ? input.outcome === 'again'
+        ? 0
+        : input.state.cleanStreak + 1
+      : input.state.cleanStreak,
     lastOutcome: input.outcome,
     schedulerState: nextSchedulerState,
   }
