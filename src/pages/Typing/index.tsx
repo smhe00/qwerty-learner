@@ -38,24 +38,6 @@ const App: React.FC = () => {
   const isReviewMode = useAtomValue(isReviewModeAtom)
 
   useEffect(() => {
-    if (!import.meta.env.DEV) return
-
-    let active = true
-    let cleanup: (() => void) | undefined
-
-    void import('@/review/devtools').then(({ installReviewDevtools }) => {
-      if (active) {
-        cleanup = installReviewDevtools()
-      }
-    })
-
-    return () => {
-      active = false
-      cleanup?.()
-    }
-  }, [])
-
-  useEffect(() => {
     // 检测用户设备
     if (!IsDesktop()) {
       setTimeout(() => {
