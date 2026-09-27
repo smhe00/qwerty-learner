@@ -63,6 +63,7 @@ export function scheduleBasicReview(input: ReviewScheduleInput): IReviewWordStat
   }
 
   const intervalDays = intervalForStage(nextStage)
+  const keepExistingDueDate = !isDue && input.outcome !== 'again'
   const nextSchedulerState: BasicSchedulerState = {
     kind: 'basic-v1',
     stage: nextStage,
@@ -73,7 +74,7 @@ export function scheduleBasicReview(input: ReviewScheduleInput): IReviewWordStat
     ...input.state,
     updatedAt: input.now,
     lastReviewedAt: input.now,
-    nextReviewAt: input.now + intervalDays * DAY_SECONDS,
+    nextReviewAt: keepExistingDueDate ? input.state.nextReviewAt : input.now + intervalDays * DAY_SECONDS,
     reviewCount: input.state.reviewCount + 1,
     lapseCount: input.state.lapseCount + (input.outcome === 'again' ? 1 : 0),
     cleanStreak: input.outcome === 'again' ? 0 : input.state.cleanStreak + 1,
