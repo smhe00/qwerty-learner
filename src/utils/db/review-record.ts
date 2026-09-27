@@ -2,7 +2,7 @@ import { db } from '.'
 import { ReviewRecord } from './record'
 import type { TErrorWordData } from '@/pages/Gallery-N/hooks/useErrorWords'
 import { filterDueReviewCandidates } from '@/review/due'
-import { rankReviewCandidates } from '@/review/priority'
+import { rankDueReviewCandidates } from '@/review/priority'
 import { bootstrapReviewWordStatesForDictionary, getDueReviewWordStates } from '@/review/repository'
 import type { Word } from '@/typings'
 import { getUTCUnixTimestamp } from '@/utils'
@@ -35,7 +35,7 @@ export async function generateNewWordReviewRecord(dictID: string, errorData: TEr
 
   const dueStates = await getDueReviewWordStates(dictID, getUTCUnixTimestamp())
   const dueErrorData = filterDueReviewCandidates(errorData, dueStates)
-  const sortedWords: Word[] = rankReviewCandidates(dueErrorData).map((item) => item.originData)
+  const sortedWords: Word[] = rankDueReviewCandidates(dueErrorData, dueStates).map((item) => item.originData)
 
   if (sortedWords.length === 0) {
     return undefined
