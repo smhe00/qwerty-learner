@@ -731,3 +731,45 @@ test.describe('review state rebuild fidelity', () => {
     expect(rebuilt?.schedulerState.kind).toBe('basic-v1')
   })
 })
+
+
+test.describe('same-session long-term counters', () => {
+  test('does not inflate review counters on immediate reinforcement', () => {
+    let state = createInitialReviewWordState('cet4', 'apple', 1000)
+    state = scheduleBasicReview({ state, outcome: 'again', now: 1000 })
+
+    expect(state.reviewCount).toBe(1)
+    expect(state.lapseCount).toBe(1)
+    expect(state.cleanStreak).toBe(0)
+
+    const due = state.nextReviewAt
+    state = scheduleBasicReview({ state, outcome: 'good', now: 1300 })
+    state = scheduleBasicReview({ state, outcome: 'good', now: 1600 })
+
+    expect(state.reviewCount).toBe(1)
+    expect(state.lapseCount).toBe(1)
+    expect(state.cleanStreak).toBe(0)
+    expect(state.nextReviewAt).toBe(due)
+  })
+
+  test('an early failure outside the learning window resets long-term scheduling', () => {
+    const day = 24 * 60 * 60
+    let state = createInitialReviewWordState('cet4', 'apple', 1000)
+    state = scheduleBasicReview({ state, outcome: 'good', now: 1000 })
+
+    const originalDue = state.nextReviewAt
+    const laterButStillEarly = 1000 + 2 * 60 * 60
+    expect(laterButStillEarly).toBeLessThan(originalDue)
+
+    state = scheduleBasicReview({ state, outcome: 'again', now: laterButStillEarly })
+
+    expect(state.reviewCount).toBe(2)
+    expect(state.lapseCount).toBe(1)
+    expect(state.schedulerState).toEqual({
+      kind: 'basic-v1',
+      stage: 0,
+      intervalDays: 1,
+    })
+    expect(state.nextReviewAt).toBe(laterButStillEarly + day)
+  })
+})
