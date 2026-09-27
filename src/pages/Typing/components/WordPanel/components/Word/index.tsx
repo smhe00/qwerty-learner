@@ -14,6 +14,8 @@ import useKeySounds from '@/hooks/useKeySounds'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import { classifyTypingError } from '@/review/classifier'
 import type { TypingErrorClassification } from '@/review/classifier'
+import type { WordHistorySummary } from '@/review/features'
+import { loadWordHistorySummary } from '@/review/history'
 import { WordTelemetryCollector } from '@/review/telemetry'
 import {
   currentChapterAtom,
@@ -53,13 +55,15 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
   const [playKeySound, playBeepSound, playHintSound] = useKeySounds()
   const pronunciationIsOpen = useAtomValue(pronunciationIsOpenAtom)
   const [isHoveringWord, setIsHoveringWord] = useState(false)
-  const currentLanguage = useAtomValue(currentDictInfoAtom).language
-  const currentLanguageCategory = useAtomValue(currentDictInfoAtom).languageCategory
+  const currentDictInfo = useAtomValue(currentDictInfoAtom)
+  const currentLanguage = currentDictInfo.language
+  const currentLanguageCategory = currentDictInfo.languageCategory
   const currentChapter = useAtomValue(currentChapterAtom)
 
   const [showTipAlert, setShowTipAlert] = useState(false)
   const wordPronunciationIconRef = useRef<WordPronunciationIconRef>(null)
   const telemetryCollectorRef = useRef(new WordTelemetryCollector())
+  const historySummaryRef = useRef<WordHistorySummary | undefined>(undefined)
 
   useEffect(() => {
     // run only when word changes
@@ -87,6 +91,25 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
       telemetryCollectorRef.current.markReady(Date.now())
     }
   }, [state.isTyping, word])
+
+  useEffect(() => {
+    let cancelled = false
+    historySummaryRef.current = undefined
+
+    loadWordHistorySummary(currentDictInfo.id, word.name)
+      .then((summary) => {
+        if (!cancelled) {
+          historySummaryRef.current = summary
+        }
+      })
+      .catch((error) => {
+        console.warn('failed to load review word history', error)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [currentDictInfo.id, word.name])
 
   const updateInput = useCallback(
     (updateAction: WordUpdateAction) => {
@@ -280,6 +303,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
         word: word.name,
         wrongCount: wordState.wrongCount,
         telemetry,
+        history: historySummaryRef.current,
       })
 
       // wordLogUploader({

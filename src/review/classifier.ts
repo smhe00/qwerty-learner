@@ -57,8 +57,9 @@ export function classifyTypingError(input: {
 
   const features = extractTypingBehaviorFeatures(input.word, input.wrongCount, input.telemetry, input.history)
   const firstKey = features.firstKeyLatencyMs
-  const historyFailureRate = features.history?.failureRate ?? 0
-  const historyDominantRatio = features.history?.dominantWrongIndexRatio ?? 0
+  const historySampleWeight = Math.min(1, (features.history?.recordCount ?? 0) / 5)
+  const historyFailureRate = (features.history?.failureRate ?? 0) * historySampleWeight
+  const historyDominantRatio = (features.history?.dominantWrongIndexRatio ?? 0) * historySampleWeight
 
   let recall =
     0.15 +
