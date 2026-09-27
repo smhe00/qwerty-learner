@@ -1,8 +1,8 @@
-export const MIN_REINFORCEMENT_GAP = 3
-export const MAX_REINFORCEMENT_GAP = 7
-
 import type { TypingErrorClassification } from './classifier'
 import { reinforcementGapByCause } from './policy'
+
+export const MIN_REINFORCEMENT_GAP = 3
+export const MAX_REINFORCEMENT_GAP = 7
 
 export type NamedReviewItem = {
   name: string
