@@ -19,7 +19,7 @@ export class LearningContextCollector {
 
   reset(initial?: {
     answerVisibilityAtStart?: AnswerVisibility
-    pronunciationAvailable?: boolean
+    pronunciationEnabledAtStart?: boolean
   }) {
     this.context = {
       version: 1,
@@ -27,7 +27,7 @@ export class LearningContextCollector {
       answerRevealed: false,
       revealedBeforeFirstKey: false,
       revealCount: 0,
-      pronunciationAvailable: initial?.pronunciationAvailable,
+      pronunciationEnabledAtStart: initial?.pronunciationEnabledAtStart,
       pronunciationPlayed: false,
       pronunciationPlayCount: 0,
     }
