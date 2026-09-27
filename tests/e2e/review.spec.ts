@@ -169,7 +169,7 @@ test.describe('review data model', () => {
     const collector = new LearningContextCollector()
     collector.reset({
       answerVisibilityAtStart: summarizeAnswerVisibility([false, false, false]),
-      pronunciationAvailable: true,
+      pronunciationEnabledAtStart: true,
     })
     collector.recordAnswerReveal()
     collector.recordInputStarted()
@@ -182,7 +182,7 @@ test.describe('review data model', () => {
       answerRevealed: true,
       revealedBeforeFirstKey: true,
       revealCount: 2,
-      pronunciationAvailable: true,
+      pronunciationEnabledAtStart: true,
       pronunciationPlayed: true,
       pronunciationPlayCount: 1,
     })
