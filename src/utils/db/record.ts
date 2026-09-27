@@ -31,7 +31,7 @@ export interface LearningContextV1 {
   answerRevealed?: boolean
   revealedBeforeFirstKey?: boolean
   revealCount?: number
-  pronunciationAvailable?: boolean
+  pronunciationEnabledAtStart?: boolean
   pronunciationPlayed?: boolean
   pronunciationPlayCount?: number
 }
