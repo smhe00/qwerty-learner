@@ -137,9 +137,9 @@ test.describe('review data model', () => {
       wrongCount: 0,
       mistakes: {},
       typingTelemetry: {
-          telemetryVersion: 2,
-          firstKeyLatencyMs: 240,
-          attempts: [{ startLatencyMs: 240, durationMs: 300, correctPrefixLength: 5, result: 'clean' }],
+        telemetryVersion: 2,
+        firstKeyLatencyMs: 240,
+        attempts: [{ startLatencyMs: 240, durationMs: 300, correctPrefixLength: 5, result: 'clean' }],
       },
     }
 
@@ -769,6 +769,7 @@ test.describe('review dictionary diagnostics', () => {
     expect(diagnostic.telemetryCoverage).toBe(0.5)
     expect(diagnostic.stateCount).toBe(2)
     expect(diagnostic.dueCount).toBe(1)
+    expect(diagnostic.attentionUncertainCount).toBe(0)
     expect(diagnostic.basicStageCounts).toEqual({ 0: 1, 1: 1 })
     expect(Object.values(diagnostic.causeCounts).reduce((sum, count) => sum + count, 0)).toBe(2)
   })
