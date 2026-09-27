@@ -231,3 +231,29 @@ Starting a new Review session now:
 4. builds the existing virtual ReviewRecord only from due error words.
 
 The existing Gallery/Review entry point and unfinished-session resume behavior remain unchanged.
+
+
+## Development diagnostics and rebuildability
+
+Development builds expose a read-only browser-console API:
+
+```js
+await window.__qwertyReviewDebug.inspect('cet4', 'receive')
+await window.__qwertyReviewDebug.due('cet4')
+await window.__qwertyReviewDebug.stats('cet4')
+```
+
+The API is loaded dynamically only when `import.meta.env.DEV` is true. Production builds do not install the global debug object.
+
+`inspect(dict, word)` reports:
+
+- current scheduler state and due status;
+- next-review timestamp;
+- historical failure summary;
+- latest-record telemetry availability;
+- latest classifier scores and derived behavior features;
+- evidence tags such as `long-first-key`, `repeated-same-position`, `adjacent-key-errors`, and `multiple-varied-failures`.
+
+`stats(dict)` reports telemetry coverage, latest per-word classification distribution, due count, and basic scheduler stage distribution. This is intended for threshold calibration with real user data before replacing the transparent classifier with a learned model.
+
+Scheduler state is explicitly rebuildable. New telemetry records are replayed through the full classifier and scheduler mapping; legacy rows without telemetry fall back to conservative `wrongCount` mapping. `rebuildReviewWordStatesForDictionary(dict)` can therefore reconstruct the derived table from `wordRecords` without treating `reviewWordStates` as irreplaceable source data.
