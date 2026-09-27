@@ -1,9 +1,10 @@
-import { getDueReviewDiagnostics, getReviewWordDiagnostics } from './diagnostics'
-import type { DueReviewDiagnostic, ReviewWordDiagnostics } from './diagnostics'
+import { getDueReviewDiagnostics, getReviewDictionaryDiagnostics, getReviewWordDiagnostics } from './diagnostics'
+import type { DueReviewDiagnostic, ReviewDictionaryDiagnostics, ReviewWordDiagnostics } from './diagnostics'
 
 export type ReviewDebugApi = {
   inspect(dict: string, word: string): Promise<ReviewWordDiagnostics>
   due(dict: string): Promise<DueReviewDiagnostic[]>
+  stats(dict: string): Promise<ReviewDictionaryDiagnostics>
 }
 
 type ReviewDebugWindow = Window & {
@@ -19,12 +20,13 @@ export function installReviewDevtools(): () => void {
   const api: ReviewDebugApi = {
     inspect: (dict, word) => getReviewWordDiagnostics(dict, word),
     due: (dict) => getDueReviewDiagnostics(dict),
+    stats: (dict) => getReviewDictionaryDiagnostics(dict),
   }
 
   debugWindow.__qwertyReviewDebug = api
 
   console.info(
-    '[review] debug tools ready: await window.__qwertyReviewDebug.inspect("cet4", "receive") or await window.__qwertyReviewDebug.due("cet4")',
+    '[review] debug tools ready: inspect(dict, word), due(dict), stats(dict) via window.__qwertyReviewDebug',
   )
 
   return () => {
