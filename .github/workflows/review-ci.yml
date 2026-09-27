@@ -1,0 +1,26 @@
+name: Review Feature Validation
+
+on:
+  push:
+    branches:
+      - feature/spaced-review
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: yarn
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: TypeScript
+        run: yarn tsc --noEmit
+      - name: Lint
+        run: yarn lint
+      - name: Build
+        run: yarn build
+      - name: Review domain tests
+        run: yarn playwright test tests/e2e/review.spec.ts --project=chromium
