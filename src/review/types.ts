@@ -1,3 +1,5 @@
+export const CURRENT_REVIEW_STATE_VERSION = 2
+
 export type ReviewOutcome = 'again' | 'hard' | 'good' | 'easy'
 
 export type BasicSchedulerState = {
@@ -40,7 +42,7 @@ export function createInitialReviewWordState(dict: string, word: string, now: nu
     reviewCount: 0,
     lapseCount: 0,
     cleanStreak: 0,
-    stateVersion: 1,
+    stateVersion: CURRENT_REVIEW_STATE_VERSION,
     schedulerState: {
       kind: 'basic-v1',
       stage: 0,
