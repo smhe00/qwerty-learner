@@ -1,321 +1,309 @@
-# Review Upstream Integration Plan
+# Review 向上游提交策略
 
-## Goal
+> 目标：保留 fork 中完整的 Review / spaced-learning 研发能力，同时把成熟、通用、低侵入的部分逐步贡献给 `RealKai42/qwerty-learner`。
 
-Develop the review feature in `smhe00/qwerty-learner` so that mature, generic pieces can be proposed back to `RealKai42/qwerty-learner` without requiring the upstream project to adopt fork-specific school or product customizations.
+## 1. 基本判断
 
-## Current baseline
+当前 `feature/spaced-review` 是完整研发分支，不适合整体作为一个大型 PR 直接提交 upstream。
 
-- Upstream baseline: `1182426f2bd0a28c95302c33f9e19136b1262a70`
-- Development branch: `feature/spaced-review`
-- First implementation commit: `386fc6e5639bee18df249f71bf30fd4dd440d9a2`
+原因不是功能方向有问题，而是它同时包含：
 
-The current implementation intentionally does **not** change:
+- telemetry；
+- learning context；
+- classifier；
+- Review reinforcement；
+- Dexie v4；
+- ReviewWordState；
+- scheduler；
+- rebuild / migration；
+- diagnostics；
+- backup compatibility。
 
-- dictionary JSON schema
-- pronunciation providers
-- phonetic rendering
-- IndexedDB schema
-- normal chapter selection
-- normal chapter progression
+如果一次提交，上游维护者必须同时接受整套长期记忆架构，review 和维护成本过高。
 
-## P0 implementation now present
-
-### Review priority
-
-Review candidate ordering is isolated in:
+因此：
 
 ```text
-src/review/priority.ts
+完整研发分支
+≠
+Upstream PR 分支
 ```
 
-Current rule:
+---
 
-1. higher historical error count first;
-2. for equal error count, more recent error first.
+## 2. 两条线并行
 
-This replaces the previous ordering whose sort direction placed lower-priority items first.
-
-### Same-session reinforcement
-
-Queue policy is isolated in:
+### Fork 产品线
 
 ```text
-src/review/session.ts
+feature/spaced-review
 ```
 
-Current behavior:
+用于：
 
-```text
-clean attempt
-    → advance
+- 完整功能研发；
+- 本地真实使用；
+- 数据积累；
+- classifier / scheduler 校准；
+- all-learned 等后续探索。
 
-attempt contains an error
-    → finish the current word
-    → schedule one pending copy after 3-5 intervening words
-    → the repeated attempt must be clean to avoid another reinforcement
-```
+这里可以保留较完整的架构。
 
-The scheduler allows at most one pending reinforcement for the same word, preventing accidental duplicate queue growth.
+### Upstream 贡献线
 
-Near the end of a session, the failed word is appended when there are not enough remaining words to satisfy the normal spacing.
+每个 PR 应从接近 upstream master 的干净分支开始。
 
-### Persistence
+只带一个明确、独立、容易验证的功能。
 
-The existing `ReviewRecord` is reused. No database migration is introduced in P0.
+---
 
-When the live review queue changes, the updated queue and index are persisted through the existing `reviewModeInfoAtom` / `reviewRecords` path so browser refresh can resume the modified queue.
+## 3. 上游提交优先级
 
-`useWordList()` rehydrates the review queue only when the review-session identity changes. This prevents persistence updates from resetting the active Typing reducer.
+### PR 1：Review 排序正确性
 
-## Automated tests
-
-Pure review-domain tests were added at:
-
-```text
-tests/e2e/review.spec.ts
-```
-
-They cover:
-
-- priority ordering;
-- bounded reinforcement spacing;
-- normal reinsertion;
-- end-of-session reinsertion;
-- prevention of duplicate pending reinforcement.
-
-The repository's existing GitHub Action runs only for pushes to `master` and `dev/e2e`. No CI workflow was changed in this feature branch solely to force a run, because CI-only changes would increase the upstream diff surface.
-
-## Recommended upstream PR sequence
-
-Do **not** send the entire mature review project as one large PR.
-
-### PR 1 — Review priority correctness
-
-Scope:
+建议范围：
 
 - `src/review/priority.ts`
-- small change to `src/utils/db/review-record.ts`
-- priority tests
+- `src/utils/db/review-record.ts` 少量修改
+- 对应测试
 
-Purpose:
+目标：
 
-- correct review ordering;
-- introduce a small pure-function review domain seam.
+> 修正现有 Review candidate 排序，并引入一个纯函数 seam。
 
-This should be the easiest change for upstream to review.
+不包含：
 
-### PR 2 — Same-session reinforcement
+- telemetry
+- scheduler
+- 新 DB 表
+- learningContext
+- WordPanel 大改
 
-Scope:
+这是最适合作为第一笔 upstream contribution 的内容。
+
+---
+
+### PR 2：Review 同轮延迟强化
+
+建议范围：
 
 - `src/review/session.ts`
-- minimal Typing integration;
-- queue tests
+- WordPanel 极小接入
+- queue regression tests
 
-Purpose:
-
-- a failed review word reappears later in the same review session;
-- reuse the existing Typing and ReviewRecord infrastructure.
-
-### PR 3 — Persistent spaced scheduling
-
-Only after P0 has been exercised in real usage.
-
-Scope:
-
-- per-word review state;
-- next-review time;
-- interval policy;
-- IndexedDB migration;
-- due-word query.
-
-This PR should remain generic and should not include school-specific scheduling policy.
-
-### PR 4 — Review UI / analytics
-
-Optional and separable:
-
-- due count;
-- mastery states;
-- review history;
-- progress display.
-
-## Fork-only extensions
-
-The following should remain outside the generic upstream PR unless the upstream maintainer explicitly wants them:
-
-- Shanghai textbook-specific dictionaries or tags;
-- Zhongkao-specific review policy;
-- parent-facing reports;
-- school/unit-specific dashboards.
-
-## Merge discipline
-
-Before each new review milestone:
-
-1. fetch current upstream `master`;
-2. compare it with the fork baseline;
-3. rebase/merge upstream into the feature branch using a normal non-force workflow;
-4. resolve conflicts before adding the next feature;
-5. keep review-domain logic in `src/review/`;
-6. avoid unrelated formatting or refactors;
-7. keep each upstream candidate PR independently understandable and testable.
-
-## Implemented data foundation (v0.1)
-
-The feature branch now contains the storage foundation required for later adaptive scheduling:
-
-- `WordRecord` keeps all legacy fields unchanged and adds optional raw telemetry only.
-- telemetry v2 records active-foreground first-key latency plus failed/clean attempt timing, error position/key, and background-pause metadata.
-- Dexie schema v4 adds `reviewWordStates` with a unique `[dict+word]` identity and a `[dict+nextReviewAt]` due-query index.
-- `reviewRecords` and `chapterRecords` remain structurally unchanged.
-- old WordRecord rows without telemetry remain valid.
-- importing a backup without `reviewWordStates` clears any stale derived review state so it can later be rebuilt from imported WordRecords.
-- scheduler state is versioned and separated from raw typing evidence; no FSRS behavior is enabled yet.
-
-This keeps `wordRecords` as the historical source of truth and `reviewWordStates` as rebuildable scheduler state.
-
-
-## Adaptive typing classification
-
-The current feature branch now classifies a failed typing attempt using transparent raw evidence:
-
-- first-key latency;
-- number of failed attempts;
-- repeated wrong position;
-- QWERTY-adjacent wrong key ratio;
-- inter-key timing;
-- historical failure rate;
-- historical dominant wrong position.
-
-The classifier produces probabilistic `recall / spelling / motor` scores plus an `uncertain` state. Same-session reinforcement now uses the classification:
-
-- recall-like failure -> return after 3 words;
-- spelling-like failure -> return after 4 words;
-- uncertain failure -> return after 5 words;
-- motor-like slip -> return after 7 words.
-
-Historical evidence is loaded asynchronously and sample-count weighted. A single historical record therefore has limited influence, while repeated same-position errors become stronger spelling evidence.
-
-A scheduler adapter boundary is defined separately from the classifier. The branch intentionally does not add `ts-fsrs` yet: the currently maintained package requires Node.js 20+, while the upstream project's existing CI still targets Node 18. A runtime/toolchain upgrade should be handled separately before adopting the maintained FSRS package.
-
-
-## Basic cross-session scheduler
-
-The feature branch now contains a working `basic-v1` cross-session scheduler backed by `reviewWordStates`.
-
-Current intervals:
+目标：
 
 ```text
-1 day -> 3 days -> 7 days -> 14 days -> 30 days
+Review 中答错
+→ 隔几个词再次出现
 ```
 
-Key semantics:
+保持：
 
-- `again` resets the state to the 1-day stage and increments `lapseCount`;
-- `hard` keeps the current stage;
-- `good` advances one stage only when the word is actually due;
-- `easy` can advance two stages only when the word is actually due;
-- same-session reinforcement or normal immediate word loops do not advance the spaced interval;
-- early practice does not push the existing due date later;
-- current typing classification maps recall-like errors to `again`, spelling/uncertain errors to `hard`, and motor-like slips / clean attempts to `good`.
+- 原有 Typing 页面；
+- 原有 ReviewRecord；
+- 原有词库结构。
 
-Every completed word now writes the original `WordRecord` first, then updates the derived `reviewWordState`. If no state exists, historical WordRecords for that `[dict+word]` are replayed before applying the current adaptive outcome, so imported legacy history is not silently discarded.
+不要同时引入长期 scheduler。
 
-Starting a new Review session now:
+---
 
-1. lazily bootstraps missing per-word states for the dictionary;
-2. queries `reviewWordStates` where `nextReviewAt <= now`;
-3. intersects those due states with the dictionary's historical error words;
-4. builds the existing virtual ReviewRecord only from due error words.
+### PR 3：更丰富的输入 telemetry
 
-The existing Gallery/Review entry point and unfinished-session resume behavior remain unchanged.
+只有在前两个 PR 稳定、并能清楚证明收益后再考虑。
 
+建议目标：
 
-## Development diagnostics and rebuildability
+> 为现有 Review 提供更可靠、可解释的输入证据。
 
-Development builds expose a read-only browser-console API:
+要求：
 
-```js
-await window.__qwertyReviewDebug.inspect('cet4', 'receive')
-await window.__qwertyReviewDebug.due('cet4')
-await window.__qwertyReviewDebug.stats('cet4')
+- optional；
+- additive；
+- 旧 `WordRecord` 合法；
+- 不要求修改词典 JSON；
+- 不改变 UI；
+- 不强迫 upstream 同时接受长期 scheduler。
+
+`learningContext` 是否进入这一阶段，应视上游兴趣决定。
+
+---
+
+### PR 4：长期 ReviewWordState / scheduler
+
+这是高门槛 PR。
+
+建议只有在 fork 已有真实使用证据后考虑。
+
+需要独立说明：
+
+- 为什么需要新表；
+- 为什么 `WordRecord` 仍是 source of truth；
+- migration / rebuild 如何工作；
+- backup/import 如何兼容；
+- due query 如何实现；
+- 为什么不会影响正常 chapter flow。
+
+不要把 school-specific policy 放进这个 PR。
+
+---
+
+## 4. 暂时保留在 fork 的内容
+
+当前建议 fork-only：
+
+- all-learned；
+- 跨词库 global memory；
+- 上海教材 / 中考策略；
+- parent-facing report；
+- 自动 classifier calibration；
+- 自动 interval calibration；
+- learned cue weights；
+- FSRS6；
+- 更复杂 dashboard；
+- 个性化学习策略。
+
+这些能力可以长期存在于 fork，不需要为了 upstream 而删除。
+
+---
+
+## 5. 原项目代码侵入原则
+
+优先保持原项目这些区域稳定：
+
+- Typing reducer；
+- 正常 chapter flow；
+- pronunciation provider；
+- phonetic renderer；
+- dictionary JSON；
+- Gallery 基本结构。
+
+新增复杂逻辑尽量放在：
+
+```text
+src/review/
 ```
 
-The API is loaded dynamically only when `import.meta.env.DEV` is true. Production builds do not install the global debug object.
+原项目只保留薄接入点。
 
-`inspect(dict, word)` reports:
+原则：
 
-- current scheduler state and due status;
-- next-review timestamp;
-- historical failure summary;
-- latest-record telemetry availability;
-- latest classifier scores and derived behavior features;
-- evidence tags such as `long-first-key`, `repeated-same-position`, `adjacent-key-errors`, and `multiple-varied-failures`.
+> 共享数据和算法，不为“架构统一”强行重构原项目控制流。
 
-`stats(dict)` reports telemetry coverage, latest per-word classification distribution, due count, and basic scheduler stage distribution. This is intended for threshold calibration with real user data before replacing the transparent classifier with a learned model.
+尤其避免把正常学习流程强制改造成新的 `SessionPolicy` 框架，除非 upstream 自己希望做这一层重构。
 
-Scheduler state is explicitly rebuildable. New telemetry records are replayed through the full classifier and scheduler mapping; legacy rows without telemetry fall back to conservative `wrongCount` mapping. `rebuildReviewWordStatesForDictionary(dict)` can therefore reconstruct the derived table from `wordRecords` without treating `reviewWordStates` as irreplaceable source data.
+---
 
+## 6. 数据兼容原则
 
-## P1 scheduling semantics
+### 正式兼容对象
 
-The basic scheduler now distinguishes immediate learning repetitions from independent long-term reviews using a 30-minute learning window.
+必须兼容：
 
-- immediate reinforcement does not advance interval stage;
-- immediate reinforcement does not inflate `reviewCount`, `cleanStreak`, or `lapseCount`;
-- early successful practice preserves the existing due date;
-- an early failure outside the learning window is treated as meaningful forgetting and resets the schedule to the 1-day stage;
-- raw `WordRecord` events are still preserved for every completed attempt.
+- upstream 正式 `WordRecord`；
+- upstream 正式备份；
+- 我们正式确定后的新数据格式。
 
-Due-session ordering is scheduler-aware and intentionally uses lexicographic rules rather than opaque weights:
+### 不为短期实验格式增加长期维护负担
 
-1. higher `lapseCount`;
-2. weaker current basic stage;
-3. higher historical error count;
-4. earlier `nextReviewAt` (more overdue);
-5. more recent historical error as the final tie breaker.
+开发期短时间产生的实验 schema，不建立额外 compatibility branch。
 
-This ordering is designed to remain explainable until real telemetry volume is sufficient to justify learned weights.
+当前正式 telemetry 只有：
 
-
-## Additive evidence compatibility
-
-New learning evidence is additive and optional so **official upstream
-qwerty-learner records and backups** remain valid without migration.
-
-The canonical record shape is:
-
-```ts
-IWordRecord {
-  // original upstream fields remain unchanged
-  typingTelemetry?: WordRecordTelemetry
-  learningContext?: LearningContextV1
-}
+```text
+typingTelemetry.telemetryVersion = 2
 ```
 
-There is deliberately only one representation for new typing evidence:
-`typingTelemetry`. Experimental pre-baseline shapes are not migrated or
-special-cased; if encountered, their extra properties are simply ignored.
+旧实验格式存在时直接忽略。
 
-`learningContext` is versioned and optional. Missing context means
-**unknown**, not false. Its fields describe semantic learning conditions rather
-than particular UI controls:
+---
 
-- answer visibility at the start of the observation;
-- whether the answer was revealed and whether reveal happened before first input;
-- answer visibility ratio, reveal timing, and whether reveal happened before first input;
-- whether the meaning was initially visible or revealed before first input;
-- whether phonetics were visible;
-- whether pronunciation was enabled, whether it played before first input, and whether playback was automatic or user-requested.
+## 7. Pull Request 质量标准
 
-Background/hidden-tab time is excluded from typing latency. Very long foreground idle without an explanatory learning interaction is marked as `attentionUncertain`; it is not asserted to be distraction or forgetting, and the scheduler treats that evidence conservatively.
+每个 upstream PR 都应该满足：
 
-The UI only records these events. Classifier and scheduler behavior remains
-unchanged until these signals are calibrated against future independent
-retrieval.
+1. 一个明确用户问题；
+2. 一个主要行为变化；
+3. 尽可能少的原文件修改；
+4. 没有无关格式化；
+5. 新算法尽量是纯函数；
+6. 有针对性的 regression tests；
+7. 不要求 reviewer 同时接受未来 roadmap；
+8. PR 描述只讨论当前 PR，不销售整个 fork 架构。
 
-No Dexie schema-version bump is required for these optional properties because
-they are not IndexedDB indexes; they are additive values on existing
-`wordRecords` objects.
+建议单个早期 PR 控制在：
+
+```text
+2～4 个主要文件
+约 100～250 行有效改动
+```
+
+这不是硬性限制，而是 reviewability 目标。
+
+---
+
+## 8. 分支策略
+
+不要直接把：
+
+```text
+feature/spaced-review
+```
+
+提交为 upstream PR。
+
+建议：
+
+```text
+upstream/review-pr1-priority
+upstream/review-pr2-reinforcement
+upstream/review-pr3-telemetry
+...
+```
+
+每个分支从最新 upstream master 建立，再把成熟功能以最小实现重新落进去。
+
+不要简单把 feature branch 的大量 commit 整体 cherry-pick 过去。
+
+---
+
+## 9. 每次准备 upstream PR 前
+
+执行：
+
+1. fetch 最新 upstream master；
+2. 确认 fork master 与 upstream 差异；
+3. 从干净 baseline 建 PR branch；
+4. 只实现当前 PR 的功能；
+5. 执行 lint / build / target tests；
+6. 本地浏览器做一次真实流程验证；
+7. 检查 IndexedDB / backup 是否真的被当前 PR 触及；
+8. 检查 diff 是否包含无关文件；
+9. 写清行为前后对比；
+10. 再提交 PR。
+
+---
+
+## 10. 当前 fork 的完整能力不需要削弱
+
+Upstream 接受概率和 fork 产品能力是两个不同目标。
+
+正确关系应是：
+
+```text
+               smhe00 完整研发分支
+                       │
+          ┌────────────┴────────────┐
+          │                         │
+  完整 adaptive review       小粒度 upstream PR
+  telemetry                  排序修正
+  learning context           reinforcement
+  scheduler                  telemetry foundation
+  diagnostics                scheduler（更晚）
+```
+
+因此，不要为了让 upstream 更容易 merge，就把已经验证有价值的完整功能从 fork 删除。
+
+应该做的是：
+
+> 让 upstream 每次只承担一个清晰、有限、可逆的决策。
