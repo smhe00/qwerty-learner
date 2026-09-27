@@ -16,6 +16,7 @@ import { classifyTypingError } from '@/review/classifier'
 import type { TypingErrorClassification } from '@/review/classifier'
 import type { WordHistorySummary } from '@/review/features'
 import { loadWordHistorySummary } from '@/review/history'
+import { LearningContextCollector, summarizeAnswerVisibility } from '@/review/learning-context'
 import { applyReviewOutcome } from '@/review/repository'
 import { classificationToReviewOutcome } from '@/review/scheduler'
 import { WordTelemetryCollector } from '@/review/telemetry'
@@ -65,6 +66,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
   const [showTipAlert, setShowTipAlert] = useState(false)
   const wordPronunciationIconRef = useRef<WordPronunciationIconRef>(null)
   const telemetryCollectorRef = useRef(new WordTelemetryCollector())
+  const learningContextCollectorRef = useRef(new LearningContextCollector())
   const historySummaryRef = useRef<WordHistorySummary | undefined>(undefined)
 
   useEffect(() => {
@@ -85,6 +87,21 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
     newWordState.letterStates = new Array(headword.length).fill('normal')
     newWordState.startTime = getUtcStringForMixpanel()
     newWordState.randomLetterVisible = headword.split('').map(() => Math.random() > 0.4)
+
+    const initialLetterVisibility = headword.split('').map((letter, index) => {
+      if (isShowAnswerOnHover && isHoveringWord) return true
+      if (!wordDictationConfig.isOpen) return true
+      if (wordDictationConfig.type === 'hideAll') return false
+      if (wordDictationConfig.type === 'hideVowel') return !vowelLetters.includes(letter.toUpperCase())
+      if (wordDictationConfig.type === 'hideConsonant') return vowelLetters.includes(letter.toUpperCase())
+      return newWordState.randomLetterVisible[index]
+    })
+
+    learningContextCollectorRef.current.reset({
+      answerVisibilityAtStart: summarizeAnswerVisibility(initialLetterVisibility),
+      pronunciationAvailable: pronunciationIsOpen,
+    })
+
     setWordState(newWordState)
   }, [word, setWordState])
 
@@ -119,6 +136,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
         case 'add':
           if (wordState.hasWrong) return
 
+          learningContextCollectorRef.current.recordInputStarted()
           telemetryCollectorRef.current.recordKey(Date.now())
 
           if (updateAction.value === ' ') {
@@ -140,8 +158,22 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
     [wordState.hasWrong, setWordState],
   )
 
-  const handleHoverWord = useCallback((checked: boolean) => {
-    setIsHoveringWord(checked)
+  const handleHoverWord = useCallback(
+    (checked: boolean) => {
+      if (checked && isShowAnswerOnHover && wordDictationConfig.isOpen) {
+        learningContextCollectorRef.current.recordAnswerReveal()
+      }
+      setIsHoveringWord(checked)
+    },
+    [isShowAnswerOnHover, wordDictationConfig.isOpen],
+  )
+
+  const playPronunciation = useCallback(() => {
+    const play = wordPronunciationIconRef.current?.play
+    if (!play) return
+
+    learningContextCollectorRef.current.recordPronunciationPlayed()
+    play()
   }, [])
 
   useHotkeys(
@@ -165,7 +197,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
     'ctrl+j',
     () => {
       if (state.isTyping) {
-        wordPronunciationIconRef.current?.play()
+        playPronunciation()
       }
     },
     [state.isTyping],
@@ -174,7 +206,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
 
   useEffect(() => {
     if (wordState.inputWord.length === 0 && state.isTyping) {
-      wordPronunciationIconRef.current?.play && wordPronunciationIconRef.current?.play()
+      playPronunciation()
     }
   }, [state.isTyping, wordState.inputWord.length, wordPronunciationIconRef.current?.play])
 
@@ -301,6 +333,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
     if (wordState.isFinished) {
       dispatch({ type: TypingStateActionType.SET_IS_SAVING_RECORD, payload: true })
       const telemetry = telemetryCollectorRef.current.snapshot()
+      const learningContext = learningContextCollectorRef.current.snapshot()
       const classification = classifyTypingError({
         word: word.name,
         wrongCount: wordState.wrongCount,
@@ -324,6 +357,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
             letterTimeArray: wordState.letterTimeArray,
             letterMistake: wordState.letterMistake,
             telemetry,
+            learningContext,
           })
 
           if (wordRecordId > 0) {
@@ -378,7 +412,10 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
             })}
           </div>
           {pronunciationIsOpen && (
-            <div className="absolute -right-12 top-1/2 h-9 w-9 -translate-y-1/2 transform ">
+            <div
+              className="absolute -right-12 top-1/2 h-9 w-9 -translate-y-1/2 transform "
+              onClickCapture={() => learningContextCollectorRef.current.recordPronunciationPlayed()}
+            >
               <Tooltip content={`快捷键${CTRL} + J`}>
                 <WordPronunciationIcon word={word} lang={currentLanguage} ref={wordPronunciationIconRef} className="h-full w-full" />
               </Tooltip>
