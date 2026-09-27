@@ -117,6 +117,11 @@ export class WordTelemetryCollector {
  * Legacy WordRecord rows simply return undefined.
  */
 export function readWordTelemetry(record: IWordRecord): WordRecordTelemetry | undefined {
+  const nested = record.typingTelemetry
+  if (nested?.telemetryVersion === 1 && nested.firstKeyLatencyMs !== undefined && nested.attempts) {
+    return nested
+  }
+
   if (record.telemetryVersion !== 1 || record.firstKeyLatencyMs === undefined || !record.attempts) {
     return undefined
   }
