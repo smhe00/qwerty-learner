@@ -9,11 +9,16 @@ import type { IWordRecord } from '@/utils/db/record'
 export function inferReviewOutcomeFromWordRecord(
   record: IWordRecord,
   priorRecords: IWordRecord[],
-): ReviewOutcome {
+): ReviewOutcome | undefined {
   const telemetry = readWordTelemetry(record)
 
+  // Legacy qwerty-learner clean rows were ordinary typing practice, not
+  // spaced-review confirmations. Replaying them as "good" would overstate
+  // mastery and can push imported historical error words into the future.
+  // Legacy failures remain useful evidence; new telemetry rows retain their
+  // full adaptive semantics, including clean attempts.
   if (!telemetry) {
-    return inferLegacyReviewOutcome(record.wrongCount)
+    return record.wrongCount > 0 ? inferLegacyReviewOutcome(record.wrongCount) : undefined
   }
 
   const classification = classifyTypingError({
@@ -32,18 +37,21 @@ export function rebuildBasicStateFromWordRecords(
   records: IWordRecord[],
 ): IReviewWordState | undefined {
   const sortedRecords = [...records].sort((a, b) => a.timeStamp - b.timeStamp)
-  const firstRecord = sortedRecords[0]
-  if (!firstRecord) return undefined
-
-  let state = createInitialReviewWordState(dict, word, firstRecord.timeStamp)
+  let state: IReviewWordState | undefined
   const priorRecords: IWordRecord[] = []
 
   for (const record of sortedRecords) {
-    state = scheduleBasicReview({
-      state,
-      outcome: inferReviewOutcomeFromWordRecord(record, priorRecords),
-      now: record.timeStamp,
-    })
+    const outcome = inferReviewOutcomeFromWordRecord(record, priorRecords)
+
+    if (outcome !== undefined) {
+      state ??= createInitialReviewWordState(dict, word, record.timeStamp)
+      state = scheduleBasicReview({
+        state,
+        outcome,
+        now: record.timeStamp,
+      })
+    }
+
     priorRecords.push(record)
   }
 
