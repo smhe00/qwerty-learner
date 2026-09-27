@@ -83,7 +83,7 @@ export default function WordComponent({ word, onFinish }: { word: Word; onFinish
     if (state.isTyping) {
       telemetryCollectorRef.current.markReady(Date.now())
     }
-  }, [state.isTyping, word.name])
+  }, [state.isTyping, word])
 
   const updateInput = useCallback(
     (updateAction: WordUpdateAction) => {
