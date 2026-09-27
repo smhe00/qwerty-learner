@@ -22,6 +22,20 @@ export interface WordRecordTelemetry {
   attempts: WordAttemptRecord[]
 }
 
+export type AnswerVisibility = 'full' | 'partial' | 'hidden'
+
+export interface LearningContextV1 {
+  version: 1
+  // Semantic description of how much of the answer was visible before input.
+  answerVisibilityAtStart?: AnswerVisibility
+  answerRevealed?: boolean
+  revealedBeforeFirstKey?: boolean
+  revealCount?: number
+  pronunciationAvailable?: boolean
+  pronunciationPlayed?: boolean
+  pronunciationPlayCount?: number
+}
+
 export interface IWordRecord {
   id?: number
   word: string
@@ -37,10 +51,19 @@ export interface IWordRecord {
   // 每个字母被错误输入成什么, index 为字母的索引, 数组内为错误的 e.key
   mistakes: LetterMistakes
 
-  // Optional raw telemetry added in DB v4. Old records intentionally remain valid.
+  // Preferred additive v4+ representation for typing evidence.
+  typingTelemetry?: WordRecordTelemetry
+
+  // Legacy additive telemetry shape kept readable for records already written by
+  // early spaced-review builds. New records should use typingTelemetry instead.
+  typingTelemetry?: WordRecordTelemetry
   telemetryVersion?: 1
   firstKeyLatencyMs?: number
   attempts?: WordAttemptRecord[]
+  learningContext?: LearningContextV1
+
+  // Optional semantic learning conditions. Absence means "unknown", never false.
+  learningContext?: LearningContextV1
 }
 
 export interface LetterMistakes {
@@ -69,6 +92,7 @@ export class WordRecord implements IWordRecord {
     wrongCount: number,
     mistakes: LetterMistakes,
     telemetry?: WordRecordTelemetry,
+    learningContext?: LearningContextV1,
   ) {
     this.word = word
     this.timeStamp = getUTCUnixTimestamp()
@@ -79,9 +103,10 @@ export class WordRecord implements IWordRecord {
     this.mistakes = mistakes
 
     if (telemetry) {
-      this.telemetryVersion = telemetry.telemetryVersion
-      this.firstKeyLatencyMs = telemetry.firstKeyLatencyMs
-      this.attempts = telemetry.attempts
+      this.typingTelemetry = telemetry
+    }
+    if (learningContext) {
+      this.learningContext = learningContext
     }
   }
 
