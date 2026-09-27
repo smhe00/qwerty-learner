@@ -220,6 +220,36 @@ test.describe('review data model', () => {
       ],
       backgroundPauseMs: 30000,
       backgroundPauseCount: 1,
+      backgroundPauseBeforeFirstKeyMs: 30000,
+      backgroundPauseBeforeFirstKeyCount: 1,
+    })
+  })
+
+  test('excludes a background pause from an in-progress attempt', () => {
+    const collector = new WordTelemetryCollector()
+    collector.resetWord()
+    collector.markReady(1000)
+    collector.recordKey(1200)
+
+    collector.pause(1300)
+    collector.resume(11300)
+    collector.recordKey(11500)
+    collector.recordClean(2, 11600)
+
+    expect(collector.snapshot()).toEqual({
+      telemetryVersion: 2,
+      firstKeyLatencyMs: 200,
+      attempts: [
+        {
+          startLatencyMs: 200,
+          durationMs: 400,
+          correctPrefixLength: 2,
+          result: 'clean',
+          interKeyIntervalsMs: [300],
+        },
+      ],
+      backgroundPauseMs: 10000,
+      backgroundPauseCount: 1,
     })
   })
 
