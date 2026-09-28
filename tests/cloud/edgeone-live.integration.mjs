@@ -221,7 +221,7 @@ function versionFromKey(key) {
 try {
   await primeEdgeOneAccessSession()
 
-  const health = await waitForBackendCapability('hybrid-auth-rate-limit-v3')
+  const health = await waitForBackendCapability('blob-transient-retry-v1')
   assert.equal(health.status, 200)
   assert.equal(health.json?.ok, true)
   assert.equal(health.json?.authMode, 'single-active-session')
@@ -230,6 +230,7 @@ try {
   assert.ok(health.json.capabilities.includes('application-auth-rate-limit-v1'))
   assert.ok(health.json.capabilities.includes('application-auth-rate-limit-v2'))
   assert.ok(health.json.capabilities.includes('hybrid-auth-rate-limit-v3'))
+  assert.ok(health.json.capabilities.includes('blob-transient-retry-v1'))
 
   await verifyAdminBlobCredential()
 
@@ -413,6 +414,7 @@ try {
         applicationAuthRateLimitCapability: true,
         applicationAuthRateLimitV2Capability: true,
         hybridAuthRateLimitV3Capability: true,
+        blobTransientRetryCapability: true,
       },
       null,
       2,

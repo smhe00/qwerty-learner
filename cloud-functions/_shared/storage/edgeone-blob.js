@@ -1,6 +1,56 @@
 /* eslint-env node */
+
+const RETRY_DELAYS_MS = [0, 100, 250, 500]
+
+function sleep(ms) {
+  return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve()
+}
+
+async function withRetry(operation) {
+  let lastError
+
+  for (const delayMs of RETRY_DELAYS_MS) {
+    if (delayMs > 0) await sleep(delayMs)
+
+    try {
+      return await operation()
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  throw lastError
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => canonicalJson(item)).join(',')}]`
+  }
+
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+      .join(',')}}`
+  }
+
+  return JSON.stringify(value)
+}
+
+function jsonEquivalent(left, right) {
+  return canonicalJson(left) === canonicalJson(right)
+}
+
 export function createEdgeOneBlobStorage(store) {
-  const strongJson = (key) => store.get(key, { type: 'json', consistency: 'strong' })
+  const strongJson = (key) =>
+    withRetry(() => store.get(key, { type: 'json', consistency: 'strong' }))
+
+  const strongList = (prefix) =>
+    withRetry(() => store.list({ prefix, consistency: 'strong' }))
+
+  const deleteKey = (key) => withRetry(() => store.delete(key))
+
+  const setJson = (key, value) => withRetry(() => store.setJSON(key, value))
 
   function accountKey(usernameHash) {
     return `accounts/${usernameHash}/identity.json`
@@ -49,18 +99,37 @@ export function createEdgeOneBlobStorage(store) {
   }
 
   async function setJsonOnlyIfNew(key, value) {
-    try {
-      await store.setJSON(key, value, { onlyIfNew: true })
-      return true
-    } catch (error) {
-      const existing = await strongJson(key)
-      if (existing !== null) return false
-      throw error
+    let lastError
+
+    for (const delayMs of RETRY_DELAYS_MS) {
+      if (delayMs > 0) await sleep(delayMs)
+
+      try {
+        await store.setJSON(key, value, { onlyIfNew: true })
+        return true
+      } catch (error) {
+        lastError = error
+      }
+
+      try {
+        const existing = await strongJson(key)
+
+        if (existing !== null) {
+          // A write can become durable even when the client observes a transport
+          // error. If the strong read returns exactly our candidate, recover that
+          // ambiguous success instead of falsely reporting a conflict.
+          return jsonEquivalent(existing, value)
+        }
+      } catch (readError) {
+        lastError = readError
+      }
     }
+
+    throw lastError
   }
 
   async function latestObject(prefix) {
-    const { blobs = [] } = await store.list({ prefix, consistency: 'strong' })
+    const { blobs = [] } = await strongList(prefix)
     let latest = null
 
     for (const blob of blobs) {
@@ -78,7 +147,7 @@ export function createEdgeOneBlobStorage(store) {
   }
 
   async function listVersioned(prefix) {
-    const { blobs = [] } = await store.list({ prefix, consistency: 'strong' })
+    const { blobs = [] } = await strongList(prefix)
 
     return blobs
       .map((blob) => ({
@@ -97,7 +166,7 @@ export function createEdgeOneBlobStorage(store) {
     const versions = await listVersioned(prefix)
     const obsolete = versions.slice(0, Math.max(0, versions.length - keepCount))
 
-    await Promise.all(obsolete.map((item) => store.delete(item.key)))
+    await Promise.all(obsolete.map((item) => deleteKey(item.key)))
 
     return {
       deleted: obsolete.length,
@@ -107,8 +176,8 @@ export function createEdgeOneBlobStorage(store) {
   }
 
   async function deletePrefix(prefix) {
-    const { blobs = [] } = await store.list({ prefix, consistency: 'strong' })
-    await Promise.all(blobs.map((blob) => store.delete(blob.key)))
+    const { blobs = [] } = await strongList(prefix)
+    await Promise.all(blobs.map((blob) => deleteKey(blob.key)))
     return blobs.length
   }
 
@@ -170,18 +239,18 @@ export function createEdgeOneBlobStorage(store) {
     },
 
     async setAuthRateLimitCounter(clientKey, windowStart, record) {
-      await store.setJSON(authRateLimitCounterKey(clientKey, windowStart), record)
+      await setJson(authRateLimitCounterKey(clientKey, windowStart), record)
     },
 
     async pruneAuthRateLimitCounters(clientKey, minWindowStart) {
       const prefix = authRateLimitPrefix(clientKey)
-      const { blobs = [] } = await store.list({ prefix, consistency: 'strong' })
+      const { blobs = [] } = await strongList(prefix)
       const obsolete = blobs.filter((blob) => {
         const windowStart = parseRateLimitCounterWindow(blob.key)
         return windowStart !== null && windowStart < minWindowStart
       })
 
-      await Promise.all(obsolete.map((blob) => store.delete(blob.key)))
+      await Promise.all(obsolete.map((blob) => deleteKey(blob.key)))
 
       return {
         deleted: obsolete.length,
@@ -197,7 +266,7 @@ export function createEdgeOneBlobStorage(store) {
 
       const account = await strongJson(accountKey(usernameHash))
       if (account !== null) {
-        await store.delete(accountKey(usernameHash))
+        await deleteKey(accountKey(usernameHash))
       }
 
       return {

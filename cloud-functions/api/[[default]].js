@@ -177,6 +177,7 @@ export async function onRequest(context) {
             'application-auth-rate-limit-v1',
             'application-auth-rate-limit-v2',
             'hybrid-auth-rate-limit-v3',
+            'blob-transient-retry-v1',
           ],
         },
         200,
