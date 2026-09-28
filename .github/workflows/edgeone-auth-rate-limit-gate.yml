@@ -15,11 +15,10 @@ permissions:
 jobs:
   auth-rate-limit:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     env:
       QWERTY_SYNC_BASE_URL: ${{ secrets.QWERTY_SYNC_BASE_URL }}
       RATE_LIMIT_THRESHOLD: '10'
-      RATE_LIMIT_MAX_ATTEMPTS: '13'
 
     steps:
       - name: Checkout
@@ -39,5 +38,5 @@ jobs:
           fi
           echo "Required EdgeOne live-test URL is present."
 
-      - name: Probe precise auth rate limit
+      - name: Probe application auth rate limit
         run: node tests/cloud/edgeone-rate-limit.integration.mjs

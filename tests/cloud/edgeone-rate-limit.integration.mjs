@@ -4,14 +4,10 @@ import assert from 'node:assert/strict'
 
 const baseUrlInput = String(process.env.QWERTY_SYNC_BASE_URL || '').trim()
 const expectedThreshold = Number(process.env.RATE_LIMIT_THRESHOLD || 10)
-const maxAttempts = Number(process.env.RATE_LIMIT_MAX_ATTEMPTS || expectedThreshold + 3)
 
 if (!baseUrlInput) throw new Error('QWERTY_SYNC_BASE_URL is required')
 if (!Number.isInteger(expectedThreshold) || expectedThreshold < 1) {
   throw new Error('RATE_LIMIT_THRESHOLD must be a positive integer')
-}
-if (!Number.isInteger(maxAttempts) || maxAttempts <= expectedThreshold) {
-  throw new Error('RATE_LIMIT_MAX_ATTEMPTS must be greater than RATE_LIMIT_THRESHOLD')
 }
 
 const baseUrl = new URL(baseUrlInput)
@@ -114,6 +110,21 @@ async function primeEdgeOneAccessSession() {
   }
 }
 
+async function getJson(path) {
+  const response = await fetchWithAccessCookies(apiUrl(path), {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  })
+  const text = await response.text()
+  let json = null
+  try {
+    json = text ? JSON.parse(text) : null
+  } catch {
+    // Keep null; caller reports the HTTP/body mismatch.
+  }
+  return { response, json, text }
+}
+
 async function request(path, body) {
   const response = await fetchWithAccessCookies(apiUrl(path), {
     method: 'POST',
@@ -125,25 +136,61 @@ async function request(path, body) {
   })
 
   const text = await response.text()
+  let json = null
+  try {
+    json = text ? JSON.parse(text) : null
+  } catch {
+    // Keep null; assertions below report body preview.
+  }
+
   return {
     status: response.status,
-    contentType: response.headers.get('content-type') || '',
-    bodyPreview: text.slice(0, 160),
+    json,
+    retryAfter: response.headers.get('retry-after'),
+    bodyPreview: text.slice(0, 200),
   }
 }
 
-function isRateLimited(response) {
-  return response.status === 403 || response.status === 429
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function waitForCapability(capability, timeoutMs = 8 * 60 * 1000) {
+  const deadline = Date.now() + timeoutMs
+  let lastCapabilities = []
+
+  while (Date.now() < deadline) {
+    const health = await getJson('/api/health')
+    if (health.response.status === 200 && health.json?.ok) {
+      lastCapabilities = Array.isArray(health.json.capabilities)
+        ? health.json.capabilities
+        : []
+      if (lastCapabilities.includes(capability)) return
+    }
+    await sleep(10_000)
+  }
+
+  throw new Error(
+    `Timed out waiting for ${capability}; last capabilities=${JSON.stringify(lastCapabilities)}`,
+  )
+}
+
+async function alignToFreshMinuteWindow() {
+  const seconds = Math.floor(Date.now() / 1000) % 60
+  const waitSeconds = seconds <= 2 ? 0 : 62 - seconds
+  if (waitSeconds > 0) {
+    console.log(`Waiting ${waitSeconds}s for a fresh fixed rate-limit window...`)
+    await sleep(waitSeconds * 1000)
+  }
 }
 
 await primeEdgeOneAccessSession()
+await waitForCapability('application-auth-rate-limit-v1')
+await alignToFreshMinuteWindow()
 
-const health = await fetchWithAccessCookies(apiUrl('/api/health'), {
-  method: 'GET',
-  headers: { Accept: 'application/json' },
-})
-await health.arrayBuffer().catch(() => {})
-assert.equal(health.status, 200, 'health must be reachable before the rate-limit probe')
+const healthBefore = await getJson('/api/health')
+assert.equal(healthBefore.response.status, 200)
+assert.equal(healthBefore.json?.ok, true)
 
 const invalidRegisterBody = {
   username: 'x',
@@ -152,39 +199,32 @@ const invalidRegisterBody = {
 }
 
 const statuses = []
-let blockedAt = null
 
-for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+for (let attempt = 1; attempt <= expectedThreshold; attempt += 1) {
   const result = await request('/api/auth/register', invalidRegisterBody)
   statuses.push(result.status)
-
-  if (attempt === 1) {
-    assert.equal(
-      isRateLimited(result),
-      false,
-      `probe started from an already rate-limited state (HTTP ${result.status})`,
-    )
-    assert.equal(
-      result.status,
-      400,
-      `expected application validation HTTP 400 before rate limit, got ${result.status}: ${result.bodyPreview}`,
-    )
-  }
-
-  if (isRateLimited(result)) {
-    blockedAt = attempt
-    break
-  }
+  assert.equal(
+    result.status,
+    400,
+    `attempt ${attempt} should reach application validation before the threshold; got HTTP ${result.status}: ${result.bodyPreview}`,
+  )
+  assert.equal(result.json?.error, 'invalid_username')
 }
 
-assert.ok(
-  blockedAt,
-  `rate limit did not trigger within ${maxAttempts} register requests; statuses=${statuses.join(',')}`,
-)
+const blocked = await request('/api/auth/register', invalidRegisterBody)
+statuses.push(blocked.status)
 
+assert.equal(
+  blocked.status,
+  429,
+  `request ${expectedThreshold + 1} should be application-rate-limited: ${blocked.bodyPreview}`,
+)
+assert.equal(blocked.json?.error, 'auth_rate_limited')
+
+const retryAfter = Number(blocked.retryAfter)
 assert.ok(
-  blockedAt >= expectedThreshold,
-  `rate limit triggered unexpectedly early at request ${blockedAt}; expected baseline is around ${expectedThreshold + 1}`,
+  Number.isInteger(retryAfter) && retryAfter >= 1 && retryAfter <= 60,
+  `invalid Retry-After header: ${blocked.retryAfter}`,
 )
 
 const loginAfterTrigger = await request('/api/auth/login', {
@@ -193,33 +233,27 @@ const loginAfterTrigger = await request('/api/auth/login', {
   deviceId: 'rate-limit-gate',
 })
 
-assert.ok(
-  isRateLimited(loginAfterTrigger),
-  `login path was not covered by the triggered auth rule; got HTTP ${loginAfterTrigger.status}: ${loginAfterTrigger.bodyPreview}`,
-)
+assert.equal(loginAfterTrigger.status, 429)
+assert.equal(loginAfterTrigger.json?.error, 'auth_rate_limited')
 
-const healthAfter = await fetchWithAccessCookies(apiUrl('/api/health'), {
-  method: 'GET',
-  headers: { Accept: 'application/json' },
-})
-await healthAfter.arrayBuffer().catch(() => {})
-
+const healthAfter = await getJson('/api/health')
 assert.equal(
-  healthAfter.status,
+  healthAfter.response.status,
   200,
-  `rate-limit rule appears broader than auth endpoints; /api/health returned ${healthAfter.status}`,
+  `auth limiter must not affect /api/health: ${healthAfter.text.slice(0, 200)}`,
 )
+assert.equal(healthAfter.json?.ok, true)
 
 console.log(
   JSON.stringify(
     {
       ok: true,
+      limiter: 'application-auth-rate-limit-v1',
       expectedThreshold,
-      maxAttempts,
       registerStatuses: statuses,
-      blockedAt,
+      retryAfterSeconds: retryAfter,
       loginStatusAfterTrigger: loginAfterTrigger.status,
-      healthStatusAfterTrigger: healthAfter.status,
+      healthStatusAfterTrigger: healthAfter.response.status,
     },
     null,
     2,
