@@ -105,6 +105,27 @@ export async function runBackendSelfTest(service) {
     assert(r2.revision === 2, 'second revision must be 2')
     pass('sync-upload-revision-2')
 
+    let latestPayload = p2
+    let latestRevision = 2
+
+    for (let generation = 3; generation <= 5; generation += 1) {
+      latestPayload = payload({
+        generation,
+        words: ['receive', 'necessary', 'environment', `word-${generation}`],
+      })
+
+      const result = await service.putSync(login2.token, {
+        baseRevision: latestRevision,
+        payloadBase64: latestPayload,
+        deviceId: 'device-b',
+        clientFormatVersion: 'test-v1',
+      })
+
+      latestRevision = generation
+      assert(result.revision === latestRevision, `revision ${generation} mismatch`)
+    }
+    pass('sync-advances-through-revision-5')
+
     const changed = await service.changePassword(
       login2.token,
       password1,
@@ -127,7 +148,10 @@ export async function runBackendSelfTest(service) {
     pass('password-change-session-revoked-by-new-login')
 
     const after = await service.getSync(login3.token)
-    assert(after.revision === 2 && after.payloadBase64 === p2, 'sync must survive password change')
+    assert(
+      after.revision === latestRevision && after.payloadBase64 === latestPayload,
+      'sync must survive password change',
+    )
     pass('sync-survives-password-change')
 
     await expectError(() => service.me('not-a-session-token'), 'invalid_token')

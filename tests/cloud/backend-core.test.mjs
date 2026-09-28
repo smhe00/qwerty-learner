@@ -91,6 +91,35 @@ class MemoryStorage {
     return latest ? clone(latest) : null
   }
 
+  async pruneRevisions(userId, keepCount) {
+    const entries = [...this.revisions.keys()]
+      .filter((key) => key.startsWith(`${userId}:`))
+      .map((key) => ({
+        key,
+        revision: Number(key.slice(userId.length + 1)),
+      }))
+      .sort((left, right) => left.revision - right.revision)
+
+    const obsolete = entries.slice(0, Math.max(0, entries.length - keepCount))
+
+    for (const item of obsolete) {
+      this.revisions.delete(item.key)
+    }
+
+    return {
+      deleted: obsolete.length,
+      retained: entries.length - obsolete.length,
+      latestRevision: entries.length ? entries[entries.length - 1].revision : 0,
+    }
+  }
+
+  revisionVersions(userId) {
+    return [...this.revisions.keys()]
+      .filter((key) => key.startsWith(`${userId}:`))
+      .map((key) => Number(key.slice(userId.length + 1)))
+      .sort((a, b) => a - b)
+  }
+
   async deleteUserData(usernameHash, userId) {
     const accountDeleted = this.accounts.delete(usernameHash)
     let authDeleted = 0
@@ -128,9 +157,11 @@ class MemoryStorage {
 }
 
 test('cloud backend full contract', async () => {
+  const storage = new MemoryStorage()
   const service = createBackendService({
-    storage: new MemoryStorage(),
+    storage,
     maxSyncBytes: 4 * 1024 * 1024,
+    snapshotRetention: 3,
   })
 
   const report = await runBackendSelfTest(service)
@@ -140,4 +171,42 @@ test('cloud backend full contract', async () => {
   assert.equal(report.stepCount, report.steps.length)
   assert.equal(report.cleanup.accountDeleted, true)
   assert.ok(report.cleanup.sessionsDeleted >= 1)
+})
+
+test('snapshot retention keeps only the latest three full revisions', async () => {
+  const storage = new MemoryStorage()
+  const service = createBackendService({
+    storage,
+    snapshotRetention: 3,
+  })
+
+  const username = 'retention_test_user'
+  const password = 'Retention-Test-Password-123'
+  const registered = await service.register(username, password, 'retention-device')
+  const userId = registered.user.userId
+
+  let baseRevision = 0
+  for (let revision = 1; revision <= 6; revision += 1) {
+    const payloadBase64 = Buffer.from(
+      JSON.stringify({ revision, value: `snapshot-${revision}` }),
+      'utf8',
+    ).toString('base64')
+
+    const result = await service.putSync(registered.token, {
+      baseRevision,
+      payloadBase64,
+      deviceId: 'retention-device',
+      clientFormatVersion: 'test-v1',
+    })
+
+    assert.equal(result.revision, revision)
+    baseRevision = revision
+  }
+
+  assert.deepEqual(storage.revisionVersions(userId), [4, 5, 6])
+
+  const latest = await service.getSync(registered.token)
+  assert.equal(latest.revision, 6)
+
+  await service.cleanupTestUser(username)
 })

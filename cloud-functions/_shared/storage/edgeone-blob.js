@@ -64,6 +64,18 @@ export function createEdgeOneBlobStorage(store) {
     return value === null ? null : { version: latest.version, value }
   }
 
+  async function listVersioned(prefix) {
+    const { blobs = [] } = await store.list({ prefix, consistency: 'strong' })
+
+    return blobs
+      .map((blob) => ({
+        key: blob.key,
+        version: parseVersion(blob.key),
+      }))
+      .filter((item) => item.version !== null)
+      .sort((left, right) => left.version - right.version)
+  }
+
   async function deletePrefix(prefix) {
     const { blobs = [] } = await store.list({ prefix, consistency: 'strong' })
     await Promise.all(blobs.map((blob) => store.delete(blob.key)))
@@ -104,6 +116,23 @@ export function createEdgeOneBlobStorage(store) {
     async getLatestRevision(userId) {
       const latest = await latestObject(revisionPrefix(userId))
       return latest ? { revision: latest.version, snapshot: latest.value } : null
+    },
+
+    async pruneRevisions(userId, keepCount) {
+      if (!Number.isInteger(keepCount) || keepCount < 1) {
+        throw new Error('keepCount must be a positive integer')
+      }
+
+      const revisions = await listVersioned(revisionPrefix(userId))
+      const obsolete = revisions.slice(0, Math.max(0, revisions.length - keepCount))
+
+      await Promise.all(obsolete.map((item) => store.delete(item.key)))
+
+      return {
+        deleted: obsolete.length,
+        retained: revisions.length - obsolete.length,
+        latestRevision: revisions.length ? revisions[revisions.length - 1].version : 0,
+      }
     },
 
     async deleteUserData(usernameHash, userId) {

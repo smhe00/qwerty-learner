@@ -339,6 +339,7 @@ getLatestSession(usernameHash)
 
 createRevision(userId, revision, snapshot)
 getLatestRevision(userId)
+pruneRevisions(userId, keepCount)
 
 deleteUserData(usernameHash, userId)   # tests/admin only
 ```
@@ -368,7 +369,8 @@ The backend contract test must verify at least:
 17. new password login succeeds;
 18. password change does not alter sync data;
 19. malformed/random token rejected;
-20. cleanup removes account/auth/session/revisions.
+20. cleanup removes account/auth/session/revisions;
+21. after advancing beyond three snapshots, only the latest three revision objects remain while the revision number continues increasing.
 
 Backend does not advance to frontend integration until this test passes locally and against real EdgeOne Blob.
 
@@ -460,7 +462,8 @@ No separate profile system.
 Before broader public use:
 - [ ] specific CORS/same-origin policy
 - [ ] abuse/rate-limit strategy for login/register
-- [ ] retention policy for old revisions/session versions
+- [x] snapshot retention policy: keep latest 3 full revisions
+- [ ] retention policy for old session/auth versions
 - [ ] backup/export strategy
 - [ ] monitoring/error telemetry without sensitive payloads
 

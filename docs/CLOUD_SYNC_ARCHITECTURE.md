@@ -146,7 +146,31 @@ Blob onlyIfNew
 
 这比覆盖一个 `snapshot.json` 更安全，而且实现成本很低。
 
-## 8. 离线分叉
+## 8. Snapshot 保留策略
+
+revision 编号单调增长且永不复用，但 Blob 不永久保存所有完整 snapshot。
+
+V1 固定保留最近 **3 个**完整 revision：
+
+```text
+.../000000000128.json
+.../000000000129.json
+.../000000000130.json
+```
+
+成功写入 131 后，删除 128：
+
+```text
+.../000000000129.json
+.../000000000130.json
+.../000000000131.json
+```
+
+这样保留并发保护和短窗口恢复能力，同时限制重复完整 snapshot 的空间占用。
+
+retention 清理属于维护动作：新 revision 一旦已通过 `onlyIfNew` 成功持久化，即使删除旧版本失败，也不能把本次同步返回成失败，否则客户端可能重试已经成功的提交。
+
+## 9. 离线分叉
 
 单 active session 不等于永远没有数据分叉。
 
@@ -164,7 +188,7 @@ localBaseRevision != remoteRevision
 
 时停止自动同步，让用户明确选择保留本地/导出备份或采用云端版本。
 
-## 9. 数据职责
+## 10. 数据职责
 
 ```text
 IndexedDB
@@ -189,7 +213,7 @@ IndexedDB export
 → PUT /api/sync
 ```
 
-## 10. 运行配置
+## 11. 运行配置
 
 V1 无需应用 Secret：
 
@@ -202,7 +226,7 @@ CORS_ORIGIN=*
 
 生产前应将 CORS 收紧为同源或明确站点域名。
 
-## 11. Upstream 隔离原则
+## 12. Upstream 隔离原则
 
 1. 不要求登录才能学习。
 2. 不修改词典 JSON。

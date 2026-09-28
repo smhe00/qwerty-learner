@@ -17,6 +17,7 @@ const SESSION_SCHEMA_VERSION = 1
 const SESSION_TOKEN_PREFIX = 'qs1'
 const SESSION_RANDOM_BYTES = 32
 const SESSION_CREATE_RETRIES = 8
+const DEFAULT_SNAPSHOT_RETENTION = 3
 
 const SCRYPT_N = 16384
 const SCRYPT_R = 8
@@ -197,8 +198,12 @@ export function createBackendService({
   storage,
   sessionTtlSeconds = 7 * 24 * 60 * 60,
   maxSyncBytes = 4 * 1024 * 1024,
+  snapshotRetention = DEFAULT_SNAPSHOT_RETENTION,
 }) {
   if (!storage) throw new Error('storage is required')
+  if (!Number.isInteger(snapshotRetention) || snapshotRetention < 1) {
+    throw new Error('snapshotRetention must be a positive integer')
+  }
 
   async function getCurrentAuth(identity) {
     const latest = await storage.getLatestAuth(identity.usernameHash)
@@ -489,6 +494,18 @@ export function createBackendService({
       throw new AppError(409, 'sync_conflict', 'Remote data changed during upload', {
         current: metaFromSnapshot(latest ? latest.snapshot : null),
       })
+    }
+
+    // The snapshot commit is already durable at this point. Retention cleanup is
+    // maintenance only: a cleanup failure must not turn a successful commit into
+    // an HTTP failure, otherwise the client could retry an already-committed
+    // revision and receive a misleading conflict.
+    if (typeof storage.pruneRevisions === 'function') {
+      try {
+        await storage.pruneRevisions(identity.userId, snapshotRetention)
+      } catch (error) {
+        console.error('Snapshot retention cleanup failed:', error)
+      }
     }
 
     return metaFromSnapshot(snapshot)
