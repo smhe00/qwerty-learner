@@ -14,13 +14,6 @@ if (!baseUrlInput) throw new Error('QWERTY_SYNC_BASE_URL is required')
 
 const baseUrl = new URL(baseUrlInput)
 
-const eoTime = Number(baseUrl.searchParams.get('eo_time'))
-if (Number.isFinite(eoTime) && eoTime > 0 && Date.now() >= eoTime * 1000) {
-  throw new Error(
-    `QWERTY_SYNC_BASE_URL access token expired at ${new Date(eoTime * 1000).toISOString()}. Generate a fresh EdgeOne protected-access URL and retry.`,
-  )
-}
-
 async function verifyAdminBlobCredential() {
   try {
     await listStores({
@@ -95,12 +88,12 @@ function revisionFromKey(key) {
 }
 
 try {
-  await verifyAdminBlobCredential()
-
   const health = await request('/api/health')
   assert.equal(health.status, 200)
   assert.equal(health.json?.ok, true)
   assert.equal(health.json?.authMode, 'single-active-session')
+
+  await verifyAdminBlobCredential()
 
   const registered = await request('/api/auth/register', {
     method: 'POST',
