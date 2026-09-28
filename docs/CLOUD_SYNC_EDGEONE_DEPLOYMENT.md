@@ -35,8 +35,8 @@ P4 PASS 前继续保持 `src/` 零修改。
 5. 根目录保持仓库根目录。
 
 > 这是 P4 验证阶段的临时生产映射，不代表未来必须长期把 feature 分支当正式生产分支。
-> 当前 upstream `master` 不包含 `edgeone.json`、`cloud-functions/` 与云后端依赖，
-> 用它做首次 Makers 构建无法验证本分支的 EdgeOne 能力。
+> 当前 upstream `master` 本身可以作为纯静态 Vite 站点部署；它此前的部署失败不是因为缺少 Cloud Functions，而是 EdgeOne 默认查找 `dist/`，而该项目实际由 Vite 输出到 `build/`。
+> 但 `master` 不包含云后端，因此不能用于 P4 的 Auth/Sync/Blob 验证。
 > P4/P5 稳定后再决定最终生产分支（例如专门的稳定分支或合并后的 fork 主分支）。
 
 仓库已包含 `edgeone.json`，用于固定：
@@ -197,21 +197,42 @@ Review、Typing 主流程仍不直接依赖 EdgeOne。
 
 ## 9. 首次项目创建失败时的分支检查
 
-如果构建日志出现：
+如果日志中出现：
+
+```text
+✓ built
+[StaticAssetsBuilder] ✓ Build project completed
+ENOENT ... /dist
+```
+
+说明应用编译已经成功，真正失败点是 **EdgeOne 的输出目录与 Vite 实际产物目录不一致**。
+
+本项目 `vite.config.ts` 明确设置：
+
+```text
+build.outDir = "build"
+```
+
+因此正确输出目录是：
+
+```text
+./build
+```
+
+而不是 Vite 框架预设通常使用的：
+
+```text
+./dist
+```
+
+`feature/edgeone-cloud-sync` 根目录的 `edgeone.json` 已显式设置 `"outputDirectory": "./build"`。
+
+对于 upstream `master`，若单独部署纯静态站点，需要在 Makers 控制台把“输出目录”手工设为 `build`，因为该分支没有 `edgeone.json`。
+
+另外：
 
 ```text
 No server-handler detected, generating routes.json for pure project...
-Generated routes.json for pure project
-Build error
 ```
 
-先确认实际构建的是哪个 Git commit。
-
-对于本项目：
-
-- upstream `master`：没有 Cloud Functions，也没有 `edgeone.json`；
-- `feature/edgeone-cloud-sync`：包含完整 Makers/Cloud Functions/Blob 代码。
-
-因此 P4 首次创建项目必须从 `feature/edgeone-cloud-sync` 构建。
-
-`No server-handler detected` 本身只是表示构建器把项目当纯静态站点处理，并不等同于具体错误原因；若在正确的 cloud-sync 分支上仍出现该信息，再按平台构建问题继续排查。
+对于没有 Cloud Functions 的 `master` 是正常信息，不是构建失败原因。
