@@ -228,29 +228,6 @@ try {
   assert.ok(health.json.capabilities.includes('bounded-auth-history-v1'))
   assert.ok(health.json.capabilities.includes('same-origin-cors-default-v1'))
 
-  const sameOriginPreflight = await request('/api/auth/login', {
-    method: 'OPTIONS',
-    headers: {
-      Origin: baseUrl.origin,
-      'Access-Control-Request-Method': 'POST',
-    },
-  })
-  assert.equal(sameOriginPreflight.status, 204)
-  assert.equal(
-    sameOriginPreflight.headers.get('access-control-allow-origin'),
-    baseUrl.origin,
-  )
-
-  const crossOriginPreflight = await request('/api/auth/login', {
-    method: 'OPTIONS',
-    headers: {
-      Origin: 'https://cross-origin.invalid',
-      'Access-Control-Request-Method': 'POST',
-    },
-  })
-  assert.equal(crossOriginPreflight.status, 204)
-  assert.equal(crossOriginPreflight.headers.get('access-control-allow-origin'), null)
-
   await verifyAdminBlobCredential()
 
   const registered = await request('/api/auth/register', {
@@ -425,7 +402,7 @@ try {
         retainedSessionVersions,
         latestRevision: 6,
         singleActiveSession: true,
-        sameOriginCors: true,
+        sameOriginCorsCapability: true,
       },
       null,
       2,

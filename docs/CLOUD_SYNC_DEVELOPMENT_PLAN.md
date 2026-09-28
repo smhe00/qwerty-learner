@@ -557,7 +557,9 @@ Auth/session retention and CORS hardening passed the backend CI gate.
 
 Operational policy: `docs/CLOUD_SYNC_OPERATIONS.md`.
 
-P8 real-Blob retention Gate now verifies latest-3 session versions, latest-2 auth versions, snapshot retention, password-change continuity, and same-origin CORS against the deployed EdgeOne backend. The live harness waits for a health capability marker so GitHub Actions cannot race an older Makers deployment.
+P8 real-Blob retention Gate verifies latest-3 session versions, latest-2 auth versions, snapshot retention, and password-change continuity against the deployed EdgeOne backend. The live harness waits for a health capability marker so GitHub Actions cannot race an older Makers deployment.
+
+CORS semantics are tested directly against the Cloud Function handler because EdgeOne protected-preview access may intercept OPTIONS before the function. The real browser Gate separately verifies that same-origin application traffic works end-to-end.
 
 The only remaining P8 Gate after that live test passes is enabling and validating the EdgeOne precise rate-limiting rule for the auth endpoints.
 

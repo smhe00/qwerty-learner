@@ -67,7 +67,7 @@
     "lint": "eslint .",
     "prettier": "prettier --write .",
     "prepare": "husky install",
-    "test:cloud": "node --test tests/cloud/backend-core.test.mjs",
+    "test:cloud": "node --test tests/cloud/*.test.mjs",
     "test:cloud:edgeone": "node tests/cloud/edgeone-live.integration.mjs"
   },
   "lint-staged": {
