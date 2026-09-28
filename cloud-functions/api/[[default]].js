@@ -1,5 +1,6 @@
 /* eslint-env node */
 import { getStore } from '@edgeone/pages-blob'
+import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
 import { AppError, createBackendService } from '../_shared/core.js'
 import { createEdgeOneBlobStorage } from '../_shared/storage/edgeone-blob.js'
 
@@ -86,17 +87,59 @@ function logApiError(request, path, error) {
   else console.warn(line)
 }
 
-function makeService(env) {
+function makeStorage(env) {
   const store = getStore({
     name: env.BLOB_STORE_NAME || 'qwerty-data',
     consistency: 'strong',
   })
 
+  return createEdgeOneBlobStorage(store)
+}
+
+function makeService(env, storage) {
   return createBackendService({
-    storage: createEdgeOneBlobStorage(store),
+    storage,
     sessionTtlSeconds: numberEnv(env.SESSION_TTL_SECONDS, 7 * 24 * 60 * 60),
     maxSyncBytes: numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024),
   })
+}
+
+async function enforceAuthRateLimit(context, storage, env, cors) {
+  const clientIp =
+    typeof context.clientIp === 'string' ? context.clientIp.trim() : ''
+
+  if (!clientIp) {
+    throw new AppError(
+      503,
+      'client_ip_unavailable',
+      'Client IP is unavailable; authentication is temporarily unavailable',
+    )
+  }
+
+  const result = await checkAuthRateLimit({
+    storage,
+    clientIp,
+    requestLimit: numberEnv(env.AUTH_RATE_LIMIT_REQUESTS, 10),
+    windowSeconds: numberEnv(env.AUTH_RATE_LIMIT_WINDOW_SECONDS, 60),
+  })
+
+  if (result.allowed) return null
+
+  return json(
+    {
+      ok: false,
+      error: 'auth_rate_limited',
+      message: 'Too many authentication attempts; please retry later',
+      details: {
+        retryAfterSeconds: result.retryAfterSeconds,
+      },
+    },
+    429,
+    {
+      ...cors,
+      'Retry-After': String(result.retryAfterSeconds),
+    },
+  )
 }
 
 export async function onRequest(context) {
@@ -131,6 +174,7 @@ export async function onRequest(context) {
             'bounded-session-history-v1',
             'bounded-auth-history-v1',
             'same-origin-cors-default-v1',
+            'application-auth-rate-limit-v1',
           ],
         },
         200,
@@ -138,9 +182,18 @@ export async function onRequest(context) {
       )
     }
 
-    const service = makeService(env)
+    const storage = makeStorage(env)
+    const service = makeService(env, storage)
     const bodyLimit =
       Math.ceil(numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024) * 1.5) + 256 * 1024
+
+    if (
+      request.method === 'POST' &&
+      (path === '/auth/register' || path === '/auth/login')
+    ) {
+      const limited = await enforceAuthRateLimit(context, storage, env, cors)
+      if (limited) return limited
+    }
 
     if (request.method === 'POST' && path === '/auth/register') {
       const body = await readJson(request, 64 * 1024)

@@ -30,8 +30,30 @@ export function createEdgeOneBlobStorage(store) {
     return `${revisionPrefix(userId)}${String(revision).padStart(12, '0')}.json`
   }
 
+  function authRateLimitPrefix(clientKey) {
+    return `rate-limit/auth/${clientKey}/windows/`
+  }
+
+  function authRateLimitWindowPrefix(clientKey, windowStart) {
+    return `${authRateLimitPrefix(clientKey)}${windowStart}/`
+  }
+
+  function authRateLimitSlotKey(clientKey, windowStart, slot) {
+    return `${authRateLimitWindowPrefix(clientKey, windowStart)}slot-${String(slot).padStart(3, '0')}.json`
+  }
+
   function parseVersion(key) {
     const match = /\/(\d{12})\.json$/.exec(key)
+    return match ? Number(match[1]) : null
+  }
+
+  function parseRateLimitSlot(key) {
+    const match = /\/slot-(\d+)\.json$/.exec(key)
+    return match ? Number(match[1]) : null
+  }
+
+  function parseRateLimitWindow(key) {
+    const match = /\/windows\/(\d+)\//.exec(key)
     return match ? Number(match[1]) : null
   }
 
@@ -149,6 +171,40 @@ export function createEdgeOneBlobStorage(store) {
         deleted: result.deleted,
         retained: result.retained,
         latestRevision: result.latestVersion,
+      }
+    },
+
+    async listAuthRateLimitSlots(clientKey, windowStart) {
+      const { blobs = [] } = await store.list({
+        prefix: authRateLimitWindowPrefix(clientKey, windowStart),
+        consistency: 'strong',
+      })
+
+      return blobs
+        .map((blob) => parseRateLimitSlot(blob.key))
+        .filter((slot) => slot !== null)
+        .sort((left, right) => left - right)
+    },
+
+    async claimAuthRateLimitSlot(clientKey, windowStart, slot, record) {
+      return setJsonOnlyIfNew(
+        authRateLimitSlotKey(clientKey, windowStart, slot),
+        record,
+      )
+    },
+
+    async pruneAuthRateLimitWindows(clientKey, minWindowStart) {
+      const prefix = authRateLimitPrefix(clientKey)
+      const { blobs = [] } = await store.list({ prefix, consistency: 'strong' })
+      const obsolete = blobs.filter((blob) => {
+        const windowStart = parseRateLimitWindow(blob.key)
+        return windowStart !== null && windowStart < minWindowStart
+      })
+
+      await Promise.all(obsolete.map((blob) => store.delete(blob.key)))
+
+      return {
+        deleted: obsolete.length,
       }
     },
 
