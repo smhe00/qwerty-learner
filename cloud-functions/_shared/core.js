@@ -224,7 +224,17 @@ export function createBackendService({
     try {
       await operation()
     } catch (error) {
-      console.error(`${label} retention cleanup failed:`, error)
+      console.error(
+        JSON.stringify({
+          event: 'cloud_retention_cleanup_failed',
+          area: label.toLowerCase(),
+          errorName: error instanceof Error ? error.name : 'UnknownError',
+          errorCode:
+            error && typeof error === 'object' && 'code' in error
+              ? String(error.code)
+              : null,
+        }),
+      )
     }
   }
 

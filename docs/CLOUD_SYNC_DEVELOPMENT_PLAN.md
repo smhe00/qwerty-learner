@@ -547,13 +547,17 @@ P7 is complete.
 ### P8 — operational hardening
 Before broader public use:
 - [x] specific CORS/same-origin policy — default `same-origin`, explicit allowlist supported
-- [ ] abuse/rate-limit strategy for login/register
+- [ ] abuse/rate-limit deployment for login/register — policy documented; EdgeOne console rule still must be enabled
 - [x] snapshot retention policy: keep latest 3 full revisions
 - [x] retention policy for old session/auth versions — latest 3 sessions / latest 2 auth objects
 - [x] backup/export strategy — existing manual local export remains the recovery path before destructive cloud restore
-- [ ] monitoring/error telemetry without sensitive payloads
+- [x] monitoring/error telemetry without sensitive payloads — structured error code/status logging only
 
-Auth/session retention and CORS hardening must pass the backend CI gate before being treated as complete.
+Auth/session retention and CORS hardening passed the backend CI gate.
+
+Operational policy: `docs/CLOUD_SYNC_OPERATIONS.md`.
+
+The only remaining P8 Gate is enabling and validating the EdgeOne precise rate-limiting rule for the auth endpoints.
 
 ## 14. Continuation protocol for future sessions
 

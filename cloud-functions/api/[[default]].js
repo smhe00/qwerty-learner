@@ -71,6 +71,21 @@ async function readJson(request, maxBytes) {
   }
 }
 
+function logApiError(request, path, error) {
+  const fields = {
+    event: 'cloud_api_error',
+    method: request.method,
+    path,
+    status: error instanceof AppError ? error.statusCode : 500,
+    code: error instanceof AppError ? error.code : 'internal_error',
+    errorName: error instanceof Error ? error.name : 'UnknownError',
+  }
+
+  const line = JSON.stringify(fields)
+  if (fields.status >= 500) console.error(line)
+  else console.warn(line)
+}
+
 function makeService(env) {
   const store = getStore({
     name: env.BLOB_STORE_NAME || 'qwerty-data',
@@ -181,6 +196,8 @@ export async function onRequest(context) {
 
     throw new AppError(404, 'not_found', 'Not found')
   } catch (error) {
+    logApiError(request, path, error)
+
     if (error instanceof AppError) {
       return json(
         {
@@ -194,7 +211,6 @@ export async function onRequest(context) {
       )
     }
 
-    console.error('Unhandled cloud API error:', error)
     return json(
       {
         ok: false,
