@@ -1,0 +1,51 @@
+name: EdgeOne Live Gate
+
+on:
+  push:
+    branches:
+      - feature/edgeone-cloud-sync
+    paths:
+      - '.github/workflows/edgeone-live-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  edgeone-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+      QWERTY_SYNC_BASE_URL: ${{ secrets.QWERTY_SYNC_BASE_URL }}
+      EDGEONE_PROJECT_ID: makers-cgemngjuuwle
+      BLOB_STORE_NAME: qwerty-data
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: 'yarn'
+
+      - name: Verify live-test secrets are configured
+        shell: bash
+        run: |
+          if [ -z "$EDGEONE_API_TOKEN" ]; then
+            echo "::error::EDGEONE_API_TOKEN is not configured"
+            exit 1
+          fi
+          if [ -z "$QWERTY_SYNC_BASE_URL" ]; then
+            echo "::error::QWERTY_SYNC_BASE_URL is not configured"
+            exit 1
+          fi
+          echo "Required EdgeOne live-test secrets are present."
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run real EdgeOne integration gate
+        run: yarn test:cloud:edgeone
