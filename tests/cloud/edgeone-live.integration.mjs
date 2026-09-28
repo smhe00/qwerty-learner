@@ -5,12 +5,22 @@ import { getStore } from '@edgeone/pages-blob'
 import { createBackendService } from '../../cloud-functions/_shared/core.js'
 import { createEdgeOneBlobStorage } from '../../cloud-functions/_shared/storage/edgeone-blob.js'
 
-const baseUrl = String(process.env.QWERTY_SYNC_BASE_URL || '').replace(/\/+$/, '')
+const baseUrlInput = String(process.env.QWERTY_SYNC_BASE_URL || '').trim()
 const projectId = process.env.EDGEONE_PROJECT_ID || ''
 const apiToken = process.env.EDGEONE_API_TOKEN || ''
 const storeName = process.env.BLOB_STORE_NAME || 'qwerty-data'
 
-if (!baseUrl) throw new Error('QWERTY_SYNC_BASE_URL is required')
+if (!baseUrlInput) throw new Error('QWERTY_SYNC_BASE_URL is required')
+
+const baseUrl = new URL(baseUrlInput)
+
+function apiUrl(path) {
+  const url = new URL(path, `${baseUrl.origin}/`)
+  for (const [key, value] of baseUrl.searchParams.entries()) {
+    url.searchParams.set(key, value)
+  }
+  return url.toString()
+}
 if (!projectId) throw new Error('EDGEONE_PROJECT_ID is required for real-Blob verification/cleanup')
 if (!apiToken) throw new Error('EDGEONE_API_TOKEN is required for real-Blob verification/cleanup')
 
@@ -33,7 +43,7 @@ async function request(path, { method = 'GET', token, body } = {}) {
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(apiUrl(path), {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -184,7 +194,7 @@ try {
     JSON.stringify(
       {
         ok: true,
-        baseUrl,
+        baseUrl: baseUrl.origin,
         userId,
         retainedRevisions,
         latestRevision: 6,

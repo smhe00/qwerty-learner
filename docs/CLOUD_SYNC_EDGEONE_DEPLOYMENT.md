@@ -140,11 +140,13 @@ yarn test:cloud:edgeone
 ### 所需本地环境变量
 
 ```text
-QWERTY_SYNC_BASE_URL=https://<preview-domain>
+QWERTY_SYNC_BASE_URL=https://<domain>/?eo_token=<temporary-token>&eo_time=<temporary-time>
 EDGEONE_PROJECT_ID=<Makers Project ID>
 EDGEONE_API_TOKEN=<Makers API Token>
 BLOB_STORE_NAME=qwerty-data
 ```
+
+`QWERTY_SYNC_BASE_URL` may contain EdgeOne access-protection query parameters. The integration script preserves those query parameters when it calls every `/api/*` endpoint.
 
 然后：
 
