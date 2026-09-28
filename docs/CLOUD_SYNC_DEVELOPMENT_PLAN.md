@@ -398,12 +398,14 @@ Backend does not advance to frontend integration until this test passes locally 
 - [x] keep self-test as local/GitHub test code only
 - [x] update docs/env example
 
-### P3 — local static verification
+### P3 — local/CI static verification
 Required before deployment:
-- [ ] `yarn test:cloud`
-- [ ] `yarn lint`
-- [ ] `yarn build`
-- [ ] inspect branch diff to confirm no accidental `src/` changes
+- [x] `yarn test:cloud` — GitHub Cloud Sync Gate PASS
+- [ ] cloud-only ESLint: `yarn eslint cloud-functions tests/cloud --ext .js,.mjs`
+- [x] `yarn build` — GitHub Cloud Sync Gate PASS
+- [x] inspect branch diff: no accidental `src/` changes
+
+Full-repository `yarn lint` is not a cloud-sync Gate because the current base branch already contains an unrelated existing error in `src/pages/Typing/components/WordPanel/components/Word/index.tsx` (`no-case-declarations`). Cloud work must not modify that upstream/Typing code merely to make this feature Gate green.
 
 ### P4 — EdgeOne real integration gate
 - [ ] connect GitHub branch/project
