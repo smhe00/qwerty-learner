@@ -515,17 +515,34 @@ P6 starts only after the encryption-key UX is fixed in the architecture. The cur
 
 Security design: `docs/CLOUD_SYNC_ENCRYPTION.md`.
 
-P6 implementation must still pass static CI and the real EdgeOne Browser Sync Gate before P6 is declared complete.
+P6 validation is complete.
+
+Static gate: GitHub Actions `Cloud Sync Gate` run `36452560509` PASS.
+
+Live browser gate: GitHub Actions `EdgeOne Browser Sync Gate` run `36452560735`, attempt 2, PASS:
+- encrypted upload created `qwerty-sync-envelope-v1`;
+- envelope identifies AES-256-GCM and does not expose the test plaintext;
+- wrong encryption passphrase was rejected before local IndexedDB overwrite;
+- correct passphrase restored the encrypted snapshot;
+- local/remote divergence detection remained functional;
+- test account cleanup removed the account and 2 revisions.
+
+P6 is complete.
 
 Do not claim end-to-end encrypted backups until the AES-GCM envelope and key UX gates pass.
 
 ### P7 — minimal UI
-Add only a small cloud-sync area under existing Data Settings:
 
-- logged-out: username/password/register/login;
-- logged-in: account, sync status, last sync, remote revision, sync/logout.
+P7 was intentionally folded into P5/P6 instead of creating a second UI layer.
 
-No separate profile system.
+- [x] cloud-sync area lives only under existing Data Settings
+- [x] logged-out: username/password/register/login
+- [x] logged-in: account, sync status, remote revision, upload/download/logout
+- [x] encryption passphrase entry and recovery warning
+- [x] divergence warning and explicit overwrite/restore actions
+- [x] no separate profile system
+
+P7 is complete.
 
 ### P8 — operational hardening
 Before broader public use:

@@ -104,3 +104,26 @@ It does not protect against:
 - a user revealing/reusing the encryption passphrase.
 
 Because the passphrase never reaches the cloud backend, this design can be described as client-side/end-to-end encrypted snapshot storage after the live P6 gates pass.
+
+
+## Validation status
+
+P6 passed both static and live browser validation on 2026-09-29.
+
+The live test verified:
+
+- encrypted snapshot upload;
+- `qwerty-sync-envelope-v1` format;
+- AES-256-GCM envelope metadata;
+- no test plaintext present in the stored envelope;
+- wrong-passphrase authentication failure before IndexedDB overwrite;
+- correct-passphrase restore;
+- divergence detection after encrypted sync;
+- cleanup of the temporary account and revisions.
+
+GitHub Actions:
+
+```text
+Cloud Sync Gate             36452560509          PASS
+EdgeOne Browser Sync Gate   36452560735 attempt 2 PASS
+```
