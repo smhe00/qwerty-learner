@@ -464,12 +464,30 @@ P5 implementation principles:
 
 Initial frontend capabilities:
 
-- login/register/logout;
-- remember current token locally;
-- manual upload/download;
-- revision metadata;
-- local dirty/baseRevision tracking;
-- explicit divergent-state handling.
+- [x] login/register/logout;
+- [x] remember current token locally;
+- [x] manual upload/download;
+- [x] revision metadata;
+- [x] local dirty/baseRevision tracking;
+- [x] explicit divergent-state handling.
+
+P5 implementation commit: `f9ee332ec0ca6373a18cc8606f2ebd4575882bcc`.
+
+P5 static gate: GitHub Actions run `36430381657` PASS:
+- backend cloud contract PASS;
+- isolated cloud lint PASS;
+- isolated frontend sync lint PASS;
+- full Vite build PASS.
+
+Diff audit against `feature/spaced-review`: the only existing application file modified by P5 is
+`src/pages/Typing/components/Setting/DataSetting.tsx` (+2 lines: import + component mount).
+All frontend sync implementation lives under `src/sync/`.
+No Review core, Typing learning flow, or IndexedDB schema was modified.
+
+Remaining P5 gate before declaring browser integration fully validated:
+- [ ] deploy the P5 commit to EdgeOne;
+- [ ] exercise register/login/manual upload/manual download through the real browser UI;
+- [ ] verify divergent-state warning/explicit choice against the live backend.
 
 ### P6 — snapshot packaging
 - [ ] IndexedDB export
