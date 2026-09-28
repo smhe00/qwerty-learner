@@ -1,0 +1,60 @@
+name: EdgeOne Browser Sync Gate
+
+on:
+  push:
+    branches:
+      - feature/edgeone-cloud-sync
+    paths:
+      - '.github/workflows/edgeone-browser-sync-gate.yml'
+      - 'tests/e2e/cloud-sync-live.spec.ts'
+      - 'tests/e2e/cloud-sync-live.config.ts'
+      - 'tests/cloud/edgeone-cleanup-user.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-sync-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+      QWERTY_SYNC_BASE_URL: ${{ secrets.QWERTY_SYNC_BASE_URL }}
+      EDGEONE_PROJECT_ID: makers-cgemngjuuwle
+      BLOB_STORE_NAME: qwerty-data
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: 'yarn'
+
+      - name: Verify live-test secrets are configured
+        shell: bash
+        run: |
+          test -n "$EDGEONE_API_TOKEN" || { echo "::error::EDGEONE_API_TOKEN is not configured"; exit 1; }
+          test -n "$QWERTY_SYNC_BASE_URL" || { echo "::error::QWERTY_SYNC_BASE_URL is not configured"; exit 1; }
+
+      - name: Create isolated test identity
+        shell: bash
+        run: |
+          echo "QWERTY_E2E_USERNAME=edgeone_ui_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
+          echo "QWERTY_E2E_PASSWORD=EdgeOne-UI-A9-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run real browser cloud-sync gate
+        run: npx playwright test --config=tests/e2e/cloud-sync-live.config.ts
+
+      - name: Cleanup browser E2E account
+        if: always()
+        run: node tests/cloud/edgeone-cleanup-user.mjs

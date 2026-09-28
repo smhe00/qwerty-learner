@@ -486,8 +486,10 @@ No Review core, Typing learning flow, or IndexedDB schema was modified.
 
 Remaining P5 gate before declaring browser integration fully validated:
 - [ ] deploy the P5 commit to EdgeOne;
-- [ ] exercise register/login/manual upload/manual download through the real browser UI;
+- [ ] EdgeOne Browser Sync Gate: real Chromium register/login/manual upload/manual download;
 - [ ] verify divergent-state warning/explicit choice against the live backend.
+
+The browser gate uses GitHub Actions Secrets for EdgeOne access, disables trace/video/screenshots to avoid persisting protected-access URLs, creates an isolated test account per run, and performs best-effort Blob cleanup in an `always()` step.
 
 ### P6 — snapshot packaging
 - [ ] IndexedDB export
