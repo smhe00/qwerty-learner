@@ -9,6 +9,7 @@ on:
       - 'tests/e2e/cloud-sync-live.spec.ts'
       - 'tests/e2e/cloud-sync-live.config.ts'
       - 'tests/cloud/edgeone-cleanup-user.mjs'
+      - 'cloud-functions/**'
       - 'src/sync/**'
       - 'src/pages/Typing/components/Setting/DataSetting.tsx'
   workflow_dispatch:
