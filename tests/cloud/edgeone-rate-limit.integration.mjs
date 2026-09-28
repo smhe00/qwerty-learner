@@ -4,10 +4,14 @@ import assert from 'node:assert/strict'
 
 const baseUrlInput = String(process.env.QWERTY_SYNC_BASE_URL || '').trim()
 const expectedThreshold = Number(process.env.RATE_LIMIT_THRESHOLD || 10)
+const roundsToRun = Number(process.env.RATE_LIMIT_ROUNDS || 2)
 
 if (!baseUrlInput) throw new Error('QWERTY_SYNC_BASE_URL is required')
 if (!Number.isInteger(expectedThreshold) || expectedThreshold < 1) {
   throw new Error('RATE_LIMIT_THRESHOLD must be a positive integer')
+}
+if (!Number.isInteger(roundsToRun) || roundsToRun < 1 || roundsToRun > 4) {
+  throw new Error('RATE_LIMIT_ROUNDS must be an integer between 1 and 4')
 }
 
 const baseUrl = new URL(baseUrlInput)
@@ -34,8 +38,8 @@ function captureAccessCookies(headers) {
 
     const name = pair.slice(0, separator).trim()
     const value = pair.slice(separator + 1).trim()
-    if (!name) continue
 
+    if (!name) continue
     if (value) accessCookies.set(name, value)
     else accessCookies.delete(name)
   }
@@ -115,17 +119,20 @@ async function getJson(path) {
     method: 'GET',
     headers: { Accept: 'application/json' },
   })
+
   const text = await response.text()
   let json = null
+
   try {
     json = text ? JSON.parse(text) : null
   } catch {
     // Keep null; caller reports the HTTP/body mismatch.
   }
+
   return { response, json, text }
 }
 
-async function request(path, body) {
+async function postJson(path, body) {
   const response = await fetchWithAccessCookies(apiUrl(path), {
     method: 'POST',
     headers: {
@@ -137,10 +144,11 @@ async function request(path, body) {
 
   const text = await response.text()
   let json = null
+
   try {
     json = text ? JSON.parse(text) : null
   } catch {
-    // Keep null; assertions below report body preview.
+    // Keep null; assertions report a body preview.
   }
 
   return {
@@ -161,12 +169,15 @@ async function waitForCapability(capability, timeoutMs = 8 * 60 * 1000) {
 
   while (Date.now() < deadline) {
     const health = await getJson('/api/health')
+
     if (health.response.status === 200 && health.json?.ok) {
       lastCapabilities = Array.isArray(health.json.capabilities)
         ? health.json.capabilities
         : []
+
       if (lastCapabilities.includes(capability)) return
     }
+
     await sleep(10_000)
   }
 
@@ -178,8 +189,96 @@ async function waitForCapability(capability, timeoutMs = 8 * 60 * 1000) {
 async function alignToFreshMinuteWindow() {
   const seconds = Math.floor(Date.now() / 1000) % 60
   const waitSeconds = seconds <= 2 ? 0 : 62 - seconds
+
   if (waitSeconds > 0) {
-    console.log(
+    console.log(`Waiting ${waitSeconds}s for a fresh fixed rate-limit window...`)
+    await sleep(waitSeconds * 1000)
+  }
+}
+
+async function runRound(round) {
+  await alignToFreshMinuteWindow()
+
+  const invalidRegisterBody = {
+    username: 'x',
+    password: 'RateLimit-Probe-A9',
+    deviceId: 'rate-limit-gate',
+  }
+
+  const statuses = []
+
+  for (let attempt = 1; attempt <= expectedThreshold; attempt += 1) {
+    const result = await postJson('/api/auth/register', invalidRegisterBody)
+    statuses.push(result.status)
+
+    assert.equal(
+      result.status,
+      400,
+      `round ${round} attempt ${attempt} should reach application validation before threshold; got HTTP ${result.status}: ${result.bodyPreview}`,
+    )
+    assert.equal(result.json?.error, 'invalid_username')
+  }
+
+  const blocked = await postJson('/api/auth/register', invalidRegisterBody)
+  statuses.push(blocked.status)
+
+  assert.equal(
+    blocked.status,
+    429,
+    `round ${round} request ${expectedThreshold + 1} should be rate-limited: ${blocked.bodyPreview}`,
+  )
+  assert.equal(blocked.json?.error, 'auth_rate_limited')
+
+  const retryAfter = Number(blocked.retryAfter)
+  assert.ok(
+    Number.isInteger(retryAfter) && retryAfter >= 1 && retryAfter <= 60,
+    `round ${round} invalid Retry-After header: ${blocked.retryAfter}`,
+  )
+
+  const loginAfterTrigger = await postJson('/api/auth/login', {
+    username: 'x',
+    password: 'RateLimit-Probe-A9',
+    deviceId: 'rate-limit-gate',
+  })
+
+  assert.equal(
+    loginAfterTrigger.status,
+    429,
+    `round ${round} login should share register counter: ${loginAfterTrigger.bodyPreview}`,
+  )
+  assert.equal(loginAfterTrigger.json?.error, 'auth_rate_limited')
+
+  const healthAfter = await getJson('/api/health')
+  assert.equal(
+    healthAfter.response.status,
+    200,
+    `round ${round} limiter must not affect /api/health: ${healthAfter.text.slice(0, 200)}`,
+  )
+  assert.equal(healthAfter.json?.ok, true)
+
+  return {
+    round,
+    registerStatuses: statuses,
+    retryAfterSeconds: retryAfter,
+    loginStatusAfterTrigger: loginAfterTrigger.status,
+    healthStatusAfterTrigger: healthAfter.response.status,
+  }
+}
+
+await primeEdgeOneAccessSession()
+await waitForCapability('application-auth-rate-limit-v2')
+
+const healthBefore = await getJson('/api/health')
+assert.equal(healthBefore.response.status, 200)
+assert.equal(healthBefore.json?.ok, true)
+assert.ok(healthBefore.json.capabilities.includes('application-auth-rate-limit-v2'))
+
+const rounds = []
+for (let round = 1; round <= roundsToRun; round += 1) {
+  rounds.push(await runRound(round))
+}
+
+console.log(
   JSON.stringify(
     {
       ok: true,
