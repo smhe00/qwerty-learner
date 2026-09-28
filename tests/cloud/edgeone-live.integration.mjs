@@ -83,6 +83,12 @@ async function fetchWithAccessCookies(url, init = {}) {
   let method = init.method || 'GET'
   let body = init.body
   const baseHeaders = new Headers(init.headers || {})
+  if (!baseHeaders.has('User-Agent')) {
+    baseHeaders.set(
+      'User-Agent',
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/153 Safari/537.36',
+    )
+  }
 
   for (let redirectCount = 0; redirectCount <= 5; redirectCount += 1) {
     const headers = new Headers(baseHeaders)
