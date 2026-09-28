@@ -380,21 +380,21 @@ Backend does not advance to frontend integration until this test passes locally 
 - [x] this authoritative development plan committed
 
 ### P1 — single-session backend
-- [ ] remove JWT/HMAC session logic
-- [ ] remove `APP_SESSION_SECRET`
-- [ ] implement opaque random session token
-- [ ] implement immutable session versions
-- [ ] enforce one current session per account
-- [ ] password change rotates both auth and session
-- [ ] update in-memory storage test double
-- [ ] update full backend contract test
+- [x] remove JWT/HMAC session logic
+- [x] remove `APP_SESSION_SECRET`
+- [x] implement opaque random session token
+- [x] implement immutable session versions
+- [x] enforce one current session per account
+- [x] password change rotates both auth and session
+- [x] update in-memory storage test double
+- [x] update full backend contract test
 
 ### P2 — remove public self-test / runtime secrets
-- [ ] delete `/api/__test/full`
-- [ ] remove `TEST_SECRET`
-- [ ] remove `ENABLE_SELF_TEST`
-- [ ] keep self-test as local/GitHub test code only
-- [ ] update docs/env example
+- [x] delete `/api/__test/full`
+- [x] remove `TEST_SECRET`
+- [x] remove `ENABLE_SELF_TEST`
+- [x] keep self-test as local/GitHub test code only
+- [x] update docs/env example
 
 ### P3 — local static verification
 Required before deployment:

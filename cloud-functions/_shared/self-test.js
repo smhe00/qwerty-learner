@@ -12,6 +12,7 @@ async function expectError(fn, code) {
     assert(error && error.code === code, `Expected ${code}, got ${error && error.code}`)
     return
   }
+
   throw new Error(`Expected ${code}, operation succeeded`)
 }
 
@@ -27,50 +28,66 @@ export async function runBackendSelfTest(service) {
   const pass = (name) => steps.push({ name, ok: true })
 
   let userId = null
-  let success = false
   let primaryError = null
   let cleanup = null
 
   try {
-    const registered = await service.register(username, password1)
+    const registered = await service.register(username, password1, 'register-device')
     userId = registered.user.userId
     assert(registered.token, 'register token missing')
     pass('register')
 
+    const registrationMe = await service.me(registered.token)
+    assert(registrationMe.user.userId === userId, 'registration session invalid')
+    pass('registration-session-valid')
+
     await expectError(() => service.register(username, password1), 'username_taken')
     pass('duplicate-register-rejected')
 
-    await expectError(() => service.login(username, 'Definitely-Wrong-Password'), 'invalid_credentials')
+    await expectError(
+      () => service.login(username, 'Definitely-Wrong-Password'),
+      'invalid_credentials',
+    )
     pass('wrong-password-rejected')
 
-    const login1 = await service.login(username, password1)
-    pass('login')
+    const login1 = await service.login(username, password1, 'device-a')
+    pass('first-login')
 
-    const me = await service.me(login1.token)
+    await expectError(() => service.me(registered.token), 'session_revoked')
+    pass('registration-session-revoked')
+
+    const login2 = await service.login(username, password1, 'device-b')
+    pass('second-login')
+
+    await expectError(() => service.me(login1.token), 'session_revoked')
+    pass('first-login-revoked')
+
+    const me = await service.me(login2.token)
     assert(me.user.userId === userId, 'auth/me mismatch')
-    pass('auth-me')
+    assert(me.session.deviceId === 'device-b', 'latest device id mismatch')
+    pass('auth-me-latest-session')
 
-    const empty = await service.syncMeta(login1.token)
+    const empty = await service.syncMeta(login2.token)
     assert(empty.revision === 0 && empty.hasData === false, 'new account must start at revision 0')
     pass('sync-meta-empty')
 
     const p1 = payload({ generation: 1, words: ['receive', 'necessary'] })
-    const r1 = await service.putSync(login1.token, {
+    const r1 = await service.putSync(login2.token, {
       baseRevision: 0,
       payloadBase64: p1,
-      deviceId: 'self-test-a',
+      deviceId: 'device-b',
       clientFormatVersion: 'test-v1',
     })
     assert(r1.revision === 1, 'first revision must be 1')
     pass('sync-upload-revision-1')
 
-    const d1 = await service.getSync(login1.token)
+    const d1 = await service.getSync(login2.token)
     assert(d1.revision === 1 && d1.payloadBase64 === p1, 'revision 1 download mismatch')
     pass('sync-download-revision-1')
 
     await expectError(
       () =>
-        service.putSync(login1.token, {
+        service.putSync(login2.token, {
           baseRevision: 0,
           payloadBase64: payload({ stale: true }),
         }),
@@ -79,33 +96,42 @@ export async function runBackendSelfTest(service) {
     pass('sync-conflict-detected')
 
     const p2 = payload({ generation: 2, words: ['receive', 'necessary', 'environment'] })
-    const r2 = await service.putSync(login1.token, {
+    const r2 = await service.putSync(login2.token, {
       baseRevision: 1,
       payloadBase64: p2,
-      deviceId: 'self-test-b',
+      deviceId: 'device-b',
       clientFormatVersion: 'test-v1',
     })
     assert(r2.revision === 2, 'second revision must be 2')
     pass('sync-upload-revision-2')
 
-    const changed = await service.changePassword(login1.token, password1, password2)
+    const changed = await service.changePassword(
+      login2.token,
+      password1,
+      password2,
+      'device-b',
+    )
     assert(changed.token, 'password change token missing')
     pass('change-password')
 
-    await expectError(() => service.me(login1.token), 'session_revoked')
-    pass('old-session-revoked')
+    await expectError(() => service.me(login2.token), 'session_revoked')
+    pass('pre-change-session-revoked')
 
     await expectError(() => service.login(username, password1), 'invalid_credentials')
     pass('old-password-rejected')
 
-    const login2 = await service.login(username, password2)
+    const login3 = await service.login(username, password2, 'device-c')
     pass('new-password-login')
 
-    const after = await service.getSync(login2.token)
+    await expectError(() => service.me(changed.token), 'session_revoked')
+    pass('password-change-session-revoked-by-new-login')
+
+    const after = await service.getSync(login3.token)
     assert(after.revision === 2 && after.payloadBase64 === p2, 'sync must survive password change')
     pass('sync-survives-password-change')
 
-    success = true
+    await expectError(() => service.me('not-a-session-token'), 'invalid_token')
+    pass('malformed-token-rejected')
   } catch (error) {
     primaryError = error
   }
@@ -120,5 +146,12 @@ export async function runBackendSelfTest(service) {
 
   if (primaryError) throw primaryError
 
-  return { success, username, userId, stepCount: steps.length, steps, cleanup }
+  return {
+    success: true,
+    username,
+    userId,
+    stepCount: steps.length,
+    steps,
+    cleanup,
+  }
 }

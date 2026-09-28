@@ -2,7 +2,6 @@
 /* global Response */
 import { getStore } from '@edgeone/pages-blob'
 import { AppError, createBackendService } from '../_shared/core.js'
-import { runBackendSelfTest } from '../_shared/self-test.js'
 import { createEdgeOneBlobStorage } from '../_shared/storage/edgeone-blob.js'
 
 function numberEnv(value, fallback) {
@@ -24,25 +23,40 @@ function json(data, status = 200, headers = {}) {
 function bearer(request) {
   const value = request.headers.get('authorization') || ''
   const match = /^Bearer\s+(.+)$/i.exec(value)
-  if (!match) throw new AppError(401, 'missing_token', 'Authorization Bearer token is required')
+
+  if (!match) {
+    throw new AppError(401, 'missing_token', 'Authorization Bearer token is required')
+  }
+
   return match[1]
 }
 
 function corsHeaders(request, configuredOrigin) {
   const origin = request.headers.get('origin') || ''
+
   if (!configuredOrigin || configuredOrigin === '*') {
     return { 'Access-Control-Allow-Origin': '*' }
   }
-  const allowed = configuredOrigin.split(',').map((item) => item.trim()).filter(Boolean)
-  return allowed.includes(origin) ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {}
+
+  const allowed = configuredOrigin
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  return allowed.includes(origin)
+    ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' }
+    : {}
 }
 
 async function readJson(request, maxBytes) {
   const text = await request.text()
+
   if (Buffer.byteLength(text, 'utf8') > maxBytes) {
     throw new AppError(413, 'request_too_large', 'HTTP request body is too large')
   }
+
   if (!text) return {}
+
   try {
     return JSON.parse(text)
   } catch {
@@ -55,9 +69,9 @@ function makeService(env) {
     name: env.BLOB_STORE_NAME || 'qwerty-data',
     consistency: 'strong',
   })
+
   return createBackendService({
     storage: createEdgeOneBlobStorage(store),
-    sessionSecret: env.APP_SESSION_SECRET || '',
     sessionTtlSeconds: numberEnv(env.SESSION_TTL_SECONDS, 7 * 24 * 60 * 60),
     maxSyncBytes: numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024),
   })
@@ -75,7 +89,7 @@ export async function onRequest(context) {
       headers: {
         ...cors,
         'Access-Control-Allow-Methods': 'GET,POST,PUT,OPTIONS',
-        'Access-Control-Allow-Headers': 'Authorization,Content-Type,X-Test-Secret',
+        'Access-Control-Allow-Headers': 'Authorization,Content-Type',
         'Access-Control-Max-Age': '86400',
       },
     })
@@ -84,23 +98,44 @@ export async function onRequest(context) {
   try {
     if (request.method === 'GET' && (path === '/' || path === '/health')) {
       return json(
-        { ok: true, service: 'qwerty-sync-gateway', apiVersion: 1, runtime: process.version },
+        {
+          ok: true,
+          service: 'qwerty-sync-gateway',
+          apiVersion: 1,
+          authMode: 'single-active-session',
+          runtime: process.version,
+        },
         200,
         cors,
       )
     }
 
     const service = makeService(env)
-    const bodyLimit = Math.ceil(numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024) * 1.5) + 256 * 1024
+    const bodyLimit =
+      Math.ceil(numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024) * 1.5) + 256 * 1024
 
     if (request.method === 'POST' && path === '/auth/register') {
       const body = await readJson(request, 64 * 1024)
-      return json({ ok: true, ...(await service.register(body.username, body.password)) }, 201, cors)
+      return json(
+        {
+          ok: true,
+          ...(await service.register(body.username, body.password, body.deviceId)),
+        },
+        201,
+        cors,
+      )
     }
 
     if (request.method === 'POST' && path === '/auth/login') {
       const body = await readJson(request, 64 * 1024)
-      return json({ ok: true, ...(await service.login(body.username, body.password)) }, 200, cors)
+      return json(
+        {
+          ok: true,
+          ...(await service.login(body.username, body.password, body.deviceId)),
+        },
+        200,
+        cors,
+      )
     }
 
     if (request.method === 'GET' && path === '/auth/me') {
@@ -112,7 +147,12 @@ export async function onRequest(context) {
       return json(
         {
           ok: true,
-          ...(await service.changePassword(bearer(request), body.currentPassword, body.newPassword)),
+          ...(await service.changePassword(
+            bearer(request),
+            body.currentPassword,
+            body.newPassword,
+            body.deviceId,
+          )),
         },
         200,
         cors,
@@ -132,16 +172,6 @@ export async function onRequest(context) {
       return json({ ok: true, ...(await service.putSync(bearer(request), body)) }, 200, cors)
     }
 
-    if (request.method === 'POST' && path === '/__test/full') {
-      if (String(env.ENABLE_SELF_TEST || '').toLowerCase() !== 'true' || !env.TEST_SECRET) {
-        throw new AppError(404, 'not_found', 'Not found')
-      }
-      if ((request.headers.get('x-test-secret') || '') !== env.TEST_SECRET) {
-        throw new AppError(403, 'test_forbidden', 'Invalid test secret')
-      }
-      return json({ ok: true, report: await runBackendSelfTest(service) }, 200, cors)
-    }
-
     throw new AppError(404, 'not_found', 'Not found')
   } catch (error) {
     if (error instanceof AppError) {
@@ -158,6 +188,14 @@ export async function onRequest(context) {
     }
 
     console.error('Unhandled cloud API error:', error)
-    return json({ ok: false, error: 'internal_error', message: 'Internal server error' }, 500, cors)
+    return json(
+      {
+        ok: false,
+        error: 'internal_error',
+        message: 'Internal server error',
+      },
+      500,
+      cors,
+    )
   }
 }

@@ -13,6 +13,11 @@ export class AppError extends Error {
 
 const ACCOUNT_SCHEMA_VERSION = 1
 const SNAPSHOT_SCHEMA_VERSION = 1
+const SESSION_SCHEMA_VERSION = 1
+const SESSION_TOKEN_PREFIX = 'qs1'
+const SESSION_RANDOM_BYTES = 32
+const SESSION_CREATE_RETRIES = 8
+
 const SCRYPT_N = 16384
 const SCRYPT_R = 8
 const SCRYPT_P = 1
@@ -35,18 +40,8 @@ function randomHex(bytes) {
   return crypto.randomBytes(bytes).toString('hex')
 }
 
-function base64UrlEncodeBuffer(buffer) {
+function base64UrlEncode(buffer) {
   return buffer.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
-}
-
-function base64UrlEncodeJson(value) {
-  return base64UrlEncodeBuffer(Buffer.from(JSON.stringify(value), 'utf8'))
-}
-
-function base64UrlDecodeToBuffer(value) {
-  let base64 = value.replace(/-/g, '+').replace(/_/g, '/')
-  while (base64.length % 4 !== 0) base64 += '='
-  return Buffer.from(base64, 'base64')
 }
 
 function scryptAsync(password, salt, keyLength) {
@@ -89,6 +84,7 @@ async function createPasswordRecord(password) {
   validatePassword(password)
   const salt = crypto.randomBytes(16).toString('base64')
   const hash = await scryptAsync(password, salt, SCRYPT_KEY_LENGTH)
+
   return {
     algorithm: 'scrypt',
     salt,
@@ -102,8 +98,10 @@ async function createPasswordRecord(password) {
 
 async function verifyPassword(password, record) {
   if (!record || record.algorithm !== 'scrypt' || typeof password !== 'string') return false
+
   const expected = Buffer.from(record.hash || '', 'base64')
   if (!expected.length) return false
+
   const actual = await scryptAsync(password, record.salt, expected.length)
   return actual.length === expected.length && crypto.timingSafeEqual(actual, expected)
 }
@@ -126,99 +124,168 @@ function validatePayloadBase64(payloadBase64, maxSyncBytes) {
       actualBytes: buffer.length,
     })
   }
+
   return buffer
+}
+
+function sanitizeDeviceId(deviceId) {
+  return typeof deviceId === 'string' && deviceId.trim()
+    ? deviceId.trim().slice(0, 128)
+    : null
+}
+
+function createSession(identity, authVersion, version, sessionTtlSeconds, deviceId) {
+  const randomSecret = base64UrlEncode(crypto.randomBytes(SESSION_RANDOM_BYTES))
+  const token = `${SESSION_TOKEN_PREFIX}.${identity.usernameHash}.${randomSecret}`
+  const issuedAt = unixSeconds()
+  const expiresAt = issuedAt + sessionTtlSeconds
+
+  return {
+    token,
+    record: {
+      schemaVersion: SESSION_SCHEMA_VERSION,
+      version,
+      userId: identity.userId,
+      usernameHash: identity.usernameHash,
+      authVersion,
+      tokenHash: sha256Hex(token),
+      deviceId: sanitizeDeviceId(deviceId),
+      createdAt: nowIso(),
+      issuedAt,
+      expiresAt,
+    },
+    expiresAt,
+    expiresIn: sessionTtlSeconds,
+  }
+}
+
+function parseSessionToken(token) {
+  if (typeof token !== 'string') {
+    throw new AppError(401, 'invalid_token', 'Invalid session token')
+  }
+
+  const parts = token.split('.')
+  if (
+    parts.length !== 3 ||
+    parts[0] !== SESSION_TOKEN_PREFIX ||
+    !/^[a-f0-9]{64}$/.test(parts[1]) ||
+    !/^[A-Za-z0-9_-]{40,64}$/.test(parts[2])
+  ) {
+    throw new AppError(401, 'invalid_token', 'Invalid session token')
+  }
+
+  return {
+    usernameHash: parts[1],
+    tokenHash: sha256Hex(token),
+  }
+}
+
+function secureHexEqual(left, right) {
+  if (
+    typeof left !== 'string' ||
+    typeof right !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(left) ||
+    !/^[a-f0-9]{64}$/.test(right)
+  ) {
+    return false
+  }
+
+  return crypto.timingSafeEqual(Buffer.from(left, 'hex'), Buffer.from(right, 'hex'))
 }
 
 export function createBackendService({
   storage,
-  sessionSecret,
   sessionTtlSeconds = 7 * 24 * 60 * 60,
   maxSyncBytes = 4 * 1024 * 1024,
 }) {
   if (!storage) throw new Error('storage is required')
-  if (typeof sessionSecret !== 'string' || sessionSecret.length < 32) {
-    throw new Error('APP_SESSION_SECRET must contain at least 32 characters')
-  }
 
   async function getCurrentAuth(identity) {
     const latest = await storage.getLatestAuth(identity.usernameHash)
     return latest || identity.initialAuth
   }
 
-  function issueSession(identity, authVersion) {
-    const issuedAt = unixSeconds()
-    const payload = {
-      iss: 'qwerty-sync-gateway',
-      sub: identity.userId,
-      uah: identity.usernameHash,
-      av: authVersion,
-      iat: issuedAt,
-      exp: issuedAt + sessionTtlSeconds,
-    }
-    const headerPart = base64UrlEncodeJson({ alg: 'HS256', typ: 'JWT' })
-    const payloadPart = base64UrlEncodeJson(payload)
-    const signingInput = `${headerPart}.${payloadPart}`
-    const signature = crypto.createHmac('sha256', sessionSecret).update(signingInput).digest()
-    return {
-      token: `${signingInput}.${base64UrlEncodeBuffer(signature)}`,
-      expiresAt: payload.exp,
-      expiresIn: sessionTtlSeconds,
-    }
+  async function getCurrentSession(identity) {
+    const latest = await storage.getLatestSession(identity.usernameHash)
+    return latest || identity.initialSession
   }
 
-  function verifyTokenSignature(token) {
-    if (typeof token !== 'string') throw new AppError(401, 'invalid_token', 'Invalid session token')
-    const parts = token.split('.')
-    if (parts.length !== 3) throw new AppError(401, 'invalid_token', 'Invalid session token')
+  async function issueNextSession(identity, authVersion, deviceId) {
+    for (let attempt = 0; attempt < SESSION_CREATE_RETRIES; attempt += 1) {
+      const current = await getCurrentSession(identity)
+      const nextVersion = (current ? current.version : 0) + 1
+      const candidate = createSession(
+        identity,
+        authVersion,
+        nextVersion,
+        sessionTtlSeconds,
+        deviceId,
+      )
 
-    const signingInput = `${parts[0]}.${parts[1]}`
-    const expected = crypto.createHmac('sha256', sessionSecret).update(signingInput).digest()
-    let actual
-    let payload
+      const created = await storage.createSessionVersion(
+        identity.usernameHash,
+        nextVersion,
+        candidate.record,
+      )
 
-    try {
-      actual = base64UrlDecodeToBuffer(parts[2])
-      payload = JSON.parse(base64UrlDecodeToBuffer(parts[1]).toString('utf8'))
-    } catch {
-      throw new AppError(401, 'invalid_token', 'Invalid session token')
+      if (created) {
+        return {
+          token: candidate.token,
+          expiresAt: candidate.expiresAt,
+          expiresIn: candidate.expiresIn,
+        }
+      }
     }
 
-    if (expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) {
-      throw new AppError(401, 'invalid_token', 'Invalid session token')
-    }
-    if (
-      !payload ||
-      payload.iss !== 'qwerty-sync-gateway' ||
-      typeof payload.sub !== 'string' ||
-      typeof payload.uah !== 'string' ||
-      typeof payload.av !== 'number'
-    ) {
-      throw new AppError(401, 'invalid_token', 'Invalid session token')
-    }
-    if (typeof payload.exp !== 'number' || payload.exp < unixSeconds()) {
-      throw new AppError(401, 'session_expired', 'Session has expired')
-    }
-    return payload
+    throw new AppError(
+      409,
+      'session_update_conflict',
+      'Concurrent login activity prevented session creation; please retry',
+    )
   }
 
   async function authenticate(token) {
-    const payload = verifyTokenSignature(token)
-    const identity = await storage.getAccount(payload.uah)
-    if (!identity || identity.status !== 'active' || identity.userId !== payload.sub) {
-      throw new AppError(401, 'session_revoked', 'Session is no longer valid')
+    const parsed = parseSessionToken(token)
+    const identity = await storage.getAccount(parsed.usernameHash)
+
+    if (!identity || identity.status !== 'active') {
+      throw new AppError(401, 'invalid_token', 'Invalid session token')
     }
+
+    const currentSession = await getCurrentSession(identity)
+    if (
+      !currentSession ||
+      currentSession.userId !== identity.userId ||
+      currentSession.usernameHash !== identity.usernameHash ||
+      !secureHexEqual(currentSession.tokenHash, parsed.tokenHash)
+    ) {
+      throw new AppError(401, 'session_revoked', 'Session is no longer current')
+    }
+
+    if (
+      typeof currentSession.expiresAt !== 'number' ||
+      currentSession.expiresAt <= unixSeconds()
+    ) {
+      throw new AppError(401, 'session_expired', 'Session has expired')
+    }
+
     const currentAuth = await getCurrentAuth(identity)
-    if (!currentAuth || currentAuth.version !== payload.av) {
+    if (!currentAuth || currentSession.authVersion !== currentAuth.version) {
       throw new AppError(401, 'session_revoked', 'Session is no longer valid')
     }
-    return { payload, identity, currentAuth }
+
+    return { identity, currentAuth, currentSession }
   }
 
   function publicUser(identity) {
-    return { userId: identity.userId, username: identity.username, createdAt: identity.createdAt }
+    return {
+      userId: identity.userId,
+      username: identity.username,
+      createdAt: identity.createdAt,
+    }
   }
 
-  async function register(usernameInput, password) {
+  async function register(usernameInput, password, deviceId) {
     const { username, normalizedUsername } = normalizeUsername(usernameInput)
     validatePassword(password)
 
@@ -228,25 +295,45 @@ export function createBackendService({
       password: await createPasswordRecord(password),
       createdAt: nowIso(),
     }
-    const identity = {
+
+    const identityBase = {
       schemaVersion: ACCOUNT_SCHEMA_VERSION,
       userId: randomHex(16),
       username,
       normalizedUsername,
       usernameHash,
-      initialAuth,
       status: 'active',
       createdAt: nowIso(),
     }
 
-    const created = await storage.createAccount(usernameHash, identity)
-    if (!created) throw new AppError(409, 'username_taken', 'Username is already registered')
+    const initialSession = createSession(
+      identityBase,
+      initialAuth.version,
+      1,
+      sessionTtlSeconds,
+      deviceId,
+    )
 
-    const session = issueSession(identity, 1)
-    return { user: publicUser(identity), ...session }
+    const identity = {
+      ...identityBase,
+      initialAuth,
+      initialSession: initialSession.record,
+    }
+
+    const created = await storage.createAccount(usernameHash, identity)
+    if (!created) {
+      throw new AppError(409, 'username_taken', 'Username is already registered')
+    }
+
+    return {
+      user: publicUser(identity),
+      token: initialSession.token,
+      expiresAt: initialSession.expiresAt,
+      expiresIn: initialSession.expiresIn,
+    }
   }
 
-  async function login(usernameInput, password) {
+  async function login(usernameInput, password, deviceId) {
     const { normalizedUsername } = normalizeUsername(usernameInput)
     const usernameHash = sha256Hex(normalizedUsername)
     const identity = await storage.getAccount(usernameHash)
@@ -260,16 +347,24 @@ export function createBackendService({
       throw new AppError(401, 'invalid_credentials', 'Invalid username or password')
     }
 
-    const session = issueSession(identity, currentAuth.version)
+    const session = await issueNextSession(identity, currentAuth.version, deviceId)
     return { user: publicUser(identity), ...session }
   }
 
   async function me(token) {
-    const { identity } = await authenticate(token)
-    return { user: publicUser(identity) }
+    const { identity, currentSession } = await authenticate(token)
+
+    return {
+      user: publicUser(identity),
+      session: {
+        version: currentSession.version,
+        deviceId: currentSession.deviceId || null,
+        expiresAt: currentSession.expiresAt,
+      },
+    }
   }
 
-  async function changePassword(token, currentPassword, newPassword) {
+  async function changePassword(token, currentPassword, newPassword, deviceId) {
     const { identity, currentAuth } = await authenticate(token)
     validatePassword(newPassword)
 
@@ -282,12 +377,22 @@ export function createBackendService({
       password: await createPasswordRecord(newPassword),
       createdAt: nowIso(),
     }
-    const created = await storage.createAuthVersion(identity.usernameHash, nextAuth.version, nextAuth)
+
+    const created = await storage.createAuthVersion(
+      identity.usernameHash,
+      nextAuth.version,
+      nextAuth,
+    )
+
     if (!created) {
-      throw new AppError(409, 'account_update_conflict', 'Account changed concurrently, please retry')
+      throw new AppError(
+        409,
+        'account_update_conflict',
+        'Account changed concurrently, please retry',
+      )
     }
 
-    const session = issueSession(identity, nextAuth.version)
+    const session = await issueNextSession(identity, nextAuth.version, deviceId)
     return { user: publicUser(identity), ...session }
   }
 
@@ -303,6 +408,7 @@ export function createBackendService({
         clientFormatVersion: null,
       }
     }
+
     return {
       hasData: true,
       revision: snapshot.revision,
@@ -325,7 +431,11 @@ export function createBackendService({
     const current = await storage.getLatestRevision(identity.userId)
 
     if (!current) {
-      return { ...metaFromSnapshot(null), payloadEncoding: 'base64', payloadBase64: null }
+      return {
+        ...metaFromSnapshot(null),
+        payloadEncoding: 'base64',
+        payloadBase64: null,
+      }
     }
 
     return {
@@ -338,8 +448,13 @@ export function createBackendService({
   async function putSync(token, input = {}) {
     const { identity } = await authenticate(token)
     const baseRevision = Number(input.baseRevision)
+
     if (!Number.isInteger(baseRevision) || baseRevision < 0) {
-      throw new AppError(400, 'invalid_base_revision', 'baseRevision must be a non-negative integer')
+      throw new AppError(
+        400,
+        'invalid_base_revision',
+        'baseRevision must be a non-negative integer',
+      )
     }
 
     const payload = validatePayloadBase64(input.payloadBase64, maxSyncBytes)
@@ -361,7 +476,7 @@ export function createBackendService({
       dataSha256: crypto.createHash('sha256').update(payload).digest('hex'),
       payloadEncoding: 'base64',
       payloadBase64: input.payloadBase64,
-      deviceId: typeof input.deviceId === 'string' ? input.deviceId.slice(0, 128) : null,
+      deviceId: sanitizeDeviceId(input.deviceId),
       clientFormatVersion:
         input.clientFormatVersion === undefined || input.clientFormatVersion === null
           ? null
@@ -383,7 +498,16 @@ export function createBackendService({
     const { normalizedUsername } = normalizeUsername(usernameInput)
     const usernameHash = sha256Hex(normalizedUsername)
     const identity = await storage.getAccount(usernameHash)
-    if (!identity) return { accountDeleted: false, revisionsDeleted: 0, authDeleted: 0 }
+
+    if (!identity) {
+      return {
+        accountDeleted: false,
+        authDeleted: 0,
+        sessionsDeleted: 0,
+        revisionsDeleted: 0,
+      }
+    }
+
     return storage.deleteUserData(usernameHash, identity.userId)
   }
 

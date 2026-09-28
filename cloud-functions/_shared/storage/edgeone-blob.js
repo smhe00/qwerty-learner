@@ -14,6 +14,14 @@ export function createEdgeOneBlobStorage(store) {
     return `${authPrefix(usernameHash)}${String(version).padStart(12, '0')}.json`
   }
 
+  function sessionPrefix(usernameHash) {
+    return `accounts/${usernameHash}/sessions/`
+  }
+
+  function sessionKey(usernameHash, version) {
+    return `${sessionPrefix(usernameHash)}${String(version).padStart(12, '0')}.json`
+  }
+
   function revisionPrefix(userId) {
     return `users/${userId}/revisions/`
   }
@@ -45,10 +53,13 @@ export function createEdgeOneBlobStorage(store) {
     for (const blob of blobs) {
       const version = parseVersion(blob.key)
       if (version === null) continue
-      if (!latest || version > latest.version) latest = { version, key: blob.key }
+      if (!latest || version > latest.version) {
+        latest = { version, key: blob.key }
+      }
     }
 
     if (!latest) return null
+
     const value = await strongJson(latest.key)
     return value === null ? null : { version: latest.version, value }
   }
@@ -77,6 +88,15 @@ export function createEdgeOneBlobStorage(store) {
       return latest ? latest.value : null
     },
 
+    async createSessionVersion(usernameHash, version, record) {
+      return setJsonOnlyIfNew(sessionKey(usernameHash, version), record)
+    },
+
+    async getLatestSession(usernameHash) {
+      const latest = await latestObject(sessionPrefix(usernameHash))
+      return latest ? latest.value : null
+    },
+
     async createRevision(userId, revision, snapshot) {
       return setJsonOnlyIfNew(revisionKey(userId, revision), snapshot)
     },
@@ -87,13 +107,23 @@ export function createEdgeOneBlobStorage(store) {
     },
 
     async deleteUserData(usernameHash, userId) {
-      const [authDeleted, revisionsDeleted] = await Promise.all([
+      const [authDeleted, sessionsDeleted, revisionsDeleted] = await Promise.all([
         deletePrefix(authPrefix(usernameHash)),
+        deletePrefix(sessionPrefix(usernameHash)),
         deletePrefix(revisionPrefix(userId)),
       ])
+
       const account = await strongJson(accountKey(usernameHash))
-      if (account !== null) await store.delete(accountKey(usernameHash))
-      return { accountDeleted: account !== null, authDeleted, revisionsDeleted }
+      if (account !== null) {
+        await store.delete(accountKey(usernameHash))
+      }
+
+      return {
+        accountDeleted: account !== null,
+        authDeleted,
+        sessionsDeleted,
+        revisionsDeleted,
+      }
     },
   }
 }

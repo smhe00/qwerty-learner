@@ -1,59 +1,88 @@
 # 云账号与同步使用说明
 
-> 当前文档描述正在开发的 EdgeOne 云同步能力。后端 API 稳定后再接入 Qwerty UI。
+> 当前为后端开发阶段。实施状态以 `docs/CLOUD_SYNC_DEVELOPMENT_PLAN.md` 为准。
 
-## 使用原则
+## 基本原则
 
-Qwerty 仍然是 local-first 应用。
+Qwerty 仍然是 local-first 应用：
 
-- 不登录：可以正常学习，数据只在当前浏览器 IndexedDB。
-- 登录：增加云备份和多设备同步。
-- 网络断开：本地学习不受影响。
-- 恢复网络后：再执行同步。
+- 不登录也能正常学习；
+- 登录只增加云备份和跨设备能力；
+- 本地 IndexedDB 是工作数据库；
+- 网络中断不会阻止学习。
 
-## 账号
+## 账号与在线设备
 
-用户使用容易记忆的“用户名 + 密码”。
+用户使用用户名和密码登录。
 
-密码不会明文保存。服务端只保存 scrypt 的 salt/hash。
+V1 采用 **一个账号只保留一个有效云会话**：
 
-修改密码后，旧登录 Session 会自动失效。
+- 在设备 A 登录；
+- 随后在设备 B 成功登录；
+- B 成为当前有效会话；
+- A 的本地数据不会被删除，但 A 再访问云 API 时会收到会话失效，需要重新登录。
 
-## 多设备
+这减少了两台设备同时写云端造成的复杂冲突。
 
-同一账号可以在多台电脑登录。
+## 密码和 Session
 
-每次上传带当前远端 revision。若另一台设备已经更新远端，旧设备上传会收到 `sync_conflict`，客户端必须先拉取、合并，再提交下一 revision。
+密码不会明文保存，服务端只保存 scrypt salt/hash。
 
-因此服务端不采用 last-write-wins。
+Session token 是每次登录随机生成的 256-bit opaque token。
 
-## 云端保存内容
+服务端只保存 token 的 SHA256，不保存 token 原文。
 
-后端保存账号身份、密码 hash 和 opaque 同步 payload。
+系统不使用 JWT，因此无需 `APP_SESSION_SECRET`。
 
-后端不解析具体单词、错题、Telemetry、Review scheduler 数据。
+修改密码后会产生新的 auth/session version，旧 session 自动失效。
 
-未来前端会在上传前对 IndexedDB 快照进行压缩和客户端加密。
+## 同步
 
-## 隐私
-
-真实 Secret 不进入 GitHub。GitHub 只保存 `.env.example` 中的变量名。
-
-正式环境至少需要：
-
-```text
-APP_SESSION_SECRET
-BLOB_STORE_NAME
-SESSION_TTL_SECONDS
-MAX_SYNC_BYTES
-CORS_ORIGIN
-```
-
-完整自测只在开发期间开启：
+云端仍保留递增 revision：
 
 ```text
-ENABLE_SELF_TEST=true
-TEST_SECRET=...
+0 → 1 → 2 → 3 ...
 ```
 
-上线后必须关闭。
+即使只有一个 active session，也需要 revision 防止：
+
+- 多浏览器 tab；
+- 请求重复发送；
+- 网络 retry；
+- 请求乱序。
+
+如果客户端携带的 `baseRevision` 不是当前远端 revision，服务端返回 `sync_conflict`，不会静默覆盖。
+
+## 离线数据冲突
+
+单 session 不能消除“旧设备离线学习”造成的分叉。
+
+如果本地存在未同步修改，同时云端 revision 已经前进，第一版不会自动合并，也不会自动覆盖。
+
+后续 UI 会明确让用户选择保留/导出本地数据或采用云端数据。
+
+## 云端保存什么
+
+EdgeOne Blob 保存：
+
+- 账号 identity；
+- password hash versions；
+- session hash versions；
+- opaque sync snapshots。
+
+后端不解析具体单词、错题、Review scheduler 或 telemetry。
+
+未来快照由浏览器执行压缩和客户端加密后再上传。
+
+## 运行配置
+
+V1 不需要人为生成 Secret。
+
+```text
+SESSION_TTL_SECONDS=604800
+MAX_SYNC_BYTES=4194304
+BLOB_STORE_NAME=qwerty-data
+CORS_ORIGIN=*
+```
+
+GitHub 不保存真实用户数据或 session token。
