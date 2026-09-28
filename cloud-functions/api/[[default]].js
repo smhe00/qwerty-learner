@@ -1,9 +1,6 @@
 /* eslint-env node */
 import { getStore } from '@edgeone/pages-blob'
-import {
-  AuthRateLimitStorageError,
-  checkAuthRateLimit,
-} from '../_shared/auth-rate-limit.js'
+import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
 import { AppError, createBackendService } from '../_shared/core.js'
 import { createEdgeOneBlobStorage } from '../_shared/storage/edgeone-blob.js'
 
@@ -119,42 +116,12 @@ async function enforceAuthRateLimit(context, storage, env, cors) {
     )
   }
 
-  let result
-
-  try {
-    result = await checkAuthRateLimit({
-      storage,
-      clientIp,
-      requestLimit: numberEnv(env.AUTH_RATE_LIMIT_REQUESTS, 10),
-      windowSeconds: numberEnv(env.AUTH_RATE_LIMIT_WINDOW_SECONDS, 60),
-    })
-  } catch (error) {
-    if (error instanceof AuthRateLimitStorageError) {
-      console.error(
-        JSON.stringify({
-          event: 'auth_rate_limit_storage_unavailable',
-          stage: error.stage,
-          errorName: error.originalName,
-          errorCode: error.originalCode,
-        }),
-      )
-
-      return json(
-        {
-          ok: false,
-          error: 'auth_rate_limit_unavailable',
-          message: 'Authentication is temporarily unavailable; please retry shortly',
-        },
-        503,
-        {
-          ...cors,
-          'Retry-After': '5',
-        },
-      )
-    }
-
-    throw error
-  }
+  const result = await checkAuthRateLimit({
+    storage,
+    clientIp,
+    requestLimit: numberEnv(env.AUTH_RATE_LIMIT_REQUESTS, 10),
+    windowSeconds: numberEnv(env.AUTH_RATE_LIMIT_WINDOW_SECONDS, 60),
+  })
 
   if (result.allowed) return null
 
@@ -209,6 +176,7 @@ export async function onRequest(context) {
             'same-origin-cors-default-v1',
             'application-auth-rate-limit-v1',
             'application-auth-rate-limit-v2',
+            'hybrid-auth-rate-limit-v3',
           ],
         },
         200,

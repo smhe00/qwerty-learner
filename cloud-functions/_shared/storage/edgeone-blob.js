@@ -34,12 +34,8 @@ export function createEdgeOneBlobStorage(store) {
     return `rate-limit/auth/${clientKey}/windows/`
   }
 
-  function authRateLimitWindowPrefix(clientKey, windowStart) {
-    return `${authRateLimitPrefix(clientKey)}${windowStart}/`
-  }
-
-  function authRateLimitSlotKey(clientKey, windowStart, slot) {
-    return `${authRateLimitWindowPrefix(clientKey, windowStart)}slot-${String(slot).padStart(3, '0')}.json`
+  function authRateLimitCounterKey(clientKey, windowStart) {
+    return `${authRateLimitPrefix(clientKey)}${windowStart}.json`
   }
 
   function parseVersion(key) {
@@ -47,13 +43,8 @@ export function createEdgeOneBlobStorage(store) {
     return match ? Number(match[1]) : null
   }
 
-  function parseRateLimitSlot(key) {
-    const match = /\/slot-(\d+)\.json$/.exec(key)
-    return match ? Number(match[1]) : null
-  }
-
-  function parseRateLimitWindow(key) {
-    const match = /\/windows\/(\d+)\//.exec(key)
+  function parseRateLimitCounterWindow(key) {
+    const match = /\/windows\/(\d+)\.json$/.exec(key)
     return match ? Number(match[1]) : null
   }
 
@@ -174,30 +165,19 @@ export function createEdgeOneBlobStorage(store) {
       }
     },
 
-    async listAuthRateLimitSlots(clientKey, windowStart) {
-      const { blobs = [] } = await store.list({
-        prefix: authRateLimitWindowPrefix(clientKey, windowStart),
-        consistency: 'strong',
-      })
-
-      return blobs
-        .map((blob) => parseRateLimitSlot(blob.key))
-        .filter((slot) => slot !== null)
-        .sort((left, right) => left - right)
+    async getAuthRateLimitCounter(clientKey, windowStart) {
+      return strongJson(authRateLimitCounterKey(clientKey, windowStart))
     },
 
-    async claimAuthRateLimitSlot(clientKey, windowStart, slot, record) {
-      return setJsonOnlyIfNew(
-        authRateLimitSlotKey(clientKey, windowStart, slot),
-        record,
-      )
+    async setAuthRateLimitCounter(clientKey, windowStart, record) {
+      await store.setJSON(authRateLimitCounterKey(clientKey, windowStart), record)
     },
 
-    async pruneAuthRateLimitWindows(clientKey, minWindowStart) {
+    async pruneAuthRateLimitCounters(clientKey, minWindowStart) {
       const prefix = authRateLimitPrefix(clientKey)
       const { blobs = [] } = await store.list({ prefix, consistency: 'strong' })
       const obsolete = blobs.filter((blob) => {
-        const windowStart = parseRateLimitWindow(blob.key)
+        const windowStart = parseRateLimitCounterWindow(blob.key)
         return windowStart !== null && windowStart < minWindowStart
       })
 

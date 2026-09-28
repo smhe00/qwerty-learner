@@ -1,27 +1,18 @@
 /* eslint-env node */
 import crypto from 'node:crypto'
 
-const RATE_LIMIT_SCHEMA_VERSION = 1
+const RATE_LIMIT_SCHEMA_VERSION = 2
 const CLIENT_KEY_NAMESPACE = 'qwerty-auth-rate-v1'
-const MAX_CLAIM_RETRIES = 16
-const STORAGE_RETRY_DELAYS_MS = [0, 100, 250, 500]
+const STORAGE_RETRY_DELAYS_MS = [0, 100, 250]
+const MAX_LOCAL_CLIENTS = 8192
 
-export class AuthRateLimitStorageError extends Error {
-  constructor(stage, error) {
-    super('Authentication rate-limit storage is temporarily unavailable')
-    this.name = 'AuthRateLimitStorageError'
-    this.stage = stage
-    this.originalName = error instanceof Error ? error.name : 'UnknownError'
-    this.originalCode =
-      error && typeof error === 'object' && 'code' in error ? String(error.code) : null
-  }
-}
+const localCounters = new Map()
 
 function sleep(ms) {
   return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve()
 }
 
-async function withStorageRetry(stage, operation) {
+async function withStorageRetry(operation) {
   let lastError
 
   for (const delayMs of STORAGE_RETRY_DELAYS_MS) {
@@ -34,7 +25,7 @@ async function withStorageRetry(stage, operation) {
     }
   }
 
-  throw new AuthRateLimitStorageError(stage, lastError)
+  throw lastError
 }
 
 function clientKey(clientIp) {
@@ -48,33 +39,112 @@ function retryAfterSeconds(nowSeconds, windowStart, windowSeconds) {
   return Math.max(1, windowStart + windowSeconds - nowSeconds)
 }
 
-function firstAvailableSlot(slots, requestLimit) {
-  const occupied = new Set(slots)
-  for (let slot = 1; slot <= requestLimit + 1; slot += 1) {
-    if (!occupied.has(slot)) return slot
+function pruneLocalCounters(currentWindowStart, windowSeconds) {
+  if (localCounters.size <= MAX_LOCAL_CLIENTS) return
+
+  const oldestAllowedWindow = currentWindowStart - windowSeconds
+
+  for (const [key, value] of localCounters.entries()) {
+    if (value.windowStart < oldestAllowedWindow) {
+      localCounters.delete(key)
+    }
   }
-  return null
+
+  while (localCounters.size > MAX_LOCAL_CLIENTS) {
+    const firstKey = localCounters.keys().next().value
+    if (firstKey === undefined) break
+    localCounters.delete(firstKey)
+  }
 }
 
-async function bestEffortPrune(storage, key, minWindowStart) {
-  if (typeof storage.pruneAuthRateLimitWindows !== 'function') return
+function incrementLocalCounter(key, windowStart, windowSeconds) {
+  const current = localCounters.get(key)
+
+  if (!current || current.windowStart !== windowStart) {
+    const next = { windowStart, count: 1 }
+    localCounters.set(key, next)
+    pruneLocalCounters(windowStart, windowSeconds)
+    return next.count
+  }
+
+  current.count += 1
+  return current.count
+}
+
+async function bestEffortSharedCount({
+  storage,
+  key,
+  windowStart,
+  countFloor,
+  nowMs,
+  windowSeconds,
+}) {
+  if (
+    typeof storage?.getAuthRateLimitCounter !== 'function' ||
+    typeof storage?.setAuthRateLimitCounter !== 'function'
+  ) {
+    return null
+  }
 
   try {
-    await withStorageRetry('prune', () =>
-      storage.pruneAuthRateLimitWindows(key, minWindowStart),
+    const current = await withStorageRetry(() =>
+      storage.getAuthRateLimitCounter(key, windowStart),
     )
+
+    const previousCount =
+      current &&
+      current.windowStart === windowStart &&
+      Number.isInteger(current.count) &&
+      current.count >= 0
+        ? current.count
+        : 0
+
+    const nextCount = Math.max(previousCount + 1, countFloor)
+
+    await withStorageRetry(() =>
+      storage.setAuthRateLimitCounter(key, windowStart, {
+        schemaVersion: RATE_LIMIT_SCHEMA_VERSION,
+        windowStart,
+        count: nextCount,
+        updatedAt: new Date(Number(nowMs)).toISOString(),
+      }),
+    )
+
+    if (countFloor === 1 && typeof storage.pruneAuthRateLimitCounters === 'function') {
+      storage
+        .pruneAuthRateLimitCounters(key, windowStart - windowSeconds)
+        .catch((error) => {
+          console.error(
+            JSON.stringify({
+              event: 'auth_rate_limit_cleanup_failed',
+              errorName: error instanceof Error ? error.name : 'UnknownError',
+              errorCode:
+                error && typeof error === 'object' && 'code' in error
+                  ? String(error.code)
+                  : null,
+            }),
+          )
+        })
+    }
+
+    return nextCount
   } catch (error) {
-    console.error(
+    console.warn(
       JSON.stringify({
-        event: 'auth_rate_limit_cleanup_failed',
+        event: 'auth_rate_limit_shared_storage_unavailable',
         errorName: error instanceof Error ? error.name : 'UnknownError',
         errorCode:
-          error && typeof error === 'object' && 'originalCode' in error
-            ? error.originalCode
+          error && typeof error === 'object' && 'code' in error
+            ? String(error.code)
             : null,
       }),
     )
+    return null
   }
+}
+
+export function resetAuthRateLimitMemoryForTest() {
+  localCounters.clear()
 }
 
 export async function checkAuthRateLimit({
@@ -84,7 +154,6 @@ export async function checkAuthRateLimit({
   windowSeconds = 60,
   nowMs = Date.now(),
 }) {
-  if (!storage) throw new Error('storage is required')
   if (typeof clientIp !== 'string' || !clientIp.trim()) {
     throw new Error('clientIp is required')
   }
@@ -94,75 +163,48 @@ export async function checkAuthRateLimit({
   if (!Number.isInteger(windowSeconds) || windowSeconds < 1) {
     throw new Error('windowSeconds must be a positive integer')
   }
-  if (
-    typeof storage.listAuthRateLimitSlots !== 'function' ||
-    typeof storage.claimAuthRateLimitSlot !== 'function'
-  ) {
-    throw new Error('storage does not implement auth rate-limit operations')
-  }
 
-  const normalizedIp = clientIp.trim()
-  const key = clientKey(normalizedIp)
+  const key = clientKey(clientIp.trim())
   const nowSeconds = Math.floor(Number(nowMs) / 1000)
   const windowStart = Math.floor(nowSeconds / windowSeconds) * windowSeconds
   const retryAfter = retryAfterSeconds(nowSeconds, windowStart, windowSeconds)
-  const sentinelSlot = requestLimit + 1
 
-  for (let attempt = 0; attempt < MAX_CLAIM_RETRIES; attempt += 1) {
-    const slots = await withStorageRetry('list', () =>
-      storage.listAuthRateLimitSlots(key, windowStart),
-    )
+  const localCount = incrementLocalCounter(key, windowStart, windowSeconds)
 
-    if (slots.includes(sentinelSlot)) {
-      return {
-        allowed: false,
-        retryAfterSeconds: retryAfter,
-        windowStart,
-      }
-    }
-
-    const slot = firstAvailableSlot(slots, requestLimit)
-    if (slot === null) {
-      return {
-        allowed: false,
-        retryAfterSeconds: retryAfter,
-        windowStart,
-      }
-    }
-
-    const created = await withStorageRetry('claim', () =>
-      storage.claimAuthRateLimitSlot(key, windowStart, slot, {
-        schemaVersion: RATE_LIMIT_SCHEMA_VERSION,
-        slot,
-        windowStart,
-        createdAt: new Date(Number(nowMs)).toISOString(),
-      }),
-    )
-
-    if (!created) continue
-
-    if (slot === 1) {
-      await bestEffortPrune(storage, key, windowStart - windowSeconds)
-    }
-
-    if (slot > requestLimit) {
-      return {
-        allowed: false,
-        retryAfterSeconds: retryAfter,
-        windowStart,
-      }
-    }
-
+  if (localCount > requestLimit) {
     return {
-      allowed: true,
-      remaining: requestLimit - slot,
+      allowed: false,
+      retryAfterSeconds: retryAfter,
       windowStart,
+      source: 'local',
     }
   }
 
-  return {
-    allowed: false,
-    retryAfterSeconds: retryAfter,
+  const sharedCount = await bestEffortSharedCount({
+    storage,
+    key,
     windowStart,
+    countFloor: localCount,
+    nowMs,
+    windowSeconds,
+  })
+
+  if (sharedCount !== null && sharedCount > requestLimit) {
+    return {
+      allowed: false,
+      retryAfterSeconds: retryAfter,
+      windowStart,
+      source: 'shared',
+    }
+  }
+
+  const effectiveCount =
+    sharedCount === null ? localCount : Math.max(localCount, sharedCount)
+
+  return {
+    allowed: true,
+    remaining: Math.max(0, requestLimit - effectiveCount),
+    windowStart,
+    source: sharedCount === null ? 'local' : 'hybrid',
   }
 }

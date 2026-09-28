@@ -266,12 +266,12 @@ async function runRound(round) {
 }
 
 await primeEdgeOneAccessSession()
-await waitForCapability('application-auth-rate-limit-v2')
+await waitForCapability('hybrid-auth-rate-limit-v3')
 
 const healthBefore = await getJson('/api/health')
 assert.equal(healthBefore.response.status, 200)
 assert.equal(healthBefore.json?.ok, true)
-assert.ok(healthBefore.json.capabilities.includes('application-auth-rate-limit-v2'))
+assert.ok(healthBefore.json.capabilities.includes('hybrid-auth-rate-limit-v3'))
 
 const rounds = []
 for (let round = 1; round <= roundsToRun; round += 1) {
@@ -282,7 +282,7 @@ console.log(
   JSON.stringify(
     {
       ok: true,
-      limiter: 'application-auth-rate-limit-v2',
+      limiter: 'hybrid-auth-rate-limit-v3',
       expectedThreshold,
       rounds,
     },
