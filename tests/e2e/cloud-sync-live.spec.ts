@@ -53,6 +53,228 @@ async function addLocalWordRecord(page: Page, suffix: string) {
   }, suffix)
 }
 
+async function addReviewCloudFixture(page: Page) {
+  await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const transaction = database.transaction(
+          ['wordRecords', 'reviewRecords', 'reviewWordStates'],
+          'readwrite',
+        )
+
+        transaction.objectStore('wordRecords').add({
+          word: 'edgeone-e2e-baseline',
+          timeStamp: 1_800_000_000,
+          dict: 'cet4',
+          chapter: -1,
+          timing: [120, 140, 160],
+          wrongCount: 2,
+          mistakes: {
+            1: ['x', 'c'],
+          },
+          typingTelemetry: {
+            telemetryVersion: 2,
+            firstKeyLatencyMs: 850,
+            attempts: [
+              {
+                startLatencyMs: 850,
+                durationMs: 920,
+                correctPrefixLength: 1,
+                result: 'wrong',
+                wrongIndex: 1,
+                wrongKey: 'x',
+                interKeyIntervalsMs: [120, 140],
+              },
+              {
+                startLatencyMs: 210,
+                durationMs: 780,
+                correctPrefixLength: 20,
+                result: 'correct',
+                interKeyIntervalsMs: [90, 110],
+              },
+            ],
+            backgroundPauseMs: 1200,
+            backgroundPauseCount: 1,
+          },
+          learningContext: {
+            version: 1,
+            answerVisibilityAtStart: 'hidden',
+            answerVisibleRatioAtStart: 0,
+            answerRevealed: false,
+            revealedBeforeFirstKey: false,
+            revealCount: 0,
+            meaningVisibleAtStart: true,
+            pronunciationEnabledAtStart: true,
+            pronunciationPlayed: true,
+            pronunciationPlayedBeforeFirstKey: true,
+            pronunciationPlayCount: 1,
+            pronunciationAutomaticPlayCount: 1,
+            pronunciationRequestedPlayCount: 0,
+          },
+        })
+
+        transaction.objectStore('reviewWordStates').add({
+          dict: 'cet4',
+          word: 'edgeone-e2e-baseline',
+          createdAt: 1_800_000_000,
+          updatedAt: 1_800_000_600,
+          lastReviewedAt: 1_800_000_600,
+          nextReviewAt: 1_800_605_400,
+          reviewCount: 4,
+          lapseCount: 2,
+          cleanStreak: 1,
+          lastOutcome: 'hard',
+          stateVersion: 3,
+          schedulerState: {
+            kind: 'basic-v1',
+            stage: 2,
+            intervalDays: 7,
+          },
+        })
+
+        transaction.objectStore('reviewRecords').add({
+          dict: 'cet4',
+          index: 3,
+          createTime: 1_800_000_500,
+          isFinished: false,
+          words: [
+            { name: 'abandon', trans: ['放弃'], usphone: 'əˈbændən', ukphone: 'əˈbændən' },
+            { name: 'ability', trans: ['能力'], usphone: 'əˈbɪləti', ukphone: 'əˈbɪləti' },
+            { name: 'abroad', trans: ['在国外'], usphone: 'əˈbrɔːd', ukphone: 'əˈbrɔːd' },
+            { name: 'absorb', trans: ['吸收'], usphone: 'əbˈzɔːrb', ukphone: 'əbˈzɔːb' },
+            { name: 'abandon', trans: ['放弃'], usphone: 'əˈbændən', ukphone: 'əˈbændən' },
+          ],
+        })
+
+        transaction.oncomplete = () => resolve()
+        transaction.onerror = () => reject(transaction.error)
+        transaction.onabort = () => reject(transaction.error)
+      })
+    } finally {
+      database.close()
+    }
+  })
+}
+
+async function readReviewCloudFixture(page: Page) {
+  return page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+
+    const readAll = (storeName: string) =>
+      new Promise<any[]>((resolve, reject) => {
+        const transaction = database.transaction(storeName, 'readonly')
+        const request = transaction.objectStore(storeName).getAll()
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+      })
+
+    try {
+      const [wordRecords, reviewRecords, reviewWordStates] = await Promise.all([
+        readAll('wordRecords'),
+        readAll('reviewRecords'),
+        readAll('reviewWordStates'),
+      ])
+
+      return {
+        wordRecord: wordRecords.find(
+          (record) => record.word === 'edgeone-e2e-baseline' && record.dict === 'cet4',
+        ),
+        reviewRecord: reviewRecords.find((record) => record.dict === 'cet4'),
+        reviewWordState: reviewWordStates.find(
+          (state) => state.word === 'edgeone-e2e-baseline' && state.dict === 'cet4',
+        ),
+      }
+    } finally {
+      database.close()
+    }
+  })
+}
+
+async function mutateReviewCloudFixture(page: Page, dirty: boolean) {
+  await page.evaluate(async (makeDirty) => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const transaction = database.transaction(
+          ['reviewRecords', 'reviewWordStates'],
+          'readwrite',
+        )
+        const stateStore = transaction.objectStore('reviewWordStates')
+        const recordStore = transaction.objectStore('reviewRecords')
+
+        const stateRequest = stateStore.getAll()
+        stateRequest.onsuccess = () => {
+          const state = stateRequest.result.find(
+            (item) => item.word === 'edgeone-e2e-baseline' && item.dict === 'cet4',
+          )
+          if (!state) {
+            transaction.abort()
+            return
+          }
+
+          stateStore.put({
+            ...state,
+            updatedAt: makeDirty ? 1_900_000_000 : 1_800_000_600,
+            nextReviewAt: makeDirty ? 1_900_605_400 : 1_800_605_400,
+            reviewCount: makeDirty ? 99 : 4,
+            lapseCount: makeDirty ? 9 : 2,
+            cleanStreak: makeDirty ? 0 : 1,
+            lastOutcome: makeDirty ? 'again' : 'hard',
+            schedulerState: {
+              kind: 'basic-v1',
+              stage: makeDirty ? 0 : 2,
+              intervalDays: makeDirty ? 0 : 7,
+            },
+          })
+        }
+
+        const recordRequest = recordStore.getAll()
+        recordRequest.onsuccess = () => {
+          const record = recordRequest.result.find((item) => item.dict === 'cet4')
+          if (!record) {
+            transaction.abort()
+            return
+          }
+
+          recordStore.put({
+            ...record,
+            index: makeDirty ? 0 : 3,
+            isFinished: false,
+            words: makeDirty ? record.words.slice(0, 2) : [
+              { name: 'abandon', trans: ['放弃'], usphone: 'əˈbændən', ukphone: 'əˈbændən' },
+              { name: 'ability', trans: ['能力'], usphone: 'əˈbɪləti', ukphone: 'əˈbɪləti' },
+              { name: 'abroad', trans: ['在国外'], usphone: 'əˈbrɔːd', ukphone: 'əˈbrɔːd' },
+              { name: 'absorb', trans: ['吸收'], usphone: 'əbˈzɔːrb', ukphone: 'əbˈzɔːb' },
+              { name: 'abandon', trans: ['放弃'], usphone: 'əˈbændən', ukphone: 'əˈbændən' },
+            ],
+          })
+        }
+
+        transaction.oncomplete = () => resolve()
+        transaction.onerror = () => reject(transaction.error)
+        transaction.onabort = () => reject(transaction.error || new Error('review fixture transaction aborted'))
+      })
+    } finally {
+      database.close()
+    }
+  }, dirty)
+}
+
 async function wordRecordCount(page: Page) {
   return page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -130,12 +352,68 @@ test('real browser register, upload, divergence detection and download restore',
   await expect(page.getByText('云端 revision：')).toContainText('0')
   await page.getByPlaceholder('至少12字符；请勿与登录密码共用').fill(encryptionPassphrase)
 
-  await addLocalWordRecord(page, 'baseline')
+  await addReviewCloudFixture(page)
   await page.getByRole('button', { name: '刷新状态' }).click()
   await expect(page.getByText('本地有未上传修改')).toBeVisible()
 
   await page.getByRole('button', { name: '加密上传本地数据' }).click()
   await expect(page.getByText('已加密上传到云端 revision 1。')).toBeVisible()
+  await expect(page.getByText('本地与云端一致')).toBeVisible()
+
+  const reviewFixtureBefore = await readReviewCloudFixture(page)
+  expect(reviewFixtureBefore.wordRecord).toMatchObject({
+    word: 'edgeone-e2e-baseline',
+    dict: 'cet4',
+    chapter: -1,
+    wrongCount: 2,
+    mistakes: { 1: ['x', 'c'] },
+    typingTelemetry: {
+      telemetryVersion: 2,
+      firstKeyLatencyMs: 850,
+      backgroundPauseMs: 1200,
+      backgroundPauseCount: 1,
+    },
+    learningContext: {
+      version: 1,
+      answerVisibilityAtStart: 'hidden',
+      pronunciationPlayed: true,
+      pronunciationPlayedBeforeFirstKey: true,
+    },
+  })
+  expect(reviewFixtureBefore.reviewWordState).toMatchObject({
+    dict: 'cet4',
+    word: 'edgeone-e2e-baseline',
+    reviewCount: 4,
+    lapseCount: 2,
+    cleanStreak: 1,
+    lastOutcome: 'hard',
+    stateVersion: 3,
+    schedulerState: {
+      kind: 'basic-v1',
+      stage: 2,
+      intervalDays: 7,
+    },
+  })
+  expect(reviewFixtureBefore.reviewRecord).toMatchObject({
+    dict: 'cet4',
+    index: 3,
+    isFinished: false,
+  })
+  expect(reviewFixtureBefore.reviewRecord.words.map((word: { name: string }) => word.name)).toEqual([
+    'abandon',
+    'ability',
+    'abroad',
+    'absorb',
+    'abandon',
+  ])
+
+  // A Review-only mutation must participate in the whole-DB dirty fingerprint.
+  await mutateReviewCloudFixture(page, true)
+  await page.getByRole('button', { name: '刷新状态' }).click()
+  await expect(page.getByText('本地有未上传修改')).toBeVisible()
+
+  await mutateReviewCloudFixture(page, false)
+  await page.getByRole('button', { name: '刷新状态' }).click()
   await expect(page.getByText('本地与云端一致')).toBeVisible()
 
   const encryptedRemote = await page.evaluate(async () => {
@@ -181,6 +459,11 @@ test('real browser register, upload, divergence detection and download restore',
   await page.getByRole('button', { name: '使用云端数据' }).click()
   await expect(page.getByText('云同步加密口令错误或云端数据已损坏。')).toBeVisible()
   expect(await wordRecordCount(page)).toBe(2)
+  expect(await readReviewCloudFixture(page)).toEqual(reviewFixtureBefore)
+
+  // Corrupt the local derived/session Review state before the successful restore.
+  // The cloud snapshot must restore the exact scheduler/session semantics.
+  await mutateReviewCloudFixture(page, true)
 
   await page
     .getByPlaceholder('至少12字符；请勿与登录密码共用')
@@ -191,4 +474,14 @@ test('real browser register, upload, divergence detection and download restore',
   await expect(page.getByText('已恢复云端 revision 2。')).toBeVisible()
   await expect(page.getByText('本地与云端一致')).toBeVisible()
   expect(await wordRecordCount(page)).toBe(1)
+
+  const reviewFixtureAfterRestore = await readReviewCloudFixture(page)
+  expect(reviewFixtureAfterRestore).toEqual(reviewFixtureBefore)
+  expect(reviewFixtureAfterRestore.reviewWordState.schedulerState).toEqual({
+    kind: 'basic-v1',
+    stage: 2,
+    intervalDays: 7,
+  })
+  expect(reviewFixtureAfterRestore.reviewRecord.index).toBe(3)
+  expect(reviewFixtureAfterRestore.reviewRecord.words[4].name).toBe('abandon')
 })
