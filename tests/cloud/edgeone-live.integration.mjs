@@ -115,7 +115,7 @@ async function fetchWithAccessCookies(url, init = {}) {
 
     currentUrl = new URL(location, currentUrl).toString()
 
-    if (response.status === 303 || ((response.status === 301 || response.status === 302) && method !== 'GET' && method !== 'HEAD')) {
+    if (response.status === 303 && method !== 'GET' && method !== 'HEAD') {
       method = 'GET'
       body = undefined
       baseHeaders.delete('Content-Type')
@@ -123,6 +123,26 @@ async function fetchWithAccessCookies(url, init = {}) {
   }
 
   throw new Error('unreachable EdgeOne access redirect state')
+}
+
+async function primeEdgeOneAccessSession() {
+  const response = await fetchWithAccessCookies(baseUrl.toString(), {
+    method: 'GET',
+    headers: {
+      Accept: 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
+    },
+  })
+
+  // Consume the body so the connection can be cleanly reused. A 200 page or
+  // JSON response is sufficient; this step exists only to capture EdgeOne's
+  // protected-preview access cookie before POST/PUT API calls.
+  await response.arrayBuffer().catch(() => {})
+
+  if (response.status >= 400) {
+    throw new Error(
+      `EdgeOne protected-access bootstrap failed with HTTP ${response.status}`,
+    )
+  }
 }
 
 async function request(path, { method = 'GET', token, body } = {}) {
@@ -161,6 +181,8 @@ function revisionFromKey(key) {
 }
 
 try {
+  await primeEdgeOneAccessSession()
+
   const health = await request('/api/health')
   assert.equal(health.status, 200)
   assert.equal(health.json?.ok, true)
@@ -177,7 +199,11 @@ try {
     },
   })
 
-  assert.equal(registered.status, 201)
+  assert.equal(
+    registered.status,
+    201,
+    `register failed: ${JSON.stringify(registered.json)}`,
+  )
   assert.equal(registered.json?.ok, true)
   assert.ok(registered.json?.token)
   userId = registered.json.user.userId

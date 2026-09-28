@@ -516,3 +516,5 @@ The most important invariant is:
 If EdgeOne is unavailable, a user must still be able to open Qwerty and learn locally.
 
 P4 harness note: EdgeOne protected preview URLs may complete an access-validation redirect/cookie handshake. PowerShell/browser clients handle this transparently, while Node's native `fetch()` has no persistent cookie jar. The live integration harness therefore captures `Set-Cookie`, follows redirects manually, and replays the access cookie for subsequent `/api/*` calls. This is test-harness behavior only; production application auth remains unchanged.
+
+P4 harness correction: for protected EdgeOne preview access, the harness now primes the access session with a GET before mutating API calls and preserves POST/PUT across 301/302 redirects. Only HTTP 303 is allowed to switch a mutating request to GET. This prevents access-layer redirects from turning `POST /api/auth/register` into `GET /api/auth/register` and producing a false application 404.
