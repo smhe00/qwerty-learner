@@ -6599,3 +6599,8 @@ zrender@5.4.3:
   integrity sha512-DRUM4ZLnoaT0PBVvGBDO9oWIDBKFdAVieNWxWwK0niYzJCMwGchRk21/hsE+RKkIveH3XHCyvXcJDkgLVvfizQ==
   dependencies:
     tslib "2.3.0"
+
+
+"@edgeone/pages-blob@0.0.18":
+  version "0.0.18"
+  resolved "https://registry.npmjs.org/@edgeone/pages-blob/-/pages-blob-0.0.18.tgz"

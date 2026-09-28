@@ -1,0 +1,11 @@
+{
+  "buildCommand": "yarn build",
+  "installCommand": "yarn install --frozen-lockfile",
+  "outputDirectory": "./build",
+  "nodeVersion": "20.18.0",
+  "cloudFunctions": {
+    "nodejs": {
+      "maxDuration": 60
+    }
+  }
+}

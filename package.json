@@ -55,7 +55,8 @@
     "typescript": "^4.0.3",
     "use-immer": "^0.9.0",
     "use-sound": "^4.0.1",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "@edgeone/pages-blob": "0.0.18"
   },
   "scripts": {
     "dev": "vite",
@@ -65,7 +66,8 @@
     "test:e2e": "playwright test",
     "lint": "eslint .",
     "prettier": "prettier --write .",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "test:cloud": "node --test tests/cloud/backend-core.test.mjs"
   },
   "lint-staged": {
     "src/**/*.{js,jsx,ts,tsx,json,css,scss,md}": [
