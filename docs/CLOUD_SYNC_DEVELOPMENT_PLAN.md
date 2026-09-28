@@ -414,6 +414,12 @@ P3 gate result: GitHub Actions **Cloud Sync Gate PASS** at commit `2a8f7f3f9230c
 Deployment/runbook: `docs/CLOUD_SYNC_EDGEONE_DEPLOYMENT.md`.
 
 Observed EdgeOne deployments on 2026-09-28:
+
+Runtime environment facts:
+- EdgeOne site/zone: `zone-3vjkordh7u8k`;
+- Makers region: `global`;
+- Makers project: `makers-cgemngjuuwle`;
+- external Blob SDK credential exchange verified successfully with `listStores()`; current result `{ stores: [] }` before first real data write.
 - `master` deployment `dpk9qxv0ione` — SUCCESS at commit `1182426f2bd0a28c95302c33f9e19136b1262a70`;
 - `feature/edgeone-cloud-sync` deployment `dppemfs6uhvm` — SUCCESS at commit `6e28b3de03cdbb70e917de5b3c9e4609912138f4`.
 

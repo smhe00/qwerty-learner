@@ -238,3 +238,32 @@ No server-handler detected, generating routes.json for pure project...
 ```
 
 对于没有 Cloud Functions 的 `master` 是正常信息，不是构建失败原因。
+
+
+## 10. Current verified Makers identity
+
+For the current international-site project:
+
+```text
+region=global
+site/zone=zone-3vjkordh7u8k
+projectId=makers-cgemngjuuwle
+```
+
+The project ID was verified via `@edgeone/makers-sdk` project listing, and external Blob SDK authentication was verified with:
+
+```text
+listStores({
+  projectId: "makers-cgemngjuuwle",
+  token: <Makers API Token>,
+  consistency: "strong"
+})
+```
+
+which returned:
+
+```text
+{ stores: [] }
+```
+
+before the first Blob write. An empty store list is expected at this stage and confirms credential exchange succeeded.
