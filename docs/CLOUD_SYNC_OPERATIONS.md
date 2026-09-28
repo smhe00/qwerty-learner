@@ -28,39 +28,60 @@ CORS is a browser boundary, not an authentication or abuse-prevention mechanism.
 
 ## Authentication rate limiting
 
-Makers currently exposes one Precise Rate Limiting rule on the free edition and also applies platform adaptive rate limiting.
+### Platform constraint
 
-Recommended use of the single precise rule for this project:
+EdgeOne Makers exposes platform adaptive rate limiting on project/deployment domains, but those domains cannot attach project-specific custom security rules. Precise rate-limiting rules require an editable custom-domain security policy.
+
+V1 therefore treats EdgeOne's adaptive protection as a coarse outer layer and implements the authentication limiter inside the Cloud Function. This keeps the release independent of custom-domain eligibility.
+
+### Application limiter
+
+Protected endpoints:
 
 ```text
-name:
-  qwerty-auth-abuse-v1
-
-condition:
-  ${http.request.uri.path} in ['/api/auth/register','/api/auth/login']
-  and ${http.request.method} in ['POST']
-
-counting dimension:
-  http.request.ip
-
-mode:
-  Block
-
-initial threshold:
-  10 requests / 60 seconds
-
-action duration:
-  300 seconds
-
-action:
-  Deny / Block
+POST /api/auth/register
+POST /api/auth/login
 ```
 
-Keep the two paths in the **match condition**, not in the counting dimension. The intended V1 policy is one combined per-client-IP counter across both authentication entry points.
+Policy:
 
-The threshold is a project baseline, not an EdgeOne-required value. Re-evaluate it from real traffic before public scale-up.
+```text
+identity:          EdgeOne EventContext clientIp
+shared dimension:  one counter across register + login
+threshold:         10 requests
+window:            60 seconds, fixed window
+over limit:        HTTP 429 auth_rate_limited
+response header:   Retry-After
+```
 
-### Rate-limit deployment Gate
+The limiter runs **before** JSON body processing and before password `scrypt`, so repeated credential guesses do not consume password-hashing work once the IP has exhausted its window.
+
+Do not implement a per-username lockout: an attacker could intentionally exhaust another user's account and deny that user access.
+
+### Privacy / storage design
+
+The raw IP address is not written to Blob.
+
+```text
+clientIp
+  -> SHA-256("qwerty-auth-rate-v1" || NUL || clientIp)
+  -> rate-limit/auth/<clientKey>/windows/<windowStart>/slot-NNN.json
+```
+
+Each request claims one immutable slot with Blob `onlyIfNew`. Slot discovery uses strong consistency. Request `limit + 1` becomes the sentinel that marks the current window as blocked.
+
+Only the current/recent windows are needed; stale windows are best-effort pruned. The limiter namespace is separate from account/session/snapshot data.
+
+If EdgeOne does not supply `context.clientIp`, authentication fails closed with HTTP 503 `client_ip_unavailable` rather than silently bypassing the limiter.
+
+Runtime defaults:
+
+```text
+AUTH_RATE_LIMIT_REQUESTS=10
+AUTH_RATE_LIMIT_WINDOW_SECONDS=60
+```
+
+### Validation Gate
 
 Repository validation:
 
@@ -69,31 +90,30 @@ workflow: EdgeOne Auth Rate Limit Gate
 script:   tests/cloud/edgeone-rate-limit.integration.mjs
 ```
 
-The probe deliberately uses an invalid short username so no account is created. It verifies:
+The live probe deliberately uses an invalid short username, so it creates no account. It aligns to a fresh fixed window and verifies:
 
-1. normal auth requests reach the application before the threshold;
-2. the precise rule blocks after the configured threshold;
-3. once triggered, `/api/auth/login` is also covered by the same rule;
-4. `/api/health` remains reachable, proving the rule is scoped to the auth paths rather than the whole site.
+1. requests 1-10 reach application validation and return `invalid_username`;
+2. request 11 returns HTTP 429 `auth_rate_limited`;
+3. `Retry-After` is present and within the current window;
+4. `/api/auth/login` is blocked by the same shared IP counter;
+5. `/api/health` stays HTTP 200.
 
-Observed on 2026-09-29:
+Verified on 2026-09-29:
 
 ```text
-commit: e4e068b8a07c500573be7becb79c96f4929f3f11
-run:    36484045749
-result: FAIL
-detail: 13 x POST /api/auth/register -> HTTP 400
-        no EdgeOne HTTP 403/429
+implementation: 7a0b99b4e8a3fd9a21732907934ce233368f3faf
+live backend:   EdgeOne Live Gate 36487859692 PASS
+rate-limit E2E: EdgeOne Auth Rate Limit Gate 36488214624 PASS
+gate commit:    69dda250f0178ed883d06e0d5c4242014ee9346c
 ```
 
-This is a useful negative Gate: it confirms that the application is healthy while the platform precise-rate-limit rule is still not deployed. P8 must not be marked complete until this workflow passes after the console rule is enabled.
-
-Do not implement a simple per-username hard lockout in application code: an attacker could intentionally exhaust another user's attempts and deny that user access.
+The earlier WAF-oriented negative run `36484045749` remains useful history: it proved that the Makers project domain itself was not applying a configurable precise rule, which led to the application-layer design.
 
 Official references:
 
+- https://pages.edgeone.ai/document/node-functions
+- https://pages.edgeone.ai/document/blob-storage
 - https://pages.edgeone.ai/document/limits-and-quotas
-- https://edgeone.ai/document/55943
 
 ## Blob retention
 

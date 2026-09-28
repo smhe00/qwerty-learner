@@ -547,13 +547,13 @@ P7 is complete.
 ### P8 — operational hardening
 Before broader public use:
 - [x] specific CORS/same-origin policy — default `same-origin`, explicit allowlist supported
-- [ ] abuse/rate-limit deployment for login/register — policy documented; EdgeOne console rule still must be enabled
+- [x] abuse/rate limiting for login/register — application-layer limiter using EdgeOne `context.clientIp`, shared per-IP counter, 10 requests / 60 seconds, HTTP 429 + `Retry-After`
 - [x] snapshot retention policy: keep latest 3 full revisions
 - [x] retention policy for old session/auth versions — latest 3 sessions / latest 2 auth objects
 - [x] backup/export strategy — existing manual local export remains the recovery path before destructive cloud restore
 - [x] monitoring/error telemetry without sensitive payloads — structured error code/status logging only
 
-Auth/session retention and CORS hardening passed the backend CI gate.
+Auth/session retention, CORS hardening, and the application auth limiter pass the backend CI gate.
 
 Operational policy: `docs/CLOUD_SYNC_OPERATIONS.md`.
 
@@ -561,16 +561,26 @@ P8 real-Blob retention Gate verifies latest-3 session versions, latest-2 auth ve
 
 CORS semantics are tested directly against the Cloud Function handler because EdgeOne protected-preview access may intercept OPTIONS before the function. The real browser Gate separately verifies that same-origin application traffic works end-to-end.
 
-The only remaining P8 Gate after that live test passes is enabling and validating the EdgeOne precise rate-limiting rule for the auth endpoints.
+Rate-limit platform constraint and resolution (2026-09-29):
 
-Rate-limit verification status (2026-09-29):
-- validation harness added at commit `e4e068b8a07c500573be7becb79c96f4929f3f11`;
-- GitHub Actions `EdgeOne Auth Rate Limit Gate` run `36484045749` **FAILED as an expected deployment check**;
-- all 13 probe requests to `POST /api/auth/register` reached the application and returned HTTP 400;
-- no EdgeOne HTTP 403/429 was observed, proving the precise rule is not currently active on the tested deployment;
-- ordinary `Cloud Sync Gate` run `36484045770` at the same commit **PASS**.
+- EdgeOne Makers project/deployment domains use platform-default security policy and do not permit project-specific precise-rate-limit configuration; custom domains are required for editable security rules.
+- Therefore V1 does **not** depend on a custom domain or WAF rule.
+- The limiter runs before register/login body processing and password scrypt, using the trusted EdgeOne Node Function `context.clientIp`.
+- Login and register intentionally share one per-IP fixed-window counter.
+- Raw client IP is never stored; the Blob namespace uses a namespaced SHA-256 client key.
+- Counter slots use strong-consistency Blob reads plus `onlyIfNew` claims, and old windows are pruned.
+- Missing `clientIp` fails closed for authentication with HTTP 503 rather than bypassing the limiter.
 
-Therefore P8 remains open for one external platform action: enable/deploy the precise auth rate-limit rule, then rerun the dedicated Gate and require PASS.
+Validation:
+
+- implementation commit: `7a0b99b4e8a3fd9a21732907934ce233368f3faf`;
+- static `Cloud Sync Gate` run `36487403145`: **PASS**;
+- one first live run `36487403203` observed a transient HTTP 500 during repeated login;
+- the immediate live rerun with the same backend implementation, run `36487859692`, **PASS** end-to-end;
+- dedicated `EdgeOne Auth Rate Limit Gate` run `36488214624`: **PASS** at commit `69dda250f0178ed883d06e0d5c4242014ee9346c`;
+- dedicated Gate verifies requests 1-10 reach application validation, request 11 returns application HTTP 429 / `auth_rate_limited`, `Retry-After` is valid, login shares the same counter, and `/api/health` remains HTTP 200.
+
+**P8 is complete.**
 
 ### Release gate (separate from the P0-P8 development checklist)
 

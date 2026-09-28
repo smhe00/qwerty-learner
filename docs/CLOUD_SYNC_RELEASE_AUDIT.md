@@ -2,23 +2,23 @@
 
 > Date: 2026-09-29  
 > Branch: `feature/edgeone-cloud-sync`  
-> Audited code commit: `e4e068b8a07c500573be7becb79c96f4929f3f11`  
+> Audited code/test commit: `69dda250f0178ed883d06e0d5c4242014ee9346c`  
 > Authority for development state remains: `docs/CLOUD_SYNC_DEVELOPMENT_PLAN.md`
 
 ## Executive status
 
-The V1 feature implementation is engineering-complete through P7 and all P8 code-side hardening is present.
+The V1 implementation and all P0-P8 engineering Gates are complete.
 
-**Public release is currently blocked by one external platform Gate: EdgeOne precise authentication rate limiting is not enabled on the tested deployment.**
+The previous dependency on an EdgeOne precise WAF rule was removed after confirming that Makers project/deployment domains cannot attach project-specific security rules. V1 now uses an application-layer per-IP limiter based on the trusted EdgeOne Node Function `context.clientIp`.
 
-This is now directly verified, not inferred:
+Current verified Gates:
 
-- Cloud Sync Gate run `36484045770`: **PASS** at `e4e068b8...`;
-- EdgeOne Auth Rate Limit Gate run `36484045749`: **FAIL**;
-- rate probe result: 13 consecutive `POST /api/auth/register` requests all reached the application and returned HTTP 400;
-- no EdgeOne HTTP 403/429 was observed.
+- Cloud Sync Gate run `36488214587`: **PASS** at `69dda250...`;
+- EdgeOne Live Gate run `36487859692`: **PASS** on the application-rate-limit backend;
+- EdgeOne Auth Rate Limit Gate run `36488214624`: **PASS**;
+- prior Chromium encrypted-sync Gate remains **PASS**.
 
-The failed rate-limit run is therefore a deployment-policy failure, not an application regression.
+P8 is closed. Remaining work is release management: production branch/domain selection, production environment confirmation, release-candidate recording, and rollback target selection.
 
 ## Release-audit findings
 
@@ -117,7 +117,7 @@ The handler does not log:
 - request body;
 - snapshot payload.
 
-### 10. Real environment Gates — PASS except rate limiting
+### 10. Real environment Gates — PASS
 
 Previously verified:
 
@@ -129,34 +129,26 @@ Previously verified:
 - real Chromium register/login/upload/download/restore;
 - encrypted snapshot and wrong-passphrase rejection.
 
-Current static Gate remains green after adding the rate-limit probe.
+Current static Gate remains green after the application limiter and live rate-limit probe.
 
-### 11. Rate limiting — BLOCKER
+### 11. Rate limiting — PASS
 
-Required EdgeOne rule:
+The deployed V1 limiter is application-layer because the current Makers project/deployment domain cannot attach a custom precise-rate-limit rule.
 
 ```text
-condition:
-  ${http.request.uri.path} in ['/api/auth/register','/api/auth/login']
-  and ${http.request.method} in ['POST']
-
-CountBy:
-  http.request.ip
-
-Mode:
-  Block
-
-threshold:
-  10 requests / 60 seconds
-
-duration:
-  300 seconds
-
-action:
-  Deny / Block
+trusted identity: context.clientIp
+scope:            POST /api/auth/register + /api/auth/login
+counter:          shared per IP
+threshold:        10 / 60 seconds
+over-limit:       HTTP 429 auth_rate_limited
+retry guidance:   Retry-After
+storage:          strong-consistency Blob + onlyIfNew immutable slots
+raw IP stored:    no
 ```
 
-After deploying this rule, `EdgeOne Auth Rate Limit Gate` must be rerun and PASS before P8 can close.
+The dedicated real EdgeOne Gate run `36488214624` passed. It verified the first ten auth requests reach application validation, the eleventh is blocked with application HTTP 429, login shares the same counter, and health traffic is unaffected.
+
+One earlier live run (`36487403203`) observed a transient HTTP 500 during repeated login. The immediate rerun (`36487859692`) passed without changing the backend implementation. This is retained as an operational observation; monitor aggregate `internal_error` / authentication availability after rollout, but it is not a reproducible release blocker.
 
 ## Release decisions after P8
 
@@ -178,6 +170,7 @@ Real EdgeOne backend         PASS
 Real Chromium                PASS
 Encryption                   PASS
 Retention/CORS/logging       PASS
-Precise auth rate limiting   BLOCKED: platform rule not deployed
-Public release               HOLD until rate-limit Gate PASS
+Application auth rate limit  PASS
+P0-P8 engineering Gates      COMPLETE
+Public release               READY FOR RELEASE-MANAGEMENT GATE
 ```
