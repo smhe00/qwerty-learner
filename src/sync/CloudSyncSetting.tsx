@@ -1,17 +1,26 @@
 import { SyncApiError, getSync, getSyncMeta, putSync } from './api'
 import { loadAuth, loginAndRemember, logout, registerAndRemember } from './auth'
-import { CLIENT_FORMAT_VERSION, createLocalSnapshot, restoreLocalSnapshot } from './snapshot'
+import {
+  MIN_ENCRYPTION_PASSPHRASE_LENGTH,
+  isEncryptedFormat,
+} from './crypto'
+import {
+  CLIENT_FORMAT_VERSION,
+  createLocalSnapshot,
+  inspectLocalState,
+  restoreLocalSnapshot,
+} from './snapshot'
 import { assessSyncState, loadSyncBaseline, saveSyncBaseline } from './state'
 import type {
   CloudAuthState,
-  LocalSnapshot,
+  LocalState,
   RemoteSyncMeta,
   SyncAssessment,
 } from './types'
 import { useCallback, useEffect, useState } from 'react'
 
 type SyncView = {
-  local: LocalSnapshot
+  local: LocalState
   remote: RemoteSyncMeta
   assessment: SyncAssessment
 }
@@ -45,13 +54,14 @@ export default function CloudSyncSetting() {
   const [auth, setAuth] = useState<CloudAuthState | null>(() => loadAuth())
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [encryptionPassphrase, setEncryptionPassphrase] = useState('')
   const [view, setView] = useState<SyncView | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
 
   const refresh = useCallback(async (currentAuth: CloudAuthState) => {
     const [local, remote] = await Promise.all([
-      createLocalSnapshot(),
+      inspectLocalState(),
       getSyncMeta(currentAuth.token),
     ])
     const baseline = loadSyncBaseline(currentAuth.user.userId)
@@ -66,6 +76,7 @@ export default function CloudSyncSetting() {
   useEffect(() => {
     if (!auth) {
       setView(null)
+      setEncryptionPassphrase('')
       return
     }
 
@@ -94,7 +105,7 @@ export default function CloudSyncSetting() {
       const next = await loginAndRemember(username, password)
       setAuth(next)
       setPassword('')
-      setMessage('登录成功。')
+      setMessage('登录成功。请输入云同步加密口令后再上传或恢复数据。')
     })
 
   const doRegister = () =>
@@ -102,7 +113,7 @@ export default function CloudSyncSetting() {
       const next = await registerAndRemember(username, password)
       setAuth(next)
       setPassword('')
-      setMessage('账号已创建并登录。')
+      setMessage('账号已创建并登录。请设置独立的云同步加密口令。')
     })
 
   const doRefresh = () => {
@@ -117,7 +128,7 @@ export default function CloudSyncSetting() {
     if (!auth) return
 
     void run(async () => {
-      const local = await createLocalSnapshot()
+      const local = await createLocalSnapshot(encryptionPassphrase, auth.user.userId)
       const remote = await getSyncMeta(auth.token)
       const baseline = loadSyncBaseline(auth.user.userId)
       const assessment = assessSyncState(local, remote, baseline)
@@ -138,7 +149,7 @@ export default function CloudSyncSetting() {
 
       saveSyncBaseline(auth.user.userId, uploaded.revision, local.fingerprint)
       await refresh(auth)
-      setMessage(`已上传到云端 revision ${uploaded.revision}。`)
+      setMessage(`已加密上传到云端 revision ${uploaded.revision}。`)
     })
   }
 
@@ -146,7 +157,7 @@ export default function CloudSyncSetting() {
     if (!auth) return
 
     void run(async () => {
-      const local = await createLocalSnapshot()
+      const local = await inspectLocalState()
       const remoteMeta = await getSyncMeta(auth.token)
       const baseline = loadSyncBaseline(auth.user.userId)
       const assessment = assessSyncState(local, remoteMeta, baseline)
@@ -169,6 +180,8 @@ export default function CloudSyncSetting() {
       const restored = await restoreLocalSnapshot(
         remote.payloadBase64,
         remote.clientFormatVersion,
+        encryptionPassphrase,
+        auth.user.userId,
       )
 
       saveSyncBaseline(auth.user.userId, remote.revision, restored.fingerprint)
@@ -181,8 +194,16 @@ export default function CloudSyncSetting() {
     logout()
     setAuth(null)
     setPassword('')
+    setEncryptionPassphrase('')
     setMessage('')
   }
+
+  const passphraseReady =
+    encryptionPassphrase.length >= MIN_ENCRYPTION_PASSPHRASE_LENGTH
+  const remoteNeedsPassphrase =
+    !view?.remote.hasData || isEncryptedFormat(view.remote.clientFormatVersion)
+  const canDownload =
+    !!view?.remote.hasData && (!remoteNeedsPassphrase || passphraseReady)
 
   return (
     <div className="border-b border-neutral-100 pb-5 dark:border-neutral-700">
@@ -258,6 +279,31 @@ export default function CloudSyncSetting() {
             ) : null}
           </div>
 
+          <div className="rounded border border-indigo-100 bg-indigo-50 p-2 dark:border-indigo-900 dark:bg-indigo-950">
+            <label className="mb-1 block text-xs font-bold text-indigo-700 dark:text-indigo-300">
+              云同步加密口令
+            </label>
+            <input
+              className="block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+              value={encryptionPassphrase}
+              onChange={(event) => setEncryptionPassphrase(event.target.value)}
+              placeholder="至少12字符；请勿与登录密码共用"
+              type="password"
+              autoComplete="off"
+            />
+            <p className="mt-1 text-xs leading-relaxed text-indigo-600 dark:text-indigo-300">
+              新上传数据会在浏览器内 gzip 后使用 AES-256-GCM 加密。此口令不会发送给服务器，也不会持久保存；
+              忘记后服务器无法恢复云端数据。
+            </p>
+            {view?.remote.hasData &&
+              view.remote.clientFormatVersion &&
+              !isEncryptedFormat(view.remote.clientFormatVersion) && (
+                <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                  当前云端是旧版未加密快照；可以直接下载。下一次上传会升级为加密格式。
+                </p>
+              )}
+          </div>
+
           {view?.assessment.diverged && (
             <div className="rounded bg-amber-50 p-2 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300">
               检测到分叉：本地与云端都发生了变化。系统不会自动合并；请明确选择上传本地版本或下载云端版本。
@@ -276,15 +322,20 @@ export default function CloudSyncSetting() {
             <button
               className="my-btn-primary disabled:bg-gray-300"
               type="button"
-              disabled={busy || !view || (!view.assessment.localDirty && !view.assessment.diverged)}
+              disabled={
+                busy ||
+                !passphraseReady ||
+                !view ||
+                (!view.assessment.localDirty && !view.assessment.diverged)
+              }
               onClick={doUpload}
             >
-              {view?.assessment.diverged ? '以本地覆盖云端' : '上传本地数据'}
+              {view?.assessment.diverged ? '以本地加密覆盖云端' : '加密上传本地数据'}
             </button>
             <button
               className="my-btn-primary disabled:bg-gray-300"
               type="button"
-              disabled={busy || !view?.remote.hasData}
+              disabled={busy || !canDownload}
               onClick={doDownload}
             >
               使用云端数据

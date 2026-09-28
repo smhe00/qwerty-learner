@@ -25,11 +25,14 @@ export type RemoteSnapshot = RemoteSyncMeta & {
   payloadBase64: string | null
 }
 
-export type LocalSnapshot = {
-  payloadBase64: string
+export type LocalState = {
   fingerprint: string
   sizeBytes: number
   recordCount: number
+}
+
+export type LocalSnapshot = LocalState & {
+  payloadBase64: string
   clientFormatVersion: string
 }
 

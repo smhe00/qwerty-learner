@@ -506,12 +506,16 @@ The browser gate uses GitHub Actions Secrets for EdgeOne access, disables trace/
 P6 starts only after the encryption-key UX is fixed in the architecture. The current P5 cloud snapshot is opaque to the server but is **not encrypted**.
 
 - [x] IndexedDB export — implemented in P5
-- [ ] gzip
-- [ ] client-side AES-GCM
+- [x] gzip — implemented in P6
+- [x] client-side AES-GCM — AES-256-GCM implemented in P6
 - [x] Base64 transport — implemented in P5
-- [x] restore validation — JSON/Dexie metadata validation implemented in P5
-- [ ] encrypted-envelope format versioning
-- [ ] encryption-key UX and recovery semantics
+- [x] restore validation — authenticated decrypt + gzip + JSON + Dexie metadata before overwrite
+- [x] encrypted-envelope format versioning — `qwerty-sync-envelope-v1`
+- [x] encryption-key UX and recovery semantics — separate 12+ character passphrase, memory-only, never sent to server; server cannot recover it
+
+Security design: `docs/CLOUD_SYNC_ENCRYPTION.md`.
+
+P6 implementation must still pass static CI and the real EdgeOne Browser Sync Gate before P6 is declared complete.
 
 Do not claim end-to-end encrypted backups until the AES-GCM envelope and key UX gates pass.
 

@@ -9,6 +9,8 @@ on:
       - 'tests/e2e/cloud-sync-live.spec.ts'
       - 'tests/e2e/cloud-sync-live.config.ts'
       - 'tests/cloud/edgeone-cleanup-user.mjs'
+      - 'src/sync/**'
+      - 'src/pages/Typing/components/Setting/DataSetting.tsx'
   workflow_dispatch:
 
 permissions:
@@ -45,6 +47,7 @@ jobs:
         run: |
           echo "QWERTY_E2E_USERNAME=edgeone_ui_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
           echo "QWERTY_E2E_PASSWORD=EdgeOne-UI-A9-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
+          echo "QWERTY_E2E_ENCRYPTION_PASSPHRASE=EdgeOne-E2EE-P6-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-Recovery" >> "$GITHUB_ENV"
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile

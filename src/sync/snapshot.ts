@@ -1,34 +1,22 @@
-import type { LocalSnapshot } from './types'
+import {
+  ENCRYPTED_CLIENT_FORMAT_VERSION,
+  LEGACY_CLIENT_FORMAT_VERSION,
+  decodeTransportPayload,
+  decryptCompressedSnapshot,
+  encodeTransportPayload,
+  encryptCompressedSnapshot,
+} from './crypto'
+import type { LocalSnapshot, LocalState } from './types'
 import { db } from '@/utils/db'
 import { peakImportFile } from 'dexie-export-import'
 
-export const CLIENT_FORMAT_VERSION = 'qwerty-dexie-json-v1'
-
-function bytesToBase64(bytes: Uint8Array) {
-  const chunkSize = 0x8000
-  let binary = ''
-
-  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-    const chunk = bytes.subarray(offset, offset + chunkSize)
-    binary += String.fromCharCode(...chunk)
-  }
-
-  return btoa(binary)
-}
-
-function base64ToBytes(value: string) {
-  const binary = atob(value)
-  const bytes = new Uint8Array(binary.length)
-
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index)
-  }
-
-  return bytes
-}
+export const CLIENT_FORMAT_VERSION = ENCRYPTED_CLIENT_FORMAT_VERSION
 
 function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value)
+  if (value === null || typeof value !== 'object') {
+    const encoded = JSON.stringify(value)
+    return encoded === undefined ? 'null' : encoded
+  }
 
   if (Array.isArray(value)) {
     return `[${value.map((item) => stableStringify(item)).join(',')}]`
@@ -43,7 +31,7 @@ function stableStringify(value: unknown): string {
 
 async function sha256Hex(value: string) {
   const bytes = new TextEncoder().encode(value)
-  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes)
 
   return [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, '0'))
@@ -70,37 +58,84 @@ async function localRecordCount() {
   return counts.reduce((sum, value) => sum + value, 0)
 }
 
-export async function createLocalSnapshot(): Promise<LocalSnapshot> {
+async function exportLocalJson() {
   const blob = await db.export()
-  const json = await blob.text()
-  const bytes = new TextEncoder().encode(json)
+  return blob.text()
+}
 
+async function stateFromJson(json: string): Promise<LocalState> {
   const [fingerprint, recordCount] = await Promise.all([
     fingerprintExport(json),
     localRecordCount(),
   ])
 
   return {
-    payloadBase64: bytesToBase64(bytes),
     fingerprint,
-    sizeBytes: bytes.length,
+    sizeBytes: new TextEncoder().encode(json).length,
     recordCount,
-    clientFormatVersion: CLIENT_FORMAT_VERSION,
   }
+}
+
+export async function inspectLocalState(): Promise<LocalState> {
+  const json = await exportLocalJson()
+  return stateFromJson(json)
+}
+
+export async function createLocalSnapshot(
+  passphrase: string,
+  userId: string,
+): Promise<LocalSnapshot> {
+  const json = await exportLocalJson()
+  const local = await stateFromJson(json)
+  const pako = await import('pako')
+  const compressed = pako.gzip(json)
+  const envelopeBytes = await encryptCompressedSnapshot(compressed, passphrase, userId)
+
+  return {
+    ...local,
+    payloadBase64: encodeTransportPayload(envelopeBytes),
+    clientFormatVersion: ENCRYPTED_CLIENT_FORMAT_VERSION,
+  }
+}
+
+async function decodeSnapshotJson(
+  payloadBase64: string,
+  clientFormatVersion: string | null,
+  passphrase: string,
+  userId: string,
+) {
+  const payloadBytes = decodeTransportPayload(payloadBase64)
+
+  if (
+    clientFormatVersion === null ||
+    clientFormatVersion === LEGACY_CLIENT_FORMAT_VERSION
+  ) {
+    return new TextDecoder().decode(payloadBytes)
+  }
+
+  if (clientFormatVersion !== ENCRYPTED_CLIENT_FORMAT_VERSION) {
+    throw new Error(`不支持的云端数据格式：${clientFormatVersion}`)
+  }
+
+  const compressed = await decryptCompressedSnapshot(payloadBytes, passphrase, userId)
+  const pako = await import('pako')
+  return pako.ungzip(compressed, { to: 'string' })
 }
 
 export async function restoreLocalSnapshot(
   payloadBase64: string,
   clientFormatVersion: string | null,
+  passphrase: string,
+  userId: string,
 ) {
-  if (clientFormatVersion && clientFormatVersion !== CLIENT_FORMAT_VERSION) {
-    throw new Error(`不支持的云端数据格式：${clientFormatVersion}`)
-  }
+  const json = await decodeSnapshotJson(
+    payloadBase64,
+    clientFormatVersion,
+    passphrase,
+    userId,
+  )
 
-  const bytes = base64ToBytes(payloadBase64)
-  const json = new TextDecoder().decode(bytes)
-
-  // Parse before import so malformed remote payloads never reach IndexedDB.
+  // Validate JSON and Dexie metadata before touching IndexedDB.
   JSON.parse(json)
 
   const blob = new Blob([json], { type: 'application/json' })
@@ -118,15 +153,9 @@ export async function restoreLocalSnapshot(
     clearTablesBeforeImport: true,
   })
 
-  // Backups predating DB v4 do not contain the derived review state.
   if (!hasReviewWordStates) {
     await db.reviewWordStates.clear()
   }
 
-  const [fingerprint, recordCount] = await Promise.all([
-    fingerprintExport(json),
-    localRecordCount(),
-  ])
-
-  return { fingerprint, recordCount }
+  return stateFromJson(json)
 }

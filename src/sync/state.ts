@@ -1,5 +1,5 @@
 import type {
-  LocalSnapshot,
+  LocalState,
   RemoteSyncMeta,
   SyncAssessment,
   SyncAssessmentStatus,
@@ -45,7 +45,7 @@ export function saveSyncBaseline(userId: string, baseRevision: number, localFing
 }
 
 export function assessSyncState(
-  local: LocalSnapshot,
+  local: LocalState,
   remote: RemoteSyncMeta,
   baseline: SyncBaseline | null,
 ): SyncAssessment {

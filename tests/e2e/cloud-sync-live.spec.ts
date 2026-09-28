@@ -3,10 +3,12 @@ import { expect, test, type Page } from '@playwright/test'
 const liveUrl = process.env.QWERTY_SYNC_BASE_URL
 const username = process.env.QWERTY_E2E_USERNAME
 const password = process.env.QWERTY_E2E_PASSWORD
+const encryptionPassphrase = process.env.QWERTY_E2E_ENCRYPTION_PASSPHRASE
 
 if (!liveUrl) throw new Error('QWERTY_SYNC_BASE_URL is required')
 if (!username) throw new Error('QWERTY_E2E_USERNAME is required')
 if (!password) throw new Error('QWERTY_E2E_PASSWORD is required')
+if (!encryptionPassphrase) throw new Error('QWERTY_E2E_ENCRYPTION_PASSPHRASE is required')
 
 async function openDataSettings(page: Page) {
   await page.goto(liveUrl, { waitUntil: 'domcontentloaded' })
@@ -126,14 +128,37 @@ test('real browser register, upload, divergence detection and download restore',
 
   await expect(page.getByText(`账号：${username}`)).toBeVisible()
   await expect(page.getByText('云端 revision：')).toContainText('0')
+  await page.getByPlaceholder('至少12字符；请勿与登录密码共用').fill(encryptionPassphrase)
 
   await addLocalWordRecord(page, 'baseline')
   await page.getByRole('button', { name: '刷新状态' }).click()
   await expect(page.getByText('本地有未上传修改')).toBeVisible()
 
-  await page.getByRole('button', { name: '上传本地数据' }).click()
-  await expect(page.getByText('已上传到云端 revision 1。')).toBeVisible()
+  await page.getByRole('button', { name: '加密上传本地数据' }).click()
+  await expect(page.getByText('已加密上传到云端 revision 1。')).toBeVisible()
   await expect(page.getByText('本地与云端一致')).toBeVisible()
+
+  const encryptedRemote = await page.evaluate(async () => {
+    const rawAuth = localStorage.getItem('qwerty.cloudAuth.v1')
+    if (!rawAuth) throw new Error('missing cloud auth state')
+    const auth = JSON.parse(rawAuth) as { token: string }
+    const response = await fetch('/api/sync', {
+      headers: { Authorization: `Bearer ${auth.token}` },
+    })
+    if (!response.ok) throw new Error(`GET /api/sync failed with HTTP ${response.status}`)
+    const snapshot = (await response.json()) as {
+      clientFormatVersion: string
+      payloadBase64: string
+    }
+    return {
+      clientFormatVersion: snapshot.clientFormatVersion,
+      envelopeText: atob(snapshot.payloadBase64),
+    }
+  })
+
+  expect(encryptedRemote.clientFormatVersion).toBe('qwerty-sync-envelope-v1')
+  expect(encryptedRemote.envelopeText).toContain('"AES-256-GCM"')
+  expect(encryptedRemote.envelopeText).not.toContain('edgeone-e2e-baseline')
 
   expect(await wordRecordCount(page)).toBe(1)
 
@@ -149,6 +174,17 @@ test('real browser register, upload, divergence detection and download restore',
   await expect(page.getByText('本地与云端均有变化，需要手动选择')).toBeVisible()
   await expect(page.getByText(/检测到分叉/)).toBeVisible()
 
+  await page
+    .getByPlaceholder('至少12字符；请勿与登录密码共用')
+    .fill('wrong-passphrase-12345')
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: '使用云端数据' }).click()
+  await expect(page.getByText('云同步加密口令错误或云端数据已损坏。')).toBeVisible()
+  expect(await wordRecordCount(page)).toBe(2)
+
+  await page
+    .getByPlaceholder('至少12字符；请勿与登录密码共用')
+    .fill(encryptionPassphrase)
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: '使用云端数据' }).click()
 
