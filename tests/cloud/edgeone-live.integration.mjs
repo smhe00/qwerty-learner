@@ -1,7 +1,7 @@
 /* eslint-env node */
 import assert from 'node:assert/strict'
 import crypto from 'node:crypto'
-import { getStore } from '@edgeone/pages-blob'
+import { getStore, listStores } from '@edgeone/pages-blob'
 import { createBackendService } from '../../cloud-functions/_shared/core.js'
 import { createEdgeOneBlobStorage } from '../../cloud-functions/_shared/storage/edgeone-blob.js'
 
@@ -13,6 +13,28 @@ const storeName = process.env.BLOB_STORE_NAME || 'qwerty-data'
 if (!baseUrlInput) throw new Error('QWERTY_SYNC_BASE_URL is required')
 
 const baseUrl = new URL(baseUrlInput)
+
+const eoTime = Number(baseUrl.searchParams.get('eo_time'))
+if (Number.isFinite(eoTime) && eoTime > 0 && Date.now() >= eoTime * 1000) {
+  throw new Error(
+    `QWERTY_SYNC_BASE_URL access token expired at ${new Date(eoTime * 1000).toISOString()}. Generate a fresh EdgeOne protected-access URL and retry.`,
+  )
+}
+
+async function verifyAdminBlobCredential() {
+  try {
+    await listStores({
+      projectId,
+      token: apiToken,
+      consistency: 'strong',
+    })
+  } catch (error) {
+    const message = error?.message || String(error)
+    throw new Error(
+      `EDGEONE_API_TOKEN credential check failed for project ${projectId}: ${message}. Use a Makers API Token created from the EdgeOne Makers API Token page, not eo_token or a TencentCloud SecretKey.`,
+    )
+  }
+}
 
 function apiUrl(path) {
   const url = new URL(path, `${baseUrl.origin}/`)
@@ -73,6 +95,8 @@ function revisionFromKey(key) {
 }
 
 try {
+  await verifyAdminBlobCredential()
+
   const health = await request('/api/health')
   assert.equal(health.status, 200)
   assert.equal(health.json?.ok, true)
