@@ -6,7 +6,7 @@ on:
       - feature/edgeone-cloud-sync
     paths:
       - '.github/workflows/edgeone-auth-rate-limit-gate.yml'
-      - 'cloud-functions/api/[[default]].js'
+      - 'cloud-functions/api/**'
       - 'cloud-functions/_shared/auth-rate-limit.js'
       - 'cloud-functions/_shared/storage/edgeone-blob.js'
       - 'tests/cloud/auth-rate-limit.test.mjs'
