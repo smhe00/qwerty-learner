@@ -427,7 +427,7 @@ This confirms both the pure-static upstream build and the cloud-sync branch can 
 
 - [x] connect GitHub branch/project — project created in EdgeOne Makers
 - [x] deploy cloud-sync branch successfully
-- [ ] confirm Cloud Function route `/api/health` from the deployed feature environment
+- [x] confirm Cloud Function route `/api/health` from the deployed feature environment — HTTP 200 verified from local PowerShell; response reports `qwerty-sync-gateway`, API v1, `single-active-session`, runtime `v20.19.3`
 - [ ] create/use Blob namespace `qwerty-data`
 - [ ] exercise API via HTTPS — `yarn test:cloud:edgeone`
 - [ ] verify single-session revocation against real Blob
