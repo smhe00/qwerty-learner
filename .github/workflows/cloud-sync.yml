@@ -36,5 +36,8 @@ jobs:
       - name: Run cloud backend contract tests
         run: yarn test:cloud
 
+      - name: Lint repository
+        run: yarn lint
+
       - name: Build Qwerty
         run: yarn build
