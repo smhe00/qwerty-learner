@@ -439,7 +439,7 @@ This confirms both the pure-static upstream build and the cloud-sync branch can 
 P4 is complete. Frontend integration may now proceed under the existing minimal-intrusion rule.
 
 ### P5 — frontend sync client
-Only after P4 passes.
+P4 has passed. P5 implementation is now active.
 
 Add isolated:
 
@@ -453,6 +453,14 @@ src/sync/
 ```
 
 Do not modify Review core.
+
+P5 implementation principles:
+
+- no IndexedDB schema change;
+- no Review/Typing write-path hook;
+- local dirty state is detected by comparing a stable logical IndexedDB fingerprint with the last per-user sync baseline;
+- all sync actions remain manual;
+- divergent local/remote state requires an explicit overwrite/download choice.
 
 Initial frontend capabilities:
 
