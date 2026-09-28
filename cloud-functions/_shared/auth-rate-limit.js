@@ -208,3 +208,5 @@ export async function checkAuthRateLimit({
     source: sharedCount === null ? 'local' : 'hybrid',
   }
 }
+
+// Release-candidate verification marker: no functional behavior change.
