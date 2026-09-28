@@ -295,7 +295,11 @@ try {
         deviceId: `edgeone-live-extra-${index}`,
       },
     })
-    assert.equal(extraLogin.status, 200)
+    assert.equal(
+      extraLogin.status,
+      200,
+      `extra login ${index} failed: ${JSON.stringify(extraLogin.json)}`,
+    )
     activeToken = extraLogin.json.token
   }
 
