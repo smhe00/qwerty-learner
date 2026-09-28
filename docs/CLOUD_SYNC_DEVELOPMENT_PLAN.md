@@ -514,3 +514,5 @@ The most important invariant is:
 > **Cloud sync is an optional platform layer around Qwerty, not a dependency of Qwerty learning logic.**
 
 If EdgeOne is unavailable, a user must still be able to open Qwerty and learn locally.
+
+P4 harness note: EdgeOne protected preview URLs may complete an access-validation redirect/cookie handshake. PowerShell/browser clients handle this transparently, while Node's native `fetch()` has no persistent cookie jar. The live integration harness therefore captures `Set-Cookie`, follows redirects manually, and replays the access cookie for subsequent `/api/*` calls. This is test-harness behavior only; production application auth remains unchanged.

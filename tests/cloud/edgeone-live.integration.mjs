@@ -52,13 +52,80 @@ const username = `edgeone_test_${Date.now().toString(36)}_${crypto.randomBytes(3
 const password = `EdgeOne-Test-A9-${crypto.randomBytes(8).toString('hex')}`
 let userId = null
 
+const accessCookies = new Map()
+
+function captureAccessCookies(headers) {
+  const setCookies =
+    typeof headers.getSetCookie === 'function'
+      ? headers.getSetCookie()
+      : [headers.get('set-cookie')].filter(Boolean)
+
+  for (const setCookie of setCookies) {
+    const pair = setCookie.split(';', 1)[0]
+    const separator = pair.indexOf('=')
+    if (separator <= 0) continue
+
+    const name = pair.slice(0, separator).trim()
+    const value = pair.slice(separator + 1).trim()
+
+    if (!name) continue
+    if (value) accessCookies.set(name, value)
+    else accessCookies.delete(name)
+  }
+}
+
+function accessCookieHeader() {
+  return [...accessCookies.entries()].map(([name, value]) => `${name}=${value}`).join('; ')
+}
+
+async function fetchWithAccessCookies(url, init = {}) {
+  let currentUrl = url
+  let method = init.method || 'GET'
+  let body = init.body
+  const baseHeaders = new Headers(init.headers || {})
+
+  for (let redirectCount = 0; redirectCount <= 5; redirectCount += 1) {
+    const headers = new Headers(baseHeaders)
+    const cookie = accessCookieHeader()
+    if (cookie) headers.set('Cookie', cookie)
+
+    const response = await fetch(currentUrl, {
+      ...init,
+      method,
+      body,
+      headers,
+      redirect: 'manual',
+    })
+
+    captureAccessCookies(response.headers)
+
+    if (![301, 302, 303, 307, 308].includes(response.status)) return response
+
+    const location = response.headers.get('location')
+    if (!location) return response
+    if (redirectCount === 5) {
+      throw new Error('EdgeOne access protection exceeded 5 redirects')
+    }
+
+    currentUrl = new URL(location, currentUrl).toString()
+
+    if (response.status === 303 || ((response.status === 301 || response.status === 302) && method !== 'GET' && method !== 'HEAD')) {
+      method = 'GET'
+      body = undefined
+      baseHeaders.delete('Content-Type')
+    }
+  }
+
+  throw new Error('unreachable EdgeOne access redirect state')
+}
+
 async function request(path, { method = 'GET', token, body } = {}) {
   const headers = { Accept: 'application/json' }
 
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const response = await fetch(apiUrl(path), {
+  const response = await fetchWithAccessCookies(apiUrl(path), {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
