@@ -401,20 +401,24 @@ Backend does not advance to frontend integration until this test passes locally 
 ### P3 — local/CI static verification
 Required before deployment:
 - [x] `yarn test:cloud` — GitHub Cloud Sync Gate PASS
-- [ ] cloud-only ESLint: `yarn eslint cloud-functions tests/cloud --ext .js,.mjs`
+- [x] cloud-only ESLint: `yarn eslint cloud-functions tests/cloud --ext .js,.mjs` — GitHub Cloud Sync Gate PASS
 - [x] `yarn build` — GitHub Cloud Sync Gate PASS
 - [x] inspect branch diff: no accidental `src/` changes
 
 Full-repository `yarn lint` is not a cloud-sync Gate because the current base branch already contains an unrelated existing error in `src/pages/Typing/components/WordPanel/components/Word/index.tsx` (`no-case-declarations`). Cloud work must not modify that upstream/Typing code merely to make this feature Gate green.
 
 ### P4 — EdgeOne real integration gate
-- [ ] connect GitHub branch/project
+
+P3 gate result: GitHub Actions **Cloud Sync Gate PASS** at commit `2a8f7f3f9230ca83d6b8f9a8356cd561c9270a3f` (contract tests + isolated cloud lint + full Qwerty build).
+
+Deployment/runbook: `docs/CLOUD_SYNC_EDGEONE_DEPLOYMENT.md`.
+- [ ] connect GitHub branch/project — follow `docs/CLOUD_SYNC_EDGEONE_DEPLOYMENT.md`
 - [ ] deploy Cloud Functions
 - [ ] create/use Blob namespace `qwerty-data`
-- [ ] exercise API via HTTPS
+- [ ] exercise API via HTTPS — `yarn test:cloud:edgeone`
 - [ ] verify single-session revocation against real Blob
 - [ ] verify revision conflict against real Blob
-- [ ] verify cleanup/test data handling
+- [ ] verify cleanup/test data handling — live integration script cleans directly through admin Blob credentials
 - [ ] close any platform-specific compatibility defects
 
 ### P5 — frontend sync client
