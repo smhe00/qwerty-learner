@@ -1,7 +1,10 @@
 /* eslint-env node */
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { checkAuthRateLimit } from '../../cloud-functions/_shared/auth-rate-limit.js'
+import {
+  AuthRateLimitStorageError,
+  checkAuthRateLimit,
+} from '../../cloud-functions/_shared/auth-rate-limit.js'
 
 class MemoryRateLimitStorage {
   constructor() {
@@ -130,5 +133,54 @@ test('concurrent claims never allow more than the configured request limit', asy
   assert.equal(
     results.filter((result) => !result.allowed).length,
     10,
+  )
+})
+
+
+test('auth rate limiter retries transient storage reads before failing', async () => {
+  const storage = new MemoryRateLimitStorage()
+  let failuresRemaining = 2
+  const originalList = storage.listAuthRateLimitSlots.bind(storage)
+
+  storage.listAuthRateLimitSlots = async (...args) => {
+    if (failuresRemaining > 0) {
+      failuresRemaining -= 1
+      throw new Error('transient list failure')
+    }
+    return originalList(...args)
+  }
+
+  const result = await checkAuthRateLimit({
+    storage,
+    clientIp: '203.0.113.88',
+    requestLimit: 10,
+    windowSeconds: 60,
+    nowMs: 3_000_000,
+  })
+
+  assert.equal(result.allowed, true)
+  assert.equal(failuresRemaining, 0)
+})
+
+test('auth rate limiter reports persistent storage failure after bounded retries', async () => {
+  const storage = new MemoryRateLimitStorage()
+  storage.listAuthRateLimitSlots = async () => {
+    throw new Error('persistent list failure')
+  }
+
+  await assert.rejects(
+    () =>
+      checkAuthRateLimit({
+        storage,
+        clientIp: '203.0.113.99',
+        requestLimit: 10,
+        windowSeconds: 60,
+        nowMs: 3_600_000,
+      }),
+    (error) => {
+      assert.ok(error instanceof AuthRateLimitStorageError)
+      assert.equal(error.stage, 'list')
+      return true
+    },
   )
 })

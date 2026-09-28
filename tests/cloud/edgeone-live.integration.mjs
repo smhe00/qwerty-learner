@@ -221,13 +221,14 @@ function versionFromKey(key) {
 try {
   await primeEdgeOneAccessSession()
 
-  const health = await waitForBackendCapability('application-auth-rate-limit-v1')
+  const health = await waitForBackendCapability('application-auth-rate-limit-v2')
   assert.equal(health.status, 200)
   assert.equal(health.json?.ok, true)
   assert.equal(health.json?.authMode, 'single-active-session')
   assert.ok(health.json.capabilities.includes('bounded-auth-history-v1'))
   assert.ok(health.json.capabilities.includes('same-origin-cors-default-v1'))
   assert.ok(health.json.capabilities.includes('application-auth-rate-limit-v1'))
+  assert.ok(health.json.capabilities.includes('application-auth-rate-limit-v2'))
 
   await verifyAdminBlobCredential()
 
@@ -409,6 +410,7 @@ try {
         singleActiveSession: true,
         sameOriginCorsCapability: true,
         applicationAuthRateLimitCapability: true,
+        applicationAuthRateLimitV2Capability: true,
       },
       null,
       2,

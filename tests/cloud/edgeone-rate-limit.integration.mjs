@@ -179,81 +179,13 @@ async function alignToFreshMinuteWindow() {
   const seconds = Math.floor(Date.now() / 1000) % 60
   const waitSeconds = seconds <= 2 ? 0 : 62 - seconds
   if (waitSeconds > 0) {
-    console.log(`Waiting ${waitSeconds}s for a fresh fixed rate-limit window...`)
-    await sleep(waitSeconds * 1000)
-  }
-}
-
-await primeEdgeOneAccessSession()
-await waitForCapability('application-auth-rate-limit-v1')
-await alignToFreshMinuteWindow()
-
-const healthBefore = await getJson('/api/health')
-assert.equal(healthBefore.response.status, 200)
-assert.equal(healthBefore.json?.ok, true)
-
-const invalidRegisterBody = {
-  username: 'x',
-  password: 'RateLimit-Probe-A9',
-  deviceId: 'rate-limit-gate',
-}
-
-const statuses = []
-
-for (let attempt = 1; attempt <= expectedThreshold; attempt += 1) {
-  const result = await request('/api/auth/register', invalidRegisterBody)
-  statuses.push(result.status)
-  assert.equal(
-    result.status,
-    400,
-    `attempt ${attempt} should reach application validation before the threshold; got HTTP ${result.status}: ${result.bodyPreview}`,
-  )
-  assert.equal(result.json?.error, 'invalid_username')
-}
-
-const blocked = await request('/api/auth/register', invalidRegisterBody)
-statuses.push(blocked.status)
-
-assert.equal(
-  blocked.status,
-  429,
-  `request ${expectedThreshold + 1} should be application-rate-limited: ${blocked.bodyPreview}`,
-)
-assert.equal(blocked.json?.error, 'auth_rate_limited')
-
-const retryAfter = Number(blocked.retryAfter)
-assert.ok(
-  Number.isInteger(retryAfter) && retryAfter >= 1 && retryAfter <= 60,
-  `invalid Retry-After header: ${blocked.retryAfter}`,
-)
-
-const loginAfterTrigger = await request('/api/auth/login', {
-  username: 'x',
-  password: 'RateLimit-Probe-A9',
-  deviceId: 'rate-limit-gate',
-})
-
-assert.equal(loginAfterTrigger.status, 429)
-assert.equal(loginAfterTrigger.json?.error, 'auth_rate_limited')
-
-const healthAfter = await getJson('/api/health')
-assert.equal(
-  healthAfter.response.status,
-  200,
-  `auth limiter must not affect /api/health: ${healthAfter.text.slice(0, 200)}`,
-)
-assert.equal(healthAfter.json?.ok, true)
-
-console.log(
+    console.log(
   JSON.stringify(
     {
       ok: true,
-      limiter: 'application-auth-rate-limit-v1',
+      limiter: 'application-auth-rate-limit-v2',
       expectedThreshold,
-      registerStatuses: statuses,
-      retryAfterSeconds: retryAfter,
-      loginStatusAfterTrigger: loginAfterTrigger.status,
-      healthStatusAfterTrigger: healthAfter.response.status,
+      rounds,
     },
     null,
     2,

@@ -4,6 +4,38 @@ import crypto from 'node:crypto'
 const RATE_LIMIT_SCHEMA_VERSION = 1
 const CLIENT_KEY_NAMESPACE = 'qwerty-auth-rate-v1'
 const MAX_CLAIM_RETRIES = 16
+const STORAGE_RETRY_DELAYS_MS = [0, 100, 250, 500]
+
+export class AuthRateLimitStorageError extends Error {
+  constructor(stage, error) {
+    super('Authentication rate-limit storage is temporarily unavailable')
+    this.name = 'AuthRateLimitStorageError'
+    this.stage = stage
+    this.originalName = error instanceof Error ? error.name : 'UnknownError'
+    this.originalCode =
+      error && typeof error === 'object' && 'code' in error ? String(error.code) : null
+  }
+}
+
+function sleep(ms) {
+  return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve()
+}
+
+async function withStorageRetry(stage, operation) {
+  let lastError
+
+  for (const delayMs of STORAGE_RETRY_DELAYS_MS) {
+    if (delayMs > 0) await sleep(delayMs)
+
+    try {
+      return await operation()
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  throw new AuthRateLimitStorageError(stage, lastError)
+}
 
 function clientKey(clientIp) {
   return crypto
@@ -28,15 +60,17 @@ async function bestEffortPrune(storage, key, minWindowStart) {
   if (typeof storage.pruneAuthRateLimitWindows !== 'function') return
 
   try {
-    await storage.pruneAuthRateLimitWindows(key, minWindowStart)
+    await withStorageRetry('prune', () =>
+      storage.pruneAuthRateLimitWindows(key, minWindowStart),
+    )
   } catch (error) {
     console.error(
       JSON.stringify({
         event: 'auth_rate_limit_cleanup_failed',
         errorName: error instanceof Error ? error.name : 'UnknownError',
         errorCode:
-          error && typeof error === 'object' && 'code' in error
-            ? String(error.code)
+          error && typeof error === 'object' && 'originalCode' in error
+            ? error.originalCode
             : null,
       }),
     )
@@ -75,7 +109,9 @@ export async function checkAuthRateLimit({
   const sentinelSlot = requestLimit + 1
 
   for (let attempt = 0; attempt < MAX_CLAIM_RETRIES; attempt += 1) {
-    const slots = await storage.listAuthRateLimitSlots(key, windowStart)
+    const slots = await withStorageRetry('list', () =>
+      storage.listAuthRateLimitSlots(key, windowStart),
+    )
 
     if (slots.includes(sentinelSlot)) {
       return {
@@ -94,12 +130,14 @@ export async function checkAuthRateLimit({
       }
     }
 
-    const created = await storage.claimAuthRateLimitSlot(key, windowStart, slot, {
-      schemaVersion: RATE_LIMIT_SCHEMA_VERSION,
-      slot,
-      windowStart,
-      createdAt: new Date(Number(nowMs)).toISOString(),
-    })
+    const created = await withStorageRetry('claim', () =>
+      storage.claimAuthRateLimitSlot(key, windowStart, slot, {
+        schemaVersion: RATE_LIMIT_SCHEMA_VERSION,
+        slot,
+        windowStart,
+        createdAt: new Date(Number(nowMs)).toISOString(),
+      }),
+    )
 
     if (!created) continue
 
