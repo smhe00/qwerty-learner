@@ -32,6 +32,22 @@ class MemoryStorage {
     return true
   }
 
+  async pruneAuthVersions(hash, keepCount) {
+    const entries = [...this.auth.keys()]
+      .filter((key) => key.startsWith(`${hash}:`))
+      .map((key) => ({ key, version: Number(key.slice(hash.length + 1)) }))
+      .sort((left, right) => left.version - right.version)
+
+    const obsolete = entries.slice(0, Math.max(0, entries.length - keepCount))
+    for (const item of obsolete) this.auth.delete(item.key)
+
+    return {
+      deleted: obsolete.length,
+      retained: entries.length - obsolete.length,
+      latestVersion: entries.length ? entries[entries.length - 1].version : 0,
+    }
+  }
+
   async getLatestAuth(hash) {
     let latest = null
 
@@ -52,6 +68,22 @@ class MemoryStorage {
     if (this.sessions.has(key)) return false
     this.sessions.set(key, clone(record))
     return true
+  }
+
+  async pruneSessionVersions(hash, keepCount) {
+    const entries = [...this.sessions.keys()]
+      .filter((key) => key.startsWith(`${hash}:`))
+      .map((key) => ({ key, version: Number(key.slice(hash.length + 1)) }))
+      .sort((left, right) => left.version - right.version)
+
+    const obsolete = entries.slice(0, Math.max(0, entries.length - keepCount))
+    for (const item of obsolete) this.sessions.delete(item.key)
+
+    return {
+      deleted: obsolete.length,
+      retained: entries.length - obsolete.length,
+      latestVersion: entries.length ? entries[entries.length - 1].version : 0,
+    }
   }
 
   async getLatestSession(hash) {
@@ -111,6 +143,20 @@ class MemoryStorage {
       retained: entries.length - obsolete.length,
       latestRevision: entries.length ? entries[entries.length - 1].revision : 0,
     }
+  }
+
+  authVersions(hash) {
+    return [...this.auth.keys()]
+      .filter((key) => key.startsWith(`${hash}:`))
+      .map((key) => Number(key.slice(hash.length + 1)))
+      .sort((a, b) => a - b)
+  }
+
+  sessionVersions(hash) {
+    return [...this.sessions.keys()]
+      .filter((key) => key.startsWith(`${hash}:`))
+      .map((key) => Number(key.slice(hash.length + 1)))
+      .sort((a, b) => a - b)
   }
 
   revisionVersions(userId) {
@@ -207,6 +253,52 @@ test('snapshot retention keeps only the latest three full revisions', async () =
 
   const latest = await service.getSync(registered.token)
   assert.equal(latest.revision, 6)
+
+  await service.cleanupTestUser(username)
+})
+
+
+test('auth and session history retention bounds immutable version objects', async () => {
+  const storage = new MemoryStorage()
+  const service = createBackendService({
+    storage,
+    sessionHistoryRetention: 3,
+    authHistoryRetention: 2,
+  })
+
+  const username = 'history_retention_user'
+  let password = 'History-Retention-A1-Start'
+  const registered = await service.register(username, password, 'register-device')
+  const usernameHash = registered.token.split('.')[1]
+
+  let active = registered
+  for (let index = 0; index < 4; index += 1) {
+    active = await service.login(username, password, `login-${index}`)
+  }
+
+  assert.deepEqual(storage.sessionVersions(usernameHash), [3, 4, 5])
+
+  for (let index = 0; index < 3; index += 1) {
+    const nextPassword = `History-Retention-B${index}-Password-123`
+    active = await service.changePassword(
+      active.token,
+      password,
+      nextPassword,
+      `password-change-${index}`,
+    )
+    password = nextPassword
+  }
+
+  assert.deepEqual(storage.authVersions(usernameHash), [3, 4])
+  assert.deepEqual(storage.sessionVersions(usernameHash), [6, 7, 8])
+
+  const me = await service.me(active.token)
+  assert.equal(me.user.userId, registered.user.userId)
+
+  const latestLogin = await service.login(username, password, 'final-login')
+  const latestMe = await service.me(latestLogin.token)
+  assert.equal(latestMe.session.deviceId, 'final-login')
+  assert.deepEqual(storage.sessionVersions(usernameHash), [7, 8, 9])
 
   await service.cleanupTestUser(username)
 })

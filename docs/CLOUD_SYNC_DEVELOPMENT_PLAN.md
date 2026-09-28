@@ -546,12 +546,14 @@ P7 is complete.
 
 ### P8 — operational hardening
 Before broader public use:
-- [ ] specific CORS/same-origin policy
+- [x] specific CORS/same-origin policy — default `same-origin`, explicit allowlist supported
 - [ ] abuse/rate-limit strategy for login/register
 - [x] snapshot retention policy: keep latest 3 full revisions
-- [ ] retention policy for old session/auth versions
-- [ ] backup/export strategy
+- [x] retention policy for old session/auth versions — latest 3 sessions / latest 2 auth objects
+- [x] backup/export strategy — existing manual local export remains the recovery path before destructive cloud restore
 - [ ] monitoring/error telemetry without sensitive payloads
+
+Auth/session retention and CORS hardening must pass the backend CI gate before being treated as complete.
 
 ## 14. Continuation protocol for future sessions
 

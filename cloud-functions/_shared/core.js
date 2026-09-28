@@ -18,6 +18,8 @@ const SESSION_TOKEN_PREFIX = 'qs1'
 const SESSION_RANDOM_BYTES = 32
 const SESSION_CREATE_RETRIES = 8
 const DEFAULT_SNAPSHOT_RETENTION = 3
+const DEFAULT_SESSION_HISTORY_RETENTION = 3
+const DEFAULT_AUTH_HISTORY_RETENTION = 2
 
 const SCRYPT_N = 16384
 const SCRYPT_R = 8
@@ -204,10 +206,26 @@ export function createBackendService({
   sessionTtlSeconds = 7 * 24 * 60 * 60,
   maxSyncBytes = 4 * 1024 * 1024,
   snapshotRetention = DEFAULT_SNAPSHOT_RETENTION,
+  sessionHistoryRetention = DEFAULT_SESSION_HISTORY_RETENTION,
+  authHistoryRetention = DEFAULT_AUTH_HISTORY_RETENTION,
 }) {
   if (!storage) throw new Error('storage is required')
   if (!Number.isInteger(snapshotRetention) || snapshotRetention < 1) {
     throw new Error('snapshotRetention must be a positive integer')
+  }
+  if (!Number.isInteger(sessionHistoryRetention) || sessionHistoryRetention < 1) {
+    throw new Error('sessionHistoryRetention must be a positive integer')
+  }
+  if (!Number.isInteger(authHistoryRetention) || authHistoryRetention < 1) {
+    throw new Error('authHistoryRetention must be a positive integer')
+  }
+
+  async function bestEffortPrune(label, operation) {
+    try {
+      await operation()
+    } catch (error) {
+      console.error(`${label} retention cleanup failed:`, error)
+    }
   }
 
   async function getCurrentAuth(identity) {
@@ -239,6 +257,12 @@ export function createBackendService({
       )
 
       if (created) {
+        if (typeof storage.pruneSessionVersions === 'function') {
+          await bestEffortPrune('Session', () =>
+            storage.pruneSessionVersions(identity.usernameHash, sessionHistoryRetention),
+          )
+        }
+
         return {
           token: candidate.token,
           expiresAt: candidate.expiresAt,
@@ -402,6 +426,12 @@ export function createBackendService({
       )
     }
 
+    if (typeof storage.pruneAuthVersions === 'function') {
+      await bestEffortPrune('Auth', () =>
+        storage.pruneAuthVersions(identity.usernameHash, authHistoryRetention),
+      )
+    }
+
     const session = await issueNextSession(identity, nextAuth.version, deviceId)
     return { user: publicUser(identity), ...session }
   }
@@ -506,11 +536,9 @@ export function createBackendService({
     // an HTTP failure, otherwise the client could retry an already-committed
     // revision and receive a misleading conflict.
     if (typeof storage.pruneRevisions === 'function') {
-      try {
-        await storage.pruneRevisions(identity.userId, snapshotRetention)
-      } catch (error) {
-        console.error('Snapshot retention cleanup failed:', error)
-      }
+      await bestEffortPrune('Snapshot', () =>
+        storage.pruneRevisions(identity.userId, snapshotRetention),
+      )
     }
 
     return metaFromSnapshot(snapshot)

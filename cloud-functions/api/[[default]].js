@@ -32,9 +32,17 @@ function bearer(request) {
 
 function corsHeaders(request, configuredOrigin) {
   const origin = request.headers.get('origin') || ''
+  if (!origin) return {}
 
-  if (!configuredOrigin || configuredOrigin === '*') {
+  if (configuredOrigin === '*') {
     return { 'Access-Control-Allow-Origin': '*' }
+  }
+
+  const requestOrigin = new URL(request.url).origin
+  if (!configuredOrigin || configuredOrigin === 'same-origin') {
+    return origin === requestOrigin
+      ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' }
+      : {}
   }
 
   const allowed = configuredOrigin
@@ -80,7 +88,7 @@ export async function onRequest(context) {
   const { request, env = {} } = context
   const url = new URL(request.url)
   const path = url.pathname.replace(/^\/api(?=\/|$)/, '') || '/'
-  const cors = corsHeaders(request, env.CORS_ORIGIN || '*')
+  const cors = corsHeaders(request, env.CORS_ORIGIN || 'same-origin')
 
   if (request.method === 'OPTIONS') {
     return new Response(null, {

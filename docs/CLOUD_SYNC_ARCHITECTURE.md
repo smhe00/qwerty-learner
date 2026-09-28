@@ -221,10 +221,10 @@ V1 无需应用 Secret：
 SESSION_TTL_SECONDS=604800
 MAX_SYNC_BYTES=4194304
 BLOB_STORE_NAME=qwerty-data
-CORS_ORIGIN=*
+CORS_ORIGIN=same-origin
 ```
 
-生产前应将 CORS 收紧为同源或明确站点域名。
+默认只允许浏览器同源调用。若未来拆分前后端域名，可显式配置逗号分隔的允许 Origin；仅在明确需要时才使用 `*`。
 
 ## 12. Upstream 隔离原则
 
@@ -233,3 +233,22 @@ CORS_ORIGIN=*
 3. 不把 EdgeOne SDK 引入 `src/review/` 或 Typing。
 4. 后续前端只在 `src/sync/` 和极小设置入口接入。
 5. 云功能保持 fork-only，不阻碍 Review 模块单独向 upstream 提 PR。
+
+
+## 13. Auth / Session 保留策略
+
+初始 auth/session version 1 仍内嵌在 immutable `identity.json`。
+
+额外的版本对象采用有限保留：
+
+```text
+auth versions:     latest 2
+session versions:  latest 3
+snapshot revisions latest 3
+```
+
+版本号继续单调增加，删除旧对象不会复用版本号。
+
+新 auth/session 对象一旦通过 `onlyIfNew` 成功提交，retention cleanup 只是维护操作。cleanup 失败不会把已经成功的登录、改密或同步操作改判成失败。
+
+该策略同时限制 Blob 空间增长，并让 `getLatestAuth/getLatestSession` 的 version listing 长期保持在很小的集合内，降低分页风险。

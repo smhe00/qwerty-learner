@@ -76,6 +76,23 @@ export function createEdgeOneBlobStorage(store) {
       .sort((left, right) => left.version - right.version)
   }
 
+  async function pruneVersioned(prefix, keepCount) {
+    if (!Number.isInteger(keepCount) || keepCount < 1) {
+      throw new Error('keepCount must be a positive integer')
+    }
+
+    const versions = await listVersioned(prefix)
+    const obsolete = versions.slice(0, Math.max(0, versions.length - keepCount))
+
+    await Promise.all(obsolete.map((item) => store.delete(item.key)))
+
+    return {
+      deleted: obsolete.length,
+      retained: versions.length - obsolete.length,
+      latestVersion: versions.length ? versions[versions.length - 1].version : 0,
+    }
+  }
+
   async function deletePrefix(prefix) {
     const { blobs = [] } = await store.list({ prefix, consistency: 'strong' })
     await Promise.all(blobs.map((blob) => store.delete(blob.key)))
@@ -100,6 +117,10 @@ export function createEdgeOneBlobStorage(store) {
       return latest ? latest.value : null
     },
 
+    async pruneAuthVersions(usernameHash, keepCount) {
+      return pruneVersioned(authPrefix(usernameHash), keepCount)
+    },
+
     async createSessionVersion(usernameHash, version, record) {
       return setJsonOnlyIfNew(sessionKey(usernameHash, version), record)
     },
@@ -107,6 +128,10 @@ export function createEdgeOneBlobStorage(store) {
     async getLatestSession(usernameHash) {
       const latest = await latestObject(sessionPrefix(usernameHash))
       return latest ? latest.value : null
+    },
+
+    async pruneSessionVersions(usernameHash, keepCount) {
+      return pruneVersioned(sessionPrefix(usernameHash), keepCount)
     },
 
     async createRevision(userId, revision, snapshot) {
@@ -119,19 +144,11 @@ export function createEdgeOneBlobStorage(store) {
     },
 
     async pruneRevisions(userId, keepCount) {
-      if (!Number.isInteger(keepCount) || keepCount < 1) {
-        throw new Error('keepCount must be a positive integer')
-      }
-
-      const revisions = await listVersioned(revisionPrefix(userId))
-      const obsolete = revisions.slice(0, Math.max(0, revisions.length - keepCount))
-
-      await Promise.all(obsolete.map((item) => store.delete(item.key)))
-
+      const result = await pruneVersioned(revisionPrefix(userId), keepCount)
       return {
-        deleted: obsolete.length,
-        retained: revisions.length - obsolete.length,
-        latestRevision: revisions.length ? revisions[revisions.length - 1].version : 0,
+        deleted: result.deleted,
+        retained: result.retained,
+        latestRevision: result.latestVersion,
       }
     },
 
