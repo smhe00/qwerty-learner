@@ -1,3 +1,4 @@
+/* eslint-env node */
 export function createEdgeOneBlobStorage(store) {
   const strongJson = (key) => store.get(key, { type: 'json', consistency: 'strong' })
 

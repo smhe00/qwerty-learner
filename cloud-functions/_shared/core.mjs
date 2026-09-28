@@ -1,3 +1,4 @@
+/* eslint-env node */
 import crypto from 'node:crypto'
 
 export class AppError extends Error {

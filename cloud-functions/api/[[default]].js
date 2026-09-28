@@ -1,7 +1,9 @@
+/* eslint-env node */
+/* global Response */
 import { getStore } from '@edgeone/pages-blob'
-import { AppError, createBackendService } from '../../backend/core.mjs'
-import { runBackendSelfTest } from '../../backend/self-test.mjs'
-import { createEdgeOneBlobStorage } from '../../backend/storage/edgeone-blob.mjs'
+import { AppError, createBackendService } from '../_shared/core.mjs'
+import { runBackendSelfTest } from '../_shared/self-test.mjs'
+import { createEdgeOneBlobStorage } from '../_shared/storage/edgeone-blob.mjs'
 
 function numberEnv(value, fallback) {
   const number = Number(value)

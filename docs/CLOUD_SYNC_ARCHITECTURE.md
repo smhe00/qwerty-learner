@@ -13,19 +13,21 @@
 ## 2. 代码边界
 
 ```text
-backend/
-  core.mjs                    认证、Session、revision、冲突协议
-  self-test.mjs               平台无关的完整契约测试
-  storage/edgeone-blob.mjs    EdgeOne Blob 适配器
+cloud-functions/
+  _shared/
+    core.mjs                    平台无关：认证、Session、revision、冲突协议
+    self-test.mjs               平台无关的完整契约测试
+    storage/edgeone-blob.mjs    EdgeOne Blob 适配器
+  api/[[default]].js            EdgeOne HTTP 适配器
 
-cloud-functions/api/[[default]].js
-                              EdgeOne HTTP 适配器
+tests/cloud/
+  backend-core.test.mjs         内存 Storage 的后端契约测试
 
 src/
                               当前阶段不修改
 ```
 
-核心后端只依赖一个 storage contract。以后 Blob 可替换为 S3/COS/Gitee，而前端 API 不变。
+核心逻辑放在 `cloud-functions/_shared/`，是为了遵循 EdgeOne 对辅助模块的官方打包边界；代码本身不依赖 EdgeOne SDK，只依赖 storage contract。以后 Blob 可替换为 S3/COS/Gitee，而前端 API 不变。
 
 ## 3. API v1
 

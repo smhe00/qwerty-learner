@@ -1,3 +1,4 @@
+/* eslint-env node */
 import crypto from 'node:crypto'
 
 function assert(condition, message) {
@@ -26,6 +27,8 @@ export async function runBackendSelfTest(service) {
   const pass = (name) => steps.push({ name, ok: true })
 
   let userId = null
+  let success = false
+  let primaryError = null
   let cleanup = null
 
   try {
@@ -102,13 +105,20 @@ export async function runBackendSelfTest(service) {
     assert(after.revision === 2 && after.payloadBase64 === p2, 'sync must survive password change')
     pass('sync-survives-password-change')
 
-    return { success: true, username, userId, stepCount: steps.length, steps }
-  } finally {
-    try {
-      cleanup = await service.cleanupTestUser(username)
-      steps.push({ name: 'cleanup', ok: true, details: cleanup })
-    } catch (error) {
-      steps.push({ name: 'cleanup', ok: false, details: { message: error.message } })
-    }
+    success = true
+  } catch (error) {
+    primaryError = error
   }
+
+  try {
+    cleanup = await service.cleanupTestUser(username)
+    steps.push({ name: 'cleanup', ok: true, details: cleanup })
+  } catch (error) {
+    steps.push({ name: 'cleanup', ok: false, details: { message: error.message } })
+    if (!primaryError) primaryError = error
+  }
+
+  if (primaryError) throw primaryError
+
+  return { success, username, userId, stepCount: steps.length, steps, cleanup }
 }
