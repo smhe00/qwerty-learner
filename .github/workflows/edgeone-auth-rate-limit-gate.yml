@@ -1,0 +1,43 @@
+name: EdgeOne Auth Rate Limit Gate
+
+on:
+  push:
+    branches:
+      - feature/edgeone-cloud-sync
+    paths:
+      - '.github/workflows/edgeone-auth-rate-limit-gate.yml'
+      - 'tests/cloud/edgeone-rate-limit.integration.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  auth-rate-limit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      QWERTY_SYNC_BASE_URL: ${{ secrets.QWERTY_SYNC_BASE_URL }}
+      RATE_LIMIT_THRESHOLD: '10'
+      RATE_LIMIT_MAX_ATTEMPTS: '13'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+
+      - name: Verify live-test URL is configured
+        shell: bash
+        run: |
+          if [ -z "$QWERTY_SYNC_BASE_URL" ]; then
+            echo "::error::QWERTY_SYNC_BASE_URL is not configured"
+            exit 1
+          fi
+          echo "Required EdgeOne live-test URL is present."
+
+      - name: Probe precise auth rate limit
+        run: node tests/cloud/edgeone-rate-limit.integration.mjs
