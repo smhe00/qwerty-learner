@@ -412,8 +412,16 @@ Full-repository `yarn lint` is not a cloud-sync Gate because the current base br
 P3 gate result: GitHub Actions **Cloud Sync Gate PASS** at commit `2a8f7f3f9230ca83d6b8f9a8356cd561c9270a3f` (contract tests + isolated cloud lint + full Qwerty build).
 
 Deployment/runbook: `docs/CLOUD_SYNC_EDGEONE_DEPLOYMENT.md`.
-- [ ] connect GitHub branch/project — follow `docs/CLOUD_SYNC_EDGEONE_DEPLOYMENT.md`
-- [ ] deploy Cloud Functions
+
+Observed EdgeOne deployments on 2026-09-28:
+- `master` deployment `dpk9qxv0ione` — SUCCESS at commit `1182426f2bd0a28c95302c33f9e19136b1262a70`;
+- `feature/edgeone-cloud-sync` deployment `dppemfs6uhvm` — SUCCESS at commit `6e28b3de03cdbb70e917de5b3c9e4609912138f4`.
+
+This confirms both the pure-static upstream build and the cloud-sync branch can be accepted by EdgeOne. P4 now moves from build/deploy validation to runtime API/Blob validation.
+
+- [x] connect GitHub branch/project — project created in EdgeOne Makers
+- [x] deploy cloud-sync branch successfully
+- [ ] confirm Cloud Function route `/api/health` from the deployed feature environment
 - [ ] create/use Blob namespace `qwerty-data`
 - [ ] exercise API via HTTPS — `yarn test:cloud:edgeone`
 - [ ] verify single-session revocation against real Blob
