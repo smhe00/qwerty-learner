@@ -1,8 +1,8 @@
 /* eslint-env node */
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createBackendService } from '../../cloud-functions/_shared/core.mjs'
-import { runBackendSelfTest } from '../../cloud-functions/_shared/self-test.mjs'
+import { createBackendService } from '../../cloud-functions/_shared/core.js'
+import { runBackendSelfTest } from '../../cloud-functions/_shared/self-test.js'
 
 const clone = (value) => JSON.parse(JSON.stringify(value))
 

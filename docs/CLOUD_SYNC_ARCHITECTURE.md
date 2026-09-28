@@ -15,9 +15,9 @@
 ```text
 cloud-functions/
   _shared/
-    core.mjs                    平台无关：认证、Session、revision、冲突协议
-    self-test.mjs               平台无关的完整契约测试
-    storage/edgeone-blob.mjs    EdgeOne Blob 适配器
+    core.js                    平台无关：认证、Session、revision、冲突协议
+    self-test.js               平台无关的完整契约测试
+    storage/edgeone-blob.js    EdgeOne Blob 适配器
   api/[[default]].js            EdgeOne HTTP 适配器
 
 tests/cloud/
