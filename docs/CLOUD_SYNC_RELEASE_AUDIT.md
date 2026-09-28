@@ -2,7 +2,7 @@
 
 > Date: 2026-09-29  
 > Branch: `feature/edgeone-cloud-sync`  
-> Audited code/test commit: `69dda250f0178ed883d06e0d5c4242014ee9346c`  
+> Review-aware browser test commit: `29bbe06999b0a7f77abde7d632bdcfb2efda18ec`  
 > Authority for development state remains: `docs/CLOUD_SYNC_DEVELOPMENT_PLAN.md`
 
 ## Executive status
@@ -16,7 +16,7 @@ Current verified Gates:
 - Cloud Sync Gate run `36488214587`: **PASS** at `69dda250...`;
 - EdgeOne Live Gate run `36487859692`: **PASS** on the application-rate-limit backend;
 - EdgeOne Auth Rate Limit Gate run `36488214624`: **PASS**;
-- prior Chromium encrypted-sync Gate remains **PASS**.
+- Review-aware Chromium encrypted-sync Gate run `36500293718`: **PASS** at `29bbe069...`.
 
 P8 is closed. Remaining work is release management: production branch/domain selection, production environment confirmation, release-candidate recording, and rollback target selection.
 
@@ -131,7 +131,23 @@ Previously verified:
 
 Current static Gate remains green after the application limiter and live rate-limit probe.
 
-### 11. Rate limiting — PASS
+### 11. Review × Cloud consistency — PASS
+
+The real Chromium cloud-sync test now includes the current spaced-Review data model rather than validating only generic `wordRecords`.
+
+Run `36500293718` passed on the real EdgeOne deployment and verified:
+
+- `WordRecord.typingTelemetry` survives encrypted upload/restore;
+- `WordRecord.learningContext` survives encrypted upload/restore;
+- `reviewWordStates` scheduler state, counters, due time and outcome survive exactly;
+- `reviewRecords` queue order, duplicate reinforcement entry, current index and unfinished-session state survive exactly;
+- changing only Review state marks the whole database dirty;
+- a wrong encryption passphrase leaves local Review state unchanged;
+- deliberately corrupted local Review scheduler/session state is replaced by the exact cloud snapshot after an explicit restore.
+
+This validates the V1 architectural choice to synchronize one encrypted RecordDB snapshot/revision rather than introducing a separate Review cloud API.
+
+### 12. Rate limiting — PASS
 
 The deployed V1 limiter is application-layer because the current Makers project/deployment domain cannot attach a custom precise-rate-limit rule.
 
@@ -149,6 +165,18 @@ raw IP stored:    no
 The dedicated real EdgeOne Gate run `36488214624` passed. It verified the first ten auth requests reach application validation, the eleventh is blocked with application HTTP 429, login shares the same counter, and health traffic is unaffected.
 
 One earlier live run (`36487403203`) observed a transient HTTP 500 during repeated login. The immediate rerun (`36487859692`) passed without changing the backend implementation. This is retained as an operational observation; monitor aggregate `internal_error` / authentication availability after rollout, but it is not a reproducible release blocker.
+
+## Branch convergence
+
+The integrated product no longer maintains Review and Cloud as separate active long-lived feature lines.
+
+- `feature/spaced-review` is frozen at `93b40e0784ea26cf300d10d8e67365f16618e7e3`;
+- `archive/review-baseline-20260928` preserves the same historical baseline;
+- `feature/edgeone-cloud-sync` is the temporary integrated RC line;
+- after the final four-Gate RC passes, `product/main` becomes the only active integrated product branch;
+- future upstream contribution branches remain separate and are cut from an upstream-compatible baseline.
+
+See `docs/BRANCH_STRATEGY.md`.
 
 ## Release decisions after P8
 
