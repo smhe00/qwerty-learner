@@ -30,9 +30,14 @@ P4 PASS 前继续保持 `src/` 零修改。
 1. 选择 **导入 Git 仓库**。
 2. 连接 GitHub。
 3. 选择 `smhe00/qwerty-learner`。
-4. 先把当前云同步分支作为预览部署来源：
+4. **P4 首次创建 Makers 项目时，生产分支直接选择**
    `feature/edgeone-cloud-sync`。
 5. 根目录保持仓库根目录。
+
+> 这是 P4 验证阶段的临时生产映射，不代表未来必须长期把 feature 分支当正式生产分支。
+> 当前 upstream `master` 不包含 `edgeone.json`、`cloud-functions/` 与云后端依赖，
+> 用它做首次 Makers 构建无法验证本分支的 EdgeOne 能力。
+> P4/P5 稳定后再决定最终生产分支（例如专门的稳定分支或合并后的 fork 主分支）。
 
 仓库已包含 `edgeone.json`，用于固定：
 
@@ -42,7 +47,7 @@ P4 PASS 前继续保持 `src/` 零修改。
 - Node 版本；
 - Cloud Functions timeout。
 
-Makers 对 Git 仓库支持自动构建部署；非生产分支通常进入预览环境。
+Makers 对 Git 仓库支持自动构建部署。项目成功创建以后，再利用非生产分支做 Preview 验证。P4 的首要目标是先让包含 Cloud Functions 的当前分支成功建立项目和公网 API。
 
 ## 3. 运行环境变量
 
@@ -188,3 +193,25 @@ src/sync/
 并在现有 Data Settings 中加入最小入口。
 
 Review、Typing 主流程仍不直接依赖 EdgeOne。
+
+
+## 9. 首次项目创建失败时的分支检查
+
+如果构建日志出现：
+
+```text
+No server-handler detected, generating routes.json for pure project...
+Generated routes.json for pure project
+Build error
+```
+
+先确认实际构建的是哪个 Git commit。
+
+对于本项目：
+
+- upstream `master`：没有 Cloud Functions，也没有 `edgeone.json`；
+- `feature/edgeone-cloud-sync`：包含完整 Makers/Cloud Functions/Blob 代码。
+
+因此 P4 首次创建项目必须从 `feature/edgeone-cloud-sync` 构建。
+
+`No server-handler detected` 本身只是表示构建器把项目当纯静态站点处理，并不等同于具体错误原因；若在正确的 cloud-sync 分支上仍出现该信息，再按平台构建问题继续排查。
