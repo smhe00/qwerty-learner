@@ -484,22 +484,36 @@ Diff audit against `feature/spaced-review`: the only existing application file m
 All frontend sync implementation lives under `src/sync/`.
 No Review core, Typing learning flow, or IndexedDB schema was modified.
 
-Remaining P5 gate before declaring browser integration fully validated:
-- [ ] deploy the P5 commit to EdgeOne;
-- [ ] EdgeOne Browser Sync Gate: real Chromium register/login/manual upload/manual download;
-- [ ] verify divergent-state warning/explicit choice against the live backend.
+P5 live browser gate is complete:
+- [x] P5 frontend is deployed and visible on the protected EdgeOne site;
+- [x] real Chromium register/login/manual upload/manual download path verified;
+- [x] divergent-state warning and explicit cloud-restore choice verified against the live backend;
+- [x] browser E2E test account cleanup verified.
+
+GitHub Actions `EdgeOne Browser Sync Gate` run `36451704069` PASS:
+- secrets present;
+- dependencies installed;
+- Chromium installed on Ubuntu 22.04;
+- `cloud-sync-live.spec.ts`: 1 passed;
+- cleanup: account deleted, 2 revisions deleted.
+
+P5 is complete.
 
 The browser gate uses GitHub Actions Secrets for EdgeOne access, disables trace/video/screenshots to avoid persisting protected-access URLs, creates an isolated test account per run, and performs best-effort Blob cleanup in an `always()` step.
 
 ### P6 — snapshot packaging
-- [ ] IndexedDB export
+
+P6 starts only after the encryption-key UX is fixed in the architecture. The current P5 cloud snapshot is opaque to the server but is **not encrypted**.
+
+- [x] IndexedDB export — implemented in P5
 - [ ] gzip
 - [ ] client-side AES-GCM
-- [ ] Base64 transport
-- [ ] restore validation
-- [ ] format versioning
+- [x] Base64 transport — implemented in P5
+- [x] restore validation — JSON/Dexie metadata validation implemented in P5
+- [ ] encrypted-envelope format versioning
+- [ ] encryption-key UX and recovery semantics
 
-Encryption key UX must be designed before claiming end-to-end encrypted backups.
+Do not claim end-to-end encrypted backups until the AES-GCM envelope and key UX gates pass.
 
 ### P7 — minimal UI
 Add only a small cloud-sync area under existing Data Settings:

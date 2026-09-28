@@ -1,6 +1,6 @@
 # 云账号与同步使用说明
 
-> 当前已进入前端手动同步验证阶段。实施状态以 `docs/CLOUD_SYNC_DEVELOPMENT_PLAN.md` 为准。
+> 当前手动云同步前端已通过真实 EdgeOne 浏览器验证。实施状态以 `docs/CLOUD_SYNC_DEVELOPMENT_PLAN.md` 为准。
 
 ## 基本原则
 
