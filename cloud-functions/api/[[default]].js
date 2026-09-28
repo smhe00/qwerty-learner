@@ -126,6 +126,12 @@ export async function onRequest(context) {
           apiVersion: 1,
           authMode: 'single-active-session',
           runtime: process.version,
+          capabilities: [
+            'snapshot-retention-v1',
+            'bounded-session-history-v1',
+            'bounded-auth-history-v1',
+            'same-origin-cors-default-v1',
+          ],
         },
         200,
         cors,

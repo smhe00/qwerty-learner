@@ -49,7 +49,7 @@ const storage = createEdgeOneBlobStorage(store)
 const cleanupService = createBackendService({ storage })
 
 const username = `edgeone_test_${Date.now().toString(36)}_${crypto.randomBytes(3).toString('hex')}`
-const password = `EdgeOne-Test-A9-${crypto.randomBytes(8).toString('hex')}`
+let password = `EdgeOne-Test-A9-${crypto.randomBytes(8).toString('hex')}`
 let userId = null
 
 const accessCookies = new Map()
@@ -145,8 +145,8 @@ async function primeEdgeOneAccessSession() {
   }
 }
 
-async function request(path, { method = 'GET', token, body } = {}) {
-  const headers = { Accept: 'application/json' }
+async function request(path, { method = 'GET', token, body, headers: extraHeaders = {} } = {}) {
+  const headers = { Accept: 'application/json', ...extraHeaders }
 
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   if (token) headers.Authorization = `Bearer ${token}`
@@ -168,14 +168,52 @@ async function request(path, { method = 'GET', token, body } = {}) {
     )
   }
 
-  return { status: response.status, json }
+  return { status: response.status, json, headers: response.headers }
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function waitForBackendCapability(capability, timeoutMs = 8 * 60 * 1000) {
+  const deadline = Date.now() + timeoutMs
+  let lastCapabilities = []
+
+  while (Date.now() < deadline) {
+    const health = await request('/api/health')
+    if (health.status === 200 && health.json?.ok) {
+      lastCapabilities = Array.isArray(health.json.capabilities)
+        ? health.json.capabilities
+        : []
+
+      if (lastCapabilities.includes(capability)) return health
+    }
+
+    await sleep(10_000)
+  }
+
+  throw new Error(
+    `Timed out waiting for deployed backend capability ${capability}; last capabilities: ${JSON.stringify(lastCapabilities)}`,
+  )
+}
+
+async function listVersions(prefix) {
+  const { blobs = [] } = await store.list({
+    prefix,
+    consistency: 'strong',
+  })
+
+  return blobs
+    .map((blob) => versionFromKey(blob.key))
+    .filter((version) => version !== null)
+    .sort((left, right) => left - right)
 }
 
 function payload(value) {
   return Buffer.from(JSON.stringify(value), 'utf8').toString('base64')
 }
 
-function revisionFromKey(key) {
+function versionFromKey(key) {
   const match = /\/(\d{12})\.json$/.exec(key)
   return match ? Number(match[1]) : null
 }
@@ -183,10 +221,35 @@ function revisionFromKey(key) {
 try {
   await primeEdgeOneAccessSession()
 
-  const health = await request('/api/health')
+  const health = await waitForBackendCapability('bounded-session-history-v1')
   assert.equal(health.status, 200)
   assert.equal(health.json?.ok, true)
   assert.equal(health.json?.authMode, 'single-active-session')
+  assert.ok(health.json.capabilities.includes('bounded-auth-history-v1'))
+  assert.ok(health.json.capabilities.includes('same-origin-cors-default-v1'))
+
+  const sameOriginPreflight = await request('/api/auth/login', {
+    method: 'OPTIONS',
+    headers: {
+      Origin: baseUrl.origin,
+      'Access-Control-Request-Method': 'POST',
+    },
+  })
+  assert.equal(sameOriginPreflight.status, 204)
+  assert.equal(
+    sameOriginPreflight.headers.get('access-control-allow-origin'),
+    baseUrl.origin,
+  )
+
+  const crossOriginPreflight = await request('/api/auth/login', {
+    method: 'OPTIONS',
+    headers: {
+      Origin: 'https://cross-origin.invalid',
+      'Access-Control-Request-Method': 'POST',
+    },
+  })
+  assert.equal(crossOriginPreflight.status, 204)
+  assert.equal(crossOriginPreflight.headers.get('access-control-allow-origin'), null)
 
   await verifyAdminBlobCredential()
 
@@ -239,11 +302,30 @@ try {
   })
 
   assert.equal(secondLogin.status, 200)
-  const activeToken = secondLogin.json.token
+  let activeToken = secondLogin.json.token
 
   const revokedFirstLogin = await request('/api/auth/me', { token: firstLoginToken })
   assert.equal(revokedFirstLogin.status, 401)
   assert.equal(revokedFirstLogin.json?.error, 'session_revoked')
+
+  for (let index = 0; index < 3; index += 1) {
+    const extraLogin = await request('/api/auth/login', {
+      method: 'POST',
+      body: {
+        username,
+        password,
+        deviceId: `edgeone-live-extra-${index}`,
+      },
+    })
+    assert.equal(extraLogin.status, 200)
+    activeToken = extraLogin.json.token
+  }
+
+  const usernameHash = activeToken.split('.')[1]
+  const retainedSessionsAfterLogins = await listVersions(
+    `accounts/${usernameHash}/sessions/`,
+  )
+  assert.deepEqual(retainedSessionsAfterLogins, [4, 5, 6])
 
   const meta0 = await request('/api/sync/meta', { token: activeToken })
   assert.equal(meta0.status, 200)
@@ -294,17 +376,43 @@ try {
   assert.equal(downloaded.json?.revision, 6)
   assert.equal(downloaded.json?.payloadBase64, latestPayload)
 
-  const { blobs = [] } = await store.list({
-    prefix: `users/${userId}/revisions/`,
-    consistency: 'strong',
-  })
-
-  const retainedRevisions = blobs
-    .map((blob) => revisionFromKey(blob.key))
-    .filter((revision) => revision !== null)
-    .sort((left, right) => left - right)
-
+  const retainedRevisions = await listVersions(`users/${userId}/revisions/`)
   assert.deepEqual(retainedRevisions, [4, 5, 6])
+
+  for (let index = 0; index < 3; index += 1) {
+    const nextPassword = `EdgeOne-Changed-${index}-A9-${crypto
+      .randomBytes(6)
+      .toString('hex')}`
+
+    const changed = await request('/api/auth/change-password', {
+      method: 'POST',
+      token: activeToken,
+      body: {
+        currentPassword: password,
+        newPassword: nextPassword,
+        deviceId: `edgeone-live-password-${index}`,
+      },
+    })
+
+    assert.equal(changed.status, 200)
+    activeToken = changed.json.token
+    password = nextPassword
+  }
+
+  const retainedAuthVersions = await listVersions(
+    `accounts/${usernameHash}/auth/`,
+  )
+  const retainedSessionVersions = await listVersions(
+    `accounts/${usernameHash}/sessions/`,
+  )
+
+  assert.deepEqual(retainedAuthVersions, [3, 4])
+  assert.deepEqual(retainedSessionVersions, [7, 8, 9])
+
+  const afterPasswordChanges = await request('/api/sync', { token: activeToken })
+  assert.equal(afterPasswordChanges.status, 200)
+  assert.equal(afterPasswordChanges.json?.revision, 6)
+  assert.equal(afterPasswordChanges.json?.payloadBase64, latestPayload)
 
   console.log(
     JSON.stringify(
@@ -313,8 +421,11 @@ try {
         baseUrl: baseUrl.origin,
         userId,
         retainedRevisions,
+        retainedAuthVersions,
+        retainedSessionVersions,
         latestRevision: 6,
         singleActiveSession: true,
+        sameOriginCors: true,
       },
       null,
       2,

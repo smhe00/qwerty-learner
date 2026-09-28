@@ -6,6 +6,9 @@ on:
       - feature/edgeone-cloud-sync
     paths:
       - '.github/workflows/edgeone-live-gate.yml'
+      - 'cloud-functions/**'
+      - 'tests/cloud/edgeone-live.integration.mjs'
+      - 'tests/cloud/backend-core.test.mjs'
   workflow_dispatch:
 
 permissions:

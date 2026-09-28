@@ -557,7 +557,9 @@ Auth/session retention and CORS hardening passed the backend CI gate.
 
 Operational policy: `docs/CLOUD_SYNC_OPERATIONS.md`.
 
-The only remaining P8 Gate is enabling and validating the EdgeOne precise rate-limiting rule for the auth endpoints.
+P8 real-Blob retention Gate now verifies latest-3 session versions, latest-2 auth versions, snapshot retention, password-change continuity, and same-origin CORS against the deployed EdgeOne backend. The live harness waits for a health capability marker so GitHub Actions cannot race an older Makers deployment.
+
+The only remaining P8 Gate after that live test passes is enabling and validating the EdgeOne precise rate-limiting rule for the auth endpoints.
 
 ## 14. Continuation protocol for future sessions
 
