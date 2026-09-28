@@ -33,23 +33,60 @@ Makers currently exposes one Precise Rate Limiting rule on the free edition and 
 Recommended use of the single precise rule for this project:
 
 ```text
-match:
-  method = POST
-  path in:
-    /api/auth/register
-    /api/auth/login
+name:
+  qwerty-auth-abuse-v1
+
+condition:
+  ${http.request.uri.path} in ['/api/auth/register','/api/auth/login']
+  and ${http.request.method} in ['POST']
 
 counting dimension:
-  visitor / client IP
+  http.request.ip
+
+mode:
+  Block
 
 initial threshold:
   10 requests / 60 seconds
 
+action duration:
+  300 seconds
+
 action:
-  block for 5 minutes
+  Deny / Block
 ```
 
+Keep the two paths in the **match condition**, not in the counting dimension. The intended V1 policy is one combined per-client-IP counter across both authentication entry points.
+
 The threshold is a project baseline, not an EdgeOne-required value. Re-evaluate it from real traffic before public scale-up.
+
+### Rate-limit deployment Gate
+
+Repository validation:
+
+```text
+workflow: EdgeOne Auth Rate Limit Gate
+script:   tests/cloud/edgeone-rate-limit.integration.mjs
+```
+
+The probe deliberately uses an invalid short username so no account is created. It verifies:
+
+1. normal auth requests reach the application before the threshold;
+2. the precise rule blocks after the configured threshold;
+3. once triggered, `/api/auth/login` is also covered by the same rule;
+4. `/api/health` remains reachable, proving the rule is scoped to the auth paths rather than the whole site.
+
+Observed on 2026-09-29:
+
+```text
+commit: e4e068b8a07c500573be7becb79c96f4929f3f11
+run:    36484045749
+result: FAIL
+detail: 13 x POST /api/auth/register -> HTTP 400
+        no EdgeOne HTTP 403/429
+```
+
+This is a useful negative Gate: it confirms that the application is healthy while the platform precise-rate-limit rule is still not deployed. P8 must not be marked complete until this workflow passes after the console rule is enabled.
 
 Do not implement a simple per-username hard lockout in application code: an attacker could intentionally exhaust another user's attempts and deny that user access.
 

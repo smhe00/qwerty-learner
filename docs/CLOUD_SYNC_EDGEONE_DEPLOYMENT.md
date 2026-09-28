@@ -59,12 +59,10 @@ Makers 对 Git 仓库支持自动构建部署。项目成功创建以后，再�
 SESSION_TTL_SECONDS=604800
 MAX_SYNC_BYTES=4194304
 BLOB_STORE_NAME=qwerty-data
-CORS_ORIGIN=*
+CORS_ORIGIN=same-origin
 ```
 
-P4 预览阶段可先使用 `CORS_ORIGIN=*`。
-
-正式上线且前后端同域后，再收紧为同源/明确域名。
+早期 P4 预览曾允许临时使用 `CORS_ORIGIN=*`。当前 hardened 配置应使用 `CORS_ORIGIN=same-origin`；只有明确的可信跨域部署才使用显式 allowlist。正式环境不要使用 `*`。
 
 环境变量修改只影响之后的新部署，因此改完变量后重新部署一次。
 
@@ -267,3 +265,36 @@ which returned:
 ```
 
 before the first Blob write. An empty store list is expected at this stage and confirms credential exchange succeeded.
+
+
+## 11. V1 Release / rollback checklist
+
+This section is for the public-release handoff after P8 passes.
+
+Before promoting a release candidate:
+
+1. record the exact Git commit SHA;
+2. record the EdgeOne deployment ID and production domain;
+3. verify `CORS_ORIGIN=same-origin` (or the intended explicit allowlist) in the production environment;
+4. require PASS from:
+   - Cloud Sync Gate;
+   - EdgeOne Live Gate;
+   - EdgeOne Browser Sync Gate;
+   - EdgeOne Auth Rate Limit Gate;
+5. keep the previous known-good deployment/commit identified as the rollback target.
+
+Rollback principle:
+
+```text
+bad production deployment
+        ↓
+stop further promotion
+        ↓
+redeploy previous known-good EdgeOne deployment/config
+        ↓
+verify /api/health + browser local-only operation
+        ↓
+run Live Gate before re-promoting
+```
+
+Cloud sync remains optional/local-first, so a cloud rollback must never block the base learning application.

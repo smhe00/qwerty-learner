@@ -179,10 +179,10 @@ Expected runtime configuration:
 SESSION_TTL_SECONDS=604800
 MAX_SYNC_BYTES=4194304
 BLOB_STORE_NAME=qwerty-data
-CORS_ORIGIN=*
+CORS_ORIGIN=same-origin
 ```
 
-After frontend and backend share one production domain, prefer a specific origin or same-origin requests instead of `*`.
+Production should use `same-origin` (or an explicit trusted-origin allowlist if frontend/backend are deliberately split). Do not use `*` for normal production operation.
 
 ## 7. Password storage
 
@@ -562,6 +562,25 @@ P8 real-Blob retention Gate verifies latest-3 session versions, latest-2 auth ve
 CORS semantics are tested directly against the Cloud Function handler because EdgeOne protected-preview access may intercept OPTIONS before the function. The real browser Gate separately verifies that same-origin application traffic works end-to-end.
 
 The only remaining P8 Gate after that live test passes is enabling and validating the EdgeOne precise rate-limiting rule for the auth endpoints.
+
+Rate-limit verification status (2026-09-29):
+- validation harness added at commit `e4e068b8a07c500573be7becb79c96f4929f3f11`;
+- GitHub Actions `EdgeOne Auth Rate Limit Gate` run `36484045749` **FAILED as an expected deployment check**;
+- all 13 probe requests to `POST /api/auth/register` reached the application and returned HTTP 400;
+- no EdgeOne HTTP 403/429 was observed, proving the precise rule is not currently active on the tested deployment;
+- ordinary `Cloud Sync Gate` run `36484045770` at the same commit **PASS**.
+
+Therefore P8 remains open for one external platform action: enable/deploy the precise auth rate-limit rule, then rerun the dedicated Gate and require PASS.
+
+### Release gate (separate from the P0-P8 development checklist)
+
+After P8 passes, public rollout still requires operational release decisions rather than new feature work:
+
+- freeze the production domain and production branch/ref;
+- verify the production environment uses `CORS_ORIGIN=same-origin` (or an explicit trusted allowlist);
+- record the release-candidate Git commit SHA and EdgeOne deployment ID;
+- confirm the previous known-good deployment can be redeployed as the rollback path;
+- run the static, real-Blob, browser, and auth-rate-limit Gates against the release candidate.
 
 ## 14. Continuation protocol for future sessions
 
