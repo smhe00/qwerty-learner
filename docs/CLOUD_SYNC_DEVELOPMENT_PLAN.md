@@ -428,12 +428,15 @@ This confirms both the pure-static upstream build and the cloud-sync branch can 
 - [x] connect GitHub branch/project — project created in EdgeOne Makers
 - [x] deploy cloud-sync branch successfully
 - [x] confirm Cloud Function route `/api/health` from the deployed feature environment — HTTP 200 verified from local PowerShell; response reports `qwerty-sync-gateway`, API v1, `single-active-session`, runtime `v20.19.3`
-- [ ] create/use Blob namespace `qwerty-data`
-- [ ] exercise API via HTTPS — `yarn test:cloud:edgeone`
-- [ ] verify single-session revocation against real Blob
-- [ ] verify revision conflict against real Blob
-- [ ] verify cleanup/test data handling — live integration script cleans directly through admin Blob credentials
-- [ ] close any platform-specific compatibility defects
+- [x] create/use Blob namespace `qwerty-data` — real account/session/revision objects created successfully
+- [x] exercise API via HTTPS — `yarn test:cloud:edgeone` PASS on 2026-09-28
+- [x] verify single-session revocation against real Blob — PASS
+- [x] verify revision conflict against real Blob — PASS
+- [x] verify latest-three snapshot retention against real Blob — retained revisions `[4,5,6]`, latest revision `6`
+- [x] verify cleanup/test data handling — account deleted; 2 sessions and 3 retained revisions removed
+- [x] close platform-specific compatibility defects — protected-preview access handling fixed in the P4 harness
+
+P4 is complete. Frontend integration may now proceed under the existing minimal-intrusion rule.
 
 ### P5 — frontend sync client
 Only after P4 passes.
