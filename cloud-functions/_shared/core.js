@@ -68,7 +68,12 @@ export function normalizeUsername(input) {
   if (normalizedUsername.length < 3 || normalizedUsername.length > 32) {
     throw new AppError(400, 'invalid_username', 'Username must contain 3-32 characters')
   }
-  if (/[\x00-\x1f\x7f\s/\\?#%]/.test(normalizedUsername)) {
+  const hasControlCharacter = [...normalizedUsername].some((character) => {
+    const code = character.charCodeAt(0)
+    return code < 32 || code === 127
+  })
+
+  if (hasControlCharacter || /[\s/\\?#%]/.test(normalizedUsername)) {
     throw new AppError(400, 'invalid_username', 'Username contains unsupported characters')
   }
 

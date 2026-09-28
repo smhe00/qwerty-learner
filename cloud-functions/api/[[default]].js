@@ -1,5 +1,4 @@
 /* eslint-env node */
-/* global Response */
 import { getStore } from '@edgeone/pages-blob'
 import { AppError, createBackendService } from '../_shared/core.js'
 import { createEdgeOneBlobStorage } from '../_shared/storage/edgeone-blob.js'
