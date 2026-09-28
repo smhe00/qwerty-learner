@@ -1,0 +1,40 @@
+name: Cloud Sync Gate
+
+on:
+  push:
+    branches:
+      - feature/edgeone-cloud-sync
+    paths:
+      - 'cloud-functions/**'
+      - 'tests/cloud/**'
+      - 'docs/CLOUD_SYNC_*.md'
+      - 'edgeone.json'
+      - '.env.example'
+      - 'package.json'
+      - 'yarn.lock'
+      - '.github/workflows/cloud-sync.yml'
+  workflow_dispatch:
+
+jobs:
+  cloud-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run cloud backend contract tests
+        run: yarn test:cloud
+
+      - name: Build Qwerty
+        run: yarn build
