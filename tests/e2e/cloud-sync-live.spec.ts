@@ -369,7 +369,8 @@ test('real browser register, upload, divergence detection and download restore',
   await openDataSettings(page)
 
   await page.getByPlaceholder('用户名').fill(username)
-  await page.getByPlaceholder('密码（8-128字符）').fill(password)
+  await page.getByPlaceholder('密码（4-128字符）').fill(password)
+  await page.getByPlaceholder('再次输入密码（仅注册）').fill(password)
   await page.getByRole('button', { name: '注册' }).click()
 
   await expect(page.getByText(`账号：${username}`)).toBeVisible()
