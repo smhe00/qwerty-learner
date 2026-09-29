@@ -3,7 +3,9 @@ import test from 'node:test'
 import { createBaselineExerciseCondition } from '../../src/review/condition'
 import { createBaselineReviewPolicyDecision } from '../../src/review/decision'
 import { evaluateReviewEvidence } from '../../src/review/evidence'
+import { chooseTargetedMaskPlan } from '../../src/review/exercise-policy'
 import { buildReviewObservation } from '../../src/review/observation'
+import { buildOrthographyProfile } from '../../src/review/profile'
 import type { IWordRecord } from '../../src/utils/db/record'
 
 test('captures all-visible and all-hidden baseline conditions', () => {
@@ -265,4 +267,136 @@ test('evidence v2 treats attention uncertainty as low-strength hard evidence', (
   assert.equal(result.memoryGrade, 'hard')
   assert.equal(result.retrievalValidity, 'uncertain')
   assert.ok(result.evidenceStrength <= 0.35)
+})
+
+
+test('orthography profile requires independent records instead of repeated events in one attempt', () => {
+  const oneBadRecord: IWordRecord = {
+    word: 'planet',
+    timeStamp: 1,
+    dict: 'cet4',
+    chapter: -1,
+    timing: [],
+    wrongCount: 3,
+    mistakes: { 2: ['x', 'x', 'x'] },
+  }
+
+  const profile = buildOrthographyProfile('planet', [oneBadRecord])
+  assert.equal(profile.dominantWrongIndex, 2)
+  assert.equal(profile.dominantWrongRecordCount, 1)
+  assert.equal(profile.positions[0].errorEventCount, 3)
+
+  const plan = chooseTargetedMaskPlan({
+    baselineCondition: createBaselineExerciseCondition({
+      pronunciationEnabled: true,
+      meaningVisible: true,
+      phoneticVisible: false,
+      letterVisibility: [false, false, false, false, false, false],
+    }),
+    orthography: profile,
+    wordLength: 6,
+  })
+
+  assert.equal(plan, null)
+})
+
+test('orthography profile finds a stable weak position across records', () => {
+  const records: IWordRecord[] = [1, 2, 3, 4].map((timeStamp, index) => ({
+    word: 'planet',
+    timeStamp,
+    dict: 'cet4',
+    chapter: -1,
+    timing: [],
+    wrongCount: 1,
+    mistakes: index < 3 ? { 2: ['x'] } : { 4: ['z'] },
+  }))
+
+  const profile = buildOrthographyProfile('planet', records)
+  assert.equal(profile.failedRecordCount, 4)
+  assert.equal(profile.dominantWrongIndex, 2)
+  assert.equal(profile.dominantWrongRecordCount, 3)
+  assert.equal(profile.dominantWrongRecordRatio, 0.75)
+  assert.deepEqual(profile.confusions[0], {
+    index: 2,
+    expected: 'a',
+    typed: 'x',
+    count: 3,
+  })
+})
+
+test('targeted mask policy hides only the stable weak position and preserves other cues', () => {
+  const records: IWordRecord[] = [1, 2, 3].map((timeStamp) => ({
+    word: 'planet',
+    timeStamp,
+    dict: 'cet4',
+    chapter: -1,
+    timing: [],
+    wrongCount: 1,
+    mistakes: { 2: ['x'] },
+  }))
+  const orthography = buildOrthographyProfile('planet', records)
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: true,
+    meaningVisible: true,
+    phoneticVisible: false,
+    letterVisibility: [false, false, false, false, false, false],
+  })
+
+  const plan = chooseTargetedMaskPlan({
+    baselineCondition: baseline,
+    orthography,
+    wordLength: 6,
+  })
+
+  assert.ok(plan)
+  assert.equal(plan.condition.audio, baseline.audio)
+  assert.equal(plan.condition.meaning, baseline.meaning)
+  assert.equal(plan.condition.source, 'adaptive-policy')
+  assert.deepEqual(plan.condition.letters, {
+    mode: 'targeted-mask',
+    visiblePositions: [0, 1, 3, 4, 5],
+    maskedPositions: [2],
+  })
+  assert.equal(plan.decision.policyVersion, 'targeted-mask-v1')
+  assert.ok(plan.decision.reasonCodes.includes('dominant-spelling-position'))
+})
+
+test('orthography profile prefers telemetry and does not double-count legacy mistakes', () => {
+  const record: IWordRecord = {
+    word: 'planet',
+    timeStamp: 1,
+    dict: 'cet4',
+    chapter: -1,
+    timing: [],
+    wrongCount: 2,
+    mistakes: { 1: ['legacy'], 2: ['legacy'] },
+    typingTelemetry: {
+      telemetryVersion: 2,
+      firstKeyLatencyMs: 500,
+      attempts: [
+        {
+          startLatencyMs: 500,
+          durationMs: 100,
+          correctPrefixLength: 2,
+          result: 'wrong',
+          wrongIndex: 2,
+          wrongKey: 'x',
+        },
+        {
+          startLatencyMs: 200,
+          durationMs: 80,
+          correctPrefixLength: 2,
+          result: 'wrong',
+          wrongIndex: 2,
+          wrongKey: 'x',
+        },
+      ],
+    },
+  }
+
+  const profile = buildOrthographyProfile('planet', [record])
+  assert.equal(profile.totalWrongEvents, 2)
+  assert.equal(profile.positions.length, 1)
+  assert.equal(profile.positions[0].index, 2)
+  assert.equal(profile.positions[0].errorRecordCount, 1)
 })

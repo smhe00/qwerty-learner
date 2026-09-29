@@ -16,11 +16,23 @@ export type ReviewPolicyDecisionV1 = {
  * Keeping this versioned from day one lets future policy versions be compared
  * against the original user-settings behaviour without guessing.
  */
-export function createBaselineReviewPolicyDecision(): ReviewPolicyDecisionV1 {
+export function createReviewPolicyDecision(
+  policyVersion: string,
+  reasonCodes: string[],
+  conditionVersion: ExerciseConditionV1['version'] = 1,
+): ReviewPolicyDecisionV1 {
   return {
     version: REVIEW_POLICY_DECISION_VERSION,
-    policyVersion: BASELINE_EXERCISE_POLICY_VERSION,
-    reasonCodes: ['baseline-user-settings'],
-    conditionVersion: 1,
+    policyVersion,
+    reasonCodes: [...reasonCodes],
+    conditionVersion,
   }
+}
+
+export function createBaselineReviewPolicyDecision(): ReviewPolicyDecisionV1 {
+  return createReviewPolicyDecision(
+    BASELINE_EXERCISE_POLICY_VERSION,
+    ['baseline-user-settings'],
+    1,
+  )
 }
