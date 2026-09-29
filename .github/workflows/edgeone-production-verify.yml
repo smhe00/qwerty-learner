@@ -1,0 +1,142 @@
+name: EdgeOne Production Verify
+
+on:
+  push:
+    branches:
+      - product/main
+    paths:
+      - '.github/workflows/edgeone-production-verify.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+      EDGEONE_PROJECT_ID: makers-cgemngjuuwle
+      EDGEONE_PRODUCTION_BRANCH: feature/edgeone-cloud-sync
+      EXPECTED_RC_SHA: 2e1128095c41afa4d881757eff037ff7a28f5294
+
+    steps:
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.3'
+
+      - name: Verify production deployment from Git pointer
+        shell: bash
+        run: |
+          test -n "$EDGEONE_API_TOKEN" || { echo "::error::EDGEONE_API_TOKEN is not configured"; exit 1; }
+          npm install --no-save --ignore-scripts @edgeone/makers-sdk
+
+          node --input-type=module <<'NODE'
+          import { Makers } from '@edgeone/makers-sdk'
+
+          const makers = new Makers({
+            token: process.env.EDGEONE_API_TOKEN,
+            region: 'global',
+          })
+
+          const projectId = process.env.EDGEONE_PROJECT_ID
+          const repoBranch = process.env.EDGEONE_PRODUCTION_BRANCH
+          const recentCutoff = Date.now() - 20 * 60 * 1000
+          const deadline = Date.now() + 12 * 60 * 1000
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+          let deployment = null
+
+          while (Date.now() < deadline) {
+            const page = await makers.deployments.list({
+              projectId,
+              repoBranch: [repoBranch],
+              page: 0,
+              pageSize: 20,
+              order: { field: 'createdOn', direction: 'desc' },
+            })
+
+            deployment = page.items.find((item) => {
+              const created = Date.parse(item.createdOn || item.modifiedOn || '')
+              return Number.isFinite(created) && created >= recentCutoff
+            }) || null
+
+            if (deployment) break
+            console.log('Waiting for a recent EdgeOne deployment from production pointer...')
+            await sleep(10_000)
+          }
+
+          if (!deployment) {
+            throw new Error('No recent EdgeOne deployment appeared for the production pointer branch')
+          }
+
+          console.log(JSON.stringify({
+            deploymentId: deployment.deploymentId,
+            env: deployment.env,
+            status: deployment.status,
+            repoBranch: deployment.repoBranch,
+            createdOn: deployment.createdOn,
+          }, null, 2))
+
+          if (deployment.env !== 'Production') {
+            throw new Error(`Expected Production deployment, got ${deployment.env}`)
+          }
+
+          if (deployment.status === 'Pending' || deployment.status === 'Process') {
+            deployment = await makers.deployments.wait({
+              projectId,
+              deploymentId: deployment.deploymentId,
+              timeout: 900,
+              pollInterval: 5,
+            })
+          }
+
+          if (deployment.status !== 'Success') {
+            throw new Error(`Production deployment ended with status ${deployment.status} code=${deployment.code || ''}`)
+          }
+
+          const project = await makers.projects.get({ projectId })
+          const rawDomain = project.presetDomain || ''
+          if (!rawDomain) {
+            throw new Error('Makers project did not return presetDomain')
+          }
+
+          const base = /^https?:\/\//.test(rawDomain) ? rawDomain : `https://${rawDomain}`
+          let health = null
+
+          for (let attempt = 1; attempt <= 8; attempt += 1) {
+            const response = await fetch(new URL('/api/health', base))
+            const text = await response.text()
+
+            if (response.status === 200) {
+              health = JSON.parse(text)
+              break
+            }
+
+            console.log(`/api/health attempt ${attempt}: HTTP ${response.status}`)
+            await sleep(10_000)
+          }
+
+          if (!health?.ok || health.service !== 'qwerty-sync-gateway') {
+            throw new Error('Production /api/health did not validate qwerty-sync-gateway')
+          }
+
+          if (!Array.isArray(health.capabilities) || !health.capabilities.includes('blob-transient-retry-v1')) {
+            throw new Error('Production /api/health is missing expected RC capability')
+          }
+
+          console.log(JSON.stringify({
+            ok: true,
+            deploymentId: deployment.deploymentId,
+            env: deployment.env,
+            productionDomain: rawDomain,
+            health: {
+              service: health.service,
+              apiVersion: health.apiVersion,
+              authMode: health.authMode,
+              capabilities: health.capabilities,
+            },
+          }, null, 2))
+          NODE
