@@ -3,7 +3,7 @@ name: EdgeOne Auth Rate Limit Gate
 on:
   push:
     branches:
-      - feature/edgeone-cloud-sync
+      - product/main
     paths:
       - '.github/workflows/edgeone-auth-rate-limit-gate.yml'
       - 'cloud-functions/api/**'
