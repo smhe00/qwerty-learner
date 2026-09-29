@@ -1,4 +1,4 @@
-import type { TypingErrorClassification, TypingErrorCause } from './classifier'
+import type { TypingErrorCause, TypingErrorClassification } from './classifier'
 import type { ReviewObservation } from './observation'
 import { typingClassifierPolicy } from './policy'
 import type { ReviewOutcome } from './types'
