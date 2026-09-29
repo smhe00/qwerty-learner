@@ -370,7 +370,12 @@ test('real browser register, upload, divergence detection and download restore',
 
   await page.getByPlaceholder('用户名').fill(username)
   await page.getByPlaceholder('密码（4-128字符）').fill(password)
+  await page.getByPlaceholder('再次输入密码（仅注册）').fill(`${password}-mismatch`)
+  await expect(page.getByText('两次输入的注册密码不一致。')).toBeVisible()
+  await expect(page.getByRole('button', { name: '注册' })).toBeDisabled()
+
   await page.getByPlaceholder('再次输入密码（仅注册）').fill(password)
+  await expect(page.getByRole('button', { name: '注册' })).toBeEnabled()
   await page.getByRole('button', { name: '注册' }).click()
 
   await expect(page.getByText(`账号：${username}`)).toBeVisible()
