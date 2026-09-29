@@ -3,7 +3,7 @@ name: EdgeOne Live Gate
 on:
   push:
     branches:
-      - feature/edgeone-cloud-sync
+      - product/main
     paths:
       - '.github/workflows/edgeone-live-gate.yml'
       - 'cloud-functions/**'
