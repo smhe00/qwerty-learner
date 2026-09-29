@@ -51,6 +51,7 @@ jobs:
           npx esbuild tests/review/domain.test.ts \
             --bundle \
             --platform=node \
+            --target=node20 \
             --format=esm \
             --outfile=.review-test/domain.test.mjs
 
