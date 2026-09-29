@@ -20,6 +20,7 @@ import {
 import { buildReviewObservation } from '../../src/review/observation'
 import { buildOrthographyProfile } from '../../src/review/profile'
 import { buildReviewSessionExercisePlans } from '../../src/review/session'
+import { reviewOutcomeForAttempt } from '../../src/review/scheduler'
 import type { IWordRecord } from '../../src/utils/db/record'
 
 test('captures all-visible and all-hidden baseline conditions', () => {
@@ -955,4 +956,177 @@ test('audio withdrawal does not run when pronunciation is already disabled', () 
     }),
     null,
   )
+})
+
+
+test('audio-off probe recall failure becomes hard audio-dependence evidence, not ordinary again', () => {
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: true,
+    meaningVisible: true,
+    phoneticVisible: false,
+    letterVisibility: [false, false, false],
+  })
+  const probe = {
+    ...baseline,
+    purpose: 'probe' as const,
+    source: 'adaptive-policy' as const,
+    audio: 'none' as const,
+    probeDimension: 'audio' as const,
+  }
+  const classification = {
+    cause: 'recall' as const,
+    confidence: 0.9,
+    scores: { recall: 0.8, spelling: 0.1, motor: 0.1 },
+  }
+  const evidence = evaluateReviewEvidence(
+    {
+      exerciseCondition: probe,
+      learningContext: {
+        version: 1,
+        pronunciationEnabledAtStart: false,
+        pronunciationRequestedPlayCount: 0,
+      },
+    },
+    classification,
+  )
+
+  assert.equal(evidence.memoryGrade, 'hard')
+  assert.equal(evidence.weaknesses?.audioDependence, 1)
+  assert.ok(evidence.reasonCodes.includes('audio-dependence-evidence'))
+  assert.equal(
+    reviewOutcomeForAttempt({
+      classification,
+      evidence,
+      condition: probe,
+    }),
+    'hard',
+  )
+})
+
+test('manual pronunciation during an audio probe marks the result assisted', () => {
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: true,
+    meaningVisible: true,
+    phoneticVisible: false,
+    letterVisibility: [false, false, false],
+  })
+  const probe = {
+    ...baseline,
+    purpose: 'probe' as const,
+    source: 'adaptive-policy' as const,
+    audio: 'none' as const,
+    probeDimension: 'audio' as const,
+  }
+  const evidence = evaluateReviewEvidence(
+    {
+      exerciseCondition: probe,
+      learningContext: {
+        version: 1,
+        pronunciationEnabledAtStart: false,
+        pronunciationPlayed: true,
+        pronunciationRequestedPlayCount: 1,
+      },
+    },
+    {
+      cause: 'clean',
+      confidence: 1,
+      scores: { recall: 0, spelling: 0, motor: 0 },
+    },
+  )
+
+  assert.equal(evidence.memoryGrade, 'hard')
+  assert.equal(evidence.retrievalValidity, 'assisted')
+  assert.equal(evidence.weaknesses?.audioDependence, 0.5)
+  assert.ok(
+    evidence.reasonCodes.includes(
+      'audio-probe-assisted-by-requested-pronunciation',
+    ),
+  )
+})
+
+test('frozen audio withdrawal plan becomes active while unsupported plans still fall back', () => {
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: true,
+    meaningVisible: true,
+    phoneticVisible: false,
+    letterVisibility: [false, false, false],
+  })
+  const audioShadow = chooseAudioWithdrawalShadow({
+    baselineCondition: baseline,
+    word: 'cat',
+    records: [1, 2, 3].map((id) =>
+      cleanAudioRecord(id, 'cat', baseline),
+    ),
+  })
+  assert.ok(audioShadow)
+
+  const active = resolveExercisePlanForAttempt(
+    baseline,
+    materializeReviewExercisePlan(audioShadow),
+  )
+  assert.equal(active.condition.audio, 'none')
+  assert.equal(active.condition.probeDimension, 'audio')
+  assert.equal(active.decision.policyVersion, 'audio-withdrawal-probe-v1')
+
+  const unsupported = resolveExercisePlanForAttempt(baseline, {
+    version: 1,
+    sourceShadowVersion: 1,
+    condition: {
+      ...baseline,
+      source: 'adaptive-policy',
+      meaning: 'hidden',
+      probeDimension: 'meaning',
+    },
+    decision: {
+      version: 1,
+      policyVersion: 'future-meaning-probe-v1',
+      reasonCodes: ['future-test'],
+      conditionVersion: 1,
+    },
+  })
+  assert.equal(unsupported.condition, baseline)
+  assert.equal(
+    unsupported.decision.policyVersion,
+    'baseline-user-settings-v1',
+  )
+})
+
+test('clean audio-off probe records positive audio independence evidence', () => {
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: true,
+    meaningVisible: true,
+    phoneticVisible: false,
+    letterVisibility: [false, false, false],
+  })
+  const probe = {
+    ...baseline,
+    purpose: 'probe' as const,
+    source: 'adaptive-policy' as const,
+    audio: 'none' as const,
+    probeDimension: 'audio' as const,
+  }
+  const evidence = evaluateReviewEvidence(
+    {
+      exerciseCondition: probe,
+      typingTelemetry: {
+        telemetryVersion: 2,
+        firstKeyLatencyMs: 400,
+        attempts: [],
+      },
+      learningContext: {
+        version: 1,
+        pronunciationEnabledAtStart: false,
+        pronunciationRequestedPlayCount: 0,
+      },
+    },
+    {
+      cause: 'clean',
+      confidence: 1,
+      scores: { recall: 0, spelling: 0, motor: 0 },
+    },
+  )
+
+  assert.equal(evidence.memoryGrade, 'easy')
+  assert.equal(evidence.weaknesses?.audioDependence, 0)
+  assert.ok(evidence.reasonCodes.includes('audio-withdrawal-clean'))
 })

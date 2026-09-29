@@ -1,4 +1,6 @@
 import type { TypingErrorClassification } from './classifier'
+import type { ExerciseConditionV1 } from './condition'
+import type { ReviewEvidenceV1 } from './evidence'
 import { basicReviewIntervalsDays, sameSessionWindowSeconds } from './policy'
 import type { BasicSchedulerState, IReviewWordState, ReviewOutcome, ReviewSchedulerState } from './types'
 
@@ -101,4 +103,18 @@ export function inferLegacyReviewOutcome(wrongCount: number): ReviewOutcome {
   if (wrongCount >= 2) return 'again'
   if (wrongCount === 1) return 'hard'
   return 'good'
+}
+
+export function reviewOutcomeForAttempt(input: {
+  classification: TypingErrorClassification
+  evidence: ReviewEvidenceV1
+  condition?: ExerciseConditionV1
+}): ReviewOutcome {
+  const isAudioWithdrawalProbe =
+    input.condition?.purpose === 'probe' &&
+    input.condition.probeDimension === 'audio'
+
+  return isAudioWithdrawalProbe
+    ? input.evidence.memoryGrade
+    : classificationToReviewOutcome(input.classification)
 }

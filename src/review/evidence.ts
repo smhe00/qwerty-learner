@@ -15,6 +15,9 @@ export type ReviewEvidenceV1 = {
   evidenceStrength: number
   retrievalValidity: RetrievalValidity
   reasonCodes: string[]
+  weaknesses?: {
+    audioDependence?: number
+  }
 }
 
 function clamp01(value: number): number {
@@ -71,6 +74,14 @@ export function evaluateReviewEvidence(
   const confidence = clamp01(classification.confidence)
   const reasons: string[] = []
 
+  const isAudioWithdrawalProbe =
+    observation.exerciseCondition?.purpose === 'probe' &&
+    observation.exerciseCondition.probeDimension === 'audio' &&
+    observation.exerciseCondition.audio === 'none'
+  const requestedAudioDuringProbe =
+    isAudioWithdrawalProbe &&
+    (observation.learningContext?.pronunciationRequestedPlayCount ?? 0) > 0
+
   if (classification.attentionUncertain) {
     return {
       version: REVIEW_EVIDENCE_VERSION,
@@ -83,8 +94,40 @@ export function evaluateReviewEvidence(
     }
   }
 
+  if (requestedAudioDuringProbe) {
+    return {
+      version: REVIEW_EVIDENCE_VERSION,
+      memoryGrade: 'hard',
+      errorCause: classification.cause,
+      confidence,
+      evidenceStrength: Math.min(confidence, 0.35),
+      retrievalValidity: 'assisted',
+      reasonCodes: ['audio-probe-assisted-by-requested-pronunciation'],
+      weaknesses: {
+        audioDependence: 0.5,
+      },
+    }
+  }
+
   if (classification.cause !== 'clean') {
     if (classification.cause === 'recall') {
+      if (isAudioWithdrawalProbe) {
+        return {
+          version: REVIEW_EVIDENCE_VERSION,
+          memoryGrade: 'hard',
+          errorCause: 'recall',
+          confidence,
+          evidenceStrength: confidence,
+          retrievalValidity: 'independent',
+          reasonCodes: [
+            'audio-withdrawal-recall-failure',
+            'audio-dependence-evidence',
+          ],
+          weaknesses: {
+            audioDependence: 1,
+          },
+        }
+      }
       return {
         version: REVIEW_EVIDENCE_VERSION,
         memoryGrade: 'again',
@@ -161,7 +204,12 @@ export function evaluateReviewEvidence(
       confidence,
       evidenceStrength: confidence,
       retrievalValidity: 'independent',
-      reasonCodes: ['unaided-fast-clean-recall'],
+      reasonCodes: isAudioWithdrawalProbe
+        ? ['audio-withdrawal-clean', 'unaided-fast-clean-recall']
+        : ['unaided-fast-clean-recall'],
+      weaknesses: isAudioWithdrawalProbe
+        ? { audioDependence: 0 }
+        : undefined,
     }
   }
 
@@ -190,8 +238,16 @@ export function evaluateReviewEvidence(
   if (audio === 'automatic') {
     reasons.push('automatic-audio-cue')
   }
+  if (isAudioWithdrawalProbe) {
+    reasons.push('audio-withdrawal-clean')
+  }
 
-  const assisted = reasons.length > 0
+  const assisted = reasons.some(
+    (reason) =>
+      reason === 'orthographic-cue-full' ||
+      reason === 'orthographic-cue-partial' ||
+      reason === 'automatic-audio-cue',
+  )
   return {
     version: REVIEW_EVIDENCE_VERSION,
     memoryGrade: 'good',
@@ -203,5 +259,8 @@ export function evaluateReviewEvidence(
     retrievalValidity: assisted ? 'assisted' : visibility === 'hidden' ? 'independent' : 'unknown',
     reasonCodes:
       reasons.length > 0 ? dedupe(reasons) : ['clean-recall-legacy-or-unknown-condition'],
+    weaknesses: isAudioWithdrawalProbe
+      ? { audioDependence: 0 }
+      : undefined,
   }
 }

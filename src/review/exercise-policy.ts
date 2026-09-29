@@ -108,7 +108,10 @@ export function resolveExercisePlanForAttempt(
   baselineCondition: ExerciseConditionV1,
   frozenPlan?: ReviewExercisePlanV1,
 ): ExercisePlan {
-  if (frozenPlan?.decision.policyVersion === TARGETED_MASK_POLICY_VERSION) {
+  if (
+    frozenPlan?.decision.policyVersion === TARGETED_MASK_POLICY_VERSION ||
+    frozenPlan?.decision.policyVersion === AUDIO_WITHDRAWAL_POLICY_VERSION
+  ) {
     return {
       condition: frozenPlan.condition,
       decision: frozenPlan.decision,

@@ -465,7 +465,8 @@ PASS  R2-P2-002   Targeted mask shadow decision
 PASS  R2-P2-002.5 Session plan freeze
 PASS  R2-P2-002.6 Scaffold withdrawal + stale-shadow guardrail
 PASS  R2-P2-003   Active targeted mask in Review mode
-DOING R2-P3-001   Audio withdrawal probe shadow
+PASS  R2-P3-001   Audio withdrawal probe shadow
+DOING R2-P3-002   Active audio withdrawal probe + probe-aware evidence
 ```
 
 P2-003 不直接从 WordComponent 的异步 IndexedDB history query 驱动。连续练习时下一词可立即接收键盘输入，因此 active condition 必须在 session/queue 层预先冻结，避免首键前后 presentation 改变并污染 telemetry。
@@ -482,3 +483,15 @@ audio withdrawal diagnostic probe
 ```
 
 同一 exercise 不叠加两个 adaptive action，保持 single-variable / single-purpose 可解释性。
+
+
+### Audio probe scheduler guardrail
+
+Audio withdrawal probe 是诊断性条件变化。有效 audio-off probe 的 recall failure 表示 cue dependence，不直接等同普通遗忘。因此 P3-002 仅对：
+
+```text
+purpose = probe
+probeDimension = audio
+```
+
+使用 Evidence V2 的 `memoryGrade` 驱动长期 scheduler；其它 attempt 继续沿用现有 classifier → outcome 映射。手动请求读音会把该 probe 标记为 assisted。

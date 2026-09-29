@@ -37,7 +37,7 @@ import {
   summarizeAnswerVisibility,
 } from '@/review/learning-context'
 import { applyReviewOutcome } from '@/review/repository'
-import { classificationToReviewOutcome } from '@/review/scheduler'
+import { reviewOutcomeForAttempt } from '@/review/scheduler'
 import { WordTelemetryCollector } from '@/review/telemetry'
 import {
   currentChapterAtom,
@@ -170,7 +170,8 @@ export default function WordComponent({
       answerVisibleRatioAtStart: calculateAnswerVisibleRatio(appliedLetterVisibility),
       meaningVisibleAtStart: meaningVisible,
       phoneticVisibleAtStart: phoneticVisible,
-      pronunciationEnabledAtStart: pronunciationIsOpen,
+      pronunciationEnabledAtStart:
+        appliedPlan.condition.audio === 'automatic',
     })
     previousMeaningVisibleRef.current = meaningVisible
 
@@ -325,7 +326,11 @@ export default function WordComponent({
   )
 
   useEffect(() => {
-    if (wordState.inputWord.length === 0 && state.isTyping) {
+    if (
+      wordState.inputWord.length === 0 &&
+      state.isTyping &&
+      exerciseConditionRef.current?.audio === 'automatic'
+    ) {
       playPronunciation('automatic')
     }
   }, [state.isTyping, wordState.inputWord.length, wordPronunciationIconRef.current?.play])
@@ -533,7 +538,11 @@ export default function WordComponent({
             await applyReviewOutcome(
               currentDictInfo.id,
               word.name,
-              classificationToReviewOutcome(classification),
+              reviewOutcomeForAttempt({
+                classification,
+                evidence: reviewEvidence,
+                condition: exerciseConditionRef.current,
+              }),
               Math.floor(Date.now() / 1000),
               wordRecordId,
             )
