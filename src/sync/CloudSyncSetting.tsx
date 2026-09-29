@@ -50,6 +50,7 @@ function errorMessage(error: unknown) {
   if (error instanceof SyncApiError) {
     if (error.code === 'sync_conflict') return '云端数据刚刚发生变化，请刷新状态后重试。'
     if (error.code === 'session_revoked') return '当前登录已被其他登录替代，请重新登录。'
+    if (error.code === 'username_taken') return '用户名已存在，请直接登录。'
     if (error.code === 'invalid_credentials') return '当前账号密码不正确。'
     return error.message
   }

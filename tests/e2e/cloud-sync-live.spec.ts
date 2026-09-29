@@ -388,6 +388,39 @@ test('real browser register, upload, divergence detection and download restore',
   await expect(page.getByText('已上传到云端 revision 1。')).toBeVisible()
   await expect(page.getByText('本地与云端一致')).toBeVisible()
 
+  const originalUserId = await page.evaluate(() => {
+    const raw = localStorage.getItem('qwerty.cloudAuth.v1')
+    if (!raw) throw new Error('missing auth before duplicate registration check')
+    return (JSON.parse(raw) as { user: { userId: string } }).user.userId
+  })
+
+  await page.getByRole('button', { name: '退出登录' }).click()
+  await expect(page.getByRole('button', { name: '注册' })).toBeVisible()
+
+  const duplicatePassword = `${password}-duplicate`
+  await page.getByPlaceholder('用户名').fill(username.toUpperCase())
+  await page.getByPlaceholder('密码（4-128字符）').fill(duplicatePassword)
+  await page.getByPlaceholder('再次输入密码（仅注册）').fill(duplicatePassword)
+  await page.getByRole('button', { name: '注册' }).click()
+
+  await expect(page.getByText('用户名已存在，请直接登录。')).toBeVisible()
+  await expect(page.getByRole('button', { name: '登录' })).toBeVisible()
+
+  await page.getByPlaceholder('用户名').fill(username)
+  await page.getByPlaceholder('密码（4-128字符）').fill(password)
+  await page.getByPlaceholder('再次输入密码（仅注册）').fill(password)
+  await page.getByRole('button', { name: '登录' }).click()
+
+  await expect(page.getByText(`账号：${username}`)).toBeVisible()
+  await expect(page.getByText('云端 revision：')).toContainText('1')
+
+  const userIdAfterDuplicateRegister = await page.evaluate(() => {
+    const raw = localStorage.getItem('qwerty.cloudAuth.v1')
+    if (!raw) throw new Error('missing auth after duplicate registration check')
+    return (JSON.parse(raw) as { user: { userId: string } }).user.userId
+  })
+  expect(userIdAfterDuplicateRegister).toBe(originalUserId)
+
   const reviewFixtureBefore = await readReviewCloudFixture(page)
   expect(reviewFixtureBefore.wordRecord).toMatchObject({
     word: 'edgeone-e2e-baseline',
