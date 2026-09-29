@@ -93,7 +93,7 @@ export function buildReviewSessionExercisePlans(
   const latest = new Map<string, IWordRecord>()
 
   for (const record of records) {
-    if (!wanted.has(record.word) || !record.reviewPolicyShadow) continue
+    if (!wanted.has(record.word)) continue
 
     const prior = latest.get(record.word)
     if (!prior || recordOrder(record) > recordOrder(prior)) {

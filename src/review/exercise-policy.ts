@@ -67,6 +67,19 @@ export function chooseTargetedMaskShadow(input: {
   word: string
   records: IWordRecord[]
 }): ReviewPolicyShadowV1 | null {
+  const latestRecord = [...input.records].sort((left, right) => {
+    const leftOrder = left.id ?? left.timeStamp
+    const rightOrder = right.id ?? right.timeStamp
+    return rightOrder - leftOrder
+  })[0]
+
+  if (
+    latestRecord?.exerciseCondition?.letters.mode === 'targeted-mask' &&
+    latestRecord.wrongCount === 0
+  ) {
+    return null
+  }
+
   const plan = chooseTargetedMaskPlan({
     baselineCondition: input.baselineCondition,
     orthography: buildOrthographyProfile(input.word, input.records),

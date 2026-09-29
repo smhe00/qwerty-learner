@@ -565,3 +565,178 @@ test('review session freezes the newest shadow per word and ignores legacy recor
   assert.deepEqual(plans.test.condition.letters.maskedPositions, [2])
   assert.equal(plans.legacy, undefined)
 })
+
+
+test('a clean targeted-mask attempt withdraws the scaffold for the next exercise', () => {
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: true,
+    meaningVisible: true,
+    phoneticVisible: false,
+    letterVisibility: [false, false, false, false, false, false],
+  })
+  const targeted = {
+    ...baseline,
+    source: 'adaptive-policy' as const,
+    letters: {
+      mode: 'targeted-mask' as const,
+      visiblePositions: [0, 1, 3, 4, 5],
+      maskedPositions: [2],
+    },
+  }
+
+  const records: IWordRecord[] = [
+    {
+      id: 1,
+      word: 'planet',
+      timeStamp: 1,
+      dict: 'cet4',
+      chapter: -1,
+      timing: [],
+      wrongCount: 1,
+      mistakes: { 2: ['x'] },
+    },
+    {
+      id: 2,
+      word: 'planet',
+      timeStamp: 2,
+      dict: 'cet4',
+      chapter: -1,
+      timing: [],
+      wrongCount: 1,
+      mistakes: { 2: ['x'] },
+    },
+    {
+      id: 3,
+      word: 'planet',
+      timeStamp: 3,
+      dict: 'cet4',
+      chapter: -1,
+      timing: [],
+      wrongCount: 1,
+      mistakes: { 2: ['x'] },
+    },
+    {
+      id: 4,
+      word: 'planet',
+      timeStamp: 4,
+      dict: 'cet4',
+      chapter: -1,
+      timing: [],
+      wrongCount: 0,
+      mistakes: {},
+      exerciseCondition: targeted,
+    },
+  ]
+
+  assert.equal(
+    chooseTargetedMaskShadow({
+      baselineCondition: baseline,
+      word: 'planet',
+      records,
+    }),
+    null,
+  )
+})
+
+test('a failed targeted-mask attempt keeps the targeted scaffold eligible', () => {
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: true,
+    meaningVisible: true,
+    phoneticVisible: false,
+    letterVisibility: [false, false, false, false, false, false],
+  })
+  const targeted = {
+    ...baseline,
+    source: 'adaptive-policy' as const,
+    letters: {
+      mode: 'targeted-mask' as const,
+      visiblePositions: [0, 1, 3, 4, 5],
+      maskedPositions: [2],
+    },
+  }
+
+  const records: IWordRecord[] = [1, 2, 3].map((id) => ({
+    id,
+    word: 'planet',
+    timeStamp: id,
+    dict: 'cet4',
+    chapter: -1,
+    timing: [],
+    wrongCount: 1,
+    mistakes: { 2: ['x'] },
+  }))
+  records.push({
+    id: 4,
+    word: 'planet',
+    timeStamp: 4,
+    dict: 'cet4',
+    chapter: -1,
+    timing: [],
+    wrongCount: 1,
+    mistakes: { 2: ['x'] },
+    exerciseCondition: targeted,
+  })
+
+  const shadow = chooseTargetedMaskShadow({
+    baselineCondition: baseline,
+    word: 'planet',
+    records,
+  })
+  assert.ok(shadow)
+  assert.deepEqual(shadow.condition.letters.maskedPositions, [2])
+})
+
+test('a newer record without a shadow cancels an older session shadow', () => {
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: true,
+    meaningVisible: true,
+    phoneticVisible: false,
+    letterVisibility: [false, false, false, false],
+  })
+  const shadow = createReviewPolicyShadow(
+    {
+      ...baseline,
+      source: 'adaptive-policy',
+      letters: {
+        mode: 'targeted-mask',
+        visiblePositions: [0, 1, 3],
+        maskedPositions: [2],
+      },
+    },
+    {
+      version: 1,
+      policyVersion: 'targeted-mask-v1',
+      reasonCodes: ['dominant-spelling-position'],
+      conditionVersion: 1,
+    },
+  )
+
+  const plans = buildReviewSessionExercisePlans(
+    [{ name: 'test', trans: [], usphone: '', ukphone: '' }],
+    [
+      {
+        id: 1,
+        word: 'test',
+        timeStamp: 1,
+        dict: 'cet4',
+        chapter: -1,
+        timing: [],
+        wrongCount: 1,
+        mistakes: { 2: ['x'] },
+        reviewPolicyShadow: shadow,
+      },
+      {
+        id: 2,
+        word: 'test',
+        timeStamp: 2,
+        dict: 'cet4',
+        chapter: -1,
+        timing: [],
+        wrongCount: 0,
+        mistakes: {},
+      },
+    ],
+  )
+
+  assert.deepEqual(plans, {})
+})
