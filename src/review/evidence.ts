@@ -59,8 +59,13 @@ function assistanceReasons(observation: ReviewObservation): string[] {
  * scheduler does not consume this result yet; this lets us validate semantics
  * before changing due dates.
  */
+export type ReviewEvidenceObservation = Pick<
+  ReviewObservation,
+  'typingTelemetry' | 'learningContext' | 'exerciseCondition'
+>
+
 export function evaluateReviewEvidence(
-  observation: ReviewObservation,
+  observation: ReviewEvidenceObservation,
   classification: TypingErrorClassification,
 ): ReviewEvidenceV1 {
   const confidence = clamp01(classification.confidence)

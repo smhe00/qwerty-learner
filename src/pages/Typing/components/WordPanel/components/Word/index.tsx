@@ -18,6 +18,7 @@ import { createBaselineExerciseCondition } from '@/review/condition'
 import type { ExerciseConditionV1 } from '@/review/condition'
 import { createBaselineReviewPolicyDecision } from '@/review/decision'
 import type { ReviewPolicyDecisionV1 } from '@/review/decision'
+import { evaluateReviewEvidence } from '@/review/evidence'
 import type { WordHistorySummary } from '@/review/features'
 import { loadWordHistorySummary } from '@/review/history'
 import {
@@ -423,6 +424,14 @@ export default function WordComponent({
         learningContext,
         history: historySummaryRef.current,
       })
+      const reviewEvidence = evaluateReviewEvidence(
+        {
+          typingTelemetry: telemetry,
+          learningContext,
+          exerciseCondition: exerciseConditionRef.current,
+        },
+        classification,
+      )
 
       // wordLogUploader({
       //   headword: word.name,
@@ -443,6 +452,7 @@ export default function WordComponent({
             learningContext,
             exerciseCondition: exerciseConditionRef.current,
             reviewPolicyDecision: reviewPolicyDecisionRef.current,
+            reviewEvidence,
           })
 
           if (wordRecordId > 0) {

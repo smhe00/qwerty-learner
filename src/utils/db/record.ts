@@ -1,6 +1,7 @@
 import { getUTCUnixTimestamp } from '../index'
 import type { ExerciseConditionV1 } from '@/review/condition'
 import type { ReviewPolicyDecisionV1 } from '@/review/decision'
+import type { ReviewEvidenceV1 } from '@/review/evidence'
 import type { Word } from '@/typings'
 
 export type WordAttemptResult = 'clean' | 'wrong'
@@ -85,6 +86,9 @@ export interface IWordRecord {
 
   // Optional policy metadata explaining why the condition was selected.
   reviewPolicyDecision?: ReviewPolicyDecisionV1
+
+  // Versioned derived evidence snapshot. Raw telemetry/context remain the source of truth.
+  reviewEvidence?: ReviewEvidenceV1
 }
 
 export interface LetterMistakes {
@@ -105,6 +109,7 @@ export class WordRecord implements IWordRecord {
   learningContext?: LearningContextV1
   exerciseCondition?: ExerciseConditionV1
   reviewPolicyDecision?: ReviewPolicyDecisionV1
+  reviewEvidence?: ReviewEvidenceV1
 
   constructor(
     word: string,
@@ -117,6 +122,7 @@ export class WordRecord implements IWordRecord {
     learningContext?: LearningContextV1,
     exerciseCondition?: ExerciseConditionV1,
     reviewPolicyDecision?: ReviewPolicyDecisionV1,
+    reviewEvidence?: ReviewEvidenceV1,
   ) {
     this.word = word
     this.timeStamp = getUTCUnixTimestamp()
@@ -137,6 +143,9 @@ export class WordRecord implements IWordRecord {
     }
     if (reviewPolicyDecision) {
       this.reviewPolicyDecision = reviewPolicyDecision
+    }
+    if (reviewEvidence) {
+      this.reviewEvidence = reviewEvidence
     }
   }
 
