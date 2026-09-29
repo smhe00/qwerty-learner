@@ -1,87 +1,76 @@
 # Qwerty 云账号与同步架构
 
-> 持续开发状态与恢复步骤见 `docs/CLOUD_SYNC_DEVELOPMENT_PLAN.md`。
+> 当前产品格式：`qwerty-dexie-gzip-v2`。旧的客户端 AES 加密格式已经废弃，不做兼容恢复。
 
 ## 1. 定位
 
-本模块给 Qwerty Learner 增加可选的“账号 + 云存储 + 跨设备同步”能力，同时保持原项目 local-first：
+本模块给 Qwerty Learner 增加可选的“账号 + 云存储 + 跨设备同步”能力，同时保持 local-first：
 
-- 未登录：行为与 upstream 一致，只使用浏览器 IndexedDB。
-- 已登录：IndexedDB 仍是工作数据库，EdgeOne Blob 只承担账号状态和同步快照。
-- 网络不可用时不得影响正常学习。
-- Review、Typing、词典格式不依赖云平台。
-
-当前阶段不修改 `src/`。
+- 未登录：行为与 upstream 一致，只使用浏览器 IndexedDB；
+- 已登录：IndexedDB 仍是实时工作数据库；
+- EdgeOne Blob 保存账号状态和同步快照；
+- 网络不可用时不得影响正常学习；
+- Review、Typing 不依赖云平台可用性。
 
 ## 2. 代码边界
 
 ```text
+src/sync/
+  CloudSyncSetting.tsx         云同步 UI
+  auth.ts                      浏览器登录态
+  api.ts                       HTTP client
+  snapshot.ts                  Dexie export / gzip / Base64 / restore
+  state.ts                     fingerprint + sync baseline
+
 cloud-functions/
   _shared/
-    core.js                    平台无关：认证、Session、revision、冲突协议
-    self-test.js               本地/GitHub 后端完整契约测试
-    storage/edgeone-blob.js    EdgeOne Blob 适配器
-  api/[[default]].js           EdgeOne HTTP 入口
+    core.js                    认证、Session、revision、冲突、账号删除
+    storage/edgeone-blob.js    EdgeOne Blob adapter
+  api/[[default]].js           HTTP API entry
 
-tests/cloud/
-  backend-core.test.mjs        内存 Storage 契约测试
-
-src/
-                              当前阶段不修改
+tests/
+  cloud/                       backend contract / real EdgeOne
+  e2e/                         real browser sync
 ```
 
-核心逻辑放在 `cloud-functions/_shared/` 以符合 EdgeOne Functions 的辅助模块打包边界，但 `core.js` 本身不依赖 EdgeOne SDK，只依赖 storage contract。
-
-## 3. API v1
+## 3. API
 
 ```text
-GET  /api/health
+GET    /api/health
 
-POST /api/auth/register
-POST /api/auth/login
-GET  /api/auth/me
-POST /api/auth/change-password
+POST   /api/auth/register
+POST   /api/auth/login
+GET    /api/auth/me
+POST   /api/auth/change-password
+DELETE /api/auth/account
 
-GET  /api/sync/meta
-GET  /api/sync
-PUT  /api/sync
+GET    /api/sync/meta
+GET    /api/sync
+PUT    /api/sync
 ```
 
-没有公网测试接口。
+`DELETE /api/auth/account` 需要：
 
-## 4. 单账号单在线会话
+- 当前有效 Bearer session；
+- 当前账号密码再次验证。
 
-V1 不使用 JWT，也不需要 `APP_SESSION_SECRET`。
+删除成功后 session 因账号 identity 已不存在而立即失效。
 
-登录成功产生 256-bit 随机 session secret，token 形式：
+## 4. 单账号单 Active Session
+
+登录成功产生随机 opaque session token：
 
 ```text
 qs1.<usernameHash>.<randomSecretBase64Url>
 ```
 
-服务端只保存：
+服务端只保存 `SHA256(fullToken)`。
 
-```text
-SHA256(fullToken)
-```
-
-不保存原始 token。
-
-每次登录创建新的 immutable session version：
-
-```text
-accounts/<usernameHash>/sessions/00000000000N.json
-```
-
-最大 version 是唯一有效 session。新登录完成后，旧设备的 token 在下一次请求时得到 `401 session_revoked`。
-
-Session 读取使用 Blob strong consistency；session version 写入使用 `onlyIfNew`。
-
-若两个登录并发竞争同一 version，失败方重新读取最新 session 并创建下一 version，因此最终仍只有最大 version 有效。
+每次新登录创建更高的 session version，只有最新 version 有效。
 
 ## 5. 密码
 
-密码使用：
+账号密码使用：
 
 ```text
 scrypt
@@ -92,130 +81,158 @@ r=8
 p=1
 ```
 
-密码修改创建新的 immutable auth version，同时创建新的 session version，因此修改密码后旧 session 失效。
+密码不进入同步 snapshot。
 
 ## 6. Blob 数据模型
 
-命名空间默认：`qwerty-data`。
-
 ```text
 accounts/
-  <SHA256(normalized_username)>/
+  <usernameHash>/
     identity.json
     auth/
-      000000000002.json
-      000000000003.json
-      ...
+      00000000000N.json
     sessions/
-      000000000002.json
-      000000000003.json
-      ...
+      00000000000N.json
 
 users/
   <userId>/
     revisions/
-      000000000001.json
-      000000000002.json
-      ...
+      00000000000N.json
 ```
 
-`identity.json` 包含 immutable 身份、初始 auth version 1 和初始 session version 1。
+账号删除会删除该 usernameHash 下的 identity/auth/session，以及该 userId 下的全部 revisions。
 
-所有状态机读取使用 strong consistency。
+## 7. Snapshot 格式
 
-## 7. 为什么单会话后仍保留 revision
+当前客户端唯一格式：
 
-单会话消除了正常的多设备同时写，但仍可能有：
+```text
+qwerty-dexie-gzip-v2
+```
 
-- 同一个浏览器多个 tab；
+生成：
+
+```text
+db.export()
+   ↓
+Dexie JSON
+   ↓
+pako.gzip()
+   ↓
+Base64
+   ↓
+PUT /api/sync
+```
+
+服务端要求：
+
+- `clientFormatVersion === qwerty-dexie-gzip-v2`；
+- `payloadBase64` 是规范 Base64；
+- 解码后具有 gzip magic bytes；
+- payload 不超过 `MAX_SYNC_BYTES`。
+
+服务端当前不需要解析 Dexie JSON，仍把 snapshot 当作整体对象存储；但由于不再端到端加密，云存储管理员理论上可以解压查看内容。
+
+旧格式 `qwerty-sync-envelope-v1` 直接拒绝新上传，客户端也拒绝恢复。
+
+## 8. Fingerprint
+
+客户端对 Dexie export 的逻辑 `data` 做稳定序列化后计算 SHA-256。
+
+fingerprint 用于判断：
+
+```text
+clean
+local-dirty
+remote-ahead
+diverged
+```
+
+它与 gzip 二进制本身无关，因此压缩实现变化不会误判业务内容变化。
+
+## 9. Revision / optimistic concurrency
+
+即使单账号只有一个 active session，也保留 revision 防止：
+
+- 多 tab；
 - HTTP retry；
 - 请求乱序；
 - stale client state。
 
-因此同步仍采用：
+规则：
 
 ```text
-baseRevision == remoteRevision
-       ↓
-create remoteRevision + 1
-       ↓
-Blob onlyIfNew
+baseRevision == currentRemoteRevision
+        ↓
+create revision + 1
 ```
 
-若 revision 已存在，则返回 `409 sync_conflict`。
+否则返回 `409 sync_conflict`。
 
-这比覆盖一个 `snapshot.json` 更安全，而且实现成本很低。
+## 10. Snapshot retention
 
-## 8. Snapshot 保留策略
+只保留最近 3 个完整 snapshot revision。
 
-revision 编号单调增长且永不复用，但 Blob 不永久保存所有完整 snapshot。
+revision 编号继续单调增长，不复用。
 
-V1 固定保留最近 **3 个**完整 revision：
+## 11. 下载恢复
 
 ```text
-.../000000000128.json
-.../000000000129.json
-.../000000000130.json
+GET /api/sync
+   ↓
+Base64 decode
+   ↓
+gzip decompress
+   ↓
+JSON validate
+   ↓
+peakImportFile metadata validate
+   ↓
+Dexie transactional import
 ```
 
-成功写入 131 后，删除 128：
+如果云端格式不是 `qwerty-dexie-gzip-v2`，客户端不做兼容解码。
+
+## 12. 删除账号
+
+删除操作流程：
 
 ```text
-.../000000000129.json
-.../000000000130.json
-.../000000000131.json
+valid session
+   ↓
+verify current password
+   ↓
+delete auth versions
+delete session versions
+delete sync revisions
+delete identity.json
+   ↓
+old token becomes invalid
 ```
 
-这样保留并发保护和短窗口恢复能力，同时限制重复完整 snapshot 的空间占用。
-
-retention 清理属于维护动作：新 revision 一旦已通过 `onlyIfNew` 成功持久化，即使删除旧版本失败，也不能把本次同步返回成失败，否则客户端可能重试已经成功的提交。
-
-## 9. 离线分叉
-
-单 active session 不等于永远没有数据分叉。
-
-例如旧设备离线产生未同步数据，而另一设备登录后继续推进云端。
-
-V1 不做自动 record-level merge。
-
-未来前端检测：
+前端成功后同步清理：
 
 ```text
-localDirty = true
-AND
-localBaseRevision != remoteRevision
+qwerty.cloudAuth.v1
+qwerty.cloudSyncState.v1.<userId>
 ```
 
-时停止自动同步，让用户明确选择保留本地/导出备份或采用云端版本。
+但不删除 IndexedDB。
 
-## 10. 数据职责
+## 13. 数据职责
 
 ```text
 IndexedDB
   = 实时工作数据库
 
 EdgeOne Blob
-  = 账号状态 + session 状态 + 同步快照
+  = account/session state + gzip snapshots
 
 GitHub
-  = 源码 + 测试 + 文档 + 部署配置
+  = source + tests + docs + deployment config
 ```
 
-同步 payload 对后端完全 opaque。
-
-未来客户端负责：
-
-```text
-IndexedDB export
-→ gzip
-→ AES-GCM
-→ Base64
-→ PUT /api/sync
-```
-
-## 11. 运行配置
-
-V1 无需应用 Secret：
+## 14. 运行配置
 
 ```text
 SESSION_TTL_SECONDS=604800
@@ -224,31 +241,10 @@ BLOB_STORE_NAME=qwerty-data
 CORS_ORIGIN=same-origin
 ```
 
-默认只允许浏览器同源调用。若未来拆分前后端域名，可显式配置逗号分隔的允许 Origin；仅在明确需要时才使用 `*`。
+## 15. Upstream 隔离
 
-## 12. Upstream 隔离原则
-
-1. 不要求登录才能学习。
-2. 不修改词典 JSON。
-3. 不把 EdgeOne SDK 引入 `src/review/` 或 Typing。
-4. 后续前端只在 `src/sync/` 和极小设置入口接入。
-5. 云功能保持 fork-only，不阻碍 Review 模块单独向 upstream 提 PR。
-
-
-## 13. Auth / Session 保留策略
-
-初始 auth/session version 1 仍内嵌在 immutable `identity.json`。
-
-额外的版本对象采用有限保留：
-
-```text
-auth versions:     latest 2
-session versions:  latest 3
-snapshot revisions latest 3
-```
-
-版本号继续单调增加，删除旧对象不会复用版本号。
-
-新 auth/session 对象一旦通过 `onlyIfNew` 成功提交，retention cleanup 只是维护操作。cleanup 失败不会把已经成功的登录、改密或同步操作改判成失败。
-
-该策略同时限制 Blob 空间增长，并让 `getLatestAuth/getLatestSession` 的 version listing 长期保持在很小的集合内，降低分页风险。
+1. 不要求登录才能学习；
+2. 不修改词典格式；
+3. EdgeOne SDK 不进入 Review / Typing 主流程；
+4. 云同步集中在 `src/sync/` 和设置入口；
+5. fork-only cloud 功能不阻碍 Review 独立向 upstream 提交。
