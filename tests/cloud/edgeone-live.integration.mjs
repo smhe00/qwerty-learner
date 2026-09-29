@@ -50,7 +50,7 @@ const storage = createEdgeOneBlobStorage(store)
 const cleanupService = createBackendService({ storage })
 
 const username = `edgeone_test_${Date.now().toString(36)}_${crypto.randomBytes(3).toString('hex')}`
-let password = `EdgeOne-Test-A9-${crypto.randomBytes(8).toString('hex')}`
+let password = 'A9x!'
 let userId = null
 
 const accessCookies = new Map()
