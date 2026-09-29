@@ -466,7 +466,8 @@ PASS  R2-P2-002.5 Session plan freeze
 PASS  R2-P2-002.6 Scaffold withdrawal + stale-shadow guardrail
 PASS  R2-P2-003   Active targeted mask in Review mode
 PASS  R2-P3-001   Audio withdrawal probe shadow
-DOING R2-P3-002   Active audio withdrawal probe + probe-aware evidence
+PASS  R2-P3-002   Active audio withdrawal probe + probe-aware evidence
+NEXT  R2-P4-001   Condition-dependent profile
 ```
 
 P2-003 不直接从 WordComponent 的异步 IndexedDB history query 驱动。连续练习时下一词可立即接收键盘输入，因此 active condition 必须在 session/queue 层预先冻结，避免首键前后 presentation 改变并污染 telemetry。
@@ -495,3 +496,20 @@ probeDimension = audio
 ```
 
 使用 Evidence V2 的 `memoryGrade` 驱动长期 scheduler；其它 attempt 继续沿用现有 classifier → outcome 映射。手动请求读音会把该 probe 标记为 assisted。
+
+
+## 20. 临时高优先级修复：重复注册账号保护
+
+Review 主线在 P3-002 完成后暂时冻结，先处理云账号数据安全问题：
+
+```text
+AUTH-HOTFIX-001
+- 同名/规范化同名用户名重复注册必须返回 username_taken
+- 不得生成/替换新 userId
+- 不得覆盖原 identity/auth/session
+- 不得让原 revisions 变为不可访问
+- 原密码和原账号必须继续有效
+- 前端显示明确中文提示
+```
+
+完成并通过 Cloud Sync Gate / live contract 后，再恢复 R2-P4-001。
