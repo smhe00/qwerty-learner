@@ -13,6 +13,7 @@ class FakeBlobStore {
     this.deleteFailures = 0
     this.setFailures = 0
     this.ambiguousOnlyIfNewWrite = false
+    this.ignoreOnlyIfNew = false
   }
 
   async get(key) {
@@ -38,7 +39,7 @@ class FakeBlobStore {
   }
 
   async setJSON(key, value, options = {}) {
-    if (options.onlyIfNew && this.objects.has(key)) {
+    if (options.onlyIfNew && !this.ignoreOnlyIfNew && this.objects.has(key)) {
       throw new Error('already exists')
     }
 
@@ -147,4 +148,28 @@ test('Blob adapter retries transient delete operations during cleanup', async ()
   assert.equal(result.sessionsDeleted, 1)
   assert.equal(result.revisionsDeleted, 1)
   assert.equal(store.deleteFailures, 0)
+})
+
+
+test('Blob adapter preflight protects accounts even if provider ignores onlyIfNew', async () => {
+  const store = new FakeBlobStore()
+  const storage = createEdgeOneBlobStorage(store)
+  const hash = 'f'.repeat(64)
+
+  assert.equal(
+    await storage.createAccount(hash, { userId: 'original', status: 'active' }),
+    true,
+  )
+
+  store.ignoreOnlyIfNew = true
+
+  assert.equal(
+    await storage.createAccount(hash, { userId: 'replacement', status: 'active' }),
+    false,
+  )
+
+  assert.deepEqual(await storage.getAccount(hash), {
+    userId: 'original',
+    status: 'active',
+  })
 })

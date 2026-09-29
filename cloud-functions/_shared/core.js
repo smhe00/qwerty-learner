@@ -335,6 +335,11 @@ export function createBackendService({
     validatePassword(password)
 
     const usernameHash = sha256Hex(normalizedUsername)
+    const existingIdentity = await storage.getAccount(usernameHash)
+    if (existingIdentity) {
+      throw new AppError(409, 'username_taken', 'Username is already registered')
+    }
+
     const initialAuth = {
       version: 1,
       password: await createPasswordRecord(password),

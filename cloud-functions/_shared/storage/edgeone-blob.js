@@ -117,7 +117,7 @@ export function createEdgeOneBlobStorage(store) {
         if (existing !== null) {
           // A write can become durable even when the client observes a transport
           // error. If the strong read returns exactly our candidate, recover that
-          // ambiguous success instead of falsely reporting a conflict.
+          // ambiguous success. A different durable object is a genuine conflict.
           return jsonEquivalent(existing, value)
         }
       } catch (readError) {
@@ -183,7 +183,11 @@ export function createEdgeOneBlobStorage(store) {
 
   return {
     async createAccount(usernameHash, identity) {
-      return setJsonOnlyIfNew(accountKey(usernameHash), identity)
+      const key = accountKey(usernameHash)
+      const existing = await strongJson(key)
+      if (existing !== null) return false
+
+      return setJsonOnlyIfNew(key, identity)
     },
 
     async getAccount(usernameHash) {

@@ -222,7 +222,7 @@ function versionFromKey(key) {
 try {
   await primeEdgeOneAccessSession()
 
-  const health = await waitForBackendCapability('plain-gzip-sync-v2')
+  const health = await waitForBackendCapability('duplicate-register-protection-v1')
   assert.equal(health.status, 200)
   assert.equal(health.json?.ok, true)
   assert.equal(health.json?.authMode, 'single-active-session')
@@ -234,6 +234,7 @@ try {
   assert.ok(health.json.capabilities.includes('blob-transient-retry-v1'))
   assert.ok(health.json.capabilities.includes('plain-gzip-sync-v2'))
   assert.ok(health.json.capabilities.includes('account-delete-v1'))
+  assert.ok(health.json.capabilities.includes('duplicate-register-protection-v1'))
 
   await verifyAdminBlobCredential()
 
@@ -319,10 +320,71 @@ try {
   assert.equal(meta0.status, 200)
   assert.equal(meta0.json?.revision, 0)
 
-  let baseRevision = 0
+  const firstProtectedPayload = payload({
+    revision: 1,
+    source: 'duplicate-register-protection',
+  })
+  const firstProtectedUpload = await request('/api/sync', {
+    method: 'PUT',
+    token: activeToken,
+    body: {
+      baseRevision: 0,
+      payloadBase64: firstProtectedPayload,
+      deviceId: 'duplicate-register-original',
+      clientFormatVersion: 'qwerty-dexie-gzip-v2',
+    },
+  })
+  assert.equal(firstProtectedUpload.status, 200)
+  assert.equal(firstProtectedUpload.json?.revision, 1)
+
+  const duplicateRegisterPassword = 'B8y?'
+  const duplicateRegister = await request('/api/auth/register', {
+    method: 'POST',
+    body: {
+      username: username.toUpperCase(),
+      password: duplicateRegisterPassword,
+      deviceId: 'edgeone-live-duplicate-register',
+    },
+  })
+  assert.equal(duplicateRegister.status, 409)
+  assert.equal(duplicateRegister.json?.error, 'username_taken')
+
+  const stillMe = await request('/api/auth/me', { token: activeToken })
+  assert.equal(stillMe.status, 200)
+  assert.equal(stillMe.json?.user?.userId, userId)
+
+  const stillProtected = await request('/api/sync', { token: activeToken })
+  assert.equal(stillProtected.status, 200)
+  assert.equal(stillProtected.json?.revision, 1)
+  assert.equal(stillProtected.json?.payloadBase64, firstProtectedPayload)
+
+  const duplicatePasswordLogin = await request('/api/auth/login', {
+    method: 'POST',
+    body: {
+      username,
+      password: duplicateRegisterPassword,
+      deviceId: 'edgeone-live-duplicate-password',
+    },
+  })
+  assert.equal(duplicatePasswordLogin.status, 401)
+  assert.equal(duplicatePasswordLogin.json?.error, 'invalid_credentials')
+
+  const originalPasswordLogin = await request('/api/auth/login', {
+    method: 'POST',
+    body: {
+      username,
+      password,
+      deviceId: 'edgeone-live-original-after-duplicate',
+    },
+  })
+  assert.equal(originalPasswordLogin.status, 200)
+  assert.equal(originalPasswordLogin.json?.user?.userId, userId)
+  activeToken = originalPasswordLogin.json.token
+
+  let baseRevision = 1
   let latestPayload = null
 
-  for (let revision = 1; revision <= 6; revision += 1) {
+  for (let revision = 2; revision <= 6; revision += 1) {
     latestPayload = payload({
       revision,
       source: 'edgeone-live-integration',
@@ -477,6 +539,7 @@ try {
         blobTransientRetryCapability: true,
         plainGzipSyncV2Capability: true,
         accountDeleteCapability: true,
+        duplicateRegisterProtectionCapability: true,
         accountDeletedViaApi: true,
       },
       null,

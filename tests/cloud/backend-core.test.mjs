@@ -421,3 +421,67 @@ test('password length policy accepts four characters and rejects three', async (
 
   await service.cleanupTestUser('pw4_user')
 })
+
+
+test('duplicate registration preserves the original account and revisions', async () => {
+  const storage = new MemoryStorage()
+  const service = createBackendService({ storage })
+
+  const username = 'duplicate_register_user'
+  const password = 'Orig'
+  const replacementPassword = 'New2'
+
+  const registered = await service.register(
+    username,
+    password,
+    'duplicate-register-original',
+  )
+  const userId = registered.user.userId
+  const usernameHash = registered.token.split('.')[1]
+
+  const uploaded = await service.putSync(registered.token, {
+    baseRevision: 0,
+    payloadBase64: gzipPayload({ value: 'must-survive-duplicate-register' }),
+    deviceId: 'duplicate-register-original',
+    clientFormatVersion: 'qwerty-dexie-gzip-v2',
+  })
+  assert.equal(uploaded.revision, 1)
+
+  await assert.rejects(
+    () =>
+      service.register(
+        username.toUpperCase(),
+        replacementPassword,
+        'duplicate-register-replacement',
+      ),
+    (error) => error?.statusCode === 409 && error?.code === 'username_taken',
+  )
+
+  const identityAfter = await storage.getAccount(usernameHash)
+  assert.equal(identityAfter.userId, userId)
+  assert.deepEqual(storage.revisionVersions(userId), [1])
+
+  const me = await service.me(registered.token)
+  assert.equal(me.user.userId, userId)
+
+  const snapshot = await service.getSync(registered.token)
+  assert.equal(snapshot.revision, 1)
+  assert.equal(
+    snapshot.payloadBase64,
+    gzipPayload({ value: 'must-survive-duplicate-register' }),
+  )
+
+  await assert.rejects(
+    () => service.login(username, replacementPassword, 'duplicate-new-password'),
+    (error) => error?.code === 'invalid_credentials',
+  )
+
+  const originalLogin = await service.login(
+    username,
+    password,
+    'duplicate-original-password',
+  )
+  assert.equal(originalLogin.user.userId, userId)
+
+  await service.cleanupTestUser(username)
+})

@@ -180,6 +180,7 @@ export async function onRequest(context) {
             'blob-transient-retry-v1',
             'plain-gzip-sync-v2',
             'account-delete-v1',
+            'duplicate-register-protection-v1',
           ],
         },
         200,
