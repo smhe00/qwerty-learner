@@ -1,5 +1,6 @@
 /* eslint-env node */
 import crypto from 'node:crypto'
+import zlib from 'node:zlib'
 
 function assert(condition, message) {
   if (!condition) throw new Error(message)
@@ -17,7 +18,7 @@ async function expectError(fn, code) {
 }
 
 function payload(value) {
-  return Buffer.from(JSON.stringify(value), 'utf8').toString('base64')
+  return zlib.gzipSync(Buffer.from(JSON.stringify(value), 'utf8')).toString('base64')
 }
 
 export async function runBackendSelfTest(service) {
@@ -76,7 +77,7 @@ export async function runBackendSelfTest(service) {
       baseRevision: 0,
       payloadBase64: p1,
       deviceId: 'device-b',
-      clientFormatVersion: 'test-v1',
+      clientFormatVersion: 'qwerty-dexie-gzip-v2',
     })
     assert(r1.revision === 1, 'first revision must be 1')
     pass('sync-upload-revision-1')
@@ -90,6 +91,7 @@ export async function runBackendSelfTest(service) {
         service.putSync(login2.token, {
           baseRevision: 0,
           payloadBase64: payload({ stale: true }),
+          clientFormatVersion: 'qwerty-dexie-gzip-v2',
         }),
       'sync_conflict',
     )
@@ -100,7 +102,7 @@ export async function runBackendSelfTest(service) {
       baseRevision: 1,
       payloadBase64: p2,
       deviceId: 'device-b',
-      clientFormatVersion: 'test-v1',
+      clientFormatVersion: 'qwerty-dexie-gzip-v2',
     })
     assert(r2.revision === 2, 'second revision must be 2')
     pass('sync-upload-revision-2')
@@ -118,7 +120,7 @@ export async function runBackendSelfTest(service) {
         baseRevision: latestRevision,
         payloadBase64: latestPayload,
         deviceId: 'device-b',
-        clientFormatVersion: 'test-v1',
+        clientFormatVersion: 'qwerty-dexie-gzip-v2',
       })
 
       latestRevision = generation
