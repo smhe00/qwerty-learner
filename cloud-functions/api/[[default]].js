@@ -153,7 +153,7 @@ export async function onRequest(context) {
       status: 204,
       headers: {
         ...cors,
-        'Access-Control-Allow-Methods': 'GET,POST,PUT,OPTIONS',
+        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
         'Access-Control-Allow-Headers': 'Authorization,Content-Type',
         'Access-Control-Max-Age': '86400',
       },
@@ -178,6 +178,8 @@ export async function onRequest(context) {
             'application-auth-rate-limit-v2',
             'hybrid-auth-rate-limit-v3',
             'blob-transient-retry-v1',
+            'plain-gzip-sync-v2',
+            'account-delete-v1',
           ],
         },
         200,
@@ -224,6 +226,18 @@ export async function onRequest(context) {
 
     if (request.method === 'GET' && path === '/auth/me') {
       return json({ ok: true, ...(await service.me(bearer(request))) }, 200, cors)
+    }
+
+    if (request.method === 'DELETE' && path === '/auth/account') {
+      const body = await readJson(request, 64 * 1024)
+      return json(
+        {
+          ok: true,
+          ...(await service.deleteAccount(bearer(request), body.currentPassword)),
+        },
+        200,
+        cors,
+      )
     }
 
     if (request.method === 'POST' && path === '/auth/change-password') {
