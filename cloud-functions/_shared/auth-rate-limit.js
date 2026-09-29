@@ -209,4 +209,4 @@ export async function checkAuthRateLimit({
   }
 }
 
-// Final integrated Review + Cloud release-candidate verification marker.
+// Product-main convergence verification marker; no functional behavior change.
