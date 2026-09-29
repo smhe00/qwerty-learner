@@ -3,7 +3,7 @@ name: Cloud Sync Gate
 on:
   push:
     branches:
-      - feature/edgeone-cloud-sync
+      - product/main
     paths:
       - 'cloud-functions/**'
       - 'tests/cloud/**'
