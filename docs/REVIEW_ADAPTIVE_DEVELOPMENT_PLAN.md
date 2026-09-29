@@ -503,13 +503,17 @@ probeDimension = audio
 Review 主线在 P3-002 完成后暂时冻结，先处理云账号数据安全问题：
 
 ```text
-AUTH-HOTFIX-001
-- 同名/规范化同名用户名重复注册必须返回 username_taken
-- 不得生成/替换新 userId
-- 不得覆盖原 identity/auth/session
-- 不得让原 revisions 变为不可访问
-- 原密码和原账号必须继续有效
-- 前端显示明确中文提示
+AUTH-HOTFIX-001  PASS
+- 同名/规范化同名用户名重复注册返回 username_taken
+- core 注册前做强一致性存在性检查
+- EdgeOne Blob account create 再做一次 preflight，防止 provider onlyIfNew 语义退化
+- 不生成/替换新 userId
+- 不覆盖原 identity/auth/session
+- 原 revisions 保持可访问
+- 原密码和原账号继续有效
+- 前端明确提示“用户名已存在，请直接登录。”
+- Backend/Blob contract + browser/live regression 已补齐
+- Cloud Sync Gate #62 @ 9af24267420e1a135ba91bb9c788d84620537e51 PASS
 ```
 
-完成并通过 Cloud Sync Gate / live contract 后，再恢复 R2-P4-001。
+生产指针暂不自动推进：当前 `product/main` 同时包含尚未发布的 Review P2/P3 active 行为。Hotfix 代码已在产品主线验证完成，生产发布需要作为单独 release decision 处理，避免无意捆绑其它功能。
