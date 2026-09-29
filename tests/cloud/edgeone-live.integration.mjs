@@ -1,6 +1,7 @@
 /* eslint-env node */
 import assert from 'node:assert/strict'
 import crypto from 'node:crypto'
+import zlib from 'node:zlib'
 import { getStore, listStores } from '@edgeone/pages-blob'
 import { createBackendService } from '../../cloud-functions/_shared/core.js'
 import { createEdgeOneBlobStorage } from '../../cloud-functions/_shared/storage/edgeone-blob.js'
@@ -210,7 +211,7 @@ async function listVersions(prefix) {
 }
 
 function payload(value) {
-  return Buffer.from(JSON.stringify(value), 'utf8').toString('base64')
+  return zlib.gzipSync(Buffer.from(JSON.stringify(value), 'utf8')).toString('base64')
 }
 
 function versionFromKey(key) {
@@ -221,7 +222,7 @@ function versionFromKey(key) {
 try {
   await primeEdgeOneAccessSession()
 
-  const health = await waitForBackendCapability('blob-transient-retry-v1')
+  const health = await waitForBackendCapability('plain-gzip-sync-v2')
   assert.equal(health.status, 200)
   assert.equal(health.json?.ok, true)
   assert.equal(health.json?.authMode, 'single-active-session')
@@ -231,6 +232,8 @@ try {
   assert.ok(health.json.capabilities.includes('application-auth-rate-limit-v2'))
   assert.ok(health.json.capabilities.includes('hybrid-auth-rate-limit-v3'))
   assert.ok(health.json.capabilities.includes('blob-transient-retry-v1'))
+  assert.ok(health.json.capabilities.includes('plain-gzip-sync-v2'))
+  assert.ok(health.json.capabilities.includes('account-delete-v1'))
 
   await verifyAdminBlobCredential()
 
@@ -333,7 +336,7 @@ try {
         baseRevision,
         payloadBase64: latestPayload,
         deviceId: 'edgeone-live-b',
-        clientFormatVersion: 'integration-v1',
+        clientFormatVersion: 'qwerty-dexie-gzip-v2',
       },
     })
 
@@ -349,7 +352,7 @@ try {
       baseRevision: 5,
       payloadBase64: payload({ stale: true }),
       deviceId: 'edgeone-live-b',
-      clientFormatVersion: 'integration-v1',
+      clientFormatVersion: 'qwerty-dexie-gzip-v2',
     },
   })
 
@@ -399,6 +402,63 @@ try {
   assert.equal(afterPasswordChanges.json?.revision, 6)
   assert.equal(afterPasswordChanges.json?.payloadBase64, latestPayload)
 
+  const wrongDeletePassword = await request('/api/auth/account', {
+    method: 'DELETE',
+    token: activeToken,
+    body: {
+      currentPassword: 'Definitely-Wrong-Delete-Password',
+    },
+  })
+  assert.equal(wrongDeletePassword.status, 401)
+  assert.equal(wrongDeletePassword.json?.error, 'invalid_credentials')
+
+  const deleted = await request('/api/auth/account', {
+    method: 'DELETE',
+    token: activeToken,
+    body: {
+      currentPassword: password,
+    },
+  })
+  assert.equal(deleted.status, 200, `delete account failed: ${JSON.stringify(deleted.json)}`)
+  assert.equal(deleted.json?.deleted?.accountDeleted, true)
+  assert.ok(deleted.json?.deleted?.sessionsDeleted >= 1)
+  assert.ok(deleted.json?.deleted?.revisionsDeleted >= 1)
+
+  const afterDeleteMe = await request('/api/auth/me', { token: activeToken })
+  assert.equal(afterDeleteMe.status, 401)
+  assert.equal(afterDeleteMe.json?.error, 'invalid_token')
+
+  const afterDeleteLogin = await request('/api/auth/login', {
+    method: 'POST',
+    body: {
+      username,
+      password,
+      deviceId: 'edgeone-live-after-delete',
+    },
+  })
+  assert.equal(afterDeleteLogin.status, 401)
+  assert.equal(afterDeleteLogin.json?.error, 'invalid_credentials')
+
+  const [authAfterDelete, sessionsAfterDelete, revisionsAfterDelete] = await Promise.all([
+    listVersions(`accounts/${usernameHash}/auth/`),
+    listVersions(`accounts/${usernameHash}/sessions/`),
+    listVersions(`users/${userId}/revisions/`),
+  ])
+  assert.deepEqual(authAfterDelete, [])
+  assert.deepEqual(sessionsAfterDelete, [])
+  assert.deepEqual(revisionsAfterDelete, [])
+
+  const reregistered = await request('/api/auth/register', {
+    method: 'POST',
+    body: {
+      username,
+      password: 'EdgeOne-ReRegistered-A9-Password',
+      deviceId: 'edgeone-live-reregister',
+    },
+  })
+  assert.equal(reregistered.status, 201)
+  assert.notEqual(reregistered.json?.user?.userId, userId)
+
   console.log(
     JSON.stringify(
       {
@@ -415,6 +475,9 @@ try {
         applicationAuthRateLimitV2Capability: true,
         hybridAuthRateLimitV3Capability: true,
         blobTransientRetryCapability: true,
+        plainGzipSyncV2Capability: true,
+        accountDeleteCapability: true,
+        accountDeletedViaApi: true,
       },
       null,
       2,
