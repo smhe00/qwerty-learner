@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { classifyTypingError } from '../../src/review/classifier'
+import { createBaselineExerciseCondition } from '../../src/review/condition'
+import { createBaselineReviewPolicyDecision } from '../../src/review/decision'
 import { buildReviewDictionaryDiagnostics, buildReviewWordDiagnostics } from '../../src/review/diagnostics'
 import { filterDueReviewCandidates } from '../../src/review/due'
 import { summarizeWordHistory } from '../../src/review/features'
@@ -9,6 +11,7 @@ import {
   readLearningContext,
   summarizeAnswerVisibility,
 } from '../../src/review/learning-context'
+import { buildReviewObservation } from '../../src/review/observation'
 import { rankDueReviewCandidates, rankReviewCandidates } from '../../src/review/priority'
 import { inferReviewOutcomeFromWordRecord, rebuildBasicStateFromWordRecords } from '../../src/review/rebuild'
 import {
@@ -1169,5 +1172,127 @@ test.describe('legacy migration due-now semantics', () => {
 
     expect(rebuilt).toBeDefined()
     expect(rebuilt?.nextReviewAt).not.toBe(now)
+  })
+})
+
+
+test.describe('adaptive review domain contracts', () => {
+  test('captures all-visible and all-hidden baseline conditions', () => {
+    expect(
+      createBaselineExerciseCondition({
+        pronunciationEnabled: true,
+        meaningVisible: true,
+        phoneticVisible: false,
+        letterVisibility: [true, true, true],
+      }),
+    ).toEqual({
+      version: 1,
+      purpose: 'training',
+      source: 'user-settings',
+      audio: 'automatic',
+      meaning: 'visible',
+      phonetic: 'hidden',
+      letters: { mode: 'all-visible' },
+      probeDimension: 'none',
+    })
+
+    expect(
+      createBaselineExerciseCondition({
+        pronunciationEnabled: false,
+        meaningVisible: false,
+        phoneticVisible: true,
+        letterVisibility: [false, false],
+      }),
+    ).toEqual({
+      version: 1,
+      purpose: 'training',
+      source: 'user-settings',
+      audio: 'none',
+      meaning: 'hidden',
+      phonetic: 'visible',
+      letters: { mode: 'all-hidden' },
+      probeDimension: 'none',
+    })
+  })
+
+  test('records exact positions for a partial baseline mask', () => {
+    const condition = createBaselineExerciseCondition({
+      pronunciationEnabled: true,
+      meaningVisible: true,
+      phoneticVisible: true,
+      letterVisibility: [true, false, true, false],
+    })
+
+    expect(condition.letters).toEqual({
+      mode: 'partial',
+      visiblePositions: [0, 2],
+      maskedPositions: [1, 3],
+    })
+  })
+
+  test('creates versioned baseline policy metadata', () => {
+    expect(createBaselineReviewPolicyDecision()).toEqual({
+      version: 1,
+      policyVersion: 'baseline-user-settings-v1',
+      reasonCodes: ['baseline-user-settings'],
+      conditionVersion: 1,
+    })
+  })
+
+  test('builds an observation from legacy records without inventing missing evidence', () => {
+    const legacy: IWordRecord = {
+      id: 7,
+      word: 'legacy',
+      timeStamp: 100,
+      dict: 'cet4',
+      chapter: 0,
+      timing: [],
+      wrongCount: 1,
+      mistakes: { 2: ['x'] },
+    }
+
+    const observation = buildReviewObservation(legacy)
+
+    expect(observation).toMatchObject({
+      version: 1,
+      recordId: 7,
+      word: 'legacy',
+      dict: 'cet4',
+      timeStamp: 100,
+      wrongCount: 1,
+      mistakes: { 2: ['x'] },
+    })
+    expect(observation.exerciseCondition).toBeUndefined()
+    expect(observation.reviewPolicyDecision).toBeUndefined()
+    expect(observation.typingTelemetry).toBeUndefined()
+    expect(observation.learningContext).toBeUndefined()
+  })
+
+  test('carries adaptive condition and policy metadata into observations', () => {
+    const exerciseCondition = createBaselineExerciseCondition({
+      pronunciationEnabled: true,
+      meaningVisible: true,
+      phoneticVisible: false,
+      letterVisibility: [true, false, true],
+    })
+    const reviewPolicyDecision = createBaselineReviewPolicyDecision()
+
+    const record: IWordRecord = {
+      word: 'adapt',
+      timeStamp: 200,
+      dict: 'cet4',
+      chapter: -1,
+      timing: [],
+      wrongCount: 0,
+      mistakes: {},
+      exerciseCondition,
+      reviewPolicyDecision,
+    }
+
+    expect(buildReviewObservation(record)).toMatchObject({
+      version: 1,
+      exerciseCondition,
+      reviewPolicyDecision,
+    })
   })
 })

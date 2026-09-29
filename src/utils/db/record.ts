@@ -1,4 +1,6 @@
 import { getUTCUnixTimestamp } from '../index'
+import type { ExerciseConditionV1 } from '@/review/condition'
+import type { ReviewPolicyDecisionV1 } from '@/review/decision'
 import type { Word } from '@/typings'
 
 export type WordAttemptResult = 'clean' | 'wrong'
@@ -77,6 +79,12 @@ export interface IWordRecord {
 
   // Optional semantic learning conditions. Absence means "unknown", never false.
   learningContext?: LearningContextV1
+
+  // Optional presentation condition selected for this attempt.
+  exerciseCondition?: ExerciseConditionV1
+
+  // Optional policy metadata explaining why the condition was selected.
+  reviewPolicyDecision?: ReviewPolicyDecisionV1
 }
 
 export interface LetterMistakes {
@@ -95,6 +103,8 @@ export class WordRecord implements IWordRecord {
   mistakes: LetterMistakes
   typingTelemetry?: WordRecordTelemetry
   learningContext?: LearningContextV1
+  exerciseCondition?: ExerciseConditionV1
+  reviewPolicyDecision?: ReviewPolicyDecisionV1
 
   constructor(
     word: string,
