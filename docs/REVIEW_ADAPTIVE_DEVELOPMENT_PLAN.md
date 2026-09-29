@@ -33,10 +33,12 @@ How to review
 ```text
 yarn eslint <changed review/frontend files>
 yarn build
-npx playwright test tests/e2e/review.spec.ts --project=chromium
+Review Gate domain tests
 ```
 
 并建立专门的 `Review Gate` GitHub Actions，对 `product/main` 的 Review 相关路径自动执行。
+
+当前 `tests/e2e/review.spec.ts` 历史测试会沿应用依赖链进入 `import.meta` 模块，不能作为纯 Node CI 的稳定 domain-test 入口。新的纯领域回归放在 `tests/review/domain.test.ts`，由 esbuild bundle 后交给 Node test runner；真实 UI 行为另用浏览器 E2E 覆盖。
 
 涉及 DB/export/sync 数据兼容时额外要求：
 

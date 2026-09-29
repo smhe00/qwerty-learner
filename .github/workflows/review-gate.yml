@@ -11,6 +11,7 @@ on:
       - 'src/pages/Typing/components/WordPanel/**'
       - 'src/store/reviewInfoAtom.ts'
       - 'tests/e2e/review.spec.ts'
+      - 'tests/review/**'
       - 'docs/REVIEW_*.md'
       - '.github/workflows/review-gate.yml'
       - 'package.json'
@@ -44,8 +45,17 @@ jobs:
           src/pages/Typing/components/WordPanel
           --ext .ts,.tsx
 
+      - name: Bundle Review domain tests
+        run: |
+          mkdir -p .review-test
+          npx esbuild tests/review/domain.test.ts \
+            --bundle \
+            --platform=node \
+            --format=esm \
+            --outfile=.review-test/domain.test.mjs
+
       - name: Run Review domain tests
-        run: npx playwright test tests/e2e/review.spec.ts --project=chromium
+        run: node --test .review-test/domain.test.mjs
 
       - name: Build Qwerty
         run: yarn build
