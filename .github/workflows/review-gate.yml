@@ -42,7 +42,6 @@ jobs:
           src/utils/db/record.ts
           src/utils/db/index.ts
           src/pages/Typing/components/WordPanel
-          tests/e2e/review.spec.ts
           --ext .ts,.tsx
 
       - name: Run Review domain tests

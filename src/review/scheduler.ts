@@ -1,6 +1,5 @@
 import type { TypingErrorClassification } from './classifier'
 import { basicReviewIntervalsDays, sameSessionWindowSeconds } from './policy'
-import { createInitialReviewWordState } from './types'
 import type { BasicSchedulerState, IReviewWordState, ReviewOutcome, ReviewSchedulerState } from './types'
 
 export type ReviewScheduleInput = {

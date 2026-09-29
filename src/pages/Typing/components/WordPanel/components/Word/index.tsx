@@ -199,7 +199,7 @@ export default function WordComponent({
   const updateInput = useCallback(
     (updateAction: WordUpdateAction) => {
       switch (updateAction.type) {
-        case 'add':
+        case 'add': {
           if (wordState.hasWrong) return
 
           const now = Date.now()
@@ -217,6 +217,7 @@ export default function WordComponent({
             })
           }
           break
+        }
 
         default:
           console.warn('unknown update type', updateAction)
