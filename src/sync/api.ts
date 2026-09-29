@@ -17,6 +17,16 @@ type AuthResponse = {
 type SyncMetaResponse = { ok: true } & RemoteSyncMeta
 type SyncResponse = { ok: true } & RemoteSnapshot
 
+export type DeleteAccountResponse = {
+  ok: true
+  deleted: {
+    accountDeleted: boolean
+    authDeleted: number
+    sessionsDeleted: number
+    revisionsDeleted: number
+  }
+}
+
 export class SyncApiError extends Error {
   status: number
   code: string
@@ -106,6 +116,14 @@ export function login(username: string, password: string, deviceId?: string) {
 
 export function getMe(token: string) {
   return request<{ ok: true; user: CloudUser }>('/api/auth/me', { token })
+}
+
+export function deleteCloudAccount(token: string, currentPassword: string) {
+  return request<DeleteAccountResponse>('/api/auth/account', {
+    method: 'DELETE',
+    token,
+    body: { currentPassword },
+  })
 }
 
 export function getSyncMeta(token: string) {

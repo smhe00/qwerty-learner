@@ -44,6 +44,10 @@ export function saveSyncBaseline(userId: string, baseRevision: number, localFing
   return baseline
 }
 
+export function clearSyncBaseline(userId: string) {
+  localStorage.removeItem(keyForUser(userId))
+}
+
 export function assessSyncState(
   local: LocalState,
   remote: RemoteSyncMeta,

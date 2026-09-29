@@ -1,16 +1,17 @@
-import { SyncApiError, getSync, getSyncMeta, putSync } from './api'
+import { SyncApiError, deleteCloudAccount, getSync, getSyncMeta, putSync } from './api'
 import { loadAuth, loginAndRemember, logout, registerAndRemember } from './auth'
-import {
-  MIN_ENCRYPTION_PASSPHRASE_LENGTH,
-  isEncryptedFormat,
-} from './crypto'
 import {
   CLIENT_FORMAT_VERSION,
   createLocalSnapshot,
   inspectLocalState,
   restoreLocalSnapshot,
 } from './snapshot'
-import { assessSyncState, loadSyncBaseline, saveSyncBaseline } from './state'
+import {
+  assessSyncState,
+  clearSyncBaseline,
+  loadSyncBaseline,
+  saveSyncBaseline,
+} from './state'
 import type {
   CloudAuthState,
   LocalState,
@@ -25,8 +26,13 @@ type SyncView = {
   assessment: SyncAssessment
 }
 
+function isUnsupportedRemote(view: SyncView | null) {
+  return !!view?.remote.hasData && view.remote.clientFormatVersion !== CLIENT_FORMAT_VERSION
+}
+
 function statusText(view: SyncView | null) {
   if (!view) return '尚未检查'
+  if (isUnsupportedRemote(view)) return '云端是旧格式，需要用当前本地数据重新上传'
 
   switch (view.assessment.status) {
     case 'clean':
@@ -44,6 +50,7 @@ function errorMessage(error: unknown) {
   if (error instanceof SyncApiError) {
     if (error.code === 'sync_conflict') return '云端数据刚刚发生变化，请刷新状态后重试。'
     if (error.code === 'session_revoked') return '当前登录已被其他登录替代，请重新登录。'
+    if (error.code === 'invalid_credentials') return '当前账号密码不正确。'
     return error.message
   }
 
@@ -54,7 +61,7 @@ export default function CloudSyncSetting() {
   const [auth, setAuth] = useState<CloudAuthState | null>(() => loadAuth())
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [encryptionPassphrase, setEncryptionPassphrase] = useState('')
+  const [deletePassword, setDeletePassword] = useState('')
   const [view, setView] = useState<SyncView | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
@@ -76,7 +83,7 @@ export default function CloudSyncSetting() {
   useEffect(() => {
     if (!auth) {
       setView(null)
-      setEncryptionPassphrase('')
+      setDeletePassword('')
       return
     }
 
@@ -105,7 +112,7 @@ export default function CloudSyncSetting() {
       const next = await loginAndRemember(username, password)
       setAuth(next)
       setPassword('')
-      setMessage('登录成功。请输入云同步加密口令后再上传或恢复数据。')
+      setMessage('登录成功。')
     })
 
   const doRegister = () =>
@@ -113,7 +120,7 @@ export default function CloudSyncSetting() {
       const next = await registerAndRemember(username, password)
       setAuth(next)
       setPassword('')
-      setMessage('账号已创建并登录。请设置独立的云同步加密口令。')
+      setMessage('账号已创建并登录。')
     })
 
   const doRefresh = () => {
@@ -128,12 +135,19 @@ export default function CloudSyncSetting() {
     if (!auth) return
 
     void run(async () => {
-      const local = await createLocalSnapshot(encryptionPassphrase, auth.user.userId)
+      const local = await createLocalSnapshot()
       const remote = await getSyncMeta(auth.token)
       const baseline = loadSyncBaseline(auth.user.userId)
       const assessment = assessSyncState(local, remote, baseline)
+      const remoteUnsupported =
+        remote.hasData && remote.clientFormatVersion !== CLIENT_FORMAT_VERSION
 
-      if (assessment.diverged) {
+      if (remoteUnsupported) {
+        const confirmed = window.confirm(
+          '当前云端数据是旧格式，本版本不再支持恢复。继续将使用当前本地数据覆盖旧云端版本。是否继续？',
+        )
+        if (!confirmed) return
+      } else if (assessment.diverged) {
         const confirmed = window.confirm(
           '本地和云端都在上次同步后发生了变化。继续将以当前本地数据覆盖云端最新版本。建议先使用“导出数据”保存本地备份。是否继续？',
         )
@@ -149,7 +163,7 @@ export default function CloudSyncSetting() {
 
       saveSyncBaseline(auth.user.userId, uploaded.revision, local.fingerprint)
       await refresh(auth)
-      setMessage(`已加密上传到云端 revision ${uploaded.revision}。`)
+      setMessage(`已上传到云端 revision ${uploaded.revision}。`)
     })
   }
 
@@ -167,6 +181,11 @@ export default function CloudSyncSetting() {
         return
       }
 
+      if (remoteMeta.clientFormatVersion !== CLIENT_FORMAT_VERSION) {
+        setMessage('云端数据是旧格式，本版本不再支持恢复。请上传当前本地数据生成新格式云端备份。')
+        return
+      }
+
       if (assessment.localDirty) {
         const confirmed = window.confirm(
           '下载云端数据会完全覆盖当前本地练习数据。建议先使用“导出数据”保存本地备份。是否继续？',
@@ -180,8 +199,6 @@ export default function CloudSyncSetting() {
       const restored = await restoreLocalSnapshot(
         remote.payloadBase64,
         remote.clientFormatVersion,
-        encryptionPassphrase,
-        auth.user.userId,
       )
 
       saveSyncBaseline(auth.user.userId, remote.revision, restored.fingerprint)
@@ -190,20 +207,38 @@ export default function CloudSyncSetting() {
     })
   }
 
+  const doDeleteAccount = () => {
+    if (!auth || deletePassword.length < 8) return
+
+    const confirmed = window.confirm(
+      `将永久删除云端账号“${auth.user.username}”、全部云端同步数据和云端会话。此操作不可撤销，但不会删除本机学习数据。是否继续？`,
+    )
+    if (!confirmed) return
+
+    void run(async () => {
+      const userId = auth.user.userId
+      await deleteCloudAccount(auth.token, deletePassword)
+      clearSyncBaseline(userId)
+      logout()
+      setAuth(null)
+      setPassword('')
+      setDeletePassword('')
+      setView(null)
+      setMessage('云端账号及其全部云端数据已删除；本机学习数据已保留。')
+    })
+  }
+
   const doLogout = () => {
     logout()
     setAuth(null)
     setPassword('')
-    setEncryptionPassphrase('')
+    setDeletePassword('')
     setMessage('')
   }
 
-  const passphraseReady =
-    encryptionPassphrase.length >= MIN_ENCRYPTION_PASSPHRASE_LENGTH
-  const remoteNeedsPassphrase =
-    !view?.remote.hasData || isEncryptedFormat(view.remote.clientFormatVersion)
+  const remoteUnsupported = isUnsupportedRemote(view)
   const canDownload =
-    !!view?.remote.hasData && (!remoteNeedsPassphrase || passphraseReady)
+    !!view?.remote.hasData && view.remote.clientFormatVersion === CLIENT_FORMAT_VERSION
 
   return (
     <div className="border-b border-neutral-100 pb-5 dark:border-neutral-700">
@@ -223,7 +258,7 @@ export default function CloudSyncSetting() {
 
       <p className="mb-3 text-left text-xs leading-relaxed text-gray-500 dark:text-gray-400">
         云端同步是可选功能。学习数据仍以本机 IndexedDB 为工作副本，不登录或网络不可用时不会影响练习。
-        当前版本仅提供手动上传/下载，不会自动合并冲突。
+        当前版本仅提供手动上传/下载，不会自动合并冲突。上传数据通过 HTTPS 传输并以 gzip 压缩格式保存在云端。
       </p>
 
       {!auth ? (
@@ -279,32 +314,13 @@ export default function CloudSyncSetting() {
             ) : null}
           </div>
 
-          <div className="rounded border border-indigo-100 bg-indigo-50 p-2 dark:border-indigo-900 dark:bg-indigo-950">
-            <label className="mb-1 block text-xs font-bold text-indigo-700 dark:text-indigo-300">
-              云同步加密口令
-            </label>
-            <input
-              className="block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
-              value={encryptionPassphrase}
-              onChange={(event) => setEncryptionPassphrase(event.target.value)}
-              placeholder="至少12字符；请勿与登录密码共用"
-              type="password"
-              autoComplete="off"
-            />
-            <p className="mt-1 text-xs leading-relaxed text-indigo-600 dark:text-indigo-300">
-              新上传数据会在浏览器内 gzip 后使用 AES-256-GCM 加密。此口令不会发送给服务器，也不会持久保存；
-              忘记后服务器无法恢复云端数据。
-            </p>
-            {view?.remote.hasData &&
-              view.remote.clientFormatVersion &&
-              !isEncryptedFormat(view.remote.clientFormatVersion) && (
-                <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-                  当前云端是旧版未加密快照；可以直接下载。下一次上传会升级为加密格式。
-                </p>
-              )}
-          </div>
+          {remoteUnsupported && (
+            <div className="rounded bg-amber-50 p-2 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+              当前云端数据来自旧同步格式，本版本不再兼容恢复。可以使用当前本地数据直接覆盖并生成新格式云端备份。
+            </div>
+          )}
 
-          {view?.assessment.diverged && (
+          {view?.assessment.diverged && !remoteUnsupported && (
             <div className="rounded bg-amber-50 p-2 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300">
               检测到分叉：本地与云端都发生了变化。系统不会自动合并；请明确选择上传本地版本或下载云端版本。
             </div>
@@ -324,13 +340,18 @@ export default function CloudSyncSetting() {
               type="button"
               disabled={
                 busy ||
-                !passphraseReady ||
                 !view ||
-                (!view.assessment.localDirty && !view.assessment.diverged)
+                (!view.assessment.localDirty &&
+                  !view.assessment.diverged &&
+                  !remoteUnsupported)
               }
               onClick={doUpload}
             >
-              {view?.assessment.diverged ? '以本地加密覆盖云端' : '加密上传本地数据'}
+              {remoteUnsupported
+                ? '用本地数据覆盖旧版云端'
+                : view?.assessment.diverged
+                  ? '以本地覆盖云端'
+                  : '上传本地数据'}
             </button>
             <button
               className="my-btn-primary disabled:bg-gray-300"
@@ -339,6 +360,31 @@ export default function CloudSyncSetting() {
               onClick={doDownload}
             >
               使用云端数据
+            </button>
+          </div>
+
+          <div className="mt-4 rounded border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950">
+            <div className="mb-1 text-xs font-bold text-red-700 dark:text-red-300">
+              删除云端账号
+            </div>
+            <p className="mb-2 text-xs leading-relaxed text-red-600 dark:text-red-300">
+              永久删除账号、全部云端同步数据和所有云端会话。不会删除本机 IndexedDB 学习数据。
+            </p>
+            <input
+              className="mb-2 block w-full rounded border border-red-200 bg-white px-3 py-2 text-sm dark:border-red-800 dark:bg-gray-800"
+              value={deletePassword}
+              onChange={(event) => setDeletePassword(event.target.value)}
+              placeholder="输入当前账号密码确认删除"
+              type="password"
+              autoComplete="current-password"
+            />
+            <button
+              className="rounded bg-red-600 px-3 py-2 text-xs font-bold text-white disabled:bg-gray-300"
+              type="button"
+              disabled={busy || deletePassword.length < 8}
+              onClick={doDeleteAccount}
+            >
+              永久删除云端账号
             </button>
           </div>
         </div>
