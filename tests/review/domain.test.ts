@@ -914,16 +914,24 @@ test('next-exercise coordinator prioritizes spelling remediation over audio prob
     letterVisibility: [false, false, false, false, false, false],
   })
 
-  const records: IWordRecord[] = [1, 2, 3].map((id) => ({
-    ...cleanAudioRecord(id, 'planet', baseline),
+  const spellingFailures: IWordRecord[] = [1, 2, 3].map((id) => ({
+    id,
+    word: 'planet',
+    timeStamp: id,
+    dict: 'cet4',
+    chapter: -1,
+    timing: [],
     wrongCount: 1,
     mistakes: { 2: ['x'] },
   }))
+  const recentAudioMastery = [4, 5, 6].map((id) =>
+    cleanAudioRecord(id, 'planet', baseline),
+  )
 
   const shadow = chooseNextExerciseShadow({
     baselineCondition: baseline,
     word: 'planet',
-    records,
+    records: [...spellingFailures, ...recentAudioMastery],
   })
 
   assert.ok(shadow)
