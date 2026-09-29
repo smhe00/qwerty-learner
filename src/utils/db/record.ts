@@ -115,6 +115,8 @@ export class WordRecord implements IWordRecord {
     mistakes: LetterMistakes,
     telemetry?: WordRecordTelemetry,
     learningContext?: LearningContextV1,
+    exerciseCondition?: ExerciseConditionV1,
+    reviewPolicyDecision?: ReviewPolicyDecisionV1,
   ) {
     this.word = word
     this.timeStamp = getUTCUnixTimestamp()
@@ -129,6 +131,12 @@ export class WordRecord implements IWordRecord {
     }
     if (learningContext) {
       this.learningContext = learningContext
+    }
+    if (exerciseCondition) {
+      this.exerciseCondition = exerciseCondition
+    }
+    if (reviewPolicyDecision) {
+      this.reviewPolicyDecision = reviewPolicyDecision
     }
   }
 

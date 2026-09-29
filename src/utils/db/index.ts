@@ -8,6 +8,8 @@ import type {
   WordRecordTelemetry,
 } from './record'
 import { ChapterRecord, ReviewRecord, WordRecord } from './record'
+import type { ExerciseConditionV1 } from '@/review/condition'
+import type { ReviewPolicyDecisionV1 } from '@/review/decision'
 import type { IReviewWordState } from '@/review/types'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import type { TypingState } from '@/pages/Typing/store/type'
@@ -108,6 +110,8 @@ export function useSaveWordRecord() {
       letterMistake,
       telemetry,
       learningContext,
+      exerciseCondition,
+      reviewPolicyDecision,
     }: {
       word: string
       wrongCount: number
@@ -115,6 +119,8 @@ export function useSaveWordRecord() {
       letterMistake: LetterMistakes
       telemetry?: WordRecordTelemetry
       learningContext?: LearningContextV1
+      exerciseCondition?: ExerciseConditionV1
+      reviewPolicyDecision?: ReviewPolicyDecisionV1
     }) => {
       const timing = []
       for (let i = 1; i < letterTimeArray.length; i++) {
@@ -131,6 +137,8 @@ export function useSaveWordRecord() {
         letterMistake,
         telemetry,
         learningContext,
+        exerciseCondition,
+        reviewPolicyDecision,
       )
 
       let dbID = -1

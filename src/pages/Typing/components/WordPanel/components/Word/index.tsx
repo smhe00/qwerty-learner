@@ -14,6 +14,10 @@ import useKeySounds from '@/hooks/useKeySounds'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import { classifyTypingError } from '@/review/classifier'
 import type { TypingErrorClassification } from '@/review/classifier'
+import { createBaselineExerciseCondition } from '@/review/condition'
+import type { ExerciseConditionV1 } from '@/review/condition'
+import { createBaselineReviewPolicyDecision } from '@/review/decision'
+import type { ReviewPolicyDecisionV1 } from '@/review/decision'
 import type { WordHistorySummary } from '@/review/features'
 import { loadWordHistorySummary } from '@/review/history'
 import {
@@ -86,6 +90,8 @@ export default function WordComponent({
   const learningContextCollectorRef = useRef(new LearningContextCollector())
   const previousMeaningVisibleRef = useRef(meaningVisible)
   const historySummaryRef = useRef<WordHistorySummary | undefined>(undefined)
+  const exerciseConditionRef = useRef<ExerciseConditionV1 | undefined>(undefined)
+  const reviewPolicyDecisionRef = useRef<ReviewPolicyDecisionV1 | undefined>(undefined)
 
   useEffect(() => {
     // run only when word changes
@@ -114,6 +120,14 @@ export default function WordComponent({
       if (wordDictationConfig.type === 'hideConsonant') return vowelLetters.includes(letter.toUpperCase())
       return newWordState.randomLetterVisible[index]
     })
+
+    exerciseConditionRef.current = createBaselineExerciseCondition({
+      pronunciationEnabled: pronunciationIsOpen,
+      meaningVisible,
+      phoneticVisible,
+      letterVisibility: initialLetterVisibility,
+    })
+    reviewPolicyDecisionRef.current = createBaselineReviewPolicyDecision()
 
     learningContextCollectorRef.current.reset({
       answerVisibilityAtStart: summarizeAnswerVisibility(initialLetterVisibility),
@@ -427,6 +441,8 @@ export default function WordComponent({
             letterMistake: wordState.letterMistake,
             telemetry,
             learningContext,
+            exerciseCondition: exerciseConditionRef.current,
+            reviewPolicyDecision: reviewPolicyDecisionRef.current,
           })
 
           if (wordRecordId > 0) {
