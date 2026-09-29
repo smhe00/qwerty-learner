@@ -402,3 +402,22 @@ test('sync upload rejects old or non-gzip formats', async () => {
 
   await service.cleanupTestUser('format_reject_user')
 })
+
+
+test('password length policy accepts four characters and rejects three', async () => {
+  const storage = new MemoryStorage()
+  const service = createBackendService({ storage })
+
+  await assert.rejects(
+    () => service.register('pw3_user', 'abc', 'pw3-device'),
+    (error) => error?.code === 'invalid_password',
+  )
+
+  const registered = await service.register('pw4_user', 'abcd', 'pw4-device')
+  assert.ok(registered.token)
+
+  const login = await service.login('pw4_user', 'abcd', 'pw4-login')
+  assert.equal(login.user.userId, registered.user.userId)
+
+  await service.cleanupTestUser('pw4_user')
+})
