@@ -1,0 +1,52 @@
+name: Review Gate
+
+on:
+  push:
+    branches:
+      - product/main
+    paths:
+      - 'src/review/**'
+      - 'src/utils/db/record.ts'
+      - 'src/utils/db/index.ts'
+      - 'src/pages/Typing/components/WordPanel/**'
+      - 'src/store/reviewInfoAtom.ts'
+      - 'tests/e2e/review.spec.ts'
+      - 'docs/REVIEW_*.md'
+      - '.github/workflows/review-gate.yml'
+      - 'package.json'
+      - 'yarn.lock'
+  workflow_dispatch:
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Lint Review code
+        run: >
+          yarn eslint
+          src/review
+          src/utils/db/record.ts
+          src/utils/db/index.ts
+          src/pages/Typing/components/WordPanel
+          tests/e2e/review.spec.ts
+          --ext .ts,.tsx
+
+      - name: Run Review domain tests
+        run: npx playwright test tests/e2e/review.spec.ts --project=chromium
+
+      - name: Build Qwerty
+        run: yarn build
