@@ -14,13 +14,22 @@ import useKeySounds from '@/hooks/useKeySounds'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import { classifyTypingError } from '@/review/classifier'
 import type { TypingErrorClassification } from '@/review/classifier'
-import { createBaselineExerciseCondition } from '@/review/condition'
+import {
+  createBaselineExerciseCondition,
+  isLetterVisibleForExerciseCondition,
+} from '@/review/condition'
 import type { ExerciseConditionV1 } from '@/review/condition'
-import { createBaselineReviewPolicyDecision } from '@/review/decision'
-import type { ReviewPolicyDecisionV1 } from '@/review/decision'
+import type {
+  ReviewExercisePlanV1,
+  ReviewPolicyDecisionV1,
+  ReviewPolicyShadowV1,
+} from '@/review/decision'
 import { evaluateReviewEvidence } from '@/review/evidence'
 import type { WordHistorySummary } from '@/review/features'
-import { chooseTargetedMaskShadow } from '@/review/exercise-policy'
+import {
+  chooseTargetedMaskShadow,
+  resolveExercisePlanForAttempt,
+} from '@/review/exercise-policy'
 import { loadWordReviewHistory } from '@/review/history'
 import {
   LearningContextCollector,
@@ -44,7 +53,14 @@ import { CTRL, getUtcStringForMixpanel } from '@/utils'
 import { useSaveWordRecord } from '@/utils/db'
 import type { IWordRecord, PronunciationCue } from '@/utils/db/record'
 import { useAtomValue } from 'jotai'
-import { useCallback, useContext, useEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useImmer } from 'use-immer'
 
@@ -53,6 +69,7 @@ const vowelLetters = ['A', 'E', 'I', 'O', 'U']
 export type WordFinishResult = {
   wrongCount: number
   classification: TypingErrorClassification
+  nextExerciseShadow?: ReviewPolicyShadowV1 | null
 }
 
 type WordComponentProps = {
@@ -60,6 +77,7 @@ type WordComponentProps = {
   onFinish: (result: WordFinishResult) => void
   meaningVisible: boolean
   phoneticVisible: boolean
+  exercisePlan?: ReviewExercisePlanV1
 }
 
 export default function WordComponent({
@@ -67,6 +85,7 @@ export default function WordComponent({
   onFinish,
   meaningVisible,
   phoneticVisible,
+  exercisePlan,
 }: WordComponentProps) {
   // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
   const { state, dispatch } = useContext(TypingContext)!
@@ -96,8 +115,8 @@ export default function WordComponent({
   const exerciseConditionRef = useRef<ExerciseConditionV1 | undefined>(undefined)
   const reviewPolicyDecisionRef = useRef<ReviewPolicyDecisionV1 | undefined>(undefined)
 
-  useEffect(() => {
-    // run only when word changes
+  useLayoutEffect(() => {
+    // Resolve the frozen presentation before paint / first input.
     telemetryCollectorRef.current.resetWord()
 
     let headword = ''
@@ -124,17 +143,31 @@ export default function WordComponent({
       return newWordState.randomLetterVisible[index]
     })
 
-    exerciseConditionRef.current = createBaselineExerciseCondition({
+    const baselineCondition = createBaselineExerciseCondition({
       pronunciationEnabled: pronunciationIsOpen,
       meaningVisible,
       phoneticVisible,
       letterVisibility: initialLetterVisibility,
     })
-    reviewPolicyDecisionRef.current = createBaselineReviewPolicyDecision()
+    const appliedPlan = resolveExercisePlanForAttempt(
+      baselineCondition,
+      exercisePlan,
+    )
+    const appliedLetterVisibility = initialLetterVisibility.map(
+      (fallbackVisible, index) =>
+        isLetterVisibleForExerciseCondition(
+          appliedPlan.condition,
+          index,
+          fallbackVisible,
+        ),
+    )
+
+    exerciseConditionRef.current = appliedPlan.condition
+    reviewPolicyDecisionRef.current = appliedPlan.decision
 
     learningContextCollectorRef.current.reset({
-      answerVisibilityAtStart: summarizeAnswerVisibility(initialLetterVisibility),
-      answerVisibleRatioAtStart: calculateAnswerVisibleRatio(initialLetterVisibility),
+      answerVisibilityAtStart: summarizeAnswerVisibility(appliedLetterVisibility),
+      answerVisibleRatioAtStart: calculateAnswerVisibleRatio(appliedLetterVisibility),
       meaningVisibleAtStart: meaningVisible,
       phoneticVisibleAtStart: phoneticVisible,
       pronunciationEnabledAtStart: pronunciationIsOpen,
@@ -301,6 +334,18 @@ export default function WordComponent({
     (index: number) => {
       if (wordState.letterStates[index] === 'correct' || (isShowAnswerOnHover && isHoveringWord)) return true
 
+      const activeCondition = exerciseConditionRef.current
+      if (
+        activeCondition?.source === 'adaptive-policy' &&
+        activeCondition.letters.mode === 'targeted-mask'
+      ) {
+        return isLetterVisibleForExerciseCondition(
+          activeCondition,
+          index,
+          true,
+        )
+      }
+
       if (wordDictationConfig.isOpen) {
         if (wordDictationConfig.type === 'hideAll') return false
 
@@ -446,6 +491,8 @@ export default function WordComponent({
       //   countTypo: wordState.wrongCount,
       // })
       const persistResult = async () => {
+        let nextExerciseShadow: ReviewPolicyShadowV1 | null | undefined
+
         try {
           const currentRecordForPolicy: IWordRecord = {
             word: word.name,
@@ -461,13 +508,13 @@ export default function WordComponent({
             reviewPolicyDecision: reviewPolicyDecisionRef.current,
             reviewEvidence,
           }
-          const reviewPolicyShadow = exerciseConditionRef.current
+          nextExerciseShadow = exerciseConditionRef.current
             ? chooseTargetedMaskShadow({
                 baselineCondition: exerciseConditionRef.current,
                 word: word.name,
                 records: [...historyRecordsRef.current, currentRecordForPolicy],
-              }) ?? undefined
-            : undefined
+              })
+            : null
 
           const wordRecordId = await saveWordRecord({
             word: word.name,
@@ -479,7 +526,7 @@ export default function WordComponent({
             exerciseCondition: exerciseConditionRef.current,
             reviewPolicyDecision: reviewPolicyDecisionRef.current,
             reviewEvidence,
-            reviewPolicyShadow,
+            reviewPolicyShadow: nextExerciseShadow ?? undefined,
           })
 
           if (wordRecordId > 0) {
@@ -495,7 +542,11 @@ export default function WordComponent({
           console.error('failed to persist review learning state', error)
         } finally {
           dispatch({ type: TypingStateActionType.SET_IS_SAVING_RECORD, payload: false })
-          onFinish({ wrongCount: wordState.wrongCount, classification })
+          onFinish({
+            wrongCount: wordState.wrongCount,
+            classification,
+            nextExerciseShadow,
+          })
         }
       }
 

@@ -7,6 +7,7 @@ import Translation from './components/Translation'
 import WordComponent from './components/Word'
 import type { WordFinishResult } from './components/Word'
 import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
+import { materializeReviewExercisePlan } from '@/review/decision'
 import { MAX_REINFORCEMENT_GAP, getAdaptiveReinforcementGap, scheduleReinforcement } from '@/review/session'
 import { isReviewModeAtom, isShowPrevAndNextWordAtom, loopWordConfigAtom, phoneticConfigAtom, reviewModeInfoAtom } from '@/store'
 import type { Word } from '@/typings'
@@ -27,8 +28,13 @@ export default function WordPanel() {
   const currentWord = state.chapterData.words[state.chapterData.index]
   const nextWord = state.chapterData.words[state.chapterData.index + 1] as Word | undefined
 
+  const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
   const isReviewMode = useAtomValue(isReviewModeAtom)
+  const currentExercisePlan =
+    isReviewMode && currentWord
+      ? reviewModeInfo.reviewRecord?.exercisePlans?.[currentWord.name]
+      : undefined
 
   const prevIndex = useMemo(() => {
     const newIndex = state.chapterData.index - 1
@@ -69,13 +75,35 @@ export default function WordPanel() {
   )
 
   const onFinish = useCallback(
-    ({ wrongCount, classification }: WordFinishResult) => {
+    ({ wrongCount, classification, nextExerciseShadow }: WordFinishResult) => {
       const accumulatedWrongCount = currentReviewWrongCount + wrongCount
       const attemptGap = wrongCount > 0 ? getAdaptiveReinforcementGap(wrongCount, classification) : MAX_REINFORCEMENT_GAP
       const reinforcementGap = Math.min(currentReviewGap, attemptGap)
       const hasMoreLoopExercises = currentWordExerciseCount < loopWordTimes - 1
       const hasNextWord = state.chapterData.index < state.chapterData.words.length - 1
       const needsReinforcement = isReviewMode && accumulatedWrongCount > 0 && currentWord !== undefined
+
+      if (isReviewMode && currentWord && nextExerciseShadow !== undefined) {
+        setReviewModeInfo((old) => {
+          if (!old.reviewRecord) return old
+
+          const exercisePlans = { ...(old.reviewRecord.exercisePlans ?? {}) }
+          if (nextExerciseShadow) {
+            exercisePlans[currentWord.name] = materializeReviewExercisePlan(nextExerciseShadow)
+          } else {
+            delete exercisePlans[currentWord.name]
+          }
+
+          return {
+            ...old,
+            reviewRecord: {
+              ...old.reviewRecord,
+              exercisePlans:
+                Object.keys(exercisePlans).length > 0 ? exercisePlans : undefined,
+            },
+          }
+        })
+      }
 
       if (hasNextWord || hasMoreLoopExercises || needsReinforcement) {
         // 用户完成当前单词
@@ -238,6 +266,7 @@ export default function WordPanel() {
                 onFinish={onFinish}
                 meaningVisible={shouldShowTranslation}
                 phoneticVisible={phoneticVisible}
+                exercisePlan={currentExercisePlan}
                 key={wordComponentKey}
               />
               {phoneticConfig.isOpen && <Phonetic word={currentWord} />}

@@ -463,8 +463,8 @@ PASS  R2-P1-002   Persist Evidence V2 shadow
 PASS  R2-P2-001   Orthography profile + targeted-mask policy
 PASS  R2-P2-002   Targeted mask shadow decision
 PASS  R2-P2-002.5 Session plan freeze
-DOING R2-P2-002.6 Scaffold withdrawal + stale-shadow guardrail
-HOLD  R2-P2-003   Active targeted mask until guardrail PASS
+PASS  R2-P2-002.6 Scaffold withdrawal + stale-shadow guardrail
+DOING R2-P2-003   Active targeted mask in Review mode
 ```
 
 P2-003 不直接从 WordComponent 的异步 IndexedDB history query 驱动。连续练习时下一词可立即接收键盘输入，因此 active condition 必须在 session/queue 层预先冻结，避免首键前后 presentation 改变并污染 telemetry。

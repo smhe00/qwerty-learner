@@ -1,6 +1,14 @@
 import type { ExerciseConditionV1 } from './condition'
-import { createReviewPolicyDecision, createReviewPolicyShadow } from './decision'
-import type { ReviewPolicyDecisionV1, ReviewPolicyShadowV1 } from './decision'
+import {
+  createBaselineReviewPolicyDecision,
+  createReviewPolicyDecision,
+  createReviewPolicyShadow,
+} from './decision'
+import type {
+  ReviewExercisePlanV1,
+  ReviewPolicyDecisionV1,
+  ReviewPolicyShadowV1,
+} from './decision'
 import { buildOrthographyProfile } from './profile'
 import type { OrthographyProfile } from './profile'
 import type { IWordRecord } from '@/utils/db/record'
@@ -87,4 +95,21 @@ export function chooseTargetedMaskShadow(input: {
   })
 
   return plan ? createReviewPolicyShadow(plan.condition, plan.decision) : null
+}
+
+export function resolveExercisePlanForAttempt(
+  baselineCondition: ExerciseConditionV1,
+  frozenPlan?: ReviewExercisePlanV1,
+): ExercisePlan {
+  if (frozenPlan?.decision.policyVersion === TARGETED_MASK_POLICY_VERSION) {
+    return {
+      condition: frozenPlan.condition,
+      decision: frozenPlan.decision,
+    }
+  }
+
+  return {
+    condition: baselineCondition,
+    decision: createBaselineReviewPolicyDecision(),
+  }
 }

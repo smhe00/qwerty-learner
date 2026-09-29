@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createBaselineExerciseCondition } from '../../src/review/condition'
+import {
+  createBaselineExerciseCondition,
+  isLetterVisibleForExerciseCondition,
+} from '../../src/review/condition'
 import {
   createBaselineReviewPolicyDecision,
   createReviewPolicyShadow,
@@ -10,6 +13,7 @@ import { evaluateReviewEvidence } from '../../src/review/evidence'
 import {
   chooseTargetedMaskPlan,
   chooseTargetedMaskShadow,
+  resolveExercisePlanForAttempt,
 } from '../../src/review/exercise-policy'
 import { buildReviewObservation } from '../../src/review/observation'
 import { buildOrthographyProfile } from '../../src/review/profile'
@@ -739,4 +743,65 @@ test('a newer record without a shadow cancels an older session shadow', () => {
   )
 
   assert.deepEqual(plans, {})
+})
+
+
+test('targeted-mask condition exposes every letter except the weak position', () => {
+  const condition = {
+    ...createBaselineExerciseCondition({
+      pronunciationEnabled: true,
+      meaningVisible: true,
+      phoneticVisible: false,
+      letterVisibility: [false, false, false, false, false],
+    }),
+    source: 'adaptive-policy' as const,
+    letters: {
+      mode: 'targeted-mask' as const,
+      visiblePositions: [0, 1, 3, 4],
+      maskedPositions: [2],
+    },
+  }
+
+  assert.deepEqual(
+    [0, 1, 2, 3, 4].map((index) =>
+      isLetterVisibleForExerciseCondition(condition, index, false),
+    ),
+    [true, true, false, true, true],
+  )
+})
+
+test('attempt resolver activates only the supported frozen targeted-mask plan', () => {
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: true,
+    meaningVisible: true,
+    phoneticVisible: false,
+    letterVisibility: [false, false, false, false],
+  })
+  const targetedCondition = {
+    ...baseline,
+    source: 'adaptive-policy' as const,
+    letters: {
+      mode: 'targeted-mask' as const,
+      visiblePositions: [0, 1, 3],
+      maskedPositions: [2],
+    },
+  }
+  const shadow = createReviewPolicyShadow(
+    targetedCondition,
+    {
+      version: 1,
+      policyVersion: 'targeted-mask-v1',
+      reasonCodes: ['dominant-spelling-position'],
+      conditionVersion: 1,
+    },
+  )
+  const frozen = materializeReviewExercisePlan(shadow)
+
+  const active = resolveExercisePlanForAttempt(baseline, frozen)
+  assert.equal(active.condition.source, 'adaptive-policy')
+  assert.equal(active.decision.policyVersion, 'targeted-mask-v1')
+
+  const fallback = resolveExercisePlanForAttempt(baseline)
+  assert.equal(fallback.condition, baseline)
+  assert.equal(fallback.decision.policyVersion, 'baseline-user-settings-v1')
 })

@@ -73,3 +73,28 @@ export function createBaselineExerciseCondition(
     probeDimension: 'none',
   }
 }
+
+export function isLetterVisibleForExerciseCondition(
+  condition: ExerciseConditionV1,
+  index: number,
+  fallbackVisible: boolean,
+): boolean {
+  switch (condition.letters.mode) {
+    case 'all-visible':
+      return true
+    case 'all-hidden':
+      return false
+    case 'partial':
+    case 'targeted-mask': {
+      if (condition.letters.visiblePositions) {
+        return condition.letters.visiblePositions.includes(index)
+      }
+      if (condition.letters.maskedPositions) {
+        return !condition.letters.maskedPositions.includes(index)
+      }
+      return fallbackVisible
+    }
+    default:
+      return fallbackVisible
+  }
+}
