@@ -471,6 +471,21 @@ export function createBackendService({
     }
   }
 
+  async function deleteAccount(token, currentPassword) {
+    const { identity, currentAuth } = await authenticate(token)
+
+    if (!(await verifyPassword(currentPassword, currentAuth.password))) {
+      throw new AppError(401, 'invalid_credentials', 'Current password is incorrect')
+    }
+
+    const deleted = await storage.deleteUserData(identity.usernameHash, identity.userId)
+    if (!deleted || deleted.accountDeleted !== true) {
+      throw new AppError(500, 'account_delete_failed', 'Cloud account deletion did not complete')
+    }
+
+    return { deleted }
+  }
+
   async function syncMeta(token) {
     const { identity } = await authenticate(token)
     const current = await storage.getLatestRevision(identity.userId)
@@ -589,6 +604,7 @@ export function createBackendService({
     login,
     me,
     changePassword,
+    deleteAccount,
     syncMeta,
     getSync,
     putSync,
