@@ -1,10 +1,15 @@
 /* eslint-env node */
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import zlib from 'node:zlib'
 import { createBackendService } from '../../cloud-functions/_shared/core.js'
 import { runBackendSelfTest } from '../../cloud-functions/_shared/self-test.js'
 
 const clone = (value) => JSON.parse(JSON.stringify(value))
+
+function gzipPayload(value) {
+  return zlib.gzipSync(Buffer.from(JSON.stringify(value), 'utf8')).toString('base64')
+}
 
 class MemoryStorage {
   constructor() {
@@ -233,16 +238,13 @@ test('snapshot retention keeps only the latest three full revisions', async () =
 
   let baseRevision = 0
   for (let revision = 1; revision <= 6; revision += 1) {
-    const payloadBase64 = Buffer.from(
-      JSON.stringify({ revision, value: `snapshot-${revision}` }),
-      'utf8',
-    ).toString('base64')
+    const payloadBase64 = gzipPayload({ revision, value: `snapshot-${revision}` })
 
     const result = await service.putSync(registered.token, {
       baseRevision,
       payloadBase64,
       deviceId: 'retention-device',
-      clientFormatVersion: 'test-v1',
+      clientFormatVersion: 'qwerty-dexie-gzip-v2',
     })
 
     assert.equal(result.revision, revision)
@@ -301,4 +303,102 @@ test('auth and session history retention bounds immutable version objects', asyn
   assert.deepEqual(storage.sessionVersions(usernameHash), [7, 8, 9])
 
   await service.cleanupTestUser(username)
+})
+
+
+test('account deletion removes account, sessions and snapshots while requiring current password', async () => {
+  const storage = new MemoryStorage()
+  const service = createBackendService({ storage })
+
+  const username = 'delete_account_user'
+  let password = 'Delete-Account-A1-Password'
+  const registered = await service.register(username, password, 'delete-register')
+  const userId = registered.user.userId
+  const usernameHash = registered.token.split('.')[1]
+
+  let active = await service.login(username, password, 'delete-login')
+  const nextPassword = 'Delete-Account-B2-Password'
+  active = await service.changePassword(
+    active.token,
+    password,
+    nextPassword,
+    'delete-password-change',
+  )
+  password = nextPassword
+
+  await service.putSync(active.token, {
+    baseRevision: 0,
+    payloadBase64: gzipPayload({ value: 'delete-me' }),
+    deviceId: 'delete-device',
+    clientFormatVersion: 'qwerty-dexie-gzip-v2',
+  })
+
+  await assert.rejects(
+    () => service.deleteAccount(active.token, 'wrong-password-value'),
+    (error) => error?.code === 'invalid_credentials',
+  )
+
+  assert.ok(await storage.getAccount(usernameHash))
+  assert.deepEqual(storage.revisionVersions(userId), [1])
+
+  const deleted = await service.deleteAccount(active.token, password)
+  assert.equal(deleted.deleted.accountDeleted, true)
+  assert.ok(deleted.deleted.sessionsDeleted >= 1)
+  assert.ok(deleted.deleted.authDeleted >= 1)
+  assert.equal(deleted.deleted.revisionsDeleted, 1)
+
+  assert.equal(await storage.getAccount(usernameHash), null)
+  assert.deepEqual(storage.authVersions(usernameHash), [])
+  assert.deepEqual(storage.sessionVersions(usernameHash), [])
+  assert.deepEqual(storage.revisionVersions(userId), [])
+
+  await assert.rejects(
+    () => service.me(active.token),
+    (error) => error?.code === 'invalid_token',
+  )
+  await assert.rejects(
+    () => service.login(username, password, 'deleted-login'),
+    (error) => error?.code === 'invalid_credentials',
+  )
+
+  const registeredAgain = await service.register(
+    username,
+    'Delete-Account-C3-NewPassword',
+    'delete-reregister',
+  )
+  assert.notEqual(registeredAgain.user.userId, userId)
+
+  await service.cleanupTestUser(username)
+})
+
+test('sync upload rejects old or non-gzip formats', async () => {
+  const storage = new MemoryStorage()
+  const service = createBackendService({ storage })
+  const registered = await service.register(
+    'format_reject_user',
+    'Format-Reject-A1-Password',
+    'format-device',
+  )
+
+  await assert.rejects(
+    () =>
+      service.putSync(registered.token, {
+        baseRevision: 0,
+        payloadBase64: gzipPayload({ old: true }),
+        clientFormatVersion: 'qwerty-sync-envelope-v1',
+      }),
+    (error) => error?.code === 'unsupported_sync_format',
+  )
+
+  await assert.rejects(
+    () =>
+      service.putSync(registered.token, {
+        baseRevision: 0,
+        payloadBase64: Buffer.from('not-gzip', 'utf8').toString('base64'),
+        clientFormatVersion: 'qwerty-dexie-gzip-v2',
+      }),
+    (error) => error?.code === 'invalid_payload',
+  )
+
+  await service.cleanupTestUser('format_reject_user')
 })
