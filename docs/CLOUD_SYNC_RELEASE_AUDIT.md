@@ -1,5 +1,8 @@
 # Qwerty Cloud Sync V1 — Pre-Release Audit
 
+> **2026-09-29 delta:** the previous client-side encryption findings in this historical audit no longer describe the current candidate. Product policy now uses `qwerty-dexie-gzip-v2` without an independent encryption passphrase; HTTPS, account/session controls, revision conflict protection and retention remain. Old encrypted cloud snapshots are intentionally unsupported. Account deletion is added and removes identity/auth/session/sync data while preserving local IndexedDB.
+
+
 > Date: 2026-09-29  
 > Branch: `feature/edgeone-cloud-sync`  
 > Review-aware browser test commit: `29bbe06999b0a7f77abde7d632bdcfb2efda18ec`  
