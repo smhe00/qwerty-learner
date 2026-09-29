@@ -36,3 +36,26 @@ export function createBaselineReviewPolicyDecision(): ReviewPolicyDecisionV1 {
     1,
   )
 }
+
+export const REVIEW_POLICY_SHADOW_VERSION = 1 as const
+
+export type ReviewPolicyShadowV1 = {
+  version: typeof REVIEW_POLICY_SHADOW_VERSION
+  mode: 'shadow'
+  appliesTo: 'next-exercise'
+  condition: ExerciseConditionV1
+  decision: ReviewPolicyDecisionV1
+}
+
+export function createReviewPolicyShadow(
+  condition: ExerciseConditionV1,
+  policyDecision: ReviewPolicyDecisionV1,
+): ReviewPolicyShadowV1 {
+  return {
+    version: REVIEW_POLICY_SHADOW_VERSION,
+    mode: 'shadow',
+    appliesTo: 'next-exercise',
+    condition,
+    decision: policyDecision,
+  }
+}

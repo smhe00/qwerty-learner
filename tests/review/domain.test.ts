@@ -1,9 +1,15 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createBaselineExerciseCondition } from '../../src/review/condition'
-import { createBaselineReviewPolicyDecision } from '../../src/review/decision'
+import {
+  createBaselineReviewPolicyDecision,
+  createReviewPolicyShadow,
+} from '../../src/review/decision'
 import { evaluateReviewEvidence } from '../../src/review/evidence'
-import { chooseTargetedMaskPlan } from '../../src/review/exercise-policy'
+import {
+  chooseTargetedMaskPlan,
+  chooseTargetedMaskShadow,
+} from '../../src/review/exercise-policy'
 import { buildReviewObservation } from '../../src/review/observation'
 import { buildOrthographyProfile } from '../../src/review/profile'
 import type { IWordRecord } from '../../src/utils/db/record'
@@ -399,4 +405,61 @@ test('orthography profile prefers telemetry and does not double-count legacy mis
   assert.equal(profile.positions.length, 1)
   assert.equal(profile.positions[0].index, 2)
   assert.equal(profile.positions[0].errorRecordCount, 1)
+})
+
+
+test('creates an explicit next-exercise shadow record without changing the current condition', () => {
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: true,
+    meaningVisible: true,
+    phoneticVisible: false,
+    letterVisibility: [false, false, false, false],
+  })
+  const decision = createBaselineReviewPolicyDecision()
+  const shadow = createReviewPolicyShadow(baseline, decision)
+
+  assert.deepEqual(shadow, {
+    version: 1,
+    mode: 'shadow',
+    appliesTo: 'next-exercise',
+    condition: baseline,
+    decision,
+  })
+})
+
+test('targeted mask shadow can trigger on the current attempt becoming the third independent failure', () => {
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: true,
+    meaningVisible: true,
+    phoneticVisible: false,
+    letterVisibility: [false, false, false, false, false, false],
+  })
+
+  const records: IWordRecord[] = [1, 2, 3].map((timeStamp) => ({
+    word: 'planet',
+    timeStamp,
+    dict: 'cet4',
+    chapter: -1,
+    timing: [],
+    wrongCount: 1,
+    mistakes: { 2: ['x'] },
+  }))
+
+  const beforeCurrent = chooseTargetedMaskShadow({
+    baselineCondition: baseline,
+    word: 'planet',
+    records: records.slice(0, 2),
+  })
+  assert.equal(beforeCurrent, null)
+
+  const afterCurrent = chooseTargetedMaskShadow({
+    baselineCondition: baseline,
+    word: 'planet',
+    records,
+  })
+  assert.ok(afterCurrent)
+  assert.equal(afterCurrent.mode, 'shadow')
+  assert.equal(afterCurrent.appliesTo, 'next-exercise')
+  assert.equal(afterCurrent.decision.policyVersion, 'targeted-mask-v1')
+  assert.deepEqual(afterCurrent.condition.letters.maskedPositions, [2])
 })

@@ -1,7 +1,9 @@
 import type { ExerciseConditionV1 } from './condition'
-import { createReviewPolicyDecision } from './decision'
-import type { ReviewPolicyDecisionV1 } from './decision'
+import { createReviewPolicyDecision, createReviewPolicyShadow } from './decision'
+import type { ReviewPolicyDecisionV1, ReviewPolicyShadowV1 } from './decision'
+import { buildOrthographyProfile } from './profile'
 import type { OrthographyProfile } from './profile'
+import type { IWordRecord } from '@/utils/db/record'
 
 export const TARGETED_MASK_POLICY_VERSION = 'targeted-mask-v1'
 
@@ -58,4 +60,18 @@ export function chooseTargetedMaskPlan(input: {
       condition.version,
     ),
   }
+}
+
+export function chooseTargetedMaskShadow(input: {
+  baselineCondition: ExerciseConditionV1
+  word: string
+  records: IWordRecord[]
+}): ReviewPolicyShadowV1 | null {
+  const plan = chooseTargetedMaskPlan({
+    baselineCondition: input.baselineCondition,
+    orthography: buildOrthographyProfile(input.word, input.records),
+    wordLength: input.word.length,
+  })
+
+  return plan ? createReviewPolicyShadow(plan.condition, plan.decision) : null
 }

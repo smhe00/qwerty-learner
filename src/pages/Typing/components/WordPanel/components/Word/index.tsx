@@ -20,7 +20,8 @@ import { createBaselineReviewPolicyDecision } from '@/review/decision'
 import type { ReviewPolicyDecisionV1 } from '@/review/decision'
 import { evaluateReviewEvidence } from '@/review/evidence'
 import type { WordHistorySummary } from '@/review/features'
-import { loadWordHistorySummary } from '@/review/history'
+import { chooseTargetedMaskShadow } from '@/review/exercise-policy'
+import { loadWordReviewHistory } from '@/review/history'
 import {
   LearningContextCollector,
   calculateAnswerVisibleRatio,
@@ -41,7 +42,7 @@ import {
 import type { Word } from '@/typings'
 import { CTRL, getUtcStringForMixpanel } from '@/utils'
 import { useSaveWordRecord } from '@/utils/db'
-import type { PronunciationCue } from '@/utils/db/record'
+import type { IWordRecord, PronunciationCue } from '@/utils/db/record'
 import { useAtomValue } from 'jotai'
 import { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -91,6 +92,7 @@ export default function WordComponent({
   const learningContextCollectorRef = useRef(new LearningContextCollector())
   const previousMeaningVisibleRef = useRef(meaningVisible)
   const historySummaryRef = useRef<WordHistorySummary | undefined>(undefined)
+  const historyRecordsRef = useRef<IWordRecord[]>([])
   const exerciseConditionRef = useRef<ExerciseConditionV1 | undefined>(undefined)
   const reviewPolicyDecisionRef = useRef<ReviewPolicyDecisionV1 | undefined>(undefined)
 
@@ -195,11 +197,13 @@ export default function WordComponent({
   useEffect(() => {
     let cancelled = false
     historySummaryRef.current = undefined
+    historyRecordsRef.current = []
 
-    loadWordHistorySummary(currentDictInfo.id, word.name)
-      .then((summary) => {
+    loadWordReviewHistory(currentDictInfo.id, word.name)
+      .then((history) => {
         if (!cancelled) {
-          historySummaryRef.current = summary
+          historySummaryRef.current = history.summary
+          historyRecordsRef.current = history.records
         }
       })
       .catch((error) => {
@@ -443,6 +447,28 @@ export default function WordComponent({
       // })
       const persistResult = async () => {
         try {
+          const currentRecordForPolicy: IWordRecord = {
+            word: word.name,
+            timeStamp: Math.floor(Date.now() / 1000),
+            dict: currentDictInfo.id,
+            chapter: currentChapter,
+            timing: [],
+            wrongCount: wordState.wrongCount,
+            mistakes: wordState.letterMistake,
+            typingTelemetry: telemetry,
+            learningContext,
+            exerciseCondition: exerciseConditionRef.current,
+            reviewPolicyDecision: reviewPolicyDecisionRef.current,
+            reviewEvidence,
+          }
+          const reviewPolicyShadow = exerciseConditionRef.current
+            ? chooseTargetedMaskShadow({
+                baselineCondition: exerciseConditionRef.current,
+                word: word.name,
+                records: [...historyRecordsRef.current, currentRecordForPolicy],
+              }) ?? undefined
+            : undefined
+
           const wordRecordId = await saveWordRecord({
             word: word.name,
             wrongCount: wordState.wrongCount,
@@ -453,6 +479,7 @@ export default function WordComponent({
             exerciseCondition: exerciseConditionRef.current,
             reviewPolicyDecision: reviewPolicyDecisionRef.current,
             reviewEvidence,
+            reviewPolicyShadow,
           })
 
           if (wordRecordId > 0) {

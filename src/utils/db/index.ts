@@ -9,7 +9,7 @@ import type {
 } from './record'
 import { ChapterRecord, ReviewRecord, WordRecord } from './record'
 import type { ExerciseConditionV1 } from '@/review/condition'
-import type { ReviewPolicyDecisionV1 } from '@/review/decision'
+import type { ReviewPolicyDecisionV1, ReviewPolicyShadowV1 } from '@/review/decision'
 import type { ReviewEvidenceV1 } from '@/review/evidence'
 import type { IReviewWordState } from '@/review/types'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
@@ -114,6 +114,7 @@ export function useSaveWordRecord() {
       exerciseCondition,
       reviewPolicyDecision,
       reviewEvidence,
+      reviewPolicyShadow,
     }: {
       word: string
       wrongCount: number
@@ -124,6 +125,7 @@ export function useSaveWordRecord() {
       exerciseCondition?: ExerciseConditionV1
       reviewPolicyDecision?: ReviewPolicyDecisionV1
       reviewEvidence?: ReviewEvidenceV1
+      reviewPolicyShadow?: ReviewPolicyShadowV1
     }) => {
       const timing = []
       for (let i = 1; i < letterTimeArray.length; i++) {
@@ -143,6 +145,7 @@ export function useSaveWordRecord() {
         exerciseCondition,
         reviewPolicyDecision,
         reviewEvidence,
+        reviewPolicyShadow,
       )
 
       let dbID = -1
