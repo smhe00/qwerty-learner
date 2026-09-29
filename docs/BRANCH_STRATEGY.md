@@ -44,9 +44,19 @@ This branch is no longer a development line. Do not land new Review changes here
 
 ### `feature/edgeone-cloud-sync`
 
-This branch produced the initial integrated Review + Cloud release candidate and is now frozen at `7d9a0730f4627d91077948cb1bfa677cb18ec68d`.
+This branch is no longer a development line. EdgeOne's existing GitHub project is still bound to this branch as its Production trigger, so it is retained only as a **production pointer**.
 
-`product/main` was created from that exact verified commit. Do not land new product development on this feature branch.
+Release rule:
+
+```text
+product/main verified RC
+        ↓ fast-forward only
+feature/edgeone-cloud-sync production pointer
+        ↓ EdgeOne GitHub auto-deploy
+Production
+```
+
+Do not land independent commits here. The pointer may only fast-forward to a commit already validated on `product/main`.
 
 ## Upstream contribution branches
 
@@ -71,3 +81,30 @@ product/main
 ```
 
 Review schema, scheduler semantics, backup/restore behavior, and cloud synchronization must not evolve on separate long-lived branches.
+
+
+## Current production handoff
+
+Verified on 2026-09-29:
+
+```text
+canonical product branch:
+  product/main
+
+verified application RC:
+  2e1128095c41afa4d881757eff037ff7a28f5294
+
+EdgeOne production pointer:
+  feature/edgeone-cloud-sync
+  -> 2e1128095c41afa4d881757eff037ff7a28f5294
+
+EdgeOne production deployment:
+  dpo4dh1hgncg
+
+production project domain:
+  qwerty-learner.edgeone.cool
+```
+
+The production deployment completed successfully and `/api/health` returned the expected `qwerty-sync-gateway` capabilities, including `blob-transient-retry-v1`.
+
+The EdgeOne project is Provider=`Github`. Direct folder/ZIP deployment is therefore intentionally not used; the platform rejects that path for GitHub-provider projects. Production promotion is performed by fast-forwarding the production pointer to a verified `product/main` commit.
