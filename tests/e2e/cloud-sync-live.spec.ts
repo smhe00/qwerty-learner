@@ -3,15 +3,39 @@ import { expect, test, type Page } from '@playwright/test'
 const liveUrl = process.env.QWERTY_SYNC_BASE_URL
 const username = process.env.QWERTY_E2E_USERNAME
 const password = process.env.QWERTY_E2E_PASSWORD
-const encryptionPassphrase = process.env.QWERTY_E2E_ENCRYPTION_PASSPHRASE
 
 if (!liveUrl) throw new Error('QWERTY_SYNC_BASE_URL is required')
 if (!username) throw new Error('QWERTY_E2E_USERNAME is required')
 if (!password) throw new Error('QWERTY_E2E_PASSWORD is required')
-if (!encryptionPassphrase) throw new Error('QWERTY_E2E_ENCRYPTION_PASSPHRASE is required')
+
+async function waitForProductionCapability(page: Page) {
+  const deadline = Date.now() + 180_000
+
+  while (Date.now() < deadline) {
+    const capabilities = await page
+      .evaluate(async () => {
+        const response = await fetch('/api/health', { cache: 'no-store' })
+        if (!response.ok) return []
+        const data = (await response.json()) as { capabilities?: string[] }
+        return Array.isArray(data.capabilities) ? data.capabilities : []
+      })
+      .catch(() => [])
+
+    if (capabilities.includes('plain-gzip-sync-v2') && capabilities.includes('account-delete-v1')) {
+      return
+    }
+
+    await page.waitForTimeout(5_000)
+    await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => {})
+  }
+
+  throw new Error('Timed out waiting for gzip-v2/account-delete production deployment')
+}
 
 async function openDataSettings(page: Page) {
   await page.goto(liveUrl, { waitUntil: 'domcontentloaded' })
+  await waitForProductionCapability(page)
+  await page.reload({ waitUntil: 'domcontentloaded' })
 
   const dismiss = page.getByRole('button', { name: '关闭提示' })
   if (await dismiss.isVisible().catch(() => false)) {
@@ -327,7 +351,7 @@ async function advanceRemoteWithCurrentSnapshot(page: Page) {
         baseRevision: current.revision,
         payloadBase64: current.payloadBase64,
         deviceId: 'edgeone-ui-e2e-remote',
-        clientFormatVersion: current.clientFormatVersion || 'qwerty-dexie-json-v1',
+        clientFormatVersion: current.clientFormatVersion || 'qwerty-dexie-gzip-v2',
       }),
     })
 
@@ -340,7 +364,7 @@ async function advanceRemoteWithCurrentSnapshot(page: Page) {
 }
 
 test('real browser register, upload, divergence detection and download restore', async ({ page }) => {
-  test.setTimeout(120_000)
+  test.setTimeout(240_000)
 
   await openDataSettings(page)
 
@@ -350,14 +374,12 @@ test('real browser register, upload, divergence detection and download restore',
 
   await expect(page.getByText(`账号：${username}`)).toBeVisible()
   await expect(page.getByText('云端 revision：')).toContainText('0')
-  await page.getByPlaceholder('至少12字符；请勿与登录密码共用').fill(encryptionPassphrase)
-
   await addReviewCloudFixture(page)
   await page.getByRole('button', { name: '刷新状态' }).click()
   await expect(page.getByText('本地有未上传修改')).toBeVisible()
 
-  await page.getByRole('button', { name: '加密上传本地数据' }).click()
-  await expect(page.getByText('已加密上传到云端 revision 1。')).toBeVisible()
+  await page.getByRole('button', { name: '上传本地数据' }).click()
+  await expect(page.getByText('已上传到云端 revision 1。')).toBeVisible()
   await expect(page.getByText('本地与云端一致')).toBeVisible()
 
   const reviewFixtureBefore = await readReviewCloudFixture(page)
@@ -416,7 +438,7 @@ test('real browser register, upload, divergence detection and download restore',
   await page.getByRole('button', { name: '刷新状态' }).click()
   await expect(page.getByText('本地与云端一致')).toBeVisible()
 
-  const encryptedRemote = await page.evaluate(async () => {
+  const gzipRemote = await page.evaluate(async () => {
     const rawAuth = localStorage.getItem('qwerty.cloudAuth.v1')
     if (!rawAuth) throw new Error('missing cloud auth state')
     const auth = JSON.parse(rawAuth) as { token: string }
@@ -428,15 +450,25 @@ test('real browser register, upload, divergence detection and download restore',
       clientFormatVersion: string
       payloadBase64: string
     }
+
+    const binary = atob(snapshot.payloadBase64)
+    const bytes = new Uint8Array(binary.length)
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index)
+    }
+
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))
+    const json = await new Response(stream).text()
+
     return {
       clientFormatVersion: snapshot.clientFormatVersion,
-      envelopeText: atob(snapshot.payloadBase64),
+      json,
     }
   })
 
-  expect(encryptedRemote.clientFormatVersion).toBe('qwerty-sync-envelope-v1')
-  expect(encryptedRemote.envelopeText).toContain('"AES-256-GCM"')
-  expect(encryptedRemote.envelopeText).not.toContain('edgeone-e2e-baseline')
+  expect(gzipRemote.clientFormatVersion).toBe('qwerty-dexie-gzip-v2')
+  expect(gzipRemote.json).toContain('edgeone-e2e-baseline')
+  expect(gzipRemote.json).not.toContain('AES-256-GCM')
 
   expect(await wordRecordCount(page)).toBe(1)
 
@@ -452,12 +484,6 @@ test('real browser register, upload, divergence detection and download restore',
   await expect(page.getByText('本地与云端均有变化，需要手动选择')).toBeVisible()
   await expect(page.getByText(/检测到分叉/)).toBeVisible()
 
-  await page
-    .getByPlaceholder('至少12字符；请勿与登录密码共用')
-    .fill('wrong-passphrase-12345')
-  page.once('dialog', (dialog) => dialog.accept())
-  await page.getByRole('button', { name: '使用云端数据' }).click()
-  await expect(page.getByText('云同步加密口令错误或云端数据已损坏。')).toBeVisible()
   expect(await wordRecordCount(page)).toBe(2)
   expect(await readReviewCloudFixture(page)).toEqual(reviewFixtureBefore)
 
@@ -465,9 +491,6 @@ test('real browser register, upload, divergence detection and download restore',
   // The cloud snapshot must restore the exact scheduler/session semantics.
   await mutateReviewCloudFixture(page, true)
 
-  await page
-    .getByPlaceholder('至少12字符；请勿与登录密码共用')
-    .fill(encryptionPassphrase)
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: '使用云端数据' }).click()
 
@@ -484,4 +507,47 @@ test('real browser register, upload, divergence detection and download restore',
   })
   expect(reviewFixtureAfterRestore.reviewRecord.index).toBe(3)
   expect(reviewFixtureAfterRestore.reviewRecord.words[4].name).toBe('abandon')
+
+  const authBeforeDelete = await page.evaluate(() => {
+    const raw = localStorage.getItem('qwerty.cloudAuth.v1')
+    if (!raw) throw new Error('missing auth before delete')
+    const auth = JSON.parse(raw) as { token: string; user: { userId: string } }
+    return {
+      token: auth.token,
+      userId: auth.user.userId,
+      baseline: localStorage.getItem(`qwerty.cloudSyncState.v1.${auth.user.userId}`),
+    }
+  })
+  expect(authBeforeDelete.baseline).not.toBeNull()
+
+  await page.getByPlaceholder('输入当前账号密码确认删除').fill(password)
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: '永久删除云端账号' }).click()
+
+  await expect(
+    page.getByText('云端账号及其全部云端数据已删除；本机学习数据已保留。'),
+  ).toBeVisible()
+  await expect(page.getByRole('button', { name: '登录' })).toBeVisible()
+  expect(await wordRecordCount(page)).toBe(1)
+
+  const localAfterDelete = await page.evaluate((userId) => {
+    return {
+      auth: localStorage.getItem('qwerty.cloudAuth.v1'),
+      baseline: localStorage.getItem(`qwerty.cloudSyncState.v1.${userId}`),
+    }
+  }, authBeforeDelete.userId)
+  expect(localAfterDelete.auth).toBeNull()
+  expect(localAfterDelete.baseline).toBeNull()
+
+  const oldTokenCheck = await page.evaluate(async (token) => {
+    const response = await fetch('/api/auth/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    return {
+      status: response.status,
+      body: await response.json(),
+    }
+  }, authBeforeDelete.token)
+  expect(oldTokenCheck.status).toBe(401)
+  expect((oldTokenCheck.body as { error?: string }).error).toBe('invalid_token')
 })
