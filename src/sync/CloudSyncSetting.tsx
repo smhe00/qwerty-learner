@@ -61,6 +61,7 @@ export default function CloudSyncSetting() {
   const [auth, setAuth] = useState<CloudAuthState | null>(() => loadAuth())
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [deletePassword, setDeletePassword] = useState('')
   const [view, setView] = useState<SyncView | null>(null)
   const [busy, setBusy] = useState(false)
@@ -112,14 +113,21 @@ export default function CloudSyncSetting() {
       const next = await loginAndRemember(username, password)
       setAuth(next)
       setPassword('')
+      setConfirmPassword('')
       setMessage('登录成功。')
     })
 
   const doRegister = () =>
     run(async () => {
+      if (password !== confirmPassword) {
+        setMessage('两次输入的注册密码不一致。')
+        return
+      }
+
       const next = await registerAndRemember(username, password)
       setAuth(next)
       setPassword('')
+      setConfirmPassword('')
       setMessage('账号已创建并登录。')
     })
 
@@ -208,7 +216,7 @@ export default function CloudSyncSetting() {
   }
 
   const doDeleteAccount = () => {
-    if (!auth || deletePassword.length < 8) return
+    if (!auth || deletePassword.length < 4) return
 
     const confirmed = window.confirm(
       `将永久删除云端账号“${auth.user.username}”、全部云端同步数据和云端会话。此操作不可撤销，但不会删除本机学习数据。是否继续？`,
@@ -232,6 +240,7 @@ export default function CloudSyncSetting() {
     logout()
     setAuth(null)
     setPassword('')
+    setConfirmPassword('')
     setDeletePassword('')
     setMessage('')
   }
@@ -274,15 +283,28 @@ export default function CloudSyncSetting() {
             className="block w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="密码（8-128字符）"
+            placeholder="密码（4-128字符）"
             type="password"
             autoComplete="current-password"
           />
+          <input
+            className="block w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            placeholder="再次输入密码（仅注册）"
+            type="password"
+            autoComplete="new-password"
+          />
+          {confirmPassword && password !== confirmPassword && (
+            <p className="text-left text-xs text-red-600 dark:text-red-300">
+              两次输入的注册密码不一致。
+            </p>
+          )}
           <div className="flex gap-2">
             <button
               className="my-btn-primary disabled:bg-gray-300"
               type="button"
-              disabled={busy || !username.trim() || password.length < 8}
+              disabled={busy || !username.trim() || password.length < 4}
               onClick={doLogin}
             >
               登录
@@ -290,7 +312,13 @@ export default function CloudSyncSetting() {
             <button
               className="my-btn-primary disabled:bg-gray-300"
               type="button"
-              disabled={busy || !username.trim() || password.length < 8}
+              disabled={
+                busy ||
+                !username.trim() ||
+                password.length < 4 ||
+                confirmPassword.length < 4 ||
+                password !== confirmPassword
+              }
               onClick={doRegister}
             >
               注册
@@ -381,7 +409,7 @@ export default function CloudSyncSetting() {
             <button
               className="rounded bg-red-600 px-3 py-2 text-xs font-bold text-white disabled:bg-gray-300"
               type="button"
-              disabled={busy || deletePassword.length < 8}
+              disabled={busy || deletePassword.length < 4}
               onClick={doDeleteAccount}
             >
               永久删除云端账号
