@@ -1,5 +1,8 @@
 # Qwerty EdgeOne Cloud Sync — Development Plan & Handoff
 
+> **2026-09-29 current product decision:** the earlier P6 client-side AES/PBKDF2 design is superseded. Current sync format is `qwerty-dexie-gzip-v2` = Base64(gzip(Dexie export)); old encrypted snapshots are intentionally not recoverable by the new client. Logged-in users can permanently delete the cloud account, all cloud sessions/auth versions and all sync revisions while keeping local IndexedDB data.
+
+
 > **Authority:** This document is the durable continuation point for the cloud-sync work.  
 > **Branch:** `feature/edgeone-cloud-sync`  
 > **Rule:** Future sessions/agents should read this file first, then read the current branch HEAD and diff. Do not rely on old chat context as the source of truth.
