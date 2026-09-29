@@ -1,0 +1,449 @@
+# Adaptive Review 开发计划
+
+> 权威产品分支：`product/main`  
+> 本计划采用“小步实现 → 测试 → Gate → review → 下一步”的循环，不以大爆炸方式重写 Review。
+
+## 1. 总体目标
+
+建立一个长期可演进的 Review 架构，使系统能够独立优化：
+
+```text
+When to review
++
+How to review
+```
+
+最终支持：
+
+- retrieval-validity Grade V2；
+- targeted spelling mask；
+- audio withdrawal probe；
+- condition-dependent profiles；
+- personalized latency；
+- adaptive reinforcement；
+- FSRS shadow / active；
+- 后续 learned exercise policy。
+
+---
+
+## 2. Gate 原则
+
+每个阶段至少满足：
+
+```text
+yarn eslint <changed review/frontend files>
+yarn build
+npx playwright test tests/e2e/review.spec.ts --project=chromium
+```
+
+并建立专门的 `Review Gate` GitHub Actions，对 `product/main` 的 Review 相关路径自动执行。
+
+涉及 DB/export/sync 数据兼容时额外要求：
+
+```text
+Cloud Sync Gate PASS
+```
+
+涉及真实 UI condition 变化时增加浏览器行为测试。
+
+生产发布与开发 Gate 分离；开发阶段不自动推进 EdgeOne production pointer。
+
+---
+
+## 3. P0 — Domain contracts
+
+### 目标
+
+先建立稳定的数据/接口边界，不改变用户行为。
+
+### 新增
+
+- `ExerciseConditionV1`
+- `ReviewPolicyDecisionV1`
+- `ReviewObservation`
+- baseline condition builder
+- baseline policy decision builder
+
+### 要求
+
+- pure TypeScript；
+- 无 React / Dexie / EdgeOne 依赖；
+- versioned；
+- legacy-safe；
+- deterministic。
+
+### PASS
+
+- unit tests 覆盖 all-visible / all-hidden / partial；
+- observation 能处理旧 WordRecord；
+- build/lint/review test PASS。
+
+---
+
+## 4. P0.5 — Record actual baseline condition
+
+### 目标
+
+不改变当前 UI，只开始记录当前真实练习条件。
+
+### 行为
+
+当前全局设置仍决定 UI。
+
+在 Word 开始时生成：
+
+```text
+ExerciseCondition
+source = user-settings
+purpose = training
+```
+
+保存到当前 WordRecord。
+
+同时保存：
+
+```text
+ReviewPolicyDecision
+policyVersion = baseline-user-settings-v1
+reasonCodes = [baseline-user-settings]
+```
+
+### 重要约束
+
+- intended condition 与 actual LearningContext 分开；
+- 不修改 scheduler；
+- 不修改 classifier；
+- 不改变用户看到的页面。
+
+### PASS
+
+- 新记录包含 condition / decision；
+- 老记录无字段时正常读取；
+- local/cloud backup 无 schema upgrade 即可包含新字段；
+- Review Gate PASS。
+
+---
+
+## 5. P1 — Review Evidence / Grade V2
+
+### 目标
+
+解决当前最明显的 grade 信息损失。
+
+### 第一版必须处理
+
+```text
+answer revealed before first key
+→ 不能当普通 Good
+
+clean but very slow
+→ 不等价 normal Good
+
+clean + unaided + fast
+→ Easy strong candidate
+
+motor typo
+→ 不应按 memory failure 处理
+```
+
+### 输出
+
+引入 `ReviewEvidence`，至少包括：
+
+- memoryGrade；
+- errorCause；
+- confidence；
+- evidenceStrength；
+- reasonCodes。
+
+### 迁移
+
+scheduler 改为消费 evidence.memoryGrade。
+
+same-session reinforcement 继续独立消费 errorCause。
+
+### PASS
+
+建立表驱动测试覆盖关键情形；不能只靠手写几个例子。
+
+---
+
+## 6. P2 — Orthography Profile + Targeted Mask
+
+### 目标
+
+上线第一个真正改变 How 的 adaptive feature。
+
+### Profile
+
+从历史 WordRecord 动态计算：
+
+- wrong events；
+- dominant wrong position；
+- dominant ratio；
+- sample count；
+- expected → typed confusion。
+
+不新增永久 profile table。
+
+### Policy
+
+只有证据足够强才启用 targeted mask。
+
+第一版阈值必须放入 policy/config，不散落 UI。
+
+### Scaffold
+
+```text
+weak position
+→ weak span
+→ all hidden
+```
+
+### PASS
+
+- targeted mask 必须能稳定复现；
+- UI 仅执行 condition；
+- 同词不同 condition 正确记录；
+- 不满足样本条件时保持 baseline。
+
+---
+
+## 7. P3 — Audio Withdrawal Probe
+
+### 目标
+
+检测 cue dependence。
+
+### 触发
+
+只有达到稳定 audio-on 表现后才允许 probe。
+
+### Probe 原则
+
+只改变 audio：
+
+```text
+baseline condition
+vs
+same condition + audio none
+```
+
+### 结果
+
+probe failure 不能简单 reset 为普通 Again。
+
+先记录 cue-dependence evidence，再由 EvidenceModel 解释。
+
+### PASS
+
+- probe 标记明确；
+- single-variable test；
+- condition/result 可 replay。
+
+---
+
+## 8. P4 — Condition-dependent Profiles
+
+### 目标
+
+能够回答：
+
+```text
+audio on vs off
+partial letters vs hidden
+meaning visible vs hidden
+```
+
+表现差异。
+
+### Profile
+
+第一阶段动态 rebuild：
+
+- attempts；
+- success rate；
+- latency distribution；
+- recent outcomes。
+
+不新建永久表。
+
+---
+
+## 9. P5 — Personalized latency
+
+### 目标
+
+替换全局固定 latency threshold 的主导作用。
+
+### Baseline 样本
+
+优先：
+
+- clean；
+- unaided；
+- foreground active time；
+- condition 可比。
+
+### 输出
+
+至少：
+
+```text
+P25 / P50 / P75 / P90
+```
+
+Grade/Evidence 使用 normalized percentile。
+
+---
+
+## 10. P6 — Adaptive micro reinforcement
+
+当前 3/4/5/7 word gap 升级为状态机。
+
+例：
+
+```text
+recall fail
+→ 3 words
+→ fail again
+→ shorter return
+→ slow success
+→ end-of-session probe
+→ fast success
+→ stop reinforcement
+```
+
+长期 scheduler 与 micro scheduler 保持独立。
+
+---
+
+## 11. P7 — Recency-weighted history
+
+替换 lifetime-average 主导。
+
+候选实现：
+
+- recent-N window；
+- EWMA；
+- time decay。
+
+先用可解释实现，不做黑盒拟合。
+
+---
+
+## 12. P8 — FSRS-6 shadow
+
+FSRS 只做预测：
+
+```text
+basic-v1 controls due date
+FSRS records shadow prediction
+```
+
+采集：
+
+- predicted retrievability；
+- actual later outcome；
+- calibration error。
+
+没有数据证明优于 basic-v1 前不切 active。
+
+---
+
+## 13. P9 — FSRS active
+
+只有满足预先定义的 calibration / retention / workload Gate 后切换。
+
+必须保留 basic-v1 rebuild / migration path。
+
+---
+
+## 14. P10 — Learned Exercise Policy
+
+未来才考虑：
+
+- contextual bandit；
+- offline policy evaluation；
+- personalized policy learning。
+
+前提：
+
+- condition 完整记录；
+- decision reason/version 完整；
+- outcome/evidence 完整；
+- deterministic baseline 已积累足够数据。
+
+ML 只能替换 policy/evidence 层，不能污染 UI 或 raw storage。
+
+---
+
+## 15. KPI
+
+### Primary
+
+- 7-day unaided recall；
+- 30-day unaided recall。
+
+### Efficiency
+
+- review seconds / retained word；
+- reviews / retained word。
+
+### Diagnostics
+
+- false mastery rate；
+- cue-assisted → cue-free performance delta；
+- spelling weak-position recurrence。
+
+### Guardrail
+
+- 单次 session workload；
+- excessive repetition；
+- unexpected difficulty spikes；
+- old-data compatibility。
+
+---
+
+## 16. 当前迭代队列
+
+```text
+R2-P0-001  文档与 Domain Contract
+R2-P0-002  Review Gate
+R2-P0-003  Persist baseline ExerciseCondition / PolicyDecision
+R2-P1-001  Evidence V2 design + table tests
+R2-P1-002  Evidence V2 integration
+R2-P2-001  Orthography profile
+R2-P2-002  Targeted mask shadow decision
+R2-P2-003  Targeted mask active
+R2-P3-001  Audio probe shadow
+R2-P3-002  Audio probe active
+```
+
+每个任务完成后必须重新评估下一任务，不机械执行整张路线图。
+
+---
+
+## 17. 当前明确不做
+
+- 不立即上 FSRS active；
+- 不立即做 RL；
+- 不同时改变 audio/meaning/letters 多个变量；
+- 不新建不可重建 profile 真值表；
+- 不为 optional record fields 无意义升级 Dexie schema；
+- 不把 adaptive rule 写进 React UI。
+
+---
+
+## 18. 低优先级非 Review 任务
+
+记录但不进入当前循环：
+
+```text
+LOW-CLOUD-PORTABILITY
+- formalize storage contract
+- split EdgeOne HTTP adapter from generic handlers
+- add Node/Postgres reference provider
+```
+
+只有 Review 主线稳定或部署迁移出现实际需求时再启动。
