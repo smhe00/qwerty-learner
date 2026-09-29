@@ -84,8 +84,8 @@ export function normalizeUsername(input) {
 }
 
 function validatePassword(password) {
-  if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
-    throw new AppError(400, 'invalid_password', 'Password must contain 8-128 characters')
+  if (typeof password !== 'string' || password.length < 4 || password.length > 128) {
+    throw new AppError(400, 'invalid_password', 'Password must contain 4-128 characters')
   }
 }
 
