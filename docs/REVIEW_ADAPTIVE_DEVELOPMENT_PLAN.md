@@ -464,7 +464,21 @@ PASS  R2-P2-001   Orthography profile + targeted-mask policy
 PASS  R2-P2-002   Targeted mask shadow decision
 PASS  R2-P2-002.5 Session plan freeze
 PASS  R2-P2-002.6 Scaffold withdrawal + stale-shadow guardrail
-DOING R2-P2-003   Active targeted mask in Review mode
+PASS  R2-P2-003   Active targeted mask in Review mode
+DOING R2-P3-001   Audio withdrawal probe shadow
 ```
 
 P2-003 不直接从 WordComponent 的异步 IndexedDB history query 驱动。连续练习时下一词可立即接收键盘输入，因此 active condition 必须在 session/queue 层预先冻结，避免首键前后 presentation 改变并污染 telemetry。
+
+
+### P3 policy arbitration
+
+从 P3 起所有 `How` policy 必须经统一 coordinator 选择下一 action。第一版优先级：
+
+```text
+targeted spelling remediation
+    >
+audio withdrawal diagnostic probe
+```
+
+同一 exercise 不叠加两个 adaptive action，保持 single-variable / single-purpose 可解释性。

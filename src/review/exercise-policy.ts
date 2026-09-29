@@ -11,14 +11,21 @@ import type {
 } from './decision'
 import { buildOrthographyProfile } from './profile'
 import type { OrthographyProfile } from './profile'
+import { typingClassifierPolicy } from './policy'
 import type { IWordRecord } from '@/utils/db/record'
 
 export const TARGETED_MASK_POLICY_VERSION = 'targeted-mask-v1'
+export const AUDIO_WITHDRAWAL_POLICY_VERSION = 'audio-withdrawal-probe-v1'
 
 export const targetedMaskPolicy = {
   minFailedRecords: 3,
   minDominantRecordCount: 3,
   minDominantRecordRatio: 0.6,
+} as const
+
+export const audioWithdrawalPolicy = {
+  minComparableCleanRecords: 3,
+  maxFirstKeyLatencyMs: typingClassifierPolicy.longFirstKeyMs,
 } as const
 
 export type ExercisePlan = {
@@ -112,4 +119,91 @@ export function resolveExercisePlanForAttempt(
     condition: baselineCondition,
     decision: createBaselineReviewPolicyDecision(),
   }
+}
+
+function recordOrderDescending(left: IWordRecord, right: IWordRecord): number {
+  const leftOrder = left.id ?? left.timeStamp
+  const rightOrder = right.id ?? right.timeStamp
+  return rightOrder - leftOrder
+}
+
+function comparableAudioMasteryRecord(
+  record: IWordRecord,
+  baselineCondition: ExerciseConditionV1,
+): boolean {
+  const condition = record.exerciseCondition
+  const context = record.learningContext
+  const telemetry = record.typingTelemetry
+
+  return Boolean(
+    condition &&
+      condition.audio === 'automatic' &&
+      condition.meaning === baselineCondition.meaning &&
+      condition.phonetic === baselineCondition.phonetic &&
+      condition.letters.mode === baselineCondition.letters.mode &&
+      record.wrongCount === 0 &&
+      !context?.revealedBeforeFirstKey &&
+      !context?.meaningRevealedBeforeFirstKey &&
+      (context?.pronunciationAutomaticPlayCount ?? 0) > 0 &&
+      telemetry?.firstKeyLatencyMs !== undefined &&
+      telemetry.firstKeyLatencyMs <= audioWithdrawalPolicy.maxFirstKeyLatencyMs,
+  )
+}
+
+export function chooseAudioWithdrawalShadow(input: {
+  baselineCondition: ExerciseConditionV1
+  word: string
+  records: IWordRecord[]
+}): ReviewPolicyShadowV1 | null {
+  const { baselineCondition } = input
+  if (baselineCondition.audio !== 'automatic') return null
+
+  const recent = [...input.records]
+    .sort(recordOrderDescending)
+    .slice(0, audioWithdrawalPolicy.minComparableCleanRecords)
+
+  if (
+    recent.length < audioWithdrawalPolicy.minComparableCleanRecords ||
+    !recent.every((record) =>
+      comparableAudioMasteryRecord(record, baselineCondition),
+    )
+  ) {
+    return null
+  }
+
+  const latest = recent[0]
+  if (
+    latest.exerciseCondition?.purpose === 'probe' &&
+    latest.exerciseCondition.probeDimension === 'audio'
+  ) {
+    return null
+  }
+
+  const condition: ExerciseConditionV1 = {
+    ...baselineCondition,
+    purpose: 'probe',
+    source: 'adaptive-policy',
+    audio: 'none',
+    probeDimension: 'audio',
+  }
+
+  return createReviewPolicyShadow(
+    condition,
+    createReviewPolicyDecision(
+      AUDIO_WITHDRAWAL_POLICY_VERSION,
+      ['stable-audio-assisted-recall', 'single-variable-audio-withdrawal'],
+      condition.version,
+    ),
+  )
+}
+
+export function chooseNextExerciseShadow(input: {
+  baselineCondition: ExerciseConditionV1
+  word: string
+  records: IWordRecord[]
+}): ReviewPolicyShadowV1 | null {
+  const targetedMask = chooseTargetedMaskShadow(input)
+  if (targetedMask) return targetedMask
+
+  return chooseAudioWithdrawalShadow(input)
 }

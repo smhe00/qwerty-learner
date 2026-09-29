@@ -11,6 +11,8 @@ import {
 } from '../../src/review/decision'
 import { evaluateReviewEvidence } from '../../src/review/evidence'
 import {
+  chooseAudioWithdrawalShadow,
+  chooseNextExerciseShadow,
   chooseTargetedMaskPlan,
   chooseTargetedMaskShadow,
   resolveExercisePlanForAttempt,
@@ -804,4 +806,145 @@ test('attempt resolver activates only the supported frozen targeted-mask plan', 
   const fallback = resolveExercisePlanForAttempt(baseline)
   assert.equal(fallback.condition, baseline)
   assert.equal(fallback.decision.policyVersion, 'baseline-user-settings-v1')
+})
+
+
+function cleanAudioRecord(
+  id: number,
+  word: string,
+  condition: ReturnType<typeof createBaselineExerciseCondition>,
+): IWordRecord {
+  return {
+    id,
+    word,
+    timeStamp: id,
+    dict: 'cet4',
+    chapter: -1,
+    timing: [],
+    wrongCount: 0,
+    mistakes: {},
+    exerciseCondition: condition,
+    typingTelemetry: {
+      telemetryVersion: 2,
+      firstKeyLatencyMs: 700,
+      attempts: [],
+    },
+    learningContext: {
+      version: 1,
+      pronunciationEnabledAtStart: true,
+      pronunciationPlayed: true,
+      pronunciationPlayCount: 1,
+      pronunciationAutomaticPlayCount: 1,
+      pronunciationRequestedPlayCount: 0,
+    },
+  }
+}
+
+test('audio withdrawal shadow changes only the audio dimension after stable mastery', () => {
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: true,
+    meaningVisible: true,
+    phoneticVisible: false,
+    letterVisibility: [false, false, false, false],
+  })
+  const records = [1, 2, 3].map((id) =>
+    cleanAudioRecord(id, 'test', baseline),
+  )
+
+  const shadow = chooseAudioWithdrawalShadow({
+    baselineCondition: baseline,
+    word: 'test',
+    records,
+  })
+
+  assert.ok(shadow)
+  assert.equal(shadow.condition.purpose, 'probe')
+  assert.equal(shadow.condition.probeDimension, 'audio')
+  assert.equal(shadow.condition.audio, 'none')
+  assert.equal(shadow.condition.meaning, baseline.meaning)
+  assert.equal(shadow.condition.phonetic, baseline.phonetic)
+  assert.deepEqual(shadow.condition.letters, baseline.letters)
+  assert.equal(
+    shadow.decision.policyVersion,
+    'audio-withdrawal-probe-v1',
+  )
+})
+
+test('audio withdrawal requires three recent comparable clean automatic-audio records', () => {
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: true,
+    meaningVisible: true,
+    phoneticVisible: false,
+    letterVisibility: [false, false, false],
+  })
+  const records = [1, 2].map((id) =>
+    cleanAudioRecord(id, 'cat', baseline),
+  )
+
+  assert.equal(
+    chooseAudioWithdrawalShadow({
+      baselineCondition: baseline,
+      word: 'cat',
+      records,
+    }),
+    null,
+  )
+
+  const slow = cleanAudioRecord(3, 'cat', baseline)
+  if (slow.typingTelemetry) {
+    slow.typingTelemetry.firstKeyLatencyMs = 2500
+  }
+  records.push(slow)
+
+  assert.equal(
+    chooseAudioWithdrawalShadow({
+      baselineCondition: baseline,
+      word: 'cat',
+      records,
+    }),
+    null,
+  )
+})
+
+test('next-exercise coordinator prioritizes spelling remediation over audio probe', () => {
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: true,
+    meaningVisible: true,
+    phoneticVisible: false,
+    letterVisibility: [false, false, false, false, false, false],
+  })
+
+  const records: IWordRecord[] = [1, 2, 3].map((id) => ({
+    ...cleanAudioRecord(id, 'planet', baseline),
+    wrongCount: 1,
+    mistakes: { 2: ['x'] },
+  }))
+
+  const shadow = chooseNextExerciseShadow({
+    baselineCondition: baseline,
+    word: 'planet',
+    records,
+  })
+
+  assert.ok(shadow)
+  assert.equal(shadow.decision.policyVersion, 'targeted-mask-v1')
+  assert.equal(shadow.condition.letters.mode, 'targeted-mask')
+})
+
+test('audio withdrawal does not run when pronunciation is already disabled', () => {
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: false,
+    meaningVisible: true,
+    phoneticVisible: false,
+    letterVisibility: [false, false, false],
+  })
+
+  assert.equal(
+    chooseAudioWithdrawalShadow({
+      baselineCondition: baseline,
+      word: 'cat',
+      records: [],
+    }),
+    null,
+  )
 })

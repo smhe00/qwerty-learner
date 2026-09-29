@@ -27,7 +27,7 @@ import type {
 import { evaluateReviewEvidence } from '@/review/evidence'
 import type { WordHistorySummary } from '@/review/features'
 import {
-  chooseTargetedMaskShadow,
+  chooseNextExerciseShadow,
   resolveExercisePlanForAttempt,
 } from '@/review/exercise-policy'
 import { loadWordReviewHistory } from '@/review/history'
@@ -509,7 +509,7 @@ export default function WordComponent({
             reviewEvidence,
           }
           nextExerciseShadow = exerciseConditionRef.current
-            ? chooseTargetedMaskShadow({
+            ? chooseNextExerciseShadow({
                 baselineCondition: exerciseConditionRef.current,
                 word: word.name,
                 records: [...historyRecordsRef.current, currentRecordForPolicy],
