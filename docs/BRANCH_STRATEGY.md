@@ -12,7 +12,7 @@ Do not develop fork-only product features directly on `master`.
 
 ### `product/main`
 
-Purpose: the single source of truth for the integrated fork product after the current release candidate passes all production Gates.
+Purpose: the single source of truth for the integrated fork product. The initial integrated Review + Cloud release candidate passed all production Gates on 2026-09-29.
 
 All integrated product behavior belongs here:
 
@@ -44,9 +44,9 @@ This branch is no longer a development line. Do not land new Review changes here
 
 ### `feature/edgeone-cloud-sync`
 
-This is the temporary integration/release-candidate branch that already contains the complete `feature/spaced-review` history plus cloud sync.
+This branch produced the initial integrated Review + Cloud release candidate and is now frozen at `7d9a0730f4627d91077948cb1bfa677cb18ec68d`.
 
-After the final Review-aware cloud release candidate passes all Gates and `product/main` is created from that exact commit, this branch becomes historical and should not receive new product development.
+`product/main` was created from that exact verified commit. Do not land new product development on this feature branch.
 
 ## Upstream contribution branches
 
