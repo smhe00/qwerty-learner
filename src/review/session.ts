@@ -1,4 +1,8 @@
 import type { TypingErrorClassification } from './classifier'
+import { materializeReviewExercisePlan } from './decision'
+import type { ReviewExercisePlanV1 } from './decision'
+import type { Word } from '@/typings'
+import type { IWordRecord } from '@/utils/db/record'
 import { reinforcementGapByCause } from './policy'
 
 export const MIN_REINFORCEMENT_GAP = 3
@@ -66,4 +70,44 @@ export function getAdaptiveReinforcementGap(
   if (classification.cause === 'spelling') return reinforcementGapByCause.spelling
   if (classification.cause === 'motor') return reinforcementGapByCause.motor
   return reinforcementGapByCause.uncertain
+}
+
+export type ReviewSessionExercisePlans = Record<string, ReviewExercisePlanV1>
+
+function recordOrder(record: IWordRecord): number {
+  return record.id ?? record.timeStamp
+}
+
+/**
+ * Freezes the newest shadow proposal for each review word at session creation.
+ *
+ * The returned plans are session data, not a new source of truth. They can be
+ * rebuilt from WordRecord.reviewPolicyShadow and are intentionally detached
+ * from WordComponent async history loading.
+ */
+export function buildReviewSessionExercisePlans(
+  words: Word[],
+  records: IWordRecord[],
+): ReviewSessionExercisePlans {
+  const wanted = new Set(words.map((word) => word.name))
+  const latest = new Map<string, IWordRecord>()
+
+  for (const record of records) {
+    if (!wanted.has(record.word) || !record.reviewPolicyShadow) continue
+
+    const prior = latest.get(record.word)
+    if (!prior || recordOrder(record) > recordOrder(prior)) {
+      latest.set(record.word, record)
+    }
+  }
+
+  const plans: ReviewSessionExercisePlans = {}
+  for (const word of words) {
+    const shadow = latest.get(word.name)?.reviewPolicyShadow
+    if (shadow) {
+      plans[word.name] = materializeReviewExercisePlan(shadow)
+    }
+  }
+
+  return plans
 }

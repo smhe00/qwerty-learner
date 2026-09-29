@@ -1,6 +1,10 @@
 import { getUTCUnixTimestamp } from '../index'
 import type { ExerciseConditionV1 } from '@/review/condition'
-import type { ReviewPolicyDecisionV1, ReviewPolicyShadowV1 } from '@/review/decision'
+import type {
+  ReviewExercisePlanV1,
+  ReviewPolicyDecisionV1,
+  ReviewPolicyShadowV1,
+} from '@/review/decision'
 import type { ReviewEvidenceV1 } from '@/review/evidence'
 import type { Word } from '@/typings'
 
@@ -243,6 +247,8 @@ export interface IReviewRecord {
   isFinished: boolean
   // 单词列表, 根据复习算法生成和修改，可能会有重复值
   words: Word[]
+  // Frozen at session creation from the latest shadow proposal per word.
+  exercisePlans?: Record<string, ReviewExercisePlanV1>
 }
 
 export class ReviewRecord implements IReviewRecord {
@@ -252,13 +258,21 @@ export class ReviewRecord implements IReviewRecord {
   createTime: number
   isFinished: boolean
   words: Word[]
+  exercisePlans?: Record<string, ReviewExercisePlanV1>
 
-  constructor(dict: string, words: Word[]) {
+  constructor(
+    dict: string,
+    words: Word[],
+    exercisePlans?: Record<string, ReviewExercisePlanV1>,
+  ) {
     this.dict = dict
     this.index = 0
     this.createTime = getUTCUnixTimestamp()
     this.words = words
     this.isFinished = false
+    if (exercisePlans && Object.keys(exercisePlans).length > 0) {
+      this.exercisePlans = exercisePlans
+    }
   }
 }
 

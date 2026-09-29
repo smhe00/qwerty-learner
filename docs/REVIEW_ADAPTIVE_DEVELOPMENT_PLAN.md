@@ -417,6 +417,7 @@ R2-P1-001  Evidence V2 design + table tests
 R2-P1-002  Evidence V2 integration
 R2-P2-001  Orthography profile
 R2-P2-002  Targeted mask shadow decision
+R2-P2-002.5 Session plan freeze（active 前消除异步 condition race）
 R2-P2-003  Targeted mask active
 R2-P3-001  Audio probe shadow
 R2-P3-002  Audio probe active
@@ -449,3 +450,20 @@ LOW-CLOUD-PORTABILITY
 ```
 
 只有 Review 主线稳定或部署迁移出现实际需求时再启动。
+
+
+## 19. 执行状态（2026-09-30）
+
+```text
+PASS  R2-P0-001   Domain contracts / architecture
+PASS  R2-P0-002   Review Gate
+PASS  R2-P0-003   Persist baseline ExerciseCondition / PolicyDecision
+PASS  R2-P1-001   Evidence V2 shadow model
+PASS  R2-P1-002   Persist Evidence V2 shadow
+PASS  R2-P2-001   Orthography profile + targeted-mask policy
+PASS  R2-P2-002   Targeted mask shadow decision
+DOING R2-P2-002.5 Session plan freeze
+HOLD  R2-P2-003   Active targeted mask until session plan is frozen
+```
+
+P2-003 不直接从 WordComponent 的异步 IndexedDB history query 驱动。连续练习时下一词可立即接收键盘输入，因此 active condition 必须在 session/queue 层预先冻结，避免首键前后 presentation 改变并污染 telemetry。

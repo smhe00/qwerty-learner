@@ -2,6 +2,7 @@ import { db } from '.'
 import { ReviewRecord } from './record'
 import type { TErrorWordData } from '@/pages/Gallery-N/hooks/useErrorWords'
 import { filterDueReviewCandidates } from '@/review/due'
+import { buildReviewSessionExercisePlans } from '@/review/session'
 import { rankDueReviewCandidates } from '@/review/priority'
 import { bootstrapReviewWordStatesForDictionary, getDueReviewWordStates } from '@/review/repository'
 import type { Word } from '@/typings'
@@ -41,7 +42,9 @@ export async function generateNewWordReviewRecord(dictID: string, errorData: TEr
     return undefined
   }
 
-  const record = new ReviewRecord(dictID, sortedWords)
+  const wordRecords = await db.wordRecords.where('dict').equals(dictID).toArray()
+  const exercisePlans = buildReviewSessionExercisePlans(sortedWords, wordRecords)
+  const record = new ReviewRecord(dictID, sortedWords, exercisePlans)
 
   await db.reviewRecords.put(record)
   return record

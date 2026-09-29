@@ -4,6 +4,7 @@ import { createBaselineExerciseCondition } from '../../src/review/condition'
 import {
   createBaselineReviewPolicyDecision,
   createReviewPolicyShadow,
+  materializeReviewExercisePlan,
 } from '../../src/review/decision'
 import { evaluateReviewEvidence } from '../../src/review/evidence'
 import {
@@ -12,6 +13,7 @@ import {
 } from '../../src/review/exercise-policy'
 import { buildReviewObservation } from '../../src/review/observation'
 import { buildOrthographyProfile } from '../../src/review/profile'
+import { buildReviewSessionExercisePlans } from '../../src/review/session'
 import type { IWordRecord } from '../../src/utils/db/record'
 
 test('captures all-visible and all-hidden baseline conditions', () => {
@@ -462,4 +464,104 @@ test('targeted mask shadow can trigger on the current attempt becoming the third
   assert.equal(afterCurrent.appliesTo, 'next-exercise')
   assert.equal(afterCurrent.decision.policyVersion, 'targeted-mask-v1')
   assert.deepEqual(afterCurrent.condition.letters.maskedPositions, [2])
+})
+
+
+test('materializes a frozen exercise plan from a shadow proposal', () => {
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: true,
+    meaningVisible: true,
+    phoneticVisible: false,
+    letterVisibility: [true, false, true],
+  })
+  const shadow = createReviewPolicyShadow(
+    baseline,
+    createBaselineReviewPolicyDecision(),
+  )
+
+  assert.deepEqual(materializeReviewExercisePlan(shadow), {
+    version: 1,
+    condition: baseline,
+    decision: shadow.decision,
+    sourceShadowVersion: 1,
+  })
+})
+
+test('review session freezes the newest shadow per word and ignores legacy records', () => {
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: true,
+    meaningVisible: true,
+    phoneticVisible: false,
+    letterVisibility: [false, false, false, false],
+  })
+  const olderShadow = createReviewPolicyShadow(
+    baseline,
+    createBaselineReviewPolicyDecision(),
+  )
+  const newerCondition = {
+    ...baseline,
+    source: 'adaptive-policy' as const,
+    letters: {
+      mode: 'targeted-mask' as const,
+      visiblePositions: [0, 1, 3],
+      maskedPositions: [2],
+    },
+  }
+  const newerShadow = createReviewPolicyShadow(
+    newerCondition,
+    {
+      version: 1,
+      policyVersion: 'targeted-mask-v1',
+      reasonCodes: ['dominant-spelling-position'],
+      conditionVersion: 1,
+    },
+  )
+
+  const records: IWordRecord[] = [
+    {
+      id: 1,
+      word: 'test',
+      timeStamp: 1,
+      dict: 'cet4',
+      chapter: -1,
+      timing: [],
+      wrongCount: 1,
+      mistakes: { 2: ['x'] },
+      reviewPolicyShadow: olderShadow,
+    },
+    {
+      id: 2,
+      word: 'test',
+      timeStamp: 2,
+      dict: 'cet4',
+      chapter: -1,
+      timing: [],
+      wrongCount: 1,
+      mistakes: { 2: ['x'] },
+      reviewPolicyShadow: newerShadow,
+    },
+    {
+      id: 3,
+      word: 'legacy',
+      timeStamp: 3,
+      dict: 'cet4',
+      chapter: -1,
+      timing: [],
+      wrongCount: 1,
+      mistakes: { 0: ['x'] },
+    },
+  ]
+
+  const plans = buildReviewSessionExercisePlans(
+    [
+      { name: 'test', trans: [], usphone: '', ukphone: '' },
+      { name: 'legacy', trans: [], usphone: '', ukphone: '' },
+    ],
+    records,
+  )
+
+  assert.equal(Object.keys(plans).length, 1)
+  assert.equal(plans.test.decision.policyVersion, 'targeted-mask-v1')
+  assert.deepEqual(plans.test.condition.letters.maskedPositions, [2])
+  assert.equal(plans.legacy, undefined)
 })

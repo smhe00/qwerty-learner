@@ -59,3 +59,23 @@ export function createReviewPolicyShadow(
     decision: policyDecision,
   }
 }
+
+export const REVIEW_EXERCISE_PLAN_VERSION = 1 as const
+
+export type ReviewExercisePlanV1 = {
+  version: typeof REVIEW_EXERCISE_PLAN_VERSION
+  condition: ExerciseConditionV1
+  decision: ReviewPolicyDecisionV1
+  sourceShadowVersion: ReviewPolicyShadowV1['version']
+}
+
+export function materializeReviewExercisePlan(
+  shadow: ReviewPolicyShadowV1,
+): ReviewExercisePlanV1 {
+  return {
+    version: REVIEW_EXERCISE_PLAN_VERSION,
+    condition: shadow.condition,
+    decision: shadow.decision,
+    sourceShadowVersion: shadow.version,
+  }
+}
