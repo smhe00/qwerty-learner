@@ -1,6 +1,6 @@
 # EdgeOne Makers 部署与 P4 实机验收
 
-> 分支：`feature/edgeone-cloud-sync`  
+> 当前产品分支：`product/main`  
 > 权威开发状态：`docs/CLOUD_SYNC_DEVELOPMENT_PLAN.md`
 
 ## 1. 部署目标
@@ -30,11 +30,10 @@ P4 PASS 前继续保持 `src/` 零修改。
 1. 选择 **导入 Git 仓库**。
 2. 连接 GitHub。
 3. 选择 `smhe00/qwerty-learner`。
-4. **P4 首次创建 Makers 项目时，生产分支直接选择**
-   `feature/edgeone-cloud-sync`。
+4. P4 首次创建 Makers 项目时历史上使用 `feature/edgeone-cloud-sync` 作为生产分支；集成 RC 通过后，正式产品分支应切换为 `product/main`。
 5. 根目录保持仓库根目录。
 
-> 这是 P4 验证阶段的临时生产映射，不代表未来必须长期把 feature 分支当正式生产分支。
+> `feature/edgeone-cloud-sync` 只是 P4/P8 验证阶段的临时生产映射。当前仓库唯一产品主线已经收敛到 `product/main`。
 > 当前 upstream `master` 本身可以作为纯静态 Vite 站点部署；它此前的部署失败不是因为缺少 Cloud Functions，而是 EdgeOne 默认查找 `dist/`，而该项目实际由 Vite 输出到 `build/`。
 > 但 `master` 不包含云后端，因此不能用于 P4 的 Auth/Sync/Blob 验证。
 > P4/P5 稳定后再决定最终生产分支（例如专门的稳定分支或合并后的 fork 主分支）。
@@ -225,7 +224,7 @@ build.outDir = "build"
 ./dist
 ```
 
-`feature/edgeone-cloud-sync` 根目录的 `edgeone.json` 已显式设置 `"outputDirectory": "./build"`。
+`product/main` 根目录的 `edgeone.json` 已显式设置 `"outputDirectory": "./build"`。
 
 对于 upstream `master`，若单独部署纯静态站点，需要在 Makers 控制台把“输出目录”手工设为 `build`，因为该分支没有 `edgeone.json`。
 
