@@ -524,3 +524,8 @@ AUTH-HOTFIX-001  PASS
 用户选择完整发布：Review P2/P3 active 行为与 AUTH-HOTFIX-001 一起进入本次 release candidate。
 
 发布纪律：最终候选 SHA 必须同时通过 Review Gate 与 Cloud Sync Gate；随后仅以 fast-forward 推进 `feature/edgeone-cloud-sync`，再由 production Live / Browser / Auth Rate Limit 三个 Gate 验收。
+
+
+### Release verification correction
+
+Production verification attempt 1 exposed test/deployment sequencing issues rather than an application regression: the duplicate-registration live scenario adds one successful login, so bounded session-history expectation advances to `[8,9,10]`; Browser Gate now waits for `duplicate-register-protection-v1` before exercising the new UI. These corrections do not change product behavior.

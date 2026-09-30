@@ -457,7 +457,7 @@ try {
   )
 
   assert.deepEqual(retainedAuthVersions, [3, 4])
-  assert.deepEqual(retainedSessionVersions, [7, 8, 9])
+  assert.deepEqual(retainedSessionVersions, [8, 9, 10])
 
   const afterPasswordChanges = await request('/api/sync', { token: activeToken })
   assert.equal(afterPasswordChanges.status, 200)

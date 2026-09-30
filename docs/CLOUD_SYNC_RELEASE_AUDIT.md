@@ -80,3 +80,8 @@ product/main verified RC
 ```
 
 Do not place independent commits on the production pointer.
+
+
+## Production verification sequencing
+
+The production browser gate waits for the release-specific `duplicate-register-protection-v1` health capability before exercising the duplicate-registration UI. The live integration expectation accounts for the additional successful login used to prove the original account remains valid after a rejected duplicate registration.

@@ -21,7 +21,11 @@ async function waitForProductionCapability(page: Page) {
       })
       .catch(() => [])
 
-    if (capabilities.includes('plain-gzip-sync-v2') && capabilities.includes('account-delete-v1')) {
+    if (
+      capabilities.includes('plain-gzip-sync-v2') &&
+      capabilities.includes('account-delete-v1') &&
+      capabilities.includes('duplicate-register-protection-v1')
+    ) {
       return
     }
 
@@ -29,7 +33,7 @@ async function waitForProductionCapability(page: Page) {
     await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => {})
   }
 
-  throw new Error('Timed out waiting for gzip-v2/account-delete production deployment')
+  throw new Error('Timed out waiting for gzip-v2/account-delete/duplicate-register production deployment')
 }
 
 async function openDataSettings(page: Page) {
