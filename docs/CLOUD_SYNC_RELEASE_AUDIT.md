@@ -141,3 +141,32 @@ Review Gate #37 PASS
 ```
 
 The final marker commit must pass Review Gate and Cloud Sync Gate on the same SHA before promotion.
+
+
+## Review fresh-error reactivation + Force Review RC — 2026-09-30
+
+This release fixes Review admission after new ordinary-learning errors and adds an explicit force-review path.
+
+Verified behavior:
+
+```text
+formal Review completed
+-> nextReviewAt in future
+-> ordinary learning later produces a fresh error
+-> Review bootstrap reactivates the word due-now
+-> reviewCount / scheduler stage / lastReviewedAt remain unchanged
+```
+
+When no error word is currently due, the UI now offers `强制开始复习`.
+Force mode bypasses only the time gate; it still uses the current error-word set,
+Review ordering, ExercisePlan generation, evidence capture and the verified
+progression state machine.
+
+Pre-RC verification at `67385b38487d563c244ee7621c07325072e968a2`:
+
+```text
+Domain regression   46 / 46 PASS
+Formal properties   11 / 11 PASS
+Real Chrome flow     4 / 4  PASS
+Production build            PASS
+```

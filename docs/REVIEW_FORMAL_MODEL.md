@@ -265,3 +265,43 @@ Typing reducer       = local mutation only
 ```
 
 The word progression test that previously stalled at `analyse` now passes.
+
+
+## 14. Fresh-error reactivation and Force Review admission
+
+Review admission now has two independently verified rules.
+
+### Fresh ordinary-learning weakness
+
+If the newest ordinary-learning failure is later than the newest formal Review:
+
+```text
+nextReviewAt := now
+reviewCount   := unchanged
+scheduler     := unchanged
+lastReviewedAt:= unchanged
+```
+
+This is evidence-driven reactivation, not a synthetic Review event.
+
+### Force Review
+
+```text
+due mode   -> current error words where nextReviewAt <= now
+force mode -> all current error words
+```
+
+Force mode bypasses only temporal admission. It cannot introduce non-error words
+or bypass the Review progression/evidence machinery.
+
+Review Gate #41 verified:
+
+```text
+46 domain tests
+11 bounded-exhaustive formal properties
+4 Chrome integration scenarios
+production build
+```
+
+The Chrome scenarios include both the reported fresh-error sequence and the
+no-due -> Force Review UI path.
