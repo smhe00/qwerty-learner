@@ -19,6 +19,11 @@ import {
 } from '../../src/review/exercise-policy'
 import { buildReviewObservation } from '../../src/review/observation'
 import {
+  decideReviewProgress,
+  decideWordInput,
+  shouldPlayAutomaticPronunciation,
+} from '../../src/review/machine'
+import {
   inferReviewOutcomeFromWordRecord,
   rebuildBasicStateFromWordRecords,
 } from '../../src/review/rebuild'
@@ -1313,4 +1318,107 @@ test('review queue advances remount WordComponent while ordinary learning keeps 
   assert.equal(first, 'review-0-0')
   assert.equal(second, 'review-1-0')
   assert.notEqual(first, second)
+})
+
+
+test('input gate rejects every key after the target length', () => {
+  assert.deepEqual(
+    decideWordInput({
+      inputLength: 6,
+      targetLength: 6,
+      hasWrong: false,
+      isFinished: false,
+    }),
+    { accept: false, reason: 'target-complete' },
+  )
+  assert.deepEqual(
+    decideWordInput({
+      inputLength: 5,
+      targetLength: 6,
+      hasWrong: false,
+      isFinished: false,
+    }),
+    { accept: true, index: 5, isFinal: true },
+  )
+})
+
+test('automatic pronunciation is emitted at most once per attempt', () => {
+  assert.equal(
+    shouldPlayAutomaticPronunciation({
+      isTyping: true,
+      inputLength: 0,
+      automaticAudioEnabled: true,
+      alreadyPlayedForAttempt: false,
+    }),
+    true,
+  )
+  assert.equal(
+    shouldPlayAutomaticPronunciation({
+      isTyping: true,
+      inputLength: 0,
+      automaticAudioEnabled: true,
+      alreadyPlayedForAttempt: true,
+    }),
+    false,
+  )
+})
+
+test('assisted spelling and motor errors remain assisted evidence', () => {
+  const assisted = createBaselineExerciseCondition({
+    pronunciationEnabled: true,
+    meaningVisible: true,
+    phoneticVisible: false,
+    letterVisibility: [true, true, true],
+  })
+
+  for (const cause of ['spelling', 'motor'] as const) {
+    const evidence = evaluateReviewEvidence(
+      { exerciseCondition: assisted },
+      {
+        cause,
+        confidence: 0.8,
+        scores: { recall: 0.1, spelling: 0.7, motor: 0.2 },
+      },
+    )
+    assert.equal(evidence.retrievalValidity, 'assisted')
+    assert.ok(evidence.reasonCodes.includes('orthographic-cue-full'))
+    assert.ok(evidence.reasonCodes.includes('automatic-audio-cue'))
+  }
+})
+
+test('out-of-range typo positions are excluded from orthography evidence', () => {
+  const record: IWordRecord = {
+    word: 'cancel',
+    timeStamp: 1,
+    dict: 'cet4',
+    chapter: 1,
+    timing: [],
+    wrongCount: 1,
+    mistakes: { 6: ['s'] },
+    typingTelemetry: {
+      telemetryVersion: 2,
+      firstKeyLatencyMs: 500,
+      attempts: [
+        {
+          startLatencyMs: 500,
+          durationMs: 50,
+          correctPrefixLength: 6,
+          result: 'wrong',
+          wrongIndex: 6,
+          wrongKey: 's',
+        },
+      ],
+    },
+  }
+
+  const profile = buildOrthographyProfile('cancel', [record])
+  assert.equal(profile.totalWrongEvents, 0)
+  assert.equal(profile.dominantWrongIndex, undefined)
+
+  const classification = classifyTypingError({
+    word: 'cancel',
+    wrongCount: record.wrongCount,
+    telemetry: record.typingTelemetry,
+  })
+  assert.equal(classification.cause, 'clean')
 })

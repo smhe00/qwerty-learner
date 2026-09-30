@@ -59,7 +59,13 @@ export function extractTypingBehaviorFeatures(
   history?: WordHistorySummary,
 ): TypingBehaviorFeatures {
   const attempts = telemetry?.attempts ?? []
-  const wrongAttempts = attempts.filter((attempt) => attempt.result === 'wrong')
+  const wrongAttempts = attempts.filter(
+    (attempt) =>
+      attempt.result === 'wrong' &&
+      attempt.wrongIndex !== undefined &&
+      attempt.wrongIndex >= 0 &&
+      attempt.wrongIndex < word.length,
+  )
   const cleanAttempts = attempts.filter((attempt) => attempt.result === 'clean')
   const wrongPositions = wrongAttempts
     .map((attempt) => attempt.wrongIndex)
@@ -81,7 +87,7 @@ export function extractTypingBehaviorFeatures(
 
   return {
     firstKeyLatencyMs: telemetry?.firstKeyLatencyMs,
-    wrongAttemptCount: Math.max(wrongCount, wrongAttempts.length),
+    wrongAttemptCount: telemetry ? wrongAttempts.length : wrongCount,
     cleanAttemptCount: cleanAttempts.length,
     uniqueWrongPositionCount: new Set(wrongPositions).size,
     repeatedWrongPositionRatio: repeatedAtDominantPosition,
@@ -93,7 +99,28 @@ export function extractTypingBehaviorFeatures(
 }
 
 export function summarizeWordHistory(records: IWordRecord[]): WordHistorySummary {
-  const failedRecords = records.filter((record) => record.wrongCount > 0)
+  const failedRecords = records.filter((record) => {
+    const telemetry = readWordTelemetry(record)
+    if (telemetry) {
+      return telemetry.attempts.some(
+        (attempt) =>
+          attempt.result === 'wrong' &&
+          attempt.wrongIndex !== undefined &&
+          attempt.wrongIndex >= 0 &&
+          attempt.wrongIndex < record.word.length,
+      )
+    }
+
+    return Object.entries(record.mistakes).some(([rawIndex, wrongKeys]) => {
+      const index = Number(rawIndex)
+      return (
+        Number.isInteger(index) &&
+        index >= 0 &&
+        index < record.word.length &&
+        wrongKeys.length > 0
+      )
+    })
+  })
   const positionCounts = new Map<number, number>()
   const firstKeyLatencies: number[] = []
 
@@ -102,14 +129,31 @@ export function summarizeWordHistory(records: IWordRecord[]): WordHistorySummary
     if (telemetry) {
       firstKeyLatencies.push(telemetry.firstKeyLatencyMs)
       for (const attempt of telemetry.attempts) {
-        if (attempt.result === 'wrong' && attempt.wrongIndex !== undefined) {
-          positionCounts.set(attempt.wrongIndex, (positionCounts.get(attempt.wrongIndex) ?? 0) + 1)
+        if (
+          attempt.result === 'wrong' &&
+          attempt.wrongIndex !== undefined &&
+          attempt.wrongIndex >= 0 &&
+          attempt.wrongIndex < record.word.length
+        ) {
+          positionCounts.set(
+            attempt.wrongIndex,
+            (positionCounts.get(attempt.wrongIndex) ?? 0) + 1,
+          )
         }
       }
     } else {
       for (const [rawIndex, wrongKeys] of Object.entries(record.mistakes)) {
         const index = Number(rawIndex)
-        positionCounts.set(index, (positionCounts.get(index) ?? 0) + wrongKeys.length)
+        if (
+          Number.isInteger(index) &&
+          index >= 0 &&
+          index < record.word.length
+        ) {
+          positionCounts.set(
+            index,
+            (positionCounts.get(index) ?? 0) + wrongKeys.length,
+          )
+        }
       }
     }
   }

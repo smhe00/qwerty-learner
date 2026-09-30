@@ -45,14 +45,41 @@ function audioCondition(observation: ReviewObservation) {
   return undefined
 }
 
-function assistanceReasons(observation: ReviewObservation): string[] {
+function assistanceReasons(observation: ReviewEvidenceObservation): string[] {
   const reasons: string[] = []
   const context = observation.learningContext
+  const visibility = answerVisibility(observation)
+  const audio = audioCondition(observation)
 
-  if (context?.revealedBeforeFirstKey) reasons.push('answer-revealed-before-first-key')
-  if (context?.meaningRevealedBeforeFirstKey) reasons.push('meaning-revealed-before-first-key')
+  if (context?.revealedBeforeFirstKey) {
+    reasons.push('answer-revealed-before-first-key')
+  }
+  if (context?.meaningRevealedBeforeFirstKey) {
+    reasons.push('meaning-revealed-before-first-key')
+  }
+  if (visibility === 'full') {
+    reasons.push('orthographic-cue-full')
+  } else if (visibility === 'partial') {
+    reasons.push('orthographic-cue-partial')
+  }
+  if (audio === 'automatic') {
+    reasons.push('automatic-audio-cue')
+  }
 
   return reasons
+}
+
+function retrievalValidityFromCondition(
+  observation: ReviewEvidenceObservation,
+): RetrievalValidity {
+  const assistance = assistanceReasons(observation)
+  if (assistance.length > 0) return 'assisted'
+
+  const visibility = answerVisibility(observation)
+  const audio = audioCondition(observation)
+  if (visibility === 'hidden' && audio === 'none') return 'independent'
+
+  return 'unknown'
 }
 
 /**
@@ -128,38 +155,41 @@ export function evaluateReviewEvidence(
           },
         }
       }
+      const cueReasons = assistanceReasons(observation)
       return {
         version: REVIEW_EVIDENCE_VERSION,
         memoryGrade: 'again',
         errorCause: 'recall',
         confidence,
         evidenceStrength: confidence,
-        retrievalValidity: 'independent',
-        reasonCodes: ['recall-failure'],
+        retrievalValidity: retrievalValidityFromCondition(observation),
+        reasonCodes: dedupe(['recall-failure', ...cueReasons]),
       }
     }
 
     if (classification.cause === 'spelling') {
+      const cueReasons = assistanceReasons(observation)
       return {
         version: REVIEW_EVIDENCE_VERSION,
         memoryGrade: 'hard',
         errorCause: 'spelling',
         confidence,
         evidenceStrength: confidence,
-        retrievalValidity: 'independent',
-        reasonCodes: ['spelling-weakness'],
+        retrievalValidity: retrievalValidityFromCondition(observation),
+        reasonCodes: dedupe(['spelling-weakness', ...cueReasons]),
       }
     }
 
     if (classification.cause === 'motor') {
+      const cueReasons = assistanceReasons(observation)
       return {
         version: REVIEW_EVIDENCE_VERSION,
         memoryGrade: 'good',
         errorCause: 'motor',
         confidence,
         evidenceStrength: Math.max(0.5, confidence),
-        retrievalValidity: 'independent',
-        reasonCodes: ['motor-error-not-memory-failure'],
+        retrievalValidity: retrievalValidityFromCondition(observation),
+        reasonCodes: dedupe(['motor-error-not-memory-failure', ...cueReasons]),
       }
     }
 

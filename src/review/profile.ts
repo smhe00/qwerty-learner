@@ -75,6 +75,7 @@ export function buildOrthographyProfile(
         if (attempt.result !== 'wrong' || attempt.wrongIndex === undefined) continue
 
         const index = attempt.wrongIndex
+        if (index < 0 || index >= word.length) continue
         const accumulator = positions.get(index) ?? { eventCount: 0, recordCount: 0 }
         accumulator.eventCount += 1
         positions.set(index, accumulator)
@@ -85,7 +86,14 @@ export function buildOrthographyProfile(
     } else {
       for (const [rawIndex, wrongKeys] of Object.entries(record.mistakes)) {
         const index = Number(rawIndex)
-        if (!Number.isInteger(index) || wrongKeys.length === 0) continue
+        if (
+          !Number.isInteger(index) ||
+          index < 0 ||
+          index >= word.length ||
+          wrongKeys.length === 0
+        ) {
+          continue
+        }
 
         const accumulator = positions.get(index) ?? { eventCount: 0, recordCount: 0 }
         accumulator.eventCount += wrongKeys.length

@@ -60,7 +60,7 @@ export function classifyTypingError(input: {
       !hadPreInputLearningInteraction) ||
     ((features.maxInterKeyMs ?? 0) >= typingClassifierPolicy.attentionUncertainInterKeyMs)
 
-  if (input.wrongCount <= 0) {
+  if (features.wrongAttemptCount <= 0) {
     return {
       cause: 'clean',
       confidence: attentionUncertain ? 0.4 : 1,

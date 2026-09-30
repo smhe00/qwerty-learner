@@ -36,6 +36,10 @@ import {
   calculateAnswerVisibleRatio,
   summarizeAnswerVisibility,
 } from '@/review/learning-context'
+import {
+  decideWordInput,
+  shouldPlayAutomaticPronunciation,
+} from '@/review/machine'
 import { applyReviewOutcome } from '@/review/repository'
 import { reviewOutcomeForAttempt } from '@/review/scheduler'
 import { WordTelemetryCollector } from '@/review/telemetry'
@@ -114,10 +118,19 @@ export default function WordComponent({
   const historyRecordsRef = useRef<IWordRecord[]>([])
   const exerciseConditionRef = useRef<ExerciseConditionV1 | undefined>(undefined)
   const reviewPolicyDecisionRef = useRef<ReviewPolicyDecisionV1 | undefined>(undefined)
+  const acceptedInputLengthRef = useRef(0)
+  const inputLockedRef = useRef(false)
+  const automaticPronunciationPlayedRef = useRef(false)
+  const finishNotifiedRef = useRef(false)
+  const targetLengthRef = useRef(0)
 
   useLayoutEffect(() => {
     // Resolve the frozen presentation before paint / first input.
     telemetryCollectorRef.current.resetWord()
+    acceptedInputLengthRef.current = 0
+    inputLockedRef.current = false
+    automaticPronunciationPlayedRef.current = false
+    finishNotifiedRef.current = false
 
     let headword = ''
     try {
@@ -130,6 +143,7 @@ export default function WordComponent({
 
     const newWordState = structuredClone(initialWordState)
     newWordState.displayWord = headword
+    targetLengthRef.current = headword.length
     newWordState.letterStates = new Array(headword.length).fill('normal')
     newWordState.startTime = getUtcStringForMixpanel()
     newWordState.randomLetterVisible = headword.split('').map(() => Math.random() > 0.4)
@@ -253,7 +267,18 @@ export default function WordComponent({
     (updateAction: WordUpdateAction) => {
       switch (updateAction.type) {
         case 'add': {
-          if (wordState.hasWrong) return
+          const inputDecision = decideWordInput({
+            inputLength: acceptedInputLengthRef.current,
+            targetLength: targetLengthRef.current,
+            hasWrong: wordState.hasWrong,
+            isFinished: inputLockedRef.current,
+          })
+          if (!inputDecision.accept) return
+
+          acceptedInputLengthRef.current += 1
+          if (inputDecision.isFinal) {
+            inputLockedRef.current = true
+          }
 
           const now = Date.now()
           learningContextCollectorRef.current.recordInputStarted(now)
@@ -289,12 +314,13 @@ export default function WordComponent({
     [isShowAnswerOnHover, wordDictationConfig.isOpen],
   )
 
-  const playPronunciation = useCallback((cue: PronunciationCue) => {
+  const playPronunciation = useCallback((cue: PronunciationCue): boolean => {
     const play = wordPronunciationIconRef.current?.play
-    if (!play) return
+    if (!play) return false
 
     learningContextCollectorRef.current.recordPronunciationPlayed(cue)
     play()
+    return true
   }, [])
 
   useHotkeys(
@@ -326,14 +352,18 @@ export default function WordComponent({
   )
 
   useEffect(() => {
-    if (
-      wordState.inputWord.length === 0 &&
-      state.isTyping &&
-      exerciseConditionRef.current?.audio === 'automatic'
-    ) {
-      playPronunciation('automatic')
+    const shouldPlay = shouldPlayAutomaticPronunciation({
+      isTyping: state.isTyping,
+      inputLength: wordState.inputWord.length,
+      automaticAudioEnabled:
+        exerciseConditionRef.current?.audio === 'automatic',
+      alreadyPlayedForAttempt: automaticPronunciationPlayedRef.current,
+    })
+
+    if (shouldPlay && playPronunciation('automatic')) {
+      automaticPronunciationPlayedRef.current = true
     }
-  }, [state.isTyping, wordState.inputWord.length, wordPronunciationIconRef.current?.play])
+  }, [playPronunciation, state.isTyping, wordState.inputWord.length])
 
   const getLetterVisible = useCallback(
     (index: number) => {
@@ -452,6 +482,9 @@ export default function WordComponent({
   useEffect(() => {
     if (wordState.hasWrong) {
       const timer = setTimeout(() => {
+        acceptedInputLengthRef.current = 0
+        inputLockedRef.current = false
+        automaticPronunciationPlayedRef.current = false
         setWordState((state) => {
           state.inputWord = ''
           state.letterStates = new Array(state.letterStates.length).fill('normal')
@@ -467,7 +500,8 @@ export default function WordComponent({
   }, [wordState.hasWrong, setWordState])
 
   useEffect(() => {
-    if (wordState.isFinished) {
+    if (wordState.isFinished && !finishNotifiedRef.current) {
+      finishNotifiedRef.current = true
       dispatch({ type: TypingStateActionType.SET_IS_SAVING_RECORD, payload: true })
       const telemetry = telemetryCollectorRef.current.snapshot()
       const learningContext = learningContextCollectorRef.current.snapshot()

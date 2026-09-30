@@ -8,6 +8,7 @@ import WordComponent from './components/Word'
 import type { WordFinishResult } from './components/Word'
 import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
 import { materializeReviewExercisePlan } from '@/review/decision'
+import { decideReviewProgress } from '@/review/machine'
 import {
   MAX_REINFORCEMENT_GAP,
   getAdaptiveReinforcementGap,
