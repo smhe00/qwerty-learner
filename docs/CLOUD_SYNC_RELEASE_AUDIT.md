@@ -118,3 +118,26 @@ The fix is deliberately Review-only:
 - ordinary learning keeps its upstream component-key semantics unchanged.
 
 Implementation `99601a7d97d2dcc78fdb0cd46f6e1320f6d86944` passed Review Gate #25.
+
+
+## Review Formal Gate V1 integrated RC — 2026-09-30
+
+This release candidate includes the Review progression architecture hardening:
+
+- terminal input lock and out-of-range typo filtering;
+- corrected assisted retrieval semantics;
+- one automatic pronunciation per attempt;
+- pure Review transition core in `src/review/machine.ts`;
+- atomic ReviewRecord projection outside the Typing reducer;
+- derived scheduler persistence removed from the UI progression critical path;
+- bounded exhaustive model checking;
+- real Chrome multi-word Review progression gate.
+
+Verified checkpoint before RC marker:
+
+```text
+5a25cce26993e47639a6909b85e7e948d393686a
+Review Gate #37 PASS
+```
+
+The final marker commit must pass Review Gate and Cloud Sync Gate on the same SHA before promotion.

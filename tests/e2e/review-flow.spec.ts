@@ -1,3 +1,4 @@
+// RC 2026-09-30 review-formal-gate-v1 production acceptance marker
 import { expect, test } from '@playwright/test'
 
 type ReviewWord = {

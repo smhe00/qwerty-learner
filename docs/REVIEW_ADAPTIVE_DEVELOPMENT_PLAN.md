@@ -665,3 +665,23 @@ layers remain green:
 The formal layer is complete relative to the state/action abstraction documented
 in `REVIEW_FORMAL_MODEL.md`; browser/runtime behavior remains an integration
 obligation and is therefore independently gated.
+
+
+## 26. Formal Gate V1 production release candidate
+
+The user approved production release after Review Gate #37 PASS.
+
+Release scope includes:
+
+```text
+data-quality fixes
++ terminal input safety
++ cue-validity correction
++ audio idempotence
++ pure Review state machine
++ atomic Review persistence
++ bounded exhaustive formal gate
++ real Chrome multi-word execution gate
+```
+
+Final promotion requires Review Gate + Cloud Sync Gate on one RC SHA, followed by production Live / Browser / Auth Rate Limit acceptance.

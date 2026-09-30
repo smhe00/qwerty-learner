@@ -1,3 +1,4 @@
+// RC 2026-09-30 review-formal-gate-v1 production acceptance marker
 // RC 2026-09-30 review-multiword-remount production acceptance marker
 // RC 2026-09-30 first-review-seeding-v4 production acceptance marker
 import { expect, test, type Page } from '@playwright/test'
