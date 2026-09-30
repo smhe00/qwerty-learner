@@ -163,3 +163,25 @@ Any new Review action or condition must:
 4. pass Review Gate before activation.
 
 No future adaptive policy should be added only as a React `if` branch.
+
+
+## 9. Browser execution gate
+
+The formal model proves the production decision functions inside the bounded
+abstraction. A separate Chromium integration test seeds a real three-word Review
+session and verifies the React/Jotai/IndexedDB execution boundary:
+
+```text
+cancel -> analyse -> numerous -> FINISHED
+```
+
+The test deliberately sends an extra key immediately after the final character
+of the first word and verifies that no out-of-range typo is persisted.
+
+A release therefore needs both:
+
+```text
+formal model checker PASS
++
+multi-word browser execution PASS
+```

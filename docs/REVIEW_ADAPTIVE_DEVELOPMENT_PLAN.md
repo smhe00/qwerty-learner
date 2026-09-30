@@ -606,3 +606,10 @@ START: production state machine + explicit invariants + exhaustive bounded model
 Review progression is also decoupled from derived scheduler persistence: once the raw WordRecord SSOT has been captured, the UI may advance; `applyReviewOutcome()` runs as a non-blocking derived-state update.
 
 No P4 adaptive feature should become active until this formal gate is green.
+
+
+### Browser integration addition
+
+Review Gate now includes a local Chromium test that executes a three-word Review
+session through real React/Jotai/IndexedDB state. This closes the gap between
+the finite state-machine proof and UI command execution.
