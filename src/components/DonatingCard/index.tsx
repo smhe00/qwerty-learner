@@ -9,17 +9,16 @@ type DonatingCardProps = {
 
 export const DonatingCard = ({ className }: DonatingCardProps) => {
   return (
-    <div className={`flex w-full flex-col items-center justify-center gap-2 ${className ?? ''}`}>
-      <h2 className="font-bold text-gray-800 dark:text-gray-300">赞赏本站维护者</h2>
-      <p className="px-8 text-center text-sm leading-6 text-gray-500 dark:text-gray-400">
-        扫描下方赞赏码，可自愿选择金额支持本实例持续维护。
-      </p>
-      <img
-        src={appreciationQr}
-        alt="本站维护者赞赏码"
-        className="mt-1 h-72 w-72 rounded-xl object-contain shadow-sm"
-      />
-      <p className="text-xs text-gray-400 dark:text-gray-500">赞赏完全自愿，不影响任何功能使用。</p>
+    <div className={`flex w-full flex-col items-center justify-center ${className ?? ''}`}>
+      <div className="rounded-[1.5rem] border border-amber-100 bg-amber-50/60 p-3 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/20">
+        <img
+          src={appreciationQr}
+          alt="何世明的微信赞赏码"
+          className="h-72 w-72 rounded-[1.15rem] bg-white object-contain"
+        />
+      </div>
+      <div className="mt-3 text-sm font-semibold text-gray-700 dark:text-gray-200">微信赞赏码 · 何世明</div>
+      <div className="mt-1 text-xs text-gray-400 dark:text-gray-500">自愿赞赏，不影响任何功能使用</div>
     </div>
   )
 }

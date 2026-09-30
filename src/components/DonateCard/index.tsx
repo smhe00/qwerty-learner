@@ -117,26 +117,18 @@ export const DonateCard = () => {
                       <IconParty className="inline-block" fontSize={16} />
                     </p>
 
-                    <p className="mx-auto px-4 indent-4">
-                      本网站基于
+                    <p className="mx-auto px-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                      本实例基于
                       <a
-                        className="mx-1 font-semibold text-indigo-600 underline-offset-4 hover:underline dark:text-indigo-400"
+                        className="mx-1 text-indigo-500 underline-offset-4 hover:underline"
                         href="https://github.com/RealKai42/qwerty-learner"
                         target="_blank"
                         rel="noreferrer"
                       >
                         Qwerty Learner
                       </a>
-                      开源项目（GPL-3.0）修改并独立部署。原项目自 2021-01-21 起持续开源，至今已经
+                      （GPL-3.0）修改并独立部署。原项目已持续开源
                       <HighlightedText className="text-indigo-500"> {dayFromQwerty} </HighlightedText>天。
-                    </p>
-
-                    <p className="mx-auto px-4 indent-4">
-                      本站新增功能、服务器和日常维护由本站维护者承担。如果本版本对您的学习有帮助，可自愿赞赏本站维护者，
-                      <span className="font-semibold text-indigo-600 dark:text-indigo-400">
-                        赞赏仅用于本实例的持续维护，与 upstream 原作者的赞赏或捐赠渠道相互独立
-                      </span>
-                      。是否赞赏不会影响任何功能使用。
                     </p>
                   </div>
 

@@ -51,27 +51,25 @@ const Footer: React.FC = () => {
         iconClassName="text-amber-500 bg-amber-100 dark:text-amber-300 dark:bg-amber-500"
         onClose={() => handleCloseInfoPanel('donate')}
       >
-        <p className="indent-4 text-sm text-gray-500 dark:text-gray-300">
-          本网站基于
-          <a
-            className="mx-1 font-semibold text-indigo-600 underline-offset-4 hover:underline dark:text-indigo-400"
-            href="https://github.com/RealKai42/qwerty-learner"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Qwerty Learner
-          </a>
-          开源项目（GPL-3.0）修改并独立部署。
-        </p>
-        <br />
-        <p className="indent-4 text-sm text-gray-700 dark:text-gray-200">
-          本站新增功能、服务器和日常维护由本站维护者承担。如本版本对您的学习有帮助，可自愿赞赏本站维护者。
-          赞赏仅用于本实例的持续维护，与 upstream 原作者的赞赏或捐赠渠道相互独立。
-        </p>
-        <br />
-        <p className="indent-4 text-sm text-gray-500 dark:text-gray-300">是否赞赏不会影响任何功能使用。</p>
+        <div className="flex flex-col items-center text-center">
+          <p className="mb-1 text-base font-medium text-gray-700 dark:text-gray-200">如果这个版本对你的学习有帮助</p>
+          <p className="mb-5 text-sm text-gray-500 dark:text-gray-400">可以用微信赞赏码支持本站持续维护。</p>
 
-        <DonatingCard />
+          <DonatingCard />
+
+          <div className="mt-5 w-full border-t border-gray-100 pt-4 text-xs leading-5 text-gray-400 dark:border-gray-700 dark:text-gray-500">
+            本实例基于
+            <a
+              className="mx-1 text-indigo-500 underline-offset-4 hover:underline"
+              href="https://github.com/RealKai42/qwerty-learner"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Qwerty Learner
+            </a>
+            （GPL-3.0）修改并独立部署；赞赏仅用于本站维护，与 upstream 原作者渠道独立。
+          </div>
+        </div>
       </InfoPanel>
 
       <InfoPanel
