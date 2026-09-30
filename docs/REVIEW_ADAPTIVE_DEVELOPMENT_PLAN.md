@@ -579,3 +579,14 @@ The release marker aligns Review Gate + Cloud Sync Gate and all three production
 Observed production symptom: the first Review word completes, but a following word can reach its final correct letter without advancing.
 
 The Review-only fix forces a fresh `WordComponent` instance whenever the live Review queue index changes. This resets per-attempt state, completion effects, telemetry collectors and condition refs at a component boundary. Ordinary learning mode deliberately retains the upstream component key semantics unchanged.
+
+
+### REVIEW-HOTFIX-002 verification
+
+```text
+Review word 1 -> component instance review-0-*
+Review word 2 -> component instance review-1-*
+ordinary learning -> unchanged numeric reload key
+```
+
+Implementation `99601a7d97d2dcc78fdb0cd46f6e1320f6d86944` passed Review Gate #25. This RC aligns candidate and production acceptance gates for release.

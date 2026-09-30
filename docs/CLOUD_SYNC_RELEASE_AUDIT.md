@@ -106,3 +106,15 @@ The integrated release now includes `REVIEW-HOTFIX-001`:
 - only Review-mode records (`chapter == -1`) advance the long-term spaced scheduler;
 - `CURRENT_REVIEW_STATE_VERSION=4` forces previously mis-scheduled v3 states to rebuild;
 - the final RC touches all three production acceptance probes so Live / Browser / Auth Rate Limit run on this exact promoted SHA.
+
+
+## REVIEW-HOTFIX-002 production RC
+
+Production testing exposed a multi-word Review lifecycle issue: the first word completed, while a later word could reach its last correct letter without advancing.
+
+The fix is deliberately Review-only:
+- each Review queue index receives a fresh WordComponent instance;
+- per-attempt completion effects, telemetry collectors and exercise-condition refs are reset at a component boundary;
+- ordinary learning keeps its upstream component-key semantics unchanged.
+
+Implementation `99601a7d97d2dcc78fdb0cd46f6e1320f6d86944` passed Review Gate #25.
