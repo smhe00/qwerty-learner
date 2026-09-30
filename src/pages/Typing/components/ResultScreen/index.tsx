@@ -265,7 +265,7 @@ const ResultScreen = () => {
                   }}
                   className="cursor-pointer"
                   type="button"
-                  title="捐赠我们的项目"
+                  title="赞赏本站维护者"
                 >
                   <IconCoffee fontSize={17} className={`text-gray-500 hover:text-amber-500  focus:outline-none ${styles.imgShake}`} />
                 </button>
