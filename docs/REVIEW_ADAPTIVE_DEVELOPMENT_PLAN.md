@@ -626,3 +626,14 @@ The previous REVIEW-HOTFIX-002 remount strategy is superseded. Queue advance now
 preserves the WordComponent/input listener instance; the explicit attempt state
 machine resets per-word state on the word lifecycle. Only same-word loop reloads
 change the component key.
+
+
+### REVIEW-HOTFIX-004: pure reducer and atomic Review snapshot
+
+Real-browser diagnostics showed `analyse` at `finished=true` with a durable
+WordRecord while the Review cursor remained at index 1. Review persistence was
+still being invoked as a callback **inside** the Typing reducer.
+
+That reducer side effect is removed. Review transition + persistence now use a
+single projected snapshot outside the reducer, and the reducer performs only
+local pure state mutation. The formal model includes projection equivalence.

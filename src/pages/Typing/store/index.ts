@@ -71,7 +71,6 @@ export type TypingStateAction =
   | {
       type: TypingStateActionType.NEXT_WORD
       payload?: {
-        updateReviewRecord?: (state: TypingState) => void
         insertWord?: {
           index: number
           word: WordWithIndex
@@ -158,9 +157,6 @@ export const typingReducer = (state: TypingState, action: TypingStateAction) => 
       state.chapterData.wordCount += 1
       state.isShowSkip = false
 
-      if (action.payload?.updateReviewRecord) {
-        action.payload.updateReviewRecord(state)
-      }
       break
     }
     case TypingStateActionType.LOOP_CURRENT_WORD:

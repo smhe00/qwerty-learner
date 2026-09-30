@@ -163,6 +163,8 @@ async function readReviewWordRecords(
 test('multi-word Review advances through every rendered word and finishes', async ({
   page,
 }) => {
+  const pageErrors: string[] = []
+  page.on('pageerror', (error) => pageErrors.push(error.message))
   await seedReviewSession(page, reviewWords, 900001)
   await page.goto('/')
   await startTyping(page)
@@ -173,15 +175,6 @@ test('multi-word Review advances through every rendered word and finishes', asyn
   await waitForRenderedWord(page, 'analyse')
 
   await page.keyboard.type('analyse')
-  await page.waitForTimeout(250)
-  console.log(
-    'REVIEW_BROWSER_STATE_AFTER_ANALYSE',
-    JSON.stringify({
-      attempt: await readRenderedAttemptState(page, 'analyse'),
-      reviewInfo: await readReviewModeInfo(page),
-      records: await readReviewWordRecords(page, ['cancel', 'analyse']),
-    }),
-  )
   await waitForReviewIndex(page, 2)
   await waitForRenderedWord(page, 'numerous')
 
@@ -203,6 +196,7 @@ test('multi-word Review advances through every rendered word and finishes', asyn
     'numerous',
   ])
   expect(persisted.every((record) => record.wrongCount === 0)).toBe(true)
+  expect(pageErrors).toEqual([])
 })
 
 test('post-completion extra key cannot become an out-of-range typo on the completed word', async ({

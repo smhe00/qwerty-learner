@@ -133,3 +133,64 @@ export function decideReviewProgress<T extends NamedReviewItem>(input: {
 
   return { kind: 'finish' }
 }
+
+export type ReviewProgressProjection<T extends NamedReviewItem> = {
+  queue: T[]
+  index: number
+  isFinished: boolean
+}
+
+export function projectReviewProgress<T extends NamedReviewItem>(input: {
+  queue: T[]
+  currentIndex: number
+  decision: ReviewProgressDecision<T>
+}): ReviewProgressProjection<T> {
+  const { queue, currentIndex, decision } = input
+
+  if (currentIndex < 0 || currentIndex >= queue.length) {
+    throw new Error('review projection currentIndex out of range')
+  }
+
+  if (decision.kind === 'loop-current') {
+    return {
+      queue,
+      index: currentIndex,
+      isFinished: false,
+    }
+  }
+
+  if (decision.kind === 'finish') {
+    if (currentIndex !== queue.length - 1) {
+      throw new Error('review finish projection requires final queue item')
+    }
+    return {
+      queue,
+      index: currentIndex,
+      isFinished: true,
+    }
+  }
+
+  const nextQueue = [...queue]
+  if (decision.insertWord) {
+    if (
+      decision.insertWord.index <= currentIndex ||
+      decision.insertWord.index > nextQueue.length
+    ) {
+      throw new Error('review reinforcement insertion out of range')
+    }
+    nextQueue.splice(decision.insertWord.index, 0, decision.insertWord.word)
+  }
+
+  if (decision.nextIndex !== currentIndex + 1) {
+    throw new Error('review advance projection must move exactly one item')
+  }
+  if (decision.nextIndex < 0 || decision.nextIndex >= nextQueue.length) {
+    throw new Error('review advance projection nextIndex out of range')
+  }
+
+  return {
+    queue: nextQueue,
+    index: decision.nextIndex,
+    isFinished: false,
+  }
+}

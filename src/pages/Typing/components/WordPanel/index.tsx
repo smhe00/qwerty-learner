@@ -8,7 +8,10 @@ import WordComponent from './components/Word'
 import type { WordFinishResult } from './components/Word'
 import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
 import { materializeReviewExercisePlan } from '@/review/decision'
-import { decideReviewProgress } from '@/review/machine'
+import {
+  decideReviewProgress,
+  projectReviewProgress,
+} from '@/review/machine'
 import {
   MAX_REINFORCEMENT_GAP,
   getAdaptiveReinforcementGap,
@@ -61,57 +64,9 @@ export default function WordPanel() {
     setWordComponentKey((old) => old + 1)
   }, [])
 
-  const updateReviewRecord = useCallback(
-    (state: TypingState) => {
-      const words: Word[] = state.chapterData.words.map((word) => {
-        const persistedWord: Word = {
-          name: word.name,
-          trans: word.trans,
-          usphone: word.usphone,
-          ukphone: word.ukphone,
-        }
-        if (word.notation !== undefined) {
-          persistedWord.notation = word.notation
-        }
-        return persistedWord
-      })
-
-      setReviewModeInfo((old) => ({
-        ...old,
-        reviewRecord: old.reviewRecord ? { ...old.reviewRecord, index: state.chapterData.index, words } : undefined,
-      }))
-    },
-    [setReviewModeInfo],
-  )
-
   const onFinish = useCallback(
     ({ wrongCount, classification, nextExerciseShadow }: WordFinishResult) => {
       if (isReviewMode && currentWord) {
-        if (nextExerciseShadow !== undefined) {
-          setReviewModeInfo((old) => {
-            if (!old.reviewRecord) return old
-
-            const exercisePlans = { ...(old.reviewRecord.exercisePlans ?? {}) }
-            if (nextExerciseShadow) {
-              exercisePlans[currentWord.name] =
-                materializeReviewExercisePlan(nextExerciseShadow)
-            } else {
-              delete exercisePlans[currentWord.name]
-            }
-
-            return {
-              ...old,
-              reviewRecord: {
-                ...old.reviewRecord,
-                exercisePlans:
-                  Object.keys(exercisePlans).length > 0
-                    ? exercisePlans
-                    : undefined,
-              },
-            }
-          })
-        }
-
         const attemptGap =
           wrongCount > 0
             ? getAdaptiveReinforcementGap(wrongCount, classification)
@@ -126,6 +81,55 @@ export default function WordPanel() {
           attemptWrongCount: wrongCount,
           currentReinforcementGap: currentReviewGap,
           attemptReinforcementGap: attemptGap,
+        })
+        const projection = projectReviewProgress({
+          queue: state.chapterData.words,
+          currentIndex: state.chapterData.index,
+          decision,
+        })
+
+        // Persist one atomic Review snapshot outside the Typing reducer.
+        // Reducers stay pure; React/Jotai side effects are not executed during
+        // Immer reducer evaluation.
+        setReviewModeInfo((old) => {
+          if (!old.reviewRecord) return old
+
+          const exercisePlans = { ...(old.reviewRecord.exercisePlans ?? {}) }
+          if (nextExerciseShadow !== undefined) {
+            if (nextExerciseShadow) {
+              exercisePlans[currentWord.name] =
+                materializeReviewExercisePlan(nextExerciseShadow)
+            } else {
+              delete exercisePlans[currentWord.name]
+            }
+          }
+
+          const words: Word[] = projection.queue.map((word) => {
+            const persistedWord: Word = {
+              name: word.name,
+              trans: word.trans,
+              usphone: word.usphone,
+              ukphone: word.ukphone,
+            }
+            if (word.notation !== undefined) {
+              persistedWord.notation = word.notation
+            }
+            return persistedWord
+          })
+
+          return {
+            ...old,
+            reviewRecord: {
+              ...old.reviewRecord,
+              index: projection.index,
+              words,
+              isFinished: projection.isFinished,
+              exercisePlans:
+                Object.keys(exercisePlans).length > 0
+                  ? exercisePlans
+                  : undefined,
+            },
+          }
         })
 
         if (decision.kind === 'loop-current') {
@@ -145,7 +149,6 @@ export default function WordPanel() {
           dispatch({
             type: TypingStateActionType.NEXT_WORD,
             payload: {
-              updateReviewRecord,
               insertWord: decision.insertWord,
             },
           })
@@ -153,12 +156,6 @@ export default function WordPanel() {
         }
 
         dispatch({ type: TypingStateActionType.FINISH_CHAPTER })
-        setReviewModeInfo((old) => ({
-          ...old,
-          reviewRecord: old.reviewRecord
-            ? { ...old.reviewRecord, isFinished: true }
-            : undefined,
-        }))
         return
       }
 
@@ -193,7 +190,6 @@ export default function WordPanel() {
       isReviewMode,
       dispatch,
       reloadCurrentWordComponent,
-      updateReviewRecord,
       setReviewModeInfo,
     ],
   )

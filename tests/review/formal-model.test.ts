@@ -9,6 +9,7 @@ import {
 import {
   decideReviewProgress,
   decideWordInput,
+  projectReviewProgress,
   shouldPlayAutomaticPronunciation,
 } from '../../src/review/machine'
 import {
@@ -456,4 +457,71 @@ test('formal/policy-arbitration: spelling remediation prevents simultaneous audi
   assert.equal(shadow.condition.letters.mode, 'targeted-mask')
   assert.equal(shadow.condition.audio, 'automatic')
   assert.equal(shadow.condition.probeDimension, 'none')
+})
+
+
+test('formal/projection-safety: projected queue and cursor exactly implement every bounded decision', () => {
+  let explored = 0
+
+  for (let queueLength = 1; queueLength <= 5; queueLength += 1) {
+    const queue = Array.from({ length: queueLength }, (_, index) => ({
+      name: 'w' + index,
+    }))
+
+    for (let currentIndex = 0; currentIndex < queueLength; currentIndex += 1) {
+      for (let loopWordTimes = 1; loopWordTimes <= 3; loopWordTimes += 1) {
+        for (
+          let currentExerciseCount = 0;
+          currentExerciseCount < loopWordTimes;
+          currentExerciseCount += 1
+        ) {
+          for (let wrongCount = 0; wrongCount <= 2; wrongCount += 1) {
+            const decision = decideReviewProgress({
+              queue,
+              currentIndex,
+              currentWord: queue[currentIndex],
+              currentExerciseCount,
+              loopWordTimes,
+              priorAccumulatedWrongCount: 0,
+              attemptWrongCount: wrongCount,
+              currentReinforcementGap: MAX_REINFORCEMENT_GAP,
+              attemptReinforcementGap: MIN_REINFORCEMENT_GAP,
+            })
+            const projection = projectReviewProgress({
+              queue,
+              currentIndex,
+              decision,
+            })
+            explored += 1
+
+            if (decision.kind === 'loop-current') {
+              assert.equal(projection.index, currentIndex)
+              assert.equal(projection.queue, queue)
+              assert.equal(projection.isFinished, false)
+            } else if (decision.kind === 'advance') {
+              assert.equal(projection.index, currentIndex + 1)
+              assert.equal(projection.isFinished, false)
+              assert.equal(
+                projection.queue.length,
+                queue.length + (decision.insertWord ? 1 : 0),
+              )
+              assert.equal(
+                projection.queue[projection.index].name,
+                decision.insertWord?.index === projection.index
+                  ? decision.insertWord.word.name
+                  : queue[currentIndex + 1]?.name,
+              )
+            } else {
+              assert.equal(currentIndex, queue.length - 1)
+              assert.equal(projection.index, currentIndex)
+              assert.equal(projection.queue, queue)
+              assert.equal(projection.isFinished, true)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert.ok(explored > 100)
 })

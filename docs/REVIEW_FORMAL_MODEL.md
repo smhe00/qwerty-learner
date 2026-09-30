@@ -208,3 +208,27 @@ explicit same-word loop reload
 
 No time-based debounce is used. Browser progression is the executable
 integration proof for this UI-boundary invariant.
+
+
+## 11. Pure-reducer / atomic-persistence invariant
+
+The browser trace proved that a completed second word could have its raw
+WordRecord persisted while the live queue cursor stayed unchanged. The remaining
+architectural hazard was an external Jotai write executed from inside the
+Typing reducer through `NEXT_WORD.payload.updateReviewRecord`.
+
+That pattern is prohibited.
+
+The production rule is now:
+
+```text
+Review completion
+  -> decideReviewProgress()            pure
+  -> projectReviewProgress()           pure
+  -> one atomic ReviewRecord write     effect boundary
+  -> pure Typing reducer command
+```
+
+The reducer no longer calls external persistence callbacks. The formal checker
+exhaustively verifies that the projected persistent queue/index matches each
+bounded transition decision.
