@@ -10,6 +10,7 @@ import { calcChapterCount } from '@/utils'
 import * as Progress from '@radix-ui/react-progress'
 import { useAtomValue } from 'jotai'
 import { useMemo, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 interface Props {
   dictionary: Dictionary
@@ -17,6 +18,7 @@ interface Props {
 
 export default function DictionaryComponent({ dictionary }: Props) {
   const currentDictID = useAtomValue(currentDictIdAtom)
+  const [searchParams] = useSearchParams()
 
   const divRef = useRef<HTMLDivElement>(null)
   const entry = useIntersectionObserver(divRef, {})
@@ -24,13 +26,14 @@ export default function DictionaryComponent({ dictionary }: Props) {
   const dictStats = useDictStats(dictionary.id, isVisible)
   const chapterCount = useMemo(() => calcChapterCount(dictionary.length), [dictionary.length])
   const isSelected = currentDictID === dictionary.id
+  const isReviewShortcut = isSelected && searchParams.get('review') === '1'
   const progress = useMemo(
     () => (dictStats ? Math.ceil((dictStats.exercisedChapterCount / chapterCount) * 100) : 0),
     [dictStats, chapterCount],
   )
 
   return (
-    <Dialog>
+    <Dialog defaultOpen={isReviewShortcut}>
       <DialogTrigger asChild>
         <div
           ref={divRef}

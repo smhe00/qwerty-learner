@@ -5,11 +5,13 @@ import { autoUpdate, offset, useFloating, useHover, useInteractions } from '@flo
 import { useAtomValue } from 'jotai'
 import { useCallback, useContext, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { useNavigate } from 'react-router-dom'
 
 export default function StartButton({ isLoading }: { isLoading: boolean }) {
   // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
   const { state, dispatch } = useContext(TypingContext)!
   const randomConfig = useAtomValue(randomConfigAtom)
+  const navigate = useNavigate()
 
   const onToggleIsTyping = useCallback(() => {
     !isLoading && dispatch({ type: TypingStateActionType.TOGGLE_IS_TYPING })
@@ -18,6 +20,10 @@ export default function StartButton({ isLoading }: { isLoading: boolean }) {
   const onClickRestart = useCallback(() => {
     dispatch({ type: TypingStateActionType.REPEAT_CHAPTER, shouldShuffle: randomConfig.isOpen })
   }, [dispatch, randomConfig.isOpen])
+
+  const onClickReview = useCallback(() => {
+    navigate('/gallery?review=1')
+  }, [navigate])
 
   useHotkeys('enter', onToggleIsTyping, { enableOnFormTags: true, preventDefault: true }, [onToggleIsTyping])
 
@@ -41,7 +47,7 @@ export default function StartButton({ isLoading }: { isLoading: boolean }) {
             ? 'bg-gray-400 shadow-gray-200 dark:bg-gray-600  dark:shadow-none'
             : 'bg-indigo-500 shadow-indigo-300 dark:shadow-indigo-500/60'
         } ${
-          isShowReStartButton ? 'h-20' : 'h-auto'
+          isShowReStartButton ? 'h-28' : 'h-auto'
         } flex-column absolute left-0 top-0 w-20 rounded-lg shadow-lg transition-colors duration-200`}
       >
         <button
@@ -55,7 +61,7 @@ export default function StartButton({ isLoading }: { isLoading: boolean }) {
           <span className="font-medium">{state.isTyping ? 'Pause' : 'Start'}</span>
         </button>
         {isShowReStartButton && (
-          <div className="absolute bottom-0 flex w-20 justify-center" ref={refs.setFloating} {...getFloatingProps()}>
+          <div className="absolute bottom-0 flex w-20 flex-col items-center justify-center" ref={refs.setFloating} {...getFloatingProps()}>
             <button
               className={`${
                 state.isTyping ? 'bg-gray-500 dark:bg-gray-700 dark:hover:bg-gray-500 ' : 'bg-indigo-400 '
@@ -65,6 +71,16 @@ export default function StartButton({ isLoading }: { isLoading: boolean }) {
               aria-label={'重新开始'}
             >
               Restart
+            </button>
+            <button
+              className={`${
+                state.isTyping ? 'bg-gray-500 dark:bg-gray-700 dark:hover:bg-gray-500 ' : 'bg-indigo-400 '
+              } my-btn-primary mb-1 w-18 transition-colors duration-200`}
+              type="button"
+              onClick={onClickReview}
+              aria-label={'复习错词'}
+            >
+              Review
             </button>
           </div>
         )}
