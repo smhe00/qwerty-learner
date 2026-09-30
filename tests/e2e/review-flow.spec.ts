@@ -233,7 +233,8 @@ async function seedReviewAdmissionCase(
 
   await page.goto('/gallery')
   await page.getByText('CET-4', { exact: true }).first().click()
-  await page.getByRole('button', { name: '错题回顾' }).click()
+  await expect(page.getByText('章节选择', { exact: true })).toBeVisible()
+  await page.getByText('错题回顾', { exact: true }).click()
   await expect(page.getByText('当前词典错词数: 1')).toBeVisible()
 }
 
