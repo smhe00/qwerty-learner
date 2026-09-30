@@ -667,6 +667,7 @@ export default function WordComponent({
           data-tip="按 Tab 快捷键显示完整单词"
         >
           <div
+            data-typing-word={word.name}
             onMouseEnter={() => handleHoverWord(true)}
             onMouseLeave={() => handleHoverWord(false)}
             className={`flex items-center ${isTextSelectable && 'select-all'} justify-center ${wordState.hasWrong ? style.wrong : ''}`}
