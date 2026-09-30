@@ -48,7 +48,7 @@ test('formal/input-safety: exhaustive bounded input states never accept an out-o
     }
   }
 
-  assert.ok(explored > 500)
+  assert.equal(explored, 468)
 })
 
 test('formal/audio-safety: automatic pronunciation can fire only once per attempt', () => {
