@@ -534,3 +534,8 @@ Production verification attempt 1 exposed test/deployment sequencing issues rath
 ### Final production Gate isolation
 
 Live integration authentication traffic is kept below the configured limiter threshold. Deliberate 429 testing remains isolated in the dedicated Auth Rate Limit Gate, preventing one acceptance Gate from invalidating another Gate's assumptions.
+
+
+### Final RC gate alignment
+
+The final RC marker touches all three production acceptance probe paths so Live / Browser / Auth Rate Limit automatically execute on the exact same promoted SHA. This is test/release metadata only; runtime code is unchanged.

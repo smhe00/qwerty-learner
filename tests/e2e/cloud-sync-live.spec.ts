@@ -8,6 +8,7 @@ if (!liveUrl) throw new Error('QWERTY_SYNC_BASE_URL is required')
 if (!username) throw new Error('QWERTY_E2E_USERNAME is required')
 if (!password) throw new Error('QWERTY_E2E_PASSWORD is required')
 
+// Release acceptance waits for the release-specific backend capability so browser assertions never race EdgeOne deployment.
 async function waitForProductionCapability(page: Page) {
   const deadline = Date.now() + 180_000
 
