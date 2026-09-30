@@ -10,6 +10,7 @@ import {
   materializeReviewExercisePlan,
 } from '../../src/review/decision'
 import { classifyTypingError } from '../../src/review/classifier'
+import { selectReviewCandidates } from '../../src/review/due'
 import { evaluateReviewEvidence } from '../../src/review/evidence'
 import {
   chooseAudioWithdrawalShadow,
@@ -25,7 +26,9 @@ import {
   shouldPlayAutomaticPronunciation,
 } from '../../src/review/machine'
 import {
+  hasUnreviewedLearningFailure,
   inferReviewOutcomeFromWordRecord,
+  reactivateReviewStateFromLearningEvidence,
   rebuildBasicStateFromWordRecords,
 } from '../../src/review/rebuild'
 import { buildOrthographyProfile } from '../../src/review/profile'
@@ -34,7 +37,10 @@ import {
   getWordComponentInstanceKey,
 } from '../../src/review/session'
 import { reviewOutcomeForAttempt } from '../../src/review/scheduler'
-import { CURRENT_REVIEW_STATE_VERSION } from '../../src/review/types'
+import {
+  CURRENT_REVIEW_STATE_VERSION,
+  createInitialReviewWordState,
+} from '../../src/review/types'
 import type { IWordRecord } from '../../src/utils/db/record'
 
 test('captures all-visible and all-hidden baseline conditions', () => {
@@ -1427,4 +1433,124 @@ test('out-of-range typo positions are excluded from orthography evidence', () =>
     telemetry: record.typingTelemetry,
   })
   assert.equal(classification.cause, 'clean')
+})
+
+
+test('fresh ordinary-learning failure after Review reactivates due-now without changing scheduler history', () => {
+  const reviewed = createInitialReviewWordState('cet4', 'again', 100)
+  reviewed.lastReviewedAt = 200
+  reviewed.nextReviewAt = 200 + 24 * 60 * 60
+  reviewed.reviewCount = 1
+  reviewed.cleanStreak = 1
+  reviewed.lastOutcome = 'good'
+  reviewed.schedulerState = {
+    kind: 'basic-v1',
+    stage: 0,
+    intervalDays: 1,
+  }
+
+  const records: IWordRecord[] = [
+    {
+      id: 1,
+      word: 'again',
+      timeStamp: 200,
+      dict: 'cet4',
+      chapter: -1,
+      timing: [],
+      wrongCount: 0,
+      mistakes: {},
+    },
+    {
+      id: 2,
+      word: 'again',
+      timeStamp: 300,
+      dict: 'cet4',
+      chapter: 5,
+      timing: [],
+      wrongCount: 2,
+      mistakes: { 1: ['x'] },
+    },
+  ]
+
+  assert.equal(hasUnreviewedLearningFailure(records), true)
+
+  const reactivated = reactivateReviewStateFromLearningEvidence(
+    reviewed,
+    records,
+    400,
+  )
+
+  assert.equal(reactivated.nextReviewAt, 400)
+  assert.equal(reactivated.reviewCount, 1)
+  assert.equal(reactivated.cleanStreak, 1)
+  assert.equal(reactivated.lastReviewedAt, 200)
+  assert.deepEqual(reactivated.schedulerState, reviewed.schedulerState)
+})
+
+test('learning failure before latest Review does not reactivate a future state', () => {
+  const state = createInitialReviewWordState('cet4', 'covered', 100)
+  state.lastReviewedAt = 300
+  state.nextReviewAt = 10_000
+  state.reviewCount = 1
+
+  const records: IWordRecord[] = [
+    {
+      id: 1,
+      word: 'covered',
+      timeStamp: 200,
+      dict: 'cet4',
+      chapter: 5,
+      timing: [],
+      wrongCount: 1,
+      mistakes: { 1: ['x'] },
+    },
+    {
+      id: 2,
+      word: 'covered',
+      timeStamp: 300,
+      dict: 'cet4',
+      chapter: -1,
+      timing: [],
+      wrongCount: 0,
+      mistakes: {},
+    },
+  ]
+
+  assert.equal(hasUnreviewedLearningFailure(records), false)
+  assert.equal(
+    reactivateReviewStateFromLearningEvidence(state, records, 400),
+    state,
+  )
+})
+
+test('force Review selects all current error candidates while due mode selects only due candidates', () => {
+  const now = 1_000
+  const candidates = [
+    { word: 'due' },
+    { word: 'future' },
+    { word: 'missing' },
+  ]
+  const dueState = createInitialReviewWordState('cet4', 'due', 1)
+  dueState.nextReviewAt = 900
+  const futureState = createInitialReviewWordState('cet4', 'future', 1)
+  futureState.nextReviewAt = 2_000
+
+  assert.deepEqual(
+    selectReviewCandidates(
+      candidates,
+      [dueState, futureState],
+      now,
+      'due',
+    ).map((candidate) => candidate.word),
+    ['due'],
+  )
+  assert.deepEqual(
+    selectReviewCandidates(
+      candidates,
+      [dueState, futureState],
+      now,
+      'force',
+    ).map((candidate) => candidate.word),
+    ['due', 'future', 'missing'],
+  )
 })

@@ -161,6 +161,82 @@ async function readReviewWordRecords(
   }, words)
 }
 
+async function seedReviewAdmissionCase(
+  page: import('@playwright/test').Page,
+  options: { freshLearningAfterReview: boolean },
+) {
+  await page.goto('/')
+
+  await page.evaluate(async ({ freshLearningAfterReview }) => {
+    const now = Math.floor(Date.now() / 1000)
+    const reviewTime = now - 120
+    const learningTime = freshLearningAfterReview
+      ? now - 60
+      : now - 180
+
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction(
+          ['wordRecords', 'reviewWordStates', 'reviewRecords'],
+          'readwrite',
+        )
+
+        tx.objectStore('wordRecords').add({
+          word: 'cancel',
+          timeStamp: learningTime,
+          dict: 'cet4',
+          chapter: 0,
+          timing: [],
+          wrongCount: 1,
+          mistakes: { 0: ['x'] },
+        })
+        tx.objectStore('wordRecords').add({
+          word: 'cancel',
+          timeStamp: reviewTime,
+          dict: 'cet4',
+          chapter: -1,
+          timing: [],
+          wrongCount: 0,
+          mistakes: {},
+        })
+        tx.objectStore('reviewWordStates').put({
+          dict: 'cet4',
+          word: 'cancel',
+          createdAt: reviewTime,
+          updatedAt: reviewTime,
+          lastReviewedAt: reviewTime,
+          nextReviewAt: now + 86_400,
+          reviewCount: 1,
+          lapseCount: 0,
+          cleanStreak: 1,
+          lastOutcome: 'good',
+          stateVersion: 4,
+          schedulerState: {
+            kind: 'basic-v1',
+            stage: 0,
+            intervalDays: 1,
+          },
+        })
+
+        tx.oncomplete = () => {
+          db.close()
+          resolve()
+        }
+        tx.onerror = () => reject(tx.error)
+        tx.onabort = () => reject(tx.error)
+      }
+    })
+  }, options)
+
+  await page.goto('/gallery')
+  await page.getByText('CET-4', { exact: true }).first().click()
+  await page.getByRole('button', { name: '错题回顾' }).click()
+  await expect(page.getByText('当前词典错词数: 1')).toBeVisible()
+}
+
 test('multi-word Review advances through every rendered word and finishes', async ({
   page,
 }) => {
@@ -228,4 +304,59 @@ test('post-completion extra key cannot become an out-of-range typo on the comple
       (attempt) => attempt.wrongIndex === 6,
     ),
   ).toBe(false)
+})
+
+
+test('fresh ordinary-learning failure reopens a previously reviewed word immediately', async ({
+  page,
+}) => {
+  await seedReviewAdmissionCase(page, {
+    freshLearningAfterReview: true,
+  })
+
+  await page.getByRole('button', { name: '开始复习' }).click()
+
+  await expect(page).toHaveURL(/\/$/)
+  await expect
+    .poll(async () => {
+      const info = await readReviewModeInfo(page)
+      return {
+        enabled: info?.isReviewMode,
+        words: info?.reviewRecord?.words?.map(
+          (word: { name: string }) => word.name,
+        ),
+      }
+    })
+    .toEqual({
+      enabled: true,
+      words: ['cancel'],
+    })
+})
+
+test('no-due screen offers Force Review and force bypasses only the time gate', async ({
+  page,
+}) => {
+  await seedReviewAdmissionCase(page, {
+    freshLearningAfterReview: false,
+  })
+
+  await page.getByRole('button', { name: '开始复习' }).click()
+
+  await expect(
+    page.getByText(
+      '当前没有到期需要复习的错词。你可以等待调度时间，或强制复习当前错词。',
+    ),
+  ).toBeVisible()
+
+  await page.getByRole('button', { name: '强制开始复习' }).click()
+
+  await expect(page).toHaveURL(/\/$/)
+  await expect
+    .poll(async () => {
+      const info = await readReviewModeInfo(page)
+      return info?.reviewRecord?.words?.map(
+        (word: { name: string }) => word.name,
+      )
+    })
+    .toEqual(['cancel'])
 })

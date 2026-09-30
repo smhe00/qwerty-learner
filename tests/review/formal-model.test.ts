@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createBaselineExerciseCondition } from '../../src/review/condition'
+import { selectReviewCandidates } from '../../src/review/due'
 import {
   chooseAudioWithdrawalShadow,
   chooseNextExerciseShadow,
@@ -17,6 +18,11 @@ import {
   MIN_REINFORCEMENT_GAP,
 } from '../../src/review/session'
 import type { OrthographyProfile } from '../../src/review/profile'
+import {
+  hasUnreviewedLearningFailure,
+  reactivateReviewStateFromLearningEvidence,
+} from '../../src/review/rebuild'
+import { createInitialReviewWordState } from '../../src/review/types'
 import type { IWordRecord } from '../../src/utils/db/record'
 
 test('formal/input-safety: exhaustive bounded input states never accept an out-of-range index', () => {
@@ -524,4 +530,99 @@ test('formal/projection-safety: projected queue and cursor exactly implement eve
   }
 
   assert.ok(explored > 100)
+})
+
+
+test('formal/admission-safety: due is a subset and force is the complete error set', () => {
+  const now = 100
+  const candidates = [
+    { word: 'w0' },
+    { word: 'w1' },
+    { word: 'w2' },
+  ]
+
+  for (let mask = 0; mask < 8; mask += 1) {
+    const states = candidates.map((candidate, index) => {
+      const state = createInitialReviewWordState('cet4', candidate.word, 1)
+      state.nextReviewAt =
+        (mask & (1 << index)) !== 0 ? now : now + 1
+      return state
+    })
+
+    const due = selectReviewCandidates(candidates, states, now, 'due')
+    const forced = selectReviewCandidates(
+      candidates,
+      states,
+      now,
+      'force',
+    )
+
+    assert.deepEqual(
+      due.map((candidate) => candidate.word),
+      candidates
+        .filter((_, index) => (mask & (1 << index)) !== 0)
+        .map((candidate) => candidate.word),
+    )
+    assert.deepEqual(forced, candidates)
+    assert.ok(due.every((candidate) => forced.includes(candidate)))
+  }
+})
+
+test('formal/learning-reactivation: only fresh learning after latest Review pulls a future state due-now', () => {
+  const now = 1_000
+  const cases = [
+    { learningTime: 100, learningId: 1, reviewTime: 200, reviewId: 2, expected: false },
+    { learningTime: 300, learningId: 2, reviewTime: 200, reviewId: 1, expected: true },
+    { learningTime: 200, learningId: 1, reviewTime: 200, reviewId: 2, expected: false },
+    { learningTime: 200, learningId: 2, reviewTime: 200, reviewId: 1, expected: true },
+  ]
+
+  for (const item of cases) {
+    const records: IWordRecord[] = [
+      {
+        id: item.learningId,
+        word: 'reactivate',
+        timeStamp: item.learningTime,
+        dict: 'cet4',
+        chapter: 1,
+        timing: [],
+        wrongCount: 1,
+        mistakes: { 0: ['x'] },
+      },
+      {
+        id: item.reviewId,
+        word: 'reactivate',
+        timeStamp: item.reviewTime,
+        dict: 'cet4',
+        chapter: -1,
+        timing: [],
+        wrongCount: 0,
+        mistakes: {},
+      },
+    ]
+    const state = createInitialReviewWordState('cet4', 'reactivate', 1)
+    state.reviewCount = 3
+    state.lastReviewedAt = item.reviewTime
+    state.nextReviewAt = now + 10_000
+    state.schedulerState = {
+      kind: 'basic-v1',
+      stage: 2,
+      intervalDays: 7,
+    }
+
+    assert.equal(hasUnreviewedLearningFailure(records), item.expected)
+
+    const refreshed = reactivateReviewStateFromLearningEvidence(
+      state,
+      records,
+      now,
+    )
+
+    assert.equal(
+      refreshed.nextReviewAt,
+      item.expected ? now : state.nextReviewAt,
+    )
+    assert.equal(refreshed.reviewCount, state.reviewCount)
+    assert.deepEqual(refreshed.schedulerState, state.schedulerState)
+  }
 })

@@ -8,6 +8,8 @@ on:
       - 'src/review/**'
       - 'src/utils/db/record.ts'
       - 'src/utils/db/index.ts'
+      - 'src/utils/db/review-record.ts'
+      - 'src/pages/Gallery-N/ReviewDetail/**'
       - 'src/pages/Typing/components/WordPanel/**'
       - 'src/store/reviewInfoAtom.ts'
       - 'tests/e2e/review.spec.ts'
@@ -44,6 +46,8 @@ jobs:
           src/review
           src/utils/db/record.ts
           src/utils/db/index.ts
+          src/utils/db/review-record.ts
+          src/pages/Gallery-N/ReviewDetail
           src/pages/Typing/components/WordPanel
           --ext .ts,.tsx
 
