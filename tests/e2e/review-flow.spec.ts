@@ -99,6 +99,24 @@ async function waitForRenderedWord(
   await expect(page.locator(`[data-typing-word="${word}"]`)).toBeVisible()
 }
 
+
+async function readRenderedAttemptState(
+  page: import('@playwright/test').Page,
+  word: string,
+) {
+  const locator = page.locator(`[data-typing-word="${word}"]`)
+  return {
+    word,
+    input: await locator.getAttribute('data-typing-input'),
+    acceptedLength: await locator.getAttribute('data-typing-accepted-length'),
+    targetLength: await locator.getAttribute('data-typing-target-length'),
+    locked: await locator.getAttribute('data-typing-locked'),
+    hasWrong: await locator.getAttribute('data-typing-has-wrong'),
+    finished: await locator.getAttribute('data-typing-finished'),
+    active: await locator.getAttribute('data-typing-active'),
+  }
+}
+
 async function startTyping(page: import('@playwright/test').Page) {
   await expect(page.getByText('按任意键开始')).toBeVisible()
   // The first legal key starts Typing and is intentionally not part of the word.
@@ -155,6 +173,15 @@ test('multi-word Review advances through every rendered word and finishes', asyn
   await waitForRenderedWord(page, 'analyse')
 
   await page.keyboard.type('analyse')
+  await page.waitForTimeout(250)
+  console.log(
+    'REVIEW_BROWSER_STATE_AFTER_ANALYSE',
+    JSON.stringify({
+      attempt: await readRenderedAttemptState(page, 'analyse'),
+      reviewInfo: await readReviewModeInfo(page),
+      records: await readReviewWordRecords(page, ['cancel', 'analyse']),
+    }),
+  )
   await waitForReviewIndex(page, 2)
   await waitForRenderedWord(page, 'numerous')
 

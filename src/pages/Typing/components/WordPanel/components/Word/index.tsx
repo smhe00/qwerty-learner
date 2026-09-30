@@ -668,6 +668,13 @@ export default function WordComponent({
         >
           <div
             data-typing-word={word.name}
+            data-typing-input={wordState.inputWord}
+            data-typing-accepted-length={acceptedInputLengthRef.current}
+            data-typing-target-length={targetLengthRef.current}
+            data-typing-locked={inputLockedRef.current ? 'true' : 'false'}
+            data-typing-has-wrong={wordState.hasWrong ? 'true' : 'false'}
+            data-typing-finished={wordState.isFinished ? 'true' : 'false'}
+            data-typing-active={state.isTyping ? 'true' : 'false'}
             onMouseEnter={() => handleHoverWord(true)}
             onMouseLeave={() => handleHoverWord(false)}
             className={`flex items-center ${isTextSelectable && 'select-all'} justify-center ${wordState.hasWrong ? style.wrong : ''}`}
