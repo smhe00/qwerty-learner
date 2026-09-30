@@ -11,3 +11,19 @@ export function filterDueReviewCandidates<T extends DueReviewCandidate>(
   const dueWords = new Set(dueStates.map((state) => state.word))
   return candidates.filter((candidate) => dueWords.has(candidate.word))
 }
+
+export type ReviewSelectionMode = 'due' | 'force'
+
+export function selectReviewCandidates<T extends DueReviewCandidate>(
+  candidates: T[],
+  states: IReviewWordState[],
+  now: number,
+  mode: ReviewSelectionMode = 'due',
+): T[] {
+  if (mode === 'force') return [...candidates]
+
+  const dueWords = new Set(
+    states.filter((state) => state.nextReviewAt <= now).map((state) => state.word),
+  )
+  return candidates.filter((candidate) => dueWords.has(candidate.word))
+}

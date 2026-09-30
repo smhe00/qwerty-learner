@@ -6,6 +6,7 @@ import { timeStamp2String } from '@/utils'
 import { generateNewWordReviewRecord, useGetLatestReviewRecord } from '@/utils/db/review-record'
 import * as Progress from '@radix-ui/react-progress'
 import { useSetAtom } from 'jotai'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MdiRobotAngry from '~icons/mdi/robot-angry'
 
@@ -15,18 +16,32 @@ export function ReviewDetail({ errorData, dict }: { errorData: TErrorWordData[];
   const setCurrentDictId = useSetAtom(currentDictIdAtom)
   const navigate = useNavigate()
   const setCurrentChapter = useSetAtom(currentChapterAtom)
+  const [showForceReview, setShowForceReview] = useState(false)
+  const [isStarting, setIsStarting] = useState(false)
 
-  const startReview = async () => {
-    const record = await generateNewWordReviewRecord(dict.id, errorData)
-    if (!record) {
-      alert('当前没有到期需要复习的错词')
-      return
-    }
-
+  const enterReview = (
+    record: NonNullable<Awaited<ReturnType<typeof generateNewWordReviewRecord>>>,
+  ) => {
     setCurrentDictId(dict.id)
     setCurrentChapter(-1)
     setReviewModeInfo({ isReviewMode: true, reviewRecord: record })
     navigate('/')
+  }
+
+  const startReview = async (mode: 'due' | 'force' = 'due') => {
+    if (isStarting) return
+    setIsStarting(true)
+    try {
+      const record = await generateNewWordReviewRecord(dict.id, errorData, { mode })
+      if (!record) {
+        setShowForceReview(mode === 'due' && errorData.length > 0)
+        return
+      }
+      setShowForceReview(false)
+      enterReview(record)
+    } finally {
+      setIsStarting(false)
+    }
   }
 
   const continueReview = () => {
@@ -73,13 +88,33 @@ export function ReviewDetail({ errorData, dict }: { errorData: TErrorWordData[];
 
         {!latestReviewRecord && <div>当前词典错词数: {errorData.length}</div>}
 
+        {showForceReview && (
+          <div className="mt-4 flex flex-col items-center gap-3 text-sm text-gray-500">
+            <div role="status">
+              当前没有到期需要复习的错词。你可以等待调度时间，或强制复习当前错词。
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isStarting}
+              onClick={() => void startReview('force')}
+            >
+              强制开始复习
+            </Button>
+          </div>
+        )}
+
         <div className="mt-6 flex gap-10">
           {latestReviewRecord && (
             <Button size="sm" onClick={continueReview}>
               继续当前进度
             </Button>
           )}
-          <Button size="sm" onClick={startReview}>
+          <Button
+            size="sm"
+            disabled={isStarting}
+            onClick={() => void startReview('due')}
+          >
             开始{latestReviewRecord && '新的'}复习
           </Button>
         </div>

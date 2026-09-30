@@ -7,6 +7,47 @@ import { createInitialReviewWordState } from './types'
 import type { IReviewWordState, ReviewOutcome } from './types'
 import type { IWordRecord } from '@/utils/db/record'
 
+function compareRecordOrder(left: IWordRecord, right: IWordRecord): number {
+  const timeDiff = left.timeStamp - right.timeStamp
+  if (timeDiff !== 0) return timeDiff
+  return (left.id ?? 0) - (right.id ?? 0)
+}
+
+export function hasUnreviewedLearningFailure(records: IWordRecord[]): boolean {
+  let latestLearningFailure: IWordRecord | undefined
+  let latestReview: IWordRecord | undefined
+
+  for (const record of records) {
+    if (record.chapter === -1) {
+      if (!latestReview || compareRecordOrder(record, latestReview) > 0) latestReview = record
+      continue
+    }
+    if (record.wrongCount <= 0) continue
+    if (!latestLearningFailure || compareRecordOrder(record, latestLearningFailure) > 0) {
+      latestLearningFailure = record
+    }
+  }
+
+  if (!latestLearningFailure) return false
+  if (!latestReview) return true
+  return compareRecordOrder(latestLearningFailure, latestReview) > 0
+}
+
+export function reactivateReviewStateFromLearningEvidence(
+  state: IReviewWordState,
+  records: IWordRecord[],
+  now: number,
+): IReviewWordState {
+  if (!hasUnreviewedLearningFailure(records)) return state
+  if (state.nextReviewAt <= now) return state
+
+  return {
+    ...state,
+    nextReviewAt: now,
+    updatedAt: Math.max(state.updatedAt, now),
+  }
+}
+
 export function inferReviewOutcomeFromWordRecord(
   record: IWordRecord,
   priorRecords: IWordRecord[],
@@ -68,9 +109,15 @@ export function rebuildBasicStateFromWordRecords(
   }
 
   if (state && options?.legacyDueAt !== undefined) {
-    if (replayedReviewCount === 0 && firstLearningFailure) {
-      // Initial learning failure means "eligible for first Review now", not
-      // "a Review already happened". Keep reviewCount/stage at zero.
+    if (hasUnreviewedLearningFailure(sortedRecords)) {
+      // A fresh ordinary-learning failure re-opens Review immediately without
+      // fabricating a Review event or mutating long-term scheduler history.
+      state = {
+        ...state,
+        nextReviewAt: options.legacyDueAt,
+        updatedAt: options.legacyDueAt,
+      }
+    } else if (replayedReviewCount === 0 && firstLearningFailure) {
       state = {
         ...state,
         nextReviewAt: options.legacyDueAt,

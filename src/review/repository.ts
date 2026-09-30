@@ -1,4 +1,7 @@
-import { rebuildBasicStateFromWordRecords } from './rebuild'
+import {
+  reactivateReviewStateFromLearningEvidence,
+  rebuildBasicStateFromWordRecords,
+} from './rebuild'
 import { scheduleBasicReview } from './scheduler'
 import { CURRENT_REVIEW_STATE_VERSION, createInitialReviewWordState } from './types'
 import type { IReviewWordState, ReviewOutcome } from './types'
@@ -16,6 +19,10 @@ export async function upsertReviewWordState(state: IReviewWordState): Promise<nu
       id: existing?.id ?? state.id,
     })
   })
+}
+
+export async function getReviewWordStates(dict: string): Promise<IReviewWordState[]> {
+  return db.reviewWordStates.where('dict').equals(dict).toArray()
 }
 
 export async function getDueReviewWordStates(dict: string, now: number): Promise<IReviewWordState[]> {
@@ -82,38 +89,50 @@ export async function bootstrapReviewWordStatesForDictionary(
       db.reviewWordStates.where('dict').equals(dict).toArray(),
     ])
 
-    const hasStaleState = existingStates.some((state) => state.stateVersion !== CURRENT_REVIEW_STATE_VERSION)
+    const hasStaleState = existingStates.some(
+      (state) => state.stateVersion !== CURRENT_REVIEW_STATE_VERSION,
+    )
     if (hasStaleState) {
       await db.reviewWordStates.where('dict').equals(dict).delete()
     }
 
-    const existingWords = hasStaleState ? new Set<string>() : new Set(existingStates.map((state) => state.word))
+    const existingByWord = hasStaleState
+      ? new Map<string, IReviewWordState>()
+      : new Map(existingStates.map((state) => [state.word, state]))
     const recordsByWord = new Map<string, typeof records>()
 
     for (const record of records) {
-      if (existingWords.has(record.word)) continue
       const group = recordsByWord.get(record.word)
-      if (group) {
-        group.push(record)
-      } else {
-        recordsByWord.set(record.word, [record])
-      }
+      if (group) group.push(record)
+      else recordsByWord.set(record.word, [record])
     }
 
-    let createdCount = 0
-
+    let changedCount = 0
     for (const [word, wordRecords] of recordsByWord) {
-      const state = rebuildBasicStateFromWordRecords(dict, word, wordRecords, { legacyDueAt })
+      const existing = existingByWord.get(word)
+      if (existing) {
+        const refreshed = reactivateReviewStateFromLearningEvidence(
+          existing,
+          wordRecords,
+          legacyDueAt,
+        )
+        if (refreshed !== existing) {
+          await db.reviewWordStates.put({ ...refreshed, id: existing.id })
+          changedCount += 1
+        }
+        continue
+      }
+
+      const state = rebuildBasicStateFromWordRecords(dict, word, wordRecords, {
+        legacyDueAt,
+      })
       if (!state) continue
-
       await db.reviewWordStates.put(state)
-      createdCount += 1
+      changedCount += 1
     }
-
-    return createdCount
+    return changedCount
   })
 }
-
 
 export async function rebuildReviewWordStatesForDictionary(
   dict: string,
