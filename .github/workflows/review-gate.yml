@@ -64,11 +64,8 @@ jobs:
       - name: Run Review formal model checker
         run: node --test .review-test/formal-model.test.mjs
 
-      - name: Install Chromium for Review browser gate
-        run: npx playwright install --with-deps chromium
-
       - name: Run multi-word Review browser gate
-        run: npx playwright test --config=tests/e2e/review-flow.config.ts
+        run: npx playwright test --config=tests/e2e/review-flow.config.ts --project=chrome
 
       - name: Build Qwerty
         run: yarn build
