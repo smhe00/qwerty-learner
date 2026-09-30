@@ -1,38 +1,51 @@
 <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="34" y1="24" x2="168" y2="178" gradientUnits="userSpaceOnUse">
+    <linearGradient id="keycap" x1="40" y1="28" x2="160" y2="174" gradientUnits="userSpaceOnUse">
       <stop stop-color="#FFFFFF"/>
-      <stop offset="1" stop-color="#F1F5F9"/>
+      <stop offset="0.72" stop-color="#F8FAFC"/>
+      <stop offset="1" stop-color="#EEF3F8"/>
     </linearGradient>
-    <linearGradient id="cloud" x1="76" y1="88" x2="120" y2="120" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#A9CCF7"/>
-      <stop offset="1" stop-color="#6FA7E8"/>
+
+    <linearGradient id="cloud" x1="76" y1="92" x2="124" y2="128" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9FCBFF"/>
+      <stop offset="1" stop-color="#5797E8"/>
     </linearGradient>
-    <linearGradient id="arrow" x1="126" y1="55" x2="157" y2="101" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#E8B65A"/>
-      <stop offset="1" stop-color="#D6942A"/>
+
+    <linearGradient id="review" x1="133" y1="55" x2="162" y2="99" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFC85D"/>
+      <stop offset="1" stop-color="#F0A11C"/>
     </linearGradient>
-    <filter id="shadow" x="12" y="12" width="176" height="180" filterUnits="userSpaceOnUse">
-      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#64748B" flood-opacity="0.16"/>
+
+    <filter id="keyShadow" x="6" y="6" width="188" height="192" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#7C93AD" flood-opacity="0.18"/>
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#FFFFFF" flood-opacity="0.9"/>
+    </filter>
+
+    <filter id="softInner" x="24" y="18" width="152" height="164" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="0.35"/>
     </filter>
   </defs>
 
-  <g filter="url(#shadow)">
-    <rect x="26" y="22" width="148" height="152" rx="34" fill="url(#bg)"/>
-    <rect x="26.5" y="22.5" width="147" height="151" rx="33.5" stroke="#E2E8F0"/>
+  <!-- soft keycap, tuned for the site's light UI -->
+  <g filter="url(#keyShadow)">
+    <rect x="24" y="18" width="152" height="156" rx="34" fill="url(#keycap)"/>
+    <rect x="24.75" y="18.75" width="150.5" height="154.5" rx="33.25" stroke="#E5EAF0" stroke-width="1.5"/>
   </g>
 
-  <!-- Q: visual inheritance from Qwerty while clearly a new mark -->
-  <circle cx="91" cy="96" r="48" stroke="#334155" stroke-width="16" stroke-linecap="round"/>
-  <path d="M121 126L151 156" stroke="#334155" stroke-width="16" stroke-linecap="round"/>
+  <!-- Q: heavier, smoother and optically centered -->
+  <circle cx="91" cy="96" r="48" stroke="#334155" stroke-width="17" stroke-linecap="round"/>
+  <path d="M121.5 127L150.5 156" stroke="#334155" stroke-width="17" stroke-linecap="round"/>
 
-  <!-- cloud sync -->
-  <path d="M70 111.5C70 102.94 76.94 96 85.5 96C87.25 96 88.93 96.29 90.5 96.83C94.1 88.13 102.68 82 112.7 82C125.96 82 136.7 92.74 136.7 106C136.7 107.03 136.64 108.05 136.51 109.04C142.07 110.81 146.1 116.02 146.1 122.17C146.1 129.76 139.96 135.9 132.37 135.9H86.2C77.25 135.9 70 128.65 70 119.7V111.5Z" fill="url(#cloud)"/>
+  <!-- cloud, simplified for small-size legibility -->
+  <g>
+    <circle cx="88" cy="110" r="15" fill="url(#cloud)"/>
+    <circle cx="105" cy="100" r="20" fill="url(#cloud)"/>
+    <circle cx="123" cy="111" r="14" fill="url(#cloud)"/>
+    <rect x="75" y="108" width="62" height="23" rx="11.5" fill="url(#cloud)"/>
+  </g>
 
-  <!-- adaptive review loop -->
-  <path d="M126 66C139 59 153 61 162 69C168 74 172 82 172 90" stroke="url(#arrow)" stroke-width="10" stroke-linecap="round"/>
-  <path d="M165 58L176 83L149 80L165 58Z" fill="#D89A33"/>
-
-  <!-- small star: enhanced edition cue -->
-  <path d="M157 38C158.9 45.5 162.5 49.1 170 51C162.5 52.9 158.9 56.5 157 64C155.1 56.5 151.5 52.9 144 51C151.5 49.1 155.1 45.5 157 38Z" fill="#E6AE47"/>
+  <!-- adaptive-review loop arrow, integrated with the Q arc -->
+  <path d="M132 66C141 61 151 60 159 64C168 68 173 77 173 88"
+        stroke="url(#review)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M160.5 55L176 81L147.5 78L160.5 55Z" fill="#F0A11C"/>
 </svg>
