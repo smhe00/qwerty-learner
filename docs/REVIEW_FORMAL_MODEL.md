@@ -185,3 +185,26 @@ formal model checker PASS
 +
 multi-word browser execution PASS
 ```
+
+
+## 10. Keyboard-listener continuity invariant
+
+The real-browser gate exposed a lifecycle property outside the pure transition
+model: remounting WordComponent on every Review index change also remounted the
+global keydown listener. The next word could already be visible before the new
+effect installed the listener, causing fast leading keystrokes to disappear.
+
+The corrected lifecycle rule is:
+
+```text
+queue index changes
+    -> same WordComponent / same keyboard listener
+    -> synchronous per-word attempt reset in layout lifecycle
+
+explicit same-word loop reload
+    -> reloadKey changes
+    -> component remount allowed
+```
+
+No time-based debounce is used. Browser progression is the executable
+integration proof for this UI-boundary invariant.

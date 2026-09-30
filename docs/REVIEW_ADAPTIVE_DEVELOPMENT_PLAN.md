@@ -613,3 +613,16 @@ No P4 adaptive feature should become active until this formal gate is green.
 Review Gate now includes a local Chromium test that executes a three-word Review
 session through real React/Jotai/IndexedDB state. This closes the gap between
 the finite state-machine proof and UI command execution.
+
+
+### REVIEW-HOTFIX-003: keyboard listener continuity
+
+Browser Gate reproduced the remaining multi-word stall with no spillover input.
+Root cause: Review-index keyed remount created a render-to-effect interval where
+the next word was visible but KeyEventHandler had not reattached its global
+keydown listener.
+
+The previous REVIEW-HOTFIX-002 remount strategy is superseded. Queue advance now
+preserves the WordComponent/input listener instance; the explicit attempt state
+machine resets per-word state on the word lifecycle. Only same-word loop reloads
+change the component key.

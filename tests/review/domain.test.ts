@@ -1287,7 +1287,7 @@ test('state version 4 forces existing version 3 review states to be stale', () =
 })
 
 
-test('review queue advances remount WordComponent while ordinary learning keeps upstream key semantics', () => {
+test('review queue keeps WordComponent mounted across words and remounts only on explicit reload', () => {
   assert.equal(
     getWordComponentInstanceKey({
       isReviewMode: false,
@@ -1298,27 +1298,32 @@ test('review queue advances remount WordComponent while ordinary learning keeps 
   )
   assert.equal(
     getWordComponentInstanceKey({
-      isReviewMode: false,
+      isReviewMode: true,
+      reviewIndex: 0,
+      reloadKey: 7,
+    }),
+    7,
+  )
+  assert.equal(
+    getWordComponentInstanceKey({
+      isReviewMode: true,
       reviewIndex: 5,
       reloadKey: 7,
     }),
     7,
   )
-
-  const first = getWordComponentInstanceKey({
-    isReviewMode: true,
-    reviewIndex: 0,
-    reloadKey: 0,
-  })
-  const second = getWordComponentInstanceKey({
-    isReviewMode: true,
-    reviewIndex: 1,
-    reloadKey: 0,
-  })
-
-  assert.equal(first, 'review-0-0')
-  assert.equal(second, 'review-1-0')
-  assert.notEqual(first, second)
+  assert.notEqual(
+    getWordComponentInstanceKey({
+      isReviewMode: true,
+      reviewIndex: 5,
+      reloadKey: 7,
+    }),
+    getWordComponentInstanceKey({
+      isReviewMode: true,
+      reviewIndex: 5,
+      reloadKey: 8,
+    }),
+  )
 })
 
 

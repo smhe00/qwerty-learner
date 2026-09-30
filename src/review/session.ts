@@ -113,15 +113,17 @@ export function buildReviewSessionExercisePlans(
 }
 
 /**
- * Review words own per-attempt collectors/refs inside WordComponent. Force a
- * fresh component instance whenever the live review queue advances. Ordinary
- * learning deliberately keeps the upstream key behaviour unchanged.
+ * Keep the WordComponent mounted across queue-index changes so its global
+ * keyboard listener has no unmounted/remounted gap between words.
+ *
+ * Per-word attempt state is reset synchronously by the WordComponent word
+ * lifecycle. An explicit reloadKey change still remounts the component for
+ * same-word loop training.
  */
 export function getWordComponentInstanceKey(input: {
   isReviewMode: boolean
   reviewIndex: number
   reloadKey: number
 }): string | number {
-  if (!input.isReviewMode) return input.reloadKey
-  return `review-${input.reviewIndex}-${input.reloadKey}`
+  return input.reloadKey
 }
