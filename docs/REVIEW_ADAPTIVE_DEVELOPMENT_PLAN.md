@@ -590,3 +590,19 @@ ordinary learning -> unchanged numeric reload key
 ```
 
 Implementation `99601a7d97d2dcc78fdb0cd46f6e1320f6d86944` passed Review Gate #25. This RC aligns candidate and production acceptance gates for release.
+
+
+## 24. Review formal-verification gate
+
+After repeated runtime progression failures, Review development changes policy:
+
+```text
+STOP: add React conditions until a symptom disappears
+START: production state machine + explicit invariants + exhaustive bounded model checking
+```
+
+`src/review/machine.ts` is the production decision core. `tests/review/formal-model.test.ts` explores the bounded cross-product and verifies input safety, audio idempotence, queue transition safety, finite-session liveness, mask bounds and single-variable policy behavior.
+
+Review progression is also decoupled from derived scheduler persistence: once the raw WordRecord SSOT has been captured, the UI may advance; `applyReviewOutcome()` runs as a non-blocking derived-state update.
+
+No P4 adaptive feature should become active until this formal gate is green.

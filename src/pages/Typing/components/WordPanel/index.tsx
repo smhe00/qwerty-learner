@@ -13,7 +13,6 @@ import {
   MAX_REINFORCEMENT_GAP,
   getAdaptiveReinforcementGap,
   getWordComponentInstanceKey,
-  scheduleReinforcement,
 } from '@/review/session'
 import { isReviewModeAtom, isShowPrevAndNextWordAtom, loopWordConfigAtom, phoneticConfigAtom, reviewModeInfoAtom } from '@/store'
 import type { Word } from '@/typings'
@@ -87,87 +86,101 @@ export default function WordPanel() {
 
   const onFinish = useCallback(
     ({ wrongCount, classification, nextExerciseShadow }: WordFinishResult) => {
-      const accumulatedWrongCount = currentReviewWrongCount + wrongCount
-      const attemptGap = wrongCount > 0 ? getAdaptiveReinforcementGap(wrongCount, classification) : MAX_REINFORCEMENT_GAP
-      const reinforcementGap = Math.min(currentReviewGap, attemptGap)
-      const hasMoreLoopExercises = currentWordExerciseCount < loopWordTimes - 1
-      const hasNextWord = state.chapterData.index < state.chapterData.words.length - 1
-      const needsReinforcement = isReviewMode && accumulatedWrongCount > 0 && currentWord !== undefined
+      if (isReviewMode && currentWord) {
+        if (nextExerciseShadow !== undefined) {
+          setReviewModeInfo((old) => {
+            if (!old.reviewRecord) return old
 
-      if (isReviewMode && currentWord && nextExerciseShadow !== undefined) {
-        setReviewModeInfo((old) => {
-          if (!old.reviewRecord) return old
+            const exercisePlans = { ...(old.reviewRecord.exercisePlans ?? {}) }
+            if (nextExerciseShadow) {
+              exercisePlans[currentWord.name] =
+                materializeReviewExercisePlan(nextExerciseShadow)
+            } else {
+              delete exercisePlans[currentWord.name]
+            }
 
-          const exercisePlans = { ...(old.reviewRecord.exercisePlans ?? {}) }
-          if (nextExerciseShadow) {
-            exercisePlans[currentWord.name] = materializeReviewExercisePlan(nextExerciseShadow)
-          } else {
-            delete exercisePlans[currentWord.name]
-          }
+            return {
+              ...old,
+              reviewRecord: {
+                ...old.reviewRecord,
+                exercisePlans:
+                  Object.keys(exercisePlans).length > 0
+                    ? exercisePlans
+                    : undefined,
+              },
+            }
+          })
+        }
 
-          return {
-            ...old,
-            reviewRecord: {
-              ...old.reviewRecord,
-              exercisePlans:
-                Object.keys(exercisePlans).length > 0 ? exercisePlans : undefined,
-            },
-          }
+        const attemptGap =
+          wrongCount > 0
+            ? getAdaptiveReinforcementGap(wrongCount, classification)
+            : MAX_REINFORCEMENT_GAP
+        const decision = decideReviewProgress({
+          queue: state.chapterData.words,
+          currentIndex: state.chapterData.index,
+          currentWord,
+          currentExerciseCount: currentWordExerciseCount,
+          loopWordTimes,
+          priorAccumulatedWrongCount: currentReviewWrongCount,
+          attemptWrongCount: wrongCount,
+          currentReinforcementGap: currentReviewGap,
+          attemptReinforcementGap: attemptGap,
         })
+
+        if (decision.kind === 'loop-current') {
+          setCurrentWordExerciseCount(decision.nextExerciseCount)
+          setCurrentReviewWrongCount(decision.nextAccumulatedWrongCount)
+          setCurrentReviewGap(decision.nextReinforcementGap)
+          dispatch({ type: TypingStateActionType.LOOP_CURRENT_WORD })
+          reloadCurrentWordComponent()
+          return
+        }
+
+        setCurrentWordExerciseCount(0)
+        setCurrentReviewWrongCount(0)
+        setCurrentReviewGap(MAX_REINFORCEMENT_GAP)
+
+        if (decision.kind === 'advance') {
+          dispatch({
+            type: TypingStateActionType.NEXT_WORD,
+            payload: {
+              updateReviewRecord,
+              insertWord: decision.insertWord,
+            },
+          })
+          return
+        }
+
+        dispatch({ type: TypingStateActionType.FINISH_CHAPTER })
+        setReviewModeInfo((old) => ({
+          ...old,
+          reviewRecord: old.reviewRecord
+            ? { ...old.reviewRecord, isFinished: true }
+            : undefined,
+        }))
+        return
       }
 
-      if (hasNextWord || hasMoreLoopExercises || needsReinforcement) {
-        // 用户完成当前单词
+      // Ordinary learning intentionally retains the upstream progression path.
+      const hasMoreLoopExercises =
+        currentWordExerciseCount < loopWordTimes - 1
+      const hasNextWord =
+        state.chapterData.index < state.chapterData.words.length - 1
+
+      if (hasNextWord || hasMoreLoopExercises) {
         if (hasMoreLoopExercises) {
           setCurrentWordExerciseCount((old) => old + 1)
-          if (isReviewMode) {
-            setCurrentReviewWrongCount(accumulatedWrongCount)
-            setCurrentReviewGap(reinforcementGap)
-          }
           dispatch({ type: TypingStateActionType.LOOP_CURRENT_WORD })
           reloadCurrentWordComponent()
         } else {
           setCurrentWordExerciseCount(0)
-          setCurrentReviewWrongCount(0)
-          setCurrentReviewGap(MAX_REINFORCEMENT_GAP)
-
-          if (isReviewMode) {
-            let insertWord: { index: number; word: typeof currentWord } | undefined
-
-            if (needsReinforcement && currentWord) {
-              const plan = scheduleReinforcement(
-                state.chapterData.words,
-                state.chapterData.index,
-                currentWord,
-                reinforcementGap,
-              )
-
-              if (plan.insertedAt !== null) {
-                insertWord = {
-                  index: plan.insertedAt,
-                  word: currentWord,
-                }
-              }
-            }
-
-            dispatch({
-              type: TypingStateActionType.NEXT_WORD,
-              payload: {
-                updateReviewRecord,
-                insertWord,
-              },
-            })
-          } else {
-            dispatch({ type: TypingStateActionType.NEXT_WORD })
-          }
+          dispatch({ type: TypingStateActionType.NEXT_WORD })
         }
-      } else {
-        // 用户完成当前章节
-        dispatch({ type: TypingStateActionType.FINISH_CHAPTER })
-        if (isReviewMode) {
-          setReviewModeInfo((old) => ({ ...old, reviewRecord: old.reviewRecord ? { ...old.reviewRecord, isFinished: true } : undefined }))
-        }
+        return
       }
+
+      dispatch({ type: TypingStateActionType.FINISH_CHAPTER })
     },
     [
       currentReviewWrongCount,

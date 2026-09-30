@@ -502,7 +502,11 @@ export default function WordComponent({
   useEffect(() => {
     if (wordState.isFinished && !finishNotifiedRef.current) {
       finishNotifiedRef.current = true
-      dispatch({ type: TypingStateActionType.SET_IS_SAVING_RECORD, payload: true })
+      dispatch({
+        type: TypingStateActionType.SET_IS_SAVING_RECORD,
+        payload: true,
+      })
+
       const telemetry = telemetryCollectorRef.current.snapshot()
       const learningContext = learningContextCollectorRef.current.snapshot()
       const classification = classifyTypingError({
@@ -521,40 +525,44 @@ export default function WordComponent({
         classification,
       )
 
-      // wordLogUploader({
-      //   headword: word.name,
-      //   timeStart: wordState.startTime,
-      //   timeEnd: wordState.endTime,
-      //   countInput: wordState.correctCount + wordState.wrongCount,
-      //   countCorrect: wordState.correctCount,
-      //   countTypo: wordState.wrongCount,
-      // })
+      const currentRecordForPolicy: IWordRecord = {
+        word: word.name,
+        timeStamp: Math.floor(Date.now() / 1000),
+        dict: currentDictInfo.id,
+        chapter: currentChapter,
+        timing: [],
+        wrongCount: wordState.wrongCount,
+        mistakes: wordState.letterMistake,
+        typingTelemetry: telemetry,
+        learningContext,
+        exerciseCondition: exerciseConditionRef.current,
+        reviewPolicyDecision: reviewPolicyDecisionRef.current,
+        reviewEvidence,
+      }
+      const nextExerciseShadow = exerciseConditionRef.current
+        ? chooseNextExerciseShadow({
+            baselineCondition: exerciseConditionRef.current,
+            word: word.name,
+            records: [
+              ...historyRecordsRef.current,
+              currentRecordForPolicy,
+            ],
+          })
+        : null
+      const isReviewAttempt = currentChapter === -1
+
+      const notifyFinished = () => {
+        onFinish({
+          wrongCount: wordState.wrongCount,
+          classification,
+          nextExerciseShadow,
+        })
+      }
+
       const persistResult = async () => {
-        let nextExerciseShadow: ReviewPolicyShadowV1 | null | undefined
+        let reviewProgressReleased = false
 
         try {
-          const currentRecordForPolicy: IWordRecord = {
-            word: word.name,
-            timeStamp: Math.floor(Date.now() / 1000),
-            dict: currentDictInfo.id,
-            chapter: currentChapter,
-            timing: [],
-            wrongCount: wordState.wrongCount,
-            mistakes: wordState.letterMistake,
-            typingTelemetry: telemetry,
-            learningContext,
-            exerciseCondition: exerciseConditionRef.current,
-            reviewPolicyDecision: reviewPolicyDecisionRef.current,
-            reviewEvidence,
-          }
-          nextExerciseShadow = exerciseConditionRef.current
-            ? chooseNextExerciseShadow({
-                baselineCondition: exerciseConditionRef.current,
-                word: word.name,
-                records: [...historyRecordsRef.current, currentRecordForPolicy],
-              })
-            : null
-
           const wordRecordId = await saveWordRecord({
             word: word.name,
             wrongCount: wordState.wrongCount,
@@ -567,6 +575,37 @@ export default function WordComponent({
             reviewEvidence,
             reviewPolicyShadow: nextExerciseShadow ?? undefined,
           })
+
+          if (isReviewAttempt) {
+            // Raw evidence is the SSOT. Once it is durably captured, UI
+            // progression must not wait for derived scheduler persistence.
+            dispatch({
+              type: TypingStateActionType.SET_IS_SAVING_RECORD,
+              payload: false,
+            })
+            reviewProgressReleased = true
+            notifyFinished()
+
+            if (wordRecordId > 0) {
+              void applyReviewOutcome(
+                currentDictInfo.id,
+                word.name,
+                reviewOutcomeForAttempt({
+                  classification,
+                  evidence: reviewEvidence,
+                  condition: exerciseConditionRef.current,
+                }),
+                Math.floor(Date.now() / 1000),
+                wordRecordId,
+              ).catch((error) => {
+                console.error(
+                  'failed to persist derived review scheduler state',
+                  error,
+                )
+              })
+            }
+            return
+          }
 
           if (wordRecordId > 0) {
             await applyReviewOutcome(
@@ -584,12 +623,21 @@ export default function WordComponent({
         } catch (error) {
           console.error('failed to persist review learning state', error)
         } finally {
-          dispatch({ type: TypingStateActionType.SET_IS_SAVING_RECORD, payload: false })
-          onFinish({
-            wrongCount: wordState.wrongCount,
-            classification,
-            nextExerciseShadow,
-          })
+          if (isReviewAttempt) {
+            if (!reviewProgressReleased) {
+              dispatch({
+                type: TypingStateActionType.SET_IS_SAVING_RECORD,
+                payload: false,
+              })
+              notifyFinished()
+            }
+          } else {
+            dispatch({
+              type: TypingStateActionType.SET_IS_SAVING_RECORD,
+              payload: false,
+            })
+            notifyFinished()
+          }
         }
       }
 

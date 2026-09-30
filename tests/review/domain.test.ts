@@ -9,6 +9,7 @@ import {
   createReviewPolicyShadow,
   materializeReviewExercisePlan,
 } from '../../src/review/decision'
+import { classifyTypingError } from '../../src/review/classifier'
 import { evaluateReviewEvidence } from '../../src/review/evidence'
 import {
   chooseAudioWithdrawalShadow,

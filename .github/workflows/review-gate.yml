@@ -45,18 +45,24 @@ jobs:
           src/pages/Typing/components/WordPanel
           --ext .ts,.tsx
 
-      - name: Bundle Review domain tests
+      - name: Bundle Review verification tests
         run: |
           mkdir -p .review-test
-          npx esbuild tests/review/domain.test.ts \
+          npx esbuild \
+            tests/review/domain.test.ts \
+            tests/review/formal-model.test.ts \
             --bundle \
             --platform=node \
             --target=node20 \
             --format=esm \
-            --outfile=.review-test/domain.test.mjs
+            --outdir=.review-test \
+            --out-extension:.js=.mjs
 
       - name: Run Review domain tests
         run: node --test .review-test/domain.test.mjs
+
+      - name: Run Review formal model checker
+        run: node --test .review-test/formal-model.test.mjs
 
       - name: Build Qwerty
         run: yarn build
