@@ -11,6 +11,8 @@ on:
       - 'src/pages/Typing/components/WordPanel/**'
       - 'src/store/reviewInfoAtom.ts'
       - 'tests/e2e/review.spec.ts'
+      - 'tests/e2e/review-flow.spec.ts'
+      - 'tests/e2e/review-flow.config.ts'
       - 'tests/review/**'
       - 'docs/REVIEW_*.md'
       - '.github/workflows/review-gate.yml'
