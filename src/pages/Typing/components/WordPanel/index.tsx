@@ -8,7 +8,12 @@ import WordComponent from './components/Word'
 import type { WordFinishResult } from './components/Word'
 import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
 import { materializeReviewExercisePlan } from '@/review/decision'
-import { MAX_REINFORCEMENT_GAP, getAdaptiveReinforcementGap, scheduleReinforcement } from '@/review/session'
+import {
+  MAX_REINFORCEMENT_GAP,
+  getAdaptiveReinforcementGap,
+  getWordComponentInstanceKey,
+  scheduleReinforcement,
+} from '@/review/session'
 import { isReviewModeAtom, isShowPrevAndNextWordAtom, loopWordConfigAtom, phoneticConfigAtom, reviewModeInfoAtom } from '@/store'
 import type { Word } from '@/typings'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -35,6 +40,11 @@ export default function WordPanel() {
     isReviewMode && currentWord
       ? reviewModeInfo.reviewRecord?.exercisePlans?.[currentWord.name]
       : undefined
+  const currentWordComponentKey = getWordComponentInstanceKey({
+    isReviewMode,
+    reviewIndex: state.chapterData.index,
+    reloadKey: wordComponentKey,
+  })
 
   const prevIndex = useMemo(() => {
     const newIndex = state.chapterData.index - 1
@@ -267,7 +277,7 @@ export default function WordPanel() {
                 meaningVisible={shouldShowTranslation}
                 phoneticVisible={phoneticVisible}
                 exercisePlan={currentExercisePlan}
-                key={wordComponentKey}
+                key={currentWordComponentKey}
               />
               {phoneticConfig.isOpen && <Phonetic word={currentWord} />}
               <Translation

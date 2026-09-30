@@ -23,7 +23,10 @@ import {
   rebuildBasicStateFromWordRecords,
 } from '../../src/review/rebuild'
 import { buildOrthographyProfile } from '../../src/review/profile'
-import { buildReviewSessionExercisePlans } from '../../src/review/session'
+import {
+  buildReviewSessionExercisePlans,
+  getWordComponentInstanceKey,
+} from '../../src/review/session'
 import { reviewOutcomeForAttempt } from '../../src/review/scheduler'
 import { CURRENT_REVIEW_STATE_VERSION } from '../../src/review/types'
 import type { IWordRecord } from '../../src/utils/db/record'
@@ -1275,4 +1278,39 @@ test('only chapter -1 records advance the long-term scheduler', () => {
 test('state version 4 forces existing version 3 review states to be stale', () => {
   assert.equal(CURRENT_REVIEW_STATE_VERSION, 4)
   assert.notEqual(3, CURRENT_REVIEW_STATE_VERSION)
+})
+
+
+test('review queue advances remount WordComponent while ordinary learning keeps upstream key semantics', () => {
+  assert.equal(
+    getWordComponentInstanceKey({
+      isReviewMode: false,
+      reviewIndex: 0,
+      reloadKey: 7,
+    }),
+    7,
+  )
+  assert.equal(
+    getWordComponentInstanceKey({
+      isReviewMode: false,
+      reviewIndex: 5,
+      reloadKey: 7,
+    }),
+    7,
+  )
+
+  const first = getWordComponentInstanceKey({
+    isReviewMode: true,
+    reviewIndex: 0,
+    reloadKey: 0,
+  })
+  const second = getWordComponentInstanceKey({
+    isReviewMode: true,
+    reviewIndex: 1,
+    reloadKey: 0,
+  })
+
+  assert.equal(first, 'review-0-0')
+  assert.equal(second, 'review-1-0')
+  assert.notEqual(first, second)
 })

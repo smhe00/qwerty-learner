@@ -572,3 +572,10 @@ stateVersion 3           -> stale, rebuild as v4
 ```
 
 The release marker aligns Review Gate + Cloud Sync Gate and all three production acceptance probes on one final SHA.
+
+
+## 23. REVIEW-HOTFIX-002: multi-word Review completion
+
+Observed production symptom: the first Review word completes, but a following word can reach its final correct letter without advancing.
+
+The Review-only fix forces a fresh `WordComponent` instance whenever the live Review queue index changes. This resets per-attempt state, completion effects, telemetry collectors and condition refs at a component boundary. Ordinary learning mode deliberately retains the upstream component key semantics unchanged.
