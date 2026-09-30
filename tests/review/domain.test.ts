@@ -18,9 +18,14 @@ import {
   resolveExercisePlanForAttempt,
 } from '../../src/review/exercise-policy'
 import { buildReviewObservation } from '../../src/review/observation'
+import {
+  inferReviewOutcomeFromWordRecord,
+  rebuildBasicStateFromWordRecords,
+} from '../../src/review/rebuild'
 import { buildOrthographyProfile } from '../../src/review/profile'
 import { buildReviewSessionExercisePlans } from '../../src/review/session'
 import { reviewOutcomeForAttempt } from '../../src/review/scheduler'
+import { CURRENT_REVIEW_STATE_VERSION } from '../../src/review/types'
 import type { IWordRecord } from '../../src/utils/db/record'
 
 test('captures all-visible and all-hidden baseline conditions', () => {
@@ -1129,4 +1134,145 @@ test('clean audio-off probe records positive audio independence evidence', () =>
   assert.equal(evidence.memoryGrade, 'easy')
   assert.equal(evidence.weaknesses?.audioDependence, 0)
   assert.ok(evidence.reasonCodes.includes('audio-withdrawal-clean'))
+})
+
+
+test('ordinary learning failure seeds an immediately due first review without advancing scheduler', () => {
+  const dueNow = 10_000
+  const learningFailure: IWordRecord = {
+    id: 1,
+    word: 'seed',
+    timeStamp: 9_000,
+    dict: 'cet4',
+    chapter: 3,
+    timing: [],
+    wrongCount: 1,
+    mistakes: { 1: ['x'] },
+    typingTelemetry: {
+      telemetryVersion: 2,
+      firstKeyLatencyMs: 700,
+      attempts: [
+        {
+          startLatencyMs: 700,
+          durationMs: 100,
+          correctPrefixLength: 1,
+          result: 'wrong',
+          wrongIndex: 1,
+          wrongKey: 'x',
+        },
+      ],
+    },
+  }
+
+  assert.equal(
+    inferReviewOutcomeFromWordRecord(learningFailure, []),
+    undefined,
+  )
+
+  const state = rebuildBasicStateFromWordRecords(
+    'cet4',
+    'seed',
+    [learningFailure],
+    { legacyDueAt: dueNow },
+  )
+
+  assert.ok(state)
+  assert.equal(state.stateVersion, CURRENT_REVIEW_STATE_VERSION)
+  assert.equal(state.nextReviewAt, dueNow)
+  assert.equal(state.reviewCount, 0)
+  assert.equal(state.lapseCount, 0)
+  assert.equal(state.cleanStreak, 0)
+  assert.equal(state.lastReviewedAt, undefined)
+  assert.deepEqual(state.schedulerState, {
+    kind: 'basic-v1',
+    stage: 0,
+    intervalDays: 0,
+  })
+})
+
+test('ordinary learning clean telemetry does not create or advance review state', () => {
+  const cleanLearning: IWordRecord = {
+    id: 1,
+    word: 'clean',
+    timeStamp: 1_000,
+    dict: 'cet4',
+    chapter: 2,
+    timing: [],
+    wrongCount: 0,
+    mistakes: {},
+    typingTelemetry: {
+      telemetryVersion: 2,
+      firstKeyLatencyMs: 350,
+      attempts: [],
+    },
+  }
+
+  assert.equal(
+    inferReviewOutcomeFromWordRecord(cleanLearning, []),
+    undefined,
+  )
+  assert.equal(
+    rebuildBasicStateFromWordRecords(
+      'cet4',
+      'clean',
+      [cleanLearning],
+      { legacyDueAt: 2_000 },
+    ),
+    undefined,
+  )
+})
+
+test('only chapter -1 records advance the long-term scheduler', () => {
+  const learningFailure: IWordRecord = {
+    id: 1,
+    word: 'reviewed',
+    timeStamp: 1_000,
+    dict: 'cet4',
+    chapter: 4,
+    timing: [],
+    wrongCount: 1,
+    mistakes: { 2: ['x'] },
+    typingTelemetry: {
+      telemetryVersion: 2,
+      firstKeyLatencyMs: 900,
+      attempts: [],
+    },
+  }
+  const reviewAttempt: IWordRecord = {
+    id: 2,
+    word: 'reviewed',
+    timeStamp: 2_000,
+    dict: 'cet4',
+    chapter: -1,
+    timing: [],
+    wrongCount: 0,
+    mistakes: {},
+    typingTelemetry: {
+      telemetryVersion: 2,
+      firstKeyLatencyMs: 600,
+      attempts: [],
+    },
+  }
+
+  const state = rebuildBasicStateFromWordRecords(
+    'cet4',
+    'reviewed',
+    [learningFailure, reviewAttempt],
+    { legacyDueAt: 3_000 },
+  )
+
+  assert.ok(state)
+  assert.equal(state.reviewCount, 1)
+  assert.equal(state.lastReviewedAt, 2_000)
+  assert.equal(state.nextReviewAt, 2_000 + 24 * 60 * 60)
+  assert.deepEqual(state.schedulerState, {
+    kind: 'basic-v1',
+    stage: 0,
+    intervalDays: 1,
+  })
+})
+
+test('state version 4 forces existing version 3 review states to be stale', () => {
+  assert.equal(CURRENT_REVIEW_STATE_VERSION, 4)
+  assert.notEqual(3, CURRENT_REVIEW_STATE_VERSION)
 })

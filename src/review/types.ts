@@ -1,4 +1,4 @@
-export const CURRENT_REVIEW_STATE_VERSION = 3
+export const CURRENT_REVIEW_STATE_VERSION = 4
 
 export type ReviewOutcome = 'again' | 'hard' | 'good' | 'easy'
 

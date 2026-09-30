@@ -539,3 +539,21 @@ Live integration authentication traffic is kept below the configured limiter thr
 ### Final RC gate alignment
 
 The final RC marker touches all three production acceptance probe paths so Live / Browser / Auth Rate Limit automatically execute on the exact same promoted SHA. This is test/release metadata only; runtime code is unchanged.
+
+
+## 22. AUTH/Review release blocker: first-review seeding
+
+`REVIEW-HOTFIX-001` fixes the boundary between ordinary learning and spaced review:
+
+```text
+ordinary learning WordRecord (chapter >= 0)
+  -> raw learning evidence / weakness seed
+  -> first Review due immediately when the word is an error word
+  -> does NOT increment reviewCount or advance basic-v1 interval
+
+Review WordRecord (chapter == -1)
+  -> formal spaced-review event
+  -> may advance 1 / 3 / 7 / 14 / 30 day scheduler
+```
+
+`CURRENT_REVIEW_STATE_VERSION` is bumped from 3 to 4 so previously mis-scheduled states are deleted and rebuilt automatically on Review bootstrap.

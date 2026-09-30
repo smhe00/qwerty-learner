@@ -11,13 +11,15 @@ export function inferReviewOutcomeFromWordRecord(
   record: IWordRecord,
   priorRecords: IWordRecord[],
 ): ReviewOutcome | undefined {
+  // Only records created by Review mode are long-term spaced-review events.
+  // Ordinary learning records remain valuable evidence for profiles/seeding,
+  // but must never advance the long-term scheduler.
+  if (record.chapter !== -1) return undefined
+
   const telemetry = readWordTelemetry(record)
 
-  // Legacy qwerty-learner clean rows were ordinary typing practice, not
-  // spaced-review confirmations. Replaying them as "good" would overstate
-  // mastery and can push imported historical error words into the future.
-  // Legacy failures remain useful evidence; new telemetry rows retain their
-  // full adaptive semantics, including clean attempts.
+  // Legacy Review rows can still seed historical outcomes. Clean legacy rows
+  // lack enough evidence to replay as a positive spaced-review confirmation.
   if (!telemetry) {
     return record.wrongCount > 0 ? inferLegacyReviewOutcome(record.wrongCount) : undefined
   }
@@ -40,7 +42,13 @@ export function rebuildBasicStateFromWordRecords(
   options?: { legacyDueAt?: number },
 ): IReviewWordState | undefined {
   const sortedRecords = [...records].sort((a, b) => a.timeStamp - b.timeStamp)
-  let state: IReviewWordState | undefined
+  const firstLearningFailure = sortedRecords.find(
+    (record) => record.chapter !== -1 && record.wrongCount > 0,
+  )
+  let state: IReviewWordState | undefined = firstLearningFailure
+    ? createInitialReviewWordState(dict, word, firstLearningFailure.timeStamp)
+    : undefined
+  let replayedReviewCount = 0
   const priorRecords: IWordRecord[] = []
 
   for (const record of sortedRecords) {
@@ -53,18 +61,32 @@ export function rebuildBasicStateFromWordRecords(
         outcome,
         now: record.timeStamp,
       })
+      replayedReviewCount += 1
     }
 
     priorRecords.push(record)
   }
 
   if (state && options?.legacyDueAt !== undefined) {
-    const hasAdaptiveTelemetry = sortedRecords.some((record) => readWordTelemetry(record) !== undefined)
-    if (!hasAdaptiveTelemetry) {
+    if (replayedReviewCount === 0 && firstLearningFailure) {
+      // Initial learning failure means "eligible for first Review now", not
+      // "a Review already happened". Keep reviewCount/stage at zero.
       state = {
         ...state,
         nextReviewAt: options.legacyDueAt,
         updatedAt: options.legacyDueAt,
+      }
+    } else {
+      const reviewRecords = sortedRecords.filter((record) => record.chapter === -1)
+      const hasAdaptiveReviewTelemetry = reviewRecords.some(
+        (record) => readWordTelemetry(record) !== undefined,
+      )
+      if (!hasAdaptiveReviewTelemetry) {
+        state = {
+          ...state,
+          nextReviewAt: options.legacyDueAt,
+          updatedAt: options.legacyDueAt,
+        }
       }
     }
   }
