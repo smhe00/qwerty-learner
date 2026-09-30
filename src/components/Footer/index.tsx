@@ -52,8 +52,9 @@ const Footer: React.FC = () => {
         onClose={() => handleCloseInfoPanel('donate')}
       >
         <div className="flex flex-col items-center text-center">
-          <p className="mb-1 text-base font-medium text-gray-700 dark:text-gray-200">如果这个版本对你的学习有帮助</p>
-          <p className="mb-5 text-sm text-gray-500 dark:text-gray-400">可以用微信赞赏码支持本站持续维护。</p>
+          <p className="mb-5 text-base font-medium text-gray-700 dark:text-gray-200">
+            本站新增：自适应智能复习、云同步等增强功能。
+          </p>
 
           <DonatingCard />
 

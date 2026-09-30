@@ -17,8 +17,7 @@ export const DonatingCard = ({ className }: DonatingCardProps) => {
           className="h-72 w-72 rounded-[1.15rem] bg-white object-contain"
         />
       </div>
-      <div className="mt-3 text-sm font-semibold text-gray-700 dark:text-gray-200">微信赞赏码 · 何世明</div>
-      <div className="mt-1 text-xs text-gray-400 dark:text-gray-500">自愿赞赏，不影响任何功能使用</div>
+      <div className="mt-3 text-sm font-medium text-gray-600 dark:text-gray-300">微信扫一扫自愿赞赏，不影响任何功能</div>
     </div>
   )
 }
