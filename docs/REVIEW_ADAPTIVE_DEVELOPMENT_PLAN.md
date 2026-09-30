@@ -637,3 +637,31 @@ still being invoked as a callback **inside** the Typing reducer.
 That reducer side effect is removed. Review transition + persistence now use a
 single projected snapshot outside the reducer, and the reducer performs only
 local pure state mutation. The formal model includes projection equivalence.
+
+
+## 25. Review verification policy — ACTIVE
+
+`FORMAL-GATE-V1` is now a mandatory activation gate.
+
+Current verified checkpoint:
+
+```text
+d6107a9320ab991e753abad096a807fb76b2d3c6
+Review Gate #36 PASS
+
+43 domain regressions
+9 bounded-exhaustive formal properties
+2 real-browser Review execution properties
+production build PASS
+```
+
+No new P4/P5 adaptive behavior may be activated unless all three verification
+layers remain green:
+
+1. domain/semantic regression;
+2. bounded exhaustive state/property checking;
+3. real Chrome multi-word execution.
+
+The formal layer is complete relative to the state/action abstraction documented
+in `REVIEW_FORMAL_MODEL.md`; browser/runtime behavior remains an integration
+obligation and is therefore independently gated.

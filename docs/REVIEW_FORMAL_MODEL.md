@@ -232,3 +232,36 @@ Review completion
 The reducer no longer calls external persistence callbacks. The formal checker
 exhaustively verifies that the projected persistent queue/index matches each
 bounded transition decision.
+
+
+## 12. Verification checkpoint — 2026-09-30
+
+Production decision core at `d6107a9320ab991e753abad096a807fb76b2d3c6`
+passed Review Gate #36:
+
+```text
+Domain regression          43 / 43 PASS
+Formal bounded model        9 / 9  PASS
+Real Chrome Review flow     2 / 2  PASS
+Production build                    PASS
+```
+
+The browser progression scenario is:
+
+```text
+cancel -> analyse -> numerous -> FINISH
+```
+
+and the terminal-input scenario sends an extra key immediately after
+`cancel` and proves that no `wrongIndex == word.length` evidence is
+persisted.
+
+This checkpoint also verifies the pure-reducer rule:
+
+```text
+decision/projection  = pure
+ReviewRecord update  = one external atomic effect
+Typing reducer       = local mutation only
+```
+
+The word progression test that previously stalled at `analyse` now passes.
