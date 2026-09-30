@@ -1,3 +1,4 @@
+// RC 2026-09-30 first-review-seeding-v4 production acceptance marker
 /* eslint-env node */
 import assert from 'node:assert/strict'
 import crypto from 'node:crypto'

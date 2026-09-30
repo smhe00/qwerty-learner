@@ -1,3 +1,4 @@
+// RC 2026-09-30 first-review-seeding-v4 production acceptance marker
 import { expect, test, type Page } from '@playwright/test'
 
 const liveUrl = process.env.QWERTY_SYNC_BASE_URL

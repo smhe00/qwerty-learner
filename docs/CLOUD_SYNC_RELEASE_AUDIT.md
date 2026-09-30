@@ -95,3 +95,14 @@ The live integration keeps its own register/login traffic below the production `
 ## Final RC trigger set
 
 The final RC deliberately includes the three production acceptance probes (live integration, browser sync, auth rate-limit) as changed test paths so the production-pointer fast-forward triggers all three Gates on the exact same SHA. No product runtime behavior is changed by this RC marker.
+
+
+## First-review seeding hotfix RC
+
+The integrated release now includes `REVIEW-HOTFIX-001`:
+
+- ordinary learning records (`chapter >= 0`) are learning evidence only;
+- ordinary learning failures seed an immediately-due first Review with `reviewCount=0`;
+- only Review-mode records (`chapter == -1`) advance the long-term spaced scheduler;
+- `CURRENT_REVIEW_STATE_VERSION=4` forces previously mis-scheduled v3 states to rebuild;
+- the final RC touches all three production acceptance probes so Live / Browser / Auth Rate Limit run on this exact promoted SHA.

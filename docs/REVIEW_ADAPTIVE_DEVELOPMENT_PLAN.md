@@ -557,3 +557,18 @@ Review WordRecord (chapter == -1)
 ```
 
 `CURRENT_REVIEW_STATE_VERSION` is bumped from 3 to 4 so previously mis-scheduled states are deleted and rebuilt automatically on Review bootstrap.
+
+
+### REVIEW-HOTFIX-001 verification
+
+Implementation commit `9069e5d8d0707f1a6501211d8eb11cceabcef131` passed Review Gate #23.
+
+Final RC requirements:
+
+```text
+ordinary learning error -> first Review due now, reviewCount=0
+Review chapter=-1       -> advances scheduler
+stateVersion 3           -> stale, rebuild as v4
+```
+
+The release marker aligns Review Gate + Cloud Sync Gate and all three production acceptance probes on one final SHA.
