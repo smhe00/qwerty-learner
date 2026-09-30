@@ -293,7 +293,7 @@ try {
   assert.equal(revokedFirstLogin.status, 401)
   assert.equal(revokedFirstLogin.json?.error, 'session_revoked')
 
-  for (let index = 0; index < 3; index += 1) {
+  for (let index = 0; index < 2; index += 1) {
     const extraLogin = await request('/api/auth/login', {
       method: 'POST',
       body: {
@@ -314,7 +314,7 @@ try {
   const retainedSessionsAfterLogins = await listVersions(
     `accounts/${usernameHash}/sessions/`,
   )
-  assert.deepEqual(retainedSessionsAfterLogins, [4, 5, 6])
+  assert.deepEqual(retainedSessionsAfterLogins, [3, 4, 5])
 
   const meta0 = await request('/api/sync/meta', { token: activeToken })
   assert.equal(meta0.status, 200)
@@ -457,7 +457,7 @@ try {
   )
 
   assert.deepEqual(retainedAuthVersions, [3, 4])
-  assert.deepEqual(retainedSessionVersions, [8, 9, 10])
+  assert.deepEqual(retainedSessionVersions, [7, 8, 9])
 
   const afterPasswordChanges = await request('/api/sync', { token: activeToken })
   assert.equal(afterPasswordChanges.status, 200)

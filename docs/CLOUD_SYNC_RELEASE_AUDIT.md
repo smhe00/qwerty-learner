@@ -85,3 +85,8 @@ Do not place independent commits on the production pointer.
 ## Production verification sequencing
 
 The production browser gate waits for the release-specific `duplicate-register-protection-v1` health capability before exercising the duplicate-registration UI. The live integration expectation accounts for the additional successful login used to prove the original account remains valid after a rejected duplicate registration.
+
+
+### Final Gate load correction
+
+The live integration keeps its own register/login traffic below the production `10/60s` authentication threshold. Session-retention coverage is preserved with two extra logins; the dedicated Auth Rate Limit Gate remains responsible for intentionally crossing the threshold. The rate-limit gate waits for `duplicate-register-protection-v1`, tying the final rate-limit acceptance to this release deployment.

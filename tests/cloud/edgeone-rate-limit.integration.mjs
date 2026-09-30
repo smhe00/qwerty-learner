@@ -266,13 +266,14 @@ async function runRound(round) {
 }
 
 await primeEdgeOneAccessSession()
-await waitForCapability('blob-transient-retry-v1')
+await waitForCapability('duplicate-register-protection-v1')
 
 const healthBefore = await getJson('/api/health')
 assert.equal(healthBefore.response.status, 200)
 assert.equal(healthBefore.json?.ok, true)
 assert.ok(healthBefore.json.capabilities.includes('hybrid-auth-rate-limit-v3'))
 assert.ok(healthBefore.json.capabilities.includes('blob-transient-retry-v1'))
+assert.ok(healthBefore.json.capabilities.includes('duplicate-register-protection-v1'))
 
 const rounds = []
 for (let round = 1; round <= roundsToRun; round += 1) {

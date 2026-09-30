@@ -529,3 +529,8 @@ AUTH-HOTFIX-001  PASS
 ### Release verification correction
 
 Production verification attempt 1 exposed test/deployment sequencing issues rather than an application regression: the duplicate-registration live scenario adds one successful login, so bounded session-history expectation advances to `[8,9,10]`; Browser Gate now waits for `duplicate-register-protection-v1` before exercising the new UI. These corrections do not change product behavior.
+
+
+### Final production Gate isolation
+
+Live integration authentication traffic is kept below the configured limiter threshold. Deliberate 429 testing remains isolated in the dedicated Auth Rate Limit Gate, preventing one acceptance Gate from invalidating another Gate's assumptions.
