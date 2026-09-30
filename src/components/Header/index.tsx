@@ -1,4 +1,4 @@
-import logo from '@/assets/logo.svg'
+import logo from '@/assets/logo.png'
 import { infoPanelStateAtom } from '@/store'
 import { useSetAtom } from 'jotai'
 import type { PropsWithChildren } from 'react'
