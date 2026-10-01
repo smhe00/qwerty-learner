@@ -127,8 +127,12 @@ jobs:
             throw new Error('Production /api/health did not validate qwerty-sync-gateway')
           }
 
-          if (!Array.isArray(health.capabilities) || !health.capabilities.includes('blob-transient-retry-v1')) {
-            throw new Error('Production /api/health is missing expected RC capability')
+          if (
+            !Array.isArray(health.capabilities) ||
+            !health.capabilities.includes('blob-transient-retry-v1') ||
+            !health.capabilities.includes('learning-state-backup-v3')
+          ) {
+            throw new Error('Production /api/health is missing expected backup-v3 capability')
           }
 
           console.log(JSON.stringify({
