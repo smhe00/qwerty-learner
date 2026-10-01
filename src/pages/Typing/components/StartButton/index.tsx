@@ -83,7 +83,7 @@ export default function StartButton({ isLoading }: { isLoading: boolean }) {
           onClick={onToggleIsTyping}
           aria-label={state.isTyping ? '暂停' : '开始'}
         >
-          <span className="font-medium">{state.isTyping ? '暂停' : '开始'}</span>
+          <span className="font-medium">{state.isTyping ? 'Pause' : 'Start'}</span>
         </button>
         {isShowReStartButton && (
           <div className="absolute bottom-0 flex w-20 flex-col items-center justify-center" ref={refs.setFloating} {...getFloatingProps()}>
@@ -97,7 +97,7 @@ export default function StartButton({ isLoading }: { isLoading: boolean }) {
                 aria-label={'返回学习'}
                 title="返回普通学习，保留当前复习进度"
               >
-                学习
+                Learn
               </button>
             ) : (
               <button
@@ -110,7 +110,7 @@ export default function StartButton({ isLoading }: { isLoading: boolean }) {
                 aria-label={'复习错词'}
                 title={hasReviewWords ? `${reviewWordCount} 个错词可复习` : '完成一些单词学习后即可复习'}
               >
-                复习
+                Review
               </button>
             )}
             <button
@@ -122,7 +122,7 @@ export default function StartButton({ isLoading }: { isLoading: boolean }) {
               aria-label={'打开云备份'}
               title="打开云端登录、上传和恢复页面"
             >
-              云备份
+              Backup
             </button>
           </div>
         )}
