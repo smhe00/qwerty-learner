@@ -22,11 +22,11 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
           aria-label="打开赞赏页面"
           title="赞赏本站维护者"
         >
-          <img src={logo} className="mr-3 h-14 w-14 lg:h-16 lg:w-16" alt="Qwerty Learner Logo" />
+          <img src={logo} className="mr-3 h-14 w-14 lg:h-16 lg:w-16" alt="Qwerty Plus Logo" />
           <div className="flex flex-col items-start leading-none">
             <h1 className="whitespace-nowrap text-2xl font-bold tracking-tight lg:text-4xl">
               <span className="text-slate-800 dark:text-slate-100">Qwerty</span>
-              <span className="ml-2 font-medium text-slate-500 dark:text-slate-300">Learner</span>
+              <span className="ml-2 font-medium text-slate-500 dark:text-slate-300">Plus</span>
             </h1>
             <span className="mt-2 pl-1 text-[0.58rem] font-medium tracking-[0.32em] text-slate-400 dark:text-slate-500 lg:text-xs">
               ENHANCED EDITION
