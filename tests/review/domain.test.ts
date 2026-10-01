@@ -1554,3 +1554,44 @@ test('force Review selects all current error candidates while due mode selects o
     ['due', 'future', 'missing'],
   )
 })
+
+
+test('review progression refuses a second reinforcement when the per-session budget is exhausted', () => {
+  const word = { name: 'persistent' }
+  const decision = decideReviewProgress({
+    queue: [word],
+    currentIndex: 0,
+    currentWord: word,
+    currentExerciseCount: 0,
+    loopWordTimes: 1,
+    priorAccumulatedWrongCount: 0,
+    attemptWrongCount: 3,
+    currentReinforcementGap: 3,
+    attemptReinforcementGap: 3,
+    reinforcementRemaining: 0,
+  })
+
+  assert.deepEqual(decision, { kind: 'finish' })
+})
+
+test('review progression consumes the only reinforcement opportunity when budget remains', () => {
+  const word = { name: 'persistent' }
+  const decision = decideReviewProgress({
+    queue: [word],
+    currentIndex: 0,
+    currentWord: word,
+    currentExerciseCount: 0,
+    loopWordTimes: 1,
+    priorAccumulatedWrongCount: 0,
+    attemptWrongCount: 3,
+    currentReinforcementGap: 3,
+    attemptReinforcementGap: 3,
+    reinforcementRemaining: 1,
+  })
+
+  assert.equal(decision.kind, 'advance')
+  if (decision.kind === 'advance') {
+    assert.equal(decision.nextIndex, 1)
+    assert.equal(decision.insertWord?.word.name, 'persistent')
+  }
+})

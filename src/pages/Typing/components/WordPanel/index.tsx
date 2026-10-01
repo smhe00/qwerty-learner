@@ -17,6 +17,7 @@ import {
   getAdaptiveReinforcementGap,
   getWordComponentInstanceKey,
 } from '@/review/session'
+import { MAX_REINFORCEMENT_PER_WORD_PER_SESSION } from '@/review/state-machine'
 import { isReviewModeAtom, isShowPrevAndNextWordAtom, loopWordConfigAtom, phoneticConfigAtom, reviewModeInfoAtom } from '@/store'
 import type { Word } from '@/typings'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -71,6 +72,13 @@ export default function WordPanel() {
           wrongCount > 0
             ? getAdaptiveReinforcementGap(wrongCount, classification)
             : MAX_REINFORCEMENT_GAP
+        const reinforcementUsed =
+          reviewModeInfo.reviewRecord?.reinforcementCounts?.[currentWord.name] ?? 0
+        const reinforcementRemaining = Math.max(
+          0,
+          MAX_REINFORCEMENT_PER_WORD_PER_SESSION - reinforcementUsed,
+        )
+
         const decision = decideReviewProgress({
           queue: state.chapterData.words,
           currentIndex: state.chapterData.index,
@@ -81,6 +89,7 @@ export default function WordPanel() {
           attemptWrongCount: wrongCount,
           currentReinforcementGap: currentReviewGap,
           attemptReinforcementGap: attemptGap,
+          reinforcementRemaining,
         })
         const projection = projectReviewProgress({
           queue: state.chapterData.words,
@@ -95,6 +104,15 @@ export default function WordPanel() {
           if (!old.reviewRecord) return old
 
           const exercisePlans = { ...(old.reviewRecord.exercisePlans ?? {}) }
+          const reinforcementCounts = {
+            ...(old.reviewRecord.reinforcementCounts ?? {}),
+          }
+
+          if (decision.kind === 'advance' && decision.insertWord) {
+            reinforcementCounts[currentWord.name] =
+              (reinforcementCounts[currentWord.name] ?? 0) + 1
+          }
+
           if (nextExerciseShadow !== undefined) {
             if (nextExerciseShadow) {
               exercisePlans[currentWord.name] =
@@ -127,6 +145,10 @@ export default function WordPanel() {
               exercisePlans:
                 Object.keys(exercisePlans).length > 0
                   ? exercisePlans
+                  : undefined,
+              reinforcementCounts:
+                Object.keys(reinforcementCounts).length > 0
+                  ? reinforcementCounts
                   : undefined,
             },
           }
@@ -187,6 +209,7 @@ export default function WordPanel() {
       state.chapterData.index,
       state.chapterData.words,
       currentWord,
+      reviewModeInfo.reviewRecord?.reinforcementCounts,
       isReviewMode,
       dispatch,
       reloadCurrentWordComponent,

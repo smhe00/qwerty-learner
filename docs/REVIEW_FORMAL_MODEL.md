@@ -305,3 +305,69 @@ production build
 
 The Chrome scenarios include both the reported fresh-error sequence and the
 no-due -> Force Review UI path.
+
+
+## 15. State Machine V2 — bounded termination
+
+The Review model now includes an explicit finite-work state machine in
+`src/review/state-machine.ts`.
+
+The live progression path also persists per-word reinforcement consumption in
+the unfinished `ReviewRecord`. The production invariant is:
+
+```text
+MAX_REINFORCEMENT_PER_WORD_PER_SESSION = 1
+```
+
+Therefore an initial unique queue of length `N` has:
+
+```text
+queueLength <= 2N
+```
+
+even if every presented word is answered incorrectly forever.
+
+The executable checker now includes the stronger liveness scenario:
+
+```text
+every word fails
+→ each word may insert at most one reinforcement
+→ reinforcement failures cannot insert again
+→ cursor continues
+→ FINISH
+```
+
+The Review-item machine also has explicit terminal states:
+
+```text
+DONE | DEFERRED
+```
+
+and bounded budgets:
+
+```text
+invalid retry <= 1
+reinforcement <= 1
+diagnostic probe <= 1
+```
+
+`reviewItemTerminationVariant()` is a non-negative integer that must strictly
+decrease on every legal item transition. The formal test recursively explores
+every legal branch from the initial item state and rejects any edge for which:
+
+```text
+V(next) >= V(current)
+```
+
+This proves absence of an item-state cycle inside the modeled transition system.
+
+The rating decision core `decideReviewRating()` is also exhaustively checked
+over the bounded Cartesian product of purpose, probe dimension, letter
+visibility, audio, meaning, attempt role, error cause and attention uncertainty.
+
+The new rating gate is deliberately not yet connected to live scheduler
+mutation. Live Review presentation still inherits several ordinary-learning
+settings, so activating the gate before canonical-probe presentation is wired
+would turn valid training into repeated due cards. The production no-loop
+reinforcement guard is active now; scheduler-rating activation remains a
+separate gated rollout described in `REVIEW_STATE_MACHINE_V2.md`.

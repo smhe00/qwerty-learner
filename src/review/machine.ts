@@ -1,7 +1,7 @@
 import { scheduleReinforcement } from './session'
 import type { NamedReviewItem } from './session'
 
-export const REVIEW_MACHINE_VERSION = 1 as const
+export const REVIEW_MACHINE_VERSION = 2 as const
 
 export type WordInputDecision =
   | { accept: false; reason: 'wrong-lock' | 'finished' | 'empty-target' | 'target-complete' }
@@ -70,6 +70,7 @@ export function decideReviewProgress<T extends NamedReviewItem>(input: {
   attemptWrongCount: number
   currentReinforcementGap: number
   attemptReinforcementGap: number
+  reinforcementRemaining?: number
 }): ReviewProgressDecision<T> {
   if (input.queue.length === 0) {
     throw new Error('review queue must not be empty')
@@ -106,8 +107,13 @@ export function decideReviewProgress<T extends NamedReviewItem>(input: {
     }
   }
 
+  const reinforcementRemaining = Math.max(
+    0,
+    input.reinforcementRemaining ?? 1,
+  )
+
   let insertWord: { index: number; word: T } | undefined
-  if (accumulatedWrongCount > 0) {
+  if (accumulatedWrongCount > 0 && reinforcementRemaining > 0) {
     const reinforcement = scheduleReinforcement(
       input.queue,
       input.currentIndex,

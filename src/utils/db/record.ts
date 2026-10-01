@@ -249,6 +249,10 @@ export interface IReviewRecord {
   words: Word[]
   // Frozen at session creation from the latest shadow proposal per word.
   exercisePlans?: Record<string, ReviewExercisePlanV1>
+  // Persisted same-session reinforcement budget consumption per word.
+  // A value of 1 means this Review session has already inserted its one
+  // allowed reinforcement occurrence for the word.
+  reinforcementCounts?: Record<string, number>
 }
 
 export class ReviewRecord implements IReviewRecord {
@@ -259,6 +263,7 @@ export class ReviewRecord implements IReviewRecord {
   isFinished: boolean
   words: Word[]
   exercisePlans?: Record<string, ReviewExercisePlanV1>
+  reinforcementCounts?: Record<string, number>
 
   constructor(
     dict: string,

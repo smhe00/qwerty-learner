@@ -17,6 +17,20 @@ import {
   MAX_REINFORCEMENT_GAP,
   MIN_REINFORCEMENT_GAP,
 } from '../../src/review/session'
+import {
+  MAX_INVALID_RETRY_PER_ITEM,
+  MAX_REINFORCEMENT_PER_WORD_PER_SESSION,
+  createReviewItemMachineState,
+  decideReviewItemTransition,
+  decideReviewRating,
+  isTerminalReviewItemState,
+  reviewItemTerminationVariant,
+} from '../../src/review/state-machine'
+import type {
+  RatingDecision,
+  ReviewItemEvent,
+  ReviewItemMachineState,
+} from '../../src/review/state-machine'
 import type { OrthographyProfile } from '../../src/review/profile'
 import {
   hasUnreviewedLearningFailure,
@@ -194,6 +208,7 @@ type ModelState = {
   exerciseCount: number
   accumulatedWrong: number
   gap: number
+  reinforcementCounts: Record<string, number>
   finished: boolean
 }
 
@@ -213,6 +228,11 @@ function applyModelCompletion(
     attemptWrongCount: input.wrongCount,
     currentReinforcementGap: state.gap,
     attemptReinforcementGap: input.attemptGap,
+    reinforcementRemaining: Math.max(
+      0,
+      MAX_REINFORCEMENT_PER_WORD_PER_SESSION -
+        (state.reinforcementCounts[state.queue[state.index].name] ?? 0),
+    ),
   })
 
   if (decision.kind === 'loop-current') {
@@ -229,12 +249,15 @@ function applyModelCompletion(
   }
 
   const queue = [...state.queue]
+  const reinforcementCounts = { ...state.reinforcementCounts }
   if (decision.insertWord) {
     queue.splice(
       decision.insertWord.index,
       0,
       decision.insertWord.word,
     )
+    reinforcementCounts[decision.insertWord.word.name] =
+      (reinforcementCounts[decision.insertWord.word.name] ?? 0) + 1
   }
 
   return {
@@ -243,6 +266,7 @@ function applyModelCompletion(
     exerciseCount: 0,
     accumulatedWrong: 0,
     gap: MAX_REINFORCEMENT_GAP,
+    reinforcementCounts,
     finished: false,
   }
 }
@@ -258,6 +282,7 @@ test('formal/progress-liveness: every finite queue terminates after clean comple
         exerciseCount: 0,
         accumulatedWrong: 0,
         gap: MAX_REINFORCEMENT_GAP,
+        reinforcementCounts: {},
         finished: false,
       }
 
@@ -290,6 +315,7 @@ test('formal/progress-liveness: one failure plus finite reinforcement still term
         exerciseCount: 0,
         accumulatedWrong: 0,
         gap: MAX_REINFORCEMENT_GAP,
+        reinforcementCounts: {},
         finished: false,
       }
 
@@ -625,4 +651,331 @@ test('formal/learning-reactivation: only fresh learning after latest Review pull
     assert.equal(refreshed.reviewCount, state.reviewCount)
     assert.deepEqual(refreshed.schedulerState, state.schedulerState)
   }
+})
+
+
+test('formal/progress-liveness: persistent failures terminate with bounded reinforcement', () => {
+  for (let queueLength = 1; queueLength <= 6; queueLength += 1) {
+    for (let loopWordTimes = 1; loopWordTimes <= 3; loopWordTimes += 1) {
+      let state: ModelState = {
+        queue: Array.from({ length: queueLength }, (_, index) => ({
+          name: 'persist-' + index,
+        })),
+        index: 0,
+        exerciseCount: 0,
+        accumulatedWrong: 0,
+        gap: MAX_REINFORCEMENT_GAP,
+        reinforcementCounts: {},
+        finished: false,
+      }
+
+      const maxQueueLength =
+        queueLength * (1 + MAX_REINFORCEMENT_PER_WORD_PER_SESSION)
+      const bound = maxQueueLength * loopWordTimes + 2
+
+      for (let step = 0; step < bound && !state.finished; step += 1) {
+        state = applyModelCompletion(state, {
+          wrongCount: 2,
+          loopWordTimes,
+          attemptGap: MIN_REINFORCEMENT_GAP,
+        })
+        assert.ok(
+          state.queue.length <= maxQueueLength,
+          'reinforcement queue exceeded the proven finite bound',
+        )
+      }
+
+      assert.equal(
+        state.finished,
+        true,
+        'persistent failure must still terminate the current Review session',
+      )
+
+      for (const count of Object.values(state.reinforcementCounts)) {
+        assert.ok(count <= MAX_REINFORCEMENT_PER_WORD_PER_SESSION)
+      }
+    }
+  }
+})
+
+function canonicalCondition() {
+  return {
+    version: 1 as const,
+    purpose: 'probe' as const,
+    source: 'adaptive-policy' as const,
+    audio: 'none' as const,
+    meaning: 'visible' as const,
+    phonetic: 'hidden' as const,
+    letters: { mode: 'all-hidden' as const },
+    probeDimension: 'none' as const,
+  }
+}
+
+function ratingFixture(input: {
+  purpose?: 'training' | 'probe'
+  probeDimension?: 'none' | 'audio' | 'orthography' | 'meaning'
+  letters?: 'all-visible' | 'all-hidden' | 'partial' | 'targeted-mask'
+  audio?: 'none' | 'automatic'
+  meaning?: 'hidden' | 'visible'
+  role?: 'cold' | 'training' | 'reinforcement'
+  cause?: 'clean' | 'recall' | 'spelling' | 'motor' | 'uncertain'
+  attentionUncertain?: boolean
+  memoryGrade?: 'again' | 'hard' | 'good' | 'easy'
+  retrievalValidity?: 'independent' | 'assisted' | 'uncertain' | 'unknown'
+  reasonCodes?: string[]
+} = {}) {
+  const condition = {
+    ...canonicalCondition(),
+    purpose: input.purpose ?? 'probe',
+    probeDimension: input.probeDimension ?? 'none',
+    audio: input.audio ?? 'none',
+    meaning: input.meaning ?? 'visible',
+    letters: { mode: input.letters ?? 'all-hidden' },
+  }
+  const classification = {
+    cause: input.cause ?? 'clean',
+    confidence: 0.9,
+    attentionUncertain: input.attentionUncertain || undefined,
+    scores: { recall: 0.1, spelling: 0.1, motor: 0.1 },
+  }
+  const evidence = {
+    version: 1 as const,
+    memoryGrade: input.memoryGrade ?? 'good',
+    errorCause: classification.cause,
+    confidence: 0.9,
+    evidenceStrength: 0.9,
+    retrievalValidity: input.retrievalValidity ?? 'independent',
+    reasonCodes: input.reasonCodes ?? [],
+  }
+
+  return decideReviewRating({
+    attemptRole: input.role ?? 'cold',
+    condition,
+    classification,
+    evidence,
+  })
+}
+
+test('formal/rating-totality: bounded condition space always returns one deterministic decision', () => {
+  let explored = 0
+
+  for (const purpose of ['training', 'probe'] as const) {
+    for (const probeDimension of ['none', 'audio', 'orthography', 'meaning'] as const) {
+      for (const letters of ['all-visible', 'all-hidden', 'partial', 'targeted-mask'] as const) {
+        for (const audio of ['none', 'automatic'] as const) {
+          for (const meaning of ['hidden', 'visible'] as const) {
+            for (const role of ['cold', 'training', 'reinforcement'] as const) {
+              for (const cause of ['clean', 'recall', 'spelling', 'motor', 'uncertain'] as const) {
+                for (const attentionUncertain of [false, true]) {
+                  const input = {
+                    purpose,
+                    probeDimension,
+                    letters,
+                    audio,
+                    meaning,
+                    role,
+                    cause,
+                    attentionUncertain,
+                    memoryGrade: cause === 'clean' ? 'easy' as const : 'hard' as const,
+                  }
+                  const first = ratingFixture(input)
+                  const second = ratingFixture(input)
+                  assert.deepEqual(first, second)
+                  assert.equal(first.rating === null, !first.eligible)
+                  explored += 1
+
+                  if (purpose === 'training') {
+                    assert.equal(first.rating, null)
+                  }
+                  if (role !== 'cold') {
+                    assert.equal(first.rating, null)
+                  }
+                  if (probeDimension !== 'none') {
+                    assert.equal(first.rating, null)
+                  }
+                  if (letters !== 'all-hidden') {
+                    assert.equal(first.rating, null)
+                  }
+                  if (audio !== 'none') {
+                    assert.equal(first.rating, null)
+                  }
+                  if (meaning !== 'visible') {
+                    assert.equal(first.rating, null)
+                  }
+                  if (attentionUncertain) {
+                    assert.equal(first.rating, null)
+                  }
+                  if (first.eligible && cause === 'motor') {
+                    assert.equal(first.rating, 'good')
+                  }
+                  if (first.rating === 'easy') {
+                    assert.equal(cause, 'clean')
+                    assert.equal(purpose, 'probe')
+                    assert.equal(probeDimension, 'none')
+                    assert.equal(letters, 'all-hidden')
+                    assert.equal(audio, 'none')
+                    assert.equal(meaning, 'visible')
+                    assert.equal(role, 'cold')
+                    assert.equal(attentionUncertain, false)
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert.equal(explored, 3840)
+})
+
+test('formal/rating-safety: reveal, assistance and diagnostic evidence never rate', () => {
+  assert.equal(
+    ratingFixture({ reasonCodes: ['answer-revealed-before-first-key'] }).rating,
+    null,
+  )
+  assert.equal(
+    ratingFixture({ retrievalValidity: 'uncertain' }).rating,
+    null,
+  )
+  assert.equal(
+    ratingFixture({ probeDimension: 'audio' }).rating,
+    null,
+  )
+  assert.equal(
+    ratingFixture({ role: 'reinforcement' }).rating,
+    null,
+  )
+})
+
+function eligibleDecision(rating: 'again' | 'hard' | 'good' | 'easy'): RatingDecision {
+  return {
+    eligible: true,
+    rating,
+    confidence: 0.9,
+    reasonCodes: ['formal-fixture'],
+  }
+}
+
+function nullDecision(
+  reason:
+    | 'training-event'
+    | 'non-cold-attempt'
+    | 'diagnostic-probe'
+    | 'attention-uncertain'
+    | 'answer-revealed'
+    | 'orthographic-cue-not-hidden'
+    | 'audio-assisted'
+    | 'meaning-not-visible',
+): RatingDecision {
+  return {
+    eligible: false,
+    rating: null,
+    reason,
+    reasonCodes: [reason],
+  }
+}
+
+function legalEvents(state: ReviewItemMachineState): ReviewItemEvent[] {
+  if (state.phase === 'cold-probe' || state.phase === 'invalid-retry') {
+    return [
+      { kind: 'probe-result', decision: eligibleDecision('again'), needsTraining: true },
+      { kind: 'probe-result', decision: eligibleDecision('hard'), needsTraining: true },
+      { kind: 'probe-result', decision: eligibleDecision('good'), needsTraining: false },
+      { kind: 'probe-result', decision: eligibleDecision('easy'), needsTraining: false },
+      { kind: 'probe-result', decision: nullDecision('attention-uncertain'), needsTraining: false },
+      { kind: 'probe-result', decision: nullDecision('answer-revealed'), needsTraining: false },
+      { kind: 'probe-result', decision: nullDecision('diagnostic-probe'), needsTraining: false },
+      { kind: 'probe-result', decision: nullDecision('training-event'), needsTraining: false },
+    ]
+  }
+
+  if (state.phase === 'training') {
+    return [
+      { kind: 'training-complete', requestReinforcement: false },
+      { kind: 'training-complete', requestReinforcement: true },
+    ]
+  }
+
+  if (state.phase === 'reinforcement') {
+    return [{ kind: 'reinforcement-complete' }]
+  }
+
+  return []
+}
+
+test('formal/item-liveness: every legal item transition strictly decreases the termination variant', () => {
+  const visit = (state: ReviewItemMachineState, depth: number) => {
+    assert.ok(depth <= 5, 'finite Review item exceeded the transition bound')
+
+    if (isTerminalReviewItemState(state)) return
+
+    const before = reviewItemTerminationVariant(state)
+    const events = legalEvents(state)
+    assert.ok(events.length > 0)
+
+    for (const event of events) {
+      const next = decideReviewItemTransition(state, event)
+      const after = reviewItemTerminationVariant(next)
+      assert.ok(
+        after < before,
+        `termination variant failed to decrease: ${before} -> ${after}`,
+      )
+      visit(next, depth + 1)
+    }
+  }
+
+  const initial = createReviewItemMachineState()
+  assert.equal(initial.invalidRetryRemaining, MAX_INVALID_RETRY_PER_ITEM)
+  assert.equal(
+    initial.reinforcementRemaining,
+    MAX_REINFORCEMENT_PER_WORD_PER_SESSION,
+  )
+  visit(initial, 0)
+})
+
+test('formal/item-liveness: repeated null ratings defer instead of livelocking', () => {
+  let state = createReviewItemMachineState()
+
+  state = decideReviewItemTransition(state, {
+    kind: 'probe-result',
+    decision: nullDecision('attention-uncertain'),
+    needsTraining: false,
+  })
+  assert.equal(state.phase, 'invalid-retry')
+  assert.equal(state.invalidRetryRemaining, 0)
+
+  state = decideReviewItemTransition(state, {
+    kind: 'probe-result',
+    decision: nullDecision('attention-uncertain'),
+    needsTraining: false,
+  })
+  assert.equal(state.phase, 'deferred')
+  assert.equal(isTerminalReviewItemState(state), true)
+})
+
+test('formal/item-safety: one rated failure can create at most one reinforcement then terminates', () => {
+  let state = createReviewItemMachineState()
+
+  state = decideReviewItemTransition(state, {
+    kind: 'probe-result',
+    decision: eligibleDecision('again'),
+    needsTraining: true,
+  })
+  assert.equal(state.phase, 'training')
+  assert.equal(state.ratingEmitted, true)
+
+  state = decideReviewItemTransition(state, {
+    kind: 'training-complete',
+    requestReinforcement: true,
+  })
+  assert.equal(state.phase, 'reinforcement')
+  assert.equal(state.reinforcementRemaining, 0)
+
+  state = decideReviewItemTransition(state, {
+    kind: 'reinforcement-complete',
+  })
+  assert.equal(state.phase, 'done')
+  assert.equal(state.ratingEmitted, true)
 })
