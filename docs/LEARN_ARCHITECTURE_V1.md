@@ -27,12 +27,26 @@ As of the Phase A/B rollout:
 ```text
 Phase A — Typing / Learn product boundary     IMPLEMENTED
 Phase B — ACTIVE / EXCLUDED lifecycle         IMPLEMENTED
-Phase C — unified Learn Session               PENDING
+Phase C — unified Learn Session               PARTIAL
 Phase D — Rating Gate owns live scheduler     PENDING
-Phase E — all-word admission                  PENDING
+Phase E — all-word admission                  PARTIAL
 Phase F — basic-v2                            PENDING
 Phase G — FSRS-6                              PENDING
 ```
+
+Current acquisition rollout:
+
+- Learn dictionary selection reuses the Typing gallery UI, but Learn selection
+  is direct at dictionary level and never opens chapter selection.
+- Normal Learn start first builds a due Review session.
+- Only when no due ACTIVE word exists does Learn open a new-word Acquisition
+  session.
+- Acquisition V1 is bounded to 20 UNSEEN words in dictionary order.
+- Acquisition uses full spelling + meaning + phonetic + automatic audio.
+- Acquisition completion creates ACTIVE state with `nextReviewAt = now + 1 day`.
+- Acquisition creates no Again/Hard/Good/Easy rating and does not increment
+  review/lapse counters.
+- Session records now carry transitional `sessionKind = review | acquisition`.
 
 Current Phase B persistence uses an additive compatibility model:
 
@@ -1191,12 +1205,20 @@ build
 production verification
 ```
 
-In particular, all-word admission MUST NOT ship before:
+A bounded **acquisition-only admission** may ship before the full Rating Gate
+migration if and only if it is scheduler-rating neutral:
+
+- it may create ACTIVE state and an initial due date;
+- it must not fabricate Again/Hard/Good/Easy;
+- it must not increment review/lapse counters;
+- acquisition WordRecords must never replay as spaced-review ratings.
+
+Full all-word scheduler rollout still requires:
 
 1. Typing/Learn ownership boundary exists;
 2. exclusion/restore works;
 3. excluded words are proven absent from queue;
-4. Rating Gate is the sole Learn scheduler mutation path;
+4. Rating Gate becomes the sole Learn scheduler mutation path;
 5. current error-word users migrate without losing state.
 
 ---
