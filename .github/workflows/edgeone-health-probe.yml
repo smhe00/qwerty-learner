@@ -1,0 +1,47 @@
+name: EdgeOne Health Probe
+
+on:
+  push:
+    branches:
+      - product/main
+    paths:
+      - '.github/workflows/edgeone-health-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe homepage and health endpoint
+        shell: bash
+        run: |
+          set +e
+          BASE='https://qwerty-learner.edgeone.cool'
+
+          echo '=== DNS ==='
+          getent ahosts qwerty-learner.edgeone.cool || true
+
+          echo '=== HOMEPAGE ==='
+          curl -sS -o /tmp/home.body -D /tmp/home.headers \
+            --connect-timeout 10 --max-time 20 "$BASE/"
+          HOME_RC=$?
+          cat /tmp/home.headers 2>/dev/null || true
+          echo "curl_rc=$HOME_RC"
+          echo "body_bytes=$(wc -c < /tmp/home.body 2>/dev/null || echo 0)"
+
+          echo '=== HEALTH ==='
+          curl -sS -o /tmp/health.body -D /tmp/health.headers \
+            --connect-timeout 10 --max-time 20 "$BASE/api/health"
+          HEALTH_RC=$?
+          cat /tmp/health.headers 2>/dev/null || true
+          cat /tmp/health.body 2>/dev/null || true
+          echo
+          echo "curl_rc=$HEALTH_RC"
+
+          if [ "$HOME_RC" -ne 0 ] || [ "$HEALTH_RC" -ne 0 ]; then
+            exit 1
+          fi
