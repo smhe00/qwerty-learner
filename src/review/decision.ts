@@ -2,6 +2,7 @@ import type { ExerciseConditionV1 } from './condition'
 
 export const REVIEW_POLICY_DECISION_VERSION = 1 as const
 export const BASELINE_EXERCISE_POLICY_VERSION = 'baseline-user-settings-v1'
+export const CANONICAL_REVIEW_PROBE_POLICY_VERSION = 'canonical-review-probe-v1'
 
 export type ReviewPolicyDecisionV1 = {
   version: typeof REVIEW_POLICY_DECISION_VERSION
@@ -77,5 +78,36 @@ export function materializeReviewExercisePlan(
     condition: shadow.condition,
     decision: shadow.decision,
     sourceShadowVersion: shadow.version,
+  }
+}
+
+
+export function createCanonicalReviewProbePlan(): ReviewExercisePlanV1 {
+  const condition: ExerciseConditionV1 = {
+    version: 1,
+    purpose: 'probe',
+    source: 'adaptive-policy',
+    audio: 'none',
+    meaning: 'visible',
+    phonetic: 'hidden',
+    letters: { mode: 'all-hidden' },
+    probeDimension: 'none',
+  }
+
+  return {
+    version: REVIEW_EXERCISE_PLAN_VERSION,
+    condition,
+    decision: createReviewPolicyDecision(
+      CANONICAL_REVIEW_PROBE_POLICY_VERSION,
+      [
+        'canonical-long-term-probe',
+        'meaning-to-orthography',
+        'letters-hidden',
+        'audio-off',
+        'phonetic-hidden',
+      ],
+      condition.version,
+    ),
+    sourceShadowVersion: REVIEW_POLICY_SHADOW_VERSION,
   }
 }

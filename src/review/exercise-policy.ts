@@ -1,5 +1,6 @@
 import type { ExerciseConditionV1 } from './condition'
 import {
+  CANONICAL_REVIEW_PROBE_POLICY_VERSION,
   createBaselineReviewPolicyDecision,
   createReviewPolicyDecision,
   createReviewPolicyShadow,
@@ -110,7 +111,8 @@ export function resolveExercisePlanForAttempt(
 ): ExercisePlan {
   if (
     frozenPlan?.decision.policyVersion === TARGETED_MASK_POLICY_VERSION ||
-    frozenPlan?.decision.policyVersion === AUDIO_WITHDRAWAL_POLICY_VERSION
+    frozenPlan?.decision.policyVersion === AUDIO_WITHDRAWAL_POLICY_VERSION ||
+    frozenPlan?.decision.policyVersion === CANONICAL_REVIEW_PROBE_POLICY_VERSION
   ) {
     return {
       condition: frozenPlan.condition,

@@ -275,11 +275,23 @@ export default function WordPanel() {
     return isShowTranslation || state.isTransVisible
   }, [isShowTranslation, state.isTransVisible])
 
-  const phoneticVisible = useMemo(() => {
+  const baselinePhoneticVisible = useMemo(() => {
     if (!phoneticConfig.isOpen || !currentWord) return false
     const phonetic = phoneticConfig.type === 'us' ? currentWord.usphone : currentWord.ukphone
     return Boolean(phonetic && phonetic.length > 1)
   }, [currentWord, phoneticConfig.isOpen, phoneticConfig.type])
+
+  const hasAdaptiveReviewPresentation =
+    isReviewMode &&
+    currentExercisePlan?.condition.source === 'adaptive-policy'
+
+  const effectiveMeaningVisible = hasAdaptiveReviewPresentation
+    ? currentExercisePlan.condition.meaning === 'visible'
+    : shouldShowTranslation
+
+  const effectivePhoneticVisible = hasAdaptiveReviewPresentation
+    ? currentExercisePlan.condition.phonetic === 'visible'
+    : baselinePhoneticVisible
 
   return (
     <div className="container flex h-full w-full flex-col items-center justify-center">
@@ -307,15 +319,15 @@ export default function WordPanel() {
               <WordComponent
                 word={currentWord}
                 onFinish={onFinish}
-                meaningVisible={shouldShowTranslation}
-                phoneticVisible={phoneticVisible}
+                meaningVisible={effectiveMeaningVisible}
+                phoneticVisible={effectivePhoneticVisible}
                 exercisePlan={currentExercisePlan}
                 key={currentWordComponentKey}
               />
-              {phoneticConfig.isOpen && <Phonetic word={currentWord} />}
+              {effectivePhoneticVisible && <Phonetic word={currentWord} />}
               <Translation
                 trans={currentWord.trans.join('；')}
-                showTrans={shouldShowTranslation}
+                showTrans={effectiveMeaningVisible}
                 onMouseEnter={() => handleShowTranslation(true)}
                 onMouseLeave={() => handleShowTranslation(false)}
               />

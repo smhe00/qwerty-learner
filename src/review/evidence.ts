@@ -65,6 +65,9 @@ function assistanceReasons(observation: ReviewEvidenceObservation): string[] {
   if (audio === 'automatic') {
     reasons.push('automatic-audio-cue')
   }
+  if ((context?.pronunciationRequestedPlayCount ?? 0) > 0) {
+    reasons.push('requested-audio-cue')
+  }
 
   return reasons
 }
@@ -276,7 +279,8 @@ export function evaluateReviewEvidence(
     (reason) =>
       reason === 'orthographic-cue-full' ||
       reason === 'orthographic-cue-partial' ||
-      reason === 'automatic-audio-cue',
+      reason === 'automatic-audio-cue' ||
+      reason === 'requested-audio-cue',
   )
   return {
     version: REVIEW_EVIDENCE_VERSION,

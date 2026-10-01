@@ -1,5 +1,7 @@
 import type { TypingErrorClassification } from './classifier'
-import { materializeReviewExercisePlan } from './decision'
+import {
+  createCanonicalReviewProbePlan,
+} from './decision'
 import type { ReviewExercisePlanV1 } from './decision'
 import type { Word } from '@/typings'
 import type { IWordRecord } from '@/utils/db/record'
@@ -74,42 +76,19 @@ export function getAdaptiveReinforcementGap(
 
 export type ReviewSessionExercisePlans = Record<string, ReviewExercisePlanV1>
 
-function recordOrder(record: IWordRecord): number {
-  return record.id ?? record.timeStamp
-}
-
 /**
- * Freezes the newest shadow proposal for each review word at session creation.
- *
- * The returned plans are session data, not a new source of truth. They can be
- * rebuilt from WordRecord.reviewPolicyShadow and are intentionally detached
- * from WordComponent async history loading.
+ * Every newly created long-term Review item starts from the same canonical
+ * cold probe, independent of the ordinary-learning UI settings or historical
+ * adaptive shadows. Remediation/diagnostic shadows may still be generated
+ * after the cold probe and applied to a later same-session exercise.
  */
 export function buildReviewSessionExercisePlans(
   words: Word[],
-  records: IWordRecord[],
+  _records: IWordRecord[],
 ): ReviewSessionExercisePlans {
-  const wanted = new Set(words.map((word) => word.name))
-  const latest = new Map<string, IWordRecord>()
-
-  for (const record of records) {
-    if (!wanted.has(record.word)) continue
-
-    const prior = latest.get(record.word)
-    if (!prior || recordOrder(record) > recordOrder(prior)) {
-      latest.set(record.word, record)
-    }
-  }
-
-  const plans: ReviewSessionExercisePlans = {}
-  for (const word of words) {
-    const shadow = latest.get(word.name)?.reviewPolicyShadow
-    if (shadow) {
-      plans[word.name] = materializeReviewExercisePlan(shadow)
-    }
-  }
-
-  return plans
+  return Object.fromEntries(
+    words.map((word) => [word.name, createCanonicalReviewProbePlan()]),
+  )
 }
 
 /**

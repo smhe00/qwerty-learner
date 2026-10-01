@@ -5,7 +5,9 @@ import {
   isLetterVisibleForExerciseCondition,
 } from '../../src/review/condition'
 import {
+  CANONICAL_REVIEW_PROBE_POLICY_VERSION,
   createBaselineReviewPolicyDecision,
+  createCanonicalReviewProbePlan,
   createReviewPolicyShadow,
   materializeReviewExercisePlan,
 } from '../../src/review/decision'
@@ -514,28 +516,24 @@ test('materializes a frozen exercise plan from a shadow proposal', () => {
   })
 })
 
-test('review session freezes the newest shadow per word and ignores legacy records', () => {
+test('review session starts every word with the canonical cold probe regardless of prior shadows', () => {
   const baseline = createBaselineExerciseCondition({
     pronunciationEnabled: true,
-    meaningVisible: true,
-    phoneticVisible: false,
-    letterVisibility: [false, false, false, false],
+    meaningVisible: false,
+    phoneticVisible: true,
+    letterVisibility: [true, true, true, true],
   })
-  const olderShadow = createReviewPolicyShadow(
-    baseline,
-    createBaselineReviewPolicyDecision(),
-  )
-  const newerCondition = {
-    ...baseline,
-    source: 'adaptive-policy' as const,
-    letters: {
-      mode: 'targeted-mask' as const,
-      visiblePositions: [0, 1, 3],
-      maskedPositions: [2],
+  const targetedShadow = createReviewPolicyShadow(
+    {
+      ...baseline,
+      source: 'adaptive-policy',
+      purpose: 'training',
+      letters: {
+        mode: 'targeted-mask',
+        visiblePositions: [0, 1, 3],
+        maskedPositions: [2],
+      },
     },
-  }
-  const newerShadow = createReviewPolicyShadow(
-    newerCondition,
     {
       version: 1,
       policyVersion: 'targeted-mask-v1',
@@ -544,53 +542,42 @@ test('review session freezes the newest shadow per word and ignores legacy recor
     },
   )
 
-  const records: IWordRecord[] = [
-    {
-      id: 1,
-      word: 'test',
-      timeStamp: 1,
-      dict: 'cet4',
-      chapter: -1,
-      timing: [],
-      wrongCount: 1,
-      mistakes: { 2: ['x'] },
-      reviewPolicyShadow: olderShadow,
-    },
-    {
-      id: 2,
-      word: 'test',
-      timeStamp: 2,
-      dict: 'cet4',
-      chapter: -1,
-      timing: [],
-      wrongCount: 1,
-      mistakes: { 2: ['x'] },
-      reviewPolicyShadow: newerShadow,
-    },
-    {
-      id: 3,
-      word: 'legacy',
-      timeStamp: 3,
-      dict: 'cet4',
-      chapter: -1,
-      timing: [],
-      wrongCount: 1,
-      mistakes: { 0: ['x'] },
-    },
-  ]
-
   const plans = buildReviewSessionExercisePlans(
     [
       { name: 'test', trans: [], usphone: '', ukphone: '' },
       { name: 'legacy', trans: [], usphone: '', ukphone: '' },
     ],
-    records,
+    [
+      {
+        id: 1,
+        word: 'test',
+        timeStamp: 1,
+        dict: 'cet4',
+        chapter: -1,
+        timing: [],
+        wrongCount: 1,
+        mistakes: { 2: ['x'] },
+        reviewPolicyShadow: targetedShadow,
+      },
+    ],
   )
 
-  assert.equal(Object.keys(plans).length, 1)
-  assert.equal(plans.test.decision.policyVersion, 'targeted-mask-v1')
-  assert.deepEqual(plans.test.condition.letters.maskedPositions, [2])
-  assert.equal(plans.legacy, undefined)
+  assert.deepEqual(plans.test, createCanonicalReviewProbePlan())
+  assert.deepEqual(plans.legacy, createCanonicalReviewProbePlan())
+  assert.equal(
+    plans.test.decision.policyVersion,
+    CANONICAL_REVIEW_PROBE_POLICY_VERSION,
+  )
+  assert.deepEqual(plans.test.condition, {
+    version: 1,
+    purpose: 'probe',
+    source: 'adaptive-policy',
+    audio: 'none',
+    meaning: 'visible',
+    phonetic: 'hidden',
+    letters: { mode: 'all-hidden' },
+    probeDimension: 'none',
+  })
 })
 
 
@@ -713,7 +700,7 @@ test('a failed targeted-mask attempt keeps the targeted scaffold eligible', () =
   assert.deepEqual(shadow.condition.letters.maskedPositions, [2])
 })
 
-test('a newer record without a shadow cancels an older session shadow', () => {
+test('historical shadow presence or absence cannot change the next session cold-probe condition', () => {
   const baseline = createBaselineExerciseCondition({
     pronunciationEnabled: true,
     meaningVisible: true,
@@ -765,7 +752,7 @@ test('a newer record without a shadow cancels an older session shadow', () => {
     ],
   )
 
-  assert.deepEqual(plans, {})
+  assert.deepEqual(plans.test, createCanonicalReviewProbePlan())
 })
 
 
@@ -1594,4 +1581,59 @@ test('review progression consumes the only reinforcement opportunity when budget
     assert.equal(decision.nextIndex, 1)
     assert.equal(decision.insertWord?.word.name, 'persistent')
   }
+})
+
+
+test('canonical Review probe overrides ordinary user presentation settings', () => {
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: true,
+    meaningVisible: false,
+    phoneticVisible: true,
+    letterVisibility: [true, true, true],
+  })
+  const canonical = createCanonicalReviewProbePlan()
+  const active = resolveExercisePlanForAttempt(baseline, canonical)
+
+  assert.equal(active.decision.policyVersion, CANONICAL_REVIEW_PROBE_POLICY_VERSION)
+  assert.deepEqual(active.condition, canonical.condition)
+  assert.equal(active.condition.purpose, 'probe')
+  assert.equal(active.condition.probeDimension, 'none')
+  assert.equal(active.condition.audio, 'none')
+  assert.equal(active.condition.meaning, 'visible')
+  assert.equal(active.condition.phonetic, 'hidden')
+  assert.equal(active.condition.letters.mode, 'all-hidden')
+})
+
+test('manually requested pronunciation marks an otherwise canonical retrieval as assisted', () => {
+  const condition = createCanonicalReviewProbePlan().condition
+  const evidence = evaluateReviewEvidence(
+    {
+      exerciseCondition: condition,
+      learningContext: {
+        version: 1,
+        answerVisibilityAtStart: 'hidden',
+        meaningVisibleAtStart: true,
+        phoneticVisibleAtStart: false,
+        pronunciationEnabledAtStart: false,
+        pronunciationPlayed: true,
+        pronunciationPlayedBeforeFirstKey: true,
+        pronunciationPlayCount: 1,
+        pronunciationAutomaticPlayCount: 0,
+        pronunciationRequestedPlayCount: 1,
+      },
+      typingTelemetry: {
+        telemetryVersion: 2,
+        firstKeyLatencyMs: 500,
+        attempts: [],
+      },
+    },
+    {
+      cause: 'clean',
+      confidence: 0.9,
+      scores: { recall: 0, spelling: 0, motor: 0 },
+    },
+  )
+
+  assert.equal(evidence.retrievalValidity, 'assisted')
+  assert.ok(evidence.reasonCodes.includes('requested-audio-cue'))
 })

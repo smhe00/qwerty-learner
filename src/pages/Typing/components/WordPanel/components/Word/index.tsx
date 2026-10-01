@@ -370,10 +370,7 @@ export default function WordComponent({
       if (wordState.letterStates[index] === 'correct' || (isShowAnswerOnHover && isHoveringWord)) return true
 
       const activeCondition = exerciseConditionRef.current
-      if (
-        activeCondition?.source === 'adaptive-policy' &&
-        activeCondition.letters.mode === 'targeted-mask'
-      ) {
+      if (activeCondition?.source === 'adaptive-policy') {
         return isLetterVisibleForExerciseCondition(
           activeCondition,
           index,
@@ -675,6 +672,13 @@ export default function WordComponent({
             data-typing-has-wrong={wordState.hasWrong ? 'true' : 'false'}
             data-typing-finished={wordState.isFinished ? 'true' : 'false'}
             data-typing-active={state.isTyping ? 'true' : 'false'}
+            data-review-purpose={exerciseConditionRef.current?.purpose}
+            data-review-probe-dimension={exerciseConditionRef.current?.probeDimension}
+            data-review-audio={exerciseConditionRef.current?.audio}
+            data-review-meaning={exerciseConditionRef.current?.meaning}
+            data-review-phonetic={exerciseConditionRef.current?.phonetic}
+            data-review-letters={exerciseConditionRef.current?.letters.mode}
+            data-review-policy={reviewPolicyDecisionRef.current?.policyVersion}
             onMouseEnter={() => handleHoverWord(true)}
             onMouseLeave={() => handleHoverWord(false)}
             className={`flex items-center ${isTextSelectable && 'select-all'} justify-center ${wordState.hasWrong ? style.wrong : ''}`}

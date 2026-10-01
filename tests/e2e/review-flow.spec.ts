@@ -361,3 +361,113 @@ test('no-due screen offers Force Review and force bypasses only the time gate', 
     })
     .toEqual(['cancel'])
 })
+
+
+test('new Review session forces a canonical cold probe independent of ordinary settings', async ({
+  page,
+}) => {
+  await seedReviewAdmissionCase(page, {
+    freshLearningAfterReview: true,
+  })
+
+  await page.getByRole('button', { name: '开始复习' }).click()
+  await expect(page).toHaveURL(/\/$/)
+
+  const sessionInfo = await readReviewModeInfo(page)
+  expect(sessionInfo?.reviewRecord?.exercisePlans?.cancel).toMatchObject({
+    condition: {
+      purpose: 'probe',
+      source: 'adaptive-policy',
+      audio: 'none',
+      meaning: 'visible',
+      phonetic: 'hidden',
+      letters: { mode: 'all-hidden' },
+      probeDimension: 'none',
+    },
+    decision: {
+      policyVersion: 'canonical-review-probe-v1',
+    },
+  })
+
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+
+  const word = page.locator('[data-typing-word="cancel"]')
+  await expect(word).toHaveAttribute('data-review-purpose', 'probe')
+  await expect(word).toHaveAttribute('data-review-probe-dimension', 'none')
+  await expect(word).toHaveAttribute('data-review-audio', 'none')
+  await expect(word).toHaveAttribute('data-review-meaning', 'visible')
+  await expect(word).toHaveAttribute('data-review-phonetic', 'hidden')
+  await expect(word).toHaveAttribute('data-review-letters', 'all-hidden')
+  await expect(word).toHaveAttribute(
+    'data-review-policy',
+    'canonical-review-probe-v1',
+  )
+  await expect(word).toHaveText('______')
+
+  await page.keyboard.type('cancel')
+
+  await expect
+    .poll(async () => {
+      const info = await readReviewModeInfo(page)
+      return info?.reviewRecord?.isFinished
+    })
+    .toBe(true)
+
+  const persistedCondition = await page.evaluate(async () => {
+    return new Promise<{
+      exerciseCondition?: {
+        purpose?: string
+        source?: string
+        audio?: string
+        meaning?: string
+        phonetic?: string
+        letters?: { mode?: string }
+        probeDimension?: string
+      }
+      learningContext?: {
+        pronunciationAutomaticPlayCount?: number
+      }
+    } | null>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction('wordRecords', 'readonly')
+        const all = tx.objectStore('wordRecords').getAll()
+        all.onerror = () => reject(all.error)
+        all.onsuccess = () => {
+          const record = [...all.result]
+            .reverse()
+            .find(
+              (item) =>
+                item.chapter === -1 &&
+                item.word === 'cancel',
+            )
+          resolve(
+            record
+              ? {
+                  exerciseCondition: record.exerciseCondition,
+                  learningContext: record.learningContext,
+                }
+              : null,
+          )
+          db.close()
+        }
+      }
+    })
+  })
+
+  expect(persistedCondition?.exerciseCondition).toMatchObject({
+    purpose: 'probe',
+    source: 'adaptive-policy',
+    audio: 'none',
+    meaning: 'visible',
+    phonetic: 'hidden',
+    letters: { mode: 'all-hidden' },
+    probeDimension: 'none',
+  })
+  expect(
+    persistedCondition?.learningContext?.pronunciationAutomaticPlayCount ?? 0,
+  ).toBe(0)
+})

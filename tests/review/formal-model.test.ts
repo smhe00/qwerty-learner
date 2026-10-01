@@ -979,3 +979,53 @@ test('formal/item-safety: one rated failure can create at most one reinforcement
   assert.equal(state.phase, 'done')
   assert.equal(state.ratingEmitted, true)
 })
+
+
+test('formal/canonical-probe: session cold probe is invariant to ordinary UI presentation', async () => {
+  const { createCanonicalReviewProbePlan } = await import('../../src/review/decision')
+  const { resolveExercisePlanForAttempt } = await import('../../src/review/exercise-policy')
+  const { createBaselineExerciseCondition } = await import('../../src/review/condition')
+
+  let explored = 0
+  for (const pronunciationEnabled of [false, true]) {
+    for (const meaningVisible of [false, true]) {
+      for (const phoneticVisible of [false, true]) {
+        for (const letterVisible of [false, true]) {
+          const baseline = createBaselineExerciseCondition({
+            pronunciationEnabled,
+            meaningVisible,
+            phoneticVisible,
+            letterVisibility: Array(6).fill(letterVisible),
+          })
+          const active = resolveExercisePlanForAttempt(
+            baseline,
+            createCanonicalReviewProbePlan(),
+          )
+          explored += 1
+
+          assert.equal(active.condition.purpose, 'probe')
+          assert.equal(active.condition.probeDimension, 'none')
+          assert.equal(active.condition.source, 'adaptive-policy')
+          assert.equal(active.condition.audio, 'none')
+          assert.equal(active.condition.meaning, 'visible')
+          assert.equal(active.condition.phonetic, 'hidden')
+          assert.equal(active.condition.letters.mode, 'all-hidden')
+        }
+      }
+    }
+  }
+
+  assert.equal(explored, 16)
+})
+
+test('formal/rating-safety: assisted retrieval can never reach the scheduler', () => {
+  const assisted = ratingFixture({
+    retrievalValidity: 'assisted',
+    reasonCodes: ['requested-audio-cue'],
+  })
+  assert.equal(assisted.eligible, false)
+  assert.equal(assisted.rating, null)
+  if (!assisted.eligible) {
+    assert.equal(assisted.reason, 'assisted-retrieval')
+  }
+})

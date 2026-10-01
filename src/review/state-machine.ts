@@ -20,6 +20,7 @@ export type RatingNullReason =
   | 'orthographic-cue-not-hidden'
   | 'audio-assisted'
   | 'meaning-not-visible'
+  | 'assisted-retrieval'
 
 export type RatingDecision =
   | {
@@ -90,11 +91,15 @@ export function decideReviewRating(input: {
     return nullRating('attention-uncertain')
   }
 
-  if (
-    hasReason(evidence, 'answer-revealed-before-first-key') ||
-    hasReason(evidence, 'clean-after-assistance')
-  ) {
+  if (hasReason(evidence, 'answer-revealed-before-first-key')) {
     return nullRating('answer-revealed')
+  }
+
+  if (evidence.retrievalValidity === 'assisted') {
+    return nullRating('assisted-retrieval', [
+      'assisted-retrieval',
+      ...evidence.reasonCodes,
+    ])
   }
 
   if (condition.letters.mode !== 'all-hidden') {
