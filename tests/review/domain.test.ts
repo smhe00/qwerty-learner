@@ -1522,7 +1522,7 @@ test('learning failure before latest Review does not reactivate a future state',
   )
 })
 
-test('force Review selects all current error candidates while due mode selects only due candidates', () => {
+test('force Review selects all ACTIVE candidates while due mode selects only due ACTIVE candidates', () => {
   const now = 1_000
   const candidates = [
     { word: 'due' },
@@ -1550,7 +1550,7 @@ test('force Review selects all current error candidates while due mode selects o
       now,
       'force',
     ).map((candidate) => candidate.word),
-    ['due', 'future', 'missing'],
+    ['due', 'future'],
   )
 })
 
