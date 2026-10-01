@@ -1,6 +1,6 @@
 import { TypingContext, TypingStateActionType } from '../../store'
 import Tooltip from '@/components/Tooltip'
-import { currentChapterAtom, currentDictIdAtom, isReviewModeAtom, randomConfigAtom, reviewModeInfoAtom } from '@/store'
+import { currentChapterAtom, currentDictIdAtom, isReviewModeAtom, reviewModeInfoAtom } from '@/store'
 import { db } from '@/utils/db'
 import { autoUpdate, offset, useFloating, useHover, useInteractions } from '@floating-ui/react'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -12,7 +12,6 @@ import { useNavigate } from 'react-router-dom'
 export default function StartButton({ isLoading }: { isLoading: boolean }) {
   // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
   const { state, dispatch } = useContext(TypingContext)!
-  const randomConfig = useAtomValue(randomConfigAtom)
   const currentDictId = useAtomValue(currentDictIdAtom)
   const isReviewMode = useAtomValue(isReviewModeAtom)
   const setCurrentChapter = useSetAtom(currentChapterAtom)
@@ -37,9 +36,9 @@ export default function StartButton({ isLoading }: { isLoading: boolean }) {
     !isLoading && dispatch({ type: TypingStateActionType.TOGGLE_IS_TYPING })
   }, [isLoading, dispatch])
 
-  const onClickRestart = useCallback(() => {
-    dispatch({ type: TypingStateActionType.REPEAT_CHAPTER, shouldShuffle: randomConfig.isOpen })
-  }, [dispatch, randomConfig.isOpen])
+  const onClickCloudBackup = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('qwerty:open-data-settings'))
+  }, [])
 
   const onClickReview = useCallback(() => {
     if (!hasReviewWords) return
@@ -84,46 +83,47 @@ export default function StartButton({ isLoading }: { isLoading: boolean }) {
           onClick={onToggleIsTyping}
           aria-label={state.isTyping ? '暂停' : '开始'}
         >
-          <span className="font-medium">{state.isTyping ? 'Pause' : 'Start'}</span>
+          <span className="font-medium">{state.isTyping ? '暂停' : '开始'}</span>
         </button>
         {isShowReStartButton && (
           <div className="absolute bottom-0 flex w-20 flex-col items-center justify-center" ref={refs.setFloating} {...getFloatingProps()}>
-            <button
-              className={`${
-                state.isTyping ? 'bg-gray-500 dark:bg-gray-700 dark:hover:bg-gray-500 ' : 'bg-indigo-400 '
-              } my-btn-primary mb-1 mt-1 w-18  transition-colors duration-200`}
-              type="button"
-              onClick={onClickRestart}
-              aria-label={'重新开始'}
-            >
-              Restart
-            </button>
             {isReviewMode ? (
               <button
                 className={`${
                   state.isTyping ? 'bg-gray-500 dark:bg-gray-700 dark:hover:bg-gray-500 ' : 'bg-indigo-400 '
-                } my-btn-primary mb-1 w-18 transition-colors duration-200`}
+                } my-btn-primary mb-1 mt-1 w-18 transition-colors duration-200`}
                 type="button"
                 onClick={onClickBackToLearning}
                 aria-label={'返回学习'}
                 title="返回普通学习，保留当前复习进度"
               >
-                Learn
+                学习
               </button>
             ) : (
               <button
                 className={`${
                   state.isTyping ? 'bg-gray-500 dark:bg-gray-700 dark:hover:bg-gray-500 ' : 'bg-indigo-400 '
-                } my-btn-primary mb-1 w-18 transition-colors duration-200 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:opacity-70 dark:disabled:bg-gray-700`}
+                } my-btn-primary mb-1 mt-1 w-18 transition-colors duration-200 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:opacity-70 dark:disabled:bg-gray-700`}
                 type="button"
                 onClick={onClickReview}
                 disabled={!hasReviewWords}
                 aria-label={'复习错词'}
                 title={hasReviewWords ? `${reviewWordCount} 个错词可复习` : '完成一些单词学习后即可复习'}
               >
-                Review
+                复习
               </button>
             )}
+            <button
+              className={`${
+                state.isTyping ? 'bg-gray-500 dark:bg-gray-700 dark:hover:bg-gray-500 ' : 'bg-indigo-400 '
+              } my-btn-primary mb-1 w-18 transition-colors duration-200`}
+              type="button"
+              onClick={onClickCloudBackup}
+              aria-label={'打开云备份'}
+              title="打开云端登录、上传和恢复页面"
+            >
+              云备份
+            </button>
           </div>
         )}
       </div>

@@ -5,7 +5,7 @@ import SoundSetting from './SoundSetting'
 import ViewSetting from '@/pages/Typing/components/Setting/ViewSetting'
 import { Dialog, Tab, Transition } from '@headlessui/react'
 import classNames from 'classnames'
-import { Fragment, useContext, useState } from 'react'
+import { Fragment, useContext, useEffect, useState } from 'react'
 import IconCog6Tooth from '~icons/heroicons/cog-6-tooth-solid'
 import IconEye from '~icons/heroicons/eye-solid'
 import IconAdjustmentsHorizontal from '~icons/tabler/adjustments-horizontal'
@@ -15,6 +15,7 @@ import IconX from '~icons/tabler/x'
 
 export default function Setting() {
   const [isOpen, setIsOpen] = useState(false)
+  const [selectedTabIndex, setSelectedTabIndex] = useState(0)
   const { dispatch } = useContext(TypingContext) ?? {}
 
   function closeModal() {
@@ -27,6 +28,19 @@ export default function Setting() {
       dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })
     }
   }
+
+  useEffect(() => {
+    const openDataSettings = () => {
+      setSelectedTabIndex(3)
+      setIsOpen(true)
+      if (dispatch) {
+        dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })
+      }
+    }
+
+    window.addEventListener('qwerty:open-data-settings', openDataSettings)
+    return () => window.removeEventListener('qwerty:open-data-settings', openDataSettings)
+  }, [dispatch])
 
   return (
     <>
@@ -74,7 +88,7 @@ export default function Setting() {
                     </button>
                   </div>
 
-                  <Tab.Group vertical>
+                  <Tab.Group vertical selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
                     <div className="flex h-120 w-full ">
                       <Tab.List className="flex h-full w-52 flex-col items-start space-y-3  border-r border-neutral-100 bg-stone-50 px-6 py-3 dark:border-transparent dark:bg-gray-900">
                         <Tab
