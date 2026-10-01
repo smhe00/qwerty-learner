@@ -522,6 +522,7 @@ test('Hint 3 skip lock blocks navigation to a real next Review word', async ({
   }
 
   await expect(cancel).toHaveText('cancel')
+  await expect(cancel).toHaveAttribute('data-review-skip-locked', 'true')
 
   await page.keyboard.press('Control+Shift+ArrowRight')
   await page.waitForTimeout(100)

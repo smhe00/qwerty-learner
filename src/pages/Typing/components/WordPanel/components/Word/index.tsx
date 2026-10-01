@@ -784,6 +784,7 @@ export default function WordComponent({
             data-review-policy={reviewPolicyDecisionRef.current?.policyVersion}
             data-review-hint-level={activeHintLevel === null ? 'cold' : activeHintLevel}
             data-review-hint-stage={reviewHintStateRef.current.stage}
+            data-review-skip-locked={state.isSkipLocked ? 'true' : 'false'}
             onMouseEnter={() => handleHoverWord(true)}
             onMouseLeave={() => handleHoverWord(false)}
             className={`flex items-center ${isTextSelectable && 'select-all'} justify-center ${wordState.hasWrong ? style.wrong : ''}`}
