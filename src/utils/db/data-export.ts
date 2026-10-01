@@ -1,3 +1,4 @@
+import { exportBackupJson, importBackupJson } from '@/utils/backup'
 import { db } from '.'
 import { getCurrentDate, recordDataAction } from '..'
 
@@ -14,25 +15,26 @@ export type ImportProgress = {
 }
 
 export async function exportDatabase(callback: (exportProgress: ExportProgress) => boolean) {
-  const [pako, { saveAs }] = await Promise.all([import('pako'), import('file-saver'), import('dexie-export-import')])
+  const [pako, { saveAs }] = await Promise.all([import('pako'), import('file-saver')])
 
-  const blob = await db.export({
-    progressCallback: ({ totalRows, completedRows, done }) => {
-      return callback({ totalRows, completedRows, done })
-    },
-  })
-  const [wordCount, chapterCount] = await Promise.all([db.wordRecords.count(), db.chapterRecords.count()])
+  const json = await exportBackupJson(callback)
+  const [wordCount, chapterCount] = await Promise.all([
+    db.wordRecords.count(),
+    db.chapterRecords.count(),
+  ])
 
-  const json = await blob.text()
   const compressed = pako.gzip(json)
   const compressedBlob = new Blob([compressed])
   const currentDate = getCurrentDate()
-  saveAs(compressedBlob, `Qwerty-Learner-User-Data-${currentDate}.gz`)
+  saveAs(compressedBlob, `Qwerty-Plus-User-Data-${currentDate}.gz`)
   recordDataAction({ type: 'export', size: compressedBlob.size, wordCount, chapterCount })
 }
 
-export async function importDatabase(onStart: () => void, callback: (importProgress: ImportProgress) => boolean) {
-  const [pako, { peakImportFile }] = await Promise.all([import('pako'), import('dexie-export-import')])
+export async function importDatabase(
+  onStart: () => void,
+  callback: (importProgress: ImportProgress) => boolean,
+) {
+  const pako = await import('pako')
 
   const input = document.createElement('input')
   input.type = 'file'
@@ -45,35 +47,17 @@ export async function importDatabase(onStart: () => void, callback: (importProgr
 
     const compressed = await file.arrayBuffer()
     const json = pako.ungzip(compressed, { to: 'string' })
-    const blob = new Blob([json])
-    const importMeta = await peakImportFile(blob)
-    const hasReviewWordStates = importMeta.data.tables.some((table) => table.name === 'reviewWordStates')
+    await importBackupJson(json, { progressCallback: callback })
 
-    await db.import(blob, {
-      acceptVersionDiff: true,
-      acceptMissingTables: true,
-      acceptNameDiff: false,
-      acceptChangedPrimaryKey: false,
-      overwriteValues: true,
-      clearTablesBeforeImport: true,
-      progressCallback: ({ totalRows, completedRows, done }) => {
-        return callback({ totalRows, completedRows, done })
-      },
-    })
-
-    // A v3 backup has no derived review state. Clear any local v4 state so it
-    // can be rebuilt lazily from the imported WordRecord source of truth.
-    if (!hasReviewWordStates) {
-      await db.reviewWordStates.clear()
-    }
-
-    const [wordCount, chapterCount] = await Promise.all([db.wordRecords.count(), db.chapterRecords.count()])
+    const [wordCount, chapterCount] = await Promise.all([
+      db.wordRecords.count(),
+      db.chapterRecords.count(),
+    ])
     recordDataAction({ type: 'import', size: file.size, wordCount, chapterCount })
   })
 
   input.click()
 }
-
 
 export async function clearLocalLearningData() {
   await db.transaction('rw', db.tables, async () => {

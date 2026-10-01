@@ -179,6 +179,7 @@ export async function onRequest(context) {
             'hybrid-auth-rate-limit-v3',
             'blob-transient-retry-v1',
             'plain-gzip-sync-v2',
+            'learning-state-backup-v3',
             'account-delete-v1',
             'duplicate-register-protection-v1',
           ],

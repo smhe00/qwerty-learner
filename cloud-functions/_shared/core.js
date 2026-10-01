@@ -20,7 +20,11 @@ const SESSION_CREATE_RETRIES = 8
 const DEFAULT_SNAPSHOT_RETENTION = 3
 const DEFAULT_SESSION_HISTORY_RETENTION = 3
 const DEFAULT_AUTH_HISTORY_RETENTION = 2
-export const SYNC_CLIENT_FORMAT_VERSION = 'qwerty-dexie-gzip-v2'
+export const SYNC_CLIENT_FORMAT_VERSION = 'qwerty-backup-v3'
+export const SYNC_SUPPORTED_CLIENT_FORMAT_VERSIONS = [
+  SYNC_CLIENT_FORMAT_VERSION,
+  'qwerty-dexie-gzip-v2',
+]
 
 const SCRYPT_N = 16384
 const SCRYPT_R = 8
@@ -528,11 +532,11 @@ export function createBackendService({
       )
     }
 
-    if (input.clientFormatVersion !== SYNC_CLIENT_FORMAT_VERSION) {
+    if (!SYNC_SUPPORTED_CLIENT_FORMAT_VERSIONS.includes(input.clientFormatVersion)) {
       throw new AppError(
         400,
         'unsupported_sync_format',
-        `clientFormatVersion must be ${SYNC_CLIENT_FORMAT_VERSION}`,
+        `clientFormatVersion must be one of ${SYNC_SUPPORTED_CLIENT_FORMAT_VERSIONS.join(', ')}`,
       )
     }
 

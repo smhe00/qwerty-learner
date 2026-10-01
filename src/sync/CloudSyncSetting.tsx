@@ -4,6 +4,7 @@ import {
   CLIENT_FORMAT_VERSION,
   createLocalSnapshot,
   inspectLocalState,
+  isSupportedSnapshotFormat,
   restoreLocalSnapshot,
 } from './snapshot'
 import {
@@ -27,7 +28,17 @@ type SyncView = {
 }
 
 function isUnsupportedRemote(view: SyncView | null) {
-  return !!view?.remote.hasData && view.remote.clientFormatVersion !== CLIENT_FORMAT_VERSION
+  return (
+    !!view?.remote.hasData &&
+    !isSupportedSnapshotFormat(view.remote.clientFormatVersion)
+  )
+}
+
+function isLegacyRemote(view: SyncView | null) {
+  return (
+    !!view?.remote.hasData &&
+    view.remote.clientFormatVersion === 'qwerty-dexie-gzip-v2'
+  )
 }
 
 function statusText(view: SyncView | null) {
@@ -149,7 +160,7 @@ export default function CloudSyncSetting() {
       const baseline = loadSyncBaseline(auth.user.userId)
       const assessment = assessSyncState(local, remote, baseline)
       const remoteUnsupported =
-        remote.hasData && remote.clientFormatVersion !== CLIENT_FORMAT_VERSION
+        remote.hasData && !isSupportedSnapshotFormat(remote.clientFormatVersion)
 
       if (remoteUnsupported) {
         const confirmed = window.confirm(
@@ -190,8 +201,8 @@ export default function CloudSyncSetting() {
         return
       }
 
-      if (remoteMeta.clientFormatVersion !== CLIENT_FORMAT_VERSION) {
-        setMessage('云端数据是旧格式，本版本不再支持恢复。请上传当前本地数据生成新格式云端备份。')
+      if (!isSupportedSnapshotFormat(remoteMeta.clientFormatVersion)) {
+        setMessage('云端数据格式不受支持。请上传当前本地数据生成新格式云端备份。')
         return
       }
 
@@ -212,7 +223,11 @@ export default function CloudSyncSetting() {
 
       saveSyncBaseline(auth.user.userId, remote.revision, restored.fingerprint)
       await refresh(auth)
-      setMessage(`已恢复云端 revision ${remote.revision}。`)
+      setMessage(
+        restored.hasLearningState
+          ? `已恢复云端 revision ${remote.revision}，词库和章节位置已同步。`
+          : `已恢复云端 revision ${remote.revision}。旧版备份不含词库和章节位置，已保留当前选择。`,
+      )
     })
   }
 
@@ -247,8 +262,9 @@ export default function CloudSyncSetting() {
   }
 
   const remoteUnsupported = isUnsupportedRemote(view)
+  const remoteLegacy = isLegacyRemote(view)
   const canDownload =
-    !!view?.remote.hasData && view.remote.clientFormatVersion === CLIENT_FORMAT_VERSION
+    !!view?.remote.hasData && isSupportedSnapshotFormat(view.remote.clientFormatVersion)
 
   return (
     <div className="border-b border-neutral-100 pb-5 dark:border-neutral-700">
@@ -345,7 +361,13 @@ export default function CloudSyncSetting() {
 
           {remoteUnsupported && (
             <div className="rounded bg-amber-50 p-2 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-              当前云端数据来自旧同步格式，本版本不再兼容恢复。可以使用当前本地数据直接覆盖并生成新格式云端备份。
+              当前云端数据格式不受支持。可以使用当前本地数据覆盖并生成新格式云端备份。
+            </div>
+          )}
+
+          {remoteLegacy && !remoteUnsupported && (
+            <div className="rounded bg-amber-50 p-2 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+              当前云端备份为旧版 v2：可恢复全部学习记录，但旧版不包含当前词库和章节位置。下次上传后会自动升级为 v3。
             </div>
           )}
 

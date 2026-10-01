@@ -1,8 +1,14 @@
 import type { LocalSnapshot, LocalState } from './types'
+import {
+  BACKUP_FORMAT_VERSION,
+  exportBackupJson,
+  importBackupJson,
+  isSupportedBackupFormat,
+  readLearningState,
+} from '@/utils/backup'
 import { db } from '@/utils/db'
-import { peakImportFile } from 'dexie-export-import'
 
-export const CLIENT_FORMAT_VERSION = 'qwerty-dexie-gzip-v2'
+export const CLIENT_FORMAT_VERSION = BACKUP_FORMAT_VERSION
 
 function stableStringify(value: unknown): string {
   if (value === null || typeof value !== 'object') {
@@ -30,13 +36,27 @@ async function sha256Hex(value: string) {
     .join('')
 }
 
-function logicalExportData(json: string) {
-  const parsed = JSON.parse(json) as { data?: unknown }
+function logicalBackupData(json: string) {
+  const parsed = JSON.parse(json) as {
+    backupFormatVersion?: string
+    learningState?: unknown
+    database?: { data?: unknown } | unknown
+    data?: unknown
+  }
+
+  if (parsed.backupFormatVersion === BACKUP_FORMAT_VERSION && parsed.database) {
+    const database = parsed.database as { data?: unknown }
+    return {
+      learningState: parsed.learningState ?? null,
+      database: database.data ?? database,
+    }
+  }
+
   return parsed.data ?? parsed
 }
 
 async function fingerprintExport(json: string) {
-  return sha256Hex(stableStringify(logicalExportData(json)))
+  return sha256Hex(stableStringify(logicalBackupData(json)))
 }
 
 async function localRecordCount() {
@@ -51,8 +71,7 @@ async function localRecordCount() {
 }
 
 async function exportLocalJson() {
-  const blob = await db.export()
-  return blob.text()
+  return exportBackupJson()
 }
 
 async function stateFromJson(json: string): Promise<LocalState> {
@@ -60,11 +79,17 @@ async function stateFromJson(json: string): Promise<LocalState> {
     fingerprintExport(json),
     localRecordCount(),
   ])
+  const learningState = readLearningState()
+  const hasMeaningfulState =
+    recordCount > 0 ||
+    learningState.currentDict !== 'zhongkaohexin' ||
+    learningState.currentChapter !== 0
 
   return {
     fingerprint,
     sizeBytes: new TextEncoder().encode(json).length,
     recordCount,
+    hasMeaningfulState,
   }
 }
 
@@ -99,6 +124,8 @@ function base64ToBytes(value: string) {
   return bytes
 }
 
+export { isSupportedBackupFormat as isSupportedSnapshotFormat }
+
 export async function inspectLocalState(): Promise<LocalState> {
   const json = await exportLocalJson()
   return stateFromJson(json)
@@ -121,8 +148,8 @@ async function decodeSnapshotJson(
   payloadBase64: string,
   clientFormatVersion: string | null,
 ) {
-  if (clientFormatVersion !== CLIENT_FORMAT_VERSION) {
-    throw new Error('云端数据格式已过期或不受支持，请使用当前本地数据重新上传。')
+  if (!isSupportedBackupFormat(clientFormatVersion)) {
+    throw new Error('云端数据格式不受支持，请使用当前本地数据重新上传。')
   }
 
   const compressed = base64ToBytes(payloadBase64)
@@ -140,28 +167,12 @@ export async function restoreLocalSnapshot(
   clientFormatVersion: string | null,
 ) {
   const json = await decodeSnapshotJson(payloadBase64, clientFormatVersion)
+  const imported = await importBackupJson(json, { clientFormatVersion })
+  const local = await inspectLocalState()
 
-  // Validate JSON and Dexie metadata before touching IndexedDB.
-  JSON.parse(json)
-
-  const blob = new Blob([json], { type: 'application/json' })
-  const importMeta = await peakImportFile(blob)
-  const hasReviewWordStates = importMeta.data.tables.some(
-    (table) => table.name === 'reviewWordStates',
-  )
-
-  await db.import(blob, {
-    acceptVersionDiff: true,
-    acceptMissingTables: true,
-    acceptNameDiff: false,
-    acceptChangedPrimaryKey: false,
-    overwriteValues: true,
-    clearTablesBeforeImport: true,
-  })
-
-  if (!hasReviewWordStates) {
-    await db.reviewWordStates.clear()
+  return {
+    ...local,
+    restoredLearningState: imported.restoredLearningState,
+    hasLearningState: imported.hasLearningState,
   }
-
-  return stateFromJson(json)
 }

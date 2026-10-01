@@ -244,7 +244,7 @@ test('snapshot retention keeps only the latest three full revisions', async () =
       baseRevision,
       payloadBase64,
       deviceId: 'retention-device',
-      clientFormatVersion: 'qwerty-dexie-gzip-v2',
+      clientFormatVersion: 'qwerty-backup-v3',
     })
 
     assert.equal(result.revision, revision)

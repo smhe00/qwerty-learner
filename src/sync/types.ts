@@ -29,6 +29,7 @@ export type LocalState = {
   fingerprint: string
   sizeBytes: number
   recordCount: number
+  hasMeaningfulState: boolean
 }
 
 export type LocalSnapshot = LocalState & {

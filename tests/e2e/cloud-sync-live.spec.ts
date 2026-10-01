@@ -28,6 +28,7 @@ async function waitForProductionCapability(page: Page) {
 
     if (
       capabilities.includes('plain-gzip-sync-v2') &&
+      capabilities.includes('learning-state-backup-v3') &&
       capabilities.includes('account-delete-v1') &&
       capabilities.includes('duplicate-register-protection-v1')
     ) {
@@ -38,7 +39,7 @@ async function waitForProductionCapability(page: Page) {
     await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => {})
   }
 
-  throw new Error('Timed out waiting for gzip-v2/account-delete/duplicate-register production deployment')
+  throw new Error('Timed out waiting for learning-state-backup-v3 production deployment')
 }
 
 async function openDataSettings(page: Page) {
@@ -390,6 +391,10 @@ test('real browser register, upload, divergence detection and download restore',
   await expect(page.getByText(`账号：${username}`)).toBeVisible()
   await expect(page.getByText('云端 revision：')).toContainText('0')
   await addReviewCloudFixture(page)
+  await page.evaluate(() => {
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(7))
+  })
   await page.getByRole('button', { name: '刷新状态' }).click()
   await expect(page.getByText('本地有未上传修改')).toBeVisible()
 
@@ -508,13 +513,22 @@ test('real browser register, upload, divergence detection and download restore',
     const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))
     const json = await new Response(stream).text()
 
+    const parsed = JSON.parse(json) as {
+      backupFormatVersion?: string
+      learningState?: { currentDict?: string; currentChapter?: number }
+    }
+
     return {
       clientFormatVersion: snapshot.clientFormatVersion,
       json,
+      backupFormatVersion: parsed.backupFormatVersion,
+      learningState: parsed.learningState,
     }
   })
 
-  expect(gzipRemote.clientFormatVersion).toBe('qwerty-dexie-gzip-v2')
+  expect(gzipRemote.clientFormatVersion).toBe('qwerty-backup-v3')
+  expect(gzipRemote.backupFormatVersion).toBe('qwerty-backup-v3')
+  expect(gzipRemote.learningState).toEqual({ currentDict: 'cet4', currentChapter: 7 })
   expect(gzipRemote.json).toContain('edgeone-e2e-baseline')
   expect(gzipRemote.json).not.toContain('AES-256-GCM')
 
@@ -535,16 +549,26 @@ test('real browser register, upload, divergence detection and download restore',
   expect(await wordRecordCount(page)).toBe(2)
   expect(await readReviewCloudFixture(page)).toEqual(reviewFixtureBefore)
 
-  // Corrupt the local derived/session Review state before the successful restore.
-  // The cloud snapshot must restore the exact scheduler/session semantics.
+  // Corrupt both Review state and the local learning position before restore.
+  // The v3 cloud snapshot must restore scheduler/session semantics plus learning position.
   await mutateReviewCloudFixture(page, true)
+  await page.evaluate(() => {
+    localStorage.setItem('currentDict', JSON.stringify('zhongkaohexin'))
+    localStorage.setItem('currentChapter', JSON.stringify(0))
+  })
 
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: '使用云端数据' }).click()
 
-  await expect(page.getByText('已恢复云端 revision 2。')).toBeVisible()
+  await expect(page.getByText('已恢复云端 revision 2，词库和章节位置已同步。')).toBeVisible()
   await expect(page.getByText('本地与云端一致')).toBeVisible()
   expect(await wordRecordCount(page)).toBe(1)
+
+  const restoredLearningState = await page.evaluate(() => ({
+    currentDict: JSON.parse(localStorage.getItem('currentDict') || 'null'),
+    currentChapter: JSON.parse(localStorage.getItem('currentChapter') || 'null'),
+  }))
+  expect(restoredLearningState).toEqual({ currentDict: 'cet4', currentChapter: 7 })
 
   const reviewFixtureAfterRestore = await readReviewCloudFixture(page)
   expect(reviewFixtureAfterRestore).toEqual(reviewFixtureBefore)

@@ -56,7 +56,7 @@ export function assessSyncState(
   const baseRevision = baseline?.baseRevision ?? 0
   const localDirty = baseline
     ? local.fingerprint !== baseline.localFingerprint
-    : local.recordCount > 0
+    : local.hasMeaningfulState
   const remoteChanged = remote.revision !== baseRevision
   const diverged = localDirty && remoteChanged
 
