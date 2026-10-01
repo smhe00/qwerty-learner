@@ -6,6 +6,10 @@ on:
       - product/main
     paths:
       - '.github/workflows/edgeone-production-verify.yml'
+      - 'index.html'
+      - 'src/components/Header/**'
+      - 'src/assets/logoData.ts'
+      - 'edgeone.json'
   workflow_dispatch:
 
 permissions:
@@ -18,7 +22,7 @@ jobs:
     env:
       EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
       EDGEONE_PROJECT_ID: makers-cgemngjuuwle
-      EDGEONE_PRODUCTION_BRANCH: feature/edgeone-cloud-sync
+      EDGEONE_PRODUCTION_BRANCH: product/main
       EXPECTED_RC_SHA: 2e1128095c41afa4d881757eff037ff7a28f5294
 
     steps:
