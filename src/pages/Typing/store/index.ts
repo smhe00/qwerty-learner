@@ -24,6 +24,7 @@ export const initialState: TypingState = {
   isTyping: false,
   isFinished: false,
   isShowSkip: false,
+  isSkipLocked: false,
   isTransVisible: true,
   isLoopSingleWord: false,
   isSavingRecord: false,
@@ -39,6 +40,7 @@ export const initialUserInputLog: UserInputLog = {
 export enum TypingStateActionType {
   SETUP_CHAPTER = 'SETUP_CHAPTER',
   SET_IS_SKIP = 'SET_IS_SKIP',
+  SET_SKIP_LOCKED = 'SET_SKIP_LOCKED',
   SET_IS_TYPING = 'SET_IS_TYPING',
   TOGGLE_IS_TYPING = 'TOGGLE_IS_TYPING',
   REPORT_WRONG_WORD = 'REPORT_WRONG_WORD',
@@ -64,6 +66,7 @@ export enum TypingStateActionType {
 export type TypingStateAction =
   | { type: TypingStateActionType.SETUP_CHAPTER; payload: { words: WordWithIndex[]; shouldShuffle: boolean; initialIndex?: number } }
   | { type: TypingStateActionType.SET_IS_SKIP; payload: boolean }
+  | { type: TypingStateActionType.SET_SKIP_LOCKED; payload: boolean }
   | { type: TypingStateActionType.SET_IS_TYPING; payload: boolean }
   | { type: TypingStateActionType.TOGGLE_IS_TYPING }
   | { type: TypingStateActionType.REPORT_WRONG_WORD; payload: { letterMistake: LetterMistakes } }
@@ -111,6 +114,12 @@ export const typingReducer = (state: TypingState, action: TypingStateAction) => 
       state.isShowSkip =
         state.isSkipLocked && action.payload ? false : action.payload
       break
+    case TypingStateActionType.SET_SKIP_LOCKED:
+      state.isSkipLocked = action.payload
+      if (action.payload) {
+        state.isShowSkip = false
+      }
+      break
     case TypingStateActionType.SET_IS_TYPING:
       state.isTyping = action.payload
       break
@@ -135,6 +144,7 @@ export const typingReducer = (state: TypingState, action: TypingStateAction) => 
       break
     }
     case TypingStateActionType.NEXT_WORD: {
+      state.isSkipLocked = false
       if (action.payload?.insertWord) {
         const insertAt = Math.min(
           state.chapterData.words.length,
@@ -161,16 +171,19 @@ export const typingReducer = (state: TypingState, action: TypingStateAction) => 
       break
     }
     case TypingStateActionType.LOOP_CURRENT_WORD:
+      state.isSkipLocked = false
       state.isShowSkip = false
       state.chapterData.wordCount += 1
       break
     case TypingStateActionType.FINISH_CHAPTER:
+      state.isSkipLocked = false
       state.chapterData.wordCount += 1
       state.isTyping = false
       state.isFinished = true
       state.isShowSkip = false
       break
     case TypingStateActionType.SKIP_WORD: {
+      if (state.isSkipLocked) break
       const newIndex = state.chapterData.index + 1
       if (newIndex >= state.chapterData.words.length) {
         state.isTyping = false
@@ -182,6 +195,7 @@ export const typingReducer = (state: TypingState, action: TypingStateAction) => 
       break
     }
     case TypingStateActionType.SKIP_2_WORD_INDEX: {
+      if (state.isSkipLocked) break
       const newIndex = action.newIndex
       if (newIndex >= state.chapterData.words.length) {
         state.isTyping = false
