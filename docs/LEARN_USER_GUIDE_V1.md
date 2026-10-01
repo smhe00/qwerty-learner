@@ -61,6 +61,22 @@ Start / Pause 只负责开始或暂停当前输入。
 
 云备份和数据操作继续放在“设置 → 数据”中。
 
+## 2.1 Learn 词库选择
+
+Learn 的词库选择直接复用 Typing 的词库 Gallery 界面：
+
+```text
+Learn
+→ 点击当前词库名
+→ 进入与 Typing 相同的词库 Gallery
+→ 点击词库卡片
+→ 直接返回 Learn
+```
+
+Learn 只选择“词库”，不会进入 Typing 的第二级章节选择。
+
+---
+
 ---
 
 ## 3. Learn 首页
@@ -77,11 +93,23 @@ Learn 首页显示当前词库的长期学习状态：
 主要操作：
 
 - **继续当前学习**：恢复未完成的 Learn session；
-- **开始今日学习**：处理当前到期词；
-- **额外复习**：当前没有到期任务时的辅助入口；
+- **开始学习**：先处理到期长期复习；如果没有到期词，则自动学习新词；
+- **额外复习**：只对已有 ACTIVE 词做额外复习，不会触发新词 acquisition；
 - **学习计划**：查看长期学习中的词和已移出词。
 
-当前 A/B 阶段中，“尚未进入 Learn”的 clean-only/未建卡词不会自动 admission。
+新词 Acquisition V1：
+
+```text
+无 due Review
+→ 从词库中按顺序选择最多 20 个 UNSEEN 词
+→ 显示完整拼写 + 释义 + 音标 + 自动发音
+→ 用户完成正确输入
+→ ACTIVE
+→ nextReviewAt = +1 day
+```
+
+Acquisition 是 training，不产生 Again / Hard / Good / Easy，也不会增加
+reviewCount / lapseCount。
 
 ---
 
