@@ -1,6 +1,6 @@
 # Learn Architecture V1
 
-> Status: **Design Contract / implementation target**
+> Status: **Active architecture — Phase A/B implemented; Phase C+ pending**
 >
 > Product: Qwerty Plus
 >
@@ -17,6 +17,32 @@
 > **Learn**, the long-term learning lifecycle, manual exclusion semantics,
 > session ownership, persistence boundaries, migration rules, and rollout
 > order.
+
+---
+
+## 0. Implementation status
+
+As of the Phase A/B rollout:
+
+```text
+Phase A — Typing / Learn product boundary     IMPLEMENTED
+Phase B — ACTIVE / EXCLUDED lifecycle         IMPLEMENTED
+Phase C — unified Learn Session               PENDING
+Phase D — Rating Gate owns live scheduler     PENDING
+Phase E — all-word admission                  PENDING
+Phase F — basic-v2                            PENDING
+Phase G — FSRS-6                              PENDING
+```
+
+Current Phase B persistence uses an additive compatibility model:
+
+- no `reviewWordStates` row means `UNSEEN`;
+- legacy rows without `lifecycle` are interpreted as `ACTIVE`;
+- `lifecycle='excluded'` means manually removed from Learn;
+- restore preserves scheduler history and sets `nextReviewAt=now`.
+
+The internal `isReviewMode` and Review naming remain temporarily in code as
+implementation details. Product-level navigation is already Typing / Learn.
 
 ---
 

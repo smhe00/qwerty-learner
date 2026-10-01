@@ -1,5 +1,10 @@
 # 错题复习与间隔复习使用指南
 
+> **Product migration note:** The top-level product mode is now **Learn**, not
+> Review. This document describes the legacy/error-word Review behavior that
+> remains as an internal Learn subsystem during Phase A/B. For current user
+> navigation and exclusion/restore semantics, see `LEARN_USER_GUIDE_V1.md`.
+>
 > 本文面向使用者，说明当前功能“怎么用、会发生什么”。  
 > 算法、数据库和代码结构请看 `REVIEW_SYSTEM_ARCHITECTURE.md`。
 
