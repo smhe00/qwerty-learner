@@ -6,6 +6,12 @@ on:
       - product/main
     paths:
       - 'src/review/**'
+      - 'src/learn/**'
+      - 'src/components/ModeSwitcher/**'
+      - 'src/pages/Learn/**'
+      - 'src/pages/Typing/index.tsx'
+      - 'src/pages/Typing/store/**'
+      - 'src/pages/Typing/components/StartButton/**'
       - 'src/utils/db/record.ts'
       - 'src/utils/db/index.ts'
       - 'src/utils/db/review-record.ts'
@@ -17,6 +23,7 @@ on:
       - 'tests/e2e/review-flow.config.ts'
       - 'tests/review/**'
       - 'docs/REVIEW_*.md'
+      - 'docs/LEARN_*.md'
       - '.github/workflows/review-gate.yml'
       - 'package.json'
       - 'yarn.lock'
@@ -44,6 +51,12 @@ jobs:
         run: >
           yarn eslint
           src/review
+          src/learn
+          src/components/ModeSwitcher
+          src/pages/Learn
+          src/pages/Typing/index.tsx
+          src/pages/Typing/store
+          src/pages/Typing/components/StartButton
           src/utils/db/record.ts
           src/utils/db/index.ts
           src/utils/db/review-record.ts

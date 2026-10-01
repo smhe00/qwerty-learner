@@ -1,3 +1,4 @@
+import { isActiveLearningState } from '@/learn/lifecycle'
 import type { IReviewWordState } from './types'
 
 export type DueReviewCandidate = {
@@ -8,7 +9,9 @@ export function filterDueReviewCandidates<T extends DueReviewCandidate>(
   candidates: T[],
   dueStates: IReviewWordState[],
 ): T[] {
-  const dueWords = new Set(dueStates.map((state) => state.word))
+  const dueWords = new Set(
+    dueStates.filter(isActiveLearningState).map((state) => state.word),
+  )
   return candidates.filter((candidate) => dueWords.has(candidate.word))
 }
 
@@ -20,10 +23,21 @@ export function selectReviewCandidates<T extends DueReviewCandidate>(
   now: number,
   mode: ReviewSelectionMode = 'due',
 ): T[] {
-  if (mode === 'force') return [...candidates]
+  const activeWords = new Set(
+    states.filter(isActiveLearningState).map((state) => state.word),
+  )
+
+  if (mode === 'force') {
+    return candidates.filter((candidate) => activeWords.has(candidate.word))
+  }
 
   const dueWords = new Set(
-    states.filter((state) => state.nextReviewAt <= now).map((state) => state.word),
+    states
+      .filter(
+        (state) =>
+          isActiveLearningState(state) && state.nextReviewAt <= now,
+      )
+      .map((state) => state.word),
   )
   return candidates.filter((candidate) => dueWords.has(candidate.word))
 }

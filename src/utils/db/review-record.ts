@@ -17,7 +17,7 @@ export function useGetLatestReviewRecord(dictID: string) {
   const [wordReviewRecord, setWordReviewRecord] = useState<ReviewRecord | undefined>(undefined)
   useEffect(() => {
     const fetchWordReviewRecords = async () => {
-      const record = await getReviewRecords(dictID)
+      const record = await getLatestReviewRecord(dictID)
       setWordReviewRecord(record)
     }
     if (dictID) {
@@ -27,7 +27,7 @@ export function useGetLatestReviewRecord(dictID: string) {
   return wordReviewRecord
 }
 
-async function getReviewRecords(dictID: string): Promise<ReviewRecord | undefined> {
+export async function getLatestReviewRecord(dictID: string): Promise<ReviewRecord | undefined> {
   const records = await db.reviewRecords.where('dict').equals(dictID).toArray()
 
   const latestRecord = records.sort((a, b) => a.createTime - b.createTime).pop()

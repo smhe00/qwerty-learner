@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  decideLearningLifecycleTransition,
+  getLearningLifecycle,
+  pruneLearnSessionWord,
+} from '../../src/learn/lifecycle'
+import {
   createBaselineExerciseCondition,
   isLetterVisibleForExerciseCondition,
 } from '../../src/review/condition'
@@ -1758,4 +1763,109 @@ test('cold-probe surrender remains Again even when final hint-assisted typing is
     }),
     'again',
   )
+})
+
+
+test('Learn lifecycle excludes, preserves history state, ignores Typing, and restores due-now', () => {
+  const base = createInitialReviewWordState('cet4', 'cancel', 100)
+  const reviewed = {
+    ...base,
+    nextReviewAt: 500,
+    reviewCount: 4,
+    lapseCount: 2,
+    cleanStreak: 1,
+    lastOutcome: 'hard' as const,
+    schedulerState: {
+      kind: 'basic-v1' as const,
+      stage: 2,
+      intervalDays: 7,
+    },
+  }
+
+  assert.equal(getLearningLifecycle(reviewed), 'active')
+
+  const excluded = decideLearningLifecycleTransition(reviewed, {
+    kind: 'exclude',
+    now: 200,
+  })
+  assert.equal(getLearningLifecycle(excluded), 'excluded')
+  assert.equal(excluded.reviewCount, 4)
+  assert.equal(excluded.lapseCount, 2)
+  assert.equal(excluded.schedulerState.stage, 2)
+  assert.deepEqual(excluded.exclusion, {
+    reason: 'manual',
+    excludedAt: 200,
+  })
+
+  const afterTyping = decideLearningLifecycleTransition(excluded, {
+    kind: 'typing-observation',
+  })
+  assert.equal(afterTyping, excluded)
+  assert.equal(getLearningLifecycle(afterTyping), 'excluded')
+
+  const restored = decideLearningLifecycleTransition(excluded, {
+    kind: 'restore',
+    now: 300,
+  })
+  assert.equal(getLearningLifecycle(restored), 'active')
+  assert.equal(restored.nextReviewAt, 300)
+  assert.equal(restored.reviewCount, 4)
+  assert.equal(restored.lapseCount, 2)
+  assert.equal(restored.schedulerState.stage, 2)
+  assert.equal(restored.exclusion, undefined)
+})
+
+test('Learn selection excludes manually excluded states in due and force modes', () => {
+  const active = createInitialReviewWordState('cet4', 'active', 100)
+  const excluded = decideLearningLifecycleTransition(
+    createInitialReviewWordState('cet4', 'excluded', 100),
+    { kind: 'exclude', now: 110 },
+  )
+  const candidates = [
+    { word: 'active' },
+    { word: 'excluded' },
+  ]
+
+  assert.deepEqual(
+    selectReviewCandidates(candidates, [active, excluded], 100, 'due'),
+    [{ word: 'active' }],
+  )
+  assert.deepEqual(
+    selectReviewCandidates(candidates, [active, excluded], 100, 'force'),
+    [{ word: 'active' }],
+  )
+})
+
+test('pruning an excluded word removes all session duplicates and preserves logical cursor', () => {
+  const word = (name: string) => ({
+    name,
+    trans: [],
+    usphone: '',
+    ukphone: '',
+  })
+  const record = {
+    id: 7,
+    dict: 'cet4',
+    index: 2,
+    createTime: 1,
+    isFinished: false,
+    words: [word('a'), word('x'), word('x'), word('b')],
+    exercisePlans: {
+      x: createCanonicalReviewProbePlan(),
+      b: createCanonicalReviewProbePlan(),
+    },
+    reinforcementCounts: {
+      x: 1,
+    },
+  }
+
+  const pruned = pruneLearnSessionWord(record, 'x')
+  assert.deepEqual(
+    pruned.words.map((item) => item.name),
+    ['a', 'b'],
+  )
+  assert.equal(pruned.index, 1)
+  assert.equal(pruned.isFinished, false)
+  assert.equal(pruned.exercisePlans?.x, undefined)
+  assert.equal(pruned.reinforcementCounts?.x, undefined)
 })

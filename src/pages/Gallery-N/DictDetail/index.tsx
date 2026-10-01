@@ -27,7 +27,11 @@ export default function DictDetail({ dictionary: dict }: { dictionary: Dictionar
   const [searchParams] = useSearchParams()
   const [currentChapter, setCurrentChapter] = useAtom(currentChapterAtom)
   const [currentDictId, setCurrentDictId] = useAtom(currentDictIdAtom)
-  const [curTab, setCurTab] = useState<Tab>(searchParams.get('review') === '1' ? Tab.Review : Tab.Chapters)
+  const [curTab, setCurTab] = useState<Tab>(
+    searchParams.get('learn') === '1' || searchParams.get('review') === '1'
+      ? Tab.Review
+      : Tab.Chapters,
+  )
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
   const navigate = useNavigate()
   const { deleteWordRecord } = useDeleteWordRecord()
@@ -53,7 +57,7 @@ export default function DictDetail({ dictionary: dict }: { dictionary: Dictionar
       setCurrentDictId(dict.id)
       setCurrentChapter(index)
       setReviewModeInfo((old) => ({ ...old, isReviewMode: false }))
-      navigate('/')
+      navigate('/typing')
     },
     [dict.id, navigate, setCurrentChapter, setCurrentDictId, setReviewModeInfo],
   )
@@ -100,7 +104,7 @@ export default function DictDetail({ dictionary: dict }: { dictionary: Dictionar
                   className={`${curTab === Tab.Review ? 'text-primary-foreground bg-primary' : ''} disabled:opacity-100`}
                 >
                   <PajamasReviewList className="mr-1.5 text-gray-500" />
-                  错题回顾
+                  长期学习
                 </ToggleGroupItem>
               </>
             )}

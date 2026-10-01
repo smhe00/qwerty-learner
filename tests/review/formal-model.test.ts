@@ -1138,3 +1138,130 @@ test('formal/hint-rating: explicit cold surrender dominates assisted final compl
   assert.equal(decision.eligible, true)
   assert.equal(decision.rating, 'again')
 })
+
+
+test('formal/learn-lifecycle: Typing is lifecycle-neutral and exclude/restore are deterministic', async () => {
+  const {
+    decideLearningLifecycleTransition,
+    getLearningLifecycle,
+  } = await import('../../src/learn/lifecycle')
+  const { createInitialReviewWordState } = await import('../../src/review/types')
+
+  for (let reviewCount = 0; reviewCount <= 3; reviewCount += 1) {
+    for (let lapseCount = 0; lapseCount <= 3; lapseCount += 1) {
+      const active = {
+        ...createInitialReviewWordState('cet4', 'word', 100),
+        reviewCount,
+        lapseCount,
+        nextReviewAt: 999,
+      }
+
+      const typing = decideLearningLifecycleTransition(active, {
+        kind: 'typing-observation',
+      })
+      assert.equal(typing, active)
+      assert.equal(getLearningLifecycle(typing), 'active')
+
+      const excluded = decideLearningLifecycleTransition(active, {
+        kind: 'exclude',
+        now: 200,
+      })
+      assert.equal(getLearningLifecycle(excluded), 'excluded')
+      assert.equal(excluded.reviewCount, reviewCount)
+      assert.equal(excluded.lapseCount, lapseCount)
+      assert.equal(excluded.nextReviewAt, 999)
+
+      const typingWhileExcluded = decideLearningLifecycleTransition(excluded, {
+        kind: 'typing-observation',
+      })
+      assert.equal(typingWhileExcluded, excluded)
+      assert.equal(getLearningLifecycle(typingWhileExcluded), 'excluded')
+
+      const restored = decideLearningLifecycleTransition(excluded, {
+        kind: 'restore',
+        now: 300,
+      })
+      assert.equal(getLearningLifecycle(restored), 'active')
+      assert.equal(restored.nextReviewAt, 300)
+      assert.equal(restored.reviewCount, reviewCount)
+      assert.equal(restored.lapseCount, lapseCount)
+    }
+  }
+})
+
+test('formal/learn-queue: excluded words can never be selected, including force mode', async () => {
+  const { decideLearningLifecycleTransition } = await import('../../src/learn/lifecycle')
+  const { selectReviewCandidates } = await import('../../src/review/due')
+  const { createInitialReviewWordState } = await import('../../src/review/types')
+
+  for (let activeCount = 0; activeCount <= 4; activeCount += 1) {
+    const candidates = Array.from({ length: 6 }, (_, index) => ({
+      word: 'w' + index,
+    }))
+    const states = candidates.map((candidate, index) => {
+      const base = {
+        ...createInitialReviewWordState('cet4', candidate.word, 100),
+        nextReviewAt: index % 2 === 0 ? 100 : 500,
+      }
+      return index < activeCount
+        ? base
+        : decideLearningLifecycleTransition(base, {
+            kind: 'exclude',
+            now: 150,
+          })
+    })
+
+    for (const mode of ['due', 'force'] as const) {
+      const selected = selectReviewCandidates(
+        candidates,
+        states,
+        200,
+        mode,
+      )
+      for (const item of selected) {
+        const state = states.find((entry) => entry.word === item.word)
+        assert.equal(state?.lifecycle === 'excluded', false)
+      }
+    }
+  }
+})
+
+test('formal/learn-session-prune: removal is idempotent and never leaves the excluded word in queue', async () => {
+  const { pruneLearnSessionWord } = await import('../../src/learn/lifecycle')
+
+  const makeWord = (name: string) => ({
+    name,
+    trans: [],
+    usphone: '',
+    ukphone: '',
+  })
+
+  for (let length = 1; length <= 6; length += 1) {
+    for (let index = 0; index < length; index += 1) {
+      const words = Array.from({ length }, (_, position) =>
+        makeWord(position % 2 === 0 ? 'x' : 'y'),
+      )
+      const record = {
+        dict: 'cet4',
+        index,
+        createTime: 1,
+        isFinished: false,
+        words,
+      }
+
+      const once = pruneLearnSessionWord(record, 'x')
+      const twice = pruneLearnSessionWord(once, 'x')
+      assert.deepEqual(twice, once)
+      assert.equal(
+        once.words.some((word) => word.name === 'x'),
+        false,
+      )
+      if (once.words.length === 0) {
+        assert.equal(once.isFinished, true)
+      } else {
+        assert.ok(once.index >= 0)
+        assert.ok(once.index < once.words.length)
+      }
+    }
+  }
+})

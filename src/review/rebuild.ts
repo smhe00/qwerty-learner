@@ -1,3 +1,4 @@
+import { isActiveLearningState } from '@/learn/lifecycle'
 import { classifyTypingError } from './classifier'
 import { summarizeWordHistory } from './features'
 import { readLearningContext } from './learning-context'
@@ -38,6 +39,7 @@ export function reactivateReviewStateFromLearningEvidence(
   records: IWordRecord[],
   now: number,
 ): IReviewWordState {
+  if (!isActiveLearningState(state)) return state
   if (!hasUnreviewedLearningFailure(records)) return state
   if (state.nextReviewAt <= now) return state
 

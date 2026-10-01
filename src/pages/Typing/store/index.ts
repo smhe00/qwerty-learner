@@ -51,6 +51,7 @@ export enum TypingStateActionType {
   INCREASE_WRONG_WORD = 'INCREASE_WRONG_WORD',
   SKIP_WORD = 'SKIP_WORD',
   SKIP_2_WORD_INDEX = 'SKIP_2_WORD_INDEX',
+  REMOVE_WORD_FROM_QUEUE = 'REMOVE_WORD_FROM_QUEUE',
   REPEAT_CHAPTER = 'REPEAT_CHAPTER',
   NEXT_CHAPTER = 'NEXT_CHAPTER',
   TOGGLE_WORD_VISIBLE = 'TOGGLE_WORD_VISIBLE',
@@ -84,6 +85,7 @@ export type TypingStateAction =
   | { type: TypingStateActionType.FINISH_CHAPTER }
   | { type: TypingStateActionType.SKIP_WORD }
   | { type: TypingStateActionType.SKIP_2_WORD_INDEX; newIndex: number }
+  | { type: TypingStateActionType.REMOVE_WORD_FROM_QUEUE; word: string }
   | { type: TypingStateActionType.REPEAT_CHAPTER; shouldShuffle: boolean }
   | { type: TypingStateActionType.NEXT_CHAPTER }
   | { type: TypingStateActionType.TOGGLE_TRANS_VISIBLE }
@@ -202,6 +204,54 @@ export const typingReducer = (state: TypingState, action: TypingStateAction) => 
         state.isFinished = true
       }
       state.chapterData.index = newIndex
+      break
+    }
+    case TypingStateActionType.REMOVE_WORD_FROM_QUEUE: {
+      const oldIndex = state.chapterData.index
+      const keepIndexes = state.chapterData.words
+        .map((word, index) => ({ word, index }))
+        .filter(({ word }) => word.name !== action.word)
+        .map(({ index }) => index)
+
+      const removedBefore = state.chapterData.words
+        .slice(0, oldIndex)
+        .filter((word) => word.name === action.word).length
+
+      const nextWords = keepIndexes.map(
+        (index) => state.chapterData.words[index],
+      )
+      const nextLogs = keepIndexes.map(
+        (index) => state.chapterData.userInputLogs[index],
+      )
+
+      state.chapterData.words = nextWords
+      state.chapterData.userInputLogs = nextLogs
+
+      state.chapterData.words.forEach((word, index) => {
+        word.index = index
+      })
+      state.chapterData.userInputLogs.forEach((log, index) => {
+        log.index = index
+      })
+
+      state.isSkipLocked = false
+      state.isShowSkip = false
+
+      if (nextWords.length === 0) {
+        state.chapterData.index = 0
+        state.isTyping = false
+        state.isFinished = true
+        break
+      }
+
+      const nextIndex = Math.max(0, oldIndex - removedBefore)
+      if (nextIndex >= nextWords.length) {
+        state.chapterData.index = nextWords.length - 1
+        state.isTyping = false
+        state.isFinished = true
+      } else {
+        state.chapterData.index = nextIndex
+      }
       break
     }
     case TypingStateActionType.REPEAT_CHAPTER: {

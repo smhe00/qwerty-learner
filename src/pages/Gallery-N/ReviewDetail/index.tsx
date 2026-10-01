@@ -25,7 +25,7 @@ export function ReviewDetail({ errorData, dict }: { errorData: TErrorWordData[];
     setCurrentDictId(dict.id)
     setCurrentChapter(-1)
     setReviewModeInfo({ isReviewMode: true, reviewRecord: record })
-    navigate('/')
+    navigate('/learn/session')
   }
 
   const startReview = async (mode: 'due' | 'force' = 'due') => {
@@ -49,7 +49,7 @@ export function ReviewDetail({ errorData, dict }: { errorData: TErrorWordData[];
     setCurrentChapter(-1)
 
     setReviewModeInfo({ isReviewMode: true, reviewRecord: latestReviewRecord })
-    navigate('/')
+    navigate('/learn/session')
   }
 
   return (
@@ -58,9 +58,9 @@ export function ReviewDetail({ errorData, dict }: { errorData: TErrorWordData[];
         <MdiRobotAngry fontSize={30} className="text-indigo-300 " />
         <blockquote>
           <p className="text-lg font-medium text-gray-600 dark:text-gray-300">
-            我们将使用您在该词典的历史练习数据、错误次数、练习时间来智能生成练习列表
+            Learn 会使用当前词典的长期学习状态生成到期学习列表。
             <br />
-            目前该生成方式还处于实验阶段，我们会逐步完善该生成方式
+            当前 A/B 阶段沿用已有 Review 内核；新词全量 admission 将在后续阶段开启。
           </p>
         </blockquote>
       </div>
@@ -91,7 +91,7 @@ export function ReviewDetail({ errorData, dict }: { errorData: TErrorWordData[];
         {showForceReview && (
           <div className="mt-4 flex flex-col items-center gap-3 text-sm text-gray-500">
             <div role="status">
-              当前没有到期需要复习的错词。你可以等待调度时间，或强制复习当前错词。
+              今天没有到期的长期学习词。你可以等待调度时间，或进行一次额外复习。
             </div>
             <Button
               size="sm"
@@ -99,7 +99,7 @@ export function ReviewDetail({ errorData, dict }: { errorData: TErrorWordData[];
               disabled={isStarting}
               onClick={() => void startReview('force')}
             >
-              强制开始复习
+              额外复习
             </Button>
           </div>
         )}
@@ -115,7 +115,7 @@ export function ReviewDetail({ errorData, dict }: { errorData: TErrorWordData[];
             disabled={isStarting}
             onClick={() => void startReview('due')}
           >
-            开始{latestReviewRecord && '新的'}复习
+            开始{latestReviewRecord && '新的'}学习
           </Button>
         </div>
       </div>

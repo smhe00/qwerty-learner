@@ -1,4 +1,5 @@
 import Layout from '../../components/Layout'
+import ModeSwitcher from '@/components/ModeSwitcher'
 import { DictChapterButton } from './components/DictChapterButton'
 import PronunciationSwitcher from './components/PronunciationSwitcher'
 import ResultScreen from './components/ResultScreen'
@@ -14,13 +15,21 @@ import { DonateCard } from '@/components/DonateCard'
 import Header from '@/components/Header'
 import Tooltip from '@/components/Tooltip'
 import { idDictionaryMap } from '@/resources/dictionary'
-import { currentChapterAtom, currentDictIdAtom, isReviewModeAtom, randomConfigAtom, reviewModeInfoAtom } from '@/store'
+import {
+  currentChapterAtom,
+  currentDictIdAtom,
+  currentDictInfoAtom,
+  isReviewModeAtom,
+  randomConfigAtom,
+  reviewModeInfoAtom,
+} from '@/store'
 import { IsDesktop, isLegal } from '@/utils'
 import { useSaveChapterRecord } from '@/utils/db'
 import { useMixPanelChapterLogUploader } from '@/utils/mixpanel'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import type React from 'react'
 import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useImmerReducer } from 'use-immer'
 
 const App: React.FC = () => {
@@ -36,6 +45,8 @@ const App: React.FC = () => {
 
   const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
   const isReviewMode = useAtomValue(isReviewModeAtom)
+  const currentDictInfo = useAtomValue(currentDictInfoAtom)
+  const navigate = useNavigate()
 
   useEffect(() => {
     // 检测用户设备
@@ -132,20 +143,37 @@ const App: React.FC = () => {
       {state.isFinished && <ResultScreen />}
       <Layout>
         <Header>
-          <DictChapterButton />
-          <PronunciationSwitcher />
-          <Switcher />
-          <StartButton isLoading={isLoading} />
-          <Tooltip content="跳过该词">
-            <button
-              className={`${
-                state.isShowSkip ? 'bg-orange-400' : 'invisible w-0 bg-gray-300 px-0 opacity-0'
-              } my-btn-primary transition-all duration-300 `}
-              onClick={skipWord}
-            >
-              Skip
-            </button>
-          </Tooltip>
+          <ModeSwitcher />
+          {isReviewMode ? (
+            <>
+              <button
+                type="button"
+                onClick={() => navigate('/learn')}
+                className="rounded-lg px-3 py-1 text-sm text-gray-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                title="返回 Learn 学习计划"
+              >
+                {currentDictInfo.name}
+              </button>
+              <StartButton isLoading={isLoading} />
+            </>
+          ) : (
+            <>
+              <DictChapterButton />
+              <PronunciationSwitcher />
+              <Switcher />
+              <StartButton isLoading={isLoading} />
+              <Tooltip content="跳过该词">
+                <button
+                  className={`${
+                    state.isShowSkip ? 'bg-orange-400' : 'invisible w-0 bg-gray-300 px-0 opacity-0'
+                  } my-btn-primary transition-all duration-300 `}
+                  onClick={skipWord}
+                >
+                  Skip
+                </button>
+              </Tooltip>
+            </>
+          )}
         </Header>
         <div className="container mx-auto flex h-full flex-1 flex-col items-center justify-center pb-5">
           <div className="container relative mx-auto flex h-full flex-col items-center">

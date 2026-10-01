@@ -7,6 +7,7 @@ import Translation from './components/Translation'
 import WordComponent from './components/Word'
 import type { WordFinishResult } from './components/Word'
 import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
+import { pruneLearnSessionWord } from '@/learn/lifecycle'
 import { materializeReviewExercisePlan } from '@/review/decision'
 import type { ReviewHintLevel } from '@/review/hint'
 import {
@@ -19,7 +20,15 @@ import {
   getWordComponentInstanceKey,
 } from '@/review/session'
 import { MAX_REINFORCEMENT_PER_WORD_PER_SESSION } from '@/review/state-machine'
-import { isReviewModeAtom, isShowPrevAndNextWordAtom, loopWordConfigAtom, phoneticConfigAtom, reviewModeInfoAtom } from '@/store'
+import { excludeLearningWord } from '@/review/repository'
+import {
+  currentDictIdAtom,
+  isReviewModeAtom,
+  isShowPrevAndNextWordAtom,
+  loopWordConfigAtom,
+  phoneticConfigAtom,
+  reviewModeInfoAtom,
+} from '@/store'
 import type { Word } from '@/typings'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
@@ -29,6 +38,7 @@ export default function WordPanel() {
   // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
   const { state, dispatch } = useContext(TypingContext)!
   const phoneticConfig = useAtomValue(phoneticConfigAtom)
+  const currentDictId = useAtomValue(currentDictIdAtom)
   const isShowPrevAndNextWord = useAtomValue(isShowPrevAndNextWordAtom)
   const [wordComponentKey, setWordComponentKey] = useState(0)
   const [currentWordExerciseCount, setCurrentWordExerciseCount] = useState(0)
@@ -36,6 +46,8 @@ export default function WordPanel() {
   const [currentReviewGap, setCurrentReviewGap] = useState(MAX_REINFORCEMENT_GAP)
   const [currentReviewHintLevel, setCurrentReviewHintLevel] =
     useState<ReviewHintLevel | null>(null)
+  const [isLearnMenuOpen, setIsLearnMenuOpen] = useState(false)
+  const [isExcludingWord, setIsExcludingWord] = useState(false)
   const { times: loopWordTimes } = useAtomValue(loopWordConfigAtom)
   const currentWord = state.chapterData.words[state.chapterData.index]
   const nextWord = state.chapterData.words[state.chapterData.index + 1] as Word | undefined
@@ -224,8 +236,54 @@ export default function WordPanel() {
     ],
   )
 
+  const excludeCurrentLearnWord = useCallback(async () => {
+    if (!isReviewMode || !currentWord || isExcludingWord) return
+
+    const confirmed = window.confirm(
+      `将 “${currentWord.name}” 移出学习计划？\n\n之后不会出现在 Learn 中，历史学习记录会保留。`,
+    )
+    if (!confirmed) return
+
+    setIsExcludingWord(true)
+    try {
+      await excludeLearningWord(currentDictId, currentWord.name)
+
+      setReviewModeInfo((old) => {
+        if (!old.reviewRecord) return old
+        return {
+          ...old,
+          reviewRecord: pruneLearnSessionWord(
+            old.reviewRecord,
+            currentWord.name,
+          ),
+        }
+      })
+
+      setCurrentWordExerciseCount(0)
+      setCurrentReviewWrongCount(0)
+      setCurrentReviewGap(MAX_REINFORCEMENT_GAP)
+      setCurrentReviewHintLevel(null)
+      setIsLearnMenuOpen(false)
+
+      dispatch({
+        type: TypingStateActionType.REMOVE_WORD_FROM_QUEUE,
+        word: currentWord.name,
+      })
+    } finally {
+      setIsExcludingWord(false)
+    }
+  }, [
+    currentDictId,
+    currentWord,
+    dispatch,
+    isExcludingWord,
+    isReviewMode,
+    setReviewModeInfo,
+  ])
+
   const onSkipWord = useCallback(
     (type: 'prev' | 'next') => {
+      if (isReviewMode) return
       if (type === 'prev') {
         dispatch({ type: TypingStateActionType.SKIP_2_WORD_INDEX, newIndex: prevIndex })
       }
@@ -234,7 +292,7 @@ export default function WordPanel() {
         dispatch({ type: TypingStateActionType.SKIP_2_WORD_INDEX, newIndex: nextIndex })
       }
     },
-    [dispatch, prevIndex, nextIndex],
+    [dispatch, isReviewMode, prevIndex, nextIndex],
   )
 
   useHotkeys(
@@ -308,7 +366,7 @@ export default function WordPanel() {
   return (
     <div className="container flex h-full w-full flex-col items-center justify-center">
       <div className="container flex h-24 w-full shrink-0 grow-0 justify-between px-12 pt-10">
-        {isShowPrevAndNextWord && state.isTyping && (
+        {!isReviewMode && isShowPrevAndNextWord && state.isTyping && (
           <>
             <PrevAndNextWord type="prev" />
             <PrevAndNextWord type="next" />
@@ -328,6 +386,31 @@ export default function WordPanel() {
               </div>
             )}
             <div className="relative">
+              {isReviewMode && (
+                <div className="absolute -right-16 top-0 z-20">
+                  <button
+                    type="button"
+                    aria-label="Learn 单词菜单"
+                    title="Learn 单词菜单"
+                    onClick={() => setIsLearnMenuOpen((open) => !open)}
+                    className="rounded-md px-2 py-1 text-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+                  >
+                    ⋯
+                  </button>
+                  {isLearnMenuOpen && (
+                    <div className="absolute right-0 mt-1 w-36 rounded-lg border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                      <button
+                        type="button"
+                        disabled={isExcludingWord}
+                        onClick={() => void excludeCurrentLearnWord()}
+                        className="w-full rounded-md px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-gray-700"
+                      >
+                        移出学习计划
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
               <WordComponent
                 word={currentWord}
                 onFinish={onFinish}
