@@ -73,10 +73,11 @@ export default function DataSetting() {
         clearSyncBaseline(auth.user.userId)
       }
 
+      localStorage.removeItem('currentDict')
       localStorage.removeItem('currentChapter')
       localStorage.removeItem('reviewModeInfo')
 
-      window.alert('本地学习数据已清除。云端账号和云端备份均未删除。')
+      window.alert('本地学习数据已清除，默认词库已恢复为“中考核心词”。云端账号和云端备份均未删除。')
       window.location.reload()
     } catch (error) {
       console.error('清除本地数据失败：', error)
@@ -155,7 +156,7 @@ export default function DataSetting() {
           <div className={styles.section}>
             <span className={styles.sectionLabel}>清除本地数据</span>
             <span className={styles.sectionDescription}>
-              清除当前浏览器中的练习记录、章节记录和智能复习数据，并重置当前章节进度。
+              清除当前浏览器中的练习记录、章节记录和智能复习数据，并将词库和章节进度恢复为首次使用状态。
               <strong className="font-bold text-red-500"> 不会删除云端账号或云端备份，也不会修改其他设备的数据。</strong>
             </span>
             <span className="pl-4 text-left text-xs leading-relaxed text-gray-500 dark:text-gray-400">
