@@ -10,7 +10,7 @@ import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { useAtomValue } from 'jotai'
 import { createContext, useCallback, useEffect, useMemo } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { Updater } from 'use-immer'
 import { useImmer } from 'use-immer'
 import IconInfo from '~icons/ic/outline-info'
@@ -32,7 +32,9 @@ export const GalleryContext = createContext<{
 export default function GalleryPage() {
   const [galleryState, setGalleryState] = useImmer<GalleryState>(initialGalleryState)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const currentDictInfo = useAtomValue(currentDictInfoAtom)
+  const isLearnSelection = searchParams.get('mode') === 'learn'
 
   const { groupedByCategoryAndTag } = useMemo(() => {
     const currentLanguageCategoryDicts = dictionaries.filter((dict) => dict.languageCategory === galleryState.currentLanguageTab)
@@ -47,10 +49,12 @@ export default function GalleryPage() {
   }, [galleryState.currentLanguageTab])
 
   const onBack = useCallback(() => {
-    navigate('/')
-  }, [navigate])
+    navigate(isLearnSelection ? '/learn' : '/typing')
+  }, [isLearnSelection, navigate])
 
-  useHotkeys('enter,esc', onBack, { preventDefault: true })
+  useHotkeys(isLearnSelection ? 'esc' : 'enter,esc', onBack, {
+    preventDefault: true,
+  })
 
   useEffect(() => {
     if (currentDictInfo) {

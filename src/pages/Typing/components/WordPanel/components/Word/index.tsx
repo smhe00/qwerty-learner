@@ -11,6 +11,7 @@ import type { WordPronunciationIconRef } from '@/components/WordPronunciationIco
 import { WordPronunciationIcon } from '@/components/WordPronunciationIcon'
 import { EXPLICIT_SPACE } from '@/constants'
 import useKeySounds from '@/hooks/useKeySounds'
+import type { LearnSessionKind } from '@/learn/session'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import { classifyTypingError } from '@/review/classifier'
 import type { TypingErrorClassification } from '@/review/classifier'
@@ -49,7 +50,10 @@ import {
   decideWordInput,
   shouldPlayAutomaticPronunciation,
 } from '@/review/machine'
-import { applyReviewOutcome } from '@/review/repository'
+import {
+  applyReviewOutcome,
+  completeLearningAcquisition,
+} from '@/review/repository'
 import { reviewOutcomeForAttempt } from '@/review/scheduler'
 import { WordTelemetryCollector } from '@/review/telemetry'
 import {
@@ -91,6 +95,7 @@ type WordComponentProps = {
   meaningVisible: boolean
   phoneticVisible: boolean
   exercisePlan?: ReviewExercisePlanV1
+  learnItemKind?: LearnSessionKind
   onHintLevelChange?: (level: ReviewHintLevel | null) => void
 }
 
@@ -100,6 +105,7 @@ export default function WordComponent({
   meaningVisible,
   phoneticVisible,
   exercisePlan,
+  learnItemKind,
   onHintLevelChange,
 }: WordComponentProps) {
   // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
@@ -638,6 +644,9 @@ export default function WordComponent({
         exerciseCondition: exerciseConditionRef.current,
         reviewPolicyDecision: reviewPolicyDecisionRef.current,
         reviewEvidence,
+        sourceMode: currentChapter === -1 ? 'learn' : 'typing',
+        learnItemKind:
+          currentChapter === -1 ? learnItemKind ?? 'review' : undefined,
       }
       const nextExerciseShadow = exerciseConditionRef.current
         ? chooseNextExerciseShadow({
@@ -649,7 +658,9 @@ export default function WordComponent({
             ],
           })
         : null
-      const isReviewAttempt = currentChapter === -1
+      const isLearnAttempt = currentChapter === -1
+      const isAcquisitionAttempt =
+        isLearnAttempt && learnItemKind === 'acquisition'
 
       const notifyFinished = () => {
         onFinish({
@@ -674,11 +685,15 @@ export default function WordComponent({
             reviewPolicyDecision: reviewPolicyDecisionRef.current,
             reviewEvidence,
             reviewPolicyShadow: nextExerciseShadow ?? undefined,
+            sourceMode: isLearnAttempt ? 'learn' : 'typing',
+            learnItemKind: isLearnAttempt
+              ? learnItemKind ?? 'review'
+              : undefined,
           })
 
-          if (isReviewAttempt) {
+          if (isLearnAttempt) {
             // Raw evidence is the SSOT. Once it is durably captured, UI
-            // progression must not wait for derived scheduler persistence.
+            // progression must not wait for derived Learn-state persistence.
             dispatch({
               type: TypingStateActionType.SET_IS_SAVING_RECORD,
               payload: false,
@@ -687,19 +702,30 @@ export default function WordComponent({
             notifyFinished()
 
             if (wordRecordId > 0) {
-              void applyReviewOutcome(
-                currentDictInfo.id,
-                word.name,
-                reviewOutcomeForAttempt({
-                  classification,
-                  evidence: reviewEvidence,
-                  condition: exerciseConditionRef.current,
-                }),
-                Math.floor(Date.now() / 1000),
-                wordRecordId,
-              ).catch((error) => {
+              const now = Math.floor(Date.now() / 1000)
+              const persistLearnState = isAcquisitionAttempt
+                ? completeLearningAcquisition(
+                    currentDictInfo.id,
+                    word.name,
+                    now,
+                  )
+                : applyReviewOutcome(
+                    currentDictInfo.id,
+                    word.name,
+                    reviewOutcomeForAttempt({
+                      classification,
+                      evidence: reviewEvidence,
+                      condition: exerciseConditionRef.current,
+                    }),
+                    now,
+                    wordRecordId,
+                  )
+
+              void persistLearnState.catch((error) => {
                 console.error(
-                  'failed to persist derived review scheduler state',
+                  isAcquisitionAttempt
+                    ? 'failed to persist acquisition learning state'
+                    : 'failed to persist derived review scheduler state',
                   error,
                 )
               })
@@ -707,23 +733,13 @@ export default function WordComponent({
             return
           }
 
-          if (wordRecordId > 0) {
-            await applyReviewOutcome(
-              currentDictInfo.id,
-              word.name,
-              reviewOutcomeForAttempt({
-                classification,
-                evidence: reviewEvidence,
-                condition: exerciseConditionRef.current,
-              }),
-              Math.floor(Date.now() / 1000),
-              wordRecordId,
-            )
-          }
+          // Typing is deliberately long-term-state neutral. Its WordRecord is
+          // retained as prior evidence; Learn may reactivate a state later
+          // during explicit Learn admission/bootstrap.
         } catch (error) {
           console.error('failed to persist review learning state', error)
         } finally {
-          if (isReviewAttempt) {
+          if (isLearnAttempt) {
             if (!reviewProgressReleased) {
               dispatch({
                 type: TypingStateActionType.SET_IS_SAVING_RECORD,

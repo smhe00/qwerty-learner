@@ -711,3 +711,302 @@ test('current Learn item can be excluded without using Skip', async ({ page }) =
 
   expect(state?.lifecycle).toBe('excluded')
 })
+
+
+test('Learn dictionary selection reuses the Typing gallery and skips chapter selection', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.evaluate(() => {
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(0))
+  })
+
+  await page.goto('/learn')
+  await page.getByRole('link', { name: 'CET-4', exact: true }).click()
+  await expect(page).toHaveURL(/\/gallery\?mode=learn$/)
+
+  const target = page.getByRole('button', {
+    name: '选择 Learn 词库：中考核心词',
+  })
+  await expect(target).toBeVisible()
+  await target.click()
+
+  await expect(page).toHaveURL(/\/learn$/)
+  await expect(
+    page.getByRole('heading', { name: '中考核心词', exact: true }),
+  ).toBeVisible()
+  await expect(page.getByText('章节选择', { exact: true })).toHaveCount(0)
+})
+
+test('Learn starts new acquisition only when there is no due review', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.evaluate(async () => {
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(0))
+    localStorage.setItem(
+      'reviewModeInfo',
+      JSON.stringify({
+        isReviewMode: false,
+      }),
+    )
+
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const names = [
+          'wordRecords',
+          'reviewWordStates',
+          'reviewRecords',
+        ]
+        const tx = db.transaction(names, 'readwrite')
+        for (const name of names) {
+          tx.objectStore(name).clear()
+        }
+        tx.oncomplete = () => {
+          db.close()
+          resolve()
+        }
+        tx.onerror = () => reject(tx.error)
+        tx.onabort = () => reject(tx.error)
+      }
+    })
+  })
+
+  await page.goto('/learn')
+  const startButton = page.getByRole('button', {
+    name: '开始学习',
+    exact: true,
+  })
+  await expect(startButton).toBeEnabled()
+  await startButton.click()
+
+  await expect(page).toHaveURL(/\/learn\/session$/)
+
+  const info = await readReviewModeInfo(page)
+  expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
+  expect(info?.reviewRecord?.words?.length).toBe(20)
+
+  const firstWord = info?.reviewRecord?.words?.[0]?.name as string
+  expect(firstWord).toBeTruthy()
+  expect(
+    info?.reviewRecord?.exercisePlans?.[firstWord],
+  ).toMatchObject({
+    condition: {
+      purpose: 'training',
+      audio: 'automatic',
+      meaning: 'visible',
+      phonetic: 'visible',
+      letters: { mode: 'all-visible' },
+      probeDimension: 'none',
+    },
+    decision: {
+      policyVersion: 'learn-acquisition-v1',
+    },
+  })
+
+  await startTyping(page)
+  await waitForRenderedWord(page, firstWord)
+  const rendered = page.locator(
+    `[data-typing-word="${firstWord}"]`,
+  )
+  await expect(rendered).toHaveAttribute(
+    'data-review-purpose',
+    'training',
+  )
+  await expect(rendered).toHaveAttribute(
+    'data-review-letters',
+    'all-visible',
+  )
+
+  await page.keyboard.type(firstWord)
+
+  await expect
+    .poll(async () => {
+      return page.evaluate(async (word) => {
+        return new Promise<{
+          state?: {
+            lifecycle?: string
+            reviewCount?: number
+            lapseCount?: number
+            lastOutcome?: string
+            nextReviewAt?: number
+          }
+          record?: {
+            sourceMode?: string
+            learnItemKind?: string
+          }
+          now: number
+        }>((resolve, reject) => {
+          const request = indexedDB.open('RecordDB')
+          request.onerror = () => reject(request.error)
+          request.onsuccess = () => {
+            const db = request.result
+            const tx = db.transaction(
+              ['reviewWordStates', 'wordRecords'],
+              'readonly',
+            )
+            const states = tx.objectStore('reviewWordStates').getAll()
+            const records = tx.objectStore('wordRecords').getAll()
+            tx.onerror = () => reject(tx.error)
+            tx.oncomplete = () => {
+              const state = states.result.find(
+                (item) => item.dict === 'cet4' && item.word === word,
+              )
+              const record = [...records.result]
+                .reverse()
+                .find(
+                  (item) => item.dict === 'cet4' && item.word === word,
+                )
+              resolve({
+                state: state
+                  ? {
+                      lifecycle: state.lifecycle,
+                      reviewCount: state.reviewCount,
+                      lapseCount: state.lapseCount,
+                      lastOutcome: state.lastOutcome,
+                      nextReviewAt: state.nextReviewAt,
+                    }
+                  : undefined,
+                record: record
+                  ? {
+                      sourceMode: record.sourceMode,
+                      learnItemKind: record.learnItemKind,
+                    }
+                  : undefined,
+                now: Math.floor(Date.now() / 1000),
+              })
+              db.close()
+            }
+          }
+        })
+      }, firstWord)
+    })
+    .toMatchObject({
+      state: {
+        lifecycle: 'active',
+        reviewCount: 0,
+        lapseCount: 0,
+      },
+      record: {
+        sourceMode: 'learn',
+        learnItemKind: 'acquisition',
+      },
+    })
+
+  const persisted = await page.evaluate(async (word) => {
+    return new Promise<{
+      nextReviewAt?: number
+      lastOutcome?: string
+      now: number
+    }>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction('reviewWordStates', 'readonly')
+        const all = tx.objectStore('reviewWordStates').getAll()
+        all.onerror = () => reject(all.error)
+        all.onsuccess = () => {
+          const state = all.result.find(
+            (item) => item.dict === 'cet4' && item.word === word,
+          )
+          resolve({
+            nextReviewAt: state?.nextReviewAt,
+            lastOutcome: state?.lastOutcome,
+            now: Math.floor(Date.now() / 1000),
+          })
+          db.close()
+        }
+      }
+    })
+  }, firstWord)
+
+  expect(persisted.lastOutcome).toBeUndefined()
+  expect(persisted.nextReviewAt).toBeGreaterThan(
+    persisted.now + 86_300,
+  )
+  expect(persisted.nextReviewAt).toBeLessThanOrEqual(
+    persisted.now + 86_500,
+  )
+})
+
+test('a due ACTIVE word is reviewed before any unseen acquisition word', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.evaluate(async () => {
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(0))
+    localStorage.setItem(
+      'reviewModeInfo',
+      JSON.stringify({
+        isReviewMode: false,
+      }),
+    )
+
+    const now = Math.floor(Date.now() / 1000)
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction(
+          ['wordRecords', 'reviewWordStates', 'reviewRecords'],
+          'readwrite',
+        )
+        tx.objectStore('wordRecords').clear()
+        tx.objectStore('reviewRecords').clear()
+        tx.objectStore('reviewWordStates').clear()
+        tx.objectStore('reviewWordStates').put({
+          dict: 'cet4',
+          word: 'cancel',
+          createdAt: now - 100,
+          updatedAt: now - 100,
+          nextReviewAt: now - 1,
+          reviewCount: 0,
+          lapseCount: 0,
+          cleanStreak: 0,
+          lifecycle: 'active',
+          stateVersion: 4,
+          schedulerState: {
+            kind: 'basic-v1',
+            stage: 0,
+            intervalDays: 0,
+          },
+        })
+        tx.oncomplete = () => {
+          db.close()
+          resolve()
+        }
+        tx.onerror = () => reject(tx.error)
+        tx.onabort = () => reject(tx.error)
+      }
+    })
+  })
+
+  await page.goto('/learn')
+  await page.getByRole('button', {
+    name: '开始学习',
+    exact: true,
+  }).click()
+
+  await expect(page).toHaveURL(/\/learn\/session$/)
+  const info = await readReviewModeInfo(page)
+
+  expect(info?.reviewRecord?.sessionKind).toBe('review')
+  expect(
+    info?.reviewRecord?.words?.map((word: { name: string }) => word.name),
+  ).toEqual(['cancel'])
+  expect(
+    info?.reviewRecord?.exercisePlans?.cancel?.condition,
+  ).toMatchObject({
+    purpose: 'probe',
+    letters: { mode: 'all-hidden' },
+    audio: 'none',
+  })
+})

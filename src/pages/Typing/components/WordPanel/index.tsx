@@ -8,6 +8,7 @@ import WordComponent from './components/Word'
 import type { WordFinishResult } from './components/Word'
 import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
 import { pruneLearnSessionWord } from '@/learn/lifecycle'
+import type { LearnSessionKind } from '@/learn/session'
 import { materializeReviewExercisePlan } from '@/review/decision'
 import type { ReviewHintLevel } from '@/review/hint'
 import {
@@ -55,6 +56,9 @@ export default function WordPanel() {
   const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
   const isReviewMode = useAtomValue(isReviewModeAtom)
+  const currentLearnItemKind: LearnSessionKind =
+    reviewModeInfo.reviewRecord?.sessionKind ?? 'review'
+  const effectiveLoopWordTimes = isReviewMode ? 1 : loopWordTimes
   const currentExercisePlan =
     isReviewMode && currentWord
       ? reviewModeInfo.reviewRecord?.exercisePlans?.[currentWord.name]
@@ -103,7 +107,7 @@ export default function WordPanel() {
           currentIndex: state.chapterData.index,
           currentWord,
           currentExerciseCount: currentWordExerciseCount,
-          loopWordTimes,
+          loopWordTimes: effectiveLoopWordTimes,
           priorAccumulatedWrongCount: currentReviewWrongCount,
           attemptWrongCount: wrongCount,
           currentReinforcementGap: currentReviewGap,
@@ -224,6 +228,7 @@ export default function WordPanel() {
       currentReviewWrongCount,
       currentReviewGap,
       currentWordExerciseCount,
+      effectiveLoopWordTimes,
       loopWordTimes,
       state.chapterData.index,
       state.chapterData.words,
@@ -417,6 +422,9 @@ export default function WordPanel() {
                 meaningVisible={effectiveMeaningVisible}
                 phoneticVisible={effectivePhoneticVisible}
                 exercisePlan={currentExercisePlan}
+                learnItemKind={
+                  isReviewMode ? currentLearnItemKind : undefined
+                }
                 onHintLevelChange={setCurrentReviewHintLevel}
                 key={currentWordComponentKey}
               />

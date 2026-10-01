@@ -6,6 +6,11 @@ import {
   pruneLearnSessionWord,
 } from '../../src/learn/lifecycle'
 import {
+  LEARN_NEW_WORD_BATCH_SIZE,
+  createLearnAcquisitionPlan,
+  selectUnseenLearningWords,
+} from '../../src/learn/session'
+import {
   createBaselineExerciseCondition,
   isLetterVisibleForExerciseCondition,
 } from '../../src/review/condition'
@@ -1868,4 +1873,65 @@ test('pruning an excluded word removes all session duplicates and preserves logi
   assert.equal(pruned.isFinished, false)
   assert.equal(pruned.exercisePlans?.x, undefined)
   assert.equal(pruned.reinforcementCounts?.x, undefined)
+})
+
+
+test('Learn acquisition plan is assisted training and never a canonical probe', () => {
+  const plan = createLearnAcquisitionPlan()
+
+  assert.equal(plan.condition.purpose, 'training')
+  assert.equal(plan.condition.audio, 'automatic')
+  assert.equal(plan.condition.meaning, 'visible')
+  assert.equal(plan.condition.phonetic, 'visible')
+  assert.deepEqual(plan.condition.letters, { mode: 'all-visible' })
+  assert.equal(plan.condition.probeDimension, 'none')
+  assert.equal(plan.decision.policyVersion, 'learn-acquisition-v1')
+})
+
+test('new-word acquisition selects only unseen words in dictionary order with a bounded batch', () => {
+  const words = Array.from({ length: 30 }, (_, index) => ({
+    name: 'w' + index,
+    trans: [],
+    usphone: '',
+    ukphone: '',
+  }))
+  const active = createInitialReviewWordState('cet4', 'w0', 1)
+  const excluded = decideLearningLifecycleTransition(
+    createInitialReviewWordState('cet4', 'w2', 1),
+    { kind: 'exclude', now: 2 },
+  )
+
+  const selected = selectUnseenLearningWords(
+    words,
+    [active, excluded],
+  )
+
+  assert.equal(selected.length, LEARN_NEW_WORD_BATCH_SIZE)
+  assert.equal(selected[0].name, 'w1')
+  assert.equal(selected.some((word) => word.name === 'w0'), false)
+  assert.equal(selected.some((word) => word.name === 'w2'), false)
+  assert.deepEqual(
+    selected.slice(0, 4).map((word) => word.name),
+    ['w1', 'w3', 'w4', 'w5'],
+  )
+})
+
+test('acquisition WordRecord cannot be replayed as a spaced-review rating', () => {
+  const acquisitionRecord: IWordRecord = {
+    word: 'cancel',
+    timeStamp: 100,
+    dict: 'cet4',
+    chapter: -1,
+    timing: [],
+    wrongCount: 0,
+    mistakes: {},
+    sourceMode: 'learn',
+    learnItemKind: 'acquisition',
+    exerciseCondition: createLearnAcquisitionPlan().condition,
+  }
+
+  assert.equal(
+    inferReviewOutcomeFromWordRecord(acquisitionRecord, []),
+    undefined,
+  )
 })

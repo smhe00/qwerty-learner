@@ -1,4 +1,5 @@
 import { getUTCUnixTimestamp } from '../index'
+import type { LearnSessionKind } from '@/learn/session'
 import type { ExerciseConditionV1 } from '@/review/condition'
 import type {
   ReviewExercisePlanV1,
@@ -106,6 +107,10 @@ export interface IWordRecord {
 
   // Shadow-only proposal for the next exercise; never applied to this attempt.
   reviewPolicyShadow?: ReviewPolicyShadowV1
+
+  // Explicit product provenance. Legacy records may omit these fields.
+  sourceMode?: 'typing' | 'learn'
+  learnItemKind?: LearnSessionKind
 }
 
 export interface LetterMistakes {
@@ -128,6 +133,8 @@ export class WordRecord implements IWordRecord {
   reviewPolicyDecision?: ReviewPolicyDecisionV1
   reviewEvidence?: ReviewEvidenceV1
   reviewPolicyShadow?: ReviewPolicyShadowV1
+  sourceMode?: 'typing' | 'learn'
+  learnItemKind?: LearnSessionKind
 
   constructor(
     word: string,
@@ -142,6 +149,8 @@ export class WordRecord implements IWordRecord {
     reviewPolicyDecision?: ReviewPolicyDecisionV1,
     reviewEvidence?: ReviewEvidenceV1,
     reviewPolicyShadow?: ReviewPolicyShadowV1,
+    sourceMode?: 'typing' | 'learn',
+    learnItemKind?: LearnSessionKind,
   ) {
     this.word = word
     this.timeStamp = getUTCUnixTimestamp()
@@ -168,6 +177,12 @@ export class WordRecord implements IWordRecord {
     }
     if (reviewPolicyShadow) {
       this.reviewPolicyShadow = reviewPolicyShadow
+    }
+    if (sourceMode) {
+      this.sourceMode = sourceMode
+    }
+    if (learnItemKind) {
+      this.learnItemKind = learnItemKind
     }
   }
 
@@ -263,6 +278,8 @@ export interface IReviewRecord {
   // A value of 1 means this Review session has already inserted its one
   // allowed reinforcement occurrence for the word.
   reinforcementCounts?: Record<string, number>
+  // Transitional Learn session classification. Legacy absence means review.
+  sessionKind?: LearnSessionKind
 }
 
 export class ReviewRecord implements IReviewRecord {
@@ -274,17 +291,20 @@ export class ReviewRecord implements IReviewRecord {
   words: Word[]
   exercisePlans?: Record<string, ReviewExercisePlanV1>
   reinforcementCounts?: Record<string, number>
+  sessionKind?: LearnSessionKind
 
   constructor(
     dict: string,
     words: Word[],
     exercisePlans?: Record<string, ReviewExercisePlanV1>,
+    sessionKind: LearnSessionKind = 'review',
   ) {
     this.dict = dict
     this.index = 0
     this.createTime = getUTCUnixTimestamp()
     this.words = words
     this.isFinished = false
+    this.sessionKind = sessionKind
     if (exercisePlans && Object.keys(exercisePlans).length > 0) {
       this.exercisePlans = exercisePlans
     }

@@ -260,3 +260,28 @@ export async function restoreLearningWord(
     return { ...next, id }
   })
 }
+
+
+export async function completeLearningAcquisition(
+  dict: string,
+  word: string,
+  now = Math.floor(Date.now() / 1000),
+): Promise<IReviewWordState> {
+  return db.transaction('rw', db.reviewWordStates, async () => {
+    const existing = await getReviewWordState(dict, word)
+
+    // Acquisition is only for UNSEEN words. Repeated same-session training
+    // must be idempotent, and manual exclusion must never be overwritten.
+    if (existing) return existing
+
+    const next = {
+      ...createInitialReviewWordState(dict, word, now),
+      lifecycle: 'active' as const,
+      nextReviewAt: now + 86_400,
+      updatedAt: now,
+    }
+
+    const id = await db.reviewWordStates.put(next)
+    return { ...next, id }
+  })
+}

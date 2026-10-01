@@ -8,6 +8,12 @@ import { createInitialReviewWordState } from './types'
 import type { IReviewWordState, ReviewOutcome } from './types'
 import type { IWordRecord } from '@/utils/db/record'
 
+function isLongTermReviewRecord(record: IWordRecord): boolean {
+  if (record.sourceMode === 'typing') return false
+  if (record.learnItemKind === 'acquisition') return false
+  return record.chapter === -1
+}
+
 function compareRecordOrder(left: IWordRecord, right: IWordRecord): number {
   const timeDiff = left.timeStamp - right.timeStamp
   if (timeDiff !== 0) return timeDiff
@@ -19,10 +25,11 @@ export function hasUnreviewedLearningFailure(records: IWordRecord[]): boolean {
   let latestReview: IWordRecord | undefined
 
   for (const record of records) {
-    if (record.chapter === -1) {
+    if (isLongTermReviewRecord(record)) {
       if (!latestReview || compareRecordOrder(record, latestReview) > 0) latestReview = record
       continue
     }
+    if (record.learnItemKind === 'acquisition') continue
     if (record.wrongCount <= 0) continue
     if (!latestLearningFailure || compareRecordOrder(record, latestLearningFailure) > 0) {
       latestLearningFailure = record
@@ -57,7 +64,7 @@ export function inferReviewOutcomeFromWordRecord(
   // Only records created by Review mode are long-term spaced-review events.
   // Ordinary learning records remain valuable evidence for profiles/seeding,
   // but must never advance the long-term scheduler.
-  if (record.chapter !== -1) return undefined
+  if (!isLongTermReviewRecord(record)) return undefined
 
   const telemetry = readWordTelemetry(record)
 
@@ -126,7 +133,7 @@ export function rebuildBasicStateFromWordRecords(
         updatedAt: options.legacyDueAt,
       }
     } else {
-      const reviewRecords = sortedRecords.filter((record) => record.chapter === -1)
+      const reviewRecords = sortedRecords.filter(isLongTermReviewRecord)
       const hasAdaptiveReviewTelemetry = reviewRecords.some(
         (record) => readWordTelemetry(record) !== undefined,
       )

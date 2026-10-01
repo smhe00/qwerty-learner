@@ -16,6 +16,8 @@ on:
       - 'src/utils/db/index.ts'
       - 'src/utils/db/review-record.ts'
       - 'src/pages/Gallery-N/ReviewDetail/**'
+      - 'src/pages/Gallery-N/index.tsx'
+      - 'src/pages/Gallery-N/DictionaryWithoutCover.tsx'
       - 'src/pages/Typing/components/WordPanel/**'
       - 'src/store/reviewInfoAtom.ts'
       - 'tests/e2e/review.spec.ts'
@@ -61,6 +63,8 @@ jobs:
           src/utils/db/index.ts
           src/utils/db/review-record.ts
           src/pages/Gallery-N/ReviewDetail
+          src/pages/Gallery-N/index.tsx
+          src/pages/Gallery-N/DictionaryWithoutCover.tsx
           src/pages/Typing/components/WordPanel
           --ext .ts,.tsx
 

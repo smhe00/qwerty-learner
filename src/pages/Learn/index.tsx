@@ -1,10 +1,10 @@
 import ModeSwitcher from '@/components/ModeSwitcher'
 import Header from '@/components/Header'
 import Layout from '@/components/Layout'
+import Tooltip from '@/components/Tooltip'
 import { Button } from '@/components/ui/button'
 import useErrorWordData from '@/pages/Gallery-N/hooks/useErrorWords'
 import Setting from '@/pages/Typing/components/Setting'
-import { dictionaries } from '@/resources/dictionary'
 import {
   currentChapterAtom,
   currentDictIdAtom,
@@ -12,8 +12,10 @@ import {
   reviewModeInfoAtom,
 } from '@/store'
 import { db } from '@/utils/db'
+import { wordListFetcher } from '@/utils/wordListFetcher'
 import {
-  generateNewWordReviewRecord,
+  generateLearnReviewRecord,
+  generateNewWordAcquisitionRecord,
   getLatestReviewRecord,
 } from '@/utils/db/review-record'
 import {
@@ -22,16 +24,18 @@ import {
   restoreLearningWord,
 } from '@/review/repository'
 import { getLearningLifecycle } from '@/learn/lifecycle'
+import { decideLearnStartKind } from '@/learn/session'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
+import useSWR from 'swr'
 
 type PlanTab = 'active' | 'excluded'
 
 export default function LearnPage() {
   const navigate = useNavigate()
-  const [currentDictId, setCurrentDictId] = useAtom(currentDictIdAtom)
+  const currentDictId = useAtomValue(currentDictIdAtom)
   const currentDictInfo = useAtomValue(currentDictInfoAtom)
   const setCurrentChapter = useSetAtom(currentChapterAtom)
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
@@ -40,6 +44,10 @@ export default function LearnPage() {
   const [statusText, setStatusText] = useState('')
 
   const { errorWordData } = useErrorWordData(currentDictInfo, false)
+  const {
+    data: wordList,
+    isLoading: isWordListLoading,
+  } = useSWR(currentDictInfo.url, wordListFetcher)
 
   useEffect(() => {
     void bootstrapReviewWordStatesForDictionary(currentDictId)
@@ -80,9 +88,10 @@ export default function LearnPage() {
     0,
     currentDictInfo.length - activeStates.length - excludedStates.length,
   )
+  const startKind = decideLearnStartKind({ dueCount, unseenCount })
 
   const enterSession = useCallback(
-    (record: NonNullable<Awaited<ReturnType<typeof generateNewWordReviewRecord>>>) => {
+    (record: NonNullable<Awaited<ReturnType<typeof generateLearnReviewRecord>>>) => {
       setCurrentChapter(-1)
       setReviewModeInfo({
         isReviewMode: true,
@@ -95,30 +104,50 @@ export default function LearnPage() {
 
   const startLearn = useCallback(
     async (mode: 'due' | 'force') => {
-      if (isStarting) return
+      if (isStarting || !wordList) return
       setIsStarting(true)
       setStatusText('')
       try {
         await bootstrapReviewWordStatesForDictionary(currentDictId)
-        const record = await generateNewWordReviewRecord(
+
+        let record = await generateLearnReviewRecord(
           currentDictId,
+          wordList,
           errorWordData,
           { mode },
         )
+
+        // Normal Learn always prioritizes due long-term reviews. Only when
+        // there is no due card do we open a bounded new-word acquisition
+        // session. Extra review remains review-only.
+        if (!record && mode === 'due') {
+          record = await generateNewWordAcquisitionRecord(
+            currentDictId,
+            wordList,
+          )
+        }
+
         if (!record) {
           setStatusText(
             mode === 'due'
-              ? '今天没有到期的长期学习词。'
-              : '当前没有可用于额外学习的长期学习词。',
+              ? '当前词库没有需要复习或新学习的单词。'
+              : '当前没有可用于额外复习的长期学习词。',
           )
           return
         }
+
         enterSession(record)
       } finally {
         setIsStarting(false)
       }
     },
-    [currentDictId, enterSession, errorWordData, isStarting],
+    [
+      currentDictId,
+      enterSession,
+      errorWordData,
+      isStarting,
+      wordList,
+    ],
   )
 
   const continueLearn = useCallback(() => {
@@ -151,22 +180,14 @@ export default function LearnPage() {
     <Layout>
       <Header>
         <ModeSwitcher />
-        <select
-          aria-label="Learn 词库"
-          value={currentDictId}
-          onChange={(event) => {
-            setCurrentDictId(event.target.value)
-            setCurrentChapter(0)
-            setStatusText('')
-          }}
-          className="rounded-lg bg-transparent px-3 py-1.5 text-sm text-gray-700 outline-none hover:bg-indigo-50 dark:text-gray-200 dark:hover:bg-gray-700"
-        >
-          {dictionaries.map((dict) => (
-            <option key={dict.id} value={dict.id}>
-              {dict.name}
-            </option>
-          ))}
-        </select>
+        <Tooltip content="词典切换">
+          <NavLink
+            className="block rounded-lg px-3 py-1 text-lg transition-colors duration-300 ease-in-out hover:bg-indigo-400 hover:text-white focus:outline-none dark:text-white dark:text-opacity-60 dark:hover:text-opacity-100"
+            to="/gallery?mode=learn"
+          >
+            {currentDictInfo.name}
+          </NavLink>
+        </Tooltip>
         <Setting />
       </Header>
 
@@ -178,8 +199,7 @@ export default function LearnPage() {
           </h2>
           <p className="mt-2 max-w-3xl text-sm text-gray-500 dark:text-gray-400">
             Learn 管理长期记忆；Typing 保持原项目的章节打字练习逻辑。
-            当前 A/B 阶段已接管原有长期复习状态，新词的全量 admission
-            会在后续阶段开启。
+            Learn 优先处理到期长期复习；如果当前没有到期词，则自动进入新词学习。
           </p>
         </div>
 
@@ -209,10 +229,14 @@ export default function LearnPage() {
             <Button onClick={continueLearn}>继续当前学习</Button>
           )}
           <Button
-            disabled={isStarting || dueCount === 0}
+            disabled={
+              isStarting ||
+              isWordListLoading ||
+              startKind === 'empty'
+            }
             onClick={() => void startLearn('due')}
           >
-            开始今日学习
+            开始学习
           </Button>
           <Button
             variant="outline"

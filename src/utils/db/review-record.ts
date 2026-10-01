@@ -1,4 +1,9 @@
 import { db } from '.'
+import {
+  LEARN_NEW_WORD_BATCH_SIZE,
+  buildLearnAcquisitionExercisePlans,
+  selectUnseenLearningWords,
+} from '@/learn/session'
 import { ReviewRecord } from './record'
 import type { TErrorWordData } from '@/pages/Gallery-N/hooks/useErrorWords'
 import { selectReviewCandidates } from '@/review/due'
@@ -66,4 +71,76 @@ export async function generateNewWordReviewRecord(
 
 export async function putWordReviewRecord(record: ReviewRecord) {
   db.reviewRecords.put(record)
+}
+
+
+export async function generateLearnReviewRecord(
+  dictID: string,
+  words: Word[],
+  errorData: TErrorWordData[],
+  options?: { mode?: ReviewSelectionMode },
+) {
+  const now = getUTCUnixTimestamp()
+  await bootstrapReviewWordStatesForDictionary(dictID, now)
+
+  const states = await getReviewWordStates(dictID)
+  const errorByWord = new Map(
+    errorData.map((item) => [item.word, item]),
+  )
+
+  const candidates = words.map((originData) => {
+    const error = errorByWord.get(originData.name)
+    return {
+      word: originData.name,
+      originData,
+      errorCount: error?.errorCount ?? 0,
+      latestErrorTime: error?.latestErrorTime ?? 0,
+    }
+  })
+
+  const selected = selectReviewCandidates(
+    candidates,
+    states,
+    now,
+    options?.mode ?? 'due',
+  )
+
+  const sortedWords: Word[] = rankDueReviewCandidates(
+    selected,
+    states,
+  ).map((item) => item.originData)
+
+  if (sortedWords.length === 0) return undefined
+
+  const wordRecords = await db.wordRecords.where('dict').equals(dictID).toArray()
+  const exercisePlans = buildReviewSessionExercisePlans(sortedWords, wordRecords)
+  const record = new ReviewRecord(
+    dictID,
+    sortedWords,
+    exercisePlans,
+    'review',
+  )
+  await db.reviewRecords.put(record)
+  return record
+}
+
+export async function generateNewWordAcquisitionRecord(
+  dictID: string,
+  words: Word[],
+  limit = LEARN_NEW_WORD_BATCH_SIZE,
+) {
+  const states = await getReviewWordStates(dictID)
+  const selectedWords = selectUnseenLearningWords(words, states, limit)
+
+  if (selectedWords.length === 0) return undefined
+
+  const exercisePlans = buildLearnAcquisitionExercisePlans(selectedWords)
+  const record = new ReviewRecord(
+    dictID,
+    selectedWords,
+    exercisePlans,
+    'acquisition',
+  )
+  await db.reviewRecords.put(record)
+  return record
 }

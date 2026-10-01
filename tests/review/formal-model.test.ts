@@ -1265,3 +1265,58 @@ test('formal/learn-session-prune: removal is idempotent and never leaves the exc
     }
   }
 })
+
+
+test('formal/learn-start-priority: due review always wins over new acquisition', async () => {
+  const {
+    decideLearnStartKind,
+    selectUnseenLearningWords,
+  } = await import('../../src/learn/session')
+  const {
+    createInitialReviewWordState,
+  } = await import('../../src/review/types')
+
+  for (let dueCount = 0; dueCount <= 5; dueCount += 1) {
+    for (let unseenCount = 0; unseenCount <= 25; unseenCount += 1) {
+      const decision = decideLearnStartKind({ dueCount, unseenCount })
+      if (dueCount > 0) {
+        assert.equal(decision, 'review')
+      } else if (unseenCount > 0) {
+        assert.equal(decision, 'acquisition')
+      } else {
+        assert.equal(decision, 'empty')
+      }
+    }
+  }
+
+  const words = Array.from({ length: 40 }, (_, index) => ({
+    name: 'w' + index,
+    trans: [],
+    usphone: '',
+    ukphone: '',
+  }))
+  const states = Array.from({ length: 7 }, (_, index) =>
+    createInitialReviewWordState('cet4', 'w' + index, 1),
+  )
+
+  const selected = selectUnseenLearningWords(words, states, 20)
+  assert.equal(selected.length, 20)
+  assert.equal(selected[0].name, 'w7')
+  assert.equal(new Set(selected.map((word) => word.name)).size, selected.length)
+  assert.equal(
+    selected.some((word) => states.some((state) => state.word === word.name)),
+    false,
+  )
+})
+
+test('formal/acquisition-safety: acquisition presentation is training-only', async () => {
+  const { createLearnAcquisitionPlan } = await import('../../src/learn/session')
+  const plan = createLearnAcquisitionPlan()
+
+  assert.equal(plan.condition.purpose, 'training')
+  assert.equal(plan.condition.probeDimension, 'none')
+  assert.equal(plan.condition.letters.mode, 'all-visible')
+  assert.equal(plan.condition.meaning, 'visible')
+  assert.equal(plan.condition.phonetic, 'visible')
+  assert.equal(plan.condition.audio, 'automatic')
+})
