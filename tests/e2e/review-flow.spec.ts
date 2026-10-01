@@ -265,7 +265,7 @@ async function seedReviewAdmissionCase(
   await page.goto('/gallery')
   await page.getByText('CET-4', { exact: true }).first().click()
   await expect(page.getByText('章节选择', { exact: true })).toBeVisible()
-  await page.getByText('错题回顾', { exact: true }).click()
+  await page.getByText('长期学习', { exact: true }).click()
   await expect(page.getByText('当前词典错词数: 1')).toBeVisible()
 }
 
@@ -346,9 +346,9 @@ test('fresh ordinary-learning failure reopens a previously reviewed word immedia
     freshLearningAfterReview: true,
   })
 
-  await page.getByRole('button', { name: '开始复习' }).click()
+  await page.getByRole('button', { name: '开始学习' }).click()
 
-  await expect(page).toHaveURL(/\/$/)
+  await expect(page).toHaveURL(/\/learn\/session$/)
   await expect
     .poll(async () => {
       const info = await readReviewModeInfo(page)
@@ -372,17 +372,17 @@ test('no-due screen offers Force Review and force bypasses only the time gate', 
     freshLearningAfterReview: false,
   })
 
-  await page.getByRole('button', { name: '开始复习' }).click()
+  await page.getByRole('button', { name: '开始学习' }).click()
 
   await expect(
     page.getByText(
-      '当前没有到期需要复习的错词。你可以等待调度时间，或强制复习当前错词。',
+      '今天没有到期的长期学习词。你可以等待调度时间，或进行一次额外复习。',
     ),
   ).toBeVisible()
 
-  await page.getByRole('button', { name: '强制开始复习' }).click()
+  await page.getByRole('button', { name: '额外复习' }).click()
 
-  await expect(page).toHaveURL(/\/$/)
+  await expect(page).toHaveURL(/\/learn\/session$/)
   await expect
     .poll(async () => {
       const info = await readReviewModeInfo(page)
@@ -401,8 +401,8 @@ test('new Review session forces a canonical cold probe independent of ordinary s
     freshLearningAfterReview: true,
   })
 
-  await page.getByRole('button', { name: '开始复习' }).click()
-  await expect(page).toHaveURL(/\/$/)
+  await page.getByRole('button', { name: '开始学习' }).click()
+  await expect(page).toHaveURL(/\/learn\/session$/)
 
   const sessionInfo = await readReviewModeInfo(page)
   expect(sessionInfo?.reviewRecord?.exercisePlans?.cancel).toMatchObject({
@@ -540,8 +540,8 @@ test('Hint 3 skip lock blocks navigation to a real next Review word', async ({
 test('Typing and Learn are explicit top-level modes', async ({ page }) => {
   await page.goto('/typing')
 
-  const typingMode = page.getByRole('button', { name: 'Typing' })
-  const learnMode = page.getByRole('button', { name: 'Learn' })
+  const typingMode = page.getByRole('button', { name: 'Typing', exact: true })
+  const learnMode = page.getByRole('button', { name: 'Learn', exact: true })
 
   await expect(typingMode).toHaveAttribute('aria-pressed', 'true')
   await expect(learnMode).toHaveAttribute('aria-pressed', 'false')
@@ -553,7 +553,7 @@ test('Typing and Learn are explicit top-level modes', async ({ page }) => {
     page.getByRole('button', { name: 'Learn' }),
   ).toHaveAttribute('aria-pressed', 'true')
   await expect(
-    page.getByText('Learn 管理长期记忆；Typing 保持原项目的章节打字练习逻辑。'),
+    page.getByText(/Learn 管理长期记忆；Typing 保持原项目/),
   ).toBeVisible()
 
   await page.getByRole('button', { name: 'Typing' }).click()
