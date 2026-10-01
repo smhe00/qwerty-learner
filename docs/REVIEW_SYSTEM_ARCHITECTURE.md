@@ -1,6 +1,11 @@
 # Review 系统架构
 
 > 产品主线：`product/main`  
+> Product-level architecture has moved to **Typing / Learn**. See
+> `LEARN_ARCHITECTURE_V1.md`. This document remains the lower-level architecture
+> of Review activities **inside Learn** and should not be read as defining a
+> top-level Review product mode.
+>
 > 本文同时描述 **当前已实现架构** 与 **Adaptive Review 目标架构**。  
 > 迭代顺序和验收标准见 `REVIEW_ADAPTIVE_DEVELOPMENT_PLAN.md`。
 
