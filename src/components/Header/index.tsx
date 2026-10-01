@@ -28,8 +28,8 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
               <span className="text-slate-800 dark:text-slate-100">Qwerty</span>
               <span className="ml-2 font-medium text-slate-500 dark:text-slate-300">Plus</span>
             </h1>
-            <span className="mt-2 pl-1 text-[0.58rem] font-medium tracking-[0.32em] text-slate-400 dark:text-slate-500 lg:text-xs">
-              ENHANCED EDITION
+            <span className="mt-2 pl-1 text-[0.65rem] font-medium tracking-[0.16em] text-slate-400 dark:text-slate-500 lg:text-xs">
+              打字 · 背单词
             </span>
           </div>
         </button>

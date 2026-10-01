@@ -7,14 +7,14 @@ test.describe('Dictionary manage', () => {
   })
 
   test('Homepage default dictionary', async ({ page }) => {
-    await expect(await page.getByText('CET-4').isVisible()).toBeTruthy()
+    await expect(await page.getByText('中考核心词').isVisible()).toBeTruthy()
 
-    await page.getByText('CET-4').hover()
+    await page.getByText('中考核心词').hover()
     await expect(await page.getByText('词典切换').isVisible()).toBeTruthy()
   })
 
   test('Switch language', async ({ page }) => {
-    await page.getByText('CET-4').click()
+    await page.getByText('中考核心词').click()
     await page.waitForURL('**/gallery')
 
     await expect(await page.getByRole('radio', { name: /^英语$/ }).getAttribute('aria-checked')).toBeTruthy()
@@ -39,10 +39,10 @@ test.describe('Dictionary manage', () => {
   })
 
   test('Switch category', async ({ page }) => {
-    await page.getByText('CET-4').click()
+    await page.getByText('中考核心词').click()
     await page.waitForURL('**/gallery')
 
-    await expect(await page.getByRole('radio', { name: /^大学英语$/ }).getAttribute('aria-checked')).toBeTruthy()
+    await expect(await page.getByRole('radio', { name: /^通用$/ }).getAttribute('aria-checked')).toBeTruthy()
 
     await page.getByRole('radio', { name: /^考研$/ }).click()
     await expect(await page.getByRole('radio', { name: /^考研$/ }).getAttribute('aria-checked')).toBeTruthy()
@@ -54,7 +54,7 @@ test.describe('Dictionary manage', () => {
   })
 
   test('Switch dictionary', async ({ page }) => {
-    await page.getByText('CET-4').click()
+    await page.getByText('中考核心词').click()
     await page.waitForURL('**/gallery')
 
     await page
@@ -68,7 +68,7 @@ test.describe('Dictionary manage', () => {
   })
 
   test('Close dictionary settings', async ({ page }) => {
-    await page.getByText('CET-4').click()
+    await page.getByText('中考核心词').click()
     await page.waitForURL('**/gallery')
     // should use testId
     await page.locator('main > div > svg').first().click()
