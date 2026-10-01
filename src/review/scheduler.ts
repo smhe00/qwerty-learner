@@ -110,6 +110,10 @@ export function reviewOutcomeForAttempt(input: {
   evidence: ReviewEvidenceV1
   condition?: ExerciseConditionV1
 }): ReviewOutcome {
+  if (input.evidence.reasonCodes.includes('cold-probe-surrendered')) {
+    return 'again'
+  }
+
   const isAudioWithdrawalProbe =
     input.condition?.purpose === 'probe' &&
     input.condition.probeDimension === 'audio'

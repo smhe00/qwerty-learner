@@ -49,6 +49,37 @@ async function seedReviewSession(
             index: 0,
             isFinished: false,
             words: seededWords,
+            exercisePlans: Object.fromEntries(
+              seededWords.map((word) => [
+                word.name,
+                {
+                  version: 1,
+                  condition: {
+                    version: 1,
+                    purpose: 'probe',
+                    source: 'adaptive-policy',
+                    audio: 'none',
+                    meaning: 'visible',
+                    phonetic: 'hidden',
+                    letters: { mode: 'all-hidden' },
+                    probeDimension: 'none',
+                  },
+                  decision: {
+                    version: 1,
+                    policyVersion: 'canonical-review-probe-v1',
+                    reasonCodes: [
+                      'canonical-long-term-probe',
+                      'meaning-to-orthography',
+                      'letters-hidden',
+                      'audio-off',
+                      'phonetic-hidden',
+                    ],
+                    conditionVersion: 1,
+                  },
+                  sourceShadowVersion: 1,
+                },
+              ]),
+            ),
           },
         }),
       )
@@ -470,4 +501,36 @@ test('new Review session forces a canonical cold probe independent of ordinary s
   expect(
     persistedCondition?.learningContext?.pronunciationAutomaticPlayCount ?? 0,
   ).toBe(0)
+})
+
+
+test('Hint 3 skip lock blocks navigation to a real next Review word', async ({
+  page,
+}) => {
+  await seedReviewSession(page, reviewWords.slice(0, 2), 900010)
+  await page.goto('/')
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+
+  const cancel = page.locator('[data-typing-word="cancel"]')
+  for (let level = 0; level <= 3; level += 1) {
+    await page.keyboard.press('Space')
+    await expect(cancel).toHaveAttribute(
+      'data-review-hint-level',
+      String(level),
+    )
+  }
+
+  await expect(cancel).toHaveText('cancel')
+
+  await page.keyboard.press('Control+Shift+ArrowRight')
+  await page.waitForTimeout(100)
+
+  await expect(cancel).toBeVisible()
+  const info = await readReviewModeInfo(page)
+  expect(info?.reviewRecord?.index).toBe(0)
+
+  await page.keyboard.type('cancel')
+  await waitForReviewIndex(page, 1)
+  await waitForRenderedWord(page, 'analyse')
 })

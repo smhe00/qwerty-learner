@@ -68,6 +68,9 @@ function assistanceReasons(observation: ReviewEvidenceObservation): string[] {
   if ((context?.pronunciationRequestedPlayCount ?? 0) > 0) {
     reasons.push('requested-audio-cue')
   }
+  if (context?.reviewHint) {
+    reasons.push(`review-hint-${context.reviewHint.maxLevel}`)
+  }
 
   return reasons
 }
@@ -108,6 +111,24 @@ export function evaluateReviewEvidence(
     observation.exerciseCondition?.purpose === 'probe' &&
     observation.exerciseCondition.probeDimension === 'audio' &&
     observation.exerciseCondition.audio === 'none'
+
+  const reviewHint = observation.learningContext?.reviewHint
+  if (reviewHint?.coldProbeSurrendered) {
+    return {
+      version: REVIEW_EVIDENCE_VERSION,
+      memoryGrade: 'again',
+      errorCause: 'recall',
+      confidence: 1,
+      evidenceStrength: 1,
+      retrievalValidity: 'independent',
+      reasonCodes: [
+        'cold-probe-surrendered',
+        `review-hint-${reviewHint.maxLevel}`,
+        `review-hint-advances-${reviewHint.advanceCount}`,
+      ],
+    }
+  }
+
   const requestedAudioDuringProbe =
     isAudioWithdrawalProbe &&
     (observation.learningContext?.pronunciationRequestedPlayCount ?? 0) > 0

@@ -47,6 +47,9 @@ export type TypingState = {
   isTyping: boolean
   isFinished: boolean
   isShowSkip: boolean
+  // Prevents user-driven skip/navigation while a mandatory Review training
+  // phase (Hint 3) requires a correct copy before progression.
+  isSkipLocked: boolean
   isTransVisible: boolean
   isLoopSingleWord: boolean
   // 是否正在保存数据

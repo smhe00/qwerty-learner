@@ -8,6 +8,7 @@ import WordComponent from './components/Word'
 import type { WordFinishResult } from './components/Word'
 import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
 import { materializeReviewExercisePlan } from '@/review/decision'
+import type { ReviewHintLevel } from '@/review/hint'
 import {
   decideReviewProgress,
   projectReviewProgress,
@@ -21,7 +22,7 @@ import { MAX_REINFORCEMENT_PER_WORD_PER_SESSION } from '@/review/state-machine'
 import { isReviewModeAtom, isShowPrevAndNextWordAtom, loopWordConfigAtom, phoneticConfigAtom, reviewModeInfoAtom } from '@/store'
 import type { Word } from '@/typings'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useCallback, useContext, useMemo, useState } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
 export default function WordPanel() {
@@ -33,6 +34,8 @@ export default function WordPanel() {
   const [currentWordExerciseCount, setCurrentWordExerciseCount] = useState(0)
   const [currentReviewWrongCount, setCurrentReviewWrongCount] = useState(0)
   const [currentReviewGap, setCurrentReviewGap] = useState(MAX_REINFORCEMENT_GAP)
+  const [currentReviewHintLevel, setCurrentReviewHintLevel] =
+    useState<ReviewHintLevel | null>(null)
   const { times: loopWordTimes } = useAtomValue(loopWordConfigAtom)
   const currentWord = state.chapterData.words[state.chapterData.index]
   const nextWord = state.chapterData.words[state.chapterData.index + 1] as Word | undefined
@@ -49,6 +52,10 @@ export default function WordPanel() {
     reviewIndex: state.chapterData.index,
     reloadKey: wordComponentKey,
   })
+
+  useEffect(() => {
+    setCurrentReviewHintLevel(null)
+  }, [state.chapterData.index, wordComponentKey])
 
   const prevIndex = useMemo(() => {
     const newIndex = state.chapterData.index - 1
@@ -289,9 +296,14 @@ export default function WordPanel() {
     ? currentExercisePlan.condition.meaning === 'visible'
     : shouldShowTranslation
 
-  const effectivePhoneticVisible = hasAdaptiveReviewPresentation
-    ? currentExercisePlan.condition.phonetic === 'visible'
-    : baselinePhoneticVisible
+  const effectivePhoneticVisible =
+    isReviewMode &&
+    currentReviewHintLevel !== null &&
+    currentReviewHintLevel >= 1
+      ? true
+      : hasAdaptiveReviewPresentation
+        ? currentExercisePlan.condition.phonetic === 'visible'
+        : baselinePhoneticVisible
 
   return (
     <div className="container flex h-full w-full flex-col items-center justify-center">
@@ -322,6 +334,7 @@ export default function WordPanel() {
                 meaningVisible={effectiveMeaningVisible}
                 phoneticVisible={effectivePhoneticVisible}
                 exercisePlan={currentExercisePlan}
+                onHintLevelChange={setCurrentReviewHintLevel}
                 key={currentWordComponentKey}
               />
               {effectivePhoneticVisible && <Phonetic word={currentWord} />}

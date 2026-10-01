@@ -108,7 +108,8 @@ export const typingReducer = (state: TypingState, action: TypingStateAction) => 
       return newState
     }
     case TypingStateActionType.SET_IS_SKIP:
-      state.isShowSkip = action.payload
+      state.isShowSkip =
+        state.isSkipLocked && action.payload ? false : action.payload
       break
     case TypingStateActionType.SET_IS_TYPING:
       state.isTyping = action.payload

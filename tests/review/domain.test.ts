@@ -23,6 +23,13 @@ import {
 } from '../../src/review/exercise-policy'
 import { buildReviewObservation } from '../../src/review/observation'
 import {
+  applyReviewHintDecision,
+  createReviewHintMachineState,
+  createReviewHintPlan,
+  decideReviewHintInput,
+  reviewHintTerminationVariant,
+} from '../../src/review/hint'
+import {
   decideReviewProgress,
   decideWordInput,
   shouldPlayAutomaticPronunciation,
@@ -1636,4 +1643,119 @@ test('manually requested pronunciation marks an otherwise canonical retrieval as
 
   assert.equal(evidence.retrievalValidity, 'assisted')
   assert.ok(evidence.reasonCodes.includes('requested-audio-cue'))
+})
+
+
+test('Review hint ladder escalates only on first-position space and Hint 3 cannot be skipped', () => {
+  let state = createReviewHintMachineState()
+  const expected = [
+    { stage: 'hint-0', level: 0 },
+    { stage: 'hint-1', level: 1 },
+    { stage: 'hint-2', level: 2 },
+    { stage: 'hint-3', level: 3 },
+  ] as const
+
+  for (const item of expected) {
+    const before = reviewHintTerminationVariant(state)
+    const decision = decideReviewHintInput({
+      state,
+      inputIndex: 0,
+      key: ' ',
+    })
+    assert.equal(decision.kind, 'advance-hint')
+    if (decision.kind === 'advance-hint') {
+      assert.equal(decision.to, item.stage)
+      assert.equal(decision.level, item.level)
+      state = applyReviewHintDecision(state, decision)
+    }
+    assert.ok(reviewHintTerminationVariant(state) < before)
+  }
+
+  assert.equal(state.stage, 'hint-3')
+  assert.equal(state.coldProbeSurrendered, true)
+  assert.equal(state.advanceCount, 4)
+
+  assert.deepEqual(
+    decideReviewHintInput({ state, inputIndex: 0, key: ' ' }),
+    { kind: 'type-key' },
+  )
+  assert.deepEqual(
+    decideReviewHintInput({ state, inputIndex: 1, key: ' ' }),
+    { kind: 'type-key' },
+  )
+})
+
+test('Review hint plans implement first-letter, audio+phonetic, partial spelling, then mandatory full copy', () => {
+  const hint0 = createReviewHintPlan(0, 6)
+  assert.equal(hint0.condition.audio, 'none')
+  assert.equal(hint0.condition.phonetic, 'hidden')
+  assert.deepEqual(hint0.condition.letters, {
+    mode: 'partial',
+    visiblePositions: [0],
+    maskedPositions: [1, 2, 3, 4, 5],
+  })
+
+  const hint1 = createReviewHintPlan(1, 6)
+  assert.equal(hint1.condition.audio, 'automatic')
+  assert.equal(hint1.condition.phonetic, 'visible')
+  assert.deepEqual(hint1.condition.letters.visiblePositions, [0])
+
+  const hint2 = createReviewHintPlan(2, 6)
+  assert.equal(hint2.condition.audio, 'automatic')
+  assert.equal(hint2.condition.phonetic, 'visible')
+  assert.deepEqual(hint2.condition.letters, {
+    mode: 'partial',
+    visiblePositions: [0, 2, 4],
+    maskedPositions: [1, 3, 5],
+  })
+
+  const hint3 = createReviewHintPlan(3, 6)
+  assert.equal(hint3.condition.audio, 'automatic')
+  assert.equal(hint3.condition.phonetic, 'visible')
+  assert.deepEqual(hint3.condition.letters, { mode: 'all-visible' })
+})
+
+test('cold-probe surrender remains Again even when final hint-assisted typing is clean', () => {
+  const evidence = evaluateReviewEvidence(
+    {
+      exerciseCondition: createReviewHintPlan(3, 6).condition,
+      learningContext: {
+        version: 1,
+        reviewHint: {
+          version: 1,
+          maxLevel: 3,
+          coldProbeSurrendered: true,
+          advanceCount: 4,
+        },
+      },
+      typingTelemetry: {
+        telemetryVersion: 2,
+        firstKeyLatencyMs: 500,
+        attempts: [],
+      },
+    },
+    {
+      cause: 'clean',
+      confidence: 0.9,
+      scores: { recall: 0, spelling: 0, motor: 0 },
+    },
+  )
+
+  assert.equal(evidence.memoryGrade, 'again')
+  assert.equal(evidence.errorCause, 'recall')
+  assert.equal(evidence.retrievalValidity, 'independent')
+  assert.ok(evidence.reasonCodes.includes('cold-probe-surrendered'))
+
+  assert.equal(
+    reviewOutcomeForAttempt({
+      classification: {
+        cause: 'clean',
+        confidence: 0.9,
+        scores: { recall: 0, spelling: 0, motor: 0 },
+      },
+      evidence,
+      condition: createReviewHintPlan(3, 6).condition,
+    }),
+    'again',
+  )
 })

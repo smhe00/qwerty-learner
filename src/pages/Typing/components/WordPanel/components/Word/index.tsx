@@ -19,6 +19,7 @@ import {
   isLetterVisibleForExerciseCondition,
 } from '@/review/condition'
 import type { ExerciseConditionV1 } from '@/review/condition'
+import { CANONICAL_REVIEW_PROBE_POLICY_VERSION } from '@/review/decision'
 import type {
   ReviewExercisePlanV1,
   ReviewPolicyDecisionV1,
@@ -31,6 +32,14 @@ import {
   resolveExercisePlanForAttempt,
 } from '@/review/exercise-policy'
 import { loadWordReviewHistory } from '@/review/history'
+import {
+  REVIEW_HINT_POLICY_VERSION,
+  applyReviewHintDecision,
+  createReviewHintMachineState,
+  createReviewHintPlan,
+  decideReviewHintInput,
+} from '@/review/hint'
+import type { ReviewHintLevel } from '@/review/hint'
 import {
   LearningContextCollector,
   calculateAnswerVisibleRatio,
@@ -82,6 +91,7 @@ type WordComponentProps = {
   meaningVisible: boolean
   phoneticVisible: boolean
   exercisePlan?: ReviewExercisePlanV1
+  onHintLevelChange?: (level: ReviewHintLevel | null) => void
 }
 
 export default function WordComponent({
@@ -90,6 +100,7 @@ export default function WordComponent({
   meaningVisible,
   phoneticVisible,
   exercisePlan,
+  onHintLevelChange,
 }: WordComponentProps) {
   // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
   const { state, dispatch } = useContext(TypingContext)!
@@ -104,6 +115,7 @@ export default function WordComponent({
   const [playKeySound, playBeepSound, playHintSound] = useKeySounds()
   const pronunciationIsOpen = useAtomValue(pronunciationIsOpenAtom)
   const [isHoveringWord, setIsHoveringWord] = useState(false)
+  const [activeHintLevel, setActiveHintLevel] = useState<ReviewHintLevel | null>(null)
   const currentDictInfo = useAtomValue(currentDictInfoAtom)
   const currentLanguage = currentDictInfo.language
   const currentLanguageCategory = currentDictInfo.languageCategory
@@ -123,6 +135,7 @@ export default function WordComponent({
   const automaticPronunciationPlayedRef = useRef(false)
   const finishNotifiedRef = useRef(false)
   const targetLengthRef = useRef(0)
+  const reviewHintStateRef = useRef(createReviewHintMachineState())
 
   useLayoutEffect(() => {
     // Resolve the frozen presentation before paint / first input.
@@ -131,6 +144,10 @@ export default function WordComponent({
     inputLockedRef.current = false
     automaticPronunciationPlayedRef.current = false
     finishNotifiedRef.current = false
+    reviewHintStateRef.current = createReviewHintMachineState()
+    setActiveHintLevel(null)
+    onHintLevelChange?.(null)
+    dispatch({ type: TypingStateActionType.SET_SKIP_LOCKED, payload: false })
 
     let headword = ''
     try {
@@ -263,10 +280,67 @@ export default function WordComponent({
     }
   }, [currentDictInfo.id, word.name])
 
+  const isManagedReviewHintFlow = useCallback(() => {
+    const policyVersion = reviewPolicyDecisionRef.current?.policyVersion
+    return (
+      currentChapter === -1 &&
+      (policyVersion === CANONICAL_REVIEW_PROBE_POLICY_VERSION ||
+        policyVersion === REVIEW_HINT_POLICY_VERSION)
+    )
+  }, [currentChapter])
+
   const updateInput = useCallback(
     (updateAction: WordUpdateAction) => {
       switch (updateAction.type) {
         case 'add': {
+          if (isManagedReviewHintFlow()) {
+            const hintDecision = decideReviewHintInput({
+              state: reviewHintStateRef.current,
+              inputIndex: acceptedInputLengthRef.current,
+              key: updateAction.value,
+            })
+
+            if (hintDecision.kind === 'advance-hint') {
+              updateAction.event.preventDefault()
+              const nextHintState = applyReviewHintDecision(
+                reviewHintStateRef.current,
+                hintDecision,
+              )
+              reviewHintStateRef.current = nextHintState
+
+              const hintPlan = createReviewHintPlan(
+                hintDecision.level,
+                targetLengthRef.current,
+              )
+              exerciseConditionRef.current = hintPlan.condition
+              reviewPolicyDecisionRef.current = hintPlan.decision
+              learningContextCollectorRef.current.recordReviewHintAdvance(
+                hintDecision.level,
+                hintDecision.coldProbeSurrendered,
+              )
+
+              setActiveHintLevel(hintDecision.level)
+              onHintLevelChange?.(hintDecision.level)
+              setIsHoveringWord(false)
+
+              if (hintDecision.level === 1) {
+                // Hint 1 introduces pronunciation for the first time.
+                // Re-arm exactly one automatic play for this attempt.
+                automaticPronunciationPlayedRef.current = false
+              }
+
+              if (hintDecision.level === 3) {
+                learningContextCollectorRef.current.recordAnswerReveal(Date.now())
+                dispatch({
+                  type: TypingStateActionType.SET_SKIP_LOCKED,
+                  payload: true,
+                })
+              }
+
+              return
+            }
+          }
+
           const inputDecision = decideWordInput({
             inputLength: acceptedInputLengthRef.current,
             targetLength: targetLengthRef.current,
@@ -301,17 +375,31 @@ export default function WordComponent({
           console.warn('unknown update type', updateAction)
       }
     },
-    [wordState.hasWrong, setWordState],
+    [
+      dispatch,
+      isManagedReviewHintFlow,
+      onHintLevelChange,
+      setWordState,
+      wordState.hasWrong,
+    ],
   )
 
   const handleHoverWord = useCallback(
     (checked: boolean) => {
-      if (checked && isShowAnswerOnHover && wordDictationConfig.isOpen) {
+      if (
+        checked &&
+        isManagedReviewHintFlow() &&
+        reviewHintStateRef.current.stage !== 'hint-3'
+      ) {
+        return
+      }
+
+      if (checked && isShowAnswerOnHover) {
         learningContextCollectorRef.current.recordAnswerReveal(Date.now())
       }
       setIsHoveringWord(checked)
     },
-    [isShowAnswerOnHover, wordDictationConfig.isOpen],
+    [isManagedReviewHintFlow, isShowAnswerOnHover],
   )
 
   const playPronunciation = useCallback((cue: PronunciationCue): boolean => {
@@ -363,13 +451,27 @@ export default function WordComponent({
     if (shouldPlay && playPronunciation('automatic')) {
       automaticPronunciationPlayedRef.current = true
     }
-  }, [playPronunciation, state.isTyping, wordState.inputWord.length])
+  }, [
+    activeHintLevel,
+    playPronunciation,
+    state.isTyping,
+    wordState.inputWord.length,
+  ])
 
   const getLetterVisible = useCallback(
     (index: number) => {
-      if (wordState.letterStates[index] === 'correct' || (isShowAnswerOnHover && isHoveringWord)) return true
-
       const activeCondition = exerciseConditionRef.current
+      if (wordState.letterStates[index] === 'correct') return true
+
+      const managedHintFlow = isManagedReviewHintFlow()
+      if (
+        !managedHintFlow &&
+        isShowAnswerOnHover &&
+        isHoveringWord
+      ) {
+        return true
+      }
+
       if (activeCondition?.source === 'adaptive-policy') {
         return isLetterVisibleForExerciseCondition(
           activeCondition,
@@ -396,6 +498,7 @@ export default function WordComponent({
     },
     [
       isHoveringWord,
+      isManagedReviewHintFlow,
       isShowAnswerOnHover,
       wordDictationConfig.isOpen,
       wordDictationConfig.type,
@@ -679,6 +782,8 @@ export default function WordComponent({
             data-review-phonetic={exerciseConditionRef.current?.phonetic}
             data-review-letters={exerciseConditionRef.current?.letters.mode}
             data-review-policy={reviewPolicyDecisionRef.current?.policyVersion}
+            data-review-hint-level={activeHintLevel === null ? 'cold' : activeHintLevel}
+            data-review-hint-stage={reviewHintStateRef.current.stage}
             onMouseEnter={() => handleHoverWord(true)}
             onMouseLeave={() => handleHoverWord(false)}
             className={`flex items-center ${isTextSelectable && 'select-all'} justify-center ${wordState.hasWrong ? style.wrong : ''}`}
@@ -687,7 +792,7 @@ export default function WordComponent({
               return <Letter key={`${index}-${t}`} letter={t} visible={getLetterVisible(index)} state={wordState.letterStates[index]} />
             })}
           </div>
-          {pronunciationIsOpen && (
+          {(pronunciationIsOpen || (activeHintLevel !== null && activeHintLevel >= 1)) && (
             <div
               className="absolute -right-12 top-1/2 h-9 w-9 -translate-y-1/2 transform "
               onClickCapture={() => learningContextCollectorRef.current.recordPronunciationPlayed('requested')}
@@ -698,6 +803,16 @@ export default function WordComponent({
             </div>
           )}
         </div>
+        {isManagedReviewHintFlow() && (
+          <div
+            className="mt-3 text-center text-xs text-gray-400 dark:text-gray-500"
+            data-review-hint-help
+          >
+            {activeHintLevel === 3
+              ? '请照着完整单词输入正确后继续'
+              : '想不起来？在首字母位置按空格获取下一提示'}
+          </div>
+        )}
       </div>
       <TipAlert className="fixed bottom-10 right-3" show={showTipAlert} setShow={setShowTipAlert} />
     </>

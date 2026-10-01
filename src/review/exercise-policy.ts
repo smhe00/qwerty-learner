@@ -13,6 +13,7 @@ import type {
 import { buildOrthographyProfile } from './profile'
 import type { OrthographyProfile } from './profile'
 import { typingClassifierPolicy } from './policy'
+import { REVIEW_HINT_POLICY_VERSION } from './hint'
 import type { IWordRecord } from '@/utils/db/record'
 
 export const TARGETED_MASK_POLICY_VERSION = 'targeted-mask-v1'
@@ -112,7 +113,8 @@ export function resolveExercisePlanForAttempt(
   if (
     frozenPlan?.decision.policyVersion === TARGETED_MASK_POLICY_VERSION ||
     frozenPlan?.decision.policyVersion === AUDIO_WITHDRAWAL_POLICY_VERSION ||
-    frozenPlan?.decision.policyVersion === CANONICAL_REVIEW_PROBE_POLICY_VERSION
+    frozenPlan?.decision.policyVersion === CANONICAL_REVIEW_PROBE_POLICY_VERSION ||
+    frozenPlan?.decision.policyVersion === REVIEW_HINT_POLICY_VERSION
   ) {
     return {
       condition: frozenPlan.condition,

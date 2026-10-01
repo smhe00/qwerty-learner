@@ -1029,3 +1029,112 @@ test('formal/rating-safety: assisted retrieval can never reach the scheduler', (
     assert.equal(assisted.reason, 'assisted-retrieval')
   }
 })
+
+
+test('formal/hint-liveness: the hint ladder is acyclic and bounded by four escalations', async () => {
+  const {
+    applyReviewHintDecision,
+    createReviewHintMachineState,
+    decideReviewHintInput,
+    reviewHintTerminationVariant,
+  } = await import('../../src/review/hint')
+
+  const visit = (
+    state: ReturnType<typeof createReviewHintMachineState>,
+    depth: number,
+  ) => {
+    assert.ok(depth <= 4, 'hint ladder exceeded four escalations')
+
+    for (const inputIndex of [0, 1]) {
+      for (const key of [' ', 'a']) {
+        const decision = decideReviewHintInput({
+          state,
+          inputIndex,
+          key,
+        })
+
+        const shouldAdvance =
+          inputIndex === 0 &&
+          key === ' ' &&
+          state.stage !== 'hint-3'
+
+        assert.equal(decision.kind === 'advance-hint', shouldAdvance)
+
+        if (decision.kind === 'advance-hint') {
+          const next = applyReviewHintDecision(state, decision)
+          assert.ok(
+            reviewHintTerminationVariant(next) <
+              reviewHintTerminationVariant(state),
+          )
+          visit(next, depth + 1)
+        }
+      }
+    }
+  }
+
+  visit(createReviewHintMachineState(), 0)
+})
+
+test('formal/hint-presentation: cue levels are monotone and Hint 3 is full mandatory copy', async () => {
+  const { createReviewHintPlan } = await import('../../src/review/hint')
+
+  for (let wordLength = 1; wordLength <= 20; wordLength += 1) {
+    const plans = [0, 1, 2, 3].map((level) =>
+      createReviewHintPlan(level as 0 | 1 | 2 | 3, wordLength),
+    )
+
+    const visibleCount = (level: number) => {
+      const letters = plans[level].condition.letters
+      if (letters.mode === 'all-visible') return wordLength
+      if (letters.mode === 'all-hidden') return 0
+      return letters.visiblePositions?.length ?? 0
+    }
+
+    assert.ok(visibleCount(0) >= 1)
+    assert.equal(visibleCount(1), visibleCount(0))
+    assert.ok(visibleCount(2) >= visibleCount(1))
+    assert.equal(visibleCount(3), wordLength)
+
+    assert.equal(plans[0].condition.audio, 'none')
+    assert.equal(plans[0].condition.phonetic, 'hidden')
+
+    for (const level of [1, 2, 3]) {
+      assert.equal(plans[level].condition.audio, 'automatic')
+      assert.equal(plans[level].condition.phonetic, 'visible')
+      assert.equal(plans[level].condition.purpose, 'training')
+    }
+
+    assert.equal(plans[3].condition.letters.mode, 'all-visible')
+  }
+})
+
+test('formal/hint-rating: explicit cold surrender dominates assisted final completion as Again', async () => {
+  const { createReviewHintPlan } = await import('../../src/review/hint')
+  const { decideReviewRating } = await import('../../src/review/state-machine')
+
+  const decision = decideReviewRating({
+    attemptRole: 'cold',
+    condition: createReviewHintPlan(3, 6).condition,
+    classification: {
+      cause: 'clean',
+      confidence: 0.95,
+      scores: { recall: 0, spelling: 0, motor: 0 },
+    },
+    evidence: {
+      version: 1,
+      memoryGrade: 'again',
+      errorCause: 'recall',
+      confidence: 1,
+      evidenceStrength: 1,
+      retrievalValidity: 'independent',
+      reasonCodes: [
+        'cold-probe-surrendered',
+        'review-hint-3',
+        'review-hint-advances-4',
+      ],
+    },
+  })
+
+  assert.equal(decision.eligible, true)
+  assert.equal(decision.rating, 'again')
+})

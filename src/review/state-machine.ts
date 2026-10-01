@@ -68,6 +68,21 @@ export function decideReviewRating(input: {
 }): RatingDecision {
   const { attemptRole, condition, classification, evidence } = input
 
+  // A first-position space on the canonical cold probe is an explicit
+  // "I don't know" signal. Later hint-assisted completion is training, but
+  // the cold-probe memory result is still an eligible Again.
+  if (
+    attemptRole === 'cold' &&
+    hasReason(evidence, 'cold-probe-surrendered')
+  ) {
+    return {
+      eligible: true,
+      rating: 'again',
+      confidence: 1,
+      reasonCodes: [...new Set(evidence.reasonCodes)],
+    }
+  }
+
   if (attemptRole !== 'cold') {
     return nullRating('non-cold-attempt')
   }

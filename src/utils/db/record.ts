@@ -37,6 +37,13 @@ export interface WordRecordTelemetry {
 export type AnswerVisibility = 'full' | 'partial' | 'hidden'
 export type PronunciationCue = 'automatic' | 'requested'
 
+export interface ReviewHintContextV1 {
+  version: 1
+  maxLevel: 0 | 1 | 2 | 3
+  coldProbeSurrendered: boolean
+  advanceCount: 1 | 2 | 3 | 4
+}
+
 export interface LearningContextV1 {
   version: 1
 
@@ -62,6 +69,9 @@ export interface LearningContextV1 {
   pronunciationPlayCount?: number
   pronunciationAutomaticPlayCount?: number
   pronunciationRequestedPlayCount?: number
+
+  // Review-only cue escalation trace. Absence means no hint ladder was used.
+  reviewHint?: ReviewHintContextV1
 }
 
 export interface IWordRecord {

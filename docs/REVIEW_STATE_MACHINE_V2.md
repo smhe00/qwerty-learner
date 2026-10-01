@@ -414,3 +414,43 @@ must update:
 5. browser acceptance tests if the transition crosses the React/persistence boundary.
 
 No unbounded Review loop may be introduced only as a UI condition.
+
+
+## 15. Canonical Hint Ladder submachine
+
+The canonical cold probe now owns a finite cue-escalation submachine:
+
+```text
+cold → hint0 → hint1 → hint2 → hint3
+```
+
+The only escalation input is Space at input index zero.
+
+Hint meanings:
+
+```text
+hint0 = first letter
+hint1 = first letter + pronunciation + phonetic
+hint2 = partial spelling + pronunciation + phonetic
+hint3 = full spelling + pronunciation + phonetic
+```
+
+Hint 3 is terminal for cue escalation and is a mandatory training state.
+Space at Hint 3 is an ordinary typing key, not a skip operation. The Typing
+reducer also holds `isSkipLocked=true` while Hint 3 is active, so explicit
+skip/navigation actions cannot bypass the required correct copy.
+
+The hint termination variant is:
+
+```text
+4,3,2,1,0
+```
+
+for `cold,hint0,hint1,hint2,hint3` respectively. Every escalation strictly
+decreases it.
+
+The first cold-probe Space is persisted as an explicit recall failure and maps
+to `Again`; later hint-assisted successful typing is training and cannot
+overwrite that memory result.
+
+See `REVIEW_HINT_LADDER_V1.md`.

@@ -3,6 +3,7 @@ import type {
   IWordRecord,
   LearningContextV1,
   PronunciationCue,
+  ReviewHintContextV1,
 } from '@/utils/db/record'
 
 export function summarizeAnswerVisibility(letterVisibility: boolean[]): AnswerVisibility | undefined {
@@ -83,6 +84,22 @@ export class LearningContextCollector {
 
     if (!this.hasInputStarted) {
       this.context.meaningRevealedBeforeFirstKey = true
+    }
+  }
+
+  recordReviewHintAdvance(level: 0 | 1 | 2 | 3, coldProbeSurrendered: boolean) {
+    const current = this.context.reviewHint
+    const advanceCount = Math.min(4, (current?.advanceCount ?? 0) + 1) as ReviewHintContextV1['advanceCount']
+
+    this.context.reviewHint = {
+      version: 1,
+      maxLevel:
+        current === undefined
+          ? level
+          : (Math.max(current.maxLevel, level) as ReviewHintContextV1['maxLevel']),
+      coldProbeSurrendered:
+        (current?.coldProbeSurrendered ?? false) || coldProbeSurrendered,
+      advanceCount,
     }
   }
 
