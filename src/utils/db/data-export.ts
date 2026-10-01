@@ -73,3 +73,10 @@ export async function importDatabase(onStart: () => void, callback: (importProgr
 
   input.click()
 }
+
+
+export async function clearLocalLearningData() {
+  await db.transaction('rw', db.tables, async () => {
+    await Promise.all(db.tables.map((table) => table.clear()))
+  })
+}
