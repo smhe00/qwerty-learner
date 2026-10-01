@@ -199,6 +199,8 @@ async function seedReviewAdmissionCase(
   await page.goto('/')
 
   await page.evaluate(async ({ freshLearningAfterReview }) => {
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(0))
     const now = Math.floor(Date.now() / 1000)
     const reviewTime = now - 120
     const learningTime = freshLearningAfterReview
@@ -550,16 +552,16 @@ test('Typing and Learn are explicit top-level modes', async ({ page }) => {
   await learnMode.click()
   await expect(page).toHaveURL(/\/learn$/)
   await expect(
-    page.getByRole('button', { name: 'Learn' }),
+    page.getByRole('button', { name: 'Learn', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true')
   await expect(
     page.getByText(/Learn 管理长期记忆；Typing 保持原项目/),
   ).toBeVisible()
 
-  await page.getByRole('button', { name: 'Typing' }).click()
+  await page.getByRole('button', { name: 'Typing', exact: true }).click()
   await expect(page).toHaveURL(/\/typing$/)
   await expect(
-    page.getByRole('button', { name: 'Typing' }),
+    page.getByRole('button', { name: 'Typing', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true')
 })
 
