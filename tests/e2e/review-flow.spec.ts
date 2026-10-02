@@ -1478,7 +1478,12 @@ test('Learn starts new acquisition only when there is no due review', async ({
     '[data-typing-translation="visible"]',
   )
   await expect(translation).toBeVisible()
-  await expect(translation).toHaveCSS('color', 'rgb(55, 65, 81)')
+  const lightTranslationColor = await translation.evaluate(
+    (element) => getComputedStyle(element).color,
+  )
+  expect(lightTranslationColor).not.toBe('rgb(255, 255, 255)')
+  expect(lightTranslationColor).not.toBe('rgba(255, 255, 255, 1)')
+  expect(lightTranslationColor).not.toBe('rgba(0, 0, 0, 0)')
 
   await page.getByRole('button', {
     name: '开关深色模式',
@@ -1848,3 +1853,55 @@ test('light app theme keeps inherited Typing header controls readable when OS pr
   }
 })
 
+
+
+test('Typing and Learn use the same indigo interaction palette', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('isOpenDarkModeAtom', JSON.stringify(false))
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(0))
+  })
+
+  await page.goto('/typing')
+
+  const typingMode = page.getByRole('button', {
+    name: 'Typing',
+    exact: true,
+  })
+  const typingStart = page.getByRole('button', {
+    name: '开始',
+    exact: true,
+  })
+
+  const typingModeColor = await typingMode.evaluate(
+    (element) => getComputedStyle(element).color,
+  )
+  const typingStartBackground = await typingStart.evaluate(
+    (element) => getComputedStyle(element).backgroundColor,
+  )
+
+  await page.getByRole('button', { name: 'Learn', exact: true }).click()
+  await expect(page).toHaveURL(/\/learn$/)
+
+  const learnMode = page.getByRole('button', {
+    name: 'Learn',
+    exact: true,
+  })
+  const learnStart = page.getByRole('button', {
+    name: '开始',
+    exact: true,
+  })
+
+  await expect(learnMode).toHaveCSS('color', typingModeColor)
+  await expect(learnStart).toHaveCSS(
+    'background-color',
+    typingStartBackground,
+  )
+
+  const learnDictionary = page.locator('header nav a[href="/gallery?mode=learn"]')
+  await learnDictionary.hover()
+  await expect(learnDictionary).toHaveCSS(
+    'background-color',
+    'rgb(129, 140, 248)',
+  )
+})

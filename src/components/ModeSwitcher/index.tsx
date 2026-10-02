@@ -50,7 +50,7 @@ export default function ModeSwitcher() {
         aria-pressed={isLearn}
         className={`rounded-md px-3 py-1.5 transition-colors ${
           isLearn
-            ? 'bg-white font-medium text-emerald-600 shadow-sm dark:bg-gray-800 dark:text-emerald-300'
+            ? 'bg-white font-medium text-indigo-600 shadow-sm dark:bg-gray-800 dark:text-indigo-300'
             : 'text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white'
         }`}
       >

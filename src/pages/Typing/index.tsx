@@ -152,7 +152,7 @@ const App: React.FC = () => {
           <DictChapterButton learnMode={isReviewMode} />
           <PronunciationSwitcher learnMode={isReviewMode} />
           <Switcher learnMode={isReviewMode} />
-          <StartButton isLoading={isLoading} learnMode={isReviewMode} />
+          <StartButton isLoading={isLoading} />
           <Tooltip
             content={
               isReviewMode

@@ -28,7 +28,7 @@ export default function Translation({ trans, showTrans = true, onMouseEnter, onM
     <div className={`flex items-center justify-center  pb-4 pt-5`} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
       <span
         data-typing-translation={showTrans ? 'visible' : 'hidden'}
-        className={`max-w-4xl text-center font-sans text-gray-700 transition-colors duration-300 dark:text-white dark:text-opacity-80 ${
+        className={`max-w-4xl text-center font-sans transition-colors duration-300 dark:text-white dark:text-opacity-80 ${
           isShowTransRead && 'pl-8'
         } ${isTextSelectable && 'select-text'}`}
         style={{ fontSize: fontSizeConfig.translateFont.toString() + 'px' }}

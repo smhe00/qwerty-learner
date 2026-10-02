@@ -160,7 +160,7 @@ export default function LearnPage() {
         >
           <button
             data-header-slot="start"
-            className="my-btn-primary w-20 bg-emerald-500 shadow shadow-emerald-300 transition-colors hover:bg-emerald-400 dark:shadow-emerald-500/50"
+            className="my-btn-primary w-20 bg-indigo-500 shadow shadow-indigo-300 dark:shadow-indigo-500/60"
             type="button"
             disabled={primaryDisabled}
             onClick={() => void startLearn()}

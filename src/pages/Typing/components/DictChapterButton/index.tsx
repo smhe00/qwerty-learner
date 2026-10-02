@@ -27,9 +27,7 @@ export const DictChapterButton = ({
     <>
       <Tooltip content="词典切换">
         <NavLink
-          className={`block rounded-lg px-3 py-1 text-lg transition-colors duration-300 ease-in-out hover:text-white focus:outline-none dark:text-white dark:text-opacity-60 dark:hover:text-opacity-100 ${
-            learnMode ? 'hover:bg-emerald-500' : 'hover:bg-indigo-400'
-          }`}
+          className="block rounded-lg px-3 py-1 text-lg transition-colors duration-300 ease-in-out hover:bg-indigo-400 hover:text-white focus:outline-none dark:text-white dark:text-opacity-60 dark:hover:text-opacity-100"
           to={
             learnMode
               ? isReviewMode
