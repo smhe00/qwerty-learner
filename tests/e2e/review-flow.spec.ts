@@ -255,6 +255,8 @@ async function readReviewGateState(
         lapseCount?: number
         lastOutcome?: string
         stage?: number
+        schedulerKind?: string
+        intervalDays?: number
       }
       decision?: {
         eligible?: boolean
@@ -293,6 +295,8 @@ async function readReviewGateState(
                   lapseCount: state.lapseCount,
                   lastOutcome: state.lastOutcome,
                   stage: state.schedulerState?.stage,
+                  schedulerKind: state.schedulerState?.kind,
+                  intervalDays: state.schedulerState?.intervalDays,
                 }
               : undefined,
             decision: record?.reviewRatingDecision,
@@ -642,6 +646,7 @@ test('Phase D live gate applies one canonical rating through the scheduler', asy
 
   const after = await readReviewGateState(page, 'cancel')
   expect(['hard', 'good', 'easy']).toContain(after.decision?.rating)
+  expect(after.state?.schedulerKind).toBe('basic-v2')
   expect(after.state?.nextReviewAt).toBeGreaterThan(before.nextReviewAt)
 })
 

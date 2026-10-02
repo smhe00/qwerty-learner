@@ -36,6 +36,11 @@ import {
   hasUnreviewedLearningFailure,
   reactivateReviewStateFromLearningEvidence,
 } from '../../src/review/rebuild'
+import { basicV2ReviewIntervalsDays } from '../../src/review/policy'
+import {
+  scheduleBasicReview,
+  upgradeBasicSchedulerState,
+} from '../../src/review/scheduler'
 import { createInitialReviewWordState } from '../../src/review/types'
 import type { IWordRecord } from '../../src/utils/db/record'
 
@@ -653,6 +658,100 @@ test('formal/learning-reactivation: only fresh learning after latest Review pull
   }
 })
 
+
+test('formal/basic-v2-migration: v1 upgrade preserves non-scheduler state for bounded legacy stages', () => {
+  const legacyIntervals = [1, 3, 7, 14, 30]
+
+  for (let stage = 0; stage < legacyIntervals.length; stage += 1) {
+    const state = createInitialReviewWordState(
+      'cet4',
+      'legacy-' + stage,
+      10,
+    )
+    state.updatedAt = 20
+    state.lastReviewedAt = 15
+    state.nextReviewAt = 100_000 + stage
+    state.reviewCount = stage + 1
+    state.lapseCount = stage
+    state.cleanStreak = stage + 2
+    state.lifecycle = stage % 2 === 0 ? 'active' : 'excluded'
+    if (state.lifecycle === 'excluded') {
+      state.exclusion = {
+        reason: 'manual',
+        excludedAt: 19,
+      }
+    }
+    state.schedulerState = {
+      kind: 'basic-v1',
+      stage,
+      intervalDays: legacyIntervals[stage],
+    }
+
+    const upgraded = upgradeBasicSchedulerState(state)
+
+    assert.equal(upgraded.updatedAt, state.updatedAt)
+    assert.equal(upgraded.lastReviewedAt, state.lastReviewedAt)
+    assert.equal(upgraded.nextReviewAt, state.nextReviewAt)
+    assert.equal(upgraded.reviewCount, state.reviewCount)
+    assert.equal(upgraded.lapseCount, state.lapseCount)
+    assert.equal(upgraded.cleanStreak, state.cleanStreak)
+    assert.equal(upgraded.lifecycle, state.lifecycle)
+    assert.deepEqual(upgraded.exclusion, state.exclusion)
+    assert.equal(upgraded.schedulerState.kind, 'basic-v2')
+    assert.equal(upgraded.schedulerState.stage, stage)
+    assert.equal(
+      upgraded.schedulerState.intervalDays,
+      legacyIntervals[stage],
+    )
+  }
+})
+
+test('formal/basic-v2-scheduler: all ratings stay inside the finite interval ladder', () => {
+  const outcomes = ['again', 'hard', 'good', 'easy'] as const
+
+  for (
+    let stage = 0;
+    stage < basicV2ReviewIntervalsDays.length;
+    stage += 1
+  ) {
+    for (const outcome of outcomes) {
+      for (const due of [false, true]) {
+        const now = 1_000_000
+        const state = createInitialReviewWordState(
+          'cet4',
+          `stage-${stage}-${outcome}-${due}`,
+          1,
+        )
+        state.reviewCount = 5
+        state.lastReviewedAt = now - 86_400
+        state.nextReviewAt = due ? now : now + 86_400
+        state.schedulerState = {
+          kind: 'basic-v2',
+          stage,
+          intervalDays: basicV2ReviewIntervalsDays[stage],
+        }
+
+        const next = scheduleBasicReview({
+          state,
+          outcome,
+          now,
+        })
+
+        assert.equal(next.schedulerState.kind, 'basic-v2')
+        if (next.schedulerState.kind !== 'basic-v2') continue
+        assert.ok(next.schedulerState.stage >= 0)
+        assert.ok(
+          next.schedulerState.stage < basicV2ReviewIntervalsDays.length,
+        )
+        assert.ok(
+          basicV2ReviewIntervalsDays.some(
+            (days) => days === next.schedulerState.intervalDays,
+          ),
+        )
+      }
+    }
+  }
+})
 
 test('formal/progress-liveness: persistent failures terminate with bounded reinforcement', () => {
   for (let queueLength = 1; queueLength <= 6; queueLength += 1) {

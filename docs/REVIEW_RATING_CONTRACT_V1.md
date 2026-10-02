@@ -1155,8 +1155,8 @@ Remaining gaps include:
 
 1. `rating=null` still needs bounded same-session retry/defer orchestration;
 2. the all-word Learn admission path is only partially rolled out;
-3. the current scheduler remains `basic-v1` with shorter maximum intervals;
-4. Phase F must introduce `basic-v2` after the Rating Gate rollout is complete.
+3. `basic-v2` is active with a deterministic 1/3/7/14/30/60/120/180-day ladder;
+4. FSRS-6 remains a later scheduler-adapter phase after basic-v2 observation.
 
 These gaps are implementation work, not ambiguities in the contract.
 

@@ -58,7 +58,11 @@ import {
   getReviewAttemptRole,
   getWordComponentInstanceKey,
 } from '../../src/review/session'
-import { reviewOutcomeForAttempt } from '../../src/review/scheduler'
+import {
+  reviewOutcomeForAttempt,
+  scheduleBasicReview,
+  upgradeBasicSchedulerState,
+} from '../../src/review/scheduler'
 import {
   createReviewItemMachineState,
   resolveCompletedReviewItem,
@@ -1210,7 +1214,7 @@ test('ordinary learning failure seeds an immediately due first review without ad
   assert.equal(state.cleanStreak, 0)
   assert.equal(state.lastReviewedAt, undefined)
   assert.deepEqual(state.schedulerState, {
-    kind: 'basic-v1',
+    kind: 'basic-v2',
     stage: 0,
     intervalDays: 0,
   })
@@ -1292,13 +1296,103 @@ test('only chapter -1 records advance the long-term scheduler', () => {
   assert.equal(state.lastReviewedAt, 2_000)
   assert.equal(state.nextReviewAt, 2_000 + 24 * 60 * 60)
   assert.deepEqual(state.schedulerState, {
-    kind: 'basic-v1',
+    kind: 'basic-v2',
     stage: 0,
     intervalDays: 1,
   })
 })
 
-test('state version 4 forces existing version 3 review states to be stale', () => {
+test('basic-v1 compatibility upgrade preserves due date, counters, and lifecycle exactly', () => {
+  const legacy = {
+    ...createInitialReviewWordState('cet4', 'legacy-v1', 100),
+    updatedAt: 150,
+    lastReviewedAt: 120,
+    nextReviewAt: 999_999,
+    reviewCount: 7,
+    lapseCount: 2,
+    cleanStreak: 3,
+    lastOutcome: 'good' as const,
+    lifecycle: 'excluded' as const,
+    exclusion: {
+      reason: 'manual' as const,
+      excludedAt: 140,
+    },
+    schedulerState: {
+      kind: 'basic-v1' as const,
+      stage: 4,
+      intervalDays: 30,
+    },
+  }
+
+  const upgraded = upgradeBasicSchedulerState(legacy)
+
+  assert.equal(upgraded.stateVersion, CURRENT_REVIEW_STATE_VERSION)
+  assert.equal(upgraded.nextReviewAt, legacy.nextReviewAt)
+  assert.equal(upgraded.updatedAt, legacy.updatedAt)
+  assert.equal(upgraded.lastReviewedAt, legacy.lastReviewedAt)
+  assert.equal(upgraded.reviewCount, legacy.reviewCount)
+  assert.equal(upgraded.lapseCount, legacy.lapseCount)
+  assert.equal(upgraded.cleanStreak, legacy.cleanStreak)
+  assert.equal(upgraded.lifecycle, 'excluded')
+  assert.deepEqual(upgraded.exclusion, legacy.exclusion)
+  assert.deepEqual(upgraded.schedulerState, {
+    kind: 'basic-v2',
+    stage: 4,
+    intervalDays: 30,
+  })
+})
+
+test('basic-v2 extends mature Good reviews through 60, 120, and 180 day stages', () => {
+  const day = 24 * 60 * 60
+  let now = 1_000
+  let state = createInitialReviewWordState('cet4', 'mature', now)
+
+  const expectedIntervals = [1, 3, 7, 14, 30, 60, 120, 180, 180]
+  for (const expectedDays of expectedIntervals) {
+    state = scheduleBasicReview({
+      state,
+      outcome: 'good',
+      now,
+    })
+    assert.equal(state.schedulerState.kind, 'basic-v2')
+    if (state.schedulerState.kind !== 'basic-v2') return
+    assert.equal(state.schedulerState.intervalDays, expectedDays)
+    assert.equal(state.nextReviewAt, now + expectedDays * day)
+    now = state.nextReviewAt
+  }
+})
+
+test('a due legacy basic-v1 card upgrades only when rated and can advance into the v2 tail', () => {
+  const day = 24 * 60 * 60
+  const now = 10_000
+  const legacy = {
+    ...createInitialReviewWordState('cet4', 'legacy-tail', 1),
+    lastReviewedAt: now - 30 * day,
+    nextReviewAt: now,
+    reviewCount: 5,
+    cleanStreak: 5,
+    schedulerState: {
+      kind: 'basic-v1' as const,
+      stage: 4,
+      intervalDays: 30,
+    },
+  }
+
+  const next = scheduleBasicReview({
+    state: legacy,
+    outcome: 'good',
+    now,
+  })
+
+  assert.equal(next.schedulerState.kind, 'basic-v2')
+  if (next.schedulerState.kind !== 'basic-v2') return
+  assert.equal(next.schedulerState.stage, 5)
+  assert.equal(next.schedulerState.intervalDays, 60)
+  assert.equal(next.nextReviewAt, now + 60 * day)
+  assert.equal(next.reviewCount, 6)
+})
+
+test('basic-v2 rollout keeps review stateVersion at 4 so legacy rows are not rebuilt', () => {
   assert.equal(CURRENT_REVIEW_STATE_VERSION, 4)
   assert.notEqual(3, CURRENT_REVIEW_STATE_VERSION)
 })

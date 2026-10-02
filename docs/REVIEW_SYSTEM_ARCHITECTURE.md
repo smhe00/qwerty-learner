@@ -35,7 +35,7 @@ ReviewDecision = SchedulingDecision + ExerciseDecision
 - SchedulingDecision：长期 interval、due time、lapse/stability；
 - ExerciseDecision：读音、释义、音标、字母提示、targeted mask、probe/training、同轮强化。
 
-两者必须解耦，使 basic-v1 → FSRS 的调度升级不影响 exercise policy，也使 exercise policy 可以独立演进。
+两者必须解耦，使 basic-v2 → FSRS 的调度升级不影响 exercise policy，也使 exercise policy 可以独立演进。
 
 ---
 
@@ -101,8 +101,8 @@ WordRecord
    ├─ classificationToReviewOutcome()
    │     └─ again / hard / good
    │
-   └─ basic-v1 scheduler
-         └─ 1 / 3 / 7 / 14 / 30 days
+   └─ basic-v2 scheduler
+         └─ 1 / 3 / 7 / 14 / 30 / 60 / 120 / 180 days
 ```
 
 Review session 内还有独立 reinforcement：
@@ -346,7 +346,7 @@ motor typo ≠ memory failure
 - stability / difficulty；
 - next due。
 
-初期 basic-v1，后期可由 FSRS 接管。
+当前 basic-v2，后期可由 FSRS 接管。
 
 ### 9.2 OrthographyProfile
 
@@ -495,7 +495,7 @@ Profile builder 应支持：
 调度器接口继续保持可替换：
 
 ```text
-basic-v1 active
+basic-v2 active
       │
       ├─ FSRS-6 shadow
       │      └─ 只预测，不控制 due date

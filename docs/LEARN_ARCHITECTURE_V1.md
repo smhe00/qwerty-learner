@@ -30,7 +30,7 @@ Phase B — ACTIVE / EXCLUDED lifecycle         IMPLEMENTED
 Phase C — unified Learn Session               PARTIAL
 Phase D — Rating Gate owns live scheduler     IMPLEMENTED (D1 gate + D2 bounded null/reinforcement flow)
 Phase E — all-word admission                  PARTIAL
-Phase F — basic-v2                            PENDING
+Phase F — basic-v2                            IMPLEMENTED
 Phase G — FSRS-6                              PENDING
 ```
 
@@ -974,11 +974,21 @@ Completed acquisition creates ACTIVE long-term state.
 
 ### Phase F — basic-v2
 
-Extend deterministic intervals to:
+Implemented deterministic intervals:
 
 ```text
 1 / 3 / 7 / 14 / 30 / 60 / 120 / 180 days
 ```
+
+Compatibility rules:
+
+- existing `basic-v1` rows remain readable;
+- `CURRENT_REVIEW_STATE_VERSION` remains 4, so rollout does not trigger a
+  destructive state rebuild;
+- an idle legacy card keeps its existing `nextReviewAt`, counters, lifecycle,
+  exclusion metadata, stage, and interval;
+- the next eligible Learn rating upgrades that card to `basic-v2`;
+- newly created or explicitly rebuilt states are written as `basic-v2`.
 
 ### Phase G — FSRS-6 adapter
 
