@@ -361,8 +361,6 @@ export default function WordPanel() {
       })
 
       setCurrentWordExerciseCount(0)
-      setCurrentReviewWrongCount(0)
-      setCurrentReviewGap(MAX_REINFORCEMENT_GAP)
       setCurrentReviewHintLevel(null)
       setIsLearnMenuOpen(false)
 
