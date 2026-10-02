@@ -53,6 +53,7 @@ import {
 } from '../../src/review/rebuild'
 import { buildOrthographyProfile } from '../../src/review/profile'
 import {
+  MAX_REINFORCEMENT_GAP,
   buildReviewSessionExercisePlans,
   getReviewAttemptRole,
   getWordComponentInstanceKey,
