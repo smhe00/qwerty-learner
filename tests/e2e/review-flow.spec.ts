@@ -1021,6 +1021,23 @@ test('Learn exposes only one unfinished session and cannot create a duplicate fr
             },
           ],
         })
+        // A newer finished historical row must not hide the unfinished
+        // recovery checkpoint above.
+        tx.objectStore('reviewRecords').add({
+          dict: 'cet4',
+          index: 1,
+          createTime: 900_002,
+          isFinished: true,
+          sessionKind: 'review',
+          words: [
+            {
+              name: 'analyse',
+              trans: [],
+              usphone: '',
+              ukphone: '',
+            },
+          ],
+        })
         tx.oncomplete = () => {
           db.close()
           resolve()
@@ -1082,8 +1099,8 @@ test('Learn exposes only one unfinished session and cannot create a duplicate fr
     })
   })
 
-  expect(beforeCount).toBe(1)
-  expect(afterCount).toBe(1)
+  expect(beforeCount).toBe(2)
+  expect(afterCount).toBe(2)
 })
 
 test('Learn starts new acquisition only when there is no due review', async ({

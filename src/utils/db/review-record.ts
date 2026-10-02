@@ -35,9 +35,13 @@ export function useGetLatestReviewRecord(dictID: string) {
 export async function getLatestReviewRecord(dictID: string): Promise<ReviewRecord | undefined> {
   const records = await db.reviewRecords.where('dict').equals(dictID).toArray()
 
-  const latestRecord = records.sort((a, b) => a.createTime - b.createTime).pop()
-
-  return latestRecord && (latestRecord.isFinished ? undefined : latestRecord)
+  // Session recovery is about the newest unfinished checkpoint, not the
+  // newest historical record. A newer finished session must never hide an
+  // older still-unfinished session.
+  return records
+    .filter((record) => !record.isFinished)
+    .sort((a, b) => a.createTime - b.createTime)
+    .pop()
 }
 
 export async function generateNewWordReviewRecord(
