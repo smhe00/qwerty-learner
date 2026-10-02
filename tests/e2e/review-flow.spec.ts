@@ -1813,10 +1813,7 @@ test('lazy route chunk failure recovers without manual refresh', async ({
   await probePage.waitForTimeout(1500)
   const analysisScripts: string[] = []
   probePage.on('request', (request) => {
-    if (
-      request.resourceType() === 'script' &&
-      /\/assets\/.*\.js(?:\?.*)?$/.test(request.url())
-    ) {
+    if (/\/assets\/.*\.js(?:\?.*)?$/.test(request.url())) {
       analysisScripts.push(request.url())
     }
   })
