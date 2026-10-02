@@ -7,6 +7,7 @@ import type {
   ReviewPolicyShadowV1,
 } from '@/review/decision'
 import type { ReviewEvidenceV1 } from '@/review/evidence'
+import type { RatingDecision } from '@/review/state-machine'
 import type { Word } from '@/typings'
 
 export type WordAttemptResult = 'clean' | 'wrong'
@@ -107,6 +108,10 @@ export interface IWordRecord {
   // Versioned derived evidence snapshot. Raw telemetry/context remain the source of truth.
   reviewEvidence?: ReviewEvidenceV1
 
+  // Scheduler-neutral Rating Gate result. eligible=false is meaningful evidence:
+  // the attempt is stored but MUST NOT mutate long-term scheduler state.
+  reviewRatingDecision?: RatingDecision
+
   // Shadow-only proposal for the next exercise; never applied to this attempt.
   reviewPolicyShadow?: ReviewPolicyShadowV1
 
@@ -134,6 +139,7 @@ export class WordRecord implements IWordRecord {
   exerciseCondition?: ExerciseConditionV1
   reviewPolicyDecision?: ReviewPolicyDecisionV1
   reviewEvidence?: ReviewEvidenceV1
+  reviewRatingDecision?: RatingDecision
   reviewPolicyShadow?: ReviewPolicyShadowV1
   sourceMode?: 'typing' | 'learn'
   learnItemKind?: LearnSessionKind
@@ -150,6 +156,7 @@ export class WordRecord implements IWordRecord {
     exerciseCondition?: ExerciseConditionV1,
     reviewPolicyDecision?: ReviewPolicyDecisionV1,
     reviewEvidence?: ReviewEvidenceV1,
+    reviewRatingDecision?: RatingDecision,
     reviewPolicyShadow?: ReviewPolicyShadowV1,
     sourceMode?: 'typing' | 'learn',
     learnItemKind?: LearnSessionKind,
@@ -176,6 +183,9 @@ export class WordRecord implements IWordRecord {
     }
     if (reviewEvidence) {
       this.reviewEvidence = reviewEvidence
+    }
+    if (reviewRatingDecision) {
+      this.reviewRatingDecision = reviewRatingDecision
     }
     if (reviewPolicyShadow) {
       this.reviewPolicyShadow = reviewPolicyShadow

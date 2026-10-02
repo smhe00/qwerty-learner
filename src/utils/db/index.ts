@@ -12,6 +12,7 @@ import type { LearnSessionKind } from '@/learn/session'
 import type { ExerciseConditionV1 } from '@/review/condition'
 import type { ReviewPolicyDecisionV1, ReviewPolicyShadowV1 } from '@/review/decision'
 import type { ReviewEvidenceV1 } from '@/review/evidence'
+import type { RatingDecision } from '@/review/state-machine'
 import type { IReviewWordState } from '@/review/types'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import type { TypingState } from '@/pages/Typing/store/type'
@@ -115,6 +116,7 @@ export function useSaveWordRecord() {
       exerciseCondition,
       reviewPolicyDecision,
       reviewEvidence,
+      reviewRatingDecision,
       reviewPolicyShadow,
       sourceMode,
       learnItemKind,
@@ -128,6 +130,7 @@ export function useSaveWordRecord() {
       exerciseCondition?: ExerciseConditionV1
       reviewPolicyDecision?: ReviewPolicyDecisionV1
       reviewEvidence?: ReviewEvidenceV1
+      reviewRatingDecision?: RatingDecision
       reviewPolicyShadow?: ReviewPolicyShadowV1
       sourceMode?: 'typing' | 'learn'
       learnItemKind?: LearnSessionKind
@@ -150,6 +153,7 @@ export function useSaveWordRecord() {
         exerciseCondition,
         reviewPolicyDecision,
         reviewEvidence,
+        reviewRatingDecision,
         reviewPolicyShadow,
         sourceMode,
         learnItemKind,

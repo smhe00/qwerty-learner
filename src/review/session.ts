@@ -1,4 +1,6 @@
 import type { TypingErrorClassification } from './classifier'
+import type { LearnSessionKind } from '@/learn/session'
+import type { ReviewAttemptRole } from './state-machine'
 import {
   createCanonicalReviewProbePlan,
 } from './decision'
@@ -75,6 +77,15 @@ export function getAdaptiveReinforcementGap(
 }
 
 export type ReviewSessionExercisePlans = Record<string, ReviewExercisePlanV1>
+
+
+export function getReviewAttemptRole(input: {
+  sessionKind?: LearnSessionKind
+  reinforcementUsed: number
+}): ReviewAttemptRole | undefined {
+  if (input.sessionKind !== 'review') return undefined
+  return input.reinforcementUsed > 0 ? 'reinforcement' : 'cold'
+}
 
 /**
  * Every newly created long-term Review item starts from the same canonical

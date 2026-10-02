@@ -105,6 +105,10 @@ export function inferLegacyReviewOutcome(wrongCount: number): ReviewOutcome {
   return 'good'
 }
 
+/**
+ * @deprecated Live Learn scheduler mutation must go through decideReviewRating().
+ * Retained only for backward-compatible analysis/tests while Phase D migrates.
+ */
 export function reviewOutcomeForAttempt(input: {
   classification: TypingErrorClassification
   evidence: ReviewEvidenceV1

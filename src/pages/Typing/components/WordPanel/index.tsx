@@ -18,6 +18,7 @@ import {
 import {
   MAX_REINFORCEMENT_GAP,
   getAdaptiveReinforcementGap,
+  getReviewAttemptRole,
   getWordComponentInstanceKey,
 } from '@/review/session'
 import { MAX_REINFORCEMENT_PER_WORD_PER_SESSION } from '@/review/state-machine'
@@ -63,6 +64,15 @@ export default function WordPanel() {
     isReviewMode && currentWord
       ? reviewModeInfo.reviewRecord?.exercisePlans?.[currentWord.name]
       : undefined
+  const currentReviewAttemptRole = getReviewAttemptRole({
+    sessionKind: isReviewMode ? currentLearnItemKind : undefined,
+    reinforcementUsed:
+      isReviewMode && currentWord
+        ? reviewModeInfo.reviewRecord?.reinforcementCounts?.[
+            currentWord.name
+          ] ?? 0
+        : 0,
+  })
   const currentWordComponentKey = getWordComponentInstanceKey({
     isReviewMode,
     reviewIndex: state.chapterData.index,
@@ -425,6 +435,7 @@ export default function WordPanel() {
                 learnItemKind={
                   isReviewMode ? currentLearnItemKind : undefined
                 }
+                reviewAttemptRole={currentReviewAttemptRole}
                 onHintLevelChange={setCurrentReviewHintLevel}
                 key={currentWordComponentKey}
               />

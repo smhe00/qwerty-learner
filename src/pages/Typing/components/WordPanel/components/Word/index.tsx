@@ -58,7 +58,11 @@ import {
   applyReviewOutcome,
   completeLearningAcquisition,
 } from '@/review/repository'
-import { reviewOutcomeForAttempt } from '@/review/scheduler'
+import { decideReviewRating } from '@/review/state-machine'
+import type {
+  RatingDecision,
+  ReviewAttemptRole,
+} from '@/review/state-machine'
 import { WordTelemetryCollector } from '@/review/telemetry'
 import {
   currentChapterAtom,
@@ -100,6 +104,7 @@ type WordComponentProps = {
   phoneticVisible: boolean
   exercisePlan?: ReviewExercisePlanV1
   learnItemKind?: LearnSessionKind
+  reviewAttemptRole?: ReviewAttemptRole
   onHintLevelChange?: (level: ReviewHintLevel | null) => void
 }
 
@@ -110,6 +115,7 @@ export default function WordComponent({
   phoneticVisible,
   exercisePlan,
   learnItemKind,
+  reviewAttemptRole,
   onHintLevelChange,
 }: WordComponentProps) {
   // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
@@ -721,6 +727,22 @@ export default function WordComponent({
       const isLearnAttempt = currentChapter === -1
       const isAcquisitionAttempt =
         isLearnAttempt && learnItemKind === 'acquisition'
+      const reviewRatingDecision: RatingDecision | undefined =
+        isLearnAttempt &&
+        !isAcquisitionAttempt &&
+        reviewAttemptRole !== undefined &&
+        exerciseConditionRef.current
+          ? decideReviewRating({
+              attemptRole: reviewAttemptRole,
+              condition: exerciseConditionRef.current,
+              classification,
+              evidence: reviewEvidence,
+            })
+          : undefined
+
+      if (reviewRatingDecision) {
+        currentRecordForPolicy.reviewRatingDecision = reviewRatingDecision
+      }
 
       const notifyFinished = () => {
         onFinish({
@@ -744,6 +766,7 @@ export default function WordComponent({
             exerciseCondition: exerciseConditionRef.current,
             reviewPolicyDecision: reviewPolicyDecisionRef.current,
             reviewEvidence,
+            reviewRatingDecision,
             reviewPolicyShadow: nextExerciseShadow ?? undefined,
             sourceMode: isLearnAttempt ? 'learn' : 'typing',
             learnItemKind: isLearnAttempt
@@ -763,32 +786,31 @@ export default function WordComponent({
 
             if (wordRecordId > 0) {
               const now = Math.floor(Date.now() / 1000)
-              const persistLearnState = isAcquisitionAttempt
-                ? completeLearningAcquisition(
-                    currentDictInfo.id,
-                    word.name,
-                    now,
+              if (isAcquisitionAttempt) {
+                void completeLearningAcquisition(
+                  currentDictInfo.id,
+                  word.name,
+                  now,
+                ).catch((error) => {
+                  console.error(
+                    'failed to persist acquisition learning state',
+                    error,
                   )
-                : applyReviewOutcome(
-                    currentDictInfo.id,
-                    word.name,
-                    reviewOutcomeForAttempt({
-                      classification,
-                      evidence: reviewEvidence,
-                      condition: exerciseConditionRef.current,
-                    }),
-                    now,
-                    wordRecordId,
+                })
+              } else if (reviewRatingDecision?.eligible) {
+                void applyReviewOutcome(
+                  currentDictInfo.id,
+                  word.name,
+                  reviewRatingDecision.rating,
+                  now,
+                  wordRecordId,
+                ).catch((error) => {
+                  console.error(
+                    'failed to persist derived review scheduler state',
+                    error,
                   )
-
-              void persistLearnState.catch((error) => {
-                console.error(
-                  isAcquisitionAttempt
-                    ? 'failed to persist acquisition learning state'
-                    : 'failed to persist derived review scheduler state',
-                  error,
-                )
-              })
+                })
+              }
             }
             return
           }
