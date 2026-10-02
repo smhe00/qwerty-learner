@@ -1857,6 +1857,11 @@ test('Typing and Learn use the same indigo interaction palette', async ({ page }
   )
   const typingDictionary = page.locator('header nav a[href="/gallery"]')
   await typingDictionary.hover()
+  const typingTransitionMs = await typingDictionary.evaluate((element) => {
+    const value = getComputedStyle(element).transitionDuration.split(',')[0]
+    return Number.parseFloat(value) * (value.includes('ms') ? 1 : 1000)
+  })
+  await page.waitForTimeout(typingTransitionMs + 50)
   const typingDictionaryHoverBackground = await typingDictionary.evaluate(
     (element) => getComputedStyle(element).backgroundColor,
   )
@@ -1881,6 +1886,11 @@ test('Typing and Learn use the same indigo interaction palette', async ({ page }
 
   const learnDictionary = page.locator('header nav a[href="/gallery?mode=learn"]')
   await learnDictionary.hover()
+  const learnTransitionMs = await learnDictionary.evaluate((element) => {
+    const value = getComputedStyle(element).transitionDuration.split(',')[0]
+    return Number.parseFloat(value) * (value.includes('ms') ? 1 : 1000)
+  })
+  await page.waitForTimeout(learnTransitionMs + 50)
   await expect(learnDictionary).toHaveCSS(
     'background-color',
     typingDictionaryHoverBackground,
