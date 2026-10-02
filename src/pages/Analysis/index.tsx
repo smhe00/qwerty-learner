@@ -4,6 +4,7 @@ import LineCharts from './components/LineCharts'
 import { useLearnStats } from './hooks/useLearnStats'
 import { useWordStats } from './hooks/useWordStats'
 import Layout from '@/components/Layout'
+import { decideDailyAcquisitionQuota } from '@/learn/quota'
 import {
   currentDictIdAtom,
   currentDictInfoAtom,
@@ -84,6 +85,18 @@ function LearnAnalysis() {
     .filter((item) => item.successRate !== null)
     .map((item) => [item.date, item.successRate as number] as [string, number])
   const ratings = stats.scheduler.ratings30d
+  const quota = decideDailyAcquisitionQuota(stats)
+  const quotaDetail = quota.pausedByDue
+    ? '先完成到期复习'
+    : quota.remainingDailyNewWords === 0
+      ? '今日额度已完成'
+      : quota.tier === 'low'
+        ? '近期记忆压力较高'
+        : quota.tier === 'medium'
+          ? '近期记忆表现一般'
+          : quota.reasonCodes.includes('bootstrap-insufficient-rated-history')
+            ? '样本不足，保持默认节奏'
+            : '近期记忆表现稳定'
 
   return (
     <>
@@ -104,6 +117,16 @@ function LearnAnalysis() {
       <div className="mx-4 my-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
         <MetricCard label="今日复习词数" value={stats.today.reviewedWords} />
         <MetricCard label="今日新学词数" value={stats.today.acquiredWords} />
+        <MetricCard
+          label="今日新词目标"
+          value={quota.targetDailyNewWords}
+          detail={quotaDetail}
+        />
+        <MetricCard
+          label="当前可新增"
+          value={quota.allowedNow}
+          detail={quota.pausedByDue ? 'Due 优先' : '受今日目标与 UNSEEN 上限约束'}
+        />
         <MetricCard label="当前到期" value={stats.lifecycle.due} />
         <MetricCard label="长期学习中" value={stats.lifecycle.active} />
         <MetricCard label="已移出" value={stats.lifecycle.excluded} />
@@ -115,7 +138,7 @@ function LearnAnalysis() {
         <MetricCard
           label="Cold Probe 一次通过率"
           value={formatRate(stats.today.coldProbePassRate)}
-          detail="今日主 Learn 尝试"
+          detail="今日 Review 主尝试"
         />
         <MetricCard
           label="Hint 使用率"

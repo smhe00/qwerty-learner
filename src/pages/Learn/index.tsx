@@ -1,6 +1,8 @@
 import ModeSwitcher from '@/components/ModeSwitcher'
 import Header from '@/components/Header'
 import Layout from '@/components/Layout'
+import { decideDailyAcquisitionQuota } from '@/learn/quota'
+import { buildLearnStatsSnapshot } from '@/learn/stats'
 import { DictChapterButton } from '@/pages/Typing/components/DictChapterButton'
 import PronunciationSwitcher from '@/pages/Typing/components/PronunciationSwitcher'
 import Switcher from '@/pages/Typing/components/Switcher'
@@ -16,7 +18,11 @@ import {
   generateNewWordAcquisitionRecord,
   getLatestReviewRecord,
 } from '@/utils/db/review-record'
-import { bootstrapReviewWordStatesForDictionary } from '@/review/repository'
+import {
+  bootstrapReviewWordStatesForDictionary,
+  getReviewWordStates,
+} from '@/review/repository'
+import { db } from '@/utils/db'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -103,10 +109,43 @@ export default function LearnPage() {
         if (!isCurrent()) return
 
         if (!record) {
-          record = await generateNewWordAcquisitionRecord(
-            dictId,
-            words,
-          )
+          const now = Math.floor(Date.now() / 1000)
+          const [wordRecords, wordStates] = await Promise.all([
+            db.wordRecords.where('dict').equals(dictId).toArray(),
+            getReviewWordStates(dictId),
+          ])
+          if (!isCurrent()) return
+
+          const stats = buildLearnStatsSnapshot({
+            now,
+            dict: dictId,
+            wordRecords,
+            wordStates,
+            dictionaryWords: words.map((word) => word.name),
+          })
+          const quota = decideDailyAcquisitionQuota(stats)
+
+          if (quota.allowedNow > 0) {
+            record = await generateNewWordAcquisitionRecord(
+              dictId,
+              words,
+              quota.allowedNow,
+            )
+          } else if (stats.lifecycle.unseen === 0) {
+            setStatusText('当前词库没有需要学习的单词。')
+            setIsStarting(false)
+            return
+          } else if (quota.pausedByDue) {
+            setStatusText('还有到期复习需要处理，暂不新增单词。')
+            setIsStarting(false)
+            return
+          } else {
+            setStatusText(
+              `今日新词额度已完成（${stats.today.acquiredWords}/${quota.targetDailyNewWords}）。`,
+            )
+            setIsStarting(false)
+            return
+          }
         }
         if (!isCurrent()) return
 

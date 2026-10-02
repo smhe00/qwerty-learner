@@ -73,6 +73,7 @@ import {
   CURRENT_REVIEW_STATE_VERSION,
   createInitialReviewWordState,
 } from '../../src/review/types'
+import { decideDailyAcquisitionQuota } from '../../src/learn/quota'
 import { buildLearnStatsSnapshot } from '../../src/learn/stats'
 import type { IWordRecord } from '../../src/utils/db/record'
 
@@ -2496,7 +2497,8 @@ test('Learn P2 aggregates lifecycle, due state, ratings and daily evidence witho
   assert.equal(stats.today.reviewedWords, 2)
   assert.equal(stats.today.acquiredWords, 1)
   assert.equal(stats.today.hintUseRate, 33.3)
-  assert.equal(stats.today.coldProbePassRate, 66.7)
+  assert.equal(stats.today.reviewAttempts, 2)
+  assert.equal(stats.today.coldProbePassRate, 50)
 
   assert.deepEqual(stats.lifecycle, {
     active: 3,
@@ -2533,4 +2535,144 @@ test('Learn P2 keeps UNSEEN unknown when the dictionary payload is unavailable',
   assert.equal(stats.lifecycle.unseen, null)
   assert.equal(stats.today.hintUseRate, null)
   assert.equal(stats.scheduler.successRate30d, null)
+})
+
+
+test('Learn P3 keeps the 20-word bootstrap target when review history is insufficient', () => {
+  const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'p3',
+    wordRecords: [],
+    wordStates: [],
+    dictionaryWords: Array.from({ length: 100 }, (_, index) => `w${index}`),
+  })
+
+  const quota = decideDailyAcquisitionQuota(stats)
+  assert.equal(quota.tier, 'high')
+  assert.equal(quota.targetDailyNewWords, 20)
+  assert.equal(quota.allowedNow, 20)
+  assert.ok(quota.reasonCodes.includes('bootstrap-insufficient-rated-history'))
+})
+
+test('Learn P3 reduces the daily new-word target to 5 under high Again pressure', () => {
+  const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
+  const records: IWordRecord[] = Array.from({ length: 10 }, (_, index) => ({
+    word: `review-${index}`,
+    timeStamp: now - index * 60,
+    dict: 'p3',
+    chapter: -1,
+    timing: [],
+    wrongCount: index < 4 ? 1 : 0,
+    mistakes: index < 4 ? { 0: ['x'] } : {},
+    sourceMode: 'learn',
+    learnItemKind: 'review',
+    reviewRatingDecision:
+      index < 4
+        ? {
+            eligible: true as const,
+            rating: 'again' as const,
+            confidence: 1,
+            reasonCodes: ['test-again'],
+          }
+        : {
+            eligible: true as const,
+            rating: 'good' as const,
+            confidence: 1,
+            reasonCodes: ['test-good'],
+          },
+  }))
+
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'p3',
+    wordRecords: records,
+    wordStates: [],
+    dictionaryWords: Array.from({ length: 100 }, (_, index) => `w${index}`),
+  })
+  const quota = decideDailyAcquisitionQuota(stats)
+
+  assert.equal(quota.signals.againRate30d, 40)
+  assert.equal(quota.tier, 'low')
+  assert.equal(quota.targetDailyNewWords, 5)
+  assert.equal(quota.allowedNow, 5)
+  assert.ok(quota.reasonCodes.includes('high-again-rate'))
+})
+
+test('Learn P3 uses 10 words for moderate review pressure and never exceeds remaining daily quota', () => {
+  const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
+  const records: IWordRecord[] = [
+    ...Array.from({ length: 10 }, (_, index) => ({
+      word: `review-${index}`,
+      timeStamp: now - index * 60,
+      dict: 'p3',
+      chapter: -1,
+      timing: [],
+      wrongCount: index < 2 ? 1 : 0,
+      mistakes: index < 2 ? { 0: ['x'] } : {},
+      sourceMode: 'learn' as const,
+      learnItemKind: 'review' as const,
+      reviewRatingDecision:
+        index < 2
+          ? {
+              eligible: true as const,
+              rating: 'again' as const,
+              confidence: 1,
+              reasonCodes: ['test-again'],
+            }
+          : {
+              eligible: true as const,
+              rating: 'good' as const,
+              confidence: 1,
+              reasonCodes: ['test-good'],
+            },
+    })),
+    ...Array.from({ length: 7 }, (_, index) => ({
+      word: `new-${index}`,
+      timeStamp: now - index * 30,
+      dict: 'p3',
+      chapter: -1,
+      timing: [],
+      wrongCount: 0,
+      mistakes: {},
+      sourceMode: 'learn' as const,
+      learnItemKind: 'acquisition' as const,
+    })),
+  ]
+
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'p3',
+    wordRecords: records,
+    wordStates: [],
+    dictionaryWords: Array.from({ length: 100 }, (_, index) => `w${index}`),
+  })
+  const quota = decideDailyAcquisitionQuota(stats)
+
+  assert.equal(quota.tier, 'medium')
+  assert.equal(quota.targetDailyNewWords, 10)
+  assert.equal(quota.remainingDailyNewWords, 3)
+  assert.equal(quota.allowedNow, 3)
+})
+
+test('Learn P3 never admits new words while due Review backlog exists', () => {
+  const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
+  const dueState = {
+    ...createInitialReviewWordState('p3', 'due-word', now),
+    nextReviewAt: now - 1,
+  }
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'p3',
+    wordRecords: [],
+    wordStates: [dueState],
+    dictionaryWords: ['due-word', 'new-word'],
+  })
+  const quota = decideDailyAcquisitionQuota(stats)
+
+  assert.equal(quota.targetDailyNewWords, 20)
+  assert.equal(quota.remainingDailyNewWords, 1)
+  assert.equal(quota.allowedNow, 0)
+  assert.equal(quota.pausedByDue, true)
+  assert.ok(quota.reasonCodes.includes('due-review-first'))
 })

@@ -2149,3 +2149,94 @@ test('Typing and Learn use the same indigo interaction palette', async ({ page }
     typingDictionaryHoverBackground,
   )
 })
+
+
+test('Learn P3 weak review pressure limits a new acquisition session to five words', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.evaluate(async () => {
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(0))
+    localStorage.setItem(
+      'reviewModeInfo',
+      JSON.stringify({ isReviewMode: false }),
+    )
+
+    const now = Math.floor(Date.now() / 1000)
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction(
+          ['wordRecords', 'reviewWordStates', 'reviewRecords'],
+          'readwrite',
+        )
+        tx.objectStore('reviewRecords').clear()
+
+        for (let index = 0; index < 8; index += 1) {
+          const word = `quota-history-${index}`
+          const isAgain = index < 4
+          tx.objectStore('wordRecords').add({
+            word,
+            timeStamp: now - index * 60,
+            dict: 'cet4',
+            chapter: -1,
+            timing: [],
+            wrongCount: isAgain ? 1 : 0,
+            mistakes: isAgain ? { 0: ['x'] } : {},
+            sourceMode: 'learn',
+            learnItemKind: 'review',
+            reviewRatingDecision: isAgain
+              ? {
+                  eligible: true,
+                  rating: 'again',
+                  confidence: 1,
+                  reasonCodes: ['p3-e2e-again'],
+                }
+              : {
+                  eligible: true,
+                  rating: 'good',
+                  confidence: 1,
+                  reasonCodes: ['p3-e2e-good'],
+                },
+          })
+          tx.objectStore('reviewWordStates').put({
+            dict: 'cet4',
+            word,
+            createdAt: now - 86400,
+            updatedAt: now,
+            lastReviewedAt: now,
+            nextReviewAt: now + 86400,
+            reviewCount: 1,
+            lapseCount: isAgain ? 1 : 0,
+            cleanStreak: isAgain ? 0 : 1,
+            lastOutcome: isAgain ? 'again' : 'good',
+            lifecycle: 'active',
+            stateVersion: 4,
+            schedulerState: {
+              kind: 'basic-v2',
+              stage: 1,
+              intervalDays: 1,
+            },
+          })
+        }
+
+        tx.oncomplete = () => {
+          db.close()
+          resolve()
+        }
+        tx.onerror = () => reject(tx.error)
+        tx.onabort = () => reject(tx.error)
+      }
+    })
+  })
+
+  await page.goto('/learn')
+  await expect(page).toHaveURL(/\/learn\/session$/)
+
+  const info = await readReviewModeInfo(page)
+  expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
+  expect(info?.reviewRecord?.words).toHaveLength(5)
+})
