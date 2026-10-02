@@ -51,6 +51,7 @@ import {
   inferReviewOutcomeFromWordRecord,
   reactivateReviewStateFromLearningEvidence,
   rebuildBasicStateFromWordRecords,
+  shouldDropLegacyTypingSeededState,
 } from '../../src/review/rebuild'
 import { buildOrthographyProfile } from '../../src/review/profile'
 import {
@@ -1168,7 +1169,7 @@ test('clean audio-off probe records positive audio independence evidence', () =>
 })
 
 
-test('ordinary learning failure seeds an immediately due first review without advancing scheduler', () => {
+test('Typing failure remains evidence-only and cannot seed Learn state', () => {
   const dueNow = 10_000
   const learningFailure: IWordRecord = {
     id: 1,
@@ -1207,18 +1208,7 @@ test('ordinary learning failure seeds an immediately due first review without ad
     { legacyDueAt: dueNow },
   )
 
-  assert.ok(state)
-  assert.equal(state.stateVersion, CURRENT_REVIEW_STATE_VERSION)
-  assert.equal(state.nextReviewAt, dueNow)
-  assert.equal(state.reviewCount, 0)
-  assert.equal(state.lapseCount, 0)
-  assert.equal(state.cleanStreak, 0)
-  assert.equal(state.lastReviewedAt, undefined)
-  assert.deepEqual(state.schedulerState, {
-    kind: 'basic-v2',
-    stage: 0,
-    intervalDays: 0,
-  })
+  assert.equal(state, undefined)
 })
 
 test('ordinary learning clean telemetry does not create or advance review state', () => {
@@ -1542,7 +1532,7 @@ test('out-of-range typo positions are excluded from orthography evidence', () =>
 })
 
 
-test('fresh ordinary-learning failure after Review reactivates due-now without changing scheduler history', () => {
+test('Typing failure after Review does not reactivate Learn scheduler state', () => {
   const reviewed = createInitialReviewWordState('cet4', 'again', 100)
   reviewed.lastReviewedAt = 200
   reviewed.nextReviewAt = 200 + 24 * 60 * 60
@@ -1578,7 +1568,7 @@ test('fresh ordinary-learning failure after Review reactivates due-now without c
     },
   ]
 
-  assert.equal(hasUnreviewedLearningFailure(records), true)
+  assert.equal(hasUnreviewedLearningFailure(records), false)
 
   const reactivated = reactivateReviewStateFromLearningEvidence(
     reviewed,
@@ -1586,7 +1576,8 @@ test('fresh ordinary-learning failure after Review reactivates due-now without c
     400,
   )
 
-  assert.equal(reactivated.nextReviewAt, 400)
+  assert.equal(reactivated, reviewed)
+  assert.equal(reactivated.nextReviewAt, reviewed.nextReviewAt)
   assert.equal(reactivated.reviewCount, 1)
   assert.equal(reactivated.cleanStreak, 1)
   assert.equal(reactivated.lastReviewedAt, 200)
@@ -2225,16 +2216,61 @@ test('pruning an excluded word removes all session duplicates and preserves logi
 })
 
 
-test('Learn acquisition plan is assisted training and never a canonical probe', () => {
+test('Learn acquisition starts from an unaided cold probe before Hint training', () => {
   const plan = createLearnAcquisitionPlan()
 
-  assert.equal(plan.condition.purpose, 'training')
-  assert.equal(plan.condition.audio, 'automatic')
+  assert.equal(plan.condition.purpose, 'probe')
+  assert.equal(plan.condition.audio, 'none')
   assert.equal(plan.condition.meaning, 'visible')
-  assert.equal(plan.condition.phonetic, 'visible')
-  assert.deepEqual(plan.condition.letters, { mode: 'all-visible' })
+  assert.equal(plan.condition.phonetic, 'hidden')
+  assert.deepEqual(plan.condition.letters, { mode: 'all-hidden' })
   assert.equal(plan.condition.probeDimension, 'none')
-  assert.equal(plan.decision.policyVersion, 'learn-acquisition-v1')
+  assert.equal(
+    plan.decision.policyVersion,
+    'learn-acquisition-cold-probe-v2',
+  )
+  assert.ok(plan.decision.reasonCodes.includes('cold-probe-first'))
+})
+
+test('legacy active state seeded only from Typing is removable ghost state', () => {
+  const state = createInitialReviewWordState(
+    'cet4',
+    'typing-only',
+    100,
+  )
+  state.updatedAt = 200
+  state.nextReviewAt = 200
+
+  const typingRecord: IWordRecord = {
+    word: 'typing-only',
+    timeStamp: 100,
+    dict: 'cet4',
+    chapter: 1,
+    timing: [],
+    wrongCount: 2,
+    mistakes: { 0: ['x'] },
+    sourceMode: 'typing',
+  }
+
+  assert.equal(
+    shouldDropLegacyTypingSeededState(state, [typingRecord]),
+    true,
+  )
+
+  const acquisitionRecord: IWordRecord = {
+    ...typingRecord,
+    chapter: -1,
+    sourceMode: 'learn',
+    learnItemKind: 'acquisition',
+  }
+
+  assert.equal(
+    shouldDropLegacyTypingSeededState(state, [
+      typingRecord,
+      acquisitionRecord,
+    ]),
+    false,
+  )
 })
 
 test('UNSEEN count is derived from the actual dictionary, ignoring stale states and duplicate names', () => {

@@ -43,7 +43,7 @@ Learn 管理长期记忆。
 - bounded reinforcement；
 - 手工移出/恢复学习计划。
 
-新词全量进入长期记忆系统将在后续 all-word admission 阶段开启。
+词库中的新词会逐批进入长期记忆系统；Typing 历史不会自动把词加入 Learn。
 
 ---
 
@@ -81,35 +81,28 @@ Learn 只选择“词库”，不会进入 Typing 的第二级章节选择。
 
 ## 3. Learn 首页
 
-Learn 首页显示当前词库的长期学习状态：
+Learn 首页第一行与 Typing 保持同一布局骨架：
 
-```text
-今日到期
-长期学习中
-尚未进入 Learn
-已移出
-```
+- 词库名位置一致；
+- Start / Continue 位置一致；
+- 设置位置一致；
+- Learn 使用绿色强调色，Typing 保持蓝紫色；
+- 第一行以下暂时留空，后续再决定长期状态信息如何呈现。
 
-主要操作：
-
-- **继续当前学习**：恢复未完成的 Learn session；
-- **开始学习**：先处理到期长期复习；如果没有到期词，则自动学习新词；
-- **额外复习**：只对已有 ACTIVE 词做额外复习，不会触发新词 acquisition；
-- **学习计划**：查看长期学习中的词和已移出词。
-
-新词 Acquisition V1：
+新词 Acquisition V2：
 
 ```text
 无 due Review
 → 从词库中按顺序选择最多 20 个 UNSEEN 词
-→ 显示完整拼写 + 释义 + 音标 + 自动发音
-→ 用户完成正确输入
-→ ACTIVE
+→ Cold Probe：只显示释义，隐藏拼写/音标，不自动发音
+→ 会：直接正确输入
+→ 不会/持续拼错：Hint 0 → 1 → 2 → 3
+→ 完成后 ACTIVE
 → nextReviewAt = +1 day
 ```
 
-Acquisition 是 training，不产生 Again / Hard / Good / Easy，也不会增加
-reviewCount / lapseCount。
+第一次 cold probe 属于 Learn admission probe；当前仍不把它伪装成长期
+Again / Hard / Good / Easy 调度事件，因此不会增加 reviewCount / lapseCount。
 
 ---
 

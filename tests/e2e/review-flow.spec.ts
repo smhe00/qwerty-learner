@@ -980,9 +980,78 @@ test('Learn dictionary selection reuses the Typing gallery and skips chapter sel
 
   await expect(page).toHaveURL(/\/learn$/)
   await expect(
-    page.getByRole('heading', { name: '中考核心词', exact: true }),
+    page.getByRole('link', { name: '中考核心词', exact: true }),
   ).toBeVisible()
   await expect(page.getByText('章节选择', { exact: true })).toHaveCount(0)
+})
+
+test('Learn header keeps dictionary, Start, and Settings aligned with Typing', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.evaluate(() => {
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(0))
+    localStorage.setItem(
+      'reviewModeInfo',
+      JSON.stringify({ isReviewMode: false }),
+    )
+  })
+
+  await page.goto('/typing')
+  const typingDictionary = page.getByRole('link', {
+    name: 'CET-4',
+    exact: true,
+  })
+  const typingStart = page.getByRole('button', {
+    name: '开始',
+    exact: true,
+  })
+  const typingSetting = page.getByTitle('打开设置对话框')
+
+  await expect(typingDictionary).toBeVisible()
+  await expect(typingStart).toBeVisible()
+  await expect(typingSetting).toBeVisible()
+
+  const typingPositions = {
+    dictionary: (await typingDictionary.boundingBox())?.x ?? 0,
+    start: (await typingStart.boundingBox())?.x ?? 0,
+    setting: (await typingSetting.boundingBox())?.x ?? 0,
+  }
+
+  await page.goto('/learn')
+  const learnDictionary = page.getByRole('link', {
+    name: 'CET-4',
+    exact: true,
+  })
+  const learnStart = page.getByRole('button', {
+    name: '开始',
+    exact: true,
+  })
+  const learnSetting = page.getByTitle('打开设置对话框')
+
+  await expect(learnDictionary).toBeVisible()
+  await expect(learnStart).toBeVisible()
+  await expect(learnSetting).toBeVisible()
+
+  const learnPositions = {
+    dictionary: (await learnDictionary.boundingBox())?.x ?? 0,
+    start: (await learnStart.boundingBox())?.x ?? 0,
+    setting: (await learnSetting.boundingBox())?.x ?? 0,
+  }
+
+  expect(
+    Math.abs(learnPositions.dictionary - typingPositions.dictionary),
+  ).toBeLessThanOrEqual(4)
+  expect(
+    Math.abs(learnPositions.start - typingPositions.start),
+  ).toBeLessThanOrEqual(24)
+  expect(
+    Math.abs(learnPositions.setting - typingPositions.setting),
+  ).toBeLessThanOrEqual(24)
+
+  await expect(page.getByText('今日到期', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('学习计划', { exact: true })).toHaveCount(0)
 })
 
 test('Learn exposes only one unfinished session and cannot create a duplicate from the plan page', async ({
@@ -1050,7 +1119,7 @@ test('Learn exposes only one unfinished session and cannot create a duplicate fr
 
   await page.goto('/learn')
   await expect(
-    page.getByRole('button', { name: '继续当前学习', exact: true }),
+    page.getByRole('button', { name: '继续学习', exact: true }),
   ).toBeVisible()
   await expect(
     page.getByRole('button', { name: '开始学习', exact: true }),
@@ -1077,7 +1146,7 @@ test('Learn exposes only one unfinished session and cannot create a duplicate fr
   })
 
   await page.getByRole('button', {
-    name: '继续当前学习',
+    name: '继续学习',
     exact: true,
   }).click()
   await expect(page).toHaveURL(/\/learn\/session$/)
@@ -1131,6 +1200,36 @@ test('Learn starts new acquisition only when there is no due review', async ({
         for (const name of names) {
           tx.objectStore(name).clear()
         }
+
+        const now = Math.floor(Date.now() / 1000)
+        tx.objectStore('wordRecords').add({
+          word: 'cancel',
+          timeStamp: now - 60,
+          dict: 'cet4',
+          chapter: 0,
+          timing: [],
+          wrongCount: 2,
+          mistakes: { 0: ['x'] },
+          sourceMode: 'typing',
+        })
+        tx.objectStore('reviewWordStates').put({
+          dict: 'cet4',
+          word: 'cancel',
+          createdAt: now - 60,
+          updatedAt: now - 30,
+          nextReviewAt: now - 30,
+          reviewCount: 0,
+          lapseCount: 0,
+          cleanStreak: 0,
+          lifecycle: 'active',
+          stateVersion: 4,
+          schedulerState: {
+            kind: 'basic-v2',
+            stage: 0,
+            intervalDays: 0,
+          },
+        })
+
         tx.oncomplete = () => {
           db.close()
           resolve()
@@ -1142,8 +1241,35 @@ test('Learn starts new acquisition only when there is no due review', async ({
   })
 
   await page.goto('/learn')
+
+  await expect
+    .poll(async () => {
+      return page.evaluate(async () => {
+        return new Promise<boolean>((resolve, reject) => {
+          const request = indexedDB.open('RecordDB')
+          request.onerror = () => reject(request.error)
+          request.onsuccess = () => {
+            const db = request.result
+            const tx = db.transaction('reviewWordStates', 'readonly')
+            const all = tx.objectStore('reviewWordStates').getAll()
+            all.onerror = () => reject(all.error)
+            all.onsuccess = () => {
+              resolve(
+                all.result.some(
+                  (item) =>
+                    item.dict === 'cet4' && item.word === 'cancel',
+                ),
+              )
+              db.close()
+            }
+          }
+        })
+      })
+    })
+    .toBe(false)
+
   const startButton = page.getByRole('button', {
-    name: '开始学习',
+    name: '开始',
     exact: true,
   })
   await expect(startButton).toBeEnabled()
@@ -1161,15 +1287,15 @@ test('Learn starts new acquisition only when there is no due review', async ({
     info?.reviewRecord?.exercisePlans?.[firstWord],
   ).toMatchObject({
     condition: {
-      purpose: 'training',
-      audio: 'automatic',
+      purpose: 'probe',
+      audio: 'none',
       meaning: 'visible',
-      phonetic: 'visible',
-      letters: { mode: 'all-visible' },
+      phonetic: 'hidden',
+      letters: { mode: 'all-hidden' },
       probeDimension: 'none',
     },
     decision: {
-      policyVersion: 'learn-acquisition-v1',
+      policyVersion: 'learn-acquisition-cold-probe-v2',
     },
   })
 
@@ -1180,11 +1306,15 @@ test('Learn starts new acquisition only when there is no due review', async ({
   )
   await expect(rendered).toHaveAttribute(
     'data-review-purpose',
-    'training',
+    'probe',
   )
   await expect(rendered).toHaveAttribute(
     'data-review-letters',
-    'all-visible',
+    'all-hidden',
+  )
+  await expect(rendered).toHaveAttribute(
+    'data-review-hint-level',
+    'cold',
   )
 
   await page.keyboard.type(firstWord)
@@ -1326,6 +1456,17 @@ test('a due ACTIVE word is reviewed before any unseen acquisition word', async (
         tx.objectStore('wordRecords').clear()
         tx.objectStore('reviewRecords').clear()
         tx.objectStore('reviewWordStates').clear()
+        tx.objectStore('wordRecords').add({
+          word: 'cancel',
+          timeStamp: now - 86_500,
+          dict: 'cet4',
+          chapter: -1,
+          timing: [],
+          wrongCount: 0,
+          mistakes: {},
+          sourceMode: 'learn',
+          learnItemKind: 'acquisition',
+        })
         tx.objectStore('reviewWordStates').put({
           dict: 'cet4',
           word: 'cancel',
@@ -1355,7 +1496,7 @@ test('a due ACTIVE word is reviewed before any unseen acquisition word', async (
 
   await page.goto('/learn')
   await page.getByRole('button', {
-    name: '开始学习',
+    name: '开始',
     exact: true,
   }).click()
 

@@ -55,7 +55,8 @@ Current acquisition rollout:
 - Only when no due ACTIVE word exists does Learn open a new-word Acquisition
   session.
 - Acquisition V1 is bounded to 20 UNSEEN words in dictionary order.
-- Acquisition uses full spelling + meaning + phonetic + automatic audio.
+- Acquisition starts with a cold probe: meaning visible, spelling hidden,
+  phonetic hidden, audio off; failure falls through the normal Hint ladder.
 - Acquisition completion creates ACTIVE state with `nextReviewAt = now + 1 day`.
 - Acquisition creates no Again/Hard/Good/Easy rating and does not increment
   review/lapse counters.
@@ -177,7 +178,7 @@ LearningState scheduler mutation
 ```
 
 Typing history can later be used as prior evidence by Learn, but it is not a
-scheduler rating.
+scheduler rating and MUST NOT create, reactivate, or admit a LearningState.
 
 ---
 
