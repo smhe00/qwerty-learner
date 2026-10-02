@@ -1,7 +1,6 @@
 import ModeSwitcher from '@/components/ModeSwitcher'
 import Header from '@/components/Header'
 import Layout from '@/components/Layout'
-import Tooltip from '@/components/Tooltip'
 import { DictChapterButton } from '@/pages/Typing/components/DictChapterButton'
 import PronunciationSwitcher from '@/pages/Typing/components/PronunciationSwitcher'
 import Switcher from '@/pages/Typing/components/Switcher'
@@ -11,7 +10,6 @@ import {
   currentDictInfoAtom,
   reviewModeInfoAtom,
 } from '@/store'
-import { db } from '@/utils/db'
 import { wordListFetcher } from '@/utils/wordListFetcher'
 import {
   generateLearnReviewRecord,
@@ -19,14 +17,8 @@ import {
   getLatestReviewRecord,
 } from '@/utils/db/review-record'
 import { bootstrapReviewWordStatesForDictionary } from '@/review/repository'
-import { getLearningLifecycle } from '@/learn/lifecycle'
-import {
-  countUnseenLearningWords,
-  decideLearnStartKind,
-} from '@/learn/session'
-import { useLiveQuery } from 'dexie-react-hooks'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useSWR from 'swr'
 
@@ -37,49 +29,14 @@ export default function LearnPage() {
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
   const [isStarting, setIsStarting] = useState(false)
   const [statusText, setStatusText] = useState('')
+  const startInFlightRef = useRef(false)
+  const attemptedDictRef = useRef<string | null>(null)
 
   const { errorWordData } = useErrorWordData(currentDictInfo, false)
-  const {
-    data: wordList,
-    isLoading: isWordListLoading,
-  } = useSWR(currentDictInfo.url, wordListFetcher)
-
-  useEffect(() => {
-    void bootstrapReviewWordStatesForDictionary(currentDictId)
-  }, [currentDictId])
-
-  const states = useLiveQuery(
-    () => db.reviewWordStates.where('dict').equals(currentDictId).toArray(),
-    [currentDictId],
-    [],
+  const { data: wordList } = useSWR(
+    currentDictInfo.url,
+    wordListFetcher,
   )
-
-  const latestSession = useLiveQuery(
-    () => getLatestReviewRecord(currentDictId),
-    [currentDictId],
-    undefined,
-  )
-
-  const activeStates = useMemo(
-    () =>
-      states.filter(
-        (state) => getLearningLifecycle(state) === 'active',
-      ),
-    [states],
-  )
-
-  const now = Math.floor(Date.now() / 1000)
-  const dueCount = activeStates.filter(
-    (state) => state.nextReviewAt <= now,
-  ).length
-  const unseenCount = useMemo(
-    () =>
-      wordList
-        ? countUnseenLearningWords(wordList, states)
-        : 0,
-    [states, wordList],
-  )
-  const startKind = decideLearnStartKind({ dueCount, unseenCount })
 
   const enterSession = useCallback(
     (
@@ -96,8 +53,10 @@ export default function LearnPage() {
     [navigate, setReviewModeInfo],
   )
 
-  const startLearn = useCallback(async () => {
-    if (isStarting || !wordList) return
+  const prepareLearnSession = useCallback(async () => {
+    if (startInFlightRef.current || !wordList) return
+
+    startInFlightRef.current = true
     setIsStarting(true)
     setStatusText('')
 
@@ -131,20 +90,22 @@ export default function LearnPage() {
 
       enterSession(record)
     } finally {
+      startInFlightRef.current = false
       setIsStarting(false)
     }
   }, [
     currentDictId,
     enterSession,
     errorWordData,
-    isStarting,
     wordList,
   ])
 
-  const primaryDisabled =
-    isStarting ||
-    (!latestSession &&
-      (isWordListLoading || startKind === 'empty'))
+  useEffect(() => {
+    if (!wordList || attemptedDictRef.current === currentDictId) return
+
+    attemptedDictRef.current = currentDictId
+    void prepareLearnSession()
+  }, [currentDictId, prepareLearnSession, wordList])
 
   return (
     <Layout>
@@ -153,34 +114,15 @@ export default function LearnPage() {
         <DictChapterButton learnMode />
         <PronunciationSwitcher learnMode />
         <Switcher learnMode />
-
-        <Tooltip
-          content="开始 Learn"
-          className="box-content h-7 w-8 px-6 py-1"
-        >
-          <button
-            data-header-slot="start"
-            className="my-btn-primary w-20 bg-indigo-500 shadow shadow-indigo-300 dark:shadow-indigo-500/60"
-            type="button"
-            disabled={primaryDisabled}
-            onClick={() => void startLearn()}
-            aria-label="开始"
-          >
-            <span className="font-medium">Start</span>
-          </button>
-        </Tooltip>
-        <span className="invisible w-0" aria-hidden="true" />
       </Header>
 
       <main className="container mx-auto flex w-full flex-1 items-start justify-center">
-        {statusText && (
-          <span
-            className="mt-8 text-sm text-gray-400 dark:text-gray-500"
-            role="status"
-          >
-            {statusText}
-          </span>
-        )}
+        <span
+          className="mt-8 text-sm text-gray-400 dark:text-gray-500"
+          role="status"
+        >
+          {statusText || (isStarting || !wordList ? '正在准备 Learn…' : '')}
+        </span>
       </main>
     </Layout>
   )
