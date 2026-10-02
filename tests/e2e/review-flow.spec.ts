@@ -1801,7 +1801,7 @@ test('Hint ladder auto-advances after two failures at each active level', async 
 })
 
 
-test('lazy Gallery chunk failure recovers without manual refresh', async ({
+test('lazy route chunk failure recovers without manual refresh', async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -1826,13 +1826,14 @@ test('lazy Gallery chunk failure recovers without manual refresh', async ({
     await route.continue()
   })
 
-  await page.locator('header nav a[href="/gallery"]').click()
+  // Analysis is intentionally not idle-preloaded. Its first lazy chunk load
+  // models a stale route chunk after a production deployment.
+  await page.getByRole('button', {
+    name: '查看数据统计',
+    exact: true,
+  }).click()
 
-  await expect(page).toHaveURL(/\/gallery$/)
-  await expect(
-    page.getByText('CET-4', { exact: true }).first(),
-  ).toBeVisible()
-
+  await expect(page).toHaveURL(/\/analysis$/)
   await expect
     .poll(async () =>
       page.evaluate(() =>
