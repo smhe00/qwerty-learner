@@ -1115,9 +1115,23 @@ test('Learn reuses Typing controls while preserving Typing-owned preferences', a
     }),
   ).toBeDisabled()
 
-  const pronunciationButton = page
-    .getByRole('button', { name: '英音', exact: true })
-    .first()
+  await expect(
+    page.getByRole('button', {
+      name: '数据统计（Learn 模式禁用）',
+      exact: true,
+    }),
+  ).toBeDisabled()
+  await expect(
+    page.getByRole('button', {
+      name: '错题本（Learn 模式禁用）',
+      exact: true,
+    }),
+  ).toBeDisabled()
+
+  const pronunciationButton = page.getByRole('button', {
+    name: '发音口音：英音',
+    exact: true,
+  })
   await expect(pronunciationButton).toBeEnabled()
   await pronunciationButton.click()
   await expect(
@@ -1263,11 +1277,9 @@ test('Learn exposes only one unfinished session and cannot create a duplicate fr
 
   await page.goto('/learn')
   await expect(
-    page.getByRole('button', { name: '继续学习', exact: true }),
+    page.getByRole('button', { name: '开始', exact: true }),
   ).toBeVisible()
-  await expect(
-    page.getByRole('button', { name: '开始学习', exact: true }),
-  ).toHaveCount(0)
+  await expect(page.getByText('Continue', { exact: true })).toHaveCount(0)
   await expect(
     page.getByRole('button', { name: '额外复习', exact: true }),
   ).toHaveCount(0)
@@ -1290,7 +1302,7 @@ test('Learn exposes only one unfinished session and cannot create a duplicate fr
   })
 
   await page.getByRole('button', {
-    name: '继续学习',
+    name: '开始',
     exact: true,
   }).click()
   await expect(page).toHaveURL(/\/learn\/session$/)
@@ -1323,6 +1335,7 @@ test('Learn starts new acquisition only when there is no due review', async ({
   await page.evaluate(async () => {
     localStorage.setItem('currentDict', JSON.stringify('cet4'))
     localStorage.setItem('currentChapter', JSON.stringify(0))
+    localStorage.setItem('isOpenDarkModeAtom', JSON.stringify(false))
     localStorage.setItem(
       'reviewModeInfo',
       JSON.stringify({
@@ -1459,6 +1472,22 @@ test('Learn starts new acquisition only when there is no due review', async ({
   await expect(rendered).toHaveAttribute(
     'data-review-hint-level',
     'cold',
+  )
+
+  const translation = page.locator(
+    '[data-typing-translation="visible"]',
+  )
+  await expect(translation).toBeVisible()
+  await expect(translation).toHaveCSS('color', 'rgb(55, 65, 81)')
+
+  await page.getByRole('button', {
+    name: '开关深色模式',
+    exact: true,
+  }).click()
+  await expect(translation).toBeVisible()
+  await expect(translation).toHaveCSS(
+    'color',
+    'rgba(255, 255, 255, 0.8)',
   )
 
   await page.keyboard.type(firstWord)

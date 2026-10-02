@@ -117,6 +117,11 @@ const PronunciationSwitcher = ({
       {({ open }) => (
         <>
           <Popover.Button
+            aria-label={
+              learnMode
+                ? `发音口音：${pronunciationConfig.name}`
+                : `发音及音标切换：${currentLabel}`
+            }
             className={`flex h-8 min-w-max cursor-pointer items-center justify-center rounded-md px-1 transition-colors duration-300 ease-in-out hover:bg-indigo-400 hover:text-white focus:outline-none dark:text-white dark:text-opacity-60 dark:hover:text-opacity-100  ${
               open ? 'bg-indigo-400 text-white' : 'bg-transparent'
             }`}

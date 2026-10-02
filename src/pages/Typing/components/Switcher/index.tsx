@@ -108,12 +108,15 @@ export default function Switcher({
         </button>
       </Tooltip>
 
-      <Tooltip content="错题本">
-        <ErrorBookButton />
+      <Tooltip content={learnMode ? 'Learn 模式暂不可用' : '错题本'}>
+        <ErrorBookButton disabled={learnMode} />
       </Tooltip>
 
-      <Tooltip className="h-7 w-7" content="查看数据统计">
-        <AnalysisButton />
+      <Tooltip
+        className="h-7 w-7"
+        content={learnMode ? 'Learn 模式暂不可用' : '查看数据统计'}
+      >
+        <AnalysisButton disabled={learnMode} />
       </Tooltip>
 
       <Tooltip className="h-7 w-7" content="开关深色模式">

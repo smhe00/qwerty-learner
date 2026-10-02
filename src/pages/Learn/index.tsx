@@ -141,11 +141,6 @@ export default function LearnPage() {
     wordList,
   ])
 
-  const continueLearn = useCallback(() => {
-    if (!latestSession) return
-    enterSession(latestSession)
-  }, [enterSession, latestSession])
-
   const primaryDisabled =
     isStarting ||
     (!latestSession &&
@@ -160,7 +155,7 @@ export default function LearnPage() {
         <Switcher learnMode />
 
         <Tooltip
-          content={latestSession ? '继续当前学习' : '开始 Learn'}
+          content="开始 Learn"
           className="box-content h-7 w-8 px-6 py-1"
         >
           <button
@@ -168,16 +163,10 @@ export default function LearnPage() {
             className="my-btn-primary w-20 bg-emerald-500 shadow shadow-emerald-300 transition-colors hover:bg-emerald-400 dark:shadow-emerald-500/50"
             type="button"
             disabled={primaryDisabled}
-            onClick={() =>
-              latestSession
-                ? continueLearn()
-                : void startLearn()
-            }
-            aria-label={latestSession ? '继续学习' : '开始'}
+            onClick={() => void startLearn()}
+            aria-label="开始"
           >
-            <span className="font-medium">
-              {latestSession ? 'Continue' : 'Start'}
-            </span>
+            <span className="font-medium">Start</span>
           </button>
         </Tooltip>
         <span className="invisible w-0" aria-hidden="true" />
