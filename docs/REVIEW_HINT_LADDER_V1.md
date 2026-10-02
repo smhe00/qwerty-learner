@@ -15,10 +15,17 @@ and no phonetic cue. When the learner cannot retrieve the word, the UI must
 provide a finite, ordered cue ladder without confusing training success with
 long-term memory success.
 
-The control gesture is intentionally keyboard-native:
+The hint system has two entry paths:
 
-> At input position zero, pressing **Space** means “I cannot recall this under
-> the current cue level; give me the next hint.”
+1. **Automatic Hint 0** — during the canonical cold probe, if the first wrong
+   position of a spelling attempt is the same position twice, Hint 0 appears
+   automatically at that position.
+2. **Manual escalation** — at input position zero, pressing **Space** means
+   “give me the next hint.”
+
+If a prior spelling attempt exists, manual Hint 0 targets the first wrong
+position from the latest failed attempt. If there is no prior error evidence,
+manual Hint 0 falls back to position 0.
 
 Space is a hint-control key only while a stronger hint exists.
 
@@ -31,17 +38,18 @@ COLD
   audio off
   phonetic hidden
         |
-        | Space at first-letter position
+        | same first-wrong position twice
+        | OR Space at input position 0
         v
 HINT 0
-  first English letter visible
+  correct letter at target error position visible in red
   audio off
   phonetic hidden
         |
-        | Space at first-letter position
+        | Space at input position 0
         v
 HINT 1
-  first English letter visible
+  same target-position letter remains visible
   pronunciation enabled/played
   phonetic visible
         |
@@ -61,14 +69,21 @@ HINT 3
   MUST type the full word correctly
 ```
 
-For Hint 2 the deterministic V1 mask shows positions `0,2,4,...`.
+For Hint 2 the deterministic V1 mask shows positions `0,2,4,...` **plus the
+Hint 0 target position**, so cue strength never decreases.
 
-Example:
+Example, if `cancel` was repeatedly misspelled first at index 3:
 
 ```text
-cancel
-→ c_n_e_
+cold:   ______
+hint0:  ___c__   <- target c is red
+hint1:  ___c__   + pronunciation + phonetic
+hint2:  c_nce_   <- deterministic partial cue retains index 3
+hint3:  cancel
 ```
+
+The first-wrong position is attempt-local: because a failed attempt stops at
+its first wrong key, the position is unambiguous.
 
 ## 3. Hint 3 is mandatory training
 
@@ -118,6 +133,26 @@ cold probe: failed / surrendered
 training: eventually completed
 ```
 
+### Automatic Hint 0 memory semantics
+
+Automatic Hint 0 does **not** set `coldProbeSurrendered`.
+
+It records spelling evidence instead:
+
+```text
+same first-wrong position twice
+→ auto Hint 0
+→ targeted training cue
+```
+
+The automatic cue must not manufacture an `Again` event merely because the
+UI supplied a hint. The original independent cold-probe errors remain in raw
+telemetry/classification evidence and later Rating Gate logic decides the
+scheduler-compatible result.
+
+The position-specific cue is training evidence; later clean typing under the
+cue must not be interpreted as an unaided clean retrieval.
+
 ## 5. Persisted hint trace
 
 `LearningContextV1.reviewHint` stores:
@@ -128,6 +163,8 @@ training: eventually completed
   maxLevel: 0 | 1 | 2 | 3
   coldProbeSurrendered: boolean
   advanceCount: 1 | 2 | 3 | 4
+  hintPosition?: number
+  autoHint0Triggered?: boolean
 }
 ```
 
@@ -171,10 +208,16 @@ memory probes.
 The hint state machine is:
 
 ```text
-cold → h0 → h1 → h2 → h3
+cold ──Space────────────────────────────→ h0
+  │
+  └──same first-wrong position twice───→ h0
+                                          ↓
+                                          h1 → h2 → h3
 ```
 
-No backward transition exists.
+Automatic escalation exists only on `cold → h0`. Once Hint 0 is active,
+additional spelling errors cannot auto-escalate again. No backward transition
+exists.
 
 A well-founded variant is:
 
@@ -205,15 +248,19 @@ Production verification must include:
 1. first-position Space advances exactly one hint level;
 2. Space at a nonzero input position does not request a hint;
 3. Hint 3 Space does not advance;
-4. Hint 0 shows only the first letter;
-5. Hint 1 introduces audio + phonetic;
-6. Hint 2 exposes deterministic partial spelling;
-7. Hint 3 exposes the full answer;
-8. Hint 3 blocks skip/navigation;
-9. Hint 3 requires correct full typing to finish;
-10. persisted hint trace records `maxLevel=3` and four advances;
-11. cold surrender produces `Again` even when final copy is clean;
-12. bounded formal enumeration proves strict hint-variant descent.
+4. one cold-probe wrong attempt does not auto-trigger Hint 0;
+5. the same first-wrong position twice auto-triggers Hint 0 exactly once;
+6. Hint 0 shows only the target error-position letter and renders it red;
+7. manual Hint 0 uses the latest first-wrong position when available;
+8. Hint 1 retains the target position and introduces audio + phonetic;
+9. Hint 2 exposes deterministic partial spelling while retaining the target position;
+10. Hint 3 exposes the full answer;
+11. Hint 3 blocks skip/navigation;
+12. Hint 3 requires correct full typing to finish;
+13. persisted hint trace records target position and whether Hint 0 was automatic;
+14. cold surrender produces `Again` even when final copy is clean;
+15. bounded formal enumeration proves strict hint-variant descent;
+16. exhaustive target-position checks prove Hint 0 → Hint 1 → Hint 2 → Hint 3 cue monotonicity.
 
 ## 10. Next gate
 

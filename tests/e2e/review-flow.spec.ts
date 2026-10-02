@@ -1057,4 +1057,47 @@ test('Hint 0 auto-targets a repeatedly wrong spelling position and renders it re
   await expect(word).toHaveAttribute('data-review-audio', 'automatic')
   await expect(word).toHaveAttribute('data-review-phonetic', 'visible')
   await expect(word).toHaveText('__n___')
+
+  // Complete the assisted attempt and verify the raw hint trace is persisted.
+  await page.keyboard.type('cancel')
+  await expect
+    .poll(async () => {
+      return page.evaluate(async () => {
+        return new Promise<{
+          maxLevel?: number
+          coldProbeSurrendered?: boolean
+          advanceCount?: number
+          hintPosition?: number
+          autoHint0Triggered?: boolean
+        } | null>((resolve, reject) => {
+          const request = indexedDB.open('RecordDB')
+          request.onerror = () => reject(request.error)
+          request.onsuccess = () => {
+            const db = request.result
+            const tx = db.transaction('wordRecords', 'readonly')
+            const all = tx.objectStore('wordRecords').getAll()
+            all.onerror = () => reject(all.error)
+            all.onsuccess = () => {
+              const record = [...all.result]
+                .reverse()
+                .find(
+                  (item) =>
+                    item.dict === 'cet4' &&
+                    item.word === 'cancel' &&
+                    item.chapter === -1,
+                )
+              resolve(record?.learningContext?.reviewHint ?? null)
+              db.close()
+            }
+          }
+        })
+      })
+    })
+    .toMatchObject({
+      maxLevel: 1,
+      coldProbeSurrendered: false,
+      advanceCount: 2,
+      hintPosition: 2,
+      autoHint0Triggered: true,
+    })
 })

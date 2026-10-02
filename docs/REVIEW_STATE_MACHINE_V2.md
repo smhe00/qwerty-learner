@@ -424,16 +424,34 @@ The canonical cold probe now owns a finite cue-escalation submachine:
 cold → hint0 → hint1 → hint2 → hint3
 ```
 
-The only escalation input is Space at input index zero.
+Escalation inputs are:
+
+```text
+cold + Space at input index 0
+    → hint0
+
+cold + same first-wrong spelling position observed twice
+    → hint0 automatically
+
+hint0/hint1/hint2 + Space at input index 0
+    → next hint
+```
+
+The automatic transition is available only from `cold`, so repeated errors
+cannot create an automatic Hint loop.
 
 Hint meanings:
 
 ```text
-hint0 = first letter
-hint1 = first letter + pronunciation + phonetic
-hint2 = partial spelling + pronunciation + phonetic
+hint0 = correct letter at target error position, rendered red
+hint1 = same target letter + pronunciation + phonetic
+hint2 = partial spelling + target letter + pronunciation + phonetic
 hint3 = full spelling + pronunciation + phonetic
 ```
+
+If manual Hint 0 follows a failed attempt, the target is the latest attempt's
+first wrong position. Without prior error evidence, manual Hint 0 falls back to
+the first letter.
 
 Hint 3 is terminal for cue escalation and is a mandatory training state.
 Space at Hint 3 is an ordinary typing key, not a skip operation. The Typing
@@ -452,5 +470,9 @@ decreases it.
 The first cold-probe Space is persisted as an explicit recall failure and maps
 to `Again`; later hint-assisted successful typing is training and cannot
 overwrite that memory result.
+
+Automatic Hint 0 does not mark `coldProbeSurrendered`. It persists the target
+position plus `autoHint0Triggered=true`; the two independent cold-probe errors
+remain the evidence source for later rating logic.
 
 See `REVIEW_HINT_LADDER_V1.md`.
