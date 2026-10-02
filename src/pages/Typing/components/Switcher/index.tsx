@@ -17,7 +17,11 @@ import IconSun from '~icons/heroicons/sun-solid'
 import IconLanguage from '~icons/tabler/language'
 import IconLanguageOff from '~icons/tabler/language-off'
 
-export default function Switcher() {
+export default function Switcher({
+  learnMinimal = false,
+}: {
+  learnMinimal?: boolean
+}) {
   const [isOpenDarkMode, setIsOpenDarkMode] = useAtom(isOpenDarkModeAtom)
   const { state, dispatch } = useContext(TypingContext) ?? {}
 
@@ -42,18 +46,30 @@ export default function Switcher() {
 
   return (
     <div className="flex items-center justify-center gap-2">
-      <Tooltip content="音效设置">
+      <Tooltip
+        content="音效设置"
+        className={learnMinimal ? 'invisible pointer-events-none' : ''}
+      >
         <SoundSwitcher />
       </Tooltip>
 
-      <Tooltip className="h-7 w-7" content="设置单个单词循环">
+      <Tooltip
+        className={`h-7 w-7 ${learnMinimal ? 'invisible pointer-events-none' : ''}`}
+        content="设置单个单词循环"
+      >
         <LoopWordSwitcher />
       </Tooltip>
 
-      <Tooltip className="h-7 w-7" content={`开关默写模式（${CTRL} + V）`}>
+      <Tooltip
+        className={`h-7 w-7 ${learnMinimal ? 'invisible pointer-events-none' : ''}`}
+        content={`开关默写模式（${CTRL} + V）`}
+      >
         <WordDictationSwitcher />
       </Tooltip>
-      <Tooltip className="h-7 w-7" content={`开关释义显示（${CTRL} + Shift + V）`}>
+      <Tooltip
+        className={`h-7 w-7 ${learnMinimal ? 'invisible pointer-events-none' : ''}`}
+        content={`开关释义显示（${CTRL} + Shift + V）`}
+      >
         <button
           className={`p-[2px] ${state?.isTransVisible ? 'text-indigo-500' : 'text-gray-500'} text-lg focus:outline-none`}
           type="button"
@@ -67,15 +83,24 @@ export default function Switcher() {
         </button>
       </Tooltip>
 
-      <Tooltip content="错题本">
+      <Tooltip
+        content="错题本"
+        className={learnMinimal ? 'invisible pointer-events-none' : ''}
+      >
         <ErrorBookButton />
       </Tooltip>
 
-      <Tooltip className="h-7 w-7" content="查看数据统计">
+      <Tooltip
+        className={`h-7 w-7 ${learnMinimal ? 'invisible pointer-events-none' : ''}`}
+        content="查看数据统计"
+      >
         <AnalysisButton />
       </Tooltip>
 
-      <Tooltip className="h-7 w-7" content="开关深色模式">
+      <Tooltip
+        className={`h-7 w-7 ${learnMinimal ? 'invisible pointer-events-none' : ''}`}
+        content="开关深色模式"
+      >
         <button
           className={`p-[2px] text-lg text-indigo-500 focus:outline-none`}
           type="button"
@@ -88,7 +113,10 @@ export default function Switcher() {
           {isOpenDarkMode ? <IconMoon className="icon" /> : <IconSun className="icon" />}
         </button>
       </Tooltip>
-      <Tooltip className="h-7 w-7" content="指法图示">
+      <Tooltip
+        className={`h-7 w-7 ${learnMinimal ? 'invisible pointer-events-none' : ''}`}
+        content="指法图示"
+      >
         <HandPositionIllustration></HandPositionIllustration>
       </Tooltip>
       <Tooltip content="设置">

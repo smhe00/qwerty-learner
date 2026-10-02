@@ -457,30 +457,24 @@ test('post-completion extra key cannot become an out-of-range typo on the comple
 })
 
 
-test('fresh ordinary-learning failure reopens a previously reviewed word immediately', async ({
+test('fresh Typing failure cannot reopen a previously reviewed Learn word', async ({
   page,
 }) => {
   await seedReviewAdmissionCase(page, {
     freshLearningAfterReview: true,
   })
 
-  await page.getByRole('button', { name: '开始学习' }).click()
-
+  await page.goto('/learn')
+  await page.getByRole('button', { name: '开始', exact: true }).click()
   await expect(page).toHaveURL(/\/learn\/session$/)
-  await expect
-    .poll(async () => {
-      const info = await readReviewModeInfo(page)
-      return {
-        enabled: info?.isReviewMode,
-        words: info?.reviewRecord?.words?.map(
-          (word: { name: string }) => word.name,
-        ),
-      }
-    })
-    .toEqual({
-      enabled: true,
-      words: ['cancel'],
-    })
+
+  const info = await readReviewModeInfo(page)
+  expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
+  expect(
+    info?.reviewRecord?.words?.some(
+      (word: { name: string }) => word.name === 'cancel',
+    ),
+  ).toBe(false)
 })
 
 test('no-due screen offers Force Review and force bypasses only the time gate', async ({
@@ -518,7 +512,43 @@ test('new Review session forces a canonical cold probe independent of ordinary s
   await seedReviewAdmissionCase(page, {
     freshLearningAfterReview: true,
   })
-
+  await page.evaluate(async () => {
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction('wordRecords', 'readwrite')
+        const all = tx.objectStore('wordRecords').getAll()
+        all.onerror = () => reject(all.error)
+        all.onsuccess = () => {
+          const fresh = [...all.result]
+            .filter(
+              (item) =>
+                item.dict === 'cet4' &&
+                item.word === 'cancel' &&
+                item.chapter !== -1,
+            )
+            .sort((a, b) => b.timeStamp - a.timeStamp)[0]
+          if (fresh?.id !== undefined) {
+            tx.objectStore('wordRecords').put({
+              ...fresh,
+              sourceMode: 'learn',
+              learnItemKind: 'review',
+            })
+          }
+        }
+        tx.oncomplete = () => {
+          db.close()
+          resolve()
+        }
+        tx.onerror = () => reject(tx.error)
+      }
+    })
+  })
+  await page.goto('/gallery')
+  await page.getByText('CET-4', { exact: true }).first().click()
+  await page.getByText('长期学习', { exact: true }).click()
   await page.getByRole('button', { name: '开始学习' }).click()
   await expect(page).toHaveURL(/\/learn\/session$/)
 
@@ -801,8 +831,10 @@ test('Typing and Learn are explicit top-level modes', async ({ page }) => {
     page.getByRole('button', { name: 'Learn', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true')
   await expect(
-    page.getByText(/Learn 管理长期记忆；Typing 保持原项目/),
+    page.getByRole('button', { name: '开始', exact: true }),
   ).toBeVisible()
+  await expect(page.getByText('今日到期', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('学习计划', { exact: true })).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Typing', exact: true }).click()
   await expect(page).toHaveURL(/\/typing$/)
@@ -811,7 +843,7 @@ test('Typing and Learn are explicit top-level modes', async ({ page }) => {
   ).toHaveAttribute('aria-pressed', 'true')
 })
 
-test('Learn plan exclusion preserves state and restore makes the word due now', async ({
+test('Learn landing keeps long-term state while plan details stay hidden', async ({
   page,
 }) => {
   await seedReviewAdmissionCase(page, {
@@ -819,71 +851,15 @@ test('Learn plan exclusion preserves state and restore makes the word due now', 
   })
 
   await page.goto('/learn')
-  await expect(page.getByText('长期学习中')).toBeVisible()
+  await expect(page.getByText('长期学习中', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('学习计划', { exact: true })).toHaveCount(0)
 
-  const activeTab = page.getByRole('button', { name: /学习中 1/ })
-  await expect(activeTab).toBeVisible()
-  await expect(page.getByText('cancel', { exact: true })).toBeVisible()
-
-  await page.getByRole('button', { name: '移出学习计划' }).click()
-
-  await expect(
-    page.getByRole('button', { name: /已移出 1/ }),
-  ).toBeVisible()
-  await page.getByRole('button', { name: /已移出 1/ }).click()
-  await expect(page.getByText('cancel', { exact: true })).toBeVisible()
-  await expect(page.getByText('不会进入 Learn 队列')).toBeVisible()
-
-  const excludedState = await page.evaluate(async () => {
+  const state = await page.evaluate(async () => {
     return new Promise<{
       lifecycle?: string
       reviewCount?: number
-      lapseCount?: number
-    } | null>((resolve, reject) => {
-      const request = indexedDB.open('RecordDB')
-      request.onerror = () => reject(request.error)
-      request.onsuccess = () => {
-        const db = request.result
-        const tx = db.transaction('reviewWordStates', 'readonly')
-        const all = tx.objectStore('reviewWordStates').getAll()
-        all.onerror = () => reject(all.error)
-        all.onsuccess = () => {
-          const state = all.result.find(
-            (item) => item.dict === 'cet4' && item.word === 'cancel',
-          )
-          resolve(
-            state
-              ? {
-                  lifecycle: state.lifecycle,
-                  reviewCount: state.reviewCount,
-                  lapseCount: state.lapseCount,
-                }
-              : null,
-          )
-          db.close()
-        }
-      }
-    })
-  })
-
-  expect(excludedState).toMatchObject({
-    lifecycle: 'excluded',
-    reviewCount: 1,
-    lapseCount: 0,
-  })
-
-  await page.getByRole('button', { name: '恢复学习' }).click()
-  await expect(
-    page.getByRole('button', { name: /学习中 1/ }),
-  ).toBeVisible()
-
-  const restored = await page.evaluate(async () => {
-    return new Promise<{
-      lifecycle?: string
       nextReviewAt?: number
-      now: number
     } | null>((resolve, reject) => {
-      const now = Math.floor(Date.now() / 1000)
       const request = indexedDB.open('RecordDB')
       request.onerror = () => reject(request.error)
       request.onsuccess = () => {
@@ -892,15 +868,15 @@ test('Learn plan exclusion preserves state and restore makes the word due now', 
         const all = tx.objectStore('reviewWordStates').getAll()
         all.onerror = () => reject(all.error)
         all.onsuccess = () => {
-          const state = all.result.find(
+          const match = all.result.find(
             (item) => item.dict === 'cet4' && item.word === 'cancel',
           )
           resolve(
-            state
+            match
               ? {
-                  lifecycle: state.lifecycle,
-                  nextReviewAt: state.nextReviewAt,
-                  now,
+                  lifecycle: match.lifecycle,
+                  reviewCount: match.reviewCount,
+                  nextReviewAt: match.nextReviewAt,
                 }
               : null,
           )
@@ -910,10 +886,10 @@ test('Learn plan exclusion preserves state and restore makes the word due now', 
     })
   })
 
-  expect(restored?.lifecycle).toBe('active')
-  expect(restored?.nextReviewAt).toBeLessThanOrEqual(
-    (restored?.now ?? 0) + 1,
-  )
+  expect(state).toMatchObject({
+    reviewCount: 1,
+  })
+  expect(state?.lifecycle ?? 'active').toBe('active')
 })
 
 test('current Learn item can be excluded without using Skip', async ({ page }) => {

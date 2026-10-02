@@ -2,8 +2,10 @@ import ModeSwitcher from '@/components/ModeSwitcher'
 import Header from '@/components/Header'
 import Layout from '@/components/Layout'
 import Tooltip from '@/components/Tooltip'
+import { DictChapterButton } from '@/pages/Typing/components/DictChapterButton'
+import PronunciationSwitcher from '@/pages/Typing/components/PronunciationSwitcher'
+import Switcher from '@/pages/Typing/components/Switcher'
 import useErrorWordData from '@/pages/Gallery-N/hooks/useErrorWords'
-import Setting from '@/pages/Typing/components/Setting'
 import {
   currentChapterAtom,
   currentDictIdAtom,
@@ -26,7 +28,7 @@ import {
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import useSWR from 'swr'
 
 export default function LearnPage() {
@@ -156,39 +158,11 @@ export default function LearnPage() {
     <Layout>
       <Header>
         <ModeSwitcher />
-
-        <Tooltip content="词典切换">
-          <NavLink
-            data-header-slot="dictionary"
-            className="block rounded-lg px-3 py-1 text-lg transition-colors duration-300 ease-in-out hover:bg-emerald-500 hover:text-white focus:outline-none dark:text-white dark:text-opacity-60 dark:hover:text-opacity-100"
-            to="/gallery?mode=learn"
-          >
-            {currentDictInfo.name}
-          </NavLink>
-        </Tooltip>
-
-        <span
-          aria-hidden="true"
-          className="invisible rounded-lg px-3 py-1 text-lg"
-        >
-          第 1 章
-        </span>
-
-        <span
-          aria-hidden="true"
-          className="invisible flex h-8 min-w-[2.5rem] items-center px-1"
-        >
-          美音
-        </span>
-
-        <div
-          className="flex w-56 items-center justify-end"
-          data-header-tools-placeholder
-        >
-          <span data-header-slot="setting">
-            <Setting />
-          </span>
+        <DictChapterButton learnMinimal />
+        <div className="invisible pointer-events-none">
+          <PronunciationSwitcher />
         </div>
+        <Switcher learnMinimal />
 
         <Tooltip
           content={latestSession ? '继续当前学习' : '开始 Learn'}

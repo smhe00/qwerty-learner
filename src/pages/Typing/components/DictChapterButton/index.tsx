@@ -7,7 +7,11 @@ import { Fragment } from 'react'
 import { NavLink } from 'react-router-dom'
 import IconCheck from '~icons/tabler/check'
 
-export const DictChapterButton = () => {
+export const DictChapterButton = ({
+  learnMinimal = false,
+}: {
+  learnMinimal?: boolean
+}) => {
   const currentDictInfo = useAtomValue(currentDictInfoAtom)
   const [currentChapter, setCurrentChapter] = useAtom(currentChapterAtom)
   const chapterCount = currentDictInfo.chapterCount
@@ -23,13 +27,16 @@ export const DictChapterButton = () => {
       <Tooltip content="词典切换">
         <NavLink
           className="block rounded-lg px-3 py-1 text-lg transition-colors duration-300 ease-in-out hover:bg-indigo-400 hover:text-white focus:outline-none dark:text-white dark:text-opacity-60 dark:hover:text-opacity-100"
-          to="/gallery"
+          to={learnMinimal ? '/gallery?mode=learn' : '/gallery'}
         >
           {currentDictInfo.name} {isReviewMode && '错题复习'}
         </NavLink>
       </Tooltip>
       {!isReviewMode && (
-        <Tooltip content="章节切换">
+        <Tooltip
+          content="章节切换"
+          className={learnMinimal ? 'invisible pointer-events-none' : ''}
+        >
           <Listbox value={currentChapter} onChange={setCurrentChapter}>
             <Listbox.Button
               onKeyDown={handleKeyDown}
