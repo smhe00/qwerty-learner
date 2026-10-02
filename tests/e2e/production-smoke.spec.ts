@@ -31,6 +31,35 @@ test('production build resolves lazy navigation and preserves Learn session on r
 
   await page.reload()
   await expect(page).toHaveURL(/\/learn\/session$/)
+
+  const reloadDiagnostics = await page.evaluate(() => {
+    const overlay = Array.from(document.querySelectorAll('p')).find(
+      (element) => element.textContent?.trim() === '按任意键开始',
+    )
+    const overlayStyle = overlay ? getComputedStyle(overlay) : undefined
+    const overlayRect = overlay?.getBoundingClientRect()
+    const currentWord = document.querySelector('[data-typing-word]')
+
+    return {
+      reviewModeInfo: localStorage.getItem('reviewModeInfo'),
+      currentDict: localStorage.getItem('currentDict'),
+      currentChapter: localStorage.getItem('currentChapter'),
+      startButton: Boolean(document.querySelector('button[aria-label="开始"]')),
+      pauseButton: Boolean(document.querySelector('button[aria-label="暂停"]')),
+      currentWord: currentWord?.getAttribute('data-typing-word') ?? null,
+      overlay: overlay
+        ? {
+            display: overlayStyle?.display,
+            visibility: overlayStyle?.visibility,
+            opacity: overlayStyle?.opacity,
+            width: overlayRect?.width,
+            height: overlayRect?.height,
+          }
+        : null,
+    }
+  })
+  console.log('P0_PROD_RELOAD_DIAG', JSON.stringify(reloadDiagnostics))
+
   await expect(page.getByText('按任意键开始')).toBeVisible()
 
   const after = await page.evaluate(() => {
