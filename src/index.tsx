@@ -57,8 +57,7 @@ function LearnSessionRoute() {
   const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
   const hasActiveSession =
     reviewModeInfo.isReviewMode &&
-    reviewModeInfo.reviewRecord !== undefined &&
-    !reviewModeInfo.reviewRecord.isFinished
+    reviewModeInfo.reviewRecord !== undefined
 
   return hasActiveSession ? (
     <TypingPage />

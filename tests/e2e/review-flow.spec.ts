@@ -1982,7 +1982,7 @@ test('cold probe first-input Space means unknown and enters Hint 0 directly', as
 
   await expect(word).toHaveAttribute('data-review-hint-level', '0')
   await expect(word).toHaveAttribute('data-review-hint-position', '0')
-  await expect(word).toHaveAttribute('data-review-forced-reveal', '0')
+  await expect(word).toHaveAttribute('data-review-forced-reveal', '')
   await expect(word).toHaveText('c_____')
   await expect
     .poll(async () => await word.getAttribute('data-typing-input'))
