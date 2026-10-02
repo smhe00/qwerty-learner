@@ -24,8 +24,16 @@ export type LearnStatsSnapshot = {
   lifecycle: {
     active: number
     due: number
+    difficultDue: number
     excluded: number
     unseen: number | null
+  }
+  effort: {
+    todayActiveSeconds: number
+    medianReviewSeconds: number | null
+    medianAcquisitionSeconds: number | null
+    recentReviewSamples: number
+    recentAcquisitionSamples: number
   }
   scheduler: {
     averageIntervalDays: number | null
@@ -118,6 +126,38 @@ function isColdProbePass(record: IWordRecord): boolean {
   )
 }
 
+function recordActiveSeconds(record: IWordRecord): number | null {
+  const attempts = record.typingTelemetry?.attempts
+  if (attempts && attempts.length > 0) {
+    const seconds =
+      attempts.reduce(
+        (sum, attempt) =>
+          sum + attempt.startLatencyMs + attempt.durationMs,
+        0,
+      ) / 1000
+    return Number.isFinite(seconds) && seconds > 0 ? seconds : null
+  }
+
+  if (record.timing.length > 0) {
+    const seconds =
+      record.timing.reduce((sum, interval) => sum + interval, 0) / 1000
+    return Number.isFinite(seconds) && seconds > 0 ? seconds : null
+  }
+
+  return null
+}
+
+function median(values: number[]): number | null {
+  if (values.length === 0) return null
+  const sorted = [...values].sort((left, right) => left - right)
+  const middle = Math.floor(sorted.length / 2)
+  const value =
+    sorted.length % 2 === 0
+      ? (sorted[middle - 1] + sorted[middle]) / 2
+      : sorted[middle]
+  return round1(value)
+}
+
 function schedulerIntervalDays(state: IReviewWordState): number | undefined {
   if (
     state.schedulerState.kind === 'basic-v1' ||
@@ -166,6 +206,12 @@ export function buildLearnStatsSnapshot(input: {
   const dueStates = activeStates.filter(
     (state) => state.nextReviewAt <= input.now,
   )
+  const difficultDueStates = dueStates.filter(
+    (state) =>
+      state.lastOutcome === 'again' ||
+      state.lastOutcome === 'hard' ||
+      (state.lapseCount > 0 && state.cleanStreak === 0),
+  )
 
   const knownWords = new Set(states.map((state) => state.word))
   const unseen =
@@ -191,6 +237,21 @@ export function buildLearnStatsSnapshot(input: {
   const recentRecords = records.filter((record) =>
     dateKeySet.has(localDateKey(record.timeStamp)),
   )
+  const todayActiveSeconds = round1(
+    todayRecords.reduce(
+      (sum, record) => sum + (recordActiveSeconds(record) ?? 0),
+      0,
+    ),
+  )
+  const recentReviewSeconds = recentRecords
+    .filter((record) => !isAcquisition(record))
+    .map(recordActiveSeconds)
+    .filter((value): value is number => value !== null)
+  const recentAcquisitionSeconds = recentRecords
+    .filter(isAcquisition)
+    .map(recordActiveSeconds)
+    .filter((value): value is number => value !== null)
+
   const recentRated = recentRecords.filter(
     (record) => record.reviewRatingDecision?.eligible === true,
   )
@@ -238,8 +299,16 @@ export function buildLearnStatsSnapshot(input: {
     lifecycle: {
       active: activeStates.length,
       due: dueStates.length,
+      difficultDue: difficultDueStates.length,
       excluded: excludedStates.length,
       unseen,
+    },
+    effort: {
+      todayActiveSeconds,
+      medianReviewSeconds: median(recentReviewSeconds),
+      medianAcquisitionSeconds: median(recentAcquisitionSeconds),
+      recentReviewSamples: recentReviewSeconds.length,
+      recentAcquisitionSamples: recentAcquisitionSeconds.length,
     },
     scheduler: {
       averageIntervalDays,

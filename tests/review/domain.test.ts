@@ -73,6 +73,7 @@ import {
   CURRENT_REVIEW_STATE_VERSION,
   createInitialReviewWordState,
 } from '../../src/review/types'
+import { buildLearnDailyPlan } from '../../src/learn/plan'
 import { decideDailyAcquisitionQuota } from '../../src/learn/quota'
 import { buildLearnStatsSnapshot } from '../../src/learn/stats'
 import type { IWordRecord } from '../../src/utils/db/record'
@@ -2504,6 +2505,7 @@ test('Learn P2 aggregates lifecycle, due state, ratings and daily evidence witho
   assert.deepEqual(stats.lifecycle, {
     active: 3,
     due: 1,
+    difficultDue: 0,
     excluded: 1,
     unseen: 1,
   })
@@ -2759,4 +2761,154 @@ test('Learn P3 excludes invalid Rating Gate events from cold-probe quality', () 
   assert.ok(
     decision.reasonCodes.includes('bootstrap-insufficient-rated-history'),
   )
+})
+
+
+test('Learn P4 uses fallback timing for a new user and plans the full 20-word bootstrap', () => {
+  const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'p4',
+    wordRecords: [],
+    wordStates: [],
+    dictionaryWords: Array.from({ length: 100 }, (_, index) => `w${index}`),
+  })
+  const quota = decideDailyAcquisitionQuota(stats)
+  const plan = buildLearnDailyPlan({ stats, quota })
+
+  assert.equal(plan.action, 'acquire-new')
+  assert.equal(plan.newWordTarget, 20)
+  assert.equal(plan.plannedRemainingNewWords, 20)
+  assert.equal(plan.allowedNewWordsNow, 20)
+  assert.equal(plan.timeModel.reviewSecondsPerWord, 15)
+  assert.equal(plan.timeModel.acquisitionSecondsPerWord, 30)
+  assert.equal(plan.estimatedNewMinutes, 10)
+})
+
+test('Learn P4 uses personal median active time and caps new words after a heavy Review day', () => {
+  const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
+  const records: IWordRecord[] = Array.from({ length: 10 }, (_, index) => ({
+    word: `review-${index}`,
+    timeStamp: now - index * 60,
+    dict: 'p4-heavy',
+    chapter: -1,
+    timing: [],
+    wrongCount: 0,
+    mistakes: {},
+    sourceMode: 'learn',
+    learnItemKind: 'review',
+    typingTelemetry: {
+      telemetryVersion: 2,
+      firstKeyLatencyMs: 10_000,
+      attempts: [
+        {
+          startLatencyMs: 10_000,
+          durationMs: 80_000,
+          correctPrefixLength: 5,
+          result: 'clean',
+        },
+      ],
+    },
+    reviewRatingDecision: {
+      eligible: true,
+      rating: 'good',
+      confidence: 1,
+      reasonCodes: ['p4-good'],
+    },
+  }))
+
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'p4-heavy',
+    wordRecords: records,
+    wordStates: [],
+    dictionaryWords: Array.from({ length: 100 }, (_, index) => `w${index}`),
+  })
+  const quota = decideDailyAcquisitionQuota(stats)
+  const plan = buildLearnDailyPlan({ stats, quota })
+
+  assert.equal(stats.effort.todayActiveSeconds, 900)
+  assert.equal(stats.effort.medianReviewSeconds, 90)
+  assert.equal(quota.targetDailyNewWords, 20)
+  assert.equal(plan.todayActiveMinutes, 15)
+  assert.equal(plan.plannedRemainingNewWords, 10)
+  assert.equal(plan.allowedNewWordsNow, 10)
+  assert.ok(plan.reasonCodes.includes('daily-workload-soft-budget'))
+})
+
+test('Learn P4 never truncates Due and projects its cost before new acquisition', () => {
+  const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
+  const states = Array.from({ length: 50 }, (_, index) => ({
+    ...createInitialReviewWordState('p4-due', `due-${index}`, now),
+    nextReviewAt: now - 1,
+    lastOutcome: index < 8 ? ('hard' as const) : ('good' as const),
+  }))
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'p4-due',
+    wordRecords: [],
+    wordStates: states,
+    dictionaryWords: [
+      ...states.map((state) => state.word),
+      ...Array.from({ length: 50 }, (_, index) => `new-${index}`),
+    ],
+  })
+  const quota = decideDailyAcquisitionQuota(stats)
+  const plan = buildLearnDailyPlan({ stats, quota })
+
+  assert.equal(plan.action, 'review-due')
+  assert.equal(plan.dueReviewWords, 50)
+  assert.equal(plan.difficultDueWords, 8)
+  assert.equal(plan.allowedNewWordsNow, 0)
+  assert.equal(plan.estimatedDueMinutes, 12.5)
+  assert.equal(plan.plannedRemainingNewWords, 15)
+  assert.equal(plan.estimatedNewMinutes, 7.5)
+  assert.equal(plan.estimatedRemainingMinutes, 20)
+})
+
+test('Learn P4 stops new admission after the soft daily workload budget is spent', () => {
+  const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
+  const records: IWordRecord[] = Array.from({ length: 10 }, (_, index) => ({
+    word: `spent-${index}`,
+    timeStamp: now - index * 60,
+    dict: 'p4-spent',
+    chapter: -1,
+    timing: [],
+    wrongCount: 0,
+    mistakes: {},
+    sourceMode: 'learn',
+    learnItemKind: 'review',
+    typingTelemetry: {
+      telemetryVersion: 2,
+      firstKeyLatencyMs: 20_000,
+      attempts: [
+        {
+          startLatencyMs: 20_000,
+          durationMs: 100_000,
+          correctPrefixLength: 5,
+          result: 'clean',
+        },
+      ],
+    },
+    reviewRatingDecision: {
+      eligible: true,
+      rating: 'good',
+      confidence: 1,
+      reasonCodes: ['p4-good'],
+    },
+  }))
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'p4-spent',
+    wordRecords: records,
+    wordStates: [],
+    dictionaryWords: ['new'],
+  })
+  const quota = decideDailyAcquisitionQuota(stats)
+  const plan = buildLearnDailyPlan({ stats, quota })
+
+  assert.equal(plan.todayActiveMinutes, 20)
+  assert.equal(plan.allowedNewWordsNow, 0)
+  assert.equal(plan.action, 'complete')
+  assert.ok(plan.reasonCodes.includes('daily-workload-budget-reached'))
 })

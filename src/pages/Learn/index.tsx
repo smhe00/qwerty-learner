@@ -1,6 +1,7 @@
 import ModeSwitcher from '@/components/ModeSwitcher'
 import Header from '@/components/Header'
 import Layout from '@/components/Layout'
+import { buildLearnDailyPlan } from '@/learn/plan'
 import { decideDailyAcquisitionQuota } from '@/learn/quota'
 import { buildLearnStatsSnapshot } from '@/learn/stats'
 import { DictChapterButton } from '@/pages/Typing/components/DictChapterButton'
@@ -124,19 +125,28 @@ export default function LearnPage() {
             dictionaryWords: words.map((word) => word.name),
           })
           const quota = decideDailyAcquisitionQuota(stats)
+          const dailyPlan = buildLearnDailyPlan({ stats, quota })
 
-          if (quota.allowedNow > 0) {
+          if (dailyPlan.allowedNewWordsNow > 0) {
             record = await generateNewWordAcquisitionRecord(
               dictId,
               words,
-              quota.allowedNow,
+              dailyPlan.allowedNewWordsNow,
             )
           } else if (stats.lifecycle.unseen === 0) {
             setStatusText('当前词库没有需要学习的单词。')
             setIsStarting(false)
             return
-          } else if (quota.pausedByDue) {
+          } else if (dailyPlan.action === 'review-due') {
             setStatusText('还有到期复习需要处理，暂不新增单词。')
+            setIsStarting(false)
+            return
+          } else if (
+            dailyPlan.reasonCodes.includes('daily-workload-budget-reached')
+          ) {
+            setStatusText(
+              `今日 Learn 工作量已完成（已投入约 ${dailyPlan.todayActiveMinutes} 分钟）。`,
+            )
             setIsStarting(false)
             return
           } else {

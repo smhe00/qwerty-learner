@@ -4,6 +4,7 @@ import LineCharts from './components/LineCharts'
 import { useLearnStats } from './hooks/useLearnStats'
 import { useWordStats } from './hooks/useWordStats'
 import Layout from '@/components/Layout'
+import { buildLearnDailyPlan } from '@/learn/plan'
 import { decideDailyAcquisitionQuota } from '@/learn/quota'
 import {
   currentDictIdAtom,
@@ -86,6 +87,7 @@ function LearnAnalysis() {
     .map((item) => [item.date, item.successRate as number] as [string, number])
   const ratings = stats.scheduler.ratings30d
   const quota = decideDailyAcquisitionQuota(stats)
+  const dailyPlan = buildLearnDailyPlan({ stats, quota })
   const quotaDetail = quota.pausedByDue
     ? '先完成到期复习'
     : quota.remainingDailyNewWords === 0
@@ -124,10 +126,21 @@ function LearnAnalysis() {
         />
         <MetricCard
           label="当前可新增"
-          value={quota.allowedNow}
-          detail={quota.pausedByDue ? 'Due 优先' : '受今日目标与 UNSEEN 上限约束'}
+          value={dailyPlan.allowedNewWordsNow}
+          detail={
+            dailyPlan.dueReviewWords > 0
+              ? 'Due 优先'
+              : dailyPlan.reasonCodes.includes('daily-workload-soft-budget')
+                ? '受 P4 工作量预算约束'
+                : '受今日目标与 UNSEEN 上限约束'
+          }
         />
         <MetricCard label="当前到期" value={stats.lifecycle.due} />
+        <MetricCard
+          label="其中困难到期词"
+          value={stats.lifecycle.difficultDue}
+          detail="最近 Again / Hard 或未恢复 lapse"
+        />
         <MetricCard label="长期学习中" value={stats.lifecycle.active} />
         <MetricCard label="已移出" value={stats.lifecycle.excluded} />
         <MetricCard
@@ -159,6 +172,39 @@ function LearnAnalysis() {
           }
           detail="ACTIVE basic scheduler"
         />
+      </div>
+
+      <div className="mx-4 my-6 rounded-lg bg-white p-6 shadow dark:bg-gray-700 dark:bg-opacity-50">
+        <div className="text-lg font-semibold text-gray-700 dark:text-white">
+          今日 Learn 计划
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <MetricCard label="到期复习" value={dailyPlan.dueReviewWords} />
+          <MetricCard label="困难到期词" value={dailyPlan.difficultDueWords} />
+          <MetricCard
+            label="计划剩余新词"
+            value={dailyPlan.plannedRemainingNewWords}
+            detail={`P3 额度剩余 ${dailyPlan.quotaRemainingNewWords}`}
+          />
+          <MetricCard
+            label="预计剩余时间"
+            value={`${dailyPlan.estimatedRemainingMinutes} 分钟`}
+            detail={`今日已投入约 ${dailyPlan.todayActiveMinutes} 分钟`}
+          />
+        </div>
+        <div className="mt-3 text-xs text-gray-400">
+          P4 新词准入软预算为 {dailyPlan.acquisitionSoftBudgetMinutes} 分钟；
+          到期 Review 不受预算截断。时间模型：Review{' '}
+          {dailyPlan.timeModel.reviewSecondsPerWord}s/词（
+          {dailyPlan.timeModel.reviewSource === 'observed-median'
+            ? '个人近期中位数'
+            : '回退值'}
+          ），新词 {dailyPlan.timeModel.acquisitionSecondsPerWord}s/词（
+          {dailyPlan.timeModel.acquisitionSource === 'observed-median'
+            ? '个人近期中位数'
+            : '回退值'}
+          ）。
+        </div>
       </div>
 
       <div className="mx-4 my-6 rounded-lg bg-white p-6 shadow dark:bg-gray-700 dark:bg-opacity-50">

@@ -2240,3 +2240,98 @@ test('Learn P3 weak review pressure limits a new acquisition session to five wor
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
   expect(info?.reviewRecord?.words).toHaveLength(5)
 })
+
+
+test('Learn P4 workload budget limits new acquisition after fifteen active minutes', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.evaluate(async () => {
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(0))
+    localStorage.setItem(
+      'reviewModeInfo',
+      JSON.stringify({ isReviewMode: false }),
+    )
+
+    const now = Math.floor(Date.now() / 1000)
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction(
+          ['wordRecords', 'reviewWordStates', 'reviewRecords'],
+          'readwrite',
+        )
+        tx.objectStore('reviewRecords').clear()
+
+        for (let index = 0; index < 10; index += 1) {
+          const word = `p4-history-${index}`
+          tx.objectStore('wordRecords').add({
+            word,
+            timeStamp: now - index * 60,
+            dict: 'cet4',
+            chapter: -1,
+            timing: [],
+            wrongCount: 0,
+            mistakes: {},
+            sourceMode: 'learn',
+            learnItemKind: 'review',
+            typingTelemetry: {
+              telemetryVersion: 2,
+              firstKeyLatencyMs: 10000,
+              attempts: [
+                {
+                  startLatencyMs: 10000,
+                  durationMs: 80000,
+                  correctPrefixLength: 4,
+                  result: 'clean',
+                },
+              ],
+            },
+            reviewRatingDecision: {
+              eligible: true,
+              rating: 'good',
+              confidence: 1,
+              reasonCodes: ['p4-e2e-good'],
+            },
+          })
+          tx.objectStore('reviewWordStates').put({
+            dict: 'cet4',
+            word,
+            createdAt: now - 86400,
+            updatedAt: now,
+            lastReviewedAt: now,
+            nextReviewAt: now + 86400,
+            reviewCount: 1,
+            lapseCount: 0,
+            cleanStreak: 1,
+            lastOutcome: 'good',
+            lifecycle: 'active',
+            stateVersion: 4,
+            schedulerState: {
+              kind: 'basic-v2',
+              stage: 1,
+              intervalDays: 1,
+            },
+          })
+        }
+
+        tx.oncomplete = () => {
+          db.close()
+          resolve()
+        }
+        tx.onerror = () => reject(tx.error)
+        tx.onabort = () => reject(tx.error)
+      }
+    })
+  })
+
+  await page.goto('/learn')
+  await expect(page).toHaveURL(/\/learn\/session$/)
+
+  const info = await readReviewModeInfo(page)
+  expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
+  expect(info?.reviewRecord?.words).toHaveLength(10)
+})
