@@ -29,104 +29,109 @@ export default function LearnPage() {
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
   const [isStarting, setIsStarting] = useState(true)
   const [statusText, setStatusText] = useState('')
-  const startInFlightRef = useRef(false)
-  const attemptedDictRef = useRef<string | null>(null)
+  const preparationGenerationRef = useRef(0)
   const isActiveRef = useRef(true)
 
   const { errorWordData } = useErrorWordData(currentDictInfo, false)
+  const errorWordDataRef = useRef(errorWordData)
   const { data: wordList } = useSWR(
     currentDictInfo.url,
     wordListFetcher,
   )
 
-  const enterSession = useCallback(
-    (
+  useEffect(() => {
+    errorWordDataRef.current = errorWordData
+  }, [errorWordData])
+
+  useEffect(() => {
+    isActiveRef.current = true
+    return () => {
+      isActiveRef.current = false
+      preparationGenerationRef.current += 1
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!wordList) return
+
+    const generation = preparationGenerationRef.current + 1
+    preparationGenerationRef.current = generation
+    const dictId = currentDictId
+    const words = wordList
+
+    const isCurrent = () =>
+      isActiveRef.current &&
+      preparationGenerationRef.current === generation
+
+    setIsStarting(true)
+    setStatusText('')
+
+    const enterSession = (
       record: NonNullable<
         Awaited<ReturnType<typeof generateLearnReviewRecord>>
       >,
     ) => {
-      if (!isActiveRef.current) return
+      if (!isCurrent()) return
 
       setReviewModeInfo({
         isReviewMode: true,
         reviewRecord: record,
       })
       navigate('/learn/session')
-    },
-    [navigate, setReviewModeInfo],
-  )
+    }
 
-  const prepareLearnSession = useCallback(async () => {
-    if (startInFlightRef.current || !wordList) return
+    const prepare = async () => {
+      try {
+        const unfinished = await getLatestReviewRecord(dictId)
+        if (!isCurrent()) return
 
-    startInFlightRef.current = true
-    setIsStarting(true)
-    setStatusText('')
-    let enteredSession = false
-
-    try {
-      const unfinished = await getLatestReviewRecord(currentDictId)
-      if (unfinished) {
-        enteredSession = true
-        enterSession(unfinished)
-        return
-      }
-
-      await bootstrapReviewWordStatesForDictionary(currentDictId)
-
-      let record = await generateLearnReviewRecord(
-        currentDictId,
-        wordList,
-        errorWordData,
-        { mode: 'due' },
-      )
-
-      if (!record) {
-        record = await generateNewWordAcquisitionRecord(
-          currentDictId,
-          wordList,
-        )
-      }
-
-      if (!record) {
-        if (isActiveRef.current) {
-          setStatusText('当前词库没有需要学习的单词。')
+        if (unfinished) {
+          enterSession(unfinished)
+          return
         }
-        return
-      }
 
-      enteredSession = true
-      enterSession(record)
-    } catch {
-      if (isActiveRef.current) {
-        setStatusText('Learn 准备失败，请重试。')
-      }
-    } finally {
-      startInFlightRef.current = false
-      if (isActiveRef.current && !enteredSession) {
-        setIsStarting(false)
+        await bootstrapReviewWordStatesForDictionary(dictId)
+        if (!isCurrent()) return
+
+        let record = await generateLearnReviewRecord(
+          dictId,
+          words,
+          errorWordDataRef.current,
+          { mode: 'due' },
+        )
+        if (!isCurrent()) return
+
+        if (!record) {
+          record = await generateNewWordAcquisitionRecord(
+            dictId,
+            words,
+          )
+        }
+        if (!isCurrent()) return
+
+        if (!record) {
+          setStatusText('当前词库没有需要学习的单词。')
+          setIsStarting(false)
+          return
+        }
+
+        enterSession(record)
+      } catch {
+        if (isCurrent()) {
+          setStatusText('Learn 准备失败，请重试。')
+          setIsStarting(false)
+        }
       }
     }
-  }, [
-    currentDictId,
-    enterSession,
-    errorWordData,
-    wordList,
-  ])
 
-  useEffect(() => {
-    isActiveRef.current = true
+    void prepare()
+
     return () => {
-      isActiveRef.current = false
+      if (preparationGenerationRef.current === generation) {
+        preparationGenerationRef.current += 1
+      }
     }
-  }, [])
-
-  useEffect(() => {
-    if (!wordList || attemptedDictRef.current === currentDictId) return
-
-    attemptedDictRef.current = currentDictId
-    void prepareLearnSession()
-  }, [currentDictId, prepareLearnSession, wordList])
+  }, [currentDictId, navigate, setReviewModeInfo, wordList])
 
   if (isStarting || !wordList) {
     return (
