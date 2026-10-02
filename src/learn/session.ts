@@ -64,13 +64,10 @@ export function buildLearnAcquisitionExercisePlans(
  * LearningState means the word has already been admitted or manually
  * excluded, so it is not UNSEEN.
  */
-export function selectUnseenLearningWords(
+function collectUnseenLearningWords(
   words: Word[],
   states: IReviewWordState[],
-  limit = LEARN_NEW_WORD_BATCH_SIZE,
 ): Word[] {
-  if (limit <= 0) return []
-
   const knownWords = new Set(states.map((state) => state.word))
   const selected: Word[] = []
   const selectedNames = new Set<string>()
@@ -86,11 +83,25 @@ export function selectUnseenLearningWords(
 
     selected.push(word)
     selectedNames.add(word.name)
-
-    if (selected.length >= limit) break
   }
 
   return selected
+}
+
+export function selectUnseenLearningWords(
+  words: Word[],
+  states: IReviewWordState[],
+  limit = LEARN_NEW_WORD_BATCH_SIZE,
+): Word[] {
+  if (limit <= 0) return []
+  return collectUnseenLearningWords(words, states).slice(0, limit)
+}
+
+export function countUnseenLearningWords(
+  words: Word[],
+  states: IReviewWordState[],
+): number {
+  return collectUnseenLearningWords(words, states).length
 }
 
 

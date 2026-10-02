@@ -24,7 +24,10 @@ import {
   restoreLearningWord,
 } from '@/review/repository'
 import { getLearningLifecycle } from '@/learn/lifecycle'
-import { decideLearnStartKind } from '@/learn/session'
+import {
+  countUnseenLearningWords,
+  decideLearnStartKind,
+} from '@/learn/session'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -84,9 +87,12 @@ export default function LearnPage() {
   const dueCount = activeStates.filter(
     (state) => state.nextReviewAt <= now,
   ).length
-  const unseenCount = Math.max(
-    0,
-    currentDictInfo.length - activeStates.length - excludedStates.length,
+  const unseenCount = useMemo(
+    () =>
+      wordList
+        ? countUnseenLearningWords(wordList, states)
+        : 0,
+    [states, wordList],
   )
   const startKind = decideLearnStartKind({ dueCount, unseenCount })
 
@@ -108,6 +114,15 @@ export default function LearnPage() {
       setIsStarting(true)
       setStatusText('')
       try {
+        // A Learn plan owns at most one unfinished session per dictionary.
+        // Re-read IndexedDB here instead of trusting only the live-query UI so
+        // a render/load race cannot create a second unfinished session.
+        const unfinished = await getLatestReviewRecord(currentDictId)
+        if (unfinished) {
+          enterSession(unfinished)
+          return
+        }
+
         await bootstrapReviewWordStatesForDictionary(currentDictId)
 
         let record = await generateLearnReviewRecord(
@@ -225,26 +240,29 @@ export default function LearnPage() {
         </section>
 
         <section className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-          {latestSession && (
+          {latestSession ? (
             <Button onClick={continueLearn}>继续当前学习</Button>
+          ) : (
+            <>
+              <Button
+                disabled={
+                  isStarting ||
+                  isWordListLoading ||
+                  startKind === 'empty'
+                }
+                onClick={() => void startLearn('due')}
+              >
+                开始学习
+              </Button>
+              <Button
+                variant="outline"
+                disabled={isStarting || activeStates.length === 0}
+                onClick={() => void startLearn('force')}
+              >
+                额外复习
+              </Button>
+            </>
           )}
-          <Button
-            disabled={
-              isStarting ||
-              isWordListLoading ||
-              startKind === 'empty'
-            }
-            onClick={() => void startLearn('due')}
-          >
-            开始学习
-          </Button>
-          <Button
-            variant="outline"
-            disabled={isStarting || activeStates.length === 0}
-            onClick={() => void startLearn('force')}
-          >
-            额外复习
-          </Button>
           {statusText && (
             <span className="text-sm text-gray-500" role="status">
               {statusText}

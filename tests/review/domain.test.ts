@@ -7,6 +7,7 @@ import {
 } from '../../src/learn/lifecycle'
 import {
   LEARN_NEW_WORD_BATCH_SIZE,
+  countUnseenLearningWords,
   createLearnAcquisitionPlan,
   selectUnseenLearningWords,
 } from '../../src/learn/session'
@@ -2234,6 +2235,34 @@ test('Learn acquisition plan is assisted training and never a canonical probe', 
   assert.deepEqual(plan.condition.letters, { mode: 'all-visible' })
   assert.equal(plan.condition.probeDimension, 'none')
   assert.equal(plan.decision.policyVersion, 'learn-acquisition-v1')
+})
+
+test('UNSEEN count is derived from the actual dictionary, ignoring stale states and duplicate names', () => {
+  const words = [
+    { name: 'w0', trans: [], usphone: '', ukphone: '' },
+    { name: 'w1', trans: [], usphone: '', ukphone: '' },
+    { name: 'w1', trans: [], usphone: '', ukphone: '' },
+    { name: 'w2', trans: [], usphone: '', ukphone: '' },
+  ]
+  const active = createInitialReviewWordState('cet4', 'w0', 1)
+  const staleState = createInitialReviewWordState('cet4', 'removed-word', 1)
+  const excludedStale = decideLearningLifecycleTransition(
+    createInitialReviewWordState('cet4', 'old-excluded-word', 1),
+    { kind: 'exclude', now: 2 },
+  )
+
+  assert.equal(
+    countUnseenLearningWords(words, [active, staleState, excludedStale]),
+    2,
+  )
+  assert.deepEqual(
+    selectUnseenLearningWords(
+      words,
+      [active, staleState, excludedStale],
+      99,
+    ).map((word) => word.name),
+    ['w1', 'w2'],
+  )
 })
 
 test('new-word acquisition selects only unseen words in dictionary order with a bounded batch', () => {

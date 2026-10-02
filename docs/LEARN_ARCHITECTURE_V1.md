@@ -1,6 +1,6 @@
 # Learn Architecture V1
 
-> Status: **Active architecture — Phase A/B implemented; Phase C+ pending**
+> Status: **Active architecture — Phase A–F implemented; Phase G pending**
 >
 > Product: Qwerty Plus
 >
@@ -27,12 +27,25 @@ As of the Phase A/B rollout:
 ```text
 Phase A — Typing / Learn product boundary     IMPLEMENTED
 Phase B — ACTIVE / EXCLUDED lifecycle         IMPLEMENTED
-Phase C — unified Learn Session               PARTIAL
+Phase C — unified Learn Session               IMPLEMENTED (V1)
 Phase D — Rating Gate owns live scheduler     IMPLEMENTED (D1 gate + D2 bounded null/reinforcement flow)
-Phase E — all-word admission                  PARTIAL
+Phase E — all-word admission                  IMPLEMENTED (V1)
 Phase F — basic-v2                            IMPLEMENTED
 Phase G — FSRS-6                              PENDING
 ```
+
+Phase C/E closure rules:
+
+- each dictionary may have at most one unfinished Learn session exposed to the
+  user; the plan page resumes it instead of creating a parallel session;
+- the start action re-checks IndexedDB before creation, so live-query render
+  races cannot create a duplicate unfinished session;
+- UNSEEN is derived from the actual selected dictionary word list minus all
+  existing LearningState words, not from a coarse dictionary-length formula;
+- stale states for words removed from a dictionary do not reduce the UNSEEN
+  count or block acquisition of real dictionary words;
+- acquisition remains bounded to 20 words per session and repeats across
+  sessions until every non-excluded dictionary word has entered Learn.
 
 Current acquisition rollout:
 

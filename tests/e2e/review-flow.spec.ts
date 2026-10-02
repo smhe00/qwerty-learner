@@ -985,6 +985,107 @@ test('Learn dictionary selection reuses the Typing gallery and skips chapter sel
   await expect(page.getByText('章节选择', { exact: true })).toHaveCount(0)
 })
 
+test('Learn exposes only one unfinished session and cannot create a duplicate from the plan page', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.evaluate(async () => {
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(0))
+    localStorage.setItem(
+      'reviewModeInfo',
+      JSON.stringify({
+        isReviewMode: false,
+      }),
+    )
+
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction('reviewRecords', 'readwrite')
+        tx.objectStore('reviewRecords').clear()
+        tx.objectStore('reviewRecords').add({
+          dict: 'cet4',
+          index: 0,
+          createTime: 900_001,
+          isFinished: false,
+          sessionKind: 'acquisition',
+          words: [
+            {
+              name: 'cancel',
+              trans: [],
+              usphone: '',
+              ukphone: '',
+            },
+          ],
+        })
+        tx.oncomplete = () => {
+          db.close()
+          resolve()
+        }
+        tx.onerror = () => reject(tx.error)
+        tx.onabort = () => reject(tx.error)
+      }
+    })
+  })
+
+  await page.goto('/learn')
+  await expect(
+    page.getByRole('button', { name: '继续当前学习', exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: '开始学习', exact: true }),
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole('button', { name: '额外复习', exact: true }),
+  ).toHaveCount(0)
+
+  const beforeCount = await page.evaluate(async () => {
+    return new Promise<number>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction('reviewRecords', 'readonly')
+        const count = tx.objectStore('reviewRecords').count()
+        count.onerror = () => reject(count.error)
+        count.onsuccess = () => {
+          resolve(count.result)
+          db.close()
+        }
+      }
+    })
+  })
+
+  await page.getByRole('button', {
+    name: '继续当前学习',
+    exact: true,
+  }).click()
+  await expect(page).toHaveURL(/\/learn\/session$/)
+
+  const afterCount = await page.evaluate(async () => {
+    return new Promise<number>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction('reviewRecords', 'readonly')
+        const count = tx.objectStore('reviewRecords').count()
+        count.onerror = () => reject(count.error)
+        count.onsuccess = () => {
+          resolve(count.result)
+          db.close()
+        }
+      }
+    })
+  })
+
+  expect(beforeCount).toBe(1)
+  expect(afterCount).toBe(1)
+})
+
 test('Learn starts new acquisition only when there is no due review', async ({
   page,
 }) => {
