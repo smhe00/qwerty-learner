@@ -3,6 +3,8 @@ import { expect, test } from '@playwright/test'
 test('production build resolves lazy navigation and preserves Learn session on reload', async ({
   page,
 }) => {
+  const pageErrors: string[] = []
+  page.on('pageerror', (error) => pageErrors.push(error.message))
   await page.goto('/typing')
 
   await page.getByRole('link', { name: /词/, exact: false }).first().click()
@@ -32,6 +34,8 @@ test('production build resolves lazy navigation and preserves Learn session on r
   await page.reload()
   await expect(page).toHaveURL(/\/learn\/session$/)
 
+  await page.waitForTimeout(500)
+
   const reloadDiagnostics = await page.evaluate(() => {
     const overlay = Array.from(document.querySelectorAll('p')).find(
       (element) => element.textContent?.trim() === '按任意键开始',
@@ -56,9 +60,14 @@ test('production build resolves lazy navigation and preserves Learn session on r
             height: overlayRect?.height,
           }
         : null,
+      rootText: document.getElementById('root')?.textContent?.slice(0, 500),
+      rootHtml: document.getElementById('root')?.innerHTML.slice(0, 1000),
     }
   })
-  console.log('P0_PROD_RELOAD_DIAG', JSON.stringify(reloadDiagnostics))
+  console.log(
+    'P0_PROD_RELOAD_DIAG',
+    JSON.stringify({ ...reloadDiagnostics, pageErrors }),
+  )
 
   await expect(page.getByText('按任意键开始')).toBeVisible()
 
