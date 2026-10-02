@@ -240,9 +240,16 @@ const Footer: React.FC = () => {
         >
           鲁ICP备2022030649号
         </a>
-        <span className="select-none rounded bg-slate-200 px-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-          Build <span className="select-all">{LATEST_COMMIT_HASH}</span>
-        </span>
+        <a
+          className="select-none rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600 hover:bg-slate-300 hover:text-slate-800 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+          href={`https://github.com/smhe00/qwerty-learner/commit/${LATEST_COMMIT_HASH}`}
+          target="_blank"
+          rel="noreferrer"
+          title="当前线上构建对应的 Git commit"
+          aria-label={`当前版本 ${LATEST_COMMIT_HASH}，查看对应 Git commit`}
+        >
+          Version <span className="select-all font-mono">{LATEST_COMMIT_HASH}</span>
+        </a>
       </footer>
     </>
   )

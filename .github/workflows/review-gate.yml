@@ -9,6 +9,7 @@ on:
       - 'src/review/**'
       - 'src/learn/**'
       - 'src/components/ModeSwitcher/**'
+      - 'src/components/Footer/**'
       - 'src/pages/Learn/**'
       - 'src/pages/Typing/index.tsx'
       - 'src/pages/Typing/store/**'
