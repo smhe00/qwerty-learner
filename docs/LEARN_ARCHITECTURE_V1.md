@@ -22,7 +22,7 @@
 
 ## 0. Implementation status
 
-As of the Phase A/B rollout:
+As of the Learn V1 stabilization closure:
 
 ```text
 Phase A — Typing / Learn product boundary     IMPLEMENTED
@@ -34,12 +34,78 @@ Phase F — basic-v2                            IMPLEMENTED
 Phase G — FSRS-6                              PENDING
 ```
 
+Learn V1 stabilization:
+
+```text
+P0 — navigation / persistence / reload stability   CLOSED
+P1 — Learn UX / mode-boundary consistency          CLOSED
+```
+
+### P0 stability contract
+
+- `/learn` is a resolver entry point. It resumes the one unfinished session
+  first; otherwise it selects due ACTIVE review words; only when no due review
+  exists does it create bounded new-word acquisition.
+- `/learn/session` is never a free-standing Typing route. Invalid or stale
+  session entry self-heals through the Learn resolver.
+- Route-critical state (`currentDict`, `currentChapter`, and
+  `reviewModeInfo`) is restored synchronously from localStorage before the
+  first controller render. A production reload must not transiently enter the
+  wrong mode.
+- Learn session checkpoints are serialized before IndexedDB persistence.
+  Completion is terminal for the same session identity: a delayed unfinished
+  write cannot resurrect a completed session.
+- Reload recovery selects only unfinished durable sessions. A completed session
+  cannot become the current unfinished session again.
+- Dictionary/session async work is generation-owned. A stale request from a
+  previous dictionary cannot block or navigate over a newer selection.
+- Word-list fetch failures are explicit and retryable; Learn must not remain in
+  an indefinite spinner.
+- Production assets use a route-safe absolute Vite base: root deployments use
+  `/`; GitHub Pages builds use `/qwerty-learner/`. Deep-route refresh such
+  as `/learn/session` must load the same application as root navigation.
+- Gallery/Learn lazy routes are proactively prefetched, and a stale lazy import
+  may trigger at most one build-scoped recovery reload.
+- Review Gate now includes both the normal browser state-machine suite and a
+  production-build `vite preview` navigation/reload smoke.
+
+### P1 UX and mode-boundary contract
+
+- Typing and Learn use the same upstream indigo interaction palette and shared
+  header geometry. Mode identity is conveyed by labels/state, not a separate
+  green visual system.
+- Entering Learn resolves directly to the session and presents the same
+  `按任意键开始` interaction model as Typing; there is no extra landing Start
+  gate.
+- Typing-owned preferences remain unchanged while Learn uses its own canonical
+  exercise conditions. Chapter, loop, dictation, and translation controls stay
+  visible but disabled where Learn policy owns the behavior.
+- Pronunciation accent, sound effects, theme, Settings, hand-position help, and
+  dictionary selection remain usable in Learn where they do not alter memory
+  evidence.
+- Date/statistics view is enabled in Learn with a mode-safe return path.
+  Error-book remains disabled because its upstream semantics are Typing-error
+  oriented and would be ambiguous as a Learn memory view.
+- Learn completion does not emit Typing chapter-completion analytics or
+  `chapterRecords`, does not reset the Typing chapter, and uses Learn-specific
+  result actions (`继续 Learn`, `选择其他词库`, explicit return to Typing).
+- A first-input Space in a canonical cold probe means explicit `unknown` and
+  enters Hint 0 directly. Hint 0 targets the latest first-wrong spelling
+  position; the Hint ladder remains bounded through mandatory Hint 3 copy.
+- Manual exclusion removes the word from the active Learn queue while
+  preserving history/scheduler state. Typing activity cannot reactivate an
+  excluded word.
+- Browser regression covers multi-word completion, reload/session identity,
+  direct-any-key entry, dictionary switching, statistics round-trip,
+  exclusion, due-before-acquisition priority, Hint escalation, theme
+  inheritance, and Typing/Learn preference isolation.
+
 Phase C/E closure rules:
 
 - each dictionary may have at most one unfinished Learn session exposed to the
-  user; the plan page resumes it instead of creating a parallel session;
-- the start action re-checks IndexedDB before creation, so live-query render
-  races cannot create a duplicate unfinished session;
+  user; the Learn resolver resumes it instead of creating a parallel session;
+- session creation re-checks durable state before creation, so render or
+  navigation races cannot create a duplicate unfinished session;
 - UNSEEN is derived from the actual selected dictionary word list minus all
   existing LearningState words, not from a coarse dictionary-length formula;
 - stale states for words removed from a dictionary do not reduce the UNSEEN
