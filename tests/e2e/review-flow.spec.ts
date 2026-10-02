@@ -1905,34 +1905,13 @@ test('invalid Learn session route self-heals through the Learn entry controller'
   page,
 }) => {
   await page.goto('/')
-  await page.evaluate(async () => {
+  await page.evaluate(() => {
     localStorage.setItem('currentDict', JSON.stringify('cet4'))
     localStorage.setItem('currentChapter', JSON.stringify(0))
     localStorage.setItem(
       'reviewModeInfo',
       JSON.stringify({ isReviewMode: false }),
     )
-
-    await new Promise<void>((resolve, reject) => {
-      const request = indexedDB.open('RecordDB')
-      request.onerror = () => reject(request.error)
-      request.onsuccess = () => {
-        const db = request.result
-        const tx = db.transaction(
-          ['reviewRecords', 'reviewWordStates', 'wordRecords'],
-          'readwrite',
-        )
-        tx.objectStore('reviewRecords').clear()
-        tx.objectStore('reviewWordStates').clear()
-        tx.objectStore('wordRecords').clear()
-        tx.oncomplete = () => {
-          db.close()
-          resolve()
-        }
-        tx.onerror = () => reject(tx.error)
-        tx.onabort = () => reject(tx.error)
-      }
-    })
   })
 
   await page.goto('/learn/session')
