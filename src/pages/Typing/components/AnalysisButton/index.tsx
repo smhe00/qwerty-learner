@@ -5,16 +5,18 @@ import ChartPie from '~icons/heroicons/chart-pie-solid'
 
 const AnalysisButton = ({
   disabled = false,
+  learnMode = false,
 }: {
   disabled?: boolean
+  learnMode?: boolean
 }) => {
   const navigate = useNavigate()
 
   const toAnalysis = useCallback(() => {
     if (disabled) return
-    navigate('/analysis')
+    navigate(learnMode ? '/analysis?from=learn' : '/analysis')
     recordAnalysisAction('open')
-  }, [disabled, navigate])
+  }, [disabled, learnMode, navigate])
 
   return (
     <button

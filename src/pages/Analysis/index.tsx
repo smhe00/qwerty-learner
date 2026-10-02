@@ -9,16 +9,18 @@ import dayjs from 'dayjs'
 import { useAtom } from 'jotai'
 import { useCallback } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import IconX from '~icons/tabler/x'
 
 const Analysis = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [, setIsOpenDarkMode] = useAtom(isOpenDarkModeAtom)
+  const returnToLearn = searchParams.get('from') === 'learn'
 
   const onBack = useCallback(() => {
-    navigate('/')
-  }, [navigate])
+    navigate(returnToLearn ? '/learn' : '/')
+  }, [navigate, returnToLearn])
 
   const changeDarkModeState = () => {
     setIsOpenDarkMode((old) => !old)

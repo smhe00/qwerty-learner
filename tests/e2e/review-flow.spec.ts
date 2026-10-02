@@ -1117,18 +1117,35 @@ test('Learn reuses Typing controls while preserving Typing-owned preferences', a
     }),
   ).toBeDisabled()
 
-  await expect(
-    page.getByRole('button', {
-      name: '数据统计（Learn 模式禁用）',
-      exact: true,
-    }),
-  ).toBeDisabled()
+  const analysisButton = page.getByRole('button', {
+    name: '查看数据统计',
+    exact: true,
+  })
+  await expect(analysisButton).toBeEnabled()
   await expect(
     page.getByRole('button', {
       name: '错题本（Learn 模式禁用）',
       exact: true,
     }),
   ).toBeDisabled()
+
+  const sessionBeforeAnalysis = await readReviewModeInfo(page)
+  await analysisButton.click()
+  await expect(page).toHaveURL(/\/analysis\?from=learn$/)
+  await expect(
+    page.getByText('过去一年练习次数热力图', { exact: true }),
+  ).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page.getByText('按任意键开始')).toBeVisible()
+  const sessionAfterAnalysis = await readReviewModeInfo(page)
+  expect(
+    sessionAfterAnalysis?.reviewRecord?.id ??
+      sessionAfterAnalysis?.reviewRecord?.createTime,
+  ).toBe(
+    sessionBeforeAnalysis?.reviewRecord?.id ??
+      sessionBeforeAnalysis?.reviewRecord?.createTime,
+  )
 
   const pronunciationButton = page.getByRole('button', {
     name: '发音口音：英音',
