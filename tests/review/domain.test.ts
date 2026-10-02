@@ -59,6 +59,10 @@ import {
 } from '../../src/review/session'
 import { reviewOutcomeForAttempt } from '../../src/review/scheduler'
 import {
+  createReviewItemMachineState,
+  resolveCompletedReviewItem,
+} from '../../src/review/state-machine'
+import {
   CURRENT_REVIEW_STATE_VERSION,
   createInitialReviewWordState,
 } from '../../src/review/types'
@@ -1584,6 +1588,74 @@ test('Review attempt role is cold once, reinforcement thereafter, and acquisitio
     }),
     undefined,
   )
+})
+
+test('completed Review item retries retryable null exactly once then defers', () => {
+  let state = createReviewItemMachineState()
+  const attention = {
+    eligible: false as const,
+    rating: null,
+    reason: 'attention-uncertain' as const,
+    reasonCodes: ['attention-uncertain'],
+  }
+
+  const first = resolveCompletedReviewItem({
+    state,
+    attemptRole: 'cold',
+    decision: attention,
+    requestReinforcement: false,
+  })
+  assert.equal(first.kind, 'retry-canonical')
+  state = first.state
+  assert.equal(state.phase, 'invalid-retry')
+  assert.equal(state.invalidRetryRemaining, 0)
+
+  const second = resolveCompletedReviewItem({
+    state,
+    attemptRole: 'cold',
+    decision: attention,
+    requestReinforcement: false,
+  })
+  assert.equal(second.kind, 'advance')
+  assert.equal(second.state.phase, 'deferred')
+})
+
+test('completed rated failure consumes training and requests one bounded reinforcement', () => {
+  const resolution = resolveCompletedReviewItem({
+    state: createReviewItemMachineState(),
+    attemptRole: 'cold',
+    decision: {
+      eligible: true,
+      rating: 'again',
+      confidence: 1,
+      reasonCodes: ['fixture'],
+    },
+    requestReinforcement: true,
+  })
+
+  assert.equal(resolution.kind, 'advance')
+  if (resolution.kind !== 'advance') return
+  assert.equal(resolution.insertReinforcement, true)
+  assert.equal(resolution.state.phase, 'reinforcement')
+  assert.equal(resolution.state.ratingEmitted, true)
+  assert.equal(resolution.state.reinforcementRemaining, 0)
+
+  const terminal = resolveCompletedReviewItem({
+    state: resolution.state,
+    attemptRole: 'reinforcement',
+    decision: {
+      eligible: false,
+      rating: null,
+      reason: 'non-cold-attempt',
+      reasonCodes: ['non-cold-attempt'],
+    },
+    requestReinforcement: false,
+  })
+  assert.equal(terminal.kind, 'advance')
+  assert.equal(terminal.state.phase, 'done')
+  if (terminal.kind === 'advance') {
+    assert.equal(terminal.insertReinforcement, false)
+  }
 })
 
 test('review progression refuses a second reinforcement when the per-session budget is exhausted', () => {

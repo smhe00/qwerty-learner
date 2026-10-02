@@ -1411,6 +1411,76 @@ test('formal/hint-auto: every automatic escalation is bounded and acyclic', asyn
   }
 })
 
+test('formal/completion-bridge: retry and reinforcement paths remain bounded', async () => {
+  const {
+    createReviewItemMachineState,
+    resolveCompletedReviewItem,
+    reviewItemTerminationVariant,
+  } = await import('../../src/review/state-machine')
+
+  const retryable = {
+    eligible: false as const,
+    rating: null,
+    reason: 'attention-uncertain' as const,
+    reasonCodes: ['attention-uncertain'],
+  }
+
+  let state = createReviewItemMachineState()
+  const beforeRetry = reviewItemTerminationVariant(state)
+  const retry = resolveCompletedReviewItem({
+    state,
+    attemptRole: 'cold',
+    decision: retryable,
+    requestReinforcement: false,
+  })
+  state = retry.state
+  assert.equal(retry.kind, 'retry-canonical')
+  assert.ok(reviewItemTerminationVariant(state) < beforeRetry)
+
+  const beforeDefer = reviewItemTerminationVariant(state)
+  const deferred = resolveCompletedReviewItem({
+    state,
+    attemptRole: 'cold',
+    decision: retryable,
+    requestReinforcement: false,
+  })
+  assert.equal(deferred.state.phase, 'deferred')
+  assert.ok(reviewItemTerminationVariant(deferred.state) < beforeDefer)
+
+  state = createReviewItemMachineState()
+  const beforeRated = reviewItemTerminationVariant(state)
+  const rated = resolveCompletedReviewItem({
+    state,
+    attemptRole: 'cold',
+    decision: {
+      eligible: true,
+      rating: 'again',
+      confidence: 1,
+      reasonCodes: ['again'],
+    },
+    requestReinforcement: true,
+  })
+  assert.equal(rated.state.phase, 'reinforcement')
+  assert.ok(reviewItemTerminationVariant(rated.state) < beforeRated)
+
+  const beforeReinforcement = reviewItemTerminationVariant(rated.state)
+  const done = resolveCompletedReviewItem({
+    state: rated.state,
+    attemptRole: 'reinforcement',
+    decision: {
+      eligible: false,
+      rating: null,
+      reason: 'non-cold-attempt',
+      reasonCodes: ['non-cold-attempt'],
+    },
+    requestReinforcement: false,
+  })
+  assert.equal(done.state.phase, 'done')
+  assert.ok(
+    reviewItemTerminationVariant(done.state) < beforeReinforcement,
+  )
+})
+
 test('formal/hint0-position: cue strength is monotone for every target position', async () => {
   const { createReviewHintPlan } = await import('../../src/review/hint')
 

@@ -7,7 +7,10 @@ import type {
   ReviewPolicyShadowV1,
 } from '@/review/decision'
 import type { ReviewEvidenceV1 } from '@/review/evidence'
-import type { RatingDecision } from '@/review/state-machine'
+import type {
+  RatingDecision,
+  ReviewItemMachineState,
+} from '@/review/state-machine'
 import type { Word } from '@/typings'
 
 export type WordAttemptResult = 'clean' | 'wrong'
@@ -292,6 +295,9 @@ export interface IReviewRecord {
   reinforcementCounts?: Record<string, number>
   // Transitional Learn session classification. Legacy absence means review.
   sessionKind?: LearnSessionKind
+  // Persisted bounded item-machine state by logical word. Optional for legacy
+  // unfinished sessions; absence reconstructs the initial cold state.
+  itemStates?: Record<string, ReviewItemMachineState>
 }
 
 export class ReviewRecord implements IReviewRecord {
@@ -304,6 +310,7 @@ export class ReviewRecord implements IReviewRecord {
   exercisePlans?: Record<string, ReviewExercisePlanV1>
   reinforcementCounts?: Record<string, number>
   sessionKind?: LearnSessionKind
+  itemStates?: Record<string, ReviewItemMachineState>
 
   constructor(
     dict: string,

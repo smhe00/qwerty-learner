@@ -76,8 +76,10 @@ export function pruneLearnSessionWord(
   const words = originalWords.filter((item) => item.name !== word)
   const exercisePlans = { ...(record.exercisePlans ?? {}) }
   const reinforcementCounts = { ...(record.reinforcementCounts ?? {}) }
+  const itemStates = { ...(record.itemStates ?? {}) }
   delete exercisePlans[word]
   delete reinforcementCounts[word]
+  delete itemStates[word]
 
   if (words.length === 0) {
     return {
@@ -91,6 +93,8 @@ export function pruneLearnSessionWord(
         Object.keys(reinforcementCounts).length > 0
           ? reinforcementCounts
           : undefined,
+      itemStates:
+        Object.keys(itemStates).length > 0 ? itemStates : undefined,
     }
   }
 
@@ -111,5 +115,7 @@ export function pruneLearnSessionWord(
       Object.keys(reinforcementCounts).length > 0
         ? reinforcementCounts
         : undefined,
+    itemStates:
+      Object.keys(itemStates).length > 0 ? itemStates : undefined,
   }
 }

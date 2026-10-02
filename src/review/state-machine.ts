@@ -305,6 +305,94 @@ export function decideReviewItemTransition(
   throw new Error(`unsupported review item phase: ${state.phase}`)
 }
 
+export type CompletedReviewItemResolution =
+  | {
+      kind: 'retry-canonical'
+      state: ReviewItemMachineState
+    }
+  | {
+      kind: 'advance'
+      state: ReviewItemMachineState
+      insertReinforcement: boolean
+    }
+
+/**
+ * Bridge one completed UI word into the proven bounded item machine.
+ *
+ * A WordComponent completion may already contain both the failed cold probe
+ * and its mandatory corrective typing (for example the Hint ladder). When an
+ * eligible result still needs same-session reinforcement, the logical
+ * probe-result -> training-complete pair is therefore consumed atomically and
+ * leaves the item in the finite reinforcement phase.
+ */
+export function resolveCompletedReviewItem(input: {
+  state: ReviewItemMachineState
+  attemptRole: ReviewAttemptRole
+  decision: RatingDecision
+  requestReinforcement: boolean
+}): CompletedReviewItemResolution {
+  if (input.attemptRole === 'reinforcement') {
+    const reinforcementState: ReviewItemMachineState =
+      input.state.phase === 'reinforcement'
+        ? input.state
+        : {
+            ...input.state,
+            phase: 'reinforcement',
+            ratingEmitted: true,
+            reinforcementRemaining: 0,
+          }
+
+    return {
+      kind: 'advance',
+      state: decideReviewItemTransition(reinforcementState, {
+        kind: 'reinforcement-complete',
+      }),
+      insertReinforcement: false,
+    }
+  }
+
+  if (
+    input.state.phase !== 'cold-probe' &&
+    input.state.phase !== 'invalid-retry'
+  ) {
+    throw new Error(
+      `cold Review completion cannot start from ${input.state.phase}`,
+    )
+  }
+
+  const afterProbe = decideReviewItemTransition(input.state, {
+    kind: 'probe-result',
+    decision: input.decision,
+    needsTraining:
+      input.decision.eligible && input.requestReinforcement,
+  })
+
+  if (afterProbe.phase === 'invalid-retry') {
+    return {
+      kind: 'retry-canonical',
+      state: afterProbe,
+    }
+  }
+
+  if (afterProbe.phase === 'training') {
+    const afterTraining = decideReviewItemTransition(afterProbe, {
+      kind: 'training-complete',
+      requestReinforcement: true,
+    })
+    return {
+      kind: 'advance',
+      state: afterTraining,
+      insertReinforcement: afterTraining.phase === 'reinforcement',
+    }
+  }
+
+  return {
+    kind: 'advance',
+    state: afterProbe,
+    insertReinforcement: false,
+  }
+}
+
 const PHASE_RANK: Record<ReviewItemPhase, number> = {
   'cold-probe': 5,
   'invalid-retry': 4,
