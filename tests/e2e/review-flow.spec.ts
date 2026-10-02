@@ -509,47 +509,22 @@ test('no-due screen offers Force Review and force bypasses only the time gate', 
 test('new Review session forces a canonical cold probe independent of ordinary settings', async ({
   page,
 }) => {
-  await seedReviewAdmissionCase(page, {
-    freshLearningAfterReview: true,
+  await page.goto('/')
+  await page.evaluate(() => {
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(0))
+    localStorage.setItem(
+      'reviewModeInfo',
+      JSON.stringify({ isReviewMode: false }),
+    )
   })
-  await page.evaluate(async () => {
-    await new Promise<void>((resolve, reject) => {
-      const request = indexedDB.open('RecordDB')
-      request.onerror = () => reject(request.error)
-      request.onsuccess = () => {
-        const db = request.result
-        const tx = db.transaction('wordRecords', 'readwrite')
-        const all = tx.objectStore('wordRecords').getAll()
-        all.onerror = () => reject(all.error)
-        all.onsuccess = () => {
-          const fresh = [...all.result]
-            .filter(
-              (item) =>
-                item.dict === 'cet4' &&
-                item.word === 'cancel' &&
-                item.chapter !== -1,
-            )
-            .sort((a, b) => b.timeStamp - a.timeStamp)[0]
-          if (fresh?.id !== undefined) {
-            tx.objectStore('wordRecords').put({
-              ...fresh,
-              sourceMode: 'learn',
-              learnItemKind: 'review',
-            })
-          }
-        }
-        tx.oncomplete = () => {
-          db.close()
-          resolve()
-        }
-        tx.onerror = () => reject(tx.error)
-      }
-    })
-  })
-  await page.goto('/gallery')
-  await page.getByText('CET-4', { exact: true }).first().click()
-  await page.getByText('长期学习', { exact: true }).click()
-  await page.getByRole('button', { name: '开始学习' }).click()
+  await putDueReviewWordState(page, 'cancel')
+
+  await page.goto('/learn')
+  await page.getByRole('button', {
+    name: '开始',
+    exact: true,
+  }).click()
   await expect(page).toHaveURL(/\/learn\/session$/)
 
   const sessionInfo = await readReviewModeInfo(page)
