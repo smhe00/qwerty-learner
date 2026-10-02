@@ -28,6 +28,8 @@ on:
       - 'tests/e2e/review.spec.ts'
       - 'tests/e2e/review-flow.spec.ts'
       - 'tests/e2e/review-flow.config.ts'
+      - 'tests/e2e/production-smoke.spec.ts'
+      - 'tests/e2e/production-smoke.config.ts'
       - 'tests/review/**'
       - 'docs/REVIEW_*.md'
       - 'docs/LEARN_*.md'
@@ -100,3 +102,6 @@ jobs:
 
       - name: Build Qwerty
         run: yarn build
+
+      - name: Run production navigation smoke
+        run: npx playwright test --config=tests/e2e/production-smoke.config.ts --project=chrome

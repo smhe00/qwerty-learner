@@ -423,6 +423,43 @@ test('multi-word Review advances through every rendered word and finishes', asyn
     'numerous',
   ])
   expect(persisted.every((record) => record.wrongCount === 0)).toBe(true)
+
+  await expect(page.getByText('CET-4 Learn', { exact: true })).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: '继续 Learn', exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: '选择其他词库', exact: true }),
+  ).toBeVisible()
+  await expect(page.getByText('练习其他章节', { exact: true })).toHaveCount(0)
+  await expect(
+    page.getByRole('button', {
+      name: '结束 Learn 并返回 Typing',
+      exact: true,
+    }),
+  ).toBeVisible()
+
+  await expect
+    .poll(async () =>
+      page.evaluate(async () => {
+        return new Promise<number>((resolve, reject) => {
+          const request = indexedDB.open('RecordDB')
+          request.onerror = () => reject(request.error)
+          request.onsuccess = () => {
+            const db = request.result
+            const tx = db.transaction('chapterRecords', 'readonly')
+            const count = tx.objectStore('chapterRecords').count()
+            count.onerror = () => reject(count.error)
+            count.onsuccess = () => {
+              resolve(count.result)
+              db.close()
+            }
+          }
+        })
+      }),
+    )
+    .toBe(0)
+
   expect(pageErrors).toEqual([])
 })
 
@@ -1800,6 +1837,157 @@ test('Hint ladder auto-advances after two failures at each active level', async 
     })
 })
 
+
+
+test('invalid Learn session route self-heals through the Learn entry controller', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.evaluate(async () => {
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(0))
+    localStorage.setItem(
+      'reviewModeInfo',
+      JSON.stringify({ isReviewMode: false }),
+    )
+
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction(
+          ['reviewRecords', 'reviewWordStates', 'wordRecords'],
+          'readwrite',
+        )
+        tx.objectStore('reviewRecords').clear()
+        tx.objectStore('reviewWordStates').clear()
+        tx.objectStore('wordRecords').clear()
+        tx.oncomplete = () => {
+          db.close()
+          resolve()
+        }
+        tx.onerror = () => reject(tx.error)
+        tx.onabort = () => reject(tx.error)
+      }
+    })
+  })
+
+  await page.goto('/learn/session')
+  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(
+    page.getByRole('button', { name: 'Learn', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByText('按任意键开始')).toBeVisible()
+
+  const info = await readReviewModeInfo(page)
+  expect(info?.isReviewMode).toBe(true)
+  expect(info?.reviewRecord?.isFinished).toBe(false)
+  expect(info?.reviewRecord?.words?.length).toBeGreaterThan(0)
+})
+
+test('unfinished Learn session survives reload without cursor reset or duplication', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.evaluate(async ({ words }) => {
+    const record = {
+      id: 910001,
+      dict: 'cet4',
+      createTime: 910001,
+      index: 1,
+      isFinished: false,
+      sessionKind: 'review',
+      words,
+    }
+
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(2))
+    localStorage.setItem(
+      'reviewModeInfo',
+      JSON.stringify({
+        isReviewMode: true,
+        reviewRecord: record,
+      }),
+    )
+
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction('reviewRecords', 'readwrite')
+        tx.objectStore('reviewRecords').clear()
+        tx.objectStore('reviewRecords').put(record)
+        tx.oncomplete = () => {
+          db.close()
+          resolve()
+        }
+        tx.onerror = () => reject(tx.error)
+        tx.onabort = () => reject(tx.error)
+      }
+    })
+  }, { words: reviewWords })
+
+  await page.goto('/learn/session')
+  await waitForRenderedWord(page, 'analyse')
+
+  const before = await readReviewModeInfo(page)
+  expect(before?.reviewRecord?.id).toBe(910001)
+  expect(before?.reviewRecord?.index).toBe(1)
+
+  await page.reload()
+  await expect(page).toHaveURL(/\/learn\/session$/)
+  await waitForRenderedWord(page, 'analyse')
+
+  const after = await readReviewModeInfo(page)
+  expect(after?.reviewRecord?.id).toBe(910001)
+  expect(after?.reviewRecord?.index).toBe(1)
+  expect(
+    await page.evaluate(() => localStorage.getItem('currentChapter')),
+  ).toBe(JSON.stringify(2))
+
+  const count = await page.evaluate(async () => {
+    return new Promise<number>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction('reviewRecords', 'readonly')
+        const result = tx.objectStore('reviewRecords').count()
+        result.onerror = () => reject(result.error)
+        result.onsuccess = () => {
+          resolve(result.result)
+          db.close()
+        }
+      }
+    })
+  })
+  expect(count).toBe(1)
+})
+
+test('cold probe first-input Space means unknown and enters Hint 0 directly', async ({
+  page,
+}) => {
+  await seedReviewSession(page, reviewWords.slice(0, 1), 910002)
+  await page.goto('/learn/session')
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+
+  const word = page.locator('[data-typing-word="cancel"]')
+  await expect(word).toHaveAttribute('data-review-hint-level', 'cold')
+  await expect(word).toHaveText('______')
+
+  await page.keyboard.press('Space')
+
+  await expect(word).toHaveAttribute('data-review-hint-level', '0')
+  await expect(word).toHaveAttribute('data-review-hint-position', '0')
+  await expect(word).toHaveAttribute('data-review-forced-reveal', '0')
+  await expect(word).toHaveText('c_____')
+  await expect
+    .poll(async () => await word.getAttribute('data-typing-input'))
+    .toBe('')
+})
 
 test('light app theme keeps inherited Typing header controls readable when OS prefers dark', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' })
