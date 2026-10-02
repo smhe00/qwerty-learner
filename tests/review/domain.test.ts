@@ -54,6 +54,7 @@ import {
 import { buildOrthographyProfile } from '../../src/review/profile'
 import {
   buildReviewSessionExercisePlans,
+  getReviewAttemptRole,
   getWordComponentInstanceKey,
 } from '../../src/review/session'
 import { reviewOutcomeForAttempt } from '../../src/review/scheduler'
@@ -1560,6 +1561,30 @@ test('force Review selects all ACTIVE candidates while due mode selects only due
   )
 })
 
+
+test('Review attempt role is cold once, reinforcement thereafter, and acquisition is non-rateable', () => {
+  assert.equal(
+    getReviewAttemptRole({
+      sessionKind: 'review',
+      reinforcementUsed: 0,
+    }),
+    'cold',
+  )
+  assert.equal(
+    getReviewAttemptRole({
+      sessionKind: 'review',
+      reinforcementUsed: 1,
+    }),
+    'reinforcement',
+  )
+  assert.equal(
+    getReviewAttemptRole({
+      sessionKind: 'acquisition',
+      reinforcementUsed: 0,
+    }),
+    undefined,
+  )
+})
 
 test('review progression refuses a second reinforcement when the per-session budget is exhausted', () => {
   const word = { name: 'persistent' }

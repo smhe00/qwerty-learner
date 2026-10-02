@@ -28,7 +28,7 @@ As of the Phase A/B rollout:
 Phase A — Typing / Learn product boundary     IMPLEMENTED
 Phase B — ACTIVE / EXCLUDED lifecycle         IMPLEMENTED
 Phase C — unified Learn Session               PARTIAL
-Phase D — Rating Gate owns live scheduler     PENDING
+Phase D — Rating Gate owns live scheduler     PARTIAL (D1 live mutation gate implemented)
 Phase E — all-word admission                  PARTIAL
 Phase F — basic-v2                            PENDING
 Phase G — FSRS-6                              PENDING
@@ -47,6 +47,18 @@ Current acquisition rollout:
 - Acquisition creates no Again/Hard/Good/Easy rating and does not increment
   review/lapse counters.
 - Session records now carry transitional `sessionKind = review | acquisition`.
+
+Current Phase D1 rollout:
+
+- every live Learn Review completion now executes `decideReviewRating()`;
+- the resulting `reviewRatingDecision` is persisted on the WordRecord;
+- only `eligible=true` may call `applyReviewOutcome()` and mutate scheduler state;
+- `eligible=false` remains durable evidence but leaves due date/counters unchanged;
+- acquisition remains rating-free;
+- same-session reinforcement is explicitly `attemptRole='reinforcement'` and cannot rate.
+
+Phase D2 still needs to wire `rating=null` into the bounded invalid-retry/defer
+item-state machine instead of always advancing the UI queue immediately.
 
 Current Phase B persistence uses an additive compatibility model:
 

@@ -1142,15 +1142,21 @@ The current code already contains much of the required vocabulary:
 
 However V1 implementation does not yet fully enforce this contract.
 
-Known gaps include:
+Current Phase D1 status:
 
-1. some current paths still map classification directly to `ReviewOutcome`;
-2. current audio-withdrawal probe may directly produce a scheduler outcome;
-3. attention-uncertain observations are currently often mapped to Hard rather than `null`;
-4. the all-learned admission path is not yet active;
-5. the current scheduler is `basic-v1` with shorter maximum intervals;
-6. rating eligibility is not yet a single explicit pure decision function;
-7. formal verification currently validates Review progression strongly, but not the complete condition × evidence → rating/null matrix defined here.
+- `decideReviewRating()` is now the sole live Learn gate before
+  `applyReviewOutcome()`;
+- `eligible=false` decisions are persisted and do not mutate scheduler state;
+- acquisition and reinforcement cannot emit live scheduler ratings;
+- the legacy `reviewOutcomeForAttempt()` helper remains only for
+  backward-compatible analysis/tests and is not used by the live mutation path.
+
+Remaining gaps include:
+
+1. `rating=null` still needs bounded same-session retry/defer orchestration;
+2. the all-word Learn admission path is only partially rolled out;
+3. the current scheduler remains `basic-v1` with shorter maximum intervals;
+4. Phase F must introduce `basic-v2` after the Rating Gate rollout is complete.
 
 These gaps are implementation work, not ambiguities in the contract.
 

@@ -192,6 +192,113 @@ async function readReviewWordRecords(
   }, words)
 }
 
+async function putDueReviewWordState(
+  page: import('@playwright/test').Page,
+  word: string,
+) {
+  return page.evaluate(async (targetWord) => {
+    const now = Math.floor(Date.now() / 1000)
+    const state = {
+      dict: 'cet4',
+      word: targetWord,
+      createdAt: now - 172_800,
+      updatedAt: now - 86_400,
+      lastReviewedAt: now - 86_400,
+      nextReviewAt: now - 1,
+      reviewCount: 1,
+      lapseCount: 0,
+      cleanStreak: 1,
+      lastOutcome: 'good',
+      lifecycle: 'active',
+      stateVersion: 4,
+      schedulerState: {
+        kind: 'basic-v1',
+        stage: 0,
+        intervalDays: 1,
+      },
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction('reviewWordStates', 'readwrite')
+        tx.objectStore('reviewWordStates').put(state)
+        tx.onerror = () => reject(tx.error)
+        tx.onabort = () => reject(tx.error)
+        tx.oncomplete = () => {
+          db.close()
+          resolve()
+        }
+      }
+    })
+
+    return state
+  }, word)
+}
+
+async function readReviewGateState(
+  page: import('@playwright/test').Page,
+  word: string,
+) {
+  return page.evaluate(async (targetWord) => {
+    return new Promise<{
+      state?: {
+        nextReviewAt?: number
+        reviewCount?: number
+        lapseCount?: number
+        lastOutcome?: string
+        stage?: number
+      }
+      decision?: {
+        eligible?: boolean
+        rating?: string | null
+        reason?: string
+      }
+    }>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction(
+          ['reviewWordStates', 'wordRecords'],
+          'readonly',
+        )
+        const states = tx.objectStore('reviewWordStates').getAll()
+        const records = tx.objectStore('wordRecords').getAll()
+        tx.onerror = () => reject(tx.error)
+        tx.oncomplete = () => {
+          const state = states.result.find(
+            (item) => item.dict === 'cet4' && item.word === targetWord,
+          )
+          const record = [...records.result]
+            .reverse()
+            .find(
+              (item) =>
+                item.dict === 'cet4' &&
+                item.word === targetWord &&
+                item.chapter === -1,
+            )
+          resolve({
+            state: state
+              ? {
+                  nextReviewAt: state.nextReviewAt,
+                  reviewCount: state.reviewCount,
+                  lapseCount: state.lapseCount,
+                  lastOutcome: state.lastOutcome,
+                  stage: state.schedulerState?.stage,
+                }
+              : undefined,
+            decision: record?.reviewRatingDecision,
+          })
+          db.close()
+        }
+      }
+    })
+  }, word)
+}
+
 async function seedReviewAdmissionCase(
   page: import('@playwright/test').Page,
   options: { freshLearningAfterReview: boolean },
@@ -505,6 +612,81 @@ test('new Review session forces a canonical cold probe independent of ordinary s
   ).toBe(0)
 })
 
+
+test('Phase D live gate applies a canonical Good rating exactly once', async ({
+  page,
+}) => {
+  await seedReviewSession(page, reviewWords.slice(0, 1), 900004)
+  await page.goto('/')
+  const before = await putDueReviewWordState(page, 'cancel')
+
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+  await page.waitForTimeout(700)
+  await page.keyboard.type('cancel')
+
+  await expect
+    .poll(async () => {
+      const result = await readReviewGateState(page, 'cancel')
+      return {
+        reviewCount: result.state?.reviewCount,
+        lastOutcome: result.state?.lastOutcome,
+        stage: result.state?.stage,
+        eligible: result.decision?.eligible,
+        rating: result.decision?.rating,
+      }
+    })
+    .toEqual({
+      reviewCount: 2,
+      lastOutcome: 'good',
+      stage: 1,
+      eligible: true,
+      rating: 'good',
+    })
+
+  const after = await readReviewGateState(page, 'cancel')
+  expect(after.state?.nextReviewAt).toBeGreaterThan(before.nextReviewAt)
+})
+
+test('Phase D live gate persists assisted Hint evidence but leaves scheduler unchanged', async ({
+  page,
+}) => {
+  await seedReviewSession(page, reviewWords.slice(0, 1), 900005)
+  await page.goto('/')
+  const before = await putDueReviewWordState(page, 'cancel')
+
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+  const word = page.locator('[data-typing-word="cancel"]')
+
+  await page.keyboard.type('cax')
+  await expect
+    .poll(async () => await word.getAttribute('data-typing-input'))
+    .toBe('')
+  await page.keyboard.type('cax')
+  await expect(word).toHaveAttribute('data-review-hint-level', '0')
+
+  await page.keyboard.type('cancel')
+
+  await expect
+    .poll(async () => {
+      const result = await readReviewGateState(page, 'cancel')
+      return {
+        reviewCount: result.state?.reviewCount,
+        nextReviewAt: result.state?.nextReviewAt,
+        lastOutcome: result.state?.lastOutcome,
+        eligible: result.decision?.eligible,
+        reason: result.decision?.reason,
+      }
+    })
+    .toEqual({
+      reviewCount: before.reviewCount,
+      nextReviewAt: before.nextReviewAt,
+      lastOutcome: before.lastOutcome,
+      eligible: false,
+      reason: 'training-event',
+    })
+})
 
 test('Hint 3 skip lock blocks navigation to a real next Review word', async ({
   page,
