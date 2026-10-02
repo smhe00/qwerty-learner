@@ -1879,6 +1879,11 @@ test('Typing and Learn use the same indigo interaction palette', async ({ page }
   const typingStartBackground = await typingStart.evaluate(
     (element) => getComputedStyle(element).backgroundColor,
   )
+  const typingDictionary = page.locator('header nav a[href="/gallery"]')
+  await typingDictionary.hover()
+  const typingDictionaryHoverBackground = await typingDictionary.evaluate(
+    (element) => getComputedStyle(element).backgroundColor,
+  )
 
   await page.getByRole('button', { name: 'Learn', exact: true }).click()
   await expect(page).toHaveURL(/\/learn$/)
@@ -1902,6 +1907,6 @@ test('Typing and Learn use the same indigo interaction palette', async ({ page }
   await learnDictionary.hover()
   await expect(learnDictionary).toHaveCSS(
     'background-color',
-    'rgb(129, 140, 248)',
+    typingDictionaryHoverBackground,
   )
 })
