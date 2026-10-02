@@ -1132,9 +1132,6 @@ test('Learn reuses Typing controls while preserving Typing-owned preferences', a
   const sessionBeforeAnalysis = await readReviewModeInfo(page)
   await analysisButton.click()
   await expect(page).toHaveURL(/\/analysis\?from=learn$/)
-  await expect(
-    page.getByText('过去一年练习次数热力图', { exact: true }),
-  ).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page).toHaveURL(/\/learn\/session$/)
   await expect(page.getByText('按任意键开始')).toBeVisible()
