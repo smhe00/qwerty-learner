@@ -16,7 +16,23 @@ import type { ReviewRecord } from '@/utils/db/record'
 import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 
-export const currentDictIdAtom = atomWithStorage('currentDict', 'zhongkaohexin')
+function readStoredValue<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback
+
+  const raw = window.localStorage.getItem(key)
+  if (raw === null) return fallback
+
+  try {
+    return JSON.parse(raw) as T
+  } catch {
+    return fallback
+  }
+}
+
+export const currentDictIdAtom = atomWithStorage(
+  'currentDict',
+  readStoredValue('currentDict', 'zhongkaohexin'),
+)
 export const currentDictInfoAtom = atom<Dictionary>((get) => {
   const id = get(currentDictIdAtom)
   let dict = idDictionaryMap[id]
@@ -27,7 +43,10 @@ export const currentDictInfoAtom = atom<Dictionary>((get) => {
   return dict
 })
 
-export const currentChapterAtom = atomWithStorage('currentChapter', 0)
+export const currentChapterAtom = atomWithStorage(
+  'currentChapter',
+  readStoredValue('currentChapter', 0),
+)
 
 export const loopWordConfigAtom = atomForConfig<{ times: LoopWordTimesOption }>('loopWordConfig', {
   times: 1,
