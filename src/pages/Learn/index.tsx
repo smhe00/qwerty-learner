@@ -27,10 +27,11 @@ export default function LearnPage() {
   const currentDictId = useAtomValue(currentDictIdAtom)
   const currentDictInfo = useAtomValue(currentDictInfoAtom)
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
-  const [isStarting, setIsStarting] = useState(false)
+  const [isStarting, setIsStarting] = useState(true)
   const [statusText, setStatusText] = useState('')
   const startInFlightRef = useRef(false)
   const attemptedDictRef = useRef<string | null>(null)
+  const isActiveRef = useRef(true)
 
   const { errorWordData } = useErrorWordData(currentDictInfo, false)
   const { data: wordList } = useSWR(
@@ -44,6 +45,8 @@ export default function LearnPage() {
         Awaited<ReturnType<typeof generateLearnReviewRecord>>
       >,
     ) => {
+      if (!isActiveRef.current) return
+
       setReviewModeInfo({
         isReviewMode: true,
         reviewRecord: record,
@@ -59,10 +62,12 @@ export default function LearnPage() {
     startInFlightRef.current = true
     setIsStarting(true)
     setStatusText('')
+    let enteredSession = false
 
     try {
       const unfinished = await getLatestReviewRecord(currentDictId)
       if (unfinished) {
+        enteredSession = true
         enterSession(unfinished)
         return
       }
@@ -84,14 +89,23 @@ export default function LearnPage() {
       }
 
       if (!record) {
-        setStatusText('当前词库没有需要学习的单词。')
+        if (isActiveRef.current) {
+          setStatusText('当前词库没有需要学习的单词。')
+        }
         return
       }
 
+      enteredSession = true
       enterSession(record)
+    } catch {
+      if (isActiveRef.current) {
+        setStatusText('Learn 准备失败，请重试。')
+      }
     } finally {
       startInFlightRef.current = false
-      setIsStarting(false)
+      if (isActiveRef.current && !enteredSession) {
+        setIsStarting(false)
+      }
     }
   }, [
     currentDictId,
@@ -101,11 +115,33 @@ export default function LearnPage() {
   ])
 
   useEffect(() => {
+    isActiveRef.current = true
+    return () => {
+      isActiveRef.current = false
+    }
+  }, [])
+
+  useEffect(() => {
     if (!wordList || attemptedDictRef.current === currentDictId) return
 
     attemptedDictRef.current = currentDictId
     void prepareLearnSession()
   }, [currentDictId, prepareLearnSession, wordList])
+
+  if (isStarting || !wordList) {
+    return (
+      <Layout>
+        <main className="container mx-auto flex w-full flex-1 items-start justify-center">
+          <span
+            className="mt-8 text-sm text-gray-400 dark:text-gray-500"
+            role="status"
+          >
+            正在准备 Learn…
+          </span>
+        </main>
+      </Layout>
+    )
+  }
 
   return (
     <Layout>
@@ -121,7 +157,7 @@ export default function LearnPage() {
           className="mt-8 text-sm text-gray-400 dark:text-gray-500"
           role="status"
         >
-          {statusText || (isStarting || !wordList ? '正在准备 Learn…' : '')}
+          {statusText}
         </span>
       </main>
     </Layout>
