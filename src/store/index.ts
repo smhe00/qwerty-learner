@@ -105,10 +105,15 @@ export const isShowAnswerOnHoverAtom = atomWithStorage('isShowAnswerOnHover', tr
 
 export const isTextSelectableAtom = atomWithStorage('isTextSelectable', false)
 
-export const reviewModeInfoAtom = reviewInfoAtom({
-  isReviewMode: false,
-  reviewRecord: undefined as ReviewRecord | undefined,
-})
+export const reviewModeInfoAtom = reviewInfoAtom(
+  readStoredValue<{
+    isReviewMode: boolean
+    reviewRecord?: ReviewRecord
+  }>('reviewModeInfo', {
+    isReviewMode: false,
+    reviewRecord: undefined,
+  }),
+)
 export const isReviewModeAtom = atom((get) => get(reviewModeInfoAtom).isReviewMode)
 
 export const phoneticConfigAtom = atomForConfig('phoneticConfig', {
