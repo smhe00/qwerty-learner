@@ -175,15 +175,19 @@ export function buildLearnStatsSnapshot(input: {
   wordStates: IReviewWordState[]
   dictionaryWords?: string[]
 }): LearnStatsSnapshot {
-  const records = input.wordRecords.filter(
-    (record) => record.dict === input.dict && isPrimaryLearnAttempt(record),
+  const learnRecords = input.wordRecords.filter(
+    (record) => record.dict === input.dict && isLearnRecord(record),
   )
+  const records = learnRecords.filter(isPrimaryLearnAttempt)
   const states = input.wordStates.filter((state) => state.dict === input.dict)
   const todayKey = localDateKey(input.now)
   const dateKeys = recentLocalDateKeys(input.now, 30)
   const dateKeySet = new Set(dateKeys)
 
   const todayRecords = records.filter(
+    (record) => localDateKey(record.timeStamp) === todayKey,
+  )
+  const todayLearnRecords = learnRecords.filter(
     (record) => localDateKey(record.timeStamp) === todayKey,
   )
   const todayAcquisition = todayRecords.filter(isAcquisition)
@@ -238,7 +242,7 @@ export function buildLearnStatsSnapshot(input: {
     dateKeySet.has(localDateKey(record.timeStamp)),
   )
   const todayActiveSeconds = round1(
-    todayRecords.reduce(
+    todayLearnRecords.reduce(
       (sum, record) => sum + (recordActiveSeconds(record) ?? 0),
       0,
     ),

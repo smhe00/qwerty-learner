@@ -2912,3 +2912,82 @@ test('Learn P4 stops new admission after the soft daily workload budget is spent
   assert.equal(plan.action, 'complete')
   assert.ok(plan.reasonCodes.includes('daily-workload-budget-reached'))
 })
+
+
+test('Learn P4 workload includes reinforcement time without promoting it into Review quality metrics', () => {
+  const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
+  const records: IWordRecord[] = [
+    {
+      word: 'primary',
+      timeStamp: now - 60,
+      dict: 'p4-reinforcement',
+      chapter: -1,
+      timing: [],
+      wrongCount: 0,
+      mistakes: {},
+      sourceMode: 'learn',
+      learnItemKind: 'review',
+      typingTelemetry: {
+        telemetryVersion: 2,
+        firstKeyLatencyMs: 1000,
+        attempts: [
+          {
+            startLatencyMs: 1000,
+            durationMs: 9000,
+            correctPrefixLength: 7,
+            result: 'clean',
+          },
+        ],
+      },
+      reviewRatingDecision: {
+        eligible: true,
+        rating: 'good',
+        confidence: 1,
+        reasonCodes: ['primary'],
+      },
+    },
+    {
+      word: 'primary',
+      timeStamp: now - 30,
+      dict: 'p4-reinforcement',
+      chapter: -1,
+      timing: [],
+      wrongCount: 0,
+      mistakes: {},
+      sourceMode: 'learn',
+      learnItemKind: 'review',
+      typingTelemetry: {
+        telemetryVersion: 2,
+        firstKeyLatencyMs: 1000,
+        attempts: [
+          {
+            startLatencyMs: 1000,
+            durationMs: 19000,
+            correctPrefixLength: 7,
+            result: 'clean',
+          },
+        ],
+      },
+      reviewRatingDecision: {
+        eligible: false,
+        rating: null,
+        reason: 'non-cold-attempt',
+        reasonCodes: ['reinforcement'],
+      },
+    },
+  ]
+
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'p4-reinforcement',
+    wordRecords: records,
+    wordStates: [],
+    dictionaryWords: ['new'],
+  })
+
+  assert.equal(stats.today.reviewAttempts, 1)
+  assert.equal(stats.today.coldProbeAttempts, 1)
+  assert.equal(stats.effort.recentReviewSamples, 1)
+  assert.equal(stats.effort.medianReviewSeconds, 10)
+  assert.equal(stats.effort.todayActiveSeconds, 30)
+})
