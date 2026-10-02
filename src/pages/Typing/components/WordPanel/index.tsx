@@ -25,7 +25,6 @@ import {
   getWordComponentInstanceKey,
 } from '@/review/session'
 import {
-  MAX_REINFORCEMENT_PER_WORD_PER_SESSION,
   createReviewItemMachineState,
   resolveCompletedReviewItem,
 } from '@/review/state-machine'
@@ -51,8 +50,6 @@ export default function WordPanel() {
   const isShowPrevAndNextWord = useAtomValue(isShowPrevAndNextWordAtom)
   const [wordComponentKey, setWordComponentKey] = useState(0)
   const [currentWordExerciseCount, setCurrentWordExerciseCount] = useState(0)
-  const [currentReviewWrongCount, setCurrentReviewWrongCount] = useState(0)
-  const [currentReviewGap, setCurrentReviewGap] = useState(MAX_REINFORCEMENT_GAP)
   const [currentReviewHintLevel, setCurrentReviewHintLevel] =
     useState<ReviewHintLevel | null>(null)
   const [isLearnMenuOpen, setIsLearnMenuOpen] = useState(false)
@@ -66,7 +63,6 @@ export default function WordPanel() {
   const isReviewMode = useAtomValue(isReviewModeAtom)
   const currentLearnItemKind: LearnSessionKind =
     reviewModeInfo.reviewRecord?.sessionKind ?? 'review'
-  const effectiveLoopWordTimes = isReviewMode ? 1 : loopWordTimes
   const currentExercisePlan =
     isReviewMode && currentWord
       ? reviewModeInfo.reviewRecord?.exercisePlans?.[currentWord.name]
@@ -161,8 +157,6 @@ export default function WordPanel() {
           })
 
           setCurrentWordExerciseCount(0)
-          setCurrentReviewWrongCount(0)
-          setCurrentReviewGap(MAX_REINFORCEMENT_GAP)
           dispatch({ type: TypingStateActionType.LOOP_CURRENT_WORD })
           reloadCurrentWordComponent()
           return
@@ -250,8 +244,6 @@ export default function WordPanel() {
         })
 
         setCurrentWordExerciseCount(0)
-        setCurrentReviewWrongCount(0)
-        setCurrentReviewGap(MAX_REINFORCEMENT_GAP)
 
         if (decision.kind === 'advance') {
           dispatch({
