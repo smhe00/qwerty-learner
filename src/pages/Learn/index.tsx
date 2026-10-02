@@ -18,7 +18,7 @@ import {
 } from '@/utils/db/review-record'
 import { bootstrapReviewWordStatesForDictionary } from '@/review/repository'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useSWR from 'swr'
 

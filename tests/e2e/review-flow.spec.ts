@@ -1800,6 +1800,54 @@ test('Hint ladder auto-advances after two failures at each active level', async 
     })
 })
 
+
+test('lazy Gallery chunk failure recovers without manual refresh', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const count = Number(
+      sessionStorage.getItem('qwerty:e2e-document-load-count') ?? '0',
+    )
+    sessionStorage.setItem(
+      'qwerty:e2e-document-load-count',
+      String(count + 1),
+    )
+  })
+
+  await page.goto('/typing')
+
+  let abortedChunk = false
+  await page.route(/\/assets\/.*\.js(?:\?.*)?$/, async (route) => {
+    if (!abortedChunk) {
+      abortedChunk = true
+      await route.abort()
+      return
+    }
+    await route.continue()
+  })
+
+  await page.locator('header nav a[href="/gallery"]').click()
+
+  await expect(page).toHaveURL(/\/gallery$/)
+  await expect(
+    page.getByText('CET-4', { exact: true }).first(),
+  ).toBeVisible()
+
+  await expect
+    .poll(async () =>
+      page.evaluate(() =>
+        Number(
+          sessionStorage.getItem(
+            'qwerty:e2e-document-load-count',
+          ) ?? '0',
+        ),
+      ),
+    )
+    .toBeGreaterThanOrEqual(2)
+
+  expect(abortedChunk).toBe(true)
+})
+
 test('light app theme keeps inherited Typing header controls readable when OS prefers dark', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' })
   await page.addInitScript(() => {
