@@ -43,6 +43,8 @@ export interface ReviewHintContextV1 {
   maxLevel: 0 | 1 | 2 | 3
   coldProbeSurrendered: boolean
   advanceCount: 1 | 2 | 3 | 4
+  hintPosition?: number
+  autoHint0Triggered?: boolean
 }
 
 export interface LearningContextV1 {

@@ -1320,3 +1320,102 @@ test('formal/acquisition-safety: acquisition presentation is training-only', asy
   assert.equal(plan.condition.phonetic, 'visible')
   assert.equal(plan.condition.audio, 'automatic')
 })
+
+
+test('formal/hint0-auto: repeated same-position cold error is bounded and acyclic', async () => {
+  const {
+    applyReviewHintDecision,
+    createReviewHintMachineState,
+    observeReviewHintWrong,
+    reviewHintTerminationVariant,
+  } = await import('../../src/review/hint')
+
+  for (let wordLength = 1; wordLength <= 20; wordLength += 1) {
+    for (let wrongIndex = 0; wrongIndex < wordLength; wrongIndex += 1) {
+      let state = createReviewHintMachineState()
+
+      const first = observeReviewHintWrong({
+        state,
+        wrongIndex,
+        wordLength,
+      })
+      state = first.state
+      assert.equal(first.decision, null)
+      assert.equal(state.stage, 'cold-probe')
+
+      const before = reviewHintTerminationVariant(state)
+      const second = observeReviewHintWrong({
+        state,
+        wrongIndex,
+        wordLength,
+      })
+      state = second.state
+      assert.equal(second.decision?.kind, 'advance-hint')
+
+      if (second.decision?.kind === 'advance-hint') {
+        assert.equal(second.decision.level, 0)
+        assert.equal(second.decision.hintPosition, wrongIndex)
+        assert.equal(
+          second.decision.trigger,
+          'repeated-wrong-position',
+        )
+        state = applyReviewHintDecision(state, second.decision)
+      }
+
+      assert.equal(state.stage, 'hint-0')
+      assert.equal(state.hintPosition, wrongIndex)
+      assert.ok(reviewHintTerminationVariant(state) < before)
+
+      for (let repeat = 0; repeat < 4; repeat += 1) {
+        const later = observeReviewHintWrong({
+          state,
+          wrongIndex,
+          wordLength,
+        })
+        state = later.state
+        assert.equal(later.decision, null)
+        assert.equal(state.stage, 'hint-0')
+      }
+    }
+  }
+})
+
+test('formal/hint0-position: cue strength is monotone for every target position', async () => {
+  const { createReviewHintPlan } = await import('../../src/review/hint')
+
+  const visibleSet = (
+    level: 0 | 1 | 2 | 3,
+    wordLength: number,
+    hintPosition: number,
+  ) => {
+    const letters = createReviewHintPlan(
+      level,
+      wordLength,
+      hintPosition,
+    ).condition.letters
+
+    if (letters.mode === 'all-visible') {
+      return new Set(
+        Array.from({ length: wordLength }, (_, index) => index),
+      )
+    }
+    if (letters.mode === 'all-hidden') return new Set<number>()
+    return new Set(letters.visiblePositions ?? [])
+  }
+
+  for (let wordLength = 1; wordLength <= 20; wordLength += 1) {
+    for (let hintPosition = 0; hintPosition < wordLength; hintPosition += 1) {
+      const h0 = visibleSet(0, wordLength, hintPosition)
+      const h1 = visibleSet(1, wordLength, hintPosition)
+      const h2 = visibleSet(2, wordLength, hintPosition)
+      const h3 = visibleSet(3, wordLength, hintPosition)
+
+      assert.deepEqual([...h0], [hintPosition])
+      assert.deepEqual([...h1], [hintPosition])
+      assert.ok([...h0].every((index) => h1.has(index)))
+      assert.ok([...h1].every((index) => h2.has(index)))
+      assert.ok([...h2].every((index) => h3.has(index)))
+      assert.equal(h3.size, wordLength)
+    }
+  }
+})

@@ -1010,3 +1010,51 @@ test('a due ACTIVE word is reviewed before any unseen acquisition word', async (
     audio: 'none',
   })
 })
+
+
+test('Hint 0 auto-targets a repeatedly wrong spelling position and renders it red', async ({
+  page,
+}) => {
+  await seedReviewSession(page, reviewWords.slice(0, 1), 900030)
+  await page.goto('/learn/session')
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+
+  const word = page.locator('[data-typing-word="cancel"]')
+  await expect(word).toHaveAttribute('data-review-hint-level', 'cold')
+  await expect(word).toHaveText('______')
+
+  // First attempt: c a are correct, x is the first wrong key at index 2.
+  await page.keyboard.type('cax')
+  await expect
+    .poll(async () => await word.getAttribute('data-typing-input'))
+    .toBe('')
+  await expect(word).toHaveAttribute('data-review-hint-level', 'cold')
+
+  // Second first-wrong at the same index automatically activates Hint 0.
+  await page.keyboard.type('cax')
+  await expect
+    .poll(async () => await word.getAttribute('data-typing-input'))
+    .toBe('')
+
+  await expect(word).toHaveAttribute('data-review-hint-level', '0')
+  await expect(word).toHaveAttribute('data-review-hint-stage', 'hint-0')
+  await expect(word).toHaveAttribute('data-review-hint-position', '2')
+  await expect(word).toHaveAttribute('data-review-hint-auto', 'true')
+  await expect(word).toHaveAttribute('data-review-audio', 'none')
+  await expect(word).toHaveAttribute('data-review-phonetic', 'hidden')
+  await expect(word).toHaveText('__n___')
+
+  const emphasized = word.locator('[data-review-hint-emphasis="true"]')
+  await expect(emphasized).toHaveCount(1)
+  await expect(emphasized).toHaveText('n')
+  await expect(emphasized).toHaveClass(/text-red-500/)
+
+  // Manual escalation keeps the same position cue while adding audio/phonetic.
+  await page.keyboard.press('Space')
+  await expect(word).toHaveAttribute('data-review-hint-level', '1')
+  await expect(word).toHaveAttribute('data-review-hint-position', '2')
+  await expect(word).toHaveAttribute('data-review-audio', 'automatic')
+  await expect(word).toHaveAttribute('data-review-phonetic', 'visible')
+  await expect(word).toHaveText('__n___')
+})

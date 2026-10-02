@@ -87,7 +87,14 @@ export class LearningContextCollector {
     }
   }
 
-  recordReviewHintAdvance(level: 0 | 1 | 2 | 3, coldProbeSurrendered: boolean) {
+  recordReviewHintAdvance(
+    level: 0 | 1 | 2 | 3,
+    coldProbeSurrendered: boolean,
+    meta?: {
+      hintPosition?: number
+      autoHint0Triggered?: boolean
+    },
+  ) {
     const current = this.context.reviewHint
     const advanceCount = Math.min(4, (current?.advanceCount ?? 0) + 1) as ReviewHintContextV1['advanceCount']
 
@@ -100,6 +107,11 @@ export class LearningContextCollector {
       coldProbeSurrendered:
         (current?.coldProbeSurrendered ?? false) || coldProbeSurrendered,
       advanceCount,
+      hintPosition:
+        meta?.hintPosition ?? current?.hintPosition,
+      autoHint0Triggered:
+        (current?.autoHint0Triggered ?? false) ||
+        (meta?.autoHint0Triggered ?? false),
     }
   }
 

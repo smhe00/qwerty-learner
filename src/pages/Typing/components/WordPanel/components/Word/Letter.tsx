@@ -22,15 +22,25 @@ export type LetterProps = {
   letter: string
   state?: LetterState
   visible?: boolean
+  hintEmphasis?: boolean
 }
 
-const Letter: React.FC<LetterProps> = ({ letter, state = 'normal', visible = true }) => {
+const Letter: React.FC<LetterProps> = ({
+  letter,
+  state = 'normal',
+  visible = true,
+  hintEmphasis = false,
+}) => {
   const fontSizeConfig = useAtomValue(fontSizeConfigAtom)
+  const stateClass =
+    hintEmphasis && state === 'normal'
+      ? 'text-red-500 font-semibold dark:text-red-400'
+      : stateClassNameMap[(letter === EXPLICIT_SPACE) as unknown as string][state]
+
   return (
     <span
-      className={`m-0 p-0 font-mono font-normal ${
-        stateClassNameMap[(letter === EXPLICIT_SPACE) as unknown as string][state]
-      } pr-0.8 duration-0 dark:text-opacity-80`}
+      data-review-hint-emphasis={hintEmphasis ? 'true' : undefined}
+      className={`m-0 p-0 font-mono font-normal ${stateClass} pr-0.8 duration-0 dark:text-opacity-80`}
       style={{ fontSize: fontSizeConfig.foreignFont.toString() + 'px' }}
     >
       {visible ? letter : '_'}

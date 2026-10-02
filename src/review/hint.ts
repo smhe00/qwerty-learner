@@ -21,6 +21,12 @@ export type ReviewHintMachineState = {
   maxLevelReached: ReviewHintLevel | null
   coldProbeSurrendered: boolean
   advanceCount: 0 | 1 | 2 | 3 | 4
+  // Position-specific Hint 0 target. null means no spelling-error evidence yet.
+  hintPosition: number | null
+  // Last first-wrong position from the most recent spelling attempt.
+  lastWrongIndex: number | null
+  // Cold-probe error counts by position. Used only for bounded auto Hint 0.
+  wrongPositionCounts: Record<number, number>
 }
 
 export type ReviewHintInputDecision =
@@ -33,6 +39,8 @@ export type ReviewHintInputDecision =
       to: Exclude<ReviewHintStage, 'cold-probe'>
       level: ReviewHintLevel
       coldProbeSurrendered: boolean
+      hintPosition: number
+      trigger: 'manual-space' | 'repeated-wrong-position'
     }
 
 const NEXT_HINT: Record<
@@ -51,6 +59,9 @@ export function createReviewHintMachineState(): ReviewHintMachineState {
     maxLevelReached: null,
     coldProbeSurrendered: false,
     advanceCount: 0,
+    hintPosition: null,
+    lastWrongIndex: null,
+    wrongPositionCounts: {},
   }
 }
 
@@ -77,6 +88,11 @@ export function decideReviewHintInput(input: {
   }
 
   const next = NEXT_HINT[input.state.stage]
+  const hintPosition =
+    input.state.hintPosition ??
+    input.state.lastWrongIndex ??
+    0
+
   return {
     kind: 'advance-hint',
     from: input.state.stage,
@@ -84,6 +100,8 @@ export function decideReviewHintInput(input: {
     level: next.level,
     coldProbeSurrendered:
       input.state.coldProbeSurrendered || input.state.stage === 'cold-probe',
+    hintPosition,
+    trigger: 'manual-space',
   }
 }
 
@@ -98,6 +116,72 @@ export function applyReviewHintDecision(
     maxLevelReached: decision.level,
     coldProbeSurrendered: decision.coldProbeSurrendered,
     advanceCount: Math.min(4, state.advanceCount + 1) as 0 | 1 | 2 | 3 | 4,
+    hintPosition: decision.hintPosition,
+    lastWrongIndex: state.lastWrongIndex,
+    wrongPositionCounts: { ...state.wrongPositionCounts },
+  }
+}
+
+export const AUTO_HINT0_REPEATED_WRONG_THRESHOLD = 2 as const
+
+export type ReviewHintWrongObservation = {
+  state: ReviewHintMachineState
+  decision: ReviewHintInputDecision | null
+}
+
+/**
+ * Observe the first wrong position of one completed spelling attempt.
+ *
+ * Auto Hint 0 is intentionally narrow:
+ * - only the canonical cold-probe may auto-escalate;
+ * - the same position must be the first wrong position twice;
+ * - it can happen at most once because Hint 0 leaves cold-probe;
+ * - the cue targets that position, not the first letter.
+ */
+export function observeReviewHintWrong(input: {
+  state: ReviewHintMachineState
+  wrongIndex: number
+  wordLength: number
+}): ReviewHintWrongObservation {
+  const { state, wordLength } = input
+  if (
+    input.wrongIndex < 0 ||
+    input.wrongIndex >= wordLength ||
+    wordLength <= 0
+  ) {
+    return { state, decision: null }
+  }
+
+  const wrongIndex = input.wrongIndex
+  const wrongPositionCounts = {
+    ...state.wrongPositionCounts,
+    [wrongIndex]: (state.wrongPositionCounts[wrongIndex] ?? 0) + 1,
+  }
+  const observedState: ReviewHintMachineState = {
+    ...state,
+    lastWrongIndex: wrongIndex,
+    wrongPositionCounts,
+  }
+
+  if (
+    state.stage !== 'cold-probe' ||
+    wrongPositionCounts[wrongIndex] <
+      AUTO_HINT0_REPEATED_WRONG_THRESHOLD
+  ) {
+    return { state: observedState, decision: null }
+  }
+
+  return {
+    state: observedState,
+    decision: {
+      kind: 'advance-hint',
+      from: 'cold-probe',
+      to: 'hint-0',
+      level: 0,
+      coldProbeSurrendered: state.coldProbeSurrendered,
+      hintPosition: wrongIndex,
+      trigger: 'repeated-wrong-position',
+    },
   }
 }
 
@@ -136,25 +220,38 @@ function partialLetters(
 export function reviewHintLetterCondition(
   level: ReviewHintLevel,
   wordLength: number,
+  hintPosition = 0,
 ): ExerciseLetterCondition {
   if (level === 3) return { mode: 'all-visible' }
 
+  const boundedHintPosition =
+    wordLength <= 0
+      ? 0
+      : Math.min(Math.max(hintPosition, 0), wordLength - 1)
+
   if (level === 0 || level === 1) {
-    return partialLetters(wordLength, wordLength > 0 ? [0] : [])
+    return partialLetters(
+      wordLength,
+      wordLength > 0 ? [boundedHintPosition] : [],
+    )
   }
 
-  // Hint 2 reveals roughly half the spelling deterministically:
-  // positions 0,2,4,...  Example: cancel -> c_n_e_
+  // Hint 2 reveals roughly half the spelling deterministically and retains
+  // the position-specific Hint 0 cue so cue strength is monotone.
   const visiblePositions = Array.from(
     { length: wordLength },
     (_, index) => index,
   ).filter((index) => index % 2 === 0)
+  if (wordLength > 0 && !visiblePositions.includes(boundedHintPosition)) {
+    visiblePositions.push(boundedHintPosition)
+  }
   return partialLetters(wordLength, visiblePositions)
 }
 
 export function createReviewHintPlan(
   level: ReviewHintLevel,
   wordLength: number,
+  hintPosition = 0,
 ): ReviewExercisePlanV1 {
   const condition: ExerciseConditionV1 = {
     version: 1,
@@ -163,7 +260,7 @@ export function createReviewHintPlan(
     audio: level >= 1 ? 'automatic' : 'none',
     meaning: 'visible',
     phonetic: level >= 1 ? 'visible' : 'hidden',
-    letters: reviewHintLetterCondition(level, wordLength),
+    letters: reviewHintLetterCondition(level, wordLength, hintPosition),
     probeDimension: 'none',
   }
 
@@ -175,12 +272,13 @@ export function createReviewHintPlan(
       [
         `review-hint-${level}`,
         level === 0
-          ? 'first-letter-cue'
+          ? 'position-specific-letter-cue'
           : level === 1
             ? 'audio-phonetic-cue'
             : level === 2
               ? 'partial-spelling-cue'
               : 'full-answer-copy-training',
+        `hint-position-${Math.max(0, hintPosition)}`,
       ],
       condition.version,
     ),

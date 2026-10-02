@@ -89,12 +89,27 @@ export class WordTelemetryCollector {
     this.keyTimesMs.push(activeNow)
   }
 
-  recordWrong(correctPrefixLength: number, wrongIndex: number, wrongKey: string | undefined, endedAtMs: number) {
-    this.closeAttempt('wrong', correctPrefixLength, this.toActiveTime(endedAtMs), wrongIndex, wrongKey)
+  recordWrong(
+    correctPrefixLength: number,
+    wrongIndex: number,
+    wrongKey: string | undefined,
+    endedAtMs: number,
+  ): boolean {
+    return this.closeAttempt(
+      'wrong',
+      correctPrefixLength,
+      this.toActiveTime(endedAtMs),
+      wrongIndex,
+      wrongKey,
+    )
   }
 
-  recordClean(correctPrefixLength: number, endedAtMs: number) {
-    this.closeAttempt('clean', correctPrefixLength, this.toActiveTime(endedAtMs))
+  recordClean(correctPrefixLength: number, endedAtMs: number): boolean {
+    return this.closeAttempt(
+      'clean',
+      correctPrefixLength,
+      this.toActiveTime(endedAtMs),
+    )
   }
 
   startNextAttempt(nowMs: number) {
@@ -134,9 +149,13 @@ export class WordTelemetryCollector {
     activeEndedAtMs: number,
     wrongIndex?: number,
     wrongKey?: string,
-  ) {
-    if (this.attemptClosed || this.keyTimesMs.length === 0 || this.attemptReadyAtMs === null) {
-      return
+  ): boolean {
+    if (
+      this.attemptClosed ||
+      this.keyTimesMs.length === 0 ||
+      this.attemptReadyAtMs === null
+    ) {
+      return false
     }
 
     const firstKeyAtMs = this.keyTimesMs[0]
@@ -157,6 +176,7 @@ export class WordTelemetryCollector {
 
     this.attempts.push(attempt)
     this.attemptClosed = true
+    return true
   }
 }
 

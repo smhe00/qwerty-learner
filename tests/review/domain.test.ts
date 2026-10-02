@@ -37,6 +37,7 @@ import {
   createReviewHintMachineState,
   createReviewHintPlan,
   decideReviewHintInput,
+  observeReviewHintWrong,
   reviewHintTerminationVariant,
 } from '../../src/review/hint'
 import {
@@ -1695,7 +1696,7 @@ test('Review hint ladder escalates only on first-position space and Hint 3 canno
   )
 })
 
-test('Review hint plans implement first-letter, audio+phonetic, partial spelling, then mandatory full copy', () => {
+test('Review hint plans implement position cue, audio+phonetic, partial spelling, then mandatory full copy', () => {
   const hint0 = createReviewHintPlan(0, 6)
   assert.equal(hint0.condition.audio, 'none')
   assert.equal(hint0.condition.phonetic, 'hidden')
@@ -1723,6 +1724,99 @@ test('Review hint plans implement first-letter, audio+phonetic, partial spelling
   assert.equal(hint3.condition.audio, 'automatic')
   assert.equal(hint3.condition.phonetic, 'visible')
   assert.deepEqual(hint3.condition.letters, { mode: 'all-visible' })
+})
+
+test('Hint 0 targets the last spelling first-wrong position instead of always the first letter', () => {
+  let state = createReviewHintMachineState()
+
+  const observation = observeReviewHintWrong({
+    state,
+    wrongIndex: 3,
+    wordLength: 6,
+  })
+  state = observation.state
+  assert.equal(observation.decision, null)
+  assert.equal(state.lastWrongIndex, 3)
+
+  const decision = decideReviewHintInput({
+    state,
+    inputIndex: 0,
+    key: ' ',
+  })
+  assert.equal(decision.kind, 'advance-hint')
+  if (decision.kind !== 'advance-hint') return
+
+  assert.equal(decision.level, 0)
+  assert.equal(decision.hintPosition, 3)
+  assert.equal(decision.trigger, 'manual-space')
+
+  state = applyReviewHintDecision(state, decision)
+  assert.equal(state.hintPosition, 3)
+
+  const hint0 = createReviewHintPlan(0, 6, state.hintPosition)
+  assert.deepEqual(hint0.condition.letters, {
+    mode: 'partial',
+    visiblePositions: [3],
+    maskedPositions: [0, 1, 2, 4, 5],
+  })
+
+  const hint1 = createReviewHintPlan(1, 6, state.hintPosition)
+  assert.deepEqual(hint1.condition.letters.visiblePositions, [3])
+
+  const hint2 = createReviewHintPlan(2, 6, state.hintPosition)
+  assert.deepEqual(hint2.condition.letters.visiblePositions, [0, 2, 3, 4])
+})
+
+test('same cold-probe position wrong twice auto-enters Hint 0 exactly once', () => {
+  let state = createReviewHintMachineState()
+
+  let observed = observeReviewHintWrong({
+    state,
+    wrongIndex: 2,
+    wordLength: 6,
+  })
+  state = observed.state
+  assert.equal(observed.decision, null)
+  assert.equal(state.wrongPositionCounts[2], 1)
+
+  observed = observeReviewHintWrong({
+    state,
+    wrongIndex: 4,
+    wordLength: 6,
+  })
+  state = observed.state
+  assert.equal(observed.decision, null)
+  assert.equal(state.wrongPositionCounts[4], 1)
+
+  const before = reviewHintTerminationVariant(state)
+  observed = observeReviewHintWrong({
+    state,
+    wrongIndex: 2,
+    wordLength: 6,
+  })
+  state = observed.state
+
+  assert.equal(observed.decision?.kind, 'advance-hint')
+  if (observed.decision?.kind !== 'advance-hint') return
+
+  assert.equal(observed.decision.level, 0)
+  assert.equal(observed.decision.hintPosition, 2)
+  assert.equal(observed.decision.trigger, 'repeated-wrong-position')
+  assert.equal(observed.decision.coldProbeSurrendered, false)
+
+  state = applyReviewHintDecision(state, observed.decision)
+  assert.equal(state.stage, 'hint-0')
+  assert.equal(state.hintPosition, 2)
+  assert.equal(state.coldProbeSurrendered, false)
+  assert.ok(reviewHintTerminationVariant(state) < before)
+
+  const afterAuto = observeReviewHintWrong({
+    state,
+    wrongIndex: 2,
+    wordLength: 6,
+  })
+  assert.equal(afterAuto.decision, null)
+  assert.equal(afterAuto.state.stage, 'hint-0')
 })
 
 test('cold-probe surrender remains Again even when final hint-assisted typing is clean', () => {
