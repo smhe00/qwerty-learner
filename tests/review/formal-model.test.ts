@@ -1322,7 +1322,7 @@ test('formal/acquisition-safety: acquisition presentation is training-only', asy
 })
 
 
-test('formal/hint0-auto: repeated same-position cold error is bounded and acyclic', async () => {
+test('formal/hint-auto: every automatic escalation is bounded and acyclic', async () => {
   const {
     applyReviewHintDecision,
     createReviewHintMachineState,
@@ -1343,7 +1343,7 @@ test('formal/hint0-auto: repeated same-position cold error is bounded and acycli
       assert.equal(first.decision, null)
       assert.equal(state.stage, 'cold-probe')
 
-      const before = reviewHintTerminationVariant(state)
+      const beforeCold = reviewHintTerminationVariant(state)
       const second = observeReviewHintWrong({
         state,
         wrongIndex,
@@ -1351,30 +1351,61 @@ test('formal/hint0-auto: repeated same-position cold error is bounded and acycli
       })
       state = second.state
       assert.equal(second.decision?.kind, 'advance-hint')
-
-      if (second.decision?.kind === 'advance-hint') {
-        assert.equal(second.decision.level, 0)
-        assert.equal(second.decision.hintPosition, wrongIndex)
-        assert.equal(
-          second.decision.trigger,
-          'repeated-wrong-position',
-        )
-        state = applyReviewHintDecision(state, second.decision)
-      }
-
+      if (second.decision?.kind !== 'advance-hint') continue
+      assert.equal(second.decision.level, 0)
+      assert.equal(second.decision.trigger, 'repeated-wrong-position')
+      state = applyReviewHintDecision(state, second.decision)
       assert.equal(state.stage, 'hint-0')
-      assert.equal(state.hintPosition, wrongIndex)
-      assert.ok(reviewHintTerminationVariant(state) < before)
+      assert.equal(state.stageWrongCount, 0)
+      assert.ok(reviewHintTerminationVariant(state) < beforeCold)
 
-      for (let repeat = 0; repeat < 4; repeat += 1) {
-        const later = observeReviewHintWrong({
+      const expected = [
+        { from: 'hint-0', to: 'hint-1', level: 1 },
+        { from: 'hint-1', to: 'hint-2', level: 2 },
+        { from: 'hint-2', to: 'hint-3', level: 3 },
+      ] as const
+
+      for (const edge of expected) {
+        assert.equal(state.stage, edge.from)
+        const before = reviewHintTerminationVariant(state)
+
+        const wrongA = observeReviewHintWrong({
           state,
           wrongIndex,
           wordLength,
         })
-        state = later.state
-        assert.equal(later.decision, null)
-        assert.equal(state.stage, 'hint-0')
+        state = wrongA.state
+        assert.equal(wrongA.decision, null)
+        assert.equal(state.stageWrongCount, 1)
+
+        const wrongB = observeReviewHintWrong({
+          state,
+          wrongIndex: (wrongIndex + 1) % wordLength,
+          wordLength,
+        })
+        state = wrongB.state
+        assert.equal(wrongB.decision?.kind, 'advance-hint')
+        if (wrongB.decision?.kind !== 'advance-hint') break
+        assert.equal(wrongB.decision.to, edge.to)
+        assert.equal(wrongB.decision.level, edge.level)
+        assert.equal(wrongB.decision.trigger, 'repeated-hint-errors')
+        state = applyReviewHintDecision(state, wrongB.decision)
+        assert.equal(state.stageWrongCount, 0)
+        assert.ok(reviewHintTerminationVariant(state) < before)
+      }
+
+      assert.equal(state.stage, 'hint-3')
+      const terminalVariant = reviewHintTerminationVariant(state)
+      for (let repeat = 0; repeat < 4; repeat += 1) {
+        const terminal = observeReviewHintWrong({
+          state,
+          wrongIndex,
+          wordLength,
+        })
+        state = terminal.state
+        assert.equal(terminal.decision, null)
+        assert.equal(state.stage, 'hint-3')
+        assert.equal(reviewHintTerminationVariant(state), terminalVariant)
       }
     }
   }

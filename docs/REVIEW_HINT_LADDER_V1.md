@@ -15,12 +15,15 @@ and no phonetic cue. When the learner cannot retrieve the word, the UI must
 provide a finite, ordered cue ladder without confusing training success with
 long-term memory success.
 
-The hint system has two entry paths:
+The hint system has three escalation paths:
 
 1. **Automatic Hint 0** — during the canonical cold probe, if the first wrong
    position of a spelling attempt is the same position twice, Hint 0 appears
    automatically at that position.
-2. **Manual escalation** — at input position zero, pressing **Space** means
+2. **Automatic level escalation** — once Hint 0/1/2 is active, two failed
+   spelling attempts at the current Hint level advance to Hint 1/2/3
+   respectively. The per-level failure counter resets after every advance.
+3. **Manual escalation** — at input position zero, pressing **Space** means
    “give me the next hint.”
 
 If a prior spelling attempt exists, manual Hint 0 targets the first wrong
@@ -46,21 +49,21 @@ HINT 0
   audio off
   phonetic hidden
         |
-        | Space at input position 0
+        | Space at input position 0 OR 2 failed attempts at Hint 0
         v
 HINT 1
   same target-position letter remains visible
   pronunciation enabled/played
   phonetic visible
         |
-        | Space at first-letter position
+        | Space at input position 0 OR 2 failed attempts at Hint 1
         v
 HINT 2
   deterministic partial spelling
   pronunciation available
   phonetic visible
         |
-        | Space at first-letter position
+        | Space at input position 0 OR 2 failed attempts at Hint 2
         v
 HINT 3
   full English answer visible
@@ -84,6 +87,12 @@ hint3:  cancel
 
 The first-wrong position is attempt-local: because a failed attempt stops at
 its first wrong key, the position is unambiguous.
+
+Position evidence is cumulative across the word attempt sequence. Any spelling
+position that reaches two errors is added to a forced-reveal set and remains
+visible in Hint 0, Hint 1, and Hint 2. Hint 3 already reveals the full word.
+This position-level rule is independent of the per-Hint-level two-failure
+counter used for automatic escalation.
 
 ## 3. Hint 3 is mandatory training
 
@@ -215,8 +224,14 @@ cold ──Space─────────────────────�
                                           h1 → h2 → h3
 ```
 
-Automatic escalation exists only on `cold → h0`. Once Hint 0 is active,
-additional spelling errors cannot auto-escalate again. No backward transition
+Automatic escalation is bounded at every non-terminal stage:
+
+- `cold → h0` requires the same first-wrong position twice;
+- `h0 → h1`, `h1 → h2`, and `h2 → h3` each require two failed attempts
+  at the current Hint level;
+- every stage transition resets the per-level failure counter.
+
+Hint 3 has no automatic or manual escalation edge. No backward transition
 exists.
 
 A well-founded variant is:
@@ -250,17 +265,20 @@ Production verification must include:
 3. Hint 3 Space does not advance;
 4. one cold-probe wrong attempt does not auto-trigger Hint 0;
 5. the same first-wrong position twice auto-triggers Hint 0 exactly once;
-6. Hint 0 shows only the target error-position letter and renders it red;
-7. manual Hint 0 uses the latest first-wrong position when available;
-8. Hint 1 retains the target position and introduces audio + phonetic;
-9. Hint 2 exposes deterministic partial spelling while retaining the target position;
-10. Hint 3 exposes the full answer;
-11. Hint 3 blocks skip/navigation;
-12. Hint 3 requires correct full typing to finish;
-13. persisted hint trace records target position and whether Hint 0 was automatic;
-14. cold surrender produces `Again` even when final copy is clean;
-15. bounded formal enumeration proves strict hint-variant descent;
-16. exhaustive target-position checks prove Hint 0 → Hint 1 → Hint 2 → Hint 3 cue monotonicity.
+6. any spelling position wrong twice is forced visible in Hint 0/1/2;
+7. two failed attempts at Hint 0 automatically enter Hint 1;
+8. two failed attempts at Hint 1 automatically enter Hint 2;
+9. two failed attempts at Hint 2 automatically enter Hint 3;
+10. every Hint transition resets the per-level failure counter;
+11. manual Hint 0 uses the latest first-wrong position when available;
+12. Hint 1 introduces audio + phonetic without removing prior forced cues;
+13. Hint 2 exposes deterministic partial spelling while retaining forced cues;
+14. Hint 3 exposes the full answer and never auto-escalates;
+15. Hint 3 blocks skip/navigation and requires correct full typing to finish;
+16. persisted hint trace records target position and whether Hint 0 was automatic;
+17. cold surrender produces `Again` even when final copy is clean;
+18. bounded formal enumeration proves strict hint-variant descent;
+19. exhaustive target-position checks prove Hint 0 → Hint 1 → Hint 2 → Hint 3 cue monotonicity.
 
 ## 10. Next gate
 

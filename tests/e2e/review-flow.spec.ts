@@ -1012,7 +1012,7 @@ test('a due ACTIVE word is reviewed before any unseen acquisition word', async (
 })
 
 
-test('Hint 0 auto-targets a repeatedly wrong spelling position and renders it red', async ({
+test('Hint ladder auto-advances after two failures at each active level', async ({
   page,
 }) => {
   await seedReviewSession(page, reviewWords.slice(0, 1), 900030)
@@ -1024,41 +1024,66 @@ test('Hint 0 auto-targets a repeatedly wrong spelling position and renders it re
   await expect(word).toHaveAttribute('data-review-hint-level', 'cold')
   await expect(word).toHaveText('______')
 
-  // First attempt: c a are correct, x is the first wrong key at index 2.
+  // Cold probe keeps the stricter rule: the same first-wrong position twice.
   await page.keyboard.type('cax')
   await expect
     .poll(async () => await word.getAttribute('data-typing-input'))
     .toBe('')
   await expect(word).toHaveAttribute('data-review-hint-level', 'cold')
 
-  // Second first-wrong at the same index automatically activates Hint 0.
   await page.keyboard.type('cax')
   await expect
     .poll(async () => await word.getAttribute('data-typing-input'))
     .toBe('')
-
   await expect(word).toHaveAttribute('data-review-hint-level', '0')
-  await expect(word).toHaveAttribute('data-review-hint-stage', 'hint-0')
   await expect(word).toHaveAttribute('data-review-hint-position', '2')
-  await expect(word).toHaveAttribute('data-review-hint-auto', 'true')
-  await expect(word).toHaveAttribute('data-review-audio', 'none')
-  await expect(word).toHaveAttribute('data-review-phonetic', 'hidden')
+  await expect(word).toHaveAttribute('data-review-forced-reveal', '2')
   await expect(word).toHaveText('__n___')
 
-  const emphasized = word.locator('[data-review-hint-emphasis="true"]')
-  await expect(emphasized).toHaveCount(1)
-  await expect(emphasized).toHaveText('n')
-  await expect(emphasized).toHaveClass(/text-red-500/)
+  await page.keyboard.type('x')
+  await expect
+    .poll(async () => await word.getAttribute('data-typing-input'))
+    .toBe('')
+  await expect(word).toHaveAttribute('data-review-hint-level', '0')
+  await expect(word).toHaveAttribute('data-review-hint-stage-errors', '1')
 
-  // Manual escalation keeps the same position cue while adding audio/phonetic.
-  await page.keyboard.press('Space')
+  await page.keyboard.type('x')
+  await expect
+    .poll(async () => await word.getAttribute('data-typing-input'))
+    .toBe('')
   await expect(word).toHaveAttribute('data-review-hint-level', '1')
-  await expect(word).toHaveAttribute('data-review-hint-position', '2')
+  await expect(word).toHaveAttribute('data-review-forced-reveal', '0,2')
   await expect(word).toHaveAttribute('data-review-audio', 'automatic')
   await expect(word).toHaveAttribute('data-review-phonetic', 'visible')
-  await expect(word).toHaveText('__n___')
+  await expect(word).toHaveText('c_n___')
 
-  // Complete the assisted attempt and verify the raw hint trace is persisted.
+  await page.keyboard.type('cx')
+  await expect
+    .poll(async () => await word.getAttribute('data-typing-input'))
+    .toBe('')
+  await page.keyboard.type('cx')
+  await expect
+    .poll(async () => await word.getAttribute('data-typing-input'))
+    .toBe('')
+  await expect(word).toHaveAttribute('data-review-hint-level', '2')
+  await expect(word).toHaveAttribute('data-review-forced-reveal', '0,1,2')
+  await expect(word).toHaveText('can_e_')
+
+  await page.keyboard.type('canx')
+  await expect
+    .poll(async () => await word.getAttribute('data-typing-input'))
+    .toBe('')
+  await page.keyboard.type('canx')
+  await expect
+    .poll(async () => await word.getAttribute('data-typing-input'))
+    .toBe('')
+  await expect(word).toHaveAttribute('data-review-hint-level', '3')
+  await expect(word).toHaveAttribute('data-review-hint-stage', 'hint-3')
+  await expect(word).toHaveText('cancel')
+
+  const emphasized = word.locator('[data-review-hint-emphasis="true"]')
+  await expect(emphasized).toHaveCount(0)
+
   await page.keyboard.type('cancel')
   await expect
     .poll(async () => {
@@ -1094,9 +1119,9 @@ test('Hint 0 auto-targets a repeatedly wrong spelling position and renders it re
       })
     })
     .toMatchObject({
-      maxLevel: 1,
+      maxLevel: 3,
       coldProbeSurrendered: false,
-      advanceCount: 2,
+      advanceCount: 4,
       hintPosition: 2,
       autoHint0Triggered: true,
     })

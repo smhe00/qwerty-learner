@@ -435,17 +435,22 @@ cold + same first-wrong spelling position observed twice
 
 hint0/hint1/hint2 + Space at input index 0
     → next hint
+
+hint0/hint1/hint2 + 2 failed attempts at current Hint level
+    → next hint automatically
 ```
 
-The automatic transition is available only from `cold`, so repeated errors
-cannot create an automatic Hint loop.
+The per-Hint-level failure counter resets on every transition. In parallel,
+each spelling position has a cumulative error count; a position that reaches
+two errors is forced visible in every non-terminal Hint level. Hint 3 is
+terminal, so repeated errors there never create another escalation.
 
 Hint meanings:
 
 ```text
-hint0 = correct letter at target error position, rendered red
-hint1 = same target letter + pronunciation + phonetic
-hint2 = partial spelling + target letter + pronunciation + phonetic
+hint0 = target letter + any forced-reveal error positions
+hint1 = same spelling cues + pronunciation + phonetic
+hint2 = partial spelling + retained forced-reveal positions + pronunciation + phonetic
 hint3 = full spelling + pronunciation + phonetic
 ```
 

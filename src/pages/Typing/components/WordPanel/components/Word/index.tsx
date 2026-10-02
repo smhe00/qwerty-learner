@@ -316,6 +316,7 @@ export default function WordComponent({
         decision.level,
         targetLengthRef.current,
         decision.hintPosition,
+        nextHintState.forcedRevealPositions,
       )
       exerciseConditionRef.current = hintPlan.condition
       reviewPolicyDecisionRef.current = hintPlan.decision
@@ -590,14 +591,33 @@ export default function WordComponent({
       )
 
       if (wrongRecorded && isManagedReviewHintFlow()) {
+        const previousForcedRevealKey =
+          reviewHintStateRef.current.forcedRevealPositions.join(',')
         const observation = observeReviewHintWrong({
           state: reviewHintStateRef.current,
           wrongIndex,
           wordLength: targetLengthRef.current,
         })
         reviewHintStateRef.current = observation.state
+
         if (observation.decision?.kind === 'advance-hint') {
           activateReviewHint(observation.decision)
+        } else if (
+          observation.state.maxLevelReached !== null &&
+          previousForcedRevealKey !==
+            observation.state.forcedRevealPositions.join(',')
+        ) {
+          // A position can reach its second lifetime error before the current
+          // Hint level itself has accumulated two failures. Refresh the same
+          // level immediately so that forced-reveal semantics are not delayed.
+          const hintPlan = createReviewHintPlan(
+            observation.state.maxLevelReached,
+            targetLengthRef.current,
+            observation.state.hintPosition ?? 0,
+            observation.state.forcedRevealPositions,
+          )
+          exerciseConditionRef.current = hintPlan.condition
+          reviewPolicyDecisionRef.current = hintPlan.decision
         }
       }
 
@@ -849,6 +869,12 @@ export default function WordComponent({
                 ? 'true'
                 : 'false'
             }
+            data-review-hint-stage-errors={
+              reviewHintStateRef.current.stageWrongCount
+            }
+            data-review-forced-reveal={
+              reviewHintStateRef.current.forcedRevealPositions.join(',')
+            }
             data-review-skip-locked={state.isSkipLocked ? 'true' : 'false'}
             onMouseEnter={() => handleHoverWord(true)}
             onMouseLeave={() => handleHoverWord(false)}
@@ -858,7 +884,10 @@ export default function WordComponent({
               const hintEmphasis =
                 activeHintLevel !== null &&
                 activeHintLevel < 3 &&
-                reviewHintStateRef.current.hintPosition === index
+                (reviewHintStateRef.current.hintPosition === index ||
+                  reviewHintStateRef.current.forcedRevealPositions.includes(
+                    index,
+                  ))
               return (
                 <Letter
                   key={`${index}-${t}`}
@@ -889,8 +918,8 @@ export default function WordComponent({
             {activeHintLevel === 3
               ? '请照着完整单词输入正确后继续'
               : activeHintLevel === null
-                ? '同一位置连续拼错两次会自动提示该字母；也可在输入开头按空格获取提示'
-                : '在输入开头按空格获取下一提示'}
+                ? '同一位置拼错两次会自动提示该字母；也可在输入开头按空格获取提示'
+                : '当前提示下错两次会自动升级；也可在输入开头按空格获取下一提示'}
           </div>
         )}
       </div>

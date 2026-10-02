@@ -1767,7 +1767,7 @@ test('Hint 0 targets the last spelling first-wrong position instead of always th
   assert.deepEqual(hint2.condition.letters.visiblePositions, [0, 2, 3, 4])
 })
 
-test('same cold-probe position wrong twice auto-enters Hint 0 exactly once', () => {
+test('cold repeated position enters Hint 0 and each hinted level auto-advances after two failures', () => {
   let state = createReviewHintMachineState()
 
   let observed = observeReviewHintWrong({
@@ -1779,44 +1779,85 @@ test('same cold-probe position wrong twice auto-enters Hint 0 exactly once', () 
   assert.equal(observed.decision, null)
   assert.equal(state.wrongPositionCounts[2], 1)
 
-  observed = observeReviewHintWrong({
-    state,
-    wrongIndex: 4,
-    wordLength: 6,
-  })
-  state = observed.state
-  assert.equal(observed.decision, null)
-  assert.equal(state.wrongPositionCounts[4], 1)
-
-  const before = reviewHintTerminationVariant(state)
+  const beforeColdAdvance = reviewHintTerminationVariant(state)
   observed = observeReviewHintWrong({
     state,
     wrongIndex: 2,
     wordLength: 6,
   })
   state = observed.state
-
   assert.equal(observed.decision?.kind, 'advance-hint')
   if (observed.decision?.kind !== 'advance-hint') return
-
   assert.equal(observed.decision.level, 0)
   assert.equal(observed.decision.hintPosition, 2)
   assert.equal(observed.decision.trigger, 'repeated-wrong-position')
-  assert.equal(observed.decision.coldProbeSurrendered, false)
-
   state = applyReviewHintDecision(state, observed.decision)
   assert.equal(state.stage, 'hint-0')
-  assert.equal(state.hintPosition, 2)
-  assert.equal(state.coldProbeSurrendered, false)
-  assert.ok(reviewHintTerminationVariant(state) < before)
+  assert.equal(state.stageWrongCount, 0)
+  assert.deepEqual(state.forcedRevealPositions, [2])
+  assert.ok(reviewHintTerminationVariant(state) < beforeColdAdvance)
 
-  const afterAuto = observeReviewHintWrong({
-    state,
-    wrongIndex: 2,
-    wordLength: 6,
-  })
-  assert.equal(afterAuto.decision, null)
-  assert.equal(afterAuto.state.stage, 'hint-0')
+  const automaticStages = [
+    { from: 'hint-0', to: 'hint-1', level: 1 },
+    { from: 'hint-1', to: 'hint-2', level: 2 },
+    { from: 'hint-2', to: 'hint-3', level: 3 },
+  ] as const
+
+  for (const expected of automaticStages) {
+    assert.equal(state.stage, expected.from)
+    const before = reviewHintTerminationVariant(state)
+
+    const first = observeReviewHintWrong({
+      state,
+      wrongIndex: 0,
+      wordLength: 6,
+    })
+    state = first.state
+    assert.equal(first.decision, null)
+    assert.equal(state.stageWrongCount, 1)
+
+    const second = observeReviewHintWrong({
+      state,
+      wrongIndex: 1,
+      wordLength: 6,
+    })
+    state = second.state
+    assert.equal(second.decision?.kind, 'advance-hint')
+    if (second.decision?.kind !== 'advance-hint') return
+    assert.equal(second.decision.level, expected.level)
+    assert.equal(second.decision.to, expected.to)
+    assert.equal(second.decision.trigger, 'repeated-hint-errors')
+
+    state = applyReviewHintDecision(state, second.decision)
+    assert.equal(state.stage, expected.to)
+    assert.equal(state.stageWrongCount, 0)
+    assert.ok(reviewHintTerminationVariant(state) < before)
+  }
+
+  for (let repeat = 0; repeat < 4; repeat += 1) {
+    const terminal = observeReviewHintWrong({
+      state,
+      wrongIndex: repeat % 2,
+      wordLength: 6,
+    })
+    state = terminal.state
+    assert.equal(terminal.decision, null)
+    assert.equal(state.stage, 'hint-3')
+  }
+})
+
+test('forced reveal positions are retained at every non-terminal Hint level', () => {
+  const hint0 = createReviewHintPlan(0, 6, 3, [1, 4])
+  assert.deepEqual(hint0.condition.letters.visiblePositions, [1, 3, 4])
+
+  const hint1 = createReviewHintPlan(1, 6, 3, [1, 4])
+  assert.deepEqual(hint1.condition.letters.visiblePositions, [1, 3, 4])
+
+  const hint2 = createReviewHintPlan(2, 6, 3, [1, 4])
+  assert.deepEqual(hint2.condition.letters.visiblePositions, [0, 1, 2, 3, 4])
+
+  const hint3 = createReviewHintPlan(3, 6, 3, [1, 4])
+  assert.deepEqual(hint3.condition.letters, { mode: 'all-visible' })
 })
 
 test('cold-probe surrender remains Again even when final hint-assisted typing is clean', () => {
