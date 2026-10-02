@@ -657,6 +657,9 @@ test('Phase D live gate persists assisted Hint evidence but leaves scheduler unc
     .toBe('')
   await page.keyboard.type('cax')
   await expect(word).toHaveAttribute('data-review-hint-level', '0')
+  await expect
+    .poll(async () => await word.getAttribute('data-typing-input'))
+    .toBe('')
 
   await page.keyboard.type('cancel')
 
