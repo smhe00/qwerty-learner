@@ -267,7 +267,10 @@ export function buildReviewDictionaryDiagnostics(input: {
 
   const basicStageCounts: Record<string, number> = {}
   for (const state of input.states) {
-    if (state.schedulerState.kind === 'basic-v1') {
+    if (
+      state.schedulerState.kind === 'basic-v1' ||
+      state.schedulerState.kind === 'basic-v2'
+    ) {
       const key = String(state.schedulerState.stage)
       basicStageCounts[key] = (basicStageCounts[key] ?? 0) + 1
     }

@@ -75,7 +75,10 @@ export async function applyReviewOutcome(
         createInitialReviewWordState(dict, word, now)
     }
 
-    if (current.schedulerState.kind !== 'basic-v1') {
+    if (
+      current.schedulerState.kind !== 'basic-v1' &&
+      current.schedulerState.kind !== 'basic-v2'
+    ) {
       return current
     }
 

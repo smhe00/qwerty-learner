@@ -19,5 +19,14 @@ export const reinforcementGapByCause = {
 } as const
 
 
-export const basicReviewIntervalsDays = [1, 3, 7, 14, 30] as const
+export const basicV2ReviewIntervalsDays = [
+  1,
+  3,
+  7,
+  14,
+  30,
+  60,
+  120,
+  180,
+] as const
 export const sameSessionWindowSeconds = 30 * 60

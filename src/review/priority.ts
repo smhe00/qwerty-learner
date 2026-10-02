@@ -28,7 +28,12 @@ export type DueReviewPriorityCandidate = ReviewPriorityCandidate & {
 
 function basicStage(state: IReviewWordState | undefined): number {
   if (!state) return Number.POSITIVE_INFINITY
-  if (state.schedulerState.kind === 'basic-v1') return state.schedulerState.stage
+  if (
+    state.schedulerState.kind === 'basic-v1' ||
+    state.schedulerState.kind === 'basic-v2'
+  ) {
+    return state.schedulerState.stage
+  }
 
   // FSRS states use a different scale; do not fabricate a cross-algorithm
   // conversion here. Mixed scheduler kinds are not expected during v1.
@@ -40,7 +45,7 @@ function basicStage(state: IReviewWordState | undefined): number {
  *
  * Priority, in order:
  * 1. more historical lapses;
- * 2. weaker current basic-v1 stage;
+ * 2. weaker current basic scheduler stage;
  * 3. more historical typing errors;
  * 4. longer overdue;
  * 5. more recent error as the final tie breaker.

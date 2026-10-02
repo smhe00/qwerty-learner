@@ -2,8 +2,14 @@ export const CURRENT_REVIEW_STATE_VERSION = 4
 
 export type ReviewOutcome = 'again' | 'hard' | 'good' | 'easy'
 
-export type BasicSchedulerState = {
+export type LegacyBasicSchedulerStateV1 = {
   kind: 'basic-v1'
+  stage: number
+  intervalDays: number
+}
+
+export type BasicSchedulerState = {
+  kind: 'basic-v2'
   stage: number
   intervalDays: number
 }
@@ -14,7 +20,10 @@ export type Fsrs6SchedulerState = {
   stability: number
 }
 
-export type ReviewSchedulerState = BasicSchedulerState | Fsrs6SchedulerState
+export type ReviewSchedulerState =
+  | LegacyBasicSchedulerStateV1
+  | BasicSchedulerState
+  | Fsrs6SchedulerState
 
 export type PersistentLearningLifecycle = 'active' | 'excluded'
 
@@ -57,7 +66,7 @@ export function createInitialReviewWordState(dict: string, word: string, now: nu
     lifecycle: 'active',
     stateVersion: CURRENT_REVIEW_STATE_VERSION,
     schedulerState: {
-      kind: 'basic-v1',
+      kind: 'basic-v2',
       stage: 0,
       intervalDays: 0,
     },

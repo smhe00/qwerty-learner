@@ -1,8 +1,13 @@
 import type { TypingErrorClassification } from './classifier'
 import type { ExerciseConditionV1 } from './condition'
 import type { ReviewEvidenceV1 } from './evidence'
-import { basicReviewIntervalsDays, sameSessionWindowSeconds } from './policy'
-import type { BasicSchedulerState, IReviewWordState, ReviewOutcome, ReviewSchedulerState } from './types'
+import { basicV2ReviewIntervalsDays, sameSessionWindowSeconds } from './policy'
+import type {
+  BasicSchedulerState,
+  IReviewWordState,
+  ReviewOutcome,
+  ReviewSchedulerState,
+} from './types'
 
 export type ReviewScheduleInput = {
   state: IReviewWordState
@@ -32,20 +37,39 @@ export function classificationToReviewOutcome(classification: TypingErrorClassif
 const DAY_SECONDS = 24 * 60 * 60
 
 function intervalForStage(stage: number): number {
-  const boundedStage = Math.min(Math.max(stage, 0), basicReviewIntervalsDays.length - 1)
-  return basicReviewIntervalsDays[boundedStage]
+  const boundedStage = Math.min(
+    Math.max(stage, 0),
+    basicV2ReviewIntervalsDays.length - 1,
+  )
+  return basicV2ReviewIntervalsDays[boundedStage]
+}
+
+export function upgradeBasicSchedulerState(
+  state: IReviewWordState,
+): IReviewWordState {
+  if (state.schedulerState.kind !== 'basic-v1') return state
+
+  return {
+    ...state,
+    schedulerState: {
+      kind: 'basic-v2',
+      stage: state.schedulerState.stage,
+      intervalDays: state.schedulerState.intervalDays,
+    },
+  }
 }
 
 export function scheduleBasicReview(input: ReviewScheduleInput): IReviewWordState {
-  const current = input.state.schedulerState
-  if (current.kind !== 'basic-v1') {
-    throw new Error(`basic-v1 scheduler cannot update ${current.kind} state`)
+  const upgradedState = upgradeBasicSchedulerState(input.state)
+  const current = upgradedState.schedulerState
+  if (current.kind !== 'basic-v2') {
+    throw new Error(`basic-v2 scheduler cannot update ${current.kind} state`)
   }
 
-  const isFirstReview = input.state.reviewCount === 0
-  const isDue = isFirstReview || input.now >= input.state.nextReviewAt
+  const isFirstReview = upgradedState.reviewCount === 0
+  const isDue = isFirstReview || input.now >= upgradedState.nextReviewAt
   const secondsSinceLastReview =
-    input.state.lastReviewedAt === undefined ? undefined : Math.max(0, input.now - input.state.lastReviewedAt)
+    upgradedState.lastReviewedAt === undefined ? undefined : Math.max(0, input.now - upgradedState.lastReviewedAt)
   const isSameSession =
     !isFirstReview && secondsSinceLastReview !== undefined && secondsSinceLastReview <= sameSessionWindowSeconds
   const countsAsLongTermReview = isDue || (input.outcome === 'again' && !isSameSession)
@@ -59,43 +83,43 @@ export function scheduleBasicReview(input: ReviewScheduleInput): IReviewWordStat
     nextStage = isFirstReview
       ? 1
       : isDue
-        ? Math.min(current.stage + 2, basicReviewIntervalsDays.length - 1)
+        ? Math.min(current.stage + 2, basicV2ReviewIntervalsDays.length - 1)
         : current.stage
   } else {
     nextStage = isFirstReview
       ? 0
       : isDue
-        ? Math.min(current.stage + 1, basicReviewIntervalsDays.length - 1)
+        ? Math.min(current.stage + 1, basicV2ReviewIntervalsDays.length - 1)
         : current.stage
   }
 
   const intervalDays = intervalForStage(nextStage)
   const shouldReschedule = isDue || (input.outcome === 'again' && !isSameSession)
   const nextSchedulerState: BasicSchedulerState = {
-    kind: 'basic-v1',
+    kind: 'basic-v2',
     stage: nextStage,
     intervalDays,
   }
 
   return {
-    ...input.state,
+    ...upgradedState,
     updatedAt: input.now,
     lastReviewedAt: input.now,
-    nextReviewAt: shouldReschedule ? input.now + intervalDays * DAY_SECONDS : input.state.nextReviewAt,
-    reviewCount: input.state.reviewCount + (countsAsLongTermReview ? 1 : 0),
-    lapseCount: input.state.lapseCount + (countsAsLongTermReview && input.outcome === 'again' ? 1 : 0),
+    nextReviewAt: shouldReschedule ? input.now + intervalDays * DAY_SECONDS : upgradedState.nextReviewAt,
+    reviewCount: upgradedState.reviewCount + (countsAsLongTermReview ? 1 : 0),
+    lapseCount: upgradedState.lapseCount + (countsAsLongTermReview && input.outcome === 'again' ? 1 : 0),
     cleanStreak: countsAsLongTermReview
       ? input.outcome === 'again'
         ? 0
-        : input.state.cleanStreak + 1
-      : input.state.cleanStreak,
+        : upgradedState.cleanStreak + 1
+      : upgradedState.cleanStreak,
     lastOutcome: input.outcome,
     schedulerState: nextSchedulerState,
   }
 }
 
 export const basicReviewScheduler: ReviewSchedulerAdapter = {
-  kind: 'basic-v1',
+  kind: 'basic-v2',
   schedule: scheduleBasicReview,
 }
 
