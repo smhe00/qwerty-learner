@@ -1804,3 +1804,47 @@ test('Hint ladder auto-advances after two failures at each active level', async 
       autoHint0Triggered: true,
     })
 })
+
+test('light app theme keeps inherited Typing header controls readable when OS prefers dark', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await page.addInitScript(() => {
+    localStorage.setItem('isOpenDarkModeAtom', JSON.stringify(false))
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(0))
+  })
+
+  await page.goto('/typing')
+
+  const html = page.locator('html')
+  await expect(html).not.toHaveClass(/dark/)
+  await expect(html).toHaveCSS('color-scheme', 'light')
+
+  const header = page.locator('header nav')
+  await expect(header).toHaveCSS('background-color', 'rgb(255, 255, 255)')
+
+  const dictionary = header.locator('a[href="/gallery"]')
+  const chapter = header.getByRole('button', {
+    name: '第 1 章',
+    exact: true,
+  })
+  const pronunciation = header.getByRole('button', {
+    name: /发音及音标切换：/,
+  })
+
+  await expect(dictionary).toBeVisible()
+  await expect(chapter).toBeVisible()
+  await expect(pronunciation).toBeVisible()
+
+  const colors = await Promise.all(
+    [dictionary, chapter, pronunciation].map((control) =>
+      control.evaluate((element) => getComputedStyle(element).color),
+    ),
+  )
+
+  for (const color of colors) {
+    expect(color).not.toBe('rgb(255, 255, 255)')
+    expect(color).not.toBe('rgba(255, 255, 255, 1)')
+    expect(color).not.toBe('rgba(0, 0, 0, 0)')
+  }
+})
+
