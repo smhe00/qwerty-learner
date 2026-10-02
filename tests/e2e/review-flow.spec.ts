@@ -439,6 +439,21 @@ test('multi-word Review advances through every rendered word and finishes', asyn
     }),
   ).toBeVisible()
 
+  const finishedSession = await readReviewModeInfo(page)
+  const finishedSessionId =
+    finishedSession?.reviewRecord?.id ??
+    finishedSession?.reviewRecord?.createTime
+
+  await page.reload()
+  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page.getByText('CET-4 Learn', { exact: true })).toBeVisible()
+  const afterFinishedReload = await readReviewModeInfo(page)
+  expect(
+    afterFinishedReload?.reviewRecord?.id ??
+      afterFinishedReload?.reviewRecord?.createTime,
+  ).toBe(finishedSessionId)
+  expect(afterFinishedReload?.reviewRecord?.isFinished).toBe(true)
+
   await expect
     .poll(async () =>
       page.evaluate(async () => {

@@ -48,6 +48,7 @@ export enum TypingStateActionType {
   NEXT_WORD = 'NEXT_WORD',
   LOOP_CURRENT_WORD = 'LOOP_CURRENT_WORD',
   FINISH_CHAPTER = 'FINISH_CHAPTER',
+  RESTORE_FINISHED_CHAPTER = 'RESTORE_FINISHED_CHAPTER',
   INCREASE_WRONG_WORD = 'INCREASE_WRONG_WORD',
   SKIP_WORD = 'SKIP_WORD',
   SKIP_2_WORD_INDEX = 'SKIP_2_WORD_INDEX',
@@ -83,6 +84,7 @@ export type TypingStateAction =
     }
   | { type: TypingStateActionType.LOOP_CURRENT_WORD }
   | { type: TypingStateActionType.FINISH_CHAPTER }
+  | { type: TypingStateActionType.RESTORE_FINISHED_CHAPTER }
   | { type: TypingStateActionType.SKIP_WORD }
   | { type: TypingStateActionType.SKIP_2_WORD_INDEX; newIndex: number }
   | { type: TypingStateActionType.REMOVE_WORD_FROM_QUEUE; word: string }
@@ -183,6 +185,12 @@ export const typingReducer = (state: TypingState, action: TypingStateAction) => 
     case TypingStateActionType.FINISH_CHAPTER:
       state.isSkipLocked = false
       state.chapterData.wordCount += 1
+      state.isTyping = false
+      state.isFinished = true
+      state.isShowSkip = false
+      break
+    case TypingStateActionType.RESTORE_FINISHED_CHAPTER:
+      state.isSkipLocked = false
       state.isTyping = false
       state.isFinished = true
       state.isShowSkip = false

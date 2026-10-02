@@ -115,6 +115,12 @@ const App: React.FC = () => {
           initialIndex,
         },
       })
+
+      if (isReviewMode && reviewModeInfo.reviewRecord?.isFinished) {
+        dispatch({
+          type: TypingStateActionType.RESTORE_FINISHED_CHAPTER,
+        })
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [words])
