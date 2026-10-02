@@ -11,6 +11,7 @@ on:
       - 'src/components/ModeSwitcher/**'
       - 'src/components/Footer/**'
       - 'src/pages/Learn/**'
+      - 'src/pages/Analysis/**'
       - 'src/index.tsx'
       - 'src/pages/Typing/index.tsx'
       - 'src/pages/Typing/store/**'
@@ -64,6 +65,7 @@ jobs:
           src/learn
           src/components/ModeSwitcher
           src/pages/Learn
+          src/pages/Analysis
           src/index.tsx
           src/pages/Typing/index.tsx
           src/pages/Typing/store

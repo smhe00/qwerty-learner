@@ -73,7 +73,8 @@ import {
   CURRENT_REVIEW_STATE_VERSION,
   createInitialReviewWordState,
 } from '../../src/review/types'
-import { buildLearnStatsSnapshot } from '../../src/learn/stats'\nimport type { IWordRecord } from '../../src/utils/db/record'
+import { buildLearnStatsSnapshot } from '../../src/learn/stats'
+import type { IWordRecord } from '../../src/utils/db/record'
 
 test('captures all-visible and all-hidden baseline conditions', () => {
   assert.deepEqual(
