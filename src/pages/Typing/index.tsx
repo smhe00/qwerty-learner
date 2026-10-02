@@ -29,9 +29,12 @@ import { useMixPanelChapterLogUploader } from '@/utils/mixpanel'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import type React from 'react'
 import { useCallback, useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useImmerReducer } from 'use-immer'
 
 const App: React.FC = () => {
+  const location = useLocation()
+  const navigate = useNavigate()
   const typingTransVisible = useAtomValue(typingTransVisibleAtom)
   const [state, dispatch] = useImmerReducer(typingReducer, {
     ...structuredClone(initialState),
@@ -48,6 +51,20 @@ const App: React.FC = () => {
 
   const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
   const isReviewMode = useAtomValue(isReviewModeAtom)
+
+  useEffect(() => {
+    if (
+      location.pathname === '/learn/session' &&
+      (!reviewModeInfo.isReviewMode || !reviewModeInfo.reviewRecord)
+    ) {
+      navigate('/learn', { replace: true })
+    }
+  }, [
+    location.pathname,
+    navigate,
+    reviewModeInfo.isReviewMode,
+    reviewModeInfo.reviewRecord,
+  ])
 
   useEffect(() => {
     // 检测用户设备
