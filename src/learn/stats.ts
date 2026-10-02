@@ -230,6 +230,7 @@ export function buildLearnStatsSnapshot(input: {
     today: {
       reviewedWords: uniqueWordCount(todayReview),
       reviewAttempts: todayReview.length,
+      coldProbeAttempts: todayColdProbe.length,
       acquiredWords: uniqueWordCount(todayAcquisition),
       hintUseRate: rate(hintCount, todayRecords.length),
       coldProbePassRate: rate(coldPassCount, todayColdProbe.length),
