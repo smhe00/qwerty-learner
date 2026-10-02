@@ -185,6 +185,7 @@ export default function LearnPage() {
             </span>
           </button>
         </Tooltip>
+        <span className="invisible w-0" aria-hidden="true" />
       </Header>
 
       <main className="container mx-auto flex w-full flex-1 items-start justify-center">
