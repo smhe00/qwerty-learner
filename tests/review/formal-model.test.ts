@@ -599,62 +599,79 @@ test('formal/admission-safety: due is a subset and force is the complete error s
   }
 })
 
-test('formal/learning-reactivation: only fresh learning after latest Review pulls a future state due-now', () => {
+test('formal/learning-reactivation: Typing is neutral and only explicit Learn training can pull a future state due-now', () => {
   const now = 1_000
-  const cases = [
-    { learningTime: 100, learningId: 1, reviewTime: 200, reviewId: 2, expected: false },
-    { learningTime: 300, learningId: 2, reviewTime: 200, reviewId: 1, expected: true },
-    { learningTime: 200, learningId: 1, reviewTime: 200, reviewId: 2, expected: false },
-    { learningTime: 200, learningId: 2, reviewTime: 200, reviewId: 1, expected: true },
+  const timingCases = [
+    { learningTime: 100, learningId: 1, reviewTime: 200, reviewId: 2, fresh: false },
+    { learningTime: 300, learningId: 2, reviewTime: 200, reviewId: 1, fresh: true },
+    { learningTime: 200, learningId: 1, reviewTime: 200, reviewId: 2, fresh: false },
+    { learningTime: 200, learningId: 2, reviewTime: 200, reviewId: 1, fresh: true },
   ]
 
-  for (const item of cases) {
-    const records: IWordRecord[] = [
-      {
-        id: item.learningId,
-        word: 'reactivate',
-        timeStamp: item.learningTime,
-        dict: 'cet4',
-        chapter: 1,
-        timing: [],
-        wrongCount: 1,
-        mistakes: { 0: ['x'] },
-      },
-      {
-        id: item.reviewId,
-        word: 'reactivate',
-        timeStamp: item.reviewTime,
-        dict: 'cet4',
-        chapter: -1,
-        timing: [],
-        wrongCount: 0,
-        mistakes: {},
-      },
-    ]
-    const state = createInitialReviewWordState('cet4', 'reactivate', 1)
-    state.reviewCount = 3
-    state.lastReviewedAt = item.reviewTime
-    state.nextReviewAt = now + 10_000
-    state.schedulerState = {
-      kind: 'basic-v1',
-      stage: 2,
-      intervalDays: 7,
+  for (const sourceMode of ['typing', 'learn'] as const) {
+    for (const item of timingCases) {
+      const records: IWordRecord[] = [
+        {
+          id: item.learningId,
+          word: 'reactivate',
+          timeStamp: item.learningTime,
+          dict: 'cet4',
+          chapter: 1,
+          timing: [],
+          wrongCount: 1,
+          mistakes: { 0: ['x'] },
+          sourceMode,
+        },
+        {
+          id: item.reviewId,
+          word: 'reactivate',
+          timeStamp: item.reviewTime,
+          dict: 'cet4',
+          chapter: -1,
+          timing: [],
+          wrongCount: 0,
+          mistakes: {},
+          sourceMode: 'learn',
+          learnItemKind: 'review',
+        },
+      ]
+      const state = createInitialReviewWordState(
+        'cet4',
+        'reactivate',
+        1,
+      )
+      state.reviewCount = 3
+      state.lastReviewedAt = item.reviewTime
+      state.nextReviewAt = now + 10_000
+      state.schedulerState = {
+        kind: 'basic-v1',
+        stage: 2,
+        intervalDays: 7,
+      }
+
+      const expected = sourceMode === 'learn' && item.fresh
+
+      assert.equal(
+        hasUnreviewedLearningFailure(records),
+        expected,
+      )
+
+      const refreshed = reactivateReviewStateFromLearningEvidence(
+        state,
+        records,
+        now,
+      )
+
+      assert.equal(
+        refreshed.nextReviewAt,
+        expected ? now : state.nextReviewAt,
+      )
+      assert.equal(refreshed.reviewCount, state.reviewCount)
+      assert.deepEqual(
+        refreshed.schedulerState,
+        state.schedulerState,
+      )
     }
-
-    assert.equal(hasUnreviewedLearningFailure(records), item.expected)
-
-    const refreshed = reactivateReviewStateFromLearningEvidence(
-      state,
-      records,
-      now,
-    )
-
-    assert.equal(
-      refreshed.nextReviewAt,
-      item.expected ? now : state.nextReviewAt,
-    )
-    assert.equal(refreshed.reviewCount, state.reviewCount)
-    assert.deepEqual(refreshed.schedulerState, state.schedulerState)
   }
 })
 
@@ -1408,16 +1425,28 @@ test('formal/learn-start-priority: due review always wins over new acquisition',
   )
 })
 
-test('formal/acquisition-safety: acquisition presentation is training-only', async () => {
-  const { createLearnAcquisitionPlan } = await import('../../src/learn/session')
+test('formal/acquisition-safety: acquisition starts cold but remains scheduler-neutral', async () => {
+  const {
+    createLearnAcquisitionPlan,
+  } = await import('../../src/learn/session')
+  const {
+    getReviewAttemptRole,
+  } = await import('../../src/review/session')
   const plan = createLearnAcquisitionPlan()
 
-  assert.equal(plan.condition.purpose, 'training')
+  assert.equal(plan.condition.purpose, 'probe')
   assert.equal(plan.condition.probeDimension, 'none')
-  assert.equal(plan.condition.letters.mode, 'all-visible')
+  assert.equal(plan.condition.letters.mode, 'all-hidden')
   assert.equal(plan.condition.meaning, 'visible')
-  assert.equal(plan.condition.phonetic, 'visible')
-  assert.equal(plan.condition.audio, 'automatic')
+  assert.equal(plan.condition.phonetic, 'hidden')
+  assert.equal(plan.condition.audio, 'none')
+  assert.equal(
+    getReviewAttemptRole({
+      sessionKind: 'acquisition',
+      reinforcementUsed: 0,
+    }),
+    undefined,
+  )
 })
 
 
