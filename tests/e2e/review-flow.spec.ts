@@ -1005,6 +1005,199 @@ test('Learn header keeps dictionary, Start, and Settings aligned with Typing', a
   await expect(page.getByText('学习计划', { exact: true })).toHaveCount(0)
 })
 
+test('Learn reuses Typing controls while preserving Typing-owned preferences', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.evaluate(async () => {
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(2))
+    localStorage.setItem(
+      'loopWordConfig',
+      JSON.stringify({ times: 3 }),
+    )
+    localStorage.setItem(
+      'wordDictationConfig',
+      JSON.stringify({
+        isOpen: true,
+        type: 'hideVowel',
+        openBy: 'user',
+      }),
+    )
+    localStorage.setItem(
+      'typingTransVisible',
+      JSON.stringify(false),
+    )
+    localStorage.setItem(
+      'pronunciation',
+      JSON.stringify({
+        isOpen: true,
+        volume: 1,
+        type: 'uk',
+        name: '英音',
+        isLoop: false,
+        isTransRead: false,
+        transVolume: 1,
+        rate: 1,
+      }),
+    )
+    localStorage.setItem(
+      'phoneticConfig',
+      JSON.stringify({ isOpen: true, type: 'uk' }),
+    )
+    localStorage.setItem(
+      'reviewModeInfo',
+      JSON.stringify({ isReviewMode: false }),
+    )
+
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const names = [
+          'wordRecords',
+          'reviewWordStates',
+          'reviewRecords',
+        ]
+        const tx = db.transaction(names, 'readwrite')
+        for (const name of names) {
+          tx.objectStore(name).clear()
+        }
+        tx.oncomplete = () => {
+          db.close()
+          resolve()
+        }
+        tx.onerror = () => reject(tx.error)
+        tx.onabort = () => reject(tx.error)
+      }
+    })
+  })
+
+  await page.goto('/typing')
+  await expect(
+    page.getByRole('button', { name: '第 3 章', exact: true }),
+  ).toBeVisible()
+
+  const before = await page.evaluate(() => ({
+    chapter: localStorage.getItem('currentChapter'),
+    loop: localStorage.getItem('loopWordConfig'),
+    dictation: localStorage.getItem('wordDictationConfig'),
+    trans: localStorage.getItem('typingTransVisible'),
+    pronunciation: localStorage.getItem('pronunciation'),
+    phonetic: localStorage.getItem('phoneticConfig'),
+  }))
+
+  await page.getByRole('button', { name: 'Learn', exact: true }).click()
+  await expect(page).toHaveURL(/\/learn$/)
+
+  await expect(
+    page.getByRole('button', {
+      name: '章节切换（Learn 模式禁用）',
+      exact: true,
+    }),
+  ).toBeDisabled()
+  await expect(
+    page.getByRole('button', {
+      name: '选择单词的循环次数',
+      exact: true,
+    }),
+  ).toBeDisabled()
+  await expect(
+    page.getByRole('button', {
+      name: '开关默写模式',
+      exact: true,
+    }),
+  ).toBeDisabled()
+  await expect(
+    page.getByRole('button', {
+      name: /开关释义显示/,
+    }),
+  ).toBeDisabled()
+
+  const pronunciationButton = page
+    .getByRole('button', { name: '英音', exact: true })
+    .first()
+  await expect(pronunciationButton).toBeEnabled()
+  await pronunciationButton.click()
+  await expect(
+    page.getByText('单词发音口音', { exact: true }),
+  ).toBeVisible()
+  await page.keyboard.press('Escape')
+
+  const soundButton = page.getByRole('button', {
+    name: '音效设置',
+    exact: true,
+  })
+  await expect(soundButton).toBeEnabled()
+  await soundButton.click()
+  await expect(
+    page.getByText('开关按键音', { exact: true }),
+  ).toBeVisible()
+  await page.keyboard.press('Escape')
+
+  const afterLanding = await page.evaluate(() => ({
+    chapter: localStorage.getItem('currentChapter'),
+    loop: localStorage.getItem('loopWordConfig'),
+    dictation: localStorage.getItem('wordDictationConfig'),
+    trans: localStorage.getItem('typingTransVisible'),
+    pronunciation: localStorage.getItem('pronunciation'),
+    phonetic: localStorage.getItem('phoneticConfig'),
+  }))
+  expect(afterLanding).toEqual(before)
+
+  const startButton = page.getByRole('button', {
+    name: '开始',
+    exact: true,
+  })
+  await expect(startButton).toBeEnabled()
+  await startButton.click()
+  await expect(page).toHaveURL(/\/learn\/session$/)
+
+  expect(
+    await page.evaluate(() =>
+      localStorage.getItem('currentChapter'),
+    ),
+  ).toBe(before.chapter)
+
+  const info = await readReviewModeInfo(page)
+  const firstWord = info?.reviewRecord?.words?.[0]?.name as string
+  await startTyping(page)
+  await waitForRenderedWord(page, firstWord)
+  const rendered = page.locator(
+    `[data-typing-word="${firstWord}"]`,
+  )
+  await expect(rendered).toHaveAttribute('data-review-audio', 'none')
+  await expect(rendered).toHaveAttribute(
+    'data-review-letters',
+    'all-hidden',
+  )
+  await expect(rendered).toHaveAttribute(
+    'data-review-phonetic',
+    'hidden',
+  )
+  await expect(rendered).toHaveAttribute(
+    'data-review-meaning',
+    'visible',
+  )
+
+  await page.getByRole('button', { name: 'Typing', exact: true }).click()
+  await expect(page).toHaveURL(/\/typing$/)
+  await expect(
+    page.getByRole('button', { name: '第 3 章', exact: true }),
+  ).toBeVisible()
+
+  const afterReturn = await page.evaluate(() => ({
+    chapter: localStorage.getItem('currentChapter'),
+    loop: localStorage.getItem('loopWordConfig'),
+    dictation: localStorage.getItem('wordDictationConfig'),
+    trans: localStorage.getItem('typingTransVisible'),
+    pronunciation: localStorage.getItem('pronunciation'),
+    phonetic: localStorage.getItem('phoneticConfig'),
+  }))
+  expect(afterReturn).toEqual(before)
+})
+
 test('Learn exposes only one unfinished session and cannot create a duplicate from the plan page', async ({
   page,
 }) => {
