@@ -1816,6 +1816,10 @@ test('lazy route chunk failure recovers without manual refresh', async ({
 
   await page.goto('/typing')
 
+  // Let the intentional Gallery/Learn idle preload finish first. The next
+  // JavaScript chunk request is then the Analysis lazy route under test.
+  await page.waitForTimeout(1500)
+
   let abortedChunk = false
   await page.route(/\/assets\/.*\.js(?:\?.*)?$/, async (route) => {
     if (!abortedChunk) {
