@@ -45,7 +45,13 @@ const Analysis = () => {
   return (
     <Layout>
       <div className="flex w-full flex-1 flex-col overflow-y-auto pl-20 pr-20 pt-20">
-        <IconX className="absolute right-20 top-10 mr-2 h-7 w-7 cursor-pointer text-gray-400" onClick={onBack} />
+        <IconX
+          className="absolute right-20 top-10 mr-2 h-7 w-7 cursor-pointer text-gray-400"
+          onClick={onBack}
+          role="button"
+          tabIndex={0}
+          aria-label="返回"
+        />
         <ScrollArea.Root className="flex-1 overflow-y-auto">
           <ScrollArea.Viewport className="h-full w-auto pb-[20rem] [&>div]:!block">
             {isEmpty ? (
