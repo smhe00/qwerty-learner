@@ -25,6 +25,7 @@ on:
       - 'src/pages/Gallery-N/DictionaryWithoutCover.tsx'
       - 'src/pages/Typing/components/WordPanel/**'
       - 'src/store/reviewInfoAtom.ts'
+      - 'src/store/index.ts'
       - 'tests/e2e/review.spec.ts'
       - 'tests/e2e/review-flow.spec.ts'
       - 'tests/e2e/review-flow.config.ts'
@@ -76,6 +77,7 @@ jobs:
           src/pages/Gallery-N/index.tsx
           src/pages/Gallery-N/DictionaryWithoutCover.tsx
           src/pages/Typing/components/WordPanel
+          src/store/index.ts
           --ext .ts,.tsx
 
       - name: Bundle Review verification tests
