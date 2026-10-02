@@ -39,6 +39,7 @@ Learn V1 stabilization:
 ```text
 P0 — navigation / persistence / reload stability   CLOSED
 P1 — Learn UX / mode-boundary consistency          CLOSED
+P2 — Learn statistics semantics / UI                CLOSED
 ```
 
 ### P0 stability contract
@@ -99,6 +100,31 @@ P1 — Learn UX / mode-boundary consistency          CLOSED
   direct-any-key entry, dictionary switching, statistics round-trip,
   exclusion, due-before-acquisition priority, Hint escalation, theme
   inheritance, and Typing/Learn preference isolation.
+
+### P2 statistics contract
+
+- `/analysis?from=learn` is a Learn-owned statistics surface; ordinary
+  `/analysis` remains the upstream-compatible Typing statistics surface.
+- Learn history counts only explicit Learn provenance plus narrowly defined
+  transitional legacy Review records. Explicit Typing records never contribute.
+- Current lifecycle metrics are derived from `reviewWordStates`: ACTIVE, due,
+  EXCLUDED and selected-dictionary UNSEEN.
+- Again / Hard / Good / Easy counts include only Rating Gate
+  `eligible=true` events. Training and reinforcement cannot inflate scheduler
+  statistics.
+- Today metrics include unique reviewed/acquired words, Hint use rate and
+  Cold Probe first-pass rate.
+- The 30-day view reports rating distribution, review success rate and daily
+  Review/Acquisition trends. It deliberately calls this a success rate rather
+  than a calibrated retention probability.
+- Average interval is read from ACTIVE basic scheduler states; FSRS-specific
+  statistics remain a Phase G concern.
+- `reviewRecords` remain recovery/session checkpoints and are not treated as
+  memory-quality truth.
+- Learn statistics are read-only: opening or calculating statistics cannot
+  mutate lifecycle, due dates or scheduler state.
+- Browser regression verifies the Learn-specific surface and the return to the
+  same unfinished Learn session.
 
 Phase C/E closure rules:
 

@@ -1,6 +1,6 @@
 # Learn V1 使用指南
 
-> 当前版本：Typing / Learn Phase A/B
+> 当前版本：Typing / Learn V1 + P2 Learn Statistics
 >
 > Learn 的长期目标架构见 `LEARN_ARCHITECTURE_V1.md`。
 
@@ -86,7 +86,7 @@ Learn 首页第一行与 Typing 保持同一布局骨架：
 - 词库名位置一致；
 - Start / Continue 位置一致；
 - 设置位置一致；
-- Learn 使用绿色强调色，Typing 保持蓝紫色；
+- Typing 与 Learn 使用统一的 indigo 交互色系；模式身份由标签和状态表达；
 - 第一行以下暂时留空，后续再决定长期状态信息如何呈现。
 
 新词 Acquisition V2：
@@ -229,7 +229,41 @@ Hint 3 仍然必须把完整单词输入正确才能正常完成；“移出学�
 
 ---
 
-## 8. 当前兼容状态
+## 8. Learn 数据统计
+
+Learn 中的数据统计入口会打开 Learn 专属统计页，而不是复用 Typing
+统计口径。
+
+当前显示：
+
+- 今日复习词数；
+- 今日新学词数；
+- 当前到期、长期学习中、已移出、尚未学习；
+- Cold Probe 一次通过率；
+- Hint 使用率；
+- 最近 30 天 Again / Hard / Good / Easy；
+- 最近 30 天复习通过率；
+- ACTIVE 单词的平均调度间隔；
+- 最近 30 天复习、新学和通过率趋势。
+
+其中“30 日复习通过率”只统计通过 Rating Gate 的调度事件：
+
+```text
+Again           → 未通过
+Hard/Good/Easy  → 通过
+```
+
+它不是 FSRS 意义上的校准 retention probability。
+
+Typing 数据不会混入 Learn 统计。Learn 统计页也不会修改复习日期、
+lifecycle 或 scheduler state。
+
+如果词表文件暂时加载失败，`UNSEEN / 尚未学习` 会显示未知；已有
+Learn 历史、到期、Rating 等统计仍然可用。
+
+---
+
+## 9. 当前兼容状态
 
 内部代码仍然暂时保留：
 
@@ -252,7 +286,7 @@ Learn
 
 ---
 
-## 9. 下一阶段
+## 10. 下一阶段
 
 后续按照架构顺序继续：
 
