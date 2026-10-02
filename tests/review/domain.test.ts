@@ -73,7 +73,7 @@ import {
   CURRENT_REVIEW_STATE_VERSION,
   createInitialReviewWordState,
 } from '../../src/review/types'
-import type { IWordRecord } from '../../src/utils/db/record'
+import { buildLearnStatsSnapshot } from '../../src/learn/stats'\nimport type { IWordRecord } from '../../src/utils/db/record'
 
 test('captures all-visible and all-hidden baseline conditions', () => {
   assert.deepEqual(
@@ -2347,4 +2347,189 @@ test('acquisition WordRecord cannot be replayed as a spaced-review rating', () =
     inferReviewOutcomeFromWordRecord(acquisitionRecord, []),
     undefined,
   )
+})
+
+
+test('Learn P2 aggregates lifecycle, due state, ratings and daily evidence without Typing leakage', () => {
+  const nowDate = new Date(2026, 9, 3, 12, 0, 0)
+  const now = Math.floor(nowDate.getTime() / 1000)
+  const tenDaysAgo = new Date(nowDate)
+  tenDaysAgo.setDate(nowDate.getDate() - 10)
+
+  const wordRecords: IWordRecord[] = [
+    {
+      word: 'alpha',
+      timeStamp: now - 60,
+      dict: 'p2',
+      chapter: -1,
+      timing: [],
+      wrongCount: 0,
+      mistakes: {},
+      sourceMode: 'learn',
+      learnItemKind: 'acquisition',
+    },
+    {
+      word: 'beta',
+      timeStamp: now - 50,
+      dict: 'p2',
+      chapter: -1,
+      timing: [],
+      wrongCount: 0,
+      mistakes: {},
+      sourceMode: 'learn',
+      learnItemKind: 'review',
+      reviewRatingDecision: {
+        eligible: true,
+        rating: 'good',
+        confidence: 1,
+        reasonCodes: ['canonical-clean-retrieval'],
+      },
+    },
+    {
+      word: 'gamma',
+      timeStamp: now - 40,
+      dict: 'p2',
+      chapter: -1,
+      timing: [],
+      wrongCount: 1,
+      mistakes: { 0: [' '] },
+      sourceMode: 'learn',
+      learnItemKind: 'review',
+      learningContext: {
+        version: 1,
+        reviewHint: {
+          maxLevel: 1,
+          coldProbeSurrendered: true,
+          advanceCount: 2,
+        },
+      },
+      reviewRatingDecision: {
+        eligible: true,
+        rating: 'again',
+        confidence: 1,
+        reasonCodes: ['cold-probe-surrendered'],
+      },
+    },
+    {
+      word: 'beta',
+      timeStamp: now - 30,
+      dict: 'p2',
+      chapter: -1,
+      timing: [],
+      wrongCount: 0,
+      mistakes: {},
+      sourceMode: 'learn',
+      learnItemKind: 'review',
+      reviewRatingDecision: {
+        eligible: false,
+        rating: null,
+        reason: 'non-cold-attempt',
+        reasonCodes: ['non-cold-attempt'],
+      },
+    },
+    {
+      word: 'legacy',
+      timeStamp: Math.floor(tenDaysAgo.getTime() / 1000),
+      dict: 'p2',
+      chapter: -1,
+      timing: [],
+      wrongCount: 0,
+      mistakes: {},
+      reviewRatingDecision: {
+        eligible: true,
+        rating: 'easy',
+        confidence: 1,
+        reasonCodes: ['canonical-clean-retrieval'],
+      },
+    },
+    {
+      word: 'typing-noise',
+      timeStamp: now - 20,
+      dict: 'p2',
+      chapter: 0,
+      timing: [],
+      wrongCount: 0,
+      mistakes: {},
+      sourceMode: 'typing',
+      reviewRatingDecision: {
+        eligible: true,
+        rating: 'easy',
+        confidence: 1,
+        reasonCodes: ['should-not-count'],
+      },
+    },
+  ]
+
+  const wordStates = [
+    {
+      ...createInitialReviewWordState('p2', 'alpha', now),
+      nextReviewAt: now + 86400,
+      schedulerState: { kind: 'basic-v2' as const, stage: 1, intervalDays: 1 },
+    },
+    {
+      ...createInitialReviewWordState('p2', 'beta', now),
+      nextReviewAt: now - 1,
+      schedulerState: { kind: 'basic-v2' as const, stage: 2, intervalDays: 3 },
+    },
+    {
+      ...createInitialReviewWordState('p2', 'gamma', now),
+      lifecycle: 'excluded' as const,
+      nextReviewAt: now - 1,
+      schedulerState: { kind: 'basic-v2' as const, stage: 1, intervalDays: 1 },
+    },
+    {
+      ...createInitialReviewWordState('p2', 'delta', now),
+      nextReviewAt: now + 604800,
+      schedulerState: { kind: 'basic-v2' as const, stage: 3, intervalDays: 7 },
+    },
+  ]
+
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'p2',
+    wordRecords,
+    wordStates,
+    dictionaryWords: ['alpha', 'beta', 'gamma', 'delta', 'epsilon'],
+  })
+
+  assert.equal(stats.today.reviewedWords, 2)
+  assert.equal(stats.today.acquiredWords, 1)
+  assert.equal(stats.today.hintUseRate, 33.3)
+  assert.equal(stats.today.coldProbePassRate, 66.7)
+
+  assert.deepEqual(stats.lifecycle, {
+    active: 3,
+    due: 1,
+    excluded: 1,
+    unseen: 1,
+  })
+  assert.equal(stats.scheduler.averageIntervalDays, 3.7)
+  assert.equal(stats.scheduler.ratedEvents30d, 3)
+  assert.equal(stats.scheduler.successRate30d, 66.7)
+  assert.deepEqual(stats.scheduler.ratings30d, {
+    again: 1,
+    hard: 0,
+    good: 1,
+    easy: 1,
+  })
+
+  const today = stats.dailyActivity30d.at(-1)
+  assert.ok(today)
+  assert.equal(today.reviewed, 2)
+  assert.equal(today.acquired, 1)
+  assert.equal(today.successRate, 50)
+})
+
+test('Learn P2 keeps UNSEEN unknown when the dictionary payload is unavailable', () => {
+  const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'p2',
+    wordRecords: [],
+    wordStates: [],
+  })
+
+  assert.equal(stats.lifecycle.unseen, null)
+  assert.equal(stats.today.hintUseRate, null)
+  assert.equal(stats.scheduler.successRate30d, null)
 })
