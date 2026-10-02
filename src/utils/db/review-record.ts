@@ -69,12 +69,20 @@ export async function generateNewWordReviewRecord(
   const wordRecords = await db.wordRecords.where('dict').equals(dictID).toArray()
   const exercisePlans = buildReviewSessionExercisePlans(sortedWords, wordRecords)
   const record = new ReviewRecord(dictID, sortedWords, exercisePlans)
-  await db.reviewRecords.put(record)
+  record.id = await db.reviewRecords.add(record)
   return record
 }
 
 export async function putWordReviewRecord(record: ReviewRecord) {
-  return db.reviewRecords.put(record)
+  return db.transaction('rw', db.reviewRecords, async () => {
+    if (record.id !== undefined) {
+      const existing = await db.reviewRecords.get(record.id)
+      if (existing?.isFinished && !record.isFinished) {
+        return record.id
+      }
+    }
+    return db.reviewRecords.put(record)
+  })
 }
 
 
@@ -124,7 +132,7 @@ export async function generateLearnReviewRecord(
     exercisePlans,
     'review',
   )
-  await db.reviewRecords.put(record)
+  record.id = await db.reviewRecords.add(record)
   return record
 }
 
@@ -145,6 +153,6 @@ export async function generateNewWordAcquisitionRecord(
     exercisePlans,
     'acquisition',
   )
-  await db.reviewRecords.put(record)
+  record.id = await db.reviewRecords.add(record)
   return record
 }

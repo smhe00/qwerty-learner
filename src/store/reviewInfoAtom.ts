@@ -5,6 +5,20 @@ import { atomWithStorage } from 'jotai/utils'
 
 let reviewRecordWriteQueue: Promise<unknown> = Promise.resolve()
 
+function sameReviewSession(
+  left: ReviewRecord | undefined,
+  right: ReviewRecord | undefined,
+) {
+  if (!left || !right) return false
+  if (left.id !== undefined && right.id !== undefined) {
+    return left.id === right.id
+  }
+  return (
+    left.dict === right.dict &&
+    left.createTime === right.createTime
+  )
+}
+
 function queueReviewRecordWrite(record: ReviewRecord) {
   // Persist an immutable snapshot in the same order as UI state transitions.
   // Without serialization, an older unfinished checkpoint can complete after
@@ -55,7 +69,23 @@ export function reviewInfoAtom(initialValue: TReviewInfoAtomData) {
       return get(storageAtom)
     },
     (get, set, updater: TReviewInfoAtomData | ((oldValue: TReviewInfoAtomData) => TReviewInfoAtomData)) => {
-      const newValue = typeof updater === 'function' ? updater(get(storageAtom)) : updater
+      const oldValue = get(storageAtom)
+      let newValue =
+        typeof updater === 'function' ? updater(oldValue) : updater
+
+      // Session completion is terminal. A delayed closure is never allowed to
+      // resurrect the same session after isFinished became true.
+      if (
+        oldValue.reviewRecord?.isFinished &&
+        newValue.reviewRecord &&
+        !newValue.reviewRecord.isFinished &&
+        sameReviewSession(oldValue.reviewRecord, newValue.reviewRecord)
+      ) {
+        newValue = {
+          ...newValue,
+          reviewRecord: oldValue.reviewRecord,
+        }
+      }
 
       // Keep local route-critical state synchronous, while serializing durable
       // checkpoints so IndexedDB can never finish them out of order.
