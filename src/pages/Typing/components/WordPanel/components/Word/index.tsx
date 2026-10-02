@@ -94,6 +94,7 @@ const vowelLetters = ['A', 'E', 'I', 'O', 'U']
 export type WordFinishResult = {
   wrongCount: number
   classification: TypingErrorClassification
+  reviewRatingDecision?: RatingDecision
   nextExerciseShadow?: ReviewPolicyShadowV1 | null
 }
 
@@ -748,6 +749,7 @@ export default function WordComponent({
         onFinish({
           wrongCount: wordState.wrongCount,
           classification,
+          reviewRatingDecision,
           nextExerciseShadow,
         })
       }

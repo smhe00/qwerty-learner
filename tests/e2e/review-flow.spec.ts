@@ -168,6 +168,11 @@ async function readReviewWordRecords(
         typingTelemetry?: {
           attempts?: Array<{ wrongIndex?: number; result: string }>
         }
+        reviewRatingDecision?: {
+          eligible?: boolean
+          rating?: string | null
+          reason?: string
+        }
       }>
     >((resolve, reject) => {
       const request = indexedDB.open('RecordDB')
@@ -681,6 +686,65 @@ test('Phase D live gate persists assisted Hint evidence but leaves scheduler unc
       eligible: false,
       reason: 'training-event',
     })
+})
+
+test('forgotten cold probe schedules one reinforcement and reinforcement cannot rate again', async ({
+  page,
+}) => {
+  await seedReviewSession(page, reviewWords.slice(0, 2), 900006)
+  await page.goto('/')
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+
+  const cancel = page.locator('[data-typing-word="cancel"]')
+  await page.keyboard.press('Space')
+  await expect(cancel).toHaveAttribute('data-review-hint-level', '0')
+  await page.keyboard.type('cancel')
+
+  await waitForReviewIndex(page, 1)
+  let info = await readReviewModeInfo(page)
+  expect(
+    info?.reviewRecord?.words?.map((word: { name: string }) => word.name),
+  ).toEqual(['cancel', 'analyse', 'cancel'])
+  expect(info?.reviewRecord?.reinforcementCounts?.cancel).toBe(1)
+  expect(info?.reviewRecord?.itemStates?.cancel?.phase).toBe(
+    'reinforcement',
+  )
+
+  await waitForRenderedWord(page, 'analyse')
+  await page.keyboard.type('analyse')
+  await waitForReviewIndex(page, 2)
+  await waitForRenderedWord(page, 'cancel')
+  await page.keyboard.type('cancel')
+
+  await expect
+    .poll(async () => {
+      const current = await readReviewModeInfo(page)
+      return {
+        finished: current?.reviewRecord?.isFinished,
+        reinforcementCount:
+          current?.reviewRecord?.reinforcementCounts?.cancel,
+        phase: current?.reviewRecord?.itemStates?.cancel?.phase,
+      }
+    })
+    .toEqual({
+      finished: true,
+      reinforcementCount: 1,
+      phase: 'done',
+    })
+
+  const records = await readReviewWordRecords(page, ['cancel'])
+  expect(records).toHaveLength(2)
+  const latest = records[records.length - 1] as {
+    reviewRatingDecision?: {
+      eligible?: boolean
+      reason?: string
+    }
+  }
+  expect(latest.reviewRatingDecision).toMatchObject({
+    eligible: false,
+    reason: 'non-cold-attempt',
+  })
 })
 
 test('Hint 3 skip lock blocks navigation to a real next Review word', async ({

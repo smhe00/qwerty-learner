@@ -1658,6 +1658,27 @@ test('completed rated failure consumes training and requests one bounded reinfor
   }
 })
 
+test('review progression can insert explicit reinforcement even after zero wrong keys', () => {
+  const queue = [{ name: 'forgotten' }, { name: 'next' }]
+  const decision = decideReviewProgress({
+    queue,
+    currentIndex: 0,
+    currentWord: queue[0],
+    currentExerciseCount: 0,
+    loopWordTimes: 1,
+    priorAccumulatedWrongCount: 0,
+    attemptWrongCount: 0,
+    currentReinforcementGap: MAX_REINFORCEMENT_GAP,
+    attemptReinforcementGap: MAX_REINFORCEMENT_GAP,
+    reinforcementRemaining: 1,
+    requestReinforcement: true,
+  })
+
+  assert.equal(decision.kind, 'advance')
+  if (decision.kind !== 'advance') return
+  assert.equal(decision.insertWord?.word.name, 'forgotten')
+})
+
 test('review progression refuses a second reinforcement when the per-session budget is exhausted', () => {
   const word = { name: 'persistent' }
   const decision = decideReviewProgress({

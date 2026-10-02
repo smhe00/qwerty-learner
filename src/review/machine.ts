@@ -71,6 +71,7 @@ export function decideReviewProgress<T extends NamedReviewItem>(input: {
   currentReinforcementGap: number
   attemptReinforcementGap: number
   reinforcementRemaining?: number
+  requestReinforcement?: boolean
 }): ReviewProgressDecision<T> {
   if (input.queue.length === 0) {
     throw new Error('review queue must not be empty')
@@ -112,8 +113,11 @@ export function decideReviewProgress<T extends NamedReviewItem>(input: {
     input.reinforcementRemaining ?? 1,
   )
 
+  const requestReinforcement =
+    input.requestReinforcement ?? accumulatedWrongCount > 0
+
   let insertWord: { index: number; word: T } | undefined
-  if (accumulatedWrongCount > 0 && reinforcementRemaining > 0) {
+  if (requestReinforcement && reinforcementRemaining > 0) {
     const reinforcement = scheduleReinforcement(
       input.queue,
       input.currentIndex,

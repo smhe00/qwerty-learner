@@ -28,7 +28,7 @@ As of the Phase A/B rollout:
 Phase A — Typing / Learn product boundary     IMPLEMENTED
 Phase B — ACTIVE / EXCLUDED lifecycle         IMPLEMENTED
 Phase C — unified Learn Session               PARTIAL
-Phase D — Rating Gate owns live scheduler     PARTIAL (D1 live mutation gate implemented)
+Phase D — Rating Gate owns live scheduler     IMPLEMENTED (D1 gate + D2 bounded null/reinforcement flow)
 Phase E — all-word admission                  PARTIAL
 Phase F — basic-v2                            PENDING
 Phase G — FSRS-6                              PENDING
@@ -57,8 +57,17 @@ Current Phase D1 rollout:
 - acquisition remains rating-free;
 - same-session reinforcement is explicitly `attemptRole='reinforcement'` and cannot rate.
 
-Phase D2 still needs to wire `rating=null` into the bounded invalid-retry/defer
-item-state machine instead of always advancing the UI queue immediately.
+Phase D2 is now wired into the live Learn queue:
+
+- retryable null results enter one persisted `invalid-retry` and remount the
+  same word with a fresh canonical probe;
+- a second retryable null, diagnostic null, or other non-rateable result is
+  deferred without mutating the scheduler;
+- eligible failure can request exactly one persisted reinforcement;
+- reinforcement runs with `attemptRole='reinforcement'`, cannot rate, and
+  terminates the logical item as `done`;
+- the item-machine state is persisted in the unfinished ReviewRecord so reload
+  cannot replenish retry/reinforcement budgets.
 
 Current Phase B persistence uses an additive compatibility model:
 

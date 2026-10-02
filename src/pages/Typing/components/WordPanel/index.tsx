@@ -9,7 +9,10 @@ import type { WordFinishResult } from './components/Word'
 import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
 import { pruneLearnSessionWord } from '@/learn/lifecycle'
 import type { LearnSessionKind } from '@/learn/session'
-import { materializeReviewExercisePlan } from '@/review/decision'
+import {
+  createCanonicalReviewProbePlan,
+  materializeReviewExercisePlan,
+} from '@/review/decision'
 import type { ReviewHintLevel } from '@/review/hint'
 import {
   decideReviewProgress,
@@ -21,7 +24,11 @@ import {
   getReviewAttemptRole,
   getWordComponentInstanceKey,
 } from '@/review/session'
-import { MAX_REINFORCEMENT_PER_WORD_PER_SESSION } from '@/review/state-machine'
+import {
+  MAX_REINFORCEMENT_PER_WORD_PER_SESSION,
+  createReviewItemMachineState,
+  resolveCompletedReviewItem,
+} from '@/review/state-machine'
 import { excludeLearningWord } from '@/review/repository'
 import {
   currentDictIdAtom,
@@ -99,30 +106,84 @@ export default function WordPanel() {
   }, [])
 
   const onFinish = useCallback(
-    ({ wrongCount, classification, nextExerciseShadow }: WordFinishResult) => {
-      if (isReviewMode && currentWord) {
+    ({
+      wrongCount,
+      classification,
+      reviewRatingDecision,
+      nextExerciseShadow,
+    }: WordFinishResult) => {
+      if (
+        isReviewMode &&
+        currentWord &&
+        currentLearnItemKind === 'review'
+      ) {
+        if (!reviewRatingDecision || !currentReviewAttemptRole) {
+          console.error(
+            'Review completion missing Rating Gate decision or attempt role',
+          )
+          return
+        }
+
+        const currentItemState =
+          reviewModeInfo.reviewRecord?.itemStates?.[currentWord.name] ??
+          createReviewItemMachineState()
+        const requestReinforcement =
+          reviewRatingDecision.eligible &&
+          (wrongCount > 0 ||
+            reviewRatingDecision.rating === 'again' ||
+            reviewRatingDecision.rating === 'hard')
+        const itemResolution = resolveCompletedReviewItem({
+          state: currentItemState,
+          attemptRole: currentReviewAttemptRole,
+          decision: reviewRatingDecision,
+          requestReinforcement,
+        })
+
+        if (itemResolution.kind === 'retry-canonical') {
+          setReviewModeInfo((old) => {
+            if (!old.reviewRecord) return old
+            const exercisePlans = {
+              ...(old.reviewRecord.exercisePlans ?? {}),
+              [currentWord.name]: createCanonicalReviewProbePlan(),
+            }
+            const itemStates = {
+              ...(old.reviewRecord.itemStates ?? {}),
+              [currentWord.name]: itemResolution.state,
+            }
+            return {
+              ...old,
+              reviewRecord: {
+                ...old.reviewRecord,
+                exercisePlans,
+                itemStates,
+              },
+            }
+          })
+
+          setCurrentWordExerciseCount(0)
+          setCurrentReviewWrongCount(0)
+          setCurrentReviewGap(MAX_REINFORCEMENT_GAP)
+          dispatch({ type: TypingStateActionType.LOOP_CURRENT_WORD })
+          reloadCurrentWordComponent()
+          return
+        }
+
         const attemptGap =
           wrongCount > 0
             ? getAdaptiveReinforcementGap(wrongCount, classification)
             : MAX_REINFORCEMENT_GAP
-        const reinforcementUsed =
-          reviewModeInfo.reviewRecord?.reinforcementCounts?.[currentWord.name] ?? 0
-        const reinforcementRemaining = Math.max(
-          0,
-          MAX_REINFORCEMENT_PER_WORD_PER_SESSION - reinforcementUsed,
-        )
-
         const decision = decideReviewProgress({
           queue: state.chapterData.words,
           currentIndex: state.chapterData.index,
           currentWord,
-          currentExerciseCount: currentWordExerciseCount,
-          loopWordTimes: effectiveLoopWordTimes,
-          priorAccumulatedWrongCount: currentReviewWrongCount,
+          currentExerciseCount: 0,
+          loopWordTimes: 1,
+          priorAccumulatedWrongCount: 0,
           attemptWrongCount: wrongCount,
-          currentReinforcementGap: currentReviewGap,
+          currentReinforcementGap: MAX_REINFORCEMENT_GAP,
           attemptReinforcementGap: attemptGap,
-          reinforcementRemaining,
+          reinforcementRemaining: itemResolution.insertReinforcement ? 1 : 0,
+          requestReinforcement: itemResolution.insertReinforcement,
         })
         const projection = projectReviewProgress({
           queue: state.chapterData.words,
@@ -130,9 +191,6 @@ export default function WordPanel() {
           decision,
         })
 
-        // Persist one atomic Review snapshot outside the Typing reducer.
-        // Reducers stay pure; React/Jotai side effects are not executed during
-        // Immer reducer evaluation.
         setReviewModeInfo((old) => {
           if (!old.reviewRecord) return old
 
@@ -140,18 +198,21 @@ export default function WordPanel() {
           const reinforcementCounts = {
             ...(old.reviewRecord.reinforcementCounts ?? {}),
           }
+          const itemStates = {
+            ...(old.reviewRecord.itemStates ?? {}),
+            [currentWord.name]: itemResolution.state,
+          }
 
           if (decision.kind === 'advance' && decision.insertWord) {
             reinforcementCounts[currentWord.name] =
               (reinforcementCounts[currentWord.name] ?? 0) + 1
-          }
 
-          if (nextExerciseShadow !== undefined) {
             if (nextExerciseShadow) {
               exercisePlans[currentWord.name] =
                 materializeReviewExercisePlan(nextExerciseShadow)
-            } else {
-              delete exercisePlans[currentWord.name]
+            } else if (!exercisePlans[currentWord.name]) {
+              exercisePlans[currentWord.name] =
+                createCanonicalReviewProbePlan()
             }
           }
 
@@ -183,18 +244,10 @@ export default function WordPanel() {
                 Object.keys(reinforcementCounts).length > 0
                   ? reinforcementCounts
                   : undefined,
+              itemStates,
             },
           }
         })
-
-        if (decision.kind === 'loop-current') {
-          setCurrentWordExerciseCount(decision.nextExerciseCount)
-          setCurrentReviewWrongCount(decision.nextAccumulatedWrongCount)
-          setCurrentReviewGap(decision.nextReinforcementGap)
-          dispatch({ type: TypingStateActionType.LOOP_CURRENT_WORD })
-          reloadCurrentWordComponent()
-          return
-        }
 
         setCurrentWordExerciseCount(0)
         setCurrentReviewWrongCount(0)
@@ -214,7 +267,49 @@ export default function WordPanel() {
         return
       }
 
-      // Ordinary learning intentionally retains the upstream progression path.
+      if (isReviewMode && currentWord) {
+        // Acquisition remains a bounded training-only queue and deliberately
+        // does not enter the Review Rating/Item machines.
+        const decision = decideReviewProgress({
+          queue: state.chapterData.words,
+          currentIndex: state.chapterData.index,
+          currentWord,
+          currentExerciseCount: 0,
+          loopWordTimes: 1,
+          priorAccumulatedWrongCount: 0,
+          attemptWrongCount: 0,
+          currentReinforcementGap: MAX_REINFORCEMENT_GAP,
+          attemptReinforcementGap: MAX_REINFORCEMENT_GAP,
+          reinforcementRemaining: 0,
+          requestReinforcement: false,
+        })
+        const projection = projectReviewProgress({
+          queue: state.chapterData.words,
+          currentIndex: state.chapterData.index,
+          decision,
+        })
+
+        setReviewModeInfo((old) => {
+          if (!old.reviewRecord) return old
+          return {
+            ...old,
+            reviewRecord: {
+              ...old.reviewRecord,
+              index: projection.index,
+              isFinished: projection.isFinished,
+            },
+          }
+        })
+
+        if (decision.kind === 'advance') {
+          dispatch({ type: TypingStateActionType.NEXT_WORD })
+        } else {
+          dispatch({ type: TypingStateActionType.FINISH_CHAPTER })
+        }
+        return
+      }
+
+      // Ordinary Typing intentionally retains the upstream progression path.
       const hasMoreLoopExercises =
         currentWordExerciseCount < loopWordTimes - 1
       const hasNextWord =
@@ -235,15 +330,14 @@ export default function WordPanel() {
       dispatch({ type: TypingStateActionType.FINISH_CHAPTER })
     },
     [
-      currentReviewWrongCount,
-      currentReviewGap,
+      currentLearnItemKind,
+      currentReviewAttemptRole,
       currentWordExerciseCount,
-      effectiveLoopWordTimes,
       loopWordTimes,
       state.chapterData.index,
       state.chapterData.words,
       currentWord,
-      reviewModeInfo.reviewRecord?.reinforcementCounts,
+      reviewModeInfo.reviewRecord?.itemStates,
       isReviewMode,
       dispatch,
       reloadCurrentWordComponent,
