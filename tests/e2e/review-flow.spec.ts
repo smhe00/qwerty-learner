@@ -465,7 +465,6 @@ test('fresh Typing failure cannot reopen a previously reviewed Learn word', asyn
   })
 
   await page.goto('/learn')
-  await page.getByRole('button', { name: '开始', exact: true }).click()
   await expect(page).toHaveURL(/\/learn\/session$/)
 
   const info = await readReviewModeInfo(page)
@@ -521,10 +520,6 @@ test('new Review session forces a canonical cold probe independent of ordinary s
   await putDueReviewWordState(page, 'cancel')
 
   await page.goto('/learn')
-  await page.getByRole('button', {
-    name: '开始',
-    exact: true,
-  }).click()
   await expect(page).toHaveURL(/\/learn\/session$/)
 
   const sessionInfo = await readReviewModeInfo(page)
@@ -801,12 +796,17 @@ test('Typing and Learn are explicit top-level modes', async ({ page }) => {
   await expect(page.getByRole('button', { name: '开始' })).toBeVisible()
 
   await learnMode.click()
-  await expect(page).toHaveURL(/\/learn$/)
+  await expect(page).toHaveURL(/\/learn\/session$/)
   await expect(
     page.getByRole('button', { name: 'Learn', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true')
   await expect(
     page.getByRole('button', { name: '开始', exact: true }),
+  ).toBeVisible()
+  await expect(page.getByText('按任意键开始')).toBeVisible()
+  await startTyping(page)
+  await expect(
+    page.getByRole('button', { name: '暂停', exact: true }),
   ).toBeVisible()
   await expect(page.getByText('今日到期', { exact: true })).toHaveCount(0)
   await expect(page.getByText('学习计划', { exact: true })).toHaveCount(0)
@@ -818,7 +818,7 @@ test('Typing and Learn are explicit top-level modes', async ({ page }) => {
   ).toHaveAttribute('aria-pressed', 'true')
 })
 
-test('Learn landing keeps long-term state while plan details stay hidden', async ({
+test('Learn entry keeps long-term state while plan details stay hidden', async ({
   page,
 }) => {
   await seedReviewAdmissionCase(page, {
@@ -826,6 +826,7 @@ test('Learn landing keeps long-term state while plan details stay hidden', async
   })
 
   await page.goto('/learn')
+  await expect(page).toHaveURL(/\/learn\/session$/)
   await expect(page.getByText('长期学习中', { exact: true })).toHaveCount(0)
   await expect(page.getByText('学习计划', { exact: true })).toHaveCount(0)
 
@@ -929,7 +930,7 @@ test('Learn dictionary selection reuses the Typing gallery and skips chapter sel
   await expect(target).toBeVisible()
   await target.click()
 
-  await expect(page).toHaveURL(/\/learn$/)
+  await expect(page).toHaveURL(/\/learn\/session$/)
   await expect(
     page.getByRole('link', { name: '中考核心词', exact: true }),
   ).toBeVisible()
@@ -971,6 +972,7 @@ test('Learn header keeps dictionary, Start, and Settings aligned with Typing', a
   }
 
   await page.goto('/learn')
+  await expect(page).toHaveURL(/\/learn\/session$/)
   const learnDictionary = page.getByRole('link', {
     name: 'CET-4',
     exact: true,
@@ -1089,7 +1091,7 @@ test('Learn reuses Typing controls while preserving Typing-owned preferences', a
   }))
 
   await page.getByRole('button', { name: 'Learn', exact: true }).click()
-  await expect(page).toHaveURL(/\/learn$/)
+  await expect(page).toHaveURL(/\/learn\/session$/)
 
   await expect(
     page.getByRole('button', {
@@ -1159,14 +1161,6 @@ test('Learn reuses Typing controls while preserving Typing-owned preferences', a
     phonetic: localStorage.getItem('phoneticConfig'),
   }))
   expect(afterLanding).toEqual(before)
-
-  const startButton = page.getByRole('button', {
-    name: '开始',
-    exact: true,
-  })
-  await expect(startButton).toBeEnabled()
-  await startButton.click()
-  await expect(page).toHaveURL(/\/learn\/session$/)
 
   expect(
     await page.evaluate(() =>
@@ -1276,6 +1270,7 @@ test('Learn exposes only one unfinished session and cannot create a duplicate fr
   })
 
   await page.goto('/learn')
+  await expect(page).toHaveURL(/\/learn\/session$/)
   await expect(
     page.getByRole('button', { name: '开始', exact: true }),
   ).toBeVisible()
@@ -1300,12 +1295,6 @@ test('Learn exposes only one unfinished session and cannot create a duplicate fr
       }
     })
   })
-
-  await page.getByRole('button', {
-    name: '开始',
-    exact: true,
-  }).click()
-  await expect(page).toHaveURL(/\/learn\/session$/)
 
   const afterCount = await page.evaluate(async () => {
     return new Promise<number>((resolve, reject) => {
@@ -1398,6 +1387,7 @@ test('Learn starts new acquisition only when there is no due review', async ({
   })
 
   await page.goto('/learn')
+  await expect(page).toHaveURL(/\/learn\/session$/)
 
   await expect
     .poll(async () => {
@@ -1886,7 +1876,7 @@ test('Typing and Learn use the same indigo interaction palette', async ({ page }
   )
 
   await page.getByRole('button', { name: 'Learn', exact: true }).click()
-  await expect(page).toHaveURL(/\/learn$/)
+  await expect(page).toHaveURL(/\/learn\/session$/)
 
   const learnMode = page.getByRole('button', {
     name: 'Learn',
