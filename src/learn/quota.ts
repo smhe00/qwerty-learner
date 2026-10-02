@@ -8,7 +8,7 @@ export const learnAcquisitionQuotaPolicy = {
   medium: 10,
   high: 20,
   minRatedEventsForAdaptation: 8,
-  minTodayReviewAttemptsForColdSignal: 5,
+  minTodayColdProbeAttemptsForSignal: 5,
   weakAgainRatePct: 35,
   moderateAgainRatePct: 20,
   weakColdProbePassRatePct: 60,
@@ -30,6 +30,7 @@ export type LearnAcquisitionQuotaDecision = {
     unseenCount: number | null
     todayReviewedWords: number
     todayReviewAttempts: number
+    todayColdProbeAttempts: number
     todayAcquiredWords: number
     coldProbePassRateToday: number | null
     ratedEvents30d: number
@@ -56,46 +57,42 @@ export function decideDailyAcquisitionQuota(
     ratedEvents,
   )
   const hasColdSignal =
-    stats.today.reviewAttempts >=
-      policy.minTodayReviewAttemptsForColdSignal &&
+    stats.today.coldProbeAttempts >=
+      policy.minTodayColdProbeAttemptsForSignal &&
     stats.today.coldProbePassRate !== null
+  const weakAgain =
+    ratedEvents >= policy.minRatedEventsForAdaptation &&
+    againRate30d !== null &&
+    againRate30d >= policy.weakAgainRatePct
+  const moderateAgain =
+    ratedEvents >= policy.minRatedEventsForAdaptation &&
+    againRate30d !== null &&
+    againRate30d >= policy.moderateAgainRatePct
+  const weakCold =
+    hasColdSignal &&
+    (stats.today.coldProbePassRate as number) <
+      policy.weakColdProbePassRatePct
+  const moderateCold =
+    hasColdSignal &&
+    (stats.today.coldProbePassRate as number) <
+      policy.strongColdProbePassRatePct
 
   let tier: LearnAcquisitionQuotaTier = 'high'
   const reasonCodes: string[] = []
 
-  if (ratedEvents < policy.minRatedEventsForAdaptation) {
+  if (weakAgain || weakCold) {
+    tier = 'low'
+    if (weakAgain) reasonCodes.push('high-again-rate')
+    if (weakCold) reasonCodes.push('low-cold-probe-pass-rate')
+  } else if (moderateAgain || moderateCold) {
+    tier = 'medium'
+    if (moderateAgain) reasonCodes.push('moderate-again-rate')
+    if (moderateCold) reasonCodes.push('moderate-cold-probe-pass-rate')
+  } else if (ratedEvents < policy.minRatedEventsForAdaptation) {
     reasonCodes.push('bootstrap-insufficient-rated-history')
+    if (hasColdSignal) reasonCodes.push('strong-cold-probe-signal')
   } else {
-    const weakAgain =
-      againRate30d !== null &&
-      againRate30d >= policy.weakAgainRatePct
-    const moderateAgain =
-      againRate30d !== null &&
-      againRate30d >= policy.moderateAgainRatePct
-    const weakCold =
-      hasColdSignal &&
-      (stats.today.coldProbePassRate as number) <
-        policy.weakColdProbePassRatePct
-    const moderateCold =
-      hasColdSignal &&
-      (stats.today.coldProbePassRate as number) <
-        policy.strongColdProbePassRatePct
-
-    if (weakAgain || weakCold) {
-      tier = 'low'
-      reasonCodes.push(
-        weakAgain ? 'high-again-rate' : 'low-cold-probe-pass-rate',
-      )
-    } else if (moderateAgain || moderateCold) {
-      tier = 'medium'
-      reasonCodes.push(
-        moderateAgain
-          ? 'moderate-again-rate'
-          : 'moderate-cold-probe-pass-rate',
-      )
-    } else {
-      reasonCodes.push('stable-review-performance')
-    }
+    reasonCodes.push('stable-review-performance')
   }
 
   const targetDailyNewWords = policy[tier]
@@ -134,6 +131,7 @@ export function decideDailyAcquisitionQuota(
       unseenCount: stats.lifecycle.unseen,
       todayReviewedWords: stats.today.reviewedWords,
       todayReviewAttempts: stats.today.reviewAttempts,
+      todayColdProbeAttempts: stats.today.coldProbeAttempts,
       todayAcquiredWords: stats.today.acquiredWords,
       coldProbePassRateToday: stats.today.coldProbePassRate,
       ratedEvents30d: ratedEvents,

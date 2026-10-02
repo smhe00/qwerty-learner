@@ -16,6 +16,7 @@ export type LearnStatsSnapshot = {
   today: {
     reviewedWords: number
     reviewAttempts: number
+    coldProbeAttempts: number
     acquiredWords: number
     hintUseRate: number | null
     coldProbePassRate: number | null
@@ -110,9 +111,10 @@ function uniqueWordCount(records: IWordRecord[]): number {
 
 function isColdProbePass(record: IWordRecord): boolean {
   return (
+    record.reviewRatingDecision?.eligible === true &&
     record.wrongCount === 0 &&
     !record.learningContext?.reviewHint &&
-    record.reviewRatingDecision?.rating !== 'again'
+    record.reviewRatingDecision.rating !== 'again'
   )
 }
 
@@ -150,7 +152,10 @@ export function buildLearnStatsSnapshot(input: {
   const hintCount = todayRecords.filter(
     (record) => record.learningContext?.reviewHint !== undefined,
   ).length
-  const coldPassCount = todayReview.filter(isColdProbePass).length
+  const todayColdProbe = todayReview.filter(
+    (record) => record.reviewRatingDecision?.eligible === true,
+  )
+  const coldPassCount = todayColdProbe.filter(isColdProbePass).length
 
   const activeStates = states.filter(
     (state) => getLearningLifecycle(state) === 'active',
@@ -227,7 +232,7 @@ export function buildLearnStatsSnapshot(input: {
       reviewAttempts: todayReview.length,
       acquiredWords: uniqueWordCount(todayAcquisition),
       hintUseRate: rate(hintCount, todayRecords.length),
-      coldProbePassRate: rate(coldPassCount, todayReview.length),
+      coldProbePassRate: rate(coldPassCount, todayColdProbe.length),
     },
     lifecycle: {
       active: activeStates.length,

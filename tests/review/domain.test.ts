@@ -2498,6 +2498,7 @@ test('Learn P2 aggregates lifecycle, due state, ratings and daily evidence witho
   assert.equal(stats.today.acquiredWords, 1)
   assert.equal(stats.today.hintUseRate, 33.3)
   assert.equal(stats.today.reviewAttempts, 2)
+  assert.equal(stats.today.coldProbeAttempts, 2)
   assert.equal(stats.today.coldProbePassRate, 50)
 
   assert.deepEqual(stats.lifecycle, {
@@ -2675,4 +2676,87 @@ test('Learn P3 never admits new words while due Review backlog exists', () => {
   assert.equal(quota.allowedNow, 0)
   assert.equal(quota.pausedByDue, true)
   assert.ok(quota.reasonCodes.includes('due-review-first'))
+})
+
+
+test('Learn P3 can throttle from five valid cold probes before the 30-day sample reaches eight', () => {
+  const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
+  const records: IWordRecord[] = Array.from({ length: 5 }, (_, index) => ({
+    word: `cold-${index}`,
+    timeStamp: now - index * 60,
+    dict: 'p3-cold',
+    chapter: -1,
+    timing: [],
+    wrongCount: index < 3 ? 1 : 0,
+    mistakes: index < 3 ? { 0: ['x'] } : {},
+    sourceMode: 'learn',
+    learnItemKind: 'review',
+    reviewRatingDecision:
+      index < 3
+        ? {
+            eligible: true as const,
+            rating: 'again' as const,
+            confidence: 1,
+            reasonCodes: ['cold-fail'],
+          }
+        : {
+            eligible: true as const,
+            rating: 'good' as const,
+            confidence: 1,
+            reasonCodes: ['cold-pass'],
+          },
+  }))
+
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'p3-cold',
+    wordRecords: records,
+    wordStates: [],
+    dictionaryWords: Array.from({ length: 100 }, (_, index) => `w${index}`),
+  })
+  const decision = decideDailyAcquisitionQuota(stats)
+
+  assert.equal(stats.today.coldProbeAttempts, 5)
+  assert.equal(stats.today.coldProbePassRate, 40)
+  assert.equal(decision.tier, 'low')
+  assert.equal(decision.targetDailyNewWords, 5)
+  assert.ok(decision.reasonCodes.includes('low-cold-probe-pass-rate'))
+})
+
+test('Learn P3 excludes invalid Rating Gate events from cold-probe quality', () => {
+  const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
+  const records: IWordRecord[] = Array.from({ length: 5 }, (_, index) => ({
+    word: `invalid-${index}`,
+    timeStamp: now - index * 60,
+    dict: 'p3-invalid',
+    chapter: -1,
+    timing: [],
+    wrongCount: 0,
+    mistakes: {},
+    sourceMode: 'learn',
+    learnItemKind: 'review',
+    reviewRatingDecision: {
+      eligible: false as const,
+      rating: null,
+      reason: 'attention-uncertain' as const,
+      reasonCodes: ['attention-uncertain'],
+    },
+  }))
+
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'p3-invalid',
+    wordRecords: records,
+    wordStates: [],
+    dictionaryWords: ['new'],
+  })
+  const decision = decideDailyAcquisitionQuota(stats)
+
+  assert.equal(stats.today.reviewAttempts, 5)
+  assert.equal(stats.today.coldProbeAttempts, 0)
+  assert.equal(stats.today.coldProbePassRate, null)
+  assert.equal(decision.tier, 'high')
+  assert.ok(
+    decision.reasonCodes.includes('bootstrap-insufficient-rated-history'),
+  )
 })
