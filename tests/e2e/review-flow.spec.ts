@@ -1415,15 +1415,6 @@ test('Learn starts new acquisition only when there is no due review', async ({
     })
     .toBe(false)
 
-  const startButton = page.getByRole('button', {
-    name: '开始',
-    exact: true,
-  })
-  await expect(startButton).toBeEnabled()
-  await startButton.click()
-
-  await expect(page).toHaveURL(/\/learn\/session$/)
-
   const info = await readReviewModeInfo(page)
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
   expect(info?.reviewRecord?.words?.length).toBe(20)
@@ -1663,11 +1654,6 @@ test('a due ACTIVE word is reviewed before any unseen acquisition word', async (
   })
 
   await page.goto('/learn')
-  await page.getByRole('button', {
-    name: '开始',
-    exact: true,
-  }).click()
-
   await expect(page).toHaveURL(/\/learn\/session$/)
   const info = await readReviewModeInfo(page)
 
