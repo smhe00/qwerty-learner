@@ -36,6 +36,10 @@ async function seedReviewSession(
 ) {
   await page.addInitScript(
     ({ seededWords, recordId }) => {
+      const seedKey = `qwerty:e2e:review-session-seed:${recordId}`
+      if (sessionStorage.getItem(seedKey) === 'done') return
+      sessionStorage.setItem(seedKey, 'done')
+
       localStorage.setItem('currentDict', JSON.stringify('cet4'))
       localStorage.setItem('currentChapter', JSON.stringify(-1))
       localStorage.setItem(
