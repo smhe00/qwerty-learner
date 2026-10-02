@@ -1802,8 +1802,40 @@ test('Hint ladder auto-advances after two failures at each active level', async 
 
 
 test('lazy route chunk failure recovers without manual refresh', async ({
-  page,
+  browser,
 }) => {
+  const probeContext = await browser.newContext()
+  const probePage = await probeContext.newPage()
+  await probePage.goto('/typing')
+
+  // Let the intentional Gallery/Learn idle preload finish, then observe the
+  // exact hashed JavaScript requested only when Analysis is opened.
+  await probePage.waitForTimeout(1500)
+  const analysisScripts: string[] = []
+  probePage.on('request', (request) => {
+    if (
+      request.resourceType() === 'script' &&
+      /\/assets\/.*\.js(?:\?.*)?$/.test(request.url())
+    ) {
+      analysisScripts.push(request.url())
+    }
+  })
+
+  await probePage.getByRole('button', {
+    name: '查看数据统计',
+    exact: true,
+  }).click()
+  await expect(probePage).toHaveURL(/\/analysis$/)
+  await expect(
+    probePage.getByText('暂无练习数据', { exact: true }),
+  ).toBeVisible()
+
+  const analysisChunkUrl = analysisScripts[0]
+  expect(analysisChunkUrl).toBeTruthy()
+  await probeContext.close()
+
+  const recoveryContext = await browser.newContext()
+  const page = await recoveryContext.newPage()
   await page.addInitScript(() => {
     const count = Number(
       sessionStorage.getItem('qwerty:e2e-document-load-count') ?? '0',
@@ -1815,13 +1847,10 @@ test('lazy route chunk failure recovers without manual refresh', async ({
   })
 
   await page.goto('/typing')
-
-  // Let the intentional Gallery/Learn idle preload finish first. The next
-  // JavaScript chunk request is then the Analysis lazy route under test.
   await page.waitForTimeout(1500)
 
   let abortedChunk = false
-  await page.route(/\/assets\/.*\.js(?:\?.*)?$/, async (route) => {
+  await page.route(analysisChunkUrl, async (route) => {
     if (!abortedChunk) {
       abortedChunk = true
       await route.abort()
@@ -1830,14 +1859,15 @@ test('lazy route chunk failure recovers without manual refresh', async ({
     await route.continue()
   })
 
-  // Analysis is intentionally not idle-preloaded. Its first lazy chunk load
-  // models a stale route chunk after a production deployment.
   await page.getByRole('button', {
     name: '查看数据统计',
     exact: true,
   }).click()
 
   await expect(page).toHaveURL(/\/analysis$/)
+  await expect(
+    page.getByText('暂无练习数据', { exact: true }),
+  ).toBeVisible()
   await expect
     .poll(async () =>
       page.evaluate(() =>
@@ -1851,6 +1881,7 @@ test('lazy route chunk failure recovers without manual refresh', async ({
     .toBeGreaterThanOrEqual(2)
 
   expect(abortedChunk).toBe(true)
+  await recoveryContext.close()
 })
 
 test('light app theme keeps inherited Typing header controls readable when OS prefers dark', async ({ page }) => {
