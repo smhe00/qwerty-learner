@@ -40,6 +40,7 @@ Learn V1 stabilization:
 P0 — navigation / persistence / reload stability   CLOSED
 P1 — Learn UX / mode-boundary consistency          CLOSED
 P2 — Learn statistics semantics / UI                CLOSED
+P3 — adaptive daily acquisition quota / feedback    CLOSED
 ```
 
 ### P0 stability contract
@@ -125,6 +126,39 @@ P2 — Learn statistics semantics / UI                CLOSED
   mutate lifecycle, due dates or scheduler state.
 - Browser regression verifies the Learn-specific surface and the return to the
   same unfinished Learn session.
+
+### P3 acquisition quota contract
+
+Learn P3 turns P2 statistics into a deterministic admission feedback controller.
+
+- Due Review always has priority. If any ACTIVE word is due, new Acquisition
+  is not admitted at that moment.
+- New-word admission is a **daily total quota**, not a per-session quota.
+  Re-entering Learn cannot bypass the daily target.
+- V1 quota tiers are 5 / 10 / 20 new words per day.
+- With fewer than 8 eligible Rating Gate events in the recent 30-day window,
+  the bootstrap target stays at 20 unless today's valid Cold Probe evidence is
+  already strong enough to throttle.
+- A current-day Cold Probe signal is used only after at least 5
+  `eligible=true` Review probes. Rating-null / attention-uncertain /
+  training events cannot become a positive Cold Probe signal.
+- Low tier (5): 30-day Again rate >= 35%, or today's valid Cold Probe pass rate
+  < 60%.
+- Medium tier (10): 30-day Again rate >= 20%, or today's valid Cold Probe pass
+  rate < 80%, unless the low-tier rule already matched.
+- High tier (20): otherwise.
+- The remaining quota is
+  `max(0, target - todayAcquiredWords)`, further capped by UNSEEN count.
+- The controller is pure and versioned as
+  `learn-acquisition-quota-v1`. It does not mutate scheduler or lifecycle.
+- The Learn resolver consumes `allowedNow` when creating an Acquisition
+  session; the statistics page exposes both today's target and the currently
+  admissible number.
+- Browser regression proves that weak Review performance creates a five-word
+  Acquisition session.
+
+This P3 milestone is a Learn product milestone and is distinct from the older
+adaptive-Review roadmap's historical P3 naming.
 
 Phase C/E closure rules:
 

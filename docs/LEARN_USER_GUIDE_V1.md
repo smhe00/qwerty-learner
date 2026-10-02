@@ -1,6 +1,6 @@
 # Learn V1 使用指南
 
-> 当前版本：Typing / Learn V1 + P2 Learn Statistics
+> 当前版本：Typing / Learn V1 + P3 Adaptive Acquisition Quota
 >
 > Learn 的长期目标架构见 `LEARN_ARCHITECTURE_V1.md`。
 
@@ -93,7 +93,8 @@ Learn 首页第一行与 Typing 保持同一布局骨架：
 
 ```text
 无 due Review
-→ 从词库中按顺序选择最多 20 个 UNSEEN 词
+→ P3 计算今日剩余新词额度
+→ 从词库中按顺序选择最多 allowedNow 个 UNSEEN 词
 → Cold Probe：只显示释义，隐藏拼写/音标，不自动发音
 → 会：直接正确输入
 → 不会/持续拼错：Hint 0 → 1 → 2 → 3
@@ -103,6 +104,28 @@ Learn 首页第一行与 Typing 保持同一布局骨架：
 
 第一次 cold probe 属于 Learn admission probe；当前仍不把它伪装成长期
 Again / Hard / Good / Easy 调度事件，因此不会增加 reviewCount / lapseCount。
+
+### P3 每日新词额度
+
+新词不再固定为“每次最多 20 个”。系统根据近期记忆质量给出每日目标：
+
+```text
+记忆压力高    → 5 个/天
+中等          → 10 个/天
+稳定/样本不足 → 20 个/天
+```
+
+主要反馈信号是：
+
+- 当前 Due：只要还有到期 Review，就先复习，不新增；
+- 最近 30 天 Again 比例；
+- 今天有效 Cold Probe 一次通过率。
+
+Cold Probe 至少有 5 个有效样本才参与当天调速；Rating Gate 判定无效的
+尝试不会被当作“通过”。
+
+每日额度是总量。例如今日目标 10 个、已经学了 7 个，再次进入 Learn
+最多只会再加入 3 个新词，而不是重新获得 10 个额度。
 
 ---
 
@@ -238,8 +261,9 @@ Learn 中的数据统计入口会打开 Learn 专属统计页，而不是复用 
 
 - 今日复习词数；
 - 今日新学词数；
+- 今日新词目标、当前可新增；
 - 当前到期、长期学习中、已移出、尚未学习；
-- Cold Probe 一次通过率；
+- Cold Probe 一次通过率（仅有效 Review probe）；
 - Hint 使用率；
 - 最近 30 天 Again / Hard / Good / Easy；
 - 最近 30 天复习通过率；
