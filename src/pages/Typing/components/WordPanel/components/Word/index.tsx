@@ -11,7 +11,10 @@ import type { WordPronunciationIconRef } from '@/components/WordPronunciationIco
 import { WordPronunciationIcon } from '@/components/WordPronunciationIcon'
 import { EXPLICIT_SPACE } from '@/constants'
 import useKeySounds from '@/hooks/useKeySounds'
-import type { LearnSessionKind } from '@/learn/session'
+import {
+  LEARN_ACQUISITION_POLICY_VERSION,
+  type LearnSessionKind,
+} from '@/learn/session'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import { classifyTypingError } from '@/review/classifier'
 import type { TypingErrorClassification } from '@/review/classifier'
@@ -302,6 +305,7 @@ export default function WordComponent({
     return (
       currentChapter === -1 &&
       (policyVersion === CANONICAL_REVIEW_PROBE_POLICY_VERSION ||
+        policyVersion === LEARN_ACQUISITION_POLICY_VERSION ||
         policyVersion === REVIEW_HINT_POLICY_VERSION)
     )
   }, [currentChapter])

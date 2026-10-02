@@ -7,28 +7,29 @@ import type { ReviewExercisePlanV1 } from '@/review/decision'
 import type { IReviewWordState } from '@/review/types'
 import type { Word } from '@/typings'
 
-export const LEARN_ACQUISITION_POLICY_VERSION = 'learn-acquisition-v1'
+export const LEARN_ACQUISITION_POLICY_VERSION =
+  'learn-acquisition-cold-probe-v2'
 export const LEARN_NEW_WORD_BATCH_SIZE = 20
 
 export type LearnSessionKind = 'review' | 'acquisition'
 
 /**
- * Acquisition is deliberately a training condition, not a memory probe.
+ * Every UNSEEN word starts with a real cold probe before any scaffold is shown.
  *
- * A new word is shown in full with meaning, phonetic and pronunciation so the
- * learner can establish an initial representation. Completing this exercise
- * admits the word to long-term Learn with an initial due date, but does not
- * fabricate Again/Hard/Good/Easy.
+ * This is an admission probe, not yet a long-term scheduler rating. A learner
+ * who does not know the word falls through the existing finite Hint ladder.
+ * Once the word is completed, it enters ACTIVE and receives the initial +1 day
+ * due date.
  */
 export function createLearnAcquisitionPlan(): ReviewExercisePlanV1 {
   const condition = {
     version: 1 as const,
-    purpose: 'training' as const,
+    purpose: 'probe' as const,
     source: 'adaptive-policy' as const,
-    audio: 'automatic' as const,
+    audio: 'none' as const,
     meaning: 'visible' as const,
-    phonetic: 'visible' as const,
-    letters: { mode: 'all-visible' as const },
+    phonetic: 'hidden' as const,
+    letters: { mode: 'all-hidden' as const },
     probeDimension: 'none' as const,
   }
 
@@ -39,10 +40,11 @@ export function createLearnAcquisitionPlan(): ReviewExercisePlanV1 {
       LEARN_ACQUISITION_POLICY_VERSION,
       [
         'learn-acquisition',
-        'full-orthography-visible',
-        'meaning-visible',
-        'phonetic-visible',
-        'automatic-audio',
+        'cold-probe-first',
+        'meaning-to-orthography',
+        'letters-hidden',
+        'audio-off',
+        'phonetic-hidden',
         'no-scheduler-rating',
       ],
       condition.version,

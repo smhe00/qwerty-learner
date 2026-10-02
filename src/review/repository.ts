@@ -1,6 +1,7 @@
 import {
   reactivateReviewStateFromLearningEvidence,
   rebuildBasicStateFromWordRecords,
+  shouldDropLegacyTypingSeededState,
 } from './rebuild'
 import {
   decideLearningLifecycleTransition,
@@ -114,9 +115,6 @@ export async function bootstrapReviewWordStatesForDictionary(
       await db.reviewWordStates.where('dict').equals(dict).delete()
     }
 
-    const existingByWord = hasStaleState
-      ? new Map<string, IReviewWordState>()
-      : new Map(existingStates.map((state) => [state.word, state]))
     const recordsByWord = new Map<string, typeof records>()
 
     for (const record of records) {
@@ -126,6 +124,27 @@ export async function bootstrapReviewWordStatesForDictionary(
     }
 
     let changedCount = 0
+    const retainedStates: IReviewWordState[] = []
+
+    if (!hasStaleState) {
+      for (const state of existingStates) {
+        const wordRecords = recordsByWord.get(state.word) ?? []
+        if (shouldDropLegacyTypingSeededState(state, wordRecords)) {
+          await db.reviewWordStates
+            .where('[dict+word]')
+            .equals([dict, state.word])
+            .delete()
+          changedCount += 1
+          continue
+        }
+        retainedStates.push(state)
+      }
+    }
+
+    const existingByWord = hasStaleState
+      ? new Map<string, IReviewWordState>()
+      : new Map(retainedStates.map((state) => [state.word, state]))
+
     for (const [word, wordRecords] of recordsByWord) {
       const existing = existingByWord.get(word)
       if (existing) {

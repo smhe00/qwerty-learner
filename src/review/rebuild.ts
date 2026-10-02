@@ -14,6 +14,29 @@ function isLongTermReviewRecord(record: IWordRecord): boolean {
   return record.chapter === -1
 }
 
+function isExplicitLearnRecord(record: IWordRecord): boolean {
+  if (record.sourceMode === 'typing') return false
+  if (record.sourceMode === 'learn') return true
+
+  // Legacy long-term Review rows predate sourceMode but used chapter=-1.
+  return record.chapter === -1
+}
+
+export function shouldDropLegacyTypingSeededState(
+  state: IReviewWordState,
+  records: IWordRecord[],
+): boolean {
+  if (!isActiveLearningState(state)) return false
+  if (state.reviewCount !== 0) return false
+  if (state.lastReviewedAt !== undefined || state.lastOutcome !== undefined) {
+    return false
+  }
+  if (state.schedulerState.kind === 'fsrs6') return false
+  if (state.schedulerState.intervalDays !== 0) return false
+
+  return !records.some(isExplicitLearnRecord)
+}
+
 function compareRecordOrder(left: IWordRecord, right: IWordRecord): number {
   const timeDiff = left.timeStamp - right.timeStamp
   if (timeDiff !== 0) return timeDiff
@@ -29,6 +52,7 @@ export function hasUnreviewedLearningFailure(records: IWordRecord[]): boolean {
       if (!latestReview || compareRecordOrder(record, latestReview) > 0) latestReview = record
       continue
     }
+    if (!isExplicitLearnRecord(record)) continue
     if (record.learnItemKind === 'acquisition') continue
     if (record.wrongCount <= 0) continue
     if (!latestLearningFailure || compareRecordOrder(record, latestLearningFailure) > 0) {
@@ -92,12 +116,37 @@ export function rebuildBasicStateFromWordRecords(
   options?: { legacyDueAt?: number },
 ): IReviewWordState | undefined {
   const sortedRecords = [...records].sort((a, b) => a.timeStamp - b.timeStamp)
-  const firstLearningFailure = sortedRecords.find(
-    (record) => record.chapter !== -1 && record.wrongCount > 0,
+  const firstAcquisition = sortedRecords.find(
+    (record) =>
+      record.sourceMode === 'learn' &&
+      record.learnItemKind === 'acquisition',
   )
-  let state: IReviewWordState | undefined = firstLearningFailure
-    ? createInitialReviewWordState(dict, word, firstLearningFailure.timeStamp)
-    : undefined
+  const firstLearningFailure = sortedRecords.find(
+    (record) =>
+      record.sourceMode === 'learn' &&
+      record.learnItemKind !== 'acquisition' &&
+      record.chapter !== -1 &&
+      record.wrongCount > 0,
+  )
+
+  let state: IReviewWordState | undefined
+  if (firstAcquisition) {
+    state = {
+      ...createInitialReviewWordState(
+        dict,
+        word,
+        firstAcquisition.timeStamp,
+      ),
+      nextReviewAt: firstAcquisition.timeStamp + 86_400,
+      updatedAt: firstAcquisition.timeStamp,
+    }
+  } else if (firstLearningFailure) {
+    state = createInitialReviewWordState(
+      dict,
+      word,
+      firstLearningFailure.timeStamp,
+    )
+  }
   let replayedReviewCount = 0
   const priorRecords: IWordRecord[] = []
 
