@@ -53,6 +53,30 @@ const LearnPage = lazy(() =>
   loadRouteWithRefresh('learn', loadLearnPage),
 )
 
+function hasPersistedLearnSession(): boolean {
+  const raw = localStorage.getItem('reviewModeInfo')
+  if (!raw) return false
+
+  try {
+    const value = JSON.parse(raw)
+    return Boolean(value?.isReviewMode && value?.reviewRecord)
+  } catch {
+    return false
+  }
+}
+
+function LearnSessionRoute() {
+  // atomWithStorage hydrates after the first React render. Route admission
+  // must therefore use localStorage synchronously and only once; subscribing
+  // to reviewModeInfo here would let transient hydration/default values
+  // redirect an otherwise valid live Learn session.
+  return hasPersistedLearnSession() ? (
+    <TypingPage />
+  ) : (
+    <Navigate to="/learn" replace />
+  )
+}
+
 if (process.env.NODE_ENV === 'production') {
   // for prod
   mixpanel.init('bdc492847e9340eeebd53cc35f321691')
@@ -124,7 +148,7 @@ function Root() {
                 <Route index element={<TypingPage />} />
                 <Route path="/typing" element={<TypingPage />} />
                 <Route path="/learn" element={<LearnPage />} />
-                <Route path="/learn/session" element={<TypingPage />} />
+                <Route path="/learn/session" element={<LearnSessionRoute />} />
                 <Route path="/gallery" element={<GalleryPage />} />
                 <Route path="/analysis" element={<AnalysisPage />} />
                 <Route path="/error-book" element={<ErrorBook />} />
