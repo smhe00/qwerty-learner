@@ -34,10 +34,11 @@ export default function LearnPage() {
 
   const { errorWordData } = useErrorWordData(currentDictInfo, false)
   const errorWordDataRef = useRef(errorWordData)
-  const { data: wordList } = useSWR(
-    currentDictInfo.url,
-    wordListFetcher,
-  )
+  const {
+    data: wordList,
+    error: wordListError,
+    mutate: retryWordList,
+  } = useSWR(currentDictInfo.url, wordListFetcher)
 
   useEffect(() => {
     errorWordDataRef.current = errorWordData
@@ -132,6 +133,28 @@ export default function LearnPage() {
       }
     }
   }, [currentDictId, navigate, setReviewModeInfo, wordList])
+
+  if (wordListError && !wordList) {
+    return (
+      <Layout>
+        <main className="container mx-auto flex w-full flex-1 flex-col items-center justify-center gap-4">
+          <span
+            className="text-sm text-gray-500 dark:text-gray-400"
+            role="alert"
+          >
+            词表加载失败，系统会自动重试。
+          </span>
+          <button
+            type="button"
+            className="my-btn-primary bg-indigo-500 text-sm"
+            onClick={() => void retryWordList()}
+          >
+            立即重试
+          </button>
+        </main>
+      </Layout>
+    )
+  }
 
   if (isStarting || !wordList) {
     return (

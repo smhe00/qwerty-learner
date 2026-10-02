@@ -11,8 +11,11 @@ on:
       - 'src/components/ModeSwitcher/**'
       - 'src/components/Footer/**'
       - 'src/pages/Learn/**'
+      - 'src/index.tsx'
       - 'src/pages/Typing/index.tsx'
       - 'src/pages/Typing/store/**'
+      - 'src/pages/Typing/components/ResultScreen/**'
+      - 'src/utils/wordListFetcher.ts'
       - 'src/pages/Typing/components/StartButton/**'
       - 'src/utils/db/record.ts'
       - 'src/utils/db/index.ts'
@@ -58,8 +61,11 @@ jobs:
           src/learn
           src/components/ModeSwitcher
           src/pages/Learn
+          src/index.tsx
           src/pages/Typing/index.tsx
           src/pages/Typing/store
+          src/pages/Typing/components/ResultScreen
+          src/utils/wordListFetcher.ts
           src/pages/Typing/components/StartButton
           src/utils/db/record.ts
           src/utils/db/index.ts

@@ -158,22 +158,34 @@ const ResultScreen = () => {
 
   const exitButtonHandler = useCallback(() => {
     if (isReviewMode) {
-      setCurrentChapter(0)
       setReviewModeInfo((old) => ({ ...old, isReviewMode: false }))
-    } else {
-      dispatch({ type: TypingStateActionType.REPEAT_CHAPTER, shouldShuffle: false })
+      navigate('/typing')
+      return
     }
-  }, [dispatch, isReviewMode, setCurrentChapter, setReviewModeInfo])
+
+    dispatch({
+      type: TypingStateActionType.REPEAT_CHAPTER,
+      shouldShuffle: false,
+    })
+  }, [dispatch, isReviewMode, navigate, setReviewModeInfo])
+
+  const continueLearnHandler = useCallback(() => {
+    setReviewModeInfo((old) => ({ ...old, isReviewMode: false }))
+    navigate('/learn')
+  }, [navigate, setReviewModeInfo])
 
   const onNavigateToGallery = useCallback(() => {
-    setCurrentChapter(0)
     setReviewModeInfo((old) => ({ ...old, isReviewMode: false }))
-    navigate('/gallery')
-  }, [navigate, setCurrentChapter, setReviewModeInfo])
+    navigate('/gallery?mode=learn')
+  }, [navigate, setReviewModeInfo])
 
   useHotkeys(
     'enter',
     () => {
+      if (isReviewMode) {
+        continueLearnHandler()
+        return
+      }
       nextButtonHandler()
     },
     { preventDefault: true },
@@ -220,9 +232,18 @@ const ResultScreen = () => {
         <div className="flex h-screen items-center justify-center">
           <div className="my-card fixed flex w-[90vw] max-w-6xl flex-col overflow-hidden rounded-3xl bg-white pb-14 pl-10 pr-5 pt-10 shadow-lg dark:bg-gray-800 md:w-4/5 lg:w-3/5">
             <div className="text-center font-sans text-xl font-normal text-gray-900 dark:text-gray-400 md:text-2xl">
-              {`${currentDictInfo.name} ${isReviewMode ? '错题复习' : '第' + (currentChapter + 1) + '章'}`}
+              {`${currentDictInfo.name} ${isReviewMode ? 'Learn' : '第' + (currentChapter + 1) + '章'}`}
             </div>
-            <button className="absolute right-7 top-5" onClick={exitButtonHandler}>
+            <button
+              className="absolute right-7 top-5"
+              onClick={exitButtonHandler}
+              aria-label={
+                isReviewMode ? '结束 Learn 并返回 Typing' : '关闭结果'
+              }
+              title={
+                isReviewMode ? '结束 Learn 并返回 Typing' : '关闭结果'
+              }
+            >
               <IconX className="text-gray-400" />
             </button>
             <div className="mt-10 flex flex-row gap-2 overflow-hidden">
@@ -326,14 +347,24 @@ const ResultScreen = () => {
               )}
 
               {isReviewMode && (
-                <button
-                  className="my-btn-primary h-12 text-base font-bold"
-                  type="button"
-                  onClick={onNavigateToGallery}
-                  title="练习其他章节"
-                >
-                  练习其他章节
-                </button>
+                <>
+                  <button
+                    className="my-btn-primary h-12 text-base font-bold"
+                    type="button"
+                    onClick={continueLearnHandler}
+                    title="继续 Learn"
+                  >
+                    继续 Learn
+                  </button>
+                  <button
+                    className="my-btn-primary h-12 border-2 border-solid border-gray-300 bg-white text-base text-gray-700 dark:border-gray-700 dark:bg-gray-600 dark:text-white"
+                    type="button"
+                    onClick={onNavigateToGallery}
+                    title="选择其他词库"
+                  >
+                    选择其他词库
+                  </button>
+                </>
               )}
             </div>
           </div>

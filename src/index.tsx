@@ -4,7 +4,7 @@ import { ErrorBook } from './pages/ErrorBook'
 import { FriendLinks } from './pages/FriendLinks'
 import MobilePage from './pages/Mobile'
 import TypingPage from './pages/Typing'
-import { isOpenDarkModeAtom } from '@/store'
+import { isOpenDarkModeAtom, reviewModeInfoAtom } from '@/store'
 import { Analytics } from '@vercel/analytics/react'
 import 'animate.css'
 import { useAtomValue } from 'jotai'
@@ -52,6 +52,20 @@ const GalleryPage = lazy(() =>
 const LearnPage = lazy(() =>
   loadRouteWithRefresh('learn', loadLearnPage),
 )
+
+function LearnSessionRoute() {
+  const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
+  const hasActiveSession =
+    reviewModeInfo.isReviewMode &&
+    reviewModeInfo.reviewRecord !== undefined &&
+    !reviewModeInfo.reviewRecord.isFinished
+
+  return hasActiveSession ? (
+    <TypingPage />
+  ) : (
+    <Navigate to="/learn" replace />
+  )
+}
 
 if (process.env.NODE_ENV === 'production') {
   // for prod
@@ -124,7 +138,7 @@ function Root() {
                 <Route index element={<TypingPage />} />
                 <Route path="/typing" element={<TypingPage />} />
                 <Route path="/learn" element={<LearnPage />} />
-                <Route path="/learn/session" element={<TypingPage />} />
+                <Route path="/learn/session" element={<LearnSessionRoute />} />
                 <Route path="/gallery" element={<GalleryPage />} />
                 <Route path="/analysis" element={<AnalysisPage />} />
                 <Route path="/error-book" element={<ErrorBook />} />

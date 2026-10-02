@@ -121,13 +121,17 @@ const App: React.FC = () => {
 
   useEffect(() => {
     // 当用户完成章节后且完成 word Record 数据保存，记录 chapter Record 数据,
-    if (state.isFinished && !state.isSavingRecord) {
+    if (
+      !isReviewMode &&
+      state.isFinished &&
+      !state.isSavingRecord
+    ) {
       chapterLogUploader()
       saveChapterRecord(state)
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.isFinished, state.isSavingRecord])
+  }, [isReviewMode, state.isFinished, state.isSavingRecord])
 
   useEffect(() => {
     // 启动计时器
@@ -144,7 +148,7 @@ const App: React.FC = () => {
 
   return (
     <TypingContext.Provider value={{ state: state, dispatch }}>
-      {state.isFinished && <DonateCard />}
+      {state.isFinished && !isReviewMode && <DonateCard />}
       {state.isFinished && <ResultScreen />}
       <Layout>
         <Header>
