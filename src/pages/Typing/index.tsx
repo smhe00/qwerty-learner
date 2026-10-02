@@ -18,10 +18,10 @@ import { idDictionaryMap } from '@/resources/dictionary'
 import {
   currentChapterAtom,
   currentDictIdAtom,
-  currentDictInfoAtom,
   isReviewModeAtom,
   randomConfigAtom,
   reviewModeInfoAtom,
+  typingTransVisibleAtom,
 } from '@/store'
 import { IsDesktop, isLegal } from '@/utils'
 import { useSaveChapterRecord } from '@/utils/db'
@@ -29,11 +29,14 @@ import { useMixPanelChapterLogUploader } from '@/utils/mixpanel'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import type React from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useImmerReducer } from 'use-immer'
 
 const App: React.FC = () => {
-  const [state, dispatch] = useImmerReducer(typingReducer, structuredClone(initialState))
+  const typingTransVisible = useAtomValue(typingTransVisibleAtom)
+  const [state, dispatch] = useImmerReducer(typingReducer, {
+    ...structuredClone(initialState),
+    isTransVisible: typingTransVisible,
+  })
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const { words } = useWordList()
 
@@ -45,8 +48,6 @@ const App: React.FC = () => {
 
   const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
   const isReviewMode = useAtomValue(isReviewModeAtom)
-  const currentDictInfo = useAtomValue(currentDictInfoAtom)
-  const navigate = useNavigate()
 
   useEffect(() => {
     // 检测用户设备
@@ -108,7 +109,11 @@ const App: React.FC = () => {
 
       dispatch({
         type: TypingStateActionType.SETUP_CHAPTER,
-        payload: { words, shouldShuffle: randomConfig.isOpen, initialIndex },
+        payload: {
+          words,
+          shouldShuffle: isReviewMode ? false : randomConfig.isOpen,
+          initialIndex,
+        },
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -144,36 +149,33 @@ const App: React.FC = () => {
       <Layout>
         <Header>
           <ModeSwitcher />
-          {isReviewMode ? (
-            <>
-              <button
-                type="button"
-                onClick={() => navigate('/learn')}
-                className="rounded-lg px-3 py-1 text-sm text-gray-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                title="返回 Learn 学习计划"
-              >
-                {currentDictInfo.name}
-              </button>
-              <StartButton isLoading={isLoading} />
-            </>
-          ) : (
-            <>
-              <DictChapterButton />
-              <PronunciationSwitcher />
-              <Switcher />
-              <StartButton isLoading={isLoading} />
-              <Tooltip content="跳过该词">
-                <button
-                  className={`${
-                    state.isShowSkip ? 'bg-orange-400' : 'invisible w-0 bg-gray-300 px-0 opacity-0'
-                  } my-btn-primary transition-all duration-300 `}
-                  onClick={skipWord}
-                >
-                  Skip
-                </button>
-              </Tooltip>
-            </>
-          )}
+          <DictChapterButton learnMode={isReviewMode} />
+          <PronunciationSwitcher learnMode={isReviewMode} />
+          <Switcher learnMode={isReviewMode} />
+          <StartButton isLoading={isLoading} learnMode={isReviewMode} />
+          <Tooltip
+            content={
+              isReviewMode
+                ? 'Learn 模式不允许普通 Skip'
+                : '跳过该词'
+            }
+          >
+            <button
+              className={`${
+                state.isShowSkip
+                  ? isReviewMode
+                    ? 'cursor-not-allowed bg-gray-300 text-gray-500 opacity-50'
+                    : 'bg-orange-400'
+                  : 'invisible w-0 bg-gray-300 px-0 opacity-0'
+              } my-btn-primary transition-all duration-300 `}
+              type="button"
+              disabled={isReviewMode}
+              onClick={skipWord}
+              aria-disabled={isReviewMode}
+            >
+              Skip
+            </button>
+          </Tooltip>
         </Header>
         <div className="container mx-auto flex h-full flex-1 flex-col items-center justify-center pb-5">
           <div className="container relative mx-auto flex h-full flex-col items-center">

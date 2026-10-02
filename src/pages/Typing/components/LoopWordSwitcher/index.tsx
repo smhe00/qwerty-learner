@@ -8,7 +8,11 @@ import IconRepeat from '~icons/tabler/repeat'
 import IconRepeatOff from '~icons/tabler/repeat-off'
 
 const loopOptions: LoopWordTimesOption[] = [1, 3, 5, 8, Number.MAX_SAFE_INTEGER]
-export default function LoopWordSwitcher() {
+export default function LoopWordSwitcher({
+  disabled = false,
+}: {
+  disabled?: boolean
+}) {
   const [{ times: loopTimes }, setLoopWordConfig] = useAtom(loopWordConfigAtom)
   const [isOpen, setIsOpen] = useState(false)
 
@@ -27,14 +31,21 @@ export default function LoopWordSwitcher() {
       <Popover className="relative">
         <Popover.Button
           className={`p-[2px] ${
-            loopTimes === 1 ? 'text-gray-500' : 'text-indigo-500'
-          } rounded text-lg hover:bg-indigo-400 hover:text-white focus:outline-none `}
+            disabled
+              ? 'cursor-not-allowed text-gray-400 opacity-40'
+              : loopTimes === 1
+                ? 'text-gray-500 hover:bg-indigo-400 hover:text-white'
+                : 'text-indigo-500 hover:bg-indigo-400 hover:text-white'
+          } rounded text-lg focus:outline-none `}
           type="button"
+          disabled={disabled}
           onClick={(e) => {
+            if (disabled) return
             setIsOpen(!isOpen)
             e.currentTarget.blur()
           }}
           aria-label="选择单词的循环次数"
+          aria-disabled={disabled}
         >
           <div className="relative">
             {loopTimes === 1 ? (

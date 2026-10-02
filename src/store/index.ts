@@ -72,6 +72,14 @@ export const randomConfigAtom = atomForConfig('randomConfig', {
 
 export const isShowPrevAndNextWordAtom = atomWithStorage('isShowPrevAndNextWord', true)
 
+// Typing owns this preference. Learn may display it in a disabled control, but
+// must not mutate it; its effective meaning visibility comes from the Learn
+// exercise plan instead.
+export const typingTransVisibleAtom = atomWithStorage(
+  'typingTransVisible',
+  true,
+)
+
 export const isIgnoreCaseAtom = atomWithStorage('isIgnoreCase', true)
 
 export const isShowAnswerOnHoverAtom = atomWithStorage('isShowAnswerOnHover', true)

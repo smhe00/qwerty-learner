@@ -7,7 +7,6 @@ import PronunciationSwitcher from '@/pages/Typing/components/PronunciationSwitch
 import Switcher from '@/pages/Typing/components/Switcher'
 import useErrorWordData from '@/pages/Gallery-N/hooks/useErrorWords'
 import {
-  currentChapterAtom,
   currentDictIdAtom,
   currentDictInfoAtom,
   reviewModeInfoAtom,
@@ -35,7 +34,6 @@ export default function LearnPage() {
   const navigate = useNavigate()
   const currentDictId = useAtomValue(currentDictIdAtom)
   const currentDictInfo = useAtomValue(currentDictInfoAtom)
-  const setCurrentChapter = useSetAtom(currentChapterAtom)
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
   const [isStarting, setIsStarting] = useState(false)
   const [statusText, setStatusText] = useState('')
@@ -89,14 +87,13 @@ export default function LearnPage() {
         Awaited<ReturnType<typeof generateLearnReviewRecord>>
       >,
     ) => {
-      setCurrentChapter(-1)
       setReviewModeInfo({
         isReviewMode: true,
         reviewRecord: record,
       })
       navigate('/learn/session')
     },
-    [navigate, setCurrentChapter, setReviewModeInfo],
+    [navigate, setReviewModeInfo],
   )
 
   const startLearn = useCallback(async () => {
@@ -158,11 +155,9 @@ export default function LearnPage() {
     <Layout>
       <Header>
         <ModeSwitcher />
-        <DictChapterButton learnMinimal />
-        <div className="invisible pointer-events-none">
-          <PronunciationSwitcher />
-        </div>
-        <Switcher learnMinimal />
+        <DictChapterButton learnMode />
+        <PronunciationSwitcher learnMode />
+        <Switcher learnMode />
 
         <Tooltip
           content={latestSession ? '继续当前学习' : '开始 Learn'}

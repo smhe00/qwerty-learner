@@ -20,8 +20,10 @@ export function useWordList(): UseWordListResult {
   const [currentChapter, setCurrentChapter] = useAtom(currentChapterAtom)
   const { isReviewMode, reviewRecord } = useAtomValue(reviewModeInfoAtom)
 
-  // Reset current chapter to 0, when currentChapter is greater than chapterCount.
-  if (currentChapter >= currentDictInfo.chapterCount) {
+  // Legacy Learn builds used -1 as a shared chapter sentinel. Learn now owns
+  // its queue independently, so normalize any stale sentinel before Typing
+  // slices the dictionary.
+  if (currentChapter < 0 || currentChapter >= currentDictInfo.chapterCount) {
     setCurrentChapter(0)
   }
 

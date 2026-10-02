@@ -140,6 +140,9 @@ export default function WordComponent({
   const currentLanguage = currentDictInfo.language
   const currentLanguageCategory = currentDictInfo.languageCategory
   const currentChapter = useAtomValue(currentChapterAtom)
+  const isLearnAttempt = learnItemKind !== undefined
+  const effectiveChapter = isLearnAttempt ? -1 : currentChapter
+  const effectiveIgnoreCase = isLearnAttempt ? true : isIgnoreCase
 
   const [showTipAlert, setShowTipAlert] = useState(false)
   const wordPronunciationIconRef = useRef<WordPronunciationIconRef>(null)
@@ -303,12 +306,12 @@ export default function WordComponent({
   const isManagedReviewHintFlow = useCallback(() => {
     const policyVersion = reviewPolicyDecisionRef.current?.policyVersion
     return (
-      currentChapter === -1 &&
+      isLearnAttempt &&
       (policyVersion === CANONICAL_REVIEW_PROBE_POLICY_VERSION ||
         policyVersion === LEARN_ACQUISITION_POLICY_VERSION ||
         policyVersion === REVIEW_HINT_POLICY_VERSION)
     )
-  }, [currentChapter])
+  }, [isLearnAttempt])
 
   const activateReviewHint = useCallback(
     (
@@ -563,7 +566,9 @@ export default function WordComponent({
     const correctChar = wordState.displayWord[inputLength - 1]
     let isEqual = false
     if (inputChar != undefined && correctChar != undefined) {
-      isEqual = isIgnoreCase ? inputChar.toLowerCase() === correctChar.toLowerCase() : inputChar === correctChar
+      isEqual = effectiveIgnoreCase
+        ? inputChar.toLowerCase() === correctChar.toLowerCase()
+        : inputChar === correctChar
     }
 
     if (isEqual) {
@@ -649,7 +654,7 @@ export default function WordComponent({
         dispatch({ type: TypingStateActionType.REPORT_WRONG_WORD, payload: { letterMistake: currentState.letterMistake } })
       })
 
-      if (currentChapter === 0 && state.chapterData.index === 0 && wordState.wrongCount >= 3) {
+      if (!isLearnAttempt && currentChapter === 0 && state.chapterData.index === 0 && wordState.wrongCount >= 3) {
         setShowTipAlert(true)
       }
     }
@@ -706,7 +711,7 @@ export default function WordComponent({
         word: word.name,
         timeStamp: Math.floor(Date.now() / 1000),
         dict: currentDictInfo.id,
-        chapter: currentChapter,
+        chapter: effectiveChapter,
         timing: [],
         wrongCount: wordState.wrongCount,
         mistakes: wordState.letterMistake,
@@ -715,9 +720,10 @@ export default function WordComponent({
         exerciseCondition: exerciseConditionRef.current,
         reviewPolicyDecision: reviewPolicyDecisionRef.current,
         reviewEvidence,
-        sourceMode: currentChapter === -1 ? 'learn' : 'typing',
-        learnItemKind:
-          currentChapter === -1 ? learnItemKind ?? 'review' : undefined,
+        sourceMode: isLearnAttempt ? 'learn' : 'typing',
+        learnItemKind: isLearnAttempt
+          ? learnItemKind ?? 'review'
+          : undefined,
       }
       const nextExerciseShadow = exerciseConditionRef.current
         ? chooseNextExerciseShadow({
@@ -729,7 +735,6 @@ export default function WordComponent({
             ],
           })
         : null
-      const isLearnAttempt = currentChapter === -1
       const isAcquisitionAttempt =
         isLearnAttempt && learnItemKind === 'acquisition'
       const reviewRatingDecision: RatingDecision | undefined =

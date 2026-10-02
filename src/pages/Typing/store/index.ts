@@ -107,6 +107,9 @@ export const typingReducer = (state: TypingState, action: TypingStateAction) => 
         initialIndex = 0
       }
       newState.chapterData.index = initialIndex
+      // Presentation preference belongs to Typing, not to a chapter/session.
+      // Preserve it across chapter setup and Learn session rehydration.
+      newState.isTransVisible = state.isTransVisible
       newState.chapterData.words = words
       newState.chapterData.userInputLogs = words.map((_, index) => ({ ...structuredClone(initialUserInputLog), index }))
 

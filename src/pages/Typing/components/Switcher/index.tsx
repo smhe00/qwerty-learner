@@ -7,7 +7,7 @@ import Setting from '../Setting'
 import SoundSwitcher from '../SoundSwitcher'
 import WordDictationSwitcher from '../WordDictationSwitcher'
 import Tooltip from '@/components/Tooltip'
-import { isOpenDarkModeAtom } from '@/store'
+import { isOpenDarkModeAtom, typingTransVisibleAtom } from '@/store'
 import { CTRL } from '@/utils'
 import { useAtom } from 'jotai'
 import { useContext } from 'react'
@@ -18,18 +18,25 @@ import IconLanguage from '~icons/tabler/language'
 import IconLanguageOff from '~icons/tabler/language-off'
 
 export default function Switcher({
-  learnMinimal = false,
+  learnMode = false,
 }: {
-  learnMinimal?: boolean
+  learnMode?: boolean
 }) {
   const [isOpenDarkMode, setIsOpenDarkMode] = useAtom(isOpenDarkModeAtom)
+  const [typingTransVisible, setTypingTransVisible] = useAtom(
+    typingTransVisibleAtom,
+  )
   const { state, dispatch } = useContext(TypingContext) ?? {}
+  const transVisible = state?.isTransVisible ?? typingTransVisible
 
   const changeDarkModeState = () => {
     setIsOpenDarkMode((old) => !old)
   }
 
   const changeTransVisibleState = () => {
+    if (learnMode) return
+    const next = !transVisible
+    setTypingTransVisible(next)
     if (dispatch) {
       dispatch({ type: TypingStateActionType.TOGGLE_TRANS_VISIBLE })
     }
@@ -38,71 +45,80 @@ export default function Switcher({
   useHotkeys(
     'ctrl+shift+v',
     () => {
-      changeTransVisibleState()
+      if (!learnMode) changeTransVisibleState()
     },
     { enableOnFormTags: true, preventDefault: true },
-    [],
+    [learnMode, transVisible],
   )
 
   return (
     <div className="flex items-center justify-center gap-2">
-      <Tooltip
-        content="音效设置"
-        className={learnMinimal ? 'invisible pointer-events-none' : ''}
-      >
+      <Tooltip content="音效设置">
         <SoundSwitcher />
       </Tooltip>
 
       <Tooltip
-        className={`h-7 w-7 ${learnMinimal ? 'invisible pointer-events-none' : ''}`}
-        content="设置单个单词循环"
+        className="h-7 w-7"
+        content={
+          learnMode
+            ? 'Learn 模式由程序管理循环次数'
+            : '设置单个单词循环'
+        }
       >
-        <LoopWordSwitcher />
+        <LoopWordSwitcher disabled={learnMode} />
       </Tooltip>
 
       <Tooltip
-        className={`h-7 w-7 ${learnMinimal ? 'invisible pointer-events-none' : ''}`}
-        content={`开关默写模式（${CTRL} + V）`}
+        className="h-7 w-7"
+        content={
+          learnMode
+            ? 'Learn 模式由程序决定字母显示'
+            : `开关默写模式（${CTRL} + V）`
+        }
       >
-        <WordDictationSwitcher />
+        <WordDictationSwitcher disabled={learnMode} />
       </Tooltip>
+
       <Tooltip
-        className={`h-7 w-7 ${learnMinimal ? 'invisible pointer-events-none' : ''}`}
-        content={`开关释义显示（${CTRL} + Shift + V）`}
+        className="h-7 w-7"
+        content={
+          learnMode
+            ? 'Learn 模式由程序决定释义显示'
+            : `开关释义显示（${CTRL} + Shift + V）`
+        }
       >
         <button
-          className={`p-[2px] ${state?.isTransVisible ? 'text-indigo-500' : 'text-gray-500'} text-lg focus:outline-none`}
+          className={`p-[2px] ${
+            learnMode
+              ? 'cursor-not-allowed text-gray-400 opacity-40'
+              : transVisible
+                ? 'text-indigo-500'
+                : 'text-gray-500'
+          } text-lg focus:outline-none`}
           type="button"
+          disabled={learnMode}
+          aria-disabled={learnMode}
           onClick={(e) => {
-            changeTransVisibleState()
+            if (!learnMode) changeTransVisibleState()
             e.currentTarget.blur()
           }}
           aria-label={`开关释义显示（${CTRL} + Shift + V）`}
         >
-          {state?.isTransVisible ? <IconLanguage /> : <IconLanguageOff />}
+          {transVisible ? <IconLanguage /> : <IconLanguageOff />}
         </button>
       </Tooltip>
 
-      <Tooltip
-        content="错题本"
-        className={learnMinimal ? 'invisible pointer-events-none' : ''}
-      >
+      <Tooltip content="错题本">
         <ErrorBookButton />
       </Tooltip>
 
-      <Tooltip
-        className={`h-7 w-7 ${learnMinimal ? 'invisible pointer-events-none' : ''}`}
-        content="查看数据统计"
-      >
+      <Tooltip className="h-7 w-7" content="查看数据统计">
         <AnalysisButton />
       </Tooltip>
 
-      <Tooltip
-        className={`h-7 w-7 ${learnMinimal ? 'invisible pointer-events-none' : ''}`}
-        content="开关深色模式"
-      >
+      <Tooltip className="h-7 w-7" content="开关深色模式">
         <button
-          className={`p-[2px] text-lg text-indigo-500 focus:outline-none`}
+          className="p-[2px] text-lg text-indigo-500 focus:outline-none"
           type="button"
           onClick={(e) => {
             changeDarkModeState()
@@ -110,15 +126,18 @@ export default function Switcher({
           }}
           aria-label="开关深色模式"
         >
-          {isOpenDarkMode ? <IconMoon className="icon" /> : <IconSun className="icon" />}
+          {isOpenDarkMode ? (
+            <IconMoon className="icon" />
+          ) : (
+            <IconSun className="icon" />
+          )}
         </button>
       </Tooltip>
-      <Tooltip
-        className={`h-7 w-7 ${learnMinimal ? 'invisible pointer-events-none' : ''}`}
-        content="指法图示"
-      >
-        <HandPositionIllustration></HandPositionIllustration>
+
+      <Tooltip className="h-7 w-7" content="指法图示">
+        <HandPositionIllustration />
       </Tooltip>
+
       <Tooltip content="设置">
         <Setting />
       </Tooltip>

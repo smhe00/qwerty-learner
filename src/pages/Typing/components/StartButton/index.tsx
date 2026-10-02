@@ -3,7 +3,13 @@ import Tooltip from '@/components/Tooltip'
 import { useCallback, useContext } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
-export default function StartButton({ isLoading }: { isLoading: boolean }) {
+export default function StartButton({
+  isLoading,
+  learnMode = false,
+}: {
+  isLoading: boolean
+  learnMode?: boolean
+}) {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const { state, dispatch } = useContext(TypingContext)!
 
@@ -29,7 +35,9 @@ export default function StartButton({ isLoading }: { isLoading: boolean }) {
         className={`my-btn-primary w-20 shadow ${
           state.isTyping
             ? 'bg-gray-400 shadow-gray-200 dark:bg-gray-700 dark:shadow-none dark:hover:bg-gray-500'
-            : 'bg-indigo-500 shadow-indigo-300 dark:shadow-indigo-500/60'
+            : learnMode
+              ? 'bg-emerald-500 shadow-emerald-300 dark:shadow-emerald-500/50'
+              : 'bg-indigo-500 shadow-indigo-300 dark:shadow-indigo-500/60'
         }`}
         type="button"
         onClick={onToggleIsTyping}

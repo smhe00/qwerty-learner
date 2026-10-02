@@ -10,7 +10,11 @@ import { Fragment, useCallback, useEffect, useMemo } from 'react'
 import IconCheck from '~icons/tabler/check'
 import IconChevronDown from '~icons/tabler/chevron-down'
 
-const PronunciationSwitcher = () => {
+const PronunciationSwitcher = ({
+  learnMode = false,
+}: {
+  learnMode?: boolean
+}) => {
   const currentDictInfo = useAtomValue(currentDictInfoAtom)
   const [pronunciationConfig, setPronunciationConfig] = useAtom(pronunciationConfigAtom)
   const [phoneticConfig, setPhoneticConfig] = useAtom(phoneticConfigAtom)
@@ -44,6 +48,7 @@ const PronunciationSwitcher = () => {
 
   const onChangePronunciationIsOpen = useCallback(
     (value: boolean) => {
+      if (learnMode) return
       setPronunciationConfig((old) => ({
         ...old,
         isOpen: value,
@@ -54,6 +59,7 @@ const PronunciationSwitcher = () => {
 
   const onChangePronunciationIsTransRead = useCallback(
     (value: boolean) => {
+      if (learnMode) return
       setPronunciationConfig((old) => ({
         ...old,
         isTransRead: value,
@@ -64,6 +70,7 @@ const PronunciationSwitcher = () => {
 
   const onChangePronunciationIsLoop = useCallback(
     (value: boolean) => {
+      if (learnMode) return
       setPronunciationConfig((old) => ({
         ...old,
         isLoop: value,
@@ -74,6 +81,7 @@ const PronunciationSwitcher = () => {
 
   const onChangePhoneticIsOpen = useCallback(
     (value: boolean) => {
+      if (learnMode) return
       setPhoneticConfig((old) => ({
         ...old,
         isOpen: value,
@@ -97,7 +105,7 @@ const PronunciationSwitcher = () => {
   )
 
   const currentLabel = useMemo(() => {
-    if (pronunciationConfig.isOpen) {
+    if (learnMode || pronunciationConfig.isOpen) {
       return pronunciationConfig.name
     } else {
       return '关闭'
@@ -133,7 +141,12 @@ const PronunciationSwitcher = () => {
                 <div className="flex w-full  flex-col  items-start gap-2 py-0">
                   <span className="text-sm font-normal leading-5 text-gray-900 dark:text-white dark:text-opacity-60">开关音标显示</span>
                   <div className="flex w-full flex-row items-center justify-between">
-                    <Switch checked={phoneticConfig.isOpen} onChange={onChangePhoneticIsOpen} className="switch-root">
+                    <Switch
+                      checked={phoneticConfig.isOpen}
+                      onChange={onChangePhoneticIsOpen}
+                      disabled={learnMode}
+                      className={`switch-root ${learnMode ? 'cursor-not-allowed opacity-40' : ''}`}
+                    >
                       <span aria-hidden="true" className="switch-thumb" />
                     </Switch>
                     <span className="text-right text-xs font-normal leading-tight text-gray-600">{`音标已${
@@ -144,7 +157,12 @@ const PronunciationSwitcher = () => {
                 <div className="flex w-full  flex-col  items-start gap-2 py-0">
                   <span className="text-sm font-normal leading-5 text-gray-900 dark:text-white dark:text-opacity-60">开关单词发音</span>
                   <div className="flex w-full flex-row items-center justify-between">
-                    <Switch checked={pronunciationConfig.isOpen} onChange={onChangePronunciationIsOpen} className="switch-root">
+                    <Switch
+                      checked={pronunciationConfig.isOpen}
+                      onChange={onChangePronunciationIsOpen}
+                      disabled={learnMode}
+                      className={`switch-root ${learnMode ? 'cursor-not-allowed opacity-40' : ''}`}
+                    >
                       <span aria-hidden="true" className="switch-thumb" />
                     </Switch>
                     <span className="text-right text-xs font-normal leading-tight text-gray-600">{`发音已${
@@ -156,7 +174,12 @@ const PronunciationSwitcher = () => {
                   <div className="flex w-full  flex-col  items-start gap-2 py-0">
                     <span className="text-sm font-normal leading-5 text-gray-900 dark:text-white dark:text-opacity-60">开关释义发音</span>
                     <div className="flex w-full flex-row items-center justify-between">
-                      <Switch checked={pronunciationConfig.isTransRead} onChange={onChangePronunciationIsTransRead} className="switch-root">
+                      <Switch
+                        checked={pronunciationConfig.isTransRead}
+                        onChange={onChangePronunciationIsTransRead}
+                        disabled={learnMode}
+                        className={`switch-root ${learnMode ? 'cursor-not-allowed opacity-40' : ''}`}
+                      >
                         <span aria-hidden="true" className="switch-thumb" />
                       </Switch>
                       <span className="text-right text-xs font-normal leading-tight text-gray-600">{`发音已${
@@ -166,7 +189,7 @@ const PronunciationSwitcher = () => {
                   </div>
                 )}
                 <Transition
-                  show={pronunciationConfig.isOpen}
+                  show={learnMode || pronunciationConfig.isOpen}
                   className="flex w-full flex-col items-center justify-center gap-4"
                   enter="transition-all duration-300 ease-in"
                   enterFrom="max-h-0 opacity-0"
@@ -178,7 +201,12 @@ const PronunciationSwitcher = () => {
                   <div className="flex w-full  flex-col  items-start gap-2 py-0">
                     <span className="text-sm font-normal leading-5 text-gray-900 dark:text-white dark:text-opacity-60">开关循环发音</span>
                     <div className="flex w-full flex-row items-center justify-between">
-                      <Switch checked={pronunciationConfig.isLoop} onChange={onChangePronunciationIsLoop} className="switch-root">
+                      <Switch
+                      checked={pronunciationConfig.isLoop}
+                      onChange={onChangePronunciationIsLoop}
+                      disabled={learnMode}
+                      className={`switch-root ${learnMode ? 'cursor-not-allowed opacity-40' : ''}`}
+                    >
                         <span aria-hidden="true" className="switch-thumb" />
                       </Switch>
                       <span className="text-right text-xs font-normal leading-tight text-gray-600">{`循环已${

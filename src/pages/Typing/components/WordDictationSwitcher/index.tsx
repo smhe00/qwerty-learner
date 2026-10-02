@@ -28,11 +28,16 @@ const wordDictationTypeList: { name: string; type: WordDictationType }[] = [
   },
 ]
 
-export default function WordDictationSwitcher() {
+export default function WordDictationSwitcher({
+  disabled = false,
+}: {
+  disabled?: boolean
+}) {
   const [wordDictationConfig, setWordDictationConfig] = useAtom(wordDictationConfigAtom)
   const [currentType, setCurrentType] = useState(wordDictationTypeList[0])
 
   const onToggleWordDictation = () => {
+    if (disabled) return
     setWordDictationConfig((old) => {
       if (!old.isOpen) {
         return { ...old, isOpen: !old.isOpen, openBy: 'user' }
@@ -43,6 +48,7 @@ export default function WordDictationSwitcher() {
   }
 
   const onChangeWordDictationType = (value: WordDictationType) => {
+    if (disabled) return
     setWordDictationConfig((old) => {
       return { ...old, type: value }
     })
@@ -55,7 +61,7 @@ export default function WordDictationSwitcher() {
   useHotkeys(
     'ctrl+v',
     () => {
-      onToggleWordDictation()
+      if (!disabled) onToggleWordDictation()
     },
     { enableOnFormTags: true, preventDefault: true },
     [],
@@ -67,12 +73,18 @@ export default function WordDictationSwitcher() {
         <>
           <Popover.Button
             className={`flex items-center justify-center rounded p-[2px] text-lg ${
-              wordDictationConfig.isOpen ? 'text-indigo-500' : 'text-gray-500'
-            } outline-none transition-colors duration-300 ease-in-out hover:bg-indigo-400 hover:text-white  ${
-              open ? 'bg-indigo-500 text-white' : ''
+              disabled
+                ? 'cursor-not-allowed text-gray-400 opacity-40'
+                : wordDictationConfig.isOpen
+                  ? 'text-indigo-500 hover:bg-indigo-400 hover:text-white'
+                  : 'text-gray-500 hover:bg-indigo-400 hover:text-white'
+            } outline-none transition-colors duration-300 ease-in-out ${
+              !disabled && open ? 'bg-indigo-500 text-white' : ''
             }`}
             type="button"
+            disabled={disabled}
             aria-label="开关默写模式"
+            aria-disabled={disabled}
           >
             {wordDictationConfig.isOpen ? <IconEye className="icon" /> : <IconEyeSlash className="icon" />}
           </Popover.Button>
