@@ -393,7 +393,7 @@ test('multi-word Review advances through every rendered word and finishes', asyn
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
   await seedReviewSession(page, reviewWords, 900001)
-  await page.goto('/')
+  await page.goto('/learn/session')
   await startTyping(page)
 
   await waitForRenderedWord(page, 'cancel')
@@ -934,6 +934,23 @@ test('current Learn item can be excluded without using Skip', async ({ page }) =
   await page.getByRole('button', { name: 'Learn 单词菜单' }).click()
   await page.getByRole('button', { name: '移出学习计划' }).click()
 
+  await expect
+    .poll(async () => {
+      const info = await readReviewModeInfo(page)
+      return {
+        words: info?.reviewRecord?.words?.map(
+          (word: { name: string }) => word.name,
+        ),
+        index: info?.reviewRecord?.index,
+        isFinished: info?.reviewRecord?.isFinished,
+      }
+    })
+    .toEqual({
+      words: ['analyse'],
+      index: 0,
+      isFinished: false,
+    })
+  await expect(page.getByText('CET-4 Learn', { exact: true })).toHaveCount(0)
   await waitForRenderedWord(page, 'analyse')
   await expect(
     page.locator('[data-typing-word="cancel"]'),
