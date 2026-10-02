@@ -41,6 +41,7 @@ P0 — navigation / persistence / reload stability   CLOSED
 P1 — Learn UX / mode-boundary consistency          CLOSED
 P2 — Learn statistics semantics / UI                CLOSED
 P3 — adaptive daily acquisition quota / feedback    CLOSED
+P4 — daily Learn plan / workload controller          CLOSED
 ```
 
 ### P0 stability contract
@@ -159,6 +160,43 @@ Learn P3 turns P2 statistics into a deterministic admission feedback controller.
 
 This P3 milestone is a Learn product milestone and is distinct from the older
 adaptive-Review roadmap's historical P3 naming.
+
+### P4 daily Learn plan contract
+
+P4 composes current Due workload, difficult Due words, the P3 acquisition
+quota, and observed Learn active time into one deterministic daily plan.
+
+- P4 never truncates Due Review. The workload budget applies only to new-word
+  Acquisition after Due work.
+- V1 uses a 20-minute **soft Acquisition budget**. This is not a hard Learn
+  session timer and never blocks an overdue Review.
+- Today's spent time includes all Learn activity with usable active-time
+  telemetry, including same-session reinforcement. Rating-null work still
+  consumes time even though it cannot change memory quality statistics.
+- Per-word time estimation uses the recent 30-day median separately for
+  primary Review and Acquisition records.
+- If personal timing samples are unavailable, V1 falls back to 15 seconds per
+  Review word and 30 seconds per Acquisition word.
+- Before admitting new words, P4 projects:
+  `today active time + current Due estimate + candidate Acquisition estimate`.
+- The number of planned new words is the minimum of:
+  1. P3 remaining daily quota;
+  2. UNSEEN availability already reflected by P3;
+  3. the number that fits inside the remaining 20-minute soft budget.
+- A Due word is classified as currently difficult when its latest state is
+  Again / Hard, or it has an unrecovered lapse
+  (`lapseCount > 0 && cleanStreak === 0`).
+- P4 returns one action:
+  `review-due | acquire-new | complete`.
+- The statistics surface displays the same pure P4 plan consumed by the Learn
+  resolver; UI does not recreate workload policy.
+- Browser regression verifies that after 15 minutes of measured Learn Review
+  activity, a stable P3 quota of 20 is reduced to a 10-word Acquisition
+  session.
+- Reinforcement contributes to spent workload but cannot become an eligible
+  Review quality signal.
+
+Policy version: `learn-daily-plan-v1`.
 
 Phase C/E closure rules:
 

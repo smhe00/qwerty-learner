@@ -1,6 +1,6 @@
 # Learn V1 使用指南
 
-> 当前版本：Typing / Learn V1 + P3 Adaptive Acquisition Quota
+> 当前版本：Typing / Learn V1 + P4 Daily Learn Plan
 >
 > Learn 的长期目标架构见 `LEARN_ARCHITECTURE_V1.md`。
 
@@ -126,6 +126,45 @@ Cold Probe 至少有 5 个有效样本才参与当天调速；Rating Gate 判定
 
 每日额度是总量。例如今日目标 10 个、已经学了 7 个，再次进入 Learn
 最多只会再加入 3 个新词，而不是重新获得 10 个额度。
+
+### P4 今日 Learn 计划
+
+P4 在 P3 新词额度之上增加当天总工作量规划。
+
+基本原则：
+
+```text
+Due Review
+    ↓ 永远优先，不能被时间预算截断
+完成 Due
+    ↓
+P3 剩余新词额度
+    ↓
+P4 工作量预算再次约束
+    ↓
+实际 Acquisition 数量
+```
+
+V1 使用 20 分钟软预算。它不是倒计时，也不会强制停止 Learn，而只用于
+判断今天清完 Due 后还应不应该继续增加新词。
+
+时间估计优先使用最近 30 天个人 Learn 数据的中位数：
+
+- Review 每词耗时；
+- Acquisition 每词耗时。
+
+样本不足时使用回退值：
+
+```text
+Review       15 秒/词
+Acquisition  30 秒/词
+```
+
+例如今天已经完成约 15 分钟 Review，而 P3 仍允许 20 个新词，则 P4
+按 30 秒/新词的回退模型，只会再安排约 10 个新词。
+
+same-session reinforcement 虽然不产生 Rating，但真实消耗的时间仍计入
+P4 今日工作量。
 
 ---
 
@@ -262,7 +301,8 @@ Learn 中的数据统计入口会打开 Learn 专属统计页，而不是复用 
 - 今日复习词数；
 - 今日新学词数；
 - 今日新词目标、当前可新增；
-- 当前到期、长期学习中、已移出、尚未学习；
+- 今日 Learn 计划、预计剩余时间；
+- 当前到期、其中困难到期词、长期学习中、已移出、尚未学习；
 - Cold Probe 一次通过率（仅有效 Review probe）；
 - Hint 使用率；
 - 最近 30 天 Again / Hard / Good / Easy；
