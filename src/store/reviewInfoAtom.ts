@@ -3,6 +3,18 @@ import { putWordReviewRecord } from '@/utils/db/review-record'
 import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 
+let reviewRecordWriteQueue: Promise<unknown> = Promise.resolve()
+
+function queueReviewRecordWrite(record: ReviewRecord) {
+  // Persist an immutable snapshot in the same order as UI state transitions.
+  // Without serialization, an older unfinished checkpoint can complete after
+  // the final finished write and resurrect a stale Learn session on reload.
+  const snapshot = structuredClone(record) as ReviewRecord
+  reviewRecordWriteQueue = reviewRecordWriteQueue
+    .catch(() => undefined)
+    .then(() => putWordReviewRecord(snapshot))
+}
+
 export type TReviewInfoAtomData = {
   isReviewMode: boolean
   reviewRecord: ReviewRecord | undefined
@@ -45,9 +57,10 @@ export function reviewInfoAtom(initialValue: TReviewInfoAtomData) {
     (get, set, updater: TReviewInfoAtomData | ((oldValue: TReviewInfoAtomData) => TReviewInfoAtomData)) => {
       const newValue = typeof updater === 'function' ? updater(get(storageAtom)) : updater
 
-      // update reviewRecord to indexdb
+      // Keep local route-critical state synchronous, while serializing durable
+      // checkpoints so IndexedDB can never finish them out of order.
       if (newValue.reviewRecord?.id) {
-        putWordReviewRecord(newValue.reviewRecord)
+        queueReviewRecordWrite(newValue.reviewRecord)
       }
       set(storageAtom, newValue)
     },

@@ -74,7 +74,7 @@ export async function generateNewWordReviewRecord(
 }
 
 export async function putWordReviewRecord(record: ReviewRecord) {
-  db.reviewRecords.put(record)
+  return db.reviewRecords.put(record)
 }
 
 
