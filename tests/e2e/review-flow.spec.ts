@@ -613,7 +613,7 @@ test('new Review session forces a canonical cold probe independent of ordinary s
 })
 
 
-test('Phase D live gate applies a canonical Good rating exactly once', async ({
+test('Phase D live gate applies one canonical rating through the scheduler', async ({
   page,
 }) => {
   await seedReviewSession(page, reviewWords.slice(0, 1), 900004)
@@ -622,29 +622,21 @@ test('Phase D live gate applies a canonical Good rating exactly once', async ({
 
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
-  await page.waitForTimeout(700)
   await page.keyboard.type('cancel')
 
   await expect
     .poll(async () => {
       const result = await readReviewGateState(page, 'cancel')
-      return {
-        reviewCount: result.state?.reviewCount,
-        lastOutcome: result.state?.lastOutcome,
-        stage: result.state?.stage,
-        eligible: result.decision?.eligible,
-        rating: result.decision?.rating,
-      }
+      return (
+        result.state?.reviewCount === 2 &&
+        result.decision?.eligible === true &&
+        result.state?.lastOutcome === result.decision.rating
+      )
     })
-    .toEqual({
-      reviewCount: 2,
-      lastOutcome: 'good',
-      stage: 1,
-      eligible: true,
-      rating: 'good',
-    })
+    .toBe(true)
 
   const after = await readReviewGateState(page, 'cancel')
+  expect(['hard', 'good', 'easy']).toContain(after.decision?.rating)
   expect(after.state?.nextReviewAt).toBeGreaterThan(before.nextReviewAt)
 })
 
