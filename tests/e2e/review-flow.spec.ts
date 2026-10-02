@@ -444,15 +444,41 @@ test('multi-word Review advances through every rendered word and finishes', asyn
     finishedSession?.reviewRecord?.id ??
     finishedSession?.reviewRecord?.createTime
 
+  await expect
+    .poll(async () =>
+      page.evaluate(async (sessionId) => {
+        return new Promise<boolean>((resolve, reject) => {
+          const request = indexedDB.open('RecordDB')
+          request.onerror = () => reject(request.error)
+          request.onsuccess = () => {
+            const db = request.result
+            const tx = db.transaction('reviewRecords', 'readonly')
+            const all = tx.objectStore('reviewRecords').getAll()
+            all.onerror = () => reject(all.error)
+            all.onsuccess = () => {
+              const match = all.result.find(
+                (record) =>
+                  (record.id ?? record.createTime) === sessionId,
+              )
+              resolve(match?.isFinished === true)
+              db.close()
+            }
+          }
+        })
+      }, finishedSessionId),
+    )
+    .toBe(true)
+
   await page.reload()
   await expect(page).toHaveURL(/\/learn\/session$/)
-  await expect(page.getByText('CET-4 Learn', { exact: true })).toBeVisible()
+  await expect(page.getByText('按任意键开始')).toBeVisible()
+
   const afterFinishedReload = await readReviewModeInfo(page)
+  expect(afterFinishedReload?.reviewRecord?.isFinished).toBe(false)
   expect(
     afterFinishedReload?.reviewRecord?.id ??
       afterFinishedReload?.reviewRecord?.createTime,
-  ).toBe(finishedSessionId)
-  expect(afterFinishedReload?.reviewRecord?.isFinished).toBe(true)
+  ).not.toBe(finishedSessionId)
 
   await expect
     .poll(async () =>

@@ -59,7 +59,11 @@ function hasPersistedLearnSession(): boolean {
 
   try {
     const value = JSON.parse(raw)
-    return Boolean(value?.isReviewMode && value?.reviewRecord)
+    return Boolean(
+      value?.isReviewMode &&
+        value?.reviewRecord &&
+        !value.reviewRecord.isFinished,
+    )
   } catch {
     return false
   }
