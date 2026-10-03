@@ -260,7 +260,7 @@ test('G3 captures interval divergence and 4x/quarter outliers', () => {
   assert.equal(analysis.intervalDivergence.ratio.max, 5)
 })
 
-test('G3 workload uses only the latest shadow per word', () => {
+test('G3 next-due projection uses only the latest shadow per word', () => {
   const analysis = analyzeFsrsShadowRecords({
     records: [
       record({
@@ -294,14 +294,14 @@ test('G3 workload uses only the latest shadow per word', () => {
     asOf: t0,
   })
 
-  assert.equal(analysis.workload.latestShadowWords, 2)
-  assert.deepEqual(analysis.workload.horizons[0], {
+  assert.equal(analysis.nextDueProjection.latestShadowWords, 2)
+  assert.deepEqual(analysis.nextDueProjection.horizons[0], {
     days: 1,
     basicDueWords: 1,
     fsrsDueWords: 0,
     deltaWords: -1,
   })
-  assert.deepEqual(analysis.workload.horizons[1], {
+  assert.deepEqual(analysis.nextDueProjection.horizons[1], {
     days: 7,
     basicDueWords: 2,
     fsrsDueWords: 1,
