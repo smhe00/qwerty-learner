@@ -34,6 +34,35 @@ test('ordinary Typing automatically pronounces consecutive clean words', async (
     const target = window as AudioProbeWindow
     target.__qwertyAudioPlays = []
 
+    // Stale Learn policy must be inert while isReviewMode is false.
+    localStorage.setItem(
+      'reviewModeInfo',
+      JSON.stringify({
+        isReviewMode: false,
+        reviewRecord: {
+          id: 991001,
+          createTime: 991001,
+          index: 0,
+          isFinished: false,
+          words: [],
+          exercisePlans: {
+            life: {
+              condition: {
+                version: 1,
+                purpose: 'probe',
+                source: 'adaptive-policy',
+                audio: 'none',
+                meaning: 'hidden',
+                phonetic: 'hidden',
+                letters: { mode: 'all-hidden' },
+                probeDimension: 'audio',
+              },
+            },
+          },
+        },
+      }),
+    )
+
     const nativePlay = HTMLMediaElement.prototype.play
     HTMLMediaElement.prototype.play = function patchedPlay() {
       target.__qwertyAudioPlays?.push(this.currentSrc || this.src)
