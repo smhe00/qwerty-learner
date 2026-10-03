@@ -74,19 +74,19 @@ export type FsrsIntervalDivergenceSummaryV1 = {
   outliers: FsrsIntervalOutlierV1[]
 }
 
-export type FsrsWorkloadHorizonV1 = {
+export type FsrsNextDueHorizonV1 = {
   days: 1 | 7 | 30
   basicDueWords: number
   fsrsDueWords: number
   deltaWords: number
 }
 
-export type FsrsWorkloadSummaryV1 = {
+export type FsrsNextDueProjectionV1 = {
   asOf: number
   latestShadowWords: number
   basicOverdueNow: number
   fsrsOverdueNow: number
-  horizons: FsrsWorkloadHorizonV1[]
+  horizons: FsrsNextDueHorizonV1[]
 }
 
 export type FsrsAnalysisRecordV1 = {
@@ -115,7 +115,7 @@ export type FsrsG3AnalysisV1 = {
   calibration: FsrsCalibrationSummaryV1
   discrimination: FsrsDiscriminationSummaryV1
   intervalDivergence: FsrsIntervalDivergenceSummaryV1
-  workload: FsrsWorkloadSummaryV1
+  nextDueProjection: FsrsNextDueProjectionV1
 }
 
 type HomogeneousSample = {
@@ -407,10 +407,10 @@ function buildIntervalDivergence(
   }
 }
 
-function buildWorkload(
+function buildNextDueProjection(
   samples: readonly HomogeneousSample[],
   asOf: number,
-): FsrsWorkloadSummaryV1 {
+): FsrsNextDueProjectionV1 {
   const latestByWord = new Map<string, HomogeneousSample>()
 
   for (const sample of samples) {
@@ -496,6 +496,6 @@ export function analyzeFsrsShadowRecords(input: {
     calibration,
     discrimination: buildDiscrimination(homogeneous),
     intervalDivergence: buildIntervalDivergence(homogeneous),
-    workload: buildWorkload(homogeneous, input.asOf),
+    nextDueProjection: buildNextDueProjection(homogeneous, input.asOf),
   }
 }
