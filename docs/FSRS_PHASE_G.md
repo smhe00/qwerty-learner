@@ -2,7 +2,7 @@
 
 > Product milestone: P5
 >
-> Status: G0 CLOSED / G1 RUNNING
+> Status: G0 CLOSED / G1 CLOSED / G2 CLOSED / G3 NEXT
 >
 > Active scheduler: `basic-v2`
 >
@@ -35,8 +35,9 @@ Pinned candidate:
 
 ```text
 library package: ts-fsrs
-package version: 5.4.2
+package version: 5.4.2 (official latest stable verified 2026-10-03)
 algorithm family: FSRS-6
+pre-release excluded: 6.0.0-beta.x
 ```
 
 G0 deliberately installs the candidate only inside CI. It is not yet a
@@ -55,6 +56,17 @@ Required checks:
 7. the existing Qwerty production build remains green.
 
 G0 has **zero product behavior change**.
+
+### Stable-version policy
+
+Phase G uses the latest **stable** `ts-fsrs` release, pinned exactly for
+reproducibility. As verified on 2026-10-03, the stable npm/GitHub release is
+`ts-fsrs@5.4.2`. The contemporaneous `6.0.0-beta.x` line is pre-release and
+is deliberately excluded from production/shadow evidence.
+
+Package major version and algorithm generation are different concepts:
+`ts-fsrs 5.x` implements the **FSRS-6 algorithm** (introduced in
+`ts-fsrs 5.0.0`).
 
 ### G0 closure
 
@@ -202,3 +214,33 @@ For each `dict+word`:
 Historical completeness is never silently assumed. When the current durable
 `reviewCount` exceeds the number of replayable eligible events, replay output
 is explicitly marked `partial-history`.
+
+
+### G1 closure
+
+Historical replay is CLOSED. Verified properties:
+
+- eligible Learn Review events only;
+- deterministic chronological replay;
+- no conversion from basic-v2 state into FSRS D/S;
+- pre-review retrievability captured;
+- four-rating counterfactual intervals captured;
+- incomplete durable history explicitly marked `partial-history`.
+
+### G2 closure
+
+Live dual-track shadow is CLOSED for data collection.
+
+Runtime ownership remains:
+
+```text
+basic-v2  ACTIVE  → sole owner of nextReviewAt
+FSRS-6    SHADOW  → event-level observation only
+```
+
+Each eligible Review first commits the basic-v2 result, then FSRS shadow work
+runs in a separate failure-isolated transaction and annotates the source
+WordRecord. A shadow failure cannot roll back or replace the active scheduler
+state.
+
+Verified by FSRS Phase G Gate #11 and Review Gate #133.
