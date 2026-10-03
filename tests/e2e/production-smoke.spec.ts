@@ -13,6 +13,10 @@ test('production build resolves lazy navigation and preserves Learn session on r
     page.getByText('CET-4', { exact: true }).first(),
   ).toBeVisible()
 
+  await page.goto('/analysis?from=learn')
+  await expect(page.locator('[data-fsrs-shadow-analysis]')).toBeVisible()
+  await expect(page.getByText('FSRS-6 Shadow 分析')).toBeVisible()
+
   await page.goto('/typing')
   await page.getByRole('button', {
     name: '查看数据统计',
