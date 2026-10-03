@@ -111,7 +111,13 @@ const shadowScheduler = fsrs({
   relearning_steps: [],
 })
 
-const outcomeToRating: Record<ShadowReviewOutcome, Rating> = {
+type FsrsGrade =
+  | Rating.Again
+  | Rating.Hard
+  | Rating.Good
+  | Rating.Easy
+
+const outcomeToRating: Record<ShadowReviewOutcome, FsrsGrade> = {
   again: Rating.Again,
   hard: Rating.Hard,
   good: Rating.Good,
