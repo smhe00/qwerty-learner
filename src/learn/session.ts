@@ -14,6 +14,46 @@ export const LEARN_NEW_WORD_BATCH_SIZE = 20
 export type LearnSessionKind = 'review' | 'acquisition'
 
 /**
+ * Learn owns one long-term spelling memory per exact dictionary name.
+ *
+ * Typing keeps the dictionary list unchanged, including repeated textbook
+ * occurrences. Learn collapses repeated names at its boundary so one memory
+ * item cannot be expanded into multiple session items. The first occurrence
+ * keeps dictionary order while translations are merged for display.
+ */
+export function canonicalizeLearningWords(words: Word[]): Word[] {
+  const canonical: Word[] = []
+  const byName = new Map<string, Word>()
+
+  for (const word of canonicalizeLearningWords(words)) {
+    if (!word?.name) continue
+
+    const existing = byName.get(word.name)
+    if (!existing) {
+      const copy: Word = {
+        ...word,
+        trans: [...word.trans],
+      }
+      canonical.push(copy)
+      byName.set(copy.name, copy)
+      continue
+    }
+
+    for (const translation of word.trans) {
+      if (!existing.trans.includes(translation)) {
+        existing.trans.push(translation)
+      }
+    }
+
+    if (!existing.usphone && word.usphone) existing.usphone = word.usphone
+    if (!existing.ukphone && word.ukphone) existing.ukphone = word.ukphone
+    if (!existing.notation && word.notation) existing.notation = word.notation
+  }
+
+  return canonical
+}
+
+/**
  * Every UNSEEN word starts with a real cold probe before any scaffold is shown.
  *
  * This is an admission probe, not yet a long-term scheduler rating. A learner
