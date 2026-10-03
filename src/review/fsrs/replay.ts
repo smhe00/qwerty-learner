@@ -1,4 +1,4 @@
-import { createEmptyCard, fsrs, Rating, State } from 'ts-fsrs'
+import { Rating, State, createEmptyCard, fsrs } from 'ts-fsrs'
 import type { Card } from 'ts-fsrs'
 import {
   FSRS_SHADOW_ALGORITHM_MODEL,
