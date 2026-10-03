@@ -2361,3 +2361,89 @@ test('Learn P4 workload budget limits new acquisition after fifteen active minut
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
   expect(info?.reviewRecord?.words).toHaveLength(10)
 })
+
+
+test('backup/cloud snapshot round-trip preserves FSRS and Learn durable state', async ({
+  page,
+}) => {
+  await page.goto('/tests/e2e/backup-harness.html')
+  await expect(page.getByText('backup harness ready')).toBeVisible()
+
+  await page.evaluate(async () => {
+    await (window as any).__backupHarness.seed()
+  })
+
+  const backupJson = await page.evaluate(async () => {
+    return (window as any).__backupHarness.exportBackupJson()
+  })
+
+  await page.evaluate(async () => {
+    await (window as any).__backupHarness.poisonBeforeRestore()
+  })
+
+  await page.evaluate(async (json) => {
+    await (window as any).__backupHarness.importBackupJson(json)
+  }, backupJson)
+
+  const offline = await page.evaluate(async () => {
+    return (window as any).__backupHarness.inspect()
+  })
+
+  expect(offline.wordRecord?.fsrsShadow?.libraryVersion).toBe('5.4.2')
+  expect(offline.wordRecord?.fsrsShadow?.algorithmModel).toBe('fsrs-6')
+  expect(offline.wordRecord?.fsrsShadow?.retrievabilityBefore).toBe(0.82)
+  expect(
+    offline.wordRecord?.fsrsShadow?.counterfactual?.easy?.intervalDays,
+  ).toBe(14)
+  expect(offline.reviewWordState?.schedulerState).toEqual({
+    kind: 'basic-v2',
+    stage: 4,
+    intervalDays: 14,
+  })
+  expect(offline.reviewRecord?.isFinished).toBe(false)
+  expect(offline.reviewRecord?.sessionKind).toBe('review')
+  expect(offline.reviewRecord?.reinforcementCounts?.['backup-fsrs-word']).toBe(
+    1,
+  )
+  expect(offline.currentDict).toBe('cet4')
+  expect(offline.currentChapter).toBe(3)
+  expect(offline.reviewModeInfo).toEqual({ isReviewMode: false })
+
+  const snapshot = await page.evaluate(async () => {
+    return (window as any).__backupHarness.createLocalSnapshot()
+  })
+
+  await page.evaluate(async () => {
+    await (window as any).__backupHarness.poisonBeforeRestore()
+  })
+
+  const restored = await page.evaluate(async (input) => {
+    return (window as any).__backupHarness.restoreLocalSnapshot(
+      input.payloadBase64,
+      input.clientFormatVersion,
+    )
+  }, snapshot)
+
+  const cloudClient = await page.evaluate(async () => {
+    return (window as any).__backupHarness.inspect()
+  })
+
+  expect(restored.fingerprint).toBe(snapshot.fingerprint)
+  expect(cloudClient.wordRecord?.fsrsShadow).toEqual(
+    offline.wordRecord?.fsrsShadow,
+  )
+  expect(cloudClient.reviewWordState?.schedulerState).toEqual(
+    offline.reviewWordState?.schedulerState,
+  )
+  expect(cloudClient.reviewRecord?.isFinished).toBe(false)
+  expect(cloudClient.currentDict).toBe('cet4')
+  expect(cloudClient.currentChapter).toBe(3)
+  expect(cloudClient.reviewModeInfo).toEqual({ isReviewMode: false })
+
+  await page.evaluate(async () => {
+    await (window as any).__backupHarness.clearAllTables()
+    localStorage.removeItem('currentDict')
+    localStorage.removeItem('currentChapter')
+    localStorage.removeItem('reviewModeInfo')
+  })
+})
