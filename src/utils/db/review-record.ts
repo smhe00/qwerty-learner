@@ -2,6 +2,7 @@ import { db } from '.'
 import {
   LEARN_NEW_WORD_BATCH_SIZE,
   buildLearnAcquisitionExercisePlans,
+  canonicalizeLearningWords,
   selectUnseenLearningWords,
 } from '@/learn/session'
 import { ReviewRecord } from './record'
@@ -100,7 +101,7 @@ export async function generateLearnReviewRecord(
     errorData.map((item) => [item.word, item]),
   )
 
-  const candidates = words.map((originData) => {
+  const candidates = canonicalizeLearningWords(words).map((originData) => {
     const error = errorByWord.get(originData.name)
     return {
       word: originData.name,
