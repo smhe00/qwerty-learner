@@ -145,6 +145,7 @@ export default function WordComponent({
   const effectiveIgnoreCase = isLearnAttempt ? true : isIgnoreCase
 
   const [showTipAlert, setShowTipAlert] = useState(false)
+  const [isPronunciationReady, setIsPronunciationReady] = useState(false)
   const wordPronunciationIconRef = useRef<WordPronunciationIconRef>(null)
   const telemetryCollectorRef = useRef(new WordTelemetryCollector())
   const learningContextCollectorRef = useRef(new LearningContextCollector())
@@ -448,8 +449,10 @@ export default function WordComponent({
     const play = wordPronunciationIconRef.current?.play
     if (!play) return false
 
+    const played = play()
+    if (!played) return false
+
     learningContextCollectorRef.current.recordPronunciationPlayed(cue)
-    play()
     return true
   }, [])
 
@@ -495,6 +498,7 @@ export default function WordComponent({
     }
   }, [
     activeHintLevel,
+    isPronunciationReady,
     playPronunciation,
     state.isTyping,
     wordState.inputWord.length,
@@ -938,7 +942,13 @@ export default function WordComponent({
               onClickCapture={() => learningContextCollectorRef.current.recordPronunciationPlayed('requested')}
             >
               <Tooltip content={`快捷键${CTRL} + J`}>
-                <WordPronunciationIcon word={word} lang={currentLanguage} ref={wordPronunciationIconRef} className="h-full w-full" />
+                <WordPronunciationIcon
+                  word={word}
+                  lang={currentLanguage}
+                  ref={wordPronunciationIconRef}
+                  className="h-full w-full"
+                  onReadyChange={setIsPronunciationReady}
+                />
               </Tooltip>
             </div>
           )}
