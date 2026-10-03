@@ -2,7 +2,7 @@
 
 > Product milestone: P5
 >
-> Status: G0 CLOSED / G1 CLOSED / G2 CLOSED / G3 RUNNING
+> Status: G0 CLOSED / G1 CLOSED / G2 CLOSED / G3 ACTIVE (analysis ready, evidence collecting) / G4 BLOCKED
 >
 > Active scheduler: `basic-v2`
 >
@@ -293,3 +293,21 @@ Learn 数据统计 exposes a read-only FSRS-6 Shadow block with:
 - 30-day next-due projection.
 
 The page explicitly states that basic-v2 still owns `nextReviewAt`.
+
+
+### G3 implementation checkpoint
+
+G3 analysis infrastructure is implemented and gated. The implementation can
+compute calibration, discrimination, interval divergence, outliers and
+next-due projection, and the Learn statistics page exposes those metrics.
+
+Verification checkpoint:
+
+```text
+FSRS Phase G Gate #18  PASS
+Review Gate #141       PASS
+```
+
+`G3 ACTIVE` now means **real evidence collection**, not unfinished analysis
+code. G4 remains blocked until the data-readiness gate is reached and the
+resulting calibration/workload evidence is actually reviewed.
