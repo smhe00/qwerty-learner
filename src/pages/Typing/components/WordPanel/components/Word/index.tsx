@@ -517,6 +517,7 @@ export default function WordComponent({
             state.letterStates = new Array(state.letterStates.length).fill(
               'normal',
             )
+            state.letterTimeArray = []
             state.hasWrong = false
           })
           telemetryCollectorRef.current.startNextAttempt(Date.now())
