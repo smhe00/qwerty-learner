@@ -1,6 +1,6 @@
 # Qwerty 云账号与同步架构
 
-> 当前产品格式：`qwerty-dexie-gzip-v2`。旧的客户端 AES 加密格式已经废弃，不做兼容恢复。
+> 当前产品格式：`qwerty-backup-v3`。`qwerty-backup-v3` 仅作为旧备份兼容恢复格式；旧的客户端 AES 加密 envelope 已废弃，不做兼容恢复。
 
 ## 1. 定位
 
@@ -107,7 +107,7 @@ users/
 当前客户端唯一格式：
 
 ```text
-qwerty-dexie-gzip-v2
+qwerty-backup-v3
 ```
 
 生成：
@@ -126,14 +126,14 @@ PUT /api/sync
 
 服务端要求：
 
-- `clientFormatVersion === qwerty-dexie-gzip-v2`；
+- `clientFormatVersion === qwerty-backup-v3`；
 - `payloadBase64` 是规范 Base64；
 - 解码后具有 gzip magic bytes；
 - payload 不超过 `MAX_SYNC_BYTES`。
 
 服务端当前不需要解析 Dexie JSON，仍把 snapshot 当作整体对象存储；但由于不再端到端加密，云存储管理员理论上可以解压查看内容。
 
-旧格式 `qwerty-sync-envelope-v1` 直接拒绝新上传，客户端也拒绝恢复。
+旧格式 `qwerty-dexie-gzip-v2` 可兼容恢复；实验性 `qwerty-sync-envelope-v1` 直接拒绝新上传，客户端也拒绝恢复。
 
 ## 8. Fingerprint
 
@@ -191,7 +191,7 @@ peakImportFile metadata validate
 Dexie transactional import
 ```
 
-如果云端格式不是 `qwerty-dexie-gzip-v2`，客户端不做兼容解码。
+客户端接受当前 `qwerty-backup-v3` 和旧 `qwerty-dexie-gzip-v2`；其他格式不做兼容解码。
 
 ## 12. 删除账号
 
