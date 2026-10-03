@@ -485,3 +485,80 @@ test('duplicate registration preserves the original account and revisions', asyn
 
   await service.cleanupTestUser(username)
 })
+
+
+test('qwerty-backup-v3 FSRS payload is stored byte-for-byte', async () => {
+  const storage = new MemoryStorage()
+  const service = createBackendService({ storage })
+
+  const username = 'fsrs_payload_roundtrip_user'
+  const registered = await service.register(
+    username,
+    'Fsrs-Payload-A1-Password',
+    'fsrs-payload-device',
+  )
+
+  const payloadObject = {
+    backupFormatVersion: 'qwerty-backup-v3',
+    learningState: {
+      currentDict: 'cet4',
+      currentChapter: 3,
+    },
+    database: {
+      data: {
+        data: [
+          {
+            tableName: 'wordRecords',
+            rows: [
+              {
+                id: 101,
+                word: 'cold',
+                dict: 'cet4',
+                sourceMode: 'learn',
+                learnItemKind: 'review',
+                fsrsShadow: {
+                  schemaVersion: 1,
+                  libraryVersion: '5.4.2',
+                  algorithmModel: 'fsrs-6',
+                  parameterSetId:
+                    'fsrs6-default-r0.90-no-fuzz-long-term-v1',
+                  retrievabilityBefore: 0.82,
+                  selectedIntervalDays: 7,
+                  basicV2: {
+                    dueAt: 123456,
+                    nominalIntervalDays: 14,
+                    reviewCount: 3,
+                    lapseCount: 0,
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    },
+  }
+
+  const payloadBase64 = gzipPayload(payloadObject)
+  const uploaded = await service.putSync(registered.token, {
+    baseRevision: 0,
+    payloadBase64,
+    deviceId: 'fsrs-payload-device',
+    clientFormatVersion: 'qwerty-backup-v3',
+  })
+
+  assert.equal(uploaded.revision, 1)
+
+  const downloaded = await service.getSync(registered.token)
+  assert.equal(downloaded.clientFormatVersion, 'qwerty-backup-v3')
+  assert.equal(downloaded.payloadBase64, payloadBase64)
+
+  const decoded = JSON.parse(
+    zlib.gunzipSync(Buffer.from(downloaded.payloadBase64, 'base64')).toString(
+      'utf8',
+    ),
+  )
+  assert.deepEqual(decoded, payloadObject)
+
+  await service.cleanupTestUser(username)
+})
