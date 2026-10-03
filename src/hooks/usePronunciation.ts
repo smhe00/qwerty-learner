@@ -38,6 +38,7 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
   const pronunciationConfig = useAtomValue(pronunciationConfigAtom)
   const loop = useMemo(() => (typeof isLoop === 'boolean' ? isLoop : pronunciationConfig.isLoop), [isLoop, pronunciationConfig.isLoop])
   const [isPlaying, setIsPlaying] = useState(false)
+  const [isReady, setIsReady] = useState(false)
 
   const [play, { stop, sound }] = useSound(generateWordSoundSrc(word, pronunciationConfig.type), {
     html5: true,
@@ -54,9 +55,18 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
   }, [loop, sound])
 
   useEffect(() => {
-    if (!sound) return
-    const unListens: Array<() => void> = []
+    if (!sound) {
+      setIsReady(false)
+      return
+    }
 
+    const unListens: Array<() => void> = []
+    const markReady = () => setIsReady(true)
+    const markNotReady = () => setIsReady(false)
+
+    setIsReady((sound as Howl).state() === 'loaded')
+    unListens.push(addHowlListener(sound, 'load', markReady))
+    unListens.push(addHowlListener(sound, 'loaderror', markNotReady))
     unListens.push(addHowlListener(sound, 'play', () => setIsPlaying(true)))
     unListens.push(addHowlListener(sound, 'end', () => setIsPlaying(false)))
     unListens.push(addHowlListener(sound, 'pause', () => setIsPlaying(false)))
@@ -64,12 +74,13 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
 
     return () => {
       setIsPlaying(false)
+      setIsReady(false)
       unListens.forEach((unListen) => unListen())
       ;(sound as Howl).unload()
     }
   }, [sound])
 
-  return { play, stop, isPlaying }
+  return { play, stop, isPlaying, isReady }
 }
 
 export function usePrefetchPronunciationSound(word: string | undefined) {
