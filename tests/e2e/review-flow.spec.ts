@@ -267,6 +267,21 @@ async function readReviewGateState(
         rating?: string | null
         reason?: string
       }
+      shadow?: {
+        libraryVersion?: string
+        algorithmModel?: string
+        parameterSetId?: string
+        rating?: string
+        retrievabilityBefore?: number | null
+        selectedIntervalDays?: number
+        historyCoverage?: string
+        replayedEligibleEvents?: number
+        basicV2?: {
+          dueAt?: number
+          nominalIntervalDays?: number
+        }
+        counterfactual?: Record<string, { intervalDays?: number }>
+      }
     }>((resolve, reject) => {
       const request = indexedDB.open('RecordDB')
       request.onerror = () => reject(request.error)
@@ -304,6 +319,7 @@ async function readReviewGateState(
                 }
               : undefined,
             decision: record?.reviewRatingDecision,
+            shadow: record?.fsrsShadow,
           })
           db.close()
         }
@@ -721,7 +737,8 @@ test('Phase D live gate applies one canonical rating through the scheduler', asy
       return (
         result.state?.reviewCount === 2 &&
         result.decision?.eligible === true &&
-        result.state?.lastOutcome === result.decision.rating
+        result.state?.lastOutcome === result.decision.rating &&
+        result.shadow?.libraryVersion === '5.4.2'
       )
     })
     .toBe(true)
@@ -730,6 +747,15 @@ test('Phase D live gate applies one canonical rating through the scheduler', asy
   expect(['hard', 'good', 'easy']).toContain(after.decision?.rating)
   expect(after.state?.schedulerKind).toBe('basic-v2')
   expect(after.state?.nextReviewAt).toBeGreaterThan(before.nextReviewAt)
+  expect(after.shadow?.algorithmModel).toBe('fsrs-6')
+  expect(after.shadow?.rating).toBe(after.decision?.rating)
+  expect(after.shadow?.basicV2?.dueAt).toBe(after.state?.nextReviewAt)
+  expect(after.shadow?.basicV2?.nominalIntervalDays).toBe(
+    after.state?.intervalDays,
+  )
+  expect(
+    Object.keys(after.shadow?.counterfactual ?? {}).sort(),
+  ).toEqual(['again', 'easy', 'good', 'hard'])
 })
 
 test('Phase D live gate persists assisted Hint evidence but leaves scheduler unchanged', async ({

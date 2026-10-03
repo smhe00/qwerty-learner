@@ -33,6 +33,7 @@ on:
       - 'tests/e2e/production-smoke.spec.ts'
       - 'tests/e2e/production-smoke.config.ts'
       - 'tests/review/**'
+      - 'tests/fsrs/**'
       - 'docs/REVIEW_*.md'
       - 'docs/LEARN_*.md'
       - '.github/workflows/review-gate.yml'
@@ -100,6 +101,18 @@ jobs:
 
       - name: Run Review formal model checker
         run: node --test .review-test/formal-model.test.mjs
+
+      - name: Bundle FSRS shadow contract tests
+        run: |
+          npx esbuild tests/fsrs/g2-live-shadow.test.ts \
+            --bundle \
+            --platform=node \
+            --target=node20 \
+            --format=esm \
+            --outfile=.review-test/g2-live-shadow.test.mjs
+
+      - name: Run FSRS shadow contract tests
+        run: node --test .review-test/g2-live-shadow.test.mjs
 
       - name: Run multi-word Review browser gate
         run: npx playwright test --config=tests/e2e/review-flow.config.ts --project=chrome
