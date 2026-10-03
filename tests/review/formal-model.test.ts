@@ -1162,8 +1162,8 @@ test('formal/hint-liveness: the hint ladder is acyclic and bounded by four escal
   ) => {
     assert.ok(depth <= 4, 'hint ladder exceeded four escalations')
 
-    for (const inputIndex of [0, 1]) {
-      for (const key of [' ', 'a']) {
+    for (const inputIndex of [0, 1, 4]) {
+      for (const key of ['Escape', ' ', 'a']) {
         const decision = decideReviewHintInput({
           state,
           inputIndex,
@@ -1171,8 +1171,7 @@ test('formal/hint-liveness: the hint ladder is acyclic and bounded by four escal
         })
 
         const shouldAdvance =
-          inputIndex === 0 &&
-          key === ' ' &&
+          key === 'Escape' &&
           state.stage !== 'hint-3'
 
         assert.equal(decision.kind === 'advance-hint', shouldAdvance)
@@ -1685,4 +1684,55 @@ test('formal/learn-name-canonicalization: bounded duplicate dictionaries produce
   }
 
   assert.ok(explored > 300)
+})
+
+
+test('formal/dictionary-example-range: only bounded non-empty slices are eligible', async () => {
+  const { getFirstValidDictionaryExample, maskDictionaryExample } =
+    await import('../../src/utils/dictionaryExample')
+
+  const en = 'abcdef'
+  let explored = 0
+
+  for (let start = -1; start <= en.length + 1; start += 1) {
+    for (let end = -1; end <= en.length + 1; end += 1) {
+      const word = {
+        name: 'target',
+        trans: [],
+        usphone: '',
+        ukphone: '',
+        example: [
+          {
+            en,
+            cn: 'fixture',
+            start,
+            end,
+          },
+        ],
+      }
+
+      const example = getFirstValidDictionaryExample(word)
+      const valid =
+        Number.isInteger(start) &&
+        Number.isInteger(end) &&
+        start >= 0 &&
+        end > start &&
+        end <= en.length
+
+      assert.equal(example !== undefined, valid)
+
+      if (example) {
+        const parts = maskDictionaryExample(example)
+        assert.equal(
+          parts.before + parts.surface + parts.after,
+          en,
+        )
+        assert.equal(parts.surface, en.slice(start, end))
+        assert.ok(parts.masked.length >= 3)
+      }
+      explored += 1
+    }
+  }
+
+  assert.ok(explored > 50)
 })
