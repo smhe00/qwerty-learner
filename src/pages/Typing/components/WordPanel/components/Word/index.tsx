@@ -1,5 +1,6 @@
 import type { WordUpdateAction } from '../InputHandler'
 import InputHandler from '../InputHandler'
+import ExampleCue from '../ExampleCue'
 import Letter from './Letter'
 import Notation from './Notation'
 import { TipAlert } from './TipAlert'
@@ -93,6 +94,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { useImmer } from 'use-immer'
 
 const vowelLetters = ['A', 'E', 'I', 'O', 'U']
+const SUCCESS_FEEDBACK_MS = 600
 
 export type WordFinishResult = {
   wrongCount: number
@@ -160,6 +162,11 @@ export default function WordComponent({
   const finishNotifiedRef = useRef(false)
   const targetLengthRef = useRef(0)
   const reviewHintStateRef = useRef(createReviewHintMachineState())
+  const successFeedbackStartedAtRef = useRef(0)
+  const successFastForwardRequestedRef = useRef(false)
+  const successAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingFinishReleaseRef = useRef<(() => void) | null>(null)
+  const successPronunciationPlayedRef = useRef(false)
 
   useLayoutEffect(() => {
     // Resolve the frozen presentation before paint / first input.
@@ -169,6 +176,14 @@ export default function WordComponent({
     automaticPronunciationPlayedRef.current = false
     setIsPronunciationReady(false)
     finishNotifiedRef.current = false
+    successFeedbackStartedAtRef.current = 0
+    successFastForwardRequestedRef.current = false
+    successPronunciationPlayedRef.current = false
+    pendingFinishReleaseRef.current = null
+    if (successAdvanceTimerRef.current) {
+      clearTimeout(successAdvanceTimerRef.current)
+      successAdvanceTimerRef.current = null
+    }
     reviewHintStateRef.current = createReviewHintMachineState()
     setActiveHintLevel(null)
     onHintLevelChange?.(null)
@@ -366,10 +381,71 @@ export default function WordComponent({
     [dispatch, onHintLevelChange],
   )
 
+  const releasePendingFinish = useCallback(() => {
+    const release = pendingFinishReleaseRef.current
+    if (!release) return
+
+    pendingFinishReleaseRef.current = null
+    if (successAdvanceTimerRef.current) {
+      clearTimeout(successAdvanceTimerRef.current)
+      successAdvanceTimerRef.current = null
+    }
+    release()
+  }, [])
+
+  const requestSuccessFastForward = useCallback(() => {
+    successFastForwardRequestedRef.current = true
+    releasePendingFinish()
+  }, [releasePendingFinish])
+
+  const armSuccessFinishRelease = useCallback(
+    (release: () => void) => {
+      pendingFinishReleaseRef.current = release
+
+      if (successFastForwardRequestedRef.current) {
+        releasePendingFinish()
+        return
+      }
+
+      const elapsed = Math.max(
+        0,
+        Date.now() - successFeedbackStartedAtRef.current,
+      )
+      const remaining = Math.max(0, SUCCESS_FEEDBACK_MS - elapsed)
+      if (remaining === 0) {
+        releasePendingFinish()
+        return
+      }
+
+      successAdvanceTimerRef.current = setTimeout(
+        releasePendingFinish,
+        remaining,
+      )
+    },
+    [releasePendingFinish],
+  )
+
+  useEffect(() => {
+    return () => {
+      if (successAdvanceTimerRef.current) {
+        clearTimeout(successAdvanceTimerRef.current)
+      }
+      pendingFinishReleaseRef.current = null
+    }
+  }, [])
+
   const updateInput = useCallback(
     (updateAction: WordUpdateAction) => {
       switch (updateAction.type) {
         case 'add': {
+          if (inputLockedRef.current) {
+            if (updateAction.value === ' ') {
+              updateAction.event.preventDefault()
+              requestSuccessFastForward()
+            }
+            return
+          }
+
           if (isManagedReviewHintFlow()) {
             const hintDecision = decideReviewHintInput({
               state: reviewHintStateRef.current,
@@ -414,6 +490,39 @@ export default function WordComponent({
           break
         }
 
+        case 'surrender': {
+          if (
+            !isLearnAttempt ||
+            !isManagedReviewHintFlow() ||
+            inputLockedRef.current
+          ) {
+            return
+          }
+
+          const hintDecision = decideReviewHintInput({
+            state: reviewHintStateRef.current,
+            inputIndex: acceptedInputLengthRef.current,
+            key: 'Escape',
+          })
+          if (hintDecision.kind !== 'advance-hint') return
+
+          updateAction.event.preventDefault()
+          activateReviewHint(hintDecision)
+
+          acceptedInputLengthRef.current = 0
+          inputLockedRef.current = false
+          automaticPronunciationPlayedRef.current = false
+          setWordState((state) => {
+            state.inputWord = ''
+            state.letterStates = new Array(state.letterStates.length).fill(
+              'normal',
+            )
+            state.hasWrong = false
+          })
+          telemetryCollectorRef.current.startNextAttempt(Date.now())
+          return
+        }
+
         default:
           console.warn('unknown update type', updateAction)
       }
@@ -422,7 +531,9 @@ export default function WordComponent({
       activateReviewHint,
       dispatch,
       isManagedReviewHintFlow,
+      isLearnAttempt,
       onHintLevelChange,
+      requestSuccessFastForward,
       setWordState,
       wordState.hasWrong,
     ],
@@ -603,7 +714,10 @@ export default function WordComponent({
 
       if (inputLength >= wordState.displayWord.length) {
         // 完成输入时
-        telemetryCollectorRef.current.recordClean(inputLength, Date.now())
+        const successTime = Date.now()
+        successFeedbackStartedAtRef.current = successTime
+        successFastForwardRequestedRef.current = false
+        telemetryCollectorRef.current.recordClean(inputLength, successTime)
         setWordState((state) => {
           state.letterStates[inputLength - 1] = 'correct'
           state.isFinished = true
@@ -778,12 +892,13 @@ export default function WordComponent({
       }
 
       const notifyFinished = () => {
-        onFinish({
+        const result: WordFinishResult = {
           wrongCount: wordState.wrongCount,
           classification,
           reviewRatingDecision,
           nextExerciseShadow,
-        })
+        }
+        armSuccessFinishRelease(() => onFinish(result))
       }
 
       const persistResult = async () => {
@@ -879,6 +994,23 @@ export default function WordComponent({
   }, [wordState.isFinished])
 
   useEffect(() => {
+    if (
+      !wordState.isFinished ||
+      successPronunciationPlayedRef.current ||
+      !isPronunciationReady
+    ) {
+      return
+    }
+
+    const played = wordPronunciationIconRef.current?.play() ?? false
+    if (played) {
+      // Success playback is feedback after retrieval, not a retrieval cue.
+      // Deliberately do not record it in LearningContext.
+      successPronunciationPlayedRef.current = true
+    }
+  }, [isPronunciationReady, word.name, wordState.isFinished])
+
+  useEffect(() => {
     if (wordState.wrongCount >= 4) {
       dispatch({ type: TypingStateActionType.SET_IS_SKIP, payload: true })
     }
@@ -906,6 +1038,9 @@ export default function WordComponent({
             data-typing-locked={inputLockedRef.current ? 'true' : 'false'}
             data-typing-has-wrong={wordState.hasWrong ? 'true' : 'false'}
             data-typing-finished={wordState.isFinished ? 'true' : 'false'}
+            data-typing-success-feedback={
+              wordState.isFinished ? 'active' : 'inactive'
+            }
             data-typing-active={state.isTyping ? 'true' : 'false'}
             data-review-purpose={exerciseConditionRef.current?.purpose}
             data-review-probe-dimension={exerciseConditionRef.current?.probeDimension}
@@ -934,7 +1069,7 @@ export default function WordComponent({
             data-review-skip-locked={state.isSkipLocked ? 'true' : 'false'}
             onMouseEnter={() => handleHoverWord(true)}
             onMouseLeave={() => handleHoverWord(false)}
-            className={`flex items-center ${isTextSelectable && 'select-all'} justify-center ${wordState.hasWrong ? style.wrong : ''}`}
+            className={`flex items-center ${isTextSelectable && 'select-all'} justify-center ${wordState.hasWrong ? style.wrong : ''} ${wordState.isFinished ? style.success : ''}`}
           >
             {wordState.displayWord.split('').map((t, index) => {
               const hintEmphasis =
@@ -955,23 +1090,31 @@ export default function WordComponent({
               )
             })}
           </div>
-          {(pronunciationIsOpen || (activeHintLevel !== null && activeHintLevel >= 1)) && (
-            <div
-              className="absolute -right-12 top-1/2 h-9 w-9 -translate-y-1/2 transform "
-              onClickCapture={() => learningContextCollectorRef.current.recordPronunciationPlayed('requested')}
-            >
-              <Tooltip content={`快捷键${CTRL} + J`}>
-                <WordPronunciationIcon
-                  word={word}
-                  lang={currentLanguage}
-                  ref={wordPronunciationIconRef}
-                  className="h-full w-full"
-                  onReadyChange={setIsPronunciationReady}
-                />
-              </Tooltip>
-            </div>
-          )}
+          <div
+            className={
+              pronunciationIsOpen ||
+              (activeHintLevel !== null && activeHintLevel >= 1)
+                ? 'absolute -right-12 top-1/2 h-9 w-9 -translate-y-1/2 transform'
+                : 'hidden'
+            }
+            onClickCapture={() =>
+              learningContextCollectorRef.current.recordPronunciationPlayed(
+                'requested',
+              )
+            }
+          >
+            <Tooltip content={`快捷键${CTRL} + J`}>
+              <WordPronunciationIcon
+                word={word}
+                lang={currentLanguage}
+                ref={wordPronunciationIconRef}
+                className="h-full w-full"
+                onReadyChange={setIsPronunciationReady}
+              />
+            </Tooltip>
+          </div>
         </div>
+        <ExampleCue word={word} revealed={wordState.isFinished} />
         {isManagedReviewHintFlow() && (
           <div
             className="mt-3 text-center text-xs text-gray-400 dark:text-gray-500"
@@ -980,8 +1123,8 @@ export default function WordComponent({
             {activeHintLevel === 3
               ? '请照着完整单词输入正确后继续'
               : activeHintLevel === null
-                ? '同一位置拼错两次会自动提示该字母；也可在输入开头按空格获取提示'
-                : '当前提示下错两次会自动升级；也可在输入开头按空格获取下一提示'}
+                ? '同一位置拼错两次会自动提示该字母；不会时可按 Esc 获取提示'
+                : '当前提示下错两次会自动升级；也可按 Esc 获取下一提示'}
           </div>
         )}
       </div>
