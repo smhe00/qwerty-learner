@@ -54,6 +54,7 @@ jobs:
           --module ESNext
           --moduleResolution node
           --lib ES2020,DOM
+          --types node
           tests/fsrs/g0-compat.ts
 
       - name: Bundle and run Node 20 compatibility probe
