@@ -33,6 +33,10 @@ export function canonicalizeLearningWords(words: Word[]): Word[] {
       const copy: Word = {
         ...word,
         trans: [...word.trans],
+        ...(word.example !== undefined
+          ? { example: word.example.map((example) => ({ ...example })) }
+          : {}),
+        ...(word.tags !== undefined ? { tags: [...word.tags] } : {}),
       }
       canonical.push(copy)
       byName.set(copy.name, copy)
