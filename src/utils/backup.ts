@@ -49,6 +49,14 @@ export function readLearningState(): BackupLearningState {
   }
 }
 
+function notifyStorageChange(
+  key: string,
+  oldValue: string | null,
+  newValue: string | null,
+) {
+  notifyStorageChange(key, oldValue, newValue)
+}
+
 function writeStorageValue(key: string, value: string | number) {
   const oldValue = localStorage.getItem(key)
   const newValue = JSON.stringify(value)
@@ -67,6 +75,14 @@ function writeStorageValue(key: string, value: string | number) {
   } catch {
     window.dispatchEvent(new Event('storage'))
   }
+}
+
+export function resetReviewModeInfoAfterRestore() {
+  const key = 'reviewModeInfo'
+  const oldValue = localStorage.getItem(key)
+  const newValue = JSON.stringify({ isReviewMode: false })
+  localStorage.setItem(key, newValue)
+  notifyStorageChange(key, oldValue, newValue)
 }
 
 export function restoreLearningState(state: BackupLearningState) {
@@ -188,6 +204,11 @@ export async function importBackupJson(
   if (!hasReviewWordStates) {
     await db.reviewWordStates.clear()
   }
+
+  // reviewModeInfo is a route-critical localStorage cache, while the durable
+  // Learn session lives in IndexedDB.reviewRecords. Never let a pre-restore
+  // browser cache resurrect a session that does not belong to the imported DB.
+  resetReviewModeInfoAfterRestore()
 
   const restoredLearningState = decoded.learningState
     ? restoreLearningState(decoded.learningState)
