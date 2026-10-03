@@ -7,6 +7,7 @@ import {
 } from '../../src/learn/lifecycle'
 import {
   LEARN_NEW_WORD_BATCH_SIZE,
+  canonicalizeLearningWords,
   countUnseenLearningWords,
   createLearnAcquisitionPlan,
   selectUnseenLearningWords,
@@ -2274,6 +2275,37 @@ test('legacy active state seeded only from Typing is removable ghost state', () 
     ]),
     false,
   )
+})
+
+test('duplicate dictionary names collapse into one Learn spelling memory with merged translations', () => {
+  const words = [
+    {
+      name: 'bank',
+      trans: ['n. 河岸'],
+      usphone: 'bæŋk',
+      ukphone: 'bæŋk',
+    },
+    {
+      name: 'break',
+      trans: ['v. 打破'],
+      usphone: 'breɪk',
+      ukphone: 'breɪk',
+    },
+    {
+      name: 'bank',
+      trans: ['n. 银行'],
+      usphone: 'bæŋk',
+      ukphone: 'bæŋk',
+    },
+  ]
+
+  const canonical = canonicalizeLearningWords(words)
+
+  assert.deepEqual(
+    canonical.map((word) => word.name),
+    ['bank', 'break'],
+  )
+  assert.deepEqual(canonical[0].trans, ['n. 河岸', 'n. 银行'])
 })
 
 test('UNSEEN count is derived from the actual dictionary, ignoring stale states and duplicate names', () => {
