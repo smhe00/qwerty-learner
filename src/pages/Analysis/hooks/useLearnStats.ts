@@ -1,11 +1,14 @@
 import { buildLearnStatsSnapshot } from '@/learn/stats'
 import type { LearnStatsSnapshot } from '@/learn/stats'
+import { analyzeFsrsShadowRecords } from '@/review/fsrs/analysis'
+import type { FsrsG3AnalysisV1 } from '@/review/fsrs/analysis'
 import { db } from '@/utils/db'
 import { wordListFetcher } from '@/utils/wordListFetcher'
 import { useEffect, useState } from 'react'
 
 export type LearnStatsLoadState = {
   stats?: LearnStatsSnapshot
+  fsrsAnalysis?: FsrsG3AnalysisV1
   loading: boolean
   wordListAvailable: boolean
   error?: string
@@ -41,6 +44,10 @@ export function useLearnStats(
         setState({
           loading: false,
           wordListAvailable: wordListResult.available,
+          fsrsAnalysis: analyzeFsrsShadowRecords({
+            records: wordRecords,
+            asOf: now,
+          }),
           stats: buildLearnStatsSnapshot({
             now,
             dict,
