@@ -23,6 +23,14 @@ function formatRate(value: number | null): string {
   return value === null ? '—' : `${value}%`
 }
 
+function formatDecimal(
+  value: number | null,
+  digits = 3,
+  suffix = '',
+): string {
+  return value === null ? '—' : `${value.toFixed(digits)}${suffix}`
+}
+
 function MetricCard({
   label,
   value,
@@ -50,10 +58,13 @@ function MetricCard({
 function LearnAnalysis() {
   const currentDictId = useAtomValue(currentDictIdAtom)
   const currentDictInfo = useAtomValue(currentDictInfoAtom)
-  const { stats, loading, wordListAvailable, error } = useLearnStats(
-    currentDictId,
-    currentDictInfo.url,
-  )
+  const {
+    stats,
+    fsrsAnalysis,
+    loading,
+    wordListAvailable,
+    error,
+  } = useLearnStats(currentDictId, currentDictInfo.url)
 
   if (loading) {
     return (
@@ -88,6 +99,22 @@ function LearnAnalysis() {
   const ratings = stats.scheduler.ratings30d
   const quota = decideDailyAcquisitionQuota(stats)
   const dailyPlan = buildLearnDailyPlan({ stats, quota })
+  const fsrsReadiness =
+    fsrsAnalysis?.readiness === 'g4-review-ready'
+      ? '可进入 G4 数据评审'
+      : fsrsAnalysis?.readiness === 'descriptive'
+        ? '可做描述性分析'
+        : '收集中'
+  const fsrsReadinessDetail =
+    fsrsAnalysis?.readiness === 'g4-review-ready'
+      ? '仅表示样本量满足评审门槛，不代表可启用'
+      : fsrsAnalysis?.readiness === 'descriptive'
+        ? '已达到 50 个可校准样本；继续收集到 G4 门槛'
+        : `至少需要 50 个可校准样本，目前 ${fsrsAnalysis?.calibration.usableSamples ?? 0}`
+  const fsrs30DayNextDue = fsrsAnalysis?.nextDueProjection.horizons.find(
+    (item) => item.days === 30,
+  )
+
   const quotaDetail = quota.pausedByDue
     ? '先完成到期复习'
     : quota.remainingDailyNewWords === 0
@@ -207,6 +234,74 @@ function LearnAnalysis() {
         </div>
       </div>
 
+      <div
+        className="mx-4 my-6 rounded-lg bg-white p-6 shadow dark:bg-gray-700 dark:bg-opacity-50"
+        data-fsrs-shadow-analysis
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div className="text-lg font-semibold text-gray-700 dark:text-white">
+            FSRS-6 Shadow 分析
+          </div>
+          <div className="text-sm text-gray-400">{fsrsReadiness}</div>
+        </div>
+        <div className="mt-1 text-xs text-gray-400">
+          {fsrsReadinessDetail}
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-3">
+          <MetricCard
+            label="同版本 Shadow 事件"
+            value={fsrsAnalysis?.homogeneousShadowRecords ?? 0}
+            detail={
+              fsrsAnalysis && fsrsAnalysis.rejectedShadowRecords > 0
+                ? `另有 ${fsrsAnalysis.rejectedShadowRecords} 条版本/来源不一致记录未混入分析`
+                : '仅统计当前 FSRS-6 / 参数集'
+            }
+          />
+          <MetricCard
+            label="可校准样本"
+            value={fsrsAnalysis?.calibration.usableSamples ?? 0}
+            detail="首次 New Review 的 R 为空，不进入校准"
+          />
+          <MetricCard
+            label="Calibration ECE"
+            value={formatDecimal(
+              fsrsAnalysis?.calibration.expectedCalibrationError ?? null,
+            )}
+            detail="越低越好；样本不足时不下结论"
+          />
+          <MetricCard
+            label="Discrimination AUC"
+            value={formatDecimal(fsrsAnalysis?.discrimination.auc ?? null)}
+            detail="衡量较高 R 是否对应更高实际记住概率"
+          />
+          <MetricCard
+            label="FSRS/basic 间隔 P50"
+            value={formatDecimal(
+              fsrsAnalysis?.intervalDivergence.ratio.p50 ?? null,
+              2,
+              '×',
+            )}
+            detail={
+              fsrsAnalysis
+                ? `极端差异 ${fsrsAnalysis.intervalDivergence.outliers.length} 条`
+                : undefined
+            }
+          />
+          <MetricCard
+            label="30日 next-due"
+            value={
+              fsrs30DayNextDue
+                ? `${fsrs30DayNextDue.basicDueWords} → ${fsrs30DayNextDue.fsrsDueWords}`
+                : '—'
+            }
+            detail="basic-v2 → FSRS；只比较每词下一次 due，不是递归 workload"
+          />
+        </div>
+        <div className="mt-3 text-xs text-gray-400">
+          当前仍由 basic-v2 独占 nextReviewAt。这里的 FSRS-6 数据只用于
+          G3 观察和 G4 评审，不改变 Learn 队列、到期时间或每日计划。
+        </div>
+      </div>
       <div className="mx-4 my-6 rounded-lg bg-white p-6 shadow dark:bg-gray-700 dark:bg-opacity-50">
         <div className="text-lg font-semibold text-gray-700 dark:text-white">
           最近 30 天 Rating
