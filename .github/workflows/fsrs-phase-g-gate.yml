@@ -1,0 +1,72 @@
+name: FSRS Phase G Gate
+
+on:
+  push:
+    branches:
+      - product/main
+    paths:
+      - '.github/workflows/fsrs-phase-g-gate.yml'
+      - 'tests/fsrs/**'
+      - 'docs/FSRS_PHASE_G.md'
+      - 'src/review/fsrs/**'
+      - 'src/review/types.ts'
+      - 'src/review/scheduler.ts'
+      - 'package.json'
+      - 'yarn.lock'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  g0-compatibility:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      FSRS_PACKAGE_VERSION: 5.4.2
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: 'yarn'
+
+      - name: Install project dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Install pinned ts-fsrs for G0 only
+        run: yarn add --ignore-scripts --exact "ts-fsrs@$FSRS_PACKAGE_VERSION"
+
+      - name: Verify pinned package version
+        run: node tests/fsrs/verify-package-version.mjs "$FSRS_PACKAGE_VERSION"
+
+      - name: Verify TypeScript 4.9 declaration compatibility
+        run: >
+          yarn tsc
+          --noEmit
+          --strict
+          --skipLibCheck false
+          --target ES2020
+          --module ESNext
+          --moduleResolution node
+          --lib ES2020,DOM
+          tests/fsrs/g0-compat.ts
+
+      - name: Bundle and run Node 20 compatibility probe
+        run: |
+          mkdir -p .fsrs-g0
+          npx esbuild tests/fsrs/g0-compat.ts             --bundle             --platform=node             --target=node20             --format=esm             --outfile=.fsrs-g0/g0-compat.mjs
+          node .fsrs-g0/g0-compat.mjs
+
+      - name: Verify Vite 4 browser bundle
+        run: >
+          npx vite build tests/fsrs/browser
+          --outDir ../../../.fsrs-g0/browser
+          --emptyOutDir
+
+      - name: Build Qwerty with pinned package present
+        run: yarn build
