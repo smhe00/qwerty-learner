@@ -1,6 +1,6 @@
 # 云账号与同步使用说明
 
-> 当前产品采用 `qwerty-dexie-gzip-v2` 云同步格式。旧加密格式不再兼容恢复。
+> 当前产品采用 `qwerty-backup-v3` 云同步格式。旧 `qwerty-dexie-gzip-v2` 仍可恢复；旧加密格式不再兼容恢复。
 
 ## 基本原则
 
@@ -77,7 +77,7 @@ qwerty-sync-envelope-v1
 
 > 云端是旧格式，需要用当前本地数据重新上传。
 
-用户确认后可直接用当前本地数据覆盖旧云端 revision，并从此使用 gzip v2 格式。
+用户确认后可直接用当前本地数据覆盖旧云端 revision，并从此使用 `qwerty-backup-v3` 格式。
 
 ## Revision 与冲突保护
 
