@@ -1,6 +1,7 @@
 import atomForConfig from './atomForConfig'
 import { reviewInfoAtom } from './reviewInfoAtom'
 import { DISMISS_START_CARD_DATE_KEY, defaultFontSizeConfig } from '@/constants'
+import { DEFAULT_DICTIONARY_ID } from '@/resources/defaultDictionary'
 import { idDictionaryMap } from '@/resources/dictionary'
 import { correctSoundResources, keySoundResources, wrongSoundResources } from '@/resources/soundResource'
 import type {
@@ -31,14 +32,14 @@ function readStoredValue<T>(key: string, fallback: T): T {
 
 export const currentDictIdAtom = atomWithStorage(
   'currentDict',
-  readStoredValue('currentDict', 'zhongkaohexin'),
+  readStoredValue('currentDict', DEFAULT_DICTIONARY_ID),
 )
 export const currentDictInfoAtom = atom<Dictionary>((get) => {
   const id = get(currentDictIdAtom)
   let dict = idDictionaryMap[id]
   // 如果 dict 不存在，则返回默认词库。Typing 中会检查 DictId 是否存在，并重置为默认词库
   if (!dict) {
-    dict = idDictionaryMap.zhongkaohexin
+    dict = idDictionaryMap[DEFAULT_DICTIONARY_ID]
   }
   return dict
 })
