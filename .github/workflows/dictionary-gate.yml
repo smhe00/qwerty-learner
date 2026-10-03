@@ -1,0 +1,41 @@
+name: Dictionary Gate
+
+on:
+  push:
+    branches:
+      - product/main
+    paths:
+      - 'public/dicts/hujiaoxin2027.json'
+      - 'src/resources/dictionary.ts'
+      - 'src/store/index.ts'
+      - 'src/pages/Typing/index.tsx'
+      - 'tests/dictionary/**'
+      - '.github/workflows/dictionary-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dictionary:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Validate 沪教新初2027 dictionary
+        run: node --test tests/dictionary/hujiaoxin2027.test.mjs
+
+      - name: Build Qwerty
+        run: yarn build
