@@ -506,33 +506,32 @@ The browser gate uses GitHub Actions Secrets for EdgeOne access, disables trace/
 
 ### P6 — snapshot packaging
 
-P6 starts only after the encryption-key UX is fixed in the architecture. The current P5 cloud snapshot is opaque to the server but is **not encrypted**.
+P6 packaging is complete in the **current non-encrypted form**.
 
-- [x] IndexedDB export — implemented in P5
-- [x] gzip — implemented in P6
-- [x] client-side AES-GCM — AES-256-GCM implemented in P6
-- [x] Base64 transport — implemented in P5
-- [x] restore validation — authenticated decrypt + gzip + JSON + Dexie metadata before overwrite
-- [x] encrypted-envelope format versioning — `qwerty-sync-envelope-v1`
-- [x] encryption-key UX and recovery semantics — separate 12+ character passphrase, memory-only, never sent to server; server cannot recover it
+Current pipeline:
 
-Security design: `docs/CLOUD_SYNC_ENCRYPTION.md`.
+```text
+Dexie export
+  -> qwerty-backup-v3 envelope
+  -> gzip
+  -> Base64 transport
+```
 
-P6 validation is complete.
+- [x] IndexedDB export
+- [x] qwerty-backup-v3 envelope with learningState
+- [x] gzip
+- [x] Base64 transport
+- [x] restore validation
+- [x] legacy `qwerty-dexie-gzip-v2` restore compatibility
+- [x] stale route-state reset after restore
 
-Static gate: GitHub Actions `Cloud Sync Gate` run `36452560509` PASS.
+The earlier AES-256-GCM / PBKDF2 / `qwerty-sync-envelope-v1` design is
+historical and superseded. Current `product/main` does **not** use a separate
+cloud encryption passphrase and must not be described as end-to-end encrypted.
 
-Live browser gate: GitHub Actions `EdgeOne Browser Sync Gate` run `36452560735`, attempt 2, PASS:
-- encrypted upload created `qwerty-sync-envelope-v1`;
-- envelope identifies AES-256-GCM and does not expose the test plaintext;
-- wrong encryption passphrase was rejected before local IndexedDB overwrite;
-- correct passphrase restored the encrypted snapshot;
-- local/remote divergence detection remained functional;
-- test account cleanup removed the account and 2 revisions.
-
-P6 is complete.
-
-Do not claim end-to-end encrypted backups until the AES-GCM envelope and key UX gates pass.
+Current security note: cloud data is protected in transit by HTTPS and by
+application authentication/authorization, but Blob contents are not
+client-side encrypted.
 
 ### P7 — minimal UI
 
@@ -541,7 +540,7 @@ P7 was intentionally folded into P5/P6 instead of creating a second UI layer.
 - [x] cloud-sync area lives only under existing Data Settings
 - [x] logged-out: username/password/register/login
 - [x] logged-in: account, sync status, remote revision, upload/download/logout
-- [x] encryption passphrase entry and recovery warning
+- [x] current gzip/Base64 snapshot status and restore warnings
 - [x] divergence warning and explicit overwrite/restore actions
 - [x] no separate profile system
 
