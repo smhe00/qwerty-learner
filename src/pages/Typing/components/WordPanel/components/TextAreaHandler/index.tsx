@@ -43,6 +43,11 @@ export default function TextAreaHandler({ updateInput }: { updateInput: (updateO
       ref={textareaRef}
       autoFocus
       spellCheck="false"
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          updateInput({ type: 'surrender', event: event.nativeEvent })
+        }
+      }}
       onInput={onInput}
       onBlur={onBlur}
       onCompositionStart={() => {
