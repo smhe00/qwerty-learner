@@ -3,7 +3,7 @@ import { currentChapterAtom, currentDictInfoAtom, reviewModeInfoAtom } from '@/s
 import type { Word, WordWithIndex } from '@/typings/index'
 import { wordListFetcher } from '@/utils/wordListFetcher'
 import { useAtom, useAtomValue } from 'jotai'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import useSWR from 'swr'
 
 export type UseWordListResult = {
@@ -20,14 +20,23 @@ export function useWordList(): UseWordListResult {
   const [currentChapter, setCurrentChapter] = useAtom(currentChapterAtom)
   const { isReviewMode, reviewRecord } = useAtomValue(reviewModeInfoAtom)
 
-  // Legacy Learn builds used -1 as a shared chapter sentinel. Learn now owns
-  // its queue independently, so normalize any stale sentinel before Typing
-  // slices the dictionary.
-  if (currentChapter < 0 || currentChapter >= currentDictInfo.chapterCount) {
-    setCurrentChapter(0)
-  }
+  // Normalize stale chapter state without mutating an atom during React render.
+  // This is especially important when switching to a smaller default dictionary.
+  const normalizedChapter =
+    currentChapter < 0 || currentChapter >= currentDictInfo.chapterCount
+      ? 0
+      : currentChapter
 
-  const isFirstChapter = !isReviewMode && currentDictInfo.id === 'cet4' && currentChapter === 0
+  useEffect(() => {
+    if (normalizedChapter !== currentChapter) {
+      setCurrentChapter(normalizedChapter)
+    }
+  }, [currentChapter, normalizedChapter, setCurrentChapter])
+
+  const isFirstChapter =
+    !isReviewMode &&
+    currentDictInfo.id === 'cet4' &&
+    normalizedChapter === 0
   const { data: wordList, error, isLoading } = useSWR(currentDictInfo.url, wordListFetcher)
 
   // The Typing reducer owns the live review queue. Rehydrate it only when the
@@ -47,7 +56,7 @@ export function useWordList(): UseWordListResult {
     } else if (isReviewMode) {
       newWords = reviewWords
     } else if (wordList) {
-      newWords = wordList.slice(currentChapter * CHAPTER_LENGTH, (currentChapter + 1) * CHAPTER_LENGTH)
+      newWords = wordList.slice(normalizedChapter * CHAPTER_LENGTH, (normalizedChapter + 1) * CHAPTER_LENGTH)
     } else {
       newWords = []
     }
@@ -68,7 +77,7 @@ export function useWordList(): UseWordListResult {
         trans,
       }
     })
-  }, [isFirstChapter, isReviewMode, wordList, reviewWords, currentChapter])
+  }, [isFirstChapter, isReviewMode, wordList, reviewWords, normalizedChapter])
 
   return { words, isLoading, error }
 }
