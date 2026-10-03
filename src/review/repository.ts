@@ -55,47 +55,88 @@ export async function applyReviewOutcome(
   now: number,
   currentWordRecordId?: number,
 ): Promise<IReviewWordState> {
-  return db.transaction('rw', db.wordRecords, db.reviewWordStates, async () => {
-    const existing = await getReviewWordState(dict, word)
+  const result = await db.transaction(
+    'rw',
+    db.wordRecords,
+    db.reviewWordStates,
+    async () => {
+      const existing = await getReviewWordState(dict, word)
 
-    if (existing && getLearningLifecycle(existing) === 'excluded') {
-      return existing
+      if (existing && getLearningLifecycle(existing) === 'excluded') {
+        return { state: existing, applied: false }
+      }
+
+      let current = existing
+
+      if (!current || current.stateVersion !== CURRENT_REVIEW_STATE_VERSION) {
+        const priorRecords = await db.wordRecords
+          .where('word')
+          .equals(word)
+          .and(
+            (record) =>
+              record.dict === dict &&
+              record.id !== currentWordRecordId,
+          )
+          .toArray()
+
+        current =
+          rebuildBasicStateFromWordRecords(
+            dict,
+            word,
+            priorRecords,
+            { legacyDueAt: now },
+          ) ?? createInitialReviewWordState(dict, word, now)
+      }
+
+      if (
+        current.schedulerState.kind !== 'basic-v1' &&
+        current.schedulerState.kind !== 'basic-v2'
+      ) {
+        return { state: current, applied: false }
+      }
+
+      const next = scheduleBasicReview({
+        state: current,
+        outcome,
+        now,
+      })
+
+      const id = await db.reviewWordStates.put({
+        ...next,
+        id: existing?.id ?? next.id,
+      })
+
+      return {
+        state: { ...next, id },
+        applied: true,
+      }
+    },
+  )
+
+  // G2 invariant: basic-v2 commits before FSRS shadow work. The shadow runs
+  // in a separate transaction and is failure-isolated from active scheduling.
+  if (
+    result.applied &&
+    currentWordRecordId !== undefined &&
+    currentWordRecordId > 0 &&
+    result.state.schedulerState.kind === 'basic-v2'
+  ) {
+    try {
+      const { persistFsrsLiveShadowObservation } = await import(
+        './fsrs/live-shadow'
+      )
+      await persistFsrsLiveShadowObservation({
+        dict,
+        word,
+        sourceRecordId: currentWordRecordId,
+        basicState: result.state,
+      })
+    } catch (error) {
+      console.error('failed to persist FSRS shadow observation', error)
     }
+  }
 
-    let current = existing
-
-    if (!current || current.stateVersion !== CURRENT_REVIEW_STATE_VERSION) {
-      const priorRecords = await db.wordRecords
-        .where('word')
-        .equals(word)
-        .and((record) => record.dict === dict && record.id !== currentWordRecordId)
-        .toArray()
-
-      current =
-        rebuildBasicStateFromWordRecords(dict, word, priorRecords, { legacyDueAt: now }) ??
-        createInitialReviewWordState(dict, word, now)
-    }
-
-    if (
-      current.schedulerState.kind !== 'basic-v1' &&
-      current.schedulerState.kind !== 'basic-v2'
-    ) {
-      return current
-    }
-
-    const next = scheduleBasicReview({
-      state: current,
-      outcome,
-      now,
-    })
-
-    const id = await db.reviewWordStates.put({
-      ...next,
-      id: existing?.id ?? next.id,
-    })
-
-    return { ...next, id }
-  })
+  return result.state
 }
 
 export async function bootstrapReviewWordStatesForDictionary(

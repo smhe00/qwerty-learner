@@ -7,6 +7,7 @@ import type {
   ReviewPolicyShadowV1,
 } from '@/review/decision'
 import type { ReviewEvidenceV1 } from '@/review/evidence'
+import type { FsrsLiveShadowObservationV1 } from '@/review/fsrs/types'
 import type {
   RatingDecision,
   ReviewItemMachineState,
@@ -118,6 +119,9 @@ export interface IWordRecord {
   // Shadow-only proposal for the next exercise; never applied to this attempt.
   reviewPolicyShadow?: ReviewPolicyShadowV1
 
+  // P5/G2 derived FSRS-6 observation. Shadow-only: it never owns nextReviewAt.
+  fsrsShadow?: FsrsLiveShadowObservationV1
+
   // Explicit product provenance. Legacy records may omit these fields.
   sourceMode?: 'typing' | 'learn'
   learnItemKind?: LearnSessionKind
@@ -144,6 +148,7 @@ export class WordRecord implements IWordRecord {
   reviewEvidence?: ReviewEvidenceV1
   reviewRatingDecision?: RatingDecision
   reviewPolicyShadow?: ReviewPolicyShadowV1
+  fsrsShadow?: FsrsLiveShadowObservationV1
   sourceMode?: 'typing' | 'learn'
   learnItemKind?: LearnSessionKind
 
