@@ -486,6 +486,21 @@ export default function WordComponent({
   )
 
   useEffect(() => {
+    // Ordinary Typing follows upstream behaviour: every new word starts with
+    // one automatic pronunciation when pronunciation is enabled. Review/Learn
+    // keeps its separate frozen exercise-condition and one-shot cue semantics.
+    if (!isLearnAttempt) {
+      if (
+        state.isTyping &&
+        wordState.inputWord.length === 0 &&
+        pronunciationIsOpen &&
+        isPronunciationReady
+      ) {
+        playPronunciation('automatic')
+      }
+      return
+    }
+
     const shouldPlay = shouldPlayAutomaticPronunciation({
       isTyping: state.isTyping,
       inputLength: wordState.inputWord.length,
@@ -499,8 +514,10 @@ export default function WordComponent({
     }
   }, [
     activeHintLevel,
+    isLearnAttempt,
     isPronunciationReady,
     playPronunciation,
+    pronunciationIsOpen,
     state.isTyping,
     word.name,
     wordState.inputWord.length,
