@@ -45,6 +45,24 @@ export function canonicalizeLearningWords(words: Word[]): Word[] {
       }
     }
 
+    if (word.example?.length) {
+      existing.example ??= []
+      for (const example of word.example) {
+        const duplicate = existing.example.some(
+          (item) =>
+            item.en === example.en &&
+            item.cn === example.cn &&
+            item.start === example.start &&
+            item.end === example.end,
+        )
+        if (!duplicate) existing.example.push({ ...example })
+      }
+    }
+
+    if (word.tags?.length) {
+      existing.tags = [...new Set([...(existing.tags ?? []), ...word.tags])]
+    }
+
     if (!existing.usphone && word.usphone) existing.usphone = word.usphone
     if (!existing.ukphone && word.ukphone) existing.ukphone = word.ukphone
     if (!existing.notation && word.notation) existing.notation = word.notation
