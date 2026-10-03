@@ -25,7 +25,7 @@ export default function InputHandler({ updateInput }: { updateInput: (updateObj:
 
   return <>{handler}</>
 }
-export type WordUpdateAction = WordAddAction | WordDeleteAction | WordCompositionAction
+export type WordUpdateAction = WordAddAction | WordDeleteAction | WordCompositionAction | WordSurrenderAction
 
 export type WordAddAction = {
   type: 'add'
@@ -42,4 +42,10 @@ export type WordDeleteAction = {
 export type WordCompositionAction = {
   type: 'composition'
   value: string
+}
+
+
+export type WordSurrenderAction = {
+  type: 'surrender'
+  event: KeyboardEvent
 }
