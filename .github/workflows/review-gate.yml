@@ -21,6 +21,8 @@ on:
       - 'src/utils/db/record.ts'
       - 'src/utils/db/index.ts'
       - 'src/utils/db/review-record.ts'
+      - 'src/utils/db/data-export.ts'
+      - 'src/utils/backup.ts'
       - 'src/pages/Gallery-N/ReviewDetail/**'
       - 'src/pages/Gallery-N/index.tsx'
       - 'src/pages/Gallery-N/DictionaryWithoutCover.tsx'
@@ -29,6 +31,8 @@ on:
       - 'src/store/index.ts'
       - 'tests/e2e/review.spec.ts'
       - 'tests/e2e/review-flow.spec.ts'
+      - 'tests/e2e/backup-harness.html'
+      - 'tests/e2e/backup-harness.ts'
       - 'tests/e2e/review-flow.config.ts'
       - 'tests/e2e/production-smoke.spec.ts'
       - 'tests/e2e/production-smoke.config.ts'
@@ -76,6 +80,8 @@ jobs:
           src/utils/db/record.ts
           src/utils/db/index.ts
           src/utils/db/review-record.ts
+          src/utils/db/data-export.ts
+          src/utils/backup.ts
           src/pages/Gallery-N/ReviewDetail
           src/pages/Gallery-N/index.tsx
           src/pages/Gallery-N/DictionaryWithoutCover.tsx
