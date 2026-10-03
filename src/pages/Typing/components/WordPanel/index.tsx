@@ -210,18 +210,19 @@ export default function WordPanel() {
             }
           }
 
-          const words: Word[] = projection.queue.map((word) => {
-            const persistedWord: Word = {
-              name: word.name,
-              trans: word.trans,
-              usphone: word.usphone,
-              ukphone: word.ukphone,
-            }
-            if (word.notation !== undefined) {
-              persistedWord.notation = word.notation
-            }
-            return persistedWord
-          })
+          const words: Word[] = projection.queue.map((word) => ({
+            name: word.name,
+            trans: [...word.trans],
+            usphone: word.usphone,
+            ukphone: word.ukphone,
+            ...(word.notation !== undefined
+              ? { notation: word.notation }
+              : {}),
+            ...(word.example !== undefined
+              ? { example: word.example.map((example) => ({ ...example })) }
+              : {}),
+            ...(word.tags !== undefined ? { tags: [...word.tags] } : {}),
+          }))
 
           return {
             ...old,
