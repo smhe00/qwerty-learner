@@ -6,7 +6,6 @@ import {
 } from './types'
 import type { FsrsLiveShadowObservationV1 } from './types'
 import type { ReviewOutcome } from '../types'
-import type { IWordRecord } from '@/utils/db/record'
 
 const DAY_SECONDS = 86_400
 
@@ -90,6 +89,18 @@ export type FsrsWorkloadSummaryV1 = {
   horizons: FsrsWorkloadHorizonV1[]
 }
 
+export type FsrsAnalysisRecordV1 = {
+  id?: number
+  dict: string
+  word: string
+  sourceMode?: 'typing' | 'learn'
+  learnItemKind?: 'review' | 'acquisition'
+  reviewRatingDecision?: {
+    eligible: boolean
+  }
+  fsrsShadow?: FsrsLiveShadowObservationV1
+}
+
 export type FsrsG3AnalysisV1 = {
   schemaVersion: 1
   libraryVersion: typeof FSRS_SHADOW_LIBRARY_VERSION
@@ -107,7 +118,7 @@ export type FsrsG3AnalysisV1 = {
 }
 
 type HomogeneousSample = {
-  record: IWordRecord
+  record: FsrsAnalysisRecordV1
   shadow: FsrsLiveShadowObservationV1
 }
 
@@ -172,7 +183,7 @@ function hasCurrentProvenance(
 }
 
 function collectHomogeneousSamples(
-  records: readonly IWordRecord[],
+  records: readonly FsrsAnalysisRecordV1[],
 ): {
   totalShadowRecords: number
   homogeneous: HomogeneousSample[]
@@ -464,7 +475,7 @@ function decideReadiness(
 }
 
 export function analyzeFsrsShadowRecords(input: {
-  records: readonly IWordRecord[]
+  records: readonly FsrsAnalysisRecordV1[]
   asOf: number
 }): FsrsG3AnalysisV1 {
   const { totalShadowRecords, homogeneous } =

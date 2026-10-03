@@ -5,6 +5,7 @@ import {
   G3_G4_REVIEW_MIN_CLASS_SAMPLES,
   G3_G4_REVIEW_MIN_SAMPLES,
   analyzeFsrsShadowRecords,
+  type FsrsAnalysisRecordV1,
 } from '../../src/review/fsrs/analysis'
 import {
   FSRS_SHADOW_ALGORITHM_MODEL,
@@ -14,7 +15,6 @@ import {
 } from '../../src/review/fsrs/types'
 import type { FsrsLiveShadowObservationV1 } from '../../src/review/fsrs/types'
 import type { ReviewOutcome } from '../../src/review/types'
-import type { IWordRecord } from '../../src/utils/db/record'
 
 const DAY = 86_400
 const t0 = Math.floor(
@@ -32,7 +32,7 @@ function record(input: {
   basicDueOffsetDays?: number
   fsrsDueOffsetDays?: number
   libraryVersion?: string
-}): IWordRecord {
+}): FsrsAnalysisRecordV1 {
   const word = input.word ?? `word-${input.id}`
   const basicDueAt =
     input.eventTime +
@@ -122,19 +122,13 @@ function record(input: {
   return {
     id: input.id,
     word,
-    timeStamp: input.eventTime,
     dict: 'cet4',
-    chapter: -1,
-    timing: [],
-    wrongCount: input.rating === 'again' ? 1 : 0,
-    mistakes: {},
     sourceMode: 'learn',
     learnItemKind: 'review',
     reviewRatingDecision: {
       eligible: true,
       rating: input.rating,
-      confidence: 1,
-      reasonCodes: ['g3-test'],
+
     },
     fsrsShadow: shadow,
   }
