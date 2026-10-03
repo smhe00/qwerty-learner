@@ -41,6 +41,9 @@ jobs:
       - name: Install pinned ts-fsrs for G0 only
         run: yarn add --ignore-scripts --exact "ts-fsrs@$FSRS_PACKAGE_VERSION"
 
+      - name: Show generated dependency lock delta
+        run: git diff -- package.json yarn.lock
+
       - name: Verify pinned package version
         run: node tests/fsrs/verify-package-version.mjs "$FSRS_PACKAGE_VERSION"
 
