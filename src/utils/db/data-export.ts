@@ -54,6 +54,8 @@ export async function importDatabase(
       db.chapterRecords.count(),
     ])
     recordDataAction({ type: 'import', size: file.size, wordCount, chapterCount })
+    window.alert('数据导入完成，页面将刷新以加载恢复后的学习状态。')
+    window.location.reload()
   })
 
   input.click()
