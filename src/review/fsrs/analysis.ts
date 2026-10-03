@@ -97,6 +97,7 @@ export type FsrsAnalysisRecordV1 = {
   learnItemKind?: 'review' | 'acquisition'
   reviewRatingDecision?: {
     eligible: boolean
+    rating?: ReviewOutcome | null
   }
   fsrsShadow?: FsrsLiveShadowObservationV1
 }
