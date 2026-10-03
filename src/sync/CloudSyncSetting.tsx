@@ -222,12 +222,12 @@ export default function CloudSyncSetting() {
       )
 
       saveSyncBaseline(auth.user.userId, remote.revision, restored.fingerprint)
-      await refresh(auth)
-      setMessage(
+      window.alert(
         restored.hasLearningState
-          ? `已恢复云端 revision ${remote.revision}，词库和章节位置已同步。`
-          : `已恢复云端 revision ${remote.revision}。旧版备份不含词库和章节位置，已保留当前选择。`,
+          ? `已恢复云端 revision ${remote.revision}，页面将刷新以加载云端恢复后的学习状态。`
+          : `已恢复云端 revision ${remote.revision}。旧版备份不含词库和章节位置；页面将刷新。`,
       )
+      window.location.reload()
     })
   }
 
