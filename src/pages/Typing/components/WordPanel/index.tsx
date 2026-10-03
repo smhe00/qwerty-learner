@@ -38,6 +38,7 @@ import {
   reviewModeInfoAtom,
 } from '@/store'
 import type { Word } from '@/typings'
+import { getFirstValidDictionaryExample } from '@/utils/dictionaryExample'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -454,6 +455,24 @@ export default function WordPanel() {
     ? currentExercisePlan.condition.meaning === 'visible'
     : shouldShowTranslation
 
+  const hasValidExample = Boolean(
+    currentWord && getFirstValidDictionaryExample(currentWord),
+  )
+  const isColdSemanticProbe =
+    isReviewMode &&
+    currentReviewHintLevel === null &&
+    (currentLearnItemKind === 'acquisition' ||
+      currentReviewAttemptRole === 'cold')
+
+  // Example is a semantic cue, not a cloze answer. Cold probe prefers the
+  // masked context over translation; legacy dictionaries without examples
+  // must always retain translation as the fallback semantic cue.
+  const effectiveTranslationVisible = isColdSemanticProbe
+    ? !hasValidExample
+    : effectiveMeaningVisible
+  const effectiveSemanticCueVisible =
+    effectiveMeaningVisible || (isColdSemanticProbe && hasValidExample)
+
   const effectivePhoneticVisible =
     isReviewMode &&
     currentReviewHintLevel !== null &&
@@ -514,7 +533,7 @@ export default function WordPanel() {
               <WordComponent
                 word={currentWord}
                 onFinish={onFinish}
-                meaningVisible={effectiveMeaningVisible}
+                meaningVisible={effectiveSemanticCueVisible}
                 phoneticVisible={effectivePhoneticVisible}
                 exercisePlan={currentExercisePlan}
                 learnItemKind={
@@ -527,7 +546,7 @@ export default function WordPanel() {
               {effectivePhoneticVisible && <Phonetic word={currentWord} />}
               <Translation
                 trans={currentWord.trans.join('；')}
-                showTrans={effectiveMeaningVisible}
+                showTrans={effectiveTranslationVisible}
                 onMouseEnter={() => handleShowTranslation(true)}
                 onMouseLeave={() => handleShowTranslation(false)}
               />
