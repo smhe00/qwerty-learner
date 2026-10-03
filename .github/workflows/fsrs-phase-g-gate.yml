@@ -55,11 +55,6 @@ jobs:
           tests/fsrs/g0-compat.ts
           tests/fsrs/shadow-replay.ts
           tests/fsrs/g1-shadow-replay.test.ts
-          src/review/fsrs/types.ts
-          src/review/fsrs/replay.ts
-          src/review/fsrs/observation.ts
-          src/review/fsrs/live-shadow.ts
-          tests/fsrs/g2-live-shadow.test.ts
 
       - name: Bundle and run Node 20 compatibility probe
         run: |

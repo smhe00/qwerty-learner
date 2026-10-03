@@ -63,6 +63,9 @@ test('G2 records one FSRS shadow beside an unchanged basic-v2 owner', () => {
 
   assert.ok(observation)
   assert.equal(active.schedulerState.kind, 'basic-v2')
+  if (active.schedulerState.kind !== 'basic-v2') {
+    throw new Error('basic-v2 must remain the active scheduler')
+  }
   assert.equal(observation.rating, 'good')
   assert.equal(observation.libraryVersion, '5.4.2')
   assert.equal(observation.algorithmModel, 'fsrs-6')
