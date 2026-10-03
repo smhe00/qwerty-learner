@@ -54,14 +54,6 @@ function notifyStorageChange(
   oldValue: string | null,
   newValue: string | null,
 ) {
-  notifyStorageChange(key, oldValue, newValue)
-}
-
-function writeStorageValue(key: string, value: string | number) {
-  const oldValue = localStorage.getItem(key)
-  const newValue = JSON.stringify(value)
-  localStorage.setItem(key, newValue)
-
   try {
     window.dispatchEvent(
       new StorageEvent('storage', {
@@ -75,6 +67,13 @@ function writeStorageValue(key: string, value: string | number) {
   } catch {
     window.dispatchEvent(new Event('storage'))
   }
+}
+
+function writeStorageValue(key: string, value: string | number) {
+  const oldValue = localStorage.getItem(key)
+  const newValue = JSON.stringify(value)
+  localStorage.setItem(key, newValue)
+  notifyStorageChange(key, oldValue, newValue)
 }
 
 export function resetReviewModeInfoAfterRestore() {
