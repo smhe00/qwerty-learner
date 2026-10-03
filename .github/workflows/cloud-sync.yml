@@ -8,6 +8,8 @@ on:
       - 'cloud-functions/**'
       - 'tests/cloud/**'
       - 'src/sync/**'
+      - 'src/utils/backup.ts'
+      - 'src/utils/db/data-export.ts'
       - 'src/pages/Typing/components/Setting/DataSetting.tsx'
       - 'docs/CLOUD_SYNC_*.md'
       - 'edgeone.json'
@@ -42,7 +44,13 @@ jobs:
         run: yarn eslint cloud-functions tests/cloud --ext .js,.mjs
 
       - name: Lint frontend sync code
-        run: yarn eslint src/sync src/pages/Typing/components/Setting/DataSetting.tsx --ext .ts,.tsx
+        run: >
+          yarn eslint
+          src/sync
+          src/utils/backup.ts
+          src/utils/db/data-export.ts
+          src/pages/Typing/components/Setting/DataSetting.tsx
+          --ext .ts,.tsx
 
       - name: Build Qwerty
         run: yarn build
