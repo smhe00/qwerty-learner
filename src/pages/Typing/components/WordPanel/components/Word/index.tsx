@@ -536,6 +536,7 @@ export default function WordComponent({
       requestSuccessFastForward,
       setWordState,
       wordState.hasWrong,
+      wordState.isFinished,
     ],
   )
 
