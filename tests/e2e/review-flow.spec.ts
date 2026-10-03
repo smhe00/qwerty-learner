@@ -6,6 +6,12 @@ type ReviewWord = {
   trans: string[]
   usphone: string
   ukphone: string
+  example?: Array<{
+    en: string
+    cn: string
+    start: number
+    end: number
+  }>
 }
 
 const reviewWords: ReviewWord[] = [
@@ -810,7 +816,7 @@ test('forgotten cold probe schedules one reinforcement and reinforcement cannot 
   await waitForRenderedWord(page, 'cancel')
 
   const cancel = page.locator('[data-typing-word="cancel"]')
-  await page.keyboard.press('Space')
+  await page.keyboard.press('Escape')
   await expect(cancel).toHaveAttribute('data-review-hint-level', '0')
   await page.keyboard.type('cancel')
 
@@ -870,7 +876,7 @@ test('Hint 3 skip lock blocks navigation to a real next Review word', async ({
 
   const cancel = page.locator('[data-typing-word="cancel"]')
   for (let level = 0; level <= 3; level += 1) {
-    await page.keyboard.press('Space')
+    await page.keyboard.press('Escape')
     await expect(cancel).toHaveAttribute(
       'data-review-hint-level',
       String(level),
@@ -2042,7 +2048,7 @@ test('unfinished Learn session survives reload without cursor reset or duplicati
   expect(count).toBe(1)
 })
 
-test('cold probe first-input Space means unknown and enters Hint 0 directly', async ({
+test('cold probe Escape surrenders from any spelling position while Space remains input', async ({
   page,
 }) => {
   await seedReviewSession(page, reviewWords.slice(0, 1), 910002)
@@ -2051,18 +2057,67 @@ test('cold probe first-input Space means unknown and enters Hint 0 directly', as
   await waitForRenderedWord(page, 'cancel')
 
   const word = page.locator('[data-typing-word="cancel"]')
+  const translation = page.locator('[data-typing-translation]')
   await expect(word).toHaveAttribute('data-review-hint-level', 'cold')
   await expect(word).toHaveText('______')
+  await expect(translation).toHaveAttribute('data-typing-translation', 'visible')
 
+  // Space no longer means "unknown". At position 0 it is simply a wrong
+  // spelling character for "cancel" and must not advance the hint ladder.
   await page.keyboard.press('Space')
+  await page.waitForTimeout(350)
+  await expect(word).toHaveAttribute('data-review-hint-level', 'cold')
+
+  // Surrender after a remembered prefix. ESC resets the attempt and targets
+  // the next untyped position for Hint 0.
+  await page.keyboard.type('ca')
+  await expect
+    .poll(async () => await word.getAttribute('data-typing-input'))
+    .not.toBe('')
+  await page.keyboard.press('Escape')
 
   await expect(word).toHaveAttribute('data-review-hint-level', '0')
-  await expect(word).toHaveAttribute('data-review-hint-position', '0')
+  await expect(word).toHaveAttribute('data-review-hint-position', '2')
   await expect(word).toHaveAttribute('data-review-forced-reveal', '')
-  await expect(word).toHaveText('c_____')
+  await expect(word).toHaveText('__n___')
   await expect
     .poll(async () => await word.getAttribute('data-typing-input'))
     .toBe('')
+})
+
+test('cold probe prefers masked example over translation and reveals translation after surrender', async ({
+  page,
+}) => {
+  const contextualWord: ReviewWord = {
+    ...reviewWords[0],
+    example: [
+      {
+        en: 'He cancelled it.',
+        cn: '他取消了这件事。',
+        start: 3,
+        end: 12,
+      },
+    ],
+  }
+
+  await seedReviewSession(page, [contextualWord], 910003)
+  await page.goto('/learn/session')
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+
+  const example = page.locator('[data-typing-example="visible"]')
+  const translation = page.locator('[data-typing-translation]')
+  await expect(example).toBeVisible()
+  await expect(example).toHaveAttribute(
+    'data-typing-example-revealed',
+    'false',
+  )
+  await expect(example).toContainText('He _________ it.')
+  await expect(translation).toHaveAttribute('data-typing-translation', 'hidden')
+
+  await page.keyboard.press('Escape')
+
+  await expect(translation).toHaveAttribute('data-typing-translation', 'visible')
 })
 
 test('light app theme keeps inherited Typing header controls readable when OS prefers dark', async ({ page }) => {
