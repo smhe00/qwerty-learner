@@ -42,3 +42,22 @@
   fill: theme('colors.gray.50');
   opacity: 0.8;
 }
+
+
+.success {
+  animation: successPulse 0.55s ease-out both;
+}
+
+@keyframes successPulse {
+  0% {
+    transform: scale(1);
+  }
+
+  45% {
+    transform: scale(1.035);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
