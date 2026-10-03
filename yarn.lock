@@ -6193,6 +6193,11 @@ to-regex-range@^5.0.1:
   dependencies:
     is-number "^7.0.0"
 
+ts-fsrs@5.4.2:
+  version "5.4.2"
+  resolved "https://registry.npmmirror.com/ts-fsrs/-/ts-fsrs-5.4.2.tgz#7bd23da3d8a35368b813f4064eabe829a46f9901"
+  integrity sha512-z4qop4pzTcyTzuJ566d9EaX/4bZZzhYfeaPImfVr+xcYT65c5oBgFDijUhCE/D+C78eaolHIhKRZ04/RwF+v2g==
+
 ts-interface-checker@^0.1.9:
   version "0.1.13"
   resolved "https://registry.npmmirror.com/ts-interface-checker/-/ts-interface-checker-0.1.13.tgz"
