@@ -155,7 +155,6 @@ Never log:
 
 - Authorization/session token;
 - username or password;
-- cloud encryption passphrase;
 - request body;
 - snapshot payload/ciphertext;
 - full Blob object path;
@@ -178,4 +177,4 @@ The existing local manual export remains the independent recovery path.
 
 Before choosing a destructive cloud restore when local data is dirty, the UI tells the user to export local data first.
 
-Cloud encryption passphrases cannot be recovered by the server. Losing the passphrase does not destroy local IndexedDB data or local export capability.
+Current cloud snapshots are not client-side encrypted. Operational messaging must not claim E2EE; local export remains the independent recovery path.
