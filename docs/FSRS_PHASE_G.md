@@ -2,7 +2,7 @@
 
 > Product milestone: P5
 >
-> Status: G0 RUNNING
+> Status: G0 CLOSED / G1 RUNNING
 >
 > Active scheduler: `basic-v2`
 >
@@ -56,9 +56,30 @@ Required checks:
 
 G0 has **zero product behavior change**.
 
+### G0 closure
+
+FSRS Phase G Gate #2 passed on Node 20.18 with the repository's resolved
+TypeScript 4.9.5 and Vite 4 toolchain.
+
+Validated:
+
+- pinned `ts-fsrs@5.4.2` installation;
+- strict declaration parsing with `skipLibCheck=false` for the FSRS/Node type
+  universe;
+- Node runtime and esbuild bundle;
+- Vite browser bundle;
+- existing Qwerty production build.
+
+The first G0 run also exposed an unrelated pre-existing
+`@types/react-router-dom@5` vs React Router 6 declaration conflict when the
+entire legacy ambient type universe was forced through `skipLibCheck=false`.
+The G0 probe was corrected to isolate the dependency under test instead of
+mistaking that legacy project issue for an FSRS incompatibility.
+
 ## G1 — historical shadow replay
 
-Not active until G0 closes.
+G1 is active after G0 closure. It remains offline/shadow-only: no DB writes and
+no active scheduler mutation.
 
 Replay source must be durable Learn history, ordered chronologically. Only
 `reviewRatingDecision.eligible === true` events may advance FSRS state.
@@ -156,3 +177,28 @@ parameterSetId
 
 This prevents a future ts-fsrs package version from being confused with the
 FSRS algorithm generation.
+
+
+### G1 replay contract
+
+The G1 replay implementation is deliberately test-side/offline until its
+semantics are closed.
+
+For each `dict+word`:
+
+1. sort durable records by timestamp, then record id;
+2. use Acquisition only as optional card-birth provenance;
+3. accept only Learn Review records with
+   `reviewRatingDecision.eligible === true`;
+4. replay those ratings into a deterministic FSRS-6 scheduler configured with:
+   - request retention 0.90;
+   - fuzz disabled;
+   - short-term steps disabled;
+5. record retrievability immediately **before** each eligible Review;
+6. preview all four rating counterfactuals;
+7. apply only the actual eligible rating;
+8. never infer Difficulty/Stability from basic-v2 stage or interval.
+
+Historical completeness is never silently assumed. When the current durable
+`reviewCount` exceeds the number of replayable eligible events, replay output
+is explicitly marked `partial-history`.

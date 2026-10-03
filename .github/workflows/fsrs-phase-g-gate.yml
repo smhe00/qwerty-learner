@@ -56,6 +56,8 @@ jobs:
           --lib ES2020,DOM
           --types node
           tests/fsrs/g0-compat.ts
+          tests/fsrs/shadow-replay.ts
+          tests/fsrs/g1-shadow-replay.test.ts
 
       - name: Bundle and run Node 20 compatibility probe
         run: |
@@ -68,6 +70,18 @@ jobs:
           npx vite build tests/fsrs/browser
           --outDir ../../../.fsrs-g0/browser
           --emptyOutDir
+
+      - name: Bundle G1 historical shadow replay tests
+        run: |
+          npx esbuild tests/fsrs/g1-shadow-replay.test.ts \
+            --bundle \
+            --platform=node \
+            --target=node20 \
+            --format=esm \
+            --outfile=.fsrs-g0/g1-shadow-replay.test.mjs
+
+      - name: Run G1 historical shadow replay tests
+        run: node --test .fsrs-g0/g1-shadow-replay.test.mjs
 
       - name: Build Qwerty with pinned package present
         run: yarn build
