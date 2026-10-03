@@ -1,8 +1,6 @@
 import type { Dictionary, DictionaryResource } from '@/typings/index'
 import { calcChapterCount } from '@/utils'
 
-export const DEFAULT_DICTIONARY_ID = 'hujiaoxin2027'
-
 // 中国考试
 const chinaExam: DictionaryResource[] = [
   {
@@ -1645,17 +1643,6 @@ const internationalExam: DictionaryResource[] = [
 
 // 青少儿英语
 const childrenEnglish: DictionaryResource[] = [
-  {
-    id: 'hujiaoxin2027',
-    name: '沪教新初2027',
-    description: '沪教版新初中英语 2027 词汇',
-    category: '青少年英语',
-    tags: ['沪教版', '上海'],
-    url: '/dicts/hujiaoxin2027.json',
-    length: 1751,
-    language: 'en',
-    languageCategory: 'en',
-  },
   {
     id: 'gaokao3500',
     name: '高考 3500 词',

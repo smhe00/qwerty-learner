@@ -14,7 +14,7 @@ import { TypingContext, TypingStateActionType, initialState, typingReducer } fro
 import { DonateCard } from '@/components/DonateCard'
 import Header from '@/components/Header'
 import Tooltip from '@/components/Tooltip'
-import { DEFAULT_DICTIONARY_ID, idDictionaryMap } from '@/resources/dictionary'
+import { idDictionaryMap } from '@/resources/dictionary'
 import {
   currentChapterAtom,
   currentDictIdAtom,
@@ -64,7 +64,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const id = currentDictId
     if (!(id in idDictionaryMap)) {
-      setCurrentDictId(DEFAULT_DICTIONARY_ID)
+      setCurrentDictId('zhongkaohexin')
       setCurrentChapter(0)
       return
     }
