@@ -39,6 +39,8 @@ on:
       - 'tests/e2e/backup-harness.html'
       - 'tests/e2e/backup-harness.ts'
       - 'tests/e2e/review-flow.config.ts'
+      - 'tests/e2e/typing-lifecycle.config.ts'
+      - 'tests/e2e/typing-lifecycle.spec.ts'
       - 'tests/e2e/production-smoke.spec.ts'
       - 'tests/e2e/production-smoke.config.ts'
       - 'tests/review/**'
@@ -102,6 +104,7 @@ jobs:
           npx esbuild \
             tests/review/domain.test.ts \
             tests/review/formal-model.test.ts \
+            tests/review/typing-audio-formal.test.ts \
             --bundle \
             --platform=node \
             --target=node20 \
@@ -114,6 +117,9 @@ jobs:
 
       - name: Run Review formal model checker
         run: node --test .review-test/formal-model.test.mjs
+
+      - name: Run Typing audio lifecycle formal model
+        run: node --test .review-test/typing-audio-formal.test.mjs
 
       - name: Bundle FSRS shadow contract tests
         run: |
@@ -138,6 +144,9 @@ jobs:
 
       - name: Run FSRS G3 analysis tests
         run: node --test .review-test/g3-analysis.test.mjs
+
+      - name: Run Typing lifecycle browser gate
+        run: npx playwright test --config=tests/e2e/typing-lifecycle.config.ts --project=chrome
 
       - name: Run multi-word Review browser gate
         run: npx playwright test --config=tests/e2e/review-flow.config.ts --project=chrome
