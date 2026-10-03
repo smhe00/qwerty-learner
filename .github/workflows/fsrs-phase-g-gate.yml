@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 jobs:
-  g0-compatibility:
+  phase-g:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     env:
@@ -38,12 +38,6 @@ jobs:
       - name: Install project dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Install pinned ts-fsrs for G0 only
-        run: yarn add --ignore-scripts --exact "ts-fsrs@$FSRS_PACKAGE_VERSION"
-
-      - name: Show generated dependency lock delta
-        run: git diff -- package.json yarn.lock
-
       - name: Verify pinned package version
         run: node tests/fsrs/verify-package-version.mjs "$FSRS_PACKAGE_VERSION"
 
@@ -61,6 +55,11 @@ jobs:
           tests/fsrs/g0-compat.ts
           tests/fsrs/shadow-replay.ts
           tests/fsrs/g1-shadow-replay.test.ts
+          src/review/fsrs/types.ts
+          src/review/fsrs/replay.ts
+          src/review/fsrs/observation.ts
+          src/review/fsrs/live-shadow.ts
+          tests/fsrs/g2-live-shadow.test.ts
 
       - name: Bundle and run Node 20 compatibility probe
         run: |
@@ -85,6 +84,18 @@ jobs:
 
       - name: Run G1 historical shadow replay tests
         run: node --test .fsrs-g0/g1-shadow-replay.test.mjs
+
+      - name: Bundle G2 live shadow contract tests
+        run: |
+          npx esbuild tests/fsrs/g2-live-shadow.test.ts \
+            --bundle \
+            --platform=node \
+            --target=node20 \
+            --format=esm \
+            --outfile=.fsrs-g0/g2-live-shadow.test.mjs
+
+      - name: Run G2 live shadow contract tests
+        run: node --test .fsrs-g0/g2-live-shadow.test.mjs
 
       - name: Build Qwerty with pinned package present
         run: yarn build
