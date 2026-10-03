@@ -50,3 +50,48 @@ test('production build resolves lazy navigation and preserves Learn session on r
   )
   expect(pageErrors).toEqual([])
 })
+
+
+test('fresh browser boots with 沪教新初2027 as the default dictionary', async ({
+  page,
+}) => {
+  const pageErrors: string[] = []
+  page.on('pageerror', (error) => pageErrors.push(error.message))
+
+  await page.goto('/typing')
+
+  await expect(
+    page.getByRole('link', { name: '沪教新初2027', exact: true }),
+  ).toBeVisible()
+  await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
+  expect(pageErrors).toEqual([])
+})
+
+test('stale chapter from a larger dictionary self-heals without a blank page', async ({
+  page,
+}) => {
+  const pageErrors: string[] = []
+  page.on('pageerror', (error) => pageErrors.push(error.message))
+
+  await page.addInitScript(() => {
+    localStorage.removeItem('currentDict')
+    localStorage.setItem('currentChapter', JSON.stringify(999))
+  })
+
+  await page.goto('/typing')
+
+  await expect(
+    page.getByRole('link', { name: '沪教新初2027', exact: true }),
+  ).toBeVisible()
+  await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
+
+  await expect
+    .poll(async () =>
+      page.evaluate(() =>
+        JSON.parse(localStorage.getItem('currentChapter') || 'null'),
+      ),
+    )
+    .toBe(0)
+
+  expect(pageErrors).toEqual([])
+})
