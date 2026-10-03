@@ -7,10 +7,12 @@ test('production build resolves lazy navigation and preserves Learn session on r
   page.on('pageerror', (error) => pageErrors.push(error.message))
   await page.goto('/typing')
 
-  await page.getByRole('link', { name: /词/, exact: false }).first().click()
+  await page
+    .getByRole('link', { name: '沪教新初2027', exact: true })
+    .click()
   await expect(page).toHaveURL(/\/gallery/)
   await expect(
-    page.getByText('CET-4', { exact: true }).first(),
+    page.getByText('沪教新初2027', { exact: true }).first(),
   ).toBeVisible()
 
   await page.goto('/analysis?from=learn')
