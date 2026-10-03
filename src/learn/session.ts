@@ -25,7 +25,7 @@ export function canonicalizeLearningWords(words: Word[]): Word[] {
   const canonical: Word[] = []
   const byName = new Map<string, Word>()
 
-  for (const word of canonicalizeLearningWords(words)) {
+  for (const word of words) {
     if (!word?.name) continue
 
     const existing = byName.get(word.name)
@@ -114,9 +114,8 @@ function collectUnseenLearningWords(
   const selected: Word[] = []
   const selectedNames = new Set<string>()
 
-  for (const word of words) {
+  for (const word of canonicalizeLearningWords(words)) {
     if (
-      !word?.name ||
       knownWords.has(word.name) ||
       selectedNames.has(word.name)
     ) {
