@@ -7,6 +7,10 @@ on:
     paths:
       - 'public/dicts/hujiaoxin2027.json'
       - 'src/resources/dictionary.ts'
+      - 'tests/e2e/production-smoke.spec.ts'
+      - 'src/pages/Typing/hooks/useWordList.ts'
+      - 'src/utils/chapter.ts'
+      - 'src/resources/defaultDictionary.ts'
       - 'src/store/index.ts'
       - 'src/pages/Typing/index.tsx'
       - 'tests/dictionary/**'
@@ -39,3 +43,6 @@ jobs:
 
       - name: Build Qwerty
         run: yarn build
+
+      - name: Run default-dictionary startup smoke
+        run: npx playwright test --config=tests/e2e/production-smoke.config.ts --project=chrome
