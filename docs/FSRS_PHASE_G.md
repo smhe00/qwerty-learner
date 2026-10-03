@@ -142,7 +142,7 @@ Implemented metrics:
 - retrievability calibration with fixed R buckets;
 - Brier score and expected calibration error;
 - discrimination via remembered-vs-forgotten R and pairwise AUC;
-- projected 1/7/30-day workload from the latest shadow event per word;
+- 1/7/30-day **next-due projection** from the latest shadow event per word;
 - FSRS/basic-v2 interval ratio P50/P90/P95/max;
 - absolute interval divergence;
 - explicit <=0.25x and >=4x interval outliers;
@@ -266,3 +266,30 @@ WordRecord. A shadow failure cannot roll back or replace the active scheduler
 state.
 
 Verified by FSRS Phase G Gate #11 and Review Gate #133.
+
+
+### G3 workload interpretation
+
+The 1/7/30-day comparison is deliberately named **next-due projection**. It
+counts at most the next scheduled Review for each word under basic-v2 and FSRS.
+It is not a recursive simulation of all future Reviews and therefore must not
+be presented as total future workload.
+
+A full counterfactual workload estimate is not identifiable from basic-v2
+shadow data without assumptions about future ratings and review timing. G4
+must therefore use next-due exposure, interval divergence, observed user effort
+and calibration together rather than treating this projection as a complete
+workload forecast.
+
+### G3 user-visible observability
+
+Learn 数据统计 exposes a read-only FSRS-6 Shadow block with:
+
+- homogeneous current-version shadow count;
+- calibration sample count and readiness;
+- ECE;
+- discrimination AUC;
+- median FSRS/basic interval ratio and outlier count;
+- 30-day next-due projection.
+
+The page explicitly states that basic-v2 still owns `nextReviewAt`.
