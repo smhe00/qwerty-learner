@@ -78,6 +78,10 @@ import { buildLearnDailyPlan } from '../../src/learn/plan'
 import { decideDailyAcquisitionQuota } from '../../src/learn/quota'
 import { buildLearnStatsSnapshot } from '../../src/learn/stats'
 import type { IWordRecord } from '../../src/utils/db/record'
+import {
+  getFirstValidDictionaryExample,
+  maskDictionaryExample,
+} from '../../src/utils/dictionaryExample'
 
 test('captures all-visible and all-hidden baseline conditions', () => {
   assert.deepEqual(
@@ -1866,7 +1870,7 @@ test('manually requested pronunciation marks an otherwise canonical retrieval as
 })
 
 
-test('Review hint ladder escalates only on first-position space and Hint 3 cannot be skipped', () => {
+test('Review hint ladder escalates on Escape at any input position and Hint 3 cannot be skipped', () => {
   let state = createReviewHintMachineState()
   const expected = [
     { stage: 'hint-0', level: 0 },
@@ -1879,8 +1883,8 @@ test('Review hint ladder escalates only on first-position space and Hint 3 canno
     const before = reviewHintTerminationVariant(state)
     const decision = decideReviewHintInput({
       state,
-      inputIndex: 0,
-      key: ' ',
+      inputIndex: item.level + 1,
+      key: 'Escape',
     })
     assert.equal(decision.kind, 'advance-hint')
     if (decision.kind === 'advance-hint') {
@@ -1896,11 +1900,53 @@ test('Review hint ladder escalates only on first-position space and Hint 3 canno
   assert.equal(state.advanceCount, 4)
 
   assert.deepEqual(
-    decideReviewHintInput({ state, inputIndex: 0, key: ' ' }),
+    decideReviewHintInput({ state, inputIndex: 0, key: 'Escape' }),
     { kind: 'type-key' },
   )
   assert.deepEqual(
-    decideReviewHintInput({ state, inputIndex: 1, key: ' ' }),
+    decideReviewHintInput({ state, inputIndex: 3, key: 'Escape' }),
+    { kind: 'type-key' },
+  )
+  assert.deepEqual(
+    decideReviewHintInput({
+      state: createReviewHintMachineState(),
+      inputIndex: 0,
+      key: ' ',
+    }),
+    { kind: 'type-key' },
+  )
+})
+
+test('cold Escape surrender uses the next untyped position and Space stays a typing key', () => {
+  const state = createReviewHintMachineState()
+
+  const escapeDecision = decideReviewHintInput({
+    state,
+    inputIndex: 3,
+    key: 'Escape',
+  })
+  assert.equal(escapeDecision.kind, 'advance-hint')
+  if (escapeDecision.kind === 'advance-hint') {
+    assert.equal(escapeDecision.level, 0)
+    assert.equal(escapeDecision.hintPosition, 3)
+    assert.equal(escapeDecision.coldProbeSurrendered, true)
+    assert.equal(escapeDecision.trigger, 'manual-escape')
+  }
+
+  assert.deepEqual(
+    decideReviewHintInput({
+      state,
+      inputIndex: 0,
+      key: ' ',
+    }),
+    { kind: 'type-key' },
+  )
+  assert.deepEqual(
+    decideReviewHintInput({
+      state,
+      inputIndex: 3,
+      key: ' ',
+    }),
     { kind: 'type-key' },
   )
 })
@@ -1949,15 +1995,15 @@ test('Hint 0 targets the last spelling first-wrong position instead of always th
 
   const decision = decideReviewHintInput({
     state,
-    inputIndex: 0,
-    key: ' ',
+    inputIndex: 4,
+    key: 'Escape',
   })
   assert.equal(decision.kind, 'advance-hint')
   if (decision.kind !== 'advance-hint') return
 
   assert.equal(decision.level, 0)
   assert.equal(decision.hintPosition, 3)
-  assert.equal(decision.trigger, 'manual-space')
+  assert.equal(decision.trigger, 'manual-escape')
 
   state = applyReviewHintDecision(state, decision)
   assert.equal(state.hintPosition, 3)
@@ -2306,6 +2352,97 @@ test('duplicate dictionary names collapse into one Learn spelling memory with me
     ['bank', 'break'],
   )
   assert.deepEqual(canonical[0].trans, ['n. 河岸', 'n. 银行'])
+})
+
+test('Learn canonicalization merges rich fields without mutating the source dictionary', () => {
+  const words = [
+    {
+      name: 'bank',
+      trans: ['n. 河岸'],
+      usphone: '',
+      ukphone: '',
+      example: [
+        {
+          en: 'They sat on the bank.',
+          cn: '他们坐在河岸上。',
+          start: 16,
+          end: 20,
+        },
+      ],
+      tags: ['textbook-a'],
+    },
+    {
+      name: 'bank',
+      trans: ['n. 银行'],
+      usphone: '',
+      ukphone: '',
+      example: [
+        {
+          en: 'She works at a bank.',
+          cn: '她在银行工作。',
+          start: 15,
+          end: 19,
+        },
+      ],
+      tags: ['textbook-b'],
+    },
+  ]
+  const original = structuredClone(words)
+
+  const canonical = canonicalizeLearningWords(words)
+
+  assert.equal(canonical.length, 1)
+  assert.equal(canonical[0].example?.length, 2)
+  assert.deepEqual(canonical[0].tags, ['textbook-a', 'textbook-b'])
+  assert.deepEqual(words, original)
+})
+
+test('dictionary examples may cue an inflected surface while the spelling target remains name', () => {
+  const word = {
+    name: 'admit',
+    trans: ['v. 承认'],
+    usphone: '',
+    ukphone: '',
+    example: [
+      {
+        en: 'He finally admitted that he had made a mistake.',
+        cn: '他最终承认自己犯了一个错误。',
+        start: 11,
+        end: 19,
+      },
+    ],
+  }
+
+  const example = getFirstValidDictionaryExample(word)
+  assert.ok(example)
+  if (!example) return
+
+  const masked = maskDictionaryExample(example)
+  assert.equal(masked.surface, 'admitted')
+  assert.equal(word.name, 'admit')
+  assert.equal(
+    masked.before + masked.masked + masked.after,
+    'He finally ________ that he had made a mistake.',
+  )
+})
+
+test('invalid dictionary example ranges degrade to no-example without rejecting the word', () => {
+  const word = {
+    name: 'legacy-safe',
+    trans: ['兼容'],
+    usphone: '',
+    ukphone: '',
+    example: [
+      {
+        en: 'Example sentence.',
+        cn: '例句。',
+        start: 99,
+        end: 120,
+      },
+    ],
+  }
+
+  assert.equal(getFirstValidDictionaryExample(word), undefined)
 })
 
 test('UNSEEN count is derived from the actual dictionary, ignoring stale states and duplicate names', () => {
