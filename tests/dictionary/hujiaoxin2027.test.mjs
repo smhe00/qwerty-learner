@@ -7,8 +7,16 @@ const dictionaryPath = new URL(
   import.meta.url,
 )
 const resourcePath = new URL('../../src/resources/dictionary.ts', import.meta.url)
+const defaultDictionaryPath = new URL(
+  '../../src/resources/defaultDictionary.ts',
+  import.meta.url,
+)
 const storePath = new URL('../../src/store/index.ts', import.meta.url)
 const typingPath = new URL('../../src/pages/Typing/index.tsx', import.meta.url)
+const wordListPath = new URL(
+  '../../src/pages/Typing/hooks/useWordList.ts',
+  import.meta.url,
+)
 
 const words = JSON.parse(fs.readFileSync(dictionaryPath, 'utf8'))
 
@@ -84,17 +92,21 @@ test('known source-data regressions remain corrected', () => {
 
 test('沪教新初2027 is the single application default dictionary', () => {
   const resources = fs.readFileSync(resourcePath, 'utf8')
+  const defaults = fs.readFileSync(defaultDictionaryPath, 'utf8')
   const store = fs.readFileSync(storePath, 'utf8')
   const typing = fs.readFileSync(typingPath, 'utf8')
+  const wordList = fs.readFileSync(wordListPath, 'utf8')
 
   assert.match(
-    resources,
+    defaults,
     /export const DEFAULT_DICTIONARY_ID = 'hujiaoxin2027'/,
   )
   assert.match(resources, /id: 'hujiaoxin2027'/)
   assert.match(resources, /name: '沪教新初2027'/)
   assert.match(resources, /url: '\/dicts\/hujiaoxin2027\.json'/)
   assert.match(resources, /length: 1751/)
+  assert.match(resources, /from '@\/utils\/chapter'/)
+  assert.equal(/from '@\/utils'\s*$/.test(resources), false)
 
   assert.match(store, /readStoredValue\('currentDict', DEFAULT_DICTIONARY_ID\)/)
   assert.match(store, /idDictionaryMap\[DEFAULT_DICTIONARY_ID\]/)
@@ -104,4 +116,7 @@ test('沪教新初2027 is the single application default dictionary', () => {
     /setCurrentDictId\('zhongkaohexin'\)/.test(typing),
     false,
   )
+
+  assert.match(wordList, /const normalizedChapter =/)
+  assert.match(wordList, /useEffect\(\(\) => \{/)
 })
