@@ -46,7 +46,7 @@ export type ReviewHintInputDecision =
       coldProbeSurrendered: boolean
       hintPosition: number
       trigger:
-        | 'manual-space'
+        | 'manual-escape'
         | 'repeated-wrong-position'
         | 'repeated-hint-errors'
     }
@@ -76,20 +76,20 @@ export function createReviewHintMachineState(): ReviewHintMachineState {
 }
 
 /**
- * Space is a Review hint-control key only at input position zero.
+ * Escape explicitly surrenders the current Learn spelling attempt.
  *
- * cold -> hint0 -> hint1 -> hint2 -> hint3
+ * It is valid at any input position and advances the finite hint ladder:
+ * cold -> hint0 -> hint1 -> hint2 -> hint3.
  *
- * Hint 3 is terminal for hint escalation. Space at hint3 is therefore a
- * normal typing key (and will be wrong for ordinary English headwords), so
- * the learner must actually type the displayed word correctly to finish.
+ * Hint 3 is terminal for hint escalation, so Escape no longer advances there;
+ * the learner must type the fully revealed answer correctly to finish.
  */
 export function decideReviewHintInput(input: {
   state: ReviewHintMachineState
   inputIndex: number
   key: string
 }): ReviewHintInputDecision {
-  if (input.key !== ' ' || input.inputIndex !== 0) {
+  if (input.key !== 'Escape') {
     return { kind: 'type-key' }
   }
 
@@ -101,7 +101,7 @@ export function decideReviewHintInput(input: {
   const hintPosition =
     input.state.hintPosition ??
     input.state.lastWrongIndex ??
-    0
+    Math.max(0, input.inputIndex)
 
   return {
     kind: 'advance-hint',
@@ -111,7 +111,7 @@ export function decideReviewHintInput(input: {
     coldProbeSurrendered:
       input.state.coldProbeSurrendered || input.state.stage === 'cold-probe',
     hintPosition,
-    trigger: 'manual-space',
+    trigger: 'manual-escape',
   }
 }
 
@@ -359,7 +359,7 @@ const HINT_STAGE_RANK: Record<ReviewHintStage, number> = {
 }
 
 /**
- * Variant used by the formal checker. Every space-driven hint escalation must
+ * Variant used by the formal checker. Every manual hint escalation must
  * strictly decrease this value. Hint 3 has no escalation transition.
  */
 export function reviewHintTerminationVariant(
