@@ -167,6 +167,7 @@ export default function WordComponent({
     acceptedInputLengthRef.current = 0
     inputLockedRef.current = false
     automaticPronunciationPlayedRef.current = false
+    setIsPronunciationReady(false)
     finishNotifiedRef.current = false
     reviewHintStateRef.current = createReviewHintMachineState()
     setActiveHintLevel(null)
@@ -501,6 +502,7 @@ export default function WordComponent({
     isPronunciationReady,
     playPronunciation,
     state.isTyping,
+    word.name,
     wordState.inputWord.length,
   ])
 
