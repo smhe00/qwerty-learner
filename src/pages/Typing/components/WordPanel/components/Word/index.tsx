@@ -439,7 +439,7 @@ export default function WordComponent({
       switch (updateAction.type) {
         case 'add': {
           if (inputLockedRef.current) {
-            if (updateAction.value === ' ') {
+            if (wordState.isFinished && updateAction.value === ' ') {
               updateAction.event.preventDefault()
               requestSuccessFastForward()
             }
