@@ -2,7 +2,7 @@
 
 > Product milestone: P5
 >
-> Status: G0 CLOSED / G1 CLOSED / G2 CLOSED / G3 NEXT
+> Status: G0 CLOSED / G1 CLOSED / G2 CLOSED / G3 RUNNING
 >
 > Active scheduler: `basic-v2`
 >
@@ -134,14 +134,36 @@ The shadow state must be type-separated from the active
 
 ## G3 — analysis
 
-At minimum:
+G3 is a pure read-only analysis layer over event-level `WordRecord.fsrsShadow`
+observations. It does not write scheduler state or alter Learn behavior.
 
-- retrievability calibration;
-- discrimination of lower-R vs higher-R outcomes;
-- Review workload;
-- interval divergence vs basic-v2;
-- outlier analysis;
-- useful subgroups only when sample size supports them.
+Implemented metrics:
+
+- retrievability calibration with fixed R buckets;
+- Brier score and expected calibration error;
+- discrimination via remembered-vs-forgotten R and pairwise AUC;
+- projected 1/7/30-day workload from the latest shadow event per word;
+- FSRS/basic-v2 interval ratio P50/P90/P95/max;
+- absolute interval divergence;
+- explicit <=0.25x and >=4x interval outliers;
+- provenance rejection so different package/model/parameter generations are
+  never mixed silently.
+
+Data-readiness gates are intentionally separate from algorithm acceptance:
+
+```text
+< 50 usable pre-review-R samples
+  → collecting
+
+>= 50
+  → descriptive analysis allowed
+
+>= 200 AND remembered >= 20 AND forgotten >= 20
+  → eligible for G4 review
+```
+
+These thresholds only mean "enough evidence to inspect". They do **not** mean
+FSRS passes the activation decision.
 
 Initial binary calibration interpretation:
 

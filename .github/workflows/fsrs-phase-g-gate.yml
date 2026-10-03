@@ -55,6 +55,8 @@ jobs:
           tests/fsrs/g0-compat.ts
           tests/fsrs/shadow-replay.ts
           tests/fsrs/g1-shadow-replay.test.ts
+          src/review/fsrs/analysis.ts
+          tests/fsrs/g3-analysis.test.ts
 
       - name: Bundle and run Node 20 compatibility probe
         run: |
@@ -91,6 +93,18 @@ jobs:
 
       - name: Run G2 live shadow contract tests
         run: node --test .fsrs-g0/g2-live-shadow.test.mjs
+
+      - name: Bundle G3 analysis contract tests
+        run: |
+          npx esbuild tests/fsrs/g3-analysis.test.ts \
+            --bundle \
+            --platform=node \
+            --target=node20 \
+            --format=esm \
+            --outfile=.fsrs-g0/g3-analysis.test.mjs
+
+      - name: Run G3 analysis contract tests
+        run: node --test .fsrs-g0/g3-analysis.test.mjs
 
       - name: Build Qwerty with pinned package present
         run: yarn build

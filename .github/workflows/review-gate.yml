@@ -114,6 +114,18 @@ jobs:
       - name: Run FSRS shadow contract tests
         run: node --test .review-test/g2-live-shadow.test.mjs
 
+      - name: Bundle FSRS G3 analysis tests
+        run: |
+          npx esbuild tests/fsrs/g3-analysis.test.ts \
+            --bundle \
+            --platform=node \
+            --target=node20 \
+            --format=esm \
+            --outfile=.review-test/g3-analysis.test.mjs
+
+      - name: Run FSRS G3 analysis tests
+        run: node --test .review-test/g3-analysis.test.mjs
+
       - name: Run multi-word Review browser gate
         run: npx playwright test --config=tests/e2e/review-flow.config.ts --project=chrome
 
