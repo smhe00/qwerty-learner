@@ -11,7 +11,7 @@ This release intentionally ships the integrated Review V2 / adaptive-exercise wo
 
 ### Cloud / account
 
-- cloud snapshot format: `qwerty-dexie-gzip-v2`;
+- cloud snapshot format: `qwerty-backup-v3` (legacy restore: `qwerty-dexie-gzip-v2`);
 - snapshot payload is gzip-compressed and Base64 transported; there is **no client-side AES/PBKDF2/E2EE** in the current product;
 - HTTPS transport, revision conflict protection and snapshot retention remain;
 - account/session authentication remains opaque-token + scrypt password hashing;
