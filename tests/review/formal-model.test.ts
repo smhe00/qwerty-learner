@@ -1,3 +1,4 @@
+import { canonicalizeLearningWords } from '../../src/learn/session'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createBaselineExerciseCondition } from '../../src/review/condition'
@@ -1647,4 +1648,41 @@ test('formal/hint0-position: cue strength is monotone for every target position'
       assert.equal(h3.size, wordLength)
     }
   }
+})
+
+
+test('formal/learn-name-canonicalization: bounded duplicate dictionaries produce one stable item per exact name', () => {
+  const names = ['a', 'b', 'c']
+  let explored = 0
+
+  for (let length = 0; length <= 5; length += 1) {
+    const total = names.length ** length
+    for (let code = 0; code < total; code += 1) {
+      let value = code
+      const words = Array.from({ length }, (_, index) => {
+        const name = names[value % names.length]
+        value = Math.floor(value / names.length)
+        return {
+          name,
+          trans: ['meaning-' + index],
+          usphone: '',
+          ukphone: '',
+        }
+      })
+
+      const canonical = canonicalizeLearningWords(words)
+      const canonicalNames = canonical.map((word) => word.name)
+      const expectedNames = [...new Set(words.map((word) => word.name))]
+
+      assert.deepEqual(canonicalNames, expectedNames)
+      assert.equal(new Set(canonicalNames).size, canonicalNames.length)
+      assert.deepEqual(
+        canonicalizeLearningWords(canonical),
+        canonical,
+      )
+      explored += 1
+    }
+  }
+
+  assert.ok(explored > 300)
 })
