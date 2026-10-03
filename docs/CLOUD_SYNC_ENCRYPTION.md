@@ -1,129 +1,82 @@
-# Qwerty Cloud Sync Encryption V1
+# Qwerty Cloud Sync Encryption
 
-## Security goal
+> Status: **historical design, not active in the current product**
+>
+> Current product snapshot format: `qwerty-backup-v3`
+>
+> Transport/storage: Base64(gzip(backup JSON)) over HTTPS
+>
+> Client-side AES/PBKDF2 encryption: **not enabled**
 
-P6 protects cloud snapshots from storage-side disclosure. The EdgeOne backend stores and transports only opaque ciphertext.
+## Current implementation
 
-The encryption passphrase is **separate from the account login password** and is never sent to the backend.
+The current `product/main` implementation does not use an independent cloud
+encryption passphrase and does not emit `qwerty-sync-envelope-v1`.
 
-## Key UX
+The active pipeline is:
 
-- The user enters a cloud-sync encryption passphrase in the Data Settings UI.
-- Minimum length: 12 characters.
-- The passphrase exists only in the current page's React memory.
-- It is not written to localStorage, IndexedDB, GitHub, EdgeOne Blob, logs, or environment variables.
-- Reloading/closing the page requires entering it again before encrypted upload/download.
-- A second device must use the same encryption passphrase.
-- The server cannot recover a forgotten passphrase.
-- Losing the passphrase does not affect local learning data; the user can still export local data and create a new encrypted cloud snapshot.
+```text
+Dexie export
+  -> qwerty-backup-v3 envelope
+  -> gzip
+  -> Base64
+  -> HTTPS
+  -> EdgeOne Blob
+```
 
-Do not encourage reuse of the account login password.
+The backend treats snapshot contents as opaque application payload, but the
+payload is **not end-to-end encrypted**. A storage operator or storage
+compromise could in principle decompress and inspect learning data.
 
-## Envelope
+Current protection therefore relies on:
 
-Client format:
+- HTTPS in transit;
+- application authentication/authorization;
+- opaque user/revision storage layout;
+- immutable revision conflict protection;
+- snapshot retention and account deletion controls.
+
+Do not describe current cloud backup as E2EE or client-side encrypted.
+
+## Legacy formats
+
+Supported restore formats:
+
+```text
+qwerty-backup-v3       current
+qwerty-dexie-gzip-v2   legacy compatible
+```
+
+The old experimental encrypted envelope:
 
 ```text
 qwerty-sync-envelope-v1
 ```
 
-Pipeline:
+is not supported by the current client/backend path and must not be presented
+as the active product format.
 
-```text
-Dexie export JSON
-  -> gzip
-  -> PBKDF2-SHA-256(passphrase, random 16-byte salt, 600000 iterations)
-  -> AES-256-GCM(random 12-byte IV)
-  -> JSON envelope
-  -> Base64 HTTP payload
-```
+## Historical note
 
-AES-GCM additional authenticated data binds the ciphertext to:
+An earlier P6 design implemented and validated PBKDF2 + AES-256-GCM with a
+separate in-memory passphrase. That design was later superseded by the current
+product decision to use gzip/Base64 snapshots without a second encryption
+credential.
 
-```text
-qwerty-sync-envelope-v1:<userId>
-```
+This file is retained only to make that history explicit and prevent the old
+design from being mistaken for current behavior.
 
-This prevents an encrypted snapshot copied between accounts from authenticating under the wrong user identity.
+## Restore integrity
 
-Envelope fields:
+Even without client-side encryption, restore still validates:
 
-```json
-{
-  "format": "qwerty-sync-envelope-v1",
-  "compression": "gzip",
-  "encryption": {
-    "algorithm": "AES-256-GCM",
-    "ivBase64": "...",
-    "kdf": {
-      "algorithm": "PBKDF2-SHA-256",
-      "iterations": 600000,
-      "saltBase64": "..."
-    }
-  },
-  "ciphertextBase64": "..."
-}
-```
+1. supported client format;
+2. Base64 structure;
+3. gzip decompression;
+4. backup JSON shape;
+5. Dexie import metadata;
+6. database import before application reload.
 
-## Restore safety
-
-Restore order is deliberately:
-
-1. decode transport Base64;
-2. validate envelope structure;
-3. derive key;
-4. authenticate/decrypt AES-GCM;
-5. gunzip;
-6. parse JSON;
-7. inspect Dexie export metadata;
-8. only then overwrite IndexedDB.
-
-A wrong passphrase or damaged ciphertext must fail before any local table is cleared.
-
-## Legacy compatibility
-
-P5 snapshots with:
-
-```text
-qwerty-dexie-json-v1
-```
-
-remain downloadable without a passphrase.
-
-The next successful upload always writes `qwerty-sync-envelope-v1`, upgrading the cloud snapshot to encrypted format.
-
-## Threat boundary
-
-This protects against passive disclosure of Blob contents and backend-side snapshot inspection.
-
-It does not protect against:
-
-- malicious JavaScript already executing in the user's browser;
-- a compromised device/browser profile;
-- keylogging;
-- a user revealing/reusing the encryption passphrase.
-
-Because the passphrase never reaches the cloud backend, this design can be described as client-side/end-to-end encrypted snapshot storage after the live P6 gates pass.
-
-
-## Validation status
-
-P6 passed both static and live browser validation on 2026-09-29.
-
-The live test verified:
-
-- encrypted snapshot upload;
-- `qwerty-sync-envelope-v1` format;
-- AES-256-GCM envelope metadata;
-- no test plaintext present in the stored envelope;
-- wrong-passphrase authentication failure before IndexedDB overwrite;
-- correct-passphrase restore;
-- divergence detection after encrypted sync;
-- cleanup of the temporary account and revisions.
-
-GitHub Actions:
-
-```text
-Cloud Sync Gate             36452560509          PASS
-EdgeOne Browser Sync Gate   36452560735 attempt 2 PASS
-```
+After restore, route-critical `reviewModeInfo` is reset so the imported
+IndexedDB `reviewRecords` remain the durable source of truth for unfinished
+Learn sessions.
