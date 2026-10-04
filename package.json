@@ -69,7 +69,8 @@
     "prettier": "prettier --write .",
     "prepare": "husky install",
     "test:cloud": "node --test tests/cloud/*.test.mjs",
-    "test:cloud:edgeone": "node tests/cloud/edgeone-live.integration.mjs"
+    "test:cloud:edgeone": "node tests/cloud/edgeone-live.integration.mjs",
+    "validate:achievement-culture": "node scripts/validate-achievement-culture.mjs"
   },
   "lint-staged": {
     "src/**/*.{js,jsx,ts,tsx,json,css,scss,md}": [
