@@ -139,3 +139,74 @@ test('production introduced-based bounded trace does not create a false singleto
     [],
   )
 })
+
+
+const strandedDeferredCounterexample = `
+Error: Temporal properties were violated.
+
+State 1: <Initial predicate>
+/\\ phase = "deferred"
+/\\ clock = 0
+/\\ resumeAfter = 1
+
+State 2: <Tick line 15, col 1 to line 19, col 40 of module DeferredLifecycle>
+/\\ phase = "deferred"
+/\\ clock = 1
+/\\ resumeAfter = 1
+
+State 3: Stuttering
+`
+
+const resumedDeferredTrace = `
+State 1: <Initial predicate>
+/\\ phase = "deferred"
+/\\ clock = 0
+/\\ resumeAfter = 1
+
+State 2: <Tick line 15, col 1 to line 19, col 40 of module DeferredLifecycle>
+/\\ phase = "deferred"
+/\\ clock = 1
+/\\ resumeAfter = 1
+
+State 3: <ResumeDeferred line 21, col 1 to line 26, col 40 of module DeferredLifecycle>
+/\\ phase = "resumed"
+/\\ clock = 1
+/\\ resumeAfter = 1
+`
+
+test('TLC stuttering liveness counterexample maps to ready-deferred starvation', () => {
+  const states = parseTlcCounterexample(
+    strandedDeferredCounterexample,
+  )
+  assert.equal(states.length, 3)
+  assert.equal(states[2]?.action, 'Stuttering')
+  assert.equal(states[2]?.values.phase, 'deferred')
+
+  const trace = tlcStatesToLearnTrace(
+    states,
+    'stranded-deferred',
+  )
+  const anomalies = detectLearnSystemAnomalies(trace.events)
+
+  assert.ok(
+    anomalies.some(
+      (item) =>
+        item.code === 'stranded-pending-acquisition',
+    ),
+  )
+})
+
+test('resumed deferred trace clears the liveness concern without a false alarm', () => {
+  const trace = tlcStatesToLearnTrace(
+    parseTlcCounterexample(resumedDeferredTrace),
+    'resumed-deferred',
+  )
+
+  assert.equal(
+    detectLearnSystemAnomalies(trace.events).some(
+      (item) =>
+        item.code === 'stranded-pending-acquisition',
+    ),
+    false,
+  )
+})
