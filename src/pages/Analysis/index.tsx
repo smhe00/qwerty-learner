@@ -145,7 +145,7 @@ function LearnAnalysis() {
 
       <div className="mx-4 my-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
         <MetricCard label="今日复习词数" value={stats.today.reviewedWords} />
-        <MetricCard label="今日新学词数" value={stats.today.acquiredWords} />
+        <MetricCard label="今日独立掌握" value={stats.today.acquiredWords} />
         <MetricCard
           label="今日新词目标"
           value={quota.targetDailyNewWords}
@@ -326,8 +326,8 @@ function LearnAnalysis() {
       </div>
       <div className="mx-4 my-8 h-80 overflow-hidden rounded-lg p-8 shadow dark:bg-gray-700 dark:bg-opacity-50">
         <LineCharts
-          title="最近 30 天新学词数"
-          name="新学词数"
+          title="最近 30 天独立掌握"
+          name="独立掌握"
           data={acquisitionTrend}
         />
       </div>
