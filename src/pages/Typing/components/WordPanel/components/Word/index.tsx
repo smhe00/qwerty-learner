@@ -74,6 +74,7 @@ import {
 import type { Word } from '@/typings'
 import { CTRL, getUtcStringForMixpanel } from '@/utils'
 import { useSaveWordRecord } from '@/utils/db'
+import { getFirstValidDictionaryExample } from '@/utils/dictionaryExample'
 import type { IWordRecord, PronunciationCue } from '@/utils/db/record'
 import { useAtomValue } from 'jotai'
 import {
@@ -244,6 +245,8 @@ export default function WordComponent({
     learningContextCollectorRef.current.reset({
       answerVisibilityAtStart: summarizeAnswerVisibility(appliedLetterVisibility),
       answerVisibleRatioAtStart: calculateAnswerVisibleRatio(appliedLetterVisibility),
+      exampleVisibleAtStart:
+        getFirstValidDictionaryExample(word) !== undefined,
       meaningVisibleAtStart: meaningVisible,
       phoneticVisibleAtStart: phoneticVisible,
       pronunciationEnabledAtStart:
