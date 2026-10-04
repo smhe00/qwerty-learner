@@ -8,6 +8,7 @@ import {
 import {
   isAcquisitionIntroductionRecord,
 } from '../../src/learn/admission'
+import { decideDailyAcquisitionQuota } from '../../src/learn/quota'
 import {
   prepareLearnSession,
   type LearnPreparationDependencies,
@@ -300,9 +301,6 @@ export class VirtualLearnApp {
       ...(this.mutation.quotaAccounting === 'acquired'
         ? {
             decideQuota: (stats) => {
-              const {
-                decideDailyAcquisitionQuota,
-              } = requireQuota()
               const baseline =
                 decideDailyAcquisitionQuota(stats)
               const remaining = Math.max(
@@ -542,13 +540,3 @@ export class VirtualLearnApp {
   }
 }
 
-function requireQuota() {
-  // Static import is deliberately wrapped at the bottom of this test helper so
-  // the mutation stays visually separated from the production dependency path.
-  return {
-    decideDailyAcquisitionQuota:
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      require('../../src/learn/quota')
-        .decideDailyAcquisitionQuota as typeof import('../../src/learn/quota')['decideDailyAcquisitionQuota'],
-  }
-}
