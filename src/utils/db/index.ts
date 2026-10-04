@@ -17,7 +17,12 @@ import type { RatingDecision } from '@/review/state-machine'
 import type { IReviewWordState } from '@/review/types'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import type { TypingState } from '@/pages/Typing/store/type'
-import { currentChapterAtom, currentDictIdAtom, isReviewModeAtom } from '@/store'
+import {
+  currentChapterAtom,
+  currentDictIdAtom,
+  isReviewModeAtom,
+  reviewModeInfoAtom,
+} from '@/store'
 import type { Table } from 'dexie'
 import Dexie from 'dexie'
 import { useAtomValue } from 'jotai'
@@ -113,6 +118,12 @@ export function useSaveWordRecord() {
   const isRevision = useAtomValue(isReviewModeAtom)
   const currentChapter = useAtomValue(currentChapterAtom)
   const dictID = useAtomValue(currentDictIdAtom)
+  const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
+  const activeLearnSessionId = reviewModeInfo.reviewRecord
+    ? reviewModeInfo.reviewRecord.id !== undefined
+      ? `review:${reviewModeInfo.reviewRecord.id}`
+      : `review:${reviewModeInfo.reviewRecord.dict}:${reviewModeInfo.reviewRecord.createTime}`
+    : undefined
 
   const { dispatch } = useContext(TypingContext) ?? {}
 
@@ -186,7 +197,9 @@ export function useSaveWordRecord() {
       if (dbID > 0 && sourceMode === 'learn') {
         void import('@/achievement/engine')
           .then(({ processLiveLearnWordRecord }) =>
-            processLiveLearnWordRecord(dbID),
+            processLiveLearnWordRecord(dbID, {
+              sessionId: activeLearnSessionId,
+            }),
           )
           .catch((error) => {
             console.error('failed to process achievement event', error)
@@ -195,7 +208,13 @@ export function useSaveWordRecord() {
 
       return dbID
     },
-    [currentChapter, dictID, dispatch, isRevision],
+    [
+      activeLearnSessionId,
+      currentChapter,
+      dictID,
+      dispatch,
+      isRevision,
+    ],
   )
 
   return saveWordRecord
