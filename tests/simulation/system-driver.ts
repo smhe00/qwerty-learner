@@ -68,11 +68,22 @@ function acquisitionStateSignature(
   ].join(':')
 }
 
+type VirtualReviewOutcome = 'good' | 'hard' | 'again'
+
 function makeReviewRecord(input: {
   id: number
   word: string
   now: number
+  outcome: VirtualReviewOutcome
+  attemptRole: 'cold' | 'reinforcement'
 }): IWordRecord {
+  const wrongCount =
+    input.outcome === 'again'
+      ? 2
+      : input.outcome === 'hard'
+        ? 1
+        : 0
+  const eligible = input.attemptRole === 'cold'
   return {
     id: input.id,
     word: input.word,
@@ -80,24 +91,39 @@ function makeReviewRecord(input: {
     dict: 'simulation',
     chapter: -1,
     timing: [600],
-    wrongCount: 0,
-    mistakes: {},
+    wrongCount,
+    mistakes:
+      wrongCount > 0
+        ? { 0: ['x'] }
+        : {},
     sourceMode: 'learn',
     learnItemKind: 'review',
-    reviewRatingDecision: {
-      eligible: true,
-      rating: 'good',
-      confidence: 1,
-      reasonCodes: ['simulation-clean-review'],
-    },
+    reviewRatingDecision: eligible
+      ? {
+          eligible: true,
+          rating: input.outcome,
+          confidence: 1,
+          reasonCodes: ['simulation-cold-review'],
+        }
+      : {
+          eligible: false,
+          rating: null,
+          reason: 'non-cold-attempt',
+          reasonCodes: ['simulation-reinforcement'],
+        },
     reviewEvidence: {
       version: 1,
-      memoryGrade: 'good',
-      errorCause: 'clean',
+      memoryGrade: input.outcome,
+      errorCause:
+        input.outcome === 'again'
+          ? 'recall'
+          : input.outcome === 'hard'
+            ? 'spelling'
+            : 'clean',
       confidence: 1,
       retrievalValidity: 'independent',
       evidenceStrength: 1,
-      reasonCodes: ['simulation-clean-review'],
+      reasonCodes: ['simulation-review'],
     },
   }
 }
@@ -108,7 +134,9 @@ function makeAcquisitionRecord(input: {
   now: number
   policyVersion: string
   spacingEligible?: boolean
+  wrongCount?: number
 }): IWordRecord {
+  const wrongCount = input.wrongCount ?? 0
   return {
     id: input.id,
     word: input.word,
@@ -116,8 +144,8 @@ function makeAcquisitionRecord(input: {
     dict: 'simulation',
     chapter: -1,
     timing: [500],
-    wrongCount: 0,
-    mistakes: {},
+    wrongCount,
+    mistakes: wrongCount > 0 ? { 0: ['x'] } : {},
     sourceMode: 'learn',
     learnItemKind: 'acquisition',
     reviewPolicyDecision: {
@@ -133,8 +161,10 @@ function makeAcquisitionRecord(input: {
       ? {
           reviewEvidence: {
             version: 1 as const,
-            memoryGrade: 'good' as const,
-            errorCause: 'clean' as const,
+            memoryGrade:
+              wrongCount > 0 ? ('again' as const) : ('good' as const),
+            errorCause:
+              wrongCount > 0 ? ('recall' as const) : ('clean' as const),
             confidence: 1,
             retrievalValidity: 'independent' as const,
             evidenceStrength: 1,
@@ -501,7 +531,9 @@ export class VirtualLearnApp {
     }
   }
 
-  completeCurrentReviewClean(): boolean {
+  completeCurrentReview(
+    outcome: VirtualReviewOutcome = 'good',
+  ): boolean {
     const session = this.sessionById(this.activeSessionId)
     if (
       !session ||
@@ -526,11 +558,39 @@ export class VirtualLearnApp {
     const beforeItemStateSignature = JSON.stringify(
       session.itemStates?.[currentWord.name] ?? null,
     )
-    const ratingDecision = {
-      eligible: true as const,
-      rating: 'good' as const,
+    const isCold = attemptRole === 'cold'
+    const ratingDecision = isCold
+      ? {
+          eligible: true as const,
+          rating: outcome,
+          confidence: 1,
+          reasonCodes: ['simulation-cold-review'],
+        }
+      : {
+          eligible: false as const,
+          rating: null,
+          reason: 'non-cold-attempt' as const,
+          reasonCodes: ['simulation-reinforcement'],
+        }
+    const wrongCount =
+      outcome === 'again'
+        ? 2
+        : outcome === 'hard'
+          ? 1
+          : 0
+    const classification = {
+      cause:
+        outcome === 'again'
+          ? ('recall' as const)
+          : outcome === 'hard'
+            ? ('spelling' as const)
+            : ('clean' as const),
       confidence: 1,
-      reasonCodes: ['simulation-clean-review'],
+      scores: {
+        recall: outcome === 'again' ? 1 : 0,
+        spelling: outcome === 'hard' ? 1 : 0,
+        motor: 0,
+      },
     }
     const resolution = resolveReviewCompletion({
       queue: session.words,
@@ -538,16 +598,8 @@ export class VirtualLearnApp {
       currentWord,
       ratingDecision,
       attemptRole,
-      wrongCount: 0,
-      classification: {
-        cause: 'clean',
-        confidence: 1,
-        scores: {
-          recall: 0,
-          spelling: 0,
-          motor: 0,
-        },
-      },
+      wrongCount,
+      classification,
       exercisePlans: session.exercisePlans,
       reinforcementCounts: session.reinforcementCounts,
       itemStates: session.itemStates,
@@ -574,16 +626,18 @@ export class VirtualLearnApp {
         id: this.nextWordRecordId++,
         word: currentWord.name,
         now: this.now,
+        outcome,
+        attemptRole,
       }),
     )
 
     const stateIndex = this.wordStates.findIndex(
       (state) => state.word === currentWord.name,
     )
-    if (stateIndex >= 0) {
+    if (stateIndex >= 0 && isCold) {
       this.wordStates[stateIndex] = scheduleBasicReview({
         state: this.wordStates[stateIndex],
-        outcome: 'good',
+        outcome,
         now: this.now,
       })
     }
@@ -593,7 +647,7 @@ export class VirtualLearnApp {
       kind: 'attempt-completed',
       sessionKind: 'review',
       word: currentWord.name,
-      success: true,
+      success: outcome !== 'again',
       beforeIndex,
       afterIndex: session.index,
       expectedAfterIndex: resolution.projection.index,
@@ -613,15 +667,54 @@ export class VirtualLearnApp {
     return true
   }
 
+  completeCurrentAcquisitionClean(): boolean {
+    return this.completeCurrentAcquisitionAttempt({
+      wrongCount: 0,
+      cause: 'clean',
+    })
+  }
+
+  completeCurrentReviewClean(): boolean {
+    return this.completeCurrentReview('good')
+  }
+
   completeCurrentClean(): boolean {
     const session = this.sessionById(this.activeSessionId)
     if (!session) return false
     return session.sessionKind === 'review'
-      ? this.completeCurrentReviewClean()
+      ? this.completeCurrentReview('good')
       : this.completeCurrentAcquisitionClean()
   }
 
-  completeCurrentAcquisitionClean(): boolean {
+  completeCurrentAttempt(
+    outcome: VirtualReviewOutcome,
+  ): boolean {
+    const session = this.sessionById(this.activeSessionId)
+    if (!session) return false
+    if (session.sessionKind === 'review') {
+      return this.completeCurrentReview(outcome)
+    }
+
+    return this.completeCurrentAcquisitionAttempt({
+      wrongCount:
+        outcome === 'again'
+          ? 2
+          : outcome === 'hard'
+            ? 1
+            : 0,
+      cause:
+        outcome === 'again'
+          ? 'recall'
+          : outcome === 'hard'
+            ? 'spelling'
+            : 'clean',
+    })
+  }
+
+  completeCurrentAcquisitionAttempt(input: {
+    wrongCount: number
+    cause: 'clean' | 'recall' | 'spelling'
+  }): boolean {
     const session = this.sessionById(this.activeSessionId)
     if (
       !session ||
@@ -660,8 +753,8 @@ export class VirtualLearnApp {
       state: currentState,
       acquisitionStates:
         session.acquisitionStates ?? {},
-      wrongCount: 0,
-      classificationCause: 'clean',
+      wrongCount: input.wrongCount,
+      classificationCause: input.cause,
       retrievalValidity: 'independent',
       now: this.now,
     })
@@ -680,7 +773,7 @@ export class VirtualLearnApp {
     session.acquisitionStates =
       clone(resolution.acquisitionStates)
 
-    if (resolution.shouldPersistAdmission) {
+    if (currentState.phase === 'independent') {
       this.wordRecords.push(
         makeAcquisitionRecord({
           id: this.nextWordRecordId++,
@@ -688,9 +781,14 @@ export class VirtualLearnApp {
           now: this.now,
           policyVersion:
             LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION,
-          spacingEligible: true,
+          spacingEligible:
+            resolution.shouldPersistAdmission,
+          wrongCount: input.wrongCount,
         }),
       )
+    }
+
+    if (resolution.shouldPersistAdmission) {
       if (
         !this.wordStates.some(
           (state) => state.word === currentWord.name,
@@ -726,7 +824,7 @@ export class VirtualLearnApp {
       kind: 'attempt-completed',
       sessionKind: 'acquisition',
       word: currentWord.name,
-      success: true,
+      success: input.wrongCount === 0,
       beforeIndex,
       afterIndex: session.index,
       expectedAfterIndex: expected.index,
