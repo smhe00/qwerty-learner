@@ -121,6 +121,11 @@ async function seedAcquisitionSession(
   id: number,
   phase: 'exposure' | 'supported' | 'independent' = 'independent',
   independentInterveningItems = 4,
+  scaffoldStrainTier:
+    | 'unknown'
+    | 'low'
+    | 'elevated'
+    | 'recovery' = 'unknown',
 ) {
   await page.addInitScript(
     ({
@@ -128,6 +133,7 @@ async function seedAcquisitionSession(
       recordId,
       seededPhase,
       seededIndependentInterveningItems,
+      seededScaffoldStrainTier,
     }) => {
       const condition =
         seededPhase === 'exposure'
@@ -203,6 +209,7 @@ async function seedAcquisitionSession(
                   version: 1,
                   phase: seededPhase,
                   assistedCycles: 0,
+                  scaffoldStrainTier: seededScaffoldStrainTier,
                   ...(seededPhase === 'independent'
                     ? {
                         independentInterveningItems:
@@ -239,6 +246,7 @@ async function seedAcquisitionSession(
       seededPhase: phase,
       seededIndependentInterveningItems:
         independentInterveningItems,
+      seededScaffoldStrainTier: scaffoldStrainTier,
     },
   )
 }
@@ -1795,6 +1803,58 @@ test('Learn starts new acquisition with exposure and does not admit after visibl
       policyVersion: 'learn-acquisition-exposure-v1',
     },
   })
+})
+
+test('dynamic scaffold starts Supported acquisition at S1 under recovery strain', async ({
+  page,
+}) => {
+  await seedAcquisitionSession(
+    page,
+    [reviewWords[0]],
+    919990,
+    'supported',
+    4,
+    'recovery',
+  )
+  await page.goto('/learn/session')
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+
+  const shell = page.locator('[data-learn-acquisition-phase="supported"]')
+  const word = page.locator('[data-typing-word="cancel"]')
+  await expect(shell).toHaveAttribute('data-learn-scaffold-level', 'S1')
+  await expect(shell).toHaveAttribute(
+    'data-learn-scaffold-policy',
+    'learn-dynamic-scaffold-v1',
+  )
+  await expect(word).toHaveAttribute('data-review-purpose', 'training')
+  await expect(word).toHaveAttribute('data-review-audio', 'automatic')
+  await expect(word).toHaveAttribute('data-review-phonetic', 'visible')
+  await expect(word).toHaveAttribute('data-review-letters', 'all-hidden')
+})
+
+test('dynamic scaffold never weakens Independent acquisition under recovery strain', async ({
+  page,
+}) => {
+  await seedAcquisitionSession(
+    page,
+    [reviewWords[0]],
+    919991,
+    'independent',
+    4,
+    'recovery',
+  )
+  await page.goto('/learn/session')
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+
+  const shell = page.locator('[data-learn-acquisition-phase="independent"]')
+  const word = page.locator('[data-typing-word="cancel"]')
+  await expect(shell).toHaveAttribute('data-learn-scaffold-level', 'S3')
+  await expect(word).toHaveAttribute('data-review-purpose', 'probe')
+  await expect(word).toHaveAttribute('data-review-audio', 'none')
+  await expect(word).toHaveAttribute('data-review-phonetic', 'hidden')
+  await expect(word).toHaveAttribute('data-review-letters', 'all-hidden')
 })
 
 test('clean but short-gap Independent recall defers without false admission', async ({
