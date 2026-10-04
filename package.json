@@ -127,5 +127,6 @@
     "typescript-plugin-css-modules": "^5.0.1",
     "unplugin-icons": "^0.16.1",
     "vite": "^4.1.1"
-  }
+  },
+  "description": "Qwerty Learner Typing + Learn Alpha"
 }
