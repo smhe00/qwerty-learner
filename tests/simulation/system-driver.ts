@@ -20,6 +20,9 @@ import {
   planLearnAcquisitionCandidates,
 } from '../../src/learn/session'
 import { selectReviewCandidates } from '../../src/review/due'
+import { resolveReviewCompletion } from '../../src/review/progression'
+import { scheduleBasicReview } from '../../src/review/scheduler'
+import { getReviewAttemptRole } from '../../src/review/session'
 import { createInitialReviewWordState } from '../../src/review/types'
 import type { IReviewWordState } from '../../src/review/types'
 import type { Word } from '../../src/typings'
@@ -61,6 +64,40 @@ function acquisitionStateSignature(
     state.deferredReason ?? 'none',
     state.resumeAfter ?? -1,
   ].join(':')
+}
+
+function makeReviewRecord(input: {
+  id: number
+  word: string
+  now: number
+}): IWordRecord {
+  return {
+    id: input.id,
+    word: input.word,
+    timeStamp: input.now,
+    dict: 'simulation',
+    chapter: -1,
+    timing: [600],
+    wrongCount: 0,
+    mistakes: {},
+    sourceMode: 'learn',
+    learnItemKind: 'review',
+    reviewRatingDecision: {
+      eligible: true,
+      rating: 'good',
+      confidence: 1,
+      reasonCodes: ['simulation-clean-review'],
+    },
+    reviewEvidence: {
+      version: 1,
+      memoryGrade: 'good',
+      errorCause: 'clean',
+      confidence: 1,
+      retrievalValidity: 'independent',
+      evidenceStrength: 1,
+      reasonCodes: ['simulation-clean-review'],
+    },
+  }
 }
 
 function makeAcquisitionRecord(input: {
@@ -394,6 +431,126 @@ export class VirtualLearnApp {
         wordCount: session.words.length,
       })
     }
+  }
+
+  completeCurrentReviewClean(): boolean {
+    const session = this.sessionById(this.activeSessionId)
+    if (
+      !session ||
+      session.sessionKind !== 'review' ||
+      session.isFinished
+    ) {
+      return false
+    }
+
+    const currentWord = session.words[session.index]
+    if (!currentWord) return false
+    const reinforcementUsed =
+      session.reinforcementCounts?.[currentWord.name] ?? 0
+    const attemptRole = getReviewAttemptRole({
+      sessionKind: 'review',
+      reinforcementUsed,
+    })
+    if (!attemptRole) return false
+
+    const beforeIndex = session.index
+    const beforeQueue = queueSignature(session.words)
+    const beforeItemStateSignature = JSON.stringify(
+      session.itemStates?.[currentWord.name] ?? null,
+    )
+    const ratingDecision = {
+      eligible: true as const,
+      rating: 'good' as const,
+      confidence: 1,
+      reasonCodes: ['simulation-clean-review'],
+    }
+    const resolution = resolveReviewCompletion({
+      queue: session.words,
+      currentIndex: session.index,
+      currentWord,
+      ratingDecision,
+      attemptRole,
+      wrongCount: 0,
+      classification: {
+        cause: 'clean',
+        confidence: 1,
+        scores: {
+          recall: 0,
+          spelling: 0,
+          motor: 0,
+        },
+      },
+      exercisePlans: session.exercisePlans,
+      reinforcementCounts: session.reinforcementCounts,
+      itemStates: session.itemStates,
+    })
+
+    this.interactionCount += 1
+    const shouldDrop =
+      this.mutation.dropProjectionAtInteraction ===
+      this.interactionCount
+
+    if (!shouldDrop) {
+      session.index = resolution.projection.index
+      session.words = clone(resolution.projection.queue)
+      session.isFinished = resolution.projection.isFinished
+    }
+    session.exercisePlans = clone(resolution.exercisePlans)
+    session.reinforcementCounts = clone(
+      resolution.reinforcementCounts,
+    )
+    session.itemStates = clone(resolution.itemStates)
+
+    this.wordRecords.push(
+      makeReviewRecord({
+        id: this.nextWordRecordId++,
+        word: currentWord.name,
+        now: this.now,
+      }),
+    )
+
+    const stateIndex = this.wordStates.findIndex(
+      (state) => state.word === currentWord.name,
+    )
+    if (stateIndex >= 0) {
+      this.wordStates[stateIndex] = scheduleBasicReview({
+        state: this.wordStates[stateIndex],
+        outcome: 'good',
+        now: this.now,
+      })
+    }
+
+    this.persistSession(session)
+    this.events.push({
+      kind: 'attempt-completed',
+      sessionKind: 'review',
+      word: currentWord.name,
+      success: true,
+      beforeIndex,
+      afterIndex: session.index,
+      expectedAfterIndex: resolution.projection.index,
+      beforeQueueSignature: beforeQueue,
+      afterQueueSignature: queueSignature(session.words),
+      expectedAfterQueueSignature: queueSignature(
+        resolution.projection.queue,
+      ),
+      beforeItemStateSignature,
+      afterItemStateSignature: JSON.stringify(
+        session.itemStates?.[currentWord.name] ?? null,
+      ),
+      afterFinished: session.isFinished,
+      expectedAfterFinished: resolution.projection.isFinished,
+    })
+
+    return true
+  }
+
+  completeCurrentClean(): boolean {
+    const session = this.sessionById(this.activeSessionId)
+    if (!session) return false
+    return session.sessionKind === 'review'
+      ? this.completeCurrentReviewClean()
+      : this.completeCurrentAcquisitionClean()
   }
 
   completeCurrentAcquisitionClean(): boolean {
