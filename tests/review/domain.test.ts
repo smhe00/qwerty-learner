@@ -14,6 +14,10 @@ import {
   getLearnScaffoldPresentation,
 } from '../../src/learn/scaffold'
 import {
+  applyLearnRecoveryWindow,
+  planLearnRecoveryWindow,
+} from '../../src/learn/recovery-window'
+import {
   decideLearningLifecycleTransition,
   getLearningLifecycle,
   pruneLearnSessionWord,
@@ -253,6 +257,106 @@ test('S1 scaffold starts Hint at level 1 so manual escalation cannot reduce supp
   assert.equal(decision.to, 'hint-2')
   assert.equal(decision.level, 2)
   assert.equal(decision.hintPosition, 2)
+})
+
+test('Recovery Window pulls only high-confidence training items ahead of a difficult retry', () => {
+  const queue = ['a', 'b', 'c', 'd', 'e', 'f'].map((name) => ({ name }))
+  const current = {
+    ...createLearnAcquisitionState({ scaffoldStrainTier: 'recovery' }),
+    phase: 'supported' as const,
+    assistedCycles: 1,
+  }
+  const acquisitionStates = {
+    a: current,
+    b: {
+      ...createLearnAcquisitionState({ scaffoldStrainTier: 'recovery' }),
+      phase: 'independent' as const,
+    },
+    c: createLearnAcquisitionState({ scaffoldStrainTier: 'recovery' }),
+    d: {
+      ...createLearnAcquisitionState({ scaffoldStrainTier: 'recovery' }),
+      phase: 'supported' as const,
+    },
+    e: {
+      ...createLearnAcquisitionState({ scaffoldStrainTier: 'recovery' }),
+      phase: 'complete' as const,
+    },
+    f: createLearnAcquisitionState({ scaffoldStrainTier: 'recovery' }),
+  }
+
+  const plan = planLearnRecoveryWindow({
+    queue,
+    currentIndex: 0,
+    currentWord: queue[0],
+    nextState: current,
+    acquisitionStates,
+  })
+
+  assert.equal(plan.active, true)
+  assert.equal(plan.targetSize, 3)
+  assert.deepEqual(plan.selectedNames, ['c', 'd', 'f'])
+  assert.equal(plan.selectedNames.includes('b'), false)
+  assert.equal(plan.selectedNames.includes('e'), false)
+
+  assert.deepEqual(
+    applyLearnRecoveryWindow(queue, 0, plan.selectedNames).map(
+      (item) => item.name,
+    ),
+    ['a', 'c', 'd', 'f', 'b', 'e'],
+  )
+
+  const projection = projectLearnAcquisitionProgress({
+    queue,
+    currentIndex: 0,
+    currentWord: queue[0],
+    nextState: current,
+    acquisitionStates,
+  })
+  assert.deepEqual(
+    projection.queue.map((item) => item.name),
+    ['a', 'c', 'd', 'f', 'a', 'b', 'e'],
+  )
+  assert.equal(projection.interveningItemsBeforeFollowUp, 3)
+  assert.deepEqual(projection.recoveryWindow?.selectedNames, ['c', 'd', 'f'])
+})
+
+test('Recovery Window is bounded by strain tier and never activates on low strain', () => {
+  const queue = ['a', 'b', 'c', 'd'].map((name) => ({ name }))
+  const exposureStates = Object.fromEntries(
+    queue.map((item) => [
+      item.name,
+      createLearnAcquisitionState({ scaffoldStrainTier: 'elevated' }),
+    ]),
+  )
+
+  const elevated = planLearnRecoveryWindow({
+    queue,
+    currentIndex: 0,
+    currentWord: queue[0],
+    nextState: {
+      ...createLearnAcquisitionState({ scaffoldStrainTier: 'elevated' }),
+      phase: 'supported',
+      assistedCycles: 1,
+    },
+    acquisitionStates: exposureStates,
+  })
+  assert.equal(elevated.active, true)
+  assert.equal(elevated.targetSize, 2)
+  assert.deepEqual(elevated.selectedNames, ['b', 'c'])
+
+  const low = planLearnRecoveryWindow({
+    queue,
+    currentIndex: 0,
+    currentWord: queue[0],
+    nextState: {
+      ...createLearnAcquisitionState({ scaffoldStrainTier: 'low' }),
+      phase: 'supported',
+      assistedCycles: 1,
+    },
+    acquisitionStates: exposureStates,
+  })
+  assert.equal(low.active, false)
+  assert.deepEqual(low.selectedNames, [])
 })
 
 test('captures all-visible and all-hidden baseline conditions', () => {
