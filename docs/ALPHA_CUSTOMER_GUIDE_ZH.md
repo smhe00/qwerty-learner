@@ -1,10 +1,10 @@
-# Qwerty Learner Learn Alpha 1 客户使用说明
+# Qwerty Plus Learn Alpha 1 客户使用说明
 
 > 版本：`0.2.0-alpha.1`  
 > 阶段：受控 Alpha  
-> 在线入口：<https://qwerty.kaiyi.cool/>
+> 正式域名：尚未公布；Alpha 访问入口由测试方单独提供。
 
-感谢参与 Qwerty Learner Learn Alpha 的阶段性试用。
+感谢参与 Qwerty Plus Learn Alpha 的阶段性试用。
 
 这一版本的重点不是增加更多“背单词按钮”，而是验证一种新的长期学习流程：
 
@@ -35,7 +35,7 @@ Typing | Learn
 
 ### Typing
 
-Typing 保留原 Qwerty Learner 的章节练习逻辑。
+Typing 保留上游项目的章节练习逻辑。
 
 适合：
 
@@ -189,7 +189,7 @@ Learn 会优先保证已经到期的长期 Review。
 
 ## 10. 数据保存在什么地方
 
-Qwerty 采用 local-first 方式。
+Qwerty Plus 采用 local-first 方式。
 
 默认：
 
