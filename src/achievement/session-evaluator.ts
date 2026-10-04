@@ -3,6 +3,7 @@ import type { IWordRecord } from '@/utils/db/record'
 
 export type AchievementSessionMetricContext = {
   records: IWordRecord[]
+  recommendedGoalCompleted?: boolean
 }
 
 function isLearnRecord(record: IWordRecord): boolean {
@@ -125,6 +126,7 @@ export const SUPPORTED_SESSION_METRICS = new Set([
   'session_second_half_accuracy_gain_pp',
   'recover_after_consecutive_errors',
   'same_session_fail_then_independent_recovery',
+  'first_recommended_learn_goal_completed',
 ])
 
 export function evaluateSessionMetric(
@@ -138,6 +140,8 @@ export function evaluateSessionMetric(
       return recoverAfterConsecutiveErrors(context)
     case 'same_session_fail_then_independent_recovery':
       return sameSessionFailThenIndependentRecovery(context)
+    case 'first_recommended_learn_goal_completed':
+      return context.recommendedGoalCompleted === true ? 1 : 0
     default:
       return null
   }
