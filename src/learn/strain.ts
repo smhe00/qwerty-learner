@@ -1,14 +1,18 @@
 import type { IWordRecord } from '@/utils/db/record'
 
 export const LEARN_INTERACTION_STRAIN_POLICY_VERSION =
-  'learn-interaction-strain-v1'
+  'learn-interaction-strain-v2'
 
 export const learnInteractionStrainPolicy = {
   maxRecentAttempts: 20,
   minAttemptsForDecision: 5,
   ewmaAlpha: 0.3,
-  elevatedThreshold: 0.32,
-  recoveryThreshold: 0.55,
+  // Schmitt-trigger hysteresis. Entry thresholds are intentionally above
+  // exit thresholds so small observer noise cannot cause tier chatter.
+  elevatedEnterThreshold: 0.35,
+  elevatedExitThreshold: 0.29,
+  recoveryEnterThreshold: 0.58,
+  recoveryExitThreshold: 0.5,
   latencyFloorMs: 2_000,
   latencyCeilingMs: 8_000,
 } as const
@@ -44,6 +48,57 @@ function mean(values: number[]): number | null {
 
 function round3(value: number): number {
   return Math.round(value * 1000) / 1000
+}
+
+
+export function updateLearnInteractionStrainEwma(
+  previous: number | null,
+  input: number,
+  alpha = learnInteractionStrainPolicy.ewmaAlpha,
+): number {
+  const boundedAlpha = clamp01(alpha)
+  const boundedInput = clamp01(input)
+  if (previous === null) return boundedInput
+  return clamp01(
+    boundedAlpha * boundedInput +
+      (1 - boundedAlpha) * clamp01(previous),
+  )
+}
+
+/**
+ * Stateful tier resolver with hysteresis.
+ *
+ * The controller may escalate quickly, but de-escalation requires crossing a
+ * lower threshold. Recovery must pass through elevated before low, providing
+ * one discrete dwell step between large mode changes.
+ */
+export function resolveLearnInteractionStrainTier(
+  score: number,
+  previousTier: LearnInteractionStrainTier = 'unknown',
+): LearnInteractionStrainTier {
+  const value = clamp01(score)
+  const policy = learnInteractionStrainPolicy
+
+  if (previousTier === 'unknown') {
+    if (value >= policy.recoveryEnterThreshold) return 'recovery'
+    if (value >= policy.elevatedEnterThreshold) return 'elevated'
+    return 'low'
+  }
+
+  if (previousTier === 'low') {
+    if (value >= policy.recoveryEnterThreshold) return 'recovery'
+    if (value >= policy.elevatedEnterThreshold) return 'elevated'
+    return 'low'
+  }
+
+  if (previousTier === 'elevated') {
+    if (value >= policy.recoveryEnterThreshold) return 'recovery'
+    if (value <= policy.elevatedExitThreshold) return 'low'
+    return 'elevated'
+  }
+
+  if (value <= policy.recoveryExitThreshold) return 'elevated'
+  return 'recovery'
 }
 
 function latencyLoad(record: IWordRecord): number | null {
@@ -153,20 +208,16 @@ export function estimateLearnInteractionStrain(
   }
 
   const loads = recent.map(attemptLoads)
-  let ewma = loads[0].score
-  for (let index = 1; index < loads.length; index += 1) {
-    ewma =
-      policy.ewmaAlpha * loads[index].score +
-      (1 - policy.ewmaAlpha) * ewma
+  let ewma: number | null = null
+  let tier: LearnInteractionStrainTier = 'unknown'
+  for (let index = 0; index < loads.length; index += 1) {
+    ewma = updateLearnInteractionStrainEwma(ewma, loads[index].score)
+    if (index + 1 >= policy.minAttemptsForDecision) {
+      tier = resolveLearnInteractionStrainTier(ewma, tier)
+    }
   }
 
-  const score = round3(ewma)
-  const tier: LearnInteractionStrainTier =
-    score >= policy.recoveryThreshold
-      ? 'recovery'
-      : score >= policy.elevatedThreshold
-        ? 'elevated'
-        : 'low'
+  const score = round3(ewma ?? 0)
 
   return {
     policyVersion: LEARN_INTERACTION_STRAIN_POLICY_VERSION,
