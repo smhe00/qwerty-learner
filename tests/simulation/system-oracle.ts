@@ -153,6 +153,10 @@ export function detectLearnSystemAnomalies(
         })
       }
 
+      if (event.source === 'restored') {
+        continue
+      }
+
       const suspiciousSingleton =
         event.sessionKind === 'acquisition' &&
         event.batchSize === 1 &&
@@ -186,9 +190,6 @@ export function detectLearnSystemAnomalies(
     }
 
     if (event.kind === 'attempt-completed') {
-      singletonRun = 0
-      lastSingletonSessionId = null
-
       const projectionMismatch =
         event.afterIndex !== event.expectedAfterIndex ||
         event.afterQueueSignature !==
@@ -237,8 +238,6 @@ export function detectLearnSystemAnomalies(
     }
 
     if (event.kind === 'checkpoint') {
-      singletonRun = 0
-      lastSingletonSessionId = null
       if (event.action === 'save') {
         const checkpoint = {
           index: event.index,
