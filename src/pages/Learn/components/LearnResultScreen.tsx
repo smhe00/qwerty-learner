@@ -2,6 +2,7 @@ import {
   getUnseenAchievementStates,
   markAchievementSeen,
   processLiveLearnSessionCompletion,
+  recordVoluntaryContinueIntent,
 } from '@/achievement'
 import { getAchievementSessionId } from '@/achievement/session'
 import { TypingContext } from '@/pages/Typing/store'
@@ -88,6 +89,9 @@ export default function LearnResultScreen() {
       dict: record.dict,
       sourceRecordIds: [...state.chapterData.wordRecordIds],
       completedAt: Math.floor(Date.now() / 1000),
+      recommendedGoalCompleted:
+        record.isFinished &&
+        record.recommendedGoal?.version === 1,
     }).catch((error) => {
       console.error('failed to process achievement session completion', error)
     })
@@ -118,10 +122,39 @@ export default function LearnResultScreen() {
   }, [setReviewModeInfo])
 
   const continueLearn = useCallback(() => {
-    acknowledgeAchievements()
-    leaveLearn()
-    navigate('/learn')
-  }, [acknowledgeAchievements, leaveLearn, navigate])
+    const proceed = () => {
+      acknowledgeAchievements()
+      leaveLearn()
+      navigate('/learn')
+    }
+
+    if (
+      !record ||
+      !record.isFinished ||
+      record.recommendedGoal?.version !== 1
+    ) {
+      proceed()
+      return
+    }
+
+    void recordVoluntaryContinueIntent({
+      completedSessionId: getAchievementSessionId(record),
+      dict: record.dict,
+      occurredAt: Math.floor(Date.now() / 1000),
+    })
+      .catch((error) => {
+        console.error(
+          'failed to persist voluntary continue intent',
+          error,
+        )
+      })
+      .finally(proceed)
+  }, [
+    acknowledgeAchievements,
+    leaveLearn,
+    navigate,
+    record,
+  ])
 
   const chooseDictionary = useCallback(() => {
     acknowledgeAchievements()
