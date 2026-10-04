@@ -18,6 +18,7 @@ import {
   generateLearnReviewRecord,
   generateNewWordAcquisitionRecord,
   getLatestReviewRecord,
+  getNextSpacingDeferredResumeAt,
 } from '@/utils/db/review-record'
 import {
   bootstrapReviewWordStatesForDictionary,
@@ -133,6 +134,24 @@ export default function LearnPage() {
               words,
               dailyPlan.allowedNewWordsNow,
             )
+
+            if (!record) {
+              const nextResumeAt =
+                await getNextSpacingDeferredResumeAt(dictId)
+              if (!isCurrent()) return
+
+              if (nextResumeAt !== undefined && nextResumeAt > now) {
+                const minutes = Math.max(
+                  1,
+                  Math.ceil((nextResumeAt - now) / 60),
+                )
+                setStatusText(
+                  `还有新词正在建立间隔记忆，约 ${minutes} 分钟后可继续独立回忆。`,
+                )
+                setIsStarting(false)
+                return
+              }
+            }
           } else if (stats.lifecycle.unseen === 0) {
             setStatusText('当前词库没有需要学习的单词。')
             setIsStarting(false)
