@@ -1,4 +1,9 @@
-import { getUnseenAchievementStates, markAchievementSeen } from '@/achievement'
+import {
+  getUnseenAchievementStates,
+  markAchievementSeen,
+  processLiveLearnSessionCompletion,
+} from '@/achievement'
+import { getAchievementSessionId } from '@/achievement/session'
 import { TypingContext } from '@/pages/Typing/store'
 import { getAchievementCulture } from '@/resources/achievementCulture'
 import {
@@ -7,7 +12,7 @@ import {
 } from '@/store'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useCallback, useContext, useMemo } from 'react'
+import { useCallback, useContext, useEffect, useMemo } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate } from 'react-router-dom'
 import IconX from '~icons/tabler/x'
@@ -74,6 +79,19 @@ export default function LearnResultScreen() {
 
   const record = reviewModeInfo.reviewRecord
   const isAcquisition = record?.sessionKind === 'acquisition'
+
+  useEffect(() => {
+    if (!record || state.chapterData.wordRecordIds.length === 0) return
+
+    void processLiveLearnSessionCompletion({
+      sessionId: getAchievementSessionId(record),
+      dict: record.dict,
+      sourceRecordIds: [...state.chapterData.wordRecordIds],
+      completedAt: Math.floor(Date.now() / 1000),
+    }).catch((error) => {
+      console.error('failed to process achievement session completion', error)
+    })
+  }, [record, state.chapterData.wordRecordIds])
 
   const uniqueWordCount = useMemo(
     () =>
