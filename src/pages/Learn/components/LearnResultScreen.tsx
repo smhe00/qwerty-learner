@@ -4,6 +4,7 @@ import {
   processLiveLearnSessionCompletion,
   recordVoluntaryContinueIntent,
 } from '@/achievement'
+import { resolveAchievementCeremonyPresentation } from '@/achievement/presentation'
 import { getAchievementSessionId } from '@/achievement/session'
 import { TypingContext } from '@/pages/Typing/store'
 import { getAchievementCulture } from '@/resources/achievementCulture'
@@ -255,40 +256,76 @@ export default function LearnResultScreen() {
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {newAchievements.map(({ achievement, primary, state }) => (
-                  <article
-                    key={state.achievementId}
-                    className="rounded-xl bg-white px-4 py-4 shadow-sm dark:bg-gray-800"
-                    data-achievement-id={state.achievementId}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-base font-semibold text-gray-800 dark:text-gray-100">
-                          {achievement.title}
-                        </div>
-                        <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                          {achievement.copy.unlockMessage}
-                        </div>
-                      </div>
-                      {achievement.hidden ? (
-                        <span className="shrink-0 rounded-full bg-indigo-100 px-2 py-1 text-[11px] text-indigo-500 dark:bg-gray-700 dark:text-indigo-300">
-                          隐藏成就
-                        </span>
-                      ) : null}
-                    </div>
+                {newAchievements.map(({ achievement, primary, state }) => {
+                  const ceremony =
+                    resolveAchievementCeremonyPresentation(achievement)
+                  const emphasized =
+                    ceremony.layout === 'spotlight' ||
+                    ceremony.layout === 'ceremony'
 
-                    {primary ? (
-                      <div className="mt-3 border-l-2 border-indigo-200 pl-3 dark:border-indigo-500/40">
-                        <div className="text-sm text-gray-600 dark:text-gray-300">
-                          {primary.text}
+                  return (
+                    <article
+                      key={state.achievementId}
+                      className={`rounded-xl bg-white shadow-sm dark:bg-gray-800 ${
+                        ceremony.layout === 'compact'
+                          ? 'px-4 py-3'
+                          : ceremony.layout === 'standard'
+                            ? 'px-4 py-4'
+                            : ceremony.layout === 'spotlight'
+                              ? 'px-6 py-5 sm:col-span-2 ring-1 ring-indigo-200 dark:ring-indigo-500/30'
+                              : 'px-6 py-6 sm:col-span-2 ring-2 ring-indigo-300 dark:ring-indigo-400/40'
+                      }`}
+                      data-achievement-id={state.achievementId}
+                      data-achievement-ceremony={achievement.presentation.ceremony}
+                    >
+                      {emphasized ? (
+                        <div className="mb-2 text-xs font-medium tracking-[0.16em] text-indigo-400">
+                          {ceremony.label}
                         </div>
-                        <div className="mt-1 text-xs text-gray-400">
-                          {primary.source}
+                      ) : null}
+
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div
+                            className={`font-semibold text-gray-800 dark:text-gray-100 ${
+                              emphasized ? 'text-xl' : 'text-base'
+                            }`}
+                          >
+                            <span className="mr-2" aria-hidden="true">
+                              {achievement.artDirection.symbol}
+                            </span>
+                            {achievement.title}
+                          </div>
+                          <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            {achievement.copy.unlockMessage}
+                          </div>
                         </div>
+                        {achievement.hidden ? (
+                          <span className="shrink-0 rounded-full bg-indigo-100 px-2 py-1 text-[11px] text-indigo-500 dark:bg-gray-700 dark:text-indigo-300">
+                            隐藏成就
+                          </span>
+                        ) : null}
                       </div>
-                    ) : null}
-                  </article>
-                ))}
+
+                      {ceremony.showReflection ? (
+                        <p className="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                          {achievement.copy.reflection}
+                        </p>
+                      ) : null}
+
+                      {ceremony.showCulture && primary ? (
+                        <div className="mt-3 border-l-2 border-indigo-200 pl-3 dark:border-indigo-500/40">
+                          <div className="text-sm text-gray-600 dark:text-gray-300">
+                            {primary.text}
+                          </div>
+                          <div className="mt-1 text-xs text-gray-400">
+                            {primary.source}
+                          </div>
+                        </div>
+                      ) : null}
+                    </article>
+                  )
+                })}
               </div>
             </section>
           ) : null}
