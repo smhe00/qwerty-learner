@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  evaluateWordMetric,
   SUPPORTED_WORD_METRICS,
+  evaluateWordMetric,
 } from '../../src/achievement/evaluator'
+import { SUPPORTED_SESSION_METRICS } from '../../src/achievement/session-evaluator'
 import achievementData from '../../src/resources/achievementCulture/achievements.json'
 import type { AchievementDefinition } from '../../src/resources/achievementCulture'
 import type { IWordRecord } from '../../src/utils/db/record'
@@ -15,12 +16,14 @@ const p0 = achievements.filter(
 )
 
 test('P0 evaluator exposes only explicitly supported metrics', () => {
+  const isSupported = (metric: string) =>
+    SUPPORTED_WORD_METRICS.has(metric) ||
+    SUPPORTED_SESSION_METRICS.has(metric)
   const supported = p0.filter((achievement) =>
-    SUPPORTED_WORD_METRICS.has(achievement.condition.metric),
+    isSupported(achievement.condition.metric),
   )
   const unsupported = p0.filter(
-    (achievement) =>
-      !SUPPORTED_WORD_METRICS.has(achievement.condition.metric),
+    (achievement) => !isSupported(achievement.condition.metric),
   )
 
   assert.deepEqual(
@@ -29,19 +32,22 @@ test('P0 evaluator exposes only explicitly supported metrics', () => {
       'ACH_7_DAY',
       'ACH_7_OF_10',
       'ACH_ERROR_POSITION_FIXED',
+      'ACH_FAILURE_RECOVERY_SESSION',
       'ACH_FIRST_DECODE',
       'ACH_HIDDEN_CRAFT',
+      'ACH_HIDDEN_DAWN',
       'ACH_NO_HINT_10',
       'ACH_RECOVER_1',
       'ACH_RECOVER_3',
       'ACH_TRUE_MEMORY',
+      'ACH_WARMING_UP',
     ].sort(),
   )
 
-  // The remaining P0 definitions require session, chapter/mastery, or richer
-  // presentation-observation facts. They must remain disabled at runtime
-  // rather than being inferred from incomplete evidence.
-  assert.equal(unsupported.length, 10)
+  // The remaining P0 definitions require goal snapshots, unit/mastery state,
+  // pure-audio visibility facts, or cross-window observations. They remain
+  // disabled rather than being inferred from incomplete evidence.
+  assert.equal(unsupported.length, 7)
 })
 
 test('unsupported metric evaluates to null instead of guessing', () => {
