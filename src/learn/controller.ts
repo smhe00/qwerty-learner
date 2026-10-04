@@ -1,12 +1,8 @@
 import { buildLearnDailyPlan } from './plan'
-import {
-  decideDailyAcquisitionQuota,
-  type LearnAcquisitionQuotaDecision,
-} from './quota'
-import {
-  buildLearnStatsSnapshot,
-  type LearnStatsSnapshot,
-} from './stats'
+import type { LearnAcquisitionQuotaDecision } from './quota'
+import { decideDailyAcquisitionQuota } from './quota'
+import type { LearnStatsSnapshot } from './stats'
+import { buildLearnStatsSnapshot } from './stats'
 import type { IReviewWordState } from '@/review/types'
 import type { Word } from '@/typings'
 import type {
