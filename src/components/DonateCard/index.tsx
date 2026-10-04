@@ -6,7 +6,7 @@ import noop from '@/utils/noop'
 import { Dialog, Transition } from '@headlessui/react'
 import dayjs from 'dayjs'
 import type React from 'react'
-import { Fragment, useLayoutEffect, useMemo, useState } from 'react'
+import { Fragment, useLayoutEffect, useState } from 'react'
 import IconParty from '~icons/logos/partytown-icon'
 
 export const DonateCard = () => {
@@ -16,12 +16,6 @@ export const DonateCard = () => {
   const wordNumber = useWordNumber()
   const sumWrongCount = useSumWrongCount()
   const dayFromFirstWord = useDayFromFirstWordRecord()
-  const dayFromQwerty = useMemo(() => {
-    const now = dayjs()
-    const past = dayjs('2021-01-21')
-    return now.diff(past, 'day')
-  }, [])
-
   const HighlightedText = ({ children, className }: { children: React.ReactNode; className?: string }) => {
     return <span className={`font-bold  ${className ? className : 'text-indigo-500'}`}>{children}</span>
   }
@@ -107,7 +101,7 @@ export const DonateCard = () => {
                   <h1 className="gradient-text w-full pt-3 text-center text-[2.4rem] font-bold">{`${chapterNumber} Chapters Achievement !`}</h1>
                   <div className="flex w-full flex-col gap-4 px-4">
                     <p className="mx-auto px-4 indent-4">
-                      Qwerty Learner 已经陪伴您走过
+                      Qwerty Plus 已经陪伴您走过
                       <HighlightedText> {dayFromFirstWord} </HighlightedText>天，一起完成了
                       <HighlightedText> {wordNumber} </HighlightedText>
                       个词的练习，帮您纠正了 <HighlightedText> {sumWrongCount} </HighlightedText>
@@ -118,17 +112,7 @@ export const DonateCard = () => {
                     </p>
 
                     <p className="mx-auto px-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                      本实例基于
-                      <a
-                        className="mx-1 text-indigo-500 underline-offset-4 hover:underline"
-                        href="https://github.com/RealKai42/qwerty-learner"
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Qwerty Learner
-                      </a>
-                      （GPL-3.0）修改并独立部署。原项目已持续开源
-                      <HighlightedText className="text-indigo-500"> {dayFromQwerty} </HighlightedText>天。
+                      Qwerty Plus 当前处于 Alpha 阶段。源码与 GPL-3.0 许可证信息以当前项目仓库为准。
                     </p>
                   </div>
 
