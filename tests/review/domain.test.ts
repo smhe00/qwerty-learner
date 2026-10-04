@@ -3068,6 +3068,51 @@ test('Learn P3 excludes invalid Rating Gate events from cold-probe quality', () 
 })
 
 
+test('Learn P4 aggregates phased Acquisition effort per word instead of per attempt', () => {
+  const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
+  const phases = ['exposure', 'supported', 'independent'] as const
+  const wordRecords: IWordRecord[] = phases.map((phase, index) => {
+    const plan = createLearnAcquisitionExercisePlan(phase)
+    return {
+      word: 'environment',
+      timeStamp: now - index * 30,
+      dict: 'p4-phased-acquisition',
+      chapter: -1,
+      timing: [],
+      wrongCount: 0,
+      mistakes: {},
+      sourceMode: 'learn',
+      learnItemKind: 'acquisition',
+      exerciseCondition: plan.condition,
+      reviewPolicyDecision: plan.decision,
+      typingTelemetry: {
+        telemetryVersion: 2,
+        firstKeyLatencyMs: 2_000,
+        attempts: [
+          {
+            startLatencyMs: 2_000,
+            durationMs: 8_000,
+            correctPrefixLength: 11,
+            result: 'clean',
+          },
+        ],
+      },
+    }
+  })
+
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'p4-phased-acquisition',
+    wordRecords,
+    wordStates: [],
+    dictionaryWords: ['environment'],
+  })
+
+  assert.equal(stats.effort.todayActiveSeconds, 30)
+  assert.equal(stats.effort.medianAcquisitionSeconds, 30)
+  assert.equal(stats.effort.recentAcquisitionSamples, 1)
+})
+
 test('Learn P4 uses fallback timing for a new user and plans the full 20-word bootstrap', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
   const stats = buildLearnStatsSnapshot({
