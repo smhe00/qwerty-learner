@@ -113,9 +113,10 @@ function attemptLoads(record: IWordRecord) {
 }
 
 function recordOrder(left: IWordRecord, right: IWordRecord): number {
-  const leftOrder = left.id ?? left.timeStamp
-  const rightOrder = right.id ?? right.timeStamp
-  return leftOrder - rightOrder
+  if (left.timeStamp !== right.timeStamp) {
+    return left.timeStamp - right.timeStamp
+  }
+  return (left.id ?? 0) - (right.id ?? 0)
 }
 
 /**
