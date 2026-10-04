@@ -120,9 +120,15 @@ async function seedAcquisitionSession(
   words: ReviewWord[],
   id: number,
   phase: 'exposure' | 'supported' | 'independent' = 'independent',
+  independentInterveningItems = 4,
 ) {
   await page.addInitScript(
-    ({ seededWords, recordId, seededPhase }) => {
+    ({
+      seededWords,
+      recordId,
+      seededPhase,
+      seededIndependentInterveningItems,
+    }) => {
       const condition =
         seededPhase === 'exposure'
           ? {
@@ -178,8 +184,10 @@ async function seedAcquisitionSession(
                       seededPhase === 'independent'
                         ? [
                             'e2e-acquisition-phase',
-                            'intervening-items-4',
-                            'spacing-eligible',
+                            `intervening-items-${seededIndependentInterveningItems}`,
+                            ...(seededIndependentInterveningItems >= 2
+                              ? ['spacing-eligible']
+                              : ['spacing-insufficient']),
                           ]
                         : ['e2e-acquisition-phase'],
                     conditionVersion: 1,
@@ -196,7 +204,10 @@ async function seedAcquisitionSession(
                   phase: seededPhase,
                   assistedCycles: 0,
                   ...(seededPhase === 'independent'
-                    ? { independentInterveningItems: 4 }
+                    ? {
+                        independentInterveningItems:
+                          seededIndependentInterveningItems,
+                      }
                     : {}),
                 },
               ]),
@@ -222,7 +233,13 @@ async function seedAcquisitionSession(
         }),
       )
     },
-    { seededWords: words, recordId: id, seededPhase: phase },
+    {
+      seededWords: words,
+      recordId: id,
+      seededPhase: phase,
+      seededIndependentInterveningItems:
+        independentInterveningItems,
+    },
   )
 }
 
@@ -1778,6 +1795,143 @@ test('Learn starts new acquisition with exposure and does not admit after visibl
       policyVersion: 'learn-acquisition-exposure-v1',
     },
   })
+})
+
+test('clean but short-gap Independent recall defers without false admission', async ({
+  page,
+}) => {
+  await seedAcquisitionSession(
+    page,
+    [reviewWords[0]],
+    920000,
+    'independent',
+    0,
+  )
+  await page.goto('/learn/session')
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+
+  await page.keyboard.type('cancel')
+
+  await expect
+    .poll(async () => {
+      const info = await readReviewModeInfo(page)
+      return info?.reviewRecord?.isFinished
+    })
+    .toBe(true)
+
+  const info = await readReviewModeInfo(page)
+  const acquisitionState =
+    info?.reviewRecord?.acquisitionStates?.cancel
+  expect(acquisitionState).toMatchObject({
+    phase: 'deferred',
+    assistedCycles: 0,
+    deferredReason: 'spacing',
+  })
+  expect(acquisitionState?.resumeAfter).toBeGreaterThan(
+    Math.floor(Date.now() / 1000),
+  )
+
+  const durableState = await page.evaluate(async () => {
+    return new Promise<any>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction('reviewWordStates', 'readonly')
+        const get = tx
+          .objectStore('reviewWordStates')
+          .index('[dict+word]')
+          .get(['cet4', 'cancel'])
+        get.onerror = () => reject(get.error)
+        get.onsuccess = () => {
+          resolve(get.result)
+          db.close()
+        }
+      }
+    })
+  })
+  expect(durableState).toBeUndefined()
+  await expect(
+    page.locator('[data-learn-result-screen]'),
+  ).toBeVisible()
+})
+
+test('spacing-deferred acquisition resumes as Independent after its delay', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(-1))
+    localStorage.setItem(
+      'reviewModeInfo',
+      JSON.stringify({
+        isReviewMode: false,
+      }),
+    )
+  })
+  await page.goto('/typing')
+
+  const resumeAfter = Math.floor(Date.now() / 1000) - 1
+  await page.evaluate(
+    async ({ word, resumeAt }) => {
+      await new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open('RecordDB')
+        request.onerror = () => reject(request.error)
+        request.onsuccess = () => {
+          const db = request.result
+          const tx = db.transaction('reviewRecords', 'readwrite')
+          tx.objectStore('reviewRecords').add({
+            dict: 'cet4',
+            index: 0,
+            createTime: resumeAt - 300,
+            isFinished: true,
+            sessionKind: 'acquisition',
+            words: [word],
+            acquisitionStates: {
+              [word.name]: {
+                version: 1,
+                phase: 'deferred',
+                assistedCycles: 0,
+                independentInterveningItems: 0,
+                deferredReason: 'spacing',
+                resumeAfter: resumeAt,
+              },
+            },
+          })
+          tx.onerror = () => reject(tx.error)
+          tx.onabort = () => reject(tx.error)
+          tx.oncomplete = () => {
+            db.close()
+            resolve()
+          }
+        }
+      })
+    },
+    { word: reviewWords[0], resumeAt: resumeAfter },
+  )
+
+  await page.goto('/learn')
+  await expect(page).toHaveURL(/\/learn\/session$/)
+  const info = await readReviewModeInfo(page)
+  expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
+  expect(info?.reviewRecord?.words?.[0]?.name).toBe('cancel')
+  expect(
+    info?.reviewRecord?.acquisitionStates?.cancel,
+  ).toMatchObject({
+    phase: 'independent',
+    assistedCycles: 0,
+    independentInterveningItems: 2,
+  })
+
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+  const word = page.locator('[data-typing-word="cancel"]')
+  await expect(word).toHaveAttribute('data-review-purpose', 'probe')
+  await expect(word).toHaveAttribute(
+    'data-review-letters',
+    'all-hidden',
+  )
 })
 
 test('clean Independent acquisition is the admission boundary', async ({
