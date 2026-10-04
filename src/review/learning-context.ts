@@ -32,6 +32,7 @@ export class LearningContextCollector {
   reset(initial?: {
     answerVisibilityAtStart?: AnswerVisibility
     answerVisibleRatioAtStart?: number
+    exampleVisibleAtStart?: boolean
     meaningVisibleAtStart?: boolean
     phoneticVisibleAtStart?: boolean
     pronunciationEnabledAtStart?: boolean
@@ -43,6 +44,7 @@ export class LearningContextCollector {
       answerRevealed: false,
       revealedBeforeFirstKey: false,
       revealCount: 0,
+      exampleVisibleAtStart: initial?.exampleVisibleAtStart,
       meaningVisibleAtStart: initial?.meaningVisibleAtStart,
       meaningRevealed: false,
       meaningRevealedBeforeFirstKey: false,
