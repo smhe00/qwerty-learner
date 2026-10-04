@@ -79,6 +79,7 @@ export function detectLearnSystemAnomalies(
     ].join('::')
   let singletonRun = 0
   let lastSingletonSessionId: string | null = null
+  const readyDeferredMisses = new Map<string, number>()
 
   for (let index = 0; index < events.length; index += 1) {
     const event = events[index]
@@ -184,22 +185,63 @@ export function detectLearnSystemAnomalies(
     }
 
     if (event.kind === 'acquisition-health') {
-      const stranded = event.pending.filter(
-        (item) =>
-          item.phase === 'deferred' &&
-          item.resumeAfter === null,
+      const pendingNames = new Set(
+        event.pending.map((item) => item.word),
       )
-      for (const item of stranded) {
-        anomalies.push({
-          code: 'stranded-pending-acquisition',
-          severity: 'high',
-          eventIndex: index,
-          details: {
-            word: item.word,
-            phase: item.phase,
-            deferredReason: item.deferredReason,
-          },
-        })
+      for (const word of readyDeferredMisses.keys()) {
+        if (!pendingNames.has(word)) {
+          readyDeferredMisses.delete(word)
+        }
+      }
+
+      for (const item of event.pending) {
+        if (item.phase !== 'deferred') {
+          readyDeferredMisses.delete(item.word)
+          continue
+        }
+
+        if (item.resumeAfter === null) {
+          anomalies.push({
+            code: 'stranded-pending-acquisition',
+            severity: 'high',
+            eventIndex: index,
+            details: {
+              word: item.word,
+              phase: item.phase,
+              deferredReason: item.deferredReason,
+              reason: 'missing-resume-time',
+            },
+          })
+          continue
+        }
+
+        const ready = item.resumeAfter <= event.now
+        if (!ready) {
+          readyDeferredMisses.delete(item.word)
+          continue
+        }
+
+        if (!event.opportunity) continue
+
+        const misses =
+          (readyDeferredMisses.get(item.word) ?? 0) + 1
+        readyDeferredMisses.set(item.word, misses)
+
+        if (misses === 2) {
+          anomalies.push({
+            code: 'stranded-pending-acquisition',
+            severity: 'high',
+            eventIndex: index,
+            details: {
+              word: item.word,
+              phase: item.phase,
+              deferredReason: item.deferredReason,
+              resumeAfter: item.resumeAfter,
+              now: event.now,
+              missedOpportunities: misses,
+            },
+          })
+        }
       }
       continue
     }
