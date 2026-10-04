@@ -140,6 +140,15 @@ export async function generateLearnReviewRecord(
     exercisePlans,
     'review',
   )
+  if ((options?.mode ?? 'due') === 'due') {
+    record.recommendedGoal = {
+      version: 1,
+      kind: 'session-completion',
+      targetUniqueWords: new Set(
+        sortedWords.map((word) => word.name),
+      ).size,
+    }
+  }
   record.id = await db.reviewRecords.add(record)
   return record
 }
@@ -281,6 +290,13 @@ export async function generateNewWordAcquisitionRecord(
     'acquisition',
   )
   record.acquisitionStates = acquisitionStates
+  record.recommendedGoal = {
+    version: 1,
+    kind: 'session-completion',
+    targetUniqueWords: new Set(
+      selectedWords.map((word) => word.name),
+    ).size,
+  }
   record.id = await db.reviewRecords.add(record)
   return record
 }
