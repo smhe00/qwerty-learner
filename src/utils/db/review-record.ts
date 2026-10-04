@@ -9,6 +9,7 @@ import {
 } from '@/learn/session'
 import {
   createLearnAcquisitionExercisePlanForState,
+  normalizeDeferredAcquisitionState,
 } from '@/learn/acquisition'
 import type { LearnAcquisitionState } from '@/learn/acquisition'
 import {
@@ -186,7 +187,13 @@ function latestAcquisitionStatesByWord(
     for (const [word, state] of Object.entries(
       record.acquisitionStates ?? {},
     )) {
-      latest.set(word, state)
+      latest.set(
+        word,
+        normalizeDeferredAcquisitionState(
+          state,
+          record.createTime,
+        ),
+      )
     }
   }
 
@@ -212,7 +219,7 @@ async function getPendingAcquisitionStates(
   return pending
 }
 
-async function getSpacingDeferredAcquisitionStates(
+async function getDeferredAcquisitionStates(
   dictID: string,
 ): Promise<Map<string, LearnAcquisitionState>> {
   const pending = await getPendingAcquisitionStates(dictID)
@@ -220,21 +227,30 @@ async function getSpacingDeferredAcquisitionStates(
     [...pending].filter(
       ([, state]) =>
         state.phase === 'deferred' &&
-        state.deferredReason === 'spacing' &&
         state.resumeAfter !== undefined,
     ),
   )
 }
 
-export async function getNextSpacingDeferredResumeAt(
+export async function getNextDeferredAcquisitionResumeAt(
   dictID: string,
 ): Promise<number | undefined> {
-  const deferred = await getSpacingDeferredAcquisitionStates(dictID)
+  const deferred = await getDeferredAcquisitionStates(dictID)
   const resumeTimes = [...deferred.values()]
     .map((state) => state.resumeAfter)
     .filter((value): value is number => value !== undefined)
 
   return resumeTimes.length > 0 ? Math.min(...resumeTimes) : undefined
+}
+
+/**
+ * Compatibility alias. Pending recovery now includes both spacing and
+ * assistance deferrals.
+ */
+export async function getNextSpacingDeferredResumeAt(
+  dictID: string,
+): Promise<number | undefined> {
+  return getNextDeferredAcquisitionResumeAt(dictID)
 }
 
 export async function generateNewWordAcquisitionRecord(
