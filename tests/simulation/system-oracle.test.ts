@@ -12,9 +12,9 @@ import { decideDailyAcquisitionQuota } from '../../src/learn/quota'
 import { createInitialReviewWordState } from '../../src/review/types'
 import type { IReviewWordState } from '../../src/review/types'
 import type { Word } from '../../src/typings'
-import {
+import type {
+  IWordRecord,
   ReviewRecord,
-  type IWordRecord,
 } from '../../src/utils/db/record'
 import {
   detectLearnSystemAnomalies,
@@ -145,13 +145,15 @@ function createEntryHarness(input: {
         records.push(exposureRecord(item.name, now))
       }
 
-      const session = new ReviewRecord(
-        'simulation',
-        selected,
-        undefined,
-        'acquisition',
-      )
-      session.id = nextSessionId
+      const session = {
+        id: nextSessionId,
+        dict: 'simulation',
+        index: 0,
+        createTime: now,
+        isFinished: false,
+        words: selected,
+        sessionKind: 'acquisition' as const,
+      } as ReviewRecord
       nextSessionId += 1
       return session
     },
