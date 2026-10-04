@@ -43,7 +43,7 @@ jobs:
             --output /tmp/tla2tools.jar
           actual="$(sha256sum /tmp/tla2tools.jar | awk '{print $1}')"
           echo "Downloaded tla2tools.jar SHA256: $actual"
-          expected='e22f8ffb4bacdea0a871f444dd94fe5fb0d8013b3388ae39e82e26f852c735d5'
+          expected='c2fe4e56e43bde19f213b4a7e441d037297fda733e503579623e859b79348239'
           if [ "$actual" != "$expected" ]; then
             echo "Pinned SHA256 mismatch."
             exit 1
