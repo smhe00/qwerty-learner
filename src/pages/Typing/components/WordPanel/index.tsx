@@ -85,6 +85,15 @@ export default function WordPanel() {
       : undefined
   const currentAcquisitionScaffold =
     getLearnAcquisitionScaffoldDecision(currentAcquisitionState)
+  const currentManagedHintInitialLevel: ReviewHintLevel | undefined =
+    currentLearnItemKind === 'acquisition' &&
+    currentAcquisitionScaffold?.level === 'S1'
+      ? 1
+      : undefined
+  const currentManagedHintInitialPosition =
+    currentManagedHintInitialLevel !== undefined
+      ? currentAcquisitionScaffold?.hintPosition
+      : undefined
   const currentExercisePlan =
     isReviewMode && currentWord
       ? currentLearnItemKind === 'acquisition' &&
@@ -116,8 +125,12 @@ export default function WordPanel() {
       : currentWordComponentKey
 
   useEffect(() => {
-    setCurrentReviewHintLevel(null)
-  }, [state.chapterData.index, wordComponentKey])
+    setCurrentReviewHintLevel(currentManagedHintInitialLevel ?? null)
+  }, [
+    state.chapterData.index,
+    wordComponentKey,
+    currentManagedHintInitialLevel,
+  ])
 
   const prevIndex = useMemo(() => {
     const newIndex = state.chapterData.index - 1
@@ -712,17 +725,9 @@ export default function WordPanel() {
                 }
                 reviewAttemptRole={currentReviewAttemptRole}
                 managedHintFlow={managedHintFlow}
-                managedHintInitialLevel={
-                  currentLearnItemKind === 'acquisition' &&
-                  currentAcquisitionScaffold?.level === 'S1'
-                    ? 1
-                    : undefined
-                }
+                managedHintInitialLevel={currentManagedHintInitialLevel}
                 managedHintInitialPosition={
-                  currentLearnItemKind === 'acquisition' &&
-                  currentAcquisitionScaffold?.level === 'S1'
-                    ? currentAcquisitionScaffold.hintPosition
-                    : undefined
+                  currentManagedHintInitialPosition
                 }
                 onHintLevelChange={setCurrentReviewHintLevel}
                 key={currentWordRenderKey}
