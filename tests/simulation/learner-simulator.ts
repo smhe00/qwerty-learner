@@ -2,10 +2,18 @@ import {
   LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
   LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION,
 } from '../../src/learn/acquisition'
-import { decideDailyAcquisitionQuota } from '../../src/learn/quota'
+import {
+  decideDailyAcquisitionQuota,
+  learnAcquisitionQuotaPolicy,
+  type LearnAcquisitionQuotaPolicy,
+} from '../../src/learn/quota'
 import { buildLearnStatsSnapshot } from '../../src/learn/stats'
 import { countLongTermMasteredWords } from '../../src/learn/mastery'
-import { scheduleBasicReview } from '../../src/review/scheduler'
+import {
+  defaultBasicReviewSchedulePolicy,
+  scheduleBasicReview,
+  type BasicReviewSchedulePolicy,
+} from '../../src/review/scheduler'
 import {
   createInitialReviewWordState,
   type IReviewWordState,
@@ -351,6 +359,8 @@ export function simulateLearner(input: {
   dictionarySize?: number
   startAt?: number
   maxDailyReviews?: number
+  schedulePolicy?: BasicReviewSchedulePolicy
+  quotaPolicy?: LearnAcquisitionQuotaPolicy
 }): LearnerSimulationResult {
   const days = input.days ?? 120
   const dictionarySize = input.dictionarySize ?? 240
@@ -461,11 +471,14 @@ export function simulateLearner(input: {
         })
       }
 
-      const next = scheduleBasicReview({
-        state,
-        outcome: finalOutcome,
-        now: clock.now,
-      })
+      const next = scheduleBasicReview(
+        {
+          state,
+          outcome: finalOutcome,
+          now: clock.now,
+        },
+        input.schedulePolicy ?? defaultBasicReviewSchedulePolicy,
+      )
       wordStates = wordStates.map((existing) =>
         existing.word === state.word ? next : existing,
       )
@@ -479,7 +492,10 @@ export function simulateLearner(input: {
       wordStates,
       dictionaryWords: words,
     })
-    const quota = decideDailyAcquisitionQuota(statsBefore)
+    const quota = decideDailyAcquisitionQuota(
+      statsBefore,
+      input.quotaPolicy ?? learnAcquisitionQuotaPolicy,
+    )
 
     const pending = words.filter(
       (word) => latent.get(word)?.pending,
