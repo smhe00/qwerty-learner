@@ -2,7 +2,7 @@
 
 > Product version: `0.2.0-alpha.1`
 >
-> Release name: **Qwerty Learner — Learn Alpha 1**
+> Release name: **Qwerty Plus — Learn Alpha 1**
 >
 > Canonical integrated branch: `product/main`
 >
