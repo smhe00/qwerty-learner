@@ -1,0 +1,1021 @@
+[
+  {
+    "id": "CUL_ZHENGXIE_001",
+    "type": "poetry",
+    "title": "竹石",
+    "text": "千磨万击还坚劲，任尔东西南北风。",
+    "source": "《竹石》",
+    "author": "郑燮",
+    "era": "清",
+    "themes": [
+      "resilience",
+      "perseverance"
+    ],
+    "studentMeaning": "经过很多次打击仍能站稳，才叫真正的坚韧。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "竹石",
+      "scene": "经过很多次打击仍能站稳，才叫真正的坚韧。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_TAOYUANMING_001",
+    "type": "poetry",
+    "title": "岁月不待",
+    "text": "盛年不重来，一日难再晨。及时当勉励，岁月不待人。",
+    "source": "《杂诗十二首·其一》",
+    "author": "陶渊明",
+    "era": "东晋",
+    "themes": [
+      "long_view",
+      "perseverance"
+    ],
+    "studentMeaning": "今天能做的一小步，不必等到更完美的明天。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "岁月不待",
+      "scene": "今天能做的一小步，不必等到更完美的明天。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_YUEYANG_001",
+    "type": "classical_prose",
+    "title": "不以物喜",
+    "text": "不以物喜，不以己悲。",
+    "source": "《岳阳楼记》",
+    "author": "范仲淹",
+    "era": "北宋",
+    "themes": [
+      "self_mastery",
+      "resilience"
+    ],
+    "studentMeaning": "不让一次成功或失败完全左右自己的状态。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "不以物喜",
+      "scene": "不让一次成功或失败完全左右自己的状态。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_YUEYANG_002",
+    "type": "classical_prose",
+    "title": "先忧后乐",
+    "text": "先天下之忧而忧，后天下之乐而乐。",
+    "source": "《岳阳楼记》",
+    "author": "范仲淹",
+    "era": "北宋",
+    "themes": [
+      "long_view",
+      "courage"
+    ],
+    "studentMeaning": "把眼光放得更长远，个人得失就不再是全部。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "先忧后乐",
+      "scene": "把眼光放得更长远，个人得失就不再是全部。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_LOUSHI_001",
+    "type": "classical_prose",
+    "title": "斯是陋室",
+    "text": "斯是陋室，惟吾德馨。",
+    "source": "《陋室铭》",
+    "author": "刘禹锡",
+    "era": "唐",
+    "themes": [
+      "self_mastery",
+      "focus"
+    ],
+    "studentMeaning": "真正决定价值的，不是外部条件，而是自身状态。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "斯是陋室",
+      "scene": "真正决定价值的，不是外部条件，而是自身状态。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_AILIAN_001",
+    "type": "classical_prose",
+    "title": "濯清涟而不妖",
+    "text": "出淤泥而不染，濯清涟而不妖。",
+    "source": "《爱莲说》",
+    "author": "周敦颐",
+    "era": "北宋",
+    "themes": [
+      "self_mastery",
+      "courage"
+    ],
+    "studentMeaning": "保持自己的判断，不被周围环境轻易带走。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "濯清涟而不妖",
+      "scene": "保持自己的判断，不被周围环境轻易带走。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_CHUSHIBIAO_001",
+    "type": "classical_prose",
+    "title": "妄自菲薄",
+    "text": "不宜妄自菲薄，引喻失义。",
+    "source": "《出师表》",
+    "author": "诸葛亮",
+    "era": "三国",
+    "themes": [
+      "courage",
+      "self_mastery"
+    ],
+    "studentMeaning": "不要因为暂时做不好，就过早否定自己的能力。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "妄自菲薄",
+      "scene": "不要因为暂时做不好，就过早否定自己的能力。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_CAOGUILUNZHAN_001",
+    "type": "classical_prose",
+    "title": "一鼓作气",
+    "text": "一鼓作气，再而衰，三而竭。",
+    "source": "《曹刿论战》",
+    "author": "左丘明（传统题署）",
+    "era": "先秦",
+    "themes": [
+      "focus",
+      "courage"
+    ],
+    "studentMeaning": "把握最有精神的一段时间，把关键任务先做起来。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "一鼓作气",
+      "scene": "把握最有精神的一段时间，把关键任务先做起来。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_TAOYUANMING_002",
+    "type": "classical_prose",
+    "title": "豁然开朗",
+    "text": "复行数十步，豁然开朗。",
+    "source": "《桃花源记》",
+    "author": "陶渊明",
+    "era": "东晋",
+    "themes": [
+      "recovery",
+      "curiosity"
+    ],
+    "studentMeaning": "很多理解都发生在多走几步之后。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "豁然开朗",
+      "scene": "很多理解都发生在多走几步之后。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_OUYANGXIU_001",
+    "type": "classical_prose",
+    "title": "在乎山水",
+    "text": "醉翁之意不在酒，在乎山水之间也。",
+    "source": "《醉翁亭记》",
+    "author": "欧阳修",
+    "era": "北宋",
+    "themes": [
+      "curiosity",
+      "growth"
+    ],
+    "studentMeaning": "学习的乐趣不只在结果，也在发现过程本身。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "在乎山水",
+      "scene": "学习的乐趣不只在结果，也在发现过程本身。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_MAOSHUXIAO_001",
+    "type": "poetry",
+    "title": "路漫漫",
+    "text": "路漫漫其修远兮，吾将上下而求索。",
+    "source": "《离骚》",
+    "author": "屈原",
+    "era": "战国",
+    "themes": [
+      "curiosity",
+      "long_view",
+      "perseverance"
+    ],
+    "studentMeaning": "路很长并不可怕，重要的是继续寻找答案。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "路漫漫",
+      "scene": "路很长并不可怕，重要的是继续寻找答案。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_WANGBO_001",
+    "type": "poetry",
+    "title": "海内知己",
+    "text": "海内存知己，天涯若比邻。",
+    "source": "《送杜少府之任蜀州》",
+    "author": "王勃",
+    "era": "唐",
+    "themes": [
+      "long_view"
+    ],
+    "studentMeaning": "真正的联系可以跨越距离，也能跨越时间。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "medium",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "海内知己",
+      "scene": "真正的联系可以跨越距离，也能跨越时间。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_CAOCAO_001",
+    "type": "poetry",
+    "title": "老骥伏枥",
+    "text": "老骥伏枥，志在千里；烈士暮年，壮心不已。",
+    "source": "《龟虽寿》",
+    "author": "曹操",
+    "era": "东汉末",
+    "themes": [
+      "long_view",
+      "perseverance"
+    ],
+    "studentMeaning": "年龄和阶段不是停止进步的理由。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "medium",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "老骥伏枥",
+      "scene": "年龄和阶段不是停止进步的理由。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_YANSHU_001",
+    "type": "poetry",
+    "title": "似曾相识",
+    "text": "无可奈何花落去，似曾相识燕归来。",
+    "source": "《浣溪沙》",
+    "author": "晏殊",
+    "era": "北宋",
+    "themes": [
+      "review",
+      "recovery"
+    ],
+    "studentMeaning": "遗忘和重逢都是学习的一部分。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "medium",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "似曾相识",
+      "scene": "遗忘和重逢都是学习的一部分。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_XINQIJI_001",
+    "type": "poetry",
+    "title": "蓦然回首",
+    "text": "众里寻他千百度，蓦然回首，那人却在，灯火阑珊处。",
+    "source": "《青玉案·元夕》",
+    "author": "辛弃疾",
+    "era": "南宋",
+    "themes": [
+      "recovery",
+      "curiosity"
+    ],
+    "studentMeaning": "有些答案经过反复寻找，会在某一刻突然清晰。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "medium",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "蓦然回首",
+      "scene": "有些答案经过反复寻找，会在某一刻突然清晰。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_LISHANGYIN_001",
+    "type": "poetry",
+    "title": "更待菊黄",
+    "text": "何当共剪西窗烛，却话巴山夜雨时。",
+    "source": "《夜雨寄北》",
+    "author": "李商隐",
+    "era": "唐",
+    "themes": [
+      "long_view"
+    ],
+    "studentMeaning": "眼前的等待，也可以因为未来的回望而有意义。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "medium",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "更待菊黄",
+      "scene": "眼前的等待，也可以因为未来的回望而有意义。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_WANGWEI_001",
+    "type": "poetry",
+    "title": "行到水穷",
+    "text": "行到水穷处，坐看云起时。",
+    "source": "《终南别业》",
+    "author": "王维",
+    "era": "唐",
+    "themes": [
+      "resilience",
+      "self_mastery"
+    ],
+    "studentMeaning": "遇到暂时走不通的时候，也可以调整节奏重新观察。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "medium",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "行到水穷",
+      "scene": "遇到暂时走不通的时候，也可以调整节奏重新观察。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_CENSHEN_001",
+    "type": "poetry",
+    "title": "忽如一夜",
+    "text": "忽如一夜春风来，千树万树梨花开。",
+    "source": "《白雪歌送武判官归京》",
+    "author": "岑参",
+    "era": "唐",
+    "themes": [
+      "growth",
+      "recovery"
+    ],
+    "studentMeaning": "积累到一定程度，进步有时会突然显现。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "medium",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "忽如一夜",
+      "scene": "积累到一定程度，进步有时会突然显现。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_GUANZHONG_001",
+    "type": "classic_saying",
+    "title": "十年树木",
+    "text": "一年之计，莫如树谷；十年之计，莫如树木；终身之计，莫如树人。",
+    "source": "《管子·权修》",
+    "author": "管仲学派",
+    "era": "先秦",
+    "themes": [
+      "long_view",
+      "growth"
+    ],
+    "studentMeaning": "真正重要的成长，需要比短期成绩更长的时间尺度。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "medium",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "十年树木",
+      "scene": "真正重要的成长，需要比短期成绩更长的时间尺度。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_LVSHI_001",
+    "type": "classic_saying",
+    "title": "流水不腐",
+    "text": "流水不腐，户枢不蠹。",
+    "source": "《吕氏春秋·尽数》",
+    "author": "吕不韦门客",
+    "era": "战国末",
+    "themes": [
+      "review",
+      "perseverance"
+    ],
+    "studentMeaning": "知识也要经常调用，越用越活。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "medium",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "流水不腐",
+      "scene": "知识也要经常调用，越用越活。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_SUNZI_001",
+    "type": "classic_saying",
+    "title": "知彼知己",
+    "text": "知彼知己，百战不殆。",
+    "source": "《孙子兵法·谋攻篇》",
+    "author": "孙武",
+    "era": "春秋",
+    "themes": [
+      "craft",
+      "self_mastery"
+    ],
+    "studentMeaning": "知道任务难在哪里，也知道自己容易错在哪里，进步会更快。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "medium",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "知彼知己",
+      "scene": "知道任务难在哪里，也知道自己容易错在哪里，进步会更快。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_SHANGSHU_001",
+    "type": "classic_saying",
+    "title": "功崇惟志",
+    "text": "功崇惟志，业广惟勤。",
+    "source": "《尚书·周官》",
+    "author": "佚名",
+    "era": "先秦文献",
+    "themes": [
+      "long_view",
+      "perseverance"
+    ],
+    "studentMeaning": "成就靠方向，也靠持续行动。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "medium",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "功崇惟志",
+      "scene": "成就靠方向，也靠持续行动。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_ZENGGUANG_001",
+    "type": "classic_saying",
+    "title": "书山学海",
+    "text": "书山有路勤为径，学海无涯苦作舟。",
+    "source": "传统劝学联",
+    "author": "传统格言",
+    "era": "后世",
+    "themes": [
+      "perseverance",
+      "long_view"
+    ],
+    "studentMeaning": "学习没有真正的捷径，但可以找到适合自己的路。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "general",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "书山学海",
+      "scene": "学习没有真正的捷径，但可以找到适合自己的路。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_WANGYANGMING_001",
+    "type": "classic_saying",
+    "title": "知行合一",
+    "text": "知是行之始，行是知之成。",
+    "source": "《传习录》",
+    "author": "王守仁",
+    "era": "明",
+    "themes": [
+      "craft",
+      "growth"
+    ],
+    "studentMeaning": "知道只是起点，真正做到才算完成。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "medium",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "知行合一",
+      "scene": "知道只是起点，真正做到才算完成。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_GUZHI_001",
+    "type": "classic_saying",
+    "title": "熟能生巧",
+    "text": "熟能生巧。",
+    "source": "传统成语",
+    "author": "传统",
+    "era": "后世",
+    "themes": [
+      "craft",
+      "perseverance"
+    ],
+    "studentMeaning": "重复不是目的，熟练会让复杂动作逐渐自动化。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "general",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "熟能生巧",
+      "scene": "重复不是目的，熟练会让复杂动作逐渐自动化。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_GUZHI_002",
+    "type": "classic_saying",
+    "title": "滴水穿石",
+    "text": "滴水穿石，非一日之功。",
+    "source": "传统格言",
+    "author": "传统",
+    "era": "后世",
+    "themes": [
+      "perseverance",
+      "long_view"
+    ],
+    "studentMeaning": "微小进步只要持续，也能改变坚硬的东西。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "general",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "滴水穿石",
+      "scene": "微小进步只要持续，也能改变坚硬的东西。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_GUZHI_003",
+    "type": "classic_saying",
+    "title": "绳锯木断",
+    "text": "绳锯木断，水滴石穿。",
+    "source": "《鹤林玉露》",
+    "author": "罗大经",
+    "era": "南宋",
+    "themes": [
+      "perseverance",
+      "resilience"
+    ],
+    "studentMeaning": "力量不一定来自一次很猛，而可以来自长期不间断。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "medium",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "绳锯木断",
+      "scene": "力量不一定来自一次很猛，而可以来自长期不间断。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_GUZHI_004",
+    "type": "idiom",
+    "title": "百尺竿头",
+    "text": "百尺竿头，更进一步。",
+    "source": "佛典语汇后演为成语",
+    "author": "传统",
+    "era": "后世",
+    "themes": [
+      "growth",
+      "long_view"
+    ],
+    "studentMeaning": "已经做得不错时，仍可以向前再走一步。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "general",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "百尺竿头",
+      "scene": "已经做得不错时，仍可以向前再走一步。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_GUZHI_005",
+    "type": "idiom",
+    "title": "水到渠成",
+    "text": "水到渠成。",
+    "source": "传统成语",
+    "author": "传统",
+    "era": "后世",
+    "themes": [
+      "long_view",
+      "growth"
+    ],
+    "studentMeaning": "很多能力在积累足够之后，会自然显现。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "general",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "水到渠成",
+      "scene": "很多能力在积累足够之后，会自然显现。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_GUZHI_006",
+    "type": "idiom",
+    "title": "迎难而上",
+    "text": "迎难而上。",
+    "source": "现代常用成语",
+    "author": "现代",
+    "era": "现代",
+    "themes": [
+      "courage",
+      "resilience"
+    ],
+    "studentMeaning": "困难出现时，不立刻后退。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "general",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "迎难而上",
+      "scene": "困难出现时，不立刻后退。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_GUZHI_007",
+    "type": "idiom",
+    "title": "持之以恒",
+    "text": "持之以恒。",
+    "source": "传统成语",
+    "author": "传统",
+    "era": "后世",
+    "themes": [
+      "perseverance",
+      "long_view"
+    ],
+    "studentMeaning": "长期保持，比偶尔用力更重要。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "general",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "持之以恒",
+      "scene": "长期保持，比偶尔用力更重要。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_GUZHI_008",
+    "type": "idiom",
+    "title": "循序渐进",
+    "text": "循序渐进。",
+    "source": "传统成语",
+    "author": "传统",
+    "era": "后世",
+    "themes": [
+      "first_step",
+      "growth"
+    ],
+    "studentMeaning": "学习要有层次，一步一步把难度抬高。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "general",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "循序渐进",
+      "scene": "学习要有层次，一步一步把难度抬高。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_GUZHI_009",
+    "type": "idiom",
+    "title": "融会贯通",
+    "text": "融会贯通。",
+    "source": "传统成语",
+    "author": "传统",
+    "era": "后世",
+    "themes": [
+      "review",
+      "growth"
+    ],
+    "studentMeaning": "知识彼此连起来以后，就不再是孤立记忆。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "general",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "融会贯通",
+      "scene": "知识彼此连起来以后，就不再是孤立记忆。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_GUZHI_010",
+    "type": "idiom",
+    "title": "触类旁通",
+    "text": "触类旁通。",
+    "source": "《周易·系辞》语义演化",
+    "author": "传统",
+    "era": "先秦及后世",
+    "themes": [
+      "curiosity",
+      "growth"
+    ],
+    "studentMeaning": "真正理解一个方法后，可以迁移到相似问题。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "general",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "触类旁通",
+      "scene": "真正理解一个方法后，可以迁移到相似问题。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  }
+]
