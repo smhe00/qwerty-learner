@@ -174,7 +174,12 @@ export function rebuildBasicStateFromWordRecords(
   const priorRecords: IWordRecord[] = []
 
   for (const record of sortedRecords) {
-    const outcome = inferReviewOutcomeFromWordRecord(record, priorRecords)
+    const isAfterAdmission =
+      !firstAcquisitionAdmission ||
+      compareRecordOrder(record, firstAcquisitionAdmission) > 0
+    const outcome = isAfterAdmission
+      ? inferReviewOutcomeFromWordRecord(record, priorRecords)
+      : undefined
 
     if (outcome !== undefined) {
       state ??= createInitialReviewWordState(dict, word, record.timeStamp)
