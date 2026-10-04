@@ -120,3 +120,63 @@ test('沪教新初2027 is the single application default dictionary', () => {
   assert.match(wordList, /const normalizedChapter =/)
   assert.match(wordList, /useEffect\(\(\) => \{/)
 })
+
+
+test('沪教新初2027 examples satisfy the runtime mask contract', () => {
+  let exampleCount = 0
+  let noExampleCount = 0
+
+  for (const [index, word] of words.entries()) {
+    assert.ok(Array.isArray(word.example), `entry ${index} example must be an array`)
+    assert.ok(Array.isArray(word.tags), `entry ${index} tags must be an array`)
+
+    if (word.example.length === 0) {
+      noExampleCount += 1
+    }
+
+    for (const [exampleIndex, example] of word.example.entries()) {
+      exampleCount += 1
+      assert.equal(typeof example.en, 'string', `entry ${index} example ${exampleIndex} en`)
+      assert.equal(typeof example.cn, 'string', `entry ${index} example ${exampleIndex} cn`)
+      assert.equal(Number.isInteger(example.start), true, `entry ${index} example ${exampleIndex} start`)
+      assert.equal(Number.isInteger(example.end), true, `entry ${index} example ${exampleIndex} end`)
+      assert.ok(example.start >= 0, `entry ${index} example ${exampleIndex} start must be >= 0`)
+      assert.ok(example.end > example.start, `entry ${index} example ${exampleIndex} range must be non-empty`)
+      assert.ok(example.end <= example.en.length, `entry ${index} example ${exampleIndex} end must fit en`)
+      assert.ok(
+        example.en.slice(example.start, example.end).length > 0,
+        `entry ${index} example ${exampleIndex} mask surface must be non-empty`,
+      )
+    }
+  }
+
+  assert.equal(exampleCount, 1616)
+  assert.equal(noExampleCount, 135)
+})
+
+test('沪教新初2027 includes real data for new example and fallback flows', () => {
+  const byName = new Map()
+  for (const word of words) {
+    if (!byName.has(word.name)) byName.set(word.name, word)
+  }
+
+  const phrase = byName.get('living room')
+  assert.ok(phrase?.example?.length)
+  const phraseExample = phrase.example[0]
+  assert.equal(
+    phraseExample.en.slice(phraseExample.start, phraseExample.end),
+    'living room',
+  )
+
+  const inflected = byName.get('shoot')
+  assert.ok(inflected?.example?.length)
+  const inflectedExample = inflected.example[0]
+  assert.equal(
+    inflectedExample.en.slice(inflectedExample.start, inflectedExample.end),
+    'shot',
+  )
+  assert.notEqual('shot', inflected.name)
+
+  assert.deepEqual(byName.get('everyone')?.example, [])
+  assert.deepEqual(byName.get('p.m.')?.example, [])
+})
