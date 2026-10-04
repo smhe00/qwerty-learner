@@ -573,3 +573,77 @@ test('F3 Review stale checkpoint mutation is detected after later progress', asy
   assert.ok(regression)
   assert.equal(regression.severity, 'high')
 })
+
+
+async function runTerminalCheckpointScenario(staleRestoreOnce: boolean) {
+  const app = new VirtualLearnApp({
+    words: [word('f3-terminal')],
+    mutation: staleRestoreOnce
+      ? { staleRestoreOnce: true }
+      : undefined,
+  })
+
+  app.seedAdmittedWords(1)
+  app.makeSeededWordsDue(1)
+
+  const first = await app.enter()
+  assert.equal(first.kind, 'session')
+  if (first.kind !== 'session') {
+    return {
+      app,
+      restored: first,
+      anomalies: detectLearnSystemAnomalies(app.events),
+    }
+  }
+  assert.equal(first.record.sessionKind, 'review')
+
+  app.seedStaleCheckpointFromActive()
+
+  assert.equal(app.completeCurrentReviewClean(), true)
+  const durable = app.snapshot().sessions.find(
+    (session) => session.id === first.record.id,
+  )
+  assert.ok(durable)
+  assert.equal(durable.isFinished, true)
+
+  const restored = await app.refresh()
+  return {
+    app,
+    restored,
+    anomalies: detectLearnSystemAnomalies(app.events),
+  }
+}
+
+test('F3 production never resurrects a finished checkpoint after refresh', async () => {
+  const result = await runTerminalCheckpointScenario(false)
+
+  assert.notEqual(
+    result.restored.kind === 'session'
+      ? result.restored.source
+      : 'waiting',
+    'restored',
+  )
+  assert.equal(
+    result.anomalies.some(
+      (item) => item.code === 'checkpoint-regression',
+    ),
+    false,
+  )
+})
+
+test('F3 simulation blindly detects terminal stale checkpoint resurrection', async () => {
+  const result = await runTerminalCheckpointScenario(true)
+
+  assert.equal(result.restored.kind, 'session')
+  if (result.restored.kind !== 'session') return
+  assert.equal(result.restored.source, 'restored')
+  assert.equal(result.restored.record.isFinished, false)
+
+  const regression = result.anomalies.find(
+    (item) => item.code === 'checkpoint-regression',
+  )
+  assert.ok(regression)
+  assert.equal(regression.severity, 'high')
+  assert.equal(regression.details.savedFinished, true)
+  assert.equal(regression.details.restoredFinished, false)
+})
