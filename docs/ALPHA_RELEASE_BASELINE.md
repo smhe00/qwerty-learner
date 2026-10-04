@@ -195,8 +195,18 @@ Do not place independent product commits on the production pointer.
 
 ## 11. Exact release identity
 
-The exact release commit and tag are written here only after the final
-release-baseline commit passes the required Gate(s).
+Release tag:
 
-Until then, this document describes the release candidate contract rather than
-a production promotion.
+```text
+learn-alpha-v0.2.0-alpha.1
+```
+
+The tag target is the exact immutable release commit. The document intentionally
+does not embed its own Git SHA because doing so would make the release document
+self-referential and change the SHA on every update.
+
+The tag may be created only after Review Gate, Cloud Sync Gate and FSRS Phase G
+Gate are green on the final `product/main` commit.
+
+Creating the tag establishes the source-code Alpha baseline; production
+promotion remains a separate fast-forward/deployment acceptance action.
