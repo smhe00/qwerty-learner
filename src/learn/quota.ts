@@ -1,7 +1,7 @@
 import type { LearnStatsSnapshot } from './stats'
 
 export const LEARN_ACQUISITION_QUOTA_POLICY_VERSION =
-  'learn-acquisition-quota-v1'
+  'learn-acquisition-quota-v2'
 
 export const learnAcquisitionQuotaPolicy = {
   low: 5,
@@ -35,6 +35,9 @@ export type LearnAcquisitionQuotaDecision = {
     coldProbePassRateToday: number | null
     ratedEvents30d: number
     againRate30d: number | null
+    strainTier: LearnStatsSnapshot['strain']['tier']
+    strainScore: number | null
+    strainSamples: number
   }
 }
 
@@ -95,6 +98,20 @@ export function decideDailyAcquisitionQuota(
     reasonCodes.push('stable-review-performance')
   }
 
+  // Interaction strain is a one-way safety cap. It may slow new-word
+  // admission, but low strain never pushes the learner above the memory-based
+  // P3/P4 decision.
+  if (stats.strain.tier === 'recovery') {
+    tier = 'low'
+    reasonCodes.push('interaction-strain-recovery')
+  } else if (
+    stats.strain.tier === 'elevated' &&
+    tier === 'high'
+  ) {
+    tier = 'medium'
+    reasonCodes.push('interaction-strain-elevated')
+  }
+
   const targetDailyNewWords = policy[tier]
   const remainingBeforeUnseen = clampNonNegativeInteger(
     targetDailyNewWords - stats.today.acquiredWords,
@@ -136,6 +153,9 @@ export function decideDailyAcquisitionQuota(
       coldProbePassRateToday: stats.today.coldProbePassRate,
       ratedEvents30d: ratedEvents,
       againRate30d,
+      strainTier: stats.strain.tier,
+      strainScore: stats.strain.score,
+      strainSamples: stats.strain.sampleCount,
     },
   }
 }
