@@ -28,7 +28,10 @@ export type LearnSystemTraceEvent =
       kind: 'checkpoint'
       action: 'save' | 'restore'
       sessionId: string
-      semanticSignature: string
+      index: number
+      isFinished: boolean
+      queueSignature: string
+      wordCount: number
     }
   | {
       kind: 'waiting'
@@ -99,7 +102,15 @@ export function detectLearnSystemAnomalies(
   events: LearnSystemTraceEvent[],
 ): LearnSystemAnomaly[] {
   const anomalies: LearnSystemAnomaly[] = []
-  const lastSavedCheckpoint = new Map<string, string>()
+  const lastSavedCheckpoint = new Map<
+    string,
+    {
+      index: number
+      isFinished: boolean
+      queueSignature: string
+      wordCount: number
+    }
+  >()
   let singletonRun = 0
   let lastSingletonSessionId: string | null = null
 
@@ -180,26 +191,45 @@ export function detectLearnSystemAnomalies(
       singletonRun = 0
       lastSingletonSessionId = null
       if (event.action === 'save') {
-        lastSavedCheckpoint.set(
-          event.sessionId,
-          event.semanticSignature,
-        )
+        lastSavedCheckpoint.set(event.sessionId, {
+          index: event.index,
+          isFinished: event.isFinished,
+          queueSignature: event.queueSignature,
+          wordCount: event.wordCount,
+        })
       } else {
         const saved = lastSavedCheckpoint.get(event.sessionId)
-        if (
-          saved !== undefined &&
-          saved !== event.semanticSignature
-        ) {
-          anomalies.push({
-            code: 'checkpoint-regression',
-            severity: 'high',
-            eventIndex: index,
-            details: {
-              sessionId: event.sessionId,
-              saved,
-              restored: event.semanticSignature,
-            },
-          })
+        if (saved) {
+          const terminalResurrection =
+            saved.isFinished && !event.isFinished
+          const sameQueueRollback =
+            saved.queueSignature === event.queueSignature &&
+            event.index < saved.index
+          const queueGrowthOnRestore =
+            event.wordCount > saved.wordCount
+
+          if (
+            terminalResurrection ||
+            sameQueueRollback ||
+            queueGrowthOnRestore
+          ) {
+            anomalies.push({
+              code: 'checkpoint-regression',
+              severity: 'high',
+              eventIndex: index,
+              details: {
+                sessionId: event.sessionId,
+                savedIndex: saved.index,
+                restoredIndex: event.index,
+                savedFinished: saved.isFinished,
+                restoredFinished: event.isFinished,
+                savedWordCount: saved.wordCount,
+                restoredWordCount: event.wordCount,
+                sameQueue:
+                  saved.queueSignature === event.queueSignature,
+              },
+            })
+          }
         }
       }
       continue
