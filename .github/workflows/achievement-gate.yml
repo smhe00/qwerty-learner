@@ -1,0 +1,62 @@
+name: Achievement Gate
+
+on:
+  push:
+    branches:
+      - product/main
+    paths:
+      - 'src/achievement/**'
+      - 'src/resources/achievementCulture/**'
+      - 'src/utils/db/**'
+      - 'src/utils/backup.ts'
+      - 'src/sync/snapshot.ts'
+      - 'tests/achievement/**'
+      - 'scripts/validate-achievement-culture.mjs'
+      - '.github/workflows/achievement-gate.yml'
+      - 'package.json'
+  workflow_dispatch:
+
+jobs:
+  achievement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Validate achievement culture library
+        run: yarn validate:achievement-culture
+
+      - name: Lint achievement runtime
+        run: >
+          yarn eslint
+          src/achievement
+          src/resources/achievementCulture
+          src/utils/db/index.ts
+          src/utils/backup.ts
+          src/sync/snapshot.ts
+          --ext .ts,.tsx
+
+      - name: Bundle achievement domain tests
+        run: |
+          mkdir -p .achievement-test
+          npx esbuild             tests/achievement/domain.test.ts             tests/achievement/formal-model.test.ts             --bundle             --platform=node             --target=node20             --format=esm             --outdir=.achievement-test             --out-extension:.js=.mjs
+
+      - name: Run achievement domain tests
+        run: node --test .achievement-test/domain.test.mjs
+
+      - name: Run achievement formal model
+        run: node --test .achievement-test/formal-model.test.mjs
+
+      - name: Build Qwerty Plus
+        run: yarn build
