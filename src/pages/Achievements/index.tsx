@@ -1,8 +1,10 @@
 import {
+  buildAchievementVisibleProgress,
   getAchievementStates,
   markAchievementCultureCardSeen,
 } from '@/achievement'
 import Layout from '@/components/Layout'
+import { db } from '@/utils/db'
 import {
   achievementDefinitions,
   getAchievementCulture,
@@ -23,6 +25,24 @@ const rarityLabel = {
 export default function AchievementsPage() {
   const navigate = useNavigate()
   const states = useLiveQuery(() => getAchievementStates(), [], [])
+  const visibleProgress = useLiveQuery(
+    async () => {
+      const [wordStates, wordRecords] = await Promise.all([
+        db.reviewWordStates.toArray(),
+        db.wordRecords.toArray(),
+      ])
+      return buildAchievementVisibleProgress({
+        wordStates,
+        wordRecords,
+        now: Math.floor(Date.now() / 1000),
+      })
+    },
+    [],
+    {
+      longTermMasteredWords: 0,
+      activeLearnDaysInLast10: 0,
+    },
+  )
   const [openAchievementId, setOpenAchievementId] = useState<string>()
 
   const stateById = useMemo(
@@ -92,6 +112,20 @@ export default function AchievementsPage() {
             const locked = state === undefined
             const hideIdentity = locked && achievement.hidden
             const culture = getAchievementCulture(achievement.id)
+            const progress =
+              achievement.id === 'ACH_MASTERED_100'
+                ? {
+                    value: visibleProgress.longTermMasteredWords,
+                    target: achievement.condition.target,
+                    label: '长期掌握',
+                  }
+                : achievement.id === 'ACH_7_OF_10'
+                  ? {
+                      value: visibleProgress.activeLearnDaysInLast10,
+                      target: achievement.condition.target,
+                      label: '最近 10 天学习',
+                    }
+                  : undefined
 
             return (
               <button
@@ -132,6 +166,28 @@ export default function AchievementsPage() {
                 {!locked && culture?.primary ? (
                   <div className="mt-4 border-l-2 border-indigo-100 pl-3 text-xs text-gray-400 dark:border-indigo-500/30">
                     {culture.primary.text}
+                  </div>
+                ) : null}
+
+                {!locked && progress ? (
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between text-xs text-gray-400">
+                      <span>{progress.label}</span>
+                      <span>
+                        {Math.min(progress.value, progress.target)} / {progress.target}
+                      </span>
+                    </div>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                      <div
+                        className="h-full rounded-full bg-indigo-400 transition-all"
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            (progress.value / progress.target) * 100,
+                          )}%`,
+                        }}
+                      />
+                    </div>
                   </div>
                 ) : null}
               </button>
