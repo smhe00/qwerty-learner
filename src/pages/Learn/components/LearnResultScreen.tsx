@@ -107,7 +107,7 @@ export default function LearnResultScreen() {
       className="fixed inset-0 z-30 overflow-y-auto"
       data-learn-result-screen
     >
-      <div className="absolute inset-0 bg-gray-300 opacity-80 dark:bg-gray-600" />
+      <div className="absolute inset-0 bg-gray-200/95 backdrop-blur-sm dark:bg-gray-900/90" />
       <div className="relative flex h-screen items-center justify-center">
         <div className="my-card relative flex w-[90vw] max-w-3xl flex-col rounded-3xl bg-white px-10 py-10 shadow-lg dark:bg-gray-800">
           <button
