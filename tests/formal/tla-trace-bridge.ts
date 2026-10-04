@@ -204,6 +204,47 @@ export function tlcStatesToLearnTrace(
     }
 
     if (
+      phase === 'selected' &&
+      previousPhase !== 'selected'
+    ) {
+      const candidateKind = stringValue(
+        state,
+        'candidateKind',
+      )
+      const lifecycle = stringValue(state, 'lifecycle')
+      const selectedCount =
+        numberValue(state, 'selectedCount') ?? 0
+      const due = state.values.due === true
+
+      if (
+        candidateKind !== null &&
+        lifecycle !== null &&
+        (
+          candidateKind === 'fresh' ||
+          candidateKind === 'pending' ||
+          candidateKind === 'due' ||
+          candidateKind === 'force'
+        ) &&
+        (
+          lifecycle === 'unseen' ||
+          lifecycle === 'introduced' ||
+          lifecycle === 'pending' ||
+          lifecycle === 'admitted' ||
+          lifecycle === 'excluded'
+        )
+      ) {
+        events.push({
+          kind: 'candidate-selection',
+          candidateKind,
+          word: 'tlc:candidate-word',
+          lifecycle,
+          due,
+          selectedCount,
+        })
+      }
+    }
+
+    if (
       phase === 'resolved' &&
       previousPhase !== 'resolved' &&
       state.values.success === true

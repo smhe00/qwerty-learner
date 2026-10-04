@@ -845,3 +845,142 @@ test('F5 Acquisition dropped projection is classified as driver divergence rathe
     false,
   )
 })
+
+
+test('F6 production canonicalizes duplicate dictionary spellings and selects only unseen fresh candidates', async () => {
+  const app = new VirtualLearnApp({
+    words: [
+      word('f6-duplicate-source'),
+      word('f6-duplicate-source'),
+      word('f6-fresh'),
+    ],
+  })
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+  if (prepared.kind !== 'session') return
+  assert.equal(prepared.record.sessionKind, 'acquisition')
+  assert.deepEqual(
+    prepared.record.words.map((item) => item.name),
+    ['f6-duplicate-source', 'f6-fresh'],
+  )
+
+  assert.equal(
+    detectLearnSystemAnomalies(app.events).some(
+      (item) =>
+        item.code === 'candidate-lifecycle-violation',
+    ),
+    false,
+  )
+})
+
+test('F6 simulation detects pending work misclassified as fresh', async () => {
+  const app = new VirtualLearnApp({
+    words: [word('f6-pending')],
+    mutation: { pendingAsFresh: true },
+  })
+  app.seedDeferredAcquisition({
+    reason: 'assistance',
+    ready: true,
+  })
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+
+  const violation = detectLearnSystemAnomalies(
+    app.events,
+  ).find(
+    (item) =>
+      item.code === 'candidate-lifecycle-violation',
+  )
+  assert.ok(violation)
+  assert.equal(violation.details.candidateKind, 'fresh')
+  assert.equal(violation.details.lifecycle, 'pending')
+})
+
+test('F6 simulation detects admitted word leaking back into Acquisition', async () => {
+  const app = new VirtualLearnApp({
+    words: [word('f6-admitted'), word('f6-unseen')],
+    mutation: { admittedInAcquisition: true },
+  })
+  app.seedAdmittedWords(1)
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+
+  const violation = detectLearnSystemAnomalies(
+    app.events,
+  ).find(
+    (item) =>
+      item.code === 'candidate-lifecycle-violation' &&
+      item.details.lifecycle === 'admitted',
+  )
+  assert.ok(violation)
+  assert.equal(violation.details.candidateKind, 'fresh')
+})
+
+test('F6 force selection accepts active admitted words and rejects excluded words', () => {
+  const clean = new VirtualLearnApp({
+    words: [word('f6-active'), word('f6-excluded')],
+  })
+  clean.seedAdmittedWords(1)
+  clean.seedExcludedWord(1)
+
+  assert.deepEqual(
+    clean.selectForceReviewCandidates().map(
+      (item) => item.name,
+    ),
+    ['f6-active'],
+  )
+  assert.equal(
+    detectLearnSystemAnomalies(clean.events).some(
+      (item) =>
+        item.code === 'candidate-lifecycle-violation',
+    ),
+    false,
+  )
+
+  const mutated = new VirtualLearnApp({
+    words: [word('f6-active'), word('f6-excluded')],
+    mutation: { excludedSelected: true },
+  })
+  mutated.seedAdmittedWords(1)
+  mutated.seedExcludedWord(1)
+  assert.deepEqual(
+    mutated.selectForceReviewCandidates().map(
+      (item) => item.name,
+    ),
+    ['f6-excluded', 'f6-active'],
+  )
+
+  const violation = detectLearnSystemAnomalies(
+    mutated.events,
+  ).find(
+    (item) =>
+      item.code === 'candidate-lifecycle-violation' &&
+      item.details.lifecycle === 'excluded',
+  )
+  assert.ok(violation)
+  assert.equal(violation.details.candidateKind, 'force')
+})
+
+test('F6 simulation detects duplicate canonical selection inside one candidate set', async () => {
+  const app = new VirtualLearnApp({
+    words: [word('f6-duplicate-selected')],
+    mutation: { duplicateCanonical: true },
+  })
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+
+  const violation = detectLearnSystemAnomalies(
+    app.events,
+  ).find(
+    (item) =>
+      item.code === 'candidate-lifecycle-violation',
+  )
+  assert.ok(violation)
+  assert.equal(violation.details.lifecycle, 'unseen')
+  assert.equal(violation.details.selectedCount, 2)
+  assert.equal(violation.details.uniqueSelection, false)
+})

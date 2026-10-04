@@ -51,6 +51,19 @@ export type LearnSystemTraceEvent =
       }>
     }
   | {
+      kind: 'candidate-selection'
+      candidateKind: 'fresh' | 'pending' | 'due' | 'force'
+      word: string
+      lifecycle:
+        | 'unseen'
+        | 'introduced'
+        | 'pending'
+        | 'admitted'
+        | 'excluded'
+      due: boolean
+      selectedCount: number
+    }
+  | {
       kind: 'waiting'
       reason:
         | 'deferred'
@@ -70,6 +83,7 @@ export type LearnSystemAnomaly = {
     | 'checkpoint-regression'
     | 'due-work-bypassed'
     | 'stranded-pending-acquisition'
+    | 'candidate-lifecycle-violation'
   severity: 'medium' | 'high'
   eventIndex: number
   details: Record<string, number | string | boolean | null>

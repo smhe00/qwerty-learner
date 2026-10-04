@@ -18,6 +18,7 @@ import {
 import { resolveLearnAcquisitionCompletion } from '../../src/learn/progression'
 import {
   buildLearnAcquisitionStates,
+  canonicalizeLearningWords,
   planLearnAcquisitionCandidates,
 } from '../../src/learn/session'
 import { selectReviewCandidates } from '../../src/review/due'
@@ -45,6 +46,10 @@ export type VirtualLearnMutation = {
   bypassDueFirst?: boolean
   strandReadyDeferred?: boolean
   silentNoopAtInteraction?: number
+  pendingAsFresh?: boolean
+  admittedInAcquisition?: boolean
+  excludedSelected?: boolean
+  duplicateCanonical?: boolean
 }
 
 type StoredSession = ReviewRecord
@@ -299,6 +304,43 @@ export class VirtualLearnApp {
     this.sessions.push(clone(session))
   }
 
+  seedExcludedWord(wordIndex = 0) {
+    const target = this.words[wordIndex]
+    if (!target) {
+      throw new Error('excluded seed word index out of range')
+    }
+    if (
+      this.wordStates.some(
+        (state) => state.word === target.name,
+      )
+    ) {
+      return
+    }
+
+    this.wordRecords.push(
+      makeAcquisitionRecord({
+        id: this.nextWordRecordId++,
+        word: target.name,
+        now: this.now - 1,
+        policyVersion:
+          LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION,
+        spacingEligible: true,
+      }),
+    )
+    const state = createInitialReviewWordState(
+      'simulation',
+      target.name,
+      this.now - 1,
+    )
+    state.lifecycle = 'excluded'
+    state.nextReviewAt = this.now
+    state.exclusion = {
+      reason: 'manual',
+      excludedAt: this.now,
+    }
+    this.wordStates.push(state)
+  }
+
   private sessionById(id: number | undefined) {
     if (id === undefined) return undefined
     return this.sessions.find((session) => session.id === id)
@@ -348,6 +390,72 @@ export class VirtualLearnApp {
     )
   }
 
+  private lifecycleForCandidate(input: {
+    word: string
+    pendingStates: Map<string, LearnAcquisitionState>
+    introducedWords: Set<string>
+  }):
+    | 'unseen'
+    | 'introduced'
+    | 'pending'
+    | 'admitted'
+    | 'excluded' {
+    const persistent = this.wordStates.find(
+      (state) => state.word === input.word,
+    )
+    if (persistent?.lifecycle === 'excluded') {
+      return 'excluded'
+    }
+    if (persistent) return 'admitted'
+    if (input.pendingStates.has(input.word)) return 'pending'
+    if (input.introducedWords.has(input.word)) {
+      return 'introduced'
+    }
+    return 'unseen'
+  }
+
+  private emitCandidateSelections(input: {
+    selected: Word[]
+    candidateKindByWord: Map<
+      string,
+      'fresh' | 'pending' | 'due' | 'force'
+    >
+    pendingStates?: Map<string, LearnAcquisitionState>
+    introducedWords?: Iterable<string>
+  }) {
+    const pendingStates =
+      input.pendingStates ?? new Map<string, LearnAcquisitionState>()
+    const introducedWords = new Set(
+      input.introducedWords ?? [],
+    )
+    const counts = new Map<string, number>()
+    for (const word of input.selected) {
+      counts.set(word.name, (counts.get(word.name) ?? 0) + 1)
+    }
+
+    for (const [word, selectedCount] of counts) {
+      const persistent = this.wordStates.find(
+        (state) => state.word === word,
+      )
+      this.events.push({
+        kind: 'candidate-selection',
+        candidateKind:
+          input.candidateKindByWord.get(word) ?? 'fresh',
+        word,
+        lifecycle: this.lifecycleForCandidate({
+          word,
+          pendingStates,
+          introducedWords,
+        }),
+        due:
+          persistent !== undefined &&
+          persistent.lifecycle !== 'excluded' &&
+          persistent.nextReviewAt <= this.now,
+        selectedCount,
+      })
+    }
+  }
+
   private generateAcquisition = async (
     _dictId: string,
     words: Word[],
@@ -378,19 +486,86 @@ export class VirtualLearnApp {
       freshLimit,
       now: this.now,
     })
-    const selected = [
-      ...candidatePlan.resumed.map((item) => item.word),
-      ...candidatePlan.freshWords,
+    let resumed = [...candidatePlan.resumed]
+    let freshWords = [...candidatePlan.freshWords]
+    const canonicalByName = new Map(
+      canonicalizeLearningWords(words).map((word) => [
+        word.name,
+        word,
+      ]),
+    )
+
+    if (this.mutation.pendingAsFresh) {
+      const pendingWord = [...pending.keys()][0]
+      const candidate = pendingWord
+        ? canonicalByName.get(pendingWord)
+        : undefined
+      if (candidate) {
+        resumed = resumed.filter(
+          (item) => item.word.name !== candidate.name,
+        )
+        freshWords = [
+          candidate,
+          ...freshWords.filter(
+            (word) => word.name !== candidate.name,
+          ),
+        ]
+      }
+    }
+
+    if (this.mutation.admittedInAcquisition) {
+      const admittedWord = this.wordStates.find(
+        (state) => state.lifecycle !== 'excluded',
+      )?.word
+      const candidate = admittedWord
+        ? canonicalByName.get(admittedWord)
+        : undefined
+      if (
+        candidate &&
+        !freshWords.some(
+          (word) => word.name === candidate.name,
+        )
+      ) {
+        freshWords = [candidate, ...freshWords]
+      }
+    }
+
+    let selected = [
+      ...resumed.map((item) => item.word),
+      ...freshWords,
     ]
+    if (
+      this.mutation.duplicateCanonical &&
+      selected.length > 0
+    ) {
+      selected = [selected[0], ...selected]
+    }
     if (selected.length === 0) return undefined
 
+    const candidateKindByWord = new Map<
+      string,
+      'fresh' | 'pending'
+    >()
+    for (const item of resumed) {
+      candidateKindByWord.set(item.word.name, 'pending')
+    }
+    for (const word of freshWords) {
+      candidateKindByWord.set(word.name, 'fresh')
+    }
+    this.emitCandidateSelections({
+      selected,
+      candidateKindByWord,
+      pendingStates: pending,
+      introducedWords: introduced,
+    })
+
     const freshStates = buildLearnAcquisitionStates(
-      candidatePlan.freshWords,
+      freshWords,
     )
     const acquisitionStates = {
       ...freshStates,
       ...Object.fromEntries(
-        candidatePlan.resumed.map(({ word, state }) => [
+        resumed.map(({ word, state }) => [
           word.name,
           state,
         ]),
@@ -423,7 +598,7 @@ export class VirtualLearnApp {
     words: Word[],
   ): Promise<ReviewRecord | undefined> => {
     const selected = selectReviewCandidates(
-      words.map((word) => ({
+      canonicalizeLearningWords(words).map((word) => ({
         word: word.name,
         originData: word,
       })),
@@ -433,6 +608,13 @@ export class VirtualLearnApp {
     ).map((item) => item.originData)
 
     if (selected.length === 0) return undefined
+
+    this.emitCandidateSelections({
+      selected,
+      candidateKindByWord: new Map(
+        selected.map((word) => [word.name, 'due' as const]),
+      ),
+    })
 
     const session: ReviewRecord = {
       id: this.nextSessionId++,
@@ -515,6 +697,49 @@ export class VirtualLearnApp {
           }
         : {}),
     }
+  }
+
+  selectForceReviewCandidates(): Word[] {
+    const canonical = canonicalizeLearningWords(this.words)
+    let selected = selectReviewCandidates(
+      canonical.map((word) => ({
+        word: word.name,
+        originData: word,
+      })),
+      this.wordStates,
+      this.now,
+      'force',
+    ).map((item) => item.originData)
+
+    if (this.mutation.excludedSelected) {
+      const excludedWord = this.wordStates.find(
+        (state) => state.lifecycle === 'excluded',
+      )?.word
+      const candidate = excludedWord
+        ? canonical.find(
+            (word) => word.name === excludedWord,
+          )
+        : undefined
+      if (
+        candidate &&
+        !selected.some(
+          (word) => word.name === candidate.name,
+        )
+      ) {
+        selected = [candidate, ...selected]
+      }
+    }
+
+    this.emitCandidateSelections({
+      selected,
+      candidateKindByWord: new Map(
+        selected.map((word) => [
+          word.name,
+          'force' as const,
+        ]),
+      ),
+    })
+    return clone(selected)
   }
 
   async enter(): Promise<LearnPreparationResult> {

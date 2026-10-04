@@ -246,6 +246,36 @@ export function detectLearnSystemAnomalies(
       continue
     }
 
+    if (event.kind === 'candidate-selection') {
+      const lifecycleValid =
+        event.candidateKind === 'fresh'
+          ? event.lifecycle === 'unseen'
+          : event.candidateKind === 'pending'
+            ? event.lifecycle === 'pending'
+            : event.candidateKind === 'due'
+              ? event.lifecycle === 'admitted' && event.due
+              : event.lifecycle === 'admitted'
+      const uniqueSelection = event.selectedCount === 1
+
+      if (!lifecycleValid || !uniqueSelection) {
+        anomalies.push({
+          code: 'candidate-lifecycle-violation',
+          severity: 'high',
+          eventIndex: index,
+          details: {
+            word: event.word,
+            candidateKind: event.candidateKind,
+            lifecycle: event.lifecycle,
+            due: event.due,
+            selectedCount: event.selectedCount,
+            lifecycleValid,
+            uniqueSelection,
+          },
+        })
+      }
+      continue
+    }
+
     if (event.kind === 'checkpoint') {
       if (event.action === 'save') {
         const checkpoint = {

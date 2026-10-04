@@ -628,3 +628,71 @@ test('TLC production projection stays aligned with controller expectation', () =
     false,
   )
 })
+
+
+const f6PendingAsFreshCounterexample = `
+Error: Invariant CandidateLifecycleSound is violated.
+
+State 1: <Initial predicate>
+/\\ phase = "idle"
+/\\ lifecycle = "pending"
+/\\ due = FALSE
+/\\ candidateKind = "none"
+/\\ selectedCount = 0
+
+State 2: <MutatePendingAsFresh>
+/\\ phase = "selected"
+/\\ lifecycle = "pending"
+/\\ due = FALSE
+/\\ candidateKind = "fresh"
+/\\ selectedCount = 1
+`
+
+const f6ProductionFreshTrace = `
+State 1: <Initial predicate>
+/\\ phase = "idle"
+/\\ lifecycle = "unseen"
+/\\ due = FALSE
+/\\ candidateKind = "none"
+/\\ selectedCount = 0
+
+State 2: <SelectFresh>
+/\\ phase = "selected"
+/\\ lifecycle = "unseen"
+/\\ due = FALSE
+/\\ candidateKind = "fresh"
+/\\ selectedCount = 1
+`
+
+test('F6 TLC candidate lifecycle violation maps into the generic candidate oracle', () => {
+  const trace = tlcStatesToLearnTrace(
+    parseTlcCounterexample(f6PendingAsFreshCounterexample),
+    'f6-pending-as-fresh',
+  )
+
+  const violation = detectLearnSystemAnomalies(
+    trace.events,
+  ).find(
+    (item) =>
+      item.code === 'candidate-lifecycle-violation',
+  )
+  assert.ok(violation)
+  assert.equal(violation.severity, 'high')
+  assert.equal(violation.details.candidateKind, 'fresh')
+  assert.equal(violation.details.lifecycle, 'pending')
+})
+
+test('F6 TLC production fresh selection is accepted by the same oracle', () => {
+  const trace = tlcStatesToLearnTrace(
+    parseTlcCounterexample(f6ProductionFreshTrace),
+    'f6-production-fresh',
+  )
+
+  assert.equal(
+    detectLearnSystemAnomalies(trace.events).some(
+      (item) =>
+        item.code === 'candidate-lifecycle-violation',
+    ),
+    false,
+  )
+})

@@ -115,6 +115,17 @@ jobs:
             -config formal/learn/ProjectionConsistency.production.cfg \
             formal/learn/ProjectionConsistency.tla
 
+      - name: Parse F6 candidate lifecycle model
+        run: |
+          java -cp /tmp/tla2tools.jar tla2sany.SANY \
+            formal/learn/CandidateLifecycle.tla
+
+      - name: Model-check F6 production candidate lifecycle
+        run: |
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -config formal/learn/CandidateLifecycle.production.cfg \
+            formal/learn/CandidateLifecycle.tla
+
       - name: Require admitted-based mutation counterexample
         run: |
           set +e
@@ -190,6 +201,23 @@ jobs:
             exit 1
           fi
 
+      - name: Require F6 candidate lifecycle counterexamples
+        run: |
+          for mutation in pending-as-fresh admitted-as-fresh excluded-selected duplicate-canonical; do
+            set +e
+            java -cp /tmp/tla2tools.jar tlc2.TLC \
+              -config "formal/learn/CandidateLifecycle.${mutation}.cfg" \
+              formal/learn/CandidateLifecycle.tla \
+              > "/tmp/f6-${mutation}.log" 2>&1
+            status=$?
+            set -e
+            cat "/tmp/f6-${mutation}.log"
+            if [ "$status" -eq 0 ]; then
+              echo "Expected F6 mutation ${mutation} to violate CandidateLifecycleSound."
+              exit 1
+            fi
+          done
+
       - name: Require stranded deferred liveness counterexample
         run: |
           set +e
@@ -235,3 +263,8 @@ jobs:
           node .formal-test/tla-counterexample-check.mjs \
             /tmp/dropped-projection-tlc.log \
             controller-driver-divergence
+          for mutation in pending-as-fresh admitted-as-fresh excluded-selected duplicate-canonical; do
+            node .formal-test/tla-counterexample-check.mjs \
+              "/tmp/f6-${mutation}.log" \
+              candidate-lifecycle-violation
+          done
