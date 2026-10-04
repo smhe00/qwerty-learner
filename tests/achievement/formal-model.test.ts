@@ -5,6 +5,7 @@ import {
   evaluateWordMetric,
 } from '../../src/achievement/evaluator'
 import { SUPPORTED_SESSION_METRICS } from '../../src/achievement/session-evaluator'
+import { SUPPORTED_STATE_METRICS } from '../../src/achievement/state-evaluator'
 import achievementData from '../../src/resources/achievementCulture/achievements.json'
 import type { AchievementDefinition } from '../../src/resources/achievementCulture'
 import type { IWordRecord } from '../../src/utils/db/record'
@@ -18,7 +19,8 @@ const p0 = achievements.filter(
 test('P0 evaluator exposes only explicitly supported metrics', () => {
   const isSupported = (metric: string) =>
     SUPPORTED_WORD_METRICS.has(metric) ||
-    SUPPORTED_SESSION_METRICS.has(metric)
+    SUPPORTED_SESSION_METRICS.has(metric) ||
+    SUPPORTED_STATE_METRICS.has(metric)
   const supported = p0.filter((achievement) =>
     isSupported(achievement.condition.metric),
   )
@@ -38,6 +40,7 @@ test('P0 evaluator exposes only explicitly supported metrics', () => {
       'ACH_HIDDEN_CRAFT',
       'ACH_HIDDEN_DAWN',
       'ACH_HINT_REDUCTION',
+      'ACH_MASTERED_100',
       'ACH_NO_HINT_10',
       'ACH_RECOVER_1',
       'ACH_RECOVER_3',
@@ -49,7 +52,7 @@ test('P0 evaluator exposes only explicitly supported metrics', () => {
   // The remaining P0 definitions require goal snapshots or authoritative
   // unit/mastery state. They remain
   // disabled rather than being inferred from incomplete evidence.
-  assert.equal(unsupported.length, 5)
+  assert.equal(unsupported.length, 4)
 })
 
 test('unsupported metric evaluates to null instead of guessing', () => {
