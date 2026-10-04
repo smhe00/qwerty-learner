@@ -1,5 +1,10 @@
 # Qwerty Integrated Product — Release Audit
 
+> **Status: Historical release audit (2026-09-30).** This file records the
+> pre-Learn-Alpha integrated Review/Cloud release process. It is retained for
+> traceability, not as the current release contract. See
+> [ALPHA_RELEASE_BASELINE.md](./ALPHA_RELEASE_BASELINE.md) for Learn Alpha 1.
+
 > Release candidate preparation: 2026-09-30  
 > Development branch: `product/main`  
 > Production pointer: `feature/edgeone-cloud-sync`  
