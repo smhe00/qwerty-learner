@@ -53,6 +53,8 @@ jobs:
           src/pages/Typing/components/WordPanel/components/Word/index.tsx
           src/review/learning-context.ts
           src/utils/db/index.ts
+          src/utils/db/record.ts
+          src/utils/db/review-record.ts
           src/utils/backup.ts
           src/sync/snapshot.ts
           --ext .ts,.tsx
@@ -60,7 +62,7 @@ jobs:
       - name: Bundle achievement domain tests
         run: |
           mkdir -p .achievement-test
-          npx esbuild tests/achievement/domain.test.ts tests/achievement/formal-model.test.ts tests/achievement/session.test.ts tests/achievement/mastery.test.ts --bundle --platform=node --target=node20 --format=esm --outdir=.achievement-test --out-extension:.js=.mjs
+          npx esbuild tests/achievement/domain.test.ts tests/achievement/formal-model.test.ts tests/achievement/session.test.ts tests/achievement/mastery.test.ts tests/achievement/event.test.ts --bundle --platform=node --target=node20 --format=esm --outdir=.achievement-test --out-extension:.js=.mjs
 
       - name: Run achievement domain tests
         run: node --test .achievement-test/domain.test.mjs
@@ -73,6 +75,9 @@ jobs:
 
       - name: Run Learn mastery contract tests
         run: node --test .achievement-test/mastery.test.mjs
+
+      - name: Run achievement behavior-event tests
+        run: node --test .achievement-test/event.test.mjs
 
       - name: Build Qwerty Plus
         run: yarn build
