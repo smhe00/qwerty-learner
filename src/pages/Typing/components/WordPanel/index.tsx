@@ -15,25 +15,12 @@ import {
 import { resolveLearnAcquisitionCompletion } from '@/learn/progression'
 import { pruneLearnSessionWord } from '@/learn/lifecycle'
 import type { LearnSessionKind } from '@/learn/session'
-import {
-  createCanonicalReviewProbePlan,
-  materializeReviewExercisePlan,
-} from '@/review/decision'
 import type { ReviewHintLevel } from '@/review/hint'
+import { resolveReviewCompletion } from '@/review/progression'
 import {
-  decideReviewProgress,
-  projectReviewProgress,
-} from '@/review/machine'
-import {
-  MAX_REINFORCEMENT_GAP,
-  getAdaptiveReinforcementGap,
   getReviewAttemptRole,
   getWordComponentInstanceKey,
 } from '@/review/session'
-import {
-  createReviewItemMachineState,
-  resolveCompletedReviewItem,
-} from '@/review/state-machine'
 import {
   completeLearningAcquisition,
   excludeLearningWord,
@@ -165,143 +152,86 @@ export default function WordPanel() {
           return
         }
 
-        const currentItemState =
-          reviewModeInfo.reviewRecord?.itemStates?.[currentWord.name] ??
-          createReviewItemMachineState()
-        const requestReinforcement =
-          reviewRatingDecision.eligible &&
-          (wrongCount > 0 ||
-            reviewRatingDecision.rating === 'again' ||
-            reviewRatingDecision.rating === 'hard')
-        const itemResolution = resolveCompletedReviewItem({
-          state: currentItemState,
-          attemptRole: currentReviewAttemptRole,
-          decision: reviewRatingDecision,
-          requestReinforcement,
-        })
-
-        if (itemResolution.kind === 'retry-canonical') {
-          setReviewModeInfo((old) => {
-            if (!old.reviewRecord) return old
-            const exercisePlans = {
-              ...(old.reviewRecord.exercisePlans ?? {}),
-              [currentWord.name]: createCanonicalReviewProbePlan(),
-            }
-            const itemStates = {
-              ...(old.reviewRecord.itemStates ?? {}),
-              [currentWord.name]: itemResolution.state,
-            }
-            return {
-              ...old,
-              reviewRecord: {
-                ...old.reviewRecord,
-                exercisePlans,
-                itemStates,
-              },
-            }
-          })
-
-          setCurrentWordExerciseCount(0)
-          dispatch({ type: TypingStateActionType.LOOP_CURRENT_WORD })
-          reloadCurrentWordComponent()
-          return
-        }
-
-        const attemptGap =
-          wrongCount > 0
-            ? getAdaptiveReinforcementGap(wrongCount, classification)
-            : MAX_REINFORCEMENT_GAP
-        const decision = decideReviewProgress({
+        const resolution = resolveReviewCompletion({
           queue: state.chapterData.words,
           currentIndex: state.chapterData.index,
           currentWord,
-          currentExerciseCount: 0,
-          loopWordTimes: 1,
-          priorAccumulatedWrongCount: 0,
-          attemptWrongCount: wrongCount,
-          currentReinforcementGap: MAX_REINFORCEMENT_GAP,
-          attemptReinforcementGap: attemptGap,
-          reinforcementRemaining: itemResolution.insertReinforcement ? 1 : 0,
-          requestReinforcement: itemResolution.insertReinforcement,
-        })
-        const projection = projectReviewProgress({
-          queue: state.chapterData.words,
-          currentIndex: state.chapterData.index,
-          decision,
+          ratingDecision: reviewRatingDecision,
+          attemptRole: currentReviewAttemptRole,
+          wrongCount,
+          classification,
+          exercisePlans:
+            reviewModeInfo.reviewRecord?.exercisePlans,
+          reinforcementCounts:
+            reviewModeInfo.reviewRecord?.reinforcementCounts,
+          itemStates:
+            reviewModeInfo.reviewRecord?.itemStates,
+          nextExerciseShadow,
         })
 
         setReviewModeInfo((old) => {
           if (!old.reviewRecord) return old
 
-          const exercisePlans = { ...(old.reviewRecord.exercisePlans ?? {}) }
-          const reinforcementCounts = {
-            ...(old.reviewRecord.reinforcementCounts ?? {}),
-          }
-          const itemStates = {
-            ...(old.reviewRecord.itemStates ?? {}),
-            [currentWord.name]: itemResolution.state,
-          }
-
-          if (decision.kind === 'advance' && decision.insertWord) {
-            reinforcementCounts[currentWord.name] =
-              (reinforcementCounts[currentWord.name] ?? 0) + 1
-
-            if (nextExerciseShadow) {
-              exercisePlans[currentWord.name] =
-                materializeReviewExercisePlan(nextExerciseShadow)
-            } else if (!exercisePlans[currentWord.name]) {
-              exercisePlans[currentWord.name] =
-                createCanonicalReviewProbePlan()
-            }
-          }
-
-          const words: Word[] = projection.queue.map((word) => ({
-            name: word.name,
-            trans: [...word.trans],
-            usphone: word.usphone,
-            ukphone: word.ukphone,
-            ...(word.notation !== undefined
-              ? { notation: word.notation }
-              : {}),
-            ...(word.example !== undefined
-              ? { example: word.example.map((example) => ({ ...example })) }
-              : {}),
-            ...(word.tags !== undefined ? { tags: [...word.tags] } : {}),
-          }))
+          const words: Word[] =
+            resolution.projection.queue.map((word) => ({
+              name: word.name,
+              trans: [...word.trans],
+              usphone: word.usphone,
+              ukphone: word.ukphone,
+              ...(word.notation !== undefined
+                ? { notation: word.notation }
+                : {}),
+              ...(word.example !== undefined
+                ? {
+                    example: word.example.map((example) => ({
+                      ...example,
+                    })),
+                  }
+                : {}),
+              ...(word.tags !== undefined
+                ? { tags: [...word.tags] }
+                : {}),
+            }))
 
           return {
             ...old,
             reviewRecord: {
               ...old.reviewRecord,
-              index: projection.index,
+              index: resolution.projection.index,
               words,
-              isFinished: projection.isFinished,
-              exercisePlans:
-                Object.keys(exercisePlans).length > 0
-                  ? exercisePlans
-                  : undefined,
+              isFinished:
+                resolution.projection.isFinished,
+              exercisePlans: resolution.exercisePlans,
               reinforcementCounts:
-                Object.keys(reinforcementCounts).length > 0
-                  ? reinforcementCounts
-                  : undefined,
-              itemStates,
+                resolution.reinforcementCounts,
+              itemStates: resolution.itemStates,
             },
           }
         })
 
         setCurrentWordExerciseCount(0)
 
-        if (decision.kind === 'advance') {
+        if (resolution.action === 'retry-current') {
+          dispatch({
+            type: TypingStateActionType.LOOP_CURRENT_WORD,
+          })
+          reloadCurrentWordComponent()
+          return
+        }
+
+        if (resolution.action === 'advance') {
           dispatch({
             type: TypingStateActionType.NEXT_WORD,
             payload: {
-              insertWord: decision.insertWord,
+              insertWord: resolution.insertWord,
             },
           })
           return
         }
 
-        dispatch({ type: TypingStateActionType.FINISH_CHAPTER })
+        dispatch({
+          type: TypingStateActionType.FINISH_CHAPTER,
+        })
         return
       }
 
