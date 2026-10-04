@@ -177,3 +177,86 @@ test('refresh restores the latest persisted checkpoint rather than restarting th
     false,
   )
 })
+
+
+async function runHistoricalFinalSlotScenario(
+  quotaAccounting: 'production' | 'acquired',
+) {
+  const app = new VirtualLearnApp({
+    words: Array.from(
+      { length: 30 },
+      (_, index) => word(`h${index}`),
+    ),
+    mutation: {
+      quotaAccounting,
+    },
+  })
+  app.seedAdmittedWords(19)
+
+  for (let cycle = 0; cycle < 6; cycle += 1) {
+    const prepared = await app.enter()
+    if (
+      prepared.kind !== 'session' ||
+      prepared.record.sessionKind !== 'acquisition'
+    ) {
+      break
+    }
+
+    let interactions = 0
+    while (app.completeCurrentAcquisitionClean()) {
+      interactions += 1
+      assert.ok(interactions < 20)
+    }
+    app.exit()
+  }
+
+  return {
+    app,
+    anomalies: detectLearnSystemAnomalies(app.events),
+  }
+}
+
+test('full VirtualLearnApp remains stable at the historical 19-of-20 acquisition boundary', async () => {
+  const result =
+    await runHistoricalFinalSlotScenario('production')
+
+  assert.equal(
+    result.anomalies.some(
+      (item) =>
+        item.code === 'repeated-singleton-acquisition',
+    ),
+    false,
+  )
+
+  const acquisitionSessions = result.app.events.filter(
+    (event) =>
+      event.kind === 'session-prepared' &&
+      event.sessionKind === 'acquisition',
+  )
+  assert.equal(acquisitionSessions.length, 1)
+})
+
+test('full VirtualLearnApp blindly rediscovers the admitted-based singleton loop mutation', async () => {
+  const result =
+    await runHistoricalFinalSlotScenario('acquired')
+
+  const singleton = result.anomalies.find(
+    (item) =>
+      item.code === 'repeated-singleton-acquisition',
+  )
+  assert.ok(singleton)
+
+  const acquisitionSessions = result.app.events.filter(
+    (event) =>
+      event.kind === 'session-prepared' &&
+      event.sessionKind === 'acquisition',
+  )
+  assert.ok(acquisitionSessions.length >= 3)
+  assert.ok(
+    acquisitionSessions.slice(0, 3).every(
+      (event) =>
+        event.kind === 'session-prepared' &&
+        event.batchSize === 1,
+    ),
+  )
+})
