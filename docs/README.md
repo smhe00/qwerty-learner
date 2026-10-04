@@ -20,7 +20,7 @@
 这些文档应与 `product/main` 的运行代码保持一致。
 
 - [LEARN_ARCHITECTURE_V1.md](./LEARN_ARCHITECTURE_V1.md) — Learn 总体架构、Dynamic Scaffold、Recovery Window、Control Stability Gate。
-- [LEARN_ACQUISITION_QUOTA_V2.md](./LEARN_ACQUISITION_QUOTA_V2.md) — 当前每日新词 quota 与 Interaction Strain v2 安全限流。
+- [LEARN_ACQUISITION_QUOTA_V3.md](./LEARN_ACQUISITION_QUOTA_V3.md) — 当前每日首次引入 quota、pending Acquisition 与 Interaction Strain v2 安全限流。
 - [LEARN_DAILY_PLAN_V1.md](./LEARN_DAILY_PLAN_V1.md) — 每日工作量与 due-first 规划。
 - [LEARN_STATS_V1.md](./LEARN_STATS_V1.md) — Learn 统计口径。
 - [REVIEW_RATING_CONTRACT_V1.md](./REVIEW_RATING_CONTRACT_V1.md) — Learn 内部 Review 的 Rating Gate。
@@ -48,7 +48,8 @@
 
 以下内容用于追溯研发过程，**不作为当前产品行为真源**：
 
-- `LEARN_ACQUISITION_QUOTA_V1.md` — 已由 V2 取代；
+- `LEARN_ACQUISITION_QUOTA_V1.md` — 历史版本；
+- `LEARN_ACQUISITION_QUOTA_V2.md` — 已由 V3 取代；
 - `CLOUD_SYNC_DEVELOPMENT_PLAN.md` — 云同步研发过程记录；
 - `REVIEW_ADAPTIVE_DEVELOPMENT_PLAN.md` — Adaptive Review 阶段性研发计划；
 - `REVIEW_UPSTREAM_PLAN.md` — upstream 拆分贡献策略；
