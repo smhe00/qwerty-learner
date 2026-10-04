@@ -1,12 +1,12 @@
-# Qwerty Learner — Learn Alpha
+# Qwerty Plus — Learn Alpha
 
 > 当前产品版本：`0.2.0-alpha.1`  
 > 集成产品主线：`product/main`  
-> 在线入口：<https://qwerty.kaiyi.cool/>
+> 正式域名：尚未公布；Alpha 访问入口由测试方单独提供。
 
-Qwerty Learner Learn Alpha 是基于开源项目
-[RealKai42/qwerty-learner](https://github.com/RealKai42/qwerty-learner)
-持续演进的学习版本。
+Qwerty Plus Learn Alpha 是基于开源项目
+[Qwerty Learner](https://github.com/RealKai42/qwerty-learner)
+持续演进的独立产品分支。
 
 当前产品保留原有 Typing 练习，同时新增独立的 **Learn 长期学习模式**，
 用于把“看过/打过单词”进一步转化为可验证的独立回忆和长期复习。
@@ -18,7 +18,7 @@ Qwerty Learner Learn Alpha 是基于开源项目
 
 ### Typing
 
-Typing 保持原 Qwerty Learner 的章节练习逻辑，适合：
+Typing 保留上游 Qwerty Learner 的章节练习逻辑，适合：
 
 - 键盘输入训练；
 - 单词熟悉；
