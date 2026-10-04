@@ -1736,3 +1736,36 @@ test('formal/dictionary-example-range: only bounded non-empty slices are eligibl
 
   assert.ok(explored > 50)
 })
+
+
+test('formal/typing-success-space: Space is spelling before success and fast-forward only after confirmed success', async () => {
+  const { decideSuccessInput } = await import(
+    '../../src/pages/Typing/components/WordPanel/components/Word/success'
+  )
+
+  const keys = [' ', 'a', 'Escape']
+  let explored = 0
+
+  for (const inputLocked of [false, true]) {
+    for (const isFinished of [false, true]) {
+      for (const key of keys) {
+        const decision = decideSuccessInput({
+          inputLocked,
+          isFinished,
+          key,
+        })
+
+        if (!inputLocked) {
+          assert.equal(decision, 'type-key')
+        } else if (isFinished && key === ' ') {
+          assert.equal(decision, 'fast-forward')
+        } else {
+          assert.equal(decision, 'ignore')
+        }
+        explored += 1
+      }
+    }
+  }
+
+  assert.equal(explored, 12)
+})
