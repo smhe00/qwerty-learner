@@ -41,6 +41,8 @@ export type LearnSystemTraceEvent =
     }
   | {
       kind: 'acquisition-health'
+      now: number
+      opportunity: boolean
       pending: Array<{
         word: string
         phase: string
