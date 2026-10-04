@@ -16,6 +16,7 @@ Removing the achievement feature must not change Typing or Learn scheduling beha
 ## Current content
 
 - 12 spirit themes
+- 27 metric contracts
 - 34 achievement definitions
 - 89 culture entries
 - 5 hidden achievements (hidden is visibility, not a rarity tier)
@@ -40,6 +41,7 @@ Example:
 src/resources/achievementCulture/
   types.ts
   themes.json
+  metrics.json
   achievements.json
   culture-classics-1.json
   culture-classics-2.json
@@ -74,6 +76,12 @@ Useful official references for future content review:
   https://www.shmeea.edu.cn/page/03500/20250615/19510.html
 - Shanghai Municipal Educational Examinations Authority, 2024 Chinese exam commentary:
   https://www.shmeea.edu.cn/page/03500/20240615/18570.html
+
+## Metric registry
+
+`metrics.json` is the executable semantic contract between Learn observations and achievement conditions. It fixes the meaning, scope, unit, required events/state and anti-gaming notes for every metric referenced by `achievements.json`.
+
+This prevents UI/content code from silently redefining a metric such as "independent recall after 7 days" or "recover after consecutive errors".
 
 ## Runtime contract
 
