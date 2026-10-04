@@ -129,10 +129,12 @@ jobs:
 
       - name: Bundle longitudinal learner simulation
         run: |
-          npx esbuild tests/simulation/learner-simulator.test.ts             --bundle             --platform=node             --target=node20             --format=esm             --outfile=.review-test/learner-simulator.test.mjs
+          npx esbuild tests/simulation/learner-simulator.test.ts tests/simulation/policy-sweep.test.ts --bundle --platform=node --target=node20 --format=esm --outdir=.review-test --out-extension:.js=.mjs
 
       - name: Run longitudinal learner simulation
-        run: node --test .review-test/learner-simulator.test.mjs
+        run: |
+          node --test .review-test/learner-simulator.test.mjs
+          node --test .review-test/policy-sweep.test.mjs
 
       - name: Run Typing audio lifecycle formal model
         run: node --test .review-test/typing-audio-formal.test.mjs
