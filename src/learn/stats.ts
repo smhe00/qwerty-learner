@@ -302,7 +302,10 @@ export function buildLearnStatsSnapshot(input: {
   const recentRecords = records.filter((record) =>
     dateKeySet.has(localDateKey(record.timeStamp)),
   )
-  const strain = estimateLearnInteractionStrain(recentRecords)
+  const recentLearnRecords = learnRecords.filter((record) =>
+    dateKeySet.has(localDateKey(record.timeStamp)),
+  )
+  const strain = estimateLearnInteractionStrain(recentLearnRecords)
   const todayActiveSeconds = round1(
     todayLearnRecords.reduce(
       (sum, record) => sum + (recordActiveSeconds(record) ?? 0),
