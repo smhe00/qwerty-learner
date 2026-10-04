@@ -37,7 +37,8 @@ function record(input: {
   rating?: 'again' | 'hard' | 'good' | 'easy'
   hinted?: boolean
 }): IWordRecord {
-  const independent = input.independent ?? input.wrongCount === 0
+  const independent =
+    input.independent ?? (input.wrongCount ?? 0) === 0
   const rating = input.rating ?? (input.wrongCount ? 'again' : 'good')
   return {
     id: input.id,
