@@ -375,3 +375,144 @@ test('TLC production checkpoint restore maps cleanly through the shared oracle',
     false,
   )
 })
+
+
+const checkpointRollbackCounterexample = `
+Error: Invariant RestoreLatestCheckpoint is violated.
+
+State 1: <Initial predicate>
+/\\ phase = "active"
+/\\ durableVersion = 0
+/\\ durableFinished = FALSE
+/\\ staleVersion = 0
+/\\ staleFinished = FALSE
+/\\ restoredVersion = 0
+/\\ restoredFinished = FALSE
+
+State 2: <SaveProgress line 27, col 1 to line 40, col 32 of module CheckpointMonotonicity>
+/\\ phase = "active"
+/\\ durableVersion = 1
+/\\ durableFinished = FALSE
+/\\ staleVersion = 0
+/\\ staleFinished = FALSE
+/\\ restoredVersion = 0
+/\\ restoredFinished = FALSE
+
+State 3: <Refresh line 55, col 1 to line 72, col 27 of module CheckpointMonotonicity>
+/\\ phase = "restored"
+/\\ durableVersion = 1
+/\\ durableFinished = FALSE
+/\\ staleVersion = 0
+/\\ staleFinished = FALSE
+/\\ restoredVersion = 0
+/\\ restoredFinished = FALSE
+`
+
+const checkpointProductionTrace = `
+State 1: <Initial predicate>
+/\\ phase = "active"
+/\\ durableVersion = 0
+/\\ durableFinished = FALSE
+/\\ staleVersion = 0
+/\\ staleFinished = FALSE
+/\\ restoredVersion = 0
+/\\ restoredFinished = FALSE
+
+State 2: <SaveProgress line 27, col 1 to line 40, col 32 of module CheckpointMonotonicity>
+/\\ phase = "active"
+/\\ durableVersion = 1
+/\\ durableFinished = FALSE
+/\\ staleVersion = 0
+/\\ staleFinished = FALSE
+/\\ restoredVersion = 0
+/\\ restoredFinished = FALSE
+
+State 3: <Refresh line 55, col 1 to line 72, col 27 of module CheckpointMonotonicity>
+/\\ phase = "restored"
+/\\ durableVersion = 1
+/\\ durableFinished = FALSE
+/\\ staleVersion = 0
+/\\ staleFinished = FALSE
+/\\ restoredVersion = 1
+/\\ restoredFinished = FALSE
+`
+
+const checkpointTerminalResurrection = `
+State 1: <Initial predicate>
+/\\ phase = "active"
+/\\ durableVersion = 0
+/\\ durableFinished = FALSE
+/\\ staleVersion = 0
+/\\ staleFinished = FALSE
+/\\ restoredVersion = 0
+/\\ restoredFinished = FALSE
+
+State 2: <SaveProgress line 27, col 1 to line 40, col 32 of module CheckpointMonotonicity>
+/\\ phase = "active"
+/\\ durableVersion = 1
+/\\ durableFinished = FALSE
+/\\ staleVersion = 0
+/\\ staleFinished = FALSE
+/\\ restoredVersion = 0
+/\\ restoredFinished = FALSE
+
+State 3: <SaveTerminal line 42, col 1 to line 53, col 32 of module CheckpointMonotonicity>
+/\\ phase = "active"
+/\\ durableVersion = 2
+/\\ durableFinished = TRUE
+/\\ staleVersion = 1
+/\\ staleFinished = FALSE
+/\\ restoredVersion = 0
+/\\ restoredFinished = FALSE
+
+State 4: <Refresh line 55, col 1 to line 72, col 27 of module CheckpointMonotonicity>
+/\\ phase = "restored"
+/\\ durableVersion = 2
+/\\ durableFinished = TRUE
+/\\ staleVersion = 1
+/\\ staleFinished = FALSE
+/\\ restoredVersion = 1
+/\\ restoredFinished = FALSE
+`
+
+test('TLC stale checkpoint rollback maps to checkpoint-regression', () => {
+  const trace = tlcStatesToLearnTrace(
+    parseTlcCounterexample(checkpointRollbackCounterexample),
+    'checkpoint-rollback',
+  )
+
+  const anomalies = detectLearnSystemAnomalies(trace.events)
+  const regression = anomalies.find(
+    (item) => item.code === 'checkpoint-regression',
+  )
+  assert.ok(regression)
+  assert.equal(regression.severity, 'high')
+})
+
+test('TLC production checkpoint restore does not create a false regression', () => {
+  const trace = tlcStatesToLearnTrace(
+    parseTlcCounterexample(checkpointProductionTrace),
+    'checkpoint-production',
+  )
+
+  assert.equal(
+    detectLearnSystemAnomalies(trace.events).some(
+      (item) => item.code === 'checkpoint-regression',
+    ),
+    false,
+  )
+})
+
+test('TLC terminal checkpoint resurrection is classified by the same oracle', () => {
+  const trace = tlcStatesToLearnTrace(
+    parseTlcCounterexample(checkpointTerminalResurrection),
+    'checkpoint-terminal-resurrection',
+  )
+
+  const regression = detectLearnSystemAnomalies(trace.events).find(
+    (item) => item.code === 'checkpoint-regression',
+  )
+  assert.ok(regression)
+  assert.equal(regression.details.savedFinished, true)
+  assert.equal(regression.details.restoredFinished, false)
+})
