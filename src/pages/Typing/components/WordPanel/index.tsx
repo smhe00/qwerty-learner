@@ -11,6 +11,7 @@ import {
   createLearnAcquisitionExercisePlan,
   createLearnAcquisitionState,
   decideLearnAcquisitionTransition,
+  deferLearnAcquisitionForSpacing,
   hasSufficientIndependentSpacing,
   projectLearnAcquisitionProgress,
 } from '@/learn/acquisition'
@@ -322,18 +323,28 @@ export default function WordPanel() {
             { kind: 'supported-complete' },
           )
         } else if (acquisitionState.phase === 'independent') {
-          const independentClean =
+          const independentEvidenceClean =
             wrongCount === 0 &&
             classification.cause === 'clean' &&
-            reviewEvidence.retrievalValidity === 'independent' &&
-            hasSufficientIndependentSpacing(acquisitionState)
-          nextAcquisitionState = decideLearnAcquisitionTransition(
-            acquisitionState,
-            {
-              kind: 'independent-complete',
-              independentClean,
-            },
-          )
+            reviewEvidence.retrievalValidity === 'independent'
+
+          if (
+            independentEvidenceClean &&
+            !hasSufficientIndependentSpacing(acquisitionState)
+          ) {
+            nextAcquisitionState = deferLearnAcquisitionForSpacing(
+              acquisitionState,
+              Math.floor(Date.now() / 1000),
+            )
+          } else {
+            nextAcquisitionState = decideLearnAcquisitionTransition(
+              acquisitionState,
+              {
+                kind: 'independent-complete',
+                independentClean: independentEvidenceClean,
+              },
+            )
+          }
         } else {
           console.error(
             'Acquisition completion reached terminal state',
