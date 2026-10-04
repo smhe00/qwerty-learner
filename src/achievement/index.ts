@@ -1,4 +1,5 @@
 export {
+  processLiveLearnSessionCompletion,
   processLiveLearnWordRecord,
 } from './engine'
 export {
@@ -6,6 +7,10 @@ export {
   evaluateWordMetric,
   SUPPORTED_WORD_METRICS,
 } from './evaluator'
+export {
+  SUPPORTED_SESSION_METRICS,
+  evaluateSessionMetric,
+} from './session-evaluator'
 export {
   getAchievementState,
   getAchievementStates,
