@@ -449,9 +449,11 @@ export default function WordPanel() {
         if (!projection.isFinished) {
           dispatch({
             type: TypingStateActionType.NEXT_WORD,
-            payload: {
-              insertWord: projection.insertWord,
-            },
+            payload: projection.recoveryWindow?.active
+              ? { projectedWords: projection.queue }
+              : {
+                  insertWord: projection.insertWord,
+                },
           })
         } else {
           dispatch({ type: TypingStateActionType.FINISH_CHAPTER })
