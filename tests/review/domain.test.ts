@@ -2479,6 +2479,51 @@ test('Independent acquisition cannot admit from a one-word short-term loop', () 
   assert.equal(hasSufficientIndependentSpacing(resumed), true)
 })
 
+test('Learn stats count only spacing-valid Independent acquisition as mastery', () => {
+  const now = Math.floor(new Date(2026, 9, 4, 12, 0, 0).getTime() / 1000)
+  const record = (
+    word: string,
+    reasonCodes: string[],
+  ): IWordRecord => ({
+    word,
+    timeStamp: now - 10,
+    dict: 'spacing-stats',
+    chapter: -1,
+    timing: [],
+    wrongCount: 0,
+    mistakes: {},
+    sourceMode: 'learn',
+    learnItemKind: 'acquisition',
+    reviewPolicyDecision: {
+      version: 1,
+      policyVersion: 'learn-acquisition-independent-v1',
+      reasonCodes,
+      conditionVersion: 1,
+    },
+    reviewEvidence: {
+      version: 2,
+      memoryGrade: 'good',
+      retrievalValidity: 'independent',
+      evidenceStrength: 1,
+      reasonCodes: ['test-independent'],
+    },
+  })
+
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'spacing-stats',
+    wordRecords: [
+      record('eligible', ['spacing-eligible']),
+      record('too-soon', ['spacing-insufficient']),
+    ],
+    wordStates: [],
+    dictionaryWords: ['eligible', 'too-soon'],
+  })
+
+  assert.equal(stats.today.acquiredWords, 1)
+  assert.equal(stats.dailyActivity30d.at(-1)?.acquired, 1)
+})
+
 test('legacy active state seeded only from Typing is removable ghost state', () => {
   const state = createInitialReviewWordState(
     'cet4',
