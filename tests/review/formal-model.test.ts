@@ -1430,7 +1430,7 @@ test('formal/learn-start-priority: due review always wins over new acquisition',
   )
 })
 
-test('formal/acquisition-safety: acquisition starts cold but remains scheduler-neutral', async () => {
+test('formal/acquisition-safety: acquisition starts supported by visible exposure and remains scheduler-neutral', async () => {
   const {
     createLearnAcquisitionPlan,
   } = await import('../../src/learn/session')
@@ -1439,12 +1439,12 @@ test('formal/acquisition-safety: acquisition starts cold but remains scheduler-n
   } = await import('../../src/review/session')
   const plan = createLearnAcquisitionPlan()
 
-  assert.equal(plan.condition.purpose, 'probe')
+  assert.equal(plan.condition.purpose, 'training')
   assert.equal(plan.condition.probeDimension, 'none')
-  assert.equal(plan.condition.letters.mode, 'all-hidden')
+  assert.equal(plan.condition.letters.mode, 'all-visible')
   assert.equal(plan.condition.meaning, 'visible')
-  assert.equal(plan.condition.phonetic, 'hidden')
-  assert.equal(plan.condition.audio, 'none')
+  assert.equal(plan.condition.phonetic, 'visible')
+  assert.equal(plan.condition.audio, 'automatic')
   assert.equal(
     getReviewAttemptRole({
       sessionKind: 'acquisition',
