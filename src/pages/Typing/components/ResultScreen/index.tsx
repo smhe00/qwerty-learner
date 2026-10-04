@@ -270,14 +270,15 @@ const ResultScreen = () => {
                     <IexportWords fontSize={18} className="cursor-pointer text-gray-500" onClick={exportWords}></IexportWords>
                   </>
                 )}
-                <IconXiaoHongShu
-                  fontSize={15}
-                  className="cursor-pointer text-gray-500 hover:text-red-500 focus:outline-none"
-                  onClick={(e) => {
-                    handleOpenInfoPanel('redBook')
-                    e.currentTarget.blur()
-                  }}
-                />
+                <button
+                  type="button"
+                  disabled
+                  className="cursor-not-allowed opacity-35"
+                  title="Qwerty Plus Alpha：小红书渠道暂未开放"
+                  aria-label="小红书渠道暂未开放"
+                >
+                  <IconXiaoHongShu fontSize={15} className="text-gray-500" />
+                </button>
 
                 <button
                   onClick={(e) => {
@@ -292,19 +293,24 @@ const ResultScreen = () => {
                 </button>
 
                 <button
-                  onClick={(e) => {
-                    handleOpenInfoPanel('community')
-                    e.currentTarget.blur()
-                  }}
-                  className="cursor-pointer text-gray-500 dark:text-gray-400"
+                  className="cursor-not-allowed text-gray-500 opacity-35 dark:text-gray-400"
                   type="button"
-                  title="加入我们的社区"
+                  disabled
+                  title="Qwerty Plus Alpha：社区渠道暂未开放"
+                  aria-label="社区渠道暂未开放"
                 >
-                  <IconWechat fontSize={16} className="text-gray-500 hover:text-green-500 focus:outline-none" />
+                  <IconWechat fontSize={16} className="text-gray-500" />
                 </button>
 
-                <a href="https://github.com/RealKai42/qwerty-learner" target="_blank" rel="noreferrer" className="leading-[0px]">
-                  <IconGithub fontSize={16} className="text-gray-500 hover:text-green-800 focus:outline-none" />
+                <a
+                  href="https://github.com/smhe00/qwerty-learner"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="leading-[0px]"
+                  title="Qwerty Plus 源码"
+                  aria-label="查看 Qwerty Plus 源码"
+                >
+                  <IconGithub fontSize={16} className="text-gray-500 hover:text-gray-800 focus:outline-none dark:hover:text-gray-200" />
                 </a>
               </div>
             </div>
