@@ -1,9 +1,7 @@
 import ModeSwitcher from '@/components/ModeSwitcher'
 import Header from '@/components/Header'
 import Layout from '@/components/Layout'
-import { buildLearnDailyPlan } from '@/learn/plan'
-import { decideDailyAcquisitionQuota } from '@/learn/quota'
-import { buildLearnStatsSnapshot } from '@/learn/stats'
+import { prepareLearnSession } from '@/learn/controller'
 import { DictChapterButton } from '@/pages/Typing/components/DictChapterButton'
 import PronunciationSwitcher from '@/pages/Typing/components/PronunciationSwitcher'
 import Switcher from '@/pages/Typing/components/Switcher'
@@ -13,6 +11,7 @@ import {
   currentDictInfoAtom,
   reviewModeInfoAtom,
 } from '@/store'
+import { getUTCUnixTimestamp } from '@/utils'
 import { wordListFetcher } from '@/utils/wordListFetcher'
 import {
   generateLearnReviewRecord,
@@ -91,107 +90,39 @@ export default function LearnPage() {
 
     const prepare = async () => {
       try {
-        // Repair lifecycle/admission state before restoring any unfinished
-        // session. Otherwise a stale Review checkpoint created by the old
-        // premature-admission bug can bypass bootstrap and run again.
-        await bootstrapReviewWordStatesForDictionary(dictId)
-        if (!isCurrent()) return
-
-        const unfinished = await getLatestReviewRecord(dictId)
-        if (!isCurrent()) return
-
-        if (unfinished) {
-          enterSession(unfinished)
-          return
-        }
-
-        let record = await generateLearnReviewRecord(
+        const result = await prepareLearnSession({
           dictId,
           words,
-          errorWordDataRef.current,
-          { mode: 'due' },
-        )
+          errorEvidence: errorWordDataRef.current,
+          dependencies: {
+            now: getUTCUnixTimestamp,
+            bootstrap: async (id, now) => {
+              await bootstrapReviewWordStatesForDictionary(id, now)
+            },
+            getLatestSession: getLatestReviewRecord,
+            generateDueReview: async (id, sessionWords, errorEvidence) =>
+              generateLearnReviewRecord(
+                id,
+                sessionWords,
+                errorEvidence,
+                { mode: 'due' },
+              ),
+            getWordRecords: (id) =>
+              db.wordRecords.where('dict').equals(id).toArray(),
+            getWordStates: getReviewWordStates,
+            generateAcquisition: generateNewWordAcquisitionRecord,
+            getNextSpacingResumeAt: getNextSpacingDeferredResumeAt,
+          },
+        })
         if (!isCurrent()) return
 
-        if (!record) {
-          const now = Math.floor(Date.now() / 1000)
-          const [wordRecords, wordStates] = await Promise.all([
-            db.wordRecords.where('dict').equals(dictId).toArray(),
-            getReviewWordStates(dictId),
-          ])
-          if (!isCurrent()) return
-
-          const stats = buildLearnStatsSnapshot({
-            now,
-            dict: dictId,
-            wordRecords,
-            wordStates,
-            dictionaryWords: words.map((word) => word.name),
-          })
-          const quota = decideDailyAcquisitionQuota(stats)
-          const dailyPlan = buildLearnDailyPlan({ stats, quota })
-
-          // Pending Acquisition completion is not fresh workload and must not
-          // be blocked by a fully consumed new-word quota. The fresh allowance
-          // only controls first introductions inside the resolver.
-          record = await generateNewWordAcquisitionRecord(
-            dictId,
-            words,
-            dailyPlan.allowedNewWordsNow,
-          )
-
-          if (!record) {
-            const nextResumeAt =
-              await getNextSpacingDeferredResumeAt(dictId)
-            if (!isCurrent()) return
-
-            if (nextResumeAt !== undefined && nextResumeAt > now) {
-              const minutes = Math.max(
-                1,
-                Math.ceil((nextResumeAt - now) / 60),
-              )
-              setStatusText(
-                `还有新词正在建立间隔记忆，约 ${minutes} 分钟后可继续独立回忆。`,
-              )
-              setIsStarting(false)
-              return
-            }
-          }
-
-          if (!record && stats.lifecycle.unseen === 0) {
-            setStatusText('当前词库没有需要学习的单词。')
-            setIsStarting(false)
-            return
-          } else if (!record && dailyPlan.action === 'review-due') {
-            setStatusText('还有到期复习需要处理，暂不新增单词。')
-            setIsStarting(false)
-            return
-          } else if (
-            !record &&
-            dailyPlan.reasonCodes.includes('daily-workload-budget-reached')
-          ) {
-            setStatusText(
-              `今日 Learn 工作量已完成（已投入约 ${dailyPlan.todayActiveMinutes} 分钟）。`,
-            )
-            setIsStarting(false)
-            return
-          } else if (!record) {
-            setStatusText(
-              `今日新词额度已完成（已引入 ${stats.today.introducedWords}/${quota.targetDailyNewWords}）。`,
-            )
-            setIsStarting(false)
-            return
-          }
-        }
-        if (!isCurrent()) return
-
-        if (!record) {
-          setStatusText('当前词库没有需要学习的单词。')
-          setIsStarting(false)
+        if (result.kind === 'session') {
+          enterSession(result.record)
           return
         }
 
-        enterSession(record)
+        setStatusText(result.statusText)
+        setIsStarting(false)
       } catch {
         if (isCurrent()) {
           setStatusText('Learn 准备失败，请重试。')
