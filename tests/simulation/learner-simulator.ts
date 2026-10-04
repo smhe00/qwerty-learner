@@ -494,10 +494,13 @@ export function simulateLearner(input: {
         )
     })
 
-    const acquisitionCandidates = [
-      ...pending,
-      ...unseen.slice(0, quota.allowedNow),
-    ]
+    const acquisitionCandidates =
+      statsBefore.lifecycle.due > 0
+        ? []
+        : [
+            ...pending,
+            ...unseen.slice(0, quota.allowedNow),
+          ]
 
     for (const word of acquisitionCandidates) {
       if (interactions >= maxDailyReviews + 40) break
