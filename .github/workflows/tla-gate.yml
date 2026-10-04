@@ -41,7 +41,13 @@ jobs:
           curl --fail --location --silent --show-error \
             https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar \
             --output /tmp/tla2tools.jar
-          echo 'e22f8ffb4bacdea0a871f444dd94fe5fb0d8013b3388ae39e82e26f852c735d5  /tmp/tla2tools.jar' | sha256sum -c -
+          actual="$(sha256sum /tmp/tla2tools.jar | awk '{print $1}')"
+          echo "Downloaded tla2tools.jar SHA256: $actual"
+          expected='e22f8ffb4bacdea0a871f444dd94fe5fb0d8013b3388ae39e82e26f852c735d5'
+          if [ "$actual" != "$expected" ]; then
+            echo "Pinned SHA256 mismatch."
+            exit 1
+          fi
 
       - name: Parse Learn TLA model
         run: |
