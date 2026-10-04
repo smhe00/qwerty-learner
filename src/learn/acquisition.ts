@@ -305,6 +305,37 @@ export function deferLearnAcquisitionForSpacing(
   }
 }
 
+export function normalizeDeferredAcquisitionState(
+  state: LearnAcquisitionState,
+  deferredAt: number,
+): LearnAcquisitionState {
+  if (
+    state.phase !== 'deferred' ||
+    state.resumeAfter !== undefined
+  ) {
+    return state
+  }
+
+  if (state.deferredReason === 'assistance') {
+    return {
+      ...state,
+      resumeAfter:
+        deferredAt + MIN_ASSISTANCE_DEFERRED_DELAY_SECONDS,
+    }
+  }
+
+  if (state.deferredReason === 'spacing') {
+    return {
+      ...state,
+      resumeAfter:
+        deferredAt +
+        MIN_CROSS_SESSION_INDEPENDENT_DELAY_SECONDS,
+    }
+  }
+
+  return state
+}
+
 export function scheduleAssistanceDeferredAcquisition(
   state: LearnAcquisitionState,
   now: number,
