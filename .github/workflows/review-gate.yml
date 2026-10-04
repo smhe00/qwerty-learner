@@ -104,6 +104,7 @@ jobs:
           npx esbuild \
             tests/review/domain.test.ts \
             tests/review/formal-model.test.ts \
+            tests/review/control-stability.test.ts \
             tests/review/typing-audio-formal.test.ts \
             --bundle \
             --platform=node \
@@ -117,6 +118,9 @@ jobs:
 
       - name: Run Review formal model checker
         run: node --test .review-test/formal-model.test.mjs
+
+      - name: Run Learn control stability gate
+        run: node --test .review-test/control-stability.test.mjs
 
       - name: Run Typing audio lifecycle formal model
         run: node --test .review-test/typing-audio-formal.test.mjs
