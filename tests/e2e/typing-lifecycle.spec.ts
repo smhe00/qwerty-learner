@@ -166,6 +166,9 @@ test('phrase-internal Space remains a spelling character and rich example reveal
     'false',
   )
   await expect(example).toContainText('I like __________.')
+  await expect(
+    example.locator('[data-typing-example-cn="visible"]'),
+  ).toHaveText('我喜欢冰淇淋。')
 
   // The internal Space is a normal target character, not a control key.
   await page.keyboard.type('ice cream')
@@ -183,6 +186,9 @@ test('phrase-internal Space remains a spelling character and rich example reveal
     'data-typing-example-surface',
     'ice creams',
   )
+  await expect(
+    example.locator('[data-typing-example-cn="visible"]'),
+  ).toHaveText('我喜欢冰淇淋。')
 
   // Once success is reached, Space changes role and fast-forwards.
   await page.keyboard.press('Space')
