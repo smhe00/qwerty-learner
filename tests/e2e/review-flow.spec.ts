@@ -1156,6 +1156,9 @@ test('Learn dictionary selection reuses the Typing gallery and skips chapter sel
   await page.getByRole('link', { name: 'CET-4', exact: true }).click()
   await expect(page).toHaveURL(/\/gallery\?mode=learn$/)
 
+  const commonTag = page.getByRole('radio', { name: '通用', exact: true })
+  await commonTag.click()
+
   const target = page.getByRole('button', {
     name: '选择 Learn 词库：中考核心词',
   })
@@ -1430,14 +1433,16 @@ test('Learn reuses Typing controls while preserving Typing-owned preferences', a
   const rendered = page.locator(
     `[data-typing-word="${firstWord}"]`,
   )
-  await expect(rendered).toHaveAttribute('data-review-audio', 'none')
+  // Learn owns acquisition presentation. Typing preferences remain stored,
+  // but first exposure deliberately shows the answer/phonetic and plays audio.
+  await expect(rendered).toHaveAttribute('data-review-audio', 'automatic')
   await expect(rendered).toHaveAttribute(
     'data-review-letters',
-    'all-hidden',
+    'all-visible',
   )
   await expect(rendered).toHaveAttribute(
     'data-review-phonetic',
-    'hidden',
+    'visible',
   )
   await expect(rendered).toHaveAttribute(
     'data-review-meaning',
