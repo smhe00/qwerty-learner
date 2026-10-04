@@ -1,7 +1,7 @@
 import {
+  LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
   createLearnAcquisitionExercisePlan,
   createLearnAcquisitionState,
-  LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
 } from './acquisition'
 import type { LearnAcquisitionState } from './acquisition'
 import type { ReviewExercisePlanV1 } from '@/review/decision'
