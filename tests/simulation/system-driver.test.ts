@@ -260,3 +260,36 @@ test('full VirtualLearnApp blindly rediscovers the admitted-based singleton loop
     ),
   )
 })
+
+
+test('full VirtualLearnApp detects stale checkpoint restoration after refresh', async () => {
+  const app = new VirtualLearnApp({
+    words: Array.from(
+      { length: 8 },
+      (_, index) => word(`s${index}`),
+    ),
+    mutation: {
+      staleRestoreOnce: true,
+    },
+  })
+
+  const first = await app.enter()
+  assert.equal(first.kind, 'session')
+  assert.equal(app.completeCurrentAcquisitionClean(), true)
+
+  app.seedStaleCheckpointFromActive()
+
+  assert.equal(app.completeCurrentAcquisitionClean(), true)
+
+  const restored = await app.refresh()
+  assert.equal(restored.kind, 'session')
+  if (restored.kind !== 'session') return
+  assert.equal(restored.source, 'restored')
+
+  const anomalies = detectLearnSystemAnomalies(app.events)
+  const regression = anomalies.find(
+    (item) => item.code === 'checkpoint-regression',
+  )
+  assert.ok(regression)
+  assert.equal(regression.severity, 'high')
+})
