@@ -2,8 +2,8 @@ import {
   decideLearnAcquisitionTransition,
   deferLearnAcquisitionForSpacing,
   hasSufficientIndependentSpacing,
-  scheduleAssistanceDeferredAcquisition,
   projectLearnAcquisitionProgress,
+  scheduleAssistanceDeferredAcquisition,
 } from './acquisition'
 import type {
   LearnAcquisitionProgressProjection,
