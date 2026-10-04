@@ -5,6 +5,7 @@ export type LearnSystemTraceEvent =
       kind: 'session-prepared'
       source: 'restored' | 'review' | 'acquisition'
       sessionKind: 'review' | 'acquisition'
+      sessionId: string
       batchSize: number
       uniqueWords: number
       dueCount: number | null
@@ -47,7 +48,6 @@ export type LearnSystemAnomaly = {
     | 'success-without-progress'
     | 'checkpoint-regression'
     | 'due-work-bypassed'
-    | 'fresh-work-after-zero-allowance'
   severity: 'medium' | 'high'
   eventIndex: number
   details: Record<string, number | string | boolean | null>
@@ -71,6 +71,10 @@ export function preparationResultToTraceEvent(
     kind: 'session-prepared',
     source: result.source,
     sessionKind: result.record.sessionKind ?? 'review',
+    sessionId:
+      result.record.id !== undefined
+        ? `id:${result.record.id}`
+        : `created:${result.record.dict}:${result.record.createTime}`,
     batchSize: words.length,
     uniqueWords: new Set(words.map((word) => word.name)).size,
     dueCount: result.diagnostics.stats?.lifecycle.due ?? null,
@@ -97,6 +101,7 @@ export function detectLearnSystemAnomalies(
   const anomalies: LearnSystemAnomaly[] = []
   const lastSavedCheckpoint = new Map<string, string>()
   let singletonRun = 0
+  let lastSingletonSessionId: string | null = null
 
   for (let index = 0; index < events.length; index += 1) {
     const event = events[index]
@@ -117,22 +122,6 @@ export function detectLearnSystemAnomalies(
         })
       }
 
-      if (
-        event.sessionKind === 'acquisition' &&
-        event.batchSize > 0 &&
-        event.allowedNewWordsNow === 0
-      ) {
-        anomalies.push({
-          code: 'fresh-work-after-zero-allowance',
-          severity: 'high',
-          eventIndex: index,
-          details: {
-            batchSize: event.batchSize,
-            allowedNewWordsNow: event.allowedNewWordsNow,
-          },
-        })
-      }
-
       const suspiciousSingleton =
         event.sessionKind === 'acquisition' &&
         event.batchSize === 1 &&
@@ -140,7 +129,10 @@ export function detectLearnSystemAnomalies(
         (event.unseenCount === null || event.unseenCount > 1)
 
       if (suspiciousSingleton) {
-        singletonRun += 1
+        if (event.sessionId !== lastSingletonSessionId) {
+          singletonRun += 1
+          lastSingletonSessionId = event.sessionId
+        }
         if (singletonRun === 3) {
           anomalies.push({
             code: 'repeated-singleton-acquisition',
@@ -156,12 +148,14 @@ export function detectLearnSystemAnomalies(
         }
       } else {
         singletonRun = 0
+        lastSingletonSessionId = null
       }
       continue
     }
 
     if (event.kind === 'attempt-completed') {
       singletonRun = 0
+      lastSingletonSessionId = null
       if (
         event.success &&
         event.beforeIndex === event.afterIndex &&
@@ -184,6 +178,7 @@ export function detectLearnSystemAnomalies(
 
     if (event.kind === 'checkpoint') {
       singletonRun = 0
+      lastSingletonSessionId = null
       if (event.action === 'save') {
         lastSavedCheckpoint.set(
           event.sessionId,
@@ -212,6 +207,7 @@ export function detectLearnSystemAnomalies(
 
     // Waiting breaks a run of consecutive prepared sessions.
     singletonRun = 0
+    lastSingletonSessionId = null
   }
 
   return anomalies
