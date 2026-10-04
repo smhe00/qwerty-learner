@@ -4,6 +4,8 @@ import {
   LEARN_ACQUISITION_SUPPORTED_POLICY_VERSION,
 } from './acquisition'
 import { getLearningLifecycle } from './lifecycle'
+import { estimateLearnInteractionStrain } from './strain'
+import type { LearnInteractionStrainEstimate } from './strain'
 import type { IReviewWordState, ReviewOutcome } from '@/review/types'
 import type { IWordRecord } from '@/utils/db/record'
 
@@ -40,6 +42,7 @@ export type LearnStatsSnapshot = {
     recentReviewSamples: number
     recentAcquisitionSamples: number
   }
+  strain: LearnInteractionStrainEstimate
   scheduler: {
     averageIntervalDays: number | null
     successRate30d: number | null
@@ -299,6 +302,7 @@ export function buildLearnStatsSnapshot(input: {
   const recentRecords = records.filter((record) =>
     dateKeySet.has(localDateKey(record.timeStamp)),
   )
+  const strain = estimateLearnInteractionStrain(recentRecords)
   const todayActiveSeconds = round1(
     todayLearnRecords.reduce(
       (sum, record) => sum + (recordActiveSeconds(record) ?? 0),
@@ -370,6 +374,7 @@ export function buildLearnStatsSnapshot(input: {
       recentReviewSamples: recentReviewSeconds.length,
       recentAcquisitionSamples: recentAcquisitionSeconds.length,
     },
+    strain,
     scheduler: {
       averageIntervalDays,
       successRate30d: rate(successfulRated, recentRated.length),
