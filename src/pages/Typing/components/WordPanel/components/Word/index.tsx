@@ -95,6 +95,7 @@ export type WordFinishResult = {
   classification: TypingErrorClassification
   reviewRatingDecision?: RatingDecision
   reviewEvidence: ReviewEvidenceV1
+  lastWrongIndex?: number
   nextExerciseShadow?: ReviewPolicyShadowV1 | null
 }
 
@@ -107,6 +108,8 @@ type WordComponentProps = {
   learnItemKind?: LearnSessionKind
   reviewAttemptRole?: ReviewAttemptRole
   managedHintFlow?: boolean
+  managedHintInitialLevel?: ReviewHintLevel
+  managedHintInitialPosition?: number
   onHintLevelChange?: (level: ReviewHintLevel | null) => void
 }
 
@@ -119,6 +122,8 @@ export default function WordComponent({
   learnItemKind,
   reviewAttemptRole,
   managedHintFlow = false,
+  managedHintInitialLevel,
+  managedHintInitialPosition,
   onHintLevelChange,
 }: WordComponentProps) {
   // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
@@ -181,9 +186,12 @@ export default function WordComponent({
       clearTimeout(successAdvanceTimerRef.current)
       successAdvanceTimerRef.current = null
     }
-    reviewHintStateRef.current = createReviewHintMachineState()
-    setActiveHintLevel(null)
-    onHintLevelChange?.(null)
+    reviewHintStateRef.current = createReviewHintMachineState({
+      initialLevel: managedHintInitialLevel,
+      hintPosition: managedHintInitialPosition,
+    })
+    setActiveHintLevel(managedHintInitialLevel ?? null)
+    onHintLevelChange?.(managedHintInitialLevel ?? null)
     dispatch({ type: TypingStateActionType.SET_SKIP_LOCKED, payload: false })
 
     let headword = ''
@@ -825,6 +833,13 @@ export default function WordComponent({
       })
 
       const telemetry = telemetryCollectorRef.current.snapshot()
+      const lastWrongIndex = [...telemetry.attempts]
+        .reverse()
+        .find(
+          (attempt) =>
+            attempt.result === 'wrong' &&
+            attempt.wrongIndex !== undefined,
+        )?.wrongIndex
       const learningContext = learningContextCollectorRef.current.snapshot()
       const classification = classifyTypingError({
         word: word.name,
@@ -895,6 +910,7 @@ export default function WordComponent({
           classification,
           reviewRatingDecision,
           reviewEvidence,
+          ...(lastWrongIndex !== undefined ? { lastWrongIndex } : {}),
           nextExerciseShadow,
         }
         armSuccessFinishRelease(() => onFinish(result))
