@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  createLearnAcquisitionExercisePlan,
+  createLearnAcquisitionState,
+  decideLearnAcquisitionTransition,
+  projectLearnAcquisitionProgress,
+} from '../../src/learn/acquisition'
+import {
   decideLearningLifecycleTransition,
   getLearningLifecycle,
   pruneLearnSessionWord,
@@ -2266,20 +2272,122 @@ test('pruning an excluded word removes all session duplicates and preserves logi
 })
 
 
-test('Learn acquisition starts from an unaided cold probe before Hint training', () => {
+test('Learn acquisition starts with visible confidence-building exposure', () => {
   const plan = createLearnAcquisitionPlan()
 
-  assert.equal(plan.condition.purpose, 'probe')
-  assert.equal(plan.condition.audio, 'none')
+  assert.equal(plan.condition.purpose, 'training')
+  assert.equal(plan.condition.audio, 'automatic')
   assert.equal(plan.condition.meaning, 'visible')
-  assert.equal(plan.condition.phonetic, 'hidden')
-  assert.deepEqual(plan.condition.letters, { mode: 'all-hidden' })
+  assert.equal(plan.condition.phonetic, 'visible')
+  assert.deepEqual(plan.condition.letters, { mode: 'all-visible' })
   assert.equal(plan.condition.probeDimension, 'none')
   assert.equal(
     plan.decision.policyVersion,
-    'learn-acquisition-cold-probe-v2',
+    'learn-acquisition-exposure-v1',
   )
-  assert.ok(plan.decision.reasonCodes.includes('cold-probe-first'))
+  assert.ok(plan.decision.reasonCodes.includes('visible-copy'))
+})
+
+test('Learn acquisition separates exposure, support and delayed independent recall', () => {
+  let state = createLearnAcquisitionState()
+  assert.equal(state.phase, 'exposure')
+
+  state = decideLearnAcquisitionTransition(state, {
+    kind: 'exposure-complete',
+  })
+  assert.equal(state.phase, 'guided')
+
+  state = decideLearnAcquisitionTransition(state, {
+    kind: 'guided-committed',
+  })
+  assert.equal(state.phase, 'supported')
+  assert.equal(
+    createLearnAcquisitionExercisePlan(state.phase).condition.letters.mode,
+    'all-hidden',
+  )
+
+  state = decideLearnAcquisitionTransition(state, {
+    kind: 'supported-complete',
+  })
+  assert.equal(state.phase, 'independent')
+  assert.equal(
+    createLearnAcquisitionExercisePlan(state.phase).condition.purpose,
+    'probe',
+  )
+
+  state = decideLearnAcquisitionTransition(state, {
+    kind: 'independent-complete',
+    independentClean: true,
+  })
+  assert.equal(state.phase, 'complete')
+})
+
+test('assisted independent recall returns to support and then defers instead of fabricating mastery', () => {
+  let state = createLearnAcquisitionState()
+  state = decideLearnAcquisitionTransition(state, {
+    kind: 'exposure-complete',
+  })
+  state = decideLearnAcquisitionTransition(state, {
+    kind: 'guided-committed',
+  })
+  state = decideLearnAcquisitionTransition(state, {
+    kind: 'supported-complete',
+  })
+
+  state = decideLearnAcquisitionTransition(state, {
+    kind: 'independent-complete',
+    independentClean: false,
+  })
+  assert.equal(state.phase, 'supported')
+  assert.equal(state.assistedCycles, 1)
+
+  state = decideLearnAcquisitionTransition(state, {
+    kind: 'supported-complete',
+  })
+  state = decideLearnAcquisitionTransition(state, {
+    kind: 'independent-complete',
+    independentClean: false,
+  })
+  assert.equal(state.phase, 'deferred')
+  assert.equal(state.assistedCycles, 2)
+})
+
+test('Learn acquisition follow-ups are spaced by intervening queue items', () => {
+  const queue = [
+    { name: 'a' },
+    { name: 'b' },
+    { name: 'c' },
+    { name: 'd' },
+    { name: 'e' },
+  ]
+  const supported = {
+    ...createLearnAcquisitionState(),
+    phase: 'supported' as const,
+  }
+  const first = projectLearnAcquisitionProgress({
+    queue,
+    currentIndex: 0,
+    currentWord: queue[0],
+    nextState: supported,
+  })
+  assert.equal(first.index, 1)
+  assert.equal(first.insertWord?.index, 3)
+  assert.deepEqual(
+    first.queue.map((item) => item.name),
+    ['a', 'b', 'c', 'a', 'd', 'e'],
+  )
+
+  const independent = {
+    ...supported,
+    phase: 'independent' as const,
+  }
+  const second = projectLearnAcquisitionProgress({
+    queue: first.queue,
+    currentIndex: 3,
+    currentWord: first.queue[3],
+    nextState: independent,
+  })
+  assert.equal(second.insertWord?.index, first.queue.length)
 })
 
 test('legacy active state seeded only from Typing is removable ghost state', () => {
