@@ -10,8 +10,8 @@ import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
 import {
   createLearnAcquisitionExercisePlan,
   createLearnAcquisitionState,
-  MIN_INDEPENDENT_INTERVENING_ITEMS,
   decideLearnAcquisitionTransition,
+  hasSufficientIndependentSpacing,
   projectLearnAcquisitionProgress,
 } from '@/learn/acquisition'
 import { pruneLearnSessionWord } from '@/learn/lifecycle'
@@ -326,8 +326,7 @@ export default function WordPanel() {
             wrongCount === 0 &&
             classification.cause === 'clean' &&
             reviewEvidence.retrievalValidity === 'independent' &&
-            (acquisitionState.independentInterveningItems ?? 0) >=
-              MIN_INDEPENDENT_INTERVENING_ITEMS
+            hasSufficientIndependentSpacing(acquisitionState)
           nextAcquisitionState = decideLearnAcquisitionTransition(
             acquisitionState,
             {
