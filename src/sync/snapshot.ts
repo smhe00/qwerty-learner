@@ -65,6 +65,8 @@ async function localRecordCount() {
     db.chapterRecords.count(),
     db.reviewRecords.count(),
     db.reviewWordStates.count(),
+    db.achievementEvents.count(),
+    db.achievementStates.count(),
   ])
 
   return counts.reduce((sum, value) => sum + value, 0)
