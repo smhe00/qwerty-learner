@@ -1,9 +1,10 @@
 import {
   LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
-  createLearnAcquisitionExercisePlan,
+  createLearnAcquisitionExercisePlanForState,
   createLearnAcquisitionState,
 } from './acquisition'
 import type { LearnAcquisitionState } from './acquisition'
+import type { LearnInteractionStrainTier } from './strain'
 import type { ReviewExercisePlanV1 } from '@/review/decision'
 import type { IReviewWordState } from '@/review/types'
 import type { Word } from '@/typings'
@@ -81,23 +82,35 @@ export function canonicalizeLearningWords(words: Word[]): Word[] {
  * The Learn-only controller later swaps this frozen plan to Supported and
  * Independent phases without changing ordinary Typing policy.
  */
-export function createLearnAcquisitionPlan(): ReviewExercisePlanV1 {
-  return createLearnAcquisitionExercisePlan('exposure')
+export function createLearnAcquisitionPlan(options?: {
+  scaffoldStrainTier?: LearnInteractionStrainTier
+}): ReviewExercisePlanV1 {
+  return createLearnAcquisitionExercisePlanForState(
+    createLearnAcquisitionState(options),
+  )
 }
 
 export function buildLearnAcquisitionExercisePlans(
   words: Word[],
+  options?: { scaffoldStrainTier?: LearnInteractionStrainTier },
 ): Record<string, ReviewExercisePlanV1> {
   return Object.fromEntries(
-    words.map((word) => [word.name, createLearnAcquisitionPlan()]),
+    words.map((word) => [
+      word.name,
+      createLearnAcquisitionPlan(options),
+    ]),
   )
 }
 
 export function buildLearnAcquisitionStates(
   words: Word[],
+  options?: { scaffoldStrainTier?: LearnInteractionStrainTier },
 ): Record<string, LearnAcquisitionState> {
   return Object.fromEntries(
-    words.map((word) => [word.name, createLearnAcquisitionState()]),
+    words.map((word) => [
+      word.name,
+      createLearnAcquisitionState(options),
+    ]),
   )
 }
 
