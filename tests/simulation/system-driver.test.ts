@@ -497,3 +497,79 @@ test('F2 simulation blindly detects pending/fresh Acquisition bypassing due Revi
     assert.ok(Number(bypass.details.dueCount) > 0)
   }
 })
+
+
+test('F3 production Review refresh restores the latest durable checkpoint', async () => {
+  const app = new VirtualLearnApp({
+    words: Array.from(
+      { length: 6 },
+      (_, index) => word(`f3-review-${index}`),
+    ),
+  })
+  app.seedAdmittedWords(4)
+  app.makeSeededWordsDue(4)
+
+  const first = await app.enter()
+  assert.equal(first.kind, 'session')
+  if (first.kind !== 'session') return
+  assert.equal(first.record.sessionKind, 'review')
+
+  assert.equal(app.completeCurrentReviewClean(), true)
+  assert.equal(app.completeCurrentReviewClean(), true)
+
+  const before = app.snapshot()
+  const latest = before.sessions
+    .filter((session) => !session.isFinished)
+    .at(-1)
+  assert.ok(latest)
+
+  const restored = await app.refresh()
+  assert.equal(restored.kind, 'session')
+  if (restored.kind !== 'session') return
+  assert.equal(restored.source, 'restored')
+  assert.equal(restored.record.id, latest.id)
+  assert.equal(restored.record.index, latest.index)
+
+  const anomalies = detectLearnSystemAnomalies(app.events)
+  assert.equal(
+    anomalies.some(
+      (item) => item.code === 'checkpoint-regression',
+    ),
+    false,
+  )
+})
+
+test('F3 Review stale checkpoint mutation is detected after later progress', async () => {
+  const app = new VirtualLearnApp({
+    words: Array.from(
+      { length: 6 },
+      (_, index) => word(`f3-stale-${index}`),
+    ),
+    mutation: {
+      staleRestoreOnce: true,
+    },
+  })
+  app.seedAdmittedWords(4)
+  app.makeSeededWordsDue(4)
+
+  const first = await app.enter()
+  assert.equal(first.kind, 'session')
+  if (first.kind !== 'session') return
+  assert.equal(first.record.sessionKind, 'review')
+
+  assert.equal(app.completeCurrentReviewClean(), true)
+  app.seedStaleCheckpointFromActive()
+  assert.equal(app.completeCurrentReviewClean(), true)
+
+  const restored = await app.refresh()
+  assert.equal(restored.kind, 'session')
+  if (restored.kind !== 'session') return
+  assert.equal(restored.source, 'restored')
+
+  const anomalies = detectLearnSystemAnomalies(app.events)
+  const regression = anomalies.find(
+    (item) => item.code === 'checkpoint-regression',
+  )
+  assert.ok(regression)
+  assert.equal(regression.severity, 'high')
+})
