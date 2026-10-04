@@ -129,7 +129,7 @@ jobs:
 
       - name: Bundle longitudinal learner simulation
         run: |
-          npx esbuild tests/simulation/learner-simulator.test.ts tests/simulation/policy-sweep.test.ts tests/simulation/trace-signature.test.ts tests/simulation/system-oracle.test.ts tests/simulation/interaction-driver.test.ts tests/simulation/checkpoint-driver.test.ts tests/simulation/mutation-scorecard.test.ts tests/simulation/system-driver.test.ts --bundle --platform=node --target=node20 --format=esm --outdir=.review-test --out-extension:.js=.mjs
+          npx esbuild tests/simulation/learner-simulator.test.ts tests/simulation/policy-sweep.test.ts tests/simulation/trace-signature.test.ts tests/simulation/system-oracle.test.ts tests/simulation/interaction-driver.test.ts tests/simulation/checkpoint-driver.test.ts tests/simulation/mutation-scorecard.test.ts tests/simulation/system-driver.test.ts tests/simulation/system-explorer.test.ts --bundle --platform=node --target=node20 --format=esm --outdir=.review-test --out-extension:.js=.mjs
 
       - name: Run longitudinal learner simulation
         run: |
@@ -141,6 +141,7 @@ jobs:
           node --test .review-test/checkpoint-driver.test.mjs
           node --test .review-test/mutation-scorecard.test.mjs
           node --test .review-test/system-driver.test.mjs
+          node --test .review-test/system-explorer.test.mjs
 
       - name: Run Typing audio lifecycle formal model
         run: node --test .review-test/typing-audio-formal.test.mjs
