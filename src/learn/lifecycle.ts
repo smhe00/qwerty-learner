@@ -58,6 +58,37 @@ export function decideLearningLifecycleTransition(
  * Remove every occurrence of a word from an unfinished Learn/Review session
  * while preserving the logical cursor.
  */
+/**
+ * Reconcile an unfinished Learn checkpoint with persistent lifecycle state.
+ *
+ * Review sessions may contain only ACTIVE words. Acquisition sessions may
+ * contain only words that still have no persistent lifecycle state; ACTIVE
+ * means admission already completed and EXCLUDED means the user removed it.
+ */
+export function sanitizeLearnSessionLifecycle(
+  record: IReviewRecord,
+  states: IReviewWordState[],
+): IReviewRecord {
+  if (record.isFinished) return record
+
+  const stateByWord = new Map(states.map((state) => [state.word, state]))
+  let sanitized = record
+
+  for (const word of new Set(record.words.map((item) => item.name))) {
+    const state = stateByWord.get(word)
+    const shouldPrune =
+      record.sessionKind === 'acquisition'
+        ? state !== undefined
+        : !isActiveLearningState(state)
+
+    if (shouldPrune) {
+      sanitized = pruneLearnSessionWord(sanitized, word)
+    }
+  }
+
+  return sanitized
+}
+
 export function pruneLearnSessionWord(
   record: IReviewRecord,
   word: string,
