@@ -17,7 +17,7 @@ import {
   generateLearnReviewRecord,
   generateNewWordAcquisitionRecord,
   getLatestReviewRecord,
-  getNextSpacingDeferredResumeAt,
+  getNextDeferredAcquisitionResumeAt,
 } from '@/utils/db/review-record'
 import {
   bootstrapReviewWordStatesForDictionary,
@@ -111,7 +111,8 @@ export default function LearnPage() {
               db.wordRecords.where('dict').equals(id).toArray(),
             getWordStates: getReviewWordStates,
             generateAcquisition: generateNewWordAcquisitionRecord,
-            getNextSpacingResumeAt: getNextSpacingDeferredResumeAt,
+            getNextDeferredResumeAt:
+              getNextDeferredAcquisitionResumeAt,
           },
         })
         if (!isCurrent()) return
