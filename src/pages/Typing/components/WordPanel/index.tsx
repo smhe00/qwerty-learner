@@ -596,6 +596,12 @@ export default function WordPanel() {
         ? currentExercisePlan.condition.phonetic === 'visible'
         : baselinePhoneticVisible
 
+  const managedHintFlow =
+    isReviewMode &&
+    (currentLearnItemKind === 'review' ||
+      currentAcquisitionState?.phase === 'supported' ||
+      currentAcquisitionState?.phase === 'independent')
+
   return (
     <div className="container flex h-full w-full flex-col items-center justify-center">
       <div className="container flex h-24 w-full shrink-0 grow-0 justify-between px-12 pt-10">
@@ -661,6 +667,7 @@ export default function WordPanel() {
                   isReviewMode ? currentLearnItemKind : undefined
                 }
                 reviewAttemptRole={currentReviewAttemptRole}
+                managedHintFlow={managedHintFlow}
                 onHintLevelChange={setCurrentReviewHintLevel}
                 key={currentWordRenderKey}
               />
