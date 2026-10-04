@@ -186,6 +186,23 @@ function recordActiveSeconds(record: IWordRecord): number | null {
   return null
 }
 
+function acquisitionActiveSecondsPerWordDay(
+  records: IWordRecord[],
+): number[] {
+  const totals = new Map<string, number>()
+
+  for (const record of records) {
+    if (!isAcquisition(record)) continue
+    const seconds = recordActiveSeconds(record)
+    if (seconds === null) continue
+
+    const key = `${localDateKey(record.timeStamp)}\u0000${record.word}`
+    totals.set(key, (totals.get(key) ?? 0) + seconds)
+  }
+
+  return [...totals.values()]
+}
+
 function median(values: number[]): number | null {
   if (values.length === 0) return null
   const sorted = [...values].sort((left, right) => left - right)
@@ -292,10 +309,8 @@ export function buildLearnStatsSnapshot(input: {
     .filter((record) => !isAcquisition(record))
     .map(recordActiveSeconds)
     .filter((value): value is number => value !== null)
-  const recentAcquisitionSeconds = recentRecords
-    .filter(isAcquisition)
-    .map(recordActiveSeconds)
-    .filter((value): value is number => value !== null)
+  const recentAcquisitionSeconds =
+    acquisitionActiveSecondsPerWordDay(recentRecords)
 
   const recentRated = recentRecords.filter(
     (record) => record.reviewRatingDecision?.eligible === true,
