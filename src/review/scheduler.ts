@@ -36,12 +36,25 @@ export function classificationToReviewOutcome(classification: TypingErrorClassif
 
 const DAY_SECONDS = 24 * 60 * 60
 
-function intervalForStage(stage: number): number {
+export type BasicReviewSchedulePolicy = {
+  intervalsDays: readonly number[]
+  sameSessionWindowSeconds: number
+}
+
+export const defaultBasicReviewSchedulePolicy: BasicReviewSchedulePolicy = {
+  intervalsDays: basicV2ReviewIntervalsDays,
+  sameSessionWindowSeconds,
+}
+
+function intervalForStage(
+  stage: number,
+  policy: BasicReviewSchedulePolicy,
+): number {
   const boundedStage = Math.min(
     Math.max(stage, 0),
-    basicV2ReviewIntervalsDays.length - 1,
+    policy.intervalsDays.length - 1,
   )
-  return basicV2ReviewIntervalsDays[boundedStage]
+  return policy.intervalsDays[boundedStage]
 }
 
 export function upgradeBasicSchedulerState(
@@ -59,7 +72,10 @@ export function upgradeBasicSchedulerState(
   }
 }
 
-export function scheduleBasicReview(input: ReviewScheduleInput): IReviewWordState {
+export function scheduleBasicReview(
+  input: ReviewScheduleInput,
+  policy: BasicReviewSchedulePolicy = defaultBasicReviewSchedulePolicy,
+): IReviewWordState {
   const upgradedState = upgradeBasicSchedulerState(input.state)
   const current = upgradedState.schedulerState
   if (current.kind !== 'basic-v2') {
