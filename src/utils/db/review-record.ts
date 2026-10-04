@@ -12,8 +12,7 @@ import {
 } from '@/learn/acquisition'
 import type { LearnAcquisitionState } from '@/learn/acquisition'
 import {
-  isActiveLearningState,
-  pruneLearnSessionWord,
+  sanitizeLearnSessionLifecycle,
 } from '@/learn/lifecycle'
 import { estimateLearnInteractionStrain } from '@/learn/strain'
 import { ReviewRecord } from './record'
@@ -55,21 +54,17 @@ export async function getLatestReviewRecord(dictID: string): Promise<ReviewRecor
     .sort((a, b) => a.createTime - b.createTime)
     .pop()
 
-  if (!latest || latest.sessionKind === 'acquisition') return latest
+  if (!latest) return undefined
 
-  // Review checkpoints are lifecycle-owned. If bootstrap repaired a
-  // premature Acquisition admission, remove the no-longer-ACTIVE word from
-  // any stale unfinished Review checkpoint before it can be resumed.
+  // Checkpoint recovery is lifecycle-owned. Review keeps only ACTIVE words.
+  // Acquisition keeps only words with no persistent lifecycle state, so a
+  // checkpoint written just before admission/exclusion cannot replay work
+  // that has already crossed the lifecycle boundary.
   const states = await getReviewWordStates(dictID)
-  const activeWords = new Set(
-    states.filter(isActiveLearningState).map((state) => state.word),
-  )
-  let sanitized: ReviewRecord = latest
-  for (const word of new Set(latest.words.map((item) => item.name))) {
-    if (!activeWords.has(word)) {
-      sanitized = pruneLearnSessionWord(sanitized, word) as ReviewRecord
-    }
-  }
+  const sanitized = sanitizeLearnSessionLifecycle(
+    latest,
+    states,
+  ) as ReviewRecord
 
   if (sanitized !== latest && latest.id !== undefined) {
     await putWordReviewRecord(sanitized)
