@@ -1,5 +1,10 @@
 # Adaptive Review 开发计划
 
+> **Status: Historical development plan.** The current top-level product model
+> is Typing / Learn. Review remains an internal Learn subsystem. Current
+> behavior and control contracts are documented by `LEARN_ARCHITECTURE_V1.md`,
+> `LEARN_USER_GUIDE_V1.md`, and the Review contract documents.
+
 > 权威产品分支：`product/main`  
 > 本计划采用“小步实现 → 测试 → Gate → review → 下一步”的循环，不以大爆炸方式重写 Review。
 
