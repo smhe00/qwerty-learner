@@ -2,7 +2,7 @@ import {
   LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
   createLearnAcquisitionExercisePlanForState,
   createLearnAcquisitionState,
-  resumeSpacingDeferredAcquisition,
+  resumeDeferredAcquisition,
 } from './acquisition'
 import type { LearnAcquisitionState } from './acquisition'
 import type { LearnInteractionStrainTier } from './strain'
@@ -185,7 +185,7 @@ export function planLearnAcquisitionCandidates(input: {
 
   for (const [wordName, pendingState] of input.pendingStates) {
     if (resumed.length >= LEARN_NEW_WORD_BATCH_SIZE) break
-    const resumedState = resumeSpacingDeferredAcquisition(
+    const resumedState = resumeDeferredAcquisition(
       pendingState,
       input.now,
     )
