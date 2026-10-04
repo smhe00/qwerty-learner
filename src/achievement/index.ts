@@ -22,6 +22,7 @@ export {
   SUPPORTED_STATE_METRICS,
   evaluateLongTermMasteredWordCount,
 } from './state-evaluator'
+export { buildAchievementVisibleProgress } from './progress'
 export {
   getAchievementState,
   getAchievementStates,
@@ -36,3 +37,5 @@ export type {
   AchievementUnlock,
   MetricConstraints,
 } from './types'
+
+export type { AchievementVisibleProgress } from './progress'
