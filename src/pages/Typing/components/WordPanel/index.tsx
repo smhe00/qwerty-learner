@@ -7,6 +7,12 @@ import Translation from './components/Translation'
 import WordComponent from './components/Word'
 import type { WordFinishResult } from './components/Word'
 import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
+import {
+  createLearnAcquisitionExercisePlan,
+  createLearnAcquisitionState,
+  decideLearnAcquisitionTransition,
+  projectLearnAcquisitionProgress,
+} from '@/learn/acquisition'
 import { pruneLearnSessionWord } from '@/learn/lifecycle'
 import type { LearnSessionKind } from '@/learn/session'
 import {
@@ -28,7 +34,10 @@ import {
   createReviewItemMachineState,
   resolveCompletedReviewItem,
 } from '@/review/state-machine'
-import { excludeLearningWord } from '@/review/repository'
+import {
+  completeLearningAcquisition,
+  excludeLearningWord,
+} from '@/review/repository'
 import {
   currentDictIdAtom,
   isReviewModeAtom,
@@ -64,9 +73,21 @@ export default function WordPanel() {
   const isReviewMode = useAtomValue(isReviewModeAtom)
   const currentLearnItemKind: LearnSessionKind =
     reviewModeInfo.reviewRecord?.sessionKind ?? 'review'
+  const currentAcquisitionState =
+    isReviewMode &&
+    currentLearnItemKind === 'acquisition' &&
+    currentWord
+      ? reviewModeInfo.reviewRecord?.acquisitionStates?.[currentWord.name] ??
+        createLearnAcquisitionState()
+      : undefined
   const currentExercisePlan =
     isReviewMode && currentWord
-      ? reviewModeInfo.reviewRecord?.exercisePlans?.[currentWord.name]
+      ? currentLearnItemKind === 'acquisition' &&
+        currentAcquisitionState &&
+        currentAcquisitionState.phase !== 'complete' &&
+        currentAcquisitionState.phase !== 'deferred'
+        ? createLearnAcquisitionExercisePlan(currentAcquisitionState.phase)
+        : reviewModeInfo.reviewRecord?.exercisePlans?.[currentWord.name]
       : undefined
   const currentReviewAttemptRole = getReviewAttemptRole({
     sessionKind: isReviewMode ? currentLearnItemKind : undefined,
@@ -261,42 +282,126 @@ export default function WordPanel() {
         return
       }
 
-      if (isReviewMode && currentWord) {
-        // Acquisition remains a bounded training-only queue and deliberately
-        // does not enter the Review Rating/Item machines.
-        const decision = decideReviewProgress({
+      if (
+        isReviewMode &&
+        currentWord &&
+        currentLearnItemKind === 'acquisition'
+      ) {
+        // Learn Acquisition owns its own state machine. The shared word engine
+        // only returns raw evidence; it never admits a word or mutates the
+        // long-term scheduler.
+        const acquisitionState =
+          reviewModeInfo.reviewRecord?.acquisitionStates?.[
+            currentWord.name
+          ] ?? createLearnAcquisitionState()
+
+        let nextAcquisitionState
+        if (acquisitionState.phase === 'exposure') {
+          const guided = decideLearnAcquisitionTransition(
+            acquisitionState,
+            { kind: 'exposure-complete' },
+          )
+          nextAcquisitionState = decideLearnAcquisitionTransition(
+            guided,
+            { kind: 'guided-committed' },
+          )
+        } else if (acquisitionState.phase === 'guided') {
+          nextAcquisitionState = decideLearnAcquisitionTransition(
+            acquisitionState,
+            { kind: 'guided-committed' },
+          )
+        } else if (acquisitionState.phase === 'supported') {
+          nextAcquisitionState = decideLearnAcquisitionTransition(
+            acquisitionState,
+            { kind: 'supported-complete' },
+          )
+        } else if (acquisitionState.phase === 'independent') {
+          const independentClean =
+            wrongCount === 0 &&
+            classification.cause === 'clean' &&
+            reviewEvidence.retrievalValidity === 'independent'
+          nextAcquisitionState = decideLearnAcquisitionTransition(
+            acquisitionState,
+            {
+              kind: 'independent-complete',
+              independentClean,
+            },
+          )
+        } else {
+          console.error(
+            'Acquisition completion reached terminal state',
+            acquisitionState,
+          )
+          return
+        }
+
+        const projection = projectLearnAcquisitionProgress({
           queue: state.chapterData.words,
           currentIndex: state.chapterData.index,
           currentWord,
-          currentExerciseCount: 0,
-          loopWordTimes: 1,
-          priorAccumulatedWrongCount: 0,
-          attemptWrongCount: 0,
-          currentReinforcementGap: MAX_REINFORCEMENT_GAP,
-          attemptReinforcementGap: MAX_REINFORCEMENT_GAP,
-          reinforcementRemaining: 0,
-          requestReinforcement: false,
-        })
-        const projection = projectReviewProgress({
-          queue: state.chapterData.words,
-          currentIndex: state.chapterData.index,
-          decision,
+          nextState: nextAcquisitionState,
         })
 
         setReviewModeInfo((old) => {
           if (!old.reviewRecord) return old
+
+          const acquisitionStates = {
+            ...(old.reviewRecord.acquisitionStates ?? {}),
+            [currentWord.name]: nextAcquisitionState,
+          }
+          const exercisePlans = {
+            ...(old.reviewRecord.exercisePlans ?? {}),
+          }
+
+          if (
+            nextAcquisitionState.phase === 'supported' ||
+            nextAcquisitionState.phase === 'independent'
+          ) {
+            exercisePlans[currentWord.name] =
+              createLearnAcquisitionExercisePlan(
+                nextAcquisitionState.phase,
+              )
+          } else {
+            delete exercisePlans[currentWord.name]
+          }
+
           return {
             ...old,
             reviewRecord: {
               ...old.reviewRecord,
               index: projection.index,
+              words: projection.queue,
               isFinished: projection.isFinished,
+              exercisePlans:
+                Object.keys(exercisePlans).length > 0
+                  ? exercisePlans
+                  : undefined,
+              acquisitionStates,
             },
           }
         })
 
-        if (decision.kind === 'advance') {
-          dispatch({ type: TypingStateActionType.NEXT_WORD })
+        if (nextAcquisitionState.phase === 'complete') {
+          const now = Math.floor(Date.now() / 1000)
+          void completeLearningAcquisition(
+            currentDictId,
+            currentWord.name,
+            now,
+          ).catch((error) => {
+            console.error(
+              'failed to persist completed acquisition state',
+              error,
+            )
+          })
+        }
+
+        if (!projection.isFinished) {
+          dispatch({
+            type: TypingStateActionType.NEXT_WORD,
+            payload: {
+              insertWord: projection.insertWord,
+            },
+          })
         } else {
           dispatch({ type: TypingStateActionType.FINISH_CHAPTER })
         }
@@ -324,6 +429,7 @@ export default function WordPanel() {
       dispatch({ type: TypingStateActionType.FINISH_CHAPTER })
     },
     [
+      currentDictId,
       currentLearnItemKind,
       currentReviewAttemptRole,
       currentWordExerciseCount,
@@ -331,6 +437,7 @@ export default function WordPanel() {
       state.chapterData.index,
       state.chapterData.words,
       currentWord,
+      reviewModeInfo.reviewRecord?.acquisitionStates,
       reviewModeInfo.reviewRecord?.itemStates,
       isReviewMode,
       dispatch,
@@ -458,11 +565,14 @@ export default function WordPanel() {
   const hasValidExample = Boolean(
     currentWord && getFirstValidDictionaryExample(currentWord),
   )
+  const isAcquisitionRecall =
+    currentLearnItemKind === 'acquisition' &&
+    (currentAcquisitionState?.phase === 'supported' ||
+      currentAcquisitionState?.phase === 'independent')
   const isColdSemanticProbe =
     isReviewMode &&
     currentReviewHintLevel === null &&
-    (currentLearnItemKind === 'acquisition' ||
-      currentReviewAttemptRole === 'cold')
+    (isAcquisitionRecall || currentReviewAttemptRole === 'cold')
 
   // Example is a semantic cue, not a cloze answer. Cold probe prefers the
   // masked context over translation; legacy dictionaries without examples
@@ -504,7 +614,14 @@ export default function WordPanel() {
                 </div>
               </div>
             )}
-            <div className="relative">
+            <div
+              className="relative"
+              data-learn-acquisition-phase={
+                currentLearnItemKind === 'acquisition'
+                  ? currentAcquisitionState?.phase
+                  : undefined
+              }
+            >
               {isReviewMode && (
                 <div className="absolute -right-16 top-0 z-20">
                   <button
