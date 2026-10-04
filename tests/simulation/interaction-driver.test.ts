@@ -46,11 +46,11 @@ test('generic oracle detects a dropped successful projection without knowing whi
   })
 
   const anomalies = detectLearnSystemAnomalies(result.events)
-  const stuck = anomalies.find(
-    (item) => item.code === 'success-without-progress',
+  const divergence = anomalies.find(
+    (item) => item.code === 'controller-driver-divergence',
   )
 
-  assert.ok(stuck)
-  assert.equal(stuck.severity, 'high')
-  assert.equal(stuck.eventIndex, 2)
+  assert.ok(divergence)
+  assert.equal(divergence.severity, 'high')
+  assert.equal(divergence.eventIndex, 2)
 })
