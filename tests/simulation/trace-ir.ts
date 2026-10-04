@@ -51,6 +51,13 @@ export type LearnSystemTraceEvent =
       }>
     }
   | {
+      kind: 'persistence-write'
+      action: 'requested' | 'committed'
+      sessionId: string
+      sequence: number
+      semanticSignature: string
+    }
+  | {
       kind: 'fresh-budget'
       targetDailyNewWords: number
       introducedToday: number
@@ -113,6 +120,7 @@ export type LearnSystemAnomaly = {
     | 'candidate-lifecycle-violation'
     | 'session-arbitration-violation'
     | 'fresh-budget-violation'
+    | 'persistence-order-violation'
   severity: 'medium' | 'high'
   eventIndex: number
   details: Record<string, number | string | boolean | null>

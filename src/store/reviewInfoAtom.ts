@@ -1,9 +1,12 @@
+import { createSerializedSnapshotWriter } from '@/review/persistence'
 import type { ReviewRecord } from '@/utils/db/record'
 import { putWordReviewRecord } from '@/utils/db/review-record'
 import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 
-let reviewRecordWriteQueue: Promise<unknown> = Promise.resolve()
+const reviewRecordWriter = createSerializedSnapshotWriter(
+  putWordReviewRecord,
+)
 
 function sameReviewSession(
   left: ReviewRecord | undefined,
@@ -23,10 +26,7 @@ function queueReviewRecordWrite(record: ReviewRecord) {
   // Persist an immutable snapshot in the same order as UI state transitions.
   // Without serialization, an older unfinished checkpoint can complete after
   // the final finished write and resurrect a stale Learn session on reload.
-  const snapshot = structuredClone(record) as ReviewRecord
-  reviewRecordWriteQueue = reviewRecordWriteQueue
-    .catch(() => undefined)
-    .then(() => putWordReviewRecord(snapshot))
+  void reviewRecordWriter.enqueue(record)
 }
 
 export type TReviewInfoAtomData = {

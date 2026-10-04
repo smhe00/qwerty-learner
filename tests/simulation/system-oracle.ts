@@ -80,6 +80,13 @@ export function detectLearnSystemAnomalies(
   let singletonRun = 0
   let lastSingletonSessionId: string | null = null
   const readyDeferredMisses = new Map<string, number>()
+  const persistenceOrder = new Map<
+    string,
+    {
+      highestRequested: number
+      lastCommitted: number
+    }
+  >()
 
   for (let index = 0; index < events.length; index += 1) {
     const event = events[index]
@@ -243,6 +250,52 @@ export function detectLearnSystemAnomalies(
           })
         }
       }
+      continue
+    }
+
+    if (event.kind === 'persistence-write') {
+      const state =
+        persistenceOrder.get(event.sessionId) ?? {
+          highestRequested: 0,
+          lastCommitted: 0,
+        }
+
+      if (event.action === 'requested') {
+        state.highestRequested = Math.max(
+          state.highestRequested,
+          event.sequence,
+        )
+        persistenceOrder.set(event.sessionId, state)
+        continue
+      }
+
+      const commitBeforeRequest =
+        event.sequence > state.highestRequested
+      const completionRegression =
+        event.sequence < state.lastCommitted
+
+      if (commitBeforeRequest || completionRegression) {
+        anomalies.push({
+          code: 'persistence-order-violation',
+          severity: 'high',
+          eventIndex: index,
+          details: {
+            sessionId: event.sessionId,
+            sequence: event.sequence,
+            highestRequested: state.highestRequested,
+            lastCommitted: state.lastCommitted,
+            semanticSignature: event.semanticSignature,
+            commitBeforeRequest,
+            completionRegression,
+          },
+        })
+      }
+
+      state.lastCommitted = Math.max(
+        state.lastCommitted,
+        event.sequence,
+      )
+      persistenceOrder.set(event.sessionId, state)
       continue
     }
 
