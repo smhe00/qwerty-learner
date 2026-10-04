@@ -34,12 +34,12 @@ Typing 产生的记录可以作为历史证据，但 Typing 不直接改变长�
 
 Learn 管理长期记忆。
 
-当前阶段已经承接原有的长期 Review 状态，包括：
+当前阶段包括两套 Learn 内部流程：
 
-- 到期学习；
-- canonical cold probe；
+- 新词 Acquisition：Exposure → Supported Recall → Independent Recall；
+- 到期 Review：canonical cold probe → Rating Gate → scheduler；
 - Hint 0/1/2/3；
-- Again/Hard/Good/Easy 证据体系；
+- Again/Hard/Good/Easy 证据体系（仅到期 Review）；
 - bounded reinforcement；
 - 手工移出/恢复学习计划。
 
@@ -89,21 +89,25 @@ Learn 首页第一行与 Typing 保持同一布局骨架：
 - Typing 与 Learn 使用统一的 indigo 交互色系；模式身份由标签和状态表达；
 - 第一行以下暂时留空，后续再决定长期状态信息如何呈现。
 
-新词 Acquisition V2：
+新词 Acquisition P0：
 
 ```text
 无 due Review
-→ P3 计算今日剩余新词额度
-→ 从词库中按顺序选择最多 allowedNow 个 UNSEEN 词
-→ Cold Probe：只显示释义，隐藏拼写/音标，不自动发音
-→ 会：直接正确输入
-→ 不会/持续拼错：Hint 0 → 1 → 2 → 3
-→ 完成后 ACTIVE
+→ P3/P4 决定本次可新增的新词数
+→ Exposure：显示单词 + 音标 + 释义 + 双语例句，并自动发音
+→ 看着正确输入一次，建立第一次成功体验
+→ 隔开若干词后 Supported Recall：隐藏拼写，需要时可按 Esc 获取 Hint
+→ 再隔开若干词后 Independent Recall
+→ 只有无提示、无错误的独立拼写成功才进入 ACTIVE
 → nextReviewAt = +1 day
 ```
 
-第一次 cold probe 属于 Learn admission probe；当前仍不把它伪装成长期
-Again / Hard / Good / Easy 调度事件，因此不会增加 reviewCount / lapseCount。
+Exposure 和 Supported Recall 都是训练证据，不会被当成长期记忆已经建立。
+如果 Independent Recall 仍需要提示，系统会自动回到有限的支持循环；连续
+未形成独立回忆时会 defer，之后重新学习，而不是把它伪装成“已经掌握”。
+
+Acquisition 全程不产生 Again / Hard / Good / Easy，因此不会增加
+reviewCount / lapseCount。
 
 ### P3 每日新词额度
 
@@ -264,15 +268,17 @@ Learn 与 Typing 的语义不同。
 
 > 我想不起来。
 
-使用：
+可以在拼写任意位置按：
 
 ```text
-Space
+Esc
 → Hint 0
 → Hint 1
 → Hint 2
 → Hint 3
 ```
+
+Space 始终是正常拼写字符；短语中的空格不会被当成“不会”或跳过操作。
 
 如果是：
 
