@@ -23,6 +23,19 @@ function queueSignature(queue: Word[]): string {
   return queue.map((word) => word.name).join('|')
 }
 
+function acquisitionStateSignature(
+  state: LearnAcquisitionState | undefined,
+): string {
+  if (!state) return 'missing'
+  return [
+    state.phase,
+    state.assistedCycles,
+    state.independentInterveningItems ?? -1,
+    state.deferredReason ?? 'none',
+    state.resumeAfter ?? -1,
+  ].join(':')
+}
+
 /**
  * Event-level Virtual User for Acquisition.
  *
@@ -58,6 +71,8 @@ export function runAcquisitionInteractionDriver(input: {
       createLearnAcquisitionState()
     const beforeIndex = index
     const beforeQueueSignature = queueSignature(queue)
+    const beforeItemStateSignature =
+      acquisitionStateSignature(currentState)
 
     const resolution = resolveLearnAcquisitionCompletion({
       queue,
@@ -89,8 +104,18 @@ export function runAcquisitionInteractionDriver(input: {
       success: true,
       beforeIndex,
       afterIndex: index,
+      expectedAfterIndex: resolution.projection.index,
       beforeQueueSignature,
       afterQueueSignature: queueSignature(queue),
+      expectedAfterQueueSignature: queueSignature(
+        resolution.projection.queue,
+      ),
+      beforeItemStateSignature,
+      afterItemStateSignature: acquisitionStateSignature(
+        acquisitionStates[currentWord.name],
+      ),
+      afterFinished: finished,
+      expectedAfterFinished: resolution.projection.isFinished,
     })
 
     interactions += 1
