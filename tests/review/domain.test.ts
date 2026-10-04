@@ -10,6 +10,10 @@ import {
   projectLearnAcquisitionProgress,
 } from '../../src/learn/acquisition'
 import {
+  decideLearnScaffold,
+  getLearnScaffoldPresentation,
+} from '../../src/learn/scaffold'
+import {
   decideLearningLifecycleTransition,
   getLearningLifecycle,
   pruneLearnSessionWord,
@@ -92,6 +96,100 @@ import {
   getFirstValidDictionaryExample,
   maskDictionaryExample,
 } from '../../src/utils/dictionaryExample'
+
+test('dynamic scaffold keeps acquisition boundaries and softens only Supported work', () => {
+  const tiers = ['unknown', 'low', 'elevated', 'recovery'] as const
+
+  for (const strainTier of tiers) {
+    assert.equal(
+      decideLearnScaffold({
+        phase: 'exposure',
+        strainTier,
+        assistedCycles: 2,
+      }).level,
+      'S0',
+    )
+    assert.equal(
+      decideLearnScaffold({
+        phase: 'independent',
+        strainTier,
+        assistedCycles: 2,
+      }).level,
+      'S3',
+    )
+  }
+
+  assert.equal(
+    decideLearnScaffold({
+      phase: 'supported',
+      strainTier: 'low',
+      assistedCycles: 0,
+    }).level,
+    'S2',
+  )
+  assert.equal(
+    decideLearnScaffold({
+      phase: 'supported',
+      strainTier: 'elevated',
+      assistedCycles: 0,
+    }).level,
+    'S1',
+  )
+  assert.equal(
+    decideLearnScaffold({
+      phase: 'supported',
+      strainTier: 'recovery',
+      assistedCycles: 0,
+    }).level,
+    'S1',
+  )
+  assert.equal(
+    decideLearnScaffold({
+      phase: 'supported',
+      strainTier: 'low',
+      assistedCycles: 1,
+    }).level,
+    'S1',
+  )
+})
+
+test('dynamic scaffold V1 maps S1/S2 onto existing presentation capabilities', () => {
+  assert.deepEqual(getLearnScaffoldPresentation('S1'), {
+    purpose: 'training',
+    audio: 'automatic',
+    phonetic: 'visible',
+    letters: { mode: 'all-hidden' },
+  })
+  assert.deepEqual(getLearnScaffoldPresentation('S2'), {
+    purpose: 'training',
+    audio: 'none',
+    phonetic: 'hidden',
+    letters: { mode: 'all-hidden' },
+  })
+
+  const strong = createLearnAcquisitionExercisePlan('supported', {
+    scaffoldStrainTier: 'recovery',
+    assistedCycles: 0,
+  })
+  assert.equal(strong.condition.purpose, 'training')
+  assert.equal(strong.condition.audio, 'automatic')
+  assert.equal(strong.condition.phonetic, 'visible')
+  assert.deepEqual(strong.condition.letters, { mode: 'all-hidden' })
+  assert.ok(strong.decision.reasonCodes.includes('dynamic-scaffold-s1'))
+
+  const independent = createLearnAcquisitionExercisePlan('independent', {
+    scaffoldStrainTier: 'recovery',
+    assistedCycles: 2,
+    independentInterveningItems: 2,
+  })
+  assert.equal(independent.condition.purpose, 'probe')
+  assert.equal(independent.condition.audio, 'none')
+  assert.equal(independent.condition.phonetic, 'hidden')
+  assert.ok(
+    independent.decision.reasonCodes.includes('dynamic-scaffold-s3'),
+  )
+  assert.ok(independent.decision.reasonCodes.includes('spacing-eligible'))
+})
 
 test('captures all-visible and all-hidden baseline conditions', () => {
   assert.deepEqual(
