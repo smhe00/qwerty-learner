@@ -40,7 +40,7 @@ attempt counts.
 ### Today
 
 - reviewed words: unique words with a primary Review attempt today;
-- acquired words: unique words with an Acquisition attempt today;
+- acquired words: unique words that completed a spacing-valid, unaided Independent Acquisition admission today;
 - Hint use rate: primary Learn attempts carrying `learningContext.reviewHint`;
 - Cold Probe first-pass rate: primary Learn attempts completed with zero
   wrongCount, no Hint, and no Again result.
