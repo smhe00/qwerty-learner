@@ -344,3 +344,67 @@ test('full VirtualLearnApp blindly detects a due-first bypass mutation', async (
   assert.ok(bypass)
   assert.equal(bypass.severity, 'high')
 })
+
+
+test('ready deferred Acquisition is resumed by production candidate planning', async () => {
+  const app = new VirtualLearnApp({
+    words: [word('deferred-production')],
+  })
+  app.seedDeferredAcquisition({
+    reason: 'assistance',
+    ready: true,
+  })
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+  if (prepared.kind !== 'session') return
+  assert.equal(prepared.source, 'acquisition')
+  assert.equal(prepared.record.sessionKind, 'acquisition')
+  assert.equal(
+    prepared.record.acquisitionStates?.[
+      'deferred-production'
+    ]?.phase,
+    'supported',
+  )
+
+  const anomalies = detectLearnSystemAnomalies(app.events)
+  assert.equal(
+    anomalies.some(
+      (item) =>
+        item.code === 'stranded-pending-acquisition',
+    ),
+    false,
+  )
+})
+
+test('production-backed simulation detects a ready deferred candidate hidden from planning', async () => {
+  const app = new VirtualLearnApp({
+    words: [word('deferred-stranded')],
+    mutation: {
+      strandReadyDeferred: true,
+    },
+  })
+  app.seedDeferredAcquisition({
+    reason: 'assistance',
+    ready: true,
+  })
+
+  const first = await app.enter()
+  assert.equal(first.kind, 'waiting')
+
+  app.exit()
+  const second = await app.enter()
+  assert.equal(second.kind, 'waiting')
+
+  const anomalies = detectLearnSystemAnomalies(app.events)
+  const stranded = anomalies.find(
+    (item) =>
+      item.code === 'stranded-pending-acquisition',
+  )
+  assert.ok(stranded)
+  assert.equal(stranded.severity, 'high')
+  assert.equal(
+    stranded.details.missedOpportunities,
+    2,
+  )
+})
