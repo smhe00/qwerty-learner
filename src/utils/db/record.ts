@@ -286,6 +286,12 @@ export class ChapterRecord implements IChapterRecord {
   }
 }
 
+export interface LearnRecommendedGoalV1 {
+  version: 1
+  kind: 'session-completion'
+  targetUniqueWords: number
+}
+
 export interface IReviewRecord {
   id?: number
   dict: string
@@ -311,6 +317,9 @@ export interface IReviewRecord {
   // Learn-only acquisition controller state. Ordinary Typing never reads or
   // writes this field.
   acquisitionStates?: Record<string, LearnAcquisitionState>
+  // Snapshot of the system-recommended Learn goal at session creation.
+  // Forced/manual review sessions deliberately omit this field.
+  recommendedGoal?: LearnRecommendedGoalV1
 }
 
 export class ReviewRecord implements IReviewRecord {
@@ -325,6 +334,7 @@ export class ReviewRecord implements IReviewRecord {
   sessionKind?: LearnSessionKind
   itemStates?: Record<string, ReviewItemMachineState>
   acquisitionStates?: Record<string, LearnAcquisitionState>
+  recommendedGoal?: LearnRecommendedGoalV1
 
   constructor(
     dict: string,
