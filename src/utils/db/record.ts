@@ -64,6 +64,10 @@ export interface LearningContextV1 {
   revealCount?: number
   lastAnswerRevealToFirstKeyMs?: number
 
+  // Context cue strength. False is an observed absence; undefined means
+  // this record predates the observation.
+  exampleVisibleAtStart?: boolean
+
   // Semantic cue strength.
   meaningVisibleAtStart?: boolean
   meaningRevealed?: boolean
