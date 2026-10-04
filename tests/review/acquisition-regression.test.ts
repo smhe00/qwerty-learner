@@ -272,3 +272,47 @@ test('backup regression: contaminated Review before later valid admission is not
   assert.equal(rebuilt.createdAt, 500)
   assert.equal(rebuilt.nextReviewAt, 500 + 86_400)
 })
+
+
+test('backup regression: premature Review ratings do not affect Learn statistics before admission', () => {
+  const now = 1_000
+  const records: IWordRecord[] = [
+    record({
+      word: 'noon',
+      timeStamp: 100,
+      policyVersion: LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
+    }),
+    spacingInsufficient('noon', 120),
+    {
+      word: 'noon',
+      timeStamp: 130,
+      dict: 'backup-regression',
+      chapter: -1,
+      timing: [],
+      wrongCount: 0,
+      mistakes: {},
+      sourceMode: 'learn',
+      learnItemKind: 'review',
+      reviewRatingDecision: {
+        eligible: true,
+        rating: 'good',
+        confidence: 1,
+        reasonCodes: ['premature-review-contamination'],
+      },
+    },
+  ]
+
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'backup-regression',
+    wordRecords: records,
+    wordStates: [],
+    dictionaryWords: ['noon', 'connect'],
+  })
+
+  assert.equal(stats.today.reviewAttempts, 0)
+  assert.equal(stats.today.coldProbeAttempts, 0)
+  assert.equal(stats.scheduler.ratedEvents30d, 0)
+  assert.equal(stats.today.introducedWords, 1)
+  assert.equal(stats.today.acquiredWords, 0)
+})
