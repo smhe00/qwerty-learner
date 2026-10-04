@@ -7,6 +7,7 @@ import {
 import { SUPPORTED_EVENT_METRICS } from '../../src/achievement/event-evaluator'
 import { SUPPORTED_SESSION_METRICS } from '../../src/achievement/session-evaluator'
 import { SUPPORTED_STATE_METRICS } from '../../src/achievement/state-evaluator'
+import { SUPPORTED_UNIT_METRICS } from '../../src/achievement/unit-evaluator'
 import achievementData from '../../src/resources/achievementCulture/achievements.json'
 import type { AchievementDefinition } from '../../src/resources/achievementCulture'
 import type { IWordRecord } from '../../src/utils/db/record'
@@ -22,7 +23,8 @@ test('P0 evaluator exposes only explicitly supported metrics', () => {
     SUPPORTED_WORD_METRICS.has(metric) ||
     SUPPORTED_SESSION_METRICS.has(metric) ||
     SUPPORTED_STATE_METRICS.has(metric) ||
-    SUPPORTED_EVENT_METRICS.has(metric)
+    SUPPORTED_EVENT_METRICS.has(metric) ||
+    SUPPORTED_UNIT_METRICS.has(metric)
   const supported = p0.filter((achievement) =>
     isSupported(achievement.condition.metric),
   )
@@ -30,36 +32,12 @@ test('P0 evaluator exposes only explicitly supported metrics', () => {
     (achievement) => !isSupported(achievement.condition.metric),
   )
 
-  assert.deepEqual(
-    supported.map((item) => item.id).sort(),
-    [
-      'ACH_7_DAY',
-      'ACH_7_OF_10',
-      'ACH_AUDIO_10',
-      'ACH_CONTINUE',
-      'ACH_DAILY_GOAL',
-      'ACH_ERROR_POSITION_FIXED',
-      'ACH_FAILURE_RECOVERY_SESSION',
-      'ACH_FIRST_DECODE',
-      'ACH_HIDDEN_CRAFT',
-      'ACH_HIDDEN_DAWN',
-      'ACH_HINT_REDUCTION',
-      'ACH_MASTERED_100',
-      'ACH_NO_HINT_10',
-      'ACH_RECOVER_1',
-      'ACH_RECOVER_3',
-      'ACH_TRUE_MEMORY',
-      'ACH_WARMING_UP',
-    ].sort(),
-  )
-
-  // The remaining P0 definitions require authoritative Unit membership.
-  // They remain
-  // disabled rather than being inferred from incomplete evidence.
-  assert.equal(unsupported.length, 2)
+  assert.equal(supported.length, p0.length)
+  assert.equal(unsupported.length, 0)
+  assert.equal(p0.length, 19)
 })
 
-test('unsupported metric evaluates to null instead of guessing', () => {
+test('unit metrics stay out of the generic word evaluator', () => {
   const current: IWordRecord = {
     id: 1,
     word: 'alpha',
@@ -71,15 +49,16 @@ test('unsupported metric evaluates to null instead of guessing', () => {
     mistakes: {},
     sourceMode: 'learn',
   }
-  const unsupported = p0.find(
+  const unitMetric = p0.find(
     (achievement) =>
       achievement.condition.metric ===
       'new_unit_learn_started',
   )
-  assert.ok(unsupported)
+  assert.ok(unitMetric)
+  assert.ok(SUPPORTED_UNIT_METRICS.has(unitMetric.condition.metric))
 
   assert.equal(
-    evaluateWordMetric(unsupported.condition, {
+    evaluateWordMetric(unitMetric.condition, {
       current,
       records: [current],
       now: current.timeStamp,
