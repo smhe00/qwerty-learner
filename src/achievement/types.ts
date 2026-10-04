@@ -4,7 +4,11 @@ export type AchievementEventOrigin = 'live'
 
 export interface AchievementEventRecord {
   eventId: string
-  eventType: 'word_attempt' | 'session_completed' | 'word_mastered'
+  eventType:
+    | 'word_attempt'
+    | 'session_completed'
+    | 'word_mastered'
+    | 'continue_intent'
   origin: AchievementEventOrigin
   sourceRecordId?: number
   sourceRecordIds?: number[]
