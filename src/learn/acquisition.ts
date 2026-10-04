@@ -1,3 +1,8 @@
+import type { LearnInteractionStrainTier } from './strain'
+import {
+  decideLearnScaffold,
+  getLearnScaffoldPresentation,
+} from './scaffold'
 import type { ReviewExercisePlanV1 } from '@/review/decision'
 import {
   REVIEW_EXERCISE_PLAN_VERSION,
@@ -31,6 +36,9 @@ export type LearnAcquisitionState = {
   version: typeof LEARN_ACQUISITION_FLOW_VERSION
   phase: LearnAcquisitionPhase
   assistedCycles: number
+  // Session-start strain is frozen for deterministic presentation. In-session
+  // difficulty still adapts through assistedCycles.
+  scaffoldStrainTier?: LearnInteractionStrainTier
   independentInterveningItems?: number
   deferredReason?: LearnAcquisitionDeferredReason
   resumeAfter?: number
@@ -42,11 +50,16 @@ export type LearnAcquisitionEvent =
   | { kind: 'supported-complete' }
   | { kind: 'independent-complete'; independentClean: boolean }
 
-export function createLearnAcquisitionState(): LearnAcquisitionState {
+export function createLearnAcquisitionState(options?: {
+  scaffoldStrainTier?: LearnInteractionStrainTier
+}): LearnAcquisitionState {
   return {
     version: LEARN_ACQUISITION_FLOW_VERSION,
     phase: 'exposure',
     assistedCycles: 0,
+    ...(options?.scaffoldStrainTier !== undefined
+      ? { scaffoldStrainTier: options.scaffoldStrainTier }
+      : {}),
   }
 }
 
@@ -122,7 +135,11 @@ export function decideLearnAcquisitionTransition(
  */
 export function createLearnAcquisitionExercisePlan(
   phase: LearnAcquisitionPhase,
-  options?: { independentInterveningItems?: number },
+  options?: {
+    independentInterveningItems?: number
+    scaffoldStrainTier?: LearnInteractionStrainTier
+    assistedCycles?: number
+  },
 ): ReviewExercisePlanV1 {
   if (phase === 'complete' || phase === 'deferred') {
     throw new Error(`terminal acquisition phase has no exercise plan: ${phase}`)
@@ -136,34 +153,51 @@ export function createLearnAcquisitionExercisePlan(
       ? LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION
       : LEARN_ACQUISITION_SUPPORTED_POLICY_VERSION
 
+  const scaffold = decideLearnScaffold({
+    phase,
+    strainTier: options?.scaffoldStrainTier ?? 'unknown',
+    assistedCycles: options?.assistedCycles ?? 0,
+  })
+  const presentation = getLearnScaffoldPresentation(scaffold.level)
+
   const condition = {
     version: 1 as const,
-    purpose: isIndependent ? ('probe' as const) : ('training' as const),
+    purpose: presentation.purpose,
     source: 'adaptive-policy' as const,
-    audio: isExposure ? ('automatic' as const) : ('none' as const),
+    audio: presentation.audio,
     meaning: 'visible' as const,
-    phonetic: isExposure ? ('visible' as const) : ('hidden' as const),
-    letters: {
-      mode: isExposure ? ('all-visible' as const) : ('all-hidden' as const),
-    },
+    phonetic: presentation.phonetic,
+    letters: presentation.letters,
     probeDimension: 'none' as const,
   }
+
+  const presentationReasonCodes = [
+    `dynamic-scaffold-${scaffold.level.toLowerCase()}`,
+    ...scaffold.reasonCodes,
+    presentation.letters.mode === 'all-visible'
+      ? 'letters-visible'
+      : 'letters-hidden',
+    presentation.audio === 'automatic'
+      ? 'automatic-audio'
+      : 'audio-off',
+    presentation.phonetic === 'visible'
+      ? 'phonetic-visible'
+      : 'phonetic-hidden',
+  ]
 
   const reasonCodes = isExposure
     ? [
         'learn-acquisition-exposure',
         'visible-copy',
-        'automatic-audio',
-        'phonetic-visible',
         'scheduler-neutral',
+        ...presentationReasonCodes,
       ]
     : isIndependent
       ? [
           'learn-acquisition-independent',
           'delayed-recall',
-          'letters-hidden',
-          'audio-off',
           'scheduler-neutral',
+          ...presentationReasonCodes,
           ...(options?.independentInterveningItems !== undefined
             ? [
                 `intervening-items-${options.independentInterveningItems}`,
@@ -177,9 +211,8 @@ export function createLearnAcquisitionExercisePlan(
       : [
           'learn-acquisition-supported',
           'retrieval-with-bounded-hints',
-          'letters-hidden',
-          'audio-off',
           'scheduler-neutral',
+          ...presentationReasonCodes,
         ]
 
   return {
@@ -187,11 +220,39 @@ export function createLearnAcquisitionExercisePlan(
     condition,
     decision: createReviewPolicyDecision(
       policyVersion,
-      reasonCodes,
+      [...new Set(reasonCodes)],
       condition.version,
     ),
     sourceShadowVersion: REVIEW_POLICY_SHADOW_VERSION,
   }
+}
+
+export function createLearnAcquisitionExercisePlanForState(
+  state: LearnAcquisitionState,
+): ReviewExercisePlanV1 {
+  return createLearnAcquisitionExercisePlan(state.phase, {
+    independentInterveningItems: state.independentInterveningItems,
+    scaffoldStrainTier: state.scaffoldStrainTier,
+    assistedCycles: state.assistedCycles,
+  })
+}
+
+export function getLearnAcquisitionScaffoldDecision(
+  state: LearnAcquisitionState | undefined,
+) {
+  if (
+    !state ||
+    state.phase === 'complete' ||
+    state.phase === 'deferred'
+  ) {
+    return undefined
+  }
+
+  return decideLearnScaffold({
+    phase: state.phase,
+    strainTier: state.scaffoldStrainTier ?? 'unknown',
+    assistedCycles: state.assistedCycles,
+  })
 }
 
 export function isLearnAcquisitionHintPolicyVersion(
