@@ -1655,3 +1655,106 @@ window size <= 2 (elevated) / 3 (recovery)
 The shared typing reducer only receives a generic projected future queue. It
 does not know why Learn reordered the queue and contains no Recovery policy.
 Ordinary Typing never supplies such a projection.
+
+---
+
+## Learn Control Stability Gate V1
+
+The Learn controller is treated as a discrete nonlinear hybrid feedback system.
+The product objective is lexicographic:
+
+```text
+1. preserve truthful memory evidence and bounded control
+2. keep the learner inside a recoverable interaction regime
+3. maximize useful independent retrieval per unit interaction/time
+```
+
+Stability is therefore necessary but not sufficient: a controller that keeps
+the learner comfortable by permanently over-scaffolding is considered an
+efficiency failure.
+
+### Interaction Strain observer
+
+The observer remains a first-order EWMA:
+
+```text
+S[k] = 0.3 x[k] + 0.7 S[k-1]
+```
+
+The discrete pole is 0.7, inside the unit circle. Inputs and state are clamped
+to [0, 1], giving a bounded observer for bounded interaction evidence.
+
+V2 adds Schmitt-trigger hysteresis:
+
+| Transition | Threshold |
+|---|---:|
+| low -> elevated | >= 0.35 |
+| elevated -> low | <= 0.29 |
+| elevated -> recovery | >= 0.58 |
+| recovery -> elevated | <= 0.50 |
+
+Recovery must pass through elevated before low. This provides a discrete dwell
+step between large mode changes and prevents boundary chatter. EWMA/tier state
+is reconstructed across full Learn history; the most recent 20 attempts remain
+the explanatory signal window. Contributions older than 20 attempts are
+already below about 0.1% through the stable 0.7 pole.
+
+These thresholds are engineering V1 values, not claimed psychological constants.
+They remain globally fixed until a later, slower Personal Calibration layer has
+its own stability proof.
+
+### Stability invariants
+
+CI now runs a dedicated Learn Control Stability Gate covering:
+
+- EWMA BIBO boundedness and pole decay;
+- hysteresis / no-chatter adversarial traces;
+- bounded withdrawal of protection after clean evidence returns;
+- finite Acquisition termination under repeated failure;
+- bounded, non-recursive Recovery Window selection;
+- daily new-word actuator saturation;
+- due-first backlog behavior under bounded burst arrivals;
+- deterministic Monte Carlo virtual-learner closed-loop regression.
+
+Existing hard bounds remain part of the plant/controller contract:
+
+```text
+strain                    in [0, 1]
+daily new-word target     in [0, 20]
+Recovery Window           <= 2 elevated / <= 3 recovery
+Acquisition assistedCycles <= 2
+Independent admission     only from S3 + clean + spacing-valid evidence
+```
+
+### Efficiency envelope
+
+The virtual-learner test also rejects excessive protection. Under its fixed
+regression plant and disturbance schedule, the controller must retain:
+
+```text
+Independent opportunity ratio >= 0.52
+Independent success rate       >= 0.68
+mastery-yield proxy            >= 0.40 successful Independent / interaction
+intervention ratio             <= 0.48
+return to low after stress     <= 12 clean attempts
+```
+
+These are regression envelopes for the controller implementation, not claims
+that 0.52/0.68/0.40/0.48 are universal learning-science optima. Their purpose
+is to catch controller changes that become stable by simply adding excessive
+support, Recovery items, or workload suppression.
+
+### Adaptive-control boundary
+
+Personal Calibration is intentionally NOT part of V1. Fast control states may
+change per attempt, but global controller parameters do not self-modify.
+
+A future adaptive layer must run on a much slower time scale and satisfy:
+
+```text
+T_parameter >> T_control
+|theta[k+1] - theta[k]| <= bounded step
+theta in a projected safe parameter set
+```
+
+before it may tune hysteresis, scaffold, Recovery, or quota parameters.
