@@ -1,6 +1,6 @@
 # Learn Acquisition Quota V2
 
-> Status: Active / Learn Alpha 1
+> **Status: Historical / Superseded by [LEARN_ACQUISITION_QUOTA_V3.md](./LEARN_ACQUISITION_QUOTA_V3.md).**
 >
 > Policy version: `learn-acquisition-quota-v2`
 >
