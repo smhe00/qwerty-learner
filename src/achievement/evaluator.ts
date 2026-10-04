@@ -242,6 +242,109 @@ function activeLearnDaysInWindow(
   ).size
 }
 
+function audioOnlyIndependentCorrectCount(
+  context: AchievementMetricContext,
+): number {
+  return recordsThroughCurrent(context).filter((record) => {
+    const condition = record.exerciseCondition
+    const learningContext = record.learningContext
+    return (
+      isIndependentCorrect(record) &&
+      condition?.audio === 'automatic' &&
+      condition.meaning === 'hidden' &&
+      condition.phonetic === 'hidden' &&
+      condition.letters.mode === 'all-hidden' &&
+      learningContext?.exampleVisibleAtStart === false &&
+      learningContext.pronunciationPlayedBeforeFirstKey === true &&
+      (learningContext.pronunciationAutomaticPlayCount ?? 0) > 0
+    )
+  }).length
+}
+
+function parseComparisonWindow(
+  window: string | null | undefined,
+): { currentDays: number; previousDays: number } | null {
+  if (!window) return null
+  const match = /^(\d+)d_vs_previous_(\d+)d$/.exec(window)
+  if (!match) return null
+
+  const currentDays = Number(match[1])
+  const previousDays = Number(match[2])
+  if (
+    !Number.isInteger(currentDays) ||
+    !Number.isInteger(previousDays) ||
+    currentDays <= 0 ||
+    previousDays <= 0
+  ) {
+    return null
+  }
+
+  return { currentDays, previousDays }
+}
+
+function hintUseRateDropPpVsPreviousWindow(
+  context: AchievementMetricContext,
+  condition: AchievementCondition,
+): number | null {
+  const window = parseComparisonWindow(condition.window)
+  if (!window) return null
+
+  const minAttempts = Number(
+    condition.constraints.minAttemptsEachWindow ?? 0,
+  )
+  const accuracyDropPpMax = Number(
+    condition.constraints.accuracyDropPpMax ?? 0,
+  )
+  const currentStart =
+    context.now - window.currentDays * DAY_SECONDS
+  const previousStart =
+    currentStart - window.previousDays * DAY_SECONDS
+
+  const observable = recordsThroughCurrent(context).filter(
+    (record) => record.learningContext?.version === 1,
+  )
+  const currentRecords = observable.filter(
+    (record) =>
+      record.timeStamp >= currentStart &&
+      record.timeStamp <= context.now,
+  )
+  const previousRecords = observable.filter(
+    (record) =>
+      record.timeStamp >= previousStart &&
+      record.timeStamp < currentStart,
+  )
+
+  if (
+    currentRecords.length < minAttempts ||
+    previousRecords.length < minAttempts
+  ) {
+    return null
+  }
+
+  const hintRate = (records: IWordRecord[]) =>
+    (records.filter(
+      (record) => record.learningContext?.reviewHint !== undefined,
+    ).length /
+      records.length) *
+    100
+  const cleanRate = (records: IWordRecord[]) =>
+    (records.filter(
+      (record) =>
+        record.wrongCount === 0 &&
+        record.learningContext?.reviewHint === undefined,
+    ).length /
+      records.length) *
+    100
+
+  const previousAccuracy = cleanRate(previousRecords)
+  const currentAccuracy = cleanRate(currentRecords)
+  if (previousAccuracy - currentAccuracy > accuracyDropPpMax) {
+    return null
+  }
+
+  return hintRate(previousRecords) - hintRate(currentRecords)
+}
+
 function sameWordDistinctErrorPositionsResolved(
   context: AchievementMetricContext,
 ): number {
@@ -266,6 +369,8 @@ export const SUPPORTED_WORD_METRICS = new Set([
   'word_success_across_increasing_intervals',
   'active_learn_days_in_window',
   'same_word_distinct_error_positions_resolved',
+  'audio_only_independent_correct_count',
+  'hint_use_rate_drop_pp_vs_previous_window',
 ])
 
 export function evaluateWordMetric(
@@ -291,6 +396,10 @@ export function evaluateWordMetric(
       return activeLearnDaysInWindow(context, condition)
     case 'same_word_distinct_error_positions_resolved':
       return sameWordDistinctErrorPositionsResolved(context)
+    case 'audio_only_independent_correct_count':
+      return audioOnlyIndependentCorrectCount(context)
+    case 'hint_use_rate_drop_pp_vs_previous_window':
+      return hintUseRateDropPpVsPreviousWindow(context, condition)
     default:
       return null
   }
