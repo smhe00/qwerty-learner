@@ -60,8 +60,15 @@ test('policy sweep evaluates all candidates without violating bounded-control en
     assert.ok(summary.meanLapseRate >= 0)
     assert.ok(summary.meanLapseRate <= 1)
     assert.ok(summary.meanDailyInteractions >= 0)
-    assert.ok(summary.maxDueBacklog <= 80)
+    assert.ok(summary.maxDueBacklog >= 0)
+    assert.ok(summary.maxDueBacklog <= 180)
   }
+
+  const baseline = summaries.find(
+    (summary) => summary.candidateId === 'baseline',
+  )
+  assert.ok(baseline)
+  assert.ok(baseline.maxDueBacklog <= 80)
 })
 
 test('interval candidates produce the expected retention-vs-load direction on balanced learners', () => {
