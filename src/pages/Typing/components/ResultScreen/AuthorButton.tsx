@@ -1,19 +1,24 @@
-import kai from '@/assets/kai.jpg'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 export const AuthorButton = () => {
   return (
     <TooltipProvider delayDuration={100}>
-      <Tooltip defaultOpen>
-        <TooltipTrigger>
-          <Avatar className="h-8 w-8 shadow-lg" onClick={() => window.open('https://kaiyi.cool', '_blank')}>
-            <AvatarImage src={kai} alt="Kai Homepage" />
-            <AvatarFallback>Kai</AvatarFallback>
-          </Avatar>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            disabled
+            className="cursor-not-allowed opacity-45"
+            aria-label="Qwerty Plus 对外联系渠道暂未开放"
+          >
+            <Avatar className="h-8 w-8 shadow-sm">
+              <AvatarFallback>QP</AvatarFallback>
+            </Avatar>
+          </button>
         </TooltipTrigger>
-        <TooltipContent className="cursor-pointer" onClick={() => window.open('https://kaiyi.cool', '_blank')}>
-          <p>点击了解作者和更多作品 ❤️</p>
+        <TooltipContent>
+          <p>Qwerty Plus Alpha：对外联系渠道暂未开放</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
