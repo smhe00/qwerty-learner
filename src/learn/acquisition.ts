@@ -187,3 +187,78 @@ export function learnAcquisitionFollowUpGap(
   if (nextPhase === 'independent') return 4
   return 0
 }
+
+
+export type LearnAcquisitionProgressProjection<T extends { name: string }> = {
+  queue: T[]
+  index: number
+  isFinished: boolean
+  insertWord?: {
+    index: number
+    word: T
+  }
+}
+
+/**
+ * Queue projection is Learn-owned. Follow-up attempts are separated by
+ * intervening words so a just-seen answer cannot immediately masquerade as
+ * durable recall.
+ */
+export function projectLearnAcquisitionProgress<T extends { name: string }>(
+  input: {
+    queue: T[]
+    currentIndex: number
+    currentWord: T
+    nextState: LearnAcquisitionState
+  },
+): LearnAcquisitionProgressProjection<T> {
+  const { queue, currentIndex, currentWord, nextState } = input
+  if (queue.length === 0) {
+    throw new Error('acquisition queue must not be empty')
+  }
+  if (currentIndex < 0 || currentIndex >= queue.length) {
+    throw new Error('acquisition currentIndex out of range')
+  }
+  if (queue[currentIndex]?.name !== currentWord.name) {
+    throw new Error('acquisition currentWord must match queue[currentIndex]')
+  }
+
+  const nextQueue = [...queue]
+  let insertWord: LearnAcquisitionProgressProjection<T>['insertWord']
+
+  if (
+    nextState.phase === 'supported' ||
+    nextState.phase === 'independent'
+  ) {
+    const alreadyPending = nextQueue
+      .slice(currentIndex + 1)
+      .some((item) => item.name === currentWord.name)
+
+    if (!alreadyPending) {
+      const gap = learnAcquisitionFollowUpGap(nextState.phase)
+      const index = Math.min(
+        nextQueue.length,
+        currentIndex + 1 + gap,
+      )
+      nextQueue.splice(index, 0, currentWord)
+      insertWord = { index, word: currentWord }
+    }
+  }
+
+  const nextIndex = currentIndex + 1
+  if (nextIndex < nextQueue.length) {
+    return {
+      queue: nextQueue,
+      index: nextIndex,
+      isFinished: false,
+      insertWord,
+    }
+  }
+
+  return {
+    queue: nextQueue,
+    index: Math.max(0, nextQueue.length - 1),
+    isFinished: true,
+    insertWord,
+  }
+}
