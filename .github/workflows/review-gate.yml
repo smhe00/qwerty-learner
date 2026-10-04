@@ -45,6 +45,8 @@ on:
       - 'tests/e2e/production-smoke.config.ts'
       - 'tests/review/**'
       - 'tests/simulation/**'
+      - 'tests/formal/**'
+      - 'formal/**'
       - 'tests/fsrs/**'
       - 'docs/REVIEW_*.md'
       - 'docs/LEARN_*.md'
@@ -123,6 +125,18 @@ jobs:
 
       - name: Run Review formal model checker
         run: node --test .review-test/formal-model.test.mjs
+
+      - name: Bundle TLA trace bridge tests
+        run: |
+          npx esbuild tests/formal/tla-trace-bridge.test.ts \
+            --bundle \
+            --platform=node \
+            --target=node20 \
+            --format=esm \
+            --outfile=.review-test/tla-trace-bridge.test.mjs
+
+      - name: Run TLA trace bridge tests
+        run: node --test .review-test/tla-trace-bridge.test.mjs
 
       - name: Run Learn control stability gate
         run: node --test .review-test/control-stability.test.mjs
