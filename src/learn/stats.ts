@@ -139,7 +139,9 @@ function isCompletedAcquisition(record: IWordRecord): boolean {
     return (
       record.wrongCount === 0 &&
       record.learningContext?.reviewHint === undefined &&
-      record.reviewEvidence?.retrievalValidity === 'independent'
+      record.reviewEvidence?.retrievalValidity === 'independent' &&
+      record.reviewPolicyDecision?.reasonCodes.includes('spacing-eligible') ===
+        true
     )
   }
 
