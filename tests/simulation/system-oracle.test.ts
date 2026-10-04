@@ -160,7 +160,7 @@ function createEntryHarness(input: {
       nextSessionId += 1
       return session
     },
-    getNextSpacingResumeAt: async () => undefined,
+    getNextDeferredResumeAt: async () => undefined,
     ...(input.mutateQuotaAccounting
       ? {
           decideQuota: (stats) => {
