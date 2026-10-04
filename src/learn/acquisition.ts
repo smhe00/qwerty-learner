@@ -1,5 +1,10 @@
 import type { LearnInteractionStrainTier } from './strain'
 import {
+  applyLearnRecoveryWindow,
+  planLearnRecoveryWindow,
+} from './recovery-window'
+import type { LearnRecoveryWindowPlan } from './recovery-window'
+import {
   decideLearnScaffold,
   getLearnScaffoldPresentation,
 } from './scaffold'
@@ -350,6 +355,7 @@ export type LearnAcquisitionProgressProjection<T extends { name: string }> = {
     index: number
     word: T
   }
+  recoveryWindow?: LearnRecoveryWindowPlan
 }
 
 /**
@@ -363,9 +369,16 @@ export function projectLearnAcquisitionProgress<T extends { name: string }>(
     currentIndex: number
     currentWord: T
     nextState: LearnAcquisitionState
+    acquisitionStates?: Record<string, LearnAcquisitionState>
   },
 ): LearnAcquisitionProgressProjection<T> {
-  const { queue, currentIndex, currentWord, nextState } = input
+  const {
+    queue,
+    currentIndex,
+    currentWord,
+    nextState,
+    acquisitionStates,
+  } = input
   if (queue.length === 0) {
     throw new Error('acquisition queue must not be empty')
   }
@@ -376,7 +389,20 @@ export function projectLearnAcquisitionProgress<T extends { name: string }>(
     throw new Error('acquisition currentWord must match queue[currentIndex]')
   }
 
-  const nextQueue = [...queue]
+  const recoveryWindow = planLearnRecoveryWindow({
+    queue,
+    currentIndex,
+    currentWord,
+    nextState,
+    acquisitionStates,
+  })
+  const nextQueue = recoveryWindow.active
+    ? applyLearnRecoveryWindow(
+        queue,
+        currentIndex,
+        recoveryWindow.selectedNames,
+      )
+    : [...queue]
   let insertWord: LearnAcquisitionProgressProjection<T>['insertWord']
   let interveningItemsBeforeFollowUp: number | undefined
 
@@ -392,7 +418,12 @@ export function projectLearnAcquisitionProgress<T extends { name: string }>(
       pendingOffset >= 0 ? currentIndex + 1 + pendingOffset : undefined
 
     if (followUpIndex === undefined) {
-      const gap = learnAcquisitionFollowUpGap(nextState.phase)
+      const gap = Math.max(
+        learnAcquisitionFollowUpGap(nextState.phase),
+        recoveryWindow.active
+          ? recoveryWindow.selectedNames.length
+          : 0,
+      )
       followUpIndex = Math.min(
         nextQueue.length,
         currentIndex + 1 + gap,
@@ -415,6 +446,7 @@ export function projectLearnAcquisitionProgress<T extends { name: string }>(
       isFinished: false,
       interveningItemsBeforeFollowUp,
       insertWord,
+      ...(recoveryWindow.active ? { recoveryWindow } : {}),
     }
   }
 
@@ -424,5 +456,6 @@ export function projectLearnAcquisitionProgress<T extends { name: string }>(
     isFinished: true,
     interveningItemsBeforeFollowUp,
     insertWord,
+    ...(recoveryWindow.active ? { recoveryWindow } : {}),
   }
 }
