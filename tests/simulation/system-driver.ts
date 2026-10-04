@@ -44,6 +44,7 @@ export type VirtualLearnMutation = {
   staleRestoreOnce?: boolean
   bypassDueFirst?: boolean
   strandReadyDeferred?: boolean
+  silentNoopAtInteraction?: number
 }
 
 type StoredSession = ReviewRecord
@@ -682,20 +683,26 @@ export class VirtualLearnApp {
     })
 
     this.interactionCount += 1
-    const shouldDrop =
-      this.mutation.dropProjectionAtInteraction ===
+    const silentNoop =
+      this.mutation.silentNoopAtInteraction ===
       this.interactionCount
+    const shouldDropProjection =
+      silentNoop ||
+      this.mutation.dropProjectionAtInteraction ===
+        this.interactionCount
 
-    if (!shouldDrop) {
+    if (!shouldDropProjection) {
       session.index = resolution.projection.index
       session.words = clone(resolution.projection.queue)
       session.isFinished = resolution.projection.isFinished
     }
-    session.exercisePlans = clone(resolution.exercisePlans)
-    session.reinforcementCounts = clone(
-      resolution.reinforcementCounts,
-    )
-    session.itemStates = clone(resolution.itemStates)
+    if (!silentNoop) {
+      session.exercisePlans = clone(resolution.exercisePlans)
+      session.reinforcementCounts = clone(
+        resolution.reinforcementCounts,
+      )
+      session.itemStates = clone(resolution.itemStates)
+    }
 
     this.wordRecords.push(
       makeReviewRecord({
@@ -710,7 +717,7 @@ export class VirtualLearnApp {
     const stateIndex = this.wordStates.findIndex(
       (state) => state.word === currentWord.name,
     )
-    if (stateIndex >= 0 && isCold) {
+    if (stateIndex >= 0 && isCold && !silentNoop) {
       this.wordStates[stateIndex] = scheduleBasicReview({
         state: this.wordStates[stateIndex],
         outcome,
@@ -843,20 +850,26 @@ export class VirtualLearnApp {
     })
 
     this.interactionCount += 1
-    const shouldDrop =
-      this.mutation.dropProjectionAtInteraction ===
+    const silentNoop =
+      this.mutation.silentNoopAtInteraction ===
       this.interactionCount
+    const shouldDropProjection =
+      silentNoop ||
+      this.mutation.dropProjectionAtInteraction ===
+        this.interactionCount
 
     const expected = resolution.projection
-    if (!shouldDrop) {
+    if (!shouldDropProjection) {
       session.index = expected.index
       session.words = clone(expected.queue)
       session.isFinished = expected.isFinished
     }
-    session.acquisitionStates =
-      clone(resolution.acquisitionStates)
+    if (!silentNoop) {
+      session.acquisitionStates =
+        clone(resolution.acquisitionStates)
+    }
 
-    if (currentState.phase === 'independent') {
+    if (currentState.phase === 'independent' && !silentNoop) {
       this.wordRecords.push(
         makeAcquisitionRecord({
           id: this.nextWordRecordId++,
@@ -871,7 +884,7 @@ export class VirtualLearnApp {
       )
     }
 
-    if (resolution.shouldPersistAdmission) {
+    if (resolution.shouldPersistAdmission && !silentNoop) {
       if (
         !this.wordStates.some(
           (state) => state.word === currentWord.name,
@@ -888,6 +901,7 @@ export class VirtualLearnApp {
     }
 
     if (
+      !silentNoop &&
       resolution.nextState.phase === 'deferred' &&
       resolution.nextState.deferredReason === 'spacing'
     ) {
