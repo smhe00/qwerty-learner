@@ -730,6 +730,13 @@ export class VirtualLearnApp {
       session.acquisitionStates?.[currentWord.name] ??
       createLearnAcquisitionState()
 
+    if (
+      currentState.phase === 'complete' ||
+      currentState.phase === 'deferred'
+    ) {
+      return false
+    }
+
     if (currentState.phase === 'exposure') {
       this.wordRecords.push(
         makeAcquisitionRecord({
