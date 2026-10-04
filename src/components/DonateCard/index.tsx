@@ -27,7 +27,6 @@ export const DonateCard = () => {
       wordNumber,
       sumWrongCount,
       dayFromFirstWord,
-      dayFromQwerty,
       amount: 0,
     })
 
@@ -43,7 +42,6 @@ export const DonateCard = () => {
       wordNumber,
       sumWrongCount,
       dayFromFirstWord,
-      dayFromQwerty,
       amount: 0,
     })
 
