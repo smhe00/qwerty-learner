@@ -42,7 +42,7 @@ export type LearnSystemTraceEvent =
   | {
       kind: 'waiting'
       reason:
-        | 'spacing'
+        | 'deferred'
         | 'empty'
         | 'review-due'
         | 'workload-budget'
