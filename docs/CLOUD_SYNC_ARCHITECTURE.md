@@ -1,6 +1,6 @@
 # Qwerty 云账号与同步架构
 
-> 当前产品格式：`qwerty-backup-v3`。`qwerty-backup-v3` 仅作为旧备份兼容恢复格式；旧的客户端 AES 加密 envelope 已废弃，不做兼容恢复。
+> 当前产品写入格式：`qwerty-backup-v3`。`qwerty-dexie-gzip-v2` 仅作为旧备份兼容恢复格式；旧的客户端 AES 加密 envelope 已废弃，不做兼容恢复。
 
 ## 1. 定位
 
