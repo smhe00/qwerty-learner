@@ -100,8 +100,9 @@ export function decideReviewHintInput(input: {
   const next = NEXT_HINT[input.state.stage]
   const hintPosition =
     input.state.hintPosition ??
-    input.state.lastWrongIndex ??
-    Math.max(0, input.inputIndex)
+    (input.inputIndex > 0
+      ? input.inputIndex
+      : input.state.lastWrongIndex ?? 0)
 
   return {
     kind: 'advance-hint',
