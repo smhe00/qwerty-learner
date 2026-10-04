@@ -11,6 +11,10 @@ import {
   evaluateWordMetric,
 } from './evaluator'
 import {
+  SUPPORTED_EVENT_METRICS,
+  evaluateVoluntaryContinueAttempt,
+} from './event-evaluator'
+import {
   SUPPORTED_SESSION_METRICS,
   evaluateSessionMetric,
 } from './session-evaluator'
@@ -47,6 +51,15 @@ function p0SessionAchievements(): AchievementDefinition[] {
       achievement.enabled &&
       achievement.presentation.rollout === 'p0' &&
       SUPPORTED_SESSION_METRICS.has(achievement.condition.metric),
+  )
+}
+
+function p0EventAchievements(): AchievementDefinition[] {
+  return achievementDefinitions.filter(
+    (achievement) =>
+      achievement.enabled &&
+      achievement.presentation.rollout === 'p0' &&
+      SUPPORTED_EVENT_METRICS.has(achievement.condition.metric),
   )
 }
 
@@ -153,6 +166,40 @@ export async function processLiveLearnWordRecord(
     }
   }
 
+  if (options.sessionId) {
+    const intents = (await db.achievementEvents.toArray())
+      .filter(
+        (event) =>
+          event.eventType === 'continue_intent' &&
+          event.dict === current.dict &&
+          event.sessionId !== undefined,
+      )
+      .sort((left, right) => right.occurredAt - left.occurredAt)
+    const intent = intents[0]
+
+    if (intent?.sessionId) {
+      for (const achievement of p0EventAchievements()) {
+        if (
+          achievement.condition.metric !==
+          'voluntary_continue_after_session'
+        ) {
+          continue
+        }
+
+        const value = evaluateVoluntaryContinueAttempt({
+          intentAt: intent.occurredAt,
+          completedSessionId: intent.sessionId,
+          currentSessionId: options.sessionId,
+          attemptAt: current.timeStamp,
+        })
+        values.set(achievement.condition.metric, value)
+        if (conditionSatisfied(achievement.condition, value)) {
+          candidates.push({ achievement, value })
+        }
+      }
+    }
+  }
+
   const event: AchievementEventRecord = {
     eventId,
     eventType: 'word_attempt',
@@ -174,6 +221,7 @@ export async function processLiveLearnSessionCompletion(input: {
   dict: string
   sourceRecordIds: number[]
   completedAt: number
+  recommendedGoalCompleted?: boolean
 }): Promise<AchievementUnlock[]> {
   if (!input.sessionId || input.sourceRecordIds.length === 0) return []
 
@@ -198,7 +246,10 @@ export async function processLiveLearnSessionCompletion(input: {
   const candidates: AchievementCandidate[] = []
 
   for (const achievement of p0SessionAchievements()) {
-    const value = evaluateSessionMetric(achievement.condition, { records })
+    const value = evaluateSessionMetric(achievement.condition, {
+      records,
+      recommendedGoalCompleted: input.recommendedGoalCompleted,
+    })
     if (value === null) continue
     values.set(achievement.condition.metric, value)
     if (conditionSatisfied(achievement.condition, value)) {
@@ -221,6 +272,34 @@ export async function processLiveLearnSessionCompletion(input: {
   return persistEventAndUnlocks(event, candidates)
 }
 
+
+export async function recordVoluntaryContinueIntent(input: {
+  completedSessionId: string
+  dict: string
+  occurredAt: number
+}): Promise<void> {
+  if (!input.completedSessionId) return
+
+  const eventId = `continue:${input.completedSessionId}`
+  await db.transaction('rw', db.achievementEvents, async () => {
+    const existing = await db.achievementEvents.get(eventId)
+    if (existing) return
+
+    const event: AchievementEventRecord = {
+      eventId,
+      eventType: 'continue_intent',
+      origin: 'live',
+      sessionId: input.completedSessionId,
+      occurredAt: input.occurredAt,
+      dict: input.dict,
+      metricValues: {
+        voluntary_continue_intent: 1,
+      },
+      unlockedAchievementIds: [],
+    }
+    await db.achievementEvents.add(event)
+  })
+}
 
 export async function processLiveLongTermMasteryCrossing(input: {
   sourceRecordId: number
