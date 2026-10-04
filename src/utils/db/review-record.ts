@@ -5,11 +5,10 @@ import {
   buildLearnAcquisitionExercisePlans,
   buildLearnAcquisitionStates,
   canonicalizeLearningWords,
-  selectUnseenLearningWords,
+  planLearnAcquisitionCandidates,
 } from '@/learn/session'
 import {
   createLearnAcquisitionExercisePlanForState,
-  resumeSpacingDeferredAcquisition,
 } from '@/learn/acquisition'
 import type { LearnAcquisitionState } from '@/learn/acquisition'
 import { estimateLearnInteractionStrain } from '@/learn/strain'
@@ -232,50 +231,17 @@ export async function generateNewWordAcquisitionRecord(
   const scaffoldStrainTier =
     estimateLearnInteractionStrain(wordRecords).tier
 
-  const canonicalWords = canonicalizeLearningWords(words)
-  const canonicalByName = new Map(
-    canonicalWords.map((word) => [word.name, word]),
-  )
-  const resumed: Array<{
-    word: Word
-    state: LearnAcquisitionState
-  }> = []
-
-  for (const [wordName, deferredState] of pending) {
-    if (resumed.length >= LEARN_NEW_WORD_BATCH_SIZE) break
-    const resumedState = resumeSpacingDeferredAcquisition(
-      deferredState,
-      now,
-    )
-    const word = canonicalByName.get(wordName)
-    if (!resumedState || !word) continue
-    resumed.push({ word, state: resumedState })
-  }
-
-  const blockedNames = new Set(pending.keys())
-  const introducedNames = new Set(
-    wordRecords
+  const candidatePlan = planLearnAcquisitionCandidates({
+    words,
+    states,
+    pendingStates: pending,
+    introducedWords: wordRecords
       .filter(isAcquisitionIntroductionRecord)
       .map((record) => record.word),
-  )
-  const freshCapacity = Math.min(
     freshLimit,
-    Math.max(0, LEARN_NEW_WORD_BATCH_SIZE - resumed.length),
-  )
-  const freshWords =
-    freshCapacity > 0
-      ? selectUnseenLearningWords(
-          canonicalWords,
-          states,
-          Number.MAX_SAFE_INTEGER,
-        )
-          .filter(
-            (word) =>
-              !blockedNames.has(word.name) &&
-              !introducedNames.has(word.name),
-          )
-          .slice(0, freshCapacity)
-      : []
+    now,
+  })
+  const { resumed, freshWords } = candidatePlan
 
   const selectedWords = [
     ...resumed.map((item) => item.word),
