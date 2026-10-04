@@ -293,7 +293,17 @@ export default function LearnResultScreen() {
             </section>
           ) : null}
 
-          <div className="mt-10 flex flex-wrap justify-center gap-4">
+          <div className="mt-8 flex justify-center">
+            <button
+              type="button"
+              className="text-sm font-medium text-indigo-500 hover:text-indigo-600 dark:text-indigo-300"
+              onClick={() => navigate('/achievements')}
+            >
+              查看成就收藏
+            </button>
+          </div>
+
+          <div className="mt-6 flex flex-wrap justify-center gap-4">
             <button
               className="my-btn-primary h-12 px-6 text-base font-bold"
               type="button"
