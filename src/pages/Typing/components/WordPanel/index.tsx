@@ -10,6 +10,7 @@ import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
 import {
   createLearnAcquisitionExercisePlan,
   createLearnAcquisitionState,
+  MIN_INDEPENDENT_INTERVENING_ITEMS,
   decideLearnAcquisitionTransition,
   projectLearnAcquisitionProgress,
 } from '@/learn/acquisition'
@@ -324,7 +325,9 @@ export default function WordPanel() {
           const independentClean =
             wrongCount === 0 &&
             classification.cause === 'clean' &&
-            reviewEvidence.retrievalValidity === 'independent'
+            reviewEvidence.retrievalValidity === 'independent' &&
+            (acquisitionState.independentInterveningItems ?? 0) >=
+              MIN_INDEPENDENT_INTERVENING_ITEMS
           nextAcquisitionState = decideLearnAcquisitionTransition(
             acquisitionState,
             {
@@ -347,6 +350,14 @@ export default function WordPanel() {
           nextState: nextAcquisitionState,
         })
 
+        if (nextAcquisitionState.phase === 'independent') {
+          nextAcquisitionState = {
+            ...nextAcquisitionState,
+            independentInterveningItems:
+              projection.interveningItemsBeforeFollowUp ?? 0,
+          }
+        }
+
         setReviewModeInfo((old) => {
           if (!old.reviewRecord) return old
 
@@ -365,6 +376,12 @@ export default function WordPanel() {
             exercisePlans[currentWord.name] =
               createLearnAcquisitionExercisePlan(
                 nextAcquisitionState.phase,
+                nextAcquisitionState.phase === 'independent'
+                  ? {
+                      independentInterveningItems:
+                        nextAcquisitionState.independentInterveningItems,
+                    }
+                  : undefined,
               )
           } else {
             delete exercisePlans[currentWord.name]
