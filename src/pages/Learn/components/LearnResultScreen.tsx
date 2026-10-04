@@ -1,8 +1,11 @@
+import { getUnseenAchievementStates, markAchievementSeen } from '@/achievement'
 import { TypingContext } from '@/pages/Typing/store'
+import { getAchievementCulture } from '@/resources/achievementCulture'
 import {
   currentDictInfoAtom,
   reviewModeInfoAtom,
 } from '@/store'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useContext, useMemo } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -46,6 +49,32 @@ export default function LearnResultScreen() {
   const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
   const navigate = useNavigate()
+  const unseenAchievementStates = useLiveQuery(
+    () => getUnseenAchievementStates(),
+    [],
+    [],
+  )
+
+  const newAchievements = useMemo(
+    () =>
+      unseenAchievementStates
+        .map((state) => {
+          const culture = getAchievementCulture(state.achievementId)
+          return culture ? { state, ...culture } : null
+        })
+        .filter(
+          (
+            item,
+          ): item is NonNullable<typeof item> => item !== null,
+        ),
+    [unseenAchievementStates],
+  )
+
+  const acknowledgeAchievements = useCallback(() => {
+    for (const item of newAchievements) {
+      void markAchievementSeen(item.state.achievementId)
+    }
+  }, [newAchievements])
 
   const record = reviewModeInfo.reviewRecord
   const isAcquisition = record?.sessionKind === 'acquisition'
@@ -75,19 +104,22 @@ export default function LearnResultScreen() {
   }, [setReviewModeInfo])
 
   const continueLearn = useCallback(() => {
+    acknowledgeAchievements()
     leaveLearn()
     navigate('/learn')
-  }, [leaveLearn, navigate])
+  }, [acknowledgeAchievements, leaveLearn, navigate])
 
   const chooseDictionary = useCallback(() => {
+    acknowledgeAchievements()
     leaveLearn()
     navigate('/gallery?mode=learn')
-  }, [leaveLearn, navigate])
+  }, [acknowledgeAchievements, leaveLearn, navigate])
 
   const returnToTyping = useCallback(() => {
+    acknowledgeAchievements()
     leaveLearn()
     navigate('/typing')
-  }, [leaveLearn, navigate])
+  }, [acknowledgeAchievements, leaveLearn, navigate])
 
   useHotkeys(
     'enter',
@@ -159,6 +191,60 @@ export default function LearnResultScreen() {
               value={formatTime(state.timerData.time)}
             />
           </div>
+
+          {newAchievements.length > 0 ? (
+            <section
+              className="mt-8 rounded-2xl border border-indigo-100 bg-indigo-50/60 px-6 py-5 text-left dark:border-gray-700 dark:bg-gray-700/60"
+              aria-label="本轮新成就"
+              data-achievement-settlement
+            >
+              <div className="text-center">
+                <div className="text-xs font-medium tracking-[0.18em] text-indigo-400">
+                  本轮新成就
+                </div>
+                <div className="mt-1 text-sm text-gray-500 dark:text-gray-300">
+                  记录真正发生的能力变化，不奖励机械刷次数。
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {newAchievements.map(({ achievement, primary, state }) => (
+                  <article
+                    key={state.achievementId}
+                    className="rounded-xl bg-white px-4 py-4 shadow-sm dark:bg-gray-800"
+                    data-achievement-id={state.achievementId}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-base font-semibold text-gray-800 dark:text-gray-100">
+                          {achievement.title}
+                        </div>
+                        <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                          {achievement.copy.unlockMessage}
+                        </div>
+                      </div>
+                      {achievement.hidden ? (
+                        <span className="shrink-0 rounded-full bg-indigo-100 px-2 py-1 text-[11px] text-indigo-500 dark:bg-gray-700 dark:text-indigo-300">
+                          隐藏成就
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {primary ? (
+                      <div className="mt-3 border-l-2 border-indigo-200 pl-3 dark:border-indigo-500/40">
+                        <div className="text-sm text-gray-600 dark:text-gray-300">
+                          {primary.text}
+                        </div>
+                        <div className="mt-1 text-xs text-gray-400">
+                          {primary.source}
+                        </div>
+                      </div>
+                    ) : null}
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <div className="mt-10 flex flex-wrap justify-center gap-4">
             <button
