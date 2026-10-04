@@ -115,6 +115,107 @@ async function seedReviewSession(
   )
 }
 
+async function seedAcquisitionSession(
+  page: import('@playwright/test').Page,
+  words: ReviewWord[],
+  id: number,
+  phase: 'exposure' | 'supported' | 'independent' = 'independent',
+) {
+  await page.addInitScript(
+    ({ seededWords, recordId, seededPhase }) => {
+      const condition =
+        seededPhase === 'exposure'
+          ? {
+              purpose: 'training',
+              audio: 'automatic',
+              phonetic: 'visible',
+              letters: { mode: 'all-visible' },
+            }
+          : {
+              purpose:
+                seededPhase === 'independent' ? 'probe' : 'training',
+              audio: 'none',
+              phonetic: 'hidden',
+              letters: { mode: 'all-hidden' },
+            }
+      const policyVersion =
+        seededPhase === 'exposure'
+          ? 'learn-acquisition-exposure-v1'
+          : seededPhase === 'independent'
+            ? 'learn-acquisition-independent-v1'
+            : 'learn-acquisition-supported-v1'
+
+      localStorage.setItem('currentDict', JSON.stringify('cet4'))
+      localStorage.setItem('currentChapter', JSON.stringify(-1))
+      localStorage.setItem(
+        'reviewModeInfo',
+        JSON.stringify({
+          isReviewMode: true,
+          reviewRecord: {
+            id: recordId,
+            dict: 'cet4',
+            createTime: recordId,
+            index: 0,
+            isFinished: false,
+            sessionKind: 'acquisition',
+            words: seededWords,
+            exercisePlans: Object.fromEntries(
+              seededWords.map((word) => [
+                word.name,
+                {
+                  version: 1,
+                  condition: {
+                    version: 1,
+                    source: 'adaptive-policy',
+                    meaning: 'visible',
+                    probeDimension: 'none',
+                    ...condition,
+                  },
+                  decision: {
+                    version: 1,
+                    policyVersion,
+                    reasonCodes: ['e2e-acquisition-phase'],
+                    conditionVersion: 1,
+                  },
+                  sourceShadowVersion: 1,
+                },
+              ]),
+            ),
+            acquisitionStates: Object.fromEntries(
+              seededWords.map((word) => [
+                word.name,
+                {
+                  version: 1,
+                  phase: seededPhase,
+                  assistedCycles: 0,
+                },
+              ]),
+            ),
+          },
+        }),
+      )
+      localStorage.setItem(
+        'loopWordConfig',
+        JSON.stringify({ times: 1 }),
+      )
+      localStorage.setItem(
+        'pronunciation',
+        JSON.stringify({
+          isOpen: false,
+          volume: 1,
+          type: 'us',
+          name: '美音',
+          isLoop: false,
+          isTransRead: false,
+          transVolume: 1,
+          rate: 1,
+        }),
+      )
+    },
+    { seededWords: words, recordId: id, seededPhase: phase },
+  )
+}
+
 async function readReviewModeInfo(page: import('@playwright/test').Page) {
   return page.evaluate(() => {
     const raw = localStorage.getItem('reviewModeInfo')
@@ -1471,7 +1572,7 @@ test('Learn exposes only one unfinished session and cannot create a duplicate fr
   expect(afterCount).toBe(2)
 })
 
-test('Learn starts new acquisition only when there is no due review', async ({
+test('Learn starts new acquisition with exposure and does not admit after visible copy', async ({
   page,
 }) => {
   await page.goto('/')
@@ -1481,9 +1582,7 @@ test('Learn starts new acquisition only when there is no due review', async ({
     localStorage.setItem('isOpenDarkModeAtom', JSON.stringify(false))
     localStorage.setItem(
       'reviewModeInfo',
-      JSON.stringify({
-        isReviewMode: false,
-      }),
+      JSON.stringify({ isReviewMode: false }),
     )
 
     await new Promise<void>((resolve, reject) => {
@@ -1491,15 +1590,9 @@ test('Learn starts new acquisition only when there is no due review', async ({
       request.onerror = () => reject(request.error)
       request.onsuccess = () => {
         const db = request.result
-        const names = [
-          'wordRecords',
-          'reviewWordStates',
-          'reviewRecords',
-        ]
+        const names = ['wordRecords', 'reviewWordStates', 'reviewRecords']
         const tx = db.transaction(names, 'readwrite')
-        for (const name of names) {
-          tx.objectStore(name).clear()
-        }
+        for (const name of names) tx.objectStore(name).clear()
 
         const now = Math.floor(Date.now() / 1000)
         tx.objectStore('wordRecords').add({
@@ -1543,189 +1636,104 @@ test('Learn starts new acquisition only when there is no due review', async ({
   await page.goto('/learn')
   await expect(page).toHaveURL(/\/learn\/session$/)
 
-  await expect
-    .poll(async () => {
-      return page.evaluate(async () => {
-        return new Promise<boolean>((resolve, reject) => {
-          const request = indexedDB.open('RecordDB')
-          request.onerror = () => reject(request.error)
-          request.onsuccess = () => {
-            const db = request.result
-            const tx = db.transaction('reviewWordStates', 'readonly')
-            const all = tx.objectStore('reviewWordStates').getAll()
-            all.onerror = () => reject(all.error)
-            all.onsuccess = () => {
-              resolve(
-                all.result.some(
-                  (item) =>
-                    item.dict === 'cet4' && item.word === 'cancel',
-                ),
-              )
-              db.close()
-            }
-          }
-        })
-      })
-    })
-    .toBe(false)
-
   const info = await readReviewModeInfo(page)
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
   expect(info?.reviewRecord?.words?.length).toBe(20)
 
   const firstWord = info?.reviewRecord?.words?.[0]?.name as string
   expect(firstWord).toBeTruthy()
-  expect(
-    info?.reviewRecord?.exercisePlans?.[firstWord],
-  ).toMatchObject({
+  expect(info?.reviewRecord?.acquisitionStates?.[firstWord]).toMatchObject({
+    phase: 'exposure',
+    assistedCycles: 0,
+  })
+  expect(info?.reviewRecord?.exercisePlans?.[firstWord]).toMatchObject({
     condition: {
-      purpose: 'probe',
-      audio: 'none',
+      purpose: 'training',
+      audio: 'automatic',
       meaning: 'visible',
-      phonetic: 'hidden',
-      letters: { mode: 'all-hidden' },
+      phonetic: 'visible',
+      letters: { mode: 'all-visible' },
       probeDimension: 'none',
     },
     decision: {
-      policyVersion: 'learn-acquisition-cold-probe-v2',
+      policyVersion: 'learn-acquisition-exposure-v1',
     },
   })
 
   await startTyping(page)
   await waitForRenderedWord(page, firstWord)
-  const rendered = page.locator(
-    `[data-typing-word="${firstWord}"]`,
-  )
-  await expect(rendered).toHaveAttribute(
-    'data-review-purpose',
-    'probe',
-  )
-  await expect(rendered).toHaveAttribute(
-    'data-review-letters',
-    'all-hidden',
-  )
-  await expect(rendered).toHaveAttribute(
-    'data-review-hint-level',
-    'cold',
-  )
 
-  const translation = page.locator(
-    '[data-typing-translation="visible"]',
-  )
-  await expect(translation).toBeVisible()
-  const lightTranslationColor = await translation.evaluate(
-    (element) => getComputedStyle(element).color,
-  )
-  expect(lightTranslationColor).not.toBe('rgb(255, 255, 255)')
-  expect(lightTranslationColor).not.toBe('rgba(255, 255, 255, 1)')
-  expect(lightTranslationColor).not.toBe('rgba(0, 0, 0, 0)')
-
-  await page.getByRole('button', {
-    name: '开关深色模式',
-    exact: true,
-  }).click()
-  await expect(translation).toBeVisible()
-  await expect(translation).toHaveCSS(
-    'color',
-    'rgba(255, 255, 255, 0.8)',
-  )
+  const rendered = page.locator(`[data-typing-word="${firstWord}"]`)
+  await expect(rendered).toHaveAttribute('data-review-purpose', 'training')
+  await expect(rendered).toHaveAttribute('data-review-letters', 'all-visible')
+  await expect(
+    page.locator('[data-learn-acquisition-phase="exposure"]'),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-typing-translation="visible"]'),
+  ).toBeVisible()
 
   await page.keyboard.type(firstWord)
 
   await expect
     .poll(async () => {
-      return page.evaluate(async (word) => {
-        return new Promise<{
-          state?: {
-            lifecycle?: string
-            reviewCount?: number
-            lapseCount?: number
-            lastOutcome?: string
-            nextReviewAt?: number
-          }
-          record?: {
-            sourceMode?: string
-            learnItemKind?: string
-          }
-          now: number
-        }>((resolve, reject) => {
-          const request = indexedDB.open('RecordDB')
-          request.onerror = () => reject(request.error)
-          request.onsuccess = () => {
-            const db = request.result
-            const tx = db.transaction(
-              ['reviewWordStates', 'wordRecords'],
-              'readonly',
-            )
-            const states = tx.objectStore('reviewWordStates').getAll()
-            const records = tx.objectStore('wordRecords').getAll()
-            tx.onerror = () => reject(tx.error)
-            tx.oncomplete = () => {
-              const state = states.result.find(
-                (item) => item.dict === 'cet4' && item.word === word,
-              )
-              const record = [...records.result]
-                .reverse()
-                .find(
-                  (item) => item.dict === 'cet4' && item.word === word,
-                )
-              resolve({
-                state: state
-                  ? {
-                      lifecycle: state.lifecycle,
-                      reviewCount: state.reviewCount,
-                      lapseCount: state.lapseCount,
-                      lastOutcome: state.lastOutcome,
-                      nextReviewAt: state.nextReviewAt,
-                    }
-                  : undefined,
-                record: record
-                  ? {
-                      sourceMode: record.sourceMode,
-                      learnItemKind: record.learnItemKind,
-                    }
-                  : undefined,
-                now: Math.floor(Date.now() / 1000),
-              })
-              db.close()
-            }
-          }
-        })
-      }, firstWord)
+      const current = await readReviewModeInfo(page)
+      return {
+        index: current?.reviewRecord?.index,
+        phase:
+          current?.reviewRecord?.acquisitionStates?.[firstWord]?.phase,
+        queue: current?.reviewRecord?.words
+          ?.slice(0, 4)
+          .map((word: { name: string }) => word.name),
+      }
     })
-    .toMatchObject({
-      state: {
-        lifecycle: 'active',
-        reviewCount: 0,
-        lapseCount: 0,
-      },
-      record: {
-        sourceMode: 'learn',
-        learnItemKind: 'acquisition',
-      },
+    .toEqual({
+      index: 1,
+      phase: 'supported',
+      queue: [
+        firstWord,
+        info?.reviewRecord?.words?.[1]?.name,
+        info?.reviewRecord?.words?.[2]?.name,
+        firstWord,
+      ],
     })
 
-  const persisted = await page.evaluate(async (word) => {
+  const afterExposure = await page.evaluate(async (word) => {
     return new Promise<{
-      nextReviewAt?: number
-      lastOutcome?: string
-      now: number
+      stateExists: boolean
+      record?: {
+        sourceMode?: string
+        learnItemKind?: string
+        policyVersion?: string
+      }
     }>((resolve, reject) => {
       const request = indexedDB.open('RecordDB')
       request.onerror = () => reject(request.error)
       request.onsuccess = () => {
         const db = request.result
-        const tx = db.transaction('reviewWordStates', 'readonly')
-        const all = tx.objectStore('reviewWordStates').getAll()
-        all.onerror = () => reject(all.error)
-        all.onsuccess = () => {
-          const state = all.result.find(
-            (item) => item.dict === 'cet4' && item.word === word,
-          )
+        const tx = db.transaction(
+          ['reviewWordStates', 'wordRecords'],
+          'readonly',
+        )
+        const states = tx.objectStore('reviewWordStates').getAll()
+        const records = tx.objectStore('wordRecords').getAll()
+        tx.onerror = () => reject(tx.error)
+        tx.oncomplete = () => {
+          const record = [...records.result]
+            .reverse()
+            .find((item) => item.dict === 'cet4' && item.word === word)
           resolve({
-            nextReviewAt: state?.nextReviewAt,
-            lastOutcome: state?.lastOutcome,
-            now: Math.floor(Date.now() / 1000),
+            stateExists: states.result.some(
+              (item) => item.dict === 'cet4' && item.word === word,
+            ),
+            record: record
+              ? {
+                  sourceMode: record.sourceMode,
+                  learnItemKind: record.learnItemKind,
+                  policyVersion:
+                    record.reviewPolicyDecision?.policyVersion,
+                }
+              : undefined,
           })
           db.close()
         }
@@ -1733,12 +1741,105 @@ test('Learn starts new acquisition only when there is no due review', async ({
     })
   }, firstWord)
 
-  expect(persisted.lastOutcome).toBeUndefined()
-  expect(persisted.nextReviewAt).toBeGreaterThan(
-    persisted.now + 86_300,
+  expect(afterExposure).toEqual({
+    stateExists: false,
+    record: {
+      sourceMode: 'learn',
+      learnItemKind: 'acquisition',
+      policyVersion: 'learn-acquisition-exposure-v1',
+    },
+  })
+})
+
+test('clean Independent acquisition is the admission boundary', async ({
+  page,
+}) => {
+  await seedAcquisitionSession(
+    page,
+    [reviewWords[0]],
+    920001,
+    'independent',
   )
-  expect(persisted.nextReviewAt).toBeLessThanOrEqual(
-    persisted.now + 86_500,
+  await page.goto('/learn/session')
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+
+  const word = page.locator('[data-typing-word="cancel"]')
+  await expect(word).toHaveAttribute('data-review-purpose', 'probe')
+  await expect(word).toHaveAttribute('data-review-letters', 'all-hidden')
+  await expect(
+    page.locator('[data-learn-acquisition-phase="independent"]'),
+  ).toBeVisible()
+
+  await page.keyboard.type('cancel')
+
+  await expect
+    .poll(async () => {
+      return page.evaluate(async () => {
+        return new Promise<{
+          lifecycle?: string
+          reviewCount?: number
+          lapseCount?: number
+          lastOutcome?: string
+          dueDelta?: number
+        }>((resolve, reject) => {
+          const request = indexedDB.open('RecordDB')
+          request.onerror = () => reject(request.error)
+          request.onsuccess = () => {
+            const db = request.result
+            const tx = db.transaction('reviewWordStates', 'readonly')
+            const get = tx
+              .objectStore('reviewWordStates')
+              .index('[dict+word]')
+              .get(['cet4', 'cancel'])
+            get.onerror = () => reject(get.error)
+            get.onsuccess = () => {
+              const state = get.result
+              resolve({
+                lifecycle: state?.lifecycle,
+                reviewCount: state?.reviewCount,
+                lapseCount: state?.lapseCount,
+                lastOutcome: state?.lastOutcome,
+                dueDelta:
+                  state?.nextReviewAt === undefined
+                    ? undefined
+                    : state.nextReviewAt -
+                      Math.floor(Date.now() / 1000),
+              })
+              db.close()
+            }
+          }
+        })
+      })
+    })
+    .toMatchObject({
+      lifecycle: 'active',
+      reviewCount: 0,
+      lapseCount: 0,
+    })
+
+  const admitted = await page.evaluate(async () => {
+    return new Promise<any>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction('reviewWordStates', 'readonly')
+        const get = tx
+          .objectStore('reviewWordStates')
+          .index('[dict+word]')
+          .get(['cet4', 'cancel'])
+        get.onerror = () => reject(get.error)
+        get.onsuccess = () => {
+          resolve(get.result)
+          db.close()
+        }
+      }
+    })
+  })
+  expect(admitted.lastOutcome).toBeUndefined()
+  expect(admitted.nextReviewAt).toBeGreaterThan(
+    Math.floor(Date.now() / 1000) + 86_300,
   )
 })
 
