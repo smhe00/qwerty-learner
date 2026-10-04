@@ -44,6 +44,7 @@ on:
       - 'tests/e2e/production-smoke.spec.ts'
       - 'tests/e2e/production-smoke.config.ts'
       - 'tests/review/**'
+      - 'tests/simulation/**'
       - 'tests/fsrs/**'
       - 'docs/REVIEW_*.md'
       - 'docs/LEARN_*.md'
@@ -125,6 +126,13 @@ jobs:
 
       - name: Run Learn control stability gate
         run: node --test .review-test/control-stability.test.mjs
+
+      - name: Bundle longitudinal learner simulation
+        run: |
+          npx esbuild tests/simulation/learner-simulator.test.ts             --bundle             --platform=node             --target=node20             --format=esm             --outfile=.review-test/learner-simulator.test.mjs
+
+      - name: Run longitudinal learner simulation
+        run: node --test .review-test/learner-simulator.test.mjs
 
       - name: Run Typing audio lifecycle formal model
         run: node --test .review-test/typing-audio-formal.test.mjs
