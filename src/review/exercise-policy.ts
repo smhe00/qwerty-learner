@@ -1,5 +1,9 @@
 import type { ExerciseConditionV1 } from './condition'
-import { LEARN_ACQUISITION_POLICY_VERSION } from '@/learn/session'
+import {
+  LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
+  LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION,
+  LEARN_ACQUISITION_SUPPORTED_POLICY_VERSION,
+} from '@/learn/acquisition'
 import {
   CANONICAL_REVIEW_PROBE_POLICY_VERSION,
   createBaselineReviewPolicyDecision,
@@ -116,7 +120,12 @@ export function resolveExercisePlanForAttempt(
     frozenPlan?.decision.policyVersion === AUDIO_WITHDRAWAL_POLICY_VERSION ||
     frozenPlan?.decision.policyVersion === CANONICAL_REVIEW_PROBE_POLICY_VERSION ||
     frozenPlan?.decision.policyVersion === REVIEW_HINT_POLICY_VERSION ||
-    frozenPlan?.decision.policyVersion === LEARN_ACQUISITION_POLICY_VERSION
+    frozenPlan?.decision.policyVersion ===
+      LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION ||
+    frozenPlan?.decision.policyVersion ===
+      LEARN_ACQUISITION_SUPPORTED_POLICY_VERSION ||
+    frozenPlan?.decision.policyVersion ===
+      LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION
   ) {
     return {
       condition: frozenPlan.condition,
