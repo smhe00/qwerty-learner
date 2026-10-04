@@ -1,0 +1,1523 @@
+[
+  {
+    "id": "ACH_FIRST_DECODE",
+    "title": "初次破译",
+    "category": "breakthrough",
+    "rarity": "common",
+    "themes": [
+      "first_step",
+      "courage"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "first_independent_word_correct",
+      "operator": "gte",
+      "target": 1,
+      "window": null,
+      "constraints": {}
+    },
+    "culture": {
+      "primaryId": "CUL_LAOZI_001",
+      "alternateIds": [
+        "CUL_GUZHI_008",
+        "CUL_LUNYU_003"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "你第一次靠自己把一个新词完整拼出来了。",
+      "reflection": "千里很远，但第一步已经发生。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "初芽与脚印",
+      "scene": "千里很远，但第一步已经发生。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "纸白、青灰、淡墨",
+      "material": "纸本与浅浮雕"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "near_only",
+      "ceremony": "quiet"
+    }
+  },
+  {
+    "id": "ACH_FIRST_TRY",
+    "title": "厚积初见",
+    "category": "skill",
+    "rarity": "common",
+    "themes": [
+      "self_mastery",
+      "growth"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "new_word_first_cold_probe_correct",
+      "operator": "gte",
+      "target": 1,
+      "window": null,
+      "constraints": {}
+    },
+    "culture": {
+      "primaryId": "CUL_SUSHI_001",
+      "alternateIds": [
+        "CUL_XUNZI_003",
+        "CUL_ZIZHITONGJIAN_002"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "第一次 Cold Probe 就独立正确。",
+      "reflection": "这一次看似轻松，背后往往有更早的积累。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "书页下积起的微光",
+      "scene": "这一次看似轻松，背后往往有更早的积累。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "纸白、青灰、淡墨",
+      "material": "纸本与浅浮雕"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p1",
+      "progress": "near_only",
+      "ceremony": "quiet"
+    }
+  },
+  {
+    "id": "ACH_NO_HINT_10",
+    "title": "自胜",
+    "category": "skill",
+    "rarity": "rare",
+    "themes": [
+      "self_mastery",
+      "focus"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "consecutive_independent_correct_no_hint",
+      "operator": "gte",
+      "target": 10,
+      "window": null,
+      "constraints": {}
+    },
+    "culture": {
+      "primaryId": "CUL_LAOZI_002",
+      "alternateIds": [
+        "CUL_LOUSHI_001",
+        "CUL_SUNZI_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "连续 10 个词没有使用提示。",
+      "reflection": "提示逐渐退场，你开始真正依靠自己的记忆。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "独峰",
+      "scene": "提示逐渐退场，你开始真正依靠自己的记忆。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "青玉、墨蓝、少量银光",
+      "material": "青玉与银线"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "near_only",
+      "ceremony": "settlement"
+    }
+  },
+  {
+    "id": "ACH_NO_HINT_25",
+    "title": "独立成章",
+    "category": "skill",
+    "rarity": "epic",
+    "themes": [
+      "self_mastery",
+      "focus"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "consecutive_independent_correct_no_hint",
+      "operator": "gte",
+      "target": 25,
+      "window": null,
+      "constraints": {}
+    },
+    "culture": {
+      "primaryId": "CUL_LAOZI_002",
+      "alternateIds": [
+        "CUL_CHUSHIBIAO_001",
+        "CUL_LAOZI_004"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "连续 25 个词独立完成。",
+      "reflection": "一次独立也许偶然，连续独立已经成为能力。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "一叶孤舟",
+      "scene": "一次独立也许偶然，连续独立已经成为能力。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "黛青、朱砂、克制金箔",
+      "material": "漆器与金箔"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p1",
+      "progress": "near_only",
+      "ceremony": "spotlight"
+    }
+  },
+  {
+    "id": "ACH_WARMING_UP",
+    "title": "渐入佳境",
+    "category": "growth",
+    "rarity": "rare",
+    "themes": [
+      "growth",
+      "focus"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "session_second_half_accuracy_gain_pp",
+      "operator": "gte",
+      "target": 20,
+      "window": null,
+      "constraints": {
+        "minWords": 12
+      }
+    },
+    "culture": {
+      "primaryId": "CUL_WANGZHILUAN_001",
+      "alternateIds": [
+        "CUL_CENSHEN_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "这一轮后半段明显比前半段更稳。",
+      "reflection": "状态不是固定的，你可以在一次学习里把自己带起来。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "云梯",
+      "scene": "状态不是固定的，你可以在一次学习里把自己带起来。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "青玉、墨蓝、少量银光",
+      "material": "青玉与银线"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "near_only",
+      "ceremony": "settlement"
+    }
+  },
+  {
+    "id": "ACH_RECOVER_1",
+    "title": "失而复得",
+    "category": "recovery",
+    "rarity": "common",
+    "themes": [
+      "recovery",
+      "review"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "prior_failed_word_independent_correct",
+      "operator": "gte",
+      "target": 1,
+      "window": null,
+      "constraints": {}
+    },
+    "culture": {
+      "primaryId": "CUL_LUYOU_001",
+      "alternateIds": [
+        "CUL_YANSHU_001",
+        "CUL_TAOYUANMING_002"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "一个曾经不会的词，被你重新找回来了。",
+      "reflection": "忘记不是终点，重新想起来才是记忆真正变强的过程。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "回澜与山路",
+      "scene": "忘记不是终点，重新想起来才是记忆真正变强的过程。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "纸白、青灰、淡墨",
+      "material": "纸本与浅浮雕"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "near_only",
+      "ceremony": "quiet"
+    }
+  },
+  {
+    "id": "ACH_RECOVER_3",
+    "title": "扳回一局",
+    "category": "recovery",
+    "rarity": "rare",
+    "themes": [
+      "recovery",
+      "resilience"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "word_independent_correct_after_prior_failures",
+      "operator": "gte",
+      "target": 3,
+      "window": null,
+      "constraints": {}
+    },
+    "culture": {
+      "primaryId": "CUL_LIUXI_002",
+      "alternateIds": [
+        "CUL_BAIJUYI_001",
+        "CUL_LIBAI_002"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "这个词曾至少失败 3 次，现在你独立答对了。",
+      "reflection": "错误没有定义你，后来发生的改变才会。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "折返箭与新芽",
+      "scene": "错误没有定义你，后来发生的改变才会。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "青玉、墨蓝、少量银光",
+      "material": "青玉与银线"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "near_only",
+      "ceremony": "settlement"
+    }
+  },
+  {
+    "id": "ACH_RECOVER_5_STABLE",
+    "title": "百炼",
+    "category": "recovery",
+    "rarity": "epic",
+    "themes": [
+      "resilience",
+      "craft"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "difficult_word_stably_mastered_after_failures",
+      "operator": "gte",
+      "target": 5,
+      "window": null,
+      "constraints": {}
+    },
+    "culture": {
+      "primaryId": "CUL_ZHENGXIE_001",
+      "alternateIds": [
+        "CUL_LIUXI_001",
+        "CUL_XUNZI_002"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "一个高难词经过多次失败后进入稳定掌握。",
+      "reflection": "越难攻克的词，越能证明你真的在变强。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "竹与磨石",
+      "scene": "越难攻克的词，越能证明你真的在变强。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "黛青、朱砂、克制金箔",
+      "material": "漆器与金箔"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p1",
+      "progress": "near_only",
+      "ceremony": "spotlight"
+    }
+  },
+  {
+    "id": "ACH_OLD_RIVAL",
+    "title": "老对手",
+    "category": "memory",
+    "rarity": "legendary",
+    "themes": [
+      "recovery",
+      "long_view"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "difficult_word_correct_after_days",
+      "operator": "gte",
+      "target": 30,
+      "window": null,
+      "constraints": {
+        "priorFailuresAtLeast": 3,
+        "noHint": true
+      }
+    },
+    "culture": {
+      "primaryId": "CUL_ZIZHITONGJIAN_002",
+      "alternateIds": [
+        "CUL_ZHENGXIE_001",
+        "CUL_WANGYANGMING_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "曾经反复出错的老对手，30 天后你仍然能独立答对。",
+      "reflection": "曾经让你为难的词，如今需要重新认识你了。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "旧剑与新鞘",
+      "scene": "曾经让你为难的词，如今需要重新认识你了。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "深青、月白、沉静金色",
+      "material": "玉石、金属与高细节浮雕"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p2",
+      "progress": "near_only",
+      "ceremony": "ceremony"
+    }
+  },
+  {
+    "id": "ACH_ERROR_POSITION_FIXED",
+    "title": "毫厘得正",
+    "category": "craft",
+    "rarity": "rare",
+    "themes": [
+      "craft",
+      "recovery"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "repeated_error_position_resolved",
+      "operator": "gte",
+      "target": 1,
+      "window": null,
+      "constraints": {
+        "samePositionFailuresAtLeast": 2
+      }
+    },
+    "culture": {
+      "primaryId": "CUL_LAOZI_005",
+      "alternateIds": [
+        "CUL_ZUOZHUAN_001",
+        "CUL_SHIJING_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "一个反复出错的位置被你准确修正。",
+      "reflection": "真正的精进，往往发生在这些不起眼的细节里。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "细刻度与一点金线",
+      "scene": "真正的精进，往往发生在这些不起眼的细节里。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "青玉、墨蓝、少量银光",
+      "material": "青玉与银线"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "near_only",
+      "ceremony": "settlement"
+    }
+  },
+  {
+    "id": "ACH_7_DAY",
+    "title": "七日回响",
+    "category": "memory",
+    "rarity": "rare",
+    "themes": [
+      "review",
+      "long_view"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "independent_recall_after_days",
+      "operator": "gte",
+      "target": 7,
+      "window": null,
+      "constraints": {
+        "noHint": true
+      }
+    },
+    "culture": {
+      "primaryId": "CUL_LUNYU_002",
+      "alternateIds": [
+        "CUL_LUNYU_001",
+        "CUL_LVSHI_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "至少 7 天后，你仍能独立回忆出来。",
+      "reflection": "真正的记忆，经得起时间。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "七圈水纹",
+      "scene": "真正的记忆，经得起时间。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "青玉、墨蓝、少量银光",
+      "material": "青玉与银线"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "near_only",
+      "ceremony": "settlement"
+    }
+  },
+  {
+    "id": "ACH_30_DAY",
+    "title": "久别重逢",
+    "category": "memory",
+    "rarity": "epic",
+    "themes": [
+      "review",
+      "long_view"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "independent_recall_after_days",
+      "operator": "gte",
+      "target": 30,
+      "window": null,
+      "constraints": {
+        "noHint": true
+      }
+    },
+    "culture": {
+      "primaryId": "CUL_YANSHU_001",
+      "alternateIds": [
+        "CUL_ZHUXI_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "至少 30 天后，这个词仍然清晰。",
+      "reflection": "隔得久还能认出，才叫真正留下。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "归燕与月",
+      "scene": "隔得久还能认出，才叫真正留下。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "黛青、朱砂、克制金箔",
+      "material": "漆器与金箔"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p1",
+      "progress": "near_only",
+      "ceremony": "spotlight"
+    }
+  },
+  {
+    "id": "ACH_90_DAY",
+    "title": "岁寒不忘",
+    "category": "memory",
+    "rarity": "legendary",
+    "themes": [
+      "review",
+      "long_view"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "independent_recall_after_days",
+      "operator": "gte",
+      "target": 90,
+      "window": null,
+      "constraints": {
+        "noHint": true
+      }
+    },
+    "culture": {
+      "primaryId": "CUL_LUNYU_007",
+      "alternateIds": [
+        "CUL_ZHOUYI_001",
+        "CUL_SUSHI_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "至少 90 天后仍能独立回忆。",
+      "reflection": "时间已经走过一季，真正留下的记忆仍然青翠。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "雪中松柏与四时环",
+      "scene": "时间已经走过一季，真正留下的记忆仍然青翠。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "深青、月白、沉静金色",
+      "material": "玉石、金属与高细节浮雕"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p2",
+      "progress": "near_only",
+      "ceremony": "ceremony"
+    }
+  },
+  {
+    "id": "ACH_SPACED_20",
+    "title": "温故成习",
+    "category": "memory",
+    "rarity": "rare",
+    "themes": [
+      "review",
+      "growth"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "spaced_recall_success_count",
+      "operator": "gte",
+      "target": 20,
+      "window": null,
+      "constraints": {}
+    },
+    "culture": {
+      "primaryId": "CUL_LUNYU_001",
+      "alternateIds": [
+        "CUL_LUNYU_002",
+        "CUL_LVSHI_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "你完成了 20 次跨间隔的独立回忆成功。",
+      "reflection": "一次想起是成功，多次跨越时间想起才会成为习得。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "回纹书卷",
+      "scene": "一次想起是成功，多次跨越时间想起才会成为习得。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "青玉、墨蓝、少量银光",
+      "material": "青玉与银线"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p1",
+      "progress": "visible",
+      "ceremony": "settlement"
+    }
+  },
+  {
+    "id": "ACH_TRUE_MEMORY",
+    "title": "真正记住了",
+    "category": "memory",
+    "rarity": "epic",
+    "themes": [
+      "review",
+      "self_mastery"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "word_success_across_increasing_intervals",
+      "operator": "gte",
+      "target": 3,
+      "window": null,
+      "constraints": {
+        "noHint": true
+      }
+    },
+    "culture": {
+      "primaryId": "CUL_LUNYU_002",
+      "alternateIds": [
+        "CUL_GUZHI_009",
+        "CUL_SUSHI_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "同一词在 3 个递增间隔中都独立正确。",
+      "reflection": "这次不是刚好记得，而是已经形成稳定记忆。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "三重印章",
+      "scene": "这次不是刚好记得，而是已经形成稳定记忆。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "黛青、朱砂、克制金箔",
+      "material": "漆器与金箔"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "near_only",
+      "ceremony": "spotlight"
+    }
+  },
+  {
+    "id": "ACH_AUDIO_10",
+    "title": "听声成词",
+    "category": "skill",
+    "rarity": "rare",
+    "themes": [
+      "focus",
+      "self_mastery"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "audio_only_independent_correct_count",
+      "operator": "gte",
+      "target": 10,
+      "window": null,
+      "constraints": {}
+    },
+    "culture": {
+      "primaryId": "CUL_MENGZI_002",
+      "alternateIds": [
+        "CUL_SHIJING_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "仅凭声音独立拼对了 10 个词。",
+      "reflection": "耳朵听到的声音，已经能直接连接到拼写。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "声波与墨字",
+      "scene": "耳朵听到的声音，已经能直接连接到拼写。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "青玉、墨蓝、少量银光",
+      "material": "青玉与银线"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "near_only",
+      "ceremony": "settlement"
+    }
+  },
+  {
+    "id": "ACH_AUDIO_50",
+    "title": "耳熟能详",
+    "category": "skill",
+    "rarity": "epic",
+    "themes": [
+      "focus",
+      "craft"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "audio_only_independent_correct_count",
+      "operator": "gte",
+      "target": 50,
+      "window": null,
+      "constraints": {}
+    },
+    "culture": {
+      "primaryId": "CUL_OUYANGXIU_002",
+      "alternateIds": [
+        "CUL_GUZHI_001",
+        "CUL_LUYOU_002"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "累计 50 次仅凭声音独立拼写正确。",
+      "reflection": "声音与拼写之间的通路，已经从努力变得熟练。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "古琴弦与字母",
+      "scene": "声音与拼写之间的通路，已经从努力变得熟练。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "黛青、朱砂、克制金箔",
+      "material": "漆器与金箔"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p1",
+      "progress": "near_only",
+      "ceremony": "spotlight"
+    }
+  },
+  {
+    "id": "ACH_DAILY_GOAL",
+    "title": "今日笃行",
+    "category": "consistency",
+    "rarity": "common",
+    "themes": [
+      "perseverance",
+      "focus"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "first_recommended_learn_goal_completed",
+      "operator": "gte",
+      "target": 1,
+      "window": null,
+      "constraints": {}
+    },
+    "culture": {
+      "primaryId": "CUL_ZHONGYONG_001",
+      "alternateIds": [
+        "CUL_HANYU_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "你第一次完整完成了系统建议的 Learn 目标。",
+      "reflection": "不求很多，先把答应自己的这一程认真走完。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "足迹与印章",
+      "scene": "不求很多，先把答应自己的这一程认真走完。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "纸白、青灰、淡墨",
+      "material": "纸本与浅浮雕"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "near_only",
+      "ceremony": "quiet"
+    }
+  },
+  {
+    "id": "ACH_CONTINUE",
+    "title": "再启一程",
+    "category": "consistency",
+    "rarity": "rare",
+    "themes": [
+      "perseverance",
+      "growth"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "voluntary_continue_after_session",
+      "operator": "gte",
+      "target": 1,
+      "window": null,
+      "constraints": {
+        "afterRecommendedGoalCompleted": true
+      }
+    },
+    "culture": {
+      "primaryId": "CUL_GUZHI_004",
+      "alternateIds": [
+        "CUL_WANGZHILUAN_001",
+        "CUL_LIBAI_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "完成建议目标后，你仍主动选择再学一程。",
+      "reflection": "已经完成，仍愿意更进一步。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "第二道山门",
+      "scene": "已经完成，仍愿意更进一步。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "青玉、墨蓝、少量银光",
+      "material": "青玉与银线"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "near_only",
+      "ceremony": "settlement"
+    }
+  },
+  {
+    "id": "ACH_FAILURE_RECOVERY_SESSION",
+    "title": "重整旗鼓",
+    "category": "recovery",
+    "rarity": "epic",
+    "themes": [
+      "recovery",
+      "resilience"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "recover_after_consecutive_errors",
+      "operator": "gte",
+      "target": 3,
+      "window": null,
+      "constraints": {
+        "mustRemainInSession": true,
+        "recoveryNoHint": true
+      }
+    },
+    "culture": {
+      "primaryId": "CUL_BAIJUYI_001",
+      "alternateIds": [
+        "CUL_LUYOU_001",
+        "CUL_WANGWEI_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "连续受挫后，你没有退出，并重新独立答对。",
+      "reflection": "最值得奖励的不是从不失败，而是失败以后还能回来。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "风后新草",
+      "scene": "最值得奖励的不是从不失败，而是失败以后还能回来。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "黛青、朱砂、克制金箔",
+      "material": "漆器与金箔"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "near_only",
+      "ceremony": "spotlight"
+    }
+  },
+  {
+    "id": "ACH_NEW_UNIT",
+    "title": "新境初开",
+    "category": "exploration",
+    "rarity": "common",
+    "themes": [
+      "curiosity",
+      "courage"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "new_unit_learn_started",
+      "operator": "gte",
+      "target": 1,
+      "window": null,
+      "constraints": {}
+    },
+    "culture": {
+      "primaryId": "CUL_QUYUAN_001",
+      "alternateIds": [
+        "CUL_LAOZI_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "你第一次进入一个新的学习单元。",
+      "reflection": "陌生不是危险，而是地图上还没走过的地方。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "展开地图",
+      "scene": "陌生不是危险，而是地图上还没走过的地方。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "纸白、青灰、淡墨",
+      "material": "纸本与浅浮雕"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "near_only",
+      "ceremony": "quiet"
+    }
+  },
+  {
+    "id": "ACH_CHAPTER_80",
+    "title": "一章既成",
+    "category": "milestone",
+    "rarity": "rare",
+    "themes": [
+      "long_view",
+      "growth"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "chapter_long_term_mastery_ratio",
+      "operator": "gte",
+      "target": 0.8,
+      "window": null,
+      "constraints": {
+        "minWords": 20
+      }
+    },
+    "culture": {
+      "primaryId": "CUL_GUZHI_005",
+      "alternateIds": [
+        "CUL_SUSHI_001",
+        "CUL_DUFU_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "一个章节达到 80% 长期掌握。",
+      "reflection": "一章完成，不是清空任务，而是把一片知识真正留下。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "卷轴完成印",
+      "scene": "一章完成，不是清空任务，而是把一片知识真正留下。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "青玉、墨蓝、少量银光",
+      "material": "青玉与银线"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "near_only",
+      "ceremony": "settlement"
+    }
+  },
+  {
+    "id": "ACH_MASTERED_100",
+    "title": "百词基石",
+    "category": "milestone",
+    "rarity": "rare",
+    "themes": [
+      "long_view",
+      "perseverance"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "long_term_mastered_word_count",
+      "operator": "gte",
+      "target": 100,
+      "window": null,
+      "constraints": {}
+    },
+    "culture": {
+      "primaryId": "CUL_XUNZI_001",
+      "alternateIds": [
+        "CUL_LAOZI_003"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "100 个词进入长期掌握。",
+      "reflection": "一百块小石头，已经铺成一段真实的路。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "百石阶",
+      "scene": "一百块小石头，已经铺成一段真实的路。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "青玉、墨蓝、少量银光",
+      "material": "青玉与银线"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "visible",
+      "ceremony": "settlement"
+    }
+  },
+  {
+    "id": "ACH_MASTERED_500",
+    "title": "五百成林",
+    "category": "milestone",
+    "rarity": "epic",
+    "themes": [
+      "long_view",
+      "growth"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "long_term_mastered_word_count",
+      "operator": "gte",
+      "target": 500,
+      "window": null,
+      "constraints": {}
+    },
+    "culture": {
+      "primaryId": "CUL_LAOZI_003",
+      "alternateIds": [
+        "CUL_GUANZHONG_001",
+        "CUL_ZHOUYI_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "500 个词进入长期掌握。",
+      "reflection": "从毫末到成林，许多微小记忆已经连成规模。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "词语之林",
+      "scene": "从毫末到成林，许多微小记忆已经连成规模。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "黛青、朱砂、克制金箔",
+      "material": "漆器与金箔"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p1",
+      "progress": "visible",
+      "ceremony": "spotlight"
+    }
+  },
+  {
+    "id": "ACH_MASTERED_1000",
+    "title": "千词成山",
+    "category": "milestone",
+    "rarity": "legendary",
+    "themes": [
+      "long_view",
+      "perseverance"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "long_term_mastered_word_count",
+      "operator": "gte",
+      "target": 1000,
+      "window": null,
+      "constraints": {}
+    },
+    "culture": {
+      "primaryId": "CUL_DUFU_001",
+      "alternateIds": [
+        "CUL_LAOZI_001",
+        "CUL_XUNZI_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "1000 个词进入长期掌握。",
+      "reflection": "回头看，你已经站在很高的地方。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "千阶高山",
+      "scene": "回头看，你已经站在很高的地方。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "深青、月白、沉静金色",
+      "material": "玉石、金属与高细节浮雕"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p2",
+      "progress": "visible",
+      "ceremony": "ceremony"
+    }
+  },
+  {
+    "id": "ACH_7_OF_10",
+    "title": "十日七行",
+    "category": "consistency",
+    "rarity": "rare",
+    "themes": [
+      "perseverance",
+      "long_view"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "active_learn_days_in_window",
+      "operator": "gte",
+      "target": 7,
+      "window": "10d",
+      "constraints": {}
+    },
+    "culture": {
+      "primaryId": "CUL_GUZHI_007",
+      "alternateIds": [
+        "CUL_TAOYUANMING_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "最近 10 天中有 7 天主动学习。",
+      "reflection": "不是要求一天不漏，而是在生活里保持稳定节奏。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "十格日历七枚印",
+      "scene": "不是要求一天不漏，而是在生活里保持稳定节奏。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "青玉、墨蓝、少量银光",
+      "material": "青玉与银线"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "visible",
+      "ceremony": "settlement"
+    }
+  },
+  {
+    "id": "ACH_20_OF_30",
+    "title": "积日成章",
+    "category": "consistency",
+    "rarity": "epic",
+    "themes": [
+      "perseverance",
+      "long_view"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "active_learn_days_in_window",
+      "operator": "gte",
+      "target": 20,
+      "window": "30d",
+      "constraints": {}
+    },
+    "culture": {
+      "primaryId": "CUL_GUZHI_002",
+      "alternateIds": [
+        "CUL_GUZHI_003",
+        "CUL_ZHOUYI_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "最近 30 天中有 20 天主动学习。",
+      "reflection": "不是一天的用力，而是许多个普通日子连成了章。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "月轮与二十星",
+      "scene": "不是一天的用力，而是许多个普通日子连成了章。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "黛青、朱砂、克制金箔",
+      "material": "漆器与金箔"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p1",
+      "progress": "visible",
+      "ceremony": "spotlight"
+    }
+  },
+  {
+    "id": "ACH_WEEKLY_GAIN",
+    "title": "更上一层",
+    "category": "growth",
+    "rarity": "rare",
+    "themes": [
+      "growth",
+      "self_mastery"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "cold_probe_accuracy_gain_pp_vs_previous_window",
+      "operator": "gte",
+      "target": 10,
+      "window": "7d_vs_previous_7d",
+      "constraints": {
+        "minAttemptsEachWindow": 30
+      }
+    },
+    "culture": {
+      "primaryId": "CUL_WANGZHILUAN_001",
+      "alternateIds": [
+        "CUL_XUNZI_003",
+        "CUL_GUZHI_004"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "最近一段时间的 Cold Probe 正确率比上一阶段提高至少 10 个百分点。",
+      "reflection": "成就不是和别人比，而是能看见自己的曲线向上。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "两级云台",
+      "scene": "成就不是和别人比，而是能看见自己的曲线向上。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "青玉、墨蓝、少量银光",
+      "material": "青玉与银线"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p1",
+      "progress": "near_only",
+      "ceremony": "settlement"
+    }
+  },
+  {
+    "id": "ACH_HINT_REDUCTION",
+    "title": "提示退潮",
+    "category": "growth",
+    "rarity": "rare",
+    "themes": [
+      "self_mastery",
+      "growth"
+    ],
+    "hidden": false,
+    "enabled": true,
+    "condition": {
+      "metric": "hint_use_rate_drop_pp_vs_previous_window",
+      "operator": "gte",
+      "target": 20,
+      "window": "7d_vs_previous_7d",
+      "constraints": {
+        "accuracyDropPpMax": 3,
+        "minAttemptsEachWindow": 30
+      }
+    },
+    "culture": {
+      "primaryId": "CUL_LAOZI_002",
+      "alternateIds": [
+        "CUL_CHUSHIBIAO_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "在正确率没有下降的前提下，你对提示的依赖明显减少。",
+      "reflection": "真正的进步，常常表现为外部支架慢慢撤走。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "退潮露出石路",
+      "scene": "真正的进步，常常表现为外部支架慢慢撤走。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "青玉、墨蓝、少量银光",
+      "material": "青玉与银线"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "near_only",
+      "ceremony": "settlement"
+    }
+  },
+  {
+    "id": "ACH_HIDDEN_DAWN",
+    "title": "柳暗花明",
+    "category": "recovery",
+    "rarity": "epic",
+    "themes": [
+      "recovery",
+      "resilience"
+    ],
+    "hidden": true,
+    "enabled": true,
+    "condition": {
+      "metric": "same_session_fail_then_independent_recovery",
+      "operator": "gte",
+      "target": 3,
+      "window": null,
+      "constraints": {
+        "finalNoHint": true
+      }
+    },
+    "culture": {
+      "primaryId": "CUL_LUYOU_001",
+      "alternateIds": [
+        "CUL_TAOYUANMING_002"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "隐藏成就：一个几乎想放弃的词，被你在同一轮里重新攻克。",
+      "reflection": "最漂亮的转折，往往发生在“再试一次”之后。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "山谷尽头亮起村灯",
+      "scene": "最漂亮的转折，往往发生在“再试一次”之后。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "黛青、朱砂、克制金箔",
+      "material": "漆器与金箔"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "hidden",
+      "ceremony": "spotlight"
+    }
+  },
+  {
+    "id": "ACH_HIDDEN_SMALL_STEPS",
+    "title": "跬步成途",
+    "category": "consistency",
+    "rarity": "rare",
+    "themes": [
+      "first_step",
+      "perseverance"
+    ],
+    "hidden": true,
+    "enabled": true,
+    "condition": {
+      "metric": "short_sessions_completed_in_window",
+      "operator": "gte",
+      "target": 10,
+      "window": "14d",
+      "constraints": {
+        "maxMinutesPerSession": 12
+      }
+    },
+    "culture": {
+      "primaryId": "CUL_XUNZI_001",
+      "alternateIds": [
+        "CUL_LAOZI_003"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "隐藏成就：你用许多不长的学习，悄悄走出了一段很远的路。",
+      "reflection": "不需要每次都学很久，稳定出现本身就是力量。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "连续小脚印成路",
+      "scene": "不需要每次都学很久，稳定出现本身就是力量。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "青玉、墨蓝、少量银光",
+      "material": "青玉与银线"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p1",
+      "progress": "hidden",
+      "ceremony": "settlement"
+    }
+  },
+  {
+    "id": "ACH_HIDDEN_FINISH_STRONG",
+    "title": "慎终如始",
+    "category": "recovery",
+    "rarity": "epic",
+    "themes": [
+      "focus",
+      "resilience"
+    ],
+    "hidden": true,
+    "enabled": true,
+    "condition": {
+      "metric": "hard_session_finished_without_accuracy_collapse",
+      "operator": "gte",
+      "target": 1,
+      "window": null,
+      "constraints": {
+        "earlyFailureRateAtLeast": 0.35,
+        "finalQuartileAccuracyAtLeast": 0.8
+      }
+    },
+    "culture": {
+      "primaryId": "CUL_LAOZI_004",
+      "alternateIds": [
+        "CUL_SHIJING_002"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "隐藏成就：这轮前面很难，但你把最后一段也认真完成了。",
+      "reflection": "很多人会认真开始，真正难的是困难之后仍认真结束。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "长路尽头完整印章",
+      "scene": "很多人会认真开始，真正难的是困难之后仍认真结束。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "黛青、朱砂、克制金箔",
+      "material": "漆器与金箔"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p1",
+      "progress": "hidden",
+      "ceremony": "spotlight"
+    }
+  },
+  {
+    "id": "ACH_HIDDEN_CRAFT",
+    "title": "如琢如磨",
+    "category": "craft",
+    "rarity": "epic",
+    "themes": [
+      "craft",
+      "growth"
+    ],
+    "hidden": true,
+    "enabled": true,
+    "condition": {
+      "metric": "same_word_distinct_error_positions_resolved",
+      "operator": "gte",
+      "target": 3,
+      "window": null,
+      "constraints": {}
+    },
+    "culture": {
+      "primaryId": "CUL_SHIJING_001",
+      "alternateIds": [
+        "CUL_LIJI_002"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "隐藏成就：你把一个词里几个不同的错误点逐一修正。",
+      "reflection": "不是蛮力重复，而是像琢玉一样一点点变准。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "玉璧与细刻刀",
+      "scene": "不是蛮力重复，而是像琢玉一样一点点变准。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "黛青、朱砂、克制金箔",
+      "material": "漆器与金箔"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p0",
+      "progress": "hidden",
+      "ceremony": "spotlight"
+    }
+  },
+  {
+    "id": "ACH_HIDDEN_90_DIFFICULT",
+    "title": "长风",
+    "category": "memory",
+    "rarity": "legendary",
+    "themes": [
+      "long_view",
+      "resilience"
+    ],
+    "hidden": true,
+    "enabled": true,
+    "condition": {
+      "metric": "difficult_word_independent_recall_after_days",
+      "operator": "gte",
+      "target": 90,
+      "window": null,
+      "constraints": {
+        "priorFailuresAtLeast": 3,
+        "noHint": true
+      }
+    },
+    "culture": {
+      "primaryId": "CUL_LIBAI_001",
+      "alternateIds": [
+        "CUL_ZHOUYI_001",
+        "CUL_SHIJI_001"
+      ]
+    },
+    "copy": {
+      "unlockMessage": "隐藏成就：一个曾经很难的词，90 天后仍然属于你。",
+      "reflection": "真正的长期主义，是很久以后仍能看到今天留下的东西。"
+    },
+    "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
+    "artDirection": {
+      "symbol": "远帆与长风",
+      "scene": "真正的长期主义，是很久以后仍能看到今天留下的东西。",
+      "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
+      "paletteMood": "深青、月白、沉静金色",
+      "material": "玉石、金属与高细节浮雕"
+    },
+    "unlockPolicy": "once",
+    "presentation": {
+      "rollout": "p2",
+      "progress": "hidden",
+      "ceremony": "ceremony"
+    }
+  }
+]
