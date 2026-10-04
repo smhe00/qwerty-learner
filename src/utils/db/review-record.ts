@@ -7,10 +7,11 @@ import {
   selectUnseenLearningWords,
 } from '@/learn/session'
 import {
-  createLearnAcquisitionExercisePlan,
+  createLearnAcquisitionExercisePlanForState,
   resumeSpacingDeferredAcquisition,
 } from '@/learn/acquisition'
 import type { LearnAcquisitionState } from '@/learn/acquisition'
+import { estimateLearnInteractionStrain } from '@/learn/strain'
 import { ReviewRecord } from './record'
 import type { TErrorWordData } from '@/pages/Gallery-N/hooks/useErrorWords'
 import { selectReviewCandidates } from '@/review/due'
@@ -206,10 +207,13 @@ export async function generateNewWordAcquisitionRecord(
   if (limit <= 0) return undefined
 
   const now = getUTCUnixTimestamp()
-  const [states, deferred] = await Promise.all([
+  const [states, deferred, wordRecords] = await Promise.all([
     getReviewWordStates(dictID),
     getSpacingDeferredAcquisitionStates(dictID),
+    db.wordRecords.where('dict').equals(dictID).toArray(),
   ])
+  const scaffoldStrainTier =
+    estimateLearnInteractionStrain(wordRecords).tier
 
   const canonicalWords = canonicalizeLearningWords(words)
   const canonicalByName = new Map(
@@ -251,19 +255,20 @@ export async function generateNewWordAcquisitionRecord(
   if (selectedWords.length === 0) return undefined
 
   const exercisePlans = {
-    ...buildLearnAcquisitionExercisePlans(freshWords),
+    ...buildLearnAcquisitionExercisePlans(freshWords, {
+      scaffoldStrainTier,
+    }),
     ...Object.fromEntries(
       resumed.map(({ word, state }) => [
         word.name,
-        createLearnAcquisitionExercisePlan('independent', {
-          independentInterveningItems:
-            state.independentInterveningItems,
-        }),
+        createLearnAcquisitionExercisePlanForState(state),
       ]),
     ),
   }
   const acquisitionStates = {
-    ...buildLearnAcquisitionStates(freshWords),
+    ...buildLearnAcquisitionStates(freshWords, {
+      scaffoldStrainTier,
+    }),
     ...Object.fromEntries(
       resumed.map(({ word, state }) => [word.name, state]),
     ),
