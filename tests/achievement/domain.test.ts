@@ -28,6 +28,7 @@ function record(input: {
   id: number
   timeStamp: number
   word?: string
+  dict?: string
   wrongCount?: number
   mistakes?: Record<number, string[]>
   sourceMode?: 'typing' | 'learn'
@@ -42,7 +43,7 @@ function record(input: {
     id: input.id,
     word: input.word ?? 'alpha',
     timeStamp: input.timeStamp,
-    dict: 'test',
+    dict: input.dict ?? 'test',
     chapter: -1,
     timing: [],
     wrongCount: input.wrongCount ?? 0,
@@ -248,6 +249,7 @@ test('active Learn day window counts local natural days with real attempts', () 
       id: index + 1,
       timeStamp: now - daysAgo * DAY,
       word: `w${index}`,
+      dict: index % 2 === 0 ? 'test-a' : 'test-b',
     }),
   )
   const current = records[0]
