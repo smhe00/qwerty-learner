@@ -2113,6 +2113,9 @@ test('cold probe prefers masked example over translation and reveals translation
     'false',
   )
   await expect(example).toContainText('He _________ it.')
+  await expect(
+    example.locator('[data-typing-example-cn="visible"]'),
+  ).toHaveText('他取消了这件事。')
   await expect(translation).toHaveAttribute('data-typing-translation', 'hidden')
 
   await page.keyboard.press('Escape')
