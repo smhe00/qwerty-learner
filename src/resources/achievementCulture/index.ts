@@ -3,8 +3,9 @@ import cultureClassics1 from './culture-classics-1.json'
 import cultureClassics2 from './culture-classics-2.json'
 import cultureStories from './culture-stories.json'
 import themeData from './themes.json'
+import metricData from './metrics.json'
 
-import type { AchievementDefinition, CultureEntry, SpiritTheme } from './types'
+import type { AchievementDefinition, AchievementMetricDefinition, CultureEntry, SpiritTheme } from './types'
 
 export const achievementDefinitions = achievementData as AchievementDefinition[]
 
@@ -16,6 +17,8 @@ export const cultureLibrary = [
 
 export const spiritThemes = themeData as SpiritTheme[]
 
+export const achievementMetrics = metricData as AchievementMetricDefinition[]
+
 export const achievementById = new Map(
   achievementDefinitions.map((achievement) => [achievement.id, achievement] as const),
 )
@@ -23,6 +26,8 @@ export const achievementById = new Map(
 export const cultureById = new Map(cultureLibrary.map((entry) => [entry.id, entry] as const))
 
 export const spiritThemeById = new Map(spiritThemes.map((theme) => [theme.id, theme] as const))
+
+export const achievementMetricById = new Map(achievementMetrics.map((metric) => [metric.id, metric] as const))
 
 export function getAchievementCulture(achievementId: string) {
   const achievement = achievementById.get(achievementId)
@@ -40,6 +45,7 @@ export type {
   AchievementCategory,
   AchievementCondition,
   AchievementDefinition,
+  AchievementMetricDefinition,
   AchievementRarity,
   CultureEntry,
   CultureType,
