@@ -15,6 +15,7 @@ export const LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION =
 
 export const MAX_ACQUISITION_ASSISTED_CYCLES = 2 as const
 export const MIN_INDEPENDENT_INTERVENING_ITEMS = 2 as const
+export const MIN_CROSS_SESSION_INDEPENDENT_DELAY_SECONDS = 300 as const
 
 export type LearnAcquisitionPhase =
   | 'exposure'
@@ -24,11 +25,15 @@ export type LearnAcquisitionPhase =
   | 'complete'
   | 'deferred'
 
+export type LearnAcquisitionDeferredReason = 'assistance' | 'spacing'
+
 export type LearnAcquisitionState = {
   version: typeof LEARN_ACQUISITION_FLOW_VERSION
   phase: LearnAcquisitionPhase
   assistedCycles: number
   independentInterveningItems?: number
+  deferredReason?: LearnAcquisitionDeferredReason
+  resumeAfter?: number
 }
 
 export type LearnAcquisitionEvent =
@@ -92,6 +97,7 @@ export function decideLearnAcquisitionTransition(
         ...state,
         assistedCycles,
         phase: 'deferred',
+        deferredReason: 'assistance',
       }
     }
 
@@ -195,6 +201,46 @@ export function isLearnAcquisitionHintPolicyVersion(
     policyVersion === LEARN_ACQUISITION_SUPPORTED_POLICY_VERSION ||
     policyVersion === LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION
   )
+}
+
+export function deferLearnAcquisitionForSpacing(
+  state: LearnAcquisitionState,
+  now: number,
+): LearnAcquisitionState {
+  if (state.phase !== 'independent') {
+    throw new Error('spacing deferral requires independent phase')
+  }
+
+  return {
+    ...state,
+    phase: 'deferred',
+    deferredReason: 'spacing',
+    resumeAfter:
+      now + MIN_CROSS_SESSION_INDEPENDENT_DELAY_SECONDS,
+  }
+}
+
+export function resumeSpacingDeferredAcquisition(
+  state: LearnAcquisitionState,
+  now: number,
+): LearnAcquisitionState | undefined {
+  if (
+    state.phase !== 'deferred' ||
+    state.deferredReason !== 'spacing' ||
+    state.resumeAfter === undefined ||
+    now < state.resumeAfter
+  ) {
+    return undefined
+  }
+
+  return {
+    ...state,
+    phase: 'independent',
+    independentInterveningItems:
+      MIN_INDEPENDENT_INTERVENING_ITEMS,
+    deferredReason: undefined,
+    resumeAfter: undefined,
+  }
 }
 
 export function hasSufficientIndependentSpacing(
