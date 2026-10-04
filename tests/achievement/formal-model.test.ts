@@ -4,6 +4,7 @@ import {
   SUPPORTED_WORD_METRICS,
   evaluateWordMetric,
 } from '../../src/achievement/evaluator'
+import { SUPPORTED_EVENT_METRICS } from '../../src/achievement/event-evaluator'
 import { SUPPORTED_SESSION_METRICS } from '../../src/achievement/session-evaluator'
 import { SUPPORTED_STATE_METRICS } from '../../src/achievement/state-evaluator'
 import achievementData from '../../src/resources/achievementCulture/achievements.json'
@@ -20,7 +21,8 @@ test('P0 evaluator exposes only explicitly supported metrics', () => {
   const isSupported = (metric: string) =>
     SUPPORTED_WORD_METRICS.has(metric) ||
     SUPPORTED_SESSION_METRICS.has(metric) ||
-    SUPPORTED_STATE_METRICS.has(metric)
+    SUPPORTED_STATE_METRICS.has(metric) ||
+    SUPPORTED_EVENT_METRICS.has(metric)
   const supported = p0.filter((achievement) =>
     isSupported(achievement.condition.metric),
   )
@@ -34,6 +36,8 @@ test('P0 evaluator exposes only explicitly supported metrics', () => {
       'ACH_7_DAY',
       'ACH_7_OF_10',
       'ACH_AUDIO_10',
+      'ACH_CONTINUE',
+      'ACH_DAILY_GOAL',
       'ACH_ERROR_POSITION_FIXED',
       'ACH_FAILURE_RECOVERY_SESSION',
       'ACH_FIRST_DECODE',
@@ -49,10 +53,10 @@ test('P0 evaluator exposes only explicitly supported metrics', () => {
     ].sort(),
   )
 
-  // The remaining P0 definitions require goal snapshots or authoritative
-  // unit/mastery state. They remain
+  // The remaining P0 definitions require authoritative Unit membership.
+  // They remain
   // disabled rather than being inferred from incomplete evidence.
-  assert.equal(unsupported.length, 4)
+  assert.equal(unsupported.length, 2)
 })
 
 test('unsupported metric evaluates to null instead of guessing', () => {
@@ -70,7 +74,7 @@ test('unsupported metric evaluates to null instead of guessing', () => {
   const unsupported = p0.find(
     (achievement) =>
       achievement.condition.metric ===
-      'first_recommended_learn_goal_completed',
+      'new_unit_learn_started',
   )
   assert.ok(unsupported)
 
