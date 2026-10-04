@@ -5,6 +5,8 @@ import {
   evaluatePreviousWordMetric,
   evaluateWordMetric,
 } from '../../src/achievement/evaluator'
+import { buildAchievementVisibleProgress } from '../../src/achievement/progress'
+import { createInitialReviewWordState } from '../../src/review/types'
 import type { AchievementCondition } from '../../src/resources/achievementCulture'
 import type { IWordRecord } from '../../src/utils/db/record'
 
@@ -431,4 +433,60 @@ test('previous metric snapshot supports a strict live threshold-crossing gate', 
     }),
     10,
   )
+})
+
+
+test('visible achievement progress counts only true long-term mastery and Learn activity', () => {
+  const now = Math.floor(
+    new Date(2026, 9, 4, 12, 0, 0).getTime() / 1000,
+  )
+  const mastered = {
+    ...createInitialReviewWordState('test', 'mastered', now - 40 * DAY),
+    lastOutcome: 'good' as const,
+    schedulerState: {
+      kind: 'basic-v2' as const,
+      stage: 5,
+      intervalDays: 30,
+    },
+  }
+  const shortInterval = {
+    ...createInitialReviewWordState('test', 'short', now - 5 * DAY),
+    lastOutcome: 'good' as const,
+    schedulerState: {
+      kind: 'basic-v2' as const,
+      stage: 2,
+      intervalDays: 7,
+    },
+  }
+  const excluded = {
+    ...mastered,
+    word: 'excluded',
+    lifecycle: 'excluded' as const,
+    exclusion: {
+      reason: 'manual' as const,
+      excludedAt: now,
+    },
+  }
+
+  const wordRecords = [
+    record({ id: 500, timeStamp: now, word: 'today' }),
+    record({ id: 501, timeStamp: now - DAY, word: 'yesterday' }),
+    record({
+      id: 502,
+      timeStamp: now - 3 * DAY,
+      word: 'typing-only',
+      sourceMode: 'typing',
+    }),
+    record({ id: 503, timeStamp: now - 9 * DAY, word: 'edge' }),
+    record({ id: 504, timeStamp: now - 10 * DAY, word: 'outside' }),
+  ]
+
+  const progress = buildAchievementVisibleProgress({
+    wordStates: [mastered, shortInterval, excluded],
+    wordRecords,
+    now,
+  })
+
+  assert.equal(progress.longTermMasteredWords, 1)
+  assert.equal(progress.activeLearnDaysInLast10, 3)
 })
