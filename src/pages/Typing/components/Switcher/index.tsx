@@ -1,5 +1,6 @@
 import { TypingContext, TypingStateActionType } from '../../store'
 import AnalysisButton from '../AnalysisButton'
+import AchievementsButton from '../AchievementsButton'
 import ErrorBookButton from '../ErrorBookButton'
 import HandPositionIllustration from '../HandPositionIllustration'
 import LoopWordSwitcher from '../LoopWordSwitcher'
@@ -115,6 +116,8 @@ export default function Switcher({
       <Tooltip className="h-7 w-7" content="查看数据统计">
         <AnalysisButton learnMode={learnMode} />
       </Tooltip>
+
+      <AchievementsButton />
 
       <Tooltip className="h-7 w-7" content="开关深色模式">
         <button
