@@ -148,11 +148,14 @@ jobs:
       - name: Run Typing lifecycle browser gate
         run: npx playwright test --config=tests/e2e/typing-lifecycle.config.ts --project=chrome
 
-      - name: Run multi-word Review browser gate
-        run: npx playwright test --config=tests/e2e/review-flow.config.ts --project=chrome
-
+      # Build/smoke precede the historically slower Review-flow browser suite
+      # so a fixture timeout cannot hide compile or production-navigation
+      # regressions. The Review browser gate still runs and still gates the job.
       - name: Build Qwerty
         run: yarn build
 
       - name: Run production navigation smoke
         run: npx playwright test --config=tests/e2e/production-smoke.config.ts --project=chrome
+
+      - name: Run multi-word Review browser gate
+        run: npx playwright test --config=tests/e2e/review-flow.config.ts --project=chrome
