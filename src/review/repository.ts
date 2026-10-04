@@ -2,6 +2,7 @@ import {
   reactivateReviewStateFromLearningEvidence,
   rebuildBasicStateFromWordRecords,
   shouldDropLegacyTypingSeededState,
+  shouldDropPrematureAcquisitionState,
 } from './rebuild'
 import { didEnterLongTermMastery } from '@/learn/mastery'
 import {
@@ -206,7 +207,10 @@ export async function bootstrapReviewWordStatesForDictionary(
     if (!hasStaleState) {
       for (const state of existingStates) {
         const wordRecords = recordsByWord.get(state.word) ?? []
-        if (shouldDropLegacyTypingSeededState(state, wordRecords)) {
+        if (
+          shouldDropPrematureAcquisitionState(state, wordRecords) ||
+          shouldDropLegacyTypingSeededState(state, wordRecords)
+        ) {
           await db.reviewWordStates
             .where('[dict+word]')
             .equals([dict, state.word])
