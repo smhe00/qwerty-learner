@@ -1,0 +1,431 @@
+[
+  {
+    "id": "active_learn_days_in_window",
+    "nameZh": "窗口内主动学习日数",
+    "scope": "user_window",
+    "unit": "days",
+    "description": "统计窗口内发生至少一次有效 Learn 作答的不同本地自然日数量。",
+    "requiredEvents": [
+      "word_attempt"
+    ],
+    "stateInputs": [
+      "attempt timestamp"
+    ],
+    "dataRequirement": "normalize_existing",
+    "notes": "空打开页面、不产生有效作答的会话不计入。"
+  },
+  {
+    "id": "audio_only_independent_correct_count",
+    "nameZh": "纯听音独立正确累计",
+    "scope": "user_lifetime",
+    "unit": "count",
+    "description": "累计仅凭发音、无释义/例句/Hint 可见时独立拼写正确的次数。",
+    "requiredEvents": [
+      "word_attempt"
+    ],
+    "stateInputs": [
+      "attemptContext"
+    ],
+    "dataRequirement": "new_observation",
+    "notes": "audioOnly 必须满足 audioPlayed=true、transVisible=false、exampleVisible=false、hintLevel=0。"
+  },
+  {
+    "id": "chapter_long_term_mastery_ratio",
+    "nameZh": "章节长期掌握率",
+    "scope": "chapter",
+    "unit": "ratio",
+    "description": "章节内由 Learn Engine 判定为长期掌握的词数 / 当前可学习词数。",
+    "requiredEvents": [
+      "word_mastered"
+    ],
+    "stateInputs": [
+      "reviewWordStates",
+      "chapter word membership"
+    ],
+    "dataRequirement": "normalize_existing",
+    "notes": "手工移出 Learn 的词不进入分母；Achievement Engine 不自行定义 mastered。"
+  },
+  {
+    "id": "cold_probe_accuracy_gain_pp_vs_previous_window",
+    "nameZh": "Cold Probe 正确率阶段提升",
+    "scope": "user_window",
+    "unit": "percentage_points",
+    "description": "当前窗口 Cold Probe 独立正确率减去前一等长窗口正确率。",
+    "requiredEvents": [
+      "cold_probe_completed"
+    ],
+    "stateInputs": [
+      "attemptContext"
+    ],
+    "dataRequirement": "normalize_existing",
+    "notes": "两个窗口都必须达到 achievement constraints 指定的最小样本数。"
+  },
+  {
+    "id": "consecutive_independent_correct_no_hint",
+    "nameZh": "连续无提示独立正确",
+    "scope": "session_or_cross_session",
+    "unit": "streak",
+    "description": "连续独立正确且未使用 Hint 的词数。",
+    "requiredEvents": [
+      "word_attempt",
+      "hint_used"
+    ],
+    "stateInputs": [
+      "attemptContext"
+    ],
+    "dataRequirement": "new_observation",
+    "notes": "错误、跳过、放弃拼写或使用 Hint 均重置 streak；正常短语空格不影响判定。"
+  },
+  {
+    "id": "difficult_word_correct_after_days",
+    "nameZh": "困难词跨日正确",
+    "scope": "word",
+    "unit": "days",
+    "description": "对已有足够失败历史的词，当前独立正确距离上一次有效主动回忆的时间间隔天数。",
+    "requiredEvents": [
+      "word_attempt"
+    ],
+    "stateInputs": [
+      "reviewRecords"
+    ],
+    "dataRequirement": "normalize_existing",
+    "notes": "困难度门槛由 achievement constraints.priorFailuresAtLeast 指定。"
+  },
+  {
+    "id": "difficult_word_independent_recall_after_days",
+    "nameZh": "困难词长间隔独立回忆",
+    "scope": "word",
+    "unit": "days",
+    "description": "困难词在无 Hint 条件下独立正确时，距离上一次有效主动回忆的时间间隔天数。",
+    "requiredEvents": [
+      "word_attempt"
+    ],
+    "stateInputs": [
+      "reviewRecords",
+      "attemptContext"
+    ],
+    "dataRequirement": "new_observation",
+    "notes": "仅被动查看释义/例句不刷新 lastActiveRecallAt。"
+  },
+  {
+    "id": "difficult_word_stably_mastered_after_failures",
+    "nameZh": "困难词失败后稳定掌握",
+    "scope": "word",
+    "unit": "prior_failure_count",
+    "description": "一个词首次进入 Learn Engine 的稳定掌握状态时，返回此前有效失败次数。",
+    "requiredEvents": [
+      "word_mastered"
+    ],
+    "stateInputs": [
+      "reviewRecords",
+      "reviewWordStates"
+    ],
+    "dataRequirement": "normalize_existing",
+    "notes": "只有最终进入稳定掌握才可触发，绝不因失败次数本身奖励。"
+  },
+  {
+    "id": "first_independent_word_correct",
+    "nameZh": "首次独立拼对",
+    "scope": "user_lifetime",
+    "unit": "boolean01",
+    "description": "用户在 Learn 中首次出现完整独立正确。",
+    "requiredEvents": [
+      "word_attempt"
+    ],
+    "stateInputs": [
+      "attemptContext"
+    ],
+    "dataRequirement": "new_observation",
+    "notes": "导入历史、回放事件和 Typing 事件不计。"
+  },
+  {
+    "id": "first_recommended_learn_goal_completed",
+    "nameZh": "首次完成建议目标",
+    "scope": "user_lifetime",
+    "unit": "boolean01",
+    "description": "第一次完成当次系统建议的 Learn 目标。",
+    "requiredEvents": [
+      "session_completed"
+    ],
+    "stateInputs": [
+      "recommended goal snapshot"
+    ],
+    "dataRequirement": "new_observation",
+    "notes": "永久成就仅解锁一次；日常重复鼓励未来由 journey mark/stamp 机制承担。"
+  },
+  {
+    "id": "hard_session_finished_without_accuracy_collapse",
+    "nameZh": "困难开局后的完整收尾",
+    "scope": "session",
+    "unit": "boolean01",
+    "description": "会话早段错误率达到门槛，但末段准确率恢复到指定门槛且完成会话。",
+    "requiredEvents": [
+      "session_started",
+      "word_attempt",
+      "session_completed"
+    ],
+    "stateInputs": [
+      "session metrics"
+    ],
+    "dataRequirement": "new_observation",
+    "notes": "使用 achievement constraints 中的 earlyFailureRateAtLeast 和 finalQuartileAccuracyAtLeast。"
+  },
+  {
+    "id": "hint_use_rate_drop_pp_vs_previous_window",
+    "nameZh": "Hint 依赖下降",
+    "scope": "user_window",
+    "unit": "percentage_points",
+    "description": "前一窗口 Hint 使用率减去当前窗口 Hint 使用率。",
+    "requiredEvents": [
+      "word_attempt",
+      "hint_used"
+    ],
+    "stateInputs": [
+      "attemptContext"
+    ],
+    "dataRequirement": "new_observation",
+    "notes": "必须同时满足正确率下降不超过 accuracyDropPpMax，避免靠放弃/减少尝试伪造改善。"
+  },
+  {
+    "id": "independent_recall_after_days",
+    "nameZh": "长间隔独立回忆",
+    "scope": "word",
+    "unit": "days",
+    "description": "无 Hint 独立正确时，距离该词上一次有效主动回忆的时间间隔天数。",
+    "requiredEvents": [
+      "word_attempt"
+    ],
+    "stateInputs": [
+      "reviewRecords",
+      "attemptContext"
+    ],
+    "dataRequirement": "new_observation",
+    "notes": "按 elapsed time 计算，不按日历翻页；被动曝光不重置间隔。"
+  },
+  {
+    "id": "long_term_mastered_word_count",
+    "nameZh": "长期掌握词数",
+    "scope": "user_lifetime",
+    "unit": "count",
+    "description": "由 Learn Engine 标记为长期掌握且未被用户移出 Learn 的不同词数量。",
+    "requiredEvents": [
+      "word_mastered"
+    ],
+    "stateInputs": [
+      "reviewWordStates"
+    ],
+    "dataRequirement": "normalize_existing",
+    "notes": "Achievement Engine 只读取，不改变任何 memory state。"
+  },
+  {
+    "id": "new_unit_learn_started",
+    "nameZh": "首次进入新 Unit",
+    "scope": "user_lifetime",
+    "unit": "boolean01",
+    "description": "用户第一次真正开始某 Unit 的 Learn 作答。",
+    "requiredEvents": [
+      "session_started",
+      "word_attempt"
+    ],
+    "stateInputs": [
+      "unit membership"
+    ],
+    "dataRequirement": "normalize_existing",
+    "notes": "仅进入选择页不算；至少产生一个有效 Learn word_attempt。"
+  },
+  {
+    "id": "new_word_first_cold_probe_correct",
+    "nameZh": "新词首次 Cold Probe 正确",
+    "scope": "word",
+    "unit": "boolean01",
+    "description": "一个从未进入 Learn 作答历史的新词，在第一次 Cold Probe 中无 Hint 独立正确。",
+    "requiredEvents": [
+      "cold_probe_completed"
+    ],
+    "stateInputs": [
+      "reviewRecords",
+      "attemptContext"
+    ],
+    "dataRequirement": "new_observation",
+    "notes": "文案必须归因于既有积累，不暗示固定天赋。"
+  },
+  {
+    "id": "prior_failed_word_independent_correct",
+    "nameZh": "旧错词独立找回",
+    "scope": "word",
+    "unit": "boolean01",
+    "description": "历史上至少一次有效失败的词，在后续独立无 Hint 作答中正确。",
+    "requiredEvents": [
+      "word_attempt"
+    ],
+    "stateInputs": [
+      "reviewRecords",
+      "attemptContext"
+    ],
+    "dataRequirement": "new_observation",
+    "notes": "失败历史必须早于当前成功；同一次错误后立刻靠 Hint 拼对不算。"
+  },
+  {
+    "id": "recover_after_consecutive_errors",
+    "nameZh": "连续错误后的会话恢复",
+    "scope": "session",
+    "unit": "consecutive_error_count",
+    "description": "同一会话中出现连续错误后，用户没有退出并再次无 Hint 独立答对时，返回此前连续错误数。",
+    "requiredEvents": [
+      "word_attempt",
+      "session_completed",
+      "session_abandoned"
+    ],
+    "stateInputs": [
+      "session sequence",
+      "attemptContext"
+    ],
+    "dataRequirement": "new_observation",
+    "notes": "必须确实继续学习；用于 Failure Recovery 类成就。"
+  },
+  {
+    "id": "repeated_error_position_resolved",
+    "nameZh": "固定错误位被修正",
+    "scope": "word",
+    "unit": "boolean01",
+    "description": "同一字符位置历史上多次成为首次错误位，之后一次完整独立正确将其判为 resolved。",
+    "requiredEvents": [
+      "word_attempt"
+    ],
+    "stateInputs": [
+      "error position history",
+      "attemptContext"
+    ],
+    "dataRequirement": "normalize_existing",
+    "notes": "最低重复次数由 samePositionFailuresAtLeast 指定；只在完整单词正确时结算。"
+  },
+  {
+    "id": "same_session_fail_then_independent_recovery",
+    "nameZh": "同会话多次失败后独立攻克",
+    "scope": "word_session",
+    "unit": "failure_count",
+    "description": "同一词在同一会话中失败若干次后，不依赖 Hint 最终正确时返回此前失败次数。",
+    "requiredEvents": [
+      "word_attempt",
+      "hint_used"
+    ],
+    "stateInputs": [
+      "session sequence",
+      "attemptContext"
+    ],
+    "dataRequirement": "new_observation",
+    "notes": "不能通过故意连错后看提示触发；finalNoHint 必须成立。"
+  },
+  {
+    "id": "same_word_distinct_error_positions_resolved",
+    "nameZh": "多错误位逐一修正",
+    "scope": "word",
+    "unit": "distinct_positions",
+    "description": "一个词历史上出现过的不同错误位置，在最终独立正确前被覆盖修正的不同位置数量。",
+    "requiredEvents": [
+      "word_attempt"
+    ],
+    "stateInputs": [
+      "error position history"
+    ],
+    "dataRequirement": "normalize_existing",
+    "notes": "同一位置重复错误只计一个 distinct position。"
+  },
+  {
+    "id": "session_second_half_accuracy_gain_pp",
+    "nameZh": "会话后半程正确率提升",
+    "scope": "session",
+    "unit": "percentage_points",
+    "description": "会话后半段准确率减去前半段准确率。",
+    "requiredEvents": [
+      "word_attempt"
+    ],
+    "stateInputs": [
+      "session sequence"
+    ],
+    "dataRequirement": "normalize_existing",
+    "notes": "只统计可评分的完整词；最低词数由 minWords 指定。奇数时中间词不参与两半比较。"
+  },
+  {
+    "id": "short_sessions_completed_in_window",
+    "nameZh": "窗口内短会话完成数",
+    "scope": "user_window",
+    "unit": "count",
+    "description": "统计窗口内完成且时长不超过门槛、同时达到最低有效词数的短 Learn 会话。",
+    "requiredEvents": [
+      "session_started",
+      "session_completed"
+    ],
+    "stateInputs": [
+      "session duration",
+      "completed word count"
+    ],
+    "dataRequirement": "new_observation",
+    "notes": "用于奖励可持续的小步学习，不允许通过打开后立即结束刷次数。"
+  },
+  {
+    "id": "spaced_recall_success_count",
+    "nameZh": "跨间隔回忆成功累计",
+    "scope": "user_lifetime",
+    "unit": "count",
+    "description": "累计间隔至少 20 小时的无 Hint 独立回忆成功次数。",
+    "requiredEvents": [
+      "word_attempt"
+    ],
+    "stateInputs": [
+      "reviewRecords",
+      "attemptContext"
+    ],
+    "dataRequirement": "new_observation",
+    "notes": "同日高频重复不计 spaced success；默认最小间隔 20h。"
+  },
+  {
+    "id": "voluntary_continue_after_session",
+    "nameZh": "完成后主动再学一程",
+    "scope": "session",
+    "unit": "boolean01",
+    "description": "已完成系统建议目标后，用户主动选择继续 Learn 并实际开始至少一个新作答。",
+    "requiredEvents": [
+      "session_completed",
+      "session_started",
+      "word_attempt"
+    ],
+    "stateInputs": [
+      "entrySource"
+    ],
+    "dataRequirement": "new_observation",
+    "notes": "自动跳转、恢复刷新或未产生新作答均不计。"
+  },
+  {
+    "id": "word_independent_correct_after_prior_failures",
+    "nameZh": "多次历史失败后独立正确",
+    "scope": "word",
+    "unit": "prior_failure_count",
+    "description": "当前无 Hint 独立正确时，返回该词此前累计有效失败次数。",
+    "requiredEvents": [
+      "word_attempt"
+    ],
+    "stateInputs": [
+      "reviewRecords",
+      "attemptContext"
+    ],
+    "dataRequirement": "new_observation",
+    "notes": "condition target 表示至少经历多少次历史失败后再成功。"
+  },
+  {
+    "id": "word_success_across_increasing_intervals",
+    "nameZh": "递增间隔连续成功",
+    "scope": "word",
+    "unit": "success_count",
+    "description": "同一词在连续递增的复习间隔中无 Hint 独立正确的次数。",
+    "requiredEvents": [
+      "word_attempt"
+    ],
+    "stateInputs": [
+      "reviewRecords",
+      "attemptContext"
+    ],
+    "dataRequirement": "new_observation",
+    "notes": "每次间隔必须严格大于前一次有效回忆间隔；任一失败会结束当前链但不删除历史记录。"
+  }
+]
