@@ -1535,7 +1535,7 @@ original Typing experience.
 
 ---
 
-## Dynamic Scaffold V1
+## Dynamic Scaffold V1 / V1.1
 
 Learn acquisition now owns a learner-invisible scaffold controller:
 
@@ -1552,12 +1552,15 @@ The levels are internal policy, not learner-facing labels.
 | Level | Role | Presentation |
 |---|---|---|
 | S0 | Exposure | answer visible + automatic audio + phonetic |
-| S1 | Strong Support | letters hidden + automatic audio + phonetic |
+| S1 | Strong Support | automatic audio + phonetic; if a concrete prior wrong position exists, reveal only that position |
 | S2 | Light Support | letters hidden + semantic context, no automatic audio/phonetic |
 | S3 | Independent | letters hidden + no automatic audio/phonetic + probe semantics |
 
-V1 deliberately reuses existing presentation primitives. It does not add a
-new partial-mask UI or modify the shared Typing input engine.
+V1 established the four-level controller. V1.1 adds a targeted partial mask
+without adding a new input engine: when the immediately preceding Independent
+attempt has a concrete last-wrong position, S1 reuses the existing partial
+letter renderer to reveal only that position. If no reliable position exists,
+S1 does not guess and remains letters-hidden.
 
 ### Controller rules
 
@@ -1566,7 +1569,13 @@ new partial-mask UI or modify the shared Typing input engine.
 - Elevated/recovery Interaction Strain softens Supported to S1.
 - A prior failed/assisted Independent cycle (`assistedCycles > 0`) softens
   the next Supported attempt to S1.
-- Independent is always S3, regardless of strain or prior difficulty.
+- If that failed Independent attempt contains a concrete last-wrong position,
+  S1 reveals only that letter position; the position is persisted only until
+  the following Supported attempt completes.
+- S1 starts the bounded Hint ladder at level 1, so manual/automatic escalation
+  can only move to stronger support (Hint 2/3), never backwards to Hint 0.
+- Independent is always S3, regardless of strain, prior difficulty, or the
+  previous targeted position. The targeted position is cleared before S3.
 - Strain is frozen at acquisition-session creation so the same queued attempt
   cannot change presentation underneath the learner. In-session difficulty
   still adapts immediately through `assistedCycles`.
@@ -1576,7 +1585,8 @@ new partial-mask UI or modify the shared Typing input engine.
 ```text
 Typing never reads scaffold level
 Supported scaffold never admits durable mastery
-Independent admission => S3
+targeted error position exists only in Supported training
+Independent admission => S3 and no targeted letter cue
 S3 + clean + independent evidence + spacing eligible => may admit
 any assistance/error/insufficient spacing => no durable admission
 ```
