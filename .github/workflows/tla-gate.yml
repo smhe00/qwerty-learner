@@ -82,6 +82,17 @@ jobs:
             -config formal/learn/DuePriority.production.cfg \
             formal/learn/DuePriority.tla
 
+      - name: Parse checkpoint monotonicity model
+        run: |
+          java -cp /tmp/tla2tools.jar tla2sany.SANY \
+            formal/learn/CheckpointMonotonicity.tla
+
+      - name: Model-check checkpoint production restore
+        run: |
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -config formal/learn/CheckpointMonotonicity.production.cfg \
+            formal/learn/CheckpointMonotonicity.tla
+
       - name: Require admitted-based mutation counterexample
         run: |
           set +e
@@ -109,6 +120,21 @@ jobs:
           cat /tmp/due-first-bypass-tlc.log
           if [ "$status" -eq 0 ]; then
             echo 'Expected the due-first bypass mutation to violate NoAcquisitionWhenDue.'
+            exit 1
+          fi
+
+      - name: Require stale checkpoint counterexample
+        run: |
+          set +e
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -config formal/learn/CheckpointMonotonicity.stale-mutation.cfg \
+            formal/learn/CheckpointMonotonicity.tla \
+            > /tmp/stale-checkpoint-tlc.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/stale-checkpoint-tlc.log
+          if [ "$status" -eq 0 ]; then
+            echo 'Expected the stale checkpoint mutation to violate RestoreLatestCheckpoint.'
             exit 1
           fi
 
@@ -148,3 +174,6 @@ jobs:
           node .formal-test/tla-counterexample-check.mjs \
             /tmp/due-first-bypass-tlc.log \
             due-work-bypassed
+          node .formal-test/tla-counterexample-check.mjs \
+            /tmp/stale-checkpoint-tlc.log \
+            checkpoint-regression
