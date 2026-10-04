@@ -8,6 +8,7 @@ import type {
   WordRecordTelemetry,
 } from './record'
 import { ChapterRecord, ReviewRecord, WordRecord } from './record'
+import type { AchievementEventRecord, AchievementStateRecord } from '@/achievement/types'
 import type { LearnSessionKind } from '@/learn/session'
 import type { ExerciseConditionV1 } from '@/review/condition'
 import type { ReviewPolicyDecisionV1, ReviewPolicyShadowV1 } from '@/review/decision'
@@ -27,6 +28,8 @@ class RecordDB extends Dexie {
   chapterRecords!: Table<IChapterRecord, number>
   reviewRecords!: Table<IReviewRecord, number>
   reviewWordStates!: Table<IReviewWordState, number>
+  achievementEvents!: Table<AchievementEventRecord, string>
+  achievementStates!: Table<AchievementStateRecord, string>
 
   revisionDictRecords!: Table<IRevisionDictRecord, number>
   revisionWordRecords!: Table<IWordRecord, number>
@@ -51,6 +54,14 @@ class RecordDB extends Dexie {
       chapterRecords: '++id,timeStamp,dict,chapter,time,[dict+chapter]',
       reviewRecords: '++id,dict,createTime,isFinished',
       reviewWordStates: '++id,&[dict+word],dict,word,nextReviewAt,[dict+nextReviewAt],lastReviewedAt',
+    })
+    this.version(5).stores({
+      wordRecords: '++id,word,timeStamp,dict,chapter,wrongCount,[dict+chapter]',
+      chapterRecords: '++id,timeStamp,dict,chapter,time,[dict+chapter]',
+      reviewRecords: '++id,dict,createTime,isFinished',
+      reviewWordStates: '++id,&[dict+word],dict,word,nextReviewAt,[dict+nextReviewAt],lastReviewedAt',
+      achievementEvents: '&eventId,sourceRecordId,occurredAt,dict,word',
+      achievementStates: '&achievementId,unlockedAt,seenAt',
     })
   }
 }
@@ -167,6 +178,19 @@ export function useSaveWordRecord() {
       }
       if (dispatch) {
         dbID > 0 && dispatch({ type: TypingStateActionType.ADD_WORD_RECORD_ID, payload: dbID })
+      }
+
+      // Achievement is an additive sidecar. It only runs after raw Learn
+      // evidence is durable, never participates in the scheduler transaction,
+      // and a failure here must not block word progression.
+      if (dbID > 0 && sourceMode === 'learn') {
+        void import('@/achievement/engine')
+          .then(({ processLiveLearnWordRecord }) =>
+            processLiveLearnWordRecord(dbID),
+          )
+          .catch((error) => {
+            console.error('failed to process achievement event', error)
+          })
       }
 
       return dbID
