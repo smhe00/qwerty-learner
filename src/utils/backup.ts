@@ -188,6 +188,12 @@ export async function importBackupJson(
   const hasReviewWordStates = importMeta.data.tables.some(
     (table) => table.name === 'reviewWordStates',
   )
+  const hasAchievementEvents = importMeta.data.tables.some(
+    (table) => table.name === 'achievementEvents',
+  )
+  const hasAchievementStates = importMeta.data.tables.some(
+    (table) => table.name === 'achievementStates',
+  )
 
   await db.import(databaseBlob, {
     acceptVersionDiff: true,
@@ -202,6 +208,13 @@ export async function importBackupJson(
 
   if (!hasReviewWordStates) {
     await db.reviewWordStates.clear()
+  }
+
+  if (!hasAchievementEvents) {
+    await db.achievementEvents.clear()
+  }
+  if (!hasAchievementStates) {
+    await db.achievementStates.clear()
   }
 
   // reviewModeInfo is a route-critical localStorage cache, while the durable
