@@ -753,3 +753,95 @@ test('F4 simulation detects a successful Acquisition attempt with neither projec
   assert.equal(stuck.severity, 'high')
   assert.equal(stuck.details.sessionKind, 'acquisition')
 })
+
+
+test('F5 production Review applies controller projection without divergence', async () => {
+  const app = new VirtualLearnApp({
+    words: Array.from(
+      { length: 4 },
+      (_, index) => word(`f5-review-${index}`),
+    ),
+  })
+  app.seedAdmittedWords(3)
+  app.makeSeededWordsDue(3)
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+  if (prepared.kind !== 'session') return
+  assert.equal(prepared.record.sessionKind, 'review')
+
+  assert.equal(app.completeCurrentReviewClean(), true)
+
+  const divergence = detectLearnSystemAnomalies(
+    app.events,
+  ).find(
+    (item) =>
+      item.code === 'controller-driver-divergence',
+  )
+  assert.equal(divergence, undefined)
+})
+
+test('F5 Review dropped projection is detected even when controller resolved correctly', async () => {
+  const app = new VirtualLearnApp({
+    words: Array.from(
+      { length: 4 },
+      (_, index) => word(`f5-review-drop-${index}`),
+    ),
+    mutation: {
+      dropProjectionAtInteraction: 1,
+    },
+  })
+  app.seedAdmittedWords(3)
+  app.makeSeededWordsDue(3)
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+  if (prepared.kind !== 'session') return
+  assert.equal(prepared.record.sessionKind, 'review')
+
+  assert.equal(app.completeCurrentReviewClean(), true)
+
+  const divergence = detectLearnSystemAnomalies(
+    app.events,
+  ).find(
+    (item) =>
+      item.code === 'controller-driver-divergence',
+  )
+  assert.ok(divergence)
+  assert.equal(divergence.severity, 'high')
+  assert.notEqual(
+    divergence.details.actualIndex,
+    divergence.details.expectedIndex,
+  )
+})
+
+test('F5 Acquisition dropped projection is classified as driver divergence rather than controller no-op', async () => {
+  const app = new VirtualLearnApp({
+    words: [word('f5-acquisition-drop')],
+    mutation: {
+      dropProjectionAtInteraction: 1,
+    },
+  })
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+  if (prepared.kind !== 'session') return
+  assert.equal(prepared.record.sessionKind, 'acquisition')
+
+  assert.equal(app.completeCurrentAcquisitionClean(), true)
+
+  const anomalies = detectLearnSystemAnomalies(app.events)
+  assert.ok(
+    anomalies.some(
+      (item) =>
+        item.code === 'controller-driver-divergence',
+    ),
+  )
+  assert.equal(
+    anomalies.some(
+      (item) =>
+        item.code === 'success-without-progress',
+    ),
+    false,
+  )
+})
