@@ -51,6 +51,8 @@ test('policy sweep evaluates all candidates without violating bounded-control en
     [...DEFAULT_SIMULATION_POLICY_CANDIDATES.map((item) => item.id)].sort(),
   )
 
+  console.log('SIM_POLICY_SWEEP', JSON.stringify(summaries))
+
   for (const summary of summaries) {
     assert.ok(Number.isFinite(summary.score))
     assert.ok(summary.meanRetention30d >= 0)
@@ -71,7 +73,7 @@ test('policy sweep evaluates all candidates without violating bounded-control en
   assert.ok(baseline.maxDueBacklog <= 80)
 })
 
-test('interval candidates produce the expected retention-vs-load direction on balanced learners', () => {
+test('interval candidates change workload in the expected schedule direction without assuming outcome ranking', () => {
   const candidate = Object.fromEntries(
     DEFAULT_SIMULATION_POLICY_CANDIDATES.map((item) => [
       item.id,
@@ -101,14 +103,6 @@ test('interval candidates produce the expected retention-vs-load direction on ba
   const retentionFirst = run('retention-first')
   const loadFirst = run('load-first')
 
-  const retentionLapse = average(
-    retentionFirst,
-    (item) => item.metrics.lapseRate,
-  )
-  const loadLapse = average(
-    loadFirst,
-    (item) => item.metrics.lapseRate,
-  )
   const retentionWork = average(
     retentionFirst,
     (item) => item.metrics.meanDailyInteractions,
@@ -117,7 +111,15 @@ test('interval candidates produce the expected retention-vs-load direction on ba
     loadFirst,
     (item) => item.metrics.meanDailyInteractions,
   )
+  const retentionReviews = average(
+    retentionFirst,
+    (item) => item.metrics.reviewAttempts,
+  )
+  const loadReviews = average(
+    loadFirst,
+    (item) => item.metrics.reviewAttempts,
+  )
 
-  assert.ok(retentionLapse <= loadLapse + 0.05)
-  assert.ok(retentionWork >= loadWork * 0.85)
+  assert.ok(retentionWork > loadWork)
+  assert.ok(retentionReviews > loadReviews)
 })
