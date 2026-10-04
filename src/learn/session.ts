@@ -2,6 +2,7 @@ import {
   LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
   createLearnAcquisitionExercisePlanForState,
   createLearnAcquisitionState,
+  resumeSpacingDeferredAcquisition,
 } from './acquisition'
 import type { LearnAcquisitionState } from './acquisition'
 import type { LearnInteractionStrainTier } from './strain'
@@ -156,6 +157,70 @@ export function countUnseenLearningWords(
   states: IReviewWordState[],
 ): number {
   return collectUnseenLearningWords(words, states).length
+}
+
+
+export type LearnAcquisitionCandidatePlan = {
+  resumed: Array<{
+    word: Word
+    state: LearnAcquisitionState
+  }>
+  freshWords: Word[]
+  blockedPendingWords: string[]
+}
+
+export function planLearnAcquisitionCandidates(input: {
+  words: Word[]
+  states: IReviewWordState[]
+  pendingStates: Map<string, LearnAcquisitionState>
+  introducedWords: Iterable<string>
+  freshLimit: number
+  now: number
+}): LearnAcquisitionCandidatePlan {
+  const canonicalWords = canonicalizeLearningWords(input.words)
+  const canonicalByName = new Map(
+    canonicalWords.map((word) => [word.name, word]),
+  )
+  const resumed: LearnAcquisitionCandidatePlan['resumed'] = []
+
+  for (const [wordName, pendingState] of input.pendingStates) {
+    if (resumed.length >= LEARN_NEW_WORD_BATCH_SIZE) break
+    const resumedState = resumeSpacingDeferredAcquisition(
+      pendingState,
+      input.now,
+    )
+    const word = canonicalByName.get(wordName)
+    if (!resumedState || !word) continue
+    resumed.push({ word, state: resumedState })
+  }
+
+  const blockedPendingWords = [...input.pendingStates.keys()]
+  const blockedNames = new Set(blockedPendingWords)
+  const introducedNames = new Set(input.introducedWords)
+  const freshCapacity = Math.min(
+    Math.max(0, Math.floor(input.freshLimit)),
+    Math.max(0, LEARN_NEW_WORD_BATCH_SIZE - resumed.length),
+  )
+  const freshWords =
+    freshCapacity > 0
+      ? selectUnseenLearningWords(
+          canonicalWords,
+          input.states,
+          Number.MAX_SAFE_INTEGER,
+        )
+          .filter(
+            (word) =>
+              !blockedNames.has(word.name) &&
+              !introducedNames.has(word.name),
+          )
+          .slice(0, freshCapacity)
+      : []
+
+  return {
+    resumed,
+    freshWords,
+    blockedPendingWords,
+  }
 }
 
 
