@@ -6,6 +6,8 @@ import {
   evaluateWordMetric,
 } from '../../src/achievement/evaluator'
 import { buildAchievementVisibleProgress } from '../../src/achievement/progress'
+import { resolveAchievementCeremonyPresentation } from '../../src/achievement/presentation'
+import { achievementDefinitions } from '../../src/resources/achievementCulture'
 import { createInitialReviewWordState } from '../../src/review/types'
 import type { AchievementCondition } from '../../src/resources/achievementCulture'
 import type { IWordRecord } from '../../src/utils/db/record'
@@ -489,4 +491,43 @@ test('visible achievement progress counts only true long-term mastery and Learn 
 
   assert.equal(progress.longTermMasteredWords, 1)
   assert.equal(progress.activeLearnDaysInLast10, 3)
+})
+
+
+test('achievement ceremony contract maps all presentation levels deterministically', () => {
+  const byCeremony = new Map(
+    achievementDefinitions.map((achievement) => [
+      achievement.presentation.ceremony,
+      achievement,
+    ]),
+  )
+
+  const quiet = byCeremony.get('quiet')
+  const settlement = byCeremony.get('settlement')
+  const spotlight = byCeremony.get('spotlight')
+  const ceremony = byCeremony.get('ceremony')
+
+  assert.ok(quiet)
+  assert.ok(settlement)
+  assert.ok(spotlight)
+  assert.ok(ceremony)
+
+  assert.deepEqual(resolveAchievementCeremonyPresentation(quiet), {
+    layout: 'compact',
+    showCulture: false,
+    showReflection: false,
+    label: '新成就',
+  })
+  assert.equal(
+    resolveAchievementCeremonyPresentation(settlement).layout,
+    'standard',
+  )
+  assert.equal(
+    resolveAchievementCeremonyPresentation(spotlight).showReflection,
+    true,
+  )
+  assert.equal(
+    resolveAchievementCeremonyPresentation(ceremony).layout,
+    'ceremony',
+  )
 })
