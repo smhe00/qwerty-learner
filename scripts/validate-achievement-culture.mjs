@@ -10,6 +10,7 @@ const dataDir = path.join(root, 'src', 'resources', 'achievementCulture')
 const read = (name) => JSON.parse(fs.readFileSync(path.join(dataDir, name), 'utf8'))
 
 const themes = read('themes.json')
+const metrics = read('metrics.json')
 const culture = [
   ...read('culture-classics-1.json'),
   ...read('culture-classics-2.json'),
@@ -32,6 +33,7 @@ const unique = (items, label) => {
 
 const themeIds = unique(themes, 'theme')
 const cultureIds = unique(culture, 'culture')
+const metricIds = unique(metrics, 'metric')
 unique(achievements, 'achievement')
 
 for (const entry of culture) {
@@ -72,6 +74,8 @@ for (const achievement of achievements) {
 
   if (!achievement.condition?.metric) {
     errors.push(`achievement ${achievement.id}: missing condition.metric`)
+  } else if (!metricIds.has(achievement.condition.metric)) {
+    errors.push(`achievement ${achievement.id}: unknown metric ${achievement.condition.metric}`)
   }
 
   if (!Array.isArray(achievement.themes) || achievement.themes.length === 0) {
@@ -142,6 +146,7 @@ for (const entry of culture) {
 
 const counts = {
   spiritThemes: themes.length,
+  achievementMetrics: metrics.length,
   cultureEntries: culture.length,
   achievements: achievements.length,
   hiddenAchievements: achievements.filter((item) => item.hidden).length,
