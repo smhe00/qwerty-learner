@@ -153,13 +153,25 @@ test('dynamic scaffold keeps acquisition boundaries and softens only Supported w
   )
 })
 
-test('dynamic scaffold V1 maps S1/S2 onto existing presentation capabilities', () => {
+test('dynamic scaffold V1.1 targets a known wrong position without guessing', () => {
   assert.deepEqual(getLearnScaffoldPresentation('S1'), {
     purpose: 'training',
     audio: 'automatic',
     phonetic: 'visible',
     letters: { mode: 'all-hidden' },
   })
+  assert.deepEqual(
+    getLearnScaffoldPresentation('S1', { hintPosition: 2 }),
+    {
+      purpose: 'training',
+      audio: 'automatic',
+      phonetic: 'visible',
+      letters: {
+        mode: 'partial',
+        visiblePositions: [2],
+      },
+    },
+  )
   assert.deepEqual(getLearnScaffoldPresentation('S2'), {
     purpose: 'training',
     audio: 'none',
@@ -168,14 +180,21 @@ test('dynamic scaffold V1 maps S1/S2 onto existing presentation capabilities', (
   })
 
   const strong = createLearnAcquisitionExercisePlan('supported', {
-    scaffoldStrainTier: 'recovery',
+    scaffoldStrainTier: 'low',
+    scaffoldHintPosition: 2,
     assistedCycles: 0,
   })
   assert.equal(strong.condition.purpose, 'training')
   assert.equal(strong.condition.audio, 'automatic')
   assert.equal(strong.condition.phonetic, 'visible')
-  assert.deepEqual(strong.condition.letters, { mode: 'all-hidden' })
+  assert.deepEqual(strong.condition.letters, {
+    mode: 'partial',
+    visiblePositions: [2],
+  })
   assert.ok(strong.decision.reasonCodes.includes('dynamic-scaffold-s1'))
+  assert.ok(
+    strong.decision.reasonCodes.includes('position-targeted-support-2'),
+  )
 
   const independent = createLearnAcquisitionExercisePlan('independent', {
     scaffoldStrainTier: 'recovery',
@@ -189,6 +208,51 @@ test('dynamic scaffold V1 maps S1/S2 onto existing presentation capabilities', (
     independent.decision.reasonCodes.includes('dynamic-scaffold-s3'),
   )
   assert.ok(independent.decision.reasonCodes.includes('spacing-eligible'))
+})
+
+test('independent failure carries its last wrong position only into Supported scaffold', () => {
+  const independent = {
+    ...createLearnAcquisitionState({ scaffoldStrainTier: 'low' }),
+    phase: 'independent' as const,
+    independentInterveningItems: 4,
+  }
+
+  const supported = decideLearnAcquisitionTransition(independent, {
+    kind: 'independent-complete',
+    independentClean: false,
+    scaffoldHintPosition: 2,
+  })
+  assert.equal(supported.phase, 'supported')
+  assert.equal(supported.assistedCycles, 1)
+  assert.equal(supported.scaffoldHintPosition, 2)
+
+  const nextIndependent = decideLearnAcquisitionTransition(supported, {
+    kind: 'supported-complete',
+  })
+  assert.equal(nextIndependent.phase, 'independent')
+  assert.equal(nextIndependent.scaffoldHintPosition, undefined)
+})
+
+test('S1 scaffold starts Hint at level 1 so manual escalation cannot reduce support', () => {
+  const state = createReviewHintMachineState({
+    initialLevel: 1,
+    hintPosition: 2,
+  })
+  assert.equal(state.stage, 'hint-1')
+  assert.equal(state.maxLevelReached, 1)
+  assert.equal(state.hintPosition, 2)
+
+  const decision = decideReviewHintInput({
+    state,
+    inputIndex: 0,
+    key: 'Escape',
+  })
+  assert.equal(decision.kind, 'advance-hint')
+  if (decision.kind !== 'advance-hint') return
+  assert.equal(decision.from, 'hint-1')
+  assert.equal(decision.to, 'hint-2')
+  assert.equal(decision.level, 2)
+  assert.equal(decision.hintPosition, 2)
 })
 
 test('captures all-visible and all-hidden baseline conditions', () => {
