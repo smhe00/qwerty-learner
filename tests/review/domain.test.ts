@@ -1995,7 +1995,7 @@ test('Hint 0 targets the last spelling first-wrong position instead of always th
 
   const decision = decideReviewHintInput({
     state,
-    inputIndex: 4,
+    inputIndex: 0,
     key: 'Escape',
   })
   assert.equal(decision.kind, 'advance-hint')
