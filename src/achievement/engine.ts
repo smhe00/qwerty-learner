@@ -6,6 +6,7 @@ import { db } from '@/utils/db'
 import {
   SUPPORTED_WORD_METRICS,
   conditionSatisfied,
+  evaluatePreviousWordMetric,
   evaluateWordMetric,
 } from './evaluator'
 import {
@@ -131,7 +132,21 @@ export async function processLiveLearnWordRecord(
     })
     if (value === null) continue
     values.set(achievement.condition.metric, value)
-    if (conditionSatisfied(achievement.condition, value)) {
+
+    const previousValue = evaluatePreviousWordMetric(
+      achievement.condition,
+      {
+        current,
+        records,
+        now: current.timeStamp,
+      },
+    )
+    const crossedThreshold =
+      conditionSatisfied(achievement.condition, value) &&
+      (previousValue === null ||
+        !conditionSatisfied(achievement.condition, previousValue))
+
+    if (crossedThreshold) {
       candidates.push({ achievement, value })
     }
   }
