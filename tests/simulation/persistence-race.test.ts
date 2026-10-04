@@ -27,6 +27,12 @@ function deferred(): Deferred {
   return { promise, resolve, reject }
 }
 
+async function flushAsyncTurn() {
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve)
+  })
+}
+
 function signature(snapshot: Snapshot): string {
   return [
     snapshot.index,
@@ -101,13 +107,13 @@ test('serialized production writer preserves request order under adversarial com
   events.push(requestEvent(second))
   const secondWrite = writer.enqueue(second)
 
-  await Promise.resolve()
+  await flushAsyncTurn()
   assert.deepEqual(controlled.started, [1])
   assert.equal(controlled.gates.has(2), false)
 
   controlled.gates.get(1)?.resolve()
   await firstWrite
-  await Promise.resolve()
+  await flushAsyncTurn()
 
   assert.deepEqual(controlled.started, [1, 2])
   controlled.gates.get(2)?.resolve()
@@ -139,7 +145,7 @@ test('serialized writer freezes an immutable snapshot at enqueue time', async ()
   source.index = 99
   source.isFinished = true
 
-  await Promise.resolve()
+  await flushAsyncTurn()
   controlled.gates.get(1)?.resolve()
   await write
 
