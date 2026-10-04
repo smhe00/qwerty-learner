@@ -1,4 +1,5 @@
 import { db } from '.'
+import { isAcquisitionIntroductionRecord } from '@/learn/admission'
 import {
   LEARN_NEW_WORD_BATCH_SIZE,
   buildLearnAcquisitionExercisePlans,
@@ -172,7 +173,7 @@ function latestAcquisitionStatesByWord(
   return latest
 }
 
-async function getSpacingDeferredAcquisitionStates(
+async function getPendingAcquisitionStates(
   dictID: string,
 ): Promise<Map<string, LearnAcquisitionState>> {
   const [records, states] = await Promise.all([
@@ -181,20 +182,28 @@ async function getSpacingDeferredAcquisitionStates(
   ])
   const admitted = new Set(states.map((state) => state.word))
   const latest = latestAcquisitionStatesByWord(records)
-  const deferred = new Map<string, LearnAcquisitionState>()
+  const pending = new Map<string, LearnAcquisitionState>()
 
   for (const [word, state] of latest) {
-    if (admitted.has(word)) continue
-    if (
-      state.phase === 'deferred' &&
-      state.deferredReason === 'spacing' &&
-      state.resumeAfter !== undefined
-    ) {
-      deferred.set(word, state)
-    }
+    if (admitted.has(word) || state.phase === 'complete') continue
+    pending.set(word, state)
   }
 
-  return deferred
+  return pending
+}
+
+async function getSpacingDeferredAcquisitionStates(
+  dictID: string,
+): Promise<Map<string, LearnAcquisitionState>> {
+  const pending = await getPendingAcquisitionStates(dictID)
+  return new Map(
+    [...pending].filter(
+      ([, state]) =>
+        state.phase === 'deferred' &&
+        state.deferredReason === 'spacing' &&
+        state.resumeAfter !== undefined,
+    ),
+  )
 }
 
 export async function getNextSpacingDeferredResumeAt(
@@ -213,12 +222,11 @@ export async function generateNewWordAcquisitionRecord(
   words: Word[],
   limit = LEARN_NEW_WORD_BATCH_SIZE,
 ) {
-  if (limit <= 0) return undefined
-
+  const freshLimit = Math.max(0, Math.floor(limit))
   const now = getUTCUnixTimestamp()
-  const [states, deferred, wordRecords] = await Promise.all([
+  const [states, pending, wordRecords] = await Promise.all([
     getReviewWordStates(dictID),
-    getSpacingDeferredAcquisitionStates(dictID),
+    getPendingAcquisitionStates(dictID),
     db.wordRecords.where('dict').equals(dictID).toArray(),
   ])
   const scaffoldStrainTier =
@@ -233,8 +241,8 @@ export async function generateNewWordAcquisitionRecord(
     state: LearnAcquisitionState
   }> = []
 
-  for (const [wordName, deferredState] of deferred) {
-    if (resumed.length >= limit) break
+  for (const [wordName, deferredState] of pending) {
+    if (resumed.length >= LEARN_NEW_WORD_BATCH_SIZE) break
     const resumedState = resumeSpacingDeferredAcquisition(
       deferredState,
       now,
@@ -244,17 +252,29 @@ export async function generateNewWordAcquisitionRecord(
     resumed.push({ word, state: resumedState })
   }
 
-  const blockedNames = new Set(deferred.keys())
-  const remainingLimit = Math.max(0, limit - resumed.length)
+  const blockedNames = new Set(pending.keys())
+  const introducedNames = new Set(
+    wordRecords
+      .filter(isAcquisitionIntroductionRecord)
+      .map((record) => record.word),
+  )
+  const freshCapacity = Math.min(
+    freshLimit,
+    Math.max(0, LEARN_NEW_WORD_BATCH_SIZE - resumed.length),
+  )
   const freshWords =
-    remainingLimit > 0
+    freshCapacity > 0
       ? selectUnseenLearningWords(
           canonicalWords,
           states,
           Number.MAX_SAFE_INTEGER,
         )
-          .filter((word) => !blockedNames.has(word.name))
-          .slice(0, remainingLimit)
+          .filter(
+            (word) =>
+              !blockedNames.has(word.name) &&
+              !introducedNames.has(word.name),
+          )
+          .slice(0, freshCapacity)
       : []
 
   const selectedWords = [
