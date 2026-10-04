@@ -71,6 +71,17 @@ jobs:
             -config formal/learn/DeferredLifecycle.production.cfg \
             formal/learn/DeferredLifecycle.tla
 
+      - name: Parse due-first priority model
+        run: |
+          java -cp /tmp/tla2tools.jar tla2sany.SANY \
+            formal/learn/DuePriority.tla
+
+      - name: Model-check due-first production priority
+        run: |
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -config formal/learn/DuePriority.production.cfg \
+            formal/learn/DuePriority.tla
+
       - name: Require admitted-based mutation counterexample
         run: |
           set +e
@@ -83,6 +94,21 @@ jobs:
           cat /tmp/acquired-mutation-tlc.log
           if [ "$status" -eq 0 ]; then
             echo 'Expected the acquired-based mutation to violate NoRepeatedSingleton.'
+            exit 1
+          fi
+
+      - name: Require due-first bypass counterexample
+        run: |
+          set +e
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -config formal/learn/DuePriority.bypass-mutation.cfg \
+            formal/learn/DuePriority.tla \
+            > /tmp/due-first-bypass-tlc.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/due-first-bypass-tlc.log
+          if [ "$status" -eq 0 ]; then
+            echo 'Expected the due-first bypass mutation to violate NoAcquisitionWhenDue.'
             exit 1
           fi
 
@@ -119,3 +145,6 @@ jobs:
           node .formal-test/tla-counterexample-check.mjs \
             /tmp/stranded-deferred-tlc.log \
             stranded-pending-acquisition
+          node .formal-test/tla-counterexample-check.mjs \
+            /tmp/due-first-bypass-tlc.log \
+            due-work-bypassed
