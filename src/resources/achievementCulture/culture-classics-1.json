@@ -693,8 +693,8 @@
   {
     "id": "CUL_HANFEI_001",
     "type": "classic_saying",
-    "title": "千里之堤",
-    "text": "千里之堤，溃于蚁穴。",
+    "title": "慎微",
+    "text": "千丈之堤，以蝼蚁之穴溃。",
     "source": "《韩非子·喻老》",
     "author": "韩非",
     "era": "先秦",
@@ -702,7 +702,7 @@
       "craft",
       "focus"
     ],
-    "studentMeaning": "小错误若长期忽略，也可能变成大问题。",
+    "studentMeaning": "真正值得警惕的错误，常常从一个很小的地方开始。",
     "storySummary": null,
     "curriculum": {
       "stage": "junior_middle",
@@ -714,8 +714,8 @@
       "shanghaiExamClaim": "not_claimed"
     },
     "artDirection": {
-      "motif": "千里之堤",
-      "scene": "小错误若长期忽略，也可能变成大问题。",
+      "motif": "长堤与微小蚁穴",
+      "scene": "宏大的堤岸与一个被放大的细小缺口，强调对细节的观察。",
       "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
       "avoidTextInImage": true
     }
