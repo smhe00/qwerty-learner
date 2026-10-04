@@ -199,3 +199,27 @@ test('Typing records do not influence session metrics', () => {
     0,
   )
 })
+
+
+test('recommended goal completion is explicit session evidence', () => {
+  const metric = condition(
+    'first_recommended_learn_goal_completed',
+    1,
+  )
+  const records = [record({ id: 1 })]
+
+  assert.equal(
+    evaluateSessionMetric(metric, {
+      records,
+      recommendedGoalCompleted: true,
+    }),
+    1,
+  )
+  assert.equal(
+    evaluateSessionMetric(metric, {
+      records,
+      recommendedGoalCompleted: false,
+    }),
+    0,
+  )
+})
