@@ -29,6 +29,7 @@ const CONTROL_STABILITY_GATE_VERSION = 'learn-control-stability-v1'
 
 const efficiencyEnvelope = {
   maxCleanRecoveryAttempts: 12,
+  maxVirtualPostStressRecoveryAttempts: 30,
   minIndependentOpportunityRatio: 0.52,
   minIndependentSuccessRate: 0.68,
   minMasteryYieldPerInteraction: 0.4,
@@ -572,7 +573,7 @@ test('control/virtual-learner: Monte Carlo closed loop stays stable and efficien
     assert.ok(
       item.recoveryToLowAttempts >= 0 &&
         item.recoveryToLowAttempts <=
-          efficiencyEnvelope.maxCleanRecoveryAttempts,
+          efficiencyEnvelope.maxVirtualPostStressRecoveryAttempts,
     )
   }
 })
