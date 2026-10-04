@@ -11,10 +11,13 @@ export const LEGACY_ACQUISITION_POLICY_VERSION =
 export function isAcquisitionIntroductionRecord(
   record: IWordRecord,
 ): boolean {
-  return (
-    record.sourceMode === 'learn' &&
-    record.learnItemKind === 'acquisition'
-  )
+  if (record.learnItemKind !== 'acquisition') return false
+  if (record.sourceMode === 'typing') return false
+  if (record.sourceMode === 'learn') return true
+
+  // Transitional Learn rows may predate sourceMode but still use the
+  // long-term chapter sentinel.
+  return record.chapter === -1
 }
 
 export function isModernPhasedAcquisitionRecord(
