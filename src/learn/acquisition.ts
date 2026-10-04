@@ -197,6 +197,16 @@ export function isLearnAcquisitionHintPolicyVersion(
   )
 }
 
+export function hasSufficientIndependentSpacing(
+  state: LearnAcquisitionState,
+): boolean {
+  return (
+    state.phase === 'independent' &&
+    (state.independentInterveningItems ?? 0) >=
+      MIN_INDEPENDENT_INTERVENING_ITEMS
+  )
+}
+
 export function learnAcquisitionFollowUpGap(
   nextPhase: LearnAcquisitionPhase,
 ): number {
