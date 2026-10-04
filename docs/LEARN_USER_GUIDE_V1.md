@@ -6,7 +6,7 @@
 
 ## 1. 两种模式
 
-Qwerty Learner 现在明确分为：
+Qwerty Plus 现在明确分为：
 
 ```text
 Typing
