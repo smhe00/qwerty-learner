@@ -6,6 +6,11 @@ import {
   canonicalizeLearningWords,
   selectUnseenLearningWords,
 } from '@/learn/session'
+import {
+  createLearnAcquisitionExercisePlan,
+  resumeSpacingDeferredAcquisition,
+} from '@/learn/acquisition'
+import type { LearnAcquisitionState } from '@/learn/acquisition'
 import { ReviewRecord } from './record'
 import type { TErrorWordData } from '@/pages/Gallery-N/hooks/useErrorWords'
 import { selectReviewCandidates } from '@/review/due'
@@ -138,24 +143,139 @@ export async function generateLearnReviewRecord(
   return record
 }
 
+function latestAcquisitionStatesByWord(
+  records: ReviewRecord[],
+): Map<string, LearnAcquisitionState> {
+  const latest = new Map<string, LearnAcquisitionState>()
+
+  for (const record of [...records].sort(
+    (left, right) => left.createTime - right.createTime,
+  )) {
+    if (record.sessionKind !== 'acquisition') continue
+    for (const [word, state] of Object.entries(
+      record.acquisitionStates ?? {},
+    )) {
+      latest.set(word, state)
+    }
+  }
+
+  return latest
+}
+
+async function getSpacingDeferredAcquisitionStates(
+  dictID: string,
+): Promise<Map<string, LearnAcquisitionState>> {
+  const [records, states] = await Promise.all([
+    db.reviewRecords.where('dict').equals(dictID).toArray(),
+    getReviewWordStates(dictID),
+  ])
+  const admitted = new Set(states.map((state) => state.word))
+  const latest = latestAcquisitionStatesByWord(records)
+  const deferred = new Map<string, LearnAcquisitionState>()
+
+  for (const [word, state] of latest) {
+    if (admitted.has(word)) continue
+    if (
+      state.phase === 'deferred' &&
+      state.deferredReason === 'spacing' &&
+      state.resumeAfter !== undefined
+    ) {
+      deferred.set(word, state)
+    }
+  }
+
+  return deferred
+}
+
+export async function getNextSpacingDeferredResumeAt(
+  dictID: string,
+): Promise<number | undefined> {
+  const deferred = await getSpacingDeferredAcquisitionStates(dictID)
+  const resumeTimes = [...deferred.values()]
+    .map((state) => state.resumeAfter)
+    .filter((value): value is number => value !== undefined)
+
+  return resumeTimes.length > 0 ? Math.min(...resumeTimes) : undefined
+}
+
 export async function generateNewWordAcquisitionRecord(
   dictID: string,
   words: Word[],
   limit = LEARN_NEW_WORD_BATCH_SIZE,
 ) {
-  const states = await getReviewWordStates(dictID)
-  const selectedWords = selectUnseenLearningWords(words, states, limit)
+  if (limit <= 0) return undefined
 
+  const now = getUTCUnixTimestamp()
+  const [states, deferred] = await Promise.all([
+    getReviewWordStates(dictID),
+    getSpacingDeferredAcquisitionStates(dictID),
+  ])
+
+  const canonicalWords = canonicalizeLearningWords(words)
+  const canonicalByName = new Map(
+    canonicalWords.map((word) => [word.name, word]),
+  )
+  const resumed: Array<{
+    word: Word
+    state: LearnAcquisitionState
+  }> = []
+
+  for (const [wordName, deferredState] of deferred) {
+    if (resumed.length >= limit) break
+    const resumedState = resumeSpacingDeferredAcquisition(
+      deferredState,
+      now,
+    )
+    const word = canonicalByName.get(wordName)
+    if (!resumedState || !word) continue
+    resumed.push({ word, state: resumedState })
+  }
+
+  const blockedNames = new Set(deferred.keys())
+  const remainingLimit = Math.max(0, limit - resumed.length)
+  const freshWords =
+    remainingLimit > 0
+      ? selectUnseenLearningWords(
+          canonicalWords,
+          states,
+          Number.MAX_SAFE_INTEGER,
+        )
+          .filter((word) => !blockedNames.has(word.name))
+          .slice(0, remainingLimit)
+      : []
+
+  const selectedWords = [
+    ...resumed.map((item) => item.word),
+    ...freshWords,
+  ]
   if (selectedWords.length === 0) return undefined
 
-  const exercisePlans = buildLearnAcquisitionExercisePlans(selectedWords)
+  const exercisePlans = {
+    ...buildLearnAcquisitionExercisePlans(freshWords),
+    ...Object.fromEntries(
+      resumed.map(({ word, state }) => [
+        word.name,
+        createLearnAcquisitionExercisePlan('independent', {
+          independentInterveningItems:
+            state.independentInterveningItems,
+        }),
+      ]),
+    ),
+  }
+  const acquisitionStates = {
+    ...buildLearnAcquisitionStates(freshWords),
+    ...Object.fromEntries(
+      resumed.map(({ word, state }) => [word.name, state]),
+    ),
+  }
+
   const record = new ReviewRecord(
     dictID,
     selectedWords,
     exercisePlans,
     'acquisition',
   )
-  record.acquisitionStates = buildLearnAcquisitionStates(selectedWords)
+  record.acquisitionStates = acquisitionStates
   record.id = await db.reviewRecords.add(record)
   return record
 }
