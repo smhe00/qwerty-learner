@@ -104,7 +104,12 @@ Learn 首页第一行与 Typing 保持同一布局骨架：
 
 Exposure 和 Supported Recall 都是训练证据，不会被当成长期记忆已经建立。
 如果 Independent Recall 仍需要提示，系统会自动回到有限的支持循环；连续
-未形成独立回忆时会 defer，之后重新学习，而不是把它伪装成“已经掌握”。
+未形成独立回忆时会 defer，而不是把它伪装成“已经掌握”。
+
+如果词库最后只剩很少几个新词，同一轮里没有足够的干扰词，哪怕 Independent
+拼写正确也不会立即算“独立掌握”。系统会保存进度，至少间隔 5 分钟后直接
+从 Independent Recall 继续，不会重新展示答案。等待期间如果还有其他新词，
+Learn 会继续安排其他词；如果没有，则会提示稍后继续。
 
 Acquisition 全程不产生 Again / Hard / Good / Easy，因此不会增加
 reviewCount / lapseCount。
