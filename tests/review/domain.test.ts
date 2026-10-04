@@ -824,6 +824,29 @@ test('targeted-mask condition exposes every letter except the weak position', ()
   )
 })
 
+test('attempt resolver activates every Learn acquisition phase without changing Typing baseline', () => {
+  const baseline = createBaselineExerciseCondition({
+    pronunciationEnabled: false,
+    meaningVisible: false,
+    phoneticVisible: false,
+    letterVisibility: [false, false, false, false],
+  })
+
+  for (const phase of ['exposure', 'supported', 'independent'] as const) {
+    const frozen = createLearnAcquisitionExercisePlan(phase)
+    const active = resolveExercisePlanForAttempt(baseline, frozen)
+    assert.equal(active.condition, frozen.condition)
+    assert.equal(active.decision.policyVersion, frozen.decision.policyVersion)
+  }
+
+  const ordinary = resolveExercisePlanForAttempt(baseline)
+  assert.equal(ordinary.condition, baseline)
+  assert.equal(
+    ordinary.decision.policyVersion,
+    'baseline-user-settings-v1',
+  )
+})
+
 test('attempt resolver activates only the supported frozen targeted-mask plan', () => {
   const baseline = createBaselineExerciseCondition({
     pronunciationEnabled: true,
