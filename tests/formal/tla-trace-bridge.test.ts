@@ -210,3 +210,76 @@ test('resumed deferred trace clears the liveness concern without a false alarm',
     false,
   )
 })
+
+
+const dueFirstBypassCounterexample = `
+Error: Invariant NoAcquisitionWhenDue is violated.
+
+State 1: <Initial predicate>
+/\\ phase = "idle"
+/\\ due = 1
+/\\ pendingReady = 1
+/\\ unseen = 2
+/\\ quota = 2
+/\\ sessionSize = 0
+/\\ acquisitionKind = "none"
+
+State 2: <StartPendingAcquisition line 36, col 1 to line 43, col 57 of module DuePriority>
+/\\ phase = "acquisition"
+/\\ due = 1
+/\\ pendingReady = 1
+/\\ unseen = 2
+/\\ quota = 2
+/\\ sessionSize = 1
+/\\ acquisitionKind = "pending"
+`
+
+const dueFirstProductionTrace = `
+State 1: <Initial predicate>
+/\\ phase = "idle"
+/\\ due = 1
+/\\ pendingReady = 1
+/\\ unseen = 2
+/\\ quota = 2
+/\\ sessionSize = 0
+/\\ acquisitionKind = "none"
+
+State 2: <StartReview line 27, col 1 to line 34, col 57 of module DuePriority>
+/\\ phase = "review"
+/\\ due = 1
+/\\ pendingReady = 1
+/\\ unseen = 2
+/\\ quota = 2
+/\\ sessionSize = 1
+/\\ acquisitionKind = "none"
+`
+
+test('TLC due-first bypass maps to due-work-bypassed without mutation-specific bridge logic', () => {
+  const trace = tlcStatesToLearnTrace(
+    parseTlcCounterexample(dueFirstBypassCounterexample),
+    'due-first-bypass',
+  )
+
+  const anomalies = detectLearnSystemAnomalies(trace.events)
+  const bypass = anomalies.find(
+    (item) => item.code === 'due-work-bypassed',
+  )
+
+  assert.ok(bypass)
+  assert.equal(bypass.severity, 'high')
+  assert.equal(bypass.details.dueCount, 1)
+})
+
+test('TLC due-first production trace does not create a false acquisition-priority alarm', () => {
+  const trace = tlcStatesToLearnTrace(
+    parseTlcCounterexample(dueFirstProductionTrace),
+    'due-first-production',
+  )
+
+  assert.equal(
+    detectLearnSystemAnomalies(trace.events).some(
+      (item) => item.code === 'due-work-bypassed',
+    ),
+    false,
+  )
+})
