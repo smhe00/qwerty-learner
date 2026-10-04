@@ -15,6 +15,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 const loadAnalysisPage = () => import('./pages/Analysis')
 const loadGalleryPage = () => import('./pages/Gallery-N')
 const loadLearnPage = () => import('./pages/Learn')
+const loadAchievementsPage = () => import('./pages/Achievements')
 
 async function loadRouteWithRefresh<T>(
   routeKey: string,
@@ -48,6 +49,9 @@ const GalleryPage = lazy(() =>
 )
 const LearnPage = lazy(() =>
   loadRouteWithRefresh('learn', loadLearnPage),
+)
+const AchievementsPage = lazy(() =>
+  loadRouteWithRefresh('achievements', loadAchievementsPage),
 )
 
 function hasPersistedLearnSession(): boolean {
@@ -142,6 +146,7 @@ function Root() {
                 <Route path="/typing" element={<TypingPage />} />
                 <Route path="/learn" element={<LearnPage />} />
                 <Route path="/learn/session" element={<LearnSessionRoute />} />
+                <Route path="/achievements" element={<AchievementsPage />} />
                 <Route path="/gallery" element={<GalleryPage />} />
                 <Route path="/analysis" element={<AnalysisPage />} />
                 <Route path="/error-book" element={<ErrorBook />} />
