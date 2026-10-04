@@ -239,8 +239,17 @@ Current acquisition rollout:
   just-seen answer from being mistaken for durable memory.
 - Independent admission additionally requires at least 2 **actual** intervening
   queue items. Requested spacing that is truncated by a short final batch does
-  not qualify as durable evidence; a clean answer can therefore remain
-  scheduler-neutral instead of being mistaken for mastery.
+  not qualify as durable evidence.
+- A clean Independent answer with insufficient in-session spacing is therefore
+  **not** treated as failure and does not consume an assisted cycle. It is
+  checkpointed as `spacing-deferred`, remains scheduler-neutral, and cannot
+  create ACTIVE state.
+- Spacing-deferred acquisition has a 5-minute minimum cross-session delay.
+  Once the delay expires, the next Learn session resumes that word directly at
+  Independent Recall; it must not restart Exposure and reveal the answer again.
+- While the delay is still active, the resolver may continue with other UNSEEN
+  words. If no other work exists, Learn reports the remaining wait instead of
+  looping the same word.
 - Only a clean, unaided Independent Recall creates ACTIVE state. Hint-assisted
   or otherwise non-independent completion returns to bounded support; repeated
   failure is deferred rather than fabricated as mastery.
