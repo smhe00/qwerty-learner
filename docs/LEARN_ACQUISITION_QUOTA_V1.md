@@ -1,5 +1,11 @@
 # Learn Acquisition Quota V1
 
+> **Status: Historical / Superseded.** Learn Alpha 1 uses
+> `learn-acquisition-quota-v2`. See
+> [LEARN_ACQUISITION_QUOTA_V2.md](./LEARN_ACQUISITION_QUOTA_V2.md).
+>
+> This file is retained only to preserve the P3 development history.
+
 > Status: Active / P3 CLOSED
 >
 > Policy version: `learn-acquisition-quota-v1`
