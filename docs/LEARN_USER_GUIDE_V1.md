@@ -6,7 +6,7 @@
 
 ## 1. 两种模式
 
-Qwerty Plus 现在明确分为：
+Qwerty Learner 现在明确分为：
 
 ```text
 Typing
@@ -135,6 +135,10 @@ reviewCount / lapseCount。
 交互负荷只作为**减速保护**：明显吃力时会自动降低后续新词量；状态轻松
 不会突破原本由记忆质量决定的上限。这个信号只使用 Learn 记录，不读取
 Typing 表现，也不会在学生界面显示“情绪分数”。
+
+Alpha 1 的 Interaction Strain 已升级为 V2：EWMA 观察器外增加 hysteresis，
+避免分数在边界附近轻微波动时频繁在 low / elevated / recovery 之间切换。
+控制参数仍是全局受约束参数，当前没有启用自动 Personal Calibration。
 
 Cold Probe 至少有 5 个有效样本才参与当天调速；Rating Gate 判定无效的
 尝试不会被当作“通过”。
@@ -381,26 +385,30 @@ Learn
 
 ---
 
-## 10. 下一阶段
+## 10. Alpha 1 当前边界
 
-后续按照架构顺序继续：
+当前已经实际启用：
 
-```text
-Phase C
-Acquisition + Review 统一为 Learn Session
+- Typing / Learn 产品边界；
+- 分阶段 Acquisition；
+- due Review + Rating Gate；
+- basic-v2 长期间隔；
+- Dynamic Scaffold V1.1；
+- Interaction Strain V2 hysteresis；
+- Recovery Window V1；
+- quota V2 + P4 daily plan；
+- Learn Statistics；
+- 手工移出 / 恢复；
+- Control Stability Gate。
 
-Phase D
-decideReviewRating() 成为唯一 scheduler mutation gate
+当前尚未启用：
 
-Phase E
-所有非 EXCLUDED 词进入 all-word Learn admission
+- 自动 Personal Calibration；
+- 完整 FSRS-6 主调度；
+- 自动跨设备 record-level merge；
+- 以真实 7/30 天 retention 数据在线自动修改控制参数。
 
-Phase F
-basic-v2: 1/3/7/14/30/60/120/180
-
-Phase G
-FSRS-6 adapter
-```
+Alpha 阶段会先收集真实长期保持结果，再决定慢时间尺度的个性化参数学习。
 
 
 ## 动态学习支架
