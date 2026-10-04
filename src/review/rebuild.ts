@@ -1,3 +1,7 @@
+import {
+  hasPrematureModernAcquisitionStateEvidence,
+  isCompletedAcquisitionRecord,
+} from '@/learn/admission'
 import { isActiveLearningState } from '@/learn/lifecycle'
 import { classifyTypingError } from './classifier'
 import { summarizeWordHistory } from './features'
@@ -20,6 +24,14 @@ function isExplicitLearnRecord(record: IWordRecord): boolean {
 
   // Legacy long-term Review rows predate sourceMode but used chapter=-1.
   return record.chapter === -1
+}
+
+export function shouldDropPrematureAcquisitionState(
+  state: IReviewWordState,
+  records: IWordRecord[],
+): boolean {
+  if (!isActiveLearningState(state)) return false
+  return hasPrematureModernAcquisitionStateEvidence(records)
 }
 
 export function shouldDropLegacyTypingSeededState(
@@ -116,11 +128,22 @@ export function rebuildBasicStateFromWordRecords(
   options?: { legacyDueAt?: number },
 ): IReviewWordState | undefined {
   const sortedRecords = [...records].sort((a, b) => a.timeStamp - b.timeStamp)
-  const firstAcquisition = sortedRecords.find(
-    (record) =>
-      record.sourceMode === 'learn' &&
-      record.learnItemKind === 'acquisition',
+  const firstAcquisitionAdmission = sortedRecords.find(
+    isCompletedAcquisitionRecord,
   )
+
+  // Modern phased Acquisition has a strict admission boundary. If the word
+  // has entered Exposure/Supported/Independent but never produced valid
+  // spacing-eligible Independent evidence, any later Review rows are
+  // contamination from the historical bootstrap bug and must not fabricate an
+  // ACTIVE scheduler state.
+  if (
+    hasPrematureModernAcquisitionStateEvidence(sortedRecords) &&
+    !firstAcquisitionAdmission
+  ) {
+    return undefined
+  }
+
   const firstLearningFailure = sortedRecords.find(
     (record) =>
       record.sourceMode === 'learn' &&
@@ -130,15 +153,15 @@ export function rebuildBasicStateFromWordRecords(
   )
 
   let state: IReviewWordState | undefined
-  if (firstAcquisition) {
+  if (firstAcquisitionAdmission) {
     state = {
       ...createInitialReviewWordState(
         dict,
         word,
-        firstAcquisition.timeStamp,
+        firstAcquisitionAdmission.timeStamp,
       ),
-      nextReviewAt: firstAcquisition.timeStamp + 86_400,
-      updatedAt: firstAcquisition.timeStamp,
+      nextReviewAt: firstAcquisitionAdmission.timeStamp + 86_400,
+      updatedAt: firstAcquisitionAdmission.timeStamp,
     }
   } else if (firstLearningFailure) {
     state = createInitialReviewWordState(
