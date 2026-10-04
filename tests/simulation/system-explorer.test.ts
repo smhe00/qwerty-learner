@@ -21,9 +21,12 @@ function rng(seed: number) {
   }
 }
 
+type ExplorerProfile = 'fresh' | 'warm' | 'due'
+
 async function explore(
   seed: number,
   mutation?: ConstructorParameters<typeof VirtualLearnApp>[0]['mutation'],
+  profile: ExplorerProfile = 'fresh',
 ) {
   const random = rng(seed)
   const app = new VirtualLearnApp({
@@ -33,6 +36,13 @@ async function explore(
     ),
     mutation,
   })
+
+  if (profile === 'warm' || profile === 'due') {
+    app.seedAdmittedWords(6)
+  }
+  if (profile === 'due') {
+    app.makeSeededWordsDue(3)
+  }
 
   await app.enter()
 
@@ -93,20 +103,34 @@ test('deterministic random user-action exploration stays anomaly-free across cle
     codes: string[]
   }> = []
 
-  for (let seed = 1; seed <= 16; seed += 1) {
-    const result = await explore(seed)
-    if (result.anomalies.length > 0) {
-      failures.push({
-        seed,
-        codes: result.anomalies.map((item) => item.code),
-      })
+  const profiles: ExplorerProfile[] = [
+    'fresh',
+    'warm',
+    'due',
+  ]
+  for (const profile of profiles) {
+    for (let seed = 1; seed <= 6; seed += 1) {
+      const effectiveSeed =
+        seed + profiles.indexOf(profile) * 1000
+      const result = await explore(
+        effectiveSeed,
+        undefined,
+        profile,
+      )
+      if (result.anomalies.length > 0) {
+        failures.push({
+          seed: effectiveSeed,
+          codes: result.anomalies.map((item) => item.code),
+        })
+      }
     }
   }
 
   console.log(
     'SIM_SYSTEM_EXPLORER',
     JSON.stringify({
-      seeds: 16,
+      profiles,
+      seeds: 18,
       stepsPerSeed: 220,
       failures,
     }),
@@ -164,16 +188,20 @@ test('blind random explorer detects projection faults injected at unknown intera
   assert.equal(detected, results.length)
 })
 
-test('blind random explorer discovers due-first bypass after time travel without a tailored due scenario', async () => {
+test('blind random explorer discovers due-first bypass across randomly acting due-bearing users', async () => {
   const results: Array<{
     seed: number
     detected: boolean
   }> = []
 
   for (let seed = 201; seed <= 208; seed += 1) {
-    const result = await explore(seed, {
-      bypassDueFirst: true,
-    })
+    const result = await explore(
+      seed,
+      {
+        bypassDueFirst: true,
+      },
+      'due',
+    )
     results.push({
       seed,
       detected: result.anomalies.some(
@@ -196,7 +224,7 @@ test('blind random explorer discovers due-first bypass after time travel without
     }),
   )
 
-  // Random behavior must expose the fault for most seeds without being
-  // scripted around the fault itself.
-  assert.ok(detected >= 6)
+  // The fault precondition is present, but the action sequence is random.
+  // Every seeded run must eventually expose the priority violation.
+  assert.equal(detected, results.length)
 })
