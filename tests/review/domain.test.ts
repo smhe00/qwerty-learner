@@ -83,6 +83,7 @@ import {
 import { buildLearnDailyPlan } from '../../src/learn/plan'
 import { decideDailyAcquisitionQuota } from '../../src/learn/quota'
 import { buildLearnStatsSnapshot } from '../../src/learn/stats'
+import { estimateLearnInteractionStrain } from '../../src/learn/strain'
 import type { IWordRecord } from '../../src/utils/db/record'
 import {
   getFirstValidDictionaryExample,
@@ -2844,6 +2845,140 @@ test('Learn P2 keeps UNSEEN unknown when the dictionary payload is unavailable',
   assert.equal(stats.scheduler.successRate30d, null)
 })
 
+
+test('Learn interaction strain stays unknown until enough Learn evidence exists', () => {
+  const estimate = estimateLearnInteractionStrain(
+    Array.from({ length: 4 }, (_, index) => ({
+      word: `w${index}`,
+      timeStamp: index + 1,
+      dict: 'strain',
+      chapter: -1,
+      timing: [],
+      wrongCount: 3,
+      mistakes: { 0: ['x'] },
+      sourceMode: 'learn' as const,
+      learnItemKind: 'acquisition' as const,
+    })),
+  )
+
+  assert.equal(estimate.tier, 'unknown')
+  assert.equal(estimate.score, null)
+  assert.equal(estimate.sampleCount, 4)
+})
+
+test('Learn interaction strain caps bootstrap new words without touching Typing', () => {
+  const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
+  const wordRecords: IWordRecord[] = Array.from(
+    { length: 5 },
+    (_, index) => ({
+      word: `strained-${index}`,
+      timeStamp: now - (4 - index) * 30,
+      dict: 'strain-quota',
+      chapter: -1,
+      timing: [],
+      wrongCount: 3,
+      mistakes: { 0: ['x'], 1: ['y'], 2: ['z'] },
+      sourceMode: 'learn',
+      learnItemKind: 'acquisition',
+      learningContext: {
+        version: 1,
+        reviewHint: {
+          version: 1,
+          maxLevel: 3,
+          coldProbeSurrendered: false,
+          advanceCount: 4,
+        },
+      },
+      typingTelemetry: {
+        telemetryVersion: 2,
+        firstKeyLatencyMs: 9_000,
+        attempts: [
+          {
+            startLatencyMs: 3_000,
+            durationMs: 1_000,
+            correctPrefixLength: 0,
+            result: 'wrong',
+          },
+          {
+            startLatencyMs: 3_000,
+            durationMs: 1_000,
+            correctPrefixLength: 0,
+            result: 'wrong',
+          },
+          {
+            startLatencyMs: 3_000,
+            durationMs: 1_000,
+            correctPrefixLength: 0,
+            result: 'wrong',
+          },
+        ],
+      },
+    }),
+  )
+
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'strain-quota',
+    wordRecords,
+    wordStates: [],
+    dictionaryWords: Array.from({ length: 100 }, (_, index) => `w${index}`),
+  })
+  const quota = decideDailyAcquisitionQuota(stats)
+
+  assert.equal(stats.strain.tier, 'recovery')
+  assert.ok((stats.strain.score ?? 0) >= 0.55)
+  assert.equal(quota.tier, 'low')
+  assert.equal(quota.targetDailyNewWords, 5)
+  assert.equal(quota.signals.strainTier, 'recovery')
+  assert.ok(quota.reasonCodes.includes('interaction-strain-recovery'))
+})
+
+test('low interaction strain never increases the memory-based quota', () => {
+  const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
+  const wordRecords: IWordRecord[] = Array.from(
+    { length: 5 },
+    (_, index) => ({
+      word: `fluent-${index}`,
+      timeStamp: now - (4 - index) * 30,
+      dict: 'strain-low',
+      chapter: -1,
+      timing: [],
+      wrongCount: 0,
+      mistakes: {},
+      sourceMode: 'learn',
+      learnItemKind: 'acquisition',
+      typingTelemetry: {
+        telemetryVersion: 2,
+        firstKeyLatencyMs: 500,
+        attempts: [
+          {
+            startLatencyMs: 500,
+            durationMs: 1_000,
+            correctPrefixLength: 5,
+            result: 'clean',
+          },
+        ],
+      },
+    }),
+  )
+
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'strain-low',
+    wordRecords,
+    wordStates: [],
+    dictionaryWords: Array.from({ length: 100 }, (_, index) => `w${index}`),
+  })
+  const quota = decideDailyAcquisitionQuota(stats)
+
+  assert.equal(stats.strain.tier, 'low')
+  assert.equal(quota.tier, 'high')
+  assert.equal(quota.targetDailyNewWords, 20)
+  assert.equal(
+    quota.reasonCodes.includes('interaction-strain-recovery'),
+    false,
+  )
+})
 
 test('Learn P3 keeps the 20-word bootstrap target when review history is insufficient', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
