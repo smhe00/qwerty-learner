@@ -118,6 +118,19 @@ export function detectLearnSystemAnomalies(
       wordCount: number
     }
   >()
+  const savedCheckpointHistory = new Map<string, string[]>()
+  const checkpointKey = (checkpoint: {
+    index: number
+    isFinished: boolean
+    queueSignature: string
+    wordCount: number
+  }) =>
+    [
+      checkpoint.index,
+      checkpoint.isFinished ? 1 : 0,
+      checkpoint.wordCount,
+      checkpoint.queueSignature,
+    ].join('::')
   let singletonRun = 0
   let lastSingletonSessionId: string | null = null
 
@@ -227,12 +240,17 @@ export function detectLearnSystemAnomalies(
       singletonRun = 0
       lastSingletonSessionId = null
       if (event.action === 'save') {
-        lastSavedCheckpoint.set(event.sessionId, {
+        const checkpoint = {
           index: event.index,
           isFinished: event.isFinished,
           queueSignature: event.queueSignature,
           wordCount: event.wordCount,
-        })
+        }
+        lastSavedCheckpoint.set(event.sessionId, checkpoint)
+        const history =
+          savedCheckpointHistory.get(event.sessionId) ?? []
+        history.push(checkpointKey(checkpoint))
+        savedCheckpointHistory.set(event.sessionId, history)
       } else {
         const saved = lastSavedCheckpoint.get(event.sessionId)
         if (saved) {
@@ -243,11 +261,24 @@ export function detectLearnSystemAnomalies(
             event.index < saved.index
           const queueGrowthOnRestore =
             event.wordCount > saved.wordCount
+          const restoredKey = checkpointKey({
+            index: event.index,
+            isFinished: event.isFinished,
+            queueSignature: event.queueSignature,
+            wordCount: event.wordCount,
+          })
+          const latestKey = checkpointKey(saved)
+          const history =
+            savedCheckpointHistory.get(event.sessionId) ?? []
+          const staleExactMatch =
+            restoredKey !== latestKey &&
+            history.slice(0, -1).includes(restoredKey)
 
           if (
             terminalResurrection ||
             sameQueueRollback ||
-            queueGrowthOnRestore
+            queueGrowthOnRestore ||
+            staleExactMatch
           ) {
             anomalies.push({
               code: 'checkpoint-regression',
@@ -263,6 +294,7 @@ export function detectLearnSystemAnomalies(
                 restoredWordCount: event.wordCount,
                 sameQueue:
                   saved.queueSignature === event.queueSignature,
+                staleExactMatch,
               },
             })
           }
