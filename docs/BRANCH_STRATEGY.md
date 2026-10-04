@@ -19,7 +19,7 @@ All integrated product behavior belongs here:
 - spaced Review;
 - Review telemetry and learning context;
 - Review scheduler state;
-- encrypted EdgeOne cloud sync;
+- EdgeOne cloud sync;
 - future fork-only product features.
 
 New feature work should branch from `product/main` and merge back after its targeted Gate passes.
@@ -83,7 +83,9 @@ product/main
 Review schema, scheduler semantics, backup/restore behavior, and cloud synchronization must not evolve on separate long-lived branches.
 
 
-## Current production handoff
+## Historical production handoff
+
+The block below records the verified 2026-09-29 production handoff. It is historical and is not the Learn Alpha 1 release baseline. For the current Alpha release, see `ALPHA_RELEASE_BASELINE.md`.
 
 Verified on 2026-09-29:
 
