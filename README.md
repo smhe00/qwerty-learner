@@ -1,331 +1,230 @@
-<div align=center>
-<img  src="src/assets/logo.svg"/>
-</div>
+# Qwerty Learner — Learn Alpha
 
-<h1 align="center">
-  Qwerty Learner
-</h1>
+> 当前产品版本：`0.2.0-alpha.1`  
+> 集成产品主线：`product/main`  
+> 在线入口：<https://qwerty.kaiyi.cool/>
 
-<p align="center">
-  <a href="./docs/README_EN.md">English</a>
-  <a href="./docs/README_JP.md">日本語</a>
-</p>
+Qwerty Learner Learn Alpha 是基于开源项目
+[RealKai42/qwerty-learner](https://github.com/RealKai42/qwerty-learner)
+持续演进的学习版本。
 
-<p align="center">
-  为键盘工作者设计的单词记忆与英语肌肉记忆锻炼软件
-</p>
+当前产品保留原有 Typing 练习，同时新增独立的 **Learn 长期学习模式**，
+用于把“看过/打过单词”进一步转化为可验证的独立回忆和长期复习。
 
-<p align="center" style="display: flex; justify-content: center; gap: 10px;">
-  <a href="https://github.com/Realkai42/qwerty-learner/blob/master/LICENSE"><img src="https://img.shields.io/github/license/Realkai42/qwerty-learner" alt="License"></a>
-  <a><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"/></a>
-  <a><img src="https://img.shields.io/badge/Powered%20by-React-blue"/></a>
-  <a><img src="https://img.shields.io/github/stars/RealKai42/qwerty-learner"/></a>
-  <a><img src="https://img.shields.io/github/forks/RealKai42/qwerty-learner"/></a>
-</p>
-<div align=center>
-<a href="https://trendshift.io/repositories/3239" target="_blank" class="trendshift-badge"><img src="https://trendshift.io/api/badge/repositories/3239" alt="RealKai42%2Fqwerty-learner | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
-</div>
+本仓库当前处于 **受控 Alpha** 阶段：核心学习流程、数据边界和控制稳定性
+已经通过自动化 Gate，但长期学习效率与个体参数仍需要真实用户数据继续验证。
 
-<div align=center>
-<img  src="docs/Screenshot.png"/>
-</div>
+## 当前产品模型
 
-## 📸 在线访问
+### Typing
 
-**首选部署**: <https://qwerty.kaiyi.cool/>
-GitHub Pages: <https://realkai42.github.io/qwerty-learner/>
+Typing 保持原 Qwerty Learner 的章节练习逻辑，适合：
 
-镜像仓库:
-[GitCode: RealKai42/qwerty-learner](https://gitcode.com/RealKai42/qwerty-learner/overview)
-[Gitee: KaiyiWing/qwerty-learner](https://gitee.com/KaiyiWing/qwerty-learner)
-<br/>
-<br/>
+- 键盘输入训练；
+- 单词熟悉；
+- 发音、音标和释义辅助；
+- 章节化练习与原有 Typing 工作流。
 
-项目已发布 VSCode 插件版，一键启动、随时开始练习
-[VSCode Plugin Market](https://marketplace.visualstudio.com/items?itemName=Kaiyi.qwerty-learner)
-[GitHub](https://github.com/Realkai42/qwerty-learner-vscode)
+Typing 不直接修改 Learn 的长期记忆 scheduler。
 
-<br />
+### Learn
 
-## 快速部署
+Learn 管理长期学习：
 
-### Vercel
+```text
+新词 Acquisition
+Exposure
+  -> Supported Recall
+  -> Independent Recall
+  -> ACTIVE
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FRealKai42%2Fqwerty-learner)
+到期 Review
+Cold Probe
+  -> Rating Gate
+  -> Scheduler
+```
 
-#### 部署步骤
+核心原则：
 
-1. 更新 `Vercel Build & Development Settings` -> `Output Directory`："build"
-2. Click Deploy Button
+- 看着答案输入正确，不等于已经掌握；
+- 只有无提示、无错误、满足间隔要求的 Independent Recall 才能形成新的独立掌握证据；
+- 提示、强支架、Recovery Window 都可以改善训练体验，但不能降低长期掌握标准；
+- Due Review 优先于新增词。
 
-<br />
+## Learn Alpha 当前能力
 
-## ✨ 设计思想
+- Typing / Learn 一级模式分离；
+- 沪教版新初中英语 2027 词库作为默认词库（1751 词）；
+- 双语例句与语境提示；
+- 分阶段新词 Acquisition；
+- 到期长期 Review；
+- Hint 0/1/2/3；
+- Dynamic Scaffold S0/S1/S2/S3；
+- 基于具体错误位置的 targeted support；
+- Interaction Strain EWMA + hysteresis；
+- bounded Recovery Window；
+- 每日新词 quota 与 Learn workload plan；
+- Learn 专属统计；
+- 手工移出/恢复长期学习计划；
+- 本地备份/恢复；
+- 可选云账号与手工云同步。
 
-软件设计的目标群体为以英语作为主要工作语言的键盘工作者。部分人会出现输入母语时的打字速度快于英语的情况，因为多年的母语输入练就了非常坚固的肌肉记忆 💪，而英语输入的肌肉记忆相对较弱，易出现输入英语时“提笔忘字”的现象。
+## 控制稳定性
 
-同时为了巩固英语技能，也需要持续的背诵单词 📕，本软件将英语单词的记忆与英语键盘输入的肌肉记忆的锻炼相结合，可以在背诵单词的同时巩固肌肉记忆。
+Learn 的自适应学习控制不是无限自由变化的模型。
 
-为了避免造成错误的肌肉记忆，设计上如果用户单词输入错误则需要重新输入单词，尽可能确保用户维持正确的肌肉记忆。
+当前版本对关键控制量设置了明确边界：
 
-软件也对需要机考英语的人群有一定的帮助。
+```text
+strain                         in [0, 1]
+daily new-word target          <= 20
+Recovery Window                <= 2 elevated / <= 3 recovery
+Acquisition assistedCycles     <= 2
+Independent mastery admission  only from valid S3 evidence
+```
 
-**For Coder**：
+CI 中包含独立的 **Learn Control Stability Gate**，验证：
 
-内置了程序员工作常用单词的词库，方便练习工作中常用的单词、提高输入速度。也内置了诸多语言的 API 的练习，帮助以程序员快速熟悉常用的 API，更多语言的 API 正在逐步添加中...
+- EWMA BIBO boundedness；
+- hysteresis / no-chatter；
+- Acquisition finite termination；
+- Recovery Window bounded / non-recursive；
+- quota saturation；
+- due-first backlog behavior；
+- deterministic virtual-learner closed-loop regression；
+- 防止“通过过度帮助换取表面稳定”的效率回归。
 
-<div align=center>
-<img  src="https://github.com/Realkai42/qwerty-learner/blob/master/docs/coder.png"/>
-</div>
+这不等于已经证明对所有真实学生全局最优。Alpha 阶段的重点之一，
+就是用真实长期保持数据继续校准效率目标。
 
-<br />
-<br />
+## Alpha 学习目标
 
-## 🛠 功能列表
+产品最终追求的不是短期“正确率最高”，而是：
 
-### 词库
+```text
+在可接受的心理负担下
+用尽可能少的有效学习时间
+获得尽可能多的长期可独立回忆
+```
 
-内置了常用的 CET-4 、CET-6 、GMAT 、GRE 、IELTS 、SAT 、TOEFL 、考研英语、专业四级英语、专业八级英语，也有程序员常见英语单词以及多种编程语言 API 等词库。 尽可能满足大部分用户对单词记忆的需求，也非常欢迎社区贡献更多的词库。
-<br />
-<br />
+长期希望用类似下列指标评估策略：
 
-### 音标显示、发音功能
+```text
+7-day retained words / active learning hour
+30-day retained words / active learning hour
+```
 
-方便用户在记忆单词时，同时记忆读音与音标。
+当前版本尚未启用自动 Personal Calibration。控制参数仍使用经过约束的
+全局策略，避免在没有稳定性边界前进入高风险自适应参数学习。
 
-<div align=center>
-<img  src="https://github.com/Realkai42/qwerty-learner/blob/master/docs/phonetic.jpeg"/>
-</div>
-<br />
-<br />
+## Alpha 客户使用说明
 
-### 默写模式
+首次试用、数据说明、云同步限制和反馈重点请阅读：
 
-在用户完成一个章节的练习后，会弹出选项是否默写本章，方便用户巩固本章学习的单词。
+- [Alpha 客户使用说明](./docs/ALPHA_CUSTOMER_GUIDE_ZH.md)
 
-<div align=center>
-<img  src="https://github.com/Realkai42/qwerty-learner/blob/master/docs/dictation.png"/>
-</div>
-<br />
-<br />
+完整文档入口：
 
-### 速度、正确率显示
+- [文档索引](./docs/README.md)
+- [Learn 使用指南](./docs/LEARN_USER_GUIDE_V1.md)
+- [Learn 架构](./docs/LEARN_ARCHITECTURE_V1.md)
+- [云账号与同步说明](./docs/CLOUD_SYNC_USER_GUIDE.md)
 
-量化用户输入的速度和输入的正确率，让用户有感知的了解自己技能的提升
+## 数据与云同步
 
-<div align=center>
-<img  src="https://github.com/Realkai42/qwerty-learner/blob/master/docs/speed.jpeg"/>
-</div>
-<br />
-<br />
+产品采用 local-first 模型：
 
-## 如何贡献
+- 不登录也可以学习；
+- 本地 IndexedDB 是日常工作数据库；
+- 云同步是可选能力；
+- 当前云同步为手动上传/下载；
+- 云端存在 revision 冲突保护；
+- 同一账号只保留一个当前有效云会话；
+- 当前云快照 **不是端到端加密**。
 
-### 贡献代码
+当前备份格式：
 
-[Call for Contributor](https://github.com/Realkai42/qwerty-learner/issues/390)
-[贡献准则](./docs/CONTRIBUTING.md)
+```text
+qwerty-backup-v3
+```
 
-### 贡献词库
+并兼容恢复：
 
-[导入词典](./docs/toBuildDict.md)
+```text
+qwerty-dexie-gzip-v2
+```
 
-## 运行项目
+更详细的信息见
+[云账号与同步使用说明](./docs/CLOUD_SYNC_USER_GUIDE.md)。
 
-本项目是基于`React`开发的，需要 node 环境来运行。
+## Alpha 平台范围
 
-### 环境准备
+当前核心学习流程的自动化发布 Gate 以桌面 Chrome 环境为主要浏览器基线。
 
-1. NodeJS
-2. Git
-3. Yarn
+移动端当前主要提供产品介绍页面，**不是本次 Learn Alpha 的主要验证入口**。
+Alpha 用户建议使用桌面 Chrome / Edge 访问。
 
-> **验证是否已经拥有相关环境**
->
-> 1. 手动验证  
->    请在命令行下执行以下命令，查看是否有对应版本输出
->
->    ```sh
->    node --version
->    git --version
->    yarn --version
->    ```
->
-> 2. 脚本验证  
->    使用我们提供的脚本对所需环境进行验证，如果确实依赖项会自动安装
->    - Windows 用户可以直接执行 [pre-check.ps1](scripts/pre-check.ps1) 脚本
->    - MacOS 用户可以直接执行 [pre-check.sh](scripts/pre-check.sh) 脚本
+## 开发与验证
 
-如果有对应环境缺失，我们可以参考下列官方文档进行安装
+环境：
 
-> - [NodeJS](https://nodejs.org/en/download)
-> - [Git](https://git-scm.com/downloads)
-> - [yarn](https://classic.yarnpkg.com/lang/en/docs/install)
+- Node.js 20（CI 基线）；
+- Yarn；
+- Vite / React。
 
-### 手动安装
+启动：
 
-1. 在命令行中执行 `git clone https://github.com/RealKai42/qwerty-learner.git` 将项目拉取到本地, 如果不使用 git 可能因为缺少依赖而无法运行
-2. 在命令行中执行 `cd qwerty-learner`，进入项目根目录，执行`yarn install`来下载依赖。
-3. 执行`yarn start`来启动项目，项目默认地址为`http://localhost:5173/`
-4. 在浏览器中打开`http://localhost:5173/`来访问项目。
+```bash
+yarn install
+yarn dev
+```
 
-### 脚本执行
+构建：
 
-对于 Windows 用户，可以直接执行 [install.ps1](scripts/install.ps1) 脚本，来一键安装依赖并启动项目。
+```bash
+yarn build
+```
 
-1. 打开 powershell，定位到项目根目录中的`scripts`目录
-2. 在命令行中，执行`.\install.ps1`
-3. 等待脚本完成。
+关键集成 Gate 位于：
 
-> 备注
-> 脚本依赖`winget`来安装 node，仅在 Windows 10 1709（版本 16299）或更高版本上受支持！
+```text
+.github/workflows/review-gate.yml
+```
 
-对于 MacOS 用户，可以直接执行 [install.sh](scripts/install.sh) 脚本来一键安装依赖并启动项目
+目前 Gate 包含：
 
-1. 打开终端，并进入此项目文件夹
-2. 在命令行中执行 `scripts/install.sh`
-3. 等待脚本完成
+- lint；
+- Learn/Review domain tests；
+- formal model checker；
+- Learn Control Stability Gate；
+- Typing audio formal model；
+- FSRS shadow/G3 contracts；
+- Typing lifecycle browser gate；
+- production build/smoke；
+- multi-word Learn/Review browser gate。
 
-> 此脚本依赖于 `homebrew`，请确保自己电脑上可以执行`brew`命令
+## 分支约定
 
-## 🏆 荣誉
+长期集成产品主线：
 
-- Github 全球趋势榜上榜项目
-- V2EX 全站热搜项目
-- Gitee 全站推荐项目
-- [少数派首页推荐](https://sspai.com/post/67535)
-- GitCode 开源摘星计划-毕业项目（[G-Star 计划](https://gitcode.com/g-star)）
-- Gitee 最有价值开源项目（[GVP](https://gitee.com/gvp)）
+```text
+product/main
+```
 
-## 📕 词库列表
+`master` 用于保持与 upstream 基线的关系，不承载 fork-only 产品功能。
 
-- CET-4
-- CET-6
-- GMAT
-- GRE
-- IELTS
-- SAT
-- TOEFL
-- 考研英语
-- 专业四级英语
-- 专业八级英语
-- Coder Dict 程序员常用词
-- 高考
-- 中考
-- 商务英语
-- BEC
-- 人教版英语 3-9 年级
-- 王陆雅思王听力语料库 [@Saigyouji_WKKun](https://github.com/ggehuliang)
-- 日语常见词、N1 ～ N5 [@xiaojia](https://github.com/wetery)
-- 哈萨克语基础 3000 词(哈拼版) 来源于 [@Elgar](https://github.com/Elgar17) 由 [@Herbert He](https://github.com/HerbertHe) 通过 [哈拼](https://ha-pin.js.org) 技术支持
+具体约定见：
 
-如果您需要背诵其他词库，欢迎在 Issue 中提出
+- [Branch Strategy](./docs/BRANCH_STRATEGY.md)
 
-<br />
-<br />
+## 开源来源与许可证
 
-## 📗 API 词库
+本项目基于：
 
-- JavaScript API. [@sdu-gyf](https://github.com/sdu-gyf)
-- Node.js API. [@chrysalis1215](https://github.com/chrysalis1215)
-- Java API. [@darkSheep](https://github.com/darkSheep404)
-- Linux Command. [@归谜](https://github.com/vhxubo)
-- C#: List API [@nidbCN](https://github.com/nidbCN)
+- [RealKai42/qwerty-learner](https://github.com/RealKai42/qwerty-learner)
 
-目前 API 相关词库主要依赖于社区贡献，如果您想贡献自己需要的 API 词库，建议参考 [Issue #42](https://github.com/Realkai42/qwerty-learner/issues/40) [pr #67](https://github.com/Realkai42/qwerty-learner/pull/67) 贡献词典。
+并继续遵循仓库中的 GPL-3.0 许可证要求。原项目在词库、Typing 交互、
+UI 与开源社区方面提供了基础能力；本 fork 的 Learn、Review、控制稳定性、
+云同步和相关产品能力在此基础上持续演进。
 
-<br />
-<br />
-
-## 🎙 功能与建议
-
-目前项目处于开发初期，新功能正在持续添加中，如果你对软件有任何功能与建议，欢迎在 Issues 中提出
-
-项目的进展与未来计划在 [Issue](https://github.com/Realkai42/qwerty-learner/issues/42) 中详细介绍，内部也包含对未来功能的意见征询等，如果对 Qwerty Learner 的未来感兴趣，欢迎参与讨论。
-
-如果你也喜欢本软件的设计思想，欢迎提交 pr，非常感谢你对我们的支持！
-<br />
-<br />
-
-## 🏄‍♂️ 贡献指南
-
-如果您对本项目感兴趣，我们非常欢迎参与到项目的贡献中，我们会尽可能地提供帮助
-
-在贡献前，希望您阅读 [Issue #42](https://github.com/Realkai42/qwerty-learner/issues/42) 了解我们目前的开发计划，我们希望您能参与到"计划中"的工作亦或者 Issue 区 Label 为 "Help Wanted" 的工作，我们也非常欢迎您实现自己的想法。
-
-如果您确定了想要参与的工作，希望在有基本进展后提交 draft pr，我们可以在 draft pr 上进行讨论，也有利于听取其他 collaborator 的意见。
-
-再次感谢您对项目的贡献！🎉
-
-<br />
-
-## ☕️ Buy us a coffe
-
-非常感谢大家使用 Qwerty Learner, 目前该网站由三个人用业余时间在维护，我们希望在未来购买独立的域名(目前使用 vercel 部署)，并购买服务器以方便国内用户访问与云同步存储数据。
-
-如果您喜欢我们软件，非常感谢您对我们未来的支持!
-
-<img  src="https://github.com/Realkai42/qwerty-learner/blob/master/docs/alipay.png" width="200px"/>
-
-## 👨‍💻 Contributors
-
-<a href="https://github.com/Realkai42/qwerty-learner/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=Realkai42/qwerty-learner" />
-</a>
-
-## 🎁 大感谢
-
-### 灵感来源
-
-[Keybr](https://www.keybr.com/)
-以算法著称，功能非常完善的打字网站，根据用户输入每个字母的正确率与速度生成“伪英语”来帮助用户集中锻炼个别输入较慢的字母。并可以根据用户的输入记录生成完整的分析报告。
-
-也是本项目的核心灵感来源，Keybr 更多针对英语为母语的用户。在我使用 Keybr 练习打字时，觉得虽然生成的伪英语能够练习输入不顺畅的个别字母，但并不能提升非母语用户对单词的掌握，于是有了本项目。
-
-[Typing Academy](https://www.typing.academy)
-非常优秀的打字练习网站
-其优秀的 UI 风格，以及对速度、正确率的展示极大的影响了本项目的 UI 设计
-
-[react-code-game](https://github.com/webzhd/react-code-game)
-一个非常酷的开源项目，使用 ts 实现，可以在练习打字的同时练习 js 内置 api，项目中添加代码 api 的想法便来源自此项目。
-<br/><br/>
-
-### 开源项目
-
-[React](https://github.com/facebook/react) & [CRA](https://github.com/facebook/create-react-app)
-完整和详细的文档对初学者非常友好，React 系的文档是我目前自学过程中读过最棒的文档，几乎解决使用中大部分问题。非常感谢 React 对开源世界的贡献，为我们搭建了很好的基础，让初学者也能构建非常棒的软件。
-
-[Tailwindcss](https://tailwindcss.com/docs)
-如果没有 tailwind，这个项目还有再拖一阵子，tailwind 的设计思路解决了 css 入门选手对写复杂 css 的恐惧，让新手以一个非常舒适的方式去设计 UI。
-<br/><br/>
-
-### 数据来源
-
-字典数据来自于[kajweb](https://github.com/kajweb/dict)，项目爬取了常见的字典，也是这个项目让我看到了实现本项目的希望。
-
-语音数据来源于[有道词典](https://www.youdao.com/)开放 API，感谢有道的贡献让我们这种小项目也可以用上非常专业的发音资源，感谢有道团队以及考神团队为中国教育与中外交流做出的重要贡献。
-
-JS API 来自于[react-code-game](https://github.com/webzhd/react-code-game) ，感谢项目对 JS API 的爬取与预处理。
-<br/><br/>
-
-### 项目 Icon
-
-感谢[libregd](https://github.com/libregd)提供图标设计，给项目贡献了多个好看的图标设计方案，同时也在项目的进行中提供了设计、建议、未来规划等诸多支持
-
-### 感谢支持
-
-感谢[云谦](https://github.com/sorrycc)、[大圣](https://github.com/shengxinjing) 在项目只有十几个 star 时关注了项目，给项目推进下去的动力。
-
-<br/>
-
-也感谢在项目初期跟我讨论 idea、提供建议并时不时 Push 一下我的朋友们，没有你们这个 idea 可能还得再拖一年（🐶
-
-感谢 [Pear Mini](https://github.com/pearmini) ，最开始跟我讨论 idea 给我项目支持，也是他的项目让我相信即使是一个学生的 idea 实现出来也可以很酷。 他的 [Gossip](https://github.com/pearmini/gossip) 项目完全是 Next Generation Slides 级别的创意！
-
-感谢 [AZ](https://github.com/sailist)，鼓励我把 idea 实现出来（虽然我还是拖了很久），他无与伦比的行动力影响了我。他是一个非常酷的 lib maker，写了很多非常棒的 python 库，例如中文语音识别的框架[ASRFrame](https://github.com/sailist/ASRFrame)
-
-感谢 [Luyu Cheng](https://github.com/chengluyu)，我认识的最酷的前端大佬，给项目与我的前端自学提供了无尽的帮助。在项目初期帮助我进行技术选型，在开发阶段帮我解决技术问题，为我不知道如何实现的 feature 提供技术思路，也为项目贡献了很多非常受欢迎的 feature。
-
-## 🌟 Stargazers over time
-
-[![Stargazers over time](https://starchart.cc/Realkai42/qwerty-learner.svg)](https://starchart.cc/Realkai42/qwerty-learner)
+详见 [LICENSE](./LICENSE)。
