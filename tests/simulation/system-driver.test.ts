@@ -293,3 +293,54 @@ test('full VirtualLearnApp detects stale checkpoint restoration after refresh', 
   assert.ok(regression)
   assert.equal(regression.severity, 'high')
 })
+
+
+test('full VirtualLearnApp keeps due Review ahead of fresh Acquisition', async () => {
+  const app = new VirtualLearnApp({
+    words: Array.from(
+      { length: 12 },
+      (_, index) => word(`d${index}`),
+    ),
+  })
+  app.seedAdmittedWords(3)
+  app.makeSeededWordsDue(3)
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+  if (prepared.kind !== 'session') return
+  assert.equal(prepared.record.sessionKind, 'review')
+
+  const anomalies = detectLearnSystemAnomalies(app.events)
+  assert.equal(
+    anomalies.some(
+      (item) => item.code === 'due-work-bypassed',
+    ),
+    false,
+  )
+})
+
+test('full VirtualLearnApp blindly detects a due-first bypass mutation', async () => {
+  const app = new VirtualLearnApp({
+    words: Array.from(
+      { length: 12 },
+      (_, index) => word(`x${index}`),
+    ),
+    mutation: {
+      bypassDueFirst: true,
+    },
+  })
+  app.seedAdmittedWords(3)
+  app.makeSeededWordsDue(3)
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+  if (prepared.kind !== 'session') return
+  assert.equal(prepared.record.sessionKind, 'acquisition')
+
+  const anomalies = detectLearnSystemAnomalies(app.events)
+  const bypass = anomalies.find(
+    (item) => item.code === 'due-work-bypassed',
+  )
+  assert.ok(bypass)
+  assert.equal(bypass.severity, 'high')
+})
