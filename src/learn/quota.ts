@@ -17,6 +17,18 @@ export const learnAcquisitionQuotaPolicy = {
 
 export type LearnAcquisitionQuotaTier = 'low' | 'medium' | 'high'
 
+export type LearnAcquisitionQuotaPolicy = {
+  low: number
+  medium: number
+  high: number
+  minRatedEventsForAdaptation: number
+  minTodayColdProbeAttemptsForSignal: number
+  weakAgainRatePct: number
+  moderateAgainRatePct: number
+  weakColdProbePassRatePct: number
+  strongColdProbePassRatePct: number
+}
+
 export type LearnAcquisitionQuotaDecision = {
   policyVersion: typeof LEARN_ACQUISITION_QUOTA_POLICY_VERSION
   tier: LearnAcquisitionQuotaTier
@@ -53,8 +65,8 @@ function percentage(numerator: number, denominator: number): number | null {
 
 export function decideDailyAcquisitionQuota(
   stats: LearnStatsSnapshot,
+  policy: LearnAcquisitionQuotaPolicy = learnAcquisitionQuotaPolicy,
 ): LearnAcquisitionQuotaDecision {
-  const policy = learnAcquisitionQuotaPolicy
   const ratedEvents = stats.scheduler.ratedEvents30d
   const againRate30d = percentage(
     stats.scheduler.ratings30d.again,
