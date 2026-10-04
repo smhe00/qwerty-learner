@@ -13,10 +13,8 @@ import type { WordPronunciationIconRef } from '@/components/WordPronunciationIco
 import { WordPronunciationIcon } from '@/components/WordPronunciationIcon'
 import { EXPLICIT_SPACE } from '@/constants'
 import useKeySounds from '@/hooks/useKeySounds'
-import {
-  LEARN_ACQUISITION_POLICY_VERSION,
-  type LearnSessionKind,
-} from '@/learn/session'
+import { isLearnAcquisitionHintPolicyVersion } from '@/learn/acquisition'
+import type { LearnSessionKind } from '@/learn/session'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import { classifyTypingError } from '@/review/classifier'
 import type { TypingErrorClassification } from '@/review/classifier'
@@ -32,6 +30,7 @@ import type {
   ReviewPolicyShadowV1,
 } from '@/review/decision'
 import { evaluateReviewEvidence } from '@/review/evidence'
+import type { ReviewEvidenceV1 } from '@/review/evidence'
 import type { WordHistorySummary } from '@/review/features'
 import {
   chooseNextExerciseShadow,
@@ -59,10 +58,7 @@ import {
   decideWordInput,
   shouldPlayAutomaticPronunciation,
 } from '@/review/machine'
-import {
-  applyReviewOutcome,
-  completeLearningAcquisition,
-} from '@/review/repository'
+import { applyReviewOutcome } from '@/review/repository'
 import { decideReviewRating } from '@/review/state-machine'
 import type {
   RatingDecision,
@@ -101,6 +97,7 @@ export type WordFinishResult = {
   wrongCount: number
   classification: TypingErrorClassification
   reviewRatingDecision?: RatingDecision
+  reviewEvidence: ReviewEvidenceV1
   nextExerciseShadow?: ReviewPolicyShadowV1 | null
 }
 
@@ -326,7 +323,7 @@ export default function WordComponent({
     return (
       isLearnAttempt &&
       (policyVersion === CANONICAL_REVIEW_PROBE_POLICY_VERSION ||
-        policyVersion === LEARN_ACQUISITION_POLICY_VERSION ||
+        isLearnAcquisitionHintPolicyVersion(policyVersion) ||
         policyVersion === REVIEW_HINT_POLICY_VERSION)
     )
   }, [isLearnAttempt])
@@ -903,6 +900,7 @@ export default function WordComponent({
           wrongCount: wordState.wrongCount,
           classification,
           reviewRatingDecision,
+          reviewEvidence,
           nextExerciseShadow,
         }
         armSuccessFinishRelease(() => onFinish(result))
@@ -940,33 +938,24 @@ export default function WordComponent({
             reviewProgressReleased = true
             notifyFinished()
 
-            if (wordRecordId > 0) {
+            if (
+              wordRecordId > 0 &&
+              !isAcquisitionAttempt &&
+              reviewRatingDecision?.eligible
+            ) {
               const now = Math.floor(Date.now() / 1000)
-              if (isAcquisitionAttempt) {
-                void completeLearningAcquisition(
-                  currentDictInfo.id,
-                  word.name,
-                  now,
-                ).catch((error) => {
-                  console.error(
-                    'failed to persist acquisition learning state',
-                    error,
-                  )
-                })
-              } else if (reviewRatingDecision?.eligible) {
-                void applyReviewOutcome(
-                  currentDictInfo.id,
-                  word.name,
-                  reviewRatingDecision.rating,
-                  now,
-                  wordRecordId,
-                ).catch((error) => {
-                  console.error(
-                    'failed to persist derived review scheduler state',
-                    error,
-                  )
-                })
-              }
+              void applyReviewOutcome(
+                currentDictInfo.id,
+                word.name,
+                reviewRatingDecision.rating,
+                now,
+                wordRecordId,
+              ).catch((error) => {
+                console.error(
+                  'failed to persist derived review scheduler state',
+                  error,
+                )
+              })
             }
             return
           }
