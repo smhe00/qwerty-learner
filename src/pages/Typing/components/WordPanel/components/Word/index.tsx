@@ -6,6 +6,7 @@ import Notation from './Notation'
 import { TipAlert } from './TipAlert'
 import style from './index.module.css'
 import { initialWordState } from './type'
+import { decideSuccessInput } from './success'
 import type { WordState } from './type'
 import Tooltip from '@/components/Tooltip'
 import type { WordPronunciationIconRef } from '@/components/WordPronunciationIcon'
@@ -438,13 +439,17 @@ export default function WordComponent({
     (updateAction: WordUpdateAction) => {
       switch (updateAction.type) {
         case 'add': {
-          if (inputLockedRef.current) {
-            if (wordState.isFinished && updateAction.value === ' ') {
-              updateAction.event.preventDefault()
-              requestSuccessFastForward()
-            }
+          const successInputDecision = decideSuccessInput({
+            inputLocked: inputLockedRef.current,
+            isFinished: wordState.isFinished,
+            key: updateAction.value,
+          })
+          if (successInputDecision === 'fast-forward') {
+            updateAction.event.preventDefault()
+            requestSuccessFastForward()
             return
           }
+          if (successInputDecision === 'ignore') return
 
           if (isManagedReviewHintFlow()) {
             const hintDecision = decideReviewHintInput({
