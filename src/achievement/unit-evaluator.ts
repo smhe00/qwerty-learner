@@ -4,6 +4,11 @@ import type { IReviewWordState } from '@/review/types'
 import type { IWordRecord } from '@/utils/db/record'
 import type { Word } from '@/typings'
 
+export const SUPPORTED_UNIT_METRICS = new Set([
+  'new_unit_learn_started',
+  'chapter_long_term_mastery_ratio',
+])
+
 export type AchievementUnitMembership = {
   unitIndex: number
   words: string[]
