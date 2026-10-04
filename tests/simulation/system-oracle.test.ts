@@ -109,12 +109,15 @@ function createEntryHarness(input: {
   )
   const states: IReviewWordState[] = Array.from(
     { length: 19 },
-    (_, index) =>
-      createInitialReviewWordState(
+    (_, index) => {
+      const state = createInitialReviewWordState(
         'simulation',
         `w${index}`,
         now - 100,
-      ),
+      )
+      state.nextReviewAt = now + 86_400
+      return state
+    },
   )
   let nextSessionId = 1
 
