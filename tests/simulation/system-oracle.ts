@@ -40,6 +40,15 @@ export type LearnSystemTraceEvent =
       wordCount: number
     }
   | {
+      kind: 'acquisition-health'
+      pending: Array<{
+        word: string
+        phase: string
+        deferredReason: string | null
+        resumeAfter: number | null
+      }>
+    }
+  | {
       kind: 'waiting'
       reason:
         | 'deferred'
@@ -58,6 +67,7 @@ export type LearnSystemAnomaly = {
     | 'controller-driver-divergence'
     | 'checkpoint-regression'
     | 'due-work-bypassed'
+    | 'stranded-pending-acquisition'
   severity: 'medium' | 'high'
   eventIndex: number
   details: Record<string, number | string | boolean | null>
@@ -231,6 +241,27 @@ export function detectLearnSystemAnomalies(
             word: event.word,
             index: event.beforeIndex,
             sessionKind: event.sessionKind,
+          },
+        })
+      }
+      continue
+    }
+
+    if (event.kind === 'acquisition-health') {
+      const stranded = event.pending.filter(
+        (item) =>
+          item.phase === 'deferred' &&
+          item.resumeAfter === null,
+      )
+      for (const item of stranded) {
+        anomalies.push({
+          code: 'stranded-pending-acquisition',
+          severity: 'high',
+          eventIndex: index,
+          details: {
+            word: item.word,
+            phase: item.phase,
+            deferredReason: item.deferredReason,
           },
         })
       }
