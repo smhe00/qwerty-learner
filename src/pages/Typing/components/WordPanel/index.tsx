@@ -10,12 +10,9 @@ import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
 import {
   createLearnAcquisitionExercisePlanForState,
   createLearnAcquisitionState,
-  decideLearnAcquisitionTransition,
-  deferLearnAcquisitionForSpacing,
   getLearnAcquisitionScaffoldDecision,
-  hasSufficientIndependentSpacing,
-  projectLearnAcquisitionProgress,
 } from '@/learn/acquisition'
+import { resolveLearnAcquisitionCompletion } from '@/learn/progression'
 import { pruneLearnSessionWord } from '@/learn/lifecycle'
 import type { LearnSessionKind } from '@/learn/session'
 import {
@@ -321,84 +318,28 @@ export default function WordPanel() {
             currentWord.name
           ] ?? createLearnAcquisitionState()
 
-        let nextAcquisitionState
-        if (acquisitionState.phase === 'exposure') {
-          const guided = decideLearnAcquisitionTransition(
-            acquisitionState,
-            { kind: 'exposure-complete' },
-          )
-          nextAcquisitionState = decideLearnAcquisitionTransition(
-            guided,
-            { kind: 'guided-committed' },
-          )
-        } else if (acquisitionState.phase === 'guided') {
-          nextAcquisitionState = decideLearnAcquisitionTransition(
-            acquisitionState,
-            { kind: 'guided-committed' },
-          )
-        } else if (acquisitionState.phase === 'supported') {
-          nextAcquisitionState = decideLearnAcquisitionTransition(
-            acquisitionState,
-            { kind: 'supported-complete' },
-          )
-        } else if (acquisitionState.phase === 'independent') {
-          const independentEvidenceClean =
-            wrongCount === 0 &&
-            classification.cause === 'clean' &&
-            reviewEvidence.retrievalValidity === 'independent'
-
-          if (
-            independentEvidenceClean &&
-            !hasSufficientIndependentSpacing(acquisitionState)
-          ) {
-            nextAcquisitionState = deferLearnAcquisitionForSpacing(
-              acquisitionState,
-              Math.floor(Date.now() / 1000),
-            )
-          } else {
-            nextAcquisitionState = decideLearnAcquisitionTransition(
-              acquisitionState,
-              {
-                kind: 'independent-complete',
-                independentClean: independentEvidenceClean,
-                scaffoldHintPosition: lastWrongIndex,
-              },
-            )
-          }
-        } else {
-          console.error(
-            'Acquisition completion reached terminal state',
-            acquisitionState,
-          )
-          return
-        }
-
-        const projectedAcquisitionStates = {
-          ...(reviewModeInfo.reviewRecord?.acquisitionStates ?? {}),
-          [currentWord.name]: nextAcquisitionState,
-        }
-        const projection = projectLearnAcquisitionProgress({
+        const resolution = resolveLearnAcquisitionCompletion({
           queue: state.chapterData.words,
           currentIndex: state.chapterData.index,
           currentWord,
-          nextState: nextAcquisitionState,
-          acquisitionStates: projectedAcquisitionStates,
+          state: acquisitionState,
+          acquisitionStates:
+            reviewModeInfo.reviewRecord?.acquisitionStates ?? {},
+          wrongCount,
+          classificationCause: classification.cause,
+          retrievalValidity: reviewEvidence.retrievalValidity,
+          lastWrongIndex,
+          now: Math.floor(Date.now() / 1000),
         })
-
-        if (nextAcquisitionState.phase === 'independent') {
-          nextAcquisitionState = {
-            ...nextAcquisitionState,
-            independentInterveningItems:
-              projection.interveningItemsBeforeFollowUp ?? 0,
-          }
-        }
+        const nextAcquisitionState = resolution.nextState
+        const projection = resolution.projection
 
         setReviewModeInfo((old) => {
           if (!old.reviewRecord) return old
 
           const acquisitionStates = {
             ...(old.reviewRecord.acquisitionStates ?? {}),
-            [currentWord.name]: nextAcquisitionState,
+            ...resolution.acquisitionStates,
           }
           const exercisePlans = {
             ...(old.reviewRecord.exercisePlans ?? {}),
@@ -432,7 +373,7 @@ export default function WordPanel() {
           }
         })
 
-        if (nextAcquisitionState.phase === 'complete') {
+        if (resolution.shouldPersistAdmission) {
           const now = Math.floor(Date.now() / 1000)
           void completeLearningAcquisition(
             currentDictId,
