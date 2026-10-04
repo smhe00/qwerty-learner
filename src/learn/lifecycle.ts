@@ -77,9 +77,11 @@ export function pruneLearnSessionWord(
   const exercisePlans = { ...(record.exercisePlans ?? {}) }
   const reinforcementCounts = { ...(record.reinforcementCounts ?? {}) }
   const itemStates = { ...(record.itemStates ?? {}) }
+  const acquisitionStates = { ...(record.acquisitionStates ?? {}) }
   delete exercisePlans[word]
   delete reinforcementCounts[word]
   delete itemStates[word]
+  delete acquisitionStates[word]
 
   if (words.length === 0) {
     return {
@@ -95,6 +97,10 @@ export function pruneLearnSessionWord(
           : undefined,
       itemStates:
         Object.keys(itemStates).length > 0 ? itemStates : undefined,
+      acquisitionStates:
+        Object.keys(acquisitionStates).length > 0
+          ? acquisitionStates
+          : undefined,
     }
   }
 
@@ -117,5 +123,9 @@ export function pruneLearnSessionWord(
         : undefined,
     itemStates:
       Object.keys(itemStates).length > 0 ? itemStates : undefined,
+    acquisitionStates:
+      Object.keys(acquisitionStates).length > 0
+        ? acquisitionStates
+        : undefined,
   }
 }
