@@ -144,6 +144,7 @@ export function detectLearnSystemAnomalies(
         event.sessionKind === 'acquisition' &&
         event.batchSize === 1 &&
         event.uniqueWords === 1 &&
+        event.allowedNewWordsNow === 1 &&
         (event.unseenCount === null || event.unseenCount > 1)
 
       if (suspiciousSingleton) {
