@@ -7,6 +7,8 @@ on:
     paths:
       - 'src/achievement/**'
       - 'src/pages/Learn/components/LearnResultScreen.tsx'
+      - 'src/pages/Typing/components/WordPanel/components/Word/index.tsx'
+      - 'src/review/learning-context.ts'
       - 'src/resources/achievementCulture/**'
       - 'src/utils/db/**'
       - 'src/utils/backup.ts'
@@ -44,6 +46,8 @@ jobs:
           src/achievement
           src/resources/achievementCulture
           src/pages/Learn/components/LearnResultScreen.tsx
+          src/pages/Typing/components/WordPanel/components/Word/index.tsx
+          src/review/learning-context.ts
           src/utils/db/index.ts
           src/utils/backup.ts
           src/sync/snapshot.ts
@@ -52,7 +56,7 @@ jobs:
       - name: Bundle achievement domain tests
         run: |
           mkdir -p .achievement-test
-          npx esbuild             tests/achievement/domain.test.ts             tests/achievement/formal-model.test.ts             --bundle             --platform=node             --target=node20             --format=esm             --outdir=.achievement-test             --out-extension:.js=.mjs
+          npx esbuild tests/achievement/domain.test.ts tests/achievement/formal-model.test.ts tests/achievement/session.test.ts --bundle --platform=node --target=node20 --format=esm --outdir=.achievement-test --out-extension:.js=.mjs
 
       - name: Run achievement domain tests
         run: node --test .achievement-test/domain.test.mjs
