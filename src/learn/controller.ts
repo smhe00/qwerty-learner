@@ -16,7 +16,7 @@ export type LearnPreparationSessionSource =
   | 'acquisition'
 
 export type LearnPreparationWaitReason =
-  | 'spacing'
+  | 'deferred'
   | 'empty'
   | 'review-due'
   | 'workload-budget'
@@ -62,7 +62,7 @@ export type LearnPreparationDependencies<ErrorEvidence> = {
     words: Word[],
     freshLimit: number,
   ) => Promise<ReviewRecord | undefined>
-  getNextSpacingResumeAt: (
+  getNextDeferredResumeAt: (
     dictId: string,
   ) => Promise<number | undefined>
   decideQuota?: typeof decideDailyAcquisitionQuota
@@ -165,7 +165,7 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
   }
 
   const nextResumeAt =
-    await dependencies.getNextSpacingResumeAt(dictId)
+    await dependencies.getNextDeferredResumeAt(dictId)
   const diagnostics: LearnPreparationDiagnostics = {
     now,
     stats,
@@ -180,8 +180,8 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
       Math.ceil((nextResumeAt - now) / 60),
     )
     return wait(
-      'spacing',
-      `还有新词正在建立间隔记忆，约 ${minutes} 分钟后可继续独立回忆。`,
+      'deferred',
+      `还有新词需要稍后继续巩固，约 ${minutes} 分钟后可继续。`,
       diagnostics,
     )
   }
