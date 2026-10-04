@@ -1531,3 +1531,55 @@ The V1 decisions are:
 This architecture is the prerequisite for safely moving from an error-word
 Review feature to an all-word long-term Learn system while preserving the
 original Typing experience.
+
+
+---
+
+## Dynamic Scaffold V1
+
+Learn acquisition now owns a learner-invisible scaffold controller:
+
+```text
+phase + session-start Interaction Strain + assistedCycles
+                         ↓
+               Dynamic Scaffold V1
+                         ↓
+              S0 / S1 / S2 / S3
+```
+
+The levels are internal policy, not learner-facing labels.
+
+| Level | Role | Presentation |
+|---|---|---|
+| S0 | Exposure | answer visible + automatic audio + phonetic |
+| S1 | Strong Support | letters hidden + automatic audio + phonetic |
+| S2 | Light Support | letters hidden + semantic context, no automatic audio/phonetic |
+| S3 | Independent | letters hidden + no automatic audio/phonetic + probe semantics |
+
+V1 deliberately reuses existing presentation primitives. It does not add a
+new partial-mask UI or modify the shared Typing input engine.
+
+### Controller rules
+
+- Exposure/Guided are always S0.
+- Supported defaults to S2.
+- Elevated/recovery Interaction Strain softens Supported to S1.
+- A prior failed/assisted Independent cycle (`assistedCycles > 0`) softens
+  the next Supported attempt to S1.
+- Independent is always S3, regardless of strain or prior difficulty.
+- Strain is frozen at acquisition-session creation so the same queued attempt
+  cannot change presentation underneath the learner. In-session difficulty
+  still adapts immediately through `assistedCycles`.
+
+### Safety invariants
+
+```text
+Typing never reads scaffold level
+Supported scaffold never admits durable mastery
+Independent admission => S3
+S3 + clean + independent evidence + spacing eligible => may admit
+any assistance/error/insufficient spacing => no durable admission
+```
+
+The scaffold controller therefore changes *how much help Learn gives*, not the
+scheduler truth or the admission boundary.
