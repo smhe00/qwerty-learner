@@ -530,3 +530,101 @@ test('TLC ordinary index advance is accepted as semantic progress', () => {
     false,
   )
 })
+
+
+const droppedProjectionCounterexample = `
+Error: Invariant ProjectionMatches is violated.
+
+State 1: <Initial predicate>
+/\\ phase = "active"
+/\\ success = FALSE
+/\\ beforeIndex = 0
+/\\ actualIndex = 0
+/\\ expectedIndex = 0
+/\\ actualQueueVersion = 0
+/\\ expectedQueueVersion = 0
+/\\ actualFinished = FALSE
+/\\ expectedFinished = FALSE
+/\\ beforeItemVersion = 0
+/\\ afterItemVersion = 0
+
+State 2: <ResolveExpectedAdvance line 28, col 1 to line 42, col 55 of module ProjectionConsistency>
+/\\ phase = "resolved"
+/\\ success = TRUE
+/\\ beforeIndex = 0
+/\\ actualIndex = 0
+/\\ expectedIndex = 1
+/\\ actualQueueVersion = 0
+/\\ expectedQueueVersion = 1
+/\\ actualFinished = FALSE
+/\\ expectedFinished = FALSE
+/\\ beforeItemVersion = 0
+/\\ afterItemVersion = 1
+`
+
+const productionProjectionTrace = `
+State 1: <Initial predicate>
+/\\ phase = "active"
+/\\ success = FALSE
+/\\ beforeIndex = 0
+/\\ actualIndex = 0
+/\\ expectedIndex = 0
+/\\ actualQueueVersion = 0
+/\\ expectedQueueVersion = 0
+/\\ actualFinished = FALSE
+/\\ expectedFinished = FALSE
+/\\ beforeItemVersion = 0
+/\\ afterItemVersion = 0
+
+State 2: <ResolveExpectedAdvance line 28, col 1 to line 42, col 55 of module ProjectionConsistency>
+/\\ phase = "resolved"
+/\\ success = TRUE
+/\\ beforeIndex = 0
+/\\ actualIndex = 1
+/\\ expectedIndex = 1
+/\\ actualQueueVersion = 1
+/\\ expectedQueueVersion = 1
+/\\ actualFinished = FALSE
+/\\ expectedFinished = FALSE
+/\\ beforeItemVersion = 0
+/\\ afterItemVersion = 1
+`
+
+test('TLC dropped projection maps to controller-driver-divergence', () => {
+  const trace = tlcStatesToLearnTrace(
+    parseTlcCounterexample(droppedProjectionCounterexample),
+    'projection-drop',
+  )
+
+  const anomalies = detectLearnSystemAnomalies(trace.events)
+  const divergence = anomalies.find(
+    (item) =>
+      item.code === 'controller-driver-divergence',
+  )
+
+  assert.ok(divergence)
+  assert.equal(divergence.severity, 'high')
+  assert.equal(divergence.details.actualIndex, 0)
+  assert.equal(divergence.details.expectedIndex, 1)
+  assert.equal(
+    anomalies.some(
+      (item) => item.code === 'success-without-progress',
+    ),
+    false,
+  )
+})
+
+test('TLC production projection stays aligned with controller expectation', () => {
+  const trace = tlcStatesToLearnTrace(
+    parseTlcCounterexample(productionProjectionTrace),
+    'projection-production',
+  )
+
+  assert.equal(
+    detectLearnSystemAnomalies(trace.events).some(
+      (item) =>
+        item.code === 'controller-driver-divergence',
+    ),
+    false,
+  )
+})
