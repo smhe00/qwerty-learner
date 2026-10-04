@@ -8,6 +8,11 @@ import {
 import { buildAchievementVisibleProgress } from '../../src/achievement/progress'
 import { resolveAchievementCeremonyPresentation } from '../../src/achievement/presentation'
 import { achievementDefinitions } from '../../src/resources/achievementCulture'
+import {
+  buildAchievementUnitMembership,
+  evaluateChapterLongTermMasteryRatio,
+  evaluateNewUnitLearnStarted,
+} from '../../src/achievement/unit-evaluator'
 import { createInitialReviewWordState } from '../../src/review/types'
 import type { AchievementCondition } from '../../src/resources/achievementCulture'
 import type { IWordRecord } from '../../src/utils/db/record'
@@ -530,4 +535,77 @@ test('achievement ceremony contract maps all presentation levels deterministical
     resolveAchievementCeremonyPresentation(ceremony).layout,
     'ceremony',
   )
+})
+
+
+test('unit achievement membership follows canonical dictionary order in 20-word units', () => {
+  const words = Array.from({ length: 25 }, (_, index) => ({
+    name: `u${index}`,
+    trans: [],
+    usphone: '',
+    ukphone: '',
+  }))
+  const membership = buildAchievementUnitMembership(words)
+  assert.equal(membership.get('u0')?.unitIndex, 0)
+  assert.equal(membership.get('u19')?.unitIndex, 0)
+  assert.equal(membership.get('u20')?.unitIndex, 1)
+})
+
+test('new-unit achievement fires only on the first live Learn attempt in that unit', () => {
+  const words = Array.from({ length: 25 }, (_, index) => ({
+    name: `u${index}`,
+    trans: [],
+    usphone: '',
+    ukphone: '',
+  }))
+  const first = record({ id: 600, timeStamp: 100, word: 'u20' })
+  const second = record({ id: 601, timeStamp: 200, word: 'u21' })
+
+  assert.equal(
+    evaluateNewUnitLearnStarted({
+      current: first,
+      records: [first],
+      dictionaryWords: words,
+    }),
+    1,
+  )
+  assert.equal(
+    evaluateNewUnitLearnStarted({
+      current: second,
+      records: [first, second],
+      dictionaryWords: words,
+    }),
+    0,
+  )
+})
+
+test('chapter mastery ratio uses Learn mastery contract and excludes manual exclusions from denominator', () => {
+  const words = Array.from({ length: 20 }, (_, index) => ({
+    name: `c${index}`,
+    trans: [],
+    usphone: '',
+    ukphone: '',
+  }))
+  const states = Array.from({ length: 16 }, (_, index) => ({
+    ...createInitialReviewWordState('test', `c${index}`, 100),
+    lastOutcome: 'good' as const,
+    schedulerState: {
+      kind: 'basic-v2' as const,
+      stage: 5,
+      intervalDays: 30,
+    },
+  }))
+  states.push({
+    ...createInitialReviewWordState('test', 'c16', 100),
+    lifecycle: 'excluded',
+    exclusion: { reason: 'manual', excludedAt: 200 },
+  })
+
+  const ratio = evaluateChapterLongTermMasteryRatio({
+    word: 'c0',
+    dictionaryWords: words,
+    states,
+  })
+
+  assert.equal(ratio, 16 / 19)
 })
