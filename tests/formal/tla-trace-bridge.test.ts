@@ -424,3 +424,109 @@ test('TLC terminal checkpoint resurrection is classified by the same oracle', ()
   assert.equal(regression.details.savedFinished, true)
   assert.equal(regression.details.restoredFinished, false)
 })
+
+
+const silentProgressCounterexample = `
+Error: Invariant SuccessfulAttemptHasEffect is violated.
+
+State 1: <Initial predicate>
+/\\ phase = "active"
+/\\ success = FALSE
+/\\ beforeIndex = 0
+/\\ afterIndex = 0
+/\\ beforeItemVersion = 0
+/\\ afterItemVersion = 0
+/\\ finished = FALSE
+
+State 2: <ApplySilentNoop line 48, col 1 to line 57, col 52 of module ProgressSemantics>
+/\\ phase = "resolved"
+/\\ success = TRUE
+/\\ beforeIndex = 0
+/\\ afterIndex = 0
+/\\ beforeItemVersion = 0
+/\\ afterItemVersion = 0
+/\\ finished = FALSE
+`
+
+const retryProgressTrace = `
+State 1: <Initial predicate>
+/\\ phase = "active"
+/\\ success = FALSE
+/\\ beforeIndex = 0
+/\\ afterIndex = 0
+/\\ beforeItemVersion = 0
+/\\ afterItemVersion = 0
+/\\ finished = FALSE
+
+State 2: <ApplyRetry line 31, col 1 to line 39, col 52 of module ProgressSemantics>
+/\\ phase = "resolved"
+/\\ success = TRUE
+/\\ beforeIndex = 0
+/\\ afterIndex = 0
+/\\ beforeItemVersion = 0
+/\\ afterItemVersion = 1
+/\\ finished = FALSE
+`
+
+const advanceProgressTrace = `
+State 1: <Initial predicate>
+/\\ phase = "active"
+/\\ success = FALSE
+/\\ beforeIndex = 0
+/\\ afterIndex = 0
+/\\ beforeItemVersion = 0
+/\\ afterItemVersion = 0
+/\\ finished = FALSE
+
+State 2: <ApplyAdvance line 22, col 1 to line 29, col 52 of module ProgressSemantics>
+/\\ phase = "resolved"
+/\\ success = TRUE
+/\\ beforeIndex = 0
+/\\ afterIndex = 1
+/\\ beforeItemVersion = 0
+/\\ afterItemVersion = 0
+/\\ finished = FALSE
+`
+
+test('TLC silent successful no-op maps to success-without-progress', () => {
+  const trace = tlcStatesToLearnTrace(
+    parseTlcCounterexample(silentProgressCounterexample),
+    'silent-progress-noop',
+  )
+
+  const anomalies = detectLearnSystemAnomalies(trace.events)
+  const stuck = anomalies.find(
+    (item) => item.code === 'success-without-progress',
+  )
+
+  assert.ok(stuck)
+  assert.equal(stuck.severity, 'high')
+})
+
+test('TLC retry at same index is accepted when item state changes', () => {
+  const trace = tlcStatesToLearnTrace(
+    parseTlcCounterexample(retryProgressTrace),
+    'progress-retry',
+  )
+
+  assert.equal(
+    detectLearnSystemAnomalies(trace.events).some(
+      (item) => item.code === 'success-without-progress',
+    ),
+    false,
+  )
+})
+
+test('TLC ordinary index advance is accepted as semantic progress', () => {
+  const trace = tlcStatesToLearnTrace(
+    parseTlcCounterexample(advanceProgressTrace),
+    'progress-advance',
+  )
+
+  assert.equal(
+    detectLearnSystemAnomalies(trace.events).some(
+      (item) => item.code === 'success-without-progress',
+    ),
+    false,
+  )
+})
