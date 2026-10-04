@@ -647,3 +647,109 @@ test('F3 simulation blindly detects terminal stale checkpoint resurrection', asy
   assert.equal(regression.details.savedFinished, true)
   assert.equal(regression.details.restoredFinished, false)
 })
+
+
+test('F4 production Review success always advances, finishes, or changes item state', async () => {
+  const app = new VirtualLearnApp({
+    words: Array.from(
+      { length: 5 },
+      (_, index) => word(`f4-review-${index}`),
+    ),
+  })
+  app.seedAdmittedWords(3)
+  app.makeSeededWordsDue(3)
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+  if (prepared.kind !== 'session') return
+  assert.equal(prepared.record.sessionKind, 'review')
+
+  assert.equal(app.completeCurrentReviewClean(), true)
+
+  const anomalies = detectLearnSystemAnomalies(app.events)
+  assert.equal(
+    anomalies.some(
+      (item) => item.code === 'success-without-progress',
+    ),
+    false,
+  )
+})
+
+test('F4 production Acquisition success can stay on the same index when item state progresses', async () => {
+  const app = new VirtualLearnApp({
+    words: [word('f4-acquisition')],
+  })
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+  if (prepared.kind !== 'session') return
+  assert.equal(prepared.record.sessionKind, 'acquisition')
+
+  assert.equal(app.completeCurrentAcquisitionClean(), true)
+
+  const attempt = app.events.find(
+    (event) =>
+      event.kind === 'attempt-completed' &&
+      event.word === 'f4-acquisition',
+  )
+  assert.ok(attempt)
+  if (attempt.kind !== 'attempt-completed') return
+  assert.notEqual(
+    attempt.beforeItemStateSignature,
+    attempt.afterItemStateSignature,
+  )
+
+  assert.equal(
+    detectLearnSystemAnomalies(app.events).some(
+      (item) => item.code === 'success-without-progress',
+    ),
+    false,
+  )
+})
+
+test('F4 simulation detects a successful Review attempt that silently commits no semantic progress', async () => {
+  const app = new VirtualLearnApp({
+    words: Array.from(
+      { length: 5 },
+      (_, index) => word(`f4-stuck-review-${index}`),
+    ),
+    mutation: {
+      silentNoopAtInteraction: 1,
+    },
+  })
+  app.seedAdmittedWords(3)
+  app.makeSeededWordsDue(3)
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+  assert.equal(app.completeCurrentReviewClean(), true)
+
+  const anomalies = detectLearnSystemAnomalies(app.events)
+  const stuck = anomalies.find(
+    (item) => item.code === 'success-without-progress',
+  )
+  assert.ok(stuck)
+  assert.equal(stuck.severity, 'high')
+  assert.equal(stuck.details.sessionKind, 'review')
+})
+
+test('F4 simulation detects a successful Acquisition attempt with neither projection nor item-state progress', async () => {
+  const app = new VirtualLearnApp({
+    words: [word('f4-stuck-acquisition')],
+    mutation: {
+      silentNoopAtInteraction: 1,
+    },
+  })
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+  assert.equal(app.completeCurrentAcquisitionClean(), true)
+
+  const anomalies = detectLearnSystemAnomalies(app.events)
+  const stuck = anomalies.find(
+    (item) => item.code === 'success-without-progress',
+  )
+  assert.ok(stuck)
+  assert.equal(stuck.severity, 'high')
+  assert.equal(stuck.details.sessionKind, 'acquisition')
+})
