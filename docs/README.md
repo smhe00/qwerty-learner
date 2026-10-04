@@ -1,4 +1,4 @@
-# Qwerty Learner 文档索引
+# Qwerty Plus 文档索引
 
 > 发布基线：Learn Alpha 1 / `0.2.0-alpha.1`
 >
