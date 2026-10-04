@@ -6,6 +6,7 @@ on:
       - product/main
     paths:
       - 'src/achievement/**'
+      - 'src/pages/Learn/components/LearnResultScreen.tsx'
       - 'src/resources/achievementCulture/**'
       - 'src/utils/db/**'
       - 'src/utils/backup.ts'
@@ -42,6 +43,7 @@ jobs:
           yarn eslint
           src/achievement
           src/resources/achievementCulture
+          src/pages/Learn/components/LearnResultScreen.tsx
           src/utils/db/index.ts
           src/utils/backup.ts
           src/sync/snapshot.ts
