@@ -91,6 +91,12 @@ export default function LearnPage() {
 
     const prepare = async () => {
       try {
+        // Repair lifecycle/admission state before restoring any unfinished
+        // session. Otherwise a stale Review checkpoint created by the old
+        // premature-admission bug can bypass bootstrap and run again.
+        await bootstrapReviewWordStatesForDictionary(dictId)
+        if (!isCurrent()) return
+
         const unfinished = await getLatestReviewRecord(dictId)
         if (!isCurrent()) return
 
@@ -98,9 +104,6 @@ export default function LearnPage() {
           enterSession(unfinished)
           return
         }
-
-        await bootstrapReviewWordStatesForDictionary(dictId)
-        if (!isCurrent()) return
 
         let record = await generateLearnReviewRecord(
           dictId,
