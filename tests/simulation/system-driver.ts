@@ -173,6 +173,42 @@ export class VirtualLearnApp {
     this.mutation = input.mutation ?? {}
   }
 
+  seedAdmittedWords(count: number) {
+    const bounded = Math.min(
+      Math.max(0, Math.floor(count)),
+      this.words.length,
+    )
+
+    for (let index = 0; index < bounded; index += 1) {
+      const word = this.words[index]
+      if (
+        this.wordStates.some(
+          (state) => state.word === word.name,
+        )
+      ) {
+        continue
+      }
+
+      this.wordRecords.push(
+        makeAcquisitionRecord({
+          id: this.nextWordRecordId++,
+          word: word.name,
+          now: this.now - bounded + index,
+          policyVersion:
+            LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION,
+          spacingEligible: true,
+        }),
+      )
+      const state = createInitialReviewWordState(
+        'simulation',
+        word.name,
+        this.now - bounded + index,
+      )
+      state.nextReviewAt = this.now + DAY_SECONDS
+      this.wordStates.push(state)
+    }
+  }
+
   private sessionById(id: number | undefined) {
     if (id === undefined) return undefined
     return this.sessions.find((session) => session.id === id)
