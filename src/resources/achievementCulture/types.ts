@@ -24,7 +24,7 @@ export type AchievementCategory =
   | 'craft'
   | 'hidden'
 
-export type AchievementRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'hidden'
+export type AchievementRarity = 'common' | 'rare' | 'epic' | 'legendary'
 
 export type CultureType =
   | 'poetry'
@@ -96,6 +96,12 @@ export interface AchievementDefinition {
   themes: SpiritThemeId[]
   hidden: boolean
   enabled: boolean
+  unlockPolicy: 'once'
+  presentation: {
+    rollout: 'p0' | 'p1' | 'p2'
+    progress: 'visible' | 'near_only' | 'hidden'
+    ceremony: 'quiet' | 'settlement' | 'spotlight' | 'ceremony'
+  }
   condition: AchievementCondition
   culture: AchievementCultureBinding
   copy: {
@@ -107,5 +113,7 @@ export interface AchievementDefinition {
     symbol: string
     scene: string
     illustrationPrompt: string
+    paletteMood: string
+    material: string
   }
 }
