@@ -80,6 +80,7 @@ function previousSameWordRecords(
   const currentId = context.current.id
   return recordsThroughCurrent(context).filter(
     (record) =>
+      record.dict === context.current.dict &&
       record.word === context.current.word &&
       (currentId === undefined || record.id !== currentId),
   )
@@ -182,7 +183,9 @@ function wordSuccessAcrossIncreasingIntervals(
   context: AchievementMetricContext,
 ): number {
   const records = recordsThroughCurrent(context).filter(
-    (record) => record.word === context.current.word,
+    (record) =>
+      record.dict === context.current.dict &&
+      record.word === context.current.word,
   )
 
   let lastActiveAt: number | undefined
