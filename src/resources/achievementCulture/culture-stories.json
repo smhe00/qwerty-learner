@@ -1,0 +1,343 @@
+[
+  {
+    "id": "CUL_ZIZHITONGJIAN_001",
+    "type": "historical_story",
+    "title": "孙权劝学",
+    "text": "卿今当涂掌事，不可不学！",
+    "source": "《资治通鉴·孙权劝学》",
+    "author": "司马光",
+    "era": "北宋",
+    "themes": [
+      "growth",
+      "courage"
+    ],
+    "studentMeaning": "吕蒙从“军中事务繁忙”到主动学习，后来让鲁肃刮目相看。",
+    "storySummary": "孙权劝吕蒙学习，吕蒙开始读书后见识大进，鲁肃惊叹他已非昔日吴下阿蒙。",
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material",
+        "historical_context"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "书卷与江东战旗",
+      "scene": "孙权劝吕蒙学习，吕蒙开始读书后见识大进，鲁肃惊叹他已非昔日吴下阿蒙。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_ZIZHITONGJIAN_002",
+    "type": "historical_story",
+    "title": "刮目相待",
+    "text": "士别三日，即更刮目相待。",
+    "source": "《资治通鉴·孙权劝学》",
+    "author": "司马光",
+    "era": "北宋",
+    "themes": [
+      "growth",
+      "recovery"
+    ],
+    "studentMeaning": "人的能力会变化，不应被过去的表现永久定义。",
+    "storySummary": "吕蒙学习后能力明显提升，鲁肃重新认识了他。",
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material",
+        "historical_context"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "旧印象裂开，新卷轴展开",
+      "scene": "吕蒙学习后能力明显提升，鲁肃重新认识了他。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_LIEZI_001",
+    "type": "historical_story",
+    "title": "愚公移山",
+    "text": "虽我之死，有子存焉；子又生孙，孙又生子。",
+    "source": "《列子·汤问》",
+    "author": "列子相关文本",
+    "era": "先秦至魏晋",
+    "themes": [
+      "perseverance",
+      "long_view"
+    ],
+    "studentMeaning": "面对很大的目标，可以把它拆成一代又一代的小行动。",
+    "storySummary": "愚公面对两座大山没有因工程巨大而放弃，而是选择持续行动。",
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material",
+        "historical_context"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "山路、扁担、晨光",
+      "scene": "愚公面对两座大山没有因工程巨大而放弃，而是选择持续行动。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_LIEZI_002",
+    "type": "historical_story",
+    "title": "两小儿辩日",
+    "text": "孔子不能决也。",
+    "source": "《列子·汤问》",
+    "author": "列子相关文本",
+    "era": "先秦至魏晋",
+    "themes": [
+      "curiosity",
+      "courage"
+    ],
+    "studentMeaning": "敢于提问，也敢于承认暂时不知道，是求知的重要部分。",
+    "storySummary": "两个孩子从不同观察出发争论太阳远近，孔子也没有强作结论。",
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material",
+        "historical_context"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "两个少年、太阳与刻度",
+      "scene": "两个孩子从不同观察出发争论太阳远近，孔子也没有强作结论。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_SHIJI_001",
+    "type": "historical_person",
+    "title": "司马迁",
+    "text": "究天人之际，通古今之变，成一家之言。",
+    "source": "《报任安书》",
+    "author": "司马迁",
+    "era": "西汉",
+    "themes": [
+      "long_view",
+      "resilience"
+    ],
+    "studentMeaning": "把长期困难转化成完成一件真正重要作品的动力。",
+    "storySummary": "司马迁经历巨大人生挫折后，仍坚持完成《史记》。",
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "medium",
+      "usage": [
+        "cultural_exposure",
+        "writing_material",
+        "historical_context"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "竹简、史册、长夜灯火",
+      "scene": "司马迁经历巨大人生挫折后，仍坚持完成《史记》。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_JINSHU_001",
+    "type": "historical_story",
+    "title": "闻鸡起舞",
+    "text": "闻荒鸡鸣，蹴琨觉，曰：此非恶声也。因起舞。",
+    "source": "《晋书·祖逖传》",
+    "author": "房玄龄等",
+    "era": "唐修晋史",
+    "themes": [
+      "perseverance",
+      "courage"
+    ],
+    "studentMeaning": "把清晨的一次提醒变成长期训练的起点。",
+    "storySummary": "祖逖与刘琨年轻时志向远大，听到鸡鸣便起身练习。",
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "medium",
+      "usage": [
+        "cultural_exposure",
+        "writing_material",
+        "historical_context"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "晨曦、长剑、鸡鸣",
+      "scene": "祖逖与刘琨年轻时志向远大，听到鸡鸣便起身练习。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_SONGSHI_001",
+    "type": "historical_story",
+    "title": "程门立雪",
+    "text": "游酢、杨时见程颐于洛，时盖年四十矣。",
+    "source": "《宋史·杨时传》",
+    "author": "脱脱等",
+    "era": "元",
+    "themes": [
+      "perseverance",
+      "curiosity"
+    ],
+    "studentMeaning": "真正重视学习的人，愿意为一次请教付出耐心。",
+    "storySummary": "杨时等候老师讲学，留下尊师求学的典故。",
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "medium",
+      "usage": [
+        "cultural_exposure",
+        "writing_material",
+        "historical_context"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "雪地、书院门、竹简",
+      "scene": "杨时等候老师讲学，留下尊师求学的典故。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_SANGUOZHI_001",
+    "type": "historical_story",
+    "title": "曹冲称象",
+    "text": "冲少聪察岐嶷，生五六岁，智意所及，有若成人之智。",
+    "source": "《三国志·魏书·邓哀王冲传》",
+    "author": "陈寿",
+    "era": "西晋",
+    "themes": [
+      "curiosity",
+      "craft"
+    ],
+    "studentMeaning": "遇到看似没有工具可解的问题，可以换一种表示方法。",
+    "storySummary": "曹冲用船吃水深浅把大象重量转化为可称量的石块重量。",
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "medium",
+      "usage": [
+        "cultural_exposure",
+        "writing_material",
+        "historical_context"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "木船、大象、水位刻线",
+      "scene": "曹冲用船吃水深浅把大象重量转化为可称量的石块重量。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_SHISHUO_001",
+    "type": "historical_story",
+    "title": "咏雪",
+    "text": "未若柳絮因风起。",
+    "source": "《世说新语·言语》",
+    "author": "刘义庆编",
+    "era": "南朝宋",
+    "themes": [
+      "curiosity",
+      "craft"
+    ],
+    "studentMeaning": "好的表达来自观察，也来自不断比较哪一种说法更准确。",
+    "storySummary": "谢家子弟雪日联句，以不同比喻描写大雪。",
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material",
+        "historical_context"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "雪、庭院、柳絮",
+      "scene": "谢家子弟雪日联句，以不同比喻描写大雪。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_MENGZI_STORY_001",
+    "type": "historical_story",
+    "title": "学弈",
+    "text": "虽与之俱学，弗若之矣。",
+    "source": "《孟子·告子上》",
+    "author": "孟子及其弟子",
+    "era": "先秦",
+    "themes": [
+      "focus",
+      "self_mastery"
+    ],
+    "studentMeaning": "看起来都在学习，注意力是否真正投入会产生巨大差别。",
+    "storySummary": "两人同时跟弈秋学棋，一人专心，一人分神，最终效果不同。",
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material",
+        "historical_context"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "棋盘、两束不同方向的目光",
+      "scene": "两人同时跟弈秋学棋，一人专心，一人分神，最终效果不同。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_ZHANGUO_001",
+    "type": "historical_story",
+    "title": "一鸣惊人",
+    "text": "此鸟不飞则已，一飞冲天；不鸣则已，一鸣惊人。",
+    "source": "《史记·滑稽列传》",
+    "author": "司马迁",
+    "era": "西汉",
+    "themes": [
+      "growth",
+      "long_view"
+    ],
+    "studentMeaning": "有些成长需要沉淀，真正准备好时会出现跃迁。",
+    "storySummary": "“一鸣惊人”后来常用来形容长期沉潜后表现突出。",
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "medium",
+      "usage": [
+        "cultural_exposure",
+        "writing_material",
+        "historical_context"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "大鸟冲云",
+      "scene": "“一鸣惊人”后来常用来形容长期沉潜后表现突出。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  }
+]
