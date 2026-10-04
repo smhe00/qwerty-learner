@@ -14,6 +14,7 @@ export const LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION =
   'learn-acquisition-independent-v1'
 
 export const MAX_ACQUISITION_ASSISTED_CYCLES = 2 as const
+export const MIN_INDEPENDENT_INTERVENING_ITEMS = 2 as const
 
 export type LearnAcquisitionPhase =
   | 'exposure'
@@ -27,6 +28,7 @@ export type LearnAcquisitionState = {
   version: typeof LEARN_ACQUISITION_FLOW_VERSION
   phase: LearnAcquisitionPhase
   assistedCycles: number
+  independentInterveningItems?: number
 }
 
 export type LearnAcquisitionEvent =
@@ -69,7 +71,11 @@ export function decideLearnAcquisitionTransition(
     if (event.kind !== 'supported-complete') {
       throw new Error('supported requires supported-complete')
     }
-    return { ...state, phase: 'independent' }
+    return {
+      ...state,
+      phase: 'independent',
+      independentInterveningItems: undefined,
+    }
   }
 
   if (state.phase === 'independent') {
@@ -93,6 +99,7 @@ export function decideLearnAcquisitionTransition(
       ...state,
       assistedCycles,
       phase: 'supported',
+      independentInterveningItems: undefined,
     }
   }
 
@@ -109,6 +116,7 @@ export function decideLearnAcquisitionTransition(
  */
 export function createLearnAcquisitionExercisePlan(
   phase: LearnAcquisitionPhase,
+  options?: { independentInterveningItems?: number },
 ): ReviewExercisePlanV1 {
   if (phase === 'complete' || phase === 'deferred') {
     throw new Error(`terminal acquisition phase has no exercise plan: ${phase}`)
@@ -150,6 +158,15 @@ export function createLearnAcquisitionExercisePlan(
           'letters-hidden',
           'audio-off',
           'scheduler-neutral',
+          ...(options?.independentInterveningItems !== undefined
+            ? [
+                `intervening-items-${options.independentInterveningItems}`,
+                ...(options.independentInterveningItems >=
+                MIN_INDEPENDENT_INTERVENING_ITEMS
+                  ? ['spacing-eligible']
+                  : ['spacing-insufficient']),
+              ]
+            : []),
         ]
       : [
           'learn-acquisition-supported',
@@ -193,6 +210,7 @@ export type LearnAcquisitionProgressProjection<T extends { name: string }> = {
   queue: T[]
   index: number
   isFinished: boolean
+  interveningItemsBeforeFollowUp?: number
   insertWord?: {
     index: number
     word: T
@@ -225,24 +243,33 @@ export function projectLearnAcquisitionProgress<T extends { name: string }>(
 
   const nextQueue = [...queue]
   let insertWord: LearnAcquisitionProgressProjection<T>['insertWord']
+  let interveningItemsBeforeFollowUp: number | undefined
 
   if (
     nextState.phase === 'supported' ||
     nextState.phase === 'independent'
   ) {
-    const alreadyPending = nextQueue
+    const pendingOffset = nextQueue
       .slice(currentIndex + 1)
-      .some((item) => item.name === currentWord.name)
+      .findIndex((item) => item.name === currentWord.name)
 
-    if (!alreadyPending) {
+    let followUpIndex =
+      pendingOffset >= 0 ? currentIndex + 1 + pendingOffset : undefined
+
+    if (followUpIndex === undefined) {
       const gap = learnAcquisitionFollowUpGap(nextState.phase)
-      const index = Math.min(
+      followUpIndex = Math.min(
         nextQueue.length,
         currentIndex + 1 + gap,
       )
-      nextQueue.splice(index, 0, currentWord)
-      insertWord = { index, word: currentWord }
+      nextQueue.splice(followUpIndex, 0, currentWord)
+      insertWord = { index: followUpIndex, word: currentWord }
     }
+
+    interveningItemsBeforeFollowUp = Math.max(
+      0,
+      followUpIndex - currentIndex - 1,
+    )
   }
 
   const nextIndex = currentIndex + 1
@@ -251,6 +278,7 @@ export function projectLearnAcquisitionProgress<T extends { name: string }>(
       queue: nextQueue,
       index: nextIndex,
       isFinished: false,
+      interveningItemsBeforeFollowUp,
       insertWord,
     }
   }
@@ -259,6 +287,7 @@ export function projectLearnAcquisitionProgress<T extends { name: string }>(
     queue: nextQueue,
     index: Math.max(0, nextQueue.length - 1),
     isFinished: true,
+    interveningItemsBeforeFollowUp,
     insertWord,
   }
 }
