@@ -186,17 +186,17 @@ export function estimateLearnInteractionStrain(
   records: IWordRecord[],
 ): LearnInteractionStrainEstimate {
   const policy = learnInteractionStrainPolicy
-  const recent = records
+  const ordered = records
     .filter((record) => record.sourceMode === 'learn')
     .sort(recordOrder)
-    .slice(-policy.maxRecentAttempts)
+  const recent = ordered.slice(-policy.maxRecentAttempts)
 
-  if (recent.length < policy.minAttemptsForDecision) {
+  if (ordered.length < policy.minAttemptsForDecision) {
     return {
       policyVersion: LEARN_INTERACTION_STRAIN_POLICY_VERSION,
       tier: 'unknown',
       score: null,
-      sampleCount: recent.length,
+      sampleCount: ordered.length,
       targetSuccessProbability: null,
       signals: {
         wrongLoad: null,
@@ -207,11 +207,15 @@ export function estimateLearnInteractionStrain(
     }
   }
 
-  const loads = recent.map(attemptLoads)
+  const allLoads = ordered.map(attemptLoads)
+  const recentLoads = recent.map(attemptLoads)
   let ewma: number | null = null
   let tier: LearnInteractionStrainTier = 'unknown'
-  for (let index = 0; index < loads.length; index += 1) {
-    ewma = updateLearnInteractionStrainEwma(ewma, loads[index].score)
+  for (let index = 0; index < allLoads.length; index += 1) {
+    ewma = updateLearnInteractionStrainEwma(
+      ewma,
+      allLoads[index].score,
+    )
     if (index + 1 >= policy.minAttemptsForDecision) {
       tier = resolveLearnInteractionStrainTier(ewma, tier)
     }
@@ -223,19 +227,22 @@ export function estimateLearnInteractionStrain(
     policyVersion: LEARN_INTERACTION_STRAIN_POLICY_VERSION,
     tier,
     score,
-    sampleCount: recent.length,
+    sampleCount: Math.min(
+      ordered.length,
+      policy.maxRecentAttempts,
+    ),
     targetSuccessProbability:
       tier === 'recovery' ? 0.9 : tier === 'elevated' ? 0.85 : 0.78,
     signals: {
-      wrongLoad: mean(loads.map((item) => item.wrongLoad)),
-      hintLoad: mean(loads.map((item) => item.hintLoad)),
+      wrongLoad: mean(recentLoads.map((item) => item.wrongLoad)),
+      hintLoad: mean(recentLoads.map((item) => item.hintLoad)),
       latencyLoad: mean(
-        loads
+        recentLoads
           .map((item) => item.latencyLoad)
           .filter((value): value is number => value !== null),
       ),
       correctionLoad: mean(
-        loads.map((item) => item.correctionLoad),
+        recentLoads.map((item) => item.correctionLoad),
       ),
     },
   }
