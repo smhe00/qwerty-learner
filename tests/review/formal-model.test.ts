@@ -114,44 +114,56 @@ test('formal/audio-safety: automatic pronunciation can fire only once per attemp
   assert.equal(explored, 24)
 })
 
-test('formal/scaffold-safety: strain can soften Supported work but never Independent admission', () => {
+test('formal/scaffold-safety: support may target errors but Independent never inherits scaffold cues', () => {
   const tiers = ['unknown', 'low', 'elevated', 'recovery'] as const
+  const hintPositions = [undefined, 0, 3] as const
   let explored = 0
 
   for (const strainTier of tiers) {
     for (let assistedCycles = 0; assistedCycles <= 3; assistedCycles += 1) {
-      const exposure = decideLearnScaffold({
-        phase: 'exposure',
-        strainTier,
-        assistedCycles,
-      })
-      const supported = decideLearnScaffold({
-        phase: 'supported',
-        strainTier,
-        assistedCycles,
-      })
-      const independent = decideLearnScaffold({
-        phase: 'independent',
-        strainTier,
-        assistedCycles,
-      })
-      explored += 3
+      for (const hintPosition of hintPositions) {
+        const exposure = decideLearnScaffold({
+          phase: 'exposure',
+          strainTier,
+          assistedCycles,
+          hintPosition,
+        })
+        const supported = decideLearnScaffold({
+          phase: 'supported',
+          strainTier,
+          assistedCycles,
+          hintPosition,
+        })
+        const independent = decideLearnScaffold({
+          phase: 'independent',
+          strainTier,
+          assistedCycles,
+          hintPosition,
+        })
+        explored += 3
 
-      assert.equal(exposure.level, 'S0')
-      assert.ok(supported.level === 'S1' || supported.level === 'S2')
-      assert.equal(independent.level, 'S3')
+        assert.equal(exposure.level, 'S0')
+        assert.equal(exposure.hintPosition, undefined)
+        assert.ok(supported.level === 'S1' || supported.level === 'S2')
+        assert.equal(independent.level, 'S3')
+        assert.equal(independent.hintPosition, undefined)
 
-      if (
-        strainTier === 'elevated' ||
-        strainTier === 'recovery' ||
-        assistedCycles > 0
-      ) {
-        assert.equal(supported.level, 'S1')
+        if (
+          hintPosition !== undefined ||
+          strainTier === 'elevated' ||
+          strainTier === 'recovery' ||
+          assistedCycles > 0
+        ) {
+          assert.equal(supported.level, 'S1')
+        }
+        if (hintPosition !== undefined) {
+          assert.equal(supported.hintPosition, hintPosition)
+        }
       }
     }
   }
 
-  assert.equal(explored, 48)
+  assert.equal(explored, 144)
 })
 
 test('formal/progress-safety: exhaustive bounded review completion states have one valid transition', () => {
