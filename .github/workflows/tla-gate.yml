@@ -126,6 +126,17 @@ jobs:
             -config formal/learn/CandidateLifecycle.production.cfg \
             formal/learn/CandidateLifecycle.tla
 
+      - name: Parse F7 session arbitration model
+        run: |
+          java -cp /tmp/tla2tools.jar tla2sany.SANY \
+            formal/learn/SessionArbitration.tla
+
+      - name: Model-check F7 production session arbitration
+        run: |
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -config formal/learn/SessionArbitration.production.cfg \
+            formal/learn/SessionArbitration.tla
+
       - name: Require admitted-based mutation counterexample
         run: |
           set +e
@@ -218,6 +229,23 @@ jobs:
             fi
           done
 
+      - name: Require F7 session arbitration counterexamples
+        run: |
+          for mutation in finished-shadows-unfinished oldest-unfinished wrong-dict waiting-despite-unfinished; do
+            set +e
+            java -cp /tmp/tla2tools.jar tlc2.TLC \
+              -config "formal/learn/SessionArbitration.${mutation}.cfg" \
+              formal/learn/SessionArbitration.tla \
+              > "/tmp/f7-${mutation}.log" 2>&1
+            status=$?
+            set -e
+            cat "/tmp/f7-${mutation}.log"
+            if [ "$status" -eq 0 ]; then
+              echo "Expected F7 mutation ${mutation} to violate SessionArbitrationSound."
+              exit 1
+            fi
+          done
+
       - name: Require stranded deferred liveness counterexample
         run: |
           set +e
@@ -267,4 +295,9 @@ jobs:
             node .formal-test/tla-counterexample-check.mjs \
               "/tmp/f6-${mutation}.log" \
               candidate-lifecycle-violation
+          done
+          for mutation in finished-shadows-unfinished oldest-unfinished wrong-dict waiting-despite-unfinished; do
+            node .formal-test/tla-counterexample-check.mjs \
+              "/tmp/f7-${mutation}.log" \
+              session-arbitration-violation
           done

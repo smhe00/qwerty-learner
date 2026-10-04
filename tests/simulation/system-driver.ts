@@ -50,6 +50,10 @@ export type VirtualLearnMutation = {
   admittedInAcquisition?: boolean
   excludedSelected?: boolean
   duplicateCanonical?: boolean
+  finishedShadowsUnfinished?: boolean
+  oldestUnfinishedRestore?: boolean
+  wrongDictRestore?: boolean
+  waitingDespiteUnfinished?: boolean
 }
 
 type StoredSession = ReviewRecord
@@ -341,12 +345,54 @@ export class VirtualLearnApp {
     this.wordStates.push(state)
   }
 
+  seedHistoricalSession(input: {
+    dict?: string
+    createTime: number
+    finished: boolean
+    sessionKind?: 'review' | 'acquisition'
+    wordName?: string
+  }): number {
+    const id = this.nextSessionId++
+    const wordName =
+      input.wordName ?? `f7-session-${id}`
+    const session: ReviewRecord = {
+      id,
+      dict: input.dict ?? 'simulation',
+      index: 0,
+      createTime: input.createTime,
+      isFinished: input.finished,
+      words: [
+        {
+          name: wordName,
+          trans: [],
+          usphone: '',
+          ukphone: '',
+        },
+      ],
+      sessionKind: input.sessionKind ?? 'review',
+    } as ReviewRecord
+    this.sessions.push(clone(session))
+    return id
+  }
+
   private sessionById(id: number | undefined) {
     if (id === undefined) return undefined
     return this.sessions.find((session) => session.id === id)
   }
 
-  private latestUnfinishedSession(): StoredSession | undefined {
+  private recoverableSessions(dictId: string) {
+    return this.sessions
+      .filter(
+        (session) =>
+          session.dict === dictId &&
+          !session.isFinished,
+      )
+      .sort((a, b) => a.createTime - b.createTime)
+  }
+
+  private latestUnfinishedSession(
+    dictId: string,
+  ): StoredSession | undefined {
     if (
       this.mutation.staleRestoreOnce &&
       !this.staleRestoreConsumed &&
@@ -356,13 +402,44 @@ export class VirtualLearnApp {
       return clone(this.staleCheckpoint)
     }
 
-    const unfinished = this.sessions
-      .filter((session) => !session.isFinished)
-      .sort((a, b) => a.createTime - b.createTime)
-      .at(-1)
-    if (!unfinished) return undefined
+    const expected = this.recoverableSessions(dictId)
+    if (expected.length === 0) return undefined
 
-    return clone(unfinished)
+    if (this.mutation.waitingDespiteUnfinished) {
+      return undefined
+    }
+
+    if (this.mutation.finishedShadowsUnfinished) {
+      const latestUnfinished = expected.at(-1)
+      const shadowed =
+        latestUnfinished !== undefined &&
+        this.sessions.some(
+          (session) =>
+            session.dict === dictId &&
+            session.isFinished &&
+            session.createTime >
+              latestUnfinished.createTime,
+        )
+      if (shadowed) return undefined
+    }
+
+    if (this.mutation.wrongDictRestore) {
+      const wrong = this.sessions
+        .filter(
+          (session) =>
+            session.dict !== dictId &&
+            !session.isFinished,
+        )
+        .sort((a, b) => a.createTime - b.createTime)
+        .at(-1)
+      if (wrong) return clone(wrong)
+    }
+
+    const selected =
+      this.mutation.oldestUnfinishedRestore
+        ? expected[0]
+        : expected.at(-1)
+    return selected ? clone(selected) : undefined
   }
 
   private latestPendingAcquisitionStates() {
@@ -633,7 +710,8 @@ export class VirtualLearnApp {
     return {
       now: () => this.now,
       bootstrap: async () => undefined,
-      getLatestSession: async () => this.latestUnfinishedSession(),
+      getLatestSession: async (dictId) =>
+        this.latestUnfinishedSession(dictId),
       generateDueReview: this.mutation.bypassDueFirst
         ? async () => undefined
         : this.generateDueReview,
@@ -743,11 +821,49 @@ export class VirtualLearnApp {
   }
 
   async enter(): Promise<LearnPreparationResult> {
+    const activeDict = 'simulation'
+    const recoverable =
+      this.recoverableSessions(activeDict)
+    const expected = recoverable.at(-1)
+
     const result = await prepareLearnSession({
-      dictId: 'simulation',
+      dictId: activeDict,
       words: this.words,
       errorEvidence: [],
       dependencies: this.dependencies(),
+    })
+
+    const decision =
+      result.kind === 'waiting'
+        ? ('waiting' as const)
+        : result.source === 'restored'
+          ? ('restore' as const)
+          : result.source === 'review'
+            ? ('new-review' as const)
+            : ('new-acquisition' as const)
+    const selected =
+      result.kind === 'session' &&
+      result.source === 'restored'
+        ? result.record
+        : undefined
+
+    this.events.push({
+      kind: 'session-arbitration',
+      activeDict,
+      recoverableCount: recoverable.length,
+      expectedSessionId:
+        expected?.id !== undefined
+          ? `id:${expected.id}`
+          : null,
+      decision,
+      selectedSessionId:
+        selected?.id !== undefined
+          ? `id:${selected.id}`
+          : null,
+      selectedDict: selected?.dict ?? null,
+      selectedFinished:
+        selected?.isFinished ?? null,
+      selectedCount: selected ? 1 : 0,
     })
     this.events.push(preparationResultToTraceEvent(result))
 

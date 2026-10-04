@@ -984,3 +984,189 @@ test('F6 simulation detects duplicate canonical selection inside one candidate s
   assert.equal(violation.details.selectedCount, 2)
   assert.equal(violation.details.uniqueSelection, false)
 })
+
+
+test('F7 production restores unfinished session even when a newer finished row exists', async () => {
+  const app = new VirtualLearnApp({ words: [] })
+  const recoverableId = app.seedHistoricalSession({
+    createTime: app.now - 20,
+    finished: false,
+    wordName: 'f7-recoverable',
+  })
+  app.seedHistoricalSession({
+    createTime: app.now - 10,
+    finished: true,
+    wordName: 'f7-finished-history',
+  })
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+  if (prepared.kind !== 'session') return
+  assert.equal(prepared.source, 'restored')
+  assert.equal(prepared.record.id, recoverableId)
+  assert.equal(
+    detectLearnSystemAnomalies(app.events).some(
+      (item) =>
+        item.code === 'session-arbitration-violation',
+    ),
+    false,
+  )
+})
+
+test('F7 detects a newer finished row incorrectly shadowing recoverable unfinished work', async () => {
+  const app = new VirtualLearnApp({
+    words: [],
+    mutation: { finishedShadowsUnfinished: true },
+  })
+  app.seedHistoricalSession({
+    createTime: app.now - 20,
+    finished: false,
+    wordName: 'f7-shadowed',
+  })
+  app.seedHistoricalSession({
+    createTime: app.now - 10,
+    finished: true,
+    wordName: 'f7-newer-finished',
+  })
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'waiting')
+
+  const violation = detectLearnSystemAnomalies(
+    app.events,
+  ).find(
+    (item) =>
+      item.code === 'session-arbitration-violation',
+  )
+  assert.ok(violation)
+  assert.equal(violation.details.recoverableCount, 1)
+  assert.equal(violation.details.decision, 'waiting')
+})
+
+test('F7 production restores the newest of multiple unfinished sessions and detects oldest-session mutation', async () => {
+  const clean = new VirtualLearnApp({ words: [] })
+  clean.seedHistoricalSession({
+    createTime: clean.now - 30,
+    finished: false,
+    wordName: 'f7-old',
+  })
+  const newestId = clean.seedHistoricalSession({
+    createTime: clean.now - 10,
+    finished: false,
+    wordName: 'f7-new',
+  })
+
+  const cleanPrepared = await clean.enter()
+  assert.equal(cleanPrepared.kind, 'session')
+  if (cleanPrepared.kind !== 'session') return
+  assert.equal(cleanPrepared.source, 'restored')
+  assert.equal(cleanPrepared.record.id, newestId)
+  assert.equal(
+    detectLearnSystemAnomalies(clean.events).some(
+      (item) =>
+        item.code === 'session-arbitration-violation',
+    ),
+    false,
+  )
+
+  const mutated = new VirtualLearnApp({
+    words: [],
+    mutation: { oldestUnfinishedRestore: true },
+  })
+  const oldestId = mutated.seedHistoricalSession({
+    createTime: mutated.now - 30,
+    finished: false,
+    wordName: 'f7-old-mutated',
+  })
+  mutated.seedHistoricalSession({
+    createTime: mutated.now - 10,
+    finished: false,
+    wordName: 'f7-new-mutated',
+  })
+
+  const mutatedPrepared = await mutated.enter()
+  assert.equal(mutatedPrepared.kind, 'session')
+  if (mutatedPrepared.kind !== 'session') return
+  assert.equal(mutatedPrepared.record.id, oldestId)
+  assert.ok(
+    detectLearnSystemAnomalies(mutated.events).some(
+      (item) =>
+        item.code === 'session-arbitration-violation',
+    ),
+  )
+})
+
+test('F7 production keeps recovery scoped to the active dictionary and detects wrong-dictionary restore', async () => {
+  const clean = new VirtualLearnApp({ words: [] })
+  const activeId = clean.seedHistoricalSession({
+    dict: 'simulation',
+    createTime: clean.now - 20,
+    finished: false,
+    wordName: 'f7-active-dict',
+  })
+  clean.seedHistoricalSession({
+    dict: 'other-dict',
+    createTime: clean.now - 10,
+    finished: false,
+    wordName: 'f7-other-dict',
+  })
+
+  const cleanPrepared = await clean.enter()
+  assert.equal(cleanPrepared.kind, 'session')
+  if (cleanPrepared.kind !== 'session') return
+  assert.equal(cleanPrepared.record.id, activeId)
+  assert.equal(cleanPrepared.record.dict, 'simulation')
+
+  const mutated = new VirtualLearnApp({
+    words: [],
+    mutation: { wrongDictRestore: true },
+  })
+  mutated.seedHistoricalSession({
+    dict: 'simulation',
+    createTime: mutated.now - 20,
+    finished: false,
+    wordName: 'f7-active-mutated',
+  })
+  const wrongId = mutated.seedHistoricalSession({
+    dict: 'other-dict',
+    createTime: mutated.now - 10,
+    finished: false,
+    wordName: 'f7-wrong-mutated',
+  })
+
+  const mutatedPrepared = await mutated.enter()
+  assert.equal(mutatedPrepared.kind, 'session')
+  if (mutatedPrepared.kind !== 'session') return
+  assert.equal(mutatedPrepared.record.id, wrongId)
+  assert.equal(mutatedPrepared.record.dict, 'other-dict')
+
+  const violation = detectLearnSystemAnomalies(
+    mutated.events,
+  ).find(
+    (item) =>
+      item.code === 'session-arbitration-violation',
+  )
+  assert.ok(violation)
+  assert.equal(violation.details.selectedDict, 'other-dict')
+})
+
+test('F7 detects waiting while recoverable unfinished work exists', async () => {
+  const app = new VirtualLearnApp({
+    words: [],
+    mutation: { waitingDespiteUnfinished: true },
+  })
+  app.seedHistoricalSession({
+    createTime: app.now - 10,
+    finished: false,
+    wordName: 'f7-waiting',
+  })
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'waiting')
+  assert.ok(
+    detectLearnSystemAnomalies(app.events).some(
+      (item) =>
+        item.code === 'session-arbitration-violation',
+    ),
+  )
+})

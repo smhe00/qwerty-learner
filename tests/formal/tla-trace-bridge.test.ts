@@ -696,3 +696,89 @@ test('F6 TLC production fresh selection is accepted by the same oracle', () => {
     false,
   )
 })
+
+
+const f7FinishedShadowsUnfinishedCounterexample = `
+Error: Invariant SessionArbitrationSound is violated.
+
+State 1: <Initial predicate>
+/\\ phase = "idle"
+/\\ recoverableCount = 1
+/\\ newerFinished = TRUE
+/\\ expectedSession = 1
+/\\ decision = "none"
+/\\ selectedSession = 0
+/\\ selectedDictMatches = TRUE
+/\\ selectedFinished = FALSE
+/\\ selectedCount = 0
+
+State 2: <MutateFinishedShadowsUnfinished>
+/\\ phase = "decided"
+/\\ recoverableCount = 1
+/\\ newerFinished = TRUE
+/\\ expectedSession = 1
+/\\ decision = "new"
+/\\ selectedSession = 0
+/\\ selectedDictMatches = TRUE
+/\\ selectedFinished = FALSE
+/\\ selectedCount = 0
+`
+
+const f7ProductionRestoreTrace = `
+State 1: <Initial predicate>
+/\\ phase = "idle"
+/\\ recoverableCount = 2
+/\\ newerFinished = TRUE
+/\\ expectedSession = 2
+/\\ decision = "none"
+/\\ selectedSession = 0
+/\\ selectedDictMatches = TRUE
+/\\ selectedFinished = FALSE
+/\\ selectedCount = 0
+
+State 2: <RestoreLatest>
+/\\ phase = "decided"
+/\\ recoverableCount = 2
+/\\ newerFinished = TRUE
+/\\ expectedSession = 2
+/\\ decision = "restore"
+/\\ selectedSession = 2
+/\\ selectedDictMatches = TRUE
+/\\ selectedFinished = FALSE
+/\\ selectedCount = 1
+`
+
+test('F7 TLC session arbitration fault maps into the generic arbitration oracle', () => {
+  const trace = tlcStatesToLearnTrace(
+    parseTlcCounterexample(
+      f7FinishedShadowsUnfinishedCounterexample,
+    ),
+    'f7-finished-shadows-unfinished',
+  )
+
+  const violation = detectLearnSystemAnomalies(
+    trace.events,
+  ).find(
+    (item) =>
+      item.code === 'session-arbitration-violation',
+  )
+  assert.ok(violation)
+  assert.equal(violation.severity, 'high')
+  assert.equal(violation.details.recoverableCount, 1)
+  assert.equal(violation.details.decision, 'new-acquisition')
+})
+
+test('F7 TLC production restores the newest recoverable session without a false alarm', () => {
+  const trace = tlcStatesToLearnTrace(
+    parseTlcCounterexample(f7ProductionRestoreTrace),
+    'f7-production-restore',
+  )
+
+  assert.equal(
+    detectLearnSystemAnomalies(trace.events).some(
+      (item) =>
+        item.code === 'session-arbitration-violation',
+    ),
+    false,
+  )
+})

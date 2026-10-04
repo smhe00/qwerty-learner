@@ -51,6 +51,21 @@ export type LearnSystemTraceEvent =
       }>
     }
   | {
+      kind: 'session-arbitration'
+      activeDict: string
+      recoverableCount: number
+      expectedSessionId: string | null
+      decision:
+        | 'restore'
+        | 'new-review'
+        | 'new-acquisition'
+        | 'waiting'
+      selectedSessionId: string | null
+      selectedDict: string | null
+      selectedFinished: boolean | null
+      selectedCount: number
+    }
+  | {
       kind: 'candidate-selection'
       candidateKind: 'fresh' | 'pending' | 'due' | 'force'
       word: string
@@ -84,6 +99,7 @@ export type LearnSystemAnomaly = {
     | 'due-work-bypassed'
     | 'stranded-pending-acquisition'
     | 'candidate-lifecycle-violation'
+    | 'session-arbitration-violation'
   severity: 'medium' | 'high'
   eventIndex: number
   details: Record<string, number | string | boolean | null>

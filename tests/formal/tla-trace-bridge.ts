@@ -204,6 +204,62 @@ export function tlcStatesToLearnTrace(
     }
 
     if (
+      phase === 'decided' &&
+      previousPhase !== 'decided'
+    ) {
+      const recoverableCount =
+        numberValue(state, 'recoverableCount') ?? 0
+      const expectedSession =
+        numberValue(state, 'expectedSession') ?? 0
+      const selectedSession =
+        numberValue(state, 'selectedSession') ?? 0
+      const selectedCount =
+        numberValue(state, 'selectedCount') ?? 0
+      const decision = stringValue(state, 'decision')
+      const selectedDictMatches =
+        state.values.selectedDictMatches === true
+      const selectedFinished =
+        state.values.selectedFinished === true
+
+      if (
+        decision === 'restore' ||
+        decision === 'new' ||
+        decision === 'waiting'
+      ) {
+        events.push({
+          kind: 'session-arbitration',
+          activeDict: 'tlc:active-dict',
+          recoverableCount,
+          expectedSessionId:
+            expectedSession > 0
+              ? `tlc:session:${expectedSession}`
+              : null,
+          decision:
+            decision === 'restore'
+              ? 'restore'
+              : decision === 'new'
+                ? 'new-acquisition'
+                : 'waiting',
+          selectedSessionId:
+            selectedSession > 0
+              ? `tlc:session:${selectedSession}`
+              : null,
+          selectedDict:
+            selectedSession > 0
+              ? selectedDictMatches
+                ? 'tlc:active-dict'
+                : 'tlc:other-dict'
+              : null,
+          selectedFinished:
+            selectedSession > 0
+              ? selectedFinished
+              : null,
+          selectedCount,
+        })
+      }
+    }
+
+    if (
       phase === 'selected' &&
       previousPhase !== 'selected'
     ) {

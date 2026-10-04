@@ -246,6 +246,41 @@ export function detectLearnSystemAnomalies(
       continue
     }
 
+    if (event.kind === 'session-arbitration') {
+      const mustRestore = event.recoverableCount > 0
+      const validRestore =
+        event.decision === 'restore' &&
+        event.selectedCount === 1 &&
+        event.selectedSessionId ===
+          event.expectedSessionId &&
+        event.selectedDict === event.activeDict &&
+        event.selectedFinished === false
+      const invalidUnexpectedRestore =
+        !mustRestore && event.decision === 'restore'
+
+      if (
+        (mustRestore && !validRestore) ||
+        invalidUnexpectedRestore
+      ) {
+        anomalies.push({
+          code: 'session-arbitration-violation',
+          severity: 'high',
+          eventIndex: index,
+          details: {
+            activeDict: event.activeDict,
+            recoverableCount: event.recoverableCount,
+            expectedSessionId: event.expectedSessionId,
+            decision: event.decision,
+            selectedSessionId: event.selectedSessionId,
+            selectedDict: event.selectedDict,
+            selectedFinished: event.selectedFinished,
+            selectedCount: event.selectedCount,
+          },
+        })
+      }
+      continue
+    }
+
     if (event.kind === 'candidate-selection') {
       const lifecycleValid =
         event.candidateKind === 'fresh'
