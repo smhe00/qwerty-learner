@@ -21,13 +21,17 @@ function rng(seed: number) {
   }
 }
 
-async function explore(seed: number) {
+async function explore(
+  seed: number,
+  mutation?: ConstructorParameters<typeof VirtualLearnApp>[0]['mutation'],
+) {
   const random = rng(seed)
   const app = new VirtualLearnApp({
     words: Array.from(
       { length: 18 },
       (_, index) => word(`e${index}`),
     ),
+    mutation,
   })
 
   await app.enter()
@@ -109,4 +113,82 @@ test('random action exploration remains reproducible for the same seed', async (
 
   assert.deepEqual(left.app.events, right.app.events)
   assert.deepEqual(left.anomalies, right.anomalies)
+})
+
+
+test('blind random explorer detects projection faults injected at unknown interaction positions', async () => {
+  const results: Array<{
+    seed: number
+    mutationAt: number
+    detected: boolean
+  }> = []
+
+  for (let seed = 101; seed <= 112; seed += 1) {
+    const random = rng(seed * 17)
+    const mutationAt = 1 + Math.floor(random() * 12)
+    const result = await explore(seed, {
+      dropProjectionAtInteraction: mutationAt,
+    })
+    results.push({
+      seed,
+      mutationAt,
+      detected: result.anomalies.some(
+        (item) =>
+          item.code === 'controller-driver-divergence',
+      ),
+    })
+  }
+
+  const detected = results.filter(
+    (item) => item.detected,
+  ).length
+
+  console.log(
+    'SIM_EXPLORER_MUTATION_CAMPAIGN',
+    JSON.stringify({
+      kind: 'drop-projection',
+      detected,
+      total: results.length,
+      results,
+    }),
+  )
+
+  assert.equal(detected, results.length)
+})
+
+test('blind random explorer discovers due-first bypass after time travel without a tailored due scenario', async () => {
+  const results: Array<{
+    seed: number
+    detected: boolean
+  }> = []
+
+  for (let seed = 201; seed <= 208; seed += 1) {
+    const result = await explore(seed, {
+      bypassDueFirst: true,
+    })
+    results.push({
+      seed,
+      detected: result.anomalies.some(
+        (item) => item.code === 'due-work-bypassed',
+      ),
+    })
+  }
+
+  const detected = results.filter(
+    (item) => item.detected,
+  ).length
+
+  console.log(
+    'SIM_EXPLORER_MUTATION_CAMPAIGN',
+    JSON.stringify({
+      kind: 'due-first-bypass',
+      detected,
+      total: results.length,
+      results,
+    }),
+  )
+
+  // Random behavior must expose the fault for most seeds without being
+  // scripted around the fault itself.
+  assert.ok(detected >= 6)
 })
