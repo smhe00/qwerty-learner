@@ -296,6 +296,28 @@ export function evaluateWordMetric(
   }
 }
 
+export function evaluatePreviousWordMetric(
+  condition: AchievementCondition,
+  context: AchievementMetricContext,
+): number | null {
+  const currentId = context.current.id
+  const previous = recordsThroughCurrent(context)
+    .filter(
+      (record) =>
+        currentId === undefined ||
+        record.id !== currentId,
+    )
+    .at(-1)
+
+  if (!previous) return null
+
+  return evaluateWordMetric(condition, {
+    current: previous,
+    records: context.records,
+    now: previous.timeStamp,
+  })
+}
+
 export function conditionSatisfied(
   condition: AchievementCondition,
   value: number,
