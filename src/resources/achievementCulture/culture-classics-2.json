@@ -300,7 +300,7 @@
     }
   },
   {
-    "id": "CUL_MAOSHUXIAO_001",
+    "id": "CUL_QUYUAN_001",
     "type": "poetry",
     "title": "路漫漫",
     "text": "路漫漫其修远兮，吾将上下而求索。",
@@ -452,7 +452,7 @@
   {
     "id": "CUL_LISHANGYIN_001",
     "type": "poetry",
-    "title": "更待菊黄",
+    "title": "西窗剪烛",
     "text": "何当共剪西窗烛，却话巴山夜雨时。",
     "source": "《夜雨寄北》",
     "author": "李商隐",
@@ -1014,6 +1014,131 @@
     "artDirection": {
       "motif": "触类旁通",
       "scene": "真正理解一个方法后，可以迁移到相似问题。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_LAOZI_005",
+    "type": "classic_saying",
+    "title": "大事作于细",
+    "text": "天下难事，必作于易；天下大事，必作于细。",
+    "source": "《道德经》第六十三章",
+    "author": "老子",
+    "era": "先秦",
+    "themes": [
+      "craft",
+      "first_step",
+      "perseverance"
+    ],
+    "studentMeaning": "复杂的事要从容易处着手，大的成果要从细小处做起。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "细流汇江、微石成阶",
+      "scene": "近景是一粒细石与一滴水，远景逐渐汇成台阶与江流。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_LUNYU_007",
+    "type": "classic_saying",
+    "title": "岁寒知松柏",
+    "text": "岁寒，然后知松柏之后凋也。",
+    "source": "《论语·子罕》",
+    "author": "孔子及其弟子",
+    "era": "先秦",
+    "themes": [
+      "resilience",
+      "long_view",
+      "review"
+    ],
+    "studentMeaning": "时间和困难会检验什么真正留下来了。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "冬雪松柏",
+      "scene": "四时流转后，雪中仍青的松柏成为画面中心。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_OUYANGXIU_002",
+    "type": "classical_prose",
+    "title": "惟手熟尔",
+    "text": "我亦无他，惟手熟尔。",
+    "source": "《卖油翁》",
+    "author": "欧阳修",
+    "era": "北宋",
+    "themes": [
+      "craft",
+      "perseverance",
+      "growth"
+    ],
+    "studentMeaning": "熟练并非神秘天赋，而是一次次准确练习留下的结果。",
+    "storySummary": "卖油翁把油从钱孔中倒入葫芦而钱不湿，用自己的行动说明熟练来自长期练习。",
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material",
+        "historical_context"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "铜钱孔与一线清油",
+      "scene": "清油细线穿过铜钱孔，动作稳定而克制。",
+      "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
+      "avoidTextInImage": true
+    }
+  },
+  {
+    "id": "CUL_ZUOZHUAN_001",
+    "type": "classic_saying",
+    "title": "过而能改",
+    "text": "人谁无过？过而能改，善莫大焉。",
+    "source": "《左传·宣公二年》",
+    "author": "左丘明（传统题署）",
+    "era": "先秦",
+    "themes": [
+      "recovery",
+      "craft",
+      "courage"
+    ],
+    "studentMeaning": "出错并不可怕，能准确发现并改正，错误就有了价值。",
+    "storySummary": null,
+    "curriculum": {
+      "stage": "junior_middle",
+      "relevance": "high",
+      "usage": [
+        "cultural_exposure",
+        "writing_material"
+      ],
+      "shanghaiExamClaim": "not_claimed"
+    },
+    "artDirection": {
+      "motif": "裂纹修复成金线",
+      "scene": "一枚有细小裂纹的玉片被修复，裂纹成为清晰但克制的金线。",
       "style": "雅致的中国文化插画，可用于徽章卡片，克制、清朗、有少年感",
       "avoidTextInImage": true
     }
