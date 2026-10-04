@@ -210,34 +210,70 @@ export function tlcStatesToLearnTrace(
     ) {
       const beforeIndex =
         numberValue(state, 'beforeIndex') ?? 0
-      const afterIndex =
-        numberValue(state, 'afterIndex') ?? beforeIndex
       const beforeItemVersion =
         numberValue(state, 'beforeItemVersion') ?? 0
       const afterItemVersion =
         numberValue(state, 'afterItemVersion') ??
         beforeItemVersion
-      const finished = state.values.finished === true
+      const actualIndex = numberValue(state, 'actualIndex')
+      const expectedIndex =
+        numberValue(state, 'expectedIndex')
 
-      events.push({
-        kind: 'attempt-completed',
-        sessionKind: 'review',
-        word: 'tlc:progress-word',
-        success: true,
-        beforeIndex,
-        afterIndex,
-        expectedAfterIndex: afterIndex,
-        beforeQueueSignature: 'formal-progress-queue',
-        afterQueueSignature: 'formal-progress-queue',
-        expectedAfterQueueSignature:
-          'formal-progress-queue',
-        beforeItemStateSignature:
-          `version:${beforeItemVersion}`,
-        afterItemStateSignature:
-          `version:${afterItemVersion}`,
-        afterFinished: finished,
-        expectedAfterFinished: finished,
-      })
+      if (actualIndex !== null && expectedIndex !== null) {
+        const actualQueueVersion =
+          numberValue(state, 'actualQueueVersion') ?? 0
+        const expectedQueueVersion =
+          numberValue(state, 'expectedQueueVersion') ?? 0
+        const actualFinished =
+          state.values.actualFinished === true
+        const expectedFinished =
+          state.values.expectedFinished === true
+
+        events.push({
+          kind: 'attempt-completed',
+          sessionKind: 'review',
+          word: 'tlc:projection-word',
+          success: true,
+          beforeIndex,
+          afterIndex: actualIndex,
+          expectedAfterIndex: expectedIndex,
+          beforeQueueSignature: 'queue:0',
+          afterQueueSignature:
+            `queue:${actualQueueVersion}`,
+          expectedAfterQueueSignature:
+            `queue:${expectedQueueVersion}`,
+          beforeItemStateSignature:
+            `version:${beforeItemVersion}`,
+          afterItemStateSignature:
+            `version:${afterItemVersion}`,
+          afterFinished: actualFinished,
+          expectedAfterFinished: expectedFinished,
+        })
+      } else {
+        const afterIndex =
+          numberValue(state, 'afterIndex') ?? beforeIndex
+        const finished = state.values.finished === true
+
+        events.push({
+          kind: 'attempt-completed',
+          sessionKind: 'review',
+          word: 'tlc:progress-word',
+          success: true,
+          beforeIndex,
+          afterIndex,
+          expectedAfterIndex: afterIndex,
+          beforeQueueSignature: 'formal-progress-queue',
+          afterQueueSignature: 'formal-progress-queue',
+          expectedAfterQueueSignature:
+            'formal-progress-queue',
+          beforeItemStateSignature:
+            `version:${beforeItemVersion}`,
+          afterItemStateSignature:
+            `version:${afterItemVersion}`,
+          afterFinished: finished,
+          expectedAfterFinished: finished,
+        })
+      }
     }
 
   }
