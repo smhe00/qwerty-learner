@@ -79,6 +79,7 @@ function makeStats(input: {
   due?: number
   unseen?: number | null
   acquired?: number
+  introduced?: number
   coldProbeAttempts?: number
   coldProbePassRate?: number | null
   ratedEvents30d?: number
@@ -91,6 +92,7 @@ function makeStats(input: {
       reviewedWords: 0,
       reviewAttempts: 0,
       coldProbeAttempts: input.coldProbeAttempts ?? 0,
+      introducedWords: input.introduced ?? input.acquired ?? 0,
       acquiredWords: input.acquired ?? 0,
       hintUseRate: null,
       coldProbePassRate: input.coldProbePassRate ?? null,
