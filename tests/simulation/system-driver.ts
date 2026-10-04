@@ -304,12 +304,6 @@ export class VirtualLearnApp {
   }
 
   private latestUnfinishedSession(): StoredSession | undefined {
-    const unfinished = this.sessions
-      .filter((session) => !session.isFinished)
-      .sort((a, b) => a.createTime - b.createTime)
-      .at(-1)
-    if (!unfinished) return undefined
-
     if (
       this.mutation.staleRestoreOnce &&
       !this.staleRestoreConsumed &&
@@ -318,6 +312,12 @@ export class VirtualLearnApp {
       this.staleRestoreConsumed = true
       return clone(this.staleCheckpoint)
     }
+
+    const unfinished = this.sessions
+      .filter((session) => !session.isFinished)
+      .sort((a, b) => a.createTime - b.createTime)
+      .at(-1)
+    if (!unfinished) return undefined
 
     return clone(unfinished)
   }
