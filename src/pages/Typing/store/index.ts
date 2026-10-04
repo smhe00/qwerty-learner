@@ -79,6 +79,10 @@ export type TypingStateAction =
           index: number
           word: WordWithIndex
         }
+        // Generic controller projection for future queue entries. Ordinary
+        // Typing never supplies this; Learn may use it to keep the shared
+        // input engine synchronized with a controller-owned queue.
+        projectedWords?: WordWithIndex[]
       }
     }
   | { type: TypingStateActionType.LOOP_CURRENT_WORD }
@@ -150,7 +154,26 @@ export const typingReducer = (state: TypingState, action: TypingStateAction) => 
     }
     case TypingStateActionType.NEXT_WORD: {
       state.isSkipLocked = false
-      if (action.payload?.insertWord) {
+      if (action.payload?.projectedWords) {
+        const projectedWords = action.payload.projectedWords.map(
+          (word, index) => ({ ...word, index }),
+        )
+        const completedPrefixLength = state.chapterData.index + 1
+        const completedLogs = state.chapterData.userInputLogs
+          .slice(0, completedPrefixLength)
+          .map((log, index) => ({ ...log, index }))
+
+        state.chapterData.words = projectedWords
+        state.chapterData.userInputLogs = projectedWords.map(
+          (_, index) =>
+            index < completedPrefixLength && completedLogs[index]
+              ? { ...completedLogs[index], index }
+              : {
+                  ...structuredClone(initialUserInputLog),
+                  index,
+                },
+        )
+      } else if (action.payload?.insertWord) {
         const insertAt = Math.min(
           state.chapterData.words.length,
           Math.max(state.chapterData.index + 1, action.payload.insertWord.index),
