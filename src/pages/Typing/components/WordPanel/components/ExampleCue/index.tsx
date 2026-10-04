@@ -27,20 +27,31 @@ export default function ExampleCue({
     <div
       data-typing-example="visible"
       data-typing-example-revealed={revealed ? 'true' : 'false'}
-      className="mt-4 max-w-3xl whitespace-pre-wrap px-6 text-center font-sans text-base leading-7 text-gray-500 dark:text-gray-300"
+      className="mt-4 max-w-3xl whitespace-pre-wrap px-6 text-center font-sans text-base leading-7"
     >
-      <span>{parts.before}</span>
-      <span
-        data-typing-example-surface={revealed ? parts.surface : ''}
-        className={
-          revealed
-            ? 'rounded px-1 font-semibold text-indigo-600 transition-all duration-300 dark:text-indigo-300'
-            : 'font-mono tracking-wide text-gray-400 dark:text-gray-500'
-        }
+      <div
+        data-typing-example-en="visible"
+        className="text-gray-500 dark:text-gray-300"
       >
-        {revealed ? parts.surface : parts.masked}
-      </span>
-      <span>{parts.after}</span>
+        <span>{parts.before}</span>
+        <span
+          data-typing-example-surface={revealed ? parts.surface : ''}
+          className={
+            revealed
+              ? 'rounded px-1 font-semibold text-indigo-600 transition-all duration-300 dark:text-indigo-300'
+              : 'font-mono tracking-wide text-gray-400 dark:text-gray-500'
+          }
+        >
+          {revealed ? parts.surface : parts.masked}
+        </span>
+        <span>{parts.after}</span>
+      </div>
+      <div
+        data-typing-example-cn="visible"
+        className="mt-1 text-gray-500 dark:text-gray-300"
+      >
+        {example.cn}
+      </div>
     </div>
   )
 }
