@@ -1,6 +1,7 @@
 export {
   processLiveLearnSessionCompletion,
   processLiveLearnWordRecord,
+  processLiveLongTermMasteryCrossing,
 } from './engine'
 export {
   conditionSatisfied,
