@@ -1,3 +1,8 @@
+import {
+  LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
+  LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION,
+  LEARN_ACQUISITION_SUPPORTED_POLICY_VERSION,
+} from './acquisition'
 import { getLearningLifecycle } from './lifecycle'
 import type { IReviewWordState, ReviewOutcome } from '@/review/types'
 import type { IWordRecord } from '@/utils/db/record'
@@ -113,6 +118,40 @@ function isAcquisition(record: IWordRecord): boolean {
   return record.learnItemKind === 'acquisition'
 }
 
+function isCompletedAcquisition(record: IWordRecord): boolean {
+  if (!isAcquisition(record)) return false
+
+  const policyVersion = record.reviewPolicyDecision?.policyVersion
+
+  // Phased acquisition attempts are not "new words learned" until the
+  // delayed, unaided Independent attempt succeeds cleanly.
+  if (
+    policyVersion === LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION ||
+    policyVersion === LEARN_ACQUISITION_SUPPORTED_POLICY_VERSION
+  ) {
+    return false
+  }
+
+  if (policyVersion === LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION) {
+    return (
+      record.wrongCount === 0 &&
+      record.learningContext?.reviewHint === undefined &&
+      record.reviewEvidence?.retrievalValidity === 'independent'
+    )
+  }
+
+  // A Hint plan can replace the Independent plan during the attempt. Such an
+  // assisted completion is deliberately not an admission.
+  if (record.learningContext?.reviewHint !== undefined) return false
+
+  // Compatibility: acquisition records from the old one-pass rollout were
+  // admitted immediately and have to keep their historical statistics.
+  return (
+    policyVersion === undefined ||
+    policyVersion === 'learn-acquisition-cold-probe-v2'
+  )
+}
+
 function uniqueWordCount(records: IWordRecord[]): number {
   return new Set(records.map((record) => record.word)).size
 }
@@ -191,6 +230,8 @@ export function buildLearnStatsSnapshot(input: {
     (record) => localDateKey(record.timeStamp) === todayKey,
   )
   const todayAcquisition = todayRecords.filter(isAcquisition)
+  const todayCompletedAcquisition =
+    todayAcquisition.filter(isCompletedAcquisition)
   const todayReview = todayRecords.filter((record) => !isAcquisition(record))
 
   const hintCount = todayRecords.filter(
@@ -285,7 +326,7 @@ export function buildLearnStatsSnapshot(input: {
       reviewed: uniqueWordCount(
         daily.filter((record) => !isAcquisition(record)),
       ),
-      acquired: uniqueWordCount(daily.filter(isAcquisition)),
+      acquired: uniqueWordCount(daily.filter(isCompletedAcquisition)),
       successRate: rate(dailySuccessful, dailyRated.length),
     }
   })
@@ -296,7 +337,7 @@ export function buildLearnStatsSnapshot(input: {
       reviewedWords: uniqueWordCount(todayReview),
       reviewAttempts: todayReview.length,
       coldProbeAttempts: todayColdProbe.length,
-      acquiredWords: uniqueWordCount(todayAcquisition),
+      acquiredWords: uniqueWordCount(todayCompletedAcquisition),
       hintUseRate: rate(hintCount, todayRecords.length),
       coldProbePassRate: rate(coldPassCount, todayColdProbe.length),
     },
