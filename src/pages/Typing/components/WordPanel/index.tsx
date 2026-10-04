@@ -132,6 +132,7 @@ export default function WordPanel() {
       wrongCount,
       classification,
       reviewRatingDecision,
+      reviewEvidence,
       nextExerciseShadow,
     }: WordFinishResult) => {
       if (
