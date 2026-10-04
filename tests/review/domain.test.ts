@@ -4,7 +4,9 @@ import {
   createLearnAcquisitionExercisePlan,
   createLearnAcquisitionState,
   decideLearnAcquisitionTransition,
+  deferLearnAcquisitionForSpacing,
   hasSufficientIndependentSpacing,
+  resumeSpacingDeferredAcquisition,
   projectLearnAcquisitionProgress,
 } from '../../src/learn/acquisition'
 import {
@@ -2463,6 +2465,18 @@ test('Independent acquisition cannot admit from a one-word short-term loop', () 
     plan.decision.reasonCodes.includes('spacing-eligible'),
     false,
   )
+
+  const deferred = deferLearnAcquisitionForSpacing(shortSpaced, 100)
+  assert.equal(deferred.phase, 'deferred')
+  assert.equal(deferred.deferredReason, 'spacing')
+  assert.equal(deferred.assistedCycles, 0)
+  assert.equal(resumeSpacingDeferredAcquisition(deferred, 399), undefined)
+
+  const resumed = resumeSpacingDeferredAcquisition(deferred, 400)
+  assert.ok(resumed)
+  assert.equal(resumed.phase, 'independent')
+  assert.equal(resumed.assistedCycles, 0)
+  assert.equal(hasSufficientIndependentSpacing(resumed), true)
 })
 
 test('legacy active state seeded only from Typing is removable ghost state', () => {
