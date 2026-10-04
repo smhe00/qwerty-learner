@@ -2,12 +2,18 @@ export {
   processLiveLearnSessionCompletion,
   processLiveLearnWordRecord,
   processLiveLongTermMasteryCrossing,
+  recordVoluntaryContinueIntent,
 } from './engine'
 export {
   conditionSatisfied,
   evaluateWordMetric,
   SUPPORTED_WORD_METRICS,
 } from './evaluator'
+export {
+  SUPPORTED_EVENT_METRICS,
+  VOLUNTARY_CONTINUE_WINDOW_SECONDS,
+  evaluateVoluntaryContinueAttempt,
+} from './event-evaluator'
 export {
   SUPPORTED_SESSION_METRICS,
   evaluateSessionMetric,
