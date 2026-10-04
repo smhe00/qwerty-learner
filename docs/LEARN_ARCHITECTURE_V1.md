@@ -219,12 +219,29 @@ Current acquisition rollout:
 - Only when no due ACTIVE word exists does Learn open a new-word Acquisition
   session.
 - Acquisition V1 is bounded to 20 UNSEEN words in dictionary order.
-- Acquisition starts with a cold probe: meaning visible, spelling hidden,
-  phonetic hidden, audio off; failure falls through the normal Hint ladder.
-- Acquisition completion creates ACTIVE state with `nextReviewAt = now + 1 day`.
+- A new word starts with **Exposure**, not a cold probe: spelling, phonetic and
+  meaning are visible and pronunciation is automatic. This is a visible-copy
+  training event and cannot admit the word.
+- Exposure advances through a transient Guided commit into Supported Recall.
+  Supported and Independent attempts use hidden spelling with the bounded Learn
+  Hint ladder available.
+- Follow-up attempts are inserted after intervening queue items: Supported
+  Recall uses a short gap and Independent Recall a longer gap, preventing the
+  just-seen answer from being mistaken for durable memory.
+- Only a clean, unaided Independent Recall creates ACTIVE state. Hint-assisted
+  or otherwise non-independent completion returns to bounded support; repeated
+  failure is deferred rather than fabricated as mastery.
+- Successful acquisition creates ACTIVE state with
+  `nextReviewAt = now + 1 day`.
 - Acquisition creates no Again/Hard/Good/Easy rating and does not increment
   review/lapse counters.
-- Session records now carry transitional `sessionKind = review | acquisition`.
+- Session checkpoints persist per-word `acquisitionStates` so reload cannot
+  reset a word back to Exposure or replenish its bounded assistance cycle.
+- Session records carry `sessionKind = review | acquisition`.
+- Typing policy remains isolated: acquisition state, hint ownership and
+  admission are Learn-controller concerns. Shared input/rendering components
+  receive capabilities/presentation only and do not identify Learn acquisition
+  policy versions.
 
 Current Phase D1 rollout:
 
@@ -362,14 +379,34 @@ ACTIVE
 scheduled / due / review
 ```
 
-and the internal learning flow:
+and the internal learning flow is split by item kind:
 
 ```text
-Acquisition
+New Acquisition
     ↓
+Exposure (answer + phonetic visible, automatic audio)
+    ↓
+Guided commit
+    ↓
+Supported Recall
+    ↓
+intervening words
+    ↓
+Independent Recall
+    ├── clean / unaided → ACTIVE
+    └── assisted / failed → bounded support cycle or defer
+```
+
+Acquisition is scheduler-neutral until the delayed Independent Recall succeeds.
+It never fabricates Again/Hard/Good/Easy. The first visible copy is therefore
+a confidence-building encoding event, not memory evidence.
+
+For an already ACTIVE due word, Review keeps the separate long-term flow:
+
+```text
 Canonical Cold Probe
     ↓
-Rating
+Rating Gate
     ├── Again
     ├── Hard
     ├── Good
@@ -380,10 +417,11 @@ Scheduler
 next due
 ```
 
-When retrieval fails, the existing finite training flow remains inside Learn:
+When a hidden-answer Learn attempt needs help, the existing finite Hint ladder
+remains bounded inside Learn:
 
 ```text
-Cold Probe
+Hidden Recall
     ↓
 Hint 0
     ↓
@@ -392,8 +430,6 @@ Hint 1
 Hint 2
     ↓
 Hint 3 mandatory copy
-    ↓
-optional bounded reinforcement
 ```
 
 ---
@@ -835,13 +871,18 @@ It starts with the canonical cold probe and is governed by:
 
 Admission is a lifecycle event, not a fake review.
 
-Recommended bootstrap:
+Current P0 admission rule:
 
-| Acquisition evidence | Initial due |
-|---|---:|
-| material error / strong assistance | +1 day |
-| visible-answer practice | +1 day |
-| independent hidden-answer clean acquisition | +3 days |
+| Acquisition evidence | Admission | Initial due |
+|---|---:|---:|
+| Exposure / visible-answer copy | no | — |
+| Supported / Hint-assisted recall | no | — |
+| Independent recall with assistance or error | no | — |
+| clean unaided Independent recall | yes | +1 day |
+
+The +1 day seed is deliberately conservative for this P0 rollout; later
+adaptive acquisition may vary the initial interval once sufficient evidence is
+available.
 
 Admission MUST NOT increment:
 
