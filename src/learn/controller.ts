@@ -66,6 +66,7 @@ export type LearnPreparationDependencies<ErrorEvidence> = {
     dictId: string,
   ) => Promise<number | undefined>
   decideQuota?: typeof decideDailyAcquisitionQuota
+  buildDailyPlan?: typeof buildLearnDailyPlan
 }
 
 function wait(
@@ -136,7 +137,11 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
   const quota = (dependencies.decideQuota ?? decideDailyAcquisitionQuota)(
     stats,
   )
-  const dailyPlan = buildLearnDailyPlan({ stats, quota })
+  const dailyPlan =
+    (dependencies.buildDailyPlan ?? buildLearnDailyPlan)({
+      stats,
+      quota,
+    })
 
   // Pending Acquisition completion is not fresh workload. The fresh allowance
   // only controls first introductions inside the acquisition resolver.
