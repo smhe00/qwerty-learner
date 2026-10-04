@@ -1,14 +1,15 @@
 import {
-  REVIEW_EXERCISE_PLAN_VERSION,
-  REVIEW_POLICY_SHADOW_VERSION,
-  createReviewPolicyDecision,
-} from '@/review/decision'
+  createLearnAcquisitionExercisePlan,
+  createLearnAcquisitionState,
+  LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
+} from './acquisition'
+import type { LearnAcquisitionState } from './acquisition'
 import type { ReviewExercisePlanV1 } from '@/review/decision'
 import type { IReviewWordState } from '@/review/types'
 import type { Word } from '@/typings'
 
 export const LEARN_ACQUISITION_POLICY_VERSION =
-  'learn-acquisition-cold-probe-v2'
+  LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION
 export const LEARN_NEW_WORD_BATCH_SIZE = 20
 
 export type LearnSessionKind = 'review' | 'acquisition'
@@ -76,43 +77,12 @@ export function canonicalizeLearningWords(words: Word[]): Word[] {
 }
 
 /**
- * Every UNSEEN word starts with a real cold probe before any scaffold is shown.
- *
- * This is an admission probe, not yet a long-term scheduler rating. A learner
- * who does not know the word falls through the existing finite Hint ladder.
- * Once the word is completed, it enters ACTIVE and receives the initial +1 day
- * due date.
+ * New Learn acquisition starts with a confidence-building visible exposure.
+ * The Learn-only controller later swaps this frozen plan to Supported and
+ * Independent phases without changing ordinary Typing policy.
  */
 export function createLearnAcquisitionPlan(): ReviewExercisePlanV1 {
-  const condition = {
-    version: 1 as const,
-    purpose: 'probe' as const,
-    source: 'adaptive-policy' as const,
-    audio: 'none' as const,
-    meaning: 'visible' as const,
-    phonetic: 'hidden' as const,
-    letters: { mode: 'all-hidden' as const },
-    probeDimension: 'none' as const,
-  }
-
-  return {
-    version: REVIEW_EXERCISE_PLAN_VERSION,
-    condition,
-    decision: createReviewPolicyDecision(
-      LEARN_ACQUISITION_POLICY_VERSION,
-      [
-        'learn-acquisition',
-        'cold-probe-first',
-        'meaning-to-orthography',
-        'letters-hidden',
-        'audio-off',
-        'phonetic-hidden',
-        'no-scheduler-rating',
-      ],
-      condition.version,
-    ),
-    sourceShadowVersion: REVIEW_POLICY_SHADOW_VERSION,
-  }
+  return createLearnAcquisitionExercisePlan('exposure')
 }
 
 export function buildLearnAcquisitionExercisePlans(
@@ -120,6 +90,14 @@ export function buildLearnAcquisitionExercisePlans(
 ): Record<string, ReviewExercisePlanV1> {
   return Object.fromEntries(
     words.map((word) => [word.name, createLearnAcquisitionPlan()]),
+  )
+}
+
+export function buildLearnAcquisitionStates(
+  words: Word[],
+): Record<string, LearnAcquisitionState> {
+  return Object.fromEntries(
+    words.map((word) => [word.name, createLearnAcquisitionState()]),
   )
 }
 
