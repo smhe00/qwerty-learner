@@ -100,15 +100,32 @@ for (const achievement of achievements) {
     )
   }
 
-  if (achievement.hidden && achievement.rarity !== 'hidden') {
-    errors.push(`achievement ${achievement.id}: hidden achievement must use hidden rarity`)
+  if (!['common', 'rare', 'epic', 'legendary'].includes(achievement.rarity)) {
+    errors.push(`achievement ${achievement.id}: invalid rarity ${achievement.rarity}`)
   }
 
-  if (!achievement.hidden && achievement.rarity === 'hidden') {
-    errors.push(`achievement ${achievement.id}: hidden rarity requires hidden=true`)
+  if (achievement.hidden && achievement.presentation?.progress !== 'hidden') {
+    errors.push(`achievement ${achievement.id}: hidden achievement must hide progress`)
   }
 
-  if (!achievement.artDirection?.symbol || !achievement.artDirection?.illustrationPrompt) {
+  if (achievement.unlockPolicy !== 'once') {
+    errors.push(`achievement ${achievement.id}: collection achievements must unlock once`)
+  }
+
+  if (!['p0', 'p1', 'p2'].includes(achievement.presentation?.rollout)) {
+    errors.push(`achievement ${achievement.id}: invalid rollout`)
+  }
+
+  if (!['quiet', 'settlement', 'spotlight', 'ceremony'].includes(achievement.presentation?.ceremony)) {
+    errors.push(`achievement ${achievement.id}: invalid ceremony`)
+  }
+
+  if (
+    !achievement.artDirection?.symbol ||
+    !achievement.artDirection?.illustrationPrompt ||
+    !achievement.artDirection?.paletteMood ||
+    !achievement.artDirection?.material
+  ) {
     errors.push(`achievement ${achievement.id}: incomplete artDirection`)
   }
 }
