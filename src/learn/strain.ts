@@ -131,7 +131,8 @@ export function estimateLearnInteractionStrain(
   records: IWordRecord[],
 ): LearnInteractionStrainEstimate {
   const policy = learnInteractionStrainPolicy
-  const recent = [...records]
+  const recent = records
+    .filter((record) => record.sourceMode === 'learn')
     .sort(recordOrder)
     .slice(-policy.maxRecentAttempts)
 
