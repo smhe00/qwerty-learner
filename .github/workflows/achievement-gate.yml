@@ -10,6 +10,8 @@ on:
       - 'src/review/repository.ts'
       - 'src/pages/Learn/components/LearnResultScreen.tsx'
       - 'src/pages/Achievements/**'
+      - 'src/pages/Typing/components/AchievementsButton/**'
+      - 'src/pages/Typing/components/Switcher/**'
       - 'src/index.tsx'
       - 'src/pages/Typing/components/WordPanel/components/Word/index.tsx'
       - 'src/review/learning-context.ts'
@@ -53,6 +55,8 @@ jobs:
           src/resources/achievementCulture
           src/pages/Learn/components/LearnResultScreen.tsx
           src/pages/Achievements
+          src/pages/Typing/components/AchievementsButton
+          src/pages/Typing/components/Switcher
           src/index.tsx
           src/pages/Typing/components/WordPanel/components/Word/index.tsx
           src/review/learning-context.ts
