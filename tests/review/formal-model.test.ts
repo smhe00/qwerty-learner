@@ -1,3 +1,8 @@
+import {
+  createLearnAcquisitionState,
+  decideLearnAcquisitionTransition,
+  projectLearnAcquisitionProgress,
+} from '../../src/learn/acquisition'
 import { canonicalizeLearningWords } from '../../src/learn/session'
 import assert from 'node:assert/strict'
 import test from 'node:test'
@@ -1768,4 +1773,108 @@ test('formal/typing-success-space: Space is spelling before success and fast-for
   }
 
   assert.equal(explored, 12)
+})
+
+
+test('formal/learn-acquisition: no exposure or supported path can become complete without Independent evidence', () => {
+  const initial = createLearnAcquisitionState()
+  const guided = decideLearnAcquisitionTransition(initial, {
+    kind: 'exposure-complete',
+  })
+  const supported = decideLearnAcquisitionTransition(guided, {
+    kind: 'guided-committed',
+  })
+  const independent = decideLearnAcquisitionTransition(supported, {
+    kind: 'supported-complete',
+  })
+
+  assert.equal(initial.phase, 'exposure')
+  assert.equal(guided.phase, 'guided')
+  assert.equal(supported.phase, 'supported')
+  assert.equal(independent.phase, 'independent')
+  assert.notEqual(initial.phase, 'complete')
+  assert.notEqual(guided.phase, 'complete')
+  assert.notEqual(supported.phase, 'complete')
+
+  const clean = decideLearnAcquisitionTransition(independent, {
+    kind: 'independent-complete',
+    independentClean: true,
+  })
+  assert.equal(clean.phase, 'complete')
+})
+
+test('formal/learn-acquisition: repeated assisted Independent attempts are bounded', () => {
+  for (const firstIndependentClean of [false, true]) {
+    let state = createLearnAcquisitionState()
+    state = decideLearnAcquisitionTransition(state, {
+      kind: 'exposure-complete',
+    })
+    state = decideLearnAcquisitionTransition(state, {
+      kind: 'guided-committed',
+    })
+    state = decideLearnAcquisitionTransition(state, {
+      kind: 'supported-complete',
+    })
+    state = decideLearnAcquisitionTransition(state, {
+      kind: 'independent-complete',
+      independentClean: firstIndependentClean,
+    })
+
+    if (firstIndependentClean) {
+      assert.equal(state.phase, 'complete')
+      continue
+    }
+
+    assert.equal(state.phase, 'supported')
+    assert.equal(state.assistedCycles, 1)
+
+    state = decideLearnAcquisitionTransition(state, {
+      kind: 'supported-complete',
+    })
+    state = decideLearnAcquisitionTransition(state, {
+      kind: 'independent-complete',
+      independentClean: false,
+    })
+
+    assert.equal(state.phase, 'deferred')
+    assert.equal(state.assistedCycles, 2)
+  }
+})
+
+test('formal/learn-acquisition: follow-up scheduling creates intervening-item spacing when capacity exists', () => {
+  const queue = Array.from({ length: 12 }, (_, index) => ({
+    name: `w${index}`,
+  }))
+  const currentWord = queue[0]
+
+  const supported = projectLearnAcquisitionProgress({
+    queue,
+    currentIndex: 0,
+    currentWord,
+    nextState: {
+      ...createLearnAcquisitionState(),
+      phase: 'supported',
+    },
+  })
+  assert.ok(supported.insertWord)
+  assert.equal(supported.insertWord.index - 0 - 1, 2)
+
+  const independentQueue = supported.queue.map((item, index) =>
+    index === supported.insertWord?.index ? item : item,
+  )
+  const supportedIndex = supported.insertWord?.index ?? -1
+  const independent = projectLearnAcquisitionProgress({
+    queue: independentQueue,
+    currentIndex: supportedIndex,
+    currentWord,
+    nextState: {
+      ...createLearnAcquisitionState(),
+      phase: 'independent',
+    },
+  })
+  assert.ok(independent.insertWord)
+  assert.equal(
+    independent.insertWord.index - supportedIndex - 1,
+    4,
+  )
 })
