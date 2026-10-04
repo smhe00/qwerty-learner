@@ -4,6 +4,7 @@ import {
   createLearnAcquisitionExercisePlan,
   createLearnAcquisitionState,
   decideLearnAcquisitionTransition,
+  hasSufficientIndependentSpacing,
   projectLearnAcquisitionProgress,
 } from '../../src/learn/acquisition'
 import {
@@ -2416,6 +2417,52 @@ test('Learn acquisition follow-ups are spaced by intervening queue items', () =>
     nextState: independent,
   })
   assert.equal(second.insertWord?.index, first.queue.length)
+  assert.equal(second.interveningItemsBeforeFollowUp, 2)
+
+  const spacedIndependent = {
+    ...independent,
+    independentInterveningItems:
+      second.interveningItemsBeforeFollowUp,
+  }
+  assert.equal(hasSufficientIndependentSpacing(spacedIndependent), true)
+  assert.ok(
+    createLearnAcquisitionExercisePlan('independent', {
+      independentInterveningItems:
+        second.interveningItemsBeforeFollowUp,
+    }).decision.reasonCodes.includes('spacing-eligible'),
+  )
+})
+
+test('Independent acquisition cannot admit from a one-word short-term loop', () => {
+  const word = { name: 'solo' }
+  const independent = {
+    ...createLearnAcquisitionState(),
+    phase: 'independent' as const,
+  }
+  const projection = projectLearnAcquisitionProgress({
+    queue: [word],
+    currentIndex: 0,
+    currentWord: word,
+    nextState: independent,
+  })
+
+  assert.equal(projection.interveningItemsBeforeFollowUp, 0)
+  const shortSpaced = {
+    ...independent,
+    independentInterveningItems:
+      projection.interveningItemsBeforeFollowUp,
+  }
+  assert.equal(hasSufficientIndependentSpacing(shortSpaced), false)
+
+  const plan = createLearnAcquisitionExercisePlan('independent', {
+    independentInterveningItems:
+      projection.interveningItemsBeforeFollowUp,
+  })
+  assert.ok(plan.decision.reasonCodes.includes('spacing-insufficient'))
+  assert.equal(
+    plan.decision.reasonCodes.includes('spacing-eligible'),
+    false,
+  )
 })
 
 test('legacy active state seeded only from Typing is removable ghost state', () => {
