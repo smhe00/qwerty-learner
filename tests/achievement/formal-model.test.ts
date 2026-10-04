@@ -31,11 +31,13 @@ test('P0 evaluator exposes only explicitly supported metrics', () => {
     [
       'ACH_7_DAY',
       'ACH_7_OF_10',
+      'ACH_AUDIO_10',
       'ACH_ERROR_POSITION_FIXED',
       'ACH_FAILURE_RECOVERY_SESSION',
       'ACH_FIRST_DECODE',
       'ACH_HIDDEN_CRAFT',
       'ACH_HIDDEN_DAWN',
+      'ACH_HINT_REDUCTION',
       'ACH_NO_HINT_10',
       'ACH_RECOVER_1',
       'ACH_RECOVER_3',
@@ -44,10 +46,10 @@ test('P0 evaluator exposes only explicitly supported metrics', () => {
     ].sort(),
   )
 
-  // The remaining P0 definitions require goal snapshots, unit/mastery state,
-  // pure-audio visibility facts, or cross-window observations. They remain
+  // The remaining P0 definitions require goal snapshots or authoritative
+  // unit/mastery state. They remain
   // disabled rather than being inferred from incomplete evidence.
-  assert.equal(unsupported.length, 7)
+  assert.equal(unsupported.length, 5)
 })
 
 test('unsupported metric evaluates to null instead of guessing', () => {
