@@ -136,7 +136,11 @@ export default function AchievementsPage() {
                 className={`rounded-2xl border p-5 text-left transition ${
                   locked
                     ? 'cursor-default border-gray-200 bg-gray-50 opacity-65 dark:border-gray-700 dark:bg-gray-800/60'
-                    : 'border-indigo-100 bg-white shadow-sm hover:-translate-y-0.5 hover:shadow-md dark:border-gray-700 dark:bg-gray-800'
+                    : achievement.rarity === 'legendary'
+                      ? 'border-indigo-300 bg-white shadow-md ring-2 ring-indigo-200 hover:-translate-y-0.5 hover:shadow-lg dark:border-indigo-500/50 dark:bg-gray-800 dark:ring-indigo-400/30'
+                      : achievement.rarity === 'epic'
+                        ? 'border-indigo-200 bg-white shadow-sm ring-1 ring-indigo-100 hover:-translate-y-0.5 hover:shadow-md dark:border-indigo-500/40 dark:bg-gray-800 dark:ring-indigo-400/20'
+                        : 'border-indigo-100 bg-white shadow-sm hover:-translate-y-0.5 hover:shadow-md dark:border-gray-700 dark:bg-gray-800'
                 }`}
                 data-achievement-id={achievement.id}
                 data-achievement-locked={locked ? 'true' : 'false'}
