@@ -22,6 +22,7 @@ import {
 } from './session-evaluator'
 import { evaluateLongTermMasteredWordCount } from './state-evaluator'
 import {
+  SUPPORTED_UNIT_METRICS,
   evaluateChapterLongTermMasteryRatio,
   evaluateNewUnitLearnStarted,
 } from './unit-evaluator'
@@ -49,7 +50,7 @@ function p0WordAchievements(): AchievementDefinition[] {
       achievement.presentation.rollout === 'p0' &&
       (
         SUPPORTED_WORD_METRICS.has(achievement.condition.metric) ||
-        achievement.condition.metric === 'new_unit_learn_started'
+        SUPPORTED_UNIT_METRICS.has(achievement.condition.metric)
       ),
   )
 }
