@@ -39,6 +39,7 @@ export type LearnAcquisitionState = {
   // Session-start strain is frozen for deterministic presentation. In-session
   // difficulty still adapts through assistedCycles.
   scaffoldStrainTier?: LearnInteractionStrainTier
+  scaffoldHintPosition?: number
   independentInterveningItems?: number
   deferredReason?: LearnAcquisitionDeferredReason
   resumeAfter?: number
@@ -48,7 +49,11 @@ export type LearnAcquisitionEvent =
   | { kind: 'exposure-complete' }
   | { kind: 'guided-committed' }
   | { kind: 'supported-complete' }
-  | { kind: 'independent-complete'; independentClean: boolean }
+  | {
+      kind: 'independent-complete'
+      independentClean: boolean
+      scaffoldHintPosition?: number
+    }
 
 export function createLearnAcquisitionState(options?: {
   scaffoldStrainTier?: LearnInteractionStrainTier
@@ -92,6 +97,7 @@ export function decideLearnAcquisitionTransition(
     return {
       ...state,
       phase: 'independent',
+      scaffoldHintPosition: undefined,
       independentInterveningItems: undefined,
     }
   }
@@ -101,7 +107,11 @@ export function decideLearnAcquisitionTransition(
       throw new Error('independent requires independent-complete')
     }
     if (event.independentClean) {
-      return { ...state, phase: 'complete' }
+      return {
+        ...state,
+        phase: 'complete',
+        scaffoldHintPosition: undefined,
+      }
     }
 
     const assistedCycles = state.assistedCycles + 1
@@ -110,6 +120,7 @@ export function decideLearnAcquisitionTransition(
         ...state,
         assistedCycles,
         phase: 'deferred',
+        scaffoldHintPosition: event.scaffoldHintPosition,
         deferredReason: 'assistance',
       }
     }
@@ -118,6 +129,7 @@ export function decideLearnAcquisitionTransition(
       ...state,
       assistedCycles,
       phase: 'supported',
+      scaffoldHintPosition: event.scaffoldHintPosition,
       independentInterveningItems: undefined,
     }
   }
@@ -138,6 +150,7 @@ export function createLearnAcquisitionExercisePlan(
   options?: {
     independentInterveningItems?: number
     scaffoldStrainTier?: LearnInteractionStrainTier
+    scaffoldHintPosition?: number
     assistedCycles?: number
   },
 ): ReviewExercisePlanV1 {
@@ -157,8 +170,11 @@ export function createLearnAcquisitionExercisePlan(
     phase,
     strainTier: options?.scaffoldStrainTier ?? 'unknown',
     assistedCycles: options?.assistedCycles ?? 0,
+    hintPosition: options?.scaffoldHintPosition,
   })
-  const presentation = getLearnScaffoldPresentation(scaffold.level)
+  const presentation = getLearnScaffoldPresentation(scaffold.level, {
+    hintPosition: scaffold.hintPosition,
+  })
 
   const condition = {
     version: 1 as const,
@@ -233,6 +249,7 @@ export function createLearnAcquisitionExercisePlanForState(
   return createLearnAcquisitionExercisePlan(state.phase, {
     independentInterveningItems: state.independentInterveningItems,
     scaffoldStrainTier: state.scaffoldStrainTier,
+    scaffoldHintPosition: state.scaffoldHintPosition,
     assistedCycles: state.assistedCycles,
   })
 }
@@ -252,6 +269,7 @@ export function getLearnAcquisitionScaffoldDecision(
     phase: state.phase,
     strainTier: state.scaffoldStrainTier ?? 'unknown',
     assistedCycles: state.assistedCycles,
+    hintPosition: state.scaffoldHintPosition,
   })
 }
 
