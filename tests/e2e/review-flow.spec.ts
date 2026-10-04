@@ -174,7 +174,14 @@ async function seedAcquisitionSession(
                   decision: {
                     version: 1,
                     policyVersion,
-                    reasonCodes: ['e2e-acquisition-phase'],
+                    reasonCodes:
+                      seededPhase === 'independent'
+                        ? [
+                            'e2e-acquisition-phase',
+                            'intervening-items-4',
+                            'spacing-eligible',
+                          ]
+                        : ['e2e-acquisition-phase'],
                     conditionVersion: 1,
                   },
                   sourceShadowVersion: 1,
@@ -188,6 +195,9 @@ async function seedAcquisitionSession(
                   version: 1,
                   phase: seededPhase,
                   assistedCycles: 0,
+                  ...(seededPhase === 'independent'
+                    ? { independentInterveningItems: 4 }
+                    : {}),
                 },
               ]),
             ),
