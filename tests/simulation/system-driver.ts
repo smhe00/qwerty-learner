@@ -43,6 +43,7 @@ export type VirtualLearnMutation = {
   dropProjectionAtInteraction?: number
   staleRestoreOnce?: boolean
   bypassDueFirst?: boolean
+  strandReadyDeferred?: boolean
 }
 
 type StoredSession = ReviewRecord
@@ -251,6 +252,52 @@ export class VirtualLearnApp {
     }
   }
 
+  seedDeferredAcquisition(input?: {
+    wordIndex?: number
+    reason?: 'assistance' | 'spacing'
+    ready?: boolean
+  }) {
+    const wordIndex = input?.wordIndex ?? 0
+    const target = this.words[wordIndex]
+    if (!target) {
+      throw new Error('deferred seed word index out of range')
+    }
+
+    const reason = input?.reason ?? 'assistance'
+    const ready = input?.ready ?? true
+    const deferredState: LearnAcquisitionState = {
+      ...createLearnAcquisitionState(),
+      phase: 'deferred',
+      assistedCycles: reason === 'assistance' ? 2 : 0,
+      deferredReason: reason,
+      resumeAfter: ready ? this.now : this.now + 300,
+    }
+
+    this.wordRecords.push(
+      makeAcquisitionRecord({
+        id: this.nextWordRecordId++,
+        word: target.name,
+        now: this.now - 1,
+        policyVersion:
+          LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
+      }),
+    )
+
+    const session: ReviewRecord = {
+      id: this.nextSessionId++,
+      dict: 'simulation',
+      index: 0,
+      createTime: this.now - 1,
+      isFinished: true,
+      words: [clone(target)],
+      sessionKind: 'acquisition',
+      acquisitionStates: {
+        [target.name]: deferredState,
+      },
+    } as ReviewRecord
+    this.sessions.push(clone(session))
+  }
+
   private sessionById(id: number | undefined) {
     if (id === undefined) return undefined
     return this.sessions.find((session) => session.id === id)
@@ -306,6 +353,18 @@ export class VirtualLearnApp {
     freshLimit: number,
   ): Promise<ReviewRecord | undefined> => {
     const pending = this.latestPendingAcquisitionStates()
+    const plannerPending =
+      this.mutation.strandReadyDeferred
+        ? new Map(
+            [...pending].filter(([, state]) => {
+              const isReadyDeferred =
+                state.phase === 'deferred' &&
+                state.resumeAfter !== undefined &&
+                state.resumeAfter <= this.now
+              return !isReadyDeferred
+            }),
+          )
+        : pending
     const introduced = this.wordRecords
       .filter(isAcquisitionIntroductionRecord)
       .map((record) => record.word)
@@ -313,7 +372,7 @@ export class VirtualLearnApp {
     const candidatePlan = planLearnAcquisitionCandidates({
       words,
       states: this.wordStates,
-      pendingStates: pending,
+      pendingStates: plannerPending,
       introducedWords: introduced,
       freshLimit,
       now: this.now,
@@ -465,6 +524,23 @@ export class VirtualLearnApp {
       dependencies: this.dependencies(),
     })
     this.events.push(preparationResultToTraceEvent(result))
+
+    const pendingAfterPrepare =
+      this.latestPendingAcquisitionStates()
+    this.events.push({
+      kind: 'acquisition-health',
+      now: this.now,
+      opportunity:
+        result.kind === 'session'
+          ? result.source === 'acquisition'
+          : result.reason !== 'review-due',
+      pending: [...pendingAfterPrepare].map(([word, state]) => ({
+        word,
+        phase: state.phase,
+        deferredReason: state.deferredReason ?? null,
+        resumeAfter: state.resumeAfter ?? null,
+      })),
+    })
 
     if (result.kind === 'session') {
       this.activeSessionId = result.record.id
