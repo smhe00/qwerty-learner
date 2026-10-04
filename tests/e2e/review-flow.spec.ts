@@ -551,7 +551,16 @@ test('multi-word Review advances through every rendered word and finishes', asyn
   ])
   expect(persisted.every((record) => record.wrongCount === 0)).toBe(true)
 
-  await expect(page.getByText('CET-4 Learn', { exact: true })).toBeVisible()
+  await expect(
+    page.locator('[data-learn-result-screen]'),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: '本轮学习完成', exact: true }),
+  ).toBeVisible()
+  await expect(page.getByText('CET-4 · Learn', { exact: true })).toBeVisible()
+  await expect(page.getByText('本轮复习', { exact: true })).toBeVisible()
+  await expect(page.getByText('正确率', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('WPM', { exact: true })).toHaveCount(0)
   await expect(
     page.getByRole('button', { name: '继续 Learn', exact: true }),
   ).toBeVisible()
@@ -1822,6 +1831,14 @@ test('clean Independent acquisition is the admission boundary', async ({
       reviewCount: 0,
       lapseCount: 0,
     })
+
+  await expect(
+    page.locator('[data-learn-result-screen]'),
+  ).toBeVisible()
+  await expect(page.getByText('独立掌握', { exact: true })).toBeVisible()
+  await expect(page.getByText('继续巩固', { exact: true })).toBeVisible()
+  await expect(page.getByText('正确率', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('WPM', { exact: true })).toHaveCount(0)
 
   const admitted = await page.evaluate(async () => {
     return new Promise<any>((resolve, reject) => {
