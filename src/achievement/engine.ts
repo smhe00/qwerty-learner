@@ -1,4 +1,8 @@
 import {
+  countLongTermMasteredWords,
+  isLongTermMastered,
+} from '@/learn/mastery'
+import {
   type AchievementDefinition,
   achievementDefinitions,
 } from '@/resources/achievementCulture'
@@ -213,6 +217,77 @@ export async function processLiveLearnSessionCompletion(input: {
     occurredAt: input.completedAt,
     dict: input.dict,
     metricValues: Object.fromEntries(values),
+    unlockedAchievementIds: [],
+  }
+
+  return persistEventAndUnlocks(event, candidates)
+}
+
+
+export async function processLiveLongTermMasteryCrossing(input: {
+  sourceRecordId: number
+  dict: string
+  word: string
+  occurredAt: number
+}): Promise<AchievementUnlock[]> {
+  if (
+    !Number.isInteger(input.sourceRecordId) ||
+    input.sourceRecordId <= 0
+  ) {
+    return []
+  }
+
+  const eventId = `mastery:${input.sourceRecordId}`
+  const alreadyProcessed = await db.achievementEvents.get(eventId)
+  if (alreadyProcessed) return []
+
+  const states = await db.reviewWordStates.toArray()
+  const masteredCount = countLongTermMasteredWords(states)
+  const sameWordMasteredCount = states.filter(
+    (state) =>
+      state.word === input.word && isLongTermMastered(state),
+  ).length
+  const previousMasteredCount =
+    masteredCount - (sameWordMasteredCount === 1 ? 1 : 0)
+
+  const candidates: AchievementCandidate[] = []
+  const metricValues: Record<string, number> = {
+    long_term_mastered_word_count: masteredCount,
+  }
+
+  for (const achievement of achievementDefinitions) {
+    if (
+      !achievement.enabled ||
+      achievement.presentation.rollout !== 'p0' ||
+      achievement.condition.metric !==
+        'long_term_mastered_word_count'
+    ) {
+      continue
+    }
+
+    if (
+      conditionSatisfied(achievement.condition, masteredCount) &&
+      !conditionSatisfied(
+        achievement.condition,
+        previousMasteredCount,
+      )
+    ) {
+      candidates.push({
+        achievement,
+        value: masteredCount,
+      })
+    }
+  }
+
+  const event: AchievementEventRecord = {
+    eventId,
+    eventType: 'word_mastered',
+    origin: 'live',
+    sourceRecordId: input.sourceRecordId,
+    occurredAt: input.occurredAt,
+    dict: input.dict,
+    word: input.word,
+    metricValues,
     unlockedAchievementIds: [],
   }
 
