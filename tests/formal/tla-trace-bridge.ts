@@ -167,6 +167,50 @@ export function tlcStatesToLearnTrace(
       })
     }
 
+    const isCheckpointSave =
+      state.action.includes('SaveProgress') ||
+      state.action.includes('SaveTerminal')
+    if (isCheckpointSave) {
+      const version = numberValue(state, 'durableVersion')
+      const finished = state.values.durableFinished
+      if (
+        version !== null &&
+        typeof finished === 'boolean'
+      ) {
+        events.push({
+          kind: 'checkpoint',
+          action: 'save',
+          sessionId: 'tlc:checkpoint-session',
+          index: version,
+          isFinished: finished,
+          queueSignature: 'formal-checkpoint',
+          wordCount: 3,
+        })
+      }
+    }
+
+    const isCheckpointRestore =
+      state.action.includes('Refresh') &&
+      phase === 'restored'
+    if (isCheckpointRestore) {
+      const version = numberValue(state, 'restoredVersion')
+      const finished = state.values.restoredFinished
+      if (
+        version !== null &&
+        typeof finished === 'boolean'
+      ) {
+        events.push({
+          kind: 'checkpoint',
+          action: 'restore',
+          sessionId: 'tlc:checkpoint-session',
+          index: version,
+          isFinished: finished,
+          queueSignature: 'formal-checkpoint',
+          wordCount: 3,
+        })
+      }
+    }
+
     const durableVersion = numberValue(
       state,
       'durableVersion',
