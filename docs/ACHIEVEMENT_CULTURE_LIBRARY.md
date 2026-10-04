@@ -17,8 +17,8 @@ Removing the achievement feature must not change Typing or Learn scheduling beha
 
 - 12 spirit themes
 - 34 achievement definitions
-- 85 culture entries
-- 5 hidden achievements
+- 89 culture entries
+- 5 hidden achievements (hidden is visibility, not a rarity tier)
 - culture entries are deliberately more numerous than achievements so a badge can later rotate or collect related culture cards
 
 ## Spirit themes
@@ -149,4 +149,20 @@ Recommended first events:
 - `session_completed`
 - `session_abandoned`
 
-The achievement system should first ship with a limited visible subset even though the database is larger. This permits tuning unlock frequency before exposing the full collection.
+The achievement system should first ship with a limited subset even though the database is larger. Each achievement now declares a `presentation.rollout` stage.
+
+### V2 polish rules
+
+- **Hidden is visibility, not rarity.** A hidden achievement can still be rare, epic or legendary.
+- **Permanent achievements unlock once.** Daily repeating encouragement should use a future "daily mark / journey stamp" system, not repeatedly unlock the same collection badge.
+- **Do not praise effortless success as innate talent.** First-try success is framed as evidence of earlier accumulation.
+- **Recovery achievements outrank perfect-performance achievements.** For the target audience, overcoming difficulty is more motivationally valuable than never making a mistake.
+- **Rarity controls ceremony, not worth.** Common items are quiet, rare items settle at session end, epic items get a spotlight card, legendary items receive a full collection ceremony.
+- **Progress is intentionally selective.** Cumulative milestones can show exact progress; behavior-based achievements usually surface only when near completion; hidden achievements expose no progress.
+- **Art direction is data.** Each achievement carries symbol, scene, palette mood and material so future badge/illustration work can evolve without touching Learn logic.
+
+### Content relevance semantics
+
+`curriculum.relevance = high` means the material is particularly suitable for junior-middle-school cultural exposure or writing/reading literacy. It does **not** mean the text is a currently required Shanghai Zhongkao passage.
+
+For the 2026 Shanghai admissions cycle, official policy continues to require exam setting based on curriculum standards, core competencies, and the ability to apply knowledge in concrete contexts. The culture library therefore optimizes for durable language/cultural literacy rather than an unofficial "must-test list".
