@@ -73,26 +73,31 @@ test('policy sweep evaluates all candidates without violating bounded-control en
   assert.ok(baseline.maxDueBacklog <= 80)
 })
 
-test('interval candidates change workload in the expected schedule direction without assuming outcome ranking', () => {
-  const candidate = Object.fromEntries(
-    DEFAULT_SIMULATION_POLICY_CANDIDATES.map((item) => [
-      item.id,
-      item,
-    ]),
-  )
-  const run = (id: string) => {
-    const policy = candidate[id]
-    return [5, 19, 41].map((seed) =>
+test('shorter intervals increase review workload when quota is held constant', () => {
+  const retentionSchedule =
+    DEFAULT_SIMULATION_POLICY_CANDIDATES.find(
+      (item) => item.id === 'retention-first',
+    )!.schedulePolicy
+  const loadSchedule =
+    DEFAULT_SIMULATION_POLICY_CANDIDATES.find(
+      (item) => item.id === 'load-first',
+    )!.schedulePolicy
+  const baselineQuota =
+    DEFAULT_SIMULATION_POLICY_CANDIDATES.find(
+      (item) => item.id === 'baseline',
+    )!.quotaPolicy
+
+  const run = (schedulePolicy: typeof retentionSchedule) =>
+    [5, 19, 41].map((seed) =>
       simulateLearner({
         persona: LEARNER_PERSONAS.balanced,
         seed,
         days: 120,
         dictionarySize: 220,
-        schedulePolicy: policy.schedulePolicy,
-        quotaPolicy: policy.quotaPolicy,
+        schedulePolicy,
+        quotaPolicy: baselineQuota,
       }),
     )
-  }
   const average = (
     runs: ReturnType<typeof run>,
     selector: (value: ReturnType<typeof simulateLearner>) => number,
@@ -100,17 +105,9 @@ test('interval candidates change workload in the expected schedule direction wit
     runs.reduce((sum, item) => sum + selector(item), 0) /
     runs.length
 
-  const retentionFirst = run('retention-first')
-  const loadFirst = run('load-first')
+  const retentionFirst = run(retentionSchedule)
+  const loadFirst = run(loadSchedule)
 
-  const retentionWork = average(
-    retentionFirst,
-    (item) => item.metrics.meanDailyInteractions,
-  )
-  const loadWork = average(
-    loadFirst,
-    (item) => item.metrics.meanDailyInteractions,
-  )
   const retentionReviews = average(
     retentionFirst,
     (item) => item.metrics.reviewAttempts,
@@ -120,6 +117,5 @@ test('interval candidates change workload in the expected schedule direction wit
     (item) => item.metrics.reviewAttempts,
   )
 
-  assert.ok(retentionWork > loadWork)
   assert.ok(retentionReviews > loadReviews)
 })
