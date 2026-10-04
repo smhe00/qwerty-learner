@@ -96,6 +96,20 @@ test('VirtualLearnApp survives enter, progress, refresh, time travel and Continu
   if (nextDay.kind !== 'session') return
   assert.equal(nextDay.record.sessionKind, 'review')
 
+  let reviewSteps = 0
+  while (app.completeCurrentReviewClean()) {
+    reviewSteps += 1
+    assert.ok(reviewSteps < 100)
+  }
+  assert.ok(reviewSteps > 0)
+
+  app.exit()
+  app.advanceDays(3)
+  const later = await app.enter()
+  assert.equal(later.kind, 'session')
+  if (later.kind !== 'session') return
+  assert.equal(later.record.sessionKind, 'review')
+
   const anomalies = detectLearnSystemAnomalies(app.events)
   assert.deepEqual(anomalies, [])
 })
