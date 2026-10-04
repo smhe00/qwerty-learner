@@ -41,7 +41,7 @@ jobs:
           curl --fail --location --silent --show-error \
             https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar \
             --output /tmp/tla2tools.jar
-          echo 'e30c956628cf22ffafd00639ff761742c7da0655  /tmp/tla2tools.jar' | sha1sum -c -
+          echo 'e22f8ffb4bacdea0a871f444dd94fe5fb0d8013b3388ae39e82e26f852c735d5  /tmp/tla2tools.jar' | sha256sum -c -
 
       - name: Parse Learn TLA model
         run: |
