@@ -128,39 +128,43 @@ export default function LearnPage() {
           const quota = decideDailyAcquisitionQuota(stats)
           const dailyPlan = buildLearnDailyPlan({ stats, quota })
 
-          if (dailyPlan.allowedNewWordsNow > 0) {
-            record = await generateNewWordAcquisitionRecord(
-              dictId,
-              words,
-              dailyPlan.allowedNewWordsNow,
-            )
+          // Pending Acquisition completion is not fresh workload and must not
+          // be blocked by a fully consumed new-word quota. The fresh allowance
+          // only controls first introductions inside the resolver.
+          record = await generateNewWordAcquisitionRecord(
+            dictId,
+            words,
+            dailyPlan.allowedNewWordsNow,
+          )
 
-            if (!record) {
-              const nextResumeAt =
-                await getNextSpacingDeferredResumeAt(dictId)
-              if (!isCurrent()) return
+          if (!record) {
+            const nextResumeAt =
+              await getNextSpacingDeferredResumeAt(dictId)
+            if (!isCurrent()) return
 
-              if (nextResumeAt !== undefined && nextResumeAt > now) {
-                const minutes = Math.max(
-                  1,
-                  Math.ceil((nextResumeAt - now) / 60),
-                )
-                setStatusText(
-                  `还有新词正在建立间隔记忆，约 ${minutes} 分钟后可继续独立回忆。`,
-                )
-                setIsStarting(false)
-                return
-              }
+            if (nextResumeAt !== undefined && nextResumeAt > now) {
+              const minutes = Math.max(
+                1,
+                Math.ceil((nextResumeAt - now) / 60),
+              )
+              setStatusText(
+                `还有新词正在建立间隔记忆，约 ${minutes} 分钟后可继续独立回忆。`,
+              )
+              setIsStarting(false)
+              return
             }
-          } else if (stats.lifecycle.unseen === 0) {
+          }
+
+          if (!record && stats.lifecycle.unseen === 0) {
             setStatusText('当前词库没有需要学习的单词。')
             setIsStarting(false)
             return
-          } else if (dailyPlan.action === 'review-due') {
+          } else if (!record && dailyPlan.action === 'review-due') {
             setStatusText('还有到期复习需要处理，暂不新增单词。')
             setIsStarting(false)
             return
           } else if (
+            !record &&
             dailyPlan.reasonCodes.includes('daily-workload-budget-reached')
           ) {
             setStatusText(
@@ -168,9 +172,9 @@ export default function LearnPage() {
             )
             setIsStarting(false)
             return
-          } else {
+          } else if (!record) {
             setStatusText(
-              `今日新词额度已完成（${stats.today.acquiredWords}/${quota.targetDailyNewWords}）。`,
+              `今日新词额度已完成（已引入 ${stats.today.introducedWords}/${quota.targetDailyNewWords}）。`,
             )
             setIsStarting(false)
             return
