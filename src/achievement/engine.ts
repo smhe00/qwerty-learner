@@ -1,7 +1,4 @@
-import {
-  countLongTermMasteredWords,
-  isLongTermMastered,
-} from '@/learn/mastery'
+import { isLongTermMastered } from '@/learn/mastery'
 import {
   type AchievementDefinition,
   achievementDefinitions,
@@ -17,6 +14,7 @@ import {
   SUPPORTED_SESSION_METRICS,
   evaluateSessionMetric,
 } from './session-evaluator'
+import { evaluateLongTermMasteredWordCount } from './state-evaluator'
 import type {
   AchievementEventRecord,
   AchievementStateRecord,
@@ -242,7 +240,8 @@ export async function processLiveLongTermMasteryCrossing(input: {
   if (alreadyProcessed) return []
 
   const states = await db.reviewWordStates.toArray()
-  const masteredCount = countLongTermMasteredWords(states)
+  const masteredCount =
+    evaluateLongTermMasteredWordCount(states)
   const sameWordMasteredCount = states.filter(
     (state) =>
       state.word === input.word && isLongTermMastered(state),
