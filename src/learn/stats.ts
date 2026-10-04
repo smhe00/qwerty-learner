@@ -1,8 +1,7 @@
 import {
-  LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
-  LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION,
-  LEARN_ACQUISITION_SUPPORTED_POLICY_VERSION,
-} from './acquisition'
+  isAcquisitionIntroductionRecord,
+  isCompletedAcquisitionRecord,
+} from './admission'
 import { getLearningLifecycle } from './lifecycle'
 import { estimateLearnInteractionStrain } from './strain'
 import type { LearnInteractionStrainEstimate } from './strain'
@@ -24,6 +23,7 @@ export type LearnStatsSnapshot = {
     reviewedWords: number
     reviewAttempts: number
     coldProbeAttempts: number
+    introducedWords: number
     acquiredWords: number
     hintUseRate: number | null
     coldProbePassRate: number | null
@@ -121,42 +121,6 @@ function isAcquisition(record: IWordRecord): boolean {
   return record.learnItemKind === 'acquisition'
 }
 
-function isCompletedAcquisition(record: IWordRecord): boolean {
-  if (!isAcquisition(record)) return false
-
-  const policyVersion = record.reviewPolicyDecision?.policyVersion
-
-  // Phased acquisition attempts are not "new words learned" until the
-  // delayed, unaided Independent attempt succeeds cleanly.
-  if (
-    policyVersion === LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION ||
-    policyVersion === LEARN_ACQUISITION_SUPPORTED_POLICY_VERSION
-  ) {
-    return false
-  }
-
-  if (policyVersion === LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION) {
-    return (
-      record.wrongCount === 0 &&
-      record.learningContext?.reviewHint === undefined &&
-      record.reviewEvidence?.retrievalValidity === 'independent' &&
-      record.reviewPolicyDecision?.reasonCodes.includes('spacing-eligible') ===
-        true
-    )
-  }
-
-  // A Hint plan can replace the Independent plan during the attempt. Such an
-  // assisted completion is deliberately not an admission.
-  if (record.learningContext?.reviewHint !== undefined) return false
-
-  // Compatibility: acquisition records from the old one-pass rollout were
-  // admitted immediately and have to keep their historical statistics.
-  return (
-    policyVersion === undefined ||
-    policyVersion === 'learn-acquisition-cold-probe-v2'
-  )
-}
-
 function uniqueWordCount(records: IWordRecord[]): number {
   return new Set(records.map((record) => record.word)).size
 }
@@ -251,9 +215,25 @@ export function buildLearnStatsSnapshot(input: {
   const todayLearnRecords = learnRecords.filter(
     (record) => localDateKey(record.timeStamp) === todayKey,
   )
-  const todayAcquisition = todayRecords.filter(isAcquisition)
+  const acquisitionIntroductionRecords =
+    learnRecords.filter(isAcquisitionIntroductionRecord)
+  const firstIntroductionByWord = new Map<string, IWordRecord>()
+  for (const record of acquisitionIntroductionRecords) {
+    const previous = firstIntroductionByWord.get(record.word)
+    if (
+      !previous ||
+      record.timeStamp < previous.timeStamp ||
+      (record.timeStamp === previous.timeStamp &&
+        (record.id ?? 0) < (previous.id ?? 0))
+    ) {
+      firstIntroductionByWord.set(record.word, record)
+    }
+  }
+  const todayIntroducedWords = [...firstIntroductionByWord.values()].filter(
+    (record) => localDateKey(record.timeStamp) === todayKey,
+  )
   const todayCompletedAcquisition =
-    todayAcquisition.filter(isCompletedAcquisition)
+    todayLearnRecords.filter(isCompletedAcquisitionRecord)
   const todayReview = todayRecords.filter((record) => !isAcquisition(record))
 
   const hintCount = todayRecords.filter(
@@ -280,7 +260,10 @@ export function buildLearnStatsSnapshot(input: {
       (state.lapseCount > 0 && state.cleanStreak === 0),
   )
 
-  const knownWords = new Set(states.map((state) => state.word))
+  const knownWords = new Set([
+    ...states.map((state) => state.word),
+    ...acquisitionIntroductionRecords.map((record) => record.word),
+  ])
   const unseen =
     input.dictionaryWords === undefined
       ? null
@@ -361,6 +344,7 @@ export function buildLearnStatsSnapshot(input: {
       reviewedWords: uniqueWordCount(todayReview),
       reviewAttempts: todayReview.length,
       coldProbeAttempts: todayColdProbe.length,
+      introducedWords: uniqueWordCount(todayIntroducedWords),
       acquiredWords: uniqueWordCount(todayCompletedAcquisition),
       hintUseRate: rate(hintCount, todayRecords.length),
       coldProbePassRate: rate(coldPassCount, todayColdProbe.length),
