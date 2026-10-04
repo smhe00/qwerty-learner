@@ -8,6 +8,7 @@ import {
 import {
   isAcquisitionIntroductionRecord,
 } from '../../src/learn/admission'
+import { buildLearnDailyPlan } from '../../src/learn/plan'
 import { decideDailyAcquisitionQuota } from '../../src/learn/quota'
 import {
   prepareLearnSession,
@@ -41,6 +42,7 @@ export type VirtualLearnMutation = {
   quotaAccounting?: 'production' | 'acquired'
   dropProjectionAtInteraction?: number
   staleRestoreOnce?: boolean
+  bypassDueFirst?: boolean
 }
 
 type StoredSession = ReviewRecord
@@ -209,6 +211,16 @@ export class VirtualLearnApp {
     }
   }
 
+  makeSeededWordsDue(count = this.wordStates.length) {
+    const bounded = Math.min(
+      Math.max(0, Math.floor(count)),
+      this.wordStates.length,
+    )
+    for (let index = 0; index < bounded; index += 1) {
+      this.wordStates[index].nextReviewAt = this.now
+    }
+  }
+
   private sessionById(id: number | undefined) {
     if (id === undefined) return undefined
     return this.sessions.find((session) => session.id === id)
@@ -350,7 +362,9 @@ export class VirtualLearnApp {
       now: () => this.now,
       bootstrap: async () => undefined,
       getLatestSession: async () => this.latestUnfinishedSession(),
-      generateDueReview: this.generateDueReview,
+      generateDueReview: this.mutation.bypassDueFirst
+        ? async () => undefined
+        : this.generateDueReview,
       getWordRecords: async () => clone(this.wordRecords),
       getWordStates: async () => clone(this.wordStates),
       generateAcquisition: this.generateAcquisition,
@@ -371,6 +385,22 @@ export class VirtualLearnApp {
           ? Math.min(...resumeTimes)
           : undefined
       },
+      ...(this.mutation.bypassDueFirst
+        ? {
+            buildDailyPlan: ({ stats, quota }) =>
+              buildLearnDailyPlan({
+                stats: {
+                  ...stats,
+                  lifecycle: {
+                    ...stats.lifecycle,
+                    due: 0,
+                    difficultDue: 0,
+                  },
+                },
+                quota,
+              }),
+          }
+        : {}),
       ...(this.mutation.quotaAccounting === 'acquired'
         ? {
             decideQuota: (stats) => {
