@@ -57,22 +57,18 @@ export default function LearnResultScreen() {
 
   const newAchievements = useMemo(
     () =>
-      unseenAchievementStates
-        .map((state) => {
-          const culture = getAchievementCulture(state.achievementId)
-          return culture ? { state, ...culture } : null
-        })
-        .filter(
-          (
-            item,
-          ): item is NonNullable<typeof item> => item !== null,
-        ),
+      unseenAchievementStates.flatMap((state) => {
+        const culture = getAchievementCulture(state.achievementId)
+        return culture ? [{ state, ...culture }] : []
+      }),
     [unseenAchievementStates],
   )
 
   const acknowledgeAchievements = useCallback(() => {
     for (const item of newAchievements) {
-      void markAchievementSeen(item.state.achievementId)
+      void markAchievementSeen(item.state.achievementId).catch((error) => {
+        console.error('failed to mark achievement seen', error)
+      })
     }
   }, [newAchievements])
 
@@ -140,7 +136,7 @@ export default function LearnResultScreen() {
       data-learn-result-screen
     >
       <div className="absolute inset-0 bg-gray-200/95 backdrop-blur-sm dark:bg-gray-900/90" />
-      <div className="relative flex h-screen items-center justify-center">
+      <div className="relative flex min-h-screen items-center justify-center py-8">
         <div className="my-card relative flex w-[90vw] max-w-3xl flex-col rounded-3xl bg-white px-10 py-10 shadow-lg dark:bg-gray-800">
           <button
             type="button"
