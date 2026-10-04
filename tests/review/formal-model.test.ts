@@ -5,6 +5,7 @@ import {
 } from '../../src/learn/acquisition'
 import { canonicalizeLearningWords } from '../../src/learn/session'
 import { decideLearnScaffold } from '../../src/learn/scaffold'
+import { planLearnRecoveryWindow } from '../../src/learn/recovery-window'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createBaselineExerciseCondition } from '../../src/review/condition'
@@ -164,6 +165,101 @@ test('formal/scaffold-safety: support may target errors but Independent never in
   }
 
   assert.equal(explored, 144)
+})
+
+test('formal/recovery-window: selected items are bounded training-only candidates', () => {
+  const candidatePhases = [
+    'exposure',
+    'supported',
+    'independent',
+    'complete',
+    'deferred',
+  ] as const
+  const tiers = ['elevated', 'recovery'] as const
+  let explored = 0
+
+  for (const tier of tiers) {
+    for (const phaseA of candidatePhases) {
+      for (const phaseB of candidatePhases) {
+        for (const phaseC of candidatePhases) {
+          const queue = ['target', 'a', 'b', 'c'].map((name) => ({ name }))
+          const acquisitionStates = {
+            target: {
+              ...createLearnAcquisitionState({ scaffoldStrainTier: tier }),
+              phase: 'supported' as const,
+              assistedCycles: 1,
+            },
+            a: {
+              ...createLearnAcquisitionState({ scaffoldStrainTier: tier }),
+              phase: phaseA,
+            },
+            b: {
+              ...createLearnAcquisitionState({ scaffoldStrainTier: tier }),
+              phase: phaseB,
+            },
+            c: {
+              ...createLearnAcquisitionState({ scaffoldStrainTier: tier }),
+              phase: phaseC,
+            },
+          }
+          const plan = planLearnRecoveryWindow({
+            queue,
+            currentIndex: 0,
+            currentWord: queue[0],
+            nextState: acquisitionStates.target,
+            acquisitionStates,
+          })
+          explored += 1
+
+          assert.ok(plan.selectedNames.length <= plan.targetSize)
+          assert.ok(
+            plan.selectedNames.length <=
+              (tier === 'recovery' ? 3 : 2),
+          )
+          assert.equal(
+            new Set(plan.selectedNames).size,
+            plan.selectedNames.length,
+          )
+
+          for (const selectedName of plan.selectedNames) {
+            const selected = acquisitionStates[
+              selectedName as 'a' | 'b' | 'c'
+            ]
+            assert.ok(
+              selected.phase === 'exposure' ||
+                selected.phase === 'supported',
+            )
+            assert.notEqual(selected.phase, 'independent')
+            assert.notEqual(selected.phase, 'complete')
+            assert.notEqual(selected.phase, 'deferred')
+          }
+        }
+      }
+    }
+  }
+
+  const lowPlan = planLearnRecoveryWindow({
+    queue: [{ name: 'target' }, { name: 'easy' }],
+    currentIndex: 0,
+    currentWord: { name: 'target' },
+    nextState: {
+      ...createLearnAcquisitionState({ scaffoldStrainTier: 'low' }),
+      phase: 'supported',
+      assistedCycles: 1,
+    },
+    acquisitionStates: {
+      target: {
+        ...createLearnAcquisitionState({ scaffoldStrainTier: 'low' }),
+        phase: 'supported',
+        assistedCycles: 1,
+      },
+      easy: createLearnAcquisitionState({ scaffoldStrainTier: 'low' }),
+    },
+  })
+  assert.equal(lowPlan.active, false)
+  assert.deepEqual(lowPlan.selectedNames, [])
+
+  assert.equal(explored, 250)
 })
 
 test('formal/progress-safety: exhaustive bounded review completion states have one valid transition', () => {
