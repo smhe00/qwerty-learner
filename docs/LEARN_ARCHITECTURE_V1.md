@@ -148,10 +148,19 @@ Learn P3 turns P2 statistics into a deterministic admission feedback controller.
 - Medium tier (10): 30-day Again rate >= 20%, or today's valid Cold Probe pass
   rate < 80%, unless the low-tier rule already matched.
 - High tier (20): otherwise.
+- P1 adds a hidden **Interaction Strain** safety cap from the most recent
+  Learn attempts. It measures observable interaction cost (errors, Hint depth,
+  correction load and non-Exposure response latency), never an inferred
+  emotion or personality trait.
+- Fewer than 5 recent Learn attempts leave the strain signal `unknown`.
+- `recovery` strain caps the new-word tier at 5/day; `elevated` caps a
+  high tier at 10/day. Low strain never raises a lower memory-based quota.
+- The strain controller reads only explicit Learn evidence and is forbidden
+  from reading or mutating Typing policy/state.
 - The remaining quota is
   `max(0, target - todayAcquiredWords)`, further capped by UNSEEN count.
 - The controller is pure and versioned as
-  `learn-acquisition-quota-v1`. It does not mutate scheduler or lifecycle.
+  `learn-acquisition-quota-v2`. It does not mutate scheduler or lifecycle.
 - The Learn resolver consumes `allowedNow` when creating an Acquisition
   session; the statistics page exposes both today's target and the currently
   admissible number.
