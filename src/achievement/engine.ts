@@ -48,10 +48,9 @@ export async function processLiveLearnWordRecord(
   const current = await db.wordRecords.get(sourceRecordId)
   if (!current || !isLiveLearnRecord(current)) return []
 
-  const records = await db.wordRecords
-    .where('dict')
-    .equals(current.dict)
-    .toArray()
+  // User-window metrics span dictionaries; word-scoped evaluators explicitly
+  // isolate current dict+word so cross-library homographs cannot leak state.
+  const records = await db.wordRecords.toArray()
 
   const values = new Map<string, number>()
   const candidates: Array<{
