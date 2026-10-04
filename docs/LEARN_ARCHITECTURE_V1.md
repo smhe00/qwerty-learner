@@ -1593,3 +1593,65 @@ any assistance/error/insufficient spacing => no durable admission
 
 The scaffold controller therefore changes *how much help Learn gives*, not the
 scheduler truth or the admission boundary.
+
+---
+
+## Recovery Window V1
+
+Recovery Window is a Learn-only queue policy layered above Dynamic Scaffold.
+It does not create a new item kind and does not mutate the scheduler.
+
+Trigger:
+
+```text
+Independent acquisition fails
+AND
+session-start Interaction Strain is elevated/recovery
+                         ↓
+                  Recovery Window
+```
+
+Window size:
+
+| Strain tier | Target confidence items |
+|---|---:|
+| elevated | 2 |
+| recovery | 3 |
+| low / unknown | 0 |
+
+Eligible confidence items are existing Acquisition training items only:
+
+```text
+Exposure / Guided (S0)
+or
+Supported whose scaffold resolves to S1
+```
+
+The selector scans at most the next 8 queue entries, preserves relative order,
+uses each word at most once, and pulls up to the target number immediately
+after the failed Independent attempt. It never selects:
+
+- Independent;
+- COMPLETE;
+- DEFERRED;
+- Review items;
+- arbitrary words without acquisition state.
+
+The failed word's Supported retry is then placed after those selected
+confidence items. If fewer eligible items exist, the window uses fewer rather
+than inventing fake easy tasks.
+
+### Recovery safety invariants
+
+```text
+recovery item => Acquisition training
+recovery item != Independent
+recovery item cannot directly admit ACTIVE
+recovery window never changes Rating Gate or scheduler
+low/unknown strain => no recovery window
+window size <= 2 (elevated) / 3 (recovery)
+```
+
+The shared typing reducer only receives a generic projected future queue. It
+does not know why Learn reordered the queue and contains no Recovery policy.
+Ordinary Typing never supplies such a projection.
