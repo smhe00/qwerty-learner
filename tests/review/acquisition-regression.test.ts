@@ -12,6 +12,7 @@ import {
   rebuildBasicStateFromWordRecords,
   shouldDropPrematureAcquisitionState,
 } from '../../src/review/rebuild'
+import { sanitizeLearnSessionLifecycle } from '../../src/learn/lifecycle'
 import { createInitialReviewWordState } from '../../src/review/types'
 import type { IWordRecord } from '../../src/utils/db/record'
 import type { Word } from '../../src/typings'
@@ -315,4 +316,55 @@ test('backup regression: premature Review ratings do not affect Learn statistics
   assert.equal(stats.scheduler.ratedEvents30d, 0)
   assert.equal(stats.today.introducedWords, 1)
   assert.equal(stats.today.acquiredWords, 0)
+})
+
+
+test('backup regression: unfinished acquisition checkpoint prunes admitted and excluded words', () => {
+  const pendingState = createLearnAcquisitionState()
+  const checkpoint = {
+    dict: 'backup-regression',
+    index: 0,
+    createTime: 100,
+    isFinished: false,
+    sessionKind: 'acquisition' as const,
+    words: [word('done'), word('pending'), word('removed')],
+    acquisitionStates: {
+      done: createLearnAcquisitionState(),
+      pending: pendingState,
+      removed: createLearnAcquisitionState(),
+    },
+  }
+
+  const active = createInitialReviewWordState(
+    'backup-regression',
+    'done',
+    100,
+  )
+  const excluded = {
+    ...createInitialReviewWordState(
+      'backup-regression',
+      'removed',
+      100,
+    ),
+    lifecycle: 'excluded' as const,
+    exclusion: {
+      reason: 'manual' as const,
+      excludedAt: 120,
+    },
+  }
+
+  const sanitized = sanitizeLearnSessionLifecycle(
+    checkpoint,
+    [active, excluded],
+  )
+
+  assert.deepEqual(
+    sanitized.words.map((item) => item.name),
+    ['pending'],
+  )
+  assert.equal(sanitized.isFinished, false)
+  assert.deepEqual(
+    Object.keys(sanitized.acquisitionStates ?? {}),
+    ['pending'],
+  )
 })
