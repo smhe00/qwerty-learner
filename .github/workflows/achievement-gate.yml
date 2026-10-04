@@ -9,6 +9,8 @@ on:
       - 'src/learn/mastery.ts'
       - 'src/review/repository.ts'
       - 'src/pages/Learn/components/LearnResultScreen.tsx'
+      - 'src/pages/Achievements/**'
+      - 'src/index.tsx'
       - 'src/pages/Typing/components/WordPanel/components/Word/index.tsx'
       - 'src/review/learning-context.ts'
       - 'src/resources/achievementCulture/**'
@@ -50,6 +52,8 @@ jobs:
           src/review/repository.ts
           src/resources/achievementCulture
           src/pages/Learn/components/LearnResultScreen.tsx
+          src/pages/Achievements
+          src/index.tsx
           src/pages/Typing/components/WordPanel/components/Word/index.tsx
           src/review/learning-context.ts
           src/utils/db/index.ts
