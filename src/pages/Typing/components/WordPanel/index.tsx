@@ -373,11 +373,16 @@ export default function WordPanel() {
           return
         }
 
+        const projectedAcquisitionStates = {
+          ...(reviewModeInfo.reviewRecord?.acquisitionStates ?? {}),
+          [currentWord.name]: nextAcquisitionState,
+        }
         const projection = projectLearnAcquisitionProgress({
           queue: state.chapterData.words,
           currentIndex: state.chapterData.index,
           currentWord,
           nextState: nextAcquisitionState,
+          acquisitionStates: projectedAcquisitionStates,
         })
 
         if (nextAcquisitionState.phase === 'independent') {
