@@ -60,6 +60,17 @@ jobs:
             -config formal/learn/LearnSystem.production.cfg \
             formal/learn/LearnSystem.tla
 
+      - name: Parse deferred liveness model
+        run: |
+          java -cp /tmp/tla2tools.jar tla2sany.SANY \
+            formal/learn/DeferredLifecycle.tla
+
+      - name: Model-check deferred production liveness
+        run: |
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -config formal/learn/DeferredLifecycle.production.cfg \
+            formal/learn/DeferredLifecycle.tla
+
       - name: Require admitted-based mutation counterexample
         run: |
           set +e
@@ -72,6 +83,21 @@ jobs:
           cat /tmp/acquired-mutation-tlc.log
           if [ "$status" -eq 0 ]; then
             echo 'Expected the acquired-based mutation to violate NoRepeatedSingleton.'
+            exit 1
+          fi
+
+      - name: Require stranded deferred liveness counterexample
+        run: |
+          set +e
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -config formal/learn/DeferredLifecycle.stranded-mutation.cfg \
+            formal/learn/DeferredLifecycle.tla \
+            > /tmp/stranded-deferred-tlc.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/stranded-deferred-tlc.log
+          if [ "$status" -eq 0 ]; then
+            echo 'Expected the stranded deferred mutation to violate DeferredEventuallyResumes.'
             exit 1
           fi
 
@@ -90,3 +116,6 @@ jobs:
           node .formal-test/tla-counterexample-check.mjs \
             /tmp/acquired-mutation-tlc.log \
             repeated-singleton-acquisition
+          node .formal-test/tla-counterexample-check.mjs \
+            /tmp/stranded-deferred-tlc.log \
+            stranded-pending-acquisition
