@@ -8,10 +8,11 @@ import WordComponent from './components/Word'
 import type { WordFinishResult } from './components/Word'
 import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
 import {
-  createLearnAcquisitionExercisePlan,
+  createLearnAcquisitionExercisePlanForState,
   createLearnAcquisitionState,
   decideLearnAcquisitionTransition,
   deferLearnAcquisitionForSpacing,
+  getLearnAcquisitionScaffoldDecision,
   hasSufficientIndependentSpacing,
   projectLearnAcquisitionProgress,
 } from '@/learn/acquisition'
@@ -82,20 +83,16 @@ export default function WordPanel() {
       ? reviewModeInfo.reviewRecord?.acquisitionStates?.[currentWord.name] ??
         createLearnAcquisitionState()
       : undefined
+  const currentAcquisitionScaffold =
+    getLearnAcquisitionScaffoldDecision(currentAcquisitionState)
   const currentExercisePlan =
     isReviewMode && currentWord
       ? currentLearnItemKind === 'acquisition' &&
         currentAcquisitionState &&
         currentAcquisitionState.phase !== 'complete' &&
         currentAcquisitionState.phase !== 'deferred'
-        ? createLearnAcquisitionExercisePlan(
-            currentAcquisitionState.phase,
-            currentAcquisitionState.phase === 'independent'
-              ? {
-                  independentInterveningItems:
-                    currentAcquisitionState.independentInterveningItems,
-                }
-              : undefined,
+        ? createLearnAcquisitionExercisePlanForState(
+            currentAcquisitionState,
           )
         : reviewModeInfo.reviewRecord?.exercisePlans?.[currentWord.name]
       : undefined
@@ -392,14 +389,8 @@ export default function WordPanel() {
             nextAcquisitionState.phase === 'independent'
           ) {
             exercisePlans[currentWord.name] =
-              createLearnAcquisitionExercisePlan(
-                nextAcquisitionState.phase,
-                nextAcquisitionState.phase === 'independent'
-                  ? {
-                      independentInterveningItems:
-                        nextAcquisitionState.independentInterveningItems,
-                    }
-                  : undefined,
+              createLearnAcquisitionExercisePlanForState(
+                nextAcquisitionState,
               )
           } else {
             delete exercisePlans[currentWord.name]
@@ -665,6 +656,16 @@ export default function WordPanel() {
               data-learn-acquisition-phase={
                 currentLearnItemKind === 'acquisition'
                   ? currentAcquisitionState?.phase
+                  : undefined
+              }
+              data-learn-scaffold-level={
+                currentLearnItemKind === 'acquisition'
+                  ? currentAcquisitionScaffold?.level
+                  : undefined
+              }
+              data-learn-scaffold-policy={
+                currentLearnItemKind === 'acquisition'
+                  ? currentAcquisitionScaffold?.policyVersion
                   : undefined
               }
             >
