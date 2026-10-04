@@ -88,7 +88,15 @@ export default function WordPanel() {
         currentAcquisitionState &&
         currentAcquisitionState.phase !== 'complete' &&
         currentAcquisitionState.phase !== 'deferred'
-        ? createLearnAcquisitionExercisePlan(currentAcquisitionState.phase)
+        ? createLearnAcquisitionExercisePlan(
+            currentAcquisitionState.phase,
+            currentAcquisitionState.phase === 'independent'
+              ? {
+                  independentInterveningItems:
+                    currentAcquisitionState.independentInterveningItems,
+                }
+              : undefined,
+          )
         : reviewModeInfo.reviewRecord?.exercisePlans?.[currentWord.name]
       : undefined
   const currentReviewAttemptRole = getReviewAttemptRole({
