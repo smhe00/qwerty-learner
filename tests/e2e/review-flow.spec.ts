@@ -126,6 +126,10 @@ async function seedAcquisitionSession(
     | 'low'
     | 'elevated'
     | 'recovery' = 'unknown',
+  phaseOverrides: Record<
+    string,
+    'exposure' | 'supported' | 'independent'
+  > = {},
 ) {
   await page.addInitScript(
     ({
@@ -134,28 +138,34 @@ async function seedAcquisitionSession(
       seededPhase,
       seededIndependentInterveningItems,
       seededScaffoldStrainTier,
+      seededPhaseOverrides,
     }) => {
-      const condition =
-        seededPhase === 'exposure'
-          ? {
-              purpose: 'training',
-              audio: 'automatic',
-              phonetic: 'visible',
-              letters: { mode: 'all-visible' },
-            }
-          : {
-              purpose:
-                seededPhase === 'independent' ? 'probe' : 'training',
-              audio: 'none',
-              phonetic: 'hidden',
-              letters: { mode: 'all-hidden' },
-            }
-      const policyVersion =
-        seededPhase === 'exposure'
-          ? 'learn-acquisition-exposure-v1'
-          : seededPhase === 'independent'
-            ? 'learn-acquisition-independent-v1'
-            : 'learn-acquisition-supported-v1'
+      const phaseData = (
+        wordPhase: 'exposure' | 'supported' | 'independent',
+      ) => {
+        const condition =
+          wordPhase === 'exposure'
+            ? {
+                purpose: 'training',
+                audio: 'automatic',
+                phonetic: 'visible',
+                letters: { mode: 'all-visible' },
+              }
+            : {
+                purpose:
+                  wordPhase === 'independent' ? 'probe' : 'training',
+                audio: 'none',
+                phonetic: 'hidden',
+                letters: { mode: 'all-hidden' },
+              }
+        const policyVersion =
+          wordPhase === 'exposure'
+            ? 'learn-acquisition-exposure-v1'
+            : wordPhase === 'independent'
+              ? 'learn-acquisition-independent-v1'
+              : 'learn-acquisition-supported-v1'
+        return { condition, policyVersion }
+      }
 
       localStorage.setItem('currentDict', JSON.stringify('cet4'))
       localStorage.setItem('currentChapter', JSON.stringify(-1))
@@ -172,52 +182,62 @@ async function seedAcquisitionSession(
             sessionKind: 'acquisition',
             words: seededWords,
             exercisePlans: Object.fromEntries(
-              seededWords.map((word) => [
-                word.name,
-                {
-                  version: 1,
-                  condition: {
+              seededWords.map((word) => {
+                const wordPhase =
+                  seededPhaseOverrides[word.name] ?? seededPhase
+                const { condition, policyVersion } =
+                  phaseData(wordPhase)
+                return [
+                  word.name,
+                  {
                     version: 1,
-                    source: 'adaptive-policy',
-                    meaning: 'visible',
-                    probeDimension: 'none',
-                    ...condition,
+                    condition: {
+                      version: 1,
+                      source: 'adaptive-policy',
+                      meaning: 'visible',
+                      probeDimension: 'none',
+                      ...condition,
+                    },
+                    decision: {
+                      version: 1,
+                      policyVersion,
+                      reasonCodes:
+                        wordPhase === 'independent'
+                          ? [
+                              'e2e-acquisition-phase',
+                              `intervening-items-${seededIndependentInterveningItems}`,
+                              ...(seededIndependentInterveningItems >= 2
+                                ? ['spacing-eligible']
+                                : ['spacing-insufficient']),
+                            ]
+                          : ['e2e-acquisition-phase'],
+                      conditionVersion: 1,
+                    },
+                    sourceShadowVersion: 1,
                   },
-                  decision: {
-                    version: 1,
-                    policyVersion,
-                    reasonCodes:
-                      seededPhase === 'independent'
-                        ? [
-                            'e2e-acquisition-phase',
-                            `intervening-items-${seededIndependentInterveningItems}`,
-                            ...(seededIndependentInterveningItems >= 2
-                              ? ['spacing-eligible']
-                              : ['spacing-insufficient']),
-                          ]
-                        : ['e2e-acquisition-phase'],
-                    conditionVersion: 1,
-                  },
-                  sourceShadowVersion: 1,
-                },
-              ]),
+                ]
+              }),
             ),
             acquisitionStates: Object.fromEntries(
-              seededWords.map((word) => [
-                word.name,
-                {
-                  version: 1,
-                  phase: seededPhase,
-                  assistedCycles: 0,
-                  scaffoldStrainTier: seededScaffoldStrainTier,
-                  ...(seededPhase === 'independent'
-                    ? {
-                        independentInterveningItems:
-                          seededIndependentInterveningItems,
-                      }
-                    : {}),
-                },
-              ]),
+              seededWords.map((word) => {
+                const wordPhase =
+                  seededPhaseOverrides[word.name] ?? seededPhase
+                return [
+                  word.name,
+                  {
+                    version: 1,
+                    phase: wordPhase,
+                    assistedCycles: 0,
+                    scaffoldStrainTier: seededScaffoldStrainTier,
+                    ...(wordPhase === 'independent'
+                      ? {
+                          independentInterveningItems:
+                            seededIndependentInterveningItems,
+                        }
+                      : {}),
+                  },
+                ]
+              }),
             ),
           },
         }),
@@ -247,6 +267,7 @@ async function seedAcquisitionSession(
       seededIndependentInterveningItems:
         independentInterveningItems,
       seededScaffoldStrainTier: scaffoldStrainTier,
+      seededPhaseOverrides: phaseOverrides,
     },
   )
 }
@@ -1803,6 +1824,60 @@ test('Learn starts new acquisition with exposure and does not admit after visibl
       policyVersion: 'learn-acquisition-exposure-v1',
     },
   })
+})
+
+test('Recovery Window places two confidence-training items before an elevated-strain retry', async ({
+  page,
+}) => {
+  await seedAcquisitionSession(
+    page,
+    reviewWords,
+    919989,
+    'exposure',
+    4,
+    'elevated',
+    { cancel: 'independent' },
+  )
+  await page.goto('/learn/session')
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+
+  let word = page.locator('[data-typing-word="cancel"]')
+  await expect(word).toHaveAttribute('data-review-purpose', 'probe')
+  await page.keyboard.type('cax')
+  await expect
+    .poll(async () => await word.getAttribute('data-typing-input'))
+    .toBe('')
+  await page.keyboard.type('cancel')
+
+  await expect
+    .poll(async () => {
+      const info = await readReviewModeInfo(page)
+      return {
+        index: info?.reviewRecord?.index,
+        queue: info?.reviewRecord?.words?.map(
+          (item: { name: string }) => item.name,
+        ),
+        cancel:
+          info?.reviewRecord?.acquisitionStates?.cancel,
+      }
+    })
+    .toMatchObject({
+      index: 1,
+      queue: ['cancel', 'analyse', 'numerous', 'cancel'],
+      cancel: {
+        phase: 'supported',
+        assistedCycles: 1,
+        scaffoldHintPosition: 2,
+      },
+    })
+
+  await waitForRenderedWord(page, 'analyse')
+  const shell = page.locator('[data-learn-acquisition-phase="exposure"]')
+  word = page.locator('[data-typing-word="analyse"]')
+  await expect(shell).toHaveAttribute('data-learn-scaffold-level', 'S0')
+  await expect(word).toHaveAttribute('data-review-purpose', 'training')
+  await expect(word).toHaveAttribute('data-review-letters', 'all-visible')
 })
 
 test('dynamic scaffold starts Supported acquisition at S1 under recovery strain', async ({
