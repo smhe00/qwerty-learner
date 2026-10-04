@@ -20,7 +20,8 @@ export interface AchievementStateRecord {
   achievementId: string
   unlockedAt: number
   firstTriggerEventId: string
-  sourceRecordId: number
+  sourceRecordId?: number
+  sessionId?: string
   seenAt?: number
   cultureCardSeenAt?: number
 }
