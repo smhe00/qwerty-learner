@@ -2,6 +2,7 @@ import {
   decideLearnAcquisitionTransition,
   deferLearnAcquisitionForSpacing,
   hasSufficientIndependentSpacing,
+  scheduleAssistanceDeferredAcquisition,
   projectLearnAcquisitionProgress,
 } from './acquisition'
 import type {
@@ -93,6 +94,15 @@ export function resolveLearnAcquisitionCompletion(
           scaffoldHintPosition: input.lastWrongIndex,
         },
       )
+      if (
+        nextState.phase === 'deferred' &&
+        nextState.deferredReason === 'assistance'
+      ) {
+        nextState = scheduleAssistanceDeferredAcquisition(
+          nextState,
+          input.now,
+        )
+      }
     }
   } else {
     throw new Error(
