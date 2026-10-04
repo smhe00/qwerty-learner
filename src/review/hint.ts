@@ -61,13 +61,27 @@ const NEXT_HINT: Record<
   'hint-2': { stage: 'hint-3', level: 3 },
 }
 
-export function createReviewHintMachineState(): ReviewHintMachineState {
+export function createReviewHintMachineState(options?: {
+  initialLevel?: ReviewHintLevel
+  hintPosition?: number
+}): ReviewHintMachineState {
+  const initialLevel = options?.initialLevel
+  const hintPosition =
+    options?.hintPosition !== undefined &&
+    Number.isInteger(options.hintPosition) &&
+    options.hintPosition >= 0
+      ? options.hintPosition
+      : null
+
   return {
-    stage: 'cold-probe',
-    maxLevelReached: null,
+    stage:
+      initialLevel === undefined
+        ? 'cold-probe'
+        : (`hint-${initialLevel}` as ReviewHintStage),
+    maxLevelReached: initialLevel ?? null,
     coldProbeSurrendered: false,
     advanceCount: 0,
-    hintPosition: null,
+    hintPosition,
     lastWrongIndex: null,
     wrongPositionCounts: {},
     forcedRevealPositions: [],
