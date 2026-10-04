@@ -1,4 +1,6 @@
 import { isLongTermMastered } from '@/learn/mastery'
+import { idDictionaryMap } from '@/resources/dictionary'
+import { wordListFetcher } from '@/utils/wordListFetcher'
 import {
   type AchievementDefinition,
   achievementDefinitions,
@@ -19,6 +21,10 @@ import {
   evaluateSessionMetric,
 } from './session-evaluator'
 import { evaluateLongTermMasteredWordCount } from './state-evaluator'
+import {
+  evaluateChapterLongTermMasteryRatio,
+  evaluateNewUnitLearnStarted,
+} from './unit-evaluator'
 import type {
   AchievementEventRecord,
   AchievementStateRecord,
@@ -41,7 +47,10 @@ function p0WordAchievements(): AchievementDefinition[] {
     (achievement) =>
       achievement.enabled &&
       achievement.presentation.rollout === 'p0' &&
-      SUPPORTED_WORD_METRICS.has(achievement.condition.metric),
+      (
+        SUPPORTED_WORD_METRICS.has(achievement.condition.metric) ||
+        achievement.condition.metric === 'new_unit_learn_started'
+      ),
   )
 }
 
@@ -132,6 +141,11 @@ export async function processLiveLearnWordRecord(
   const current = await db.wordRecords.get(sourceRecordId)
   if (!current || !isLiveLearnRecord(current)) return []
 
+  const dictionary = idDictionaryMap[current.dict]
+  const dictionaryWords = dictionary
+    ? await wordListFetcher(dictionary.url).catch(() => [])
+    : []
+
   // User-window metrics span dictionaries; word-scoped evaluators explicitly
   // isolate current dict+word so cross-library homographs cannot leak state.
   const records = await db.wordRecords.toArray()
@@ -140,22 +154,32 @@ export async function processLiveLearnWordRecord(
   const candidates: AchievementCandidate[] = []
 
   for (const achievement of p0WordAchievements()) {
-    const value = evaluateWordMetric(achievement.condition, {
-      current,
-      records,
-      now: current.timeStamp,
-    })
+    const value =
+      achievement.condition.metric === 'new_unit_learn_started'
+        ? evaluateNewUnitLearnStarted({
+            current,
+            records,
+            dictionaryWords,
+          })
+        : evaluateWordMetric(achievement.condition, {
+            current,
+            records,
+            now: current.timeStamp,
+          })
     if (value === null) continue
     values.set(achievement.condition.metric, value)
 
-    const previousValue = evaluatePreviousWordMetric(
-      achievement.condition,
-      {
-        current,
-        records,
-        now: current.timeStamp,
-      },
-    )
+    const previousValue =
+      achievement.condition.metric === 'new_unit_learn_started'
+        ? 0
+        : evaluatePreviousWordMetric(
+            achievement.condition,
+            {
+              current,
+              records,
+              now: current.timeStamp,
+            },
+          )
     const crossedThreshold =
       conditionSatisfied(achievement.condition, value) &&
       (previousValue === null ||
@@ -333,26 +357,62 @@ export async function processLiveLongTermMasteryCrossing(input: {
     long_term_mastered_word_count: masteredCount,
   }
 
+  const dictionary = idDictionaryMap[input.dict]
+  const dictionaryWords = dictionary
+    ? await wordListFetcher(dictionary.url).catch(() => [])
+    : []
+  const chapterMasteryRatio =
+    dictionaryWords.length > 0
+      ? evaluateChapterLongTermMasteryRatio({
+          word: input.word,
+          dictionaryWords,
+          states,
+        })
+      : null
+  if (chapterMasteryRatio !== null) {
+    metricValues.chapter_long_term_mastery_ratio =
+      chapterMasteryRatio
+  }
+
   for (const achievement of achievementDefinitions) {
     if (
       !achievement.enabled ||
-      achievement.presentation.rollout !== 'p0' ||
-      achievement.condition.metric !==
-        'long_term_mastered_word_count'
+      achievement.presentation.rollout !== 'p0'
     ) {
       continue
     }
 
     if (
-      conditionSatisfied(achievement.condition, masteredCount) &&
-      !conditionSatisfied(
+      achievement.condition.metric ===
+      'long_term_mastered_word_count'
+    ) {
+      if (
+        conditionSatisfied(achievement.condition, masteredCount) &&
+        !conditionSatisfied(
+          achievement.condition,
+          previousMasteredCount,
+        )
+      ) {
+        candidates.push({
+          achievement,
+          value: masteredCount,
+        })
+      }
+      continue
+    }
+
+    if (
+      achievement.condition.metric ===
+        'chapter_long_term_mastery_ratio' &&
+      chapterMasteryRatio !== null &&
+      conditionSatisfied(
         achievement.condition,
-        previousMasteredCount,
+        chapterMasteryRatio,
       )
     ) {
       candidates.push({
         achievement,
-        value: masteredCount,
+        value: chapterMasteryRatio,
       })
     }
   }
