@@ -408,3 +408,92 @@ test('production-backed simulation detects a ready deferred candidate hidden fro
     2,
   )
 })
+
+
+async function runDuePendingPriorityScenario(input: {
+  quotaExhausted: boolean
+  bypassDueFirst: boolean
+}) {
+  const app = new VirtualLearnApp({
+    words: Array.from(
+      { length: 30 },
+      (_, index) => word(`f2-${index}`),
+    ),
+    mutation: input.bypassDueFirst
+      ? { bypassDueFirst: true }
+      : undefined,
+  })
+
+  const admitted = input.quotaExhausted ? 20 : 3
+  app.seedAdmittedWords(admitted)
+  app.makeSeededWordsDue(Math.min(3, admitted))
+  app.seedDeferredAcquisition({
+    wordIndex: admitted,
+    reason: 'assistance',
+    ready: true,
+  })
+
+  const prepared = await app.enter()
+  return {
+    app,
+    prepared,
+    anomalies: detectLearnSystemAnomalies(app.events),
+  }
+}
+
+test('F2 production keeps due Review ahead of ready pending and fresh work while quota remains', async () => {
+  const result = await runDuePendingPriorityScenario({
+    quotaExhausted: false,
+    bypassDueFirst: false,
+  })
+
+  assert.equal(result.prepared.kind, 'session')
+  if (result.prepared.kind !== 'session') return
+  assert.equal(result.prepared.record.sessionKind, 'review')
+  assert.equal(
+    result.anomalies.some(
+      (item) => item.code === 'due-work-bypassed',
+    ),
+    false,
+  )
+})
+
+test('F2 production keeps due Review ahead of ready pending even after fresh quota is exhausted', async () => {
+  const result = await runDuePendingPriorityScenario({
+    quotaExhausted: true,
+    bypassDueFirst: false,
+  })
+
+  assert.equal(result.prepared.kind, 'session')
+  if (result.prepared.kind !== 'session') return
+  assert.equal(result.prepared.record.sessionKind, 'review')
+  assert.equal(
+    result.anomalies.some(
+      (item) => item.code === 'due-work-bypassed',
+    ),
+    false,
+  )
+})
+
+test('F2 simulation blindly detects pending/fresh Acquisition bypassing due Review', async () => {
+  for (const quotaExhausted of [false, true]) {
+    const result = await runDuePendingPriorityScenario({
+      quotaExhausted,
+      bypassDueFirst: true,
+    })
+
+    assert.equal(result.prepared.kind, 'session')
+    if (result.prepared.kind !== 'session') continue
+    assert.equal(
+      result.prepared.record.sessionKind,
+      'acquisition',
+    )
+
+    const bypass = result.anomalies.find(
+      (item) => item.code === 'due-work-bypassed',
+    )
+    assert.ok(bypass)
+    assert.equal(bypass.severity, 'high')
+    assert.ok(Number(bypass.details.dueCount) > 0)
+  }
+})
