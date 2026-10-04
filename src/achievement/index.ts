@@ -13,6 +13,10 @@ export {
   evaluateSessionMetric,
 } from './session-evaluator'
 export {
+  SUPPORTED_STATE_METRICS,
+  evaluateLongTermMasteredWordCount,
+} from './state-evaluator'
+export {
   getAchievementState,
   getAchievementStates,
   getUnseenAchievementStates,
