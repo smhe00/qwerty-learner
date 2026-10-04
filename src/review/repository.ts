@@ -3,6 +3,7 @@ import {
   rebuildBasicStateFromWordRecords,
   shouldDropLegacyTypingSeededState,
 } from './rebuild'
+import { didEnterLongTermMastery } from '@/learn/mastery'
 import {
   decideLearningLifecycleTransition,
   getLearningLifecycle,
@@ -63,7 +64,11 @@ export async function applyReviewOutcome(
       const existing = await getReviewWordState(dict, word)
 
       if (existing && getLearningLifecycle(existing) === 'excluded') {
-        return { state: existing, applied: false }
+        return {
+          state: existing,
+          applied: false,
+          enteredLongTermMastery: false,
+        }
       }
 
       let current = existing
@@ -92,7 +97,11 @@ export async function applyReviewOutcome(
         current.schedulerState.kind !== 'basic-v1' &&
         current.schedulerState.kind !== 'basic-v2'
       ) {
-        return { state: current, applied: false }
+        return {
+          state: current,
+          applied: false,
+          enteredLongTermMastery: false,
+        }
       }
 
       const next = scheduleBasicReview({
@@ -109,6 +118,10 @@ export async function applyReviewOutcome(
       return {
         state: { ...next, id },
         applied: true,
+        enteredLongTermMastery: didEnterLongTermMastery(
+          current,
+          next,
+        ),
       }
     },
   )
@@ -134,6 +147,29 @@ export async function applyReviewOutcome(
     } catch (error) {
       console.error('failed to persist FSRS shadow observation', error)
     }
+  }
+
+  if (
+    result.applied &&
+    result.enteredLongTermMastery &&
+    currentWordRecordId !== undefined &&
+    currentWordRecordId > 0
+  ) {
+    void import('@/achievement/engine')
+      .then(({ processLiveLongTermMasteryCrossing }) =>
+        processLiveLongTermMasteryCrossing({
+          sourceRecordId: currentWordRecordId,
+          dict,
+          word,
+          occurredAt: now,
+        }),
+      )
+      .catch((error) => {
+        console.error(
+          'failed to process long-term mastery achievement event',
+          error,
+        )
+      })
   }
 
   return result.state
