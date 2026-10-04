@@ -13,7 +13,6 @@ import type { WordPronunciationIconRef } from '@/components/WordPronunciationIco
 import { WordPronunciationIcon } from '@/components/WordPronunciationIcon'
 import { EXPLICIT_SPACE } from '@/constants'
 import useKeySounds from '@/hooks/useKeySounds'
-import { isLearnAcquisitionHintPolicyVersion } from '@/learn/acquisition'
 import type { LearnSessionKind } from '@/learn/session'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import { classifyTypingError } from '@/review/classifier'
@@ -23,7 +22,6 @@ import {
   isLetterVisibleForExerciseCondition,
 } from '@/review/condition'
 import type { ExerciseConditionV1 } from '@/review/condition'
-import { CANONICAL_REVIEW_PROBE_POLICY_VERSION } from '@/review/decision'
 import type {
   ReviewExercisePlanV1,
   ReviewPolicyDecisionV1,
@@ -38,7 +36,6 @@ import {
 } from '@/review/exercise-policy'
 import { loadWordReviewHistory } from '@/review/history'
 import {
-  REVIEW_HINT_POLICY_VERSION,
   applyReviewHintDecision,
   createReviewHintMachineState,
   createReviewHintPlan,
@@ -109,6 +106,7 @@ type WordComponentProps = {
   exercisePlan?: ReviewExercisePlanV1
   learnItemKind?: LearnSessionKind
   reviewAttemptRole?: ReviewAttemptRole
+  managedHintFlow?: boolean
   onHintLevelChange?: (level: ReviewHintLevel | null) => void
 }
 
@@ -120,6 +118,7 @@ export default function WordComponent({
   exercisePlan,
   learnItemKind,
   reviewAttemptRole,
+  managedHintFlow = false,
   onHintLevelChange,
 }: WordComponentProps) {
   // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
@@ -318,15 +317,10 @@ export default function WordComponent({
     }
   }, [currentDictInfo.id, word.name])
 
-  const isManagedReviewHintFlow = useCallback(() => {
-    const policyVersion = reviewPolicyDecisionRef.current?.policyVersion
-    return (
-      isLearnAttempt &&
-      (policyVersion === CANONICAL_REVIEW_PROBE_POLICY_VERSION ||
-        isLearnAcquisitionHintPolicyVersion(policyVersion) ||
-        policyVersion === REVIEW_HINT_POLICY_VERSION)
-    )
-  }, [isLearnAttempt])
+  const isManagedReviewHintFlow = useCallback(
+    () => isLearnAttempt && managedHintFlow,
+    [isLearnAttempt, managedHintFlow],
+  )
 
   const activateReviewHint = useCallback(
     (
