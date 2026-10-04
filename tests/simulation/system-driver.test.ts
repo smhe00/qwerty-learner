@@ -1170,3 +1170,155 @@ test('F7 detects waiting while recoverable unfinished work exists', async () => 
     ),
   )
 })
+
+
+test('F8 production bounds fresh work by daily allowance and unseen inventory', async () => {
+  const app = new VirtualLearnApp({
+    words: [word('f8-a'), word('f8-b')],
+  })
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+
+  const budget = app.events.find(
+    (event) => event.kind === 'fresh-budget',
+  )
+  assert.ok(budget)
+  if (budget.kind !== 'fresh-budget') return
+  assert.equal(budget.allowedNow, 2)
+  assert.equal(budget.freshSelected, 2)
+  assert.equal(
+    detectLearnSystemAnomalies(app.events).some(
+      (item) => item.code === 'fresh-budget-violation',
+    ),
+    false,
+  )
+})
+
+test('F8 detects quota calculation that ignores unseen inventory', async () => {
+  const app = new VirtualLearnApp({
+    words: [word('f8-unseen-a'), word('f8-unseen-b')],
+    mutation: { quotaIgnoresUnseen: true },
+  })
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+
+  const violation = detectLearnSystemAnomalies(
+    app.events,
+  ).find(
+    (item) => item.code === 'fresh-budget-violation',
+  )
+  assert.ok(violation)
+  assert.equal(violation.details.expectedAllowed, 2)
+  assert.equal(violation.details.allowedNow, 20)
+})
+
+test('F8 detects acquired-based accounting at the introduced-word quota boundary', async () => {
+  const app = new VirtualLearnApp({
+    words: Array.from(
+      { length: 22 },
+      (_, index) => word(`f8-acquired-${index}`),
+    ),
+    mutation: { quotaAccounting: 'acquired' },
+  })
+  app.seedAdmittedWords(19)
+  app.seedDeferredAcquisition({
+    wordIndex: 19,
+    reason: 'assistance',
+    ready: true,
+  })
+
+  await app.enter()
+
+  const violation = detectLearnSystemAnomalies(
+    app.events,
+  ).find(
+    (item) => item.code === 'fresh-budget-violation',
+  )
+  assert.ok(violation)
+  assert.equal(violation.details.introducedToday, 20)
+  assert.equal(violation.details.acquiredToday, 19)
+  assert.equal(violation.details.expectedAllowed, 0)
+  assert.equal(violation.details.allowedNow, 1)
+})
+
+test('F8 detects selector output that exceeds the approved fresh budget', async () => {
+  const app = new VirtualLearnApp({
+    words: Array.from(
+      { length: 22 },
+      (_, index) => word(`f8-over-${index}`),
+    ),
+    mutation: { freshOverBudget: true },
+  })
+  app.seedAdmittedWords(19)
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+
+  const violation = detectLearnSystemAnomalies(
+    app.events,
+  ).find(
+    (item) => item.code === 'fresh-budget-violation',
+  )
+  assert.ok(violation)
+  assert.equal(violation.details.allowedNow, 1)
+  assert.equal(violation.details.freshSelected, 2)
+})
+
+test('F8 ready pending work remains independent of zero fresh quota', async () => {
+  const clean = new VirtualLearnApp({
+    words: Array.from(
+      { length: 22 },
+      (_, index) => word(`f8-pending-${index}`),
+    ),
+  })
+  clean.seedAdmittedWords(19)
+  clean.seedDeferredAcquisition({
+    wordIndex: 19,
+    reason: 'assistance',
+    ready: true,
+  })
+
+  const cleanPrepared = await clean.enter()
+  assert.equal(cleanPrepared.kind, 'session')
+  const cleanBudget = clean.events.find(
+    (event) => event.kind === 'fresh-budget',
+  )
+  assert.ok(cleanBudget)
+  if (cleanBudget.kind !== 'fresh-budget') return
+  assert.equal(cleanBudget.allowedNow, 0)
+  assert.equal(cleanBudget.readyPendingCount, 1)
+  assert.equal(cleanBudget.pendingSelected, 1)
+  assert.equal(
+    detectLearnSystemAnomalies(clean.events).some(
+      (item) => item.code === 'fresh-budget-violation',
+    ),
+    false,
+  )
+
+  const mutated = new VirtualLearnApp({
+    words: Array.from(
+      { length: 22 },
+      (_, index) => word(`f8-pending-mutated-${index}`),
+    ),
+    mutation: { pendingConsumesFreshBudget: true },
+  })
+  mutated.seedAdmittedWords(19)
+  mutated.seedDeferredAcquisition({
+    wordIndex: 19,
+    reason: 'assistance',
+    ready: true,
+  })
+  await mutated.enter()
+
+  const violation = detectLearnSystemAnomalies(
+    mutated.events,
+  ).find(
+    (item) => item.code === 'fresh-budget-violation',
+  )
+  assert.ok(violation)
+  assert.equal(violation.details.allowedNow, 0)
+  assert.equal(violation.details.readyPendingCount, 1)
+  assert.equal(violation.details.pendingSelected, 0)
+})

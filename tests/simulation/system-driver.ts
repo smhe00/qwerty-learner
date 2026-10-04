@@ -16,6 +16,7 @@ import {
   type LearnPreparationResult,
 } from '../../src/learn/controller'
 import { resolveLearnAcquisitionCompletion } from '../../src/learn/progression'
+import { buildLearnStatsSnapshot } from '../../src/learn/stats'
 import {
   buildLearnAcquisitionStates,
   canonicalizeLearningWords,
@@ -54,6 +55,9 @@ export type VirtualLearnMutation = {
   oldestUnfinishedRestore?: boolean
   wrongDictRestore?: boolean
   waitingDespiteUnfinished?: boolean
+  freshOverBudget?: boolean
+  pendingConsumesFreshBudget?: boolean
+  quotaIgnoresUnseen?: boolean
 }
 
 type StoredSession = ReviewRecord
@@ -565,12 +569,25 @@ export class VirtualLearnApp {
     })
     let resumed = [...candidatePlan.resumed]
     let freshWords = [...candidatePlan.freshWords]
+    const canonicalWords =
+      canonicalizeLearningWords(words)
     const canonicalByName = new Map(
-      canonicalizeLearningWords(words).map((word) => [
+      canonicalWords.map((word) => [
         word.name,
         word,
       ]),
     )
+    const budgetStats = buildLearnStatsSnapshot({
+      now: this.now,
+      dict: 'simulation',
+      wordRecords: this.wordRecords,
+      wordStates: this.wordStates,
+      dictionaryWords: canonicalWords.map(
+        (word) => word.name,
+      ),
+    })
+    const productionQuota =
+      decideDailyAcquisitionQuota(budgetStats)
 
     if (this.mutation.pendingAsFresh) {
       const pendingWord = [...pending.keys()][0]
@@ -607,6 +624,29 @@ export class VirtualLearnApp {
       }
     }
 
+    if (this.mutation.pendingConsumesFreshBudget) {
+      resumed = resumed.slice(0, freshLimit)
+    }
+
+    if (this.mutation.freshOverBudget) {
+      const persistent = new Set(
+        this.wordStates.map((state) => state.word),
+      )
+      const pendingNames = new Set(pending.keys())
+      const introducedNames = new Set(introduced)
+      const selectedFresh = new Set(
+        freshWords.map((word) => word.name),
+      )
+      const extra = canonicalWords.find(
+        (word) =>
+          !persistent.has(word.name) &&
+          !pendingNames.has(word.name) &&
+          !introducedNames.has(word.name) &&
+          !selectedFresh.has(word.name),
+      )
+      if (extra) freshWords = [...freshWords, extra]
+    }
+
     let selected = [
       ...resumed.map((item) => item.word),
       ...freshWords,
@@ -617,6 +657,25 @@ export class VirtualLearnApp {
     ) {
       selected = [selected[0], ...selected]
     }
+    const productionReadyPendingCount =
+      candidatePlan.resumed.length
+    this.events.push({
+      kind: 'fresh-budget',
+      targetDailyNewWords:
+        productionQuota.targetDailyNewWords,
+      introducedToday:
+        budgetStats.today.introducedWords,
+      acquiredToday:
+        budgetStats.today.acquiredWords,
+      unseenCount: budgetStats.lifecycle.unseen,
+      dueCount: budgetStats.lifecycle.due,
+      allowedNow: freshLimit,
+      freshSelected: freshWords.length,
+      readyPendingCount:
+        productionReadyPendingCount,
+      pendingSelected: resumed.length,
+    })
+
     if (selected.length === 0) return undefined
 
     const candidateKindByWord = new Map<
@@ -770,6 +829,25 @@ export class VirtualLearnApp {
                 remainingDailyNewWords: bounded,
                 allowedNow:
                   stats.lifecycle.due > 0 ? 0 : bounded,
+              }
+            },
+          }
+        : {}),
+      ...(this.mutation.quotaIgnoresUnseen
+        ? {
+            decideQuota: (stats) => {
+              const baseline =
+                decideDailyAcquisitionQuota(stats)
+              const remaining = Math.max(
+                0,
+                baseline.targetDailyNewWords -
+                  stats.today.introducedWords,
+              )
+              return {
+                ...baseline,
+                remainingDailyNewWords: remaining,
+                allowedNow:
+                  stats.lifecycle.due > 0 ? 0 : remaining,
               }
             },
           }

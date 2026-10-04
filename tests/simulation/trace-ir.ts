@@ -51,6 +51,18 @@ export type LearnSystemTraceEvent =
       }>
     }
   | {
+      kind: 'fresh-budget'
+      targetDailyNewWords: number
+      introducedToday: number
+      acquiredToday: number
+      unseenCount: number | null
+      dueCount: number
+      allowedNow: number
+      freshSelected: number
+      readyPendingCount: number
+      pendingSelected: number
+    }
+  | {
       kind: 'session-arbitration'
       activeDict: string
       recoverableCount: number
@@ -100,6 +112,7 @@ export type LearnSystemAnomaly = {
     | 'stranded-pending-acquisition'
     | 'candidate-lifecycle-violation'
     | 'session-arbitration-violation'
+    | 'fresh-budget-violation'
   severity: 'medium' | 'high'
   eventIndex: number
   details: Record<string, number | string | boolean | null>

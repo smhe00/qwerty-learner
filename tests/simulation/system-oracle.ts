@@ -246,6 +246,66 @@ export function detectLearnSystemAnomalies(
       continue
     }
 
+    if (event.kind === 'fresh-budget') {
+      const remaining = Math.max(
+        0,
+        event.targetDailyNewWords -
+          event.introducedToday,
+      )
+      const boundedRemaining =
+        event.unseenCount === null
+          ? remaining
+          : Math.min(
+              remaining,
+              Math.max(0, event.unseenCount),
+            )
+      const expectedAllowed =
+        event.dueCount > 0 ? 0 : boundedRemaining
+      const expectedPendingSelected =
+        event.dueCount > 0
+          ? 0
+          : event.readyPendingCount
+      const allowedMismatch =
+        event.allowedNow !== expectedAllowed
+      const freshOverBudget =
+        event.freshSelected > event.allowedNow ||
+        (
+          event.unseenCount !== null &&
+          event.freshSelected > event.unseenCount
+        )
+      const pendingBudgetLeak =
+        event.pendingSelected !==
+        expectedPendingSelected
+
+      if (
+        allowedMismatch ||
+        freshOverBudget ||
+        pendingBudgetLeak
+      ) {
+        anomalies.push({
+          code: 'fresh-budget-violation',
+          severity: 'high',
+          eventIndex: index,
+          details: {
+            targetDailyNewWords:
+              event.targetDailyNewWords,
+            introducedToday: event.introducedToday,
+            acquiredToday: event.acquiredToday,
+            unseenCount: event.unseenCount,
+            dueCount: event.dueCount,
+            allowedNow: event.allowedNow,
+            expectedAllowed,
+            freshSelected: event.freshSelected,
+            readyPendingCount:
+              event.readyPendingCount,
+            pendingSelected: event.pendingSelected,
+            expectedPendingSelected,
+          },
+        })
+      }
+      continue
+    }
+
     if (event.kind === 'session-arbitration') {
       const mustRestore = event.recoverableCount > 0
       const validRestore =

@@ -204,6 +204,43 @@ export function tlcStatesToLearnTrace(
     }
 
     if (
+      phase === 'budget-selected' &&
+      previousPhase !== 'budget-selected'
+    ) {
+      const targetDailyNewWords =
+        numberValue(state, 'target') ?? 0
+      const introducedToday =
+        numberValue(state, 'introduced') ?? 0
+      const acquiredToday =
+        numberValue(state, 'acquired') ?? 0
+      const unseenCount =
+        numberValue(state, 'unseen')
+      const dueCount =
+        state.values.due === true ? 1 : 0
+      const allowedNow =
+        numberValue(state, 'allowedNow') ?? 0
+      const freshSelected =
+        numberValue(state, 'freshSelected') ?? 0
+      const readyPendingCount =
+        numberValue(state, 'readyPending') ?? 0
+      const pendingSelected =
+        numberValue(state, 'pendingSelected') ?? 0
+
+      events.push({
+        kind: 'fresh-budget',
+        targetDailyNewWords,
+        introducedToday,
+        acquiredToday,
+        unseenCount,
+        dueCount,
+        allowedNow,
+        freshSelected,
+        readyPendingCount,
+        pendingSelected,
+      })
+    }
+
+    if (
       phase === 'decided' &&
       previousPhase !== 'decided'
     ) {

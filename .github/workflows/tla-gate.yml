@@ -137,6 +137,17 @@ jobs:
             -config formal/learn/SessionArbitration.production.cfg \
             formal/learn/SessionArbitration.tla
 
+      - name: Parse F8 fresh budget model
+        run: |
+          java -cp /tmp/tla2tools.jar tla2sany.SANY \
+            formal/learn/FreshBudget.tla
+
+      - name: Model-check F8 production fresh budget
+        run: |
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -config formal/learn/FreshBudget.production.cfg \
+            formal/learn/FreshBudget.tla
+
       - name: Require admitted-based mutation counterexample
         run: |
           set +e
@@ -246,6 +257,23 @@ jobs:
             fi
           done
 
+      - name: Require F8 fresh budget counterexamples
+        run: |
+          for mutation in acquired-accounting over-budget ignores-unseen pending-consumes-budget; do
+            set +e
+            java -cp /tmp/tla2tools.jar tlc2.TLC \
+              -config "formal/learn/FreshBudget.${mutation}.cfg" \
+              formal/learn/FreshBudget.tla \
+              > "/tmp/f8-${mutation}.log" 2>&1
+            status=$?
+            set -e
+            cat "/tmp/f8-${mutation}.log"
+            if [ "$status" -eq 0 ]; then
+              echo "Expected F8 mutation ${mutation} to violate FreshBudgetSound."
+              exit 1
+            fi
+          done
+
       - name: Require stranded deferred liveness counterexample
         run: |
           set +e
@@ -300,4 +328,9 @@ jobs:
             node .formal-test/tla-counterexample-check.mjs \
               "/tmp/f7-${mutation}.log" \
               session-arbitration-violation
+          done
+          for mutation in acquired-accounting over-budget ignores-unseen pending-consumes-budget; do
+            node .formal-test/tla-counterexample-check.mjs \
+              "/tmp/f8-${mutation}.log" \
+              fresh-budget-violation
           done

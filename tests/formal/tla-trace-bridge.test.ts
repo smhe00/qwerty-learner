@@ -782,3 +782,91 @@ test('F7 TLC production restores the newest recoverable session without a false 
     false,
   )
 })
+
+
+const f8AcquiredAccountingCounterexample = `
+Error: Invariant FreshBudgetSound is violated.
+
+State 1: <Initial predicate>
+/\\ phase = "idle"
+/\\ target = 2
+/\\ introduced = 2
+/\\ acquired = 1
+/\\ unseen = 2
+/\\ due = FALSE
+/\\ readyPending = 0
+/\\ allowedNow = 0
+/\\ freshSelected = 0
+/\\ pendingSelected = 0
+
+State 2: <MutateAcquiredAccounting>
+/\\ phase = "budget-selected"
+/\\ target = 2
+/\\ introduced = 2
+/\\ acquired = 1
+/\\ unseen = 2
+/\\ due = FALSE
+/\\ readyPending = 0
+/\\ allowedNow = 1
+/\\ freshSelected = 1
+/\\ pendingSelected = 0
+`
+
+const f8ProductionBudgetTrace = `
+State 1: <Initial predicate>
+/\\ phase = "idle"
+/\\ target = 2
+/\\ introduced = 1
+/\\ acquired = 1
+/\\ unseen = 2
+/\\ due = FALSE
+/\\ readyPending = 1
+/\\ allowedNow = 0
+/\\ freshSelected = 0
+/\\ pendingSelected = 0
+
+State 2: <SelectWithinBudget>
+/\\ phase = "budget-selected"
+/\\ target = 2
+/\\ introduced = 1
+/\\ acquired = 1
+/\\ unseen = 2
+/\\ due = FALSE
+/\\ readyPending = 1
+/\\ allowedNow = 1
+/\\ freshSelected = 1
+/\\ pendingSelected = 1
+`
+
+test('F8 TLC acquired-based quota fault maps into the generic fresh-budget oracle', () => {
+  const trace = tlcStatesToLearnTrace(
+    parseTlcCounterexample(
+      f8AcquiredAccountingCounterexample,
+    ),
+    'f8-acquired-accounting',
+  )
+
+  const violation = detectLearnSystemAnomalies(
+    trace.events,
+  ).find(
+    (item) => item.code === 'fresh-budget-violation',
+  )
+  assert.ok(violation)
+  assert.equal(violation.severity, 'high')
+  assert.equal(violation.details.expectedAllowed, 0)
+  assert.equal(violation.details.allowedNow, 1)
+})
+
+test('F8 TLC production budget admits fresh and pending work without a false alarm', () => {
+  const trace = tlcStatesToLearnTrace(
+    parseTlcCounterexample(f8ProductionBudgetTrace),
+    'f8-production-budget',
+  )
+
+  assert.equal(
+    detectLearnSystemAnomalies(trace.events).some(
+      (item) => item.code === 'fresh-budget-violation',
+    ),
+    false,
+  )
+})
