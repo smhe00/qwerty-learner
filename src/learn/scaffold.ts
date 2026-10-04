@@ -1,7 +1,8 @@
 import type { LearnInteractionStrainTier } from './strain'
+import type { ExerciseLetterCondition } from '@/review/condition'
 
 export const LEARN_DYNAMIC_SCAFFOLD_POLICY_VERSION =
-  'learn-dynamic-scaffold-v1'
+  'learn-dynamic-scaffold-v1.1'
 
 export type LearnScaffoldLevel = 'S0' | 'S1' | 'S2' | 'S3'
 
@@ -16,6 +17,7 @@ export type LearnScaffoldDecision = {
   level: LearnScaffoldLevel
   strainTier: LearnInteractionStrainTier
   assistedCycles: number
+  hintPosition?: number
   reasonCodes: string[]
 }
 
@@ -23,7 +25,7 @@ export type LearnScaffoldPresentation = {
   purpose: 'training' | 'probe'
   audio: 'none' | 'automatic'
   phonetic: 'hidden' | 'visible'
-  letters: { mode: 'all-visible' | 'all-hidden' }
+  letters: ExerciseLetterCondition
 }
 
 /**
@@ -36,9 +38,16 @@ export function decideLearnScaffold(input: {
   phase: LearnScaffoldPhase
   strainTier?: LearnInteractionStrainTier
   assistedCycles?: number
+  hintPosition?: number
 }): LearnScaffoldDecision {
   const strainTier = input.strainTier ?? 'unknown'
   const assistedCycles = Math.max(0, input.assistedCycles ?? 0)
+  const hintPosition =
+    input.hintPosition !== undefined &&
+    Number.isInteger(input.hintPosition) &&
+    input.hintPosition >= 0
+      ? input.hintPosition
+      : undefined
   const reasonCodes = [
     LEARN_DYNAMIC_SCAFFOLD_POLICY_VERSION,
     `strain-${strainTier}`,
@@ -74,6 +83,7 @@ export function decideLearnScaffold(input: {
 
   const needsStrongSupport =
     assistedCycles > 0 ||
+    hintPosition !== undefined ||
     strainTier === 'elevated' ||
     strainTier === 'recovery'
 
@@ -82,9 +92,13 @@ export function decideLearnScaffold(input: {
     level: needsStrongSupport ? 'S1' : 'S2',
     strainTier,
     assistedCycles,
+    ...(hintPosition !== undefined ? { hintPosition } : {}),
     reasonCodes: [
       ...reasonCodes,
       ...(assistedCycles > 0 ? ['prior-independent-assistance'] : []),
+      ...(hintPosition !== undefined
+        ? [`position-targeted-support-${hintPosition}`]
+        : []),
       ...(strainTier === 'elevated'
         ? ['interaction-strain-elevated']
         : []),
@@ -100,6 +114,7 @@ export function decideLearnScaffold(input: {
 
 export function getLearnScaffoldPresentation(
   level: LearnScaffoldLevel,
+  options?: { hintPosition?: number },
 ): LearnScaffoldPresentation {
   switch (level) {
     case 'S0':
@@ -109,13 +124,26 @@ export function getLearnScaffoldPresentation(
         phonetic: 'visible',
         letters: { mode: 'all-visible' },
       }
-    case 'S1':
+    case 'S1': {
+      const hintPosition =
+        options?.hintPosition !== undefined &&
+        Number.isInteger(options.hintPosition) &&
+        options.hintPosition >= 0
+          ? options.hintPosition
+          : undefined
       return {
         purpose: 'training',
         audio: 'automatic',
         phonetic: 'visible',
-        letters: { mode: 'all-hidden' },
+        letters:
+          hintPosition === undefined
+            ? { mode: 'all-hidden' }
+            : {
+                mode: 'partial',
+                visiblePositions: [hintPosition],
+              },
       }
+    }
     case 'S2':
       return {
         purpose: 'training',
