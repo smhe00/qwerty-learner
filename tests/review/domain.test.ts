@@ -2258,6 +2258,9 @@ test('pruning an excluded word removes all session duplicates and preserves logi
     reinforcementCounts: {
       x: 1,
     },
+    acquisitionStates: {
+      x: createLearnAcquisitionState(),
+    },
   }
 
   const pruned = pruneLearnSessionWord(record, 'x')
@@ -2269,6 +2272,7 @@ test('pruning an excluded word removes all session duplicates and preserves logi
   assert.equal(pruned.isFinished, false)
   assert.equal(pruned.exercisePlans?.x, undefined)
   assert.equal(pruned.reinforcementCounts?.x, undefined)
+  assert.equal(pruned.acquisitionStates?.x, undefined)
 })
 
 
