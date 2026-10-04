@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   conditionSatisfied,
+  evaluatePreviousWordMetric,
   evaluateWordMetric,
 } from '../../src/achievement/evaluator'
 import type { AchievementCondition } from '../../src/resources/achievementCulture'
@@ -269,4 +270,165 @@ test('condition operators are deterministic', () => {
   assert.equal(conditionSatisfied({ ...condition('x', 3), operator: 'lte' }, 2), true)
   assert.equal(conditionSatisfied({ ...condition('x', 3), operator: 'lt' }, 3), false)
   assert.equal(conditionSatisfied({ ...condition('x', 3), operator: 'eq' }, 3), true)
+})
+
+
+test('audio-only count requires observed absence of text cues and actual pre-input audio', () => {
+  const records = Array.from({ length: 10 }, (_, index) => {
+    const item = record({
+      id: index + 1,
+      timeStamp: 1_000 + index,
+      word: `audio-${index}`,
+    })
+    item.exerciseCondition = {
+      version: 1,
+      purpose: 'probe',
+      source: 'adaptive-policy',
+      audio: 'automatic',
+      meaning: 'hidden',
+      phonetic: 'hidden',
+      letters: { mode: 'all-hidden' },
+      probeDimension: 'audio',
+    }
+    item.learningContext = {
+      version: 1,
+      answerVisibilityAtStart: 'hidden',
+      exampleVisibleAtStart: false,
+      meaningVisibleAtStart: false,
+      phoneticVisibleAtStart: false,
+      pronunciationEnabledAtStart: true,
+      pronunciationPlayed: true,
+      pronunciationPlayedBeforeFirstKey: true,
+      pronunciationAutomaticPlayCount: 1,
+    }
+    return item
+  })
+  const current = records.at(-1)!
+
+  assert.equal(
+    evaluateWordMetric(
+      condition('audio_only_independent_correct_count', 10),
+      { current, records, now: current.timeStamp },
+    ),
+    10,
+  )
+
+  const contaminated = record({
+    id: 11,
+    timeStamp: 2_000,
+    word: 'with-example',
+  })
+  contaminated.exerciseCondition = records[0].exerciseCondition
+  contaminated.learningContext = {
+    ...records[0].learningContext,
+    exampleVisibleAtStart: true,
+  }
+
+  assert.equal(
+    evaluateWordMetric(
+      condition('audio_only_independent_correct_count', 10),
+      {
+        current: contaminated,
+        records: [...records, contaminated],
+        now: contaminated.timeStamp,
+      },
+    ),
+    10,
+  )
+})
+
+test('Hint reduction compares adjacent windows and enforces attempt/accuracy guards', () => {
+  const now = 2_000_000
+  const previous = Array.from({ length: 30 }, (_, index) =>
+    record({
+      id: index + 1,
+      timeStamp: now - 13 * DAY + index,
+      word: `previous-${index}`,
+      hinted: true,
+      independent: false,
+    }),
+  )
+  const currentWindow = Array.from({ length: 30 }, (_, index) =>
+    record({
+      id: index + 31,
+      timeStamp: now - 6 * DAY + index,
+      word: `current-${index}`,
+    }),
+  )
+  const current = currentWindow.at(-1)!
+  const metric = condition(
+    'hint_use_rate_drop_pp_vs_previous_window',
+    20,
+    {
+      window: '7d_vs_previous_7d',
+      constraints: {
+        accuracyDropPpMax: 3,
+        minAttemptsEachWindow: 30,
+      },
+    },
+  )
+
+  assert.equal(
+    evaluateWordMetric(metric, {
+      current,
+      records: [...previous, ...currentWindow],
+      now,
+    }),
+    100,
+  )
+
+  const previousMixed = Array.from({ length: 30 }, (_, index) =>
+    record({
+      id: index + 100,
+      timeStamp: now - 13 * DAY + index,
+      word: `mixed-${index}`,
+      hinted: index < 15,
+      independent: index >= 15,
+    }),
+  )
+  const degraded = Array.from({ length: 30 }, (_, index) =>
+    record({
+      id: index + 200,
+      timeStamp: now - 6 * DAY + index,
+      word: `degraded-${index}`,
+      wrongCount: 1,
+    }),
+  )
+
+  assert.equal(
+    evaluateWordMetric(metric, {
+      current: degraded.at(-1)!,
+      records: [...previousMixed, ...degraded],
+      now,
+    }),
+    null,
+  )
+})
+
+test('previous metric snapshot supports a strict live threshold-crossing gate', () => {
+  const records = Array.from({ length: 11 }, (_, index) =>
+    record({
+      id: index + 1,
+      timeStamp: 10_000 + index,
+      word: `streak-${index}`,
+    }),
+  )
+  const metric = condition('consecutive_independent_correct_no_hint', 10)
+
+  assert.equal(
+    evaluatePreviousWordMetric(metric, {
+      current: records[9],
+      records,
+      now: records[9].timeStamp,
+    }),
+    9,
+  )
+  assert.equal(
+    evaluatePreviousWordMetric(metric, {
+      current: records[10],
+      records,
+      now: records[10].timeStamp,
+    }),
+    10,
+  )
 })
