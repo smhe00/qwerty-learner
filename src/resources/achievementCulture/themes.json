@@ -1,0 +1,74 @@
+[
+  {
+    "id": "first_step",
+    "label": "初见",
+    "meaning": "迈出第一步，敢于开始",
+    "symbol": "初芽"
+  },
+  {
+    "id": "perseverance",
+    "label": "笃行",
+    "meaning": "持续行动，不因一时困难停止",
+    "symbol": "石阶"
+  },
+  {
+    "id": "recovery",
+    "label": "逆转",
+    "meaning": "从错误和遗忘中重新找回能力",
+    "symbol": "回澜"
+  },
+  {
+    "id": "review",
+    "label": "温故",
+    "meaning": "跨越时间仍能回忆，旧知生新",
+    "symbol": "回纹"
+  },
+  {
+    "id": "self_mastery",
+    "label": "自胜",
+    "meaning": "逐步减少外部提示，靠自己完成",
+    "symbol": "独峰"
+  },
+  {
+    "id": "growth",
+    "label": "精进",
+    "meaning": "能力相对自己的过去明显提升",
+    "symbol": "云梯"
+  },
+  {
+    "id": "resilience",
+    "label": "坚韧",
+    "meaning": "遇到高难度仍能坚持并最终掌握",
+    "symbol": "竹"
+  },
+  {
+    "id": "long_view",
+    "label": "远志",
+    "meaning": "把短期努力沉淀成长期能力",
+    "symbol": "长风"
+  },
+  {
+    "id": "focus",
+    "label": "专注",
+    "meaning": "保持注意与节奏，完成眼前一程",
+    "symbol": "灯"
+  },
+  {
+    "id": "curiosity",
+    "label": "求知",
+    "meaning": "主动探索、思考与发现",
+    "symbol": "星图"
+  },
+  {
+    "id": "craft",
+    "label": "琢磨",
+    "meaning": "通过细节修正让能力越来越准确",
+    "symbol": "玉"
+  },
+  {
+    "id": "courage",
+    "label": "勇毅",
+    "meaning": "面对陌生与困难仍愿意尝试",
+    "symbol": "舟"
+  }
+]
