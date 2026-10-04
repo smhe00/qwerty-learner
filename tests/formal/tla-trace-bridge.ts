@@ -203,6 +203,43 @@ export function tlcStatesToLearnTrace(
       }
     }
 
+    if (
+      phase === 'resolved' &&
+      previousPhase !== 'resolved' &&
+      state.values.success === true
+    ) {
+      const beforeIndex =
+        numberValue(state, 'beforeIndex') ?? 0
+      const afterIndex =
+        numberValue(state, 'afterIndex') ?? beforeIndex
+      const beforeItemVersion =
+        numberValue(state, 'beforeItemVersion') ?? 0
+      const afterItemVersion =
+        numberValue(state, 'afterItemVersion') ??
+        beforeItemVersion
+      const finished = state.values.finished === true
+
+      events.push({
+        kind: 'attempt-completed',
+        sessionKind: 'review',
+        word: 'tlc:progress-word',
+        success: true,
+        beforeIndex,
+        afterIndex,
+        expectedAfterIndex: afterIndex,
+        beforeQueueSignature: 'formal-progress-queue',
+        afterQueueSignature: 'formal-progress-queue',
+        expectedAfterQueueSignature:
+          'formal-progress-queue',
+        beforeItemStateSignature:
+          `version:${beforeItemVersion}`,
+        afterItemStateSignature:
+          `version:${afterItemVersion}`,
+        afterFinished: finished,
+        expectedAfterFinished: finished,
+      })
+    }
+
   }
 
   return {
