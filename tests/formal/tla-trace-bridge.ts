@@ -96,14 +96,6 @@ function stringValue(
   return typeof value === 'string' ? value : null
 }
 
-function booleanValue(
-  state: TlcState,
-  key: string,
-): boolean | null {
-  const value = state.values[key]
-  return typeof value === 'boolean' ? value : null
-}
-
 export function tlcStatesToLearnTrace(
   states: TlcState[],
   scenario = 'tlc-counterexample',
@@ -211,46 +203,6 @@ export function tlcStatesToLearnTrace(
       }
     }
 
-    const durableVersion = numberValue(
-      state,
-      'durableVersion',
-    )
-    const previousDurableVersion = previous
-      ? numberValue(previous, 'durableVersion')
-      : null
-    if (
-      durableVersion !== null &&
-      (index === 0 ||
-        durableVersion !== previousDurableVersion)
-    ) {
-      events.push({
-        kind: 'checkpoint',
-        action: 'save',
-        sessionId: 'tlc:checkpoint-session',
-        index: durableVersion,
-        isFinished:
-          booleanValue(state, 'durableFinished') ?? false,
-        queueSignature: 'formal-checkpoint-queue',
-        wordCount: 3,
-      })
-    }
-
-    if (
-      phase === 'restored' &&
-      previousPhase !== 'restored'
-    ) {
-      events.push({
-        kind: 'checkpoint',
-        action: 'restore',
-        sessionId: 'tlc:checkpoint-session',
-        index:
-          numberValue(state, 'restoredVersion') ?? 0,
-        isFinished:
-          booleanValue(state, 'restoredFinished') ?? false,
-        queueSignature: 'formal-checkpoint-queue',
-        wordCount: 3,
-      })
-    }
   }
 
   return {
