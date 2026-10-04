@@ -331,9 +331,6 @@ export function buildLearnStatsSnapshot(input: {
   const recentRecords = records.filter((record) =>
     dateKeySet.has(localDateKey(record.timeStamp)),
   )
-  const recentLearnRecords = learnRecords.filter((record) =>
-    dateKeySet.has(localDateKey(record.timeStamp)),
-  )
   const strain = estimateLearnInteractionStrain(learnRecords)
   const todayActiveSeconds = round1(
     todayLearnRecords.reduce(
@@ -377,7 +374,7 @@ export function buildLearnStatsSnapshot(input: {
       reviewed: uniqueWordCount(
         daily.filter((record) => !isAcquisition(record)),
       ),
-      acquired: uniqueWordCount(daily.filter(isCompletedAcquisition)),
+      acquired: uniqueWordCount(daily.filter(isCompletedAcquisitionRecord)),
       successRate: rate(dailySuccessful, dailyRated.length),
     }
   })
