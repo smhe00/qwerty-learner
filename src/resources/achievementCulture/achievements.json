@@ -135,7 +135,7 @@
     "id": "ACH_NO_HINT_25",
     "title": "独立成章",
     "category": "skill",
-    "rarity": "epic",
+    "rarity": "rare",
     "themes": [
       "self_mastery",
       "focus"
@@ -165,21 +165,21 @@
       "symbol": "一叶孤舟",
       "scene": "一次独立也许偶然，连续独立已经成为能力。",
       "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
-      "paletteMood": "黛青、朱砂、克制金箔",
-      "material": "漆器与金箔"
+      "paletteMood": "青玉、墨蓝、少量银光",
+      "material": "青玉与银线"
     },
     "unlockPolicy": "once",
     "presentation": {
       "rollout": "p1",
       "progress": "near_only",
-      "ceremony": "spotlight"
+      "ceremony": "settlement"
     }
   },
   {
     "id": "ACH_WARMING_UP",
     "title": "渐入佳境",
     "category": "growth",
-    "rarity": "rare",
+    "rarity": "common",
     "themes": [
       "growth",
       "focus"
@@ -210,14 +210,14 @@
       "symbol": "云梯",
       "scene": "状态不是固定的，你可以在一次学习里把自己带起来。",
       "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
-      "paletteMood": "青玉、墨蓝、少量银光",
-      "material": "青玉与银线"
+      "paletteMood": "纸白、青灰、淡墨",
+      "material": "纸本与浅浮雕"
     },
     "unlockPolicy": "once",
     "presentation": {
       "rollout": "p0",
       "progress": "near_only",
-      "ceremony": "settlement"
+      "ceremony": "quiet"
     }
   },
   {
@@ -719,7 +719,7 @@
     "id": "ACH_AUDIO_50",
     "title": "耳熟能详",
     "category": "skill",
-    "rarity": "epic",
+    "rarity": "rare",
     "themes": [
       "focus",
       "craft"
@@ -749,14 +749,14 @@
       "symbol": "古琴弦与字母",
       "scene": "声音与拼写之间的通路，已经从努力变得熟练。",
       "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
-      "paletteMood": "黛青、朱砂、克制金箔",
-      "material": "漆器与金箔"
+      "paletteMood": "青玉、墨蓝、少量银光",
+      "material": "青玉与银线"
     },
     "unlockPolicy": "once",
     "presentation": {
       "rollout": "p1",
       "progress": "near_only",
-      "ceremony": "spotlight"
+      "ceremony": "settlement"
     }
   },
   {
@@ -806,7 +806,7 @@
     "id": "ACH_CONTINUE",
     "title": "再启一程",
     "category": "consistency",
-    "rarity": "rare",
+    "rarity": "common",
     "themes": [
       "perseverance",
       "growth"
@@ -838,21 +838,21 @@
       "symbol": "第二道山门",
       "scene": "已经完成，仍愿意更进一步。",
       "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
-      "paletteMood": "青玉、墨蓝、少量银光",
-      "material": "青玉与银线"
+      "paletteMood": "纸白、青灰、淡墨",
+      "material": "纸本与浅浮雕"
     },
     "unlockPolicy": "once",
     "presentation": {
       "rollout": "p0",
       "progress": "near_only",
-      "ceremony": "settlement"
+      "ceremony": "quiet"
     }
   },
   {
     "id": "ACH_FAILURE_RECOVERY_SESSION",
     "title": "重整旗鼓",
     "category": "recovery",
-    "rarity": "epic",
+    "rarity": "rare",
     "themes": [
       "recovery",
       "resilience"
@@ -885,14 +885,14 @@
       "symbol": "风后新草",
       "scene": "最值得奖励的不是从不失败，而是失败以后还能回来。",
       "illustrationPrompt": "精致中国文化徽章插画，适合初中生学习产品；构图简洁、有收藏感、避免幼稚卡通；不在图内生成文字。",
-      "paletteMood": "黛青、朱砂、克制金箔",
-      "material": "漆器与金箔"
+      "paletteMood": "青玉、墨蓝、少量银光",
+      "material": "青玉与银线"
     },
     "unlockPolicy": "once",
     "presentation": {
       "rollout": "p0",
       "progress": "near_only",
-      "ceremony": "spotlight"
+      "ceremony": "settlement"
     }
   },
   {
@@ -1356,7 +1356,8 @@
       "target": 10,
       "window": "14d",
       "constraints": {
-        "maxMinutesPerSession": 12
+        "maxMinutesPerSession": 12,
+        "minCompletedWords": 5
       }
     },
     "culture": {
