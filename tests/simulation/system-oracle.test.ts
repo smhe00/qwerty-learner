@@ -276,13 +276,19 @@ test('oracle detects progress and persistence anomalies without mutation-specifi
       kind: 'checkpoint',
       action: 'save',
       sessionId: 's1',
-      semanticSignature: 'index=4;queue=a,b',
+      index: 4,
+      isFinished: false,
+      queueSignature: 'a|b|c|d|e',
+      wordCount: 5,
     },
     {
       kind: 'checkpoint',
       action: 'restore',
       sessionId: 's1',
-      semanticSignature: 'index=2;queue=a,b',
+      index: 2,
+      isFinished: false,
+      queueSignature: 'a|b|c|d|e',
+      wordCount: 5,
     },
   ]
 
