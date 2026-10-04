@@ -11,6 +11,10 @@ import {
   createLearnAcquisitionExercisePlanForState,
 } from '@/learn/acquisition'
 import type { LearnAcquisitionState } from '@/learn/acquisition'
+import {
+  isActiveLearningState,
+  pruneLearnSessionWord,
+} from '@/learn/lifecycle'
 import { estimateLearnInteractionStrain } from '@/learn/strain'
 import { ReviewRecord } from './record'
 import type { TErrorWordData } from '@/pages/Gallery-N/hooks/useErrorWords'
@@ -46,10 +50,32 @@ export async function getLatestReviewRecord(dictID: string): Promise<ReviewRecor
   // Session recovery is about the newest unfinished checkpoint, not the
   // newest historical record. A newer finished session must never hide an
   // older still-unfinished session.
-  return records
+  const latest = records
     .filter((record) => !record.isFinished)
     .sort((a, b) => a.createTime - b.createTime)
     .pop()
+
+  if (!latest || latest.sessionKind === 'acquisition') return latest
+
+  // Review checkpoints are lifecycle-owned. If bootstrap repaired a
+  // premature Acquisition admission, remove the no-longer-ACTIVE word from
+  // any stale unfinished Review checkpoint before it can be resumed.
+  const states = await getReviewWordStates(dictID)
+  const activeWords = new Set(
+    states.filter(isActiveLearningState).map((state) => state.word),
+  )
+  let sanitized: ReviewRecord = latest
+  for (const word of new Set(latest.words.map((item) => item.name))) {
+    if (!activeWords.has(word)) {
+      sanitized = pruneLearnSessionWord(sanitized, word) as ReviewRecord
+    }
+  }
+
+  if (sanitized !== latest && latest.id !== undefined) {
+    await putWordReviewRecord(sanitized)
+  }
+
+  return sanitized.isFinished ? undefined : sanitized
 }
 
 export async function generateNewWordReviewRecord(
