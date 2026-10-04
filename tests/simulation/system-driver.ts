@@ -388,6 +388,8 @@ export class VirtualLearnApp {
           })
         }
       }
+    } else {
+      this.activeSessionId = undefined
     }
 
     return result
