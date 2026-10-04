@@ -21,8 +21,14 @@ export type LearnSystemTraceEvent =
       success: boolean
       beforeIndex: number
       afterIndex: number
+      expectedAfterIndex: number
       beforeQueueSignature: string
       afterQueueSignature: string
+      expectedAfterQueueSignature: string
+      beforeItemStateSignature: string
+      afterItemStateSignature: string
+      afterFinished: boolean
+      expectedAfterFinished: boolean
     }
   | {
       kind: 'checkpoint'
@@ -49,6 +55,7 @@ export type LearnSystemAnomaly = {
   code:
     | 'repeated-singleton-acquisition'
     | 'success-without-progress'
+    | 'controller-driver-divergence'
     | 'checkpoint-regression'
     | 'due-work-bypassed'
   severity: 'medium' | 'high'
@@ -167,11 +174,39 @@ export function detectLearnSystemAnomalies(
     if (event.kind === 'attempt-completed') {
       singletonRun = 0
       lastSingletonSessionId = null
-      if (
-        event.success &&
+
+      const projectionMismatch =
+        event.afterIndex !== event.expectedAfterIndex ||
+        event.afterQueueSignature !==
+          event.expectedAfterQueueSignature ||
+        event.afterFinished !== event.expectedAfterFinished
+
+      if (projectionMismatch) {
+        anomalies.push({
+          code: 'controller-driver-divergence',
+          severity: 'high',
+          eventIndex: index,
+          details: {
+            word: event.word,
+            actualIndex: event.afterIndex,
+            expectedIndex: event.expectedAfterIndex,
+            actualFinished: event.afterFinished,
+            expectedFinished: event.expectedAfterFinished,
+          },
+        })
+      }
+
+      const noSemanticProgress =
         event.beforeIndex === event.afterIndex &&
         event.beforeQueueSignature ===
-          event.afterQueueSignature
+          event.afterQueueSignature &&
+        event.beforeItemStateSignature ===
+          event.afterItemStateSignature
+
+      if (
+        event.success &&
+        !event.afterFinished &&
+        noSemanticProgress
       ) {
         anomalies.push({
           code: 'success-without-progress',
