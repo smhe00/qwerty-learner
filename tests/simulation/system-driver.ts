@@ -398,14 +398,14 @@ export class VirtualLearnApp {
       getWordRecords: async () => clone(this.wordRecords),
       getWordStates: async () => clone(this.wordStates),
       generateAcquisition: this.generateAcquisition,
-      getNextSpacingResumeAt: async () => {
+      getNextDeferredResumeAt: async () => {
         const resumeTimes = [
           ...this.latestPendingAcquisitionStates().values(),
         ]
           .filter(
             (state) =>
               state.phase === 'deferred' &&
-              state.deferredReason === 'spacing',
+              state.resumeAfter !== undefined,
           )
           .map((state) => state.resumeAfter)
           .filter(
