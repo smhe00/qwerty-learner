@@ -1,12 +1,12 @@
 import {
-  achievementDefinitions,
   type AchievementDefinition,
+  achievementDefinitions,
 } from '@/resources/achievementCulture'
 import { db } from '@/utils/db'
 import {
+  SUPPORTED_WORD_METRICS,
   conditionSatisfied,
   evaluateWordMetric,
-  SUPPORTED_WORD_METRICS,
 } from './evaluator'
 import type {
   AchievementEventRecord,
