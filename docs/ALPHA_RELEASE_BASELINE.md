@@ -52,7 +52,7 @@ Durable admission requires clean, unaided, spacing-valid Independent evidence.
 | Interaction Strain | `learn-interaction-strain-v2` |
 | Dynamic Scaffold | `learn-dynamic-scaffold-v1.1` |
 | Recovery Window | `learn-recovery-window-v1` |
-| Acquisition quota | `learn-acquisition-quota-v2` |
+| Acquisition quota | `learn-acquisition-quota-v3` |
 | Daily plan | `learn-daily-plan-v1` |
 | Acquisition flow | flow version 1 |
 | Active scheduler | `basic-v2` |
