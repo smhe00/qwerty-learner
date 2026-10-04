@@ -237,6 +237,10 @@ Current acquisition rollout:
 - Follow-up attempts are inserted after intervening queue items: Supported
   Recall uses a short gap and Independent Recall a longer gap, preventing the
   just-seen answer from being mistaken for durable memory.
+- Independent admission additionally requires at least 2 **actual** intervening
+  queue items. Requested spacing that is truncated by a short final batch does
+  not qualify as durable evidence; a clean answer can therefore remain
+  scheduler-neutral instead of being mistaken for mastery.
 - Only a clean, unaided Independent Recall creates ACTIVE state. Hint-assisted
   or otherwise non-independent completion returns to bounded support; repeated
   failure is deferred rather than fabricated as mastery.
