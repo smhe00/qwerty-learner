@@ -1,6 +1,7 @@
 import {
   isAcquisitionIntroductionRecord,
   isCompletedAcquisitionRecord,
+  isModernPhasedAcquisitionRecord,
 } from './admission'
 import { getLearningLifecycle } from './lifecycle'
 import { estimateLearnInteractionStrain } from './strain'
@@ -125,6 +126,46 @@ function uniqueWordCount(records: IWordRecord[]): number {
   return new Set(records.map((record) => record.word)).size
 }
 
+
+function compareRecordOrder(
+  left: IWordRecord,
+  right: IWordRecord,
+): number {
+  const timeDiff = left.timeStamp - right.timeStamp
+  if (timeDiff !== 0) return timeDiff
+  return (left.id ?? 0) - (right.id ?? 0)
+}
+
+function filterReviewsBeforeModernAdmission(
+  records: IWordRecord[],
+): IWordRecord[] {
+  const modernWords = new Set(
+    records
+      .filter(isModernPhasedAcquisitionRecord)
+      .map((record) => record.word),
+  )
+  if (modernWords.size === 0) return records
+
+  const firstAdmissionByWord = new Map<string, IWordRecord>()
+  for (const record of records) {
+    if (!isCompletedAcquisitionRecord(record)) continue
+    const previous = firstAdmissionByWord.get(record.word)
+    if (!previous || compareRecordOrder(record, previous) < 0) {
+      firstAdmissionByWord.set(record.word, record)
+    }
+  }
+
+  return records.filter((record) => {
+    if (isAcquisitionIntroductionRecord(record)) return true
+    if (!modernWords.has(record.word)) return true
+
+    const admission = firstAdmissionByWord.get(record.word)
+    return Boolean(
+      admission && compareRecordOrder(record, admission) > 0,
+    )
+  })
+}
+
 function isColdProbePass(record: IWordRecord): boolean {
   return (
     record.reviewRatingDecision?.eligible === true &&
@@ -203,7 +244,10 @@ export function buildLearnStatsSnapshot(input: {
   const learnRecords = input.wordRecords.filter(
     (record) => record.dict === input.dict && isLearnRecord(record),
   )
-  const records = learnRecords.filter(isPrimaryLearnAttempt)
+  const schedulerEligibleLearnRecords =
+    filterReviewsBeforeModernAdmission(learnRecords)
+  const records =
+    schedulerEligibleLearnRecords.filter(isPrimaryLearnAttempt)
   const states = input.wordStates.filter((state) => state.dict === input.dict)
   const todayKey = localDateKey(input.now)
   const dateKeys = recentLocalDateKeys(input.now, 30)
