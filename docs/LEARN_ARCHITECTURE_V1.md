@@ -130,12 +130,12 @@ P4 — daily Learn plan / workload controller          CLOSED
 
 ### P3 acquisition quota contract
 
-Learn P3 turns P2 statistics into a deterministic admission feedback controller.
+Learn P3 turns P2 statistics into a deterministic first-introduction workload controller.
 
 - Due Review always has priority. If any ACTIVE word is due, new Acquisition
   is not admitted at that moment.
-- New-word admission is a **daily total quota**, not a per-session quota.
-  Re-entering Learn cannot bypass the daily target.
+- New-word **first introduction** is a daily total quota, not a per-session quota.
+  Re-entering Learn cannot bypass the daily target. Final Independent admission is tracked separately as an outcome.
 - V1 quota tiers are 5 / 10 / 20 new words per day.
 - With fewer than 8 eligible Rating Gate events in the recent 30-day window,
   the bootstrap target stays at 20 unless today's valid Cold Probe evidence is
@@ -157,13 +157,12 @@ Learn P3 turns P2 statistics into a deterministic admission feedback controller.
   high tier at 10/day. Low strain never raises a lower memory-based quota.
 - The strain controller reads only explicit Learn evidence and is forbidden
   from reading or mutating Typing policy/state.
-- The remaining quota is
-  `max(0, target - todayAcquiredWords)`, further capped by UNSEEN count.
+- The remaining fresh quota is
+  `max(0, target - todayIntroducedWords)`, further capped by truly UNSEEN count.
+- A spacing-deferred word is already introduced: it remains pending, cannot be selected again as fresh, and may resume after its delay even when fresh quota is zero.
 - The controller is pure and versioned as
-  `learn-acquisition-quota-v2`. It does not mutate scheduler or lifecycle.
-- The Learn resolver consumes `allowedNow` when creating an Acquisition
-  session; the statistics page exposes both today's target and the currently
-  admissible number.
+  `learn-acquisition-quota-v3`. It does not mutate scheduler or lifecycle.
+- The Learn resolver uses `allowedNow` only for fresh first introductions; pending Acquisition completion is resolved separately.
 - Browser regression proves that weak Review performance creates a five-word
   Acquisition session.
 
@@ -189,8 +188,8 @@ quota, and observed Learn active time into one deterministic daily plan.
 - Before admitting new words, P4 projects:
   `today active time + current Due estimate + candidate Acquisition estimate`.
 - The number of planned new words is the minimum of:
-  1. P3 remaining daily quota;
-  2. UNSEEN availability already reflected by P3;
+  1. P3 remaining daily first-introduction quota;
+  2. truly UNSEEN availability already reflected by P3;
   3. the number that fits inside the remaining 20-minute soft budget.
 - A Due word is classified as currently difficult when its latest state is
   Again / Hard, or it has an unrecovered lapse
