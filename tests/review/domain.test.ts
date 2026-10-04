@@ -2846,20 +2846,39 @@ test('Learn P2 keeps UNSEEN unknown when the dictionary payload is unavailable',
 })
 
 
-test('Learn interaction strain stays unknown until enough Learn evidence exists', () => {
-  const estimate = estimateLearnInteractionStrain(
-    Array.from({ length: 4 }, (_, index) => ({
-      word: `w${index}`,
+test('Learn interaction strain ignores Typing and stays unknown until enough Learn evidence exists', () => {
+  const learnRecords: IWordRecord[] = Array.from(
+    { length: 4 },
+    (_, index) => ({
+      word: `learn-${index}`,
       timeStamp: index + 1,
       dict: 'strain',
       chapter: -1,
       timing: [],
       wrongCount: 3,
       mistakes: { 0: ['x'] },
-      sourceMode: 'learn' as const,
-      learnItemKind: 'acquisition' as const,
-    })),
+      sourceMode: 'learn',
+      learnItemKind: 'acquisition',
+    }),
   )
+  const typingRecords: IWordRecord[] = Array.from(
+    { length: 10 },
+    (_, index) => ({
+      word: `typing-${index}`,
+      timeStamp: 100 + index,
+      dict: 'strain',
+      chapter: 0,
+      timing: [],
+      wrongCount: 10,
+      mistakes: { 0: ['x'] },
+      sourceMode: 'typing',
+    }),
+  )
+
+  const estimate = estimateLearnInteractionStrain([
+    ...learnRecords,
+    ...typingRecords,
+  ])
 
   assert.equal(estimate.tier, 'unknown')
   assert.equal(estimate.score, null)
