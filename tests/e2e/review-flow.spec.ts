@@ -1825,12 +1825,78 @@ test('dynamic scaffold starts Supported acquisition at S1 under recovery strain'
   await expect(shell).toHaveAttribute('data-learn-scaffold-level', 'S1')
   await expect(shell).toHaveAttribute(
     'data-learn-scaffold-policy',
-    'learn-dynamic-scaffold-v1',
+    'learn-dynamic-scaffold-v1.1',
   )
   await expect(word).toHaveAttribute('data-review-purpose', 'training')
   await expect(word).toHaveAttribute('data-review-audio', 'automatic')
   await expect(word).toHaveAttribute('data-review-phonetic', 'visible')
   await expect(word).toHaveAttribute('data-review-letters', 'all-hidden')
+})
+
+test('failed Independent recall targets the wrong position in the next S1 attempt', async ({
+  page,
+}) => {
+  await seedAcquisitionSession(
+    page,
+    [reviewWords[0]],
+    919992,
+    'independent',
+    4,
+    'low',
+  )
+  await page.goto('/learn/session')
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+
+  let word = page.locator('[data-typing-word="cancel"]')
+  await expect(word).toHaveAttribute('data-review-letters', 'all-hidden')
+
+  await page.keyboard.type('cax')
+  await expect
+    .poll(async () => await word.getAttribute('data-typing-input'))
+    .toBe('')
+  await page.keyboard.type('cancel')
+
+  await expect
+    .poll(async () => {
+      const info = await readReviewModeInfo(page)
+      const state = info?.reviewRecord?.acquisitionStates?.cancel
+      return {
+        index: info?.reviewRecord?.index,
+        phase: state?.phase,
+        assistedCycles: state?.assistedCycles,
+        scaffoldHintPosition: state?.scaffoldHintPosition,
+        letters:
+          info?.reviewRecord?.exercisePlans?.cancel?.condition?.letters,
+      }
+    })
+    .toEqual({
+      index: 1,
+      phase: 'supported',
+      assistedCycles: 1,
+      scaffoldHintPosition: 2,
+      letters: {
+        mode: 'partial',
+        visiblePositions: [2],
+      },
+    })
+
+  await waitForRenderedWord(page, 'cancel')
+  const shell = page.locator('[data-learn-acquisition-phase="supported"]')
+  word = page.locator('[data-typing-word="cancel"]')
+
+  await expect(shell).toHaveAttribute('data-learn-scaffold-level', 'S1')
+  await expect(shell).toHaveAttribute(
+    'data-learn-scaffold-hint-position',
+    '2',
+  )
+  await expect(word).toHaveAttribute('data-review-letters', 'partial')
+  await expect(word).toHaveAttribute('data-review-hint-level', '1')
+  await expect(word).toHaveAttribute('data-review-hint-stage', 'hint-1')
+
+  await page.keyboard.press('Escape')
+  await expect(word).toHaveAttribute('data-review-hint-level', '2')
+  await expect(word).toHaveAttribute('data-review-hint-stage', 'hint-2')
 })
 
 test('dynamic scaffold never weakens Independent acquisition under recovery strain', async ({
