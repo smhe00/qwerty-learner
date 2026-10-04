@@ -136,15 +136,16 @@ reviewCount / lapseCount。
 不会突破原本由记忆质量决定的上限。这个信号只使用 Learn 记录，不读取
 Typing 表现，也不会在学生界面显示“情绪分数”。
 
-Alpha 1 的 Interaction Strain 已升级为 V2：EWMA 观察器外增加 hysteresis，
+当前 Interaction Strain 使用 V2：EWMA 观察器外增加 hysteresis，
 避免分数在边界附近轻微波动时频繁在 low / elevated / recovery 之间切换。
 控制参数仍是全局受约束参数，当前没有启用自动 Personal Calibration。
 
 Cold Probe 至少有 5 个有效样本才参与当天调速；Rating Gate 判定无效的
 尝试不会被当作“通过”。
 
-每日额度是总量。例如今日目标 10 个、已经学了 7 个，再次进入 Learn
-最多只会再加入 3 个新词，而不是重新获得 10 个额度。
+每日额度控制的是**今天第一次进入 Acquisition 的新词数**。例如今日目标 10 个、已经首次引入 7 个，再次进入 Learn 最多只会再引入 3 个新词，而不是重新获得 10 个额度。
+
+“首次引入”和“独立掌握”是两个指标：某词即使因为间隔不足暂未完成 Independent admission，也已经消耗了当天的新词额度。它会保留为 pending Acquisition，延时满足后可直接继续 Independent，不会再占一个 fresh slot。
 
 ### P4 今日 Learn 计划
 
