@@ -33,7 +33,13 @@ Session token 是每次登录随机生成的 256-bit opaque token，服务端只
 
 ## 同步格式
 
-当前唯一受支持的客户端格式：
+当前客户端**写入/上传**格式：
+
+```text
+qwerty-backup-v3
+```
+
+为了迁移旧数据，当前客户端仍兼容恢复：
 
 ```text
 qwerty-dexie-gzip-v2
@@ -44,9 +50,7 @@ qwerty-dexie-gzip-v2
 ```text
 IndexedDB
   ↓
-Dexie db.export()
-  ↓
-JSON
+qwerty-backup-v3 JSON envelope
   ↓
 gzip
   ↓
@@ -57,7 +61,8 @@ PUT /api/sync
 EdgeOne Blob
 ```
 
-因此云端 snapshot 的业务数据核心与本地 `.gz` 导出一致，区别主要是云 API 使用 Base64 放入 JSON 传输。
+`qwerty-backup-v3` 除数据库内容外还保存必要的学习状态，例如当前词库和章节。
+云 API 使用 Base64 包装 gzip snapshot 进行 JSON 传输。
 
 当前版本**不再使用独立云同步加密口令，也不再执行 PBKDF2/AES-GCM 客户端加密**。
 
