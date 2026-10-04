@@ -140,6 +140,7 @@ export default function WordPanel() {
       classification,
       reviewRatingDecision,
       reviewEvidence,
+      lastWrongIndex,
       nextExerciseShadow,
     }: WordFinishResult) => {
       if (
@@ -347,6 +348,7 @@ export default function WordPanel() {
               {
                 kind: 'independent-complete',
                 independentClean: independentEvidenceClean,
+                scaffoldHintPosition: lastWrongIndex,
               },
             )
           }
@@ -668,6 +670,11 @@ export default function WordPanel() {
                   ? currentAcquisitionScaffold?.policyVersion
                   : undefined
               }
+              data-learn-scaffold-hint-position={
+                currentLearnItemKind === 'acquisition'
+                  ? currentAcquisitionScaffold?.hintPosition
+                  : undefined
+              }
             >
               {isReviewMode && (
                 <div className="absolute -right-16 top-0 z-20">
@@ -705,6 +712,18 @@ export default function WordPanel() {
                 }
                 reviewAttemptRole={currentReviewAttemptRole}
                 managedHintFlow={managedHintFlow}
+                managedHintInitialLevel={
+                  currentLearnItemKind === 'acquisition' &&
+                  currentAcquisitionScaffold?.level === 'S1'
+                    ? 1
+                    : undefined
+                }
+                managedHintInitialPosition={
+                  currentLearnItemKind === 'acquisition' &&
+                  currentAcquisitionScaffold?.level === 'S1'
+                    ? currentAcquisitionScaffold.hintPosition
+                    : undefined
+                }
                 onHintLevelChange={setCurrentReviewHintLevel}
                 key={currentWordRenderKey}
               />
