@@ -93,6 +93,17 @@ jobs:
             -config formal/learn/CheckpointMonotonicity.production.cfg \
             formal/learn/CheckpointMonotonicity.tla
 
+      - name: Parse progress semantics model
+        run: |
+          java -cp /tmp/tla2tools.jar tla2sany.SANY \
+            formal/learn/ProgressSemantics.tla
+
+      - name: Model-check production progress semantics
+        run: |
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -config formal/learn/ProgressSemantics.production.cfg \
+            formal/learn/ProgressSemantics.tla
+
       - name: Require admitted-based mutation counterexample
         run: |
           set +e
@@ -138,6 +149,21 @@ jobs:
             exit 1
           fi
 
+      - name: Require silent progress counterexample
+        run: |
+          set +e
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -config formal/learn/ProgressSemantics.silent-noop.cfg \
+            formal/learn/ProgressSemantics.tla \
+            > /tmp/silent-progress-tlc.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/silent-progress-tlc.log
+          if [ "$status" -eq 0 ]; then
+            echo 'Expected the silent progress mutation to violate SuccessfulAttemptHasEffect.'
+            exit 1
+          fi
+
       - name: Require stranded deferred liveness counterexample
         run: |
           set +e
@@ -177,3 +203,6 @@ jobs:
           node .formal-test/tla-counterexample-check.mjs \
             /tmp/stale-checkpoint-tlc.log \
             checkpoint-regression
+          node .formal-test/tla-counterexample-check.mjs \
+            /tmp/silent-progress-tlc.log \
+            success-without-progress
