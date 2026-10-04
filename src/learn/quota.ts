@@ -1,7 +1,7 @@
 import type { LearnStatsSnapshot } from './stats'
 
 export const LEARN_ACQUISITION_QUOTA_POLICY_VERSION =
-  'learn-acquisition-quota-v2'
+  'learn-acquisition-quota-v3'
 
 export const learnAcquisitionQuotaPolicy = {
   low: 5,
@@ -31,6 +31,7 @@ export type LearnAcquisitionQuotaDecision = {
     todayReviewedWords: number
     todayReviewAttempts: number
     todayColdProbeAttempts: number
+    todayIntroducedWords: number
     todayAcquiredWords: number
     coldProbePassRateToday: number | null
     ratedEvents30d: number
@@ -114,7 +115,7 @@ export function decideDailyAcquisitionQuota(
 
   const targetDailyNewWords = policy[tier]
   const remainingBeforeUnseen = clampNonNegativeInteger(
-    targetDailyNewWords - stats.today.acquiredWords,
+    targetDailyNewWords - stats.today.introducedWords,
   )
   const remainingDailyNewWords =
     stats.lifecycle.unseen === null
@@ -149,6 +150,7 @@ export function decideDailyAcquisitionQuota(
       todayReviewedWords: stats.today.reviewedWords,
       todayReviewAttempts: stats.today.reviewAttempts,
       todayColdProbeAttempts: stats.today.coldProbeAttempts,
+      todayIntroducedWords: stats.today.introducedWords,
       todayAcquiredWords: stats.today.acquiredWords,
       coldProbePassRateToday: stats.today.coldProbePassRate,
       ratedEvents30d: ratedEvents,
