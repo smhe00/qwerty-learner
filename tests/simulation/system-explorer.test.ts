@@ -40,7 +40,15 @@ async function explore(
     const choice = random()
 
     if (choice < 0.58) {
-      const progressed = app.completeCurrentClean()
+      const quality = random()
+      const outcome =
+        quality < 0.68
+          ? ('good' as const)
+          : quality < 0.88
+            ? ('hard' as const)
+            : ('again' as const)
+      const progressed =
+        app.completeCurrentAttempt(outcome)
       if (!progressed) await app.enter()
       continue
     }
