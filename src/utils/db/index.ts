@@ -8,6 +8,7 @@ import type {
   WordRecordTelemetry,
 } from './record'
 import { ChapterRecord, ReviewRecord, WordRecord } from './record'
+import { getAchievementSessionId } from '@/achievement/session'
 import type { AchievementEventRecord, AchievementStateRecord } from '@/achievement/types'
 import type { LearnSessionKind } from '@/learn/session'
 import type { ExerciseConditionV1 } from '@/review/condition'
@@ -120,9 +121,7 @@ export function useSaveWordRecord() {
   const dictID = useAtomValue(currentDictIdAtom)
   const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
   const activeLearnSessionId = reviewModeInfo.reviewRecord
-    ? reviewModeInfo.reviewRecord.id !== undefined
-      ? `review:${reviewModeInfo.reviewRecord.id}`
-      : `review:${reviewModeInfo.reviewRecord.dict}:${reviewModeInfo.reviewRecord.createTime}`
+    ? getAchievementSessionId(reviewModeInfo.reviewRecord)
     : undefined
 
   const { dispatch } = useContext(TypingContext) ?? {}
