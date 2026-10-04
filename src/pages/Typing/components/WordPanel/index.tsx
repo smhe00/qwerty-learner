@@ -103,6 +103,10 @@ export default function WordPanel() {
     reviewIndex: state.chapterData.index,
     reloadKey: wordComponentKey,
   })
+  const currentWordRenderKey =
+    currentLearnItemKind === 'acquisition' && currentAcquisitionState
+      ? `${currentWordComponentKey}:${currentAcquisitionState.phase}`
+      : currentWordComponentKey
 
   useEffect(() => {
     setCurrentReviewHintLevel(null)
@@ -658,7 +662,7 @@ export default function WordPanel() {
                 }
                 reviewAttemptRole={currentReviewAttemptRole}
                 onHintLevelChange={setCurrentReviewHintLevel}
-                key={currentWordComponentKey}
+                key={currentWordRenderKey}
               />
               {effectivePhoneticVisible && <Phonetic word={currentWord} />}
               <Translation
