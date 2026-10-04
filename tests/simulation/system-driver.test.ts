@@ -27,7 +27,7 @@ async function finishAllAcquisitionWork(
     const next = await app.enter()
     if (
       next.kind === 'waiting' &&
-      next.reason === 'spacing' &&
+      next.reason === 'deferred' &&
       next.diagnostics.nextResumeAt !== undefined
     ) {
       app.advanceSeconds(
