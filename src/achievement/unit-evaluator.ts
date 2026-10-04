@@ -1,5 +1,4 @@
 import { CHAPTER_LENGTH } from '@/constants'
-import { canonicalizeLearningWords } from '@/learn/session'
 import { isLongTermMastered } from '@/learn/mastery'
 import type { IReviewWordState } from '@/review/types'
 import type { IWordRecord } from '@/utils/db/record'
@@ -13,19 +12,31 @@ export type AchievementUnitMembership = {
 export function buildAchievementUnitMembership(
   dictionaryWords: Word[],
 ): Map<string, AchievementUnitMembership> {
-  const canonical = canonicalizeLearningWords(dictionaryWords)
   const membership = new Map<string, AchievementUnitMembership>()
+  const unitWords = new Map<number, string[]>()
 
-  canonical.forEach((word, index) => {
+  dictionaryWords.forEach((word, index) => {
+    if (!word?.name) return
     const unitIndex = Math.floor(index / CHAPTER_LENGTH)
-    const existing = membership.get(word.name)
-    if (existing) return
-    const unitStart = unitIndex * CHAPTER_LENGTH
-    const words = canonical
-      .slice(unitStart, unitStart + CHAPTER_LENGTH)
-      .map((item) => item.name)
-    membership.set(word.name, { unitIndex, words })
+    const words = unitWords.get(unitIndex) ?? []
+    if (!words.includes(word.name)) words.push(word.name)
+    unitWords.set(unitIndex, words)
+
+    // Learn owns one long-term memory per exact word name. If a dictionary
+    // repeats a name in later chapters, its stable Achievement unit is the
+    // first original occurrence, matching canonical Learn identity without
+    // shifting the source dictionary's chapter boundaries.
+    if (!membership.has(word.name)) {
+      membership.set(word.name, { unitIndex, words: [] })
+    }
   })
+
+  for (const [word, entry] of membership) {
+    membership.set(word, {
+      unitIndex: entry.unitIndex,
+      words: [...(unitWords.get(entry.unitIndex) ?? [])],
+    })
+  }
 
   return membership
 }
