@@ -1,0 +1,86 @@
+name: TLA Gate
+
+on:
+  push:
+    branches:
+      - product/main
+    paths:
+      - 'formal/**'
+      - 'tests/formal/**'
+      - 'tests/simulation/trace-ir.ts'
+      - 'tests/simulation/system-oracle.ts'
+      - '.github/workflows/tla-gate.yml'
+  workflow_dispatch:
+
+jobs:
+  tla:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: 'yarn'
+
+      - name: Use Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Download pinned TLA+ tools
+        run: |
+          curl --fail --location --silent --show-error \
+            https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar \
+            --output /tmp/tla2tools.jar
+          echo 'e30c956628cf22ffafd00639ff761742c7da0655  /tmp/tla2tools.jar' | sha1sum -c -
+
+      - name: Parse Learn TLA model
+        run: |
+          java -cp /tmp/tla2tools.jar tla2sany.SANY \
+            formal/learn/LearnSystem.tla
+
+      - name: Model-check production quota accounting
+        run: |
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -config formal/learn/LearnSystem.production.cfg \
+            formal/learn/LearnSystem.tla
+
+      - name: Require admitted-based mutation counterexample
+        run: |
+          set +e
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -config formal/learn/LearnSystem.acquired-mutation.cfg \
+            formal/learn/LearnSystem.tla \
+            > /tmp/acquired-mutation-tlc.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/acquired-mutation-tlc.log
+          if [ "$status" -eq 0 ]; then
+            echo 'Expected the acquired-based mutation to violate NoRepeatedSingleton.'
+            exit 1
+          fi
+
+      - name: Bundle live TLC trace checker
+        run: |
+          mkdir -p .formal-test
+          npx esbuild tests/formal/tla-counterexample-check.ts \
+            --bundle \
+            --platform=node \
+            --target=node20 \
+            --format=esm \
+            --outfile=.formal-test/tla-counterexample-check.mjs
+
+      - name: Replay TLC counterexample through Shared Trace Oracle
+        run: |
+          node .formal-test/tla-counterexample-check.mjs \
+            /tmp/acquired-mutation-tlc.log \
+            repeated-singleton-acquisition
