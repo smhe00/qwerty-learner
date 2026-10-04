@@ -104,6 +104,17 @@ jobs:
             -config formal/learn/ProgressSemantics.production.cfg \
             formal/learn/ProgressSemantics.tla
 
+      - name: Parse projection consistency model
+        run: |
+          java -cp /tmp/tla2tools.jar tla2sany.SANY \
+            formal/learn/ProjectionConsistency.tla
+
+      - name: Model-check production projection consistency
+        run: |
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -config formal/learn/ProjectionConsistency.production.cfg \
+            formal/learn/ProjectionConsistency.tla
+
       - name: Require admitted-based mutation counterexample
         run: |
           set +e
@@ -164,6 +175,21 @@ jobs:
             exit 1
           fi
 
+      - name: Require dropped projection counterexample
+        run: |
+          set +e
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -config formal/learn/ProjectionConsistency.drop-mutation.cfg \
+            formal/learn/ProjectionConsistency.tla \
+            > /tmp/dropped-projection-tlc.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/dropped-projection-tlc.log
+          if [ "$status" -eq 0 ]; then
+            echo 'Expected the dropped projection mutation to violate ProjectionMatches.'
+            exit 1
+          fi
+
       - name: Require stranded deferred liveness counterexample
         run: |
           set +e
@@ -206,3 +232,6 @@ jobs:
           node .formal-test/tla-counterexample-check.mjs \
             /tmp/silent-progress-tlc.log \
             success-without-progress
+          node .formal-test/tla-counterexample-check.mjs \
+            /tmp/dropped-projection-tlc.log \
+            controller-driver-divergence
