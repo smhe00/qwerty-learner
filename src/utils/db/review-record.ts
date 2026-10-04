@@ -2,6 +2,7 @@ import { db } from '.'
 import {
   LEARN_NEW_WORD_BATCH_SIZE,
   buildLearnAcquisitionExercisePlans,
+  buildLearnAcquisitionStates,
   canonicalizeLearningWords,
   selectUnseenLearningWords,
 } from '@/learn/session'
@@ -154,6 +155,7 @@ export async function generateNewWordAcquisitionRecord(
     exercisePlans,
     'acquisition',
   )
+  record.acquisitionStates = buildLearnAcquisitionStates(selectedWords)
   record.id = await db.reviewRecords.add(record)
   return record
 }
