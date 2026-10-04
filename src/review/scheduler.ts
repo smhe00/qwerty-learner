@@ -71,7 +71,9 @@ export function scheduleBasicReview(input: ReviewScheduleInput): IReviewWordStat
   const secondsSinceLastReview =
     upgradedState.lastReviewedAt === undefined ? undefined : Math.max(0, input.now - upgradedState.lastReviewedAt)
   const isSameSession =
-    !isFirstReview && secondsSinceLastReview !== undefined && secondsSinceLastReview <= sameSessionWindowSeconds
+    !isFirstReview &&
+    secondsSinceLastReview !== undefined &&
+    secondsSinceLastReview <= policy.sameSessionWindowSeconds
   const countsAsLongTermReview = isDue || (input.outcome === 'again' && !isSameSession)
   let nextStage = current.stage
 
@@ -83,17 +85,17 @@ export function scheduleBasicReview(input: ReviewScheduleInput): IReviewWordStat
     nextStage = isFirstReview
       ? 1
       : isDue
-        ? Math.min(current.stage + 2, basicV2ReviewIntervalsDays.length - 1)
+        ? Math.min(current.stage + 2, policy.intervalsDays.length - 1)
         : current.stage
   } else {
     nextStage = isFirstReview
       ? 0
       : isDue
-        ? Math.min(current.stage + 1, basicV2ReviewIntervalsDays.length - 1)
+        ? Math.min(current.stage + 1, policy.intervalsDays.length - 1)
         : current.stage
   }
 
-  const intervalDays = intervalForStage(nextStage)
+  const intervalDays = intervalForStage(nextStage, policy)
   const shouldReschedule = isDue || (input.outcome === 'again' && !isSameSession)
   const nextSchedulerState: BasicSchedulerState = {
     kind: 'basic-v2',
