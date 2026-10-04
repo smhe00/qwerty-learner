@@ -26,6 +26,7 @@ export const LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION =
 export const MAX_ACQUISITION_ASSISTED_CYCLES = 2 as const
 export const MIN_INDEPENDENT_INTERVENING_ITEMS = 2 as const
 export const MIN_CROSS_SESSION_INDEPENDENT_DELAY_SECONDS = 300 as const
+export const MIN_ASSISTANCE_DEFERRED_DELAY_SECONDS = 300 as const
 
 export type LearnAcquisitionPhase =
   | 'exposure'
@@ -304,27 +305,72 @@ export function deferLearnAcquisitionForSpacing(
   }
 }
 
-export function resumeSpacingDeferredAcquisition(
+export function scheduleAssistanceDeferredAcquisition(
+  state: LearnAcquisitionState,
+  now: number,
+): LearnAcquisitionState {
+  if (
+    state.phase !== 'deferred' ||
+    state.deferredReason !== 'assistance'
+  ) {
+    throw new Error(
+      'assistance deferral scheduling requires assistance-deferred state',
+    )
+  }
+
+  return {
+    ...state,
+    resumeAfter:
+      now + MIN_ASSISTANCE_DEFERRED_DELAY_SECONDS,
+  }
+}
+
+export function resumeDeferredAcquisition(
   state: LearnAcquisitionState,
   now: number,
 ): LearnAcquisitionState | undefined {
   if (
     state.phase !== 'deferred' ||
-    state.deferredReason !== 'spacing' ||
     state.resumeAfter === undefined ||
     now < state.resumeAfter
   ) {
     return undefined
   }
 
-  return {
-    ...state,
-    phase: 'independent',
-    independentInterveningItems:
-      MIN_INDEPENDENT_INTERVENING_ITEMS,
-    deferredReason: undefined,
-    resumeAfter: undefined,
+  if (state.deferredReason === 'spacing') {
+    return {
+      ...state,
+      phase: 'independent',
+      independentInterveningItems:
+        MIN_INDEPENDENT_INTERVENING_ITEMS,
+      deferredReason: undefined,
+      resumeAfter: undefined,
+    }
   }
+
+  if (state.deferredReason === 'assistance') {
+    return {
+      ...state,
+      phase: 'supported',
+      independentInterveningItems: undefined,
+      deferredReason: undefined,
+      resumeAfter: undefined,
+    }
+  }
+
+  return undefined
+}
+
+/**
+ * Compatibility wrapper retained for callers/tests that specifically reason
+ * about spacing-deferred Acquisition.
+ */
+export function resumeSpacingDeferredAcquisition(
+  state: LearnAcquisitionState,
+  now: number,
+): LearnAcquisitionState | undefined {
+  if (state.deferredReason !== 'spacing') return undefined
+  return resumeDeferredAcquisition(state, now)
 }
 
 export function hasSufficientIndependentSpacing(
