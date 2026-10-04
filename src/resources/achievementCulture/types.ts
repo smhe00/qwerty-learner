@@ -75,6 +75,18 @@ export interface CultureEntry {
 
 export type AchievementOperator = 'gte' | 'lte' | 'eq' | 'gt' | 'lt'
 
+export interface AchievementMetricDefinition {
+  id: string
+  nameZh: string
+  scope: string
+  unit: string
+  description: string
+  requiredEvents: string[]
+  stateInputs: string[]
+  dataRequirement: 'existing' | 'normalize_existing' | 'new_observation'
+  notes: string
+}
+
 export interface AchievementCondition {
   metric: string
   operator: AchievementOperator
