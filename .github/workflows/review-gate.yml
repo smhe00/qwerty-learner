@@ -103,6 +103,7 @@ jobs:
           mkdir -p .review-test
           npx esbuild \
             tests/review/domain.test.ts \
+            tests/review/acquisition-regression.test.ts \
             tests/review/formal-model.test.ts \
             tests/review/control-stability.test.ts \
             tests/review/typing-audio-formal.test.ts \
@@ -115,6 +116,9 @@ jobs:
 
       - name: Run Review domain tests
         run: node --test .review-test/domain.test.mjs
+
+      - name: Run Acquisition backup regression
+        run: node --test .review-test/acquisition-regression.test.mjs
 
       - name: Run Review formal model checker
         run: node --test .review-test/formal-model.test.mjs
