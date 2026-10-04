@@ -4,6 +4,7 @@ import {
   projectLearnAcquisitionProgress,
 } from '../../src/learn/acquisition'
 import { canonicalizeLearningWords } from '../../src/learn/session'
+import { decideLearnScaffold } from '../../src/learn/scaffold'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createBaselineExerciseCondition } from '../../src/review/condition'
@@ -111,6 +112,46 @@ test('formal/audio-safety: automatic pronunciation can fire only once per attemp
   }
 
   assert.equal(explored, 24)
+})
+
+test('formal/scaffold-safety: strain can soften Supported work but never Independent admission', () => {
+  const tiers = ['unknown', 'low', 'elevated', 'recovery'] as const
+  let explored = 0
+
+  for (const strainTier of tiers) {
+    for (let assistedCycles = 0; assistedCycles <= 3; assistedCycles += 1) {
+      const exposure = decideLearnScaffold({
+        phase: 'exposure',
+        strainTier,
+        assistedCycles,
+      })
+      const supported = decideLearnScaffold({
+        phase: 'supported',
+        strainTier,
+        assistedCycles,
+      })
+      const independent = decideLearnScaffold({
+        phase: 'independent',
+        strainTier,
+        assistedCycles,
+      })
+      explored += 3
+
+      assert.equal(exposure.level, 'S0')
+      assert.ok(supported.level === 'S1' || supported.level === 'S2')
+      assert.equal(independent.level, 'S3')
+
+      if (
+        strainTier === 'elevated' ||
+        strainTier === 'recovery' ||
+        assistedCycles > 0
+      ) {
+        assert.equal(supported.level, 'S1')
+      }
+    }
+  }
+
+  assert.equal(explored, 48)
 })
 
 test('formal/progress-safety: exhaustive bounded review completion states have one valid transition', () => {
