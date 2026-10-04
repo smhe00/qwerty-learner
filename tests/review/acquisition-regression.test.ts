@@ -3,8 +3,11 @@ import test from 'node:test'
 import {
   LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
   LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION,
+  MIN_ASSISTANCE_DEFERRED_DELAY_SECONDS,
   createLearnAcquisitionState,
+  normalizeDeferredAcquisitionState,
 } from '../../src/learn/acquisition'
+import { resolveLearnAcquisitionCompletion } from '../../src/learn/progression'
 import { decideDailyAcquisitionQuota } from '../../src/learn/quota'
 import { planLearnAcquisitionCandidates } from '../../src/learn/session'
 import { buildLearnStatsSnapshot } from '../../src/learn/stats'
@@ -367,4 +370,107 @@ test('backup regression: unfinished acquisition checkpoint prunes admitted and e
     Object.keys(sanitized.acquisitionStates ?? {}),
     ['pending'],
   )
+})
+
+
+test('simulation-discovered regression: assistance-deferred acquisition resumes Supported after bounded cross-session delay', () => {
+  const now = 10_000
+  const target = word('difficult')
+  const state = {
+    ...createLearnAcquisitionState({
+      scaffoldStrainTier: 'recovery',
+    }),
+    phase: 'independent' as const,
+    assistedCycles: 1,
+    independentInterveningItems: 4,
+  }
+
+  const resolution = resolveLearnAcquisitionCompletion({
+    queue: [target],
+    currentIndex: 0,
+    currentWord: target,
+    state,
+    acquisitionStates: {
+      difficult: state,
+    },
+    wrongCount: 2,
+    classificationCause: 'recall',
+    retrievalValidity: 'independent',
+    lastWrongIndex: 2,
+    now,
+  })
+
+  assert.equal(resolution.nextState.phase, 'deferred')
+  assert.equal(
+    resolution.nextState.deferredReason,
+    'assistance',
+  )
+  assert.equal(
+    resolution.nextState.resumeAfter,
+    now + MIN_ASSISTANCE_DEFERRED_DELAY_SECONDS,
+  )
+  assert.equal(
+    resolution.nextState.scaffoldHintPosition,
+    2,
+  )
+
+  const pending = new Map([
+    ['difficult', resolution.nextState],
+  ])
+
+  const waiting = planLearnAcquisitionCandidates({
+    words: [target],
+    states: [],
+    pendingStates: pending,
+    introducedWords: ['difficult'],
+    freshLimit: 0,
+    now:
+      now +
+      MIN_ASSISTANCE_DEFERRED_DELAY_SECONDS -
+      1,
+  })
+  assert.deepEqual(waiting.resumed, [])
+
+  const ready = planLearnAcquisitionCandidates({
+    words: [target],
+    states: [],
+    pendingStates: pending,
+    introducedWords: ['difficult'],
+    freshLimit: 0,
+    now:
+      now +
+      MIN_ASSISTANCE_DEFERRED_DELAY_SECONDS +
+      1,
+  })
+  assert.equal(ready.resumed.length, 1)
+  assert.equal(ready.resumed[0]?.state.phase, 'supported')
+  assert.equal(
+    ready.resumed[0]?.state.scaffoldHintPosition,
+    2,
+  )
+  assert.deepEqual(ready.freshWords, [])
+})
+
+test('simulation-discovered regression: legacy assistance-deferred state without resumeAfter is repaired', () => {
+  const deferredAt = 20_000
+  const legacy = {
+    ...createLearnAcquisitionState(),
+    phase: 'deferred' as const,
+    assistedCycles: 2,
+    deferredReason: 'assistance' as const,
+    scaffoldHintPosition: 3,
+  }
+
+  const repaired = normalizeDeferredAcquisitionState(
+    legacy,
+    deferredAt,
+  )
+
+  assert.equal(repaired.phase, 'deferred')
+  assert.equal(repaired.deferredReason, 'assistance')
+  assert.equal(
+    repaired.resumeAfter,
+    deferredAt + MIN_ASSISTANCE_DEFERRED_DELAY_SECONDS,
+  )
+  assert.equal(repaired.scaffoldHintPosition, 3)
 })
