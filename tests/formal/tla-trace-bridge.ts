@@ -38,6 +38,35 @@ export function parseTlcCounterexample(text: string): TlcState[] {
       continue
     }
 
+    const stutteringMatch = line.match(
+      /^State\s+(\d+):\s*Stuttering\s*$/,
+    )
+    if (stutteringMatch && current) {
+      current = {
+        number: Number(stutteringMatch[1]),
+        action: 'Stuttering',
+        values: { ...current.values },
+      }
+      states.push(current)
+      continue
+    }
+
+    const backMatch = line.match(/^Back to state\s+(\d+):/)
+    if (backMatch) {
+      const target = states.find(
+        (state) => state.number === Number(backMatch[1]),
+      )
+      if (target) {
+        current = {
+          number: (states.at(-1)?.number ?? target.number) + 1,
+          action: `Back to state ${target.number}`,
+          values: { ...target.values },
+        }
+        states.push(current)
+      }
+      continue
+    }
+
     if (!current) continue
 
     const valueMatch = line.match(
@@ -98,6 +127,35 @@ export function tlcStatesToLearnTrace(
         allowedNewWordsNow: batchSize,
         introducedToday: numberValue(state, 'introduced'),
         acquiredToday: numberValue(state, 'acquired'),
+      })
+    }
+
+    const clock = numberValue(state, 'clock')
+    const resumeAfter = numberValue(state, 'resumeAfter')
+    if (
+      phase === 'deferred' &&
+      clock !== null &&
+      resumeAfter !== null
+    ) {
+      events.push({
+        kind: 'acquisition-health',
+        now: clock,
+        opportunity: clock >= resumeAfter,
+        pending: [
+          {
+            word: 'tlc:deferred-word',
+            phase: 'deferred',
+            deferredReason: 'formal',
+            resumeAfter,
+          },
+        ],
+      })
+    } else if (phase === 'resumed') {
+      events.push({
+        kind: 'acquisition-health',
+        now: clock ?? resumeAfter ?? 0,
+        opportunity: false,
+        pending: [],
       })
     }
   }
