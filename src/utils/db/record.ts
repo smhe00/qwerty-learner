@@ -1,4 +1,5 @@
 import { getUTCUnixTimestamp } from '../index'
+import type { LearnAcquisitionState } from '@/learn/acquisition'
 import type { LearnSessionKind } from '@/learn/session'
 import type { ExerciseConditionV1 } from '@/review/condition'
 import type {
@@ -303,6 +304,9 @@ export interface IReviewRecord {
   // Persisted bounded item-machine state by logical word. Optional for legacy
   // unfinished sessions; absence reconstructs the initial cold state.
   itemStates?: Record<string, ReviewItemMachineState>
+  // Learn-only acquisition controller state. Ordinary Typing never reads or
+  // writes this field.
+  acquisitionStates?: Record<string, LearnAcquisitionState>
 }
 
 export class ReviewRecord implements IReviewRecord {
@@ -316,6 +320,7 @@ export class ReviewRecord implements IReviewRecord {
   reinforcementCounts?: Record<string, number>
   sessionKind?: LearnSessionKind
   itemStates?: Record<string, ReviewItemMachineState>
+  acquisitionStates?: Record<string, LearnAcquisitionState>
 
   constructor(
     dict: string,
