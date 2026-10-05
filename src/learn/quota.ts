@@ -137,10 +137,15 @@ export function decideDailyAcquisitionQuota(
           clampNonNegativeInteger(stats.lifecycle.unseen),
         )
 
-  const pausedByDue = stats.lifecycle.due > 0
-  const allowedNow = pausedByDue ? 0 : remainingDailyNewWords
+  // Due Review keeps scheduling priority, but is not a hard admission gate.
+  // Mixed Learn sessions reserve bounded capacity for new words so a backlog
+  // cannot permanently starve Acquisition.
+  const pausedByDue = false
+  const allowedNow = remainingDailyNewWords
 
-  if (pausedByDue) reasonCodes.push('due-review-first')
+  if (stats.lifecycle.due > 0) {
+    reasonCodes.push('due-review-priority')
+  }
   if (remainingBeforeUnseen === 0) {
     reasonCodes.push('daily-new-word-target-reached')
   }
