@@ -83,7 +83,30 @@ export default function LearnResultScreen() {
   }, [newAchievements])
 
   const record = reviewModeInfo.reviewRecord
-  const isAcquisition = record?.sessionKind === 'acquisition'
+  const sessionMix = useMemo(() => {
+    const uniqueNames = [
+      ...new Set(record?.words.map((word) => word.name) ?? []),
+    ]
+    let reviewCount = 0
+    let acquisitionCount = 0
+
+    for (const wordName of uniqueNames) {
+      const itemKind =
+        record?.itemKinds?.[wordName] ??
+        (record?.sessionKind === 'acquisition'
+          ? 'acquisition'
+          : 'review')
+      if (itemKind === 'acquisition') acquisitionCount += 1
+      else reviewCount += 1
+    }
+
+    return {
+      reviewCount,
+      acquisitionCount,
+      isMixed: reviewCount > 0 && acquisitionCount > 0,
+    }
+  }, [record?.itemKinds, record?.sessionKind, record?.words])
+  const hasAcquisition = sessionMix.acquisitionCount > 0
 
   useEffect(() => {
     if (!record || state.chapterData.wordRecordIds.length === 0) return
@@ -108,14 +131,17 @@ export default function LearnResultScreen() {
   )
 
   const independentMastered = useMemo(() => {
-    if (!isAcquisition) return 0
+    if (!hasAcquisition) return 0
     return Object.values(record?.acquisitionStates ?? {}).filter(
       (item) => item.phase === 'complete',
     ).length
-  }, [isAcquisition, record?.acquisitionStates])
+  }, [hasAcquisition, record?.acquisitionStates])
 
-  const needsConsolidation = isAcquisition
-    ? Math.max(0, uniqueWordCount - independentMastered)
+  const needsConsolidation = hasAcquisition
+    ? Math.max(
+        0,
+        sessionMix.acquisitionCount - independentMastered,
+      )
     : 0
 
   const keepLearnSelected = useCallback(() => {
@@ -225,19 +251,36 @@ export default function LearnResultScreen() {
               本轮学习完成
             </h1>
             <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              {isAcquisition
-                ? '需要继续巩固的词会由 Learn 自动安排，不需要现在重做。'
-                : '本轮复习已经完成，后续间隔由 Learn 自动安排。'}
+              {sessionMix.isMixed
+                ? '本轮同时处理了到期复习和新词；后续复习与新词会继续由 Learn 自动编排。'
+                : hasAcquisition
+                  ? '需要继续巩固的词会由 Learn 自动安排，不需要现在重做。'
+                  : '本轮复习已经完成，后续间隔由 Learn 自动安排。'}
             </p>
           </div>
 
           <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <SummaryMetric
-              label={isAcquisition ? '本轮学习' : '本轮复习'}
-              value={uniqueWordCount}
-              detail="词"
-            />
-            {isAcquisition ? (
+            {sessionMix.isMixed ? (
+              <>
+                <SummaryMetric
+                  label="本轮复习"
+                  value={sessionMix.reviewCount}
+                  detail="词"
+                />
+                <SummaryMetric
+                  label="本轮新词"
+                  value={sessionMix.acquisitionCount}
+                  detail="词"
+                />
+              </>
+            ) : (
+              <SummaryMetric
+                label={hasAcquisition ? '本轮学习' : '本轮复习'}
+                value={uniqueWordCount}
+                detail="词"
+              />
+            )}
+            {hasAcquisition ? (
               <>
                 <SummaryMetric
                   label="独立掌握"
