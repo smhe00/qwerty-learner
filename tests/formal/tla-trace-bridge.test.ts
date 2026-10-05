@@ -213,7 +213,7 @@ test('resumed deferred trace clears the liveness concern without a false alarm',
 
 
 const dueFirstBypassCounterexample = `
-Error: Invariant NoAcquisitionWhenDue is violated.
+Error: Invariant NoPureAcquisitionWhenDue is violated.
 
 State 1: <Initial predicate>
 /\\ phase = "idle"
@@ -242,16 +242,20 @@ State 1: <Initial predicate>
 /\\ unseen = 2
 /\\ quota = 2
 /\\ sessionSize = 0
+/\\ reviewSize = 0
+/\\ acquisitionSize = 0
 /\\ acquisitionKind = "none"
 
-State 2: <StartReview line 27, col 1 to line 34, col 57 of module DuePriority>
-/\\ phase = "review"
+State 2: <StartMixed of module DuePriority>
+/\\ phase = "mixed"
 /\\ due = 1
 /\\ pendingReady = 1
 /\\ unseen = 2
 /\\ quota = 2
-/\\ sessionSize = 1
-/\\ acquisitionKind = "none"
+/\\ sessionSize = 2
+/\\ reviewSize = 1
+/\\ acquisitionSize = 1
+/\\ acquisitionKind = "pending"
 `
 
 test('TLC due-first bypass maps to due-work-bypassed without mutation-specific bridge logic', () => {
@@ -270,7 +274,7 @@ test('TLC due-first bypass maps to due-work-bypassed without mutation-specific b
   assert.equal(bypass.details.dueCount, 1)
 })
 
-test('TLC due-first production trace does not create a false acquisition-priority alarm', () => {
+test('TLC mixed production trace keeps due work while admitting acquisition', () => {
   const trace = tlcStatesToLearnTrace(
     parseTlcCounterexample(dueFirstProductionTrace),
     'due-first-production',
@@ -282,6 +286,15 @@ test('TLC due-first production trace does not create a false acquisition-priorit
     ),
     false,
   )
+  const prepared = trace.events.find(
+    (event) => event.kind === 'session-prepared',
+  )
+  assert.ok(prepared)
+  if (prepared.kind === 'session-prepared') {
+    assert.equal(prepared.sessionKind, 'mixed')
+    assert.equal(prepared.dueCount, 1)
+    assert.equal(prepared.allowedNewWordsNow, 1)
+  }
 })
 
 
