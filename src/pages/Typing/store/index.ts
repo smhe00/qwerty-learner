@@ -62,6 +62,7 @@ export enum TypingStateActionType {
   SET_IS_LOOP_SINGLE_WORD = 'SET_IS_LOOP_SINGLE_WORD',
   TOGGLE_IS_LOOP_SINGLE_WORD = 'TOGGLE_IS_LOOP_SINGLE_WORD',
   SET_REVISION_INDEX = 'SET_REVISION_INDEX',
+  RESET_SESSION = 'RESET_SESSION',
 }
 
 export type TypingStateAction =
@@ -98,11 +99,17 @@ export type TypingStateAction =
   | { type: TypingStateActionType.SET_IS_SAVING_RECORD; payload: boolean }
   | { type: TypingStateActionType.SET_IS_LOOP_SINGLE_WORD; payload: boolean }
   | { type: TypingStateActionType.TOGGLE_IS_LOOP_SINGLE_WORD }
+  | { type: TypingStateActionType.RESET_SESSION }
 
 type Dispatch = (action: TypingStateAction) => void
 
 export const typingReducer = (state: TypingState, action: TypingStateAction) => {
   switch (action.type) {
+    case TypingStateActionType.RESET_SESSION: {
+      const newState = structuredClone(initialState)
+      newState.isTransVisible = state.isTransVisible
+      return newState
+    }
     case TypingStateActionType.SETUP_CHAPTER: {
       const newState = structuredClone(initialState)
       const words = action.payload.shouldShuffle ? shuffle(action.payload.words) : action.payload.words
