@@ -1,11 +1,13 @@
 ---
-protocol_version: "1.0"
+protocol_version: "1.1"
 task_id: null
 task_file: null
 report_file: null
 target_branch: "product/main"
 status: "IDLE"
 executor: "any-compatible-agent"
+claim_base_commit: null
+claimed_at_utc: null
 last_known_commit: null
 release_to_master: false
 ---
@@ -32,5 +34,6 @@ git pull --ff-only origin product/main
 read AGENTS.md
 read interactive/CURRENT_TASK.md
 read the referenced task and report
-execute -> validate -> report -> commit -> push
+claim task if READY
+execute -> validate -> stale-head check -> report -> commit -> push
 ```
