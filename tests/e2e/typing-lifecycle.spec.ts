@@ -479,6 +479,11 @@ test('success pronunciation falls back when the Howl instance is not ready yet',
   await page.goto('/typing')
   await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
   await page.keyboard.press('a')
+
+  const beforeSuccess = (
+    await playedUrls(page)
+  ).filter((url) => url.includes('audio=life')).length
+
   await page.keyboard.type('life')
 
   await expect
@@ -487,7 +492,7 @@ test('success pronunciation falls back when the Howl instance is not ready yet',
         url.includes('audio=life'),
       ).length,
     )
-    .toBeGreaterThanOrEqual(1)
+    .toBeGreaterThan(beforeSuccess)
 
   await expect(
     page.locator('[data-typing-word="break"]'),
