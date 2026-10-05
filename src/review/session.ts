@@ -1,5 +1,5 @@
 import type { TypingErrorClassification } from './classifier'
-import type { LearnSessionKind } from '@/learn/session'
+import type { LearnItemKind } from '@/learn/session'
 import type { ReviewAttemptRole } from './state-machine'
 import {
   createCanonicalReviewProbePlan,
@@ -80,7 +80,7 @@ export type ReviewSessionExercisePlans = Record<string, ReviewExercisePlanV1>
 
 
 export function getReviewAttemptRole(input: {
-  sessionKind?: LearnSessionKind
+  sessionKind?: LearnItemKind
   reinforcementUsed: number
 }): ReviewAttemptRole | undefined {
   if (input.sessionKind !== 'review') return undefined
