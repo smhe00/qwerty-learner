@@ -389,7 +389,12 @@ test('background pause preserves Typing counters when the page returns to foregr
   await page.evaluate(() => {
     window.dispatchEvent(new Event('blur'))
   })
-  await expect(page.getByText('按任意键继续')).toBeVisible()
+  await expect(
+    page.getByRole('button', {
+      name: '开始',
+      exact: true,
+    }),
+  ).toBeVisible()
 
   await page.evaluate(() => {
     window.dispatchEvent(new Event('focus'))
