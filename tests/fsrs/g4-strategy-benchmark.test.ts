@@ -138,8 +138,9 @@ test('G4 benchmark compares basic-v2 and FSRS-6 retention candidates with an exp
     (item) => item.id === 'fsrs6-default-r0.90',
   )
 
-  assert.ok(basic)
-  assert.ok(fsrsDefault)
+  if (!basic || !fsrsDefault) {
+    throw new Error('benchmark baselines are missing')
+  }
 
   for (const summary of summaries) {
     assert.equal(

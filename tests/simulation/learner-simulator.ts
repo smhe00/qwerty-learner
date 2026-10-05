@@ -518,9 +518,12 @@ export function simulateLearner(input: {
         if (!scheduler) {
           throw new Error('FSRS simulation scheduler was not initialized')
         }
-        const currentCard =
-          fsrsCards.get(state.word) ??
-          createEmptyCard(new Date(state.createdAt * 1000))
+        const currentCard = fsrsCards.get(state.word)
+        if (!currentCard) {
+          throw new Error(
+            `FSRS simulation card missing for ${state.word}`,
+          )
+        }
         const nextCard = scheduler.next(
           currentCard,
           new Date(clock.now * 1000),

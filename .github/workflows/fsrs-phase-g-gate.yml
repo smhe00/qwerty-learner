@@ -58,8 +58,6 @@ jobs:
           src/review/fsrs/analysis.ts
           src/review/fsrs/strategy.ts
           tests/fsrs/g3-analysis.test.ts
-          tests/fsrs/g4-strategy-benchmark.test.ts
-          tests/simulation/learner-simulator.ts
 
       - name: Bundle and run Node 20 compatibility probe
         run: |
