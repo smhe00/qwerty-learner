@@ -1,11 +1,12 @@
 ---
-protocol_version: "1.0"
+protocol_version: "1.1"
 task_id: "TASK-YYYYMMDD-NNN-short-name"
 title: "Short task title"
 status: "READY"
 target_branch: "product/main"
 base_commit: null
 recommended_executor: "any-compatible-agent"
+allow_parallel_executors: false
 report_file: "interactive/reports/TASK-YYYYMMDD-NNN-short-name-report.md"
 release_to_master: false
 ---
@@ -40,6 +41,7 @@ Record reproducible symptoms, logs, trace references, screenshots, failing tests
 - Do not touch `master` unless `release_to_master: true`.
 - Do not weaken existing validation gates.
 - Preserve unrelated behavior.
+- Default to a single executor; parallel implementation requires `allow_parallel_executors: true`.
 
 Add task-specific constraints here.
 
@@ -50,7 +52,8 @@ Add task-specific constraints here.
 3. implement the smallest robust fix;
 4. add/adjust regression coverage;
 5. run required validation;
-6. write/update the report.
+6. check for upstream branch movement before push;
+7. write/update the report.
 
 ## Acceptance Criteria
 
@@ -100,4 +103,3 @@ branch_deletion: false
 ## Reviewer Notes
 
 Reserved for Chat/Reviewer.
-
