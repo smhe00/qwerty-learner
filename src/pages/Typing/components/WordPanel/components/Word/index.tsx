@@ -600,14 +600,9 @@ export default function WordComponent({
         return
       }
 
-      if (
-        wordState.isFinished &&
-        successAudioStartedRef.current &&
-        !playing
-      ) {
-        successAudioSettledRef.current = true
-        maybeReleasePendingFinish()
-      }
+      // Playback completion is request-scoped and delivered directly by
+      // WordPronunciationIcon. React playing state is visual-only; using it
+      // as a barrier can lose fast true→false transitions.
     },
     [
       audioOwnerKey,
@@ -1237,7 +1232,19 @@ export default function WordComponent({
     }
 
     const played =
-      wordPronunciationIconRef.current?.play(audioOwnerKey) ?? false
+      wordPronunciationIconRef.current?.play(
+        audioOwnerKey,
+        () => {
+          successAudioSettledRef.current = true
+          appendDeveloperTrace({
+            scope: 'audio',
+            event: 'success-audio-settled',
+            word: word.name,
+            details: { audioOwnerKey },
+          })
+          maybeReleasePendingFinish()
+        },
+      ) ?? false
     if (played) {
       // Success playback is feedback after retrieval, not a retrieval cue.
       // Deliberately do not record it in LearningContext.
@@ -1255,6 +1262,7 @@ export default function WordComponent({
     activeHintLevel,
     audioOwnerKey,
     isPronunciationReady,
+    maybeReleasePendingFinish,
     pronunciationIsOpen,
     word.name,
     wordState.isFinished,
