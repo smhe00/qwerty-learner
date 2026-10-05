@@ -634,7 +634,7 @@ test('multi-word Review advances through every rendered word and finishes', asyn
       name: '结束 Learn 并返回 Typing',
       exact: true,
     }),
-  ).toBeVisible()
+  ).toHaveCount(0)
 
   const finishedSession = await readReviewModeInfo(page)
   const finishedSessionId =
@@ -666,15 +666,33 @@ test('multi-word Review advances through every rendered word and finishes', asyn
     )
     .toBe(true)
 
-  await page.reload()
-  await expect(page).toHaveURL(/\/learn\/session$/)
-  await expect(page.getByText('按任意键开始')).toBeVisible()
+  await page
+    .getByRole('button', {
+      name: '关闭结果',
+      exact: true,
+    })
+    .click()
+  await expect(page).toHaveURL(/\/learn$/)
+  await expect(
+    page.getByRole('button', { name: '开始 Learn', exact: true }),
+  ).toBeVisible()
 
-  const afterFinishedReload = await readReviewModeInfo(page)
-  expect(afterFinishedReload?.reviewRecord?.isFinished).toBe(false)
+  await page.reload()
+  await expect(page).toHaveURL(/\/learn$/)
+  await expect(
+    page.getByRole('button', { name: '开始 Learn', exact: true }),
+  ).toBeVisible()
+
+  await page
+    .getByRole('button', { name: '开始 Learn', exact: true })
+    .click()
+  await expect(page).toHaveURL(/\/learn\/session$/)
+
+  const afterContinue = await readReviewModeInfo(page)
+  expect(afterContinue?.reviewRecord?.isFinished).toBe(false)
   expect(
-    afterFinishedReload?.reviewRecord?.id ??
-      afterFinishedReload?.reviewRecord?.createTime,
+    afterContinue?.reviewRecord?.id ??
+      afterContinue?.reviewRecord?.createTime,
   ).not.toBe(finishedSessionId)
 
   await expect
@@ -872,10 +890,10 @@ test('new Review session forces a canonical cold probe independent of ordinary s
 
   await expect
     .poll(async () => {
-      const info = await readReviewModeInfo(page)
-      return info?.reviewRecord?.isFinished
+      const records = await readReviewWordRecords(page, ['cancel'])
+      return records.length
     })
-    .toBe(true)
+    .toBe(1)
 
   const persistedCondition = await page.evaluate(async () => {
     return new Promise<{
