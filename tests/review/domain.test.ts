@@ -3490,7 +3490,7 @@ test('Learn P3 uses 10 words for moderate review pressure and never exceeds rema
   assert.equal(quota.allowedNow, 3)
 })
 
-test('Learn P3 never admits new words while due Review backlog exists', () => {
+test('Learn P3 keeps Review priority without starving new-word admission', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
   const dueState = {
     ...createInitialReviewWordState('p3', 'due-word', now),
@@ -3507,9 +3507,9 @@ test('Learn P3 never admits new words while due Review backlog exists', () => {
 
   assert.equal(quota.targetDailyNewWords, 20)
   assert.equal(quota.remainingDailyNewWords, 1)
-  assert.equal(quota.allowedNow, 0)
-  assert.equal(quota.pausedByDue, true)
-  assert.ok(quota.reasonCodes.includes('due-review-first'))
+  assert.equal(quota.allowedNow, 1)
+  assert.equal(quota.pausedByDue, false)
+  assert.ok(quota.reasonCodes.includes('due-review-priority'))
 })
 
 
@@ -3713,7 +3713,7 @@ test('Learn P4 uses personal median active time and caps new words after a heavy
   assert.ok(plan.reasonCodes.includes('daily-workload-soft-budget'))
 })
 
-test('Learn P4 never truncates Due and projects its cost before new acquisition', () => {
+test('Learn P4 preserves full Due accounting while reserving bounded room for new acquisition', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
   const states = Array.from({ length: 50 }, (_, index) => ({
     ...createInitialReviewWordState('p4-due', `due-${index}`, now),
@@ -3733,14 +3733,15 @@ test('Learn P4 never truncates Due and projects its cost before new acquisition'
   const quota = decideDailyAcquisitionQuota(stats)
   const plan = buildLearnDailyPlan({ stats, quota })
 
-  assert.equal(plan.action, 'review-due')
+  assert.equal(plan.action, 'mixed')
   assert.equal(plan.dueReviewWords, 50)
   assert.equal(plan.difficultDueWords, 8)
-  assert.equal(plan.allowedNewWordsNow, 0)
+  assert.equal(plan.allowedNewWordsNow, 20)
   assert.equal(plan.estimatedDueMinutes, 12.5)
-  assert.equal(plan.plannedRemainingNewWords, 15)
-  assert.equal(plan.estimatedNewMinutes, 7.5)
-  assert.equal(plan.estimatedRemainingMinutes, 20)
+  assert.equal(plan.plannedRemainingNewWords, 20)
+  assert.equal(plan.estimatedNewMinutes, 10)
+  assert.equal(plan.estimatedRemainingMinutes, 22.5)
+  assert.ok(plan.reasonCodes.includes('daily-plan-review-priority'))
 })
 
 test('Learn P4 stops new admission after the soft daily workload budget is spent', () => {
