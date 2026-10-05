@@ -26,17 +26,23 @@ import {
 } from '@/review/repository'
 import { db } from '@/utils/db'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import useSWR from 'swr'
+
+type LearnLocationState = {
+  autoStart?: boolean
+}
 
 export default function LearnPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const currentDictId = useAtomValue(currentDictIdAtom)
   const currentDictInfo = useAtomValue(currentDictInfoAtom)
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
-  const [isStarting, setIsStarting] = useState(true)
+  const [isStarting, setIsStarting] = useState(false)
   const [statusText, setStatusText] = useState('')
+  const autoStartConsumedRef = useRef(false)
   const preparationGuardRef = useRef<
     ReturnType<typeof createAsyncOwnershipGuard> | null
   >(null)
@@ -65,7 +71,18 @@ export default function LearnPage() {
   }, [preparationGuard])
 
   useEffect(() => {
-    if (!wordList) return
+    setReviewModeInfo((old) =>
+      old.isReviewMode
+        ? old
+        : {
+            ...old,
+            isReviewMode: true,
+          },
+    )
+  }, [setReviewModeInfo])
+
+  const startLearn = useCallback(() => {
+    if (!wordList || isStarting) return
 
     const claim = preparationGuard.begin()
     const dictId = currentDictId
@@ -134,21 +151,43 @@ export default function LearnPage() {
     }
 
     void prepare()
-
-    return () => {
-      claim.invalidate()
-    }
   }, [
     currentDictId,
+    isStarting,
     navigate,
     preparationGuard,
     setReviewModeInfo,
     wordList,
   ])
 
+  useEffect(() => {
+    const routeState = location.state as LearnLocationState | null
+    if (
+      !routeState?.autoStart ||
+      autoStartConsumedRef.current ||
+      !wordList
+    ) {
+      return
+    }
+
+    autoStartConsumedRef.current = true
+    navigate('/learn', { replace: true, state: null })
+    startLearn()
+  }, [location.state, navigate, startLearn, wordList])
+
+  const renderHeader = () => (
+    <Header>
+      <ModeSwitcher />
+      <DictChapterButton learnMode />
+      <PronunciationSwitcher learnMode />
+      <Switcher learnMode />
+    </Header>
+  )
+
   if (wordListError && !wordList) {
     return (
       <Layout>
+        {renderHeader()}
         <main className="container mx-auto flex w-full flex-1 flex-col items-center justify-center gap-4">
           <span
             className="text-sm text-gray-500 dark:text-gray-400"
@@ -168,37 +207,32 @@ export default function LearnPage() {
     )
   }
 
-  if (isStarting || !wordList) {
-    return (
-      <Layout>
-        <main className="container mx-auto flex w-full flex-1 items-start justify-center">
-          <span
-            className="mt-8 text-sm text-gray-400 dark:text-gray-500"
-            role="status"
-          >
-            正在准备 Learn…
-          </span>
-        </main>
-      </Layout>
-    )
-  }
-
   return (
     <Layout>
-      <Header>
-        <ModeSwitcher />
-        <DictChapterButton learnMode />
-        <PronunciationSwitcher learnMode />
-        <Switcher learnMode />
-      </Header>
+      {renderHeader()}
 
-      <main className="container mx-auto flex w-full flex-1 items-start justify-center">
+      <main className="container mx-auto flex w-full flex-1 flex-col items-center justify-center gap-5">
         <span
-          className="mt-8 text-sm text-gray-400 dark:text-gray-500"
+          className="text-sm text-gray-400 dark:text-gray-500"
           role="status"
         >
-          {statusText}
+          {isStarting
+            ? '正在准备 Learn…'
+            : statusText ||
+              (wordList
+                ? 'Learn 已就绪。可以随时开始，也可以在学习过程中随时暂停。'
+                : '正在加载词表…')}
         </span>
+
+        <button
+          type="button"
+          className="my-btn-primary w-24 bg-indigo-500 shadow shadow-indigo-300 dark:shadow-indigo-500/60"
+          onClick={startLearn}
+          disabled={isStarting || !wordList}
+          aria-label="开始 Learn"
+        >
+          <span className="font-medium">Start</span>
+        </button>
       </main>
     </Layout>
   )
