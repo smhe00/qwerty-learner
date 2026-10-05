@@ -365,3 +365,25 @@ weights: ts-fsrs 5.4.2 FSRS-6 defaults
 Selection does not change the active scheduler. The candidate is represented
 explicitly in code so subsequent replay, long-horizon simulation and real-data
 validation refer to the same immutable parameter identity.
+
+
+### G4 r0.88 long-horizon rejection
+
+The initial 120-day sweep selected r0.88, but the required 365-day confirmation
+rejected it without changing the predeclared gate.
+
+Observed over 365 days (4 personas x 3 paired seeds):
+
+```text
+FSRS r0.90 retention30d = 0.416925
+FSRS r0.88 retention30d = 0.410419
+delta                    = -0.006506
+allowed                  = >= -0.005000
+
+efficiency gain vs r0.90 = +19.36%
+P95 workload ratio       = 0.9906
+worst persona efficiency = -0.08%
+```
+
+Therefore r0.88 is not a production promotion candidate. The refinement search
+moves inside the 0.88-0.90 interval while keeping the same promotion thresholds.

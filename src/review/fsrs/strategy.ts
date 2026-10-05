@@ -12,17 +12,6 @@ export const FSRS6_DEFAULT_STRATEGY: Fsrs6StrategyConfig = {
   requestRetention: 0.9,
 }
 
-/**
- * Simulation-selected G4 candidate.
- *
- * This does not own production scheduling until the remaining G4 real-data,
- * migration/rollback and compatibility gates are closed.
- */
-export const FSRS6_G4_CANDIDATE_STRATEGY: Fsrs6StrategyConfig = {
-  id: 'fsrs6-default-r0.88-no-fuzz-long-term-g4-v1',
-  requestRetention: 0.88,
-}
-
 export function createFsrs6Scheduler(
   strategy: Fsrs6StrategyConfig = FSRS6_DEFAULT_STRATEGY,
 ) {
