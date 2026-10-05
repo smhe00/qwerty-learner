@@ -8,8 +8,12 @@ import {
   normalizeDeferredAcquisitionState,
 } from '../../src/learn/acquisition'
 import { resolveLearnAcquisitionCompletion } from '../../src/learn/progression'
+import { buildLearnDailyPlan } from '../../src/learn/plan'
 import { decideDailyAcquisitionQuota } from '../../src/learn/quota'
-import { planLearnAcquisitionCandidates } from '../../src/learn/session'
+import {
+  decideLearnStartKind,
+  planLearnAcquisitionCandidates,
+} from '../../src/learn/session'
 import { buildLearnStatsSnapshot } from '../../src/learn/stats'
 import {
   rebuildBasicStateFromWordRecords,
@@ -126,6 +130,37 @@ test('backup regression: first introduction consumes quota even before admission
   assert.equal(quota.remainingDailyNewWords, 0)
   assert.equal(quota.allowedNow, 0)
   assert.equal(quota.signals.todayIntroducedWords, 20)
+})
+
+test('due review keeps priority without starving new-word admission', () => {
+  const now = 10_000
+  const dueState = createInitialReviewWordState(
+    'backup-regression',
+    'due-word',
+    now - 1_000,
+  )
+  dueState.nextReviewAt = now - 1
+
+  const stats = buildLearnStatsSnapshot({
+    now,
+    dict: 'backup-regression',
+    wordRecords: [],
+    wordStates: [dueState],
+    dictionaryWords: ['due-word', 'new-word'],
+  })
+  const quota = decideDailyAcquisitionQuota(stats)
+  const plan = buildLearnDailyPlan({ stats, quota })
+
+  assert.equal(stats.lifecycle.due, 1)
+  assert.equal(stats.lifecycle.unseen, 1)
+  assert.equal(quota.pausedByDue, false)
+  assert.ok(quota.allowedNow > 0)
+  assert.equal(plan.action, 'mixed')
+  assert.ok(plan.allowedNewWordsNow > 0)
+  assert.equal(
+    decideLearnStartKind({ dueCount: 1, unseenCount: 1 }),
+    'mixed',
+  )
 })
 
 test('backup regression: pending spacing word resumes with zero fresh quota and does not inject connect', () => {
