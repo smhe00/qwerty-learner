@@ -1,20 +1,11 @@
 name: EdgeOne Browser Sync Gate
 
 on:
-  push:
-    branches:
-      - product/main
-    paths:
-      - '.github/workflows/edgeone-browser-sync-gate.yml'
-      - 'tests/e2e/cloud-sync-live.spec.ts'
-      - 'tests/e2e/cloud-sync-live.config.ts'
-      - 'tests/cloud/edgeone-cleanup-user.mjs'
-      - 'cloud-functions/**'
-      - 'src/sync/**'
-      - 'src/utils/backup.ts'
-      - 'src/utils/db/index.ts'
-      - 'src/achievement/**'
-      - 'src/pages/Typing/components/Setting/DataSetting.tsx'
+  workflow_run:
+    workflows:
+      - EdgeOne Production Verify
+    types:
+      - completed
   workflow_dispatch:
 
 permissions:
@@ -22,6 +13,9 @@ permissions:
 
 jobs:
   browser-sync-live:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
@@ -31,8 +25,10 @@ jobs:
       BLOB_STORE_NAME: qwerty-data
 
     steps:
-      - name: Checkout
+      - name: Checkout verified release
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Use Node.js 20
         uses: actions/setup-node@v4
