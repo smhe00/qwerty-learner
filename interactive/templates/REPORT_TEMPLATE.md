@@ -1,11 +1,13 @@
 ---
-protocol_version: "1.0"
+protocol_version: "1.1"
 task_id: "TASK-YYYYMMDD-NNN-short-name"
 status: "IN_PROGRESS"
 executor: "agent-name"
 target_branch: "product/main"
+claim_base_commit: null
 start_commit: null
 last_commit: null
+upstream_head_at_handoff: null
 dirty_worktree: false
 ---
 
@@ -59,11 +61,17 @@ Never report PASS for checks that were not executed.
 
 ```text
 branch:
+claim_base_commit:
 start_commit:
 last_commit:
+upstream_head_at_handoff:
 pushed: yes/no
 dirty_worktree: yes/no
 ```
+
+## Branch Divergence Check
+
+State whether `origin/product/main` moved during execution and, if so, how it was integrated and what validation was rerun.
 
 ## Remaining Risks
 
@@ -79,4 +87,3 @@ Write this so another agent can continue without the previous conversation.
 ## Blocking Dependency
 
 If status is `BLOCKED`, state exactly what is needed. Otherwise write `None`.
-
