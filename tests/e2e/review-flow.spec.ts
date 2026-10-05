@@ -701,6 +701,44 @@ test('multi-word Review advances through every rendered word and finishes', asyn
   expect(pageErrors).toEqual([])
 })
 
+test('closing a completed Learn result returns to an accessible Learn entry', async ({
+  page,
+}) => {
+  await seedReviewSession(page, [reviewWords[0]], 900020)
+  await page.goto('/learn/session')
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+  await page.keyboard.type('cancel')
+
+  await expect(
+    page.locator('[data-learn-result-screen]'),
+  ).toBeVisible()
+
+  await page
+    .getByRole('button', {
+      name: '结束 Learn 并返回 Typing',
+      exact: true,
+    })
+    .click()
+
+  await expect(page).toHaveURL(/\/typing$/)
+  await expect(
+    page.locator('[data-learn-result-screen]'),
+  ).toHaveCount(0)
+
+  const learnMode = page.getByRole('button', {
+    name: 'Learn',
+    exact: true,
+  })
+  await expect(learnMode).toBeVisible()
+  await expect(learnMode).toHaveAttribute('aria-pressed', 'false')
+
+  // This click is the regression assertion: before the fix, the stale
+  // finished Typing ResultScreen could immediately cover the mode switcher.
+  await learnMode.click()
+  await expect(page).toHaveURL(/\/learn(?:\/session)?$/)
+})
+
 test('post-completion extra key cannot become an out-of-range typo on the completed word', async ({
   page,
 }) => {
