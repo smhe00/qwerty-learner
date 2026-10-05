@@ -433,6 +433,7 @@ export function simulateLearner(input: {
   }
 
   const wordRecords: IWordRecord[] = []
+  const acquisitionSeen = new Set<string>()
   let wordStates: IReviewWordState[] = []
   const daily: SimulationDay[] = []
   let nextId = 1
@@ -580,12 +581,11 @@ export function simulateLearner(input: {
     )
     const unseen = words.filter((word) => {
       const item = latent.get(word)!
-      return !item.admitted && !item.pending &&
-        !wordRecords.some(
-          (record) =>
-            record.word === word &&
-            record.learnItemKind === 'acquisition',
-        )
+      return (
+        !item.admitted &&
+        !item.pending &&
+        !acquisitionSeen.has(word)
+      )
     })
 
     const freshAdmissionLimit =
@@ -607,6 +607,7 @@ export function simulateLearner(input: {
 
       if (isFresh) {
         introduced += 1
+        acquisitionSeen.add(word)
         wordRecords.push(
           buildRecord({
             id: nextId++,
