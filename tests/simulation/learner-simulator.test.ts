@@ -54,6 +54,30 @@ test('120-day learner personas produce plausible ordered outcomes and bounded wo
   )
   const weakMastery = mean(weak, (item) => item.metrics.masteryRate)
 
+  console.log(
+    'SIM_PERSONA_BACKLOG',
+    JSON.stringify({
+      strong: strong.map((item) => item.metrics.maxDueBacklog),
+      balanced: balanced.map((item) => item.metrics.maxDueBacklog),
+      weakMemory: weak.map((item) => item.metrics.maxDueBacklog),
+      highFatigue: fatigue.map((item) => item.metrics.maxDueBacklog),
+      p95DailyInteractions: {
+        strong: strong.map(
+          (item) => item.metrics.p95DailyInteractions,
+        ),
+        balanced: balanced.map(
+          (item) => item.metrics.p95DailyInteractions,
+        ),
+        weakMemory: weak.map(
+          (item) => item.metrics.p95DailyInteractions,
+        ),
+        highFatigue: fatigue.map(
+          (item) => item.metrics.p95DailyInteractions,
+        ),
+      },
+    }),
+  )
+
   assert.ok(strongMastery > balancedMastery)
   assert.ok(balancedMastery > weakMastery)
 
