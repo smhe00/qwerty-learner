@@ -1537,7 +1537,7 @@ test('formal/learn-session-prune: removal is idempotent and never leaves the exc
 })
 
 
-test('formal/learn-start-priority: due review always wins over new acquisition', async () => {
+test('formal/learn-start-priority: due review is always represented without starving acquisition', async () => {
   const {
     decideLearnStartKind,
     selectUnseenLearningWords,
@@ -1549,7 +1549,9 @@ test('formal/learn-start-priority: due review always wins over new acquisition',
   for (let dueCount = 0; dueCount <= 5; dueCount += 1) {
     for (let unseenCount = 0; unseenCount <= 25; unseenCount += 1) {
       const decision = decideLearnStartKind({ dueCount, unseenCount })
-      if (dueCount > 0) {
+      if (dueCount > 0 && unseenCount > 0) {
+        assert.equal(decision, 'mixed')
+      } else if (dueCount > 0) {
         assert.equal(decision, 'review')
       } else if (unseenCount > 0) {
         assert.equal(decision, 'acquisition')
