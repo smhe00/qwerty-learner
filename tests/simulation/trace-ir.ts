@@ -3,8 +3,8 @@ export const LEARN_TRACE_IR_VERSION = 1 as const
 export type LearnSystemTraceEvent =
   | {
       kind: 'session-prepared'
-      source: 'restored' | 'review' | 'acquisition'
-      sessionKind: 'review' | 'acquisition'
+      source: 'restored' | 'review' | 'acquisition' | 'mixed'
+      sessionKind: 'review' | 'acquisition' | 'mixed'
       sessionId: string
       batchSize: number
       uniqueWords: number
