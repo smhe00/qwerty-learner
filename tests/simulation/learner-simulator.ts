@@ -7,6 +7,7 @@ import {
   learnAcquisitionQuotaPolicy,
   type LearnAcquisitionQuotaPolicy,
 } from '../../src/learn/quota'
+import { LEARN_MIXED_NEW_WORD_RESERVE } from '../../src/learn/session'
 import { buildLearnStatsSnapshot } from '../../src/learn/stats'
 import { countLongTermMasteredWords } from '../../src/learn/mastery'
 import {
@@ -510,13 +511,17 @@ export function simulateLearner(input: {
         )
     })
 
-    const acquisitionCandidates =
+    const freshAdmissionLimit =
       statsBefore.lifecycle.due > 0
-        ? []
-        : [
-            ...pending,
-            ...unseen.slice(0, quota.allowedNow),
-          ]
+        ? Math.min(
+            quota.allowedNow,
+            LEARN_MIXED_NEW_WORD_RESERVE,
+          )
+        : quota.allowedNow
+    const acquisitionCandidates = [
+      ...pending,
+      ...unseen.slice(0, freshAdmissionLimit),
+    ]
 
     for (const word of acquisitionCandidates) {
       if (interactions >= maxDailyReviews + 40) break
