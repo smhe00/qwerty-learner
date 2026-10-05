@@ -205,13 +205,24 @@ yarn build
 
 ## 分支约定
 
-长期集成产品主线：
+开发真源：
 
 ```text
 product/main
 ```
 
-`master` 用于保持与 upstream 基线的关系，不承载 fork-only 产品功能。
+EdgeOne Maker 发布分支：
+
+```text
+master
+```
+
+日常开发只进入 `product/main`。GitHub Actions 中的 lint、测试、Playwright
+和本地 `yarn build` 可以正常运行，但不会触发 EdgeOne Maker 部署。
+
+`master` 不与 `product/main` 持续同步；只有达到明确发布里程碑后才同步一次。
+每次更新 `master` 都视为一次正式发布动作，并会触发 EdgeOne Maker
+Production 构建，因此必须节省使用。
 
 具体约定见：
 
