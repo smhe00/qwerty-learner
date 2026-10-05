@@ -46,8 +46,17 @@ Before modifying code:
 6. read the referenced task file
 7. if the task is resumed, read its referenced report/checkpoint
 8. inspect current source and Git state before editing
+9. record the current `origin/product/main` commit as the execution base
 
 Do not infer the active task from chat history alone.
+
+### Single-writer rule
+
+By default, exactly **one executor** owns an active task.
+
+- If `CURRENT_TASK.md` is `READY`, an executor may claim it by recording itself and the current base commit.
+- If it is `IN_PROGRESS` under another executor, do not start a second implementation unless Chat/Reviewer explicitly reassigns the task or the task allows parallel executors.
+- Agent replacement is a handoff, not parallel execution.
 
 ## 4. Mandatory completion sequence
 
@@ -57,9 +66,14 @@ Before handing work back:
 2. update/write the task report under `interactive/reports/`
 3. record exact test/build/simulation results
 4. record commit SHA(s), changed files and remaining risks
-5. commit all intended changes to `product/main`
-6. push to GitHub unless the task explicitly says otherwise
-7. leave the repository in a resumable state
+5. `git fetch origin` again and check whether `origin/product/main` advanced
+6. safely integrate upstream development changes if needed; never force-push
+7. rerun validation affected by integration
+8. commit all intended changes to `product/main`
+9. push to GitHub unless the task explicitly says otherwise
+10. leave the repository in a resumable state
+
+If `origin/product/main` moved incompatibly while the task was running, do not overwrite it. Record the divergence and hand back a `BLOCKED` or `PARTIAL` checkpoint as appropriate.
 
 ## 5. Safety rules
 
@@ -89,6 +103,7 @@ Therefore every non-trivial task must leave enough repository-visible state for 
 - known failures
 - exact next action
 - current commit SHA
+- current upstream `product/main` SHA
 
 ## 7. Communication protocol
 
