@@ -13,7 +13,7 @@ import type { WordPronunciationIconRef } from '@/components/WordPronunciationIco
 import { WordPronunciationIcon } from '@/components/WordPronunciationIcon'
 import { EXPLICIT_SPACE } from '@/constants'
 import useKeySounds from '@/hooks/useKeySounds'
-import type { LearnSessionKind } from '@/learn/session'
+import type { LearnItemKind } from '@/learn/session'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import { classifyTypingError } from '@/review/classifier'
 import type { TypingErrorClassification } from '@/review/classifier'
@@ -106,7 +106,7 @@ type WordComponentProps = {
   meaningVisible: boolean
   phoneticVisible: boolean
   exercisePlan?: ReviewExercisePlanV1
-  learnItemKind?: LearnSessionKind
+  learnItemKind?: LearnItemKind
   reviewAttemptRole?: ReviewAttemptRole
   managedHintFlow?: boolean
   managedHintInitialLevel?: ReviewHintLevel
