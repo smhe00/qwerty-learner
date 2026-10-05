@@ -111,20 +111,24 @@ export function tlcStatesToLearnTrace(
       : null
 
     if (
-      phase === 'acquisition' &&
-      previousPhase !== 'acquisition'
+      (phase === 'acquisition' || phase === 'mixed') &&
+      previousPhase !== phase
     ) {
       const batchSize = numberValue(state, 'sessionSize') ?? 0
+      const acquisitionSize =
+        phase === 'mixed'
+          ? numberValue(state, 'acquisitionSize') ?? 0
+          : batchSize
       events.push({
         kind: 'session-prepared',
-        source: 'acquisition',
-        sessionKind: 'acquisition',
+        source: phase,
+        sessionKind: phase,
         sessionId: `tlc:${state.number}`,
         batchSize,
         uniqueWords: batchSize,
         dueCount: numberValue(state, 'due') ?? 0,
         unseenCount: numberValue(state, 'unseen'),
-        allowedNewWordsNow: batchSize,
+        allowedNewWordsNow: acquisitionSize,
         introducedToday: numberValue(state, 'introduced'),
         acquiredToday: numberValue(state, 'acquired'),
       })
