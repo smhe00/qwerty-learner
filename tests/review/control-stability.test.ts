@@ -24,6 +24,7 @@ import {
   learnAcquisitionQuotaPolicy,
 } from '../../src/learn/quota'
 import type { LearnStatsSnapshot } from '../../src/learn/stats'
+import { LEARN_MIXED_NEW_WORD_RESERVE } from '../../src/learn/session'
 
 const CONTROL_STABILITY_GATE_VERSION = 'learn-control-stability-v1'
 
@@ -320,7 +321,7 @@ test('control/recovery: window is bounded and cannot recursively select Independ
   assert.deepEqual(plan.selectedNames, ['a', 'c', 'd'])
 })
 
-test('control/quota: workload actuator is saturated and due remains dominant', () => {
+test('control/quota: workload actuator stays bounded while due priority coexists with mixed acquisition', () => {
   const tiers: LearnInteractionStrainTier[] = [
     'unknown',
     'low',
@@ -350,13 +351,24 @@ test('control/quota: workload actuator is saturated and due remains dominant', (
           decision.allowedNow <=
             learnAcquisitionQuotaPolicy.high,
         )
-        if (due > 0) assert.equal(decision.allowedNow, 0)
+        if (due > 0) {
+          assert.equal(decision.pausedByDue, false)
+          assert.ok(
+            decision.reasonCodes.includes(
+              'due-review-priority',
+            ),
+          )
+          assert.equal(
+            decision.allowedNow,
+            decision.remainingDailyNewWords,
+          )
+        }
       }
     }
   }
 })
 
-test('control/backlog: due-first policy clears bounded burst arrivals', () => {
+test('control/backlog: bounded mixed reserve preserves review service under burst arrivals', () => {
   let backlog = 0
   let maxBacklog = 0
   const serviceCapacity = 10
@@ -371,8 +383,21 @@ test('control/backlog: due-first policy clears bounded burst arrivals', () => {
         unseen: 1_000,
       }),
     )
-    assert.equal(quota.allowedNow, 0)
+    assert.equal(quota.pausedByDue, false)
+    assert.ok(
+      quota.reasonCodes.includes('due-review-priority'),
+    )
+    const mixedFreshReserve = Math.min(
+      quota.allowedNow,
+      LEARN_MIXED_NEW_WORD_RESERVE,
+    )
+    assert.ok(mixedFreshReserve >= 0)
+    assert.ok(
+      mixedFreshReserve <= LEARN_MIXED_NEW_WORD_RESERVE,
+    )
 
+    // Review service remains first-class work. The bounded mixed
+    // acquisition reserve must not consume this service capacity.
     backlog = Math.max(0, backlog - serviceCapacity)
     maxBacklog = Math.max(maxBacklog, backlog)
   }
