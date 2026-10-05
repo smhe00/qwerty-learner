@@ -408,6 +408,7 @@ test('background pause preserves Typing counters when the page returns to foregr
 test('Typing Skip never overlaps Start/Pause when it becomes visible', async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1100, height: 800 })
   await page.goto('/typing')
   await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
   await page.keyboard.press('a')
@@ -442,4 +443,53 @@ test('Typing Skip never overlaps Start/Pause when it becomes visible', async ({
     skipBox.y < pauseBox.y + pauseBox.height &&
     skipBox.y + skipBox.height > pauseBox.y
   expect(overlaps).toBe(false)
+})
+
+
+test('success pronunciation falls back when the Howl instance is not ready yet', async ({
+  page,
+}) => {
+  const audio = silentWav(220)
+
+  await page.route('https://dict.youdao.com/**', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 250))
+    await route.fulfill({
+      status: 200,
+      contentType: 'audio/wav',
+      headers: {
+        'access-control-allow-origin': '*',
+        'cache-control': 'no-store',
+      },
+      body: audio,
+    })
+  })
+
+  await page.addInitScript(() => {
+    const target = window as AudioProbeWindow
+    target.__qwertyAudioPlays = []
+    const nativePlay = HTMLMediaElement.prototype.play
+    HTMLMediaElement.prototype.play = function patchedPlay() {
+      target.__qwertyAudioPlays?.push(this.currentSrc || this.src)
+      const result = nativePlay.call(this)
+      result?.catch(() => undefined)
+      return result
+    }
+  })
+
+  await page.goto('/typing')
+  await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
+  await page.keyboard.press('a')
+  await page.keyboard.type('life')
+
+  await expect
+    .poll(async () =>
+      (await playedUrls(page)).filter((url) =>
+        url.includes('audio=life'),
+      ).length,
+    )
+    .toBeGreaterThanOrEqual(1)
+
+  await expect(
+    page.locator('[data-typing-word="break"]'),
+  ).toBeVisible({ timeout: 2_000 })
 })

@@ -36,7 +36,10 @@ import { useMixPanelChapterLogUploader } from '@/utils/mixpanel'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import type React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import {
+  useLocation,
+  useNavigate,
+} from 'react-router-dom'
 import { useImmerReducer } from 'use-immer'
 
 const App: React.FC = () => {
@@ -48,6 +51,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const { words } = useWordList()
   const navigate = useNavigate()
+  const location = useLocation()
   const setupIdentityRef = useRef<string | null>(null)
   const legacyRotationRef = useRef<string | null>(null)
 
@@ -61,6 +65,8 @@ const App: React.FC = () => {
   const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
   const isReviewMode = useAtomValue(isReviewModeAtom)
+  const isLearnSurface =
+    isReviewMode || location.pathname.startsWith('/learn')
 
   useEffect(() => {
     // 检测用户设备
@@ -249,18 +255,26 @@ const App: React.FC = () => {
           <DictChapterButton learnMode={isReviewMode} />
           <PronunciationSwitcher learnMode={isReviewMode} />
           <Switcher learnMode={isReviewMode} />
-          <StartButton isLoading={isLoading} />
-          {!isReviewMode && state.isShowSkip && (
-            <Tooltip content="跳过该词">
-              <button
-                className="my-btn-primary shrink-0 whitespace-nowrap bg-orange-400"
-                type="button"
-                onClick={skipWord}
+          <div
+            className="flex shrink-0 items-center gap-3"
+            data-typing-primary-controls
+          >
+            <StartButton isLoading={isLoading} />
+            {!isLearnSurface && state.isShowSkip && (
+              <Tooltip
+                content="跳过该词"
+                className="shrink-0"
               >
-                Skip
-              </button>
-            </Tooltip>
-          )}
+                <button
+                  className="my-btn-primary min-w-20 shrink-0 whitespace-nowrap bg-orange-400"
+                  type="button"
+                  onClick={skipWord}
+                >
+                  Skip
+                </button>
+              </Tooltip>
+            )}
+          </div>
         </Header>
         <div className="container mx-auto flex h-full flex-1 flex-col items-center justify-center pb-5">
           <div className="container relative mx-auto flex h-full flex-col items-center">

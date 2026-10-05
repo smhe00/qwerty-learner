@@ -6,7 +6,13 @@ import { romajiToHiragana } from '@/utils/kana'
 import noop from '@/utils/noop'
 import type { Howl } from 'howler'
 import { useAtomValue } from 'jotai'
-import { useEffect, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import useSound from 'use-sound'
 import type { HookOptions } from 'use-sound/dist/types'
 
@@ -46,13 +52,110 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
     pronunciationConfig.type,
   )
 
-  const [play, { stop, sound }] = useSound(soundSrc, {
+  const [playHowl, { stop: stopHowl, sound }] = useSound(soundSrc, {
     html5: true,
     format: ['mp3'],
     loop,
     volume: pronunciationConfig.volume,
     rate: pronunciationConfig.rate,
   } as HookOptions)
+  const fallbackAudioRef = useRef<HTMLAudioElement | null>(null)
+
+  const trace = useCallback(
+    (
+      event: string,
+      details?: Record<string, string | number | boolean | null>,
+    ) =>
+      appendDeveloperTrace({
+        scope: 'audio',
+        event,
+        word,
+        details: {
+          pronunciationType: String(pronunciationConfig.type),
+          ...details,
+        },
+      }),
+    [pronunciationConfig.type, word],
+  )
+
+  const stopFallback = useCallback(() => {
+    const audio = fallbackAudioRef.current
+    if (!audio) return
+    fallbackAudioRef.current = null
+    audio.pause()
+    try {
+      audio.currentTime = 0
+    } catch {
+      // Some browsers reject currentTime before metadata is available.
+    }
+  }, [])
+
+  const stop = useCallback(() => {
+    stopHowl()
+    stopFallback()
+    setIsPlaying(false)
+  }, [stopFallback, stopHowl])
+
+  const play = useCallback((): boolean => {
+    if (soundSrc === '' || hasError) return false
+
+    stop()
+
+    if (sound) {
+      playHowl()
+      return true
+    }
+
+    // use-sound lazily exposes its Howl instance. A fast typist can finish a
+    // short word before that instance exists; previously success audio was
+    // silently skipped. Native Audio is a narrow fallback for that window.
+    const audio = new Audio(soundSrc)
+    audio.preload = 'auto'
+    audio.volume = pronunciationConfig.volume
+    audio.playbackRate = pronunciationConfig.rate
+    audio.loop = loop
+    fallbackAudioRef.current = audio
+
+    const owns = () => fallbackAudioRef.current === audio
+    audio.addEventListener('playing', () => {
+      if (!owns()) return
+      setHasError(false)
+      setIsReady(true)
+      setIsPlaying(true)
+      trace('audio-start', { transport: 'native-fallback' })
+    })
+    audio.addEventListener('ended', () => {
+      if (!owns()) return
+      setIsPlaying(false)
+      trace('audio-end', { transport: 'native-fallback' })
+    })
+    audio.addEventListener('error', () => {
+      if (!owns()) return
+      setIsPlaying(false)
+      setHasError(true)
+      trace('audio-play-error', { transport: 'native-fallback' })
+    })
+
+    trace('audio-native-fallback-requested')
+    const result = audio.play()
+    result?.catch(() => {
+      if (!owns()) return
+      setIsPlaying(false)
+      setHasError(true)
+      trace('audio-play-error', { transport: 'native-fallback' })
+    })
+    return true
+  }, [
+    hasError,
+    loop,
+    playHowl,
+    pronunciationConfig.rate,
+    pronunciationConfig.volume,
+    sound,
+    soundSrc,
+    stop,
+    trace,
+  ])
 
   useEffect(() => {
     if (!sound) return
@@ -69,19 +172,6 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
 
     let active = true
     const unListens: Array<() => void> = []
-    const trace = (
-      event: string,
-      details?: Record<string, string | number | boolean | null>,
-    ) =>
-      appendDeveloperTrace({
-        scope: 'audio',
-        event,
-        word,
-        details: {
-          pronunciationType: String(pronunciationConfig.type),
-          ...details,
-        },
-      })
     const markReady = () => {
       if (!active) return
       setHasError(false)
@@ -135,7 +225,13 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
       trace('audio-unload')
       ;(sound as Howl).unload()
     }
-  }, [pronunciationConfig.type, sound, soundSrc, word])
+  }, [sound, trace])
+
+  useEffect(() => {
+    return () => {
+      stopFallback()
+    }
+  }, [soundSrc, stopFallback])
 
   return {
     play,
@@ -143,7 +239,7 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
     isPlaying,
     isReady,
     hasError,
-    hasSound: Boolean(sound),
+    hasSound: Boolean(sound || fallbackAudioRef.current),
   }
 }
 

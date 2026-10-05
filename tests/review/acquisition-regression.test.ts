@@ -523,7 +523,18 @@ test('oversized legacy acquisition sessions rotate while repeated attempts insid
   assert.equal(
     shouldRotateOversizedLearnSession({
       isFinished: false,
-      sessionKind: 'acquisition',
+      // Real legacy checkpoints can lack all Learn classification metadata.
+      words: Array.from({ length: 21 }, (_, index) =>
+        makeWord(index),
+      ),
+    }),
+    true,
+  )
+
+  assert.equal(
+    shouldRotateOversizedLearnSession({
+      isFinished: false,
+      sessionKind: 'review',
       words: Array.from({ length: 21 }, (_, index) =>
         makeWord(index),
       ),

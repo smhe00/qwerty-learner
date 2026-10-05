@@ -54,13 +54,29 @@ export function countLearnSessionAcquisitionWords(
   return names.size
 }
 
+export function countLearnSessionLogicalWords(
+  snapshot: LearnSessionCohortSnapshot,
+): number {
+  return new Set(
+    snapshot.words
+      .map((word) => word?.name)
+      .filter((name): name is string => Boolean(name)),
+  ).size
+}
+
 export function shouldRotateOversizedLearnSession(
   snapshot: LearnSessionCohortSnapshot,
 ): boolean {
+  if (snapshot.isFinished === true) return false
+
+  // Compatibility rule: old Learn checkpoints can lack sessionKind,
+  // itemKinds, or acquisitionStates entirely. Session sizing is a UI/product
+  // invariant, so infer the cohort from the queue itself rather than trusting
+  // metadata that may not exist. Repeated supported/independent follow-ups do
+  // not count as additional logical words.
   return (
-    snapshot.isFinished !== true &&
-    countLearnSessionAcquisitionWords(snapshot) >
-      LEARN_SESSION_TARGET_SIZE
+    countLearnSessionLogicalWords(snapshot) >
+    LEARN_SESSION_TARGET_SIZE
   )
 }
 

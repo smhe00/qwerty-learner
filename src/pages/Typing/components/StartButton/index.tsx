@@ -27,7 +27,7 @@ export default function StartButton({
   return (
     <Tooltip
       content={`${state.isTyping ? '暂停' : '开始'} （Enter）`}
-      className="box-content h-7 w-8 px-6 py-1"
+      className="shrink-0"
     >
       <button
         className={`my-btn-primary w-20 shadow ${

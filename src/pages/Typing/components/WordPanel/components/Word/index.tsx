@@ -358,7 +358,10 @@ export default function WordComponent({
   }, [currentDictInfo.id, word.name])
 
   const isManagedReviewHintFlow = useCallback(
-    () => isLearnAttempt && managedHintFlow,
+    () =>
+      isLearnAttempt &&
+      managedHintFlow &&
+      exerciseConditionRef.current?.letters.mode !== 'all-visible',
     [isLearnAttempt, managedHintFlow],
   )
 
@@ -817,9 +820,10 @@ export default function WordComponent({
         state.isTyping &&
         wordState.inputWord.length === 0 &&
         pronunciationIsOpen &&
-        isPronunciationReady
-      ) {
+        !automaticPronunciationPlayedRef.current &&
         playPronunciation('automatic')
+      ) {
+        automaticPronunciationPlayedRef.current = true
       }
       return
     }

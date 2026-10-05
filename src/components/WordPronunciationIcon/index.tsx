@@ -62,7 +62,6 @@ export const WordPronunciationIcon = React.forwardRef<
       isPlaying,
       isReady,
       hasError,
-      hasSound,
     } = usePronunciationSound(currentWord())
 
     const playSound = useCallback(
@@ -82,9 +81,9 @@ export const WordPronunciationIcon = React.forwardRef<
           })
           return false
         }
-        if (!hasSound || hasError) return false
-        stop()
-        play()
+        if (hasError) return false
+        const accepted = play()
+        if (!accepted) return false
         appendDeveloperTrace({
           scope: 'audio',
           event: 'audio-play-requested',
@@ -93,7 +92,7 @@ export const WordPronunciationIcon = React.forwardRef<
         })
         return true
       },
-      [hasError, hasSound, ownerKey, play, stop, word.name],
+      [hasError, ownerKey, play, word.name],
     )
 
     useEffect(() => {

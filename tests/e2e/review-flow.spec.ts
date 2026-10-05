@@ -3201,10 +3201,10 @@ test('visible first-acquisition copy never auto-enters the hint ladder after rep
     'all-visible',
   )
 
-  await page.keyboard.press('x')
-  await page.waitForTimeout(350)
-  await page.keyboard.press('x')
-  await page.waitForTimeout(350)
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    await page.keyboard.press('x')
+    await page.waitForTimeout(350)
+  }
 
   await expect(word).toHaveAttribute(
     'data-review-hint-level',
