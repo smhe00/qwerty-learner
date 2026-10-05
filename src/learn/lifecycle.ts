@@ -76,8 +76,13 @@ export function sanitizeLearnSessionLifecycle(
 
   for (const word of new Set(record.words.map((item) => item.name))) {
     const state = stateByWord.get(word)
+    const itemKind =
+      record.itemKinds?.[word] ??
+      (record.sessionKind === 'acquisition'
+        ? 'acquisition'
+        : 'review')
     const shouldPrune =
-      record.sessionKind === 'acquisition'
+      itemKind === 'acquisition'
         ? state !== undefined
         : !isActiveLearningState(state)
 
@@ -107,10 +112,12 @@ export function pruneLearnSessionWord(
   const words = originalWords.filter((item) => item.name !== word)
   const exercisePlans = { ...(record.exercisePlans ?? {}) }
   const reinforcementCounts = { ...(record.reinforcementCounts ?? {}) }
+  const itemKinds = { ...(record.itemKinds ?? {}) }
   const itemStates = { ...(record.itemStates ?? {}) }
   const acquisitionStates = { ...(record.acquisitionStates ?? {}) }
   delete exercisePlans[word]
   delete reinforcementCounts[word]
+  delete itemKinds[word]
   delete itemStates[word]
   delete acquisitionStates[word]
 
@@ -126,6 +133,8 @@ export function pruneLearnSessionWord(
         Object.keys(reinforcementCounts).length > 0
           ? reinforcementCounts
           : undefined,
+      itemKinds:
+        Object.keys(itemKinds).length > 0 ? itemKinds : undefined,
       itemStates:
         Object.keys(itemStates).length > 0 ? itemStates : undefined,
       acquisitionStates:
@@ -152,6 +161,8 @@ export function pruneLearnSessionWord(
       Object.keys(reinforcementCounts).length > 0
         ? reinforcementCounts
         : undefined,
+    itemKinds:
+      Object.keys(itemKinds).length > 0 ? itemKinds : undefined,
     itemStates:
       Object.keys(itemStates).length > 0 ? itemStates : undefined,
     acquisitionStates:
