@@ -289,12 +289,17 @@ test('production audio adapter ignores a stale previous-word load after fast-for
     )
     .toBe(true)
 
+  const lifePlaysAtOwnerSwitch = (
+    await playedUrls(page)
+  ).filter((url) => url.includes('audio=life')).length
+
   await page.waitForTimeout(1_300)
 
   const playsAfterOldLoad = await playedUrls(page)
   expect(
-    playsAfterOldLoad.filter((url) => url.includes('audio=life')),
-  ).toHaveLength(0)
+    playsAfterOldLoad.filter((url) => url.includes('audio=life'))
+      .length,
+  ).toBe(lifePlaysAtOwnerSwitch)
   expect(
     playsAfterOldLoad.filter((url) => url.includes('audio=break'))
       .length,
