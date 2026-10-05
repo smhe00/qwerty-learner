@@ -3,13 +3,7 @@ name: EdgeOne Production Verify
 on:
   push:
     branches:
-      - product/main
-    paths:
-      - '.github/workflows/edgeone-production-verify.yml'
-      - 'index.html'
-      - 'src/components/Header/**'
-      - 'src/assets/logoData.ts'
-      - 'edgeone.json'
+      - master
   workflow_dispatch:
 
 permissions:
@@ -22,8 +16,7 @@ jobs:
     env:
       EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
       EDGEONE_PROJECT_ID: makers-cgemngjuuwle
-      EDGEONE_PRODUCTION_BRANCH: feature/edgeone-cloud-sync
-      EXPECTED_RC_SHA: 2e1128095c41afa4d881757eff037ff7a28f5294
+      EDGEONE_PRODUCTION_BRANCH: master
 
     steps:
       - name: Use Node.js 20
@@ -47,6 +40,7 @@ jobs:
 
           const projectId = process.env.EDGEONE_PROJECT_ID
           const repoBranch = process.env.EDGEONE_PRODUCTION_BRANCH
+          const releaseSha = process.env.GITHUB_SHA
           const recentCutoff = Date.now() - 20 * 60 * 1000
           const deadline = Date.now() + 12 * 60 * 1000
           const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -81,8 +75,15 @@ jobs:
             env: deployment.env,
             status: deployment.status,
             repoBranch: deployment.repoBranch,
+            releaseSha,
             createdOn: deployment.createdOn,
           }, null, 2))
+
+          if (deployment.repoBranch !== repoBranch) {
+            throw new Error(
+              `Expected deployment from ${repoBranch}, got ${deployment.repoBranch || 'unknown'}`,
+            )
+          }
 
           if (deployment.env !== 'Production') {
             throw new Error(`Expected Production deployment, got ${deployment.env}`)
@@ -138,6 +139,8 @@ jobs:
           console.log(JSON.stringify({
             ok: true,
             deploymentId: deployment.deploymentId,
+            releaseSha,
+            repoBranch,
             env: deployment.env,
             productionDomain: rawDomain,
             health: {
