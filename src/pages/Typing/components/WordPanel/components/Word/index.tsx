@@ -95,6 +95,7 @@ import { useImmer } from 'use-immer'
 
 const vowelLetters = ['A', 'E', 'I', 'O', 'U']
 const SUCCESS_FEEDBACK_MS = 600
+const SUCCESS_AUDIO_START_GRACE_MS = 900
 const SUCCESS_AUDIO_MAX_WAIT_MS = 3500
 
 export type WordFinishResult = {
@@ -176,6 +177,7 @@ export default function WordComponent({
   const successFeedbackStartedAtRef = useRef(0)
   const successFastForwardRequestedRef = useRef(false)
   const successAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const successAudioStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const successHardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingFinishReleaseRef = useRef<(() => void) | null>(null)
   const successPronunciationPlayedRef = useRef(false)
@@ -205,6 +207,10 @@ export default function WordComponent({
     if (successAdvanceTimerRef.current) {
       clearTimeout(successAdvanceTimerRef.current)
       successAdvanceTimerRef.current = null
+    }
+    if (successAudioStartTimerRef.current) {
+      clearTimeout(successAudioStartTimerRef.current)
+      successAudioStartTimerRef.current = null
     }
     if (successHardTimeoutRef.current) {
       clearTimeout(successHardTimeoutRef.current)
@@ -416,6 +422,10 @@ export default function WordComponent({
       clearTimeout(successAdvanceTimerRef.current)
       successAdvanceTimerRef.current = null
     }
+    if (successAudioStartTimerRef.current) {
+      clearTimeout(successAudioStartTimerRef.current)
+      successAudioStartTimerRef.current = null
+    }
     if (successHardTimeoutRef.current) {
       clearTimeout(successHardTimeoutRef.current)
       successHardTimeoutRef.current = null
@@ -470,10 +480,22 @@ export default function WordComponent({
         0,
         SUCCESS_FEEDBACK_MS - elapsed,
       )
+      const audioExpected =
+        pronunciationIsOpen ||
+        exerciseConditionRef.current?.audio === 'automatic' ||
+        (activeHintLevel !== null && activeHintLevel >= 1)
+      const audioStartRemaining = Math.max(
+        0,
+        SUCCESS_AUDIO_START_GRACE_MS - elapsed,
+      )
       const maximumRemaining = Math.max(
         0,
         SUCCESS_AUDIO_MAX_WAIT_MS - elapsed,
       )
+
+      if (!audioExpected) {
+        successAudioUnavailableRef.current = true
+      }
 
       appendDeveloperTrace({
         scope: 'learn-terminal',
@@ -482,10 +504,37 @@ export default function WordComponent({
         details: {
           minimumRemaining,
           maximumRemaining,
+          audioExpected,
+          audioStartRemaining,
           audioStarted: successAudioStartedRef.current,
           audioSettled: successAudioSettledRef.current,
         },
       })
+
+      if (
+        audioExpected &&
+        !successAudioStartedRef.current
+      ) {
+        if (audioStartRemaining === 0) {
+          successAudioUnavailableRef.current = true
+        } else {
+          successAudioStartTimerRef.current = setTimeout(() => {
+            if (!successAudioStartedRef.current) {
+              successAudioUnavailableRef.current = true
+              appendDeveloperTrace({
+                scope: 'audio',
+                event: 'success-audio-start-grace-expired',
+                word: word.name,
+                details: {
+                  audioOwnerKey,
+                  graceMs: SUCCESS_AUDIO_START_GRACE_MS,
+                },
+              })
+              maybeReleasePendingFinish()
+            }
+          }, audioStartRemaining)
+        }
+      }
 
       if (minimumRemaining === 0) {
         successMinFeedbackElapsedRef.current = true
@@ -507,7 +556,13 @@ export default function WordComponent({
 
       maybeReleasePendingFinish()
     },
-    [maybeReleasePendingFinish, word.name],
+    [
+      activeHintLevel,
+      audioOwnerKey,
+      maybeReleasePendingFinish,
+      pronunciationIsOpen,
+      word.name,
+    ],
   )
 
   const handlePronunciationReadyChange = useCallback(
@@ -574,6 +629,9 @@ export default function WordComponent({
     return () => {
       if (successAdvanceTimerRef.current) {
         clearTimeout(successAdvanceTimerRef.current)
+      }
+      if (successAudioStartTimerRef.current) {
+        clearTimeout(successAudioStartTimerRef.current)
       }
       if (successHardTimeoutRef.current) {
         clearTimeout(successHardTimeoutRef.current)
@@ -1161,10 +1219,15 @@ export default function WordComponent({
   }, [wordState.isFinished])
 
   useEffect(() => {
+    const successAudioExpected =
+      pronunciationIsOpen ||
+      exerciseConditionRef.current?.audio === 'automatic' ||
+      (activeHintLevel !== null && activeHintLevel >= 1)
+
     if (
       !wordState.isFinished ||
       successPronunciationPlayedRef.current ||
-      !isPronunciationReady
+      !successAudioExpected
     ) {
       return
     }
@@ -1185,17 +1248,22 @@ export default function WordComponent({
       })
     }
   }, [
+    activeHintLevel,
     audioOwnerKey,
     isPronunciationReady,
+    pronunciationIsOpen,
     word.name,
     wordState.isFinished,
   ])
 
   useEffect(() => {
-    if (wordState.wrongCount >= 4) {
-      dispatch({ type: TypingStateActionType.SET_IS_SKIP, payload: true })
+    if (!isLearnAttempt && wordState.wrongCount >= 4) {
+      dispatch({
+        type: TypingStateActionType.SET_IS_SKIP,
+        payload: true,
+      })
     }
-  }, [wordState.wrongCount, dispatch])
+  }, [dispatch, isLearnAttempt, wordState.wrongCount])
 
   return (
     <>

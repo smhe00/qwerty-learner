@@ -9,6 +9,7 @@ import {
   buildLearnAcquisitionStates,
   canonicalizeLearningWords,
   planLearnAcquisitionCandidates,
+  shouldRotateOversizedLearnSession,
 } from '@/learn/session'
 import {
   createLearnAcquisitionExercisePlanForState,
@@ -72,6 +73,28 @@ export async function getLatestReviewRecord(dictID: string): Promise<ReviewRecor
 
   if (sanitized !== latest && latest.id !== undefined) {
     await putWordReviewRecord(sanitized)
+  }
+
+  if (shouldRotateOversizedLearnSession(sanitized)) {
+    const rotated = {
+      ...sanitized,
+      isFinished: true,
+    } as ReviewRecord
+    await putWordReviewRecord(rotated)
+    appendDeveloperTrace({
+      scope: 'runtime',
+      event: 'oversized-learn-session-rotated',
+      sessionId: String(
+        sanitized.id ?? sanitized.createTime,
+      ),
+      index: sanitized.index,
+      queueLength: sanitized.words.length,
+      details: {
+        sessionKind: sanitized.sessionKind ?? 'legacy',
+        reason: 'acquisition-cohort-over-20',
+      },
+    })
+    return undefined
   }
 
   return sanitized.isFinished ? undefined : sanitized

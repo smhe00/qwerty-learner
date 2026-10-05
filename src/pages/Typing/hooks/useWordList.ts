@@ -37,7 +37,14 @@ export function useWordList(): UseWordListResult {
     !isReviewMode &&
     currentDictInfo.id === 'cet4' &&
     normalizedChapter === 0
-  const { data: wordList, error, isLoading } = useSWR(currentDictInfo.url, wordListFetcher)
+  const { data: wordList, error, isLoading } = useSWR(
+    currentDictInfo.url,
+    wordListFetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    },
+  )
 
   // The Typing reducer owns the live review queue. Rehydrate it only when the
   // review session identity changes; persisting a reinforced queue must not

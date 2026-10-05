@@ -13,6 +13,7 @@ import { decideDailyAcquisitionQuota } from '../../src/learn/quota'
 import {
   decideLearnStartKind,
   planLearnAcquisitionCandidates,
+  shouldRotateOversizedLearnSession,
 } from '../../src/learn/session'
 import { buildLearnStatsSnapshot } from '../../src/learn/stats'
 import {
@@ -508,4 +509,60 @@ test('simulation-discovered regression: legacy assistance-deferred state without
     deferredAt + MIN_ASSISTANCE_DEFERRED_DELAY_SECONDS,
   )
   assert.equal(repaired.scaffoldHintPosition, 3)
+})
+
+
+test('oversized legacy acquisition sessions rotate while repeated attempts inside a 20-word cohort do not', () => {
+  const makeWord = (index: number) => ({
+    name: `legacy-${index}`,
+    trans: [],
+    usphone: '',
+    ukphone: '',
+  })
+
+  assert.equal(
+    shouldRotateOversizedLearnSession({
+      isFinished: false,
+      sessionKind: 'acquisition',
+      words: Array.from({ length: 21 }, (_, index) =>
+        makeWord(index),
+      ),
+    }),
+    true,
+  )
+
+  const cohort = Array.from({ length: 20 }, (_, index) =>
+    makeWord(index),
+  )
+  assert.equal(
+    shouldRotateOversizedLearnSession({
+      isFinished: false,
+      sessionKind: 'acquisition',
+      words: [...cohort, ...cohort, ...cohort],
+    }),
+    false,
+  )
+})
+
+test('active interrupted acquisition state resumes instead of becoming permanently blocked pending work', () => {
+  const word = {
+    name: 'resume-exposure',
+    trans: [],
+    usphone: '',
+    ukphone: '',
+  }
+  const state = createLearnAcquisitionState()
+  const plan = planLearnAcquisitionCandidates({
+    words: [word],
+    states: [],
+    pendingStates: new Map([[word.name, state]]),
+    introducedWords: [word.name],
+    freshLimit: 0,
+    now: 100,
+  })
+
+  assert.equal(plan.resumed.length, 1)
+  assert.equal(plan.resumed[0]?.word.name, word.name)
+  assert.equal(plan.resumed[0]?.state.phase, 'exposure')
+  assert.equal(plan.freshWords.length, 0)
 })

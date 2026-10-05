@@ -369,3 +369,68 @@ test('production success pronunciation completes before automatic advance', asyn
     page.locator('[data-typing-word="break"]'),
   ).toBeVisible({ timeout: 2_500 })
 })
+
+
+test('background pause preserves Typing counters when the page returns to foreground', async ({
+  page,
+  context,
+}) => {
+  await page.goto('/typing')
+  await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
+  await page.keyboard.press('a')
+  await page.keyboard.type('li')
+
+  const readStats = async () =>
+    page.locator('.my-card').last().locator('div').allTextContents()
+
+  const before = await readStats()
+  const second = await context.newPage()
+  await second.goto('about:blank')
+  await second.bringToFront()
+  await page.waitForTimeout(300)
+  await page.bringToFront()
+  await page.waitForTimeout(300)
+
+  await expect(page.getByText('按任意键继续')).toBeVisible()
+  const after = await readStats()
+  expect(after).toEqual(before)
+})
+
+test('Typing Skip never overlaps Start/Pause when it becomes visible', async ({
+  page,
+}) => {
+  await page.goto('/typing')
+  await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
+  await page.keyboard.press('a')
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    await page.keyboard.press('x')
+    await page.waitForTimeout(350)
+  }
+
+  const skip = page.getByRole('button', {
+    name: 'Skip',
+    exact: true,
+  })
+  const pause = page.getByRole('button', {
+    name: '暂停',
+    exact: true,
+  })
+  await expect(skip).toBeVisible()
+  await expect(pause).toBeVisible()
+
+  const [skipBox, pauseBox] = await Promise.all([
+    skip.boundingBox(),
+    pause.boundingBox(),
+  ])
+  expect(skipBox).not.toBeNull()
+  expect(pauseBox).not.toBeNull()
+  if (!skipBox || !pauseBox) return
+
+  const overlaps =
+    skipBox.x < pauseBox.x + pauseBox.width &&
+    skipBox.x + skipBox.width > pauseBox.x &&
+    skipBox.y < pauseBox.y + pauseBox.height &&
+    skipBox.y + skipBox.height > pauseBox.y
+  expect(overlaps).toBe(false)
+})

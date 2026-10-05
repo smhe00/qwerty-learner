@@ -33,7 +33,7 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
             </span>
           </div>
         </button>
-        <nav className="my-card on element flex w-auto content-center items-center justify-end space-x-3 rounded-xl bg-white p-4 transition-colors duration-300 dark:bg-gray-800">
+        <nav className="my-card on element flex w-auto flex-wrap content-center items-center justify-end gap-3 rounded-xl bg-white p-4 transition-colors duration-300 dark:bg-gray-800">
           {children}
         </nav>
       </div>

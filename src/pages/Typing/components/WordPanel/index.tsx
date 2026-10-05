@@ -603,8 +603,12 @@ export default function WordPanel() {
         ? currentExercisePlan.condition.phonetic === 'visible'
         : baselinePhoneticVisible
 
+  const isVisibleCopyAttempt =
+    currentLearnItemKind === 'acquisition' &&
+    currentExercisePlan?.condition.letters.mode === 'all-visible'
   const managedHintFlow =
     isReviewMode &&
+    !isVisibleCopyAttempt &&
     (currentLearnItemKind === 'review' ||
       currentAcquisitionState?.phase === 'supported' ||
       currentAcquisitionState?.phase === 'independent')

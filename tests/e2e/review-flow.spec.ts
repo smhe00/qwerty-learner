@@ -3176,3 +3176,106 @@ test('final Learn word reaches result UI even when route-cache persistence throw
     )
     .toBe(true)
 })
+
+
+test('visible first-acquisition copy never auto-enters the hint ladder after repeated mistakes', async ({
+  page,
+}) => {
+  await seedAcquisitionSession(
+    page,
+    [reviewWords[0]],
+    900091,
+    'exposure',
+  )
+  await page.goto('/learn/session')
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+
+  const word = page.locator('[data-typing-word="cancel"]')
+  await expect(word).toHaveAttribute(
+    'data-learn-acquisition-phase',
+    'exposure',
+  )
+  await expect(word).toHaveAttribute(
+    'data-review-letters',
+    'all-visible',
+  )
+
+  await page.keyboard.press('x')
+  await page.waitForTimeout(350)
+  await page.keyboard.press('x')
+  await page.waitForTimeout(350)
+
+  await expect(word).toHaveAttribute(
+    'data-review-hint-level',
+    'cold',
+  )
+  await expect(word).toHaveAttribute(
+    'data-review-letters',
+    'all-visible',
+  )
+  await expect(
+    page.getByRole('button', { name: 'Skip', exact: true }),
+  ).toHaveCount(0)
+
+  await page.keyboard.type('cancel')
+  await expect
+    .poll(async () => {
+      const info = await readReviewModeInfo(page)
+      return info?.reviewRecord?.index
+    })
+    .toBeGreaterThan(0)
+})
+
+test('oversized legacy acquisition session is closed and returned to Learn idle for rechunking', async ({
+  page,
+}) => {
+  const legacyWords = Array.from({ length: 21 }, (_, index) => ({
+    name: `legacy-acq-${index}`,
+    trans: [`legacy ${index}`],
+    usphone: '',
+    ukphone: '',
+  }))
+
+  await seedAcquisitionSession(
+    page,
+    legacyWords,
+    900092,
+    'exposure',
+  )
+  await page.goto('/learn/session')
+
+  await expect(page).toHaveURL(/\/learn$/)
+  await expect(
+    page.getByRole('button', {
+      name: '开始 Learn',
+      exact: true,
+    }),
+  ).toBeVisible()
+
+  await expect
+    .poll(async () =>
+      page.evaluate(async () => {
+        return new Promise<boolean>((resolve, reject) => {
+          const request = indexedDB.open('RecordDB')
+          request.onerror = () => reject(request.error)
+          request.onsuccess = () => {
+            const db = request.result
+            const tx = db.transaction(
+              'reviewRecords',
+              'readonly',
+            )
+            const get = tx
+              .objectStore('reviewRecords')
+              .get(900092)
+            get.onerror = () => reject(get.error)
+            get.onsuccess = () => {
+              resolve(get.result?.isFinished === true)
+              db.close()
+            }
+          }
+        })
+      }),
+    )
+    .toBe(true)
+})

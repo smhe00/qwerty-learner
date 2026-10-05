@@ -137,7 +137,14 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
     }
   }, [pronunciationConfig.type, sound, soundSrc, word])
 
-  return { play, stop, isPlaying, isReady, hasError }
+  return {
+    play,
+    stop,
+    isPlaying,
+    isReady,
+    hasError,
+    hasSound: Boolean(sound),
+  }
 }
 
 export function usePrefetchPronunciationSound(word: string | undefined) {

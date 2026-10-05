@@ -19,6 +19,51 @@ export const LEARN_MIXED_NEW_WORD_RESERVE = 5
 export type LearnItemKind = 'review' | 'acquisition'
 export type LearnSessionKind = LearnItemKind | 'mixed'
 
+export type LearnSessionCohortSnapshot = {
+  isFinished?: boolean
+  sessionKind?: LearnSessionKind
+  words: Array<{ name: string }>
+  itemKinds?: Record<string, LearnItemKind>
+  acquisitionStates?: Record<string, LearnAcquisitionState>
+}
+
+export function countLearnSessionAcquisitionWords(
+  snapshot: LearnSessionCohortSnapshot,
+): number {
+  const names = new Set<string>()
+
+  for (const name of Object.keys(snapshot.acquisitionStates ?? {})) {
+    names.add(name)
+  }
+
+  if (snapshot.sessionKind === 'acquisition') {
+    for (const word of snapshot.words) {
+      if (word?.name) names.add(word.name)
+    }
+  } else if (snapshot.sessionKind === 'mixed') {
+    for (const word of snapshot.words) {
+      if (
+        word?.name &&
+        snapshot.itemKinds?.[word.name] === 'acquisition'
+      ) {
+        names.add(word.name)
+      }
+    }
+  }
+
+  return names.size
+}
+
+export function shouldRotateOversizedLearnSession(
+  snapshot: LearnSessionCohortSnapshot,
+): boolean {
+  return (
+    snapshot.isFinished !== true &&
+    countLearnSessionAcquisitionWords(snapshot) >
+      LEARN_SESSION_TARGET_SIZE
+  )
+}
+
 /**
  * Learn owns one long-term spelling memory per exact dictionary name.
  *
@@ -188,10 +233,14 @@ export function planLearnAcquisitionCandidates(input: {
 
   for (const [wordName, pendingState] of input.pendingStates) {
     if (resumed.length >= LEARN_NEW_WORD_BATCH_SIZE) break
-    const resumedState = resumeDeferredAcquisition(
-      pendingState,
-      input.now,
-    )
+
+    const resumedState =
+      pendingState.phase === 'deferred'
+        ? resumeDeferredAcquisition(pendingState, input.now)
+        : pendingState.phase === 'complete'
+          ? undefined
+          : pendingState
+
     const word = canonicalByName.get(wordName)
     if (!resumedState || !word) continue
     resumed.push({ word, state: resumedState })

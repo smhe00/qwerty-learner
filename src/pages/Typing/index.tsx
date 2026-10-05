@@ -10,6 +10,10 @@ import WordList from './components/WordList'
 import WordPanel from './components/WordPanel'
 import { useConfetti } from './hooks/useConfetti'
 import { useWordList } from './hooks/useWordList'
+import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
+import {
+  shouldRotateOversizedLearnSession,
+} from '@/learn/session'
 import { TypingContext, TypingStateActionType, initialState, typingReducer } from './store'
 import { DonateCard } from '@/components/DonateCard'
 import LearnResultScreen from '@/pages/Learn/components/LearnResultScreen'
@@ -27,10 +31,12 @@ import {
 } from '@/store'
 import { IsDesktop, isLegal } from '@/utils'
 import { useSaveChapterRecord } from '@/utils/db'
+import { putWordReviewRecord } from '@/utils/db/review-record'
 import { useMixPanelChapterLogUploader } from '@/utils/mixpanel'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import type React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useImmerReducer } from 'use-immer'
 
 const App: React.FC = () => {
@@ -41,14 +47,19 @@ const App: React.FC = () => {
   })
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const { words } = useWordList()
+  const navigate = useNavigate()
+  const setupIdentityRef = useRef<string | null>(null)
+  const legacyRotationRef = useRef<string | null>(null)
 
   const [currentDictId, setCurrentDictId] = useAtom(currentDictIdAtom)
+  const currentChapter = useAtomValue(currentChapterAtom)
   const setCurrentChapter = useSetAtom(currentChapterAtom)
   const randomConfig = useAtomValue(randomConfigAtom)
   const chapterLogUploader = useMixPanelChapterLogUploader(state)
   const saveChapterRecord = useSaveChapterRecord()
 
   const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
+  const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
   const isReviewMode = useAtomValue(isReviewModeAtom)
 
   useEffect(() => {
@@ -106,20 +117,98 @@ const App: React.FC = () => {
   }, [state.isTyping, isLoading, dispatch])
 
   useEffect(() => {
-    if (words !== undefined) {
-      const initialIndex = isReviewMode && reviewModeInfo.reviewRecord?.index ? reviewModeInfo.reviewRecord.index : 0
+    if (words.length === 0) return
 
-      dispatch({
-        type: TypingStateActionType.SETUP_CHAPTER,
-        payload: {
-          words,
-          shouldShuffle: isReviewMode ? false : randomConfig.isOpen,
-          initialIndex,
-        },
-      })
+    const setupIdentity = isReviewMode
+      ? `learn:${String(
+          reviewModeInfo.reviewRecord?.id ??
+            reviewModeInfo.reviewRecord?.createTime ??
+            'none',
+        )}`
+      : `typing:${currentDictId}:${currentChapter}`
+
+    if (setupIdentityRef.current === setupIdentity) return
+    setupIdentityRef.current = setupIdentity
+
+    const initialIndex =
+      isReviewMode && reviewModeInfo.reviewRecord?.index
+        ? reviewModeInfo.reviewRecord.index
+        : 0
+
+    dispatch({
+      type: TypingStateActionType.SETUP_CHAPTER,
+      payload: {
+        words,
+        shouldShuffle: isReviewMode ? false : randomConfig.isOpen,
+        initialIndex,
+      },
+    })
+  }, [
+    currentChapter,
+    currentDictId,
+    dispatch,
+    isReviewMode,
+    randomConfig.isOpen,
+    reviewModeInfo.reviewRecord?.createTime,
+    reviewModeInfo.reviewRecord?.id,
+    reviewModeInfo.reviewRecord?.index,
+    words,
+  ])
+
+  useEffect(() => {
+    const record = reviewModeInfo.reviewRecord
+    if (
+      !isReviewMode ||
+      !record ||
+      !shouldRotateOversizedLearnSession(record)
+    ) {
+      return
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [words])
+
+    const sessionId = String(record.id ?? record.createTime)
+    if (legacyRotationRef.current === sessionId) return
+    legacyRotationRef.current = sessionId
+
+    const rotated = {
+      ...record,
+      isFinished: true,
+    }
+
+    void putWordReviewRecord(rotated)
+      .then(() => {
+        appendDeveloperTrace({
+          scope: 'runtime',
+          event: 'oversized-learn-session-rotated',
+          sessionId,
+          index: record.index,
+          queueLength: record.words.length,
+          details: {
+            sessionKind: record.sessionKind ?? 'legacy',
+            reason: 'active-acquisition-cohort-over-20',
+          },
+        })
+        setReviewModeInfo({
+          isReviewMode: true,
+          reviewRecord: undefined,
+        })
+        navigate('/learn', {
+          replace: true,
+          state: { idle: true },
+        })
+      })
+      .catch((error) => {
+        legacyRotationRef.current = null
+        console.error(
+          'failed to rotate oversized Learn session',
+          error,
+        )
+      })
+  }, [
+    isReviewMode,
+    navigate,
+    reviewModeInfo.reviewRecord,
+    setReviewModeInfo,
+  ])
 
   useEffect(() => {
     // 当用户完成章节后且完成 word Record 数据保存，记录 chapter Record 数据,
@@ -161,29 +250,17 @@ const App: React.FC = () => {
           <PronunciationSwitcher learnMode={isReviewMode} />
           <Switcher learnMode={isReviewMode} />
           <StartButton isLoading={isLoading} />
-          <Tooltip
-            content={
-              isReviewMode
-                ? 'Learn 模式不允许普通 Skip'
-                : '跳过该词'
-            }
-          >
-            <button
-              className={`${
-                state.isShowSkip
-                  ? isReviewMode
-                    ? 'cursor-not-allowed bg-gray-300 text-gray-500 opacity-50'
-                    : 'bg-orange-400'
-                  : 'invisible w-0 bg-gray-300 px-0 opacity-0'
-              } my-btn-primary transition-all duration-300 `}
-              type="button"
-              disabled={isReviewMode}
-              onClick={skipWord}
-              aria-disabled={isReviewMode}
-            >
-              Skip
-            </button>
-          </Tooltip>
+          {!isReviewMode && state.isShowSkip && (
+            <Tooltip content="跳过该词">
+              <button
+                className="my-btn-primary shrink-0 whitespace-nowrap bg-orange-400"
+                type="button"
+                onClick={skipWord}
+              >
+                Skip
+              </button>
+            </Tooltip>
+          )}
         </Header>
         <div className="container mx-auto flex h-full flex-1 flex-col items-center justify-center pb-5">
           <div className="container relative mx-auto flex h-full flex-col items-center">
