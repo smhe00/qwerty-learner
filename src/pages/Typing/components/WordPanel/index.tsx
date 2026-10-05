@@ -14,7 +14,7 @@ import {
 } from '@/learn/acquisition'
 import { resolveLearnAcquisitionCompletion } from '@/learn/progression'
 import { pruneLearnSessionWord } from '@/learn/lifecycle'
-import type { LearnSessionKind } from '@/learn/session'
+import type { LearnItemKind } from '@/learn/session'
 import type { ReviewHintLevel } from '@/review/hint'
 import { resolveReviewCompletion } from '@/review/progression'
 import {
@@ -58,8 +58,13 @@ export default function WordPanel() {
   const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
   const isReviewMode = useAtomValue(isReviewModeAtom)
-  const currentLearnItemKind: LearnSessionKind =
-    reviewModeInfo.reviewRecord?.sessionKind ?? 'review'
+  const currentLearnItemKind: LearnItemKind =
+    currentWord
+      ? reviewModeInfo.reviewRecord?.itemKinds?.[currentWord.name] ??
+        (reviewModeInfo.reviewRecord?.sessionKind === 'acquisition'
+          ? 'acquisition'
+          : 'review')
+      : 'review'
   const currentAcquisitionState =
     isReviewMode &&
     currentLearnItemKind === 'acquisition' &&
