@@ -3,7 +3,7 @@ name: EdgeOne Browser Sync Gate
 on:
   push:
     branches:
-      - feature/edgeone-cloud-sync
+      - product/main
     paths:
       - '.github/workflows/edgeone-browser-sync-gate.yml'
       - 'tests/e2e/cloud-sync-live.spec.ts'
