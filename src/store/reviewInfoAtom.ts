@@ -1,3 +1,4 @@
+import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import { createSerializedSnapshotWriter } from '@/review/persistence'
 import type { ReviewRecord } from '@/utils/db/record'
 import { putWordReviewRecord } from '@/utils/db/review-record'
@@ -90,9 +91,57 @@ export function reviewInfoAtom(initialValue: TReviewInfoAtomData) {
       // Keep local route-critical state synchronous, while serializing durable
       // checkpoints so IndexedDB can never finish them out of order.
       if (newValue.reviewRecord?.id) {
+        appendDeveloperTrace({
+          scope: 'persistence',
+          event: 'review-checkpoint-requested',
+          sessionId: String(newValue.reviewRecord.id),
+          index: newValue.reviewRecord.index,
+          queueLength: newValue.reviewRecord.words.length,
+          details: {
+            isFinished: newValue.reviewRecord.isFinished,
+          },
+        })
         queueReviewRecordWrite(newValue.reviewRecord)
       }
-      set(storageAtom, newValue)
+
+      try {
+        set(storageAtom, newValue)
+        if (newValue.reviewRecord) {
+          appendDeveloperTrace({
+            scope: 'persistence',
+            event: 'review-route-cache-committed',
+            sessionId: String(
+              newValue.reviewRecord.id ??
+                newValue.reviewRecord.createTime,
+            ),
+            index: newValue.reviewRecord.index,
+            queueLength: newValue.reviewRecord.words.length,
+            details: {
+              isFinished: newValue.reviewRecord.isFinished,
+            },
+          })
+        }
+      } catch (error) {
+        appendDeveloperTrace({
+          scope: 'persistence',
+          event: 'review-route-cache-error',
+          sessionId: newValue.reviewRecord
+            ? String(
+                newValue.reviewRecord.id ??
+                  newValue.reviewRecord.createTime,
+              )
+            : undefined,
+          index: newValue.reviewRecord?.index,
+          queueLength: newValue.reviewRecord?.words.length,
+          details: {
+            message:
+              error instanceof Error
+                ? error.message
+                : String(error),
+          },
+        })
+        throw error
+      }
     },
   )
 }

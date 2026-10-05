@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import {
+  isOwnedAudioEvent,
+  shouldReleaseSuccessFeedback,
+} from '../../src/review/audio-lifecycle'
 
 type State = {
   wordEpoch: number
@@ -148,4 +152,74 @@ test('formal/typing-audio: two clean consecutive words each become audible once 
 
   state = step(state, { type: 'audio-ready', wordEpoch: 1 })
   assert.equal(state.playCountByAttempt[1], 1)
+})
+
+
+test('formal/audio-ownership: only the current owner may mutate or play audio', () => {
+  const owners = ['0:alpha', '1:beta', '2:alpha']
+  let explored = 0
+
+  for (const currentOwner of owners) {
+    for (const eventOwner of owners) {
+      explored += 1
+      assert.equal(
+        isOwnedAudioEvent(currentOwner, eventOwner),
+        currentOwner === eventOwner,
+      )
+    }
+  }
+
+  assert.equal(explored, owners.length ** 2)
+})
+
+test('formal/success-audio: exhaustive lifecycle states never release early', () => {
+  let explored = 0
+
+  for (const minFeedbackElapsed of [false, true]) {
+    for (const audioStarted of [false, true]) {
+      for (const audioSettled of [false, true]) {
+        for (const audioUnavailable of [false, true]) {
+          for (const timeoutExpired of [false, true]) {
+            for (const fastForward of [false, true]) {
+              explored += 1
+              const released = shouldReleaseSuccessFeedback({
+                minFeedbackElapsed,
+                audioStarted,
+                audioSettled,
+                audioUnavailable,
+                timeoutExpired,
+                fastForward,
+              })
+
+              if (fastForward) {
+                assert.equal(released, true)
+                continue
+              }
+
+              assert.equal(
+                released,
+                minFeedbackElapsed &&
+                  (
+                    audioSettled ||
+                    audioUnavailable ||
+                    timeoutExpired
+                  ),
+              )
+
+              if (
+                audioStarted &&
+                !audioSettled &&
+                !audioUnavailable &&
+                !timeoutExpired
+              ) {
+                assert.equal(released, false)
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert.equal(explored, 64)
 })

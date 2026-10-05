@@ -12,6 +12,7 @@ import Tooltip from '@/components/Tooltip'
 import type { WordPronunciationIconRef } from '@/components/WordPronunciationIcon'
 import { WordPronunciationIcon } from '@/components/WordPronunciationIcon'
 import { EXPLICIT_SPACE } from '@/constants'
+import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import useKeySounds from '@/hooks/useKeySounds'
 import type { LearnItemKind } from '@/learn/session'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
@@ -52,6 +53,10 @@ import {
   summarizeAnswerVisibility,
 } from '@/review/learning-context'
 import {
+  isOwnedAudioEvent,
+  shouldReleaseSuccessFeedback,
+} from '@/review/audio-lifecycle'
+import {
   decideWordInput,
   shouldPlayAutomaticPronunciation,
 } from '@/review/machine'
@@ -90,6 +95,7 @@ import { useImmer } from 'use-immer'
 
 const vowelLetters = ['A', 'E', 'I', 'O', 'U']
 const SUCCESS_FEEDBACK_MS = 600
+const SUCCESS_AUDIO_MAX_WAIT_MS = 3500
 
 export type WordFinishResult = {
   wrongCount: number
@@ -112,6 +118,7 @@ type WordComponentProps = {
   managedHintInitialLevel?: ReviewHintLevel
   managedHintInitialPosition?: number
   onHintLevelChange?: (level: ReviewHintLevel | null) => void
+  audioOwnerKey: string
 }
 
 export default function WordComponent({
@@ -126,6 +133,7 @@ export default function WordComponent({
   managedHintInitialLevel,
   managedHintInitialPosition,
   onHintLevelChange,
+  audioOwnerKey,
 }: WordComponentProps) {
   // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
   const { state, dispatch } = useContext(TypingContext)!
@@ -168,8 +176,14 @@ export default function WordComponent({
   const successFeedbackStartedAtRef = useRef(0)
   const successFastForwardRequestedRef = useRef(false)
   const successAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const successHardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingFinishReleaseRef = useRef<(() => void) | null>(null)
   const successPronunciationPlayedRef = useRef(false)
+  const successMinFeedbackElapsedRef = useRef(false)
+  const successAudioStartedRef = useRef(false)
+  const successAudioSettledRef = useRef(false)
+  const successAudioUnavailableRef = useRef(false)
+  const successAudioTimeoutExpiredRef = useRef(false)
 
   useLayoutEffect(() => {
     // Resolve the frozen presentation before paint / first input.
@@ -182,10 +196,19 @@ export default function WordComponent({
     successFeedbackStartedAtRef.current = 0
     successFastForwardRequestedRef.current = false
     successPronunciationPlayedRef.current = false
+    successMinFeedbackElapsedRef.current = false
+    successAudioStartedRef.current = false
+    successAudioSettledRef.current = false
+    successAudioUnavailableRef.current = false
+    successAudioTimeoutExpiredRef.current = false
     pendingFinishReleaseRef.current = null
     if (successAdvanceTimerRef.current) {
       clearTimeout(successAdvanceTimerRef.current)
       successAdvanceTimerRef.current = null
+    }
+    if (successHardTimeoutRef.current) {
+      clearTimeout(successHardTimeoutRef.current)
+      successHardTimeoutRef.current = null
     }
     reviewHintStateRef.current = createReviewHintMachineState({
       initialLevel: managedHintInitialLevel,
@@ -384,7 +407,7 @@ export default function WordComponent({
     [dispatch, onHintLevelChange],
   )
 
-  const releasePendingFinish = useCallback(() => {
+  const releasePendingFinishNow = useCallback(() => {
     const release = pendingFinishReleaseRef.current
     if (!release) return
 
@@ -393,45 +416,167 @@ export default function WordComponent({
       clearTimeout(successAdvanceTimerRef.current)
       successAdvanceTimerRef.current = null
     }
+    if (successHardTimeoutRef.current) {
+      clearTimeout(successHardTimeoutRef.current)
+      successHardTimeoutRef.current = null
+    }
+    appendDeveloperTrace({
+      scope: 'learn-terminal',
+      event: 'success-finish-release',
+      word: word.name,
+      details: {
+        fastForward: successFastForwardRequestedRef.current,
+        audioStarted: successAudioStartedRef.current,
+        audioSettled: successAudioSettledRef.current,
+        audioUnavailable: successAudioUnavailableRef.current,
+        timeoutExpired: successAudioTimeoutExpiredRef.current,
+      },
+    })
     release()
-  }, [])
+  }, [word.name])
+
+  const maybeReleasePendingFinish = useCallback(() => {
+    if (
+      !pendingFinishReleaseRef.current ||
+      !shouldReleaseSuccessFeedback({
+        minFeedbackElapsed: successMinFeedbackElapsedRef.current,
+        audioStarted: successAudioStartedRef.current,
+        audioSettled: successAudioSettledRef.current,
+        audioUnavailable: successAudioUnavailableRef.current,
+        timeoutExpired: successAudioTimeoutExpiredRef.current,
+        fastForward: successFastForwardRequestedRef.current,
+      })
+    ) {
+      return
+    }
+
+    releasePendingFinishNow()
+  }, [releasePendingFinishNow])
 
   const requestSuccessFastForward = useCallback(() => {
     successFastForwardRequestedRef.current = true
-    releasePendingFinish()
-  }, [releasePendingFinish])
+    maybeReleasePendingFinish()
+  }, [maybeReleasePendingFinish])
 
   const armSuccessFinishRelease = useCallback(
     (release: () => void) => {
       pendingFinishReleaseRef.current = release
 
-      if (successFastForwardRequestedRef.current) {
-        releasePendingFinish()
-        return
-      }
-
       const elapsed = Math.max(
         0,
         Date.now() - successFeedbackStartedAtRef.current,
       )
-      const remaining = Math.max(0, SUCCESS_FEEDBACK_MS - elapsed)
-      if (remaining === 0) {
-        releasePendingFinish()
+      const minimumRemaining = Math.max(
+        0,
+        SUCCESS_FEEDBACK_MS - elapsed,
+      )
+      const maximumRemaining = Math.max(
+        0,
+        SUCCESS_AUDIO_MAX_WAIT_MS - elapsed,
+      )
+
+      appendDeveloperTrace({
+        scope: 'learn-terminal',
+        event: 'success-finish-armed',
+        word: word.name,
+        details: {
+          minimumRemaining,
+          maximumRemaining,
+          audioStarted: successAudioStartedRef.current,
+          audioSettled: successAudioSettledRef.current,
+        },
+      })
+
+      if (minimumRemaining === 0) {
+        successMinFeedbackElapsedRef.current = true
+      } else {
+        successAdvanceTimerRef.current = setTimeout(() => {
+          successMinFeedbackElapsedRef.current = true
+          maybeReleasePendingFinish()
+        }, minimumRemaining)
+      }
+
+      if (maximumRemaining === 0) {
+        successAudioTimeoutExpiredRef.current = true
+      } else {
+        successHardTimeoutRef.current = setTimeout(() => {
+          successAudioTimeoutExpiredRef.current = true
+          maybeReleasePendingFinish()
+        }, maximumRemaining)
+      }
+
+      maybeReleasePendingFinish()
+    },
+    [maybeReleasePendingFinish, word.name],
+  )
+
+  const handlePronunciationReadyChange = useCallback(
+    (ready: boolean, ownerKey: string) => {
+      if (!isOwnedAudioEvent(audioOwnerKey, ownerKey)) {
+        appendDeveloperTrace({
+          scope: 'audio',
+          event: 'stale-audio-ready-ignored',
+          word: word.name,
+          details: { audioOwnerKey, eventOwnerKey: ownerKey, ready },
+        })
+        return
+      }
+      setIsPronunciationReady(ready)
+    },
+    [audioOwnerKey, word.name],
+  )
+
+  const handlePronunciationPlayingChange = useCallback(
+    (playing: boolean, ownerKey: string) => {
+      if (!isOwnedAudioEvent(audioOwnerKey, ownerKey)) {
+        appendDeveloperTrace({
+          scope: 'audio',
+          event: 'stale-audio-playing-ignored',
+          word: word.name,
+          details: {
+            audioOwnerKey,
+            eventOwnerKey: ownerKey,
+            playing,
+          },
+        })
         return
       }
 
-      successAdvanceTimerRef.current = setTimeout(
-        releasePendingFinish,
-        remaining,
-      )
+      if (
+        wordState.isFinished &&
+        successAudioStartedRef.current &&
+        !playing
+      ) {
+        successAudioSettledRef.current = true
+        maybeReleasePendingFinish()
+      }
     },
-    [releasePendingFinish],
+    [
+      audioOwnerKey,
+      maybeReleasePendingFinish,
+      word.name,
+      wordState.isFinished,
+    ],
+  )
+
+  const handlePronunciationErrorChange = useCallback(
+    (hasError: boolean, ownerKey: string) => {
+      if (!isOwnedAudioEvent(audioOwnerKey, ownerKey)) return
+      if (hasError && wordState.isFinished) {
+        successAudioUnavailableRef.current = true
+        maybeReleasePendingFinish()
+      }
+    },
+    [audioOwnerKey, maybeReleasePendingFinish, wordState.isFinished],
   )
 
   useEffect(() => {
     return () => {
       if (successAdvanceTimerRef.current) {
         clearTimeout(successAdvanceTimerRef.current)
+      }
+      if (successHardTimeoutRef.current) {
+        clearTimeout(successHardTimeoutRef.current)
       }
       pendingFinishReleaseRef.current = null
     }
@@ -942,6 +1087,19 @@ export default function WordComponent({
           })
 
           if (isLearnAttempt) {
+            appendDeveloperTrace({
+              scope: 'learn-terminal',
+              event: 'word-record-durable',
+              word: word.name,
+              index: state.chapterData.index,
+              queueLength: state.chapterData.words.length,
+              details: {
+                wordRecordId,
+                finalQueueItem:
+                  state.chapterData.index ===
+                  state.chapterData.words.length - 1,
+              },
+            })
             // Raw evidence is the SSOT. Once it is durably captured, UI
             // progression must not wait for derived Learn-state persistence.
             dispatch({
@@ -1011,13 +1169,27 @@ export default function WordComponent({
       return
     }
 
-    const played = wordPronunciationIconRef.current?.play() ?? false
+    const played =
+      wordPronunciationIconRef.current?.play(audioOwnerKey) ?? false
     if (played) {
       // Success playback is feedback after retrieval, not a retrieval cue.
       // Deliberately do not record it in LearningContext.
       successPronunciationPlayedRef.current = true
+      successAudioStartedRef.current = true
+      successAudioSettledRef.current = false
+      appendDeveloperTrace({
+        scope: 'audio',
+        event: 'success-audio-start-requested',
+        word: word.name,
+        details: { audioOwnerKey },
+      })
     }
-  }, [isPronunciationReady, word.name, wordState.isFinished])
+  }, [
+    audioOwnerKey,
+    isPronunciationReady,
+    word.name,
+    wordState.isFinished,
+  ])
 
   useEffect(() => {
     if (wordState.wrongCount >= 4) {
@@ -1114,11 +1286,15 @@ export default function WordComponent({
           >
             <Tooltip content={`快捷键${CTRL} + J`}>
               <WordPronunciationIcon
+                key={audioOwnerKey}
                 word={word}
                 lang={currentLanguage}
+                ownerKey={audioOwnerKey}
                 ref={wordPronunciationIconRef}
                 className="h-full w-full"
-                onReadyChange={setIsPronunciationReady}
+                onReadyChange={handlePronunciationReadyChange}
+                onPlayingChange={handlePronunciationPlayingChange}
+                onErrorChange={handlePronunciationErrorChange}
               />
             </Tooltip>
           </div>

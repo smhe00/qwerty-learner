@@ -1,3 +1,4 @@
+import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import { pronunciationConfigAtom } from '@/store'
 import type { PronunciationType } from '@/typings'
 import { addHowlListener } from '@/utils'
@@ -39,8 +40,13 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
   const loop = useMemo(() => (typeof isLoop === 'boolean' ? isLoop : pronunciationConfig.isLoop), [isLoop, pronunciationConfig.isLoop])
   const [isPlaying, setIsPlaying] = useState(false)
   const [isReady, setIsReady] = useState(false)
+  const [hasError, setHasError] = useState(false)
+  const soundSrc = generateWordSoundSrc(
+    word,
+    pronunciationConfig.type,
+  )
 
-  const [play, { stop, sound }] = useSound(generateWordSoundSrc(word, pronunciationConfig.type), {
+  const [play, { stop, sound }] = useSound(soundSrc, {
     html5: true,
     format: ['mp3'],
     loop,
@@ -57,30 +63,81 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
   useEffect(() => {
     if (!sound) {
       setIsReady(false)
+      setHasError(soundSrc === '')
       return
     }
 
+    let active = true
     const unListens: Array<() => void> = []
-    const markReady = () => setIsReady(true)
-    const markNotReady = () => setIsReady(false)
+    const trace = (
+      event: string,
+      details?: Record<string, string | number | boolean | null>,
+    ) =>
+      appendDeveloperTrace({
+        scope: 'audio',
+        event,
+        word,
+        details: {
+          pronunciationType: String(pronunciationConfig.type),
+          ...details,
+        },
+      })
+    const markReady = () => {
+      if (!active) return
+      setHasError(false)
+      setIsReady(true)
+      trace('audio-ready')
+    }
+    const markLoadError = () => {
+      if (!active) return
+      setIsReady(false)
+      setHasError(true)
+      trace('audio-load-error')
+    }
+    const markPlay = () => {
+      if (!active) return
+      setIsPlaying(true)
+      trace('audio-start')
+    }
+    const markEnd = () => {
+      if (!active) return
+      setIsPlaying(false)
+      trace('audio-end')
+    }
+    const markPause = () => {
+      if (!active) return
+      setIsPlaying(false)
+      trace('audio-pause')
+    }
+    const markPlayError = () => {
+      if (!active) return
+      setIsPlaying(false)
+      setHasError(true)
+      trace('audio-play-error')
+    }
 
-    setIsReady((sound as Howl).state() === 'loaded')
+    const loaded = (sound as Howl).state() === 'loaded'
+    setIsReady(loaded)
+    setHasError(false)
+    trace('audio-bind', { loaded })
     unListens.push(addHowlListener(sound, 'load', markReady))
-    unListens.push(addHowlListener(sound, 'loaderror', markNotReady))
-    unListens.push(addHowlListener(sound, 'play', () => setIsPlaying(true)))
-    unListens.push(addHowlListener(sound, 'end', () => setIsPlaying(false)))
-    unListens.push(addHowlListener(sound, 'pause', () => setIsPlaying(false)))
-    unListens.push(addHowlListener(sound, 'playerror', () => setIsPlaying(false)))
+    unListens.push(addHowlListener(sound, 'loaderror', markLoadError))
+    unListens.push(addHowlListener(sound, 'play', markPlay))
+    unListens.push(addHowlListener(sound, 'end', markEnd))
+    unListens.push(addHowlListener(sound, 'pause', markPause))
+    unListens.push(addHowlListener(sound, 'playerror', markPlayError))
 
     return () => {
+      active = false
       setIsPlaying(false)
       setIsReady(false)
       unListens.forEach((unListen) => unListen())
+      trace('audio-unload')
       ;(sound as Howl).unload()
     }
-  }, [sound])
+  }, [pronunciationConfig.type, sound, soundSrc, word])
 
-  return { play, stop, isPlaying, isReady }
+  return { play, stop, isPlaying, isReady, hasError }
 }
 
 export function usePrefetchPronunciationSound(word: string | undefined) {

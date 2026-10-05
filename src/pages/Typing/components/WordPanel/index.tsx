@@ -6,6 +6,7 @@ import Phonetic from './components/Phonetic'
 import Translation from './components/Translation'
 import WordComponent from './components/Word'
 import type { WordFinishResult } from './components/Word'
+import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
 import {
   createLearnAcquisitionExercisePlanForState,
@@ -112,6 +113,11 @@ export default function WordPanel() {
     currentLearnItemKind === 'acquisition' && currentAcquisitionState
       ? `${currentWordComponentKey}:${currentAcquisitionState.phase}`
       : currentWordComponentKey
+  const currentAudioOwnerKey = currentWord
+    ? `${state.chapterData.index}:${String(
+        currentWordRenderKey,
+      )}:${currentWord.name}`
+    : 'none'
 
   useEffect(() => {
     setCurrentReviewHintLevel(currentManagedHintInitialLevel ?? null)
@@ -174,7 +180,9 @@ export default function WordPanel() {
           nextExerciseShadow,
         })
 
-        setReviewModeInfo((old) => {
+        let reviewStateCommitError: unknown
+        try {
+          setReviewModeInfo((old) => {
           if (!old.reviewRecord) return old
 
           const words: Word[] =
@@ -212,7 +220,27 @@ export default function WordPanel() {
               itemStates: resolution.itemStates,
             },
           }
-        })
+          })
+        } catch (error) {
+          reviewStateCommitError = error
+          appendDeveloperTrace({
+            scope: 'learn-terminal',
+            event: 'review-state-commit-error',
+            word: currentWord.name,
+            index: state.chapterData.index,
+            queueLength: state.chapterData.words.length,
+            details: {
+              action: resolution.action,
+              message:
+                error instanceof Error
+                  ? error.message
+                  : String(error),
+            },
+          })
+          if (resolution.action !== 'finish') {
+            throw error
+          }
+        }
 
         setCurrentWordExerciseCount(0)
 
@@ -234,6 +262,22 @@ export default function WordPanel() {
           return
         }
 
+        appendDeveloperTrace({
+          scope: 'learn-terminal',
+          event: 'ui-finish-dispatch',
+          word: currentWord.name,
+          index: state.chapterData.index,
+          queueLength: state.chapterData.words.length,
+          details: {
+            sessionId: String(
+              reviewModeInfo.reviewRecord?.id ??
+                reviewModeInfo.reviewRecord?.createTime ??
+                'unknown',
+            ),
+            reviewStateCommitError:
+              reviewStateCommitError !== undefined,
+          },
+        })
         dispatch({
           type: TypingStateActionType.FINISH_CHAPTER,
         })
@@ -269,7 +313,9 @@ export default function WordPanel() {
         const nextAcquisitionState = resolution.nextState
         const projection = resolution.projection
 
-        setReviewModeInfo((old) => {
+        let acquisitionStateCommitError: unknown
+        try {
+          setReviewModeInfo((old) => {
           if (!old.reviewRecord) return old
 
           const acquisitionStates = {
@@ -306,7 +352,27 @@ export default function WordPanel() {
               acquisitionStates,
             },
           }
-        })
+          })
+        } catch (error) {
+          acquisitionStateCommitError = error
+          appendDeveloperTrace({
+            scope: 'learn-terminal',
+            event: 'acquisition-state-commit-error',
+            word: currentWord.name,
+            index: state.chapterData.index,
+            queueLength: state.chapterData.words.length,
+            details: {
+              finished: projection.isFinished,
+              message:
+                error instanceof Error
+                  ? error.message
+                  : String(error),
+            },
+          })
+          if (!projection.isFinished) {
+            throw error
+          }
+        }
 
         if (resolution.shouldPersistAdmission) {
           const now = Math.floor(Date.now() / 1000)
@@ -332,6 +398,22 @@ export default function WordPanel() {
                 },
           })
         } else {
+          appendDeveloperTrace({
+            scope: 'learn-terminal',
+            event: 'ui-finish-dispatch',
+            word: currentWord.name,
+            index: state.chapterData.index,
+            queueLength: state.chapterData.words.length,
+            details: {
+              sessionId: String(
+                reviewModeInfo.reviewRecord?.id ??
+                  reviewModeInfo.reviewRecord?.createTime ??
+                  'unknown',
+              ),
+              acquisitionStateCommitError:
+                acquisitionStateCommitError !== undefined,
+            },
+          })
           dispatch({ type: TypingStateActionType.FINISH_CHAPTER })
         }
         return
@@ -613,6 +695,7 @@ export default function WordPanel() {
                   currentManagedHintInitialPosition
                 }
                 onHintLevelChange={setCurrentReviewHintLevel}
+                audioOwnerKey={currentAudioOwnerKey}
                 key={currentWordRenderKey}
               />
               {effectivePhoneticVisible && <Phonetic word={currentWord} />}

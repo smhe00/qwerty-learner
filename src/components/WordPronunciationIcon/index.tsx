@@ -1,64 +1,138 @@
 import { SoundIcon } from './SoundIcon'
+import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import usePronunciationSound from '@/hooks/usePronunciation'
+import { isOwnedAudioEvent } from '@/review/audio-lifecycle'
 import type { Word } from '@/typings'
-import { useCallback, useEffect, useImperativeHandle } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+} from 'react'
 import React from 'react'
+
+type WordPronunciationIconProps = {
+  word: Word
+  lang: string
+  ownerKey: string
+  className?: string
+  iconClassName?: string
+  onReadyChange?: (
+    ready: boolean,
+    ownerKey: string,
+  ) => void
+  onPlayingChange?: (
+    playing: boolean,
+    ownerKey: string,
+  ) => void
+  onErrorChange?: (
+    hasError: boolean,
+    ownerKey: string,
+  ) => void
+}
 
 export const WordPronunciationIcon = React.forwardRef<
   WordPronunciationIconRef,
-  { word: Word; lang: string; className?: string; iconClassName?: string; onReadyChange?: (ready: boolean) => void }
->(({ word, lang, className, iconClassName, onReadyChange }, ref) => {
-  const currentWord = () => {
-    if (lang === 'hapin') {
-      if (/[\u0400-\u04FF]/.test(word.notation || '')) {
-        // 哈萨克语西里尔文字
-        return word.notation || ''
-      } else {
-        // 哈萨克语老文字
+  WordPronunciationIconProps
+>(
+  (
+    {
+      word,
+      lang,
+      ownerKey,
+      className,
+      iconClassName,
+      onReadyChange,
+      onPlayingChange,
+      onErrorChange,
+    },
+    ref,
+  ) => {
+    const currentWord = () => {
+      if (lang === 'hapin') {
+        if (/[\u0400-\u04FF]/.test(word.notation || '')) {
+          return word.notation || ''
+        }
         return word.trans[2]
       }
-    } else {
       return word.name
     }
-  }
-  const { play, stop, isPlaying, isReady } = usePronunciationSound(currentWord())
+    const {
+      play,
+      stop,
+      isPlaying,
+      isReady,
+      hasError,
+    } = usePronunciationSound(currentWord())
 
-  const playSound = useCallback((): boolean => {
-    if (!isReady) return false
-    stop()
-    play()
-    return true
-  }, [isReady, play, stop])
+    const playSound = useCallback(
+      (expectedOwnerKey?: string): boolean => {
+        if (
+          expectedOwnerKey !== undefined &&
+          !isOwnedAudioEvent(ownerKey, expectedOwnerKey)
+        ) {
+          appendDeveloperTrace({
+            scope: 'audio',
+            event: 'audio-play-owner-rejected',
+            word: word.name,
+            details: {
+              ownerKey,
+              expectedOwnerKey,
+            },
+          })
+          return false
+        }
+        if (!isReady || hasError) return false
+        stop()
+        play()
+        appendDeveloperTrace({
+          scope: 'audio',
+          event: 'audio-play-requested',
+          word: word.name,
+          details: { ownerKey },
+        })
+        return true
+      },
+      [hasError, isReady, ownerKey, play, stop, word.name],
+    )
 
-  useEffect(() => {
-    onReadyChange?.(isReady)
-    return () => onReadyChange?.(false)
-  }, [isReady, onReadyChange])
+    useEffect(() => {
+      onReadyChange?.(isReady, ownerKey)
+      return () => onReadyChange?.(false, ownerKey)
+    }, [isReady, onReadyChange, ownerKey])
 
-  useEffect(() => {
-    return stop
-  }, [word, stop])
+    useEffect(() => {
+      onPlayingChange?.(isPlaying, ownerKey)
+    }, [isPlaying, onPlayingChange, ownerKey])
 
-  useImperativeHandle(
-    ref,
-    () => ({
-      play: playSound,
-    }),
-    [playSound],
-  )
+    useEffect(() => {
+      onErrorChange?.(hasError, ownerKey)
+    }, [hasError, onErrorChange, ownerKey])
 
-  return (
-    <SoundIcon
-      animated={isPlaying}
-      onClick={playSound}
-      className={`cursor-pointer text-gray-600 ${className}`}
-      iconClassName={iconClassName}
-    />
-  )
-})
+    useEffect(() => {
+      return stop
+    }, [stop])
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        play: playSound,
+      }),
+      [playSound],
+    )
+
+    return (
+      <SoundIcon
+        animated={isPlaying}
+        onClick={() => playSound(ownerKey)}
+        className={`cursor-pointer text-gray-600 ${className}`}
+        iconClassName={iconClassName}
+      />
+    )
+  },
+)
 
 WordPronunciationIcon.displayName = 'WordPronunciationIcon'
 
 export type WordPronunciationIconRef = {
-  play: () => boolean
+  play: (expectedOwnerKey?: string) => boolean
 }

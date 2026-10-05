@@ -1,4 +1,5 @@
 import { db } from '.'
+import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import { isAcquisitionIntroductionRecord } from '@/learn/admission'
 import {
   LEARN_MIXED_NEW_WORD_RESERVE,
@@ -106,15 +107,32 @@ export async function generateNewWordReviewRecord(
 }
 
 export async function putWordReviewRecord(record: ReviewRecord) {
-  return db.transaction('rw', db.reviewRecords, async () => {
-    if (record.id !== undefined) {
-      const existing = await db.reviewRecords.get(record.id)
-      if (existing?.isFinished && !record.isFinished) {
-        return record.id
+  const id = await db.transaction(
+    'rw',
+    db.reviewRecords,
+    async () => {
+      if (record.id !== undefined) {
+        const existing = await db.reviewRecords.get(record.id)
+        if (existing?.isFinished && !record.isFinished) {
+          return record.id
+        }
       }
-    }
-    return db.reviewRecords.put(record)
+      return db.reviewRecords.put(record)
+    },
+  )
+
+  appendDeveloperTrace({
+    scope: 'persistence',
+    event: 'review-checkpoint-durable',
+    sessionId: String(record.id ?? record.createTime),
+    index: record.index,
+    queueLength: record.words.length,
+    details: {
+      isFinished: record.isFinished,
+    },
   })
+
+  return id
 }
 
 
