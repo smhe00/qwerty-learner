@@ -14,6 +14,7 @@ export type LearnPreparationSessionSource =
   | 'restored'
   | 'review'
   | 'acquisition'
+  | 'mixed'
 
 export type LearnPreparationWaitReason =
   | 'deferred'
@@ -60,6 +61,12 @@ export type LearnPreparationDependencies<ErrorEvidence> = {
   generateAcquisition: (
     dictId: string,
     words: Word[],
+    freshLimit: number,
+  ) => Promise<ReviewRecord | undefined>
+  generateSession?: (
+    dictId: string,
+    words: Word[],
+    errorEvidence: ErrorEvidence[],
     freshLimit: number,
   ) => Promise<ReviewRecord | undefined>
   getNextDeferredResumeAt: (
@@ -109,20 +116,6 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
     }
   }
 
-  const dueReview = await dependencies.generateDueReview(
-    dictId,
-    words,
-    errorEvidence,
-  )
-  if (dueReview) {
-    return {
-      kind: 'session',
-      source: 'review',
-      record: dueReview,
-      diagnostics: { now },
-    }
-  }
-
   const [wordRecords, wordStates] = await Promise.all([
     dependencies.getWordRecords(dictId),
     dependencies.getWordStates(dictId),
@@ -143,13 +136,64 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
       quota,
     })
 
+  if (dependencies.generateSession) {
+    const session = await dependencies.generateSession(
+      dictId,
+      words,
+      errorEvidence,
+      dailyPlan.allowedNewWordsNow,
+    )
+    if (session) {
+      const source: LearnPreparationSessionSource =
+        session.sessionKind === 'mixed'
+          ? 'mixed'
+          : session.sessionKind === 'acquisition'
+            ? 'acquisition'
+            : 'review'
+      return {
+        kind: 'session',
+        source,
+        record: session,
+        diagnostics: {
+          now,
+          stats,
+          quota,
+          allowedNewWordsNow: dailyPlan.allowedNewWordsNow,
+        },
+      }
+    }
+  } else {
+    // Compatibility path for non-product callers that have not adopted the
+    // unified mixed-session generator yet.
+    const dueReview = await dependencies.generateDueReview(
+      dictId,
+      words,
+      errorEvidence,
+    )
+    if (dueReview) {
+      return {
+        kind: 'session',
+        source: 'review',
+        record: dueReview,
+        diagnostics: {
+          now,
+          stats,
+          quota,
+          allowedNewWordsNow: dailyPlan.allowedNewWordsNow,
+        },
+      }
+    }
+  }
+
   // Pending Acquisition completion is not fresh workload. The fresh allowance
   // only controls first introductions inside the acquisition resolver.
-  const acquisition = await dependencies.generateAcquisition(
-    dictId,
-    words,
-    dailyPlan.allowedNewWordsNow,
-  )
+  const acquisition = dependencies.generateSession
+    ? undefined
+    : await dependencies.generateAcquisition(
+        dictId,
+        words,
+        dailyPlan.allowedNewWordsNow,
+      )
   if (acquisition) {
     return {
       kind: 'session',
