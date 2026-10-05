@@ -69,8 +69,12 @@ Allowed automatic work:
 - Cloud backend contract tests;
 - local Playwright browser tests;
 - local `yarn build`;
-- live integration tests that connect the checked-out local frontend to the
-  already deployed EdgeOne API, provided they do not create a Maker deployment.
+- cloud/API contract tests against local or mocked development services.
+
+The real EdgeOne browser-sync test is intentionally **not** an automatic
+`product/main` gate. The development branch can legitimately contain frontend
+or protocol changes that are newer than the currently deployed production
+backend. Treating that version skew as a development failure would be incorrect.
 
 These checks determine whether a development checkpoint is eligible to become a
 release candidate.
@@ -86,8 +90,13 @@ The EdgeOne production verification workflow must:
 - verify the production `/api/health` contract;
 - record the release SHA and EdgeOne deployment identity in the Actions log.
 
-No `product/main` push may wait for, promote, or create an EdgeOne Maker
-deployment.
+After Production Verify succeeds, the EdgeOne Browser Sync Gate runs against
+that verified release and the newly deployed production backend. It may also be
+started manually with `workflow_dispatch` when an explicit live integration
+check is needed.
+
+No `product/main` push may wait for, promote, create, or automatically probe
+for a newer EdgeOne Maker deployment.
 
 ## Historical branches
 
