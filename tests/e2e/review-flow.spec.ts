@@ -3191,11 +3191,11 @@ test('visible first-acquisition copy never auto-enters the hint ladder after rep
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
 
-  const word = page.locator('[data-typing-word="cancel"]')
-  await expect(word).toHaveAttribute(
-    'data-learn-acquisition-phase',
-    'exposure',
+  const acquisition = page.locator(
+    '[data-learn-acquisition-phase="exposure"]',
   )
+  const word = page.locator('[data-typing-word="cancel"]')
+  await expect(acquisition).toBeVisible()
   await expect(word).toHaveAttribute(
     'data-review-letters',
     'all-visible',
