@@ -1,6 +1,6 @@
 # Qwerty Plus Agent Communication Protocol
 
-Version: **1.0**
+Version: **1.1**
 
 This directory is the persistent communication bus between Chat/Architect/Reviewer and any replaceable coding agent.
 
@@ -12,7 +12,8 @@ The protocol is designed so that:
 2. Chat can temporarily act as the coding agent;
 3. local execution can move between Codex, WorkBuddy, DeepSeek Harness or another executor;
 4. project state survives token/session exhaustion;
-5. `master` release builds are protected from routine development churn.
+5. `master` release builds are protected from routine development churn;
+6. two agents do not silently overwrite each other's work.
 
 ## Directory layout
 
@@ -40,6 +41,7 @@ Responsible for:
 - task decomposition;
 - acceptance criteria;
 - risk constraints;
+- assigning/reassigning the active executor;
 - reviewing commits/reports;
 - deciding PASS / REWORK / next task;
 - release authorization.
@@ -51,7 +53,7 @@ Chat may also execute coding-agent work directly, but must follow the same task/
 Responsible for:
 
 - fetching repository state;
-- reading the active task;
+- reading and claiming/recovering the active task;
 - source inspection;
 - implementation;
 - local tests/simulation/build;
@@ -94,7 +96,7 @@ REVIEW      -> REWORK -> IN_PROGRESS
 Meaning:
 
 - **READY** — task is defined and may be claimed.
-- **IN_PROGRESS** — an executor is actively working.
+- **IN_PROGRESS** — one executor owns the task by default.
 - **PARTIAL** — useful work/checkpoint exists, but task is incomplete.
 - **BLOCKED** — progress requires an unavailable dependency or explicit user decision.
 - **REVIEW** — implementation/report is ready for Chat review.
@@ -103,9 +105,56 @@ Meaning:
 
 Only Chat/Reviewer should normally mark final **PASS**.
 
+## Single-writer claim protocol
+
+The default execution model is **single writer per task**.
+
+When claiming a `READY` task, record in `CURRENT_TASK.md`:
+
+- `executor`
+- `claim_base_commit` = current `origin/product/main` SHA
+- `claimed_at_utc`
+- `status: IN_PROGRESS`
+
+An executor that sees a task already `IN_PROGRESS` under another executor must not start a competing implementation unless:
+
+1. Chat/Reviewer explicitly reassigns it; or
+2. the task explicitly sets `allow_parallel_executors: true`.
+
+When an executor is replaced, the replacement updates the ownership fields and continues from the repository-visible report/checkpoint.
+
+This is a **soft lease**, not a reason to force-push or lock Git history.
+
+## Stale-branch protection
+
+At start:
+
+```bash
+git fetch origin
+git checkout product/main
+git pull --ff-only origin product/main
+git rev-parse origin/product/main
+```
+
+Record that SHA as `claim_base_commit` / `start_commit`.
+
+Before push:
+
+```bash
+git fetch origin
+git rev-parse origin/product/main
+```
+
+If `origin/product/main` advanced beyond work already incorporated locally:
+
+- never force-push;
+- integrate the new commits only if safe;
+- rerun validation affected by the integration;
+- if semantic/conflict risk is material, leave a `PARTIAL` or `BLOCKED` report rather than guessing.
+
 ## CURRENT_TASK semantics
 
-`CURRENT_TASK.md` is a pointer, not the full specification.
+`CURRENT_TASK.md` is a pointer and ownership record, not the full specification.
 
 It records:
 
@@ -114,7 +163,9 @@ It records:
 - report file;
 - target branch;
 - current status;
-- current/recommended executor;
+- current executor;
+- claim/base commit;
+- claim time;
 - last known commit;
 - short next action.
 
@@ -171,8 +222,9 @@ Before handoff, when possible:
 1. commit coherent work;
 2. update the report with status `PARTIAL` or `BLOCKED`;
 3. include the last commit SHA;
-4. include exact next steps;
-5. note any dirty/uncommitted files.
+4. include the current `origin/product/main` SHA;
+5. include exact next steps;
+6. note any dirty/uncommitted files.
 
 The replacement executor then:
 
@@ -183,6 +235,7 @@ git pull --ff-only
 read AGENTS.md
 read interactive/CURRENT_TASK.md
 read task + report
+take over ownership in CURRENT_TASK.md
 continue from repository-visible state
 ```
 
@@ -259,7 +312,8 @@ A task is **BLOCKED** only when required progress depends on something the execu
 - unavailable credential/service;
 - required hardware/runtime;
 - contradictory requirements;
-- user decision with material product impact.
+- user decision with material product impact;
+- unsafe branch divergence from another executor.
 
 Lack of one optional tool is not automatically blocking. Continue all safe work and leave a precise checkpoint.
 
@@ -294,4 +348,3 @@ A release task should explicitly state:
 - expected EdgeOne build;
 - smoke-test requirements;
 - rollback reference.
-
