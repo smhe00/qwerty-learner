@@ -13,8 +13,11 @@ import type { Word } from '@/typings'
 export const LEARN_ACQUISITION_POLICY_VERSION =
   LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION
 export const LEARN_NEW_WORD_BATCH_SIZE = 20
+export const LEARN_SESSION_TARGET_SIZE = 20
+export const LEARN_MIXED_NEW_WORD_RESERVE = 5
 
-export type LearnSessionKind = 'review' | 'acquisition'
+export type LearnItemKind = 'review' | 'acquisition'
+export type LearnSessionKind = LearnItemKind | 'mixed'
 
 /**
  * Learn owns one long-term spelling memory per exact dictionary name.
@@ -224,16 +227,21 @@ export function planLearnAcquisitionCandidates(input: {
 }
 
 
-export type LearnStartKind = 'review' | 'acquisition' | 'empty'
+export type LearnStartKind =
+  | 'review'
+  | 'acquisition'
+  | 'mixed'
+  | 'empty'
 
 /**
- * Product-level start priority: due review always wins. New acquisition is
- * allowed only when there is no due review work.
+ * Product-level Start semantics: Review keeps priority, but due work no longer
+ * acts as a hard gate against new-word admission.
  */
 export function decideLearnStartKind(input: {
   dueCount: number
   unseenCount: number
 }): LearnStartKind {
+  if (input.dueCount > 0 && input.unseenCount > 0) return 'mixed'
   if (input.dueCount > 0) return 'review'
   if (input.unseenCount > 0) return 'acquisition'
   return 'empty'
