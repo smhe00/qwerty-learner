@@ -65,7 +65,10 @@ export const WordPronunciationIcon = React.forwardRef<
     } = usePronunciationSound(currentWord())
 
     const playSound = useCallback(
-      (expectedOwnerKey?: string): boolean => {
+      (
+        expectedOwnerKey?: string,
+        onSettled?: () => void,
+      ): boolean => {
         if (
           expectedOwnerKey !== undefined &&
           !isOwnedAudioEvent(ownerKey, expectedOwnerKey)
@@ -82,7 +85,7 @@ export const WordPronunciationIcon = React.forwardRef<
           return false
         }
         if (hasError) return false
-        const accepted = play()
+        const accepted = play(onSettled)
         if (!accepted) return false
         appendDeveloperTrace({
           scope: 'audio',
@@ -134,5 +137,8 @@ export const WordPronunciationIcon = React.forwardRef<
 WordPronunciationIcon.displayName = 'WordPronunciationIcon'
 
 export type WordPronunciationIconRef = {
-  play: (expectedOwnerKey?: string) => boolean
+  play: (
+    expectedOwnerKey?: string,
+    onSettled?: () => void,
+  ) => boolean
 }
