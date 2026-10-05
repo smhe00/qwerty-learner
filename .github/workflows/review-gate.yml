@@ -25,6 +25,7 @@ on:
       - 'src/utils/db/record.ts'
       - 'src/utils/db/index.ts'
       - 'src/utils/db/review-record.ts'
+      - 'src/achievement/**'
       - 'src/utils/db/data-export.ts'
       - 'src/utils/backup.ts'
       - 'src/pages/Gallery-N/ReviewDetail/**'
@@ -91,6 +92,7 @@ jobs:
           src/utils/db/record.ts
           src/utils/db/index.ts
           src/utils/db/review-record.ts
+          src/achievement
           src/utils/db/data-export.ts
           src/utils/backup.ts
           src/pages/Gallery-N/ReviewDetail

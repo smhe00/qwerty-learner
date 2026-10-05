@@ -1,5 +1,9 @@
 import { createLocalSnapshot, restoreLocalSnapshot } from '../../src/sync/snapshot'
-import { exportBackupJson, importBackupJson } from '../../src/utils/backup'
+import {
+  DURABLE_BACKUP_TABLE_NAMES,
+  exportBackupJson,
+  importBackupJson,
+} from '../../src/utils/backup'
 import { db } from '../../src/utils/db'
 
 const now = Math.floor(
@@ -154,6 +158,31 @@ async function seed() {
     },
   })
 
+  await db.achievementEvents.add({
+    eventId: 'backup-achievement-event',
+    eventType: 'word_mastered',
+    origin: 'live',
+    sourceRecordId: wordRecordId,
+    sessionId: 'backup-session',
+    occurredAt: now,
+    dict,
+    word,
+    metricValues: {
+      mastered_words: 1,
+    },
+    unlockedAchievementIds: ['ACH_BACKUP_ROUNDTRIP'],
+  })
+
+  await db.achievementStates.add({
+    achievementId: 'ACH_BACKUP_ROUNDTRIP',
+    unlockedAt: now,
+    firstTriggerEventId: 'backup-achievement-event',
+    sourceRecordId: wordRecordId,
+    sessionId: 'backup-session',
+    seenAt: now + 1,
+    cultureCardSeenAt: now + 2,
+  })
+
   localStorage.setItem('currentDict', JSON.stringify(dict))
   localStorage.setItem('currentChapter', JSON.stringify(3))
   localStorage.setItem(
@@ -203,11 +232,19 @@ async function inspect() {
   const reviewRecord = (
     await db.reviewRecords.where('dict').equals(dict).toArray()
   ).find((record) => !record.isFinished)
+  const achievementEvent = await db.achievementEvents.get(
+    'backup-achievement-event',
+  )
+  const achievementState = await db.achievementStates.get(
+    'ACH_BACKUP_ROUNDTRIP',
+  )
 
   return {
     wordRecord,
     reviewWordState,
     reviewRecord,
+    achievementEvent,
+    achievementState,
     currentDict: JSON.parse(localStorage.getItem('currentDict') || 'null'),
     currentChapter: JSON.parse(
       localStorage.getItem('currentChapter') || 'null',
@@ -218,10 +255,32 @@ async function inspect() {
   }
 }
 
+async function inspectTableContract() {
+  const json = await exportBackupJson()
+  const parsed = JSON.parse(json) as {
+    database?: {
+      data?: {
+        tables?: Array<{ name?: string }>
+      }
+    }
+  }
+  const exported = (parsed.database?.data?.tables ?? [])
+    .map((table) => table.name)
+    .filter((name): name is string => typeof name === 'string')
+    .sort()
+
+  return {
+    manifest: [...DURABLE_BACKUP_TABLE_NAMES].sort(),
+    runtime: db.tables.map((table) => table.name).sort(),
+    exported,
+  }
+}
+
 ;(window as any).__backupHarness = {
   seed,
   poisonBeforeRestore,
   inspect,
+  inspectTableContract,
   exportBackupJson,
   importBackupJson,
   createLocalSnapshot,

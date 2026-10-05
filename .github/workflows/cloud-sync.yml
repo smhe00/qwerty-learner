@@ -9,7 +9,9 @@ on:
       - 'tests/cloud/**'
       - 'src/sync/**'
       - 'src/utils/backup.ts'
+      - 'src/utils/db/index.ts'
       - 'src/utils/db/data-export.ts'
+      - 'src/achievement/**'
       - 'src/pages/Typing/components/Setting/DataSetting.tsx'
       - 'docs/CLOUD_SYNC_*.md'
       - 'edgeone.json'
@@ -48,7 +50,9 @@ jobs:
           yarn eslint
           src/sync
           src/utils/backup.ts
+          src/utils/db/index.ts
           src/utils/db/data-export.ts
+          src/achievement
           src/pages/Typing/components/Setting/DataSetting.tsx
           --ext .ts,.tsx
 

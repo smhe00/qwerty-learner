@@ -8,6 +8,15 @@ export const SUPPORTED_BACKUP_FORMAT_VERSIONS = [
   LEGACY_BACKUP_FORMAT_VERSION,
 ] as const
 
+export const DURABLE_BACKUP_TABLE_NAMES = [
+  'wordRecords',
+  'chapterRecords',
+  'reviewRecords',
+  'reviewWordStates',
+  'achievementEvents',
+  'achievementStates',
+] as const
+
 export type BackupLearningState = {
   currentDict: string
   currentChapter: number
@@ -185,14 +194,8 @@ export async function importBackupJson(
   const decoded = decodeBackupJson(json, clientFormatVersion)
   const databaseBlob = new Blob([decoded.databaseJson], { type: 'application/json' })
   const importMeta = await peakImportFile(databaseBlob)
-  const hasReviewWordStates = importMeta.data.tables.some(
-    (table) => table.name === 'reviewWordStates',
-  )
-  const hasAchievementEvents = importMeta.data.tables.some(
-    (table) => table.name === 'achievementEvents',
-  )
-  const hasAchievementStates = importMeta.data.tables.some(
-    (table) => table.name === 'achievementStates',
+  const importedTableNames = new Set(
+    importMeta.data.tables.map((table) => table.name),
   )
 
   await db.import(databaseBlob, {
@@ -206,15 +209,10 @@ export async function importBackupJson(
       progressCallback ? progressCallback({ totalRows, completedRows, done }) : true,
   })
 
-  if (!hasReviewWordStates) {
-    await db.reviewWordStates.clear()
-  }
-
-  if (!hasAchievementEvents) {
-    await db.achievementEvents.clear()
-  }
-  if (!hasAchievementStates) {
-    await db.achievementStates.clear()
+  for (const tableName of DURABLE_BACKUP_TABLE_NAMES) {
+    if (!importedTableNames.has(tableName)) {
+      await db.table(tableName).clear()
+    }
   }
 
   // reviewModeInfo is a route-critical localStorage cache, while the durable

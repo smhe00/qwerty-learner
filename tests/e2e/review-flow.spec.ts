@@ -2929,6 +2929,20 @@ test('backup/cloud snapshot round-trip preserves FSRS and Learn durable state', 
     await (window as any).__backupHarness.seed()
   })
 
+  const tableContract = await page.evaluate(async () => {
+    return (window as any).__backupHarness.inspectTableContract()
+  })
+  expect(tableContract.manifest).toEqual([
+    'achievementEvents',
+    'achievementStates',
+    'chapterRecords',
+    'reviewRecords',
+    'reviewWordStates',
+    'wordRecords',
+  ])
+  expect(tableContract.runtime).toEqual(tableContract.manifest)
+  expect(tableContract.exported).toEqual(tableContract.manifest)
+
   const backupJson = await page.evaluate(async () => {
     return (window as any).__backupHarness.exportBackupJson()
   })
@@ -2964,6 +2978,22 @@ test('backup/cloud snapshot round-trip preserves FSRS and Learn durable state', 
   expect(offline.currentDict).toBe('cet4')
   expect(offline.currentChapter).toBe(3)
   expect(offline.reviewModeInfo).toEqual({ isReviewMode: false })
+  expect(offline.achievementEvent).toMatchObject({
+    eventId: 'backup-achievement-event',
+    eventType: 'word_mastered',
+    origin: 'live',
+    sourceRecordId: offline.wordRecord?.id,
+    sessionId: 'backup-session',
+    dict: 'cet4',
+    word: 'backup-fsrs-word',
+    unlockedAchievementIds: ['ACH_BACKUP_ROUNDTRIP'],
+  })
+  expect(offline.achievementState).toMatchObject({
+    achievementId: 'ACH_BACKUP_ROUNDTRIP',
+    firstTriggerEventId: 'backup-achievement-event',
+    sourceRecordId: offline.wordRecord?.id,
+    sessionId: 'backup-session',
+  })
 
   const snapshot = await page.evaluate(async () => {
     return (window as any).__backupHarness.createLocalSnapshot()
@@ -2995,6 +3025,12 @@ test('backup/cloud snapshot round-trip preserves FSRS and Learn durable state', 
   expect(cloudClient.currentDict).toBe('cet4')
   expect(cloudClient.currentChapter).toBe(3)
   expect(cloudClient.reviewModeInfo).toEqual({ isReviewMode: false })
+  expect(cloudClient.achievementEvent).toEqual(
+    offline.achievementEvent,
+  )
+  expect(cloudClient.achievementState).toEqual(
+    offline.achievementState,
+  )
 
   await page.evaluate(async () => {
     await (window as any).__backupHarness.clearAllTables()

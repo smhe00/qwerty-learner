@@ -98,7 +98,13 @@ async function addReviewCloudFixture(page: Page) {
     try {
       await new Promise<void>((resolve, reject) => {
         const transaction = database.transaction(
-          ['wordRecords', 'reviewRecords', 'reviewWordStates'],
+          [
+            'wordRecords',
+            'reviewRecords',
+            'reviewWordStates',
+            'achievementEvents',
+            'achievementStates',
+          ],
           'readwrite',
         )
 
@@ -186,6 +192,28 @@ async function addReviewCloudFixture(page: Page) {
           ],
         })
 
+
+        transaction.objectStore('achievementEvents').add({
+          eventId: 'edgeone-achievement-event',
+          eventType: 'word_mastered',
+          origin: 'live',
+          occurredAt: 1_800_000_600,
+          dict: 'cet4',
+          word: 'edgeone-e2e-baseline',
+          metricValues: {
+            mastered_words: 1,
+          },
+          unlockedAchievementIds: ['ACH_EDGEONE_ROUNDTRIP'],
+        })
+
+        transaction.objectStore('achievementStates').add({
+          achievementId: 'ACH_EDGEONE_ROUNDTRIP',
+          unlockedAt: 1_800_000_600,
+          firstTriggerEventId: 'edgeone-achievement-event',
+          sessionId: 'edgeone-e2e-session',
+          seenAt: 1_800_000_601,
+        })
+
         transaction.oncomplete = () => resolve()
         transaction.onerror = () => reject(transaction.error)
         transaction.onabort = () => reject(transaction.error)
@@ -213,10 +241,18 @@ async function readReviewCloudFixture(page: Page) {
       })
 
     try {
-      const [wordRecords, reviewRecords, reviewWordStates] = await Promise.all([
+      const [
+        wordRecords,
+        reviewRecords,
+        reviewWordStates,
+        achievementEvents,
+        achievementStates,
+      ] = await Promise.all([
         readAll('wordRecords'),
         readAll('reviewRecords'),
         readAll('reviewWordStates'),
+        readAll('achievementEvents'),
+        readAll('achievementStates'),
       ])
 
       return {
@@ -226,6 +262,12 @@ async function readReviewCloudFixture(page: Page) {
         reviewRecord: reviewRecords.find((record) => record.dict === 'cet4'),
         reviewWordState: reviewWordStates.find(
           (state) => state.word === 'edgeone-e2e-baseline' && state.dict === 'cet4',
+        ),
+        achievementEvent: achievementEvents.find(
+          (event) => event.eventId === 'edgeone-achievement-event',
+        ),
+        achievementState: achievementStates.find(
+          (state) => state.achievementId === 'ACH_EDGEONE_ROUNDTRIP',
         ),
       }
     } finally {
@@ -481,6 +523,19 @@ test('real browser register, upload, divergence detection and download restore',
     'absorb',
     'abandon',
   ])
+  expect(reviewFixtureBefore.achievementEvent).toMatchObject({
+    eventId: 'edgeone-achievement-event',
+    eventType: 'word_mastered',
+    origin: 'live',
+    dict: 'cet4',
+    word: 'edgeone-e2e-baseline',
+    unlockedAchievementIds: ['ACH_EDGEONE_ROUNDTRIP'],
+  })
+  expect(reviewFixtureBefore.achievementState).toMatchObject({
+    achievementId: 'ACH_EDGEONE_ROUNDTRIP',
+    firstTriggerEventId: 'edgeone-achievement-event',
+    sessionId: 'edgeone-e2e-session',
+  })
 
   // A Review-only mutation must participate in the whole-DB dirty fingerprint.
   await mutateReviewCloudFixture(page, true)
@@ -530,6 +585,8 @@ test('real browser register, upload, divergence detection and download restore',
   expect(gzipRemote.backupFormatVersion).toBe('qwerty-backup-v3')
   expect(gzipRemote.learningState).toEqual({ currentDict: 'cet4', currentChapter: 7 })
   expect(gzipRemote.json).toContain('edgeone-e2e-baseline')
+  expect(gzipRemote.json).toContain('edgeone-achievement-event')
+  expect(gzipRemote.json).toContain('ACH_EDGEONE_ROUNDTRIP')
   expect(gzipRemote.json).not.toContain('AES-256-GCM')
 
   expect(await wordRecordCount(page)).toBe(1)

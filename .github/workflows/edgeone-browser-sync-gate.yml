@@ -11,6 +11,9 @@ on:
       - 'tests/cloud/edgeone-cleanup-user.mjs'
       - 'cloud-functions/**'
       - 'src/sync/**'
+      - 'src/utils/backup.ts'
+      - 'src/utils/db/index.ts'
+      - 'src/achievement/**'
       - 'src/pages/Typing/components/Setting/DataSetting.tsx'
   workflow_dispatch:
 
