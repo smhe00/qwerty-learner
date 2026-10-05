@@ -19,6 +19,33 @@ export const LEARN_MIXED_NEW_WORD_RESERVE = 5
 export type LearnItemKind = 'review' | 'acquisition'
 export type LearnSessionKind = LearnItemKind | 'mixed'
 
+export type LearnSessionItemKindSnapshot = {
+  sessionKind?: LearnSessionKind
+  itemKinds?: Record<string, LearnItemKind>
+  acquisitionStates?: Record<string, LearnAcquisitionState>
+}
+
+export function resolveLearnItemKindForWord(
+  snapshot: LearnSessionItemKindSnapshot,
+  wordName: string,
+): LearnItemKind {
+  const explicit = snapshot.itemKinds?.[wordName]
+  if (explicit) return explicit
+
+  if (snapshot.sessionKind === 'acquisition') {
+    return 'acquisition'
+  }
+
+  // Legacy mixed checkpoints can predate itemKinds while still carrying the
+  // stronger per-word acquisition state. Never route such a word through the
+  // Review completion path merely because itemKinds metadata is absent.
+  if (snapshot.acquisitionStates?.[wordName]) {
+    return 'acquisition'
+  }
+
+  return 'review'
+}
+
 export type LearnSessionCohortSnapshot = {
   isFinished?: boolean
   sessionKind?: LearnSessionKind

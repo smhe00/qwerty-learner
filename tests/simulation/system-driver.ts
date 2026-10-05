@@ -452,7 +452,12 @@ export class VirtualLearnApp {
     for (const session of [...this.sessions].sort(
       (a, b) => a.createTime - b.createTime,
     )) {
-      if (session.sessionKind !== 'acquisition') continue
+      if (
+        session.sessionKind !== 'acquisition' &&
+        session.sessionKind !== 'mixed'
+      ) {
+        continue
+      }
       for (const [word, state] of Object.entries(
         session.acquisitionStates ?? {},
       )) {

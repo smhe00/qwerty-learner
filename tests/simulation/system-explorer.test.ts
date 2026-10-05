@@ -109,7 +109,7 @@ test('deterministic random user-action exploration stays anomaly-free across cle
     'due',
   ]
   for (const profile of profiles) {
-    for (let seed = 1; seed <= 6; seed += 1) {
+    for (let seed = 1; seed <= 20; seed += 1) {
       const effectiveSeed =
         seed + profiles.indexOf(profile) * 1000
       const result = await explore(
@@ -130,7 +130,7 @@ test('deterministic random user-action exploration stays anomaly-free across cle
     'SIM_SYSTEM_EXPLORER',
     JSON.stringify({
       profiles,
-      seeds: 18,
+      seeds: 60,
       stepsPerSeed: 220,
       failures,
     }),

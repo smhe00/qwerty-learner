@@ -14,6 +14,7 @@ import {
   decideLearnStartKind,
   planLearnAcquisitionCandidates,
   shouldRotateOversizedLearnSession,
+  resolveLearnItemKindForWord,
 } from '../../src/learn/session'
 import { buildLearnStatsSnapshot } from '../../src/learn/stats'
 import {
@@ -576,4 +577,41 @@ test('active interrupted acquisition state resumes instead of becoming permanent
   assert.equal(plan.resumed[0]?.word.name, word.name)
   assert.equal(plan.resumed[0]?.state.phase, 'exposure')
   assert.equal(plan.freshWords.length, 0)
+})
+
+
+test('legacy mixed session recovers per-word acquisition kind when itemKinds metadata is absent', () => {
+  const acquisitionState = createLearnAcquisitionState()
+  const snapshot = {
+    sessionKind: 'mixed' as const,
+    words: [
+      { name: 'legacy-acq' },
+      { name: 'legacy-review' },
+    ],
+    acquisitionStates: {
+      'legacy-acq': acquisitionState,
+    },
+  }
+
+  assert.equal(
+    resolveLearnItemKindForWord(snapshot, 'legacy-acq'),
+    'acquisition',
+  )
+  assert.equal(
+    resolveLearnItemKindForWord(snapshot, 'legacy-review'),
+    'review',
+  )
+
+  assert.equal(
+    resolveLearnItemKindForWord(
+      {
+        ...snapshot,
+        itemKinds: {
+          'legacy-acq': 'review',
+        },
+      },
+      'legacy-acq',
+    ),
+    'review',
+  )
 })
