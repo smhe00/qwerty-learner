@@ -110,14 +110,15 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
     stop()
     pendingSettledRef.current = onSettled ?? null
 
-    if (sound) {
+    if (sound && isReady) {
       playHowl()
       return true
     }
 
-    // use-sound lazily exposes its Howl instance. A fast typist can finish a
-    // short word before that instance exists; previously success audio was
-    // silently skipped. Native Audio is a narrow fallback for that window.
+    // A Howl object can exist before it is actually loaded. Treating object
+    // existence as readiness leaves short-word success playback queued behind
+    // Howler loading and can miss the feedback window. Native Audio owns this
+    // not-ready window explicitly and reports its own terminal completion.
     const audio = new Audio(soundSrc)
     audio.preload = 'auto'
     audio.volume = pronunciationConfig.volume
@@ -168,6 +169,7 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
     soundSrc,
     stop,
     trace,
+    isReady,
   ])
 
   useEffect(() => {

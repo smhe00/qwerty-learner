@@ -7,6 +7,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useRef,
 } from 'react'
 import React from 'react'
 
@@ -111,9 +112,16 @@ export const WordPronunciationIcon = React.forwardRef<
       onErrorChange?.(hasError, ownerKey)
     }, [hasError, onErrorChange, ownerKey])
 
+    const stopRef = useRef(stop)
     useEffect(() => {
-      return stop
+      stopRef.current = stop
     }, [stop])
+
+    useEffect(() => {
+      return () => {
+        stopRef.current()
+      }
+    }, [ownerKey])
 
     useImperativeHandle(
       ref,

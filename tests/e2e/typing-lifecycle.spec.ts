@@ -387,7 +387,17 @@ test('background pause preserves Typing counters when the page returns to foregr
   const readStats = async () =>
     page.locator('.my-card').last().locator('div').allTextContents()
 
+  await expect
+    .poll(async () => readStats())
+    .toEqual([
+      '00:00时间',
+      '2输入数',
+      '0WPM',
+      '2正确数',
+      '0正确率',
+    ])
   const before = await readStats()
+
   // Headless Chromium does not reliably emit a real window blur from
   // Page.bringToFront(). Drive the exact production listener deterministically:
   // blur pauses Typing; focus only resumes telemetry and must not reset counters.
