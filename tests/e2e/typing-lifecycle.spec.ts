@@ -451,7 +451,7 @@ test('Typing Skip never overlaps Start/Pause when it becomes visible', async ({
 })
 
 
-test('success pronunciation falls back when the Howl instance is not ready yet', async ({
+test('success pronunciation fallback settles its own playback request when Howl is not ready', async ({
   page,
 }) => {
   const audio = silentWav(220)
@@ -502,4 +502,10 @@ test('success pronunciation falls back when the Howl instance is not ready yet',
   await expect(
     page.locator('[data-typing-word="break"]'),
   ).toBeVisible({ timeout: 2_000 })
+
+  expect(
+    (await playedUrls(page)).filter((url) =>
+      url.includes('audio=life'),
+    ).length,
+  ).toBeGreaterThan(beforeSuccess)
 })
