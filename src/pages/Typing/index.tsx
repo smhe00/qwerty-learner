@@ -266,7 +266,7 @@ const App: React.FC = () => {
                 className="shrink-0"
               >
                 <button
-                  className="my-btn-primary min-w-20 shrink-0 whitespace-nowrap bg-orange-400"
+                  className="my-btn-primary w-20 shrink-0 whitespace-nowrap bg-orange-400"
                   type="button"
                   onClick={skipWord}
                 >
