@@ -373,7 +373,6 @@ test('production success pronunciation completes before automatic advance', asyn
 
 test('background pause preserves Typing counters when the page returns to foreground', async ({
   page,
-  context,
 }) => {
   await page.goto('/typing')
   await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
@@ -384,14 +383,19 @@ test('background pause preserves Typing counters when the page returns to foregr
     page.locator('.my-card').last().locator('div').allTextContents()
 
   const before = await readStats()
-  const second = await context.newPage()
-  await second.goto('about:blank')
-  await second.bringToFront()
-  await page.waitForTimeout(300)
-  await page.bringToFront()
+  // Headless Chromium does not reliably emit a real window blur from
+  // Page.bringToFront(). Drive the exact production listener deterministically:
+  // blur pauses Typing; focus only resumes telemetry and must not reset counters.
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('blur'))
+  })
+  await expect(page.getByText('按任意键继续')).toBeVisible()
+
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('focus'))
+  })
   await page.waitForTimeout(300)
 
-  await expect(page.getByText('按任意键继续')).toBeVisible()
   const after = await readStats()
   expect(after).toEqual(before)
 })
