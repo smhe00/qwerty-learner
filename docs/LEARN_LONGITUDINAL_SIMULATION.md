@@ -200,3 +200,74 @@ Production changes should require:
 5. an explicit code review of the policy delta.
 
 This keeps the simulator as a decision-support system rather than an unchecked optimizer.
+
+
+## Real-trace calibration infrastructure
+
+Qwerty Plus now uses one shared implementation for both real production-shaped
+records and simulator records:
+
+```text
+src/learn/calibration.ts
+```
+
+The shared module provides:
+
+- `buildTraceSignature()`;
+- `buildLearnCalibrationReport()`;
+- `splitLearnCalibrationRecordsByTime()`;
+- `compareTraceSignatures()`.
+
+### Aggregate-only report
+
+`LearnCalibrationReportV1` contains only aggregate counters and signature
+metrics. It deliberately does not contain:
+
+- word strings;
+- dictionary identifiers;
+- mistake keys;
+- raw attempt arrays;
+- raw timestamps for individual observations.
+
+There is no automatic upload path for this report. Collection or export of real
+calibration aggregates must remain an explicit product decision.
+
+### Temporal train / hold-out split
+
+Calibration uses an explicit time boundary:
+
+```text
+training: timeStamp < holdoutStartAt
+hold-out: timeStamp >= holdoutStartAt
+```
+
+Ordinary Typing records are excluded from the Learn calibration split.
+
+A random row split is not accepted because repeated observations of the same
+word can otherwise leak future behavior into the calibration set.
+
+### Metric coverage
+
+A signature comparison reports both:
+
+- distance over comparable observed metrics;
+- missing metrics that could not be compared.
+
+Missing telemetry is therefore represented as missing evidence, never as a
+synthetic zero.
+
+### Parameter freeze
+
+This infrastructure does **not** authorize policy tuning.
+
+Quota, scheduler, acquisition, scaffold, and FSRS ownership parameters remain
+unchanged until all of the following are available:
+
+1. a sufficiently sized real aggregate calibration window;
+2. a later temporal hold-out window;
+3. acceptable signature agreement on hold-out data;
+4. no Formal / Simulation / workload regression;
+5. an explicit reviewed policy-change proposal.
+
+Synthetic personas remain stress-test models until calibrated and validated
+against real hold-out behavior.
