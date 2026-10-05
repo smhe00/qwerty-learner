@@ -1,6 +1,7 @@
 import ModeSwitcher from '@/components/ModeSwitcher'
 import Header from '@/components/Header'
 import Layout from '@/components/Layout'
+import { createAsyncOwnershipGuard } from '@/learn/async-ownership'
 import { prepareLearnSession } from '@/learn/controller'
 import { DictChapterButton } from '@/pages/Typing/components/DictChapterButton'
 import PronunciationSwitcher from '@/pages/Typing/components/PronunciationSwitcher'
@@ -36,8 +37,13 @@ export default function LearnPage() {
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
   const [isStarting, setIsStarting] = useState(true)
   const [statusText, setStatusText] = useState('')
-  const preparationGenerationRef = useRef(0)
-  const isActiveRef = useRef(true)
+  const preparationGuardRef = useRef<
+    ReturnType<typeof createAsyncOwnershipGuard> | null
+  >(null)
+  if (preparationGuardRef.current === null) {
+    preparationGuardRef.current = createAsyncOwnershipGuard()
+  }
+  const preparationGuard = preparationGuardRef.current
 
   const { errorWordData } = useErrorWordData(currentDictInfo, false)
   const errorWordDataRef = useRef(errorWordData)
@@ -52,24 +58,19 @@ export default function LearnPage() {
   }, [errorWordData])
 
   useEffect(() => {
-    isActiveRef.current = true
+    preparationGuard.activate()
     return () => {
-      isActiveRef.current = false
-      preparationGenerationRef.current += 1
+      preparationGuard.deactivate()
     }
-  }, [])
+  }, [preparationGuard])
 
   useEffect(() => {
     if (!wordList) return
 
-    const generation = preparationGenerationRef.current + 1
-    preparationGenerationRef.current = generation
+    const claim = preparationGuard.begin()
     const dictId = currentDictId
     const words = wordList
-
-    const isCurrent = () =>
-      isActiveRef.current &&
-      preparationGenerationRef.current === generation
+    const isCurrent = claim.isCurrent
 
     setIsStarting(true)
     setStatusText('')
@@ -135,11 +136,15 @@ export default function LearnPage() {
     void prepare()
 
     return () => {
-      if (preparationGenerationRef.current === generation) {
-        preparationGenerationRef.current += 1
-      }
+      claim.invalidate()
     }
-  }, [currentDictId, navigate, setReviewModeInfo, wordList])
+  }, [
+    currentDictId,
+    navigate,
+    preparationGuard,
+    setReviewModeInfo,
+    wordList,
+  ])
 
   if (wordListError && !wordList) {
     return (

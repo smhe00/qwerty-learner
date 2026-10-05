@@ -110,6 +110,7 @@ jobs:
             tests/review/acquisition-regression.test.ts \
             tests/review/formal-model.test.ts \
             tests/review/control-stability.test.ts \
+            tests/review/async-ownership.test.ts \
             tests/review/typing-audio-formal.test.ts \
             --bundle \
             --platform=node \
@@ -141,6 +142,9 @@ jobs:
 
       - name: Run Learn control stability gate
         run: node --test .review-test/control-stability.test.mjs
+
+      - name: Run Learn async ownership race gate
+        run: node --test .review-test/async-ownership.test.mjs
 
       - name: Bundle longitudinal learner simulation
         run: |
