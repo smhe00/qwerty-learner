@@ -1,7 +1,9 @@
 import { db } from '.'
 import { isAcquisitionIntroductionRecord } from '@/learn/admission'
 import {
+  LEARN_MIXED_NEW_WORD_RESERVE,
   LEARN_NEW_WORD_BATCH_SIZE,
+  LEARN_SESSION_TARGET_SIZE,
   buildLearnAcquisitionExercisePlans,
   buildLearnAcquisitionStates,
   canonicalizeLearningWords,
@@ -174,6 +176,175 @@ export async function generateLearnReviewRecord(
   record.id = await db.reviewRecords.add(record)
   return record
 }
+
+export async function generateLearnMixedSessionRecord(
+  dictID: string,
+  words: Word[],
+  errorData: TErrorWordData[],
+  freshLimit = LEARN_NEW_WORD_BATCH_SIZE,
+) {
+  const now = getUTCUnixTimestamp()
+  await bootstrapReviewWordStatesForDictionary(dictID, now)
+
+  const [states, pending, wordRecords] = await Promise.all([
+    getReviewWordStates(dictID),
+    getPendingAcquisitionStates(dictID),
+    db.wordRecords.where('dict').equals(dictID).toArray(),
+  ])
+
+  const errorByWord = new Map(
+    errorData.map((item) => [item.word, item]),
+  )
+  const reviewCandidates = canonicalizeLearningWords(words).map(
+    (originData) => {
+      const error = errorByWord.get(originData.name)
+      return {
+        word: originData.name,
+        originData,
+        errorCount: error?.errorCount ?? 0,
+        latestErrorTime: error?.latestErrorTime ?? 0,
+      }
+    },
+  )
+  const dueWords = rankDueReviewCandidates(
+    selectReviewCandidates(
+      reviewCandidates,
+      states,
+      now,
+      'due',
+    ),
+    states,
+  ).map((item) => item.originData)
+
+  const candidatePlan = planLearnAcquisitionCandidates({
+    words,
+    states,
+    pendingStates: pending,
+    introducedWords: wordRecords
+      .filter(isAcquisitionIntroductionRecord)
+      .map((record) => record.word),
+    freshLimit: Math.max(0, Math.floor(freshLimit)),
+    now,
+  })
+  const acquisitionCandidates = [
+    ...candidatePlan.resumed.map(({ word, state }) => ({
+      word,
+      state,
+      resumed: true as const,
+    })),
+    ...candidatePlan.freshWords.map((word) => ({
+      word,
+      state: undefined,
+      resumed: false as const,
+    })),
+  ]
+
+  const reservedAcquisitionSlots =
+    dueWords.length > 0
+      ? Math.min(
+          LEARN_MIXED_NEW_WORD_RESERVE,
+          acquisitionCandidates.length,
+        )
+      : 0
+  const reviewSlotLimit = Math.max(
+    0,
+    LEARN_SESSION_TARGET_SIZE - reservedAcquisitionSlots,
+  )
+  const selectedReviewWords = dueWords.slice(0, reviewSlotLimit)
+  const acquisitionSlotLimit = Math.max(
+    0,
+    LEARN_SESSION_TARGET_SIZE - selectedReviewWords.length,
+  )
+  const selectedAcquisition = acquisitionCandidates.slice(
+    0,
+    acquisitionSlotLimit,
+  )
+  const selectedAcquisitionWords = selectedAcquisition.map(
+    (item) => item.word,
+  )
+  const selectedWords = [
+    ...selectedReviewWords,
+    ...selectedAcquisitionWords,
+  ]
+
+  if (selectedWords.length === 0) return undefined
+
+  const scaffoldStrainTier =
+    estimateLearnInteractionStrain(wordRecords).tier
+  const freshWords = selectedAcquisition
+    .filter((item) => !item.resumed)
+    .map((item) => item.word)
+  const resumed = selectedAcquisition.filter(
+    (item): item is typeof item & {
+      state: LearnAcquisitionState
+      resumed: true
+    } => item.resumed && item.state !== undefined,
+  )
+
+  const reviewPlans = buildReviewSessionExercisePlans(
+    selectedReviewWords,
+    wordRecords,
+  )
+  const acquisitionPlans = {
+    ...buildLearnAcquisitionExercisePlans(freshWords, {
+      scaffoldStrainTier,
+    }),
+    ...Object.fromEntries(
+      resumed.map(({ word, state }) => [
+        word.name,
+        createLearnAcquisitionExercisePlanForState(state),
+      ]),
+    ),
+  }
+  const acquisitionStates = {
+    ...buildLearnAcquisitionStates(freshWords, {
+      scaffoldStrainTier,
+    }),
+    ...Object.fromEntries(
+      resumed.map(({ word, state }) => [word.name, state]),
+    ),
+  }
+
+  const hasReview = selectedReviewWords.length > 0
+  const hasAcquisition = selectedAcquisitionWords.length > 0
+  const sessionKind =
+    hasReview && hasAcquisition
+      ? 'mixed'
+      : hasAcquisition
+        ? 'acquisition'
+        : 'review'
+
+  const record = new ReviewRecord(
+    dictID,
+    selectedWords,
+    {
+      ...reviewPlans,
+      ...acquisitionPlans,
+    },
+    sessionKind,
+  )
+  record.itemKinds = Object.fromEntries([
+    ...selectedReviewWords.map(
+      (word) => [word.name, 'review' as const],
+    ),
+    ...selectedAcquisitionWords.map(
+      (word) => [word.name, 'acquisition' as const],
+    ),
+  ])
+  if (hasAcquisition) {
+    record.acquisitionStates = acquisitionStates
+  }
+  record.recommendedGoal = {
+    version: 1,
+    kind: 'session-completion',
+    targetUniqueWords: new Set(
+      selectedWords.map((word) => word.name),
+    ).size,
+  }
+  record.id = await db.reviewRecords.add(record)
+  return record
+}
+
 
 function latestAcquisitionStatesByWord(
   records: ReviewRecord[],
