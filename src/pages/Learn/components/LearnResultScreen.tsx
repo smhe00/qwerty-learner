@@ -118,18 +118,19 @@ export default function LearnResultScreen() {
     ? Math.max(0, uniqueWordCount - independentMastered)
     : 0
 
-  const leaveLearn = useCallback(() => {
+  const keepLearnSelected = useCallback(() => {
     setReviewModeInfo((old) => ({
       ...old,
-      isReviewMode: false,
+      isReviewMode: true,
     }))
   }, [setReviewModeInfo])
 
   const continueLearn = useCallback(() => {
     const proceed = () => {
       acknowledgeAchievements()
-      leaveLearn()
-      navigate('/learn')
+      dispatch({ type: TypingStateActionType.RESET_SESSION })
+      keepLearnSelected()
+      navigate('/learn', { state: { autoStart: true } })
     }
 
     if (
@@ -155,23 +156,35 @@ export default function LearnResultScreen() {
       .finally(proceed)
   }, [
     acknowledgeAchievements,
-    leaveLearn,
+    dispatch,
+    keepLearnSelected,
     navigate,
     record,
   ])
 
   const chooseDictionary = useCallback(() => {
     acknowledgeAchievements()
-    leaveLearn()
+    dispatch({ type: TypingStateActionType.RESET_SESSION })
+    keepLearnSelected()
     navigate('/gallery?mode=learn')
-  }, [acknowledgeAchievements, leaveLearn, navigate])
+  }, [
+    acknowledgeAchievements,
+    dispatch,
+    keepLearnSelected,
+    navigate,
+  ])
 
-  const returnToTyping = useCallback(() => {
+  const closeResult = useCallback(() => {
     acknowledgeAchievements()
     dispatch({ type: TypingStateActionType.RESET_SESSION })
-    leaveLearn()
-    navigate('/typing')
-  }, [acknowledgeAchievements, dispatch, leaveLearn, navigate])
+    keepLearnSelected()
+    navigate('/learn')
+  }, [
+    acknowledgeAchievements,
+    dispatch,
+    keepLearnSelected,
+    navigate,
+  ])
 
   useHotkeys(
     'enter',
@@ -181,9 +194,9 @@ export default function LearnResultScreen() {
   )
   useHotkeys(
     'esc',
-    () => returnToTyping(),
+    () => closeResult(),
     { preventDefault: true },
-    [returnToTyping],
+    [closeResult],
   )
 
   return (
@@ -197,9 +210,9 @@ export default function LearnResultScreen() {
           <button
             type="button"
             className="absolute right-7 top-5"
-            onClick={returnToTyping}
-            aria-label="结束 Learn 并返回 Typing"
-            title="结束 Learn 并返回 Typing"
+            onClick={closeResult}
+            aria-label="关闭结果"
+            title="关闭结果并留在 Learn"
           >
             <IconX className="text-gray-400" />
           </button>
