@@ -1,112 +1,122 @@
-# Branch Strategy — Qwerty Fork Product Line
+# Branch Strategy — Qwerty Plus
 
-> Effective: 2026-09-29
+> Effective: 2026-10-05
 
-## Long-lived branches
+## Authoritative branches
 
-### `master`
+### `product/main` — development source of truth
 
-Purpose: track the upstream `RealKai42/qwerty-learner` baseline and keep upstream contribution work separable from the fork product line.
+`product/main` is the only active integrated development line.
 
-Do not develop fork-only product features directly on `master`.
+All Qwerty Plus product development lands here first, including:
 
-### `product/main`
+- Typing / Learn product changes;
+- Review scheduler and state-machine changes;
+- backup / restore and cloud sync changes;
+- Formal / Simulation verification assets;
+- CI and release-preparation changes.
 
-Purpose: the single source of truth for the integrated fork product. The initial integrated Review + Cloud release candidate passed all production Gates on 2026-09-29.
+Normal development pushes to `product/main` may run GitHub Actions such as lint,
+unit tests, TLA+, Simulation, Playwright, contract tests, and local `yarn build`.
+These GitHub Actions are **not** EdgeOne Maker deployments and do not consume the
+limited Maker build quota.
 
-All integrated product behavior belongs here:
+No development commit should be made directly on `master`.
 
-- spaced Review;
-- Review telemetry and learning context;
-- Review scheduler state;
-- EdgeOne cloud sync;
-- future fork-only product features.
+### `master` — release / EdgeOne Maker branch
 
-New feature work should branch from `product/main` and merge back after its targeted Gate passes.
+`master` is the public release branch and the only branch bound to EdgeOne
+Maker production deployment.
 
-## Frozen historical branches
-
-### `feature/spaced-review`
-
-Frozen at:
-
-```text
-93b40e0784ea26cf300d10d8e67365f16618e7e3
-```
-
-The same commit is preserved by:
+Updating `master` is therefore a release action:
 
 ```text
-archive/review-baseline-20260928
+product/main
+    │
+    │ milestone accepted / release candidate approved
+    ▼
+master
+    │
+    ▼
+EdgeOne Maker production build
+    │
+    ▼
+production verification
 ```
 
-This branch is no longer a development line. Do not land new Review changes here.
+Because the Maker build quota is limited, `master` must **not** be continuously
+synchronized from `product/main`.
 
-### `feature/edgeone-cloud-sync`
+Rules:
 
-This branch is no longer a development line. EdgeOne's existing GitHub project is still bound to this branch as its Production trigger, so it is retained only as a **production pointer**.
+1. ordinary development stays on `product/main`;
+2. only a meaningful milestone may be synchronized to `master`;
+3. each `master` update is expected to consume one EdgeOne Maker production build;
+4. automation must never push or fast-forward `master` during ordinary CI;
+5. production verification runs after the `master` release push;
+6. the release record must retain the source `product/main` checkpoint, the
+   resulting `master` SHA, and the EdgeOne deployment identity when available.
 
-Release rule:
+## CI topology
 
-```text
-product/main verified RC
-        ↓ fast-forward only
-feature/edgeone-cloud-sync production pointer
-        ↓ EdgeOne GitHub auto-deploy
-Production
-```
+### Development CI — `product/main`
 
-Do not land independent commits here. The pointer may only fast-forward to a commit already validated on `product/main`.
+Allowed automatic work:
 
-## Upstream contribution branches
+- Review Gate;
+- TLA Gate;
+- Simulation / mutation / persistence-race tests;
+- Cloud backend contract tests;
+- local Playwright browser tests;
+- local `yarn build`;
+- live integration tests that connect the checked-out local frontend to the
+  already deployed EdgeOne API, provided they do not create a Maker deployment.
 
-Upstream PRs must remain independent of the fork product branch.
+These checks determine whether a development checkpoint is eligible to become a
+release candidate.
 
-Create narrowly scoped branches from the latest upstream-compatible baseline, for example:
+### Release CI — `master`
 
-```text
-upstream/review-pr1-priority
-upstream/review-pr2-reinforcement
-upstream/review-pr3-telemetry
-```
+A `master` push means that an approved release candidate has been promoted.
 
-Do not submit the complete fork product branch as one upstream PR.
+The EdgeOne production verification workflow must:
 
-## Invariant
+- inspect the deployment for repo branch `master`;
+- require a successful Production deployment;
+- verify the production `/api/health` contract;
+- record the release SHA and EdgeOne deployment identity in the Actions log.
 
-There must be exactly one active integrated product line:
+No `product/main` push may wait for, promote, or create an EdgeOne Maker
+deployment.
+
+## Historical branches
+
+Old branches such as `feature/edgeone-cloud-sync` and earlier Review feature
+branches are historical only. They are not product truth, release pointers, or
+deployment triggers.
+
+Historical documents or commit records may still mention the former EdgeOne
+production pointer. Those references describe the 2026-09-29 deployment process
+and must not be interpreted as the current branch policy.
+
+## Upstream contributions
+
+Upstream contributions remain independent of the Qwerty Plus product branch.
+Create narrowly scoped upstream-compatible branches when contributing to
+`RealKai42/qwerty-learner`; do not repurpose `master` for upstream tracking.
+
+## Invariants
+
+There is exactly one development source of truth:
 
 ```text
 product/main
 ```
 
-Review schema, scheduler semantics, backup/restore behavior, and cloud synchronization must not evolve on separate long-lived branches.
-
-
-## Historical production handoff
-
-The block below records the verified 2026-09-29 production handoff. It is historical and is not the Learn Alpha 1 release baseline. For the current Alpha release, see `ALPHA_RELEASE_BASELINE.md`.
-
-Verified on 2026-09-29:
+There is exactly one Maker release branch:
 
 ```text
-canonical product branch:
-  product/main
-
-verified application RC:
-  2e1128095c41afa4d881757eff037ff7a28f5294
-
-EdgeOne production pointer:
-  feature/edgeone-cloud-sync
-  -> 2e1128095c41afa4d881757eff037ff7a28f5294
-
-EdgeOne production deployment:
-  dpo4dh1hgncg
-
-production project domain:
-  qwerty-learner.edgeone.cool
+master
 ```
 
-The production deployment completed successfully and `/api/health` returned the expected `qwerty-sync-gateway` capabilities, including `blob-transient-retry-v1`.
-
-The EdgeOne project is Provider=`Github`. Direct folder/ZIP deployment is therefore intentionally not used; the platform rejects that path for GitHub-provider projects. Production promotion is performed by fast-forwarding the production pointer to a verified `product/main` commit.
+The two branches are intentionally **not** kept continuously synchronized.
