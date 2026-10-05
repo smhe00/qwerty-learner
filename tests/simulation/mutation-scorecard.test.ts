@@ -107,6 +107,47 @@ test('system mutation scorecard detects generic failure classes without false po
         },
       ],
     },
+    {
+      id: 'final-word-durable-without-ui-finish',
+      expected: 'terminal-handoff-stall',
+      events: [
+        {
+          kind: 'terminal-word-durable',
+          sessionId: 'terminal-stall',
+          word: 'argue',
+          index: 402,
+          queueLength: 403,
+        },
+      ],
+    },
+    {
+      id: 'stale-audio-owner',
+      expected: 'audio-owner-mismatch',
+      events: [
+        {
+          kind: 'audio-play',
+          displayedWord: 'beta',
+          displayedEpoch: 2,
+          audioWord: 'alpha',
+          audioEpoch: 1,
+        },
+      ],
+    },
+    {
+      id: 'success-advance-before-audio-settles',
+      expected: 'success-audio-lifecycle-violation',
+      events: [
+        {
+          kind: 'success-advance',
+          word: 'pronunciation',
+          audioRequired: true,
+          audioStarted: true,
+          audioSettled: false,
+          timeoutExpired: false,
+          fastForward: false,
+        },
+      ],
+    },
   ]
 
   const results = cases.map((item) => {
@@ -163,6 +204,37 @@ test('system mutation scorecard detects generic failure classes without false po
         isFinished: false,
         queueSignature: 'a|c|d',
         wordCount: 3,
+      },
+    ],
+    [
+      {
+        kind: 'terminal-word-durable',
+        sessionId: 'terminal-ok',
+        word: 'omega',
+        index: 2,
+        queueLength: 3,
+      },
+      {
+        kind: 'terminal-ui-finished',
+        sessionId: 'terminal-ok',
+      },
+    ],
+    [
+      {
+        kind: 'audio-play',
+        displayedWord: 'beta',
+        displayedEpoch: 2,
+        audioWord: 'beta',
+        audioEpoch: 2,
+      },
+      {
+        kind: 'success-advance',
+        word: 'beta',
+        audioRequired: true,
+        audioStarted: true,
+        audioSettled: true,
+        timeoutExpired: false,
+        fastForward: false,
       },
     ],
   ]

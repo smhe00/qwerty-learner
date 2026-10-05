@@ -98,6 +98,33 @@ export type LearnSystemTraceEvent =
       selectedCount: number
     }
   | {
+      kind: 'terminal-word-durable'
+      sessionId: string
+      word: string
+      index: number
+      queueLength: number
+    }
+  | {
+      kind: 'terminal-ui-finished'
+      sessionId: string
+    }
+  | {
+      kind: 'audio-play'
+      displayedWord: string
+      displayedEpoch: number
+      audioWord: string
+      audioEpoch: number
+    }
+  | {
+      kind: 'success-advance'
+      word: string
+      audioRequired: boolean
+      audioStarted: boolean
+      audioSettled: boolean
+      timeoutExpired: boolean
+      fastForward: boolean
+    }
+  | {
       kind: 'waiting'
       reason:
         | 'deferred'
@@ -121,6 +148,9 @@ export type LearnSystemAnomaly = {
     | 'session-arbitration-violation'
     | 'fresh-budget-violation'
     | 'persistence-order-violation'
+    | 'terminal-handoff-stall'
+    | 'audio-owner-mismatch'
+    | 'success-audio-lifecycle-violation'
   severity: 'medium' | 'high'
   eventIndex: number
   details: Record<string, number | string | boolean | null>

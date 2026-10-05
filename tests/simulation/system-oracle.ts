@@ -87,6 +87,15 @@ export function detectLearnSystemAnomalies(
       lastCommitted: number
     }
   >()
+  const pendingTerminalHandoffs = new Map<
+    string,
+    {
+      eventIndex: number
+      word: string
+      index: number
+      queueLength: number
+    }
+  >()
 
   for (let index = 0; index < events.length; index += 1) {
     const event = events[index]
@@ -185,6 +194,68 @@ export function detectLearnSystemAnomalies(
             word: event.word,
             index: event.beforeIndex,
             sessionKind: event.sessionKind,
+          },
+        })
+      }
+      continue
+    }
+
+    if (event.kind === 'terminal-word-durable') {
+      if (event.index === event.queueLength - 1) {
+        pendingTerminalHandoffs.set(event.sessionId, {
+          eventIndex: index,
+          word: event.word,
+          index: event.index,
+          queueLength: event.queueLength,
+        })
+      }
+      continue
+    }
+
+    if (event.kind === 'terminal-ui-finished') {
+      pendingTerminalHandoffs.delete(event.sessionId)
+      continue
+    }
+
+    if (event.kind === 'audio-play') {
+      if (
+        event.displayedEpoch !== event.audioEpoch ||
+        event.displayedWord !== event.audioWord
+      ) {
+        anomalies.push({
+          code: 'audio-owner-mismatch',
+          severity: 'high',
+          eventIndex: index,
+          details: {
+            displayedWord: event.displayedWord,
+            displayedEpoch: event.displayedEpoch,
+            audioWord: event.audioWord,
+            audioEpoch: event.audioEpoch,
+          },
+        })
+      }
+      continue
+    }
+
+    if (event.kind === 'success-advance') {
+      const lifecycleIncomplete =
+        event.audioRequired &&
+        !event.fastForward &&
+        !event.timeoutExpired &&
+        (!event.audioStarted || !event.audioSettled)
+
+      if (lifecycleIncomplete) {
+        anomalies.push({
+          code: 'success-audio-lifecycle-violation',
+          severity: 'high',
+          eventIndex: index,
+          details: {
+            word: event.word,
+            audioRequired: event.audioRequired,
+            audioStarted: event.audioStarted,
+            audioSettled: event.audioSettled,
+            timeoutExpired: event.timeoutExpired,
+            fastForward: event.fastForward,
           },
         })
       }
@@ -492,6 +563,23 @@ export function detectLearnSystemAnomalies(
     // Waiting breaks a run of consecutive prepared sessions.
     singletonRun = 0
     lastSingletonSessionId = null
+  }
+
+  for (const [
+    sessionId,
+    pending,
+  ] of pendingTerminalHandoffs) {
+    anomalies.push({
+      code: 'terminal-handoff-stall',
+      severity: 'high',
+      eventIndex: pending.eventIndex,
+      details: {
+        sessionId,
+        word: pending.word,
+        index: pending.index,
+        queueLength: pending.queueLength,
+      },
+    })
   }
 
   return anomalies

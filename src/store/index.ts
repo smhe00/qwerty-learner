@@ -14,6 +14,7 @@ import type {
   WordDictationType,
 } from '@/typings'
 import type { ReviewRecord } from '@/utils/db/record'
+import { DEVELOPER_DIAGNOSTICS_CONFIG_KEY } from '@/dev/diagnostic-trace'
 import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 
@@ -127,6 +128,11 @@ export const isOpenDarkModeAtom = atomWithStorage('isOpenDarkModeAtom', window.m
 export const isShowSkipAtom = atom(false)
 
 export const isInDevModeAtom = atom(false)
+
+export const developerDiagnosticsConfigAtom = atomWithStorage(
+  DEVELOPER_DIAGNOSTICS_CONFIG_KEY,
+  { isOpen: false },
+)
 
 export const infoPanelStateAtom = atom<InfoPanelState>({
   donate: false,

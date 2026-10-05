@@ -7,6 +7,7 @@ on:
     paths:
       - 'src/review/**'
       - 'src/learn/**'
+      - 'src/dev/**'
       - 'src/components/ModeSwitcher/**'
       - 'src/components/Footer/**'
       - 'src/pages/Learn/**'
@@ -32,6 +33,7 @@ on:
       - 'src/pages/Gallery-N/index.tsx'
       - 'src/pages/Gallery-N/DictionaryWithoutCover.tsx'
       - 'src/pages/Typing/components/WordPanel/**'
+      - 'src/pages/Typing/components/Setting/**'
       - 'src/store/reviewInfoAtom.ts'
       - 'src/store/index.ts'
       - 'tests/e2e/review.spec.ts'
@@ -78,6 +80,7 @@ jobs:
           yarn eslint
           src/review
           src/learn
+          src/dev
           src/components/ModeSwitcher
           src/pages/Learn
           src/pages/Analysis
@@ -99,6 +102,7 @@ jobs:
           src/pages/Gallery-N/index.tsx
           src/pages/Gallery-N/DictionaryWithoutCover.tsx
           src/pages/Typing/components/WordPanel
+          src/pages/Typing/components/Setting
           src/store/index.ts
           --ext .ts,.tsx
 

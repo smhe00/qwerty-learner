@@ -1,6 +1,7 @@
 import { TypingContext, TypingStateActionType } from '../../store'
 import AdvancedSetting from './AdvancedSetting'
 import DataSetting from './DataSetting'
+import DeveloperSetting from './DeveloperSetting'
 import SoundSetting from './SoundSetting'
 import ViewSetting from '@/pages/Typing/components/Setting/ViewSetting'
 import { Dialog, Tab, Transition } from '@headlessui/react'
@@ -10,6 +11,7 @@ import IconCog6Tooth from '~icons/heroicons/cog-6-tooth-solid'
 import IconEye from '~icons/heroicons/eye-solid'
 import IconAdjustmentsHorizontal from '~icons/tabler/adjustments-horizontal'
 import IconDatabaseCog from '~icons/tabler/database-cog'
+import IconBug from '~icons/tabler/bug'
 import IconEar from '~icons/tabler/ear'
 import IconX from '~icons/tabler/x'
 
@@ -135,6 +137,17 @@ export default function Setting() {
                           <IconDatabaseCog className="mr-2 text-neutral-500  dark:text-neutral-300" />
                           <span className="text-neutral-500 dark:text-neutral-300">数据设置</span>
                         </Tab>
+                        <Tab
+                          className={({ selected }) =>
+                            classNames(
+                              'flex h-14 w-full cursor-pointer items-center gap-2 rounded-lg px-4 py-2 ring-0 focus:outline-none',
+                              selected && 'bg-gray-200 bg-opacity-50 dark:bg-gray-800',
+                            )
+                          }
+                        >
+                          <IconBug className="mr-2 text-neutral-500 dark:text-neutral-300" />
+                          <span className="text-neutral-500 dark:text-neutral-300">开发诊断</span>
+                        </Tab>
                       </Tab.List>
 
                       <Tab.Panels className="h-full w-full flex-1">
@@ -149,6 +162,9 @@ export default function Setting() {
                         </Tab.Panel>
                         <Tab.Panel className="flex h-full focus:outline-none">
                           <DataSetting />
+                        </Tab.Panel>
+                        <Tab.Panel className="flex h-full focus:outline-none">
+                          <DeveloperSetting />
                         </Tab.Panel>
                       </Tab.Panels>
                     </div>
