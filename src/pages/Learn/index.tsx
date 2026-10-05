@@ -15,6 +15,7 @@ import {
 import { getUTCUnixTimestamp } from '@/utils'
 import { wordListFetcher } from '@/utils/wordListFetcher'
 import {
+  generateLearnMixedSessionRecord,
   generateLearnReviewRecord,
   generateNewWordAcquisitionRecord,
   getLatestReviewRecord,
@@ -32,6 +33,7 @@ import useSWR from 'swr'
 
 type LearnLocationState = {
   autoStart?: boolean
+  idle?: boolean
 }
 
 export default function LearnPage() {
@@ -129,6 +131,7 @@ export default function LearnPage() {
               db.wordRecords.where('dict').equals(id).toArray(),
             getWordStates: getReviewWordStates,
             generateAcquisition: generateNewWordAcquisitionRecord,
+            generateSession: generateLearnMixedSessionRecord,
             getNextDeferredResumeAt:
               getNextDeferredAcquisitionResumeAt,
           },
@@ -162,8 +165,11 @@ export default function LearnPage() {
 
   useEffect(() => {
     const routeState = location.state as LearnLocationState | null
+    const shouldAutoStart =
+      routeState?.autoStart === true || routeState?.idle !== true
+
     if (
-      !routeState?.autoStart ||
+      !shouldAutoStart ||
       autoStartConsumedRef.current ||
       !wordList
     ) {
