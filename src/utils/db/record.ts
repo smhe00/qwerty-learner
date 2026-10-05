@@ -1,6 +1,6 @@
 import { getUTCUnixTimestamp } from '../index'
 import type { LearnAcquisitionState } from '@/learn/acquisition'
-import type { LearnSessionKind } from '@/learn/session'
+import type { LearnItemKind, LearnSessionKind } from '@/learn/session'
 import type { ExerciseConditionV1 } from '@/review/condition'
 import type {
   ReviewExercisePlanV1,
@@ -129,7 +129,7 @@ export interface IWordRecord {
 
   // Explicit product provenance. Legacy records may omit these fields.
   sourceMode?: 'typing' | 'learn'
-  learnItemKind?: LearnSessionKind
+  learnItemKind?: LearnItemKind
 }
 
 export interface LetterMistakes {
@@ -155,7 +155,7 @@ export class WordRecord implements IWordRecord {
   reviewPolicyShadow?: ReviewPolicyShadowV1
   fsrsShadow?: FsrsLiveShadowObservationV1
   sourceMode?: 'typing' | 'learn'
-  learnItemKind?: LearnSessionKind
+  learnItemKind?: LearnItemKind
 
   constructor(
     word: string,
@@ -172,7 +172,7 @@ export class WordRecord implements IWordRecord {
     reviewRatingDecision?: RatingDecision,
     reviewPolicyShadow?: ReviewPolicyShadowV1,
     sourceMode?: 'typing' | 'learn',
-    learnItemKind?: LearnSessionKind,
+    learnItemKind?: LearnItemKind,
   ) {
     this.word = word
     this.timeStamp = getUTCUnixTimestamp()
@@ -309,8 +309,11 @@ export interface IReviewRecord {
   // A value of 1 means this Review session has already inserted its one
   // allowed reinforcement occurrence for the word.
   reinforcementCounts?: Record<string, number>
-  // Transitional Learn session classification. Legacy absence means review.
+  // Learn session classification. Legacy absence means review.
   sessionKind?: LearnSessionKind
+  // Mixed sessions keep the state-machine kind per logical word. Review-only
+  // and Acquisition-only sessions may omit this map for backward compatibility.
+  itemKinds?: Record<string, LearnItemKind>
   // Persisted bounded item-machine state by logical word. Optional for legacy
   // unfinished sessions; absence reconstructs the initial cold state.
   itemStates?: Record<string, ReviewItemMachineState>
@@ -332,6 +335,7 @@ export class ReviewRecord implements IReviewRecord {
   exercisePlans?: Record<string, ReviewExercisePlanV1>
   reinforcementCounts?: Record<string, number>
   sessionKind?: LearnSessionKind
+  itemKinds?: Record<string, LearnItemKind>
   itemStates?: Record<string, ReviewItemMachineState>
   acquisitionStates?: Record<string, LearnAcquisitionState>
   recommendedGoal?: LearnRecommendedGoalV1
