@@ -16,8 +16,8 @@ import {
 import { resolveLearnAcquisitionCompletion } from '@/learn/progression'
 import { pruneLearnSessionWord } from '@/learn/lifecycle'
 import {
-  resolveLearnItemKindForWord,
   type LearnItemKind,
+  resolveLearnItemKindForWord,
 } from '@/learn/session'
 import type { ReviewHintLevel } from '@/review/hint'
 import { resolveReviewCompletion } from '@/review/progression'
