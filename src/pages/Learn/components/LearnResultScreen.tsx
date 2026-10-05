@@ -6,7 +6,10 @@ import {
 } from '@/achievement'
 import { resolveAchievementCeremonyPresentation } from '@/achievement/presentation'
 import { getAchievementSessionId } from '@/achievement/session'
-import { TypingContext } from '@/pages/Typing/store'
+import {
+  TypingContext,
+  TypingStateActionType,
+} from '@/pages/Typing/store'
 import { getAchievementCulture } from '@/resources/achievementCulture'
 import {
   currentDictInfoAtom,
@@ -51,7 +54,7 @@ function SummaryMetric({
 
 export default function LearnResultScreen() {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const { state } = useContext(TypingContext)!
+  const { state, dispatch } = useContext(TypingContext)!
   const currentDictInfo = useAtomValue(currentDictInfoAtom)
   const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
@@ -165,9 +168,10 @@ export default function LearnResultScreen() {
 
   const returnToTyping = useCallback(() => {
     acknowledgeAchievements()
+    dispatch({ type: TypingStateActionType.RESET_SESSION })
     leaveLearn()
     navigate('/typing')
-  }, [acknowledgeAchievements, leaveLearn, navigate])
+  }, [acknowledgeAchievements, dispatch, leaveLearn, navigate])
 
   useHotkeys(
     'enter',
