@@ -354,7 +354,12 @@ function latestAcquisitionStatesByWord(
   for (const record of [...records].sort(
     (left, right) => left.createTime - right.createTime,
   )) {
-    if (record.sessionKind !== 'acquisition') continue
+    if (
+      record.sessionKind !== 'acquisition' &&
+      record.sessionKind !== 'mixed'
+    ) {
+      continue
+    }
     for (const [word, state] of Object.entries(
       record.acquisitionStates ?? {},
     )) {
