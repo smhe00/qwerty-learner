@@ -45,6 +45,7 @@ export default function LearnPage() {
   const [isStarting, setIsStarting] = useState(false)
   const [statusText, setStatusText] = useState('')
   const autoStartConsumedRef = useRef(false)
+  const lifecycleEpochRef = useRef(0)
   const preparationGuardRef = useRef<
     ReturnType<typeof createAsyncOwnershipGuard> | null
   >(null)
@@ -66,9 +67,20 @@ export default function LearnPage() {
   }, [errorWordData])
 
   useEffect(() => {
+    const lifecycleEpoch = lifecycleEpochRef.current + 1
+    lifecycleEpochRef.current = lifecycleEpoch
     preparationGuard.activate()
+
     return () => {
-      preparationGuard.deactivate()
+      // React StrictMode replays mount effects in development. Deferring the
+      // cleanup by one microtask lets the immediately following replay claim a
+      // newer lifecycle epoch, while a real unmount still invalidates pending
+      // Learn preparation before its async work can commit.
+      queueMicrotask(() => {
+        if (lifecycleEpochRef.current === lifecycleEpoch) {
+          preparationGuard.deactivate()
+        }
+      })
     }
   }, [preparationGuard])
 
