@@ -98,7 +98,8 @@ export default function LearnPage() {
     const claim = preparationGuard.begin()
     const dictId = currentDictId
     const words = wordList
-    const isCurrent = claim.isCurrent
+    const isCurrent = () =>
+      claim.isCurrent() && window.location.pathname === '/learn'
 
     setIsStarting(true)
     setStatusText('')
