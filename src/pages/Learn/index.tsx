@@ -45,7 +45,7 @@ export default function LearnPage() {
   const [isStarting, setIsStarting] = useState(false)
   const [statusText, setStatusText] = useState('')
   const autoStartConsumedRef = useRef(false)
-  const lifecycleEpochRef = useRef(0)
+  const learnPageRootRef = useRef<HTMLElement | null>(null)
   const preparationGuardRef = useRef<
     ReturnType<typeof createAsyncOwnershipGuard> | null
   >(null)
@@ -67,20 +67,17 @@ export default function LearnPage() {
   }, [errorWordData])
 
   useEffect(() => {
-    const lifecycleEpoch = lifecycleEpochRef.current + 1
-    lifecycleEpochRef.current = lifecycleEpoch
     preparationGuard.activate()
 
     return () => {
-      // React StrictMode replays mount effects in development. Deferring the
-      // cleanup by one microtask lets the immediately following replay claim a
-      // newer lifecycle epoch, while a real unmount still invalidates pending
-      // Learn preparation before its async work can commit.
-      queueMicrotask(() => {
-        if (lifecycleEpochRef.current === lifecycleEpoch) {
-          preparationGuard.deactivate()
-        }
-      })
+      // React StrictMode replays passive effects without detaching the DOM.
+      // A real route leave disconnects (or clears) this ref first, so invalidate
+      // ownership synchronously only for the real unmount. This keeps auto-start
+      // alive through StrictMode replay without letting stale preparation win a
+      // race against navigation to Typing/Gallery.
+      if (!learnPageRootRef.current?.isConnected) {
+        preparationGuard.deactivate()
+      }
     }
   }, [preparationGuard])
 
@@ -206,7 +203,10 @@ export default function LearnPage() {
     return (
       <Layout>
         {renderHeader()}
-        <main className="container mx-auto flex w-full flex-1 flex-col items-center justify-center gap-4">
+        <main
+          ref={learnPageRootRef}
+          className="container mx-auto flex w-full flex-1 flex-col items-center justify-center gap-4"
+        >
           <span
             className="text-sm text-gray-500 dark:text-gray-400"
             role="alert"
@@ -229,7 +229,10 @@ export default function LearnPage() {
     <Layout>
       {renderHeader()}
 
-      <main className="container mx-auto flex w-full flex-1 flex-col items-center justify-center gap-5">
+      <main
+        ref={learnPageRootRef}
+        className="container mx-auto flex w-full flex-1 flex-col items-center justify-center gap-5"
+      >
         <span
           className="text-sm text-gray-400 dark:text-gray-500"
           role="status"
