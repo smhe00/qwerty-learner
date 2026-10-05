@@ -16,6 +16,11 @@ import {
   type BasicReviewSchedulePolicy,
 } from '../../src/review/scheduler'
 import {
+  createFsrs6Scheduler,
+  type Fsrs6StrategyConfig,
+} from '../../src/review/fsrs/strategy'
+import { Rating, createEmptyCard, type Card } from 'ts-fsrs'
+import {
   createInitialReviewWordState,
   type IReviewWordState,
   type ReviewOutcome,
@@ -23,6 +28,33 @@ import {
 import type { IWordRecord } from '../../src/utils/db/record'
 
 const DAY_SECONDS = 86_400
+
+type FsrsGrade =
+  | Rating.Again
+  | Rating.Hard
+  | Rating.Good
+  | Rating.Easy
+
+const outcomeToFsrsRating: Record<ReviewOutcome, FsrsGrade> = {
+  again: Rating.Again,
+  hard: Rating.Hard,
+  good: Rating.Good,
+  easy: Rating.Easy,
+}
+
+export type SimulationReviewStrategy =
+  | {
+      id: 'basic-v2'
+      kind: 'basic-v2'
+    }
+  | (Fsrs6StrategyConfig & {
+      kind: 'fsrs6'
+    })
+
+export const SIMULATION_BASIC_V2_STRATEGY: SimulationReviewStrategy = {
+  id: 'basic-v2',
+  kind: 'basic-v2',
+}
 
 export type LearnerPersona = {
   id: string
@@ -362,10 +394,18 @@ export function simulateLearner(input: {
   maxDailyReviews?: number
   schedulePolicy?: BasicReviewSchedulePolicy
   quotaPolicy?: LearnAcquisitionQuotaPolicy
+  reviewStrategy?: SimulationReviewStrategy
 }): LearnerSimulationResult {
   const days = input.days ?? 120
   const dictionarySize = input.dictionarySize ?? 240
   const maxDailyReviews = input.maxDailyReviews ?? 80
+  const reviewStrategy =
+    input.reviewStrategy ?? SIMULATION_BASIC_V2_STRATEGY
+  const fsrsScheduler =
+    reviewStrategy.kind === 'fsrs6'
+      ? createFsrs6Scheduler(reviewStrategy)
+      : undefined
+  const fsrsCards = new Map<string, Card>()
   const startAt =
     input.startAt ??
     Math.floor(new Date(2026, 0, 1, 8, 0, 0).getTime() / 1000)
@@ -472,14 +512,48 @@ export function simulateLearner(input: {
         })
       }
 
-      const next = scheduleBasicReview(
-        {
-          state,
-          outcome: finalOutcome,
-          now: clock.now,
-        },
-        input.schedulePolicy ?? defaultBasicReviewSchedulePolicy,
-      )
+      let next: IReviewWordState
+      if (reviewStrategy.kind === 'fsrs6') {
+        const scheduler = fsrsScheduler
+        if (!scheduler) {
+          throw new Error('FSRS simulation scheduler was not initialized')
+        }
+        const currentCard =
+          fsrsCards.get(state.word) ??
+          createEmptyCard(new Date(state.createdAt * 1000))
+        const nextCard = scheduler.next(
+          currentCard,
+          new Date(clock.now * 1000),
+          outcomeToFsrsRating[finalOutcome],
+        ).card
+        fsrsCards.set(state.word, nextCard)
+        next = {
+          ...state,
+          updatedAt: clock.now,
+          lastReviewedAt: clock.now,
+          nextReviewAt: Math.floor(nextCard.due.getTime() / 1000),
+          reviewCount: state.reviewCount + 1,
+          lapseCount:
+            state.lapseCount + (finalOutcome === 'again' ? 1 : 0),
+          cleanStreak:
+            finalOutcome === 'again' ? 0 : state.cleanStreak + 1,
+          lastOutcome: finalOutcome,
+          schedulerState: {
+            kind: 'fsrs6',
+            difficulty: nextCard.difficulty,
+            stability: nextCard.stability,
+          },
+        }
+      } else {
+        next = scheduleBasicReview(
+          {
+            state,
+            outcome: finalOutcome,
+            now: clock.now,
+          },
+          input.schedulePolicy ?? defaultBasicReviewSchedulePolicy,
+        )
+      }
       wordStates = wordStates.map((existing) =>
         existing.word === state.word ? next : existing,
       )
@@ -607,6 +681,15 @@ export function simulateLearner(input: {
           clock.now,
         )
         state.nextReviewAt = clock.now + DAY_SECONDS
+        if (reviewStrategy.kind === 'fsrs6') {
+          const card = createEmptyCard(new Date(clock.now * 1000))
+          fsrsCards.set(word, card)
+          state.schedulerState = {
+            kind: 'fsrs6',
+            difficulty: card.difficulty,
+            stability: card.stability,
+          }
+        }
         wordStates.push(state)
       } else {
         item.strength = clamp01(

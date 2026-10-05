@@ -191,6 +191,18 @@ jobs:
       - name: Run FSRS G3 analysis tests
         run: node --test .review-test/g3-analysis.test.mjs
 
+      - name: Bundle FSRS G4 strategy benchmark
+        run: |
+          npx esbuild tests/fsrs/g4-strategy-benchmark.test.ts \
+            --bundle \
+            --platform=node \
+            --target=node20 \
+            --format=esm \
+            --outfile=.review-test/g4-strategy-benchmark.test.mjs
+
+      - name: Run FSRS G4 strategy benchmark
+        run: node --test .review-test/g4-strategy-benchmark.test.mjs
+
       - name: Run Typing lifecycle browser gate
         run: npx playwright test --config=tests/e2e/typing-lifecycle.config.ts --project=chrome
 

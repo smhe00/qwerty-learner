@@ -1,4 +1,4 @@
-import { Rating, State, createEmptyCard, fsrs } from 'ts-fsrs'
+import { Rating, State, createEmptyCard } from 'ts-fsrs'
 import type { Card } from 'ts-fsrs'
 import {
   FSRS_SHADOW_ALGORITHM_MODEL,
@@ -13,6 +13,7 @@ import type {
   FsrsShadowReplayEventV1,
   FsrsShadowReplayResultV1,
 } from './types'
+import { createFsrs6Scheduler } from './strategy'
 import type { IReviewWordState, ReviewOutcome } from '../types'
 import type { IWordRecord } from '@/utils/db/record'
 
@@ -33,14 +34,7 @@ const outcomeToRating: Record<ReviewOutcome, FsrsGrade> = {
 
 const outcomes: ReviewOutcome[] = ['again', 'hard', 'good', 'easy']
 
-const shadowScheduler = fsrs({
-  request_retention: 0.9,
-  maximum_interval: 36500,
-  enable_fuzz: false,
-  enable_short_term: false,
-  learning_steps: [],
-  relearning_steps: [],
-})
+const shadowScheduler = createFsrs6Scheduler()
 
 function toDate(timestamp: number): Date {
   return new Date(timestamp * 1000)

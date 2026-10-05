@@ -311,3 +311,42 @@ Review Gate #141       PASS
 `G3 ACTIVE` now means **real evidence collection**, not unfinished analysis
 code. G4 remains blocked until the data-readiness gate is reached and the
 resulting calibration/workload evidence is actually reviewed.
+
+
+## G4 strategy benchmark bootstrap — 2026-10-05
+
+The first activation experiment is now a deterministic strategy benchmark, not
+a direct production switch.
+
+Compared schedulers:
+
+```text
+A  basic-v2 ACTIVE baseline
+B  FSRS-6 default, request retention 0.90
+C  FSRS-6 default weights with request-retention sweep
+   0.84 / 0.86 / 0.88 / 0.90 / 0.92 / 0.94
+```
+
+The learner-memory model remains independent from FSRS. It uses the existing
+latent strength/difficulty/fatigue simulator, while FSRS controls only review
+timing. This prevents an FSRS candidate from being evaluated against itself as
+the simulated ground truth.
+
+The benchmark is paired across the same learner personas and random seeds. It
+reports long-term mastery per interaction, 30-day observed retention, daily
+workload, P95 workload, backlog and per-persona efficiency.
+
+A candidate is marked promotable only when all of these hold relative to the
+FSRS-6 r0.90 default:
+
+- mastery-per-interaction improves by at least 5%;
+- 30-day retention loses no more than 0.5 percentage point;
+- mean P95 daily workload is no more than 1.05x;
+- no persona loses more than 3% efficiency;
+- it also matches or beats basic-v2 efficiency without exceeding the same
+  retention-loss bound.
+
+A simulation promotion decision selects a G4 candidate; it does not by itself
+grant production write authority. Real G3 evidence readiness, deterministic
+migration/rollback, backup compatibility, formal gates and browser gates remain
+required before FSRS replaces basic-v2.
