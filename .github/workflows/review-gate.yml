@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - product/main
-      - feature/edgeone-cloud-sync
     paths:
       - 'src/review/**'
       - 'src/learn/**'
