@@ -178,7 +178,7 @@ export default function LearnResultScreen() {
     acknowledgeAchievements()
     dispatch({ type: TypingStateActionType.RESET_SESSION })
     keepLearnSelected()
-    navigate('/learn')
+    navigate('/learn', { state: { idle: true } })
   }, [
     acknowledgeAchievements,
     dispatch,
