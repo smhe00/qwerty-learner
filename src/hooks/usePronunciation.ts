@@ -60,6 +60,13 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
     rate: pronunciationConfig.rate,
   } as HookOptions)
   const fallbackAudioRef = useRef<HTMLAudioElement | null>(null)
+  const pendingSettledRef = useRef<(() => void) | null>(null)
+
+  const settlePendingPlayback = useCallback(() => {
+    const settled = pendingSettledRef.current
+    pendingSettledRef.current = null
+    settled?.()
+  }, [])
 
   const trace = useCallback(
     (
@@ -91,15 +98,17 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
   }, [])
 
   const stop = useCallback(() => {
+    pendingSettledRef.current = null
     stopHowl()
     stopFallback()
     setIsPlaying(false)
   }, [stopFallback, stopHowl])
 
-  const play = useCallback((): boolean => {
+  const play = useCallback((onSettled?: () => void): boolean => {
     if (soundSrc === '' || hasError) return false
 
     stop()
+    pendingSettledRef.current = onSettled ?? null
 
     if (sound) {
       playHowl()
@@ -128,12 +137,14 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
       if (!owns()) return
       setIsPlaying(false)
       trace('audio-end', { transport: 'native-fallback' })
+      settlePendingPlayback()
     })
     audio.addEventListener('error', () => {
       if (!owns()) return
       setIsPlaying(false)
       setHasError(true)
       trace('audio-play-error', { transport: 'native-fallback' })
+      settlePendingPlayback()
     })
 
     trace('audio-native-fallback-requested')
@@ -143,6 +154,7 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
       setIsPlaying(false)
       setHasError(true)
       trace('audio-play-error', { transport: 'native-fallback' })
+      settlePendingPlayback()
     })
     return true
   }, [
@@ -151,6 +163,7 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
     playHowl,
     pronunciationConfig.rate,
     pronunciationConfig.volume,
+    settlePendingPlayback,
     sound,
     soundSrc,
     stop,
@@ -193,6 +206,7 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
       if (!active) return
       setIsPlaying(false)
       trace('audio-end')
+      settlePendingPlayback()
     }
     const markPause = () => {
       if (!active) return
@@ -204,6 +218,7 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
       setIsPlaying(false)
       setHasError(true)
       trace('audio-play-error')
+      settlePendingPlayback()
     }
 
     const loaded = (sound as Howl).state() === 'loaded'
@@ -225,7 +240,7 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
       trace('audio-unload')
       ;(sound as Howl).unload()
     }
-  }, [sound, trace])
+  }, [settlePendingPlayback, sound, trace])
 
   useEffect(() => {
     return () => {
