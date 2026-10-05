@@ -12,6 +12,7 @@ export const learnDailyPlanPolicy = {
 export type LearnDailyPlanAction =
   | 'review-due'
   | 'acquire-new'
+  | 'mixed'
   | 'complete'
 
 export type LearnDailyPlan = {
@@ -71,10 +72,13 @@ export function buildLearnDailyPlan(input: {
   const dueSeconds = stats.lifecycle.due * reviewSecondsPerWord
   const softBudgetSeconds = policy.acquisitionSoftBudgetMinutes * 60
 
-  // Due is never cut by this budget. Instead, project the room left for
-  // Acquisition after today's already-spent work and all currently due Review.
+  // Review debt remains first-class work, but only a bounded slice of it is
+  // charged ahead of Acquisition. Otherwise a large backlog would starve new
+  // words indefinitely even though Learn is designed as a continuous mode.
+  const reviewPrioritySeconds =
+    Math.min(stats.lifecycle.due, 15) * reviewSecondsPerWord
   const projectedSecondsBeforeNew =
-    stats.effort.todayActiveSeconds + dueSeconds
+    stats.effort.todayActiveSeconds + reviewPrioritySeconds
   const acquisitionSecondsAvailable = Math.max(
     0,
     softBudgetSeconds - projectedSecondsBeforeNew,
@@ -88,8 +92,7 @@ export function buildLearnDailyPlan(input: {
     quota.remainingDailyNewWords,
     workloadNewWordCapacity,
   )
-  const allowedNewWordsNow =
-    stats.lifecycle.due > 0 ? 0 : plannedRemainingNewWords
+  const allowedNewWordsNow = plannedRemainingNewWords
 
   const estimatedNewSeconds =
     plannedRemainingNewWords * acquisitionSecondsPerWord
@@ -98,20 +101,22 @@ export function buildLearnDailyPlan(input: {
     stats.effort.todayActiveSeconds + estimatedRemainingSeconds
 
   const reasonCodes = [...quota.reasonCodes]
-  if (stats.lifecycle.due > 0) reasonCodes.push('daily-plan-due-first')
+  if (stats.lifecycle.due > 0) {
+    reasonCodes.push('daily-plan-review-priority')
+  }
   if (plannedRemainingNewWords < quota.remainingDailyNewWords) {
     reasonCodes.push('daily-workload-soft-budget')
   }
   if (
     quota.remainingDailyNewWords > 0 &&
-    plannedRemainingNewWords === 0 &&
-    stats.lifecycle.due === 0
+    plannedRemainingNewWords === 0
   ) {
     reasonCodes.push('daily-workload-budget-reached')
   }
 
   let action: LearnDailyPlanAction
-  if (stats.lifecycle.due > 0) action = 'review-due'
+  if (stats.lifecycle.due > 0 && allowedNewWordsNow > 0) action = 'mixed'
+  else if (stats.lifecycle.due > 0) action = 'review-due'
   else if (allowedNewWordsNow > 0) action = 'acquire-new'
   else action = 'complete'
 
