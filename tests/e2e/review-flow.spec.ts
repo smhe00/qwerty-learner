@@ -3101,3 +3101,78 @@ test('backup/cloud snapshot round-trip preserves FSRS and Learn durable state', 
     localStorage.removeItem('reviewModeInfo')
   })
 })
+
+
+test('final Learn word reaches result UI even when route-cache persistence throws', async ({
+  page,
+}) => {
+  await seedReviewSession(page, [reviewWords[0]], 900090)
+
+  await page.addInitScript(() => {
+    const nativeSetItem = Storage.prototype.setItem
+    Storage.prototype.setItem = function patchedSetItem(
+      key: string,
+      value: string,
+    ) {
+      if (
+        key === 'reviewModeInfo' &&
+        sessionStorage.getItem(
+          'qwerty:e2e:fail-review-mode-write',
+        ) === '1'
+      ) {
+        throw new DOMException(
+          'Injected reviewModeInfo write failure',
+          'QuotaExceededError',
+        )
+      }
+      return nativeSetItem.call(this, key, value)
+    }
+  })
+
+  await page.goto('/learn/session')
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+
+  await page.evaluate(() => {
+    sessionStorage.setItem(
+      'qwerty:e2e:fail-review-mode-write',
+      '1',
+    )
+  })
+
+  await page.keyboard.type('cancel')
+
+  // The UI terminal transition is safety-critical and must not depend on a
+  // route-cache write succeeding.
+  await expect(
+    page.locator('[data-learn-result-screen]'),
+  ).toBeVisible({ timeout: 5_000 })
+
+  // The serialized IndexedDB checkpoint was queued before the route-cache
+  // failure and still converges to the terminal state.
+  await expect
+    .poll(async () =>
+      page.evaluate(async () => {
+        return new Promise<boolean>((resolve, reject) => {
+          const request = indexedDB.open('RecordDB')
+          request.onerror = () => reject(request.error)
+          request.onsuccess = () => {
+            const db = request.result
+            const tx = db.transaction(
+              'reviewRecords',
+              'readonly',
+            )
+            const get = tx
+              .objectStore('reviewRecords')
+              .get(900090)
+            get.onerror = () => reject(get.error)
+            get.onsuccess = () => {
+              resolve(get.result?.isFinished === true)
+              db.close()
+            }
+          }
+        })
+      }),
+    )
+    .toBe(true)
+})

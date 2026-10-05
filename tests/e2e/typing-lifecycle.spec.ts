@@ -15,6 +15,38 @@ async function playedUrls(page: import('@playwright/test').Page) {
   )
 }
 
+function silentWav(durationMs: number): Buffer {
+  const sampleRate = 8_000
+  const channels = 1
+  const bitsPerSample = 16
+  const bytesPerSample = bitsPerSample / 8
+  const samples = Math.max(
+    1,
+    Math.floor((sampleRate * durationMs) / 1000),
+  )
+  const dataSize = samples * channels * bytesPerSample
+  const buffer = Buffer.alloc(44 + dataSize)
+
+  buffer.write('RIFF', 0)
+  buffer.writeUInt32LE(36 + dataSize, 4)
+  buffer.write('WAVE', 8)
+  buffer.write('fmt ', 12)
+  buffer.writeUInt32LE(16, 16)
+  buffer.writeUInt16LE(1, 20)
+  buffer.writeUInt16LE(channels, 22)
+  buffer.writeUInt32LE(sampleRate, 24)
+  buffer.writeUInt32LE(
+    sampleRate * channels * bytesPerSample,
+    28,
+  )
+  buffer.writeUInt16LE(channels * bytesPerSample, 32)
+  buffer.writeUInt16LE(bitsPerSample, 34)
+  buffer.write('data', 36)
+  buffer.writeUInt32LE(dataSize, 40)
+
+  return buffer
+}
+
 test('ordinary Typing automatically pronounces consecutive clean words', async ({
   page,
 }) => {
@@ -193,4 +225,147 @@ test('phrase-internal Space remains a spelling character and rich example reveal
   // Once success is reached, Space changes role and fast-forwards.
   await page.keyboard.press('Space')
   await expect(page.locator('[data-typing-word="next"]')).toBeVisible()
+})
+
+
+test('production audio adapter ignores a stale previous-word load after fast-forward', async ({
+  page,
+}) => {
+  const shortAudio = silentWav(180)
+
+  await page.route('https://dict.youdao.com/**', async (route) => {
+    const url = route.request().url()
+    if (url.includes('audio=life')) {
+      await new Promise((resolve) => setTimeout(resolve, 1_000))
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'audio/wav',
+      headers: {
+        'access-control-allow-origin': '*',
+        'cache-control': 'no-store',
+      },
+      body: shortAudio,
+    })
+  })
+
+  await page.addInitScript(() => {
+    const target = window as AudioProbeWindow
+    target.__qwertyAudioPlays = []
+
+    const nativePlay = HTMLMediaElement.prototype.play
+    HTMLMediaElement.prototype.play = function patchedPlay() {
+      target.__qwertyAudioPlays?.push(this.currentSrc || this.src)
+      const result = nativePlay.call(this)
+      result?.catch(() => undefined)
+      return result
+    }
+  })
+
+  await page.goto('/typing')
+  await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
+  await page.keyboard.press('a')
+  await page.keyboard.type('life')
+
+  await expect(
+    page.locator('[data-typing-word="life"]'),
+  ).toHaveAttribute(
+    'data-typing-success-feedback',
+    'active',
+  )
+
+  // Explicit fast-forward is allowed even while the old audio request is
+  // still unresolved. The old owner must never gain permission to play later.
+  await page.keyboard.press('Space')
+  await expect(
+    page.locator('[data-typing-word="break"]'),
+  ).toBeVisible()
+
+  await expect
+    .poll(async () =>
+      (await playedUrls(page)).some((url) =>
+        url.includes('audio=break'),
+      ),
+    )
+    .toBe(true)
+
+  await page.waitForTimeout(1_300)
+
+  const playsAfterOldLoad = await playedUrls(page)
+  expect(
+    playsAfterOldLoad.filter((url) => url.includes('audio=life')),
+  ).toHaveLength(0)
+  expect(
+    playsAfterOldLoad.filter((url) => url.includes('audio=break'))
+      .length,
+  ).toBeGreaterThanOrEqual(1)
+})
+
+test('production success pronunciation completes before automatic advance', async ({
+  page,
+}) => {
+  const longAudio = silentWav(1_400)
+
+  await page.route('https://dict.youdao.com/**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'audio/wav',
+      headers: {
+        'access-control-allow-origin': '*',
+        'cache-control': 'no-store',
+      },
+      body: longAudio,
+    })
+  })
+
+  await page.addInitScript(() => {
+    const target = window as AudioProbeWindow
+    target.__qwertyAudioPlays = []
+
+    const nativePlay = HTMLMediaElement.prototype.play
+    HTMLMediaElement.prototype.play = function patchedPlay() {
+      target.__qwertyAudioPlays?.push(this.currentSrc || this.src)
+      const result = nativePlay.call(this)
+      result?.catch(() => undefined)
+      return result
+    }
+  })
+
+  await page.goto('/typing')
+  await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
+  await page.keyboard.press('a')
+
+  // Let the ordinary automatic pronunciation finish so the second play is
+  // unambiguously the post-success pronunciation under test.
+  await expect
+    .poll(async () =>
+      (await playedUrls(page)).filter((url) =>
+        url.includes('audio=life'),
+      ).length,
+    )
+    .toBeGreaterThanOrEqual(1)
+  await page.waitForTimeout(1_550)
+
+  await page.keyboard.type('life')
+  await expect
+    .poll(async () =>
+      (await playedUrls(page)).filter((url) =>
+        url.includes('audio=life'),
+      ).length,
+    )
+    .toBeGreaterThanOrEqual(2)
+
+  // Historical production advanced at 600 ms and truncated longer speech.
+  // A 1.4 s real media element must still own the screen after that boundary.
+  await page.waitForTimeout(750)
+  await expect(
+    page.locator('[data-typing-word="life"]'),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-typing-word="break"]'),
+  ).toHaveCount(0)
+
+  await expect(
+    page.locator('[data-typing-word="break"]'),
+  ).toBeVisible({ timeout: 2_500 })
 })
