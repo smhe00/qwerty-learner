@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  FSRS6_DEFAULT_STRATEGY,
+  FSRS6_G4_CANDIDATE_STRATEGY,
+} from '../../src/review/fsrs/strategy'
+import {
   LEARNER_PERSONAS,
   SIMULATION_BASIC_V2_STRATEGY,
   simulateLearner,
@@ -9,7 +13,9 @@ import {
 
 const RETENTION_SWEEP = [0.84, 0.86, 0.88, 0.9, 0.92, 0.94] as const
 const SEEDS = [11, 23, 37, 51, 67, 83] as const
+const LONG_HORIZON_SEEDS = [11, 37, 67] as const
 const DAYS = 120
+const LONG_HORIZON_DAYS = 365
 const DICTIONARY_SIZE = 240
 
 const MIN_EFFICIENCY_GAIN_FOR_PROMOTION = 0.05
@@ -39,29 +45,60 @@ function round6(value: number): number {
   return Math.round(value * 1_000_000) / 1_000_000
 }
 
+function fsrsStrategyForRetention(
+  requestRetention: number,
+): SimulationReviewStrategy {
+  if (
+    requestRetention ===
+    FSRS6_DEFAULT_STRATEGY.requestRetention
+  ) {
+    return {
+      ...FSRS6_DEFAULT_STRATEGY,
+      kind: 'fsrs6',
+    }
+  }
+  if (
+    requestRetention ===
+    FSRS6_G4_CANDIDATE_STRATEGY.requestRetention
+  ) {
+    return {
+      ...FSRS6_G4_CANDIDATE_STRATEGY,
+      kind: 'fsrs6',
+    }
+  }
+  return {
+    id: `fsrs6-default-r${requestRetention.toFixed(2)}`,
+    kind: 'fsrs6',
+    requestRetention,
+  }
+}
+
 function strategyCandidates(): SimulationReviewStrategy[] {
   return [
     SIMULATION_BASIC_V2_STRATEGY,
-    ...RETENTION_SWEEP.map(
-      (requestRetention): SimulationReviewStrategy => ({
-        id: `fsrs6-default-r${requestRetention.toFixed(2)}`,
-        kind: 'fsrs6',
-        requestRetention,
-      }),
-    ),
+    ...RETENTION_SWEEP.map(fsrsStrategyForRetention),
   ]
 }
 
 function summarize(
   strategy: SimulationReviewStrategy,
+  options: {
+    seeds?: readonly number[]
+    days?: number
+    dictionarySize?: number
+  } = {},
 ): StrategySummary {
+  const seeds = options.seeds ?? SEEDS
+  const days = options.days ?? DAYS
+  const dictionarySize =
+    options.dictionarySize ?? DICTIONARY_SIZE
   const runs = Object.values(LEARNER_PERSONAS).flatMap((persona) =>
-    SEEDS.map((seed) =>
+    seeds.map((seed) =>
       simulateLearner({
         persona,
         seed,
-        days: DAYS,
-        dictionarySize: DICTIONARY_SIZE,
+        days,
+        dictionarySize,
         reviewStrategy: strategy,
       }),
     ),
@@ -135,7 +172,7 @@ test('G4 benchmark compares basic-v2 and FSRS-6 retention candidates with an exp
   const summaries = strategyCandidates().map(summarize)
   const basic = summaries.find((item) => item.id === 'basic-v2')
   const fsrsDefault = summaries.find(
-    (item) => item.id === 'fsrs6-default-r0.90',
+    (item) => item.id === FSRS6_DEFAULT_STRATEGY.id,
   )
 
   if (!basic || !fsrsDefault) {
@@ -245,4 +282,87 @@ test('G4 benchmark compares basic-v2 and FSRS-6 retention candidates with an exp
       promoted.summary.meanEfficiency > fsrsDefault.meanEfficiency,
     )
   }
+})
+
+test('G4 selected r0.88 candidate keeps its advantage over 365 simulated days', () => {
+  const strategies: SimulationReviewStrategy[] = [
+    SIMULATION_BASIC_V2_STRATEGY,
+    {
+      ...FSRS6_DEFAULT_STRATEGY,
+      kind: 'fsrs6',
+    },
+    {
+      ...FSRS6_G4_CANDIDATE_STRATEGY,
+      kind: 'fsrs6',
+    },
+  ]
+  const summaries = strategies.map((strategy) =>
+    summarize(strategy, {
+      seeds: LONG_HORIZON_SEEDS,
+      days: LONG_HORIZON_DAYS,
+      dictionarySize: DICTIONARY_SIZE,
+    }),
+  )
+  const basic = summaries.find(
+    (item) => item.id === SIMULATION_BASIC_V2_STRATEGY.id,
+  )
+  const fsrsDefault = summaries.find(
+    (item) => item.id === FSRS6_DEFAULT_STRATEGY.id,
+  )
+  const candidate = summaries.find(
+    (item) => item.id === FSRS6_G4_CANDIDATE_STRATEGY.id,
+  )
+  if (!basic || !fsrsDefault || !candidate) {
+    throw new Error('365-day benchmark baselines are missing')
+  }
+
+  const efficiencyGain = relativeGain(
+    candidate.meanEfficiency,
+    fsrsDefault.meanEfficiency,
+  )
+  const retentionDelta =
+    candidate.meanRetention30d - fsrsDefault.meanRetention30d
+  const p95WorkloadRatio =
+    fsrsDefault.meanP95DailyInteractions === 0
+      ? 1
+      : candidate.meanP95DailyInteractions /
+        fsrsDefault.meanP95DailyInteractions
+  const worstPersonaEfficiencyDelta = Math.min(
+    ...Object.keys(fsrsDefault.personaEfficiency).map((persona) =>
+      relativeGain(
+        candidate.personaEfficiency[persona],
+        fsrsDefault.personaEfficiency[persona],
+      ),
+    ),
+  )
+
+  console.log(
+    'SIM_FSRS_G4_365D',
+    JSON.stringify({
+      basic,
+      fsrsDefault,
+      candidate,
+      efficiencyGain,
+      retentionDelta,
+      p95WorkloadRatio,
+      worstPersonaEfficiencyDelta,
+    }),
+  )
+
+  assert.ok(
+    efficiencyGain >= MIN_EFFICIENCY_GAIN_FOR_PROMOTION,
+  )
+  assert.ok(retentionDelta >= -MAX_RETENTION_DROP)
+  assert.ok(
+    p95WorkloadRatio <= MAX_P95_WORKLOAD_MULTIPLIER,
+  )
+  assert.ok(
+    worstPersonaEfficiencyDelta >=
+      -MAX_PERSONA_EFFICIENCY_DROP,
+  )
+  assert.ok(candidate.meanEfficiency >= basic.meanEfficiency)
+  assert.ok(
+    candidate.meanRetention30d >=
+      basic.meanRetention30d - MAX_RETENTION_DROP,
+  )
 })

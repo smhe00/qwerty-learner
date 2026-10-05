@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/fsrs-phase-g-gate.yml'
       - 'tests/fsrs/**'
+      - 'tests/simulation/learner-simulator.ts'
       - 'docs/FSRS_PHASE_G.md'
       - 'src/review/fsrs/**'
       - 'src/review/types.ts'

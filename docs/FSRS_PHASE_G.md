@@ -350,3 +350,18 @@ A simulation promotion decision selects a G4 candidate; it does not by itself
 grant production write authority. Real G3 evidence readiness, deterministic
 migration/rollback, backup compatibility, formal gates and browser gates remain
 required before FSRS replaces basic-v2.
+
+
+### G4 simulation-selected candidate
+
+The 120-day paired benchmark on 2026-10-05 selected:
+
+```text
+candidate: fsrs6-default-r0.88-no-fuzz-long-term-g4-v1
+request retention: 0.88
+weights: ts-fsrs 5.4.2 FSRS-6 defaults
+```
+
+Selection does not change the active scheduler. The candidate is represented
+explicitly in code so subsequent replay, long-horizon simulation and real-data
+validation refer to the same immutable parameter identity.
