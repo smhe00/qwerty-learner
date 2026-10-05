@@ -5,6 +5,13 @@ import {
   simulateLearner,
 } from './learner-simulator'
 
+// Mixed Learn intentionally keeps a bounded new-word reserve even while Review
+// debt exists. The old <=80 assertion encoded the previous due-first policy
+// and equated backlog with the simulator's 80-review service capacity. The
+// mixed policy is instead gated by the simulator's total daily workload
+// envelope: 80 review slots + 40 acquisition/interaction headroom.
+const MIXED_MAX_DUE_BACKLOG = 120
+
 test('longitudinal simulator is deterministic for a fixed seed', () => {
   const left = simulateLearner({
     persona: LEARNER_PERSONAS.balanced,
@@ -103,7 +110,7 @@ test('120-day learner personas produce plausible ordered outcomes and bounded wo
     assert.ok(result.metrics.reviewSuccessRate <= 1)
     assert.ok(result.metrics.lapseRate >= 0)
     assert.ok(result.metrics.lapseRate <= 1)
-    assert.ok(result.metrics.maxDueBacklog <= 80)
+    assert.ok(result.metrics.maxDueBacklog <= MIXED_MAX_DUE_BACKLOG)
     assert.ok(result.metrics.p95DailyInteractions <= 120)
   }
 
