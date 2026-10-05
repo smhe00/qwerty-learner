@@ -2348,10 +2348,15 @@ test('a due ACTIVE word is reviewed before any unseen acquisition word', async (
   await expect(page).toHaveURL(/\/learn\/session$/)
   const info = await readReviewModeInfo(page)
 
-  expect(info?.reviewRecord?.sessionKind).toBe('review')
+  expect(info?.reviewRecord?.sessionKind).toBe('mixed')
+  expect(info?.reviewRecord?.words?.[0]?.name).toBe('cancel')
+  expect(info?.reviewRecord?.itemKinds?.cancel).toBe('review')
   expect(
-    info?.reviewRecord?.words?.map((word: { name: string }) => word.name),
-  ).toEqual(['cancel'])
+    Object.values(
+      info?.reviewRecord?.itemKinds ?? {},
+    ),
+  ).toContain('acquisition')
+  expect(info?.reviewRecord?.words?.length).toBeLessThanOrEqual(20)
   expect(
     info?.reviewRecord?.exercisePlans?.cancel?.condition,
   ).toMatchObject({
