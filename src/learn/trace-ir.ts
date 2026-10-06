@@ -120,6 +120,13 @@ export type LearnSystemTraceEvent =
       isFinished: boolean | null
     }
   | {
+      kind: 'occurrence-identity'
+      sessionId: string
+      word: string
+      occurrenceCount: number
+      logicalStateEntries: number
+    }
+  | {
       kind: 'terminal-word-durable'
       sessionId: string
       word: string
@@ -176,6 +183,7 @@ export type LearnSystemAnomaly = {
     | 'terminal-session-resurrection'
     | 'post-finish-evidence'
     | 'mixed-item-ownership-violation'
+    | 'occurrence-identity-violation'
   severity: 'medium' | 'high'
   eventIndex: number
   details: Record<string, number | string | boolean | null>

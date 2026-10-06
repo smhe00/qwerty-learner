@@ -1833,6 +1833,25 @@ export class VirtualLearnApp {
     return true
   }
 
+  auditOccurrenceIdentity(word: string) {
+    const session = this.sessionById(this.activeSessionId)
+    if (!session || session.id === undefined) return undefined
+
+    const event: LearnSystemTraceEvent = {
+      kind: 'occurrence-identity',
+      sessionId: `id:${session.id}`,
+      word,
+      occurrenceCount: session.words.filter(
+        (item) => item.name === word,
+      ).length,
+      logicalStateEntries:
+        Number(Boolean(session.itemStates?.[word])) +
+        Number(Boolean(session.acquisitionStates?.[word])),
+    }
+    this.events.push(event)
+    return event
+  }
+
   snapshot() {
     return {
       now: this.now,

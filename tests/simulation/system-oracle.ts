@@ -268,6 +268,26 @@ export function detectLearnSystemAnomalies(
       continue
     }
 
+    if (event.kind === 'occurrence-identity') {
+      if (
+        event.occurrenceCount > 1 &&
+        event.logicalStateEntries !== 1
+      ) {
+        anomalies.push({
+          code: 'occurrence-identity-violation',
+          severity: 'high',
+          eventIndex: index,
+          details: {
+            sessionId: event.sessionId,
+            word: event.word,
+            occurrenceCount: event.occurrenceCount,
+            logicalStateEntries: event.logicalStateEntries,
+          },
+        })
+      }
+      continue
+    }
+
     if (event.kind === 'terminal-word-durable') {
       if (event.index === event.queueLength - 1) {
         pendingTerminalHandoffs.set(event.sessionId, {

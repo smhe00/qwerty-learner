@@ -221,6 +221,19 @@ test('system mutation scorecard detects generic failure classes without false po
         },
       ],
     },
+    {
+      id: 'duplicate-logical-state-for-repeated-occurrence',
+      expected: 'occurrence-identity-violation',
+      events: [
+        {
+          kind: 'occurrence-identity',
+          sessionId: 'occurrence-mutant',
+          word: 'repeat',
+          occurrenceCount: 2,
+          logicalStateEntries: 2,
+        },
+      ],
+    },
   ]
 
   const results = cases.map((item) => {
@@ -335,6 +348,15 @@ test('system mutation scorecard detects generic failure classes without false po
             hasAcquisitionState: true,
           },
         ],
+      },
+    ],
+    [
+      {
+        kind: 'occurrence-identity',
+        sessionId: 'occurrence-clean',
+        word: 'repeat',
+        occurrenceCount: 3,
+        logicalStateEntries: 1,
       },
     ],
   ]

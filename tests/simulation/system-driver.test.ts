@@ -1359,3 +1359,37 @@ test('F8 ready pending work remains independent of zero fresh quota', async () =
   assert.equal(violation.details.readyPendingCount, 1)
   assert.equal(violation.details.pendingSelected, 0)
 })
+
+
+test('P1 repeated Review occurrences share one logical-word state', async () => {
+  const app = new VirtualLearnApp({
+    words: [
+      word('occurrence-review'),
+      word('occurrence-peer'),
+    ],
+  })
+  app.seedAdmittedWords(2)
+  app.makeSeededWordsDue(2)
+
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+  if (prepared.kind !== 'session') return
+  assert.equal(prepared.record.sessionKind, 'review')
+
+  assert.equal(app.completeCurrentAttempt('hard'), true)
+  const audit = app.auditOccurrenceIdentity(
+    'occurrence-review',
+  )
+  assert.ok(audit)
+  if (!audit || audit.kind !== 'occurrence-identity') return
+  assert.ok(audit.occurrenceCount > 1)
+  assert.equal(audit.logicalStateEntries, 1)
+
+  assert.equal(
+    detectLearnSystemAnomalies(app.events).some(
+      (item) =>
+        item.code === 'occurrence-identity-violation',
+    ),
+    false,
+  )
+})
