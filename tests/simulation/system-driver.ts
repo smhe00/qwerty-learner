@@ -21,8 +21,12 @@ import {
   buildLearnAcquisitionStates,
   canonicalizeLearningWords,
   planLearnAcquisitionCandidates,
+  resolveLearnItemKindForWord,
+  selectLearnMixedSessionItems,
 } from '../../src/learn/session'
 import { selectReviewCandidates } from '../../src/review/due'
+import { rankDueReviewCandidates } from '../../src/review/priority'
+import type { LearnLifecycleSeedAction } from '../../src/learn/trace-ir'
 import { resolveReviewCompletion } from '../../src/review/progression'
 import { scheduleBasicReview } from '../../src/review/scheduler'
 import { getReviewAttemptRole } from '../../src/review/session'
@@ -58,6 +62,9 @@ export type VirtualLearnMutation = {
   freshOverBudget?: boolean
   pendingConsumesFreshBudget?: boolean
   quotaIgnoresUnseen?: boolean
+  routeResurrectsFinished?: boolean
+  postFinishEvidence?: boolean
+  wrongMixedOwnership?: boolean
 }
 
 type StoredSession = ReviewRecord
@@ -205,6 +212,8 @@ export class VirtualLearnApp {
   private staleCheckpoint: StoredSession | undefined
   private mutation: VirtualLearnMutation
   private staleRestoreConsumed = false
+  private routeResurrectionConsumed = false
+  private postFinishEvidenceInjected = false
 
   constructor(input: {
     words: Word[]
