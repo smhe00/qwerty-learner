@@ -3103,6 +3103,43 @@ test('backup/cloud snapshot round-trip preserves FSRS and Learn durable state', 
 })
 
 
+test('desktop resize after Learn completion cannot resurrect the finished last word', async ({
+  page,
+}) => {
+  await seedReviewSession(page, [reviewWords[0]], 900089)
+
+  // The incident was observed from the root URL. Root admission must route an
+  // active Learn checkpoint to the canonical session URL.
+  await page.goto('/')
+  await expect(page).toHaveURL(/\/learn\/session$/)
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+  await page.keyboard.type('cancel')
+
+  const result = page.locator('[data-learn-result-screen]')
+  await expect(result).toBeVisible({ timeout: 5_000 })
+
+  const viewport = page.viewportSize() ?? {
+    width: 1280,
+    height: 720,
+  }
+  await page.setViewportSize({
+    width: Math.max(900, viewport.width - 80),
+    height: Math.max(650, viewport.height - 40),
+  })
+
+  // Desktop -> desktop resize must be presentation-only. It must not navigate
+  // through "/" and remount Typing with reducer isFinished=false.
+  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(result).toBeVisible()
+  await expect(
+    page.locator('[data-typing-word="cancel"]'),
+  ).toHaveCount(0)
+
+  const info = await readReviewModeInfo(page)
+  expect(info?.reviewRecord?.isFinished).toBe(true)
+})
+
 test('final Learn word reaches result UI even when route-cache persistence throws', async ({
   page,
 }) => {

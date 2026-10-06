@@ -7,7 +7,7 @@ import TypingPage from './pages/Typing'
 import { isOpenDarkModeAtom } from '@/store'
 import 'animate.css'
 import { useAtomValue } from 'jotai'
-import React, { Suspense, lazy, useEffect, useState } from 'react'
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import 'react-app-polyfill/stable'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
@@ -54,19 +54,18 @@ const AchievementsPage = lazy(() =>
   loadRouteWithRefresh('achievements', loadAchievementsPage),
 )
 
-function hasPersistedLearnSession(): boolean {
+type PersistedLearnRouteState = 'none' | 'active' | 'finished'
+
+function getPersistedLearnRouteState(): PersistedLearnRouteState {
   const raw = localStorage.getItem('reviewModeInfo')
-  if (!raw) return false
+  if (!raw) return 'none'
 
   try {
     const value = JSON.parse(raw)
-    return Boolean(
-      value?.isReviewMode &&
-        value?.reviewRecord &&
-        !value.reviewRecord.isFinished,
-    )
+    if (!value?.isReviewMode || !value?.reviewRecord) return 'none'
+    return value.reviewRecord.isFinished ? 'finished' : 'active'
   } catch {
-    return false
+    return 'none'
   }
 }
 
@@ -75,11 +74,26 @@ function LearnSessionRoute() {
   // must therefore use localStorage synchronously and only once; subscribing
   // to reviewModeInfo here would let transient hydration/default values
   // redirect an otherwise valid live Learn session.
-  return hasPersistedLearnSession() ? (
+  return getPersistedLearnRouteState() === 'active' ? (
     <TypingPage />
   ) : (
     <Navigate to="/learn" replace />
   )
+}
+
+function RootIndexRoute() {
+  const learnState = getPersistedLearnRouteState()
+
+  // A full-document navigation to "/" must never resurrect a Learn checkpoint.
+  // This is especially important after terminal completion: the durable record
+  // is already finished, while the Typing reducer starts from isFinished=false.
+  if (learnState === 'active') {
+    return <Navigate to="/learn/session" replace />
+  }
+  if (learnState === 'finished') {
+    return <Navigate to="/learn" replace />
+  }
+  return <TypingPage />
 }
 
 function Root() {
@@ -119,14 +133,31 @@ function Root() {
   }, [darkMode])
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 600)
+  const wasMobileRef = useRef(isMobile)
 
   useEffect(() => {
     const handleResize = () => {
-      const isMobile = window.innerWidth <= 600
-      if (!isMobile) {
-        window.location.href = '/'
+      const nextIsMobile = window.innerWidth <= 600
+      const wasMobile = wasMobileRef.current
+      wasMobileRef.current = nextIsMobile
+      setIsMobile(nextIsMobile)
+
+      // Desktop resize is not navigation. The old handler forced every
+      // desktop resize (DevTools, side panel, window drag) through "/", which
+      // could remount Typing after a Learn terminal checkpoint and resurrect
+      // the final word. Only a real mobile -> desktop transition needs to
+      // leave the dedicated /mobile route.
+      if (
+        wasMobile &&
+        !nextIsMobile &&
+        window.location.pathname.endsWith('/mobile')
+      ) {
+        const rootPath =
+          REACT_APP_DEPLOY_ENV === 'pages'
+            ? '/qwerty-learner/'
+            : '/'
+        window.location.replace(rootPath)
       }
-      setIsMobile(isMobile)
     }
 
     window.addEventListener('resize', handleResize)
@@ -142,7 +173,7 @@ function Root() {
               <Route path="/*" element={<Navigate to="/mobile" />} />
             ) : (
               <>
-                <Route index element={<TypingPage />} />
+                <Route index element={<RootIndexRoute />} />
                 <Route path="/typing" element={<TypingPage />} />
                 <Route path="/learn" element={<LearnPage />} />
                 <Route path="/learn/session" element={<LearnSessionRoute />} />

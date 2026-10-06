@@ -96,11 +96,21 @@ export function shouldRotateOversizedLearnSession(
 ): boolean {
   if (snapshot.isFinished === true) return false
 
-  // Compatibility rule: old Learn checkpoints can lack sessionKind,
-  // itemKinds, or acquisitionStates entirely. Session sizing is a UI/product
-  // invariant, so infer the cohort from the queue itself rather than trusting
-  // metadata that may not exist. Repeated supported/independent follow-ups do
-  // not count as additional logical words.
+  // Review volume is not an acquisition cohort. A large due-review session
+  // may legitimately contain more than 20 logical words and must never be
+  // closed by the new-word compatibility guard.
+  if (snapshot.sessionKind === 'review') return false
+
+  if (snapshot.sessionKind === 'mixed') {
+    return (
+      countLearnSessionAcquisitionWords(snapshot) >
+      LEARN_SESSION_TARGET_SIZE
+    )
+  }
+
+  // Explicit acquisition and metadata-less legacy checkpoints use the queue
+  // as the conservative cohort signal. Repeated supported/independent
+  // occurrences do not increase the logical-word count.
   return (
     countLearnSessionLogicalWords(snapshot) >
     LEARN_SESSION_TARGET_SIZE

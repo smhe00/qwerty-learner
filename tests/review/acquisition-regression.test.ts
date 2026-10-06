@@ -536,8 +536,42 @@ test('oversized legacy acquisition sessions rotate while repeated attempts insid
     shouldRotateOversizedLearnSession({
       isFinished: false,
       sessionKind: 'review',
-      words: Array.from({ length: 21 }, (_, index) =>
+      words: Array.from({ length: 40 }, (_, index) =>
         makeWord(index),
+      ),
+    }),
+    false,
+  )
+
+  assert.equal(
+    shouldRotateOversizedLearnSession({
+      isFinished: false,
+      sessionKind: 'mixed',
+      words: Array.from({ length: 30 }, (_, index) =>
+        makeWord(index),
+      ),
+      itemKinds: Object.fromEntries(
+        Array.from({ length: 30 }, (_, index) => [
+          `legacy-${index}`,
+          index < 5 ? 'acquisition' : 'review',
+        ]),
+      ),
+    }),
+    false,
+  )
+
+  assert.equal(
+    shouldRotateOversizedLearnSession({
+      isFinished: false,
+      sessionKind: 'mixed',
+      words: Array.from({ length: 25 }, (_, index) =>
+        makeWord(index),
+      ),
+      itemKinds: Object.fromEntries(
+        Array.from({ length: 25 }, (_, index) => [
+          `legacy-${index}`,
+          index < 21 ? 'acquisition' : 'review',
+        ]),
       ),
     }),
     true,
