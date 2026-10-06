@@ -6,7 +6,7 @@ import {
   minimizeDiagnosticEvents,
   parseDiagnosticExport,
   replayDiagnostic,
-} from '../../src/dev/replay'
+} from './replay'
 
 async function main() {
   const filePath = process.argv[2]

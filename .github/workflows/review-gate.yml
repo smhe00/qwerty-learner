@@ -8,7 +8,6 @@ on:
       - 'src/review/**'
       - 'src/learn/**'
       - 'src/dev/**'
-      - 'tools/diagnostics/**'
       - 'src/components/ModeSwitcher/**'
       - 'src/components/Footer/**'
       - 'src/pages/Learn/**'
@@ -82,7 +81,6 @@ jobs:
           src/review
           src/learn
           src/dev
-          tools/diagnostics
           src/components/ModeSwitcher
           src/pages/Learn
           src/pages/Analysis
@@ -148,7 +146,7 @@ jobs:
 
       - name: Bundle and smoke diagnostic replay CLI
         run: |
-          npx esbuild tools/diagnostics/replay-incident.ts \
+          npx esbuild src/dev/replay-cli.ts \
             --bundle \
             --platform=node \
             --target=node20 \

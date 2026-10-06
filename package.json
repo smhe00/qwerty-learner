@@ -71,7 +71,7 @@
     "test:cloud": "node --test tests/cloud/*.test.mjs",
     "test:cloud:edgeone": "node tests/cloud/edgeone-live.integration.mjs",
     "validate:achievement-culture": "node scripts/validate-achievement-culture.mjs",
-    "diagnostic:replay": "mkdir -p .diagnostic && npx esbuild tools/diagnostics/replay-incident.ts --bundle --platform=node --target=node20 --format=esm --outfile=.diagnostic/replay-incident.mjs && node .diagnostic/replay-incident.mjs"
+    "diagnostic:replay": "mkdir -p .diagnostic && npx esbuild src/dev/replay-cli.ts --bundle --platform=node --target=node20 --format=esm --outfile=.diagnostic/replay-incident.mjs && node .diagnostic/replay-incident.mjs"
   },
   "lint-staged": {
     "src/**/*.{js,jsx,ts,tsx,json,css,scss,md}": [
