@@ -5,7 +5,6 @@ export type BrowserFuzzGate =
   | 'review-persistence'
 
 export type BrowserFuzzFault =
-  | 'stale-preparation-owns-navigation'
   | 'desktop-resize-navigates-root'
 
 export type BrowserFuzzHookState = {

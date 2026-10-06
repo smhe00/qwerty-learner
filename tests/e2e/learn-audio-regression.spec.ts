@@ -207,7 +207,7 @@ function clearAudioLog(page: Page): Promise<void> {
   })
 }
 
-test('Learn sound resources resolve to the app root under the nested session route', async ({ page }) => {
+test('Learn sound resources resolve to the app root on the single Learn route', async ({ page }) => {
   const soundResponses: Array<{ status: number; path: string }> = []
   page.on('response', (response) => {
     const path = new URL(response.url()).pathname

@@ -2544,7 +2544,7 @@ test('Hint V2 reveals Minimal, Strong, then Full after exactly three failed atte
     })
 })
 
-test('invalid Learn session route self-heals through the Learn entry controller', async ({
+test('invalid persisted Learn session self-heals through the single Learn controller', async ({
   page,
 }) => {
   await page.goto('/')

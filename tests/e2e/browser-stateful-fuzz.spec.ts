@@ -696,14 +696,12 @@ test('P3 clean deterministic lifecycle fuzz keeps browser/session invariants', a
   )
 })
 
-test('P3 detects stale Learn preparation mutating mode after navigation', async ({
+test('single-route Learn cancels stale preparation after leaving the mode', async ({
   page,
 }) => {
   await configureHooks(page, {
     gates: { 'learn-preparation': true },
-    faults: {
-      'stale-preparation-owns-navigation': true,
-    },
+    faults: {},
   })
 
   await page.goto('/learn')
@@ -721,31 +719,21 @@ test('P3 detects stale Learn preparation mutating mode after navigation', async 
   await expect(page).toHaveURL(/\/typing$/)
 
   await releaseGate(page, 'learn-preparation')
+  await page.waitForTimeout(500)
 
-  // With a single Learn route there is no stale navigation target to steal.
-  // The injected ownership bug is still observable because the stale async
-  // preparation can mutate route-critical reviewModeInfo after leaving Learn.
-  const staleMutationObserved = await expect
-    .poll(async () => {
-      const state = await readRouteState(page)
-      return (
-        state.path === '/typing' &&
-        Boolean(state.record) &&
-        state.record?.isFinished !== true
-      )
-    }, {
-      timeout: 8_000,
-    })
-    .toBe(true)
-    .then(
-      () => true,
-      () => false,
-    )
+  const state = await page.evaluate(() => {
+    const raw = localStorage.getItem('reviewModeInfo')
+    const info = raw ? JSON.parse(raw) : undefined
+    return {
+      path: location.pathname,
+      isReviewMode: info?.isReviewMode,
+      reviewRecord: info?.reviewRecord,
+    }
+  })
 
-  expect(
-    staleMutationObserved,
-    'fault injection must remain observable by the ownership invariant',
-  ).toBe(true)
+  expect(state.path).toBe('/typing')
+  expect(state.isReviewMode).toBe(false)
+  expect(state.reviewRecord).toBeUndefined()
 })
 
 test('P3 survives route-cache ahead of IndexedDB and refresh during checkpoint window', async ({
