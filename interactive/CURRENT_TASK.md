@@ -4,11 +4,11 @@ task_id: "TASK-20261007-008-learn-live-stats"
 task_file: "interactive/tasks/TASK-20261007-008-learn-live-stats.md"
 report_file: "interactive/reports/TASK-20261007-008-learn-live-stats-report.md"
 target_branch: "product/main"
-status: "READY"
+status: "REVIEW"
 executor: "workbuddy"
-claim_base_commit: null
-claimed_at_utc: null
-last_known_commit: null
+claim_base_commit: "8b2c04ee0a336d3be696b7adb9438ac6c6df7ae1"
+claimed_at_utc: "2026-10-06T23:18:08Z"
+last_known_commit: "17c427c15b0998fdd732231d612c66374e9b4a12"
 release_to_master: false
 priority: "P1"
 ---
@@ -19,7 +19,17 @@ Learn live statistics task is ready.
 
 - **Task:** `TASK-20261007-008-learn-live-stats`
 - **Executor:** `workbuddy`
-- **Status:** `READY`
+- **Status:** `REVIEW`
+- **Claimed at (UTC):** `2026-10-06T23:18:08Z`
+- **Claim base commit:** `8b2c04ee0a336d3be696b7adb9438ac6c6df7ae1`
+- **Implementation commit:** `17c427c15b0998fdd732231d612c66374e9b4a12`
+- **Report:** `interactive/reports/TASK-20261007-008-learn-live-stats-report.md`
+
+Implementation, tests and report are complete and pushed to `product/main`.
+Next action belongs to Chat/Reviewer: verify the five Learn labels against the
+Typing control, then decide the two documented open questions (新学 has no
+queue-membership fallback; 已复习 counts any completed persisted Learn row).
+Executor must not self-approve and must not touch `master`.
 
 ## Product requirement
 

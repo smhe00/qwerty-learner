@@ -2,9 +2,9 @@
 protocol_version: "1.1"
 task_id: "TASK-20261007-008-learn-live-stats"
 title: "Add Learn-only live stats while preserving Typing stats"
-status: "READY"
+status: "REVIEW"
 target_branch: "product/main"
-base_commit: null
+base_commit: "8b2c04ee0a336d3be696b7adb9438ac6c6df7ae1"
 recommended_executor: "workbuddy"
 allow_parallel_executors: false
 report_file: "interactive/reports/TASK-20261007-008-learn-live-stats-report.md"
