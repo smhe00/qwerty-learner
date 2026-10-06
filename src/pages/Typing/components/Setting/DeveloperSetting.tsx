@@ -1,4 +1,5 @@
 import styles from './index.module.css'
+import { exportDeveloperIncidentSnapshot } from '@/dev/incident-snapshot'
 import {
   clearDeveloperTrace,
   exportDeveloperTrace,
@@ -17,6 +18,9 @@ export default function DeveloperSetting() {
   const [traceCount, setTraceCount] = useState(
     () => readDeveloperTrace().length,
   )
+  const [incidentStatus, setIncidentStatus] = useState<
+    'idle' | 'exporting' | 'done' | 'error'
+  >('idle')
 
   const onToggle = useCallback(
     (checked: boolean) => {
@@ -33,6 +37,18 @@ export default function DeveloperSetting() {
   const onExport = useCallback(() => {
     exportDeveloperTrace()
     setTraceCount(readDeveloperTrace().length)
+  }, [])
+
+  const onExportIncident = useCallback(async () => {
+    setIncidentStatus('exporting')
+    try {
+      await exportDeveloperIncidentSnapshot()
+      setTraceCount(readDeveloperTrace().length)
+      setIncidentStatus('done')
+    } catch (error) {
+      console.error('failed to export developer incident snapshot', error)
+      setIncidentStatus('error')
+    }
   }, [])
 
   return (
@@ -74,6 +90,16 @@ export default function DeveloperSetting() {
               <button
                 type="button"
                 className="my-btn-primary"
+                onClick={() => void onExportIncident()}
+                disabled={incidentStatus === 'exporting'}
+              >
+                {incidentStatus === 'exporting'
+                  ? '正在抓取现场…'
+                  : '导出现场诊断包'}
+              </button>
+              <button
+                type="button"
+                className="rounded bg-indigo-400 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-500"
                 onClick={onExport}
               >
                 导出开发 Trace
@@ -87,7 +113,21 @@ export default function DeveloperSetting() {
               </button>
             </div>
             <span className="pl-4 text-left text-xs text-gray-500 dark:text-gray-400">
-              当前缓存约 {traceCount} 条；导出文件与用户数据备份完全独立。
+              “导出现场诊断包”是只读操作，不会刷新页面或修改学习状态；
+              它会同时保存当前页面状态、Trace、路由缓存以及当前词典相关的本地学习数据库。
+            </span>
+            {incidentStatus === 'done' && (
+              <span className="pl-4 text-left text-xs text-emerald-600 dark:text-emerald-300">
+                现场诊断包已导出。请直接把该 JSON 文件发给开发者。
+              </span>
+            )}
+            {incidentStatus === 'error' && (
+              <span className="pl-4 text-left text-xs text-red-600 dark:text-red-300">
+                现场导出失败，请保持页面不动并重试。
+              </span>
+            )}
+            <span className="pl-4 text-left text-xs text-gray-500 dark:text-gray-400">
+              当前缓存约 {traceCount} 条；诊断文件与用户数据备份完全独立。
             </span>
           </div>
         </div>

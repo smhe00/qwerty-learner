@@ -156,6 +156,30 @@ export default function WordPanel() {
     }: WordFinishResult) => {
       if (
         isReviewMode &&
+        reviewModeInfo.reviewRecord?.isFinished === true
+      ) {
+        appendDeveloperTrace({
+          scope: 'learn-terminal',
+          event: 'finished-session-completion-blocked',
+          word: currentWord?.name,
+          sessionId: String(
+            reviewModeInfo.reviewRecord.id ??
+              reviewModeInfo.reviewRecord.createTime,
+          ),
+          index: state.chapterData.index,
+          queueLength: state.chapterData.words.length,
+          details: {
+            reason: 'terminal-session-is-immutable',
+          },
+        })
+        dispatch({
+          type: TypingStateActionType.FINISH_CHAPTER,
+        })
+        return
+      }
+
+      if (
+        isReviewMode &&
         currentWord &&
         currentLearnItemKind === 'review'
       ) {

@@ -1299,6 +1299,31 @@ test('Learn dictionary selection reuses the Typing gallery and skips chapter sel
   await expect(page.getByText('章节选择', { exact: true })).toHaveCount(0)
 })
 
+test('developer diagnostics exports a read-only incident bundle from the UI', async ({
+  page,
+}) => {
+  await page.goto('/typing')
+  await page.getByTitle('打开设置对话框').click()
+  await page.getByRole('tab', { name: '开发诊断', exact: true }).click()
+
+  const downloadPromise = page.waitForEvent('download')
+  await page
+    .getByRole('button', { name: '导出现场诊断包', exact: true })
+    .click()
+  const download = await downloadPromise
+
+  expect(download.suggestedFilename()).toMatch(
+    /^Qwerty-Plus-Incident-.*\.json$/,
+  )
+  await expect(
+    page.getByText('现场诊断包已导出。请直接把该 JSON 文件发给开发者。'),
+  ).toBeVisible()
+
+  // Export is read-only: the current route and Learn/Typing ownership do not
+  // change merely because diagnostics were captured.
+  await expect(page).toHaveURL(/\/typing$/)
+})
+
 test('Learn header keeps dictionary, Start, and Settings aligned with Typing', async ({
   page,
 }) => {
@@ -3102,6 +3127,107 @@ test('backup/cloud snapshot round-trip preserves FSRS and Learn durable state', 
   })
 })
 
+
+test('finished Learn session rejects duplicate evidence even if a stale route renders its word', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const word = {
+      name: 'cancel',
+      trans: ['取消'],
+      usphone: 'kænsl',
+      ukphone: 'kænsl',
+    }
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(-1))
+    localStorage.setItem(
+      'developerDiagnosticsConfig',
+      JSON.stringify({ isOpen: true }),
+    )
+    localStorage.setItem(
+      'reviewModeInfo',
+      JSON.stringify({
+        isReviewMode: true,
+        reviewRecord: {
+          id: 900088,
+          dict: 'cet4',
+          createTime: 900088,
+          index: 0,
+          isFinished: true,
+          sessionKind: 'review',
+          words: [word],
+          exercisePlans: {
+            cancel: {
+              version: 1,
+              condition: {
+                version: 1,
+                purpose: 'probe',
+                source: 'adaptive-policy',
+                audio: 'none',
+                meaning: 'visible',
+                phonetic: 'hidden',
+                letters: { mode: 'all-hidden' },
+                probeDimension: 'none',
+              },
+              decision: {
+                version: 1,
+                policyVersion: 'canonical-review-probe-v1',
+                reasonCodes: ['terminal-immutability-regression'],
+                conditionVersion: 1,
+              },
+              sourceShadowVersion: 1,
+            },
+          },
+        },
+      }),
+    )
+    localStorage.setItem(
+      'pronunciation',
+      JSON.stringify({
+        isOpen: false,
+        volume: 1,
+        type: 'us',
+        name: '美音',
+        isLoop: false,
+        isTransRead: false,
+        transVolume: 1,
+        rate: 1,
+      }),
+    )
+  })
+
+  // /typing deliberately bypasses root route admission to emulate a future
+  // stale-route bug rendering a terminal record.
+  await page.goto('/typing')
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+  await page.keyboard.type('cancel')
+
+  await expect(
+    page.locator('[data-learn-result-screen]'),
+  ).toBeVisible({ timeout: 5_000 })
+
+  const records = await readReviewWordRecords(page, ['cancel'])
+  expect(records).toHaveLength(0)
+
+  const trace = await page.evaluate(() =>
+    JSON.parse(
+      localStorage.getItem('qwertyDeveloperTraceV1') ?? '[]',
+    ),
+  )
+  expect(
+    trace.some(
+      (event: { event?: string }) =>
+        event.event === 'finished-session-word-record-blocked',
+    ),
+  ).toBe(true)
+  expect(
+    trace.some(
+      (event: { event?: string }) =>
+        event.event === 'finished-session-completion-blocked',
+    ),
+  ).toBe(true)
+})
 
 test('desktop resize after Learn completion cannot resurrect the finished last word', async ({
   page,

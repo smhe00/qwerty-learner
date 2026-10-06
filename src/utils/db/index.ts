@@ -9,6 +9,7 @@ import type {
 } from './record'
 import { ChapterRecord, ReviewRecord, WordRecord } from './record'
 import { getAchievementSessionId } from '@/achievement/session'
+import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import type { AchievementEventRecord, AchievementStateRecord } from '@/achievement/types'
 import type { LearnSessionKind } from '@/learn/session'
 import type { ExerciseConditionV1 } from '@/review/condition'
@@ -123,6 +124,12 @@ export function useSaveWordRecord() {
   const activeLearnSessionId = reviewModeInfo.reviewRecord
     ? getAchievementSessionId(reviewModeInfo.reviewRecord)
     : undefined
+  const activeLearnSessionFinished =
+    reviewModeInfo.reviewRecord?.isFinished === true
+  const activeLearnSessionIndex =
+    reviewModeInfo.reviewRecord?.index
+  const activeLearnSessionQueueLength =
+    reviewModeInfo.reviewRecord?.words.length
 
   const { dispatch } = useContext(TypingContext) ?? {}
 
@@ -156,6 +163,21 @@ export function useSaveWordRecord() {
       sourceMode?: 'typing' | 'learn'
       learnItemKind?: LearnSessionKind
     }) => {
+      if (sourceMode === 'learn' && activeLearnSessionFinished) {
+        appendDeveloperTrace({
+          scope: 'learn-terminal',
+          event: 'finished-session-word-record-blocked',
+          word,
+          sessionId: activeLearnSessionId,
+          index: activeLearnSessionIndex,
+          queueLength: activeLearnSessionQueueLength,
+          details: {
+            reason: 'terminal-session-is-immutable',
+          },
+        })
+        return -1
+      }
+
       const timing = []
       for (let i = 1; i < letterTimeArray.length; i++) {
         const diff = letterTimeArray[i] - letterTimeArray[i - 1]
@@ -208,7 +230,10 @@ export function useSaveWordRecord() {
       return dbID
     },
     [
+      activeLearnSessionFinished,
       activeLearnSessionId,
+      activeLearnSessionIndex,
+      activeLearnSessionQueueLength,
       currentChapter,
       dictID,
       dispatch,
