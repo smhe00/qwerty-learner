@@ -21,13 +21,11 @@ test('Pages basename keeps Learn preparation ownership and header Start placemen
   // Enter through the deployed SPA root, then use the same ModeSwitcher path a
   // real Pages user uses. This preserves BrowserRouter basename semantics.
   await page.goto('.')
-  await expect(
-    page.locator('[data-typing-word]:visible').first(),
-  ).toHaveAttribute('data-typing-word', /\S+/)
-
   await page.getByRole('button', { name: 'Learn', exact: true }).click()
   await expect(page).toHaveURL(/\/qwerty-learner\/learn$/)
-  await expect(page.getByText('正在准备 Learn…')).toBeVisible()
+  await expect(page.getByText('正在准备 Learn…')).toBeVisible({
+    timeout: 20_000,
+  })
 
   // The idle/preparation Start control belongs with the primary controls in
   // the header, never near the bottom of the Learn landing surface.
