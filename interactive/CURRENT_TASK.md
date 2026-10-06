@@ -1,30 +1,59 @@
 ---
 protocol_version: "1.1"
-task_id: "TASK-20261006-007-hint-efficiency-v2"
-task_file: "interactive/tasks/TASK-20261006-007-hint-efficiency-v2.md"
-report_file: "interactive/reports/TASK-20261006-007-hint-efficiency-v2-report.md"
+task_id: "TASK-20261007-008-learn-live-stats"
+task_file: "interactive/tasks/TASK-20261007-008-learn-live-stats.md"
+report_file: "interactive/reports/TASK-20261007-008-learn-live-stats-report.md"
 target_branch: "product/main"
-status: "PASS"
-executor: "chat"
-claim_base_commit: "4a84a49e93fc71b55e40984e83eecd43d10613c5"
-accepted_candidate_head: "735f394bacb572a35e1c22e98a8d0e267458e37f"
-release_to_master: true
+status: "READY"
+executor: "workbuddy"
+claim_base_commit: null
+claimed_at_utc: null
+last_known_commit: null
+release_to_master: false
+priority: "P1"
 ---
 
 # Current Task
 
-Hint Efficiency V2 is reviewed and accepted.
+Learn live statistics task is ready.
 
-Also closed in the same integrated release candidate:
+- **Task:** `TASK-20261007-008-learn-live-stats`
+- **Executor:** `workbuddy`
+- **Status:** `READY`
 
-- TASK-20261006-006 Learn key/wrong audio regression: PASS
-- route-safe dictionary asset cleanup: PASS
+## Product requirement
 
-Final validation:
+Learn mode replaces the Typing-oriented live strip with exactly:
 
-- Review Gate `37442500149`: PASS
-- Dictionary Gate `37442500060`: PASS
+```text
+学习时间 | 本轮进度 | 新学 | 已复习 | 独立回忆
+```
 
-Release authorization: user explicitly requested all current work be closed and
-then published. The next operation is a fast-forward of `master` to the
-closed `product/main` head.
+Typing mode must remain unchanged:
+
+```text
+时间 | 输入数 | WPM | 正确数 | 正确率
+```
+
+This task must use existing Learn session/evidence data and must not introduce
+unnecessary persisted schema.
+
+## Executor action
+
+```text
+git fetch origin
+git checkout product/main
+git pull --ff-only origin product/main
+read AGENTS.md
+read interactive/CURRENT_TASK.md
+read the referenced task
+claim -> implement -> test Learn -> test Typing control
+-> stale-head check -> report -> commit -> push
+```
+
+## Branch policy
+
+- Development: `product/main`
+- Release: `master`
+- `release_to_master: false`
+- Do not touch `master`.
