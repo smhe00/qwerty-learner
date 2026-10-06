@@ -40,6 +40,11 @@ on:
       - 'src/hooks/useKeySounds.ts'
       - 'tests/audio/**'
       - 'tests/resources/**'
+      - 'tests/learn/**'
+      - 'tests/e2e/learn-live-stats.spec.ts'
+      - 'tests/e2e/learn-live-stats.config.ts'
+      - 'tests/e2e/learn-live-stats-harness.ts'
+      - 'tests/e2e/learn-live-stats-harness.html'
       - 'tests/e2e/learn-audio-regression.spec.ts'
       - 'tests/e2e/learn-audio-regression.config.ts'
       - 'tests/e2e/review.spec.ts'
@@ -125,6 +130,7 @@ jobs:
             tests/review/control-stability.test.ts \
             tests/review/async-ownership.test.ts \
             tests/review/typing-audio-formal.test.ts \
+            tests/learn/live-stats.test.ts \
             --bundle \
             --platform=node \
             --target=node20 \
@@ -140,6 +146,9 @@ jobs:
 
       - name: Run Review formal model checker
         run: node --test .review-test/formal-model.test.mjs
+
+      - name: Run Learn live stats selector tests
+        run: node --test .review-test/live-stats.test.mjs
 
       - name: Bundle TLA trace bridge tests
         run: |
@@ -227,6 +236,9 @@ jobs:
 
       - name: Run Learn audio regression browser gate
         run: npx playwright test --config=tests/e2e/learn-audio-regression.config.ts --project=chrome
+
+      - name: Run Learn live stats browser gate
+        run: npx playwright test --config=tests/e2e/learn-live-stats.config.ts --project=chrome
 
       - name: Run P3 browser stateful fuzz gate
         env:

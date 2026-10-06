@@ -8,6 +8,24 @@ import type { IWordRecord } from '@/utils/db/record'
 export const LEGACY_ACQUISITION_POLICY_VERSION =
   'learn-acquisition-cold-probe-v2'
 
+/**
+ * Strong Learn provenance for a persisted word record.
+ *
+ * `sourceMode` is authoritative when present. Rows written before it existed
+ * are only accepted through the long-term Learn chapter sentinel plus a Learn
+ * marker, so ordinary Typing rows are never mistaken for Learn evidence.
+ */
+export function isLearnProvenanceRecord(record: IWordRecord): boolean {
+  if (record.sourceMode === 'learn') return true
+  if (record.sourceMode === 'typing') return false
+
+  return (
+    record.chapter === -1 &&
+    (record.learnItemKind !== undefined ||
+      record.reviewRatingDecision !== undefined)
+  )
+}
+
 export function isAcquisitionIntroductionRecord(
   record: IWordRecord,
 ): boolean {

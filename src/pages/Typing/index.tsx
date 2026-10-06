@@ -16,6 +16,7 @@ import {
 } from '@/learn/session'
 import { TypingContext, TypingStateActionType, initialState, typingReducer } from './store'
 import { DonateCard } from '@/components/DonateCard'
+import LearnLiveStats from '@/pages/Learn/components/LearnLiveStats'
 import LearnResultScreen from '@/pages/Learn/components/LearnResultScreen'
 import Header from '@/components/Header'
 import Tooltip from '@/components/Tooltip'
@@ -292,7 +293,7 @@ const App: React.FC = () => {
                 !state.isFinished && <WordPanel />
               )}
             </div>
-            <Speed />
+            {isLearnSurface ? <LearnLiveStats /> : <Speed />}
           </div>
         </div>
       </Layout>
