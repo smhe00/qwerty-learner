@@ -407,6 +407,34 @@ export class VirtualLearnApp {
     dictId: string,
   ): StoredSession | undefined {
     if (
+      this.mutation.routeResurrectsFinished &&
+      !this.routeResurrectionConsumed
+    ) {
+      const finished = this.sessions
+        .filter(
+          (session) =>
+            session.dict === dictId &&
+            session.isFinished,
+        )
+        .sort((a, b) => a.createTime - b.createTime)
+        .at(-1)
+      if (finished) {
+        this.routeResurrectionConsumed = true
+        const resurrected = {
+          ...clone(finished),
+          isFinished: false,
+        } as StoredSession
+        const index = this.sessions.findIndex(
+          (session) => session.id === resurrected.id,
+        )
+        if (index >= 0) {
+          this.sessions[index] = clone(resurrected)
+        }
+        return resurrected
+      }
+    }
+
+    if (
       this.mutation.staleRestoreOnce &&
       !this.staleRestoreConsumed &&
       this.staleCheckpoint
@@ -779,6 +807,255 @@ export class VirtualLearnApp {
     return clone(session)
   }
 
+
+  private generateUnifiedSession = async (
+    _dictId: string,
+    words: Word[],
+    _errorEvidence: never[],
+    freshLimit: number,
+  ): Promise<ReviewRecord | undefined> => {
+    const canonicalWords = canonicalizeLearningWords(words)
+    const canonicalByName = new Map(
+      canonicalWords.map((word) => [word.name, word]),
+    )
+    const reviewCandidates = canonicalWords.map((originData) => ({
+      word: originData.name,
+      originData,
+    }))
+    const dueWords = this.mutation.bypassDueFirst
+      ? []
+      : rankDueReviewCandidates(
+          selectReviewCandidates(
+            reviewCandidates,
+            this.wordStates,
+            this.now,
+            'due',
+          ),
+          this.wordStates,
+        ).map((item) => item.originData)
+
+    const pending = this.latestPendingAcquisitionStates()
+    const plannerPending =
+      this.mutation.strandReadyDeferred
+        ? new Map(
+            [...pending].filter(([, state]) => {
+              const ready =
+                state.phase === 'deferred' &&
+                state.resumeAfter !== undefined &&
+                state.resumeAfter <= this.now
+              return !ready
+            }),
+          )
+        : pending
+    const introduced = this.wordRecords
+      .filter(isAcquisitionIntroductionRecord)
+      .map((record) => record.word)
+
+    const candidatePlan = planLearnAcquisitionCandidates({
+      words: canonicalWords,
+      states: this.wordStates,
+      pendingStates: plannerPending,
+      introducedWords: introduced,
+      freshLimit,
+      now: this.now,
+    })
+    let resumed = [...candidatePlan.resumed]
+    let freshWords = [...candidatePlan.freshWords]
+
+    if (this.mutation.pendingAsFresh) {
+      const pendingWord = [...pending.keys()][0]
+      const candidate = pendingWord
+        ? canonicalByName.get(pendingWord)
+        : undefined
+      if (candidate) {
+        resumed = resumed.filter(
+          (item) => item.word.name !== candidate.name,
+        )
+        freshWords = [
+          candidate,
+          ...freshWords.filter(
+            (word) => word.name !== candidate.name,
+          ),
+        ]
+      }
+    }
+
+    if (this.mutation.admittedInAcquisition) {
+      const admittedWord = this.wordStates.find(
+        (state) => state.lifecycle !== 'excluded',
+      )?.word
+      const candidate = admittedWord
+        ? canonicalByName.get(admittedWord)
+        : undefined
+      if (
+        candidate &&
+        !freshWords.some(
+          (word) => word.name === candidate.name,
+        )
+      ) {
+        freshWords = [candidate, ...freshWords]
+      }
+    }
+
+    if (this.mutation.pendingConsumesFreshBudget) {
+      resumed = resumed.slice(0, freshLimit)
+    }
+
+    if (this.mutation.freshOverBudget) {
+      const persistent = new Set(
+        this.wordStates.map((state) => state.word),
+      )
+      const pendingNames = new Set(pending.keys())
+      const introducedNames = new Set(introduced)
+      const selectedFresh = new Set(
+        freshWords.map((word) => word.name),
+      )
+      const extra = canonicalWords.find(
+        (word) =>
+          !persistent.has(word.name) &&
+          !pendingNames.has(word.name) &&
+          !introducedNames.has(word.name) &&
+          !selectedFresh.has(word.name),
+      )
+      if (extra) freshWords = [...freshWords, extra]
+    }
+
+    const acquisitionCandidates = [
+      ...resumed.map(({ word, state }) => ({
+        word,
+        state,
+        resumed: true as const,
+      })),
+      ...freshWords.map((word) => ({
+        word,
+        state: undefined,
+        resumed: false as const,
+      })),
+    ]
+    const selection = selectLearnMixedSessionItems({
+      dueWords,
+      acquisitionWords: acquisitionCandidates.map(
+        (item) => item.word,
+      ),
+    })
+    const selectedAcquisition = acquisitionCandidates.slice(
+      0,
+      selection.selectedAcquisitionWords.length,
+    )
+    const selectedFresh = selectedAcquisition
+      .filter((item) => !item.resumed)
+      .map((item) => item.word)
+    const selectedPending = selectedAcquisition.filter(
+      (item) => item.resumed,
+    )
+
+    const budgetStats = buildLearnStatsSnapshot({
+      now: this.now,
+      dict: 'simulation',
+      wordRecords: this.wordRecords,
+      wordStates: this.wordStates,
+      dictionaryWords: canonicalWords.map(
+        (word) => word.name,
+      ),
+    })
+    const productionQuota =
+      decideDailyAcquisitionQuota(budgetStats)
+    this.events.push({
+      kind: 'fresh-budget',
+      targetDailyNewWords:
+        productionQuota.targetDailyNewWords,
+      introducedToday:
+        budgetStats.today.introducedWords,
+      acquiredToday:
+        budgetStats.today.acquiredWords,
+      unseenCount: budgetStats.lifecycle.unseen,
+      dueCount: budgetStats.lifecycle.due,
+      allowedNow: freshLimit,
+      freshSelected: selectedFresh.length,
+      readyPendingCount: candidatePlan.resumed.length,
+      pendingSelected: selectedPending.length,
+    })
+
+    if (selection.selectedWords.length === 0) {
+      return undefined
+    }
+
+    let sessionWords = [...selection.selectedWords]
+    if (
+      this.mutation.duplicateCanonical &&
+      sessionWords.length > 0
+    ) {
+      sessionWords = [sessionWords[0], ...sessionWords]
+    }
+
+    const candidateKindByWord = new Map<
+      string,
+      'fresh' | 'pending' | 'due'
+    >()
+    for (const word of selection.selectedReviewWords) {
+      candidateKindByWord.set(word.name, 'due')
+    }
+    for (const item of selectedPending) {
+      candidateKindByWord.set(item.word.name, 'pending')
+    }
+    for (const word of selectedFresh) {
+      candidateKindByWord.set(word.name, 'fresh')
+    }
+    this.emitCandidateSelections({
+      selected: sessionWords,
+      candidateKindByWord,
+      pendingStates: pending,
+      introducedWords: introduced,
+    })
+
+    const acquisitionStates = {
+      ...buildLearnAcquisitionStates(selectedFresh),
+      ...Object.fromEntries(
+        selectedPending.map(({ word, state }) => [
+          word.name,
+          state,
+        ]),
+      ),
+    }
+    const itemKinds = {
+      ...selection.itemKinds,
+    }
+    if (
+      this.mutation.wrongMixedOwnership &&
+      selection.sessionKind === 'mixed'
+    ) {
+      const acquisitionWord =
+        selection.selectedAcquisitionWords[0]
+      if (acquisitionWord) {
+        itemKinds[acquisitionWord.name] = 'review'
+      }
+    }
+
+    const session: ReviewRecord = {
+      id: this.nextSessionId++,
+      dict: 'simulation',
+      index: 0,
+      createTime: this.now,
+      isFinished: false,
+      words: clone(sessionWords),
+      sessionKind: selection.sessionKind,
+      itemKinds,
+      ...(selectedAcquisition.length > 0
+        ? { acquisitionStates }
+        : {}),
+      recommendedGoal: {
+        version: 1,
+        kind: 'session-completion',
+        targetUniqueWords: new Set(
+          sessionWords.map((word) => word.name),
+        ).size,
+      },
+    } as ReviewRecord
+
+    this.sessions.push(clone(session))
+    return clone(session)
+  }
+
   private dependencies(): LearnPreparationDependencies<never> {
     return {
       now: () => this.now,
@@ -791,6 +1068,7 @@ export class VirtualLearnApp {
       getWordRecords: async () => clone(this.wordRecords),
       getWordStates: async () => clone(this.wordStates),
       generateAcquisition: this.generateAcquisition,
+      generateSession: this.generateUnifiedSession,
       getNextDeferredResumeAt: async () => {
         const resumeTimes = [
           ...this.latestPendingAcquisitionStates().values(),
