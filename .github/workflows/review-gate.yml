@@ -54,6 +54,8 @@ on:
       - 'tests/e2e/browser-stateful-fuzz.config.ts'
       - 'tests/e2e/production-smoke.spec.ts'
       - 'tests/e2e/production-smoke.config.ts'
+      - 'tests/e2e/pages-smoke.spec.ts'
+      - 'tests/e2e/pages-smoke.config.ts'
       - 'tests/review/**'
       - 'tests/simulation/**'
       - 'tests/formal/**'
@@ -242,6 +244,14 @@ jobs:
 
       - name: Run production navigation smoke
         run: npx playwright test --config=tests/e2e/production-smoke.config.ts --project=chrome
+
+      - name: Build GitHub Pages variant
+        env:
+          REACT_APP_DEPLOY_ENV: pages
+        run: yarn build
+
+      - name: Run GitHub Pages basename smoke
+        run: npx playwright test --config=tests/e2e/pages-smoke.config.ts --project=chrome
 
       - name: Run multi-word Review browser gate
         run: npx playwright test --config=tests/e2e/review-flow.config.ts --project=chrome

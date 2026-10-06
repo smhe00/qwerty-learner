@@ -43,6 +43,8 @@ type LearnLocationState = {
 export default function LearnPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const currentRouteRef = useRef(location.pathname)
+  currentRouteRef.current = location.pathname
   const currentDictId = useAtomValue(currentDictIdAtom)
   const currentDictInfo = useAtomValue(currentDictInfoAtom)
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
@@ -108,7 +110,7 @@ export default function LearnPage() {
       ) ||
       (
         claim.isCurrent() &&
-        window.location.pathname === '/learn'
+        currentRouteRef.current === '/learn'
       )
 
     setIsStarting(true)
@@ -208,6 +210,16 @@ export default function LearnPage() {
       <DictChapterButton learnMode />
       <PronunciationSwitcher learnMode />
       <Switcher learnMode />
+      <button
+        type="button"
+        className="my-btn-primary w-20 shrink-0 bg-indigo-500 shadow shadow-indigo-300 disabled:bg-gray-300 disabled:shadow-none dark:shadow-indigo-500/60"
+        onClick={startLearn}
+        disabled={isStarting || !wordList}
+        aria-label="开始 Learn"
+        data-learn-start-control
+      >
+        <span className="font-medium">Start</span>
+      </button>
     </Header>
   )
 
@@ -257,15 +269,6 @@ export default function LearnPage() {
                 : '正在加载词表…')}
         </span>
 
-        <button
-          type="button"
-          className="my-btn-primary w-24 bg-indigo-500 shadow shadow-indigo-300 dark:shadow-indigo-500/60"
-          onClick={startLearn}
-          disabled={isStarting || !wordList}
-          aria-label="开始 Learn"
-        >
-          <span className="font-medium">Start</span>
-        </button>
       </main>
     </Layout>
   )
