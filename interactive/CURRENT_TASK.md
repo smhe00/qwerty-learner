@@ -4,41 +4,42 @@ task_id: "TASK-20261006-002-trace-replay-minimizer"
 task_file: "interactive/tasks/TASK-20261006-002-trace-replay-minimizer.md"
 report_file: "interactive/reports/TASK-20261006-002-trace-replay-minimizer-report.md"
 target_branch: "product/main"
-status: "IN_PROGRESS"
+status: "REVIEW"
 executor: "chat"
-claim_base_commit: "e615274f4065fff0159b66814c99ca3117957739"
+claim_base_commit: "2dbc32e1d47578bff4837f33d27de32559f83d3b"
 claimed_at_utc: "2026-10-06T02:45:00Z"
-last_known_commit: "e615274f4065fff0159b66814c99ca3117957739"
+last_known_commit: "a16402c4b08a660505c610e19113021c153e722a"
 release_to_master: false
 ---
 
 # Current Task
 
-P0 diagnostic replay infrastructure is actively owned by Chat under the single-writer protocol.
+P0 diagnostic Trace/Incident replay + minimizer implementation is ready for reviewer acceptance.
 
 - **Task:** `TASK-20261006-002-trace-replay-minimizer`
-- **Target:** `product/main`
-- **Status:** `IN_PROGRESS`
+- **Status:** `REVIEW`
 - **Executor:** `chat`
-- **Claim base:** `e615274f4065fff0159b66814c99ca3117957739`
-- **Parallel executors:** disabled
-- **Release:** forbidden for this task
+- **Latest implementation:** `a16402c4b08a660505c610e19113021c153e722a`
+- **Report:** `interactive/reports/TASK-20261006-002-trace-replay-minimizer-report.md`
+- **Release:** false
 
-## Current execution order
+## Validation
 
-1. P0.1 input loader + schema normalization;
-2. P0.2 replay state + core anomaly oracles;
-3. P0.3 stable anomaly/signature format;
-4. P0.4 deterministic ddmin;
-5. P0.5 local CLI;
-6. P0.6 synthetic fixtures/tests;
-7. P0.7 exported-incident compatibility;
-8. P0.8 CI integration.
+Review Gate `37407820528`: **SUCCESS**
 
-## Evidence rule
+Also green:
 
-Do not commit real user incident exports, backups or DB dumps.
+- Achievement Gate
+- Cloud Sync Gate
 
-## Next action
+FSRS Phase G was still running when the execution report was written; it is not a mandatory P0 gate but should be recorded by the final reviewer when complete.
 
-Inspect existing `tests/simulation/trace-ir.ts`, formal trace bridge and package scripts, then implement the loader/oracle without introducing a second incompatible trace model.
+## Reviewer focus
+
+Confirm:
+
+1. minimized output is replayable by the same loader;
+2. real UI Incident export is contract-tested against P0;
+3. no real user Incident/backup data entered Git;
+4. conservative evidence handling avoids false certainty;
+5. P0 remains diagnostic infrastructure only and does not alter Learn/Typing semantics.
