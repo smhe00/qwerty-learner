@@ -1,0 +1,1 @@
+globalThis.jotaiAtomCache=globalThis.jotaiAtomCache||{cache:new Map,get(s,t){return this.cache.has(s)?this.cache.get(s):(this.cache.set(s,t),t)}};const a=1,S="5.4.2",c="fsrs-6",e="fsrs6-default-r0.90-no-fuzz-long-term-v1";export{S as F,c as a,e as b,a as c};

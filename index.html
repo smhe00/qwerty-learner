@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="UTF-8" />
+
+    <script type="text/javascript">
+      // Single Page Apps for GitHub Pages
+      // MIT License
+      // https://github.com/rafgraph/spa-github-pages
+      ;(function (l) {
+        if (l.search[1] === '/') {
+          var decoded = l.search
+            .slice(1)
+            .split('&')
+            .map(function (s) {
+              return s.replace(/~and~/g, '&')
+            })
+            .join('?')
+          window.history.replaceState(null, null, l.pathname.slice(0, -1) + decoded + l.hash)
+        }
+      })(window.location)
+    </script>
+
+    <title>Qwerty Plus — Typing + Learn Alpha</title>
+    <meta
+      name="description"
+      content="Qwerty Plus Alpha：结合 Typing 与长期 Learn 的英语词汇学习工具，支持分阶段学习、独立回忆、到期复习与自适应学习控制。"
+    />
+    <meta
+      name="keywords"
+      content="Qwerty Plus, Typing, Learn, 英语学习, 单词学习, 长期记忆, 间隔复习, 拼写训练"
+    />
+    <meta name="author" content="Qwerty Plus" />
+    <meta name="robots" content="noindex, nofollow" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Qwerty Plus — Typing + Learn Alpha" />
+    <meta
+      property="og:description"
+      content="Qwerty Plus Alpha：结合 Typing 与长期 Learn 的英语词汇学习工具。"
+    />
+    <meta property="og:site_name" content="Qwerty Plus" />
+    <meta property="og:locale" content="zh_CN" />
+
+    <meta property="twitter:card" content="summary" />
+    <meta property="twitter:title" content="Qwerty Plus — Typing + Learn Alpha" />
+    <meta
+      property="twitter:description"
+      content="Qwerty Plus Alpha：结合 Typing 与长期 Learn 的英语词汇学习工具。"
+    />
+
+    <link rel="icon" type="image/svg+xml" href="/qwerty-learner/qwerty-plus-icon.svg?v=20261006" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/qwerty-learner/qwerty-plus-icon-64.png?v=20261006" />
+    <link rel="apple-touch-icon" href="/qwerty-learner/qwerty-plus-icon-64.png?v=20261006" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#818CF8" />
+    <meta name="application-name" content="Qwerty Plus" />
+    <meta name="msapplication-TileColor" content="#818CF8" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Qwerty Plus" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="MobileOptimized" content="320" />
+    <meta name="referrer" content="origin-when-cross-origin" />
+    <link rel="manifest" href="/qwerty-learner/manifest.json" />
+
+    <script>
+      ;(() => {
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+        const storedDarkMode = localStorage.getItem('isOpenDarkModeAtom')
+        let darkMode = systemDark
+
+        if (storedDarkMode !== null) {
+          try {
+            darkMode = JSON.parse(storedDarkMode)
+          } catch {
+            darkMode = systemDark
+          }
+        }
+
+        document.documentElement.classList.toggle('dark', darkMode)
+      })()
+    </script>
+    <script type="module" crossorigin src="/qwerty-learner/assets/index-2aa2e00d.js"></script>
+    <link rel="stylesheet" href="/qwerty-learner/assets/index-bae1580a.css">
+  </head>
+  <body>
+    <noscript>
+      <div>You need to enable JavaScript to run Qwerty Plus.</div>
+      <div>你需要启用 JavaScript 来运行 Qwerty Plus。</div>
+    </noscript>
+    <div id="root"></div>
+    
+  </body>
+</html>
