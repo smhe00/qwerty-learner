@@ -1244,7 +1244,8 @@ export class VirtualLearnApp {
       now: this.now,
       opportunity:
         result.kind === 'session'
-          ? result.source === 'acquisition'
+          ? result.source === 'acquisition' ||
+            result.source === 'mixed'
           : result.reason !== 'review-due',
       pending: [...pendingAfterPrepare].map(([word, state]) => ({
         word,

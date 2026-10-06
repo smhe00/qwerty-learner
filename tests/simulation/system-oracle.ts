@@ -451,12 +451,9 @@ export function detectLearnSystemAnomalies(
               remaining,
               Math.max(0, event.unseenCount),
             )
-      const expectedAllowed =
-        event.dueCount > 0 ? 0 : boundedRemaining
+      const expectedAllowed = boundedRemaining
       const expectedPendingSelected =
-        event.dueCount > 0
-          ? 0
-          : event.readyPendingCount
+        event.readyPendingCount
       const allowedMismatch =
         event.allowedNow !== expectedAllowed
       const freshOverBudget =

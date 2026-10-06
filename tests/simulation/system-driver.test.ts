@@ -308,7 +308,22 @@ test('full VirtualLearnApp keeps due Review ahead of fresh Acquisition', async (
   const prepared = await app.enter()
   assert.equal(prepared.kind, 'session')
   if (prepared.kind !== 'session') return
-  assert.equal(prepared.record.sessionKind, 'review')
+  assert.equal(prepared.record.sessionKind, 'mixed')
+  assert.deepEqual(
+    prepared.record.words.slice(0, 3).map((item) => item.name),
+    ['d0', 'd1', 'd2'],
+  )
+  assert.equal(prepared.record.itemKinds?.d0, 'review')
+  assert.equal(
+    prepared.record.words
+      .slice(3)
+      .some(
+        (item) =>
+          prepared.record.itemKinds?.[item.name] ===
+          'acquisition',
+      ),
+    true,
+  )
 
   const anomalies = detectLearnSystemAnomalies(app.events)
   assert.equal(
@@ -449,7 +464,18 @@ test('F2 production keeps due Review ahead of ready pending and fresh work while
 
   assert.equal(result.prepared.kind, 'session')
   if (result.prepared.kind !== 'session') return
-  assert.equal(result.prepared.record.sessionKind, 'review')
+  assert.equal(result.prepared.record.sessionKind, 'mixed')
+  assert.equal(
+    result.prepared.record.words
+      .slice(0, 3)
+      .every(
+        (item) =>
+          result.prepared.kind === 'session' &&
+          result.prepared.record.itemKinds?.[item.name] ===
+            'review',
+      ),
+    true,
+  )
   assert.equal(
     result.anomalies.some(
       (item) => item.code === 'due-work-bypassed',
@@ -466,7 +492,18 @@ test('F2 production keeps due Review ahead of ready pending even after fresh quo
 
   assert.equal(result.prepared.kind, 'session')
   if (result.prepared.kind !== 'session') return
-  assert.equal(result.prepared.record.sessionKind, 'review')
+  assert.equal(result.prepared.record.sessionKind, 'mixed')
+  assert.equal(
+    result.prepared.record.words
+      .slice(0, 3)
+      .every(
+        (item) =>
+          result.prepared.kind === 'session' &&
+          result.prepared.record.itemKinds?.[item.name] ===
+            'review',
+      ),
+    true,
+  )
   assert.equal(
     result.anomalies.some(
       (item) => item.code === 'due-work-bypassed',
@@ -502,7 +539,7 @@ test('F2 simulation blindly detects pending/fresh Acquisition bypassing due Revi
 test('F3 production Review refresh restores the latest durable checkpoint', async () => {
   const app = new VirtualLearnApp({
     words: Array.from(
-      { length: 6 },
+      { length: 4 },
       (_, index) => word(`f3-review-${index}`),
     ),
   })
@@ -542,7 +579,7 @@ test('F3 production Review refresh restores the latest durable checkpoint', asyn
 test('F3 Review stale checkpoint mutation is detected after later progress', async () => {
   const app = new VirtualLearnApp({
     words: Array.from(
-      { length: 6 },
+      { length: 4 },
       (_, index) => word(`f3-stale-${index}`),
     ),
     mutation: {
@@ -652,7 +689,7 @@ test('F3 simulation blindly detects terminal stale checkpoint resurrection', asy
 test('F4 production Review success always advances, finishes, or changes item state', async () => {
   const app = new VirtualLearnApp({
     words: Array.from(
-      { length: 5 },
+      { length: 3 },
       (_, index) => word(`f4-review-${index}`),
     ),
   })
@@ -710,7 +747,7 @@ test('F4 production Acquisition success can stay on the same index when item sta
 test('F4 simulation detects a successful Review attempt that silently commits no semantic progress', async () => {
   const app = new VirtualLearnApp({
     words: Array.from(
-      { length: 5 },
+      { length: 3 },
       (_, index) => word(`f4-stuck-review-${index}`),
     ),
     mutation: {
@@ -758,7 +795,7 @@ test('F4 simulation detects a successful Acquisition attempt with neither projec
 test('F5 production Review applies controller projection without divergence', async () => {
   const app = new VirtualLearnApp({
     words: Array.from(
-      { length: 4 },
+      { length: 3 },
       (_, index) => word(`f5-review-${index}`),
     ),
   })
@@ -784,7 +821,7 @@ test('F5 production Review applies controller projection without divergence', as
 test('F5 Review dropped projection is detected even when controller resolved correctly', async () => {
   const app = new VirtualLearnApp({
     words: Array.from(
-      { length: 4 },
+      { length: 3 },
       (_, index) => word(`f5-review-drop-${index}`),
     ),
     mutation: {
