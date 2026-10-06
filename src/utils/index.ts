@@ -46,6 +46,39 @@ export const isChineseSymbol = (val: string): boolean =>
     val,
   )
 
+export const shouldIgnoreTypingKeyEvent = (event: KeyboardEvent): boolean => {
+  if (event.defaultPrevented) return true
+
+  const target = event.target
+  if (!(target instanceof Element)) return false
+
+  // Typing owns the page-level keyboard only when the user is interacting with
+  // the learning surface. Modal UI and text-editing controls keep their keys.
+  if (target.closest('[role="dialog"]')) return true
+
+  if (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement
+  ) {
+    return true
+  }
+
+  if (
+    target.closest('[role="textbox"], [role="searchbox"], [role="combobox"]')
+  ) {
+    return true
+  }
+
+  if (target instanceof HTMLElement && target.isContentEditable) return true
+
+  const editableAncestor = target.closest('[contenteditable]')
+  return (
+    editableAncestor !== null &&
+    editableAncestor.getAttribute('contenteditable') !== 'false'
+  )
+}
+
 export const IsDesktop = () => {
   const userAgentInfo = navigator.userAgent
   const Agents = ['Android', 'iPhone', 'SymbianOS', 'Windows Phone', 'iPad', 'iPod']

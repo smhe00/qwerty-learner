@@ -1,5 +1,6 @@
 import { TypingContext, TypingStateActionType } from '../../store'
 import Tooltip from '@/components/Tooltip'
+import { shouldIgnoreTypingKeyEvent } from '@/utils'
 import { useCallback, useContext } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
@@ -19,8 +20,12 @@ export default function StartButton({
 
   useHotkeys(
     'enter',
-    onToggleIsTyping,
-    { enableOnFormTags: true, preventDefault: true },
+    (event) => {
+      if (shouldIgnoreTypingKeyEvent(event)) return
+      event.preventDefault()
+      onToggleIsTyping()
+    },
+    { enableOnFormTags: false, preventDefault: false },
     [onToggleIsTyping],
   )
 

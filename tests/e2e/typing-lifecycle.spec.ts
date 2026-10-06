@@ -189,6 +189,42 @@ test('ordinary Typing automatically pronounces consecutive clean words', async (
 })
 
 
+test('cloud credential editing never leaks keys into Typing', async ({
+  page,
+}) => {
+  await page.goto('/typing')
+  const currentWord = await waitForTypingWord(page)
+
+  // Match the reported production path: pause an active session by opening
+  // Settings, then edit the cloud account fields.
+  await page.keyboard.press('a')
+  await expect(
+    page.getByRole('button', { name: '暂停', exact: true }),
+  ).toBeVisible()
+
+  await page
+    .getByRole('button', { name: '打开设置对话框', exact: true })
+    .click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: '开始', exact: true }),
+  ).toBeVisible()
+
+  await page.getByRole('tab', { name: '数据设置', exact: true }).click()
+
+  const username = page.getByPlaceholder('用户名')
+  await username.click()
+  await page.keyboard.type('clouduser')
+  await page.keyboard.press('Enter')
+
+  await expect(username).toHaveValue('clouduser')
+  await expect(
+    page.getByRole('button', { name: '开始', exact: true }),
+  ).toBeVisible()
+  await expect.poll(() => visibleTypingWord(page)).toBe(currentWord)
+})
+
+
 test('phrase-internal Space remains a spelling character and rich example reveals on success', async ({
   page,
 }) => {

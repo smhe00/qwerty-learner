@@ -1,6 +1,6 @@
 import type { WordUpdateAction } from '../InputHandler'
 import { TypingContext } from '@/pages/Typing/store'
-import { isChineseSymbol, isLegal } from '@/utils'
+import { isChineseSymbol, isLegal, shouldIgnoreTypingKeyEvent } from '@/utils'
 import { useCallback, useContext, useEffect } from 'react'
 
 export default function KeyEventHandler({ updateInput }: { updateInput: (updateObj: WordUpdateAction) => void }) {
@@ -9,6 +9,8 @@ export default function KeyEventHandler({ updateInput }: { updateInput: (updateO
 
   const onKeydown = useCallback(
     (e: KeyboardEvent) => {
+      if (shouldIgnoreTypingKeyEvent(e)) return
+
       const char = e.key
 
       if (char === 'Escape') {

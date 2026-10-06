@@ -29,7 +29,7 @@ import {
   reviewModeInfoAtom,
   typingTransVisibleAtom,
 } from '@/store'
-import { IsDesktop, isLegal } from '@/utils'
+import { IsDesktop, isLegal, shouldIgnoreTypingKeyEvent } from '@/utils'
 import { useSaveChapterRecord } from '@/utils/db'
 import { putWordReviewRecord } from '@/utils/db/review-record'
 import { useMixPanelChapterLogUploader } from '@/utils/mixpanel'
@@ -111,6 +111,8 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!state.isTyping) {
       const onKeyDown = (e: KeyboardEvent) => {
+        if (shouldIgnoreTypingKeyEvent(e)) return
+
         if (!isLoading && e.key !== 'Enter' && (isLegal(e.key) || e.key === ' ') && !e.altKey && !e.ctrlKey && !e.metaKey) {
           e.preventDefault()
           dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: true })
