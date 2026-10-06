@@ -1,61 +1,28 @@
 ---
 protocol_version: "1.1"
-task_id: "TASK-20261006-002-trace-replay-minimizer"
-task_file: "interactive/tasks/TASK-20261006-002-trace-replay-minimizer.md"
-report_file: "interactive/reports/TASK-20261006-002-trace-replay-minimizer-report.md"
+task_id: "TASK-20261006-003-production-aligned-learn-sim"
+task_file: "interactive/tasks/TASK-20261006-003-production-aligned-learn-sim.md"
+report_file: "interactive/reports/TASK-20261006-003-production-aligned-learn-sim-report.md"
 target_branch: "product/main"
-status: "PASS"
+status: "IN_PROGRESS"
 executor: "chat"
-claim_base_commit: "2dbc32e1d47578bff4837f33d27de32559f83d3b"
-claimed_at_utc: "2026-10-06T02:45:00Z"
-last_known_commit: "bfc218ad94203f1ee7bbc0f2b2021d55450b93a0"
-review_commit: "bfc218ad94203f1ee7bbc0f2b2021d55450b93a0"
+claim_base_commit: "18092df71e490bdccbe63c61b987d04a42de16b5"
+claimed_at_utc: "2026-10-06T03:25:00Z"
+last_known_commit: "18092df71e490bdccbe63c61b987d04a42de16b5"
 release_to_master: false
 ---
 
 # Current Task
 
-P0 diagnostic Trace/Incident replay + minimizer has been reviewed and accepted.
+P1 production-aligned Learn simulation is active.
 
-- **Task:** `TASK-20261006-002-trace-replay-minimizer`
-- **Status:** `PASS`
-- **Executor:** `chat`
-- **Reviewer commit:** `bfc218ad94203f1ee7bbc0f2b2021d55450b93a0`
-- **Report:** `interactive/reports/TASK-20261006-002-trace-replay-minimizer-report.md`
-- **Release:** false
+## Execution order
 
-## Accepted Result
+1. move shared Trace IR to neutral source module;
+2. align VirtualLearnApp with production mixed-session semantics;
+3. add lifecycle actions and invariants;
+4. bridge P0 minimized traces into deterministic simulation seeds;
+5. extend explorer and mutation sensitivity;
+6. run full Review Gate and write report.
 
-```text
-Developer Trace / Incident export
-        ↓
-schema-aware loader
-        ↓
-normalized replay
-        ↓
-structural anomaly oracles
-        ↓
-stable signature
-        ↓
-deterministic ddmin
-        ↓
-same-schema replayable .min.json
-```
-
-Validation accepted:
-
-- Review Gate: PASS
-- Achievement Gate: PASS
-- Cloud Sync Gate: PASS
-- FSRS Phase G Gate: PASS
-- 800-event minimizer benchmark: 3 ms in CI
-
-## Branch policy
-
-- P0 remains on `product/main`.
-- `master` is the release branch and remains at the separately authorized release commit.
-- No release of P0 is implied.
-
-## Next Task
-
-Recommended next phase is P1: production-aligned virtual Learn model, including mixed-session path, route/reload/refresh actions, and feedback of minimized P0 traces into deterministic simulation seeds.
+`master` must not be modified by this task.
