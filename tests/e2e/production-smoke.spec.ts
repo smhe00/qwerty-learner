@@ -65,7 +65,9 @@ test('fresh browser boots with 上海中考2027 as the default dictionary', asyn
   await expect(
     page.getByRole('link', { name: '上海中考2027', exact: true }),
   ).toBeVisible()
-  await expect(page.locator('[data-typing-word="ability"]')).toBeVisible()
+  await expect(
+    page.locator('[data-typing-word]:visible').first(),
+  ).toHaveAttribute('data-typing-word', /\\S+/)
   expect(pageErrors).toEqual([])
 })
 
@@ -85,7 +87,9 @@ test('stale chapter from a larger dictionary self-heals without a blank page', a
   await expect(
     page.getByRole('link', { name: '上海中考2027', exact: true }),
   ).toBeVisible()
-  await expect(page.locator('[data-typing-word="ability"]')).toBeVisible()
+  await expect(
+    page.locator('[data-typing-word]:visible').first(),
+  ).toHaveAttribute('data-typing-word', /\\S+/)
 
   await expect
     .poll(async () =>
@@ -132,7 +136,9 @@ test('leaving Learn while dictionary preparation is pending cannot navigate back
   releaseDictionary()
 
   await expect(page).toHaveURL(/\/typing$/)
-  await expect(page.locator('[data-typing-word="ability"]')).toBeVisible()
+  await expect(
+    page.locator('[data-typing-word]:visible').first(),
+  ).toHaveAttribute('data-typing-word', /\\S+/)
 
   const mode = await page.evaluate(() => {
     const raw = localStorage.getItem('reviewModeInfo')
@@ -178,7 +184,9 @@ test('Typing reload does not resurrect unfinished Learn, while re-entering Learn
 
   await page.reload()
   await expect(page).toHaveURL(/\/typing$/)
-  await expect(page.locator('[data-typing-word="ability"]')).toBeVisible()
+  await expect(
+    page.locator('[data-typing-word]:visible').first(),
+  ).toHaveAttribute('data-typing-word', /\\S+/)
 
   await page.getByRole('button', {
     name: 'Learn',

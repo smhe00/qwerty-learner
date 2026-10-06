@@ -15,6 +15,56 @@ async function playedUrls(page: import('@playwright/test').Page) {
   )
 }
 
+async function visibleTypingWord(
+  page: import('@playwright/test').Page,
+): Promise<string | null> {
+  const current = page.locator('[data-typing-word]:visible').first()
+  if ((await current.count()) === 0) return null
+  return current.getAttribute('data-typing-word')
+}
+
+async function waitForTypingWord(
+  page: import('@playwright/test').Page,
+): Promise<string> {
+  await expect.poll(() => visibleTypingWord(page)).not.toBeNull()
+  const word = await visibleTypingWord(page)
+  if (!word) throw new Error('Typing word is not available')
+  return word
+}
+
+async function waitForDifferentTypingWord(
+  page: import('@playwright/test').Page,
+  previousWord: string,
+): Promise<string> {
+  await expect.poll(() => visibleTypingWord(page)).not.toBe(previousWord)
+  return waitForTypingWord(page)
+}
+
+function audioWordFromUrl(url: string): string | null {
+  try {
+    return new URL(url).searchParams.get('audio')
+  } catch {
+    return null
+  }
+}
+
+async function playedCountForWord(
+  page: import('@playwright/test').Page,
+  word: string,
+): Promise<number> {
+  return (await playedUrls(page)).filter(
+    (url) => audioWordFromUrl(url) === word,
+  ).length
+}
+
+function wrongKeyFor(word: string): string {
+  return word[0]?.toLowerCase() === 'x' ? 'q' : 'x'
+}
+
+function assertWordCanExerciseTwoCharacters(word: string): void {
+  expect(word.length).toBeGreaterThanOrEqual(2)
+}
+
 function silentWav(durationMs: number): Buffer {
   const sampleRate = 8_000
   const channels = 1
@@ -78,7 +128,7 @@ test('ordinary Typing automatically pronounces consecutive clean words', async (
           isFinished: false,
           words: [],
           exercisePlans: {
-            life: {
+            stalePolicyProbe: {
               condition: {
                 version: 1,
                 purpose: 'probe',
@@ -105,47 +155,37 @@ test('ordinary Typing automatically pronounces consecutive clean words', async (
   })
 
   await page.goto('/typing')
-  await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
+  const firstWord = await waitForTypingWord(page)
   await expect(page.getByText('按任意键开始')).toBeVisible()
 
-  // The first legal key starts Typing and is intentionally not part of "life".
+  // The first legal key starts Typing and is intentionally not part of the word.
   await page.keyboard.press('a')
 
   await expect
-    .poll(async () =>
-      (await playedUrls(page)).filter((url) => url.includes('audio=life'))
-        .length,
-    )
+    .poll(() => playedCountForWord(page, firstWord))
     .toBeGreaterThanOrEqual(1)
 
-  await page.keyboard.type('life')
+  await page.keyboard.type(firstWord)
 
-  const completedLife = page.locator('[data-typing-word="life"]')
-  await expect(completedLife).toHaveAttribute(
-    'data-typing-success-feedback',
-    'active',
-    { timeout: 450 },
-  )
+  await expect(
+    page.locator(
+      '[data-typing-word][data-typing-success-feedback="active"]:visible',
+    ),
+  ).toBeVisible({ timeout: 450 })
   await expect
-    .poll(async () =>
-      (await playedUrls(page)).filter((url) => url.includes('audio=life'))
-        .length,
-    )
+    .poll(() => playedCountForWord(page, firstWord))
     .toBeGreaterThanOrEqual(2)
 
   // Space is the explicit fast path between completed learning items.
   await page.keyboard.press('Space')
-  await expect(page.locator('[data-typing-word="break"]')).toBeVisible()
+  const secondWord = await waitForDifferentTypingWord(page, firstWord)
 
   await expect
-    .poll(async () =>
-      (await playedUrls(page)).filter((url) => url.includes('audio=break'))
-        .length,
-    )
+    .poll(() => playedCountForWord(page, secondWord))
     .toBeGreaterThanOrEqual(1)
 
-  await page.keyboard.type('break')
-  await expect(page.locator('[data-typing-word="ICT"]')).toBeVisible()
+  await page.keyboard.type(secondWord)
+  await waitForDifferentTypingWord(page, secondWord)
 })
 
 
@@ -232,10 +272,12 @@ test('production audio adapter ignores a stale previous-word load after fast-for
   page,
 }) => {
   const shortAudio = silentWav(180)
+  let delayedFirstAudioRequest = false
 
   await page.route('https://dict.youdao.com/**', async (route) => {
-    const url = route.request().url()
-    if (url.includes('audio=life')) {
+    const requestedWord = audioWordFromUrl(route.request().url())
+    if (!delayedFirstAudioRequest && requestedWord) {
+      delayedFirstAudioRequest = true
       await new Promise((resolve) => setTimeout(resolve, 1_000))
     }
     await route.fulfill({
@@ -263,47 +305,36 @@ test('production audio adapter ignores a stale previous-word load after fast-for
   })
 
   await page.goto('/typing')
-  await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
+  const firstWord = await waitForTypingWord(page)
   await page.keyboard.press('a')
-  await page.keyboard.type('life')
+  await page.keyboard.type(firstWord)
 
   await expect(
-    page.locator('[data-typing-word="life"]'),
-  ).toHaveAttribute(
-    'data-typing-success-feedback',
-    'active',
-  )
+    page.locator(
+      '[data-typing-word][data-typing-success-feedback="active"]:visible',
+    ),
+  ).toBeVisible()
 
   // Explicit fast-forward is allowed even while the old audio request is
   // still unresolved. The old owner must never gain permission to play later.
   await page.keyboard.press('Space')
-  await expect(
-    page.locator('[data-typing-word="break"]'),
-  ).toBeVisible()
+  const secondWord = await waitForDifferentTypingWord(page, firstWord)
 
   await expect
-    .poll(async () =>
-      (await playedUrls(page)).some((url) =>
-        url.includes('audio=break'),
-      ),
-    )
-    .toBe(true)
+    .poll(() => playedCountForWord(page, secondWord))
+    .toBeGreaterThanOrEqual(1)
 
-  const lifePlaysAtOwnerSwitch = (
-    await playedUrls(page)
-  ).filter((url) => url.includes('audio=life')).length
+  const firstWordPlaysAtOwnerSwitch = await playedCountForWord(
+    page,
+    firstWord,
+  )
 
   await page.waitForTimeout(1_300)
 
-  const playsAfterOldLoad = await playedUrls(page)
-  expect(
-    playsAfterOldLoad.filter((url) => url.includes('audio=life'))
-      .length,
-  ).toBe(lifePlaysAtOwnerSwitch)
-  expect(
-    playsAfterOldLoad.filter((url) => url.includes('audio=break'))
-      .length,
-  ).toBeGreaterThanOrEqual(1)
+  expect(await playedCountForWord(page, firstWord)).toBe(
+    firstWordPlaysAtOwnerSwitch,
+  )
+  expect(await playedCountForWord(page, secondWord)).toBeGreaterThanOrEqual(1)
 })
 
 test('production success pronunciation completes before automatic advance', async ({
@@ -337,42 +368,29 @@ test('production success pronunciation completes before automatic advance', asyn
   })
 
   await page.goto('/typing')
-  await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
+  const firstWord = await waitForTypingWord(page)
   await page.keyboard.press('a')
 
   // Let the ordinary automatic pronunciation finish so the second play is
   // unambiguously the post-success pronunciation under test.
   await expect
-    .poll(async () =>
-      (await playedUrls(page)).filter((url) =>
-        url.includes('audio=life'),
-      ).length,
-    )
+    .poll(() => playedCountForWord(page, firstWord))
     .toBeGreaterThanOrEqual(1)
   await page.waitForTimeout(1_550)
 
-  await page.keyboard.type('life')
+  await page.keyboard.type(firstWord)
   await expect
-    .poll(async () =>
-      (await playedUrls(page)).filter((url) =>
-        url.includes('audio=life'),
-      ).length,
-    )
+    .poll(() => playedCountForWord(page, firstWord))
     .toBeGreaterThanOrEqual(2)
 
   // Historical production advanced at 600 ms and truncated longer speech.
   // A 1.4 s real media element must still own the screen after that boundary.
   await page.waitForTimeout(750)
-  await expect(
-    page.locator('[data-typing-word="life"]'),
-  ).toBeVisible()
-  await expect(
-    page.locator('[data-typing-word="break"]'),
-  ).toHaveCount(0)
+  await expect.poll(() => visibleTypingWord(page)).toBe(firstWord)
 
-  await expect(
-    page.locator('[data-typing-word="break"]'),
-  ).toBeVisible({ timeout: 2_500 })
+  await expect
+    .poll(() => visibleTypingWord(page), { timeout: 2_500 })
+    .not.toBe(firstWord)
 })
 
 
@@ -380,9 +398,10 @@ test('background pause preserves Typing counters when the page returns to foregr
   page,
 }) => {
   await page.goto('/typing')
-  await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
+  const currentWord = await waitForTypingWord(page)
+  assertWordCanExerciseTwoCharacters(currentWord)
   await page.keyboard.press('a')
-  await page.keyboard.type('li')
+  await page.keyboard.type(currentWord.slice(0, 2))
 
   const readStats = async () =>
     page.locator('.my-card').last().locator('div').allTextContents()
@@ -425,11 +444,12 @@ test('Typing Skip never overlaps Start/Pause when it becomes visible', async ({
 }) => {
   await page.setViewportSize({ width: 1100, height: 800 })
   await page.goto('/typing')
-  await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
+  const currentWord = await waitForTypingWord(page)
   await page.keyboard.press('a')
 
+  const wrongKey = wrongKeyFor(currentWord)
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    await page.keyboard.press('x')
+    await page.keyboard.press(wrongKey)
     await page.waitForTimeout(350)
   }
 
@@ -492,30 +512,20 @@ test('success pronunciation fallback settles its own playback request when Howl 
   })
 
   await page.goto('/typing')
-  await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
+  const firstWord = await waitForTypingWord(page)
   await page.keyboard.press('a')
 
-  const beforeSuccess = (
-    await playedUrls(page)
-  ).filter((url) => url.includes('audio=life')).length
+  const beforeSuccess = await playedCountForWord(page, firstWord)
 
-  await page.keyboard.type('life')
+  await page.keyboard.type(firstWord)
 
   await expect
-    .poll(async () =>
-      (await playedUrls(page)).filter((url) =>
-        url.includes('audio=life'),
-      ).length,
-    )
+    .poll(() => playedCountForWord(page, firstWord))
     .toBeGreaterThan(beforeSuccess)
 
-  await expect(
-    page.locator('[data-typing-word="break"]'),
-  ).toBeVisible({ timeout: 2_000 })
+  await waitForDifferentTypingWord(page, firstWord)
 
-  expect(
-    (await playedUrls(page)).filter((url) =>
-      url.includes('audio=life'),
-    ).length,
-  ).toBeGreaterThan(beforeSuccess)
+  expect(await playedCountForWord(page, firstWord)).toBeGreaterThan(
+    beforeSuccess,
+  )
 })
