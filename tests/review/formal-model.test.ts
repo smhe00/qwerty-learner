@@ -1302,55 +1302,88 @@ test('formal/rating-safety: assisted retrieval can never reach the scheduler', (
 })
 
 
-test('formal/hint-liveness: the hint ladder is acyclic and bounded by four escalations', async () => {
+test('formal/hint-liveness: explicit ESC terminates immediately and automatic Hint V2 reaches full answer by failure three', async () => {
   const {
     applyReviewHintDecision,
     createReviewHintMachineState,
     decideReviewHintInput,
+    observeReviewHintWrong,
     reviewHintTerminationVariant,
   } = await import('../../src/review/hint')
 
-  const visit = (
-    state: ReturnType<typeof createReviewHintMachineState>,
-    depth: number,
-  ) => {
-    assert.ok(depth <= 4, 'hint ladder exceeded four escalations')
+  for (const inputIndex of [0, 1, 4]) {
+    const state = createReviewHintMachineState()
+    const escape = decideReviewHintInput({
+      state,
+      inputIndex,
+      key: 'Escape',
+    })
+    assert.equal(escape.kind, 'advance-hint')
+    if (escape.kind === 'advance-hint') {
+      const next = applyReviewHintDecision(state, escape)
+      assert.equal(next.stage, 'hint-3')
+      assert.ok(
+        reviewHintTerminationVariant(next) <
+          reviewHintTerminationVariant(state),
+      )
+    }
 
-    for (const inputIndex of [0, 1, 4]) {
-      for (const key of ['Escape', ' ', 'a']) {
-        const decision = decideReviewHintInput({
+    for (const key of [' ', 'a']) {
+      assert.deepEqual(
+        decideReviewHintInput({
           state,
           inputIndex,
           key,
-        })
-
-        const shouldAdvance =
-          key === 'Escape' &&
-          state.stage !== 'hint-3'
-
-        assert.equal(decision.kind === 'advance-hint', shouldAdvance)
-
-        if (decision.kind === 'advance-hint') {
-          const next = applyReviewHintDecision(state, decision)
-          assert.ok(
-            reviewHintTerminationVariant(next) <
-              reviewHintTerminationVariant(state),
-          )
-          visit(next, depth + 1)
-        }
-      }
+        }),
+        { kind: 'type-key' },
+      )
     }
   }
 
-  visit(createReviewHintMachineState(), 0)
+  let state = createReviewHintMachineState()
+  const expected = [
+    { stage: 'hint-0', level: 0, failures: 1 },
+    { stage: 'hint-1', level: 1, failures: 2 },
+    { stage: 'hint-3', level: 3, failures: 3 },
+  ] as const
+
+  for (const item of expected) {
+    const before = reviewHintTerminationVariant(state)
+    const observation = observeReviewHintWrong({
+      state,
+      wrongIndex: Math.min(item.failures - 1, 2),
+      wordLength: 6,
+    })
+    assert.equal(observation.decision?.kind, 'advance-hint')
+    if (observation.decision?.kind !== 'advance-hint') continue
+    assert.equal(observation.decision.to, item.stage)
+    assert.equal(observation.decision.level, item.level)
+    assert.equal(
+      observation.decision.failureCount,
+      item.failures,
+    )
+    state = applyReviewHintDecision(
+      observation.state,
+      observation.decision,
+    )
+    assert.ok(
+      reviewHintTerminationVariant(state) < before,
+    )
+  }
+
+  assert.equal(state.stage, 'hint-3')
+  assert.equal(state.failureCount, 3)
 })
 
-test('formal/hint-presentation: cue levels are monotone and Hint 3 is full mandatory copy', async () => {
+test('formal/hint-presentation: Minimal -> Strong -> Full is monotone and legacy Hint 2 aliases Strong', async () => {
   const { createReviewHintPlan } = await import('../../src/review/hint')
 
   for (let wordLength = 1; wordLength <= 20; wordLength += 1) {
     const plans = [0, 1, 2, 3].map((level) =>
-      createReviewHintPlan(level as 0 | 1 | 2 | 3, wordLength),
+      createReviewHintPlan(
+        level as 0 | 1 | 2 | 3,
+        wordLength,
+      ),
     )
 
     const visibleCount = (level: number) => {
@@ -1361,28 +1394,40 @@ test('formal/hint-presentation: cue levels are monotone and Hint 3 is full manda
     }
 
     assert.ok(visibleCount(0) >= 1)
-    assert.equal(visibleCount(1), visibleCount(0))
-    assert.ok(visibleCount(2) >= visibleCount(1))
+    assert.ok(visibleCount(1) >= visibleCount(0))
+    assert.equal(visibleCount(2), visibleCount(1))
     assert.equal(visibleCount(3), wordLength)
 
     assert.equal(plans[0].condition.audio, 'none')
     assert.equal(plans[0].condition.phonetic, 'hidden')
 
     for (const level of [1, 2, 3]) {
-      assert.equal(plans[level].condition.audio, 'automatic')
-      assert.equal(plans[level].condition.phonetic, 'visible')
-      assert.equal(plans[level].condition.purpose, 'training')
+      assert.equal(
+        plans[level].condition.audio,
+        'automatic',
+      )
+      assert.equal(
+        plans[level].condition.phonetic,
+        'visible',
+      )
+      assert.equal(
+        plans[level].condition.purpose,
+        'training',
+      )
     }
 
-    assert.equal(plans[3].condition.letters.mode, 'all-visible')
+    assert.equal(
+      plans[3].condition.letters.mode,
+      'all-visible',
+    )
   }
 })
 
-test('formal/hint-rating: explicit cold surrender dominates assisted final completion as Again', async () => {
+test('formal/hint-rating: explicit cold surrender remains Again and frozen cold failure outranks assisted completion', async () => {
   const { createReviewHintPlan } = await import('../../src/review/hint')
   const { decideReviewRating } = await import('../../src/review/state-machine')
 
-  const decision = decideReviewRating({
+  const surrendered = decideReviewRating({
     attemptRole: 'cold',
     condition: createReviewHintPlan(3, 6).condition,
     classification: {
@@ -1400,15 +1445,39 @@ test('formal/hint-rating: explicit cold surrender dominates assisted final compl
       reasonCodes: [
         'cold-probe-surrendered',
         'review-hint-3',
-        'review-hint-advances-4',
+        'review-hint-advances-1',
       ],
     },
   })
 
-  assert.equal(decision.eligible, true)
-  assert.equal(decision.rating, 'again')
-})
+  assert.equal(surrendered.eligible, true)
+  assert.equal(surrendered.rating, 'again')
 
+  const frozen = decideReviewRating({
+    attemptRole: 'cold',
+    condition: createReviewHintPlan(3, 6).condition,
+    classification: {
+      cause: 'clean',
+      confidence: 1,
+      scores: { recall: 0, spelling: 0, motor: 0 },
+    },
+    evidence: {
+      version: 1,
+      memoryGrade: 'hard',
+      errorCause: 'spelling',
+      confidence: 0.8,
+      evidenceStrength: 0.8,
+      retrievalValidity: 'independent',
+      reasonCodes: [
+        'spelling-weakness',
+        'cold-probe-failure-frozen',
+      ],
+    },
+  })
+
+  assert.equal(frozen.eligible, true)
+  assert.equal(frozen.rating, 'hard')
+})
 
 test('formal/learn-lifecycle: Typing is lifecycle-neutral and exclude/restore are deterministic', async () => {
   const {
