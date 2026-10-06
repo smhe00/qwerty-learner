@@ -1,54 +1,55 @@
 ---
 protocol_version: "1.1"
-task_id: "TASK-20261006-005-browser-stateful-fuzz"
-task_file: "interactive/tasks/TASK-20261006-005-browser-stateful-fuzz.md"
-report_file: "interactive/reports/TASK-20261006-005-browser-stateful-fuzz-report.md"
+task_id: "TASK-20261006-006-learn-keystroke-audio-regression"
+task_file: "interactive/tasks/TASK-20261006-006-learn-keystroke-audio-regression.md"
+report_file: "interactive/reports/TASK-20261006-006-learn-keystroke-audio-regression-report.md"
 target_branch: "product/main"
-status: "PASS"
-executor: "chat"
-claim_base_commit: "0652eb63a7e74267d1251b1c45c0b4205b96c48b"
-last_known_commit: "060895333110dd3a73598b7a7b202d02fefd2ba8"
-review_commit: "060895333110dd3a73598b7a7b202d02fefd2ba8"
+status: "READY"
+executor: "workbuddy"
+claim_base_commit: null
+claimed_at_utc: null
+last_known_commit: null
 release_to_master: false
 ---
 
 # Current Task
 
-P3 browser stateful fuzzing has been reviewed and accepted.
+A new regression task is ready for execution.
 
-Accepted result:
+- **Task:** `TASK-20261006-006-learn-keystroke-audio-regression`
+- **Task file:** `interactive/tasks/TASK-20261006-006-learn-keystroke-audio-regression.md`
+- **Recommended executor:** `workbuddy`
+- **Status:** `READY`
+- **Priority:** regression / user-visible Learn audio
 
-- deterministic browser seed/action generator
-- exact seed replay
-- action-sequence minimizer
-- 20 clean seeds × 5 actions = 100 actions, zero failures
-- stale Learn preparation navigation mutant detected
-- route-cache / IndexedDB divergence window exercised
-- refresh during blocked checkpoint recovered monotonically
-- desktop resize navigation mutant detected
-- fault catalog v2: 42 covered, 0 partial
-- executable critical mutation contract: 29/29
-- clean mutation controls: 0/11 false positives
+## Symptom
 
-Validation:
+Latest `product/main` in Learn mode has lost both:
 
-- Review Gate 37421422769: PASS
-- Achievement Gate 37421422753: PASS
-- Cloud Sync Gate 37421422752: PASS
-- FSRS Phase G 37421422832: PASS
+1. normal typing/keystroke sound;
+2. wrong-letter/error sound.
 
-Coverage Review:
+This task requires root-cause analysis plus regression coverage. It must preserve the recent pronunciation/success-audio completion fixes.
 
-`docs/COVERAGE_REVIEW_4.md`
+## Executor action
 
-P3 documentation:
+```text
+git fetch origin
+git checkout product/main
+git pull --ff-only origin product/main
+read AGENTS.md
+read interactive/CURRENT_TASK.md
+read the referenced task
+claim task according to interactive/README.md
+reproduce -> root-cause -> fix -> regression tests -> validate
+-> stale-head check -> report -> commit -> push
+```
 
-`docs/BROWSER_STATEFUL_FUZZ_P3.md`
+Do not rely on external chat context for task details.
 
-Branch policy:
+## Branch policy
 
-- P3 remains on `product/main`.
-- `master` remains the last explicitly authorized release.
-- no release is implied.
-
-Recommended next state: stabilization/field observation before inventing a P4.
+- Development: `product/main`
+- Release/deployment: `master`
+- This task has `release_to_master: false`.
+- Do not touch `master`.
