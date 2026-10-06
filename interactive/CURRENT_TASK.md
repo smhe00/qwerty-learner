@@ -1,50 +1,59 @@
 ---
 protocol_version: "1.1"
-task_id: "TASK-20261006-001-header-branding"
-task_file: "interactive/tasks/TASK-20261006-001-header-branding.md"
-report_file: "interactive/reports/TASK-20261006-001-header-branding-report.md"
+task_id: "TASK-20261006-002-trace-replay-minimizer"
+task_file: "interactive/tasks/TASK-20261006-002-trace-replay-minimizer.md"
+report_file: "interactive/reports/TASK-20261006-002-trace-replay-minimizer-report.md"
 target_branch: "product/main"
-status: "PASS"
-executor: "workbuddy"
-claim_base_commit: "1dc4a40ef1fbbfc360fd64b18354b5b6391be581"
-claimed_at_utc: "2026-10-06T00:05:40Z"
-last_known_commit: "22ccae5907bbfebc1f37c834ba46c62a64d3a5f6"
-review_commit: "8405858eb2eac2ddd91b2c1141b2ca193221ec97"
+status: "READY"
+executor: null
+claim_base_commit: null
+claimed_at_utc: null
+last_known_commit: "26e8454f519850374aaf9f3fd61c67c9a7222638"
 release_to_master: false
 ---
 
 # Current Task
 
-The active task has been reviewed and accepted.
+P0 diagnostic replay infrastructure is ready to be claimed by one executor.
 
-- **Task:** `TASK-20261006-001-header-branding`
-- **Task file:** `interactive/tasks/TASK-20261006-001-header-branding.md`
-- **Executor:** `workbuddy`
-- **Status:** `PASS`
-- **Implementation:** `22ccae5907bbfebc1f37c834ba46c62a64d3a5f6`
-- **Reviewer record:** `interactive/reports/TASK-20261006-001-header-branding-report.md`
-- **Reviewer commit:** `8405858eb2eac2ddd91b2c1141b2ca193221ec97`
+- **Task:** `TASK-20261006-002-trace-replay-minimizer`
+- **Target:** `product/main`
+- **Status:** `READY`
+- **Parallel executors:** disabled
+- **Release:** forbidden for this task
 
-## Result
+## Objective
 
-Accepted behavior on `product/main`:
+Implement the P0 pipeline:
 
 ```text
-Qwerty Plus
-打字 · 背单词 · 云备份
+Developer Trace / Incident JSON
+        ↓
+normalized Trace IR
+        ↓
+replay + invariant oracles
+        ↓
+anomaly signature / first bad event
+        ↓
+deterministic delta minimizer
+        ↓
+minimal replayable failure trace
 ```
 
-`Plus` uses the yellow brand colors from the repository logo asset.
+## Important Evidence Constraint
 
-No rework is required.
+Do **not** commit any real user incident export, backup or database dump.
 
-## Branch policy
+Use synthetic/sanitized fixtures only.
 
-- Development result is accepted on `product/main`.
-- Release/deployment branch remains `master`.
-- This task has `release_to_master: false`.
-- No release is implied by this PASS.
+## Next Action
 
-## Next Task
+Executor must:
 
-Chat/Architect may replace this pointer when the next task is dispatched.
+1. fetch and checkout latest `product/main`;
+2. read `AGENTS.md`;
+3. read this file;
+4. read `interactive/tasks/TASK-20261006-002-trace-replay-minimizer.md`;
+5. claim the task under the single-writer protocol;
+6. record the actual current `origin/product/main` SHA as `claim_base_commit`;
+7. implement P0 without touching `master`.
