@@ -7,6 +7,7 @@ import {
   waitForBrowserFuzzGate,
 } from '@/dev/browser-fuzz-hooks'
 import { prepareLearnSession } from '@/learn/controller'
+import TypingPage from '@/pages/Typing'
 import { DictChapterButton } from '@/pages/Typing/components/DictChapterButton'
 import PronunciationSwitcher from '@/pages/Typing/components/PronunciationSwitcher'
 import Switcher from '@/pages/Typing/components/Switcher'
@@ -45,16 +46,26 @@ export default function LearnPage() {
   const location = useLocation()
   const currentRouteRef = useRef(location.pathname)
   currentRouteRef.current = location.pathname
+
   const currentDictId = useAtomValue(currentDictIdAtom)
   const currentDictInfo = useAtomValue(currentDictInfoAtom)
+  const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
+
+  const [isSessionView, setIsSessionView] = useState(
+    () =>
+      reviewModeInfo.isReviewMode &&
+      Boolean(reviewModeInfo.reviewRecord) &&
+      reviewModeInfo.reviewRecord?.isFinished !== true,
+  )
   const [isStarting, setIsStarting] = useState(false)
   const [statusText, setStatusText] = useState('')
-  const autoStartConsumedRef = useRef(false)
+  const autoStartConsumedRef = useRef(isSessionView)
   const learnPageRootRef = useRef<HTMLElement | null>(null)
   const preparationGuardRef = useRef<
     ReturnType<typeof createAsyncOwnershipGuard> | null
   >(null)
+
   if (preparationGuardRef.current === null) {
     preparationGuardRef.current = createAsyncOwnershipGuard()
   }
@@ -76,11 +87,9 @@ export default function LearnPage() {
     preparationGuard.activate()
 
     return () => {
-      // React StrictMode replays passive effects without detaching the DOM.
-      // A real route leave disconnects (or clears) this ref first, so invalidate
-      // ownership synchronously only for the real unmount. This keeps auto-start
-      // alive through StrictMode replay without letting stale preparation win a
-      // race against navigation to Typing/Gallery.
+      // StrictMode replays effects while the DOM is still attached. A real
+      // route leave disconnects the Learn landing root, so only then revoke
+      // preparation ownership.
       if (!learnPageRootRef.current?.isConnected) {
         preparationGuard.deactivate()
       }
@@ -88,6 +97,30 @@ export default function LearnPage() {
   }, [preparationGuard])
 
   useEffect(() => {
+    const routeState = location.state as LearnLocationState | null
+
+    if (routeState?.autoStart === true) {
+      // Continue from the result screen without remounting or changing route.
+      autoStartConsumedRef.current = false
+      setIsSessionView(false)
+      setIsStarting(false)
+      setStatusText('')
+      return
+    }
+
+    if (routeState?.idle === true) {
+      // Closing a result intentionally leaves Learn idle. Keep that contract
+      // across reload until the user explicitly starts again.
+      autoStartConsumedRef.current = true
+      setIsSessionView(false)
+      setIsStarting(false)
+      setStatusText('')
+    }
+  }, [location.key, location.state])
+
+  useEffect(() => {
+    if (isSessionView) return
+
     setReviewModeInfo((old) =>
       old.isReviewMode
         ? old
@@ -96,10 +129,10 @@ export default function LearnPage() {
             isReviewMode: true,
           },
     )
-  }, [setReviewModeInfo])
+  }, [isSessionView, setReviewModeInfo])
 
   const startLearn = useCallback(() => {
-    if (!wordList || isStarting) return
+    if (!wordList || isStarting || isSessionView) return
 
     const claim = preparationGuard.begin()
     const dictId = currentDictId
@@ -127,7 +160,14 @@ export default function LearnPage() {
         isReviewMode: true,
         reviewRecord: record,
       })
-      navigate('/learn/session')
+
+      // /learn is the only Learn route. Switching from preparation to the
+      // spelling engine is a local state transition, not navigation.
+      setIsStarting(false)
+      setStatusText('')
+      autoStartConsumedRef.current = true
+      navigate('/learn', { replace: true, state: null })
+      setIsSessionView(true)
     }
 
     const prepare = async () => {
@@ -179,6 +219,7 @@ export default function LearnPage() {
     void prepare()
   }, [
     currentDictId,
+    isSessionView,
     isStarting,
     navigate,
     preparationGuard,
@@ -187,6 +228,8 @@ export default function LearnPage() {
   ])
 
   useEffect(() => {
+    if (isSessionView) return
+
     const routeState = location.state as LearnLocationState | null
     const shouldAutoStart =
       routeState?.autoStart === true || routeState?.idle !== true
@@ -200,9 +243,17 @@ export default function LearnPage() {
     }
 
     autoStartConsumedRef.current = true
-    navigate('/learn', { replace: true, state: null })
     startLearn()
-  }, [location.state, navigate, startLearn, wordList])
+  }, [
+    isSessionView,
+    location.state,
+    startLearn,
+    wordList,
+  ])
+
+  if (isSessionView) {
+    return <TypingPage />
+  }
 
   const renderHeader = () => (
     <Header>
@@ -210,16 +261,6 @@ export default function LearnPage() {
       <DictChapterButton learnMode />
       <PronunciationSwitcher learnMode />
       <Switcher learnMode />
-      <button
-        type="button"
-        className="my-btn-primary w-20 shrink-0 bg-indigo-500 shadow shadow-indigo-300 disabled:bg-gray-300 disabled:shadow-none dark:shadow-indigo-500/60"
-        onClick={startLearn}
-        disabled={isStarting || !wordList}
-        aria-label="开始 Learn"
-        data-learn-start-control
-      >
-        <span className="font-medium">Start</span>
-      </button>
     </Header>
   )
 
@@ -269,6 +310,15 @@ export default function LearnPage() {
                 : '正在加载词表…')}
         </span>
 
+        <button
+          type="button"
+          className="my-btn-primary w-24 bg-indigo-500 shadow shadow-indigo-300 dark:shadow-indigo-500/60"
+          onClick={startLearn}
+          disabled={isStarting || !wordList}
+          aria-label="开始 Learn"
+        >
+          <span className="font-medium">Start</span>
+        </button>
       </main>
     </Layout>
   )

@@ -46,11 +46,11 @@ P4 — daily Learn plan / workload controller          CLOSED
 
 ### P0 stability contract
 
-- `/learn` is a resolver entry point. It resumes the one unfinished session
-  first; otherwise it selects due ACTIVE review words; only when no due review
-  exists does it create bounded new-word acquisition.
-- `/learn/session` is never a free-standing Typing route. Invalid or stale
-  session entry self-heals through the Learn resolver.
+- `/learn` is the only Learn route. It owns preparation, unfinished-session
+  recovery, active spelling, pause, completion, and idle states in one route
+  state machine.
+- Preparing or restoring a session changes component state in place; it never
+  navigates to a second Learn URL.
 - Route-critical state (`currentDict`, `currentChapter`, and
   `reviewModeInfo`) is restored synchronously from localStorage before the
   first controller render. A production reload must not transiently enter the
@@ -65,8 +65,8 @@ P4 — daily Learn plan / workload controller          CLOSED
 - Word-list fetch failures are explicit and retryable; Learn must not remain in
   an indefinite spinner.
 - Production assets use a route-safe absolute Vite base: root deployments use
-  `/`; GitHub Pages builds use `/qwerty-learner/`. Deep-route refresh such
-  as `/learn/session` must load the same application as root navigation.
+  `/`; alternate static builds may use their configured base. Learn itself
+  has no nested session route.
 - Gallery/Learn lazy routes are proactively prefetched, and a stale lazy import
   may trigger at most one build-scoped recovery reload.
 - Review Gate now includes both the normal browser state-machine suite and a
@@ -77,9 +77,9 @@ P4 — daily Learn plan / workload controller          CLOSED
 - Typing and Learn use the same upstream indigo interaction palette and shared
   header geometry. Mode identity is conveyed by labels/state, not a separate
   green visual system.
-- Entering Learn resolves directly to the session and presents the same
-  `按任意键开始` interaction model as Typing; there is no extra landing Start
-  gate.
+- Entering Learn resolves the session in place and presents the same
+  `按任意键开始` interaction model as Typing. The idle/preparation state may
+  expose Start, but an active Learn session never requires a second page.
 - Typing-owned preferences remain unchanged while Learn uses its own canonical
   exercise conditions. Chapter, loop, dictation, and translation controls stay
   visible but disabled where Learn policy owns the behavior.
@@ -1056,18 +1056,16 @@ This matrix is normative.
 
 ## 21. Routing
 
-Target route model:
+Canonical route model:
 
 ```text
 /typing
 /learn
 ```
 
-During migration, the existing route structure may remain temporarily for
-compatibility.
-
-The architectural requirement is not the literal URL on day one; it is that
-two different controllers own policy:
+There is no `/learn/session` route. Session preparation and activation are
+internal Learn state transitions. The two controllers still own different
+policy:
 
 ```text
 TypingController

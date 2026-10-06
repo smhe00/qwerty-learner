@@ -581,7 +581,7 @@ test('multi-word Review advances through every rendered word and finishes', asyn
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
   await seedReviewSession(page, reviewWords, 900001)
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await startTyping(page)
 
   await waitForRenderedWord(page, 'cancel')
@@ -691,7 +691,7 @@ test('multi-word Review advances through every rendered word and finishes', asyn
   await page
     .getByRole('button', { name: '开始 Learn', exact: true })
     .click()
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
 
   const afterContinue = await readReviewModeInfo(page)
   expect(afterContinue?.reviewRecord?.isFinished).toBe(false)
@@ -728,7 +728,7 @@ test('closing a completed Learn result stays in Learn idle with Start available'
   page,
 }) => {
   await seedReviewSession(page, [reviewWords[0]], 900020)
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
   await page.keyboard.type('cancel')
@@ -802,7 +802,7 @@ test('fresh Typing failure cannot reopen a previously reviewed Learn word', asyn
   })
 
   await page.goto('/learn')
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
 
   const info = await readReviewModeInfo(page)
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
@@ -830,7 +830,7 @@ test('no-due screen offers Force Review and force bypasses only the time gate', 
 
   await page.getByRole('button', { name: '额外复习' }).click()
 
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
   await expect
     .poll(async () => {
       const info = await readReviewModeInfo(page)
@@ -857,7 +857,7 @@ test('new Review session forces a canonical cold probe independent of ordinary s
   await putDueReviewWordState(page, 'cancel')
 
   await page.goto('/learn')
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
 
   const sessionInfo = await readReviewModeInfo(page)
   expect(sessionInfo?.reviewRecord?.exercisePlans?.cancel).toMatchObject({
@@ -1154,7 +1154,7 @@ test('Typing and Learn are explicit top-level modes', async ({ page }) => {
   await expect(page.getByRole('button', { name: '开始' })).toBeVisible()
 
   await learnMode.click()
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
   await expect(
     page.getByRole('button', { name: 'Learn', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true')
@@ -1184,7 +1184,7 @@ test('Learn entry keeps long-term state while plan details stay hidden', async (
   })
 
   await page.goto('/learn')
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
   await expect(page.getByText('长期学习中', { exact: true })).toHaveCount(0)
   await expect(page.getByText('学习计划', { exact: true })).toHaveCount(0)
 
@@ -1228,7 +1228,7 @@ test('Learn entry keeps long-term state while plan details stay hidden', async (
 
 test('current Learn item can be excluded without using Skip', async ({ page }) => {
   await seedReviewSession(page, reviewWords.slice(0, 2), 900020)
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
 
@@ -1316,7 +1316,7 @@ test('Learn dictionary selection reuses the Typing gallery and skips chapter sel
 
   await target.click()
 
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
   await expect(
     page.getByRole('link', {
       name: selectedDictionaryName as string,
@@ -1395,7 +1395,7 @@ test('Learn header keeps dictionary, Start, and Settings aligned with Typing', a
   }
 
   await page.goto('/learn')
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
   const learnDictionary = page.getByRole('link', {
     name: 'CET-4',
     exact: true,
@@ -1514,7 +1514,7 @@ test('Learn reuses Typing controls while preserving Typing-owned preferences', a
   }))
 
   await page.getByRole('button', { name: 'Learn', exact: true }).click()
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
 
   await expect(
     page.getByRole('button', {
@@ -1565,7 +1565,7 @@ test('Learn reuses Typing controls while preserving Typing-owned preferences', a
     page.getByText('30日复习通过率', { exact: true }),
   ).toBeVisible()
   await page.getByRole('button', { name: '返回', exact: true }).click()
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
   await expect(page.getByText('按任意键开始')).toBeVisible()
   const sessionAfterAnalysis = await readReviewModeInfo(page)
   expect(
@@ -1718,7 +1718,7 @@ test('Learn exposes only one unfinished session and cannot create a duplicate fr
   })
 
   await page.goto('/learn')
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
   await expect(
     page.getByRole('button', { name: '开始', exact: true }),
   ).toBeVisible()
@@ -1827,7 +1827,7 @@ test('Learn starts new acquisition with exposure and does not admit after visibl
   })
 
   await page.goto('/learn')
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
 
   const info = await readReviewModeInfo(page)
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
@@ -1956,7 +1956,7 @@ test('Recovery Window places two confidence-training items before an elevated-st
     'elevated',
     { cancel: 'independent' },
   )
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
 
@@ -2009,7 +2009,7 @@ test('dynamic scaffold starts Supported acquisition at S1 under recovery strain'
     4,
     'recovery',
   )
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
 
@@ -2037,7 +2037,7 @@ test('failed Independent recall targets the wrong position in the next S1 attemp
     4,
     'low',
   )
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
 
@@ -2104,7 +2104,7 @@ test('dynamic scaffold never weakens Independent acquisition under recovery stra
     4,
     'recovery',
   )
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
 
@@ -2127,7 +2127,7 @@ test('clean but short-gap Independent recall defers without false admission', as
     'independent',
     0,
   )
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
 
@@ -2232,7 +2232,7 @@ test('spacing-deferred acquisition resumes as Independent after its delay', asyn
   )
 
   await page.goto('/learn')
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
   const info = await readReviewModeInfo(page)
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
   expect(info?.reviewRecord?.words?.[0]?.name).toBe('cancel')
@@ -2263,7 +2263,7 @@ test('clean Independent acquisition is the admission boundary', async ({
     920001,
     'independent',
   )
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
 
@@ -2425,7 +2425,7 @@ test('a due ACTIVE word is reviewed before any unseen acquisition word', async (
   })
 
   await page.goto('/learn')
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
   const info = await readReviewModeInfo(page)
 
   expect(info?.reviewRecord?.sessionKind).toBe('mixed')
@@ -2451,7 +2451,7 @@ test('Hint V2 reveals Minimal, Strong, then Full after exactly three failed atte
   page,
 }) => {
   await seedReviewSession(page, reviewWords.slice(0, 1), 900030)
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
 
@@ -2557,8 +2557,8 @@ test('invalid Learn session route self-heals through the Learn entry controller'
     )
   })
 
-  await page.goto('/learn/session')
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await page.goto('/learn')
+  await expect(page).toHaveURL(/\/learn$/)
   await expect(
     page.getByRole('button', { name: 'Learn', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true')
@@ -2613,7 +2613,7 @@ test('unfinished Learn session survives reload without cursor reset or duplicati
     })
   }, { words: reviewWords })
 
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await waitForRenderedWord(page, 'analyse')
 
   const before = await readReviewModeInfo(page)
@@ -2621,7 +2621,7 @@ test('unfinished Learn session survives reload without cursor reset or duplicati
   expect(before?.reviewRecord?.index).toBe(1)
 
   await page.reload()
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
   await waitForRenderedWord(page, 'analyse')
 
   const after = await readReviewModeInfo(page)
@@ -2654,7 +2654,7 @@ test('Space is ordinary spelling input while ESC is the only explicit surrender'
   page,
 }) => {
   await seedReviewSession(page, reviewWords.slice(0, 1), 910002)
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
 
@@ -2710,7 +2710,7 @@ test('cold probe prefers masked example over translation and reveals translation
   }
 
   await seedReviewSession(page, [contextualWord], 910003)
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
 
@@ -2813,7 +2813,7 @@ test('Typing and Learn use the same indigo interaction palette', async ({ page }
   )
 
   await page.getByRole('button', { name: 'Learn', exact: true }).click()
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
 
   const learnMode = page.getByRole('button', {
     name: 'Learn',
@@ -2927,7 +2927,7 @@ test('Learn P3 weak review pressure limits a new acquisition session to five wor
   })
 
   await page.goto('/learn')
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
 
   const info = await readReviewModeInfo(page)
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
@@ -3022,7 +3022,7 @@ test('Learn P4 workload budget limits new acquisition after fifteen active minut
   })
 
   await page.goto('/learn')
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
 
   const info = await readReviewModeInfo(page)
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
@@ -3259,9 +3259,9 @@ test('desktop resize after Learn completion cannot resurrect the finished last w
   await seedReviewSession(page, [reviewWords[0]], 900089)
 
   // The incident was observed from the root URL. Root admission must route an
-  // active Learn checkpoint to the canonical session URL.
+  // active Learn checkpoint to the canonical Learn URL.
   await page.goto('/')
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
   await page.keyboard.type('cancel')
@@ -3280,7 +3280,7 @@ test('desktop resize after Learn completion cannot resurrect the finished last w
 
   // Desktop -> desktop resize must be presentation-only. It must not navigate
   // through "/" and remount Typing with reducer isFinished=false.
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
   await expect(result).toBeVisible()
   await expect(
     page.locator('[data-typing-word="cancel"]'),
@@ -3316,7 +3316,7 @@ test('final Learn word reaches result UI even when route-cache persistence throw
     }
   })
 
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
 
@@ -3374,7 +3374,7 @@ test('visible first-acquisition copy never auto-enters the hint ladder after rep
     900091,
     'exposure',
   )
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
 
@@ -3430,7 +3430,7 @@ test('oversized legacy acquisition session is closed and returned to Learn idle 
     900092,
     'exposure',
   )
-  await page.goto('/learn/session')
+  await page.goto('/learn')
 
   await expect(page).toHaveURL(/\/learn$/)
   await expect(
@@ -3532,7 +3532,7 @@ test('legacy all-visible Learn item without acquisition metadata never enters Hi
     )
   })
 
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await startTyping(page)
   const word = page.locator('[data-typing-word="cancel"]')
   await expect(word).toHaveAttribute(
@@ -3589,7 +3589,7 @@ test('metadata-less legacy Learn queue over 20 unique words is rotated before re
     )
   }, words)
 
-  await page.goto('/learn/session')
+  await page.goto('/learn')
 
   await expect(page).toHaveURL(/\/learn$/)
   await expect(

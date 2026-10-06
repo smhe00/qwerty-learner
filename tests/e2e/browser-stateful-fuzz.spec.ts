@@ -189,8 +189,8 @@ async function resetAndSeed(
     })
   }, session)
 
-  await page.goto('/learn/session')
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await page.goto('/learn')
+  await expect(page).toHaveURL(/\/learn$/)
   await expect(
     page.locator('[data-typing-word]').first(),
   ).toBeVisible()
@@ -345,14 +345,20 @@ async function routeCycle(page: Page) {
 
   await expect
     .poll(() => new URL(page.url()).pathname)
-    .toMatch(/\/learn(?:\/session)?$/)
+    .toMatch(/\/learn$/)
 
   await expect
     .poll(async () => {
       const state = await readRouteState(page)
+      const activeWordVisible = await page
+        .locator('[data-typing-word]')
+        .first()
+        .isVisible()
+        .catch(() => false)
+
       return (
         state.record?.isFinished === true ||
-        state.path === '/learn/session'
+        (Boolean(state.record) && activeWordVisible)
       )
     })
     .toBe(true)
@@ -403,7 +409,7 @@ async function assertBrowserInvariants(
       ).toBe(state.terminalWordRecordCount)
     }
   } else if (activeWordVisible) {
-    expect(route.path).toBe('/learn/session')
+    expect(route.path).toBe('/learn')
     expect(record?.isFinished).not.toBe(true)
   }
 }
@@ -421,7 +427,7 @@ async function runAction(
     await page.reload()
     await expect
       .poll(() => new URL(page.url()).pathname)
-      .toMatch(/\/learn(?:\/session)?$/)
+      .toMatch(/\/learn$/)
     return
   }
 
@@ -690,7 +696,7 @@ test('P3 clean deterministic lifecycle fuzz keeps browser/session invariants', a
   )
 })
 
-test('P3 detects stale Learn preparation stealing navigation ownership', async ({
+test('P3 detects stale Learn preparation mutating mode after navigation', async ({
   page,
 }) => {
   await configureHooks(page, {
@@ -716,19 +722,29 @@ test('P3 detects stale Learn preparation stealing navigation ownership', async (
 
   await releaseGate(page, 'learn-preparation')
 
-  const stolen = await expect
-    .poll(() => new URL(page.url()).pathname, {
+  // With a single Learn route there is no stale navigation target to steal.
+  // The injected ownership bug is still observable because the stale async
+  // preparation can mutate route-critical reviewModeInfo after leaving Learn.
+  const staleMutationObserved = await expect
+    .poll(async () => {
+      const state = await readRouteState(page)
+      return (
+        state.path === '/typing' &&
+        Boolean(state.record) &&
+        state.record?.isFinished !== true
+      )
+    }, {
       timeout: 8_000,
     })
-    .toBe('/learn/session')
+    .toBe(true)
     .then(
       () => true,
       () => false,
     )
 
   expect(
-    stolen,
-    'fault injection must be observable by the navigation invariant',
+    staleMutationObserved,
+    'fault injection must remain observable by the ownership invariant',
   ).toBe(true)
 })
 
@@ -766,7 +782,7 @@ test('P3 survives route-cache ahead of IndexedDB and refresh during checkpoint w
   // IndexedDB checkpoint can run. Route-critical localStorage must preserve
   // the newer index and the next durable write must converge forward.
   await page.reload()
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
   const restored = await readRouteState(page)
   expect(restored.record?.index).toBe(1)
 

@@ -70,28 +70,13 @@ function getPersistedLearnRouteState(): PersistedLearnRouteState {
   }
 }
 
-function LearnSessionRoute() {
-  // atomWithStorage hydrates after the first React render. Route admission
-  // must therefore use localStorage synchronously and only once; subscribing
-  // to reviewModeInfo here would let transient hydration/default values
-  // redirect an otherwise valid live Learn session.
-  return getPersistedLearnRouteState() === 'active' ? (
-    <TypingPage />
-  ) : (
-    <Navigate to="/learn" replace />
-  )
-}
-
 function RootIndexRoute() {
   const learnState = getPersistedLearnRouteState()
 
   // A full-document navigation to "/" must never resurrect a Learn checkpoint.
   // This is especially important after terminal completion: the durable record
   // is already finished, while the Typing reducer starts from isFinished=false.
-  if (learnState === 'active') {
-    return <Navigate to="/learn/session" replace />
-  }
-  if (learnState === 'finished') {
+  if (learnState !== 'none') {
     return <Navigate to="/learn" replace />
   }
   return <TypingPage />
@@ -185,7 +170,6 @@ function Root() {
                 <Route index element={<RootIndexRoute />} />
                 <Route path="/typing" element={<TypingPage />} />
                 <Route path="/learn" element={<LearnPage />} />
-                <Route path="/learn/session" element={<LearnSessionRoute />} />
                 <Route path="/achievements" element={<AchievementsPage />} />
                 <Route path="/gallery" element={<GalleryPage />} />
                 <Route path="/analysis" element={<AnalysisPage />} />

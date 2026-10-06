@@ -29,7 +29,7 @@ test('production build resolves lazy navigation and preserves Learn session on r
 
   await page.goto('/typing')
   await page.getByRole('button', { name: 'Learn', exact: true }).click()
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
   await expect(page.getByText('按任意键开始')).toBeVisible()
 
   const before = await page.evaluate(() => {
@@ -38,7 +38,7 @@ test('production build resolves lazy navigation and preserves Learn session on r
   })
 
   await page.reload()
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
 
   await expect(page.getByText('按任意键开始')).toBeVisible()
 
@@ -158,7 +158,7 @@ test('Typing reload does not resurrect unfinished Learn, while re-entering Learn
     name: 'Learn',
     exact: true,
   }).click()
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
   await expect(page.getByText('按任意键开始')).toBeVisible()
 
   const learnSession = await page.evaluate(() => {
@@ -192,7 +192,7 @@ test('Typing reload does not resurrect unfinished Learn, while re-entering Learn
     name: 'Learn',
     exact: true,
   }).click()
-  await expect(page).toHaveURL(/\/learn\/session$/)
+  await expect(page).toHaveURL(/\/learn$/)
 
   const restored = await page.evaluate(() => {
     const raw = localStorage.getItem('reviewModeInfo')

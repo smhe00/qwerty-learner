@@ -1,9 +1,9 @@
 // Regression coverage for TASK-20261006-006.
 //
-// A Learn session renders Typing on the nested `/learn/session` route. Sound
+// A Learn session renders Typing in-place on the single `/learn` route. Sound
 // resources were addressed with a document-relative prefix (`./sounds/`), which
 // resolves against the *current document path* rather than the app root. Under
-// `/learn/session` that became `/learn/sounds/...` and every feedback sound
+// assets must remain app-root safe while Learn shares the `/learn` route
 // 404'd, silently killing both the typing-click and wrong-letter sounds while
 // leaving absolute-URL pronunciation audio working.
 //
@@ -220,7 +220,7 @@ test('Learn sound resources resolve to the app root under the nested session rou
 
   await installAudioSpy(page)
   await seedLearnSession(page)
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await page.getByText('按任意键开始').waitFor()
   await page.keyboard.press('a')
   await page.locator('[data-typing-word]').first().waitFor()
@@ -245,7 +245,7 @@ test('Learn sound resources resolve to the app root under the nested session rou
 test('Learn plays the key sound on a correct non-terminal letter', async ({ page }) => {
   await installAudioSpy(page)
   await seedLearnSession(page)
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await page.getByText('按任意键开始').waitFor()
 
   const wordEl = page.locator('[data-typing-word]').first()
@@ -267,7 +267,7 @@ test('Learn plays the key sound on a correct non-terminal letter', async ({ page
 test('Learn plays the wrong-letter sound on an incorrect letter', async ({ page }) => {
   await installAudioSpy(page)
   await seedLearnSession(page)
-  await page.goto('/learn/session')
+  await page.goto('/learn')
   await page.getByText('按任意键开始').waitFor()
   await page.keyboard.press('a')
 
