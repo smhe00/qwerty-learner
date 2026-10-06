@@ -1,11 +1,11 @@
 ---
 protocol_version: "1.1"
-task_id: null
-task_file: null
-report_file: null
+task_id: "TASK-20261006-001-header-branding"
+task_file: "interactive/tasks/TASK-20261006-001-header-branding.md"
+report_file: "interactive/reports/TASK-20261006-001-header-branding-report.md"
 target_branch: "product/main"
-status: "IDLE"
-executor: "any-compatible-agent"
+status: "READY"
+executor: "workbuddy"
 claim_base_commit: null
 claimed_at_utc: null
 last_known_commit: null
@@ -14,18 +14,14 @@ release_to_master: false
 
 # Current Task
 
-There is currently **no active coding task**.
+The active task is:
 
-Before starting work, Chat/Architect should create a task from
-`interactive/templates/TASK_TEMPLATE.md`, then update this file to point to it.
+- **Task:** `TASK-20261006-001-header-branding`
+- **Task file:** `interactive/tasks/TASK-20261006-001-header-branding.md`
+- **Recommended executor:** `workbuddy`
+- **Status:** `READY`
 
-## Default branch policy
-
-- Development: `product/main`
-- Release/deployment: `master`
-- Do not touch `master` unless the active task explicitly sets `release_to_master: true`.
-
-## Executor bootstrap
+## Executor action
 
 ```text
 git fetch origin
@@ -33,7 +29,16 @@ git checkout product/main
 git pull --ff-only origin product/main
 read AGENTS.md
 read interactive/CURRENT_TASK.md
-read the referenced task and report
-claim task if READY
+read the referenced task
+claim task according to interactive/README.md
 execute -> validate -> stale-head check -> report -> commit -> push
 ```
+
+Do not rely on external chat context for task details. The task file is the execution specification.
+
+## Branch policy
+
+- Development: `product/main`
+- Release/deployment: `master`
+- This task has `release_to_master: false`.
+- Do not touch `master`.
