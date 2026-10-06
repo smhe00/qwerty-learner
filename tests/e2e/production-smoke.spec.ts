@@ -8,11 +8,11 @@ test('production build resolves lazy navigation and preserves Learn session on r
   await page.goto('/typing')
 
   await page
-    .getByRole('link', { name: '沪教新初2027', exact: true })
+    .getByRole('link', { name: '上海中考2027', exact: true })
     .click()
   await expect(page).toHaveURL(/\/gallery/)
   await expect(
-    page.getByText('沪教新初2027', { exact: true }).first(),
+    page.getByText('上海中考2027', { exact: true }).first(),
   ).toBeVisible()
 
   await page.goto('/analysis?from=learn')
@@ -54,7 +54,7 @@ test('production build resolves lazy navigation and preserves Learn session on r
 })
 
 
-test('fresh browser boots with 沪教新初2027 as the default dictionary', async ({
+test('fresh browser boots with 上海中考2027 as the default dictionary', async ({
   page,
 }) => {
   const pageErrors: string[] = []
@@ -63,9 +63,9 @@ test('fresh browser boots with 沪教新初2027 as the default dictionary', asyn
   await page.goto('/typing')
 
   await expect(
-    page.getByRole('link', { name: '沪教新初2027', exact: true }),
+    page.getByRole('link', { name: '上海中考2027', exact: true }),
   ).toBeVisible()
-  await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
+  await expect(page.locator('[data-typing-word="ability"]')).toBeVisible()
   expect(pageErrors).toEqual([])
 })
 
@@ -83,9 +83,9 @@ test('stale chapter from a larger dictionary self-heals without a blank page', a
   await page.goto('/typing')
 
   await expect(
-    page.getByRole('link', { name: '沪教新初2027', exact: true }),
+    page.getByRole('link', { name: '上海中考2027', exact: true }),
   ).toBeVisible()
-  await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
+  await expect(page.locator('[data-typing-word="ability"]')).toBeVisible()
 
   await expect
     .poll(async () =>
@@ -132,7 +132,7 @@ test('leaving Learn while dictionary preparation is pending cannot navigate back
   releaseDictionary()
 
   await expect(page).toHaveURL(/\/typing$/)
-  await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
+  await expect(page.locator('[data-typing-word="ability"]')).toBeVisible()
 
   const mode = await page.evaluate(() => {
     const raw = localStorage.getItem('reviewModeInfo')
@@ -178,7 +178,7 @@ test('Typing reload does not resurrect unfinished Learn, while re-entering Learn
 
   await page.reload()
   await expect(page).toHaveURL(/\/typing$/)
-  await expect(page.locator('[data-typing-word="life"]')).toBeVisible()
+  await expect(page.locator('[data-typing-word="ability"]')).toBeVisible()
 
   await page.getByRole('button', {
     name: 'Learn',

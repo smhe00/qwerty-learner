@@ -6,6 +6,7 @@ on:
       - product/main
     paths:
       - 'public/dicts/hujiaoxin2027.json'
+      - 'public/dicts/ShanghaiZhongkao2027.json'
       - 'src/resources/dictionary.ts'
       - 'tests/e2e/production-smoke.spec.ts'
       - 'src/pages/Typing/hooks/useWordList.ts'
@@ -38,8 +39,8 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Validate 沪教新初2027 dictionary
-        run: node --test tests/dictionary/hujiaoxin2027.test.mjs
+      - name: Validate built-in dictionaries
+        run: node --test tests/dictionary/*.test.mjs
 
       - name: Build Qwerty
         run: yarn build

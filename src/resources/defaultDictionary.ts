@@ -1,1 +1,1 @@
-export const DEFAULT_DICTIONARY_ID = 'hujiaoxin2027'
+export const DEFAULT_DICTIONARY_ID = 'shanghai-zhongkao-2027'
