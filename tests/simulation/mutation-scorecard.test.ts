@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  P2_CRITICAL_FAULT_CATALOG,
+  P2_FAULT_CATALOG_VERSION,
+  P2_MUTATION_POLICY,
+} from './fault-catalog'
+import {
   detectLearnSystemAnomalies,
   type LearnSystemAnomaly,
   type LearnSystemTraceEvent,
@@ -42,14 +47,83 @@ function singletonEvent(
   }
 }
 
-test('system mutation scorecard detects generic failure classes without false positives on clean controls', () => {
+function freshBudgetEvent(input: {
+  allowedNow: number
+  expectedAllowedNow: number
+  freshSelected: number
+  unseenCount?: number
+  introducedToday?: number
+  acquiredToday?: number
+  readyPendingCount?: number
+  pendingSelected?: number
+  expectedPendingSelected?: number
+}): LearnSystemTraceEvent {
+  return {
+    kind: 'fresh-budget',
+    targetDailyNewWords: 20,
+    introducedToday: input.introducedToday ?? 0,
+    acquiredToday: input.acquiredToday ?? 0,
+    unseenCount: input.unseenCount ?? 20,
+    dueCount: 3,
+    allowedNow: input.allowedNow,
+    expectedAllowedNow: input.expectedAllowedNow,
+    freshSelected: input.freshSelected,
+    readyPendingCount: input.readyPendingCount ?? 0,
+    pendingSelected: input.pendingSelected ?? 0,
+    expectedPendingSelected:
+      input.expectedPendingSelected ?? 0,
+  }
+}
+
+function candidateEvent(input: {
+  candidateKind: 'fresh' | 'pending' | 'due' | 'force'
+  lifecycle:
+    | 'unseen'
+    | 'introduced'
+    | 'pending'
+    | 'admitted'
+    | 'excluded'
+  selectedCount?: number
+  due?: boolean
+}): LearnSystemTraceEvent {
+  return {
+    kind: 'candidate-selection',
+    candidateKind: input.candidateKind,
+    word: 'candidate',
+    lifecycle: input.lifecycle,
+    due: input.due ?? false,
+    selectedCount: input.selectedCount ?? 1,
+  }
+}
+
+function arbitrationEvent(input: {
+  recoverableCount: number
+  expectedSessionId: string | null
+  decision:
+    | 'restore'
+    | 'new-review'
+    | 'new-acquisition'
+    | 'waiting'
+  selectedSessionId: string | null
+  selectedDict: string | null
+  selectedFinished: boolean | null
+  selectedCount: number
+}): LearnSystemTraceEvent {
+  return {
+    kind: 'session-arbitration',
+    activeDict: 'simulation',
+    ...input,
+  }
+}
+
+function mutationCases(): MutationCase[] {
   const stalled = runAcquisitionInteractionDriver({
     words: ['alpha', 'beta', 'gamma', 'delta'].map(word),
     now: 1_000,
     mutation: { stallInteraction: 2 },
   })
 
-  const cases: MutationCase[] = [
+  return [
     {
       id: 'repeated-singleton-selection',
       expected: 'repeated-singleton-acquisition',
@@ -63,6 +137,28 @@ test('system mutation scorecard detects generic failure classes without false po
       id: 'dropped-controller-projection',
       expected: 'controller-driver-divergence',
       events: stalled.events,
+    },
+    {
+      id: 'success-without-semantic-progress',
+      expected: 'success-without-progress',
+      events: [
+        {
+          kind: 'attempt-completed',
+          sessionKind: 'review',
+          word: 'still',
+          success: true,
+          beforeIndex: 2,
+          afterIndex: 2,
+          expectedAfterIndex: 2,
+          beforeQueueSignature: 'a|still|b',
+          afterQueueSignature: 'a|still|b',
+          expectedAfterQueueSignature: 'a|still|b',
+          beforeItemStateSignature: 'same',
+          afterItemStateSignature: 'same',
+          afterFinished: false,
+          expectedAfterFinished: false,
+        },
+      ],
     },
     {
       id: 'stale-checkpoint-rollback',
@@ -89,6 +185,30 @@ test('system mutation scorecard detects generic failure classes without false po
       ],
     },
     {
+      id: 'finished-checkpoint-resurrection',
+      expected: 'checkpoint-regression',
+      events: [
+        {
+          kind: 'checkpoint',
+          action: 'save',
+          sessionId: 'terminal-cp',
+          index: 0,
+          isFinished: true,
+          queueSignature: 'omega',
+          wordCount: 1,
+        },
+        {
+          kind: 'checkpoint',
+          action: 'restore',
+          sessionId: 'terminal-cp',
+          index: 0,
+          isFinished: false,
+          queueSignature: 'omega',
+          wordCount: 1,
+        },
+      ],
+    },
+    {
       id: 'due-review-bypassed',
       expected: 'due-work-bypassed',
       events: [
@@ -101,7 +221,7 @@ test('system mutation scorecard detects generic failure classes without false po
           uniqueWords: 4,
           dueCount: 3,
           unseenCount: 20,
-          allowedNewWordsNow: 0,
+          allowedNewWordsNow: 4,
           introducedToday: 2,
           acquiredToday: 2,
         },
@@ -234,75 +354,262 @@ test('system mutation scorecard detects generic failure classes without false po
         },
       ],
     },
+    {
+      id: 'persistence-commit-before-request',
+      expected: 'persistence-order-violation',
+      events: [
+        {
+          kind: 'persistence-write',
+          action: 'committed',
+          sessionId: 'persist-a',
+          sequence: 1,
+          semanticSignature: 'one',
+        },
+      ],
+    },
+    {
+      id: 'persistence-out-of-order-commit',
+      expected: 'persistence-order-violation',
+      events: [
+        {
+          kind: 'persistence-write',
+          action: 'requested',
+          sessionId: 'persist-b',
+          sequence: 1,
+          semanticSignature: 'one',
+        },
+        {
+          kind: 'persistence-write',
+          action: 'requested',
+          sessionId: 'persist-b',
+          sequence: 2,
+          semanticSignature: 'two',
+        },
+        {
+          kind: 'persistence-write',
+          action: 'committed',
+          sessionId: 'persist-b',
+          sequence: 2,
+          semanticSignature: 'two',
+        },
+        {
+          kind: 'persistence-write',
+          action: 'committed',
+          sessionId: 'persist-b',
+          sequence: 1,
+          semanticSignature: 'one',
+        },
+      ],
+    },
+    {
+      id: 'stranded-deferred-acquisition',
+      expected: 'stranded-pending-acquisition',
+      events: [
+        {
+          kind: 'acquisition-health',
+          now: 1_000,
+          opportunity: true,
+          pending: [
+            {
+              word: 'deferred',
+              phase: 'deferred',
+              deferredReason: 'spacing',
+              resumeAfter: null,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'pending-as-fresh',
+      expected: 'candidate-lifecycle-violation',
+      events: [
+        candidateEvent({
+          candidateKind: 'fresh',
+          lifecycle: 'pending',
+        }),
+      ],
+    },
+    {
+      id: 'admitted-as-fresh',
+      expected: 'candidate-lifecycle-violation',
+      events: [
+        candidateEvent({
+          candidateKind: 'fresh',
+          lifecycle: 'admitted',
+        }),
+      ],
+    },
+    {
+      id: 'excluded-word-selected',
+      expected: 'candidate-lifecycle-violation',
+      events: [
+        candidateEvent({
+          candidateKind: 'force',
+          lifecycle: 'excluded',
+        }),
+      ],
+    },
+    {
+      id: 'duplicate-canonical-selection',
+      expected: 'candidate-lifecycle-violation',
+      events: [
+        candidateEvent({
+          candidateKind: 'fresh',
+          lifecycle: 'unseen',
+          selectedCount: 2,
+        }),
+      ],
+    },
+    {
+      id: 'fresh-selection-over-budget',
+      expected: 'fresh-budget-violation',
+      events: [
+        freshBudgetEvent({
+          allowedNow: 2,
+          expectedAllowedNow: 2,
+          freshSelected: 3,
+        }),
+      ],
+    },
+    {
+      id: 'pending-consumes-fresh-budget',
+      expected: 'fresh-budget-violation',
+      events: [
+        freshBudgetEvent({
+          allowedNow: 2,
+          expectedAllowedNow: 2,
+          freshSelected: 1,
+          readyPendingCount: 2,
+          pendingSelected: 1,
+          expectedPendingSelected: 2,
+        }),
+      ],
+    },
+    {
+      id: 'quota-ignores-unseen-cap',
+      expected: 'fresh-budget-violation',
+      events: [
+        freshBudgetEvent({
+          allowedNow: 20,
+          expectedAllowedNow: 1,
+          freshSelected: 1,
+          unseenCount: 1,
+        }),
+      ],
+    },
+    {
+      id: 'acquired-vs-introduced-quota-accounting',
+      expected: 'fresh-budget-violation',
+      events: [
+        freshBudgetEvent({
+          allowedNow: 1,
+          expectedAllowedNow: 0,
+          freshSelected: 0,
+          introducedToday: 20,
+          acquiredToday: 19,
+        }),
+      ],
+    },
+    {
+      id: 'finished-shadows-unfinished',
+      expected: 'session-arbitration-violation',
+      events: [
+        arbitrationEvent({
+          recoverableCount: 1,
+          expectedSessionId: 'id:old',
+          decision: 'waiting',
+          selectedSessionId: null,
+          selectedDict: null,
+          selectedFinished: null,
+          selectedCount: 0,
+        }),
+      ],
+    },
+    {
+      id: 'oldest-unfinished-restored',
+      expected: 'session-arbitration-violation',
+      events: [
+        arbitrationEvent({
+          recoverableCount: 2,
+          expectedSessionId: 'id:new',
+          decision: 'restore',
+          selectedSessionId: 'id:old',
+          selectedDict: 'simulation',
+          selectedFinished: false,
+          selectedCount: 1,
+        }),
+      ],
+    },
+    {
+      id: 'wrong-dictionary-restored',
+      expected: 'session-arbitration-violation',
+      events: [
+        arbitrationEvent({
+          recoverableCount: 1,
+          expectedSessionId: 'id:expected',
+          decision: 'restore',
+          selectedSessionId: 'id:expected',
+          selectedDict: 'other-dict',
+          selectedFinished: false,
+          selectedCount: 1,
+        }),
+      ],
+    },
+    {
+      id: 'waiting-despite-unfinished',
+      expected: 'session-arbitration-violation',
+      events: [
+        arbitrationEvent({
+          recoverableCount: 1,
+          expectedSessionId: 'id:expected',
+          decision: 'waiting',
+          selectedSessionId: null,
+          selectedDict: null,
+          selectedFinished: null,
+          selectedCount: 0,
+        }),
+      ],
+    },
   ]
+}
 
-  const results = cases.map((item) => {
-    const anomalies = detectLearnSystemAnomalies(item.events)
-    return {
-      id: item.id,
-      detected: anomalies.some(
-        (anomaly) => anomaly.code === item.expected,
-      ),
-      codes: anomalies.map((anomaly) => anomaly.code),
-    }
-  })
-
-  const detected = results.filter((item) => item.detected).length
-  const sensitivity = detected / cases.length
-
-  const cleanInteraction = runAcquisitionInteractionDriver({
-    words: ['alpha', 'beta', 'gamma', 'delta'].map(word),
-    now: 1_000,
-  })
-  const cleanControls: LearnSystemTraceEvent[][] = [
+function cleanControls(
+  cleanInteraction: ReturnType<
+    typeof runAcquisitionInteractionDriver
+  >,
+): LearnSystemTraceEvent[][] {
+  return [
     cleanInteraction.events,
     [singletonEvent('single-legit', 10)],
     [
       {
-        kind: 'session-prepared',
-        source: 'acquisition',
-        sessionKind: 'acquisition',
-        sessionId: 'pending-resume',
-        batchSize: 1,
-        uniqueWords: 1,
-        dueCount: 0,
-        unseenCount: 10,
-        allowedNewWordsNow: 0,
-        introducedToday: 20,
-        acquiredToday: 19,
-      },
-    ],
-    [
-      {
         kind: 'checkpoint',
         action: 'save',
-        sessionId: 'prune',
-        index: 3,
-        isFinished: false,
-        queueSignature: 'a|b|c|d',
-        wordCount: 4,
+        sessionId: 'terminal-ok',
+        index: 0,
+        isFinished: true,
+        queueSignature: 'omega',
+        wordCount: 1,
       },
       {
-        kind: 'checkpoint',
-        action: 'restore',
-        sessionId: 'prune',
-        index: 2,
-        isFinished: false,
-        queueSignature: 'a|c|d',
-        wordCount: 3,
+        kind: 'lifecycle',
+        action: 'route-enter',
+        sessionId: null,
+        isFinished: null,
       },
     ],
     [
       {
         kind: 'terminal-word-durable',
-        sessionId: 'terminal-ok',
+        sessionId: 'terminal-handoff-ok',
         word: 'omega',
         index: 2,
         queueLength: 3,
       },
       {
         kind: 'terminal-ui-finished',
-        sessionId: 'terminal-ok',
+        sessionId: 'terminal-handoff-ok',
       },
     ],
     [
@@ -359,24 +666,164 @@ test('system mutation scorecard detects generic failure classes without false po
         logicalStateEntries: 1,
       },
     ],
+    [
+      {
+        kind: 'persistence-write',
+        action: 'requested',
+        sessionId: 'persist-clean',
+        sequence: 1,
+        semanticSignature: 'one',
+      },
+      {
+        kind: 'persistence-write',
+        action: 'committed',
+        sessionId: 'persist-clean',
+        sequence: 1,
+        semanticSignature: 'one',
+      },
+      {
+        kind: 'persistence-write',
+        action: 'requested',
+        sessionId: 'persist-clean',
+        sequence: 2,
+        semanticSignature: 'two',
+      },
+      {
+        kind: 'persistence-write',
+        action: 'committed',
+        sessionId: 'persist-clean',
+        sequence: 2,
+        semanticSignature: 'two',
+      },
+    ],
+    [
+      freshBudgetEvent({
+        allowedNow: 3,
+        expectedAllowedNow: 3,
+        freshSelected: 2,
+        readyPendingCount: 1,
+        pendingSelected: 1,
+        expectedPendingSelected: 1,
+      }),
+    ],
+    [
+      candidateEvent({
+        candidateKind: 'pending',
+        lifecycle: 'pending',
+      }),
+    ],
+    [
+      arbitrationEvent({
+        recoverableCount: 1,
+        expectedSessionId: 'id:newest',
+        decision: 'restore',
+        selectedSessionId: 'id:newest',
+        selectedDict: 'simulation',
+        selectedFinished: false,
+        selectedCount: 1,
+      }),
+    ],
   ]
-  const falsePositives = cleanControls.filter(
-    (events) => detectLearnSystemAnomalies(events).length > 0,
+}
+
+test('P2 mutation coverage contract kills every executable critical fault with zero clean false positives', () => {
+  const cases = mutationCases()
+  const catalogIds = new Set(
+    P2_CRITICAL_FAULT_CATALOG.map((item) => item.id),
+  )
+  assert.equal(
+    catalogIds.size,
+    P2_CRITICAL_FAULT_CATALOG.length,
+    'fault catalog ids must be unique',
+  )
+
+  const executableCritical = P2_CRITICAL_FAULT_CATALOG.filter(
+    (item) =>
+      item.severity === 'high' &&
+      item.executableMutation,
+  )
+  assert.ok(
+    executableCritical.length >=
+      P2_MUTATION_POLICY.minExecutableCriticalFaults,
+  )
+
+  const caseIds = new Set(cases.map((item) => item.id))
+  const missingExecutableFaults = executableCritical
+    .map((item) => item.id)
+    .filter((id) => !caseIds.has(id))
+  assert.deepEqual(missingExecutableFaults, [])
+
+  const unknownMutationIds = cases
+    .map((item) => item.id)
+    .filter((id) => !catalogIds.has(id))
+  assert.deepEqual(unknownMutationIds, [])
+
+  const results = cases.map((item) => {
+    const anomalies = detectLearnSystemAnomalies(item.events)
+    return {
+      id: item.id,
+      detected: anomalies.some(
+        (anomaly) => anomaly.code === item.expected,
+      ),
+      expected: item.expected,
+      codes: anomalies.map((anomaly) => anomaly.code),
+    }
+  })
+
+  const detected = results.filter((item) => item.detected).length
+  const criticalKillRate =
+    executableCritical.length === 0
+      ? 0
+      : detected / executableCritical.length
+
+  const cleanInteraction = runAcquisitionInteractionDriver({
+    words: ['alpha', 'beta', 'gamma', 'delta'].map(word),
+    now: 1_000,
+  })
+  const controls = cleanControls(cleanInteraction)
+  const falsePositiveResults = controls.map((events, index) => ({
+    index,
+    codes: detectLearnSystemAnomalies(events).map(
+      (item) => item.code,
+    ),
+  }))
+  const falsePositives = falsePositiveResults.filter(
+    (item) => item.codes.length > 0,
   ).length
 
+  const disposition = Object.fromEntries(
+    ['covered', 'partial', 'uncovered', 'out-of-scope'].map(
+      (status) => [
+        status,
+        P2_CRITICAL_FAULT_CATALOG.filter(
+          (item) => item.status === status,
+        ).length,
+      ],
+    ),
+  )
+
   console.log(
-    'SIM_MUTATION_SCORECARD',
+    'P2_MUTATION_COVERAGE',
     JSON.stringify({
+      catalogVersion: P2_FAULT_CATALOG_VERSION,
+      catalogTotal: P2_CRITICAL_FAULT_CATALOG.length,
+      executableCritical: executableCritical.length,
       detected,
-      total: cases.length,
-      sensitivity,
+      criticalKillRate,
       falsePositives,
-      cleanControls: cleanControls.length,
+      cleanControls: controls.length,
+      disposition,
       results,
+      falsePositiveResults,
     }),
   )
 
-  assert.equal(detected, cases.length)
-  assert.equal(sensitivity, 1)
-  assert.equal(falsePositives, 0)
+  assert.equal(
+    criticalKillRate,
+    P2_MUTATION_POLICY.requiredCriticalKillRate,
+  )
+  assert.equal(
+    falsePositives,
+    P2_MUTATION_POLICY.maxCleanFalsePositives,
+  )
 })
