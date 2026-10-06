@@ -13,6 +13,11 @@ export type LearnSystemTraceEvent =
       allowedNewWordsNow: number | null
       introducedToday: number | null
       acquiredToday: number | null
+      itemOwnership?: Array<{
+        word: string
+        itemKind: 'review' | 'acquisition'
+        hasAcquisitionState: boolean
+      }>
     }
   | {
       kind: 'attempt-completed'
@@ -98,6 +103,23 @@ export type LearnSystemTraceEvent =
       selectedCount: number
     }
   | {
+      kind: 'learn-evidence-durable'
+      sessionId: string
+      word: string
+      itemKind: 'review' | 'acquisition'
+    }
+  | {
+      kind: 'lifecycle'
+      action:
+        | 'route-enter'
+        | 'route-leave'
+        | 'reload'
+        | 'background'
+        | 'foreground'
+      sessionId: string | null
+      isFinished: boolean | null
+    }
+  | {
       kind: 'terminal-word-durable'
       sessionId: string
       word: string
@@ -151,6 +173,9 @@ export type LearnSystemAnomaly = {
     | 'terminal-handoff-stall'
     | 'audio-owner-mismatch'
     | 'success-audio-lifecycle-violation'
+    | 'terminal-session-resurrection'
+    | 'post-finish-evidence'
+    | 'mixed-item-ownership-violation'
   severity: 'medium' | 'high'
   eventIndex: number
   details: Record<string, number | string | boolean | null>
@@ -165,4 +190,20 @@ export type LearnTraceEnvelope = {
     | 'historical-replay'
   scenario?: string
   events: LearnSystemTraceEvent[]
+}
+
+
+export type LearnLifecycleSeedAction =
+  | { kind: 'enter' }
+  | { kind: 'route-leave' }
+  | { kind: 'reload' }
+  | { kind: 'background' }
+  | { kind: 'foreground' }
+  | { kind: 'retry-current' }
+
+export type LearnLifecycleSeed = {
+  version: 1
+  source: 'diagnostic-replay' | 'synthetic'
+  anomalyCodes: string[]
+  actions: LearnLifecycleSeedAction[]
 }

@@ -1,4 +1,5 @@
 import type { LearnPreparationResult } from '../../src/learn/controller'
+import { resolveLearnItemKindForWord } from '../../src/learn/session'
 import type {
   LearnSystemAnomaly,
   LearnSystemTraceEvent,
@@ -42,6 +43,16 @@ export function preparationResultToTraceEvent(
       result.diagnostics.stats?.today.introducedWords ?? null,
     acquiredToday:
       result.diagnostics.stats?.today.acquiredWords ?? null,
+    itemOwnership: words.map((word) => ({
+      word: word.name,
+      itemKind: resolveLearnItemKindForWord(
+        result.record,
+        word.name,
+      ),
+      hasAcquisitionState: Boolean(
+        result.record.acquisitionStates?.[word.name],
+      ),
+    })),
   }
 }
 
@@ -87,6 +98,7 @@ export function detectLearnSystemAnomalies(
       lastCommitted: number
     }
   >()
+  const terminalSessions = new Set<string>()
   const pendingTerminalHandoffs = new Map<
     string,
     {
@@ -101,6 +113,25 @@ export function detectLearnSystemAnomalies(
     const event = events[index]
 
     if (event.kind === 'session-prepared') {
+      for (const item of event.itemOwnership ?? []) {
+        const ownershipMismatch =
+          item.itemKind === 'acquisition'
+            ? !item.hasAcquisitionState
+            : item.hasAcquisitionState
+        if (ownershipMismatch) {
+          anomalies.push({
+            code: 'mixed-item-ownership-violation',
+            severity: 'high',
+            eventIndex: index,
+            details: {
+              word: item.word,
+              itemKind: item.itemKind,
+              hasAcquisitionState: item.hasAcquisitionState,
+            },
+          })
+        }
+      }
+
       if (
         event.sessionKind === 'acquisition' &&
         (event.dueCount ?? 0) > 0
@@ -194,6 +225,43 @@ export function detectLearnSystemAnomalies(
             word: event.word,
             index: event.beforeIndex,
             sessionKind: event.sessionKind,
+          },
+        })
+      }
+      continue
+    }
+
+    if (event.kind === 'learn-evidence-durable') {
+      if (terminalSessions.has(event.sessionId)) {
+        anomalies.push({
+          code: 'post-finish-evidence',
+          severity: 'high',
+          eventIndex: index,
+          details: {
+            sessionId: event.sessionId,
+            word: event.word,
+            itemKind: event.itemKind,
+          },
+        })
+      }
+      continue
+    }
+
+    if (event.kind === 'lifecycle') {
+      if (
+        (event.action === 'route-enter' ||
+          event.action === 'reload') &&
+        event.sessionId !== null &&
+        terminalSessions.has(event.sessionId) &&
+        event.isFinished === false
+      ) {
+        anomalies.push({
+          code: 'terminal-session-resurrection',
+          severity: 'high',
+          eventIndex: index,
+          details: {
+            sessionId: event.sessionId,
+            action: event.action,
           },
         })
       }
@@ -497,6 +565,9 @@ export function detectLearnSystemAnomalies(
 
     if (event.kind === 'checkpoint') {
       if (event.action === 'save') {
+        if (event.isFinished) {
+          terminalSessions.add(event.sessionId)
+        }
         const checkpoint = {
           index: event.index,
           isFinished: event.isFinished,
