@@ -43,6 +43,9 @@ on:
       - 'tests/e2e/review-flow.config.ts'
       - 'tests/e2e/typing-lifecycle.config.ts'
       - 'tests/e2e/typing-lifecycle.spec.ts'
+      - 'tests/e2e/browser-stateful-fuzz.spec.ts'
+      - 'tests/e2e/browser-stateful-fuzz-core.ts'
+      - 'tests/e2e/browser-stateful-fuzz.config.ts'
       - 'tests/e2e/production-smoke.spec.ts'
       - 'tests/e2e/production-smoke.config.ts'
       - 'tests/review/**'
@@ -209,6 +212,12 @@ jobs:
 
       - name: Run Typing lifecycle browser gate
         run: npx playwright test --config=tests/e2e/typing-lifecycle.config.ts --project=chrome
+
+      - name: Run P3 browser stateful fuzz gate
+        env:
+          P3_FUZZ_SEEDS: '20'
+          P3_FUZZ_STEPS: '5'
+        run: npx playwright test --config=tests/e2e/browser-stateful-fuzz.config.ts --project=chrome
 
       # Build/smoke precede the historically slower Review-flow browser suite
       # so a fixture timeout cannot hide compile or production-navigation
