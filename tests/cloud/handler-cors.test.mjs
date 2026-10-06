@@ -15,27 +15,48 @@ function preflight(origin, env = {}) {
   return onRequest({ request, env })
 }
 
-test('CORS defaults to same-origin', async () => {
+test('CORS defaults to the two production frontends plus same-origin', async () => {
+  const edgeOne = await preflight('https://qwerty-plus.edgeone.dev')
+  assert.equal(
+    edgeOne.headers.get('access-control-allow-origin'),
+    'https://qwerty-plus.edgeone.dev',
+  )
+  assert.equal(edgeOne.headers.get('vary'), 'Origin')
+
+  const githubPages = await preflight('https://smhe00.github.io')
+  assert.equal(
+    githubPages.headers.get('access-control-allow-origin'),
+    'https://smhe00.github.io',
+  )
+  assert.equal(githubPages.headers.get('vary'), 'Origin')
+
   const same = await preflight('https://qwerty.example')
   assert.equal(same.status, 204)
   assert.equal(
     same.headers.get('access-control-allow-origin'),
     'https://qwerty.example',
   )
-  assert.equal(same.headers.get('vary'), 'Origin')
 
   const cross = await preflight('https://cross-origin.invalid')
   assert.equal(cross.status, 204)
   assert.equal(cross.headers.get('access-control-allow-origin'), null)
 })
 
-test('CORS supports an explicit origin allowlist', async () => {
+test('CORS supports additive explicit origin configuration', async () => {
   const allowed = await preflight('https://app.example', {
     CORS_ORIGIN: 'https://app.example,https://backup.example',
   })
   assert.equal(
     allowed.headers.get('access-control-allow-origin'),
     'https://app.example',
+  )
+
+  const productionStillAllowed = await preflight('https://smhe00.github.io', {
+    CORS_ORIGIN: 'https://app.example,https://backup.example',
+  })
+  assert.equal(
+    productionStillAllowed.headers.get('access-control-allow-origin'),
+    'https://smhe00.github.io',
   )
 
   const denied = await preflight('https://other.example', {

@@ -12,7 +12,31 @@
 - 网络不可用时不得影响正常学习；
 - Review、Typing 不依赖云平台可用性。
 
-## 2. 代码边界
+## 2. 双前端、单后端部署拓扑
+
+生产环境采用两套静态前端、同一套 EdgeOne 云后端：
+
+```text
+EdgeOne frontend
+https://qwerty-plus.edgeone.dev
+            \
+             +--> https://qwerty-plus.edgeone.dev/api/* --> EdgeOne Blob
+            /
+GitHub Pages backup frontend
+https://smhe00.github.io/qwerty-learner/
+```
+
+约束：
+
+- 两个前端都使用同一个 `VITE_QWERTY_SYNC_BASE_URL=https://qwerty-plus.edgeone.dev`；
+- 云账号、session、revision 和 snapshot 因而天然互通；
+- GitHub Pages 只承担静态前端备份，不直接访问 EdgeOne Blob；
+- Blob 凭据和存储访问能力只存在于 EdgeOne 服务端；
+- CORS 默认只额外信任两个生产前端 Origin：`https://qwerty-plus.edgeone.dev` 与 `https://smhe00.github.io`；
+- GitHub Pages 的 Origin 不包含 `/qwerty-learner/` 路径；
+- EdgeOne 云后端不可用时，两套前端仍可保持 local-first 学习，但云账号/同步同时不可用。
+
+## 4. 代码边界
 
 ```text
 src/sync/
@@ -33,7 +57,7 @@ tests/
   e2e/                         real browser sync
 ```
 
-## 3. API
+## 4. API
 
 ```text
 GET    /api/health
@@ -56,7 +80,7 @@ PUT    /api/sync
 
 删除成功后 session 因账号 identity 已不存在而立即失效。
 
-## 4. 单账号单 Active Session
+## 5. 单账号单 Active Session
 
 登录成功产生随机 opaque session token：
 
@@ -68,7 +92,7 @@ qs1.<usernameHash>.<randomSecretBase64Url>
 
 每次新登录创建更高的 session version，只有最新 version 有效。
 
-## 5. 密码
+## 6. 密码
 
 账号密码使用：
 
@@ -83,7 +107,7 @@ p=1
 
 密码不进入同步 snapshot。
 
-## 6. Blob 数据模型
+## 7. Blob 数据模型
 
 ```text
 accounts/
@@ -102,7 +126,7 @@ users/
 
 账号删除会删除该 usernameHash 下的 identity/auth/session，以及该 userId 下的全部 revisions。
 
-## 7. Snapshot 格式
+## 8. Snapshot 格式
 
 当前客户端唯一格式：
 
@@ -135,7 +159,7 @@ PUT /api/sync
 
 旧格式 `qwerty-dexie-gzip-v2` 可兼容恢复；实验性 `qwerty-sync-envelope-v1` 直接拒绝新上传，客户端也拒绝恢复。
 
-## 8. Fingerprint
+## 9. Fingerprint
 
 客户端对 Dexie export 的逻辑 `data` 做稳定序列化后计算 SHA-256。
 
@@ -150,7 +174,7 @@ diverged
 
 它与 gzip 二进制本身无关，因此压缩实现变化不会误判业务内容变化。
 
-## 9. Revision / optimistic concurrency
+## 10. Revision / optimistic concurrency
 
 即使单账号只有一个 active session，也保留 revision 防止：
 
@@ -169,13 +193,13 @@ create revision + 1
 
 否则返回 `409 sync_conflict`。
 
-## 10. Snapshot retention
+## 11. Snapshot retention
 
 只保留最近 3 个完整 snapshot revision。
 
 revision 编号继续单调增长，不复用。
 
-## 11. 下载恢复
+## 12. 下载恢复
 
 ```text
 GET /api/sync
@@ -193,7 +217,7 @@ Dexie transactional import
 
 客户端接受当前 `qwerty-backup-v3` 和旧 `qwerty-dexie-gzip-v2`；其他格式不做兼容解码。
 
-## 12. 删除账号
+## 13. 删除账号
 
 删除操作流程：
 
@@ -219,7 +243,7 @@ qwerty.cloudSyncState.v1.<userId>
 
 但不删除 IndexedDB。
 
-## 13. 数据职责
+## 14. 数据职责
 
 ```text
 IndexedDB
@@ -229,19 +253,20 @@ EdgeOne Blob
   = account/session state + gzip snapshots
 
 GitHub
-  = source + tests + docs + deployment config
+  = source + tests + docs + GitHub Pages backup frontend + deployment config
 ```
 
-## 14. 运行配置
+## 15. 运行配置
 
 ```text
 SESSION_TTL_SECONDS=604800
 MAX_SYNC_BYTES=4194304
 BLOB_STORE_NAME=qwerty-data
-CORS_ORIGIN=same-origin
+VITE_QWERTY_SYNC_BASE_URL=https://qwerty-plus.edgeone.dev
+CORS_ORIGIN=https://qwerty-plus.edgeone.dev,https://smhe00.github.io
 ```
 
-## 15. Upstream 隔离
+## 16. Upstream 隔离
 
 1. 不要求登录才能学习；
 2. 不修改词典格式；

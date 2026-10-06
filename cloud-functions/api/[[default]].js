@@ -4,6 +4,11 @@ import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
 import { AppError, createBackendService } from '../_shared/core.js'
 import { createEdgeOneBlobStorage } from '../_shared/storage/edgeone-blob.js'
 
+const TRUSTED_FRONTEND_ORIGINS = [
+  'https://qwerty-plus.edgeone.dev',
+  'https://smhe00.github.io',
+]
+
 function numberEnv(value, fallback) {
   const number = Number(value)
   return Number.isInteger(number) && number > 0 ? number : fallback
@@ -40,18 +45,22 @@ function corsHeaders(request, configuredOrigin) {
   }
 
   const requestOrigin = new URL(request.url).origin
-  if (!configuredOrigin || configuredOrigin === 'same-origin') {
-    return origin === requestOrigin
-      ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' }
-      : {}
+  const allowed = new Set(TRUSTED_FRONTEND_ORIGINS)
+
+  // Same-origin requests are always safe to expose. Keep this behavior for
+  // local development and for an EdgeOne custom domain added in the future.
+  allowed.add(requestOrigin)
+
+  // CORS_ORIGIN can add explicit origins without removing the two production
+  // frontend origins above. "same-origin" remains a supported legacy value.
+  if (configuredOrigin && configuredOrigin !== 'same-origin') {
+    for (const item of configuredOrigin.split(',')) {
+      const value = item.trim()
+      if (value) allowed.add(value)
+    }
   }
 
-  const allowed = configuredOrigin
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
-
-  return allowed.includes(origin)
+  return allowed.has(origin)
     ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' }
     : {}
 }
@@ -173,7 +182,8 @@ export async function onRequest(context) {
             'snapshot-retention-v1',
             'bounded-session-history-v1',
             'bounded-auth-history-v1',
-            'same-origin-cors-default-v1',
+            'trusted-frontend-cors-v2',
+            'same-origin-cors-v1',
             'application-auth-rate-limit-v1',
             'application-auth-rate-limit-v2',
             'hybrid-auth-rate-limit-v3',
