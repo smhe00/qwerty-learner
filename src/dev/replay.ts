@@ -4,9 +4,9 @@ import {
 } from './diagnostic-trace'
 import {
   LEARN_TRACE_IR_VERSION,
-  type LearnSystemTraceEvent,
   type LearnLifecycleSeed,
   type LearnLifecycleSeedAction,
+  type LearnSystemTraceEvent,
   type LearnTraceEnvelope,
 } from '../learn/trace-ir'
 
