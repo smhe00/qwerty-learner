@@ -4,11 +4,14 @@ import {
   DEVELOPER_INCIDENT_SCHEMA,
   DiagnosticReplayError,
   createReplayableMinimizedExport,
+  diagnosticToLearnLifecycleSeed,
   minimizeDiagnosticEvents,
   parseDiagnosticExport,
   replayDiagnostic,
 } from '../../src/dev/replay'
 import { DEVELOPER_TRACE_SCHEMA } from '../../src/dev/diagnostic-trace'
+import { VirtualLearnApp } from './system-driver'
+import { detectLearnSystemAnomalies } from './system-oracle'
 
 function event(
   sequence: number,
@@ -493,4 +496,106 @@ test('800-event trace minimization remains bounded and deterministic', () => {
 
   assert.ok(minimized.minimizedEventCount <= 2)
   assert.ok(elapsed < 5_000)
+})
+
+
+test('P0 minimized terminal divergence becomes a deterministic P1 reload seed', async () => {
+  const source = incident(
+    [
+      event(1, 'noise-before'),
+      event(2, 'review-checkpoint-durable', {
+        sessionId: '7',
+        index: 0,
+        queueLength: 1,
+        details: { isFinished: true },
+      }),
+      event(3, 'ui-finish-dispatch', {
+        sessionId: '7',
+        word: 'seed-terminal',
+        index: 0,
+        queueLength: 1,
+        scope: 'learn-terminal',
+      }),
+      event(4, 'noise-after'),
+    ],
+    {
+      resultVisible: false,
+      typingWord: 'seed-terminal',
+    },
+  )
+  const report = replayDiagnostic(source)
+  const target = report.anomalies.find(
+    (item) => item.code === 'terminal-ui-divergence',
+  )
+  assert.ok(target)
+
+  const parsed = parseDiagnosticExport(source)
+  const minimized = minimizeDiagnosticEvents(
+    parsed,
+    target.signature,
+  )
+  const replayable = createReplayableMinimizedExport(
+    parsed,
+    minimized,
+  )
+  const seed = diagnosticToLearnLifecycleSeed(replayable)
+
+  assert.deepEqual(seed.actions, [{ kind: 'reload' }])
+  assert.ok(
+    seed.anomalyCodes.includes('terminal-ui-divergence'),
+  )
+
+  const makeApp = (
+    mutation?: ConstructorParameters<
+      typeof VirtualLearnApp
+    >[0]['mutation'],
+  ) => {
+    const app = new VirtualLearnApp({
+      words: [
+        {
+          name: 'seed-terminal',
+          trans: [],
+          usphone: '',
+          ukphone: '',
+        },
+      ],
+      mutation,
+    })
+    app.seedAdmittedWords(1)
+    app.makeSeededWordsDue(1)
+    return app
+  }
+
+  const clean = makeApp()
+  const cleanPrepared = await clean.enter()
+  assert.equal(cleanPrepared.kind, 'session')
+  assert.equal(clean.completeCurrentReviewClean(), true)
+  await clean.applyLifecycleActions(seed.actions)
+  const cleanCodes = detectLearnSystemAnomalies(
+    clean.events,
+  ).map((item) => item.code)
+  assert.equal(
+    cleanCodes.includes('terminal-session-resurrection'),
+    false,
+  )
+  assert.equal(
+    cleanCodes.includes('post-finish-evidence'),
+    false,
+  )
+
+  const mutated = makeApp({
+    routeResurrectsFinished: true,
+  })
+  const mutatedPrepared = await mutated.enter()
+  assert.equal(mutatedPrepared.kind, 'session')
+  assert.equal(mutated.completeCurrentReviewClean(), true)
+  await mutated.applyLifecycleActions(seed.actions)
+
+  const mutatedCodes = detectLearnSystemAnomalies(
+    mutated.events,
+  ).map((item) => item.code)
+  assert.ok(
+    mutatedCodes.includes('terminal-session-resurrection'),
+  )
+  assert.ok(mutatedCodes.includes('checkpoint-regression'))
 })

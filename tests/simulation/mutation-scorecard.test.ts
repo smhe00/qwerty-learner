@@ -148,6 +148,79 @@ test('system mutation scorecard detects generic failure classes without false po
         },
       ],
     },
+    {
+      id: 'finished-session-route-resurrection',
+      expected: 'terminal-session-resurrection',
+      events: [
+        {
+          kind: 'checkpoint',
+          action: 'save',
+          sessionId: 'terminal-route',
+          index: 0,
+          isFinished: true,
+          queueSignature: 'omega',
+          wordCount: 1,
+        },
+        {
+          kind: 'lifecycle',
+          action: 'route-enter',
+          sessionId: 'terminal-route',
+          isFinished: false,
+        },
+      ],
+    },
+    {
+      id: 'post-finish-evidence',
+      expected: 'post-finish-evidence',
+      events: [
+        {
+          kind: 'checkpoint',
+          action: 'save',
+          sessionId: 'terminal-evidence',
+          index: 0,
+          isFinished: true,
+          queueSignature: 'omega',
+          wordCount: 1,
+        },
+        {
+          kind: 'learn-evidence-durable',
+          sessionId: 'terminal-evidence',
+          word: 'omega',
+          itemKind: 'review',
+        },
+      ],
+    },
+    {
+      id: 'wrong-mixed-item-ownership',
+      expected: 'mixed-item-ownership-violation',
+      events: [
+        {
+          kind: 'session-prepared',
+          source: 'mixed',
+          sessionKind: 'mixed',
+          sessionId: 'mixed-owner',
+          batchSize: 2,
+          uniqueWords: 2,
+          dueCount: 1,
+          unseenCount: 1,
+          allowedNewWordsNow: 1,
+          introducedToday: 0,
+          acquiredToday: 0,
+          itemOwnership: [
+            {
+              word: 'review-word',
+              itemKind: 'review',
+              hasAcquisitionState: false,
+            },
+            {
+              word: 'acq-word',
+              itemKind: 'review',
+              hasAcquisitionState: true,
+            },
+          ],
+        },
+      ],
+    },
   ]
 
   const results = cases.map((item) => {
@@ -235,6 +308,33 @@ test('system mutation scorecard detects generic failure classes without false po
         audioSettled: true,
         timeoutExpired: false,
         fastForward: false,
+      },
+    ],
+    [
+      {
+        kind: 'session-prepared',
+        source: 'mixed',
+        sessionKind: 'mixed',
+        sessionId: 'mixed-clean',
+        batchSize: 2,
+        uniqueWords: 2,
+        dueCount: 1,
+        unseenCount: 1,
+        allowedNewWordsNow: 1,
+        introducedToday: 0,
+        acquiredToday: 0,
+        itemOwnership: [
+          {
+            word: 'review-word',
+            itemKind: 'review',
+            hasAcquisitionState: false,
+          },
+          {
+            word: 'acq-word',
+            itemKind: 'acquisition',
+            hasAcquisitionState: true,
+          },
+        ],
       },
     ],
   ]

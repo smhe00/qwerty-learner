@@ -44,7 +44,9 @@ async function explore(
     app.makeSeededWordsDue(3)
   }
 
+  const actions: string[] = []
   await app.enter()
+  actions.push('enter')
 
   for (let step = 0; step < 220; step += 1) {
     const choice = random()
@@ -59,18 +61,33 @@ async function explore(
             : ('again' as const)
       const progressed =
         app.completeCurrentAttempt(outcome)
-      if (!progressed) await app.enter()
+      actions.push(`attempt:${outcome}:${progressed ? 'ok' : 'miss'}`)
+      if (!progressed) {
+        await app.enter()
+        actions.push('enter-after-miss')
+      }
       continue
     }
 
-    if (choice < 0.7) {
+    if (choice < 0.68) {
       await app.refresh()
+      actions.push('reload')
       continue
     }
 
-    if (choice < 0.8) {
+    if (choice < 0.76) {
       app.exit()
+      actions.push('route-leave')
       await app.enter()
+      actions.push('route-enter')
+      continue
+    }
+
+    if (choice < 0.82) {
+      app.background()
+      actions.push('background')
+      app.foreground()
+      actions.push('foreground')
       continue
     }
 
@@ -79,20 +96,27 @@ async function explore(
         Math.floor(random() * 4)
       ]
       app.advanceSeconds(seconds)
+      actions.push(`advance-seconds:${seconds}`)
       if (random() < 0.5) {
         app.exit()
+        actions.push('route-leave')
         await app.enter()
+        actions.push('route-enter')
       }
       continue
     }
 
     app.advanceDays(1)
+    actions.push('advance-days:1')
     app.exit()
+    actions.push('route-leave')
     await app.enter()
+    actions.push('route-enter')
   }
 
   return {
     app,
+    actions,
     anomalies: detectLearnSystemAnomalies(app.events),
   }
 }
@@ -101,6 +125,7 @@ test('deterministic random user-action exploration stays anomaly-free across cle
   const failures: Array<{
     seed: number
     codes: string[]
+    actions: string[]
   }> = []
 
   const profiles: ExplorerProfile[] = [
@@ -121,6 +146,7 @@ test('deterministic random user-action exploration stays anomaly-free across cle
         failures.push({
           seed: effectiveSeed,
           codes: result.anomalies.map((item) => item.code),
+          actions: result.actions,
         })
       }
     }
