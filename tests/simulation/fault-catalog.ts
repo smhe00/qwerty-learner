@@ -1,4 +1,4 @@
-export const P2_FAULT_CATALOG_VERSION = 1 as const
+export const P2_FAULT_CATALOG_VERSION = 2 as const
 
 export type VerificationDetectorLayer =
   | 'simulation'
@@ -382,41 +382,43 @@ export const P2_CRITICAL_FAULT_CATALOG: CriticalFaultCatalogEntry[] = [
     rationale: 'Durable terminal state plus finish dispatch contradicts a captured active-word DOM.',
   },
 
-  // Explicit remaining gaps: classified, but not allowed to inflate mutation score.
+  // Browser lifecycle classes closed by P3. They remain outside the
+  // event-level simulation mutation denominator because their detector is
+  // real Playwright/React/browser behavior.
   {
     id: 'stale-async-preparation-wins-navigation',
     family: 'async-browser',
     severity: 'high',
-    status: 'partial',
-    detectors: ['browser'],
+    status: 'covered',
+    detectors: ['browser', 'domain'],
     executableMutation: false,
-    rationale: 'Async preparation ownership is covered in selected races, but not yet fuzzed across arbitrary route schedules.',
+    rationale: 'P3 deterministically blocks Learn preparation, leaves the SPA route, releases the stale operation, and requires the injected stale-owner mutant to be detected.',
   },
   {
     id: 'route-cache-idb-divergence-after-crash',
     family: 'persistence-order',
     severity: 'high',
-    status: 'partial',
+    status: 'covered',
     detectors: ['p0-replay', 'browser'],
     executableMutation: false,
-    rationale: 'P0 can diagnose divergence, but simulation does not yet model a real crash between synchronous cache and IndexedDB durability.',
+    rationale: 'P3 creates a controlled route-cache-ahead-of-IndexedDB window, reloads the document before the blocked durable write, and verifies route-cache recovery plus forward convergence.',
   },
   {
     id: 'refresh-during-checkpoint-commit-window',
     family: 'persistence-order',
     severity: 'high',
-    status: 'partial',
+    status: 'covered',
     detectors: ['simulation', 'browser'],
     executableMutation: false,
-    rationale: 'Stale checkpoint ordering is modeled; real browser timing/interruption belongs to P3 stateful fuzzing.',
+    rationale: 'P3 blocks the real checkpoint persistence path, refreshes during the window, restores from route-critical cache, releases persistence, and verifies monotonic convergence.',
   },
   {
     id: 'viewport-resize-without-document-reload',
     family: 'async-browser',
     severity: 'medium',
-    status: 'partial',
+    status: 'covered',
     detectors: ['browser'],
     executableMutation: false,
-    rationale: 'Browser regression exists; viewport resize is not yet a separate virtual action from route/reload in simulation.',
+    rationale: 'P3 includes viewport resize as an independent seeded action and kills an injected desktop-resize navigation mutant.',
   },
 ]
