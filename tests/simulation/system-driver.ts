@@ -630,6 +630,12 @@ export class VirtualLearnApp {
     })
     const productionQuota =
       decideDailyAcquisitionQuota(budgetStats)
+    const productionPlan = buildLearnDailyPlan({
+      stats: budgetStats,
+      quota: productionQuota,
+    })
+    const baselinePendingSelected =
+      candidatePlan.resumed.length
 
     if (this.mutation.pendingAsFresh) {
       const pendingWord = [...pending.keys()][0]
@@ -712,10 +718,14 @@ export class VirtualLearnApp {
       unseenCount: budgetStats.lifecycle.unseen,
       dueCount: budgetStats.lifecycle.due,
       allowedNow: freshLimit,
+      expectedAllowedNow:
+        productionPlan.allowedNewWordsNow,
       freshSelected: freshWords.length,
       readyPendingCount:
         productionReadyPendingCount,
       pendingSelected: resumed.length,
+      expectedPendingSelected:
+        baselinePendingSelected,
     })
 
     if (selected.length === 0) return undefined
@@ -859,8 +869,10 @@ export class VirtualLearnApp {
       freshLimit,
       now: this.now,
     })
-    let resumed = [...candidatePlan.resumed]
-    let freshWords = [...candidatePlan.freshWords]
+    const baselineResumed = [...candidatePlan.resumed]
+    const baselineFreshWords = [...candidatePlan.freshWords]
+    let resumed = [...baselineResumed]
+    let freshWords = [...baselineFreshWords]
 
     if (this.mutation.pendingAsFresh) {
       const pendingWord = [...pending.keys()][0]
@@ -960,6 +972,37 @@ export class VirtualLearnApp {
     })
     const productionQuota =
       decideDailyAcquisitionQuota(budgetStats)
+    const productionPlan = buildLearnDailyPlan({
+      stats: budgetStats,
+      quota: productionQuota,
+    })
+    const baselineAcquisitionCandidates = [
+      ...baselineResumed.map(({ word, state }) => ({
+        word,
+        state,
+        resumed: true as const,
+      })),
+      ...baselineFreshWords.map((word) => ({
+        word,
+        state: undefined,
+        resumed: false as const,
+      })),
+    ]
+    const baselineSelection = selectLearnMixedSessionItems({
+      dueWords,
+      acquisitionWords: baselineAcquisitionCandidates.map(
+        (item) => item.word,
+      ),
+    })
+    const baselineSelectedAcquisition =
+      baselineAcquisitionCandidates.slice(
+        0,
+        baselineSelection.selectedAcquisitionWords.length,
+      )
+    const baselinePendingSelected =
+      baselineSelectedAcquisition.filter(
+        (item) => item.resumed,
+      ).length
     this.events.push({
       kind: 'fresh-budget',
       targetDailyNewWords:
@@ -971,9 +1014,13 @@ export class VirtualLearnApp {
       unseenCount: budgetStats.lifecycle.unseen,
       dueCount: budgetStats.lifecycle.due,
       allowedNow: freshLimit,
+      expectedAllowedNow:
+        productionPlan.allowedNewWordsNow,
       freshSelected: selectedFresh.length,
       readyPendingCount: candidatePlan.resumed.length,
       pendingSelected: selectedPending.length,
+      expectedPendingSelected:
+        baselinePendingSelected,
     })
 
     if (selection.selectedWords.length === 0) {

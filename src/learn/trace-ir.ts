@@ -70,9 +70,11 @@ export type LearnSystemTraceEvent =
       unseenCount: number | null
       dueCount: number
       allowedNow: number
+      expectedAllowedNow?: number
       freshSelected: number
       readyPendingCount: number
       pendingSelected: number
+      expectedPendingSelected?: number
     }
   | {
       kind: 'session-arbitration'

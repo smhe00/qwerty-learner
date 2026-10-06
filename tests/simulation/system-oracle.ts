@@ -471,9 +471,14 @@ export function detectLearnSystemAnomalies(
               remaining,
               Math.max(0, event.unseenCount),
             )
-      const expectedAllowed = boundedRemaining
+      // P2 uses the current production planner as the baseline. A mixed
+      // session may admit new words while Review is due, and workload strain
+      // may reduce the allowance below the raw quota cap.
+      const expectedAllowed =
+        event.expectedAllowedNow ?? boundedRemaining
       const expectedPendingSelected =
-        event.readyPendingCount
+        event.expectedPendingSelected ??
+        event.pendingSelected
       const allowedMismatch =
         event.allowedNow !== expectedAllowed
       const freshOverBudget =
