@@ -2,7 +2,7 @@
 protocol_version: "1.1"
 task_id: "TASK-20261006-006-learn-key-wrong-audio-regression"
 title: "Fix Learn typing-click and wrong-letter audio regression"
-status: "QUEUED"
+status: "REVIEW"
 target_branch: "product/main"
 base_commit: null
 recommended_executor: "workbuddy"
