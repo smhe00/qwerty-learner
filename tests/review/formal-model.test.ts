@@ -1675,7 +1675,7 @@ test('formal/acquisition-safety: acquisition starts supported by visible exposur
 })
 
 
-test('formal/hint-auto: every automatic escalation is bounded and acyclic', async () => {
+test('formal/hint-auto: every automatic Hint V2 escalation is bounded by three failures', async () => {
   const {
     applyReviewHintDecision,
     createReviewHintMachineState,
@@ -1684,82 +1684,85 @@ test('formal/hint-auto: every automatic escalation is bounded and acyclic', asyn
   } = await import('../../src/review/hint')
 
   for (let wordLength = 1; wordLength <= 20; wordLength += 1) {
-    for (let wrongIndex = 0; wrongIndex < wordLength; wrongIndex += 1) {
+    for (
+      let wrongIndex = 0;
+      wrongIndex < wordLength;
+      wrongIndex += 1
+    ) {
       let state = createReviewHintMachineState()
-
-      const first = observeReviewHintWrong({
-        state,
-        wrongIndex,
-        wordLength,
-      })
-      state = first.state
-      assert.equal(first.decision, null)
-      assert.equal(state.stage, 'cold-probe')
-
-      const beforeCold = reviewHintTerminationVariant(state)
-      const second = observeReviewHintWrong({
-        state,
-        wrongIndex,
-        wordLength,
-      })
-      state = second.state
-      assert.equal(second.decision?.kind, 'advance-hint')
-      if (second.decision?.kind !== 'advance-hint') continue
-      assert.equal(second.decision.level, 0)
-      assert.equal(second.decision.trigger, 'repeated-wrong-position')
-      state = applyReviewHintDecision(state, second.decision)
-      assert.equal(state.stage, 'hint-0')
-      assert.equal(state.stageWrongCount, 0)
-      assert.ok(reviewHintTerminationVariant(state) < beforeCold)
-
       const expected = [
-        { from: 'hint-0', to: 'hint-1', level: 1 },
-        { from: 'hint-1', to: 'hint-2', level: 2 },
-        { from: 'hint-2', to: 'hint-3', level: 3 },
+        { stage: 'hint-0', level: 0, failures: 1 },
+        { stage: 'hint-1', level: 1, failures: 2 },
+        { stage: 'hint-3', level: 3, failures: 3 },
       ] as const
 
-      for (const edge of expected) {
-        assert.equal(state.stage, edge.from)
-        const before = reviewHintTerminationVariant(state)
-
-        const wrongA = observeReviewHintWrong({
+      for (const item of expected) {
+        const before =
+          reviewHintTerminationVariant(state)
+        const observed = observeReviewHintWrong({
           state,
-          wrongIndex,
+          wrongIndex:
+            (wrongIndex + item.failures - 1) %
+            wordLength,
           wordLength,
         })
-        state = wrongA.state
-        assert.equal(wrongA.decision, null)
-        assert.equal(state.stageWrongCount, 1)
-
-        const wrongB = observeReviewHintWrong({
-          state,
-          wrongIndex: (wrongIndex + 1) % wordLength,
-          wordLength,
-        })
-        state = wrongB.state
-        assert.equal(wrongB.decision?.kind, 'advance-hint')
-        if (wrongB.decision?.kind !== 'advance-hint') break
-        assert.equal(wrongB.decision.to, edge.to)
-        assert.equal(wrongB.decision.level, edge.level)
-        assert.equal(wrongB.decision.trigger, 'repeated-hint-errors')
-        state = applyReviewHintDecision(state, wrongB.decision)
-        assert.equal(state.stageWrongCount, 0)
-        assert.ok(reviewHintTerminationVariant(state) < before)
+        assert.equal(
+          observed.decision?.kind,
+          'advance-hint',
+        )
+        if (
+          observed.decision?.kind !==
+          'advance-hint'
+        ) {
+          continue
+        }
+        assert.equal(
+          observed.decision.to,
+          item.stage,
+        )
+        assert.equal(
+          observed.decision.level,
+          item.level,
+        )
+        assert.equal(
+          observed.decision.failureCount,
+          item.failures,
+        )
+        assert.equal(
+          observed.decision.trigger,
+          'failed-retrieval',
+        )
+        state = applyReviewHintDecision(
+          observed.state,
+          observed.decision,
+        )
+        assert.ok(
+          reviewHintTerminationVariant(state) <
+            before,
+        )
       }
 
       assert.equal(state.stage, 'hint-3')
-      const terminalVariant = reviewHintTerminationVariant(state)
-      for (let repeat = 0; repeat < 4; repeat += 1) {
-        const terminal = observeReviewHintWrong({
-          state,
-          wrongIndex,
-          wordLength,
-        })
-        state = terminal.state
-        assert.equal(terminal.decision, null)
-        assert.equal(state.stage, 'hint-3')
-        assert.equal(reviewHintTerminationVariant(state), terminalVariant)
-      }
+      assert.equal(state.failureCount, 3)
+
+      const terminalVariant =
+        reviewHintTerminationVariant(state)
+      const terminal = observeReviewHintWrong({
+        state,
+        wrongIndex,
+        wordLength,
+      })
+      assert.equal(terminal.decision, null)
+      assert.equal(
+        reviewHintTerminationVariant(
+          terminal.state,
+        ),
+        terminalVariant,
+      )
+      assert.equal(
+        terminal.state.failureCount,
+        3,
+      )
     }
   }
 })
@@ -1834,8 +1837,10 @@ test('formal/completion-bridge: retry and reinforcement paths remain bounded', a
   )
 })
 
-test('formal/hint0-position: cue strength is monotone for every target position', async () => {
-  const { createReviewHintPlan } = await import('../../src/review/hint')
+test('formal/hint-position: Minimal is targeted, Strong is a superset, and Full is complete', async () => {
+  const { createReviewHintPlan } = await import(
+    '../../src/review/hint'
+  )
 
   const visibleSet = (
     level: 0 | 1 | 2 | 3,
@@ -1850,30 +1855,62 @@ test('formal/hint0-position: cue strength is monotone for every target position'
 
     if (letters.mode === 'all-visible') {
       return new Set(
-        Array.from({ length: wordLength }, (_, index) => index),
+        Array.from(
+          { length: wordLength },
+          (_, index) => index,
+        ),
       )
     }
-    if (letters.mode === 'all-hidden') return new Set<number>()
-    return new Set(letters.visiblePositions ?? [])
+    if (letters.mode === 'all-hidden') {
+      return new Set<number>()
+    }
+    return new Set(
+      letters.visiblePositions ?? [],
+    )
   }
 
   for (let wordLength = 1; wordLength <= 20; wordLength += 1) {
-    for (let hintPosition = 0; hintPosition < wordLength; hintPosition += 1) {
-      const h0 = visibleSet(0, wordLength, hintPosition)
-      const h1 = visibleSet(1, wordLength, hintPosition)
-      const h2 = visibleSet(2, wordLength, hintPosition)
-      const h3 = visibleSet(3, wordLength, hintPosition)
+    for (
+      let hintPosition = 0;
+      hintPosition < wordLength;
+      hintPosition += 1
+    ) {
+      const h0 = visibleSet(
+        0,
+        wordLength,
+        hintPosition,
+      )
+      const h1 = visibleSet(
+        1,
+        wordLength,
+        hintPosition,
+      )
+      const h2 = visibleSet(
+        2,
+        wordLength,
+        hintPosition,
+      )
+      const h3 = visibleSet(
+        3,
+        wordLength,
+        hintPosition,
+      )
 
-      assert.deepEqual([...h0], [hintPosition])
-      assert.deepEqual([...h1], [hintPosition])
-      assert.ok([...h0].every((index) => h1.has(index)))
-      assert.ok([...h1].every((index) => h2.has(index)))
-      assert.ok([...h2].every((index) => h3.has(index)))
+      assert.deepEqual(
+        [...h0],
+        [hintPosition],
+      )
+      assert.ok(
+        [...h0].every((index) => h1.has(index)),
+      )
+      assert.deepEqual([...h2], [...h1])
+      assert.ok(
+        [...h1].every((index) => h3.has(index)),
+      )
       assert.equal(h3.size, wordLength)
     }
   }
 })
-
 
 test('formal/learn-name-canonicalization: bounded duplicate dictionaries produce one stable item per exact name', () => {
   const names = ['a', 'b', 'c']
