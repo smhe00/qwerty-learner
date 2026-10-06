@@ -202,15 +202,16 @@ test('cloud credential editing never leaks keys into Typing', async ({
     page.getByRole('button', { name: '暂停', exact: true }),
   ).toBeVisible()
 
-  await page
-    .getByRole('button', { name: '打开设置对话框', exact: true })
-    .click()
+  // Data settings also has a production event entry used by non-cog UI.
+  // Drive that exact path so the regression is about keyboard ownership rather
+  // than Headless UI transition/tooltip timing.
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('qwerty:open-data-settings'))
+  })
   await expect(page.getByRole('dialog')).toBeVisible()
   await expect(
     page.getByRole('button', { name: '开始', exact: true }),
   ).toBeVisible()
-
-  await page.getByRole('tab', { name: '数据设置', exact: true }).click()
 
   const username = page.getByPlaceholder('用户名')
   await username.click()
