@@ -1,4 +1,9 @@
 // RC 2026-09-30 review-formal-gate-v1 production acceptance marker
+import { readFile } from 'node:fs/promises'
+import {
+  parseDiagnosticExport,
+  replayDiagnostic,
+} from '../../src/dev/replay'
 import { expect, test } from '@playwright/test'
 
 type ReviewWord = {
@@ -1315,6 +1320,15 @@ test('developer diagnostics exports a read-only incident bundle from the UI', as
   expect(download.suggestedFilename()).toMatch(
     /^Qwerty-Plus-Incident-.*\.json$/,
   )
+  const downloadPath = await download.path()
+  expect(downloadPath).not.toBeNull()
+  const exported = await readFile(downloadPath as string, 'utf8')
+  const parsed = parseDiagnosticExport(exported)
+  expect(parsed.kind).toBe('incident')
+  expect(parsed.schema).toBe('qwerty-developer-incident-v1')
+  const replay = replayDiagnostic(parsed)
+  expect(replay.eventCount).toBeGreaterThanOrEqual(0)
+
   await expect(
     page.getByText('现场诊断包已导出。请直接把该 JSON 文件发给开发者。'),
   ).toBeVisible()

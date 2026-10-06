@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   DEVELOPER_INCIDENT_SCHEMA,
   DiagnosticReplayError,
+  createReplayableMinimizedExport,
   minimizeDiagnosticEvents,
   parseDiagnosticExport,
   replayDiagnostic,
@@ -427,11 +428,23 @@ test('ddmin preserves anomaly signature, order and deterministic result', () => 
     first.retainedSequences,
   )
   assert.ok(first.minimizedEventCount < first.originalEventCount)
+  const parsed = parseDiagnosticExport(source)
   assert.ok(
     replayDiagnostic({
-      ...parseDiagnosticExport(source),
+      ...parsed,
       events: first.events,
     }).anomalies.some(
+      (item) => item.signature === target.signature,
+    ),
+  )
+
+  const replayable = createReplayableMinimizedExport(
+    parsed,
+    first,
+  )
+  const replayed = replayDiagnostic(replayable)
+  assert.ok(
+    replayed.anomalies.some(
       (item) => item.signature === target.signature,
     ),
   )
@@ -474,6 +487,9 @@ test('800-event trace minimization remains bounded and deterministic', () => {
     target.signature,
   )
   const elapsed = Date.now() - started
+  console.log(
+    `P0 800-event diagnostic minimizer runtime: ${elapsed}ms`,
+  )
 
   assert.ok(minimized.minimizedEventCount <= 2)
   assert.ok(elapsed < 5_000)

@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import {
   DiagnosticReplayError,
+  createReplayableMinimizedExport,
   minimizeDiagnosticEvents,
   parseDiagnosticExport,
   replayDiagnostic,
@@ -48,14 +49,10 @@ async function main() {
       await fs.writeFile(
         minimizedPath,
         JSON.stringify(
-          {
-            schema: 'qwerty-diagnostic-minimized-v1',
-            sourceSchema: parsed.schema,
-            targetSignature: target.signature,
-            retainedSequences:
-              minimized.retainedSequences,
-            events: minimized.events,
-          },
+          createReplayableMinimizedExport(
+            parsed,
+            minimized,
+          ),
           null,
           2,
         ),

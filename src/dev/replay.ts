@@ -110,6 +110,65 @@ export type DiagnosticMinimizationResult = {
   events: NormalizedDiagnosticEvent[]
 }
 
+function normalizedToDeveloperTraceEvent(
+  event: NormalizedDiagnosticEvent,
+): DeveloperTraceEvent {
+  return {
+    schemaVersion: 1,
+    sequence: event.sequence,
+    at: event.at,
+    path: event.path ?? '',
+    scope: event.scope as DeveloperTraceEvent['scope'],
+    event: event.event,
+    ...(event.word ? { word: event.word } : {}),
+    ...(event.sessionId && event.sessionEvidence === 'observed'
+      ? { sessionId: event.sessionId }
+      : {}),
+    ...(event.index !== undefined
+      ? { index: event.index }
+      : {}),
+    ...(event.queueLength !== undefined
+      ? { queueLength: event.queueLength }
+      : {}),
+    ...(Object.keys(event.details).length > 0
+      ? {
+          details: event.details as DeveloperTraceEvent['details'],
+        }
+      : {}),
+  }
+}
+
+export function createReplayableMinimizedExport(
+  parsed: ParsedDiagnosticExport,
+  minimized: DiagnosticMinimizationResult,
+): unknown {
+  const rawEvents = minimized.events.map(
+    normalizedToDeveloperTraceEvent,
+  )
+
+  if (parsed.kind === 'trace') {
+    return {
+      schema: DEVELOPER_TRACE_SCHEMA,
+      exportedAt: parsed.capturedAt ?? 0,
+      events: rawEvents,
+    }
+  }
+
+  if (!parsed.incident) {
+    throw new DiagnosticReplayError(
+      'incident export is missing its incident snapshot',
+    )
+  }
+
+  return {
+    ...parsed.incident,
+    trace: {
+      ...parsed.incident.trace,
+      events: rawEvents,
+    },
+  }
+}
+
 function asRecord(value: unknown): UnknownRecord | undefined {
   return value !== null && typeof value === 'object'
     ? (value as UnknownRecord)

@@ -8,6 +8,7 @@ on:
       - 'src/review/**'
       - 'src/learn/**'
       - 'src/dev/**'
+      - 'tools/diagnostics/**'
       - 'src/components/ModeSwitcher/**'
       - 'src/components/Footer/**'
       - 'src/pages/Learn/**'
@@ -81,6 +82,7 @@ jobs:
           src/review
           src/learn
           src/dev
+          tools/diagnostics
           src/components/ModeSwitcher
           src/pages/Learn
           src/pages/Analysis
@@ -143,6 +145,17 @@ jobs:
 
       - name: Run TLA trace bridge tests
         run: node --test .review-test/tla-trace-bridge.test.mjs
+
+      - name: Bundle and smoke diagnostic replay CLI
+        run: |
+          npx esbuild tools/diagnostics/replay-incident.ts \
+            --bundle \
+            --platform=node \
+            --target=node20 \
+            --format=esm \
+            --outfile=.review-test/replay-incident.mjs
+          printf '%s\n' '{"schema":"qwerty-developer-trace-v1","exportedAt":0,"events":[]}' > .review-test/healthy-trace.json
+          node .review-test/replay-incident.mjs .review-test/healthy-trace.json
 
       - name: Run Learn control stability gate
         run: node --test .review-test/control-stability.test.mjs
