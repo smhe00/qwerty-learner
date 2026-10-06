@@ -392,7 +392,9 @@ export default function WordComponent({
         {
           hintPosition: decision.hintPosition,
           autoHint0Triggered:
-            decision.trigger === 'repeated-wrong-position',
+            decision.trigger === 'failed-retrieval' &&
+            decision.level === 0,
+          failureCount: nextHintState.failureCount,
         },
       )
 
@@ -400,8 +402,8 @@ export default function WordComponent({
       onHintLevelChange?.(decision.level)
       setIsHoveringWord(false)
 
-      if (decision.level === 1) {
-        // Hint 1 introduces pronunciation for the first time.
+      if (decision.level >= 1) {
+        // Strong/Full Hint may introduce pronunciation for the first time.
         automaticPronunciationPlayedRef.current = false
       }
 
@@ -955,6 +957,36 @@ export default function WordComponent({
       )
 
       if (wrongRecorded && isManagedReviewHintFlow()) {
+        if (
+          reviewHintStateRef.current.stage === 'cold-probe' &&
+          !learningContextCollectorRef.current.snapshot()
+            .coldProbeEvidence
+        ) {
+          const coldTelemetry =
+            telemetryCollectorRef.current.snapshot()
+          const coldLearningContext =
+            learningContextCollectorRef.current.snapshot()
+          const coldClassification = classifyTypingError({
+            word: word.name,
+            wrongCount: wordState.wrongCount + 1,
+            telemetry: coldTelemetry,
+            learningContext: coldLearningContext,
+            history: historySummaryRef.current,
+          })
+          const coldEvidence = evaluateReviewEvidence(
+            {
+              typingTelemetry: coldTelemetry,
+              learningContext: coldLearningContext,
+              exerciseCondition:
+                exerciseConditionRef.current,
+            },
+            coldClassification,
+          )
+          learningContextCollectorRef.current.recordColdProbeEvidence(
+            coldEvidence,
+          )
+        }
+
         const previousForcedRevealKey =
           reviewHintStateRef.current.forcedRevealPositions.join(',')
         const observation = observeReviewHintWrong({
@@ -1323,6 +1355,9 @@ export default function WordComponent({
             }
             data-review-hint-stage-errors={
               reviewHintStateRef.current.stageWrongCount
+            }
+            data-review-hint-failures={
+              reviewHintStateRef.current.failureCount
             }
             data-review-forced-reveal={
               reviewHintStateRef.current.forcedRevealPositions.join(',')
