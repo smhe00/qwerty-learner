@@ -997,12 +997,12 @@ test('Phase D live gate applies one canonical rating through the scheduler', asy
   ).toEqual(['again', 'easy', 'good', 'hard'])
 })
 
-test('Phase D live gate persists assisted Hint evidence but leaves scheduler unchanged', async ({
+test('Hint V2 freezes Cold Probe evidence before assisted completion reaches the scheduler', async ({
   page,
 }) => {
   await seedReviewSession(page, reviewWords.slice(0, 1), 900005)
   await page.goto('/')
-  const before = await putDueReviewWordState(page, 'cancel')
+  await putDueReviewWordState(page, 'cancel')
 
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
@@ -1012,31 +1012,47 @@ test('Phase D live gate persists assisted Hint evidence but leaves scheduler unc
   await expect
     .poll(async () => await word.getAttribute('data-typing-input'))
     .toBe('')
-  await page.keyboard.type('cax')
   await expect(word).toHaveAttribute('data-review-hint-level', '0')
-  await expect
-    .poll(async () => await word.getAttribute('data-typing-input'))
-    .toBe('')
+  await expect(word).toHaveAttribute('data-review-hint-failures', '1')
 
   await page.keyboard.type('cancel')
 
   await expect
     .poll(async () => {
-      const result = await readReviewGateState(page, 'cancel')
+      const records = await readReviewWordRecords(page, ['cancel'])
+      const latest = records[records.length - 1] as {
+        learningContext?: {
+          coldProbeEvidence?: {
+            retrievalValidity?: string
+          }
+          reviewHint?: {
+            failureCount?: number
+          }
+        }
+        reviewRatingDecision?: {
+          eligible?: boolean
+          reasonCodes?: string[]
+        }
+      }
       return {
-        reviewCount: result.state?.reviewCount,
-        nextReviewAt: result.state?.nextReviewAt,
-        lastOutcome: result.state?.lastOutcome,
-        eligible: result.decision?.eligible,
-        reason: result.decision?.reason,
+        frozen:
+          latest?.learningContext?.coldProbeEvidence
+            ?.retrievalValidity,
+        failures:
+          latest?.learningContext?.reviewHint?.failureCount,
+        eligible:
+          latest?.reviewRatingDecision?.eligible,
+        frozenReason:
+          latest?.reviewRatingDecision?.reasonCodes?.includes(
+            'cold-probe-failure-frozen',
+          ),
       }
     })
     .toEqual({
-      reviewCount: before.reviewCount,
-      nextReviewAt: before.nextReviewAt,
-      lastOutcome: before.lastOutcome,
-      eligible: false,
-      reason: 'training-event',
+      frozen: 'independent',
+      failures: 1,
+      eligible: true,
+      frozenReason: true,
     })
 })
 
@@ -1050,7 +1066,8 @@ test('forgotten cold probe schedules one reinforcement and reinforcement cannot 
 
   const cancel = page.locator('[data-typing-word="cancel"]')
   await page.keyboard.press('Escape')
-  await expect(cancel).toHaveAttribute('data-review-hint-level', '0')
+  await expect(cancel).toHaveAttribute('data-review-hint-level', '3')
+  await expect(cancel).toHaveText('cancel')
   await page.keyboard.type('cancel')
 
   await waitForReviewIndex(page, 1)
@@ -1099,7 +1116,7 @@ test('forgotten cold probe schedules one reinforcement and reinforcement cannot 
   })
 })
 
-test('Hint 3 skip lock blocks navigation to a real next Review word', async ({
+test('ESC enters full answer immediately and skip lock blocks navigation until corrective typing', async ({
   page,
 }) => {
   await seedReviewSession(page, reviewWords.slice(0, 2), 900010)
@@ -1108,14 +1125,9 @@ test('Hint 3 skip lock blocks navigation to a real next Review word', async ({
   await waitForRenderedWord(page, 'cancel')
 
   const cancel = page.locator('[data-typing-word="cancel"]')
-  for (let level = 0; level <= 3; level += 1) {
-    await page.keyboard.press('Escape')
-    await expect(cancel).toHaveAttribute(
-      'data-review-hint-level',
-      String(level),
-    )
-  }
-
+  await page.keyboard.press('Escape')
+  await expect(cancel).toHaveAttribute('data-review-hint-level', '3')
+  await expect(cancel).toHaveAttribute('data-review-hint-stage', 'hint-3')
   await expect(cancel).toHaveText('cancel')
   await expect(cancel).toHaveAttribute('data-review-skip-locked', 'true')
 
@@ -1130,7 +1142,6 @@ test('Hint 3 skip lock blocks navigation to a real next Review word', async ({
   await waitForReviewIndex(page, 1)
   await waitForRenderedWord(page, 'analyse')
 })
-
 
 test('Typing and Learn are explicit top-level modes', async ({ page }) => {
   await page.goto('/typing')
@@ -2066,8 +2077,9 @@ test('failed Independent recall targets the wrong position in the next S1 attemp
   await expect(word).toHaveAttribute('data-review-hint-stage', 'hint-1')
 
   await page.keyboard.press('Escape')
-  await expect(word).toHaveAttribute('data-review-hint-level', '2')
-  await expect(word).toHaveAttribute('data-review-hint-stage', 'hint-2')
+  await expect(word).toHaveAttribute('data-review-hint-level', '3')
+  await expect(word).toHaveAttribute('data-review-hint-stage', 'hint-3')
+  await expect(word).toHaveText('cancel')
 })
 
 test('dynamic scaffold never weakens Independent acquisition under recovery strain', async ({
@@ -2424,7 +2436,7 @@ test('a due ACTIVE word is reviewed before any unseen acquisition word', async (
 })
 
 
-test('Hint ladder auto-advances after two failures at each active level', async ({
+test('Hint V2 reveals Minimal, Strong, then Full after exactly three failed attempts', async ({
   page,
 }) => {
   await seedReviewSession(page, reviewWords.slice(0, 1), 900030)
@@ -2436,110 +2448,90 @@ test('Hint ladder auto-advances after two failures at each active level', async 
   await expect(word).toHaveAttribute('data-review-hint-level', 'cold')
   await expect(word).toHaveText('______')
 
-  // Cold probe keeps the stricter rule: the same first-wrong position twice.
-  await page.keyboard.type('cax')
-  await expect
-    .poll(async () => await word.getAttribute('data-typing-input'))
-    .toBe('')
-  await expect(word).toHaveAttribute('data-review-hint-level', 'cold')
-
+  // fail #1 -> Minimal Hint at the observed wrong position.
   await page.keyboard.type('cax')
   await expect
     .poll(async () => await word.getAttribute('data-typing-input'))
     .toBe('')
   await expect(word).toHaveAttribute('data-review-hint-level', '0')
+  await expect(word).toHaveAttribute('data-review-hint-failures', '1')
   await expect(word).toHaveAttribute('data-review-hint-position', '2')
   await expect(word).toHaveAttribute('data-review-forced-reveal', '2')
   await expect(word).toHaveText('__n___')
 
-  await page.keyboard.type('x')
-  await expect
-    .poll(async () => await word.getAttribute('data-typing-input'))
-    .toBe('')
-  await expect(word).toHaveAttribute('data-review-hint-level', '0')
-  await expect(word).toHaveAttribute('data-review-hint-stage-errors', '1')
-
+  // fail #2 -> Strong Hint: partial spelling + audio + phonetic.
   await page.keyboard.type('x')
   await expect
     .poll(async () => await word.getAttribute('data-typing-input'))
     .toBe('')
   await expect(word).toHaveAttribute('data-review-hint-level', '1')
+  await expect(word).toHaveAttribute('data-review-hint-failures', '2')
   await expect(word).toHaveAttribute('data-review-forced-reveal', '0,2')
   await expect(word).toHaveAttribute('data-review-audio', 'automatic')
   await expect(word).toHaveAttribute('data-review-phonetic', 'visible')
-  await expect(word).toHaveText('c_n___')
+  await expect(word).toHaveText('c_n_e_')
 
+  // fail #3 -> Full Answer immediately. No extra Hint-2 retry budget.
   await page.keyboard.type('cx')
-  await expect
-    .poll(async () => await word.getAttribute('data-typing-input'))
-    .toBe('')
-  await page.keyboard.type('cx')
-  await expect
-    .poll(async () => await word.getAttribute('data-typing-input'))
-    .toBe('')
-  await expect(word).toHaveAttribute('data-review-hint-level', '2')
-  await expect(word).toHaveAttribute('data-review-forced-reveal', '0,1,2')
-  await expect(word).toHaveText('can_e_')
-
-  await page.keyboard.type('canx')
-  await expect
-    .poll(async () => await word.getAttribute('data-typing-input'))
-    .toBe('')
-  await page.keyboard.type('canx')
   await expect
     .poll(async () => await word.getAttribute('data-typing-input'))
     .toBe('')
   await expect(word).toHaveAttribute('data-review-hint-level', '3')
   await expect(word).toHaveAttribute('data-review-hint-stage', 'hint-3')
+  await expect(word).toHaveAttribute('data-review-hint-failures', '3')
   await expect(word).toHaveText('cancel')
 
-  const emphasized = word.locator('[data-review-hint-emphasis="true"]')
-  await expect(emphasized).toHaveCount(0)
-
   await page.keyboard.type('cancel')
+
   await expect
     .poll(async () => {
-      return page.evaluate(async () => {
-        return new Promise<{
-          maxLevel?: number
-          coldProbeSurrendered?: boolean
-          advanceCount?: number
-          hintPosition?: number
-          autoHint0Triggered?: boolean
-        } | null>((resolve, reject) => {
-          const request = indexedDB.open('RecordDB')
-          request.onerror = () => reject(request.error)
-          request.onsuccess = () => {
-            const db = request.result
-            const tx = db.transaction('wordRecords', 'readonly')
-            const all = tx.objectStore('wordRecords').getAll()
-            all.onerror = () => reject(all.error)
-            all.onsuccess = () => {
-              const record = [...all.result]
-                .reverse()
-                .find(
-                  (item) =>
-                    item.dict === 'cet4' &&
-                    item.word === 'cancel' &&
-                    item.chapter === -1,
-                )
-              resolve(record?.learningContext?.reviewHint ?? null)
-              db.close()
-            }
+      const records = await readReviewWordRecords(page, ['cancel'])
+      const latest = records[records.length - 1] as {
+        learningContext?: {
+          coldProbeEvidence?: {
+            retrievalValidity?: string
           }
-        })
-      })
+          reviewHint?: {
+            maxLevel?: number
+            coldProbeSurrendered?: boolean
+            advanceCount?: number
+            failureCount?: number
+            hintPosition?: number
+            autoHint0Triggered?: boolean
+          }
+        }
+        reviewRatingDecision?: {
+          eligible?: boolean
+          reasonCodes?: string[]
+        }
+      }
+      return {
+        hint: latest?.learningContext?.reviewHint,
+        frozen:
+          latest?.learningContext?.coldProbeEvidence
+            ?.retrievalValidity,
+        eligible:
+          latest?.reviewRatingDecision?.eligible,
+        frozenReason:
+          latest?.reviewRatingDecision?.reasonCodes?.includes(
+            'cold-probe-failure-frozen',
+          ),
+      }
     })
     .toMatchObject({
-      maxLevel: 3,
-      coldProbeSurrendered: false,
-      advanceCount: 4,
-      hintPosition: 2,
-      autoHint0Triggered: true,
+      hint: {
+        maxLevel: 3,
+        coldProbeSurrendered: false,
+        advanceCount: 3,
+        failureCount: 3,
+        hintPosition: 2,
+        autoHint0Triggered: true,
+      },
+      frozen: 'independent',
+      eligible: true,
+      frozenReason: true,
     })
 })
-
-
 
 test('invalid Learn session route self-heals through the Learn entry controller', async ({
   page,
@@ -2647,7 +2639,7 @@ test('unfinished Learn session survives reload without cursor reset or duplicati
   expect(count).toBe(1)
 })
 
-test('cold probe Escape surrenders from any spelling position while Space remains input', async ({
+test('Space is ordinary spelling input while ESC is the only explicit surrender', async ({
   page,
 }) => {
   await seedReviewSession(page, reviewWords.slice(0, 1), 910002)
@@ -2659,26 +2651,33 @@ test('cold probe Escape surrenders from any spelling position while Space remain
   const translation = page.locator('[data-typing-translation]')
   await expect(word).toHaveAttribute('data-review-hint-level', 'cold')
   await expect(word).toHaveText('______')
-  await expect(translation).toHaveAttribute('data-typing-translation', 'visible')
+  await expect(translation).toHaveAttribute(
+    'data-typing-translation',
+    'visible',
+  )
 
-  // Space no longer means "unknown". At position 0 it is simply a wrong
-  // spelling character for "cancel" and must not advance the hint ladder.
+  // Space is no longer a special "I don't know" command. For this single
+  // word it is simply an ordinary wrong spelling key, so it consumes fail #1
+  // and enters Minimal Hint rather than surrendering to Full Answer.
   await page.keyboard.press('Space')
-  await page.waitForTimeout(350)
-  await expect(word).toHaveAttribute('data-review-hint-level', 'cold')
+  await expect
+    .poll(async () => await word.getAttribute('data-typing-input'))
+    .toBe('')
+  await expect(word).toHaveAttribute('data-review-hint-level', '0')
+  await expect(word).toHaveAttribute('data-review-hint-failures', '1')
+  await expect(word).toHaveAttribute('data-review-hint-position', '0')
+  await expect(word).toHaveText('c_____')
 
-  // Surrender after a remembered prefix. ESC resets the attempt and targets
-  // the next untyped position for Hint 0.
+  // ESC is the explicit surrender and jumps directly to Full Answer.
   await page.keyboard.type('ca')
   await expect
     .poll(async () => await word.getAttribute('data-typing-input'))
     .not.toBe('')
   await page.keyboard.press('Escape')
 
-  await expect(word).toHaveAttribute('data-review-hint-level', '0')
-  await expect(word).toHaveAttribute('data-review-hint-position', '2')
-  await expect(word).toHaveAttribute('data-review-forced-reveal', '')
-  await expect(word).toHaveText('__n___')
+  await expect(word).toHaveAttribute('data-review-hint-level', '3')
+  await expect(word).toHaveAttribute('data-review-hint-stage', 'hint-3')
+  await expect(word).toHaveText('cancel')
   await expect
     .poll(async () => await word.getAttribute('data-typing-input'))
     .toBe('')
