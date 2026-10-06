@@ -1257,6 +1257,16 @@ export class VirtualLearnApp {
     if (result.kind === 'session') {
       this.activeSessionId = result.record.id
 
+      this.events.push({
+        kind: 'lifecycle',
+        action: 'route-enter',
+        sessionId:
+          result.record.id !== undefined
+            ? `id:${result.record.id}`
+            : null,
+        isFinished: result.record.isFinished,
+      })
+
       const restored = result.source === 'restored'
       if (restored && result.record.id !== undefined) {
         const stored = this.sessionById(result.record.id)
@@ -1274,18 +1284,90 @@ export class VirtualLearnApp {
       }
     } else {
       this.activeSessionId = undefined
+      this.events.push({
+        kind: 'lifecycle',
+        action: 'route-enter',
+        sessionId: null,
+        isFinished: null,
+      })
     }
 
     return result
   }
 
   exit() {
+    const session = this.sessionById(this.activeSessionId)
+    this.events.push({
+      kind: 'lifecycle',
+      action: 'route-leave',
+      sessionId:
+        session?.id !== undefined
+          ? `id:${session.id}`
+          : null,
+      isFinished: session?.isFinished ?? null,
+    })
     this.activeSessionId = undefined
   }
 
   refresh() {
+    const session = this.sessionById(this.activeSessionId)
+    this.events.push({
+      kind: 'lifecycle',
+      action: 'reload',
+      sessionId:
+        session?.id !== undefined
+          ? `id:${session.id}`
+          : null,
+      isFinished: session?.isFinished ?? null,
+    })
     this.exit()
     return this.enter()
+  }
+
+  background() {
+    const session = this.sessionById(this.activeSessionId)
+    this.events.push({
+      kind: 'lifecycle',
+      action: 'background',
+      sessionId:
+        session?.id !== undefined
+          ? `id:${session.id}`
+          : null,
+      isFinished: session?.isFinished ?? null,
+    })
+  }
+
+  foreground() {
+    const session = this.sessionById(this.activeSessionId)
+    this.events.push({
+      kind: 'lifecycle',
+      action: 'foreground',
+      sessionId:
+        session?.id !== undefined
+          ? `id:${session.id}`
+          : null,
+      isFinished: session?.isFinished ?? null,
+    })
+  }
+
+  async applyLifecycleActions(
+    actions: LearnLifecycleSeedAction[],
+  ): Promise<void> {
+    for (const action of actions) {
+      if (action.kind === 'enter') {
+        await this.enter()
+      } else if (action.kind === 'route-leave') {
+        this.exit()
+      } else if (action.kind === 'reload') {
+        await this.refresh()
+      } else if (action.kind === 'background') {
+        this.background()
+      } else if (action.kind === 'foreground') {
+        this.foreground()
+      } else if (action.kind === 'retry-current') {
+        this.completeCurrentClean()
+      }
+    }
   }
 
   advanceSeconds(seconds: number) {
@@ -1319,20 +1401,85 @@ export class VirtualLearnApp {
     }
   }
 
+  private currentItemKind(
+    session: StoredSession,
+  ): 'review' | 'acquisition' | undefined {
+    const currentWord = session.words[session.index]
+    if (!currentWord) return undefined
+    return resolveLearnItemKindForWord(
+      session,
+      currentWord.name,
+    )
+  }
+
+  private emitLearnEvidence(
+    session: StoredSession,
+    word: string,
+    itemKind: 'review' | 'acquisition',
+  ) {
+    if (session.id === undefined) return
+    this.events.push({
+      kind: 'learn-evidence-durable',
+      sessionId: `id:${session.id}`,
+      word,
+      itemKind,
+    })
+  }
+
+  private maybeInjectPostFinishEvidence(
+    session: StoredSession,
+    word: Word,
+    itemKind: 'review' | 'acquisition',
+  ) {
+    if (
+      !this.mutation.postFinishEvidence ||
+      this.postFinishEvidenceInjected ||
+      !session.isFinished
+    ) {
+      return
+    }
+
+    this.postFinishEvidenceInjected = true
+    if (itemKind === 'review') {
+      this.wordRecords.push(
+        makeReviewRecord({
+          id: this.nextWordRecordId++,
+          word: word.name,
+          now: this.now,
+          outcome: 'good',
+          attemptRole: 'cold',
+        }),
+      )
+    } else {
+      this.wordRecords.push(
+        makeAcquisitionRecord({
+          id: this.nextWordRecordId++,
+          word: word.name,
+          now: this.now,
+          policyVersion:
+            LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION,
+          spacingEligible: true,
+        }),
+      )
+    }
+    this.emitLearnEvidence(session, word.name, itemKind)
+  }
+
   completeCurrentReview(
     outcome: VirtualReviewOutcome = 'good',
   ): boolean {
     const session = this.sessionById(this.activeSessionId)
-    if (
-      !session ||
-      session.sessionKind !== 'review' ||
-      session.isFinished
-    ) {
+    if (!session || session.isFinished) {
       return false
     }
 
     const currentWord = session.words[session.index]
-    if (!currentWord) return false
+    if (
+      !currentWord ||
+      this.currentItemKind(session) !== 'review'
+    ) {
+      return false
+    }
     const reinforcementUsed =
       session.reinforcementCounts?.[currentWord.name] ?? 0
     const attemptRole = getReviewAttemptRole({
@@ -1424,6 +1571,11 @@ export class VirtualLearnApp {
         attemptRole,
       }),
     )
+    this.emitLearnEvidence(
+      session,
+      currentWord.name,
+      'review',
+    )
 
     const stateIndex = this.wordStates.findIndex(
       (state) => state.word === currentWord.name,
@@ -1437,6 +1589,11 @@ export class VirtualLearnApp {
     }
 
     this.persistSession(session)
+    this.maybeInjectPostFinishEvidence(
+      session,
+      currentWord,
+      'review',
+    )
     this.events.push({
       kind: 'attempt-completed',
       sessionKind: 'review',
@@ -1475,9 +1632,12 @@ export class VirtualLearnApp {
   completeCurrentClean(): boolean {
     const session = this.sessionById(this.activeSessionId)
     if (!session) return false
-    return session.sessionKind === 'review'
+    const itemKind = this.currentItemKind(session)
+    return itemKind === 'review'
       ? this.completeCurrentReview('good')
-      : this.completeCurrentAcquisitionClean()
+      : itemKind === 'acquisition'
+        ? this.completeCurrentAcquisitionClean()
+        : false
   }
 
   completeCurrentAttempt(
@@ -1485,9 +1645,11 @@ export class VirtualLearnApp {
   ): boolean {
     const session = this.sessionById(this.activeSessionId)
     if (!session) return false
-    if (session.sessionKind === 'review') {
+    const itemKind = this.currentItemKind(session)
+    if (itemKind === 'review') {
       return this.completeCurrentReview(outcome)
     }
+    if (itemKind !== 'acquisition') return false
 
     return this.completeCurrentAcquisitionAttempt({
       wrongCount:
@@ -1510,16 +1672,17 @@ export class VirtualLearnApp {
     cause: 'clean' | 'recall' | 'spelling'
   }): boolean {
     const session = this.sessionById(this.activeSessionId)
-    if (
-      !session ||
-      session.sessionKind !== 'acquisition' ||
-      session.isFinished
-    ) {
+    if (!session || session.isFinished) {
       return false
     }
 
     const currentWord = session.words[session.index]
-    if (!currentWord) return false
+    if (
+      !currentWord ||
+      this.currentItemKind(session) !== 'acquisition'
+    ) {
+      return false
+    }
     const currentState =
       session.acquisitionStates?.[currentWord.name] ??
       createLearnAcquisitionState()
@@ -1540,6 +1703,11 @@ export class VirtualLearnApp {
           policyVersion:
             LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
         }),
+      )
+      this.emitLearnEvidence(
+        session,
+        currentWord.name,
+        'acquisition',
       )
     }
 
@@ -1593,6 +1761,11 @@ export class VirtualLearnApp {
           wrongCount: input.wrongCount,
         }),
       )
+      this.emitLearnEvidence(
+        session,
+        currentWord.name,
+        'acquisition',
+      )
     }
 
     if (resolution.shouldPersistAdmission && !silentNoop) {
@@ -1627,6 +1800,11 @@ export class VirtualLearnApp {
     }
 
     this.persistSession(session)
+    this.maybeInjectPostFinishEvidence(
+      session,
+      currentWord,
+      'acquisition',
+    )
 
     this.events.push({
       kind: 'attempt-completed',
