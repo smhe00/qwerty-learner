@@ -7,7 +7,7 @@ on:
     paths:
       - 'formal/**'
       - 'tests/formal/**'
-      - 'tests/simulation/trace-ir.ts'
+      - 'src/learn/trace-ir.ts'
       - 'tests/simulation/system-oracle.ts'
       - '.github/workflows/tla-gate.yml'
   workflow_dispatch:
@@ -39,11 +39,13 @@ jobs:
       - name: Download pinned TLA+ tools
         run: |
           curl --fail --location --silent --show-error \
-            https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar \
+            https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar \
             --output /tmp/tla2tools.jar
           actual="$(sha256sum /tmp/tla2tools.jar | awk '{print $1}')"
           echo "Downloaded tla2tools.jar SHA256: $actual"
-          expected='c2fe4e56e43bde19f213b4a7e441d037297fda733e503579623e859b79348239'
+          # v1.7.4 is the immutable stable release. Do not use the v1.8.0
+          # prerelease alias here: upstream intentionally replaces that asset.
+          expected='936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88'
           if [ "$actual" != "$expected" ]; then
             echo "Pinned SHA256 mismatch."
             exit 1
@@ -174,7 +176,7 @@ jobs:
           set -e
           cat /tmp/due-first-bypass-tlc.log
           if [ "$status" -eq 0 ]; then
-            echo 'Expected the due-first bypass mutation to violate NoAcquisitionWhenDue.'
+            echo 'Expected the due-first bypass mutation to violate NoPureAcquisitionWhenDue.'
             exit 1
           fi
 
