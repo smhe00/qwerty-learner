@@ -290,6 +290,37 @@ async function completeCurrent(page: Page) {
       )
     })
     .toBe(true)
+
+  // Durable progress happens before the success-feedback animation releases
+  // the next word. A stateful fuzzer must not treat input during that locked
+  // presentation window as a failed Learn transition.
+  await expect
+    .poll(async () => {
+      const after = await readRouteState(page)
+      if (after.record?.isFinished === true) {
+        return true
+      }
+
+      const next = page.locator('[data-typing-word]').first()
+      if (!(await next.isVisible().catch(() => false))) {
+        return false
+      }
+      const nextWord = await next.getAttribute(
+        'data-typing-word',
+      )
+      const locked = await next.getAttribute(
+        'data-typing-locked',
+      )
+      const finished = await next.getAttribute(
+        'data-typing-finished',
+      )
+      return (
+        nextWord !== word &&
+        locked !== 'true' &&
+        finished !== 'true'
+      )
+    })
+    .toBe(true)
 }
 
 async function routeCycle(page: Page) {
