@@ -51,6 +51,8 @@ export interface ReviewHintContextV1 {
   advanceCount: 1 | 2 | 3 | 4
   hintPosition?: number
   autoHint0Triggered?: boolean
+  // Hint V2 global failed-retrieval count. Legacy absence means unknown.
+  failureCount?: 0 | 1 | 2 | 3
 }
 
 export interface LearningContextV1 {
@@ -82,6 +84,10 @@ export interface LearningContextV1 {
   pronunciationPlayCount?: number
   pronunciationAutomaticPlayCount?: number
   pronunciationRequestedPlayCount?: number
+
+  // Frozen independent Cold Probe evidence captured before any Hint changes
+  // the presentation. Assisted completion must never overwrite this result.
+  coldProbeEvidence?: ReviewEvidenceV1
 
   // Review-only cue escalation trace. Absence means no hint ladder was used.
   reviewHint?: ReviewHintContextV1
