@@ -1299,18 +1299,29 @@ test('Learn dictionary selection reuses the Typing gallery and skips chapter sel
   await page.getByRole('link', { name: 'CET-4', exact: true }).click()
   await expect(page).toHaveURL(/\/gallery\?mode=learn$/)
 
-  const commonTag = page.getByRole('radio', { name: '通用', exact: true })
-  await commonTag.click()
-
-  const target = page.getByRole('button', {
-    name: '选择 Learn 词库：中考核心词',
-  })
+  const target = page
+    .getByRole('button', {
+      name: /^选择 Learn 词库：/,
+    })
+    .first()
   await expect(target).toBeVisible()
+
+  const targetLabel = await target.getAttribute('aria-label')
+  expect(targetLabel).toMatch(/^选择 Learn 词库：.+/)
+  const selectedDictionaryName = targetLabel?.replace(
+    /^选择 Learn 词库：/,
+    '',
+  )
+  expect(selectedDictionaryName).toBeTruthy()
+
   await target.click()
 
   await expect(page).toHaveURL(/\/learn\/session$/)
   await expect(
-    page.getByRole('link', { name: '中考核心词', exact: true }),
+    page.getByRole('link', {
+      name: selectedDictionaryName as string,
+      exact: true,
+    }),
   ).toBeVisible()
   await expect(page.getByText('章节选择', { exact: true })).toHaveCount(0)
 })
