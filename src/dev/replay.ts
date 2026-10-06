@@ -5,6 +5,8 @@ import {
 import {
   LEARN_TRACE_IR_VERSION,
   type LearnSystemTraceEvent,
+  type LearnLifecycleSeed,
+  type LearnLifecycleSeedAction,
   type LearnTraceEnvelope,
 } from '../learn/trace-ir'
 
@@ -841,5 +843,43 @@ export function minimizeDiagnosticEvents(
       (event) => event.sequence,
     ),
     events: current,
+  }
+}
+
+
+export function diagnosticToLearnLifecycleSeed(
+  input: string | unknown | ParsedDiagnosticExport,
+): LearnLifecycleSeed {
+  const parsed =
+    asRecord(input)?.kind === 'trace' ||
+    asRecord(input)?.kind === 'incident'
+      ? (input as ParsedDiagnosticExport)
+      : parseDiagnosticExport(input)
+  const report = replayDiagnostic(parsed)
+  const anomalyCodes = [
+    ...new Set(report.anomalies.map((item) => item.code)),
+  ]
+  const actions: LearnLifecycleSeedAction[] = []
+
+  if (
+    anomalyCodes.includes('terminal-ui-divergence') ||
+    anomalyCodes.includes('finished-checkpoint-regression')
+  ) {
+    actions.push({ kind: 'reload' })
+  }
+
+  if (
+    anomalyCodes.includes(
+      'finished-session-evidence-after-terminal',
+    )
+  ) {
+    actions.push({ kind: 'retry-current' })
+  }
+
+  return {
+    version: 1,
+    source: 'diagnostic-replay',
+    anomalyCodes,
+    actions,
   }
 }
