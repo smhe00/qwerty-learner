@@ -1,4 +1,7 @@
-import type { ExerciseConditionV1, ExerciseLetterCondition } from './condition'
+import type {
+  ExerciseConditionV1,
+  ExerciseLetterCondition,
+} from './condition'
 import {
   REVIEW_EXERCISE_PLAN_VERSION,
   REVIEW_POLICY_SHADOW_VERSION,
@@ -6,7 +9,9 @@ import {
 } from './decision'
 import type { ReviewExercisePlanV1 } from './decision'
 
-export const REVIEW_HINT_POLICY_VERSION = 'canonical-review-hint-v1'
+export const REVIEW_HINT_POLICY_VERSION =
+  'canonical-review-hint-v2'
+export const REVIEW_HINT_MAX_FAILURES = 3 as const
 
 export type ReviewHintLevel = 0 | 1 | 2 | 3
 export type ReviewHintStage =
@@ -16,21 +21,26 @@ export type ReviewHintStage =
   | 'hint-2'
   | 'hint-3'
 
+export type ReviewHintFailureCount = 0 | 1 | 2 | 3
+
 export type ReviewHintMachineState = {
   stage: ReviewHintStage
   maxLevelReached: ReviewHintLevel | null
   coldProbeSurrendered: boolean
   advanceCount: 0 | 1 | 2 | 3 | 4
-  // Position-specific Hint 0 target. null means no spelling-error evidence yet.
+  // Global unsuccessful retrieval attempts for this word. Hint V2 never
+  // replenishes this budget on stage transitions.
+  failureCount: ReviewHintFailureCount
+  // Position-specific Minimal Hint target.
   hintPosition: number | null
   // Last first-wrong position from the most recent spelling attempt.
   lastWrongIndex: number | null
-  // Error counts by spelling position across the current word. Positions that
-  // reach the threshold are forced visible at every non-terminal Hint level.
+  // Error counts by spelling position across the current word.
   wrongPositionCounts: Record<number, number>
+  // Every observed wrong position remains visible once assistance begins.
   forcedRevealPositions: number[]
-  // Failed spelling attempts within the current Hint stage. This counter is
-  // reset on every hint-stage transition.
+  // Legacy diagnostic field retained for DOM/backward compatibility. V2 does
+  // not use stage-local retry budgets.
   stageWrongCount: 0 | 1 | 2
 }
 
@@ -45,20 +55,17 @@ export type ReviewHintInputDecision =
       level: ReviewHintLevel
       coldProbeSurrendered: boolean
       hintPosition: number
-      trigger:
-        | 'manual-escape'
-        | 'repeated-wrong-position'
-        | 'repeated-hint-errors'
+      failureCount: ReviewHintFailureCount
+      trigger: 'manual-escape' | 'failed-retrieval'
     }
 
-const NEXT_HINT: Record<
-  Exclude<ReviewHintStage, 'hint-3'>,
-  { stage: Exclude<ReviewHintStage, 'cold-probe'>; level: ReviewHintLevel }
-> = {
-  'cold-probe': { stage: 'hint-0', level: 0 },
-  'hint-0': { stage: 'hint-1', level: 1 },
-  'hint-1': { stage: 'hint-2', level: 2 },
-  'hint-2': { stage: 'hint-3', level: 3 },
+function failureCountForInitialLevel(
+  level: ReviewHintLevel | undefined,
+): ReviewHintFailureCount {
+  if (level === undefined) return 0
+  if (level === 0) return 1
+  if (level === 1 || level === 2) return 2
+  return 3
 }
 
 export function createReviewHintMachineState(options?: {
@@ -81,6 +88,7 @@ export function createReviewHintMachineState(options?: {
     maxLevelReached: initialLevel ?? null,
     coldProbeSurrendered: false,
     advanceCount: 0,
+    failureCount: failureCountForInitialLevel(initialLevel),
     hintPosition,
     lastWrongIndex: null,
     wrongPositionCounts: {},
@@ -90,13 +98,11 @@ export function createReviewHintMachineState(options?: {
 }
 
 /**
- * Escape explicitly surrenders the current Learn spelling attempt.
+ * ESC is the only explicit surrender shortcut in Hint V2.
  *
- * It is valid at any input position and advances the finite hint ladder:
- * cold -> hint0 -> hint1 -> hint2 -> hint3.
- *
- * Hint 3 is terminal for hint escalation, so Escape no longer advances there;
- * the learner must type the fully revealed answer correctly to finish.
+ * It is valid at any input position and jumps directly to the mandatory full
+ * answer. Space is deliberately not handled here as surrender; phrase spaces
+ * continue through the ordinary typing path.
  */
 export function decideReviewHintInput(input: {
   state: ReviewHintMachineState
@@ -111,21 +117,21 @@ export function decideReviewHintInput(input: {
     return { kind: 'type-key' }
   }
 
-  const next = NEXT_HINT[input.state.stage]
   const hintPosition =
     input.state.hintPosition ??
-    (input.inputIndex > 0
-      ? input.inputIndex
-      : input.state.lastWrongIndex ?? 0)
+    (input.state.lastWrongIndex ??
+      Math.max(0, input.inputIndex))
 
   return {
     kind: 'advance-hint',
     from: input.state.stage,
-    to: next.stage,
-    level: next.level,
+    to: 'hint-3',
+    level: 3,
     coldProbeSurrendered:
-      input.state.coldProbeSurrendered || input.state.stage === 'cold-probe',
+      input.state.coldProbeSurrendered ||
+      input.state.stage === 'cold-probe',
     hintPosition,
+    failureCount: input.state.failureCount,
     trigger: 'manual-escape',
   }
 }
@@ -138,19 +144,36 @@ export function applyReviewHintDecision(
 
   return {
     stage: decision.to,
-    maxLevelReached: decision.level,
-    coldProbeSurrendered: decision.coldProbeSurrendered,
-    advanceCount: Math.min(4, state.advanceCount + 1) as 0 | 1 | 2 | 3 | 4,
+    maxLevelReached:
+      state.maxLevelReached === null
+        ? decision.level
+        : (Math.max(
+            state.maxLevelReached,
+            decision.level,
+          ) as ReviewHintLevel),
+    coldProbeSurrendered:
+      decision.coldProbeSurrendered,
+    advanceCount: Math.min(
+      4,
+      state.advanceCount + 1,
+    ) as 0 | 1 | 2 | 3 | 4,
+    failureCount: decision.failureCount,
     hintPosition: decision.hintPosition,
     lastWrongIndex: state.lastWrongIndex,
-    wrongPositionCounts: { ...state.wrongPositionCounts },
-    forcedRevealPositions: [...state.forcedRevealPositions],
+    wrongPositionCounts: {
+      ...state.wrongPositionCounts,
+    },
+    forcedRevealPositions: [
+      ...state.forcedRevealPositions,
+    ],
     stageWrongCount: 0,
   }
 }
 
-export const AUTO_HINT0_REPEATED_WRONG_THRESHOLD = 2 as const
-export const AUTO_HINT_STAGE_WRONG_THRESHOLD = 2 as const
+// Compatibility exports for downstream code/tests. V2 escalates on every
+// failed attempt and does not use stage-local retry thresholds.
+export const AUTO_HINT0_REPEATED_WRONG_THRESHOLD = 1 as const
+export const AUTO_HINT_STAGE_WRONG_THRESHOLD = 1 as const
 
 export type ReviewHintWrongObservation = {
   state: ReviewHintMachineState
@@ -158,16 +181,14 @@ export type ReviewHintWrongObservation = {
 }
 
 /**
- * Observe the first wrong position of one completed spelling attempt.
+ * Hint V2 global failure budget:
  *
- * Two independent adaptive signals are maintained:
- * - position count: a spelling position wrong twice becomes forced-visible at
- *   every non-terminal Hint level;
- * - stage count: once Hint 0/1/2 is active, two failed attempts at the current
- *   Hint level automatically advance to the next Hint level.
+ * fail #1 -> Minimal Hint (Hint 0)
+ * fail #2 -> Strong Hint  (Hint 1)
+ * fail #3 -> Full Answer  (Hint 3)
  *
- * Cold probe keeps its stricter entry rule: the same first-wrong position must
- * be observed twice before Hint 0 is entered automatically.
+ * Hint 2 remains a presentation compatibility level for legacy/scaffold
+ * callers, but the automatic V2 path skips it.
  */
 export function observeReviewHintWrong(input: {
   state: ReviewHintMachineState
@@ -184,68 +205,73 @@ export function observeReviewHintWrong(input: {
   }
 
   const wrongIndex = input.wrongIndex
+  const nextFailureCount = Math.min(
+    REVIEW_HINT_MAX_FAILURES,
+    state.failureCount + 1,
+  ) as ReviewHintFailureCount
   const wrongPositionCounts = {
     ...state.wrongPositionCounts,
-    [wrongIndex]: (state.wrongPositionCounts[wrongIndex] ?? 0) + 1,
+    [wrongIndex]:
+      (state.wrongPositionCounts[wrongIndex] ?? 0) + 1,
   }
-  const forcedRevealPositions =
-    wrongPositionCounts[wrongIndex] >= AUTO_HINT0_REPEATED_WRONG_THRESHOLD
-      ? [...new Set([...state.forcedRevealPositions, wrongIndex])].sort(
-          (left, right) => left - right,
-        )
-      : [...state.forcedRevealPositions]
-  const stageWrongCount = Math.min(
-    AUTO_HINT_STAGE_WRONG_THRESHOLD,
-    state.stageWrongCount + 1,
-  ) as 0 | 1 | 2
+  const forcedRevealPositions = [
+    ...new Set([
+      ...state.forcedRevealPositions,
+      wrongIndex,
+    ]),
+  ].sort((left, right) => left - right)
+
   const observedState: ReviewHintMachineState = {
     ...state,
+    failureCount: nextFailureCount,
     lastWrongIndex: wrongIndex,
     wrongPositionCounts,
     forcedRevealPositions,
-    stageWrongCount,
+    stageWrongCount:
+      state.stage === 'hint-3'
+        ? (Math.min(
+            2,
+            state.stageWrongCount + 1,
+          ) as 0 | 1 | 2)
+        : 1,
   }
 
-  if (state.stage === 'cold-probe') {
-    if (
-      wrongPositionCounts[wrongIndex] <
-      AUTO_HINT0_REPEATED_WRONG_THRESHOLD
-    ) {
-      return { state: observedState, decision: null }
-    }
-
+  if (state.stage === 'hint-3') {
     return {
       state: observedState,
-      decision: {
-        kind: 'advance-hint',
-        from: 'cold-probe',
-        to: 'hint-0',
-        level: 0,
-        coldProbeSurrendered: state.coldProbeSurrendered,
-        hintPosition: wrongIndex,
-        trigger: 'repeated-wrong-position',
-      },
+      decision: null,
     }
   }
 
-  if (
-    state.stage === 'hint-3' ||
-    stageWrongCount < AUTO_HINT_STAGE_WRONG_THRESHOLD
-  ) {
-    return { state: observedState, decision: null }
-  }
+  const target =
+    nextFailureCount === 1
+      ? {
+          stage: 'hint-0' as const,
+          level: 0 as const,
+        }
+      : nextFailureCount === 2
+        ? {
+            stage: 'hint-1' as const,
+            level: 1 as const,
+          }
+        : {
+            stage: 'hint-3' as const,
+            level: 3 as const,
+          }
 
-  const next = NEXT_HINT[state.stage]
   return {
     state: observedState,
     decision: {
       kind: 'advance-hint',
       from: state.stage,
-      to: next.stage,
-      level: next.level,
-      coldProbeSurrendered: state.coldProbeSurrendered,
-      hintPosition: state.hintPosition ?? wrongIndex,
-      trigger: 'repeated-hint-errors',
+      to: target.stage,
+      level: target.level,
+      coldProbeSurrendered:
+        state.coldProbeSurrendered,
+      hintPosition:
+        state.hintPosition ?? wrongIndex,
+      failureCount: nextFailureCount,
+      trigger: 'failed-retrieval',
     },
   }
 }
@@ -255,20 +281,29 @@ function maskedPositions(
   visiblePositions: number[],
 ): number[] {
   const visible = new Set(visiblePositions)
-  return Array.from({ length: wordLength }, (_, index) => index).filter(
-    (index) => !visible.has(index),
-  )
+  return Array.from(
+    { length: wordLength },
+    (_, index) => index,
+  ).filter((index) => !visible.has(index))
 }
 
 function partialLetters(
   wordLength: number,
   visiblePositions: number[],
 ): ExerciseLetterCondition {
-  const boundedVisible = [...new Set(visiblePositions)]
-    .filter((index) => index >= 0 && index < wordLength)
+  const boundedVisible = [
+    ...new Set(visiblePositions),
+  ]
+    .filter(
+      (index) =>
+        index >= 0 && index < wordLength,
+    )
     .sort((left, right) => left - right)
 
-  if (wordLength <= 0 || boundedVisible.length === 0) {
+  if (
+    wordLength <= 0 ||
+    boundedVisible.length === 0
+  ) {
     return { mode: 'all-hidden' }
   }
   if (boundedVisible.length >= wordLength) {
@@ -278,8 +313,31 @@ function partialLetters(
   return {
     mode: 'partial',
     visiblePositions: boundedVisible,
-    maskedPositions: maskedPositions(wordLength, boundedVisible),
+    maskedPositions: maskedPositions(
+      wordLength,
+      boundedVisible,
+    ),
   }
+}
+
+function strongHintPositions(
+  wordLength: number,
+  hintPosition: number,
+  forcedRevealPositions: number[],
+): number[] {
+  const positions = Array.from(
+    { length: wordLength },
+    (_, index) => index,
+  ).filter((index) => index % 2 === 0)
+
+  if (
+    wordLength > 0 &&
+    !positions.includes(hintPosition)
+  ) {
+    positions.push(hintPosition)
+  }
+  positions.push(...forcedRevealPositions)
+  return positions
 }
 
 export function reviewHintLetterCondition(
@@ -288,36 +346,45 @@ export function reviewHintLetterCondition(
   hintPosition = 0,
   forcedRevealPositions: number[] = [],
 ): ExerciseLetterCondition {
-  if (level === 3) return { mode: 'all-visible' }
+  if (level === 3) {
+    return { mode: 'all-visible' }
+  }
 
   const boundedHintPosition =
     wordLength <= 0
       ? 0
-      : Math.min(Math.max(hintPosition, 0), wordLength - 1)
-  const boundedForcedPositions = forcedRevealPositions.filter(
-    (index) => index >= 0 && index < wordLength,
-  )
+      : Math.min(
+          Math.max(hintPosition, 0),
+          wordLength - 1,
+        )
+  const boundedForcedPositions =
+    forcedRevealPositions.filter(
+      (index) =>
+        index >= 0 && index < wordLength,
+    )
 
-  if (level === 0 || level === 1) {
+  if (level === 0) {
     return partialLetters(
       wordLength,
       wordLength > 0
-        ? [boundedHintPosition, ...boundedForcedPositions]
+        ? [
+            boundedHintPosition,
+            ...boundedForcedPositions,
+          ]
         : [],
     )
   }
 
-  // Hint 2 reveals roughly half the spelling deterministically and retains
-  // both the original Hint 0 target and all forced-reveal error positions.
-  const visiblePositions = Array.from(
-    { length: wordLength },
-    (_, index) => index,
-  ).filter((index) => index % 2 === 0)
-  if (wordLength > 0 && !visiblePositions.includes(boundedHintPosition)) {
-    visiblePositions.push(boundedHintPosition)
-  }
-  visiblePositions.push(...boundedForcedPositions)
-  return partialLetters(wordLength, visiblePositions)
+  // V2 Strong Hint. Level 2 is kept as a compatibility alias for callers
+  // that already persisted/selected that level.
+  return partialLetters(
+    wordLength,
+    strongHintPositions(
+      wordLength,
+      boundedHintPosition,
+      boundedForcedPositions,
+    ),
+  )
 }
 
 export function createReviewHintPlan(
@@ -332,7 +399,8 @@ export function createReviewHintPlan(
     source: 'adaptive-policy',
     audio: level >= 1 ? 'automatic' : 'none',
     meaning: 'visible',
-    phonetic: level >= 1 ? 'visible' : 'hidden',
+    phonetic:
+      level >= 1 ? 'visible' : 'hidden',
     letters: reviewHintLetterCondition(
       level,
       wordLength,
@@ -350,32 +418,39 @@ export function createReviewHintPlan(
       [
         `review-hint-${level}`,
         level === 0
-          ? 'position-specific-letter-cue'
-          : level === 1
-            ? 'audio-phonetic-cue'
-            : level === 2
-              ? 'partial-spelling-cue'
-              : 'full-answer-copy-training',
-        `hint-position-${Math.max(0, hintPosition)}`,
-        `forced-reveal-${forcedRevealPositions.join('.') || 'none'}`,
+          ? 'minimal-position-specific-cue'
+          : level === 3
+            ? 'full-answer-copy-training'
+            : 'strong-partial-spelling-cue',
+        `hint-position-${Math.max(
+          0,
+          hintPosition,
+        )}`,
+        `forced-reveal-${
+          forcedRevealPositions.join('.') || 'none'
+        }`,
       ],
       condition.version,
     ),
-    sourceShadowVersion: REVIEW_POLICY_SHADOW_VERSION,
+    sourceShadowVersion:
+      REVIEW_POLICY_SHADOW_VERSION,
   }
 }
 
-const HINT_STAGE_RANK: Record<ReviewHintStage, number> = {
+const HINT_STAGE_RANK: Record<
+  ReviewHintStage,
+  number
+> = {
   'cold-probe': 4,
   'hint-0': 3,
   'hint-1': 2,
+  // Legacy compatibility level. V2 automatic escalation does not enter it.
   'hint-2': 1,
   'hint-3': 0,
 }
 
 /**
- * Variant used by the formal checker. Every manual hint escalation must
- * strictly decrease this value. Hint 3 has no escalation transition.
+ * Every production Hint V2 escalation strictly decreases this value.
  */
 export function reviewHintTerminationVariant(
   state: ReviewHintMachineState,
