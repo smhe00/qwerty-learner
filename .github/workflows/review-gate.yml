@@ -39,6 +39,7 @@ on:
       - 'src/resources/soundResource.ts'
       - 'src/hooks/useKeySounds.ts'
       - 'tests/audio/**'
+      - 'tests/resources/**'
       - 'tests/e2e/learn-audio-regression.spec.ts'
       - 'tests/e2e/learn-audio-regression.config.ts'
       - 'tests/e2e/review.spec.ts'
@@ -217,6 +218,9 @@ jobs:
 
       - name: Run sound URL resolution guard
         run: node --test tests/audio/sound-url.test.mjs
+
+      - name: Run dictionary URL resolution guard
+        run: node --test tests/resources/dictionary-url.test.mjs
 
       - name: Run Typing lifecycle browser gate
         run: npx playwright test --config=tests/e2e/typing-lifecycle.config.ts --project=chrome
