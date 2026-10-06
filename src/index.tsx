@@ -8,6 +8,7 @@ import { isOpenDarkModeAtom } from '@/store'
 import 'animate.css'
 import { useAtomValue } from 'jotai'
 import React, { Suspense, lazy, useEffect, useRef, useState } from 'react'
+import { isBrowserFuzzFaultEnabled } from '@/dev/browser-fuzz-hooks'
 import 'react-app-polyfill/stable'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
@@ -148,9 +149,17 @@ function Root() {
       // the final word. Only a real mobile -> desktop transition needs to
       // leave the dedicated /mobile route.
       if (
-        wasMobile &&
-        !nextIsMobile &&
-        window.location.pathname.endsWith('/mobile')
+        (
+          isBrowserFuzzFaultEnabled(
+            'desktop-resize-navigates-root',
+          ) &&
+          !nextIsMobile
+        ) ||
+        (
+          wasMobile &&
+          !nextIsMobile &&
+          window.location.pathname.endsWith('/mobile')
+        )
       ) {
         const rootPath =
           REACT_APP_DEPLOY_ENV === 'pages'

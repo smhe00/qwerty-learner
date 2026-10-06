@@ -1,5 +1,6 @@
 import { db } from '.'
 import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
+import { waitForBrowserFuzzGate } from '@/dev/browser-fuzz-hooks'
 import { isAcquisitionIntroductionRecord } from '@/learn/admission'
 import {
   LEARN_NEW_WORD_BATCH_SIZE,
@@ -130,6 +131,7 @@ export async function generateNewWordReviewRecord(
 }
 
 export async function putWordReviewRecord(record: ReviewRecord) {
+  await waitForBrowserFuzzGate('review-persistence')
   const id = await db.transaction(
     'rw',
     db.reviewRecords,

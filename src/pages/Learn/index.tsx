@@ -2,6 +2,10 @@ import ModeSwitcher from '@/components/ModeSwitcher'
 import Header from '@/components/Header'
 import Layout from '@/components/Layout'
 import { createAsyncOwnershipGuard } from '@/learn/async-ownership'
+import {
+  isBrowserFuzzFaultEnabled,
+  waitForBrowserFuzzGate,
+} from '@/dev/browser-fuzz-hooks'
 import { prepareLearnSession } from '@/learn/controller'
 import { DictChapterButton } from '@/pages/Typing/components/DictChapterButton'
 import PronunciationSwitcher from '@/pages/Typing/components/PronunciationSwitcher'
@@ -99,7 +103,13 @@ export default function LearnPage() {
     const dictId = currentDictId
     const words = wordList
     const isCurrent = () =>
-      claim.isCurrent() && window.location.pathname === '/learn'
+      isBrowserFuzzFaultEnabled(
+        'stale-preparation-owns-navigation',
+      ) ||
+      (
+        claim.isCurrent() &&
+        window.location.pathname === '/learn'
+      )
 
     setIsStarting(true)
     setStatusText('')
@@ -120,6 +130,7 @@ export default function LearnPage() {
 
     const prepare = async () => {
       try {
+        await waitForBrowserFuzzGate('learn-preparation')
         const result = await prepareLearnSession({
           dictId,
           words,
