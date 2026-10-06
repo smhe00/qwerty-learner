@@ -33,18 +33,18 @@ Min(a, b) ==
 Remaining(base) ==
   IF base >= target THEN 0 ELSE target - base
 
+\* Due Review has priority in session composition, but current production
+\* Learn is allowed to reserve bounded Acquisition capacity in a mixed
+\* session. FreshBudget therefore models quota/accounting only; due-priority
+\* correctness belongs to DuePriority.tla.
 ExpectedAllowed ==
-  IF due
-  THEN 0
-  ELSE Min(Remaining(introduced), unseen)
+  Min(Remaining(introduced), unseen)
 
 AcquiredAllowed ==
-  IF due
-  THEN 0
-  ELSE Min(Remaining(acquired), unseen)
+  Min(Remaining(acquired), unseen)
 
 ExpectedPending ==
-  IF due THEN 0 ELSE readyPending
+  readyPending
 
 Init ==
   /\ phase = "idle"

@@ -229,6 +229,12 @@ export function tlcStatesToLearnTrace(
         numberValue(state, 'readyPending') ?? 0
       const pendingSelected =
         numberValue(state, 'pendingSelected') ?? 0
+      const expectedAllowedNow = Math.min(
+        Math.max(0, targetDailyNewWords - introducedToday),
+        Math.max(0, unseenCount ?? 0),
+      )
+      const expectedPendingSelected =
+        readyPendingCount
 
       events.push({
         kind: 'fresh-budget',
@@ -238,9 +244,11 @@ export function tlcStatesToLearnTrace(
         unseenCount,
         dueCount,
         allowedNow,
+        expectedAllowedNow,
         freshSelected,
         readyPendingCount,
         pendingSelected,
+        expectedPendingSelected,
       })
     }
 
