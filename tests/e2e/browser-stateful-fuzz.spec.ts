@@ -261,7 +261,9 @@ async function readWordRecordCount(page: Page) {
 }
 
 async function ensureTypingStarted(page: Page) {
-  const prompt = page.getByText('按任意键开始')
+  const prompt = page.getByText(
+    /按任意键(?:开始|继续)/,
+  )
   if (await prompt.isVisible().catch(() => false)) {
     await page.keyboard.press('a')
   }
