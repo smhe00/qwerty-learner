@@ -1,8 +1,8 @@
 ---
 protocol_version: "1.1"
-task_id: "TASK-20261006-006-learn-keystroke-audio-regression"
-task_file: "interactive/tasks/TASK-20261006-006-learn-keystroke-audio-regression.md"
-report_file: "interactive/reports/TASK-20261006-006-learn-keystroke-audio-regression-report.md"
+task_id: "TASK-20261006-006-learn-key-wrong-audio-regression"
+task_file: "interactive/tasks/TASK-20261006-006-learn-key-wrong-audio-regression.md"
+report_file: "interactive/reports/TASK-20261006-006-learn-key-wrong-audio-regression-report.md"
 target_branch: "product/main"
 status: "READY"
 executor: "workbuddy"
@@ -10,26 +10,28 @@ claim_base_commit: null
 claimed_at_utc: null
 last_known_commit: null
 release_to_master: false
+priority: "P0-regression"
 ---
 
 # Current Task
 
-A new regression task is ready for execution.
+A new field regression is active.
 
-- **Task:** `TASK-20261006-006-learn-keystroke-audio-regression`
-- **Task file:** `interactive/tasks/TASK-20261006-006-learn-keystroke-audio-regression.md`
-- **Recommended executor:** `workbuddy`
+- **Task:** `TASK-20261006-006-learn-key-wrong-audio-regression`
+- **Task file:** `interactive/tasks/TASK-20261006-006-learn-key-wrong-audio-regression.md`
+- **Executor:** `workbuddy`
 - **Status:** `READY`
-- **Priority:** regression / user-visible Learn audio
+- **Priority:** P0 regression
 
-## Symptom
+## User symptom
 
-Latest `product/main` in Learn mode has lost both:
+In the latest Learn flow:
 
-1. normal typing/keystroke sound;
-2. wrong-letter/error sound.
+- normal typing/key sound has disappeared;
+- wrong-letter/error sound has disappeared.
 
-This task requires root-cause analysis plus regression coverage. It must preserve the recent pronunciation/success-audio completion fixes.
+The executor must reproduce the runtime behavior before fixing it and must add executable
+regression coverage.
 
 ## Executor action
 
@@ -41,15 +43,13 @@ read AGENTS.md
 read interactive/CURRENT_TASK.md
 read the referenced task
 claim task according to interactive/README.md
-reproduce -> root-cause -> fix -> regression tests -> validate
+reproduce -> diagnose -> fix -> regression test -> validate
 -> stale-head check -> report -> commit -> push
 ```
-
-Do not rely on external chat context for task details.
 
 ## Branch policy
 
 - Development: `product/main`
 - Release/deployment: `master`
-- This task has `release_to_master: false`.
+- `release_to_master: false`
 - Do not touch `master`.
