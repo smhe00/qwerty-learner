@@ -83,6 +83,19 @@ export function decideReviewRating(input: {
     }
   }
 
+  if (
+    attemptRole === 'cold' &&
+    hasReason(evidence, 'cold-probe-failure-frozen') &&
+    evidence.retrievalValidity === 'independent'
+  ) {
+    return {
+      eligible: true,
+      rating: evidence.memoryGrade,
+      confidence: evidence.confidence,
+      reasonCodes: [...new Set(evidence.reasonCodes)],
+    }
+  }
+
   if (attemptRole !== 'cold') {
     return nullRating('non-cold-attempt')
   }

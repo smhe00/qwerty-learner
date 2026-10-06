@@ -129,6 +129,25 @@ export function evaluateReviewEvidence(
     }
   }
 
+  const frozenColdProbeEvidence =
+    observation.learningContext?.coldProbeEvidence
+  if (frozenColdProbeEvidence) {
+    return {
+      ...frozenColdProbeEvidence,
+      reasonCodes: dedupe([
+        ...frozenColdProbeEvidence.reasonCodes,
+        'cold-probe-failure-frozen',
+        ...(reviewHint
+          ? [
+              `review-hint-${reviewHint.maxLevel}`,
+              `review-hint-advances-${reviewHint.advanceCount}`,
+              `review-hint-failures-${reviewHint.failureCount ?? 'unknown'}`,
+            ]
+          : []),
+      ]),
+    }
+  }
+
   const requestedAudioDuringProbe =
     isAudioWithdrawalProbe &&
     (observation.learningContext?.pronunciationRequestedPlayCount ?? 0) > 0

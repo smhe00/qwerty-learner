@@ -1,55 +1,27 @@
 ---
 protocol_version: "1.1"
-task_id: "TASK-20261006-006-learn-key-wrong-audio-regression"
-task_file: "interactive/tasks/TASK-20261006-006-learn-key-wrong-audio-regression.md"
-report_file: "interactive/reports/TASK-20261006-006-learn-key-wrong-audio-regression-report.md"
+task_id: "TASK-20261006-007-hint-efficiency-v2"
+task_file: "interactive/tasks/TASK-20261006-007-hint-efficiency-v2.md"
+report_file: "interactive/reports/TASK-20261006-007-hint-efficiency-v2-report.md"
 target_branch: "product/main"
-status: "READY"
-executor: "workbuddy"
-claim_base_commit: null
-claimed_at_utc: null
-last_known_commit: null
+status: "IN_PROGRESS"
+executor: "chat"
+claim_base_commit: "4a84a49e93fc71b55e40984e83eecd43d10613c5"
+last_known_commit: "4a84a49e93fc71b55e40984e83eecd43d10613c5"
 release_to_master: false
-priority: "P0-regression"
 ---
 
 # Current Task
 
-A new field regression is active.
+Hint Efficiency V2 is active under the single-writer protocol.
 
-- **Task:** `TASK-20261006-006-learn-key-wrong-audio-regression`
-- **Task file:** `interactive/tasks/TASK-20261006-006-learn-key-wrong-audio-regression.md`
-- **Executor:** `workbuddy`
-- **Status:** `READY`
-- **Priority:** P0 regression
+Implementation order:
 
-## User symptom
+1. change pure Hint state machine to global 3-failure budget;
+2. freeze Cold Probe evidence before Hint assistance;
+3. wire Word UI / ESC semantics;
+4. update domain/formal/browser regressions;
+5. run full Review Gate;
+6. restore queued P0 audio task to READY after Hint V2 acceptance.
 
-In the latest Learn flow:
-
-- normal typing/key sound has disappeared;
-- wrong-letter/error sound has disappeared.
-
-The executor must reproduce the runtime behavior before fixing it and must add executable
-regression coverage.
-
-## Executor action
-
-```text
-git fetch origin
-git checkout product/main
-git pull --ff-only origin product/main
-read AGENTS.md
-read interactive/CURRENT_TASK.md
-read the referenced task
-claim task according to interactive/README.md
-reproduce -> diagnose -> fix -> regression test -> validate
--> stale-head check -> report -> commit -> push
-```
-
-## Branch policy
-
-- Development: `product/main`
-- Release/deployment: `master`
-- `release_to_master: false`
-- Do not touch `master`.
+`master` remains untouched.

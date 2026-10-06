@@ -5,6 +5,7 @@ import type {
   PronunciationCue,
   ReviewHintContextV1,
 } from '@/utils/db/record'
+import type { ReviewEvidenceV1 } from './evidence'
 
 export function summarizeAnswerVisibility(letterVisibility: boolean[]): AnswerVisibility | undefined {
   if (letterVisibility.length === 0) return undefined
@@ -89,12 +90,24 @@ export class LearningContextCollector {
     }
   }
 
+  recordColdProbeEvidence(evidence: ReviewEvidenceV1) {
+    if (this.context.coldProbeEvidence) return
+    this.context.coldProbeEvidence = {
+      ...evidence,
+      reasonCodes: [...evidence.reasonCodes],
+      weaknesses: evidence.weaknesses
+        ? { ...evidence.weaknesses }
+        : undefined,
+    }
+  }
+
   recordReviewHintAdvance(
     level: 0 | 1 | 2 | 3,
     coldProbeSurrendered: boolean,
     meta?: {
       hintPosition?: number
       autoHint0Triggered?: boolean
+      failureCount?: 0 | 1 | 2 | 3
     },
   ) {
     const current = this.context.reviewHint
@@ -114,6 +127,8 @@ export class LearningContextCollector {
       autoHint0Triggered:
         (current?.autoHint0Triggered ?? false) ||
         (meta?.autoHint0Triggered ?? false),
+      failureCount:
+        meta?.failureCount ?? current?.failureCount,
     }
   }
 

@@ -237,13 +237,14 @@ test('independent failure carries its last wrong position only into Supported sc
   assert.equal(nextIndependent.scaffoldHintPosition, undefined)
 })
 
-test('S1 scaffold starts Hint at level 1 so manual escalation cannot reduce support', () => {
+test('S1 scaffold starts Strong Hint and ESC surrenders directly to full answer', () => {
   const state = createReviewHintMachineState({
     initialLevel: 1,
     hintPosition: 2,
   })
   assert.equal(state.stage, 'hint-1')
   assert.equal(state.maxLevelReached, 1)
+  assert.equal(state.failureCount, 2)
   assert.equal(state.hintPosition, 2)
 
   const decision = decideReviewHintInput({
@@ -254,9 +255,10 @@ test('S1 scaffold starts Hint at level 1 so manual escalation cannot reduce supp
   assert.equal(decision.kind, 'advance-hint')
   if (decision.kind !== 'advance-hint') return
   assert.equal(decision.from, 'hint-1')
-  assert.equal(decision.to, 'hint-2')
-  assert.equal(decision.level, 2)
+  assert.equal(decision.to, 'hint-3')
+  assert.equal(decision.level, 3)
   assert.equal(decision.hintPosition, 2)
+  assert.equal(decision.failureCount, 2)
 })
 
 test('Recovery Window pulls only high-confidence training items ahead of a difficult retry', () => {
@@ -2169,68 +2171,32 @@ test('manually requested pronunciation marks an otherwise canonical retrieval as
 })
 
 
-test('Review hint ladder escalates on Escape at any input position and Hint 3 cannot be skipped', () => {
-  let state = createReviewHintMachineState()
-  const expected = [
-    { stage: 'hint-0', level: 0 },
-    { stage: 'hint-1', level: 1 },
-    { stage: 'hint-2', level: 2 },
-    { stage: 'hint-3', level: 3 },
-  ] as const
-
-  for (const item of expected) {
-    const before = reviewHintTerminationVariant(state)
-    const decision = decideReviewHintInput({
-      state,
-      inputIndex: item.level + 1,
-      key: 'Escape',
-    })
-    assert.equal(decision.kind, 'advance-hint')
-    if (decision.kind === 'advance-hint') {
-      assert.equal(decision.to, item.stage)
-      assert.equal(decision.level, item.level)
-      state = applyReviewHintDecision(state, decision)
-    }
-    assert.ok(reviewHintTerminationVariant(state) < before)
-  }
-
-  assert.equal(state.stage, 'hint-3')
-  assert.equal(state.coldProbeSurrendered, true)
-  assert.equal(state.advanceCount, 4)
-
-  assert.deepEqual(
-    decideReviewHintInput({ state, inputIndex: 0, key: 'Escape' }),
-    { kind: 'type-key' },
-  )
-  assert.deepEqual(
-    decideReviewHintInput({ state, inputIndex: 3, key: 'Escape' }),
-    { kind: 'type-key' },
-  )
-  assert.deepEqual(
-    decideReviewHintInput({
-      state: createReviewHintMachineState(),
-      inputIndex: 0,
-      key: ' ',
-    }),
-    { kind: 'type-key' },
-  )
-})
-
-test('cold Escape surrender uses the next untyped position and Space stays a typing key', () => {
+test('Hint V2 uses ESC as the only explicit surrender and Space stays ordinary input', () => {
   const state = createReviewHintMachineState()
 
-  const escapeDecision = decideReviewHintInput({
+  const escape = decideReviewHintInput({
     state,
     inputIndex: 3,
     key: 'Escape',
   })
-  assert.equal(escapeDecision.kind, 'advance-hint')
-  if (escapeDecision.kind === 'advance-hint') {
-    assert.equal(escapeDecision.level, 0)
-    assert.equal(escapeDecision.hintPosition, 3)
-    assert.equal(escapeDecision.coldProbeSurrendered, true)
-    assert.equal(escapeDecision.trigger, 'manual-escape')
-  }
+  assert.equal(escape.kind, 'advance-hint')
+  if (escape.kind !== 'advance-hint') return
+  assert.equal(escape.from, 'cold-probe')
+  assert.equal(escape.to, 'hint-3')
+  assert.equal(escape.level, 3)
+  assert.equal(escape.hintPosition, 3)
+  assert.equal(escape.coldProbeSurrendered, true)
+  assert.equal(escape.failureCount, 0)
+  assert.equal(escape.trigger, 'manual-escape')
+
+  const terminal = applyReviewHintDecision(state, escape)
+  assert.equal(terminal.stage, 'hint-3')
+  assert.equal(terminal.advanceCount, 1)
+  assert.equal(terminal.coldProbeSurrendered, true)
+  assert.ok(
+    reviewHintTerminationVariant(terminal) <
+      reviewHintTerminationVariant(state),
+  )
 
   assert.deepEqual(
     decideReviewHintInput({
@@ -2248,173 +2214,134 @@ test('cold Escape surrender uses the next untyped position and Space stays a typ
     }),
     { kind: 'type-key' },
   )
+  assert.deepEqual(
+    decideReviewHintInput({
+      state: terminal,
+      inputIndex: 0,
+      key: 'Escape',
+    }),
+    { kind: 'type-key' },
+  )
 })
 
-test('Review hint plans implement position cue, audio+phonetic, partial spelling, then mandatory full copy', () => {
-  const hint0 = createReviewHintPlan(0, 6)
+test('Hint V2 presentation is Minimal -> Strong -> Full with legacy level 2 as Strong alias', () => {
+  const hint0 = createReviewHintPlan(0, 6, 3)
   assert.equal(hint0.condition.audio, 'none')
   assert.equal(hint0.condition.phonetic, 'hidden')
-  assert.deepEqual(hint0.condition.letters, {
-    mode: 'partial',
-    visiblePositions: [0],
-    maskedPositions: [1, 2, 3, 4, 5],
-  })
-
-  const hint1 = createReviewHintPlan(1, 6)
-  assert.equal(hint1.condition.audio, 'automatic')
-  assert.equal(hint1.condition.phonetic, 'visible')
-  assert.deepEqual(hint1.condition.letters.visiblePositions, [0])
-
-  const hint2 = createReviewHintPlan(2, 6)
-  assert.equal(hint2.condition.audio, 'automatic')
-  assert.equal(hint2.condition.phonetic, 'visible')
-  assert.deepEqual(hint2.condition.letters, {
-    mode: 'partial',
-    visiblePositions: [0, 2, 4],
-    maskedPositions: [1, 3, 5],
-  })
-
-  const hint3 = createReviewHintPlan(3, 6)
-  assert.equal(hint3.condition.audio, 'automatic')
-  assert.equal(hint3.condition.phonetic, 'visible')
-  assert.deepEqual(hint3.condition.letters, { mode: 'all-visible' })
-})
-
-test('Hint 0 targets the last spelling first-wrong position instead of always the first letter', () => {
-  let state = createReviewHintMachineState()
-
-  const observation = observeReviewHintWrong({
-    state,
-    wrongIndex: 3,
-    wordLength: 6,
-  })
-  state = observation.state
-  assert.equal(observation.decision, null)
-  assert.equal(state.lastWrongIndex, 3)
-
-  const decision = decideReviewHintInput({
-    state,
-    inputIndex: 0,
-    key: 'Escape',
-  })
-  assert.equal(decision.kind, 'advance-hint')
-  if (decision.kind !== 'advance-hint') return
-
-  assert.equal(decision.level, 0)
-  assert.equal(decision.hintPosition, 3)
-  assert.equal(decision.trigger, 'manual-escape')
-
-  state = applyReviewHintDecision(state, decision)
-  assert.equal(state.hintPosition, 3)
-
-  const hint0 = createReviewHintPlan(0, 6, state.hintPosition)
   assert.deepEqual(hint0.condition.letters, {
     mode: 'partial',
     visiblePositions: [3],
     maskedPositions: [0, 1, 2, 4, 5],
   })
 
-  const hint1 = createReviewHintPlan(1, 6, state.hintPosition)
-  assert.deepEqual(hint1.condition.letters.visiblePositions, [3])
+  const hint1 = createReviewHintPlan(1, 6, 3)
+  assert.equal(hint1.condition.audio, 'automatic')
+  assert.equal(hint1.condition.phonetic, 'visible')
+  assert.deepEqual(hint1.condition.letters, {
+    mode: 'partial',
+    visiblePositions: [0, 2, 3, 4],
+    maskedPositions: [1, 5],
+  })
 
-  const hint2 = createReviewHintPlan(2, 6, state.hintPosition)
-  assert.deepEqual(hint2.condition.letters.visiblePositions, [0, 2, 3, 4])
+  const hint2 = createReviewHintPlan(2, 6, 3)
+  assert.deepEqual(
+    hint2.condition.letters,
+    hint1.condition.letters,
+  )
+
+  const hint3 = createReviewHintPlan(3, 6, 3)
+  assert.equal(hint3.condition.audio, 'automatic')
+  assert.equal(hint3.condition.phonetic, 'visible')
+  assert.deepEqual(hint3.condition.letters, {
+    mode: 'all-visible',
+  })
 })
 
-test('cold repeated position enters Hint 0 and each hinted level auto-advances after two failures', () => {
+test('Hint V2 has one global three-failure budget with no stage-local retries', () => {
   let state = createReviewHintMachineState()
 
+  const firstBefore = reviewHintTerminationVariant(state)
   let observed = observeReviewHintWrong({
     state,
     wrongIndex: 2,
     wordLength: 6,
   })
-  state = observed.state
-  assert.equal(observed.decision, null)
-  assert.equal(state.wrongPositionCounts[2], 1)
-
-  const beforeColdAdvance = reviewHintTerminationVariant(state)
-  observed = observeReviewHintWrong({
-    state,
-    wrongIndex: 2,
-    wordLength: 6,
-  })
-  state = observed.state
   assert.equal(observed.decision?.kind, 'advance-hint')
   if (observed.decision?.kind !== 'advance-hint') return
   assert.equal(observed.decision.level, 0)
+  assert.equal(observed.decision.to, 'hint-0')
+  assert.equal(observed.decision.failureCount, 1)
   assert.equal(observed.decision.hintPosition, 2)
-  assert.equal(observed.decision.trigger, 'repeated-wrong-position')
-  state = applyReviewHintDecision(state, observed.decision)
+  assert.equal(observed.decision.trigger, 'failed-retrieval')
+  state = applyReviewHintDecision(
+    observed.state,
+    observed.decision,
+  )
+  assert.equal(state.failureCount, 1)
   assert.equal(state.stage, 'hint-0')
-  assert.equal(state.stageWrongCount, 0)
   assert.deepEqual(state.forcedRevealPositions, [2])
-  assert.ok(reviewHintTerminationVariant(state) < beforeColdAdvance)
+  assert.ok(reviewHintTerminationVariant(state) < firstBefore)
 
-  const automaticStages = [
-    { from: 'hint-0', to: 'hint-1', level: 1 },
-    { from: 'hint-1', to: 'hint-2', level: 2 },
-    { from: 'hint-2', to: 'hint-3', level: 3 },
-  ] as const
+  const secondBefore = reviewHintTerminationVariant(state)
+  observed = observeReviewHintWrong({
+    state,
+    wrongIndex: 0,
+    wordLength: 6,
+  })
+  assert.equal(observed.decision?.kind, 'advance-hint')
+  if (observed.decision?.kind !== 'advance-hint') return
+  assert.equal(observed.decision.level, 1)
+  assert.equal(observed.decision.to, 'hint-1')
+  assert.equal(observed.decision.failureCount, 2)
+  state = applyReviewHintDecision(
+    observed.state,
+    observed.decision,
+  )
+  assert.equal(state.failureCount, 2)
+  assert.equal(state.stage, 'hint-1')
+  assert.deepEqual(state.forcedRevealPositions, [0, 2])
+  assert.ok(reviewHintTerminationVariant(state) < secondBefore)
 
-  for (const expected of automaticStages) {
-    assert.equal(state.stage, expected.from)
-    const before = reviewHintTerminationVariant(state)
+  const thirdBefore = reviewHintTerminationVariant(state)
+  observed = observeReviewHintWrong({
+    state,
+    wrongIndex: 1,
+    wordLength: 6,
+  })
+  assert.equal(observed.decision?.kind, 'advance-hint')
+  if (observed.decision?.kind !== 'advance-hint') return
+  assert.equal(observed.decision.level, 3)
+  assert.equal(observed.decision.to, 'hint-3')
+  assert.equal(observed.decision.failureCount, 3)
+  state = applyReviewHintDecision(
+    observed.state,
+    observed.decision,
+  )
+  assert.equal(state.failureCount, 3)
+  assert.equal(state.stage, 'hint-3')
+  assert.deepEqual(state.forcedRevealPositions, [0, 1, 2])
+  assert.ok(reviewHintTerminationVariant(state) < thirdBefore)
 
-    const first = observeReviewHintWrong({
-      state,
-      wrongIndex: 0,
-      wordLength: 6,
-    })
-    state = first.state
-    assert.equal(first.decision, null)
-    assert.equal(state.stageWrongCount, 1)
-
-    const second = observeReviewHintWrong({
-      state,
-      wrongIndex: 1,
-      wordLength: 6,
-    })
-    state = second.state
-    assert.equal(second.decision?.kind, 'advance-hint')
-    if (second.decision?.kind !== 'advance-hint') return
-    assert.equal(second.decision.level, expected.level)
-    assert.equal(second.decision.to, expected.to)
-    assert.equal(second.decision.trigger, 'repeated-hint-errors')
-
-    state = applyReviewHintDecision(state, second.decision)
-    assert.equal(state.stage, expected.to)
-    assert.equal(state.stageWrongCount, 0)
-    assert.ok(reviewHintTerminationVariant(state) < before)
-  }
-
-  for (let repeat = 0; repeat < 4; repeat += 1) {
-    const terminal = observeReviewHintWrong({
-      state,
-      wrongIndex: repeat % 2,
-      wordLength: 6,
-    })
-    state = terminal.state
-    assert.equal(terminal.decision, null)
-    assert.equal(state.stage, 'hint-3')
-  }
+  const afterFull = observeReviewHintWrong({
+    state,
+    wrongIndex: 4,
+    wordLength: 6,
+  })
+  assert.equal(afterFull.decision, null)
+  assert.equal(afterFull.state.stage, 'hint-3')
+  assert.equal(afterFull.state.failureCount, 3)
 })
 
-test('forced reveal positions are retained at every non-terminal Hint level', () => {
-  const hint0 = createReviewHintPlan(0, 6, 3, [1, 4])
-  assert.deepEqual(hint0.condition.letters.visiblePositions, [1, 3, 4])
-
-  const hint1 = createReviewHintPlan(1, 6, 3, [1, 4])
-  assert.deepEqual(hint1.condition.letters.visiblePositions, [1, 3, 4])
-
-  const hint2 = createReviewHintPlan(2, 6, 3, [1, 4])
-  assert.deepEqual(hint2.condition.letters.visiblePositions, [0, 1, 2, 3, 4])
-
-  const hint3 = createReviewHintPlan(3, 6, 3, [1, 4])
-  assert.deepEqual(hint3.condition.letters, { mode: 'all-visible' })
+test('Strong Hint retains known wrong positions while revealing roughly half the word', () => {
+  const strong = createReviewHintPlan(1, 6, 3, [1, 4])
+  assert.deepEqual(strong.condition.letters, {
+    mode: 'partial',
+    visiblePositions: [0, 1, 2, 3, 4],
+    maskedPositions: [5],
+  })
 })
 
-test('cold-probe surrender remains Again even when final hint-assisted typing is clean', () => {
+test('cold-probe surrender remains Again even when final full-answer typing is clean', () => {
   const evidence = evaluateReviewEvidence(
     {
       exerciseCondition: createReviewHintPlan(3, 6).condition,
@@ -2424,7 +2351,8 @@ test('cold-probe surrender remains Again even when final hint-assisted typing is
           version: 1,
           maxLevel: 3,
           coldProbeSurrendered: true,
-          advanceCount: 4,
+          advanceCount: 1,
+          failureCount: 0,
         },
       },
       typingTelemetry: {
@@ -2443,22 +2371,68 @@ test('cold-probe surrender remains Again even when final hint-assisted typing is
   assert.equal(evidence.memoryGrade, 'again')
   assert.equal(evidence.errorCause, 'recall')
   assert.equal(evidence.retrievalValidity, 'independent')
-  assert.ok(evidence.reasonCodes.includes('cold-probe-surrendered'))
-
-  assert.equal(
-    reviewOutcomeForAttempt({
-      classification: {
-        cause: 'clean',
-        confidence: 0.9,
-        scores: { recall: 0, spelling: 0, motor: 0 },
-      },
-      evidence,
-      condition: createReviewHintPlan(3, 6).condition,
-    }),
-    'again',
+  assert.ok(
+    evidence.reasonCodes.includes(
+      'cold-probe-surrendered',
+    ),
   )
 })
 
+test('frozen Cold Probe evidence survives assisted full-answer completion', () => {
+  const frozen = {
+    version: 1 as const,
+    memoryGrade: 'hard' as const,
+    errorCause: 'spelling' as const,
+    confidence: 0.82,
+    evidenceStrength: 0.82,
+    retrievalValidity: 'independent' as const,
+    reasonCodes: ['spelling-weakness'],
+  }
+
+  const evidence = evaluateReviewEvidence(
+    {
+      exerciseCondition: createReviewHintPlan(3, 6).condition,
+      learningContext: {
+        version: 1,
+        coldProbeEvidence: frozen,
+        reviewHint: {
+          version: 1,
+          maxLevel: 3,
+          coldProbeSurrendered: false,
+          advanceCount: 3,
+          failureCount: 3,
+          hintPosition: 2,
+          autoHint0Triggered: true,
+        },
+      },
+      typingTelemetry: {
+        telemetryVersion: 2,
+        firstKeyLatencyMs: 500,
+        attempts: [],
+      },
+    },
+    {
+      cause: 'clean',
+      confidence: 1,
+      scores: { recall: 0, spelling: 0, motor: 0 },
+    },
+  )
+
+  assert.equal(evidence.memoryGrade, 'hard')
+  assert.equal(evidence.errorCause, 'spelling')
+  assert.equal(evidence.retrievalValidity, 'independent')
+  assert.equal(evidence.confidence, 0.82)
+  assert.ok(
+    evidence.reasonCodes.includes(
+      'cold-probe-failure-frozen',
+    ),
+  )
+  assert.ok(
+    evidence.reasonCodes.includes(
+      'review-hint-failures-3',
+    ),
+  )
+})
 
 test('Learn lifecycle excludes, preserves history state, ignores Typing, and restores due-now', () => {
   const base = createInitialReviewWordState('cet4', 'cancel', 100)
