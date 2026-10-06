@@ -36,6 +36,11 @@ on:
       - 'src/pages/Typing/components/Setting/**'
       - 'src/store/reviewInfoAtom.ts'
       - 'src/store/index.ts'
+      - 'src/resources/soundResource.ts'
+      - 'src/hooks/useKeySounds.ts'
+      - 'tests/audio/**'
+      - 'tests/e2e/learn-audio-regression.spec.ts'
+      - 'tests/e2e/learn-audio-regression.config.ts'
       - 'tests/e2e/review.spec.ts'
       - 'tests/e2e/review-flow.spec.ts'
       - 'tests/e2e/backup-harness.html'
@@ -210,8 +215,14 @@ jobs:
       - name: Run FSRS G3 analysis tests
         run: node --test .review-test/g3-analysis.test.mjs
 
+      - name: Run sound URL resolution guard
+        run: node --test tests/audio/sound-url.test.mjs
+
       - name: Run Typing lifecycle browser gate
         run: npx playwright test --config=tests/e2e/typing-lifecycle.config.ts --project=chrome
+
+      - name: Run Learn audio regression browser gate
+        run: npx playwright test --config=tests/e2e/learn-audio-regression.config.ts --project=chrome
 
       - name: Run P3 browser stateful fuzz gate
         env:

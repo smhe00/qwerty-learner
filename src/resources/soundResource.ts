@@ -1,6 +1,12 @@
 import type { LanguagePronunciationMap, SoundResource } from '@/typings'
 
-export const SOUND_URL_PREFIX = REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner/sounds/' : './sounds/'
+// Sound URLs must be app-root absolute, not document relative. Learn renders its
+// session on `/learn/session`, and a `./sounds/` prefix resolves against that
+// nested document path (`/learn/sounds/...`), so every feedback sound 404'd and
+// played silently. Pronunciation audio uses absolute URLs and was unaffected,
+// which is why only the typing-click and wrong-letter sounds disappeared.
+// The `pages` branch matches the Vite `base` in vite.config.ts.
+export const SOUND_URL_PREFIX = REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner/sounds/' : '/sounds/'
 export const KEY_SOUND_URL_PREFIX = SOUND_URL_PREFIX + 'key-sound/'
 
 // will add more sound resource and add config ui in the future
