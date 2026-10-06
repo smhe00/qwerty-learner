@@ -982,9 +982,11 @@ test('new Review session forces a canonical cold probe independent of ordinary s
 test('Phase D live gate applies one canonical rating through the scheduler', async ({
   page,
 }) => {
-  await seedReviewSession(page, reviewWords.slice(0, 1), 900004)
-  await page.goto('/gallery')
+  // Seed scheduler state before installing the active Learn checkpoint. This
+  // keeps fixture writes independent from the live Learn database connection.
+  await page.goto('/')
   const before = await putDueReviewWordState(page, 'cancel')
+  await seedReviewSession(page, reviewWords.slice(0, 1), 900004)
   await page.goto('/learn')
   await waitForActiveLearnSession(page)
 
@@ -1022,9 +1024,9 @@ test('Phase D live gate applies one canonical rating through the scheduler', asy
 test('Hint V2 freezes Cold Probe evidence before assisted completion reaches the scheduler', async ({
   page,
 }) => {
-  await seedReviewSession(page, reviewWords.slice(0, 1), 900005)
-  await page.goto('/gallery')
+  await page.goto('/')
   await putDueReviewWordState(page, 'cancel')
+  await seedReviewSession(page, reviewWords.slice(0, 1), 900005)
   await page.goto('/learn')
   await waitForActiveLearnSession(page)
 
