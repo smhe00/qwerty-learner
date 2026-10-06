@@ -26,10 +26,10 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
           <div className="flex flex-col items-start leading-none">
             <h1 className="whitespace-nowrap text-2xl font-bold tracking-tight lg:text-4xl">
               <span className="text-slate-800 dark:text-slate-100">Qwerty</span>
-              <span className="ml-2 font-medium text-slate-500 dark:text-slate-300">Plus</span>
+              <span className="ml-2 font-medium text-[#F0A11C] dark:text-[#FFC85D]">Plus</span>
             </h1>
             <span className="mt-2 pl-1 text-[0.65rem] font-medium tracking-[0.16em] text-slate-400 dark:text-slate-500 lg:text-xs">
-              打字 · 背单词
+              打字 · 背单词 · 云备份
             </span>
           </div>
         </button>
