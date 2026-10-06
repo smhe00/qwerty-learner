@@ -284,6 +284,30 @@ async function readReviewModeInfo(page: import('@playwright/test').Page) {
   })
 }
 
+async function waitForActiveLearnSession(
+  page: import('@playwright/test').Page,
+) {
+  await expect
+    .poll(
+      async () => {
+        const info = await readReviewModeInfo(page)
+        return Boolean(
+          info?.isReviewMode &&
+            info?.reviewRecord &&
+            info.reviewRecord.isFinished !== true,
+        )
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(true)
+
+  await expect(
+    page.locator('[data-typing-word]').first(),
+  ).toBeVisible({ timeout: 15_000 })
+
+  return readReviewModeInfo(page)
+}
+
 async function waitForReviewIndex(
   page: import('@playwright/test').Page,
   index: number,
@@ -802,9 +826,7 @@ test('fresh Typing failure cannot reopen a previously reviewed Learn word', asyn
   })
 
   await page.goto('/learn')
-  await expect(page).toHaveURL(/\/learn$/)
-
-  const info = await readReviewModeInfo(page)
+  const info = await waitForActiveLearnSession(page)
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
   expect(
     info?.reviewRecord?.words?.some(
@@ -857,9 +879,7 @@ test('new Review session forces a canonical cold probe independent of ordinary s
   await putDueReviewWordState(page, 'cancel')
 
   await page.goto('/learn')
-  await expect(page).toHaveURL(/\/learn$/)
-
-  const sessionInfo = await readReviewModeInfo(page)
+  const sessionInfo = await waitForActiveLearnSession(page)
   expect(sessionInfo?.reviewRecord?.exercisePlans?.cancel).toMatchObject({
     condition: {
       purpose: 'probe',
@@ -963,8 +983,10 @@ test('Phase D live gate applies one canonical rating through the scheduler', asy
   page,
 }) => {
   await seedReviewSession(page, reviewWords.slice(0, 1), 900004)
-  await page.goto('/')
+  await page.goto('/gallery')
   const before = await putDueReviewWordState(page, 'cancel')
+  await page.goto('/learn')
+  await waitForActiveLearnSession(page)
 
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
@@ -1001,8 +1023,10 @@ test('Hint V2 freezes Cold Probe evidence before assisted completion reaches the
   page,
 }) => {
   await seedReviewSession(page, reviewWords.slice(0, 1), 900005)
-  await page.goto('/')
+  await page.goto('/gallery')
   await putDueReviewWordState(page, 'cancel')
+  await page.goto('/learn')
+  await waitForActiveLearnSession(page)
 
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
@@ -1296,6 +1320,7 @@ test('Learn dictionary selection reuses the Typing gallery and skips chapter sel
   })
 
   await page.goto('/learn')
+  await waitForActiveLearnSession(page)
   await page.getByRole('link', { name: 'CET-4', exact: true }).click()
   await expect(page).toHaveURL(/\/gallery\?mode=learn$/)
 
@@ -1827,9 +1852,7 @@ test('Learn starts new acquisition with exposure and does not admit after visibl
   })
 
   await page.goto('/learn')
-  await expect(page).toHaveURL(/\/learn$/)
-
-  const info = await readReviewModeInfo(page)
+  const info = await waitForActiveLearnSession(page)
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
   expect(info?.reviewRecord?.words?.length).toBe(20)
 
@@ -2232,8 +2255,7 @@ test('spacing-deferred acquisition resumes as Independent after its delay', asyn
   )
 
   await page.goto('/learn')
-  await expect(page).toHaveURL(/\/learn$/)
-  const info = await readReviewModeInfo(page)
+  const info = await waitForActiveLearnSession(page)
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
   expect(info?.reviewRecord?.words?.[0]?.name).toBe('cancel')
   expect(
@@ -2425,8 +2447,7 @@ test('a due ACTIVE word is reviewed before any unseen acquisition word', async (
   })
 
   await page.goto('/learn')
-  await expect(page).toHaveURL(/\/learn$/)
-  const info = await readReviewModeInfo(page)
+  const info = await waitForActiveLearnSession(page)
 
   expect(info?.reviewRecord?.sessionKind).toBe('mixed')
   expect(info?.reviewRecord?.words?.[0]?.name).toBe('cancel')
@@ -2927,9 +2948,7 @@ test('Learn P3 weak review pressure limits a new acquisition session to five wor
   })
 
   await page.goto('/learn')
-  await expect(page).toHaveURL(/\/learn$/)
-
-  const info = await readReviewModeInfo(page)
+  const info = await waitForActiveLearnSession(page)
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
   expect(info?.reviewRecord?.words).toHaveLength(5)
 })
@@ -3022,9 +3041,7 @@ test('Learn P4 workload budget limits new acquisition after fifteen active minut
   })
 
   await page.goto('/learn')
-  await expect(page).toHaveURL(/\/learn$/)
-
-  const info = await readReviewModeInfo(page)
+  const info = await waitForActiveLearnSession(page)
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
   expect(info?.reviewRecord?.words).toHaveLength(10)
 })
