@@ -288,6 +288,43 @@ export const P2_CRITICAL_FAULT_CATALOG: CriticalFaultCatalogEntry[] = [
     rationale: 'Controller reports waiting even though recoverable unfinished work exists.',
   },
 
+  {
+    id: 'pure-review-over-20-wrongly-rotated',
+    family: 'mixed-identity',
+    severity: 'high',
+    status: 'covered',
+    detectors: ['domain', 'p0-replay'],
+    executableMutation: false,
+    rationale: 'Review volume is legal above 20 and must not be classified as an oversized Acquisition cohort.',
+  },
+  {
+    id: 'mixed-total-counted-as-acquisition-cohort',
+    family: 'mixed-identity',
+    severity: 'high',
+    status: 'covered',
+    detectors: ['domain', 'p0-replay', 'simulation'],
+    executableMutation: false,
+    rationale: 'Mixed-session cohort sizing must count Acquisition logical words rather than total Review+Acquisition queue size.',
+  },
+  {
+    id: 'legacy-mixed-missing-itemKinds',
+    family: 'mixed-identity',
+    severity: 'high',
+    status: 'covered',
+    detectors: ['domain', 'simulation'],
+    executableMutation: false,
+    rationale: 'Legacy mixed checkpoints recover Acquisition ownership from acquisitionStates when itemKinds metadata is absent.',
+  },
+  {
+    id: 'workload-soft-budget-ignored',
+    family: 'candidate-budget',
+    severity: 'high',
+    status: 'covered',
+    detectors: ['simulation'],
+    executableMutation: true,
+    rationale: 'Fresh allowance must respect the production daily workload planner, not merely the raw quota/unseen cap.',
+  },
+
   // Browser/P0 critical classes that are covered, but are deliberately not
   // counted as event-level simulation mutations in the kill-rate denominator.
   {
