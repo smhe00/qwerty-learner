@@ -2,13 +2,12 @@ import { db } from '.'
 import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import { isAcquisitionIntroductionRecord } from '@/learn/admission'
 import {
-  LEARN_MIXED_NEW_WORD_RESERVE,
   LEARN_NEW_WORD_BATCH_SIZE,
-  LEARN_SESSION_TARGET_SIZE,
   buildLearnAcquisitionExercisePlans,
   buildLearnAcquisitionStates,
   canonicalizeLearningWords,
   planLearnAcquisitionCandidates,
+  selectLearnMixedSessionItems,
   shouldRotateOversizedLearnSession,
 } from '@/learn/session'
 import {
@@ -281,33 +280,23 @@ export async function generateLearnMixedSessionRecord(
     })),
   ]
 
-  const reservedAcquisitionSlots =
-    dueWords.length > 0
-      ? Math.min(
-          LEARN_MIXED_NEW_WORD_RESERVE,
-          acquisitionCandidates.length,
-        )
-      : 0
-  const reviewSlotLimit = Math.max(
-    0,
-    LEARN_SESSION_TARGET_SIZE - reservedAcquisitionSlots,
-  )
-  const selectedReviewWords = dueWords.slice(0, reviewSlotLimit)
-  const acquisitionSlotLimit = Math.max(
-    0,
-    LEARN_SESSION_TARGET_SIZE - selectedReviewWords.length,
-  )
+  const selection = selectLearnMixedSessionItems({
+    dueWords,
+    acquisitionWords: acquisitionCandidates.map(
+      (item) => item.word,
+    ),
+  })
+  const {
+    selectedReviewWords,
+    selectedAcquisitionWords,
+    selectedWords,
+    sessionKind,
+    itemKinds,
+  } = selection
   const selectedAcquisition = acquisitionCandidates.slice(
     0,
-    acquisitionSlotLimit,
+    selectedAcquisitionWords.length,
   )
-  const selectedAcquisitionWords = selectedAcquisition.map(
-    (item) => item.word,
-  )
-  const selectedWords = [
-    ...selectedReviewWords,
-    ...selectedAcquisitionWords,
-  ]
 
   if (selectedWords.length === 0) return undefined
 
@@ -347,14 +336,7 @@ export async function generateLearnMixedSessionRecord(
     ),
   }
 
-  const hasReview = selectedReviewWords.length > 0
   const hasAcquisition = selectedAcquisitionWords.length > 0
-  const sessionKind =
-    hasReview && hasAcquisition
-      ? 'mixed'
-      : hasAcquisition
-        ? 'acquisition'
-        : 'review'
 
   const record = new ReviewRecord(
     dictID,
@@ -365,14 +347,7 @@ export async function generateLearnMixedSessionRecord(
     },
     sessionKind,
   )
-  record.itemKinds = Object.fromEntries([
-    ...selectedReviewWords.map(
-      (word) => [word.name, 'review' as const],
-    ),
-    ...selectedAcquisitionWords.map(
-      (word) => [word.name, 'acquisition' as const],
-    ),
-  ])
+  record.itemKinds = itemKinds
   if (hasAcquisition) {
     record.acquisitionStates = acquisitionStates
   }

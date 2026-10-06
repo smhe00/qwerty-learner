@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createSerializedSnapshotWriter } from '../../src/review/persistence'
-import type { LearnSystemTraceEvent } from './trace-ir'
+import type { LearnSystemTraceEvent } from '../../src/learn/trace-ir'
 import { detectLearnSystemAnomalies } from './system-oracle'
 
 type Snapshot = {

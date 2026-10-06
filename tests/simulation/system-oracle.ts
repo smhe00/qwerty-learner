@@ -2,12 +2,12 @@ import type { LearnPreparationResult } from '../../src/learn/controller'
 import type {
   LearnSystemAnomaly,
   LearnSystemTraceEvent,
-} from './trace-ir'
+} from '../../src/learn/trace-ir'
 
 export type {
   LearnSystemAnomaly,
   LearnSystemTraceEvent,
-} from './trace-ir'
+} from '../../src/learn/trace-ir'
 
 export function preparationResultToTraceEvent(
   result: LearnPreparationResult,

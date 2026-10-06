@@ -117,6 +117,72 @@ export function shouldRotateOversizedLearnSession(
   )
 }
 
+export type LearnMixedSessionSelection = {
+  selectedReviewWords: Word[]
+  selectedAcquisitionWords: Word[]
+  selectedWords: Word[]
+  sessionKind: LearnSessionKind
+  itemKinds: Record<string, LearnItemKind>
+}
+
+export function selectLearnMixedSessionItems(input: {
+  dueWords: Word[]
+  acquisitionWords: Word[]
+}): LearnMixedSessionSelection {
+  const reservedAcquisitionSlots =
+    input.dueWords.length > 0
+      ? Math.min(
+          LEARN_MIXED_NEW_WORD_RESERVE,
+          input.acquisitionWords.length,
+        )
+      : 0
+  const reviewSlotLimit = Math.max(
+    0,
+    LEARN_SESSION_TARGET_SIZE - reservedAcquisitionSlots,
+  )
+  const selectedReviewWords = input.dueWords.slice(
+    0,
+    reviewSlotLimit,
+  )
+  const acquisitionSlotLimit = Math.max(
+    0,
+    LEARN_SESSION_TARGET_SIZE - selectedReviewWords.length,
+  )
+  const selectedAcquisitionWords = input.acquisitionWords.slice(
+    0,
+    acquisitionSlotLimit,
+  )
+  const selectedWords = [
+    ...selectedReviewWords,
+    ...selectedAcquisitionWords,
+  ]
+  const hasReview = selectedReviewWords.length > 0
+  const hasAcquisition = selectedAcquisitionWords.length > 0
+  const sessionKind: LearnSessionKind =
+    hasReview && hasAcquisition
+      ? 'mixed'
+      : hasAcquisition
+        ? 'acquisition'
+        : 'review'
+  const itemKinds = Object.fromEntries([
+    ...selectedReviewWords.map(
+      (word) => [word.name, 'review' as const],
+    ),
+    ...selectedAcquisitionWords.map(
+      (word) => [word.name, 'acquisition' as const],
+    ),
+  ])
+
+  return {
+    selectedReviewWords,
+    selectedAcquisitionWords,
+    selectedWords,
+    sessionKind,
+    itemKinds,
+  }
+}
+
+
 /**
  * Learn owns one long-term spelling memory per exact dictionary name.
  *

@@ -2,7 +2,7 @@ import {
   LEARN_TRACE_IR_VERSION,
   type LearnTraceEnvelope,
   type LearnSystemTraceEvent,
-} from '../simulation/trace-ir'
+} from '../../src/learn/trace-ir'
 
 export type TlcState = {
   number: number

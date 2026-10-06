@@ -6,7 +6,7 @@ import {
   LEARN_TRACE_IR_VERSION,
   type LearnSystemTraceEvent,
   type LearnTraceEnvelope,
-} from '../../tests/simulation/trace-ir'
+} from '../learn/trace-ir'
 
 export const DEVELOPER_INCIDENT_SCHEMA =
   'qwerty-developer-incident-v1' as const
