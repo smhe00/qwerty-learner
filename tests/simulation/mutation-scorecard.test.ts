@@ -512,6 +512,19 @@ function mutationCases(): MutationCase[] {
       ],
     },
     {
+      id: 'workload-soft-budget-ignored',
+      expected: 'fresh-budget-violation',
+      events: [
+        freshBudgetEvent({
+          allowedNow: 8,
+          expectedAllowedNow: 3,
+          freshSelected: 3,
+          unseenCount: 20,
+          introducedToday: 4,
+        }),
+      ],
+    },
+    {
       id: 'finished-shadows-unfinished',
       expected: 'session-arbitration-violation',
       events: [
@@ -704,6 +717,13 @@ function cleanControls(
         readyPendingCount: 1,
         pendingSelected: 1,
         expectedPendingSelected: 1,
+      }),
+      freshBudgetEvent({
+        allowedNow: 3,
+        expectedAllowedNow: 3,
+        freshSelected: 3,
+        unseenCount: 20,
+        introducedToday: 4,
       }),
     ],
     [
