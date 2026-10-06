@@ -36,7 +36,7 @@ https://smhe00.github.io/qwerty-learner/
 - GitHub Pages 的 Origin 不包含 `/qwerty-learner/` 路径；
 - EdgeOne 云后端不可用时，两套前端仍可保持 local-first 学习，但云账号/同步同时不可用。
 
-## 4. 代码边界
+## 3. 代码边界
 
 ```text
 src/sync/
