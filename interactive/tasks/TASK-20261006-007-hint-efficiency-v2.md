@@ -2,7 +2,7 @@
 protocol_version: "1.1"
 task_id: "TASK-20261006-007-hint-efficiency-v2"
 title: "Hint Efficiency V2: three-failure cap and frozen cold evidence"
-status: "IN_PROGRESS"
+status: "PASS"
 target_branch: "product/main"
 base_commit: "4a84a49e93fc71b55e40984e83eecd43d10613c5"
 recommended_executor: "chat"
@@ -79,21 +79,21 @@ scheduler rating uses frozen cold evidence
 
 ## Acceptance criteria
 
-- [ ] first-character Space never acts as surrender;
-- [ ] ESC directly enters Full Answer from Cold/Minimal/Strong;
-- [ ] first failed attempt enters Minimal Hint immediately;
-- [ ] second failed attempt enters Strong Hint immediately;
-- [ ] third failed attempt enters Full Answer immediately;
-- [ ] no fourth unassisted/hinted failed-retrieval stage exists;
-- [ ] Full Answer requires correct typing before completion;
-- [ ] first Cold failure evidence is frozen before assistance;
-- [ ] assisted final completion cannot upgrade the frozen Cold scheduler result;
-- [ ] explicit Cold ESC remains Again;
-- [ ] existing Acquisition all-visible behavior is not forced into Review Hint escalation;
-- [ ] phrase spaces continue to behave as ordinary characters;
-- [ ] domain/formal/browser regressions are updated;
-- [ ] full Review Gate is green;
-- [ ] master is untouched.
+- [x] first-character Space never acts as surrender;
+- [x] ESC directly enters Full Answer from Cold/Minimal/Strong;
+- [x] first failed attempt enters Minimal Hint immediately;
+- [x] second failed attempt enters Strong Hint immediately;
+- [x] third failed attempt enters Full Answer immediately;
+- [x] no fourth unassisted/hinted failed-retrieval stage exists;
+- [x] Full Answer requires correct typing before completion;
+- [x] first Cold failure evidence is frozen before assistance;
+- [x] assisted final completion cannot upgrade the frozen Cold scheduler result;
+- [x] explicit Cold ESC remains Again;
+- [x] existing Acquisition all-visible behavior is not forced into Review Hint escalation;
+- [x] phrase spaces continue to behave as ordinary characters;
+- [x] domain/formal/browser regressions are updated;
+- [x] full Review Gate is green;
+- [x] master is untouched.
 
 ## Coordination
 
