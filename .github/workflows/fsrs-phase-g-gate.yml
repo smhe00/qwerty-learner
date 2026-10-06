@@ -22,7 +22,7 @@ permissions:
 jobs:
   phase-g:
     runs-on: ubuntu-22.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       FSRS_PACKAGE_VERSION: 5.4.2
 

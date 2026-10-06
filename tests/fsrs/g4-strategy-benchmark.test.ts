@@ -22,8 +22,14 @@ const RETENTION_SWEEP = [
   0.94,
 ] as const
 const SEEDS = [11, 23, 37, 51, 67, 83] as const
-const LONG_HORIZON_SEEDS = [11, 37] as const
-const LONG_HORIZON_RETENTIONS = [0.885, 0.89, 0.895] as const
+const LONG_HORIZON_SEEDS = SEEDS
+const LONG_HORIZON_RETENTIONS = [
+  0.82,
+  0.83,
+  0.84,
+  0.85,
+  0.86,
+] as const
 const DAYS = 120
 const LONG_HORIZON_DAYS = 365
 const DICTIONARY_SIZE = 240
@@ -285,7 +291,7 @@ test('G4 benchmark compares basic-v2 and FSRS-6 retention candidates with an exp
   }
 })
 
-test('G4 365-day refinement searches between r0.88 and r0.90 without weakening promotion gates', () => {
+test('G4 365-day multi-seed validation compares aggressive FSRS retention targets against basic-v2 and r0.90', () => {
   const strategies: SimulationReviewStrategy[] = [
     SIMULATION_BASIC_V2_STRATEGY,
     {
@@ -308,7 +314,7 @@ test('G4 365-day refinement searches between r0.88 and r0.90 without weakening p
     (item) => item.id === FSRS6_DEFAULT_STRATEGY.id,
   )
   if (!basic || !fsrsDefault) {
-    throw new Error('365-day benchmark baselines are missing')
+    throw new Error('365-day multi-seed benchmark baselines are missing')
   }
 
   const candidates = summaries
@@ -368,8 +374,14 @@ test('G4 365-day refinement searches between r0.88 and r0.90 without weakening p
     candidates.find((candidate) => candidate.promotable) ?? null
 
   console.log(
-    'SIM_FSRS_G4_365D_REFINEMENT',
+    'SIM_FSRS_G4_365D_AGGRESSIVE_MULTI_SEED',
     JSON.stringify({
+      configuration: {
+        days: LONG_HORIZON_DAYS,
+        seeds: LONG_HORIZON_SEEDS,
+        personas: Object.keys(LEARNER_PERSONAS),
+        dictionarySize: DICTIONARY_SIZE,
+      },
       basic,
       fsrsDefault,
       candidates,
