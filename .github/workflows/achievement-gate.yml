@@ -7,6 +7,7 @@ on:
     paths:
       - 'src/achievement/**'
       - 'src/learn/mastery.ts'
+      - 'src/learn/settlement.ts'
       - 'src/review/repository.ts'
       - 'src/pages/Learn/components/LearnResultScreen.tsx'
       - 'src/pages/Achievements/**'
@@ -51,6 +52,7 @@ jobs:
           yarn eslint
           src/achievement
           src/learn/mastery.ts
+          src/learn/settlement.ts
           src/review/repository.ts
           src/resources/achievementCulture
           src/pages/Learn/components/LearnResultScreen.tsx
