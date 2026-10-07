@@ -98,6 +98,31 @@ async function seedReviewSession(
           },
         }),
       )
+      const now = Math.floor(Date.now() / 1000)
+      const date = new Date(now * 1000)
+      const dateKey = [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, '0'),
+        String(date.getDate()).padStart(2, '0'),
+      ].join('-')
+      localStorage.setItem(
+        'qwerty.learn.dailySession.v1.cet4',
+        JSON.stringify({
+          version: 1,
+          sessionId: `e2e-review:${recordId}:${dateKey}`,
+          dict: 'cet4',
+          dateKey,
+          startedAt: now,
+          status: 'active',
+          dailyNewTarget: 32,
+          plannedNewWords: 32,
+          plannedReviewWords: seededWords.map((word) => word.name),
+          carryOverAcquisitionWords: [],
+          accumulatedActiveSeconds: 0,
+          completedBlockIds: [],
+          blockCount: 0,
+        }),
+      )
       localStorage.setItem(
         'loopWordConfig',
         JSON.stringify({ times: 1 }),
@@ -245,6 +270,31 @@ async function seedAcquisitionSession(
               }),
             ),
           },
+        }),
+      )
+      const now = Math.floor(Date.now() / 1000)
+      const date = new Date(now * 1000)
+      const dateKey = [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, '0'),
+        String(date.getDate()).padStart(2, '0'),
+      ].join('-')
+      localStorage.setItem(
+        'qwerty.learn.dailySession.v1.cet4',
+        JSON.stringify({
+          version: 1,
+          sessionId: `e2e-acquisition:${recordId}:${dateKey}`,
+          dict: 'cet4',
+          dateKey,
+          startedAt: now,
+          status: 'active',
+          dailyNewTarget: 32,
+          plannedNewWords: 32,
+          plannedReviewWords: [],
+          carryOverAcquisitionWords: [],
+          accumulatedActiveSeconds: 0,
+          completedBlockIds: [],
+          blockCount: 0,
         }),
       )
       localStorage.setItem(
