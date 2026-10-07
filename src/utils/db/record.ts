@@ -9,6 +9,7 @@ import type {
 } from '@/review/decision'
 import type { ReviewEvidenceV1 } from '@/review/evidence'
 import type { FsrsLiveShadowObservationV1 } from '@/review/fsrs/types'
+import type { ReviewHintMachineState } from '@/review/hint'
 import type {
   RatingDecision,
   ReviewItemMachineState,
@@ -326,6 +327,9 @@ export interface IReviewRecord {
   // Learn-only acquisition controller state. Ordinary Typing never reads or
   // writes this field.
   acquisitionStates?: Record<string, LearnAcquisitionState>
+  // Persisted per-word Hint V2 state. This makes reload recovery resume the
+  // same logical word and assistance stage instead of silently resetting it.
+  hintStates?: Record<string, ReviewHintMachineState>
   // Snapshot of the system-recommended Learn goal at session creation.
   // Forced/manual review sessions deliberately omit this field.
   recommendedGoal?: LearnRecommendedGoalV1
@@ -344,6 +348,7 @@ export class ReviewRecord implements IReviewRecord {
   itemKinds?: Record<string, LearnItemKind>
   itemStates?: Record<string, ReviewItemMachineState>
   acquisitionStates?: Record<string, LearnAcquisitionState>
+  hintStates?: Record<string, ReviewHintMachineState>
   recommendedGoal?: LearnRecommendedGoalV1
 
   constructor(
