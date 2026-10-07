@@ -133,6 +133,7 @@ jobs:
           npx esbuild \
             tests/review/domain.test.ts \
             tests/review/hint.test.ts \
+            tests/review/evidence-profile.test.ts \
             tests/review/audio-policy.test.ts \
             tests/review/scheduler-lifecycle.test.ts \
             tests/review/acquisition-regression.test.ts \
@@ -156,6 +157,9 @@ jobs:
 
       - name: Run Review Hint contracts
         run: node --test .review-test/review/hint.test.mjs
+
+      - name: Run Review evidence and profile contracts
+        run: node --test .review-test/review/evidence-profile.test.mjs
 
       - name: Run Review audio policy contracts
         run: node --test .review-test/review/audio-policy.test.mjs
