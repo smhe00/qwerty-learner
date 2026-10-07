@@ -139,16 +139,16 @@ jobs:
             --out-extension:.js=.mjs
 
       - name: Run Review domain tests
-        run: node --test .review-test/domain.test.mjs
+        run: node --test .review-test/review/domain.test.mjs
 
       - name: Run Acquisition backup regression
-        run: node --test .review-test/acquisition-regression.test.mjs
+        run: node --test .review-test/review/acquisition-regression.test.mjs
 
       - name: Run Review formal model checker
-        run: node --test .review-test/formal-model.test.mjs
+        run: node --test .review-test/review/formal-model.test.mjs
 
       - name: Run Learn live stats selector tests
-        run: node --test .review-test/live-stats.test.mjs
+        run: node --test .review-test/learn/live-stats.test.mjs
 
       - name: Bundle TLA trace bridge tests
         run: |
@@ -174,10 +174,10 @@ jobs:
           node .review-test/replay-incident.mjs .review-test/healthy-trace.json
 
       - name: Run Learn control stability gate
-        run: node --test .review-test/control-stability.test.mjs
+        run: node --test .review-test/review/control-stability.test.mjs
 
       - name: Run Learn async ownership race gate
-        run: node --test .review-test/async-ownership.test.mjs
+        run: node --test .review-test/review/async-ownership.test.mjs
 
       - name: Bundle longitudinal learner simulation
         run: |
@@ -199,7 +199,7 @@ jobs:
           node --test .review-test/field-replay.test.mjs
 
       - name: Run Typing audio lifecycle formal model
-        run: node --test .review-test/typing-audio-formal.test.mjs
+        run: node --test .review-test/review/typing-audio-formal.test.mjs
 
       - name: Bundle FSRS shadow contract tests
         run: |
