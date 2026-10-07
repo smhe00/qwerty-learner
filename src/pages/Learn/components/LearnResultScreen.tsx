@@ -111,7 +111,11 @@ export default function LearnResultScreen() {
   const record = reviewModeInfo.reviewRecord
   const [settlement, setSettlement] = useState<Settlement | null>(null)
   const [settlementError, setSettlementError] = useState('')
-  const settlementStartedRef = useRef(false)
+  // React StrictMode replays effects in development. Keep the actual durable
+  // settlement in a stable Promise so replayed effects subscribe to the same
+  // operation instead of cancelling the only run and leaving Pause disabled.
+  const settlementPromiseRef = useRef<Promise<Settlement> | null>(null)
+  const syncPromiseRef = useRef<Promise<LearnAutoSyncResult> | null>(null)
 
   const unseenAchievementStates = useLiveQuery(
     () => getUnseenAchievementStates(),
@@ -140,23 +144,26 @@ export default function LearnResultScreen() {
   }, [newAchievements])
 
   useEffect(() => {
-    if (!record || settlementStartedRef.current) return
-    settlementStartedRef.current = true
+    if (!record) return
 
-    let cancelled = false
+    let active = true
 
-    const settle = async () => {
-      try {
-        if (state.chapterData.wordRecordIds.length > 0) {
+    if (!settlementPromiseRef.current) {
+      const recordSnapshot = structuredClone(record)
+      const sourceRecordIds = [...state.chapterData.wordRecordIds]
+      const activeSeconds = state.timerData.time
+
+      settlementPromiseRef.current = (async (): Promise<Settlement> => {
+        if (sourceRecordIds.length > 0) {
           try {
             await processLiveLearnSessionCompletion({
-              sessionId: getAchievementSessionId(record),
-              dict: record.dict,
-              sourceRecordIds: [...state.chapterData.wordRecordIds],
+              sessionId: getAchievementSessionId(recordSnapshot),
+              dict: recordSnapshot.dict,
+              sourceRecordIds,
               completedAt: Math.floor(Date.now() / 1000),
               recommendedGoalCompleted:
-                record.isFinished &&
-                record.recommendedGoal?.version === 1,
+                recordSnapshot.isFinished &&
+                recordSnapshot.recommendedGoal?.version === 1,
             })
           } catch (error) {
             // Achievement is a sidecar and must never block Learn recovery or
@@ -172,20 +179,20 @@ export default function LearnResultScreen() {
         // scheduler/acquisition update and serialized ReviewRecord checkpoint.
         await flushLearnPersistence()
 
-        const stored = loadLearnDailySession(record.dict)
+        const stored = loadLearnDailySession(recordSnapshot.dict)
         if (!stored) {
           throw new Error('DailySession checkpoint is missing')
         }
 
         let dailySession = recordLearnBlockCompletion({
           session: stored,
-          blockId: getAchievementSessionId(record),
-          activeSeconds: state.timerData.time,
+          blockId: getAchievementSessionId(recordSnapshot),
+          activeSeconds,
         })
 
         const wordRecords = await db.wordRecords
           .where('dict')
-          .equals(record.dict)
+          .equals(recordSnapshot.dict)
           .toArray()
         const progress = deriveLearnDailyProgress({
           session: dailySession,
@@ -200,39 +207,63 @@ export default function LearnResultScreen() {
           await flushLearnPersistence()
         }
 
-        if (!cancelled) {
-          setSettlement({
-            session: dailySession,
-            progress,
-          })
+        return {
+          session: dailySession,
+          progress,
+        }
+      })()
+    }
+
+    const settlementPromise = settlementPromiseRef.current
+
+    void settlementPromise
+      .then((baseSettlement) => {
+        if (active) {
+          setSettlement(baseSettlement)
+          setSettlementError('')
         }
 
-        if (progress.complete) {
-          const sync = await autoSyncCompletedLearnSession()
-          if (!cancelled) {
+        if (!baseSettlement.progress.complete) return
+
+        if (!syncPromiseRef.current) {
+          syncPromiseRef.current = autoSyncCompletedLearnSession()
+        }
+
+        void syncPromiseRef.current
+          .then((sync) => {
+            if (!active) return
             setSettlement((current) =>
               current
                 ? {
                     ...current,
                     sync,
                   }
-                : current,
+                : {
+                    ...baseSettlement,
+                    sync,
+                  },
             )
-          }
-        }
-      } catch (error) {
+          })
+          .catch((error) => {
+            // autoSyncCompletedLearnSession normally resolves failures into a
+            // typed result, but keep Daily completion non-blocking even if an
+            // unexpected caller-level rejection occurs.
+            console.error('failed to auto-sync completed Learn session', error)
+          })
+      })
+      .catch((error) => {
         console.error('failed to settle Learn block', error)
-        if (!cancelled) {
+        if (active) {
           setSettlementError(
             '阶段状态保存失败，请不要继续操作；刷新页面后系统会从最后一个已保存单词恢复。',
           )
         }
-      }
-    }
+      })
 
-    void settle()
     return () => {
-      cancelled = true
+      // Only detach this render's subscriber. The durable operation itself
+      // intentionally survives StrictMode effect replay and route-state churn.
+      active = false
     }
   }, [record, state.chapterData.wordRecordIds, state.timerData.time])
 
