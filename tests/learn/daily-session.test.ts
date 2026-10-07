@@ -313,7 +313,7 @@ test('safe auto-sync never overwrites remote-ahead or diverged state', () => {
       diverged: false,
       baseRevision: 7,
     }),
-    'clean',
+    'remote-ahead',
   )
   assert.equal(
     decideLearnAutoSyncAction({
