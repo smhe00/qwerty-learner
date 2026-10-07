@@ -55,6 +55,7 @@ on:
       - 'tests/e2e/learn-legacy-compat.spec.ts'
       - 'tests/e2e/learn-shell-ui.spec.ts'
       - 'tests/e2e/learn-recovery-flow.spec.ts'
+      - 'tests/e2e/learn-acquisition-flow.spec.ts'
       - 'tests/e2e/backup-harness.html'
       - 'tests/e2e/backup-harness.ts'
       - 'tests/e2e/review-flow.config.ts'
