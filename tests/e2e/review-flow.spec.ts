@@ -6,7 +6,6 @@ import {
   readReviewModeInfo,
   readReviewWordRecords,
   reviewWords,
-  seedAcquisitionSession,
   seedReviewAdmissionCase,
   seedReviewSession,
   startTyping,
