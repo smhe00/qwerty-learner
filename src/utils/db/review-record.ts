@@ -3,6 +3,10 @@ import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import { waitForBrowserFuzzGate } from '@/dev/browser-fuzz-hooks'
 import { isAcquisitionIntroductionRecord } from '@/learn/admission'
 import {
+  deriveLearnDailyProgress,
+  loadLearnDailySession,
+} from '@/learn/daily-session'
+import {
   LEARN_NEW_WORD_BATCH_SIZE,
   buildLearnAcquisitionExercisePlans,
   buildLearnAcquisitionStates,
@@ -249,6 +253,11 @@ export async function generateLearnMixedSessionRecord(
       }
     },
   )
+  const dailySession = loadLearnDailySession(dictID)
+  const plannedReviewNames =
+    dailySession?.status === 'active'
+      ? new Set(dailySession.plannedReviewWords)
+      : null
   const dueWords = rankDueReviewCandidates(
     selectReviewCandidates(
       reviewCandidates,
@@ -257,7 +266,32 @@ export async function generateLearnMixedSessionRecord(
       'due',
     ),
     states,
-  ).map((item) => item.originData)
+  )
+    .map((item) => item.originData)
+    .filter(
+      (word) =>
+        plannedReviewNames === null ||
+        plannedReviewNames.has(word.name),
+    )
+
+  const dailyProgress =
+    dailySession?.status === 'active'
+      ? deriveLearnDailyProgress({
+          session: dailySession,
+          wordRecords,
+        })
+      : undefined
+  const freshAllowance =
+    dailySession?.status === 'active'
+      ? Math.min(
+          Math.max(0, Math.floor(freshLimit)),
+          Math.max(
+            0,
+            dailySession.plannedNewWords -
+              (dailyProgress?.introducedNewWords ?? 0),
+          ),
+        )
+      : Math.max(0, Math.floor(freshLimit))
 
   const candidatePlan = planLearnAcquisitionCandidates({
     words,
@@ -266,7 +300,7 @@ export async function generateLearnMixedSessionRecord(
     introducedWords: wordRecords
       .filter(isAcquisitionIntroductionRecord)
       .map((record) => record.word),
-    freshLimit: Math.max(0, Math.floor(freshLimit)),
+    freshLimit: freshAllowance,
     now,
   })
   const acquisitionCandidates = [
@@ -469,7 +503,7 @@ export async function generateNewWordAcquisitionRecord(
   words: Word[],
   limit = LEARN_NEW_WORD_BATCH_SIZE,
 ) {
-  const freshLimit = Math.max(0, Math.floor(limit))
+  const requestedFreshLimit = Math.max(0, Math.floor(limit))
   const now = getUTCUnixTimestamp()
   const [states, pending, wordRecords] = await Promise.all([
     getReviewWordStates(dictID),
@@ -478,6 +512,25 @@ export async function generateNewWordAcquisitionRecord(
   ])
   const scaffoldStrainTier =
     estimateLearnInteractionStrain(wordRecords).tier
+  const dailySession = loadLearnDailySession(dictID)
+  const dailyProgress =
+    dailySession?.status === 'active'
+      ? deriveLearnDailyProgress({
+          session: dailySession,
+          wordRecords,
+        })
+      : undefined
+  const freshLimit =
+    dailySession?.status === 'active'
+      ? Math.min(
+          requestedFreshLimit,
+          Math.max(
+            0,
+            dailySession.plannedNewWords -
+              (dailyProgress?.introducedNewWords ?? 0),
+          ),
+        )
+      : requestedFreshLimit
 
   const candidatePlan = planLearnAcquisitionCandidates({
     words,
