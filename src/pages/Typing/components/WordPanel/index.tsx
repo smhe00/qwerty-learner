@@ -20,7 +20,10 @@ import {
   type LearnItemKind,
   resolveLearnItemKindForWord,
 } from '@/learn/session'
-import type { ReviewHintLevel } from '@/review/hint'
+import type {
+  ReviewHintLevel,
+  ReviewHintMachineState,
+} from '@/review/hint'
 import { resolveReviewCompletion } from '@/review/progression'
 import {
   getReviewAttemptRole,
@@ -79,15 +82,23 @@ export default function WordPanel() {
       : undefined
   const currentAcquisitionScaffold =
     getLearnAcquisitionScaffoldDecision(currentAcquisitionState)
+  const currentPersistedHintState =
+    isReviewMode && currentWord
+      ? reviewModeInfo.reviewRecord?.hintStates?.[currentWord.name]
+      : undefined
   const currentManagedHintInitialLevel: ReviewHintLevel | undefined =
-    currentLearnItemKind === 'acquisition' &&
-    currentAcquisitionScaffold?.level === 'S1'
-      ? 1
-      : undefined
+    currentPersistedHintState?.stage !== undefined &&
+    currentPersistedHintState.stage !== 'cold-probe'
+      ? currentPersistedHintState.maxLevelReached ?? undefined
+      : currentLearnItemKind === 'acquisition' &&
+          currentAcquisitionScaffold?.level === 'S1'
+        ? 1
+        : undefined
   const currentManagedHintInitialPosition =
-    currentManagedHintInitialLevel !== undefined
+    currentPersistedHintState?.hintPosition ??
+    (currentManagedHintInitialLevel !== undefined
       ? currentAcquisitionScaffold?.hintPosition
-      : undefined
+      : undefined)
   const currentExercisePlan =
     isReviewMode && currentWord
       ? currentLearnItemKind === 'acquisition' &&
@@ -145,6 +156,27 @@ export default function WordPanel() {
   const reloadCurrentWordComponent = useCallback(() => {
     setWordComponentKey((old) => old + 1)
   }, [])
+
+  const persistCurrentHintState = useCallback(
+    (hintState: ReviewHintMachineState) => {
+      if (!isReviewMode || !currentWord) return
+
+      setReviewModeInfo((old) => {
+        if (!old.reviewRecord) return old
+        return {
+          ...old,
+          reviewRecord: {
+            ...old.reviewRecord,
+            hintStates: {
+              ...(old.reviewRecord.hintStates ?? {}),
+              [currentWord.name]: hintState,
+            },
+          },
+        }
+      })
+    },
+    [currentWord, isReviewMode, setReviewModeInfo],
+  )
 
   const onFinish = useCallback(
     ({
@@ -234,6 +266,11 @@ export default function WordPanel() {
                 : {}),
             }))
 
+          const hintStates = {
+            ...(old.reviewRecord.hintStates ?? {}),
+          }
+          delete hintStates[currentWord.name]
+
           return {
             ...old,
             reviewRecord: {
@@ -246,6 +283,10 @@ export default function WordPanel() {
               reinforcementCounts:
                 resolution.reinforcementCounts,
               itemStates: resolution.itemStates,
+              hintStates:
+                Object.keys(hintStates).length > 0
+                  ? hintStates
+                  : undefined,
             },
           }
           })
@@ -366,6 +407,11 @@ export default function WordPanel() {
             delete exercisePlans[currentWord.name]
           }
 
+          const hintStates = {
+            ...(old.reviewRecord.hintStates ?? {}),
+          }
+          delete hintStates[currentWord.name]
+
           return {
             ...old,
             reviewRecord: {
@@ -378,6 +424,10 @@ export default function WordPanel() {
                   ? exercisePlans
                   : undefined,
               acquisitionStates,
+              hintStates:
+                Object.keys(hintStates).length > 0
+                  ? hintStates
+                  : undefined,
             },
           }
           })
@@ -728,7 +778,9 @@ export default function WordPanel() {
                 managedHintInitialPosition={
                   currentManagedHintInitialPosition
                 }
+                managedHintInitialState={currentPersistedHintState}
                 onHintLevelChange={setCurrentReviewHintLevel}
+                onHintStateChange={persistCurrentHintState}
                 audioOwnerKey={currentAudioOwnerKey}
                 key={currentWordRenderKey}
               />
