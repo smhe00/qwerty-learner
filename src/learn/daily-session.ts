@@ -234,6 +234,7 @@ function isIndependentCleanReview(record: IWordRecord): boolean {
   return (
     record.sourceMode === 'learn' &&
     record.learnItemKind !== 'acquisition' &&
+    record.reviewRatingDecision?.eligible === true &&
     record.reviewEvidence?.retrievalValidity === 'independent' &&
     record.reviewEvidence?.errorCause === 'clean'
   )
