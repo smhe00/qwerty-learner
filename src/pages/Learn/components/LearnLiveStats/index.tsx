@@ -1,14 +1,14 @@
 import {
-  countTodayIntroducedLearnWords,
-  deriveLearnLiveStats,
-} from '@/learn/live-stats'
+  deriveLearnDailyProgress,
+  loadLearnDailySession,
+} from '@/learn/daily-session'
 import { TypingContext } from '@/pages/Typing/store'
 import InfoBox from '@/pages/Typing/components/Speed/InfoBox'
-import { memoryConfigAtom, reviewModeInfoAtom } from '@/store'
+import { reviewModeInfoAtom } from '@/store'
 import { db } from '@/utils/db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useAtomValue } from 'jotai'
-import { useContext, useMemo, useRef } from 'react'
+import { useContext, useMemo } from 'react'
 
 function formatClock(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds))
@@ -18,32 +18,26 @@ function formatClock(seconds: number): string {
 }
 
 /**
- * Learn-only live strip.
+ * Learn-only daily strip.
  *
- * It replaces the Typing `Speed` component exclusively on the Learn surface
- * and reuses the same visual primitive, so Typing keeps its own statistics,
- * labels and semantics untouched.
+ * Blocks are intentionally invisible here: the learner sees one daily plan
+ * whose progress advances only when a logical word reaches its final required
+ * independent-clean completion.
  */
 export default function LearnLiveStats() {
-  // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const { state } = useContext(TypingContext)!
   const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
-  const memoryConfig = useAtomValue(memoryConfigAtom)
   const record = reviewModeInfo.reviewRecord
   const dict = record?.dict
 
-  // Dexie re-runs this query only when the underlying table changes, which in
-  // practice means once per durable word result. There is no per-keystroke or
-  // interval-based database read here.
   const wordRecords = useLiveQuery(
     async () => {
       if (!dict) return []
       try {
         return await db.wordRecords.where('dict').equals(dict).toArray()
       } catch (error) {
-        // A failed evidence read must never take the Learn surface down. The
-        // strip degrades to the session-derived counters instead.
-        console.error('failed to read Learn live stats evidence', error)
+        console.error('failed to read Learn daily stats evidence', error)
         return []
       }
     },
@@ -51,43 +45,21 @@ export default function LearnLiveStats() {
     [],
   )
 
-  const evidence = useMemo(
-    () =>
-      deriveLearnLiveStats({
-        reviewRecord: record,
-        wordRecords: wordRecords ?? [],
-      }),
-    [record, wordRecords],
-  )
+  const daily = useMemo(() => {
+    if (!dict) return null
+    return loadLearnDailySession(dict)
+  }, [dict, record?.id, record?.createTime])
 
-  const todayIntroducedWords = useMemo(
-    () =>
-      countTodayIntroducedLearnWords({
-        dict,
-        wordRecords: wordRecords ?? [],
-      }),
-    [dict, wordRecords],
-  )
+  const progress = useMemo(() => {
+    if (!daily) return null
+    return deriveLearnDailyProgress({
+      session: daily,
+      wordRecords: wordRecords ?? [],
+    })
+  }, [daily, wordRecords])
 
-  const sessionKey = record
-    ? `${record.dict}:${String(record.id ?? record.createTime)}`
-    : ''
-
-  // Progress is monotonic inside one session. A recovered checkpoint may
-  // momentarily resolve a smaller number than the value already shown, so the
-  // displayed value never walks backwards while the learner is active.
-  const progressFloorRef = useRef<{ key: string; value: number }>({
-    key: '',
-    value: 0,
-  })
-  if (progressFloorRef.current.key !== sessionKey) {
-    progressFloorRef.current = { key: sessionKey, value: 0 }
-  }
-  const completedLogicalWords = Math.min(
-    Math.max(evidence.completedLogicalWords, progressFloorRef.current.value),
-    evidence.totalLogicalWords,
-  )
-  progressFloorRef.current.value = completedLogicalWords
+  const dailySeconds =
+    (daily?.accumulatedActiveSeconds ?? 0) + state.timerData.time
 
   return (
     <div
@@ -95,21 +67,36 @@ export default function LearnLiveStats() {
       data-learn-live-stats
     >
       <InfoBox
-        info={formatClock(state.timerData.time)}
+        info={formatClock(dailySeconds)}
         description="学习时间"
       />
       <InfoBox
-        info={`${completedLogicalWords}/${evidence.totalLogicalWords}`}
-        description="本轮进度"
+        info={
+          progress
+            ? `${progress.completedWords}/${progress.targetWords}`
+            : '0/0'
+        }
+        description="今日进度"
       />
       <InfoBox
-        info={`${todayIntroducedWords}/${memoryConfig.dailyNewWordTarget}`}
+        info={
+          daily && progress
+            ? `${progress.introducedNewWords}/${daily.dailyNewTarget}`
+            : '0/0'
+        }
         description="今日新词"
       />
-      <InfoBox info={evidence.reviewedWords + ''} description="已复习" />
       <InfoBox
-        info={evidence.independentRecallWords + ''}
-        description="独立回忆"
+        info={
+          progress
+            ? `${progress.completedReviewWords}/${progress.reviewTargetWords}`
+            : '0/0'
+        }
+        description="今日复习"
+      />
+      <InfoBox
+        info={String(progress?.remainingWords ?? 0)}
+        description="待完成"
       />
     </div>
   )
