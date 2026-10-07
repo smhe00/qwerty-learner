@@ -12,6 +12,10 @@ import { useConfetti } from './hooks/useConfetti'
 import { useWordList } from './hooks/useWordList'
 import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import {
+  ensureLearnDailySession,
+  loadLearnDailySession,
+} from '@/learn/daily-session'
+import {
   shouldRotateOversizedLearnSession,
 } from '@/learn/session'
 import { TypingContext, TypingStateActionType, initialState, typingReducer } from './store'
@@ -26,13 +30,16 @@ import {
   currentChapterAtom,
   currentDictIdAtom,
   isReviewModeAtom,
+  memoryConfigAtom,
   randomConfigAtom,
   reviewModeInfoAtom,
   typingTransVisibleAtom,
 } from '@/store'
 import { IsDesktop, isLegal, shouldIgnoreTypingKeyEvent } from '@/utils'
-import { useSaveChapterRecord } from '@/utils/db'
+import { getReviewWordStates } from '@/review/repository'
+import { db, useSaveChapterRecord } from '@/utils/db'
 import { putWordReviewRecord } from '@/utils/db/review-record'
+import { wordListFetcher } from '@/utils/wordListFetcher'
 import { useMixPanelChapterLogUploader } from '@/utils/mixpanel'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import type React from 'react'
@@ -60,6 +67,7 @@ const App: React.FC = () => {
   const currentChapter = useAtomValue(currentChapterAtom)
   const setCurrentChapter = useSetAtom(currentChapterAtom)
   const randomConfig = useAtomValue(randomConfigAtom)
+  const memoryConfig = useAtomValue(memoryConfigAtom)
   const chapterLogUploader = useMixPanelChapterLogUploader(state)
   const saveChapterRecord = useSaveChapterRecord()
 
@@ -68,6 +76,59 @@ const App: React.FC = () => {
   const isReviewMode = useAtomValue(isReviewModeAtom)
   const isLearnSurface =
     isReviewMode || location.pathname.startsWith('/learn')
+
+  useEffect(() => {
+    const record = reviewModeInfo.reviewRecord
+    if (
+      !isReviewMode ||
+      !record ||
+      record.isFinished ||
+      loadLearnDailySession(record.dict)
+    ) {
+      return
+    }
+
+    let cancelled = false
+
+    const migrateActiveBlock = async () => {
+      try {
+        const dictInfo = idDictionaryMap[record.dict]
+        const [wordRecords, wordStates, dictionaryWords] =
+          await Promise.all([
+            db.wordRecords.where('dict').equals(record.dict).toArray(),
+            getReviewWordStates(record.dict),
+            dictInfo
+              ? wordListFetcher(dictInfo.url)
+              : Promise.resolve(record.words),
+          ])
+
+        if (cancelled) return
+
+        ensureLearnDailySession({
+          dict: record.dict,
+          now: Math.floor(Date.now() / 1000),
+          dailyNewTarget: memoryConfig.dailyNewWordTarget,
+          dictionaryWords: dictionaryWords.map((word) => word.name),
+          wordRecords,
+          wordStates,
+        })
+      } catch (error) {
+        console.error(
+          'failed to anchor active Learn block to DailySession',
+          error,
+        )
+      }
+    }
+
+    void migrateActiveBlock()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    isReviewMode,
+    memoryConfig.dailyNewWordTarget,
+    reviewModeInfo.reviewRecord,
+  ])
 
   useEffect(() => {
     // 检测用户设备
