@@ -284,7 +284,7 @@ export default function CloudSyncSetting() {
 
       <p className="mb-3 text-left text-xs leading-relaxed text-gray-500 dark:text-gray-400">
         云端同步是可选功能。学习数据仍以本机 IndexedDB 为工作副本，不登录或网络不可用时不会影响练习。
-        当前版本仅提供手动上传/下载，不会自动合并冲突。上传数据通过 HTTPS 传输并以 gzip 压缩格式保存在云端。
+        Learn 每日目标完成后，如果本地有新数据且云端自上次同步后没有变化，会自动安全上传；云端领先或双方都有变化时不会自动覆盖，仍需手动处理。上传数据通过 HTTPS 传输并以 gzip 压缩格式保存在云端。
       </p>
 
       {!auth ? (
