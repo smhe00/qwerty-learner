@@ -1,13 +1,7 @@
 // RC 2026-09-30 review-formal-gate-v1 production acceptance marker
-import { readFile } from 'node:fs/promises'
-import {
-  parseDiagnosticExport,
-  replayDiagnostic,
-} from '../../src/dev/replay'
 import { expect, test } from '@playwright/test'
 import {
   putDueReviewWordState,
-  readRenderedAttemptState,
   readReviewGateState,
   readReviewModeInfo,
   readReviewWordRecords,
