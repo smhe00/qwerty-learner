@@ -3636,7 +3636,7 @@ test('Learn P4 uses fallback timing for a new user and plans the full 20-word bo
   assert.equal(plan.estimatedNewMinutes, 10)
 })
 
-test('Learn P4 uses personal median active time and caps new words after a heavy Review day', () => {
+test('Learn P4 keeps the configured quota after a heavy Review day and reports workload only as advisory', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
   const records: IWordRecord[] = Array.from({ length: 10 }, (_, index) => ({
     word: `review-${index}`,
@@ -3682,9 +3682,11 @@ test('Learn P4 uses personal median active time and caps new words after a heavy
   assert.equal(stats.effort.medianReviewSeconds, 90)
   assert.equal(quota.targetDailyNewWords, 20)
   assert.equal(plan.todayActiveMinutes, 15)
-  assert.equal(plan.plannedRemainingNewWords, 10)
-  assert.equal(plan.allowedNewWordsNow, 10)
-  assert.ok(plan.reasonCodes.includes('daily-workload-soft-budget'))
+  assert.equal(plan.plannedRemainingNewWords, 20)
+  assert.equal(plan.allowedNewWordsNow, 20)
+  assert.ok(
+    plan.reasonCodes.includes('daily-workload-soft-budget-advisory'),
+  )
 })
 
 test('Learn P4 preserves full Due accounting while reserving bounded room for new acquisition', () => {
@@ -3718,7 +3720,7 @@ test('Learn P4 preserves full Due accounting while reserving bounded room for ne
   assert.ok(plan.reasonCodes.includes('daily-plan-review-priority'))
 })
 
-test('Learn P4 stops new admission after the soft daily workload budget is spent', () => {
+test('Learn P4 keeps new admission available after the soft workload budget is spent', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
   const records: IWordRecord[] = Array.from({ length: 10 }, (_, index) => ({
     word: `spent-${index}`,
@@ -3760,9 +3762,11 @@ test('Learn P4 stops new admission after the soft daily workload budget is spent
   const plan = buildLearnDailyPlan({ stats, quota })
 
   assert.equal(plan.todayActiveMinutes, 20)
-  assert.equal(plan.allowedNewWordsNow, 0)
-  assert.equal(plan.action, 'complete')
-  assert.ok(plan.reasonCodes.includes('daily-workload-budget-reached'))
+  assert.equal(plan.allowedNewWordsNow, 1)
+  assert.equal(plan.action, 'acquire-new')
+  assert.ok(
+    plan.reasonCodes.includes('daily-workload-soft-budget-advisory'),
+  )
 })
 
 
