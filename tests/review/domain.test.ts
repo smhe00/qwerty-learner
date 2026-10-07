@@ -1692,9 +1692,9 @@ test('a due legacy basic-v1 card upgrades only when rated and can advance into t
   assert.equal(next.reviewCount, 6)
 })
 
-test('basic-v2 rollout keeps review stateVersion at 4 so legacy rows are not rebuilt', () => {
-  assert.equal(CURRENT_REVIEW_STATE_VERSION, 4)
-  assert.notEqual(3, CURRENT_REVIEW_STATE_VERSION)
+test('FSRS activation bumps review stateVersion to 5 so basic-v2 rows are rebuilt', () => {
+  assert.equal(CURRENT_REVIEW_STATE_VERSION, 5)
+  assert.notEqual(4, CURRENT_REVIEW_STATE_VERSION)
 })
 
 
