@@ -47,6 +47,7 @@ import {
 import type {
   ReviewHintInputDecision,
   ReviewHintLevel,
+  ReviewHintMachineState,
 } from '@/review/hint'
 import {
   LearningContextCollector,
@@ -114,7 +115,9 @@ type WordComponentProps = {
   managedHintFlow?: boolean
   managedHintInitialLevel?: ReviewHintLevel
   managedHintInitialPosition?: number
+  managedHintInitialState?: ReviewHintMachineState
   onHintLevelChange?: (level: ReviewHintLevel | null) => void
+  onHintStateChange?: (state: ReviewHintMachineState) => void
   audioOwnerKey: string
 }
 
@@ -129,7 +132,9 @@ export default function WordComponent({
   managedHintFlow = false,
   managedHintInitialLevel,
   managedHintInitialPosition,
+  managedHintInitialState,
   onHintLevelChange,
+  onHintStateChange,
   audioOwnerKey,
 }: WordComponentProps) {
   // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
@@ -190,12 +195,19 @@ export default function WordComponent({
       clearTimeout(successAdvanceTimerRef.current)
       successAdvanceTimerRef.current = null
     }
-    reviewHintStateRef.current = createReviewHintMachineState({
-      initialLevel: managedHintInitialLevel,
-      hintPosition: managedHintInitialPosition,
-    })
-    setActiveHintLevel(managedHintInitialLevel ?? null)
-    onHintLevelChange?.(managedHintInitialLevel ?? null)
+    const initialHintState = managedHintInitialState
+      ? structuredClone(managedHintInitialState)
+      : createReviewHintMachineState({
+          initialLevel: managedHintInitialLevel,
+          hintPosition: managedHintInitialPosition,
+        })
+    reviewHintStateRef.current = initialHintState
+    const initialHintLevel =
+      initialHintState.stage === 'cold-probe'
+        ? null
+        : initialHintState.maxLevelReached
+    setActiveHintLevel(initialHintLevel)
+    onHintLevelChange?.(initialHintLevel)
     dispatch({ type: TypingStateActionType.SET_SKIP_LOCKED, payload: false })
 
     let headword = ''
@@ -351,6 +363,7 @@ export default function WordComponent({
         decision,
       )
       reviewHintStateRef.current = nextHintState
+      onHintStateChange?.(structuredClone(nextHintState))
 
       const hintPlan = createReviewHintPlan(
         decision.level,
@@ -389,7 +402,7 @@ export default function WordComponent({
         })
       }
     },
-    [dispatch, onHintLevelChange],
+    [dispatch, onHintLevelChange, onHintStateChange],
   )
 
   const releasePendingFinishNow = useCallback(() => {
@@ -867,7 +880,12 @@ export default function WordComponent({
 
         if (observation.decision?.kind === 'advance-hint') {
           activateReviewHint(observation.decision)
-        } else if (
+        } else {
+          onHintStateChange?.(structuredClone(observation.state))
+        }
+
+        if (
+          observation.decision?.kind !== 'advance-hint' &&
           observation.state.maxLevelReached !== null &&
           previousForcedRevealKey !==
             observation.state.forcedRevealPositions.join(',')
