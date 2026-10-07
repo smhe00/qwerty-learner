@@ -102,6 +102,15 @@ export function inferReviewOutcomeFromWordRecord(
   // but must never advance the long-term scheduler.
   if (!isLongTermReviewRecord(record)) return undefined
 
+  // Modern records already contain the scheduler-neutral Rating Gate result.
+  // It is the authoritative replay event. Explicitly ineligible attempts must
+  // never be re-inferred from typing telemetry.
+  if (record.reviewRatingDecision !== undefined) {
+    return record.reviewRatingDecision.eligible
+      ? record.reviewRatingDecision.rating
+      : undefined
+  }
+
   const telemetry = readWordTelemetry(record)
 
   // Legacy Review rows can still seed historical outcomes. Clean legacy rows

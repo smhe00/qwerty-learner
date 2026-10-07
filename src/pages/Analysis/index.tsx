@@ -240,7 +240,7 @@ function LearnAnalysis() {
       >
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <div className="text-lg font-semibold text-gray-700 dark:text-white">
-            FSRS-6 Shadow 分析
+            FSRS-6 Active 分析
           </div>
           <div className="text-sm text-gray-400">{fsrsReadiness}</div>
         </div>
@@ -249,7 +249,7 @@ function LearnAnalysis() {
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-3">
           <MetricCard
-            label="同版本 Shadow 事件"
+            label="同版本 FSRS 事件"
             value={fsrsAnalysis?.homogeneousShadowRecords ?? 0}
             detail={
               fsrsAnalysis && fsrsAnalysis.rejectedShadowRecords > 0
@@ -298,8 +298,8 @@ function LearnAnalysis() {
           />
         </div>
         <div className="mt-3 text-xs text-gray-400">
-          当前仍由 basic-v2 独占 nextReviewAt。这里的 FSRS-6 数据只用于
-          G3 观察和 G4 评审，不改变 Learn 队列、到期时间或每日计划。
+          当前由 FSRS-6 r0.84 独占 nextReviewAt。basic-v2 作为可重建的
+          对照/回退基线保留；这里继续展示两者的间隔与校准差异。
         </div>
       </div>
       <div className="mx-4 my-6 rounded-lg bg-white p-6 shadow dark:bg-gray-700 dark:bg-opacity-50">

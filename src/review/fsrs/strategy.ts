@@ -13,16 +13,20 @@ export const FSRS6_DEFAULT_STRATEGY: Fsrs6StrategyConfig = {
   requestRetention: 0.9,
 }
 
-// Qwerty real-data shadow baseline. Keep this separate from the official
-// r0.90 control so benchmark semantics and production evidence provenance do
-// not get conflated.
-export const FSRS6_SHADOW_BASELINE_STRATEGY: Fsrs6StrategyConfig = {
+// Qwerty production scheduler. r0.84 is deliberately more workload-efficient
+// than the official r0.90 control; default FSRS-6 weights remain unchanged.
+export const FSRS6_ACTIVE_STRATEGY: Fsrs6StrategyConfig = {
   id: FSRS_SHADOW_PARAMETER_SET_ID,
-  requestRetention: 0.88,
+  requestRetention: 0.84,
 }
 
+// Historical API name retained so G3 analysis and observation code can keep
+// consuming the active FSRS trajectory without a data-schema rename.
+export const FSRS6_SHADOW_BASELINE_STRATEGY =
+  FSRS6_ACTIVE_STRATEGY
+
 export function createFsrs6Scheduler(
-  strategy: Fsrs6StrategyConfig = FSRS6_SHADOW_BASELINE_STRATEGY,
+  strategy: Fsrs6StrategyConfig = FSRS6_ACTIVE_STRATEGY,
 ) {
   if (
     !Number.isFinite(strategy.requestRetention) ||

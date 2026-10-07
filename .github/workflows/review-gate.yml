@@ -225,6 +225,18 @@ jobs:
       - name: Run FSRS G3 analysis tests
         run: node --test .review-test/g3-analysis.test.mjs
 
+      - name: Bundle FSRS active scheduler contract
+        run: |
+          npx esbuild tests/fsrs/g5-active-scheduler.test.ts \
+            --bundle \
+            --platform=node \
+            --target=node20 \
+            --format=esm \
+            --outfile=.review-test/g5-active-scheduler.test.mjs
+
+      - name: Run FSRS active scheduler contract
+        run: node --test .review-test/g5-active-scheduler.test.mjs
+
       - name: Run sound URL resolution guard
         run: node --test tests/audio/sound-url.test.mjs
 

@@ -4,7 +4,7 @@ export const FSRS_SHADOW_SCHEMA_VERSION = 1 as const
 export const FSRS_SHADOW_LIBRARY_VERSION = '5.4.2' as const
 export const FSRS_SHADOW_ALGORITHM_MODEL = 'fsrs-6' as const
 export const FSRS_SHADOW_PARAMETER_SET_ID =
-  'fsrs6-default-r0.88-no-fuzz-long-term-v1' as const
+  'fsrs6-default-r0.84-no-fuzz-long-term-v1' as const
 
 export type FsrsHistoryCoverage =
   | 'unknown'

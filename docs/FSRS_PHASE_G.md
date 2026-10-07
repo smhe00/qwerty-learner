@@ -2,11 +2,11 @@
 
 > Product milestone: P5
 >
-> Status: G0 CLOSED / G1 CLOSED / G2 CLOSED / G3 ACTIVE (analysis ready, evidence collecting) / G4 BLOCKED
+> Status: G0 CLOSED / G1 CLOSED / G2 CLOSED / G3 CLOSED / G4 ACTIVATED
 >
-> Active scheduler: `basic-v2`
+> Active scheduler: **FSRS-6 r0.84**
 >
-> FSRS authority: **shadow only; no scheduler write authority**
+> Rollback/comparator scheduler: `basic-v2`
 
 ## Objective
 
@@ -172,32 +172,30 @@ remembered = Hard | Good | Easy
 forgotten  = Again
 ```
 
-### G3 real-data baseline — r0.88
+### G3/G4 production baseline — r0.84
 
-Starting with the current Qwerty development baseline, new FSRS shadow evidence
-uses:
+The active Qwerty scheduler uses:
 
 ```text
 algorithm          FSRS-6
 weights            ts-fsrs 5.4.2 default weights
-request retention  0.88
+request retention  0.84
 fuzz               disabled
 short-term steps   disabled
-parameterSetId     fsrs6-default-r0.88-no-fuzz-long-term-v1
+parameterSetId     fsrs6-default-r0.84-no-fuzz-long-term-v1
 ```
 
-This is a **shadow/data-collection baseline only**. It does not grant FSRS
-scheduler write authority: `basic-v2` still owns `nextReviewAt`.
+This parameter set owns `nextReviewAt`. The official/default r0.90 strategy
+remains available as the benchmark control. Older r0.90/r0.88 observations are
+historical evidence and are not mixed with r0.84 observations; provenance
+filtering groups evidence by `parameterSetId`.
 
-The official/default r0.90 strategy remains available as the benchmark control.
-Existing r0.90 shadow observations are retained as historical evidence and are
-not mixed with r0.88 observations; G3 provenance filtering groups evidence by
-`parameterSetId`.
-
-The purpose of fixing r0.88 here is to accumulate homogeneous real Review
-history for subsequent FSRS weight fitting and calibration. Future optimized
-weights must receive a new immutable parameter-set identity rather than
-silently replacing this baseline.
+The active state is rebuilt deterministically from raw eligible Review history;
+no basic-v2 stage/interval is numerically converted into FSRS
+Difficulty/Stability. `basic-v2` remains reconstructable from the same raw
+ratings for rollback and workload comparison. Future optimized weights must
+receive a new immutable parameter-set identity rather than silently replacing
+this baseline.
 
 ## G4 — activation decision
 
@@ -251,8 +249,8 @@ For each `dict+word`:
 2. use Acquisition only as optional card-birth provenance;
 3. accept only Learn Review records with
    `reviewRatingDecision.eligible === true`;
-4. replay those ratings into the current deterministic FSRS-6 shadow baseline:
-   - request retention 0.88;
+4. replay those ratings into the current deterministic FSRS-6 production baseline:
+   - request retention 0.84;
    - default FSRS-6 weights;
    - fuzz disabled;
    - short-term steps disabled;
@@ -415,3 +413,32 @@ worst persona efficiency = -0.08%
 
 Therefore r0.88 is not a production promotion candidate. The refinement search
 moves inside the 0.88-0.90 interval while keeping the same promotion thresholds.
+
+
+## G4 activation — FSRS-6 r0.84
+
+The product owner selected FSRS-6 with default weights and
+`request_retention=0.84` as the mainline production scheduler.
+
+```text
+Rating Gate
+   ├─ FSRS-6 r0.84 ACTIVE → owns nextReviewAt
+   └─ basic-v2 REPLAYABLE → comparator / rollback baseline
+```
+
+Migration contract:
+
+1. persisted Review state version is bumped;
+2. old basic-v2 states are never numerically converted to FSRS state;
+3. eligible raw Learn Review ratings are replayed chronologically into
+   FSRS-6 r0.84;
+4. explicit ineligible/training/reinforcement attempts do not mutate the
+   long-term scheduler;
+5. manual exclusion lifecycle survives migration;
+6. a basic-v2 comparator remains reconstructable from the same raw history;
+7. r0.84 provenance is immutable in scheduler state/observations.
+
+The existing `fsrsShadow` storage field remains for schema compatibility.
+After activation it is an observational mirror of the active FSRS trajectory
+paired with a basic-v2 comparator; the field name no longer implies that FSRS
+lacks write authority.

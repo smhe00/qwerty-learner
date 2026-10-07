@@ -120,5 +120,17 @@ jobs:
       - name: Run G4 FSRS strategy benchmark
         run: node --test .fsrs-g0/g4-strategy-benchmark.test.mjs
 
+      - name: Bundle G5 active scheduler contract
+        run: |
+          npx esbuild tests/fsrs/g5-active-scheduler.test.ts \
+            --bundle \
+            --platform=node \
+            --target=node20 \
+            --format=esm \
+            --outfile=.fsrs-g0/g5-active-scheduler.test.mjs
+
+      - name: Run G5 active scheduler contract
+        run: node --test .fsrs-g0/g5-active-scheduler.test.mjs
+
       - name: Build Qwerty with pinned package present
         run: yarn build

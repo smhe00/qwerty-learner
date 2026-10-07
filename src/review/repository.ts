@@ -6,12 +6,15 @@ import {
 } from './rebuild'
 import { didEnterLongTermMastery } from '@/learn/mastery'
 import {
+  createInitialFsrsReviewWordState,
+  rebuildActiveFsrsStateFromWordRecords,
+} from './fsrs/active'
+import {
   decideLearningLifecycleTransition,
   getLearningLifecycle,
   isActiveLearningState,
   pruneLearnSessionWord,
 } from '@/learn/lifecycle'
-import { scheduleBasicReview } from './scheduler'
 import { CURRENT_REVIEW_STATE_VERSION, createInitialReviewWordState } from './types'
 import type { IReviewWordState, ReviewOutcome } from './types'
 import { db } from '@/utils/db'
@@ -67,73 +70,115 @@ export async function applyReviewOutcome(
       if (existing && getLearningLifecycle(existing) === 'excluded') {
         return {
           state: existing,
+          basicComparator: undefined,
           applied: false,
           enteredLongTermMastery: false,
         }
       }
 
-      let current = existing
+      const durableRecords = await db.wordRecords
+        .where('word')
+        .equals(word)
+        .and((record) => record.dict === dict)
+        .toArray()
 
-      if (!current || current.stateVersion !== CURRENT_REVIEW_STATE_VERSION) {
-        const priorRecords = await db.wordRecords
-          .where('word')
-          .equals(word)
-          .and(
-            (record) =>
-              record.dict === dict &&
-              record.id !== currentWordRecordId,
-          )
-          .toArray()
-
-        current =
-          rebuildBasicStateFromWordRecords(
-            dict,
-            word,
-            priorRecords,
-            { legacyDueAt: now },
-          ) ?? createInitialReviewWordState(dict, word, now)
-      }
+      const sourceRecord =
+        currentWordRecordId !== undefined
+          ? durableRecords.find(
+              (record) => record.id === currentWordRecordId,
+            )
+          : undefined
 
       if (
-        current.schedulerState.kind !== 'basic-v1' &&
-        current.schedulerState.kind !== 'basic-v2'
+        sourceRecord?.reviewRatingDecision?.eligible === true &&
+        sourceRecord.reviewRatingDecision.rating !== outcome
       ) {
-        return {
-          state: current,
-          applied: false,
-          enteredLongTermMastery: false,
+        throw new Error(
+          'persisted Review rating does not match scheduler outcome',
+        )
+      }
+
+      const replayRecords =
+        currentWordRecordId === undefined
+          ? [
+              ...durableRecords,
+              {
+                word,
+                dict,
+                chapter: -1,
+                timeStamp: now,
+                timing: [],
+                wrongCount: outcome === 'again' ? 1 : 0,
+                mistakes: {},
+                sourceMode: 'learn' as const,
+                learnItemKind: 'review' as const,
+                reviewRatingDecision: {
+                  eligible: true as const,
+                  rating: outcome,
+                  confidence: 1,
+                  reasonCodes: ['legacy-direct-scheduler-call'],
+                },
+              },
+            ]
+          : durableRecords
+
+      let next = rebuildActiveFsrsStateFromWordRecords(
+        dict,
+        word,
+        replayRecords,
+        { legacyDueAt: now },
+      )
+
+      if (!next) {
+        throw new Error(
+          'FSRS-6 active scheduler could not rebuild a state from Review history',
+        )
+      }
+
+      if (existing) {
+        next = {
+          ...next,
+          id: existing.id,
+          lifecycle: existing.lifecycle ?? next.lifecycle,
+          ...(existing.exclusion
+            ? { exclusion: existing.exclusion }
+            : {}),
         }
       }
 
-      const next = scheduleBasicReview({
-        state: current,
-        outcome,
-        now,
-      })
+      const basicComparator = rebuildBasicStateFromWordRecords(
+        dict,
+        word,
+        replayRecords,
+        { legacyDueAt: now },
+      )
 
       const id = await db.reviewWordStates.put({
         ...next,
         id: existing?.id ?? next.id,
       })
+      const persisted = { ...next, id }
 
       return {
-        state: { ...next, id },
+        state: persisted,
+        basicComparator:
+          basicComparator?.schedulerState.kind === 'basic-v2'
+            ? basicComparator
+            : undefined,
         applied: true,
         enteredLongTermMastery: didEnterLongTermMastery(
-          current,
-          next,
+          existing,
+          persisted,
         ),
       }
     },
   )
 
-  // G2 invariant: basic-v2 commits before FSRS shadow work. The shadow runs
-  // in a separate transaction and is failure-isolated from active scheduling.
   if (
     result.applied &&
     currentWordRecordId !== undefined &&
     currentWordRecordId > 0 &&
-    result.state.schedulerState.kind === 'basic-v2'
+    result.basicComparator
   ) {
     try {
       const { persistFsrsLiveShadowObservation } = await import(
@@ -143,10 +188,10 @@ export async function applyReviewOutcome(
         dict,
         word,
         sourceRecordId: currentWordRecordId,
-        basicState: result.state,
+        basicState: result.basicComparator,
       })
     } catch (error) {
-      console.error('failed to persist FSRS shadow observation', error)
+      console.error('failed to persist FSRS observation', error)
     }
   }
 
@@ -188,6 +233,9 @@ export async function bootstrapReviewWordStatesForDictionary(
 
     const hasStaleState = existingStates.some(
       (state) => state.stateVersion !== CURRENT_REVIEW_STATE_VERSION,
+    )
+    const previousByWord = new Map(
+      existingStates.map((state) => [state.word, state]),
     )
     if (hasStaleState) {
       await db.reviewWordStates.where('dict').equals(dict).delete()
@@ -241,13 +289,52 @@ export async function bootstrapReviewWordStatesForDictionary(
         continue
       }
 
-      const state = rebuildBasicStateFromWordRecords(dict, word, wordRecords, {
-        legacyDueAt,
-      })
+      let state = rebuildActiveFsrsStateFromWordRecords(
+        dict,
+        word,
+        wordRecords,
+        { legacyDueAt },
+      )
       if (!state) continue
+
+      const previous = previousByWord.get(word)
+      if (previous && getLearningLifecycle(previous) === 'excluded') {
+        state = {
+          ...state,
+          lifecycle: 'excluded',
+          exclusion: previous.exclusion,
+        }
+      }
+
       await db.reviewWordStates.put(state)
       changedCount += 1
     }
+
+    if (hasStaleState) {
+      for (const previous of existingStates) {
+        if (
+          getLearningLifecycle(previous) !== 'excluded' ||
+          recordsByWord.has(previous.word)
+        ) {
+          continue
+        }
+
+        const migrated = {
+          ...createInitialFsrsReviewWordState(
+            dict,
+            previous.word,
+            previous.createdAt,
+          ),
+          lifecycle: 'excluded' as const,
+          exclusion: previous.exclusion,
+          nextReviewAt: previous.nextReviewAt,
+          updatedAt: previous.updatedAt,
+        }
+        await db.reviewWordStates.put(migrated)
+        changedCount += 1
+      }
+    }
+
     return changedCount
   })
 }
@@ -279,7 +366,12 @@ export async function rebuildReviewWordStatesForDictionary(
 
     let rebuiltCount = 0
     for (const [word, wordRecords] of recordsByWord) {
-      let state = rebuildBasicStateFromWordRecords(dict, word, wordRecords, { legacyDueAt })
+      let state = rebuildActiveFsrsStateFromWordRecords(
+        dict,
+        word,
+        wordRecords,
+        { legacyDueAt },
+      )
       if (!state) continue
 
       const previous = previousByWord.get(word)
@@ -378,7 +470,7 @@ export async function completeLearningAcquisition(
     if (existing) return existing
 
     const next = {
-      ...createInitialReviewWordState(dict, word, now),
+      ...createInitialFsrsReviewWordState(dict, word, now),
       lifecycle: 'active' as const,
       nextReviewAt: now + 86_400,
       updatedAt: now,

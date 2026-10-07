@@ -1,4 +1,4 @@
-export const CURRENT_REVIEW_STATE_VERSION = 4
+export const CURRENT_REVIEW_STATE_VERSION = 5
 
 export type ReviewOutcome = 'again' | 'hard' | 'good' | 'easy'
 
@@ -18,6 +18,7 @@ export type Fsrs6SchedulerState = {
   kind: 'fsrs6'
   difficulty: number
   stability: number
+  parameterSetId?: string
 }
 
 export type ReviewSchedulerState =
