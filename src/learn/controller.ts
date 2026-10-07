@@ -113,11 +113,27 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
 
   const unfinished = await dependencies.getLatestSession(dictId)
   if (unfinished) {
+    const [wordRecords, wordStates] = await Promise.all([
+      dependencies.getWordRecords(dictId),
+      dependencies.getWordStates(dictId),
+    ])
+    const dailySession = ensureLearnDailySession({
+      dict: dictId,
+      now,
+      dailyNewTarget: input.dailyNewWordTarget ?? 32,
+      dictionaryWords: words.map((word) => word.name),
+      wordRecords,
+      wordStates,
+    })
+
     return {
       kind: 'session',
       source: 'restored',
       record: unfinished,
-      diagnostics: { now },
+      diagnostics: {
+        now,
+        dailySession,
+      },
     }
   }
 
