@@ -101,6 +101,7 @@
       "owner": "src/learn/quota.ts",
       "gate": "review",
       "tests": [
+        "tests/learn/quota-strain.test.ts",
         "tests/simulation/system-driver.test.ts",
         "tests/e2e/review-flow.spec.ts"
       ]
