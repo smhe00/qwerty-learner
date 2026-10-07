@@ -181,6 +181,17 @@
         "tests/achievement/session.test.ts",
         "tests/achievement/domain.test.ts"
       ]
+    },
+    {
+      "id": "REVIEW-SCHED-001",
+      "title": "Long-term review state changes only from eligible Learn review evidence",
+      "level": "L0",
+      "owner": "src/review/scheduler.ts",
+      "gate": "review",
+      "tests": [
+        "tests/review/scheduler-lifecycle.test.ts",
+        "tests/e2e/review-flow.spec.ts"
+      ]
     }
   ],
   "cleanup": {
