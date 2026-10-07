@@ -1,3 +1,4 @@
+import { clearAllLearnDailySessions } from '@/learn/daily-session'
 import { db } from '@/utils/db'
 import { peakImportFile } from 'dexie-export-import'
 
@@ -219,6 +220,7 @@ export async function importBackupJson(
   // Learn session lives in IndexedDB.reviewRecords. Never let a pre-restore
   // browser cache resurrect a session that does not belong to the imported DB.
   resetReviewModeInfoAfterRestore()
+  clearAllLearnDailySessions()
 
   const restoredLearningState = decoded.learningState
     ? restoreLearningState(decoded.learningState)
