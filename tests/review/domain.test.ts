@@ -91,10 +91,7 @@ import {
   CURRENT_REVIEW_STATE_VERSION,
   createInitialReviewWordState,
 } from '../../src/review/types'
-import { buildLearnDailyPlan } from '../../src/learn/plan'
-import { decideDailyAcquisitionQuota } from '../../src/learn/quota'
 import { buildLearnStatsSnapshot } from '../../src/learn/stats'
-import { estimateLearnInteractionStrain } from '../../src/learn/strain'
 import type { IWordRecord } from '../../src/utils/db/record'
 import {
   getFirstValidDictionaryExample,
