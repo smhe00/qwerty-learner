@@ -728,6 +728,12 @@ test('multi-word Review advances through every rendered word and finishes', asyn
   await expect(page.getByText('CET-4 · Learn', { exact: true })).toBeVisible()
   const learnResult = page.locator('[data-learn-result-screen]')
   await expect(learnResult).toHaveAttribute('data-learn-block-pause', 'true')
+  // Block Pause renders immediately, but progress is only released after the
+  // durable persistence barrier settles. Wait on the actual continuation
+  // readiness contract instead of assuming a fixed IndexedDB latency.
+  await expect(
+    page.getByRole('button', { name: '按任意键继续', exact: true }),
+  ).toBeEnabled({ timeout: 15_000 })
   await expect(
     learnResult.getByText('今日进度', { exact: true }),
   ).toBeVisible()
@@ -2440,6 +2446,9 @@ test('clean Independent acquisition is the admission boundary', async ({
   await expect(
     page.getByRole('heading', { name: '阶段完成', exact: true }),
   ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: '按任意键继续', exact: true }),
+  ).toBeEnabled({ timeout: 15_000 })
   await expect(
     learnResult.getByText('今日进度', { exact: true }),
   ).toBeVisible()
