@@ -14,6 +14,7 @@ import { WordPronunciationIcon } from '@/components/WordPronunciationIcon'
 import { EXPLICIT_SPACE } from '@/constants'
 import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import useKeySounds from '@/hooks/useKeySounds'
+import { trackLearnPersistence } from '@/learn/persistence'
 import type { LearnItemKind } from '@/learn/session'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import { classifyTypingError } from '@/review/classifier'
@@ -1071,12 +1072,14 @@ export default function WordComponent({
               reviewRatingDecision?.eligible
             ) {
               const now = Math.floor(Date.now() / 1000)
-              void applyReviewOutcome(
-                currentDictInfo.id,
-                word.name,
-                reviewRatingDecision.rating,
-                now,
-                wordRecordId,
+              void trackLearnPersistence(
+                applyReviewOutcome(
+                  currentDictInfo.id,
+                  word.name,
+                  reviewRatingDecision.rating,
+                  now,
+                  wordRecordId,
+                ),
               ).catch((error) => {
                 console.error(
                   'failed to persist derived review scheduler state',
