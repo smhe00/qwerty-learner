@@ -2,6 +2,7 @@ import { TypingContext, TypingStateActionType } from '../../store'
 import AdvancedSetting from './AdvancedSetting'
 import DataSetting from './DataSetting'
 import DeveloperSetting from './DeveloperSetting'
+import MemorySetting from './MemorySetting'
 import SoundSetting from './SoundSetting'
 import ViewSetting from '@/pages/Typing/components/Setting/ViewSetting'
 import { Dialog, Tab, Transition } from '@headlessui/react'
@@ -12,6 +13,7 @@ import IconEye from '~icons/heroicons/eye-solid'
 import IconAdjustmentsHorizontal from '~icons/tabler/adjustments-horizontal'
 import IconDatabaseCog from '~icons/tabler/database-cog'
 import IconBug from '~icons/tabler/bug'
+import IconBrain from '~icons/tabler/brain'
 import IconEar from '~icons/tabler/ear'
 import IconX from '~icons/tabler/x'
 
@@ -33,7 +35,7 @@ export default function Setting() {
 
   useEffect(() => {
     const openDataSettings = () => {
-      setSelectedTabIndex(3)
+      setSelectedTabIndex(4)
       setIsOpen(true)
       if (dispatch) {
         dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })
@@ -123,6 +125,17 @@ export default function Setting() {
                             )
                           }
                         >
+                          <IconBrain className="mr-2 text-neutral-500 dark:text-neutral-300" />
+                          <span className="text-neutral-500 dark:text-neutral-300">记忆参数</span>
+                        </Tab>
+                        <Tab
+                          className={({ selected }) =>
+                            classNames(
+                              'flex h-14 w-full cursor-pointer items-center gap-2 rounded-lg px-4 py-2 ring-0 focus:outline-none',
+                              selected && 'bg-gray-200 bg-opacity-50 dark:bg-gray-800',
+                            )
+                          }
+                        >
                           <IconEye className="mr-2 text-neutral-500  dark:text-neutral-300" />
                           <span className="text-neutral-500 dark:text-neutral-300">显示设置</span>
                         </Tab>
@@ -156,6 +169,9 @@ export default function Setting() {
                         </Tab.Panel>
                         <Tab.Panel className="flex h-full focus:outline-none">
                           <AdvancedSetting />
+                        </Tab.Panel>
+                        <Tab.Panel className="flex h-full focus:outline-none">
+                          <MemorySetting />
                         </Tab.Panel>
                         <Tab.Panel className="flex h-full focus:outline-none">
                           <ViewSetting />
