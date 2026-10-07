@@ -1,3 +1,5 @@
+import { ensureLearnDailySession } from './daily-session'
+import type { LearnDailySessionV1 } from './daily-session'
 import { buildLearnDailyPlan } from './plan'
 import type { LearnAcquisitionQuotaDecision } from './quota'
 import { decideDailyAcquisitionQuota } from './quota'
@@ -22,6 +24,7 @@ export type LearnPreparationWaitReason =
   | 'review-due'
   | 'workload-budget'
   | 'quota'
+  | 'daily-complete'
 
 export type LearnPreparationDiagnostics = {
   now: number
@@ -29,6 +32,7 @@ export type LearnPreparationDiagnostics = {
   quota?: LearnAcquisitionQuotaDecision
   allowedNewWordsNow?: number
   nextResumeAt?: number
+  dailySession?: LearnDailySessionV1
 }
 
 export type LearnPreparationResult =
@@ -128,10 +132,32 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
     wordStates,
     dictionaryWords: words.map((word) => word.name),
   })
+  const dailySession = ensureLearnDailySession({
+    dict: dictId,
+    now,
+    dailyNewTarget: input.dailyNewWordTarget ?? 32,
+    dictionaryWords: words.map((word) => word.name),
+    wordRecords,
+    wordStates,
+  })
+
+  if (dailySession.status === 'completed') {
+    return wait(
+      'daily-complete',
+      '今日 Learn 目标已完成。',
+      {
+        now,
+        stats,
+        dailySession,
+        allowedNewWordsNow: 0,
+      },
+    )
+  }
+
   const quota = (dependencies.decideQuota ?? decideDailyAcquisitionQuota)(
     stats,
     undefined,
-    input.dailyNewWordTarget,
+    dailySession.dailyNewTarget,
   )
   const dailyPlan =
     (dependencies.buildDailyPlan ?? buildLearnDailyPlan)({
@@ -162,6 +188,7 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
           stats,
           quota,
           allowedNewWordsNow: dailyPlan.allowedNewWordsNow,
+          dailySession,
         },
       }
     }
@@ -183,6 +210,7 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
           stats,
           quota,
           allowedNewWordsNow: dailyPlan.allowedNewWordsNow,
+          dailySession,
         },
       }
     }
@@ -207,6 +235,7 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
         stats,
         quota,
         allowedNewWordsNow: dailyPlan.allowedNewWordsNow,
+        dailySession,
       },
     }
   }
@@ -219,6 +248,7 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
     quota,
     allowedNewWordsNow: dailyPlan.allowedNewWordsNow,
     ...(nextResumeAt !== undefined ? { nextResumeAt } : {}),
+    dailySession,
   }
 
   if (nextResumeAt !== undefined && nextResumeAt > now) {
