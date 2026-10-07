@@ -79,19 +79,15 @@ export function buildLearnDailyPlan(input: {
     Math.min(stats.lifecycle.due, 15) * reviewSecondsPerWord
   const projectedSecondsBeforeNew =
     stats.effort.todayActiveSeconds + reviewPrioritySeconds
+  // DailySession owns the user's explicit daily target. The time estimate is
+  // advisory only: workload must not silently reduce a configured 32-word
+  // target or make the daily completion invariant unreachable.
   const acquisitionSecondsAvailable = Math.max(
     0,
     softBudgetSeconds - projectedSecondsBeforeNew,
   )
-  const workloadNewWordCapacity =
-    acquisitionSecondsPerWord > 0
-      ? Math.floor(acquisitionSecondsAvailable / acquisitionSecondsPerWord)
-      : quota.remainingDailyNewWords
-
-  const plannedRemainingNewWords = Math.min(
-    quota.remainingDailyNewWords,
-    workloadNewWordCapacity,
-  )
+  void acquisitionSecondsAvailable
+  const plannedRemainingNewWords = quota.remainingDailyNewWords
   const allowedNewWordsNow = plannedRemainingNewWords
 
   const estimatedNewSeconds =
@@ -104,14 +100,11 @@ export function buildLearnDailyPlan(input: {
   if (stats.lifecycle.due > 0) {
     reasonCodes.push('daily-plan-review-priority')
   }
-  if (plannedRemainingNewWords < quota.remainingDailyNewWords) {
-    reasonCodes.push('daily-workload-soft-budget')
-  }
   if (
-    quota.remainingDailyNewWords > 0 &&
-    plannedRemainingNewWords === 0
+    stats.effort.todayActiveSeconds + estimatedNewSeconds >
+    softBudgetSeconds
   ) {
-    reasonCodes.push('daily-workload-budget-reached')
+    reasonCodes.push('daily-workload-soft-budget-advisory')
   }
 
   let action: LearnDailyPlanAction
