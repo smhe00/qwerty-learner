@@ -66,6 +66,7 @@ function percentage(numerator: number, denominator: number): number | null {
 export function decideDailyAcquisitionQuota(
   stats: LearnStatsSnapshot,
   policy: LearnAcquisitionQuotaPolicy = learnAcquisitionQuotaPolicy,
+  targetDailyNewWordsOverride?: number,
 ): LearnAcquisitionQuotaDecision {
   const ratedEvents = stats.scheduler.ratedEvents30d
   const againRate30d = percentage(
@@ -125,7 +126,10 @@ export function decideDailyAcquisitionQuota(
     reasonCodes.push('interaction-strain-elevated')
   }
 
-  const targetDailyNewWords = policy[tier]
+  const targetDailyNewWords =
+    targetDailyNewWordsOverride === undefined
+      ? policy[tier]
+      : Math.max(1, Math.floor(targetDailyNewWordsOverride))
   const remainingBeforeUnseen = clampNonNegativeInteger(
     targetDailyNewWords - stats.today.introducedWords,
   )
