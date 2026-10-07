@@ -7,7 +7,11 @@
 
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildLearnLiveStats, deriveLearnLiveStats } from '../../src/learn/live-stats'
+import {
+  buildLearnLiveStats,
+  countTodayIntroducedLearnWords,
+  deriveLearnLiveStats,
+} from '../../src/learn/live-stats'
 import type { IReviewRecord, IWordRecord } from '../../src/utils/db/record'
 import type { Word } from '../../src/typings'
 
@@ -344,4 +348,35 @@ test('an absent session yields an all-zero strip', () => {
     reviewedWords: 0,
     independentRecallWords: 0,
   })
+})
+
+
+test('今日新词 counts first introduction only and does not carry yesterday into today', () => {
+  const today = SESSION_START + 86_400
+  const stats = countTodayIntroducedLearnWords({
+    dict: 'cet4',
+    now: today + 300,
+    wordRecords: [
+      record('yesterday', {
+        learnItemKind: 'acquisition',
+        timeStamp: SESSION_START + 60,
+      }),
+      record('today', {
+        learnItemKind: 'acquisition',
+        timeStamp: today + 60,
+      }),
+      record('today', {
+        learnItemKind: 'acquisition',
+        timeStamp: today + 120,
+      }),
+      record('typing-only', {
+        learnItemKind: 'acquisition',
+        sourceMode: 'typing',
+        chapter: 0,
+        timeStamp: today + 180,
+      }),
+    ],
+  })
+
+  assert.equal(stats, 1)
 })
