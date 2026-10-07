@@ -30,6 +30,10 @@ function queueReviewRecordWrite(record: ReviewRecord) {
   void reviewRecordWriter.enqueue(record)
 }
 
+export async function flushReviewRecordWrites(): Promise<void> {
+  await reviewRecordWriter.flush()
+}
+
 export type TReviewInfoAtomData = {
   isReviewMode: boolean
   reviewRecord: ReviewRecord | undefined
