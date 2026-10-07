@@ -12,6 +12,7 @@ import useErrorWordData from '@/pages/Gallery-N/hooks/useErrorWords'
 import {
   currentDictIdAtom,
   currentDictInfoAtom,
+  memoryConfigAtom,
   reviewModeInfoAtom,
 } from '@/store'
 import { getUTCUnixTimestamp } from '@/utils'
@@ -46,6 +47,7 @@ export default function LearnPage() {
 
   const currentDictId = useAtomValue(currentDictIdAtom)
   const currentDictInfo = useAtomValue(currentDictInfoAtom)
+  const memoryConfig = useAtomValue(memoryConfigAtom)
   const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
 
@@ -169,6 +171,7 @@ export default function LearnPage() {
           dictId,
           words,
           errorEvidence: errorWordDataRef.current,
+          dailyNewWordTarget: memoryConfig.dailyNewWordTarget,
           dependencies: {
             now: getUTCUnixTimestamp,
             bootstrap: async (id, now) => {
@@ -213,6 +216,7 @@ export default function LearnPage() {
     currentDictId,
     isSessionView,
     isStarting,
+    memoryConfig.dailyNewWordTarget,
     navigate,
     preparationGuard,
     setReviewModeInfo,
