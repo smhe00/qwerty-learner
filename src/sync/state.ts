@@ -74,3 +74,23 @@ export function assessSyncState(
     baseRevision,
   }
 }
+
+
+export type LearnAutoSyncAction =
+  | 'clean'
+  | 'upload'
+  | 'remote-ahead'
+  | 'diverged'
+
+/**
+ * Pure policy used by completion auto-sync and verification tests.
+ * Automatic sync may upload only when local changed and remote did not.
+ */
+export function decideLearnAutoSyncAction(
+  assessment: SyncAssessment,
+): LearnAutoSyncAction {
+  if (assessment.diverged) return 'diverged'
+  if (assessment.remoteChanged) return 'remote-ahead'
+  if (!assessment.localDirty) return 'clean'
+  return 'upload'
+}
