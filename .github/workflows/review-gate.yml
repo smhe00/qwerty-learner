@@ -51,6 +51,8 @@ on:
       - 'tests/e2e/learn-audio-regression.config.ts'
       - 'tests/e2e/review.spec.ts'
       - 'tests/e2e/review-flow.spec.ts'
+      - 'tests/e2e/review-flow-harness.ts'
+      - 'tests/e2e/learn-legacy-compat.spec.ts'
       - 'tests/e2e/backup-harness.html'
       - 'tests/e2e/backup-harness.ts'
       - 'tests/e2e/review-flow.config.ts'
@@ -241,5 +243,5 @@ jobs:
       - name: Run production navigation smoke
         run: npx playwright test --config=tests/e2e/production-smoke.config.ts --project=chrome
 
-      - name: Run multi-word Review browser gate
+      - name: Run Learn browser contract suite
         run: npx playwright test --config=tests/e2e/review-flow.config.ts --project=chrome
