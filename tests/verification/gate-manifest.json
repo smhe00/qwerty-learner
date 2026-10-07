@@ -214,12 +214,32 @@
         "tests/review/evidence-profile.test.ts",
         "tests/e2e/review-flow.spec.ts"
       ]
+    },
+    {
+      "id": "LEARN-SCAFFOLD-001",
+      "title": "Dynamic scaffold may soften Supported work but cannot weaken Independent retrieval",
+      "level": "L1",
+      "owner": "src/learn/scaffold.ts",
+      "gate": "review",
+      "tests": [
+        "tests/learn/scaffold-recovery.test.ts",
+        "tests/e2e/learn-acquisition-flow.spec.ts"
+      ]
+    },
+    {
+      "id": "REVIEW-EXERCISE-POLICY-001",
+      "title": "Adaptive exercise shadows never alter the canonical cold-probe contract",
+      "level": "L1",
+      "owner": "src/review/exercise-policy.ts",
+      "gate": "review",
+      "tests": [
+        "tests/review/exercise-policy.test.ts",
+        "tests/e2e/review-flow.spec.ts"
+      ]
     }
   ],
   "cleanup": {
-    "oversizedSuites": [
-      "tests/review/domain.test.ts"
-    ],
+    "oversizedSuites": [],
     "duplicateExecutionCandidates": [
       {
         "tests": [
