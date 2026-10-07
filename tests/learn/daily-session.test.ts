@@ -70,6 +70,12 @@ function independentCleanReview(
       retrievalValidity: 'independent',
       reasonCodes: ['independent-clean'],
     },
+    reviewRatingDecision: {
+      eligible: true,
+      rating: 'good',
+      confidence: 1,
+      reasonCodes: ['independent-clean'],
+    },
   })
 }
 
