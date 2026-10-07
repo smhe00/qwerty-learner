@@ -134,6 +134,7 @@ jobs:
             tests/review/typing-audio-formal.test.ts \
             tests/learn/live-stats.test.ts \
             tests/learn/daily-session.test.ts \
+            tests/learn/quota-strain.test.ts \
             --bundle \
             --platform=node \
             --target=node20 \
@@ -155,6 +156,9 @@ jobs:
 
       - name: Run Learn daily session invariants
         run: node --test .review-test/learn/daily-session.test.mjs
+
+      - name: Run Learn quota and strain contracts
+        run: node --test .review-test/learn/quota-strain.test.mjs
 
       - name: Bundle TLA trace bridge tests
         run: |
