@@ -673,11 +673,23 @@ test('multi-word Review advances through every rendered word and finishes', asyn
     page.locator('[data-learn-result-screen]'),
   ).toBeVisible()
   await expect(
-    page.getByRole('heading', { name: '本轮学习完成', exact: true }),
+    page.getByRole('heading', { name: '今日学习完成', exact: true }),
   ).toBeVisible()
   await expect(page.getByText('CET-4 · Learn', { exact: true })).toBeVisible()
-  await expect(page.getByText('本轮复习', { exact: true })).toBeVisible()
   const learnResult = page.locator('[data-learn-result-screen]')
+  await expect(learnResult).toHaveAttribute('data-learn-daily-complete', 'true')
+  await expect(
+    learnResult.getByText('今日进度', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    learnResult.getByText('今日复习', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    learnResult.getByText('今日新词', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    learnResult.getByText('待完成', { exact: true }),
+  ).toBeVisible()
   await expect(
     learnResult.getByText('正确率', { exact: true }),
   ).toHaveCount(0)
@@ -685,17 +697,10 @@ test('multi-word Review advances through every rendered word and finishes', asyn
     learnResult.getByText('WPM', { exact: true }),
   ).toHaveCount(0)
   await expect(
-    page.getByRole('button', { name: '继续 Learn', exact: true }),
+    page.getByRole('button', { name: '完成', exact: true }),
   ).toBeVisible()
   await expect(
-    page.getByRole('button', { name: '选择其他词库', exact: true }),
-  ).toBeVisible()
-  await expect(page.getByText('练习其他章节', { exact: true })).toHaveCount(0)
-  await expect(
-    page.getByRole('button', {
-      name: '结束 Learn 并返回 Typing',
-      exact: true,
-    }),
+    page.getByRole('button', { name: '按任意键继续', exact: true }),
   ).toHaveCount(0)
 
   const finishedSession = await readReviewModeInfo(page)
@@ -730,7 +735,7 @@ test('multi-word Review advances through every rendered word and finishes', asyn
 
   await page
     .getByRole('button', {
-      name: '关闭结果',
+      name: '完成',
       exact: true,
     })
     .click()
@@ -749,13 +754,19 @@ test('multi-word Review advances through every rendered word and finishes', asyn
     .getByRole('button', { name: '开始 Learn', exact: true })
     .click()
   await expect(page).toHaveURL(/\/learn$/)
+  await expect(
+    page.getByText('今日 Learn 目标已完成。', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-learn-result-screen]'),
+  ).toHaveCount(0)
 
   const afterContinue = await readReviewModeInfo(page)
-  expect(afterContinue?.reviewRecord?.isFinished).toBe(false)
+  expect(afterContinue?.reviewRecord?.isFinished).toBe(true)
   expect(
     afterContinue?.reviewRecord?.id ??
       afterContinue?.reviewRecord?.createTime,
-  ).not.toBe(finishedSessionId)
+  ).toBe(finishedSessionId)
 
   await expect
     .poll(async () =>
@@ -796,7 +807,7 @@ test('closing a completed Learn result stays in Learn idle with Start available'
 
   await page
     .getByRole('button', {
-      name: '关闭结果',
+      name: '完成',
       exact: true,
     })
     .click()
@@ -2381,9 +2392,20 @@ test('clean Independent acquisition is the admission boundary', async ({
   await expect(
     page.locator('[data-learn-result-screen]'),
   ).toBeVisible()
-  await expect(page.getByText('独立掌握', { exact: true })).toBeVisible()
-  await expect(page.getByText('继续巩固', { exact: true })).toBeVisible()
   const learnResult = page.locator('[data-learn-result-screen]')
+  await expect(learnResult).toHaveAttribute('data-learn-daily-complete', 'true')
+  await expect(
+    page.getByRole('heading', { name: '今日学习完成', exact: true }),
+  ).toBeVisible()
+  await expect(
+    learnResult.getByText('今日进度', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    learnResult.getByText('今日新词', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    learnResult.getByText('待完成', { exact: true }),
+  ).toBeVisible()
   await expect(
     learnResult.getByText('正确率', { exact: true }),
   ).toHaveCount(0)
@@ -2900,7 +2922,7 @@ test('Typing and Learn use the same indigo interaction palette', async ({ page }
 })
 
 
-test('Learn P3 weak review pressure limits a new acquisition session to five words', async ({
+test('Learn weak review pressure does not silently override the configured daily target', async ({
   page,
 }) => {
   await page.goto('/')
@@ -3078,7 +3100,9 @@ test('Learn P4 workload budget limits new acquisition after fifteen active minut
   await page.goto('/learn')
   const info = await waitForActiveLearnSession(page)
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
-  expect(info?.reviewRecord?.words).toHaveLength(10)
+  // Fifteen minutes of prior effort may affect diagnostics, but it must not
+  // silently reduce the explicit 32-new-word DailySession target.
+  expect(info?.reviewRecord?.words).toHaveLength(20)
 })
 
 
