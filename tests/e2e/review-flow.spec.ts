@@ -673,11 +673,11 @@ test('multi-word Review advances through every rendered word and finishes', asyn
     page.locator('[data-learn-result-screen]'),
   ).toBeVisible()
   await expect(
-    page.getByRole('heading', { name: '今日学习完成', exact: true }),
+    page.getByRole('heading', { name: '阶段完成', exact: true }),
   ).toBeVisible()
   await expect(page.getByText('CET-4 · Learn', { exact: true })).toBeVisible()
   const learnResult = page.locator('[data-learn-result-screen]')
-  await expect(learnResult).toHaveAttribute('data-learn-daily-complete', 'true')
+  await expect(learnResult).toHaveAttribute('data-learn-block-pause', 'true')
   await expect(
     learnResult.getByText('今日进度', { exact: true }),
   ).toBeVisible()
@@ -697,10 +697,10 @@ test('multi-word Review advances through every rendered word and finishes', asyn
     learnResult.getByText('WPM', { exact: true }),
   ).toHaveCount(0)
   await expect(
-    page.getByRole('button', { name: '完成', exact: true }),
+    page.getByRole('button', { name: '按任意键继续', exact: true }),
   ).toBeVisible()
   await expect(
-    page.getByRole('button', { name: '按任意键继续', exact: true }),
+    page.getByRole('button', { name: '完成', exact: true }),
   ).toHaveCount(0)
 
   const finishedSession = await readReviewModeInfo(page)
@@ -735,7 +735,7 @@ test('multi-word Review advances through every rendered word and finishes', asyn
 
   await page
     .getByRole('button', {
-      name: '完成',
+      name: '暂停 Learn',
       exact: true,
     })
     .click()
@@ -754,19 +754,12 @@ test('multi-word Review advances through every rendered word and finishes', asyn
     .getByRole('button', { name: '开始 Learn', exact: true })
     .click()
   await expect(page).toHaveURL(/\/learn$/)
-  await expect(
-    page.getByText('今日 Learn 目标已完成。', { exact: true }),
-  ).toBeVisible()
-  await expect(
-    page.locator('[data-learn-result-screen]'),
-  ).toHaveCount(0)
-
-  const afterContinue = await readReviewModeInfo(page)
-  expect(afterContinue?.reviewRecord?.isFinished).toBe(true)
+  const afterContinue = await waitForActiveLearnSession(page)
+  expect(afterContinue?.reviewRecord?.isFinished).toBe(false)
   expect(
     afterContinue?.reviewRecord?.id ??
       afterContinue?.reviewRecord?.createTime,
-  ).toBe(finishedSessionId)
+  ).not.toBe(finishedSessionId)
 
   await expect
     .poll(async () =>
@@ -792,7 +785,7 @@ test('multi-word Review advances through every rendered word and finishes', asyn
   expect(pageErrors).toEqual([])
 })
 
-test('closing a completed Learn result stays in Learn idle with Start available', async ({
+test('closing a Learn block pause stays in Learn idle with Start available', async ({
   page,
 }) => {
   await seedReviewSession(page, [reviewWords[0]], 900020)
@@ -807,7 +800,7 @@ test('closing a completed Learn result stays in Learn idle with Start available'
 
   await page
     .getByRole('button', {
-      name: '完成',
+      name: '暂停 Learn',
       exact: true,
     })
     .click()
@@ -2393,9 +2386,9 @@ test('clean Independent acquisition is the admission boundary', async ({
     page.locator('[data-learn-result-screen]'),
   ).toBeVisible()
   const learnResult = page.locator('[data-learn-result-screen]')
-  await expect(learnResult).toHaveAttribute('data-learn-daily-complete', 'true')
+  await expect(learnResult).toHaveAttribute('data-learn-block-pause', 'true')
   await expect(
-    page.getByRole('heading', { name: '今日学习完成', exact: true }),
+    page.getByRole('heading', { name: '阶段完成', exact: true }),
   ).toBeVisible()
   await expect(
     learnResult.getByText('今日进度', { exact: true }),
@@ -3007,11 +3000,13 @@ test('Learn weak review pressure does not silently override the configured daily
   await page.goto('/learn')
   const info = await waitForActiveLearnSession(page)
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
-  expect(info?.reviewRecord?.words).toHaveLength(5)
+  // Weak memory signals remain diagnostics, but the explicit daily target is
+  // 32 and a single internal Block remains capped at 20.
+  expect(info?.reviewRecord?.words).toHaveLength(20)
 })
 
 
-test('Learn P4 workload budget limits new acquisition after fifteen active minutes', async ({
+test('Learn workload budget is advisory and does not shrink the configured daily target', async ({
   page,
 }) => {
   await page.goto('/')
