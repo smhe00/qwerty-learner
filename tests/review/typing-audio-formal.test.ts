@@ -1,9 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import {
-  isOwnedAudioEvent,
-  shouldReleaseSuccessFeedback,
-} from '../../src/review/audio-lifecycle'
+import { isOwnedAudioEvent } from '../../src/review/audio-lifecycle'
 
 type State = {
   wordEpoch: number
@@ -170,56 +167,4 @@ test('formal/audio-ownership: only the current owner may mutate or play audio', 
   }
 
   assert.equal(explored, owners.length ** 2)
-})
-
-test('formal/success-audio: exhaustive lifecycle states never release early', () => {
-  let explored = 0
-
-  for (const minFeedbackElapsed of [false, true]) {
-    for (const audioStarted of [false, true]) {
-      for (const audioSettled of [false, true]) {
-        for (const audioUnavailable of [false, true]) {
-          for (const timeoutExpired of [false, true]) {
-            for (const fastForward of [false, true]) {
-              explored += 1
-              const released = shouldReleaseSuccessFeedback({
-                minFeedbackElapsed,
-                audioStarted,
-                audioSettled,
-                audioUnavailable,
-                timeoutExpired,
-                fastForward,
-              })
-
-              if (fastForward) {
-                assert.equal(released, true)
-                continue
-              }
-
-              assert.equal(
-                released,
-                minFeedbackElapsed &&
-                  (
-                    audioSettled ||
-                    audioUnavailable ||
-                    timeoutExpired
-                  ),
-              )
-
-              if (
-                audioStarted &&
-                !audioSettled &&
-                !audioUnavailable &&
-                !timeoutExpired
-              ) {
-                assert.equal(released, false)
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  assert.equal(explored, 64)
 })

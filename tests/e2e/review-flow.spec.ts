@@ -951,7 +951,8 @@ test('new Review session forces a canonical cold probe independent of ordinary s
       const records = await readReviewWordRecords(page, ['cancel'])
       return records.length
     })
-    .toBe(1)
+    // One native FSRS seed event plus the current cold-probe result.
+    .toBe(2)
 
   const persistedCondition = await page.evaluate(async () => {
     return new Promise<{

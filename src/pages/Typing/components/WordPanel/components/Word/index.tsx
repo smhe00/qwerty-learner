@@ -52,10 +52,7 @@ import {
   calculateAnswerVisibleRatio,
   summarizeAnswerVisibility,
 } from '@/review/learning-context'
-import {
-  isOwnedAudioEvent,
-  shouldReleaseSuccessFeedback,
-} from '@/review/audio-lifecycle'
+import { isOwnedAudioEvent } from '@/review/audio-lifecycle'
 import {
   decideWordInput,
   shouldPlayAutomaticPronunciation,
@@ -95,8 +92,6 @@ import { useImmer } from 'use-immer'
 
 const vowelLetters = ['A', 'E', 'I', 'O', 'U']
 const SUCCESS_FEEDBACK_MS = 600
-const SUCCESS_AUDIO_START_GRACE_MS = 900
-const SUCCESS_AUDIO_MAX_WAIT_MS = 3500
 
 export type WordFinishResult = {
   wrongCount: number
@@ -177,15 +172,7 @@ export default function WordComponent({
   const successFeedbackStartedAtRef = useRef(0)
   const successFastForwardRequestedRef = useRef(false)
   const successAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const successAudioStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const successHardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingFinishReleaseRef = useRef<(() => void) | null>(null)
-  const successPronunciationPlayedRef = useRef(false)
-  const successMinFeedbackElapsedRef = useRef(false)
-  const successAudioStartedRef = useRef(false)
-  const successAudioSettledRef = useRef(false)
-  const successAudioUnavailableRef = useRef(false)
-  const successAudioTimeoutExpiredRef = useRef(false)
 
   useLayoutEffect(() => {
     // Resolve the frozen presentation before paint / first input.
@@ -197,24 +184,10 @@ export default function WordComponent({
     finishNotifiedRef.current = false
     successFeedbackStartedAtRef.current = 0
     successFastForwardRequestedRef.current = false
-    successPronunciationPlayedRef.current = false
-    successMinFeedbackElapsedRef.current = false
-    successAudioStartedRef.current = false
-    successAudioSettledRef.current = false
-    successAudioUnavailableRef.current = false
-    successAudioTimeoutExpiredRef.current = false
     pendingFinishReleaseRef.current = null
     if (successAdvanceTimerRef.current) {
       clearTimeout(successAdvanceTimerRef.current)
       successAdvanceTimerRef.current = null
-    }
-    if (successAudioStartTimerRef.current) {
-      clearTimeout(successAudioStartTimerRef.current)
-      successAudioStartTimerRef.current = null
-    }
-    if (successHardTimeoutRef.current) {
-      clearTimeout(successHardTimeoutRef.current)
-      successHardTimeoutRef.current = null
     }
     reviewHintStateRef.current = createReviewHintMachineState({
       initialLevel: managedHintInitialLevel,
@@ -427,51 +400,23 @@ export default function WordComponent({
       clearTimeout(successAdvanceTimerRef.current)
       successAdvanceTimerRef.current = null
     }
-    if (successAudioStartTimerRef.current) {
-      clearTimeout(successAudioStartTimerRef.current)
-      successAudioStartTimerRef.current = null
-    }
-    if (successHardTimeoutRef.current) {
-      clearTimeout(successHardTimeoutRef.current)
-      successHardTimeoutRef.current = null
-    }
+
     appendDeveloperTrace({
       scope: 'learn-terminal',
       event: 'success-finish-release',
       word: word.name,
       details: {
         fastForward: successFastForwardRequestedRef.current,
-        audioStarted: successAudioStartedRef.current,
-        audioSettled: successAudioSettledRef.current,
-        audioUnavailable: successAudioUnavailableRef.current,
-        timeoutExpired: successAudioTimeoutExpiredRef.current,
+        audioWait: false,
       },
     })
     release()
   }, [word.name])
 
-  const maybeReleasePendingFinish = useCallback(() => {
-    if (
-      !pendingFinishReleaseRef.current ||
-      !shouldReleaseSuccessFeedback({
-        minFeedbackElapsed: successMinFeedbackElapsedRef.current,
-        audioStarted: successAudioStartedRef.current,
-        audioSettled: successAudioSettledRef.current,
-        audioUnavailable: successAudioUnavailableRef.current,
-        timeoutExpired: successAudioTimeoutExpiredRef.current,
-        fastForward: successFastForwardRequestedRef.current,
-      })
-    ) {
-      return
-    }
-
-    releasePendingFinishNow()
-  }, [releasePendingFinishNow])
-
   const requestSuccessFastForward = useCallback(() => {
     successFastForwardRequestedRef.current = true
-    maybeReleasePendingFinish()
-  }, [maybeReleasePendingFinish])
+    releasePendingFinishNow()
+  }, [releasePendingFinishNow])
 
   const armSuccessFinishRelease = useCallback(
     (release: () => void) => {
@@ -485,22 +430,6 @@ export default function WordComponent({
         0,
         SUCCESS_FEEDBACK_MS - elapsed,
       )
-      const audioExpected =
-        pronunciationIsOpen ||
-        exerciseConditionRef.current?.audio === 'automatic' ||
-        (activeHintLevel !== null && activeHintLevel >= 1)
-      const audioStartRemaining = Math.max(
-        0,
-        SUCCESS_AUDIO_START_GRACE_MS - elapsed,
-      )
-      const maximumRemaining = Math.max(
-        0,
-        SUCCESS_AUDIO_MAX_WAIT_MS - elapsed,
-      )
-
-      if (!audioExpected) {
-        successAudioUnavailableRef.current = true
-      }
 
       appendDeveloperTrace({
         scope: 'learn-terminal',
@@ -508,66 +437,24 @@ export default function WordComponent({
         word: word.name,
         details: {
           minimumRemaining,
-          maximumRemaining,
-          audioExpected,
-          audioStartRemaining,
-          audioStarted: successAudioStartedRef.current,
-          audioSettled: successAudioSettledRef.current,
+          audioWait: false,
         },
       })
 
       if (
-        audioExpected &&
-        !successAudioStartedRef.current
+        successFastForwardRequestedRef.current ||
+        minimumRemaining === 0
       ) {
-        if (audioStartRemaining === 0) {
-          successAudioUnavailableRef.current = true
-        } else {
-          successAudioStartTimerRef.current = setTimeout(() => {
-            if (!successAudioStartedRef.current) {
-              successAudioUnavailableRef.current = true
-              appendDeveloperTrace({
-                scope: 'audio',
-                event: 'success-audio-start-grace-expired',
-                word: word.name,
-                details: {
-                  audioOwnerKey,
-                  graceMs: SUCCESS_AUDIO_START_GRACE_MS,
-                },
-              })
-              maybeReleasePendingFinish()
-            }
-          }, audioStartRemaining)
-        }
+        releasePendingFinishNow()
+        return
       }
 
-      if (minimumRemaining === 0) {
-        successMinFeedbackElapsedRef.current = true
-      } else {
-        successAdvanceTimerRef.current = setTimeout(() => {
-          successMinFeedbackElapsedRef.current = true
-          maybeReleasePendingFinish()
-        }, minimumRemaining)
-      }
-
-      if (maximumRemaining === 0) {
-        successAudioTimeoutExpiredRef.current = true
-      } else {
-        successHardTimeoutRef.current = setTimeout(() => {
-          successAudioTimeoutExpiredRef.current = true
-          maybeReleasePendingFinish()
-        }, maximumRemaining)
-      }
-
-      maybeReleasePendingFinish()
+      successAdvanceTimerRef.current = setTimeout(
+        releasePendingFinishNow,
+        minimumRemaining,
+      )
     },
-    [
-      activeHintLevel,
-      audioOwnerKey,
-      maybeReleasePendingFinish,
-      pronunciationIsOpen,
-      word.name,
-    ],
+    [releasePendingFinishNow, word.name],
   )
 
   const handlePronunciationReadyChange = useCallback(
@@ -599,42 +486,23 @@ export default function WordComponent({
             playing,
           },
         })
-        return
       }
-
-      // Playback completion is request-scoped and delivered directly by
-      // WordPronunciationIcon. React playing state is visual-only; using it
-      // as a barrier can lose fast true→false transitions.
     },
-    [
-      audioOwnerKey,
-      maybeReleasePendingFinish,
-      word.name,
-      wordState.isFinished,
-    ],
+    [audioOwnerKey, word.name],
   )
 
   const handlePronunciationErrorChange = useCallback(
-    (hasError: boolean, ownerKey: string) => {
+    (_hasError: boolean, ownerKey: string) => {
       if (!isOwnedAudioEvent(audioOwnerKey, ownerKey)) return
-      if (hasError && wordState.isFinished) {
-        successAudioUnavailableRef.current = true
-        maybeReleasePendingFinish()
-      }
+      // Pronunciation errors never block or release terminal progression.
     },
-    [audioOwnerKey, maybeReleasePendingFinish, wordState.isFinished],
+    [audioOwnerKey],
   )
 
   useEffect(() => {
     return () => {
       if (successAdvanceTimerRef.current) {
         clearTimeout(successAdvanceTimerRef.current)
-      }
-      if (successAudioStartTimerRef.current) {
-        clearTimeout(successAudioStartTimerRef.current)
-      }
-      if (successHardTimeoutRef.current) {
-        clearTimeout(successHardTimeoutRef.current)
       }
       pendingFinishReleaseRef.current = null
     }
@@ -1249,56 +1117,6 @@ export default function WordComponent({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wordState.isFinished])
 
-  useEffect(() => {
-    const successAudioExpected =
-      pronunciationIsOpen ||
-      exerciseConditionRef.current?.audio === 'automatic' ||
-      (activeHintLevel !== null && activeHintLevel >= 1)
-
-    if (
-      !wordState.isFinished ||
-      successPronunciationPlayedRef.current ||
-      !successAudioExpected
-    ) {
-      return
-    }
-
-    const played =
-      wordPronunciationIconRef.current?.play(
-        audioOwnerKey,
-        () => {
-          successAudioSettledRef.current = true
-          appendDeveloperTrace({
-            scope: 'audio',
-            event: 'success-audio-settled',
-            word: word.name,
-            details: { audioOwnerKey },
-          })
-          maybeReleasePendingFinish()
-        },
-      ) ?? false
-    if (played) {
-      // Success playback is feedback after retrieval, not a retrieval cue.
-      // Deliberately do not record it in LearningContext.
-      successPronunciationPlayedRef.current = true
-      successAudioStartedRef.current = true
-      successAudioSettledRef.current = false
-      appendDeveloperTrace({
-        scope: 'audio',
-        event: 'success-audio-start-requested',
-        word: word.name,
-        details: { audioOwnerKey },
-      })
-    }
-  }, [
-    activeHintLevel,
-    audioOwnerKey,
-    isPronunciationReady,
-    maybeReleasePendingFinish,
-    pronunciationIsOpen,
-    word.name,
-    wordState.isFinished,
-  ])
 
   useEffect(() => {
     if (!isLearnAttempt && wordState.wrongCount >= 4) {

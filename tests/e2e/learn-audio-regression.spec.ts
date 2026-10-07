@@ -19,8 +19,11 @@ type AudioEvent = {
   src?: string
 }
 
-async function installAudioSpy(page: Page) {
-  await page.addInitScript(() => {
+async function installAudioSpy(
+  page: Page,
+  options: { stallPronunciation?: boolean } = {},
+) {
+  await page.addInitScript(({ stallPronunciation }) => {
     const log: AudioEvent[] = []
     const holder = window as unknown as { __audioLog: AudioEvent[] }
     holder.__audioLog = log
@@ -53,7 +56,11 @@ async function installAudioSpy(page: Page) {
 
     const originalMediaPlay = HTMLMediaElement.prototype.play
     HTMLMediaElement.prototype.play = function patchedMediaPlay(this: HTMLMediaElement, ...args: unknown[]) {
-      push({ kind: 'media-play', src: this.currentSrc || this.src })
+      const src = this.currentSrc || this.src
+      push({ kind: 'media-play', src })
+      if (stallPronunciation && src.includes('dict.youdao.com/dictvoice')) {
+        return new Promise<void>(() => {})
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return (originalMediaPlay as any).apply(this, args)
     }
@@ -64,11 +71,14 @@ async function installAudioSpy(page: Page) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return (originalStart as any).apply(this, args)
     }
-  })
+  }, { stallPronunciation: options.stallPronunciation === true })
 }
 
-async function seedLearnSession(page: Page) {
-  await page.addInitScript(() => {
+async function seedLearnSession(
+  page: Page,
+  pronunciationOpen = false,
+) {
+  await page.addInitScript(({ pronunciationOpen }) => {
     const words = [
       { name: 'cancel', trans: ['取消'], usphone: 'kænsl', ukphone: 'kænsl' },
       { name: 'analyse', trans: ['分析'], usphone: 'ænəlaɪz', ukphone: 'ænəlaɪz' },
@@ -118,7 +128,7 @@ async function seedLearnSession(page: Page) {
     localStorage.setItem(
       'pronunciation',
       JSON.stringify({
-        isOpen: false,
+        isOpen: pronunciationOpen,
         volume: 1,
         type: 'us',
         name: '美音',
@@ -150,7 +160,7 @@ async function seedLearnSession(page: Page) {
         correctResource: { key: '1', name: '声音1', filename: 'correct.wav' },
       }),
     )
-  })
+  }, { pronunciationOpen })
 }
 
 async function seedTypingSession(page: Page) {
@@ -286,6 +296,35 @@ test('Learn plays the wrong-letter sound on an incorrect letter', async ({ page 
     (event) => event.kind === 'howl-play' && (event.src ?? '').includes('beep.wav'),
   )
   expect(wrongSound.length).toBeGreaterThan(0)
+})
+
+test('spelling completion never auto-pronounces or waits for pronunciation playback', async ({ page }) => {
+  await installAudioSpy(page, { stallPronunciation: true })
+  await seedLearnSession(page, true)
+  await page.goto('/learn')
+  await page.getByText('按任意键开始').waitFor()
+  await page.keyboard.press('a')
+
+  const current = page.locator('[data-typing-word="cancel"]')
+  await current.waitFor()
+
+  await clearAudioLog(page)
+  const startedAt = Date.now()
+  await page.keyboard.type('cancel')
+
+  // Terminal progression is a fixed visual-feedback delay only. A stalled
+  // pronunciation transport must never hold the completed word for seconds.
+  await expect(
+    page.locator('[data-typing-word="analyse"]'),
+  ).toBeVisible({ timeout: 2_500 })
+  expect(Date.now() - startedAt).toBeLessThan(2_500)
+
+  const events = await readAudioLog(page)
+  const pronunciationPlayback = events.filter(
+    (event) =>
+      (event.src ?? '').includes('dict.youdao.com/dictvoice'),
+  )
+  expect(pronunciationPlayback).toEqual([])
 })
 
 test('Typing control keeps key and wrong sounds on the root route', async ({ page }) => {
