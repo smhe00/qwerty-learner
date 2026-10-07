@@ -29,6 +29,12 @@ export type LearnLiveStatsInput = {
   elapsedSeconds?: number
 }
 
+export type LearnTodayIntroducedInput = {
+  dict?: string | null
+  wordRecords?: IWordRecord[] | null
+  now?: number
+}
+
 const EMPTY_EVIDENCE: LearnLiveStatsEvidence = {
   completedLogicalWords: 0,
   totalLogicalWords: 0,
@@ -41,6 +47,57 @@ function clamp(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min
   if (max < min) return min
   return Math.min(Math.max(Math.floor(value), min), max)
+}
+
+function localDateKey(timestamp: number): string {
+  const date = new Date(timestamp * 1000)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function compareRecordOrder(
+  left: IWordRecord,
+  right: IWordRecord,
+): number {
+  const timeDiff = left.timeStamp - right.timeStamp
+  if (timeDiff !== 0) return timeDiff
+  return (left.id ?? 0) - (right.id ?? 0)
+}
+
+/**
+ * Daily new-word progress is based on the first durable Learn acquisition
+ * introduction for each word. A word started yesterday and reinforced today
+ * is not counted again today.
+ */
+export function countTodayIntroducedLearnWords(
+  input: LearnTodayIntroducedInput,
+): number {
+  if (!input.dict) return 0
+
+  const firstIntroductionByWord = new Map<string, IWordRecord>()
+  for (const candidate of input.wordRecords ?? []) {
+    if (
+      candidate.dict !== input.dict ||
+      !isAcquisitionIntroductionRecord(candidate)
+    ) {
+      continue
+    }
+
+    const previous = firstIntroductionByWord.get(candidate.word)
+    if (!previous || compareRecordOrder(candidate, previous) < 0) {
+      firstIntroductionByWord.set(candidate.word, candidate)
+    }
+  }
+
+  const todayKey = localDateKey(
+    input.now ?? Math.floor(Date.now() / 1000),
+  )
+
+  return [...firstIntroductionByWord.values()].filter(
+    (record) => localDateKey(record.timeStamp) === todayKey,
+  ).length
 }
 
 function isTerminalReviewPhase(phase: ReviewItemPhase): boolean {
