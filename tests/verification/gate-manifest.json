@@ -192,6 +192,17 @@
         "tests/review/scheduler-lifecycle.test.ts",
         "tests/e2e/review-flow.spec.ts"
       ]
+    },
+    {
+      "id": "REVIEW-AUDIO-POLICY-001",
+      "title": "Audio withdrawal probes remain evidence-aware and never masquerade as independent recall",
+      "level": "L1",
+      "owner": "src/review/exercise-policy.ts",
+      "gate": "review",
+      "tests": [
+        "tests/review/audio-policy.test.ts",
+        "tests/review/typing-audio-formal.test.ts"
+      ]
     }
   ],
   "cleanup": {
