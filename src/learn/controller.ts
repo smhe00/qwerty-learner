@@ -99,6 +99,7 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
   dictId: string
   words: Word[]
   errorEvidence: ErrorEvidence[]
+  dailyNewWordTarget?: number
   dependencies: LearnPreparationDependencies<ErrorEvidence>
 }): Promise<LearnPreparationResult> {
   const { dictId, words, errorEvidence, dependencies } = input
@@ -129,6 +130,8 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
   })
   const quota = (dependencies.decideQuota ?? decideDailyAcquisitionQuota)(
     stats,
+    undefined,
+    input.dailyNewWordTarget,
   )
   const dailyPlan =
     (dependencies.buildDailyPlan ?? buildLearnDailyPlan)({
