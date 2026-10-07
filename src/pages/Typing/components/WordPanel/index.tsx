@@ -13,6 +13,7 @@ import {
   createLearnAcquisitionState,
   getLearnAcquisitionScaffoldDecision,
 } from '@/learn/acquisition'
+import { trackLearnPersistence } from '@/learn/persistence'
 import { resolveLearnAcquisitionCompletion } from '@/learn/progression'
 import { pruneLearnSessionWord } from '@/learn/lifecycle'
 import {
@@ -403,10 +404,12 @@ export default function WordPanel() {
 
         if (resolution.shouldPersistAdmission) {
           const now = Math.floor(Date.now() / 1000)
-          void completeLearningAcquisition(
-            currentDictId,
-            currentWord.name,
-            now,
+          void trackLearnPersistence(
+            completeLearningAcquisition(
+              currentDictId,
+              currentWord.name,
+              now,
+            ),
           ).catch((error) => {
             console.error(
               'failed to persist completed acquisition state',
