@@ -97,7 +97,7 @@ function silentWav(durationMs: number): Buffer {
   return buffer
 }
 
-test('ordinary Typing automatically pronounces consecutive clean words', async ({
+test('ordinary Typing pronounces word entry but never auto-pronounces after spelling completion', async ({
   page,
 }) => {
   await page.route('https://dict.youdao.com/**', async (route) => {
@@ -165,6 +165,8 @@ test('ordinary Typing automatically pronounces consecutive clean words', async (
     .poll(() => playedCountForWord(page, firstWord))
     .toBeGreaterThanOrEqual(1)
 
+  const firstWordPlaysBeforeSuccess =
+    await playedCountForWord(page, firstWord)
   await page.keyboard.type(firstWord)
 
   await expect(
@@ -172,9 +174,10 @@ test('ordinary Typing automatically pronounces consecutive clean words', async (
       '[data-typing-word][data-typing-success-feedback="active"]:visible',
     ),
   ).toBeVisible({ timeout: 450 })
-  await expect
-    .poll(() => playedCountForWord(page, firstWord))
-    .toBeGreaterThanOrEqual(2)
+  await page.waitForTimeout(250)
+  expect(await playedCountForWord(page, firstWord)).toBe(
+    firstWordPlaysBeforeSuccess,
+  )
 
   // Space is the explicit fast path between completed learning items.
   await page.keyboard.press('Space')
@@ -369,7 +372,7 @@ test('production audio adapter ignores a stale previous-word load after fast-for
   expect(await playedCountForWord(page, secondWord)).toBeGreaterThanOrEqual(1)
 })
 
-test('production success pronunciation completes before automatic advance', async ({
+test('production spelling completion advances without post-success pronunciation wait', async ({
   page,
 }) => {
   const longAudio = silentWav(1_400)
@@ -403,25 +406,27 @@ test('production success pronunciation completes before automatic advance', asyn
   const firstWord = await waitForTypingWord(page)
   await page.keyboard.press('a')
 
-  // Let the ordinary automatic pronunciation finish so the second play is
-  // unambiguously the post-success pronunciation under test.
+  // Let the ordinary word-entry pronunciation finish. Spelling completion
+  // must not create a second automatic pronunciation request.
   await expect
     .poll(() => playedCountForWord(page, firstWord))
     .toBeGreaterThanOrEqual(1)
   await page.waitForTimeout(1_550)
+  const playsBeforeSuccess = await playedCountForWord(
+    page,
+    firstWord,
+  )
 
   await page.keyboard.type(firstWord)
-  await expect
-    .poll(() => playedCountForWord(page, firstWord))
-    .toBeGreaterThanOrEqual(2)
+  await page.waitForTimeout(250)
+  expect(await playedCountForWord(page, firstWord)).toBe(
+    playsBeforeSuccess,
+  )
 
-  // Historical production advanced at 600 ms and truncated longer speech.
-  // A 1.4 s real media element must still own the screen after that boundary.
-  await page.waitForTimeout(750)
-  await expect.poll(() => visibleTypingWord(page)).toBe(firstWord)
-
+  // Completion owns only the short visual success feedback interval; it no
+  // longer waits for pronunciation playback before advancing.
   await expect
-    .poll(() => visibleTypingWord(page), { timeout: 2_500 })
+    .poll(() => visibleTypingWord(page), { timeout: 1_500 })
     .not.toBe(firstWord)
 })
 
@@ -513,7 +518,7 @@ test('Typing Skip never overlaps Start/Pause when it becomes visible', async ({
 })
 
 
-test('success pronunciation fallback settles its own playback request when Howl is not ready', async ({
+test('spelling completion never starts a late pronunciation fallback when Howl is not ready', async ({
   page,
 }) => {
   const audio = silentWav(220)
@@ -550,14 +555,16 @@ test('success pronunciation fallback settles its own playback request when Howl 
   const beforeSuccess = await playedCountForWord(page, firstWord)
 
   await page.keyboard.type(firstWord)
+  await page.waitForTimeout(500)
 
-  await expect
-    .poll(() => playedCountForWord(page, firstWord))
-    .toBeGreaterThan(beforeSuccess)
+  // A not-yet-ready word-entry request must not turn into a post-success
+  // pronunciation after the word has already been completed.
+  expect(await playedCountForWord(page, firstWord)).toBe(
+    beforeSuccess,
+  )
 
   await waitForDifferentTypingWord(page, firstWord)
-
-  expect(await playedCountForWord(page, firstWord)).toBeGreaterThan(
+  expect(await playedCountForWord(page, firstWord)).toBe(
     beforeSuccess,
   )
 })
