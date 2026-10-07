@@ -90,7 +90,7 @@
       "owner": "src/review/hint.ts",
       "gate": "review",
       "tests": [
-        "tests/review/domain.test.ts",
+        "tests/review/hint.test.ts",
         "tests/e2e/review-flow.spec.ts"
       ]
     },
