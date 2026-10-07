@@ -4,6 +4,7 @@ import Layout from '@/components/Layout'
 import { createAsyncOwnershipGuard } from '@/learn/async-ownership'
 import { waitForBrowserFuzzGate } from '@/dev/browser-fuzz-hooks'
 import { prepareLearnSession } from '@/learn/controller'
+import { flushLearnPersistence } from '@/learn/persistence'
 import TypingPage from '@/pages/Typing'
 import { DictChapterButton } from '@/pages/Typing/components/DictChapterButton'
 import PronunciationSwitcher from '@/pages/Typing/components/PronunciationSwitcher'
@@ -28,6 +29,7 @@ import {
   bootstrapReviewWordStatesForDictionary,
   getReviewWordStates,
 } from '@/review/repository'
+import { autoSyncCompletedLearnSession } from '@/sync/auto'
 import { db } from '@/utils/db'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -203,6 +205,33 @@ export default function LearnPage() {
 
         setStatusText(result.statusText)
         setIsStarting(false)
+
+        if (result.reason === 'daily-complete') {
+          void flushLearnPersistence()
+            .then(() => autoSyncCompletedLearnSession())
+            .then((sync) => {
+              if (!isCurrent()) return
+              if (sync.status === 'uploaded') {
+                setStatusText(
+                  `今日 Learn 目标已完成；云同步完成（revision ${sync.revision}）。`,
+                )
+              } else if (
+                sync.status === 'remote-ahead' ||
+                sync.status === 'diverged' ||
+                sync.status === 'conflict'
+              ) {
+                setStatusText(
+                  '今日 Learn 目标已完成；检测到云端变化，未自动覆盖云端数据。',
+                )
+              }
+            })
+            .catch((error) => {
+              console.error(
+                'failed to auto-sync recovered daily completion',
+                error,
+              )
+            })
+        }
       } catch {
         if (isCurrent()) {
           setStatusText('Learn 准备失败，请重试。')
