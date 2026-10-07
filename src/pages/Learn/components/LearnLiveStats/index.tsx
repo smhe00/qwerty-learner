@@ -45,10 +45,10 @@ export default function LearnLiveStats() {
     [],
   )
 
-  const daily = useMemo(() => {
-    if (!dict) return null
-    return loadLearnDailySession(dict)
-  }, [dict, record?.id, record?.createTime])
+  // DailySession may be created by a recovery/migration effect after this
+  // component mounts. Read the tiny localStorage checkpoint on each render so
+  // the next timer/Dexie update immediately exposes the daily plan.
+  const daily = dict ? loadLearnDailySession(dict) : null
 
   const progress = useMemo(() => {
     if (!daily) return null
