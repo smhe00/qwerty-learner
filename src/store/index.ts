@@ -91,6 +91,10 @@ export const randomConfigAtom = atomForConfig('randomConfig', {
   isOpen: false,
 })
 
+export const memoryConfigAtom = atomForConfig('memoryConfig', {
+  dailyNewWordTarget: 32,
+})
+
 export const isShowPrevAndNextWordAtom = atomWithStorage('isShowPrevAndNextWord', true)
 
 // Typing owns this preference. Learn may display it in a disabled control, but
