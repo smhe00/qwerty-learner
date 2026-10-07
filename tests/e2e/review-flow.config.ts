@@ -5,6 +5,7 @@ export default defineConfig({
   testMatch: [
     'review-flow.spec.ts',
     'learn-shell-ui.spec.ts',
+    'learn-recovery-flow.spec.ts',
     'learn-legacy-compat.spec.ts',
   ],
   fullyParallel: false,
