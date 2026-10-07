@@ -7,10 +7,10 @@ import {
 } from './snapshot'
 import {
   assessSyncState,
+  decideLearnAutoSyncAction,
   loadSyncBaseline,
   saveSyncBaseline,
 } from './state'
-import type { SyncAssessment } from './types'
 
 export type LearnAutoSyncResult =
   | { status: 'not-logged-in' }
@@ -23,21 +23,6 @@ export type LearnAutoSyncResult =
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
-}
-
-export type LearnAutoSyncAction =
-  | 'clean'
-  | 'upload'
-  | 'remote-ahead'
-  | 'diverged'
-
-export function decideLearnAutoSyncAction(
-  assessment: SyncAssessment,
-): LearnAutoSyncAction {
-  if (assessment.diverged) return 'diverged'
-  if (assessment.remoteChanged) return 'remote-ahead'
-  if (!assessment.localDirty) return 'clean'
-  return 'upload'
 }
 
 /**
