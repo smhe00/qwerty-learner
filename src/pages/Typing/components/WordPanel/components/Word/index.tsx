@@ -871,9 +871,8 @@ export default function WordComponent({
           previousForcedRevealKey !==
             observation.state.forcedRevealPositions.join(',')
         ) {
-          // A position can reach its second lifetime error before the current
-          // Hint level itself has accumulated two failures. Refresh the same
-          // level immediately so that forced-reveal semantics are not delayed.
+          // A newly observed wrong position becomes forced-visible immediately.
+          // Refresh the current hint level so forced-reveal semantics are not delayed.
           const hintPlan = createReviewHintPlan(
             observation.state.maxLevelReached,
             targetLengthRef.current,
@@ -1241,8 +1240,8 @@ export default function WordComponent({
             {activeHintLevel === 3
               ? '请照着完整单词输入正确后继续'
               : activeHintLevel === null
-                ? '同一位置拼错两次会自动提示该字母；不会时可按 Esc 获取提示'
-                : '当前提示下错两次会自动升级；也可按 Esc 获取下一提示'}
+                ? '拼错后会自动逐级提示；不会时可按 Esc 直接查看完整提示'
+                : '再次拼错会自动加强提示；也可按 Esc 直接查看完整提示'}
           </div>
         )}
       </div>
