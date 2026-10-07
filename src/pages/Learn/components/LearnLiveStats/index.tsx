@@ -1,7 +1,10 @@
-import { deriveLearnLiveStats } from '@/learn/live-stats'
+import {
+  countTodayIntroducedLearnWords,
+  deriveLearnLiveStats,
+} from '@/learn/live-stats'
 import { TypingContext } from '@/pages/Typing/store'
 import InfoBox from '@/pages/Typing/components/Speed/InfoBox'
-import { reviewModeInfoAtom } from '@/store'
+import { memoryConfigAtom, reviewModeInfoAtom } from '@/store'
 import { db } from '@/utils/db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useAtomValue } from 'jotai'
@@ -25,6 +28,7 @@ export default function LearnLiveStats() {
   // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
   const { state } = useContext(TypingContext)!
   const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
+  const memoryConfig = useAtomValue(memoryConfigAtom)
   const record = reviewModeInfo.reviewRecord
   const dict = record?.dict
 
@@ -54,6 +58,15 @@ export default function LearnLiveStats() {
         wordRecords: wordRecords ?? [],
       }),
     [record, wordRecords],
+  )
+
+  const todayIntroducedWords = useMemo(
+    () =>
+      countTodayIntroducedLearnWords({
+        dict,
+        wordRecords: wordRecords ?? [],
+      }),
+    [dict, wordRecords],
   )
 
   const sessionKey = record
@@ -89,7 +102,10 @@ export default function LearnLiveStats() {
         info={`${completedLogicalWords}/${evidence.totalLogicalWords}`}
         description="本轮进度"
       />
-      <InfoBox info={evidence.newLearnedWords + ''} description="新学" />
+      <InfoBox
+        info={`${todayIntroducedWords}/${memoryConfig.dailyNewWordTarget}`}
+        description="今日新词"
+      />
       <InfoBox info={evidence.reviewedWords + ''} description="已复习" />
       <InfoBox
         info={evidence.independentRecallWords + ''}
