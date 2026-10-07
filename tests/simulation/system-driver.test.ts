@@ -190,6 +190,7 @@ async function runHistoricalFinalSlotScenario(
     mutation: {
       quotaAccounting,
     },
+    dailyNewWordTarget: 20,
   })
   app.seedAdmittedWords(19)
 
@@ -1212,6 +1213,7 @@ test('F7 detects waiting while recoverable unfinished work exists', async () => 
 test('F8 production bounds fresh work by daily allowance and unseen inventory', async () => {
   const app = new VirtualLearnApp({
     words: [word('f8-a'), word('f8-b')],
+    dailyNewWordTarget: 20,
   })
 
   const prepared = await app.enter()
@@ -1236,6 +1238,7 @@ test('F8 detects quota calculation that ignores unseen inventory', async () => {
   const app = new VirtualLearnApp({
     words: [word('f8-unseen-a'), word('f8-unseen-b')],
     mutation: { quotaIgnoresUnseen: true },
+    dailyNewWordTarget: 20,
   })
 
   const prepared = await app.enter()
@@ -1258,6 +1261,7 @@ test('F8 detects acquired-based accounting at the introduced-word quota boundary
       (_, index) => word(`f8-acquired-${index}`),
     ),
     mutation: { quotaAccounting: 'acquired' },
+    dailyNewWordTarget: 20,
   })
   app.seedAdmittedWords(19)
   app.seedDeferredAcquisition({
@@ -1287,6 +1291,7 @@ test('F8 detects selector output that exceeds the approved fresh budget', async 
       (_, index) => word(`f8-over-${index}`),
     ),
     mutation: { freshOverBudget: true },
+    dailyNewWordTarget: 20,
   })
   app.seedAdmittedWords(19)
 
@@ -1309,6 +1314,7 @@ test('F8 ready pending work remains independent of zero fresh quota', async () =
       { length: 22 },
       (_, index) => word(`f8-pending-${index}`),
     ),
+    dailyNewWordTarget: 20,
   })
   clean.seedAdmittedWords(19)
   clean.seedDeferredAcquisition({
@@ -1340,6 +1346,7 @@ test('F8 ready pending work remains independent of zero fresh quota', async () =
       (_, index) => word(`f8-pending-mutated-${index}`),
     ),
     mutation: { pendingConsumesFreshBudget: true },
+    dailyNewWordTarget: 20,
   })
   mutated.seedAdmittedWords(19)
   mutated.seedDeferredAcquisition({
