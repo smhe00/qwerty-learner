@@ -10,6 +10,7 @@ import {
   loadSyncBaseline,
   saveSyncBaseline,
 } from './state'
+import type { SyncAssessment } from './types'
 
 export type LearnAutoSyncResult =
   | { status: 'not-logged-in' }
@@ -22,6 +23,21 @@ export type LearnAutoSyncResult =
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+export type LearnAutoSyncAction =
+  | 'clean'
+  | 'upload'
+  | 'remote-ahead'
+  | 'diverged'
+
+export function decideLearnAutoSyncAction(
+  assessment: SyncAssessment,
+): LearnAutoSyncAction {
+  if (!assessment.localDirty) return 'clean'
+  if (assessment.diverged) return 'diverged'
+  if (assessment.remoteChanged) return 'remote-ahead'
+  return 'upload'
 }
 
 /**
@@ -43,13 +59,10 @@ export async function autoSyncCompletedLearnSession(): Promise<LearnAutoSyncResu
     const baseline = loadSyncBaseline(auth.user.userId)
     const assessment = assessSyncState(local, remote, baseline)
 
-    if (!assessment.localDirty) {
-      return { status: 'clean' }
-    }
-    if (assessment.diverged) {
-      return { status: 'diverged' }
-    }
-    if (assessment.remoteChanged) {
+    const action = decideLearnAutoSyncAction(assessment)
+    if (action === 'clean') return { status: 'clean' }
+    if (action === 'diverged') return { status: 'diverged' }
+    if (action === 'remote-ahead') {
       return { status: 'remote-ahead' }
     }
 
