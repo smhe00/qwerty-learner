@@ -188,18 +188,6 @@ export default function LearnResultScreen() {
     record,
   ])
 
-  const chooseDictionary = useCallback(() => {
-    acknowledgeAchievements()
-    dispatch({ type: TypingStateActionType.RESET_SESSION })
-    keepLearnSelected()
-    navigate('/gallery?mode=learn')
-  }, [
-    acknowledgeAchievements,
-    dispatch,
-    keepLearnSelected,
-    navigate,
-  ])
-
   const closeResult = useCallback(() => {
     acknowledgeAchievements()
     dispatch({ type: TypingStateActionType.RESET_SESSION })
@@ -237,8 +225,8 @@ export default function LearnResultScreen() {
             type="button"
             className="absolute right-7 top-5"
             onClick={closeResult}
-            aria-label="关闭结果"
-            title="关闭结果并留在 Learn"
+            aria-label="结束本次学习"
+            title="结束本次学习并留在 Learn"
           >
             <IconX className="text-gray-400" />
           </button>
@@ -412,10 +400,10 @@ export default function LearnResultScreen() {
             <button
               className="my-btn-primary h-12 border-2 border-solid border-gray-300 bg-white px-6 text-base text-gray-700 dark:border-gray-700 dark:bg-gray-600 dark:text-white"
               type="button"
-              onClick={chooseDictionary}
-              title="选择其他词库"
+              onClick={closeResult}
+              title="结束本次学习"
             >
-              选择其他词库
+              结束本次学习
             </button>
           </div>
         </div>
