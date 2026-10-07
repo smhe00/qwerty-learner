@@ -84,6 +84,28 @@
       ]
     },
     {
+      "id": "LEARN-LIFECYCLE-001",
+      "title": "Learn lifecycle selection excludes excluded/admitted work from fresh acquisition",
+      "level": "L1",
+      "owner": "src/learn/lifecycle.ts",
+      "gate": "review",
+      "tests": [
+        "tests/learn/acquisition-domain.test.ts",
+        "tests/review/acquisition-regression.test.ts"
+      ]
+    },
+    {
+      "id": "LEARN-ACQUISITION-001",
+      "title": "Acquisition exposure/support/independent phases cannot fabricate mastery",
+      "level": "L0",
+      "owner": "src/learn/acquisition.ts",
+      "gate": "review",
+      "tests": [
+        "tests/learn/acquisition-domain.test.ts",
+        "tests/e2e/learn-acquisition-flow.spec.ts"
+      ]
+    },
+    {
       "id": "LEARN-HINT-001",
       "title": "Hint escalation and persisted hint state are monotonic",
       "level": "L1",
