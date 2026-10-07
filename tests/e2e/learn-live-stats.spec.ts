@@ -85,10 +85,10 @@ test('Learn shows exactly five pressure-free live metrics', async ({ page }) => 
 
   expect(cells).toHaveLength(5)
   expect(cells[0]).toMatch(/^\d{2}:\d{2}学习时间$/)
-  expect(cells[1]).toBe('0/2本轮进度')
-  expect(cells[2]).toBe('0新学')
-  expect(cells[3]).toBe('0已复习')
-  expect(cells[4]).toBe('0独立回忆')
+  expect(cells[1]).toBe('0/2今日进度')
+  expect(cells[2]).toBe('0/32今日新词')
+  expect(cells[3]).toBe('0/2今日复习')
+  expect(cells[4]).toBe('2待完成')
 
   const stripText = await page.locator('[data-learn-live-stats]').textContent()
   for (const banned of [
@@ -163,18 +163,20 @@ test('Learn reconstructs persisted evidence and survives reload without double c
 
   await page.goto('/learn')
   const beforeReload = await readLearnStrip(page)
-  expect(beforeReload[2]).toBe('1新学')
-  expect(beforeReload[3]).toBe('1已复习')
-  expect(beforeReload[4]).toBe('1独立回忆')
+  expect(beforeReload[1]).toBe('1/2今日进度')
+  expect(beforeReload[2]).toBe('1/32今日新词')
+  expect(beforeReload[3]).toBe('1/1今日复习')
+  expect(beforeReload[4]).toBe('1待完成')
 
   await page.reload()
   const afterReload = await readLearnStrip(page)
-  expect(afterReload[2]).toBe('1新学')
-  expect(afterReload[3]).toBe('1已复习')
-  expect(afterReload[4]).toBe('1独立回忆')
+  expect(afterReload[1]).toBe('1/2今日进度')
+  expect(afterReload[2]).toBe('1/32今日新词')
+  expect(afterReload[3]).toBe('1/1今日复习')
+  expect(afterReload[4]).toBe('1待完成')
 })
 
-test('Learn 本轮进度 uses terminal item state and ignores a stale queue index', async ({
+test('Learn 今日进度 ignores block cursor and advances only from valid independent evidence', async ({
   page,
 }) => {
   await seedLearnSession(page, {
@@ -184,31 +186,28 @@ test('Learn 本轮进度 uses terminal item state and ignores a stale queue inde
       createTime: SESSION_START,
       words: ['cancel', 'analyse'],
       sessionKind: 'review',
-      // Legacy checkpoint: no per-item metadata, so the consumed queue prefix
-      // is the only conservative signal.
       index: 1,
-    },
-  })
-
-  await page.goto('/learn')
-  expect((await readLearnStrip(page))[1]).toBe('1/2本轮进度')
-
-  await seedLearnSession(page, {
-    dict: 'cet4',
-    session: {
-      id: 991_003,
-      createTime: SESSION_START,
-      words: ['cancel', 'analyse'],
-      sessionKind: 'review',
       itemStates: {
         cancel: reviewItemState('done'),
         analyse: reviewItemState('deferred'),
       },
     },
+    wordRecords: [
+      {
+        word: 'cancel',
+        timeStamp: SESSION_START + 10,
+        learnItemKind: 'review',
+        retrievalValidity: 'independent',
+        errorCause: 'clean',
+      },
+    ],
   })
 
   await page.goto('/learn')
-  expect((await readLearnStrip(page))[1]).toBe('2/2本轮进度')
+  const cells = await readLearnStrip(page)
+  expect(cells[1]).toBe('1/2今日进度')
+  expect(cells[3]).toBe('1/2今日复习')
+  expect(cells[4]).toBe('1待完成')
 })
 
 test('Learn 学习时间 advances while the session is active', async ({ page }) => {
