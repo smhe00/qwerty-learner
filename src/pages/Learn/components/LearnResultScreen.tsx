@@ -1,32 +1,20 @@
 import {
   getUnseenAchievementStates,
   markAchievementSeen,
-  processLiveLearnSessionCompletion,
 } from '@/achievement'
 import { resolveAchievementCeremonyPresentation } from '@/achievement/presentation'
-import { getAchievementSessionId } from '@/achievement/session'
 import {
-  completeLearnDailySession,
-  deriveLearnDailyProgress,
-  loadLearnDailySession,
-  recordLearnBlockCompletion,
-} from '@/learn/daily-session'
-import type {
-  LearnDailyProgress,
-  LearnDailySessionV1,
-} from '@/learn/daily-session'
-import { flushLearnPersistence } from '@/learn/persistence'
+  settleLearnBlockDurably,
+  syncCompletedLearnSettlement,
+} from '@/learn/settlement'
+import type { LearnBlockSettlement } from '@/learn/settlement'
 import {
   TypingContext,
   TypingStateActionType,
 } from '@/pages/Typing/store'
 import { getAchievementCulture } from '@/resources/achievementCulture'
 import { currentDictInfoAtom, reviewModeInfoAtom } from '@/store'
-import {
-  autoSyncCompletedLearnSession,
-} from '@/sync/auto'
 import type { LearnAutoSyncResult } from '@/sync/auto'
-import { db } from '@/utils/db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useAtomValue, useSetAtom } from 'jotai'
 import {
@@ -74,9 +62,7 @@ function SummaryMetric({
   )
 }
 
-type Settlement = {
-  session: LearnDailySessionV1
-  progress: LearnDailyProgress
+type Settlement = LearnBlockSettlement & {
   sync?: LearnAutoSyncResult
 }
 
@@ -149,69 +135,11 @@ export default function LearnResultScreen() {
     let active = true
 
     if (!settlementPromiseRef.current) {
-      const recordSnapshot = structuredClone(record)
-      const sourceRecordIds = [...state.chapterData.wordRecordIds]
-      const activeSeconds = state.timerData.time
-
-      settlementPromiseRef.current = (async (): Promise<Settlement> => {
-        if (sourceRecordIds.length > 0) {
-          try {
-            await processLiveLearnSessionCompletion({
-              sessionId: getAchievementSessionId(recordSnapshot),
-              dict: recordSnapshot.dict,
-              sourceRecordIds,
-              completedAt: Math.floor(Date.now() / 1000),
-              recommendedGoalCompleted:
-                recordSnapshot.isFinished &&
-                recordSnapshot.recommendedGoal?.version === 1,
-            })
-          } catch (error) {
-            // Achievement is a sidecar and must never block Learn recovery or
-            // daily completion.
-            console.error(
-              'failed to process Learn block achievement settlement',
-              error,
-            )
-          }
-        }
-
-        // The Daily completion snapshot must observe every WordRecord,
-        // scheduler/acquisition update and serialized ReviewRecord checkpoint.
-        await flushLearnPersistence()
-
-        const stored = loadLearnDailySession(recordSnapshot.dict)
-        if (!stored) {
-          throw new Error('DailySession checkpoint is missing')
-        }
-
-        let dailySession = recordLearnBlockCompletion({
-          session: stored,
-          blockId: getAchievementSessionId(recordSnapshot),
-          activeSeconds,
-        })
-
-        const wordRecords = await db.wordRecords
-          .where('dict')
-          .equals(recordSnapshot.dict)
-          .toArray()
-        const progress = deriveLearnDailyProgress({
-          session: dailySession,
-          wordRecords,
-        })
-
-        if (progress.complete) {
-          dailySession = completeLearnDailySession(
-            dailySession,
-            Math.floor(Date.now() / 1000),
-          )
-          await flushLearnPersistence()
-        }
-
-        return {
-          session: dailySession,
-          progress,
-        }
-      })()
+      settlementPromiseRef.current = settleLearnBlockDurably({
+        record,
+        sourceRecordIds: [...state.chapterData.wordRecordIds],
+        activeSeconds: state.timerData.time,
+      })
     }
 
     const settlementPromise = settlementPromiseRef.current
@@ -226,7 +154,16 @@ export default function LearnResultScreen() {
         if (!baseSettlement.progress.complete) return
 
         if (!syncPromiseRef.current) {
-          syncPromiseRef.current = autoSyncCompletedLearnSession()
+          syncPromiseRef.current = syncCompletedLearnSettlement(
+            baseSettlement,
+          ).then((sync) => {
+            if (!sync) {
+              throw new Error(
+                'completed Learn settlement returned no sync result',
+              )
+            }
+            return sync
+          })
         }
 
         void syncPromiseRef.current
@@ -245,10 +182,13 @@ export default function LearnResultScreen() {
             )
           })
           .catch((error) => {
-            // autoSyncCompletedLearnSession normally resolves failures into a
-            // typed result, but keep Daily completion non-blocking even if an
-            // unexpected caller-level rejection occurs.
-            console.error('failed to auto-sync completed Learn session', error)
+            // Cloud synchronization is intentionally outside the local
+            // durability barrier. Unexpected sync failures never block Daily
+            // completion or Block recovery.
+            console.error(
+              'failed to auto-sync completed Learn session',
+              error,
+            )
           })
       })
       .catch((error) => {
