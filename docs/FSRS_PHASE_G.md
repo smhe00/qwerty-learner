@@ -172,6 +172,33 @@ remembered = Hard | Good | Easy
 forgotten  = Again
 ```
 
+### G3 real-data baseline — r0.88
+
+Starting with the current Qwerty development baseline, new FSRS shadow evidence
+uses:
+
+```text
+algorithm          FSRS-6
+weights            ts-fsrs 5.4.2 default weights
+request retention  0.88
+fuzz               disabled
+short-term steps   disabled
+parameterSetId     fsrs6-default-r0.88-no-fuzz-long-term-v1
+```
+
+This is a **shadow/data-collection baseline only**. It does not grant FSRS
+scheduler write authority: `basic-v2` still owns `nextReviewAt`.
+
+The official/default r0.90 strategy remains available as the benchmark control.
+Existing r0.90 shadow observations are retained as historical evidence and are
+not mixed with r0.88 observations; G3 provenance filtering groups evidence by
+`parameterSetId`.
+
+The purpose of fixing r0.88 here is to accumulate homogeneous real Review
+history for subsequent FSRS weight fitting and calibration. Future optimized
+weights must receive a new immutable parameter-set identity rather than
+silently replacing this baseline.
+
 ## G4 — activation decision
 
 FSRS cannot become active solely because integration works. Activation requires
@@ -224,8 +251,9 @@ For each `dict+word`:
 2. use Acquisition only as optional card-birth provenance;
 3. accept only Learn Review records with
    `reviewRatingDecision.eligible === true`;
-4. replay those ratings into a deterministic FSRS-6 scheduler configured with:
-   - request retention 0.90;
+4. replay those ratings into the current deterministic FSRS-6 shadow baseline:
+   - request retention 0.88;
+   - default FSRS-6 weights;
    - fuzz disabled;
    - short-term steps disabled;
 5. record retrievability immediately **before** each eligible Review;

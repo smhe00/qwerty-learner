@@ -7,13 +7,22 @@ export type Fsrs6StrategyConfig = {
   weights?: readonly number[]
 }
 
+// Official/default control used by benchmark comparisons.
 export const FSRS6_DEFAULT_STRATEGY: Fsrs6StrategyConfig = {
-  id: FSRS_SHADOW_PARAMETER_SET_ID,
+  id: 'fsrs6-official-r0.90-no-fuzz-long-term-v1',
   requestRetention: 0.9,
 }
 
+// Qwerty real-data shadow baseline. Keep this separate from the official
+// r0.90 control so benchmark semantics and production evidence provenance do
+// not get conflated.
+export const FSRS6_SHADOW_BASELINE_STRATEGY: Fsrs6StrategyConfig = {
+  id: FSRS_SHADOW_PARAMETER_SET_ID,
+  requestRetention: 0.88,
+}
+
 export function createFsrs6Scheduler(
-  strategy: Fsrs6StrategyConfig = FSRS6_DEFAULT_STRATEGY,
+  strategy: Fsrs6StrategyConfig = FSRS6_SHADOW_BASELINE_STRATEGY,
 ) {
   if (
     !Number.isFinite(strategy.requestRetention) ||
