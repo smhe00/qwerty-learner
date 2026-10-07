@@ -5,6 +5,11 @@
 // harness runs inside the page instead of poking IndexedDB from the test
 // process. It only writes fixtures; it never asserts product behaviour.
 
+import {
+  LEARN_DAILY_SESSION_VERSION,
+  learnLocalDateKey,
+  saveLearnDailySession,
+} from '../../src/learn/daily-session'
 import { db } from '../../src/utils/db'
 import type { IReviewRecord, IWordRecord } from '../../src/utils/db/record'
 import type { Word } from '../../src/typings'
@@ -71,6 +76,18 @@ async function seed(input: SeedInput) {
           },
         }
       : {}),
+    ...(entry.learnItemKind !== 'acquisition' &&
+    entry.retrievalValidity === 'independent' &&
+    (entry.errorCause ?? 'clean') === 'clean'
+      ? {
+          reviewRatingDecision: {
+            eligible: true as const,
+            rating: 'good' as const,
+            confidence: 1,
+            reasonCodes: ['harness-independent-clean'],
+          },
+        }
+      : {}),
   }))
 
   if (records.length > 0) {
@@ -102,6 +119,35 @@ async function seed(input: SeedInput) {
     'reviewModeInfo',
     JSON.stringify({ isReviewMode: true, reviewRecord }),
   )
+
+  const logicalNames = [...new Set(input.session.words)]
+  const reviewNames = logicalNames.filter((name) => {
+    const explicit = input.session.itemKinds?.[name]
+    return explicit
+      ? explicit === 'review'
+      : input.session.sessionKind !== 'acquisition'
+  })
+  const acquisitionNames = logicalNames.filter((name) => {
+    const explicit = input.session.itemKinds?.[name]
+    return explicit
+      ? explicit === 'acquisition'
+      : input.session.sessionKind === 'acquisition'
+  })
+  saveLearnDailySession({
+    version: LEARN_DAILY_SESSION_VERSION,
+    sessionId: `harness:${input.dict}:${input.session.createTime}`,
+    dict: input.dict,
+    dateKey: learnLocalDateKey(Math.floor(Date.now() / 1000)),
+    startedAt: input.session.createTime,
+    status: 'active',
+    dailyNewTarget: 32,
+    plannedNewWords: acquisitionNames.length,
+    plannedReviewWords: reviewNames,
+    carryOverAcquisitionWords: [],
+    accumulatedActiveSeconds: 0,
+    completedBlockIds: [],
+    blockCount: 0,
+  })
 
   return {
     wordRecords: records.length,
