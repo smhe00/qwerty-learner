@@ -131,7 +131,7 @@ jobs:
         run: |
           mkdir -p .review-test
           npx esbuild \
-            tests/review/domain.test.ts \
+            tests/review/exercise-policy.test.ts \
             tests/review/hint.test.ts \
             tests/review/evidence-profile.test.ts \
             tests/review/audio-policy.test.ts \
@@ -144,6 +144,7 @@ jobs:
             tests/learn/live-stats.test.ts \
             tests/learn/daily-session.test.ts \
             tests/learn/acquisition-domain.test.ts \
+            tests/learn/scaffold-recovery.test.ts \
             tests/learn/quota-strain.test.ts \
             --bundle \
             --platform=node \
@@ -152,8 +153,8 @@ jobs:
             --outdir=.review-test \
             --out-extension:.js=.mjs
 
-      - name: Run Review domain tests
-        run: node --test .review-test/review/domain.test.mjs
+      - name: Run Review exercise-policy contracts
+        run: node --test .review-test/review/exercise-policy.test.mjs
 
       - name: Run Review Hint contracts
         run: node --test .review-test/review/hint.test.mjs
@@ -181,6 +182,9 @@ jobs:
 
       - name: Run Learn acquisition and lifecycle contracts
         run: node --test .review-test/learn/acquisition-domain.test.mjs
+
+      - name: Run Learn scaffold and recovery-window contracts
+        run: node --test .review-test/learn/scaffold-recovery.test.mjs
 
       - name: Run Learn quota and strain contracts
         run: node --test .review-test/learn/quota-strain.test.mjs
