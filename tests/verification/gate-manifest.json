@@ -79,7 +79,7 @@
       "owner": "src/store/reviewInfoAtom.ts",
       "gate": "review",
       "tests": [
-        "tests/e2e/review-flow.spec.ts",
+        "tests/e2e/learn-recovery-flow.spec.ts",
         "tests/e2e/browser-stateful-fuzz.spec.ts"
       ]
     },
@@ -102,8 +102,8 @@
       "gate": "review",
       "tests": [
         "tests/learn/quota-strain.test.ts",
-        "tests/simulation/system-driver.test.ts",
-        "tests/e2e/review-flow.spec.ts"
+        "tests/e2e/learn-acquisition-flow.spec.ts",
+        "tests/simulation/system-driver.test.ts"
       ]
     },
     {
@@ -163,7 +163,6 @@
   ],
   "cleanup": {
     "oversizedSuites": [
-      "tests/e2e/review-flow.spec.ts",
       "tests/review/domain.test.ts"
     ],
     "duplicateExecutionCandidates": [
