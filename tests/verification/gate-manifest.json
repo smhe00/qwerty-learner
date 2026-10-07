@@ -203,6 +203,17 @@
         "tests/review/audio-policy.test.ts",
         "tests/review/typing-audio-formal.test.ts"
       ]
+    },
+    {
+      "id": "REVIEW-EVIDENCE-001",
+      "title": "Review evidence preserves assistance, latency and orthography semantics without inventing confidence",
+      "level": "L0",
+      "owner": "src/review/evidence.ts",
+      "gate": "review",
+      "tests": [
+        "tests/review/evidence-profile.test.ts",
+        "tests/e2e/review-flow.spec.ts"
+      ]
     }
   ],
   "cleanup": {
