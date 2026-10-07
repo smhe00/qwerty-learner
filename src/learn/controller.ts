@@ -1,4 +1,8 @@
-import { ensureLearnDailySession } from './daily-session'
+import {
+  completeLearnDailySession,
+  deriveLearnDailyProgress,
+  ensureLearnDailySession,
+} from './daily-session'
 import type { LearnDailySessionV1 } from './daily-session'
 import { buildLearnDailyPlan } from './plan'
 import type { LearnAcquisitionQuotaDecision } from './quota'
@@ -148,7 +152,7 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
     wordStates,
     dictionaryWords: words.map((word) => word.name),
   })
-  const dailySession = ensureLearnDailySession({
+  let dailySession = ensureLearnDailySession({
     dict: dictId,
     now,
     dailyNewTarget: input.dailyNewWordTarget ?? 32,
@@ -156,6 +160,16 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
     wordRecords,
     wordStates,
   })
+  const recoveredDailyProgress = deriveLearnDailyProgress({
+    session: dailySession,
+    wordRecords,
+  })
+  if (
+    dailySession.status === 'active' &&
+    recoveredDailyProgress.complete
+  ) {
+    dailySession = completeLearnDailySession(dailySession, now)
+  }
 
   if (dailySession.status === 'completed') {
     return wait(
