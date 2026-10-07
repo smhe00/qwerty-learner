@@ -12,6 +12,10 @@ on:
       - '.github/workflows/tla-gate.yml'
   workflow_dispatch:
 
+concurrency:
+  group: tla-gate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   tla:
     runs-on: ubuntu-latest
