@@ -6,6 +6,10 @@
 // process. It only writes fixtures; it never asserts product behaviour.
 
 import {
+  LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION,
+  LEARN_ACQUISITION_SUPPORTED_POLICY_VERSION,
+} from '../../src/learn/acquisition'
+import {
   LEARN_DAILY_SESSION_VERSION,
   learnLocalDateKey,
   saveLearnDailySession,
@@ -73,6 +77,23 @@ async function seed(input: SeedInput) {
             evidenceStrength: 1,
             retrievalValidity: entry.retrievalValidity ?? 'unknown',
             reasonCodes: ['harness-fixture'],
+          },
+        }
+      : {}),
+    ...(entry.learnItemKind === 'acquisition'
+      ? {
+          reviewPolicyDecision: {
+            version: 1 as const,
+            policyVersion:
+              entry.retrievalValidity === 'independent'
+                ? LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION
+                : LEARN_ACQUISITION_SUPPORTED_POLICY_VERSION,
+            reasonCodes:
+              entry.retrievalValidity === 'independent' &&
+              (entry.errorCause ?? 'clean') === 'clean'
+                ? ['harness-acquisition', 'spacing-eligible']
+                : ['harness-acquisition'],
+            conditionVersion: 1 as const,
           },
         }
       : {}),
