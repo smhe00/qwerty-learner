@@ -1,7 +1,7 @@
 ---
 protocol_version: "1.1"
 task_id: "TASK-20261007-008-learn-live-stats"
-status: "REVIEW"
+status: "PASS"
 executor: "workbuddy"
 target_branch: "product/main"
 claim_base_commit: "8b2c04ee0a336d3be696b7adb9438ac6c6df7ae1"
@@ -191,3 +191,80 @@ no force-push. `git log HEAD..origin/product/main` is empty.
 ## Blocking Dependency
 
 None.
+
+
+---
+
+# Reviewer Acceptance
+
+Final reviewer result: **PASS**.
+
+## Independent review findings
+
+1. **Typing isolation: PASS**
+   - `src/pages/Typing/components/Speed/index.tsx` has zero diff.
+   - Existing Typing labels remain exactly:
+     `时间 / 输入数 / WPM / 正确数 / 正确率`.
+   - Typing reducer counters, WPM, accuracy and ChapterRecord semantics were not changed.
+   - Shared-page integration only selects:
+     `isLearnSurface ? <LearnLiveStats /> : <Speed />`.
+
+2. **Learn five-slot product requirement: PASS**
+   - Learn renders exactly:
+     `学习时间 / 本轮进度 / 新学 / 已复习 / 独立回忆`.
+   - No WPM, accuracy, error count, Hint count, lapse or backlog pressure is exposed in the live strip.
+
+3. **SSOT / schema discipline: PASS**
+   - No new persisted database field or schema version was introduced.
+   - Current session state comes from `IReviewRecord`.
+   - Durable evidence comes from existing `IWordRecord`.
+   - Learn provenance is centralized through `isLearnProvenanceRecord()`.
+
+4. **本轮进度 semantics: PASS**
+   - Total is unique logical words, not physical queue occurrences.
+   - Modern sessions use terminal Review/Acquisition item states.
+   - Legacy fallback dedupes the consumed queue prefix.
+   - Completion is clamped to total.
+   - The component adds a per-session monotonic display floor.
+
+5. **新学 semantics: ACCEPTED**
+   - Counts unique acquisition words only after durable acquisition evidence exists.
+   - Queue membership alone does not count.
+   - This is intentionally conservative and matches the product goal of showing earned progress rather than planned work.
+
+6. **已复习 semantics: ACCEPTED**
+   - Counts unique non-acquisition Learn words with durable completed-attempt evidence, plus terminal Review item state.
+   - Retries/reinforcement are deduped by exact word name.
+   - This is appropriate for the user-facing meaning “已复习”; scheduler eligibility is deliberately not required.
+
+7. **独立回忆 semantics: PASS**
+   - Strict condition:
+     `retrievalValidity === 'independent' && errorCause === 'clean'`.
+   - Assisted success and independent failure are excluded.
+   - Multiple qualifying records for one word count once.
+
+8. **Reload / live refresh: PASS**
+   - Dexie `useLiveQuery` refreshes from durable WordRecord changes rather than per-keystroke polling.
+   - Reload reconstruction is covered by browser tests.
+
+9. **Validation evidence: PASS**
+   - selector tests: 13/13
+   - Learn live-stats browser gate: 5/5
+   - Typing lifecycle control: 8/8
+   - Learn audio regression: 4/4
+   - relevant Review domain/formal suites: PASS
+   - build: PASS
+   - lint: no new errors
+   - project-wide type errors remain baseline-only
+   - review-flow instability was measured against baseline and is not attributed to this change.
+
+## Accepted implementation
+
+```text
+implementation_commit: 17c427c15b0998fdd732231d612c66374e9b4a12
+target_branch: product/main
+review_result: PASS
+release_to_master: false
+```
+
+No rework is required for TASK-20261007-008.
