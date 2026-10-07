@@ -190,12 +190,12 @@ remains available as the benchmark control. Older r0.90/r0.88 observations are
 historical evidence and are not mixed with r0.84 observations; provenance
 filtering groups evidence by `parameterSetId`.
 
-The active state is rebuilt deterministically from raw eligible Review history;
-no basic-v2 stage/interval is numerically converted into FSRS
-Difficulty/Stability. `basic-v2` remains reconstructable from the same raw
-ratings for rollback and workload comparison. Future optimized weights must
-receive a new immutable parameter-set identity rather than silently replacing
-this baseline.
+The current test-stage cutover starts from native FSRS state. Pre-FSRS
+persisted scheduler state is intentionally not migrated or bridged; stale
+Review state may be discarded because current data is test-only. `basic-v2`
+remains available only as a reconstructed benchmark/comparator trajectory from
+eligible raw ratings. Future optimized weights must receive a new immutable
+parameter-set identity rather than silently replacing this baseline.
 
 ## G4 — activation decision
 
@@ -207,7 +207,7 @@ explicit gates for:
 - acceptable workload;
 - bounded interval outliers;
 - deterministic replay;
-- migration and rollback;
+- clean-state cutover and rollback/comparator coverage;
 - backup/restore compatibility;
 - Review formal gate;
 - browser gate.
@@ -426,16 +426,18 @@ Rating Gate
    └─ basic-v2 REPLAYABLE → comparator / rollback baseline
 ```
 
-Migration contract:
+Cutover contract:
 
-1. persisted Review state version is bumped;
-2. old basic-v2 states are never numerically converted to FSRS state;
-3. eligible raw Learn Review ratings are replayed chronologically into
-   FSRS-6 r0.84;
-4. explicit ineligible/training/reinforcement attempts do not mutate the
+1. current native Review state uses state version 5 and FSRS-6 r0.84;
+2. pre-FSRS persisted scheduler state is disposable test data and is not
+   migrated or bridged;
+3. stale state may be cleared during bootstrap;
+4. native FSRS history is reconstructed only from current eligible Review
+   evidence when needed;
+5. explicit ineligible/training/reinforcement attempts do not mutate the
    long-term scheduler;
-5. manual exclusion lifecycle survives migration;
-6. a basic-v2 comparator remains reconstructable from the same raw history;
+6. basic-v2 remains a benchmark/comparator trajectory, not a persisted
+   migration target;
 7. r0.84 provenance is immutable in scheduler state/observations.
 
 The existing `fsrsShadow` storage field remains for schema compatibility.

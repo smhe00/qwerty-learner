@@ -7,7 +7,6 @@ import {
 import { didEnterLongTermMastery } from '@/learn/mastery'
 import {
   createInitialFsrsReviewWordState,
-  isCurrentActiveFsrsState,
   rebuildActiveFsrsStateFromWordRecords,
 } from './fsrs/active'
 import {
@@ -16,7 +15,6 @@ import {
   isActiveLearningState,
   pruneLearnSessionWord,
 } from '@/learn/lifecycle'
-import { scheduleBasicReview } from './scheduler'
 import { CURRENT_REVIEW_STATE_VERSION, createInitialReviewWordState } from './types'
 import type { IReviewWordState, ReviewOutcome } from './types'
 import { db } from '@/utils/db'
@@ -128,10 +126,7 @@ export async function applyReviewOutcome(
         dict,
         word,
         replayRecords,
-        {
-          legacyDueAt: now,
-          priorState: existing,
-        },
+        { legacyDueAt: now },
       )
 
       if (!next) {
@@ -151,23 +146,12 @@ export async function applyReviewOutcome(
         }
       }
 
-      const basicComparator =
-        existing &&
-        (
-          existing.schedulerState.kind === 'basic-v1' ||
-          existing.schedulerState.kind === 'basic-v2'
-        )
-          ? scheduleBasicReview({
-              state: existing,
-              outcome,
-              now,
-            })
-          : rebuildBasicStateFromWordRecords(
-              dict,
-              word,
-              replayRecords,
-              { legacyDueAt: now },
-            )
+      const basicComparator = rebuildBasicStateFromWordRecords(
+        dict,
+        word,
+        replayRecords,
+        { legacyDueAt: now },
+      )
 
       const id = await db.reviewWordStates.put({
         ...next,
@@ -247,6 +231,16 @@ export async function bootstrapReviewWordStatesForDictionary(
       db.reviewWordStates.where('dict').equals(dict).toArray(),
     ])
 
+    const hasStaleState = existingStates.some(
+      (state) => state.stateVersion !== CURRENT_REVIEW_STATE_VERSION,
+    )
+
+    // FSRS activation uses a clean-state cutover. Pre-FSRS scheduler state is
+    // disposable test data and is deliberately not migrated or bridged.
+    if (hasStaleState) {
+      await db.reviewWordStates.where('dict').equals(dict).delete()
+    }
+
     const recordsByWord = new Map<string, typeof records>()
     for (const record of records) {
       const group = recordsByWord.get(record.word)
@@ -254,89 +248,45 @@ export async function bootstrapReviewWordStatesForDictionary(
       else recordsByWord.set(record.word, [record])
     }
 
-    let changedCount = 0
-    const retainedWords = new Set<string>()
+    let changedCount = hasStaleState ? existingStates.length : 0
+    const retainedStates: IReviewWordState[] = []
 
-    for (const previous of existingStates) {
-      const wordRecords = recordsByWord.get(previous.word) ?? []
-
-      if (
-        shouldDropPrematureAcquisitionState(previous, wordRecords) ||
-        shouldDropLegacyTypingSeededState(previous, wordRecords)
-      ) {
-        if (previous.id !== undefined) {
-          await db.reviewWordStates.delete(previous.id)
-        } else {
+    if (!hasStaleState) {
+      for (const state of existingStates) {
+        const wordRecords = recordsByWord.get(state.word) ?? []
+        if (
+          shouldDropPrematureAcquisitionState(state, wordRecords) ||
+          shouldDropLegacyTypingSeededState(state, wordRecords)
+        ) {
           await db.reviewWordStates
             .where('[dict+word]')
-            .equals([dict, previous.word])
+            .equals([dict, state.word])
             .delete()
+          changedCount += 1
+          continue
         }
-        changedCount += 1
-        continue
+        retainedStates.push(state)
       }
-
-      const needsFsrsMigration =
-        previous.stateVersion !== CURRENT_REVIEW_STATE_VERSION ||
-        (
-          previous.schedulerState.kind === 'fsrs6' &&
-          !isCurrentActiveFsrsState(previous)
-        )
-
-      let next = previous
-
-      if (needsFsrsMigration) {
-        const replayed = rebuildActiveFsrsStateFromWordRecords(
-          dict,
-          previous.word,
-          wordRecords,
-          { legacyDueAt },
-        )
-
-        // A replay is complete enough to replace the durable legacy state
-        // only when it accounts for at least the number of reviews already
-        // represented by that state. Otherwise keep the legacy scheduler row
-        // as an explicit bridge: due/lifecycle/counters remain authoritative
-        // until the next eligible Review can hand control to FSRS r0.84.
-        if (
-          replayed &&
-          replayed.reviewCount >= previous.reviewCount
-        ) {
-          next = {
-            ...replayed,
-            id: previous.id,
-            lifecycle: previous.lifecycle ?? replayed.lifecycle,
-            ...(previous.exclusion
-              ? { exclusion: previous.exclusion }
-              : {}),
-          }
-        } else {
-          next = {
-            ...previous,
-            stateVersion: CURRENT_REVIEW_STATE_VERSION,
-          }
-        }
-      }
-
-      next = reactivateReviewStateFromLearningEvidence(
-        next,
-        wordRecords,
-        legacyDueAt,
-      )
-
-      if (next !== previous || needsFsrsMigration) {
-        await db.reviewWordStates.put({
-          ...next,
-          id: previous.id,
-        })
-        changedCount += 1
-      }
-
-      retainedWords.add(previous.word)
     }
 
+    const existingByWord = new Map(
+      retainedStates.map((state) => [state.word, state]),
+    )
+
     for (const [word, wordRecords] of recordsByWord) {
-      if (retainedWords.has(word)) continue
+      const existing = existingByWord.get(word)
+      if (existing) {
+        const refreshed = reactivateReviewStateFromLearningEvidence(
+          existing,
+          wordRecords,
+          legacyDueAt,
+        )
+        if (refreshed !== existing) {
+          await db.reviewWordStates.put({ ...refreshed, id: existing.id })
+          changedCount += 1
+        }
+        continue
+      }
 
       const state = rebuildActiveFsrsStateFromWordRecords(
         dict,
@@ -370,82 +320,42 @@ export async function rebuildReviewWordStatesForDictionary(
 
     for (const record of records) {
       const group = recordsByWord.get(record.word)
-      if (group) group.push(record)
-      else recordsByWord.set(record.word, [record])
+      if (group) {
+        group.push(record)
+      } else {
+        recordsByWord.set(record.word, [record])
+      }
     }
 
-    const nextStates: IReviewWordState[] = []
-    const allWords = new Set([
-      ...previousByWord.keys(),
-      ...recordsByWord.keys(),
-    ])
+    await db.reviewWordStates.where('dict').equals(dict).delete()
 
-    for (const word of allWords) {
-      const previous = previousByWord.get(word)
-      const wordRecords = recordsByWord.get(word) ?? []
-
-      if (
-        previous &&
-        (
-          shouldDropPrematureAcquisitionState(previous, wordRecords) ||
-          shouldDropLegacyTypingSeededState(previous, wordRecords)
-        )
-      ) {
-        continue
-      }
-
-      const replayed = rebuildActiveFsrsStateFromWordRecords(
+    let rebuiltCount = 0
+    for (const [word, wordRecords] of recordsByWord) {
+      let state = rebuildActiveFsrsStateFromWordRecords(
         dict,
         word,
         wordRecords,
         { legacyDueAt },
       )
+      if (!state) continue
 
-      let next: IReviewWordState | undefined
-      if (
-        previous &&
-        (
-          !replayed ||
-          replayed.reviewCount < previous.reviewCount
-        )
-      ) {
-        next = {
-          ...previous,
-          stateVersion: CURRENT_REVIEW_STATE_VERSION,
-        }
-      } else {
-        next = replayed
-      }
-
-      if (!next) continue
-
-      if (previous) {
-        next = {
-          ...next,
-          id: previous.id,
-          lifecycle: previous.lifecycle ?? next.lifecycle,
-          ...(previous.exclusion
-            ? { exclusion: previous.exclusion }
-            : {}),
+      const previous = previousByWord.get(word)
+      if (previous && getLearningLifecycle(previous) === 'excluded') {
+        state = {
+          ...state,
+          lifecycle: 'excluded',
+          exclusion: previous.exclusion,
         }
       }
 
-      next = reactivateReviewStateFromLearningEvidence(
-        next,
-        wordRecords,
-        legacyDueAt,
-      )
-      nextStates.push(next)
-    }
-
-    await db.reviewWordStates.where('dict').equals(dict).delete()
-    for (const state of nextStates) {
       await db.reviewWordStates.put(state)
+      rebuiltCount += 1
     }
 
-    return nextStates.length
+    return rebuiltCount
   })
 }
+
 
 export async function excludeLearningWord(
   dict: string,

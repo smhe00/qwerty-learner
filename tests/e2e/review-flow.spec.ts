@@ -399,23 +399,25 @@ async function putDueReviewWordState(
 ) {
   return page.evaluate(async (targetWord) => {
     const now = Math.floor(Date.now() / 1000)
+    const previousReviewAt = now - 86_400
     const state = {
       dict: 'cet4',
       word: targetWord,
       createdAt: now - 172_800,
-      updatedAt: now - 86_400,
-      lastReviewedAt: now - 86_400,
+      updatedAt: previousReviewAt,
+      lastReviewedAt: previousReviewAt,
       nextReviewAt: now - 1,
       reviewCount: 1,
       lapseCount: 0,
       cleanStreak: 1,
       lastOutcome: 'good',
       lifecycle: 'active',
-      stateVersion: 4,
+      stateVersion: 5,
       schedulerState: {
-        kind: 'basic-v1',
-        stage: 0,
-        intervalDays: 1,
+        kind: 'fsrs6',
+        difficulty: 5,
+        stability: 1,
+        parameterSetId: 'fsrs6-default-r0.84-no-fuzz-long-term-v1',
       },
     }
 
@@ -424,7 +426,27 @@ async function putDueReviewWordState(
       request.onerror = () => reject(request.error)
       request.onsuccess = () => {
         const db = request.result
-        const tx = db.transaction('reviewWordStates', 'readwrite')
+        const tx = db.transaction(
+          ['wordRecords', 'reviewWordStates'],
+          'readwrite',
+        )
+        tx.objectStore('wordRecords').add({
+          word: targetWord,
+          timeStamp: previousReviewAt,
+          dict: 'cet4',
+          chapter: -1,
+          timing: [],
+          wrongCount: 0,
+          mistakes: {},
+          sourceMode: 'learn',
+          learnItemKind: 'review',
+          reviewRatingDecision: {
+            eligible: true,
+            rating: 'good',
+            confidence: 1,
+            reasonCodes: ['e2e-native-fsrs-seed'],
+          },
+        })
         tx.objectStore('reviewWordStates').put(state)
         tx.onerror = () => reject(tx.error)
         tx.onabort = () => reject(tx.error)
@@ -562,6 +584,14 @@ async function seedReviewAdmissionCase(
           timing: [],
           wrongCount: 0,
           mistakes: {},
+          sourceMode: 'learn',
+          learnItemKind: 'review',
+          reviewRatingDecision: {
+            eligible: true,
+            rating: 'good',
+            confidence: 1,
+            reasonCodes: ['e2e-native-fsrs-seed'],
+          },
         })
         tx.objectStore('reviewWordStates').put({
           dict: 'cet4',
@@ -574,11 +604,14 @@ async function seedReviewAdmissionCase(
           lapseCount: 0,
           cleanStreak: 1,
           lastOutcome: 'good',
-          stateVersion: 4,
+          lifecycle: 'active',
+          stateVersion: 5,
           schedulerState: {
-            kind: 'basic-v1',
-            stage: 0,
-            intervalDays: 1,
+            kind: 'fsrs6',
+            difficulty: 5,
+            stability: 1,
+            parameterSetId:
+              'fsrs6-default-r0.84-no-fuzz-long-term-v1',
           },
         })
 
