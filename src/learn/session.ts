@@ -13,7 +13,9 @@ import type { Word } from '@/typings'
 export const LEARN_ACQUISITION_POLICY_VERSION =
   LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION
 export const LEARN_NEW_WORD_BATCH_SIZE = 20
-export const LEARN_SESSION_TARGET_SIZE = 20
+export const LEARN_BLOCK_TARGET_SIZE = 20
+/** @deprecated Product-level Learn Session is now the daily plan; this alias is block-sized. */
+export const LEARN_SESSION_TARGET_SIZE = LEARN_BLOCK_TARGET_SIZE
 export const LEARN_MIXED_NEW_WORD_RESERVE = 5
 
 export type LearnItemKind = 'review' | 'acquisition'
