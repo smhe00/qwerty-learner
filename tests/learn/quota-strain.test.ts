@@ -8,6 +8,14 @@ import { estimateLearnInteractionStrain } from '../../src/learn/strain'
 import { createInitialReviewWordState } from '../../src/review/types'
 import type { IWordRecord } from '../../src/utils/db/record'
 
+/**
+ * Fallback quota/strain contracts.
+ *
+ * DailySession may provide an explicit user-configured daily target (default 32).
+ * The adaptive 20/10/5 policy below remains a fallback/diagnostic policy and
+ * must not be interpreted as the current product-level daily target contract.
+ */
+
 test('Learn interaction strain ignores Typing and stays unknown until enough Learn evidence exists', () => {
   const learnRecords: IWordRecord[] = Array.from(
     { length: 4 },
@@ -47,7 +55,7 @@ test('Learn interaction strain ignores Typing and stays unknown until enough Lea
   assert.equal(estimate.sampleCount, 4)
 })
 
-test('Learn interaction strain caps bootstrap new words without touching Typing', () => {
+test('fallback quota uses interaction strain without touching Typing evidence', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
   const wordRecords: IWordRecord[] = Array.from(
     { length: 5 },
@@ -114,7 +122,7 @@ test('Learn interaction strain caps bootstrap new words without touching Typing'
   assert.ok(quota.reasonCodes.includes('interaction-strain-recovery'))
 })
 
-test('low interaction strain never increases the memory-based quota', () => {
+test('fallback quota never increases from low interaction strain', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
   const wordRecords: IWordRecord[] = Array.from(
     { length: 5 },
@@ -161,7 +169,7 @@ test('low interaction strain never increases the memory-based quota', () => {
   )
 })
 
-test('Learn P3 keeps the 20-word bootstrap target when review history is insufficient', () => {
+test('fallback quota keeps the historical 20-word bootstrap target with insufficient history', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
   const stats = buildLearnStatsSnapshot({
     now,
@@ -178,7 +186,7 @@ test('Learn P3 keeps the 20-word bootstrap target when review history is insuffi
   assert.ok(quota.reasonCodes.includes('bootstrap-insufficient-rated-history'))
 })
 
-test('Learn P3 reduces the daily new-word target to 5 under high Again pressure', () => {
+test('fallback quota reduces to 5 under high Again pressure', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
   const records: IWordRecord[] = Array.from({ length: 10 }, (_, index) => ({
     word: `review-${index}`,
@@ -222,7 +230,7 @@ test('Learn P3 reduces the daily new-word target to 5 under high Again pressure'
   assert.ok(quota.reasonCodes.includes('high-again-rate'))
 })
 
-test('Learn P3 uses 10 words for moderate review pressure and never exceeds remaining daily quota', () => {
+test('fallback quota uses 10 under moderate pressure and never exceeds remaining allowance', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
   const records: IWordRecord[] = [
     ...Array.from({ length: 10 }, (_, index) => ({
@@ -278,7 +286,7 @@ test('Learn P3 uses 10 words for moderate review pressure and never exceeds rema
   assert.equal(quota.allowedNow, 3)
 })
 
-test('Learn P3 keeps Review priority without starving new-word admission', () => {
+test('fallback quota reports Review priority without starving fresh admission', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
   const dueState = {
     ...createInitialReviewWordState('p3', 'due-word', now),
@@ -301,7 +309,7 @@ test('Learn P3 keeps Review priority without starving new-word admission', () =>
 })
 
 
-test('Learn P3 can throttle from five valid cold probes before the 30-day sample reaches eight', () => {
+test('fallback quota may throttle from five valid cold probes', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
   const records: IWordRecord[] = Array.from({ length: 5 }, (_, index) => ({
     word: `cold-${index}`,
@@ -345,7 +353,7 @@ test('Learn P3 can throttle from five valid cold probes before the 30-day sample
   assert.ok(decision.reasonCodes.includes('low-cold-probe-pass-rate'))
 })
 
-test('Learn P3 excludes invalid Rating Gate events from cold-probe quality', () => {
+test('fallback quota excludes invalid Rating Gate events from cold-probe quality', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
   const records: IWordRecord[] = Array.from({ length: 5 }, (_, index) => ({
     word: `invalid-${index}`,
@@ -429,7 +437,7 @@ test('Learn P4 aggregates phased Acquisition effort per word instead of per atte
   assert.equal(stats.effort.recentAcquisitionSamples, 1)
 })
 
-test('Learn P4 uses fallback timing for a new user and plans the full 20-word bootstrap', () => {
+test('fallback workload plan uses historical 20-word bootstrap timing for a new user', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
   const stats = buildLearnStatsSnapshot({
     now,
@@ -450,7 +458,7 @@ test('Learn P4 uses fallback timing for a new user and plans the full 20-word bo
   assert.equal(plan.estimatedNewMinutes, 10)
 })
 
-test('Learn P4 keeps the configured quota after a heavy Review day and reports workload only as advisory', () => {
+test('explicit quota remains unchanged after a heavy Review day; workload is advisory', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
   const records: IWordRecord[] = Array.from({ length: 10 }, (_, index) => ({
     word: `review-${index}`,
@@ -503,7 +511,7 @@ test('Learn P4 keeps the configured quota after a heavy Review day and reports w
   )
 })
 
-test('Learn P4 preserves full Due accounting while reserving bounded room for new acquisition', () => {
+test('workload plan preserves full Due accounting while reserving fresh work', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
   const states = Array.from({ length: 50 }, (_, index) => ({
     ...createInitialReviewWordState('p4-due', `due-${index}`, now),
@@ -534,7 +542,7 @@ test('Learn P4 preserves full Due accounting while reserving bounded room for ne
   assert.ok(plan.reasonCodes.includes('daily-plan-review-priority'))
 })
 
-test('Learn P4 keeps new admission available after the soft workload budget is spent', () => {
+test('soft workload budget remains advisory after it is spent', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
   const records: IWordRecord[] = Array.from({ length: 10 }, (_, index) => ({
     word: `spent-${index}`,
@@ -584,7 +592,7 @@ test('Learn P4 keeps new admission available after the soft workload budget is s
 })
 
 
-test('Learn P4 workload includes reinforcement time without promoting it into Review quality metrics', () => {
+test('workload accounting includes reinforcement time without promoting it into Review quality', () => {
   const now = Math.floor(new Date(2026, 9, 3, 12, 0, 0).getTime() / 1000)
   const records: IWordRecord[] = [
     {
