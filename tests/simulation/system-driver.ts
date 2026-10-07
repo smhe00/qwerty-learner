@@ -1194,7 +1194,11 @@ export class VirtualLearnApp {
         ? {
             decideQuota: (stats) => {
               const baseline =
-                decideDailyAcquisitionQuota(stats)
+                decideDailyAcquisitionQuota(
+                  stats,
+                  undefined,
+                  this.dailyNewWordTarget,
+                )
               const remaining = Math.max(
                 0,
                 baseline.targetDailyNewWords -
