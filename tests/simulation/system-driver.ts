@@ -214,11 +214,13 @@ export class VirtualLearnApp {
   private staleRestoreConsumed = false
   private routeResurrectionConsumed = false
   private postFinishEvidenceInjected = false
+  private dailyNewWordTarget: number
 
   constructor(input: {
     words: Word[]
     now?: number
     mutation?: VirtualLearnMutation
+    dailyNewWordTarget?: number
   }) {
     this.words = clone(input.words)
     this.now =
@@ -227,6 +229,10 @@ export class VirtualLearnApp {
         new Date(2026, 9, 4, 8, 0, 0).getTime() / 1000,
       )
     this.mutation = input.mutation ?? {}
+    this.dailyNewWordTarget = Math.max(
+      1,
+      Math.floor(input.dailyNewWordTarget ?? 32),
+    )
   }
 
   seedAdmittedWords(count: number) {
@@ -629,7 +635,11 @@ export class VirtualLearnApp {
       ),
     })
     const productionQuota =
-      decideDailyAcquisitionQuota(budgetStats)
+      decideDailyAcquisitionQuota(
+        budgetStats,
+        undefined,
+        this.dailyNewWordTarget,
+      )
     const productionPlan = buildLearnDailyPlan({
       stats: budgetStats,
       quota: productionQuota,
@@ -971,7 +981,11 @@ export class VirtualLearnApp {
       ),
     })
     const productionQuota =
-      decideDailyAcquisitionQuota(budgetStats)
+      decideDailyAcquisitionQuota(
+        budgetStats,
+        undefined,
+        this.dailyNewWordTarget,
+      )
     const productionPlan = buildLearnDailyPlan({
       stats: budgetStats,
       quota: productionQuota,
@@ -1153,7 +1167,11 @@ export class VirtualLearnApp {
         ? {
             decideQuota: (stats) => {
               const baseline =
-                decideDailyAcquisitionQuota(stats)
+                decideDailyAcquisitionQuota(
+                  stats,
+                  undefined,
+                  this.dailyNewWordTarget,
+                )
               const remaining = Math.max(
                 0,
                 baseline.targetDailyNewWords -
@@ -1247,6 +1265,7 @@ export class VirtualLearnApp {
       dictId: activeDict,
       words: this.words,
       errorEvidence: [],
+      dailyNewWordTarget: this.dailyNewWordTarget,
       dependencies: this.dependencies(),
     })
 
