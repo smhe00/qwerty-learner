@@ -26,6 +26,10 @@ on:
       - 'package.json'
   workflow_dispatch:
 
+concurrency:
+  group: achievement-gate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   achievement:
     runs-on: ubuntu-latest
