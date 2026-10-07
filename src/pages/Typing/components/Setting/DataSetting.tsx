@@ -1,4 +1,5 @@
 import styles from './index.module.css'
+import { clearAllLearnDailySessions } from '@/learn/daily-session'
 import CloudSyncSetting from '@/sync/CloudSyncSetting'
 import { loadAuth } from '@/sync/auth'
 import { clearSyncBaseline } from '@/sync/state'
@@ -76,6 +77,7 @@ export default function DataSetting() {
       localStorage.removeItem('currentDict')
       localStorage.removeItem('currentChapter')
       localStorage.removeItem('reviewModeInfo')
+      clearAllLearnDailySessions()
 
       window.alert('本地学习数据已清除，默认词库已恢复为“中考核心词”。云端账号和云端备份均未删除。')
       window.location.reload()
