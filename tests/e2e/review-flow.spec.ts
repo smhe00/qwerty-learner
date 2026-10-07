@@ -1008,14 +1008,13 @@ test('Phase D live gate applies one canonical rating through the scheduler', asy
 
   const after = await readReviewGateState(page, 'cancel')
   expect(['hard', 'good', 'easy']).toContain(after.decision?.rating)
-  expect(after.state?.schedulerKind).toBe('basic-v2')
+  expect(after.state?.schedulerKind).toBe('fsrs6')
   expect(after.state?.nextReviewAt).toBeGreaterThan(before.nextReviewAt)
   expect(after.shadow?.algorithmModel).toBe('fsrs-6')
   expect(after.shadow?.rating).toBe(after.decision?.rating)
-  expect(after.shadow?.basicV2?.dueAt).toBe(after.state?.nextReviewAt)
-  expect(after.shadow?.basicV2?.nominalIntervalDays).toBe(
-    after.state?.intervalDays,
-  )
+  // basic-v2 is now the rollback/comparator trajectory, not the active due.
+  expect(after.shadow?.basicV2?.dueAt).toBeGreaterThan(before.nextReviewAt)
+  expect(after.shadow?.basicV2?.nominalIntervalDays).toBeGreaterThan(0)
   expect(
     Object.keys(after.shadow?.counterfactual ?? {}).sort(),
   ).toEqual(['again', 'easy', 'good', 'hard'])

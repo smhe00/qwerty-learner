@@ -14,11 +14,26 @@ export type BasicSchedulerState = {
   intervalDays: number
 }
 
+export type FsrsLegacyBridgeV1 = {
+  version: 1
+  cutoffAt: number
+  reviewCountOffset: number
+  lapseCountOffset: number
+  cleanStreakOffset: number
+}
+
 export type Fsrs6SchedulerState = {
   kind: 'fsrs6'
   difficulty: number
   stability: number
   parameterSetId?: string
+  /**
+   * Present only when production FSRS was activated from an opaque legacy
+   * scheduler state whose earlier raw Review history cannot be replayed
+   * completely. Events at/before cutoffAt are represented by the offsets;
+   * only later eligible Review ratings are replayed into FSRS.
+   */
+  legacyBridge?: FsrsLegacyBridgeV1
 }
 
 export type ReviewSchedulerState =

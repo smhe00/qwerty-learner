@@ -8,6 +8,7 @@ import {
   createInitialFsrsReviewWordState,
   rebuildActiveFsrsStateFromWordRecords,
 } from '../../src/review/fsrs/active'
+import type { IReviewWordState } from '../../src/review/types'
 import type { IWordRecord } from '../../src/utils/db/record'
 
 const DAY = 86_400
@@ -129,4 +130,136 @@ test('an eligible Again is replayed as a long-term lapse', () => {
   assert.equal(state.lapseCount, 1)
   assert.equal(state.cleanStreak, 0)
   assert.equal(state.lastOutcome, 'again')
+})
+
+
+test('opaque legacy state bridges safely until the next eligible Review', () => {
+  const legacy: IReviewWordState = {
+    dict: 'test',
+    word: 'alpha',
+    createdAt: t0 - 30 * DAY,
+    updatedAt: t0,
+    lastReviewedAt: t0,
+    nextReviewAt: t0 + 10 * DAY,
+    reviewCount: 7,
+    lapseCount: 2,
+    cleanStreak: 3,
+    lastOutcome: 'good',
+    lifecycle: 'active',
+    stateVersion: 4,
+    schedulerState: {
+      kind: 'basic-v2',
+      stage: 4,
+      intervalDays: 30,
+    },
+  }
+
+  // No post-cutoff eligible Review means migration must not fabricate an
+  // FSRS state from incomplete history. Repository migration keeps the
+  // durable legacy row as the due/lifecycle authority.
+  const beforeNextReview = rebuildActiveFsrsStateFromWordRecords(
+    'test',
+    'alpha',
+    [
+      {
+        id: 1,
+        word: 'alpha',
+        dict: 'test',
+        chapter: -1,
+        timeStamp: t0,
+        timing: [],
+        wrongCount: 0,
+        mistakes: {},
+      },
+    ],
+    { priorState: legacy },
+  )
+  assert.equal(beforeNextReview, undefined)
+
+  const transitioned = rebuildActiveFsrsStateFromWordRecords(
+    'test',
+    'alpha',
+    [
+      {
+        id: 1,
+        word: 'alpha',
+        dict: 'test',
+        chapter: -1,
+        timeStamp: t0,
+        timing: [],
+        wrongCount: 0,
+        mistakes: {},
+      },
+      review(2, t0 + DAY, 'hard'),
+    ],
+    { priorState: legacy },
+  )
+
+  assert.ok(transitioned)
+  assert.equal(transitioned.reviewCount, 8)
+  assert.equal(transitioned.lapseCount, 2)
+  assert.equal(transitioned.cleanStreak, 4)
+  assert.equal(transitioned.lastOutcome, 'hard')
+  assert.equal(transitioned.lastReviewedAt, t0 + DAY)
+  assert.equal(transitioned.lifecycle, 'active')
+  assert.equal(transitioned.schedulerState.kind, 'fsrs6')
+  if (transitioned.schedulerState.kind !== 'fsrs6') return
+  assert.equal(
+    transitioned.schedulerState.parameterSetId,
+    FSRS6_ACTIVE_STRATEGY.id,
+  )
+  assert.deepEqual(transitioned.schedulerState.legacyBridge, {
+    version: 1,
+    cutoffAt: t0,
+    reviewCountOffset: 7,
+    lapseCountOffset: 2,
+    cleanStreakOffset: 3,
+  })
+  assert.ok(transitioned.nextReviewAt > t0 + DAY)
+})
+
+test('legacy bridge replay remains deterministic across later active Reviews', () => {
+  const legacy: IReviewWordState = {
+    dict: 'test',
+    word: 'alpha',
+    createdAt: t0 - 20 * DAY,
+    updatedAt: t0,
+    lastReviewedAt: t0,
+    nextReviewAt: t0 + DAY,
+    reviewCount: 3,
+    lapseCount: 1,
+    cleanStreak: 2,
+    lastOutcome: 'good',
+    lifecycle: 'active',
+    stateVersion: 5,
+    schedulerState: {
+      kind: 'basic-v1',
+      stage: 0,
+      intervalDays: 1,
+    },
+  }
+  const records = [
+    review(10, t0 + DAY, 'good'),
+    review(11, t0 + 5 * DAY, 'again'),
+  ]
+
+  const first = rebuildActiveFsrsStateFromWordRecords(
+    'test',
+    'alpha',
+    records,
+    { priorState: legacy },
+  )
+  assert.ok(first)
+  assert.equal(first.reviewCount, 5)
+  assert.equal(first.lapseCount, 2)
+  assert.equal(first.cleanStreak, 0)
+
+  const replayed = rebuildActiveFsrsStateFromWordRecords(
+    'test',
+    'alpha',
+    records,
+    { priorState: first },
+  )
+  assert.ok(replayed)
+  assert.deepEqual(replayed, first)
 })
