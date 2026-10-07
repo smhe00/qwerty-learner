@@ -34,9 +34,9 @@ export type LearnAutoSyncAction =
 export function decideLearnAutoSyncAction(
   assessment: SyncAssessment,
 ): LearnAutoSyncAction {
-  if (!assessment.localDirty) return 'clean'
   if (assessment.diverged) return 'diverged'
   if (assessment.remoteChanged) return 'remote-ahead'
+  if (!assessment.localDirty) return 'clean'
   return 'upload'
 }
 
