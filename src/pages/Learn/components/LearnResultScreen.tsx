@@ -148,15 +148,24 @@ export default function LearnResultScreen() {
     const settle = async () => {
       try {
         if (state.chapterData.wordRecordIds.length > 0) {
-          await processLiveLearnSessionCompletion({
-            sessionId: getAchievementSessionId(record),
-            dict: record.dict,
-            sourceRecordIds: [...state.chapterData.wordRecordIds],
-            completedAt: Math.floor(Date.now() / 1000),
-            recommendedGoalCompleted:
-              record.isFinished &&
-              record.recommendedGoal?.version === 1,
-          })
+          try {
+            await processLiveLearnSessionCompletion({
+              sessionId: getAchievementSessionId(record),
+              dict: record.dict,
+              sourceRecordIds: [...state.chapterData.wordRecordIds],
+              completedAt: Math.floor(Date.now() / 1000),
+              recommendedGoalCompleted:
+                record.isFinished &&
+                record.recommendedGoal?.version === 1,
+            })
+          } catch (error) {
+            // Achievement is a sidecar and must never block Learn recovery or
+            // daily completion.
+            console.error(
+              'failed to process Learn block achievement settlement',
+              error,
+            )
+          }
         }
 
         // The Daily completion snapshot must observe every WordRecord,
@@ -183,22 +192,33 @@ export default function LearnResultScreen() {
           wordRecords,
         })
 
-        let sync: LearnAutoSyncResult | undefined
         if (progress.complete) {
           dailySession = completeLearnDailySession(
             dailySession,
             Math.floor(Date.now() / 1000),
           )
           await flushLearnPersistence()
-          sync = await autoSyncCompletedLearnSession()
         }
 
         if (!cancelled) {
           setSettlement({
             session: dailySession,
             progress,
-            sync,
           })
+        }
+
+        if (progress.complete) {
+          const sync = await autoSyncCompletedLearnSession()
+          if (!cancelled) {
+            setSettlement((current) =>
+              current
+                ? {
+                    ...current,
+                    sync,
+                  }
+                : current,
+            )
+          }
         }
       } catch (error) {
         console.error('failed to settle Learn block', error)
@@ -439,7 +459,9 @@ export default function LearnResultScreen() {
 
           {isDailyComplete ? (
             <div className="mt-7 text-center text-xs text-gray-400">
-              {syncText(settlement?.sync)}
+              {settlement?.sync
+                ? syncText(settlement.sync)
+                : '正在检查云同步状态…'}
             </div>
           ) : null}
 
