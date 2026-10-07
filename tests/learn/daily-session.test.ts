@@ -8,7 +8,7 @@ import {
 import {
   LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION,
 } from '../../src/learn/acquisition'
-import { decideLearnAutoSyncAction } from '../../src/sync/auto'
+import { decideLearnAutoSyncAction } from '../../src/sync/state'
 import type { IReviewWordState } from '../../src/review/types'
 import type { IWordRecord } from '../../src/utils/db/record'
 
