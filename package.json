@@ -72,7 +72,8 @@
     "test:cloud:edgeone": "node tests/cloud/edgeone-live.integration.mjs",
     "validate:achievement-culture": "node scripts/validate-achievement-culture.mjs",
     "diagnostic:replay": "mkdir -p .diagnostic && npx esbuild src/dev/replay-cli.ts --bundle --platform=node --target=node20 --format=esm --outfile=.diagnostic/replay-incident.mjs && node .diagnostic/replay-incident.mjs",
-    "test:p3-fuzz": "playwright test --config=tests/e2e/browser-stateful-fuzz.config.ts --project=chrome"
+    "test:p3-fuzz": "playwright test --config=tests/e2e/browser-stateful-fuzz.config.ts --project=chrome",
+    "validate:gate-manifest": "node scripts/validate-gate-manifest.mjs"
   },
   "lint-staged": {
     "src/**/*.{js,jsx,ts,tsx,json,css,scss,md}": [
