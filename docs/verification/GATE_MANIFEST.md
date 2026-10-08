@@ -2,17 +2,21 @@
 
 > Status: **canonical verification governance**
 
-Qwerty Plus verification has grown to 81 test files and 13 workflows. The
-problem is no longer a lack of tests; it is ownership, duplication, and semantic
-drift.
+Qwerty Plus entered this refactor with 81 test files and 13 workflows. The
+current tree has more test files because giant mixed-responsibility suites were
+split by owner before duplicate assertions are deleted. File count is therefore
+not a success metric; contract coverage, ownership, Gate runtime, and protected
+regression count are.
 
-The machine-readable source of truth is:
+The governance triangle is:
 
-`tests/verification/gate-manifest.json`
+- product specification: `docs/SPECIFICATION_V1.md`;
+- executable ownership: `tests/verification/gate-manifest.json`;
+- protected real-world regressions:
+  `tests/verification/regression-catalog.json`.
 
-The repository validates that manifest with:
-
-`scripts/validate-gate-manifest.mjs`
+The lightweight **Verification Contract Gate** validates all three with
+`scripts/validate-gate-manifest.mjs`.
 
 ## Verification levels
 
@@ -61,6 +65,7 @@ Current canonical ownership:
 
 | Concern | Canonical gate |
 | --- | --- |
+| Specification / contract / regression traceability | Verification Contract Gate |
 | Learn / Review integration | Review Gate |
 | FSRS package + scheduler | FSRS Phase G Gate |
 | TLC models / counterexamples | TLA Gate |
@@ -87,19 +92,19 @@ A failing old test must be classified before editing:
 
 ## Cleanup sequence
 
-### P0 — Governance and obvious duplication
+### P0 — Governance and obvious duplication — complete
 
-- establish Architecture V2 and this manifest;
-- validate manifest references in CI;
-- stop Review Gate from directly rerunning FSRS G2/G3/G5, which are owned by
-  FSRS Phase G Gate;
-- stop Achievement Gate from performing a second full build when Review Gate
-  already owns integration compilation for shared Learn paths;
-- extract Learn settlement orchestration from React presentation.
+- Architecture V2 established;
+- Product Specification V1 established;
+- machine-readable Contract → Spec → Test → Gate traceability added;
+- regression catalog validator added;
+- duplicated FSRS G2/G3/G5 execution removed from Review Gate;
+- docs-only edits removed from heavyweight behavior Gates;
+- stale runs are cancelled through workflow concurrency.
 
-### P1 — Split oversized suites
+### P1 — Split oversized suites — complete
 
-`tests/e2e/review-flow.spec.ts` should be decomposed by behavior:
+The old mixed browser suite is now divided into:
 
 - `learn-review-flow.spec.ts`
 - `learn-acquisition-flow.spec.ts`
@@ -107,27 +112,23 @@ A failing old test must be classified before editing:
 - `learn-shell-ui.spec.ts`
 - `learn-legacy-compat.spec.ts`
 
-`tests/review/domain.test.ts` should be split by domain:
+The old 101-case `tests/review/domain.test.ts` no longer exists. Domain
+coverage is owned by Hint, Evidence, Audio, Exercise-policy,
+Scheduler/Lifecycle, Acquisition, Scaffold/Recovery, and Quota/Strain suites.
 
-- evidence/rating;
-- hint;
-- acquisition;
-- lifecycle;
-- scheduling;
-- persistence contract.
+### P2 — Regression inventory and deduplication — in progress
 
-The split is organizational only: no contract is removed during P1.
+- protected historical regression IDs are machine-validated;
+- obsolete Basic-v1 migration code/tests have been removed;
+- Basic-v2 is retained only as a shadow/comparator model;
+- residual Review foundation coverage is being consolidated by owner;
+- deletion is allowed only after equivalent canonical coverage is proven.
 
-### P2 — Regression inventory and deduplication
+### P3 — Workflow retirement — substantially complete
 
-Assign persistent regression IDs to real historical defects. Merge/remove tests
-only when another canonical test has the same failure signature and invariant.
-
-### P3 — Workflow retirement
-
-Review `.github/workflows/e2e.yml`. It currently uses a separate Node/npm
-execution stack from product/main gates and is a candidate for retirement or
-replacement by a release-smoke workflow.
+The legacy Node 18/npm/full-suite `.github/workflows/e2e.yml` has been
+retired. Product/main behavior is verified by owned Gates, while master release
+verification remains with EdgeOne production/browser verification workflows.
 
 ## Success criteria
 
