@@ -28,10 +28,7 @@ export type DueReviewPriorityCandidate = ReviewPriorityCandidate & {
 
 function basicStage(state: IReviewWordState | undefined): number {
   if (!state) return Number.POSITIVE_INFINITY
-  if (
-    state.schedulerState.kind === 'basic-v1' ||
-    state.schedulerState.kind === 'basic-v2'
-  ) {
+  if (state.schedulerState.kind === 'basic-v2') {
     return state.schedulerState.stage
   }
 
