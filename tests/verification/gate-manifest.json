@@ -68,7 +68,7 @@
       "owner": "src/learn/settlement.ts",
       "gate": "review",
       "tests": [
-        "tests/e2e/review-flow.spec.ts",
+        "tests/e2e/learn-review-flow.spec.ts",
         "tests/simulation/persistence-race.test.ts"
       ]
     },
@@ -113,7 +113,7 @@
       "gate": "review",
       "tests": [
         "tests/review/hint.test.ts",
-        "tests/e2e/review-flow.spec.ts"
+        "tests/e2e/learn-review-flow.spec.ts"
       ]
     },
     {
@@ -190,7 +190,7 @@
       "gate": "review",
       "tests": [
         "tests/review/scheduler-lifecycle.test.ts",
-        "tests/e2e/review-flow.spec.ts"
+        "tests/e2e/learn-review-flow.spec.ts"
       ]
     },
     {
@@ -212,7 +212,7 @@
       "gate": "review",
       "tests": [
         "tests/review/evidence-profile.test.ts",
-        "tests/e2e/review-flow.spec.ts"
+        "tests/e2e/learn-review-flow.spec.ts"
       ]
     },
     {
@@ -234,7 +234,7 @@
       "gate": "review",
       "tests": [
         "tests/review/exercise-policy.test.ts",
-        "tests/e2e/review-flow.spec.ts"
+        "tests/e2e/learn-review-flow.spec.ts"
       ]
     }
   ],
