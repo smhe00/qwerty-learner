@@ -7,7 +7,7 @@ import { getDueReviewWordStates, getReviewWordState } from './repository'
 import { readWordTelemetry } from './telemetry'
 import type { TypingErrorClassification } from './classifier'
 import type { IReviewWordState } from './types'
-import { db } from '@/utils/db'
+import { db } from '@/utils/db/core'
 import type { IWordRecord, LearningContextV1 } from '@/utils/db/record'
 
 export type ReviewDiagnosticLatestRecord = {
