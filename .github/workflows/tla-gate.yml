@@ -342,6 +342,33 @@ jobs:
           done
 
 
+  sync-tla:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Download pinned TLA+ tools
+        run: |
+          curl --fail --location --silent --show-error \
+            https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar \
+            --output /tmp/tla2tools.jar
+          actual="$(sha256sum /tmp/tla2tools.jar | awk '{print $1}')"
+          expected='936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88'
+          echo "Downloaded tla2tools.jar SHA256: $actual"
+          if [ "$actual" != "$expected" ]; then
+            echo "Pinned SHA256 mismatch."
+            exit 1
+          fi
+
       - name: Parse Cloud Sync V2 executable specification
         run: |
           java -cp /tmp/tla2tools.jar tla2sany.SANY \
