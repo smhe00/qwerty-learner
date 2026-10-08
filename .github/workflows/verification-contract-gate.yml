@@ -1,0 +1,36 @@
+name: Verification Contract Gate
+
+on:
+  push:
+    branches:
+      - product/main
+    paths:
+      - 'docs/SPECIFICATION_V1.md'
+      - 'tests/verification/**'
+      - 'scripts/validate-gate-manifest.mjs'
+      - '.github/workflows/verification-contract-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verification-contract-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verification-contract:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+
+      - name: Validate specification, contracts and regressions
+        run: node scripts/validate-gate-manifest.mjs
