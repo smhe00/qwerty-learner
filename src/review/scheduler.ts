@@ -104,7 +104,7 @@ export function scheduleBasicReview(
   }
 
   return {
-    ...upgradedState,
+    ...input.state,
     updatedAt: input.now,
     lastReviewedAt: input.now,
     nextReviewAt: shouldReschedule ? input.now + intervalDays * DAY_SECONDS : input.state.nextReviewAt,
