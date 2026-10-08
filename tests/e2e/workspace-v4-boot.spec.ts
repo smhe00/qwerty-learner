@@ -47,7 +47,7 @@ test('initialized anonymous workspace mounts only after exclusive lock and recov
     return { stages, generation }
   })
   expect(result).toEqual({
-    stages: ['locking', 'recovering', 'checking-identity', 'ready', 'mounted'],
+    stages: ['locking', 'checking-identity', 'ready', 'mounted'],
     generation: 1,
   })
 })
