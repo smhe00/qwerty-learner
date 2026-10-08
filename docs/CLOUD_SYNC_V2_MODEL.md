@@ -623,9 +623,13 @@ older local account workspace until they next contact the service, but that copy
 is no longer a valid account workspace once the server deletion has committed.
 
 The server must retain a **minimal deletion tombstone** for the deleted immutable
-account identity. This tombstone exists only to propagate deletion and reject
-stale clients. It must not contain learning records, settings, password material,
-session secrets, or a recoverable account snapshot.
+account ID (userId/accountId). This tombstone exists only to propagate deletion
+and reject stale clients. It must not contain learning records, settings, password
+material, session secrets, or a recoverable account snapshot.
+
+The username/login name is **not** the immutable identity. A deleted username may
+be registered again later. A newly registered account using the same username
+must receive a brand-new immutable account ID and a fresh account workspace.
 
 Any stale device that later performs auth, sync, metadata refresh, app-start
 account validation, or account-workspace activation must receive an explicit
@@ -659,10 +663,43 @@ devices.
 
 The deletion tombstone is protocol metadata only. Its purpose is delete
 propagation and anti-resurrection; it is not considered retained account
-business data. A deleted immutable account identity must never be reused, and
-the tombstone (or an equivalent permanent anti-resurrection mechanism) must
-remain authoritative for that deleted identity.
+business data.
 
+The deleted immutable account ID must never be reused, and the tombstone (or an
+equivalent permanent anti-resurrection mechanism) must remain authoritative for
+that deleted ID. The human-readable username may be reused by a newly registered
+account, but that new account is a different identity and must never inherit the
+old account's tombstone, workspace, baseline, revisions, or stale-device data.
+
+
+
+
+#### Username reuse and identity-keying
+
+All workspace ownership, local account-workspace keys, sync baselines, cloud
+revision namespaces, deletion tombstones, and stale-device checks must be keyed
+by immutable account ID, **never by username alone**.
+
+Example:
+
+~~~text
+old account:
+  username = alice
+  accountId = U100
+  -> deleted
+  -> tombstone(U100)
+
+later:
+  register username = alice
+  accountId = U847
+  -> new empty/newly-seeded workspace
+~~~
+
+A stale device holding U100 must receive account_deleted and purge U100 even if
+the username "alice" now belongs to U847.
+
+The existence of the new username mapping must never authorize, migrate, merge,
+or attach U100's stale local data to U847.
 
 ## 9. Device-switch semantics
 
@@ -847,6 +884,10 @@ presented as the normal cross-device synchronization mechanism.
     the deleted account workspace after receiving account_deleted.
 31. A deletion tombstone may retain only minimal anti-resurrection protocol
     metadata and must never retain recoverable account business data.
+32. Usernames may be reused after account deletion, but immutable account IDs
+    must never be reused.
+33. Workspace ownership, revisions, baselines, tombstones, and stale-device
+    protection must be keyed by immutable account ID rather than username.
 
 
 
@@ -935,7 +976,8 @@ semantics.
 - delete one dictionary's learning records;
 - delete all learning records while retaining settings/account;
 - full cloud+local account deletion;
-- cross-device account-deletion tombstone propagation;
+- cross-device account-deletion tombstone propagation keyed by immutable account ID;
+- safe username reuse with a fresh immutable account ID;
 - stale-device deletion-resurrection protection;
 - multi-device sessions;
 - stable device identity;
