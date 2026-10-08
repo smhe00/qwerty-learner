@@ -555,19 +555,18 @@ test('spelling completion never starts a late pronunciation fallback when Howl i
   const firstWord = await waitForTypingWord(page)
   await page.keyboard.press('a')
 
-  const beforeSuccess = await playedCountForWord(page, firstWord)
-
   await page.keyboard.type(firstWord)
-  await page.waitForTimeout(500)
+  await expect(
+    page.locator('[data-typing-word][data-typing-success-feedback="active"]:visible'),
+  ).toBeVisible()
 
-  // A not-yet-ready word-entry request must not turn into a post-success
-  // pronunciation after the word has already been completed.
-  expect(await playedCountForWord(page, firstWord)).toBe(
-    beforeSuccess,
-  )
+  // Establish the baseline at the actual success boundary. A word-entry
+  // request that begins DURING typing is not post-success pronunciation.
+  // Any call added during feedback or after progression is forbidden.
+  const atSuccess = await playedCountForWord(page, firstWord)
+  await page.waitForTimeout(500)
+  expect(await playedCountForWord(page, firstWord)).toBe(atSuccess)
 
   await waitForDifferentTypingWord(page, firstWord)
-  expect(await playedCountForWord(page, firstWord)).toBe(
-    beforeSuccess,
-  )
+  expect(await playedCountForWord(page, firstWord)).toBe(atSuccess)
 })
