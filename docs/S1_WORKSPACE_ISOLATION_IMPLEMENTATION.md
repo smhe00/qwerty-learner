@@ -103,3 +103,22 @@ No EdgeOne build triggered, and `master` remains unchanged.
 The existing manual V3 export/import and Cloud Sync V1/V3 are unchanged.
 Full V4 manual restore, V1 account migration, stale-tab protection and
 auto boot recovery still require separate implementation and safety gates.
+
+## S1 pre-mount safety primitive (2026-10-09)
+
+`src/sync/workspace-bootstrap.ts` now exposes `prepareGuardedWorkspaceBoot`
+and `mountGuardedWorkspaceApp`. An experimental caller MUST defer dynamic
+import of the mounted application until the exclusive Web Lock has been
+acquired, a previously initialized registry has been validated, pending
+journal recovery has completed and its account ID matches current auth.
+It **fails closed**, without mounting the callback, for uninitialized V1
+storage, competing tabs, corrupted/pending restore failures and identity
+mismatch. The lease must remain held for the entire mounted writer lifetime.
+
+This is tested in a real Chromium browser against IndexedDB, including a
+reload after injected restore crash, tab contention, an account/auth mismatch,
+and corrupt-vault recovery refusal. The legacy production entry point is
+**still intentionally unguarded**: the new safety primitive must not be
+presented as cross-tab protection while V1 tabs and account actions can still
+write without participating in the lock. This checkpoint is NOT S1 activation
+and no master deployment is authorized.

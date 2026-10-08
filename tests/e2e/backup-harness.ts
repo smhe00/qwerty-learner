@@ -1,3 +1,4 @@
+import { mountGuardedWorkspaceApp } from '../../src/sync/workspace-bootstrap'
 import { initializeLegacyWorkspace, transitionWorkingWorkspace } from '../../src/sync/workspace-coordinator'
 import { acquireWorkspaceWriterLease } from '../../src/sync/workspace-lock'
 import { captureWorkingWorkspaceV4, resetWorkingWorkspaceToEmpty, restoreWorkingWorkspaceV4 } from '../../src/sync/workspace-v4-browser'
@@ -308,4 +309,5 @@ async function inspectTableContract() {
   initializeLegacyWorkspace,
   transitionWorkingWorkspace,
   acquireWorkspaceWriterLease,
+  mountGuardedWorkspaceApp,
 }

@@ -6,6 +6,7 @@ on:
       - product/main
     paths:
       - 'src/sync/workspace-*'
+      - 'src/sync/auth.ts'
       - 'src/sync/manual-backup-v4.ts'
       - 'src/pages/Typing/components/Setting/DataSetting.tsx'
       - 'src/utils/db/data-export.ts'
