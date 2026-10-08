@@ -65,6 +65,7 @@ Current canonical ownership:
 
 | Concern | Canonical gate |
 | --- | --- |
+| Static dependency direction / layer boundaries | Architecture Gate |
 | Specification / contract / regression traceability | Verification Contract Gate |
 | Learn / Review integration | Review Gate |
 | FSRS package + scheduler | FSRS Phase G Gate |
