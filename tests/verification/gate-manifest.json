@@ -8,6 +8,11 @@
   },
   "gates": [
     {
+      "id": "architecture",
+      "workflow": ".github/workflows/architecture-gate.yml",
+      "owner": "architecture-boundaries"
+    },
+    {
       "id": "verification",
       "workflow": ".github/workflows/verification-contract-gate.yml",
       "owner": "verification-governance"
