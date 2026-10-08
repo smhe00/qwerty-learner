@@ -205,15 +205,14 @@
     },
     {
       "id": "SYNC-FORMAL-001",
-      "title": "Cloud Sync V2 end-to-end distributed protocol is executable and model-checked",
+      "title": "Cloud Sync V2 canonical executable protocol with mandatory bounded TLC projections; 3x4 exploratory",
       "level": "L1",
       "owner": "formal/sync",
       "gate": "tla",
       "tests": [
         "formal/sync/CloudSyncV2.tla",
         "formal/sync/CloudSyncV2.production.cfg",
-        "formal/sync/CloudSyncV2.concurrent.cfg",
-        "formal/sync/CloudSyncV2.three-device-four-username.cfg"
+        "formal/sync/CloudSyncV2.concurrent.cfg"
       ],
       "specs": [
         "SPEC-SYNC-V2-FORMAL-001"

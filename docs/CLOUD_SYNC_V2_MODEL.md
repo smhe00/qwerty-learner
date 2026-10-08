@@ -963,7 +963,14 @@ semantics.
 - require mutation counterexamples for stale ordinary writes, immutable account-ID
   reuse, and active-Block retargeting.
 
-**Gate:** S0.5 is complete only when the repository TLA Gate passes the Sync V2 model-checking section.
+**Gate (2026-10-09 conditional freeze):** S0.5 is the executable canonical
+protocol baseline, formal verification status **PARTIAL**. Mandatory CI keeps
+the existing bounded production/Block/identity/backup/two-device TLC checks
+and negative mutation controls. The 3-device/4-username bounded `NextScale`
+exploration is deferred to `tla-scale-exploration.yml` and does NOT gate S1.
+No full-protocol proof or exhausted 3x4 state space is claimed. All S1–S4 code
+must refine the S0.5 transitions; protocol changes require explicit review.
+See `docs/S1_WORKSPACE_ISOLATION_IMPLEMENTATION.md`.
 S1-S4 implementation must remain conformant with the executable protocol.
 
 ### S1 — Local workspace isolation

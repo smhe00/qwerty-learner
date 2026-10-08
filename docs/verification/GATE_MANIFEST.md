@@ -72,7 +72,7 @@ Current canonical ownership:
 | FSRS package + active scheduler contracts | FSRS Phase G Gate |
 | FSRS 365-day / multi-seed strategy benchmark | FSRS Benchmark Gate |
 | Learn TLC models / counterexamples | TLA Gate |
-| Cloud Sync V2 end-to-end executable protocol | TLA Gate (S0.5 section) |
+| Cloud Sync V2 canonical protocol and bounded projections (partial) | TLA Gate (S0.5 section) |
 | Achievement rules | Achievement Gate |
 | Dictionary content | Dictionary Gate |
 | Cloud backend/sync | Cloud Sync workflows |

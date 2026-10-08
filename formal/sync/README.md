@@ -100,3 +100,10 @@ Gate owner: `TLA Gate` (`.github/workflows/tla-gate.yml`).
 The CI gate runs the Sync model in a parallel job so protocol iterations do not wait for the Learn formal suite.
 
 These configurations are projections of the same `Next` relation. They split TLC's finite search bounds to control combinatorial explosion; they do not split or weaken the canonical protocol state machine.
+
+## S0.5 freeze (2026-10-09)
+
+Status: **PARTIAL**. 3-device/4-username bounded NextScale is not exhausted;
+run it manually using the TLA Scale Exploration workflow. Mandatory bounded
+projections and mutation controls remain in TLA Gate. Passing individual
+Next* projections is not a full-protocol proof.
