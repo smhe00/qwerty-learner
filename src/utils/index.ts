@@ -137,20 +137,7 @@ export function toFixedNumber(number: number, fractionDigits: number) {
   return Number((number ?? 0).toFixed(fractionDigits))
 }
 
-export function getUTCUnixTimestamp() {
-  const now = new Date()
-  return Math.floor(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      now.getUTCHours(),
-      now.getUTCMinutes(),
-      now.getUTCSeconds(),
-      now.getUTCMilliseconds(),
-    ) / 1000,
-  )
-}
+export { getUTCUnixTimestamp } from './time'
 
 export function timeStamp2String(timestamp: number) {
   const date = new Date(timestamp * 1000)
