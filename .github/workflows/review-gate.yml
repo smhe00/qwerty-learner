@@ -165,18 +165,18 @@ jobs:
       - name: Run Review scheduler and lifecycle contracts
         run: node --test .review-test/review/scheduler-lifecycle.test.mjs
 
-      - name: Bundle legacy Review domain compatibility tests
+      - name: Bundle Review foundation tests
         run: |
-          npx esbuild tests/review/legacy-domain.test.ts \
+          npx esbuild tests/review/review-foundation.test.ts \
             --bundle \
             --platform=node \
             --target=node20 \
             --format=esm \
             --external:@playwright/test \
-            --outfile=.review-test/review/legacy-domain.test.mjs
+            --outfile=.review-test/review/review-foundation.test.mjs
 
-      - name: Run legacy Review domain compatibility tests
-        run: node --test .review-test/review/legacy-domain.test.mjs
+      - name: Run Review foundation tests
+        run: node --test .review-test/review/review-foundation.test.mjs
 
       - name: Run Acquisition backup regression
         run: node --test .review-test/review/acquisition-regression.test.mjs
