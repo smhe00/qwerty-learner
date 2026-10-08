@@ -51,6 +51,56 @@ for (const contract of manifest.contracts ?? []) {
   }
 }
 
+const regressionCatalogPath = resolve(
+  root,
+  'tests/verification/regression-catalog.json',
+)
+if (!existsSync(regressionCatalogPath)) {
+  errors.push('missing regression catalog')
+} else {
+  const catalog = JSON.parse(
+    readFileSync(regressionCatalogPath, 'utf8'),
+  )
+  const regressionIds = new Set()
+
+  for (const regression of catalog.regressions ?? []) {
+    if (!regression.id || regressionIds.has(regression.id)) {
+      errors.push(
+        `duplicate or missing regression id: ${regression.id ?? '<missing>'}`,
+      )
+      continue
+    }
+    regressionIds.add(regression.id)
+
+    if (!Array.isArray(regression.tests) || regression.tests.length === 0) {
+      errors.push(`regression ${regression.id} has no tests`)
+      continue
+    }
+
+    for (const ref of regression.tests) {
+      if (!ref?.file || !existsSync(resolve(root, ref.file))) {
+        errors.push(
+          `regression ${regression.id} references missing test file: ${ref?.file}`,
+        )
+        continue
+      }
+      if (!ref?.title) {
+        errors.push(
+          `regression ${regression.id} has a test reference without title`,
+        )
+        continue
+      }
+
+      const source = readFileSync(resolve(root, ref.file), 'utf8')
+      if (!source.includes(ref.title)) {
+        errors.push(
+          `regression ${regression.id} test title not found in ${ref.file}: ${ref.title}`,
+        )
+      }
+    }
+  }
+}
+
 if (errors.length > 0) {
   throw new Error(
     ['Gate manifest validation failed:', ...errors.map((x) => `- ${x}`)].join(
@@ -60,5 +110,5 @@ if (errors.length > 0) {
 }
 
 console.log(
-  `Gate manifest OK: ${gateIds.size} gates, ${contractIds.size} contracts.`,
+  `Gate manifest OK: ${gateIds.size} gates, ${contractIds.size} contracts, regression catalog validated.`,
 )
