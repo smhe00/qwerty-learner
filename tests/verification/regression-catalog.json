@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "regressions": [
+    {
+      "id": "REG-20261004-LEARN-SINGLETON-STALL",
+      "symptom": "Learn later phases collapsed to one repeated word / failed to make semantic progress.",
+      "tests": [
+        {
+          "file": "tests/simulation/system-driver.test.ts",
+          "title": "full VirtualLearnApp blindly rediscovers the admitted-based singleton loop mutation"
+        },
+        {
+          "file": "tests/simulation/system-driver.test.ts",
+          "title": "F4 simulation detects a successful Acquisition attempt with neither projection nor item-state progress"
+        }
+      ]
+    },
+    {
+      "id": "REG-20261006-POST-SUCCESS-AUDIO-DELAY",
+      "symptom": "Spelling completion triggered/awaited pronunciation and could stall progression.",
+      "tests": [
+        {
+          "file": "tests/e2e/typing-lifecycle.spec.ts",
+          "title": "ordinary Typing pronounces word entry but never auto-pronounces after spelling completion"
+        },
+        {
+          "file": "tests/e2e/typing-lifecycle.spec.ts",
+          "title": "production spelling completion advances without post-success pronunciation wait"
+        }
+      ]
+    },
+    {
+      "id": "REG-20261007-BLOCK-PAUSE-STRICTMODE-DEADLOCK",
+      "symptom": "React StrictMode effect replay cancelled the only settlement subscriber, leaving Block Pause disabled.",
+      "tests": [
+        {
+          "file": "tests/e2e/learn-review-flow.spec.ts",
+          "title": "multi-word Review advances through every rendered word and finishes"
+        }
+      ]
+    },
+    {
+      "id": "REG-20261007-RELOAD-CURSOR-RESET",
+      "symptom": "Reload could restart or duplicate an unfinished Learn session instead of restoring its logical-word checkpoint.",
+      "tests": [
+        {
+          "file": "tests/e2e/learn-recovery-flow.spec.ts",
+          "title": "unfinished Learn session survives reload without cursor reset or duplication"
+        },
+        {
+          "file": "tests/simulation/system-driver.test.ts",
+          "title": "refresh restores the latest persisted checkpoint rather than restarting the session"
+        }
+      ]
+    },
+    {
+      "id": "REG-20261007-TERMINAL-RESURRECTION",
+      "symptom": "Finished Learn work could reappear after stale routing/resize/checkpoint races.",
+      "tests": [
+        {
+          "file": "tests/e2e/learn-recovery-flow.spec.ts",
+          "title": "finished Learn session rejects duplicate evidence even if a stale route renders its word"
+        },
+        {
+          "file": "tests/e2e/learn-recovery-flow.spec.ts",
+          "title": "desktop resize after Learn completion cannot resurrect the finished last word"
+        },
+        {
+          "file": "tests/simulation/system-driver.test.ts",
+          "title": "F3 production never resurrects a finished checkpoint after refresh"
+        }
+      ]
+    },
+    {
+      "id": "REG-20261007-DAILY-PROGRESS-ASSISTED-COUNT",
+      "symptom": "Daily progress could advance from cursor/block state or assisted acquisition rather than final independent evidence.",
+      "tests": [
+        {
+          "file": "tests/e2e/learn-live-stats.spec.ts",
+          "title": "Learn 今日进度 ignores block cursor and advances only from valid independent evidence"
+        },
+        {
+          "file": "tests/learn/daily-session.test.ts",
+          "title": "assisted acquisition does not advance daily independent progress"
+        }
+      ]
+    },
+    {
+      "id": "REG-20261007-FRESH-BUDGET-SEMANTIC-DRIFT",
+      "symptom": "Simulation and product quota semantics drifted between historical 20-word boundaries and configured daily targets.",
+      "tests": [
+        {
+          "file": "tests/simulation/system-driver.test.ts",
+          "title": "F8 production bounds fresh work by daily allowance and unseen inventory"
+        },
+        {
+          "file": "tests/learn/quota-strain.test.ts",
+          "title": "explicit quota remains unchanged after a heavy Review day; workload is advisory"
+        }
+      ]
+    }
+  ]
+}
