@@ -8,6 +8,11 @@
   },
   "gates": [
     {
+      "id": "verification",
+      "workflow": ".github/workflows/verification-contract-gate.yml",
+      "owner": "verification-governance"
+    },
+    {
       "id": "review",
       "workflow": ".github/workflows/review-gate.yml",
       "owner": "learn-review-integration"
