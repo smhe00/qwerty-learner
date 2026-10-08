@@ -1,5 +1,7 @@
 # Qwerty 云账号与同步架构
 
+> **Sync V2 已批准但尚未实现：** 统一跨设备进度模型见 [`CLOUD_SYNC_V2_MODEL.md`](./CLOUD_SYNC_V2_MODEL.md)。当前本文其余内容仍描述已发布的 V1 实现；V2 落地前不要把目标语义误认为现网行为。
+
 > 当前产品写入格式：`qwerty-backup-v3`。`qwerty-dexie-gzip-v2` 仅作为旧备份兼容恢复格式；旧的客户端 AES 加密 envelope 已废弃，不做兼容恢复。
 
 ## 1. 定位
