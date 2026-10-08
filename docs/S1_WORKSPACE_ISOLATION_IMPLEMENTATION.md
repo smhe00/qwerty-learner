@@ -127,3 +127,14 @@ and corrupt-vault recovery refusal. The legacy production entry point is
 presented as cross-tab protection while V1 tabs and account actions can still
 write without participating in the lock. This checkpoint is NOT S1 activation
 and no master deployment is authorized.
+
+### Verification addendum: guarded boot
+
+At source checkpoint `90c9b5d3`, the real Chromium S1 Gate passed **14/14**
+including six new fail-closed and journal-recovery scenarios; workflow
+https://github.com/smhe00/qwerty-learner/actions/runs/37858999566 .
+Cloud Sync Gate for boot source `fefc93dc` passed tests/lint/build:
+https://github.com/smhe00/qwerty-learner/actions/runs/37858818743 .
+These results cover an *unmounted harness*; S1 early-boot protection of the
+real V1 application is NOT delivered. The 3-device/4-username full TLC proof
+is still not complete.

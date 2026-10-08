@@ -131,3 +131,39 @@ isolation. It must not be used to auto-authorize cross-account migration.
 
 `master` and EdgeOne production remain unchanged; normal manual V3
 export/import and cloud V3 payloads retain their existing behavior.
+
+## 2026-10-09 guarded pre-mount checkpoint (post-CI)
+
+Development implementation commits:
+- `24a4f432`: S1 guarded startup primitive, six actual-Chromium
+  boot/lock/crash/error cases; test harness and gate wiring.
+- `1cc346d5`: force a fresh JS context after recovery, because importing
+  the restore adapter may initialize Jotai/localStorage module caches before
+  the target is restored.
+- `fefc93dc`: isolate clean-journal boot path from restore imports.
+- `90c9b5d3`: correct a test expectation (no `recovering` phase when
+  no pending journal exists); there was no corresponding product failure.
+
+**Verified CI:**
+- S1 Workspace Browser Gate:
+  https://github.com/smhe00/qwerty-learner/actions/runs/37858999566
+  **PASS 14/14** real Chromium tests at `90c9b5d3` (8 existing, 6 new).
+  The initial attempt at `fefc93dc` was 13/14 due solely to that incorrect
+  stage expectation, fixed and rerun green.
+- Cloud Sync Gate:
+  https://github.com/smhe00/qwerty-learner/actions/runs/37858818743
+  **PASS**, includes cloud tests, lint, Vite build at `fefc93dc`.
+  The subsequent `90c9b5d3` modification is a test-only assertion change.
+- The S0.5 protocol-wide TLA run `37856150599` was **CANCELLED**, not PASS.
+  The optional whole-state 3-device/4-username TLC exploration remains
+  nonblocking and unproved.
+
+**Activation blocker remains P0:** This is an opt-in primitive exercised
+from a browser harness, **not a wired app startup gate**. Existing V1 tabs,
+Login/Logout, React hydration, and all RecordDB writers do not yet honor
+this lease. No production safety claim is made. Before activation, route
+every live writer through the guarded boot, stop stale tabs and replay
+pending journals before mounting all Jotai modules. Then complete explicit
+legacy ownership, auth/offline failure UX, account transitions and tests.
+
+S1 remains **PARTIAL**. No `master` change or EdgeOne build authorized.

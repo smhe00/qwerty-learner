@@ -8,7 +8,7 @@ status: "PARTIAL"
 executor: "ChatGPT (direct executor)"
 claim_base_commit: "77ce352abdf15148da69ed90b47fc77f03fd5039"
 claimed_at_utc: "2026-10-08T22:41:35Z"
-last_known_commit: "40c05aa052adeba79b4b96213f46b2f7dd36666e"
+last_known_commit: "90c9b5d32a26263ccdbfe2685ffb2127c0ac6268"
 release_to_master: false
 priority: "P0"
 ---
@@ -30,4 +30,7 @@ separate report/release report; retain its historical review status and files.
 No master deployment is authorized for this task.
 
 2026-10-09 checkpoint: guarded bootstrap API and Chromium boot/fail-closed tests
-are being integrated; no production V1 entry wiring or S1 activation.
+were committed and tested: 14/14 Chromium on run 37858999566 and
+Cloud Sync build/lint on 37858818743 (source fefc93d). No production V1
+entry wiring or S1 activation. Next is controlled app entry with all-writer
+fencing, legacy migration consent and account lifecycle UI.
