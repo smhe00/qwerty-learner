@@ -318,9 +318,7 @@
         "duplicateGate": "review"
       }
     ],
-    "legacyWorkflowCandidates": [
-      ".github/workflows/e2e.yml"
-    ]
+    "legacyWorkflowCandidates": []
   },
   "specification": "docs/SPECIFICATION_V1.md"
 }
