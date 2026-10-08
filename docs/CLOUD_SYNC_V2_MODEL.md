@@ -1,4 +1,4 @@
-# Qwerty Plus Cloud Sync V2 — Unified Progress Model
+# Qwerty Plus Cloud Sync V2 — Canonical Workspace Sync Specification
 
 > Status: **canonical target specification; implementation pending**
 >
@@ -261,9 +261,12 @@ deviceId
 sizeBytes
 ~~~
 
-logicalFingerprint is SHA-256 of the canonical logical workspace content and is
-independent of gzip/Base64 representation. payloadSha256 is the integrity hash of
-the stored payload bytes.
+logicalFingerprint is SHA-256 of the canonical logical Backup V4 workspaceData and is
+independent of gzip/Base64 representation. It includes durable database state,
+DailySession/runtime, workspace settings, and navigation state. It excludes
+transport/snapshot metadata such as createdAt, source-account hint, auth/session,
+baseline, device identity, and compression representation. payloadSha256 is the
+integrity hash of the actual stored payload bytes.
 
 Manual Sync can therefore perform a metadata-only no-op when local and cloud
 logicalFingerprint are equal, even if the client's baseline revision needs to be
@@ -456,12 +459,15 @@ including at least:
   records are removed.
 
 It does not delete the dictionary resource itself, account/auth/session, ordinary
-workspace settings, other dictionaries' records, or global user preferences.
+workspace settings, other dictionaries' records, global user preferences, or
+already-earned account-level achievement state/history. Achievement state is
+cleared only by full account reset/deletion.
 
 #### Delete all dictionaries' learning records
 
 This removes learning progress/history across all dictionaries but keeps the
-workspace/account and its ordinary settings. It is **not** a full account reset.
+workspace/account, ordinary settings, and already-earned account-level achievement
+state/history. It is **not** a full account reset.
 
 For an account workspace, either deletion is a revisioned state mutation and
 must:
@@ -705,6 +711,27 @@ cross-account import/migration and requires strong confirmation. Backup/restore
 must never touch inactive local workspaces.
 
 
+
+
+### 10.3 V3 -> V4 migration policy
+
+V4 is write-only for new Sync V2 commits: after migration, new cloud/manual
+snapshots are always V4.
+
+V3 remains read-compatible only for one-way migration:
+
+- import the V3 database and its currentDict/currentChapter state;
+- synthesize missing V4-only durable runtime/settings fields deterministically;
+- when upgrading on the same browser profile, existing persistent user-facing
+  settings may seed WorkspaceSettingsV1;
+- when no prior settings exist, use product defaults;
+- missing DailySession/runtime is treated as absent, never fabricated;
+- after the first successful V4 commit, V4 becomes the account's canonical
+  snapshot format.
+
+V3 and V4 logical fingerprints are not compared as if they were the same schema.
+A V3 account must be migrated before V4 fingerprint/no-op semantics apply.
+
 ## 11. UI model
 
 Normal state should be expressed in user terms:
@@ -733,7 +760,8 @@ presented as the normal cross-device synchronization mechanism.
 
 1. Local learning never waits for cloud availability.
 2. Every authoritative logical-word transition remains locally durable.
-3. Automatic payload sync occurs no more frequently than Block boundaries.
+3. Routine automatic Learn payload sync occurs no more frequently than Block boundaries;
+   explicit operations such as delete/restore/logout reconciliation may trigger an immediate Sync.
 4. Manual Sync may commit the latest durable logical-word state inside a Block.
 5. Equal local/cloud state causes no snapshot payload transfer.
 6. A stale device cannot silently overwrite a newer cloud revision.
@@ -767,7 +795,49 @@ presented as the normal cross-device synchronization mechanism.
 29. Manual backup/restore operates on exactly one active workspace.
 
 
-## 13. Implementation order
+
+
+## 13. Canonical state models
+
+### 13.1 Workspace state
+
+~~~text
+ANONYMOUS
+ACCOUNT_ACTIVE
+ACCOUNT_AUTH_REQUIRED
+WORKSPACE_SWITCHING
+~~~
+
+### 13.2 Sync state
+
+~~~text
+CLEAN
+LOCAL_DIRTY
+REMOTE_AHEAD
+SYNCING
+CONFLICT
+OFFLINE
+AUTH_REQUIRED
+~~~
+
+### 13.3 Account/workspace transition state
+
+~~~text
+IDLE
+SAVING_SOURCE
+SYNCING_SOURCE
+LOADING_TARGET
+CHECKING_REMOTE
+RECONCILING
+COMMITTING_SWITCH
+DONE
+FAILED
+~~~
+
+Implementations may add internal substates, but must preserve these observable
+semantics.
+
+## 14. Implementation order
 
 ### S0 — Backup V4 and canonical workspace schema
 
