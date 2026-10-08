@@ -21,6 +21,10 @@ on:
       - '.github/workflows/cloud-sync.yml'
   workflow_dispatch:
 
+concurrency:
+  group: cloud-sync-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   cloud-backend:
     runs-on: ubuntu-latest
