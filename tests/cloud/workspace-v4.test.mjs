@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test, after } from 'node:test'
+import { after, test } from 'node:test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'

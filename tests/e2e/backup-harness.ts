@@ -1,3 +1,7 @@
+import { captureWorkingWorkspaceV4, resetWorkingWorkspaceToEmpty, restoreWorkingWorkspaceV4 } from '../../src/sync/workspace-v4-browser'
+import { createWorkspaceV4, workspaceFingerprintV4 } from '../../src/sync/workspace-v4'
+import { loadWorkspaceFromVault, saveWorkspaceToVault, workspaceRegistryPort, openWorkspaceVault } from '../../src/sync/workspace-vault'
+import { switchWorkspace, recoverWorkspace, ANONYMOUS } from '../../src/sync/workspace-transition'
 import { createLocalSnapshot, restoreLocalSnapshot } from '../../src/sync/snapshot'
 import {
   DURABLE_BACKUP_TABLE_NAMES,
@@ -286,4 +290,16 @@ async function inspectTableContract() {
   createLocalSnapshot,
   restoreLocalSnapshot,
   clearAllTables,
+  captureWorkingWorkspaceV4,
+  resetWorkingWorkspaceToEmpty,
+  restoreWorkingWorkspaceV4,
+  createWorkspaceV4,
+  workspaceFingerprintV4,
+  loadWorkspaceFromVault,
+  saveWorkspaceToVault,
+  workspaceRegistryPort,
+  openWorkspaceVault,
+  switchWorkspace,
+  recoverWorkspace,
+  ANONYMOUS,
 }
