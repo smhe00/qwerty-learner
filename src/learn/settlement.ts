@@ -13,7 +13,7 @@ import type {
 import { flushLearnPersistence } from './persistence'
 import { autoSyncCompletedLearnSession } from '@/sync/auto'
 import type { LearnAutoSyncResult } from '@/sync/auto'
-import { db } from '@/utils/db'
+import { db } from '@/utils/db/core'
 import type { ReviewRecord } from '@/utils/db/record'
 
 export type LearnBlockSettlement = {
