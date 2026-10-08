@@ -659,7 +659,9 @@ devices.
 
 The deletion tombstone is protocol metadata only. Its purpose is delete
 propagation and anti-resurrection; it is not considered retained account
-business data.
+business data. A deleted immutable account identity must never be reused, and
+the tombstone (or an equivalent permanent anti-resurrection mechanism) must
+remain authoritative for that deleted identity.
 
 
 ## 9. Device-switch semantics
@@ -792,6 +794,7 @@ Cloud Sync
   ↓ 正在恢复账号进度
   ! 同步冲突，需要处理
   ! 需要重新登录
+  ! 账号已删除，正在清理本机副本
   ○ 离线，稍后自动同步
 
 [ Sync ]
@@ -869,6 +872,7 @@ SYNCING
 CONFLICT
 OFFLINE
 AUTH_REQUIRED
+ACCOUNT_DELETED
 ~~~
 
 ### 13.3 Account/workspace transition state
