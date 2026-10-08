@@ -163,3 +163,65 @@ test('corrupted vault checksum never silently produces an empty account', async 
   }, accountA)
   expect(state).toMatch(/integrity mismatch/)
 })
+
+test('under an exclusive tab lease, anonymous and account snapshots remain physically isolated', async ({ page }) => {
+  await ready(page)
+  const outcome = await page.evaluate(async (a) => {
+    const h = (window as any).__backupHarness
+    const lease = await h.acquireWorkspaceWriterLease()
+    try {
+      await h.seed()
+      const original = await h.db.wordRecords.toArray()
+      if (!original.some((r: any) => r.word === 'backup-fsrs-word')) throw Error('no anonymous fixture')
+      await h.initializeLegacyWorkspace(h.ANONYMOUS)
+      await h.transitionWorkingWorkspace(a)
+      const firstAccount = await h.db.wordRecords.toArray()
+      await h.db.wordRecords.add({
+        word: 'A-ONLY-PRIVATE', dict: 'cet4', chapter: 0,
+        timeStamp: 1, wrongCount: 0, mistakes: {}, timing: [100],
+      })
+      await h.transitionWorkingWorkspace(h.ANONYMOUS)
+      const backToAnonymous = (await h.db.wordRecords.toArray()).map((r: any) => r.word)
+      await h.transitionWorkingWorkspace(a)
+      const backToA = (await h.db.wordRecords.toArray()).map((r: any) => r.word)
+      const registry = await h.workspaceRegistryPort.read()
+      return { firstAccount: firstAccount.length, backToAnonymous, backToA, registry }
+    } finally {
+      lease.release()
+    }
+  }, accountA)
+  expect(outcome.firstAccount).toBe(0)
+  expect(outcome.backToAnonymous).toContain('backup-fsrs-word')
+  expect(outcome.backToAnonymous).not.toContain('A-ONLY-PRIVATE')
+  expect(outcome.backToA).toContain('A-ONLY-PRIVATE')
+  expect(outcome.backToA).not.toContain('backup-fsrs-word')
+  expect(outcome.registry.active).toEqual(accountA)
+  expect(outcome.registry.pending).toBeNull()
+})
+
+test('Web Locks refuses a second writing tab until first lease is released', async ({ page, context }) => {
+  await ready(page)
+  const sibling = await context.newPage()
+  await ready(sibling)
+  await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    ;(window as any).__workspaceLease = await h.acquireWorkspaceWriterLease()
+  })
+  const secondStatus = await sibling.evaluate(async () => {
+    try {
+      const lease = await (window as any).__backupHarness.acquireWorkspaceWriterLease()
+      lease.release()
+      return 'incorrectly-acquired'
+    } catch { return 'busy' }
+  })
+  expect(secondStatus).toBe('busy')
+  await page.evaluate(() => (window as any).__workspaceLease.release())
+  await expect.poll(async () => sibling.evaluate(async () => {
+    try {
+      const lease = await (window as any).__backupHarness.acquireWorkspaceWriterLease()
+      lease.release()
+      return 'acquired'
+    } catch { return 'busy' }
+  })).toBe('acquired')
+  await sibling.close()
+})

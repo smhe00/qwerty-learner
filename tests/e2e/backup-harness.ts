@@ -1,3 +1,5 @@
+import { initializeLegacyWorkspace, transitionWorkingWorkspace } from '../../src/sync/workspace-coordinator'
+import { acquireWorkspaceWriterLease } from '../../src/sync/workspace-lock'
 import { captureWorkingWorkspaceV4, resetWorkingWorkspaceToEmpty, restoreWorkingWorkspaceV4 } from '../../src/sync/workspace-v4-browser'
 import { createWorkspaceV4, workspaceFingerprintV4 } from '../../src/sync/workspace-v4'
 import { loadWorkspaceFromVault, saveWorkspaceToVault, workspaceRegistryPort, openWorkspaceVault } from '../../src/sync/workspace-vault'
@@ -302,4 +304,8 @@ async function inspectTableContract() {
   switchWorkspace,
   recoverWorkspace,
   ANONYMOUS,
+  db,
+  initializeLegacyWorkspace,
+  transitionWorkingWorkspace,
+  acquireWorkspaceWriterLease,
 }
