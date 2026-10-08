@@ -39,9 +39,9 @@ function eligibleRecord(
   }
 }
 
-test('G2 records one FSRS shadow beside an unchanged basic-v2 owner', () => {
+test('G2 records FSRS analysis beside a Basic-v2 comparator', () => {
   const now = t0 + DAY
-  const active = scheduleBasicReview({
+  const basicComparator = scheduleBasicReview({
     state: createInitialReviewWordState('cet4', 'cold', t0),
     outcome: 'good',
     now,
@@ -52,27 +52,27 @@ test('G2 records one FSRS shadow beside an unchanged basic-v2 owner', () => {
     word: 'cold',
     records: [record],
     currentState: {
-      reviewCount: active.reviewCount,
+      reviewCount: basicComparator.reviewCount,
     },
   })
   const observation = buildFsrsLiveShadowObservation({
     replay,
     sourceRecordId: 101,
-    basicState: active,
+    basicState: basicComparator,
   })
 
   assert.ok(observation)
-  assert.equal(active.schedulerState.kind, 'basic-v2')
-  if (active.schedulerState.kind !== 'basic-v2') {
-    throw new Error('basic-v2 must remain the active scheduler')
+  assert.equal(basicComparator.schedulerState.kind, 'basic-v2')
+  if (basicComparator.schedulerState.kind !== 'basic-v2') {
+    throw new Error('basic-v2 comparator must remain available for analysis')
   }
   assert.equal(observation.rating, 'good')
   assert.equal(observation.libraryVersion, '5.4.2')
   assert.equal(observation.algorithmModel, 'fsrs-6')
-  assert.equal(observation.basicV2.dueAt, active.nextReviewAt)
+  assert.equal(observation.basicV2.dueAt, basicComparator.nextReviewAt)
   assert.equal(
     observation.basicV2.nominalIntervalDays,
-    active.schedulerState.intervalDays,
+    basicComparator.schedulerState.intervalDays,
   )
   assert.equal(
     observation.selectedIntervalDays,
@@ -86,7 +86,7 @@ test('G2 records one FSRS shadow beside an unchanged basic-v2 owner', () => {
 
 test('G2 cannot attach a shadow to a different source record', () => {
   const now = t0 + DAY
-  const active = scheduleBasicReview({
+  const basicComparator = scheduleBasicReview({
     state: createInitialReviewWordState('cet4', 'cold', t0),
     outcome: 'hard',
     now,
@@ -96,7 +96,7 @@ test('G2 cannot attach a shadow to a different source record', () => {
     word: 'cold',
     records: [eligibleRecord(201, now, 'hard')],
     currentState: {
-      reviewCount: active.reviewCount,
+      reviewCount: basicComparator.reviewCount,
     },
   })
 
@@ -104,7 +104,7 @@ test('G2 cannot attach a shadow to a different source record', () => {
     buildFsrsLiveShadowObservation({
       replay,
       sourceRecordId: 999,
-      basicState: active,
+      basicState: basicComparator,
     }),
     undefined,
   )
