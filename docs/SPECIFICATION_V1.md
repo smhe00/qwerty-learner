@@ -92,6 +92,23 @@ including inside phrases.
 
 Reload must not regress the active Hint assistance stage.
 
+### SPEC-REVIEW-EVIDENCE-001 — Rating evidence is authoritative
+
+Only eligible Learn Review evidence may mutate the long-term scheduler.
+Assisted completion, acquisition attempts, ordinary Typing, and ineligible
+Rating Gate events must not be replayed as positive spaced-review evidence.
+
+### SPEC-REVIEW-EXERCISE-001 — Adaptive exercise policy cannot weaken Cold Probe
+
+Adaptive targeted-mask/audio/scaffold plans may change training presentation,
+but every new Review item begins from the canonical independent Cold Probe.
+Historical adaptive shadows must not silently alter that starting condition.
+
+### SPEC-SCAFFOLD-001 — Scaffold softens support, not independence
+
+Dynamic scaffold and recovery-window logic may strengthen Supported training.
+They must never weaken the final Independent retrieval requirement.
+
 ## 4. Persistence and recovery
 
 ### SPEC-RECOVERY-001 — Logical-word checkpoint
@@ -150,7 +167,15 @@ policy.
 Spelling completion must never trigger a second automatic pronunciation and
 must never wait for pronunciation playback before advancing.
 
-## 7. Typing / Learn isolation
+## 7. Sidecars
+
+### SPEC-ACHIEVEMENT-001 — Achievement processing is non-blocking
+
+Achievement detection and ceremony are additive sidecars. Achievement failures
+must never block raw evidence persistence, Block settlement, Daily completion,
+or recovery.
+
+## 8. Typing / Learn isolation
 
 ### SPEC-MODE-001 — Typing cannot mutate Learn scheduling
 
@@ -161,7 +186,7 @@ long-term Learn scheduler state.
 Learn owns long-term acquisition, review scheduling, Hint policy, DailySession,
 and durable recovery.
 
-## 8. Verification rule
+## 9. Verification rule
 
 Every behavior-changing implementation change must update or preserve the
 matching executable contract in `tests/verification/gate-manifest.json`.
