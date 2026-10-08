@@ -1,0 +1,339 @@
+# Qwerty Plus Cloud Sync V2 — Unified Progress Model
+
+> Status: **approved design, implementation pending**
+>
+> This document defines the next cloud-sync model. The current V1 implementation
+> still exposes manual upload/download controls until this design is implemented.
+>
+> Core product rule:
+>
+> **one Sync ID owns one logical learning progress; devices are replicas of that progress.**
+
+## 1. Goals
+
+Cloud sync is not a backup workflow. Its primary purpose is to let the same Sync
+ID continue the same learning progress across devices without requiring the user
+to decide whether to upload or download.
+
+The product remains local-first:
+
+- signed out: all learning works from local IndexedDB only;
+- signed in: local IndexedDB remains the real-time working copy;
+- cloud state coordinates progress across devices;
+- network or EdgeOne failure must never block Learn, Typing, FSRS, or local recovery.
+
+## 2. Two durability granularities
+
+Qwerty deliberately uses different local and cloud checkpoint granularities.
+
+### 2.1 Local durability: logical-word checkpoint
+
+After each authoritative logical-word transition, all required Learn/Review state
+is persisted locally before the next word becomes authoritative.
+
+Therefore same-device reload/crash/close recovery resumes from the latest durable
+logical-word checkpoint.
+
+~~~text
+logical word complete
+        |
+        v
+local durable checkpoint
+        |
+        v
+next logical word
+~~~
+
+Partial character input may be lost. A completed logical word must not be lost or
+replayed as unfinished.
+
+### 2.2 Automatic cloud durability: Block checkpoint
+
+Automatic payload sync is triggered at a completed Learn Block boundary.
+
+~~~text
+word checkpoints ... word checkpoints
+               |
+               v
+         Block complete
+               |
+               v
+       automatic cloud sync
+~~~
+
+Without a manual sync, a different device is guaranteed to resume from the latest
+successfully cloud-synchronized checkpoint, normally the latest completed Block.
+
+**Block is only the automatic cloud-sync cadence in the sync protocol.** It does
+not weaken local logical-word durability and does not constrain manual sync
+granularity.
+
+## 3. Block-size memory parameter
+
+The Memory settings own a configurable Learn Block size:
+
+| Parameter | Default | Minimum | Meaning |
+| --- | ---: | ---: | --- |
+| Learn Block size | 20 logical words | 10 logical words | Automatic cloud-sync / internal Block granularity |
+
+Rules:
+
+1. values below 10 are invalid and must be normalized/rejected;
+2. existing product default remains 20;
+3. changing Block size changes future Block construction, not already durable
+   logical-word checkpoints;
+4. Block size must never change DailySession progress semantics;
+5. Block size must never reduce manual sync to Block granularity.
+
+No upper bound is specified by this design document; implementation may define a
+safe UI bound separately if needed.
+
+## 4. One user action: Sync
+
+The normal cloud UI must not expose separate **Upload** and **Download** actions.
+
+It exposes one operation:
+
+~~~text
+[ Sync ]
+~~~
+
+The sync engine determines direction from local fingerprint, cloud metadata,
+known base revision, and current revision.
+
+Normal users should not need to understand revision numbers or choose a transfer
+direction.
+
+### 4.1 No-op sync
+
+Manual Sync first compares state using lightweight metadata/fingerprint logic.
+
+If local and cloud are already logically identical:
+
+~~~text
+local fingerprint == synchronized cloud fingerprint
+AND no newer remote revision
+~~~
+
+then Sync completes as a no-op.
+
+**No snapshot payload is uploaded or downloaded.** A lightweight metadata request
+is allowed.
+
+### 4.2 Local newer, cloud unchanged
+
+If local state has durable changes and cloud has not changed since the local
+baseline, manual Sync uploads one current full snapshot.
+
+The snapshot represents the **latest durable logical-word checkpoint**, even when
+the user is in the middle of a Block.
+
+Therefore manual Sync can intentionally make cross-device recovery finer than the
+automatic Block boundary.
+
+### 4.3 Cloud newer, local clean
+
+If cloud has a newer revision and local has no unsynchronized durable changes,
+Sync downloads/restores the cloud snapshot and advances the local baseline.
+
+### 4.4 Both sides changed
+
+A revision/fingerprint divergence must never silently overwrite either side.
+
+The normal UI still remains a single Sync operation. If automatic reconciliation
+is unsafe, Sync enters an explicit conflict/recovery state. Directional
+upload/download controls, if retained for diagnostics or disaster recovery,
+belong only in an advanced recovery surface and are not part of the normal sync
+workflow.
+
+## 5. Automatic sync
+
+Automatic payload sync is deliberately sparse.
+
+### Trigger
+
+~~~text
+Block durable settlement
+        |
+        v
+local state is dirty
+        |
+        v
+cloud baseline still current
+        |
+        v
+upload one full gzip snapshot
+~~~
+
+A DailySession completion that coincides with the final Block does not require a
+second identical upload.
+
+There is no periodic 10-second/30-second full-snapshot timer in V2.
+
+There is no per-character or per-logical-word automatic payload upload.
+
+Lightweight remote metadata checks may occur at safe lifecycle points such as:
+
+- login;
+- application start;
+- before starting/resuming Learn;
+- explicit manual Sync.
+
+Metadata checks are not snapshot transfers.
+
+## 6. Manual sync is logical-word granular
+
+Manual Sync is intentionally different from automatic sync.
+
+Example:
+
+~~~text
+Block size = 20
+
+Cloud last auto checkpoint: Block 5 complete
+
+Device A starts Block 6:
+  word 1 complete  -> local checkpoint
+  word 2 complete  -> local checkpoint
+  ...
+  word 8 complete  -> local checkpoint
+
+user presses Sync
+        |
+        v
+cloud snapshot now contains Block 6 through word 8
+~~~
+
+If Device B then synchronizes, it can resume from the manually synchronized
+logical-word checkpoint rather than restarting Block 6.
+
+Therefore:
+
+> **Block controls automatic sync frequency, not the maximum precision of cloud state.**
+
+## 7. Cross-device authority
+
+Every cloud snapshot has a monotonically increasing revision. A device keeps the
+revision/fingerprint of the cloud state from which its current local branch was
+derived.
+
+A stale device must not overwrite a newer cloud revision.
+
+Conceptually:
+
+~~~text
+baseRevision == cloudRevision
+        |
+        +-- local dirty --> safe push
+        |
+        +-- local clean --> no-op
+
+cloudRevision > baseRevision
+        |
+        +-- local clean --> pull latest cloud state
+        |
+        +-- local dirty --> divergence / recovery path
+~~~
+
+The server continues to enforce optimistic concurrency on snapshot writes.
+
+## 8. Device-switch semantics
+
+The user-visible contract is:
+
+- same device: recover to the latest local logical-word checkpoint;
+- another device after normal automatic sync: recover to the latest synchronized
+  Block checkpoint;
+- another device after a manual Sync: recover to the latest manually synchronized
+  logical-word checkpoint.
+
+The product must never claim that an unsynchronized local tail exists on another
+device.
+
+## 9. Payload model
+
+V2 keeps the current full-snapshot transport initially:
+
+~~~text
+IndexedDB
+  -> qwerty-backup-v3
+  -> gzip
+  -> Base64
+  -> PUT /api/sync
+~~~
+
+The important optimization is **when** payloads move, not a premature move to
+record-level CRDT/incremental sync.
+
+Full payload transfer occurs only when a real state transfer is required:
+
+- automatic dirty Block commit;
+- manual Sync with local durable changes;
+- pull when a newer cloud revision must be restored.
+
+An equal-state manual Sync performs no snapshot transfer.
+
+## 10. UI model
+
+Normal state should be expressed in user terms:
+
+~~~text
+Cloud Sync
+  ✓ Synced
+  ↻ Syncing
+  ↑ Local changes waiting for sync
+  ! Sync conflict requires recovery
+
+[ Sync ]
+~~~
+
+The normal UI must not ask the user to choose "upload local" versus "download
+cloud".
+
+Backup/export remains a separate disaster-recovery capability and must not be
+presented as the normal cross-device synchronization mechanism.
+
+## 11. Required invariants
+
+1. Local learning never waits for cloud availability.
+2. Every authoritative logical-word transition remains locally durable.
+3. Automatic payload sync occurs no more frequently than Block boundaries.
+4. Manual Sync may commit the latest durable logical-word state inside a Block.
+5. Equal local/cloud state causes no snapshot payload transfer.
+6. A stale device cannot silently overwrite a newer cloud revision.
+7. Cloud failure cannot roll back local Learn completion.
+8. DailySession progress is independent of cloud-sync timing.
+9. Block-size configuration has a hard minimum of 10 logical words.
+10. The normal cloud UI has one synchronization action, not directional
+    upload/download actions.
+
+## 12. Implementation phases
+
+### Phase S1 — contract and parameter
+
+- add the Block-size memory parameter, default 20, minimum 10;
+- bind future Block construction to the parameter;
+- add executable contracts for the invariants above.
+
+### Phase S2 — single Sync operation
+
+- replace normal upload/download controls with one Sync action;
+- implement metadata-only no-op when already synchronized;
+- retain explicit recovery only for true divergence.
+
+### Phase S3 — automatic Block sync
+
+- trigger safe automatic snapshot sync after durable Block settlement;
+- avoid a duplicate DailySession-complete upload when the final Block already
+  produced the same snapshot;
+- check remote metadata before starting/resuming Learn.
+
+### Phase S4 — multi-device hardening
+
+- allow the same Sync ID to authenticate on multiple devices;
+- add stable device identity;
+- fuzz/test stale-device, crash, reload, network-partition, and revision-conflict
+  scenarios.
+
+Incremental/record-level cloud sync is explicitly out of scope until measured
+snapshot size or usage requires it.
