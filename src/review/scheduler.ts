@@ -57,35 +57,19 @@ function intervalForStage(
   return policy.intervalsDays[boundedStage]
 }
 
-export function upgradeBasicSchedulerState(
-  state: IReviewWordState,
-): IReviewWordState {
-  if (state.schedulerState.kind !== 'basic-v1') return state
-
-  return {
-    ...state,
-    schedulerState: {
-      kind: 'basic-v2',
-      stage: state.schedulerState.stage,
-      intervalDays: state.schedulerState.intervalDays,
-    },
-  }
-}
-
 export function scheduleBasicReview(
   input: ReviewScheduleInput,
   policy: BasicReviewSchedulePolicy = defaultBasicReviewSchedulePolicy,
 ): IReviewWordState {
-  const upgradedState = upgradeBasicSchedulerState(input.state)
-  const current = upgradedState.schedulerState
+  const current = input.state.schedulerState
   if (current.kind !== 'basic-v2') {
-    throw new Error(`basic-v2 scheduler cannot update ${current.kind} state`)
+    throw new Error(`basic-v2 comparator cannot update ${current.kind} state`)
   }
 
-  const isFirstReview = upgradedState.reviewCount === 0
-  const isDue = isFirstReview || input.now >= upgradedState.nextReviewAt
+  const isFirstReview = input.state.reviewCount === 0
+  const isDue = isFirstReview || input.now >= input.state.nextReviewAt
   const secondsSinceLastReview =
-    upgradedState.lastReviewedAt === undefined ? undefined : Math.max(0, input.now - upgradedState.lastReviewedAt)
+    input.state.lastReviewedAt === undefined ? undefined : Math.max(0, input.now - input.state.lastReviewedAt)
   const isSameSession =
     !isFirstReview &&
     secondsSinceLastReview !== undefined &&
@@ -123,14 +107,14 @@ export function scheduleBasicReview(
     ...upgradedState,
     updatedAt: input.now,
     lastReviewedAt: input.now,
-    nextReviewAt: shouldReschedule ? input.now + intervalDays * DAY_SECONDS : upgradedState.nextReviewAt,
-    reviewCount: upgradedState.reviewCount + (countsAsLongTermReview ? 1 : 0),
-    lapseCount: upgradedState.lapseCount + (countsAsLongTermReview && input.outcome === 'again' ? 1 : 0),
+    nextReviewAt: shouldReschedule ? input.now + intervalDays * DAY_SECONDS : input.state.nextReviewAt,
+    reviewCount: input.state.reviewCount + (countsAsLongTermReview ? 1 : 0),
+    lapseCount: input.state.lapseCount + (countsAsLongTermReview && input.outcome === 'again' ? 1 : 0),
     cleanStreak: countsAsLongTermReview
       ? input.outcome === 'again'
         ? 0
-        : upgradedState.cleanStreak + 1
-      : upgradedState.cleanStreak,
+        : input.state.cleanStreak + 1
+      : input.state.cleanStreak,
     lastOutcome: input.outcome,
     schedulerState: nextSchedulerState,
   }
