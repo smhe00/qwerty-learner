@@ -300,7 +300,59 @@ If a first-time account binding wants to adopt anonymous progress, that must be
 an explicit one-time migration decision. Outside that explicit migration,
 workspace switching preserves isolation.
 
-### 8.4 Deleting learning records
+### 8.4 Account-scoped settings
+
+A workspace owns not only learning records but also the user's persistent
+product settings.
+
+Therefore switching workspace must switch both:
+
+~~~text
+learning progress
++
+persistent user settings
+~~~
+
+Examples of account/workspace-scoped settings include:
+
+- Memory settings, including daily new-word target and Learn Block size;
+- Typing preferences;
+- pronunciation / phonetic / key-sound / hint-sound preferences;
+- font / display / answer-visibility preferences;
+- dictation/random/loop preferences;
+- current dictionary and current chapter;
+- other persistent user-facing product parameters.
+
+The logical rule is:
+
+~~~text
+signed out
+  -> anonymous progress + anonymous settings
+
+login A
+  -> account:A progress + account:A settings
+
+logout A
+  -> anonymous progress + anonymous settings
+
+login B
+  -> account:B progress + account:B settings
+~~~
+
+Settings from account A must never leak into account B or anonymous mode.
+
+Account-scoped settings participate in the account snapshot/fingerprint and
+therefore follow the account across devices.
+
+Device/runtime-only state is not account-scoped and must not be copied through
+the cloud snapshot. Examples include authentication tokens, stable device ID,
+network state, transient UI state, and developer diagnostics.
+
+A setting change is durable locally immediately and marks the active workspace
+dirty. It must eventually be included in the next safe cloud commit; manual Sync
+must include the latest durable settings even inside an unfinished Block.
+
+### 8.5 Deleting learning records
 
 "Delete learning records" always acts on the **currently active workspace**.
 
@@ -391,6 +443,11 @@ presented as the normal cross-device synchronization mechanism.
 14. Registration is allowed only after returning to the signed-out anonymous workspace.
 15. Learning-record deletion affects only the active workspace; stale devices must not
     silently resurrect a deletion committed by a newer cloud revision.
+16. Persistent user-facing settings belong to the active workspace and switch with it.
+17. Account-scoped settings must follow the same account across devices and must not leak
+    between anonymous/account workspaces.
+18. Device/runtime-only state such as auth tokens, device identity, transient UI state,
+    and developer diagnostics must not be cloud-synchronized as account settings.
 
 ## 13. Implementation phases
 
@@ -415,7 +472,7 @@ presented as the normal cross-device synchronization mechanism.
 
 ### Phase S4 — workspace and multi-device hardening
 
-- implement isolated anonymous/account local workspaces;
+- implement isolated anonymous/account local workspaces for both learning progress and persistent settings;
 - require logout to anonymous before registering another account;
 - bind delete-one-dictionary / delete-all-records to the active workspace;
 - allow the same Sync ID to authenticate on multiple devices;
