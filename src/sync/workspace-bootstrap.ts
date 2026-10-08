@@ -58,15 +58,15 @@ export async function prepareGuardedWorkspaceBoot(
     // After a journal replay, their module-level caches may reflect the OLD
     // localStorage. Refuse hydration in this JS realm and require a reload.
     // In the no-journal path we never load those modules before app mount.
-    let registry = before
     if (before.pending) {
       report(onStage, 'recovering')
       const { recoverPendingWorkspace } = await import('./workspace-coordinator')
-      registry = await recoverPendingWorkspace()
+      await recoverPendingWorkspace()
       recovered = true
       throw new Error('S1 recovery completed; reload required before mounting app')
     }
 
+    const registry = before
     report(onStage, 'checking-identity')
     const auth = loadAuth()
     const expected: Workspace = auth
