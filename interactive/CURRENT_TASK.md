@@ -8,7 +8,7 @@ status: "PARTIAL"
 executor: "ChatGPT (direct executor)"
 claim_base_commit: "77ce352abdf15148da69ed90b47fc77f03fd5039"
 claimed_at_utc: "2026-10-08T22:41:35Z"
-last_known_commit: "f5788e5eec899ed82ff008aa9b2e8def64dd1209"
+last_known_commit: "4a4828b4541c316aa40c43520b3136591e572507"
 release_to_master: false
 priority: "P0"
 ---
@@ -44,3 +44,10 @@ blocked when S1 generation >0. Chromium actual-app Gate 22/22 PASS on
 The audio follow-up `f5788e5` requires Review Gate final confirmation.
 Next: transactional legacy ownership consent, S1 account UI, stale-old-tab
 rollout migration, failure injection and trace refinement. Still PARTIAL.
+
+2026-10-09 closure checkpoint: real S1 journal Crash recovery through
+the production entry and clean React reload was added to Playwright;
+S1 Browser Gate 37860498562 PASS 23/23. Default V1 users are not migrated.
+Typing's distinct audio feedback race and test boundary were fixed in
+`f5788e5` and `4a4828b`; Review Gate 37860755931 still requires checking.
+Next milestone remains S1 account lifecycle and explicit V1 ownership consent.

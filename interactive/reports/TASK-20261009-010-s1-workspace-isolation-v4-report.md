@@ -197,3 +197,26 @@ can be provisioned only through isolated test harness; no end-user account
 switch is activated. Full writer quiescence on page lifecycle, multi-tab
 rebind, destructive V4 restore and migration UX remain unimplemented.
 Production branch stays unchanged. S1 is PARTIAL / NO RELEASE.
+
+## Actual app Crash recovery + audio regression audit
+
+At `757f3942`, a new full application test sets a durable pending switch
+journal, preserves the original anonymous snapshot, navigates the real page,
+waits for pending restore and page reload, and checks account identity,
+registry generation=3, absent inherited anonymous records and intact
+anonymous vault. Browser Gate 37860498562 **PASS 23/23**.
+
+Review Gate revealed a separate timing-sensitive Typing audio test:
+- `f5788e5` fences delayed automatic play after synchronous accepted
+  keystrokes/terminal lock, preserving the intended one-shot entry sound.
+- `d080a7d` gives cold development transform adequate wait for first word.
+- `4a4828b` fixes the test oracle to count *new audio.play calls after actual
+  completion*, not plays during spelling after an earlier pre-input baseline.
+The production audio feature must not be labeled fully verified until Review
+Gate https://github.com/smhe00/qwerty-learner/actions/runs/37860755931
+concludes successfully.
+
+Remaining S1 blockers: explicit one-time V1 ownership migration, complete
+transactional register/login/logout UI with progress/recovery, stale older
+JS tabs, all-writer quiescence during page lifecycle, offline/auth-expiry
+error injection, protocol trace refinement. No EdgeOne build; no master push.

@@ -183,5 +183,22 @@ CI evidence:
 **Open blockers:** No V1 account ownership consent/transactional UI;
 no supported S1 login/register/logout/switch user flows; no multi-device
 or production EdgeOne migration; no verified handling of already-open older
-application tabs; no real-browser successful post-crash restore-then-app-mount
-end-to-end test yet. Do not publish `master` or call S1 complete.
+application tabs; successful post-crash restore-then-app-mount now tested end-to-end in
+Chromium; V1 consent and account switch UI are still unimplemented. Do not publish `master` or call S1 complete.
+
+### S1 post-crash actual-app recovery gate
+
+At `757f3942`, an injected Crash after durable journal persistence
+was replayed by the **real** `src/index.tsx` entry point before React.
+The app then reloaded from a clean JS context, selected the recovered account,
+kept its working database empty (rather than inheriting anonymous data),
+and verified that the anonymous V4 snapshot remained durable.
+S1 Browser Gate **23/23 PASS**:
+https://github.com/smhe00/qwerty-learner/actions/runs/37860498562
+
+The unrelated Typing audio lifecycle gate exposed a timing-sensitive legacy
+assertion; the source fix synchronously fences automatic audio after accepted
+input, and its browser regression now measures the no-late-play invariant
+from the actual success boundary, not an earlier typing start. Latest Review:
+https://github.com/smhe00/qwerty-learner/actions/runs/37860755931
+(check final result). This does not change S1's PARTIAL status.
