@@ -11,12 +11,7 @@ import {
   summarizeAnswerVisibility,
 } from '../../src/review/learning-context'
 import { rankDueReviewCandidates, rankReviewCandidates } from '../../src/review/priority'
-import { inferReviewOutcomeFromWordRecord, rebuildBasicStateFromWordRecords } from '../../src/review/rebuild'
-import {
-  classificationToReviewOutcome,
-  inferLegacyReviewOutcome,
-  scheduleBasicReview,
-} from '../../src/review/scheduler'
+import { classificationToReviewOutcome } from '../../src/review/scheduler'
 import { WordTelemetryCollector, readWordTelemetry } from '../../src/review/telemetry'
 import { createInitialReviewWordState } from '../../src/review/types'
 import type { IWordRecord } from '../../src/utils/db/record'
