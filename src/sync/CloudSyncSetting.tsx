@@ -1,3 +1,4 @@
+import { assertLegacyAuthChangeAllowed } from './workspace-auth-guard'
 import { SyncApiError, deleteCloudAccount, getSync, getSyncMeta, putSync } from './api'
 import { loadAuth, loginAndRemember, logout, registerAndRemember } from './auth'
 import {
@@ -122,6 +123,7 @@ export default function CloudSyncSetting() {
 
   const doLogin = () =>
     run(async () => {
+      await assertLegacyAuthChangeAllowed()
       const next = await loginAndRemember(username, password)
       setAuth(next)
       setPassword('')
@@ -131,6 +133,7 @@ export default function CloudSyncSetting() {
 
   const doRegister = () =>
     run(async () => {
+      await assertLegacyAuthChangeAllowed()
       if (password !== confirmPassword) {
         setMessage('两次输入的注册密码不一致。')
         return
@@ -240,6 +243,8 @@ export default function CloudSyncSetting() {
     if (!confirmed) return
 
     void run(async () => {
+      // Cloud deletion is irreversible: never issue it from isolated S1 V1 UI.
+      await assertLegacyAuthChangeAllowed()
       const userId = auth.user.userId
       await deleteCloudAccount(auth.token, deletePassword)
       clearSyncBaseline(userId)
@@ -253,12 +258,15 @@ export default function CloudSyncSetting() {
   }
 
   const doLogout = () => {
-    logout()
-    setAuth(null)
-    setPassword('')
-    setConfirmPassword('')
-    setDeletePassword('')
-    setMessage('')
+    void run(async () => {
+      await assertLegacyAuthChangeAllowed()
+      logout()
+      setAuth(null)
+      setPassword('')
+      setConfirmPassword('')
+      setDeletePassword('')
+      setMessage('')
+    })
   }
 
   const remoteUnsupported = isUnsupportedRemote(view)

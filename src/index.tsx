@@ -1,191 +1,88 @@
-import Loading from './components/Loading'
-import './index.css'
-import { ErrorBook } from './pages/ErrorBook'
-import { FriendLinks } from './pages/FriendLinks'
-import MobilePage from './pages/Mobile'
-import TypingPage from './pages/Typing'
-import { isOpenDarkModeAtom } from '@/store'
-import 'animate.css'
-import { useAtomValue } from 'jotai'
-import React, { Suspense, lazy, useEffect, useRef, useState } from 'react'
-import { isBrowserFuzzFaultEnabled } from '@/dev/browser-fuzz-hooks'
-import 'react-app-polyfill/stable'
-import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+/**
+ * Sole real-app entry. No import of React/Jotai/RecordDB or domain modules
+ * may precede the exclusive writer lease and pending-journal check.
+ * Legacy users continue without automatic S1 migration.
+ */
+import { prepareGuardedWorkspaceBoot } from './sync/workspace-bootstrap'
+import type { GuardedWorkspaceBoot, WorkspaceBootStage } from './sync/workspace-bootstrap'
 
-const loadAnalysisPage = () => import('./pages/Analysis')
-const loadGalleryPage = () => import('./pages/Gallery-N')
-const loadLearnPage = () => import('./pages/Learn')
-const loadAchievementsPage = () => import('./pages/Achievements')
+const root = document.getElementById('root')
+let boot: GuardedWorkspaceBoot | undefined
+let starting = false
+let releasedForPageHide = false
+let mounted = false
 
-async function loadRouteWithRefresh<T>(
-  routeKey: string,
-  loader: () => Promise<T>,
-): Promise<T> {
-  const retryKey = `qwerty:lazy-route-reload:${routeKey}`
+function gateUI(title: string, detail: string, action?: string): void {
+  if (!root || mounted) return
+  root.replaceChildren()
+  const panel = document.createElement('section')
+  panel.setAttribute('role', 'status')
+  panel.setAttribute('aria-live', 'polite')
+  panel.style.cssText = 'max-width:560px;margin:12vh auto;padding:28px;font-family:system-ui,sans-serif;line-height:1.7;color:#334155'
+  const heading = document.createElement('h1')
+  heading.textContent = title
+  heading.style.cssText = 'font-size:22px;font-weight:600;margin-bottom:12px'
+  const body = document.createElement('p')
+  body.textContent = detail
+  panel.append(heading, body)
+  if (action) {
+    const retry = document.createElement('button')
+    retry.textContent = action
+    retry.type = 'button'
+    retry.style.cssText = 'margin-top:20px;border:1px solid #64748b;border-radius:6px;padding:8px 16px'
+    retry.addEventListener('click', () => window.location.reload())
+    panel.append(retry)
+  }
+  root.append(panel)
+}
 
+function onStage(stage: WorkspaceBootStage): void {
+  if (stage === 'locking') {
+    gateUI('正在准备本地学习数据', '正在取得本浏览器的独占学习数据写入权限…')
+  } else if (stage === 'recovering') {
+    gateUI('正在恢复学习进度', '检测到上次未完成的工作区切换，正在安全恢复。')
+  }
+}
+
+async function start(): Promise<void> {
+  if (starting || releasedForPageHide) return
+  starting = true
   try {
-    const module = await loader()
-    sessionStorage.removeItem(retryKey)
-    return module
+    boot = await prepareGuardedWorkspaceBoot(onStage, { allowLegacy: true })
+    if (releasedForPageHide) {
+      boot.release()
+      return
+    }
+    // Importing the old app initializes store atoms and DB modules. This
+    // module must never be evaluated before the boot gate resolves.
+    await import('./app')
+    mounted = true
   } catch (error) {
-    // A browser tab can keep the previous deployment's entry bundle alive
-    // while EdgeOne has already promoted a new set of hashed route chunks.
-    // A fresh document resolves the entry/chunk versions again. Retry only
-    // once per route/build so a real network failure cannot cause a loop.
-    if (sessionStorage.getItem(retryKey) !== LATEST_COMMIT_HASH) {
-      sessionStorage.setItem(retryKey, LATEST_COMMIT_HASH)
+    boot?.release()
+    boot = undefined
+    const message = error instanceof Error ? error.message : String(error)
+    if (message.includes('recovery completed; reload required')) {
+      gateUI('恢复已完成', '正在重新加载已恢复的学习数据…')
       window.location.reload()
-      return new Promise<T>(() => undefined)
+      return
     }
-    throw error
+    if (message.includes('Another tab owns')) {
+      gateUI('另一个标签页正在使用学习数据', '为防止两个标签页同时写入而损坏学习进度，本页暂不启动。请关闭其他 Qwerty Plus 标签页，再重试。', '重试')
+    } else {
+      gateUI('学习数据安全检查未通过', '已阻止本页写入，现有学习数据不会因此被清空。原因：' + message, '重新检查')
+    }
+  } finally {
+    starting = false
   }
 }
 
-const AnalysisPage = lazy(() =>
-  loadRouteWithRefresh('analysis', loadAnalysisPage),
-)
-const GalleryPage = lazy(() =>
-  loadRouteWithRefresh('gallery', loadGalleryPage),
-)
-const LearnPage = lazy(() =>
-  loadRouteWithRefresh('learn', loadLearnPage),
-)
-const AchievementsPage = lazy(() =>
-  loadRouteWithRefresh('achievements', loadAchievementsPage),
-)
+window.addEventListener('pagehide', () => {
+  // A page restored from BFCache must never reuse an expired writer lease.
+  releasedForPageHide = true
+  boot?.release()
+})
+window.addEventListener('pageshow', event => {
+  if (event.persisted) window.location.reload()
+})
 
-type PersistedLearnRouteState = 'none' | 'active' | 'finished'
-
-function getPersistedLearnRouteState(): PersistedLearnRouteState {
-  const raw = localStorage.getItem('reviewModeInfo')
-  if (!raw) return 'none'
-
-  try {
-    const value = JSON.parse(raw)
-    if (!value?.isReviewMode || !value?.reviewRecord) return 'none'
-    return value.reviewRecord.isFinished ? 'finished' : 'active'
-  } catch {
-    return 'none'
-  }
-}
-
-function RootIndexRoute() {
-  const learnState = getPersistedLearnRouteState()
-
-  // A full-document navigation to "/" must never resurrect a Learn checkpoint.
-  // This is especially important after terminal completion: the durable record
-  // is already finished, while the Typing reducer starts from isFinished=false.
-  if (learnState !== 'none') {
-    return <Navigate to="/learn" replace />
-  }
-  return <TypingPage />
-}
-
-function Root() {
-  const darkMode = useAtomValue(isOpenDarkModeAtom)
-
-  useEffect(() => {
-    // Gallery and Learn are the two most common route transitions. Preload
-    // their chunks while the current deployment is known-good so a later
-    // promotion cannot strand an already-open tab on an old lazy chunk URL.
-    const timeout = window.setTimeout(() => {
-      void loadGalleryPage().catch(() => undefined)
-      void loadLearnPage().catch(() => undefined)
-    }, 1000)
-
-    return () => window.clearTimeout(timeout)
-  }, [])
-
-  useEffect(() => {
-    if (!import.meta.env.DEV) return
-
-    let active = true
-    let cleanup: (() => void) | undefined
-
-    void import('@/review/devtools').then(({ installReviewDevtools }) => {
-      if (active) {
-        cleanup = installReviewDevtools()
-      }
-    })
-
-    return () => {
-      active = false
-      cleanup?.()
-    }
-  }, [])
-  useEffect(() => {
-    darkMode ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark')
-  }, [darkMode])
-
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 600)
-  const wasMobileRef = useRef(isMobile)
-
-  useEffect(() => {
-    const handleResize = () => {
-      const nextIsMobile = window.innerWidth <= 600
-      const wasMobile = wasMobileRef.current
-      wasMobileRef.current = nextIsMobile
-      setIsMobile(nextIsMobile)
-
-      // Desktop resize is not navigation. The old handler forced every
-      // desktop resize (DevTools, side panel, window drag) through "/", which
-      // could remount Typing after a Learn terminal checkpoint and resurrect
-      // the final word. Only a real mobile -> desktop transition needs to
-      // leave the dedicated /mobile route.
-      if (
-        (
-          isBrowserFuzzFaultEnabled(
-            'desktop-resize-navigates-root',
-          ) &&
-          !nextIsMobile
-        ) ||
-        (
-          wasMobile &&
-          !nextIsMobile &&
-          window.location.pathname.endsWith('/mobile')
-        )
-      ) {
-        const rootPath =
-          REACT_APP_DEPLOY_ENV === 'pages'
-            ? '/qwerty-learner/'
-            : '/'
-        window.location.replace(rootPath)
-      }
-    }
-
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  return (
-    <React.StrictMode>
-      <BrowserRouter basename={REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : ''}>
-        <Suspense fallback={<Loading />}>
-          <Routes>
-            {isMobile ? (
-              <Route path="/*" element={<Navigate to="/mobile" />} />
-            ) : (
-              <>
-                <Route index element={<RootIndexRoute />} />
-                <Route path="/typing" element={<TypingPage />} />
-                <Route path="/learn" element={<LearnPage />} />
-                <Route path="/achievements" element={<AchievementsPage />} />
-                <Route path="/gallery" element={<GalleryPage />} />
-                <Route path="/analysis" element={<AnalysisPage />} />
-                <Route path="/error-book" element={<ErrorBook />} />
-                <Route path="/friend-links" element={<FriendLinks />} />
-                <Route path="/*" element={<Navigate to="/" />} />
-              </>
-            )}
-            <Route path="/mobile" element={<MobilePage />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
-    </React.StrictMode>
-  )
-}
-
-const container = document.getElementById('root')
-
-container && createRoot(container).render(<Root />)
+void start()

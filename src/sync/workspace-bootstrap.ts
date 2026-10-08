@@ -2,8 +2,8 @@
  * S1 guarded bootstrap primitive. Call this BEFORE dynamically importing the
  * mounted app and BEFORE any working-DB or Jotai writers can initialize.
  *
- * NOT installed in the V1 production entry point: legacy tabs still bypass
- * S1 ownership, so this primitive alone does not authorize S1 activation.
+ * The V1-compatible entry uses allowLegacy only for an uninitialized
+ * registry. It never migrates or switches an account implicitly.
  */
 import { loadAuth } from './auth'
 import { acquireWorkspaceWriterLease } from './workspace-lock'
@@ -20,6 +20,7 @@ export type WorkspaceBootStage =
   | 'blocked'
 
 export type GuardedWorkspaceBoot = {
+  mode: 'legacy' | 'isolated'
   registry: Registry
   /** Only call after all mounted writers have stopped and flushed. */
   release(): void
@@ -40,6 +41,7 @@ function report(
  */
 export async function prepareGuardedWorkspaceBoot(
   onStage?: (stage: WorkspaceBootStage) => void,
+  options: { allowLegacy?: boolean } = {},
 ): Promise<GuardedWorkspaceBoot> {
   report(onStage, 'locking')
   const lease = await acquireWorkspaceWriterLease().catch(error => {
@@ -51,7 +53,14 @@ export async function prepareGuardedWorkspaceBoot(
   try {
     const before = await workspaceRegistryPort.read()
     if (before.generation === 0) {
-      throw new Error('S1 workspace is not initialized: explicit V1 migration is required')
+      if (before.pending) throw new Error('Invalid uninitialized workspace journal')
+      if (!options.allowLegacy) {
+        throw new Error('S1 workspace is not initialized: explicit V1 migration is required')
+      }
+      // One-writer V1 compatibility: never assign ownership or migrate here.
+      // Login/logout retains V1 behavior until the explicit S1 consent flow.
+      report(onStage, 'ready')
+      return { mode: 'legacy', registry: before, release: () => lease.release() }
     }
 
     // Importing the restore adapter loads the legacy Jotai/store modules.
@@ -77,7 +86,7 @@ export async function prepareGuardedWorkspaceBoot(
     }
 
     report(onStage, 'ready')
-    return { registry, release: () => lease.release() }
+    return { mode: 'isolated', registry, release: () => lease.release() }
   } catch (error) {
     lease.release()
     report(onStage, recovered ? 'restart-required' : 'blocked')
