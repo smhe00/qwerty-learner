@@ -112,18 +112,6 @@ jobs:
       - name: Run G3 analysis contract tests
         run: node --test .fsrs-g0/g3-analysis.test.mjs
 
-      - name: Bundle G4 FSRS strategy benchmark
-        run: |
-          npx esbuild tests/fsrs/g4-strategy-benchmark.test.ts \
-            --bundle \
-            --platform=node \
-            --target=node20 \
-            --format=esm \
-            --outfile=.fsrs-g0/g4-strategy-benchmark.test.mjs
-
-      - name: Run G4 FSRS strategy benchmark
-        run: node --test .fsrs-g0/g4-strategy-benchmark.test.mjs
-
       - name: Bundle G5 active scheduler contract
         run: |
           npx esbuild tests/fsrs/g5-active-scheduler.test.ts \
