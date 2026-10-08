@@ -45,10 +45,7 @@ import {
   reactivateReviewStateFromLearningEvidence,
 } from '../../src/review/rebuild'
 import { basicV2ReviewIntervalsDays } from '../../src/review/policy'
-import {
-  scheduleBasicReview,
-  upgradeBasicSchedulerState,
-} from '../../src/review/scheduler'
+import { scheduleBasicReview } from '../../src/review/scheduler'
 import { createInitialReviewWordState } from '../../src/review/types'
 import type { IWordRecord } from '../../src/utils/db/record'
 
@@ -799,7 +796,7 @@ test('formal/learning-reactivation: Typing is neutral and only explicit Learn tr
       state.lastReviewedAt = item.reviewTime
       state.nextReviewAt = now + 10_000
       state.schedulerState = {
-        kind: 'basic-v1',
+        kind: 'basic-v2',
         stage: 2,
         intervalDays: 7,
       }
@@ -830,53 +827,6 @@ test('formal/learning-reactivation: Typing is neutral and only explicit Learn tr
   }
 })
 
-
-test('formal/basic-v2-migration: v1 upgrade preserves non-scheduler state for bounded legacy stages', () => {
-  const legacyIntervals = [1, 3, 7, 14, 30]
-
-  for (let stage = 0; stage < legacyIntervals.length; stage += 1) {
-    const state = createInitialReviewWordState(
-      'cet4',
-      'legacy-' + stage,
-      10,
-    )
-    state.updatedAt = 20
-    state.lastReviewedAt = 15
-    state.nextReviewAt = 100_000 + stage
-    state.reviewCount = stage + 1
-    state.lapseCount = stage
-    state.cleanStreak = stage + 2
-    state.lifecycle = stage % 2 === 0 ? 'active' : 'excluded'
-    if (state.lifecycle === 'excluded') {
-      state.exclusion = {
-        reason: 'manual',
-        excludedAt: 19,
-      }
-    }
-    state.schedulerState = {
-      kind: 'basic-v1',
-      stage,
-      intervalDays: legacyIntervals[stage],
-    }
-
-    const upgraded = upgradeBasicSchedulerState(state)
-
-    assert.equal(upgraded.updatedAt, state.updatedAt)
-    assert.equal(upgraded.lastReviewedAt, state.lastReviewedAt)
-    assert.equal(upgraded.nextReviewAt, state.nextReviewAt)
-    assert.equal(upgraded.reviewCount, state.reviewCount)
-    assert.equal(upgraded.lapseCount, state.lapseCount)
-    assert.equal(upgraded.cleanStreak, state.cleanStreak)
-    assert.equal(upgraded.lifecycle, state.lifecycle)
-    assert.deepEqual(upgraded.exclusion, state.exclusion)
-    assert.equal(upgraded.schedulerState.kind, 'basic-v2')
-    assert.equal(upgraded.schedulerState.stage, stage)
-    assert.equal(
-      upgraded.schedulerState.intervalDays,
-      legacyIntervals[stage],
-    )
-  }
-})
 
 test('formal/basic-v2-scheduler: all ratings stay inside the finite interval ladder', () => {
   const outcomes = ['again', 'hard', 'good', 'easy'] as const
