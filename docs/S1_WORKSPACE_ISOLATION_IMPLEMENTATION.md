@@ -1,6 +1,6 @@
 # Sync V2: S1 Workspace Isolation — execution baseline (2026-10-09)
 
-Status: **S1 started / transaction kernel only / NOT ENABLED in UI**.
+Status: **S1 implementation PARTIAL / isolated foundation verified / NOT ENABLED in UI**.
 Work is restricted to `product/main`; `master` is the release branch.
 
 ## Decision: S0.5 conditionally frozen
@@ -15,10 +15,11 @@ full `Next`; formal verification status is **PARTIAL**.
 
 - Current backup is `qwerty-backup-v3` (not V4).
 - Current `RecordDB` is a singleton working IndexedDB, not account-isolated.
-- Before integration, implement canonical Backup V4 (durable session/runtime
-  and settings whitelist), V3 -> V4 migration/roundtrip with real data,
-  separate durable per-account snapshot vault keyed by immutable account ID,
-  atomic/fenced registry CAS, and cross-tab exclusive writer lock.
+- Standalone Backup V4 model, V3 migration adapter, real Dexie roundtrip,
+  separate immutable-ID vault, atomic IndexedDB registry CAS, and an opt-in
+  Web Locks writer lease are implemented and browser-tested.
+- Their real activation is still blocked by early boot fencing, all-writer
+  quiescence, explicit legacy ownership migration consent, and account UX.
 - Boot recovery MUST complete before any DB writer or React hydration.
 - Target restore MUST be idempotent and reset an absent workspace to empty.
 - Preserve V1 cloud data and existing users; no silent account migration.
@@ -29,13 +30,25 @@ full `Next`; formal verification status is **PARTIAL**.
    `src/sync/workspace-transition.ts` defines identities, monotonic
    generation, CAS journal, crash recovery and A -> anonymous -> B rule.
    Tests: `tests/cloud/workspace-transition.test.mjs`.
-2. **S1.2: pending.** Backup V4 and migration + workspace snapshot vault.
-3. **S1.3: pending.** Atomic registry adapter + multi-tab writer exclusion;
-   crash-safe startup recovery before opening the working DB.
+2. **S1.2: isolated implementation verified.** `workspace-v4.ts`,
+   `workspace-v4-browser.ts`, `workspace-vault.ts`: V4 envelope,
+   allowlisted settings, complete DailySession capture, V3->V4 conversion,
+   canonical logical fingerprint, durable vault and real Dexie round-trip.
+   V1 public backup and cloud payload intentionally stay V3.
+3. **S1.3: partial.** `workspace-coordinator.ts` +
+   `workspace-lock.ts` implement explicit one-time legacy ownership
+   assignment, registry CAS, restore replay and single-writer Web Locks
+   lease. Early app bootstrap gating/React hydration and multi-tab rebind
+   are NOT wired, so cross-tab production safety is NOT claimed.
 4. **S1.4: pending.** Login/logout/registration adapter, explicit anonymous
    copy decision, visible stages and offline/auth failure semantics.
-5. **S1.5: pending.** Browser fault injection across all transaction windows,
-   reload/restart tests and TLA+ transition trace refinement.
+5. **S1.5: partial.** `tests/cloud/workspace-transition.test.mjs` and
+   `tests/cloud/workspace-v4.test.mjs` pass. `tests/e2e/workspace-v4.spec.ts`
+   passes six real Chromium cases: complete V4 roundtrip, IndexedDB CAS,
+   persistent Crash journal, corruption refusal, anonymous/A isolation,
+   and single-tab writer lease. Remaining: auth/offline failures, full
+   injection at every IO phase, actual UI boot/rebind and TLA+ trace
+   refinement.
 
 A transition is allowed only under an external cross-tab lock. Flush and
 durably vault the source before committing the pending journal; restore target
@@ -43,3 +56,34 @@ only after journal commit; commit active pointer last. After any failure with
 a pending journal, block user writes until recovery replays target restoration.
 
 **Do not wire the kernel to the live V1 UI until S1.2–S1.5 gates pass.**
+
+## Validation evidence (2026-10-09)
+
+- Cloud Sync Gate (commit `be0074d1`): **SUCCESS**, 35/35 Node tests,
+  cloud/frontend lint and Vite production build.
+  Run: https://github.com/smhe00/qwerty-learner/actions/runs/37855817254
+- S1 Workspace Browser Gate (commit `c9d6dfa0`): **SUCCESS**, 6/6 real
+  Chromium tests on isolated localhost, no EdgeOne deployment.
+  Run: https://github.com/smhe00/qwerty-learner/actions/runs/37856059765
+- Learn/Review Gate at `8f7b6188` passed; S0.5 Sync TLA mutation
+  checking was not green as of this checkpoint. Narrow mutation configuration
+  was expanded to permit both settings changes and concurrent writes:
+  `formal/sync/CloudSyncV2.stale-push-mutation.cfg`. Formal results must
+  be checked separately and never inferred from the nonformal S1 gates.
+
+### Activation blockers
+
+1. Acquire the writer lease before any React mount, Jotai hydration or DB
+   write. A second tab must render read-only/waiting UI, never run old writers.
+2. Integrate pending-journal recovery before startup and prevent any write on
+   failed recovery. Add tab broadcast/rebind and unload behavior.
+3. Implement explicit one-time migration ownership decision for existing
+   V1 account users and rollback on failures.
+4. Wire registration/logout/login progress, dirty-sync preflight,
+   account-to-anonymous-to-account transitions, and clear failure states.
+5. Extend browser/trace tests for auth expiry, offline, stale tab,
+   cloud conflict, migrations and failure injection before enabling the
+   new behavior.
+
+No code in this milestone changes the deployed V1 account UI, EdgeOne
+backend protocol, or the production release branch.

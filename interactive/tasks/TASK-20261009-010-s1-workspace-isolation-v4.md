@@ -1,8 +1,8 @@
 ---
 protocol_version: "1.1"
 task_id: "TASK-20261009-010-s1-workspace-isolation-v4"
-status: "READY"
-executor: "unassigned"
+status: "PARTIAL"
+executor: "ChatGPT (direct executor)"
 target_branch: "product/main"
 release_to_master: false
 priority: "P0"
