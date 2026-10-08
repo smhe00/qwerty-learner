@@ -1,0 +1,38 @@
+name: Architecture Gate
+
+on:
+  push:
+    branches:
+      - product/main
+    paths:
+      - 'src/learn/**'
+      - 'src/review/**'
+      - 'src/utils/db/**'
+      - 'src/utils/time.ts'
+      - 'scripts/validate-architecture-boundaries.mjs'
+      - '.github/workflows/architecture-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: architecture-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  architecture:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+
+      - name: Validate dependency direction
+        run: node scripts/validate-architecture-boundaries.mjs
