@@ -74,11 +74,11 @@ The Memory settings own a configurable Learn Block size:
 
 | Parameter | Default | Minimum | Meaning |
 | --- | ---: | ---: | --- |
-| Learn Block size | 20 logical words | 10 logical words | Automatic cloud-sync / internal Block granularity |
+| Learn Block size | 20 logical words | 1 logical word | Automatic cloud-sync / internal Block granularity |
 
 Rules:
 
-1. values below 10 are invalid and must be normalized/rejected;
+1. values below 1 are invalid and must be normalized/rejected;
 2. existing product default remains 20;
 3. each Block freezes its target size when that Block is created;
 4. changing Block size affects only future Blocks and never changes an active Block;
@@ -497,6 +497,7 @@ If account A is active and authentication becomes unusable:
 ~~~text
 account:A remains active locally
 sync status = AUTH_REQUIRED
+ACCOUNT_DELETED
 ~~~
 
 The UI must offer a clear re-authentication path and an explicit logout-to-
@@ -614,6 +615,52 @@ If server deletion fails, local account data must not be destroyed. If server
 deletion succeeds but local cleanup is interrupted, a local tombstone must
 prevent that account workspace from becoming active again and cleanup resumes on
 startup.
+
+#### Cross-device deletion propagation
+
+Full account deletion is global. Other devices may still physically contain an
+older local account workspace until they next contact the service, but that copy
+is no longer a valid account workspace once the server deletion has committed.
+
+The server must retain a **minimal deletion tombstone** for the deleted immutable
+account identity. This tombstone exists only to propagate deletion and reject
+stale clients. It must not contain learning records, settings, password material,
+session secrets, or a recoverable account snapshot.
+
+Any stale device that later performs auth, sync, metadata refresh, app-start
+account validation, or account-workspace activation must receive an explicit
+terminal result such as:
+
+~~~text
+410 account_deleted
+~~~
+
+On receiving account_deleted, the client must:
+
+1. stop all sync/write attempts for that deleted account;
+2. mark the local account workspace as deleted/tombstoned immediately;
+3. delete that account's local workspace snapshot, settings, baseline, and
+   account-owned metadata;
+4. if that workspace is active, switch the browser profile to anonymous;
+5. broadcast the deletion to all tabs so no stale tab can keep writing it.
+
+Anonymous and other accounts on the same device are untouched.
+
+If another device is offline at the time of deletion, the service cannot erase
+its storage remotely. The old local copy may therefore remain physically present
+until that device reconnects. It is treated as a stale offline replica, not as a
+surviving account. Once deletion is observed, it must be purged and must never be
+uploaded to recreate or repopulate the deleted account.
+
+Deletion wins over unsynchronized stale-device changes. Therefore the destructive
+confirmation UI must warn that unsynced data on other devices will also be lost
+unless the user first synchronizes or manually exports Backup V4 from those
+devices.
+
+The deletion tombstone is protocol metadata only. Its purpose is delete
+propagation and anti-resurrection; it is not considered retained account
+business data.
+
 
 ## 9. Device-switch semantics
 
@@ -767,7 +814,7 @@ presented as the normal cross-device synchronization mechanism.
 6. A stale device cannot silently overwrite a newer cloud revision.
 7. Cloud failure cannot roll back local Learn completion.
 8. DailySession progress is independent of cloud-sync timing.
-9. Block-size configuration has a hard minimum of 10 logical words.
+9. Block-size configuration has a hard minimum of 1 logical word.
 10. The normal cloud UI has one synchronization action, not directional
     upload/download actions.
 11. Signed-out mode always uses the isolated anonymous local workspace.
@@ -793,6 +840,10 @@ presented as the normal cross-device synchronization mechanism.
 27. Delete-one-dictionary and delete-all-learning-records preserve ordinary settings/account.
 28. Full account deletion removes both cloud and local data for that account.
 29. Manual backup/restore operates on exactly one active workspace.
+30. Full account deletion is terminal across devices: a stale device must purge
+    the deleted account workspace after receiving account_deleted.
+31. A deletion tombstone may retain only minimal anti-resurrection protocol
+    metadata and must never retain recoverable account business data.
 
 
 
@@ -869,7 +920,7 @@ semantics.
 
 ### S3 — Block automatic sync
 
-- configurable Block size, default 20, minimum 10;
+- configurable Block size, default 20, minimum 1;
 - freeze Block size at Block creation;
 - automatic safe full-snapshot sync at durable Block settlement;
 - no obsolete per-Block retry queue;
@@ -880,6 +931,7 @@ semantics.
 - delete one dictionary's learning records;
 - delete all learning records while retaining settings/account;
 - full cloud+local account deletion;
+- cross-device account-deletion tombstone propagation;
 - stale-device deletion-resurrection protection;
 - multi-device sessions;
 - stable device identity;
