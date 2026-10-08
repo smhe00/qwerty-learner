@@ -1,5 +1,7 @@
 # 云账号与同步使用说明
 
+> **当前使用说明仍对应 V1。** 已批准的下一代“单一 Sync / Block 自动同步 / logical-word 手动同步”模型记录在 [`CLOUD_SYNC_V2_MODEL.md`](./CLOUD_SYNC_V2_MODEL.md)，尚未全部实现到当前 UI。
+
 > 当前产品采用 `qwerty-backup-v3` 云同步格式。旧 `qwerty-dexie-gzip-v2` 仍可恢复；旧加密格式不再兼容恢复。
 
 ## 基本原则
