@@ -1,18 +1,23 @@
 ---
 protocol_version: "1.1"
-task_id: "TASK-20261008-009-acquisition-admission-recovery"
-task_file: "interactive/tasks/TASK-20261008-009-acquisition-admission-recovery.md"
-report_file: "interactive/reports/TASK-20261008-009-acquisition-admission-recovery-report.md"
+task_id: "TASK-20261009-010-s1-workspace-isolation-v4"
+task_file: "interactive/tasks/TASK-20261009-010-s1-workspace-isolation-v4.md"
+report_file: "interactive/reports/TASK-20261009-010-s1-workspace-isolation-v4-report.md"
 target_branch: "product/main"
-status: "REVIEW"
-executor: "codex"
-claim_base_commit: "9002ed6800f334e86fed9a72b85da9cdef8ba88f"
-release_to_master: true
-priority: "P1"
+status: "READY"
+executor: "unassigned"
+claim_base_commit: ""
+release_to_master: false
+priority: "P0"
 ---
 
 # Current Task
 
-Repair the diagnosed Learn acquisition admission mismatch and stranded tail checkpoints. User authorized implementation in this chat. The previously accepted TASK-20261007-008 remains in its task/report files.
+S0.5 formal baseline is conditionally frozen, with 3x4 TLC explicitly
+exploratory. S1 transaction kernel was committed in 8f7b6188, without
+touching the working V1 IndexedDB. Implement Backup V4, isolated vault,
+cross-tab fencing, crash recovery, then safely activate S1 workflows.
 
-Published master 16b3b2c5298f365427d999eef78861e9b1e755d2 on 2026-10-09. Live EdgeOne asset and isolated Chrome confirm Version 16b3b2c, HTTP 200 and no uncaught page errors. See release report for evidence.
+Previous TASK-20261008-009 is published to master as recorded in its
+separate report/release report; retain its historical review status and files.
+No master deployment is authorized for this task.
