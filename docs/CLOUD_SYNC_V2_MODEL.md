@@ -237,7 +237,86 @@ cloudRevision > baseRevision
 
 The server continues to enforce optimistic concurrency on snapshot writes.
 
-## 8. Device-switch semantics
+## 8. Local workspace and account switching
+
+Cloud identity and local learning data use an explicit workspace rule.
+
+~~~text
+signed out        -> active workspace = anonymous
+signed in as A    -> active workspace = account:A
+logout A          -> active workspace = anonymous
+signed in as B    -> active workspace = account:B
+~~~
+
+Each workspace is independently persisted. Login/logout switches the active
+workspace; it does not implicitly merge learning records between workspaces.
+
+Only an account workspace participates in cloud synchronization. The anonymous
+workspace is always local-only.
+
+### 8.1 Account switching
+
+Different accounts must never share the same logical local progress.
+
+Switching from account A to account B is defined as:
+
+~~~text
+A active
+  -> logout
+  -> anonymous active
+  -> login B
+  -> B active
+~~~
+
+The implementation may optimize the physical storage mechanism, but the logical
+contract is that anonymous, account:A, account:B, and any other account
+workspaces are isolated.
+
+### 8.2 Registration while already authenticated
+
+Registration is allowed only from the signed-out anonymous workspace.
+
+If account A is currently authenticated, the product must not offer or execute a
+"register new account" flow inside A's active workspace.
+
+Required flow:
+
+~~~text
+account:A active
+  -> logout
+  -> anonymous active
+  -> register new account C
+  -> account:C active
+~~~
+
+This prevents account A's local progress from being implicitly inherited by a
+newly registered account.
+
+### 8.3 Anonymous data at login/registration
+
+Anonymous progress is not automatically merged into an existing account.
+
+If a first-time account binding wants to adopt anonymous progress, that must be
+an explicit one-time migration decision. Outside that explicit migration,
+workspace switching preserves isolation.
+
+### 8.4 Deleting learning records
+
+"Delete learning records" always acts on the **currently active workspace**.
+
+- signed out: delete only anonymous local learning data;
+- signed in as A: delete only account A's learning data;
+- account A deletion must never affect anonymous or account B data.
+
+For an account workspace, deleting one dictionary or all learning records is a
+revisioned state mutation and should trigger an immediate sync attempt rather
+than waiting for the next automatic Block boundary.
+
+If the network is unavailable, the deletion remains durable locally and pending
+for account sync. A stale device must never silently resurrect records deleted by
+a newer cloud revision.
+
+## 9. Device-switch semantics
 
 The user-visible contract is:
 
@@ -250,7 +329,7 @@ The user-visible contract is:
 The product must never claim that an unsynchronized local tail exists on another
 device.
 
-## 9. Payload model
+## 10. Payload model
 
 V2 keeps the current full-snapshot transport initially:
 
@@ -273,7 +352,7 @@ Full payload transfer occurs only when a real state transfer is required:
 
 An equal-state manual Sync performs no snapshot transfer.
 
-## 10. UI model
+## 11. UI model
 
 Normal state should be expressed in user terms:
 
@@ -293,7 +372,7 @@ cloud".
 Backup/export remains a separate disaster-recovery capability and must not be
 presented as the normal cross-device synchronization mechanism.
 
-## 11. Required invariants
+## 12. Required invariants
 
 1. Local learning never waits for cloud availability.
 2. Every authoritative logical-word transition remains locally durable.
@@ -306,8 +385,14 @@ presented as the normal cross-device synchronization mechanism.
 9. Block-size configuration has a hard minimum of 10 logical words.
 10. The normal cloud UI has one synchronization action, not directional
     upload/download actions.
+11. Signed-out mode always uses the isolated anonymous local workspace.
+12. Signed-in mode always uses the authenticated account's isolated local workspace.
+13. Login/logout/account switching must not implicitly merge workspaces.
+14. Registration is allowed only after returning to the signed-out anonymous workspace.
+15. Learning-record deletion affects only the active workspace; stale devices must not
+    silently resurrect a deletion committed by a newer cloud revision.
 
-## 12. Implementation phases
+## 13. Implementation phases
 
 ### Phase S1 — contract and parameter
 
@@ -328,8 +413,11 @@ presented as the normal cross-device synchronization mechanism.
   produced the same snapshot;
 - check remote metadata before starting/resuming Learn.
 
-### Phase S4 — multi-device hardening
+### Phase S4 — workspace and multi-device hardening
 
+- implement isolated anonymous/account local workspaces;
+- require logout to anonymous before registering another account;
+- bind delete-one-dictionary / delete-all-records to the active workspace;
 - allow the same Sync ID to authenticate on multiple devices;
 - add stable device identity;
 - fuzz/test stale-device, crash, reload, network-partition, and revision-conflict
