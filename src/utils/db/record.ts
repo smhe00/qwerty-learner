@@ -1,4 +1,4 @@
-import { getUTCUnixTimestamp } from '../index'
+import { getUTCUnixTimestamp } from '../time'
 import type { LearnAcquisitionState } from '@/learn/acquisition'
 import type { LearnItemKind, LearnSessionKind } from '@/learn/session'
 import type { ExerciseConditionV1 } from '@/review/condition'
