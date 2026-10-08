@@ -48,6 +48,10 @@
       "tests": [
         "tests/learn/daily-session.test.ts",
         "tests/e2e/learn-live-stats.spec.ts"
+      ],
+      "specs": [
+        "SPEC-LEARN-SESSION-001",
+        "SPEC-LEARN-SESSION-002"
       ]
     },
     {
@@ -59,6 +63,9 @@
       "tests": [
         "tests/learn/daily-session.test.ts",
         "tests/e2e/learn-live-stats.spec.ts"
+      ],
+      "specs": [
+        "SPEC-LEARN-PROGRESS-001"
       ]
     },
     {
@@ -70,6 +77,10 @@
       "tests": [
         "tests/e2e/learn-review-flow.spec.ts",
         "tests/simulation/persistence-race.test.ts"
+      ],
+      "specs": [
+        "SPEC-LEARN-SESSION-001",
+        "SPEC-PERSIST-001"
       ]
     },
     {
@@ -81,6 +92,10 @@
       "tests": [
         "tests/e2e/learn-recovery-flow.spec.ts",
         "tests/e2e/browser-stateful-fuzz.spec.ts"
+      ],
+      "specs": [
+        "SPEC-RECOVERY-001",
+        "SPEC-PERSIST-001"
       ]
     },
     {
@@ -92,6 +107,10 @@
       "tests": [
         "tests/learn/acquisition-domain.test.ts",
         "tests/review/acquisition-regression.test.ts"
+      ],
+      "specs": [
+        "SPEC-MODE-001",
+        "SPEC-LEARN-ACQUISITION-001"
       ]
     },
     {
@@ -103,6 +122,10 @@
       "tests": [
         "tests/learn/acquisition-domain.test.ts",
         "tests/e2e/learn-acquisition-flow.spec.ts"
+      ],
+      "specs": [
+        "SPEC-LEARN-ACQUISITION-001",
+        "SPEC-SCAFFOLD-001"
       ]
     },
     {
@@ -114,6 +137,9 @@
       "tests": [
         "tests/review/hint.test.ts",
         "tests/e2e/learn-review-flow.spec.ts"
+      ],
+      "specs": [
+        "SPEC-HINT-001"
       ]
     },
     {
@@ -126,6 +152,9 @@
         "tests/learn/quota-strain.test.ts",
         "tests/e2e/learn-acquisition-flow.spec.ts",
         "tests/simulation/system-driver.test.ts"
+      ],
+      "specs": [
+        "SPEC-LEARN-SESSION-002"
       ]
     },
     {
@@ -137,6 +166,9 @@
       "tests": [
         "tests/fsrs/g5-active-scheduler.test.ts",
         "tests/fsrs/g1-shadow-replay.test.ts"
+      ],
+      "specs": [
+        "SPEC-REVIEW-001"
       ]
     },
     {
@@ -147,6 +179,10 @@
       "gate": "tla",
       "tests": [
         "tests/formal/tla-trace-bridge.test.ts"
+      ],
+      "specs": [
+        "SPEC-RECOVERY-001",
+        "SPEC-PERSIST-001"
       ]
     },
     {
@@ -158,6 +194,9 @@
       "tests": [
         "tests/review/typing-audio-formal.test.ts",
         "tests/e2e/typing-lifecycle.spec.ts"
+      ],
+      "specs": [
+        "SPEC-AUDIO-001"
       ]
     },
     {
@@ -169,6 +208,10 @@
       "tests": [
         "tests/cloud/backend-core.test.mjs",
         "tests/e2e/cloud-sync-live.spec.ts"
+      ],
+      "specs": [
+        "SPEC-SYNC-001",
+        "SPEC-PERSIST-001"
       ]
     },
     {
@@ -180,6 +223,9 @@
       "tests": [
         "tests/achievement/session.test.ts",
         "tests/achievement/domain.test.ts"
+      ],
+      "specs": [
+        "SPEC-ACHIEVEMENT-001"
       ]
     },
     {
@@ -191,6 +237,10 @@
       "tests": [
         "tests/review/scheduler-lifecycle.test.ts",
         "tests/e2e/learn-review-flow.spec.ts"
+      ],
+      "specs": [
+        "SPEC-REVIEW-001",
+        "SPEC-REVIEW-EVIDENCE-001"
       ]
     },
     {
@@ -202,6 +252,9 @@
       "tests": [
         "tests/review/audio-policy.test.ts",
         "tests/review/typing-audio-formal.test.ts"
+      ],
+      "specs": [
+        "SPEC-REVIEW-EVIDENCE-001"
       ]
     },
     {
@@ -213,6 +266,9 @@
       "tests": [
         "tests/review/evidence-profile.test.ts",
         "tests/e2e/learn-review-flow.spec.ts"
+      ],
+      "specs": [
+        "SPEC-REVIEW-EVIDENCE-001"
       ]
     },
     {
@@ -224,6 +280,9 @@
       "tests": [
         "tests/learn/scaffold-recovery.test.ts",
         "tests/e2e/learn-acquisition-flow.spec.ts"
+      ],
+      "specs": [
+        "SPEC-SCAFFOLD-001"
       ]
     },
     {
@@ -235,6 +294,9 @@
       "tests": [
         "tests/review/exercise-policy.test.ts",
         "tests/e2e/learn-review-flow.spec.ts"
+      ],
+      "specs": [
+        "SPEC-REVIEW-EXERCISE-001"
       ]
     }
   ],
@@ -254,5 +316,6 @@
     "legacyWorkflowCandidates": [
       ".github/workflows/e2e.yml"
     ]
-  }
+  },
+  "specification": "docs/SPECIFICATION_V1.md"
 }
