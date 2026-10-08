@@ -1,0 +1,54 @@
+name: FSRS Benchmark Gate
+
+on:
+  push:
+    branches:
+      - product/main
+    paths:
+      - '.github/workflows/fsrs-benchmark-gate.yml'
+      - 'tests/fsrs/g4-strategy-benchmark.test.ts'
+      - 'tests/simulation/learner-simulator.ts'
+      - 'src/review/fsrs/strategy.ts'
+      - 'src/review/scheduler.ts'
+      - 'src/review/policy.ts'
+      - 'package.json'
+      - 'yarn.lock'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fsrs-benchmark-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: 'yarn'
+
+      - name: Install project dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Bundle G4 FSRS strategy benchmark
+        run: |
+          mkdir -p .fsrs-g4
+          npx esbuild tests/fsrs/g4-strategy-benchmark.test.ts \
+            --bundle \
+            --platform=node \
+            --target=node20 \
+            --format=esm \
+            --outfile=.fsrs-g4/g4-strategy-benchmark.test.mjs
+
+      - name: Run G4 365-day multi-seed benchmark
+        run: node --test .fsrs-g4/g4-strategy-benchmark.test.mjs
