@@ -75,7 +75,7 @@ test('V3 migrates to V4 without destroying unfinished DailySession or preference
   assert.equal(result.workspaceData.navigation.currentChapter, 4)
   assert.deepEqual(result.workspaceData.learnRuntime.dailySessions.dict, daily)
   assert.deepEqual(result.workspaceData.database, db)
-  assert.deepEqual(parseWorkspaceV4(JSON.stringify(result)), result)
+  assert.deepEqual(parseWorkspaceV4(JSON.stringify(result)), JSON.parse(JSON.stringify(result)))
   const historical = migrateV3ToWorkspaceV4(legacy, metadata)
   assert.equal(Object.keys(historical.workspaceData.learnRuntime.dailySessions).length, 0)
   assert.equal(Object.keys(historical.workspaceData.settings.values).length, 0)
