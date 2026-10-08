@@ -13,10 +13,8 @@ test('real application loads unchanged legacy records after guarded boot', async
   })
   await page.goto('/')
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
-  const records = await page.evaluate(async () => {
-    const { db } = await import('/src/utils/db/core.ts')
-    return db.wordRecords.count()
-  })
+  await harness(page)
+  const records = await page.evaluate(() => (window as any).__backupHarness.db.wordRecords.count())
   expect(records).toBe(1)
 })
 
@@ -42,10 +40,8 @@ test('initialized anonymous workspace permits actual app mount without implicit 
   })
   await page.goto('/')
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
-  const result = await page.evaluate(async () => {
-    const { workspaceRegistryPort } = await import('/src/sync/workspace-vault.ts')
-    return workspaceRegistryPort.read()
-  })
+  await harness(page)
+  const result = await page.evaluate(() => (window as any).__backupHarness.workspaceRegistryPort.read())
   expect(result.generation).toBe(1)
   expect(result.active).toEqual({ kind: 'anonymous' })
 })
@@ -106,9 +102,8 @@ test('old V1 auth mutations are refused when isolated registry is initialized', 
     const h = (window as any).__backupHarness
     await h.seed()
     await h.initializeLegacyWorkspace(h.ANONYMOUS)
-    const { assertLegacyAuthChangeAllowed } = await import('/src/sync/workspace-auth-guard.ts')
     let refused = false
-    try { await assertLegacyAuthChangeAllowed() }
+    try { await h.assertLegacyAuthChangeAllowed() }
     catch { refused = true }
     const unchanged = await h.workspaceRegistryPort.read()
     return { refused, generation: unchanged.generation, active: unchanged.active }
