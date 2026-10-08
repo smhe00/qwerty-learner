@@ -692,6 +692,17 @@ export default function WordComponent({
   )
 
   useEffect(() => {
+    // A Howl readiness event can arrive after the first keystroke while the
+    // React-rendered inputWord still reads as empty. The synchronous accepted
+    // length is authoritative for whether word-entry audio may be requested.
+    // Never start a delayed automatic sound after input, completion or error.
+    if (
+      acceptedInputLengthRef.current !== 0 ||
+      inputLockedRef.current ||
+      wordState.isFinished ||
+      wordState.hasWrong
+    ) return
+
     // Ordinary Typing follows upstream behaviour: every new word starts with
     // one automatic pronunciation when pronunciation is enabled. Review/Learn
     // keeps its separate frozen exercise-condition and one-shot cue semantics.
@@ -728,6 +739,8 @@ export default function WordComponent({
     state.isTyping,
     word.name,
     wordState.inputWord.length,
+    wordState.isFinished,
+    wordState.hasWrong,
   ])
 
   const getLetterVisible = useCallback(
