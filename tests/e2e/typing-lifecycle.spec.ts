@@ -26,7 +26,10 @@ async function visibleTypingWord(
 async function waitForTypingWord(
   page: import('@playwright/test').Page,
 ): Promise<string> {
-  await expect.poll(() => visibleTypingWord(page)).not.toBeNull()
+  // The first dev-server navigation can include a cold transformation of the
+  // dynamically gated app entry. Keep the semantic assertion but allow it
+  // enough startup time; this is not an audio or word-progress timeout.
+  await expect.poll(() => visibleTypingWord(page), { timeout: 15_000 }).not.toBeNull()
   const word = await visibleTypingWord(page)
   if (!word) throw new Error('Typing word is not available')
   return word
