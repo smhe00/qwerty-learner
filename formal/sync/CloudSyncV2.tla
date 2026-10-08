@@ -61,14 +61,16 @@ SyncStates ==
 
 SwitchStates == {"IDLE", "LOGOUT_PENDING"}
 
+RawFingerprints ==
+  (0..MaxWords)
+    \X (0..MaxSettingVersion)
+    \X (1..MaxBlockSize)
+    \X (1..MaxBlockSize)
+    \X (0..MaxBlockSize)
+    \X (0..MaxBlockEpoch)
+
 Fingerprints ==
-  { <<w, s, bs, bt, bp, be>> :
-      w \in 0..MaxWords,
-      s \in 0..MaxSettingVersion,
-      bs \in 1..MaxBlockSize,
-      bt \in 1..MaxBlockSize,
-      bp \in 0..(bt - 1),
-      be \in 0..MaxBlockEpoch }
+  { fp \in RawFingerprints : fp[5] < fp[4] }
 
 Words(fp) == fp[1]
 SettingVersion(fp) == fp[2]
