@@ -3,7 +3,7 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: '.',
   testMatch: [
-    'review-flow.spec.ts',
+    'learn-review-flow.spec.ts',
     'learn-shell-ui.spec.ts',
     'learn-recovery-flow.spec.ts',
     'learn-acquisition-flow.spec.ts',
