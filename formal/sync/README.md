@@ -95,3 +95,5 @@ configurations, and requires the mutation configurations to produce
 counterexamples.
 
 Gate owner: `TLA Gate` (`.github/workflows/tla-gate.yml`).
+
+The CI gate runs the Sync model in a parallel job so protocol iterations do not wait for the Learn formal suite.
