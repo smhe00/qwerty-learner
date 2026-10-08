@@ -1,4 +1,4 @@
-import { db } from '.'
+import { db } from './core'
 import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import { waitForBrowserFuzzGate } from '@/dev/browser-fuzz-hooks'
 import { isAcquisitionIntroductionRecord } from '@/learn/admission'
