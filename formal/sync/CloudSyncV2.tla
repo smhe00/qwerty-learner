@@ -936,29 +936,31 @@ Restart(d) ==
                              ELSE Assessment(d, w)]
   /\ UNCHANGED <<server, backup, ordinaryWriteSafe, blockFreezeSafe>>
 
-Next ==
+RegistrationActions ==
   \/ \E d \in Devices, u \in Usernames, a \in AccountIds :
        RegisterBlank(d, u, a)
   \/ \E d \in Devices, u \in Usernames, a \in AccountIds :
        RegisterCopyAnonymous(d, u, a)
-  \/ \E d \in Devices, u \in Usernames :
-       LoginAbsent(d, u)
-  \/ \E d \in Devices, u \in Usernames :
-       LoginSame(d, u)
-  \/ \E d \in Devices, u \in Usernames :
-       LoginPull(d, u)
-  \/ \E d \in Devices, u \in Usernames :
-       LoginPush(d, u)
-  \/ \E d \in Devices, u \in Usernames :
-       LoginConflict(d, u)
+
+LoginActions ==
+  \/ \E d \in Devices, u \in Usernames : LoginAbsent(d, u)
+  \/ \E d \in Devices, u \in Usernames : LoginSame(d, u)
+  \/ \E d \in Devices, u \in Usernames : LoginPull(d, u)
+  \/ \E d \in Devices, u \in Usernames : LoginPush(d, u)
+  \/ \E d \in Devices, u \in Usernames : LoginConflict(d, u)
+
+LogoutActions ==
   \/ \E d \in Devices : BeginLogout(d)
   \/ \E d \in Devices : CommitLogoutClean(d)
   \/ \E d \in Devices : CommitLogoutAnyway(d)
+
+LocalMutationActions ==
   \/ \E d \in Devices : ChangeSetting(d)
-  \/ \E d \in Devices, n \in 1..MaxBlockSize :
-       ChangeBlockSize(d, n)
+  \/ \E d \in Devices, n \in 1..MaxBlockSize : ChangeBlockSize(d, n)
   \/ \E d \in Devices : CompleteWord(d)
   \/ \E d \in Devices : DeleteLearningRecords(d)
+
+SyncActions ==
   \/ \E d \in Devices : ManualNoop(d)
   \/ \E d \in Devices : ManualPush(d)
   \/ \E d \in Devices : ManualPull(d)
@@ -971,19 +973,85 @@ Next ==
   \/ \E d \in Devices : PullAppliedBeforeBaseline(d)
   \/ \E d \in Devices : ExplicitOverwriteCloud(d)
   \/ \E d \in Devices : ExplicitOverwriteLocal(d)
+
+BackupActions ==
   \/ \E d \in Devices : ExportBackup(d)
   \/ \E d \in Devices : AuthorizeCrossImport(d)
   \/ \E d \in Devices : RestoreSameWorkspaceBackup(d)
   \/ \E d \in Devices : RestoreAuthorizedForeignBackup(d)
+
+AccountDeletionActions ==
   \/ \E d \in Devices : DeleteAccount(d)
-  \/ \E d \in Devices, a \in AccountIds :
-       ObserveDeletedAccount(d, a)
+  \/ \E d \in Devices, a \in AccountIds : ObserveDeletedAccount(d, a)
+
+FaultActions ==
   \/ \E d \in Devices : GoOffline(d)
   \/ \E d \in Devices : GoOnline(d)
   \/ \E d \in Devices : ExpireAuthentication(d)
   \/ \E d \in Devices : Reauthenticate(d)
   \/ \E d \in Devices : Crash(d)
   \/ \E d \in Devices : Restart(d)
+
+(* Canonical complete protocol relation. Implementation refines this relation. *)
+Next ==
+  \/ RegistrationActions
+  \/ LoginActions
+  \/ LogoutActions
+  \/ LocalMutationActions
+  \/ SyncActions
+  \/ BackupActions
+  \/ AccountDeletionActions
+  \/ FaultActions
+
+(*
+  Exhaustive TLC projections. These are subsets of the same canonical Next
+  relation and exist only to control finite-state Cartesian explosion in CI.
+*)
+NextBlock ==
+  \/ RegistrationActions
+  \/ LoginActions
+  \/ LogoutActions
+  \/ LocalMutationActions
+  \/ SyncActions
+  \/ FaultActions
+
+CompleteWordProjection ==
+  \/ \E d \in Devices : CompleteWord(d)
+  \/ \E d \in Devices : DeleteLearningRecords(d)
+
+NextConcurrent ==
+  \/ RegistrationActions
+  \/ LoginActions
+  \/ LogoutActions
+  \/ CompleteWordProjection
+  \/ SyncActions
+  \/ AccountDeletionActions
+  \/ FaultActions
+
+NextIdentity ==
+  \/ RegistrationActions
+  \/ LoginActions
+  \/ LogoutActions
+  \/ AccountDeletionActions
+  \/ FaultActions
+
+NextBackup ==
+  \/ RegistrationActions
+  \/ LoginActions
+  \/ LogoutActions
+  \/ CompleteWordProjection
+  \/ SyncActions
+  \/ BackupActions
+  \/ FaultActions
+
+NextScale ==
+  \/ RegistrationActions
+  \/ LoginActions
+  \/ LogoutActions
+  \/ CompleteWordProjection
+  \/ SyncActions
+  \/ AccountDeletionActions
+  \/ FaultActions
 
 Spec ==
   Init /\ [][Next]_vars

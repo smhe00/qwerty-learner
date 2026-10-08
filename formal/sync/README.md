@@ -71,7 +71,8 @@ Three mutation configurations prove that the important invariants are live:
 
 | Config | Purpose |
 | --- | --- |
-| `CloudSyncV2.production.cfg` | Exhaustive bounded protocol model with two devices and username delete/re-register capacity |
+| `CloudSyncV2.production.cfg` | Exhaustive bounded **full-feature** protocol projection with one device and username delete/re-register capacity |
+| `CloudSyncV2.concurrent.cfg` | Exhaustive bounded **2-device concurrency** projection for stale/local/cloud interleavings |
 | `CloudSyncV2.three-device-four-username.cfg` | Exhaustive tight-bound model with **3 devices and 4 username values**; immutable account-ID pool is intentionally bounded to keep TLC finite |
 | mutation configs | Negative controls: TLC must find a counterexample |
 
@@ -97,3 +98,5 @@ counterexamples.
 Gate owner: `TLA Gate` (`.github/workflows/tla-gate.yml`).
 
 The CI gate runs the Sync model in a parallel job so protocol iterations do not wait for the Learn formal suite.
+
+These configurations are projections of the same `Next` relation. They split TLC's finite search bounds to control combinatorial explosion; they do not split or weaken the canonical protocol state machine.
