@@ -6,6 +6,7 @@ import {
   inspectManualBackupV4File,
 } from '@/sync/manual-backup-v4'
 import { loadAuth } from '@/sync/auth'
+import { assertLegacyLocalDestructiveOperationAllowed } from '@/sync/workspace-auth-guard'
 import { clearSyncBaseline } from '@/sync/state'
 import type { ExportProgress, ImportProgress } from '@/utils/db/data-export'
 import { clearLocalLearningData, exportDatabase, importDatabase } from '@/utils/db/data-export'
@@ -61,7 +62,14 @@ export default function DataSetting() {
   }, [])
 
   const onClickImport = useCallback(() => {
-    importDatabase(onStartImport, importProgressCallback)
+    void (async () => {
+      try {
+        await assertLegacyLocalDestructiveOperationAllowed()
+        await importDatabase(onStartImport, importProgressCallback)
+      } catch (error) {
+        window.alert('操作已阻止：' + (error instanceof Error ? error.message : String(error)))
+      }
+    })()
   }, [importProgressCallback, onStartImport])
 
   const onClickExportV4 = useCallback(async () => {
@@ -103,6 +111,12 @@ export default function DataSetting() {
   }, [])
 
   const onClickClearLocalData = useCallback(async () => {
+    try {
+      await assertLegacyLocalDestructiveOperationAllowed()
+    } catch (error) {
+      window.alert('操作已阻止：' + (error instanceof Error ? error.message : String(error)))
+      return
+    }
     const confirmed = window.confirm(
       '将清除本浏览器中的练习记录、章节记录和智能复习数据。云端账号和云端备份不会被删除。此操作不可撤销；如需保留本地数据，请先导出或上传到云端。是否继续？',
     )

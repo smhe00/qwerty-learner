@@ -7,10 +7,15 @@ on:
     paths:
       - 'src/sync/workspace-*'
       - 'src/sync/auth.ts'
+      - 'src/sync/auto.ts'
+      - 'src/sync/CloudSyncSetting.tsx'
+      - 'src/index.tsx'
+      - 'src/app.tsx'
       - 'src/sync/manual-backup-v4.ts'
       - 'src/pages/Typing/components/Setting/DataSetting.tsx'
       - 'src/utils/db/data-export.ts'
       - 'tests/e2e/workspace-v4*'
+      - 'tests/e2e/workspace-app-entry.spec.ts'
       - 'tests/e2e/backup-harness.ts'
       - '.github/workflows/s1-workspace-gate.yml'
   workflow_dispatch:

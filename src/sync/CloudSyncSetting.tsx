@@ -1,4 +1,4 @@
-import { assertLegacyAuthChangeAllowed } from './workspace-auth-guard'
+import { assertLegacyAuthChangeAllowed, assertLegacyCloudMutationAllowed } from './workspace-auth-guard'
 import { SyncApiError, deleteCloudAccount, getSync, getSyncMeta, putSync } from './api'
 import { loadAuth, loginAndRemember, logout, registerAndRemember } from './auth'
 import {
@@ -158,6 +158,7 @@ export default function CloudSyncSetting() {
     if (!auth) return
 
     void run(async () => {
+      await assertLegacyCloudMutationAllowed()
       const local = await createLocalSnapshot()
       const remote = await getSyncMeta(auth.token)
       const baseline = loadSyncBaseline(auth.user.userId)
@@ -194,6 +195,7 @@ export default function CloudSyncSetting() {
     if (!auth) return
 
     void run(async () => {
+      await assertLegacyCloudMutationAllowed()
       const local = await inspectLocalState()
       const remoteMeta = await getSyncMeta(auth.token)
       const baseline = loadSyncBaseline(auth.user.userId)

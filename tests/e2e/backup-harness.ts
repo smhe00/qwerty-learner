@@ -1,4 +1,4 @@
-import { assertLegacyAuthChangeAllowed } from '../../src/sync/workspace-auth-guard'
+import { assertLegacyAuthChangeAllowed, assertLegacyCloudMutationAllowed, assertLegacyLocalDestructiveOperationAllowed } from '../../src/sync/workspace-auth-guard'
 import { mountGuardedWorkspaceApp } from '../../src/sync/workspace-bootstrap'
 import { initializeLegacyWorkspace, transitionWorkingWorkspace } from '../../src/sync/workspace-coordinator'
 import { acquireWorkspaceWriterLease } from '../../src/sync/workspace-lock'
@@ -312,4 +312,6 @@ async function inspectTableContract() {
   acquireWorkspaceWriterLease,
   mountGuardedWorkspaceApp,
   assertLegacyAuthChangeAllowed,
+  assertLegacyCloudMutationAllowed,
+  assertLegacyLocalDestructiveOperationAllowed,
 }

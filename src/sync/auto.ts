@@ -1,3 +1,4 @@
+import { assertLegacyCloudMutationAllowed } from './workspace-auth-guard'
 import { SyncApiError, getSyncMeta, putSync } from './api'
 import { loadAuth } from './auth'
 import {
@@ -37,6 +38,7 @@ export async function autoSyncCompletedLearnSession(): Promise<LearnAutoSyncResu
   if (!auth) return { status: 'not-logged-in' }
 
   try {
+    await assertLegacyCloudMutationAllowed()
     const [local, remote] = await Promise.all([
       inspectLocalState(),
       getSyncMeta(auth.token),

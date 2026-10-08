@@ -110,3 +110,42 @@ test('old V1 auth mutations are refused when isolated registry is initialized', 
   })
   expect(status).toEqual({ refused: true, generation: 1, active: { kind: 'anonymous' } })
 })
+
+test('S1 actual Settings login refuses legacy auth before any network request', async ({ page }) => {
+  await harness(page)
+  await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+  })
+  let loginRequests = 0
+  await page.route('**/api/auth/login', route => {
+    loginRequests++
+    void route.abort()
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: '打开设置对话框' }).click()
+  await page.getByRole('tab', { name: '数据设置' }).click()
+  await page.getByPlaceholder('用户名').fill('new-user')
+  await page.getByPlaceholder('密码（4-128字符）').fill('test-password')
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await expect(page.getByText(/旧版账号操作已暂停/)).toBeVisible()
+  expect(loginRequests).toBe(0)
+})
+
+test('isolated workspace blocks legacy V1 upload and local destructive actions', async ({ page }) => {
+  await harness(page)
+  const state = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+    let blocked = 0
+    for (const operation of [
+      h.assertLegacyCloudMutationAllowed, h.assertLegacyLocalDestructiveOperationAllowed,
+    ]) {
+      try { await operation() } catch { blocked++ }
+    }
+    return { blocked, words: await h.db.wordRecords.count() }
+  })
+  expect(state).toEqual({ blocked: 2, words: 1 })
+})
