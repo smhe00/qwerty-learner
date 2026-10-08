@@ -28,6 +28,11 @@
       "owner": "fsrs"
     },
     {
+      "id": "fsrs-benchmark",
+      "workflow": ".github/workflows/fsrs-benchmark-gate.yml",
+      "owner": "fsrs-long-horizon-benchmark"
+    },
+    {
       "id": "tla",
       "workflow": ".github/workflows/tla-gate.yml",
       "owner": "formal-models"
@@ -307,6 +312,19 @@
       ],
       "specs": [
         "SPEC-REVIEW-EXERCISE-001"
+      ]
+    },
+    {
+      "id": "FSRS-BENCH-001",
+      "title": "FSRS retention strategy changes require explicit multi-seed long-horizon comparison",
+      "level": "L1",
+      "owner": "src/review/fsrs/strategy.ts",
+      "gate": "fsrs-benchmark",
+      "tests": [
+        "tests/fsrs/g4-strategy-benchmark.test.ts"
+      ],
+      "specs": [
+        "SPEC-REVIEW-001"
       ]
     }
   ],
