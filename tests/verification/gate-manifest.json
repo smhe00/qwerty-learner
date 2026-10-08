@@ -209,6 +209,7 @@
       "tests": [
         "formal/sync/CloudSyncV2.tla",
         "formal/sync/CloudSyncV2.production.cfg",
+        "formal/sync/CloudSyncV2.concurrent.cfg",
         "formal/sync/CloudSyncV2.three-device-four-username.cfg"
       ],
       "specs": [
