@@ -381,6 +381,13 @@ jobs:
             -config formal/sync/CloudSyncV2.production.cfg \
             formal/sync/CloudSyncV2.tla
 
+      - name: Exhaustively model-check two-device Sync V2 concurrency
+        run: |
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -workers auto \
+            -config formal/sync/CloudSyncV2.concurrent.cfg \
+            formal/sync/CloudSyncV2.tla
+
       - name: Exhaustively model-check Sync V2 with 3 devices and 4 usernames
         run: |
           java -cp /tmp/tla2tools.jar tlc2.TLC \
