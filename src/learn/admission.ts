@@ -51,18 +51,28 @@ export function isModernPhasedAcquisitionRecord(
   )
 }
 
-export function isValidModernAcquisitionAdmissionRecord(
+/** The same raw evidence owns both UI completion and durable admission. */
+export function isCleanIndependentAcquisitionRecord(
   record: IWordRecord,
 ): boolean {
-  if (!isAcquisitionIntroductionRecord(record)) return false
-
   return (
+    isAcquisitionIntroductionRecord(record) &&
     record.reviewPolicyDecision?.policyVersion ===
       LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION &&
     record.wrongCount === 0 &&
     record.learningContext?.reviewHint === undefined &&
-    record.reviewEvidence?.retrievalValidity === 'independent' &&
-    record.reviewPolicyDecision.reasonCodes.includes('spacing-eligible')
+    record.learningContext?.answerRevealed !== true &&
+    record.reviewEvidence?.errorCause === 'clean' &&
+    record.reviewEvidence.retrievalValidity === 'independent'
+  )
+}
+
+export function isValidModernAcquisitionAdmissionRecord(
+  record: IWordRecord,
+): boolean {
+  return (
+    isCleanIndependentAcquisitionRecord(record) &&
+    record.reviewPolicyDecision?.reasonCodes.includes('spacing-eligible') === true
   )
 }
 

@@ -98,6 +98,24 @@
           "title": "explicit quota remains unchanged after a heavy Review day; workload is advisory"
         }
       ]
+    },
+    {
+      "id": "REG-20261008-ACQUISITION-FALSE-COMPLETE",
+      "symptom": "ESC copy with zero wrong characters stranded complete checkpoints without valid admission; tail cohorts repeated spacing-ineligible probes.",
+      "tests": [
+        {
+          "file": "tests/learn/acquisition-incident.test.ts",
+          "title": "incident ESC copy with zero wrong characters never completes Acquisition"
+        },
+        {
+          "file": "tests/learn/acquisition-incident.test.ts",
+          "title": "incident false complete checkpoint remains selectable without fresh quota"
+        },
+        {
+          "file": "tests/e2e/learn-acquisition-flow.spec.ts",
+          "title": "incident historical false completion recovers and finishes the frozen daily target"
+        }
+      ]
     }
   ]
 }

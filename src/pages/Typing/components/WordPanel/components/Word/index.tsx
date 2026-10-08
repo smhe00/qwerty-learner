@@ -96,6 +96,7 @@ const vowelLetters = ['A', 'E', 'I', 'O', 'U']
 const SUCCESS_FEEDBACK_MS = 600
 
 export type WordFinishResult = {
+  record: IWordRecord
   wrongCount: number
   classification: TypingErrorClassification
   reviewRatingDecision?: RatingDecision
@@ -1029,6 +1030,7 @@ export default function WordComponent({
 
       const notifyFinished = () => {
         const result: WordFinishResult = {
+          record: currentRecordForPolicy,
           wrongCount: wordState.wrongCount,
           classification,
           reviewRatingDecision,

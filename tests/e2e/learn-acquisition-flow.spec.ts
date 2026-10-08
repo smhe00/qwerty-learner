@@ -957,3 +957,127 @@ test('visible first-acquisition copy never auto-enters the hint ladder after rep
     .toBeGreaterThan(0)
 })
 
+
+
+const incidentWord = { name: 'accurate', trans: ['准确的'], usphone: '', ukphone: '' }
+
+async function readIncidentState(page: import('@playwright/test').Page) {
+  return page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve(request.result)
+    })
+    const tx = database.transaction(['wordRecords', 'reviewWordStates'], 'readonly')
+    const read = <T,>(request: IDBRequest<T>) => new Promise<T>((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+    const [records, state] = await Promise.all([
+      read(tx.objectStore('wordRecords').getAll()),
+      read(tx.objectStore('reviewWordStates').index('[dict+word]').get(['cet4', 'accurate'])),
+    ])
+    database.close()
+    return {
+      state,
+      records: records.filter((record) => record.word === 'accurate'),
+      daily: JSON.parse(localStorage.getItem('qwerty.learn.dailySession.v1.cet4') || 'null'),
+    }
+  })
+}
+
+test('incident ESC copy cannot create a stranded complete acquisition', async ({ page }) => {
+  await seedAcquisitionSession(page, [incidentWord], 933001, 'independent', 4)
+  await page.goto('/learn')
+  await startTyping(page)
+  const word = page.locator('[data-typing-word="accurate"]')
+  await expect(word).toHaveAttribute('data-review-purpose', 'probe')
+  await page.keyboard.press('Escape')
+  await expect(word).toHaveAttribute('data-review-hint-level', '3')
+  await page.keyboard.type('accurate')
+  await expect.poll(async () => (await readReviewModeInfo(page))?.reviewRecord?.acquisitionStates?.accurate.phase)
+    .toBe('supported')
+  const snapshot = await readIncidentState(page)
+  expect(snapshot.state).toBeUndefined()
+  expect(snapshot.records).toHaveLength(1)
+  expect(snapshot.records[0].wrongCount).toBe(0)
+  expect(snapshot.records[0].reviewEvidence.memoryGrade).toBe('again')
+  expect(snapshot.records[0].learningContext.reviewHint.coldProbeSurrendered).toBe(true)
+  await expect(page.locator('[data-learn-acquisition-phase="supported"]')).toBeVisible()
+  await expect(word).toHaveAttribute('data-typing-finished', 'false')
+  await page.keyboard.type('accurate')
+  await expect.poll(async () => (await readReviewModeInfo(page))?.reviewRecord?.acquisitionStates?.accurate.deferredReason)
+    .toBe('spacing')
+  expect((await readIncidentState(page)).state).toBeUndefined()
+})
+
+test('incident historical false completion recovers and finishes the frozen daily target', async ({ page }) => {
+  await page.route('**/dicts/CET4_T.json', (route) => route.fulfill({
+    contentType: 'application/json', body: JSON.stringify([incidentWord]),
+  }))
+  await page.goto('/typing')
+  await expect(page.locator('[data-typing-word]').first()).toBeVisible()
+  await page.evaluate(async (word) => {
+    const now = Math.floor(Date.now() / 1000)
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(-1))
+    localStorage.setItem('reviewModeInfo', JSON.stringify({ isReviewMode: false }))
+    const date = new Date(now * 1000)
+    const dateKey = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
+    localStorage.setItem('qwerty.learn.dailySession.v1.cet4', JSON.stringify({
+      version: 1, sessionId: 'incident-recovery', dict: 'cet4', dateKey, startedAt: now - 1000,
+      status: 'active', dailyNewTarget: 1, plannedNewWords: 1, plannedReviewWords: [], carryOverAcquisitionWords: [],
+      accumulatedActiveSeconds: 0, completedBlockIds: [], blockCount: 0,
+    }))
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction(['reviewRecords', 'wordRecords', 'reviewWordStates'], 'readwrite')
+        for (const name of ['reviewRecords', 'wordRecords', 'reviewWordStates']) tx.objectStore(name).clear()
+        tx.objectStore('reviewRecords').add({
+          id: 933002, dict: 'cet4', index: 0, createTime: now - 800, words: [word], isFinished: true, sessionKind: 'acquisition',
+          acquisitionStates: { accurate: { version: 1, phase: 'complete', assistedCycles: 0, independentInterveningItems: 4 } },
+        })
+        const raw = { word: 'accurate', dict: 'cet4', chapter: -1, timing: [], wrongCount: 0, mistakes: {}, sourceMode: 'learn', learnItemKind: 'acquisition' }
+        tx.objectStore('wordRecords').add({ ...raw, timeStamp: now - 800, reviewPolicyDecision: {
+          version: 1, policyVersion: 'learn-acquisition-exposure-v1', reasonCodes: [], conditionVersion: 1,
+        } })
+        tx.objectStore('wordRecords').add({ ...raw, timeStamp: now - 700,
+          reviewPolicyDecision: { version: 1, policyVersion: 'canonical-review-hint-v2', reasonCodes: [], conditionVersion: 1 },
+          learningContext: { version: 1, answerRevealed: true, reviewHint: { version: 1, maxLevel: 3, coldProbeSurrendered: true, advanceCount: 1 } },
+          reviewEvidence: { version: 1, memoryGrade: 'again', errorCause: 'recall', confidence: 1, evidenceStrength: 1, retrievalValidity: 'independent', reasonCodes: ['cold-probe-surrendered'] },
+        })
+        tx.onerror = () => reject(tx.error)
+        tx.onabort = () => reject(tx.error)
+        tx.oncomplete = () => { db.close(); resolve() }
+      }
+    })
+  }, incidentWord)
+  await page.goto('/learn')
+  const recovered = await waitForActiveLearnSession(page)
+  expect(recovered.reviewRecord.words.map((item: { name: string }) => item.name)).toEqual(['accurate'])
+  expect(recovered.reviewRecord.acquisitionStates.accurate.phase).toBe('supported')
+  await startTyping(page)
+  await page.keyboard.type('accurate')
+  await expect.poll(async () => (await readReviewModeInfo(page))?.reviewRecord?.isFinished).toBe(true)
+  const pending = (await readReviewModeInfo(page)).reviewRecord.acquisitionStates.accurate
+  expect(pending.deferredReason).toBe('spacing')
+  expect((await readIncidentState(page)).state).toBeUndefined()
+  await expect(page.getByRole('button', { name: '按任意键继续', exact: true })).toBeEnabled()
+  await page.evaluate(() => { const realNow = Date.now; Date.now = () => realNow() + 301_000 })
+  await page.getByRole('button', { name: '按任意键继续', exact: true }).click()
+  const resumed = await waitForActiveLearnSession(page)
+  expect(resumed.reviewRecord.acquisitionStates.accurate.phase).toBe('independent')
+  await startTyping(page)
+  await expect(page.locator('[data-typing-word="accurate"]')).toHaveAttribute('data-review-purpose', 'probe')
+  await page.keyboard.type('accurate')
+  await expect.poll(async () => (await readIncidentState(page)).daily?.status).toBe('completed')
+  const completed = await readIncidentState(page)
+  expect(completed.state?.lifecycle).toBe('active')
+  expect(completed.records).toHaveLength(4)
+  expect(completed.records[3].reviewPolicyDecision.policyVersion).toBe('learn-acquisition-independent-v1')
+  expect(completed.records[3].reviewPolicyDecision.reasonCodes).toContain('spacing-eligible')
+  await expect(page.locator('[data-learn-result-screen]')).toHaveAttribute('data-learn-daily-complete', 'true')
+})

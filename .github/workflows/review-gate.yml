@@ -137,6 +137,7 @@ jobs:
             tests/review/typing-audio-formal.test.ts \
             tests/learn/live-stats.test.ts \
             tests/learn/daily-session.test.ts \
+            tests/learn/acquisition-incident.test.ts \
             tests/learn/acquisition-domain.test.ts \
             tests/learn/scaffold-recovery.test.ts \
             tests/learn/quota-strain.test.ts \
@@ -186,6 +187,9 @@ jobs:
 
       - name: Run Learn daily session invariants
         run: node --test .review-test/learn/daily-session.test.mjs
+
+      - name: Run Learn acquisition incident regressions
+        run: node --test .review-test/learn/acquisition-incident.test.mjs
 
       - name: Run Learn acquisition and lifecycle contracts
         run: node --test .review-test/learn/acquisition-domain.test.mjs

@@ -2,6 +2,8 @@ import {
   LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
   LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION,
   createLearnAcquisitionState,
+  createLearnAcquisitionExercisePlanForState,
+  hasSufficientIndependentSpacing,
   resumeSpacingDeferredAcquisition,
   type LearnAcquisitionState,
 } from '../../src/learn/acquisition'
@@ -16,6 +18,7 @@ import {
   type LearnPreparationResult,
 } from '../../src/learn/controller'
 import { resolveLearnAcquisitionCompletion } from '../../src/learn/progression'
+import { collectPendingAcquisitionStates, repairUnadmittedAcquisitionCheckpoint } from '../../src/learn/acquisition-recovery'
 import { buildLearnStatsSnapshot } from '../../src/learn/stats'
 import {
   buildLearnAcquisitionStates,
@@ -486,37 +489,17 @@ export class VirtualLearnApp {
       this.mutation.oldestUnfinishedRestore
         ? expected[0]
         : expected.at(-1)
-    return selected ? clone(selected) : undefined
+    return selected ? clone(repairUnadmittedAcquisitionCheckpoint(
+      selected, this.latestPendingAcquisitionStates(),
+    )) : undefined
   }
 
   private latestPendingAcquisitionStates() {
-    const latest = new Map<string, LearnAcquisitionState>()
-
-    for (const session of [...this.sessions].sort(
-      (a, b) => a.createTime - b.createTime,
-    )) {
-      if (
-        session.sessionKind !== 'acquisition' &&
-        session.sessionKind !== 'mixed'
-      ) {
-        continue
-      }
-      for (const [word, state] of Object.entries(
-        session.acquisitionStates ?? {},
-      )) {
-        latest.set(word, state)
-      }
-    }
-
-    const admitted = new Set(
-      this.wordStates.map((state) => state.word),
-    )
-    return new Map(
-      [...latest].filter(
-        ([word, state]) =>
-          !admitted.has(word) && state.phase !== 'complete',
-      ),
-    )
+    return collectPendingAcquisitionStates({
+      records: this.sessions.filter((session) => session.dict === 'simulation'),
+      wordRecords: this.wordRecords.filter((record) => record.dict === 'simulation'),
+      wordStates: this.wordStates,
+    })
   }
 
   private lifecycleForCandidate(input: {
@@ -1793,9 +1776,14 @@ export class VirtualLearnApp {
       state: currentState,
       acquisitionStates:
         session.acquisitionStates ?? {},
-      wrongCount: input.wrongCount,
-      classificationCause: input.cause,
-      retrievalValidity: 'independent',
+      record: makeAcquisitionRecord({
+        id: this.nextWordRecordId,
+        word: currentWord.name,
+        now: this.now,
+        policyVersion: createLearnAcquisitionExercisePlanForState(currentState).decision.policyVersion,
+        spacingEligible: hasSufficientIndependentSpacing(currentState),
+        wrongCount: input.wrongCount,
+      }),
       now: this.now,
     })
 

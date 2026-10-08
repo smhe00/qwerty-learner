@@ -9,8 +9,11 @@ import type {
   LearnAcquisitionProgressProjection,
   LearnAcquisitionState,
 } from './acquisition'
-import type { TypingErrorClassification } from '@/review/classifier'
-import type { ReviewEvidenceV1 } from '@/review/evidence'
+import {
+  isCleanIndependentAcquisitionRecord,
+  isValidModernAcquisitionAdmissionRecord,
+} from './admission'
+import type { IWordRecord } from '@/utils/db/record'
 import type { Word } from '@/typings'
 
 export type LearnAcquisitionCompletionInput = {
@@ -19,9 +22,7 @@ export type LearnAcquisitionCompletionInput = {
   currentWord: Word
   state: LearnAcquisitionState
   acquisitionStates: Record<string, LearnAcquisitionState>
-  wrongCount: number
-  classificationCause: TypingErrorClassification['cause']
-  retrievalValidity: ReviewEvidenceV1['retrievalValidity']
+  record: IWordRecord
   lastWrongIndex?: number
   now: number
 }
@@ -73,13 +74,13 @@ export function resolveLearnAcquisitionCompletion(
     )
   } else if (state.phase === 'independent') {
     const independentEvidenceClean =
-      input.wrongCount === 0 &&
-      input.classificationCause === 'clean' &&
-      input.retrievalValidity === 'independent'
+      input.record.word === currentWord.name &&
+      isCleanIndependentAcquisitionRecord(input.record)
 
     if (
       independentEvidenceClean &&
-      !hasSufficientIndependentSpacing(state)
+      (!hasSufficientIndependentSpacing(state) ||
+        !isValidModernAcquisitionAdmissionRecord(input.record))
     ) {
       nextState = deferLearnAcquisitionForSpacing(
         state,
@@ -115,7 +116,7 @@ export function resolveLearnAcquisitionCompletion(
     [currentWord.name]: nextState,
   }
 
-  const projection = projectLearnAcquisitionProgress({
+  let projection = projectLearnAcquisitionProgress({
     queue,
     currentIndex,
     currentWord,
@@ -128,6 +129,21 @@ export function resolveLearnAcquisitionCompletion(
       ...nextState,
       independentInterveningItems:
         projection.interveningItemsBeforeFollowUp ?? 0,
+    }
+    if (!hasSufficientIndependentSpacing(nextState)) {
+      // A tail cannot supply enough intervening items. Do not ask for an
+      // immediate probe whose result would necessarily be rejected; checkpoint
+      // the delay now, and resume an Independent probe after five minutes.
+      nextState = deferLearnAcquisitionForSpacing(nextState, input.now)
+      projection = projectLearnAcquisitionProgress({
+        queue: queue.filter((item, index) =>
+          index <= currentIndex || item.name !== currentWord.name,
+        ),
+        currentIndex,
+        currentWord,
+        nextState,
+        acquisitionStates: { ...projectedStates, [currentWord.name]: nextState },
+      })
     }
   }
 

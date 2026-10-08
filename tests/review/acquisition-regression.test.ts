@@ -430,9 +430,14 @@ test('simulation-discovered regression: assistance-deferred acquisition resumes 
     acquisitionStates: {
       difficult: state,
     },
-    wrongCount: 2,
-    classificationCause: 'recall',
-    retrievalValidity: 'independent',
+    record: record({
+      word: 'difficult',
+      timeStamp: now,
+      policyVersion: LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION,
+      wrongCount: 2,
+      retrievalValidity: 'independent',
+      reasonCodes: ['spacing-eligible'],
+    }),
     lastWrongIndex: 2,
     now,
   })

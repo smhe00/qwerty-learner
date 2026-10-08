@@ -3,6 +3,10 @@ import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import { waitForBrowserFuzzGate } from '@/dev/browser-fuzz-hooks'
 import { isAcquisitionIntroductionRecord } from '@/learn/admission'
 import {
+  collectPendingAcquisitionStates,
+  repairUnadmittedAcquisitionCheckpoint,
+} from '@/learn/acquisition-recovery'
+import {
   deriveLearnDailyProgress,
   loadLearnDailySession,
 } from '@/learn/daily-session'
@@ -17,8 +21,6 @@ import {
 } from '@/learn/session'
 import {
   createLearnAcquisitionExercisePlanForState,
-  createLearnAcquisitionState,
-  normalizeDeferredAcquisitionState,
 } from '@/learn/acquisition'
 import type { LearnAcquisitionState } from '@/learn/acquisition'
 import {
@@ -70,9 +72,14 @@ export async function getLatestReviewRecord(dictID: string): Promise<ReviewRecor
   // Acquisition keeps only words with no persistent lifecycle state, so a
   // checkpoint written just before admission/exclusion cannot replay work
   // that has already crossed the lifecycle boundary.
-  const states = await getReviewWordStates(dictID)
+  const [states, wordRecords] = await Promise.all([
+    getReviewWordStates(dictID),
+    db.wordRecords.where('dict').equals(dictID).toArray(),
+  ])
+  const pending = collectPendingAcquisitionStates({ records, wordRecords, wordStates: states })
+  const recovered = repairUnadmittedAcquisitionCheckpoint(latest, pending)
   const sanitized = sanitizeLearnSessionLifecycle(
-    latest,
+    recovered,
     states,
   ) as ReviewRecord
 
@@ -399,69 +406,15 @@ export async function generateLearnMixedSessionRecord(
 }
 
 
-function latestAcquisitionStatesByWord(
-  records: ReviewRecord[],
-): Map<string, LearnAcquisitionState> {
-  const latest = new Map<string, LearnAcquisitionState>()
-
-  for (const record of [...records].sort(
-    (left, right) => left.createTime - right.createTime,
-  )) {
-    // Legacy Learn checkpoints may have lost sessionKind while still carrying
-    // valid per-word acquisition state. The state payload is the stronger
-    // signal and must remain recoverable.
-    if (!record.acquisitionStates) continue
-
-    for (const [word, state] of Object.entries(
-      record.acquisitionStates,
-    )) {
-      latest.set(
-        word,
-        normalizeDeferredAcquisitionState(
-          state,
-          record.createTime,
-        ),
-      )
-    }
-  }
-
-  return latest
-}
-
 async function getPendingAcquisitionStates(
   dictID: string,
 ): Promise<Map<string, LearnAcquisitionState>> {
-  const [records, states, wordRecords] = await Promise.all([
+  const [records, wordStates, wordRecords] = await Promise.all([
     db.reviewRecords.where('dict').equals(dictID).toArray(),
     getReviewWordStates(dictID),
     db.wordRecords.where('dict').equals(dictID).toArray(),
   ])
-  const admitted = new Set(states.map((state) => state.word))
-  const latest = latestAcquisitionStatesByWord(records)
-
-  // Compatibility recovery: older sessions can contain exposure WordRecords
-  // but no durable acquisitionStates/sessionKind. Such words must not become
-  // permanently blocked by "introducedWords". Rebuild them conservatively at
-  // Exposure so the next <=20-word Learn cohort can finish the acquisition.
-  for (const record of wordRecords) {
-    if (
-      admitted.has(record.word) ||
-      latest.has(record.word) ||
-      !isAcquisitionIntroductionRecord(record)
-    ) {
-      continue
-    }
-    latest.set(record.word, createLearnAcquisitionState())
-  }
-
-  const pending = new Map<string, LearnAcquisitionState>()
-
-  for (const [word, state] of latest) {
-    if (admitted.has(word) || state.phase === 'complete') continue
-    pending.set(word, state)
-  }
-
-  return pending
+  return collectPendingAcquisitionStates({ records, wordRecords, wordStates })
 }
 
 async function getDeferredAcquisitionStates(

@@ -1,5 +1,6 @@
 import {
   createLearnAcquisitionState,
+  createLearnAcquisitionExercisePlanForState,
   type LearnAcquisitionState,
 } from '../../src/learn/acquisition'
 import { resolveLearnAcquisitionCompletion } from '../../src/learn/progression'
@@ -80,9 +81,27 @@ export function runAcquisitionInteractionDriver(input: {
       currentWord,
       state: currentState,
       acquisitionStates,
-      wrongCount: 0,
-      classificationCause: 'clean',
-      retrievalValidity: 'independent',
+      record: {
+        word: currentWord.name,
+        dict: 'simulation',
+        chapter: -1,
+        timeStamp: input.now + interactions * 10,
+        timing: [],
+        mistakes: {},
+        wrongCount: 0,
+        sourceMode: 'learn',
+        learnItemKind: 'acquisition',
+        reviewPolicyDecision: createLearnAcquisitionExercisePlanForState(currentState).decision,
+        reviewEvidence: {
+          version: 1,
+          memoryGrade: 'good',
+          errorCause: 'clean',
+          confidence: 1,
+          evidenceStrength: 1,
+          retrievalValidity: 'independent',
+          reasonCodes: [],
+        },
+      },
       now: input.now + interactions * 10,
     })
 

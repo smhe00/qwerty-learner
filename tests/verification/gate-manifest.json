@@ -77,7 +77,8 @@
       "gate": "review",
       "tests": [
         "tests/learn/daily-session.test.ts",
-        "tests/e2e/learn-live-stats.spec.ts"
+        "tests/e2e/learn-live-stats.spec.ts",
+        "tests/learn/acquisition-incident.test.ts"
       ],
       "specs": [
         "SPEC-LEARN-PROGRESS-001"
@@ -106,7 +107,8 @@
       "gate": "review",
       "tests": [
         "tests/e2e/learn-recovery-flow.spec.ts",
-        "tests/e2e/browser-stateful-fuzz.spec.ts"
+        "tests/e2e/browser-stateful-fuzz.spec.ts",
+        "tests/learn/acquisition-incident.test.ts"
       ],
       "specs": [
         "SPEC-RECOVERY-001",
@@ -136,7 +138,8 @@
       "gate": "review",
       "tests": [
         "tests/learn/acquisition-domain.test.ts",
-        "tests/e2e/learn-acquisition-flow.spec.ts"
+        "tests/e2e/learn-acquisition-flow.spec.ts",
+        "tests/learn/acquisition-incident.test.ts"
       ],
       "specs": [
         "SPEC-LEARN-ACQUISITION-001",

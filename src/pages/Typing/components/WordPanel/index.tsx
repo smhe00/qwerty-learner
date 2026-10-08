@@ -180,10 +180,10 @@ export default function WordPanel() {
 
   const onFinish = useCallback(
     ({
+      record,
       wrongCount,
       classification,
       reviewRatingDecision,
-      reviewEvidence,
       lastWrongIndex,
       nextExerciseShadow,
     }: WordFinishResult) => {
@@ -373,9 +373,7 @@ export default function WordPanel() {
           state: acquisitionState,
           acquisitionStates:
             reviewModeInfo.reviewRecord?.acquisitionStates ?? {},
-          wrongCount,
-          classificationCause: classification.cause,
-          retrievalValidity: reviewEvidence.retrievalValidity,
+          record,
           lastWrongIndex,
           now: Math.floor(Date.now() / 1000),
         })
@@ -471,11 +469,7 @@ export default function WordPanel() {
         if (!projection.isFinished) {
           dispatch({
             type: TypingStateActionType.NEXT_WORD,
-            payload: projection.recoveryWindow?.active
-              ? { projectedWords: projection.queue }
-              : {
-                  insertWord: projection.insertWord,
-                },
+            payload: { projectedWords: projection.queue },
           })
         } else {
           appendDeveloperTrace({
