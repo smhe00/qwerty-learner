@@ -17,7 +17,7 @@ import {
 } from '@/learn/lifecycle'
 import { CURRENT_REVIEW_STATE_VERSION, createInitialReviewWordState } from './types'
 import type { IReviewWordState, ReviewOutcome } from './types'
-import { db } from '@/utils/db'
+import { db } from '@/utils/db/core'
 
 export async function getReviewWordState(dict: string, word: string): Promise<IReviewWordState | undefined> {
   return db.reviewWordStates.where('[dict+word]').equals([dict, word]).first()
