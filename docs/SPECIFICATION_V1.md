@@ -143,6 +143,8 @@ block local completion.
 
 ## 5. Cloud synchronization
 
+> Approved next-state design: [`CLOUD_SYNC_V2_MODEL.md`](./CLOUD_SYNC_V2_MODEL.md). Until its implementation and executable contracts land, `SPEC-SYNC-001` below remains the current production contract.
+
 ### SPEC-SYNC-001 — Safe completion-only auto upload
 
 After DailySession completion, automatic cloud upload may occur only when:
