@@ -6,7 +6,7 @@ import {
   isSupportedBackupFormat,
   readLearningState,
 } from '@/utils/backup'
-import { db } from '@/utils/db'
+import { db } from '@/utils/db/core'
 
 export const CLIENT_FORMAT_VERSION = BACKUP_FORMAT_VERSION
 
