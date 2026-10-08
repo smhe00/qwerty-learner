@@ -2,7 +2,7 @@
 protocol_version: "1.1"
 task_id: "TASK-20261008-009-acquisition-admission-recovery"
 title: "Repair acquisition admission and stranded tail recovery"
-status: "IN_PROGRESS"
+status: "REVIEW"
 target_branch: "product/main"
 base_commit: "9002ed6800f334e86fed9a72b85da9cdef8ba88f"
 executor: "codex"
