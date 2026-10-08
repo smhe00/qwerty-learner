@@ -149,3 +149,47 @@ test('isolated workspace blocks legacy V1 upload and local destructive actions',
   })
   expect(state).toEqual({ blocked: 2, words: 1 })
 })
+
+test('actual app replays pending S1 switch then reloads with isolated account state', async ({ page }) => {
+  await harness(page)
+  const target = { kind: 'account', accountId: 's1-happy-crash-target' }
+  const pending = await page.evaluate(async (account) => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+    try {
+      await h.switchWorkspace(h.workspaceRegistryPort, {
+        flush: async () => {},
+        saveSource: async () => {},
+        restoreTarget: async () => { throw new Error('injected crash after durable journal') },
+      }, account)
+    } catch { /* Deliberately leave pending journal to be recovered by real boot. */ }
+    localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify({
+      token: 's1-harness-credential', expiresAt: Math.floor(Date.now()/1000) + 3600,
+      user: { userId: account.accountId, username: 'test-account' },
+    }))
+    return h.workspaceRegistryPort.read()
+  }, target)
+  expect(pending.pending?.to).toEqual(target)
+  expect(pending.active).toEqual({ kind: 'anonymous' })
+
+  // Boot must restore account A in the unmounted phase and force fresh
+  // navigation before any React/Jotai state is constructed.
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 15_000 })
+  await harness(page)
+  const settled = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    const registry = await h.workspaceRegistryPort.read()
+    return {
+      registry,
+      wordCount: await h.db.wordRecords.count(),
+      anonymousVaultPreserved: Boolean(await h.loadWorkspaceFromVault(h.ANONYMOUS)),
+    }
+  })
+  expect(settled.registry.pending).toBeNull()
+  expect(settled.registry.active).toEqual(target)
+  expect(settled.registry.generation).toBe(3)
+  expect(settled.wordCount).toBe(0)
+  expect(settled.anonymousVaultPreserved).toBe(true)
+})
