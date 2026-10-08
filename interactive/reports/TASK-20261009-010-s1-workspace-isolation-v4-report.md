@@ -167,3 +167,33 @@ pending journals before mounting all Jotai modules. Then complete explicit
 legacy ownership, auth/offline failure UX, account transitions and tests.
 
 S1 remains **PARTIAL**. No `master` change or EdgeOne build authorized.
+
+## Actual application pre-mount rollout checkpoint (2026-10-09)
+
+- `76304cfc`: moved the original UI to `src/app.tsx`; minimal
+  `src/index.tsx` now obtains a single-browser writer lease BEFORE app
+  import, fails closed for initialized S1 auth/journal mismatch, and keeps
+  gen=0 legacy V1 users working without implicit migration.
+- `ab23c052`: corrected Playwright dynamic-import-in-evaluate harness
+  errors, not product logic. Actual app Gate **20/20 PASS**:
+  https://github.com/smhe00/qwerty-learner/actions/runs/37859615247
+- `0e1ce8b7`: blocked V1 credential mutation, V1 cloud overwrite/upload
+  and auto-sync, legacy destructive import/local clear whenever S1 registry
+  is initialized, without affecting the default gen=0 V1 path.
+  Chromium **22/22 PASS**:
+  https://github.com/smhe00/qwerty-learner/actions/runs/37859862918
+  Cloud Sync Gate **PASS**:
+  https://github.com/smhe00/qwerty-learner/actions/runs/37859863015
+- `f5788e5`: minimized an observed late audio call after first input by
+  checking synchronous accepted length and terminal lock before automatic
+  playback. Review Gate rerun:
+  https://github.com/smhe00/qwerty-learner/actions/runs/37860148522
+  (final status must be checked).
+
+**Risk statement:** New-code tabs mutually exclude their own writes.
+Already-open V1 tabs running older JS do not participate in Web Locks and
+cannot be claimed fenced. V1 migration is unexposed. Current S1 identity
+can be provisioned only through isolated test harness; no end-user account
+switch is activated. Full writer quiescence on page lifecycle, multi-tab
+rebind, destructive V4 restore and migration UX remain unimplemented.
+Production branch stays unchanged. S1 is PARTIAL / NO RELEASE.

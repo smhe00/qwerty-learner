@@ -8,7 +8,7 @@ status: "PARTIAL"
 executor: "ChatGPT (direct executor)"
 claim_base_commit: "77ce352abdf15148da69ed90b47fc77f03fd5039"
 claimed_at_utc: "2026-10-08T22:41:35Z"
-last_known_commit: "90c9b5d32a26263ccdbfe2685ffb2127c0ac6268"
+last_known_commit: "f5788e5eec899ed82ff008aa9b2e8def64dd1209"
 release_to_master: false
 priority: "P0"
 ---
@@ -34,3 +34,13 @@ were committed and tested: 14/14 Chromium on run 37858999566 and
 Cloud Sync build/lint on 37858818743 (source fefc93d). No production V1
 entry wiring or S1 activation. Next is controlled app entry with all-writer
 fencing, legacy migration consent and account lifecycle UI.
+
+2026-10-09 actual-app gate checkpoint: `src/index.tsx` is now pre-mount
+locked; original React app moves unchanged to `src/app.tsx`.
+All new-version tabs share one writer lease. Pending S1 restore replays before
+app import and forces fresh navigation. Old V1 auth/sync/overwrite paths are
+blocked when S1 generation >0. Chromium actual-app Gate 22/22 PASS on
+`0e1ce8b7` (37859862918); Cloud Gate PASS (37859863015).
+The audio follow-up `f5788e5` requires Review Gate final confirmation.
+Next: transactional legacy ownership consent, S1 account UI, stale-old-tab
+rollout migration, failure injection and trace refinement. Still PARTIAL.

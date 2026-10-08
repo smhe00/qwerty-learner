@@ -35,11 +35,17 @@ full `Next`; formal verification status is **PARTIAL**.
    allowlisted settings, complete DailySession capture, V3->V4 conversion,
    canonical logical fingerprint, durable vault and real Dexie round-trip.
    V1 public backup and cloud payload intentionally stay V3.
-3. **S1.3: partial.** `workspace-coordinator.ts` +
+3. **S1.3: partial (pre-mount gate integrated on product/main).** `workspace-coordinator.ts` +
    `workspace-lock.ts` implement explicit one-time legacy ownership
    assignment, registry CAS, restore replay and single-writer Web Locks
-   lease. Early app bootstrap gating/React hydration and multi-tab rebind
-   are NOT wired, so cross-tab production safety is NOT claimed.
+   lease. The actual `src/index.tsx` is now a minimal pre-mount
+   entry: it acquires the writer lease and verifies/replays the registry
+   BEFORE dynamically importing `src/app.tsx` (React/Jotai/DB).
+   Legacy uninitialized V1 remains unmodified, except that new-code tabs
+   wait if another writer tab is active. Journal replay requires a clean
+   navigation before app hydration. Multi-tab rebind, previously-open old-JS
+   tabs, full write-quiescence on page exit and browser compatibility are
+   NOT yet proven for production S1 activation.
 4. **S1.4: pending.** Login/logout/registration adapter, explicit anonymous
    copy decision, visible stages and offline/auth failure semantics.
 5. **S1.5: partial.** `tests/cloud/workspace-transition.test.mjs` and
@@ -138,3 +144,44 @@ https://github.com/smhe00/qwerty-learner/actions/runs/37858818743 .
 These results cover an *unmounted harness*; S1 early-boot protection of the
 real V1 application is NOT delivered. The 3-device/4-username full TLC proof
 is still not complete.
+
+## 2026-10-09 actual-app bootstrap / V1 bypass fence checkpoint
+
+The real app entry is split into `src/index.tsx` (minimal writer gate) and
+`src/app.tsx` (original React application). The running app retains the Web
+Locks exclusive lease; competing new-version tabs render an explicit
+read-only/waiting screen with a retry action, not a second writable app.
+
+When the S1 registry is initialized, the boot guard enforces active immutable
+account ID matching the authenticated ID. Pending restore is replayed before
+app import; after replay, the browser is reloaded to avoid hydration of stale
+module-level caches. A corrupt vault or mismatched login fails closed.
+For an uninitialized registry, this is merely a **single-writer V1
+compatibility gate**, NOT implicit V1->V4 account migration.
+
+`src/sync/workspace-auth-guard.ts` now fences old UI login/logout/register,
+V1 cloud upload/download/auto-upload and old destructive V3 import/local
+clear once S1 registry is initialized. Read-only backup export/inspection
+continues. Existing gen=0 V1 operations are preserved.
+
+CI evidence:
+- Source `ab23c052` actual-app browser Gate:
+  https://github.com/smhe00/qwerty-learner/actions/runs/37859615247
+  **20/20 PASS** (14 foundation + 6 actual-app).
+- Source `0e1ce8b7` browser Gate:
+  https://github.com/smhe00/qwerty-learner/actions/runs/37859862918
+  **22/22 PASS**, with V1 mutation isolation.
+- Cloud Sync Gate `0e1ce8b7`:
+  https://github.com/smhe00/qwerty-learner/actions/runs/37859863015
+  **PASS** including lint + production build.
+- Earlier Review Gate `0e1ce8b7` found a delayed Typing auto-pronunciation
+  race in a real browser audio test; source `f5788e5` adds a synchronous
+  input-length/completion lock guard. Review rerun:
+  https://github.com/smhe00/qwerty-learner/actions/runs/37860148522
+  (inspect final outcome before marking a review gate as PASS).
+
+**Open blockers:** No V1 account ownership consent/transactional UI;
+no supported S1 login/register/logout/switch user flows; no multi-device
+or production EdgeOne migration; no verified handling of already-open older
+application tabs; no real-browser successful post-crash restore-then-app-mount
+end-to-end test yet. Do not publish `master` or call S1 complete.
