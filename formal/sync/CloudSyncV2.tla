@@ -1015,6 +1015,10 @@ NextBlock ==
   \/ SyncActions
   \/ FaultActions
 
+CompleteWordProjection ==
+  \/ \E d \in Devices : CompleteWord(d)
+  \/ \E d \in Devices : DeleteLearningRecords(d)
+
 NextConcurrent ==
   \/ RegistrationActions
   \/ LoginActions
@@ -1023,10 +1027,6 @@ NextConcurrent ==
   \/ SyncActions
   \/ AccountDeletionActions
   \/ FaultActions
-
-CompleteWordProjection ==
-  \/ \E d \in Devices : CompleteWord(d)
-  \/ \E d \in Devices : DeleteLearningRecords(d)
 
 NextIdentity ==
   \/ RegistrationActions
