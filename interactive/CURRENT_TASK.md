@@ -7,7 +7,7 @@ target_branch: "product/main"
 status: "REVIEW"
 executor: "codex"
 claim_base_commit: "9002ed6800f334e86fed9a72b85da9cdef8ba88f"
-release_to_master: false
+release_to_master: true
 priority: "P1"
 ---
 
@@ -15,4 +15,4 @@ priority: "P1"
 
 Repair the diagnosed Learn acquisition admission mismatch and stranded tail checkpoints. User authorized implementation in this chat. The previously accepted TASK-20261007-008 remains in its task/report files.
 
-Next action: review implementation e086ce1b and the completed report; inspect development CI. No release authorization.
+User explicitly authorized publication on 2026-10-09. Publish the validated acquisition repair to master and verify the EdgeOne build.

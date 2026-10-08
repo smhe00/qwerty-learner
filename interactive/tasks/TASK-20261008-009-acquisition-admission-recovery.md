@@ -8,7 +8,7 @@ base_commit: "9002ed6800f334e86fed9a72b85da9cdef8ba88f"
 executor: "codex"
 allow_parallel_executors: false
 report_file: "interactive/reports/TASK-20261008-009-acquisition-admission-recovery-report.md"
-release_to_master: false
+release_to_master: true
 priority: "P1"
 ---
 
@@ -22,7 +22,7 @@ Unify final acquisition progression with persisted valid admission evidence. ESC
 
 ## Constraints
 
-- Work only on product/main; no master push or deployment.
+- Development is on product/main. User explicitly authorized this validated repair to be published to master on 2026-10-09; one fast-forward release push is allowed.
 - Preserve raw history, valid admissions, exclusions, fresh quota, and ordinary Typing behavior.
 - Do not commit the user's diagnostic package or personal records.
 - Do not mark persistent failures mastered or claim unconditional completion without valid independent evidence.
