@@ -6,14 +6,18 @@
 >
 > Active scheduler: **FSRS-6 r0.84**
 >
-> Rollback/comparator scheduler: `basic-v2`
+> Analysis comparator only: `basic-v2`
+>
+> Canonical current product semantics live in
+> `docs/SPECIFICATION_V1.md`. This document retains the Phase-G rollout
+> history and benchmark rationale; pre-activation wording below is historical.
 
 ## Objective
 
-Integrate FSRS-6 as a versioned, deterministic shadow scheduler behind the
-existing Learn Rating Gate. No FSRS result may change `nextReviewAt`,
-lifecycle, Review queue selection, P3 quota, or P4 workload planning before the
-G4 activation decision.
+Historical rollout objective: integrate FSRS-6 as a versioned, deterministic
+shadow scheduler behind the Learn Rating Gate, collect comparable evidence, and
+activate it only after G4. That activation is complete; production scheduling
+now uses FSRS-6, while Basic-v2 remains only an analysis comparator.
 
 ## Phase sequence
 
@@ -22,7 +26,7 @@ G0  ts-fsrs dependency / compatibility
  ↓
 G1  historical shadow replay
  ↓
-G2  live basic-v2 + FSRS dual-track shadow
+G2  historical Basic-v2 + FSRS dual-track comparison
  ↓
 G3  calibration / retrievability / workload analysis
  ↓
