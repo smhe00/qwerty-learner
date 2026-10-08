@@ -25,6 +25,7 @@ on:
       - 'src/pages/Typing/components/StartButton/**'
       - 'src/achievement/**'
       - 'src/utils/backup.ts'
+      - 'src/utils/time.ts'
       - 'src/utils/db/**'
       - 'src/pages/Gallery-N/ReviewDetail/**'
       - 'src/pages/Gallery-N/index.tsx'
@@ -111,6 +112,7 @@ jobs:
           src/utils/db
           src/achievement
           src/utils/backup.ts
+          src/utils/time.ts
           src/pages/Gallery-N/ReviewDetail
           src/pages/Gallery-N/index.tsx
           src/pages/Gallery-N/DictionaryWithoutCover.tsx
