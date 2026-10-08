@@ -81,7 +81,7 @@
         },
         {
           "file": "tests/learn/daily-session.test.ts",
-          "title": "assisted acquisition does not advance daily independent progress"
+          "title": "daily progress advances only on final independent completion"
         }
       ]
     },
