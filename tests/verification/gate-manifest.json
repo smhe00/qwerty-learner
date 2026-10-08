@@ -38,11 +38,6 @@
       "owner": "formal-models"
     },
     {
-      "id": "sync-tla",
-      "workflow": ".github/workflows/sync-tla-gate.yml",
-      "owner": "cloud-sync-formal"
-    },
-    {
       "id": "achievement",
       "workflow": ".github/workflows/achievement-gate.yml",
       "owner": "achievement"
@@ -210,7 +205,7 @@
       "title": "Cloud Sync V2 end-to-end distributed protocol is executable and model-checked",
       "level": "L1",
       "owner": "formal/sync",
-      "gate": "sync-tla",
+      "gate": "tla",
       "tests": [
         "formal/sync/CloudSyncV2.tla",
         "formal/sync/CloudSyncV2.production.cfg",

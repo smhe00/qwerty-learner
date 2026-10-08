@@ -5,7 +5,7 @@ on:
     branches:
       - product/main
     paths:
-      - 'formal/learn/**'
+      - 'formal/**'
       - 'tests/formal/**'
       - 'src/learn/trace-ir.ts'
       - 'tests/simulation/system-oracle.ts'
@@ -340,3 +340,71 @@ jobs:
               "/tmp/f8-${mutation}.log" \
               fresh-budget-violation
           done
+
+
+      - name: Parse Cloud Sync V2 executable specification
+        run: |
+          java -cp /tmp/tla2tools.jar tla2sany.SANY \
+            formal/sync/CloudSyncV2.tla
+
+      - name: Exhaustively model-check bounded Sync V2 production protocol
+        run: |
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -workers auto \
+            -config formal/sync/CloudSyncV2.production.cfg \
+            formal/sync/CloudSyncV2.tla
+
+      - name: Exhaustively model-check Sync V2 with 3 devices and 4 usernames
+        run: |
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -workers auto \
+            -config formal/sync/CloudSyncV2.three-device-four-username.cfg \
+            formal/sync/CloudSyncV2.tla
+
+      - name: Require Sync V2 stale-push counterexample
+        run: |
+          set +e
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -workers auto \
+            -config formal/sync/CloudSyncV2.stale-push-mutation.cfg \
+            formal/sync/CloudSyncV2.tla \
+            > /tmp/sync-stale-push.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/sync-stale-push.log
+          if [ "$status" -eq 0 ]; then
+            echo 'Expected stale-push mutation to violate OrdinaryWritesUseCurrentBase.'
+            exit 1
+          fi
+
+      - name: Require Sync V2 account-ID-reuse counterexample
+        run: |
+          set +e
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -workers auto \
+            -config formal/sync/CloudSyncV2.id-reuse-mutation.cfg \
+            formal/sync/CloudSyncV2.tla \
+            > /tmp/sync-id-reuse.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/sync-id-reuse.log
+          if [ "$status" -eq 0 ]; then
+            echo 'Expected ID-reuse mutation to violate AccountIdNeverReused.'
+            exit 1
+          fi
+
+      - name: Require Sync V2 active-Block-retarget counterexample
+        run: |
+          set +e
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -workers auto \
+            -config formal/sync/CloudSyncV2.block-retarget-mutation.cfg \
+            formal/sync/CloudSyncV2.tla \
+            > /tmp/sync-block-retarget.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/sync-block-retarget.log
+          if [ "$status" -eq 0 ]; then
+            echo 'Expected block-retarget mutation to violate BlockSettingDoesNotRetargetCurrentBlock.'
+            exit 1
+          fi

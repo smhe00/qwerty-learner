@@ -963,7 +963,7 @@ semantics.
 - require mutation counterexamples for stale ordinary writes, immutable account-ID
   reuse, and active-Block retargeting.
 
-**Gate:** S0.5 is complete only when the dedicated Sync TLA Gate passes.
+**Gate:** S0.5 is complete only when the repository TLA Gate passes the Sync V2 model-checking section.
 S1-S4 implementation must remain conformant with the executable protocol.
 
 ### S1 — Local workspace isolation

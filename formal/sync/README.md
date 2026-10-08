@@ -90,8 +90,8 @@ implementation behavior that cannot be represented by a legal TLA+ transition is
 a protocol deviation and requires either a code fix or an explicit specification
 change.
 
-The dedicated `Sync TLA Gate` parses the module, exhaustively checks the
-production configurations, and requires the mutation configurations to produce
+The repository `TLA Gate` parses the module, exhaustively checks the production
+configurations, and requires the mutation configurations to produce
 counterexamples.
 
-Gate owner: `Sync TLA Gate` (`.github/workflows/sync-tla-gate.yml`).
+Gate owner: `TLA Gate` (`.github/workflows/tla-gate.yml`).
