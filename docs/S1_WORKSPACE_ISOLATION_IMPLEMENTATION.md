@@ -87,3 +87,19 @@ a pending journal, block user writes until recovery replays target restoration.
 
 No code in this milestone changes the deployed V1 account UI, EdgeOne
 backend protocol, or the production release branch.
+
+## Developer application entry for manual Backup V4
+
+From commit `40c05aa0`, `product/main` Settings > Data Settings
+includes "Export full V4 backup" and "Verify V4 backup file (read-only)".
+Both use the actual S1 V4 snapshot model, including durable Learn sessions
+and the explicit preference whitelist. Verification does not import records.
+This is an application-test feature, not account isolation activation.
+
+CI: Cloud Sync Gate run 37856717441 PASS (35/35, lint, build); Chromium S1
+Browser Gate run 37856717482 PASS (8/8, of which 2 are real Settings UI tests).
+No EdgeOne build triggered, and `master` remains unchanged.
+
+The existing manual V3 export/import and Cloud Sync V1/V3 are unchanged.
+Full V4 manual restore, V1 account migration, stale-tab protection and
+auto boot recovery still require separate implementation and safety gates.

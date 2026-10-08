@@ -86,3 +86,48 @@ explicitly invoked under an exclusive lease and no other working writers.
 The next executor should begin from product/main at or after `c9d6dfa0`,
 check `interactive/CURRENT_TASK.md`, the task and this report, and
 continue without touching `master`. No claim that S1 is ready to release.
+
+## Manual Backup V4 application-test integration (2026-10-09)
+
+Implementation commit: `40c05aa052adeba79b4b96213f46b2f7dd36666e`.
+
+- `src/sync/manual-backup-v4.ts`: app-facing V4 JSON export, gzip download,
+  full six-table manifest preflight and **read-only** file inspection with
+  logical fingerprint. It does not call V1 upload APIs or DB import.
+- `src/pages/Typing/components/Setting/DataSetting.tsx`: explicit
+  "Backup V4 (development application test)" controls for full export and
+  read-only verification, with visible success/failure messages. Existing
+  V3 buttons and cloud sync behavior are untouched.
+- `tests/e2e/workspace-v4-app.spec.ts`: application-level test opens the
+  actual data settings, downloads the gzip, inspects six durable Dexie tables,
+  unfinished DailySession, FSRS, user preferences and credential exclusion,
+  then validates the same file through a native file chooser. Another test
+  confirms invalid gzip rejection and unchanged Learn records.
+- `tests/e2e/workspace-v4.config.ts` and
+  `.github/workflows/s1-workspace-gate.yml` run both application and
+  storage-level browser suites on localhost without EdgeOne deployment.
+
+### Verified CI, exact commit `40c05aa0`
+
+| Gate | Conclusion | Details |
+| --- | --- | --- |
+| Cloud Sync Gate 37856717441 | PASS | 35/35 Node tests, ESLint, Vite build |
+| S1 Workspace Browser Gate 37856717482 | PASS | 8/8 Chromium cases, including 2 app UI cases |
+| S0.5 TLC large 3x4 | NOT REQUIRED | Exploratory; no whole-protocol proof |
+| S0.5 mandatory TLC after negative mutation config | IN_PROGRESS at checkpoint | Run 37856150599 |
+| Review Gate | IN_PROGRESS at checkpoint | Run 37856717477 |
+
+### Explicit limitations
+
+**Manual V4 import/overwrite is NOT exposed in the app.** This is deliberate:
+S1 startup pending-journal recovery and all-tab writer fencing are not yet
+wired. The S1 isolated harness has proven V4 restoration and data isolation,
+but real-user destructive restore must not be enabled without Crash recovery.
+
+The current V1 working DB is still shared across auth sessions. For a V4
+export made while authenticated, the metadata account ID is a **source hint**
+obtained from the authenticated V1 user, not a proof of complete S1 account
+isolation. It must not be used to auto-authorize cross-account migration.
+
+`master` and EdgeOne production remain unchanged; normal manual V3
+export/import and cloud V3 payloads retain their existing behavior.

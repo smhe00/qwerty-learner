@@ -8,7 +8,7 @@ status: "PARTIAL"
 executor: "ChatGPT (direct executor)"
 claim_base_commit: "77ce352abdf15148da69ed90b47fc77f03fd5039"
 claimed_at_utc: "2026-10-08T22:41:35Z"
-last_known_commit: "c9d6dfa001e68d8e25c1f581ec2b6f1e99fd2007"
+last_known_commit: "40c05aa052adeba79b4b96213f46b2f7dd36666e"
 release_to_master: false
 priority: "P0"
 ---
@@ -16,7 +16,9 @@ priority: "P0"
 # Current Task
 
 S1 foundation (Backup V4, isolated IndexedDB vault, CAS, writer lease,
-real browser isolated round-trip) is committed and validated. Status is
+real browser isolated round-trip) is committed and validated. The developer
+application now exposes V4 full export and read-only file verification,
+with 35/35 Cloud Sync and 8/8 Chromium tests passing (commit 40c05aa0). Status is
 PARTIAL, not release-ready. Next: early app startup gate/recovery before
 React/DB writes; stale-tab rebind; explicit V1 ownership migration;
 logout/login UX and auth/offline/failure browser tests. Full record:
