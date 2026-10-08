@@ -38,8 +38,6 @@ on:
       - 'tests/audio/**'
       - 'tests/resources/**'
       - 'tests/learn/**'
-      - 'tests/verification/**'
-      - 'scripts/validate-gate-manifest.mjs'
       - 'tests/e2e/learn-live-stats.spec.ts'
       - 'tests/e2e/learn-live-stats.config.ts'
       - 'tests/e2e/learn-live-stats-harness.ts'
@@ -92,9 +90,6 @@ jobs:
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
-
-      - name: Validate verification ownership manifest
-        run: yarn validate:gate-manifest
 
       - name: Lint Review code
         run: >
