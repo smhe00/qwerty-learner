@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: edgeone-browser-sync-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   browser-sync-live:
     if: >-
