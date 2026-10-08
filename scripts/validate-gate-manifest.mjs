@@ -13,6 +13,20 @@ const errors = []
 const gateIds = new Set()
 const contractIds = new Set()
 
+const specificationPath = manifest.specification
+  ? resolve(root, manifest.specification)
+  : undefined
+const specificationSource =
+  specificationPath && existsSync(specificationPath)
+    ? readFileSync(specificationPath, 'utf8')
+    : ''
+
+if (!specificationPath || !existsSync(specificationPath)) {
+  errors.push(
+    `missing canonical specification: ${manifest.specification ?? '<missing>'}`,
+  )
+}
+
 for (const gate of manifest.gates ?? []) {
   if (!gate.id || gateIds.has(gate.id)) {
     errors.push(`duplicate or missing gate id: ${gate.id ?? '<missing>'}`)
@@ -40,6 +54,19 @@ for (const contract of manifest.contracts ?? []) {
   if (!contract.owner || !existsSync(resolve(root, contract.owner))) {
     errors.push(`missing owner for ${contract.id}: ${contract.owner}`)
   }
+
+  if (!Array.isArray(contract.specs) || contract.specs.length === 0) {
+    errors.push(`no product spec mapping for ${contract.id}`)
+  } else {
+    for (const specId of contract.specs) {
+      if (!specificationSource.includes(specId)) {
+        errors.push(
+          `contract ${contract.id} references missing spec id: ${specId}`,
+        )
+      }
+    }
+  }
+
   if (!Array.isArray(contract.tests) || contract.tests.length === 0) {
     errors.push(`no tests for ${contract.id}`)
   } else {
@@ -110,5 +137,5 @@ if (errors.length > 0) {
 }
 
 console.log(
-  `Gate manifest OK: ${gateIds.size} gates, ${contractIds.size} contracts, regression catalog validated.`,
+  `Gate manifest OK: ${gateIds.size} gates, ${contractIds.size} contracts, specification and regression catalog validated.`,
 )
