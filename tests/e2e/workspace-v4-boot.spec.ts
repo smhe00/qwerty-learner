@@ -108,6 +108,26 @@ test('pending crash journal is replayed before mount on fresh navigation', async
   await expect.poll(() => page.evaluate(() =>
     Boolean((window as any).__backupHarness?.mountGuardedWorkspaceApp),
   )).toBe(true)
+  const firstBoot = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    const events: string[] = []
+    let mounted = false
+    let error = ''
+    try {
+      await h.mountGuardedWorkspaceApp(() => { mounted = true }, (s: string) => events.push(s))
+    } catch (e) { error = String(e) }
+    return { mounted, events, error, registry: await h.workspaceRegistryPort.read() }
+  })
+  expect(firstBoot.mounted).toBe(false)
+  expect(firstBoot.error).toMatch(/reload required/)
+  expect(firstBoot.events).toEqual(['locking', 'recovering', 'restart-required'])
+  expect(firstBoot.registry.pending).toBeNull()
+  expect(firstBoot.registry.active).toEqual(accountA)
+
+  await page.reload()
+  await expect.poll(() => page.evaluate(() =>
+    Boolean((window as any).__backupHarness?.mountGuardedWorkspaceApp),
+  )).toBe(true)
   const recovered = await page.evaluate(async () => {
     const h = (window as any).__backupHarness
     const events: string[] = []
@@ -124,7 +144,7 @@ test('pending crash journal is replayed before mount on fresh navigation', async
   expect(recovered.value.pending).toBeNull()
   expect(recovered.value.active).toEqual(accountA)
   expect(recovered.value.generation).toBe(3)
-  expect(recovered.events).toEqual(['locking', 'recovering', 'checking-identity', 'ready', 'mounted'])
+  expect(recovered.events).toEqual(['locking', 'checking-identity', 'ready', 'mounted'])
   expect(recovered.anonymousSaved).toBe(true)
 })
 

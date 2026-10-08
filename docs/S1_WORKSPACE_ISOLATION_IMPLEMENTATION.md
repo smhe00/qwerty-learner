@@ -111,6 +111,11 @@ and `mountGuardedWorkspaceApp`. An experimental caller MUST defer dynamic
 import of the mounted application until the exclusive Web Lock has been
 acquired, a previously initialized registry has been validated, pending
 journal recovery has completed and its account ID matches current auth.
+If a journal was recovered, the guard **requires a fresh page navigation**
+before mounting: importing the recovery adapter can initialize legacy store
+modules from pre-restore localStorage, so mounting in that same JS realm
+could resurrect stale state. The normal no-pending path does not import the
+recovery adapter or those store modules before mount.
 It **fails closed**, without mounting the callback, for uninitialized V1
 storage, competing tabs, corrupted/pending restore failures and identity
 mismatch. The lease must remain held for the entire mounted writer lifetime.

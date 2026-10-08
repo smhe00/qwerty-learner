@@ -6,7 +6,6 @@
  * S1 ownership, so this primitive alone does not authorize S1 activation.
  */
 import { loadAuth } from './auth'
-import { recoverPendingWorkspace } from './workspace-coordinator'
 import { acquireWorkspaceWriterLease } from './workspace-lock'
 import { same } from './workspace-transition'
 import type { Registry, Workspace } from './workspace-transition'
@@ -15,6 +14,7 @@ import { workspaceRegistryPort } from './workspace-vault'
 export type WorkspaceBootStage =
   | 'locking'
   | 'recovering'
+  | 'restart-required'
   | 'checking-identity'
   | 'ready'
   | 'blocked'
@@ -34,7 +34,8 @@ function report(
 
 /**
  * Fail closed for a never-migrated V1 working DB or an auth/registry mismatch.
- * A pending journal always recovers before checking the active identity.
+ * A pending journal is recovered without mounting; a new page load is then
+ * mandatory to discard any module-level storage caches initialized by restore.
  * The exclusive lease is held until the owning tab explicitly releases it.
  */
 export async function prepareGuardedWorkspaceBoot(
@@ -46,14 +47,25 @@ export async function prepareGuardedWorkspaceBoot(
     throw error
   })
 
+  let recovered = false
   try {
     const before = await workspaceRegistryPort.read()
     if (before.generation === 0) {
       throw new Error('S1 workspace is not initialized: explicit V1 migration is required')
     }
 
-    report(onStage, 'recovering')
-    const registry = await recoverPendingWorkspace()
+    // Importing the restore adapter loads the legacy Jotai/store modules.
+    // After a journal replay, their module-level caches may reflect the OLD
+    // localStorage. Refuse hydration in this JS realm and require a reload.
+    // In the no-journal path we never load those modules before app mount.
+    let registry = before
+    if (before.pending) {
+      report(onStage, 'recovering')
+      const { recoverPendingWorkspace } = await import('./workspace-coordinator')
+      registry = await recoverPendingWorkspace()
+      recovered = true
+      throw new Error('S1 recovery completed; reload required before mounting app')
+    }
 
     report(onStage, 'checking-identity')
     const auth = loadAuth()
@@ -68,7 +80,7 @@ export async function prepareGuardedWorkspaceBoot(
     return { registry, release: () => lease.release() }
   } catch (error) {
     lease.release()
-    report(onStage, 'blocked')
+    report(onStage, recovered ? 'restart-required' : 'blocked')
     throw error
   }
 }
