@@ -2,12 +2,6 @@ export const CURRENT_REVIEW_STATE_VERSION = 5
 
 export type ReviewOutcome = 'again' | 'hard' | 'good' | 'easy'
 
-export type LegacyBasicSchedulerStateV1 = {
-  kind: 'basic-v1'
-  stage: number
-  intervalDays: number
-}
-
 export type BasicSchedulerState = {
   kind: 'basic-v2'
   stage: number
@@ -22,7 +16,6 @@ export type Fsrs6SchedulerState = {
 }
 
 export type ReviewSchedulerState =
-  | LegacyBasicSchedulerStateV1
   | BasicSchedulerState
   | Fsrs6SchedulerState
 
