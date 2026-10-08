@@ -145,6 +145,24 @@ block local completion.
 
 > Approved next-state design: [`CLOUD_SYNC_V2_MODEL.md`](./CLOUD_SYNC_V2_MODEL.md). Until its implementation and executable contracts land, `SPEC-SYNC-001` below remains the current production contract.
 
+### SPEC-SYNC-V2-FORMAL-001 — Sync V2 protocol has one executable distributed state machine
+
+The approved Sync V2 target in
+[`CLOUD_SYNC_V2_MODEL.md`](./CLOUD_SYNC_V2_MODEL.md) is executable as
+`formal/sync/CloudSyncV2.tla`.
+
+The formal protocol covers the combined state machine rather than account logic
+in isolation: local logical-word progress, frozen Block boundaries, automatic
+and manual Sync, local/cloud revision authority, multi-device divergence,
+workspace/account lifecycle, Backup V4 export/restore, destructive operations,
+offline/auth failure, crash windows, username reuse with immutable account IDs,
+and stale-device deletion propagation.
+
+S1-S4 implementation behavior must refine legal transitions of the executable
+model. A behavior that cannot be represented by a legal formal transition
+requires either an implementation fix or an explicit protocol/specification
+change.
+
 ### SPEC-SYNC-001 — Safe completion-only auto upload
 
 After DailySession completion, automatic cloud upload may occur only when:

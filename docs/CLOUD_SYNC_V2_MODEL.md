@@ -8,6 +8,10 @@
 > Core product rule:
 >
 > **one Sync ID owns one logical workspace; devices are replicas of that workspace.**
+>
+> **S0.5 executable specification:** `formal/sync/CloudSyncV2.tla` is the
+> executable state-machine form of this protocol. Sync V2 implementation phases
+> must refine that model rather than inventing independent transition semantics.
 
 ## 1. Goals
 
@@ -497,7 +501,6 @@ If account A is active and authentication becomes unusable:
 ~~~text
 account:A remains active locally
 sync status = AUTH_REQUIRED
-ACCOUNT_DELETED
 ~~~
 
 The UI must offer a clear re-authentication path and an explicit logout-to-
@@ -943,6 +946,25 @@ semantics.
 - define canonical logicalFingerprint;
 - extend remote metadata with logicalFingerprint separate from payloadSha256;
 - define V3 -> V4 migration/compatibility policy.
+
+### S0.5 — End-to-end executable TLA+ protocol
+
+- model one logical EdgeOne service and multiple browser-profile devices;
+- cover anonymous/account workspaces, immutable account IDs and username reuse;
+- cover local logical-word advancement and frozen Block boundaries;
+- cover automatic Block sync and manual logical-word sync;
+- cover local/cloud revisions, equal-fingerprint no-op, remote-ahead and conflict;
+- cover Backup V4 export/restore and explicit overwrite/recovery;
+- cover offline/online, auth loss, process crash and sync crash windows;
+- cover learning-record deletion and cross-device full-account deletion propagation;
+- cover multi-device stale replicas and anti-resurrection tombstones;
+- provide bounded exhaustive TLC configurations including 3 devices and 4
+  username values;
+- require mutation counterexamples for stale ordinary writes, immutable account-ID
+  reuse, and active-Block retargeting.
+
+**Gate:** S0.5 is complete only when the dedicated Sync TLA Gate passes.
+S1-S4 implementation must remain conformant with the executable protocol.
 
 ### S1 — Local workspace isolation
 

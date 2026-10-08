@@ -5,7 +5,7 @@ on:
     branches:
       - product/main
     paths:
-      - 'formal/**'
+      - 'formal/learn/**'
       - 'tests/formal/**'
       - 'src/learn/trace-ir.ts'
       - 'tests/simulation/system-oracle.ts'

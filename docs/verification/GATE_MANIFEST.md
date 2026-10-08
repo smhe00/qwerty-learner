@@ -43,7 +43,8 @@ State-machine and scheduler properties:
 - quota accounting;
 - checkpoint monotonicity;
 - candidate/session arbitration;
-- mutation and counterexample coverage.
+- mutation and counterexample coverage;
+- Cloud Sync V2 distributed protocol refinement across local progress, Block/manual sync, multi-device state, backup/restore, deletion, crash, and account lifecycle.
 
 ### L2 — Integration / Browser
 
@@ -70,7 +71,8 @@ Current canonical ownership:
 | Learn / Review integration | Review Gate |
 | FSRS package + active scheduler contracts | FSRS Phase G Gate |
 | FSRS 365-day / multi-seed strategy benchmark | FSRS Benchmark Gate |
-| TLC models / counterexamples | TLA Gate |
+| Learn TLC models / counterexamples | TLA Gate |
+| Cloud Sync V2 end-to-end executable protocol | Sync TLA Gate |
 | Achievement rules | Achievement Gate |
 | Dictionary content | Dictionary Gate |
 | Cloud backend/sync | Cloud Sync workflows |
