@@ -1,4 +1,4 @@
-import { db } from '@/utils/db'
+import { db } from '@/utils/db/core'
 import type { AchievementStateRecord } from './types'
 
 export async function getAchievementStates(): Promise<
