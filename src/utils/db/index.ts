@@ -1,23 +1,25 @@
 import type {
-  IChapterRecord,
-  IReviewRecord,
-  IRevisionDictRecord,
-  IWordRecord,
   LearningContextV1,
   LetterMistakes,
   WordRecordTelemetry,
 } from './record'
-import { ChapterRecord, ReviewRecord, WordRecord } from './record'
+import { ChapterRecord, WordRecord } from './record'
+import { db } from './core'
+export { db } from './core'
 import { getAchievementSessionId } from '@/achievement/session'
 import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
-import type { AchievementEventRecord, AchievementStateRecord } from '@/achievement/types'
 import type { LearnSessionKind } from '@/learn/session'
 import type { ExerciseConditionV1 } from '@/review/condition'
-import type { ReviewPolicyDecisionV1, ReviewPolicyShadowV1 } from '@/review/decision'
+import type {
+  ReviewPolicyDecisionV1,
+  ReviewPolicyShadowV1,
+} from '@/review/decision'
 import type { ReviewEvidenceV1 } from '@/review/evidence'
 import type { RatingDecision } from '@/review/state-machine'
-import type { IReviewWordState } from '@/review/types'
-import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
+import {
+  TypingContext,
+  TypingStateActionType,
+} from '@/pages/Typing/store'
 import type { TypingState } from '@/pages/Typing/store/type'
 import {
   currentChapterAtom,
@@ -25,59 +27,8 @@ import {
   isReviewModeAtom,
   reviewModeInfoAtom,
 } from '@/store'
-import type { Table } from 'dexie'
-import Dexie from 'dexie'
 import { useAtomValue } from 'jotai'
 import { useCallback, useContext } from 'react'
-
-class RecordDB extends Dexie {
-  wordRecords!: Table<IWordRecord, number>
-  chapterRecords!: Table<IChapterRecord, number>
-  reviewRecords!: Table<IReviewRecord, number>
-  reviewWordStates!: Table<IReviewWordState, number>
-  achievementEvents!: Table<AchievementEventRecord, string>
-  achievementStates!: Table<AchievementStateRecord, string>
-
-  revisionDictRecords!: Table<IRevisionDictRecord, number>
-  revisionWordRecords!: Table<IWordRecord, number>
-
-  constructor() {
-    super('RecordDB')
-    this.version(1).stores({
-      wordRecords: '++id,word,timeStamp,dict,chapter,errorCount,[dict+chapter]',
-      chapterRecords: '++id,timeStamp,dict,chapter,time,[dict+chapter]',
-    })
-    this.version(2).stores({
-      wordRecords: '++id,word,timeStamp,dict,chapter,wrongCount,[dict+chapter]',
-      chapterRecords: '++id,timeStamp,dict,chapter,time,[dict+chapter]',
-    })
-    this.version(3).stores({
-      wordRecords: '++id,word,timeStamp,dict,chapter,wrongCount,[dict+chapter]',
-      chapterRecords: '++id,timeStamp,dict,chapter,time,[dict+chapter]',
-      reviewRecords: '++id,dict,createTime,isFinished',
-    })
-    this.version(4).stores({
-      wordRecords: '++id,word,timeStamp,dict,chapter,wrongCount,[dict+chapter]',
-      chapterRecords: '++id,timeStamp,dict,chapter,time,[dict+chapter]',
-      reviewRecords: '++id,dict,createTime,isFinished',
-      reviewWordStates: '++id,&[dict+word],dict,word,nextReviewAt,[dict+nextReviewAt],lastReviewedAt',
-    })
-    this.version(5).stores({
-      wordRecords: '++id,word,timeStamp,dict,chapter,wrongCount,[dict+chapter]',
-      chapterRecords: '++id,timeStamp,dict,chapter,time,[dict+chapter]',
-      reviewRecords: '++id,dict,createTime,isFinished',
-      reviewWordStates: '++id,&[dict+word],dict,word,nextReviewAt,[dict+nextReviewAt],lastReviewedAt',
-      achievementEvents: '&eventId,sourceRecordId,occurredAt,dict,word',
-      achievementStates: '&achievementId,unlockedAt,seenAt',
-    })
-  }
-}
-
-export const db = new RecordDB()
-
-db.wordRecords.mapToClass(WordRecord)
-db.chapterRecords.mapToClass(ChapterRecord)
-db.reviewRecords.mapToClass(ReviewRecord)
 
 export function useSaveChapterRecord() {
   const currentChapter = useAtomValue(currentChapterAtom)
