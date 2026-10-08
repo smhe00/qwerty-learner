@@ -81,7 +81,6 @@ import {
 import {
   reviewOutcomeForAttempt,
   scheduleBasicReview,
-  upgradeBasicSchedulerState,
 } from '../../src/review/scheduler'
 import {
   createReviewItemMachineState,
@@ -222,46 +221,6 @@ test('only chapter -1 records advance the long-term scheduler', () => {
   })
 })
 
-test('basic-v1 compatibility upgrade preserves due date, counters, and lifecycle exactly', () => {
-  const legacy = {
-    ...createInitialReviewWordState('cet4', 'legacy-v1', 100),
-    updatedAt: 150,
-    lastReviewedAt: 120,
-    nextReviewAt: 999_999,
-    reviewCount: 7,
-    lapseCount: 2,
-    cleanStreak: 3,
-    lastOutcome: 'good' as const,
-    lifecycle: 'excluded' as const,
-    exclusion: {
-      reason: 'manual' as const,
-      excludedAt: 140,
-    },
-    schedulerState: {
-      kind: 'basic-v1' as const,
-      stage: 4,
-      intervalDays: 30,
-    },
-  }
-
-  const upgraded = upgradeBasicSchedulerState(legacy)
-
-  assert.equal(upgraded.stateVersion, CURRENT_REVIEW_STATE_VERSION)
-  assert.equal(upgraded.nextReviewAt, legacy.nextReviewAt)
-  assert.equal(upgraded.updatedAt, legacy.updatedAt)
-  assert.equal(upgraded.lastReviewedAt, legacy.lastReviewedAt)
-  assert.equal(upgraded.reviewCount, legacy.reviewCount)
-  assert.equal(upgraded.lapseCount, legacy.lapseCount)
-  assert.equal(upgraded.cleanStreak, legacy.cleanStreak)
-  assert.equal(upgraded.lifecycle, 'excluded')
-  assert.deepEqual(upgraded.exclusion, legacy.exclusion)
-  assert.deepEqual(upgraded.schedulerState, {
-    kind: 'basic-v2',
-    stage: 4,
-    intervalDays: 30,
-  })
-})
-
 test('basic-v2 extends mature Good reviews through 60, 120, and 180 day stages', () => {
   const day = 24 * 60 * 60
   let now = 1_000
@@ -280,36 +239,6 @@ test('basic-v2 extends mature Good reviews through 60, 120, and 180 day stages',
     assert.equal(state.nextReviewAt, now + expectedDays * day)
     now = state.nextReviewAt
   }
-})
-
-test('a due legacy basic-v1 card upgrades only when rated and can advance into the v2 tail', () => {
-  const day = 24 * 60 * 60
-  const now = 10_000
-  const legacy = {
-    ...createInitialReviewWordState('cet4', 'legacy-tail', 1),
-    lastReviewedAt: now - 30 * day,
-    nextReviewAt: now,
-    reviewCount: 5,
-    cleanStreak: 5,
-    schedulerState: {
-      kind: 'basic-v1' as const,
-      stage: 4,
-      intervalDays: 30,
-    },
-  }
-
-  const next = scheduleBasicReview({
-    state: legacy,
-    outcome: 'good',
-    now,
-  })
-
-  assert.equal(next.schedulerState.kind, 'basic-v2')
-  if (next.schedulerState.kind !== 'basic-v2') return
-  assert.equal(next.schedulerState.stage, 5)
-  assert.equal(next.schedulerState.intervalDays, 60)
-  assert.equal(next.nextReviewAt, now + 60 * day)
-  assert.equal(next.reviewCount, 6)
 })
 
 test('FSRS activation bumps review stateVersion to 5 so basic-v2 rows are rebuilt', () => {
@@ -469,7 +398,7 @@ test('Typing failure after Review does not reactivate Learn scheduler state', ()
   reviewed.cleanStreak = 1
   reviewed.lastOutcome = 'good'
   reviewed.schedulerState = {
-    kind: 'basic-v1',
+    kind: 'basic-v2',
     stage: 0,
     intervalDays: 1,
   }
