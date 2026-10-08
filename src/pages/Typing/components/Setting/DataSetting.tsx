@@ -1,6 +1,10 @@
 import styles from './index.module.css'
 import { clearAllLearnDailySessions } from '@/learn/daily-session'
 import CloudSyncSetting from '@/sync/CloudSyncSetting'
+import {
+  downloadManualBackupV4,
+  inspectManualBackupV4File,
+} from '@/sync/manual-backup-v4'
 import { loadAuth } from '@/sync/auth'
 import { clearSyncBaseline } from '@/sync/state'
 import type { ExportProgress, ImportProgress } from '@/utils/db/data-export'
@@ -16,6 +20,8 @@ export default function DataSetting() {
   const [isImporting, setIsImporting] = useState(false)
   const [importProgress, setImportProgress] = useState(0)
   const [isClearing, setIsClearing] = useState(false)
+  const [isV4Busy, setIsV4Busy] = useState(false)
+  const [v4Message, setV4Message] = useState('')
 
   const exportProgressCallback = useCallback(({ totalRows, completedRows, done }: ExportProgress) => {
     if (done) {
@@ -57,6 +63,44 @@ export default function DataSetting() {
   const onClickImport = useCallback(() => {
     importDatabase(onStartImport, importProgressCallback)
   }, [importProgressCallback, onStartImport])
+
+  const onClickExportV4 = useCallback(async () => {
+    setV4Message('正在生成完整的 Backup V4 快照…')
+    setIsV4Busy(true)
+    try {
+      const info = await downloadManualBackupV4()
+      setV4Message(
+        `V4 导出完成：${info.tableCount} 张数据表、${info.dailySessions} 个每日学习会话、${info.settingCount} 项个人设置。`,
+      )
+    } catch (error) {
+      setV4Message('V4 导出失败：' + (error instanceof Error ? error.message : String(error)))
+    } finally {
+      setIsV4Busy(false)
+    }
+  }, [])
+
+  const onClickInspectV4 = useCallback(() => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.gz,application/gzip'
+    input.addEventListener('change', async () => {
+      const file = input.files?.[0]
+      if (!file) return
+      setIsV4Busy(true)
+      setV4Message('正在只读校验 Backup V4 文件…')
+      try {
+        const info = await inspectManualBackupV4File(file)
+        setV4Message(
+          `V4 校验通过：${info.tableCount} 张表、${info.dailySessions} 个每日学习会话、${info.settingCount} 项设置；来源：${info.owner}。未修改本地数据。`,
+        )
+      } catch (error) {
+        setV4Message('V4 校验失败：' + (error instanceof Error ? error.message : String(error)))
+      } finally {
+        setIsV4Busy(false)
+      }
+    })
+    input.click()
+  }, [])
 
   const onClickClearLocalData = useCallback(async () => {
     const confirmed = window.confirm(
@@ -154,6 +198,37 @@ export default function DataSetting() {
             >
               导入数据
             </button>
+          </div>
+          <div className={styles.section}>
+            <span className={styles.sectionLabel}>Backup V4（开发版应用测试）</span>
+            <span className={styles.sectionDescription}>
+              完整导出学习记录、FSRS、成就、未完成的每日学习会话及个人设置。
+              可以在这里校验 V4 文件的完整性；校验是只读操作，不会覆盖任何学习记录。
+              旧版“导出数据 / 导入数据”和云同步仍使用 V3，待 S1 崩溃恢复和多标签写入隔离完成后再切换。
+            </span>
+            <div className="flex flex-wrap gap-2 pl-4">
+              <button
+                className="my-btn-primary disabled:bg-gray-300"
+                type="button"
+                onClick={() => { void onClickExportV4() }}
+                disabled={isV4Busy || isExporting || isImporting || isClearing}
+              >
+                {isV4Busy ? 'V4 处理中…' : '导出完整 V4 备份'}
+              </button>
+              <button
+                className="my-btn-primary disabled:bg-gray-300"
+                type="button"
+                onClick={onClickInspectV4}
+                disabled={isV4Busy || isExporting || isImporting || isClearing}
+              >
+                验证 V4 备份文件（只读）
+              </button>
+            </div>
+            {v4Message && (
+              <span role="status" className="pl-4 text-left text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                {v4Message}
+              </span>
+            )}
           </div>
           <div className={styles.section}>
             <span className={styles.sectionLabel}>清除本地数据</span>
