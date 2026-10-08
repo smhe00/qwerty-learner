@@ -77,6 +77,32 @@ components collect evidence; they do not decide long-term scheduling policy.
 UI components may invoke these services, but should not reproduce their
 business rules.
 
+### Dependency direction
+
+The architectural dependency direction is:
+
+```text
+pages / React adapters
+        ↓
+application coordinators (learn/review/sync)
+        ↓
+domain policy + persistence ports
+        ↓
+DB core / pure utilities
+```
+
+Domain modules must not import React/store/audio barrels through convenience
+utilities. In particular:
+
+- `src/utils/db/core.ts` owns IndexedDB schema/tables and has no React hooks;
+- `src/utils/db/index.ts` is the React adapter layer for persistence hooks;
+- `src/utils/db/record.ts` may depend only on pure utilities and domain types;
+- wall-clock helpers live in `src/utils/time.ts`, not the broad
+  `src/utils/index.ts` barrel.
+
+This boundary exists so domain tests can run under plain Node without pulling
+UI/store/audio globals.
+
 ## 4. Persistence and recovery contract
 
 The durable order is:
@@ -126,24 +152,47 @@ Verification follows four levels:
 - **L2 Integration / Browser** — real UI + persistence + routing behavior.
 - **L3 Regression** — minimal reproductions of previously observed defects.
 
-The canonical mapping is maintained in
-`tests/verification/gate-manifest.json` and explained in
-`docs/verification/GATE_MANIFEST.md`.
+The architecture/specification/verification triangle is:
+
+- architecture: `docs/ARCHITECTURE_V2.md`;
+- product specification: `docs/SPECIFICATION_V1.md`;
+- executable traceability: `tests/verification/gate-manifest.json`.
+
+The verification model is explained in
+`docs/verification/GATE_MANIFEST.md`. Every executable contract references
+one or more specification IDs, and CI validates that the referenced spec and
+test files still exist.
 
 Behavior-changing work must update the relevant contract tests in the same
 change. Tests are not maintained merely to make CI green; obsolete semantics
 must be explicitly reclassified or removed.
 
-## 7. Refactor direction
+## 7. Refactor status and remaining debt
 
-Current high-priority structural debt:
+Completed structural work:
 
-1. `tests/e2e/review-flow.spec.ts` is an oversized mixed-responsibility suite.
-2. `tests/review/domain.test.ts` is an oversized mixed domain suite.
-3. Review Gate duplicates several tests owned by specialized gates.
-4. Historical phase documents can conflict with current semantics.
-5. Legacy `.github/workflows/e2e.yml` uses a separate Node/npm stack and needs
-   retirement or redefinition.
+1. the old mixed Review browser suite was split into Review, Acquisition,
+   Recovery, Shell/UI, and Legacy-compat suites with one shared harness;
+2. the old 101-case `tests/review/domain.test.ts` was decomposed into owned
+   Hint, Evidence, Audio, Exercise-policy, Scheduler/Lifecycle, Acquisition,
+   Scaffold/Recovery, and Quota/Strain suites;
+3. specialized FSRS binaries no longer run twice inside Review Gate;
+4. the Block/Daily settlement coordinator moved out of React presentation;
+5. DB core was separated from React persistence hooks;
+6. protected regression IDs are machine-validated.
+
+Remaining debt:
+
+1. finish retiring obsolete pre-FSRS compatibility assumptions; Basic-v2 is
+   allowed only as an analysis/shadow comparator;
+2. finish consolidating residual Review foundation tests by owner and remove
+   provable duplicates;
+3. replace legacy `.github/workflows/e2e.yml` (Node 18/npm/full-suite) with a
+   small release-smoke workflow aligned with the product toolchain;
+4. remove/archive historical phase documents that conflict with the canonical
+   specification;
+5. continue reducing Gate runtime by assigning one canonical owner to each
+   specialized binary.
 
 Refactoring must preserve behavior first, then move/split tests, then delete
 proven duplicates. Test-count reduction without contract coverage evidence is
