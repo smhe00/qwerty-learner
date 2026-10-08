@@ -68,7 +68,8 @@ Current canonical ownership:
 | Static dependency direction / layer boundaries | Architecture Gate |
 | Specification / contract / regression traceability | Verification Contract Gate |
 | Learn / Review integration | Review Gate |
-| FSRS package + scheduler | FSRS Phase G Gate |
+| FSRS package + active scheduler contracts | FSRS Phase G Gate |
+| FSRS 365-day / multi-seed strategy benchmark | FSRS Benchmark Gate |
 | TLC models / counterexamples | TLA Gate |
 | Achievement rules | Achievement Gate |
 | Dictionary content | Dictionary Gate |
