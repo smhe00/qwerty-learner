@@ -42,5 +42,5 @@ if (!verified) {
   console.error('No verified EdgeOne production URL; aborting BEFORE account creation.')
   process.exitCode = 1
 } else {
-  appendFileSync(process.env.GITHUB_ENV, `QWERTY_SYNC_BASE_URL=${verified}\n`)
+  appendFileSync(process.env.GITHUB_ENV, `QWERTY_SYNC_BASE_URL=${verified}\nQWERTY_LIVE_TEST_READY=1\n`)
 }
