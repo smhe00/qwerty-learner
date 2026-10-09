@@ -8,6 +8,18 @@
       // MIT License
       // https://github.com/rafgraph/spa-github-pages
       ;(function (l) {
+        var isGitHubPages = /(^|\.)github\.io$/i.test(l.hostname)
+        // Only github.io serves the GitHub Pages /?/path redirect protocol.
+        // EdgeOne deep links use edgeone.json SPA rewrites instead. An old
+        // EdgeOne 404 may have produced /learn/?/&/~and~/...; strip this
+        // synthetic query before the router boots, preserving the route.
+        if (!isGitHubPages) {
+          if (l.search[1] === '/') {
+            var cleanPath = l.pathname.replace(/\/+$/, '') || '/'
+            window.history.replaceState(window.history.state, null, cleanPath + l.hash)
+          }
+          return
+        }
         if (l.search[1] === '/') {
           var decoded = l.search
             .slice(1)
