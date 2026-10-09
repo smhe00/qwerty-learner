@@ -542,9 +542,15 @@ test('spelling completion never starts a late pronunciation fallback when Howl i
   await page.addInitScript(() => {
     const target = window as AudioProbeWindow
     target.__qwertyAudioPlays = []
+    ;(target as any).__qwertyAudioStacks = []
     const nativePlay = HTMLMediaElement.prototype.play
     HTMLMediaElement.prototype.play = function patchedPlay() {
       target.__qwertyAudioPlays?.push(this.currentSrc || this.src)
+      ;(target as any).__qwertyAudioStacks.push({
+        url: this.currentSrc || this.src,
+        at: performance.now(),
+        stack: new Error('pronunciation play called').stack,
+      })
       const result = nativePlay.call(this)
       result?.catch(() => undefined)
       return result
@@ -565,7 +571,9 @@ test('spelling completion never starts a late pronunciation fallback when Howl i
   // Any call added during feedback or after progression is forbidden.
   const atSuccess = await playedCountForWord(page, firstWord)
   await page.waitForTimeout(500)
-  expect(await playedCountForWord(page, firstWord)).toBe(atSuccess)
+  const diagnosis = await page.evaluate(() => (window as any).__qwertyAudioStacks)
+  expect(await playedCountForWord(page, firstWord),
+    'late pronunciation source stacks: ' + JSON.stringify(diagnosis)).toBe(atSuccess)
 
   await waitForDifferentTypingWord(page, firstWord)
   expect(await playedCountForWord(page, firstWord)).toBe(atSuccess)
