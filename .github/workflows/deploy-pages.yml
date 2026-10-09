@@ -60,14 +60,26 @@ jobs:
           tests/e2e/pages-stateful-explorer.spec.ts
           tests/e2e/pages-explorer-v3.spec.ts
           --project=chromium --retries=0
+      - name: Run multi-day, multi-block V3 domain simulation (advisory)
+        id: explorer_model
+        continue-on-error: true
+        run: |
+          mkdir -p .explorer-model
+          npx esbuild tests/simulation/system-explorer-v3.test.ts --bundle --platform=node --target=node20 --format=esm --outfile=.explorer-model/v3.test.mjs
+          node --test .explorer-model/v3.test.mjs
       - name: Report advisory Explorer result separately
         if: always()
         env:
           EXPLORER_OUTCOME: ${{ steps.explorer.outcome }}
+          MODEL_OUTCOME: ${{ steps.explorer_model.outcome }}
         run: |
           echo "Pages Explorer outcome: $EXPLORER_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+          echo "V3 multi-day domain model outcome: $MODEL_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
           if [ "$EXPLORER_OUTCOME" != "success" ]; then
             echo "::warning::Pages Explorer failed (advisory); inspect its redacted trace artifact."
+          fi
+          if [ "$MODEL_OUTCOME" != "success" ]; then
+            echo "::warning::Explorer V3 multi-day model failed (advisory); inspect simulation logs."
           fi
       - name: Upload redacted browser failures
         if: always()
