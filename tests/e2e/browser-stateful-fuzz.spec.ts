@@ -162,31 +162,31 @@ async function resetAndSeed(
       }),
     )
 
-    await new Promise<void>((resolve, reject) => {
-      const request = indexedDB.open('RecordDB')
-      request.onerror = () => reject(request.error)
-      request.onsuccess = () => {
-        const db = request.result
-        const stores = [
-          'reviewRecords',
-          'wordRecords',
-          'reviewWordStates',
-        ].filter((name) =>
-          db.objectStoreNames.contains(name),
-        )
-        const tx = db.transaction(stores, 'readwrite')
-        for (const name of stores) {
-          tx.objectStore(name).clear()
-        }
-        tx.objectStore('reviewRecords').put(seededSession)
-        tx.oncomplete = () => {
-          db.close()
-          resolve()
-        }
-        tx.onerror = () => reject(tx.error)
-        tx.onabort = () => reject(tx.error)
-      }
-    })
+    // Seed via the *current* production Dexie V6 adapter. A second raw
+    // indexedDB.open() racing the app's V6 schema upgrade can wait for an
+    // unclosed versionchange transaction and conceal the real lifecycle
+    // failure behind a three-minute Playwright page.evaluate timeout.
+    // This still writes durable IndexedDB, not a mocked in-memory table.
+    const { db } = await import('/src/utils/db/core.ts')
+    await Promise.race([
+      db.open(),
+      new Promise<never>((_, reject) => setTimeout(
+        () => reject(new Error('P3 seed: RecordDB V6 open blocked for 12s')),
+        12_000,
+      )),
+    ])
+    await db.transaction(
+      'rw',
+      db.reviewRecords,
+      db.wordRecords,
+      db.reviewWordStates,
+      async () => {
+        await db.reviewRecords.clear()
+        await db.wordRecords.clear()
+        await db.reviewWordStates.clear()
+        await db.reviewRecords.put(seededSession)
+      },
+    )
   }, session)
 
   await page.goto('/learn')
