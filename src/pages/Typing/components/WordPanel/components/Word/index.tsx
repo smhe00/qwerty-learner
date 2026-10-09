@@ -273,8 +273,12 @@ export default function WordComponent({
     setWordState(newWordState)
     // Capture start-of-word conditions only. Mid-word config changes belong to
     // the next observation rather than retroactively changing this one.
+    // An Immer reducer may replace the Word object without changing the
+    // logical item. Reinitializing the input/audio refs on such renders
+    // reopens automatic pronunciation AFTER the word has been spelled.
+    // The owning item (including replay/phase) is keyed explicitly instead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [word, setWordState])
+  }, [audioOwnerKey, setWordState])
 
   useEffect(() => {
     if (state.isTyping) {
