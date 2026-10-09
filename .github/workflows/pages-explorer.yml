@@ -38,10 +38,12 @@ jobs:
           PAGES_SOURCE_SHA: ${{ github.event.inputs.source_sha }}
           EXPLORER_SEED: ${{ github.event.inputs.seed }}
           EXPLORER_WORD_BUDGET: ${{ github.event.inputs.word_budget }}
+          EXPLORER_SEED_COUNT: '3'
         run: >
           npx playwright test
           tests/e2e/pages-explorer.spec.ts
           tests/e2e/pages-stateful-explorer.spec.ts
+          tests/e2e/pages-explorer-v3.spec.ts
           --project=chromium --retries=0
       - name: Preserve replay trace and failures
         if: always()

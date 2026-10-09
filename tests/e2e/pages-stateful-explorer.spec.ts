@@ -6,6 +6,7 @@ import { writeFileSync } from 'node:fs'
 const site = 'https://smhe00.github.io/qwerty-learner/'
 const seed = Number(process.env.EXPLORER_SEED || '20261010') >>> 0
 const budget = Math.max(3, Math.min(32, Number(process.env.EXPLORER_WORD_BUDGET || '8') || 8))
+const seedCount = Math.max(1, Math.min(5, Number(process.env.EXPLORER_SEED_COUNT || '3') || 3))
 const sha = process.env.PAGES_SOURCE_SHA
 
 type Snapshot = {
@@ -112,7 +113,9 @@ async function ensureActiveLearn(page: Page) {
   }, { timeout: 20_000 }).toBe('ready')
 }
 
-test('coverage-guided Pages Learn: keyboard, hint, resume, IndexedDB, mode-switch and reload', async ({
+for (let trial = 0; trial < seedCount; trial++) {
+const caseSeed = (seed + trial * 1009) >>> 0
+test(`coverage-guided Pages Learn seed ${caseSeed}: keyboard, hint, resume, IndexedDB, mode-switch and reload`, async ({
   page, request,
 }) => {
   test.setTimeout(240_000)
@@ -122,7 +125,7 @@ test('coverage-guided Pages Learn: keyboard, hint, resume, IndexedDB, mode-switc
     return response.ok() ? (await response.text()).trim() : ''
   }, { timeout: 90_000, intervals: [1000, 2000, 5000] }).toBe(sha)
 
-  const rand = generator(seed)
+  const rand = generator(caseSeed)
   const trace: TraceEntry[] = []
   const coverage = new Set<string>()
   const pageErrors: string[] = []
@@ -271,7 +274,7 @@ test('coverage-guided Pages Learn: keyboard, hint, resume, IndexedDB, mode-switc
     expect(cloudRequests, 'Pages must not contact auth/sync APIs').toEqual([])
   } finally {
     console.log('[Pages Explorer coverage]', JSON.stringify({
-      seed, wordBudget: budget,
+      seed: caseSeed, wordBudget: budget,
       completedWords: trace.filter(item => item.action === 'word-committed').length,
       coverage: [...coverage].sort(),
       pageErrorCount: pageErrors.length, cloudRequestCount: cloudRequests.length,
@@ -280,7 +283,7 @@ test('coverage-guided Pages Learn: keyboard, hint, resume, IndexedDB, mode-switc
     writeFileSync(filename, JSON.stringify({
       schema: 'pages-stateful-explorer-v1',
       publishedSha: sha,
-      seed, wordBudget: budget,
+      seed: caseSeed, wordBudget: budget,
       coverage: [...coverage].sort(),
       trace,
       pageErrorCount: pageErrors.length,
@@ -291,3 +294,4 @@ test('coverage-guided Pages Learn: keyboard, hint, resume, IndexedDB, mode-switc
     })
   }
 })
+}

@@ -69,6 +69,7 @@ export async function advanceIdleBusinessTime(page: Page, seconds: number) {
   const origin = new URL(page.url())
   expect(origin.origin).toBe(EXPLORER_PAGES_ORIGIN)
   expect(origin.pathname).toMatch(/^\/qwerty-learner\/(?:typing)?\/?$/)
+  await expect(page.getByText(/按任意键(?:开始|继续)/).first()).toBeVisible()
   const result = await page.evaluate((delta) => {
     const clock = (window as ClockWindow).__qwertyPagesExplorerClock
     if (!clock) throw new Error('Explorer clock unavailable; refusing real-time wait')
