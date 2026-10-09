@@ -59,6 +59,9 @@ async function request<T>(
   path: string,
   { method = 'GET', token, body }: { method?: string; token?: string; body?: unknown } = {},
 ): Promise<T> {
+  if (import.meta.env.VITE_QWERTY_SYNC_DISABLED === 'true' || REACT_APP_DEPLOY_ENV === 'pages') {
+    throw new SyncApiError(403, 'cloud_disabled', 'GitHub Pages 测试版禁用云账号和云同步。')
+  }
   const headers: Record<string, string> = {
     Accept: 'application/json',
   }
