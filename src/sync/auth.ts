@@ -2,6 +2,25 @@ import { login, register } from './api'
 import type { CloudAuthState } from './types'
 
 const AUTH_STORAGE_KEY = 'qwerty.cloudAuth.v1'
+const ISOLATED_AUTH_RETENTION_KEY = 'qwerty.s1.isolated-auth-retention'
+
+/**
+ * Set only after guarded S1 boot has validated registry ownership.
+ * Isolated workspaces must remain owned by their account even if a token
+ * expires. Legacy V1 expiration and sign-out semantics stay unchanged.
+ */
+export function setIsolatedAuthRetention(enabled: boolean): void {
+  if (enabled) sessionStorage.setItem(ISOLATED_AUTH_RETENTION_KEY, '1')
+  else sessionStorage.removeItem(ISOLATED_AUTH_RETENTION_KEY)
+}
+
+function retainExpiredAccountLocally(): boolean {
+  try {
+    return sessionStorage.getItem(ISOLATED_AUTH_RETENTION_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 function isValidStoredAuth(value: unknown): value is CloudAuthState {
   if (!value || typeof value !== 'object') return false
@@ -17,7 +36,7 @@ function isValidStoredAuth(value: unknown): value is CloudAuthState {
   )
 }
 
-export function loadAuth(): CloudAuthState | null {
+export function loadAuth(options: { preserveExpired?: boolean } = {}): CloudAuthState | null {
   try {
     const raw = localStorage.getItem(AUTH_STORAGE_KEY)
     if (!raw) return null
@@ -28,7 +47,7 @@ export function loadAuth(): CloudAuthState | null {
       return null
     }
 
-    if (parsed.expiresAt * 1000 <= Date.now()) {
+    if (parsed.expiresAt * 1000 <= Date.now() && !options.preserveExpired && !retainExpiredAccountLocally()) {
       localStorage.removeItem(AUTH_STORAGE_KEY)
       return null
     }

@@ -5,7 +5,7 @@
  * The V1-compatible entry uses allowLegacy only for an uninitialized
  * registry. It never migrates or switches an account implicitly.
  */
-import { loadAuth } from './auth'
+import { loadAuth, setIsolatedAuthRetention } from './auth'
 import { acquireWorkspaceWriterLease } from './workspace-lock'
 import { same } from './workspace-transition'
 import type { Registry, Workspace } from './workspace-transition'
@@ -53,6 +53,7 @@ export async function prepareGuardedWorkspaceBoot(
   try {
     const before = await workspaceRegistryPort.read()
     if (before.generation === 0) {
+      setIsolatedAuthRetention(false)
       if (before.pending) throw new Error('Invalid uninitialized workspace journal')
       if (!options.allowLegacy) {
         throw new Error('S1 workspace is not initialized: explicit V1 migration is required')
@@ -77,7 +78,7 @@ export async function prepareGuardedWorkspaceBoot(
 
     const registry = before
     report(onStage, 'checking-identity')
-    const auth = loadAuth()
+    const auth = loadAuth({ preserveExpired: true })
     const expected: Workspace = auth
       ? { kind: 'account', accountId: auth.user.userId }
       : { kind: 'anonymous' }
@@ -85,6 +86,7 @@ export async function prepareGuardedWorkspaceBoot(
       throw new Error('Active workspace and authenticated account differ: writes blocked')
     }
 
+    setIsolatedAuthRetention(true)
     report(onStage, 'ready')
     return { mode: 'isolated', registry, release: () => lease.release() }
   } catch (error) {

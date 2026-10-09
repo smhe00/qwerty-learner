@@ -79,7 +79,12 @@ async function start(): Promise<void> {
 window.addEventListener('pagehide', () => {
   // A page restored from BFCache must never reuse an expired writer lease.
   releasedForPageHide = true
-  boot?.release()
+  // Do NOT release the writer lease while the React tree and its async DB
+  // writers remain mounted. A BFCache-frozen page must retain ownership
+  // until it is discarded/reloaded, or another tab could start writing the
+  // same working IndexedDB while stale promises in this page still exist.
+  // Browser document destruction releases Web Locks automatically.
+  if (!mounted) boot?.release()
 })
 window.addEventListener('pageshow', event => {
   if (event.persisted) window.location.reload()

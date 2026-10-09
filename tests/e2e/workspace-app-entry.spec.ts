@@ -193,3 +193,74 @@ test('actual app replays pending S1 switch then reloads with isolated account st
   expect(settled.wordCount).toBe(0)
   expect(settled.anonymousVaultPreserved).toBe(true)
 })
+
+
+test('S1 keeps an expired account workspace locally owned, without silent sign-out', async ({ page }) => {
+  await harness(page)
+  const accountId = 's1-expired-account'
+  await page.evaluate(async (id) => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    const future = Math.floor(Date.now() / 1000) + 3600
+    localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify({
+      token: 's1-test-expired-token', expiresAt: future,
+      user: { userId: id, username: 'expiry-test-user' },
+    }))
+    await h.initializeLegacyWorkspace({ kind: 'account', accountId: id })
+    const expired = Math.floor(Date.now() / 1000) - 120
+    localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify({
+      token: 's1-test-expired-token', expiresAt: expired,
+      user: { userId: id, username: 'expiry-test-user' },
+    }))
+  }, accountId)
+
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  const state = await page.evaluate(() => ({
+    userId: JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || '{}').user?.userId,
+    retention: sessionStorage.getItem('qwerty.s1.isolated-auth-retention'),
+  }))
+  expect(state).toEqual({ userId: accountId, retention: '1' })
+
+  await harness(page)
+  const registry = await page.evaluate(() => (window as any).__backupHarness.workspaceRegistryPort.read())
+  expect(registry.active).toEqual({ kind: 'account', accountId })
+})
+
+test('S1 rejects a mismatched expired identity rather than silently using anonymous', async ({ page }) => {
+  await harness(page)
+  await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify({
+      token: 's1-initial-token', expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      user: { userId: 's1-real-owner', username: 'real-owner' },
+    }))
+    await h.initializeLegacyWorkspace({ kind: 'account', accountId: 's1-real-owner' })
+    localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify({
+      token: 's1-expired-different-owner', expiresAt: Math.floor(Date.now() / 1000) - 20,
+      user: { userId: 's1-other-owner', username: 'other-owner' },
+    }))
+  })
+  await page.goto('/')
+  await expect(page.getByText('学习数据安全检查未通过')).toBeVisible()
+  await expect(page.getByText(/writes blocked/)).toBeVisible()
+  expect(await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || '{}').user?.userId,
+  )).toBe('s1-other-owner')
+})
+
+test('pagehide never releases a mounted app writer lock before writer quiescence', async ({ page, context }) => {
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  await page.evaluate(() => {
+    window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }))
+  })
+  const second = await context.newPage()
+  await second.goto('/')
+  await expect(second.getByText('另一个标签页正在使用学习数据')).toBeVisible()
+  await page.close()
+  await second.getByRole('button', { name: '重试' }).click()
+  await expect(second.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  await second.close()
+})
