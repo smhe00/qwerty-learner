@@ -52,7 +52,7 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
     pronunciationConfig.type,
   )
 
-  const [playHowl, { stop: stopHowl, sound }] = useSound(soundSrc, {
+  const [, { stop: stopHowl, sound }] = useSound(soundSrc, {
     html5: true,
     format: ['mp3'],
     loop,
@@ -110,19 +110,13 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
     stop()
     pendingSettledRef.current = onSettled ?? null
 
-    // Native fallback can report readiness before Howler has loaded its own
-    // sound. Calling Howl.play() while that sound is still loading queues a
-    // deferred native play(), which can fire AFTER spelling completion.
-    // Only use Howler when its actual source state is already loaded.
-    if (sound && (sound as Howl).state() === 'loaded') {
-      playHowl()
-      return true
-    }
-
-    // A Howl object can exist before it is actually loaded. Treating object
-    // existence as readiness leaves short-word success playback queued behind
-    // Howler loading and can miss the feedback window. Native Audio owns this
-    // not-ready window explicitly and reports its own terminal completion.
+    // NEVER call Howl.play() for spelling-time word pronunciation, including
+    // its seemingly "loaded" state. With html5 Howler can defer the native
+    // play() to its internal canplay listener and fire it AFTER the exercise
+    // was completed and stop() was called. The native audio element has one
+    // explicit owner and can be paused/invalidated synchronously on success.
+    // Howler remains a passive preloader/ready signal; playback uses this
+    // owned native element exclusively.
     const audio = new Audio(soundSrc)
     audio.preload = 'auto'
     audio.volume = pronunciationConfig.volume
@@ -165,7 +159,6 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
   }, [
     hasError,
     loop,
-    playHowl,
     pronunciationConfig.rate,
     pronunciationConfig.volume,
     settlePendingPlayback,
@@ -173,7 +166,6 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
     soundSrc,
     stop,
     trace,
-    isReady,
   ])
 
   useEffect(() => {
