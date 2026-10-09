@@ -8,7 +8,7 @@ status: "PARTIAL"
 executor: "ChatGPT (direct executor)"
 claim_base_commit: "77ce352abdf15148da69ed90b47fc77f03fd5039"
 claimed_at_utc: "2026-10-08T22:41:35Z"
-last_known_commit: "345c3fca62105c766323eb89aeabd624356aa37a"
+last_known_commit: "fc8297fe7a220246103078d736a0c2605470d6b5"
 release_to_master: false
 priority: "P0"
 ---
@@ -73,3 +73,6 @@ offline / fault-injection tests remain blocked. Still PARTIAL / no master.
 implemented, new browser/formal/failure tests added; NOT VERIFIED by CI.
 Earlier 30/30 S1 Gate predates current auth commits. Still PARTIAL, do not
 publish; full P0 criteria remain in the S1 report.
+
+
+2026-10-09 continued: S1 offline logout, stale cross-tab storage containment and post-CAS/corrupt-intent recovery tests committed. Auth/CI gates for latest source have NOT RUN; verification task 011 added. Status PARTIAL; do not publish master.

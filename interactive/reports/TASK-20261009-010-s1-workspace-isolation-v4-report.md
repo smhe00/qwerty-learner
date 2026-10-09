@@ -284,3 +284,18 @@ Code committed:
 **Open acceptance blockers:** 1) Run new GitHub Actions and fix any compilation/browser failures; 2) stale old-JS clients can still mutate unversioned localStorage even though V5 IndexedDB writes are fenced by V6; 3) explicit production V1->V4 ownership migration currently remains DEV-only, not generally activated; 4) S1 current account UI intentionally does NOT do Cloud Sync V2 restore/push (deferred to S2), and login of an absent local account opens an isolated blank workspace; verify the S0.5 abstraction boundary and end-to-end UX; 5) test all-phase crash replay with real UI, auth expiration/revocation, injected offline and old-tab interference. S1 stays PARTIAL until all P0 acceptance criteria pass. Do not use the earlier green 30/30 as a release gate for current head.
 
 **Branch policy:** development \`product/main\` only; \`master\` and Maker publication are untouched.
+
+
+## 2026-10-09 S1 continuation: offline logout and stale client storage containment
+
+At product/main source `fc8297fe` (and preceding incremental commits):
+
+- `fefe879f`: local S1 logout no longer awaits cloud metadata; any offline, DNS or auth delay cannot prevent a safe logout. User sees an explicit warning that unsynced data remains local. `d8455ce2`: real UI regression counts sync-meta requests and demands **zero**.
+- `522e2a0d`, `b442ff79`: mount-time isolated owner guards trusted cross-document `storage` events for account credentials, V4 allowlisted settings, navigation and DailySessions. Under an exclusive local writer lease, a matching stale-tab write is rolled back to its previous value; cross-tab `localStorage.clear()` cannot be reconstructed from the event and causes fail-closed reload. Synthetic same-document events are ignored. **This DOES NOT fully solve old-tab mutations outside the current owner document lifetime.**
+- `e9eb7e21`: Chromium test models old V5 tab changing memory settings and identity and requires account/settings preservation after reloading the new app.
+- `9d136e8c`: fault-injected actual boot tests for a crash *after* target registry CAS but *before* saving authenticated identity, plus a corrupt Auth Intent that must block all app writers and preserve local data.
+- `fc8297fe`: verification-only task `interactive/tasks/TASK-20261009-011-s1-current-head-gate-verification.md`, ready for an authenticated GitHub Actions or local runner; the Chat/GitHub plugin has no available workflow dispatch operation.
+
+**Gate truth:** as of this checkpoint, GitHub Actions still shows no new runs for the latest S1/auth changes. Previous S1 Browser Gate **30/30 PASS** at `0675533e` remains a historical baseline, NOT evidence for this newer source. No recent source can be marked CI-green. The latest observed Review Gate `37871506118` FAILED three P3 Fuzz cases via 180s `page.evaluate` timeouts after its Typing and Learn audio checks passed. Do not alter gates to conceal these failures.
+
+**Remaining work** before S1 close: current-head lint/build/Cloud Gate/S1 Browser/TLA/Review; fix all failures; verify old-JS clients cannot contaminate user state even across owner-page termination; production opt-in V1->V4 ownership migration and rollback; complete fault and compatibility evidence. **Status remains PARTIAL.** No commit to `master`; no EdgeOne build.
