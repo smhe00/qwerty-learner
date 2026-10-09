@@ -62,10 +62,15 @@ async function state(page: Page): Promise<State> {
 async function readyToType(page: Page): Promise<string> {
   await expect(page).toHaveURL(/\/qwerty-learner\/learn\/?$/)
   const prompt = page.getByText(/按任意键(?:开始|继续)/).first()
-  if (await prompt.isVisible().catch(() => false)) {
+  const pause = page.getByRole('button', { name: '暂停', exact: true })
+  // Learn session preparation is asynchronous. An immediate isVisible()
+  // probe can return false before the idle prompt even mounts; typing then
+  // goes to an inactive keyboard handler and produces zero records.
+  if (!(await pause.isVisible().catch(() => false))) {
+    await expect(prompt).toBeVisible({ timeout: 20_000 })
     await page.keyboard.press('a')
+    await expect(pause).toBeVisible()
     await expect(prompt).toBeHidden()
-    await expect(page.getByRole('button', { name: '暂停', exact: true })).toBeVisible()
   }
   const wordNode = page.locator('[data-typing-word]:visible').first()
   await expect(wordNode).toHaveAttribute('data-typing-word', /\S+/)
