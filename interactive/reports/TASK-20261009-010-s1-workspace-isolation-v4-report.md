@@ -299,3 +299,19 @@ At product/main source `fc8297fe` (and preceding incremental commits):
 **Gate truth:** as of this checkpoint, GitHub Actions still shows no new runs for the latest S1/auth changes. Previous S1 Browser Gate **30/30 PASS** at `0675533e` remains a historical baseline, NOT evidence for this newer source. No recent source can be marked CI-green. The latest observed Review Gate `37871506118` FAILED three P3 Fuzz cases via 180s `page.evaluate` timeouts after its Typing and Learn audio checks passed. Do not alter gates to conceal these failures.
 
 **Remaining work** before S1 close: current-head lint/build/Cloud Gate/S1 Browser/TLA/Review; fix all failures; verify old-JS clients cannot contaminate user state even across owner-page termination; production opt-in V1->V4 ownership migration and rollback; complete fault and compatibility evidence. **Status remains PARTIAL.** No commit to `master`; no EdgeOne build.
+
+## 2026-10-09 recovered GitHub CI / latest S1 acceptance run
+
+**Exact tested source:** `cac469812bdd9c2f00e228ebb40638812d946b87` on `product/main`.
+
+| Gate | Run | Conclusion |
+| --- | --- | --- |
+| Cloud Sync Gate | [37902537677](https://github.com/smhe00/qwerty-learner/actions/runs/37902537677) | **PASS** — cloud contracts, cloud/frontend lint, production build |
+| S1 Workspace Browser Gate | [37902537727](https://github.com/smhe00/qwerty-learner/actions/runs/37902537727) | **PASS 45/45** — real Chromium / 1 worker |
+
+Root-cause evidence for earlier red runs:
+- [37901768089](https://github.com/smhe00/qwerty-learner/actions/runs/37901768089) at `888197be`: 37/37 cloud unit tests passed, cloud lint passed, frontend lint failed on two sorted import declarations; build skipped. Corrected by `6ea81866` and `23d30bec`.
+- [37902042074](https://github.com/smhe00/qwerty-learner/actions/runs/37902042074) at `23d30bec`: 43/45 Chromium tests passed. The two failures were a stale test expecting deprecated V1 credentials in the now-isolated S1 Settings UI, and rejection order for direct A->B account switching. Corrected by `c129af1b` and `cac46981`, then 45/45 PASS.
+- The follow-up commits **automatically started** push-triggered Actions, showing the normal GitHub CI path works again. Do not generalize this observation into an established explanation for earlier missing push triggers; the original missing-event root cause remains unconfirmed.
+
+Remaining before S1 COMPLETE: Review Gate P3/Typing audio failure evidence and any fixes, required bounded TLA+ safety checks on current source, production migration old-tab rollout decisions, exact acceptance contract and deployment authorization. **S1 stays PARTIAL, no master update or EdgeOne deployment.**
