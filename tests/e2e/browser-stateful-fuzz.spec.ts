@@ -787,8 +787,24 @@ test('P3 survives route-cache ahead of IndexedDB and refresh during checkpoint w
   const restored = await readRouteState(page)
   expect(restored.record?.index).toBe(1)
 
+  // Reading synchronous route cache does not establish that the React
+  // spelling engine has mounted after a hard reload. completeCurrent() is
+  // intentionally a no-op when no word is visible (for general fuzz flows).
+  // In this dedicated durability scenario a silent no-op is a false positive:
+  // it can leave IndexedDB at index 0 without any second completion attempt.
+  await expect(
+    page.locator('[data-typing-word]').first(),
+  ).toBeVisible({ timeout: 15_000 })
+
   await releaseGate(page, 'review-persistence')
   await completeCurrent(page)
+  // Separate "second completion actually executed" from "persisted" so
+  // a failed durability assertion cannot conceal a startup/UI race.
+  await expect
+    .poll(async () => Number(
+      (await readRouteState(page)).record?.index ?? -1,
+    ))
+    .toBeGreaterThanOrEqual(2)
 
   await expect
     .poll(async () => {
