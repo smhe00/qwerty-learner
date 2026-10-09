@@ -44,6 +44,7 @@ jobs:
           tests/e2e/pages-explorer.spec.ts
           tests/e2e/pages-stateful-explorer.spec.ts
           tests/e2e/pages-explorer-v3.spec.ts
+          tests/e2e/pages-explorer-multiblock.spec.ts
           --project=chromium --retries=0
       - name: Preserve replay trace and failures
         if: always()
