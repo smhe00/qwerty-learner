@@ -5,6 +5,10 @@ on:
     branches:
       - product/main
 
+concurrency:
+  group: github-pages-deploy
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
