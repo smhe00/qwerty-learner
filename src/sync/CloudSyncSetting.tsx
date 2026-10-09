@@ -76,6 +76,13 @@ function errorMessage(error: unknown) {
 }
 
 export default function CloudSyncSetting() {
+  if (REACT_APP_DEPLOY_ENV === 'pages') {
+    return <section role="status" className="p-4 text-sm">GitHub Pages 开发测试版仅支持本地学习和本地数据，云账号及云同步已禁用。</section>
+  }
+  return <EnabledCloudSyncSetting />
+}
+
+function EnabledCloudSyncSetting() {
   const [auth, setAuth] = useState<CloudAuthState | null>(() => loadAuth())
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
