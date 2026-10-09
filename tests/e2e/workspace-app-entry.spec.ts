@@ -639,3 +639,72 @@ test('S1 same immutable account reauth rejects a different userId', async ({ pag
   expect(result.error).toMatch(/Reauthentication may not change/)
   expect(result.auth.user.userId).toBe('s1-current-A')
 })
+
+
+test('S1 A -> anonymous -> B -> anonymous -> A preserves three full local identities', async ({ page }) => {
+  await harness(page)
+  const observed = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+    const expiry = Math.floor(Date.now() / 1000) + 3600
+    const auth = (id: string) => ({
+      token: 'fixture-token-' + id, expiresAt: expiry,
+      user: { userId: id, username: 'shared-display-name' },
+    })
+    const lease = await h.acquireWorkspaceWriterLease()
+    try {
+      const a = { kind: 'account', accountId: 'S1-A' }
+      const b = { kind: 'account', accountId: 'S1-B' }
+      await h.switchAuthenticatedWorkspace(a, auth('S1-A'))
+      await h.db.wordRecords.add({
+        word: 'A-ONLY', dict: 'cet4', chapter: -1, timeStamp: 1,
+        timing: [101], wrongCount: 0, mistakes: {},
+      })
+      localStorage.setItem('memoryConfig', JSON.stringify({
+        dailyNewWordTarget: 7, blockSize: 2,
+      }))
+      await h.switchAuthenticatedWorkspace(h.ANONYMOUS, null)
+      const anonymous = {
+        words: (await h.db.wordRecords.toArray()).map((r: any) => r.word),
+        memory: localStorage.getItem('memoryConfig'),
+      }
+      await h.switchAuthenticatedWorkspace(b, auth('S1-B'))
+      const bInitiallyEmpty = (await h.db.wordRecords.count()) === 0
+      await h.db.wordRecords.add({
+        word: 'B-ONLY', dict: 'cet4', chapter: -1, timeStamp: 2,
+        timing: [102], wrongCount: 0, mistakes: {},
+      })
+      localStorage.setItem('memoryConfig', JSON.stringify({
+        dailyNewWordTarget: 34, blockSize: 4,
+      }))
+      await h.switchAuthenticatedWorkspace(h.ANONYMOUS, null)
+      await h.switchAuthenticatedWorkspace(a, auth('S1-A'))
+      const restoredA = {
+        words: (await h.db.wordRecords.toArray()).map((r: any) => r.word),
+        memory: JSON.parse(localStorage.getItem('memoryConfig') || 'null'),
+      }
+      await h.switchAuthenticatedWorkspace(h.ANONYMOUS, null)
+      await h.switchAuthenticatedWorkspace(b, auth('S1-B'))
+      const restoredB = {
+        words: (await h.db.wordRecords.toArray()).map((r: any) => r.word),
+        memory: JSON.parse(localStorage.getItem('memoryConfig') || 'null'),
+        authId: JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null')?.user?.userId,
+      }
+      return { anonymous, bInitiallyEmpty, restoredA, restoredB }
+    } finally { lease.release() }
+  })
+  expect(observed.anonymous.words).toContain('backup-fsrs-word')
+  expect(observed.anonymous.words).not.toContain('A-ONLY')
+  expect(observed.anonymous.words).not.toContain('B-ONLY')
+  expect(observed.anonymous.memory).toBeNull()
+  expect(observed.bInitiallyEmpty).toBe(true)
+  expect(observed.restoredA.words).toContain('A-ONLY')
+  expect(observed.restoredA.words).not.toContain('B-ONLY')
+  expect(observed.restoredA.words).not.toContain('backup-fsrs-word')
+  expect(observed.restoredA.memory.dailyNewWordTarget).toBe(7)
+  expect(observed.restoredB.words).toContain('B-ONLY')
+  expect(observed.restoredB.words).not.toContain('A-ONLY')
+  expect(observed.restoredB.memory.dailyNewWordTarget).toBe(34)
+  expect(observed.restoredB.authId).toBe('S1-B')
+})
