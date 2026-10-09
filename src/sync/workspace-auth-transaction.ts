@@ -7,7 +7,6 @@
  * auth atomicity boundary, and MUST be reconciled before app hydration.
  */
 import { loadAuth, replaceAuthAfterWorkspaceCommit } from './auth'
-import { transitionWorkingWorkspace } from './workspace-coordinator'
 import { keyOf, same } from './workspace-transition'
 import type { Phase, Workspace, Registry } from './workspace-transition'
 import { workspaceRegistryPort } from './workspace-vault'
@@ -110,6 +109,7 @@ export async function switchAuthenticatedWorkspace(
   }
   storage().setItem(INTENT_KEY, JSON.stringify(intent))
   try {
+    const { transitionWorkingWorkspace } = await import('./workspace-coordinator')
     const registry = await transitionWorkingWorkspace(target, onPhase)
     await reconcileAuthTransition()
     return registry

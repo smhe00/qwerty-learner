@@ -21,6 +21,7 @@ import type {
   SyncAssessment,
 } from './types'
 import { useCallback, useEffect, useState } from 'react'
+import { workspaceRegistryPort } from './workspace-vault'
 
 type SyncView = {
   local: LocalState
@@ -79,6 +80,7 @@ export default function CloudSyncSetting() {
   const [view, setView] = useState<SyncView | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
+  const [isIsolated, setIsIsolated] = useState<boolean | null>(null)
 
   const refresh = useCallback(async (currentAuth: CloudAuthState) => {
     const [local, remote] = await Promise.all([
@@ -95,6 +97,18 @@ export default function CloudSyncSetting() {
   }, [])
 
   useEffect(() => {
+    let cancelled = false
+    void workspaceRegistryPort.read()
+      .then(registry => { if (!cancelled) setIsIsolated(registry.generation > 0) })
+      .catch(error => {
+        if (!cancelled) setMessage('无法检测工作区安全状态：' +
+          (error instanceof Error ? error.message : String(error)))
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    if (isIsolated !== false) return
     if (!auth) {
       setView(null)
       setDeletePassword('')
@@ -106,7 +120,7 @@ export default function CloudSyncSetting() {
     refresh(auth)
       .catch((error) => setMessage(errorMessage(error)))
       .finally(() => setBusy(false))
-  }, [auth, refresh])
+  }, [auth, refresh, isIsolated])
 
   const run = useCallback(async (operation: () => Promise<void>) => {
     setBusy(true)
@@ -275,6 +289,26 @@ export default function CloudSyncSetting() {
   const remoteLegacy = isLegacyRemote(view)
   const canDownload =
     !!view?.remote.hasData && isSupportedSnapshotFormat(view.remote.clientFormatVersion)
+
+  if (isIsolated === null) {
+    return <div role="status" className="text-sm text-gray-500">正在检查工作区安全状态…{message}</div>
+  }
+  if (isIsolated) {
+    return (
+      <div className="border-b border-neutral-100 pb-5 text-left dark:border-neutral-700">
+        <div className="mb-2 text-base font-bold text-gray-700 dark:text-gray-200">账户工作区（S1）</div>
+        <div className="text-sm text-gray-600 dark:text-gray-300">
+          当前账户：{auth?.user.username ?? '匿名本机工作区'}。
+          学习数据独立保留在本机 V4 工作区，退出账户不会丢弃未同步进度。
+          当前云同步 V1 上传、覆盖恢复和删除操作已暂停。
+        </div>
+        <button className="my-btn-primary mt-3" type="button"
+          onClick={() => window.location.assign('/?s1-account=manage')}>
+          安全登录 / 退出 / 切换账户
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="border-b border-neutral-100 pb-5 dark:border-neutral-700">

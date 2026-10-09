@@ -81,3 +81,26 @@ export function transitionWorkingWorkspace(
 ): Promise<Registry> {
   return switchWorkspace(workspaceRegistryPort, replica, target, onPhase)
 }
+
+
+/**
+ * Registration-only, explicit anonymous-copy choice. Call before switching
+ * to the newly allocated immutable account ID and only in the pre-mount
+ * writer-locked phase. An existing target is never overwritten.
+ */
+export async function copyAnonymousWorkspaceForNewRegistration(
+  accountId: string,
+): Promise<void> {
+  const target: Workspace = { kind: 'account', accountId }
+  const registry = await workspaceRegistryPort.read()
+  if (registry.pending || registry.generation === 0 ||
+      !same(registry.active, ANONYMOUS) || loadAuth({ preserveExpired: true })) {
+    throw new Error('Account registration copy requires an isolated anonymous workspace')
+  }
+  if (await loadWorkspaceFromVault(target)) {
+    throw new Error('New registration already has a local workspace; copy refused')
+  }
+  await replica.flush()
+  const snapshot = await captureWorkingWorkspaceV4(target)
+  await saveWorkspaceToVault(target, snapshot)
+}

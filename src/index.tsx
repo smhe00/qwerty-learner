@@ -114,6 +114,14 @@ async function start(): Promise<void> {
       showDevelopmentMigrationConsent()
       return
     }
+    if (
+      boot.mode === 'isolated' &&
+      new URLSearchParams(window.location.search).get('s1-account') === 'manage'
+    ) {
+      const { renderS1AccountManagement } = await import('./sync/workspace-account-ui')
+      renderS1AccountManagement(root, boot.registry.active)
+      return
+    }
     // Importing the old app initializes store atoms and DB modules. This
     // module must never be evaluated before the boot gate resolves.
     await import('./app')
