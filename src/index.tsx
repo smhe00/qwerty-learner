@@ -38,6 +38,10 @@ function fenceForeignWorkspaceStorageWrites(event: StorageEvent): void {
   // provide the previous values. Fail closed on the next guarded boot.
   if (event.key === null) {
     console.error('S1 detected legacy-tab clearing of shared localStorage')
+    // Reload alone is unsafe: the anonymous owner can still match while all
+    // user preferences and Learn sessions have been deleted by the old tab.
+    // Session storage survives reload and cannot be cleared by another tab.
+    sessionStorage.setItem('qwerty.s1.foreign-storage-clear-blocked', '1')
     window.location.reload()
     return
   }

@@ -64,6 +64,13 @@ export async function prepareGuardedWorkspaceBoot(
       return { mode: 'legacy', registry: before, release: () => lease.release() }
     }
 
+    // A cross-tab localStorage.clear() has no old values in the event and
+    // cannot be reversed. Never silently hydrate an empty/mixed workspace.
+    // The flag lives in THIS TAB's sessionStorage, outside stale-tab reach.
+    if (sessionStorage.getItem('qwerty.s1.foreign-storage-clear-blocked') === '1') {
+      throw new Error('S1 detected an older tab clearing shared localStorage; automatic writes are blocked until data is manually recovered')
+    }
+
     // Recover a previously committed workspace journal before auth
     // reconciliation; the intended target credentials may not yet be active.
     // Importing the restore adapter loads the legacy Jotai/store modules.

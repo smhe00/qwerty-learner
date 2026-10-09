@@ -846,3 +846,23 @@ test('S1 corrupt auth transition intent fails closed before mounting writers', a
     owner: { kind: 'anonymous' }, count: 1, intentStillPresent: true,
   })
 })
+
+
+test('S1 old tab localStorage.clear blocks remount instead of silently losing Learn state', async ({ page, context }) => {
+  await harness(page)
+  await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+  })
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  const oldTab = await context.newPage()
+  await oldTab.goto('/tests/e2e/legacy-v5.html')
+  await oldTab.evaluate(() => localStorage.clear())
+  await expect(page.getByText('学习数据安全检查未通过')).toBeVisible()
+  await expect(page.getByText(/older tab clearing shared localStorage/)).toBeVisible()
+  expect(await page.evaluate(() => sessionStorage.getItem('qwerty.s1.foreign-storage-clear-blocked'))).toBe('1')
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toHaveCount(0)
+  await oldTab.close()
+})
