@@ -227,7 +227,8 @@ window.addEventListener('pagehide', () => {
   // until it is discarded/reloaded, or another tab could start writing the
   // same working IndexedDB while stale promises in this page still exist.
   // Browser document destruction releases Web Locks automatically.
-  if (!mounted) boot?.release()
+  // The lease is retained until document destruction. Pre-mount account
+  // transitions may still be writing even when React has not mounted.
 })
 window.addEventListener('pageshow', event => {
   if (event.persisted) window.location.reload()
