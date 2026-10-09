@@ -264,3 +264,76 @@ test('pagehide never releases a mounted app writer lock before writer quiescence
   await expect(second.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
   await second.close()
 })
+
+
+test('real S1 pre-mount consent preserves anonymous V1 learning records', async ({ page }) => {
+  await harness(page)
+  await page.evaluate(async () => (window as any).__backupHarness.seed())
+  await page.goto('/?s1-migration=confirm')
+  await expect(page.getByText('S1 V1 数据归属测试（仅限本地开发）')).toBeVisible()
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toHaveCount(0)
+  await page.getByRole('button', { name: '确认归属并建立隔离工作区' }).click()
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  await harness(page)
+  const result = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    return {
+      registry: await h.workspaceRegistryPort.read(),
+      records: await h.db.wordRecords.count(),
+      saved: Boolean(await h.loadWorkspaceFromVault(h.ANONYMOUS)),
+    }
+  })
+  expect(result.registry.active).toEqual({ kind: 'anonymous' })
+  expect(result.registry.generation).toBe(1)
+  expect(result.records).toBe(1)
+  expect(result.saved).toBe(true)
+})
+
+test('S1 dev consent assigns V1 account workspace by immutable ID, not username', async ({ page }) => {
+  await harness(page)
+  await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify({
+      token: 's1-dev-account-token',
+      expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      user: { userId: 's1-immutable-identity-A', username: 'display-name' },
+    }))
+  })
+  await page.goto('/?s1-migration=confirm')
+  await expect(page.getByText(/s1-immutable-identity-A/)).toBeVisible()
+  await page.getByRole('button', { name: '确认归属并建立隔离工作区' }).click()
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  await harness(page)
+  const result = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    return {
+      registry: await h.workspaceRegistryPort.read(),
+      records: await h.db.wordRecords.count(),
+      saved: Boolean(await h.loadWorkspaceFromVault({
+        kind: 'account', accountId: 's1-immutable-identity-A',
+      })),
+    }
+  })
+  expect(result.registry.active).toEqual({
+    kind: 'account', accountId: 's1-immutable-identity-A',
+  })
+  expect(result.registry.generation).toBe(1)
+  expect(result.records).toBe(1)
+  expect(result.saved).toBe(true)
+})
+
+test('cancelling S1 pre-mount ownership consent leaves V1 unchanged', async ({ page }) => {
+  await harness(page)
+  await page.evaluate(async () => (window as any).__backupHarness.seed())
+  await page.goto('/?s1-migration=confirm')
+  await page.getByRole('button', { name: '取消，保持 V1' }).click()
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  await harness(page)
+  const state = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    return { registry: await h.workspaceRegistryPort.read(), records: await h.db.wordRecords.count() }
+  })
+  expect(state.registry.generation).toBe(0)
+  expect(state.records).toBe(1)
+})
