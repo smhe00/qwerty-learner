@@ -62,3 +62,14 @@ jobs:
       - name: Cleanup BOTH disposable accounts via their own authentication
         if: always() && env.QWERTY_LIVE_TEST_READY == '1'
         run: node tests/cloud/cleanup-production-multi-client.mjs
+
+      # The full Playwright trace, video and screenshots remain OFF for real
+      # accounts. This artifact contains only explicit sanitized checkpoints.
+      - name: Upload redacted multi-client trace
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-multi-client-redacted-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/**/attachments/production-multi-client-redacted-trace*.json
+          if-no-files-found: ignore
+          retention-days: 7
