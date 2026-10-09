@@ -14,7 +14,7 @@ import {
   importBackupJson,
 } from '../../src/utils/backup'
 import { db } from '../../src/utils/db'
-import { createLocalSnapshot, inspectLocalState, restoreLocalSnapshot } from '../../src/sync/snapshot'
+import { inspectLocalState } from '../../src/sync/snapshot'
 import { assessSyncState, loadSyncBaseline, saveSyncBaseline } from '../../src/sync/state'
 
 const now = Math.floor(
