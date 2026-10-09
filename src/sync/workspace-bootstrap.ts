@@ -54,6 +54,11 @@ export async function prepareGuardedWorkspaceBoot(
   try {
     const before = await workspaceRegistryPort.read()
     if (before.generation === 0) {
+      // An already-migrated browser must never silently fall back to V1
+      // when its isolated IndexedDB registry has been removed or corrupted.
+      if (localStorage.getItem(S1_MIGRATION_WITNESS_KEY) === 'v1') {
+        throw new Error('S1 vault registry missing but migration witness remains: legacy fallback refused')
+      }
       setIsolatedAuthRetention(false)
       if (before.pending) throw new Error('Invalid uninitialized workspace journal')
       if (!options.allowLegacy) {
