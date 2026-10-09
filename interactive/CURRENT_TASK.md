@@ -8,7 +8,7 @@ status: "PARTIAL"
 executor: "ChatGPT (direct executor)"
 claim_base_commit: "77ce352abdf15148da69ed90b47fc77f03fd5039"
 claimed_at_utc: "2026-10-08T22:41:35Z"
-last_known_commit: "cac469812bdd9c2f00e228ebb40638812d946b87"
+last_known_commit: "79b87129a177556fc6f987b483db3b00196e3f99"
 release_to_master: false
 priority: "P0"
 ---
@@ -81,3 +81,5 @@ publish; full P0 criteria remain in the S1 report.
 2026-10-09 responsibility boundary: user requests ChatGPT perform ALL non-essential Codex work directly. Codex/runner assignment 011 is RUN-ONLY for real checkout, browser, build, lint and TLC or authenticated GitHub Actions dispatch, plus immutable failure logs. Architecture, implementation, bug fixes, tests/models, audit, merge decisions and follow-up commits remain ChatGPT-owned. No automatic master release. S1 status PARTIAL until current-head gates pass and remaining rollout risks are resolved.
 
 2026-10-09 current-head CI checkpoint (source cac46981): GitHub Actions automatic push triggering resumed. Cloud Sync Gate 37902537677 PASS (unit contracts/lint/build); S1 Workspace Browser Gate 37902537727 PASS 45/45 real Chromium tests. Prior failed manual Cloud Gate 37901768089 at 888197be identified two import-order lint errors; fixed. Subsequent failed Browser Gate 37902042074 at 23d30bec yielded 43/45, exposing obsolete V1-settings-form assertion plus A->B rejection precedence; fixed and retested at cac46981. S1 PARTIAL pending Review/P3, bounded TLA and production migration/rollout gating; master unchanged.
+
+2026-10-09 status follow-up: Review run 37903504151 at 7a544d07 failed 3/5 P3 browser fuzz cases because Playwright serialized a page.evaluate dynamic import into a missing bundler helper (_interopRequireWildcard), NOT due to a demonstrated Learn invariant violation. Typing audio and Learn audio/stats suites passed before P3. Replaced evaluation-time dynamic import with an actual browser module script at 4e634afc; Review recheck is RUNNING at 79b87129 (37908418920). Previous TLA run 37903220510 passed Learn job, ran several Cloud Sync V2 positive projections, but its sync job was cancelled during an unbounded stale-push mutation search. Added targeted subset of canonical transitions and a strict timeout/error classifier for that mutation witness at 79b87129, with positive model configs UNCHANGED; TLA recheck RUNNING 37908419052. No assertion of green until results. S1 remains PARTIAL; master untouched.
