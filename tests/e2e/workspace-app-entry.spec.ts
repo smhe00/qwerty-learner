@@ -866,3 +866,27 @@ test('S1 old tab localStorage.clear blocks remount instead of silently losing Le
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toHaveCount(0)
   await oldTab.close()
 })
+
+
+test('S1 migration witness rejects old-tab storage clear after owner has closed', async ({ page, context }) => {
+  await harness(page)
+  await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+  })
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  expect(await page.evaluate(() => localStorage.getItem('qwerty.s1.workspace-migrated.v1'))).toBe('v1')
+  const oldTab = await context.newPage()
+  await oldTab.goto('/tests/e2e/legacy-v5.html')
+  await page.close()
+  await oldTab.evaluate(() => localStorage.clear())
+  await oldTab.close()
+  const next = await context.newPage()
+  await next.goto('/')
+  await expect(next.getByText('学习数据安全检查未通过')).toBeVisible()
+  await expect(next.getByText(/workspace migration witness missing/)).toBeVisible()
+  await expect(next.getByRole('button', { name: '打开设置对话框' })).toHaveCount(0)
+  await next.close()
+})

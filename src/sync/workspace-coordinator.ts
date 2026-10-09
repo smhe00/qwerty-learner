@@ -6,6 +6,7 @@
  * Deliberately not called by legacy V1 account UI or app bootstrap.
  */
 import { loadAuth } from './auth'
+import { S1_MIGRATION_WITNESS_KEY } from './workspace-v4'
 import {
   ANONYMOUS,
   recoverWorkspace,
@@ -65,6 +66,11 @@ export async function initializeLegacyWorkspace(
   await replica.flush()
   await replica.saveSource(owner)
   const initialized: Registry = { version: 1, active: owner, pending: null, generation: 1 }
+  // Write the witness BEFORE publishing generation 1. An old pre-S1 tab
+  // that later calls localStorage.clear() deletes this sentinel, so the
+  // next guarded boot refuses to accept an apparently empty anonymous
+  // workspace. No existing V1 storage is deleted or overwritten.
+  localStorage.setItem(S1_MIGRATION_WITNESS_KEY, 'v1')
   await workspaceRegistryPort.compareAndSwap(0, initialized)
   return initialized
 }

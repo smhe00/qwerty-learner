@@ -7,6 +7,8 @@ import type { LearnDailySessionV1 } from '@/learn/daily-session'
 export const WORKSPACE_V4_FORMAT = 'qwerty-backup-v4' as const
 export const WORKSPACE_SETTINGS_VERSION = 1 as const
 export const DAILY_SESSION_PREFIX = 'qwerty.learn.dailySession.v1.'
+/** Stable origin-wide witness: detects legacy tabs clearing localStorage even after S1 owner closes. */
+export const S1_MIGRATION_WITNESS_KEY = 'qwerty.s1.workspace-migrated.v1'
 
 /** Deliberate allowlist, never enumerate all localStorage keys as settings. */
 export const WORKSPACE_SETTING_KEYS = [

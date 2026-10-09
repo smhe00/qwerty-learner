@@ -6,6 +6,7 @@
  * registry. It never migrates or switches an account implicitly.
  */
 import { loadAuth, setIsolatedAuthRetention } from './auth'
+import { S1_MIGRATION_WITNESS_KEY } from './workspace-v4'
 import { acquireWorkspaceWriterLease } from './workspace-lock'
 import { same } from './workspace-transition'
 import type { Registry, Workspace } from './workspace-transition'
@@ -64,6 +65,14 @@ export async function prepareGuardedWorkspaceBoot(
       return { mode: 'legacy', registry: before, release: () => lease.release() }
     }
 
+    // A stale old-JS tab may erase localStorage even while the current
+    // owner document is closed and therefore cannot receive storage events.
+    // The migration witness persists across ordinary workspace restore
+    // and must not disappear after registry generation has been committed.
+    if (localStorage.getItem(S1_MIGRATION_WITNESS_KEY) !== 'v1') {
+      throw new Error('S1 workspace migration witness missing: possible legacy-tab storage wipe; writes blocked')
+    }
+
     // A cross-tab localStorage.clear() has no old values in the event and
     // cannot be reversed. Never silently hydrate an empty/mixed workspace.
     // The flag lives in THIS TAB's sessionStorage, outside stale-tab reach.
@@ -101,6 +110,11 @@ export async function prepareGuardedWorkspaceBoot(
       throw new Error('Active workspace and authenticated account differ: writes blocked')
     }
 
+    // Re-check after any awaited reconciliation; fail closed if stale JS
+    // cleared shared storage while we were verifying the registry.
+    if (localStorage.getItem(S1_MIGRATION_WITNESS_KEY) !== 'v1') {
+      throw new Error('S1 workspace migration witness vanished during boot; writes blocked')
+    }
     setIsolatedAuthRetention(true)
     report(onStage, 'ready')
     return { mode: 'isolated', registry, release: () => lease.release() }
