@@ -491,3 +491,151 @@ test('S1 refuses direct account A to B and preserves original authentication', a
   expect(result.registry.active).toEqual({ kind: 'account', accountId: 's1-test-A' })
   expect(result.intent).toBeNull()
 })
+
+
+test('actual S1 account UI login then offline logout preserves both local workspaces', async ({ page }) => {
+  await harness(page)
+  await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+  })
+  await page.route('**/api/auth/login', route => route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({
+      ok: true, user: { userId: 's1-ui-user-A', username: 'web-user' },
+      token: 'test-login-token', expiresAt: Math.floor(Date.now()/1000)+3600, expiresIn:3600,
+    }),
+  }))
+  await page.route('**/api/sync/meta', route => route.abort())
+  page.on('dialog', dialog => { void dialog.accept() })
+  await page.goto('/?s1-account=manage')
+  await expect(page.getByText('安全账户管理（S1）')).toBeVisible()
+  await page.getByRole('textbox', { name: '用户名' }).fill('web-user')
+  await page.getByRole('textbox', { name: '账户密码' }).fill('test-pass')
+  await page.getByRole('button', { name: '登录已有账户' }).click()
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  await harness(page)
+  const afterLogin = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    return {
+      active: (await h.workspaceRegistryPort.read()).active,
+      wordCount: await h.db.wordRecords.count(),
+      anonymousSaved: Boolean(await h.loadWorkspaceFromVault(h.ANONYMOUS)),
+    }
+  })
+  expect(afterLogin).toEqual({
+    active: { kind: 'account', accountId: 's1-ui-user-A' },
+    wordCount: 0,
+    anonymousSaved: true,
+  })
+  await page.goto('/?s1-account=manage')
+  await page.getByRole('button', { name: '退出到匿名工作区' }).click()
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  await harness(page)
+  const afterLogout = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    return {
+      active: (await h.workspaceRegistryPort.read()).active,
+      wordCount: await h.db.wordRecords.count(),
+      auth: localStorage.getItem('qwerty.cloudAuth.v1'),
+    }
+  })
+  expect(afterLogout).toEqual({
+    active: { kind: 'anonymous' }, wordCount: 1, auth: null,
+  })
+})
+
+test('S1 registration explicitly copies full anonymous V4 data, preserving original', async ({ page }) => {
+  await harness(page)
+  await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+  })
+  await page.route('**/api/auth/register', route => route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({
+      ok: true, user: { userId: 's1-fresh-registered-ID', username: 'new-username' },
+      token: 'registration-token', expiresAt: Math.floor(Date.now()/1000)+3600, expiresIn:3600,
+    }),
+  }))
+  page.on('dialog', dialog => { void dialog.accept() })
+  await page.goto('/?s1-account=manage')
+  await page.getByRole('textbox', { name: '用户名' }).fill('new-username')
+  await page.getByRole('textbox', { name: '账户密码' }).fill('test-pass')
+  await page.getByRole('textbox', { name: '注册密码确认' }).fill('test-pass')
+  await page.getByRole('button', { name: '注册新账户' }).click()
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  await harness(page)
+  const outcome = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    const registry = await h.workspaceRegistryPort.read()
+    return {
+      owner: registry.active,
+      accountCount: await h.db.wordRecords.count(),
+      anonymousSaved: Boolean(await h.loadWorkspaceFromVault(h.ANONYMOUS)),
+    }
+  })
+  expect(outcome).toEqual({
+    owner: { kind: 'account', accountId: 's1-fresh-registered-ID' },
+    accountCount: 1,
+    anonymousSaved: true,
+  })
+})
+
+test('S1 failed cloud login does not modify anonymous workspace', async ({ page }) => {
+  await harness(page)
+  await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+  })
+  await page.route('**/api/auth/login', route => route.fulfill({
+    status: 401, contentType: 'application/json',
+    body: JSON.stringify({ error: 'invalid_credentials', message: 'Invalid credentials' }),
+  }))
+  await page.goto('/?s1-account=manage')
+  await page.getByRole('textbox', { name: '用户名' }).fill('invalid')
+  await page.getByRole('textbox', { name: '账户密码' }).fill('wrongpassword')
+  await page.getByRole('button', { name: '登录已有账户' }).click()
+  await expect(page.getByRole('status')).toContainText('操作未完成')
+  await harness(page)
+  const outcome = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    return {
+      active: (await h.workspaceRegistryPort.read()).active,
+      records: await h.db.wordRecords.count(),
+      auth: localStorage.getItem('qwerty.cloudAuth.v1'),
+      intent: localStorage.getItem(h.S1_AUTH_INTENT_KEY),
+    }
+  })
+  expect(outcome).toEqual({
+    active: { kind: 'anonymous' }, records: 1, auth: null, intent: null,
+  })
+})
+
+test('S1 same immutable account reauth rejects a different userId', async ({ page }) => {
+  await harness(page)
+  const result = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    const auth = {
+      token: 'tokenA', expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      user: { userId: 's1-current-A', username: 'A' },
+    }
+    localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify(auth))
+    await h.initializeLegacyWorkspace({ kind: 'account', accountId: 's1-current-A' })
+    let error = ''
+    try {
+      await h.reauthenticateSameWorkspace({
+        ...auth, token: 'tokenB', user: { userId: 's1-other-B', username: 'B' },
+      })
+    } catch (e) { error = String(e) }
+    return {
+      error, auth: JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null'),
+    }
+  })
+  expect(result.error).toMatch(/Reauthentication may not change/)
+  expect(result.auth.user.userId).toBe('s1-current-A')
+})
