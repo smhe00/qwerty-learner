@@ -99,7 +99,24 @@ test('Explorer V3: 48-hour idle jump preserves unfinished Learn block and real d
     await page.goto(site, { waitUntil: 'domcontentloaded' })
     await page.getByRole('button', { name: 'Learn', exact: true }).click()
     const first = await readyToType(page)
-    const before = await state(page)
+    // Observe the pre-attempt checkpoint without opening a second raw
+    // IndexedDB connection while the active Word keyboard engine is mounting.
+    // All durable assertions below still read native IndexedDB.
+    const before = await page.evaluate(() => {
+      const raw = localStorage.getItem('reviewModeInfo')
+      const row = raw ? JSON.parse(raw).reviewRecord : null
+      const dictRaw = localStorage.getItem('currentDict')
+      const dict = dictRaw ? JSON.parse(dictRaw) : 'shanghai-zhongkao-2027'
+      const dailyRaw = localStorage.getItem('qwerty.learn.dailySession.v1.' + dict)
+      const daily = dailyRaw ? JSON.parse(dailyRaw) : null
+      return {
+        id: row ? String(row.id ?? row.createTime ?? '') : null,
+        cursor: row?.index ?? null,
+        finished: row?.isFinished === true,
+        rows: 0, durableCursor: 0,
+        dateKey: daily?.dateKey ?? null,
+      }
+    })
     expect(before.id).toBeTruthy()
     expect(before.dateKey).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     log('day-0-before-spelling', before)
