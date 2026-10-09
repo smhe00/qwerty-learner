@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
 
 // Published-site smoke: no signup, no synthetic DB injection, no cloud writes.
 // Each test runs in a fresh isolated incognito browser context. The actual
@@ -67,8 +69,11 @@ test('live Learn: one real typed word is durable after browser refresh', async (
   } finally {
     // Do not attach word strings, IndexedDB snapshots, auth, tokens or URLs
     // containing credentials to CI reports.
+    const filename = test.info().outputPath('published-learn-redacted-checkpoints.json')
+    mkdirSync(dirname(filename), { recursive: true })
+    writeFileSync(filename, JSON.stringify({ schema: 'published-learn-smoke-v1', checkpoints }, null, 2))
     await test.info().attach('published-learn-redacted-checkpoints.json', {
-      body: Buffer.from(JSON.stringify({ schema: 'published-learn-smoke-v1', checkpoints }, null, 2)),
+      path: filename,
       contentType: 'application/json',
     })
   }
