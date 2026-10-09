@@ -200,7 +200,8 @@ test('three real clients: two identities, revoked sessions, conflict, restore an
     expect(await words(a2)).toContain(wordStale)
     expect(await words(a2)).not.toContain(wordA2)
 
-    pageDialogAutoAccept(a2)
+    // The first dialog handler stays active for this page. Do not attach it
+    // again, otherwise both handlers try to accept the same browser dialog.
     await a2.getByRole('button', { name: '使用云端数据' }).click()
     await expect.poll(() => words(a2)).toContain(wordA2)
     await settings(a2)
