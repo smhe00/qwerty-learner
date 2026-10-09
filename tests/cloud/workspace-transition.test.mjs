@@ -133,3 +133,69 @@ test('UI progress callback may throw without corrupting state', async () => {
   await switchWorkspace(f.port, f.replica, a, () => { throw Error('unmounted') })
   assert.deepEqual(f.metadata.active, a)
 })
+
+
+test('S1 exhaustive bounded switch crash windows preserve isolated owners', async () => {
+  for (const boundary of ['flush', 'save', 'prepare-cas', 'restore', 'commit']) {
+    const f = fixture()
+    if (boundary === 'prepare-cas') {
+      const original = f.port.compareAndSwap
+      f.port.compareAndSwap = async (expected, next) => {
+        if (next.pending) throw new Error('prepare CAS crash')
+        return original(expected, next)
+      }
+    } else {
+      f.crash = boundary
+    }
+    await assert.rejects(switchWorkspace(f.port, f.replica, a))
+    if (boundary === 'flush' || boundary === 'save' || boundary === 'prepare-cas') {
+      assert.equal(f.metadata.pending, null, boundary)
+      assert.deepEqual(f.metadata.active, ANONYMOUS, boundary)
+      assert.equal(f.working, 'anonymous-progress', boundary)
+      assert.equal(f.metadata.generation, 0, boundary)
+    } else {
+      assert.ok(f.metadata.pending, boundary)
+      assert.deepEqual(f.metadata.active, ANONYMOUS, boundary)
+      f.crash = ''
+      await recoverWorkspace(f.port, f.replica)
+      assert.equal(f.metadata.pending, null, boundary)
+      assert.deepEqual(f.metadata.active, a, boundary)
+      assert.equal(f.working, 'saved-A', boundary)
+      assert.equal(f.vault.get('anonymous'), 'anonymous-progress', boundary)
+    }
+  }
+})
+
+test('S0.5 identity trace projection holds only at S1 quiescent commit points', async () => {
+  const f = fixture()
+  const physical = []
+  const observe = (event) => {
+    physical.push({
+      phase: event,
+      active: keyOf(f.metadata.active),
+      pending: f.metadata.pending !== null,
+    })
+  }
+  await switchWorkspace(f.port, f.replica, a, observe)
+  f.working = 'A-progress'
+  await switchWorkspace(f.port, f.replica, ANONYMOUS, observe)
+  await switchWorkspace(f.port, f.replica, b, observe)
+
+  // The canonical CloudSyncV2.tla Login/CommitLogout actions are atomic.
+  // S1's saving/prepared/restoring are unobservable stuttering steps behind
+  // the single-writer boot gate; only 'complete' projects to account change.
+  const committed = physical.filter(step => step.phase === 'complete')
+  assert.deepEqual(committed.map(step => step.active), [
+    keyOf(a), keyOf(ANONYMOUS), keyOf(b),
+  ])
+  assert.ok(committed.every(step => !step.pending))
+  assert.deepEqual(physical.filter(step => step.phase === 'prepared')
+    .map(step => step.active), [
+    keyOf(ANONYMOUS), keyOf(a), keyOf(ANONYMOUS),
+  ])
+  assert.ok(physical.filter(step => step.phase === 'prepared')
+    .every(step => step.pending))
+  assert.equal(f.vault.get(keyOf(a)), 'A-progress')
+  assert.equal(f.vault.get(keyOf(ANONYMOUS)), 'anonymous-progress')
+  assert.equal(f.working, '')
+})
