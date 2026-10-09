@@ -138,8 +138,10 @@ test('real Learn keyboard journey commits each word exactly once across reload',
     // the idle Start UI. Assert boot readiness and durable data, not one UI skin.
     await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
     await capture('reloaded-after-block')
+    // On terminal completion the cursor stays on the final word (index 2).
+    // isFinished is the terminal marker; index is NOT an after-end sentinel.
     expect(checkpoints.at(-1)?.durable).toEqual({
-      cursor: 3,
+      cursor: 2,
       finished: true,
       recordRows: 3,
       uniqueWords: 3,
