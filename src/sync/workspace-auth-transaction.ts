@@ -8,7 +8,7 @@
  */
 import { loadAuth, replaceAuthAfterWorkspaceCommit } from './auth'
 import { keyOf, same } from './workspace-transition'
-import type { Phase, Workspace, Registry } from './workspace-transition'
+import type { Phase, Registry, Workspace } from './workspace-transition'
 import { workspaceRegistryPort } from './workspace-vault'
 import type { CloudAuthState } from './types'
 
