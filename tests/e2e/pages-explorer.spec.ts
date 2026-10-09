@@ -74,13 +74,27 @@ test('isolated Pages exploration: ESC hint and corrective Learn completion', asy
     // KeyEventHandler before sending ESC, otherwise ESC is dropped.
     await expect(page.getByText('按任意键开始')).toBeHidden()
     checkpoints.push({ action: 'start', ...await progress() })
+    const letters = await activeWord.getAttribute('data-review-letters')
     await page.keyboard.press('Escape')
-    await expect(activeWord).toHaveAttribute('data-review-hint-level', '3')
-    checkpoints.push({
-      action: 'escape-full-hint',
-      ...await progress(),
-      hint: await activeWord.getAttribute('data-review-hint-stage'),
-    })
+    if (letters === 'all-visible') {
+      // First acquisition exposure is intentionally a visible-copy training
+      // item: no managed hint machine or surrender is applicable yet.
+      // This still checks that ESC does not corrupt the next corrective input.
+      await expect(activeWord).toHaveAttribute('data-review-letters', 'all-visible')
+      checkpoints.push({
+        action: 'visible-exposure-escape-no-hint',
+        ...await progress(),
+        hint: await activeWord.getAttribute('data-review-hint-stage'),
+      })
+    } else {
+      // Only a managed recall/probe is eligible for ESC => Full Hint.
+      await expect(activeWord).toHaveAttribute('data-review-hint-level', '3')
+      checkpoints.push({
+        action: 'managed-escape-full-hint',
+        ...await progress(),
+        hint: await activeWord.getAttribute('data-review-hint-stage'),
+      })
+    }
     await page.keyboard.type(word!)
     await expect.poll(async () => {
       const state = await progress()
