@@ -133,6 +133,12 @@ test('three real clients: two identities, revoked sessions, conflict, restore an
     await expect(page.getByText('本地与云端一致')).toBeVisible()
   }
 
+  // Keep the production replay trace strictly redacted: no credentials,
+  // usernames, localStorage values or actual cloud payloads.
+  const trace: Array<{ event: string; client: string; revision?: number }> = []
+  const mark = (event: string, client: string, revision?: number) =>
+    trace.push({ event, client, ...(revision === undefined ? {} : { revision }) })
+
   const wordA1 = `e2e-${usernameA}-first`
   const wordA2 = `e2e-${usernameA}-remote`
   const wordStale = `e2e-${usernameA}-stale-local`
@@ -146,6 +152,7 @@ test('three real clients: two identities, revoked sessions, conflict, restore an
     await refresh(a1)
     await expect(a1.getByText('本地有未上传修改')).toBeVisible()
     await upload(a1, 1)
+    mark('first-upload-asserted', 'A1', 1)
 
     // Separate identity B must start with no A data (locally or remotely).
     await settings(b1)
@@ -155,6 +162,7 @@ test('three real clients: two identities, revoked sessions, conflict, restore an
     await addWord(b1, wordB)
     await refresh(b1)
     await upload(b1, 1)
+    mark('isolated-identity-upload-asserted', 'B1', 1)
 
     // Same account, different browser: A2 login revokes A1's cloud session.
     await settings(a2)
@@ -166,7 +174,8 @@ test('three real clients: two identities, revoked sessions, conflict, restore an
       })).status
     })
     expect(a1Revoked).toBe(401)
-    expect(await words(a1)).toContain(wordA1) // revoked is NOT local deletion
+    expect(await words(a1)).toContain(wordA1)
+    mark('revoked-session-kept-local-data', 'A1') // revoked is NOT local deletion
 
     // A2 explicitly downloads; without any subsequent learning its state
     // must be CLEAN even after navigation/reload (import false-dirty regression).
@@ -181,6 +190,7 @@ test('three real clients: two identities, revoked sessions, conflict, restore an
     await refresh(a2)
     await expect(a2.getByText('本地与云端一致')).toBeVisible()
     expect(await words(a2)).not.toContain(wordB)
+    mark('remote-restore-remains-clean-after-reload', 'A2', 1)
 
     // Create local unuploaded A2 edits; A1 logs back in and moves the cloud
     // forward. Explicit reauth must detect both-sided divergence, never overwrite.
@@ -192,6 +202,7 @@ test('three real clients: two identities, revoked sessions, conflict, restore an
     await addWord(a1, wordA2)
     await refresh(a1)
     await upload(a1, 2)
+    mark('remote-revision-increment', 'A1', 2)
 
     await logout(a2)
     await login(a2, usernameA)
@@ -199,6 +210,7 @@ test('three real clients: two identities, revoked sessions, conflict, restore an
     await expect(a2.getByText('本地与云端均有变化，需要手动选择')).toBeVisible()
     expect(await words(a2)).toContain(wordStale)
     expect(await words(a2)).not.toContain(wordA2)
+    mark('divergence-without-silent-overwrite', 'A2', 2)
 
     // The first dialog handler stays active for this page. Do not attach it
     // again, otherwise both handlers try to accept the same browser dialog.
@@ -214,7 +226,13 @@ test('three real clients: two identities, revoked sessions, conflict, restore an
     await expect(b1.getByText('云端 revision：')).toContainText('1')
     expect(await words(b1)).toContain(wordB)
     expect(await words(b1)).not.toContain(wordA1)
+    mark('explicit-restore-and-account-isolation', 'A2', 2)
+    mark('independent-identity-unaffected', 'B1', 1)
   } finally {
+    await test.info().attach('production-multi-client-redacted-trace.json', {
+      body: Buffer.from(JSON.stringify({ schema: 'cloud-ui-trace-v1', trace }, null, 2)),
+      contentType: 'application/json',
+    })
     await Promise.allSettled([contextA1.close(), contextA2.close(), contextB1.close()])
   }
 })
