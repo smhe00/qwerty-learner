@@ -1019,6 +1019,18 @@ CompleteWordProjection ==
   \/ \E d \in Devices : CompleteWord(d)
   \/ \E d \in Devices : DeleteLearningRecords(d)
 
+(* Targeted counterexample projection: a second device keeps a stale
+   revision after the first device changes and publishes settings. Every
+   transition below is a production Next action; this does NOT replace the
+   larger positive-model projections. It only bounds the mutation witness. *)
+NextStalePushMutation ==
+  \/ \E d \in Devices, u \in Usernames, a \in AccountIds :
+       RegisterBlank(d, u, a)
+  \/ \E d \in Devices, u \in Usernames : LoginAbsent(d, u)
+  \/ \E d \in Devices : ChangeSetting(d)
+  \/ \E d \in Devices : CompleteWord(d)
+  \/ \E d \in Devices : ManualPush(d)
+
 NextConcurrent ==
   \/ RegistrationActions
   \/ LoginActions
