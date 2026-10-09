@@ -10,6 +10,10 @@ on:
         description: Reproducible exploration seed
         default: '20261009'
         required: true
+      word_budget:
+        description: Number of Learn words for stateful exploration (3-32)
+        default: '12'
+        required: true
 
 permissions:
   contents: read
@@ -33,7 +37,12 @@ jobs:
         env:
           PAGES_SOURCE_SHA: ${{ github.event.inputs.source_sha }}
           EXPLORER_SEED: ${{ github.event.inputs.seed }}
-        run: npx playwright test tests/e2e/pages-explorer.spec.ts --retries=0
+          EXPLORER_WORD_BUDGET: ${{ github.event.inputs.word_budget }}
+        run: >
+          npx playwright test
+          tests/e2e/pages-explorer.spec.ts
+          tests/e2e/pages-stateful-explorer.spec.ts
+          --project=chromium --retries=0
       - name: Preserve replay trace and failures
         if: always()
         uses: actions/upload-artifact@v4

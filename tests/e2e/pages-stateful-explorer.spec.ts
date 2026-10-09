@@ -270,6 +270,12 @@ test('coverage-guided Pages Learn: keyboard, hint, resume, IndexedDB, mode-switc
     expect(pageErrors, 'browser runtime errors').toEqual([])
     expect(cloudRequests, 'Pages must not contact auth/sync APIs').toEqual([])
   } finally {
+    console.log('[Pages Explorer coverage]', JSON.stringify({
+      seed, wordBudget: budget,
+      completedWords: trace.filter(item => item.action === 'word-committed').length,
+      coverage: [...coverage].sort(),
+      pageErrorCount: pageErrors.length, cloudRequestCount: cloudRequests.length,
+    }))
     const filename = test.info().outputPath('pages-stateful-explorer-redacted.json')
     writeFileSync(filename, JSON.stringify({
       schema: 'pages-stateful-explorer-v1',
