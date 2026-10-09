@@ -568,6 +568,10 @@ export default function WordComponent({
           acceptedInputLengthRef.current += 1
           if (inputDecision.isFinal) {
             inputLockedRef.current = true
+            // Never let a queued/late entry pronunciation begin after
+            // spelling has completed. Cancel both Howler and native fallback
+            // synchronously, before React effects or sound-load callbacks.
+            wordPronunciationIconRef.current?.stop()
           }
 
           const now = Date.now()

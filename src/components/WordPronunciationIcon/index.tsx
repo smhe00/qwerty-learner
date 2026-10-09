@@ -127,8 +127,9 @@ export const WordPronunciationIcon = React.forwardRef<
       ref,
       () => ({
         play: playSound,
+        stop,
       }),
-      [playSound],
+      [playSound, stop],
     )
 
     return (
@@ -145,6 +146,7 @@ export const WordPronunciationIcon = React.forwardRef<
 WordPronunciationIcon.displayName = 'WordPronunciationIcon'
 
 export type WordPronunciationIconRef = {
+  stop: () => void
   play: (
     expectedOwnerKey?: string,
     onSettled?: () => void,
