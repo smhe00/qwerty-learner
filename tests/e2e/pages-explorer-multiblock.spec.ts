@@ -209,9 +209,31 @@ test('Explorer V3: finish two genuine Learn blocks across a virtual day with dur
       expect(completed.storedFinished).toBe(true)
       completedIds.add(entry.sessionId!)
       add(block, totalCompletedAttempts, 'block-complete', completed)
-      await expect(page.getByRole('button', { name: '继续 Learn' })).toBeVisible()
+      // Learn deliberately renders its own settlement screen (not the
+      // upstream Typing ResultScreen). Verify the durable settlement barrier
+      // and the correct block-pause vs daily-complete state.
+      const resultScreen = page.locator('[data-learn-result-screen]')
+      await expect(resultScreen).toBeVisible({ timeout: 20_000 })
+      await expect(
+        resultScreen.getByText('正在保存本阶段学习状态…'),
+      ).toBeHidden({ timeout: 20_000 })
+      await expect(resultScreen.getByRole('alert')).toHaveCount(0)
+      const dailyComplete = await resultScreen.getAttribute('data-learn-daily-complete') === 'true'
+      if (dailyComplete) {
+        await expect(resultScreen.getByRole('button', { name: '完成', exact: true })).toBeEnabled()
+      } else {
+        await expect(resultScreen.getByRole('button', { name: '按任意键继续' })).toBeEnabled()
+      }
+      add(block, totalCompletedAttempts,
+        dailyComplete ? 'daily-settlement-complete' : 'block-settlement-pause',
+        await checkpoint(page))
 
       if (block === TARGET_BLOCKS) break
+
+      // Closing the Learn result preserves the completed Block and exits
+      // the active typing engine, so virtual time can safely advance.
+      await resultScreen.getByRole('button', { name: '暂停 Learn' }).click()
+      await expect(resultScreen).toHaveCount(0)
 
       // End-of-block is a safe point for virtual-time acceleration.
       // Never change the clock while Learn is accepting text.
