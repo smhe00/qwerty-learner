@@ -107,11 +107,13 @@ export async function switchAuthenticatedWorkspace(
   if (same(before.active, target)) {
     throw new Error('Use reauthentication for an existing account; no workspace switch required')
   }
-  const intent: AuthIntent = { version: 1, from: before.active, to: target, nextAuth }
-  if (!validIntent(intent)) throw new Error('Target account ID does not match authenticated user')
+  // The direct cross-account transition is forbidden independently of
+  // whether a supplied target token would otherwise be valid.
   if (before.active.kind === 'account' && target.kind === 'account') {
     throw new Error('Explicit logout to anonymous is required before switching accounts')
   }
+  const intent: AuthIntent = { version: 1, from: before.active, to: target, nextAuth }
+  if (!validIntent(intent)) throw new Error('Target account ID does not match authenticated user')
   storage().setItem(INTENT_KEY, JSON.stringify(intent))
   try {
     const { transitionWorkingWorkspace } = await import('./workspace-coordinator')
