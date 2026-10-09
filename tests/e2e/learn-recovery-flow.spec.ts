@@ -478,3 +478,73 @@ test('final Learn word reaches result UI even when route-cache persistence throw
     .toBe(true)
 })
 
+
+test('cloud restore marks an unchanged revision clean through reload and opening Learn without typing', async ({
+  page,
+}) => {
+  await page.goto('/tests/e2e/backup-harness.html')
+  await expect(page.getByText('backup harness ready')).toBeVisible()
+
+  const original = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    const snapshot = await h.createLocalSnapshot()
+    // Stand in for the cloud payload without network credentials; exercise
+    // the *same* V3 restore and baseline functions used by CloudSyncSetting.
+    await h.clearAllTables()
+    localStorage.setItem('currentDict', JSON.stringify('zhongkaohexin'))
+    localStorage.setItem('currentChapter', JSON.stringify(0))
+    const restored = await h.restoreLocalSnapshot(
+      snapshot.payloadBase64,
+      snapshot.clientFormatVersion,
+    )
+    h.saveSyncBaseline('e2e-cloud-import', 9, restored.fingerprint)
+    const state = h.assessSyncState(
+      await h.inspectLocalState(),
+      { revision: 9, hasData: true },
+      h.loadSyncBaseline('e2e-cloud-import'),
+    )
+    return { restoredFingerprint: restored.fingerprint, state }
+  })
+  expect(original.state.status).toBe('clean')
+
+  await page.goto('/typing')
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+
+  await page.goto('/tests/e2e/backup-harness.html')
+  await expect(page.getByText('backup harness ready')).toBeVisible()
+  const afterReload = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    const local = await h.inspectLocalState()
+    return {
+      fingerprint: local.fingerprint,
+      assessment: h.assessSyncState(
+        local,
+        { revision: 9, hasData: true },
+        h.loadSyncBaseline('e2e-cloud-import'),
+      ),
+    }
+  })
+  expect(afterReload.assessment.status).toBe('clean')
+  expect(afterReload.fingerprint).toBe(original.restoredFingerprint)
+
+  // Opening Learn can initialize internal review state and a session before
+  // a single keystroke; this must not silently count as an uploaded edit.
+  await page.goto('/learn')
+  await expect(page.getByRole('button', { name: 'Learn', exact: true }))
+    .toHaveAttribute('aria-pressed', 'true')
+  await page.goto('/tests/e2e/backup-harness.html')
+  const afterVisit = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    const local = await h.inspectLocalState()
+    return {
+      fingerprint: local.fingerprint,
+      assessment: h.assessSyncState(
+        local,
+        { revision: 9, hasData: true },
+        h.loadSyncBaseline('e2e-cloud-import'),
+      ),
+    }
+  })
+  expect(afterVisit.assessment.status).toBe('clean')
+})

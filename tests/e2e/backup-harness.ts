@@ -14,6 +14,8 @@ import {
   importBackupJson,
 } from '../../src/utils/backup'
 import { db } from '../../src/utils/db'
+import { createLocalSnapshot, inspectLocalState, restoreLocalSnapshot } from '../../src/sync/snapshot'
+import { assessSyncState, loadSyncBaseline, saveSyncBaseline } from '../../src/sync/state'
 
 const now = Math.floor(
   new Date('2026-10-03T00:00:00.000Z').getTime() / 1000,
@@ -295,6 +297,12 @@ async function inspectTableContract() {
   createLocalSnapshot,
   restoreLocalSnapshot,
   clearAllTables,
+  createLocalSnapshot,
+  inspectLocalState,
+  restoreLocalSnapshot,
+  assessSyncState,
+  loadSyncBaseline,
+  saveSyncBaseline,
   captureWorkingWorkspaceV4,
   resetWorkingWorkspaceToEmpty,
   restoreWorkingWorkspaceV4,
