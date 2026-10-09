@@ -25,9 +25,6 @@ jobs:
     timeout-minutes: 20
     env:
       QWERTY_SYNC_BASE_URL: ${{ secrets.QWERTY_SYNC_BASE_URL }}
-      EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
-      EDGEONE_PROJECT_ID: makers-cgemngjuuwle
-      BLOB_STORE_NAME: qwerty-data
 
     steps:
       - name: Checkout verification code (never deploy)
@@ -43,13 +40,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$QWERTY_SYNC_BASE_URL" || { echo "::error::QWERTY_SYNC_BASE_URL is missing"; exit 1; }
-          test -n "$EDGEONE_API_TOKEN" || { echo "::error::EDGEONE_API_TOKEN is missing"; exit 1; }
           echo "QWERTY_E2E_USERNAME=e2e_mc_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_a" >> "$GITHUB_ENV"
           echo "QWERTY_E2E_USERNAME_B=e2e_mc_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_b" >> "$GITHUB_ENV"
           pass="E2E-$(openssl rand -hex 16)"
           echo "::add-mask::$pass"
           echo "QWERTY_E2E_PASSWORD=$pass" >> "$GITHUB_ENV"
+
+      - name: Resolve and verify already-published EdgeOne endpoint
+        run: node tests/cloud/resolve-production-base.mjs
 
       - name: Install test dependencies and Chromium
         run: |
@@ -59,14 +57,6 @@ jobs:
       - name: Exercise published site with three isolated browsers
         run: npx playwright test --config=tests/e2e/production-multi-client.config.ts
 
-      - name: Cleanup BOTH disposable EdgeOne accounts
+      - name: Cleanup BOTH disposable accounts via their own authentication
         if: always()
-        shell: bash
-        run: |
-          status=0
-          for username in "$QWERTY_E2E_USERNAME" "$QWERTY_E2E_USERNAME_B"; do
-            if [ -n "$username" ]; then
-              QWERTY_E2E_USERNAME="$username" node tests/cloud/edgeone-cleanup-user.mjs || status=1
-            fi
-          done
-          exit "$status"
+        run: node tests/cloud/cleanup-production-multi-client.mjs
