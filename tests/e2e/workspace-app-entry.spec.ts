@@ -507,7 +507,11 @@ test('actual S1 account UI login then offline logout preserves both local worksp
       token: 'test-login-token', expiresAt: Math.floor(Date.now()/1000)+3600, expiresIn:3600,
     }),
   }))
-  await page.route('**/api/sync/meta', route => route.abort())
+  let cloudMetaRequests = 0
+  await page.route('**/api/sync/meta', route => {
+    cloudMetaRequests += 1
+    void route.abort()
+  })
   page.on('dialog', dialog => { void dialog.accept() })
   await page.goto('/?s1-account=manage')
   await expect(page.getByText('安全账户管理（S1）')).toBeVisible()
@@ -544,6 +548,7 @@ test('actual S1 account UI login then offline logout preserves both local worksp
   expect(afterLogout).toEqual({
     active: { kind: 'anonymous' }, wordCount: 1, auth: null,
   })
+  expect(cloudMetaRequests).toBe(0)
 })
 
 test('S1 registration explicitly copies full anonymous V4 data, preserving original', async ({ page }) => {
