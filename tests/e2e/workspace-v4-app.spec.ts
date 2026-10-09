@@ -32,7 +32,7 @@ test('application settings exports complete V4 gzip and validates it without cha
   await page.getByRole('tab', { name: '数据设置' }).click()
 
   const downloadPromise = page.waitForEvent('download')
-  await page.getByRole('button', { name: '导出完整 V4 备份' }).click()
+  await page.getByRole('button', { name: '导出完整备份' }).click()
   const download = await downloadPromise
   expect(download.suggestedFilename()).toMatch(/Qwerty-Plus-Backup-V4-.*\.gz$/)
   const buffer = await readFile(await download.path() as string)
