@@ -5,19 +5,10 @@ on:
     branches:
       - product/main
     paths:
+      # Re-model-check only when the formal protocol/model configuration
+      # or the TLC workflow itself changes. Implementation-only S1 commits
+      # are covered by Cloud Sync, S1 browser, and Review regression gates.
       - 'formal/**'
-      - 'tests/formal/**'
-      # S0.5 is an executable safety specification for S1's durable
-      # identity/backup boundary. Validate its projections on every relevant
-      # implementation or crash-regression change, not only TLA source edits.
-      - 'src/sync/workspace-*'
-      - 'src/sync/auth.ts'
-      - 'src/sync/CloudSyncSetting.tsx'
-      - 'src/index.tsx'
-      - 'tests/cloud/workspace-transition.test.mjs'
-      - 'tests/e2e/workspace-app-entry.spec.ts'
-      - 'src/learn/trace-ir.ts'
-      - 'tests/simulation/system-oracle.ts'
       - '.github/workflows/tla-gate.yml'
   workflow_dispatch:
 
