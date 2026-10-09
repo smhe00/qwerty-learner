@@ -24,7 +24,7 @@ async function state(page: Page): Promise<State> {
     const raw = localStorage.getItem('reviewModeInfo')
     const session = raw ? JSON.parse(raw).reviewRecord : null
     const dictRaw = localStorage.getItem('currentDict')
-    const dict = dictRaw ? JSON.parse(dictRaw) : 'hujiaoxin2027'
+    const dict = dictRaw ? JSON.parse(dictRaw) : 'shanghai-zhongkao-2027'
     const dailyRaw = localStorage.getItem('qwerty.learn.dailySession.v1.' + dict)
     const daily = dailyRaw ? JSON.parse(dailyRaw) : null
     const id = session ? String(session.id ?? session.createTime ?? '') : null
