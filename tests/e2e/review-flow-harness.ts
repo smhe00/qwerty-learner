@@ -30,9 +30,9 @@ export async function gotoReviewAppReady(
       '} catch (error) {',
       '  window.__qwertyReviewDbReady = { ok: false, message: String(error) }',
       '}',
-    ].join('\\n'),
+    ].join('\n'),
   })
-  const ready = await expect.poll(
+  await expect.poll(
     () => page.evaluate(() =>
       (window as Window & {
         __qwertyReviewDbReady?: { ok: boolean; message?: string }
@@ -40,7 +40,6 @@ export async function gotoReviewAppReady(
     ),
     { timeout: 15_000 },
   ).not.toBeUndefined()
-  void ready
   const result = await page.evaluate(() =>
     (window as Window & {
       __qwertyReviewDbReady?: { ok: boolean; message?: string }
