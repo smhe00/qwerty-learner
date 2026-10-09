@@ -3,7 +3,9 @@
  * may precede the exclusive writer lease and pending-journal check.
  * Legacy users continue without automatic S1 migration.
  */
+import { loadAuth } from './sync/auth'
 import { prepareGuardedWorkspaceBoot } from './sync/workspace-bootstrap'
+import type { Workspace } from './sync/workspace-transition'
 import type { GuardedWorkspaceBoot, WorkspaceBootStage } from './sync/workspace-bootstrap'
 
 const root = document.getElementById('root')
@@ -36,6 +38,57 @@ function gateUI(title: string, detail: string, action?: string): void {
   root.append(panel)
 }
 
+/**
+ * Explicit V1 ownership test surface, only on the local Vite dev server.
+ * Production migration stays disabled until all stale old-version tab
+ * lifecycles and auth transactions are verified.
+ */
+function showDevelopmentMigrationConsent(): void {
+  if (!root || !boot || boot.mode !== 'legacy') return
+  const auth = loadAuth()
+  const owner: Workspace = auth
+    ? { kind: 'account', accountId: auth.user.userId }
+    : { kind: 'anonymous' }
+  const ownerName = auth
+    ? '账号“' + auth.user.username + '”（不可变 ID：' + auth.user.userId + '）'
+    : '当前本机匿名工作区'
+  gateUI('S1 V1 数据归属测试（仅限本地开发）',
+    '您正在确认完整 V1 本地数据归属到' + ownerName +
+    '。迁移仅保存本机 V4 数据，不会合并或上传。请先关闭旧版本标签页。')
+  const panel = root.querySelector('section')
+  if (!panel) return
+  const confirm = document.createElement('button')
+  confirm.type = 'button'
+  confirm.textContent = '确认归属并建立隔离工作区'
+  confirm.style.cssText = 'margin-top:20px;border:1px solid #64748b;border-radius:6px;padding:8px 16px'
+  confirm.addEventListener('click', () => {
+    confirm.disabled = true
+    gateUI('正在保存本机学习数据', '正在提交 V4 快照和账户归属。')
+    void (async () => {
+      try {
+        const { initializeLegacyWorkspace } = await import('./sync/workspace-coordinator')
+        await initializeLegacyWorkspace(owner)
+        boot?.release()
+        gateUI('数据归属已提交', '正在以全新的 JavaScript 上下文加载学习数据。')
+        window.location.replace('/')
+      } catch (error) {
+        gateUI('迁移受阻，原始本地数据保留',
+          error instanceof Error ? error.message : String(error),
+          '重新检查')
+      }
+    })()
+  })
+  const cancel = document.createElement('button')
+  cancel.type = 'button'
+  cancel.textContent = '取消，保持 V1'
+  cancel.style.cssText = 'margin-left:12px;padding:8px 12px'
+  cancel.addEventListener('click', () => {
+    boot?.release()
+    window.location.replace('/')
+  })
+  panel.append(confirm, cancel)
+}
+
 function onStage(stage: WorkspaceBootStage): void {
   if (stage === 'locking') {
     gateUI('正在准备本地学习数据', '正在取得本浏览器的独占学习数据写入权限…')
@@ -51,6 +104,14 @@ async function start(): Promise<void> {
     boot = await prepareGuardedWorkspaceBoot(onStage, { allowLegacy: true })
     if (releasedForPageHide) {
       boot.release()
+      return
+    }
+    if (
+      import.meta.env.DEV &&
+      new URLSearchParams(window.location.search).get('s1-migration') === 'confirm' &&
+      boot.mode === 'legacy'
+    ) {
+      showDevelopmentMigrationConsent()
       return
     }
     // Importing the old app initializes store atoms and DB modules. This
