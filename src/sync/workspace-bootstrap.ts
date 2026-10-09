@@ -65,19 +65,19 @@ export async function prepareGuardedWorkspaceBoot(
       return { mode: 'legacy', registry: before, release: () => lease.release() }
     }
 
+    // A cross-tab localStorage.clear() has no old values in the event and
+    // cannot be reversed. Never silently hydrate an empty/mixed workspace.
+    // The flag lives in THIS TAB's sessionStorage, outside stale-tab reach.
+    if (sessionStorage.getItem('qwerty.s1.foreign-storage-clear-blocked') === '1') {
+      throw new Error('S1 detected an older tab clearing shared localStorage; automatic writes are blocked until data is manually recovered')
+    }
+
     // A stale old-JS tab may erase localStorage even while the current
     // owner document is closed and therefore cannot receive storage events.
     // The migration witness persists across ordinary workspace restore
     // and must not disappear after registry generation has been committed.
     if (localStorage.getItem(S1_MIGRATION_WITNESS_KEY) !== 'v1') {
       throw new Error('S1 workspace migration witness missing: possible legacy-tab storage wipe; writes blocked')
-    }
-
-    // A cross-tab localStorage.clear() has no old values in the event and
-    // cannot be reversed. Never silently hydrate an empty/mixed workspace.
-    // The flag lives in THIS TAB's sessionStorage, outside stale-tab reach.
-    if (sessionStorage.getItem('qwerty.s1.foreign-storage-clear-blocked') === '1') {
-      throw new Error('S1 detected an older tab clearing shared localStorage; automatic writes are blocked until data is manually recovered')
     }
 
     // Recover a previously committed workspace journal before auth
