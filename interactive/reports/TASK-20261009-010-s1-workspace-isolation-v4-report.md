@@ -220,3 +220,16 @@ Remaining S1 blockers: explicit one-time V1 ownership migration, complete
 transactional register/login/logout UI with progress/recovery, stale older
 JS tabs, all-writer quiescence during page lifecycle, offline/auth-expiry
 error injection, protocol trace refinement. No EdgeOne build; no master push.
+
+
+## 2026-10-09 S1 closure continuation: account ownership / writer lease
+
+Code committed on \`product/main\` only:
+
+- \`6bb6ed54\` and \`640b2f4e\`: Typing automatic pronunciation terminal/queued-audio suppression; Review Gate result is tracked separately (do not call PASS until confirmed).
+- \`9f076a88\`: account tokens expiring in S1 do not silently de-own a local account workspace. On guarded boot the immutable owner is validated even when the cloud token is expired. V1 expiry retains previous semantics. A mounted app does not release its Web Lock merely because pagehide/BFCache fires.
+- \`049a2e5e\` / \`4ab3b481\`: opt-in **development-only** V1 ownership consent is performed before React mounts, under the sole writer lease; it preserves existing records and immutable account IDs. Testing entry is \`/?s1-migration=confirm\` on local Vite DEV only, not available in production. A cancelled consent does not change records. A successful migration reloads from a clean JS context.
+
+**Verified**: S1 Workspace Browser Gate run https://github.com/smhe00/qwerty-learner/actions/runs/37870686755 at \`4ab3b481\`: **29/29 PASS** (including actual pre-mount consent and cancelled migration), no EdgeOne build. Cloud Sync Gate at \`9f076a88\` (37870310069) PASS; Achievement Gate at \`049a2e5e\` (37870667736) PASS. Review Gate for the latest audio change must be checked independently.
+
+**NOT completed**: safe production V1 ownership migration (already-open old-JS tabs are not fenced), full crash-consistent account register/login/logout/switch UI and dirty-cloud preflight, offline/auth error UX, per-phase fault injection and TLA+ trace refinement. No master release. S1 status remains PARTIAL.

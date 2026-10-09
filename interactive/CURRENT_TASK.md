@@ -8,7 +8,7 @@ status: "PARTIAL"
 executor: "ChatGPT (direct executor)"
 claim_base_commit: "77ce352abdf15148da69ed90b47fc77f03fd5039"
 claimed_at_utc: "2026-10-08T22:41:35Z"
-last_known_commit: "4a4828b4541c316aa40c43520b3136591e572507"
+last_known_commit: "4ab3b481ba04a480e1cc1bb62da174e183f4f774"
 release_to_master: false
 priority: "P0"
 ---
@@ -51,3 +51,12 @@ S1 Browser Gate 37860498562 PASS 23/23. Default V1 users are not migrated.
 Typing's distinct audio feedback race and test boundary were fixed in
 `f5788e5` and `4a4828b`; Review Gate 37860755931 still requires checking.
 Next milestone remains S1 account lifecycle and explicit V1 ownership consent.
+
+
+2026-10-09 progress: S1 browser contract expanded to 29/29 PASS (run 37870686755).
+Expired-token local ownership, pagehide/BFCache lock retention, and DEV-only
+explicit V1 account/anonymous ownership consent are implemented and tested
+(commits 9f076a88, 049a2e5e, 4ab3b481). S1 is still PARTIAL and
+production activation is forbidden pending old-JS stale tab containment,
+full account lifecycle and auth-intent Crash recovery, offline cases,
+and S0.5 trace refinement. Audio Review Gate is tracked separately.
