@@ -1,0 +1,72 @@
+name: Production Multi-Client E2E Gate
+
+# Runs against the ALREADY DEPLOYED master/EdgeOne site.
+# It never syncs product/main to master or requests a Maker build.
+on:
+  push:
+    branches:
+      - product/main
+    paths:
+      - '.github/workflows/production-multi-client-gate.yml'
+      - 'tests/e2e/production-multi-client.spec.ts'
+      - 'tests/e2e/production-multi-client.config.ts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: edgeone-real-multi-client
+  cancel-in-progress: false
+
+jobs:
+  multi-client:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      QWERTY_SYNC_BASE_URL: ${{ secrets.QWERTY_SYNC_BASE_URL }}
+      EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+      EDGEONE_PROJECT_ID: makers-cgemngjuuwle
+      BLOB_STORE_NAME: qwerty-data
+
+    steps:
+      - name: Checkout verification code (never deploy)
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+
+      - name: Validate live-test settings and generate disposable identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$QWERTY_SYNC_BASE_URL" || { echo "::error::QWERTY_SYNC_BASE_URL is missing"; exit 1; }
+          test -n "$EDGEONE_API_TOKEN" || { echo "::error::EDGEONE_API_TOKEN is missing"; exit 1; }
+          echo "QWERTY_E2E_USERNAME=e2e_mc_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_a" >> "$GITHUB_ENV"
+          echo "QWERTY_E2E_USERNAME_B=e2e_mc_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_b" >> "$GITHUB_ENV"
+          pass="E2E-$(openssl rand -hex 16)"
+          echo "::add-mask::$pass"
+          echo "QWERTY_E2E_PASSWORD=$pass" >> "$GITHUB_ENV"
+
+      - name: Install test dependencies and Chromium
+        run: |
+          yarn install --frozen-lockfile
+          npx playwright install --with-deps chromium
+
+      - name: Exercise published site with three isolated browsers
+        run: npx playwright test --config=tests/e2e/production-multi-client.config.ts
+
+      - name: Cleanup BOTH disposable EdgeOne accounts
+        if: always()
+        shell: bash
+        run: |
+          status=0
+          for username in "$QWERTY_E2E_USERNAME" "$QWERTY_E2E_USERNAME_B"; do
+            if [ -n "$username" ]; then
+              QWERTY_E2E_USERNAME="$username" node tests/cloud/edgeone-cleanup-user.mjs || status=1
+            fi
+          done
+          exit "$status"
