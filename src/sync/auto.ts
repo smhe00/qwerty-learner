@@ -65,6 +65,7 @@ export async function autoSyncCompletedLearnSession(): Promise<LearnAutoSyncResu
       auth.user.userId,
       uploaded.revision,
       snapshot.fingerprint,
+      snapshot.userActionFingerprint,
     )
 
     return {

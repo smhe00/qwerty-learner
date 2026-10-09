@@ -22,6 +22,8 @@ export function loadSyncBaseline(userId: string): SyncBaseline | null {
       !Number.isInteger(value.baseRevision) ||
       Number(value.baseRevision) < 0 ||
       typeof value.localFingerprint !== 'string' ||
+      (value.userActionFingerprint !== undefined &&
+        typeof value.userActionFingerprint !== 'string') ||
       typeof value.syncedAt !== 'string'
     ) {
       return null
@@ -33,10 +35,16 @@ export function loadSyncBaseline(userId: string): SyncBaseline | null {
   }
 }
 
-export function saveSyncBaseline(userId: string, baseRevision: number, localFingerprint: string) {
+export function saveSyncBaseline(
+  userId: string,
+  baseRevision: number,
+  localFingerprint: string,
+  userActionFingerprint?: string,
+) {
   const baseline: SyncBaseline = {
     baseRevision,
     localFingerprint,
+    ...(userActionFingerprint ? { userActionFingerprint } : {}),
     syncedAt: new Date().toISOString(),
   }
 
@@ -54,9 +62,22 @@ export function assessSyncState(
   baseline: SyncBaseline | null,
 ): SyncAssessment {
   const baseRevision = baseline?.baseRevision ?? 0
-  const localDirty = baseline
+  const snapshotChanged = baseline
     ? local.fingerprint !== baseline.localFingerprint
     : local.hasMeaningfulState
+  // Internal FSRS rehydration/session scaffolding can change the physical
+  // snapshot as soon as Learn opens, before any user action. Do not conflate
+  // such derived changes with unsynced learning progress. In contrast,
+  // evidence records, explicit word exclusion and navigation are actionable.
+  // Baselines saved by older releases lack this fingerprint: preserve the
+  // conservative V1 classification instead of guessing at ownership.
+  const localPrepared = Boolean(
+    snapshotChanged &&
+    baseline?.userActionFingerprint &&
+    local.userActionFingerprint &&
+    baseline.userActionFingerprint === local.userActionFingerprint,
+  )
+  const localDirty = snapshotChanged && !localPrepared
   const remoteChanged = remote.revision !== baseRevision
   const diverged = localDirty && remoteChanged
 
@@ -65,10 +86,12 @@ export function assessSyncState(
   if (diverged) status = 'diverged'
   else if (localDirty) status = 'local-dirty'
   else if (remoteChanged) status = 'remote-ahead'
+  else if (localPrepared) status = 'local-prepared'
 
   return {
     status,
     localDirty,
+    localPrepared,
     remoteChanged,
     diverged,
     baseRevision,

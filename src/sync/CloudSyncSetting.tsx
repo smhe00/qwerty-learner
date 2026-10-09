@@ -50,6 +50,8 @@ function statusText(view: SyncView | null) {
   switch (view.assessment.status) {
     case 'clean':
       return '本地与云端一致'
+    case 'local-prepared':
+      return '仅本地学习准备状态发生变化，暂无新增学习修改，无需上传'
     case 'local-dirty':
       return '本地有未上传修改'
     case 'remote-ahead':
@@ -199,7 +201,9 @@ export default function CloudSyncSetting() {
         clientFormatVersion: CLIENT_FORMAT_VERSION,
       })
 
-      saveSyncBaseline(auth.user.userId, uploaded.revision, local.fingerprint)
+      saveSyncBaseline(
+        auth.user.userId, uploaded.revision, local.fingerprint, local.userActionFingerprint,
+      )
       await refresh(auth)
       setMessage(`已上传到云端 revision ${uploaded.revision}。`)
     })
@@ -240,7 +244,9 @@ export default function CloudSyncSetting() {
         remote.clientFormatVersion,
       )
 
-      saveSyncBaseline(auth.user.userId, remote.revision, restored.fingerprint)
+      saveSyncBaseline(
+        auth.user.userId, remote.revision, restored.fingerprint, restored.userActionFingerprint,
+      )
       window.alert(
         restored.hasLearningState
           ? `已恢复云端 revision ${remote.revision}，页面将刷新以加载云端恢复后的学习状态。`

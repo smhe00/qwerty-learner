@@ -59,6 +59,59 @@ async function fingerprintExport(json: string) {
   return sha256Hex(stableStringify(logicalBackupData(json)))
 }
 
+/**
+ * Sync-side user intent projection. V3 exports contain both durable learning
+ * evidence and derivable scheduler/session scaffolding. Learn preparation may
+ * rebuild the latter without a single accepted keystroke. Only treat the
+ * former, explicit exclusion and V3 navigation changes as user changes.
+ *
+ * Hash from the EXACT exported JSON, not a second live DB read: otherwise
+ * snapshot and provenance could observe different concurrent transactions.
+ */
+async function fingerprintUserActions(json: string): Promise<string> {
+  const envelope = JSON.parse(json) as {
+    learningState?: unknown
+    database?: {
+      data?: { data?: Array<{ tableName?: string; rows?: unknown[] }> }
+    }
+  }
+  const tables = envelope.database?.data?.data
+  if (!Array.isArray(tables)) {
+    // Unknown export structure is not safe to label "derived-only".
+    // Keep the strict physical fingerprint as the evidence fallback.
+    return fingerprintExport(json)
+  }
+  const rows = (name: string): unknown[] =>
+    tables.find((entry) => entry.tableName === name)?.rows ?? []
+  const sorted = (items: unknown[]) =>
+    items.map((item) => stableStringify(item)).sort()
+
+  const excludedStates = rows('reviewWordStates').filter((item) =>
+    typeof item === 'object' && item !== null &&
+    (item as { lifecycle?: string }).lifecycle === 'excluded',
+  )
+  const activeProgress = rows('reviewRecords').filter((item) => {
+    if (typeof item !== 'object' || item === null) return false
+    const record = item as {
+      index?: number
+      isFinished?: boolean
+      hintStates?: Record<string, unknown>
+    }
+    return Boolean(
+      (record.index ?? 0) > 0 ||
+      record.isFinished ||
+      (record.hintStates && Object.keys(record.hintStates).length > 0),
+    )
+  })
+  return sha256Hex(stableStringify({
+    navigation: envelope.learningState ?? null,
+    wordRecords: sorted(rows('wordRecords')),
+    chapterRecords: sorted(rows('chapterRecords')),
+    excludedStates: sorted(excludedStates),
+    activeProgress: sorted(activeProgress),
+  }))
+}
+
 async function localRecordCount() {
   const counts = await Promise.all([
     db.wordRecords.count(),
@@ -77,8 +130,9 @@ async function exportLocalJson() {
 }
 
 async function stateFromJson(json: string): Promise<LocalState> {
-  const [fingerprint, recordCount] = await Promise.all([
+  const [fingerprint, userActionFingerprint, recordCount] = await Promise.all([
     fingerprintExport(json),
+    fingerprintUserActions(json),
     localRecordCount(),
   ])
   const learningState = readLearningState()
@@ -89,6 +143,7 @@ async function stateFromJson(json: string): Promise<LocalState> {
 
   return {
     fingerprint,
+    userActionFingerprint,
     sizeBytes: new TextEncoder().encode(json).length,
     recordCount,
     hasMeaningfulState,

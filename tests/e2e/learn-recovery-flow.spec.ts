@@ -498,7 +498,9 @@ test('cloud restore marks an unchanged revision clean through reload and opening
       snapshot.payloadBase64,
       snapshot.clientFormatVersion,
     )
-    h.saveSyncBaseline('e2e-cloud-import', 9, restored.fingerprint)
+    h.saveSyncBaseline(
+      'e2e-cloud-import', 9, restored.fingerprint, restored.userActionFingerprint,
+    )
     const state = h.assessSyncState(
       await h.inspectLocalState(),
       { revision: 9, hasData: true },
@@ -546,5 +548,30 @@ test('cloud restore marks an unchanged revision clean through reload and opening
       ),
     }
   })
-  expect(afterVisit.assessment.status).toBe('clean')
+  expect(['clean', 'local-prepared']).toContain(afterVisit.assessment.status)
+  expect(afterVisit.assessment.localDirty).toBe(false)
+
+  // A genuine accepted Learning/Typing record must still count as a dirty
+  // change, even when the remote revision remains at the imported baseline.
+  const afterStudy = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.db.wordRecords.add({
+      word: 'newly-studied',
+      dict: 'cet4',
+      chapter: -1,
+      timeStamp: Math.floor(Date.now() / 1000),
+      timing: [110, 100],
+      wrongCount: 0,
+      mistakes: {},
+      sourceMode: 'learn',
+    })
+    const state = await h.inspectLocalState()
+    return h.assessSyncState(
+      state,
+      { revision: 9, hasData: true },
+      h.loadSyncBaseline('e2e-cloud-import'),
+    )
+  })
+  expect(afterStudy.status).toBe('local-dirty')
+  expect(afterStudy.localDirty).toBe(true)
 })

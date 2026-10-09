@@ -27,6 +27,8 @@ export type RemoteSnapshot = RemoteSyncMeta & {
 
 export type LocalState = {
   fingerprint: string
+  /** Stable evidence of user learning actions, excluding derived Learn scheduler bootstraps. */
+  userActionFingerprint?: string
   sizeBytes: number
   recordCount: number
   hasMeaningfulState: boolean
@@ -40,14 +42,17 @@ export type LocalSnapshot = LocalState & {
 export type SyncBaseline = {
   baseRevision: number
   localFingerprint: string
+  /** Optional so existing V1 baseline records fail conservatively until next verified sync. */
+  userActionFingerprint?: string
   syncedAt: string
 }
 
-export type SyncAssessmentStatus = 'clean' | 'local-dirty' | 'remote-ahead' | 'diverged'
+export type SyncAssessmentStatus = 'clean' | 'local-prepared' | 'local-dirty' | 'remote-ahead' | 'diverged'
 
 export type SyncAssessment = {
   status: SyncAssessmentStatus
   localDirty: boolean
+  localPrepared?: boolean
   remoteChanged: boolean
   diverged: boolean
   baseRevision: number
