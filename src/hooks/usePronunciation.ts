@@ -110,7 +110,11 @@ export default function usePronunciationSound(word: string, isLoop?: boolean) {
     stop()
     pendingSettledRef.current = onSettled ?? null
 
-    if (sound && isReady) {
+    // Native fallback can report readiness before Howler has loaded its own
+    // sound. Calling Howl.play() while that sound is still loading queues a
+    // deferred native play(), which can fire AFTER spelling completion.
+    // Only use Howler when its actual source state is already loaded.
+    if (sound && (sound as Howl).state() === 'loaded') {
       playHowl()
       return true
     }
