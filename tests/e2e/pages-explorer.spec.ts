@@ -39,3 +39,60 @@ test('isolated Pages exploration: route and refresh transitions', async ({ page,
     await test.info().attach('pages-explorer-trace.json', { path, contentType: 'application/json' })
   }
 })
+
+/**
+ * Advisory real-UI stress path: ESC hint/surrender, corrective typing and
+ * reload. The trace deliberately excludes word spellings and browser storage.
+ * Failures retain a reproducible seed without blocking the fixed regression.
+ */
+test('isolated Pages exploration: ESC hint and corrective Learn completion', async ({ page, request }) => {
+  test.setTimeout(120_000)
+  const sha = process.env.PAGES_SOURCE_SHA
+  expect(sha).toMatch(/^[0-9a-f]{40}$/)
+  const response = await request.get(site + 'source-commit.txt')
+  expect((await response.text()).trim()).toBe(sha)
+  const checkpoints: Array<{ action: string; index: number | null; finished: boolean; hint?: string | null }> = []
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  async function progress() {
+    return page.evaluate(() => {
+      const raw = localStorage.getItem('reviewModeInfo')
+      const record = raw ? JSON.parse(raw).reviewRecord : null
+      return { index: record?.index ?? null, finished: record?.isFinished === true }
+    })
+  }
+  try {
+    await page.goto(site, { waitUntil: 'domcontentloaded' })
+    await page.getByRole('button', { name: 'Learn', exact: true }).click()
+    await expect(page.getByText('按任意键开始')).toBeVisible()
+    const activeWord = page.locator('[data-typing-word]:visible').first()
+    await expect(activeWord).toHaveAttribute('data-typing-word', /\S+/)
+    const word = await activeWord.getAttribute('data-typing-word')
+    expect(word).toBeTruthy()
+    await page.keyboard.press('a')
+    checkpoints.push({ action: 'start', ...await progress() })
+    await page.keyboard.press('Escape')
+    await expect(activeWord).toHaveAttribute('data-review-hint-level', '3')
+    checkpoints.push({
+      action: 'escape-full-hint',
+      ...await progress(),
+      hint: await activeWord.getAttribute('data-review-hint-stage'),
+    })
+    await page.keyboard.type(word!)
+    await expect.poll(async () => {
+      const state = await progress()
+      return state.finished || (state.index !== null && state.index > 0)
+    }, { timeout: 20_000 }).toBe(true)
+    const saved = await progress()
+    checkpoints.push({ action: 'corrective-complete', ...saved })
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+    await expect.poll(() => progress()).toEqual(saved)
+    checkpoints.push({ action: 'durable-reload', ...await progress() })
+    expect(errors).toEqual([])
+  } finally {
+    const path = test.info().outputPath('pages-escape-replay.json')
+    writeFileSync(path, JSON.stringify({ schema: 'pages-escape-v1', seed, sha, checkpoints, pageErrorCount: errors.length }, null, 2))
+    await test.info().attach('pages-escape-replay.json', { path, contentType: 'application/json' })
+  }
+})

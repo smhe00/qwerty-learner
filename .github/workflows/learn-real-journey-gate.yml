@@ -15,6 +15,8 @@ on:
       - 'src/index.tsx'
       - 'tests/e2e/review-flow-harness.ts'
       - 'tests/e2e/learn-real-journey.spec.ts'
+      - 'tests/e2e/learn-review-flow.spec.ts'
+      - 'tests/e2e/review-flow.config.ts'
       - 'tests/e2e/learn-real-journey.config.ts'
       - '.github/workflows/learn-real-journey-gate.yml'
   workflow_dispatch:
@@ -46,6 +48,12 @@ jobs:
         run: npx playwright test --config=tests/e2e/learn-real-journey.config.ts --list
       - name: Execute true keyboard-to-durable Learn journey
         run: npx playwright test --config=tests/e2e/learn-real-journey.config.ts
+      - name: Verify real FSRS, Hint, ESC and multi-block continuation
+        run: >
+          npx playwright test
+          --config=tests/e2e/review-flow.config.ts
+          --project=chrome
+          --grep 'multi-word Review advances|Phase D live gate applies|Hint V2 reveals|ESC enters full answer'
       - name: Upload redacted checkpoints and failure traces
         if: always()
         uses: actions/upload-artifact@v4
