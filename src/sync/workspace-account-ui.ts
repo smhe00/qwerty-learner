@@ -3,7 +3,7 @@
  * tree must not exist while switching IndexedDB and per-workspace settings.
  * Only the active guarded entry may render this surface under the writer lease.
  */
-import { login, register, getSyncMeta } from './api'
+import { login, register } from './api'
 import { loadAuth } from './auth'
 import { switchAuthenticatedWorkspace, reauthenticateSameWorkspace } from './workspace-auth-transaction'
 import { copyAnonymousWorkspaceForNewRegistration } from './workspace-coordinator'
@@ -151,18 +151,13 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
   const logoutAction = async () => {
     if (active.kind !== 'account') return
     const auth = loadAuth({ preserveExpired: true })
+    // Logout is a local durability operation at S1, NOT a cloud preflight.
+    // No fetch is permitted here: offline/stalled DNS/auth revocation must
+    // never prevent the user from leaving a locally isolated account.
     let warning = '将退出当前账户并切换到本机匿名工作区。完整本地学习记录会保留在原账户工作区。'
+    warning += '\nS1 不自动上传：本次退出前的未同步学习进度仍只保存在本机。'
     if (!auth || auth.expiresAt * 1000 <= Date.now()) {
-      warning += '\n云端会话已过期；离线退出仍可完成，未上传数据保存在本机。'
-    } else {
-      try {
-        // S1 does NOT use the V1 cloud payload to upload. This preflight is
-        // advisory only; no internet is required for a safe local logout.
-        const remote = await getSyncMeta(auth.token)
-        warning += '\n云端当前 revision：' + remote.revision + '。S1 不自动上传学习记录。'
-      } catch {
-        warning += '\n当前无法检查云端（可能离线/会话失效），本机记录仍会保留。'
-      }
+      warning += '\n云端会话已过期；离线退出仍可完成。'
     }
     if (!window.confirm(warning + '\n确定仍要安全退出？')) {
       setBusy(false, '用户已取消退出'); return
