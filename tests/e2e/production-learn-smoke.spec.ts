@@ -45,7 +45,9 @@ test('live Learn: one real typed word is durable after browser refresh', async (
   page.on('pageerror', err => errors.push(err.message))
 
   try {
-    await page.goto(new URL('/learn', origin).toString(), { waitUntil: 'domcontentloaded' })
+    await page.goto(origin!, { waitUntil: 'domcontentloaded' })
+    await page.getByRole('button', { name: 'Learn', exact: true }).click()
+    await expect(page).toHaveURL(/\/learn\/?$/, { timeout: 25_000 })
     await expect(page.getByText('按任意键开始')).toBeVisible({ timeout: 25_000 })
     const wordLocator = page.locator('[data-typing-word]:visible').first()
     await expect(wordLocator).toHaveAttribute('data-typing-word', /\S+/)
@@ -81,8 +83,9 @@ test('live Learn: one real typed word is durable after browser refresh', async (
 
 test('live Learn: repeated reload cannot grow route or add tilde-and fragments', async ({ page }) => {
   test.setTimeout(80_000)
-  const entry = new URL('/learn/', origin).toString()
-  await page.goto(entry, { waitUntil: 'domcontentloaded' })
+  await page.goto(origin!, { waitUntil: 'domcontentloaded' })
+  await page.getByRole('button', { name: 'Learn', exact: true }).click()
+  await expect(page).toHaveURL(/\/learn\/?$/, { timeout: 20_000 })
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 20_000 })
 
   const canonical = new URL(page.url())
