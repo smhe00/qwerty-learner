@@ -52,3 +52,47 @@ test('GitHub Pages 404 deep-link fallback remains available', () => {
     'https://smhe00.github.io/qwerty-learner/?/learn',
   )
 })
+
+
+const indexHtml = readFileSync(join(root, 'index.html'), 'utf8')
+const indexScript = indexHtml.match(/<script type="text\/javascript">([\s\S]*?)<\/script>/)?.[1]
+
+function runIndexBoot(href) {
+  assert.ok(indexScript, 'SPA route bootstrap script must exist')
+  const url = new URL(href)
+  let route = null
+  const location = {
+    hostname: url.hostname,
+    pathname: url.pathname,
+    search: url.search,
+    hash: url.hash,
+  }
+  const history = {
+    state: { from: 'test' },
+    replaceState(_state, _title, path) { route = path },
+  }
+  vm.runInNewContext(indexScript, { window: { location, history } })
+  return route
+}
+
+test('EdgeOne repairs an already-growing /learn/ query without changing its route', () => {
+  assert.equal(
+    runIndexBoot('https://qwerty-plus.edgeone.dev/learn/?/&/~and~/~and~/'),
+    '/learn',
+  )
+  assert.equal(
+    runIndexBoot('https://qwerty-plus.edgeone.dev/learn/?s1-account=manage'),
+    null,
+  )
+  assert.equal(
+    runIndexBoot('https://qwerty-plus.edgeone.dev/learn/'),
+    null,
+  )
+})
+
+test('GitHub Pages retains the original encoded deep-link decoder', () => {
+  assert.equal(
+    runIndexBoot('https://smhe00.github.io/qwerty-learner/?/learn'),
+    '/qwerty-learner/learn',
+  )
+})
