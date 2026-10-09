@@ -765,3 +765,84 @@ test('S1 protected owner undoes stale V5 cross-tab localStorage setting/auth wri
   expect(result.learningRows).toBe(1)
   expect(result.config).toEqual({ dailyNewWordTarget: 19, blockSize: 1 })
 })
+
+
+test('S1 boot finalizes account identity after target CAS succeeded but auth write crashed', async ({ page }) => {
+  await harness(page)
+  const accountId = 'S1-CAS-before-auth-identity'
+  const preBoot = await page.evaluate(async (id) => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+    const target = { kind: 'account', accountId: id }
+    localStorage.setItem(h.S1_AUTH_INTENT_KEY, JSON.stringify({
+      version: 1,
+      from: h.ANONYMOUS,
+      to: target,
+      nextAuth: {
+        token: 'session-recovered-after-CAS',
+        expiresAt: Math.floor(Date.now() / 1000) + 3600,
+        user: { userId: id, username: 'recovered-after-CAS' },
+      },
+    }))
+    const lease = await h.acquireWorkspaceWriterLease()
+    try { await h.transitionWorkingWorkspace(target) }
+    finally { lease.release() }
+    return {
+      registry: await h.workspaceRegistryPort.read(),
+      auth: localStorage.getItem('qwerty.cloudAuth.v1'),
+      intentPresent: localStorage.getItem(h.S1_AUTH_INTENT_KEY) !== null,
+      records: await h.db.wordRecords.count(),
+    }
+  }, accountId)
+  expect(preBoot.registry.active).toEqual({ kind: 'account', accountId })
+  expect(preBoot.registry.pending).toBeNull()
+  expect(preBoot.auth).toBeNull()
+  expect(preBoot.intentPresent).toBe(true)
+  expect(preBoot.records).toBe(0)
+
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  await harness(page)
+  const result = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    return {
+      owner: (await h.workspaceRegistryPort.read()).active,
+      auth: JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null'),
+      pendingIntent: localStorage.getItem(h.S1_AUTH_INTENT_KEY),
+      anonymousSaved: Boolean(await h.loadWorkspaceFromVault(h.ANONYMOUS)),
+      records: await h.db.wordRecords.count(),
+    }
+  })
+  expect(result.owner).toEqual({ kind: 'account', accountId })
+  expect(result.auth.user.userId).toBe(accountId)
+  expect(result.pendingIntent).toBeNull()
+  expect(result.anonymousSaved).toBe(true)
+  expect(result.records).toBe(0)
+})
+
+test('S1 corrupt auth transition intent fails closed before mounting writers', async ({ page }) => {
+  await harness(page)
+  await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+    localStorage.setItem(h.S1_AUTH_INTENT_KEY, '{incomplete-json')
+  })
+  await page.goto('/')
+  await expect(page.getByText('学习数据安全检查未通过')).toBeVisible()
+  await expect(page.getByText(/Corrupt S1 auth transition intent/)).toBeVisible()
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toHaveCount(0)
+  await harness(page)
+  const result = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    return {
+      owner: (await h.workspaceRegistryPort.read()).active,
+      count: await h.db.wordRecords.count(),
+      intentStillPresent: localStorage.getItem(h.S1_AUTH_INTENT_KEY) !== null,
+    }
+  })
+  expect(result).toEqual({
+    owner: { kind: 'anonymous' }, count: 1, intentStillPresent: true,
+  })
+})
