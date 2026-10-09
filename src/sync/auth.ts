@@ -87,6 +87,12 @@ export async function loginAndRemember(username: string, password: string) {
   })
 }
 
+/** Only the guarded pre-mount S1 transaction may finalize ownership. */
+export function replaceAuthAfterWorkspaceCommit(auth: CloudAuthState | null): void {
+  if (auth === null) localStorage.removeItem(AUTH_STORAGE_KEY)
+  else saveAuth(auth)
+}
+
 export function logout() {
   localStorage.removeItem(AUTH_STORAGE_KEY)
 }

@@ -64,6 +64,8 @@ export async function prepareGuardedWorkspaceBoot(
       return { mode: 'legacy', registry: before, release: () => lease.release() }
     }
 
+    // Recover a previously committed workspace journal before auth
+    // reconciliation; the intended target credentials may not yet be active.
     // Importing the restore adapter loads the legacy Jotai/store modules.
     // After a journal replay, their module-level caches may reflect the OLD
     // localStorage. Refuse hydration in this JS realm and require a reload.
@@ -72,10 +74,16 @@ export async function prepareGuardedWorkspaceBoot(
       report(onStage, 'recovering')
       const { recoverPendingWorkspace } = await import('./workspace-coordinator')
       await recoverPendingWorkspace()
+      const { reconcileAuthTransition } = await import('./workspace-auth-transaction')
+      await reconcileAuthTransition()
       recovered = true
       throw new Error('S1 recovery completed; reload required before mounting app')
     }
 
+    const { reconcileAuthTransition } = await import('./workspace-auth-transaction')
+    // No domain writer is mounted yet. Handle both pre-journal rollback and
+    // post-registry-CAS / pre-auth-write crashes from the previous page.
+    await reconcileAuthTransition()
     const registry = before
     report(onStage, 'checking-identity')
     const auth = loadAuth({ preserveExpired: true })

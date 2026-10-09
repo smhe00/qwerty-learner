@@ -1,3 +1,4 @@
+import { switchAuthenticatedWorkspace, reconcileAuthTransition, S1_AUTH_INTENT_KEY, reauthenticateSameWorkspace } from '../../src/sync/workspace-auth-transaction'
 import { assertLegacyAuthChangeAllowed, assertLegacyCloudMutationAllowed, assertLegacyLocalDestructiveOperationAllowed } from '../../src/sync/workspace-auth-guard'
 import { mountGuardedWorkspaceApp } from '../../src/sync/workspace-bootstrap'
 import { initializeLegacyWorkspace, transitionWorkingWorkspace } from '../../src/sync/workspace-coordinator'
@@ -314,4 +315,8 @@ async function inspectTableContract() {
   assertLegacyAuthChangeAllowed,
   assertLegacyCloudMutationAllowed,
   assertLegacyLocalDestructiveOperationAllowed,
+  switchAuthenticatedWorkspace,
+  reconcileAuthTransition,
+  reauthenticateSameWorkspace,
+  S1_AUTH_INTENT_KEY,
 }

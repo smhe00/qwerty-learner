@@ -366,3 +366,128 @@ test('real V5 old-JS tab cannot reopen or mutate RecordDB after V6 S1 rollout fe
   expect(result.words).toContain('before-v6')
   expect(result.words).not.toContain('forbidden-after-v6')
 })
+
+
+test('S1 anonymous to account switch commits auth only after registry activation', async ({ page }) => {
+  await harness(page)
+  const outcome = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+    const target = { kind: 'account', accountId: 's1-switch-A' }
+    const next = {
+      token: 'test-credential', expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      user: { userId: target.accountId, username: 'display-A' },
+    }
+    const lease = await h.acquireWorkspaceWriterLease()
+    try {
+      const stages = []
+      const registry = await h.switchAuthenticatedWorkspace(target, next, (s: string) => stages.push(s))
+      return {
+        registry,
+        stages,
+        auth: JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null'),
+        intent: localStorage.getItem(h.S1_AUTH_INTENT_KEY),
+        count: await h.db.wordRecords.count(),
+        anonymousSaved: Boolean(await h.loadWorkspaceFromVault(h.ANONYMOUS)),
+      }
+    } finally { lease.release() }
+  })
+  expect(outcome.registry.active).toEqual({ kind: 'account', accountId: 's1-switch-A' })
+  expect(outcome.stages).toEqual(['saving', 'prepared', 'restoring', 'complete'])
+  expect(outcome.auth.user.userId).toBe('s1-switch-A')
+  expect(outcome.intent).toBeNull()
+  expect(outcome.count).toBe(0)
+  expect(outcome.anonymousSaved).toBe(true)
+})
+
+test('S1 crash after journal but before identity commit reconciles on real boot', async ({ page }) => {
+  await harness(page)
+  const target = { kind: 'account', accountId: 's1-auth-crash-A' }
+  const intermediate = await page.evaluate(async (target) => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+    const intent = {
+      version: 1, from: h.ANONYMOUS, to: target,
+      nextAuth: {
+        token: 'recovered-credential',
+        expiresAt: Math.floor(Date.now() / 1000) + 3600,
+        user: { userId: target.accountId, username: 'after-crash' },
+      },
+    }
+    localStorage.setItem(h.S1_AUTH_INTENT_KEY, JSON.stringify(intent))
+    try {
+      await h.switchWorkspace(h.workspaceRegistryPort, {
+        flush: async () => {},
+        saveSource: async () => {},
+        restoreTarget: async () => { throw new Error('injected power failure') },
+      }, target)
+    } catch {}
+    return { registry: await h.workspaceRegistryPort.read(), auth: localStorage.getItem('qwerty.cloudAuth.v1') }
+  }, target)
+  expect(intermediate.registry.pending?.to).toEqual(target)
+  expect(intermediate.auth).toBeNull()
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  const state = await page.evaluate(async () => ({
+    auth: JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null'),
+    intent: localStorage.getItem('qwerty.s1.auth-transition.v1'),
+  }))
+  expect(state.auth.user.userId).toBe(target.accountId)
+  expect(state.intent).toBeNull()
+})
+
+test('S1 pre-journal auth intent crash rolls back without moving anonymous data', async ({ page }) => {
+  await harness(page)
+  const state = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+    localStorage.setItem(h.S1_AUTH_INTENT_KEY, JSON.stringify({
+      version: 1, from: h.ANONYMOUS, to: { kind: 'account', accountId: 's1-uncommitted' },
+      nextAuth: {
+        user: { userId: 's1-uncommitted', username: 'new' },
+        token: 'never-committed', expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      },
+    }))
+    return h.reconcileAuthTransition()
+  })
+  expect(state).toBe('rolled-back')
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  await harness(page)
+  expect((await page.evaluate(async () =>
+    (window as any).__backupHarness.db.wordRecords.count()))).toBe(1)
+})
+
+test('S1 refuses direct account A to B and preserves original authentication', async ({ page }) => {
+  await harness(page)
+  const result = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    const authA = {
+      token: 'account-A-token', expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      user: { userId: 's1-test-A', username: 'A' },
+    }
+    localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify(authA))
+    await h.initializeLegacyWorkspace({ kind: 'account', accountId: 's1-test-A' })
+    const lease = await h.acquireWorkspaceWriterLease()
+    let error = ''
+    try {
+      await h.switchAuthenticatedWorkspace({ kind: 'account', accountId: 's1-test-B' }, {
+        token: 'B-token', expiresAt: authA.expiresAt,
+        user: { userId: 's1-test-B', username: 'B' },
+      })
+    } catch(e) { error = String(e) } finally { lease.release() }
+    return {
+      error, auth: JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null'),
+      registry: await h.workspaceRegistryPort.read(),
+      intent: localStorage.getItem(h.S1_AUTH_INTENT_KEY),
+    }
+  })
+  expect(result.error).toMatch(/Explicit logout/)
+  expect(result.auth.user.userId).toBe('s1-test-A')
+  expect(result.registry.active).toEqual({ kind: 'account', accountId: 's1-test-A' })
+  expect(result.intent).toBeNull()
+})
