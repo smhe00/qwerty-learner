@@ -31,10 +31,18 @@ const S1_STORAGE_FENCE = new Set<string>([
 function fenceForeignWorkspaceStorageWrites(event: StorageEvent): void {
   if (boot?.mode !== 'isolated' ||
       !event.isTrusted ||
-      event.storageArea !== localStorage ||
-      !event.key ||
-      (!S1_STORAGE_FENCE.has(event.key) &&
-        !event.key.startsWith(DAILY_SESSION_PREFIX))) return
+      event.storageArea !== localStorage) return
+
+  // localStorage.clear() generates a storage event with key = null.
+  // It cannot be individually rolled back because the browser does not
+  // provide the previous values. Fail closed on the next guarded boot.
+  if (event.key === null) {
+    console.error('S1 detected legacy-tab clearing of shared localStorage')
+    window.location.reload()
+    return
+  }
+  if (!S1_STORAGE_FENCE.has(event.key) &&
+      !event.key.startsWith(DAILY_SESSION_PREFIX)) return
 
   // Another tab may have caused a later legitimate change; never overwrite
   // it with an earlier event's value.
