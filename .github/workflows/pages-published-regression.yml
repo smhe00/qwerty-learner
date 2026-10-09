@@ -1,0 +1,50 @@
+name: Pages Published Regression Gate
+
+on:
+  workflow_run:
+    workflows: ['Deployment to GitHub Pages']
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact published product/main SHA to verify
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-published-regression
+  cancel-in-progress: true
+
+jobs:
+  regression:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'product/main') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout tested source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.event.inputs.source_sha }}
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Install browser tests
+        run: |
+          yarn install --frozen-lockfile
+          npx playwright install --with-deps chromium
+      - name: Test published Pages version
+        env:
+          PAGES_SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.event.inputs.source_sha }}
+        run: npx playwright test tests/e2e/pages-regression.spec.ts --project=chromium --retries=0
+      - name: Preserve failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pages-regression-${{ github.run_id }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
