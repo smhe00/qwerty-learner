@@ -294,8 +294,6 @@ async function inspectTableContract() {
   inspectTableContract,
   exportBackupJson,
   importBackupJson,
-  createLocalSnapshot,
-  restoreLocalSnapshot,
   clearAllTables,
   createLocalSnapshot,
   inspectLocalState,
