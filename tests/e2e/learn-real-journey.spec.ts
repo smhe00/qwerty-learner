@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
 import {
   readReviewModeInfo,
   readReviewWordRecords,
@@ -148,13 +150,16 @@ test('real Learn keyboard journey commits each word exactly once across reload',
     })
     expect(runtimeErrors).toEqual([])
   } finally {
+    const filename = test.info().outputPath('learn-checkpoints-redacted.json')
+    mkdirSync(dirname(filename), { recursive: true })
+    writeFileSync(filename, JSON.stringify({
+      schema: 'learn-ui-durable-trace-v1',
+      scenario: 'three-fixture-words-reload-after-first-commit',
+      checkpoints,
+      pageErrorCount: runtimeErrors.length,
+    }, null, 2))
     await test.info().attach('learn-checkpoints-redacted.json', {
-      body: Buffer.from(JSON.stringify({
-        schema: 'learn-ui-durable-trace-v1',
-        scenario: 'three-fixture-words-reload-after-first-commit',
-        checkpoints,
-        pageErrorCount: runtimeErrors.length,
-      }, null, 2)),
+      path: filename,
       contentType: 'application/json',
     })
   }
