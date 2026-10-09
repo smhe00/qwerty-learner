@@ -70,6 +70,9 @@ test('isolated Pages exploration: ESC hint and corrective Learn completion', asy
     const word = await activeWord.getAttribute('data-typing-word')
     expect(word).toBeTruthy()
     await page.keyboard.press('a')
+    // The first key starts Learn; wait for React to mount its active
+    // KeyEventHandler before sending ESC, otherwise ESC is dropped.
+    await expect(page.getByText('按任意键开始')).toBeHidden()
     checkpoints.push({ action: 'start', ...await progress() })
     await page.keyboard.press('Escape')
     await expect(activeWord).toHaveAttribute('data-review-hint-level', '3')

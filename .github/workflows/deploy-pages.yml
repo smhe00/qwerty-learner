@@ -47,11 +47,21 @@ jobs:
           PAGES_SOURCE_SHA: ${{ github.sha }}
         run: npx playwright test tests/e2e/pages-regression.spec.ts --project=chromium --retries=0
       - name: Run seeded exploration (advisory, reproducible)
+        id: explorer
         continue-on-error: true
         env:
           PAGES_SOURCE_SHA: ${{ github.sha }}
           EXPLORER_SEED: ${{ github.run_number }}
         run: npx playwright test tests/e2e/pages-explorer.spec.ts --project=chromium --retries=0
+      - name: Report advisory Explorer result separately
+        if: always()
+        env:
+          EXPLORER_OUTCOME: ${{ steps.explorer.outcome }}
+        run: |
+          echo "Pages Explorer outcome: $EXPLORER_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$EXPLORER_OUTCOME" != "success" ]; then
+            echo "::warning::Pages Explorer failed (advisory); inspect its redacted trace artifact."
+          fi
       - name: Upload redacted browser failures
         if: always()
         uses: actions/upload-artifact@v4
