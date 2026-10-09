@@ -64,7 +64,7 @@ function saveAuth(auth: CloudAuthState) {
   return auth
 }
 
-function browserDeviceId() {
+export function browserDeviceId() {
   const navigatorInfo = typeof navigator === 'undefined' ? 'browser' : navigator.userAgent
   return `qwerty-web-${navigatorInfo.slice(0, 80)}`
 }
