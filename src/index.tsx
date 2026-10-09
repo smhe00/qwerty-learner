@@ -4,9 +4,52 @@
  * Legacy users continue without automatic S1 migration.
  */
 import { loadAuth } from './sync/auth'
+import { DAILY_SESSION_PREFIX, WORKSPACE_SETTING_KEYS } from './sync/workspace-v4'
 import { prepareGuardedWorkspaceBoot } from './sync/workspace-bootstrap'
 import type { Workspace } from './sync/workspace-transition'
 import type { GuardedWorkspaceBoot, WorkspaceBootStage } from './sync/workspace-bootstrap'
+
+const S1_STORAGE_FENCE = new Set<string>([
+  ...WORKSPACE_SETTING_KEYS,
+  'currentDict',
+  'currentChapter',
+  'reviewModeInfo',
+  'qwerty.cloudAuth.v1',
+])
+
+/**
+ * A tab running the old V5 JavaScript does not hold our Web Lock and may
+ * still write localStorage even after IndexedDB V6 refuses old DB writes.
+ * For a mounted S1 owner, revert observed foreign writes before they are
+ * captured in the next workspace snapshot.
+ *
+ * A real cross-document storage event is trusted. Locally synthesized
+ * storage events used by the legacy app are NOT trusted and must be ignored.
+ * This is a containment measure, not a proof that a closed or discarded
+ * owner can observe future writes by an old V5 tab.
+ */
+function fenceForeignWorkspaceStorageWrites(event: StorageEvent): void {
+  if (boot?.mode !== 'isolated' ||
+      !event.isTrusted ||
+      event.storageArea !== localStorage ||
+      !event.key ||
+      (!S1_STORAGE_FENCE.has(event.key) &&
+        !event.key.startsWith(DAILY_SESSION_PREFIX))) return
+
+  // Another tab may have caused a later legitimate change; never overwrite
+  // it with an earlier event's value.
+  if (localStorage.getItem(event.key) !== event.newValue) return
+  try {
+    if (event.oldValue === null) localStorage.removeItem(event.key)
+    else localStorage.setItem(event.key, event.oldValue)
+  } catch (error) {
+    console.error('S1 failed to reject an unauthorized cross-tab storage write', error)
+    // Do not save any future workspace snapshot from this JS context.
+    window.location.reload()
+  }
+}
+
+window.addEventListener('storage', fenceForeignWorkspaceStorageWrites)
 
 const root = document.getElementById('root')
 let boot: GuardedWorkspaceBoot | undefined
