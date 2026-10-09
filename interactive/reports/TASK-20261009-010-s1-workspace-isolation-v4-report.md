@@ -315,3 +315,15 @@ Root-cause evidence for earlier red runs:
 - The follow-up commits **automatically started** push-triggered Actions, showing the normal GitHub CI path works again. Do not generalize this observation into an established explanation for earlier missing push triggers; the original missing-event root cause remains unconfirmed.
 
 Remaining before S1 COMPLETE: Review Gate P3/Typing audio failure evidence and any fixes, required bounded TLA+ safety checks on current source, production migration old-tab rollout decisions, exact acceptance contract and deployment authorization. **S1 stays PARTIAL, no master update or EdgeOne deployment.**
+
+## 2026-10-09 Review Gate 14-test timeout closure
+
+**PASS evidence:** [Review Gate 37913062490](https://github.com/smhe00/qwerty-learner/actions/runs/37913062490) on `d091a2fcdde1099b1c0e41a62198763712880e13` (`product/main`). Entire job PASS, including full Learn browser contract suite **46/46**, Typing/ Learn audio, Learn stats, P3 stateful fuzz, Build, and production navigation smoke **5/5**.
+
+**Diagnosed cause:** earlier [37910290749](https://github.com/smhe00/qwerty-learner/actions/runs/37910290749) had 14 Learn browser contracts time out (30s each) in `page.evaluate` at raw `indexedDB.open('RecordDB')` test-seed calls. The legacy fixtures only waited for `page.goto('/')`; S1 now gates module hydration/DB startup, and production `RecordDB` is Dexie schema V6. This allowed raw, versionless IDB opens to race initialization/upgrade before testing the actual Learn invariant.
+
+**Fix:** commits `0e2b0119`, `d091a2fc` introduced `gotoReviewAppReady` into `tests/e2e/review-flow-harness.ts` and affected contracts: wait for real app settings control to mount; open the real V6 production Dexie database via a browser module script; verify readiness; then run the original native-IDB seeded scenarios. No production Learn or persistent-data algorithms changed. No assertions skipped or softened.
+
+**Result:** the same 46 browser contracts passed, including all 14 previously blocked cases, reducing Learn contract suite duration from 8.5 minutes to 1.8 minutes. This rules out those CI failures as evidence of a product persistence regression, but does NOT by itself prove every pathological crash/window-switch recovery case.
+
+**Status:** Review Gate PASS on `d091a2fc`. S1 overall still PARTIAL for production opt-in migration, obsolete-tab containment when owner is closed, and explicit publish authorization. `master` and EdgeOne remain unchanged.
