@@ -65,6 +65,7 @@ async function readyToType(page: Page): Promise<string> {
   if (await prompt.isVisible().catch(() => false)) {
     await page.keyboard.press('a')
     await expect(prompt).toBeHidden()
+    await expect(page.getByRole('button', { name: '暂停', exact: true })).toBeVisible()
   }
   const wordNode = page.locator('[data-typing-word]:visible').first()
   await expect(wordNode).toHaveAttribute('data-typing-word', /\S+/)
@@ -110,8 +111,8 @@ test('Explorer V3: 48-hour idle jump preserves unfinished Learn block and real d
     await page.keyboard.type(first)
     await expect.poll(async () => {
       const latest = await state(page)
-      return latest.cursor === 1 && latest.rows === 1 && latest.durableCursor === 1
-    }, { timeout: 20_000 }).toBe(true)
+      return { cursor: latest.cursor, rows: latest.rows, durableCursor: latest.durableCursor }
+    }, { timeout: 20_000 }).toEqual({ cursor: 1, rows: 1, durableCursor: 1 })
     const checkpoint = await state(page)
     expect(checkpoint.finished).toBe(false)
     log('first-word-durable', checkpoint)
