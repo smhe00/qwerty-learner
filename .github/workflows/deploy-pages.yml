@@ -7,7 +7,7 @@ on:
 
 concurrency:
   group: github-pages-deploy
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -33,6 +33,8 @@ jobs:
         run: yarn install --frozen-lockfile
       - name: Build page
         run: yarn build
+      - name: Stamp deployment source SHA
+        run: printf '%s\n' "$GITHUB_SHA" > build/source-commit.txt
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:
