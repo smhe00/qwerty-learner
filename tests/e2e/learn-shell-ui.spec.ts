@@ -12,10 +12,11 @@ import {
   startTyping,
   waitForActiveLearnSession,
   waitForRenderedWord,
+  gotoReviewAppReady,
 } from './review-flow-harness'
 
 test('Typing and Learn are explicit top-level modes', async ({ page }) => {
-  await page.goto('/typing')
+  await gotoReviewAppReady(page, '/typing')
 
   const typingMode = page.getByRole('button', { name: 'Typing', exact: true })
   const learnMode = page.getByRole('button', { name: 'Learn', exact: true })
@@ -159,7 +160,7 @@ test('current Learn item can be excluded without using Skip', async ({ page }) =
 test('Learn dictionary selection reuses the Typing gallery and skips chapter selection', async ({
   page,
 }) => {
-  await page.goto('/')
+  await gotoReviewAppReady(page)
   await page.evaluate(() => {
     localStorage.setItem('currentDict', JSON.stringify('cet4'))
     localStorage.setItem('currentChapter', JSON.stringify(0))
@@ -200,7 +201,7 @@ test('Learn dictionary selection reuses the Typing gallery and skips chapter sel
 test('developer diagnostics exports a read-only incident bundle from the UI', async ({
   page,
 }) => {
-  await page.goto('/typing')
+  await gotoReviewAppReady(page, '/typing')
   await page.getByTitle('打开设置对话框').click()
   await page.getByRole('tab', { name: '开发诊断', exact: true }).click()
 
@@ -234,7 +235,7 @@ test('developer diagnostics exports a read-only incident bundle from the UI', as
 test('Learn header keeps dictionary, Start, and Settings aligned with Typing', async ({
   page,
 }) => {
-  await page.goto('/')
+  await gotoReviewAppReady(page)
   await page.evaluate(() => {
     localStorage.setItem('currentDict', JSON.stringify('cet4'))
     localStorage.setItem('currentChapter', JSON.stringify(0))
@@ -244,7 +245,7 @@ test('Learn header keeps dictionary, Start, and Settings aligned with Typing', a
     )
   })
 
-  await page.goto('/typing')
+  await gotoReviewAppReady(page, '/typing')
   const typingDictionary = page.getByRole('link', {
     name: 'CET-4',
     exact: true,
@@ -304,7 +305,7 @@ test('Learn header keeps dictionary, Start, and Settings aligned with Typing', a
 test('Learn reuses Typing controls while preserving Typing-owned preferences', async ({
   page,
 }) => {
-  await page.goto('/')
+  await gotoReviewAppReady(page)
   await page.evaluate(async () => {
     localStorage.setItem('currentDict', JSON.stringify('cet4'))
     localStorage.setItem('currentChapter', JSON.stringify(2))
@@ -370,7 +371,7 @@ test('Learn reuses Typing controls while preserving Typing-owned preferences', a
     })
   })
 
-  await page.goto('/typing')
+  await gotoReviewAppReady(page, '/typing')
   await expect(
     page.getByRole('button', { name: '第 3 章', exact: true }),
   ).toBeVisible()
@@ -533,7 +534,7 @@ test('light app theme keeps inherited Typing header controls readable when OS pr
     localStorage.setItem('currentChapter', JSON.stringify(0))
   })
 
-  await page.goto('/typing')
+  await gotoReviewAppReady(page, '/typing')
 
   const html = page.locator('html')
   await expect(html).not.toHaveClass(/dark/)
@@ -575,7 +576,7 @@ test('Typing and Learn use the same indigo interaction palette', async ({ page }
     localStorage.setItem('currentChapter', JSON.stringify(0))
   })
 
-  await page.goto('/typing')
+  await gotoReviewAppReady(page, '/typing')
 
   const typingMode = page.getByRole('button', {
     name: 'Typing',

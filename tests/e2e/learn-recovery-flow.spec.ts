@@ -6,13 +6,14 @@ import {
   seedReviewSession,
   startTyping,
   waitForRenderedWord,
+  gotoReviewAppReady,
 } from './review-flow-harness'
 
 test('post-completion extra key cannot become an out-of-range typo on the completed word', async ({
   page,
 }) => {
   await seedReviewSession(page, [reviewWords[0]], 900002)
-  await page.goto('/')
+  await gotoReviewAppReady(page)
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
 
@@ -41,7 +42,7 @@ test('post-completion extra key cannot become an out-of-range typo on the comple
 test('invalid persisted Learn session self-heals through the single Learn controller', async ({
   page,
 }) => {
-  await page.goto('/')
+  await gotoReviewAppReady(page)
   await page.evaluate(() => {
     localStorage.setItem('currentDict', JSON.stringify('cet4'))
     localStorage.setItem('currentChapter', JSON.stringify(0))
@@ -67,7 +68,7 @@ test('invalid persisted Learn session self-heals through the single Learn contro
 test('unfinished Learn session survives reload without cursor reset or duplication', async ({
   page,
 }) => {
-  await page.goto('/')
+  await gotoReviewAppReady(page)
   await page.evaluate(async ({ words }) => {
     const record = {
       id: 910001,
@@ -335,7 +336,7 @@ test('finished Learn session rejects duplicate evidence even if a stale route re
 
   // /typing deliberately bypasses root route admission to emulate a future
   // stale-route bug rendering a terminal record.
-  await page.goto('/typing')
+  await gotoReviewAppReady(page, '/typing')
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
   await page.keyboard.type('cancel')
@@ -373,7 +374,7 @@ test('desktop resize after Learn completion cannot resurrect the finished last w
 
   // The incident was observed from the root URL. Root admission must route an
   // active Learn checkpoint to the canonical Learn URL.
-  await page.goto('/')
+  await gotoReviewAppReady(page)
   await expect(page).toHaveURL(/\/learn$/)
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')

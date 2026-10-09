@@ -1,5 +1,57 @@
 import { expect } from '@playwright/test'
 
+
+/**
+ * Legacy review-flow fixtures seed the real RecordDB directly, without
+ * mocking product queries. Since S1 moved app import behind a guarded boot
+ * and raised RecordDB to Dexie V6, "page.goto" no longer guarantees the app
+ * has opened/upgraded the database. Native indexedDB.open() can otherwise
+ * block behind the app's pending versionchange and hang page.evaluate().
+ *
+ * Wait for the real app to mount, then open the same production Dexie V6
+ * module through a browser module script (not a serialized evaluate import).
+ * Do not initialize a fake database or lower any Learn assertion.
+ */
+export async function gotoReviewAppReady(
+  page: import('@playwright/test').Page,
+  route: '/' | '/typing' = '/',
+): Promise<void> {
+  await page.goto(route)
+  await expect(
+    page.getByRole('button', { name: '打开设置对话框' }),
+  ).toBeVisible({ timeout: 15_000 })
+  await page.addScriptTag({
+    type: 'module',
+    content: [
+      "import { db } from '/src/utils/db/core.ts'",
+      'try {',
+      '  await db.open()',
+      '  window.__qwertyReviewDbReady = { ok: true }',
+      '} catch (error) {',
+      '  window.__qwertyReviewDbReady = { ok: false, message: String(error) }',
+      '}',
+    ].join('\\n'),
+  })
+  const ready = await expect.poll(
+    () => page.evaluate(() =>
+      (window as Window & {
+        __qwertyReviewDbReady?: { ok: boolean; message?: string }
+      }).__qwertyReviewDbReady,
+    ),
+    { timeout: 15_000 },
+  ).not.toBeUndefined()
+  void ready
+  const result = await page.evaluate(() =>
+    (window as Window & {
+      __qwertyReviewDbReady?: { ok: boolean; message?: string }
+    }).__qwertyReviewDbReady,
+  )
+  if (!result?.ok) {
+    throw new Error('Review fixture RecordDB V6 initialization failed: ' +
+      (result?.message ?? 'no readiness result'))
+  }
+}
+
 export type ReviewWord = {
   name: string
   trans: string[]
@@ -590,7 +642,7 @@ export async function seedReviewAdmissionCase(
   page: import('@playwright/test').Page,
   options: { freshLearningAfterReview: boolean },
 ) {
-  await page.goto('/')
+  await gotoReviewAppReady(page)
 
   await page.evaluate(async ({ freshLearningAfterReview }) => {
     localStorage.setItem('currentDict', JSON.stringify('cet4'))

@@ -12,6 +12,7 @@ import {
   waitForActiveLearnSession,
   waitForRenderedWord,
   waitForReviewIndex,
+  gotoReviewAppReady,
 } from './review-flow-harness'
 
 test('multi-word Review advances through every rendered word and finishes', async ({
@@ -261,7 +262,7 @@ test('no-due screen offers Force Review and force bypasses only the time gate', 
 test('new Review session forces a canonical cold probe independent of ordinary settings', async ({
   page,
 }) => {
-  await page.goto('/')
+  await gotoReviewAppReady(page)
   await page.evaluate(() => {
     localStorage.setItem('currentDict', JSON.stringify('cet4'))
     localStorage.setItem('currentChapter', JSON.stringify(0))
@@ -379,7 +380,7 @@ test('Phase D live gate applies one canonical rating through the scheduler', asy
 }) => {
   // Seed scheduler state before installing the active Learn checkpoint. This
   // keeps fixture writes independent from the live Learn database connection.
-  await page.goto('/')
+  await gotoReviewAppReady(page)
   const before = await putDueReviewWordState(page, 'cancel')
   await seedReviewSession(page, reviewWords.slice(0, 1), 900004)
   await page.goto('/learn')
@@ -418,7 +419,7 @@ test('Phase D live gate applies one canonical rating through the scheduler', asy
 test('Hint V2 freezes Cold Probe evidence before assisted completion reaches the scheduler', async ({
   page,
 }) => {
-  await page.goto('/')
+  await gotoReviewAppReady(page)
   await putDueReviewWordState(page, 'cancel')
   await seedReviewSession(page, reviewWords.slice(0, 1), 900005)
   await page.goto('/learn')
@@ -480,7 +481,7 @@ test('forgotten cold probe schedules one reinforcement and reinforcement cannot 
   page,
 }) => {
   await seedReviewSession(page, reviewWords.slice(0, 2), 900006)
-  await page.goto('/')
+  await gotoReviewAppReady(page)
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
 
@@ -540,7 +541,7 @@ test('ESC enters full answer immediately and skip lock blocks navigation until c
   page,
 }) => {
   await seedReviewSession(page, reviewWords.slice(0, 2), 900010)
-  await page.goto('/')
+  await gotoReviewAppReady(page)
   await startTyping(page)
   await waitForRenderedWord(page, 'cancel')
 
@@ -566,7 +567,7 @@ test('ESC enters full answer immediately and skip lock blocks navigation until c
 test('a due ACTIVE word is reviewed before any unseen acquisition word', async ({
   page,
 }) => {
-  await page.goto('/')
+  await gotoReviewAppReady(page)
   await page.evaluate(async () => {
     localStorage.setItem('currentDict', JSON.stringify('cet4'))
     localStorage.setItem('currentChapter', JSON.stringify(0))

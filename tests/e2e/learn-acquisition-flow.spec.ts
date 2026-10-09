@@ -6,12 +6,13 @@ import {
   startTyping,
   waitForActiveLearnSession,
   waitForRenderedWord,
+  gotoReviewAppReady,
 } from './review-flow-harness'
 
 test('Learn exposes only one unfinished session and cannot create a duplicate from the plan page', async ({
   page,
 }) => {
-  await page.goto('/')
+  await gotoReviewAppReady(page)
   await page.evaluate(async () => {
     localStorage.setItem('currentDict', JSON.stringify('cet4'))
     localStorage.setItem('currentChapter', JSON.stringify(0))
@@ -122,7 +123,7 @@ test('Learn exposes only one unfinished session and cannot create a duplicate fr
 test('Learn starts new acquisition with exposure and does not admit after visible copy', async ({
   page,
 }) => {
-  await page.goto('/')
+  await gotoReviewAppReady(page)
   await page.evaluate(async () => {
     localStorage.setItem('currentDict', JSON.stringify('cet4'))
     localStorage.setItem('currentChapter', JSON.stringify(0))
@@ -542,7 +543,7 @@ test('spacing-deferred acquisition resumes as Independent after its delay', asyn
       }),
     )
   })
-  await page.goto('/typing')
+  await gotoReviewAppReady(page, '/typing')
 
   const resumeAfter = Math.floor(Date.now() / 1000) - 1
   await page.evaluate(
@@ -727,7 +728,7 @@ test('clean Independent acquisition is the admission boundary', async ({
 test('Learn weak review pressure does not silently override the configured daily target', async ({
   page,
 }) => {
-  await page.goto('/')
+  await gotoReviewAppReady(page)
   await page.evaluate(async () => {
     localStorage.setItem('currentDict', JSON.stringify('cet4'))
     localStorage.setItem('currentChapter', JSON.stringify(0))
@@ -817,7 +818,7 @@ test('Learn weak review pressure does not silently override the configured daily
 test('Learn workload budget is advisory and does not shrink the configured daily target', async ({
   page,
 }) => {
-  await page.goto('/')
+  await gotoReviewAppReady(page)
   await page.evaluate(async () => {
     localStorage.setItem('currentDict', JSON.stringify('cet4'))
     localStorage.setItem('currentChapter', JSON.stringify(0))
@@ -1015,7 +1016,7 @@ test('incident historical false completion recovers and finishes the frozen dail
   await page.route('**/dicts/CET4_T.json', (route) => route.fulfill({
     contentType: 'application/json', body: JSON.stringify([incidentWord]),
   }))
-  await page.goto('/typing')
+  await gotoReviewAppReady(page, '/typing')
   await expect(page.locator('[data-typing-word]').first()).toBeVisible()
   await page.evaluate(async (word) => {
     const now = Math.floor(Date.now() / 1000)
