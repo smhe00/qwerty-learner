@@ -99,7 +99,7 @@ test('Explorer V3: 48-hour idle jump preserves unfinished Learn block and real d
   try {
     await page.goto(site, { waitUntil: 'domcontentloaded' })
     const clockStart = await readExplorerBusinessTime(page)
-    expect(clockStart.dateNow).toBe(clockStart.clockNow)
+    expect(Math.abs(clockStart.dateNow - clockStart.clockNow)).toBeLessThan(1000)
 
     await page.getByRole('button', { name: 'Learn', exact: true }).click()
     const first = await readyToType(page)
@@ -122,14 +122,15 @@ test('Explorer V3: 48-hour idle jump preserves unfinished Learn block and real d
     await expect(page).toHaveURL(/\/qwerty-learner\/typing\/?$/)
     await expect(page.getByText(/按任意键(?:开始|继续)/).first()).toBeVisible()
     const jumped = await advanceIdleBusinessTime(page, 2 * DAY + 600)
-    expect(jumped.after - jumped.before).toBe((2 * DAY + 600) * 1000)
+    expect(Math.abs(jumped.after - jumped.before - (2 * DAY + 600) * 1000)).toBeLessThan(1000)
 
     // Time must survive a full SPA bootstrap, not only a mutable tab-global.
     await page.reload({ waitUntil: 'domcontentloaded' })
     await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
     const rebootTime = await readExplorerBusinessTime(page)
-    expect(rebootTime.clockNow).toBe(jumped.after)
-    expect(rebootTime.dateNow).toBe(jumped.after)
+    expect(rebootTime.clockNow).toBeGreaterThanOrEqual(jumped.after)
+    expect(rebootTime.clockNow - jumped.after).toBeLessThan(20_000)
+    expect(Math.abs(rebootTime.dateNow - rebootTime.clockNow)).toBeLessThan(1000)
     log('virtual-two-days-after-idle', await state(page))
 
     await page.getByRole('button', { name: 'Learn', exact: true }).click()
@@ -161,7 +162,7 @@ test('Explorer V3: 48-hour idle jump preserves unfinished Learn block and real d
     writeFileSync(path, JSON.stringify({
       schema: 'pages-v3-idle-time-jump-v1',
       sourceSha: sha,
-      clockModel: 'test-only Date/Date.now proxy, physical timers unchanged',
+      clockModel: 'test-only moving Date/Date.now offset, native physical timers unchanged',
       trace,
       pageErrorCount: errors.length,
     }, null, 2))

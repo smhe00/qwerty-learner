@@ -2,6 +2,7 @@ import { expect, type Page } from '@playwright/test'
 
 // An isolated Playwright-only virtual business clock.
 // Never add a public UI switch, query argument or production endpoint.
+// Date/Date.now tick at real speed, with an offset advanced only while idle.
 // Native setTimeout/performance.now stay real, preserving spelling feedback.
 export const EXPLORER_PAGES_ORIGIN = 'https://smhe00.github.io'
 export const EXPLORER_PAGES_PATH = '/qwerty-learner/'
@@ -15,18 +16,21 @@ export async function installExplorerBusinessClock(
     ({ origin, prefix, storageKey, initialMs }) => {
       if (location.origin !== origin || !location.pathname.startsWith(prefix)) return
       const NativeDate = Date
-      const stored = Number(sessionStorage.getItem(storageKey))
-      let effectiveMs = Number.isFinite(stored) && stored > 0 ? stored : initialMs
+      const rawOffset = sessionStorage.getItem(storageKey)
+      let offsetMs = rawOffset !== null && Number.isFinite(Number(rawOffset))
+        ? Number(rawOffset)
+        : initialMs - NativeDate.now()
+      const virtualNow = () => NativeDate.now() + offsetMs
 
       const VirtualDate = new Proxy(NativeDate, {
         construct(target, args) {
-          return Reflect.construct(target, args.length ? args : [effectiveMs])
+          return Reflect.construct(target, args.length ? args : [virtualNow()])
         },
         apply() {
-          return new NativeDate(effectiveMs).toString()
+          return new NativeDate(virtualNow()).toString()
         },
         get(target, prop, receiver) {
-          if (prop === 'now') return () => effectiveMs
+          if (prop === 'now') return virtualNow
           return Reflect.get(target, prop, receiver)
         },
       })
@@ -38,14 +42,14 @@ export async function installExplorerBusinessClock(
       Object.defineProperty(window, '__qwertyPagesExplorerClock', {
         configurable: false,
         value: Object.freeze({
-          now: () => effectiveMs,
+          now: virtualNow,
           advanceSeconds(seconds: number) {
             if (!Number.isFinite(seconds) || seconds <= 0 || seconds > 45 * 86400) {
               throw new Error('Explorer clock jump outside the approved 45-day bound')
             }
-            effectiveMs += Math.floor(seconds * 1000)
-            sessionStorage.setItem(storageKey, String(effectiveMs))
-            return effectiveMs
+            offsetMs += Math.floor(seconds * 1000)
+            sessionStorage.setItem(storageKey, String(offsetMs))
+            return virtualNow()
           },
         }),
       })
@@ -77,8 +81,8 @@ export async function advanceIdleBusinessTime(page: Page, seconds: number) {
     const after = clock.advanceSeconds(delta)
     return { before, after, dateNow: Date.now() }
   }, seconds)
-  expect(result.after - result.before).toBe(Math.floor(seconds * 1000))
-  expect(result.dateNow).toBe(result.after)
+  expect(Math.abs(result.after - result.before - Math.floor(seconds * 1000))).toBeLessThan(1000)
+  expect(Math.abs(result.dateNow - result.after)).toBeLessThan(1000)
   return result
 }
 
