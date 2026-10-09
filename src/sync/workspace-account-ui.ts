@@ -5,7 +5,7 @@
  */
 import { login, register } from './api'
 import { browserDeviceId, loadAuth } from './auth'
-import { switchAuthenticatedWorkspace, reauthenticateSameWorkspace } from './workspace-auth-transaction'
+import { reauthenticateSameWorkspace, switchAuthenticatedWorkspace } from './workspace-auth-transaction'
 import { copyAnonymousWorkspaceForNewRegistration } from './workspace-coordinator'
 import { same } from './workspace-transition'
 import type { Phase, Workspace } from './workspace-transition'
