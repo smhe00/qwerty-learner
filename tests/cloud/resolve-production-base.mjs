@@ -1,12 +1,10 @@
 /* eslint-env node */
 // Verify which already-published EdgeOne URL is alive; never builds or deploys.
-// A stale QWERTY_SYNC_BASE_URL secret is not enough to block the real test.
+// Canonical Alpha production domain confirmed by the project owner on 2026-10-09.
+// Do not fall back to stale secrets or former project domains.
 import { appendFileSync } from 'node:fs'
 
-const candidates = [
-  process.env.QWERTY_SYNC_BASE_URL,
-  'https://qwerty-learner.edgeone.cool',
-].filter(Boolean)
+const candidates = ['https://qwerty-plus.edgeone.dev/']
 const seen = new Set()
 let verified = null
 
