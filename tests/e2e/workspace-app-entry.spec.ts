@@ -890,3 +890,33 @@ test('S1 migration witness rejects old-tab storage clear after owner has closed'
   await expect(next.getByRole('button', { name: '打开设置对话框' })).toHaveCount(0)
   await next.close()
 })
+
+
+test('S1 never treats a deleted vault registry as a fresh anonymous V1 profile', async ({ page }) => {
+  await harness(page)
+  const state = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+    return {
+      migrated: localStorage.getItem('qwerty.s1.workspace-migrated.v1'),
+      records: await h.db.wordRecords.count(),
+    }
+  })
+  expect(state).toEqual({ migrated: 'v1', records: 1 })
+  await page.evaluate(async () => {
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.deleteDatabase('QwertyPlusWorkspaceVaultV1')
+      request.onsuccess = () => resolve()
+      request.onerror = () => reject(request.error)
+      request.onblocked = () => reject(new Error('Vault still has open transactions'))
+    })
+  })
+  await page.goto('/')
+  await expect(page.getByText('学习数据安全检查未通过')).toBeVisible()
+  await expect(page.getByText(/vault registry missing.*legacy fallback refused/)).toBeVisible()
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toHaveCount(0)
+  await harness(page)
+  expect(await page.evaluate(async () =>
+    (window as any).__backupHarness.db.wordRecords.count())).toBe(1)
+})
