@@ -2,7 +2,7 @@
 
 > 当前产品版本：`0.2.0-alpha.1`  
 > 集成产品主线：`product/main`  
-> 正式域名：尚未公布；Alpha 访问入口由测试方单独提供。
+> Alpha 发布访问地址：https://qwerty-plus.edgeone.dev/（EdgeOne 项目域名，非自定义域名）。
 
 Qwerty Plus Learn Alpha 是基于开源项目
 [Qwerty Learner](https://github.com/RealKai42/qwerty-learner)
