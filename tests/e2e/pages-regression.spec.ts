@@ -23,5 +23,9 @@ test('published Pages: matching SHA, cloud disabled, Learn route and reload dura
   }
   await page.getByRole('button', { name: '打开设置对话框' }).click()
   await page.getByRole('tab', { name: '数据设置' }).click()
-  await expect(page.getByText('GitHub Pages 开发测试版仅支持本地学习和本地数据')).toBeVisible()
+  // P1 removes the entire cloud account/sync section in Pages builds.
+  // Verify local backup remains available and cloud actions are absent.
+  await expect(page.getByText('本地备份', { exact: true })).toBeVisible()
+  await expect(page.getByText('云端同步与账号', { exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '登录', exact: true })).toHaveCount(0)
 })
