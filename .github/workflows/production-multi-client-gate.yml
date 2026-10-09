@@ -58,5 +58,5 @@ jobs:
         run: npx playwright test --config=tests/e2e/production-multi-client.config.ts
 
       - name: Cleanup BOTH disposable accounts via their own authentication
-        if: always()
+        if: always() && env.QWERTY_LIVE_TEST_READY == '1'
         run: node tests/cloud/cleanup-production-multi-client.mjs
