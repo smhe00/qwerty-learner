@@ -10,6 +10,8 @@ on:
       - '.github/workflows/production-multi-client-gate.yml'
       - 'tests/e2e/production-multi-client.spec.ts'
       - 'tests/e2e/production-multi-client.config.ts'
+      - 'tests/cloud/resolve-production-base.mjs'
+      - 'tests/cloud/cleanup-production-multi-client.mjs'
   workflow_dispatch:
 
 permissions:
@@ -24,7 +26,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
-      QWERTY_SYNC_BASE_URL: ${{ secrets.QWERTY_SYNC_BASE_URL }}
+      QWERTY_SYNC_BASE_URL: https://qwerty-plus.edgeone.dev/
 
     steps:
       - name: Checkout verification code (never deploy)
