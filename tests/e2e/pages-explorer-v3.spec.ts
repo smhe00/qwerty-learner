@@ -84,7 +84,6 @@ test('Explorer V3: 48-hour idle jump preserves unfinished Learn block and real d
 }) => {
   test.setTimeout(180_000)
   expect(sha).toMatch(/^[a-f0-9]{40}$/)
-  await installExplorerBusinessClock(page)
   await expect.poll(async () => {
     const response = await request.get(site + 'source-commit.txt', { failOnStatusCode: false })
     return response.ok() ? (await response.text()).trim() : ''
@@ -98,9 +97,6 @@ test('Explorer V3: 48-hour idle jump preserves unfinished Learn block and real d
 
   try {
     await page.goto(site, { waitUntil: 'domcontentloaded' })
-    const clockStart = await readExplorerBusinessTime(page)
-    expect(Math.abs(clockStart.dateNow - clockStart.clockNow)).toBeLessThan(1000)
-
     await page.getByRole('button', { name: 'Learn', exact: true }).click()
     const first = await readyToType(page)
     const before = await state(page)
@@ -117,10 +113,16 @@ test('Explorer V3: 48-hour idle jump preserves unfinished Learn block and real d
     expect(checkpoint.finished).toBe(false)
     log('first-word-durable', checkpoint)
 
-    // Leave Learn: V3 never changes virtual time while a Learn attempt is live.
+    // Bootstrap the isolated virtual clock only AFTER a real unmodified
+    // Learn attempt is durable. Clock code is installed on the next reload.
+    // This makes any clock/typing incompatibility unambiguous.
+    await installExplorerBusinessClock(page, Date.now())
     await page.getByRole('button', { name: 'Typing', exact: true }).click()
     await expect(page).toHaveURL(/\/qwerty-learner\/typing\/?$/)
+    await page.reload({ waitUntil: 'domcontentloaded' })
     await expect(page.getByText(/按任意键(?:开始|继续)/).first()).toBeVisible()
+    const clockStart = await readExplorerBusinessTime(page)
+    expect(Math.abs(clockStart.dateNow - clockStart.clockNow)).toBeLessThan(1000)
     const jumped = await advanceIdleBusinessTime(page, 2 * DAY + 600)
     expect(Math.abs(jumped.after - jumped.before - (2 * DAY + 600) * 1000)).toBeLessThan(1000)
 
