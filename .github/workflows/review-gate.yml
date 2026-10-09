@@ -36,6 +36,8 @@ on:
       - 'src/store/index.ts'
       - 'src/resources/soundResource.ts'
       - 'src/hooks/useKeySounds.ts'
+      - 'src/hooks/usePronunciation.ts'
+      - 'src/components/WordPronunciationIcon/**'
       - 'tests/audio/**'
       - 'tests/resources/**'
       - 'tests/learn/**'
@@ -118,6 +120,8 @@ jobs:
           src/pages/Gallery-N/DictionaryWithoutCover.tsx
           src/pages/Typing/components/WordPanel
           src/pages/Typing/components/Setting
+          src/hooks/usePronunciation.ts
+          src/components/WordPronunciationIcon
           src/store/index.ts
           --ext .ts,.tsx
 
