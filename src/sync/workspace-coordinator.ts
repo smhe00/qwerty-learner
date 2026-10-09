@@ -39,7 +39,7 @@ const replica: ReplicaPort = {
 }
 
 function assertLegacyIdentity(owner: Workspace) {
-  const auth = loadAuth()
+  const auth = loadAuth({ preserveExpired: true })
   const expected: Workspace = auth
     ? { kind: 'account', accountId: auth.user.userId }
     : ANONYMOUS

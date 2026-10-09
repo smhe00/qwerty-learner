@@ -45,7 +45,7 @@ function gateUI(title: string, detail: string, action?: string): void {
  */
 function showDevelopmentMigrationConsent(): void {
   if (!root || !boot || boot.mode !== 'legacy') return
-  const auth = loadAuth()
+  const auth = loadAuth({ preserveExpired: true })
   const owner: Workspace = auth
     ? { kind: 'account', accountId: auth.user.userId }
     : { kind: 'anonymous' }

@@ -27,7 +27,12 @@ function validIntent(value: unknown): value is AuthIntent {
   const intent = value as Partial<AuthIntent>
   if (intent.version !== 1 || !intent.from || !intent.to ||
       !Object.prototype.hasOwnProperty.call(intent, 'nextAuth')) return false
-  try { keyOf(intent.from); keyOf(intent.to) } catch { return false }
+  try {
+    keyOf(intent.from)
+    keyOf(intent.to)
+    if (same(intent.from, intent.to)) return false
+    if (intent.from.kind === 'account' && intent.to.kind === 'account') return false
+  } catch { return false }
   const auth = intent.nextAuth
   if (intent.to.kind === 'anonymous') return auth === null
   return !!auth && typeof auth.token === 'string' && auth.token.length > 0 &&
