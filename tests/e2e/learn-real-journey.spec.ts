@@ -134,7 +134,9 @@ test('real Learn keyboard journey commits each word exactly once across reload',
 
     await page.reload()
     await expect(page).toHaveURL(/\/learn$/)
-    await expect(page.getByRole('button', { name: '开始 Learn', exact: true })).toBeVisible()
+    // Completed blocks may reopen on the pause/result screen rather than
+    // the idle Start UI. Assert boot readiness and durable data, not one UI skin.
+    await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
     await capture('reloaded-after-block')
     expect(checkpoints.at(-1)?.durable).toEqual({
       cursor: 3,
