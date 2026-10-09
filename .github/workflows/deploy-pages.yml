@@ -52,7 +52,12 @@ jobs:
         env:
           PAGES_SOURCE_SHA: ${{ github.sha }}
           EXPLORER_SEED: ${{ github.run_number }}
-        run: npx playwright test tests/e2e/pages-explorer.spec.ts --project=chromium --retries=0
+          EXPLORER_WORD_BUDGET: '8'
+        run: >
+          npx playwright test
+          tests/e2e/pages-explorer.spec.ts
+          tests/e2e/pages-stateful-explorer.spec.ts
+          --project=chromium --retries=0
       - name: Report advisory Explorer result separately
         if: always()
         env:
