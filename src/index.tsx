@@ -94,11 +94,12 @@ function gateUI(title: string, detail: string, action?: string): void {
 }
 
 /**
- * Explicit V1 ownership test surface, only on the local Vite dev server.
- * Production migration stays disabled until all stale old-version tab
- * lifecycles and auth transactions are verified.
+ * Explicit V1 ownership opt-in before React or any working-data writer mount.
+ * Local Vite DEV is always testable. Production can only expose the route if
+ * the operator deliberately supplies the build-time release gate. The default
+ * production build keeps the migration entry disabled until validation.
  */
-function showDevelopmentMigrationConsent(): void {
+function showExplicitMigrationConsent(): void {
   if (!root || !boot || boot.mode !== 'legacy') return
   const auth = loadAuth({ preserveExpired: true })
   const owner: Workspace = auth
@@ -107,7 +108,8 @@ function showDevelopmentMigrationConsent(): void {
   const ownerName = auth
     ? '账号“' + auth.user.username + '”（不可变 ID：' + auth.user.userId + '）'
     : '当前本机匿名工作区'
-  gateUI('S1 V1 数据归属测试（仅限本地开发）',
+  const isDev = import.meta.env.DEV
+  gateUI(isDev ? 'S1 V1 数据归属测试（仅限本地开发）' : 'S1 本机学习数据归属确认',
     '您正在确认完整 V1 本地数据归属到' + ownerName +
     '。迁移仅保存本机 V4 数据，不会合并或上传。请先关闭旧版本标签页。')
   const panel = root.querySelector('section')
@@ -180,11 +182,12 @@ async function start(): Promise<void> {
       return
     }
     if (
-      import.meta.env.DEV &&
+      (import.meta.env.DEV ||
+        import.meta.env.VITE_S1_ENABLE_EXPLICIT_V4_MIGRATION === 'true') &&
       new URLSearchParams(window.location.search).get('s1-migration') === 'confirm' &&
       boot.mode === 'legacy'
     ) {
-      showDevelopmentMigrationConsent()
+      showExplicitMigrationConsent()
       return
     }
     if (
