@@ -1,0 +1,44 @@
+name: Pages Explorer Agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact published Pages source SHA
+        required: true
+      seed:
+        description: Reproducible exploration seed
+        default: '20261009'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  explorer:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.source_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: |
+          yarn install --frozen-lockfile
+          npx playwright install --with-deps chromium
+      - name: Run reproducible isolated explorer
+        env:
+          PAGES_SOURCE_SHA: ${{ github.event.inputs.source_sha }}
+          EXPLORER_SEED: ${{ github.event.inputs.seed }}
+        run: npx playwright test tests/e2e/pages-explorer.spec.ts --retries=0
+      - name: Preserve replay trace and failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pages-explorer-${{ github.run_id }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14
