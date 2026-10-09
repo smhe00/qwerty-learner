@@ -70,6 +70,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: production-multi-client-redacted-${{ github.run_id }}-${{ github.run_attempt }}
-          path: test-results/**/attachments/production-multi-client-redacted-trace*.json
+          path: test-results/**/production-multi-client-redacted-trace.json
           if-no-files-found: ignore
           retention-days: 7
