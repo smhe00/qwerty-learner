@@ -22,9 +22,21 @@
       // https://username.github.io/repo-name/one/two?a=b&c=d#qwe becomes
       // https://username.github.io/repo-name/?/one/two&a=b~and~c=d#qwe
       // Otherwise, leave pathSegmentsToKeep as 0.
-      var pathSegmentsToKeep = 1
+      // This GitHub Pages 404 redirect MUST NOT run on EdgeOne Makers.
+      // An EdgeOne deep-link 404 used to redirect /learn/ -> /learn/?/,
+      // then append &/~and~ every subsequent refresh: an infinite loop.
+      // Makers serves /index.html for SPA routes via edgeone.json rewrites.
+      if (!/(^|\\.)github\\.io$/i.test(window.location.hostname)) {
+        // Defensive fallback if a cached/old deployment still serves 404:
+        // return to root once instead of multiplying query/path segments.
+        // The new Makers SPA rewrite should make this branch unreachable.
+        if (window.location.pathname !== '/') {
+          window.location.replace(window.location.origin + '/')
+        }
+      } else {
+        var pathSegmentsToKeep = 1
 
-      var l = window.location
+        var l = window.location
       l.replace(
         l.protocol +
           '//' +
@@ -39,6 +51,7 @@
           (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
           l.hash,
       )
+      }
     </script>
   </head>
   <body></body>
