@@ -40,3 +40,17 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build
+      - name: Install Chromium for published browser regression
+        run: npx playwright install --with-deps chromium
+      - name: Check published SHA and main browser path
+        env:
+          PAGES_SOURCE_SHA: ${{ github.sha }}
+        run: npx playwright test tests/e2e/pages-regression.spec.ts --retries=0
+      - name: Upload redacted browser failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pages-published-regression-${{ github.run_id }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
