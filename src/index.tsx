@@ -89,6 +89,24 @@ function showDevelopmentMigrationConsent(): void {
   panel.append(confirm, cancel)
 }
 
+
+function showS1AccountResult(): void {
+  const key = 'qwerty.s1.last-account-result'
+  const note = sessionStorage.getItem(key)
+  if (!note) return
+  sessionStorage.removeItem(key)
+  const toast = document.createElement('div')
+  toast.setAttribute('role', 'status')
+  toast.textContent = note
+  toast.style.cssText = 'position:fixed;z-index:9999;top:20px;left:50%;transform:translateX(-50%);' +
+    'max-width:85vw;padding:14px 22px;border-radius:8px;border:1px solid #64748b;' +
+    'background:#f8fafc;color:#1e293b;font-family:system-ui;box-shadow:0 4px 18px #0002'
+  document.body.appendChild(toast)
+  // Last-result messages are user-visible after the navigation and
+  // contain no credentials, tokens, or private learning data.
+  setTimeout(() => { toast.remove() }, 12000)
+}
+
 function onStage(stage: WorkspaceBootStage): void {
   if (stage === 'locking') {
     gateUI('正在准备本地学习数据', '正在取得本浏览器的独占学习数据写入权限…')
@@ -126,6 +144,7 @@ async function start(): Promise<void> {
     // module must never be evaluated before the boot gate resolves.
     await import('./app')
     mounted = true
+    showS1AccountResult()
   } catch (error) {
     boot?.release()
     boot = undefined

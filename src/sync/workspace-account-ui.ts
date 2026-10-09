@@ -98,12 +98,15 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
       complete: '工作区切换成功，正在重新载入…',
       failed: '事务中断，需要验证恢复状态…',
     } as Record<Phase,string>)[p])
-  const navigate = () => { window.location.replace('/') }
+  const navigate = (message?: string) => {
+    if (message) sessionStorage.setItem('qwerty.s1.last-account-result', message)
+    window.location.replace('/')
+  }
   const reauth = async () => {
     const signed = credential(await login(username.value.trim(), password.value))
     await reauthenticateSameWorkspace(signed)
     setBusy(true, '账户会话更新成功，工作区保持不变。')
-    navigate()
+    navigate('重新登录成功，工作区身份与学习数据保持不变。')
   }
   const loginAction = async () => {
     if (!username.value.trim() || password.value.length < 4) {
@@ -114,7 +117,7 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
       if (active.accountId !== signed.user.userId) {
         throw new Error('当前属于另一账户，必须先明确退出到匿名工作区')
       }
-      return reauthenticateSameWorkspace(signed).then(() => navigate())
+      return reauthenticateSameWorkspace(signed).then(() => navigate('当前账户已重新认证，学习进度未改变。'))
     }
     if (!window.confirm(
       '将从匿名工作区切换到“' + signed.user.username + '”。' +
@@ -122,7 +125,7 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
     )) { setBusy(false, '用户已取消登录切换'); return }
     await switchAuthenticatedWorkspace({ kind: 'account', accountId: signed.user.userId }, signed, phase)
     setBusy(true, '登录及本地隔离工作区切换完成。')
-    navigate()
+    navigate('登录成功，已进入独立的账户学习工作区。')
   }
   const registerAction = async () => {
     if (active.kind !== 'anonymous') throw new Error('注册仅允许从匿名工作区进行')
@@ -143,7 +146,7 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
     }
     await switchAuthenticatedWorkspace({ kind: 'account', accountId: signed.user.userId }, signed, phase)
     setBusy(true, '注册成功，当前工作区已切换。')
-    navigate()
+    navigate(copy ? '注册成功，匿名学习记录已复制，新旧工作区分别保留。' : '注册成功，已建立独立空白工作区。')
   }
   const logoutAction = async () => {
     if (active.kind !== 'account') return
@@ -166,7 +169,7 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
     }
     await switchAuthenticatedWorkspace({ kind: 'anonymous' }, null, phase)
     setBusy(true, '退出成功，已恢复匿名工作区。')
-    navigate()
+    navigate('安全退出成功，原账户的本地学习进度已保存，当前为匿名工作区。')
   }
   if (active.kind === 'anonymous') {
     controls.push(button('登录已有账户', () => safeRun(loginAction)))
