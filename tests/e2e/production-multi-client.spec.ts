@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
 
 /**
  * Real production, UI-driven, deliberately isolated.
@@ -45,7 +47,15 @@ test('three real clients: two identities, revoked sessions, conflict, restore an
   const b1 = await contextB1.newPage()
 
   async function settings(page: Page) {
-    await page.goto(baseUrl!, { waitUntil: 'domcontentloaded' })
+    // Cloud snapshot restore intentionally reloads the app. A concurrent
+    // navigation can be aborted by that in-flight reload; retry ONLY that
+    // documented browser cancellation, never a failed login or API assertion.
+    try {
+      await page.goto(baseUrl!, { waitUntil: 'domcontentloaded' })
+    } catch (error) {
+      if (!String(error).includes('net::ERR_ABORTED')) throw error
+      await page.goto(baseUrl!, { waitUntil: 'domcontentloaded' })
+    }
     const dismiss = page.getByRole('button', { name: '关闭提示' })
     if (await dismiss.isVisible().catch(() => false)) await dismiss.click()
     await page.getByRole('button', { name: '打开设置对话框' }).click()
@@ -229,8 +239,11 @@ test('three real clients: two identities, revoked sessions, conflict, restore an
     mark('explicit-restore-and-account-isolation', 'A2', 2)
     mark('independent-identity-unaffected', 'B1', 1)
   } finally {
+    const filename = test.info().outputPath('production-multi-client-redacted-trace.json')
+    mkdirSync(dirname(filename), { recursive: true })
+    writeFileSync(filename, JSON.stringify({ schema: 'cloud-ui-trace-v1', trace }, null, 2))
     await test.info().attach('production-multi-client-redacted-trace.json', {
-      body: Buffer.from(JSON.stringify({ schema: 'cloud-ui-trace-v1', trace }, null, 2)),
+      path: filename,
       contentType: 'application/json',
     })
     await Promise.allSettled([contextA1.close(), contextA2.close(), contextB1.close()])
