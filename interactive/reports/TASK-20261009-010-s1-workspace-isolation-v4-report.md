@@ -265,3 +265,22 @@ Remaining S1 P0: production-capable consent/migration with deterministic
 multi-tab logout/rebind, transactional register/login/logout + crash recovery,
 explicit user status and auth expiry/reauth UX; then offline, all-phase crash,
 cross-tab and TLA+ trace refinement tests. No S1 release to master.
+
+
+## 2026-10-09 S1 direct closure push: pre-mount auth transaction and account controls
+
+**Current result: PARTIAL, NOT RELEASEABLE.** Do not merge to \`master\`.
+
+Code committed:
+- \`afd048dc\`: S1 auth intent \`qwerty.s1.auth-transition.v1\`. A pre-mount switch writes intent before durable workspace journal, leaves old auth in place until the target registry commits, and reconciles intent before React hydration after crash/reload. Failed pre-journal switches discard the intent without touching source credentials.
+- \`348db5d7\`: pre-mount account management UI on \`/?s1-account=manage\` for **already isolated** workspaces. Provides login, same-ID reauthentication, registration with explicit anonymous data copy/blank choice, and offline-safe explicit logout to anonymous. The ordinary V1 mutation paths remain fenced in isolated workspaces. React Settings routes account actions to this UI.
+- \`3c9b5950\`, \`b02551fe\`, \`5476211c\`: added browser contracts for real login/logout, registration copy, authentication failure, A->anonymous->B->anonymous->A data and preferences separation, and immutable-ID reauthentication refusal.
+- \`6ecfb932\`: expired V1 credentials retain immutable local account ownership during explicit migration consent; malformed auth intents (same owner/direct A->B) are rejected.
+- \`0f1d4c06\`: post-navigation success feedback after login/logout/register/reauth, with explicit in-progress/failure UI.
+- \`345c3fca\`: bounded fault injection (flush, snapshot save, prepare CAS, restore, commit CAS) and an S0.5 abstract identity trace projection where only terminal S1 CAS commit changes ownership.
+
+**Important verification state:** Earlier, S1 Browser Gate at source \`0675533e\` passed **30/30**, Architecture and Achievement passed. This DOES NOT cover the new auth code. As of this update, GitHub Actions shows **no new runs** for the later \`product/main\` commits; therefore new S1 browser, Cloud Sync lint/build, TLA and Review checks are **NOT VERIFIED**. The last observed Review run \`37871506118\` passed Typing lifecycle 8/8 and Learn audio 5/5, then FAILED three P3 browser stateful-fuzz cases by 180 s page.evaluate timeouts. Do not call Review PASS.
+
+**Open acceptance blockers:** 1) Run new GitHub Actions and fix any compilation/browser failures; 2) stale old-JS clients can still mutate unversioned localStorage even though V5 IndexedDB writes are fenced by V6; 3) explicit production V1->V4 ownership migration currently remains DEV-only, not generally activated; 4) S1 current account UI intentionally does NOT do Cloud Sync V2 restore/push (deferred to S2), and login of an absent local account opens an isolated blank workspace; verify the S0.5 abstraction boundary and end-to-end UX; 5) test all-phase crash replay with real UI, auth expiration/revocation, injected offline and old-tab interference. S1 stays PARTIAL until all P0 acceptance criteria pass. Do not use the earlier green 30/30 as a release gate for current head.
+
+**Branch policy:** development \`product/main\` only; \`master\` and Maker publication are untouched.

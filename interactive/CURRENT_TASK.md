@@ -8,7 +8,7 @@ status: "PARTIAL"
 executor: "ChatGPT (direct executor)"
 claim_base_commit: "77ce352abdf15148da69ed90b47fc77f03fd5039"
 claimed_at_utc: "2026-10-08T22:41:35Z"
-last_known_commit: "864df067a96453366aebc7266152927e962b4f91"
+last_known_commit: "345c3fca62105c766323eb89aeabd624356aa37a"
 release_to_master: false
 priority: "P0"
 ---
@@ -67,3 +67,9 @@ reopening refusal landed at 0675533e. S1 Browser Gate 37871236510
 PASS 30/30, Architecture Gate and Achievement Gate PASS.
 Old localStorage writers remain uncontained; production account lifecycle and
 offline / fault-injection tests remain blocked. Still PARTIAL / no master.
+
+
+2026-10-09 S1 executor update: authentication journal and real account UI
+implemented, new browser/formal/failure tests added; NOT VERIFIED by CI.
+Earlier 30/30 S1 Gate predates current auth commits. Still PARTIAL, do not
+publish; full P0 criteria remain in the S1 report.
