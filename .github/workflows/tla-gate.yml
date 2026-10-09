@@ -8,7 +8,8 @@ on:
       # Re-model-check only when the formal protocol/model configuration
       # or the TLC workflow itself changes. Implementation-only S1 commits
       # are covered by Cloud Sync, S1 browser, and Review regression gates.
-      - 'formal/**'
+      - 'formal/**/*.tla'
+      - 'formal/**/*.cfg'
       - '.github/workflows/tla-gate.yml'
   workflow_dispatch:
 
