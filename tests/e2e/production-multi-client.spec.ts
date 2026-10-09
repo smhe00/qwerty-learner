@@ -133,15 +133,6 @@ test('three real clients: two identities, revoked sessions, conflict, restore an
     await expect(page.getByText('本地与云端一致')).toBeVisible()
   }
 
-  async function restore(page: Page) {
-    // Cloud restore may show both a confirm and a completion alert before reload.
-    page.on('dialog', (dialog) => dialog.accept())
-    await page.getByRole('button', { name: '使用云端数据' }).click()
-    await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
-    await page.getByRole('button', { name: '打开设置对话框' }).click()
-    await page.getByRole('tab', { name: '数据设置' }).click()
-  }
-
   const wordA1 = `e2e-${usernameA}-first`
   const wordA2 = `e2e-${usernameA}-remote`
   const wordStale = `e2e-${usernameA}-stale-local`
