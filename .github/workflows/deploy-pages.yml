@@ -3,14 +3,14 @@ name: Deployment to GitHub Pages
 on:
   push:
     branches:
-      - master
+      - product/main
 
 permissions:
   contents: write
 
 env:
   REACT_APP_DEPLOY_ENV: pages
-  VITE_QWERTY_SYNC_BASE_URL: https://qwerty-plus.edgeone.dev
+  VITE_QWERTY_SYNC_DISABLED: 'true'
 
 jobs:
   deploy:
