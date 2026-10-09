@@ -68,19 +68,31 @@ jobs:
           mkdir -p .explorer-model
           npx esbuild tests/simulation/system-explorer-v3.test.ts --bundle --platform=node --target=node20 --format=esm --outfile=.explorer-model/v3.test.mjs
           node --test .explorer-model/v3.test.mjs
+      - name: Verify V3 state-transition coverage boundaries (advisory)
+        id: explorer_coverage
+        continue-on-error: true
+        run: |
+          mkdir -p .explorer-coverage
+          npx esbuild tests/simulation/system-explorer-v3-coverage.test.ts --bundle --platform=node --target=node20 --format=esm --outfile=.explorer-coverage/v3-coverage.test.mjs
+          node --test .explorer-coverage/v3-coverage.test.mjs
       - name: Report advisory Explorer result separately
         if: always()
         env:
           EXPLORER_OUTCOME: ${{ steps.explorer.outcome }}
           MODEL_OUTCOME: ${{ steps.explorer_model.outcome }}
+          COVERAGE_OUTCOME: ${{ steps.explorer_coverage.outcome }}
         run: |
           echo "Pages Explorer outcome: $EXPLORER_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
           echo "V3 multi-day domain model outcome: $MODEL_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+          echo "V3 state transition coverage outcome: $COVERAGE_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
           if [ "$EXPLORER_OUTCOME" != "success" ]; then
             echo "::warning::Pages Explorer failed (advisory); inspect its redacted trace artifact."
           fi
           if [ "$MODEL_OUTCOME" != "success" ]; then
             echo "::warning::Explorer V3 multi-day model failed (advisory); inspect simulation logs."
+          fi
+          if [ "$COVERAGE_OUTCOME" != "success" ]; then
+            echo "::warning::Explorer V3 state-transition coverage failed (advisory); inspect coverage boundary assertions."
           fi
       - name: Upload redacted browser failures
         if: always()

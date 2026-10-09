@@ -269,3 +269,87 @@ test('Explorer V3: finish two genuine Learn blocks across a virtual day with dur
     })
   }
 })
+
+
+/**
+ * Same-day continuation is distinct from a new-day Start: Continue must
+ * preserve the daily ledger, allocate another Block, and commit its first word.
+ */
+test('Explorer V3 coverage: same-day Block pause continues into a second block', async ({
+  page, request,
+}) => {
+  test.setTimeout(210_000)
+  expect(sha).toMatch(/^[a-f0-9]{40}$/)
+  await expect.poll(async () => {
+    const response = await request.get(site + 'source-commit.txt', { failOnStatusCode: false })
+    return response.ok() ? (await response.text()).trim() : ''
+  }, { timeout: 90_000, intervals: [1000, 2000, 5000] }).toBe(sha)
+  const trail: Evidence[] = []
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  try {
+    await page.goto(site, { waitUntil: 'domcontentloaded' })
+    await page.getByRole('button', { name: '打开设置对话框' }).click()
+    await page.getByRole('tab', { name: '记忆参数' }).click()
+    const quota = page.getByRole('spinbutton', { name: '每日新词目标' })
+    await quota.fill('32')
+    await quota.press('Tab')
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Learn', exact: true }).click()
+    await startActiveLearn(page)
+    const initial = await checkpoint(page)
+    expect(initial.sessionId).toBeTruthy()
+    let completionCount = 0
+    for (let i = 0; i < MAX_ATTEMPTS_PER_BLOCK; i++) {
+      const before = await checkpoint(page)
+      if (before.finished) break
+      await spellCurrent(page, before)
+      completionCount++
+      const after = await checkpoint(page)
+      trail.push({
+        block: 1, attempt: completionCount, action: 'committed',
+        index: after.index, totalAttempts: after.attempts,
+        admitted: after.admitted, finished: after.finished,
+      })
+      if (after.finished) break
+    }
+    const finished = await checkpoint(page)
+    expect(finished.finished, 'Block must terminate within the bounded exploration').toBe(true)
+    expect(finished.storedFinished).toBe(true)
+    const result = page.locator('[data-learn-result-screen]')
+    await expect(result).toBeVisible({ timeout: 20_000 })
+    await expect(result.getByText('正在保存本阶段学习状态…')).toBeHidden({
+      timeout: 20_000,
+    })
+    await expect(result).toHaveAttribute('data-learn-block-pause', 'true')
+    await expect(result).not.toHaveAttribute('data-learn-daily-complete', 'true')
+    const action = result.getByRole('button', { name: '按任意键继续' })
+    await expect(action).toBeEnabled()
+    await action.click()
+    await startActiveLearn(page)
+    const next = await checkpoint(page)
+    expect(next.sessionId).toBeTruthy()
+    expect(next.sessionId).not.toBe(initial.sessionId)
+    expect(next.finished).toBe(false)
+    expect(next.attempts).toBe(finished.attempts)
+    await spellCurrent(page, next)
+    const committed = await checkpoint(page)
+    expect(committed.attempts).toBe(next.attempts + 1)
+    trail.push({
+      block: 2, attempt: 1, action: 'same-day-continued-committed',
+      index: committed.index, totalAttempts: committed.attempts,
+      admitted: committed.admitted, finished: committed.finished,
+    })
+    expect(errors).toEqual([])
+  } finally {
+    const target = test.info().outputPath('pages-v3-same-day-continue-redacted.json')
+    writeFileSync(target, JSON.stringify({
+      schema: 'pages-v3-same-day-continue-v1',
+      publishedSha: sha, trail, pageErrorCount: errors.length,
+    }, null, 2))
+    await test.info().attach('pages-v3-same-day-continue-redacted.json', {
+      path: target, contentType: 'application/json',
+    })
+  }
+})
