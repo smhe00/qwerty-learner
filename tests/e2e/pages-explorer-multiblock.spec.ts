@@ -125,7 +125,7 @@ async function spellCurrent(page: Page, before: LearnCheckpoint) {
 test('Explorer V3: finish two genuine Learn blocks across a virtual day with durable records', async ({
   page, request,
 }) => {
-  test.setTimeout(360_000)
+  test.setTimeout(240_000)
   expect(sha).toMatch(/^[a-f0-9]{40}$/)
   await expect.poll(async () => {
     const r = await request.get(site + 'source-commit.txt', { failOnStatusCode: false })
@@ -155,8 +155,9 @@ test('Explorer V3: finish two genuine Learn blocks across a virtual day with dur
     await page.getByRole('tab', { name: '记忆参数' }).click()
     const quota = page.getByRole('spinbutton', { name: '每日新词目标' })
     await quota.fill('6')
-    await quota.blur()
-    await page.getByRole('button', { name: '关闭对话框' }).click()
+    await quota.press('Tab')
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Learn', exact: true }).click()
     await startActiveLearn(page)
