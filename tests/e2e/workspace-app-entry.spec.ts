@@ -713,3 +713,55 @@ test('S1 A -> anonymous -> B -> anonymous -> A preserves three full local identi
   expect(observed.restoredB.memory.dailyNewWordTarget).toBe(34)
   expect(observed.restoredB.authId).toBe('S1-B')
 })
+
+
+test('S1 protected owner undoes stale V5 cross-tab localStorage setting/auth writes', async ({ page, context }) => {
+  await harness(page)
+  await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    localStorage.setItem('memoryConfig', JSON.stringify({
+      dailyNewWordTarget: 19, blockSize: 1,
+    }))
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+  })
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+
+  // Stale V5 has no writer lease, and cannot open the upgraded V6 DB.
+  // But it still has ordinary access to same-origin localStorage.
+  const stale = await context.newPage()
+  await stale.goto('/tests/e2e/legacy-v5.html')
+  await stale.evaluate(() => {
+    localStorage.setItem('memoryConfig', JSON.stringify({
+      dailyNewWordTarget: 999, blockSize: 100,
+    }))
+    localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify({
+      token: 'forbidden-stale-owner',
+      expiresAt: Math.floor(Date.now()/1000) + 3600,
+      user: { userId: 'FOREIGN-OWNER', username: 'stale' },
+    }))
+  })
+  await expect.poll(() => page.evaluate(() =>
+    JSON.parse(localStorage.getItem('memoryConfig') || 'null')?.dailyNewWordTarget,
+  )).toBe(19)
+  await expect.poll(() => page.evaluate(() =>
+    localStorage.getItem('qwerty.cloudAuth.v1'),
+  )).toBeNull()
+  await stale.close()
+
+  await page.reload()
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  await harness(page)
+  const result = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    return {
+      owner: (await h.workspaceRegistryPort.read()).active,
+      learningRows: await h.db.wordRecords.count(),
+      config: JSON.parse(localStorage.getItem('memoryConfig') || 'null'),
+    }
+  })
+  expect(result.owner).toEqual({ kind: 'anonymous' })
+  expect(result.learningRows).toBe(1)
+  expect(result.config).toEqual({ dailyNewWordTarget: 19, blockSize: 1 })
+})
