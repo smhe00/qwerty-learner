@@ -1,0 +1,57 @@
+name: Learn Real Journey Gate
+
+# This gate builds/serves the development branch on a CI localhost only.
+# Never pushes to master, uses real user accounts, or invokes EdgeOne Maker.
+on:
+  push:
+    branches:
+      - product/main
+    paths:
+      - 'src/pages/Learn/**'
+      - 'src/pages/Typing/**'
+      - 'src/learn/**'
+      - 'src/review/**'
+      - 'src/utils/db/**'
+      - 'src/index.tsx'
+      - 'tests/e2e/review-flow-harness.ts'
+      - 'tests/e2e/learn-real-journey.spec.ts'
+      - 'tests/e2e/learn-real-journey.config.ts'
+      - '.github/workflows/learn-real-journey-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: learn-real-journey-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  journey:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout product branch
+        uses: actions/checkout@v4
+      - name: Install Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Install dependencies and Chromium
+        run: |
+          yarn install --frozen-lockfile
+          npx playwright install --with-deps chromium
+      - name: Check Playwright tests
+        run: npx playwright test --config=tests/e2e/learn-real-journey.config.ts --list
+      - name: Execute true keyboard-to-durable Learn journey
+        run: npx playwright test --config=tests/e2e/learn-real-journey.config.ts
+      - name: Upload redacted checkpoints and failure traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: learn-real-journey-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
