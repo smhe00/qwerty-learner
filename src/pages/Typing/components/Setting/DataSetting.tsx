@@ -150,14 +150,48 @@ export default function DataSetting() {
     <ScrollArea.Root className="flex-1 select-none overflow-y-auto ">
       <ScrollArea.Viewport className="h-full w-full px-3">
         <div className={styles.tabContent}>
-          <CloudSyncSetting />
+          {REACT_APP_DEPLOY_ENV !== 'pages' && <section className={styles.section}>
+            <span className={styles.sectionLabel}>云端同步与账号</span>
+            <CloudSyncSetting />
+          </section>}
           <div className={styles.section}>
-            <span className={styles.sectionLabel}>数据导出</span>
+            <span className={styles.sectionLabel}>本地备份</span>
             <span className={styles.sectionDescription}>
-              目前，用户的练习数据<strong>仅保存在本地</strong>。如果您需要在不同的设备、浏览器或者其他非官方部署上使用 Qwerty Plus，
-              您需要手动进行数据同步和保存。为了保留您的练习进度，以及使用近期即将上线的数据分析和智能训练功能，
-              我们建议您及时备份您的数据。
+              完整备份学习记录、FSRS、成就、未完成的学习会话及个人设置。
+              可以在这里校验 V4 文件的完整性；校验是只读操作，不会覆盖任何学习记录。
+              V4 文件恢复尚未开放，校验只读、不修改数据。
             </span>
+            <div className="flex flex-wrap gap-2 pl-4">
+              <button
+                className="my-btn-primary disabled:bg-gray-300"
+                type="button"
+                onClick={() => { void onClickExportV4() }}
+                disabled={isV4Busy || isExporting || isImporting || isClearing}
+              >
+                {isV4Busy ? 'V4 处理中…' : '导出完整备份'}
+              </button>
+              <button
+                className="my-btn-primary disabled:bg-gray-300"
+                type="button"
+                onClick={onClickInspectV4}
+                disabled={isV4Busy || isExporting || isImporting || isClearing}
+              >
+                验证 V4 备份文件（只读）
+              </button>
+            </div>
+            {v4Message && (
+              <span role="status" className="pl-4 text-left text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                {v4Message}
+              </span>
+            )}
+          </div>
+          <details className="mx-2 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+            <summary className="cursor-pointer font-medium">高级数据操作（谨慎使用）</summary>
+            <p className="mt-2 text-sm text-gray-500">旧格式兼容及清除本地数据。清除后无法撤销。</p>
+          <div className={styles.section}>
+            <span className={styles.sectionLabel}>旧格式导出（V3）</span>
+            <span className={styles.sectionDescription}>
+              旧版文件兼容功能，常规备份请使用上方完整备份。</span>
             <span className="pl-4 text-left text-sm font-bold leading-tight text-red-500">
               为了您的数据安全，请不要修改导出的数据文件。
             </span>
@@ -185,7 +219,7 @@ export default function DataSetting() {
             </button>
           </div>
           <div className={styles.section}>
-            <span className={styles.sectionLabel}>数据导入</span>
+            <span className={styles.sectionLabel}>旧格式导入（V3）</span>
             <span className={styles.sectionDescription}>
               请注意，导入数据将<strong className="text-sm font-bold text-red-500"> 完全覆盖 </strong>当前数据。请谨慎操作。
             </span>
@@ -214,37 +248,6 @@ export default function DataSetting() {
             </button>
           </div>
           <div className={styles.section}>
-            <span className={styles.sectionLabel}>Backup V4（开发版应用测试）</span>
-            <span className={styles.sectionDescription}>
-              完整导出学习记录、FSRS、成就、未完成的每日学习会话及个人设置。
-              可以在这里校验 V4 文件的完整性；校验是只读操作，不会覆盖任何学习记录。
-              旧版“导出数据 / 导入数据”和云同步仍使用 V3，待 S1 崩溃恢复和多标签写入隔离完成后再切换。
-            </span>
-            <div className="flex flex-wrap gap-2 pl-4">
-              <button
-                className="my-btn-primary disabled:bg-gray-300"
-                type="button"
-                onClick={() => { void onClickExportV4() }}
-                disabled={isV4Busy || isExporting || isImporting || isClearing}
-              >
-                {isV4Busy ? 'V4 处理中…' : '导出完整 V4 备份'}
-              </button>
-              <button
-                className="my-btn-primary disabled:bg-gray-300"
-                type="button"
-                onClick={onClickInspectV4}
-                disabled={isV4Busy || isExporting || isImporting || isClearing}
-              >
-                验证 V4 备份文件（只读）
-              </button>
-            </div>
-            {v4Message && (
-              <span role="status" className="pl-4 text-left text-xs leading-relaxed text-gray-600 dark:text-gray-300">
-                {v4Message}
-              </span>
-            )}
-          </div>
-          <div className={styles.section}>
             <span className={styles.sectionLabel}>清除本地数据</span>
             <span className={styles.sectionDescription}>
               清除当前浏览器中的练习记录、章节记录和智能复习数据，并将词库和章节进度恢复为首次使用状态。
@@ -263,6 +266,7 @@ export default function DataSetting() {
               {isClearing ? '正在清除…' : '清除本地数据'}
             </button>
           </div>
+          </details>
         </div>
       </ScrollArea.Viewport>
       <ScrollArea.Scrollbar className="flex touch-none select-none bg-transparent " orientation="vertical"></ScrollArea.Scrollbar>
