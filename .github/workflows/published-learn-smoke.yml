@@ -47,6 +47,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: published-learn-smoke-${{ github.run_id }}-${{ github.run_attempt }}
-          path: test-results/**/attachments/published-learn-redacted-checkpoints*.json
+          path: test-results/**/published-learn-redacted-checkpoints.json
           if-no-files-found: ignore
           retention-days: 7
