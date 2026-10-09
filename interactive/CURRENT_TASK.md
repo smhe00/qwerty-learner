@@ -8,7 +8,7 @@ status: "PARTIAL"
 executor: "ChatGPT (direct executor)"
 claim_base_commit: "77ce352abdf15148da69ed90b47fc77f03fd5039"
 claimed_at_utc: "2026-10-08T22:41:35Z"
-last_known_commit: "4ab3b481ba04a480e1cc1bb62da174e183f4f774"
+last_known_commit: "864df067a96453366aebc7266152927e962b4f91"
 release_to_master: false
 priority: "P0"
 ---
@@ -60,3 +60,10 @@ explicit V1 account/anonymous ownership consent are implemented and tested
 production activation is forbidden pending old-JS stale tab containment,
 full account lifecycle and auth-intent Crash recovery, offline cases,
 and S0.5 trace refinement. Audio Review Gate is tracked separately.
+
+
+2026-10-09 additional: schema V6 old-JS IndexedDB fence and actual 2-tab
+reopening refusal landed at 0675533e. S1 Browser Gate 37871236510
+PASS 30/30, Architecture Gate and Achievement Gate PASS.
+Old localStorage writers remain uncontained; production account lifecycle and
+offline / fault-injection tests remain blocked. Still PARTIAL / no master.

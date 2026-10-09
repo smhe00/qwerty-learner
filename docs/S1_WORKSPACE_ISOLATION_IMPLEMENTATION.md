@@ -215,3 +215,35 @@ Code committed on \`product/main\` only:
 **Verified**: S1 Workspace Browser Gate run https://github.com/smhe00/qwerty-learner/actions/runs/37870686755 at \`4ab3b481\`: **29/29 PASS** (including actual pre-mount consent and cancelled migration), no EdgeOne build. Cloud Sync Gate at \`9f076a88\` (37870310069) PASS; Achievement Gate at \`049a2e5e\` (37870667736) PASS. Review Gate for the latest audio change must be checked independently.
 
 **NOT completed**: safe production V1 ownership migration (already-open old-JS tabs are not fenced), full crash-consistent account register/login/logout/switch UI and dirty-cloud preflight, offline/auth error UX, per-phase fault injection and TLA+ trace refinement. No master release. S1 status remains PARTIAL.
+
+
+## 2026-10-09 legacy V5 tab write fence and gate (S1 still PARTIAL)
+
+Source: \`0675533e\` increments Dexie RecordDB from schema 5 to schema 6
+without altering table stores or live records. A real Chromium cross-tab test
+exercises an already-open old V5 client with no S1 Web Lock. The new real app
+upgrades the database, forces versionchange, and the obsolete client cannot
+reopen/write using schema V5. The old client writes made before the upgrade
+remain durable; attempted old client writes after it are rejected.
+
+Evidence: S1 browser run
+https://github.com/smhe00/qwerty-learner/actions/runs/37871236510
+**30/30 PASS**, Architecture run 37871236555 PASS, Achievement run
+37871236487 PASS. These checks are all local CI, not production Maker.
+
+**Important limit**: Dexie/IDB version fencing protects database writes
+by V5 clients, not arbitrary localStorage mutations by an older JavaScript
+tab. Full stale-tab rebind/isolation is therefore still a production
+activation blocker. Upgrading schema to V6 also makes that local browser
+profile incompatible with earlier V5 bundles; do not deploy the migration
+indiscriminately without coordinated production rollout.
+
+The Typing no-late-pronunciation Review Gate is tracked independently:
+run 37871236488 FAILED at its 8th Typing test (1 failed, 7 passed).
+New diagnosis run 37871506118 examines call stacks for late play events;
+do not claim all Review Gates green without an observed successful run.
+
+Remaining S1 P0: production-capable consent/migration with deterministic
+multi-tab logout/rebind, transactional register/login/logout + crash recovery,
+explicit user status and auth expiry/reauth UX; then offline, all-phase crash,
+cross-tab and TLA+ trace refinement tests. No S1 release to master.
