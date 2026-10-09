@@ -42,6 +42,14 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
     ? '当前工作区：账户 ID ' + active.accountId
     : '当前工作区：本机匿名账户')
   current.setAttribute('data-s1-current-owner', active.kind === 'account' ? active.accountId : 'anonymous')
+  const accountAuth = loadAuth({ preserveExpired: true })
+  const authState = node('p', active.kind === 'anonymous'
+    ? '身份状态：匿名工作区，未关联云端会话。'
+    : !accountAuth || accountAuth.user.userId !== active.accountId
+      ? '身份状态：账户所有权待验证；禁止以其他账号覆盖本机数据。'
+      : accountAuth.expiresAt * 1000 <= Date.now()
+        ? '身份状态：云端会话已过期，本机学习记录继续归属于当前账户；请重新认证。'
+        : '身份状态：已保存当前账户会话。本机工作区与云端会话相互独立。')
   const guidance = node('p', explanation)
   guidance.style.cssText = 'margin:16px 0'
   const status = node('p', '状态：就绪')
@@ -175,7 +183,7 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
   }
   const back = button('返回学习', navigate)
   controls.push(back)
-  main.append(heading,current,guidance,actions,status)
+  main.append(heading,current,authState,guidance,actions,status)
   root.replaceChildren(main)
   void workspaceRegistryPort.read().then(registry => {
     if (registry.pending || !same(registry.active, active)) {

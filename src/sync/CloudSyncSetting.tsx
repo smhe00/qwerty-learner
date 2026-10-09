@@ -299,6 +299,11 @@ export default function CloudSyncSetting() {
         <div className="mb-2 text-base font-bold text-gray-700 dark:text-gray-200">账户工作区（S1）</div>
         <div className="text-sm text-gray-600 dark:text-gray-300">
           当前账户：{auth?.user.username ?? '匿名本机工作区'}。
+          {auth && auth.expiresAt * 1000 <= Date.now()
+            ? '云端会话已过期，需要重新登录当前账户；本机数据归属不会改变。'
+            : auth
+              ? '云端会话存在；本机工作区仍按不可变账户 ID 隔离。'
+              : '目前是匿名本机工作区。'}
           学习数据独立保留在本机 V4 工作区，退出账户不会丢弃未同步进度。
           当前云同步 V1 上传、覆盖恢复和删除操作已暂停。
         </div>
