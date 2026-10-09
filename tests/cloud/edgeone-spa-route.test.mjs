@@ -7,7 +7,7 @@ import vm from 'node:vm'
 const root = process.cwd()
 const config = JSON.parse(readFileSync(join(root, 'edgeone.json'), 'utf8'))
 const html = readFileSync(join(root, 'public/404.html'), 'utf8')
-const script = html.match(/<script type="text\\/javascript">([\\s\\S]*?)<\\/script>/)?.[1]
+const script = html.match(/<script type="text\/javascript">([\s\S]*?)<\/script>/)?.[1]
 
 function runNotFoundPage(href) {
   assert.ok(script, 'GitHub Pages compatibility script must exist')
