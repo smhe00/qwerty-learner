@@ -122,6 +122,18 @@ async function resetAndSeed(
   await page.goto('/typing')
   const session = makeSession(id)
 
+  // Playwright serializes page.evaluate callbacks into a browser function,
+  // so a dynamic import in that callback can be rewritten to a bundler
+  // helper (_interopRequireWildcard) which does not exist in the page.
+  // Load the production Dexie module through a real browser module script.
+  await page.addScriptTag({
+    type: 'module',
+    content: "import { db } from '/src/utils/db/core.ts'; window.__qwertyP3SeedDb = db;",
+  })
+  await expect.poll(() => page.evaluate(() => Boolean(
+    (window as any).__qwertyP3SeedDb,
+  ))).toBe(true)
+
   await page.evaluate(async (seededSession) => {
     localStorage.clear()
     sessionStorage.clear()
@@ -167,7 +179,8 @@ async function resetAndSeed(
     // unclosed versionchange transaction and conceal the real lifecycle
     // failure behind a three-minute Playwright page.evaluate timeout.
     // This still writes durable IndexedDB, not a mocked in-memory table.
-    const { db } = await import('/src/utils/db/core.ts')
+    const db = (window as any).__qwertyP3SeedDb
+    if (!db) throw new Error('P3 seed: production Dexie module did not load')
     await Promise.race([
       db.open(),
       new Promise<never>((_, reject) => setTimeout(
