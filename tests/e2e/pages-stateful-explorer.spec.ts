@@ -174,8 +174,10 @@ test('coverage-guided Pages Learn: keyboard, hint, resume, IndexedDB, mode-switc
       const word = await wordNode.getAttribute('data-typing-word')
       expect(word).toBeTruthy()
       const letters = await wordNode.getAttribute('data-review-letters')
-      const phase = await page.locator('[data-learn-acquisition-phase]:visible').first()
-        .getAttribute('data-learn-acquisition-phase').catch(() => null)
+      const phaseNode = page.locator('[data-learn-acquisition-phase]:visible').first()
+      const phase = await phaseNode.count()
+        ? await phaseNode.getAttribute('data-learn-acquisition-phase')
+        : null
       const before = await snapshot(page)
       expect(before.finished).toBe(false)
       expect(before.sessionId).toBe(start.sessionId)
@@ -185,6 +187,19 @@ test('coverage-guided Pages Learn: keyboard, hint, resume, IndexedDB, mode-switc
       // Observe the actual exercise condition before choosing legal actions.
       // Exposure is already a visible copy; ESC intentionally does not
       // activate its hint machine. Recall/probe does support ESC surrender.
+      if (letters !== 'all-visible' && !coverage.has('wrong-attempt') &&
+          word && /^[a-zA-Z]{4,}$/.test(word)) {
+        // Exercise the real wrong-key -> assisted-retry transition exactly
+        // once, only when the current exercise has a managed hint machine.
+        const mismatch = word[2].toLowerCase() === 'x' ? 'z' : 'x'
+        await page.keyboard.type(word.slice(0, 2) + mismatch)
+        await expect.poll(() => wordNode.getAttribute('data-typing-input'),
+          { timeout: 10_000 }).toBe('')
+        coverage.add('wrong-attempt')
+        record(i, 'wrong-attempt-reset', await snapshot(page), {
+          letters, phase, hint: await wordNode.getAttribute('data-review-hint-stage'),
+        })
+      }
       if (i === 0 || (letters !== 'all-visible' && rand() < 0.7)) {
         await page.keyboard.press('Escape')
         if (letters === 'all-visible') {
