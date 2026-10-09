@@ -337,3 +337,32 @@ test('cancelling S1 pre-mount ownership consent leaves V1 unchanged', async ({ p
   expect(state.registry.generation).toBe(0)
   expect(state.records).toBe(1)
 })
+
+
+test('real V5 old-JS tab cannot reopen or mutate RecordDB after V6 S1 rollout fence', async ({ page, context }) => {
+  // The first tab uses the actual previous Dexie schema and no S1 Web Lock.
+  // The second tab loads the new guarded real app; versionchange must retire
+  // the obsolete connection before it is allowed to own V6 writes.
+  await page.goto('/tests/e2e/legacy-v5.html')
+  await expect.poll(() => page.evaluate(() => (window as any).__legacyV5?.opened)).toBe(true)
+  const before = await page.evaluate(() => (window as any).__legacyV5.tryWordWrite('before-v6'))
+  expect(before).toBe('WRITTEN')
+
+  const next = await context.newPage()
+  await next.goto('/')
+  await expect(next.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  await expect.poll(() => page.evaluate(() => (window as any).__legacyV5?.versionChangeCount)).toBeGreaterThan(0)
+  const attempt = await page.evaluate(() => (window as any).__legacyV5.tryWordWrite('forbidden-after-v6'))
+  expect(attempt).not.toBe('WRITTEN')
+  expect(attempt).toMatch(/VersionError|DatabaseClosedError|version|closed/i)
+
+  await next.close()
+  await harness(page)
+  const result = await page.evaluate(async () => {
+    const db = (window as any).__backupHarness.db
+    return { version: db.verno, words: (await db.wordRecords.toArray()).map((item: any) => item.word) }
+  })
+  expect(result.version).toBe(6)
+  expect(result.words).toContain('before-v6')
+  expect(result.words).not.toContain('forbidden-after-v6')
+})
