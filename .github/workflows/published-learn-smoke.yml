@@ -1,0 +1,52 @@
+name: Published Learn Browser Smoke
+
+# Runs only against the already-published EdgeOne master site.
+# No accounts, no cloud writes, no master update or Maker build.
+on:
+  push:
+    branches:
+      - product/main
+    paths:
+      - 'tests/e2e/production-learn-smoke.spec.ts'
+      - 'tests/e2e/production-learn-smoke.config.ts'
+      - 'tests/cloud/resolve-production-base.mjs'
+      - '.github/workflows/published-learn-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: published-learn-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      QWERTY_SYNC_BASE_URL: https://qwerty-plus.edgeone.dev/
+    steps:
+      - name: Checkout tests only; never deploy
+        uses: actions/checkout@v4
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Confirm target is the published site
+        run: node tests/cloud/resolve-production-base.mjs
+      - name: Install dependencies and Chromium
+        run: |
+          yarn install --frozen-lockfile
+          npx playwright install --with-deps chromium
+      - name: Run real Learn keyboard and URL reload smoke
+        run: npx playwright test --config=tests/e2e/production-learn-smoke.config.ts
+      - name: Upload credential-free checkpoints
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-learn-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/**/attachments/published-learn-redacted-checkpoints*.json
+          if-no-files-found: ignore
+          retention-days: 7
