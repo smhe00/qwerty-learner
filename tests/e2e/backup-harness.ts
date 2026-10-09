@@ -7,7 +7,7 @@ import { captureWorkingWorkspaceV4, resetWorkingWorkspaceToEmpty, restoreWorking
 import { createWorkspaceV4, workspaceFingerprintV4 } from '../../src/sync/workspace-v4'
 import { loadWorkspaceFromVault, saveWorkspaceToVault, workspaceRegistryPort, openWorkspaceVault } from '../../src/sync/workspace-vault'
 import { switchWorkspace, recoverWorkspace, ANONYMOUS } from '../../src/sync/workspace-transition'
-import { createLocalSnapshot, restoreLocalSnapshot } from '../../src/sync/snapshot'
+import { createLocalSnapshot, fingerprintRemoteUserActions, restoreLocalSnapshot } from '../../src/sync/snapshot'
 import {
   DURABLE_BACKUP_TABLE_NAMES,
   exportBackupJson,
@@ -15,7 +15,7 @@ import {
 } from '../../src/utils/backup'
 import { db } from '../../src/utils/db'
 import { inspectLocalState } from '../../src/sync/snapshot'
-import { assessSyncState, loadSyncBaseline, saveSyncBaseline } from '../../src/sync/state'
+import { assessSyncState, canReconcileLegacySyncBaseline, loadSyncBaseline, saveSyncBaseline } from '../../src/sync/state'
 
 const now = Math.floor(
   new Date('2026-10-03T00:00:00.000Z').getTime() / 1000,
@@ -298,7 +298,9 @@ async function inspectTableContract() {
   createLocalSnapshot,
   inspectLocalState,
   restoreLocalSnapshot,
+  fingerprintRemoteUserActions,
   assessSyncState,
+  canReconcileLegacySyncBaseline,
   loadSyncBaseline,
   saveSyncBaseline,
   captureWorkingWorkspaceV4,

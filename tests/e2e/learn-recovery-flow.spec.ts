@@ -575,3 +575,75 @@ test('cloud restore marks an unchanged revision clean through reload and opening
   expect(afterStudy.status).toBe('local-dirty')
   expect(afterStudy.localDirty).toBe(true)
 })
+
+test('legacy sync baseline requires same-revision cloud evidence before treating Learn preparation as clean', async ({
+  page,
+}) => {
+  await page.goto('/tests/e2e/backup-harness.html')
+  await expect(page.getByText('backup harness ready')).toBeVisible()
+  const imported = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    const snapshot = await h.createLocalSnapshot()
+    await h.clearAllTables()
+    const restored = await h.restoreLocalSnapshot(
+      snapshot.payloadBase64, snapshot.clientFormatVersion,
+    )
+    // Simulate an old release: baseline stores physical fingerprint only.
+    h.saveSyncBaseline('legacy-user', 11, restored.fingerprint)
+    const cloudEvidence = await h.fingerprintRemoteUserActions(
+      snapshot.payloadBase64, snapshot.clientFormatVersion,
+    )
+    return { cloudEvidence, fingerprint: restored.fingerprint }
+  })
+
+  await page.goto('/learn')
+  await expect(page.getByRole('button', { name: 'Learn', exact: true }))
+    .toHaveAttribute('aria-pressed', 'true')
+  await page.goto('/tests/e2e/backup-harness.html')
+  await expect(page.getByText('backup harness ready')).toBeVisible()
+  const checks = await page.evaluate((cloudEvidence) => {
+    // This assertion is completed below with an actual snapshot so no
+    // backend auth token or network fixture is required.
+    return Boolean(cloudEvidence)
+  }, imported.cloudEvidence)
+  expect(checks).toBe(true)
+
+  const proven = await page.evaluate(async (remoteEvidence) => {
+    const h = (window as any).__backupHarness
+    const local = await h.inspectLocalState()
+    const baseline = h.loadSyncBaseline('legacy-user')
+    const remote = { revision: 11, hasData: true }
+    const before = h.assessSyncState(local, remote, baseline)
+    const sameRevision = h.canReconcileLegacySyncBaseline(
+      local, remote, baseline, remoteEvidence,
+    )
+    const wrongRevision = h.canReconcileLegacySyncBaseline(
+      local, { revision: 12, hasData: true }, baseline, remoteEvidence,
+    )
+    const wrongEvidence = h.canReconcileLegacySyncBaseline(
+      local, remote, baseline, 'different-user-evidence',
+    )
+    if (sameRevision) {
+      h.saveSyncBaseline(
+        'legacy-user', baseline.baseRevision, baseline.localFingerprint,
+        remoteEvidence,
+      )
+    }
+    return {
+      before: before.status,
+      sameRevision,
+      wrongRevision,
+      wrongEvidence,
+      after: h.assessSyncState(
+        local, remote, h.loadSyncBaseline('legacy-user'),
+      ).status,
+    }
+  }, imported.cloudEvidence)
+
+  expect(proven.before).toBe('local-dirty')
+  expect(proven.sameRevision).toBe(true)
+  expect(proven.wrongRevision).toBe(false)
+  expect(proven.wrongEvidence).toBe(false)
+  expect(proven.after).toBe('local-prepared')
+})

@@ -52,6 +52,30 @@ export function saveSyncBaseline(
   return baseline
 }
 
+/**
+ * Existing V1 baselines lack a user-action projection. Never grant "clean"
+ * just because a full fingerprint changed: recover only if the same remote
+ * revision is still current AND its decoded user-action evidence exactly
+ * equals the current local evidence. The caller must verify/download cloud
+ * bytes before providing remoteUserActionFingerprint.
+ */
+export function canReconcileLegacySyncBaseline(
+  local: LocalState,
+  remote: RemoteSyncMeta,
+  baseline: SyncBaseline | null,
+  remoteUserActionFingerprint: string,
+): boolean {
+  return Boolean(
+    baseline &&
+    !baseline.userActionFingerprint &&
+    remote.hasData &&
+    baseline.baseRevision === remote.revision &&
+    local.fingerprint !== baseline.localFingerprint &&
+    typeof local.userActionFingerprint === 'string' &&
+    local.userActionFingerprint === remoteUserActionFingerprint,
+  )
+}
+
 export function clearSyncBaseline(userId: string) {
   localStorage.removeItem(keyForUser(userId))
 }

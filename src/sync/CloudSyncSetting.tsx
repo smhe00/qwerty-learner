@@ -4,12 +4,14 @@ import { loadAuth, loginAndRemember, logout, registerAndRemember } from './auth'
 import {
   CLIENT_FORMAT_VERSION,
   createLocalSnapshot,
+  fingerprintRemoteUserActions,
   inspectLocalState,
   isSupportedSnapshotFormat,
   restoreLocalSnapshot,
 } from './snapshot'
 import {
   assessSyncState,
+  canReconcileLegacySyncBaseline,
   clearSyncBaseline,
   loadSyncBaseline,
   saveSyncBaseline,
@@ -89,7 +91,47 @@ export default function CloudSyncSetting() {
       inspectLocalState(),
       getSyncMeta(currentAuth.token),
     ])
-    const baseline = loadSyncBaseline(currentAuth.user.userId)
+    let baseline = loadSyncBaseline(currentAuth.user.userId)
+
+    // Older synchronized profiles have no user-action provenance. Do not
+    // assume their changed physical fingerprint means the user practiced;
+    // but never silently rebase either. Compare with the ACTUAL cloud payload
+    // of the same revision before classifying derived-only Learn preparation.
+    if (
+      baseline &&
+      !baseline.userActionFingerprint &&
+      remote.hasData &&
+      baseline.baseRevision === remote.revision &&
+      local.fingerprint !== baseline.localFingerprint &&
+      isSupportedSnapshotFormat(remote.clientFormatVersion)
+    ) {
+      try {
+        const remoteSnapshot = await getSync(currentAuth.token)
+        if (
+          remoteSnapshot.revision === remote.revision &&
+          remoteSnapshot.payloadBase64 &&
+          isSupportedSnapshotFormat(remoteSnapshot.clientFormatVersion)
+        ) {
+          const remoteEvidence = await fingerprintRemoteUserActions(
+            remoteSnapshot.payloadBase64,
+            remoteSnapshot.clientFormatVersion,
+          )
+          if (canReconcileLegacySyncBaseline(
+            local, remote, baseline, remoteEvidence,
+          )) {
+            baseline = saveSyncBaseline(
+              currentAuth.user.userId,
+              baseline.baseRevision,
+              baseline.localFingerprint,
+              remoteEvidence,
+            )
+          }
+        }
+      } catch {
+        // Failure to compare immutable remote evidence never authorizes an
+        // overwrite or resets the baseline. Preserve original dirty status.
+      }
+    }
 
     setView({
       local,

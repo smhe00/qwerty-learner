@@ -219,6 +219,19 @@ async function decodeSnapshotJson(
   }
 }
 
+/**
+ * Read-only provenance check for old cloud baselines. The caller must verify
+ * the remote revision has not changed before binding the comparison to an
+ * account. It never imports or changes local learning records.
+ */
+export async function fingerprintRemoteUserActions(
+  payloadBase64: string,
+  clientFormatVersion: string | null,
+): Promise<string> {
+  const json = await decodeSnapshotJson(payloadBase64, clientFormatVersion)
+  return fingerprintUserActions(json)
+}
+
 export async function restoreLocalSnapshot(
   payloadBase64: string,
   clientFormatVersion: string | null,
