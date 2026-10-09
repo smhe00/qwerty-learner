@@ -126,10 +126,16 @@ test('S1 actual Settings login refuses legacy auth before any network request', 
   await page.goto('/')
   await page.getByRole('button', { name: '打开设置对话框' }).click()
   await page.getByRole('tab', { name: '数据设置' }).click()
-  await page.getByPlaceholder('用户名').fill('new-user')
-  await page.getByPlaceholder('密码（4-128字符）').fill('test-password')
-  await page.getByRole('button', { name: '登录', exact: true }).click()
-  await expect(page.getByText(/旧版账号操作已暂停/)).toBeVisible()
+  // S1 intentionally removes the old V1 credential form entirely.
+  // Account changes only happen through the pre-mount guarded S1 page.
+  await expect(page.getByPlaceholder('用户名')).toHaveCount(0)
+  await expect(page.getByPlaceholder('密码（4-128字符）')).toHaveCount(0)
+  const safeEntry = page.getByRole('button', { name: '安全登录 / 退出 / 切换账户' })
+  await expect(safeEntry).toBeVisible()
+  expect(loginRequests).toBe(0)
+  await safeEntry.click()
+  await expect(page.getByRole('heading', { name: '安全账户管理（S1）' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '登录已有账户' })).toBeVisible()
   expect(loginRequests).toBe(0)
 })
 
