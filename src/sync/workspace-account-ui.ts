@@ -4,7 +4,7 @@
  * Only the active guarded entry may render this surface under the writer lease.
  */
 import { login, register } from './api'
-import { loadAuth } from './auth'
+import { browserDeviceId, loadAuth } from './auth'
 import { switchAuthenticatedWorkspace, reauthenticateSameWorkspace } from './workspace-auth-transaction'
 import { copyAnonymousWorkspaceForNewRegistration } from './workspace-coordinator'
 import { same } from './workspace-transition'
@@ -103,7 +103,7 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
     window.location.replace('/')
   }
   const reauth = async () => {
-    const signed = credential(await login(username.value.trim(), password.value))
+    const signed = credential(await login(username.value.trim(), password.value, browserDeviceId()))
     await reauthenticateSameWorkspace(signed)
     setBusy(true, '账户会话更新成功，工作区保持不变。')
     navigate('重新登录成功，工作区身份与学习数据保持不变。')
@@ -112,7 +112,7 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
     if (!username.value.trim() || password.value.length < 4) {
       throw new Error('请输入用户名和至少四位密码')
     }
-    const signed = credential(await login(username.value.trim(), password.value))
+    const signed = credential(await login(username.value.trim(), password.value, browserDeviceId()))
     if (active.kind === 'account') {
       if (active.accountId !== signed.user.userId) {
         throw new Error('当前属于另一账户，必须先明确退出到匿名工作区')
@@ -139,7 +139,7 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
     if (!window.confirm('确认使用该用户名注册新账户？注册成功后会切换到新账户。')) {
       setBusy(false, '用户已取消注册'); return
     }
-    const signed = credential(await register(username.value.trim(), password.value))
+    const signed = credential(await register(username.value.trim(), password.value, browserDeviceId()))
     if (copy) {
       setBusy(true, '新账户已注册，正在复制匿名学习数据…')
       await copyAnonymousWorkspaceForNewRegistration(signed.user.userId)
