@@ -18,18 +18,19 @@ after(() => rmSync(tmp, { recursive: true, force: true }))
 const { createWorkspaceV4, workspaceFingerprintV4 } =
   await import(pathToFileURL(target).href)
 const owner = 'test-immutable-owner'
+const TABLES = ['achievementEvents','achievementStates','chapterRecords',
+  'reviewRecords','reviewWordStates','wordRecords']
 function sample() {
   return createWorkspaceV4({
     database: { formatName: 'dexie', formatVersion: 1, data: {
       databaseName: 'RecordDB', databaseVersion: 6,
-      tables: [{ name: 'wordRecords', schema: '++id' },
-        { name: 'reviewWordStates', schema: '++id' }],
-      data: [
-        { tableName: 'wordRecords', inbound: true,
-          rows: [{ id: 2, word: '漢字' }, { id: 1, word: 'alpha' }] },
-        { tableName: 'reviewWordStates', inbound: true,
-          rows: [{ id: 4, word: 'beta', nextReviewAt: 42 }] },
-      ],
+      tables: TABLES.map(name => ({ name, schema: '++id' })),
+      data: TABLES.map(name => ({ tableName: name, inbound: true,
+        rows: name === 'wordRecords'
+          ? [{ id: 2, word: '漢字' }, { id: 1, word: 'alpha' }]
+          : name === 'reviewWordStates'
+            ? [{ id: 4, word: 'beta', nextReviewAt: 42 }] : [],
+      })),
     } },
     navigation: { currentDict: '中考', currentChapter: 3 },
     settings: { version: 1, values: { memoryConfig: { blockSize: 1 } } },
@@ -82,4 +83,13 @@ test('canonical V4 includes settings, DailySession and navigation in the digest'
     assert.notEqual(newDigest, original)
     assert.equal(verifyCompressedV4(zipped(variant), owner, newDigest).logicalFingerprint, newDigest)
   }
+})
+
+test('missing durable V4 table is rejected before destructive restore', async () => {
+  const incomplete = sample()
+  incomplete.workspaceData.database.data.tables =
+    incomplete.workspaceData.database.data.tables.filter(t => t.name !== 'reviewRecords')
+  const hash = await workspaceFingerprintV4(incomplete)
+  assert.throws(() => verifyCompressedV4(zipped(incomplete), owner, hash),
+    /complete durable Dexie table manifest/)
 })
