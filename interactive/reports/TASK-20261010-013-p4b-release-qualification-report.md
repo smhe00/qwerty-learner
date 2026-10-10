@@ -193,3 +193,20 @@ the refreshed Cloud Sync workflow now publishes the inspectable
 - These are independently recorded results. Do not claim this also
   accepts the actual V4 **allowlisted** write path; EdgeOne server-side
   allowlist account configuration is required for that separate Gate.
+
+
+## S2Recovery two-device TLA gate — PASS (2026-10-10)
+
+- [Run #38062253933](https://github.com/smhe00/qwerty-learner/actions/runs/38062253933)
+  on workflow update commit `beee782`; classic commit status
+  `p4b/s2-recovery-tla=success`.
+- Pinned TLC model checker fetched and module parsed successfully.
+- Production-bounded recovery configuration PASS.
+- `S2Recovery.two-device-cas.cfg`: two competing devices and one
+  cloud account at `MaxRev=2` PASS.
+- `S2Recovery.account-switch.cfg`: one device switching between two
+  accounts with crash journal ownership at `MaxRev=2` PASS.
+- Deliberately unsafe recovery mutant produced a real `Safety`
+  counterexample (positive mutant-gate result).
+- This is **bounded** formal verification, not a proof of unbounded
+  concurrency or a substitute for real EdgeOne V4 allowlisted CAS.
