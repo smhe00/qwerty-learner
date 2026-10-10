@@ -110,3 +110,30 @@ functional assertions were changed.
 The independent full Review Gate was re-triggered as 38058144893;
 its conclusion must be separately reported. S2 EdgeOne release remains
 blocked pending P4b-3/P4b-4.
+
+
+## 2026-10-10 server allowlist deployment checkpoint
+
+- EdgeOne Maker: user confirmed production `master` deployment **c1135a9**
+  successful. This is a deployment attestation, not a measured HTTP/Blob
+  acceptance. `master` embeds the server-side `S2_SYNC_WRITE_ACCOUNT_IDS`
+  allowlist for both V4 write endpoints, fail-closed absent configured IDs.
+- Server implementation commits: `b99a524` -> `0f9f39a`; predicate and
+  mocked HTTP boundary tests are committed in `master`. Prior gate pass
+  reports refer to *older* candidate commits; don't extrapolate.
+- Added remote isolated-account smoke to dev `product/main`:
+  `tests/cloud/p4b-edgeone-gate-smoke.mjs` and automatic
+  `.github/workflows/p4b-edgeone-write-gate-smoke.yml`.
+  This runs without Blob management secrets and deletes its temporary
+  account; tests V2 fail-closed behavior, no revision mutation,
+  and V1 backward-compatible upload.
+- No independent real HTTP result has been observed yet because current
+  execution environment cannot resolve `qwerty-plus.edgeone.dev`.
+  GitHub connector does not expose push-triggered workflow status in its
+  current commit-runs response. **DO NOT mark smoke PASS based on workflow creation.**
+- P4b-3 remaining: collect actual smoke run result; use 2–3 approved
+  disposable allowlisted account IDs for V4 Push/Pull, CAS concurrency,
+  account switching/session invalidation, fingerprints and source-row audit.
+- P4b-4 remaining: documented explicit V3->V4 consent migration, V1
+  write rejection on upgraded V4, fault replay, and production-safe
+  rollback rehearsal; all require actual recorded evidence.
