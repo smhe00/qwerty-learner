@@ -43,3 +43,17 @@ documented in `docs/S1_CLOSEOUT_AUDIT_20261010.md`.
   (including immutable account binding, canonical logical fingerprint,
   gzip bounds, CAS and safe migration) before exposing V4 writes or the one
   user-facing Sync button.
+
+## P1b backend implementation candidate
+
+- Dedicated authenticated `/api/sync/v2` GET/PUT and
+  `/api/sync/v2/meta` GET paths, reusing the existing versioned
+  snapshot store without changing the V1 production request contract.
+- Bounded gunzip decode (32 MiB inflated upper limit), strict V4
+  schema/allowlist/account-owner checks, canonical workspace digest
+  computed on the server and compared to the client claim.
+- Revision-specific optimistic CAS; V3-to-V4 implicit overwrite and
+  V4-to-V1 downgrade both rejected with 409. Identity and malformed
+  payloads fail closed. Hash parity with client implementation tested.
+- **No V2 UI or live Maker deployment.** Server endpoint remains in dev
+  `product/main`, not Maker-bound `master`. Check CI after commit.

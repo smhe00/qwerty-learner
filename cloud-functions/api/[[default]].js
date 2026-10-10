@@ -269,6 +269,19 @@ export async function onRequest(context) {
       )
     }
 
+    if (request.method === 'PUT' && path === '/sync/v2') {
+      const body = await readJson(request, bodyLimit)
+      return json({ ok: true, ...(await service.putSyncV4(bearer(request), body)) }, 200, cors)
+    }
+
+    if (request.method === 'GET' && path === '/sync/v2/meta') {
+      return json({ ok: true, ...(await service.syncMeta(bearer(request))) }, 200, cors)
+    }
+
+    if (request.method === 'GET' && path === '/sync/v2') {
+      return json({ ok: true, ...(await service.getSync(bearer(request))) }, 200, cors)
+    }
+
     if (request.method === 'GET' && path === '/sync/meta') {
       return json({ ok: true, ...(await service.syncMeta(bearer(request))) }, 200, cors)
     }

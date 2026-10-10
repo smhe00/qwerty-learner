@@ -1,5 +1,6 @@
 /* eslint-env node */
 import crypto from 'node:crypto'
+import { V4_FORMAT, verifyCompressedV4 } from './sync-v4.js'
 
 export class AppError extends Error {
   constructor(statusCode, code, message, details) {
@@ -482,7 +483,10 @@ export function createBackendService({
       // Existing V1/V3 snapshots have never had their V4 canonical
       // fingerprint server-verified, so they must never advertise one.
       payloadSha256: snapshot.dataSha256 || null,
-      logicalFingerprint: null,
+      logicalFingerprint:
+        snapshot.clientFormatVersion === V4_FORMAT
+          ? (snapshot.logicalFingerprint || null)
+          : null,
       deviceId: snapshot.deviceId || null,
       clientFormatVersion: snapshot.clientFormatVersion || null,
     }
@@ -561,6 +565,12 @@ export function createBackendService({
         current: metaFromSnapshot(current ? current.snapshot : null),
       })
     }
+    // V1 client must never replace a V4-only revision, including an
+    // already-open legacy tab whose authentication still works.
+    if (current?.snapshot.clientFormatVersion === V4_FORMAT) {
+      throw new AppError(409, 'sync_upgrade_required',
+        'This workspace has upgraded to Sync V2; V1 write refused')
+    }
 
     const revision = currentRevision + 1
     const snapshot = {
@@ -599,6 +609,72 @@ export function createBackendService({
     return metaFromSnapshot(snapshot)
   }
 
+  /**
+   * Separate V2 endpoint; unchanged legacy V1 paths cannot accidentally
+   * submit V4. No implicit V3->V4 migration/overwrite is allowed.
+   */
+  async function putSyncV4(token, input = {}) {
+    const { identity } = await authenticate(token)
+    const baseRevision = input.baseRevision
+    if (!Number.isSafeInteger(baseRevision) || baseRevision < 0) {
+      throw new AppError(400, 'invalid_base_revision', 'V4 baseRevision must be a non-negative safe integer')
+    }
+    if (input.clientFormatVersion !== V4_FORMAT) {
+      throw new AppError(400, 'unsupported_sync_format', 'V4 endpoint requires qwerty-backup-v4')
+    }
+    const payload = validatePayloadBase64(input.payloadBase64, maxSyncBytes)
+    if (payload.length < 2 || payload[0] !== 0x1f || payload[1] !== 0x8b) {
+      throw new AppError(400, 'invalid_payload', 'Sync V4 payload must be gzip-compressed')
+    }
+    let verified
+    try {
+      verified = verifyCompressedV4(payload, identity.userId, input.logicalFingerprint)
+    } catch (error) {
+      throw new AppError(400, 'invalid_v4_workspace',
+        error instanceof Error ? error.message : 'Invalid Backup V4 workspace')
+    }
+
+    const current = await storage.getLatestRevision(identity.userId)
+    const currentRevision = current ? current.revision : 0
+    if (currentRevision !== baseRevision) {
+      throw new AppError(409, 'sync_conflict', 'Remote data changed', {
+        current: metaFromSnapshot(current?.snapshot || null),
+      })
+    }
+    if (current && current.snapshot.clientFormatVersion !== V4_FORMAT) {
+      throw new AppError(409, 'sync_migration_required',
+        'Existing V1 cloud data needs explicit migration; V4 write refused', {
+          current: metaFromSnapshot(current.snapshot),
+        })
+    }
+    const revision = currentRevision + 1
+    const snapshot = {
+      schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+      revision,
+      updatedAt: nowIso(),
+      sizeBytes: payload.length,
+      dataSha256: crypto.createHash('sha256').update(payload).digest('hex'),
+      logicalFingerprint: verified.logicalFingerprint,
+      payloadEncoding: 'base64',
+      payloadBase64: input.payloadBase64,
+      deviceId: sanitizeDeviceId(input.deviceId),
+      clientFormatVersion: V4_FORMAT,
+    }
+    // Atomic revision CREATE is the authoritative concurrency gate;
+    // an earlier GET/meta cannot authorize overwriting a newer revision.
+    if (!(await storage.createRevision(identity.userId, revision, snapshot))) {
+      const latest = await storage.getLatestRevision(identity.userId)
+      throw new AppError(409, 'sync_conflict', 'Remote data changed during V4 CAS', {
+        current: metaFromSnapshot(latest?.snapshot || null),
+      })
+    }
+    if (typeof storage.pruneRevisions === 'function') {
+      await bestEffortPrune('Snapshot V4', () =>
+        storage.pruneRevisions(identity.userId, snapshotRetention))
+    }
+    return metaFromSnapshot(snapshot)
+  }
+
   async function cleanupTestUser(usernameInput) {
     const { normalizedUsername } = normalizeUsername(usernameInput)
     const usernameHash = sha256Hex(normalizedUsername)
@@ -625,6 +701,7 @@ export function createBackendService({
     syncMeta,
     getSync,
     putSync,
+    putSyncV4,
     cleanupTestUser,
   }
 }

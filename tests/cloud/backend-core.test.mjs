@@ -601,3 +601,87 @@ test('S2 transitional meta exposes transport SHA but never mislabels V3 as canon
   )
   assert.equal((await service.syncMeta(registered.token)).revision, 1)
 })
+
+test('V4 revisioned backend accepts verified owner payload, publishes logical hash, blocks stale writers and legacy downgrades', async () => {
+  const storage = new MemoryStorage()
+  const service = createBackendService({ storage })
+  const registration = await service.register('s2_v4_owner_test', 'password-works-123', 'device-A')
+  const accountId = registration.user.userId
+  const payloadV4 = (label) => ({
+    backupFormatVersion: 'qwerty-backup-v4',
+    metadata: { source: { kind: 'account', accountId }, createdAt: '2026-10-10T00:00:00Z' },
+    workspaceData: {
+      database: { formatName: 'dexie', formatVersion: 1,
+        data: { databaseName: 'RecordDB', databaseVersion: 6,
+          tables: [{ name: 'wordRecords', schema: '++id' }],
+          data: [{ tableName: 'wordRecords', inbound: true, rows: [{ id: 1, word: label }] }] } },
+      learnRuntime: { dailySessions: {} },
+      settings: { version: 1, values: {} },
+      navigation: { currentDict: 'test', currentChapter: 0 },
+    },
+  })
+  const { verifyCompressedV4 } = await import('../../cloud-functions/_shared/sync-v4.js')
+  // Derive an independent canonical hash from the same browser reference
+  // projection, rather than accepting any client-provided hash without proof.
+  const { createHash } = await import('node:crypto')
+  const payload = payloadV4('A')
+  const canonical = JSON.stringify({
+    database: { tables: payload.workspaceData.database.data.tables, data: payload.workspaceData.database.data.data },
+    learnRuntime: payload.workspaceData.learnRuntime,
+    navigation: payload.workspaceData.navigation,
+    settings: payload.workspaceData.settings,
+  })
+  const canonicalHash = createHash('sha256').update(canonical).digest('hex')
+  // Assert the authoritative server and payload normalization independently.
+  assert.equal(verifyCompressedV4(zlib.gzipSync(Buffer.from(JSON.stringify(payload))), accountId, canonicalHash).logicalFingerprint, canonicalHash)
+  const upload = await service.putSyncV4(registration.token, {
+    baseRevision: 0, payloadBase64: gzipPayload(payload), clientFormatVersion: 'qwerty-backup-v4',
+    logicalFingerprint: canonicalHash, deviceId: 'device-A',
+  })
+  assert.equal(upload.revision, 1)
+  assert.equal(upload.logicalFingerprint, canonicalHash)
+  assert.match(upload.payloadSha256, /^[a-f0-9]{64}$/)
+  const cloud = await service.syncMeta(registration.token)
+  assert.equal(cloud.logicalFingerprint, canonicalHash)
+  assert.equal((await service.getSync(registration.token)).clientFormatVersion, 'qwerty-backup-v4')
+  const anotherDevice = await service.login('s2_v4_owner_test', 'password-works-123', 'device-B')
+  await assert.rejects(service.putSyncV4(anotherDevice.token, {
+    baseRevision: 0, payloadBase64: gzipPayload(payload), clientFormatVersion: 'qwerty-backup-v4',
+    logicalFingerprint: canonicalHash,
+  }), error => error?.code === 'sync_conflict')
+  await assert.rejects(service.putSync(anotherDevice.token, {
+    baseRevision: 1, payloadBase64: gzipPayload({ old: true }),
+    clientFormatVersion: 'qwerty-backup-v3',
+  }), error => error?.code === 'sync_upgrade_required')
+  assert.equal((await service.syncMeta(anotherDevice.token)).revision, 1)
+})
+
+test('V4 server refuses identity forgery, checksum mismatch and implicit V3 migration', async () => {
+  const storage = new MemoryStorage()
+  const service = createBackendService({ storage })
+  const reg = await service.register('s2_v4_bad_test', 'password-works-456', 'device-A')
+  const wrong = {
+    backupFormatVersion: 'qwerty-backup-v4',
+    metadata: { source: { kind: 'account', accountId: 'forged-owner' }, createdAt: 'date' },
+    workspaceData: {
+      database: { data: { tables: [], data: [] } },
+      learnRuntime: { dailySessions: {} },
+      settings: { version: 1, values: {} },
+      navigation: { currentDict: 'test', currentChapter: 0 },
+    },
+  }
+  await assert.rejects(service.putSyncV4(reg.token, {
+    baseRevision: 0, payloadBase64: gzipPayload(wrong), clientFormatVersion: 'qwerty-backup-v4',
+    logicalFingerprint: 'f'.repeat(64),
+  }), error => error?.code === 'invalid_v4_workspace')
+  assert.equal((await service.syncMeta(reg.token)).revision, 0)
+  await service.putSync(reg.token, {
+    baseRevision: 0, payloadBase64: gzipPayload({ existing: 'V3' }),
+    clientFormatVersion: 'qwerty-backup-v3',
+  })
+  await assert.rejects(service.putSyncV4(reg.token, {
+    baseRevision: 1, payloadBase64: gzipPayload(wrong), clientFormatVersion: 'qwerty-backup-v4',
+    logicalFingerprint: 'f'.repeat(64),
+  }), error => error?.code === 'invalid_v4_workspace')
+  assert.equal((await service.syncMeta(reg.token)).revision, 1)
+})

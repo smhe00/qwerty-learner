@@ -39,10 +39,12 @@ choosing No-op / CAS Push / verified Pull / explicit Conflict.
 - [x] S2-P1a: backward-compatible metadata handshake; expose transport
   `payloadSha256`, deliberately advertise `logicalFingerprint: null` for
   unverified V1/V3 snapshot revisions, and keep V4 writes disabled.
-- [ ] S2-P1b: versioned server V4 metadata (`logicalFingerprint`,
+- [x] S2-P1b: versioned server V4 metadata (`logicalFingerprint`,
   `payloadSha256`, revision) with canonical fingerprint verification,
   explicit V1→V4 compatibility/migration policy and optimistic CAS, tested
-  under concurrent devices.
+  under concurrent devices. The V2 backend endpoint is implemented behind
+  an unexposed UI; no Maker deployment. Legacy V3-to-V4 migration remains
+  an explicitly blocked case, not an implicit overwrite.
 - [ ] S2-P2: account-scoped baseline persisted outside portable workspace;
   guarded V4 snapshot executor (quiescent copy, hash/identity validation,
   safe pull journal + restart), fault injection and crash replay.
