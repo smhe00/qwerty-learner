@@ -856,3 +856,64 @@ test('Learn P2 keeps UNSEEN unknown when the dictionary payload is unavailable',
   assert.equal(stats.today.hintUseRate, null)
   assert.equal(stats.scheduler.successRate30d, null)
 })
+
+/**
+ * A positive Rating Gate is not sufficient provenance. Typing and ordinary
+ * learning events must not replay into the long-term Review scheduler, and
+ * explicit ineligibility overrides even a stale non-null rating field.
+ * These are direct public-function negative controls rather than artifacts
+ * manufactured by the mutation detector.
+ */
+test('Rating Gate rejects ineligible, Typing and unevidenced legacy clean records', () => {
+  const base: IWordRecord = {
+    id: 8401,
+    word: 'recall',
+    dict: 'cet4',
+    chapter: -1,
+    timeStamp: 1800000030,
+    timing: [],
+    wrongCount: 0,
+    mistakes: {},
+    sourceMode: 'learn',
+    learnItemKind: 'review',
+  }
+  const ineligible: IWordRecord = {
+    ...base,
+    reviewRatingDecision: {
+      eligible: false,
+      rating: null,
+      reason: 'assisted-training-not-recall',
+      reasonCodes: ['not-independent'],
+    },
+  }
+  assert.equal(inferReviewOutcomeFromWordRecord(ineligible, []), undefined,
+    'ineligible Review cannot synthesize a positive scheduler outcome')
+
+  const typing: IWordRecord = {
+    ...base,
+    sourceMode: 'typing',
+    reviewRatingDecision: {
+      eligible: true, rating: 'good', confidence: 1,
+      reasonCodes: ['stale-rating-copied-into-typing'],
+    },
+  }
+  assert.equal(inferReviewOutcomeFromWordRecord(typing, []), undefined,
+    'Typing provenance takes precedence over a positive Rating Gate')
+
+  const legacyNoEvidence: IWordRecord = {
+    ...base,
+    reviewRatingDecision: undefined,
+  }
+  assert.equal(inferReviewOutcomeFromWordRecord(legacyNoEvidence, []), undefined,
+    'a clean legacy Review without telemetry or Rating Gate lacks positive recall evidence')
+
+  const eligible: IWordRecord = {
+    ...base,
+    reviewRatingDecision: {
+      eligible: true, rating: 'hard', confidence: 1,
+      reasonCodes: ['independent-rating-gate'],
+    },
+  }
+  assert.equal(inferReviewOutcomeFromWordRecord(eligible, []), 'hard',
+    'valid eligible rating should still be replayed')
+})

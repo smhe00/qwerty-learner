@@ -7,6 +7,11 @@ on:
       - 'tests/simulation/explorer-v3-generalization-g2-manifest.json'
       - 'scripts/explorer-generalization-g2.mjs'
       - '.github/workflows/explorer-generalization-g2.yml'
+      - 'tests/fsrs/g5-active-scheduler.test.ts'
+      - 'tests/learn/acquisition-domain.test.ts'
+      - 'tests/review/async-ownership.test.ts'
+      - 'tests/learn/scaffold-recovery.test.ts'
+      - 'tests/learn/daily-session.test.ts'
   workflow_dispatch:
 
 permissions:

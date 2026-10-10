@@ -357,3 +357,26 @@ test('Recovery Window is bounded by strain tier and never activates on low strai
   assert.equal(low.active, false)
   assert.deepEqual(low.selectedNames, [])
 })
+
+test('Recovery Window never pulls a candidate beyond its bounded lookahead horizon', () => {
+  const queue = Array.from({ length: 12 }, (_, i) => ({ name: 'horizon-' + i }))
+  const current = {
+    ...createLearnAcquisitionState({ scaffoldStrainTier: 'recovery' }),
+    phase: 'supported' as const,
+    assistedCycles: 1,
+  }
+  const states = Object.fromEntries(queue.map(item => [
+    item.name,
+    { ...createLearnAcquisitionState(), phase: 'independent' as const },
+  ]))
+  // The only trainable candidate is at index 9. With the documented eight
+  // lookahead slots, indices 1..8 are visible, index 9 is out of reach.
+  states[queue[9].name] = { ...createLearnAcquisitionState(), phase: 'exposure' }
+  const plan = planLearnRecoveryWindow({
+    queue, currentIndex: 0, currentWord: queue[0],
+    nextState: current, acquisitionStates: states,
+  })
+  assert.equal(plan.active, false)
+  assert.deepEqual(plan.selectedNames, [],
+    'recovery must not move far-away work forward past the lookahead boundary')
+})

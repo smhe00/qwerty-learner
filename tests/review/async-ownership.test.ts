@@ -75,3 +75,30 @@ test('reactivating Learn creates a new valid owner without reviving an old claim
   assert.equal(second.isCurrent(), true)
   assert.ok(second.generation > first.generation)
 })
+
+test('deactivated Learn rejects new claims until explicit reactivation', () => {
+  const guard = createAsyncOwnershipGuard()
+  const former = guard.begin()
+  guard.deactivate()
+  const dormant = guard.begin()
+  assert.equal(former.isCurrent(), false)
+  assert.equal(dormant.isCurrent(), false,
+    'a deferred async callback must not claim ownership on an inactive page')
+  guard.activate()
+  const resumed = guard.begin()
+  assert.equal(dormant.isCurrent(), false)
+  assert.equal(resumed.isCurrent(), true)
+})
+
+test('old ownership invalidation cannot cancel a newer active request', () => {
+  const guard = createAsyncOwnershipGuard()
+  const first = guard.begin()
+  const newest = guard.begin()
+  assert.equal(newest.isCurrent(), true)
+  first.invalidate()
+  assert.equal(first.isCurrent(), false)
+  assert.equal(newest.isCurrent(), true,
+    'late cancellation of superseded work must not invalidate the current owner')
+  newest.invalidate()
+  assert.equal(newest.isCurrent(), false)
+})

@@ -177,3 +177,42 @@ test('FSRS-6 review replay preserves exact difficulty, stability and due timesta
     'FSRS Due must equal the reference calendar timestamp, not just be in the future')
   assert.equal(actual.lastReviewedAt, t0 + 5 * DAY)
 })
+
+/**
+ * First admission is a review seed, not a completed FSRS review. New words
+ * have a fixed one-day initial Review Due, independently of the D/S replay
+ * scheduler. Positive reviews increment cleanStreak once per eligible event.
+ */
+test('FSRS newly admitted word becomes due in exactly one day', () => {
+  const admitted = rebuildActiveFsrsStateFromWordRecords(
+    'test', 'alpha', [acquisition(1)],
+  )
+  assert.ok(admitted)
+  assert.equal(admitted.reviewCount, 0)
+  assert.equal(admitted.nextReviewAt, t0 + DAY)
+  assert.equal(admitted.lastReviewedAt, undefined)
+})
+
+test('FSRS clean streak counts eligible successes once, with Again resetting streak', () => {
+  const first = rebuildActiveFsrsStateFromWordRecords(
+    'test', 'alpha', [acquisition(1), review(2, t0 + DAY, 'good')],
+  )
+  assert.ok(first)
+  assert.equal(first.cleanStreak, 1)
+  const second = rebuildActiveFsrsStateFromWordRecords(
+    'test', 'alpha', [
+      acquisition(1), review(2, t0 + DAY, 'good'),
+      review(3, t0 + 5 * DAY, 'hard'),
+    ],
+  )
+  assert.ok(second)
+  assert.equal(second.cleanStreak, 2)
+  const reset = rebuildActiveFsrsStateFromWordRecords(
+    'test', 'alpha', [
+      acquisition(1), review(2, t0 + DAY, 'good'),
+      review(3, t0 + 5 * DAY, 'again'),
+    ],
+  )
+  assert.ok(reset)
+  assert.equal(reset.cleanStreak, 0)
+})

@@ -9,7 +9,7 @@ import {
 import {
   LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION,
 } from '../../src/learn/acquisition'
-import { decideLearnAutoSyncAction } from '../../src/sync/state'
+import { assessSyncState, decideLearnAutoSyncAction } from '../../src/sync/state'
 import type { IReviewWordState } from '../../src/review/types'
 import type { IWordRecord } from '../../src/utils/db/record'
 
@@ -358,4 +358,44 @@ test('daily session date keys match civil calendar across ordinary days and year
     assert.ok(daily.sessionId.includes(':' + expected + ':'),
       'daily session identity must carry true civil date')
   }
+})
+
+test('simultaneous local evidence and remote revision change is a sync divergence, never an upload', () => {
+  const baseline = {
+    baseRevision: 7,
+    localFingerprint: 'base-snapshot',
+    userActionFingerprint: 'base-actions',
+    syncedAt: '2026-10-09T12:00:00.000Z',
+  }
+  const local = {
+    fingerprint: 'locally-edited',
+    userActionFingerprint: 'learn-progress-advanced',
+    sizeBytes: 4096,
+    recordCount: 10,
+    hasMeaningfulState: true,
+  }
+  const remote = {
+    hasData: true,
+    revision: 8,
+    updatedAt: '2026-10-10T12:00:00.000Z',
+    sizeBytes: 4200,
+    dataSha256: 'server-hash',
+    deviceId: 'second-device',
+    clientFormatVersion: '4',
+  }
+  const decision = assessSyncState(local, remote, baseline)
+  assert.equal(decision.localDirty, true)
+  assert.equal(decision.remoteChanged, true)
+  assert.equal(decision.diverged, true)
+  assert.equal(decision.status, 'diverged')
+  assert.equal(decideLearnAutoSyncAction(decision), 'diverged',
+    'auto-sync must never overwrite newer cloud data when local actions also changed')
+
+  const clean = assessSyncState({
+    ...local, fingerprint: baseline.localFingerprint,
+    userActionFingerprint: baseline.userActionFingerprint,
+  }, remote, baseline)
+  assert.equal(clean.localDirty, false)
+  assert.equal(clean.status, 'remote-ahead')
+  assert.equal(decideLearnAutoSyncAction(clean), 'remote-ahead')
 })
