@@ -59,6 +59,46 @@ async function archiveBoth(page: Page) {
   await page.getByLabel('确认不可变账户 ID').fill(owner.accountId)
 }
 
+test('P3b visibly identifies missing backup downloads before migration can start', async ({ page }) => {
+  await seed(page)
+  const fixture = await remoteFixture(page, 'v3')
+  let writes = 0
+  await page.route('**/api/sync/v2/meta', r => r.fulfill({ json: { ok: true, ...fixture.meta } }))
+  await page.route('**/api/sync/v2', r => r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
+  await page.route('**/api/sync/v2/recovery', async r => {
+    writes++
+    await r.fulfill({ status: 500, json: { error: 'unexpected_recovery_write' } })
+  })
+  await page.goto('/?s2-recovery=manage')
+  const apply = page.getByRole('button', { name: '⑤ 我已备份两端数据，继续执行选定方向' })
+  await expect(page.getByText('点击①从本页面下载本地 V4')).toBeVisible()
+  await expect(page.getByText('点击②从本页面下载云端原始备份')).toBeVisible()
+  // Checked boxes, choice and correct ID are still NOT proof of the two
+  // downloads from this exact pinned cloud revision.
+  await page.getByLabel('已确认本地备份保存成功').check()
+  await page.getByLabel('已确认云端原始备份保存成功').check()
+  await page.locator('select').selectOption('keep-local')
+  await page.getByLabel('确认不可变账户 ID').fill(owner.accountId)
+  await expect(apply).toBeDisabled()
+  await expect(page.getByText('点击①从本页面下载本地 V4')).toBeVisible()
+  await expect(page.getByText('点击②从本页面下载云端原始备份')).toBeVisible()
+
+  const localDownload = page.waitForEvent('download')
+  await page.getByRole('button', { name: '① 下载本地完整 Backup V4（.gz）' }).click()
+  await localDownload
+  await expect(page.getByText('点击①从本页面下载本地 V4')).toHaveCount(0)
+  await expect(page.getByText('点击②从本页面下载云端原始备份')).toBeVisible()
+  await expect(apply).toBeDisabled()
+  const cloudDownload = page.waitForEvent('download')
+  await page.getByRole('button', { name: /② 下载云端原始 Backup V3/ }).click()
+  await cloudDownload
+  await page.getByLabel('已确认本地备份保存成功').check()
+  await page.getByLabel('已确认云端原始备份保存成功').check()
+  await expect(page.getByText('所有迁移前置条件已满足。⑤ 已解锁；点击后仍会再次显示最终覆盖确认。')).toBeVisible()
+  await expect(apply).toBeEnabled()
+  expect(writes).toBe(0)
+})
+
 test('P3b V4 divergence stays read-only until both backups, ID and explicit consent', async ({ page }) => {
   await seed(page)
   const fixture = await remoteFixture(page, 'v4')
