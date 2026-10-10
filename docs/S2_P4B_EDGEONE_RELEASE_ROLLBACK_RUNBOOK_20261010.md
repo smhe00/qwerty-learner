@@ -74,3 +74,24 @@
 P4b-3 EdgeOne Maker 实网检查和 P4b-4 回滚演练**不允许用模拟云
 测试替代**；需要用户单独授权一次上线或提供可用的隔离测试环境。
 若没有该授权，P4b 只能宣布“开发 Gate 收口完成，生产 Gate 阻断”。
+
+### S2 服务端写入灰度隔离（开发分支待发布）
+
+从 `product/main` 的提交 `486198b` 起，EdgeOne 后端的
+`PUT /api/sync/v2` 和 `PUT /api/sync/v2/recovery` 均调用服务端身份验证，
+然后按不可变 `user.userId` 与环境变量 `S2_SYNC_WRITE_ACCOUNT_IDS`
+比较。配置格式为以逗号分隔的完整账号 ID，例如
+`test-user-id-A,test-user-id-B`；**不能填用户名或密码**。
+不配置、空值、无匹配项或包含 `*` 时返回 HTTP 403
+`s2_write_not_enabled`；GET、登录注册、旧版 V1 API 不依赖此开关。
+白名单并不跳过既有 revision CAS / V4 payload / account owner 校验。
+
+EdgeOne 部署操作：先登记隔离账号的 `userId`，再在生产函数的
+**服务端环境变量**设置上述白名单。此配置不是前端的 `VITE_` 变量。
+更新发布分支之前验证 Cloud Sync Gate、灰度拒绝测试及构建，
+再以一次 Maker 构建升级服务端。部署后先用非白名单一次性账号验证
+PUT 返回 403，并确认其 revision 没有变化；随后用白名单测试账号
+验证 PUT 可按普通 CAS 规则执行，最后清理临时测试账号或撤销白名单。
+
+**注意：目前 master 发布版本尚未包含此隔离，禁止把开发分支代码已提交
+视为生产服务端隔离已经生效。**
