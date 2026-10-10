@@ -92,3 +92,25 @@ Maker disposable-user smoke and an independent Review/Learn Gate.
   injection, V3→V4 explicit migration, V1 overwrite rejection after V4,
   rollback rehearsal. No production user account shall be modified.
 - Do NOT mark P4b closed merely because default-deny smoke and CI PASS.
+
+
+## P4b live named-account validation and cleanup (2026-10-11)
+
+- Maker `master` restored strict accountId-only V2 write allowlist
+  at `bcc94f7` (temporary test13/test24 exemption fully removed).
+- Real Maker/Blob protocol: `test13` V3→V4 opt-in migration; `test24`
+  3 device-tagged concurrent CAS; V4 download/fingerprint checks,
+  wrong-account writes blocked, V4 recovery, session invalidation —
+  **PASS twice**:
+  [run + rerun #38085108313](https://github.com/smhe00/qwerty-learner/actions/runs/38085108313).
+- First run #38084721962 unexpectedly hit HTTP 500 during migration
+  refusal; no loss observed and both disposable accounts were deleted.
+  This intermittent failure remains a reliability follow-up.
+- After strict Maker restoration, final site smoke
+  [#38085477624](https://github.com/smhe00/qwerty-learner/actions/runs/38085477624)
+  **PASS**: 403 denied `test13` V2/recovery writes; revision unchanged;
+  freshly created test13 deleted.
+- Both test usernames were deleted in successful full-suite iterations;
+  final strict smoke also deleted its own new test13.
+- Remain ACTIVE for actual multi-BrowserContext Maker journal + user
+  migration consent and rollback; do not mark P4b fully closed.
