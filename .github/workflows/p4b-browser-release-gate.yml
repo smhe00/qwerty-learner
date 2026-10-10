@@ -1,0 +1,86 @@
+name: P4b Browser Recovery Release Gate
+
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - 'tests/e2e/workspace-v4-s2-multi-device.spec.ts'
+      - 'tests/e2e/workspace-v4-s2-pull.spec.ts'
+      - 'tests/e2e/workspace-v4-s2-recovery.spec.ts'
+      - 'tests/e2e/workspace-v4.config.ts'
+      - 'src/sync/**'
+      - '.github/workflows/p4b-browser-release-gate.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: p4b-browser-release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  real-chromium-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Install real Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Independent device / migration consent / crash replay
+        id: browser
+        run: >
+          npx playwright test
+          --config=tests/e2e/workspace-v4.config.ts
+          workspace-v4-s2-multi-device.spec.ts
+          workspace-v4-s2-pull.spec.ts
+          workspace-v4-s2-recovery.spec.ts
+      - name: Upload failed traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p4b-browser-recovery-traces
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Publish independent browser Gate result
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RESULT: ${{ steps.browser.outcome }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ "$RESULT" = success ]; then
+            STATE=success
+            DESCRIPTION='Independent Chromium, V3 consent, V4 journal replay PASS'
+          else
+            STATE=failure
+            DESCRIPTION='P4b browser recovery Gate not passing'
+          fi
+          export STATE DESCRIPTION
+          python3 - <<'PY' > /tmp/p4b-browser-status.json
+          import os, json
+          print(json.dumps({
+            'context': 'p4b/browser-recovery',
+            'state': os.environ['STATE'],
+            'description': os.environ['DESCRIPTION'],
+            'target_url': 'https://github.com/' + os.environ['REPOSITORY'] +
+                          '/actions/runs/' + os.environ['RUN_ID']
+          }))
+          PY
+          curl --fail --silent --show-error --retry 2 -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/p4b-browser-status.json \
+            "https://api.github.com/repos/${REPOSITORY}/statuses/${SHA}" >/dev/null
