@@ -227,6 +227,16 @@ async function start(): Promise<void> {
       window.location.replace('/')
       return
     }
+    if (new URLSearchParams(window.location.search).get('s2-recovery') === 'manage') {
+      if (boot.mode !== 'isolated' ||
+          !(import.meta.env.DEV ||
+            import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true')) {
+        throw new Error('S2 高级恢复尚未在此部署启用。')
+      }
+      const { renderS2RecoveryUI } = await import('./sync/v2-recovery-ui')
+      await renderS2RecoveryUI(root, boot)
+      return
+    }
     if (
       boot.mode === 'isolated' &&
       new URLSearchParams(window.location.search).get('s1-account') === 'manage'
