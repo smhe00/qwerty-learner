@@ -13,7 +13,7 @@ const active = new Map()
 const created = new Set()
 const TABLES = ['achievementEvents', 'achievementStates', 'chapterRecords',
   'reviewRecords', 'reviewWordStates', 'wordRecords']
-const EXPECTED_CAPABILITY = 'p4b-temporary-named-write-test-20261011'
+const EXPECTED_CAPABILITY = 'p4b-temporary-named-v4-debug-20261011'
 let firstError = null
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 const sha256 = buf => crypto.createHash('sha256').update(buf).digest('hex')
@@ -26,10 +26,12 @@ const stable = value => {
 }
 function assertStatus(response, code, context) {
   assert.equal(response.status, code, context + ' returned HTTP ' + response.status +
-    ', error code ' + String(response.json?.error || '(none)'))
+    ', error code ' + String(response.json?.error || '(none)') +
+    ', server diagnostic ' + String(response.json?.debugType || '(none)') +
+    ': ' + String(response.json?.debugMessage || '(none)'))
 }
 async function api(path, { method = 'GET', user = null, token = null, body } = {}) {
-  const headers = { Accept: 'application/json' }
+  const headers = { Accept: 'application/json', 'X-P4b-Debug': '1' }
   const authorization = token || (user && active.get(user)?.token)
   if (authorization) headers.Authorization = 'Bearer ' + authorization
   if (body !== undefined) headers['Content-Type'] = 'application/json'
