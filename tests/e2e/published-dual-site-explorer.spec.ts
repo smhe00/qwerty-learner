@@ -156,7 +156,15 @@ for (const site of sites) {
       // expected here, but the SPA route must remain canonical.
       checkRoute(page, site)
 
-      await page.goto(site.base + 'analysis?from=learn', { waitUntil: 'domcontentloaded' })
+      // Exercise the actual user path: mode switch followed by the Statistics
+      // control. A direct HTTP GET to /analysis?from=learn is a separate
+      // deep-link/rewrite check; EdgeOne may serve '/' for that URL even when
+      // client-side React Router navigation works correctly.
+      await page.goto(site.base, { waitUntil: 'domcontentloaded' })
+      await page.getByRole('button', { name: 'Learn', exact: true }).click()
+      await expect(page).toHaveURL(/\/learn\/?$/, { timeout: 25_000 })
+      await page.getByRole('button', { name: '查看数据统计' }).click()
+      await expect(page).toHaveURL(/\/analysis\?from=learn$/, { timeout: 25_000 })
       try {
         await expect(page.locator('[data-fsrs-shadow-analysis]')).toBeVisible({ timeout: 25_000 })
       } catch (error) {
