@@ -113,6 +113,23 @@ function makeService(env, storage) {
   })
 }
 
+// Production S2 migration/write isolation. Only immutable account IDs from
+// server-side EdgeOne environment configuration are eligible to write V4.
+// Deliberately fail closed when omitted, blank, or wildcard-configured.
+async function requireS2WriteAccount(service, request, env) {
+  const token = bearer(request)
+  const { user } = await service.me(token)
+  const raw = env.S2_SYNC_WRITE_ACCOUNT_IDS
+  const allowed = typeof raw === 'string'
+    ? raw.split(',').map(value => value.trim()).filter(Boolean)
+    : []
+  if (!allowed.length || allowed.includes('*') || !allowed.includes(user.userId)) {
+    throw new AppError(403, 's2_write_not_enabled',
+      'Sync V2 writes are restricted to explicitly authorized test accounts')
+  }
+  return token
+}
+
 async function enforceAuthRateLimit(context, storage, env, cors) {
   const clientIp =
     typeof context.clientIp === 'string' ? context.clientIp.trim() : ''
@@ -271,12 +288,12 @@ export async function onRequest(context) {
 
     if (request.method === 'PUT' && path === '/sync/v2/recovery') {
       const body = await readJson(request, bodyLimit)
-      return json({ ok: true, ...(await service.putSyncV4Recovery(bearer(request), body)) }, 200, cors)
+      return json({ ok: true, ...(await service.putSyncV4Recovery(await requireS2WriteAccount(service, request, env), body)) }, 200, cors)
     }
 
     if (request.method === 'PUT' && path === '/sync/v2') {
       const body = await readJson(request, bodyLimit)
-      return json({ ok: true, ...(await service.putSyncV4(bearer(request), body)) }, 200, cors)
+      return json({ ok: true, ...(await service.putSyncV4(await requireS2WriteAccount(service, request, env), body)) }, 200, cors)
     }
 
     if (request.method === 'GET' && path === '/sync/v2/meta') {
