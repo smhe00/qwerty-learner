@@ -1,6 +1,6 @@
 /* eslint-env node */
 import assert from 'node:assert/strict'
-import { test, after } from 'node:test'
+import { after, test } from 'node:test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
