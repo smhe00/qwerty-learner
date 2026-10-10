@@ -696,3 +696,70 @@ test('V4 server refuses identity forgery, checksum mismatch and implicit V3 migr
   }), error => error?.code === 'invalid_v4_workspace')
   assert.equal((await service.syncMeta(reg.token)).revision, 1)
 })
+
+test('S2 three-device stale CAS simulation chooses one immutable V4 winner per revision', async () => {
+  const { createHash } = await import('node:crypto')
+  const storage = new MemoryStorage()
+  const service = createBackendService({ storage, snapshotRetention: 3 })
+  const user = await service.register('s2_three_device', 'strong-password-test', 'device-1')
+  const owner = user.user.userId
+  const TABLES = [
+    'achievementEvents','achievementStates','chapterRecords',
+    'reviewRecords','reviewWordStates','wordRecords',
+  ]
+  const stable = value => {
+    if (value === null || typeof value !== 'object') return JSON.stringify(value)
+    if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`
+    return `{${Object.keys(value).sort()
+      .map(key => `${JSON.stringify(key)}:${stable(value[key])}`).join(',')}}`
+  }
+  function upload(label, baseRevision) {
+    const database = {
+      formatName: 'dexie', formatVersion: 1,
+      data: { databaseName: 'RecordDB', databaseVersion: 6,
+        tables: TABLES.map(name => ({ name, schema: '++id' })),
+        data: [{ tableName: 'wordRecords', inbound: true,
+          rows: [{ id: 1, word: label }] }],
+      },
+    }
+    const logical = {
+      database: { tables: database.data.tables, data: database.data.data },
+      learnRuntime: { dailySessions: {} },
+      navigation: { currentDict: 'zhongkahexin', currentChapter: 0 },
+      settings: { version: 1, values: {} },
+    }
+    const payload = {
+      backupFormatVersion: 'qwerty-backup-v4',
+      metadata: { createdAt: '2026-10-10', source: { kind: 'account', accountId: owner } },
+      workspaceData: { database, learnRuntime: logical.learnRuntime,
+        navigation: logical.navigation, settings: logical.settings },
+    }
+    return {
+      baseRevision,
+      payloadBase64: gzipPayload(payload),
+      clientFormatVersion: 'qwerty-backup-v4',
+      logicalFingerprint: createHash('sha256').update(stable(logical)).digest('hex'),
+      deviceId: label,
+    }
+  }
+  for (let baseRevision = 0; baseRevision < 2; baseRevision++) {
+    const calls = ['device-A','device-B','device-C']
+      .map(label => service.putSyncV4(user.token, upload(label, baseRevision)))
+    const results = await Promise.allSettled(calls)
+    const passed = results.filter(x => x.status === 'fulfilled')
+    const rejected = results.filter(x => x.status === 'rejected')
+    assert.equal(passed.length, 1)
+    assert.equal(rejected.length, 2)
+    assert.ok(rejected.every(x => x.reason.code === 'sync_conflict'))
+    const cloud = await service.getSync(user.token)
+    assert.equal(cloud.revision, baseRevision + 1)
+    assert.equal(cloud.logicalFingerprint, passed[0].value.logicalFingerprint)
+    assert.equal(cloud.payloadSha256, passed[0].value.payloadSha256)
+    assert.equal(storage.revisionVersions(owner).length, baseRevision + 1)
+  }
+  await assert.rejects(service.putSync(user.token, {
+    baseRevision: 2, payloadBase64: gzipPayload({ old: true }),
+    clientFormatVersion: 'qwerty-backup-v3',
+  }), error => error?.code === 'sync_upgrade_required')
+  assert.equal((await service.syncMeta(user.token)).revision, 2)
+})
