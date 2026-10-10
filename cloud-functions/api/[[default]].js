@@ -2,6 +2,7 @@
 import { getStore } from '@edgeone/pages-blob'
 import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
 import { AppError, createBackendService } from '../_shared/core.js'
+import { isS2WriteAllowed } from '../_shared/s2-write-gate.js'
 import { createEdgeOneBlobStorage } from '../_shared/storage/edgeone-blob.js'
 
 const TRUSTED_FRONTEND_ORIGINS = [
@@ -119,11 +120,7 @@ function makeService(env, storage) {
 async function requireS2WriteAccount(service, request, env) {
   const token = bearer(request)
   const { user } = await service.me(token)
-  const raw = env.S2_SYNC_WRITE_ACCOUNT_IDS
-  const allowed = typeof raw === 'string'
-    ? raw.split(',').map(value => value.trim()).filter(Boolean)
-    : []
-  if (!allowed.length || allowed.includes('*') || !allowed.includes(user.userId)) {
+  if (!isS2WriteAllowed(env.S2_SYNC_WRITE_ACCOUNT_IDS, user.userId)) {
     throw new AppError(403, 's2_write_not_enabled',
       'Sync V2 writes are restricted to explicitly authorized test accounts')
   }
