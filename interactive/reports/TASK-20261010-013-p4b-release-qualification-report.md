@@ -259,3 +259,34 @@ the workflow has an independent successful run.
 one authenticated session. They exercise actual Blob CAS, not multiple
 independent logged-in browser sessions; browser-based multi-device/Pull
 journal and physical rollback are separately tracked release gates.
+
+
+## Final Maker strict gate restoration — PASS
+
+Final production `master` commit `bcc94f7a559666f6ce8e359682d82ca506364620`
+restored the original accountId-only `S2_SYNC_WRITE_ACCOUNT_IDS`
+authorization, with **no test13/test24 special case and no diagnostic response**.
+The cleanup candidate Cloud Sync Gate was successful
+([38085354715](https://github.com/smhe00/qwerty-learner/actions/runs/38085354715)).
+
+An independent runner waited for the actual production Maker HTTP health
+capability to drop both temporary markers and then registered *a new* `test13`
+on the live service:
+- [Final strict production run #38085477624](https://github.com/smhe00/qwerty-learner/actions/runs/38085477624):
+  **SUCCESS**; old Maker test capability absent;
+- Both ordinary V2 and V2 recovery PUT returned **403**
+  `s2_write_not_enabled` to the new `test13`, leaving revision at 0;
+- The newly created final-verification `test13` account was explicitly
+  deleted successfully.
+- Prior named protocol run #38085108313, including its independent rerun,
+  showed both `test13` and `test24` deleted successfully after each run.
+
+**Outcome:** Real Maker/Blob protocol baseline and restored strict server
+write gate verified. 2 complete named-account protocol PASS iterations,
+1 prior anomalous transient HTTP 500 that remains recorded for reliability
+analysis. No test accounts from this effort intentionally remain.
+
+**Remaining P4b hardening:** full browser-driven independent device
+end-to-end replay/journal on actual Maker, user-facing V3 migration consent,
+and controlled Maker rollback with preserved V4 write protection; do not
+silently treat pure API CAS tests as those browser/rollback tests.
