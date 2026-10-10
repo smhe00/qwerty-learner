@@ -284,13 +284,15 @@ export async function onRequest(context) {
     }
 
     if (request.method === 'PUT' && path === '/sync/v2/recovery') {
+      const token = await requireS2WriteAccount(service, request, env)
       const body = await readJson(request, bodyLimit)
-      return json({ ok: true, ...(await service.putSyncV4Recovery(await requireS2WriteAccount(service, request, env), body)) }, 200, cors)
+      return json({ ok: true, ...(await service.putSyncV4Recovery(token, body)) }, 200, cors)
     }
 
     if (request.method === 'PUT' && path === '/sync/v2') {
+      const token = await requireS2WriteAccount(service, request, env)
       const body = await readJson(request, bodyLimit)
-      return json({ ok: true, ...(await service.putSyncV4(await requireS2WriteAccount(service, request, env), body)) }, 200, cors)
+      return json({ ok: true, ...(await service.putSyncV4(token, body)) }, 200, cors)
     }
 
     if (request.method === 'GET' && path === '/sync/v2/meta') {
