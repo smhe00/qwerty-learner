@@ -78,7 +78,7 @@ class SharedMockCloud {
 async function makeDevice(
   browser: Browser, cloud: SharedMockCloud, label: string, seeded: boolean,
 ) {
-  const context = await browser.newContext({ acceptDownloads: true })
+  const context = await browser.newContext({ acceptDownloads: true, baseURL: 'http://127.0.0.1:4178' })
   await cloud.connect(context)
   const page = await context.newPage()
   await page.goto('/tests/e2e/backup-harness.html')
