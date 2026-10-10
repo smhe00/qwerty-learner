@@ -1,6 +1,5 @@
-// A 10.7 KB QR is critical UI: avoid a second cold-cache HTTP request on modal open.
-// Vite ?inline embeds it as a data URL even though it exceeds the 4 KB default.
-import appreciationQr from '@/assets/appreciation.webp?inline'
+// Bundled as a data URL (see Vite assetsInlineLimit and the cold-cache E2E gate).
+import appreciationQr from '@/assets/appreciation.webp'
 
 export type AmountType = -1 | 6 | 12 | 36 | 50 | 66
 

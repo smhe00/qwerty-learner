@@ -35,6 +35,10 @@ export default defineConfig(async ({ mode }) => {
       }),
     ],
     build: {
+      // The 10.7 KB donation QR must be embedded in the entry bundle; a
+      // separate image request after opening the dialog stalls on Ctrl+F5.
+      // The published cold-cache browser test guards against regression.
+      assetsInlineLimit: 12 * 1024,
       minify: true,
       outDir: 'build',
       sourcemap: false,
