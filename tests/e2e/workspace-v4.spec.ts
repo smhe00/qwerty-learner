@@ -225,3 +225,51 @@ test('Web Locks refuses a second writing tab until first lease is released', asy
   })).toBe('acquired')
   await sibling.close()
 })
+
+
+test('real Dexie telemetry containing special JS values exports V4 without losing metrics', async ({ page }) => {
+  await ready(page)
+  const observed = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    const initial = await h.db.wordRecords.where('word').equals('backup-fsrs-word').first()
+    if (!initial?.id) throw Error('Fixture wordRecord missing')
+    await h.db.wordRecords.update(initial.id, {
+      typingTelemetry: {
+        telemetryVersion: 2,
+        firstKeyLatencyMs: NaN,
+        attempts: [
+          {
+            startLatencyMs: Infinity,
+            durationMs: 233,
+            correctPrefixLength: 0,
+            result: 'wrong',
+            wrongIndex: undefined,
+            interKeyIntervalsMs: [32, NaN],
+          },
+        ],
+      },
+    })
+    const snapshot = await h.captureWorkingWorkspaceV4({
+      kind: 'account', accountId: 'telemetry-regression-account',
+    })
+    const exported = snapshot.workspaceData.database.data.data
+      .find((item: any) => item.tableName === 'wordRecords')
+      .rows.find((row: any) => row.id === initial.id)
+    return {
+      format: snapshot.backupFormatVersion,
+      rawTags: Object.values(exported.$types || {}).sort(),
+      serializedLatency: exported.typingTelemetry.firstKeyLatencyMs,
+      serializedDuration: exported.typingTelemetry.attempts[0].durationMs,
+      originalUnchanged: (
+        await h.db.wordRecords.toCollection().raw().toArray()
+      ).find((row: any) => row.id === initial.id)?.typingTelemetry?.attempts?.[0]?.durationMs,
+    }
+  })
+  expect(observed.format).toBe('qwerty-backup-v4')
+  expect(observed.serializedDuration).toBe(233)
+  expect(observed.originalUnchanged).toBe(233)
+  // Type metadata must be preserved in the actual exported V4 payload,
+  // even though the auditor compares it with JSON-normalized source rows.
+  expect(observed.rawTags).toContain('nan')
+})
