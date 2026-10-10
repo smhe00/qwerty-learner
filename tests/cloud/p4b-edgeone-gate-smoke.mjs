@@ -1,5 +1,5 @@
 /* eslint-env node */
-// P4b production smoke: disposable account only. No Blob admin credentials.
+// P4b production smoke: disposable accounts only. No Blob admin credentials.
 // This proves the deployed API fails closed for an unlisted account, without
 // modifying any existing account. Explicit cleanup is mandatory.
 import assert from 'node:assert/strict'
@@ -12,8 +12,12 @@ const base = new URL(origin)
 const username = 'p4b_gate_' + Date.now().toString(36) +
   crypto.randomBytes(4).toString('hex')
 const password = crypto.randomBytes(18).toString('base64url')
+const secondUsername = username.replace('p4b_gate_', 'p4b_other_')
+const secondPassword = crypto.randomBytes(18).toString('base64url')
 let token
+let secondToken
 let created = false
+let createdSecond = false
 let failure
 
 async function api(path, method = 'GET', body, auth = token) {
@@ -46,11 +50,13 @@ try {
   const registered = await api('/api/auth/register', 'POST', {
     username, password, deviceId: 'p4b-isolated-ci',
   }, '')
+  if (registered.status === 201 && registered.value?.token) {
+    token = registered.value.token
+    created = true
+  }
   expectCode(registered, 201, null, 'disposable register')
   assert.ok(registered.value?.user?.userId, 'disposable immutable userId')
   assert.ok(registered.value?.token, 'disposable token')
-  token = registered.value.token
-  created = true
 
   const before = await api('/api/sync/v2/meta')
   assert.equal(before.status, 200, 'read V2 meta before gate test')
@@ -88,9 +94,47 @@ try {
   const finalMeta = await api('/api/sync/v2/meta')
   assert.equal(finalMeta.value?.revision, 1)
   console.log('P4b V1 data protected from unlisted V2 write: PASS')
+
+  // Independently registered account must not observe the first account's
+  // V1 snapshot or inherit its authorization; no existing user is accessed.
+  const registeredSecond = await api('/api/auth/register', 'POST', {
+    username: secondUsername, password: secondPassword,
+    deviceId: 'p4b-isolated-ci-second',
+  }, '')
+  if (registeredSecond.status === 201 && registeredSecond.value?.token) {
+    secondToken = registeredSecond.value.token
+    createdSecond = true
+  }
+  expectCode(registeredSecond, 201, null, 'second disposable register')
+  assert.ok(registeredSecond.value?.user?.userId)
+  assert.notEqual(registeredSecond.value.user.userId,
+    registered.value.user.userId, 'disposable accounts share identity')
+  const secondMeta = await api('/api/sync/v2/meta', 'GET', undefined, secondToken)
+  assert.equal(secondMeta.status, 200)
+  assert.equal(secondMeta.value?.revision, 0,
+    'cross-account leak: second account can see first revision')
+  const secondBlocked = await api('/api/sync/v2', 'PUT', '{not-json',
+    secondToken)
+  expectCode(secondBlocked, 403, 's2_write_not_enabled',
+    'second account V2 write')
+  const firstStillIntact = await api('/api/sync/meta')
+  assert.equal(firstStillIntact.value?.revision, 1)
+  console.log('P4b independent second account segregation: PASS')
 } catch (error) {
   failure = error
 } finally {
+  if (createdSecond && secondToken) {
+    try {
+      const removedSecond = await api('/api/auth/account', 'DELETE',
+        { currentPassword: secondPassword }, secondToken)
+      assert.equal(removedSecond.status, 200, 'second disposable cleanup')
+      assert.equal(removedSecond.value?.deleted?.accountDeleted, true)
+      console.log('P4b second disposable account cleanup: PASS')
+    } catch (error) {
+      console.error('P4b second isolated account cleanup FAILED:', error.message)
+      failure = failure || error
+    }
+  }
   if (created && token) {
     try {
       const removed = await api('/api/auth/account', 'DELETE',
