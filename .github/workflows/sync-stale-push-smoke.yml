@@ -30,6 +30,23 @@ jobs:
             https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar \
             --output /tmp/tla2tools.jar
           echo "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88  /tmp/tla2tools.jar" | sha256sum --check
+      - name: Diagnose reachable two-device stale base
+        run: |
+          set +e
+          timeout 75s java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -config formal/sync/CloudSyncV2.stale-reachability.cfg \
+            formal/sync/CloudSyncV2.tla > /tmp/stale-candidate.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/stale-candidate.log
+          if [ "$status" -eq 124 ]; then
+            echo 'Stale candidate reachability timed out'
+            exit 1
+          fi
+          if ! grep -q 'Invariant StaleRemoteClientAbsent is violated' /tmp/stale-candidate.log; then
+            echo 'No two-device stale revision was reachable: inspect model guards'
+            exit 1
+          fi
       - name: Require actual stale-push invariant counterexample
         run: |
           set +e
