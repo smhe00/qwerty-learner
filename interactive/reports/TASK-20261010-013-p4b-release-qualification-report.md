@@ -290,3 +290,63 @@ analysis. No test accounts from this effort intentionally remain.
 end-to-end replay/journal on actual Maker, user-facing V3 migration consent,
 and controlled Maker rollback with preserved V4 write protection; do not
 silently treat pure API CAS tests as those browser/rollback tests.
+
+
+## 2026-10-11 FINAL P4b production rollback and browser acceptance evidence
+
+### Independent Chromium release Gate — PASS
+
+- [Playwright recovery Gate #38085865247](https://github.com/smhe00/qwerty-learner/actions/runs/38085865247):
+  **13/13 Chromium tests PASS** with three independent BrowserContexts,
+  CAS conflicts and preservation of local records, credential expiry,
+  precommit outage, ambiguous postcommit response, real browser reload and
+  pre-mount Pull journal replay, V3 dual-backup explicit migration consent,
+  stale-cloud rejection and recovery direction.
+- First GitHub Actions execution failed before tests due to Ubuntu 24.04
+  `libasound2` incompatibility in pinned Playwright; switched CI runner to
+  Ubuntu 22.04 without modifying or weakening assertions.
+- This is true Chromium against local Vite and simulated CAS service,
+  **not** a Maker-backed end-to-end browser V4 writer test.
+
+### Maker production browser smoke — PASS
+
+- [Maker real Chromium #38086365378](https://github.com/smhe00/qwerty-learner/actions/runs/38086365378):
+  **PASS**; two independent Chromium browser contexts access the deployed
+  site and confirm production S2 Sync and Recovery experimental URLs
+  fail closed before normal application writers run.
+- Browser smoke is read-only and does not prove user-facing V4 Sync
+  activation. This protection is intentional until rollout.
+
+### Actual Maker V4 data-preserving rollback — PASS
+
+- [Live rollback #38086096338](https://github.com/smhe00/qwerty-learner/actions/runs/38086096338):
+  **PASS**, real EdgeOne Blob and two Maker deployments.
+- Under a temporary new-`test13`-only backend allowance, wrote V4 snapshot
+  to revision 1 (immutable owner + SHA evidence). CI emitted
+  `p4b/rollback-seeded = success`.
+- Reverted Maker `master` to
+  `7818e2a51bafce48a7c8e6996fd451847f59b4cc`
+  (Cloud Sync Gate [38086180015](https://github.com/smhe00/qwerty-learner/actions/runs/38086180015) PASS).
+  Once strict backend was live, the **same** V4 revision 1 persisted;
+  compressed Blob SHA-256 and logicalFingerprint matched the seed;
+  actual downloaded JSON contained the original owner and learning row.
+- Legacy V1 PUT to migrated V4 returned HTTP 409
+  `sync_upgrade_required`. V2 unauthorised PUT returned HTTP 403
+  `s2_write_not_enabled`. Remote revision stayed 1.
+- The workflow deleted its own fresh `test13` cloud account successfully.
+  CI emitted `p4b/rollback-complete = success`.
+- No temporary username exception remains in current production source;
+  the Maker strict version is `7818e2a`.
+
+### Acceptance distinction
+
+**P4b backend protocol, browser-side isolated simulation, and actual
+data-preserving Maker rollback Gates now have successful independent evidence.**
+Prior transient HTTP 500 remains recorded as a reliability follow-up;
+subsequent API suites and data-preserving rollback were successful.
+
+**Production S2 user-facing features remain guarded/off.** A true Maker
+browser journey with the production S2 UI enabled, on multiple signed-in
+devices with their own durable IDB and post-crash recovery, has not been
+executed. Separate activation/rollout testing must precede general availability.
+Do not conflate completed P4b protocol qualification with general user launch.
