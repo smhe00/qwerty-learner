@@ -215,7 +215,9 @@ async function start(): Promise<void> {
               : status === 'conflict'
                 ? '同步冲突：本地和云端均有变化，未覆盖任何一方。'
                 : '同步被安全拦截：' + result.reason
-        sessionStorage.setItem('qwerty.s2.last-sync-result', note)
+        if (status !== 'pull-reload-required') {
+          sessionStorage.setItem('qwerty.s2.last-sync-result', note)
+        }
       } catch (error) {
         // If a Pull was staged, the next boot MUST first replay its journal.
         sessionStorage.setItem('qwerty.s2.last-sync-result',

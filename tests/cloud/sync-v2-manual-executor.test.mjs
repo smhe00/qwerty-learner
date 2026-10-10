@@ -159,11 +159,19 @@ test('S2 pulls only after verified bytes, rechecked meta and saved local source'
   f.state.cloud = (await cloud(snap(9))).snapshot
   const result = await executeManualSyncV2(f.port)
   assert.deepEqual(result, { status: 'pull-reload-required', revision: 1 })
+  assert.equal(f.state.baseline, null, 'baseline only advances after next boot recovery')
+  assert.equal(f.state.restored, null, 'never restore in mounted/current JS realm')
+  assert.equal(f.state.pending.revision, 1)
+  const before = f.state.calls.filter(x =>
+    ['download','save-source','stage','restore','seal','finalize'].includes(x))
+  assert.deepEqual(before, ['download','save-source','stage'])
+  // Model the next guarded boot's idempotent journal replay.
+  const pending = await f.port.journal.read()
+  await f.port.replica.restore(pending.snapshot, pending.accountId)
+  await f.port.replica.seal()
+  await f.port.journal.finalize(pending)
   assert.equal(f.state.baseline.baseRevision, 1)
   assert.equal(f.state.restored.workspaceData.navigation.currentChapter, 9)
-  const stages = f.state.calls.filter(x =>
-    ['download','save-source','stage','restore','seal','finalize'].includes(x))
-  assert.deepEqual(stages, ['download','save-source','stage','restore','seal','finalize'])
 })
 
 test('S2 cloud revision advancing during Pull refuses restore before journaling', async () => {

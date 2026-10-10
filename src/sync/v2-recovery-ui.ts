@@ -16,12 +16,8 @@ import {
   verifyPinnedCloudArchive,
 } from './v2-recovery-archive'
 import { syncV2PullJournalPort } from './v2-pull-journal'
-import { executeSyncV2Pull } from './v2-pull-transaction'
-import { assertWorkspaceMigrationWitness, refreshWorkspaceMigrationWitness } from './workspace-storage-witness'
-import {
-  captureWorkingWorkspaceV4,
-  restoreWorkingWorkspaceV4,
-} from './workspace-v4-browser'
+import { assertWorkspaceMigrationWitness } from './workspace-storage-witness'
+import { captureWorkingWorkspaceV4 } from './workspace-v4-browser'
 import { assertRestorableWorkspaceV4, workspaceFingerprintV4 } from './workspace-v4'
 import { saveWorkspaceToVault, workspaceRegistryPort } from './workspace-vault'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
@@ -302,20 +298,18 @@ export async function renderS2RecoveryUI(
         // Only after stage can a full RecordDB restore begin.
         await saveWorkspaceToVault({ kind: 'account', accountId }, local)
         await verifyIdentity()
+        // DO NOT restore under the already-installed S1 localStorage
+        // guard in this JS realm. Stage only. The NEXT guarded boot (fresh
+        // realm, same S1 Web Lock contract) replays the target before React
+        // hydration and only then reports completion.
         startedPull = true
-        await executeSyncV2Pull(syncV2PullJournalPort, {
-          restore: (snapshot, id) =>
-            restoreWorkingWorkspaceV4(snapshot, { kind: 'account', accountId: id }),
-          seal: async () => { refreshWorkspaceMigrationWitness() },
-        }, {
+        await syncV2PullJournalPort.stage({
           version: 1, accountId, registryGeneration: boot.registry.generation,
           revision: targetRevision, fingerprint: targetHash,
           oldBaseline, snapshot: target,
         })
-        sessionStorage.setItem('qwerty.s2.last-sync-result',
-          '已按确认保留云端学习记录，并恢复到本机。')
       }
-      status.textContent = '已完成事务；正在以新页面重新校验工作区…'
+      status.textContent = '恢复日志已提交；正在重新启动并执行安全恢复…'
       window.location.replace('/')
     })().catch(error => {
       status.textContent = '已停止覆盖：' +

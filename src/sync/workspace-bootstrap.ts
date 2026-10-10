@@ -147,6 +147,10 @@ export async function prepareGuardedWorkspaceBoot(
       report(onStage, 'recovering')
       const { recoverPendingSyncV2Pull } = await import('./v2-pull-recovery')
       await recoverPendingSyncV2Pull()
+      // Success acknowledgement is emitted only after full durable replay,
+      // witness reseal and atomic baseline finalization, never at staging.
+      sessionStorage.setItem('qwerty.s2.last-sync-result',
+        '已完成云端学习数据安全恢复。')
       recovered = true
       throw new Error('S2 Pull recovery completed; reload required before mounting app')
     }

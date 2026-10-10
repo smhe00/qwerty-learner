@@ -15,8 +15,7 @@ import { preflightManualSyncV2 } from './v2-preflight'
 import { verifyDownloadedWorkspaceV4 } from './v2-verify-remote'
 import { assertRestorableWorkspaceV4, workspaceFingerprintV4 } from './workspace-v4'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
-import { executeSyncV2Pull } from './v2-pull-transaction'
-import type { PullJournalPort, PullReplicaPort } from './v2-pull-transaction'
+import type { PullJournalPort } from './v2-pull-transaction'
 import type { SyncV2Baseline } from './v2-policy'
 import type { RemoteSnapshot, RemoteSyncMeta } from './types'
 
@@ -46,7 +45,6 @@ export type SyncV2ExecutionPort = {
   /** Preserve pre-pull unsynced local state in isolated Vault before restore. */
   saveSource(snapshot: WorkspaceSnapshotV4): Promise<void>
   journal: PullJournalPort
-  replica: PullReplicaPort
 }
 
 function base(accountId: string, revision: number, hash: string): SyncV2Baseline {
@@ -154,12 +152,14 @@ export async function executeManualSyncV2(port: SyncV2ExecutionPort): Promise<S2
   // entering the non-atomic RecordDB restore windows.
   await port.saveSource(local)
   await port.assertQuiescentOwner()
-  await executeSyncV2Pull(port.journal, port.replica, {
+  // Stage under the S1 owner lease, then force navigation. The existing S1
+  // bootstrap will replay the durable snapshot BEFORE installing the
+  // storage-writer guard and mounting any React/RecordDB writer.
+  await port.journal.stage({
     version: 1, accountId: port.accountId,
     registryGeneration: port.registryGeneration,
     revision: cloud.revision,
-    fingerprint: preflight.decision.remoteRevision === null
-      ? '' : cloud.logicalFingerprint!,
+    fingerprint: cloud.logicalFingerprint!,
     oldBaseline: baseline, snapshot: verified,
   })
   return { status: 'pull-reload-required', revision: cloud.revision }
