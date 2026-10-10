@@ -135,7 +135,9 @@ test('development Sync route leaves mounted app, executes CAS and returns with f
     timeout: 25_000,
   })
   expect(uploads).toBe(1)
+  // Qwerty's legacy React router can redirect '/' to '/learn/?/...'.
+  // Only the S2 one-shot query must disappear; preserve existing routing.
   await expect.poll(() => page.evaluate(() =>
-    window.location.pathname === '/' && window.location.search === '',
+    !window.location.href.includes('s2-sync=run'),
   )).toBe(true)
 })
