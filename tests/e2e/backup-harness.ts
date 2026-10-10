@@ -7,6 +7,8 @@ import { captureWorkingWorkspaceV4, resetWorkingWorkspaceToEmpty, restoreWorking
 import { createWorkspaceV4, workspaceFingerprintV4 } from '../../src/sync/workspace-v4'
 import { loadSyncV2Baseline, compareAndSwapSyncV2Baseline } from '../../src/sync/v2-baseline'
 import { syncV2PullJournalPort } from '../../src/sync/v2-pull-journal'
+import { manualV4ImportJournalPort } from '../../src/sync/manual-v4-import-journal'
+import { preparePortableV4Import, rebindPortableV4Import } from '../../src/sync/manual-v4-import-plan'
 import { executePreMountManualSyncV2 } from '../../src/sync/v2-browser-executor'
 import { loadWorkspaceFromVault, saveWorkspaceToVault, workspaceRegistryPort, openWorkspaceVault } from '../../src/sync/workspace-vault'
 import { switchWorkspace, recoverWorkspace, ANONYMOUS } from '../../src/sync/workspace-transition'
@@ -314,6 +316,9 @@ async function inspectTableContract() {
   loadSyncV2Baseline,
   compareAndSwapSyncV2Baseline,
   syncV2PullJournalPort,
+  manualV4ImportJournalPort,
+  preparePortableV4Import,
+  rebindPortableV4Import,
   executePreMountManualSyncV2,
   loadWorkspaceFromVault,
   saveWorkspaceToVault,
