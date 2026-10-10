@@ -117,8 +117,13 @@ async function runSeed(
   try {
     await app.enter()
     if (scenario === 'stale-after-progress') {
-      // Capture the old checkpoint, then make durable forward progress before
-      // exiting. This fixture is necessary to *activate* staleRestoreOnce.
+      // First force an actual durable write in the same session. A checkpoint
+      // captured before any save has no historical identity and cannot be
+      // distinguished from legitimate queue rewriting by the event oracle.
+      // Then save an older *persisted* version and progress beyond it.
+      if (!app.completeCurrentClean()) {
+        throw new Error('coverage fixture could not persist initial checkpoint')
+      }
       app.seedStaleCheckpointFromActive()
       const snapshot = app.snapshot()
       const initial = snapshot.sessions.find(x => x.id === snapshot.activeSessionId)
