@@ -88,7 +88,7 @@ PartialRestore(d) ==
   /\ client[d].up
   /\ client[d].journal
   /\ client[d].local # client[d].stageRev
-  /\ client' = [client EXCEPT ![d].local = @.stageRev]
+  /\ client' = [client EXCEPT ![d].local = client[d].stageRev]
   /\ UNCHANGED <<cloud, writeSafe>>
 
 ReplayAndAtomicBaseline(d) ==
@@ -96,8 +96,8 @@ ReplayAndAtomicBaseline(d) ==
   /\ client[d].journal
   /\ client[d].owner = client[d].stageOwner
   /\ client' = [client EXCEPT
-       ![d].local = @.stageRev,
-       ![d].base = @.stageRev,
+       ![d].local = client[d].stageRev,
+       ![d].base = client[d].stageRev,
        ![d].journal = FALSE,
        ![d].stageOwner = NoOwner,
        ![d].stageRev = 0,
