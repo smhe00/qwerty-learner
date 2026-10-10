@@ -1,0 +1,66 @@
+name: Maker V4 Migration Live Readiness
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - '.env.production'
+      - 'src/index.tsx'
+      - 'tests/e2e/maker-v4-live-readiness.mjs'
+      - '.github/workflows/maker-v4-live-readiness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  live-readonly-check:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Install
+        run: yarn install --frozen-lockfile
+      - name: Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify actual Maker has supervised migration route
+        id: readiness
+        run: node tests/e2e/maker-v4-live-readiness.mjs
+      - name: Publish Maker readiness status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RESULT: ${{ steps.readiness.outcome }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ "$RESULT" = success ]; then
+            STATE=success
+            DESCRIPTION='Maker live S1 migration & backup-confirmation route PASS'
+          else
+            STATE=failure
+            DESCRIPTION='Maker live migration route not confirmed'
+          fi
+          export STATE DESCRIPTION
+          python3 - <<'PY' > /tmp/maker-ready-status.json
+          import os, json
+          print(json.dumps({
+            'context': 'maker/v4-live-readiness',
+            'state': os.environ['STATE'],
+            'description': os.environ['DESCRIPTION'],
+            'target_url': 'https://github.com/' + os.environ['REPOSITORY'] +
+                          '/actions/runs/' + os.environ['RUN_ID']
+          }))
+          PY
+          curl --fail --silent --show-error --retry 2 -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/maker-ready-status.json \
+            "https://api.github.com/repos/${REPOSITORY}/statuses/${SHA}" >/dev/null
