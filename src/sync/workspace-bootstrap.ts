@@ -61,8 +61,14 @@ export async function prepareGuardedWorkspaceBoot(
     // An S2 Pull may have partially restored shared settings. Its immutable
     // staged V4 snapshot is the recovery authority before app hydration.
     const { syncV2PullJournalPort } = await import('./v2-pull-journal')
-    const pendingPull = await syncV2PullJournalPort.read()
-    if (pendingPull && before.pending) throw new Error('Conflicting S1 and S2 recovery journals')
+    const { manualV4ImportJournalPort } = await import('./manual-v4-import-journal')
+    const [pendingPull, pendingImport] = await Promise.all([
+      syncV2PullJournalPort.read(), manualV4ImportJournalPort.read(),
+    ])
+    if ((pendingPull && pendingImport) ||
+        (before.pending && (pendingPull || pendingImport))) {
+      throw new Error('Conflicting S1, S2 and manual V4 recovery journals')
+    }
     if (before.generation === 0) {
       // An already-migrated browser must never silently fall back to V1
       // when its isolated IndexedDB registry has been removed or corrupted.
@@ -100,7 +106,9 @@ export async function prepareGuardedWorkspaceBoot(
     // reconciliation and resealing; without such an intent stale V5 changes
     // must be rejected before any credential mutation.
     const hasAuthIntent = localStorage.getItem('qwerty.s1.auth-transition.v1') !== null
-    if (!before.pending && !hasAuthIntent && !pendingPull) assertWorkspaceMigrationWitness()
+    if (!before.pending && !hasAuthIntent && !pendingPull && !pendingImport) {
+      assertWorkspaceMigrationWitness()
+    }
 
     // Recover a previously committed workspace journal before auth
     // reconciliation; the intended target credentials may not yet be active.
@@ -128,9 +136,9 @@ export async function prepareGuardedWorkspaceBoot(
       // This recovery follows a validated durable S1 auth transition intent
       // whose target is already the committed registry owner.
       refreshWorkspaceMigrationWitness()
-    } else if (!pendingPull) {
-      // A staged, verified Pull can change settings before its recovery
-      // baseline has committed. Otherwise enforce stale-V5 writer detection.
+    } else if (!pendingPull && !pendingImport) {
+      // A staged Pull or V4 file restore may change settings before its
+      // journal finalizes. Otherwise enforce stale-V5 writer detection.
       assertWorkspaceMigrationWitness()
     }
     const registry = before
@@ -153,6 +161,13 @@ export async function prepareGuardedWorkspaceBoot(
         '已完成云端学习数据安全恢复。')
       recovered = true
       throw new Error('S2 Pull recovery completed; reload required before mounting app')
+    }
+    if (pendingImport) {
+      report(onStage, 'recovering')
+      const { recoverPendingManualV4Import } = await import('./manual-v4-import-recovery')
+      await recoverPendingManualV4Import()
+      recovered = true
+      throw new Error('Manual V4 import recovery completed; reload required before mounting app')
     }
 
     // Re-check after any awaited reconciliation; fail closed if stale JS
