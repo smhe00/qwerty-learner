@@ -10,6 +10,8 @@ import { gunzipSync } from 'node:zlib'
 
 export const V4_FORMAT = 'qwerty-backup-v4'
 const MAX_INFLATED_BYTES = 32 * 1024 * 1024
+const REQUIRED_TABLES = ['wordRecords','chapterRecords','reviewRecords',
+  'reviewWordStates','achievementEvents','achievementStates']
 const SETTING_KEYS = new Set([
   'memoryConfig', 'loopWordConfig', 'keySoundsConfig', 'hintSoundsConfig',
   'pronunciation', 'phoneticConfig', 'fontsize', 'isOpenDarkModeAtom',
@@ -79,6 +81,17 @@ function assertV4(snapshot, expectedAccountId) {
       !Number.isInteger(data.navigation.currentChapter) ||
       data.navigation.currentChapter < 0) {
     throw Error('Invalid V4 logical workspace structure')
+  }
+  const names = data.database.data.tables.map(x => object(x) ? x.name : undefined)
+  const payloads = data.database.data.data
+  const rowNames = payloads.map(x => object(x) ? x.tableName : undefined)
+  if (names.some(name => typeof name !== 'string') ||
+      new Set(names).size !== names.length ||
+      REQUIRED_TABLES.some(name => !names.includes(name)) ||
+      rowNames.some(name => typeof name !== 'string' || !names.includes(name)) ||
+      new Set(rowNames).size !== rowNames.length ||
+      payloads.some(x => !object(x) || !Array.isArray(x.rows))) {
+    throw Error('V4 full restore lacks complete durable Dexie table manifest')
   }
   for (const key of Object.keys(data.settings.values)) {
     if (!SETTING_KEYS.has(key)) throw Error('Disallowed V4 workspace setting')
