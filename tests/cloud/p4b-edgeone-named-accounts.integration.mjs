@@ -4,7 +4,7 @@
 // Existing usernames will NOT be taken over or deleted.
 import assert from 'node:assert/strict'
 import crypto from 'node:crypto'
-import { gzipSync, gunzipSync } from 'node:zlib'
+import { gunzipSync, gzipSync } from 'node:zlib'
 
 const base = new URL(process.env.QWERTY_SYNC_BASE_URL || 'https://qwerty-plus.edgeone.dev/')
 const NAMES = ['test13', 'test24']
