@@ -92,6 +92,20 @@ async function request<T>(
 
   if (!response.ok) {
     const error = (data || {}) as ApiErrorBody
+    // The currently saved token was superseded by another device. Broadcast
+    // only for the still-current local token: late responses from a previous
+    // login must not force a newer session out of its workspace.
+    if (response.status === 401 && error.error === 'session_revoked' &&
+        token && typeof window !== 'undefined') {
+      try {
+        const saved = JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null')
+        if (saved?.token === token) {
+          window.dispatchEvent(new Event('qwerty:cloud-session-revoked'))
+        }
+      } catch {
+        // A damaged auth record must never authorize an owner transition.
+      }
+    }
     throw new SyncApiError(
       response.status,
       error.error || 'request_failed',
