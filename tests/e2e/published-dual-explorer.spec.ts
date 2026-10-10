@@ -62,7 +62,10 @@ function track(page: Page) {
 function checkUrl(url: string, expectedRoute: 'learn' | 'typing' | 'analysis') {
   const actual = new URL(url)
   expect(actual.origin).toBe(base.origin)
-  expect(actual.pathname).toBe(routePath(expectedRoute))
+  const validPaths = expectedRoute === 'typing' && target === 'edgeone'
+    ? ['/', '/typing']
+    : [routePath(expectedRoute)]
+  expect(validPaths, 'site-specific canonical route').toContain(actual.pathname)
   expect(actual.href).not.toContain('~and~')
   expect(actual.href).not.toContain('?/&/')
 }
@@ -106,12 +109,16 @@ test('dual-site: service boundary, dictionary, analysis and data-settings contra
 
   await page.getByRole('button', { name: '打开设置对话框' }).click()
   await page.getByRole('tab', { name: '数据设置' }).click()
-  await expect(page.getByText('本地备份', { exact: true })).toBeVisible()
   if (target === 'pages') {
+    await expect(page.getByText('本地备份', { exact: true })).toBeVisible()
     await expect(page.getByText('云端同步与账号', { exact: true })).toHaveCount(0)
     await expect(page.getByRole('button', { name: '登录', exact: true })).toHaveCount(0)
   } else {
-    await expect(page.getByText('云端同步与账号', { exact: true })).toBeVisible()
+    // EdgeOne intentionally runs the older master build: its Data tab calls
+    // local backup '数据导出', and the account pane '云端同步'.
+    await expect(page.getByText('数据导出', { exact: true })).toBeVisible()
+    await expect(page.getByText('云端同步', { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible()
   }
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -209,7 +216,9 @@ test('dual-site: seeded route/reload exploration never corrupts SPA URLs', async
       await expect(page.getByRole('button', { name: '打开设置对话框' }))
         .toBeVisible({ timeout: 20_000 })
       const path = new URL(page.url()).pathname
-      expect([routePath('typing'), routePath('learn')]).toContain(path)
+      expect(target === 'edgeone'
+        ? ['/', '/typing', '/learn']
+        : [routePath('typing'), routePath('learn')]).toContain(path)
       expect(page.url()).not.toContain('~and~')
       expect(page.url()).not.toContain('?/&/')
       routeTrail.push({ phase: 'step-' + i, pathname: path })
