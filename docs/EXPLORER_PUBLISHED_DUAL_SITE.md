@@ -25,3 +25,22 @@ All anonymous test cases use clean incognito contexts. The browser traces attach
 - No EdgeOne Maker build, `master` merge, management API, or change to production code.
 
 Run classification: each real-browser test verdict is binding in this new workflow, unlike existing advisory Pages Explorer. Failing cloud cleanup is a separate failure and must not be conflated with a passed Cloud E2E.
+
+## 2026-10-10 published-site evidence and unresolved EdgeOne route
+
+After correcting harness assumptions about the **older EdgeOne master** (`数据导出` instead of Pages `本地备份`; Typing canonical `/` rather than `/typing`) and the intentional **mobile Alpha information-only shell** (no mobile keyboard yet), the expanded dual-site Playwright run recorded:
+
+| Live lane | Published verification result | Evidence |
+| --- | --- | --- |
+| Pages browser Explorer | **6/6 PASS** | https://github.com/smhe00/qwerty-learner/actions/runs/38029472671 |
+| EdgeOne anonymous Explorer | **5/6 PASS**, one published analysis deep-link failure | Same run |
+| EdgeOne disposable 3-client cloud sync | **PASS**, and own test-account cleanup **PASS** | https://github.com/smhe00/qwerty-learner/actions/runs/38028826304 |
+| Earlier independent anonymous dual-site suite | Pages 3/3 PASS; EdgeOne real Learn, two records, IndexedDB and route fuzz PASS; direct analysis route FAILED | https://github.com/smhe00/qwerty-learner/actions/runs/38028951515 |
+
+**Reproducible production-route issue (unresolved):** a fresh anonymous desktop browser navigating directly to `https://qwerty-plus.edgeone.dev/analysis?from=learn` fails to display `[data-fsrs-shadow-analysis]`. An independent browser script recorded that EdgeOne returned to `/` rather than staying on `/analysis`. The Pages equivalent deep link passes. The current master router declares `/analysis` and `edgeone.json` configures `/* -> /index.html`, but the exact mechanism of the published failure has **not** yet been established; investigate EdgeOne rewrite vs. 404 fallback without silently weakening the route assertion.
+
+This is an actual **observed production-web behavior**, not a known intentional route-alias difference and not proof that normal in-app navigation fails. Keep the failing public route test and require a separate authorized `master` release to correct production.
+
+GitHub Issues is disabled in this repository (API HTTP 410), so this section serves as the durable defect tracking record.
+
+The deeper Pages-only virtual-clock exploration remains separate. None of the anonymous experiments writes to cloud accounts, and the disposable cloud lane used unique test credentials with verified cleanup. No EdgeOne Maker deployment or `master` update occurred.
