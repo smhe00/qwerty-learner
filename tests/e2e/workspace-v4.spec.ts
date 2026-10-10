@@ -302,3 +302,61 @@ test('real Dexie telemetry containing special JS values exports V4 without losin
   // even though the auditor compares it with JSON-normalized source rows.
   expect(observed.rawTags).toContain('nan')
 })
+
+
+test('real Dexie reviewPolicyShadow exotic nested values round-trip without data loss', async ({ page }) => {
+  await ready(page)
+  const result = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    const initial = await h.db.wordRecords.where('word').equals('backup-fsrs-word').first()
+    if (!initial?.id) throw Error('Fixture missing')
+    // This representative policy record deliberately includes optional
+    // keys, special JS numbers, nonindex array properties and undefined.
+    // All are synthetic, without user learning content.
+    const shadow = {
+      version: 1, mode: 'shadow', appliesTo: 'next-exercise',
+      condition: {
+        version: 1, purpose: 'probe', source: 'adaptive-policy',
+        audio: 'none', meaning: 'visible', phonetic: 'hidden',
+        letters: { mode: 'partial', visiblePositions: [0, 2, undefined],
+          maskedPositions: [1, 3, NaN] },
+        probeDimension: 'orthography',
+        optionalFeedback: undefined,
+      },
+      decision: {
+        version: 1, policyVersion: 'synthetic-typeson-v4-regression',
+        reasonCodes: ['spelling', undefined, 'learning'],
+        conditionVersion: 1, score: Infinity,
+      },
+    }
+    await h.db.wordRecords.update(initial.id, { reviewPolicyShadow: shadow })
+    const original = (
+      await h.db.wordRecords.toCollection().raw().toArray()
+    ).find((row: any) => row.id === initial.id)?.reviewPolicyShadow
+    const backup = await h.captureWorkingWorkspaceV4({
+      kind: 'account', accountId: 'review-shadow-audit-regression',
+    })
+    const exported = backup.workspaceData.database.data.data
+      .find((group: any) => group.tableName === 'wordRecords')
+      .rows.find((row: any) => row.id === initial.id)
+    const after = (
+      await h.db.wordRecords.toCollection().raw().toArray()
+    ).find((row: any) => row.id === initial.id)?.reviewPolicyShadow
+    return {
+      format: backup.backupFormatVersion,
+      owner: backup.metadata.source.accountId,
+      source: JSON.stringify(original), post: JSON.stringify(after),
+      archiveTypes: exported.$types,
+      originalScore: original.decision.score,
+      archiveScore: exported.reviewPolicyShadow.decision.score,
+    }
+  })
+  expect(result.format).toBe('qwerty-backup-v4')
+  expect(result.owner).toBe('review-shadow-audit-regression')
+  expect(result.source).toBe(result.post)
+  expect(result.originalScore).toBe(Infinity)
+  expect(result.archiveScore).toBe('Infinity')
+  expect(Object.keys(result.archiveTypes)).toContain(
+    'reviewPolicyShadow.decision.score')
+})
