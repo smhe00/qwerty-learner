@@ -35,7 +35,13 @@ function fixture() {
     navigation: { currentDict: 'zhongkaohexin', currentChapter: 0 },
     settings: { version: 1, values: {} },
   }
-  const canonicalJson = JSON.stringify(fingerprintInput)
+  const stable = value => {
+    if (value === null || typeof value !== 'object') return JSON.stringify(value)
+    if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`
+    return `{${Object.keys(value).sort()
+      .map(key => `${JSON.stringify(key)}:${stable(value[key])}`).join(',')}}`
+  }
+  const canonicalJson = stable(fingerprintInput)
   const meta = {
     hasData: true, revision: 4, logicalFingerprint: crypto.createHash('sha256')
       .update(canonicalJson).digest('hex'),
