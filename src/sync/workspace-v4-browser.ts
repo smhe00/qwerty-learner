@@ -43,7 +43,10 @@ export async function captureWorkingWorkspaceV4(
       'wordRecords', 'chapterRecords', 'reviewRecords', 'reviewWordStates',
       'achievementEvents', 'achievementStates',
     ].includes(table.name)).map(async table =>
-      [table.name, await table.toArray()] as const),
+      // Use the raw stored row, not Dexie's mapped WordRecord class.
+      // Mapping constructors may rehydrate computed/default fields that
+      // do not exist in IndexedDB and must not be mistaken for corruption.
+      [table.name, await table.toCollection().raw().toArray()] as const),
   )
   // Count-only comparisons miss same-count substitutions (e.g. a damaged
   // FSRS interval); independently hash full live Dexie rows as well.
