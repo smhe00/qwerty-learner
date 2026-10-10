@@ -127,7 +127,7 @@ async function requireS2WriteAccount(service, request, env) {
   const temporaryTestUser = ['test13', 'test24'].includes(
     typeof user.username === 'string' ? user.username.toLowerCase() : '',
   ) && typeof user.createdAt === 'string' &&
-    Date.parse(user.createdAt) >= Date.parse('2026-10-11T00:00:00Z') &&
+    Date.parse(user.createdAt) >= Date.parse('2026-10-10T00:00:00Z') &&
     Date.now() < Date.parse('2026-10-12T12:00:00Z')
   if (!temporaryTestUser &&
       !isS2WriteAllowed(env.S2_SYNC_WRITE_ACCOUNT_IDS, user.userId)) {
