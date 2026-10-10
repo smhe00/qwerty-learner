@@ -100,7 +100,11 @@ async function makeDevice(
 
 async function sync(page: Page, expected: string) {
   await page.goto('/?s2-sync=run')
-  await expect(page.getByText(expected)).toBeVisible({ timeout: 35_000 })
+  await page.waitForTimeout(2000)
+  console.log('P4b profile Sync status: ' + JSON.stringify({
+    expected, url: page.url(), body: (await page.locator('body').innerText()).slice(0, 900),
+  }))
+  await expect(page.getByText(expected)).toBeVisible({ timeout: 8000 })
 }
 
 async function inspect(page: Page) {
