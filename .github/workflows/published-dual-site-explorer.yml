@@ -1,0 +1,126 @@
+name: Published Dual-Site Explorer (Pages + EdgeOne)
+
+# Runs on the published URLs only. Never builds or deploys EdgeOne master.
+# The EdgeOne account lane is intentionally gated: no production account
+# creation for ordinary feature/CI commits.
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - 'src/**'
+      - 'tests/e2e/published-dual-site-explorer.spec.ts'
+      - '.github/workflows/published-dual-site-explorer.yml'
+  workflow_dispatch:
+    inputs:
+      include_cloud_accounts:
+        description: "Run disposable EdgeOne 3-client sync test (with cleanup)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  dual-site-browser:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 28
+    env:
+      PAGES_SOURCE_SHA: ${{ github.sha }}
+      QWERTY_SYNC_BASE_URL: https://qwerty-plus.edgeone.dev/
+      CI: 'true'
+    steps:
+      - name: Checkout development test harness; do not deploy master
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Wait for matching published Pages commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 85); do
+            published=$(curl --connect-timeout 5 --max-time 12 -fsSL \
+              'https://smhe00.github.io/qwerty-learner/source-commit.txt' || true)
+            if [ "$published" = "$PAGES_SOURCE_SHA" ]; then
+              echo "Pages published SHA matches tested branch: ${PAGES_SOURCE_SHA:0:12}"
+              exit 0
+            fi
+            echo "Pages publish pending (attempt $attempt); no assertion against a stale site."
+            sleep 10
+          done
+          echo "::error::Pages did not publish the commit within the bounded wait."
+          exit 1
+      - name: Verify EdgeOne public health before browser work
+        run: node tests/cloud/resolve-production-base.mjs
+      - name: Install Playwright Chromium without building either site
+        run: |
+          yarn install --frozen-lockfile
+          npx playwright install --with-deps chromium
+      - name: Run identical anonymous Explorer coverage against both published URLs
+        run: >-
+          npx playwright test
+          tests/e2e/published-dual-site-explorer.spec.ts
+          --project=chromium --retries=0 --workers=1
+      - name: Persist redacted numeric Explorer evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-dual-site-explorer-${{ github.run_id }}
+          path: |
+            test-results/**/*-learn-checkpoints.json
+            test-results/**/*-route-explorer-*.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # Production cloud writes ONLY with disposable accounts. Existing S1
+  # verified 3-client scenario performs registration, revoked session,
+  # cloud sync, conflict detection, restore and identity isolation.
+  # This lane runs once for explicitly marked commits or by manual opt-in.
+  edgeone-disposable-cloud:
+    if: >-
+      (github.event_name == 'push' &&
+      contains(github.event.head_commit.message, '[live-cloud-e2e]')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.include_cloud_accounts)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    concurrency:
+      group: edgeone-real-multi-client
+      cancel-in-progress: false
+    env:
+      QWERTY_SYNC_BASE_URL: https://qwerty-plus.edgeone.dev/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Generate uniquely named disposable credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "QWERTY_E2E_USERNAME=e2e_mc_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_a" >> "$GITHUB_ENV"
+          echo "QWERTY_E2E_USERNAME_B=e2e_mc_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_b" >> "$GITHUB_ENV"
+          password="E2E-$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          echo "QWERTY_E2E_PASSWORD=$password" >> "$GITHUB_ENV"
+      - name: Require exact live production backend
+        run: node tests/cloud/resolve-production-base.mjs
+      - name: Install browser without building or deploying
+        run: |
+          yarn install --frozen-lockfile
+          npx playwright install --with-deps chromium
+      - name: Run isolated 3-client real-EdgeOne sync Explorer
+        run: npx playwright test --config=tests/e2e/production-multi-client.config.ts
+      - name: Delete both disposable accounts even on test failure
+        if: always() && env.QWERTY_LIVE_TEST_READY == '1'
+        run: node tests/cloud/cleanup-production-multi-client.mjs
+      - name: Archive only redacted cloud transitions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: edgeone-3client-redacted-${{ github.run_id }}
+          path: test-results/**/production-multi-client-redacted-trace.json
+          if-no-files-found: ignore
+          retention-days: 7
