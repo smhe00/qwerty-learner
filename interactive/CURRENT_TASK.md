@@ -114,3 +114,30 @@ Maker disposable-user smoke and an independent Review/Learn Gate.
   final strict smoke also deleted its own new test13.
 - Remain ACTIVE for actual multi-BrowserContext Maker journal + user
   migration consent and rollback; do not mark P4b fully closed.
+
+
+## 2026-10-11 P4b qualification: evidence complete for protocol/recovery/rollback
+
+- Local real Chromium: **13/13 PASS** independent BrowserContexts,
+  V3 migration consent, failure-injection and crashed Pull replay:
+  [Actions #38085865247](https://github.com/smhe00/qwerty-learner/actions/runs/38085865247).
+- Actual Maker Chromium (two browser contexts): **PASS** for guarded/off
+  S2 feature entry:
+  [Actions #38086365378](https://github.com/smhe00/qwerty-learner/actions/runs/38086365378).
+- Actual EdgeOne Maker/Blob **data-preserving two-version rollback PASS**:
+  [Actions #38086096338](https://github.com/smhe00/qwerty-learner/actions/runs/38086096338).
+  Same test13 V4 revision, transport SHA and learning row persisted across
+  deployment; V1 writes blocked 409; strict V2 writes blocked 403;
+  test13 deleted.
+- Existing real Maker V4 protocol suites ran twice PASS with test13/test24;
+  strict account authorization restored and verified.
+- Final **production master = `7818e2a`**, strict accountId-only write
+  policy; no temporary test usernames or diagnostics retained.
+- P4b backend protocol / CI / bounded formal / simulated multi-device
+  / Maker data-preserving rollback acceptance is documented.
+- **Do not enable public S2 UX yet**: production S2 feature flags remain
+  disabled; a true Maker UI V4 Journey on separately logged-in persistent
+  browsers is an explicit rollout-phase acceptance, not covered by tests
+  combining local Chromium plus real Maker API.
+- The first real API run once returned transient HTTP 500, not reproduced
+  in subsequent full suites. Keep as reliability watch, not erased.
