@@ -40,7 +40,7 @@ A navigation click is not a learning-state transition. Report each target as:
 ## Next priorities (not claimed complete)
 
 - **P0 in validation:** browser repeated *Independent* failures → actual Assistance Deferred → virtual five-minute gate → Supported re-entry (`tests/e2e/pages-deferred-v3.spec.ts`). Mark B only after confirming its advisory step success and trace.
-- **P0:** browser daily-complete result → immediate same-day wait → next-day reset.
+- **P0 in validation:** browser daily-complete result → immediate same-day waiting → next-day quota reset and real keyboard commit (`tests/e2e/pages-daily-lifecycle-v3.spec.ts`). Promote to B only on actual PASS; browser matured FSRS due scenario remains separate.
 - **P1:** browser naturally due FSRS-6 review across virtual days, including IndexedDB stability/difficulty fields after reload.
 - **P1:** coverage-guided 3+ Block / 2+ day mixture with mutation-injected regressions.
 - **Separate from Pages:** S1 workspace, accounts and multi-machine cloud sync. Do not weaken existing S1 gates to reach Explorer targets.
