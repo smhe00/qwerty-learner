@@ -225,3 +225,37 @@ test('unordered persistence mutation is detected when an older checkpoint commit
   assert.equal(violation.details.sequence, 1)
   assert.equal(violation.details.lastCommitted, 2)
 })
+
+/**
+ * flush() must be a durability barrier, not merely a notification that
+ * a write was scheduled. In particular, a caller may navigate or reload
+ * only after the current queued write really completed.
+ */
+test('flush waits for the last durable write under an adversarial unresolved storage gate', async () => {
+  const events: LearnSystemTraceEvent[] = []
+  const controlled = createControlledPersistence(events)
+  const writer = createSerializedSnapshotWriter(controlled.persist)
+  const snapshot: Snapshot = {
+    sessionId: 'review:flush-barrier',
+    sequence: 1,
+    index: 9,
+    isFinished: true,
+  }
+  const pendingWrite = writer.enqueue(snapshot)
+  let flushResolved = false
+  const pendingFlush = writer.flush().then(() => { flushResolved = true })
+
+  await flushAsyncTurn()
+  assert.deepEqual(controlled.started, [1])
+  assert.equal(controlled.durable(), undefined)
+  assert.equal(flushResolved, false,
+    'flush may not acknowledge before the storage transaction completes')
+
+  controlled.gates.get(1)?.resolve()
+  await pendingWrite
+  await pendingFlush
+
+  assert.equal(flushResolved, true)
+  assert.equal(controlled.durable()?.index, 9)
+  assert.equal(controlled.durable()?.isFinished, true)
+})

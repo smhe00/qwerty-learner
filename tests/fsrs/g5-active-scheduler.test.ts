@@ -9,6 +9,7 @@ import {
   rebuildActiveFsrsStateFromWordRecords,
 } from '../../src/review/fsrs/active'
 import type { IWordRecord } from '../../src/utils/db/record'
+import { fsrs, Rating, createEmptyCard } from 'ts-fsrs'
 
 const DAY = 86_400
 const t0 = 1_800_000_000
@@ -129,4 +130,50 @@ test('an eligible Again is replayed as a long-term lapse', () => {
   assert.equal(state.lapseCount, 1)
   assert.equal(state.cleanStreak, 0)
   assert.equal(state.lastOutcome, 'again')
+})
+
+/**
+ * An independent numerical oracle, using ts-fsrs directly rather than
+ * importing Qwerty's replay function or mirroring its output. This checks
+ * D/S and the exact due timestamp, not merely finiteness/direction.
+ *
+ * The canonical Good -> ignored/invalid Again -> Hard timeline is the
+ * same fixture exercised by the existing persistence check.
+ */
+test('FSRS-6 review replay preserves exact difficulty, stability and due timestamp', () => {
+  const records = [
+    acquisition(1),
+    review(2, t0 + DAY, 'good'),
+    review(3, t0 + 2 * DAY, 'again', false),
+    review(4, t0 + 5 * DAY, 'hard'),
+  ]
+  const actual = rebuildActiveFsrsStateFromWordRecords('test', 'alpha', records)
+  assert.ok(actual)
+  assert.equal(actual.schedulerState.kind, 'fsrs6')
+  if (actual.schedulerState.kind !== 'fsrs6') return
+
+  // Deliberately use the public ts-fsrs library as a second calculator.
+  // This avoids using the production replay's computed D/S/Due as the
+  // expected values, so a persistence mutation cannot change both.
+  const reference = fsrs({
+    request_retention: 0.84,
+    maximum_interval: 36500,
+    enable_fuzz: false,
+    enable_short_term: false,
+    learning_steps: [],
+    relearning_steps: [],
+  })
+  let card = createEmptyCard(new Date(t0 * 1000))
+  card = reference.next(card, new Date((t0 + DAY) * 1000), Rating.Good).card
+  card = reference.next(card, new Date((t0 + 5 * DAY) * 1000), Rating.Hard).card
+
+  assert.ok(card.difficulty > 0, 'reference difficulty must be meaningful')
+  assert.ok(card.stability > 0, 'reference stability must be meaningful')
+  assert.ok(Math.abs(actual.schedulerState.difficulty - card.difficulty) < 1e-8,
+    'persisted FSRS D must equal independent reference replay')
+  assert.ok(Math.abs(actual.schedulerState.stability - card.stability) < 1e-8,
+    'persisted FSRS S must equal independent reference replay')
+  assert.equal(actual.nextReviewAt, Math.floor(card.due.getTime() / 1000),
+    'FSRS Due must equal the reference calendar timestamp, not just be in the future')
+  assert.equal(actual.lastReviewedAt, t0 + 5 * DAY)
 })

@@ -4,6 +4,7 @@ import {
   createLearnDailySession,
   deriveLearnDailyProgress,
   recordLearnBlockCompletion,
+  learnLocalDateKey,
 } from '../../src/learn/daily-session'
 import {
   LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION,
@@ -325,4 +326,36 @@ test('safe auto-sync never overwrites remote-ahead or diverged state', () => {
     }),
     'diverged',
   )
+})
+
+/**
+ * Midday local timestamps avoid DST ambiguity. Explicit civil-date
+ * assertions catch an implementation that always uses day=01 even when
+ * both consecutive dates still produce distinct-looking session IDs.
+ */
+test('daily session date keys match civil calendar across ordinary days and year boundary', () => {
+  const scenarios: Array<[number, number, number, string]> = [
+    [2026, 10, 10, '2026-10-10'],
+    [2026, 10, 11, '2026-10-11'],
+    [2026, 10, 31, '2026-10-31'],
+    [2026, 11, 1, '2026-11-01'],
+    [2026, 12, 31, '2026-12-31'],
+    [2027, 1, 1, '2027-01-01'],
+  ]
+  for (const [year, month, day, expected] of scenarios) {
+    const now = Math.floor(new Date(year, month - 1, day, 12, 0, 0).getTime() / 1000)
+    assert.equal(learnLocalDateKey(now), expected,
+      'date key must reflect local civil day ' + expected)
+    const daily = createLearnDailySession({
+      dict: 'daily-test',
+      now,
+      dailyNewTarget: 2,
+      dictionaryWords: ['word-a', 'word-b', 'word-c'],
+      wordRecords: [],
+      wordStates: [],
+    })
+    assert.equal(daily.dateKey, expected)
+    assert.ok(daily.sessionId.includes(':' + expected + ':'),
+      'daily session identity must carry true civil date')
+  }
 })
