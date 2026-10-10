@@ -1,0 +1,61 @@
+name: P4b Maker Final Strict Account Gate
+
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - 'tests/cloud/p4b-final-strict-maker-smoke.mjs'
+      - '.github/workflows/p4b-final-strict-maker.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  final-strict:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+      - name: Verify test13/test24 exception absent on actual Maker
+        id: final
+        env:
+          QWERTY_SYNC_BASE_URL: https://qwerty-plus.edgeone.dev/
+        run: node tests/cloud/p4b-final-strict-maker-smoke.mjs
+      - name: Publish result to immutable GitHub commit status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RESULT: ${{ steps.final.outcome }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ "$RESULT" = success ]; then
+            STATE=success
+            DESCRIPTION='Final Maker strict V2 write gate verified and test13 cleaned'
+          else
+            STATE=failure
+            DESCRIPTION='Final Maker strict V2 gate not verified'
+          fi
+          export STATE DESCRIPTION
+          python3 - <<'PY' > /tmp/p4b-final-status.json
+          import os, json
+          print(json.dumps({
+            'context': 'p4b/edgeone-final-strict',
+            'state': os.environ['STATE'],
+            'description': os.environ['DESCRIPTION'],
+            'target_url': 'https://github.com/' + os.environ['REPOSITORY'] +
+                          '/actions/runs/' + os.environ['RUN_ID']
+          }))
+          PY
+          curl --fail --silent --show-error --retry 2 -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/p4b-final-status.json \
+            "https://api.github.com/repos/${REPOSITORY}/statuses/${SHA}" >/dev/null
