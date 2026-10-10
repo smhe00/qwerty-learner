@@ -152,6 +152,22 @@ export function getSyncV2Snapshot(token: string) {
   return request<SyncResponse>('/api/sync/v2', { token })
 }
 
+/** S2 verified V4 CAS endpoint. No ordinary UI/legacy V1 caller. */
+export function putSyncV2(
+  token: string,
+  input: {
+    baseRevision: number
+    logicalFingerprint: string
+    payloadBase64: string
+    deviceId?: string
+    clientFormatVersion: 'qwerty-backup-v4'
+  },
+) {
+  return request<SyncMetaResponse>('/api/sync/v2', {
+    method: 'PUT', token, body: input,
+  })
+}
+
 export function putSync(
   token: string,
   input: {
