@@ -30,14 +30,14 @@ test('S2 IndexedDB baseline survives page reload without replacing S1 registry H
   await expect.poll(() => page.evaluate(() =>
     Boolean((window as any).__backupHarness?.loadSyncV2Baseline),
   )).toBe(true)
-  const observed = await page.evaluate(async (a, b) => {
+  const observed = await page.evaluate(async ([a, b]: string[]) => {
     const h = (window as any).__backupHarness
     return {
       a: await h.loadSyncV2Baseline(a),
       b: await h.loadSyncV2Baseline(b),
       owner: (await h.workspaceRegistryPort.read()).active,
     }
-  }, A, B)
+  }, [A, B])
   expect(observed.a).toEqual(one)
   expect(observed.b).toBeNull()
   expect(observed.owner).toEqual({ kind: 'anonymous' })
@@ -51,7 +51,7 @@ test('S2 IndexedDB compare-and-swap prevents stale device revision and hash rewr
   }, one)
   const second = await context.newPage()
   await ready(second)
-  const mismatch = await second.evaluate(async (old, next) => {
+  const mismatch = await second.evaluate(async ([old, next]: Array<{accountId: string; baseRevision: number; logicalFingerprint: string}>) => {
     const h = (window as any).__backupHarness
     let stale = ''
     try {
@@ -69,7 +69,7 @@ test('S2 IndexedDB compare-and-swap prevents stale device revision and hash rewr
       duplicate,
       current: await h.loadSyncV2Baseline(old.accountId),
     }
-  }, one, two)
+  }, [one, two])
   expect(mismatch.stale).toMatch(/CAS conflict/)
   expect(mismatch.duplicate).toMatch(/CAS conflict/)
   expect(mismatch.current).toEqual(two)
