@@ -71,7 +71,11 @@ async function confirmImport(page: Page, requiresOtherId = true) {
   await expect(action).toBeEnabled()
   page.once('dialog', async dialog => dialog.accept())
   await action.click()
-  await expect(page.getByText(/本地完整 V4 恢复完成/)).toBeVisible({ timeout: 30000 })
+  await expect.poll(async () => {
+    const visible = await page.locator('body').innerText()
+    return visible.includes('本地完整 V4 恢复完成') ? 'done' :
+      visible.slice(0, 1200)
+  }, { timeout: 30000, intervals: [300, 700, 1200] }).toBe('done')
 }
 
 test('Portable V4 cross-account import is explicit, full, journaled and never touches cloud', async ({ page }) => {
@@ -100,7 +104,7 @@ test('Portable V4 cross-account import is explicit, full, journaled and never to
         kind: 'account', accountId: 'v4-import-new-account',
       }),
       baseline: await h.loadSyncV2Baseline(owner.accountId),
-      pending: await (await import('/src/sync/manual-v4-import-journal.ts')).manualV4ImportJournalPort.read(),
+      pending: await h.manualV4ImportJournalPort.read(),
     }
   })
   expect(actual.snapshot.metadata.source).toEqual(owner)
@@ -152,10 +156,8 @@ test('Crash after durable V4 import staging replays on boot before application c
   const json = await portableJson(page)
   const staged = await page.evaluate(async backupJson => {
     const h = (window as any).__backupHarness
-    const { rebindPortableV4Import, preparePortableV4Import } =
-      await import('/src/sync/manual-v4-import-plan.ts')
-    const { manualV4ImportJournalPort } =
-      await import('/src/sync/manual-v4-import-journal.ts')
+    const { rebindPortableV4Import, preparePortableV4Import,
+      manualV4ImportJournalPort } = h
     const owner = { kind: 'account' as const, accountId: 'v4-import-new-account' }
     const plan = await preparePortableV4Import(backupJson, owner)
     const candidate = await rebindPortableV4Import(backupJson, plan, {
@@ -174,14 +176,18 @@ test('Crash after durable V4 import staging replays on boot before application c
   }, json)
   expect(staged).toMatch(/^[a-f0-9]{64}$/)
   await page.goto('/')
-  await expect(page.getByText(/本地完整 V4 恢复完成/)).toBeVisible({ timeout: 30000 })
+  await expect.poll(async () => {
+    const visible = await page.locator('body').innerText()
+    return visible.includes('本地完整 V4 恢复完成') ? 'done' :
+      visible.slice(0, 1200)
+  }, { timeout: 30000, intervals: [300, 700, 1200] }).toBe('done')
   await page.goto('/tests/e2e/backup-harness.html')
   const actual = await page.evaluate(async () => {
     const h = (window as any).__backupHarness
     return {
       count: await h.db.wordRecords.count(),
       chapter: (await h.inspect()).currentChapter,
-      pending: await (await import('/src/sync/manual-v4-import-journal.ts')).manualV4ImportJournalPort.read(),
+      pending: await h.manualV4ImportJournalPort.read(),
     }
   })
   expect(actual.count).toBeGreaterThan(0)
