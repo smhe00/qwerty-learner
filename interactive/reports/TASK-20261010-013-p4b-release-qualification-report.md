@@ -137,3 +137,29 @@ blocked pending P4b-3/P4b-4.
 - P4b-4 remaining: documented explicit V3->V4 consent migration, V1
   write rejection on upgraded V4, fault replay, and production-safe
   rollback rehearsal; all require actual recorded evidence.
+
+
+## Real Maker EdgeOne isolated write-gate smoke — PASS (2026-10-10)
+
+**Source tested:** Maker-deployed `master` c1135a9 (user deployment confirmation).
+**Runner:** GitHub Actions on `product/main` script commit `08747a1`.
+**Independent recorded evidence:** [run #38061862646](https://github.com/smhe00/qwerty-learner/actions/runs/38061862646), job `isolated-api-smoke` conclusion SUCCESS. Classic commit status context `p4b/edgeone-prod-write-gate` SUCCESS.
+
+Actual production HTTP + Blob smoke PASS:
+- GET `/api/health`;
+- unauthenticated V2 PUT returns 401;
+- newly registered disposable account PUT `/api/sync/v2` and
+  `/api/sync/v2/recovery` returns 403 `s2_write_not_enabled`, with
+  remote revision unchanged after each attempt;
+- same disposable account completes legacy V1 PUT and readback,
+  remote revision becomes 1 with V3 client format;
+- subsequent V2 attempt still rejects, preserving V1 data;
+- second independent disposable account sees revision 0 and cannot
+  write V2; first account revision remains 1;
+- both disposable accounts deleted successfully (explicit log confirmation).
+
+**Scope is narrow:** This closes the production **deny-path/legacy
+compatibility/isolation** smoke gate. It does not close allowlisted V4
+Push/Pull, CAS winner race, replay/restore, V3→V4 migration, V1 client
+write rejection after actual V4, or rollback. The first full
+`Cloud Sync Gate` for this test-code commit must be checked separately.
