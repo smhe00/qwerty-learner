@@ -16,6 +16,10 @@ export type RemoteSyncMeta = {
   updatedAt: string | null
   sizeBytes: number
   dataSha256: string | null
+  /** S2 handshake alias for the existing stored transport checksum. */
+  payloadSha256?: string | null
+  /** Null until the backend can verify canonical Backup V4 workspaceData. */
+  logicalFingerprint?: string | null
   deviceId: string | null
   clientFormatVersion: string | null
 }

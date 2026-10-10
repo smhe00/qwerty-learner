@@ -464,6 +464,9 @@ export function createBackendService({
         updatedAt: null,
         sizeBytes: 0,
         dataSha256: null,
+        // S2 read-only metadata contract: V1 has no canonical V4 logical digest.
+        payloadSha256: null,
+        logicalFingerprint: null,
         deviceId: null,
         clientFormatVersion: null,
       }
@@ -475,6 +478,11 @@ export function createBackendService({
       updatedAt: snapshot.updatedAt,
       sizeBytes: snapshot.sizeBytes,
       dataSha256: snapshot.dataSha256,
+      // Transport digest and canonical logical digest are different things.
+      // Existing V1/V3 snapshots have never had their V4 canonical
+      // fingerprint server-verified, so they must never advertise one.
+      payloadSha256: snapshot.dataSha256 || null,
+      logicalFingerprint: null,
       deviceId: snapshot.deviceId || null,
       clientFormatVersion: snapshot.clientFormatVersion || null,
     }

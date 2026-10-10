@@ -562,3 +562,42 @@ test('qwerty-backup-v3 FSRS payload is stored byte-for-byte', async () => {
 
   await service.cleanupTestUser(username)
 })
+
+
+test('S2 transitional meta exposes transport SHA but never mislabels V3 as canonical V4', async () => {
+  const service = createBackendService({ storage: new MemoryStorage() })
+  const registered = await service.register('s2_meta_contract', 's2-meta-password-123', 's2-device')
+  const empty = await service.syncMeta(registered.token)
+  assert.equal(empty.hasData, false)
+  assert.equal(empty.payloadSha256, null)
+  assert.equal(empty.logicalFingerprint, null)
+
+  const uploaded = await service.putSync(registered.token, {
+    baseRevision: 0,
+    payloadBase64: gzipPayload({ words: ['safe-v3'] }),
+    deviceId: 's2-device',
+    clientFormatVersion: 'qwerty-backup-v3',
+  })
+  assert.equal(uploaded.revision, 1)
+  assert.match(uploaded.payloadSha256, /^[a-f0-9]{64}$/)
+  assert.equal(uploaded.payloadSha256, uploaded.dataSha256)
+  assert.equal(uploaded.logicalFingerprint, null)
+
+  const meta = await service.syncMeta(registered.token)
+  const full = await service.getSync(registered.token)
+  assert.equal(meta.payloadSha256, full.payloadSha256)
+  assert.equal(meta.logicalFingerprint, null)
+  assert.equal(full.logicalFingerprint, null)
+  assert.equal(meta.clientFormatVersion, 'qwerty-backup-v3')
+
+  await assert.rejects(
+    service.putSync(registered.token, {
+      baseRevision: 1,
+      payloadBase64: gzipPayload({ unsafelyAdvertisedV4: true }),
+      clientFormatVersion: 'qwerty-backup-v4',
+      logicalFingerprint: 'f'.repeat(64),
+    }),
+    error => error?.code === 'unsupported_sync_format',
+  )
+  assert.equal((await service.syncMeta(registered.token)).revision, 1)
+})

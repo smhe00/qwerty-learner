@@ -17,3 +17,18 @@ must be recorded after this commit lands.
 Follow-up owner: implement server-side V4 metadata/CAS first, then a
 crash-safe executor, then the one-Sync UI. S1 release blockers remain
 documented in `docs/S1_CLOSEOUT_AUDIT_20261010.md`.
+
+## 2026-10-10 implementation checkpoint
+
+- P0 `a18b110e73a90a23cebfde103a53d938cd295888`: pure V4
+  No-op/Push/Pull/Conflict/Blocked decision kernel and regression tests.
+- CI [Cloud Sync Gate 38045048350](https://github.com/smhe00/qwerty-learner/actions/runs/38045048350):
+  **62/62 Node cloud contract tests PASS**, sync/backend lint PASS, Vite build
+  PASS. Existing third-party bundler and unrelated unused-variable warnings
+  are nonblocking.
+- P1a in progress: return an explicit transport `payloadSha256` alias
+  alongside V1 `dataSha256`, and `logicalFingerprint: null` on old
+  snapshots. This prevents a V3 cloud backup from being misidentified as a
+  canonical V4 no-op. No V4 uploads are authorized by P1a.
+- P1b remains: server-side verification of full V4 gzip snapshot, immutable
+  account owner, canonical logical hash and CAS before enabling writes.
