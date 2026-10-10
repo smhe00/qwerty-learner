@@ -97,3 +97,45 @@ test('expired isolated S2 credentials fail before any V4 cloud mutation', async 
   expect(outcome.baseline).toBeNull()
   expect(requests).toBe(0)
 })
+
+test('development Sync route leaves mounted app, executes CAS and returns with feedback', async ({ page }) => {
+  let uploads = 0
+  await page.route('**/api/sync/v2/meta', async route => {
+    await route.fulfill({ json: { ok: true,
+      hasData: false, revision: 0, updatedAt: null, sizeBytes: 0,
+      dataSha256: null, payloadSha256: null, logicalFingerprint: null,
+      deviceId: null, clientFormatVersion: null,
+    } })
+  })
+  await page.route('**/api/sync/v2', async route => {
+    const input = route.request().postDataJSON()
+    uploads++
+    const bytes = Buffer.from(input.payloadBase64, 'base64')
+    const sha = createHash('sha256').update(bytes).digest('hex')
+    await route.fulfill({ json: { ok: true,
+      hasData: true, revision: 1, updatedAt: new Date().toISOString(),
+      sizeBytes: bytes.length, dataSha256: sha, payloadSha256: sha,
+      logicalFingerprint: input.logicalFingerprint,
+      deviceId: 's2-ui-test', clientFormatVersion: 'qwerty-backup-v4',
+    } })
+  })
+  await ready(page)
+  await page.evaluate(async identity => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify({
+      token: 's2-integration-fake-token',
+      expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      user: { userId: identity.accountId, username: 's2-test' },
+    }))
+    await h.initializeLegacyWorkspace(identity)
+  }, owner)
+  await page.goto('/?s2-sync=run')
+  await expect(page.getByText('同步完成：本地进度已安全上传至云端。')).toBeVisible({
+    timeout: 25_000,
+  })
+  expect(uploads).toBe(1)
+  await expect.poll(() => page.evaluate(() =>
+    window.location.pathname === '/' && window.location.search === '',
+  )).toBe(true)
+})
