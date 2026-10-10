@@ -120,7 +120,13 @@ function makeService(env, storage) {
 async function requireS2WriteAccount(service, request, env) {
   const token = bearer(request)
   const { user } = await service.me(token)
-  if (!isS2WriteAllowed(env.S2_SYNC_WRITE_ACCOUNT_IDS, user.userId)) {
+  // P4b disposable rollback trial ONLY: initial V4 seed for a NEW test13.
+  // Removing this branch from Maker is part of the same live acceptance test.
+  const rollbackSeedAccount = user.username === 'test13' &&
+    Date.parse(user.createdAt) >= Date.parse('2026-10-10T00:00:00Z') &&
+    Date.now() < Date.parse('2026-10-12T12:00:00Z')
+  if (!rollbackSeedAccount &&
+      !isS2WriteAllowed(env.S2_SYNC_WRITE_ACCOUNT_IDS, user.userId)) {
     throw new AppError(403, 's2_write_not_enabled',
       'Sync V2 writes are restricted to explicitly authorized test accounts')
   }
@@ -206,6 +212,7 @@ export async function onRequest(context) {
             'learning-state-backup-v3',
             'account-delete-v1',
             'duplicate-register-protection-v1',
+            'p4b-rollback-data-seed-v1',
           ],
         },
         200,
