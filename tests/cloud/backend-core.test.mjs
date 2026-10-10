@@ -625,7 +625,13 @@ test('V4 revisioned backend accepts verified owner payload, publishes logical ha
   // projection, rather than accepting any client-provided hash without proof.
   const { createHash } = await import('node:crypto')
   const payload = payloadV4('A')
-  const canonical = JSON.stringify({
+  const stableJson = value => {
+    if (value === null || typeof value !== 'object') return JSON.stringify(value)
+    if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`
+    return `{${Object.keys(value).sort()
+      .map(key => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(',')}}`
+  }
+  const canonical = stableJson({
     database: { tables: payload.workspaceData.database.data.tables, data: payload.workspaceData.database.data.data },
     learnRuntime: payload.workspaceData.learnRuntime,
     navigation: payload.workspaceData.navigation,
