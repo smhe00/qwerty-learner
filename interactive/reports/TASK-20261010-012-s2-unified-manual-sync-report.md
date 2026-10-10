@@ -90,3 +90,32 @@ documented in `docs/S1_CLOSEOUT_AUDIT_20261010.md`.
   32 MiB maximum inflated size before any DB import, preventing oversized
   gzip payload restore.
 - No recovery journal or upload/restore is enabled by this layer.
+
+## Verified gates and next release blocker
+
+- `121ffb38`: Cloud Sync Gate
+  [38045787565](https://github.com/smhe00/qwerty-learner/actions/runs/38045787565)
+  **PASS** for backend verified V4 snapshots, CAS, owner rejection,
+  browser/backend canonical hash parity.
+- `72c5bdd0`: Cloud Sync Gate
+  [38045964994](https://github.com/smhe00/qwerty-learner/actions/runs/38045964994)
+  **PASS** for baseline validation/CAS unit contracts.
+- `9d7a72d7`: Cloud Sync Gate
+  [38046156897](https://github.com/smhe00/qwerty-learner/actions/runs/38046156897)
+  **PASS** for read-only decision preflight.
+- `b761a4ef`: Cloud Sync Gate
+  [38046454667](https://github.com/smhe00/qwerty-learner/actions/runs/38046454667)
+  **PASS** including 84 cloud tests, streaming cloud snapshot integrity
+  validation, lint/build.
+- `fa068ecc`: S1 Workspace Browser Gate
+  [38046423639](https://github.com/smhe00/qwerty-learner/actions/runs/38046423639)
+  **PASS 48/48**, including two real Chromium S2 baseline durability/
+  stale-writer CAS tests.
+- Earlier intermediate browser/review failures were caused by a missing
+  import in the developer/test-only `backup-harness.ts` after adding
+  S2 baseline exports. Repaired in `fa068ecc`; no deployed Maker JS
+  or learning data affected.
+- The next irreducible safety gate is the **S2-P2b durable pull journal**.
+  Do not enable the real one-button Sync merely because the decision and
+  verification layers are green: interrupted RecordDB restore without a
+  replayable journal could otherwise mount an invalid mixed workspace.

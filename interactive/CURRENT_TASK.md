@@ -32,3 +32,24 @@ retained unchanged as history.
 Sync Gate 38045228572 for the server's conservative V4 metadata handshake.
 Next implement P1b server-verified V4 upload semantics; do not enable any S2
 write/restore/UI feature before authorization and live-server verification.
+
+2026-10-10 S2 P1b/P2 milestone: backend V4 verified upload/CAS and
+immutable-owner validation shipped to `product/main` only. New dev
+`/api/sync/v2` endpoint is NOT deployed to Maker. Validated source
+`121ffb38` Cloud Sync Gate 38045787565 PASS.
+
+The pure client decision kernel, durable account-scoped baseline CAS,
+read-only preflight and bounded verified V4 download are implemented
+without activating production Push, Pull, Sync button or migration.
+Latest source `b761a4ef` Cloud Sync Gate 38046454667 PASS (Node
+contracts, frontend lint, Vite build). Real S1 browser gate for the
+baseline harness `fa068ecc` 38046423639 PASS **48/48**; the two new
+baseline tests prove persistence across reload and cross-tab CAS
+rejection. Review Gate on `fa068ecc` is independently tracked in
+run 38046423650 and must not be called PASS before conclusion.
+
+CURRENT P0: S2-P2b crash-journaled pull executor, writer-quiesced
+pre-mount operation, failure/rollback/reload replay; gate must include
+mid-restore crash, stale cloud revision, expired credentials and
+simultaneous tabs. Preserve original S1 production rollout blocker
+and never release master automatically.
