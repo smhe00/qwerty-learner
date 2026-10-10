@@ -250,9 +250,34 @@ test('real Dexie telemetry containing special JS values exports V4 without losin
         ],
       },
     })
-    const snapshot = await h.captureWorkingWorkspaceV4({
-      kind: 'account', accountId: 'telemetry-regression-account',
-    })
+    // Synthetic telemetry only, never real user records. Keep a redacted
+    // diagnostic of the actual Dexie encoder if the V4 audit rejects it.
+    const rawRows = await h.db.wordRecords.toCollection().raw().toArray()
+    const source = rawRows.find((row: any) => row.id === initial.id)
+    const archive = JSON.parse(await h.exportBackupJson())
+    const serialized = archive.database.data.data
+      .find((item: any) => item.tableName === 'wordRecords')
+      .rows.find((row: any) => row.id === initial.id)
+    let snapshot
+    try {
+      snapshot = await h.captureWorkingWorkspaceV4({
+        kind: 'account', accountId: 'telemetry-regression-account',
+      })
+    } catch (error) {
+      return {
+        failure: String(error),
+        sourceTelemetry: JSON.parse(JSON.stringify(source.typingTelemetry)),
+        sourceKinds: {
+          firstKeyLatencyMs: typeof source.typingTelemetry.firstKeyLatencyMs,
+          firstKeyIsNaN: Number.isNaN(source.typingTelemetry.firstKeyLatencyMs),
+          startLatencyMs: source.typingTelemetry.attempts[0].startLatencyMs,
+          wrongIndexExists: Object.prototype.hasOwnProperty.call(
+            source.typingTelemetry.attempts[0], 'wrongIndex'),
+        },
+        serializedTelemetry: serialized.typingTelemetry,
+        exportTypes: serialized.$types || null,
+      }
+    }
     const exported = snapshot.workspaceData.database.data.data
       .find((item: any) => item.tableName === 'wordRecords')
       .rows.find((row: any) => row.id === initial.id)
@@ -266,6 +291,10 @@ test('real Dexie telemetry containing special JS values exports V4 without losin
       ).find((row: any) => row.id === initial.id)?.typingTelemetry?.attempts?.[0]?.durationMs,
     }
   })
+  if (observed.failure) {
+    console.log('SYNTHETIC_DEXIE_TELEMETRY_DIAGNOSTIC', JSON.stringify(observed))
+  }
+  expect(observed.failure).toBeUndefined()
   expect(observed.format).toBe('qwerty-backup-v4')
   expect(observed.serializedDuration).toBe(233)
   expect(observed.originalUnchanged).toBe(233)
