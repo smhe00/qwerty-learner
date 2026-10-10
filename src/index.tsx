@@ -68,6 +68,7 @@ let boot: GuardedWorkspaceBoot | undefined
 let starting = false
 let releasedForPageHide = false
 let mounted = false
+let stopSessionRevocationMonitor: (() => void) | undefined
 
 function gateUI(title: string, detail: string, action?: string): void {
   if (!root || mounted) return
@@ -192,6 +193,14 @@ async function start(): Promise<void> {
       showExplicitMigrationConsent()
       return
     }
+    // A revoked-session confirmation cannot switch the S1 working owner
+    // while React/IndexedDB writers are mounted. This is the independent,
+    // writer-locked pre-mount continuation of the confirmed alertdialog.
+    if (new URLSearchParams(window.location.search).get('s1-session-revoked') === 'confirm') {
+      const { completeConfirmedRevokedLogout } = await import('./sync/session-revocation')
+      await completeConfirmedRevokedLogout(boot, gateUI)
+      return
+    }
     // S2 pilot: the ONLY ordinary Sync action navigates into a new,
     // pre-mount, S1 writer-locked realm; it never mutates RecordDB from
     // mounted React. Production remains disabled without explicit flag.
@@ -251,6 +260,10 @@ async function start(): Promise<void> {
     // module must never be evaluated before the boot gate resolves.
     await import('./app')
     mounted = true
+    if (boot.mode === 'isolated') {
+      const { startSessionRevocationMonitor } = await import('./sync/session-revocation')
+      stopSessionRevocationMonitor = startSessionRevocationMonitor(boot.registry)
+    }
     showS1AccountResult()
   } catch (error) {
     boot?.release()
@@ -272,6 +285,7 @@ async function start(): Promise<void> {
 }
 
 window.addEventListener('pagehide', () => {
+  stopSessionRevocationMonitor?.()
   // A page restored from BFCache must never reuse an expired writer lease.
   releasedForPageHide = true
   // Do NOT release the writer lease while the React tree and its async DB
