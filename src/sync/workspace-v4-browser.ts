@@ -13,8 +13,7 @@ import {
   workspaceFingerprintV4,
 } from './workspace-v4'
 import type { WorkspaceIdentityV4, WorkspaceSnapshotV4 } from './workspace-v4'
-import { assertV4ExportMatchesSource } from './v4-table-audit'
-import type { DurableV4Counts } from './v4-table-audit'
+import { assertV4SourceRowsMatchExport } from './v4-table-audit'
 import {
   BACKUP_FORMAT_VERSION,
   exportBackupJson,
@@ -44,9 +43,12 @@ export async function captureWorkingWorkspaceV4(
       'wordRecords', 'chapterRecords', 'reviewRecords', 'reviewWordStates',
       'achievementEvents', 'achievementStates',
     ].includes(table.name)).map(async table =>
-      [table.name, await table.count()] as const),
+      [table.name, await table.toArray()] as const),
   )
-  assertV4ExportMatchesSource(snapshot, Object.fromEntries(entries) as DurableV4Counts)
+  // Count-only comparisons miss same-count substitutions (e.g. a damaged
+  // FSRS interval); independently hash full live Dexie rows as well.
+  await assertV4SourceRowsMatchExport(snapshot, Object.fromEntries(entries) as
+    Parameters<typeof assertV4SourceRowsMatchExport>[1])
   return snapshot
 }
 

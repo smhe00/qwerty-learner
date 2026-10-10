@@ -6,6 +6,7 @@
  * This is NOT EdgeOne Maker/Blob live verification (P4b-3).
  */
 import { createHash } from 'node:crypto'
+import { gunzipSync } from 'node:zlib'
 import { expect, test } from '@playwright/test'
 import type { Browser, BrowserContext, Page, Route } from '@playwright/test'
 
@@ -16,6 +17,12 @@ class SharedMockCloud {
   successfulWrites = 0
   refusedCAS = 0
   readonly byRevision = new Map<number, any>()
+
+  snapshot() {
+    return this.current
+      ? JSON.parse(gunzipSync(Buffer.from(this.current.payloadBase64, 'base64')).toString('utf8'))
+      : null
+  }
 
   meta() {
     if (!this.current) return {
@@ -118,6 +125,9 @@ async function inspect(page: Page) {
           kind: 'account', accountId: 'p4b-same-immutable-account',
         }),
       ),
+      workspaceData: (await h.captureWorkingWorkspaceV4({
+        kind: 'account', accountId: 'p4b-same-immutable-account',
+      })).workspaceData,
       preservedLearnWord: Boolean(await h.db.wordRecords.where('word')
         .equals('backup-fsrs-word').first()),
       preservedFsrs: Boolean(await h.db.reviewWordStates.where('[dict+word]')
@@ -157,7 +167,21 @@ test('P4b two independent profiles roundtrip, then detect divergent edits withou
     // in its canonical snapshot after app mount is separately tracked; it
     // cannot substitute for a missing/dropped durable learning row.
     if (b1.fingerprint !== server.meta().logicalFingerprint) {
-      console.log('P4b observation: post-hydration runtime changed V4 logical fingerprint')
+      const original = server.snapshot().workspaceData
+      const restored = b1.workspaceData
+      console.log('P4b post-hydration drift sections: ' + JSON.stringify({
+        navigation: { original: original.navigation, restored: restored.navigation },
+        settings: { original: original.settings, restored: restored.settings },
+        dailySessions: {
+          original: original.learnRuntime.dailySessions,
+          restored: restored.learnRuntime.dailySessions,
+        },
+        dbRows: original.database.data.data.map((g: any) => ({
+          name: g.tableName, before: g.rows.length,
+          after: restored.database.data.data.find((x: any) =>
+            x.tableName === g.tableName)?.rows.length,
+        })),
+      }))
     }
 
     await addWord(A.page, 'A')

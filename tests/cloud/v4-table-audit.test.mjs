@@ -13,7 +13,8 @@ await build({ entryPoints: [resolve(root, 'src/sync/v4-table-audit.ts')],
   outfile: out, bundle: true, platform: 'node', format: 'esm', target: 'node20' })
 after(() => rmSync(tmp, { recursive: true, force: true }))
 const {
-  assertV4ExportMatchesSource, exportedV4TableCounts, v4TableRowDigests,
+  assertV4ExportMatchesSource, assertV4SourceRowsMatchExport,
+  exportedV4TableCounts, v4TableRowDigests,
 } = await import(pathToFileURL(out).href)
 
 const names = ['wordRecords', 'chapterRecords', 'reviewRecords',
@@ -66,4 +67,23 @@ test('P4b per-table digest detects same-count replacement but ignores export row
   after.workspaceData.database.data.data[0].rows[0].word = 'wrong-data'
   assert.notEqual((await v4TableRowDigests(before)).wordRecords,
     (await v4TableRowDigests(after)).wordRecords)
+})
+
+test('P4b live row hash rejects same-count FSRS corruption without accepting export SHA', async () => {
+  const snapshot = fixture()
+  const actual = Object.fromEntries(names.map(name => [
+    name, structuredClone(snapshot.workspaceData.database.data.data
+      .find(group => group.tableName === name)?.rows ?? []),
+  ]))
+  await assertV4SourceRowsMatchExport(snapshot, actual)
+  snapshot.workspaceData.database.data.data[1].rows[0].word = 'silently-altered-fsrs'
+  await assert.rejects(
+    () => assertV4SourceRowsMatchExport(snapshot, actual),
+    /source\/export row-payload mismatch: reviewWordStates/,
+  )
+  snapshot.workspaceData.database.data.data[1].rows.pop()
+  await assert.rejects(
+    () => assertV4SourceRowsMatchExport(snapshot, actual),
+    /source\/export row-count mismatch: reviewWordStates/,
+  )
 })
