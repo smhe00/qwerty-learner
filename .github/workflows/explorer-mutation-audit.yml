@@ -1,0 +1,67 @@
+name: Explorer V3 Mutation Detection Audit
+
+on:
+  push:
+    branches:
+      - product/main
+    paths:
+      - 'tests/simulation/explorer-mutation-detection-v3.test.ts'
+      - 'scripts/explorer-source-mutants.mjs'
+      - '.github/workflows/explorer-mutation-audit.yml'
+      - 'tests/simulation/system-driver.ts'
+      - 'tests/simulation/system-oracle.ts'
+      - 'tests/simulation/system-explorer-v3-coverage.test.ts'
+      - 'src/learn/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mutation-audit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Bundle seeded behavioral mutation campaign
+        run: |
+          mkdir -p .mutation-audit
+          npx esbuild tests/simulation/explorer-mutation-detection-v3.test.ts --bundle --platform=node --target=node20 --format=esm --outfile=.mutation-audit/explorer-mutation.test.mjs
+      - name: Run blind mutation detection and clean control
+        id: blind
+        run: |
+          set -o pipefail
+          node --test .mutation-audit/explorer-mutation.test.mjs 2>&1 | tee .mutation-audit/blind-results.log
+      - name: Run in-memory source mutation audit
+        id: source
+        if: always()
+        run: |
+          set -o pipefail
+          node scripts/explorer-source-mutants.mjs 2>&1 | tee .mutation-audit/source-results.log
+      - name: Display audit summary
+        if: always()
+        env:
+          BLIND_OUTCOME: ${{ steps.blind.outcome }}
+          SOURCE_OUTCOME: ${{ steps.source.outcome }}
+        run: |
+          echo "## Explorer V3 Mutation Detection Audit" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Clean-baseline and blind action campaign: **$BLIND_OUTCOME**" >> "$GITHUB_STEP_SUMMARY"
+          echo "- In-memory production-source mutants: **$SOURCE_OUTCOME**" >> "$GITHUB_STEP_SUMMARY"
+          echo "- A surviving mutant is a measurement of a coverage gap, not a passing mutant." >> "$GITHUB_STEP_SUMMARY"
+          grep 'EXPLORER_V3_BLIND_MUTATION_SCORECARD' .mutation-audit/blind-results.log | tail -1 >> "$GITHUB_STEP_SUMMARY" || true
+          grep 'EXPLORER_V3_SOURCE_MUTATION_SCORECARD' .mutation-audit/source-results.log | tail -1 >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Archive audit logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: explorer-v3-mutation-detection-${{ github.run_number }}
+          path: .mutation-audit/
+          if-no-files-found: warn
+          retention-days: 14
