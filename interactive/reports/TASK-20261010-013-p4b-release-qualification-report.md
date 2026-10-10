@@ -177,3 +177,19 @@ same-count FSRS mutation rejection. Prior "row-level audit remains to be
 implemented" wording is stale. Implemented != latest candidate Gate PASS;
 the refreshed Cloud Sync workflow now publishes the inspectable
 `p4b/cloud-sync-gate` commit status for repeatable evidence.
+
+
+## Refreshed Cloud Sync Gate — PASS (2026-10-10)
+
+- [Run #38062061412](https://github.com/smhe00/qwerty-learner/actions/runs/38062061412)
+  on `product/main` commit `1c3f2a0`; classic commit status
+  `p4b/cloud-sync-gate=success`.
+- **114/114** Node cloud tests PASS (including V4 row SHA, S2 route
+  allowlist and backend compatibility tests).
+- Backend lint PASS; frontend sync lint PASS; Vite build PASS.
+  Logs include 12 pre-existing/nonblocking lint warnings, no errors.
+- Real production smoke (separate run #38061862646): PASS, 2 temporary
+  accounts both explicitly deleted.
+- These are independently recorded results. Do not claim this also
+  accepts the actual V4 **allowlisted** write path; EdgeOne server-side
+  allowlist account configuration is required for that separate Gate.
