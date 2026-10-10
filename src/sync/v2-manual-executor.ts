@@ -54,7 +54,7 @@ function base(accountId: string, revision: number, hash: string): SyncV2Baseline
 }
 const SHA256 = /^[a-f0-9]{64}$/
 
-async function payloadV4(snapshot: WorkspaceSnapshotV4): Promise<{
+export async function payloadV4(snapshot: WorkspaceSnapshotV4): Promise<{
   encoded: string
   checksum: string
 }> {
