@@ -763,3 +763,88 @@ test('S2 three-device stale CAS simulation chooses one immutable V4 winner per r
   }), error => error?.code === 'sync_upgrade_required')
   assert.equal((await service.syncMeta(user.token)).revision, 2)
 })
+
+test('P3b explicit V3-to-V4 migration requires pinned cloud evidence and account confirmation', async () => {
+  const { createHash } = await import('node:crypto')
+  const storage = new MemoryStorage()
+  const service = createBackendService({ storage, snapshotRetention: 3 })
+  const user = await service.register('p3b-migration-check', 'sufficient-password', 'A')
+  const accountId = user.user.userId
+  await service.putSync(user.token, {
+    baseRevision: 0, payloadBase64: gzipPayload({ historical: true }),
+    clientFormatVersion: 'qwerty-backup-v3',
+  })
+  const old = await service.syncMeta(user.token)
+  const tables = ['wordRecords','chapterRecords','reviewRecords','reviewWordStates',
+    'achievementEvents','achievementStates']
+  const snapshot = {
+    backupFormatVersion: 'qwerty-backup-v4',
+    metadata: { source: { kind: 'account', accountId }, createdAt: '2026-10-10' },
+    workspaceData: {
+      database: { formatName: 'dexie', data: {
+        tables: tables.map(name => ({ name, schema: '++id' })),
+        data: [{ tableName: 'wordRecords', inbound: true, rows: [{ id: 1, word: 'remember' }] }],
+      } },
+      learnRuntime: { dailySessions: {} }, settings: { version: 1, values: {} },
+      navigation: { currentDict: 'zhongkaohexin', currentChapter: 0 },
+    },
+  }
+  const stable = value => {
+    if (value === null || typeof value !== 'object') return JSON.stringify(value)
+    if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`
+    return `{${Object.keys(value).sort().map(k => `${JSON.stringify(k)}:${stable(value[k])}`).join(',')}}`
+  }
+  const workspace = snapshot.workspaceData
+  const logical = {
+    database: { tables: workspace.database.data.tables, data: workspace.database.data.data },
+    learnRuntime: workspace.learnRuntime, navigation: workspace.navigation, settings: workspace.settings,
+  }
+  const body = {
+    baseRevision: 1, payloadBase64: gzipPayload(snapshot), clientFormatVersion: 'qwerty-backup-v4',
+    logicalFingerprint: createHash('sha256').update(stable(logical)).digest('hex'),
+    expectedRemoteSha256: old.payloadSha256,
+    expectedRemoteFormat: 'qwerty-backup-v3', recoveryMode: 'migrate-v3',
+    accountConfirmation: accountId,
+  }
+  await assert.rejects(service.putSyncV4(user.token, body),
+    e => e?.code === 'sync_migration_required')
+  for (const invalid of [
+    { accountConfirmation: 'other-account' },
+    { expectedRemoteSha256: '0'.repeat(64) },
+    { expectedRemoteFormat: 'qwerty-backup-v4' },
+    { recoveryMode: 'replace-v4' },
+    { expectedRemoteSha256: null },
+  ]) {
+    await assert.rejects(service.putSyncV4Recovery(user.token, { ...body, ...invalid }),
+      e => e?.code === 'recovery_precondition_failed')
+  }
+  assert.equal((await service.syncMeta(user.token)).revision, 1)
+  const race = await Promise.allSettled([
+    service.putSyncV4Recovery(user.token, body),
+    service.putSyncV4Recovery(user.token, body),
+  ])
+  assert.equal(race.filter(x => x.status === 'fulfilled').length, 1)
+  assert.equal(race.filter(x => x.status === 'rejected').length, 1)
+  assert.equal(race.find(x => x.status === 'rejected').reason.code, 'sync_conflict')
+  const migrated = await service.syncMeta(user.token)
+  assert.equal(migrated.revision, 2)
+  assert.equal(migrated.clientFormatVersion, 'qwerty-backup-v4')
+  assert.equal(migrated.logicalFingerprint, body.logicalFingerprint)
+  assert.ok(storage.revisions.has(accountId + ':1'), 'prior V3 revision survives initial migration')
+  await assert.rejects(service.putSync(user.token, {
+    baseRevision: 2, payloadBase64: gzipPayload({ old: true }),
+    clientFormatVersion: 'qwerty-backup-v3',
+  }), e => e?.code === 'sync_upgrade_required')
+  const follow = {
+    ...body, baseRevision: 2, recoveryMode: 'replace-v4',
+    expectedRemoteFormat: 'qwerty-backup-v4',
+    expectedRemoteSha256: migrated.payloadSha256,
+    expectedRemoteLogicalFingerprint: migrated.logicalFingerprint,
+  }
+  await assert.rejects(service.putSyncV4Recovery(user.token, {
+    ...follow, expectedRemoteLogicalFingerprint: 'f'.repeat(64),
+  }), e => e?.code === 'recovery_precondition_failed')
+  const accepted = await service.putSyncV4Recovery(user.token, follow)
+  assert.equal(accepted.revision, 3)
+  assert.equal(accepted.logicalFingerprint, body.logicalFingerprint)
+})
