@@ -363,7 +363,8 @@ function EnabledCloudSyncSetting() {
           当前云同步 V1 上传、覆盖恢复和删除操作已暂停。
         </div>
         {(import.meta.env.DEV ||
-          import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true') && auth && (
+          (REACT_APP_DEPLOY_ENV !== 'pages' &&
+            import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true')) && auth && (
           <button className="my-btn-primary mt-3 mr-2" type="button"
             disabled={auth.expiresAt * 1000 <= Date.now()}
             onClick={() => window.location.assign('/?s2-sync=run')}>
@@ -371,7 +372,8 @@ function EnabledCloudSyncSetting() {
           </button>
         )}
         {(import.meta.env.DEV ||
-          import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true') && auth && (
+          (REACT_APP_DEPLOY_ENV !== 'pages' &&
+            import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true')) && auth && (
           <button className="mt-3 mr-2 text-sm underline" type="button"
             disabled={auth.expiresAt * 1000 <= Date.now()}
             onClick={() => window.location.assign('/?s2-recovery=manage')}>
