@@ -165,11 +165,14 @@ for (const site of sites) {
 
       await page.getByRole('button', { name: '打开设置对话框' }).click()
       await page.getByRole('tab', { name: '数据设置' }).click()
-      await expect(page.getByText('本地备份', { exact: true })).toBeVisible()
       if (site.cloud) {
+        // EdgeOne master retains the pre-P1 '数据导出' header, while the
+        // Pages product/main UI labels the corresponding section '本地备份'.
+        await expect(page.getByText('数据导出', { exact: true })).toBeVisible()
         await expect(page.getByText('云端同步', { exact: true })).toBeVisible()
         await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible()
       } else {
+        await expect(page.getByText('本地备份', { exact: true })).toBeVisible()
         await expect(page.getByText('云端同步与账号', { exact: true })).toHaveCount(0)
         await expect(page.getByRole('button', { name: '登录', exact: true })).toHaveCount(0)
       }
@@ -199,7 +202,9 @@ for (const site of sites) {
 
         await page.getByRole('button', { name: 'Typing', exact: true }).click()
         await checkSite(page, site)
-        expect(new URL(page.url()).pathname).toMatch(/\/typing\/?$/)
+        const typingPath = new URL(page.url()).pathname
+        expect(site.cloud ? ['/', '/typing'] : ['/qwerty-learner/', '/qwerty-learner/typing'])
+          .toContain(typingPath)
         await page.getByRole('button', { name: 'Learn', exact: true }).click()
         await checkSite(page, site)
         await expect.poll(async () => await current(page)).toEqual(before)
