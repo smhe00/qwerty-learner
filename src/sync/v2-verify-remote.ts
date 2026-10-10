@@ -45,7 +45,7 @@ async function boundedInflate(payload: Uint8Array): Promise<string> {
   const parts: Uint8Array[] = []
   let length = 0
   try {
-    while (true) {
+    for (;;) {
       const { done, value } = await reader.read()
       if (done) break
       length += value.byteLength
