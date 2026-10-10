@@ -1,0 +1,58 @@
+name: Dual Published Explorer — Pages and EdgeOne
+
+# This job checks *published* websites, not a local build. Never update
+# master / trigger EdgeOne Maker. Both browser contexts are anonymous.
+on:
+  push:
+    branches:
+      - product/main
+    paths:
+      - 'tests/e2e/published-dual-explorer.spec.ts'
+      - 'tests/e2e/published-dual-explorer.config.ts'
+      - '.github/workflows/published-dual-explorer.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: published-dual-explorer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-published:
+    name: Verify ${{ matrix.target }} (anonymous)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 22
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [pages, edgeone]
+    env:
+      PUBLISHED_EXPLORER_TARGET: ${{ matrix.target }}
+      PUBLISHED_EXPLORER_SEED: '20261010'
+      PAGES_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - name: Checkout browser tests only (no deployment)
+        uses: actions/checkout@v4
+      - name: Node 20 and frozen dependencies
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Install browser
+        run: |
+          yarn install --frozen-lockfile
+          npx playwright install --with-deps chromium
+      - name: Execute anonymous published-site Explorer
+        run: npx playwright test --config=tests/e2e/published-dual-explorer.config.ts
+      - name: Preserve redacted coverage evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-dual-explorer-${{ matrix.target }}-${{ github.run_id }}
+          path: |
+            test-results/**/*dual-*-redacted.json
+            test-results/.last-run.json
+          if-no-files-found: ignore
+          retention-days: 14
