@@ -370,7 +370,7 @@ test('real Dexie reviewPolicyShadow exotic nested values round-trip without data
  * No production data is involved and capture must leave every source row
  * untouched. A single failure in ANY row/table blocks the Chromium Gate.
  */
-test('six-table, 800-row, deterministic Typeson matrix exports V4 intact', async ({ page }) => {
+test('six-table, 832-row, deterministic Typeson matrix exports V4 intact', async ({ page }) => {
   await ready(page)
   const result = await page.evaluate(async () => {
     const h = (window as any).__backupHarness
