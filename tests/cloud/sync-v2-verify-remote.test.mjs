@@ -17,11 +17,12 @@ await build({ entryPoints: [resolve(root, 'src/sync/v2-verify-remote.ts')],
 after(() => rmSync(tmp, { recursive: true, force: true }))
 const { verifyDownloadedWorkspaceV4 } = await import(pathToFileURL(bundle).href)
 const owner = 'immutable-owner'
+const TABLES = ['achievementEvents','achievementStates','chapterRecords','reviewRecords','reviewWordStates','wordRecords']
 const snapshot = {
   backupFormatVersion: 'qwerty-backup-v4',
   metadata: { createdAt: '2026-10-10', source: { kind: 'account', accountId: owner } },
   workspaceData: {
-    database: { formatName: 'dexie', data: { tables: [], data: [] } },
+    database: { formatName: 'dexie', data: { tables: TABLES.map(name => ({ name, schema: '++id' })), data: [] } },
     settings: { version: 1, values: {} },
     learnRuntime: { dailySessions: {} },
     navigation: { currentDict: 'zhongkaohexin', currentChapter: 0 },
@@ -30,7 +31,7 @@ const snapshot = {
 function fixture() {
   const bytes = gzipSync(Buffer.from(JSON.stringify(snapshot)))
   const fingerprintInput = {
-    database: { tables: [], data: [] },
+    database: { tables: TABLES.map(name => ({ name, schema: '++id' })), data: [] },
     learnRuntime: { dailySessions: {} },
     navigation: { currentDict: 'zhongkaohexin', currentChapter: 0 },
     settings: { version: 1, values: {} },
