@@ -6,7 +6,7 @@
  * Two immutable backups must be downloaded and acknowledged before either
  * side can be deliberately replaced. This surface never auto-merges.
  */
-import { getSyncV2Meta, getSyncV2Snapshot, putSyncV2Recovery } from './api'
+import { SyncApiError, getSyncV2Meta, getSyncV2Snapshot, putSyncV2Recovery } from './api'
 import { loadAuth } from './auth'
 import { compareAndSwapSyncV2Baseline, loadSyncV2Baseline } from './v2-baseline'
 import { payloadV4 } from './v2-manual-executor'
@@ -172,6 +172,11 @@ export async function renderS2RecoveryUI(
   actions.append(typed)
   const apply = button('⑤ 我已备份两端数据，继续执行选定方向')
   apply.disabled = true
+  // After a write has been attempted, the pinned remote revision might be
+  // stale even when the browser received a network error. Never enable a
+  // second submit in this document; reopen to pin the current remote meta.
+  let attemptStarted = false
+  let attemptFailed = false
   const checklist = elt('p')
   checklist.setAttribute('role', 'status')
   checklist.style.cssText = 'margin:5px 0 0;white-space:pre-wrap;color:#334155;line-height:1.7'
@@ -184,8 +189,12 @@ export async function renderS2RecoveryUI(
     if (!cloudAck.checked) missing.push('确认云端备份文件已保存')
     if (!select.value) missing.push('选择保留哪份学习记录')
     if (typed.value !== accountId) missing.push('输入完全一致的不可变账号 ID')
-    apply.disabled = missing.length !== 0
-    checklist.textContent = missing.length === 0
+    apply.disabled = missing.length !== 0 || attemptStarted || attemptFailed
+    checklist.textContent = attemptFailed
+      ? '操作已停止；必须重新读取云端最新 revision 后才能再尝试，以免重复提交。'
+      : attemptStarted
+        ? '正在执行；请等待结果，不要重复提交或打开另一标签页。'
+        : missing.length === 0
       ? '所有迁移前置条件已满足。⑤ 已解锁；点击后仍会再次显示最终覆盖确认。'
       : '⑤ 仍不可执行，请先完成：\n' + missing.map(item => '• ' + item).join('\n')
   }
@@ -193,6 +202,8 @@ export async function renderS2RecoveryUI(
   cloudAck.addEventListener('change', refreshEnabled)
   select.addEventListener('change', refreshEnabled)
   typed.addEventListener('input', refreshEnabled)
+  const recheck = button('重新读取云端状态（只读，不执行覆盖）')
+  recheck.addEventListener('click', () => window.location.reload())
   refreshEnabled()
 
   localButton.addEventListener('click', () => {
@@ -218,7 +229,9 @@ export async function renderS2RecoveryUI(
 
   let startedPull = false
   apply.addEventListener('click', () => {
-    apply.disabled = true
+    if (attemptStarted || attemptFailed || apply.disabled) return
+    attemptStarted = true
+    refreshEnabled()
     void (async () => {
       if (!(gotLocal && gotCloud && localAck.checked && cloudAck.checked &&
             typed.value === accountId)) throw Error('Both backups and immutable account ID required')
@@ -231,6 +244,7 @@ export async function renderS2RecoveryUI(
           ' 覆盖本机学习记录。不会自动合并；V3 旧备份可能缺少新增的每日学习状态与设置，这些信息不能凭空恢复。'
       if (!window.confirm(warning + '\n两份 .gz 备份已检查保存，继续？')) {
         status.textContent = '用户取消；未更改数据。'
+        attemptStarted = false
         refreshEnabled()
         return
       }
@@ -326,9 +340,24 @@ export async function renderS2RecoveryUI(
       status.textContent = '恢复日志已提交；正在重新启动并执行安全恢复…'
       window.location.replace('/')
     })().catch(error => {
+      attemptStarted = false
+      attemptFailed = true
+      const authDenied = error instanceof SyncApiError &&
+        error.status === 403 && error.code === 's2_write_not_enabled'
+      const hint = authDenied
+        ? '服务端拒绝 V4 写入：须在 EdgeOne Maker Production 运行时环境变量 ' +
+          'S2_SYNC_WRITE_ACCOUNT_IDS 中添加本页显示的完整不可变账号 ID，' +
+          '待配置生效后重新读取云端状态。普通 Sync 不能替代 V3→V4 迁移。'
+        : '提交结果可能不确定；必须先重新读取云端格式、revision 和 SHA，' +
+          '核实是否已升至 V4，禁止在旧状态下重复覆盖。'
       status.textContent = '已停止覆盖：' +
         (error instanceof Error ? error.message : String(error)) +
-        '\n若云端提交成功而本机基线未更新，请重新检查 Sync；不要重复盲目覆盖。'
+        '\n' + hint + '\n原本的本地数据没有因本页报错被主动清空。'
+      status.style.cssText += ';color:#b91c1c;font-weight:600'
+      refreshEnabled()
+      // The status lives above a long recovery form and could otherwise be
+      // invisible when the user clicks the bottom disabled button.
+      status.scrollIntoView({ block: 'center', behavior: 'smooth' })
       if (startedPull) {
         // A staged restore might be partial: never allow any more operation
         // in this JS realm. S1 startup must replay the durable V4 journal.
