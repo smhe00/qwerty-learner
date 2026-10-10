@@ -210,3 +210,52 @@ the refreshed Cloud Sync workflow now publishes the inspectable
   counterexample (positive mutant-gate result).
 - This is **bounded** formal verification, not a proof of unbounded
   concurrency or a substitute for real EdgeOne V4 allowlisted CAS.
+
+
+## 2026-10-11 named production V4 proof: test13 + test24
+
+The user explicitly authorized testing with disposable usernames `test13` and
+`test24` and their deletion afterward. During a time-limited test-only
+Master release, both account identities were newly registered and confirmed
+distinct. Existing same-name accounts would NOT have been reused or deleted.
+
+**First run FAIL, then two actual Maker/Blob runs PASS:**
+
+- [First real run #38084721962](https://github.com/smhe00/qwerty-learner/actions/runs/38084721962):
+  both registrations succeeded; ordinary V4 PUT over existing V3 revision
+  returned unexpected HTTP **500** instead of expected 409. Both accounts
+  subsequently deleted successfully. Root cause not independently confirmed.
+- [Second run #38085108313](https://github.com/smhe00/qwerty-learner/actions/runs/38085108313):
+  real Maker/Blob **PASS**:
+  V3 upload; explicit V3->V4 migration with pinned cloud SHA and identity;
+  reject implicit migration and wrong fingerprint; reject V1 writes after V4;
+  concurrent A/B/C device-tagged requests produce exactly one CAS winner;
+  V4 download verifies payload SHA, account owner, six-table manifest and
+  word row; cross-account forged V4 refused; recovery requires pinned V4
+  cloud fingerprint; second login revokes old token without data loss;
+  `test24` and `test13` both deleted.
+- [Independent workflow rerun of #38085108313](https://github.com/smhe00/qwerty-learner/actions/runs/38085108313)
+  (job 114310561524) again **PASS** for all categories and both account
+  deletions. No new Maker deploy was required for the rerun.
+- The first 500 was not reproduced in the following two complete runs,
+  but do not silently erase it from the risk log; EdgeOne runtime/transient
+  handling remains a residual reliability investigation.
+
+After validation, code in `product/main` and `master` was returned to
+strict `S2_SYNC_WRITE_ACCOUNT_IDS` server-only write allowlist at commit
+`bcc94f7`; temporary username allowance and scoped diagnostics are
+**completely absent from the published source tree**. Cloud Sync Gate for
+this cleanup commit PASS:
+[run #38085354715](https://github.com/smhe00/qwerty-learner/actions/runs/38085354715).
+
+A separate CI workflow
+`.github/workflows/p4b-final-strict-maker.yml` confirms the actual
+Maker backend has shed the temporary health capability and again denies
+fresh `test13` V2/recovery writes, then deletes its temporary test
+account. Do not claim this final deployment/cleanup proof PASS until
+the workflow has an independent successful run.
+
+**Scope limitation:** A/B/C parallel calls used distinct device IDs under
+one authenticated session. They exercise actual Blob CAS, not multiple
+independent logged-in browser sessions; browser-based multi-device/Pull
+journal and physical rollback are separately tracked release gates.
