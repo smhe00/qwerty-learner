@@ -32,6 +32,16 @@ jobs:
           java -cp /tmp/tla2tools.jar tlc2.TLC \
             -workers auto -config formal/sync/S2Recovery.production.cfg \
             formal/sync/S2Recovery.tla
+      - name: Model-check two independent devices competing for one cloud revision
+        run: |
+          timeout 180s java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -workers auto -config formal/sync/S2Recovery.two-device-cas.cfg \
+            formal/sync/S2Recovery.tla
+      - name: Model-check account switch and crash journal owner isolation
+        run: |
+          timeout 180s java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -workers auto -config formal/sync/S2Recovery.account-switch.cfg \
+            formal/sync/S2Recovery.tla
       - name: Require real unauthorized-overwrite mutant counterexample
         run: |
           set +e

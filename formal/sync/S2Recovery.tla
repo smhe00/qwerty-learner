@@ -196,6 +196,34 @@ NextCore ==
   \/ \E d \in Devices : ExplicitRecoveryCAS(d)
   \/ \E d \in Devices : UnsafeOverwrite(d)
 
+(*
+  Finite release projections isolate multiple real concurrency hazards
+  without pretending that 2-device x 2-account x full NextCore is exhaustively
+  checked. All actions remain defined by the canonical S2Recovery relations.
+*)
+NextTwoDeviceCAS ==
+  \/ \E d \in Devices : BackupBoth(d)
+  \/ \E d \in Devices : ExplicitConsent(d)
+  \/ \E d \in Devices : StageVerifiedPull(d)
+  \/ \E d \in Devices : Crash(d)
+  \/ \E d \in Devices : Restart(d)
+  \/ \E d \in Devices : PartialRestore(d)
+  \/ \E d \in Devices : ReplayAndAtomicBaseline(d)
+  \/ \E d \in Devices : ExplicitRecoveryCAS(d)
+  \/ \E a \in Accounts : RemoteAdvance(a)
+
+NextAccountSwitch ==
+  \/ \E d \in Devices, a \in Accounts : SwitchAccount(d, a)
+  \/ \E d \in Devices : Reauth(d)
+  \/ \E d \in Devices : Expire(d)
+  \/ \E d \in Devices : BackupBoth(d)
+  \/ \E d \in Devices : ExplicitConsent(d)
+  \/ \E d \in Devices : StageVerifiedPull(d)
+  \/ \E d \in Devices : Crash(d)
+  \/ \E d \in Devices : Restart(d)
+  \/ \E d \in Devices : ReplayAndAtomicBaseline(d)
+  \/ \E a \in Accounts : RemoteAdvance(a)
+
 JournalOwnerSafe ==
   \A d \in Devices :
     client[d].journal => client[d].stageOwner = client[d].owner
