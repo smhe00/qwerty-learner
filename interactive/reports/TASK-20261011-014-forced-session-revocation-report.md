@@ -29,3 +29,15 @@ Backend single-session enforcement was already present: login issues a newer ses
 - [ ] Distinguish users still in V1 legacy mode from those who have migrated to S1; this handler presently targets **isolated account workspaces**, not a blanket V1 legacy login workflow.
 
 Status: IN_PROGRESS. Do not mark done solely because the new code was committed.
+
+
+## Latest completed development Gates — PASS
+
+- Final code candidate `cd82564250fe4f864f92f37f4ba13f02f83af5db`.
+- Cloud Sync Gate [Actions #38087949862](https://github.com/smhe00/qwerty-learner/actions/runs/38087949862): **SUCCESS**, backend tests PASS, frontend/cloud lint PASS, Vite build PASS. An earlier attempt [#38087865196](https://github.com/smhe00/qwerty-learner/actions/runs/38087865196) found four new ESLint errors; all were fixed (import sorting, two empty callbacks, prefer-const) without weakening behavior.
+- Chromium Gate [Actions #38087949894](https://github.com/smhe00/qwerty-learner/actions/runs/38087949894): **SUCCESS, 16/16 PASS**. All 13 original S2 recovery cases and three new session-takeover tests passed:
+  1. Two independent profiles: B logs in and supersedes A; A detects 401, user confirms, S1 pre-mount transaction switches to anonymous while original account V4 word row remains in Vault; B keeps current token.
+  2. Real 503 response and ordinary `session_expired` do not force a takeover dialog, and owner/data remain intact.
+  3. Visiting pre-mount forced-logout URL without a confirmed handoff cannot change account ownership.
+- All observations are from real Chromium against Vite with deterministic mocked `/api/auth/me`, **not** the public Maker user journey.
+- `master` remains unchanged; do not label this feature production-ready until the existing legacy V1 / new S1 migration path and actual Maker authentication journey are qualified.
