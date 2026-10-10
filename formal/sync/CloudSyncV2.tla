@@ -461,8 +461,8 @@ LoginPush(d, u) ==
             ![d].sync = "CLEAN",
             ![d].switch = "IDLE"]
     /\ ordinaryWriteSafe' =
-         ordinaryWriteSafe /\
-         (server.revision[a] = dev[d].baseRev[a])
+         (ordinaryWriteSafe /\
+         (server.revision[a] = dev[d].baseRev[a]))
     /\ UNCHANGED <<backup, blockFreezeSafe>>
 
 LoginConflict(d, u) ==
@@ -605,8 +605,8 @@ ManualPush(d) ==
             ![d].baseFp[a] = LocalFp(d, a),
             ![d].sync = "CLEAN"]
     /\ ordinaryWriteSafe' =
-         ordinaryWriteSafe /\
-         (server.revision[a] = dev[d].baseRev[a])
+         (ordinaryWriteSafe /\
+         (server.revision[a] = dev[d].baseRev[a]))
     /\ UNCHANGED <<backup, blockFreezeSafe>>
 
 ManualPull(d) ==
@@ -669,8 +669,8 @@ AutoPush(d) ==
             ![d].lastAuto[a] = BlockEpoch(LocalFp(d, a)),
             ![d].sync = "CLEAN"]
     /\ ordinaryWriteSafe' =
-         ordinaryWriteSafe /\
-         (server.revision[a] = dev[d].baseRev[a])
+         (ordinaryWriteSafe /\
+         (server.revision[a] = dev[d].baseRev[a]))
     /\ UNCHANGED <<backup, blockFreezeSafe>>
 
 AutoRemoteAhead(d) ==
@@ -1034,32 +1034,10 @@ CompleteWordProjection ==
   \/ \E d \in Devices : CompleteWord(d)
   \/ \E d \in Devices : DeleteLearningRecords(d)
 
-(* Intentional negative control: remove the ordinary-write base-revision
-   CAS guard, while keeping all other ManualPush data/account/revision guards.
-   The positive model's Next, ManualPush and Safety remain unchanged. *)
-StalePushWithoutCAS(d) ==
-  LET a == dev[d].active IN
-    /\ a \in AccountIds
-    /\ CanUseAccount(d, a)
-    /\ LocalDirty(d, a)
-    /\ LocalFp(d, a) # CloudFp(a)
-    /\ RemoteChanged(d, a)
-    /\ server.revision[a] < MaxRevision
-    /\ server' =
-         [server EXCEPT
-            !.revision[a] = @ + 1,
-            !.fp[a] = LocalFp(d, a)]
-    /\ dev' =
-         [dev EXCEPT
-            ![d].baseRev[a] = server.revision[a] + 1,
-            ![d].baseFp[a] = LocalFp(d, a),
-            ![d].sync = "CLEAN"]
-    /\ ordinaryWriteSafe' =
-         ordinaryWriteSafe /\
-         (server.revision[a] = dev[d].baseRev[a])
-    /\ UNCHANGED <<backup, blockFreezeSafe>>
-
-(* Small independent subset to find the stale-device overwrite trace. *)
+(* Targeted negative-control projection. PushPolicy = "allow-stale"
+   intentionally bypasses the normal CAS guard. The parenthesized
+   ordinaryWriteSafe' assignment records a stale overwrite as FALSE.
+   The positive model keeps PushPolicy = "safe". *)
 NextStalePushMutation ==
   \/ \E d \in Devices, u \in Usernames, a \in AccountIds :
        RegisterBlank(d, u, a)
@@ -1067,7 +1045,6 @@ NextStalePushMutation ==
   \/ \E d \in Devices : ChangeSetting(d)
   \/ \E d \in Devices : CompleteWord(d)
   \/ \E d \in Devices : ManualPush(d)
-  \/ \E d \in Devices : StalePushWithoutCAS(d)
 
 NextConcurrent ==
   \/ RegistrationActions
