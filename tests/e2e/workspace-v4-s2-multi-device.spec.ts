@@ -71,14 +71,19 @@ class SharedMockCloud {
   }
 
   async connect(context: BrowserContext) {
-    await context.route('**/api/sync/v2**', r => this.route(r))
+    await context.route(/\/api\/sync\/v2(?:\/|$|\?)/, r => this.route(r))
+    context.on('request', request => {
+      if (request.url().includes('/api/sync')) {
+        console.log('P4b shared-cloud request:', request.method(), request.url())
+      }
+    })
   }
 }
 
 async function makeDevice(
   browser: Browser, cloud: SharedMockCloud, label: string, seeded: boolean,
 ) {
-  const context = await browser.newContext({ acceptDownloads: true, baseURL: 'http://127.0.0.1:4178' })
+  const context = await browser.newContext({ acceptDownloads: true, baseURL: 'http://127.0.0.1:4178', serviceWorkers: 'block' })
   await cloud.connect(context)
   const page = await context.newPage()
   await page.goto('/tests/e2e/backup-harness.html')
