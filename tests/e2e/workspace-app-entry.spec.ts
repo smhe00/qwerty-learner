@@ -207,17 +207,12 @@ test('S1 keeps an expired account workspace locally owned, without silent sign-o
   await page.evaluate(async (id) => {
     const h = (window as any).__backupHarness
     await h.seed()
-    const future = Math.floor(Date.now() / 1000) + 3600
-    localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify({
-      token: 's1-test-expired-token', expiresAt: future,
-      user: { userId: id, username: 'expiry-test-user' },
-    }))
-    await h.initializeLegacyWorkspace({ kind: 'account', accountId: id })
     const expired = Math.floor(Date.now() / 1000) - 120
     localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify({
       token: 's1-test-expired-token', expiresAt: expired,
       user: { userId: id, username: 'expiry-test-user' },
     }))
+    await h.initializeLegacyWorkspace({ kind: 'account', accountId: id })
   }, accountId)
 
   await page.goto('/')
@@ -883,7 +878,7 @@ test('S1 migration witness rejects old-tab storage clear after owner has closed'
   })
   await page.goto('/')
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
-  expect(await page.evaluate(() => localStorage.getItem('qwerty.s1.workspace-migrated.v1'))).toBe('v1')
+  expect(await page.evaluate(() => localStorage.getItem('qwerty.s1.workspace-migrated.v1'))).toMatch(/^v2:[0-9a-f]{16}$/)
   const oldTab = await context.newPage()
   await oldTab.goto('/tests/e2e/legacy-v5.html')
   await page.close()
@@ -909,7 +904,8 @@ test('S1 never treats a deleted vault registry as a fresh anonymous V1 profile',
       records: await h.db.wordRecords.count(),
     }
   })
-  expect(state).toEqual({ migrated: 'v1', records: 1 })
+  expect(state.migrated).toMatch(/^v2:[0-9a-f]{16}$/)
+  expect(state.records).toBe(1)
   await page.evaluate(async () => {
     await new Promise<void>((resolve, reject) => {
       const request = indexedDB.deleteDatabase('QwertyPlusWorkspaceVaultV1')
@@ -925,4 +921,36 @@ test('S1 never treats a deleted vault registry as a fresh anonymous V1 profile',
   await harness(page)
   expect(await page.evaluate(async () =>
     (window as any).__backupHarness.db.wordRecords.count())).toBe(1)
+})
+
+
+test('S1 seal detects stale V5 settings modification after the owner tab closes', async ({ page, context }) => {
+  await harness(page)
+  await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    localStorage.setItem('memoryConfig', JSON.stringify({ blockSize: 1, dailyNewWordTarget: 19 }))
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+  })
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  expect(await page.evaluate(() => localStorage.getItem('qwerty.s1.workspace-migrated.v1'))).toMatch(/^v2:[0-9a-f]{16}$/)
+
+  const oldTab = await context.newPage()
+  await oldTab.goto('/tests/e2e/legacy-v5.html')
+  await page.close()
+  await oldTab.evaluate(() => {
+    localStorage.setItem('memoryConfig', JSON.stringify({ blockSize: 100, dailyNewWordTarget: 999 }))
+  })
+  await oldTab.close()
+
+  const reopened = await context.newPage()
+  await reopened.goto('/')
+  await expect(reopened.getByText('学习数据安全检查未通过')).toBeVisible()
+  await expect(reopened.getByText(/storage witness mismatch/)).toBeVisible()
+  await expect(reopened.getByRole('button', { name: '打开设置对话框' })).toHaveCount(0)
+  await harness(reopened)
+  expect(await reopened.evaluate(async () =>
+    (window as any).__backupHarness.db.wordRecords.count())).toBe(1)
+  await reopened.close()
 })

@@ -7,6 +7,11 @@
  */
 import { loadAuth, setIsolatedAuthRetention } from './auth'
 import { S1_MIGRATION_WITNESS_KEY } from './workspace-v4'
+import {
+  assertWorkspaceMigrationWitness,
+  installWorkspaceStorageWriterGuard,
+  refreshWorkspaceMigrationWitness,
+} from './workspace-storage-witness'
 import { acquireWorkspaceWriterLease } from './workspace-lock'
 import { same } from './workspace-transition'
 import type { Registry, Workspace } from './workspace-transition'
@@ -56,7 +61,7 @@ export async function prepareGuardedWorkspaceBoot(
     if (before.generation === 0) {
       // An already-migrated browser must never silently fall back to V1
       // when its isolated IndexedDB registry has been removed or corrupted.
-      if (localStorage.getItem(S1_MIGRATION_WITNESS_KEY) === 'v1') {
+      if (localStorage.getItem(S1_MIGRATION_WITNESS_KEY) !== null) {
         throw new Error('S1 vault registry missing but migration witness remains: legacy fallback refused')
       }
       setIsolatedAuthRetention(false)
@@ -81,9 +86,13 @@ export async function prepareGuardedWorkspaceBoot(
     // owner document is closed and therefore cannot receive storage events.
     // The migration witness persists across ordinary workspace restore
     // and must not disappear after registry generation has been committed.
-    if (localStorage.getItem(S1_MIGRATION_WITNESS_KEY) !== 'v1') {
+    if (localStorage.getItem(S1_MIGRATION_WITNESS_KEY) === null) {
       throw new Error('S1 workspace migration witness missing: possible legacy-tab storage wipe; writes blocked')
     }
+
+    // With no unfinished switch, any V5-only write since the owner closed
+    // must be detected BEFORE reconciliation can touch working credentials.
+    if (!before.pending) assertWorkspaceMigrationWitness()
 
     // Recover a previously committed workspace journal before auth
     // reconciliation; the intended target credentials may not yet be active.
@@ -97,6 +106,8 @@ export async function prepareGuardedWorkspaceBoot(
       await recoverPendingWorkspace()
       const { reconcileAuthTransition } = await import('./workspace-auth-transaction')
       await reconcileAuthTransition()
+      // The immutable vault is the recovery authority, not stale V5 storage.
+      refreshWorkspaceMigrationWitness()
       recovered = true
       throw new Error('S1 recovery completed; reload required before mounting app')
     }
@@ -104,7 +115,8 @@ export async function prepareGuardedWorkspaceBoot(
     const { reconcileAuthTransition } = await import('./workspace-auth-transaction')
     // No domain writer is mounted yet. Handle both pre-journal rollback and
     // post-registry-CAS / pre-auth-write crashes from the previous page.
-    await reconcileAuthTransition()
+    const reconciliation = await reconcileAuthTransition()
+    if (reconciliation === 'completed') refreshWorkspaceMigrationWitness()
     const registry = before
     report(onStage, 'checking-identity')
     const auth = loadAuth({ preserveExpired: true })
@@ -120,6 +132,13 @@ export async function prepareGuardedWorkspaceBoot(
     if (localStorage.getItem(S1_MIGRATION_WITNESS_KEY) !== 'v1') {
       throw new Error('S1 workspace migration witness vanished during boot; writes blocked')
     }
+    // Upgrade old V1 witness profiles on first guarded entry. New migrations
+    // are sealed before their registry CAS commits. A future stale V5 tab
+    // cannot update this digest when the owner page is no longer alive.
+    if (localStorage.getItem(S1_MIGRATION_WITNESS_KEY) === 'v1') {
+      refreshWorkspaceMigrationWitness()
+    }
+    installWorkspaceStorageWriterGuard()
     setIsolatedAuthRetention(true)
     report(onStage, 'ready')
     return { mode: 'isolated', registry, release: () => lease.release() }
