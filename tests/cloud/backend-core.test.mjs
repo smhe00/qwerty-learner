@@ -796,7 +796,12 @@ test('P3b explicit V3-to-V4 migration requires pinned cloud evidence and account
   }
   const workspace = snapshot.workspaceData
   const logical = {
-    database: { tables: workspace.database.data.tables, data: workspace.database.data.data },
+    database: {
+      tables: [...workspace.database.data.tables].sort((a, b) =>
+        JSON.stringify(a.name).localeCompare(JSON.stringify(b.name))),
+      data: [...workspace.database.data.data].sort((a, b) =>
+        JSON.stringify(a.tableName).localeCompare(JSON.stringify(b.tableName))),
+    },
     learnRuntime: workspace.learnRuntime, navigation: workspace.navigation, settings: workspace.settings,
   }
   const body = {
