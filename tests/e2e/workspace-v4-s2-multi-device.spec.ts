@@ -16,6 +16,9 @@ class SharedMockCloud {
   private current: any = null
   successfulWrites = 0
   refusedCAS = 0
+  failNextMeta = false
+  failNextPut = false
+  loseNextCommitAck = false
   readonly byRevision = new Map<number, any>()
 
   snapshot() {
@@ -39,6 +42,14 @@ class SharedMockCloud {
     const url = new URL(request.url())
     const pathname = url.pathname
     if (request.method() === 'GET') {
+      if (pathname.endsWith('/meta') && this.failNextMeta) {
+        this.failNextMeta = false
+        await r.fulfill({ status: 503, json: {
+          ok: false, error: 'temporary_unavailable',
+          message: 'P4b injected metadata read outage',
+        } })
+        return
+      }
       if (pathname.endsWith('/meta')) {
         await r.fulfill({ json: { ok: true, ...this.meta() } })
       } else {
@@ -49,6 +60,14 @@ class SharedMockCloud {
     }
     if (request.method() !== 'PUT' || pathname.endsWith('/recovery')) {
       throw new Error('Test cloud rejected unexpected API method')
+    }
+    if (this.failNextPut) {
+      this.failNextPut = false
+      await r.fulfill({ status: 503, json: {
+        ok: false, error: 'temporary_unavailable',
+        message: 'P4b injected precommit outage',
+      } })
+      return
     }
     const body = request.postDataJSON()
     const currentRevision = this.current?.revision ?? 0
@@ -74,6 +93,14 @@ class SharedMockCloud {
     }
     this.successfulWrites++
     this.byRevision.set(this.current.revision, { ...this.current })
+    if (this.loseNextCommitAck) {
+      this.loseNextCommitAck = false
+      await r.fulfill({ status: 503, json: {
+        ok: false, error: 'response_lost_after_commit',
+        message: 'P4b injected postcommit missing acknowledgement',
+      } })
+      return
+    }
     await r.fulfill({ json: { ok: true, ...this.meta() } })
   }
 
@@ -235,4 +262,76 @@ test('P4b three independent profiles competing CAS admit one winner and retain a
   } finally {
     await Promise.all([A.context.close(), B.context.close(), C.context.close()])
   }
+})
+
+test('P4b fails closed for expired credentials and preserves unsynced local rows', async ({ browser }) => {
+  const server = new SharedMockCloud()
+  const A = await makeDevice(browser, server, 'expired', true)
+  try {
+    await A.page.evaluate(() => {
+      const key = 'qwerty.cloudAuth.v1'
+      const auth = JSON.parse(localStorage.getItem(key)!)
+      auth.expiresAt = Math.floor(Date.now() / 1000) - 60
+      localStorage.setItem(key, JSON.stringify(auth))
+    })
+    await A.page.goto('/?s2-sync=run')
+    await expect(A.page.getByText(/同步未确认，将先执行安全恢复检查/)).toBeVisible()
+    expect(server.successfulWrites).toBe(0)
+    const local = await inspect(A.page)
+    expect(local.count).toBe(1)
+    expect(local.preservedFsrs).toBe(true)
+    expect(local.baseline).toBeNull()
+  } finally { await A.context.close() }
+})
+
+test('P4b injection: network metadata outage then retry retains original rows', async ({ browser }) => {
+  const server = new SharedMockCloud()
+  const A = await makeDevice(browser, server, 'offline', true)
+  try {
+    server.failNextMeta = true
+    await A.page.goto('/?s2-sync=run')
+    await expect(A.page.getByText(/同步未确认，将先执行安全恢复检查/)).toBeVisible()
+    expect(server.successfulWrites).toBe(0)
+    const before = await inspect(A.page)
+    expect(before.count).toBe(1)
+    expect(before.baseline).toBeNull()
+    await sync(A.page, '同步完成：本地进度已安全上传至云端。')
+    expect(server.successfulWrites).toBe(1)
+  } finally { await A.context.close() }
+})
+
+test('P4b injection: precommit outage refuses baseline advancement', async ({ browser }) => {
+  const server = new SharedMockCloud()
+  const A = await makeDevice(browser, server, 'precommit', true)
+  try {
+    server.failNextPut = true
+    await A.page.goto('/?s2-sync=run')
+    await expect(A.page.getByText(/同步未确认，将先执行安全恢复检查/)).toBeVisible()
+    expect(server.successfulWrites).toBe(0)
+    const before = await inspect(A.page)
+    expect(before.count).toBe(1)
+    expect(before.baseline).toBeNull()
+  } finally { await A.context.close() }
+})
+
+test('P4b injection: cloud commits but acknowledgement is lost, no phantom baseline success', async ({ browser }) => {
+  const server = new SharedMockCloud()
+  const A = await makeDevice(browser, server, 'postcommit', true)
+  try {
+    server.loseNextCommitAck = true
+    await A.page.goto('/?s2-sync=run')
+    await expect(A.page.getByText(/同步未确认，将先执行安全恢复检查/)).toBeVisible()
+    expect(server.successfulWrites).toBe(1)
+    expect(server.meta().revision).toBe(1)
+    const local = await inspect(A.page)
+    expect(local.count).toBe(1)
+    expect(local.preservedFsrs).toBe(true)
+    expect(local.baseline).toBeNull()
+    // On retry, the client may detect a metadata-only identical snapshot
+    // or require explicit conflict recovery if React modified local runtime.
+    // Neither path may create another cloud revision without CAS/consent.
+    await A.page.goto('/?s2-sync=run')
+    await expect.poll(() => A.page.url()).not.toContain('s2-sync=run')
+    expect(server.successfulWrites).toBe(1)
+  } finally { await A.context.close() }
 })
