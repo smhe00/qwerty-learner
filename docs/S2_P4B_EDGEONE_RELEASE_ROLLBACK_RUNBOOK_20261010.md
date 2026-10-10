@@ -1,6 +1,6 @@
 # Qwerty Plus — S2 P4b Maker 灰度 / 回滚操作契约
 
-状态：**预发布准备；尚未授权 Maker 新构建；不可声称实网 PASS**。
+状态：**灰度隔离已部署，P4b 实网验收未完成；不可声称全部 PASS**。
 开发主线 `product/main`；当前生产发布分支 `master`。将此文档
 纳入 P4b-4 操作预案，不代表 P4b-3 已执行。
 
@@ -75,7 +75,7 @@ P4b-3 EdgeOne Maker 实网检查和 P4b-4 回滚演练**不允许用模拟云
 测试替代**；需要用户单独授权一次上线或提供可用的隔离测试环境。
 若没有该授权，P4b 只能宣布“开发 Gate 收口完成，生产 Gate 阻断”。
 
-### S2 服务端写入灰度隔离（开发分支待发布）
+### S2 服务端写入灰度隔离（master c1135a9 已发布）
 
 从 `product/main` 的提交 `486198b` 起，EdgeOne 后端的
 `PUT /api/sync/v2` 和 `PUT /api/sync/v2/recovery` 均调用服务端身份验证，
@@ -93,5 +93,13 @@ EdgeOne 部署操作：先登记隔离账号的 `userId`，再在生产函数的
 PUT 返回 403，并确认其 revision 没有变化；随后用白名单测试账号
 验证 PUT 可按普通 CAS 规则执行，最后清理临时测试账号或撤销白名单。
 
-**注意：目前 master 发布版本尚未包含此隔离，禁止把开发分支代码已提交
-视为生产服务端隔离已经生效。**
+**2026-10-10 部署记录：** 用户确认 EdgeOne Maker 已成功部署 `master` 的
+`c1135a9`。此为发布版本确认，**不是独立 API/Blob 实网验收证明**。
+目前未核实线上 `S2_SYNC_WRITE_ACCOUNT_IDS` 值；未授权账户按代码应返回 403。
+
+**独立实网验证入口：** `node tests/cloud/p4b-edgeone-gate-smoke.mjs`，
+及 `.github/workflows/p4b-edgeone-write-gate-smoke.yml`。
+该测试从非白名单一次性账号验证真实 HTTP 403、云端 revision 不变，
+同时验证原有 V1 写入仍可用，并删除该一次性账号。无需 Blob 管理密钥。
+它不验证白名单正向 V4 写入、A/B/C 真正跨设备冲突、V3→V4 迁移或回滚，
+这些仍属于 P4b-3/P4b-4 阻断项。禁止以脚本已提交代替 CI PASS。
