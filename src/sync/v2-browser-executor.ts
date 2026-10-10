@@ -11,8 +11,8 @@ import { compareAndSwapSyncV2Baseline, loadSyncV2Baseline } from './v2-baseline'
 import { executeManualSyncV2 } from './v2-manual-executor'
 import type { S2ExecutionResult } from './v2-manual-executor'
 import { syncV2PullJournalPort } from './v2-pull-journal'
-import { assertWorkspaceMigrationWitness, refreshWorkspaceMigrationWitness } from './workspace-storage-witness'
-import { captureWorkingWorkspaceV4, restoreWorkingWorkspaceV4 } from './workspace-v4-browser'
+import { assertWorkspaceMigrationWitness } from './workspace-storage-witness'
+import { captureWorkingWorkspaceV4 } from './workspace-v4-browser'
 import { saveWorkspaceToVault, workspaceRegistryPort } from './workspace-vault'
 import type { GuardedWorkspaceBoot } from './workspace-bootstrap'
 import { flushReviewRecordWrites } from '@/store/reviewInfoAtom'
@@ -60,10 +60,5 @@ export async function executePreMountManualSyncV2(
     put: input => putSyncV2(auth.token, { ...input, deviceId: 'qwerty-web-s2-manual' }),
     saveSource: snapshot => saveWorkspaceToVault(identity, snapshot),
     journal: syncV2PullJournalPort,
-    replica: {
-      restore: (snapshot, expectedOwnerId) =>
-        restoreWorkingWorkspaceV4(snapshot, { kind: 'account', accountId: expectedOwnerId }),
-      seal: async () => { refreshWorkspaceMigrationWitness() },
-    },
   })
 }
