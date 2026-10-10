@@ -370,6 +370,14 @@ function EnabledCloudSyncSetting() {
             Sync 同步
           </button>
         )}
+        {(import.meta.env.DEV ||
+          import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true') && auth && (
+          <button className="mt-3 mr-2 text-sm underline" type="button"
+            disabled={auth.expiresAt * 1000 <= Date.now()}
+            onClick={() => window.location.assign('/?s2-recovery=manage')}>
+            高级恢复（冲突 / V3 数据迁移）
+          </button>
+        )}
         <button className="my-btn-primary mt-3" type="button"
           onClick={() => window.location.assign('/?s1-account=manage')}>
           安全登录 / 退出 / 切换账户
