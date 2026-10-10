@@ -22,6 +22,12 @@ async function init(page: Page) {
 async function portableJson(page: Page, original = oldOwner) {
   return page.evaluate(async (sourceId) => {
     const h = (window as any).__backupHarness
+    // Build a GENUINE Dexie Typeson export; editing an already-exported
+    // row without updating its $types envelope creates an invalid fixture.
+    const wordRows = await h.db.wordRecords.toCollection().raw().toArray()
+    await h.db.wordRecords.update(wordRows[0].id, {
+      typingTelemetry: { durationMs: 122, attempts: [{ key: 'x', failed: false }] },
+    })
     const snapshot = await h.captureWorkingWorkspaceV4({
       kind: 'account', accountId: 'v4-import-new-account',
     })
@@ -36,12 +42,6 @@ async function portableJson(page: Page, original = oldOwner) {
       plannedReviewWords: ['backup-fsrs-word'], carryOverAcquisitionWords: [],
       accumulatedActiveSeconds: 70, completedBlockIds: ['test:block'],
       blockCount: 1,
-    }
-    const wordTable = snapshot.workspaceData.database.data.data.find(
-      (row: any) => row.tableName === 'wordRecords',
-    )
-    wordTable.rows[0].typingTelemetry = {
-      durationMs: 122, attempts: [{ key: 'x', failed: false }],
     }
     return JSON.stringify(snapshot)
   }, original.accountId)
