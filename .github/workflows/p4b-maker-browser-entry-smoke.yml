@@ -1,0 +1,64 @@
+name: P4b Maker Chromium Pilot Route Safety
+
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - 'tests/e2e/p4b-maker-entry-smoke.mjs'
+      - '.github/workflows/p4b-maker-browser-entry-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  maker-browser-safety:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Inspect real Maker dual Chromium pilot entry guards
+        id: browser
+        run: node tests/e2e/p4b-maker-entry-smoke.mjs
+      - name: Publish checkable Maker browser result
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RESULT: ${{ steps.browser.outcome }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ "$RESULT" = success ]; then
+            STATE=success
+            DESCRIPTION='Live Maker dual Chromium S2 guard routes PASS'
+          else
+            STATE=failure
+            DESCRIPTION='Maker browser pilot guard safety not passing'
+          fi
+          export STATE DESCRIPTION
+          python3 - <<'PY' > /tmp/maker-browser-status.json
+          import os, json
+          print(json.dumps({
+            'context': 'p4b/maker-browser-entry',
+            'state': os.environ['STATE'],
+            'description': os.environ['DESCRIPTION'],
+            'target_url': 'https://github.com/' + os.environ['REPOSITORY'] +
+                          '/actions/runs/' + os.environ['RUN_ID'],
+          }))
+          PY
+          curl --fail --silent --show-error --retry 2 -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/maker-browser-status.json \
+            "https://api.github.com/repos/${REPOSITORY}/statuses/${SHA}" >/dev/null
