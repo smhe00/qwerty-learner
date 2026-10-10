@@ -613,7 +613,7 @@ export function createBackendService({
    * Separate V2 endpoint; unchanged legacy V1 paths cannot accidentally
    * submit V4. No implicit V3->V4 migration/overwrite is allowed.
    */
-  async function putSyncV4(token, input = {}) {
+  async function putSyncV4(token, input = {}, recovery = false) {
     const { identity } = await authenticate(token)
     const baseRevision = input.baseRevision
     if (!Number.isSafeInteger(baseRevision) || baseRevision < 0) {
@@ -641,7 +641,30 @@ export function createBackendService({
         current: metaFromSnapshot(current?.snapshot || null),
       })
     }
-    if (current && current.snapshot.clientFormatVersion !== V4_FORMAT) {
+    if (recovery) {
+      // Separate explicit recovery endpoint ONLY. Neither the ordinary V2
+      // endpoint nor a forged field in its request can set this capability.
+      // The user must have inspected and backed up the exact remote revision.
+      const prior = current?.snapshot
+      const mode = input.recoveryMode
+      const expectedFormat = mode === 'migrate-v3'
+        ? 'qwerty-backup-v3'
+        : mode === 'replace-v4' ? V4_FORMAT : null
+      if (!prior || !expectedFormat ||
+          prior.clientFormatVersion !== expectedFormat ||
+          input.expectedRemoteFormat !== expectedFormat ||
+          typeof input.expectedRemoteSha256 !== 'string' ||
+          !/^[a-f0-9]{64}$/.test(input.expectedRemoteSha256) ||
+          input.expectedRemoteSha256 !== prior.dataSha256 ||
+          input.accountConfirmation !== identity.userId ||
+          (mode === 'replace-v4' &&
+            (!/^[a-f0-9]{64}$/.test(input.expectedRemoteLogicalFingerprint) ||
+              input.expectedRemoteLogicalFingerprint !== prior.logicalFingerprint))) {
+        throw new AppError(409, 'recovery_precondition_failed',
+          'Explicit recovery confirmation or pinned cloud evidence did not match')
+      }
+    }
+    if (!recovery && current && current.snapshot.clientFormatVersion !== V4_FORMAT) {
       throw new AppError(409, 'sync_migration_required',
         'Existing V1 cloud data needs explicit migration; V4 write refused', {
           current: metaFromSnapshot(current.snapshot),
@@ -702,6 +725,7 @@ export function createBackendService({
     getSync,
     putSync,
     putSyncV4,
+    putSyncV4Recovery: (token, input) => putSyncV4(token, input, true),
     cleanupTestUser,
   }
 }
