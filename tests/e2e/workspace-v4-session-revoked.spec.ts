@@ -82,6 +82,8 @@ test('B login revokes A; A confirmation completes S1 durable anonymous switch', 
     })
     expect(login.token).toBe(TOKEN_B)
     await pageB.goto('/')
+    // Focus probes are intentionally throttled shortly after initial mount.
+    await pageA.waitForTimeout(5500)
     await pageA.bringToFront()
     const alert = pageA.getByRole('alertdialog')
     await expect(alert).toBeVisible({ timeout: 25_000 })
@@ -90,8 +92,10 @@ test('B login revokes A; A confirmation completes S1 durable anonymous switch', 
     await alert.getByRole('button',
       { name: '确认退出并切换到本机匿名工作区' }).click()
     await expect.poll(async () => pageA.evaluate(() =>
+      !localStorage.getItem('qwerty.cloudAuth.v1') &&
       window.location.pathname === '/' &&
-      !window.location.search.includes('s1-session-revoked'))).toBe(true)
+      !window.location.search.includes('s1-session-revoked')),
+    { timeout: 30000 }).toBe(true)
 
     await pageA.goto('/tests/e2e/backup-harness.html')
     const recovered = await pageA.evaluate(async identity => {
