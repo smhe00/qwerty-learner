@@ -172,3 +172,41 @@ on the S2 pilot code source `2d11104db` has now **COMPLETED SUCCESS**
 (including Learn browser contracts, Typing lifecycle, audio, P3 fuzz and
 build). Later commits in this checkpoint added only dev test coverage
 and documentation, not Learn/Typing business logic.
+
+## P3b development closeout — 2026-10-10
+
+Accepted in development (NOT released to Maker).
+- `/api/sync/v2/recovery`: separate authenticated CAS operation that
+  refuses a stale revision, wrong account owner, old cloud payload SHA,
+  wrong V3/V4 recovery direction or an unverified V4 replacement.
+  V1/V3 old clients remain barred from writing after V4 upgrade.
+- `v2-recovery-ui.ts`: two independent gzip backup downloads plus
+  explicit saved-file attestations, immutable account ID entry, deliberate
+  local/cloud choice and a final destructive-operation confirmation. All
+  text is rendered via textContent, no merging and no automatic choice.
+- `v2-recovery-archive.ts`: exact original cloud bytes checked against
+  pinned SHA/size/revision/format; 4MiB compressed and 32MiB inflated
+  safety limits, malformed/partial old V3 conversions refused. V3 may not
+  carry new Learn daily-session or settings data, explicitly disclosed.
+- Cloud-wins V3 migration emits V4 content only from a complete safe V3
+  export and uses server migration CAS before any local RecordDB import.
+  Upon an uncertain remote response, original local state remains intact.
+- Important bug found/fixed during deep browser testing: in-realm Pull
+  restore ran after S1 installed its witness guard, causing premature
+  result handling. Now only journal.stage runs in the recovery screen;
+  fresh boot performs deterministic restore+reseal+baseline commit, then
+  emits completion notification. This also corrects ordinary Sync Pull.
+- Cloud Sync Gate [38050718488](https://github.com/smhe00/qwerty-learner/actions/runs/38050718488):
+  **100/100 PASS**, including explicit V3 migration double-CAS, corrupted
+  archives, incomplete table manifests, oversized gzip and pinned sha checks.
+- S1 Browser Gate [38050718549](https://github.com/smhe00/qwerty-learner/actions/runs/38050718549):
+  **58/58 PASS**, including the two real cloud-wins restore scenarios,
+  actual post-restore IndexedDB navigation + baseline values + no pending
+  journal; cancellation, rollback refusal and remote revision race coverage.
+- Latest code verified: `a33a40d3c1be370b01dc3069362563dd586bbe56`.
+  Maker release to `master` is not authorized.
+- P4b must add real Maker disposable-account tests and production
+  migration/rollback approval; audit that a complete Dexie export includes
+  all durable per-table row payloads, and revisit TLA+ for explicit
+  conflict recovery. An earlier Learn Journey gate reported one unrelated
+  failure (see run 38050479982); do not claim all product gates green.

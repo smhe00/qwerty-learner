@@ -59,13 +59,19 @@ choosing No-op / CAS Push / verified Pull / explicit Conflict.
   local source backup, crash journal replay and revision/baseline CAS).
 - [x] S2-P3a: single Sync button in opt-in DEV/test-mode account UI, full-page
   pre-mount route and user-visible success/conflict/blocked feedback.
-- [ ] S2-P3b: complete advanced conflict recovery (non-destructive export,
-  deliberate directional choice and controlled migration), UX fault injection.
+- [x] S2-P3b DEV acceptance: advanced recovery requires separately
+  downloaded local/cloud .gz archives, user-confirmed backup preservation,
+  immutable account ID entry and final destructive-direction confirmation;
+  supported V4 cloud/local selection, explicit complete-V3-to-V4 migration,
+  cloud revision/SHA CAS and crash-safe staged Pull/restart.
+  Release remains BLOCKED until P4b real-Maker tests and production rollout.
 - [x] S2-P4a: simulated three-device simultaneous V4 CAS: one winner per
   revision, stale writers rejected, immutable snapshot checked.
 - [ ] S2-P4b: real Maker two/three-device disposable-account verification,
-  V1/V3->V4 explicit cloud migration and S1 rollout approval; live production
-  release is still blocked.
+  V1/V3->V4 explicit cloud migration and S1 rollout approval; verify
+  exact six-table *row-payload* coverage (not just table manifest), extend
+  formal/negative controls for explicit recovery, validate legacy-tab
+  disablement and rollback. Live production release remains blocked.
 
 ## Acceptance for P0
 

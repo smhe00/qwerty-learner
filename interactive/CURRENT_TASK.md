@@ -81,3 +81,26 @@ and never release master automatically.
 NEXT P0: S2-P3b conflict recovery/migration UX; S2-P4b disposable-account
 EdgeOne live V4 verification and S1 production consent/rollback SOP.
 The user should not enable the production V2 flag before these gates.
+
+2026-10-10 S2-P3b DEV ACCEPTANCE — do not release Maker yet:
+- Branch `product/main`, acceptance code `a33a40d3`; production `master`
+  remains `59d942c4` (untouched by this task).
+- Advanced recovery page is DEV / explicit build flag only; user downloads
+  AND confirms both local V4 and original remote V3/V4 .gz files, types
+  immutable account ID, selects a direction, and confirms again.
+- Dedicated `PUT /api/sync/v2/recovery` has account-ID, exact prior
+  revision, prior format, prior transport SHA, optional V4 logical hash
+  preconditions, and single-winner revision CAS. Ordinary Sync never
+  auto-migrates or auto-overwrites divergent V4 data.
+- Cloud-vs-local V4 and V3-to-V4 directions were exercised; Pull STAGES
+  verified V4 and navigates, S1 bootstrap alone restores before app mount,
+  seals localStorage witness, advances baseline and then notifies success.
+- Cloud Sync Gate
+  https://github.com/smhe00/qwerty-learner/actions/runs/38050718488
+  **100/100 PASS**; Chromium Browser Gate
+  https://github.com/smhe00/qwerty-learner/actions/runs/38050718549
+  **58/58 PASS**. P3b is DEV-accepted, not production-accepted.
+- P4b release blockers: actual Maker V4 migration with disposable accounts;
+  account/old-tab readiness; rollback; explicit recovery TLA/negative controls;
+  further row-payload shape audit. A previously observed Learn Journey Gate
+  error (run 38050479982) needs separate triage; it is NOT silently waved.
