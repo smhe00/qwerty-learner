@@ -360,3 +360,140 @@ test('real Dexie reviewPolicyShadow exotic nested values round-trip without data
   expect(Object.keys(result.archiveTypes)).toContain(
     'reviewPolicyShadow.decision.score')
 })
+
+
+/**
+ * Broad exporter contract: fixture contains 512 word rows, beyond the index
+ * of the first field-specific real-user failure, and 64 rows in each of the
+ * other five tables. Every table has nested exotic Typeson inputs.
+ *
+ * No production data is involved and capture must leave every source row
+ * untouched. A single failure in ANY row/table blocks the Chromium Gate.
+ */
+test('six-table, 800-row, deterministic Typeson matrix exports V4 intact', async ({ page }) => {
+  await ready(page)
+  const result = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.clearAllTables()
+    const makeNested = (i: number) => {
+      const sparse = [i, undefined, NaN, Infinity, -Infinity]
+      // Nonindex array keys are explicitly supported by Dexie Typeson.
+      ;(sparse as any).sourceHint = 'word-' + i
+      return {
+        version: 1,
+        flags: { optional: undefined, enabled: true },
+        numeric: {
+          first: i % 7 === 0 ? NaN : i,
+          second: i % 11 === 0 ? Infinity : -Infinity,
+          signedZero: -0,
+        },
+        history: sparse,
+        eventAt: new Date(Date.UTC(2026, 0, 1 + (i % 28))),
+        evidence: ['中文', 'élève', '学习', String(i)],
+      }
+    }
+    const wordRows = Array.from({ length: 512 }, (_, i) => ({
+      word: 'matrix-word-' + i,
+      dict: 'cet4', chapter: i % 48,
+      timeStamp: 1_700_000_000 + i,
+      timing: [101, 211, NaN],
+      wrongCount: i % 3, mistakes: {},
+      typingTelemetry: {
+        telemetryVersion: 2, firstKeyLatencyMs: i % 2 ? NaN : Infinity,
+        attempts: [{ result: 'wrong', wrongIndex: undefined,
+          interKeyIntervalsMs: [3, NaN], durationMs: 1 + i }],
+      },
+      reviewPolicyShadow: {
+        version: 1, mode: 'shadow', appliesTo: 'next-exercise',
+        condition: { version: 1, purpose: 'probe', source: 'adaptive-policy',
+          audio: 'none', meaning: 'visible', phonetic: 'hidden',
+          letters: { mode: 'partial', visiblePositions: [0, NaN, undefined] },
+          probeDimension: 'meaning' },
+        decision: { version: 1, policyVersion: 'matrix-' + i,
+          reasonCodes: ['fresh', undefined, 'review'],
+          conditionVersion: 1 },
+      },
+      fsrsShadow: makeNested(i),
+    }))
+    await h.db.wordRecords.bulkAdd(wordRows)
+    const chapterRows = Array.from({ length: 64 }, (_, i) => ({
+      dict: 'cet4', chapter: i, timeStamp: i + 1, time: 100 + i,
+      debugEvidence: makeNested(i + 1000),
+    }))
+    const reviewRows = Array.from({ length: 64 }, (_, i) => ({
+      dict: 'cet4', createTime: i + 1, isFinished: i % 2 === 0,
+      words: [{ name: 'matrix-' + i, trans: ['解释', undefined] }],
+      replayEvidence: makeNested(i + 2000),
+    }))
+    const stateRows = Array.from({ length: 64 }, (_, i) => ({
+      dict: 'cet4', word: 'matrix-' + i,
+      nextReviewAt: i + 1, lastReviewedAt: i,
+      reviewCount: i, schedulerState: makeNested(i + 3000),
+    }))
+    const eventRows = Array.from({ length: 64 }, (_, i) => ({
+      eventId: 'matrix-event-' + i, sourceRecordId: i + 1,
+      occurredAt: 1000 + i, dict: 'cet4', word: 'matrix-' + i,
+      metricValues: { attemptCount: i },
+      trace: makeNested(i + 4000),
+    }))
+    const achievementRows = Array.from({ length: 64 }, (_, i) => ({
+      achievementId: 'matrix-achievement-' + i,
+      unlockedAt: 1000 + i, seenAt: 2000 + i,
+      trace: makeNested(i + 5000),
+    }))
+    for (const [table, rows] of [
+      ['chapterRecords', chapterRows],
+      ['reviewRecords', reviewRows],
+      ['reviewWordStates', stateRows],
+      ['achievementEvents', eventRows],
+      ['achievementStates', achievementRows],
+    ] as const) {
+      await h.db.table(table).bulkAdd(rows)
+    }
+    const before = await Promise.all(h.db.tables
+      .filter((t: any) => [
+        'wordRecords', 'chapterRecords', 'reviewRecords',
+        'reviewWordStates', 'achievementEvents', 'achievementStates',
+      ].includes(t.name)).map(async (t: any) => [
+        t.name, JSON.stringify(await t.toCollection().raw().toArray()),
+      ]))
+    const snapshot = await h.captureWorkingWorkspaceV4({
+      kind: 'account', accountId: 'matrix-account-only',
+    })
+    const actual = snapshot.workspaceData.database.data.data
+    const counts = Object.fromEntries(actual.map((t: any) => [
+      t.tableName, t.rows.length,
+    ]))
+    const after = await Promise.all(h.db.tables
+      .filter((t: any) => [
+        'wordRecords', 'chapterRecords', 'reviewRecords',
+        'reviewWordStates', 'achievementEvents', 'achievementStates',
+      ].includes(t.name)).map(async (t: any) => [
+        t.name, JSON.stringify(await t.toCollection().raw().toArray()),
+      ]))
+    const encodedTypedRows = actual.flatMap((t: any) =>
+      t.rows.filter((row: any) => row.$types)).length
+    return {
+      format: snapshot.backupFormatVersion, counts,
+      sourceUnmodified: JSON.stringify(before) === JSON.stringify(after),
+      encodedTypedRows,
+      firstWord: actual.find((t: any) => t.tableName === 'wordRecords')
+        .rows[0]?.word,
+      lastWord: actual.find((t: any) => t.tableName === 'wordRecords')
+        .rows[511]?.word,
+    }
+  })
+  expect(result.format).toBe('qwerty-backup-v4')
+  expect(result.sourceUnmodified).toBe(true)
+  expect(result.counts).toMatchObject({
+    wordRecords: 512,
+    chapterRecords: 64,
+    reviewRecords: 64,
+    reviewWordStates: 64,
+    achievementEvents: 64,
+    achievementStates: 64,
+  })
+  expect(result.encodedTypedRows).toBeGreaterThan(500)
+  expect(result.firstWord).toBe('matrix-word-0')
+  expect(result.lastWord).toBe('matrix-word-511')
+})
