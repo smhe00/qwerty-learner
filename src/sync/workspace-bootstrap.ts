@@ -129,9 +129,12 @@ export async function prepareGuardedWorkspaceBoot(
 
     // Re-check after any awaited reconciliation; fail closed if stale JS
     // cleared shared storage while we were verifying the registry.
-    if (localStorage.getItem(S1_MIGRATION_WITNESS_KEY) !== 'v1') {
+    if (localStorage.getItem(S1_MIGRATION_WITNESS_KEY) === null) {
       throw new Error('S1 workspace migration witness vanished during boot; writes blocked')
     }
+    // Also detect an ordinary stale V5 settings/auth write during awaited
+    // reconciliation, not just disappearance of the witness key.
+    assertWorkspaceMigrationWitness()
     // Upgrade old V1 witness profiles on first guarded entry. New migrations
     // are sealed before their registry CAS commits. A future stale V5 tab
     // cannot update this digest when the owner page is no longer alive.
