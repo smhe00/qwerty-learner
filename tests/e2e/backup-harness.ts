@@ -308,6 +308,8 @@ async function inspectTableContract() {
   restoreWorkingWorkspaceV4,
   createWorkspaceV4,
   workspaceFingerprintV4,
+  loadSyncV2Baseline,
+  compareAndSwapSyncV2Baseline,
   loadWorkspaceFromVault,
   saveWorkspaceToVault,
   workspaceRegistryPort,

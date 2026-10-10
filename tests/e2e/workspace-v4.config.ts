@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: '.',
-  testMatch: ['workspace-v4.spec.ts', 'workspace-v4-app.spec.ts', 'workspace-v4-boot.spec.ts', 'workspace-app-entry.spec.ts'],
+  testMatch: ['workspace-v4.spec.ts', 'workspace-v4-app.spec.ts', 'workspace-v4-boot.spec.ts', 'workspace-v4-s2-baseline.spec.ts', 'workspace-app-entry.spec.ts'],
   fullyParallel: false,
   retries: 0,
   workers: 1,

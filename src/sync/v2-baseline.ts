@@ -131,7 +131,7 @@ export async function compareAndSwapSyncV2Baseline(
       store.put({ ...next, version: 1, syncedAt: new Date().toISOString() }, k)
       await done
     } catch (error) {
-      if (tx.readyState === 'active') tx.abort()
+      try { tx.abort() } catch { /* Already completed or aborted. */ }
       await done.catch(() => undefined)
       throw error
     }
