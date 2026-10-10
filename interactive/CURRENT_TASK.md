@@ -1,143 +1,46 @@
 ---
 protocol_version: "1.1"
-task_id: "TASK-20261010-013-p4b-release-qualification"
-task_file: "interactive/tasks/TASK-20261010-013-p4b-release-qualification.md"
-report_file: "interactive/reports/TASK-20261010-013-p4b-release-qualification-report.md"
+task_id: "TASK-20261011-014-forced-session-revocation"
+task_file: "interactive/tasks/TASK-20261011-014-forced-session-revocation.md"
+report_file: "interactive/reports/TASK-20261011-014-forced-session-revocation-report.md"
 target_branch: "product/main"
-status: "ACTIVE"
-executor: "ChatGPT (direct executor)"
-claim_base_commit: "c5aea17a7f249a8c431dd5a502342a89f3e50ec2"
+status: "READY"
+executor: "unassigned"
 release_to_master: false
 priority: "P0"
 ---
 
-# Current task — P4b Release Qualification (started)
+# Current task — Forced session logout + safe anonymous workspace switch
 
-Previous S2-P3b DEV acceptance:
-- Cloud Sync Gate 100/100 PASS at 38050718488.
-- S1 Browser Gate 58/58 PASS at 38050718549.
-- Previous task: `interactive/tasks/TASK-20261010-012-s2-unified-manual-sync.md`.
-- `master` remains Maker-bound production; NO publishing by P4b.
+**Prior P4b milestone: CLOSED / qualified on 2026-10-11.**
+See `interactive/tasks/TASK-20261010-013-p4b-release-qualification.md`
+and `interactive/reports/TASK-20261010-013-p4b-release-qualification-report.md`.
+This closes bounded backend protocol / Chrome recovery / real Maker rollback
+qualification, **not public S2 UI GA**.
 
-First P4b implementation, code in `product/main`:
-- P4b-0: independently compare all six live Dexie table counts to the
-  exported V4 snapshot and verify full restored V4 fingerprint *before*
-  accepting a restored Pull baseline. `src/sync/v4-table-audit.ts`.
-  Verified Cloud Sync Gate 38052009227 PASS and Browser Gate
-  38052009218 PASS on source `c0f81e29`.
-- P4b-1: add bounded formal `formal/sync/S2Recovery.tla` with crash
-  replay, account switch, consent and CAS invariants. New dedicated
-  `P4b S2 Recovery TLA Gate` 38052252728 PASS (bounded one-device
-  model and confirmed unsafe-overwrite counterexample).
-- P4b-2: real Playwright three-context same-account simulated cloud
-  tests, each context independently owns IndexedDB/localStorage/Web
-  Locks. First run is in progress; not yet accepted.
-- The S1/Sync development launch flag stays OFF in production; Maker
-  server migration API not live. No real EdgeOne/Blob device test yet.
+## Next P0
 
-Required release blockers: P4b-2 browser data-flow Gate,
-multi-account/per-device fault injection, 2-device TLA bounded scaling
-or documented state-space limit, per-table row-level semantics audit,
-V1/V3/legacy-client deployment migration consent and rollback SOP,
-Maker disposable-user smoke and an independent Review/Learn Gate.
+Implement user-visible forced logout when `/api/auth/me` or another
+authenticated endpoint returns `401 session_revoked`, with session checks
+on resume/focus and bounded periodic polling. After explicit user
+confirmation, execute S1 pre-mount, WebLock-protected durable
+account→anonymous switch; preserve all original account Vault data and
+correctly handle crash/restart. Network outage or ordinary expiry are NOT
+forced-logout events.
 
-2026-10-10 P4b-2 initial Chromium result:
-- Source `8693dd43164e60da48290e16b471f67c48bc5840`, S1 Browser Gate
-  https://github.com/smhe00/qwerty-learner/actions/runs/38053214157
-  **PASS 60/60**. Multi-profile two-device divergent-edit safety and
-  three-device single-winner CAS with each profile's own IDB/Baseline passed.
-- First test harness had route interception 404: fixed test-only regex
-  interception + blocked service workers (no production API changes).
-- **NEW P4b finding:** post-Pull app mount may cause the newly restored
-  V4 full logical fingerprint to diverge from the cloud, while actual
-  word/FSRS records and revision baseline remain intact. Investigate
-  derived DailySession/settings initialization and no-op semantics before
-  final P4b real Maker release. Avoid classifying this as a data-loss defect.
-- Next: row-level direct source audit, targeted two-device TLA projection,
-  multi-account/expiry/crash matrix, real Maker disposable-user tests.
+Source: `interactive/tasks/TASK-20261011-014-forced-session-revocation.md`.
 
-2026-10-10 P4b Learn Real Journey Gate blocker resolved:
-- CI baseline 38056826487 FAIL: first multiword review scenario timed out
-  waiting for "按任意键开始" while S1 cold bootstrap / Typing reducer
-  word-list hydration showed a loading spinner (trace inspected).
-- Fix `b18dad6b7fa9ecff40e59d1b9ce652d191b639bc` in
-  `tests/e2e/learn-review-flow.spec.ts` explicitly waits for the actual
-  active Learn session and first rendered word; verifies the exact
-  3-word queue and starting index 0 before typing.
-  This does NOT alter production learning code or weaken progression/
-  persistence assertions.
-- Learn Real Journey Gate 38058144882 **PASS**: 1 true keyboard-to-durable
-  browser journey plus 4 real Review/FSRS/Hint/ESC checks.
-- Broader Review Gate 38058144893 was launched as a separate regression;
-  check its final CI conclusion before final release acceptance.
-- `master` still unchanged. Real Maker/Blob P4b-3 is not accepted.
+## Queued separately
 
+- P1 EdgeOne V3→V4 implicit migration denial sometimes returned HTTP 500:
+  `interactive/tasks/TASK-20261011-015-maker-intermittent-500.md`.
+- P0 gated Maker UI test on independent logged-in durable Chromium profiles
+  before public S2 enablement:
+  `interactive/tasks/TASK-20261011-016-s2-maker-ui-pilot.md`.
 
-## P4b status update (2026-10-10, production Maker c1135a9)
+## Production state
 
-- Production EdgeOne Maker deployment of `c1135a9` confirmed by user.
-- Actual HTTP/Blob non-whitelist safety Gate **PASS**:
-  [Actions 38061862646](https://github.com/smhe00/qwerty-learner/actions/runs/38061862646)
-  (401 no token, 403 V2/recovery non-whitelist, unchanged revision,
-  V1 upload revision advance, second account isolation, 2/2 test account cleanup).
-- Cloud Sync Gate **PASS 114/114**, lint + build PASS:
-  [Actions 38062061412](https://github.com/smhe00/qwerty-learner/actions/runs/38062061412).
-- S2Recovery bounded TLA Gate **PASS**: 2-device CAS, account-switch
-  recovery, unsafe mutation caught:
-  [Actions 38062253933](https://github.com/smhe00/qwerty-learner/actions/runs/38062253933).
-- Row-level Dexie vs exported V4 SHA audit is already implemented and
-  is included in cloud tests; earlier reports were stale.
-- **Still blocking P4b:** explicit server-side allowlisted V4 test IDs,
-  actual Maker/Blob V4 Push/Pull and CAS concurrency, account/recovery fault
-  injection, V3→V4 explicit migration, V1 overwrite rejection after V4,
-  rollback rehearsal. No production user account shall be modified.
-- Do NOT mark P4b closed merely because default-deny smoke and CI PASS.
-
-
-## P4b live named-account validation and cleanup (2026-10-11)
-
-- Maker `master` restored strict accountId-only V2 write allowlist
-  at `bcc94f7` (temporary test13/test24 exemption fully removed).
-- Real Maker/Blob protocol: `test13` V3→V4 opt-in migration; `test24`
-  3 device-tagged concurrent CAS; V4 download/fingerprint checks,
-  wrong-account writes blocked, V4 recovery, session invalidation —
-  **PASS twice**:
-  [run + rerun #38085108313](https://github.com/smhe00/qwerty-learner/actions/runs/38085108313).
-- First run #38084721962 unexpectedly hit HTTP 500 during migration
-  refusal; no loss observed and both disposable accounts were deleted.
-  This intermittent failure remains a reliability follow-up.
-- After strict Maker restoration, final site smoke
-  [#38085477624](https://github.com/smhe00/qwerty-learner/actions/runs/38085477624)
-  **PASS**: 403 denied `test13` V2/recovery writes; revision unchanged;
-  freshly created test13 deleted.
-- Both test usernames were deleted in successful full-suite iterations;
-  final strict smoke also deleted its own new test13.
-- Remain ACTIVE for actual multi-BrowserContext Maker journal + user
-  migration consent and rollback; do not mark P4b fully closed.
-
-
-## 2026-10-11 P4b qualification: evidence complete for protocol/recovery/rollback
-
-- Local real Chromium: **13/13 PASS** independent BrowserContexts,
-  V3 migration consent, failure-injection and crashed Pull replay:
-  [Actions #38085865247](https://github.com/smhe00/qwerty-learner/actions/runs/38085865247).
-- Actual Maker Chromium (two browser contexts): **PASS** for guarded/off
-  S2 feature entry:
-  [Actions #38086365378](https://github.com/smhe00/qwerty-learner/actions/runs/38086365378).
-- Actual EdgeOne Maker/Blob **data-preserving two-version rollback PASS**:
-  [Actions #38086096338](https://github.com/smhe00/qwerty-learner/actions/runs/38086096338).
-  Same test13 V4 revision, transport SHA and learning row persisted across
-  deployment; V1 writes blocked 409; strict V2 writes blocked 403;
-  test13 deleted.
-- Existing real Maker V4 protocol suites ran twice PASS with test13/test24;
-  strict account authorization restored and verified.
-- Final **production master = `7818e2a`**, strict accountId-only write
-  policy; no temporary test usernames or diagnostics retained.
-- P4b backend protocol / CI / bounded formal / simulated multi-device
-  / Maker data-preserving rollback acceptance is documented.
-- **Do not enable public S2 UX yet**: production S2 feature flags remain
-  disabled; a true Maker UI V4 Journey on separately logged-in persistent
-  browsers is an explicit rollout-phase acceptance, not covered by tests
-  combining local Chromium plus real Maker API.
-- The first real API run once returned transient HTTP 500, not reproduced
-  in subsequent full suites. Keep as reliability watch, not erased.
+EdgeOne Maker `master` release: `7818e2a51bafce48a7c8e6996fd451847f59b4cc`.
+S2 frontend pilot OFF; V2 backend writes fail closed except server configured
+immutable account IDs. Do not publish new frontend activation without
+P0 release criteria; continue development only on `product/main`.
