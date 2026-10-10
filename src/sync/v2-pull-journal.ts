@@ -9,7 +9,7 @@
  */
 import { assertNextSyncV2Baseline, assertValidSyncV2Baseline } from './v2-baseline'
 import { openWorkspaceVault, workspaceRegistryPort } from './workspace-vault'
-import { parseWorkspaceV4, workspaceFingerprintV4 } from './workspace-v4'
+import { assertRestorableWorkspaceV4, parseWorkspaceV4, workspaceFingerprintV4 } from './workspace-v4'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
 import { same } from './workspace-transition'
 import type { SyncV2Baseline } from './v2-policy'
@@ -85,6 +85,7 @@ function parseStored(value: unknown): StoredPull {
 
 async function checked(record: StoredPull): Promise<PendingSyncV2Pull> {
   const snapshot = parseWorkspaceV4(record.snapshotJson)
+  assertRestorableWorkspaceV4(snapshot)
   if (snapshot.metadata.source.kind !== 'account' ||
       snapshot.metadata.source.accountId !== record.accountId ||
       await workspaceFingerprintV4(snapshot) !== record.fingerprint) {
@@ -121,6 +122,7 @@ export const syncV2PullJournalPort: PullJournalPort = {
   },
 
   async stage(pending: PendingSyncV2Pull): Promise<void> {
+    assertRestorableWorkspaceV4(pending.snapshot)
     if (pending.snapshot.metadata.source.kind !== 'account' ||
         pending.snapshot.metadata.source.accountId !== pending.accountId ||
         !SHA256.test(pending.fingerprint) ||

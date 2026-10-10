@@ -9,6 +9,7 @@ import {
   WORKSPACE_SETTING_KEYS,
   migrateV3ToWorkspaceV4,
   parseWorkspaceV4,
+  assertRestorableWorkspaceV4,
 } from './workspace-v4'
 import type { WorkspaceIdentityV4, WorkspaceSnapshotV4 } from './workspace-v4'
 import {
@@ -64,6 +65,7 @@ export async function restoreWorkingWorkspaceV4(
   expectedSource: WorkspaceIdentityV4,
 ): Promise<void> {
   const checked = parseWorkspaceV4(JSON.stringify(snapshot))
+  assertRestorableWorkspaceV4(checked)
   const actual = checked.metadata.source
   const matches = actual.kind === expectedSource.kind &&
     (actual.kind === 'anonymous' ||

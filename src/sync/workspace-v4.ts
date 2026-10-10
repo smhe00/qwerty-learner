@@ -256,3 +256,33 @@ export async function workspaceFingerprintV4(snapshot: WorkspaceSnapshotV4): Pro
   const bytes = await crypto.subtle.digest('SHA-256', encoded)
   return [...new Uint8Array(bytes)].map(x => x.toString(16).padStart(2, '0')).join('')
 }
+
+/** A V4 envelope may be inspected without a complete table manifest,
+ * but a destructive full restore requires all six durable data tables.
+ * Otherwise the legacy V3 importer clears absent tables. */
+export const REQUIRED_RESTORABLE_V4_TABLES = [
+  'wordRecords', 'chapterRecords', 'reviewRecords', 'reviewWordStates',
+  'achievementEvents', 'achievementStates',
+] as const
+
+export function assertRestorableWorkspaceV4(snapshot: WorkspaceSnapshotV4): void {
+  assertValidSnapshot(snapshot)
+  const database = snapshot.workspaceData.database as JsonRecord
+  const nested = database.data
+  if (database.formatName !== 'dexie' || !isRecord(nested) ||
+      !Array.isArray(nested.tables) || !Array.isArray(nested.data)) {
+    throw new Error('V4 full restore requires complete Dexie table manifest')
+  }
+  const tables = nested.tables as unknown[]
+  const rows = nested.data as unknown[]
+  const names = tables.map(x => isRecord(x) ? x.name : undefined)
+  const rowNames = rows.map(x => isRecord(x) ? x.tableName : undefined)
+  if (names.some(name => typeof name !== 'string') ||
+      new Set(names).size !== names.length ||
+      REQUIRED_RESTORABLE_V4_TABLES.some(name => !names.includes(name)) ||
+      rowNames.some(name => typeof name !== 'string' || !names.includes(name)) ||
+      new Set(rowNames).size !== rowNames.length ||
+      rows.some(x => !isRecord(x) || !Array.isArray(x.rows))) {
+    throw new Error('V4 full restore missing or duplicate durable tables')
+  }
+}

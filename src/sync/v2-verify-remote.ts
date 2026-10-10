@@ -6,7 +6,7 @@
  * verify BOTH transport SHA-256 and canonical workspace SHA-256 before the
  * crash-journaled pull executor may restore anything.
  */
-import { parseWorkspaceV4, workspaceFingerprintV4 } from './workspace-v4'
+import { assertRestorableWorkspaceV4, parseWorkspaceV4, workspaceFingerprintV4 } from './workspace-v4'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
 import type { RemoteSnapshot, RemoteSyncMeta } from './types'
 
@@ -93,6 +93,7 @@ export async function verifyDownloadedWorkspaceV4(
   }
   const json = await boundedInflate(compressed)
   const snapshot = parseWorkspaceV4(json)
+  assertRestorableWorkspaceV4(snapshot)
   if (snapshot.metadata.source.kind !== 'account' ||
       snapshot.metadata.source.accountId !== expectedOwnerId) {
     throw new Error('V4 downloaded snapshot owner mismatch')
