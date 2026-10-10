@@ -10,8 +10,11 @@ import {
   assertRestorableWorkspaceV4,
   migrateV3ToWorkspaceV4,
   parseWorkspaceV4,
+  workspaceFingerprintV4,
 } from './workspace-v4'
 import type { WorkspaceIdentityV4, WorkspaceSnapshotV4 } from './workspace-v4'
+import { assertV4ExportMatchesSource } from './v4-table-audit'
+import type { DurableV4Counts } from './v4-table-audit'
 import {
   BACKUP_FORMAT_VERSION,
   exportBackupJson,
@@ -30,10 +33,21 @@ export async function captureWorkingWorkspaceV4(
   // substitute for the external cross-tab lock and all-writer quiescence.
   await flushReviewRecordWrites()
   const v3 = await exportBackupJson()
-  return migrateV3ToWorkspaceV4(v3, {
+  const snapshot = migrateV3ToWorkspaceV4(v3, {
     source,
     createdAt: new Date().toISOString(),
   }, { storage: localStorage })
+  // Counts are read from actual RecordDB, not from the serialized export.
+  // This fails closed if an incomplete export omits rows from a live table.
+  const entries = await Promise.all(
+    db.tables.filter(table => [
+      'wordRecords', 'chapterRecords', 'reviewRecords', 'reviewWordStates',
+      'achievementEvents', 'achievementStates',
+    ].includes(table.name)).map(async table =>
+      [table.name, await table.count()] as const),
+  )
+  assertV4ExportMatchesSource(snapshot, Object.fromEntries(entries) as DurableV4Counts)
+  return snapshot
 }
 
 function clearWorkspaceStorage(): void {
