@@ -1,0 +1,31 @@
+name: P4b Maker V4 Data-Preserving Rollback
+
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - 'tests/cloud/p4b-maker-data-rollback.integration.mjs'
+      - '.github/workflows/p4b-maker-data-rollback.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: p4b-real-maker-data-rollback
+  cancel-in-progress: false
+
+jobs:
+  hold-v4-witness-across-deployment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+      - name: Seed isolated V4 under temporary Maker, then validate strict rollback
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node tests/cloud/p4b-maker-data-rollback.integration.mjs
