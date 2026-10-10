@@ -7,6 +7,9 @@ on:
       - 'tests/simulation/explorer-v3-heldout-manifest.json'
       - 'scripts/explorer-heldout-mutants.mjs'
       - '.github/workflows/explorer-v3-heldout.yml'
+      - 'tests/fsrs/g5-active-scheduler.test.ts'
+      - 'tests/learn/daily-session.test.ts'
+      - 'tests/simulation/persistence-race.test.ts'
   workflow_dispatch:
 
 permissions:
