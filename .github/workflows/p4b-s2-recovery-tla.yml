@@ -1,0 +1,48 @@
+name: P4b S2 Recovery TLA Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [product/main]
+    paths:
+      - 'formal/sync/S2Recovery.*'
+      - '.github/workflows/p4b-s2-recovery-tla.yml'
+
+jobs:
+  tla:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Fetch pinned model checker
+        run: |
+          curl --fail --location --silent --show-error \
+            https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar \
+            --output /tmp/tla2tools.jar
+          actual="$(sha256sum /tmp/tla2tools.jar | awk '{print $1}')"
+          test "$actual" = '936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88'
+      - name: Parse P4b recovery module
+        run: java -cp /tmp/tla2tools.jar tla2sany.SANY formal/sync/S2Recovery.tla
+      - name: Check bounded recovery production state space
+        run: |
+          java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -workers auto -config formal/sync/S2Recovery.production.cfg \
+            formal/sync/S2Recovery.tla
+      - name: Require real unauthorized-overwrite mutant counterexample
+        run: |
+          set +e
+          timeout 120s java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -workers auto -config formal/sync/S2Recovery.unsafe-mutation.cfg \
+            formal/sync/S2Recovery.tla > /tmp/p4b-recovery-mutation.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/p4b-recovery-mutation.log
+          if [ "$status" -eq 124 ] || [ "$status" -eq 0 ] ||
+             ! grep -q 'Invariant Safety is violated' /tmp/p4b-recovery-mutation.log; then
+            echo 'Mutation did not demonstrate a genuine Safety counterexample'
+            exit 1
+          fi
