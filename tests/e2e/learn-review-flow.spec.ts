@@ -22,6 +22,15 @@ test('multi-word Review advances through every rendered word and finishes', asyn
   page.on('pageerror', (error) => pageErrors.push(error.message))
   await seedReviewSession(page, reviewWords, 900001)
   await page.goto('/learn')
+
+  // The first CI visit performs S1 workspace bootstrap and cold Vite/Dexie
+  // startup. A completed navigation is NOT evidence that the review queue
+  // has reached the Typing reducer. Wait for the actual first word and
+  // confirm the three-word seeded queue before sending any keyboard input.
+  const initial = await waitForActiveLearnSession(page)
+  expect(initial?.reviewRecord?.words?.map((word: { name: string }) => word.name))
+    .toEqual(['cancel', 'analyse', 'numerous'])
+  expect(initial?.reviewRecord?.index).toBe(0)
   await startTyping(page)
 
   await waitForRenderedWord(page, 'cancel')
