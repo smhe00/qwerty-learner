@@ -76,8 +76,8 @@ async function confirmImport(page: Page, requiresOtherId = true) {
 
 test('Portable V4 cross-account import is explicit, full, journaled and never touches cloud', async ({ page }) => {
   await init(page)
-  const before = await page.evaluate(async () =>
-    (window as any).__backupHarness.captureWorkingWorkspaceV4(owner))
+  const before = await page.evaluate(async (id) =>
+    (window as any).__backupHarness.captureWorkingWorkspaceV4(id), owner)
   const backup = await portableJson(page)
   let cloudCalls = 0
   await page.route('**/api/sync/**', async r => {
@@ -96,7 +96,9 @@ test('Portable V4 cross-account import is explicit, full, journaled and never to
   const actual = await page.evaluate(async () => {
     const h = (window as any).__backupHarness
     return {
-      snapshot: await h.captureWorkingWorkspaceV4(owner),
+      snapshot: await h.captureWorkingWorkspaceV4({
+        kind: 'account', accountId: 'v4-import-new-account',
+      }),
       baseline: await h.loadSyncV2Baseline(owner.accountId),
       pending: await (await import('/src/sync/manual-v4-import-journal.ts')).manualV4ImportJournalPort.read(),
     }
@@ -137,7 +139,9 @@ test('V4 imported local content keeps current account prior cloud baseline inval
     const h = (window as any).__backupHarness
     return {
       baseline: await h.loadSyncV2Baseline('v4-import-new-account'),
-      source: (await h.captureWorkingWorkspaceV4(owner)).metadata.source,
+      source: (await h.captureWorkingWorkspaceV4({
+        kind: 'account', accountId: 'v4-import-new-account',
+      })).metadata.source,
     }
   })
   expect(state).toEqual({ baseline: null, source: owner })
@@ -187,8 +191,8 @@ test('Crash after durable V4 import staging replays on boot before application c
 
 test('Cloud raw V4 download is standard gzip accepted by the same local import', async ({ page }) => {
   await init(page)
-  const original = await page.evaluate(async () => JSON.stringify(
-    await (window as any).__backupHarness.captureWorkingWorkspaceV4(owner)))
+  const original = await page.evaluate(async (id) => JSON.stringify(
+    await (window as any).__backupHarness.captureWorkingWorkspaceV4(id)), owner)
   const payload = gzipSync(Buffer.from(original))
   const sha = createHash('sha256').update(payload).digest('hex')
   const hash = await page.evaluate(async json =>
