@@ -119,3 +119,14 @@ documented in `docs/S1_CLOSEOUT_AUDIT_20261010.md`.
   Do not enable the real one-button Sync merely because the decision and
   verification layers are green: interrupted RecordDB restore without a
   replayable journal could otherwise mount an invalid mixed workspace.
+
+## 2026-10-10 staged Pull recovery implementation
+
+- Dedicated staged V4 snapshot journal in the existing S1 vault (no schema
+  bump), replayed before app mounting under the original exclusive writer
+  lease; corrupt journal fails closed.
+- Atomic baseline revision advancement + journal deletion only after
+  full RecordDB restore and localStorage integrity witness reseal.
+- Unit fault injection and Chromium tests exercise crash replay,
+  reload-required and checksum tampering; CI evidence pending.
+- The initiated network Push/Pull execution/UI remains disabled.

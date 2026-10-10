@@ -58,6 +58,11 @@ export async function prepareGuardedWorkspaceBoot(
   let recovered = false
   try {
     const before = await workspaceRegistryPort.read()
+    // An S2 Pull may have partially restored shared settings. Its immutable
+    // staged V4 snapshot is the recovery authority before app hydration.
+    const { syncV2PullJournalPort } = await import('./v2-pull-journal')
+    const pendingPull = await syncV2PullJournalPort.read()
+    if (pendingPull && before.pending) throw new Error('Conflicting S1 and S2 recovery journals')
     if (before.generation === 0) {
       // An already-migrated browser must never silently fall back to V1
       // when its isolated IndexedDB registry has been removed or corrupted.
@@ -95,7 +100,7 @@ export async function prepareGuardedWorkspaceBoot(
     // reconciliation and resealing; without such an intent stale V5 changes
     // must be rejected before any credential mutation.
     const hasAuthIntent = localStorage.getItem('qwerty.s1.auth-transition.v1') !== null
-    if (!before.pending && !hasAuthIntent) assertWorkspaceMigrationWitness()
+    if (!before.pending && !hasAuthIntent && !pendingPull) assertWorkspaceMigrationWitness()
 
     // Recover a previously committed workspace journal before auth
     // reconciliation; the intended target credentials may not yet be active.
@@ -123,9 +128,9 @@ export async function prepareGuardedWorkspaceBoot(
       // This recovery follows a validated durable S1 auth transition intent
       // whose target is already the committed registry owner.
       refreshWorkspaceMigrationWitness()
-    } else {
-      // A stale/rolled-back intent does not authorize accepting external
-      // mutations to the active workspace's shared settings or credentials.
+    } else if (!pendingPull) {
+      // A staged, verified Pull can change settings before its recovery
+      // baseline has committed. Otherwise enforce stale-V5 writer detection.
       assertWorkspaceMigrationWitness()
     }
     const registry = before
@@ -136,6 +141,14 @@ export async function prepareGuardedWorkspaceBoot(
       : { kind: 'anonymous' }
     if (!same(registry.active, expected)) {
       throw new Error('Active workspace and authenticated account differ: writes blocked')
+    }
+
+    if (pendingPull) {
+      report(onStage, 'recovering')
+      const { recoverPendingSyncV2Pull } = await import('./v2-pull-recovery')
+      await recoverPendingSyncV2Pull()
+      recovered = true
+      throw new Error('S2 Pull recovery completed; reload required before mounting app')
     }
 
     // Re-check after any awaited reconciliation; fail closed if stale JS
