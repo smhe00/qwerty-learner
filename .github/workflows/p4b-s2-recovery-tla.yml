@@ -10,6 +10,9 @@ on:
 
 jobs:
   tla:
+    permissions:
+      contents: read
+      statuses: write
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -56,3 +59,38 @@ jobs:
             echo 'Mutation did not demonstrate a genuine Safety counterexample'
             exit 1
           fi
+
+      - name: Persist bounded S2Recovery TLA result as commit status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JOB_RESULT: ${{ job.status }}
+          SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ "$JOB_RESULT" = success ]; then
+            STATE=success
+            DESCRIPTION='S2Recovery bounded TLC + mutants PASS'
+          else
+            STATE=failure
+            DESCRIPTION='S2Recovery TLC incomplete or failed'
+          fi
+          export STATE DESCRIPTION
+          python3 - <<'PY' > /tmp/p4b-tla-status.json
+          import json, os
+          print(json.dumps({
+            'state': os.environ['STATE'],
+            'context': 'p4b/s2-recovery-tla',
+            'description': os.environ['DESCRIPTION'],
+            'target_url': 'https://github.com/' + os.environ['REPOSITORY'] +
+                          '/actions/runs/' + os.environ['RUN_ID'],
+          }))
+          PY
+          curl --fail --silent --show-error --retry 2 -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/p4b-tla-status.json \
+            "https://api.github.com/repos/${REPOSITORY}/statuses/${SHA}" > /dev/null
