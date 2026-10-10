@@ -1,0 +1,49 @@
+---
+protocol_version: "1.1"
+task_id: "TASK-20261010-013-p4b-release-qualification"
+task_file: "interactive/tasks/TASK-20261010-013-p4b-release-qualification.md"
+report_file: "interactive/reports/TASK-20261010-013-p4b-release-qualification-report.md"
+target_branch: "product/main"
+status: "ACTIVE"
+executor: "ChatGPT (direct executor)"
+release_to_master: false
+priority: "P0"
+---
+
+# P4b — Safe rollout / release qualification
+
+## Nonnegotiable constraints
+- `product/main` development, `master` Maker release ONLY on explicit user approval.
+- Never issue real Maker cloud writes or delete real accounts in P4b-0/1/2.
+- Do not equate local fake cloud with EdgeOne or Blob real availability.
+- No silent V1/V3 upgrade or divergent-side merge/overwrite; consent
+  and locally downloaded original backup required.
+- Preserve S1 WebLock, owner/generation check and crash journal.
+- Treat any Learn Real Journey or Review Gate failure as release blocking
+  until reproducible/isolated; do not relabel it green.
+
+## Stages
+- [x] P4b-0a six-table export source-count versus snapshot row counts,
+      quantitative per-table SHA diagnostic helper.
+- [x] P4b-0b post-Pull actual RecordDB+runtime canonical fingerprint
+      verification before reseal/baseline CAS; failure leaves journal.
+- [ ] P4b-0c additional row-schema semantics and independent per-table
+      source row hash verification, V3 historical shape coverage.
+- [x] P4b-1a separate TLA S2Recovery model & production 1-device bound,
+      negative-control unsafe recovery mutation proof.
+- [ ] P4b-1b multi-device / multi-account bounded TLC and failure
+      projection / coverage report.
+- [x] P4b-2a implement real Playwright isolated-profile two/three-device
+      shared in-process revision-CAS API tests.
+- [ ] P4b-2b achieve complete browser CI PASS; extend concurrent crash/
+      old-login/foreign-account and cookie/session expiry matrices.
+- [ ] P4b-3 once after local Gate approval, disposable-account *actual*
+      EdgeOne Maker + Blob isolated verification.
+- [ ] P4b-4 operator S1/legacy-tab migration/rollback runbook, final
+      release decision and explicit approval to update `master`.
+
+## Release qualification gates (not all complete)
+G1 cloud tests + lint/build, G2 all browser contracts, G3 Learn/Review/
+Typing/Achievement, G4 formal safety model, G5 real Maker 3 devices,
+G6 historic cloud V3 migration/rollback, G7 stale V1 client protection,
+G8 rollback recovery exercise and user signoff.
