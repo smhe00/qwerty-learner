@@ -148,7 +148,9 @@ function showExplicitMigrationConsent(): void {
 
 
 function showS1AccountResult(): void {
-  const key = 'qwerty.s1.last-account-result'
+  const keys = ['qwerty.s2.last-sync-result', 'qwerty.s1.last-account-result']
+  const key = keys.find(item => sessionStorage.getItem(item) !== null)
+  if (!key) return
   const note = sessionStorage.getItem(key)
   if (!note) return
   sessionStorage.removeItem(key)
@@ -188,6 +190,41 @@ async function start(): Promise<void> {
       boot.mode === 'legacy'
     ) {
       showExplicitMigrationConsent()
+      return
+    }
+    // S2 pilot: the ONLY ordinary Sync action navigates into a new,
+    // pre-mount, S1 writer-locked realm; it never mutates RecordDB from
+    // mounted React. Production remains disabled without explicit flag.
+    if (new URLSearchParams(window.location.search).get('s2-sync') === 'run') {
+      if (boot.mode !== 'isolated' ||
+          !(import.meta.env.DEV ||
+            import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true')) {
+        throw new Error('S2 Sync 尚未在此部署启用。')
+      }
+      gateUI('正在安全同步', '正在检查工作区、云端版本和完整性，必要时进行安全事务操作…')
+      try {
+        const { executePreMountManualSyncV2 } = await import('./sync/v2-browser-executor')
+        const result = await executePreMountManualSyncV2(boot)
+        const status = result.status
+        const note = status === 'noop'
+          ? '同步完成：本地和云端已经一致，没有传输完整数据。'
+          : status === 'pushed'
+            ? '同步完成：本地进度已安全上传至云端。'
+            : status === 'pull-reload-required'
+              ? '同步完成：已安全恢复云端进度。'
+              : status === 'conflict'
+                ? '同步冲突：本地和云端均有变化，未覆盖任何一方。'
+                : '同步被安全拦截：' + result.reason
+        sessionStorage.setItem('qwerty.s2.last-sync-result', note)
+      } catch (error) {
+        // If a Pull was staged, the next boot MUST first replay its journal.
+        sessionStorage.setItem('qwerty.s2.last-sync-result',
+          '同步未确认，将先执行安全恢复检查：' +
+          (error instanceof Error ? error.message : String(error)))
+      }
+      // Retain the exclusive lease until this document is destroyed; the
+      // new page must freshly acquire its own writer lease.
+      window.location.replace('/')
       return
     }
     if (

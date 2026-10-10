@@ -130,3 +130,14 @@ documented in `docs/S1_CLOSEOUT_AUDIT_20261010.md`.
 - Unit fault injection and Chromium tests exercise crash replay,
   reload-required and checksum tampering; CI evidence pending.
 - The initiated network Push/Pull execution/UI remains disabled.
+
+## S2-P3 opt-in pilot UI
+
+A single `Sync 同步` button now appears only for isolated account
+workspaces when Vite DEV or an **explicit build flag**
+`VITE_S2_ENABLE_UNIFIED_SYNC=true` is active. It navigates to
+`/?s2-sync=run`, which runs the verified executor BEFORE importing
+React/RecordDB and forces a fresh navigation afterwards. All outcomes
+display an account-safe toast; conflict/blocked never fall back to
+Upload/Download or automatic overwrite. The production build default
+keeps this button and route unavailable. No Maker/master release.

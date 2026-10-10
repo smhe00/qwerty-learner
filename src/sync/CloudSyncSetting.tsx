@@ -362,6 +362,14 @@ function EnabledCloudSyncSetting() {
           学习数据独立保留在本机 V4 工作区，退出账户不会丢弃未同步进度。
           当前云同步 V1 上传、覆盖恢复和删除操作已暂停。
         </div>
+        {(import.meta.env.DEV ||
+          import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true') && auth && (
+          <button className="my-btn-primary mt-3 mr-2" type="button"
+            disabled={auth.expiresAt * 1000 <= Date.now()}
+            onClick={() => window.location.assign('/?s2-sync=run')}>
+            Sync 同步
+          </button>
+        )}
         <button className="my-btn-primary mt-3" type="button"
           onClick={() => window.location.assign('/?s1-account=manage')}>
           安全登录 / 退出 / 切换账户
