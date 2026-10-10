@@ -27,11 +27,18 @@
       // then append &/~and~ every subsequent refresh: an infinite loop.
       // Makers serves /index.html for SPA routes via edgeone.json rewrites.
       if (!/(^|\.)github\.io$/i.test(window.location.hostname)) {
-        // Defensive fallback if a cached/old deployment still serves 404:
-        // return to root once instead of multiplying query/path segments.
-        // The new Makers SPA rewrite should make this branch unreachable.
-        if (window.location.pathname !== '/') {
-          window.location.replace(window.location.origin + '/')
+        // Fallback if Makers serves this 404 instead of an SPA rewrite.
+        // Restore only explicit app routes. Assets, APIs and unknown paths
+        // go to the root; no legacy /?/ or ~and~ query is propagated.
+        var location = window.location
+        var route = location.pathname.replace(/\/+$/, '') || '/'
+        var known = /^\/(?:typing|learn|analysis|gallery|achievements|error-book|friend-links|mobile)$/.test(route)
+        if (known) {
+          var cleanSearch = location.search[1] === '/' ? '' : location.search
+          var returnPath = route + cleanSearch + location.hash
+          location.replace(location.origin + '/?qwerty-route=' + encodeURIComponent(returnPath))
+        } else if (location.pathname !== '/') {
+          location.replace(location.origin + '/')
         }
       } else {
         var pathSegmentsToKeep = 1
