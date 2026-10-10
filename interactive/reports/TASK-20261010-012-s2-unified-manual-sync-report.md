@@ -32,3 +32,14 @@ documented in `docs/S1_CLOSEOUT_AUDIT_20261010.md`.
   canonical V4 no-op. No V4 uploads are authorized by P1a.
 - P1b remains: server-side verification of full V4 gzip snapshot, immutable
   account owner, canonical logical hash and CAS before enabling writes.
+
+- P1a `97fcaf220ea2e40c9e7071ec02fad800ac61d426`:
+  backward-compatible V1 response includes `payloadSha256` plus explicitly
+  null `logicalFingerprint`; V4 uploads are still rejected server-side.
+- CI [Cloud Sync Gate 38045228572](https://github.com/smhe00/qwerty-learner/actions/runs/38045228572):
+  **PASS**, including new backend metadata contract, full cloud tests,
+  frontend/cloud lint and Vite build.
+- S2-P1b next requires *authoritative server verification* of a V4 payload
+  (including immutable account binding, canonical logical fingerprint,
+  gzip bounds, CAS and safe migration) before exposing V4 writes or the one
+  user-facing Sync button.

@@ -36,7 +36,10 @@ choosing No-op / CAS Push / verified Pull / explicit Conflict.
 
 - [x] S2-P0: extract pure deterministic V4 Sync decision kernel in
   `src/sync/v2-policy.ts`; run unit contract tests via `yarn test:cloud`.
-- [ ] S2-P1: versioned server V4 metadata (`logicalFingerprint`,
+- [x] S2-P1a: backward-compatible metadata handshake; expose transport
+  `payloadSha256`, deliberately advertise `logicalFingerprint: null` for
+  unverified V1/V3 snapshot revisions, and keep V4 writes disabled.
+- [ ] S2-P1b: versioned server V4 metadata (`logicalFingerprint`,
   `payloadSha256`, revision) with canonical fingerprint verification,
   explicit V1→V4 compatibility/migration policy and optimistic CAS, tested
   under concurrent devices.

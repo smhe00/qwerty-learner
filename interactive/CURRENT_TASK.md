@@ -26,3 +26,9 @@ Active: S2-P0 pure deterministic V4 decision kernel and tests.
 Next: S2-P1 backend V4 metadata/CAS after current CI validation.
 Detailed task and report files above. Previous S1 task and reports are
 retained unchanged as history.
+
+2026-10-10 S2-P0/P1a checkpoint: source `a18b110e` passed Cloud Sync Gate
+38045048350 (62/62 tests, lint/build). Source `97fcaf220` passed Cloud
+Sync Gate 38045228572 for the server's conservative V4 metadata handshake.
+Next implement P1b server-verified V4 upload semantics; do not enable any S2
+write/restore/UI feature before authorization and live-server verification.
