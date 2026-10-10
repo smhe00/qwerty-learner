@@ -70,13 +70,13 @@ function normalizeTaggedExportRow(exported: unknown, rawSource: unknown): unknow
     const encoded = (current as Record<string, unknown>)[last]
     if (type === 'nan' && typeof origin === 'number' &&
         Number.isNaN(origin) && encoded === 'NaN') {
-      ;(current as Record<string, unknown>)[last] = null
+      (current as Record<string, unknown>)[last] = null
     } else if (type === 'infinity' && origin === Infinity &&
                encoded === 'Infinity') {
-      ;(current as Record<string, unknown>)[last] = null
+      (current as Record<string, unknown>)[last] = null
     } else if (type === 'negativeInfinity' && origin === -Infinity &&
                encoded === '-Infinity') {
-      ;(current as Record<string, unknown>)[last] = null
+      (current as Record<string, unknown>)[last] = null
     } else if (type === 'undef' && origin === undefined &&
                Object.prototype.hasOwnProperty.call(expected, last) &&
                encoded === null) {
@@ -89,7 +89,7 @@ function normalizeTaggedExportRow(exported: unknown, rawSource: unknown): unknow
       // JSON.stringify maps both sparse holes and undefined array slots to null.
     } else if (type === 'date' && origin instanceof Date &&
                encoded === origin.getTime()) {
-      ;(current as Record<string, unknown>)[last] = origin.toJSON()
+      (current as Record<string, unknown>)[last] = origin.toJSON()
     } else {
       // Unknown Typeson marker, forged metadata, or actual data change.
       return row
