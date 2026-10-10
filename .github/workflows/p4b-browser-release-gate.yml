@@ -7,6 +7,8 @@ on:
       - 'tests/e2e/workspace-v4-s2-multi-device.spec.ts'
       - 'tests/e2e/workspace-v4-s2-pull.spec.ts'
       - 'tests/e2e/workspace-v4-s2-recovery.spec.ts'
+      - 'tests/e2e/workspace-v4-session-revoked.spec.ts'
+      - 'src/index.tsx'
       - 'tests/e2e/workspace-v4.config.ts'
       - 'src/sync/**'
       - '.github/workflows/p4b-browser-release-gate.yml'
@@ -42,6 +44,7 @@ jobs:
           workspace-v4-s2-multi-device.spec.ts
           workspace-v4-s2-pull.spec.ts
           workspace-v4-s2-recovery.spec.ts
+          workspace-v4-session-revoked.spec.ts
       - name: Upload failed traces
         if: failure()
         uses: actions/upload-artifact@v4
