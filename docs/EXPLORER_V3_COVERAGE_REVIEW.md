@@ -21,11 +21,11 @@ A navigation click is not a learning-state transition. Report each target as:
 | CR-02 | Independent failure → Supported assisted retry | B: wrong-key and ESC behavior | D: first independent failure | Two failures in one real browser path remain N |
 | CR-03 | Second assistance failure → Deferred and blocked for 299 seconds | N | D: exact 299s/300s boundary, admitted to Supported on resume | B: N |
 | CR-04 | Spacing Deferred → Independent with intervening-items floor after 300s | N | D: exact 299s/300s boundary | B: N |
-| CR-05 | Daily new-word quota exhaustion and no 4th credit | N | D: 3/3 quota, 4th admission uncredited, new work stops | Browser daily-complete screen + same-day re-entry: N |
-| CR-06 | New day replenishes new-word allowance | B: 48-hour unfinished-session recovery | D: dateKey and quota reset | Browser new-day due + quota combination: N |
+| CR-05 | Daily new-word quota exhaustion and no 4th credit | N | D: 3/3 quota and no over-credit; B: real completion + same-day Start refusal in P0 lifecycle test **pending validation** | Do not mark B until Pages Explorer succeeds |
+| CR-06 | New day replenishes new-word allowance | B: 48h unfinished-session recovery | D: dateKey/quota reset; B: daily lifecycle test exercises next-day quota and due work **pending validation** | No production account/cloud changes |
 | CR-07 | Block pause → **same-day** Continue → distinct durable Block | N | B: dedicated same-day continuation + first word in new Block | Multi-block with mid-Block deferred: N |
 | CR-08 | Block terminal → settlement, IndexedDB durable, cross-day second Block | B: two full Blocks and 48h jump | Retained B | Three or more consecutive Blocks: N |
-| CR-09 | Naturally due review receives first slot, without forced-due seeding | M: graded campaigns (some forced due) | D: mature overnight, priority and reschedule | B: N |
+| CR-09 | Naturally due review receives first slot, without forced-due seeding | M: graded campaigns | D: mature overnight; B: real natural FSRS due, priority and durable post-review reschedule **pending validation** | Review source must be actual scheduler state |
 | CR-10 | FSRS-6 Good / Hard / Again and due interval/history rebuild | M: twelve 6-day graded campaigns | Retained M; oracle/replay assertions | Multi-day FSRS browser campaign: N |
 | CR-11 | Real keyboard, ESC3, wrong input, reload idempotence, Typing↔Learn | B: three seeded Pages runs | Retained B | Multi-tab while cloud synced is separately owned by S1 |
 | CR-12 | Mutation detection / silent no-op / stale projection | M: existing `system-explorer.test.ts` | Retained M, Review Gate | State-space exhaustive TLC remains separate |
