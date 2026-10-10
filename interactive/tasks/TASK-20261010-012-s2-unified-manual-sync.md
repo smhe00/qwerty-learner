@@ -45,7 +45,10 @@ choosing No-op / CAS Push / verified Pull / explicit Conflict.
   under concurrent devices. The V2 backend endpoint is implemented behind
   an unexposed UI; no Maker deployment. Legacy V3-to-V4 migration remains
   an explicitly blocked case, not an implicit overwrite.
-- [ ] S2-P2: account-scoped baseline persisted outside portable workspace;
+- [x] S2-P2a: durable account-scoped baseline in existing S1 vault registry
+  (no database version bump), monotonic revision and hash CAS; no UI/runtime
+  activation.
+- [ ] S2-P2b:
   guarded V4 snapshot executor (quiescent copy, hash/identity validation,
   safe pull journal + restart), fault injection and crash replay.
 - [ ] S2-P3: one normal Sync button, directional actions only in advanced

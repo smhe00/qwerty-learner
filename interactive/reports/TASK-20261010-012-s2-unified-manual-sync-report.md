@@ -57,3 +57,16 @@ documented in `docs/S1_CLOSEOUT_AUDIT_20261010.md`.
   payloads fail closed. Hash parity with client implementation tested.
 - **No V2 UI or live Maker deployment.** Server endpoint remains in dev
   `product/main`, not Maker-bound `master`. Check CI after commit.
+
+## S2-P2a local baseline groundwork
+
+- New `src/sync/v2-baseline.ts` stores account-scoped revision/fingerprint
+  in the existing S1 vault `registry` object store under independent keys.
+  Does NOT alter its `HEAD` registry or database schema version.
+- CAS checks both baseline revision and fingerprint; corrupt or cross-account
+  baseline fails closed, revision rollback and fingerprint changes at identical
+  revision are rejected.
+- This primitive is **not wired to live cloud transfers**; a future executor
+  must ensure a successful, crash-safe snapshot transfer/restore and a held
+  single-writer lock before committing a baseline. Add browser IDB integration
+  and fault injection in P2b.
