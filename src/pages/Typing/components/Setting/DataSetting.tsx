@@ -159,7 +159,7 @@ export default function DataSetting() {
             <span className={styles.sectionDescription}>
               完整备份学习记录、FSRS、成就、未完成的学习会话及个人设置。
               可以在这里校验 V4 文件的完整性；校验是只读操作，不会覆盖任何学习记录。
-              V4 文件恢复尚未开放，校验只读、不修改数据。
+              本地导出、云端导出均使用标准 Backup V4；可从同一入口导入并恢复到当前账号。不同账号 ID 将被明确提示，导入前会备份当前工作区。
             </span>
             <div className="flex flex-wrap gap-2 pl-4">
               <button
@@ -177,6 +177,14 @@ export default function DataSetting() {
                 disabled={isV4Busy || isExporting || isImporting || isClearing}
               >
                 验证 V4 备份文件（只读）
+              </button>
+              <button
+                className="my-btn-primary disabled:bg-gray-300"
+                type="button"
+                onClick={() => window.location.assign('/?v4-import=manage')}
+                disabled={isV4Busy || isExporting || isImporting || isClearing}
+              >
+                导入完整备份 V4（支持跨账号）
               </button>
             </div>
             {v4Message && (
