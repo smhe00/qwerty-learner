@@ -6,7 +6,7 @@
  * The mounted app may show the warning, but the actual owner transition is
  * performed exclusively by the NEXT pre-mount WebLock-protected document.
  */
-import { getMe, SyncApiError } from './api'
+import { SyncApiError, getMe } from './api'
 import { loadAuth } from './auth'
 import type { GuardedWorkspaceBoot } from './workspace-bootstrap'
 import type { Registry } from './workspace-transition'
@@ -47,16 +47,15 @@ function addText<K extends keyof HTMLElementTagNameMap>(
 
 export function startSessionRevocationMonitor(registry: Registry): () => void {
   if (registry.pending || registry.active.kind !== 'account' ||
-      registry.generation < 1) return () => {}
+      registry.generation < 1) return () => undefined
   const accountId = registry.active.accountId
   const currentToken = loadAuth({ preserveExpired: true })?.token
-  if (!currentToken) return () => {}
+  if (!currentToken) return () => undefined
   let busy = false
   let stopped = false
   let revealed = false
   let lastProbeAt = 0
   let modal: HTMLDivElement | undefined
-  let interval: number
 
   const currentAuth = () => {
     const auth = loadAuth({ preserveExpired: true })
@@ -150,7 +149,7 @@ export function startSessionRevocationMonitor(registry: Registry): () => void {
   window.addEventListener(REVOKED_EVENT, onApiRevoked)
   window.addEventListener('focus', onFocus)
   document.addEventListener('visibilitychange', onVisible)
-  interval = window.setInterval(() => { void probe(false) }, PROBE_INTERVAL_MS)
+  const interval = window.setInterval(() => { void probe(false) }, PROBE_INTERVAL_MS)
   void probe(false)
   return () => {
     stop()
