@@ -248,9 +248,25 @@ test('Explorer V3 P0: daily target completes, same-day reentry blocks, next-day 
     await advanceIdleBusinessTime(page, jump)
     await page.reload({ waitUntil: 'domcontentloaded' })
     await page.getByRole('button', { name: 'Learn', exact: true }).click()
-    // Landing may auto-start based on router state; explicitly handle Start.
+    // The landing may auto-start while its Start control is visible but
+    // disabled (async preparation). Wait for a usable state, never click a
+    // merely visible disabled control.
     const start = page.getByRole('button', { name: '开始 Learn' })
-    if (await start.isVisible().catch(() => false)) await start.click()
+    const pause = page.getByRole('button', { name: '暂停', exact: true })
+    const prompt = page.getByText(/按任意键(?:开始|继续)/).first()
+    const ready = await expect.poll(async () => {
+      if (await pause.isVisible().catch(() => false)) return 'active'
+      if (await prompt.isVisible().catch(() => false)) return 'typing-idle'
+      if (await start.isEnabled().catch(() => false)) return 'start'
+      return 'preparing'
+    }, { timeout: 25_000 })
+    // Poll's return value is not exposed; check the actual DOM state again.
+    void ready
+    if (!(await pause.isVisible().catch(() => false)) &&
+        !(await prompt.isVisible().catch(() => false))) {
+      await expect(start).toBeEnabled()
+      await start.click()
+    }
     await startTypingLearn(page)
     const tomorrow = await snapshot(page, scheduledWord)
     expect(tomorrow.dailyId).not.toBe(end.dailyId)
