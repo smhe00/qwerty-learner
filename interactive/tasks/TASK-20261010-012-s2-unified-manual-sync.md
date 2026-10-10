@@ -50,6 +50,9 @@ choosing No-op / CAS Push / verified Pull / explicit Conflict.
   activation.
 - [x] S2-P2b-preflight: browser canonical V4 snapshot fingerprint and pure
   read-only Sync direction planning; versioned server metadata GET client API.
+- [x] S2-P2c: read-only V4 cloud payload verifier (pinned revision,
+  compressed SHA-256, canonical logical fingerprint, account owner,
+  streaming bounded gunzip).
 - [ ] S2-P2b-executor:
   guarded V4 snapshot executor (quiescent copy, hash/identity validation,
   safe pull journal + restart), fault injection and crash replay.

@@ -145,6 +145,13 @@ export function getSyncV2Meta(token: string) {
   return request<SyncMetaResponse>('/api/sync/v2/meta', { token })
 }
 
+/** Read-only V4 snapshot fetch. MUST verify bytes with
+ * verifyDownloadedWorkspaceV4 before any eventual restore.
+ */
+export function getSyncV2Snapshot(token: string) {
+  return request<SyncResponse>('/api/sync/v2', { token })
+}
+
 export function putSync(
   token: string,
   input: {

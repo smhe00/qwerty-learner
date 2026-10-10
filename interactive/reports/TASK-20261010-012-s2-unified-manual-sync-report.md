@@ -81,3 +81,12 @@ documented in `docs/S1_CLOSEOUT_AUDIT_20261010.md`.
   in any production user button or snapshot transfer.
 - Full executor work remains: writer quiescence, account/base CAS,
   pre-restore durable rollback journal, fault injection and reload after pull.
+
+## S2-P2c read-only downloaded snapshot verification
+
+- `src/sync/v2-verify-remote.ts`: compares versioned remote snapshot
+  to pinned `/api/sync/v2/meta`; verifies compressed SHA/length, canonical
+  V4 logical hash and immutable owner. Streaming decompression enforces
+  32 MiB maximum inflated size before any DB import, preventing oversized
+  gzip payload restore.
+- No recovery journal or upload/restore is enabled by this layer.
