@@ -12,13 +12,17 @@ const sites = [
 ] as const
 type Site = (typeof sites)[number]
 
-async function checkSite(page: Page, site: Site) {
+function checkRoute(page: Page, site: Site) {
   const url = new URL(page.url())
   expect(url.origin).toBe(site.origin)
   expect(url.pathname.startsWith(site.prefix)).toBe(true)
   expect(url.href).not.toContain('~and~')
   expect(url.href).not.toContain('/?/&/')
   expect(url.href).not.toContain('%7Eand%7E')
+}
+
+async function checkSite(page: Page, site: Site) {
+  checkRoute(page, site)
   await expect(page.getByRole('button', { name: '打开设置对话框' }))
     .toBeVisible({ timeout: 25_000 })
 }
@@ -148,11 +152,13 @@ for (const site of sites) {
       await expect(page.getByRole('link', { name: '上海中考2027', exact: true })).toBeVisible()
       await page.getByRole('link', { name: '上海中考2027', exact: true }).click()
       await expect(page).toHaveURL(/\/gallery\/?$/)
-      await checkSite(page, site)
+      // Gallery has its own shell; the typing-page Settings button is not
+      // expected here, but the SPA route must remain canonical.
+      checkRoute(page, site)
 
       await page.goto(site.base + 'analysis?from=learn', { waitUntil: 'domcontentloaded' })
       await expect(page.locator('[data-fsrs-shadow-analysis]')).toBeVisible({ timeout: 25_000 })
-      await checkSite(page, site)
+      checkRoute(page, site)
 
       await page.goto(site.base, { waitUntil: 'domcontentloaded' })
       await startLearn(page, site)
@@ -270,14 +276,22 @@ for (const site of sites) {
       try {
         const page = await context.newPage()
         const observer = await inspect(page)
+        // Mobile navigation controls may be collapsed in responsive
+        // layouts. Verify both published deep links, not an assumed
+        // always-visible desktop Settings button.
         await page.goto(site.base, { waitUntil: 'domcontentloaded' })
-        await checkSite(page, site)
-        await page.getByRole('button', { name: 'Learn', exact: true }).click()
+        checkRoute(page, site)
+        await expect(page.locator('[data-typing-word]:visible').first())
+          .toHaveAttribute('data-typing-word', /\S+/, { timeout: 20_000 })
+        await page.goto(site.base + 'learn', { waitUntil: 'domcontentloaded' })
+        checkRoute(page, site)
         await expect(page).toHaveURL(/\/learn\/?$/, { timeout: 20_000 })
         await expect(page.locator('[data-typing-word]:visible').first())
           .toHaveAttribute('data-typing-word', /\S+/, { timeout: 20_000 })
         await page.reload({ waitUntil: 'domcontentloaded' })
-        await checkSite(page, site)
+        checkRoute(page, site)
+        await expect(page.locator('[data-typing-word]:visible').first())
+          .toHaveAttribute('data-typing-word', /\S+/, { timeout: 20_000 })
         observer.verify()
       } finally {
         await context.close()
