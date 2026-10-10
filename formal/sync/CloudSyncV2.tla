@@ -289,6 +289,13 @@ AnonymousNeverCloudBacked ==
 OrdinaryWritesUseCurrentBase ==
   ordinaryWriteSafe
 
+(* Diagnostic reachability probe, not a production safety invariant. A stale
+   remote revision is normal and must be reachable with two active devices. *)
+StaleRemoteClientAbsent ==
+  \A d \in Devices, a \in AccountIds :
+    ~(dev[d].active = a /\ dev[d].authUsable /\
+      dev[d].baseRev[a] # server.revision[a])
+
 BlockSettingDoesNotRetargetCurrentBlock ==
   blockFreezeSafe
 
