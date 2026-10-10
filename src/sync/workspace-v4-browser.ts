@@ -24,6 +24,66 @@ import {
 import { clearAllLearnDailySessions } from '@/learn/daily-session'
 import { flushReviewRecordWrites } from '@/store/reviewInfoAtom'
 import { db } from '@/utils/db/core'
+import Dexie from 'dexie'
+
+/**
+ * Last-resort independent lossless audit. Dexie Export/Import uses Typeson,
+ * whose userObject/array/undefined/special type rules vary by library version.
+ * Do NOT guess at or erase unknown $types markers to make a hash compare pass.
+ *
+ * Only when the fast source/export comparison sees a payload mismatch,
+ * round-trip the ORIGINAL exported database to a fresh, isolated temporary
+ * IndexedDB, then compare all six decoded raw tables with the live source.
+ * A change, missing row or failed decoder still fails closed. Never import
+ * into the actual RecordDB or change the archive about to be downloaded.
+ */
+async function verifyV4RoundTripInDisposableDatabase(
+  snapshot: WorkspaceSnapshotV4,
+  sourceRows: Parameters<typeof assertV4SourceRowsMatchExport>[1],
+): Promise<void> {
+  const original = snapshot.workspaceData.database as {
+    formatName: string
+    formatVersion: number
+    data: {
+      databaseName: string
+      databaseVersion: number
+      tables: Array<{ name: string; schema: string; rowCount?: number }>
+      data: Array<{ tableName: string; rows: unknown[] }>
+    }
+  }
+  const name = 'qwerty-v4-export-audit-' + crypto.randomUUID()
+  const shadow = new Dexie(name)
+  try {
+    const stores = Object.fromEntries(original.data.tables.map(table =>
+      [table.name, table.schema]))
+    shadow.version(original.data.databaseVersion).stores(stores)
+    // The raw Dexie export is the ONLY imported data. In particular, never
+    // discard the exporter $types metadata needed for faithful reconstruction.
+    const isolatedExport = {
+      ...original,
+      data: { ...original.data, databaseName: name },
+    }
+    await shadow.import(new Blob([JSON.stringify(isolatedExport)], {
+      type: 'application/json',
+    }), {
+      acceptNameDiff: false,
+      acceptVersionDiff: true,
+      acceptMissingTables: false,
+      acceptChangedPrimaryKey: false,
+      clearTablesBeforeImport: true,
+    })
+    const roundTripped = structuredClone(snapshot)
+    const tables = (roundTripped.workspaceData.database as typeof original).data.data
+    for (const table of tables) {
+      if (!(table.tableName in sourceRows)) continue
+      table.rows = await shadow.table(table.tableName).toCollection().raw().toArray()
+    }
+    await assertV4SourceRowsMatchExport(roundTripped, sourceRows)
+  } finally {
+    shadow.close()
+    await shadow.delete()
+  }
+}
 
 export async function captureWorkingWorkspaceV4(
   source: WorkspaceIdentityV4,
@@ -50,8 +110,19 @@ export async function captureWorkingWorkspaceV4(
   )
   // Count-only comparisons miss same-count substitutions (e.g. a damaged
   // FSRS interval); independently hash full live Dexie rows as well.
-  await assertV4SourceRowsMatchExport(snapshot, Object.fromEntries(entries) as
-    Parameters<typeof assertV4SourceRowsMatchExport>[1])
+  const sourceRows = Object.fromEntries(entries) as
+    Parameters<typeof assertV4SourceRowsMatchExport>[1]
+  try {
+    await assertV4SourceRowsMatchExport(snapshot, sourceRows)
+  } catch (error) {
+    // Only a payload mismatch can have a reversible Typeson representation.
+    // A row-count mismatch, malformed archive, or damaged source still fails.
+    if (!(error instanceof Error) ||
+        !error.message.startsWith('Backup V4 source/export row-payload mismatch:')) {
+      throw error
+    }
+    await verifyV4RoundTripInDisposableDatabase(snapshot, sourceRows)
+  }
   return snapshot
 }
 
