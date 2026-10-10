@@ -5,11 +5,11 @@
  * MUST recover before the working DB is writable.
  */
 import {
-  assertRestorableWorkspaceV4,
   DAILY_SESSION_PREFIX,
+  WORKSPACE_SETTING_KEYS,
+  assertRestorableWorkspaceV4,
   migrateV3ToWorkspaceV4,
   parseWorkspaceV4,
-  WORKSPACE_SETTING_KEYS,
 } from './workspace-v4'
 import type { WorkspaceIdentityV4, WorkspaceSnapshotV4 } from './workspace-v4'
 import {
