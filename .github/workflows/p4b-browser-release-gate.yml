@@ -9,6 +9,7 @@ on:
       - 'tests/e2e/workspace-v4-s2-recovery.spec.ts'
       - 'tests/e2e/workspace-v4-session-revoked.spec.ts'
       - 'tests/e2e/workspace-v4.spec.ts'
+      - 'tests/e2e/workspace-v4-manual-import.spec.ts'
       - 'src/index.tsx'
       - 'tests/e2e/workspace-v4.config.ts'
       - 'src/sync/**'
@@ -47,6 +48,7 @@ jobs:
           workspace-v4-s2-recovery.spec.ts
           workspace-v4-session-revoked.spec.ts
           workspace-v4.spec.ts
+          workspace-v4-manual-import.spec.ts
       - name: Upload failed traces
         if: failure()
         uses: actions/upload-artifact@v4
