@@ -168,6 +168,29 @@ export function putSyncV2(
   })
 }
 
+/** Explicit recovery only. Never reachable from the ordinary Sync button.
+ * Server verifies immutable account, pinned remote SHA and format, and CAS.
+ */
+export function putSyncV2Recovery(
+  token: string,
+  input: {
+    baseRevision: number
+    payloadBase64: string
+    logicalFingerprint: string
+    clientFormatVersion: 'qwerty-backup-v4'
+    recoveryMode: 'replace-v4' | 'migrate-v3'
+    expectedRemoteFormat: 'qwerty-backup-v4' | 'qwerty-backup-v3'
+    expectedRemoteSha256: string
+    expectedRemoteLogicalFingerprint?: string | null
+    accountConfirmation: string
+    deviceId?: string
+  },
+) {
+  return request<SyncMetaResponse>('/api/sync/v2/recovery', {
+    method: 'PUT', token, body: input,
+  })
+}
+
 export function putSync(
   token: string,
   input: {
