@@ -49,7 +49,7 @@ export function startSessionRevocationMonitor(registry: Registry): () => void {
   if (registry.pending || registry.active.kind !== 'account' ||
       registry.generation < 1) return () => {}
   const accountId = registry.active.accountId
-  let currentToken = loadAuth({ preserveExpired: true })?.token
+  const currentToken = loadAuth({ preserveExpired: true })?.token
   if (!currentToken) return () => {}
   let busy = false
   let stopped = false
@@ -174,6 +174,11 @@ export async function completeConfirmedRevokedLogout(
     throw Error('S1 forced logout requires a recovered isolated workspace')
   }
   if (boot.registry.active.kind === 'anonymous') {
+    // Only a single completed account->anonymous generation increment can
+    // confirm this handoff. Never accept an unrelated anonymous registry.
+    if (boot.registry.generation !== intent.generation + 1) {
+      throw Error('S1 revoked-session handoff does not match completed logout')
+    }
     // A previous attempt may have committed before navigation/reload.
     sessionStorage.removeItem(HANDOFF_KEY)
     sessionStorage.setItem('qwerty.s1.last-account-result',
