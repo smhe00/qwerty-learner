@@ -103,3 +103,30 @@ PUT 返回 403，并确认其 revision 没有变化；随后用白名单测试�
 同时验证原有 V1 写入仍可用，并删除该一次性账号。无需 Blob 管理密钥。
 它不验证白名单正向 V4 写入、A/B/C 真正跨设备冲突、V3→V4 迁移或回滚，
 这些仍属于 P4b-3/P4b-4 阻断项。禁止以脚本已提交代替 CI PASS。
+
+
+## P4b-4 分层回滚验收记录（2026-10-11）
+
+**已实网执行：临时服务端写入许可的实际回滚。**
+从包含短时 `test13/test24` 写入许可的 Maker 测试版，
+将生产 `master` 恢复到严格账户 ID 白名单版本 `bcc94f7`。
+[Actions #38085477624](https://github.com/smhe00/qwerty-learner/actions/runs/38085477624)
+在 Maker 真实 HTTP 环境验证：测试许可 capability 消失，
+新建立的 `test13` 账号对普通 V2 和 Recovery V2 的 PUT 均得到
+`403 s2_write_not_enabled`，远端 revision 不变，测试账号成功清除。
+因此可声明：**生产代码/服务端隔离回滚路径 PASS**。
+
+**尚未实网证明：保存有 V4 云端数据的测试账号在跨版本回滚后，
+数据仍可读取且 V1 老客户端无法破坏其 Revision。**
+先前 V4 测试通过、以及之后的严格版本回滚通过，发生于不同的
+一次性账号生命周期，不能拼接成一次端到端持久化验证。
+对于此项未满足时，仍保持生产的 V2 写入严格关闭，不要尝试
+将 `master` 恢复到完全不含 V4 写入保护的旧版。
+
+**浏览器 Gate**：新增
+`.github/workflows/p4b-browser-release-gate.yml`，
+在真实 Chromium (本地 Vite 构建) 验证独立 BrowserContexts、
+V3 迁移两份备份 + 显式方向/不可变 ID 确认、
+崩溃后 journal 重放和失败拒绝。
+此项和 Maker HTTP 测试是两类不同证据；产品上线仍需
+核实生产构建中受控前端 S2 入口的实际启用策略。
