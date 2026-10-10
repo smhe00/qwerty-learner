@@ -120,17 +120,7 @@ function makeService(env, storage) {
 async function requireS2WriteAccount(service, request, env) {
   const token = bearer(request)
   const { user } = await service.me(token)
-  // P4b TEMPORARY TEST-ONLY EXCEPTION. Remove immediately after test13/test24
-  // have completed live V4 and both disposable accounts are deleted.
-  // Existing same-name accounts are excluded by their creation timestamp.
-  // Hard expiry is a safety net in case a follow-up deployment is delayed.
-  const temporaryTestUser = ['test13', 'test24'].includes(
-    typeof user.username === 'string' ? user.username.toLowerCase() : '',
-  ) && typeof user.createdAt === 'string' &&
-    Date.parse(user.createdAt) >= Date.parse('2026-10-10T00:00:00Z') &&
-    Date.now() < Date.parse('2026-10-12T12:00:00Z')
-  if (!temporaryTestUser &&
-      !isS2WriteAllowed(env.S2_SYNC_WRITE_ACCOUNT_IDS, user.userId)) {
+  if (!isS2WriteAllowed(env.S2_SYNC_WRITE_ACCOUNT_IDS, user.userId)) {
     throw new AppError(403, 's2_write_not_enabled',
       'Sync V2 writes are restricted to explicitly authorized test accounts')
   }
@@ -216,7 +206,6 @@ export async function onRequest(context) {
             'learning-state-backup-v3',
             'account-delete-v1',
             'duplicate-register-protection-v1',
-            'p4b-temporary-named-write-test-20261011',
           ],
         },
         200,
