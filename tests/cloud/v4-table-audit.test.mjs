@@ -134,11 +134,14 @@ test('P4b: Dexie Typeson NaN/undefined telemetry survives auditable V4 export', 
       {
         startLatencyMs: 'Infinity', durationMs: 90,
         correctPrefixLength: 0, result: 'wrong',
-        wrongIndex: null, interKeyIntervalsMs: [12, 'NaN'],
+        wrongIndex: 0, interKeyIntervalsMs: [12, 'NaN'],
       },
     ],
   }
   plain.$types = {
+    '': 'userObject',
+    'typingTelemetry.attempts': 'arrayNonindexKeys',
+    'typingTelemetry.attempts.0.interKeyIntervalsMs': 'arrayNonindexKeys',
     'typingTelemetry.firstKeyLatencyMs': 'nan',
     'typingTelemetry.attempts.0.startLatencyMs': 'infinity',
     'typingTelemetry.attempts.0.wrongIndex': 'undef',
