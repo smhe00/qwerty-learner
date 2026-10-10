@@ -1,0 +1,49 @@
+name: Sync Stale-Push Mutation Smoke
+
+on:
+  push:
+    branches:
+      - product/main
+    paths:
+      - 'formal/sync/*.tla'
+      - 'formal/sync/*.cfg'
+      - '.github/workflows/sync-stale-push-smoke.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: sync-stale-mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stale-push-mutant:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Download pinned TLC
+        run: |
+          curl --fail --location --silent --show-error \
+            https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar \
+            --output /tmp/tla2tools.jar
+          echo "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88  /tmp/tla2tools.jar" | sha256sum --check
+      - name: Require actual stale-push invariant counterexample
+        run: |
+          set +e
+          timeout 90s java -cp /tmp/tla2tools.jar tlc2.TLC \
+            -config formal/sync/CloudSyncV2.stale-push-mutation.cfg \
+            formal/sync/CloudSyncV2.tla > /tmp/stale-push.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/stale-push.log
+          if [ "$status" -eq 124 ]; then
+            echo 'Timed out without a verified counterexample'
+            exit 1
+          fi
+          if [ "$status" -eq 0 ] || ! grep -q 'Invariant OrdinaryWritesUseCurrentBase is violated' /tmp/stale-push.log; then
+            echo 'Expected an explicit stale-base safety violation from the mutant'
+            exit 1
+          fi
