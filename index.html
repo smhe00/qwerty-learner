@@ -14,6 +14,25 @@
         // EdgeOne 404 may have produced /learn/?/&/~and~/...; strip this
         // synthetic query before the router boots, preserving the route.
         if (!isGitHubPages) {
+          // Recover a known SPA deep link passed through the 404 fallback.
+          // The marker exists only on the root document, is consumed once
+          // before React mounts, and cannot redirect to another origin.
+          var marker = '?qwerty-route='
+          if (l.pathname === '/' && l.search.indexOf(marker) === 0) {
+            var restored
+            try {
+              restored = decodeURIComponent(l.search.slice(marker.length))
+            } catch (error) {
+              restored = ''
+            }
+            if (/^\/(?:typing|learn|analysis|gallery|achievements|error-book|friend-links|mobile)(?:[?#]|$)/.test(restored)) {
+              window.history.replaceState(window.history.state, null, restored)
+            } else {
+              window.history.replaceState(window.history.state, null, '/')
+            }
+            return
+          }
+          // Malformed GitHub Pages-style URLs from old EdgeOne 404 releases.
           if (l.search[1] === '/') {
             var cleanPath = l.pathname.replace(/\/+$/, '') || '/'
             window.history.replaceState(window.history.state, null, cleanPath + l.hash)
@@ -96,7 +115,7 @@
         document.documentElement.classList.toggle('dark', darkMode)
       })()
     </script>
-    <script type="module" crossorigin src="/qwerty-learner/assets/index-a1514117.js"></script>
+    <script type="module" crossorigin src="/qwerty-learner/assets/index-ce02923d.js"></script>
   </head>
   <body>
     <noscript>
