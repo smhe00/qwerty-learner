@@ -47,24 +47,24 @@ function normalizeTaggedExportRow(exported: unknown, rawSource: unknown): unknow
   if (tags === undefined) return row
   if (!tags || typeof tags !== 'object' || Array.isArray(tags)) {
     // Typeson's escaped-root schema is intentionally not silently accepted.
-    return exported
+    return row
   }
 
   for (const [path, type] of Object.entries(tags)) {
     const pieces = path.split('.')
     if (pieces.some(piece => !piece || piece === '__proto__' ||
-        piece === 'constructor' || piece === 'prototype')) return exported
+        piece === 'constructor' || piece === 'prototype')) return row
 
     let expected: unknown = rawSource
     let current: unknown = row
     for (let i = 0; i < pieces.length - 1; i++) {
       if (!expected || typeof expected !== 'object' ||
-          !current || typeof current !== 'object') return exported
+          !current || typeof current !== 'object') return row
       expected = (expected as Record<string, unknown>)[pieces[i]]
       current = (current as Record<string, unknown>)[pieces[i]]
     }
     if (!expected || typeof expected !== 'object' ||
-        !current || typeof current !== 'object') return exported
+        !current || typeof current !== 'object') return row
     const last = pieces[pieces.length - 1]
     const origin = (expected as Record<string, unknown>)[last]
     const encoded = (current as Record<string, unknown>)[last]
@@ -92,7 +92,7 @@ function normalizeTaggedExportRow(exported: unknown, rawSource: unknown): unknow
       ;(current as Record<string, unknown>)[last] = origin.toJSON()
     } else {
       // Unknown Typeson marker, forged metadata, or actual data change.
-      return exported
+      return row
     }
   }
   return row
