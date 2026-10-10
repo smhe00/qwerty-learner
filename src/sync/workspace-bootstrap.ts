@@ -90,9 +90,12 @@ export async function prepareGuardedWorkspaceBoot(
       throw new Error('S1 workspace migration witness missing: possible legacy-tab storage wipe; writes blocked')
     }
 
-    // With no unfinished switch, any V5-only write since the owner closed
-    // must be detected BEFORE reconciliation can touch working credentials.
-    if (!before.pending) assertWorkspaceMigrationWitness()
+    // A completed registry CAS can legitimately precede the final auth
+    // write. In that narrow crash window the verified S1 intent authorizes
+    // reconciliation and resealing; without such an intent stale V5 changes
+    // must be rejected before any credential mutation.
+    const hasAuthIntent = localStorage.getItem('qwerty.s1.auth-transition.v1') !== null
+    if (!before.pending && !hasAuthIntent) assertWorkspaceMigrationWitness()
 
     // Recover a previously committed workspace journal before auth
     // reconciliation; the intended target credentials may not yet be active.
@@ -116,7 +119,15 @@ export async function prepareGuardedWorkspaceBoot(
     // No domain writer is mounted yet. Handle both pre-journal rollback and
     // post-registry-CAS / pre-auth-write crashes from the previous page.
     const reconciliation = await reconcileAuthTransition()
-    if (reconciliation === 'completed') refreshWorkspaceMigrationWitness()
+    if (reconciliation === 'completed') {
+      // This recovery follows a validated durable S1 auth transition intent
+      // whose target is already the committed registry owner.
+      refreshWorkspaceMigrationWitness()
+    } else {
+      // A stale/rolled-back intent does not authorize accepting external
+      // mutations to the active workspace's shared settings or credentials.
+      assertWorkspaceMigrationWitness()
+    }
     const registry = before
     report(onStage, 'checking-identity')
     const auth = loadAuth({ preserveExpired: true })
