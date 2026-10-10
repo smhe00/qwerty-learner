@@ -5,6 +5,7 @@ import { initializeLegacyWorkspace, transitionWorkingWorkspace } from '../../src
 import { acquireWorkspaceWriterLease } from '../../src/sync/workspace-lock'
 import { captureWorkingWorkspaceV4, resetWorkingWorkspaceToEmpty, restoreWorkingWorkspaceV4 } from '../../src/sync/workspace-v4-browser'
 import { createWorkspaceV4, workspaceFingerprintV4 } from '../../src/sync/workspace-v4'
+import { loadSyncV2Baseline, compareAndSwapSyncV2Baseline } from '../../src/sync/v2-baseline'
 import { loadWorkspaceFromVault, saveWorkspaceToVault, workspaceRegistryPort, openWorkspaceVault } from '../../src/sync/workspace-vault'
 import { switchWorkspace, recoverWorkspace, ANONYMOUS } from '../../src/sync/workspace-transition'
 import { createLocalSnapshot, fingerprintRemoteUserActions, restoreLocalSnapshot } from '../../src/sync/snapshot'
