@@ -20,7 +20,7 @@ try {
         last = 'HTTP ' + response?.status()
       } else {
         const heading = page.getByText('S1 本机学习数据归属确认')
-        if (await heading.isVisible({ timeout: 1500 }).catch(() => false)) {
+        if (await heading.waitFor({ state: 'visible', timeout: 8000 }).then(() => true).catch(() => false)) {
           const checkbox = page.getByRole('checkbox',
             { name: '已核对本机完整 V4 备份' })
           const button = page.getByRole('button',
