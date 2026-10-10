@@ -38,13 +38,15 @@ const PronunciationSwitcher = ({
 
   useEffect(() => {
     const phoneticType = PRONUNCIATION_PHONETIC_MAP[pronunciationConfig.type]
-    if (phoneticType) {
-      setPhoneticConfig((old) => ({
-        ...old,
-        type: phoneticType,
-      }))
+    // Do not persist an unchanged default on initial hydration. Writing
+    // phoneticConfig solely because the component mounted makes a just-pulled
+    // V4 workspace appear dirty and causes a spurious next Sync.
+    if (phoneticType && phoneticConfig.type !== phoneticType) {
+      setPhoneticConfig((old) => old.type === phoneticType
+        ? old
+        : { ...old, type: phoneticType })
     }
-  }, [pronunciationConfig.type, setPhoneticConfig])
+  }, [pronunciationConfig.type, phoneticConfig.type, setPhoneticConfig])
 
   const onChangePronunciationIsOpen = useCallback(
     (value: boolean) => {

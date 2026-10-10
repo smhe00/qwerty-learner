@@ -192,26 +192,9 @@ test('P4b two independent profiles roundtrip, then detect divergent edits withou
     expect(b1.count).toBe(1)
     expect(b1.preservedLearnWord).toBe(true)
     expect(b1.preservedFsrs).toBe(true)
-    // A newly hydrated Learn runtime may create a DailySession. A change
-    // in its canonical snapshot after app mount is separately tracked; it
-    // cannot substitute for a missing/dropped durable learning row.
-    if (b1.fingerprint !== server.meta().logicalFingerprint) {
-      const original = server.snapshot().workspaceData
-      const restored = b1.workspaceData
-      console.log('P4b post-hydration drift sections: ' + JSON.stringify({
-        navigation: { original: original.navigation, restored: restored.navigation },
-        settings: { original: original.settings, restored: restored.settings },
-        dailySessions: {
-          original: original.learnRuntime.dailySessions,
-          restored: restored.learnRuntime.dailySessions,
-        },
-        dbRows: original.database.data.data.map((g: any) => ({
-          name: g.tableName, before: g.rows.length,
-          after: restored.database.data.data.find((x: any) =>
-            x.tableName === g.tableName)?.rows.length,
-        })),
-      }))
-    }
+    // P4b regression: application hydration MUST NOT materialize defaults
+    // into localStorage and silently dirty a freshly restored workspace.
+    expect(b1.fingerprint).toBe(server.meta().logicalFingerprint)
 
     await addWord(A.page, 'A')
     await addWord(B.page, 'B')
@@ -277,7 +260,13 @@ test('P4b fails closed for expired credentials and preserves unsynced local rows
       localStorage.setItem(key, JSON.stringify(auth))
     })
     await A.page.goto('/?s2-sync=run')
-    await expect(A.page.getByText(/同步未确认，将先执行安全恢复检查/)).toBeVisible()
+    // An expired credential can be blocked by S1 bootstrap BEFORE S2
+    // enters its sync route. Both block states must leave the DB untouched.
+    await expect.poll(async () => {
+      const body = await A.page.locator('body').innerText()
+      return body.includes('学习数据安全检查未通过') ||
+        body.includes('同步未确认，将先执行安全恢复检查')
+    }).toBe(true)
     expect(server.successfulWrites).toBe(0)
     const local = await inspect(A.page)
     expect(local.count).toBe(1)
