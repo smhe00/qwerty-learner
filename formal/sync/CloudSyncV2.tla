@@ -1019,10 +1019,32 @@ CompleteWordProjection ==
   \/ \E d \in Devices : CompleteWord(d)
   \/ \E d \in Devices : DeleteLearningRecords(d)
 
-(* Targeted counterexample projection: a second device keeps a stale
-   revision after the first device changes and publishes settings. Every
-   transition below is a production Next action; this does NOT replace the
-   larger positive-model projections. It only bounds the mutation witness. *)
+(* Intentional negative control: remove the ordinary-write base-revision
+   CAS guard, while keeping all other ManualPush data/account/revision guards.
+   The positive model's Next, ManualPush and Safety remain unchanged. *)
+StalePushWithoutCAS(d) ==
+  LET a == dev[d].active IN
+    /\ a \in AccountIds
+    /\ CanUseAccount(d, a)
+    /\ LocalDirty(d, a)
+    /\ LocalFp(d, a) # CloudFp(a)
+    /\ RemoteChanged(d, a)
+    /\ server.revision[a] < MaxRevision
+    /\ server' =
+         [server EXCEPT
+            !.revision[a] = @ + 1,
+            !.fp[a] = LocalFp(d, a)]
+    /\ dev' =
+         [dev EXCEPT
+            ![d].baseRev[a] = server.revision[a] + 1,
+            ![d].baseFp[a] = LocalFp(d, a),
+            ![d].sync = "CLEAN"]
+    /\ ordinaryWriteSafe' =
+         ordinaryWriteSafe /\
+         (server.revision[a] = dev[d].baseRev[a])
+    /\ UNCHANGED <<backup, blockFreezeSafe>>
+
+(* Small independent subset to find the stale-device overwrite trace. *)
 NextStalePushMutation ==
   \/ \E d \in Devices, u \in Usernames, a \in AccountIds :
        RegisterBlank(d, u, a)
@@ -1030,6 +1052,7 @@ NextStalePushMutation ==
   \/ \E d \in Devices : ChangeSetting(d)
   \/ \E d \in Devices : CompleteWord(d)
   \/ \E d \in Devices : ManualPush(d)
+  \/ \E d \in Devices : StalePushWithoutCAS(d)
 
 NextConcurrent ==
   \/ RegistrationActions
