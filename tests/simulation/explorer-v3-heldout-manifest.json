@@ -1,0 +1,127 @@
+{
+  "schema": "explorer-v3-independent-heldout-v1",
+  "frozenAt": "2026-10-10",
+  "protocol": "Production-source mutation through esbuild temporary onLoad; existing test suites unmodified; no post-result mutation adjustments; clean baselines required; survivor counted honestly; compiler failures invalid.",
+  "detectorSuites": {
+    "fsrs": "tests/fsrs/g5-active-scheduler.test.ts",
+    "daily": "tests/learn/daily-session.test.ts",
+    "persistence": "tests/simulation/persistence-race.test.ts",
+    "refresh": "tests/simulation/system-explorer.test.ts"
+  },
+  "mutations": [
+    {
+      "id": "fsrs-review-count-double",
+      "category": "fsrs",
+      "source": "src/review/fsrs/active.ts",
+      "from": "reviewCount += 1",
+      "to": "reviewCount += 2"
+    },
+    {
+      "id": "fsrs-lapse-count-not-incremented",
+      "category": "fsrs",
+      "source": "src/review/fsrs/active.ts",
+      "from": "lapseCount += 1",
+      "to": "lapseCount += 0"
+    },
+    {
+      "id": "fsrs-last-outcome-always-good",
+      "category": "fsrs",
+      "source": "src/review/fsrs/active.ts",
+      "from": "lastOutcome = outcome",
+      "to": "lastOutcome = 'good'"
+    },
+    {
+      "id": "fsrs-persisted-stability-zero",
+      "category": "fsrs",
+      "source": "src/review/fsrs/active.ts",
+      "from": "stability: card.stability,\n      parameterSetId: FSRS6_ACTIVE_STRATEGY.id,",
+      "to": "stability: 0,\n      parameterSetId: FSRS6_ACTIVE_STRATEGY.id,",
+      "occurrence": 2
+    },
+    {
+      "id": "fsrs-persisted-difficulty-zero",
+      "category": "fsrs",
+      "source": "src/review/fsrs/active.ts",
+      "from": "difficulty: card.difficulty,\n      stability: card.stability,",
+      "to": "difficulty: 0,\n      stability: card.stability,",
+      "occurrence": 2
+    },
+    {
+      "id": "fsrs-due-earlier-by-one-day",
+      "category": "fsrs",
+      "source": "src/review/fsrs/active.ts",
+      "from": "    nextReviewAt,\n    reviewCount,\n    lapseCount,",
+      "to": "    nextReviewAt: nextReviewAt - DAY_SECONDS,\n    reviewCount,\n    lapseCount,"
+    },
+    {
+      "id": "daily-reviews-inverted-due-filter",
+      "category": "daily",
+      "source": "src/learn/daily-session.ts",
+      "from": ".filter((state) => state.nextReviewAt <= input.now)",
+      "to": ".filter((state) => state.nextReviewAt > input.now)"
+    },
+    {
+      "id": "daily-carry-over-vanishes",
+      "category": "daily",
+      "source": "src/learn/daily-session.ts",
+      "from": "const carryOverAcquisitionWords = uniqueNames(\n    [...firstIntroductions.keys()].filter(\n      (word) => !stateNames.has(word),\n    ),\n  )",
+      "to": "const carryOverAcquisitionWords = uniqueNames([])"
+    },
+    {
+      "id": "daily-review-target-not-counted",
+      "category": "daily",
+      "source": "src/learn/daily-session.ts",
+      "from": "  const targetWords =\n    reviewTargets.length +\n    carryOverTargets.length +\n    session.plannedNewWords",
+      "to": "  const targetWords =\n    carryOverTargets.length +\n    session.plannedNewWords"
+    },
+    {
+      "id": "daily-date-key-forced-day-one",
+      "category": "daily",
+      "source": "src/learn/daily-session.ts",
+      "from": "const day = String(date.getDate()).padStart(2, '0')",
+      "to": "const day = '01'"
+    },
+    {
+      "id": "persistence-overlapping-writes",
+      "category": "persistence",
+      "source": "src/review/persistence.ts",
+      "from": "queue = queue\n        .catch(() => undefined)\n        .then(() => persist(snapshot))",
+      "to": "queue = Promise.resolve(persist(snapshot))"
+    },
+    {
+      "id": "persistence-clone-dropped",
+      "category": "persistence",
+      "source": "src/review/persistence.ts",
+      "from": "const snapshot = cloneSnapshot(value)",
+      "to": "const snapshot = value"
+    },
+    {
+      "id": "persistence-rejected-queue-poisoned",
+      "category": "persistence",
+      "source": "src/review/persistence.ts",
+      "from": ".catch(() => undefined)\n        .then(() => persist(snapshot))",
+      "to": ".then(() => undefined)\n        .then(() => persist(snapshot))"
+    },
+    {
+      "id": "persistence-flush-acknowledges-early",
+      "category": "persistence",
+      "source": "src/review/persistence.ts",
+      "from": "flush(): Promise<unknown> {\n      return queue",
+      "to": "flush(): Promise<unknown> {\n      return Promise.resolve()"
+    },
+    {
+      "id": "refresh-drops-all-unfinished-checkpoints",
+      "category": "refresh",
+      "source": "src/learn/controller.ts",
+      "from": "  if (unfinished) {\n    const [wordRecords, wordStates]",
+      "to": "  if (false && unfinished) {\n    const [wordRecords, wordStates]"
+    },
+    {
+      "id": "refresh-restores-only-zero-cursor-checkpoints",
+      "category": "refresh",
+      "source": "src/learn/controller.ts",
+      "from": "  if (unfinished) {\n    const [wordRecords, wordStates]",
+      "to": "  if (unfinished && unfinished.index === 0) {\n    const [wordRecords, wordStates]"
+    }
+  ]
+}

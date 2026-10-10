@@ -1,0 +1,52 @@
+name: Explorer V3 Independent Holdout
+
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - 'tests/simulation/explorer-v3-heldout-manifest.json'
+      - 'scripts/explorer-heldout-mutants.mjs'
+      - '.github/workflows/explorer-v3-heldout.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  holdout:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Install frozen dependencies
+        run: yarn install --frozen-lockfile
+      - name: Run frozen heldout source mutations
+        id: score
+        run: |
+          set -o pipefail
+          node scripts/explorer-heldout-mutants.mjs 2>&1 | tee heldout-audit.log
+      - name: Record heldout outcome
+        if: always()
+        env:
+          HELDOUT_RESULT: ${{ steps.score.outcome }}
+        run: |
+          echo "## Explorer V3 Independent Holdout" >> "$GITHUB_STEP_SUMMARY"
+          echo "Frozen manifest baseline and mutation audit: **$HELDOUT_RESULT**" >> "$GITHUB_STEP_SUMMARY"
+          echo "Kill ratio includes only compiling mutants that fail an existing test assertion." >> "$GITHUB_STEP_SUMMARY"
+          echo "Survivors are retained, not adjusted after inspection." >> "$GITHUB_STEP_SUMMARY"
+          grep 'EXPLORER_V3_HELDOUT_SCORECARD' heldout-audit.log | tail -1 >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Archive complete reproducible scores
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: explorer-v3-independent-holdout-${{ github.run_number }}
+          path: |
+            heldout-audit.log
+            .mutation-audit/heldout-scorecard.json
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 30
