@@ -49,11 +49,11 @@ export async function assertV4SourceRowsMatchExport(
     if (originalHash !== serialized[name]) {
       const sourceRows = jsonRows(independentRows[name])
         .map(row => stableWorkspaceJson(row)).sort()
-      const exportedRows = jsonRows(
+      const exportedRows = jsonRows(stripDexieTransportTypes(
         (snapshot.workspaceData.database as {
           data: { data: Array<{tableName: string; rows: unknown[]}> }
         }).data.data.find(group => group.tableName === name)?.rows ?? [],
-      ).map(row => stableWorkspaceJson(row)).sort()
+      )).map(row => stableWorkspaceJson(row)).sort()
       const position = sourceRows.findIndex((row, i) => row !== exportedRows[i])
       const local = JSON.parse(sourceRows[position] ?? '{}') as Record<string, unknown>
       const serialized = JSON.parse(exportedRows[position] ?? '{}') as Record<string, unknown>
@@ -102,6 +102,22 @@ export function assertV4ExportMatchesSource(
   return exported
 }
 
+/**
+ * dexie-export-import adds a synthetic "$types" serialization descriptor
+ * to exported rows. It is NOT a stored IndexedDB column. Compare actual
+ * persisted row attributes, leaving other values unchanged; if a typed
+ * payload was encoded differently, its corresponding field still differs
+ * and the audit fails closed.
+ */
+function stripDexieTransportTypes(rows: unknown[]): unknown[] {
+  return rows.map(row => {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) return row
+    const copy = { ...row } as Record<string, unknown>
+    delete copy.$types
+    return copy
+  })
+}
+
 /** Stable, independent per-table row evidence for P4b diagnostics. */
 export async function v4TableRowDigests(snapshot: WorkspaceSnapshotV4):
   Promise<Record<DurableV4TableName, string>> {
@@ -112,7 +128,7 @@ export async function v4TableRowDigests(snapshot: WorkspaceSnapshotV4):
   const results = {} as Record<DurableV4TableName, string>
   for (const name of REQUIRED_RESTORABLE_V4_TABLES) {
     const rows = envelope.data.data.find(table => table.tableName === name)?.rows ?? []
-    results[name] = await rowsSha256(rows)
+    results[name] = await rowsSha256(stripDexieTransportTypes(rows))
   }
   return results
 }

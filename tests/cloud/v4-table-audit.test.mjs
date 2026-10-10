@@ -87,3 +87,18 @@ test('P4b live row hash rejects same-count FSRS corruption without accepting exp
     /source\/export row-count mismatch: reviewWordStates/,
   )
 })
+
+test('P4b ignores Dexie transport-only $types but verifies all actual stored columns', async () => {
+  const snapshot = fixture()
+  const sources = Object.fromEntries(names.map(name => [
+    name, structuredClone(snapshot.workspaceData.database.data.data
+      .find(group => group.tableName === name)?.rows ?? []),
+  ]))
+  snapshot.workspaceData.database.data.data[0].rows[0].$types = {
+    someDexieTransportMarker: 'serialization-only',
+  }
+  await assertV4SourceRowsMatchExport(snapshot, sources)
+  snapshot.workspaceData.database.data.data[0].rows[0].word = 'changed'
+  await assert.rejects(() => assertV4SourceRowsMatchExport(snapshot, sources),
+    /source\/export row-payload mismatch: wordRecords/)
+})
