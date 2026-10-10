@@ -187,7 +187,7 @@ export async function renderS2RecoveryUI(
     apply.disabled = missing.length !== 0
     checklist.textContent = missing.length === 0
       ? '所有迁移前置条件已满足。⑤ 已解锁；点击后仍会再次显示最终覆盖确认。'
-      : '⑤ 仍不可执行，请先完成：\\n' + missing.map(item => '• ' + item).join('\\n')
+      : '⑤ 仍不可执行，请先完成：\n' + missing.map(item => '• ' + item).join('\n')
   }
   localAck.addEventListener('change', refreshEnabled)
   cloudAck.addEventListener('change', refreshEnabled)
