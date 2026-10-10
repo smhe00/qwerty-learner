@@ -163,3 +163,17 @@ compatibility/isolation** smoke gate. It does not close allowlisted V4
 Push/Pull, CAS winner race, replay/restore, V3→V4 migration, V1 client
 write rejection after actual V4, or rollback. The first full
 `Cloud Sync Gate` for this test-code commit must be checked separately.
+
+
+## Source row semantic audit correction
+
+The codebase already contains the stronger source-vs-export **row-level SHA-256**
+audit in `src/sync/v4-table-audit.ts`, called from
+`captureWorkingWorkspaceV4()`. It independently reads raw Dexie rows from
+all six durable tables, normalizes transport-only `$types`, canonicalizes
+row order and verifies counts **and per-table row payload digests** before
+returning a backup. `tests/cloud/v4-table-audit.test.mjs` includes explicit
+same-count FSRS mutation rejection. Prior "row-level audit remains to be
+implemented" wording is stale. Implemented != latest candidate Gate PASS;
+the refreshed Cloud Sync workflow now publishes the inspectable
+`p4b/cloud-sync-gate` commit status for repeatable evidence.
