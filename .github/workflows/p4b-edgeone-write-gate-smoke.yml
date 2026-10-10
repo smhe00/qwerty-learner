@@ -1,0 +1,30 @@
+name: P4b EdgeOne Production Write-Gate Smoke
+
+on:
+  push:
+    branches:
+      - product/main
+    paths:
+      - 'tests/cloud/p4b-edgeone-gate-smoke.mjs'
+      - '.github/workflows/p4b-edgeone-write-gate-smoke.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: p4b-edgeone-write-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-api-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+      - name: Check deployed EdgeOne fail-closed API and V1 compatibility
+        env:
+          QWERTY_SYNC_BASE_URL: https://qwerty-plus.edgeone.dev/
+        run: node tests/cloud/p4b-edgeone-gate-smoke.mjs
