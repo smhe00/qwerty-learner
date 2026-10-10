@@ -10,8 +10,12 @@ const source = new URL('../../cloud-functions/api/[[default]].js', import.meta.u
 const result = await build({ entryPoints: [source], bundle: true, write: false,
   format: 'esm', platform: 'node', target: 'node20', plugins: [{
     name: 'mock-edgeone', setup(build) {
-      build.onResolve({ filter: /^(?:@edgeone\\/pages-blob|\\.\\.\\/_shared\\/(?:core|auth-rate-limit|storage\\/edgeone-blob)\\.js)$/ }, args =>
-        ({ path: args.path, namespace: 'p4b-mock' }))
+      const mocked = new Set([
+        '@edgeone/pages-blob', '../_shared/core.js',
+        '../_shared/auth-rate-limit.js', '../_shared/storage/edgeone-blob.js',
+      ])
+      build.onResolve({ filter: /.*/ }, args =>
+        mocked.has(args.path) ? { path: args.path, namespace: 'p4b-mock' } : undefined)
       build.onLoad({ filter: /.*/, namespace: 'p4b-mock' }, args => {
         const name = args.path
         if (name === '@edgeone/pages-blob') return { contents: 'export const getStore = () => ({})', loader: 'js' }
