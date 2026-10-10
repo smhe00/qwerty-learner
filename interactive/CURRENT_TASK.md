@@ -40,3 +40,18 @@ multi-account/per-device fault injection, 2-device TLA bounded scaling
 or documented state-space limit, per-table row-level semantics audit,
 V1/V3/legacy-client deployment migration consent and rollback SOP,
 Maker disposable-user smoke and an independent Review/Learn Gate.
+
+2026-10-10 P4b-2 initial Chromium result:
+- Source `8693dd43164e60da48290e16b471f67c48bc5840`, S1 Browser Gate
+  https://github.com/smhe00/qwerty-learner/actions/runs/38053214157
+  **PASS 60/60**. Multi-profile two-device divergent-edit safety and
+  three-device single-winner CAS with each profile's own IDB/Baseline passed.
+- First test harness had route interception 404: fixed test-only regex
+  interception + blocked service workers (no production API changes).
+- **NEW P4b finding:** post-Pull app mount may cause the newly restored
+  V4 full logical fingerprint to diverge from the cloud, while actual
+  word/FSRS records and revision baseline remain intact. Investigate
+  derived DailySession/settings initialization and no-op semantics before
+  final P4b real Maker release. Avoid classifying this as a data-loss defect.
+- Next: row-level direct source audit, targeted two-device TLA projection,
+  multi-account/expiry/crash matrix, real Maker disposable-user tests.

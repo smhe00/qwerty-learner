@@ -52,3 +52,30 @@ Critical: actual Maker/Blob tests; V1-to-V4 explicit user migration and
 rollback; real session invalidation/foreign account; row-level evidence;
 stronger bounded formal projection; existing Learn Journey regression
 needs triage. Do not publish `master`.
+
+## P4b-2 first browser acceptance — 60/60 PASS
+
+- Code source `8693dd43164e60da48290e16b471f67c48bc5840`.
+- [S1 Workspace Browser Gate 38053214157](https://github.com/smhe00/qwerty-learner/actions/runs/38053214157):
+  **PASS 60/60** (previously 58/58).
+- A and B: independent Chromium BrowserContexts, own Dexie IDB,
+  localStorage and S1 Web Locks, one shared in-process CAS fake cloud.
+  A pushes, B verifies Pull + FSRS and preserves source learning row.
+  Both edit separately; B writes new revision and A correctly reports
+  explicit conflict without losing its local change.
+- A/B/C: all independently pull revision 1, edit distinct records
+  and race the CAS server. Only ONE successor revision is created;
+  exactly one device advances baseline while the others preserve
+  their local records and earlier baseline. Client preflight
+  conflicts and server 409 CAS are both safe rejection paths.
+- Test harness first falsely returned 404 because generic route
+  interception missed new Chromium contexts; fixed by regex route
+  and `serviceWorkers: 'block'` in test-only contexts.
+- **Important separate finding:** immediately after Pull, the mounted
+  application can derive/mutate local runtime state, shifting the
+  workspace full logical fingerprint even with correct FSRS/word rows.
+  This needs a source-of-difference audit (DailySession/settings/
+  navigation vs learning records) and explicit no-op/derived-only
+  synchronization policy. Do NOT treat it as evidence of lost learning
+  rows, but do NOT ignore as production quality risk either.
+- Not EdgeOne or real Blob tests; Maker release remains BLOCKED.

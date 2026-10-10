@@ -35,8 +35,15 @@ priority: "P0"
       projection / coverage report.
 - [x] P4b-2a implement real Playwright isolated-profile two/three-device
       shared in-process revision-CAS API tests.
-- [ ] P4b-2b achieve complete browser CI PASS; extend concurrent crash/
-      old-login/foreign-account and cookie/session expiry matrices.
+- [x] P4b-2b first complete browser gate PASS (60/60):
+      two-profile Push/Pull with durable FSRS and three-profile concurrent
+      CAS with exactly one winning revision; no silent local data loss.
+- [ ] P4b-2c expand concurrent crash/old-login/foreign-account,
+      session expiry, server response-loss and offline matrices.
+- [ ] P4b-2d resolve post-Pull APP HYDRATION logical fingerprint drift:
+      actual six-table learning rows and baseline match restored cloud but
+      immediate app mount can change full logical fingerprint absent a user
+      keystroke; classify before adopting no-op/push production policy.
 - [ ] P4b-3 once after local Gate approval, disposable-account *actual*
       EdgeOne Maker + Blob isolated verification.
 - [ ] P4b-4 operator S1/legacy-tab migration/rollback runbook, final
