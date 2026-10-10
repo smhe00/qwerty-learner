@@ -4,8 +4,8 @@ task_id: "TASK-20261011-014-forced-session-revocation"
 task_file: "interactive/tasks/TASK-20261011-014-forced-session-revocation.md"
 report_file: "interactive/reports/TASK-20261011-014-forced-session-revocation-report.md"
 target_branch: "product/main"
-status: "READY"
-executor: "unassigned"
+status: "IN_PROGRESS"
+executor: "ChatGPT (direct executor)"
 release_to_master: false
 priority: "P0"
 ---
