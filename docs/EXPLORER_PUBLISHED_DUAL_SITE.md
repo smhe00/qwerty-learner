@@ -13,7 +13,7 @@ The workflow `Published Dual-Site Explorer (Pages + EdgeOne)` uses *actual publi
 
 ## Version and time correctness
 
-Pages browser runs only after the GitHub Pages `source-commit.txt` matches the exact tested commit SHA. EdgeOne is checked by an unauthenticated `/api/health` probe for the live `qwerty-sync-gateway` and `learning-state-backup-v3`, not assumed to have the same commit SHA as Pages. Thus a difference between websites is not automatically a regression; compare only published features shared by the releases.
+The browser gate reads GitHub Pages `source-commit.txt` immediately before testing and records that **actual published SHA**, even when a newer development commit is still in the deployment queue or has had its build cancelled. It never claims the newer Git commit is published until its SHA is actually served. EdgeOne is checked by an unauthenticated `/api/health` probe for the live `qwerty-sync-gateway` and `learning-state-backup-v3`, not assumed to have the same commit SHA as Pages. Thus a difference between websites is not automatically a regression; compare only published features shared by the releases.
 
 All anonymous test cases use clean incognito contexts. The browser traces attach only site, route, action, integer cursor and record-count metadata: **never real word spellings, tokens, usernames, passwords, full localStorage or IndexedDB dumps**. Account E2E disables Playwright screenshots, video and trace.
 
