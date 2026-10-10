@@ -254,14 +254,13 @@ test('Explorer V3 P0: daily target completes, same-day reentry blocks, next-day 
     const start = page.getByRole('button', { name: '开始 Learn' })
     const pause = page.getByRole('button', { name: '暂停', exact: true })
     const prompt = page.getByText(/按任意键(?:开始|继续)/).first()
-    const ready = await expect.poll(async () => {
+    await expect.poll(async () => {
       if (await pause.isVisible().catch(() => false)) return 'active'
       if (await prompt.isVisible().catch(() => false)) return 'typing-idle'
       if (await start.isEnabled().catch(() => false)) return 'start'
       return 'preparing'
-    }, { timeout: 25_000 })
-    // Poll's return value is not exposed; check the actual DOM state again.
-    void ready
+    }, { timeout: 25_000 }).not.toBe('preparing')
+    // Recheck which state won the readiness race.
     if (!(await pause.isVisible().catch(() => false)) &&
         !(await prompt.isVisible().catch(() => false))) {
       await expect(start).toBeEnabled()
