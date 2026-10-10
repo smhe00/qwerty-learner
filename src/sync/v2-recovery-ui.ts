@@ -190,13 +190,16 @@ export async function renderS2RecoveryUI(
     if (!select.value) missing.push('选择保留哪份学习记录')
     if (typed.value !== accountId) missing.push('输入完全一致的不可变账号 ID')
     apply.disabled = missing.length !== 0 || attemptStarted || attemptFailed
-    checklist.textContent = attemptFailed
-      ? '操作已停止；必须重新读取云端最新 revision 后才能再尝试，以免重复提交。'
-      : attemptStarted
-        ? '正在执行；请等待结果，不要重复提交或打开另一标签页。'
-        : missing.length === 0
-      ? '所有迁移前置条件已满足。⑤ 已解锁；点击后仍会再次显示最终覆盖确认。'
-      : '⑤ 仍不可执行，请先完成：\n' + missing.map(item => '• ' + item).join('\n')
+    if (attemptFailed) {
+      checklist.textContent = '操作已停止；必须重新读取云端最新 revision 后才能再尝试，以免重复提交。'
+    } else if (attemptStarted) {
+      checklist.textContent = '正在执行；请等待结果，不要重复提交或打开另一标签页。'
+    } else if (missing.length === 0) {
+      checklist.textContent = '所有迁移前置条件已满足。⑤ 已解锁；点击后仍会再次显示最终覆盖确认。'
+    } else {
+      checklist.textContent = '⑤ 仍不可执行，请先完成：\n' +
+        missing.map(item => '• ' + item).join('\n')
+    }
   }
   localAck.addEventListener('change', refreshEnabled)
   cloudAck.addEventListener('change', refreshEnabled)
