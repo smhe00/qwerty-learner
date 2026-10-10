@@ -140,6 +140,46 @@ test('P3b V4 divergence stays read-only until both backups, ID and explicit cons
   expect(uploads).toBe(1)
 })
 
+
+test('P3b failed V3 to V4 write shows 403 allowlist guidance and disallows stale retry', async ({ page }) => {
+  await seed(page)
+  const fixture = await remoteFixture(page, 'v3')
+  let writes = 0
+  await page.route('**/api/sync/v2/meta', r => r.fulfill({ json: { ok: true, ...fixture.meta } }))
+  await page.route('**/api/sync/v2', r => r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
+  await page.route('**/api/sync/v2/recovery', async r => {
+    writes++
+    await r.fulfill({ status: 403, json: {
+      ok: false, error: 's2_write_not_enabled',
+      message: 'V4 write allowlist not configured',
+    } })
+  })
+  await page.goto('/?s2-recovery=manage')
+  await archiveBoth(page)
+  await page.locator('select').selectOption('keep-local')
+  const action = page.getByRole('button', { name: '⑤ 我已备份两端数据，继续执行选定方向' })
+  await expect(action).toBeEnabled()
+  page.once('dialog', dialog => dialog.accept())
+  await action.click()
+  await expect(page.getByText(/已停止覆盖：/)).toBeVisible()
+  await expect(page.getByText(/S2_SYNC_WRITE_ACCOUNT_IDS/)).toBeVisible()
+  await expect(page.getByText(/操作已停止；必须重新读取云端最新 revision/)).toBeVisible()
+  await expect(action).toBeDisabled()
+  await expect.poll(() => writes).toBe(1)
+  // Typing in a different account / clicking acknowledgements must not
+  // re-enable stale pinned writes after any attempted request.
+  await page.getByLabel('确认不可变账户 ID').fill(owner.accountId)
+  await page.getByLabel('已确认本地备份保存成功').uncheck()
+  await page.getByLabel('已确认本地备份保存成功').check()
+  await expect(action).toBeDisabled()
+  expect(writes).toBe(1)
+  await page.getByRole('button', { name: '重新读取云端状态（只读，不执行覆盖）' }).click()
+  await expect(page.getByText('点击①从本页面下载本地 V4')).toBeVisible()
+  await expect(page.getByText('点击②从本页面下载云端原始备份')).toBeVisible()
+  await expect(action).toBeDisabled()
+  expect(writes).toBe(1)
+})
+
 test('P3b V3 migration keeps old cloud backup and uses separate account-pinned CAS', async ({ page }) => {
   await seed(page)
   const fixture = await remoteFixture(page, 'v3')
