@@ -252,6 +252,22 @@ async function start(): Promise<void> {
       window.location.replace('/')
       return
     }
+    if (new URLSearchParams(window.location.search).get('v4-import') === 'manage') {
+      if (boot.mode !== 'isolated') {
+        throw new Error('完整 V4 导入需要先建立 S1 隔离工作区。')
+      }
+      const { renderManualV4ImportUI } = await import('./sync/manual-v4-import-ui')
+      await renderManualV4ImportUI(root, boot)
+      return
+    }
+    if (new URLSearchParams(window.location.search).get('v4-cloud-backup') === 'download') {
+      if (boot.mode !== 'isolated' || boot.registry.active.kind !== 'account') {
+        throw new Error('云端备份下载需要登录隔离账号。')
+      }
+      const { renderCloudV4BackupUI } = await import('./sync/cloud-v4-backup-ui')
+      await renderCloudV4BackupUI(root, boot)
+      return
+    }
     if (new URLSearchParams(window.location.search).get('s2-recovery') === 'manage') {
       if (boot.mode !== 'isolated' ||
           !(import.meta.env.DEV ||
