@@ -173,8 +173,11 @@ test('P3b keep-cloud V4 restores only after pinned verification and durable jour
   await page.locator('select').selectOption('keep-cloud')
   page.once('dialog', d => d.accept())
   await page.getByText('⑤ 我已备份两端数据，继续执行选定方向').click()
+  await page.waitForTimeout(3000)
+  console.log('P3b V4 outcome: ' + (await page.locator('body').innerText()).slice(0, 1400) +
+    ' URL=' + page.url())
   await expect(page.getByText('已按确认保留云端学习记录，并恢复到本机。')).toBeVisible({
-    timeout: 30_000,
+    timeout: 8000,
   })
   expect(recoveryWrites).toBe(0)
   await page.goto('/tests/e2e/backup-harness.html')
@@ -216,8 +219,11 @@ test('P3b keep-cloud V3 explicitly migrates to V4 then restores with CAS', async
   await page.locator('select').selectOption('keep-cloud')
   page.once('dialog', d => d.accept())
   await page.getByText('⑤ 我已备份两端数据，继续执行选定方向').click()
+  await page.waitForTimeout(3000)
+  console.log('P3b V3 outcome: ' + (await page.locator('body').innerText()).slice(0, 1400) +
+    ' URL=' + page.url())
   await expect(page.getByText('已按确认保留云端学习记录，并恢复到本机。')).toBeVisible({
-    timeout: 30_000,
+    timeout: 8000,
   })
   expect(migrated.recoveryMode).toBe('migrate-v3')
   expect(migrated.expectedRemoteSha256).toBe(fixture.meta.payloadSha256)
