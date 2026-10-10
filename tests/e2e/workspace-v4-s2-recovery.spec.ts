@@ -21,7 +21,11 @@ async function seed(page: Page) {
 async function remoteFixture(page: Page, version: 'v3' | 'v4') {
   const exported = await page.evaluate(async ({ id, format }) => {
     const h = (window as any).__backupHarness
-    if (format === 'v3') return { data: await h.exportBackupJson(), hash: null }
+    if (format === 'v3') {
+      const legacy = JSON.parse(await h.exportBackupJson())
+      legacy.learningState.currentChapter = 17
+      return { data: JSON.stringify(legacy), hash: null }
+    }
     const snapshot = await h.captureWorkingWorkspaceV4({ kind: 'account', accountId: id })
     snapshot.workspaceData.navigation.currentChapter = 17
     return { data: JSON.stringify(snapshot), hash: await h.workspaceFingerprintV4(snapshot) }
@@ -152,4 +156,82 @@ test('P3b stale cloud revision after backup cancels before any recovery CAS or r
   })
   // A pre-mount recovery screen does not mount the app's writer tree.
   expect(recordCount).toBe('not-mounted')
+})
+
+test('P3b keep-cloud V4 restores only after pinned verification and durable journal', async ({ page }) => {
+  await seed(page)
+  const fixture = await remoteFixture(page, 'v4')
+  let recoveryWrites = 0
+  await page.route('**/api/sync/v2/meta', r => r.fulfill({ json: { ok: true, ...fixture.meta } }))
+  await page.route('**/api/sync/v2', r => r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
+  await page.route('**/api/sync/v2/recovery', async r => {
+    recoveryWrites++
+    await r.abort()
+  })
+  await page.goto('/?s2-recovery=manage')
+  await archiveBoth(page)
+  await page.locator('select').selectOption('keep-cloud')
+  page.once('dialog', d => d.accept())
+  await page.getByText('⑤ 我已备份两端数据，继续执行选定方向').click()
+  await expect(page.getByText('已按确认保留云端学习记录，并恢复到本机。')).toBeVisible({
+    timeout: 30_000,
+  })
+  expect(recoveryWrites).toBe(0)
+  await page.goto('/tests/e2e/backup-harness.html')
+  await expect.poll(() => page.evaluate(() =>
+    Boolean((window as any).__backupHarness?.inspect),
+  )).toBe(true)
+  const persisted = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    return {
+      chapter: (await h.inspect()).currentChapter,
+      revision: (await h.loadSyncV2Baseline('p3b-immutable-account')).baseRevision,
+      pending: await h.syncV2PullJournalPort.read(),
+    }
+  })
+  expect(persisted).toEqual({ chapter: 17, revision: 3, pending: null })
+})
+
+test('P3b keep-cloud V3 explicitly migrates to V4 then restores with CAS', async ({ page }) => {
+  await seed(page)
+  const fixture = await remoteFixture(page, 'v3')
+  let current = fixture.meta
+  let migrated: any = null
+  await page.route('**/api/sync/v2/meta', r => r.fulfill({ json: { ok: true, ...current } }))
+  await page.route('**/api/sync/v2', r => r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
+  await page.route('**/api/sync/v2/recovery', async r => {
+    migrated = r.request().postDataJSON()
+    const bytes = Buffer.from(migrated.payloadBase64, 'base64')
+    const sha = createHash('sha256').update(bytes).digest('hex')
+    current = {
+      ...current, revision: 4, sizeBytes: bytes.length,
+      clientFormatVersion: 'qwerty-backup-v4',
+      logicalFingerprint: migrated.logicalFingerprint,
+      payloadSha256: sha, dataSha256: sha,
+    }
+    await r.fulfill({ json: { ok: true, ...current } })
+  })
+  await page.goto('/?s2-recovery=manage')
+  await archiveBoth(page)
+  await page.locator('select').selectOption('keep-cloud')
+  page.once('dialog', d => d.accept())
+  await page.getByText('⑤ 我已备份两端数据，继续执行选定方向').click()
+  await expect(page.getByText('已按确认保留云端学习记录，并恢复到本机。')).toBeVisible({
+    timeout: 30_000,
+  })
+  expect(migrated.recoveryMode).toBe('migrate-v3')
+  expect(migrated.expectedRemoteSha256).toBe(fixture.meta.payloadSha256)
+  await page.goto('/tests/e2e/backup-harness.html')
+  await expect.poll(() => page.evaluate(() =>
+    Boolean((window as any).__backupHarness?.inspect),
+  )).toBe(true)
+  const persisted = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    return {
+      chapter: (await h.inspect()).currentChapter,
+      revision: (await h.loadSyncV2Baseline('p3b-immutable-account')).baseRevision,
+      pending: await h.syncV2PullJournalPort.read(),
+    }
+  })
+  expect(persisted).toEqual({ chapter: 17, revision: 4, pending: null })
 })
