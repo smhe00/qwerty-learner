@@ -4,6 +4,8 @@
  * no test imports another device's Vault or RecordDB.
  *
  * This is NOT EdgeOne Maker/Blob live verification (P4b-3).
+ * P4b row-integrity regression: passes only if raw DB fields equal exported
+ * Dexie rows after excluding the exporter's synthetic $types descriptor.
  */
 import { createHash } from 'node:crypto'
 import { gunzipSync } from 'node:zlib'
