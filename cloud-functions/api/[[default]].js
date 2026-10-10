@@ -269,6 +269,11 @@ export async function onRequest(context) {
       )
     }
 
+    if (request.method === 'PUT' && path === '/sync/v2/recovery') {
+      const body = await readJson(request, bodyLimit)
+      return json({ ok: true, ...(await service.putSyncV4Recovery(bearer(request), body)) }, 200, cors)
+    }
+
     if (request.method === 'PUT' && path === '/sync/v2') {
       const body = await readJson(request, bodyLimit)
       return json({ ok: true, ...(await service.putSyncV4(bearer(request), body)) }, 200, cors)
