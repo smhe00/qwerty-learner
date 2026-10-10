@@ -51,6 +51,11 @@ function normalizeTaggedExportRow(exported: unknown, rawSource: unknown): unknow
   }
 
   for (const [path, type] of Object.entries(tags)) {
+    if (path === '' && type === 'userObject') {
+      // Typeson labels the entire Dexie row as a user object; this does
+      // not change any of its actual persisted fields.
+      continue
+    }
     const pieces = path.split('.')
     if (pieces.some(piece => !piece || piece === '__proto__' ||
         piece === 'constructor' || piece === 'prototype')) return row
@@ -68,6 +73,12 @@ function normalizeTaggedExportRow(exported: unknown, rawSource: unknown): unknow
     const last = pieces[pieces.length - 1]
     const origin = (expected as Record<string, unknown>)[last]
     const encoded = (current as Record<string, unknown>)[last]
+    if (type === 'arrayNonindexKeys' &&
+        Array.isArray(origin) && Array.isArray(encoded)) {
+      // Typeson annotates arrays even when only index values are present.
+      // Their actual elements are still compared by the row digest.
+      continue
+    }
     if (type === 'nan' && typeof origin === 'number' &&
         Number.isNaN(origin) && encoded === 'NaN') {
       (current as Record<string, unknown>)[last] = null
@@ -78,14 +89,16 @@ function normalizeTaggedExportRow(exported: unknown, rawSource: unknown): unknow
                encoded === '-Infinity') {
       (current as Record<string, unknown>)[last] = null
     } else if (type === 'undef' && origin === undefined &&
-               Object.prototype.hasOwnProperty.call(expected, last) &&
-               encoded === null) {
+               (encoded === 0 || encoded === null)) {
+      // The real Dexie 4.x exporter uses 0 as the Typeson placeholder for
+      // an undefined property. Missing and own-undefined both JSON-omit.
+
       if (Array.isArray(current)) current[Number(last)] = null
       else delete (current as Record<string, unknown>)[last]
     } else if (type === 'sparseUndefined' && origin === undefined &&
                Array.isArray(expected) &&
                !Object.prototype.hasOwnProperty.call(expected, last) &&
-               encoded === null) {
+               (encoded === 0 || encoded === null)) {
       // JSON.stringify maps both sparse holes and undefined array slots to null.
     } else if (type === 'date' && origin instanceof Date &&
                encoded === origin.getTime()) {
