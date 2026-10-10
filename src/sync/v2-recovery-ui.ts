@@ -172,14 +172,28 @@ export async function renderS2RecoveryUI(
   actions.append(typed)
   const apply = button('⑤ 我已备份两端数据，继续执行选定方向')
   apply.disabled = true
+  const checklist = elt('p')
+  checklist.setAttribute('role', 'status')
+  checklist.style.cssText = 'margin:5px 0 0;white-space:pre-wrap;color:#334155;line-height:1.7'
+  actions.append(checklist)
   const refreshEnabled = () => {
-    apply.disabled = !(gotLocal && gotCloud && localAck.checked &&
-      cloudAck.checked && typed.value === accountId && Boolean(select.value))
+    const missing: string[] = []
+    if (!gotLocal) missing.push('点击①从本页面下载本地 V4')
+    if (!gotCloud) missing.push('点击②从本页面下载云端原始备份')
+    if (!localAck.checked) missing.push('确认本地备份文件已保存')
+    if (!cloudAck.checked) missing.push('确认云端备份文件已保存')
+    if (!select.value) missing.push('选择保留哪份学习记录')
+    if (typed.value !== accountId) missing.push('输入完全一致的不可变账号 ID')
+    apply.disabled = missing.length !== 0
+    checklist.textContent = missing.length === 0
+      ? '所有迁移前置条件已满足。⑤ 已解锁；点击后仍会再次显示最终覆盖确认。'
+      : '⑤ 仍不可执行，请先完成：\\n' + missing.map(item => '• ' + item).join('\\n')
   }
   localAck.addEventListener('change', refreshEnabled)
   cloudAck.addEventListener('change', refreshEnabled)
   select.addEventListener('change', refreshEnabled)
   typed.addEventListener('input', refreshEnabled)
+  refreshEnabled()
 
   localButton.addEventListener('click', () => {
     void (async () => {
