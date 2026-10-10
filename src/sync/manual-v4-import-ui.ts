@@ -16,7 +16,6 @@ import type { WorkspaceIdentityV4 } from './workspace-v4'
 
 const MAX_GZIP_BYTES = 128 * 1024 * 1024
 const MAX_JSON_BYTES = 256 * 1024 * 1024
-const MAX_BACKUP_AGE = 0 // File may be historical; no arbitrary expiry.
 
 function elt<K extends keyof HTMLElementTagNameMap>(tag: K, text = ''): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag)
@@ -169,6 +168,7 @@ export async function renderManualV4ImportUI(
       candidateJson = null
       plan = null
       ackDifferent.checked = false
+      ackReplace.checked = false // Consent applies to this particular file, not another.
       status.textContent = '正在只读解析和校验备份文件…'
       refresh()
       const file = chooser.files?.[0]
@@ -267,6 +267,5 @@ export async function renderManualV4ImportUI(
       backupButton.disabled = true
     })
   })
-  void MAX_BACKUP_AGE // Historical backups remain valid
   refresh()
 }
