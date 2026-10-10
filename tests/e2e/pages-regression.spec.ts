@@ -122,3 +122,53 @@ test('published Pages: Typing uses real key input and advances independently', a
   await expect.poll(() => activeWord.getAttribute('data-typing-word'), { timeout: 20_000 }).not.toBe(initial)
   await expect(page.getByRole('button', { name: 'Typing', exact: true })).toHaveAttribute('aria-pressed', 'true')
 })
+
+
+/**
+ * Ctrl+F5-equivalent: disable browser cache during the navigation/reload.
+ * The small donation QR must already be in the app bundle; opening either
+ * entry point must not initiate a separate image fetch or show a blank QR.
+ */
+test('published Pages: donation QR is visible immediately after hard refresh without image request', async ({ page, request }) => {
+  test.setTimeout(120_000)
+  await expect.poll(async () => {
+    const response = await request.get(site + 'source-commit.txt', { failOnStatusCode: false })
+    return response.ok() ? (await response.text()).trim() : ''
+  }, { timeout: 90_000, intervals: [1000, 2000, 5000] }).toBe(targetSha)
+
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Network.enable')
+  await cdp.send('Network.setCacheDisabled', { cacheDisabled: true })
+  const qrRequests: string[] = []
+  const pageErrors: string[] = []
+  page.on('request', req => {
+    if (/appreciation[^/]*\.webp(?:\?|$)/i.test(req.url())) qrRequests.push(req.url())
+  })
+  page.on('pageerror', error => pageErrors.push(error.message))
+
+  await page.goto(site, { waitUntil: 'domcontentloaded' })
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.getByRole('button', { name: '打开赞赏页面' }).click()
+
+  const qr = page.getByRole('img', { name: '何世明的微信赞赏码' })
+  await expect(qr).toBeVisible({ timeout: 10_000 })
+  const src = await qr.getAttribute('src')
+  expect(src).toMatch(/^data:image\/webp;base64,/)
+  await expect.poll(
+    () => qr.evaluate((img: HTMLImageElement) =>
+      img.complete && img.naturalWidth > 0 && img.naturalHeight > 0),
+    { timeout: 2_000, intervals: [100, 200, 250] },
+  ).toBe(true)
+  expect(qrRequests, 'the donation QR must not require a delayed network fetch').toEqual([])
+
+  await page.getByRole('button', { name: '关闭', exact: true }).click()
+  await page.getByRole('button', { name: '赞赏 Qwerty Plus' }).click()
+  await expect(qr).toBeVisible()
+  await expect.poll(
+    () => qr.evaluate((img: HTMLImageElement) =>
+      img.complete && img.naturalWidth > 0 && img.naturalHeight > 0),
+    { timeout: 2_000 },
+  ).toBe(true)
+  expect(qrRequests).toEqual([])
+  expect(pageErrors).toEqual([])
+})
