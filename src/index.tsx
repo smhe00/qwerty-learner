@@ -115,9 +115,21 @@ function showExplicitMigrationConsent(): void {
     '。迁移仅保存本机 V4 数据，不会合并或上传。请先关闭旧版本标签页。')
   const panel = root.querySelector('section')
   if (!panel) return
+  const acknowledge = document.createElement('label')
+  acknowledge.style.cssText = 'display:block;margin:18px 0 12px;line-height:1.7'
+  const checkbox = document.createElement('input')
+  checkbox.type = 'checkbox'
+  checkbox.setAttribute('aria-label', '已核对本机完整 V4 备份')
+  acknowledge.append(checkbox, document.createTextNode(
+    ' 我已通过「设置 → 数据管理 → 导出完整备份」保存并校验本机 Backup V4，' +
+    '且已关闭其他旧版 Qwerty Plus 标签页。迁移不会上传到云端。',
+  ))
+  panel.append(acknowledge)
   const confirm = document.createElement('button')
   confirm.type = 'button'
   confirm.textContent = '确认归属并建立隔离工作区'
+  confirm.disabled = true
+  checkbox.addEventListener('change', () => { confirm.disabled = !checkbox.checked })
   confirm.style.cssText = 'margin-top:20px;border:1px solid #64748b;border-radius:6px;padding:8px 16px'
   confirm.addEventListener('click', () => {
     confirm.disabled = true
@@ -186,7 +198,8 @@ async function start(): Promise<void> {
     }
     if (
       (import.meta.env.DEV ||
-        import.meta.env.VITE_S1_ENABLE_EXPLICIT_V4_MIGRATION === 'true') &&
+        (REACT_APP_DEPLOY_ENV !== 'pages' &&
+          import.meta.env.VITE_S1_ENABLE_EXPLICIT_V4_MIGRATION === 'true')) &&
       new URLSearchParams(window.location.search).get('s1-migration') === 'confirm' &&
       boot.mode === 'legacy'
     ) {
@@ -207,7 +220,8 @@ async function start(): Promise<void> {
     if (new URLSearchParams(window.location.search).get('s2-sync') === 'run') {
       if (boot.mode !== 'isolated' ||
           !(import.meta.env.DEV ||
-            import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true')) {
+            (REACT_APP_DEPLOY_ENV !== 'pages' &&
+              import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true'))) {
         throw new Error('S2 Sync 尚未在此部署启用。')
       }
       gateUI('正在安全同步', '正在检查工作区、云端版本和完整性，必要时进行安全事务操作…')
