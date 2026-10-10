@@ -43,8 +43,8 @@ jobs:
             echo 'Stale candidate reachability timed out'
             exit 1
           fi
-          if ! grep -q 'Invariant StaleRemoteClientAbsent is violated' /tmp/stale-candidate.log; then
-            echo 'No two-device stale revision was reachable: inspect model guards'
+          if ! grep -q 'Invariant StaleDirtyPushCandidateAbsent is violated' /tmp/stale-candidate.log; then
+            echo 'No stale client with divergent dirty payload was reachable: inspect local mutation guards'
             exit 1
           fi
       - name: Require actual stale-push invariant counterexample

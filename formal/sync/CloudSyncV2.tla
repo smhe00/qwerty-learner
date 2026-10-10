@@ -296,6 +296,14 @@ StaleRemoteClientAbsent ==
     ~(dev[d].active = a /\ dev[d].authUsable /\
       dev[d].baseRev[a] # server.revision[a])
 
+(* Reachability-only witness: an ordinary stale payload is ready to
+   overwrite a newer cloud revision. NOT a valid product invariant. *)
+StaleDirtyPushCandidateAbsent ==
+  \A d \in Devices, a \in AccountIds :
+    ~(CanUseAccount(d, a) /\ LocalDirty(d, a) /\
+      LocalFp(d, a) # CloudFp(a) /\ RemoteChanged(d, a) /\
+      server.revision[a] < MaxRevision)
+
 BlockSettingDoesNotRetargetCurrentBlock ==
   blockFreezeSafe
 
