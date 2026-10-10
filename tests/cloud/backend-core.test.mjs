@@ -613,8 +613,13 @@ test('V4 revisioned backend accepts verified owner payload, publishes logical ha
     workspaceData: {
       database: { formatName: 'dexie', formatVersion: 1,
         data: { databaseName: 'RecordDB', databaseVersion: 6,
-          tables: [{ name: 'wordRecords', schema: '++id' }],
-          data: [{ tableName: 'wordRecords', inbound: true, rows: [{ id: 1, word: label }] }] } },
+          tables: ['achievementEvents','achievementStates','chapterRecords',
+            'reviewRecords','reviewWordStates','wordRecords']
+            .map(name => ({ name, schema: '++id' })),
+          data: ['achievementEvents','achievementStates','chapterRecords',
+            'reviewRecords','reviewWordStates','wordRecords']
+            .map(name => ({ tableName: name, inbound: true,
+              rows: name === 'wordRecords' ? [{ id: 1, word: label }] : [] })) } },
       learnRuntime: { dailySessions: {} },
       settings: { version: 1, values: {} },
       navigation: { currentDict: 'test', currentChapter: 0 },
