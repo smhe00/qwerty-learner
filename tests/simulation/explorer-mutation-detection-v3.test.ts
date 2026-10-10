@@ -303,6 +303,11 @@ test('V3 mutation audit reports actual blind mutant kill rate and clean false-po
   console.log('EXPLORER_V3_BLIND_MUTATION_SCORECARD ' + JSON.stringify(summary))
   // This is a diagnostic measurement, not a manufactured 100% PASS score.
   // A survivor is evidence of an Explorer coverage gap, not a CI crash.
-  assert.ok(kill > 0, 'Explorer must detect at least one injected behavioral fault')
-  assert.ok(kill < total + 1)
+  // Enforce *detection* on the fixed known-fault catalog rather than
+  // allowing a green audit merely because one simple mutant was killed.
+  // Keep the blind-only 61/84 score published as an honest baseline.
+  assert.equal(guidedKill, guidedTotal,
+    'all risk-guided historical blind spots must be detected without false positives')
+  assert.equal(combinedKilled, total,
+    'all known injected behavioral faults must be detectable in at least one reproducible profile')
 })

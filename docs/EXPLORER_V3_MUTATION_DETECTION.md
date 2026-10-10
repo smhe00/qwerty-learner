@@ -41,3 +41,21 @@ The original blind randomized campaign is retained without changing its six seed
 Every guided scenario also runs **unmodified controls** with identical action policies. A survivor is reported even if its faulty precondition was not exercised; a crash is reported separately from a semantic oracle detection.
 
 The generic `system-oracle.ts` is strengthened with a ceiling derived solely from observed target, Introduced and unseen counts. It does not accept a mutated planner's self-reported `expectedAllowedNow` as sufficient evidence. Separately, domain-boundary test C6 asserts quota on an introduced but not acquired word, and C7 asserts the public four-way start-kind truth table for mixed due/new work. No product source or production branch changes are required.
+
+## Verified detection improvement (2026-10-10)
+
+The audit run [38013776392](https://github.com/smhe00/qwerty-learner/actions/runs/38013776392) confirmed the following using the **same fixed mutation catalog**:
+
+| Measurement | Original | After coverage guidance |
+| --- | ---: | ---: |
+| Unchanged blind random exploration | 61/84 = **72.6%** | **61/84 = 72.6%** (preserved for honest comparison) |
+| Four focused risk profiles | Not measured | **24/24 = 100%** |
+| Combined mutant/seed detection, blind OR guided | **61/84 = 72.6%** | **84/84 = 100%** |
+| Production-source mutations detected by executable domain invariants | **4/6 = 66.7%** | **6/6 = 100%** |
+| Clean controls / false positives | 18 / 0 | **42 / 0** (18 blind + 24 guided) |
+
+The last checkpoint blind spot required a *durably saved* historical snapshot before forward progress; seeding a snapshot before any saved checkpoint did not provide a distinguishable checkpoint history. Coverage guidance creates that valid prerequisite and checks that the generic checkpoint-regression oracle identifies a stale restore. This is test-only setup, not production code mutation.
+
+**Interpretation:** 100% refers only to the current **14 known injected behavioral fault types under six fixed seeds, each with targeted risk-state preconditions**, and to six known production-source mutations. It is **not** an estimate of general real-world defect recall, nor a claim that an equivalent live-browser fault has been detected. The original 72.6% undirected score stays visible for that reason.
+
+After verification, both suites assert the minimum detection contract in CI so a future regression cannot silently lower the fixed-catalog detection score. The full machine-readable scorecard remains an Actions artifact.

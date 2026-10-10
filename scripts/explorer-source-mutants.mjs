@@ -138,7 +138,8 @@ try {
       results,
     }))
     if (counts.invalid) process.exitCode = 1
-    if (!counts.killed) process.exitCode = 1
+    if (counts.killed + counts.survived !== mutants.length ||
+        counts.survived !== 0) process.exitCode = 1
   }
 } finally {
   rmSync(temporary, { recursive: true, force: true })
