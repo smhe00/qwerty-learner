@@ -34,15 +34,21 @@ test('EdgeOne explicitly rewrites SPA deep links to index.html', () => {
   )
 })
 
-test('EdgeOne stale 404 never expands /learn/?/&/~and~ on repeated refresh', () => {
+test('EdgeOne defensive 404 preserves known SPA paths without growing legacy queries', () => {
   const origin = 'https://qwerty-plus.edgeone.dev'
-  assert.equal(runNotFoundPage(origin + '/learn/'), origin + '/')
+  assert.equal(runNotFoundPage(origin + '/learn/'),
+    origin + '/?qwerty-route=%2Flearn')
   assert.equal(
     runNotFoundPage(origin + '/learn/?/&/~and~/~and~/~and~/'),
-    origin + '/',
+    origin + '/?qwerty-route=%2Flearn',
   )
+  assert.equal(
+    runNotFoundPage(origin + '/analysis?from=learn'),
+    origin + '/?qwerty-route=%2Fanalysis%3Ffrom%3Dlearn',
+  )
+  assert.equal(runNotFoundPage(origin + '/api/unknown'), origin + '/')
+  assert.equal(runNotFoundPage(origin + '/assets/missing.js'), origin + '/')
   assert.equal(runNotFoundPage(origin + '/'), null)
-  // Defensive fallback cannot loop even when the request is already malformed.
   assert.equal(runNotFoundPage(origin + '/?/~and~'), null)
 })
 
@@ -74,6 +80,16 @@ function runIndexBoot(href) {
   vm.runInNewContext(indexScript, { window: { location, history } })
   return route
 }
+
+test('EdgeOne consumes recovery marker before React routing and retains deep-link query', () => {
+  const origin = 'https://qwerty-plus.edgeone.dev'
+  const rescued = runNotFoundPage(origin + '/analysis?from=learn')
+  assert.equal(runIndexBoot(rescued), '/analysis?from=learn')
+  assert.equal(runIndexBoot(runNotFoundPage(origin + '/learn/')), '/learn')
+  assert.equal(runIndexBoot(origin + '/?qwerty-route=%2F%2Fevil.example'), '/')
+  assert.equal(runIndexBoot(origin + '/?qwerty-route=%ZZ'), '/')
+  assert.equal(runIndexBoot(origin + '/?qwerty-route=%2Fapi%2Fhealth'), '/')
+})
 
 test('EdgeOne repairs an already-growing /learn/ query without changing its route', () => {
   assert.equal(
