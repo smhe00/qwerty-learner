@@ -71,3 +71,24 @@ Maker disposable-user smoke and an independent Review/Learn Gate.
 - Broader Review Gate 38058144893 was launched as a separate regression;
   check its final CI conclusion before final release acceptance.
 - `master` still unchanged. Real Maker/Blob P4b-3 is not accepted.
+
+
+## P4b status update (2026-10-10, production Maker c1135a9)
+
+- Production EdgeOne Maker deployment of `c1135a9` confirmed by user.
+- Actual HTTP/Blob non-whitelist safety Gate **PASS**:
+  [Actions 38061862646](https://github.com/smhe00/qwerty-learner/actions/runs/38061862646)
+  (401 no token, 403 V2/recovery non-whitelist, unchanged revision,
+  V1 upload revision advance, second account isolation, 2/2 test account cleanup).
+- Cloud Sync Gate **PASS 114/114**, lint + build PASS:
+  [Actions 38062061412](https://github.com/smhe00/qwerty-learner/actions/runs/38062061412).
+- S2Recovery bounded TLA Gate **PASS**: 2-device CAS, account-switch
+  recovery, unsafe mutation caught:
+  [Actions 38062253933](https://github.com/smhe00/qwerty-learner/actions/runs/38062253933).
+- Row-level Dexie vs exported V4 SHA audit is already implemented and
+  is included in cloud tests; earlier reports were stale.
+- **Still blocking P4b:** explicit server-side allowlisted V4 test IDs,
+  actual Maker/Blob V4 Push/Pull and CAS concurrency, account/recovery fault
+  injection, V3→V4 explicit migration, V1 overwrite rejection after V4,
+  rollback rehearsal. No production user account shall be modified.
+- Do NOT mark P4b closed merely because default-deny smoke and CI PASS.
