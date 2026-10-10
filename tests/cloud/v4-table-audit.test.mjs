@@ -102,3 +102,73 @@ test('P4b ignores Dexie transport-only $types but verifies all actual stored col
   await assert.rejects(() => assertV4SourceRowsMatchExport(snapshot, sources),
     /source\/export row-payload mismatch: wordRecords/)
 })
+
+
+test('P4b: Dexie Typeson NaN/undefined telemetry survives auditable V4 export', async () => {
+  const snapshot = fixture()
+  const plain = snapshot.workspaceData.database.data.data[0].rows[0]
+  const actualWord = {
+    ...plain,
+    typingTelemetry: {
+      telemetryVersion: 2, firstKeyLatencyMs: NaN,
+      attempts: [
+        {
+          startLatencyMs: Infinity, durationMs: 90,
+          correctPrefixLength: 0, result: 'wrong',
+          wrongIndex: undefined, interKeyIntervalsMs: [12, NaN],
+        },
+      ],
+    },
+  }
+  const actual = Object.fromEntries(names.map(name => [
+    name, structuredClone(snapshot.workspaceData.database.data.data
+      .find(group => group.tableName === name)?.rows ?? []),
+  ]))
+  actual.wordRecords[0] = actualWord
+
+  // Mirrors Dexie/Typeson representation: values tagged in $types,
+  // including nested path components, are reversibly encoded.
+  plain.typingTelemetry = {
+    telemetryVersion: 2, firstKeyLatencyMs: 'NaN',
+    attempts: [
+      {
+        startLatencyMs: 'Infinity', durationMs: 90,
+        correctPrefixLength: 0, result: 'wrong',
+        wrongIndex: null, interKeyIntervalsMs: [12, 'NaN'],
+      },
+    ],
+  }
+  plain.$types = {
+    'typingTelemetry.firstKeyLatencyMs': 'nan',
+    'typingTelemetry.attempts.0.startLatencyMs': 'infinity',
+    'typingTelemetry.attempts.0.wrongIndex': 'undef',
+    'typingTelemetry.attempts.0.interKeyIntervalsMs.1': 'nan',
+  }
+  await assertV4SourceRowsMatchExport(snapshot, actual)
+  assert.equal(plain.typingTelemetry.firstKeyLatencyMs, 'NaN',
+    'comparison must never mutate the backup transport payload')
+
+  // Even when a difference occurs in a tagged object, a true changed
+  // telemetry metric must still make the export fail closed.
+  plain.typingTelemetry.attempts[0].durationMs = 99
+  await assert.rejects(
+    () => assertV4SourceRowsMatchExport(snapshot, actual),
+    /row-payload mismatch: wordRecords.*typingTelemetry/,
+  )
+})
+
+test('P4b: forged special-type metadata cannot hide a missing/changed metric', async () => {
+  const snapshot = fixture()
+  const actual = Object.fromEntries(names.map(name => [
+    name, structuredClone(snapshot.workspaceData.database.data.data
+      .find(group => group.tableName === name)?.rows ?? []),
+  ]))
+  snapshot.workspaceData.database.data.data[0].rows[0].$types = {
+    word: 'undef',
+  }
+  snapshot.workspaceData.database.data.data[0].rows[0].word = null
+  await assert.rejects(
+    () => assertV4SourceRowsMatchExport(snapshot, actual),
+    /row-payload mismatch: wordRecords/,
+  )
+})
