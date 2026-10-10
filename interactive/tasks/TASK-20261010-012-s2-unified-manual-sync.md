@@ -54,14 +54,18 @@ choosing No-op / CAS Push / verified Pull / explicit Conflict.
   compressed SHA-256, canonical logical fingerprint, account owner,
   streaming bounded gunzip).
 - [x] S2-P2b-recovery: durable Pull journal and pre-mount crash replay.
-- [ ] S2-P2b-executor:
-  guarded V4 snapshot executor (quiescent copy, hash/identity validation,
-  safe pull journal + restart), fault injection and crash replay.
-- [ ] S2-P3: one normal Sync button, directional actions only in advanced
-  recovery, visible network/account switch status, no-op instrumentation.
-- [ ] S2-P4: simulated 2-device/3-device interleavings, real EdgeOne
-  disposable-account tests, live Maker release gate and S1 production migration
-  prerequisite acceptance.
+- [x] S2-P2b-executor: guarded pre-mount V4 Sync (quiescent export,
+  metadata-only No-op, server CAS Push, verified/rechecked cloud Pull, durable
+  local source backup, crash journal replay and revision/baseline CAS).
+- [x] S2-P3a: single Sync button in opt-in DEV/test-mode account UI, full-page
+  pre-mount route and user-visible success/conflict/blocked feedback.
+- [ ] S2-P3b: complete advanced conflict recovery (non-destructive export,
+  deliberate directional choice and controlled migration), UX fault injection.
+- [x] S2-P4a: simulated three-device simultaneous V4 CAS: one winner per
+  revision, stale writers rejected, immutable snapshot checked.
+- [ ] S2-P4b: real Maker two/three-device disposable-account verification,
+  V1/V3->V4 explicit cloud migration and S1 rollout approval; live production
+  release is still blocked.
 
 ## Acceptance for P0
 

@@ -53,3 +53,31 @@ pre-mount operation, failure/rollback/reload replay; gate must include
 mid-restore crash, stale cloud revision, expired credentials and
 simultaneous tabs. Preserve original S1 production rollout blocker
 and never release master automatically.
+
+2026-10-10 S2-P2/P3a/P4a dev acceptance checkpoint:
+- Server V4 integrity and complete six-table manifest required before
+  destructive restoration, both browser and backend.
+- Pre-mount writer-locked Sync executor, CAS Push, zero-payload No-op,
+  verified/rechecked Pull, local source vault copy, staged recovery journal,
+  IDB baseline atomic commit are implemented.
+- Single Sync pilot route `/?s2-sync=run` is accessible ONLY under
+  Vite DEV or explicit `VITE_S2_ENABLE_UNIFIED_SYNC=true`; default
+  production flag OFF. No normal upload/download controls in isolated mode.
+- Source `b16673cd`: real Chromium S1 Browser Gate
+  [38048589692](https://github.com/smhe00/qwerty-learner/actions/runs/38048589692)
+  **PASS 53/53**; includes guarded full navigation route and post-sync
+  feedback plus crash replay, corrupt journal and expired auth.
+- Source `88a56fd`: Cloud Sync Gate
+  [38048701997](https://github.com/smhe00/qwerty-learner/actions/runs/38048701997)
+  **PASS 95/95** Node contracts, frontend/backend lint and Vite build.
+  Includes three-device simultaneous CAS/winner test.
+- Learn Journey [38048383193](https://github.com/smhe00/qwerty-learner/actions/runs/38048383193)
+  PASS; Achievement [38048383202](https://github.com/smhe00/qwerty-learner/actions/runs/38048383202)
+  PASS. Review run 38048383109 must be checked separately; at this
+  checkpoint it has not yet been accepted as completed.
+- No `master` sync or EdgeOne Maker build authorized. Live V3 cloud data
+  remains blocked from V4 overwrite without explicit migration consent.
+
+NEXT P0: S2-P3b conflict recovery/migration UX; S2-P4b disposable-account
+EdgeOne live V4 verification and S1 production consent/rollback SOP.
+The user should not enable the production V2 flag before these gates.

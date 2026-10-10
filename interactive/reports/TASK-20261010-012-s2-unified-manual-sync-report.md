@@ -141,3 +141,26 @@ React/RecordDB and forces a fresh navigation afterwards. All outcomes
 display an account-safe toast; conflict/blocked never fall back to
 Upload/Download or automatic overwrite. The production build default
 keeps this button and route unavailable. No Maker/master release.
+
+## 2026-10-10 latest S2 checkpoint — verified, DEV-only
+
+- Cloud Sync Gate [38048701997](https://github.com/smhe00/qwerty-learner/actions/runs/38048701997):
+  **95/95 PASS**, including true three-device concurrent V4 revision CAS
+  winner/stale conflict, backend+client full six-table restore validation
+  and S2 Push/Pull/noop/stale-cloud policy/executor contracts.
+- S1 Browser Gate [38048589692](https://github.com/smhe00/qwerty-learner/actions/runs/38048589692):
+  **53/53 PASS**, including real guarded V4 Push, subsequent metadata-only
+  No-op, expired session rejection and single-Sync full-page navigation.
+- Learn Journey Gate [38048383193](https://github.com/smhe00/qwerty-learner/actions/runs/38048383193)
+  and Achievement Gate [38048383202](https://github.com/smhe00/qwerty-learner/actions/runs/38048383202)
+  **PASS**. Review Gate [38048383109](https://github.com/smhe00/qwerty-learner/actions/runs/38048383109)
+  was still in its Learn browser stage at this checkpoint, not assumed green.
+- Source code is committed only to `product/main`. Maker-bound
+  `master` remains on an older production release. Local DEV URL
+  `/?s2-sync=run` is a privileged internal test workflow (not customer
+  release), guarded by the exclusive S1 writer lease; `VITE_S2_ENABLE_UNIFIED_SYNC`
+  defaults OFF.
+- P3b/P4b are release-blocking: safe V3-to-V4 cloud migration for
+  accounts with old snapshots, account-consent/backup/rollback UX,
+  non-destructive divergence recovery, disposable EdgeOne real cloud
+  verification, and S1 old-version tab/migration rollout acceptance.
