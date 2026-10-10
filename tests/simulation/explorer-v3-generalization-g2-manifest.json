@@ -1,0 +1,126 @@
+{
+  "schema": "explorer-v3-generalization-holdout-g2-v1",
+  "frozenAt": "2026-10-10",
+  "protocol": "New independent holdout. All 16 source mutants frozen before first CI. Existing detection tests only, no post-run adjustments. Killed=compiled mutant rejected by a test assertion; survived=mutant passes; invalid=build/run failure not due to a test assertion. No minimum kill rate.",
+  "detectorSuites": {
+    "fsrs": "tests/fsrs/g5-active-scheduler.test.ts",
+    "rating": "tests/learn/acquisition-domain.test.ts",
+    "ownership": "tests/review/async-ownership.test.ts",
+    "recovery": "tests/learn/scaffold-recovery.test.ts",
+    "sync": "tests/learn/daily-session.test.ts"
+  },
+  "mutations": [
+    {
+      "id": "fsrs-chronology-reversed",
+      "category": "fsrs",
+      "source": "src/review/fsrs/active.ts",
+      "from": "[...records].sort(compareRecordOrder)",
+      "to": "[...records].sort((left, right) => compareRecordOrder(right, left))"
+    },
+    {
+      "id": "fsrs-hard-rating-treated-as-good",
+      "category": "fsrs",
+      "source": "src/review/fsrs/active.ts",
+      "from": "hard: Rating.Hard,",
+      "to": "hard: Rating.Good,"
+    },
+    {
+      "id": "fsrs-initial-due-delayed-extra-day",
+      "category": "fsrs",
+      "source": "src/review/fsrs/active.ts",
+      "from": "? firstAdmission.timeStamp + DAY_SECONDS",
+      "to": "? firstAdmission.timeStamp + 2 * DAY_SECONDS"
+    },
+    {
+      "id": "fsrs-clean-streak-double-increment",
+      "category": "fsrs",
+      "source": "src/review/fsrs/active.ts",
+      "from": "cleanStreak += 1",
+      "to": "cleanStreak += 2"
+    },
+    {
+      "id": "review-ineligible-rating-replayed",
+      "category": "rating",
+      "source": "src/review/rebuild.ts",
+      "from": "return record.reviewRatingDecision.eligible\n      ? record.reviewRatingDecision.rating\n      : undefined",
+      "to": "return record.reviewRatingDecision.rating ?? 'good'"
+    },
+    {
+      "id": "review-typing-record-accepted",
+      "category": "rating",
+      "source": "src/review/rebuild.ts",
+      "from": "if (!isLongTermReviewRecord(record)) return undefined",
+      "to": "if (false && !isLongTermReviewRecord(record)) return undefined"
+    },
+    {
+      "id": "review-legacy-clean-accepted",
+      "category": "rating",
+      "source": "src/review/rebuild.ts",
+      "from": "return record.wrongCount > 0 ? inferLegacyReviewOutcome(record.wrongCount) : undefined",
+      "to": "return record.wrongCount > 0 ? inferLegacyReviewOutcome(record.wrongCount) : 'good'"
+    },
+    {
+      "id": "owner-stale-result-accepted",
+      "category": "ownership",
+      "source": "src/learn/async-ownership.ts",
+      "from": "active && generation === claimGeneration",
+      "to": "active"
+    },
+    {
+      "id": "owner-deactivate-does-not-disable",
+      "category": "ownership",
+      "source": "src/learn/async-ownership.ts",
+      "from": "deactivate() {\n      active = false",
+      "to": "deactivate() {\n      active = true"
+    },
+    {
+      "id": "owner-old-invalidates-new",
+      "category": "ownership",
+      "source": "src/learn/async-ownership.ts",
+      "from": "if (generation === claimGeneration) {",
+      "to": "if (true) {"
+    },
+    {
+      "id": "recovery-independent-training-eligible",
+      "category": "recovery",
+      "source": "src/learn/recovery-window.ts",
+      "from": "if (state.phase !== 'supported') return false",
+      "to": "if (state.phase === 'supported') return false"
+    },
+    {
+      "id": "recovery-window-only-high-strain",
+      "category": "recovery",
+      "source": "src/learn/recovery-window.ts",
+      "from": "(tier === 'elevated' || tier === 'recovery')",
+      "to": "tier === 'recovery'"
+    },
+    {
+      "id": "recovery-window-unbounded-lookahead",
+      "category": "recovery",
+      "source": "src/learn/recovery-window.ts",
+      "from": "learnRecoveryWindowPolicy.maxLookaheadItems,",
+      "to": "10000,"
+    },
+    {
+      "id": "sync-divergence-suppressed",
+      "category": "sync",
+      "source": "src/sync/state.ts",
+      "from": "const diverged = localDirty && remoteChanged",
+      "to": "const diverged = false"
+    },
+    {
+      "id": "sync-divergence-auto-uploads",
+      "category": "sync",
+      "source": "src/sync/state.ts",
+      "from": "if (assessment.diverged) return 'diverged'",
+      "to": "if (assessment.diverged) return 'upload'"
+    },
+    {
+      "id": "sync-remote-ahead-auto-uploads",
+      "category": "sync",
+      "source": "src/sync/state.ts",
+      "from": "if (assessment.remoteChanged) return 'remote-ahead'",
+      "to": "if (assessment.remoteChanged) return 'upload'"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+name: Explorer V3 Generalization Holdout G2
+
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - 'tests/simulation/explorer-v3-generalization-g2-manifest.json'
+      - 'scripts/explorer-generalization-g2.mjs'
+      - '.github/workflows/explorer-generalization-g2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generalization-g2:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Install frozen dependencies
+        run: yarn install --frozen-lockfile
+      - name: Run genuinely new frozen source mutations
+        id: score
+        run: |
+          set -o pipefail
+          node scripts/explorer-generalization-g2.mjs 2>&1 | tee generalization-g2.log
+      - name: Report unmodified detection result
+        if: always()
+        env:
+          G2_RESULT: ${{ steps.score.outcome }}
+        run: |
+          echo "## Explorer V3 New Independent Holdout G2" >> "$GITHUB_STEP_SUMMARY"
+          echo "Execution and validity: **$G2_RESULT**" >> "$GITHUB_STEP_SUMMARY"
+          echo "No kill-rate threshold is imposed; all survivors count." >> "$GITHUB_STEP_SUMMARY"
+          grep 'EXPLORER_V3_GENERALIZATION_G2_SCORECARD' generalization-g2.log | tail -1 >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Retain independent scorecard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: explorer-v3-generalization-g2-${{ github.run_number }}
+          path: |
+            generalization-g2.log
+            .mutation-audit/generalization-g2-scorecard.json
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 30
