@@ -10,11 +10,12 @@ import {
   MIN_ASSISTANCE_DEFERRED_DELAY_SECONDS,
   MIN_CROSS_SESSION_INDEPENDENT_DELAY_SECONDS,
 } from '../../src/learn/acquisition'
-import { planLearnAcquisitionCandidates } from '../../src/learn/session'
+import { planLearnAcquisitionCandidates, decideLearnStartKind } from '../../src/learn/session'
 import { createLearnDailySession, deriveLearnDailyProgress } from '../../src/learn/daily-session'
 import { buildLearnStatsSnapshot } from '../../src/learn/stats'
 import { decideDailyAcquisitionQuota } from '../../src/learn/quota'
 import { buildLearnDailyPlan } from '../../src/learn/plan'
+import { LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION } from '../../src/learn/acquisition'
 import type { IWordRecord } from '../../src/utils/db/record'
 
 const START = 1_800_000_000
@@ -165,4 +166,49 @@ test('C5: natural next-day due review is first, rescheduled, and anomaly-free', 
     ],
     count: 6,
   }))
+})
+
+/**
+ * An introduction is *not* equivalent to successful Independent admission.
+ * This exposes the previously surviving acquired-vs-introduced mutation.
+ * The expected allowance is computed from the fixture, never by mirroring
+ * the quota implementation or using its returned reason codes as the oracle.
+ */
+test('C6: daily allowance is constrained by introductions before independent admission', () => {
+  const exposure: IWordRecord = {
+    ...admission(names[0], START + 1, 201),
+    reviewPolicyDecision: {
+      version: 1,
+      policyVersion: LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
+      reasonCodes: ['coverage-exposure-only'],
+      conditionVersion: 1,
+    },
+    reviewEvidence: undefined,
+  }
+  const now = START + 20
+  const stats = buildLearnStatsSnapshot({
+    now, dict: 'simulation', wordRecords: [exposure],
+    wordStates: [], dictionaryWords: names,
+  })
+  assert.equal(stats.today.introducedWords, 1)
+  assert.equal(stats.today.acquiredWords, 0)
+  const allowance = decideDailyAcquisitionQuota(stats, undefined, 1)
+  assert.equal(allowance.remainingDailyNewWords, 0,
+    'an introduced word consumes today\'s quota even if it is not yet admitted')
+  assert.equal(allowance.allowedNow, 0)
+  const plan = buildLearnDailyPlan({ stats, quota: allowance })
+  assert.equal(plan.allowedNewWordsNow, 0)
+  assert.notEqual(plan.action, 'acquire-new')
+})
+
+/**
+ * Due + unseen is a mixed session, not acquisition-only or due-only.
+ * This explicitly kills the source mutation that previously survived
+ * because the C5 one-word observation did not exercise decideLearnStartKind.
+ */
+test('C7: due Review combined with unseen Acquisition requires mixed start', () => {
+  assert.equal(decideLearnStartKind({ dueCount: 3, unseenCount: 4 }), 'mixed')
+  assert.equal(decideLearnStartKind({ dueCount: 3, unseenCount: 0 }), 'review')
+  assert.equal(decideLearnStartKind({ dueCount: 0, unseenCount: 4 }), 'acquisition')
+  assert.equal(decideLearnStartKind({ dueCount: 0, unseenCount: 0 }), 'empty')
 })

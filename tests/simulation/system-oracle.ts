@@ -479,9 +479,17 @@ export function detectLearnSystemAnomalies(
       const expectedPendingSelected =
         event.expectedPendingSelected ??
         event.pendingSelected
+      // Independent, data-derived ceiling: the planner's own
+      // expectedAllowedNow can be mutated alongside its returned allowance.
+      // It must never authorize more *new* words than target - introduced.
+      // An under-allocation remains valid for workload/strain throttling.
+      const rawQuotaOverflow =
+        event.allowedNow > boundedRemaining ||
+        expectedAllowed > boundedRemaining
       const allowedMismatch =
         event.allowedNow !== expectedAllowed
       const freshOverBudget =
+        event.freshSelected > boundedRemaining ||
         event.freshSelected > event.allowedNow ||
         (
           event.unseenCount !== null &&
@@ -492,6 +500,7 @@ export function detectLearnSystemAnomalies(
         expectedPendingSelected
 
       if (
+        rawQuotaOverflow ||
         allowedMismatch ||
         freshOverBudget ||
         pendingBudgetLeak
@@ -509,6 +518,8 @@ export function detectLearnSystemAnomalies(
             dueCount: event.dueCount,
             allowedNow: event.allowedNow,
             expectedAllowed,
+            maxAllowedByHistory: boundedRemaining,
+            rawQuotaOverflow,
             freshSelected: event.freshSelected,
             readyPendingCount:
               event.readyPendingCount,

@@ -72,20 +72,80 @@ const cases: FaultCase[] = [
     expected: ['session-arbitration-violation'] },
 ]
 
+/**
+ * General-purpose risk profiles. These deliberately establish hard-to-hit
+ * preconditions; the action policy and anomaly oracle never inspect the
+ * injected mutation, and the same scenarios run on clean controls.
+ */
+type CoverageScenario =
+  | 'new-quota-headroom'
+  | 'introduced-not-acquired'
+  | 'stale-after-progress'
+  | 'deferred-due'
+
+const focusedGaps = [
+  { id: 'new-word-budget-overflow', profile: 'fresh', scenario: 'new-quota-headroom' },
+  { id: 'quota-counts-acquired-not-introduced', profile: 'fresh', scenario: 'introduced-not-acquired' },
+  { id: 'stale-checkpoint-on-resume', profile: 'fresh', scenario: 'stale-after-progress' },
+  { id: 'deferred-word-stranded', profile: 'fresh', scenario: 'deferred-due' },
+] as const satisfies Array<{ id: string; profile: Profile; scenario: CoverageScenario }>
+
 function randomNumber(seed: number) {
   let current = seed >>> 0
   return () => ((current = (1664525 * current + 1013904223) >>> 0) / 4294967296)
 }
 
-async function runSeed(seed: number, profile: Profile, mutation?: VirtualLearnMutation) {
-  const app = new VirtualLearnApp({ words: wordList, mutation })
+async function runSeed(
+  seed: number, profile: Profile, mutation?: VirtualLearnMutation,
+  scenario?: CoverageScenario,
+) {
+  const dailyNewWordTarget = scenario === 'introduced-not-acquired' ? 1
+    : scenario === 'new-quota-headroom' ? 3 : 32
+  const app = new VirtualLearnApp({ words: wordList, mutation, dailyNewWordTarget })
   if (profile !== 'fresh') app.seedAdmittedWords(6)
   if (profile === 'due') app.makeSeededWordsDue(3)
+  if (scenario === 'introduced-not-acquired') {
+    // A real Exposure record but no valid Independent admission yet.
+    app.seedDeferredAcquisition({ wordIndex: 0, ready: false })
+  }
+  if (scenario === 'deferred-due') {
+    app.seedDeferredAcquisition({ wordIndex: 0, ready: true })
+  }
   const rand = randomNumber(seed)
   const actions: string[] = ['enter']
   let runtimeError: string | null = null
   try {
     await app.enter()
+    if (scenario === 'stale-after-progress') {
+      // Capture the old checkpoint, then make durable forward progress before
+      // exiting. This fixture is necessary to *activate* staleRestoreOnce.
+      app.seedStaleCheckpointFromActive()
+      const snapshot = app.snapshot()
+      const initial = snapshot.sessions.find(x => x.id === snapshot.activeSessionId)
+      const initialIndex = initial?.index ?? 0
+      let progress = false
+      for (let attempt = 0; attempt < 70; attempt++) {
+        const advanced = app.completeCurrentClean()
+        if (!advanced) break
+        const state = app.snapshot()
+        const active = state.sessions.find(x => x.id === state.activeSessionId)
+        if (active && active.index > initialIndex) {
+          progress = true
+          break
+        }
+      }
+      if (!progress) throw new Error('coverage fixture could not establish checkpoint advancement')
+      app.exit()
+      await app.enter()
+      actions.push('checkpoint-progress/exit/reenter')
+    }
+    if (scenario === 'deferred-due') {
+      // Two eligible scheduling opportunities while the Deferred target is
+      // ready. The domain oracle observes actual pending health after each.
+      app.exit()
+      await app.enter()
+      actions.push('deferred-ready/reenter')
+    }
     for (let step = 0; step < STEPS; step++) {
     const choice = rand()
     if (choice < 0.58) {
@@ -177,14 +237,62 @@ test('V3 mutation audit reports actual blind mutant kill rate and clean false-po
   const total = mutants.length * SEEDS.length
   const survivors = mutants.filter(m => m.killedSeeds < m.totalSeeds)
     .map(m => ({ id: m.id, survived: m.totalSeeds - m.killedSeeds }))
+  const guided = []
+  const guidedBaseline = []
+  for (const focus of focusedGaps) {
+    const fault = cases.find(item => item.id === focus.id)
+    assert.ok(fault, 'unknown mutation in coverage profile: ' + focus.id)
+    const trials = []
+    for (const seed of SEEDS) {
+      // Controls use exactly the same precondition and action policy.
+      const clean = await runSeed(seed, focus.profile, undefined, focus.scenario)
+      guidedBaseline.push({
+        case: focus.id, seed, codes: clean.codes, runtimeError: clean.runtimeError,
+      })
+      const observed = await runSeed(seed, focus.profile, fault.mutation, focus.scenario)
+      const killed = observed.codes.some(code => fault.expected.includes(code))
+      trials.push({
+        seed, killed, codes: observed.codes,
+        firstEvidenceIndex: observed.firstEvidenceIndex,
+        runtimeCrash: observed.runtimeError,
+      })
+    }
+    guided.push({
+      id: focus.id, scenario: focus.scenario,
+      killedSeeds: trials.filter(x => x.killed).length,
+      totalSeeds: SEEDS.length, trials,
+    })
+  }
+  const guidedFalsePositives = guidedBaseline.filter(x => x.codes.length || x.runtimeError)
+  assert.deepEqual(guidedFalsePositives, [],
+    'guided risk profiles must have zero anomalies on unmodified controllers')
+  const guidedKill = guided.reduce((n, item) => n + item.killedSeeds, 0)
+  const guidedTotal = guided.length * SEEDS.length
+  const combinedKilled = mutants.reduce((n, item) => {
+    const focus = guided.find(g => g.id === item.id)
+    return n + (focus ? new Set([
+      ...item.results.filter(r => r.killed).map(r => r.seed),
+      ...focus.trials.filter(r => r.killed).map(r => r.seed),
+    ]).size : item.killedSeeds)
+  }, 0)
   const summary = {
-    schema: 'explorer-v3-blind-mutation-audit-v1',
+    schema: 'explorer-v3-blind-mutation-audit-v2',
     architecture: 'isolated-virtual-app-real-controller-oracle',
     cleanControls: baseline.length, cleanFalsePositives: falsePositives.length,
     mutantTypes: mutants.length, seedTrials: total, killedTrials: kill,
     killRate: Number((kill / total).toFixed(4)),
     runtimeCrashTrials: mutants.reduce((n, m) => n + m.crashedSeeds, 0),
     survivors,
+    guided: {
+      cleanControls: guidedBaseline.length, cleanFalsePositives: guidedFalsePositives.length,
+      killedTrials: guidedKill, trials: guidedTotal,
+      killRate: Number((guidedKill / guidedTotal).toFixed(4)),
+      profiles: guided,
+    },
+    combinedDetection: {
+      killedTrials: combinedKilled, totalTrials: total,
+      killRate: Number((combinedKilled / total).toFixed(4)),
+    },
     mutants,
   }
   console.log('EXPLORER_V3_BLIND_MUTATION_SCORECARD ' + JSON.stringify(summary))

@@ -28,3 +28,16 @@ First measure and report a credible kill score. Then choose the highest-impact s
 - `scripts/explorer-source-mutants.mjs`: in-memory production-source mutants.
 - `.github/workflows/explorer-mutation-audit.yml`: executable measurements, logs and summary.
 - `tests/simulation/system-explorer-v3-coverage.test.ts`: unchanged production-domain invariants used as the source-mutation kill oracle.
+
+## Coverage-guided extension
+
+The original blind randomized campaign is retained without changing its six seeds, 220 actions, or 14 mutations; this keeps the **61/84 = 72.6%** baseline comparable. Four supplemental **risk-state profiles** use the same action policy, but establish preconditions that are rare in purely random histories:
+
+- New-word headroom: daily target 3 vs. dictionary 24, so selecting a fourth word is observable.
+- Introduced-but-unacquired: a genuine persisted Exposure record with daily target 1.
+- Old checkpoint: a snapshot is captured, then genuine durable progress is made before leaving and restoring.
+- Ready Deferred: a pending acquisition is eligible and is presented to repeated scheduler opportunities.
+
+Every guided scenario also runs **unmodified controls** with identical action policies. A survivor is reported even if its faulty precondition was not exercised; a crash is reported separately from a semantic oracle detection.
+
+The generic `system-oracle.ts` is strengthened with a ceiling derived solely from observed target, Introduced and unseen counts. It does not accept a mutated planner's self-reported `expectedAllowedNow` as sufficient evidence. Separately, domain-boundary test C6 asserts quota on an introduced but not acquired word, and C7 asserts the public four-way start-kind truth table for mixed due/new work. No product source or production branch changes are required.
