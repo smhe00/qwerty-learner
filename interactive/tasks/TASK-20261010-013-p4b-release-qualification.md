@@ -54,3 +54,17 @@ G1 cloud tests + lint/build, G2 all browser contracts, G3 Learn/Review/
 Typing/Achievement, G4 formal safety model, G5 real Maker 3 devices,
 G6 historic cloud V3 migration/rollback, G7 stale V1 client protection,
 G8 rollback recovery exercise and user signoff.
+
+
+## P4b G3 regression — Learn Real Journey now green
+- [x] Fail 38056826487 independently triaged from CI trace: cold
+      S1/bootstrap + unready Typing word queue, not a demonstrated
+      multiword progression data defect.
+- [x] Fix `b18dad6b7fa9ecff40e59d1b9ce652d191b639bc`:
+      wait for active review and first word; verify three seed names and
+      index before typing. Do not relax remaining assertions.
+- [x] Learn Real Journey 38058144882 PASS: full keyboard-to-durable plus
+      4 targeted real browser Review/FSRS/Hint/ESC checks.
+- [ ] Full P4b release qualification still blocked on Maker/Blob gray
+      rollout, legacy client protection, and rollback exercise; the
+      Learn Gate passing alone cannot complete P4b.

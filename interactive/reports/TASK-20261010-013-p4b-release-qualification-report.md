@@ -79,3 +79,34 @@ needs triage. Do not publish `master`.
   synchronization policy. Do NOT treat it as evidence of lost learning
   rows, but do NOT ignore as production quality risk either.
 - Not EdgeOne or real Blob tests; Maker release remains BLOCKED.
+
+
+## P4b G3: Learn Real Journey first-test CI blocker closed
+
+Original failure: [38056826487](https://github.com/smhe00/qwerty-learner/actions/runs/38056826487).
+Playwright artifact includes browser trace/screenshot showing the actual
+Learn Typing surface still rendering the word-loading spinner after
+S1 workspace bootstrap, while the test prematurely looked for the
+"按任意键开始" prompt immediately after `page.goto('/learn')`.
+This is a cold-start readiness race in the test (the regression itself
+did not reach a spelling attempt), not evidence that Review advanced
+incorrectly.
+
+Code fix:
+`tests/e2e/learn-review-flow.spec.ts` at commit
+`b18dad6b7fa9ecff40e59d1b9ce652d191b639bc`.
+Before first keystroke, wait for the actual active Learn session and
+first rendered word, assert the exact seeded ordered queue
+`cancel,analyse,numerous` and index 0. No production Learn code or
+functional assertions were changed.
+
+[Learn Real Journey PASS 38058144882](https://github.com/smhe00/qwerty-learner/actions/runs/38058144882):
+- 1 true keyboard-to-durable Learn journey PASS
+- 1 multiword Review completes all three words and durable session PASS
+- 1 FSRS rating exercise PASS
+- 1 ESC full-answer/skip lock PASS
+- 1 Hint V2 three-attempt escalation PASS
+
+The independent full Review Gate was re-triggered as 38058144893;
+its conclusion must be separately reported. S2 EdgeOne release remains
+blocked pending P4b-3/P4b-4.

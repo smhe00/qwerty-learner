@@ -55,3 +55,19 @@ Maker disposable-user smoke and an independent Review/Learn Gate.
   final P4b real Maker release. Avoid classifying this as a data-loss defect.
 - Next: row-level direct source audit, targeted two-device TLA projection,
   multi-account/expiry/crash matrix, real Maker disposable-user tests.
+
+2026-10-10 P4b Learn Real Journey Gate blocker resolved:
+- CI baseline 38056826487 FAIL: first multiword review scenario timed out
+  waiting for "按任意键开始" while S1 cold bootstrap / Typing reducer
+  word-list hydration showed a loading spinner (trace inspected).
+- Fix `b18dad6b7fa9ecff40e59d1b9ce652d191b639bc` in
+  `tests/e2e/learn-review-flow.spec.ts` explicitly waits for the actual
+  active Learn session and first rendered word; verifies the exact
+  3-word queue and starting index 0 before typing.
+  This does NOT alter production learning code or weaken progression/
+  persistence assertions.
+- Learn Real Journey Gate 38058144882 **PASS**: 1 true keyboard-to-durable
+  browser journey plus 4 real Review/FSRS/Hint/ESC checks.
+- Broader Review Gate 38058144893 was launched as a separate regression;
+  check its final CI conclusion before final release acceptance.
+- `master` still unchanged. Real Maker/Blob P4b-3 is not accepted.
