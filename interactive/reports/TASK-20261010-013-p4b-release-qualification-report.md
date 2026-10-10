@@ -350,3 +350,43 @@ browser journey with the production S2 UI enabled, on multiple signed-in
 devices with their own durable IDB and post-crash recovery, has not been
 executed. Separate activation/rollout testing must precede general availability.
 Do not conflate completed P4b protocol qualification with general user launch.
+
+## Formal P4b closure decision — 2026-10-11
+
+**Stage result: COMPLETED / QUALIFIED (bounded protocol and safe-release rollback).
+Production S2 GA: NOT ENABLED.**
+
+The P4b task checklist is now updated to reflect verified outcomes. CI
+and Maker-backed evidence is listed directly in the task file:
+`interactive/tasks/TASK-20261010-013-p4b-release-qualification.md`.
+
+Final `master`: `7818e2a51bafce48a7c8e6996fd451847f59b4cc`.
+Strict default-deny S2 server allowlist restored and independently verified;
+the build remains with S2 UI experiment URLs closed. In-production username
+test exemptions and error diagnostic responses were removed. Two independent
+full named-account V4 protocol suites passed with all disposable accounts
+deleted. Data-preserving V4 rollback over an actual Maker build switch
+passed with old V1 write prevention and unchanged V4 SHA, revision and payload.
+
+Boundaries of claim:
+- TLC is bounded and decomposed, not exhaustive all-device/all-account model
+  checking.
+- Chromium 13/13 tests exercise true separate profiles but an in-memory
+  CAS server; actual Maker Chromium smoke checks only that the S2 pilot UI
+  is disabled.
+- Actual Maker V4 CAS, session invalidation, migration and recovery were
+  exercised via the API, not a live multi-browser UI journey.
+- The one transient HTTP 500 remains unexplained; later full passes do
+  not erase it.
+- Forced logout dialog and user-confirmed anonymous workspace switch after
+  a session revocation remain unimplemented.
+
+Project follow-ups created:
+1. P0 `interactive/tasks/TASK-20261011-014-forced-session-revocation.md`.
+2. P1 `interactive/tasks/TASK-20261011-015-maker-intermittent-500.md`.
+3. P0 Maker enabled-UI GA Gate
+   `interactive/tasks/TASK-20261011-016-s2-maker-ui-pilot.md`.
+
+P4b is closed as a **qualification milestone**, not a claim of feature
+general availability. No new EdgeOne Maker build is needed merely to
+publish this administrative closure.
