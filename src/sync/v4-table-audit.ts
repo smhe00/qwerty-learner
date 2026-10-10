@@ -26,6 +26,95 @@ function jsonRows(rows: unknown[]): unknown[] {
   return JSON.parse(JSON.stringify(rows)) as unknown[]
 }
 
+/**
+ * A Dexie export uses Typeson to preserve IndexedDB types that JSON cannot
+ * represent. In particular, a telemetry NaN is emitted as the STRING "NaN"
+ * plus a path in $types, while JSON.stringify(the IDB source) emits null.
+ *
+ * Normalize only explicitly tagged, independently VERIFIED values against
+ * the actual raw IndexedDB row. A forged tag, missing field, changed number,
+ * unknown type or changed ordinary value still fails the SHA audit.
+ * Do not mutate the original archive: Typeson markers must survive import.
+ */
+function normalizeTaggedExportRow(exported: unknown, rawSource: unknown): unknown {
+  if (!exported || typeof exported !== 'object' || Array.isArray(exported) ||
+      !rawSource || typeof rawSource !== 'object' || Array.isArray(rawSource)) {
+    return exported
+  }
+  const row = JSON.parse(JSON.stringify(exported)) as Record<string, unknown>
+  const tags = row.$types
+  delete row.$types
+  if (tags === undefined) return row
+  if (!tags || typeof tags !== 'object' || Array.isArray(tags)) {
+    // Typeson's escaped-root schema is intentionally not silently accepted.
+    return exported
+  }
+
+  for (const [path, type] of Object.entries(tags)) {
+    const pieces = path.split('.')
+    if (pieces.some(piece => !piece || piece === '__proto__' ||
+        piece === 'constructor' || piece === 'prototype')) return exported
+
+    let expected: unknown = rawSource
+    let current: unknown = row
+    for (let i = 0; i < pieces.length - 1; i++) {
+      if (!expected || typeof expected !== 'object' ||
+          !current || typeof current !== 'object') return exported
+      expected = (expected as Record<string, unknown>)[pieces[i]]
+      current = (current as Record<string, unknown>)[pieces[i]]
+    }
+    if (!expected || typeof expected !== 'object' ||
+        !current || typeof current !== 'object') return exported
+    const last = pieces[pieces.length - 1]
+    const origin = (expected as Record<string, unknown>)[last]
+    const encoded = (current as Record<string, unknown>)[last]
+    if (type === 'nan' && typeof origin === 'number' &&
+        Number.isNaN(origin) && encoded === 'NaN') {
+      ;(current as Record<string, unknown>)[last] = null
+    } else if (type === 'infinity' && origin === Infinity &&
+               encoded === 'Infinity') {
+      ;(current as Record<string, unknown>)[last] = null
+    } else if (type === 'negativeInfinity' && origin === -Infinity &&
+               encoded === '-Infinity') {
+      ;(current as Record<string, unknown>)[last] = null
+    } else if (type === 'undef' && origin === undefined &&
+               Object.prototype.hasOwnProperty.call(expected, last) &&
+               encoded === null) {
+      if (Array.isArray(current)) current[Number(last)] = null
+      else delete (current as Record<string, unknown>)[last]
+    } else if (type === 'sparseUndefined' && origin === undefined &&
+               Array.isArray(expected) &&
+               !Object.prototype.hasOwnProperty.call(expected, last) &&
+               encoded === null) {
+      // JSON.stringify maps both sparse holes and undefined array slots to null.
+    } else if (type === 'date' && origin instanceof Date &&
+               encoded === origin.getTime()) {
+      ;(current as Record<string, unknown>)[last] = origin.toJSON()
+    } else {
+      // Unknown Typeson marker, forged metadata, or actual data change.
+      return exported
+    }
+  }
+  return row
+}
+
+/** Stable primary-key pairing prevents exporter order changes from hiding
+ * per-row corruption. Table without a valid unique key fails closed. */
+function byIdOrBusinessKey(rows: unknown[]): Map<string, unknown> | null {
+  const result = new Map<string, unknown>()
+  for (const row of rows) {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) return null
+    const record = row as Record<string, unknown>
+    const key = record.id ?? record.eventId ?? record.achievementId
+    if ((typeof key !== 'number' && typeof key !== 'string') ||
+        (typeof key === 'number' && !Number.isFinite(key))) return null
+    const id = String(key)
+    if (result.has(id)) return null
+    result.set(id, row)
+  }
+  return result
+}
+
 async function rowsSha256(rows: unknown[]): Promise<string> {
   const canonical = stableWorkspaceJson(
     jsonRows(rows).map(row => stableWorkspaceJson(row)).sort(),
@@ -43,17 +132,26 @@ export async function assertV4SourceRowsMatchExport(
     Object.fromEntries(REQUIRED_RESTORABLE_V4_TABLES.map(name =>
       [name, independentRows[name]?.length])) as DurableV4Counts,
   )
-  const serialized = await v4TableRowDigests(snapshot)
   for (const name of REQUIRED_RESTORABLE_V4_TABLES) {
+    const exportedRows = (snapshot.workspaceData.database as {
+      data: { data: Array<{tableName: string; rows: unknown[]}> }
+    }).data.data.find(group => group.tableName === name)?.rows ?? []
+    const sourceById = byIdOrBusinessKey(independentRows[name])
+    const exportedById = byIdOrBusinessKey(exportedRows)
+    const sameIds = sourceById && exportedById &&
+      sourceById.size === exportedById.size &&
+      [...sourceById.keys()].every(key => exportedById.has(key))
+    const normalizedRows = sameIds
+      ? [...sourceById.entries()].map(([id, sourceRow]) =>
+        normalizeTaggedExportRow(exportedById.get(id), sourceRow))
+      : exportedRows.map(row => stripDexieTransportTypes([row])[0])
     const originalHash = await rowsSha256(independentRows[name])
-    if (originalHash !== serialized[name]) {
+    const serializedHash = await rowsSha256(normalizedRows)
+    if (originalHash !== serializedHash) {
       const sourceRows = jsonRows(independentRows[name])
         .map(row => stableWorkspaceJson(row)).sort()
-      const exportedRows = jsonRows(stripDexieTransportTypes(
-        (snapshot.workspaceData.database as {
-          data: { data: Array<{tableName: string; rows: unknown[]}> }
-        }).data.data.find(group => group.tableName === name)?.rows ?? [],
-      )).map(row => stableWorkspaceJson(row)).sort()
+      const exportedRows = jsonRows(normalizedRows)
+        .map(row => stableWorkspaceJson(row)).sort()
       const position = sourceRows.findIndex((row, i) => row !== exportedRows[i])
       const local = JSON.parse(sourceRows[position] ?? '{}') as Record<string, unknown>
       const serialized = JSON.parse(exportedRows[position] ?? '{}') as Record<string, unknown>
