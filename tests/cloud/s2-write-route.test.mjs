@@ -59,6 +59,6 @@ test('V1 PUT route is unchanged without S2 allowlist', async () => {
 })
 test('missing bearer cannot bypass S2 gate', async () => {
   const result = await request('/sync/v2', '', 'id-a')
-  assert.equal(result.status, 403)
+  assert.equal(result.status, 401)
   assert.deepEqual(result.calls, [])
 })
