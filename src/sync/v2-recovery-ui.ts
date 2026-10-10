@@ -214,7 +214,7 @@ export async function renderS2RecoveryUI(
         ? '最终确认：以本机数据覆盖云端 revision ' + pinned.revision +
           '。其他设备未同步的进度不会自动合并。云端旧版只能通过备份恢复。'
         : '最终确认：以云端 revision ' + pinned.revision +
-          ' 覆盖本机学习记录。不会自动合并；V3 格式将先转换为 V4。'
+          ' 覆盖本机学习记录。不会自动合并；V3 旧备份可能缺少新增的每日学习状态与设置，这些信息不能凭空恢复。'
       if (!window.confirm(warning + '\n两份 .gz 备份已检查保存，继续？')) {
         status.textContent = '用户取消；未更改数据。'
         refreshEnabled()

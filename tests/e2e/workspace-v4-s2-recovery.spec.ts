@@ -173,9 +173,6 @@ test('P3b keep-cloud V4 restores only after pinned verification and durable jour
   await page.locator('select').selectOption('keep-cloud')
   page.once('dialog', d => d.accept())
   await page.getByText('⑤ 我已备份两端数据，继续执行选定方向').click()
-  await page.waitForTimeout(3000)
-  console.log('P3b V4 outcome: ' + (await page.locator('body').innerText()).slice(0, 1400) +
-    ' URL=' + page.url())
   await expect(page.getByText('已完成云端学习数据安全恢复。')).toBeVisible({
     timeout: 8000,
   })
@@ -219,9 +216,6 @@ test('P3b keep-cloud V3 explicitly migrates to V4 then restores with CAS', async
   await page.locator('select').selectOption('keep-cloud')
   page.once('dialog', d => d.accept())
   await page.getByText('⑤ 我已备份两端数据，继续执行选定方向').click()
-  await page.waitForTimeout(3000)
-  console.log('P3b V3 outcome: ' + (await page.locator('body').innerText()).slice(0, 1400) +
-    ' URL=' + page.url())
   await expect(page.getByText('已完成云端学习数据安全恢复。')).toBeVisible({
     timeout: 8000,
   })
