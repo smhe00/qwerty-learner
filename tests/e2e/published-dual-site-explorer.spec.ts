@@ -267,7 +267,7 @@ for (const site of sites) {
       observer.verify()
     })
 
-    test('mobile-browser navigation and Learn shell remain accessible', async ({ browser }) => {
+    test('mobile Alpha information shell stays accessible across navigation and reload', async ({ browser }) => {
       test.setTimeout(100_000)
       const context = await browser.newContext({
         viewport: { width: 390, height: 844 },
@@ -276,22 +276,24 @@ for (const site of sites) {
       try {
         const page = await context.newPage()
         const observer = await inspect(page)
-        // Mobile navigation controls may be collapsed in responsive
-        // layouts. Verify both published deep links, not an assumed
-        // always-visible desktop Settings button.
         await page.goto(site.base, { waitUntil: 'domcontentloaded' })
         checkRoute(page, site)
-        await expect(page.locator('[data-typing-word]:visible').first())
-          .toHaveAttribute('data-typing-word', /\S+/, { timeout: 20_000 })
+        await expect(page).toHaveURL(/\/mobile\/?$/, { timeout: 20_000 })
+        await expect(page.getByRole('heading', { name: '当前移动端说明' })).toBeVisible()
+        await expect(page.getByText(/移动端完整学习体验尚未开放/)).toBeVisible()
+        await expect(page.locator('[data-typing-word]:visible')).toHaveCount(0)
+
+        // The published mobile channel does not yet expose keyboard Learn.
+        // Routing to Learn must preserve the announced mobile experience,
+        // not render an incomplete/hidden desktop keyboard.
         await page.goto(site.base + 'learn', { waitUntil: 'domcontentloaded' })
         checkRoute(page, site)
-        await expect(page).toHaveURL(/\/learn\/?$/, { timeout: 20_000 })
-        await expect(page.locator('[data-typing-word]:visible').first())
-          .toHaveAttribute('data-typing-word', /\S+/, { timeout: 20_000 })
+        await expect(page).toHaveURL(/\/mobile\/?$/, { timeout: 20_000 })
+        await expect(page.getByRole('heading', { name: '当前移动端说明' })).toBeVisible()
         await page.reload({ waitUntil: 'domcontentloaded' })
         checkRoute(page, site)
-        await expect(page.locator('[data-typing-word]:visible').first())
-          .toHaveAttribute('data-typing-word', /\S+/, { timeout: 20_000 })
+        await expect(page).toHaveURL(/\/mobile\/?$/)
+        await expect(page.getByRole('heading', { name: '当前移动端说明' })).toBeVisible()
         observer.verify()
       } finally {
         await context.close()
