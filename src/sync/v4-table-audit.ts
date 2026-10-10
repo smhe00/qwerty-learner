@@ -47,8 +47,23 @@ export async function assertV4SourceRowsMatchExport(
   for (const name of REQUIRED_RESTORABLE_V4_TABLES) {
     const originalHash = await rowsSha256(independentRows[name])
     if (originalHash !== serialized[name]) {
+      const sourceRows = jsonRows(independentRows[name])
+        .map(row => stableWorkspaceJson(row)).sort()
+      const exportedRows = jsonRows(
+        (snapshot.workspaceData.database as {
+          data: { data: Array<{tableName: string; rows: unknown[]}> }
+        }).data.data.find(group => group.tableName === name)?.rows ?? [],
+      ).map(row => stableWorkspaceJson(row)).sort()
+      const position = sourceRows.findIndex((row, i) => row !== exportedRows[i])
+      const local = JSON.parse(sourceRows[position] ?? '{}') as Record<string, unknown>
+      const serialized = JSON.parse(exportedRows[position] ?? '{}') as Record<string, unknown>
+      const fields = [...new Set([...Object.keys(local), ...Object.keys(serialized)])]
+        .filter(key => stableWorkspaceJson(local[key] ?? null) !==
+          stableWorkspaceJson(serialized[key] ?? null))
+      // Diagnostic includes field NAMES only, never actual user learning rows.
       throw new Error(
-        'Backup V4 source/export row-payload mismatch: ' + name,
+        'Backup V4 source/export row-payload mismatch: ' + name +
+        ' at row ' + position + ', different fields: ' + fields.join(','),
       )
     }
   }
