@@ -48,7 +48,9 @@ choosing No-op / CAS Push / verified Pull / explicit Conflict.
 - [x] S2-P2a: durable account-scoped baseline in existing S1 vault registry
   (no database version bump), monotonic revision and hash CAS; no UI/runtime
   activation.
-- [ ] S2-P2b:
+- [x] S2-P2b-preflight: browser canonical V4 snapshot fingerprint and pure
+  read-only Sync direction planning; versioned server metadata GET client API.
+- [ ] S2-P2b-executor:
   guarded V4 snapshot executor (quiescent copy, hash/identity validation,
   safe pull journal + restart), fault injection and crash replay.
 - [ ] S2-P3: one normal Sync button, directional actions only in advanced

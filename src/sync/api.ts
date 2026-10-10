@@ -137,6 +137,14 @@ export function getSync(token: string) {
   return request<SyncResponse>('/api/sync', { token })
 }
 
+/** S2 metadata-only preflight; safe when the backend still holds V3 data.
+ * A missing/null logicalFingerprint must BLOCK rather than authorize a push.
+ * Not wired to live UI until S1 production rollout and S2 crash gates pass.
+ */
+export function getSyncV2Meta(token: string) {
+  return request<SyncMetaResponse>('/api/sync/v2/meta', { token })
+}
+
 export function putSync(
   token: string,
   input: {

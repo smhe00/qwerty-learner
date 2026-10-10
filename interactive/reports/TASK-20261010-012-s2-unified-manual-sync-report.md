@@ -70,3 +70,14 @@ documented in `docs/S1_CLOSEOUT_AUDIT_20261010.md`.
   must ensure a successful, crash-safe snapshot transfer/restore and a held
   single-writer lock before committing a baseline. Add browser IDB integration
   and fault injection in P2b.
+
+## S2-P2b read-only preflight groundwork
+
+- `src/sync/v2-preflight.ts` computes the canonical V4 digest from an
+  immutable captured snapshot and applies the account-scoped decision table.
+  Empty/nonempty workspace detection errs on the side of treating unknown
+  RecordDB shapes as meaningful, preventing destructive first-pull.
+- Versioned `getSyncV2Meta` only reads cloud metadata. It does NOT wire
+  in any production user button or snapshot transfer.
+- Full executor work remains: writer quiescence, account/base CAS,
+  pre-restore durable rollback journal, fault injection and reload after pull.
