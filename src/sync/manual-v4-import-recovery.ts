@@ -2,7 +2,36 @@
 import { refreshWorkspaceMigrationWitness } from './workspace-storage-witness'
 import { manualV4ImportJournalPort } from './manual-v4-import-journal'
 import { captureWorkingWorkspaceV4, restoreWorkingWorkspaceV4 } from './workspace-v4-browser'
-import { workspaceFingerprintV4 } from './workspace-v4'
+import { canonicalWorkspaceData, workspaceFingerprintV4 } from './workspace-v4'
+
+/**
+ * Describe ONLY the structure path; never print backup values or learning
+ * records to CI / diagnostics. This is an integrity error, not permission to
+ * normalize away a changed field or to delete the journal.
+ */
+function firstDifferentPath(a: unknown, b: unknown, where = 'workspaceData'): string | null {
+  if (Object.is(a, b)) return null
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b)) return where
+    if (a.length !== b.length) return where + '.length'
+    for (let i = 0; i < a.length; i++) {
+      const diff = firstDifferentPath(a[i], b[i], where + '[' + i + ']')
+      if (diff !== null) return diff
+    }
+    return null
+  }
+  const isObject = (v: unknown): v is Record<string, unknown> =>
+    v !== null && typeof v === 'object'
+  if (!isObject(a) || !isObject(b)) return where
+  const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].sort()
+  for (const key of keys) {
+    if (!Object.prototype.hasOwnProperty.call(a, key) ||
+        !Object.prototype.hasOwnProperty.call(b, key)) return where + '.' + key
+    const diff = firstDifferentPath(a[key], b[key], where + '.' + key)
+    if (diff !== null) return diff
+  }
+  return null
+}
 
 /**
  * Idempotent: a crash at any point before journal finalization replays the
@@ -15,7 +44,12 @@ export async function recoverPendingManualV4Import(): Promise<boolean> {
   await restoreWorkingWorkspaceV4(pending.snapshot, pending.owner)
   const verified = await captureWorkingWorkspaceV4(pending.owner)
   if (await workspaceFingerprintV4(verified) !== pending.fingerprint) {
-    throw new Error('Manual V4 import restored payload differs from staged backup')
+    const path = firstDifferentPath(
+      canonicalWorkspaceData(pending.snapshot.workspaceData),
+      canonicalWorkspaceData(verified.workspaceData),
+    )
+    throw new Error('Manual V4 import restored payload differs from staged backup at ' +
+      (path ?? 'canonical-serialization'))
   }
   refreshWorkspaceMigrationWitness()
   await manualV4ImportJournalPort.finalize(pending)
