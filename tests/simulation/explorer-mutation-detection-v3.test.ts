@@ -83,8 +83,10 @@ async function runSeed(seed: number, profile: Profile, mutation?: VirtualLearnMu
   if (profile === 'due') app.makeSeededWordsDue(3)
   const rand = randomNumber(seed)
   const actions: string[] = ['enter']
-  await app.enter()
-  for (let step = 0; step < STEPS; step++) {
+  let runtimeError: string | null = null
+  try {
+    await app.enter()
+    for (let step = 0; step < STEPS; step++) {
     const choice = rand()
     if (choice < 0.58) {
       const q = rand()
@@ -122,12 +124,19 @@ async function runSeed(seed: number, profile: Profile, mutation?: VirtualLearnMu
       actions.push('day+1/reenter')
     }
   }
+  } catch (error) {
+    // A mutant can corrupt an invariant enough to crash before the
+    // generic oracle sees a usable trace. Report separately; never count
+    // a runtime crash as a successful oracle detection.
+    runtimeError = error instanceof Error ? error.message : String(error)
+  }
   const anomalies = detectLearnSystemAnomalies(app.events)
   return {
     codes: [...new Set(anomalies.map(a => a.code))].sort(),
     firstEvidenceIndex: anomalies[0]?.eventIndex ?? null,
     eventCount: app.events.length,
     actions: actions.length,
+    runtimeError,
   }
 }
 
@@ -136,10 +145,10 @@ test('V3 mutation audit reports actual blind mutant kill rate and clean false-po
   for (const profile of ['fresh', 'warm', 'due'] as const) {
     for (const seed of SEEDS) {
       const result = await runSeed(seed, profile)
-      baseline.push({ profile, seed, codes: result.codes })
+      baseline.push({ profile, seed, codes: result.codes, runtimeError: result.runtimeError })
     }
   }
-  const falsePositives = baseline.filter(b => b.codes.length > 0)
+  const falsePositives = baseline.filter(b => b.codes.length > 0 || b.runtimeError)
   assert.deepEqual(falsePositives, [], 'clean controls must remain anomaly-free')
 
   const mutants = []
@@ -153,11 +162,13 @@ test('V3 mutation audit reports actual blind mutant kill rate and clean false-po
         foundCodes: observed.codes,
         firstEvidenceIndex: observed.firstEvidenceIndex,
         eventCount: observed.eventCount,
+        runtimeCrash: observed.runtimeError,
       })
     }
     mutants.push({
       id: item.id, profile: item.profile, expectedCodes: item.expected,
       killedSeeds: results.filter(r => r.killed).length,
+      crashedSeeds: results.filter(r => r.runtimeCrash).length,
       totalSeeds: SEEDS.length,
       results,
     })
@@ -171,7 +182,9 @@ test('V3 mutation audit reports actual blind mutant kill rate and clean false-po
     architecture: 'isolated-virtual-app-real-controller-oracle',
     cleanControls: baseline.length, cleanFalsePositives: falsePositives.length,
     mutantTypes: mutants.length, seedTrials: total, killedTrials: kill,
-    killRate: Number((kill / total).toFixed(4)), survivors,
+    killRate: Number((kill / total).toFixed(4)),
+    runtimeCrashTrials: mutants.reduce((n, m) => n + m.crashedSeeds, 0),
+    survivors,
     mutants,
   }
   console.log('EXPLORER_V3_BLIND_MUTATION_SCORECARD ' + JSON.stringify(summary))

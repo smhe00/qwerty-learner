@@ -64,4 +64,5 @@ jobs:
           name: explorer-v3-mutation-detection-${{ github.run_number }}
           path: .mutation-audit/
           if-no-files-found: warn
+          include-hidden-files: true
           retention-days: 14
