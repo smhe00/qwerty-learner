@@ -157,7 +157,31 @@ for (const site of sites) {
       checkRoute(page, site)
 
       await page.goto(site.base + 'analysis?from=learn', { waitUntil: 'domcontentloaded' })
-      await expect(page.locator('[data-fsrs-shadow-analysis]')).toBeVisible({ timeout: 25_000 })
+      try {
+        await expect(page.locator('[data-fsrs-shadow-analysis]')).toBeVisible({ timeout: 25_000 })
+      } catch (error) {
+        // Minimal, non-sensitive diagnostics from a fresh anonymous browser.
+        // Never export dictionary contents, credentials or IndexedDB payloads.
+        const diagnostic = await page.evaluate(() => {
+          const node = document.querySelector('[data-fsrs-shadow-analysis]')
+          const style = node ? getComputedStyle(node) : null
+          const rect = node?.getBoundingClientRect()
+          const content = document.body.textContent || ''
+          return {
+            route: location.pathname,
+            analysisHeading: content.includes('Learn 数据统计'),
+            loading: content.includes('正在汇总 Learn 数据'),
+            loadFailure: content.includes('Learn 统计数据加载失败'),
+            fsrsNodePresent: Boolean(node),
+            display: style?.display || null,
+            visibility: style?.visibility || null,
+            nodeWidth: rect ? Math.round(rect.width) : null,
+            nodeHeight: rect ? Math.round(rect.height) : null,
+          }
+        })
+        console.error('PUBLISHED_FSRS_DIAGNOSTIC', JSON.stringify({ site: site.name, ...diagnostic }))
+        throw error
+      }
       checkRoute(page, site)
 
       await page.goto(site.base, { waitUntil: 'domcontentloaded' })
@@ -171,14 +195,13 @@ for (const site of sites) {
 
       await page.getByRole('button', { name: '打开设置对话框' }).click()
       await page.getByRole('tab', { name: '数据设置' }).click()
+      await expect(page.getByText('本地备份', { exact: true })).toBeVisible()
       if (site.cloud) {
-        // EdgeOne master retains the pre-P1 '数据导出' header, while the
-        // Pages product/main UI labels the corresponding section '本地备份'.
-        await expect(page.getByText('数据导出', { exact: true })).toBeVisible()
-        await expect(page.getByText('云端同步', { exact: true })).toBeVisible()
+        // Latest production and development code share the P1 data settings.
+        // Only Pages disables cloud account UI and cloud writes.
+        await expect(page.getByText('云端同步与账号', { exact: true })).toBeVisible()
         await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible()
       } else {
-        await expect(page.getByText('本地备份', { exact: true })).toBeVisible()
         await expect(page.getByText('云端同步与账号', { exact: true })).toHaveCount(0)
         await expect(page.getByRole('button', { name: '登录', exact: true })).toHaveCount(0)
       }
