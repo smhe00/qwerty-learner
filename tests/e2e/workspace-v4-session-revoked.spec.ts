@@ -7,6 +7,8 @@ const TOKEN_B = 's1-device-B-token'
 
 class SessionServer {
   current = TOKEN_A
+  overrideAuthError: { status: number; code: string } | null = null
+  meChecks = 0
   readonly user = { userId: OWNER.accountId, username: 'revocation-test' }
 
   async route(route: Route): Promise<void> {
@@ -20,6 +22,14 @@ class SessionServer {
       return
     }
     if (req.url().endsWith('/api/auth/me')) {
+      this.meChecks++
+      if (this.overrideAuthError) {
+        await route.fulfill({ status: this.overrideAuthError.status,
+          json: { ok: false, error: this.overrideAuthError.code,
+            message: 'not a takeover' },
+        })
+        return
+      }
       const bearer = req.headers().authorization || ''
       if (bearer !== 'Bearer ' + this.current) {
         await route.fulfill({ status: 401, json: {
@@ -136,18 +146,13 @@ test('network 503 and session_expired never falsely force anonymous logout', asy
   const a = await context(browser, server)
   try {
     const page = await setupAccount(a, TOKEN_A, true)
-    await a.unroute(/\/api\/auth\/(?:me|login)(?:\?|$)/)
-    let error = 'temporary_unavailable'
-    let status = 503
-    await a.route('**/api/auth/me', async route => route.fulfill({
-      status, json: { ok: false, error, message: 'not a takeover' },
-    }))
+    server.overrideAuthError = { status: 503, code: 'temporary_unavailable' }
     await page.goto('/')
-    await page.bringToFront()
+    await expect.poll(() => server.meChecks).toBeGreaterThan(0)
     await expect(page.getByRole('alertdialog')).toHaveCount(0)
-    status = 401
-    error = 'session_expired'
+    server.overrideAuthError = { status: 401, code: 'session_expired' }
     await page.reload()
+    await expect.poll(() => server.meChecks).toBeGreaterThan(1)
     await expect(page.getByRole('alertdialog')).toHaveCount(0)
     await page.goto('/tests/e2e/backup-harness.html')
     const state = await page.evaluate(async () => {
