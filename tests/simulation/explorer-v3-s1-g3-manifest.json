@@ -1,0 +1,137 @@
+{
+  "schema": "explorer-v3-s1-g3-independent-holdout-v1",
+  "frozenAt": "2026-10-10",
+  "protocol": "Frozen 20 new source mutants prior to first run, existing S1 and Backup V4 tests unmodified, no post-score adjustment; 0 min kill-rate. Distinct from Playwright browser mutation coverage.",
+  "detectors": {
+    "transition": {
+      "source": "src/sync/workspace-transition.ts",
+      "test": "tests/cloud/workspace-transition.test.mjs"
+    },
+    "snapshot": {
+      "source": "src/sync/workspace-v4.ts",
+      "test": "tests/cloud/workspace-v4.test.mjs"
+    }
+  },
+  "mutations": [
+    {
+      "domain": "transition",
+      "id": "switch-omits-writer-flush",
+      "from": "await replica.flush()",
+      "to": "await Promise.resolve()"
+    },
+    {
+      "domain": "transition",
+      "id": "switch-skips-source-vault-save",
+      "from": "await replica.saveSource(prior.active)",
+      "to": "await Promise.resolve()"
+    },
+    {
+      "domain": "transition",
+      "id": "switch-allows-direct-cross-account",
+      "from": "if (prior.active.kind === 'account' && target.kind === 'account') {",
+      "to": "if (false && prior.active.kind === 'account' && target.kind === 'account') {"
+    },
+    {
+      "domain": "transition",
+      "id": "switch-ignores-unrecovered-journal",
+      "from": "if (prior.pending) throw new Error('Pending switch requires recovery')",
+      "to": "if (false && prior.pending) throw new Error('Pending switch requires recovery')"
+    },
+    {
+      "domain": "transition",
+      "id": "switch-incorrect-journal-destination",
+      "from": "pending: { from: prior.active, to: target, transactionId: preparedGeneration },",
+      "to": "pending: { from: prior.active, to: prior.active, transactionId: preparedGeneration },"
+    },
+    {
+      "domain": "transition",
+      "id": "switch-claims-journal-before-CAS",
+      "from": "await port.compareAndSwap(prior.generation, pending)\n    journalPersisted = true",
+      "to": "journalPersisted = true\n    await port.compareAndSwap(prior.generation, pending)"
+    },
+    {
+      "domain": "transition",
+      "id": "switch-commits-wrong-active-owner",
+      "from": "...pending, generation: advance(preparedGeneration), active: target, pending: null,",
+      "to": "...pending, generation: advance(preparedGeneration), active: prior.active, pending: null,"
+    },
+    {
+      "domain": "transition",
+      "id": "switch-loss-of-crash-recovery-signal",
+      "from": "if (journalPersisted) {",
+      "to": "if (false && journalPersisted) {"
+    },
+    {
+      "domain": "transition",
+      "id": "recover-restores-original-instead-of-destination",
+      "from": "await replica.restoreTarget(prior.pending.to)",
+      "to": "await replica.restoreTarget(prior.pending.from)"
+    },
+    {
+      "domain": "transition",
+      "id": "recover-does-not-clear-pending",
+      "from": "active: prior.pending.to, pending: null,",
+      "to": "active: prior.pending.to, pending: prior.pending,"
+    },
+    {
+      "domain": "transition",
+      "id": "recover-commits-wrong-active-owner",
+      "from": "active: prior.pending.to, pending: null,",
+      "to": "active: prior.active, pending: null,"
+    },
+    {
+      "domain": "transition",
+      "id": "switch-progress-callback-errors-escape",
+      "from": "try { cb?.(phase) } catch { /* UI observers cannot abort transactions */ }",
+      "to": "cb?.(phase)"
+    },
+    {
+      "domain": "snapshot",
+      "id": "v4-settings-admit-credential-fields",
+      "from": "if (!allowedSettings.has(key)) throw new Error(`Disallowed workspace setting: ${key}`)",
+      "to": "if (false && !allowedSettings.has(key)) throw new Error(`Disallowed workspace setting: ${key}`)"
+    },
+    {
+      "domain": "snapshot",
+      "id": "v4-migration-loses-unfinished-daily",
+      "from": "dailySessions: options.storage ? captureDailySessions(options.storage) : {},",
+      "to": "dailySessions: {},"
+    },
+    {
+      "domain": "snapshot",
+      "id": "v4-capture-ignores-daily-prefix",
+      "from": "if (!key?.startsWith(DAILY_SESSION_PREFIX)) continue",
+      "to": "if (key?.startsWith(DAILY_SESSION_PREFIX)) continue"
+    },
+    {
+      "domain": "snapshot",
+      "id": "v4-corrupt-daily-is-silently-skipped",
+      "from": "throw new Error(`Corrupt durable DailySession: ${dict}`)",
+      "to": "continue"
+    },
+    {
+      "domain": "snapshot",
+      "id": "v4-fingerprint-includes-volatile-metadata",
+      "from": "stableWorkspaceJson(canonicalWorkspaceData(snapshot.workspaceData))",
+      "to": "stableWorkspaceJson(snapshot)"
+    },
+    {
+      "domain": "snapshot",
+      "id": "v4-fingerprint-ignores-navigation",
+      "from": "navigation: data.navigation,",
+      "to": "navigation: { currentDict: 'dict', currentChapter: 0 },"
+    },
+    {
+      "domain": "snapshot",
+      "id": "v4-empty-account-identity-accepted",
+      "from": "value.accountId.trim().length > 0",
+      "to": "value.accountId.trim().length >= 0"
+    },
+    {
+      "domain": "snapshot",
+      "id": "v4-fingerprint-sensitive-to-row-order",
+      "from": "rows: [...entry.rows].sort((a, b) =>\n          stableWorkspaceJson(a).localeCompare(stableWorkspaceJson(b)))",
+      "to": "rows: [...entry.rows]"
+    }
+  ]
+}

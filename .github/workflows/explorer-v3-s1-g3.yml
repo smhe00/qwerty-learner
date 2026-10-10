@@ -1,0 +1,47 @@
+name: Explorer V3 G3 Independent S1 Holdout
+
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - 'tests/simulation/explorer-v3-s1-g3-manifest.json'
+      - 'scripts/explorer-v3-s1-g3.mjs'
+      - '.github/workflows/explorer-v3-s1-g3.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  holdout:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Install frozen dependencies
+        run: yarn install --frozen-lockfile
+      - name: Run frozen independent S1/Backup V4 mutation suite
+        run: |
+          set -o pipefail
+          node scripts/explorer-v3-s1-g3.mjs 2>&1 | tee explorer-g3.log
+      - name: Write transparent scorecard
+        if: always()
+        run: |
+          echo "## Explorer V3 — G3 unseen S1 and Backup V4 mutations" >> "$GITHUB_STEP_SUMMARY"
+          echo "Zero target kill rate; surviving new faults are retained for analysis." >> "$GITHUB_STEP_SUMMARY"
+          grep 'EXPLORER_V3_G3_INDEPENDENT_SCORECARD' explorer-g3.log | tail -1 >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Archive untouched first-run result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: explorer-v3-g3-s1-holdout-${{ github.run_number }}
+          path: |
+            explorer-g3.log
+            .mutation-audit/g3-s1-scorecard.json
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 30
