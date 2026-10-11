@@ -130,7 +130,8 @@ test('S1 actual Settings login refuses legacy auth before any network request', 
   // Account changes only happen through the pre-mount guarded S1 page.
   await expect(page.getByPlaceholder('用户名')).toHaveCount(0)
   await expect(page.getByPlaceholder('密码（4-128字符）')).toHaveCount(0)
-  const safeEntry = page.getByRole('button', { name: '安全登录 / 退出 / 切换账户' })
+  await expect(page.getByText('登录、注册及安全退出已统一移动到网站右上角的账户入口。', { exact: false })).toBeVisible()
+  const safeEntry = page.locator('[data-account-entry]')
   await expect(safeEntry).toBeVisible()
   expect(loginRequests).toBe(0)
   await safeEntry.click()
@@ -535,7 +536,7 @@ test('actual S1 account UI login then offline logout preserves both local worksp
     anonymousSaved: true,
   })
   await page.goto('/?s1-account=manage')
-  await page.getByRole('button', { name: '退出到匿名工作区' }).click()
+  await page.getByRole('button', { name: '安全退出登录' }).click()
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
   await harness(page)
   const afterLogout = await page.evaluate(async () => {
@@ -550,6 +551,64 @@ test('actual S1 account UI login then offline logout preserves both local worksp
     active: { kind: 'anonymous' }, wordCount: 1, auth: null,
   })
   expect(cloudMetaRequests).toBe(0)
+})
+
+test('S1 cancelling logout preserves immutable owner and never renders PointerEvent toast', async ({ page }) => {
+  await harness(page)
+  await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify({
+      token: 'logout-cancel-fixture',
+      expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      user: { userId: 'logout-cancel-owner', username: 'cancel-account' },
+    }))
+    await h.initializeLegacyWorkspace({ kind: 'account', accountId: 'logout-cancel-owner' })
+  })
+  await page.goto('/')
+  const account = page.locator('[data-account-entry]')
+  await expect(account).toContainText('cancel-account')
+  await account.click()
+  await expect(page.getByRole('dialog', { name: '安全账户管理（S1）' })).toBeVisible()
+  const back = page.getByRole('button', { name: '取消并返回学习' })
+  let logoutConfirmShown = false
+  page.once('dialog', async dialog => {
+    logoutConfirmShown = true
+    expect(dialog.message()).toContain('未同步学习进度')
+    await dialog.dismiss()
+  })
+  await page.getByRole('button', { name: '安全退出登录' }).click()
+  await expect(page.getByRole('status')).toContainText('用户已取消退出')
+  expect(logoutConfirmShown).toBe(true)
+  const beforeBack = await page.evaluate(() => ({
+    auth: JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null').user.userId,
+  }))
+  expect(beforeBack.auth).toBe('logout-cancel-owner')
+  await back.click()
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  expect((await page.locator('body').innerText())).not.toContain('[object PointerEvent]')
+  await harness(page)
+  const after = await page.evaluate(async () => ({
+    owner: (await (window as any).__backupHarness.workspaceRegistryPort.read()).active,
+    auth: JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null').user.userId,
+  }))
+  expect(after).toEqual({
+    owner: { kind: 'account', accountId: 'logout-cancel-owner' },
+    auth: 'logout-cancel-owner',
+  })
+})
+
+test('legacy account button requires explicit S1 ownership before login and never posts credentials', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.locator('[data-account-entry]')).toBeVisible()
+  let authCalls = 0
+  await page.route('**/api/auth/**', route => { authCalls++; void route.abort() })
+  await page.locator('[data-account-entry]').click()
+  await expect(page.getByText('S1 V1 数据归属测试（仅限本地开发）')).toBeVisible()
+  await expect(page.getByRole('button', { name: '确认归属并建立隔离工作区' })).toBeDisabled()
+  expect(authCalls).toBe(0)
+  await page.getByRole('button', { name: '取消，保持 V1' }).click()
+  await expect(page.locator('[data-account-entry]')).toBeVisible()
 })
 
 test('S1 registration explicitly copies full anonymous V4 data, preserving original', async ({ page }) => {
