@@ -181,7 +181,8 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
     controls.push(button('重新登录当前账户', () => safeRun(reauth)))
     controls.push(button('退出到匿名工作区', () => safeRun(logoutAction)))
   }
-  const back = button('返回学习', navigate)
+  // DOM event listeners receive PointerEvent; never stringify it as a toast.
+  const back = button('返回学习', () => navigate())
   controls.push(back)
   main.append(heading,current,authState,guidance,actions,status)
   root.replaceChildren(main)
