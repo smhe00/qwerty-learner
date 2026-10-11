@@ -39,7 +39,7 @@ jobs:
           mkdir -p .branch-tests
           npx esbuild tests/learn/acquisition-incident.test.ts tests/learn/daily-session.test.ts \
             --bundle --platform=node --target=node20 --format=esm \
-            --outdir=.branch-tests --out-extension:.js=.mjs
+            --outbase=tests --outdir=.branch-tests --out-extension:.js=.mjs
       - name: Run targeted Learn contracts
         run: node --test .branch-tests/learn/*.test.mjs
       - name: Verify production build
