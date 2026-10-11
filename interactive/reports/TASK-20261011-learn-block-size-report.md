@@ -49,3 +49,11 @@ No deployment or user/cloud data changes. Local hook wrapper references missing
 running validation. No CI workflows or validation assertions were disabled.
 
 Implementation commit: 48a6d94461e3e4b5e877c52e0ded2195a4b36352 (pushed to product/main).
+
+## Release authorization
+
+User explicitly requested “发布” on 2026-10-11 after feature completion.
+Release target: 3b36daae223f98c93e7718e896f723085ae382ee.
+Includes validated upstream frozen daily cohort/terminal tail change 583c44e5
+and block-size implementation 48a6d944. No account/cloud activation changes.
+The earlier development-only delivery statement is superseded by this release.
