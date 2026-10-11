@@ -3,7 +3,7 @@ import styles from './index.module.css'
 import { memoryConfigAtom } from '@/store'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { useAtom } from 'jotai'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 const MIN_DAILY_NEW_WORD_TARGET = 1
 const MAX_DAILY_NEW_WORD_TARGET = 200
@@ -18,6 +18,18 @@ function normalizeDailyNewWordTarget(value: number): number {
 
 export default function MemorySetting() {
   const [memoryConfig, setMemoryConfig] = useAtom(memoryConfigAtom)
+  const [blockSizeDraft, setBlockSizeDraft] = useState(() => String(normalizeLearnBlockSize(memoryConfig.blockSize)))
+
+  useEffect(() => {
+    setBlockSizeDraft(String(normalizeLearnBlockSize(memoryConfig.blockSize)))
+  }, [memoryConfig.blockSize])
+
+  const commitBlockSize = useCallback(() => {
+    const value = blockSizeDraft.trim() === '' ? NaN : Number(blockSizeDraft)
+    const blockSize = normalizeLearnBlockSize(Number.isFinite(value) ? value : memoryConfig.blockSize)
+    setBlockSizeDraft(String(blockSize))
+    setMemoryConfig((prev) => ({ ...prev, blockSize }))
+  }, [blockSizeDraft, memoryConfig.blockSize, setMemoryConfig])
 
   const onChangeDailyNewWordTarget = useCallback(
     (value: number) => {
@@ -47,14 +59,19 @@ export default function MemorySetting() {
                   min={MIN_LEARN_BLOCK_SIZE}
                   max={MAX_LEARN_BLOCK_SIZE}
                   step={1}
-                  value={normalizeLearnBlockSize(memoryConfig.blockSize)}
-                  onChange={(event) => setMemoryConfig((prev) => ({
-                    ...prev, blockSize: normalizeLearnBlockSize(Number(event.target.value)),
-                  }))}
+                  value={blockSizeDraft}
+                  onChange={(event) => setBlockSizeDraft(event.target.value)}
+                  onBlur={commitBlockSize}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      event.currentTarget.blur()
+                    }
+                  }}
                   aria-label="每阶段词数"
                   className="h-10 w-28 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none transition focus:border-indigo-400 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                 />
-                <span className="text-xs text-gray-400">可设置 {MIN_LEARN_BLOCK_SIZE}–{MAX_LEARN_BLOCK_SIZE}</span>
+                <span className="text-xs text-gray-400">可设置 {MIN_LEARN_BLOCK_SIZE}–{MAX_LEARN_BLOCK_SIZE}；输入完成后按 Enter 或移开焦点保存</span>
               </div>
             </div>
           </div>

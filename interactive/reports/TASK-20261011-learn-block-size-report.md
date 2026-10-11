@@ -89,3 +89,22 @@ running; Published Dual-Site Explorer failed. The latter was already failing
 on the pre-feature site's hidden cloud-account UI; no cloud/account feature
 is part of this release. Local feature/browser tests and actual EdgeOne
 checks passed; this report does not claim all CI checks are green.
+
+## Input-completion correction
+
+User reported that clamping on each keystroke prevents free multi-digit editing.
+MemorySetting now separates the raw input draft from the persisted blockSize.
+Change events only update the draft; Enter blurs the field, and blur validates
+and persists the completed value. Empty/non-finite drafts restore the prior
+saved value. Numeric completed values retain integer/range normalization 5–50.
+The UI describes Enter/blur saving. Daily target and scheduler policy unchanged.
+
+Three Chrome feature tests passed (8.4s): existing 5/50 block settings and
+recovery plus a new real-keystroke test for clearing, entering 2 then 0 without
+intermediate mutation/persistence, Enter save, deferred out-of-range clamping,
+and empty-input restoration. Changed-source ESLint passed with zero errors or
+warnings. Build passed in 5.47s; git diff --check passed.
+
+This corrects the same feature the user already requested to publish. Existing
+release authorization is continued for this input fix. Execution base:
+6ba4852808786c882f5440cf2e9bff686ccbf55c. No unrelated task pointer changes.
