@@ -184,3 +184,26 @@ test('S2 cloud revision advancing during Pull refuses restore before journaling'
   assert.equal(f.state.baseline, null)
   assert.equal(f.state.calls.includes('restore'), false)
 })
+
+
+test('S2 overlaps read-only remote metadata with snapshot capture, after writer flush', async () => {
+  const local = snap(2)
+  const c = await cloud(local, 4)
+  const f = fixture(local, c.meta)
+  let resolveCapture
+  let hadFlush = false
+  let metadataWhileCapturePending = false
+  f.port.flush = async () => { hadFlush = true }
+  f.port.capture = async () => new Promise(resolve => {
+    resolveCapture = () => resolve(structuredClone(local))
+  })
+  f.port.getMeta = async () => {
+    assert.equal(hadFlush, true)
+    metadataWhileCapturePending = typeof resolveCapture === 'function'
+    resolveCapture()
+    return structuredClone(c.meta)
+  }
+  assert.deepEqual(await executeManualSyncV2(f.port), { status: 'noop', revision: 4 })
+  assert.equal(metadataWhileCapturePending, true)
+  assert.equal(f.state.calls.includes('upload'), false)
+})
