@@ -16,6 +16,7 @@ import {
 import { planLearnAcquisitionCandidates } from '../../src/learn/session'
 import { createLearnDailySession, deriveLearnDailyProgress, planLearnBlockMilestones } from '../../src/learn/daily-session'
 import { createInitialReviewWordState } from '../../src/review/types'
+import { rebuildActiveFsrsStateFromWordRecords } from '../../src/review/fsrs/active'
 import type { IWordRecord, IReviewRecord } from '../../src/utils/db/record'
 
 const word = { name: 'accurate', trans: [], usphone: '', ukphone: '' }
@@ -457,4 +458,18 @@ test('terminal probes are not selected while regular learning work exists', () =
     allowTerminalProbeOnIdle: false,
   })
   assert.equal(blocked.resumed.length, 0)
+})
+
+
+test('terminal admission schedules an earlier FSRS follow-up without changing r0.84', () => {
+  const state = resumeDeferredAsTerminalProbe({
+    version: 1, phase: 'deferred', assistedCycles: 2,
+    deferredReason: 'spacing', resumeAfter: NOW + 300,
+  })!
+  const plan = createLearnAcquisitionExercisePlanForState(state)
+  const record = attempt({ reviewPolicyDecision: plan.decision })
+  const result = rebuildActiveFsrsStateFromWordRecords('incident', word.name, [record])
+  assert.ok(result)
+  assert.equal(result!.nextReviewAt, NOW + 4 * 3600)
+  assert.equal(result!.reviewCount, 0, 'admission must not masquerade as a Review rating')
 })
