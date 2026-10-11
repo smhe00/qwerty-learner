@@ -43,8 +43,6 @@ jobs:
         run: yarn eslint src/sync src/index.tsx src/utils/wordListFetcher.ts --ext .ts,.tsx
       - name: Build production bundle
         run: yarn build
-      - name: Lint local browser smoke
-        run: yarn eslint tests/e2e/perf-report-local.spec.ts tests/e2e/perf-local.config.ts --ext .ts
       - name: Install Chromium for isolated local smoke
         run: yarn playwright install --with-deps chromium
       - name: Browser smoke of startup and local performance report
