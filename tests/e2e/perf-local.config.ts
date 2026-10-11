@@ -13,6 +13,7 @@ export default defineConfig({
   timeout: 30_000,
   use: {
     ...devices['Desktop Chrome'],
+    channel: 'chrome',
     baseURL: 'http://127.0.0.1:4173',
   },
   projects: [{ name: 'chromium' }],
