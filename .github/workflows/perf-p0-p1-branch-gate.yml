@@ -1,0 +1,39 @@
+name: Performance P0-P1 Branch Gate
+
+# Temporary feature-branch verification. No EdgeOne deployment.
+on:
+  push:
+    branches:
+      - feature/perf-boot-sync-p0-p1-20261011
+    paths:
+      - 'src/**'
+      - 'tests/cloud/**'
+      - 'cloud-functions/**'
+      - '.github/workflows/perf-p0-p1-branch-gate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: 'yarn'
+      - name: Install locked dependencies
+        run: yarn install --frozen-lockfile
+      - name: Run cloud V4 and S1/S2 contracts
+        run: yarn test:cloud
+      - name: Lint server and cloud tests
+        run: yarn eslint cloud-functions tests/cloud --ext .js,.mjs
+      - name: Lint modified frontend and sync
+        run: yarn eslint src/sync src/index.tsx src/utils/wordListFetcher.ts --ext .ts,.tsx
+      - name: Build production bundle
+        run: yarn build
+      - name: Typecheck (diagnostic)
+        continue-on-error: true
+        run: yarn tsc --noEmit --pretty false
