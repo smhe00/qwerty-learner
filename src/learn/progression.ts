@@ -98,13 +98,24 @@ export function resolveLearnAcquisitionCompletion(
 
     if (
       independentEvidenceClean &&
-      (!hasSufficientIndependentSpacing(state) ||
+      ((!hasSufficientIndependentSpacing(state) && !state.terminalProbe) ||
         !isValidModernAcquisitionAdmissionRecord(input.record))
     ) {
       nextState = deferLearnAcquisitionForSpacing(
         state,
         input.now,
       )
+    } else if (state.terminalProbe && !independentEvidenceClean) {
+      // One failed final probe must not immediately recycle into another
+      // attempt or manufacture mastered/FSRS evidence.
+      nextState = {
+        ...state,
+        phase: 'deferred',
+        terminalProbe: undefined,
+        terminalProbeAttemptedAt: input.now,
+        deferredReason: 'assistance',
+        resumeAfter: input.now + 300,
+      }
     } else {
       nextState = decideLearnAcquisitionTransition(
         state,
