@@ -1,5 +1,8 @@
 # Qwerty Cloud Sync Operations & Security
 
+> **2026-10-11 V4 全账号开放：**全部有效登录账号均可使用云端 V4 Push，无需 `S2_SYNC_WRITE_ACCOUNT_IDS` 白名单。历史云端 V3 仍**不自动迁移**，普通 Sync 对 V3 返回 `remote-format-unsupported`，仅可经显式备份确认的高级恢复迁移。紧急全局停写使用服务端 `S2_SYNC_WRITES_DISABLED=true`。详见 [V4 GA 方案](./S2_V4_GENERAL_AVAILABILITY_20261011.md)。
+
+
 ## Scope
 
 This document covers production hardening that sits outside learning logic:
