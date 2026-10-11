@@ -1,5 +1,7 @@
 import {
   deriveLearnDailyProgress,
+  deriveLearnExecutionProgress,
+  getLearnExtraRoundNames,
   loadLearnDailySession,
 } from '@/learn/daily-session'
 import { TypingContext } from '@/pages/Typing/store'
@@ -58,6 +60,8 @@ export default function LearnLiveStats() {
     })
   }, [daily, wordRecords])
 
+  const extraProgress = daily && getLearnExtraRoundNames(daily) ? deriveLearnExecutionProgress({ session: daily, wordRecords: wordRecords ?? [] }) : null
+
   const dailySeconds =
     (daily?.accumulatedActiveSeconds ?? 0) + state.timerData.time
 
@@ -70,6 +74,7 @@ export default function LearnLiveStats() {
         info={formatClock(dailySeconds)}
         description="学习时间"
       />
+      {extraProgress ? <InfoBox info={`${extraProgress.completedWords}/${extraProgress.targetWords}`} description="本轮加学" /> : null}
       <InfoBox
         info={
           progress
@@ -81,7 +86,7 @@ export default function LearnLiveStats() {
       <InfoBox
         info={
           daily && progress
-            ? `${progress.introducedNewWords}/${daily.dailyNewTarget}`
+            ? `${progress.introducedNewWords}/${progress.newTargetWords}`
             : '0/0'
         }
         description="今日新词"
@@ -95,8 +100,8 @@ export default function LearnLiveStats() {
         description="今日复习"
       />
       <InfoBox
-        info={String(progress?.remainingWords ?? 0)}
-        description="待完成"
+        info={String(extraProgress?.remainingWords ?? progress?.remainingWords ?? 0)}
+        description={extraProgress ? '本轮待完成' : '待完成'}
       />
     </div>
   )

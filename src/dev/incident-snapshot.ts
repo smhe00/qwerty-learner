@@ -53,6 +53,8 @@ function collectSafeLocalStorage() {
     'currentDict',
     'currentChapter',
     'reviewModeInfo',
+    'memoryConfig',
+    ...Object.keys(window.localStorage).filter(key => key.startsWith('qwerty.learn.dailySession.v1.')),
     DEVELOPER_DIAGNOSTICS_CONFIG_KEY,
     'pronunciation',
     'loopWordConfig',

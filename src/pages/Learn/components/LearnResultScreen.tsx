@@ -1,4 +1,4 @@
-import { addLearnDailyNewWords, loadLearnDailySession } from '@/learn/daily-session'
+import { addLearnDailyNewWords, getLearnExtraRoundNames, loadLearnDailySession } from '@/learn/daily-session'
 import { db } from '@/utils/db/core'
 import { getReviewWordStates } from '@/review/repository'
 import { wordListFetcher } from '@/utils/wordListFetcher'
@@ -323,6 +323,7 @@ export default function LearnResultScreen() {
   const milestoneIndex = settlement?.milestoneReached === undefined
     ? -1
     : (settlement.session.blockMilestones ?? []).indexOf(settlement.milestoneReached)
+  const isExtraRound = !!getLearnExtraRoundNames(settlement?.session ?? null)
   const isDailyComplete = progress?.complete === true
   const totalActiveSeconds = settlement
     ? settlement.session.accumulatedActiveSeconds
@@ -353,7 +354,7 @@ export default function LearnResultScreen() {
               {currentDictInfo.name} · Learn
             </div>
             <h1 className="mt-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
-              {isDailyComplete ? '今日学习完成' : milestoneIndex >= 0
+              {isDailyComplete ? getLearnExtraRoundNames(settlement?.session ?? null) ? '本次加学完成' : '今日学习完成' : milestoneIndex >= 0
                 ? `阶段 ${milestoneIndex + 1} 完成`
                 : settlement?.session.blockMilestones ? '继续学习' : '阶段完成'}
             </h1>
@@ -379,7 +380,7 @@ export default function LearnResultScreen() {
 
             {progress && isDailyComplete ? (
               <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-                今日计划中的复习和新词已经完成最终独立拼写。
+                {getLearnExtraRoundNames(settlement?.session ?? null) ? '本轮追加的新词已完成，其他未掌握词已保留。' : '今日计划中的复习和新词已经完成最终独立拼写。'}
               </p>
             ) : null}
           </div>
@@ -395,17 +396,17 @@ export default function LearnResultScreen() {
 
               <div className="mt-8 flex flex-wrap justify-center gap-4">
                 <SummaryMetric
-                  label="今日进度"
+                  label={isExtraRound ? '本轮进度' : '今日进度'}
                   value={`${progress.completedWords}/${progress.targetWords}`}
                   detail={`${progress.percent}%`}
                 />
                 <SummaryMetric
-                  label="今日新词"
-                  value={`${progress.introducedNewWords}/${settlement?.session.dailyNewTarget ?? 0}`}
+                  label={isExtraRound ? '本轮新词' : '今日新词'}
+                  value={`${progress.introducedNewWords}/${progress.newTargetWords}`}
                   detail={`独立完成 ${progress.completedNewWords}`}
                 />
                 <SummaryMetric
-                  label="今日复习"
+                  label={isExtraRound ? '本轮复习' : '今日复习'}
                   value={`${progress.completedReviewWords}/${progress.reviewTargetWords}`}
                   detail="最终独立拼写"
                 />

@@ -8,7 +8,9 @@ import {
   repairUnadmittedAcquisitionCheckpoint,
 } from '@/learn/acquisition-recovery'
 import {
-  deriveLearnDailyProgress,
+  deriveLearnExecutionProgress,
+  getLearnExtraRoundNames,
+  isLearnSessionOutsideExtraRound,
   learnLocalDateKey,
   loadLearnDailySession,
 } from '@/learn/daily-session'
@@ -71,6 +73,10 @@ export async function getLatestReviewRecord(dictID: string): Promise<ReviewRecor
     .pop()
 
   if (!latest) return undefined
+  if (isLearnSessionOutsideExtraRound(latest, loadLearnDailySession(dictID))) {
+    await putWordReviewRecord({ ...latest, isFinished: true } as ReviewRecord)
+    return undefined
+  }
 
   // Checkpoint recovery is lifecycle-owned. Review keeps only ACTIVE words.
   // Acquisition keeps only words with no persistent lifecycle state, so a
@@ -267,29 +273,22 @@ export async function generateLearnMixedSessionRecord(
     },
   )
   const dailySession = loadLearnDailySession(dictID)
+  const extraNames = getLearnExtraRoundNames(dailySession)
   const plannedReviewNames =
     dailySession?.status === 'active'
-      ? new Set(dailySession.plannedReviewWords)
+      ? new Set(dailySession.plannedReviewWords.filter(name => !extraNames || extraNames.includes(name)))
       : null
-  const dueWords = rankDueReviewCandidates(
-    selectReviewCandidates(
-      reviewCandidates,
-      states,
-      now,
-      'due',
-    ),
-    states,
-  )
-    .map((item) => item.originData)
-    .filter(
-      (word) =>
-        plannedReviewNames === null ||
-        plannedReviewNames.has(word.name),
-    )
+  const completed = dailySession ? new Set(deriveLearnExecutionProgress({ session: dailySession, wordRecords }).independentCompletedWords) : new Set<string>()
+  const dueWords = extraNames
+    ? words.filter(word => plannedReviewNames?.has(word.name) && !completed.has(word.name))
+    : rankDueReviewCandidates(
+        selectReviewCandidates(reviewCandidates, states, now, 'due'), states,
+      ).map(item => item.originData).filter(word => plannedReviewNames === null || plannedReviewNames.has(word.name))
+
 
   const dailyProgress =
     dailySession?.status === 'active'
-      ? deriveLearnDailyProgress({
+      ? deriveLearnExecutionProgress({
           session: dailySession,
           wordRecords,
         })
@@ -300,7 +299,7 @@ export async function generateLearnMixedSessionRecord(
           Math.max(0, Math.floor(freshLimit)),
           Math.max(
             0,
-            dailySession.plannedNewWords -
+            (dailyProgress?.newTargetWords ?? dailySession.plannedNewWords) -
               (dailyProgress?.introducedNewWords ?? 0),
           ),
         )
@@ -315,10 +314,10 @@ export async function generateLearnMixedSessionRecord(
       .map((record) => record.word),
     freshLimit: freshAllowance,
     blockSize,
-    allowedNewWordNames: dailySession?.plannedNewWordNames,
-    allowedAcquisitionNames: dailySession?.plannedNewWordNames
+    allowedNewWordNames: getLearnExtraRoundNames(dailySession) ?? dailySession?.plannedNewWordNames,
+    allowedAcquisitionNames: getLearnExtraRoundNames(dailySession) ?? (dailySession?.plannedNewWordNames
       ? [...dailySession.carryOverAcquisitionWords, ...dailySession.plannedNewWordNames]
-      : undefined,
+      : undefined),
     continuous: dueWords.length > 0,
     spacingCandidateNames: dueWords.map((word) => word.name),
     allowTerminalProbeOnIdle: dueWords.length === 0,
@@ -406,7 +405,7 @@ export async function generateLearnMixedSessionRecord(
     sessionKind,
   )
   // Optional introductions supply real intervening work, but never expand the frozen target.
-  if (dailySession?.status === 'active' && dailySession.plannedNewWordNames) {
+  if (dailySession?.status === 'active' && dailySession.plannedNewWordNames && !getLearnExtraRoundNames(dailySession)) {
     const known = new Set([
       ...dailySession.plannedNewWordNames,
       ...dailySession.carryOverAcquisitionWords,
@@ -446,7 +445,16 @@ async function getPendingAcquisitionStates(
     getReviewWordStates(dictID),
     db.wordRecords.where('dict').equals(dictID).toArray(),
   ])
-  return collectPendingAcquisitionStates({ records, wordRecords, wordStates })
+  const pending = collectPendingAcquisitionStates({ records, wordRecords, wordStates })
+  const daily = loadLearnDailySession(dictID)
+  // A user-requested round allows a new attempt, retaining the real spacing state.
+  for (const [name, state] of Array.from(pending)) {
+    if (daily?.extraRoundStartedAt && daily.extraRoundWordNames?.includes(name) &&
+        state.terminalProbeAttemptedAt !== undefined && state.terminalProbeAttemptedAt < daily.extraRoundStartedAt) {
+      pending.set(name, { ...state, terminalProbeAttemptedAt: undefined })
+    }
+  }
+  return pending
 }
 
 async function getDeferredAcquisitionStates(
@@ -455,7 +463,7 @@ async function getDeferredAcquisitionStates(
   const pending = await getPendingAcquisitionStates(dictID)
   const daily = loadLearnDailySession(dictID)
   const frozen = daily?.status === 'active' && daily.plannedNewWordNames
-    ? new Set([...daily.carryOverAcquisitionWords, ...daily.plannedNewWordNames])
+    ? new Set(getLearnExtraRoundNames(daily) ?? [...daily.carryOverAcquisitionWords, ...daily.plannedNewWordNames])
     : undefined
   return new Map(
     [...pending].filter(
@@ -509,7 +517,7 @@ export async function generateNewWordAcquisitionRecord(
   const dailySession = loadLearnDailySession(dictID)
   const dailyProgress =
     dailySession?.status === 'active'
-      ? deriveLearnDailyProgress({
+      ? deriveLearnExecutionProgress({
           session: dailySession,
           wordRecords,
         })
@@ -520,7 +528,7 @@ export async function generateNewWordAcquisitionRecord(
           requestedFreshLimit,
           Math.max(
             0,
-            dailySession.plannedNewWords -
+            (dailyProgress?.newTargetWords ?? dailySession.plannedNewWords) -
               (dailyProgress?.introducedNewWords ?? 0),
           ),
         )
@@ -535,10 +543,10 @@ export async function generateNewWordAcquisitionRecord(
       .map((record) => record.word),
     freshLimit,
     blockSize,
-    allowedNewWordNames: dailySession?.plannedNewWordNames,
-    allowedAcquisitionNames: dailySession?.plannedNewWordNames
+    allowedNewWordNames: getLearnExtraRoundNames(dailySession) ?? dailySession?.plannedNewWordNames,
+    allowedAcquisitionNames: getLearnExtraRoundNames(dailySession) ?? (dailySession?.plannedNewWordNames
       ? [...dailySession.carryOverAcquisitionWords, ...dailySession.plannedNewWordNames]
-      : undefined,
+      : undefined),
     continuous: false,
     allowTerminalProbeOnIdle: true,
     now,

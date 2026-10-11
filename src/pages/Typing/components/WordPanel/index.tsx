@@ -13,7 +13,7 @@ import {
   createLearnAcquisitionState,
   getLearnAcquisitionScaffoldDecision,
 } from '@/learn/acquisition'
-import { deriveLearnDailyProgress, loadLearnDailySession, saveLearnDailySession } from '@/learn/daily-session'
+import { deriveLearnExecutionProgress, getLearnExtraRoundNames, loadLearnDailySession, saveLearnDailySession } from '@/learn/daily-session'
 import { db } from '@/utils/db/core'
 import { flushLearnPersistence, trackLearnPersistence } from '@/learn/persistence'
 import { resolveLearnAcquisitionCompletion } from '@/learn/progression'
@@ -214,12 +214,12 @@ export default function WordPanel() {
       }
 
       let dailyComplete = false
-      if (isReviewMode && reviewModeInfo.reviewRecord?.optionalNewWords?.length) {
+      if (isReviewMode && (reviewModeInfo.reviewRecord?.optionalNewWords?.length || getLearnExtraRoundNames(loadLearnDailySession(currentDictId)))) {
         await flushLearnPersistence()
         const daily = loadLearnDailySession(currentDictId)
         if (daily?.status === 'active') {
           const records = await db.wordRecords.where('dict').equals(currentDictId).toArray()
-          dailyComplete = deriveLearnDailyProgress({ session: daily, wordRecords: records }).complete
+          dailyComplete = deriveLearnExecutionProgress({ session: daily, wordRecords: records }).complete
         }
       }
 

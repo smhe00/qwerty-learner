@@ -23,6 +23,9 @@ export type LearnDailySessionV1 = {
   status: LearnDailySessionStatus
   dailyNewTarget: number
   optionalNewWordNames?: string[]
+  /** Frozen identities for one explicit round of up to five unfinished/new words. */
+  extraRoundWordNames?: string[]
+  extraRoundStartedAt?: number
   /** No executable work remains today; unresolved words are retained. */
   executionExhausted?: boolean
   extraNewWordCount?: number
@@ -429,8 +432,16 @@ export function addLearnDailyNewWords(input: {
     ...input.wordStates.map(state => state.word),
     ...Array.from(firstAcquisitionIntroductionByWord(input.wordRecords).keys()),
   ])
-  const added = uniqueNames(input.dictionaryWords).filter(name => !known.has(name)).slice(0, 5)
-  if (!added.length) return session
+  const completed = new Set(deriveLearnDailyProgress({ session, wordRecords: input.wordRecords }).independentCompletedWords)
+  const dictionary = new Set(input.dictionaryWords)
+  const optionalPending = Array.from(firstAcquisitionIntroductionByWord(input.wordRecords).keys())
+    .filter(name => !input.wordStates.some(state => state.word === name) &&
+      !input.wordRecords.some(record => record.word === name && isCompletedAcquisitionRecord(record)))
+  const unfinished = uniqueNames([...session.plannedReviewWords, ...session.carryOverAcquisitionWords, ...(session.plannedNewWordNames ?? []), ...optionalPending])
+    .filter(name => dictionary.has(name) && !completed.has(name)).slice(0, 5)
+  const added = uniqueNames(input.dictionaryWords).filter(name => !known.has(name)).slice(0, 5 - unfinished.length)
+  const round = [...unfinished, ...added]
+  if (!round.length) return session
   const plannedNewWords = session.plannedNewWords + added.length
   const previousTotal = session.plannedReviewWords.length + session.carryOverAcquisitionWords.length + session.plannedNewWords
   return saveLearnDailySession({
@@ -440,7 +451,35 @@ export function addLearnDailyNewWords(input: {
     executionExhausted: undefined,
     plannedNewWords,
     extraNewWordCount: (session.extraNewWordCount ?? 0) + added.length,
+    extraRoundWordNames: round,
+    extraRoundStartedAt: input.now,
+    carryOverAcquisitionWords: uniqueNames([...session.carryOverAcquisitionWords, ...unfinished.filter(name => !session.plannedReviewWords.includes(name) && !(session.plannedNewWordNames ?? []).includes(name))]),
     plannedNewWordNames: [...(session.plannedNewWordNames ?? deriveLearnDailyProgress({ session, wordRecords: input.wordRecords }).introducedNewWordNames), ...added],
     blockMilestones: [...(session.blockMilestones ?? []), previousTotal + added.length],
   })
+}
+
+
+/** Legacy add-five sessions recover the most recently appended five identities. */
+export function getLearnExtraRoundNames(session: LearnDailySessionV1 | null): string[] | undefined {
+  if (!session) return undefined
+  if (session.extraRoundWordNames) return session.extraRoundWordNames
+  if (!(session.extraNewWordCount ?? 0)) return undefined
+  return session.plannedNewWordNames?.slice(-Math.min(5, session.extraNewWordCount ?? 0))
+}
+
+export function deriveLearnExecutionProgress(input: { session: LearnDailySessionV1; wordRecords: IWordRecord[] }): LearnDailyProgress {
+  const names = getLearnExtraRoundNames(input.session)
+  return deriveLearnDailyProgress({ ...input, session: names ? {
+    ...input.session,
+    plannedNewWords: names.filter(name => !input.session.plannedReviewWords.includes(name) && !input.session.carryOverAcquisitionWords.includes(name)).length,
+    plannedNewWordNames: names.filter(name => !input.session.plannedReviewWords.includes(name) && !input.session.carryOverAcquisitionWords.includes(name)),
+    plannedReviewWords: input.session.plannedReviewWords.filter(name => names.includes(name)),
+    carryOverAcquisitionWords: input.session.carryOverAcquisitionWords.filter(name => names.includes(name)),
+  } : input.session })
+}
+
+export function isLearnSessionOutsideExtraRound(record: { words: Array<{ name: string }>; optionalNewWords?: Array<{ name: string }> }, session: LearnDailySessionV1 | null): boolean {
+  const names = getLearnExtraRoundNames(session)
+  return !!names && (!!record.optionalNewWords?.length || record.words.some(word => !names.includes(word.name)))
 }

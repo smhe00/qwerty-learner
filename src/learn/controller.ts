@@ -1,7 +1,9 @@
 import {
   completeLearnDailySession,
   deriveLearnDailyProgress,
+  deriveLearnExecutionProgress,
   ensureLearnDailySession,
+  getLearnExtraRoundNames,
   saveLearnDailySession,
 } from './daily-session'
 import type { LearnDailySessionV1 } from './daily-session'
@@ -161,7 +163,7 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
     wordRecords,
     wordStates,
   })
-  const recoveredDailyProgress = deriveLearnDailyProgress({
+  const recoveredDailyProgress = deriveLearnExecutionProgress({
     session: dailySession,
     wordRecords,
   })
@@ -169,7 +171,13 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
     dailySession.status === 'active' &&
     recoveredDailyProgress.complete
   ) {
-    dailySession = completeLearnDailySession(dailySession, now)
+    dailySession = deriveLearnDailyProgress({ session: dailySession, wordRecords }).complete
+      ? completeLearnDailySession(dailySession, now)
+      : saveLearnDailySession({ ...dailySession, executionExhausted: true })
+  }
+
+  if (dailySession.executionExhausted && recoveredDailyProgress.complete) {
+    return wait('daily-complete', '本次加学已完成；未掌握的原计划词已保留。', { now, stats, dailySession, allowedNewWordsNow: 0 })
   }
 
   if (dailySession.status === 'completed') {
@@ -188,8 +196,8 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
   const quota = (dependencies.decideQuota ?? decideDailyAcquisitionQuota)(
     stats,
     undefined,
-    dailySession.plannedNewWordNames && ((dailySession.extraNewWordCount ?? 0) > 0 || (dailySession.optionalNewWordNames?.length ?? 0) > 0)
-      ? stats.today.introducedWords + Math.max(0, dailySession.plannedNewWords - recoveredDailyProgress.introducedNewWords)
+    dailySession.plannedNewWordNames && (getLearnExtraRoundNames(dailySession) !== undefined || (dailySession.optionalNewWordNames?.length ?? 0) > 0)
+      ? stats.today.introducedWords + Math.max(0, recoveredDailyProgress.newTargetWords - recoveredDailyProgress.introducedNewWords)
       : dailySession.dailyNewTarget,
   )
   const dailyPlan =
@@ -298,7 +306,7 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
 
   if (dailySession.status === 'active' && recoveredDailyProgress.remainingWords > 0 &&
       nextResumeAt === undefined &&
-      recoveredDailyProgress.introducedNewWords >= dailySession.plannedNewWords) {
+      recoveredDailyProgress.introducedNewWords >= recoveredDailyProgress.newTargetWords) {
     dailySession = saveLearnDailySession({ ...dailySession, executionExhausted: true })
     diagnostics.dailySession = dailySession
     return wait(

@@ -17,6 +17,7 @@ export function continueAcquisitionWithPractice(
 ): LearnAcquisitionCompletionResolution {
   if ((input.spacingWords === undefined && input.optionalNewWords === undefined) || result.nextState.phase !== 'deferred')
     return result
+  if (input.optionalNewWords?.some(word => word.name === input.currentWord.name)) return result
   const reason = result.nextState.deferredReason
   if (reason !== 'spacing' && reason !== 'assistance') return result
 

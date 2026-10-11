@@ -3,6 +3,7 @@ import { getAchievementSessionId } from '@/achievement/session'
 import {
   completeLearnDailySession,
   deriveLearnDailyProgress,
+  deriveLearnExecutionProgress,
   loadLearnDailySession,
   recordLearnBlockCompletion,
   saveLearnDailySession,
@@ -89,7 +90,7 @@ export async function settleLearnBlockDurably(
     .where('dict')
     .equals(record.dict)
     .toArray()
-  const progress = deriveLearnDailyProgress({
+  const progress = deriveLearnExecutionProgress({
     session,
     wordRecords,
   })
@@ -112,7 +113,9 @@ export async function settleLearnBlockDurably(
   }
 
   if (progress.complete) {
-    session = completeLearnDailySession(session, now)
+    session = deriveLearnDailyProgress({ session, wordRecords }).complete
+      ? completeLearnDailySession(session, now)
+      : saveLearnDailySession({ ...session, executionExhausted: true })
     await flushLearnPersistence()
   }
 

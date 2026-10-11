@@ -60,22 +60,27 @@ test(`optional tail words never block daily completion; ${entry} five-more exten
   await page.getByRole('button', { name: '多学五词', exact: true }).click()
   await waitForActiveLearnSession(page)
   const after = await page.evaluate(() => JSON.parse(localStorage.getItem('qwerty.learn.dailySession.v1.cet4')!))
-  expect(after.plannedNewWords).toBe(6)
+  const unfinished = Object.entries(record.acquisitionStates).filter(([, state]: [string, any]) => state.phase !== 'complete').map(([name]) => name)
+  expect(after.extraRoundWordNames).toHaveLength(5)
+  expect(after.extraRoundWordNames.slice(0, unfinished.length)).toEqual(unfinished)
+  expect(after.plannedNewWords).toBe(6 - unfinished.length)
   expect(after.dailyNewTarget).toBe(1)
   expect(after.sessionId).toBe(before.sessionId)
   expect(after.completedBlockIds).toEqual(before.completedBlockIds)
   const admitted = after.plannedNewWordNames.slice(1)
-  expect(admitted).toHaveLength(5)
+  expect(admitted).toHaveLength(5 - unfinished.length)
   expect(admitted.every((name: string) => !Object.keys(record.acquisitionStates).includes(name))).toBe(true)
   await page.reload()
   await waitForActiveLearnSession(page)
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('qwerty.learn.dailySession.v1.cet4')!).plannedNewWords)).toBe(6)
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('qwerty.learn.dailySession.v1.cet4')!).plannedNewWords)).toBe(after.plannedNewWords)
 })
 
 }
 
 
-test('failed terminal recall offers five-more on landing and reload without false daily completion', async ({ page }) => {
+for (const migrateQueue of [false, true]) {
+test(`five-more prioritizes unfinished recall and caps the complete round at five words${migrateQueue ? '; repairs an old expanded queue' : ''}`, async ({ page }) => {
+  test.setTimeout(90000)
   await gotoReviewAppReady(page, '/typing')
   await page.evaluate(async () => {
     const now = Math.floor(Date.now() / 1000)
@@ -108,8 +113,59 @@ test('failed terminal recall offers five-more on landing and reload without fals
   await waitForActiveLearnSession(page)
   const daily = await page.evaluate(() => JSON.parse(localStorage.getItem('qwerty.learn.dailySession.v1.cet4')!))
   expect(daily.status).toBe('active')
-  expect(daily.plannedNewWords).toBe(6)
+  expect(daily.plannedNewWords).toBe(5)
   expect(daily.plannedNewWordNames[0]).toBe('cancel')
   expect(daily.executionExhausted).toBeUndefined()
   expect(daily.completedAt).toBeUndefined()
+  if (migrateQueue) {
+    const originalId = (await readReviewModeInfo(page)).reviewRecord.id
+    await page.evaluate(async () => {
+      const cached = JSON.parse(localStorage.getItem('reviewModeInfo')!)
+      cached.reviewRecord.words.push({ name: 'outside-round', trans: [], usphone: '', ukphone: '' })
+      cached.reviewRecord.optionalNewWords = [{ name: 'another-outside-word', trans: [], usphone: '', ukphone: '' }]
+      localStorage.setItem('reviewModeInfo', JSON.stringify(cached))
+      await new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open('RecordDB')
+        request.onerror = () => reject(request.error)
+        request.onsuccess = () => {
+          const db = request.result
+          const tx = db.transaction('reviewRecords', 'readwrite')
+          tx.objectStore('reviewRecords').put(cached.reviewRecord)
+          tx.oncomplete = () => { db.close(); resolve() }
+          tx.onerror = () => reject(tx.error)
+        }
+      })
+    })
+    await page.reload()
+    await waitForActiveLearnSession(page)
+    await expect.poll(async () => (await readReviewModeInfo(page)).reviewRecord.id).not.toBe(originalId)
+  }
+  const observed = new Set<string>()
+  for (let step = 0; step < 60; step++) {
+    if (await page.locator('[data-learn-daily-complete]').count()) break
+    if (await page.getByText('按任意键开始').isVisible()) await startTyping(page)
+    const record = (await readReviewModeInfo(page)).reviewRecord
+    const name = record.words[record.index].name
+    const phase = record.acquisitionStates[name]?.phase
+    observed.add(name)
+    if (name === 'cancel') expect(phase).toBe('independent')
+    expect(daily.extraRoundWordNames).toContain(name)
+    expect(record.optionalNewWords ?? []).toHaveLength(0)
+    await expect(page.locator('[data-learn-live-stats]')).toContainText('/5')
+    await page.keyboard.type(name, { delay: 20 })
+    await expect.poll(async () => {
+      if (await page.locator('[data-learn-daily-complete]').count()) return true
+      const next = (await readReviewModeInfo(page)).reviewRecord
+      return next.id !== record.id || next.index !== record.index || next.acquisitionStates[name]?.phase !== phase || next.isFinished
+    }).toBe(true)
+  }
+  await expect(page.getByRole('heading', { name: '本次加学完成', exact: true })).toBeVisible()
+  expect(observed.size).toBe(5)
+  const done = await page.evaluate(() => JSON.parse(localStorage.getItem('qwerty.learn.dailySession.v1.cet4')!))
+  expect(observed.has('cancel')).toBe(true)
+  expect(done.status).toBe('completed')
+  await page.getByRole('button', { name: '完成', exact: true }).click()
+  await expect(page.getByRole('button', { name: '多学五词', exact: true })).toBeVisible()
 })
+
+}

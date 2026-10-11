@@ -1,3 +1,4 @@
+import { isLearnSessionOutsideExtraRound } from '@/learn/daily-session'
 import Layout from '../../components/Layout'
 import ModeSwitcher from '@/components/ModeSwitcher'
 import { DictChapterButton } from './components/DictChapterButton'
@@ -230,7 +231,7 @@ const App: React.FC = () => {
     if (
       !isReviewMode ||
       !record ||
-      !shouldRotateOversizedLearnSession(record)
+      !(shouldRotateOversizedLearnSession(record) || isLearnSessionOutsideExtraRound(record, loadLearnDailySession(record.dict)))
     ) {
       return
     }
@@ -263,7 +264,7 @@ const App: React.FC = () => {
         })
         navigate('/learn', {
           replace: true,
-          state: { idle: true },
+          state: isLearnSessionOutsideExtraRound(record, loadLearnDailySession(record.dict)) ? { autoStart: true } : { idle: true },
         })
       })
       .catch((error) => {

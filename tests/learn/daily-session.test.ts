@@ -2,6 +2,9 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   addLearnDailyNewWords,
+  deriveLearnExecutionProgress,
+  getLearnExtraRoundNames,
+  isLearnSessionOutsideExtraRound,
   createLearnDailySession,
   deriveLearnDailyProgress,
   recordLearnBlockCompletion,
@@ -418,11 +421,13 @@ test('five-more extends only the completed daily cohort, preserving the recurrin
   const session = { ...original, status: 'completed' as const, completedAt: START + 4, blockCount: 2, completedBlockIds: ['a', 'b'] }
   const records = [acquisitionExposure('planned', START + 1), completedAcquisition('planned', START + 2), acquisitionExposure('optional', START + 3)]
   const extra = addLearnDailyNewWords({ session, now: START + 10, dictionaryWords: words, wordRecords: records, wordStates: [] })
-  assert.equal(extra.plannedNewWords, 6)
+  assert.equal(extra.plannedNewWords, 5)
   assert.equal(extra.dailyNewTarget, 1)
   assert.equal(extra.status, 'active')
   assert.equal(extra.sessionId, original.sessionId)
-  assert.deepEqual(extra.plannedNewWordNames, ['planned', ...words.slice(2, 7)])
+  assert.deepEqual(extra.plannedNewWordNames, ['planned', ...words.slice(2, 6)])
+  assert.deepEqual(extra.carryOverAcquisitionWords, ['optional'])
+  assert.deepEqual(getLearnExtraRoundNames(extra), ['optional', ...words.slice(2, 6)])
   assert.deepEqual(extra.completedBlockIds, ['a', 'b'])
   assert.equal(deriveLearnDailyProgress({ session: extra, wordRecords: records }).remainingWords, 5)
   assert.equal(addLearnDailyNewWords({ session: extra, now: START + 10, dictionaryWords: words, wordRecords: records, wordStates: [] }), extra)
@@ -430,7 +435,7 @@ test('five-more extends only the completed daily cohort, preserving the recurrin
 
 test('five-more handles exhausted dictionaries and never reopens a previous day', () => {
   const session = { ...createLearnDailySession({ dict: 'daily-test', now: START, dailyNewTarget: 1, dictionaryWords: ['a', 'b', 'c'], wordRecords: [], wordStates: [] }), status: 'completed' as const }
-  const input = { session, now: START + 1, dictionaryWords: ['a', 'b', 'c'], wordRecords: [], wordStates: [] }
+  const input = { session, now: START + 1, dictionaryWords: ['a', 'b', 'c'], wordRecords: [acquisitionExposure('a', START), completedAcquisition('a', START)], wordStates: [] }
   assert.equal(addLearnDailyNewWords(input).plannedNewWords, 3)
   assert.equal(addLearnDailyNewWords({ ...input, dictionaryWords: ['a'] }), session)
   assert.equal(addLearnDailyNewWords({ ...input, now: START + 86400 }), session)
@@ -445,10 +450,44 @@ test('exhausted executable work can extend today without declaring unresolved wo
   const extra = addLearnDailyNewWords({ session: { ...original, executionExhausted: true }, now: START + 2, dictionaryWords: words, wordRecords: records, wordStates: [] })
   assert.equal(extra.status, 'active')
   assert.equal(extra.executionExhausted, undefined)
-  assert.deepEqual(extra.plannedNewWordNames, words)
-  assert.equal(extra.plannedNewWords, 6)
+  assert.deepEqual(extra.plannedNewWordNames, words.slice(0, 5))
+  assert.deepEqual(getLearnExtraRoundNames(extra), words.slice(0, 5))
+  assert.equal(extra.plannedNewWords, 5)
   assert.equal(extra.dailyNewTarget, 1)
   const progress = deriveLearnDailyProgress({ session: extra, wordRecords: records })
   assert.equal(progress.completedWords, 0)
-  assert.equal(progress.remainingWords, 6)
+  assert.equal(progress.remainingWords, 5)
+})
+
+
+test('five-more prioritizes five unfinished words and finishes independently of the remaining original plan', () => {
+  const words = Array.from({ length: 45 }, (_, i) => `word-${i}`)
+  const original = { ...createLearnDailySession({ dict: 'daily-test', now: START, dailyNewTarget: 32, dictionaryWords: words, wordRecords: [], wordStates: [] }), executionExhausted: true }
+  const records = words.slice(0, 32).map(word => acquisitionExposure(word, START + 1))
+  const extra = addLearnDailyNewWords({ session: original, now: START + 2, dictionaryWords: words, wordRecords: records, wordStates: [] })
+  assert.equal(extra.plannedNewWords, 32)
+  assert.deepEqual(getLearnExtraRoundNames(extra), words.slice(0, 5))
+  for (const name of words.slice(0, 5)) records.push(acquisitionExposure(name, START + 3), completedAcquisition(name, START + 4))
+  assert.equal(deriveLearnExecutionProgress({ session: extra, wordRecords: records }).complete, true)
+  const daily = deriveLearnDailyProgress({ session: extra, wordRecords: records })
+  assert.equal(daily.newTargetWords, 32)
+  assert.equal(daily.introducedNewWords, 32)
+  assert.equal(daily.complete, false)
+  const legacy = { ...extra, extraNewWordCount: 5, plannedNewWordNames: words.slice(0, 37), extraRoundWordNames: undefined }
+  assert.deepEqual(getLearnExtraRoundNames(legacy), words.slice(32, 37))
+  assert.equal(isLearnSessionOutsideExtraRound({ words: [{ name: words[0] }, { name: words[32] }] }, legacy), true)
+  assert.equal(isLearnSessionOutsideExtraRound({ words: words.slice(32, 37).map(name => ({ name })) }, legacy), false)
+})
+
+
+test('five-more resumes unfinished reviews and carry-over before adding fresh words', () => {
+  const original = { ...createLearnDailySession({ dict: 'daily-test', now: START, dailyNewTarget: 1, dictionaryWords: ['new', 'fresh1', 'fresh2', 'fresh3'], wordRecords: [], wordStates: [] }), plannedReviewWords: ['review'], carryOverAcquisitionWords: ['carry'], executionExhausted: true }
+  const extra = addLearnDailyNewWords({ session: original, now: START + 2, dictionaryWords: ['review', 'carry', 'new', 'fresh1', 'fresh2', 'fresh3'], wordRecords: [], wordStates: [] })
+  assert.deepEqual(getLearnExtraRoundNames(extra), ['review', 'carry', 'new', 'fresh1', 'fresh2'])
+  assert.equal(extra.plannedNewWords, 3)
+  const progress = deriveLearnExecutionProgress({ session: extra, wordRecords: [] })
+  assert.equal(progress.targetWords, 5)
+  assert.equal(progress.reviewTargetWords, 1)
+  assert.equal(progress.carryOverTargetWords, 1)
+  assert.equal(progress.newTargetWords, 3)
 })
