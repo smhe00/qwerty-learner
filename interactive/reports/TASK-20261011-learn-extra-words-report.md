@@ -1,7 +1,7 @@
 # Learn optional new words and five-more — completed on product/main
 
 Execution base: `fdb5f17665492e5cada4d8609b5435ede07e7a98`.
-Code commit: `e58b4ea6e99e7b1c751e2b96d21652faef146fec`, pushed to `origin/product/main`. Release to master: **false**.
+Code commit: `e58b4ea6e99e7b1c751e2b96d21652faef146fec`, pushed to `origin/product/main`. Release to master: **authorized by user on 2026-10-11**.
 
 ## Behavior
 
@@ -28,3 +28,7 @@ No changes to Typing scheduling or the release branch. Small/exhausted dictionar
 Temporary local browser config and bundled tests were removed. Validation ran manually because the checkout pre-commit hook references missing `.husky/_/husky.sh`; commit uses only a command-scoped hook override. Unrelated CURRENT_TASK metadata is untouched.
 
 Release branch verified unchanged at `e2e44d17ac992931ead81d8d74b694f158116536`.
+
+## Publication
+
+User requested 发布 after reviewing development completion. Source `e58b4ea6` passed 295 domain/system and 30 Chrome checks plus build. Release candidate includes only this feature and its documentation since prior `e2e44d17`; upstream development did not advance. Publication will fast-forward master; deployed asset and actual Chrome checks will be recorded below.
