@@ -9,6 +9,7 @@ import {
 import {
   deriveLearnDailyProgress,
   loadLearnDailySession,
+  learnLocalDateKey,
 } from '@/learn/daily-session'
 import {
   LEARN_NEW_WORD_BATCH_SIZE,
@@ -310,8 +311,10 @@ export async function generateLearnMixedSessionRecord(
       .filter(isAcquisitionIntroductionRecord)
       .map((record) => record.word),
     freshLimit: freshAllowance,
-    continuous: true,
-    now,
+    allowedNewWordNames: dailySession?.plannedNewWordNames,
+    continuous: dueWords.length > 0,
+    allowTerminalProbeOnIdle: dueWords.length === 0,
+    now:
   })
   const acquisitionCandidates = [
     ...candidatePlan.resumed.map(({ word, state }) => ({
@@ -396,7 +399,11 @@ export async function generateLearnMixedSessionRecord(
   record.itemKinds = itemKinds
   if (hasAcquisition) {
     record.acquisitionStates = acquisitionStates
-    record.spacingWords = selectLearnSpacingWords({ words, states, excludedNames: selectedWords.map(word => word.name) })
+    record.spacingWords = selectLearnSpacingWords({
+      words: dueWords,
+      states,
+      excludedNames: selectedWords.map((word) => word.name),
+    })
   }
   record.recommendedGoal = {
     version: 1,
@@ -438,7 +445,12 @@ export async function getNextDeferredAcquisitionResumeAt(
   dictID: string,
 ): Promise<number | undefined> {
   const deferred = await getDeferredAcquisitionStates(dictID)
-  const resumeTimes = [...deferredAcquisitionCohortResumeTimes(deferred).values()]
+  const today = learnLocalDateKey(getUTCUnixTimestamp())
+  const eligible = new Map([...deferred].filter(([, state]) =>
+    state.terminalProbeAttemptedAt === undefined ||
+    learnLocalDateKey(state.terminalProbeAttemptedAt) !== today,
+  ))
+  const resumeTimes = [...deferredAcquisitionCohortResumeTimes(eligible).values()]
 
   return resumeTimes.length > 0 ? Math.min(...resumeTimes) : undefined
 }
@@ -495,8 +507,10 @@ export async function generateNewWordAcquisitionRecord(
       .filter(isAcquisitionIntroductionRecord)
       .map((record) => record.word),
     freshLimit,
-    continuous: true,
-    now,
+    allowedNewWordNames: dailySession?.plannedNewWordNames,
+    continuous: false,
+    allowTerminalProbeOnIdle: true,
+    now:
   })
   const { resumed, freshWords } = candidatePlan
 
@@ -533,7 +547,7 @@ export async function generateNewWordAcquisitionRecord(
     'acquisition',
   )
   record.acquisitionStates = acquisitionStates
-  record.spacingWords = selectLearnSpacingWords({ words, states, excludedNames: selectedWords.map(word => word.name) })
+  record.spacingWords = []
   record.recommendedGoal = {
     version: 1,
     kind: 'session-completion',
