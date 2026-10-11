@@ -53,3 +53,13 @@ Root cause: five-more existed only on LearnResultScreen. LearnPage always render
 - Extended Chrome regression runs **both result and landing entries**, completes original work through actual typing, closes result, confirms no Start, reloads completed landing with unchanged count, then explicitly appends five and refreshes the new session.
 - **11/11 Chrome PASS, 27.2 s** (2 extra-word journeys + 9 Learn shell/UI cases). **Build PASS, 6.14 s**. Scoped ESLint **0 errors, 1 existing cleanup-ref warning**. Scheduler/domain source unchanged, so the prior 295 domain/system verification remains applicable.
 - Existing user authorization to publish this feature carries through this correction. Actual deployment version and live verification follow below.
+
+
+### Landing correction published — PASS
+
+- Code/release SHA **`8699f3f0ae23daf3cc2fd93bf1070a520137b927`**; master fast-forwarded from `f01305d2`. Development source had not diverged at execution.
+- Actual EdgeOne HTML serves `/assets/index-e4ef3e60.js` → `assets/app-444c7283.js`; new `8699f3f` marker present, old `f01305d` absent. The transient asset 404 during deployment resolved before validation.
+- **Production Chrome 4/4 PASS, 1.1 min**: result five-more; completed-day landing five-more after closing result and after reload (Start absent, frozen target unchanged before click); extension reopens today, preserves prior progress and recurring target, survives subsequent reload; durable actual keyboard word and repeated route reload smoke. No dev module injection, synthetic DB rows, login, or cloud writes.
+- [Learn Real Journey Gate 38125412183](https://github.com/smhe00/qwerty-learner/actions/runs/38125412183): **SUCCESS** for this SHA. Review and dual-site workflows were still running when checked; no all-CI-green claim.
+- [EdgeOne Production Verify 38125421309](https://github.com/smhe00/qwerty-learner/actions/runs/38125421309): **FAILURE** at the existing obsolete project lookup, `NotFoundError: Makers project(makers-cgemngjuuwle) is not found`. Actual resource inspection and production browser validation independently verify successful release.
+- Temporary local configs/live spec removed. Verification-only report update stays on product/main to avoid another release build.
