@@ -1,14 +1,15 @@
 /* eslint-env node */
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { after, test } from 'node:test'
 import { build } from 'esbuild'
 import { tmpdir } from 'node:os'
 import { mkdtempSync, rmSync } from 'node:fs'
-import { resolve, join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 const work = mkdtempSync(join(tmpdir(), 'qwerty-block-sync-'))
 const outfile = join(work, 'block-sync.mjs')
+after(() => rmSync(work, { recursive: true, force: true }))
 await build({
   entryPoints: [resolve('src/sync/learn-block-sync.ts')],
   outfile, bundle: true, platform: 'node', format: 'esm', target: 'node20',
