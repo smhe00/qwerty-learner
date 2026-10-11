@@ -1,12 +1,8 @@
-name: P4b EdgeOne Production Write-Gate Smoke
+name: V4 GA EdgeOne Production Write Smoke
 
+# Production smoke must be run only AFTER Maker deploys the GA server.
+# Do not run against existing allowlist production while product/main is staging.
 on:
-  push:
-    branches:
-      - product/main
-    paths:
-      - 'tests/cloud/p4b-edgeone-gate-smoke.mjs'
-      - '.github/workflows/p4b-edgeone-write-gate-smoke.yml'
   workflow_dispatch:
 
 concurrency:
@@ -25,7 +21,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20.18.0'
-      - name: Check deployed EdgeOne fail-closed API and V1 compatibility
+      - name: Check deployed GA V4 writes and V3 explicit-only migration
         id: smoke
         env:
           QWERTY_SYNC_BASE_URL: https://qwerty-plus.edgeone.dev/
@@ -41,10 +37,10 @@ jobs:
         run: |
           if [ "$RESULT" = 'success' ]; then
             STATE=success
-            DESCRIPTION='Disposable EdgeOne V2 gate + V1 regression PASS'
+            DESCRIPTION='Disposable EdgeOne V4 GA + V3 guard PASS'
           else
             STATE=failure
-            DESCRIPTION='Disposable EdgeOne V2 gate smoke not passing'
+            DESCRIPTION='Disposable EdgeOne V4 GA smoke not passing'
           fi
           export STATE DESCRIPTION
           python3 - <<'PY' > /tmp/p4b-status.json
