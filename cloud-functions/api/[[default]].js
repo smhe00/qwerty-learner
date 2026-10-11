@@ -209,6 +209,8 @@ export async function onRequest(context) {
             'blob-transient-retry-v1',
             'plain-gzip-sync-v2',
             'learning-state-backup-v3',
+            'backup-v4-authenticated-write-ga',
+            'backup-v3-explicit-migration-only',
             'account-delete-v1',
             'duplicate-register-protection-v1',
           ],
