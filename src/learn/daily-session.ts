@@ -22,6 +22,8 @@ export type LearnDailySessionV1 = {
   startedAt: number
   status: LearnDailySessionStatus
   dailyNewTarget: number
+  optionalNewWordNames?: string[]
+  extraNewWordCount?: number
   plannedNewWords: number
   /** Frozen identities for newly introduced words, optional on legacy V1 sessions. */
   plannedNewWordNames?: string[]
@@ -405,5 +407,37 @@ export function completeLearnDailySession(
     ...session,
     status: 'completed',
     completedAt: now,
+  })
+}
+
+/** Explicitly extend today's frozen cohort without changing the recurring target. */
+export function addLearnDailyNewWords(input: {
+  session: LearnDailySessionV1
+  now: number
+  dictionaryWords: string[]
+  wordRecords: IWordRecord[]
+  wordStates: IReviewWordState[]
+}): LearnDailySessionV1 {
+  const { session } = input
+  if (session.status !== 'completed' || session.dateKey !== learnLocalDateKey(input.now)) return session
+  const known = new Set([
+    ...(session.plannedNewWordNames ?? []),
+    ...session.plannedReviewWords,
+    ...session.carryOverAcquisitionWords,
+    ...input.wordStates.map(state => state.word),
+    ...Array.from(firstAcquisitionIntroductionByWord(input.wordRecords).keys()),
+  ])
+  const added = uniqueNames(input.dictionaryWords).filter(name => !known.has(name)).slice(0, 5)
+  if (!added.length) return session
+  const plannedNewWords = session.plannedNewWords + added.length
+  const previousTotal = session.plannedReviewWords.length + session.carryOverAcquisitionWords.length + session.plannedNewWords
+  return saveLearnDailySession({
+    ...session,
+    status: 'active',
+    completedAt: undefined,
+    plannedNewWords,
+    extraNewWordCount: (session.extraNewWordCount ?? 0) + added.length,
+    plannedNewWordNames: [...(session.plannedNewWordNames ?? deriveLearnDailyProgress({ session, wordRecords: input.wordRecords }).introducedNewWordNames), ...added],
+    blockMilestones: [...(session.blockMilestones ?? []), previousTotal + added.length],
   })
 }

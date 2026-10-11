@@ -405,6 +405,17 @@ export async function generateLearnMixedSessionRecord(
     },
     sessionKind,
   )
+  // Optional introductions supply real intervening work, but never expand the frozen target.
+  if (dailySession?.status === 'active' && dailySession.plannedNewWordNames) {
+    const known = new Set([
+      ...dailySession.plannedNewWordNames,
+      ...dailySession.carryOverAcquisitionWords,
+      ...states.map(state => state.word),
+      ...wordRecords.filter(isAcquisitionIntroductionRecord).map(record => record.word),
+      ...Array.from(pending.keys()),
+    ])
+    record.optionalNewWords = canonicalizeLearningWords(words).filter(word => !known.has(word.name)).slice(0, normalizeLearnBlockSize(blockSize))
+  }
   record.blockSize = normalizeLearnBlockSize(blockSize)
   record.itemKinds = itemKinds
   if (hasAcquisition) {

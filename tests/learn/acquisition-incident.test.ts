@@ -473,3 +473,18 @@ test('terminal admission schedules an earlier FSRS follow-up without changing r0
   assert.equal(result!.nextReviewAt, NOW + 4 * 3600)
   assert.equal(result!.reviewCount, 0, 'admission must not masquerade as a Review rating')
 })
+
+
+test('a short planned tail uses optional genuine new-word exposure as spacing without a clock advance', () => {
+  const optional = ['optional-a', 'optional-b'].map(name => ({ ...word, name }))
+  const state: LearnAcquisitionState = { version: 1, phase: 'supported', assistedCycles: 0 }
+  const result = resolveLearnAcquisitionCompletion({ queue: [word], currentIndex: 0, currentWord: word, state, acquisitionStates: { [word.name]: state }, record: attempt(), now: NOW, spacingWords: [], optionalNewWords: optional })
+  assert.equal(result.nextState.phase, 'independent')
+  assert.equal(result.nextState.independentInterveningItems, 2)
+  assert.equal(result.nextState.resumeAfter, undefined)
+  for (const extra of optional) {
+    assert.equal(result.acquisitionStates[extra.name].phase, 'exposure')
+    assert.equal(result.acquisitionStates[extra.name].spacingOnly, undefined)
+  }
+  assert.deepEqual(result.projection.queue.map(item => item.name), [word.name, ...optional.map(item => item.name), word.name])
+})

@@ -13,7 +13,9 @@ import {
   createLearnAcquisitionState,
   getLearnAcquisitionScaffoldDecision,
 } from '@/learn/acquisition'
-import { trackLearnPersistence } from '@/learn/persistence'
+import { deriveLearnDailyProgress, loadLearnDailySession, saveLearnDailySession } from '@/learn/daily-session'
+import { db } from '@/utils/db/core'
+import { flushLearnPersistence, trackLearnPersistence } from '@/learn/persistence'
 import { resolveLearnAcquisitionCompletion } from '@/learn/progression'
 import { pruneLearnSessionWord } from '@/learn/lifecycle'
 import {
@@ -179,7 +181,7 @@ export default function WordPanel() {
   )
 
   const onFinish = useCallback(
-    ({
+    async ({
       record,
       wrongCount,
       classification,
@@ -211,6 +213,16 @@ export default function WordPanel() {
         return
       }
 
+      let dailyComplete = false
+      if (isReviewMode && reviewModeInfo.reviewRecord?.optionalNewWords?.length) {
+        await flushLearnPersistence()
+        const daily = loadLearnDailySession(currentDictId)
+        if (daily?.status === 'active') {
+          const records = await db.wordRecords.where('dict').equals(currentDictId).toArray()
+          dailyComplete = deriveLearnDailyProgress({ session: daily, wordRecords: records }).complete
+        }
+      }
+
       if (
         isReviewMode &&
         currentWord &&
@@ -239,6 +251,11 @@ export default function WordPanel() {
             reviewModeInfo.reviewRecord?.itemStates,
           nextExerciseShadow,
         })
+
+        if (dailyComplete) {
+          resolution.action = 'finish'
+          resolution.projection.isFinished = true
+        }
 
         let reviewStateCommitError: unknown
         try {
@@ -377,9 +394,17 @@ export default function WordPanel() {
           lastWrongIndex,
           now: Math.floor(Date.now() / 1000),
           spacingWords: reviewModeInfo.reviewRecord?.spacingWords ?? [],
+          optionalNewWords: reviewModeInfo.reviewRecord?.optionalNewWords,
         })
+        const daily = loadLearnDailySession(currentDictId)
+        if (daily?.status === 'active' && daily.plannedNewWordNames && reviewModeInfo.reviewRecord?.optionalNewWords?.length) {
+          const optionalNames = Object.keys(resolution.acquisitionStates).filter(name =>
+            !daily.plannedNewWordNames?.includes(name) && !daily.carryOverAcquisitionWords.includes(name) && !resolution.acquisitionStates[name].spacingOnly)
+          if (optionalNames.length) saveLearnDailySession({ ...daily, optionalNewWordNames: Array.from(new Set([...(daily.optionalNewWordNames ?? []), ...optionalNames])) })
+        }
         const nextAcquisitionState = resolution.nextState
         const projection = resolution.projection
+        if (dailyComplete) projection.isFinished = true
 
         let acquisitionStateCommitError: unknown
         try {
@@ -525,6 +550,7 @@ export default function WordPanel() {
       currentWord,
       reviewModeInfo.reviewRecord?.acquisitionStates,
       reviewModeInfo.reviewRecord?.spacingWords,
+      reviewModeInfo.reviewRecord?.optionalNewWords,
       reviewModeInfo.reviewRecord?.itemStates,
       isReviewMode,
       dispatch,

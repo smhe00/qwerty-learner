@@ -26,6 +26,7 @@ export type LearnAcquisitionCompletionInput = {
   record: IWordRecord
   lastWrongIndex?: number
   now: number
+  optionalNewWords?: Word[]
   spacingWords?: Word[]
 }
 

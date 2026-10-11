@@ -187,7 +187,9 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
   const quota = (dependencies.decideQuota ?? decideDailyAcquisitionQuota)(
     stats,
     undefined,
-    dailySession.dailyNewTarget,
+    dailySession.plannedNewWordNames && ((dailySession.extraNewWordCount ?? 0) > 0 || (dailySession.optionalNewWordNames?.length ?? 0) > 0)
+      ? stats.today.introducedWords + Math.max(0, dailySession.plannedNewWords - recoveredDailyProgress.introducedNewWords)
+      : dailySession.dailyNewTarget,
   )
   const dailyPlan =
     (dependencies.buildDailyPlan ?? buildLearnDailyPlan)({

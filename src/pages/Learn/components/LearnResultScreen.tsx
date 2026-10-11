@@ -1,3 +1,7 @@
+import { addLearnDailyNewWords, loadLearnDailySession } from '@/learn/daily-session'
+import { db } from '@/utils/db/core'
+import { getReviewWordStates } from '@/review/repository'
+import { wordListFetcher } from '@/utils/wordListFetcher'
 import {
   getUnseenAchievementStates,
   markAchievementSeen,
@@ -97,6 +101,9 @@ export default function LearnResultScreen() {
   const record = reviewModeInfo.reviewRecord
   const [settlement, setSettlement] = useState<Settlement | null>(null)
   const [settlementError, setSettlementError] = useState('')
+  const [addingWords, setAddingWords] = useState(false)
+  const addingWordsRef = useRef(false)
+  const [extraWordsMessage, setExtraWordsMessage] = useState('')
   // React StrictMode replays effects in development. Keep the actual durable
   // settlement in a stable Promise so replayed effects subscribe to the same
   // operation instead of cancelling the only run and leaving Pause disabled.
@@ -227,6 +234,38 @@ export default function LearnResultScreen() {
     navigate,
     settlement,
   ])
+
+  const learnFiveMore = useCallback(async () => {
+    if (!settlement?.progress.complete || addingWordsRef.current) return
+    addingWordsRef.current = true
+    setAddingWords(true)
+    try {
+      const [words, wordRecords, wordStates] = await Promise.all([
+        wordListFetcher(currentDictInfo.url),
+        db.wordRecords.where('dict').equals(settlement.session.dict).toArray(),
+        getReviewWordStates(settlement.session.dict),
+      ])
+      const current = loadLearnDailySession(settlement.session.dict)
+      if (!current || current.sessionId !== settlement.session.sessionId) {
+        setExtraWordsMessage('今日计划已变化，请重新进入 Learn。')
+        return
+      }
+      const extended = addLearnDailyNewWords({ session: current, now: Math.floor(Date.now() / 1000), dictionaryWords: words.map(word => word.name), wordRecords, wordStates })
+      if (extended === current) {
+        setExtraWordsMessage('当前没有可追加的新词。')
+        return
+      }
+      acknowledgeAchievements()
+      dispatch({ type: TypingStateActionType.RESET_SESSION })
+      keepLearnSelected()
+      navigate('/learn', { state: { autoStart: true } })
+    } catch {
+      setExtraWordsMessage('追加新词失败，请重试。')
+    } finally {
+      addingWordsRef.current = false
+      setAddingWords(false)
+    }
+  }, [settlement, currentDictInfo.url, acknowledgeAchievements, dispatch, keepLearnSelected, navigate])
 
   // An internal queue boundary is not a learning-stage achievement. Persist
   // it, then continue seamlessly until a frozen daily milestone is reached.
@@ -453,7 +492,9 @@ export default function LearnResultScreen() {
             </div>
           ) : null}
 
-          <div className="mt-7 flex justify-center">
+          {extraWordsMessage ? <p className="mt-4 text-center text-sm text-gray-500" role="status">{extraWordsMessage}</p> : null}
+          <div className="mt-7 flex justify-center gap-4">
+            {isDailyComplete ? <button className="my-btn h-12 px-8 text-base disabled:opacity-50" type="button" disabled={addingWords} onClick={() => void learnFiveMore()}>多学五词</button> : null}
             {isDailyComplete ? (
               <button
                 className="my-btn-primary h-12 px-8 text-base font-bold"

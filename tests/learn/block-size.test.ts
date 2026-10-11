@@ -35,3 +35,10 @@ test('a saved 50-word block survives recovery independently of changed settings'
   assert.equal(shouldRotateOversizedLearnSession({ sessionKind: 'acquisition', words: words.slice(0, 50), blockSize: 50 }), false)
   assert.equal(shouldRotateOversizedLearnSession({ sessionKind: 'acquisition', words: words.slice(0, 21) }), true, 'legacy checkpoint keeps default size guard')
 })
+
+
+test('optional spacing introductions do not rotate a valid original block on reload', () => {
+  const words = Array.from({ length: 7 }, (_, i) => ({ name: `word-${i}` }))
+  const acquisitionStates = Object.fromEntries(words.map(word => [word.name, { version: 1 as const, phase: 'exposure' as const, assistedCycles: 0 }]))
+  assert.equal(shouldRotateOversizedLearnSession({ sessionKind: 'acquisition', blockSize: 5, words, acquisitionStates, optionalNewWords: words.slice(5) }), false)
+})

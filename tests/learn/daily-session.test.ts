@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  addLearnDailyNewWords,
   createLearnDailySession,
   deriveLearnDailyProgress,
   recordLearnBlockCompletion,
@@ -398,4 +399,39 @@ test('simultaneous local evidence and remote revision change is a sync divergenc
   assert.equal(clean.localDirty, false)
   assert.equal(clean.status, 'remote-ahead')
   assert.equal(decideLearnAutoSyncAction(clean), 'remote-ahead')
+})
+
+
+test('optional new words do not enlarge the completion target or satisfy planned identities', () => {
+  const session = createLearnDailySession({ dict: 'daily-test', now: START, dailyNewTarget: 1, dictionaryWords: ['planned', 'optional'], wordRecords: [], wordStates: [] })
+  const records = [acquisitionExposure('optional', START + 1), completedAcquisition('optional', START + 2)]
+  const pending = deriveLearnDailyProgress({ session, wordRecords: records })
+  assert.equal(pending.targetWords, 1)
+  assert.equal(pending.completedWords, 0)
+  records.push(acquisitionExposure('planned', START + 3), completedAcquisition('planned', START + 4))
+  assert.equal(deriveLearnDailyProgress({ session, wordRecords: records }).complete, true)
+})
+
+test('five-more extends only the completed daily cohort, preserving the recurring target and progress', () => {
+  const words = ['planned', 'optional', ...Array.from({ length: 12 }, (_, i) => `extra-${i}`)]
+  const original = createLearnDailySession({ dict: 'daily-test', now: START, dailyNewTarget: 1, dictionaryWords: words, wordRecords: [], wordStates: [] })
+  const session = { ...original, status: 'completed' as const, completedAt: START + 4, blockCount: 2, completedBlockIds: ['a', 'b'] }
+  const records = [acquisitionExposure('planned', START + 1), completedAcquisition('planned', START + 2), acquisitionExposure('optional', START + 3)]
+  const extra = addLearnDailyNewWords({ session, now: START + 10, dictionaryWords: words, wordRecords: records, wordStates: [] })
+  assert.equal(extra.plannedNewWords, 6)
+  assert.equal(extra.dailyNewTarget, 1)
+  assert.equal(extra.status, 'active')
+  assert.equal(extra.sessionId, original.sessionId)
+  assert.deepEqual(extra.plannedNewWordNames, ['planned', ...words.slice(2, 7)])
+  assert.deepEqual(extra.completedBlockIds, ['a', 'b'])
+  assert.equal(deriveLearnDailyProgress({ session: extra, wordRecords: records }).remainingWords, 5)
+  assert.equal(addLearnDailyNewWords({ session: extra, now: START + 10, dictionaryWords: words, wordRecords: records, wordStates: [] }), extra)
+})
+
+test('five-more handles exhausted dictionaries and never reopens a previous day', () => {
+  const session = { ...createLearnDailySession({ dict: 'daily-test', now: START, dailyNewTarget: 1, dictionaryWords: ['a', 'b', 'c'], wordRecords: [], wordStates: [] }), status: 'completed' as const }
+  const input = { session, now: START + 1, dictionaryWords: ['a', 'b', 'c'], wordRecords: [], wordStates: [] }
+  assert.equal(addLearnDailyNewWords(input).plannedNewWords, 3)
+  assert.equal(addLearnDailyNewWords({ ...input, dictionaryWords: ['a'] }), session)
+  assert.equal(addLearnDailyNewWords({ ...input, now: START + 86400 }), session)
 })

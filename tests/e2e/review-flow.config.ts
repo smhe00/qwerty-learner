@@ -8,6 +8,7 @@ export default defineConfig({
     'learn-recovery-flow.spec.ts',
     'learn-acquisition-flow.spec.ts',
     'learn-block-size.spec.ts',
+    'learn-extra-words.spec.ts',
     'learn-legacy-compat.spec.ts',
   ],
   fullyParallel: false,

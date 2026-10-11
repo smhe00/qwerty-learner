@@ -59,25 +59,28 @@ export type LearnSessionCohortSnapshot = {
   words: Array<{ name: string }>
   itemKinds?: Record<string, LearnItemKind>
   acquisitionStates?: Record<string, LearnAcquisitionState>
+  optionalNewWords?: Array<{ name: string }>
 }
 
 export function countLearnSessionAcquisitionWords(
   snapshot: LearnSessionCohortSnapshot,
 ): number {
   const names = new Set<string>()
+  const optional = new Set(snapshot.optionalNewWords?.map(word => word.name))
 
   for (const name of Object.keys(snapshot.acquisitionStates ?? {})) {
+    if (optional.has(name)) continue
     if (!snapshot.acquisitionStates?.[name].spacingOnly) names.add(name)
   }
 
   if (snapshot.sessionKind === 'acquisition') {
     for (const word of snapshot.words) {
-      if (word?.name && !snapshot.acquisitionStates?.[word.name]?.spacingOnly) names.add(word.name)
+      if (word?.name && !optional.has(word.name) && !snapshot.acquisitionStates?.[word.name]?.spacingOnly) names.add(word.name)
     }
   } else if (snapshot.sessionKind === 'mixed') {
     for (const word of snapshot.words) {
       if (
-        word?.name &&
+        word?.name && !optional.has(word.name) &&
         snapshot.itemKinds?.[word.name] === 'acquisition' &&
         !snapshot.acquisitionStates?.[word.name]?.spacingOnly
       ) {
@@ -94,7 +97,7 @@ export function countLearnSessionLogicalWords(
 ): number {
   return new Set(
     snapshot.words
-      .filter(word => !snapshot.acquisitionStates?.[word.name]?.spacingOnly)
+      .filter(word => !snapshot.acquisitionStates?.[word.name]?.spacingOnly && !snapshot.optionalNewWords?.some(optional => optional.name === word.name))
       .map((word) => word?.name)
       .filter((name): name is string => Boolean(name)),
   ).size
