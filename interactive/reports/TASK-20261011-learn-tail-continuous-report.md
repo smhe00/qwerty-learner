@@ -78,3 +78,34 @@ The final source commit supersedes 68ab2ed2 for production verification.
 The local Husky wrapper referenced missing .husky/_/husky.sh; commit used a
 per-command empty hook path after running the specified validation manually.
 No workflow or test gate was disabled or edited.
+
+## Published result
+
+Final source/release commit: f0ad4ec85876bb6ef35d08c2a663e091e2011eae.
+Both product/main and master were fast-forward pushed. Final build: 5.28s.
+The real EdgeOne HTML served /assets/index-0ef6632c.js and app-fd42fa71.js;
+the served app bundle contains the f0ad4ec release marker. /api/health returned
+HTTP 200, ok=true, service=qwerty-sync-gateway.
+
+Four Chrome checks passed against https://qwerty-plus.edgeone.dev/ (30.0s):
+five-word tail continuity with genuine practice, zero-fresh-quota recovery of
+five future-deferred words, real typed-word durability after refresh, and
+repeated-refresh route stability. Each used a fresh isolated local browser
+context; no cloud account was accessed or written. Live regression fixtures
+use the actual IndexedDB stores. Their temporary adapter waits for native DB
+readiness because the development-only /src/utils/db/core.ts import is absent
+from published bundles. An initial attempt to reuse the development harness
+failed at that import and was stopped; no product assertion was relaxed.
+The final live regression and both existing production smoke checks passed.
+
+CI production-verification run 38114108517 failed at its existing obsolete
+Makers project pointer: ResourceNotFound, makers-cgemngjuuwle not found.
+It did not inspect the deployed application. Production was verified through
+the actual served release marker, health endpoint and real Chrome behavior;
+this failed workflow is not reported as green. Other CI status is a separate
+snapshot, not a prerequisite invented after these direct checks.
+https://github.com/smhe00/qwerty-learner/actions/runs/38114108517
+
+No unrelated task pointer or cloud release setting was changed. The first
+correction's scope explanation (cooldown preserved) is superseded by this
+continuous-tail policy where eligible active practice words are available.
