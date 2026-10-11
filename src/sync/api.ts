@@ -69,14 +69,26 @@ async function request<T>(
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const response = await fetch(apiUrl(path), {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
+  // Guarded V4 Sync must not trap a learner on the Block screen forever
+  // when the network stalls. Aborting the client request is NOT proof that
+  // a server CAS did not commit: the next attempt always rechecks metadata.
+  const abort = path.startsWith('/api/sync/v2') ? new AbortController() : null
+  const deadline = abort ? setTimeout(() => abort.abort(), 90_000) : null
+  let response: Response
+  let text: string
+  try {
+    response = await fetch(apiUrl(path), {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: abort?.signal,
+    })
+    text = await response.text()
+  } finally {
+    if (deadline !== null) clearTimeout(deadline)
+  }
 
   let data: unknown = null
-  const text = await response.text()
 
   if (text) {
     try {
