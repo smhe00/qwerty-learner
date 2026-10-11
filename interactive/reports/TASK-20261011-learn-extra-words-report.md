@@ -32,3 +32,12 @@ Release branch verified unchanged at `e2e44d17ac992931ead81d8d74b694f158116536`.
 ## Publication
 
 User requested 发布 after reviewing development completion. Source `e58b4ea6` passed 295 domain/system and 30 Chrome checks plus build. Release candidate includes only this feature and its documentation since prior `e2e44d17`; upstream development did not advance. Publication will fast-forward master; deployed asset and actual Chrome checks will be recorded below.
+
+
+## Published verification — PASS
+
+- Master fast-forwarded from `e2e44d17ac992931ead81d8d74b694f158116536` to **`f01305d22171b581aac96f98275d6789cc78e7a2`**; remote ref confirmed. No force push.
+- Actual `https://qwerty-plus.edgeone.dev/` HTML now serves `/assets/index-d2daaccd.js`, importing `assets/app-f4b32d67.js`; application chunk contains `f01305d` and no prior `e2e44d1` marker. A transient missing asset during deployment resolved before tests.
+- **Actual production Chrome 3/3 PASS, 30.4 s**: optional new-word exposure and midway reload; original target completes while optional states remain unfinished; 多学五词 adds five mandatory unseen identities without changing the recurring target; additional session survives reload; ordinary typed word is durable; repeated route reload does not grow URL. Fresh isolated contexts, no account login, no cloud writes, no development module injection or synthetic DB records. Temporary live spec/config removed.
+- Existing **EdgeOne Production Verify** [38121319800](https://github.com/smhe00/qwerty-learner/actions/runs/38121319800) still fails the obsolete Makers project lookup: `NotFoundError: Makers project(makers-cgemngjuuwle) is not found`. This workflow is **not green**. Actual served assets and Chrome results above independently confirm publication. Updating unrelated hosting project configuration is outside this Learn release.
+- This verification-only documentation is pushed to product/main; master remains the verified release SHA to avoid another deployment.

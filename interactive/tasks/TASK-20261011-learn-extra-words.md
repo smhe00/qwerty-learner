@@ -4,6 +4,7 @@ status: COMPLETED
 target_branch: product/main
 executor: Codex
 release_to_master: true
+release_commit: f01305d22171b581aac96f98275d6789cc78e7a2
 execution_base: fdb5f17665492e5cada4d8609b5435ede07e7a98
 report_file: interactive/reports/TASK-20261011-learn-extra-words-report.md
 ---
