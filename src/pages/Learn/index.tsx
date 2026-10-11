@@ -30,7 +30,6 @@ import {
   bootstrapReviewWordStatesForDictionary,
   getReviewWordStates,
 } from '@/review/repository'
-import { autoSyncCompletedLearnSession } from '@/sync/auto'
 import { db } from '@/utils/db'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -238,32 +237,10 @@ export default function LearnPage() {
         setStatusText(result.statusText)
         setIsStarting(false)
 
-        if (result.reason === 'daily-complete') {
-          void flushLearnPersistence()
-            .then(() => autoSyncCompletedLearnSession())
-            .then((sync) => {
-              if (!isCurrent()) return
-              if (sync.status === 'uploaded') {
-                setStatusText(
-                  `今日 Learn 目标已完成；云同步完成（revision ${sync.revision}）。`,
-                )
-              } else if (
-                sync.status === 'remote-ahead' ||
-                sync.status === 'diverged' ||
-                sync.status === 'conflict'
-              ) {
-                setStatusText(
-                  '今日 Learn 目标已完成；检测到云端变化，未自动覆盖云端数据。',
-                )
-              }
-            })
-            .catch((error) => {
-              console.error(
-                'failed to auto-sync recovered daily completion',
-                error,
-              )
-            })
-        }
+        // The finished session was already durably settled. An opt-in V4
+        // Block sync was performed from the guarded pre-mount Block card,
+        // never from the Learn landing or the legacy V1 auto-upload path.
+
       } catch {
         if (isCurrent()) {
           setStatusText('Learn 准备失败，请重试。')
