@@ -96,7 +96,7 @@ export default function CloudSyncSetting() {
             <p role="alert">当前账户与本地 S1 工作区不匹配。同步已禁用，请使用右上角账户入口处理。</p>
           ) : (
             <>
-              <p>当前工作区：<strong>{auth.user.username}</strong>
+              <p>当前工作区：<strong>{auth?.user.username ?? '未知账户'}</strong>
                 {expired ? '（会话已过期，需从右上角重新登录）' : '（已登录）'}
               </p>
               {remote && <p>云端：{remote.hasData
