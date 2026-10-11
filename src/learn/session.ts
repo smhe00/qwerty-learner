@@ -352,6 +352,8 @@ export function planLearnAcquisitionCandidates(input: {
   now: number
   continuous?: boolean
   allowedNewWordNames?: Iterable<string>
+  /** Restrict all pending Acquisition (including terminal tails) to this day. */
+  allowedAcquisitionNames?: Iterable<string>
   allowTerminalProbeOnIdle?: boolean
 }): LearnAcquisitionCandidatePlan {
   const canonicalWords = canonicalizeLearningWords(input.words)
@@ -359,6 +361,8 @@ export function planLearnAcquisitionCandidates(input: {
     canonicalWords.map((word) => [word.name, word]),
   )
   const resumed: LearnAcquisitionCandidatePlan['resumed'] = []
+  const allowedAcquisitionNames = input.allowedAcquisitionNames === undefined
+    ? undefined : new Set(input.allowedAcquisitionNames)
   const cohortTimes = deferredAcquisitionCohortResumeTimes(
     new Map([...input.pendingStates].filter(([name]) => canonicalByName.has(name))),
   )
@@ -373,6 +377,7 @@ export function planLearnAcquisitionCandidates(input: {
 
   for (const [wordName, pendingState] of input.pendingStates) {
     if (resumed.length >= LEARN_NEW_WORD_BATCH_SIZE) break
+    if (allowedAcquisitionNames && !allowedAcquisitionNames.has(wordName)) continue
     if (pendingState.terminalProbeAttemptedAt !== undefined &&
         learnLocalDateKey(pendingState.terminalProbeAttemptedAt) === learnLocalDateKey(input.now)) continue
 
@@ -430,6 +435,7 @@ export function planLearnAcquisitionCandidates(input: {
     for (const [name, state] of input.pendingStates) {
       if (resumed.length >= LEARN_NEW_WORD_BATCH_SIZE) break
       if (state.phase !== 'deferred') continue
+      if (allowedAcquisitionNames && !allowedAcquisitionNames.has(name)) continue
       if (state.terminalProbeAttemptedAt !== undefined &&
           learnLocalDateKey(state.terminalProbeAttemptedAt) === learnLocalDateKey(input.now)) continue
       const word = canonicalByName.get(name)
