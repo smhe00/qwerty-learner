@@ -16,7 +16,7 @@ const out = join(tmp, 'workspace-v4.mjs')
 await build({ entryPoints: [resolve(root, 'src/sync/workspace-v4.ts')],
   outfile: out, bundle: true, platform: 'node', format: 'esm', target: 'node20' })
 after(() => rmSync(tmp, { recursive: true, force: true }))
-const { workspaceFingerprintV4, stableWorkspaceJson } = await import(pathToFileURL(out).href)
+const { canonicalWorkspaceData, workspaceFingerprintV4, stableWorkspaceJson } = await import(pathToFileURL(out).href)
 
 // Historical algorithm prior to sort-key caching. Its exact comparison
 // semantics, including localeCompare and stable ties, must remain unchanged.
@@ -102,4 +102,46 @@ test('EdgeOne V4 verifier accepts old canonical fingerprint for optimized browse
     assert.equal(verified.logicalFingerprint, hash)
     assert.equal(await workspaceFingerprintV4(verified.snapshot), hash)
   }
+})
+
+test('benchmark large-history V4 canonical sorting; compare old/new bytes and CPU time', () => {
+  const s = snapshot()
+  const rows = Array.from({ length: 4096 }, (_, i) => ({
+    id: i + 1,
+    word: 'example-' + (i % 100),
+    counters: { reviewCount: i % 16, dueAt: i * 86400000, interval: i % 29 },
+    historicalEvents: [
+      { at: i, result: 'pass', detail: ['βeta', '中文', 'alpha'][i % 3] },
+      { at: i + 100, result: 'repeat', score: i % 10 },
+    ],
+  }))
+  rows.sort((a, b) =>
+    (((a.id * 2654435761) >>> 0) - ((b.id * 2654435761) >>> 0)))
+  s.workspaceData.database.data.data[0].rows = rows
+  const original = stableWorkspaceJson(historicalCanonicalData(s.workspaceData))
+  const updated = stableWorkspaceJson(canonicalWorkspaceData(s.workspaceData))
+  assert.equal(updated, original, 'large-history canonical JSON must remain byte-identical')
+
+  const benchmark = task => {
+    const start = performance.now()
+    task()
+    return performance.now() - start
+  }
+  const historicalMs = []
+  const optimizedMs = []
+  for (let i = 0; i < 3; i++) {
+    historicalMs.push(benchmark(() => historicalCanonicalData(s.workspaceData)))
+    optimizedMs.push(benchmark(() => canonicalWorkspaceData(s.workspaceData)))
+  }
+  const median = values => [...values].sort((a, b) => a - b)[1]
+  const oldMs = median(historicalMs)
+  const newMs = median(optimizedMs)
+  console.log(JSON.stringify({
+    stage: 'v4-canonical-sort-only',
+    rows: rows.length,
+    historicalMedianMs: +oldMs.toFixed(1),
+    optimizedMedianMs: +newMs.toFixed(1),
+    speedup: +(oldMs / newMs).toFixed(2),
+    note: 'Node synthetic CPU sort only; not total browser Sync wall-clock time',
+  }))
 })
