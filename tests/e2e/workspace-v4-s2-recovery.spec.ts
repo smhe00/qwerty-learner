@@ -141,7 +141,7 @@ test('P3b V4 divergence stays read-only until both backups, ID and explicit cons
 })
 
 
-test('P3b failed V3 to V4 write shows 403 allowlist guidance and disallows stale retry', async ({ page }) => {
+test('P3b stale deployed server 403 explains release mismatch and disallows retry', async ({ page }) => {
   await seed(page)
   const fixture = await remoteFixture(page, 'v3')
   let writes = 0
@@ -162,7 +162,7 @@ test('P3b failed V3 to V4 write shows 403 allowlist guidance and disallows stale
   page.once('dialog', dialog => dialog.accept())
   await action.click()
   await expect(page.getByText(/已停止覆盖：/)).toBeVisible()
-  await expect(page.getByText(/S2_SYNC_WRITE_ACCOUNT_IDS/)).toBeVisible()
+  await expect(page.getByText(/生产环境可能尚未部署全账号 V4 版本/)).toBeVisible()
   await expect(page.getByText(/操作已停止；必须重新读取云端最新 revision/)).toBeVisible()
   await expect(action).toBeDisabled()
   await expect.poll(() => writes).toBe(1)
@@ -178,6 +178,78 @@ test('P3b failed V3 to V4 write shows 403 allowlist guidance and disallows stale
   await expect(page.getByText('点击②从本页面下载云端原始备份')).toBeVisible()
   await expect(action).toBeDisabled()
   expect(writes).toBe(1)
+})
+
+test('P3b HTTP 500 with unchanged remote rechecks meta read-only without retry', async ({ page }) => {
+  await seed(page)
+  const fixture = await remoteFixture(page, 'v3')
+  let reads = 0
+  let writes = 0
+  await page.route('**/api/sync/v2/meta', async r => {
+    reads++
+    await r.fulfill({ json: { ok: true, ...fixture.meta } })
+  })
+  await page.route('**/api/sync/v2', r =>
+    r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
+  await page.route('**/api/sync/v2/recovery', async r => {
+    writes++
+    await r.fulfill({ status: 500, json: {
+      ok: false, error: 'internal_error', message: 'Internal server error',
+    } })
+  })
+  await page.goto('/?s2-recovery=manage')
+  await archiveBoth(page)
+  await page.locator('select').selectOption('keep-local')
+  page.once('dialog', d => d.accept())
+  await page.getByRole('button', {
+    name: '⑤ 我已备份两端数据，继续执行选定方向',
+  }).click()
+  await expect(page.getByText(/与提交前版本完全一致：尚未观察到新版本提交/))
+    .toBeVisible({ timeout: 12000 })
+  expect(writes).toBe(1)
+  expect(reads).toBeGreaterThanOrEqual(4)
+  await expect(page.getByRole('button', {
+    name: '⑤ 我已备份两端数据，继续执行选定方向',
+  })).toBeDisabled()
+  await expect(page.getByText(/格式 qwerty-backup-v3，Revision 3/)).toBeVisible()
+})
+
+test('P3b ambiguous HTTP 500 after durable commit identifies exact V4 and never retries', async ({ page }) => {
+  await seed(page)
+  const fixture = await remoteFixture(page, 'v3')
+  let current = fixture.meta
+  let writes = 0
+  await page.route('**/api/sync/v2/meta', r =>
+    r.fulfill({ json: { ok: true, ...current } }))
+  await page.route('**/api/sync/v2', r =>
+    r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
+  await page.route('**/api/sync/v2/recovery', async r => {
+    writes++
+    const posted = r.request().postDataJSON()
+    const bytes = Buffer.from(posted.payloadBase64, 'base64')
+    const sha = createHash('sha256').update(bytes).digest('hex')
+    current = { ...current, revision: 4, sizeBytes: bytes.length,
+      clientFormatVersion: 'qwerty-backup-v4',
+      logicalFingerprint: posted.logicalFingerprint,
+      dataSha256: sha, payloadSha256: sha }
+    await r.fulfill({ status: 500, json: {
+      ok: false, error: 'internal_error', message: 'Internal server error',
+    } })
+  })
+  await page.goto('/?s2-recovery=manage')
+  await archiveBoth(page)
+  await page.locator('select').selectOption('keep-local')
+  page.once('dialog', d => d.accept())
+  await page.getByRole('button', {
+    name: '⑤ 我已备份两端数据，继续执行选定方向',
+  }).click()
+  await expect(page.getByText(/已验证云端创建了匹配本次请求的 V4 新版本/))
+    .toBeVisible({ timeout: 12000 })
+  expect(writes).toBe(1)
+  await expect(page.getByRole('button', {
+    name: '⑤ 我已备份两端数据，继续执行选定方向',
+  })).toBeDisabled()
+  await expect(page.getByText(/格式 qwerty-backup-v4，Revision 4/)).toBeVisible()
 })
 
 test('P3b V3 migration keeps old cloud backup and uses separate account-pinned CAS', async ({ page }) => {
