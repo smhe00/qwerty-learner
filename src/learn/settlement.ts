@@ -5,6 +5,7 @@ import {
   deriveLearnDailyProgress,
   loadLearnDailySession,
   recordLearnBlockCompletion,
+  saveLearnDailySession,
 } from './daily-session'
 import type {
   LearnDailyProgress,
@@ -19,6 +20,8 @@ import type { ReviewRecord } from '@/utils/db/record'
 export type LearnBlockSettlement = {
   session: LearnDailySessionV1
   progress: LearnDailyProgress
+  /** A true milestone crossed in this block, absent for internal checkpoints. */
+  milestoneReached?: number
 }
 
 export type LearnBlockSettlementInput = {
@@ -91,6 +94,23 @@ export async function settleLearnBlockDurably(
     wordRecords,
   })
 
+  const earnedMilestones = (session.blockMilestones ?? []).filter((target) =>
+    target <= progress.completedWords &&
+    !(session.celebratedMilestones ?? []).includes(target),
+  )
+  const milestoneReached = earnedMilestones.length > 0
+    ? earnedMilestones[earnedMilestones.length - 1]
+    : undefined
+  if (earnedMilestones.length > 0) {
+    session = saveLearnDailySession({
+      ...session,
+      celebratedMilestones: [
+        ...(session.celebratedMilestones ?? []),
+        ...earnedMilestones,
+      ],
+    })
+  }
+
   if (progress.complete) {
     session = completeLearnDailySession(session, now)
     await flushLearnPersistence()
@@ -99,6 +119,7 @@ export async function settleLearnBlockDurably(
   return {
     session,
     progress,
+    ...(milestoneReached !== undefined ? { milestoneReached } : {}),
   }
 }
 
