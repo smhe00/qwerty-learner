@@ -72,7 +72,10 @@ export function sanitizeLearnSessionLifecycle(
   if (record.isFinished) return record
 
   const stateByWord = new Map(states.map((state) => [state.word, state]))
-  let sanitized = record
+  let sanitized = record.spacingWords ? {
+    ...record,
+    spacingWords: record.spacingWords.filter(word => isActiveLearningState(stateByWord.get(word.name))),
+  } : record
 
   for (const word of new Set(record.words.map((item) => item.name))) {
     const state = stateByWord.get(word)
@@ -82,7 +85,9 @@ export function sanitizeLearnSessionLifecycle(
         ? 'acquisition'
         : 'review')
     const shouldPrune =
-      itemKind === 'acquisition'
+      record.acquisitionStates?.[word]?.spacingOnly
+        ? !isActiveLearningState(state)
+        : itemKind === 'acquisition'
         ? state !== undefined
         : !isActiveLearningState(state)
 

@@ -36,6 +36,7 @@ export function collectPendingAcquisitionStates(input: {
   }
   const pending = new Map<string, LearnAcquisitionState>()
   for (const [word, state] of latest) {
+    if (state.spacingOnly) continue
     // Exclusions and valid admission must never be undone by stale checkpoints.
     if (admitted.has(word) || validAdmissions.has(word)) continue
     pending.set(word, state.phase === 'complete' ? {

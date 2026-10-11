@@ -17,6 +17,7 @@ import {
   canonicalizeLearningWords,
   planLearnAcquisitionCandidates,
   selectLearnMixedSessionItems,
+  selectLearnSpacingWords,
   shouldRotateOversizedLearnSession,
 } from '@/learn/session'
 import {
@@ -309,6 +310,7 @@ export async function generateLearnMixedSessionRecord(
       .filter(isAcquisitionIntroductionRecord)
       .map((record) => record.word),
     freshLimit: freshAllowance,
+    continuous: true,
     now,
   })
   const acquisitionCandidates = [
@@ -394,6 +396,7 @@ export async function generateLearnMixedSessionRecord(
   record.itemKinds = itemKinds
   if (hasAcquisition) {
     record.acquisitionStates = acquisitionStates
+    record.spacingWords = selectLearnSpacingWords({ words, states, excludedNames: selectedWords.map(word => word.name) })
   }
   record.recommendedGoal = {
     version: 1,
@@ -492,6 +495,7 @@ export async function generateNewWordAcquisitionRecord(
       .filter(isAcquisitionIntroductionRecord)
       .map((record) => record.word),
     freshLimit,
+    continuous: true,
     now,
   })
   const { resumed, freshWords } = candidatePlan
@@ -529,6 +533,7 @@ export async function generateNewWordAcquisitionRecord(
     'acquisition',
   )
   record.acquisitionStates = acquisitionStates
+  record.spacingWords = selectLearnSpacingWords({ words, states, excludedNames: selectedWords.map(word => word.name) })
   record.recommendedGoal = {
     version: 1,
     kind: 'session-completion',

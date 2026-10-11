@@ -1097,3 +1097,135 @@ test('incident historical false completion recovers and finishes the frozen dail
   expect(completed.records[3].reviewPolicyDecision.reasonCodes).toContain('spacing-eligible')
   await expect(page.locator('[data-learn-result-screen]')).toHaveAttribute('data-learn-daily-complete', 'true')
 })
+
+test('five-word short-spacing tail continues with known practice instead of a five-minute wait', async ({
+  page,
+}) => {
+  const targets = [
+    'cancel',
+    'analyse',
+    'numerous',
+    'accurate',
+    'adventure',
+  ].map((name) => ({
+    name,
+    trans: [],
+    usphone: '',
+    ukphone: '',
+  }))
+  const known = ['airport', 'ability'].map((name) => ({
+    name,
+    trans: [],
+    usphone: '',
+    ukphone: '',
+  }))
+  await seedAcquisitionSession(page, targets, 944001, 'independent', 4)
+  await page.addInitScript(
+    ({ known }) => {
+      const info = JSON.parse(localStorage.getItem('reviewModeInfo')!)
+      info.reviewRecord.spacingWords = known
+    info.reviewRecord.acquisitionStates.adventure.independentInterveningItems = 0
+      localStorage.setItem('reviewModeInfo', JSON.stringify(info))
+    },
+    { known },
+  )
+  await gotoReviewAppReady(page, '/typing')
+  await startTyping(page)
+  const admitted = new Set<string>()
+  let practice = 0
+  for (let step = 0; step < 40; step++) {
+    const info = await readReviewModeInfo(page)
+    const record = info.reviewRecord
+    if (record.isFinished) break
+    const current = record.words[record.index].name
+    await waitForRenderedWord(page, current)
+    await expect(page.locator(`[data-typing-word="${current}"]`)).toHaveAttribute('data-typing-active', 'true')
+    await expect(page.locator(`[data-typing-word="${current}"]`)).toHaveAttribute('data-typing-locked', 'false')
+    const state = record.acquisitionStates[current]
+    if (state.spacingOnly) practice++
+    const previousIndex = record.index
+    await page.keyboard.type(current, { delay: 30 })
+    await expect
+      .poll(async () => {
+        const next = (await readReviewModeInfo(page)).reviewRecord
+        return next.index !== previousIndex || next.isFinished
+      })
+      .toBe(true)
+    const after = (await readReviewModeInfo(page)).reviewRecord
+    for (const target of targets) {
+      if (after.acquisitionStates[target.name]?.phase === 'complete')
+        admitted.add(target.name)
+    }
+    await expect(page.getByText(/还有新词需要稍后巩固/)).toHaveCount(0)
+    if (admitted.size === targets.length) break
+    expect(step).toBeLessThan(39)
+  }
+  expect(admitted.size).toBe(5)
+  expect(practice).toBeGreaterThanOrEqual(2)
+  const rows = await page.evaluate(
+    () =>
+      new Promise<any[]>((resolve, reject) => {
+        const request = indexedDB.open('RecordDB')
+        request.onerror = () => reject(request.error)
+        request.onsuccess = () => {
+          const db = request.result
+          const get = db
+            .transaction('wordRecords')
+            .objectStore('wordRecords')
+            .getAll()
+          get.onsuccess = () => {
+            resolve(get.result)
+            db.close()
+          }
+        }
+      }),
+  )
+  expect(
+    rows
+      .filter((row) => known.some((word) => word.name === row.word))
+      .every((row) => row.learnItemKind === 'practice'),
+  ).toBe(true)
+})
+
+test('future deferred cohort reopens immediately as Supported with zero fresh quota', async ({ page }) => {
+  const words = ['cancel', 'analyse', 'numerous', 'accurate', 'adventure'].map(name => ({ name, trans: [], usphone: '', ukphone: '' }))
+  await gotoReviewAppReady(page, '/typing')
+  await page.evaluate(async (words) => {
+    const now = Math.floor(Date.now() / 1000)
+    const date = new Date()
+    const dateKey = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('currentChapter', JSON.stringify(-1))
+    localStorage.setItem('reviewModeInfo', JSON.stringify({ isReviewMode: false }))
+    localStorage.setItem('qwerty.learn.dailySession.v1.cet4', JSON.stringify({
+      version: 1, sessionId: 'tail-carry-over', dict: 'cet4', dateKey, startedAt: now, status: 'active',
+      dailyNewTarget: 0, plannedNewWords: 0, plannedReviewWords: [], carryOverAcquisitionWords: words.map(word => word.name),
+      accumulatedActiveSeconds: 0, completedBlockIds: [], blockCount: 0,
+    }))
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction(['reviewRecords', 'reviewWordStates'], 'readwrite')
+        tx.objectStore('reviewRecords').add({ dict: 'cet4', words, index: 0, createTime: now,
+          isFinished: true, sessionKind: 'acquisition', acquisitionStates: Object.fromEntries(words.map(word => [word.name, {
+            version: 1, phase: 'deferred', assistedCycles: 7, deferredReason: 'assistance', resumeAfter: now + 300,
+          }])) })
+        for (const word of ['airport', 'ability']) tx.objectStore('reviewWordStates').add({
+          dict: 'cet4', word, createdAt: now - 86400, updatedAt: now, nextReviewAt: now + 86400,
+          reviewCount: 2, lapseCount: 0, cleanStreak: 2, lifecycle: 'active', stateVersion: 5,
+          schedulerState: { kind: 'basic-v2', stage: 2, intervalDays: 1 },
+        })
+        tx.onerror = () => reject(tx.error)
+        tx.oncomplete = () => { db.close(); resolve() }
+      }
+    })
+  }, words)
+  await page.goto('/learn')
+  const info = await waitForActiveLearnSession(page)
+  expect(info.reviewRecord.words.map((word: { name: string }) => word.name).sort()).toEqual(words.map(word => word.name).sort())
+  expect(Object.values(info.reviewRecord.acquisitionStates).every((state: any) => state.phase === 'supported' && state.independentInterveningItems === undefined)).toBe(true)
+  expect(info.reviewRecord.spacingWords.length).toBe(2)
+  await expect(page.getByText(/还有新词需要稍后巩固/)).toHaveCount(0)
+})

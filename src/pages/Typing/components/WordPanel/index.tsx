@@ -376,6 +376,7 @@ export default function WordPanel() {
           record,
           lastWrongIndex,
           now: Math.floor(Date.now() / 1000),
+          spacingWords: reviewModeInfo.reviewRecord?.spacingWords ?? [],
         })
         const nextAcquisitionState = resolution.nextState
         const projection = resolution.projection
@@ -523,6 +524,7 @@ export default function WordPanel() {
       state.chapterData.words,
       currentWord,
       reviewModeInfo.reviewRecord?.acquisitionStates,
+      reviewModeInfo.reviewRecord?.spacingWords,
       reviewModeInfo.reviewRecord?.itemStates,
       isReviewMode,
       dispatch,
@@ -764,7 +766,7 @@ export default function WordPanel() {
                 phoneticVisible={effectivePhoneticVisible}
                 exercisePlan={currentExercisePlan}
                 learnItemKind={
-                  isReviewMode ? currentLearnItemKind : undefined
+                  isReviewMode ? currentAcquisitionState?.spacingOnly ? 'practice' : currentLearnItemKind : undefined
                 }
                 reviewAttemptRole={currentReviewAttemptRole}
                 managedHintFlow={managedHintFlow}

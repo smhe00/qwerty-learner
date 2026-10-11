@@ -43,6 +43,8 @@ export type LearnAcquisitionState = {
   version: typeof LEARN_ACQUISITION_FLOW_VERSION
   phase: LearnAcquisitionPhase
   assistedCycles: number
+  // Scheduler-neutral filler between acquisition recalls; never admission.
+  spacingOnly?: boolean
   // Session-start strain is frozen for deterministic presentation. In-session
   // difficulty still adapts through assistedCycles.
   scaffoldStrainTier?: LearnInteractionStrainTier

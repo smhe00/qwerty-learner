@@ -13,6 +13,7 @@ import {
   isCleanIndependentAcquisitionRecord,
   isValidModernAcquisitionAdmissionRecord,
 } from './admission'
+import { continueAcquisitionWithPractice } from './continuous-acquisition'
 import type { IWordRecord } from '@/utils/db/record'
 import type { Word } from '@/typings'
 
@@ -25,6 +26,7 @@ export type LearnAcquisitionCompletionInput = {
   record: IWordRecord
   lastWrongIndex?: number
   now: number
+  spacingWords?: Word[]
 }
 
 export type LearnAcquisitionCompletionResolution = {
@@ -50,6 +52,23 @@ export function resolveLearnAcquisitionCompletion(
     state,
     acquisitionStates,
   } = input
+
+  if (state.spacingOnly) {
+    const nextState = { ...state, phase: 'complete' as const }
+    const states = { ...acquisitionStates, [currentWord.name]: nextState }
+    return {
+      nextState,
+      acquisitionStates: states,
+      shouldPersistAdmission: false,
+      projection: projectLearnAcquisitionProgress({
+        queue,
+        currentIndex,
+        currentWord,
+        nextState,
+        acquisitionStates: states,
+      }),
+    }
+  }
 
   let nextState: LearnAcquisitionState
 
@@ -152,10 +171,10 @@ export function resolveLearnAcquisitionCompletion(
     [currentWord.name]: nextState,
   }
 
-  return {
+  return continueAcquisitionWithPractice(input, {
     nextState,
     acquisitionStates: nextStates,
     projection,
     shouldPersistAdmission: nextState.phase === 'complete',
-  }
+  })
 }

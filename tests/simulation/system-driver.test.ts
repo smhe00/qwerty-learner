@@ -237,7 +237,7 @@ test('full VirtualLearnApp remains stable at the historical 19-of-20 acquisition
   assert.equal(acquisitionSessions.length, 1)
 })
 
-test('full VirtualLearnApp blindly rediscovers the admitted-based singleton loop mutation', async () => {
+test('continuous practice prevents the historical singleton churn even with admitted-based quota accounting', async () => {
   const result =
     await runHistoricalFinalSlotScenario('acquired')
 
@@ -245,21 +245,16 @@ test('full VirtualLearnApp blindly rediscovers the admitted-based singleton loop
     (item) =>
       item.code === 'repeated-singleton-acquisition',
   )
-  assert.ok(singleton)
+  assert.equal(singleton, undefined)
 
   const acquisitionSessions = result.app.events.filter(
     (event) =>
       event.kind === 'session-prepared' &&
       event.sessionKind === 'acquisition',
   )
-  assert.ok(acquisitionSessions.length >= 3)
-  assert.ok(
-    acquisitionSessions.slice(0, 3).every(
-      (event) =>
-        event.kind === 'session-prepared' &&
-        event.batchSize === 1,
-    ),
-  )
+  // The pending word now finishes in its original session. Separate F8
+  // quota tests still require detection of acquired-based over-allocation.
+  assert.equal(acquisitionSessions.length, 1)
 })
 
 
@@ -1399,4 +1394,19 @@ test('P1 repeated Review occurrences share one logical-word state', async () => 
     ),
     false,
   )
+})
+
+test('production controller resumes five future-deferred words and finishes without clock-only waits', async () => {
+  const app = new VirtualLearnApp({ words: Array.from({ length: 7 }, (_, i) => word(`tail-live-${i}`)), dailyNewWordTarget: 2 })
+  app.seedAdmittedWords(2)
+  for (let i = 2; i < 7; i++) app.seedDeferredAcquisition({ wordIndex: i, ready: false })
+  const prepared = await app.enter()
+  assert.equal(prepared.kind, 'session')
+  if (prepared.kind !== 'session') return
+  assert.equal(prepared.record.words.length, 5)
+  assert.ok(Object.values(prepared.record.acquisitionStates ?? {}).every(state => state.phase === 'supported'))
+  let count = 0
+  while (app.completeCurrentClean()) assert.ok(++count < 60)
+  assert.equal(app.snapshot().wordStates.filter(state => state.lifecycle !== 'excluded').length, 7)
+  assert.deepEqual(detectLearnSystemAnomalies(app.events), [])
 })

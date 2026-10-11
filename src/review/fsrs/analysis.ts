@@ -94,7 +94,7 @@ export type FsrsAnalysisRecordV1 = {
   dict: string
   word: string
   sourceMode?: 'typing' | 'learn'
-  learnItemKind?: 'review' | 'acquisition'
+  learnItemKind?: 'review' | 'acquisition' | 'practice'
   reviewRatingDecision?: {
     eligible: boolean
     rating?: ReviewOutcome | null
@@ -199,6 +199,7 @@ function collectHomogeneousSamples(
     if (
       record.sourceMode === 'typing' ||
       record.learnItemKind === 'acquisition' ||
+      record.learnItemKind === 'practice' ||
       record.reviewRatingDecision?.eligible !== true ||
       !hasCurrentProvenance(record.fsrsShadow)
     ) {

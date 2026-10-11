@@ -327,6 +327,7 @@ export interface IReviewRecord {
   // Learn-only acquisition controller state. Ordinary Typing never reads or
   // writes this field.
   acquisitionStates?: Record<string, LearnAcquisitionState>
+  spacingWords?: Word[]
   // Persisted per-word Hint V2 state. This makes reload recovery resume the
   // same logical word and assistance stage instead of silently resetting it.
   hintStates?: Record<string, ReviewHintMachineState>
@@ -348,6 +349,7 @@ export class ReviewRecord implements IReviewRecord {
   itemKinds?: Record<string, LearnItemKind>
   itemStates?: Record<string, ReviewItemMachineState>
   acquisitionStates?: Record<string, LearnAcquisitionState>
+  spacingWords?: Word[]
   hintStates?: Record<string, ReviewHintMachineState>
   recommendedGoal?: LearnRecommendedGoalV1
 

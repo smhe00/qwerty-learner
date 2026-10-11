@@ -8,7 +8,7 @@ import { db } from './core'
 export { db } from './core'
 import { getAchievementSessionId } from '@/achievement/session'
 import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
-import type { LearnSessionKind } from '@/learn/session'
+import type { LearnItemKind } from '@/learn/session'
 import type { ExerciseConditionV1 } from '@/review/condition'
 import type {
   ReviewPolicyDecisionV1,
@@ -112,7 +112,7 @@ export function useSaveWordRecord() {
       reviewRatingDecision?: RatingDecision
       reviewPolicyShadow?: ReviewPolicyShadowV1
       sourceMode?: 'typing' | 'learn'
-      learnItemKind?: LearnSessionKind
+      learnItemKind?: LearnItemKind
     }) => {
       if (sourceMode === 'learn' && activeLearnSessionFinished) {
         appendDeveloperTrace({

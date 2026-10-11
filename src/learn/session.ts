@@ -19,8 +19,8 @@ export const LEARN_BLOCK_TARGET_SIZE = 20
 export const LEARN_SESSION_TARGET_SIZE = LEARN_BLOCK_TARGET_SIZE
 export const LEARN_MIXED_NEW_WORD_RESERVE = 5
 
-export type LearnItemKind = 'review' | 'acquisition'
-export type LearnSessionKind = LearnItemKind | 'mixed'
+export type LearnItemKind = 'review' | 'acquisition' | 'practice'
+export type LearnSessionKind = 'review' | 'acquisition' | 'mixed'
 
 export type LearnSessionItemKindSnapshot = {
   sessionKind?: LearnSessionKind
@@ -63,18 +63,19 @@ export function countLearnSessionAcquisitionWords(
   const names = new Set<string>()
 
   for (const name of Object.keys(snapshot.acquisitionStates ?? {})) {
-    names.add(name)
+    if (!snapshot.acquisitionStates?.[name].spacingOnly) names.add(name)
   }
 
   if (snapshot.sessionKind === 'acquisition') {
     for (const word of snapshot.words) {
-      if (word?.name) names.add(word.name)
+      if (word?.name && !snapshot.acquisitionStates?.[word.name]?.spacingOnly) names.add(word.name)
     }
   } else if (snapshot.sessionKind === 'mixed') {
     for (const word of snapshot.words) {
       if (
         word?.name &&
-        snapshot.itemKinds?.[word.name] === 'acquisition'
+        snapshot.itemKinds?.[word.name] === 'acquisition' &&
+        !snapshot.acquisitionStates?.[word.name]?.spacingOnly
       ) {
         names.add(word.name)
       }
@@ -89,6 +90,7 @@ export function countLearnSessionLogicalWords(
 ): number {
   return new Set(
     snapshot.words
+      .filter(word => !snapshot.acquisitionStates?.[word.name]?.spacingOnly)
       .map((word) => word?.name)
       .filter((name): name is string => Boolean(name)),
   ).size
@@ -346,6 +348,7 @@ export function planLearnAcquisitionCandidates(input: {
   introducedWords: Iterable<string>
   freshLimit: number
   now: number
+  continuous?: boolean
 }): LearnAcquisitionCandidatePlan {
   const canonicalWords = canonicalizeLearningWords(input.words)
   const canonicalByName = new Map(
@@ -356,14 +359,30 @@ export function planLearnAcquisitionCandidates(input: {
     new Map([...input.pendingStates].filter(([name]) => canonicalByName.has(name))),
   )
 
+  const canContinue =
+    input.continuous &&
+    selectLearnSpacingWords({
+      words: canonicalWords,
+      states: input.states,
+      excludedNames: input.pendingStates.keys(),
+    }).length >= 2
+
   for (const [wordName, pendingState] of input.pendingStates) {
     if (resumed.length >= LEARN_NEW_WORD_BATCH_SIZE) break
 
-    if ((cohortTimes.get(wordName) ?? input.now) > input.now) continue
+    if (!canContinue && (cohortTimes.get(wordName) ?? input.now) > input.now) continue
 
     const resumedState =
       pendingState.phase === 'deferred'
-        ? resumeDeferredAcquisition(pendingState, input.now)
+        ? canContinue
+          ? {
+              ...pendingState,
+              phase: 'supported' as const,
+              independentInterveningItems: undefined,
+              deferredReason: undefined,
+              resumeAfter: undefined,
+            }
+          : resumeDeferredAcquisition(pendingState, input.now)
         : pendingState.phase === 'complete'
           ? undefined
           : pendingState
@@ -421,4 +440,21 @@ export function decideLearnStartKind(input: {
   if (input.dueCount > 0) return 'review'
   if (input.unseenCount > 0) return 'acquisition'
   return 'empty'
+}
+
+/** Already-admitted, non-excluded words only: practice adds no fresh workload. */
+export function selectLearnSpacingWords(input: {
+  words: Word[]
+  states: IReviewWordState[]
+  excludedNames: Iterable<string>
+}): Word[] {
+  const excluded = new Set(input.excludedNames)
+  const active = new Set(
+    input.states
+      .filter((state) => state.lifecycle !== 'excluded')
+      .map((state) => state.word),
+  )
+  return canonicalizeLearningWords(input.words)
+    .filter((word) => active.has(word.name) && !excluded.has(word.name))
+    .slice(0, 2)
 }

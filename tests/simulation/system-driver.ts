@@ -27,6 +27,7 @@ import {
   planLearnAcquisitionCandidates,
   resolveLearnItemKindForWord,
   selectLearnMixedSessionItems,
+  selectLearnSpacingWords,
 } from '../../src/learn/session'
 import { selectReviewCandidates } from '../../src/review/due'
 import { rankDueReviewCandidates } from '../../src/review/priority'
@@ -161,6 +162,7 @@ function makeAcquisitionRecord(input: {
   policyVersion: string
   spacingEligible?: boolean
   wrongCount?: number
+  spacingOnly?: boolean
 }): IWordRecord {
   const wrongCount = input.wrongCount ?? 0
   return {
@@ -173,7 +175,7 @@ function makeAcquisitionRecord(input: {
     wrongCount,
     mistakes: wrongCount > 0 ? { 0: ['x'] } : {},
     sourceMode: 'learn',
-    learnItemKind: 'acquisition',
+    learnItemKind: input.spacingOnly ? 'practice' : 'acquisition',
     reviewPolicyDecision: {
       version: 1,
       policyVersion: input.policyVersion,
@@ -597,6 +599,7 @@ export class VirtualLearnApp {
       pendingStates: plannerPending,
       introducedWords: introduced,
       freshLimit,
+      continuous: true,
       now: this.now,
     })
     let resumed = [...candidatePlan.resumed]
@@ -762,6 +765,7 @@ export class VirtualLearnApp {
       isFinished: false,
       words: clone(selected),
       sessionKind: 'acquisition',
+      spacingWords: selectLearnSpacingWords({ words, states: this.wordStates, excludedNames: selected.map(word => word.name) }),
       acquisitionStates,
       recommendedGoal: {
         version: 1,
@@ -861,6 +865,7 @@ export class VirtualLearnApp {
       pendingStates: plannerPending,
       introducedWords: introduced,
       freshLimit,
+      continuous: true,
       now: this.now,
     })
     const baselineResumed = [...candidatePlan.resumed]
@@ -1086,7 +1091,7 @@ export class VirtualLearnApp {
       sessionKind: selection.sessionKind,
       itemKinds,
       ...(selectedAcquisition.length > 0
-        ? { acquisitionStates }
+        ? { acquisitionStates, spacingWords: selectLearnSpacingWords({ words: canonicalWords, states: this.wordStates, excludedNames: sessionWords.map(word => word.name) }) }
         : {}),
       recommendedGoal: {
         version: 1,
@@ -1748,6 +1753,7 @@ export class VirtualLearnApp {
           now: this.now,
           policyVersion:
             LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
+          spacingOnly: currentState.spacingOnly,
         }),
       )
       this.emitLearnEvidence(
@@ -1777,6 +1783,7 @@ export class VirtualLearnApp {
         wrongCount: input.wrongCount,
       }),
       now: this.now,
+      spacingWords: session.spacingWords,
     })
 
     this.interactionCount += 1

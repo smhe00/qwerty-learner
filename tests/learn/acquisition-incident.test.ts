@@ -209,3 +209,155 @@ test('deadline cohorts are bounded and shared by waiting and selection', () => {
   assert.equal(resumeDeferredAcquisition(pending.get('word-1')!, NOW + 19), undefined)
   assert.equal(pending.get('word-0')!.phase, 'deferred', 'historical checkpoint stays immutable')
 })
+
+for (const size of [1, 2, 3, 5]) {
+  test(`continuous ${size}-word tail finishes with real intervening practice, without advancing time`, () => {
+    const targets = Array.from({ length: size }, (_, i) => ({
+      ...word,
+      name: `tail-${i}`,
+    }))
+    const spacingWords = ['known-a', 'known-b'].map((name) => ({
+      ...word,
+      name,
+    }))
+    let queue = targets
+    let index = 0
+    let states: Record<string, LearnAcquisitionState> = Object.fromEntries(
+      targets.map((item) => [
+        item.name,
+        {
+          version: 1,
+          phase: 'supported',
+          assistedCycles: 7,
+        },
+      ]),
+    )
+    const admitted = new Set<string>()
+    let practiceCount = 0
+    for (let step = 0; step < 60; step++) {
+      const current = queue[index]
+      const state = states[current.name]
+      const plan = createLearnAcquisitionExercisePlanForState(state)
+      const record = attempt({
+        word: current.name,
+        reviewPolicyDecision: plan.decision,
+        learnItemKind: state.spacingOnly ? 'practice' : 'acquisition',
+      })
+      const result = resolveLearnAcquisitionCompletion({
+        queue,
+        currentIndex: index,
+        currentWord: current,
+        state,
+        acquisitionStates: states,
+        record,
+        now: NOW,
+        spacingWords,
+      })
+      assert.notEqual(result.nextState.phase, 'deferred')
+      if (state.spacingOnly) {
+        practiceCount++
+        assert.equal(result.shouldPersistAdmission, false)
+        assert.equal(isCompletedAcquisitionRecord(record), false)
+      }
+      if (result.shouldPersistAdmission) {
+        assert.equal(state.phase, 'independent')
+        assert.ok((state.independentInterveningItems ?? 0) >= 2)
+        admitted.add(current.name)
+      }
+      states = result.acquisitionStates
+      queue = result.projection.queue
+      index = result.projection.index
+      if (result.projection.isFinished) break
+      assert.ok(step < 59, 'must terminate')
+    }
+    assert.deepEqual(
+      [...admitted].sort(),
+      targets.map((item) => item.name).sort(),
+    )
+    if (size <= 2) assert.ok(practiceCount >= 2)
+    assert.equal(
+      collectPendingAcquisitionStates({
+        records: [checkpoint({ acquisitionStates: states })],
+        wordRecords: [],
+        wordStates: [],
+      }).has('known-a'),
+      false,
+    )
+  })
+}
+
+test('future deferred five-word cohort continues Supported with zero fresh quota and known practice pool', () => {
+  const targets = Array.from({ length: 5 }, (_, i) => ({
+    ...word,
+    name: `tail-${i}`,
+  }))
+  const known = ['known-a', 'known-b'].map((name) => ({ ...word, name }))
+  const pendingStates = new Map(
+    targets.map((item) => [
+      item.name,
+      {
+        ...independent,
+        phase: 'deferred' as const,
+        deferredReason: 'assistance' as const,
+        resumeAfter: NOW + 300,
+      },
+    ]),
+  )
+  const states = known.map((item) =>
+    createInitialReviewWordState('incident', item.name, NOW),
+  )
+  const input = {
+    words: [...targets, ...known],
+    states,
+    pendingStates,
+    introducedWords: targets.map((item) => item.name),
+    freshLimit: 0,
+    now: NOW,
+    continuous: true,
+  }
+  const plan = planLearnAcquisitionCandidates(input)
+  assert.equal(plan.resumed.length, 5)
+  assert.equal(plan.freshWords.length, 0)
+  assert.ok(
+    plan.resumed.every(
+      (item) =>
+        item.state.phase === 'supported' &&
+        item.state.independentInterveningItems === undefined,
+    ),
+  )
+  assert.equal(
+    planLearnAcquisitionCandidates({
+      ...input,
+      states: states.map((state) => ({
+        ...state,
+        lifecycle: 'excluded' as const,
+      })),
+    }).resumed.length,
+    0,
+  )
+})
+
+test('repeated assistance uses real practice without granting Independent evidence or resetting quota counts', async () => {
+  const { sanitizeLearnSessionLifecycle } = await import('../../src/learn/lifecycle')
+  const { countLearnSessionAcquisitionWords, countLearnSessionLogicalWords } = await import('../../src/learn/session')
+  const known = ['known-a', 'known-b'].map(name => ({ ...word, name }))
+  const state: LearnAcquisitionState = { ...independent, assistedCycles: 7 }
+  const result = resolveLearnAcquisitionCompletion({
+    queue: [word], currentIndex: 0, currentWord: word, state,
+    acquisitionStates: { accurate: state }, record: attempt({ wrongCount: 1 }), now: NOW, spacingWords: known,
+  })
+  assert.equal(result.nextState.phase, 'supported')
+  assert.equal(result.nextState.independentInterveningItems, undefined)
+  assert.equal(result.shouldPersistAdmission, false)
+  const record = checkpoint({ isFinished: false, index: result.projection.index,
+    words: result.projection.queue, acquisitionStates: result.acquisitionStates, spacingWords: known })
+  const states = known.map(item => createInitialReviewWordState('incident', item.name, NOW))
+  const restored = sanitizeLearnSessionLifecycle(record, states)
+  assert.deepEqual(restored.words, record.words)
+  assert.equal(restored.index, record.index)
+  assert.equal(countLearnSessionAcquisitionWords(restored), 1)
+  assert.equal(countLearnSessionLogicalWords(restored), 1)
+  const excluded = sanitizeLearnSessionLifecycle(record, states.map(item => ({ ...item, lifecycle: 'excluded' as const })))
+  assert.equal(excluded.words.some(item => item.name === 'known-a'), false)
+  assert.deepEqual(excluded.spacingWords, [])
+})

@@ -88,6 +88,7 @@ const focusedGaps = [
   { id: 'quota-counts-acquired-not-introduced', profile: 'fresh', scenario: 'introduced-not-acquired' },
   { id: 'stale-checkpoint-on-resume', profile: 'fresh', scenario: 'stale-after-progress' },
   { id: 'deferred-word-stranded', profile: 'fresh', scenario: 'deferred-due' },
+  { id: 'deferred-misclassified-as-fresh', profile: 'fresh', scenario: 'deferred-due' },
 ] as const satisfies Array<{ id: string; profile: Profile; scenario: CoverageScenario }>
 
 function randomNumber(seed: number) {
