@@ -317,7 +317,7 @@ export async function generateLearnMixedSessionRecord(
       : undefined,
     continuous: dueWords.length > 0,
     allowTerminalProbeOnIdle: dueWords.length === 0,
-    now:
+    now,
   })
   const acquisitionCandidates = [
     ...candidatePlan.resumed.map(({ word, state }) => ({
@@ -521,7 +521,7 @@ export async function generateNewWordAcquisitionRecord(
       : undefined,
     continuous: false,
     allowTerminalProbeOnIdle: true,
-    now:
+    now,
   })
   const { resumed, freshWords } = candidatePlan
 
