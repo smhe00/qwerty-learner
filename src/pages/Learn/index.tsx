@@ -106,8 +106,11 @@ export default function LearnPage() {
 
   useEffect(() => {
     const routeState = location.state as LearnLocationState | null
+    const query = new URLSearchParams(location.search)
+    const blockResume = query.get('block-resume') === '1'
+    const blockIdle = query.get('block-idle') === '1'
 
-    if (routeState?.autoStart === true) {
+    if (routeState?.autoStart === true || blockResume) {
       // Continue from the result screen without remounting or changing route.
       autoStartConsumedRef.current = false
       setIsSessionView(false)
@@ -116,7 +119,7 @@ export default function LearnPage() {
       return
     }
 
-    if (routeState?.idle === true) {
+    if (routeState?.idle === true || blockIdle) {
       // Closing a result intentionally leaves Learn idle. Keep that contract
       // across reload until the user explicitly starts again.
       autoStartConsumedRef.current = true
@@ -124,7 +127,7 @@ export default function LearnPage() {
       setIsStarting(false)
       setStatusText('')
     }
-  }, [location.key, location.state])
+  }, [location.key, location.state, location.search])
 
   useEffect(() => {
     if (isSessionView) return
@@ -286,8 +289,10 @@ export default function LearnPage() {
     if (isSessionView) return
 
     const routeState = location.state as LearnLocationState | null
+    const query = new URLSearchParams(location.search)
     const shouldAutoStart =
-      routeState?.autoStart === true || routeState?.idle !== true
+      (routeState?.autoStart === true || query.get('block-resume') === '1') ||
+      (routeState?.idle !== true && query.get('block-idle') !== '1')
 
     if (
       canLearnMoreToday ||
@@ -304,6 +309,7 @@ export default function LearnPage() {
     isSessionView,
     canLearnMoreToday,
     location.state,
+    location.search,
     startLearn,
     wordList,
   ])
