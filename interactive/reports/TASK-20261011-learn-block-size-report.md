@@ -47,3 +47,5 @@ Development only; master remains f0ad4ec85876bb6ef35d08c2a663e091e2011eae.
 No deployment or user/cloud data changes. Local hook wrapper references missing
 .husky/_/husky.sh; commit uses an empty per-command hook path after manually
 running validation. No CI workflows or validation assertions were disabled.
+
+Implementation commit: 48a6d94461e3e4b5e877c52e0ded2195a4b36352 (pushed to product/main).
