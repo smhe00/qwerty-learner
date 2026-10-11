@@ -54,8 +54,8 @@ export function stageLearnBlockSync(accountId: string, input: {
   dailyComplete: boolean
   milestone?: number
 }): void {
-  if (!blockAutoSyncEnabled(accountId) || !isVisibleLearnBlockBoundary(input)) {
-    throw new Error('Block auto-sync is not enabled for this visible milestone')
+  if ((!input.dailyComplete && !blockAutoSyncEnabled(accountId)) || !isVisibleLearnBlockBoundary(input)) {
+    throw new Error('Block auto-sync is not allowed for this milestone')
   }
   const pending: LearnBlockSyncHandoff = {
     accountId,
