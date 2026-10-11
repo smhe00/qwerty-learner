@@ -34,10 +34,24 @@ const explanation = '切换账户前，本机完整 V4 工作区将安全保存�
 /** No React, domain writer, or workspace IO is imported before S1 boot. */
 export function renderS1AccountManagement(root: HTMLElement | null, active: Workspace): void {
   if (!root) throw new Error('Missing S1 account UI root')
+  // The live learning application cannot stay mounted while S1 switches
+  // databases. Render a modal-looking PRE-MOUNT document instead of a React
+  // dialog that could race ongoing IndexedDB writers.
+  const overlay = node('div')
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:80;overflow-y:auto;' +
+    'display:flex;align-items:center;justify-content:center;padding:20px;' +
+    'background:rgba(8,15,29,.78);font-family:system-ui,sans-serif'
   const main = node('section')
-  main.style.cssText = 'max-width:620px;margin:6vh auto;padding:26px;font-family:system-ui,sans-serif;color:#334155;line-height:1.7'
+  main.setAttribute('role', 'dialog')
+  main.setAttribute('aria-modal', 'true')
+  main.setAttribute('aria-labelledby', 'account-dialog-title')
+  main.style.cssText = 'position:relative;width:min(100%,520px);max-height:92vh;' +
+    'overflow-y:auto;padding:30px;border:1px solid #475569;border-radius:18px;' +
+    'background:#1e293b;box-shadow:0 22px 80px #0006;' +
+    'color:#e2e8f0;line-height:1.7'
   const heading = node('h1','安全账户管理（S1）')
-  heading.style.cssText = 'font-size:23px;font-weight:600'
+  heading.id = 'account-dialog-title'
+  heading.style.cssText = 'font-size:23px;font-weight:600;margin-bottom:14px'
   const current = node('p', active.kind === 'account'
     ? '当前工作区：账户 ID ' + active.accountId
     : '当前工作区：本机匿名账户')
@@ -51,7 +65,7 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
         ? '身份状态：云端会话已过期，本机学习记录继续归属于当前账户；请重新认证。'
         : '身份状态：已保存当前账户会话。本机工作区与云端会话相互独立。')
   const guidance = node('p', explanation)
-  guidance.style.cssText = 'margin:16px 0'
+  guidance.style.cssText = 'margin:16px 0;color:#94a3b8;font-size:13px'
   const status = node('p', '状态：就绪')
   status.setAttribute('role', 'status')
   status.style.cssText = 'margin:16px 0;white-space:pre-wrap'
@@ -62,14 +76,17 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
     input.type = type
     input.placeholder = text
     input.setAttribute('aria-label', text)
-    input.style.cssText = 'border:1px solid #94a3b8;border-radius:6px;padding:9px'
+    input.style.cssText = 'width:100%;border:1px solid #64748b;border-radius:8px;' +
+      'padding:11px 12px;background:#0f172a;color:#f8fafc;outline-offset:2px'
     actions.append(input)
     return input
   }
   const button = (text: string, action: () => void) => {
     const el = node('button', text)
     el.type = 'button'
-    el.style.cssText = 'padding:9px;border-radius:6px;border:1px solid #64748b'
+    el.style.cssText = 'padding:11px 14px;border-radius:9px;' +
+      'border:1px solid #64748b;background:#334155;color:#e2e8f0;cursor:pointer;' +
+      'font-weight:600;text-align:center'
     el.addEventListener('click', action)
     actions.append(el)
     return el
@@ -179,13 +196,19 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
     controls.push(button('注册新账户', () => safeRun(registerAction)))
   } else {
     controls.push(button('重新登录当前账户', () => safeRun(reauth)))
-    controls.push(button('退出到匿名工作区', () => safeRun(logoutAction)))
+    const logout = button('安全退出登录', () => safeRun(logoutAction))
+    logout.style.cssText += ';border-color:#be123c;color:#fecdd3'
+    controls.push(logout)
   }
   // DOM event listeners receive PointerEvent; never stringify it as a toast.
-  const back = button('返回学习', () => navigate())
+  const back = button('取消并返回学习', () => navigate())
   controls.push(back)
   main.append(heading,current,authState,guidance,actions,status)
-  root.replaceChildren(main)
+  overlay.append(main)
+  root.replaceChildren(overlay)
+  // Keep focus inside the account surface rather than starting a typing
+  // session in the background. Input focus does not send auth requests.
+  username.focus()
   void workspaceRegistryPort.read().then(registry => {
     if (registry.pending || !same(registry.active, active)) {
       controls.forEach(x => { x.disabled = true })
