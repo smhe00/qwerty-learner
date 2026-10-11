@@ -109,8 +109,10 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
   const safeRun = (action: () => Promise<void>) => {
     setBusy(true, '准备中…')
     void action().catch(error => {
-      setBusy(false, '操作未完成，当前工作区不应被删除。' +
-        (error instanceof Error ? error.message : String(error)) +
+      const detail = error instanceof TypeError && /fetch|network/i.test(error.message)
+        ? '无法连接云端认证服务（网络、DNS 或 EdgeOne API 暂不可用）。请检查 /api/health 后再重试；本地学习记录保持不变。'
+        : error instanceof Error ? error.message : String(error)
+      setBusy(false, '操作未完成；未删除本地工作区。' + detail +
         '。如提示事务中断，请重新加载以执行恢复。')
     })
   }
