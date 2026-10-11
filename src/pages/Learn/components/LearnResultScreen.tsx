@@ -144,7 +144,10 @@ export default function LearnResultScreen() {
         // upload on an opted-in isolated account.
         const auth = loadAuth({ preserveExpired: true })
         const accountId = auth?.user.userId
-        const shouldHandoff = Boolean(accountId && auth!.expiresAt * 1000 > Date.now() &&
+        const s2Enabled = REACT_APP_DEPLOY_ENV !== 'pages' &&
+          (import.meta.env.DEV || import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true')
+        const shouldHandoff = Boolean(s2Enabled && accountId &&
+          auth && auth.expiresAt * 1000 > Date.now() &&
           (baseSettlement.progress.complete || blockAutoSyncEnabled(accountId)) &&
           isVisibleLearnBlockBoundary({
             dailyComplete: baseSettlement.progress.complete,
