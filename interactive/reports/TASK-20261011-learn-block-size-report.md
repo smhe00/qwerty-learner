@@ -108,3 +108,27 @@ warnings. Build passed in 5.47s; git diff --check passed.
 This corrects the same feature the user already requested to publish. Existing
 release authorization is continued for this input fix. Execution base:
 6ba4852808786c882f5440cf2e9bff686ccbf55c. No unrelated task pointer changes.
+
+### Input fix production verification
+
+Release commit: e2e44d17ac992931ead81d8d74b694f158116536, fast-forward
+pushed to product/main and master. The served HTML references
+/assets/index-e2c64b6c.js and /assets/app-67753ad7.js; the app bundle contains
+the e2e44d1 release marker.
+
+All three real EdgeOne Chrome feature tests passed (25.8s), including the
+actual clear → 2 → 20 keystroke sequence without intermediate persistence,
+Enter commit, blur-only 60 → 50 correction, empty restoration, 5/50-word
+queues, saved preference reload and current-block recovery. Tests used fresh
+isolated local browser contexts and actual production IndexedDB, with no
+cloud account writes. Temporary readiness adapter only replaces the dev-only
+module import with a native IndexedDB readiness check; product assertions
+remain identical to committed tests.
+
+Production Verify run 38117527681 still fails before verifying deployment:
+NotFoundError / ResourceNotFound for existing stale Maker ID
+makers-cgemngjuuwle. Actual publication is confirmed through served source
+and the three passing production browser regressions. Learn Real Journey CI
+passed; Review Gate was still running at the verification snapshot. No claim
+that all CI workflows are green.
+https://github.com/smhe00/qwerty-learner/actions/runs/38117527681
