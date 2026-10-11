@@ -35,21 +35,27 @@ function stable(value) {
     .map(k => `${JSON.stringify(k)}:${stable(value[k])}`).join(',')}}`
 }
 
+// Keep sorting semantics aligned with browser V4: only cache comparison
+// keys, never change the canonical bytes or the logical fingerprint.
+function sortByCanonicalKey(values, keyOf) {
+  return values
+    .map(value => ({ value, key: stable(keyOf(value)) }))
+    .sort((a, b) => a.key.localeCompare(b.key))
+    .map(item => item.value)
+}
+
 function canonicalData(data) {
   const db = data.database
   const root = object(db.data) ? db.data : null
   let logicalDatabase = db
   if (root && Array.isArray(root.tables) && Array.isArray(root.data)) {
     logicalDatabase = {
-      tables: [...root.tables].sort((a, b) =>
-        stable(object(a) ? a.name : a).localeCompare(stable(object(b) ? b.name : b))),
-      data: root.data.map(entry => {
+      tables: sortByCanonicalKey(root.tables,
+        a => object(a) ? a.name : a),
+      data: sortByCanonicalKey(root.data.map(entry => {
         if (!object(entry) || !Array.isArray(entry.rows)) return entry
-        return { ...entry, rows: [...entry.rows].sort((a, b) =>
-          stable(a).localeCompare(stable(b))) }
-      }).sort((a, b) =>
-        stable(object(a) ? a.tableName : a)
-          .localeCompare(stable(object(b) ? b.tableName : b))),
+        return { ...entry, rows: sortByCanonicalKey(entry.rows, row => row) }
+      }), entry => object(entry) ? entry.tableName : entry),
     }
   }
   return {
