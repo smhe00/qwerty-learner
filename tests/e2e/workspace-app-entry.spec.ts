@@ -136,7 +136,9 @@ test('S1 actual Settings login refuses legacy auth before any network request', 
   expect(loginRequests).toBe(0)
   // Account controls intentionally live outside the Settings modal. Close
   // Settings before using the top-right global account entry.
-  await page.getByRole('button', { name: '关闭对话框' }).click()
+  // Keyboard dismissal works even when the header close icon is visually
+  // hidden by the responsive transition/scroll container.
+  await page.keyboard.press('Escape')
   await safeEntry.click()
   await expect(page.getByRole('heading', { name: '安全账户管理（S1）' })).toBeVisible()
   await expect(page.getByRole('button', { name: '登录已有账户' })).toBeVisible()
@@ -277,6 +279,9 @@ test('real S1 pre-mount consent preserves anonymous V1 learning records', async 
   await page.goto('/?s1-migration=confirm')
   await expect(page.getByText('S1 V1 数据归属测试（仅限本地开发）')).toBeVisible()
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toHaveCount(0)
+  // S1 explicitly requires confirmation of an existing complete V4 backup.
+  // Never bypass this checkbox in a test or in production code.
+  await page.getByLabel('已核对本机完整 V4 备份').check()
   await page.getByRole('button', { name: '确认归属并建立隔离工作区' }).click()
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
   await harness(page)
@@ -307,6 +312,9 @@ test('S1 dev consent assigns V1 account workspace by immutable ID, not username'
   })
   await page.goto('/?s1-migration=confirm')
   await expect(page.getByText(/s1-immutable-identity-A/)).toBeVisible()
+  // S1 explicitly requires confirmation of an existing complete V4 backup.
+  // Never bypass this checkbox in a test or in production code.
+  await page.getByLabel('已核对本机完整 V4 备份').check()
   await page.getByRole('button', { name: '确认归属并建立隔离工作区' }).click()
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
   await harness(page)
