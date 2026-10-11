@@ -92,14 +92,19 @@ export async function executeManualSyncV2(port: SyncV2ExecutionPort): Promise<S2
     throw new Error('S2 requires a valid isolated account workspace generation')
   }
   await timePerfStage('sync', 'flush-writers', () => port.flush())
-  const local = await timePerfStage('sync', 'snapshot-capture', () => port.capture())
+  // Remote metadata is read-only; fetch it concurrently with the immutable
+  // local snapshot. Push still uses revision CAS; Pull rechecks remote metadata
+  // after download. Do not parallelize the writer flush or ownership guard.
+  const [local, baseline, remote] = await Promise.all([
+    timePerfStage('sync', 'snapshot-capture', () => port.capture()),
+    port.readBaseline(),
+    timePerfStage('sync', 'remote-meta', () => port.getMeta()),
+  ])
   assertRestorableWorkspaceV4(local)
   if (local.metadata.source.kind !== 'account' ||
       local.metadata.source.accountId !== port.accountId) {
     throw new Error('S2 working workspace immutable account mismatch')
   }
-  const baseline = await port.readBaseline()
-  const remote = await timePerfStage('sync', 'remote-meta', () => port.getMeta())
   const preflight = await timePerfStage('sync', 'fingerprint-decision', () =>
     preflightManualSyncV2(local, port.accountId, {
     ...remote, logicalFingerprint: remote.logicalFingerprint ?? null,
