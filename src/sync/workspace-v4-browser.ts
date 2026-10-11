@@ -25,6 +25,8 @@ import { clearAllLearnDailySessions } from '@/learn/daily-session'
 import { flushReviewRecordWrites } from '@/store/reviewInfoAtom'
 import { db } from '@/utils/db/core'
 import Dexie from 'dexie'
+import { timePerfStage } from './perf-diagnostics'
+import type { PerfFlow } from './perf-diagnostics'
 
 /**
  * Last-resort independent lossless audit. Dexie Export/Import uses Typeson,
@@ -87,18 +89,21 @@ async function verifyV4RoundTripInDisposableDatabase(
 
 export async function captureWorkingWorkspaceV4(
   source: WorkspaceIdentityV4,
+  diagnosticFlow?: PerfFlow,
 ): Promise<WorkspaceSnapshotV4> {
+  const timed = <T>(stage: string, work: () => Promise<T>): Promise<T> =>
+    diagnosticFlow ? timePerfStage(diagnosticFlow, stage, work) : work()
   // Flush the known serialized Learn ReviewRecord writer. This is not a
   // substitute for the external cross-tab lock and all-writer quiescence.
   await flushReviewRecordWrites()
-  const v3 = await exportBackupJson()
+  const v3 = await timed('dexie-export', () => exportBackupJson())
   const snapshot = migrateV3ToWorkspaceV4(v3, {
     source,
     createdAt: new Date().toISOString(),
   }, { storage: localStorage })
   // Counts are read from actual RecordDB, not from the serialized export.
   // This fails closed if an incomplete export omits rows from a live table.
-  const entries = await Promise.all(
+  const entries = await timed('source-rows-read', () => Promise.all(
     db.tables.filter(table => [
       'wordRecords', 'chapterRecords', 'reviewRecords', 'reviewWordStates',
       'achievementEvents', 'achievementStates',
@@ -107,13 +112,13 @@ export async function captureWorkingWorkspaceV4(
       // Mapping constructors may rehydrate computed/default fields that
       // do not exist in IndexedDB and must not be mistaken for corruption.
       [table.name, await table.toCollection().raw().toArray()] as const),
-  )
+  ))
   // Count-only comparisons miss same-count substitutions (e.g. a damaged
   // FSRS interval); independently hash full live Dexie rows as well.
   const sourceRows = Object.fromEntries(entries) as
     Parameters<typeof assertV4SourceRowsMatchExport>[1]
   try {
-    await assertV4SourceRowsMatchExport(snapshot, sourceRows)
+    await timed('source-rows-audit', () => assertV4SourceRowsMatchExport(snapshot, sourceRows))
   } catch (error) {
     // Only a payload mismatch can have a reversible Typeson representation.
     // A row-count mismatch, malformed archive, or damaged source still fails.
@@ -121,7 +126,8 @@ export async function captureWorkingWorkspaceV4(
         !error.message.startsWith('Backup V4 source/export row-payload mismatch:')) {
       throw error
     }
-    await verifyV4RoundTripInDisposableDatabase(snapshot, sourceRows)
+    await timed('fallback-roundtrip-audit', () =>
+      verifyV4RoundTripInDisposableDatabase(snapshot, sourceRows))
   }
   return snapshot
 }
