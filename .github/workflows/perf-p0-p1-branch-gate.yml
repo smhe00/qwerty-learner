@@ -2,6 +2,14 @@ name: Performance P0-P1 Branch Gate
 
 # Temporary feature-branch verification. No EdgeOne deployment.
 on:
+  pull_request:
+    branches:
+      - product/main
+    paths:
+      - 'src/**'
+      - 'tests/cloud/**'
+      - 'cloud-functions/**'
+      - '.github/workflows/perf-p0-p1-branch-gate.yml'
   push:
     branches:
       - feature/perf-boot-sync-p0-p1-20261011
