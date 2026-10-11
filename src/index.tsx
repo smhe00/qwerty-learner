@@ -4,6 +4,7 @@
  * Legacy users continue without automatic S1 migration.
  */
 import { loadAuth } from './sync/auth'
+import { startPerfStage, timePerfStage } from './sync/perf-diagnostics'
 import { DAILY_SESSION_PREFIX, WORKSPACE_SETTING_KEYS } from './sync/workspace-v4'
 import { prepareGuardedWorkspaceBoot } from './sync/workspace-bootstrap'
 import type { Workspace } from './sync/workspace-transition'
@@ -191,7 +192,8 @@ async function start(): Promise<void> {
   if (starting || releasedForPageHide) return
   starting = true
   try {
-    boot = await prepareGuardedWorkspaceBoot(onStage, { allowLegacy: true })
+    boot = await timePerfStage('startup', 'guarded-bootstrap', () =>
+      prepareGuardedWorkspaceBoot(onStage, { allowLegacy: true }))
     if (releasedForPageHide) {
       boot.release()
       return
@@ -214,6 +216,11 @@ async function start(): Promise<void> {
       await completeConfirmedRevokedLogout(boot, gateUI)
       return
     }
+    if (new URLSearchParams(window.location.search).get('perf-report') === 'view') {
+      const { renderPerfReportUI } = await import('./sync/perf-report-ui')
+      renderPerfReportUI(root)
+      return
+    }
     // S2 pilot: the ONLY ordinary Sync action navigates into a new,
     // pre-mount, S1 writer-locked realm; it never mutates RecordDB from
     // mounted React. Production remains disabled without explicit flag.
@@ -227,7 +234,11 @@ async function start(): Promise<void> {
       gateUI('正在安全同步', '正在检查工作区、云端版本和完整性，必要时进行安全事务操作…')
       try {
         const { executePreMountManualSyncV2 } = await import('./sync/v2-browser-executor')
-        const result = await executePreMountManualSyncV2(boot)
+        // Capture the validated boot lease locally. A module-scope mutable
+        // variable loses its TypeScript narrowing inside async callbacks.
+        const syncBoot: GuardedWorkspaceBoot = boot
+        const result = await timePerfStage('sync', 'sync-total', () =>
+          executePreMountManualSyncV2(syncBoot))
         const status = result.status
         const note = status === 'noop'
           ? '同步完成：本地和云端已经一致，没有传输完整数据。'
@@ -296,8 +307,10 @@ async function start(): Promise<void> {
     }
     // Importing the old app initializes store atoms and DB modules. This
     // module must never be evaluated before the boot gate resolves.
-    await import('./app')
+    const finishFirstFrame = startPerfStage('startup', 'entry-to-first-frame')
+    await timePerfStage('startup', 'app-module-import', () => import('./app'))
     mounted = true
+    requestAnimationFrame(() => finishFirstFrame())
     if (boot.mode === 'isolated') {
       const { startSessionRevocationMonitor } = await import('./sync/session-revocation')
       stopSessionRevocationMonitor = startSessionRevocationMonitor(boot.registry)

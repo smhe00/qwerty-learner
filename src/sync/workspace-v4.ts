@@ -221,6 +221,19 @@ export function stableWorkspaceJson(value: unknown): string {
     .map(k => `${JSON.stringify(k)}:${stableWorkspaceJson(object[k])}`).join(',')}}`
 }
 
+/**
+ * Precompute each canonical comparison key once. Sorting previously called
+ * stableWorkspaceJson on both operands at every O(N log N) comparison.
+ * The key and localeCompare semantics are unchanged, so existing V4 logical
+ * fingerprints remain bit-for-bit compatible with deployed backups.
+ */
+function sortedByCanonicalKey<T>(values: T[], keyOf: (value: T) => unknown): T[] {
+  return values
+    .map(value => ({ value, key: stableWorkspaceJson(keyOf(value)) }))
+    .sort((a, b) => a.key.localeCompare(b.key))
+    .map(item => item.value)
+}
+
 /** Dexie export tables and row collection order are non-semantic. */
 export function canonicalWorkspaceData(data: WorkspaceDataV4): unknown {
   const db = data.database as JsonRecord
@@ -228,16 +241,12 @@ export function canonicalWorkspaceData(data: WorkspaceDataV4): unknown {
   let logicalDatabase: unknown = db
   if (root && Array.isArray(root.tables) && Array.isArray(root.data)) {
     logicalDatabase = {
-      tables: [...root.tables].sort((a, b) =>
-        stableWorkspaceJson(isRecord(a) ? a.name : a)
-          .localeCompare(stableWorkspaceJson(isRecord(b) ? b.name : b))),
-      data: root.data.map(entry => {
+      tables: sortedByCanonicalKey(root.tables,
+        a => isRecord(a) ? a.name : a),
+      data: sortedByCanonicalKey(root.data.map(entry => {
         if (!isRecord(entry) || !Array.isArray(entry.rows)) return entry
-        return { ...entry, rows: [...entry.rows].sort((a, b) =>
-          stableWorkspaceJson(a).localeCompare(stableWorkspaceJson(b))) }
-      }).sort((a, b) =>
-        stableWorkspaceJson(isRecord(a) ? a.tableName : a)
-          .localeCompare(stableWorkspaceJson(isRecord(b) ? b.tableName : b))),
+        return { ...entry, rows: sortedByCanonicalKey(entry.rows, row => row) }
+      }), entry => isRecord(entry) ? entry.tableName : entry),
     }
   }
   return {

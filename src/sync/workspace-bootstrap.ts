@@ -6,6 +6,7 @@
  * registry. It never migrates or switches an account implicitly.
  */
 import { loadAuth, setIsolatedAuthRetention } from './auth'
+import { timePerfStage } from './perf-diagnostics'
 import { S1_MIGRATION_WITNESS_KEY } from './workspace-v4'
 import {
   assertWorkspaceMigrationWitness,
@@ -50,21 +51,22 @@ export async function prepareGuardedWorkspaceBoot(
   options: { allowLegacy?: boolean } = {},
 ): Promise<GuardedWorkspaceBoot> {
   report(onStage, 'locking')
-  const lease = await acquireWorkspaceWriterLease().catch(error => {
+  const lease = await timePerfStage('startup', 'writer-lease', () =>
+    acquireWorkspaceWriterLease()).catch(error => {
     report(onStage, 'blocked')
     throw error
   })
 
   let recovered = false
   try {
-    const before = await workspaceRegistryPort.read()
+    const before = await timePerfStage('startup', 'registry-read', () =>
+      workspaceRegistryPort.read())
     // An S2 Pull may have partially restored shared settings. Its immutable
     // staged V4 snapshot is the recovery authority before app hydration.
     const { syncV2PullJournalPort } = await import('./v2-pull-journal')
     const { manualV4ImportJournalPort } = await import('./manual-v4-import-journal')
-    const [pendingPull, pendingImport] = await Promise.all([
-      syncV2PullJournalPort.read(), manualV4ImportJournalPort.read(),
-    ])
+    const [pendingPull, pendingImport] = await timePerfStage('startup', 'journal-check', () =>
+      Promise.all([syncV2PullJournalPort.read(), manualV4ImportJournalPort.read()]))
     if ((pendingPull && pendingImport) ||
         (before.pending && (pendingPull || pendingImport))) {
       throw new Error('Conflicting S1, S2 and manual V4 recovery journals')
@@ -131,7 +133,8 @@ export async function prepareGuardedWorkspaceBoot(
     const { reconcileAuthTransition } = await import('./workspace-auth-transaction')
     // No domain writer is mounted yet. Handle both pre-journal rollback and
     // post-registry-CAS / pre-auth-write crashes from the previous page.
-    const reconciliation = await reconcileAuthTransition()
+    const reconciliation = await timePerfStage('startup', 'auth-reconcile', () =>
+      reconcileAuthTransition())
     if (reconciliation === 'completed') {
       // This recovery follows a validated durable S1 auth transition intent
       // whose target is already the committed registry owner.

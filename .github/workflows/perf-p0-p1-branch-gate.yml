@@ -1,0 +1,107 @@
+name: Performance P0-P1 Branch Gate
+
+# Temporary feature-branch verification. No EdgeOne deployment.
+on:
+  pull_request:
+    branches:
+      - product/main
+    paths:
+      - 'src/**'
+      - 'tests/cloud/**'
+      - 'cloud-functions/**'
+      - '.github/workflows/perf-p0-p1-branch-gate.yml'
+  push:
+    branches:
+      - feature/perf-boot-sync-p0-p1-20261011
+    paths:
+      - 'src/**'
+      - 'tests/cloud/**'
+      - 'cloud-functions/**'
+      - '.github/workflows/perf-p0-p1-branch-gate.yml'
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: 'yarn'
+      - name: Install locked dependencies
+        run: yarn install --frozen-lockfile
+      - name: Run cloud V4 and S1/S2 contracts
+        run: yarn test:cloud
+      - name: Lint server and cloud tests
+        run: yarn eslint cloud-functions tests/cloud --ext .js,.mjs
+      - name: Lint modified frontend and sync
+        run: yarn eslint src/sync src/index.tsx src/utils/wordListFetcher.ts --ext .ts,.tsx
+      - name: Build production bundle
+        run: yarn build
+      - name: Browser smoke of startup and local performance report
+        run: yarn playwright test --config tests/e2e/perf-local.config.ts
+      - name: Typecheck (diagnostic; base branch has pre-existing errors)
+        continue-on-error: true
+        run: yarn tsc --noEmit --pretty false
+      - name: TypeScript regression diff against product/main
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin +refs/heads/product/main:refs/remotes/origin/product/main
+          git worktree add --detach /tmp/qwerty-perf-base refs/remotes/origin/product/main
+          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/qwerty-perf-base/node_modules
+          (cd /tmp/qwerty-perf-base &&
+            "$GITHUB_WORKSPACE/node_modules/.bin/tsc" --noEmit --pretty false) > /tmp/perf-base-tsc.txt 2>&1 || true
+          yarn tsc --noEmit --pretty false > /tmp/perf-feature-tsc.txt 2>&1 || true
+          python3 - <<'PY'
+          import collections, re, sys
+          pattern = re.compile(r'^(.+?)\(\d+,\d+\): error (TS\d+): (.*)$')
+          def parse(path):
+              result = collections.Counter()
+              for line in open(path, encoding='utf-8'):
+                  match = pattern.search(line.strip())
+                  if match:
+                      result[(match.group(1), match.group(2), match.group(3))] += 1
+              return result
+          original = parse('/tmp/perf-base-tsc.txt')
+          candidate = parse('/tmp/perf-feature-tsc.txt')
+          introduced = candidate - original
+          print(f'TypeScript baseline errors: {sum(original.values())}; feature errors: {sum(candidate.values())}')
+          if introduced:
+              print('New TypeScript regressions:')
+              for (path, code, message), count in introduced.items():
+                  print(f'  {path}: {code}: {message} (count={count})')
+              sys.exit(1)
+          print('No TypeScript diagnostic regressions relative to product/main')
+          PY
+      - name: Record verification status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RESULT: ${{ job.status }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ "$RESULT" = 'success' ]; then STATE=success; else STATE=failure; fi
+          export STATE
+          python3 - <<'PY' > /tmp/qwerty-perf-gate.json
+          import json, os
+          print(json.dumps({
+            'state': os.environ['STATE'],
+            'context': 'perf/p0-p1-branch-gate',
+            'description': 'Cloud tests, lint and build: ' + os.environ['RESULT'],
+            'target_url': 'https://github.com/' + os.environ['REPO'] +
+                          '/actions/runs/' + os.environ['RUN_ID'],
+          }))
+          PY
+          curl --fail --silent --show-error --retry 2 -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/qwerty-perf-gate.json \
+            "https://api.github.com/repos/${REPO}/statuses/${SHA}" > /dev/null
