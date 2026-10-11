@@ -1,7 +1,7 @@
 ---
 protocol_version: "1.1"
 task_id: "TASK-20261011-learn-tail-release"
-status: "IN_PROGRESS"
+status: "REVIEW"
 executor: "Codex"
 target_branch: "master"
 release_to_master: true
@@ -32,3 +32,8 @@ smoke result and any limitation in a separate report on product/main.
 
 If deployment fails, preserve diagnostics and use a new revert commit if a
 rollback is needed; never force-push or rewrite shared history.
+
+## Completion
+
+master now points to the authorized source. Served app marker 2fa2a1a verified;
+health and both published Learn smoke tests passed. See the release report.

@@ -410,7 +410,7 @@ test('backup regression: unfinished acquisition checkpoint prunes admitted and e
 })
 
 
-test('simulation-discovered regression: assistance-deferred acquisition resumes Supported after bounded cross-session delay', () => {
+test('simulation-discovered regression: assistance-deferred acquisition resumes Independent after bounded cross-session delay', () => {
   const now = 10_000
   const target = word('difficult')
   const state = {
@@ -485,10 +485,10 @@ test('simulation-discovered regression: assistance-deferred acquisition resumes 
       1,
   })
   assert.equal(ready.resumed.length, 1)
-  assert.equal(ready.resumed[0]?.state.phase, 'supported')
+  assert.equal(ready.resumed[0]?.state.phase, 'independent')
   assert.equal(
     ready.resumed[0]?.state.scaffoldHintPosition,
-    2,
+    undefined,
   )
   assert.deepEqual(ready.freshWords, [])
 })
