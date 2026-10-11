@@ -1,7 +1,7 @@
 # Learn optional new words and five-more — completed on product/main
 
 Execution base: `fdb5f17665492e5cada4d8609b5435ede07e7a98`.
-Code commit: see follow-up SHA entry below. Release to master: **false**.
+Code commit: `e58b4ea6e99e7b1c751e2b96d21652faef146fec`, pushed to `origin/product/main`. Release to master: **false**.
 
 ## Behavior
 
@@ -26,3 +26,5 @@ Code commit: see follow-up SHA entry below. Release to master: **false**.
 No changes to Typing scheduling or the release branch. Small/exhausted dictionaries still use existing legitimate final-probe/idle behavior when insufficient unseen interleaving exists. Failed final recalls remain unresolved rather than automatically mastered. Build retains existing bundle-size/Browserslist warnings.
 
 Temporary local browser config and bundled tests were removed. Validation ran manually because the checkout pre-commit hook references missing `.husky/_/husky.sh`; commit uses only a command-scoped hook override. Unrelated CURRENT_TASK metadata is untouched.
+
+Release branch verified unchanged at `e2e44d17ac992931ead81d8d74b694f158116536`.
