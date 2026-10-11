@@ -281,6 +281,9 @@ export default function LearnResultScreen() {
   )
 
   const progress = settlement?.progress
+  const milestoneIndex = settlement?.milestoneReached === undefined
+    ? -1
+    : (settlement.session.blockMilestones ?? []).indexOf(settlement.milestoneReached)
   const isDailyComplete = progress?.complete === true
   const totalActiveSeconds = settlement
     ? settlement.session.accumulatedActiveSeconds
@@ -311,8 +314,8 @@ export default function LearnResultScreen() {
               {currentDictInfo.name} · Learn
             </div>
             <h1 className="mt-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
-              {isDailyComplete ? '今日学习完成' : settlement?.milestoneReached !== undefined
-                ? `阶段 ${settlement.session.blockMilestones?.indexOf(settlement.milestoneReached)! + 1} 完成`
+              {isDailyComplete ? '今日学习完成' : milestoneIndex >= 0
+                ? `阶段 ${milestoneIndex + 1} 完成`
                 : settlement?.session.blockMilestones ? '继续学习' : '阶段完成'}
             </h1>
 
