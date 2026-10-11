@@ -74,3 +74,15 @@ The screenshot confirms Version 8699f3f with the precise terminal-exhaustion sta
 - Existing extension helper accepts this explicit active-idle state and clears the marker when adding words. It never completes the session or creates mastery evidence; original planned identities, unresolved state, progress and recurring quota remain intact.
 - **296/296 domain/Review/system tests PASS**, 351.8 ms; new contract proves unresolved original plus five added words remain incomplete and active. **3/3 Chrome PASS**, 18.1 s, covering result, completed landing, and a deterministic failed final-probe incident (first detection, reload, explicit append). **Build PASS**, 5.40 s; scoped lint 0 errors, 1 existing LearnPage cleanup-ref warning.
 - Continue the existing authorized production bug correction; served resources/live checks follow.
+
+
+### Failed-probe correction published — verified
+
+- Code/release **`c69588a08ddf47727328283cf5f303e78f13e240`**; master fast-forwarded from `8699f3f0`.
+- Actual EdgeOne HTML now serves `/assets/index-ae69be3f.js` → `assets/app-0b17bc63.js`; `c69588a` present and prior `8699f3f` absent.
+- **All five production browser scenarios verified across runs**: result extension; completed-day landing extension; failed final-probe idle entry, persistence through reload and explicit five-word extension with unresolved original intact; actual typed word durability; repeated reload route stability. First run had **4 PASS / 1 header-readiness timeout** (1.9 min); first scoped reload rerun had the same timeout. Diagnostic reproduction with unchanged assertions then passed (7.8 s), no page runtime error, and the final **unmodified original reload test PASS** (11.2 s). No timeout/assertion weakening. Initial intermittent page-readiness timeouts are recorded rather than claiming a first-run 5/5 result.
+- Three feature checks took 26.8 s / 22.4 s / 8.6 s. Failed-probe case uses an explicit synthetic incident snapshot in a fresh anonymous incognito profile on the actual served build. Other journeys exercise real typing. No user account/cloud data touched; no dev module injection.
+- [Learn Real Journey 38126629323](https://github.com/smhe00/qwerty-learner/actions/runs/38126629323): **SUCCESS**. Architecture, mutation audit and independent holdout also succeeded when checked; Review was still running.
+- [Production Verify 38126632019](https://github.com/smhe00/qwerty-learner/actions/runs/38126632019): existing obsolete Makers project lookup **FAILURE**, `NotFoundError: Makers project(makers-cgemngjuuwle) is not found`.
+- [Generalization Holdout G2 38126629239](https://github.com/smhe00/qwerty-learner/actions/runs/38126629239): **FAILURE** due an invalid frozen mutation locator in unchanged FSRS source (`fsrs-initial-due-delayed-extra-day occurrences=0`); baseline passed, 15 valid mutations killed, 0 survivors, 1 invalid-build. No all-CI-green claim; mutation fixture not altered for this UI/idle fix.
+- Temporary bundled contracts, configs, live diagnostic files removed. Verification-only docs remain on product/main; master remains the tested release.
