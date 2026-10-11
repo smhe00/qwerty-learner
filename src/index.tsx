@@ -234,8 +234,11 @@ async function start(): Promise<void> {
       gateUI('正在安全同步', '正在检查工作区、云端版本和完整性，必要时进行安全事务操作…')
       try {
         const { executePreMountManualSyncV2 } = await import('./sync/v2-browser-executor')
+        // Capture the validated boot lease locally. A module-scope mutable
+        // variable loses its TypeScript narrowing inside async callbacks.
+        const syncBoot: GuardedWorkspaceBoot = boot
         const result = await timePerfStage('sync', 'sync-total', () =>
-          executePreMountManualSyncV2(boot))
+          executePreMountManualSyncV2(syncBoot))
         const status = result.status
         const note = status === 'noop'
           ? '同步完成：本地和云端已经一致，没有传输完整数据。'
