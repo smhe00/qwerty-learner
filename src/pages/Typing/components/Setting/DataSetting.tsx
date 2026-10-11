@@ -151,7 +151,7 @@ export default function DataSetting() {
       <ScrollArea.Viewport className="h-full w-full px-3">
         <div className={styles.tabContent}>
           {REACT_APP_DEPLOY_ENV !== 'pages' && <section className={styles.section}>
-            <span className={styles.sectionLabel}>云端同步与账号</span>
+            <span className={styles.sectionLabel}>云端同步</span>
             <CloudSyncSetting />
           </section>}
           <div className={styles.section}>
