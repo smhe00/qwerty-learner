@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   verify:
@@ -37,3 +38,30 @@ jobs:
       - name: Typecheck (diagnostic)
         continue-on-error: true
         run: yarn tsc --noEmit --pretty false
+      - name: Record verification status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RESULT: ${{ job.status }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ "$RESULT" = 'success' ]; then STATE=success; else STATE=failure; fi
+          export STATE
+          python3 - <<'PY' > /tmp/qwerty-perf-gate.json
+          import json, os
+          print(json.dumps({
+            'state': os.environ['STATE'],
+            'context': 'perf/p0-p1-branch-gate',
+            'description': 'Cloud tests, lint and build: ' + os.environ['RESULT'],
+            'target_url': 'https://github.com/' + os.environ['REPO'] +
+                          '/actions/runs/' + os.environ['RUN_ID'],
+          }))
+          PY
+          curl --fail --silent --show-error --retry 2 -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/qwerty-perf-gate.json \
+            "https://api.github.com/repos/${REPO}/statuses/${SHA}" > /dev/null
