@@ -1,7 +1,16 @@
 /* eslint-env node */
-/** Fail-closed server-side S2 write isolation based on immutable userId. */
-export function isS2WriteAllowed(config, userId) {
-  if (typeof config !== 'string' || typeof userId !== 'string' || !userId) return false
-  const ids = config.split(',').map(item => item.trim()).filter(Boolean)
-  return ids.length > 0 && !ids.includes('*') && ids.includes(userId)
+/**
+ * Public S2 V4 rollout: any valid authenticated immutable account may write.
+ * An explicit emergency kill switch can disable new S2 writes globally.
+ *
+ * The legacy S2_SYNC_WRITE_ACCOUNT_IDS allowlist is intentionally ignored.
+ * Authentication, owner binding, V4 payload validation, V3 migration
+ * protection and revision CAS remain enforced by the backend service.
+ */
+export function isS2WriteEnabled(disabledFlag) {
+  return disabledFlag !== true &&
+    disabledFlag !== 1 &&
+    !(['true', '1', 'yes', 'on'].includes(
+      typeof disabledFlag === 'string' ? disabledFlag.trim().toLowerCase() : '',
+    ))
 }
