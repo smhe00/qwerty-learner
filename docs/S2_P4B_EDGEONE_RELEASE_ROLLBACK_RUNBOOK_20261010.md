@@ -1,5 +1,8 @@
 # Qwerty Plus — S2 P4b Maker 灰度 / 回滚操作契约
 
+> **历史灰度记录（已被 2026-10-11 V4 GA 取代）**：本文件早期章节中的 `S2_SYNC_WRITE_ACCOUNT_IDS` 白名单、403 拒绝和灰度回滚描述仅记录当时行为，**不是当前上线配置要求**。现行策略详见 [S2 V4 全账号开放契约](./S2_V4_GENERAL_AVAILABILITY_20261011.md)：全部有效登录账号可写 V4；V3 不自动迁移；紧急停写使用 `S2_SYNC_WRITES_DISABLED=true`。
+
+
 状态：**灰度隔离已部署，P4b 实网验收未完成；不可声称全部 PASS**。
 开发主线 `product/main`；当前生产发布分支 `master`。将此文档
 纳入 P4b-4 操作预案，不代表 P4b-3 已执行。
