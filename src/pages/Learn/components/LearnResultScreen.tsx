@@ -145,7 +145,7 @@ export default function LearnResultScreen() {
         const auth = loadAuth({ preserveExpired: true })
         const accountId = auth?.user.userId
         const shouldHandoff = Boolean(accountId && auth!.expiresAt * 1000 > Date.now() &&
-          blockAutoSyncEnabled(accountId) &&
+          (baseSettlement.progress.complete || blockAutoSyncEnabled(accountId)) &&
           isVisibleLearnBlockBoundary({
             dailyComplete: baseSettlement.progress.complete,
             milestone: baseSettlement.milestoneReached,
@@ -168,8 +168,8 @@ export default function LearnResultScreen() {
             )
           }
         }
-        // No cloud I/O when opt-in is OFF.  The previous completion-only
-        // V1 uploader was legacy and cannot mutate S1-isolated V4 accounts.
+        // Daily completion retains its existing automatic-sync intent via guarded
+        // S2 V4. The checkbox only expands that behaviour to each Block.
       })
       .catch((error) => {
         console.error('failed to settle Learn block', error)
@@ -476,7 +476,7 @@ export default function LearnResultScreen() {
 
           {isDailyComplete ? (
             <div className="mt-7 text-center text-xs text-gray-400">
-              本地学习进度已保存。未启用或未执行自动同步时，可在设置中手动同步。
+              本地进度已保存；如云端同步未执行，可在设置中手动同步。
             </div>
           ) : null}
 
