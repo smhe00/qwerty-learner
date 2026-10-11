@@ -52,6 +52,10 @@ export type LearnAcquisitionState = {
   independentInterveningItems?: number
   deferredReason?: LearnAcquisitionDeferredReason
   resumeAfter?: number
+  /** One unscheduled, fully hidden last attempt when no other daily work exists. */
+  terminalProbe?: boolean
+  /** Stops a failed terminal probe cycling again within the same day. */
+  terminalProbeAttemptedAt?: number
 }
 
 export type LearnAcquisitionEvent =
@@ -161,6 +165,7 @@ export function createLearnAcquisitionExercisePlan(
     scaffoldStrainTier?: LearnInteractionStrainTier
     scaffoldHintPosition?: number
     assistedCycles?: number
+    terminalProbe?: boolean
   },
 ): ReviewExercisePlanV1 {
   if (phase === 'complete' || phase === 'deferred') {
@@ -220,7 +225,7 @@ export function createLearnAcquisitionExercisePlan(
     : isIndependent
       ? [
           'learn-acquisition-independent',
-          'delayed-recall',
+          ...(options?.terminalProbe ? ['terminal-probe', 'spacing-not-proven'] : ['delayed-recall']),
           'scheduler-neutral',
           ...presentationReasonCodes,
           ...(options?.independentInterveningItems !== undefined
@@ -260,6 +265,7 @@ export function createLearnAcquisitionExercisePlanForState(
     scaffoldStrainTier: state.scaffoldStrainTier,
     scaffoldHintPosition: state.scaffoldHintPosition,
     assistedCycles: state.assistedCycles,
+    terminalProbe: state.terminalProbe,
   })
 }
 
@@ -404,6 +410,22 @@ export function resumeDeferredAcquisition(
  * Compatibility wrapper retained for callers/tests that specifically reason
  * about spacing-deferred Acquisition.
  */
+/** Bypass a cooling clock only for a single independent final probe. */
+export function resumeDeferredAsTerminalProbe(
+  state: LearnAcquisitionState,
+): LearnAcquisitionState | undefined {
+  if (state.phase !== 'deferred') return undefined
+  return {
+    ...state,
+    phase: 'independent',
+    scaffoldHintPosition: undefined,
+    independentInterveningItems: 0,
+    terminalProbe: true,
+    deferredReason: undefined,
+    resumeAfter: undefined,
+  }
+}
+
 export function resumeSpacingDeferredAcquisition(
   state: LearnAcquisitionState,
   now: number,

@@ -4,6 +4,7 @@ import {
   createLearnAcquisitionExercisePlanForState,
   deferredAcquisitionCohortResumeTimes,
   resumeDeferredAcquisition,
+  resumeDeferredAsTerminalProbe,
 } from '../../src/learn/acquisition'
 import type { LearnAcquisitionState } from '../../src/learn/acquisition'
 import { resolveLearnAcquisitionCompletion } from '../../src/learn/progression'
@@ -13,8 +14,9 @@ import {
   repairUnadmittedAcquisitionCheckpoint,
 } from '../../src/learn/acquisition-recovery'
 import { planLearnAcquisitionCandidates } from '../../src/learn/session'
-import { createLearnDailySession, deriveLearnDailyProgress } from '../../src/learn/daily-session'
+import { createLearnDailySession, deriveLearnDailyProgress, planLearnBlockMilestones } from '../../src/learn/daily-session'
 import { createInitialReviewWordState } from '../../src/review/types'
+import { rebuildActiveFsrsStateFromWordRecords } from '../../src/review/fsrs/active'
 import type { IWordRecord, IReviewRecord } from '../../src/utils/db/record'
 
 const word = { name: 'accurate', trans: [], usphone: '', ukphone: '' }
@@ -379,4 +381,95 @@ test('practice mistakes and clean copies stay neutral through replay, daily and 
     acquisitionStates: { accurate: { ...independent, phase: 'complete', spacingOnly: true } } }), wordRecords: [clean, wrong] })
   assert.equal(live.totalLogicalWords, 0)
   assert.equal(live.completedLogicalWords, 0)
+})
+
+
+test('daily new-word identities and balanced milestones remain frozen', () => {
+  const words = ['alpha', 'bravo', 'charlie', 'delta'].map(name => ({ ...word, name }))
+  const daily = createLearnDailySession({
+    dict: 'incident', now: NOW, dailyNewTarget: 3,
+    dictionaryWords: words.map(item => item.name),
+    wordRecords: [], wordStates: [],
+  })
+  assert.deepEqual(daily.plannedNewWordNames, ['alpha', 'bravo', 'charlie'])
+  assert.deepEqual(daily.blockMilestones, [3])
+  assert.deepEqual(planLearnBlockMilestones(105), [18, 36, 54, 71, 88, 105])
+  const candidates = planLearnAcquisitionCandidates({
+    words, states: [], pendingStates: new Map(), introducedWords: [],
+    freshLimit: 20, now: NOW, allowedNewWordNames: daily.plannedNewWordNames,
+  })
+  assert.deepEqual(candidates.freshWords.map(item => item.name), ['alpha', 'bravo', 'charlie'])
+})
+
+test('idle terminal probe bypasses clock, keeps spacing unproven and admits only clean independent evidence', () => {
+  const deferred: LearnAcquisitionState = {
+    version: 1, phase: 'deferred', assistedCycles: 5,
+    scaffoldHintPosition: 2, deferredReason: 'assistance',
+    resumeAfter: NOW + 300,
+  }
+  assert.equal(resumeDeferredAcquisition(deferred, NOW), undefined)
+  const direct = resumeDeferredAsTerminalProbe(deferred)!
+  assert.equal(direct.phase, 'independent')
+  assert.equal(direct.independentInterveningItems, 0)
+  assert.equal(direct.scaffoldHintPosition, undefined)
+  const pending = new Map([[word.name, deferred]])
+  const select = (time: number, freshLimit = 0) => planLearnAcquisitionCandidates({
+    words: [word], states: [], pendingStates: pending,
+    introducedWords: [word.name], freshLimit,
+    now: time, allowTerminalProbeOnIdle: true,
+  })
+  const planned = select(NOW)
+  assert.equal(planned.resumed.length, 1)
+  const state = planned.resumed[0].state
+  const exercise = createLearnAcquisitionExercisePlanForState(state)
+  assert.equal(exercise.condition.audio, 'none')
+  assert.equal(exercise.condition.letters.mode, 'all-hidden')
+  assert.ok(exercise.decision.reasonCodes.includes('terminal-probe'))
+  assert.ok(exercise.decision.reasonCodes.includes('spacing-not-proven'))
+  assert.equal(exercise.decision.reasonCodes.includes('spacing-eligible'), false)
+  const success = finish(attempt({ reviewPolicyDecision: exercise.decision }), state)
+  assert.equal(success.shouldPersistAdmission, true)
+  assert.equal(success.nextState.phase, 'complete')
+  const failure = finish(attempt({ reviewPolicyDecision: exercise.decision, wrongCount: 1 }), state)
+  assert.equal(failure.shouldPersistAdmission, false)
+  assert.equal(failure.nextState.phase, 'deferred')
+  assert.equal(failure.nextState.terminalProbeAttemptedAt, NOW)
+  pending.set(word.name, failure.nextState)
+  assert.equal(select(NOW + 301).resumed.length, 0, 'cannot test the same word again that day')
+  assert.equal(select(NOW + 86_400).resumed.length, 1, 'unfinished word is recoverable next day')
+})
+
+test('terminal probes are not selected while regular learning work exists', () => {
+  const second = { ...word, name: 'fresh' }
+  const pending = new Map([[word.name, {
+    version: 1 as const, phase: 'deferred' as const, assistedCycles: 1,
+    deferredReason: 'spacing' as const, resumeAfter: NOW + 300,
+  }]])
+  const available = planLearnAcquisitionCandidates({
+    words: [word, second], states: [], pendingStates: pending,
+    introducedWords: [word.name], freshLimit: 1, now: NOW,
+    allowedNewWordNames: ['fresh'], allowTerminalProbeOnIdle: true,
+  })
+  assert.deepEqual(available.freshWords.map(item => item.name), ['fresh'])
+  assert.equal(available.resumed.length, 0)
+  const blocked = planLearnAcquisitionCandidates({
+    words: [word], states: [], pendingStates: pending,
+    introducedWords: [word.name], freshLimit: 0, now: NOW,
+    allowTerminalProbeOnIdle: false,
+  })
+  assert.equal(blocked.resumed.length, 0)
+})
+
+
+test('terminal admission schedules an earlier FSRS follow-up without changing r0.84', () => {
+  const state = resumeDeferredAsTerminalProbe({
+    version: 1, phase: 'deferred', assistedCycles: 2,
+    deferredReason: 'spacing', resumeAfter: NOW + 300,
+  })!
+  const plan = createLearnAcquisitionExercisePlanForState(state)
+  const record = attempt({ reviewPolicyDecision: plan.decision })
+  const result = rebuildActiveFsrsStateFromWordRecords('incident', word.name, [record])
+  assert.ok(result)
+  assert.equal(result!.nextReviewAt, NOW + 4 * 3600)
+  assert.equal(result!.reviewCount, 0, 'admission must not masquerade as a Review rating')
 })

@@ -102,6 +102,7 @@ export default function LearnResultScreen() {
   // operation instead of cancelling the only run and leaving Pause disabled.
   const settlementPromiseRef = useRef<Promise<Settlement> | null>(null)
   const syncPromiseRef = useRef<Promise<LearnAutoSyncResult> | null>(null)
+  const skippedInternalBlockRef = useRef(false)
 
   const unseenAchievementStates = useLiveQuery(
     () => getUnseenAchievementStates(),
@@ -227,6 +228,17 @@ export default function LearnResultScreen() {
     settlement,
   ])
 
+  // An internal queue boundary is not a learning-stage achievement. Persist
+  // it, then continue seamlessly until a frozen daily milestone is reached.
+  useEffect(() => {
+    if (!settlement || settlement.progress.complete ||
+        !settlement.session.blockMilestones ||
+        settlement.milestoneReached !== undefined ||
+        skippedInternalBlockRef.current) return
+    skippedInternalBlockRef.current = true
+    continueLearn()
+  }, [settlement, continueLearn])
+
   const closeResult = useCallback(() => {
     acknowledgeAchievements()
     dispatch({ type: TypingStateActionType.RESET_SESSION })
@@ -269,6 +281,9 @@ export default function LearnResultScreen() {
   )
 
   const progress = settlement?.progress
+  const milestoneIndex = settlement?.milestoneReached === undefined
+    ? -1
+    : (settlement.session.blockMilestones ?? []).indexOf(settlement.milestoneReached)
   const isDailyComplete = progress?.complete === true
   const totalActiveSeconds = settlement
     ? settlement.session.accumulatedActiveSeconds
@@ -299,7 +314,9 @@ export default function LearnResultScreen() {
               {currentDictInfo.name} · Learn
             </div>
             <h1 className="mt-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
-              {isDailyComplete ? '今日学习完成' : '阶段完成'}
+              {isDailyComplete ? '今日学习完成' : milestoneIndex >= 0
+                ? `阶段 ${milestoneIndex + 1} 完成`
+                : settlement?.session.blockMilestones ? '继续学习' : '阶段完成'}
             </h1>
 
             {!settlement && !settlementError ? (

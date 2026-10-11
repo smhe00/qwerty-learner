@@ -1187,7 +1187,7 @@ test('five-word short-spacing tail continues with known practice instead of a fi
   ).toBe(true)
 })
 
-test('future deferred cohort reopens immediately as Supported with zero fresh quota', async ({ page }) => {
+test('future deferred tail uses one independent terminal probe without outside practice', async ({ page }) => {
   const words = ['cancel', 'analyse', 'numerous', 'accurate', 'adventure'].map(name => ({ name, trans: [], usphone: '', ukphone: '' }))
   await gotoReviewAppReady(page, '/typing')
   await page.evaluate(async (words) => {
@@ -1225,7 +1225,12 @@ test('future deferred cohort reopens immediately as Supported with zero fresh qu
   await page.goto('/learn')
   const info = await waitForActiveLearnSession(page)
   expect(info.reviewRecord.words.map((word: { name: string }) => word.name).sort()).toEqual(words.map(word => word.name).sort())
-  expect(Object.values(info.reviewRecord.acquisitionStates).every((state: any) => state.phase === 'supported' && state.independentInterveningItems === undefined)).toBe(true)
-  expect(info.reviewRecord.spacingWords.length).toBe(2)
+  expect(Object.values(info.reviewRecord.acquisitionStates).every((state: any) =>
+    state.phase === 'independent' && state.terminalProbe === true &&
+    state.independentInterveningItems === 0)).toBe(true)
+  expect(info.reviewRecord.spacingWords.length).toBe(0)
+  expect(Object.values(info.reviewRecord.exercisePlans).every((plan: any) =>
+    plan.decision.reasonCodes.includes('terminal-probe') &&
+    !plan.decision.reasonCodes.includes('spacing-eligible'))).toBe(true)
   await expect(page.getByText(/还有新词需要稍后巩固/)).toHaveCount(0)
 })
