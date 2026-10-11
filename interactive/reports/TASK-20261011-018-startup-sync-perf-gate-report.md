@@ -53,3 +53,27 @@ Fixture: 4,096 shuffled V4 word rows with historical events; same Node.js 20 Git
 ## Next decision
 
 **Eligible for PR review and controlled development integration** based on pure contracts, build, Chrome smoke and typecheck differential. **Not yet signed off for `master` production release** until authenticated Sync E2E and end-to-end performance measurements are complete.
+
+## Production release and isolated live acceptance — 2026-10-12
+
+- **Published master SHA:** `a1b747deb8c96372f2299eac40f547dacc82bdb4`.
+- **Confirmed deployed:** GitHub Actions observed the new `perf-report`
+  frontend bundle and healthy `qwerty-sync-gateway` backend at
+  `https://qwerty-plus.edgeone.dev/`.
+- **Live acceptance:** https://github.com/smhe00/qwerty-learner/actions/runs/38170862468
+  `success`; user-requested temporary names **test13** and **test24** only.
+- **Passed:** V3->V4 explicit migration with implicit migration rejection;
+  V4 gzip payload SHA and logical fingerprint on actual Blob upload/download;
+  three device-ID concurrent CAS single winner; cross-account forged V4
+  ownership rejection; V4 recovery with pinned SHA/fingerprint; new-device
+  login with prior-token revocation; immutable account isolation.
+- **Cleanup:** `Production cleanup test24: PASS` and
+  `Production cleanup test13: PASS` — both created-only disposable accounts
+  deleted via owner-authenticated API.
+- **Caveat:** These were actual production API/Blob acceptance tests, not a
+  complete user-interface Learn journey or measured device-level Sync latency.
+  The legacy `EdgeOne Production Verify` GitHub workflow failed because it
+  still references obsolete Maker project `makers-cgemngjuuwle`; its failure
+  does NOT overturn the independently observed production bundle and successful
+  two-account live integration checks. Fix the CI project-ID configuration in
+  the next development cycle without another production build.
