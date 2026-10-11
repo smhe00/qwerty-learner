@@ -8,8 +8,8 @@ import {
 } from '@/learn/acquisition-recovery'
 import {
   deriveLearnDailyProgress,
-  loadLearnDailySession,
   learnLocalDateKey,
+  loadLearnDailySession,
 } from '@/learn/daily-session'
 import {
   LEARN_NEW_WORD_BATCH_SIZE,
