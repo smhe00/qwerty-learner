@@ -247,9 +247,10 @@ async function start(): Promise<void> {
       const accountId = boot.registry.active.kind === 'account' ? boot.registry.active.accountId : ''
       const context = readLearnBlockSyncPending(accountId)
       const screen = renderLearnBlockSyncScreen(root, context)
-      screen.settle(readLearnBlockSyncOutcome() ?? {
+      const previous = context ? readLearnBlockSyncOutcome() : null
+      screen.settle(previous ?? {
         kind: 'failed',
-        message: '无法确认上次 Block 云同步结果，本地数据仍保留。可重试或退出。',
+        message: '无法确认当前账号上次 Block 的云同步结果，本地记录仍保留。',
       })
       return
     }
