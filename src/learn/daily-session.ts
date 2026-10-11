@@ -23,6 +23,8 @@ export type LearnDailySessionV1 = {
   status: LearnDailySessionStatus
   dailyNewTarget: number
   optionalNewWordNames?: string[]
+  /** No executable work remains today; unresolved words are retained. */
+  executionExhausted?: boolean
   extraNewWordCount?: number
   plannedNewWords: number
   /** Frozen identities for newly introduced words, optional on legacy V1 sessions. */
@@ -419,7 +421,7 @@ export function addLearnDailyNewWords(input: {
   wordStates: IReviewWordState[]
 }): LearnDailySessionV1 {
   const { session } = input
-  if (session.status !== 'completed' || session.dateKey !== learnLocalDateKey(input.now)) return session
+  if ((session.status !== 'completed' && !(session.status === 'active' && session.executionExhausted)) || session.dateKey !== learnLocalDateKey(input.now)) return session
   const known = new Set([
     ...(session.plannedNewWordNames ?? []),
     ...session.plannedReviewWords,
@@ -435,6 +437,7 @@ export function addLearnDailyNewWords(input: {
     ...session,
     status: 'active',
     completedAt: undefined,
+    executionExhausted: undefined,
     plannedNewWords,
     extraNewWordCount: (session.extraNewWordCount ?? 0) + added.length,
     plannedNewWordNames: [...(session.plannedNewWordNames ?? deriveLearnDailyProgress({ session, wordRecords: input.wordRecords }).introducedNewWordNames), ...added],

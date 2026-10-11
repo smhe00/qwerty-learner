@@ -20,3 +20,7 @@ Separate user-authorized Learn task. The unrelated CURRENT_TASK forced-session-r
 ## Published-feature correction: completed-day landing entry
 
 User reports the completed-day landing still only offers Start and requests replacing it with 多学五词. Continue the existing authorized publication scope for this feature. On the selected dictionary’s current completed day, both idle-return and reload show the explicit five-more action; mounting never auto-appends. Click extends today then prepares Learn through existing ownership guard. Unfinished and previous-day plans retain normal Start semantics. Correction execution base: `a28e736fe374202f62a3fbd40c9f808d64f2c265`.
+
+## Follow-up: failed final-probe idle state
+
+Screenshot at 8699f3f reports executable-work exhaustion with unresolved final probes, not completed mastery. This active daily state must also offer explicit five-more and persist that entry across reload without false completion. Continue the existing release correction scope. Base `b87ceb68229d90d3ba74292b062aad8472c68ae9`.

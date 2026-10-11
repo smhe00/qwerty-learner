@@ -63,3 +63,14 @@ Root cause: five-more existed only on LearnResultScreen. LearnPage always render
 - [Learn Real Journey Gate 38125412183](https://github.com/smhe00/qwerty-learner/actions/runs/38125412183): **SUCCESS** for this SHA. Review and dual-site workflows were still running when checked; no all-CI-green claim.
 - [EdgeOne Production Verify 38125421309](https://github.com/smhe00/qwerty-learner/actions/runs/38125421309): **FAILURE** at the existing obsolete project lookup, `NotFoundError: Makers project(makers-cgemngjuuwle) is not found`. Actual resource inspection and production browser validation independently verify successful release.
 - Temporary local configs/live spec removed. Verification-only report update stays on product/main to avoid another release build.
+
+
+## Failed final-probe idle entry correction
+
+The screenshot confirms Version 8699f3f with the precise terminal-exhaustion status text. The prior landing correction only recognized `status=completed`; final-probe failures intentionally keep `status=active`, so Start remained and did not append words.
+
+- Controller persists a separate optional `executionExhausted` marker only when all planned introductions are done, no eligible deferred resume remains, and mandatory completion is still pending. Diagnostics reflect the persisted marker.
+- Landing offers five-more for completed or exhausted **current-day** plans, suppresses auto-start for both and retains unresolved-word wording for exhaustion. Reload works even if the legacy snapshot previously lacked the new marker: normal preparation detects exhaustion and records it.
+- Existing extension helper accepts this explicit active-idle state and clears the marker when adding words. It never completes the session or creates mastery evidence; original planned identities, unresolved state, progress and recurring quota remain intact.
+- **296/296 domain/Review/system tests PASS**, 351.8 ms; new contract proves unresolved original plus five added words remain incomplete and active. **3/3 Chrome PASS**, 18.1 s, covering result, completed landing, and a deterministic failed final-probe incident (first detection, reload, explicit append). **Build PASS**, 5.40 s; scoped lint 0 errors, 1 existing LearnPage cleanup-ref warning.
+- Continue the existing authorized production bug correction; served resources/live checks follow.

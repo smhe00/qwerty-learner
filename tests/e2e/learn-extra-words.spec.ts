@@ -73,3 +73,43 @@ test(`optional tail words never block daily completion; ${entry} five-more exten
 })
 
 }
+
+
+test('failed terminal recall offers five-more on landing and reload without false daily completion', async ({ page }) => {
+  await gotoReviewAppReady(page, '/typing')
+  await page.evaluate(async () => {
+    const now = Math.floor(Date.now() / 1000)
+    const d = new Date()
+    const dateKey = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-')
+    localStorage.setItem('currentDict', JSON.stringify('cet4'))
+    localStorage.setItem('reviewModeInfo', JSON.stringify({ isReviewMode: false }))
+    localStorage.setItem('qwerty.learn.dailySession.v1.cet4', JSON.stringify({ version: 1, sessionId: 'failed-terminal', dict: 'cet4', dateKey, startedAt: now - 60, status: 'active', dailyNewTarget: 1, plannedNewWords: 1, plannedNewWordNames: ['cancel'], plannedReviewWords: [], carryOverAcquisitionWords: [], accumulatedActiveSeconds: 0, completedBlockIds: [], blockCount: 0 }))
+    await new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open('RecordDB')
+      req.onerror = () => reject(req.error)
+      req.onsuccess = () => {
+        const db = req.result
+        const tx = db.transaction(['wordRecords', 'reviewRecords'], 'readwrite')
+        tx.objectStore('wordRecords').add({ word: 'cancel', dict: 'cet4', chapter: -1, timeStamp: now - 50, sourceMode: 'learn', learnItemKind: 'acquisition', wrongCount: 0, timing: [], mistakes: {}, reviewPolicyDecision: { version: 1, policyVersion: 'learn-acquisition-exposure-v1', reasonCodes: ['visible-copy'], conditionVersion: 1 } })
+        tx.objectStore('reviewRecords').add({ dict: 'cet4', createTime: now - 30, words: [{ name: 'cancel', trans: [], usphone: '', ukphone: '' }], index: 1, isFinished: true, sessionKind: 'acquisition', acquisitionStates: { cancel: { version: 1, phase: 'deferred', assistedCycles: 7, deferredReason: 'assistance', resumeAfter: now + 300, terminalProbeAttemptedAt: now - 1 } } })
+        tx.onerror = () => reject(tx.error)
+        tx.oncomplete = () => { db.close(); resolve() }
+      }
+    })
+  })
+  await page.goto('/learn')
+  const extra = page.getByRole('button', { name: '多学五词', exact: true })
+  await expect(extra).toBeVisible()
+  await expect(page.getByText(/未通过最终测试的单词已保留/)).toBeVisible()
+  await expect(page.getByRole('button', { name: '开始 Learn', exact: true })).toHaveCount(0)
+  await page.reload()
+  await expect(extra).toBeVisible()
+  await extra.click()
+  await waitForActiveLearnSession(page)
+  const daily = await page.evaluate(() => JSON.parse(localStorage.getItem('qwerty.learn.dailySession.v1.cet4')!))
+  expect(daily.status).toBe('active')
+  expect(daily.plannedNewWords).toBe(6)
+  expect(daily.plannedNewWordNames[0]).toBe('cancel')
+  expect(daily.executionExhausted).toBeUndefined()
+  expect(daily.completedAt).toBeUndefined()
+})

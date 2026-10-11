@@ -435,3 +435,20 @@ test('five-more handles exhausted dictionaries and never reopens a previous day'
   assert.equal(addLearnDailyNewWords({ ...input, dictionaryWords: ['a'] }), session)
   assert.equal(addLearnDailyNewWords({ ...input, now: START + 86400 }), session)
 })
+
+
+test('exhausted executable work can extend today without declaring unresolved words mastered', () => {
+  const words = ['pending', 'b', 'c', 'd', 'e', 'f']
+  const original = createLearnDailySession({ dict: 'daily-test', now: START, dailyNewTarget: 1, dictionaryWords: words, wordRecords: [], wordStates: [] })
+  const records = [acquisitionExposure('pending', START + 1)]
+  assert.equal(addLearnDailyNewWords({ session: original, now: START + 2, dictionaryWords: words, wordRecords: records, wordStates: [] }), original)
+  const extra = addLearnDailyNewWords({ session: { ...original, executionExhausted: true }, now: START + 2, dictionaryWords: words, wordRecords: records, wordStates: [] })
+  assert.equal(extra.status, 'active')
+  assert.equal(extra.executionExhausted, undefined)
+  assert.deepEqual(extra.plannedNewWordNames, words)
+  assert.equal(extra.plannedNewWords, 6)
+  assert.equal(extra.dailyNewTarget, 1)
+  const progress = deriveLearnDailyProgress({ session: extra, wordRecords: records })
+  assert.equal(progress.completedWords, 0)
+  assert.equal(progress.remainingWords, 6)
+})

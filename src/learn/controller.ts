@@ -2,6 +2,7 @@ import {
   completeLearnDailySession,
   deriveLearnDailyProgress,
   ensureLearnDailySession,
+  saveLearnDailySession,
 } from './daily-session'
 import type { LearnDailySessionV1 } from './daily-session'
 import { buildLearnDailyPlan } from './plan'
@@ -298,6 +299,8 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
   if (dailySession.status === 'active' && recoveredDailyProgress.remainingWords > 0 &&
       nextResumeAt === undefined &&
       recoveredDailyProgress.introducedNewWords >= dailySession.plannedNewWords) {
+    dailySession = saveLearnDailySession({ ...dailySession, executionExhausted: true })
+    diagnostics.dailySession = dailySession
     return wait(
       'deferred',
       '本次可执行练习已经结束；未通过最终测试的单词已保留，下一学习日继续。',

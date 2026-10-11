@@ -65,6 +65,9 @@ export default function LearnPage() {
   const dailySession = loadLearnDailySession(currentDictId)
   const completedToday = dailySession?.status === 'completed' &&
     dailySession.dateKey === learnLocalDateKey(getUTCUnixTimestamp())
+  const exhaustedToday = dailySession?.status === 'active' && dailySession.executionExhausted === true &&
+    dailySession.dateKey === learnLocalDateKey(getUTCUnixTimestamp())
+  const canLearnMoreToday = completedToday || exhaustedToday
   const autoStartConsumedRef = useRef(isSessionView)
   const learnPageRootRef = useRef<HTMLElement | null>(null)
   const preparationGuardRef = useRef<
@@ -182,7 +185,7 @@ export default function LearnPage() {
           if (!isCurrent()) return
           const current = loadLearnDailySession(dictId)
           const now = getUTCUnixTimestamp()
-          if (current?.status === 'completed' && current.dateKey === learnLocalDateKey(now)) {
+          if (current && (current.status === 'completed' || (current.status === 'active' && current.executionExhausted)) && current.dateKey === learnLocalDateKey(now)) {
             const extended = addLearnDailyNewWords({
               session: current, now, dictionaryWords: words.map(word => word.name), wordRecords, wordStates,
             })
@@ -287,7 +290,7 @@ export default function LearnPage() {
       routeState?.autoStart === true || routeState?.idle !== true
 
     if (
-      completedToday ||
+      canLearnMoreToday ||
       !shouldAutoStart ||
       autoStartConsumedRef.current ||
       !wordList
@@ -299,7 +302,7 @@ export default function LearnPage() {
     startLearn()
   }, [
     isSessionView,
-    completedToday,
+    canLearnMoreToday,
     location.state,
     startLearn,
     wordList,
@@ -359,7 +362,9 @@ export default function LearnPage() {
           {isStarting
             ? '正在准备 Learn…'
             : statusText ||
-              (completedToday
+              (exhaustedToday
+                ? '本次可执行练习已经结束；未通过最终测试的单词已保留，可再多学五词。'
+                : completedToday
                 ? '今日 Learn 目标已完成，可以再多学五词。'
                 : wordList
                 ? 'Learn 已就绪。可以随时开始，也可以在学习过程中随时暂停。'
@@ -369,11 +374,11 @@ export default function LearnPage() {
         <button
           type="button"
           className="my-btn-primary w-24 bg-indigo-500 shadow shadow-indigo-300 dark:shadow-indigo-500/60"
-          onClick={() => startLearn(completedToday)}
+          onClick={() => startLearn(canLearnMoreToday)}
           disabled={isStarting || !wordList}
-          aria-label={completedToday ? '多学五词' : '开始 Learn'}
+          aria-label={canLearnMoreToday ? '多学五词' : '开始 Learn'}
         >
-          <span className="font-medium">{completedToday ? '多学五词' : 'Start'}</span>
+          <span className="font-medium">{canLearnMoreToday ? '多学五词' : 'Start'}</span>
         </button>
       </main>
     </Layout>
