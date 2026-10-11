@@ -312,6 +312,9 @@ export async function generateLearnMixedSessionRecord(
       .map((record) => record.word),
     freshLimit: freshAllowance,
     allowedNewWordNames: dailySession?.plannedNewWordNames,
+    allowedAcquisitionNames: dailySession?.plannedNewWordNames
+      ? [...dailySession.carryOverAcquisitionWords, ...dailySession.plannedNewWordNames]
+      : undefined,
     continuous: dueWords.length > 0,
     allowTerminalProbeOnIdle: dueWords.length === 0,
     now:
@@ -432,9 +435,14 @@ async function getDeferredAcquisitionStates(
   dictID: string,
 ): Promise<Map<string, LearnAcquisitionState>> {
   const pending = await getPendingAcquisitionStates(dictID)
+  const daily = loadLearnDailySession(dictID)
+  const frozen = daily?.status === 'active' && daily.plannedNewWordNames
+    ? new Set([...daily.carryOverAcquisitionWords, ...daily.plannedNewWordNames])
+    : undefined
   return new Map(
     [...pending].filter(
-      ([, state]) =>
+      ([word, state]) =>
+        (!frozen || frozen.has(word)) &&
         state.phase === 'deferred' &&
         state.resumeAfter !== undefined,
     ),
@@ -508,6 +516,9 @@ export async function generateNewWordAcquisitionRecord(
       .map((record) => record.word),
     freshLimit,
     allowedNewWordNames: dailySession?.plannedNewWordNames,
+    allowedAcquisitionNames: dailySession?.plannedNewWordNames
+      ? [...dailySession.carryOverAcquisitionWords, ...dailySession.plannedNewWordNames]
+      : undefined,
     continuous: false,
     allowTerminalProbeOnIdle: true,
     now:
