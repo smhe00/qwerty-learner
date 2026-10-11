@@ -1,0 +1,60 @@
+name: EdgeOne Production Perf V4 test13 test24
+
+# This is verification of ALREADY DEPLOYED master. Does not deploy Maker.
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - 'tests/cloud/edgeone-release-test13-test24.integration.mjs'
+      - '.github/workflows/edgeone-release-perf-named.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: qwerty-production-named-test13-test24
+  cancel-in-progress: false
+
+jobs:
+  live-test13-test24:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+      - name: Wait for production performance release and test disposable named accounts
+        id: named
+        env:
+          QWERTY_SYNC_BASE_URL: https://qwerty-plus.edgeone.dev/
+        run: node tests/cloud/edgeone-release-test13-test24.integration.mjs
+      - name: Save checkable verification status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RESULT: ${{ steps.named.outcome }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ "$RESULT" = success ]; then STATE=success; else STATE=failure; fi
+          export STATE
+          python3 - <<'PY' > /tmp/qwerty-production-perf-named.json
+          import json, os
+          print(json.dumps({
+            'state': os.environ['STATE'],
+            'context': 'release/edgeone-test13-test24',
+            'description': 'Production V4 test13/test24: ' + os.environ['RESULT'],
+            'target_url': 'https://github.com/' + os.environ['REPO'] +
+                          '/actions/runs/' + os.environ['RUN_ID'],
+          }))
+          PY
+          curl --fail --silent --show-error --retry 2 -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/qwerty-production-perf-named.json \
+            "https://api.github.com/repos/${REPO}/statuses/${SHA}" > /dev/null
