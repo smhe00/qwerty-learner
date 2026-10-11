@@ -2,7 +2,7 @@
 import { getStore } from '@edgeone/pages-blob'
 import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
 import { AppError, createBackendService } from '../_shared/core.js'
-import { isS2WriteAllowed } from '../_shared/s2-write-gate.js'
+import { isS2WriteEnabled } from '../_shared/s2-write-gate.js'
 import { createEdgeOneBlobStorage } from '../_shared/storage/edgeone-blob.js'
 
 const TRUSTED_FRONTEND_ORIGINS = [
@@ -114,15 +114,20 @@ function makeService(env, storage) {
   })
 }
 
-// Production S2 migration/write isolation. Only immutable account IDs from
-// server-side EdgeOne environment configuration are eligible to write V4.
-// Deliberately fail closed when omitted, blank, or wildcard-configured.
+// V4 GA: authenticated accounts can write by default. Emergency lockdown is
+// optional and global. No account-ID allowlist is consulted. The service
+// enforces immutable user ownership, payload validation and revision CAS.
 async function requireS2WriteAccount(service, request, env) {
   const token = bearer(request)
-  const { user } = await service.me(token)
-  if (!isS2WriteAllowed(env.S2_SYNC_WRITE_ACCOUNT_IDS, user.userId)) {
-    throw new AppError(403, 's2_write_not_enabled',
-      'Sync V2 writes are restricted to explicitly authorized test accounts')
+  // Validate the live session before attempting to parse or stage a payload.
+  // Also prevents a revoked/invalid token from reaching any write action.
+  const session = await service.me(token)
+  if (!session?.user?.userId || typeof session.user.userId !== 'string') {
+    throw new AppError(401, 'invalid_session', 'A valid account session is required')
+  }
+  if (!isS2WriteEnabled(env.S2_SYNC_WRITES_DISABLED)) {
+    throw new AppError(503, 's2_writes_temporarily_disabled',
+      'Cloud V4 writes are temporarily unavailable')
   }
   return token
 }
