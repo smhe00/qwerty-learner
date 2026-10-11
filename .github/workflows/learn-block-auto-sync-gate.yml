@@ -1,0 +1,67 @@
+name: Learn Block Auto Sync V4 Feature Gate
+
+on:
+  push:
+    branches: [feature/learn-block-v4-auto-sync-20261012]
+  pull_request:
+    branches: [product/main]
+    paths:
+      - 'src/learn/**'
+      - 'src/sync/**'
+      - 'src/pages/Learn/**'
+      - 'src/index.tsx'
+      - 'tests/cloud/learn-block-auto-sync.test.mjs'
+      - 'tests/e2e/learn-block-sync-*'
+      - '.github/workflows/learn-block-auto-sync-gate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: 'yarn'
+      - name: Install
+        run: yarn install --frozen-lockfile
+      - name: S1 S2 V4 cloud tests including Block sync
+        run: yarn test:cloud
+      - name: Lint backend
+        run: yarn eslint cloud-functions tests/cloud --ext .js,.mjs
+      - name: Lint changed client modules
+        run: yarn eslint src/sync src/learn src/pages/Learn src/index.tsx --ext .ts,.tsx
+      - name: Production bundle
+        run: yarn build
+      - name: Browser UI E2E (runner Chrome, no EdgeOne calls)
+        run: yarn playwright test --config tests/e2e/learn-block-sync-local.config.ts
+      - name: TypeScript regression against product/main
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin +refs/heads/product/main:refs/remotes/origin/product/main
+          git worktree add --detach /tmp/block-auto-base refs/remotes/origin/product/main
+          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/block-auto-base/node_modules
+          (cd /tmp/block-auto-base && "$GITHUB_WORKSPACE/node_modules/.bin/tsc" --noEmit --pretty false) > /tmp/block-base-tsc.txt 2>&1 || true
+          yarn tsc --noEmit --pretty false > /tmp/block-feature-tsc.txt 2>&1 || true
+          python3 - <<'PY'
+          import collections, re, sys
+          pattern = re.compile(r'^(.+?)\(\d+,\d+\): error (TS\d+): (.*)$')
+          def scan(path):
+              c = collections.Counter()
+              for line in open(path):
+                  found = pattern.search(line.strip())
+                  if found:
+                      c[(found.group(1), found.group(2), found.group(3))] += 1
+              return c
+          baseline = scan('/tmp/block-base-tsc.txt')
+          feature = scan('/tmp/block-feature-tsc.txt')
+          regressions = feature - baseline
+          print('TypeScript baseline:', sum(baseline.values()),
+                'feature:', sum(feature.values()), 'new:', sum(regressions.values()))
+          for x in regressions: print('NEW TYPE ERROR:', x)
+          if regressions: sys.exit(1)
+          PY
