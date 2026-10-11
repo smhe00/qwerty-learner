@@ -277,7 +277,7 @@ async function start(): Promise<void> {
         const { renderLearnBlockSyncScreen } = await import('./sync/learn-block-sync-ui')
         const accountId = boot.registry.active.kind === 'account' ? boot.registry.active.accountId : ''
         const context = readLearnBlockSyncPending(accountId)
-        if (!context || !blockAutoSyncEnabled(accountId)) {
+        if (!context || (!context.dailyComplete && !blockAutoSyncEnabled(accountId))) {
           throw new Error('Block 自动同步上下文失效或当前账号未授权自动同步')
         }
         blockScreen = renderLearnBlockSyncScreen(root, context)
