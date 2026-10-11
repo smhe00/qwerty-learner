@@ -51,7 +51,7 @@ export async function executePreMountManualSyncV2(
     registryGeneration: boot.registry.generation,
     assertQuiescentOwner: recheck,
     flush: () => flushReviewRecordWrites(),
-    capture: () => captureWorkingWorkspaceV4(identity),
+    capture: () => captureWorkingWorkspaceV4(identity, 'sync'),
     readBaseline: () => loadSyncV2Baseline(accountId),
     compareAndSwapBaseline: (expected, next) =>
       compareAndSwapSyncV2Baseline(accountId, expected, next),
