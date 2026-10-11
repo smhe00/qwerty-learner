@@ -181,6 +181,19 @@ function showS1AccountResult(): void {
 }
 
 function onStage(stage: WorkspaceBootStage): void {
+  // Block sync is a full-page, writer-locked S2 handoff, but the user sees
+  // only the familiar Block status panel throughout boot and cloud transfer.
+  if (new URLSearchParams(window.location.search).get('learn-block') === '1') {
+    const notice = root?.querySelector('[data-learn-block-sync] [role="status"]')
+    if (notice) {
+      notice.textContent = stage === 'locking'
+        ? '正在锁定本地学习记录，准备安全同步…'
+        : stage === 'recovering'
+          ? '正在恢复上一次未完成的安全事务…'
+          : '正在同步学习进度…'
+      return
+    }
+  }
   if (stage === 'locking') {
     gateUI('正在准备本地学习数据', '正在取得本浏览器的独占学习数据写入权限…')
   } else if (stage === 'recovering') {
@@ -192,6 +205,10 @@ async function start(): Promise<void> {
   if (starting || releasedForPageHide) return
   starting = true
   try {
+    if (new URLSearchParams(window.location.search).get('learn-block') === '1') {
+      const { renderLearnBlockSyncScreen } = await import('./sync/learn-block-sync-ui')
+      renderLearnBlockSyncScreen(root, null)
+    }
     boot = await timePerfStage('startup', 'guarded-bootstrap', () =>
       prepareGuardedWorkspaceBoot(onStage, { allowLegacy: true }))
     if (releasedForPageHide) {
