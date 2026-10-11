@@ -10,7 +10,7 @@ import { verifyCompressedV4 } from '../../cloud-functions/_shared/sync-v4.js'
 
 const base = new URL((process.env.QWERTY_SYNC_BASE_URL ||
   'https://qwerty-plus.edgeone.dev/').trim())
-const user = { username: 'v4recover_incident_' + Date.now().toString(36) +
+const user = { username: 'v4r_' + Date.now().toString(36) +
   crypto.randomBytes(3).toString('hex'), password: crypto.randomBytes(24).toString('base64url'),
   token: null, userId: null }
 let created = false
