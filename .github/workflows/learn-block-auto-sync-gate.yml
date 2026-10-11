@@ -39,6 +39,8 @@ jobs:
         run: yarn build
       - name: Browser UI E2E (runner Chrome, no EdgeOne calls)
         run: yarn playwright test --config tests/e2e/learn-block-sync-local.config.ts
+      - name: Guarded S1/S2 V4 Block handoff and account isolation E2E
+        run: yarn playwright test --config tests/e2e/learn-block-sync-guarded.config.ts
       - name: TypeScript regression against product/main
         run: |
           set -euo pipefail
