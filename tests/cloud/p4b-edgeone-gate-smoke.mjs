@@ -1,32 +1,31 @@
 /* eslint-env node */
-// P4b production smoke: disposable accounts only. No Blob admin credentials.
-// This proves the deployed API fails closed for an unlisted account, without
-// modifying any existing account. Explicit cleanup is mandatory.
+// Post-deployment V4 GA smoke: disposable test users ONLY, no real accounts.
+// Never run against master until API health announces authenticated-write GA.
 import assert from 'node:assert/strict'
 import crypto from 'node:crypto'
 import { gzipSync } from 'node:zlib'
+import { verifyCompressedV4 } from '../../cloud-functions/_shared/sync-v4.js'
 
-const origin = (process.env.QWERTY_SYNC_BASE_URL ||
-  'https://qwerty-plus.edgeone.dev/').trim()
-const base = new URL(origin)
-const username = 'p4b_gate_' + Date.now().toString(36) +
-  crypto.randomBytes(4).toString('hex')
-const password = crypto.randomBytes(18).toString('base64url')
-const secondUsername = username.replace('p4b_gate_', 'p4b_other_')
-const secondPassword = crypto.randomBytes(18).toString('base64url')
-let token
-let secondToken
-let created = false
-let createdSecond = false
+const base = new URL((process.env.QWERTY_SYNC_BASE_URL ||
+  'https://qwerty-plus.edgeone.dev/').trim())
+const users = []
 let failure
-
-async function api(path, method = 'GET', body, auth = token) {
+const prefix = 'v4_ga_' + Date.now().toString(36) +
+  crypto.randomBytes(3).toString('hex')
+const sha256 = content => crypto.createHash('sha256').update(content).digest('hex')
+function stable(x) {
+  if (x === null || typeof x !== 'object') return JSON.stringify(x)
+  if (Array.isArray(x)) return '[' + x.map(stable).join(',') + ']'
+  return '{' + Object.keys(x).sort().filter(k => x[k] !== undefined)
+    .map(k => JSON.stringify(k) + ':' + stable(x[k])).join(',') + '}'
+}
+async function api(path, method = 'GET', body, token) {
   const headers = { Accept: 'application/json' }
-  if (auth) headers.Authorization = 'Bearer ' + auth
+  if (token) headers.Authorization = 'Bearer ' + token
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   const response = await fetch(new URL(path, base), {
     method, headers, body: body === undefined ? undefined :
-      (typeof body === 'string' ? body : JSON.stringify(body)),
+      typeof body === 'string' ? body : JSON.stringify(body),
     redirect: 'error', signal: AbortSignal.timeout(20000),
   })
   const value = await response.json().catch(() => null)
@@ -34,118 +33,136 @@ async function api(path, method = 'GET', body, auth = token) {
 }
 function expectCode(result, status, code, label) {
   assert.equal(result.status, status,
-    label + ': unexpected HTTP status (' + result.status + ')')
+    label + ': unexpected HTTP status ' + result.status)
   if (code) assert.equal(result.value?.error, code, label + ': error code')
+}
+async function register(suffix) {
+  const user = {
+    username: prefix + '_' + suffix,
+    password: crypto.randomBytes(18).toString('base64url'),
+  }
+  const result = await api('/api/auth/register', 'POST', {
+    ...user, deviceId: 'v4-ga-disposable-' + suffix,
+  })
+  expectCode(result, 201, null, 'register ' + suffix)
+  user.userId = result.value?.user?.userId
+  user.token = result.value?.token
+  assert.ok(user.userId && user.token)
+  users.push(user)
+  return user
+}
+function v4Body(user, revision, nonce) {
+  const tableNames = ['achievementEvents', 'achievementStates', 'chapterRecords',
+    'reviewRecords', 'reviewWordStates', 'wordRecords']
+  const tables = tableNames.map(name => ({ name, schema: '++id' }))
+  const data = tableNames.map(name => ({
+    tableName: name, inbound: true,
+    rows: name === 'wordRecords' ? [{ id: 1, word: 'ga-smoke-' + nonce }] : [],
+  }))
+  const workspaceData = {
+    database: { formatName: 'dexie', formatVersion: 1, data: {
+      databaseName: 'RecordDB', databaseVersion: 6, tables, data,
+    } },
+    learnRuntime: { dailySessions: {} },
+    settings: { version: 1, values: {} },
+    navigation: { currentDict: 'ga-smoke-dict', currentChapter: 0 },
+  }
+  const logical = {
+    database: { tables, data }, learnRuntime: workspaceData.learnRuntime,
+    settings: workspaceData.settings, navigation: workspaceData.navigation,
+  }
+  const logicalFingerprint = sha256(stable(logical))
+  const snapshot = {
+    backupFormatVersion: 'qwerty-backup-v4',
+    metadata: { createdAt: '2026-10-11T00:00:00.000Z',
+      source: { kind: 'account', accountId: user.userId } },
+    workspaceData,
+  }
+  const gz = gzipSync(Buffer.from(JSON.stringify(snapshot)))
+  // Ensure our disposable file satisfies *real* V4 server contract.
+  assert.equal(verifyCompressedV4(gz, user.userId, logicalFingerprint).logicalFingerprint,
+    logicalFingerprint)
+  return {
+    baseRevision: revision, payloadBase64: gz.toString('base64'),
+    logicalFingerprint, clientFormatVersion: 'qwerty-backup-v4',
+    deviceId: 'v4-ga-disposable',
+  }
 }
 try {
   const health = await api('/api/health')
-  assert.equal(health.status, 200, 'EdgeOne gateway health')
+  expectCode(health, 200, null, 'EdgeOne gateway health')
   assert.equal(health.value?.service, 'qwerty-sync-gateway')
-  console.log('P4b health: PASS')
+  assert.ok(health.value?.capabilities?.includes('backup-v4-authenticated-write-ga'),
+    'Production has not deployed the V4 GA API; do not write')
+  console.log('V4 GA deployed backend capability: PASS')
 
-  const unauthorized = await api('/api/sync/v2', 'PUT', '{}', '')
-  expectCode(unauthorized, 401, 'missing_token', 'unauthenticated V2 PUT')
-  console.log('P4b anonymous V2 PUT rejection: PASS')
+  expectCode(await api('/api/sync/v2', 'PUT', '{}'), 401,
+    'missing_token', 'anonymous V4 PUT')
+  console.log('Anonymous V4 write rejection: PASS')
 
-  const registered = await api('/api/auth/register', 'POST', {
-    username, password, deviceId: 'p4b-isolated-ci',
-  }, '')
-  if (registered.status === 201 && registered.value?.token) {
-    token = registered.value.token
-    created = true
-  }
-  expectCode(registered, 201, null, 'disposable register')
-  assert.ok(registered.value?.user?.userId, 'disposable immutable userId')
-  assert.ok(registered.value?.token, 'disposable token')
+  const first = await register('first')
+  const second = await register('second')
+  const legacy = await register('v3')
 
-  const before = await api('/api/sync/v2/meta')
-  assert.equal(before.status, 200, 'read V2 meta before gate test')
-  assert.equal(before.value?.revision, 0, 'new test account revision 0')
-  for (const endpoint of ['/api/sync/v2', '/api/sync/v2/recovery']) {
-    // Malformed JSON proves authorization precedes request body parsing.
-    const denied = await api(endpoint, 'PUT', '{not-json')
-    expectCode(denied, 403, 's2_write_not_enabled', endpoint)
-    const afterDenied = await api('/api/sync/v2/meta')
-    assert.equal(afterDenied.status, 200)
-    assert.equal(afterDenied.value?.revision, before.value.revision,
-      endpoint + ': revision mutated by rejected write')
-  }
-  console.log('P4b V2 + recovery fail-closed, no mutation: PASS')
-
-  const payloadBase64 = gzipSync(Buffer.from(JSON.stringify({
-    format: 'p4b-disposable-v1-smoke', nonce: Date.now(),
-  }))).toString('base64')
-  const legacy = await api('/api/sync', 'PUT', {
-    baseRevision: 0, payloadBase64, deviceId: 'p4b-isolated-ci',
+  const m0 = await api('/api/sync/v2/meta', 'GET', undefined, first.token)
+  assert.equal(m0.value?.revision, 0)
+  const firstPush = await api('/api/sync/v2', 'PUT', v4Body(first, 0, 'one'),
+    first.token)
+  expectCode(firstPush, 200, null, 'GA first V4 upload')
+  assert.equal(firstPush.value?.revision, 1)
+  const secondPush = await api('/api/sync/v2', 'PUT', v4Body(first, 1, 'two'),
+    first.token)
+  expectCode(secondPush, 200, null, 'GA subsequent V4 upload')
+  assert.equal(secondPush.value?.revision, 2)
+  const stale = await api('/api/sync/v2', 'PUT', v4Body(first, 1, 'stale'),
+    first.token)
+  expectCode(stale, 409, 'sync_conflict', 'GA stale revision CAS')
+  const oldClient = await api('/api/sync', 'PUT', {
+    baseRevision: 2,
+    payloadBase64: gzipSync(Buffer.from(JSON.stringify({ legacy: true }))).toString('base64'),
     clientFormatVersion: 'qwerty-backup-v3',
-  })
-  assert.equal(legacy.status, 200,
-    'legacy V1 PUT response ' + legacy.status)
-  assert.equal(legacy.value?.revision, 1)
-  const afterLegacy = await api('/api/sync/meta')
-  assert.equal(afterLegacy.status, 200)
-  assert.equal(afterLegacy.value?.revision, 1)
-  assert.equal(afterLegacy.value?.clientFormatVersion, 'qwerty-backup-v3')
-  console.log('P4b legacy V1 write + revision: PASS')
+    deviceId: 'legacy-attempt',
+  }, first.token)
+  expectCode(oldClient, 409, 'sync_upgrade_required', 'V1 downgrade protection')
+  console.log('Fresh V4 and subsequent CAS/V1 downgrade: PASS')
 
-  const deniedAfterLegacy = await api('/api/sync/v2', 'PUT', '{not-json')
-  expectCode(deniedAfterLegacy, 403, 's2_write_not_enabled',
-    'V2 write gate after legacy V1 data')
-  const finalMeta = await api('/api/sync/v2/meta')
-  assert.equal(finalMeta.value?.revision, 1)
-  console.log('P4b V1 data protected from unlisted V2 write: PASS')
+  assert.equal((await api('/api/sync/v2/meta', 'GET', undefined, second.token)).value?.revision, 0)
+  const secondOwn = await api('/api/sync/v2', 'PUT', v4Body(second, 0, 'other-account'),
+    second.token)
+  expectCode(secondOwn, 200, null, 'second normal user without allowlist')
+  assert.equal(secondOwn.value?.revision, 1)
+  assert.equal((await api('/api/sync/v2/meta', 'GET', undefined, first.token)).value?.revision, 2)
+  console.log('Second unlisted account independent V4 write: PASS')
 
-  // Independently registered account must not observe the first account's
-  // V1 snapshot or inherit its authorization; no existing user is accessed.
-  const registeredSecond = await api('/api/auth/register', 'POST', {
-    username: secondUsername, password: secondPassword,
-    deviceId: 'p4b-isolated-ci-second',
-  }, '')
-  if (registeredSecond.status === 201 && registeredSecond.value?.token) {
-    secondToken = registeredSecond.value.token
-    createdSecond = true
-  }
-  expectCode(registeredSecond, 201, null, 'second disposable register')
-  assert.ok(registeredSecond.value?.user?.userId)
-  assert.notEqual(registeredSecond.value.user.userId,
-    registered.value.user.userId, 'disposable accounts share identity')
-  const secondMeta = await api('/api/sync/v2/meta', 'GET', undefined, secondToken)
-  assert.equal(secondMeta.status, 200)
-  assert.equal(secondMeta.value?.revision, 0,
-    'cross-account leak: second account can see first revision')
-  const secondBlocked = await api('/api/sync/v2', 'PUT', '{not-json',
-    secondToken)
-  expectCode(secondBlocked, 403, 's2_write_not_enabled',
-    'second account V2 write')
-  const firstStillIntact = await api('/api/sync/meta')
-  assert.equal(firstStillIntact.value?.revision, 1)
-  console.log('P4b independent second account segregation: PASS')
+  const historical = await api('/api/sync', 'PUT', {
+    baseRevision: 0,
+    payloadBase64: gzipSync(Buffer.from(JSON.stringify({ oldData: true }))).toString('base64'),
+    clientFormatVersion: 'qwerty-backup-v3',
+    deviceId: 'v3-disposable',
+  }, legacy.token)
+  expectCode(historical, 200, null, 'disposable historical V3')
+  assert.equal(historical.value?.revision, 1)
+  const noAutoMigration = await api('/api/sync/v2', 'PUT',
+    v4Body(legacy, 1, 'reject-auto-migration'), legacy.token)
+  expectCode(noAutoMigration, 409, 'sync_migration_required',
+    'Existing V3 cannot be overwritten by normal V4 Sync')
+  const legacyMeta = await api('/api/sync/v2/meta', 'GET', undefined, legacy.token)
+  assert.equal(legacyMeta.value?.revision, 1)
+  assert.equal(legacyMeta.value?.clientFormatVersion, 'qwerty-backup-v3')
+  console.log('Existing V3 remains V3; no automatic migration: PASS')
 } catch (error) {
   failure = error
 } finally {
-  if (createdSecond && secondToken) {
+  for (const user of users.reverse()) {
     try {
-      const removedSecond = await api('/api/auth/account', 'DELETE',
-        { currentPassword: secondPassword }, secondToken)
-      assert.equal(removedSecond.status, 200, 'second disposable cleanup')
-      assert.equal(removedSecond.value?.deleted?.accountDeleted, true)
-      console.log('P4b second disposable account cleanup: PASS')
+      const deleted = await api('/api/auth/account', 'DELETE',
+        { currentPassword: user.password }, user.token)
+      expectCode(deleted, 200, null, 'disposable cleanup ' + user.username)
+      assert.equal(deleted.value?.deleted?.accountDeleted, true)
+      console.log('Disposable account cleanup: PASS')
     } catch (error) {
-      console.error('P4b second isolated account cleanup FAILED:', error.message)
-      failure = failure || error
-    }
-  }
-  if (created && token) {
-    try {
-      const removed = await api('/api/auth/account', 'DELETE',
-        { currentPassword: password })
-      assert.equal(removed.status, 200, 'disposable account cleanup')
-      assert.equal(removed.value?.deleted?.accountDeleted, true,
-        'disposable account cleanup confirmation')
-      console.log('P4b disposable account cleanup: PASS')
-    } catch (error) {
-      console.error('P4b isolated account cleanup FAILED: ', error.message)
-      failure = failure || error
+      console.error('Disposable account cleanup FAILED (no credentials printed)')
+      failure ||= error
     }
   }
 }
