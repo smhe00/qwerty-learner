@@ -7,10 +7,7 @@ import {
   markAchievementSeen,
 } from '@/achievement'
 import { resolveAchievementCeremonyPresentation } from '@/achievement/presentation'
-import {
-  settleLearnBlockDurably,
-  syncCompletedLearnSettlement,
-} from '@/learn/settlement'
+import { settleLearnBlockDurably } from '@/learn/settlement'
 import type { LearnBlockSettlement } from '@/learn/settlement'
 import {
   TypingContext,
@@ -18,7 +15,12 @@ import {
 } from '@/pages/Typing/store'
 import { getAchievementCulture } from '@/resources/achievementCulture'
 import { currentDictInfoAtom, reviewModeInfoAtom } from '@/store'
-import type { LearnAutoSyncResult } from '@/sync/auto'
+import { loadAuth } from '@/sync/auth'
+import {
+  blockAutoSyncEnabled,
+  isVisibleLearnBlockBoundary,
+  stageLearnBlockSync,
+} from '@/sync/learn-block-sync'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useAtomValue, useSetAtom } from 'jotai'
 import {
@@ -66,31 +68,6 @@ function SummaryMetric({
   )
 }
 
-type Settlement = LearnBlockSettlement & {
-  sync?: LearnAutoSyncResult
-}
-
-function syncText(sync: LearnAutoSyncResult | undefined): string | null {
-  if (!sync) return null
-
-  switch (sync.status) {
-    case 'uploaded':
-      return `云同步完成 · revision ${sync.revision}`
-    case 'clean':
-      return '本地与云端已一致'
-    case 'not-logged-in':
-      return '未登录云端，学习记录已安全保存在本机'
-    case 'remote-ahead':
-      return '云端有较新数据，已停止自动上传，请稍后手动处理'
-    case 'diverged':
-      return '本地与云端都有变化，已停止自动上传，请稍后手动处理'
-    case 'conflict':
-      return '自动同步时检测到云端变化，未覆盖云端数据'
-    case 'failed':
-      return '本地记录已保存；本次云同步失败，可稍后重试'
-  }
-}
-
 export default function LearnResultScreen() {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const { state, dispatch } = useContext(TypingContext)!
@@ -99,16 +76,18 @@ export default function LearnResultScreen() {
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
   const navigate = useNavigate()
   const record = reviewModeInfo.reviewRecord
-  const [settlement, setSettlement] = useState<Settlement | null>(null)
+  const [settlement, setSettlement] = useState<LearnBlockSettlement | null>(null)
   const [settlementError, setSettlementError] = useState('')
   const [addingWords, setAddingWords] = useState(false)
   const addingWordsRef = useRef(false)
   const [extraWordsMessage, setExtraWordsMessage] = useState('')
+  const [blockSyncHandoff, setBlockSyncHandoff] = useState(false)
+  const [blockSyncSetupError, setBlockSyncSetupError] = useState('')
+  const blockSyncHandoffRef = useRef(false)
   // React StrictMode replays effects in development. Keep the actual durable
   // settlement in a stable Promise so replayed effects subscribe to the same
   // operation instead of cancelling the only run and leaving Pause disabled.
-  const settlementPromiseRef = useRef<Promise<Settlement> | null>(null)
-  const syncPromiseRef = useRef<Promise<LearnAutoSyncResult> | null>(null)
+  const settlementPromiseRef = useRef<Promise<LearnBlockSettlement> | null>(null)
   const skippedInternalBlockRef = useRef(false)
 
   const unseenAchievementStates = useLiveQuery(
@@ -159,45 +138,41 @@ export default function LearnResultScreen() {
           setSettlementError('')
         }
 
-        if (!baseSettlement.progress.complete) return
-
-        if (!syncPromiseRef.current) {
-          syncPromiseRef.current = syncCompletedLearnSettlement(
-            baseSettlement,
-          ).then((sync) => {
-            if (!sync) {
-              throw new Error(
-                'completed Learn settlement returned no sync result',
-              )
-            }
-            return sync
-          })
+        // Only visible, durable Block boundaries trigger automatic V4 Sync.
+        // Navigating destroys this mounted writer context before the guarded
+        // S2 executor can capture the complete workspace. Never call V1 auto
+        // upload on an opted-in isolated account.
+        const auth = loadAuth({ preserveExpired: true })
+        const accountId = auth?.user.userId
+        const s2Enabled = REACT_APP_DEPLOY_ENV !== 'pages' &&
+          (import.meta.env.DEV || import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true')
+        const shouldHandoff = Boolean(s2Enabled && accountId &&
+          auth && auth.expiresAt * 1000 > Date.now() &&
+          (baseSettlement.progress.complete || blockAutoSyncEnabled(accountId)) &&
+          isVisibleLearnBlockBoundary({
+            dailyComplete: baseSettlement.progress.complete,
+            milestone: baseSettlement.milestoneReached,
+          }))
+        if (active && shouldHandoff && accountId && !blockSyncHandoffRef.current) {
+          try {
+            stageLearnBlockSync(accountId, {
+              dailyComplete: baseSettlement.progress.complete,
+              milestone: baseSettlement.milestoneReached,
+            })
+            blockSyncHandoffRef.current = true
+            setBlockSyncHandoff(true)
+            // A new document must acquire the S1 writer lock before V4 Sync.
+            window.location.replace('/?s2-sync=run&learn-block=1')
+          } catch (error) {
+            setBlockSyncSetupError(
+              '无法启动 Block 自动同步：' +
+              (error instanceof Error ? error.message : String(error)) +
+              '。本地进度已保存，可稍后手动同步。',
+            )
+          }
         }
-
-        void syncPromiseRef.current
-          .then((sync) => {
-            if (!active) return
-            setSettlement((current) =>
-              current
-                ? {
-                    ...current,
-                    sync,
-                  }
-                : {
-                    ...baseSettlement,
-                    sync,
-                  },
-            )
-          })
-          .catch((error) => {
-            // Cloud synchronization is intentionally outside the local
-            // durability barrier. Unexpected sync failures never block Daily
-            // completion or Block recovery.
-            console.error(
-              'failed to auto-sync completed Learn session',
-              error,
-            )
-          })
+        // Daily completion retains its existing automatic-sync intent via guarded
+        // S2 V4. The checkbox only expands that behaviour to each Block.
       })
       .catch((error) => {
         console.error('failed to settle Learn block', error)
@@ -223,12 +198,13 @@ export default function LearnResultScreen() {
   }, [setReviewModeInfo])
 
   const continueLearn = useCallback(() => {
-    if (!settlement || settlement.progress.complete) return
+    if (blockSyncHandoffRef.current || blockSyncHandoff || !settlement || settlement.progress.complete) return
 
     dispatch({ type: TypingStateActionType.RESET_SESSION })
     keepLearnSelected()
     navigate('/learn', { state: { autoStart: true } })
   }, [
+    blockSyncHandoff,
     dispatch,
     keepLearnSelected,
     navigate,
@@ -236,7 +212,7 @@ export default function LearnResultScreen() {
   ])
 
   const learnFiveMore = useCallback(async () => {
-    if (!settlement?.progress.complete || addingWordsRef.current) return
+    if (blockSyncHandoffRef.current || blockSyncHandoff || !settlement?.progress.complete || addingWordsRef.current) return
     addingWordsRef.current = true
     setAddingWords(true)
     try {
@@ -265,7 +241,7 @@ export default function LearnResultScreen() {
       addingWordsRef.current = false
       setAddingWords(false)
     }
-  }, [settlement, currentDictInfo.url, acknowledgeAchievements, dispatch, keepLearnSelected, navigate])
+  }, [blockSyncHandoff, settlement, currentDictInfo.url, acknowledgeAchievements, dispatch, keepLearnSelected, navigate])
 
   // An internal queue boundary is not a learning-stage achievement. Persist
   // it, then continue seamlessly until a frozen daily milestone is reached.
@@ -279,19 +255,23 @@ export default function LearnResultScreen() {
   }, [settlement, continueLearn])
 
   const closeResult = useCallback(() => {
+    if (blockSyncHandoffRef.current || blockSyncHandoff || !settlement || settlementError) return
     acknowledgeAchievements()
     dispatch({ type: TypingStateActionType.RESET_SESSION })
     keepLearnSelected()
     navigate('/learn', { state: { idle: true } })
   }, [
     acknowledgeAchievements,
+    blockSyncHandoff,
     dispatch,
     keepLearnSelected,
     navigate,
+    settlement,
+    settlementError,
   ])
 
   useEffect(() => {
-    if (!settlement || settlement.progress.complete) return
+    if (!settlement || settlement.progress.complete || blockSyncHandoffRef.current || blockSyncHandoff) return
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (
@@ -310,7 +290,7 @@ export default function LearnResultScreen() {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [continueLearn, settlement])
+  }, [blockSyncHandoff, continueLearn, settlement])
 
   useHotkeys(
     'esc',
@@ -341,8 +321,9 @@ export default function LearnResultScreen() {
         <div className="my-card relative flex w-[90vw] max-w-3xl flex-col rounded-3xl bg-white px-10 py-10 shadow-lg dark:bg-gray-800">
           <button
             type="button"
-            className="absolute right-7 top-5"
+            className="absolute right-7 top-5 disabled:cursor-not-allowed disabled:opacity-30"
             onClick={closeResult}
+            disabled={blockSyncHandoff || !settlement || Boolean(settlementError)}
             aria-label="暂停 Learn"
             title="暂停 Learn 并保留今日进度"
           >
@@ -368,6 +349,17 @@ export default function LearnResultScreen() {
             {settlementError ? (
               <p className="mt-3 text-sm text-red-500" role="alert">
                 {settlementError}
+              </p>
+            ) : null}
+            {blockSyncHandoff ? (
+              <p className="mt-3 text-sm text-indigo-500" role="status"
+                data-learn-block-sync-pending>
+                正在进入安全同步；同步完成后才能继续或退出…
+              </p>
+            ) : null}
+            {blockSyncSetupError ? (
+              <p className="mt-3 text-sm text-amber-600" role="alert">
+                {blockSyncSetupError}
               </p>
             ) : null}
 
@@ -487,19 +479,18 @@ export default function LearnResultScreen() {
 
           {isDailyComplete ? (
             <div className="mt-7 text-center text-xs text-gray-400">
-              {settlement?.sync
-                ? syncText(settlement.sync)
-                : '正在检查云同步状态…'}
+              本地进度已保存；如云端同步未执行，可在设置中手动同步。
             </div>
           ) : null}
 
           {extraWordsMessage ? <p className="mt-4 text-center text-sm text-gray-500" role="status">{extraWordsMessage}</p> : null}
           <div className="mt-7 flex justify-center gap-4">
-            {isDailyComplete ? <button className="my-btn h-12 px-8 text-base disabled:opacity-50" type="button" disabled={addingWords} onClick={() => void learnFiveMore()}>多学五词</button> : null}
+            {isDailyComplete ? <button className="my-btn h-12 px-8 text-base disabled:opacity-50" type="button" disabled={addingWords || blockSyncHandoff} onClick={() => void learnFiveMore()}>多学五词</button> : null}
             {isDailyComplete ? (
               <button
-                className="my-btn-primary h-12 px-8 text-base font-bold"
+                className="my-btn-primary h-12 px-8 text-base font-bold disabled:opacity-40"
                 type="button"
+                disabled={blockSyncHandoff || !settlement || Boolean(settlementError)}
                 onClick={closeResult}
               >
                 完成
@@ -508,7 +499,7 @@ export default function LearnResultScreen() {
               <button
                 className="my-btn-primary h-12 px-8 text-base font-bold disabled:bg-gray-300"
                 type="button"
-                disabled={!settlement || Boolean(settlementError)}
+                disabled={!settlement || Boolean(settlementError) || blockSyncHandoff}
                 onClick={continueLearn}
               >
                 按任意键继续

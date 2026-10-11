@@ -1,0 +1,12 @@
+<!doctype html><html lang="zh"><head><meta charset="UTF-8"/><title>Block sync harness</title></head>
+<body><div id="root"></div>
+<script type="module">
+import { renderLearnBlockSyncScreen } from '/src/sync/learn-block-sync-ui.ts'
+const screen = renderLearnBlockSyncScreen(document.querySelector('#root'), {
+  accountId: 'test-account',
+  at: Date.now(),
+  dailyComplete: false,
+  milestone: 20,
+})
+window.__blockSyncScreen = screen
+</script></body></html>

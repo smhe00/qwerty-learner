@@ -181,6 +181,19 @@ function showS1AccountResult(): void {
 }
 
 function onStage(stage: WorkspaceBootStage): void {
+  // Block sync is a full-page, writer-locked S2 handoff, but the user sees
+  // only the familiar Block status panel throughout boot and cloud transfer.
+  if (new URLSearchParams(window.location.search).get('learn-block') === '1') {
+    const notice = root?.querySelector('[data-learn-block-sync] [role="status"]')
+    if (notice) {
+      notice.textContent = stage === 'locking'
+        ? '正在锁定本地学习记录，准备安全同步…'
+        : stage === 'recovering'
+          ? '正在恢复上一次未完成的安全事务…'
+          : '正在同步学习进度…'
+      return
+    }
+  }
   if (stage === 'locking') {
     gateUI('正在准备本地学习数据', '正在取得本浏览器的独占学习数据写入权限…')
   } else if (stage === 'recovering') {
@@ -192,6 +205,10 @@ async function start(): Promise<void> {
   if (starting || releasedForPageHide) return
   starting = true
   try {
+    if (new URLSearchParams(window.location.search).get('learn-block') === '1') {
+      const { renderLearnBlockSyncScreen } = await import('./sync/learn-block-sync-ui')
+      renderLearnBlockSyncScreen(root, null)
+    }
     boot = await timePerfStage('startup', 'guarded-bootstrap', () =>
       prepareGuardedWorkspaceBoot(onStage, { allowLegacy: true }))
     if (releasedForPageHide) {
@@ -221,6 +238,22 @@ async function start(): Promise<void> {
       renderPerfReportUI(root)
       return
     }
+    // Return after an S2 Pull journal recovery without mounting React.  The
+    // Block completion UI remains non-modal and still holds the writer lease.
+    if (new URLSearchParams(window.location.search).get('learn-block-sync') === 'result') {
+      const { readLearnBlockSyncPending, readLearnBlockSyncOutcome } =
+        await import('./sync/learn-block-sync')
+      const { renderLearnBlockSyncScreen } = await import('./sync/learn-block-sync-ui')
+      const accountId = boot.registry.active.kind === 'account' ? boot.registry.active.accountId : ''
+      const context = readLearnBlockSyncPending(accountId)
+      const screen = renderLearnBlockSyncScreen(root, context)
+      const previous = context ? readLearnBlockSyncOutcome() : null
+      screen.settle(previous ?? {
+        kind: 'failed',
+        message: '无法确认当前账号上次 Block 的云同步结果，本地记录仍保留。',
+      })
+      return
+    }
     // S2 pilot: the ONLY ordinary Sync action navigates into a new,
     // pre-mount, S1 writer-locked realm; it never mutates RecordDB from
     // mounted React. Production remains disabled without explicit flag.
@@ -231,7 +264,27 @@ async function start(): Promise<void> {
               import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true'))) {
         throw new Error('S2 Sync 尚未在此部署启用。')
       }
-      gateUI('正在安全同步', '正在检查工作区、云端版本和完整性，必要时进行安全事务操作…')
+      // The Learn Block variant uses the same guarded S2 executor, never
+      // a mounted React writer.  Its status is shown within the Block card.
+      const isLearnBlock = new URLSearchParams(window.location.search).get('learn-block') === '1'
+      let blockScreen: {
+        setStatus(message: string): void
+        settle(result: { kind: 'ok' | 'failed'; message: string }): void
+      } | undefined
+      if (isLearnBlock) {
+        const { readLearnBlockSyncPending, blockAutoSyncEnabled } =
+          await import('./sync/learn-block-sync')
+        const { renderLearnBlockSyncScreen } = await import('./sync/learn-block-sync-ui')
+        const accountId = boot.registry.active.kind === 'account' ? boot.registry.active.accountId : ''
+        const context = readLearnBlockSyncPending(accountId)
+        if (!context || (!context.dailyComplete && !blockAutoSyncEnabled(accountId))) {
+          throw new Error('Block 自动同步上下文失效或当前账号未授权自动同步')
+        }
+        blockScreen = renderLearnBlockSyncScreen(root, context)
+        blockScreen.setStatus('正在同步学习进度…')
+      } else {
+        gateUI('正在安全同步', '正在检查工作区、云端版本和完整性，必要时进行安全事务操作…')
+      }
       try {
         const { executePreMountManualSyncV2 } = await import('./sync/v2-browser-executor')
         // Capture the validated boot lease locally. A module-scope mutable
@@ -249,14 +302,38 @@ async function start(): Promise<void> {
               : status === 'conflict'
                 ? '同步冲突：本地和云端均有变化，未覆盖任何一方。'
                 : '同步被安全拦截：' + result.reason
+        if (isLearnBlock) {
+          const { saveLearnBlockSyncOutcome } = await import('./sync/learn-block-sync')
+          const outcome = status === 'noop' || status === 'pushed' ||
+            status === 'pull-reload-required'
+            ? { kind: 'ok' as const, message: note }
+            : { kind: 'failed' as const, message: note + ' 本机学习记录仍已保存。' }
+          saveLearnBlockSyncOutcome(outcome)
+          if (status === 'pull-reload-required') {
+            // The next S1 boot must replay the staged Pull journal before
+            // showing any successful completion/exit controls.
+            blockScreen!.setStatus('正在安全恢复云端进度…')
+            window.location.replace('/?learn-block-sync=result')
+            return
+          }
+          blockScreen!.settle(outcome)
+          return
+        }
         if (status !== 'pull-reload-required') {
           sessionStorage.setItem('qwerty.s2.last-sync-result', note)
         }
       } catch (error) {
+        const message = '同步未确认，将先执行安全恢复检查：' +
+          (error instanceof Error ? error.message : String(error))
+        if (isLearnBlock) {
+          const { saveLearnBlockSyncOutcome } = await import('./sync/learn-block-sync')
+          const outcome = { kind: 'failed' as const, message }
+          saveLearnBlockSyncOutcome(outcome)
+          blockScreen!.settle(outcome)
+          return
+        }
         // If a Pull was staged, the next boot MUST first replay its journal.
-        sessionStorage.setItem('qwerty.s2.last-sync-result',
-          '同步未确认，将先执行安全恢复检查：' +
-          (error instanceof Error ? error.message : String(error)))
+        sessionStorage.setItem('qwerty.s2.last-sync-result', message)
       }
       // Retain the exclusive lease until this document is destroyed; the
       // new page must freshly acquire its own writer lease.

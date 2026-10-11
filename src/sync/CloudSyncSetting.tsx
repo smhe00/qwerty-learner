@@ -4,6 +4,7 @@
  * S1 account dialog. Never execute legacy V1 auth/write operations here.
  */
 import { getSyncV2Meta } from './api'
+import { blockAutoSyncEnabled, setBlockAutoSyncEnabled } from './learn-block-sync'
 import { loadAuth } from './auth'
 import { workspaceRegistryPort } from './workspace-vault'
 import type { RemoteSyncMeta } from './types'
@@ -21,6 +22,7 @@ export default function CloudSyncSetting() {
   const [remote, setRemote] = useState<RemoteSyncMeta | null>(null)
   const [status, setStatus] = useState('')
   const [checking, setChecking] = useState(false)
+  const [syncEachBlock, setSyncEachBlock] = useState(false)
   const auth = loadAuth({ preserveExpired: true })
   const loggedIn =
     workspace.mode === 'account' && auth?.user.userId === workspace.accountId
@@ -33,6 +35,8 @@ export default function CloudSyncSetting() {
     void workspaceRegistryPort.read()
       .then(registry => {
         if (cancelled) return
+        setSyncEachBlock(registry.active.kind === 'account'
+          ? blockAutoSyncEnabled(registry.active.accountId) : false)
         setWorkspace(registry.pending
           ? { mode: 'error', message: '正在恢复上次账户切换，请刷新页面完成恢复。' }
           : registry.generation === 0
@@ -99,6 +103,30 @@ export default function CloudSyncSetting() {
               <p>当前工作区：<strong>{auth?.user.username ?? '未知账户'}</strong>
                 {expired ? '（会话已过期，需从右上角重新登录）' : '（已登录）'}
               </p>
+              <label className="flex cursor-pointer items-start gap-2 text-sm">
+                <input type="checkbox" className="mt-1"
+                  aria-label="每个 Block 完成后自动同步"
+                  checked={syncEachBlock}
+                  disabled={!enabled || expired}
+                  onChange={event => {
+                    if (!auth || workspace.mode !== 'account') return
+                    try {
+                      setBlockAutoSyncEnabled(workspace.accountId, event.target.checked)
+                      setSyncEachBlock(event.target.checked)
+                      setStatus(event.target.checked
+                        ? '已启用：每个可见 Block 完成后先安全同步，再允许继续或退出。'
+                        : '已关闭 Block 自动同步；学习记录仍保存在本机。')
+                    } catch {
+                      setStatus('无法保存 Block 自动同步设置，请检查浏览器存储权限。')
+                    }
+                  }} />
+                <span>每个 Block 完成后自动同步
+                  <span className="block text-xs text-gray-500 dark:text-gray-400">
+                    仅本机当前账号；默认关闭（每日全部完成仍会自动同步）。阶段结束时在 Block 页显示同步状态，
+                    同步中不可继续或退出。网络异常时可重试或明确选择仅保留本地记录。
+                  </span>
+                </span>
+              </label>
               {remote && <p>云端：{remote.hasData
                 ? `Revision ${remote.revision} · ${remote.clientFormatVersion || '未知格式'}`
                 : '尚无备份'}</p>}
