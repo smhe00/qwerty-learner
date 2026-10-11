@@ -27,6 +27,7 @@ export type LearnDailySessionV1 = {
   plannedNewWordNames?: string[]
   /** Cumulative milestones for meaningful Block celebrations, not queue sizes. */
   blockMilestones?: number[]
+  celebratedMilestones?: number[]
   plannedReviewWords: string[]
   carryOverAcquisitionWords: string[]
   accumulatedActiveSeconds: number
@@ -222,6 +223,7 @@ export function createLearnDailySession(input: {
     plannedNewWords,
     plannedNewWordNames,
     blockMilestones,
+    celebratedMilestones: [],
     plannedReviewWords,
     carryOverAcquisitionWords,
     accumulatedActiveSeconds: 0,
