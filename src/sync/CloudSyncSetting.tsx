@@ -133,6 +133,10 @@ export default function CloudSyncSetting() {
           )}
         </>
       )}
+      <button type="button" className="text-xs underline"
+        onClick={() => window.location.assign('/?perf-report=view')}>
+        查看启动 / 同步性能报告（仅本机）
+      </button>
     </section>
   )
 }
