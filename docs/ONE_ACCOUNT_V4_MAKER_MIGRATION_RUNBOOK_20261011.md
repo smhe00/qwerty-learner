@@ -8,9 +8,9 @@
 - 生产构建的 `.env.production` 设
   `VITE_S1_ENABLE_EXPLICIT_V4_MIGRATION=true` 和
   `VITE_S2_ENABLE_UNIFIED_SYNC=true`，仅开放人工确认的网页入口。
-- **前端两个 VITE 标志不是授权！** 服务端仍默认拒绝 V4 写入，只有 Maker **运行时** `S2_SYNC_WRITE_ACCOUNT_IDS` 中精准匹配的不可变 `userId` 才可 PUT `/api/sync/v2` / `/api/sync/v2/recovery`。
-  未配置时为 `403 s2_write_not_enabled`。不能填写用户名、`*` 或公开密码。
-- GitHub Pages 不开放该 Maker 实验入口；当前阶段不对所有用户开放。
+- **V4 GA（2026-10-11 新版）**：服务端允许所有**有效认证账号**调用 V4 写入。原 `S2_SYNC_WRITE_ACCOUNT_IDS` 白名单已弃用，无需再配置。客户端必须为当前已登录的不可变 userId，服务端仍执行完整 V4、CAS、账号隔离校验。
+- **不做 V3 自动迁移**：已有云端 V3 的普通 Sync 一律拦截；只有经两端备份和原 SHA/Revision 验证的显式高级恢复才可以升级。生产紧急停写可设置运行时 `S2_SYNC_WRITES_DISABLED=true`。
+- GitHub Pages 不提供 Maker 云端同步；此手册只描述 EdgeOne 生产站人工旧账号迁移。
 - 仅在用户确认备份、选择一个可信权威副本之后提交云端 V4。不要把“有 V4 备份文件”当成“已完成 S1 工作区迁移”。
 
 ## 用户执行前
@@ -31,15 +31,13 @@
 5. 访问 `https://qwerty-plus.edgeone.dev/?s1-account=manage`，核对当前工作区是刚才的同一 **账户 ID**，复制该 ID（不需要复制 Token、密码或导出登录信息）。
 6. 重新打开正常学习界面，检查词库/章节、Learning/FSRS 和历史统计未丢失。此阶段**还没有**将云端迁到 V4。
 
-## Phase 2 — Maker 服务端只授权现有 userId 写 V4
+## Phase 2 — 确认 Maker 已部署 V4 GA
 
-1. 打开 EdgeOne Maker 项目设置（实际绑定 `master` 的 Maker 项目），在 **Production 运行时环境变量**中填写
-   `S2_SYNC_WRITE_ACCOUNT_IDS=<完整不可变 userId>`。
-   不要使用用户名，不要填写通配符或测试账号。
-2. 如 Maker 同时配置了与 `.env.production` 同名的构建变量，确认 `VITE_S1_ENABLE_EXPLICIT_V4_MIGRATION=true`、
-   `VITE_S2_ENABLE_UNIFIED_SYNC=true`，避免平台环境覆盖仓库默认值。
-3. 按 Maker 实际生效机制重新部署/Promote to Production，并等待构建/发布成功。未经服务器重新确认前，切勿从页面反复盲点“覆盖”。
-4. 服务端写入白名单不是浏览器可见信息：如果恢复时返回 `403 s2_write_not_enabled`，应停止，先核查 Maker **运行时**配置的 userId 是否与工作区一致，**不要改为通配符**。
+1. 确认 EdgeOne Maker 真实生产站部署的版本为本次 GA `master` 版本。访问 `/api/health`，验证 `capabilities` 包含 `backup-v4-authenticated-write-ga`；只看 GitHub 构建状态不够。
+2. 无需配置账号白名单。可清理旧变量 `S2_SYNC_WRITE_ACCOUNT_IDS`；未清理也不影响本次 GA。
+3. 仅在紧急事故发生时设置 Production 运行时 `S2_SYNC_WRITES_DISABLED=true` 暂停 V4 写入；解除时设置 `false` 或删除该变量。
+4. 已有云端 V3 的真实账号**仍需继续 Phase 3 的人工显式迁移**。不允许直接点击普通 Sync 覆盖。
+
 
 ## Phase 3 — 云端 V3 → V4（需要确定保留哪一边）
 
@@ -67,7 +65,7 @@
 
 - 本地 S1 迁移失败：不要清理浏览器数据。旧版快照和 S1 Vault 是恢复依据；关闭多余标签页，按安全恢复页面处理。
 - 云端 V4 CAS 成功但浏览器显示失败：先核验 **Revision + SHA + 账户 ID**，不得盲目重复 Push。
-- 需要回退 Maker 代码：只能回退到**带 V4 感知及 V1 写入保护的严格白名单版本**。不能回到允许 V1 覆盖 V4 的历史版本。
+- 需要回退 Maker 代码：必须保持 **V4 感知、CAS 与 V1 写入降级保护**；优先使用新全局停写开关，不能回到允许 V1 覆盖 V4 的历史版本。
 - 迁移过程中如遇“其他设备登录，当前登录被撤销”，先保留本地备份再确认退出，避免同时在多设备竞争迁移。
 
 ## 通过标准
