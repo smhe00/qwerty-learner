@@ -2,6 +2,7 @@ import {
   LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
   createLearnAcquisitionExercisePlanForState,
   createLearnAcquisitionState,
+  deferredAcquisitionCohortResumeTimes,
   resumeDeferredAcquisition,
 } from './acquisition'
 import type { LearnAcquisitionState } from './acquisition'
@@ -351,9 +352,14 @@ export function planLearnAcquisitionCandidates(input: {
     canonicalWords.map((word) => [word.name, word]),
   )
   const resumed: LearnAcquisitionCandidatePlan['resumed'] = []
+  const cohortTimes = deferredAcquisitionCohortResumeTimes(
+    new Map([...input.pendingStates].filter(([name]) => canonicalByName.has(name))),
+  )
 
   for (const [wordName, pendingState] of input.pendingStates) {
     if (resumed.length >= LEARN_NEW_WORD_BATCH_SIZE) break
+
+    if ((cohortTimes.get(wordName) ?? input.now) > input.now) continue
 
     const resumedState =
       pendingState.phase === 'deferred'

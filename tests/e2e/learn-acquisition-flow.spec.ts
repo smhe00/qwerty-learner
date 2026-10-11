@@ -530,81 +530,96 @@ test('clean but short-gap Independent recall defers without false admission', as
   ).toBeVisible()
 })
 
-test('spacing-deferred acquisition resumes as Independent after its delay', async ({
-  page,
-}) => {
-  await page.addInitScript(() => {
-    localStorage.setItem('currentDict', JSON.stringify('cet4'))
-    localStorage.setItem('currentChapter', JSON.stringify(-1))
-    localStorage.setItem(
-      'reviewModeInfo',
-      JSON.stringify({
-        isReviewMode: false,
-      }),
-    )
-  })
-  await gotoReviewAppReady(page, '/typing')
+for (const reason of ['spacing', 'assistance'] as const) {
+  test(`${reason}-deferred acquisition resumes as Independent after its delay`, async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('currentDict', JSON.stringify('cet4'))
+      localStorage.setItem('currentChapter', JSON.stringify(-1))
+      localStorage.setItem(
+        'reviewModeInfo',
+        JSON.stringify({
+          isReviewMode: false,
+        }),
+      )
+    })
+    await gotoReviewAppReady(page, '/typing')
 
-  const resumeAfter = Math.floor(Date.now() / 1000) - 1
-  await page.evaluate(
-    async ({ word, resumeAt }) => {
-      await new Promise<void>((resolve, reject) => {
-        const request = indexedDB.open('RecordDB')
-        request.onerror = () => reject(request.error)
-        request.onsuccess = () => {
-          const db = request.result
-          const tx = db.transaction('reviewRecords', 'readwrite')
-          tx.objectStore('reviewRecords').add({
-            dict: 'cet4',
-            index: 0,
-            createTime: resumeAt - 300,
-            isFinished: true,
-            sessionKind: 'acquisition',
-            words: [word],
-            acquisitionStates: {
-              [word.name]: {
-                version: 1,
-                phase: 'deferred',
-                assistedCycles: 0,
-                independentInterveningItems: 0,
-                deferredReason: 'spacing',
-                resumeAfter: resumeAt,
+    const resumeAfter = Math.floor(Date.now() / 1000) - 1
+    await page.evaluate(
+      async ({ word, resumeAt, reason }) => {
+        await new Promise<void>((resolve, reject) => {
+          const request = indexedDB.open('RecordDB')
+          request.onerror = () => reject(request.error)
+          request.onsuccess = () => {
+            const db = request.result
+            const tx = db.transaction('reviewRecords', 'readwrite')
+            tx.objectStore('reviewRecords').add({
+              dict: 'cet4',
+              index: 0,
+              createTime: resumeAt - 300,
+              isFinished: true,
+              sessionKind: 'acquisition',
+              words: [word],
+              acquisitionStates: {
+                [word.name]: {
+                  version: 1,
+                  phase: 'deferred',
+                  assistedCycles: 0,
+                  independentInterveningItems: 0,
+                  deferredReason: reason,
+                  resumeAfter: resumeAt,
+                },
               },
-            },
-          })
-          tx.onerror = () => reject(tx.error)
-          tx.onabort = () => reject(tx.error)
-          tx.oncomplete = () => {
-            db.close()
-            resolve()
+            })
+            tx.onerror = () => reject(tx.error)
+            tx.onabort = () => reject(tx.error)
+            tx.oncomplete = () => {
+              db.close()
+              resolve()
+            }
           }
-        }
-      })
-    },
-    { word: reviewWords[0], resumeAt: resumeAfter },
-  )
+        })
+      },
+      { word: reviewWords[0], resumeAt: resumeAfter, reason },
+    )
 
-  await page.goto('/learn')
-  const info = await waitForActiveLearnSession(page)
-  expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
-  expect(info?.reviewRecord?.words?.[0]?.name).toBe('cancel')
-  expect(
-    info?.reviewRecord?.acquisitionStates?.cancel,
-  ).toMatchObject({
-    phase: 'independent',
-    assistedCycles: 0,
-    independentInterveningItems: 2,
+    await page.goto('/learn')
+    const info = await waitForActiveLearnSession(page)
+    expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
+    expect(info?.reviewRecord?.words?.[0]?.name).toBe('cancel')
+    expect(
+      info?.reviewRecord?.acquisitionStates?.cancel,
+    ).toMatchObject({
+      phase: 'independent',
+      assistedCycles: 0,
+      independentInterveningItems: 2,
+    })
+
+    await startTyping(page)
+    await waitForRenderedWord(page, 'cancel')
+    const word = page.locator('[data-typing-word="cancel"]')
+    await expect(word).toHaveAttribute('data-review-purpose', 'probe')
+    await expect(word).toHaveAttribute(
+      'data-review-letters',
+      'all-hidden',
+    )
+    await page.keyboard.type('cancel')
+    await expect.poll(async () => page.evaluate(() => new Promise((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const get = db.transaction('reviewWordStates', 'readonly').objectStore('reviewWordStates')
+          .index('[dict+word]').get(['cet4', 'cancel'])
+        get.onsuccess = () => { resolve(get.result?.lifecycle); db.close() }
+        get.onerror = () => reject(get.error)
+      }
+    }))).toBe('active')
   })
 
-  await startTyping(page)
-  await waitForRenderedWord(page, 'cancel')
-  const word = page.locator('[data-typing-word="cancel"]')
-  await expect(word).toHaveAttribute('data-review-purpose', 'probe')
-  await expect(word).toHaveAttribute(
-    'data-review-letters',
-    'all-hidden',
-  )
-})
+}
 
 test('clean Independent acquisition is the admission boundary', async ({
   page,

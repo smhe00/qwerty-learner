@@ -21,6 +21,7 @@ import {
 } from '@/learn/session'
 import {
   createLearnAcquisitionExercisePlanForState,
+  deferredAcquisitionCohortResumeTimes,
 } from '@/learn/acquisition'
 import type { LearnAcquisitionState } from '@/learn/acquisition'
 import {
@@ -434,9 +435,7 @@ export async function getNextDeferredAcquisitionResumeAt(
   dictID: string,
 ): Promise<number | undefined> {
   const deferred = await getDeferredAcquisitionStates(dictID)
-  const resumeTimes = [...deferred.values()]
-    .map((state) => state.resumeAfter)
-    .filter((value): value is number => value !== undefined)
+  const resumeTimes = [...deferredAcquisitionCohortResumeTimes(deferred).values()]
 
   return resumeTimes.length > 0 ? Math.min(...resumeTimes) : undefined
 }

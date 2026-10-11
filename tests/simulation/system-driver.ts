@@ -4,6 +4,7 @@ import {
   createLearnAcquisitionState,
   createLearnAcquisitionExercisePlanForState,
   hasSufficientIndependentSpacing,
+  deferredAcquisitionCohortResumeTimes,
   resumeSpacingDeferredAcquisition,
   type LearnAcquisitionState,
 } from '../../src/learn/acquisition'
@@ -1114,18 +1115,9 @@ export class VirtualLearnApp {
       generateAcquisition: this.generateAcquisition,
       generateSession: this.generateUnifiedSession,
       getNextDeferredResumeAt: async () => {
-        const resumeTimes = [
-          ...this.latestPendingAcquisitionStates().values(),
-        ]
-          .filter(
-            (state) =>
-              state.phase === 'deferred' &&
-              state.resumeAfter !== undefined,
-          )
-          .map((state) => state.resumeAfter)
-          .filter(
-            (value): value is number => value !== undefined,
-          )
+        const resumeTimes = [...deferredAcquisitionCohortResumeTimes(
+          this.latestPendingAcquisitionStates(),
+        ).values()]
         return resumeTimes.length > 0
           ? Math.min(...resumeTimes)
           : undefined

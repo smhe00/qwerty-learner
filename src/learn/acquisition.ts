@@ -27,6 +27,7 @@ export const MAX_ACQUISITION_ASSISTED_CYCLES = 2 as const
 export const MIN_INDEPENDENT_INTERVENING_ITEMS = 2 as const
 export const MIN_CROSS_SESSION_INDEPENDENT_DELAY_SECONDS = 300 as const
 export const MIN_ASSISTANCE_DEFERRED_DELAY_SECONDS = 300 as const
+export const LEARN_DEFERRED_COHORT_WINDOW_SECONDS = 30 as const
 
 export type LearnAcquisitionPhase =
   | 'exposure'
@@ -380,10 +381,15 @@ export function resumeDeferredAcquisition(
   }
 
   if (state.deferredReason === 'assistance') {
+    // The delay starts after the final assisted attempt. Reopening Supported
+    // would expose the answer again and force a second spacing delay at a
+    // short tail. Probe the cooled memory directly; failure still defers and
+    // only clean, unassisted evidence can admit the word.
     return {
       ...state,
-      phase: 'supported',
-      independentInterveningItems: undefined,
+      phase: 'independent',
+      independentInterveningItems: MIN_INDEPENDENT_INTERVENING_ITEMS,
+      scaffoldHintPosition: undefined,
       deferredReason: undefined,
       resumeAfter: undefined,
     }
@@ -535,4 +541,22 @@ export function projectLearnAcquisitionProgress<T extends { name: string }>(
     insertWord,
     ...(recoveryWindow.active ? { recoveryWindow } : {}),
   }
+}
+
+/** Coalesce nearby deadlines without releasing any word before its delay. */
+export function deferredAcquisitionCohortResumeTimes(states: Map<string, LearnAcquisitionState>): Map<string, number> {
+  const deadlines = [...states]
+    .flatMap(([name, state]) => (state.phase === 'deferred' && state.resumeAfter !== undefined ? [[name, state.resumeAfter] as const] : []))
+    .sort((left, right) => left[1] - right[1])
+  const result = new Map<string, number>()
+  for (let start = 0; start < deadlines.length; ) {
+    let end = start + 1
+    // Bound the extra wait to 30 seconds, measured from the first deadline
+    // rather than chaining adjacent deadlines into an unbounded cohort.
+    while (end < deadlines.length && deadlines[end][1] <= deadlines[start][1] + LEARN_DEFERRED_COHORT_WINDOW_SECONDS) end += 1
+    const readyAt = deadlines[end - 1][1]
+    for (let index = start; index < end; index += 1) result.set(deadlines[index][0], readyAt)
+    start = end
+  }
+  return result
 }

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   createLearnAcquisitionExercisePlanForState,
+  deferredAcquisitionCohortResumeTimes,
   resumeDeferredAcquisition,
 } from '../../src/learn/acquisition'
 import type { LearnAcquisitionState } from '../../src/learn/acquisition'
@@ -152,4 +153,59 @@ test('deferring a short Supported tail removes an existing immediate repeat', ()
   assert.equal(result.projection.isFinished, true)
   assert.deepEqual(result.projection.queue, [word])
   assert.equal(result.nextState.deferredReason, 'spacing')
+})
+
+for (const size of [1, 2, 3]) {
+  test(`assistance-deferred tail of ${size} probes directly without a second spacing wait`, () => {
+    const words = Array.from({ length: size }, (_, index) => ({ ...word, name: `tail-${index}` }))
+    const pending = new Map(words.map((item, index) => [item.name, {
+      version: 1 as const, phase: 'deferred' as const, assistedCycles: 7,
+      scaffoldHintPosition: 2, deferredReason: 'assistance' as const,
+      resumeAfter: NOW + index * 5,
+    }]))
+    const select = (now: number) => planLearnAcquisitionCandidates({
+      words, states: [], pendingStates: pending, introducedWords: words.map(item => item.name), freshLimit: 0, now,
+    })
+    if (size > 1) assert.equal(select(NOW).resumed.length, 0, 'nearby deadlines stay in one cohort')
+    const ready = select(NOW + (size - 1) * 5)
+    assert.equal(ready.resumed.length, size)
+    assert.deepEqual(ready.freshWords, [])
+    for (const { word: item, state } of ready.resumed) {
+      assert.equal(state.phase, 'independent')
+      assert.equal(state.scaffoldHintPosition, undefined)
+      const plan = createLearnAcquisitionExercisePlanForState(state)
+      assert.equal(plan.condition.audio, 'none')
+      assert.equal(plan.condition.letters.mode, 'all-hidden')
+      assert.ok(plan.decision.reasonCodes.includes('spacing-eligible'))
+      const record = attempt({ word: item.name, reviewPolicyDecision: plan.decision })
+      const result = resolveLearnAcquisitionCompletion({
+        queue: [item], currentIndex: 0, currentWord: item, state,
+        acquisitionStates: { [item.name]: state }, record, now: NOW + 10,
+      })
+      assert.equal(result.shouldPersistAdmission, true)
+      assert.equal(result.projection.isFinished, true)
+      assert.equal(isCompletedAcquisitionRecord(record), true)
+      const failed = resolveLearnAcquisitionCompletion({
+        queue: [item], currentIndex: 0, currentWord: item, state,
+        acquisitionStates: { [item.name]: state }, record: { ...record, wrongCount: 1 }, now: NOW + 10,
+      })
+      assert.equal(failed.shouldPersistAdmission, false)
+      assert.equal(failed.nextState.deferredReason, 'assistance')
+      assert.equal(failed.nextState.resumeAfter, NOW + 310)
+    }
+  })
+}
+
+test('deadline cohorts are bounded and shared by waiting and selection', () => {
+  const pending = new Map([0, 20, 40, 60].map((offset, index) => [`word-${index}`, {
+    ...independent, phase: 'deferred' as const, deferredReason: 'spacing' as const, resumeAfter: NOW + offset,
+  }]))
+  assert.deepEqual([...deferredAcquisitionCohortResumeTimes(pending).values()], [NOW + 20, NOW + 20, NOW + 60, NOW + 60])
+  const words = [...pending.keys()].map(name => ({ ...word, name }))
+  const selected = planLearnAcquisitionCandidates({
+    words, states: [], pendingStates: pending, introducedWords: [], freshLimit: 0, now: NOW + 20,
+  })
+  assert.deepEqual(selected.resumed.map(item => item.word.name), ['word-0', 'word-1'])
+  assert.equal(resumeDeferredAcquisition(pending.get('word-1')!, NOW + 19), undefined)
+  assert.equal(pending.get('word-0')!.phase, 'deferred', 'historical checkpoint stays immutable')
 })

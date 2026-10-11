@@ -56,7 +56,7 @@ test('C1/C2: independent recall failure re-teaches; second failure defers; resum
   const ready = candidate(START + 300)
   assert.equal(ready.resumed.length, 1)
   assert.equal(ready.resumed[0].word.name, names[0])
-  assert.equal(ready.resumed[0].state.phase, 'supported')
+  assert.equal(ready.resumed[0].state.phase, 'independent')
   assert.equal(ready.resumed[0].state.deferredReason, undefined)
 })
 

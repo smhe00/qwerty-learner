@@ -380,7 +380,7 @@ test('ready deferred Acquisition is resumed by production candidate planning', a
     prepared.record.acquisitionStates?.[
       'deferred-production'
     ]?.phase,
-    'supported',
+    'independent',
   )
 
   const anomalies = detectLearnSystemAnomalies(app.events)

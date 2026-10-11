@@ -250,14 +250,14 @@ test('Explorer V3: two independent ESC failures defer acquisition, resume after 
     await activeLearn(page)
     const resumed = await session(page, target)
     expect(resumed.id).not.toBe(id)
-    expect(resumed.phase, 'cooled Deferred target must return to Supported').toBe('supported')
+    expect(resumed.phase, 'cooled Deferred target must return to Independent').toBe('independent')
     expect(resumed.cycles).toBe(2)
     expect(resumed.deferredReason).toBeNull()
     expect(resumed.resumeAfter).toBeNull()
     const prior = await persisted(page, target, id)
     expect(prior.admitted).toBe(false)
     steps.push({
-      step: steps.length, action: 'cooled-re-entry-supported', phase: resumed.phase,
+      step: steps.length, action: 'cooled-re-entry-independent', phase: resumed.phase,
       cycles: resumed.cycles, attempts: lastHistory, sessionFinished: resumed.finished,
     })
     expect(cloudCalls).toEqual([])
