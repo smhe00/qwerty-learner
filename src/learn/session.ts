@@ -4,7 +4,9 @@ import {
   createLearnAcquisitionState,
   deferredAcquisitionCohortResumeTimes,
   resumeDeferredAcquisition,
+  resumeDeferredAsTerminalProbe,
 } from './acquisition'
+import { learnLocalDateKey } from './daily-session'
 import type { LearnAcquisitionState } from './acquisition'
 import type { LearnInteractionStrainTier } from './strain'
 import type { ReviewExercisePlanV1 } from '@/review/decision'
@@ -349,6 +351,8 @@ export function planLearnAcquisitionCandidates(input: {
   freshLimit: number
   now: number
   continuous?: boolean
+  allowedNewWordNames?: Iterable<string>
+  allowTerminalProbeOnIdle?: boolean
 }): LearnAcquisitionCandidatePlan {
   const canonicalWords = canonicalizeLearningWords(input.words)
   const canonicalByName = new Map(
@@ -369,6 +373,8 @@ export function planLearnAcquisitionCandidates(input: {
 
   for (const [wordName, pendingState] of input.pendingStates) {
     if (resumed.length >= LEARN_NEW_WORD_BATCH_SIZE) break
+    if (pendingState.terminalProbeAttemptedAt !== undefined &&
+        learnLocalDateKey(pendingState.terminalProbeAttemptedAt) === learnLocalDateKey(input.now)) continue
 
     if (!canContinue && (cohortTimes.get(wordName) ?? input.now) > input.now) continue
 
@@ -395,6 +401,9 @@ export function planLearnAcquisitionCandidates(input: {
   const blockedPendingWords = [...input.pendingStates.keys()]
   const blockedNames = new Set(blockedPendingWords)
   const introducedNames = new Set(input.introducedWords)
+  const allowedFreshNames = input.allowedNewWordNames === undefined
+    ? undefined
+    : new Set(input.allowedNewWordNames)
   const freshCapacity = Math.min(
     Math.max(0, Math.floor(input.freshLimit)),
     Math.max(0, LEARN_NEW_WORD_BATCH_SIZE - resumed.length),
@@ -409,10 +418,25 @@ export function planLearnAcquisitionCandidates(input: {
           .filter(
             (word) =>
               !blockedNames.has(word.name) &&
-              !introducedNames.has(word.name),
+              !introducedNames.has(word.name) &&
+              (allowedFreshNames === undefined || allowedFreshNames.has(word.name)),
           )
           .slice(0, freshCapacity)
       : []
+
+  // No other due or unintroduced work: one hidden independent terminal
+  // probe per deferred word, without pretending a clock or intervening word passed.
+  if (input.allowTerminalProbeOnIdle && resumed.length === 0 && freshWords.length === 0) {
+    for (const [name, state] of input.pendingStates) {
+      if (resumed.length >= LEARN_NEW_WORD_BATCH_SIZE) break
+      if (state.phase !== 'deferred') continue
+      if (state.terminalProbeAttemptedAt !== undefined &&
+          learnLocalDateKey(state.terminalProbeAttemptedAt) === learnLocalDateKey(input.now)) continue
+      const word = canonicalByName.get(name)
+      const probe = resumeDeferredAsTerminalProbe(state)
+      if (word && probe) resumed.push({ word, state: probe })
+    }
+  }
 
   return {
     resumed,
