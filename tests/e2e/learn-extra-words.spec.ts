@@ -138,7 +138,7 @@ test(`five-more prioritizes unfinished recall and caps the complete round at fiv
     })
     await page.reload()
     await waitForActiveLearnSession(page)
-    await expect.poll(async () => (await readReviewModeInfo(page)).reviewRecord.id).not.toBe(originalId)
+    await expect.poll(async () => { const record = (await readReviewModeInfo(page)).reviewRecord; return !!record && record.id !== originalId }).toBe(true)
   }
   const observed = new Set<string>()
   for (let step = 0; step < 60; step++) {
