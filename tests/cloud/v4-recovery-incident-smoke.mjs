@@ -54,7 +54,7 @@ function v4Body(baseRevision, remote) {
     // Realistic larger backup; deterministic size, fully synthetic. This
     // specifically tests the Cloud Function + Blob object write path.
     rows: name === 'wordRecords' ? [{ id: 1, word: 'disposable-v4',
-      typingTelemetry: { synthetic: crypto.randomBytes(700 * 1024).toString('base64') },
+      typingTelemetry: { synthetic: crypto.randomBytes(2800 * 1024).toString('base64') },
     }] : [],
   }))
   const workspaceData = {
