@@ -7,10 +7,7 @@ import {
   markAchievementSeen,
 } from '@/achievement'
 import { resolveAchievementCeremonyPresentation } from '@/achievement/presentation'
-import {
-  settleLearnBlockDurably,
-  syncCompletedLearnSettlement,
-} from '@/learn/settlement'
+import { settleLearnBlockDurably } from '@/learn/settlement'
 import type { LearnBlockSettlement } from '@/learn/settlement'
 import {
   TypingContext,
@@ -18,7 +15,6 @@ import {
 } from '@/pages/Typing/store'
 import { getAchievementCulture } from '@/resources/achievementCulture'
 import { currentDictInfoAtom, reviewModeInfoAtom } from '@/store'
-import type { LearnAutoSyncResult } from '@/sync/auto'
 import { loadAuth } from '@/sync/auth'
 import {
   blockAutoSyncEnabled,
@@ -72,31 +68,6 @@ function SummaryMetric({
   )
 }
 
-type Settlement = LearnBlockSettlement & {
-  sync?: LearnAutoSyncResult
-}
-
-function syncText(sync: LearnAutoSyncResult | undefined): string | null {
-  if (!sync) return null
-
-  switch (sync.status) {
-    case 'uploaded':
-      return `云同步完成 · revision ${sync.revision}`
-    case 'clean':
-      return '本地与云端已一致'
-    case 'not-logged-in':
-      return '未登录云端，学习记录已安全保存在本机'
-    case 'remote-ahead':
-      return '云端有较新数据，已停止自动上传，请稍后手动处理'
-    case 'diverged':
-      return '本地与云端都有变化，已停止自动上传，请稍后手动处理'
-    case 'conflict':
-      return '自动同步时检测到云端变化，未覆盖云端数据'
-    case 'failed':
-      return '本地记录已保存；本次云同步失败，可稍后重试'
-  }
-}
-
 export default function LearnResultScreen() {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const { state, dispatch } = useContext(TypingContext)!
@@ -105,7 +76,7 @@ export default function LearnResultScreen() {
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
   const navigate = useNavigate()
   const record = reviewModeInfo.reviewRecord
-  const [settlement, setSettlement] = useState<Settlement | null>(null)
+  const [settlement, setSettlement] = useState<LearnBlockSettlement | null>(null)
   const [settlementError, setSettlementError] = useState('')
   const [addingWords, setAddingWords] = useState(false)
   const addingWordsRef = useRef(false)
@@ -116,8 +87,7 @@ export default function LearnResultScreen() {
   // React StrictMode replays effects in development. Keep the actual durable
   // settlement in a stable Promise so replayed effects subscribe to the same
   // operation instead of cancelling the only run and leaving Pause disabled.
-  const settlementPromiseRef = useRef<Promise<Settlement> | null>(null)
-  const syncPromiseRef = useRef<Promise<LearnAutoSyncResult> | null>(null)
+  const settlementPromiseRef = useRef<Promise<LearnBlockSettlement> | null>(null)
   const skippedInternalBlockRef = useRef(false)
 
   const unseenAchievementStates = useLiveQuery(
@@ -198,47 +168,8 @@ export default function LearnResultScreen() {
             )
           }
         }
-        if (shouldHandoff) return
-
-        if (!baseSettlement.progress.complete) return
-
-        if (!syncPromiseRef.current) {
-          syncPromiseRef.current = syncCompletedLearnSettlement(
-            baseSettlement,
-          ).then((sync) => {
-            if (!sync) {
-              throw new Error(
-                'completed Learn settlement returned no sync result',
-              )
-            }
-            return sync
-          })
-        }
-
-        void syncPromiseRef.current
-          .then((sync) => {
-            if (!active) return
-            setSettlement((current) =>
-              current
-                ? {
-                    ...current,
-                    sync,
-                  }
-                : {
-                    ...baseSettlement,
-                    sync,
-                  },
-            )
-          })
-          .catch((error) => {
-            // Cloud synchronization is intentionally outside the local
-            // durability barrier. Unexpected sync failures never block Daily
-            // completion or Block recovery.
-            console.error(
-              'failed to auto-sync completed Learn session',
-              error,
-            )
-          })
+        // No cloud I/O when opt-in is OFF.  The previous completion-only
+        // V1 uploader was legacy and cannot mutate S1-isolated V4 accounts.
       })
       .catch((error) => {
         console.error('failed to settle Learn block', error)
@@ -545,9 +476,7 @@ export default function LearnResultScreen() {
 
           {isDailyComplete ? (
             <div className="mt-7 text-center text-xs text-gray-400">
-              {settlement?.sync
-                ? syncText(settlement.sync)
-                : '正在检查云同步状态…'}
+              本地学习进度已保存。未启用或未执行自动同步时，可在设置中手动同步。
             </div>
           ) : null}
 
