@@ -51,7 +51,11 @@ function v4Body(baseRevision, remote) {
   const tables = tableNames.map(name => ({ name, schema: '++id' }))
   const data = tableNames.map(name => ({
     tableName: name, inbound: true,
-    rows: name === 'wordRecords' ? [{ id: 1, word: 'disposable-v4' }] : [],
+    // Realistic larger backup; deterministic size, fully synthetic. This
+    // specifically tests the Cloud Function + Blob object write path.
+    rows: name === 'wordRecords' ? [{ id: 1, word: 'disposable-v4',
+      typingTelemetry: { synthetic: crypto.randomBytes(700 * 1024).toString('base64') },
+    }] : [],
   }))
   const workspaceData = {
     database: { formatName: 'dexie', formatVersion: 1,
@@ -103,29 +107,39 @@ try {
   }
   assert.equal(registered.status, 201)
   assert.ok(user.userId)
-  const oldPayload = gzipSync(Buffer.from(JSON.stringify({ backup: 'V3 synthetic' })))
-  const legacy = await api('/api/sync', 'PUT', {
-    baseRevision: 0,
-    payloadBase64: oldPayload.toString('base64'),
-    deviceId: 'synthetic-v3-seed',
-    clientFormatVersion: 'qwerty-backup-v3',
-  })
-  summary('Temporary V3 seed', legacy)
-  assert.equal(legacy.status, 200)
-  assert.equal(legacy.value?.revision, 1)
+  // Eight existing V3 revisions match the user-reported incident state.
+  let lastPayload
+  for (let baseRevision = 0; baseRevision < 8; baseRevision++) {
+    lastPayload = gzipSync(Buffer.from(JSON.stringify({
+      backup: 'V3 synthetic', revision: baseRevision + 1,
+      records: [{ id: 1, word: 'synthetic only' }],
+    })))
+    const legacy = await api('/api/sync', 'PUT', {
+      baseRevision,
+      payloadBase64: lastPayload.toString('base64'),
+      deviceId: 'synthetic-v3-seed',
+      clientFormatVersion: 'qwerty-backup-v3',
+    })
+    assert.equal(legacy.status, 200, 'Synthetic V3 seed revision ' + (baseRevision + 1))
+    assert.equal(legacy.value?.revision, baseRevision + 1)
+  }
+  console.log('Synthetic V3 history seeded: revision 8, 8 writes')
   const pinned = await api('/api/sync/v2/meta')
   summary('Read-only V3 pinned metadata', pinned)
-  assert.equal(pinned.value?.revision, 1)
+  assert.equal(pinned.value?.revision, 8)
   assert.equal(pinned.value?.clientFormatVersion, 'qwerty-backup-v3')
-  assert.equal(pinned.value?.payloadSha256, hex(oldPayload))
-  const put = await api('/api/sync/v2/recovery', 'PUT', v4Body(1, pinned.value))
-  summary('Explicit V3 to V4 recovery', put)
+  assert.equal(pinned.value?.payloadSha256, hex(lastPayload))
+  const body = v4Body(8, pinned.value)
+  const compressedBytes = Buffer.from(body.payloadBase64, 'base64').byteLength
+  console.log('Synthetic V4 backup compressed bytes:', compressedBytes)
+  const put = await api('/api/sync/v2/recovery', 'PUT', body)
+  summary('Explicit V3 r8 to V4 r9 recovery', put)
   // Even on 500/timeout, first perform only a read-only metadata recheck.
   const latest = await api('/api/sync/v2/meta')
   summary('Read-only result after recovery attempt', latest)
   assert.equal(put.status, 200,
-    'Recovery endpoint failed in synthetic production environment')
-  assert.equal(latest.value?.revision, 2)
+    'Recovery endpoint failed in large synthetic production environment')
+  assert.equal(latest.value?.revision, 9)
   assert.equal(latest.value?.clientFormatVersion, 'qwerty-backup-v4')
   console.log('PRODUCTION DISPOSABLE V4 EXPLICIT RECOVERY PASS')
 } catch (error) {
