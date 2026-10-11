@@ -278,10 +278,18 @@ async function start(): Promise<void> {
       await renderS2RecoveryUI(root, boot)
       return
     }
-    if (
-      boot.mode === 'isolated' &&
-      new URLSearchParams(window.location.search).get('s1-account') === 'manage'
-    ) {
+    if (new URLSearchParams(window.location.search).get('s1-account') === 'manage') {
+      if (boot.mode === 'legacy') {
+        // Old V1 users must establish isolated ownership once before logging
+        // in/out through the new unified account dialog.
+        if (import.meta.env.DEV ||
+            (REACT_APP_DEPLOY_ENV !== 'pages' &&
+              import.meta.env.VITE_S1_ENABLE_EXPLICIT_V4_MIGRATION === 'true')) {
+          showExplicitMigrationConsent()
+          return
+        }
+        throw new Error('账号管理需要 S1 安全工作区，旧版数据不能直接切换账号。')
+      }
       const { renderS1AccountManagement } = await import('./sync/workspace-account-ui')
       renderS1AccountManagement(root, boot.registry.active)
       return
