@@ -1,5 +1,6 @@
 import logo from '@/assets/logoData'
 import { loadAuth } from '@/sync/auth'
+import { UserCircle2 } from 'lucide-react'
 import { infoPanelStateAtom } from '@/store'
 import { useSetAtom } from 'jotai'
 import type { PropsWithChildren } from 'react'
@@ -49,7 +50,7 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
             title={auth ? (accountExpired ? '会话已过期；点击重新登录' : '账户管理与安全退出') : '登录或注册'}
             data-account-entry
           >
-            <span aria-hidden="true" className="text-lg">♙</span>
+            <UserCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
             <span className="max-w-28 truncate">
               {auth ? auth.user.username : '登录 / 注册'}
             </span>
