@@ -351,6 +351,8 @@ export function planLearnAcquisitionCandidates(input: {
   freshLimit: number
   now: number
   continuous?: boolean
+  /** Actual remaining due-review candidates available for legitimate interleaving. */
+  spacingCandidateNames?: Iterable<string>
   allowedNewWordNames?: Iterable<string>
   /** Restrict all pending Acquisition (including terminal tails) to this day. */
   allowedAcquisitionNames?: Iterable<string>
@@ -367,10 +369,14 @@ export function planLearnAcquisitionCandidates(input: {
     new Map([...input.pendingStates].filter(([name]) => canonicalByName.has(name))),
   )
 
+  const spacingCandidateNames = input.spacingCandidateNames === undefined
+    ? undefined : new Set(input.spacingCandidateNames)
   const canContinue =
     input.continuous &&
     selectLearnSpacingWords({
-      words: canonicalWords,
+      words: spacingCandidateNames
+        ? canonicalWords.filter((word) => spacingCandidateNames.has(word.name))
+        : canonicalWords,
       states: input.states,
       excludedNames: input.pendingStates.keys(),
     }).length >= 2
