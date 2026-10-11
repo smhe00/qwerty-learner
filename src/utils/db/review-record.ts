@@ -316,6 +316,7 @@ export async function generateLearnMixedSessionRecord(
       ? [...dailySession.carryOverAcquisitionWords, ...dailySession.plannedNewWordNames]
       : undefined,
     continuous: dueWords.length > 0,
+    spacingCandidateNames: dueWords.map((word) => word.name),
     allowTerminalProbeOnIdle: dueWords.length === 0,
     now,
   })
