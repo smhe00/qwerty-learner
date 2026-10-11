@@ -103,7 +103,7 @@ test('Portable V4 cross-account import is explicit, full, journaled and never to
       snapshot: await h.captureWorkingWorkspaceV4({
         kind: 'account', accountId: 'v4-import-new-account',
       }),
-      baseline: await h.loadSyncV2Baseline(owner.accountId),
+      baseline: await h.loadSyncV2Baseline('v4-import-new-account'),
       pending: await h.manualV4ImportJournalPort.read(),
     }
   })
