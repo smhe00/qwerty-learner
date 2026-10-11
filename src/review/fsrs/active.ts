@@ -149,7 +149,10 @@ export function rebuildActiveFsrsStateFromWordRecords(
 
   let nextReviewAt =
     reviewCount === 0 && firstAdmission
-      ? firstAdmission.timeStamp + DAY_SECONDS
+      ? firstAdmission.timeStamp +
+        (firstAdmission.reviewPolicyDecision?.reasonCodes.includes('terminal-probe')
+          ? 4 * 3_600 // conservative follow-up: no time spacing was proven
+          : DAY_SECONDS)
       : Math.floor(card.due.getTime() / 1000)
 
   if (
