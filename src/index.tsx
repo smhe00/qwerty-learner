@@ -4,6 +4,7 @@
  * Legacy users continue without automatic S1 migration.
  */
 import { loadAuth } from './sync/auth'
+import { startPerfStage, timePerfStage } from './sync/perf-diagnostics'
 import { DAILY_SESSION_PREFIX, WORKSPACE_SETTING_KEYS } from './sync/workspace-v4'
 import { prepareGuardedWorkspaceBoot } from './sync/workspace-bootstrap'
 import type { Workspace } from './sync/workspace-transition'
@@ -191,7 +192,8 @@ async function start(): Promise<void> {
   if (starting || releasedForPageHide) return
   starting = true
   try {
-    boot = await prepareGuardedWorkspaceBoot(onStage, { allowLegacy: true })
+    boot = await timePerfStage('startup', 'guarded-bootstrap', () =>
+      prepareGuardedWorkspaceBoot(onStage, { allowLegacy: true }))
     if (releasedForPageHide) {
       boot.release()
       return
@@ -212,6 +214,11 @@ async function start(): Promise<void> {
     if (new URLSearchParams(window.location.search).get('s1-session-revoked') === 'confirm') {
       const { completeConfirmedRevokedLogout } = await import('./sync/session-revocation')
       await completeConfirmedRevokedLogout(boot, gateUI)
+      return
+    }
+    if (new URLSearchParams(window.location.search).get('perf-report') === 'view') {
+      const { renderPerfReportUI } = await import('./sync/perf-report-ui')
+      renderPerfReportUI(root)
       return
     }
     // S2 pilot: the ONLY ordinary Sync action navigates into a new,
@@ -296,8 +303,10 @@ async function start(): Promise<void> {
     }
     // Importing the old app initializes store atoms and DB modules. This
     // module must never be evaluated before the boot gate resolves.
-    await import('./app')
+    const finishFirstFrame = startPerfStage('startup', 'entry-to-first-frame')
+    await timePerfStage('startup', 'app-module-import', () => import('./app'))
     mounted = true
+    requestAnimationFrame(() => finishFirstFrame())
     if (boot.mode === 'isolated') {
       const { startSessionRevocationMonitor } = await import('./sync/session-revocation')
       stopSessionRevocationMonitor = startSessionRevocationMonitor(boot.registry)
