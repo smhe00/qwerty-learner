@@ -1,0 +1,30 @@
+name: V4 Recovery Incident Disposable Production Probe
+
+on:
+  push:
+    branches:
+      - product/main
+    paths:
+      - 'tests/cloud/v4-recovery-incident-smoke.mjs'
+      - '.github/workflows/v4-recovery-incident-production.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: isolated-v4-incident-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  disposable-recovery-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+      - name: Probe live GA recovery with disposable synthetic account
+        env:
+          QWERTY_SYNC_BASE_URL: https://qwerty-plus.edgeone.dev/
+        run: node tests/cloud/v4-recovery-incident-smoke.mjs
