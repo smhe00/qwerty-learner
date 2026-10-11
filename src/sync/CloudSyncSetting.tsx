@@ -122,7 +122,7 @@ export default function CloudSyncSetting() {
                   }} />
                 <span>每个 Block 完成后自动同步
                   <span className="block text-xs text-gray-500 dark:text-gray-400">
-                    仅本机当前账号；默认关闭。阶段结束时在 Block 页显示同步状态，
+                    仅本机当前账号；默认关闭（每日全部完成仍会自动同步）。阶段结束时在 Block 页显示同步状态，
                     同步中不可继续或退出。网络异常时可重试或明确选择仅保留本地记录。
                   </span>
                 </span>
