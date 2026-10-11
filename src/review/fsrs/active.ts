@@ -44,6 +44,7 @@ function firstOrdinaryLearningFailure(
     (record) =>
       record.sourceMode === 'learn' &&
       record.learnItemKind !== 'acquisition' &&
+      record.learnItemKind !== 'practice' &&
       record.chapter !== -1 &&
       record.wrongCount > 0,
   )

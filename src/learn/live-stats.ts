@@ -138,7 +138,7 @@ function collectSessionWordNames(record: IReviewRecord): string[] {
 
   for (const word of record.words) {
     const name = word?.name
-    if (!name || seen.has(name)) continue
+    if (!name || seen.has(name) || record.acquisitionStates?.[name]?.spacingOnly) continue
     seen.add(name)
     names.push(name)
   }
@@ -154,7 +154,7 @@ function collectSessionRecords(
   const windowStart = record.createTime
 
   return wordRecords.filter((candidate) => {
-    if (candidate.dict !== record.dict) return false
+    if (candidate.dict !== record.dict || candidate.learnItemKind === 'practice') return false
     if (!sessionWords.has(candidate.word)) return false
     // A recovered session must read the same evidence as a live one, so the
     // window is anchored on the session checkpoint rather than on "today".
@@ -172,6 +172,7 @@ function collectSessionRecords(
  */
 export function isIndependentRecallEvidence(record: IWordRecord): boolean {
   return (
+    record.learnItemKind !== 'practice' &&
     record.reviewEvidence?.retrievalValidity === 'independent' &&
     record.reviewEvidence?.errorCause === 'clean'
   )

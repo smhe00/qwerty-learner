@@ -80,6 +80,7 @@ function isEligibleReview(
   return (
     record.sourceMode !== 'typing' &&
     record.learnItemKind !== 'acquisition' &&
+      record.learnItemKind !== 'practice' &&
     record.reviewRatingDecision?.eligible === true
   )
 }

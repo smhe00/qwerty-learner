@@ -104,7 +104,7 @@ function isLearnRecord(record: IWordRecord): boolean {
 }
 
 function isPrimaryLearnAttempt(record: IWordRecord): boolean {
-  if (!isLearnRecord(record)) return false
+  if (!isLearnRecord(record) || record.learnItemKind === 'practice') return false
 
   const decision = record.reviewRatingDecision
   if (

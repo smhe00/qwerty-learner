@@ -361,3 +361,22 @@ test('repeated assistance uses real practice without granting Independent eviden
   assert.equal(excluded.words.some(item => item.name === 'known-a'), false)
   assert.deepEqual(excluded.spacingWords, [])
 })
+
+test('practice mistakes and clean copies stay neutral through replay, daily and live statistics', async () => {
+  const { inferReviewOutcomeFromWordRecord, reactivateReviewStateFromLearningEvidence, rebuildBasicStateFromWordRecords } = await import('../../src/review/rebuild')
+  const { buildLearnStatsSnapshot } = await import('../../src/learn/stats')
+  const { deriveLearnLiveStats } = await import('../../src/learn/live-stats')
+  const clean = attempt({ learnItemKind: 'practice' })
+  const wrong = { ...clean, wrongCount: 3 }
+  const state = { ...createInitialReviewWordState('incident', word.name, NOW - 100), nextReviewAt: NOW + 86400 }
+  assert.equal(inferReviewOutcomeFromWordRecord(wrong, []), undefined)
+  assert.equal(reactivateReviewStateFromLearningEvidence(state, [wrong], NOW), state)
+  assert.equal(rebuildBasicStateFromWordRecords('incident', word.name, [wrong, clean]), undefined)
+  const stats = buildLearnStatsSnapshot({ now: NOW, dict: 'incident', wordRecords: [wrong, clean], wordStates: [state], dictionaryWords: [word.name] })
+  assert.equal(stats.today.introducedWords, 0)
+  assert.equal(stats.today.acquiredWords, 0)
+  const live = deriveLearnLiveStats({ reviewRecord: checkpoint({ isFinished: false,
+    acquisitionStates: { accurate: { ...independent, phase: 'complete', spacingOnly: true } } }), wordRecords: [clean, wrong] })
+  assert.equal(live.totalLogicalWords, 0)
+  assert.equal(live.completedLogicalWords, 0)
+})

@@ -14,7 +14,7 @@ import type { IWordRecord } from '@/utils/db/record'
 
 function isLongTermReviewRecord(record: IWordRecord): boolean {
   if (record.sourceMode === 'typing') return false
-  if (record.learnItemKind === 'acquisition') return false
+  if (record.learnItemKind === 'acquisition' || record.learnItemKind === 'practice') return false
   return record.chapter === -1
 }
 
@@ -65,7 +65,7 @@ export function hasUnreviewedLearningFailure(records: IWordRecord[]): boolean {
       continue
     }
     if (!isExplicitLearnRecord(record)) continue
-    if (record.learnItemKind === 'acquisition') continue
+    if (record.learnItemKind === 'acquisition' || record.learnItemKind === 'practice') continue
     if (record.wrongCount <= 0) continue
     if (!latestLearningFailure || compareRecordOrder(record, latestLearningFailure) > 0) {
       latestLearningFailure = record
@@ -157,6 +157,7 @@ export function rebuildBasicStateFromWordRecords(
     (record) =>
       record.sourceMode === 'learn' &&
       record.learnItemKind !== 'acquisition' &&
+      record.learnItemKind !== 'practice' &&
       record.chapter !== -1 &&
       record.wrongCount > 0,
   )

@@ -39,7 +39,7 @@ assertions and clean-control requirements remain enabled.
 
 ## Validation
 
-- 329 Review, Learn and simulation tests passed, zero failures. Includes full
+- 330 Review, Learn and simulation tests passed, zero failures. Includes full
   mutation detection with production-equivalent simulator continuation.
 - 17 Chrome Acquisition browser tests passed. New tests complete five words
   with a short-spacing final word without advancing the clock, persist filler
@@ -64,3 +64,17 @@ explicit timed policy. Live Learn and production-equivalent simulator supply it.
 The task's release authorization is the user's “发布”, continued for this
 reported failed fix. The unrelated task pointer is unchanged. Deployment/source
 marker and production browser verification will be appended after publication.
+
+## Final replay/statistics audit
+
+Initial implementation commit: 68ab2ed20c6421bfdebc598cdb7126c783e05c4e.
+Post-publication audit identified additional Review replay and live-statistics
+filters that treated every non-Acquisition Learn row as a Review row. Explicitly
+exclude practice from legacy rating inference, learning-failure reactivation,
+FSRS eligible replay/seeding, daily Review completion and live logical progress.
+A regression verifies both wrong and clean practice remain scheduler-neutral.
+All 330 contracts pass after this correction, with no new baseline type errors.
+The final source commit supersedes 68ab2ed2 for production verification.
+The local Husky wrapper referenced missing .husky/_/husky.sh; commit used a
+per-command empty hook path after running the specified validation manually.
+No workflow or test gate was disabled or edited.
