@@ -72,7 +72,11 @@ export function isValidModernAcquisitionAdmissionRecord(
 ): boolean {
   return (
     isCleanIndependentAcquisitionRecord(record) &&
-    record.reviewPolicyDecision?.reasonCodes.includes('spacing-eligible') === true
+    (record.reviewPolicyDecision?.reasonCodes.includes('spacing-eligible') === true ||
+      (record.reviewPolicyDecision?.reasonCodes.includes('terminal-probe') === true &&
+        record.reviewPolicyDecision?.reasonCodes.includes('spacing-not-proven') === true &&
+        record.reviewPolicyDecision?.reasonCodes.includes('letters-hidden') === true &&
+        record.reviewPolicyDecision?.reasonCodes.includes('audio-off') === true))
   )
 }
 
