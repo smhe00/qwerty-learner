@@ -40,6 +40,13 @@ test('Only visible milestones / daily completion request auto-sync', () => {
   assert.throws(() => sync.stageLearnBlockSync('account-a', { dailyComplete: false, milestone: 20 }))
 })
 
+test('Existing daily-completion auto-sync remains available when per-Block toggle is off', () => {
+  sync.setBlockAutoSyncEnabled('account-daily', false)
+  sync.stageLearnBlockSync('account-daily', { dailyComplete: true })
+  assert.equal(sync.readLearnBlockSyncPending('account-daily')?.dailyComplete, true)
+  sync.clearLearnBlockSyncHandoff()
+})
+
 test('Staged Block handoff binds to account and enables idempotent retry', () => {
   sync.setBlockAutoSyncEnabled('account-a', true)
   sync.stageLearnBlockSync('account-a', { dailyComplete: false, milestone: 20 })
