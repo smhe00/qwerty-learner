@@ -41,3 +41,15 @@ User requested 发布 after reviewing development completion. Source `e58b4ea6` 
 - **Actual production Chrome 3/3 PASS, 30.4 s**: optional new-word exposure and midway reload; original target completes while optional states remain unfinished; 多学五词 adds five mandatory unseen identities without changing the recurring target; additional session survives reload; ordinary typed word is durable; repeated route reload does not grow URL. Fresh isolated contexts, no account login, no cloud writes, no development module injection or synthetic DB records. Temporary live spec/config removed.
 - Existing **EdgeOne Production Verify** [38121319800](https://github.com/smhe00/qwerty-learner/actions/runs/38121319800) still fails the obsolete Makers project lookup: `NotFoundError: Makers project(makers-cgemngjuuwle) is not found`. This workflow is **not green**. Actual served assets and Chrome results above independently confirm publication. Updating unrelated hosting project configuration is outside this Learn release.
 - This verification-only documentation is pushed to product/main; master remains the verified release SHA to avoid another deployment.
+
+
+## Completed-day landing correction
+
+Root cause: five-more existed only on LearnResultScreen. LearnPage always rendered Start and its preparation path only reported daily-complete, so an idle return/reload after completion offered no extension action.
+
+- LearnPage reads the selected dictionary's persisted DailySession and verifies today's date before replacing Start with 多学五词.
+- Completed-day mount does not auto-start or auto-append. Only the explicit click flushes existing persistence, loads authoritative words/states, and calls the existing five-more helper before normal preparation. Ownership guard revokes stale async claims, and state/date are checked again after reads. Exhausted dictionaries display the existing no-new-words message.
+- Current unfinished/previous-day state keeps normal Start behavior; no recurring setting changes.
+- Extended Chrome regression runs **both result and landing entries**, completes original work through actual typing, closes result, confirms no Start, reloads completed landing with unchanged count, then explicitly appends five and refreshes the new session.
+- **11/11 Chrome PASS, 27.2 s** (2 extra-word journeys + 9 Learn shell/UI cases). **Build PASS, 6.14 s**. Scoped ESLint **0 errors, 1 existing cleanup-ref warning**. Scheduler/domain source unchanged, so the prior 295 domain/system verification remains applicable.
+- Existing user authorization to publish this feature carries through this correction. Actual deployment version and live verification follow below.

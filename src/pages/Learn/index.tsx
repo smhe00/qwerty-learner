@@ -4,6 +4,7 @@ import Layout from '@/components/Layout'
 import { createAsyncOwnershipGuard } from '@/learn/async-ownership'
 import { waitForBrowserFuzzGate } from '@/dev/browser-fuzz-hooks'
 import { prepareLearnSession } from '@/learn/controller'
+import { addLearnDailyNewWords, learnLocalDateKey, loadLearnDailySession } from '@/learn/daily-session'
 import { flushLearnPersistence } from '@/learn/persistence'
 import TypingPage from '@/pages/Typing'
 import { DictChapterButton } from '@/pages/Typing/components/DictChapterButton'
@@ -61,6 +62,9 @@ export default function LearnPage() {
   )
   const [isStarting, setIsStarting] = useState(false)
   const [statusText, setStatusText] = useState('')
+  const dailySession = loadLearnDailySession(currentDictId)
+  const completedToday = dailySession?.status === 'completed' &&
+    dailySession.dateKey === learnLocalDateKey(getUTCUnixTimestamp())
   const autoStartConsumedRef = useRef(isSessionView)
   const learnPageRootRef = useRef<HTMLElement | null>(null)
   const preparationGuardRef = useRef<
@@ -132,7 +136,7 @@ export default function LearnPage() {
     )
   }, [isSessionView, setReviewModeInfo])
 
-  const startLearn = useCallback(() => {
+  const startLearn = useCallback((addFiveWords = false) => {
     if (!wordList || isStarting || isSessionView) return
 
     const claim = preparationGuard.begin()
@@ -169,6 +173,26 @@ export default function LearnPage() {
     const prepare = async () => {
       try {
         await waitForBrowserFuzzGate('learn-preparation')
+        if (addFiveWords) {
+          await flushLearnPersistence()
+          const [wordRecords, wordStates] = await Promise.all([
+            db.wordRecords.where('dict').equals(dictId).toArray(),
+            getReviewWordStates(dictId),
+          ])
+          if (!isCurrent()) return
+          const current = loadLearnDailySession(dictId)
+          const now = getUTCUnixTimestamp()
+          if (current?.status === 'completed' && current.dateKey === learnLocalDateKey(now)) {
+            const extended = addLearnDailyNewWords({
+              session: current, now, dictionaryWords: words.map(word => word.name), wordRecords, wordStates,
+            })
+            if (extended === current) {
+              setStatusText('当前没有可追加的新词。')
+              setIsStarting(false)
+              return
+            }
+          }
+        }
         const result = await prepareLearnSession({
           dictId,
           words,
@@ -263,6 +287,7 @@ export default function LearnPage() {
       routeState?.autoStart === true || routeState?.idle !== true
 
     if (
+      completedToday ||
       !shouldAutoStart ||
       autoStartConsumedRef.current ||
       !wordList
@@ -274,6 +299,7 @@ export default function LearnPage() {
     startLearn()
   }, [
     isSessionView,
+    completedToday,
     location.state,
     startLearn,
     wordList,
@@ -333,7 +359,9 @@ export default function LearnPage() {
           {isStarting
             ? '正在准备 Learn…'
             : statusText ||
-              (wordList
+              (completedToday
+                ? '今日 Learn 目标已完成，可以再多学五词。'
+                : wordList
                 ? 'Learn 已就绪。可以随时开始，也可以在学习过程中随时暂停。'
                 : '正在加载词表…')}
         </span>
@@ -341,11 +369,11 @@ export default function LearnPage() {
         <button
           type="button"
           className="my-btn-primary w-24 bg-indigo-500 shadow shadow-indigo-300 dark:shadow-indigo-500/60"
-          onClick={startLearn}
+          onClick={() => startLearn(completedToday)}
           disabled={isStarting || !wordList}
-          aria-label="开始 Learn"
+          aria-label={completedToday ? '多学五词' : '开始 Learn'}
         >
-          <span className="font-medium">Start</span>
+          <span className="font-medium">{completedToday ? '多学五词' : 'Start'}</span>
         </button>
       </main>
     </Layout>

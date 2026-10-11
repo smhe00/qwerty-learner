@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test'
 import { gotoReviewAppReady, readReviewModeInfo, startTyping, waitForActiveLearnSession } from './review-flow-harness'
 
-test('optional tail words never block daily completion; five-more extends today and survives reload', async ({ page }) => {
+for (const entry of ['result', 'landing'] as const) {
+test(`optional tail words never block daily completion; ${entry} five-more extends today and survives reload`, async ({ page }) => {
   test.setTimeout(90000)
   await page.addInitScript(() => {
     if (sessionStorage.getItem('extra-words-seeded')) return
@@ -48,6 +49,14 @@ test('optional tail words never block daily completion; five-more extends today 
   expect(before.plannedNewWords).toBe(1)
   const record = (await readReviewModeInfo(page)).reviewRecord
   expect(Object.values(record.acquisitionStates).some((state: any) => state.phase !== 'complete')).toBe(true)
+  if (entry === 'landing') {
+    await page.getByRole('button', { name: '完成', exact: true }).click()
+    await expect(page.getByRole('button', { name: '多学五词', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: '开始 Learn', exact: true })).toHaveCount(0)
+    await page.reload()
+    await expect(page.getByRole('button', { name: '多学五词', exact: true })).toBeVisible()
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('qwerty.learn.dailySession.v1.cet4')!).plannedNewWords)).toBe(1)
+  }
   await page.getByRole('button', { name: '多学五词', exact: true }).click()
   await waitForActiveLearnSession(page)
   const after = await page.evaluate(() => JSON.parse(localStorage.getItem('qwerty.learn.dailySession.v1.cet4')!))
@@ -62,3 +71,5 @@ test('optional tail words never block daily completion; five-more extends today 
   await waitForActiveLearnSession(page)
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('qwerty.learn.dailySession.v1.cet4')!).plannedNewWords)).toBe(6)
 })
+
+}
