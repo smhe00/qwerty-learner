@@ -249,8 +249,10 @@ async function start(): Promise<void> {
       // The Learn Block variant uses the same guarded S2 executor, never
       // a mounted React writer.  Its status is shown within the Block card.
       const isLearnBlock = new URLSearchParams(window.location.search).get('learn-block') === '1'
-      let blockScreen: Awaited<ReturnType<typeof import('./sync/learn-block-sync-ui')>>['renderLearnBlockSyncScreen'] extends
-        (...args: never[]) => infer R ? R : never
+      let blockScreen: {
+        setStatus(message: string): void
+        settle(result: { kind: 'ok' | 'failed'; message: string }): void
+      } | undefined
       if (isLearnBlock) {
         const { readLearnBlockSyncPending, blockAutoSyncEnabled } =
           await import('./sync/learn-block-sync')
