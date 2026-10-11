@@ -134,6 +134,9 @@ test('S1 actual Settings login refuses legacy auth before any network request', 
   const safeEntry = page.locator('[data-account-entry]')
   await expect(safeEntry).toBeVisible()
   expect(loginRequests).toBe(0)
+  // Account controls intentionally live outside the Settings modal. Close
+  // Settings before using the top-right global account entry.
+  await page.getByRole('button', { name: '关闭对话框' }).click()
   await safeEntry.click()
   await expect(page.getByRole('heading', { name: '安全账户管理（S1）' })).toBeVisible()
   await expect(page.getByRole('button', { name: '登录已有账户' })).toBeVisible()
