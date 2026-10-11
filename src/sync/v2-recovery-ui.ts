@@ -231,6 +231,9 @@ export async function renderS2RecoveryUI(
   })
 
   let startedPull = false
+  // A failed/ambiguous PUT must be reconciled READ-ONLY against this
+  // exact submitted V4 identity; never retry or mutate the sync baseline.
+  let submittedPayload: { fingerprint: string; sha256: string } | null = null
   apply.addEventListener('click', () => {
     if (attemptStarted || attemptFailed || apply.disabled) return
     attemptStarted = true
@@ -264,6 +267,7 @@ export async function renderS2RecoveryUI(
 
       if (choice === 'keep-local') {
         const zip = await payloadV4(local)
+        submittedPayload = { fingerprint: localFingerprint, sha256: zip.checksum }
         await verifyIdentity()
         const uploaded = await putSyncV2Recovery(signed.token, {
           baseRevision: pinned.revision,
@@ -299,6 +303,7 @@ export async function renderS2RecoveryUI(
           target = await convertVerifiedCloudV3ToV4(remoteBytes, accountId)
           targetHash = await workspaceFingerprintV4(target)
           const zip = await payloadV4(target)
+          submittedPayload = { fingerprint: targetHash, sha256: zip.checksum }
           // V3 cloud migration is committed BEFORE the local restore journal.
           // Any failed/revoked/ambiguous HTTP response leaves the original
           // local DB untouched; the user can inspect the new remote state.
@@ -348,19 +353,40 @@ export async function renderS2RecoveryUI(
       const authDenied = error instanceof SyncApiError &&
         error.status === 403 && error.code === 's2_write_not_enabled'
       const hint = authDenied
-        ? '服务端拒绝 V4 写入：须在 EdgeOne Maker Production 运行时环境变量 ' +
-          'S2_SYNC_WRITE_ACCOUNT_IDS 中添加本页显示的完整不可变账号 ID，' +
-          '待配置生效后重新读取云端状态。普通 Sync 不能替代 V3→V4 迁移。'
-        : '提交结果可能不确定；必须先重新读取云端格式、revision 和 SHA，' +
-          '核实是否已升至 V4，禁止在旧状态下重复覆盖。'
-      status.textContent = '已停止覆盖：' +
-        (error instanceof Error ? error.message : String(error)) +
-        '\n' + hint + '\n原本的本地数据没有因本页报错被主动清空。'
+        ? '服务端仍返回旧版账号白名单拒绝：生产环境可能尚未部署全账号 V4 版本。'
+        : '提交结果可能不确定；本页会立即只读核验远端当前版本。' +
+          '任何情况下均禁止在旧 Revision 上自动重试覆盖。'
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      status.textContent = '已停止覆盖：' + errorMessage + '\n' + hint +
+        '\n正在只读查询云端格式、Revision、SHA；原本的本地数据没有因本页报错被主动清空。'
       status.style.cssText += ';color:#b91c1c;font-weight:600'
       refreshEnabled()
-      // The status lives above a long recovery form and could otherwise be
-      // invisible when the user clicks the bottom disabled button.
       status.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      // This secondary GET cannot authorize a new write and never modifies
+      // the local baseline. An ambiguous 500 might already have committed.
+      void getSyncV2Meta(signed.token).then(fresh => {
+        const summary = '\n只读核对：格式 ' + String(fresh.clientFormatVersion) +
+          '，Revision ' + String(fresh.revision) +
+          '，原始 SHA-256 ' + String(fresh.payloadSha256)
+        let conclusion = '\n云端与之前的固定版本不同，请保存此结果并停止操作。'
+        if (samePinnedRemote(pinned, fresh)) {
+          conclusion = '\n与提交前版本完全一致：尚未观察到新版本提交；本页禁止重试。'
+        } else if (submittedPayload &&
+          responseIsValid(fresh, pinned.revision + 1,
+            submittedPayload.fingerprint, submittedPayload.sha256)) {
+          conclusion = '\n已验证云端创建了匹配本次请求的 V4 新版本，' +
+            '但本地同步基线尚未确认提交；不要重复恢复。'
+        }
+        status.textContent = '已停止覆盖：' + errorMessage +
+          '\n' + hint + summary + conclusion +
+          '\n本地数据没有因本页报错被主动清空。'
+      }).catch(readError => {
+        status.textContent = '已停止覆盖：' + errorMessage +
+          '\n只读核对云端也失败：' +
+          (readError instanceof Error ? readError.message : String(readError)) +
+          '\n结果仍不确定，必须在网络恢复后重新打开本页进行只读核对；' +
+          '禁止重复覆盖。本地数据没有因本页报错被主动清空。'
+      })
       if (startedPull) {
         // A staged restore might be partial: never allow any more operation
         // in this JS realm. S1 startup must replay the durable V4 journal.
