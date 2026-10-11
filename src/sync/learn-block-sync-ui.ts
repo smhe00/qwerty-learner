@@ -15,7 +15,7 @@ export function renderLearnBlockSyncScreen(
   root: HTMLElement | null,
   context: LearnBlockSyncHandoff | null,
 ): BlockSyncScreen {
-  if (!root) return { setStatus: () => {}, settle: () => {} }
+  if (!root) throw new Error('Cannot render Learn Block Sync without the application root')
   root.replaceChildren()
 
   const page = document.createElement('main')
