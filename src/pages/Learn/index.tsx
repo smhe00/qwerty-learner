@@ -185,13 +185,15 @@ export default function LearnPage() {
                 id,
                 sessionWords,
                 errorEvidence,
-                { mode: 'due' },
+                { mode: 'due', blockSize: memoryConfig.blockSize },
               ),
             getWordRecords: (id) =>
               db.wordRecords.where('dict').equals(id).toArray(),
             getWordStates: getReviewWordStates,
-            generateAcquisition: generateNewWordAcquisitionRecord,
-            generateSession: generateLearnMixedSessionRecord,
+            generateAcquisition: (id, words, freshLimit) =>
+              generateNewWordAcquisitionRecord(id, words, freshLimit, memoryConfig.blockSize),
+            generateSession: (id, words, errors, freshLimit) =>
+              generateLearnMixedSessionRecord(id, words, errors, freshLimit, memoryConfig.blockSize),
             getNextDeferredResumeAt:
               getNextDeferredAcquisitionResumeAt,
           },
@@ -246,6 +248,7 @@ export default function LearnPage() {
     isSessionView,
     isStarting,
     memoryConfig.dailyNewWordTarget,
+    memoryConfig.blockSize,
     navigate,
     preparationGuard,
     setReviewModeInfo,

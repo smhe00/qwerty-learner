@@ -1,3 +1,4 @@
+import { MAX_LEARN_BLOCK_SIZE, MIN_LEARN_BLOCK_SIZE, normalizeLearnBlockSize } from '@/learn/block-size'
 import styles from './index.module.css'
 import { memoryConfigAtom } from '@/store'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
@@ -32,6 +33,31 @@ export default function MemorySetting() {
     <ScrollArea.Root className="flex-1 select-none overflow-y-auto">
       <ScrollArea.Viewport className="h-full w-full px-3">
         <div className={styles.tabContent}>
+          <div className={styles.section}>
+            <span className={styles.sectionLabel}>每阶段词数</span>
+            <span className={styles.sectionDescription}>
+              Learn 每个学习阶段的单词数量。默认 20；调整后从下一阶段生效，剩余词数不足时按实际数量安排。
+            </span>
+            <div className={styles.block}>
+              <label className={styles.blockLabel} htmlFor="learn-block-size">单词 / 阶段</label>
+              <div className="flex w-full items-center gap-3">
+                <input
+                  id="learn-block-size"
+                  type="number"
+                  min={MIN_LEARN_BLOCK_SIZE}
+                  max={MAX_LEARN_BLOCK_SIZE}
+                  step={1}
+                  value={normalizeLearnBlockSize(memoryConfig.blockSize)}
+                  onChange={(event) => setMemoryConfig((prev) => ({
+                    ...prev, blockSize: normalizeLearnBlockSize(Number(event.target.value)),
+                  }))}
+                  aria-label="每阶段词数"
+                  className="h-10 w-28 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none transition focus:border-indigo-400 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                />
+                <span className="text-xs text-gray-400">可设置 {MIN_LEARN_BLOCK_SIZE}–{MAX_LEARN_BLOCK_SIZE}</span>
+              </div>
+            </div>
+          </div>
           <div className={styles.section}>
             <span className={styles.sectionLabel}>每日新词目标</span>
             <span className={styles.sectionDescription}>

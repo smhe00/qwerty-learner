@@ -7,6 +7,7 @@ export default defineConfig({
     'learn-shell-ui.spec.ts',
     'learn-recovery-flow.spec.ts',
     'learn-acquisition-flow.spec.ts',
+    'learn-block-size.spec.ts',
     'learn-legacy-compat.spec.ts',
   ],
   fullyParallel: false,

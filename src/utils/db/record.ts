@@ -317,6 +317,7 @@ export interface IReviewRecord {
   // allowed reinforcement occurrence for the word.
   reinforcementCounts?: Record<string, number>
   // Learn session classification. Legacy absence means review.
+  blockSize?: number
   sessionKind?: LearnSessionKind
   // Mixed sessions keep the state-machine kind per logical word. Review-only
   // and Acquisition-only sessions may omit this map for backward compatibility.
@@ -345,6 +346,7 @@ export class ReviewRecord implements IReviewRecord {
   words: Word[]
   exercisePlans?: Record<string, ReviewExercisePlanV1>
   reinforcementCounts?: Record<string, number>
+  blockSize?: number
   sessionKind?: LearnSessionKind
   itemKinds?: Record<string, LearnItemKind>
   itemStates?: Record<string, ReviewItemMachineState>

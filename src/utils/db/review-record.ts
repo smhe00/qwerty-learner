@@ -1,3 +1,4 @@
+import { normalizeLearnBlockSize } from '@/learn/block-size'
 import { db } from './core'
 import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import { waitForBrowserFuzzGate } from '@/dev/browser-fuzz-hooks'
@@ -179,7 +180,7 @@ export async function generateLearnReviewRecord(
   dictID: string,
   words: Word[],
   errorData: TErrorWordData[],
-  options?: { mode?: ReviewSelectionMode },
+  options?: { mode?: ReviewSelectionMode; blockSize?: number },
 ) {
   const now = getUTCUnixTimestamp()
   await bootstrapReviewWordStatesForDictionary(dictID, now)
@@ -209,7 +210,7 @@ export async function generateLearnReviewRecord(
   const sortedWords: Word[] = rankDueReviewCandidates(
     selected,
     states,
-  ).map((item) => item.originData)
+  ).map((item) => item.originData).slice(0, normalizeLearnBlockSize(options?.blockSize))
 
   if (sortedWords.length === 0) return undefined
 
@@ -221,6 +222,7 @@ export async function generateLearnReviewRecord(
     exercisePlans,
     'review',
   )
+  record.blockSize = normalizeLearnBlockSize(options?.blockSize)
   if ((options?.mode ?? 'due') === 'due') {
     record.recommendedGoal = {
       version: 1,
@@ -239,6 +241,7 @@ export async function generateLearnMixedSessionRecord(
   words: Word[],
   errorData: TErrorWordData[],
   freshLimit = LEARN_NEW_WORD_BATCH_SIZE,
+  blockSize = LEARN_NEW_WORD_BATCH_SIZE,
 ) {
   const now = getUTCUnixTimestamp()
   await bootstrapReviewWordStatesForDictionary(dictID, now)
@@ -311,6 +314,7 @@ export async function generateLearnMixedSessionRecord(
       .filter(isAcquisitionIntroductionRecord)
       .map((record) => record.word),
     freshLimit: freshAllowance,
+    blockSize,
     allowedNewWordNames: dailySession?.plannedNewWordNames,
     allowedAcquisitionNames: dailySession?.plannedNewWordNames
       ? [...dailySession.carryOverAcquisitionWords, ...dailySession.plannedNewWordNames]
@@ -334,6 +338,7 @@ export async function generateLearnMixedSessionRecord(
   ]
 
   const selection = selectLearnMixedSessionItems({
+    blockSize,
     dueWords,
     acquisitionWords: acquisitionCandidates.map(
       (item) => item.word,
@@ -400,6 +405,7 @@ export async function generateLearnMixedSessionRecord(
     },
     sessionKind,
   )
+  record.blockSize = normalizeLearnBlockSize(blockSize)
   record.itemKinds = itemKinds
   if (hasAcquisition) {
     record.acquisitionStates = acquisitionStates
@@ -478,6 +484,7 @@ export async function generateNewWordAcquisitionRecord(
   dictID: string,
   words: Word[],
   limit = LEARN_NEW_WORD_BATCH_SIZE,
+  blockSize = LEARN_NEW_WORD_BATCH_SIZE,
 ) {
   const requestedFreshLimit = Math.max(0, Math.floor(limit))
   const now = getUTCUnixTimestamp()
@@ -516,6 +523,7 @@ export async function generateNewWordAcquisitionRecord(
       .filter(isAcquisitionIntroductionRecord)
       .map((record) => record.word),
     freshLimit,
+    blockSize,
     allowedNewWordNames: dailySession?.plannedNewWordNames,
     allowedAcquisitionNames: dailySession?.plannedNewWordNames
       ? [...dailySession.carryOverAcquisitionWords, ...dailySession.plannedNewWordNames]
@@ -558,6 +566,7 @@ export async function generateNewWordAcquisitionRecord(
     exercisePlans,
     'acquisition',
   )
+  record.blockSize = normalizeLearnBlockSize(blockSize)
   record.acquisitionStates = acquisitionStates
   record.spacingWords = []
   record.recommendedGoal = {

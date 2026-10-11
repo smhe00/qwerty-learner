@@ -1,3 +1,4 @@
+import { DEFAULT_LEARN_BLOCK_SIZE, normalizeLearnBlockSize } from './block-size'
 import {
   LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
   createLearnAcquisitionExercisePlanForState,
@@ -15,8 +16,8 @@ import type { Word } from '@/typings'
 
 export const LEARN_ACQUISITION_POLICY_VERSION =
   LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION
-export const LEARN_NEW_WORD_BATCH_SIZE = 20
-export const LEARN_BLOCK_TARGET_SIZE = 20
+export const LEARN_NEW_WORD_BATCH_SIZE = DEFAULT_LEARN_BLOCK_SIZE
+export const LEARN_BLOCK_TARGET_SIZE = DEFAULT_LEARN_BLOCK_SIZE
 /** @deprecated Product-level Learn Session is now the daily plan; this alias is block-sized. */
 export const LEARN_SESSION_TARGET_SIZE = LEARN_BLOCK_TARGET_SIZE
 export const LEARN_MIXED_NEW_WORD_RESERVE = 5
@@ -53,6 +54,7 @@ export function resolveLearnItemKindForWord(
 
 export type LearnSessionCohortSnapshot = {
   isFinished?: boolean
+  blockSize?: number
   sessionKind?: LearnSessionKind
   words: Array<{ name: string }>
   itemKinds?: Record<string, LearnItemKind>
@@ -111,7 +113,7 @@ export function shouldRotateOversizedLearnSession(
   if (snapshot.sessionKind === 'mixed') {
     return (
       countLearnSessionAcquisitionWords(snapshot) >
-      LEARN_SESSION_TARGET_SIZE
+      normalizeLearnBlockSize(snapshot.blockSize)
     )
   }
 
@@ -120,7 +122,7 @@ export function shouldRotateOversizedLearnSession(
   // occurrences do not increase the logical-word count.
   return (
     countLearnSessionLogicalWords(snapshot) >
-    LEARN_SESSION_TARGET_SIZE
+    normalizeLearnBlockSize(snapshot.blockSize)
   )
 }
 
@@ -135,17 +137,20 @@ export type LearnMixedSessionSelection = {
 export function selectLearnMixedSessionItems(input: {
   dueWords: Word[]
   acquisitionWords: Word[]
+  blockSize?: number
 }): LearnMixedSessionSelection {
+  const blockSize = normalizeLearnBlockSize(input.blockSize)
   const reservedAcquisitionSlots =
     input.dueWords.length > 0
       ? Math.min(
           LEARN_MIXED_NEW_WORD_RESERVE,
           input.acquisitionWords.length,
+          blockSize - 1,
         )
       : 0
   const reviewSlotLimit = Math.max(
     0,
-    LEARN_SESSION_TARGET_SIZE - reservedAcquisitionSlots,
+    blockSize - reservedAcquisitionSlots,
   )
   const selectedReviewWords = input.dueWords.slice(
     0,
@@ -153,7 +158,7 @@ export function selectLearnMixedSessionItems(input: {
   )
   const acquisitionSlotLimit = Math.max(
     0,
-    LEARN_SESSION_TARGET_SIZE - selectedReviewWords.length,
+    blockSize - selectedReviewWords.length,
   )
   const selectedAcquisitionWords = input.acquisitionWords.slice(
     0,
@@ -349,6 +354,7 @@ export function planLearnAcquisitionCandidates(input: {
   pendingStates: Map<string, LearnAcquisitionState>
   introducedWords: Iterable<string>
   freshLimit: number
+  blockSize?: number
   now: number
   continuous?: boolean
   /** Actual remaining due-review candidates available for legitimate interleaving. */
@@ -358,6 +364,7 @@ export function planLearnAcquisitionCandidates(input: {
   allowedAcquisitionNames?: Iterable<string>
   allowTerminalProbeOnIdle?: boolean
 }): LearnAcquisitionCandidatePlan {
+  const blockSize = normalizeLearnBlockSize(input.blockSize)
   const canonicalWords = canonicalizeLearningWords(input.words)
   const canonicalByName = new Map(
     canonicalWords.map((word) => [word.name, word]),
@@ -382,7 +389,7 @@ export function planLearnAcquisitionCandidates(input: {
     }).length >= 2
 
   for (const [wordName, pendingState] of input.pendingStates) {
-    if (resumed.length >= LEARN_NEW_WORD_BATCH_SIZE) break
+    if (resumed.length >= blockSize) break
     if (allowedAcquisitionNames && !allowedAcquisitionNames.has(wordName)) continue
     if (pendingState.terminalProbeAttemptedAt !== undefined &&
         learnLocalDateKey(pendingState.terminalProbeAttemptedAt) === learnLocalDateKey(input.now)) continue
@@ -417,7 +424,7 @@ export function planLearnAcquisitionCandidates(input: {
     : new Set(input.allowedNewWordNames)
   const freshCapacity = Math.min(
     Math.max(0, Math.floor(input.freshLimit)),
-    Math.max(0, LEARN_NEW_WORD_BATCH_SIZE - resumed.length),
+    Math.max(0, blockSize - resumed.length),
   )
   const freshWords =
     freshCapacity > 0
@@ -439,7 +446,7 @@ export function planLearnAcquisitionCandidates(input: {
   // probe per deferred word, without pretending a clock or intervening word passed.
   if (input.allowTerminalProbeOnIdle && resumed.length === 0 && freshWords.length === 0) {
     for (const [name, state] of input.pendingStates) {
-      if (resumed.length >= LEARN_NEW_WORD_BATCH_SIZE) break
+      if (resumed.length >= blockSize) break
       if (state.phase !== 'deferred') continue
       if (allowedAcquisitionNames && !allowedAcquisitionNames.has(name)) continue
       if (state.terminalProbeAttemptedAt !== undefined &&

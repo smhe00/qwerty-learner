@@ -1,3 +1,4 @@
+import { DEFAULT_LEARN_BLOCK_SIZE } from '@/learn/block-size'
 import atomForConfig from './atomForConfig'
 import { reviewInfoAtom } from './reviewInfoAtom'
 import { DISMISS_START_CARD_DATE_KEY, defaultFontSizeConfig } from '@/constants'
@@ -93,6 +94,7 @@ export const randomConfigAtom = atomForConfig('randomConfig', {
 
 export const memoryConfigAtom = atomForConfig('memoryConfig', {
   dailyNewWordTarget: 32,
+  blockSize: DEFAULT_LEARN_BLOCK_SIZE,
 })
 
 export const isShowPrevAndNextWordAtom = atomWithStorage('isShowPrevAndNextWord', true)
