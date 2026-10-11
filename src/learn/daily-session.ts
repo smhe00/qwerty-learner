@@ -23,6 +23,10 @@ export type LearnDailySessionV1 = {
   status: LearnDailySessionStatus
   dailyNewTarget: number
   plannedNewWords: number
+  /** Frozen identities for newly introduced words, optional on legacy V1 sessions. */
+  plannedNewWordNames?: string[]
+  /** Cumulative milestones for meaningful Block celebrations, not queue sizes. */
+  blockMilestones?: number[]
   plannedReviewWords: string[]
   carryOverAcquisitionWords: string[]
   accumulatedActiveSeconds: number
@@ -50,6 +54,19 @@ export type LearnDailyProgress = {
 
 function uniqueNames(values: Iterable<string>): string[] {
   return [...new Set([...values].filter(Boolean))]
+}
+
+/** Balance Block milestones across the fixed daily cohort; never create a one-word tail. */
+export function planLearnBlockMilestones(total: number, targetSize = 20): number[] {
+  if (total <= 0) return []
+  const blocks = Math.max(1, Math.ceil(total / targetSize))
+  const base = Math.floor(total / blocks)
+  const extra = total % blocks
+  let cumulative = 0
+  return Array.from({ length: blocks }, (_, index) => {
+    cumulative += base + (index < extra ? 1 : 0)
+    return cumulative
+  })
 }
 
 export function learnLocalDateKey(timestamp: number): string {
@@ -186,6 +203,12 @@ export function createLearnDailySession(input: {
     (word) => !knownNames.has(word),
   ).length
   const plannedNewWords = Math.min(dailyNewTarget, unseenCount)
+  const plannedNewWordNames = uniqueDictionaryWords
+    .filter((word) => !knownNames.has(word))
+    .slice(0, plannedNewWords)
+  const blockMilestones = planLearnBlockMilestones(
+    plannedReviewWords.length + carryOverAcquisitionWords.length + plannedNewWordNames.length,
+  )
   const dateKey = learnLocalDateKey(input.now)
 
   return {
@@ -197,6 +220,8 @@ export function createLearnDailySession(input: {
     status: 'active',
     dailyNewTarget,
     plannedNewWords,
+    plannedNewWordNames,
+    blockMilestones,
     plannedReviewWords,
     carryOverAcquisitionWords,
     accumulatedActiveSeconds: 0,
@@ -278,6 +303,7 @@ export function deriveLearnDailyProgress(input: {
     })
     .map((record) => record.word)
     .filter((word) => !carryOverTargets.includes(word))
+    .filter((word) => !session.plannedNewWordNames || session.plannedNewWordNames.includes(word))
     .slice(0, session.plannedNewWords)
 
   const completedReviewNames = reviewTargets.filter((word) =>
