@@ -264,7 +264,7 @@ export default function LearnResultScreen() {
   }, [setReviewModeInfo])
 
   const continueLearn = useCallback(() => {
-    if (blockSyncHandoff || !settlement || settlement.progress.complete) return
+    if (blockSyncHandoffRef.current || blockSyncHandoff || !settlement || settlement.progress.complete) return
 
     dispatch({ type: TypingStateActionType.RESET_SESSION })
     keepLearnSelected()
@@ -278,7 +278,7 @@ export default function LearnResultScreen() {
   ])
 
   const learnFiveMore = useCallback(async () => {
-    if (blockSyncHandoff || !settlement?.progress.complete || addingWordsRef.current) return
+    if (blockSyncHandoffRef.current || blockSyncHandoff || !settlement?.progress.complete || addingWordsRef.current) return
     addingWordsRef.current = true
     setAddingWords(true)
     try {
@@ -321,7 +321,7 @@ export default function LearnResultScreen() {
   }, [settlement, continueLearn])
 
   const closeResult = useCallback(() => {
-    if (blockSyncHandoff || !settlement || settlementError) return
+    if (blockSyncHandoffRef.current || blockSyncHandoff || !settlement || settlementError) return
     acknowledgeAchievements()
     dispatch({ type: TypingStateActionType.RESET_SESSION })
     keepLearnSelected()
@@ -337,7 +337,7 @@ export default function LearnResultScreen() {
   ])
 
   useEffect(() => {
-    if (!settlement || settlement.progress.complete || blockSyncHandoff) return
+    if (!settlement || settlement.progress.complete || blockSyncHandoffRef.current || blockSyncHandoff) return
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (
