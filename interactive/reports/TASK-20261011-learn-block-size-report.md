@@ -57,3 +57,35 @@ Release target: 3b36daae223f98c93e7718e896f723085ae382ee.
 Includes validated upstream frozen daily cohort/terminal tail change 583c44e5
 and block-size implementation 48a6d944. No account/cloud activation changes.
 The earlier development-only delivery statement is superseded by this release.
+
+## Published verification
+
+Published master/source: 3b36daae223f98c93e7718e896f723085ae382ee.
+Fast-forward pushed once; development-only authorization/results documents
+remain on product/main and do not trigger extra release builds.
+
+Actual EdgeOne HTML serves /assets/index-f957ce01.js, which loads
+/assets/app-a894cbd1.js containing the 3b36daa release marker.
+/api/health returned HTTP 200, ok=true, service=qwerty-sync-gateway.
+
+Four real production Chrome checks passed: the 5-word and 50-word setting
+cases (including legacy default migration, range clamping, preference reload,
+matching actual Learn queues and mid-block preference changes followed by
+recovery); typed-word persistence after refresh; repeated-refresh route
+stability. Browser contexts were fresh and isolated; no cloud account writes.
+Temporary live readiness adapter checks native IndexedDB rather than the
+unavailable development-only /src/utils/db/core.ts import. All feature
+assertions are identical to the committed browser regression tests.
+
+Production Verify run 38117019774 failed on the existing stale Maker project
+ID: NotFoundError / ResourceNotFound, makers-cgemngjuuwle not found. It did not
+verify the actual deployed app and is not reported green. Direct source,
+health and real-browser evidence confirm publication independently.
+https://github.com/smhe00/qwerty-learner/actions/runs/38117019774
+
+Feature-source CI snapshot: Architecture, Explorer V3 mutation audit,
+Achievement, Dictionary and Learn Real Journey passed. Review Gate still
+running; Published Dual-Site Explorer failed. The latter was already failing
+on the pre-feature site's hidden cloud-account UI; no cloud/account feature
+is part of this release. Local feature/browser tests and actual EdgeOne
+checks passed; this report does not claim all CI checks are green.
