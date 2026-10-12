@@ -1,6 +1,6 @@
 import { recordAnalysisAction } from '@/utils'
 import { useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import ChartPie from '~icons/heroicons/chart-pie-solid'
 
 const AnalysisButton = ({
@@ -11,12 +11,13 @@ const AnalysisButton = ({
   learnMode?: boolean
 }) => {
   const navigate = useNavigate()
+  const location = useLocation()
 
   const toAnalysis = useCallback(() => {
     if (disabled) return
-    navigate(learnMode ? '/analysis?from=learn' : '/analysis')
+    navigate(learnMode ? '/analysis?from=learn' : '/analysis', { state: { backgroundLocation: location } })
     recordAnalysisAction('open')
-  }, [disabled, learnMode, navigate])
+  }, [disabled, learnMode, location, navigate])
 
   return (
     <button
