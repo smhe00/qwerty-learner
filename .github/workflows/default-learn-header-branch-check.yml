@@ -1,0 +1,33 @@
+name: Default Learn header branch check
+
+on:
+  push:
+    branches:
+      - feature/default-learn-header-switch-20261012
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Install
+        run: yarn install --frozen-lockfile
+      - name: Lint edited source
+        run: yarn eslint src/app.tsx src/components/Header/index.tsx src/components/ModeSwitcher/index.tsx
+      - name: Build
+        run: yarn build
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Verify homepage and mode switch UI
+        run: npx playwright test --config=tests/e2e/review-flow.config.ts --project=chrome tests/e2e/default-learn-header.spec.ts
+      - name: Verify existing Learn/Typing mode E2E
+        run: npx playwright test --config=tests/e2e/review-flow.config.ts --project=chrome tests/e2e/learn-shell-ui.spec.ts --grep 'Typing and Learn are explicit top-level modes'
