@@ -1,10 +1,9 @@
 import Layout from '../../components/Layout'
 import type React from 'react'
 
-export const FriendLinks: React.FC = () => {
-  return (
-    <Layout>
-      <div className="flex w-full flex-1 flex-col items-center justify-center px-6 py-20">
+export const FriendLinks: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
+  const content = (
+      <div className={embedded ? 'flex w-full flex-col items-center justify-center px-3 py-3' : 'flex w-full flex-1 flex-col items-center justify-center px-6 py-20'}>
         <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-gray-50 p-8 text-center dark:border-gray-700 dark:bg-gray-800">
           <div className="text-lg font-semibold text-gray-700 dark:text-gray-200">
             对外渠道暂未开放
@@ -21,6 +20,6 @@ export const FriendLinks: React.FC = () => {
           </button>
         </div>
       </div>
-    </Layout>
   )
+  return embedded ? content : <Layout>{content}</Layout>
 }
