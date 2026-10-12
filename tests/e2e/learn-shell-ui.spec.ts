@@ -263,6 +263,8 @@ test('Learn header keeps dictionary and pause icon aligned with Typing', async (
   const typingPositions = {
     dictionary: (await typingDictionary.boundingBox())?.x ?? 0,
     start: (await typingStart.boundingBox())?.x ?? 0,
+    startY: (await typingStart.boundingBox())?.y ?? 0,
+    settingY: (await typingSetting.boundingBox())?.y ?? 0,
     setting: (await typingSetting.boundingBox())?.x ?? 0,
   }
 
@@ -285,6 +287,8 @@ test('Learn header keeps dictionary and pause icon aligned with Typing', async (
   const learnPositions = {
     dictionary: (await learnDictionary.boundingBox())?.x ?? 0,
     start: (await learnStart.boundingBox())?.x ?? 0,
+    startY: (await learnStart.boundingBox())?.y ?? 0,
+    settingY: (await learnSetting.boundingBox())?.y ?? 0,
     setting: (await learnSetting.boundingBox())?.x ?? 0,
   }
 
@@ -294,8 +298,9 @@ test('Learn header keeps dictionary and pause icon aligned with Typing', async (
   expect(
     Math.abs(learnPositions.start - typingPositions.start),
   ).toBeLessThanOrEqual(24)
-  expect(learnPositions.setting).toBeGreaterThan(learnPositions.start)
-  expect(typingPositions.setting).toBeGreaterThan(typingPositions.start)
+  // Right-aligned headers may wrap Settings onto a later row.
+  expect(learnPositions.settingY > learnPositions.startY || learnPositions.setting > learnPositions.start).toBe(true)
+  expect(typingPositions.settingY > typingPositions.startY || typingPositions.setting > typingPositions.start).toBe(true)
 
   await expect(page.getByText('今日到期', { exact: true })).toHaveCount(0)
   await expect(page.getByText('学习计划', { exact: true })).toHaveCount(0)
