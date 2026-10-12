@@ -155,7 +155,13 @@ for (const site of sites) {
       // navigation from the main app can display Gallery as a child window.
       // Preserve the mode-specific URL instead of asserting an obsolete path.
       await expect(page).toHaveURL(/\/gallery\/?(?:\?mode=(?:learn|typing))?$/, { timeout: 20_000 })
-      await expect(page.getByText('选择词库', { exact: true }).first()).toBeVisible()
+      // Pages embeds Gallery under the "选择词库" dialog title; the deployed
+      // EdgeOne master still uses the standalone gallery (no modal title).
+      // A visible language selector is the stable, real content in both.
+      await expect(page.getByText('英语', { exact: true }).first()).toBeVisible()
+      if (site.name === 'pages') {
+        await expect(page.locator('[data-navigation-dialog="gallery"]')).toBeVisible()
+      }
       checkRoute(page, site)
 
       // Exercise the actual user path: mode switch followed by the Statistics
