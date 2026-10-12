@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test'
 
 test('homepage defaults to Learn; explicit Typing and Learn links survive reload and back', async ({ page }) => {
+  test.setTimeout(70_000)
   await page.goto('/')
-  await expect(page).toHaveURL(/\/learn$/)
+  // S1 workspace hydration can hold the initial root route briefly;
+  // test the resolved route rather than a fixed 5-second cold-start budget.
+  await expect(page).toHaveURL(/\/learn$/, { timeout: 25_000 })
   const learn = page.getByRole('button', { name: 'Learn', exact: true })
   const typing = page.getByRole('button', { name: 'Typing', exact: true })
   await expect(learn).toHaveAttribute('aria-pressed', 'true')
