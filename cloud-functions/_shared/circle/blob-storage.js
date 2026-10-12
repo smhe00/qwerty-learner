@@ -49,5 +49,27 @@ export function createCircleBlobStorage(blob) {
     throw error
   }
 
-  return Object.freeze({ read, create })
+  async function list(relativePrefix) {
+    if (!blob.list) throw new TypeError('Circle Blob does not support list')
+    let error
+    for (const ms of RETRY_MS) {
+      if (ms) await pause(ms)
+      try {
+        // The EdgeOne SDK aggregates all pages by default.
+        const { blobs = [] } = await blob.list({
+          prefix: ROOT + relativePrefix,
+          consistency: 'strong',
+        })
+        return blobs.map(({ key }) => {
+          if (!key.startsWith(ROOT + relativePrefix)) {
+            throw new Error('Circle storage returned an out-of-scope key')
+          }
+          return key.slice(ROOT.length)
+        })
+      } catch (caught) { error = caught }
+    }
+    throw error
+  }
+
+  return Object.freeze({ read, create, list })
 }
