@@ -58,7 +58,8 @@ test('P0 settings and donation dialogs share surface tokens, remain usable on na
   const openSettings = page.getByRole('button', { name: '打开设置对话框' })
   await expect(openSettings).toBeVisible({ timeout: 20_000 })
   await openSettings.click()
-  const settings = page.getByRole('dialog').first()
+  // Match the actual Settings dialog, not unrelated dormant HeadlessUI panels.
+  const settings = page.locator('[role="dialog"]:has(button[aria-label="关闭设置"])')
   await expect(settings).toBeVisible()
   await expect(settings.locator('.focus-overlay-panel')).toBeVisible()
   const bounds = await settings.locator('.focus-overlay-panel').boundingBox()
@@ -77,20 +78,21 @@ test('P0 settings and donation dialogs share surface tokens, remain usable on na
   await page.getByRole('button', { name: '开关深色模式' }).click()
   await expect(page.locator('html')).toHaveClass(/dark/)
   await openSettings.click()
-  await expect(page.getByRole('dialog').first().locator('.focus-overlay-panel')).toBeVisible()
+  await expect(settings.locator('.focus-overlay-panel')).toBeVisible()
   await page.screenshot({
     path: 'test-results/focus-ui/settings-dark-760.png',
     fullPage: false,
     animations: 'disabled',
     timeout: 15_000,
   })
-  await page.getByRole('dialog').first().getByRole('button', { name: '关闭设置' }).click()
+  await settings.getByRole('button', { name: '关闭设置' }).click()
 
   await page.getByRole('button', { name: '打开赞赏页面' }).click()
-  await expect(page.getByRole('dialog')).toBeVisible()
-  await expect(page.getByRole('dialog').locator('.focus-overlay-panel')).toBeVisible()
+  const donate = page.locator('[role="dialog"]:has-text("赞赏 Qwerty Plus")')
+  await expect(donate).toBeVisible()
+  await expect(donate.locator('.focus-overlay-panel')).toBeVisible()
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(donate).toHaveCount(0)
 })
 
 test('P0 reduced-motion removes ornamental animations without hiding the mode switch', async ({ page }) => {
