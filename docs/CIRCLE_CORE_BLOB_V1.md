@@ -194,3 +194,51 @@ Release blockers still include:
 7. Genuine UI integration only after coordination with the separate UI team.
 
 **Do not merge to `product/main`, push `master`, or enable Circle HTTP until these gates have independent approval.**
+
+---
+
+## Iteration 4 — privacy race defenses, auditability and live-Blob contract harness
+
+**Scope:** isolated `feature/circle-core-blob` only; server backend, nonproduction probe, tests and docs; UI untouched.
+
+### Privacy security review
+
+The authorization check at the beginning of a request is not sufficient if an owner removes a member or the member's account is quarantined while expensive Blob reads are underway. This iteration adds end-of-request authorization checks to member metadata, clap and showcase endpoints; clap counts now exclude authors who were revoked during a concurrent read. Dynamic probes deliberately pause the underlying Blob read, revoke/quarantine the target, then resume. No private achievement may be returned after revocation in the tested interleavings.
+
+These guards mitigate tested races, but cannot provide a globally atomic authorization/read transaction across requests. Release certification requires review of the overall consistency assumptions and the actual EdgeOne runtime.
+
+### Scoped storage and retired-account audit
+
+- All Circle Blob storage operations now validate relative path segments, forbid `..`, `.`, duplicate separators, backslashes, control characters and non-approved characters. Prefix list inputs can end with a single trailing slash, and access stays under `social/v1/`.
+- Trusted backend `auditRetiredAccount(userId)` requires a durable quarantine marker, then reports `activityObjects` still present and a separate count of `structuralReferences` (reverse indexes, seats, owner metadata and disabled marker).
+- The audit is a **momentary strong-list snapshot**. It always returns `snapshotOnly:true`, `fullyErased:false` and `followUpRequired:true`. A concurrent pre-fence writer can still commit an object after the audit.
+- `auditRetiredAccount`, `quarantineAccount` and `scrubAccountActivities` must never be exposed as ordinary client-controlled API endpoints.
+
+### Optional real EdgeOne Blob storage contract
+
+Added `scripts/circle-blob-live-contract.mjs`, deliberately **NOT invoked** by automatic CI. The isolated Circle Gate runs `node --check` plus ESLint only.
+
+The probe must be run manually, with a separately provisioned **nonproduction** EdgeOne Blob Store whose name ends in `-circle-sandbox`; it refuses the production `qwerty-data` name and requires an explicit opt-in string. It performs four rounds of 48 simultaneous `onlyIfNew` attempts against one key, alternating two SDK Store clients, then verifies a single successful writer, strong read/list and deletion. It uses random run-scoped keys and attempts cleanup even if an assertion fails.
+
+Only in an approved nonproduction environment, provide these environment variables privately (NEVER place them in the repository or a chat):
+
+```text
+CIRCLE_BLOB_LIVE_ACK=RUN_CIRCLE_SANDBOX_ONLY
+CIRCLE_TEST_BLOB_STORE=<dedicated-name-ending-in-circle-sandbox>
+CIRCLE_TEST_PROJECT_ID=<nonproduction Makers project ID>
+CIRCLE_TEST_API_TOKEN=<nonproduction scoped token>
+```
+
+Then run `node scripts/circle-blob-live-contract.mjs` locally or in an expressly isolated manual workflow. Do not run against a production Maker project or the main backup Blob Store.
+
+Even a successful probe demonstrates only the documented single-process, two-client conditional-create/strong-read contract. It does NOT establish geographically distributed transactional linearizability, nor account-deletion physical-erasure correctness. No actual EdgeOne live probe has been executed in this feature branch in this iteration.
+
+### Remaining launch blockers
+
+1. **Account deletion is not integrated** with the existing backend `deleteAccount`; identity-containing seats/indexes/ownership metadata are not physically removed. Activity deletion can race pre-fence writes, so a one-pass clean result is not sufficient.
+2. The authenticated HTTP adapter is not mounted in production and remains disabled; mandatory per-source-IP + account rate limiter implementation is still needed.
+3. Achievement verification requires trusted server evidence independent of self-reported counts.
+4. Real EdgeOne sandbox test result must be recorded, followed by a separate multi-region behavior assessment.
+5. Full privacy compliance, retention policies, performance budgets and UI integration require approval before any merge/release.
+
+**Deployment remains prohibited:** no merge to `product/main`, no `master` update and no EdgeOne Maker build triggered by this work.
