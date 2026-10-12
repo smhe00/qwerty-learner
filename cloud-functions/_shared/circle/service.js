@@ -513,8 +513,56 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
     }
   }
 
+  /**
+   * Audit PRIVATE activity residues for a retired account. This is not a
+   * deletion certificate: concurrent in-flight writers can still commit
+   * after the scan. Structural account references remain by design.
+   */
+  async function auditRetiredAccount(userId) {
+    const uid = validId(userId)
+    if (!await storage.read(disabledKey(uid))) {
+      fail(409, 'account_not_quarantined', 'Quarantine account before audit')
+    }
+    const indexed = await storage.list(`user-circles/${uid}/`)
+    const idPattern = /^user-circles\/[A-Za-z0-9_-]{4,128}\/([A-Za-z0-9_-]{12})\.json$/
+    let activityObjects = 0
+    let structuralReferences = indexed.length + 1 // reverse index + disabled marker
+    let circlesVisited = 0
+    for (const key of indexed) {
+      const found = idPattern.exec(key)
+      if (!found) throw new Error('Malformed Circle reverse index')
+      const id = found[1]
+      const meta = await storage.read(metaKey(id))
+      if (!meta) continue
+      circlesVisited++
+      if (meta.ownerUserId === uid) structuralReferences++
+      const seats = await peers(id)
+      structuralReferences += seats.filter((seat) => seat.userId === uid).length
+      const users = new Set([meta.ownerUserId, ...seats.map((seat) => seat.userId)])
+      const prefixes = [
+        `circles/${id}/progress/${uid}/`,
+        `circles/${id}/showcase/${uid}/`,
+        `circles/${id}/reactions/${uid}/`,
+        `circles/${id}/progress-claims/${uid}/`,
+      ]
+      for (const actorUserId of users) {
+        if (actorUserId !== uid) {
+          prefixes.push(`circles/${id}/reactions/${actorUserId}/${uid}/`)
+        }
+      }
+      for (const prefix of prefixes) {
+        activityObjects += (await storage.list(prefix)).length
+      }
+    }
+    return {
+      quarantined: true, circlesVisited, activityObjects,
+      structuralReferences, fullyErased: false, followUpRequired: true,
+      snapshotOnly: true,
+    }
+  }
+
   return Object.freeze({
-    quarantineAccount, scrubAccountActivities,
+    quarantineAccount, scrubAccountActivities, auditRetiredAccount,
     createCircle, joinCircle, rotateInvite, getCircle, leaveCircle: leave,
     removeMember, closeCircle, publishProgress, getProgress,
     reactProgress, getReactions, shareAchievement, getShowcase,
