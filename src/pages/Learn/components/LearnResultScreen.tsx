@@ -316,7 +316,7 @@ export default function LearnResultScreen() {
           data-milestone={settlement?.milestoneReached !== undefined || isDailyComplete ? 'true' : undefined}>
           <button
             type="button"
-            className="absolute right-7 top-5 disabled:cursor-not-allowed disabled:opacity-30"
+            className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-lg transition-colors hover:bg-[var(--focus-surface-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 disabled:cursor-not-allowed disabled:opacity-30 sm:right-5 sm:top-4"
             onClick={closeResult}
             disabled={blockSyncHandoff || !settlement || Boolean(settlementError)}
             aria-label="暂停 Learn"
