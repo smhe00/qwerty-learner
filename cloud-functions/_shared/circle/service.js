@@ -7,6 +7,7 @@ const CIRCLE_ID = /^[A-Za-z0-9_-]{12}$/
 const EVENT_ID = /^[A-Za-z0-9_-]{8,80}$/
 const ACHIEVEMENT_ID = /^ACH_[A-Z0-9_]{3,72}$/
 const DAY = /^\d{4}-\d{2}-\d{2}$/
+const MAX_INVITE_ROTATIONS = 8 // Each rotation is immutable and CAS-gated.
 const MAX_PEERS = 11 // Owner + 11 peers. Each immutable slot has one winner.
 const PROGRESS_SLOTS = 4 // Four daily updates per member, no unbounded append.
 const fail = (status, code, message) => { throw new AppError(status, code, message) }
@@ -14,6 +15,7 @@ const hash = (s) => crypto.createHash('sha256').update(s).digest('hex')
 const now = () => new Date().toISOString()
 const randomId = () => crypto.randomBytes(9).toString('base64url')
 const metaKey = (id) => `circles/${id}/meta.json`
+const inviteKey = (id, rev) => `circles/${id}/invites/${String(rev).padStart(2, '0')}.json`
 const closedKey = (id) => `circles/${id}/closed.json`
 const slotKey = (id, slot) => `circles/${id}/seats/${String(slot).padStart(2, '0')}.json`
 const disabledKey = (uid) => `accounts-disabled/${uid}.json`
@@ -114,6 +116,17 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
     }
     return meta
   }
+  async function latestInvite(meta) {
+    // The first missing revision is terminal under create-only rotation.
+    // No revision may be skipped by a legitimate rotation.
+    let last = { revision: 0, inviteHash: meta.inviteHash }
+    for (let rev = 1; rev <= MAX_INVITE_ROTATIONS; rev++) {
+      const record = await storage.read(inviteKey(meta.circleId, rev))
+      if (!record) break
+      last = { revision: rev, inviteHash: record.inviteHash }
+    }
+    return last
+  }
   async function peers(id) {
     return (await Promise.all(Array.from({ length: MAX_PEERS }, (_, i) =>
       storage.read(slotKey(id, i + 1))))).filter(Boolean)
@@ -166,7 +179,10 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
     try { meta = await circle(id) } catch {
       fail(404, 'invalid_invite', 'Invalid Circle invite')
     }
-    if (!inviteMatches(secret, meta.inviteHash)) fail(404, 'invalid_invite', 'Invalid Circle invite')
+    const validInvite = await latestInvite(meta)
+    if (!inviteMatches(secret, validInvite.inviteHash)) {
+      fail(404, 'invalid_invite', 'Invalid Circle invite')
+    }
     if (await storage.read(revokedKey(id, uid))) {
       fail(403, 'membership_revoked', 'Membership was revoked; rejoin is disabled in V1')
     }
@@ -214,6 +230,26 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
       return { circleId: id, role: 'member' }
     }
     fail(409, 'circle_full', 'Circle has reached its 12-person lifetime seat limit')
+  }
+  async function rotateInvite(token, id) {
+    const uid = await actor(token)
+    const meta = await circle(id)
+    await requireOwner(meta, uid)
+    const current = await latestInvite(meta)
+    if (current.revision >= MAX_INVITE_ROTATIONS) {
+      fail(409, 'invite_rotation_exhausted', 'Invite rotation limit reached')
+    }
+    const secret = randomId()
+    const record = { revision: current.revision + 1, inviteHash: hash(secret),
+      changedBy: uid, changedAt: now() }
+    if (!(await storage.create(inviteKey(id, record.revision), record))) {
+      // A concurrent rotation won this version. Do not silently publish a
+      // second different secret or disclose the other request's secret.
+      fail(409, 'invite_rotation_conflict', 'Invite was rotated concurrently')
+    }
+    await circle(id)
+    return { circleId: id, revision: record.revision,
+      inviteCode: `QC-${id}-${secret}` }
   }
   async function getCircle(token, id) {
     const uid = await actor(token)
@@ -423,7 +459,7 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
 
   return Object.freeze({
     quarantineAccount,
-    createCircle, joinCircle, getCircle, leaveCircle: leave,
+    createCircle, joinCircle, rotateInvite, getCircle, leaveCircle: leave,
     removeMember, closeCircle, publishProgress, getProgress,
     reactProgress, getReactions, shareAchievement, getShowcase,
   })
