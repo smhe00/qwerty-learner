@@ -4,7 +4,7 @@ import range from '@/utils/range'
 import { Listbox, Transition } from '@headlessui/react'
 import { useAtom, useAtomValue } from 'jotai'
 import { Fragment } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import IconCheck from '~icons/tabler/check'
 
 export const DictChapterButton = ({
@@ -16,6 +16,7 @@ export const DictChapterButton = ({
   const [currentChapter, setCurrentChapter] = useAtom(currentChapterAtom)
   const chapterCount = currentDictInfo.chapterCount
   const isReviewMode = useAtomValue(isReviewModeAtom)
+  const location = useLocation()
 
   const handleKeyDown: React.KeyboardEventHandler<HTMLButtonElement> = (event) => {
     if (event.key === ' ') {
@@ -29,6 +30,7 @@ export const DictChapterButton = ({
         <NavLink
           className="block rounded-lg px-3 py-1 text-lg transition-colors duration-300 ease-in-out hover:bg-indigo-400 hover:text-white focus:outline-none dark:text-white dark:text-opacity-60 dark:hover:text-opacity-100"
           to={learnMode ? '/gallery?mode=learn' : '/gallery'}
+          state={{ backgroundLocation: location }}
         >
           {currentDictInfo.name} {isReviewMode && !learnMode && '错题复习'}
         </NavLink>
