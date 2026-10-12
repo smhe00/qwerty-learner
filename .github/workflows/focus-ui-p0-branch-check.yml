@@ -34,6 +34,7 @@ jobs:
           src/pages/Typing/components/WordPanel/index.tsx
           src/pages/Learn/components/LearnResultScreen.tsx
           src/components/InfoPanel/index.tsx
+          src/pages/Typing/components/Setting/index.tsx
       - name: Build production bundle
         run: yarn build
       - name: Install Chromium
@@ -46,6 +47,7 @@ jobs:
           --config=tests/e2e/review-flow.config.ts
           --project=chrome
           tests/e2e/focus-ui.spec.ts
+          tests/e2e/focus-p0-final-acceptance.spec.ts
       - name: Existing navigation and mode regressions
         run: >
           npx playwright test
