@@ -74,7 +74,7 @@ export default function NavigationOverlay({ title, size, children }: NavigationO
 
   return (
     <Dialog as="div" className="relative z-40" open onClose={close}>
-      <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-[3px]" aria-hidden="true" />
+      <div className="fixed inset-0 backdrop-blur-[3px]" style={{ background: "var(--focus-backdrop)" }} aria-hidden="true" />
       <div
         className="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto p-3 sm:p-5"
         onKeyDown={(event) => {
@@ -89,11 +89,11 @@ export default function NavigationOverlay({ title, size, children }: NavigationO
         onKeyUp={(event) => event.stopPropagation()}
       >
         <Dialog.Panel
-          className={`flex min-h-0 w-full ${sizes[size]} flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl dark:border-slate-600 dark:bg-slate-900`}
+          className={`focus-overlay-panel flex min-h-0 w-full ${sizes[size]} flex-col overflow-hidden rounded-[20px]`}
           data-navigation-dialog={location.pathname.slice(1)}
         >
-          <div className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-5 py-3 dark:border-slate-700 dark:bg-slate-800">
-            <Dialog.Title className="text-lg font-semibold text-slate-800 dark:text-slate-100">{title}</Dialog.Title>
+          <div className="focus-overlay-header flex shrink-0 items-center justify-between px-5 py-3.5">
+            <Dialog.Title className="text-lg font-semibold tracking-tight">{title}</Dialog.Title>
             <button
               type="button"
               className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400 dark:text-slate-300 dark:hover:bg-slate-700"
@@ -104,7 +104,7 @@ export default function NavigationOverlay({ title, size, children }: NavigationO
               <IconX className="h-5 w-5" />
             </button>
           </div>
-          <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-5" data-navigation-dialog-body>
+          <div className="focus-overlay-body min-h-0 flex-1 overflow-auto p-3 sm:p-5" data-navigation-dialog-body>
             {children}
           </div>
         </Dialog.Panel>
