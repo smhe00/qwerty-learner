@@ -6,6 +6,22 @@
 const ROOT = 'social/v1/'
 const RETRY_MS = [0, 30, 80, 180]
 
+// Never let even a trusted maintenance caller escape the Circle keyspace or
+// accidentally apply a broad scan/delete to a malformed relative path.
+function validateRelative(relative, prefix = false) {
+  if (typeof relative !== 'string' || relative.length < 3 || relative.length > 512 ||
+      relative.startsWith('/') || relative.includes('\\') ||
+      !/^[A-Za-z0-9_./-]+$/.test(relative)) {
+    throw new TypeError('Invalid Circle storage key')
+  }
+  const value = prefix && relative.endsWith('/') ? relative.slice(0, -1) : relative
+  const parts = value.split('/')
+  if (parts.some((part) => !part || part === '.' || part === '..')) {
+    throw new TypeError('Invalid Circle storage path segments')
+  }
+  return relative
+}
+
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const canonical = (value) => JSON.stringify(value, (_key, item) =>
   item && !Array.isArray(item) && typeof item === 'object'
@@ -19,7 +35,7 @@ export function createCircleBlobStorage(blob) {
   }
 
   async function read(relative) {
-    const key = ROOT + relative
+    const key = ROOT + validateRelative(relative)
     let error
     for (const ms of RETRY_MS) {
       if (ms) await pause(ms)
@@ -31,7 +47,7 @@ export function createCircleBlobStorage(blob) {
   }
 
   async function create(relative, value) {
-    const key = ROOT + relative
+    const key = ROOT + validateRelative(relative)
     let error
     for (const ms of RETRY_MS) {
       if (ms) await pause(ms)
@@ -50,6 +66,7 @@ export function createCircleBlobStorage(blob) {
   }
 
   async function list(relativePrefix) {
+    validateRelative(relativePrefix, true)
     if (!blob.list) throw new TypeError('Circle Blob does not support list')
     let error
     for (const ms of RETRY_MS) {
@@ -77,7 +94,7 @@ export function createCircleBlobStorage(blob) {
     }
     // Removal is deliberately only available through this isolated adapter.
     // Callers MUST have committed a durable disable/closed tombstone first.
-    const key = ROOT + relative
+    const key = ROOT + validateRelative(relative)
     let lastError
     for (const ms of RETRY_MS) {
       if (ms) await pause(ms)
