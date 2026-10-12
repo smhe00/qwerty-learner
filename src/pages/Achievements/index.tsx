@@ -22,7 +22,7 @@ const rarityLabel = {
   legendary: '传说',
 } as const
 
-export default function AchievementsPage() {
+export default function AchievementsPage({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate()
   const states = useLiveQuery(() => getAchievementStates(), [], [])
   const visibleProgress = useLiveQuery(
@@ -63,7 +63,7 @@ export default function AchievementsPage() {
   ).length
 
   const close = () => navigate('/learn')
-  useHotkeys('esc', close, { preventDefault: true })
+  useHotkeys('esc', close, { preventDefault: true, enabled: !embedded })
 
   const openCulture = (achievementId: string) => {
     if (!stateById.has(achievementId)) return
@@ -77,9 +77,9 @@ export default function AchievementsPage() {
     ? getAchievementCulture(openAchievementId)
     : null
 
-  return (
-    <Layout>
-      <main className="container mx-auto flex w-full flex-1 flex-col px-10 pb-12 pt-8">
+  const content = (
+    <>
+      <main className={embedded ? 'mx-auto flex w-full flex-col px-2 pb-6 pt-2 sm:px-4' : 'container mx-auto flex w-full flex-1 flex-col px-10 pb-12 pt-8'}>
         <div className="flex items-start justify-between">
           <div>
             <div className="text-sm font-medium tracking-[0.16em] text-indigo-400">
@@ -92,7 +92,7 @@ export default function AchievementsPage() {
               已解锁 {unlockedCount} / {achievements.length} · 记录能力变化，而不是刷次数。
             </p>
           </div>
-          <button
+          {!embedded && <button
             type="button"
             onClick={close}
             className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -100,7 +100,7 @@ export default function AchievementsPage() {
             title="返回 Learn"
           >
             <IconX className="h-6 w-6" />
-          </button>
+          </button>}
         </div>
 
         <section
@@ -202,10 +202,17 @@ export default function AchievementsPage() {
 
       {opened && openAchievementId && stateById.has(openAchievementId) ? (
         <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 px-6 backdrop-blur-sm"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 px-6 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-label={`${opened.achievement.title} 文化卡`}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.stopPropagation()
+              event.preventDefault()
+              setOpenAchievementId(undefined)
+            }
+          }}
           onClick={() => setOpenAchievementId(undefined)}
         >
           <article
@@ -247,6 +254,7 @@ export default function AchievementsPage() {
           </article>
         </div>
       ) : null}
-    </Layout>
+    </>
   )
+  return embedded ? content : <Layout>{content}</Layout>
 }

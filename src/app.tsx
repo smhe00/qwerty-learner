@@ -1,4 +1,5 @@
 import Loading from './components/Loading'
+import NavigationOverlay, { AUXILIARY_PATHS, getAuxiliaryBackground } from './components/NavigationOverlay'
 import './index.css'
 import { ErrorBook } from './pages/ErrorBook'
 import { FriendLinks } from './pages/FriendLinks'
@@ -11,7 +12,7 @@ import React, { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { isBrowserFuzzFaultEnabled } from '@/dev/browser-fuzz-hooks'
 import 'react-app-polyfill/stable'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 const loadAnalysisPage = () => import('./pages/Analysis')
 const loadGalleryPage = () => import('./pages/Gallery-N')
@@ -72,6 +73,48 @@ function TypingRoute() {
   }, [reviewMode.isReviewMode, setReviewMode])
   if (reviewMode.isReviewMode) return <Loading />
   return <TypingPage />
+}
+
+function DesktopRoutes() {
+  const location = useLocation()
+  const isAuxiliary = AUXILIARY_PATHS.has(location.pathname)
+  const background = getAuxiliaryBackground(location.pathname, location.search, location.state)
+  const persistedBackground = (location.state as {
+    backgroundLocation?: { pathname: string }
+  } | null)?.backgroundLocation
+  const hasLiveBackground = persistedBackground?.pathname === '/learn' ||
+    persistedBackground?.pathname === '/typing'
+  return (
+    <>
+      <Routes location={isAuxiliary && hasLiveBackground && background ? background : location}>
+        <Route index element={<RootIndexRoute />} />
+        <Route path="/typing" element={<TypingRoute />} />
+        <Route path="/learn" element={<LearnPage />} />
+        <Route path="/mobile" element={<MobilePage />} />
+        <Route path="/achievements" element={<AchievementsPage />} />
+        <Route path="/gallery" element={<GalleryPage />} />
+        <Route path="/analysis" element={<AnalysisPage />} />
+        <Route path="/error-book" element={<ErrorBook />} />
+        <Route path="/friend-links" element={<FriendLinks />} />
+        <Route path="/*" element={<Navigate to="/" />} />
+      </Routes>
+      {isAuxiliary && hasLiveBackground && location.pathname === '/gallery' && (
+        <NavigationOverlay title="选择词库" size="xl"><GalleryPage embedded /></NavigationOverlay>
+      )}
+      {isAuxiliary && hasLiveBackground && location.pathname === '/analysis' && (
+        <NavigationOverlay title="数据统计" size="xl"><AnalysisPage embedded /></NavigationOverlay>
+      )}
+      {isAuxiliary && hasLiveBackground && location.pathname === '/achievements' && (
+        <NavigationOverlay title="成就" size="xl"><AchievementsPage embedded /></NavigationOverlay>
+      )}
+      {isAuxiliary && hasLiveBackground && location.pathname === '/error-book' && (
+        <NavigationOverlay title="错题本" size="lg"><ErrorBook embedded /></NavigationOverlay>
+      )}
+      {isAuxiliary && hasLiveBackground && location.pathname === '/friend-links' && (
+        <NavigationOverlay title="网站信息" size="md"><FriendLinks embedded /></NavigationOverlay>
+      )}
+    </>
+  )
 }
 
 function Root() {
@@ -154,24 +197,14 @@ function Root() {
     <React.StrictMode>
       <BrowserRouter basename={REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : ''}>
         <Suspense fallback={<Loading />}>
-          <Routes>
-            {isMobile ? (
-              <Route path="/*" element={<Navigate to="/mobile" />} />
-            ) : (
-              <>
-                <Route index element={<RootIndexRoute />} />
-                <Route path="/typing" element={<TypingRoute />} />
-                <Route path="/learn" element={<LearnPage />} />
-                <Route path="/achievements" element={<AchievementsPage />} />
-                <Route path="/gallery" element={<GalleryPage />} />
-                <Route path="/analysis" element={<AnalysisPage />} />
-                <Route path="/error-book" element={<ErrorBook />} />
-                <Route path="/friend-links" element={<FriendLinks />} />
-                <Route path="/*" element={<Navigate to="/" />} />
-              </>
-            )}
-            <Route path="/mobile" element={<MobilePage />} />
-          </Routes>
+          {isMobile ? (
+            <Routes>
+              <Route path="/mobile" element={<MobilePage />} />
+              <Route path="/*" element={<Navigate to="/mobile" replace />} />
+            </Routes>
+          ) : (
+            <DesktopRoutes />
+          )}
         </Suspense>
       </BrowserRouter>
     </React.StrictMode>

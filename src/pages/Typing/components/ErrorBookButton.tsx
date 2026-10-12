@@ -1,6 +1,6 @@
 import { recordErrorBookAction } from '@/utils'
 import { useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import IconBook from '~icons/bxs/book'
 
 const ErrorBookButton = ({
@@ -9,12 +9,13 @@ const ErrorBookButton = ({
   disabled?: boolean
 }) => {
   const navigate = useNavigate()
+  const location = useLocation()
 
   const toErrorBook = useCallback(() => {
     if (disabled) return
-    navigate('/error-book')
+    navigate('/error-book', { state: { backgroundLocation: location } })
     recordErrorBookAction('open')
-  }, [disabled, navigate])
+  }, [disabled, location, navigate])
 
   return (
     <button

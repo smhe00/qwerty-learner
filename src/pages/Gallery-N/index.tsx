@@ -29,7 +29,7 @@ export const GalleryContext = createContext<{
   setState: Updater<GalleryState>
 } | null>(null)
 
-export default function GalleryPage() {
+export default function GalleryPage({ embedded = false }: { embedded?: boolean }) {
   const [galleryState, setGalleryState] = useImmer<GalleryState>(initialGalleryState)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -54,6 +54,7 @@ export default function GalleryPage() {
 
   useHotkeys(isLearnSelection ? 'esc' : 'enter,esc', onBack, {
     preventDefault: true,
+    enabled: !embedded,
   })
 
   useEffect(() => {
@@ -64,25 +65,24 @@ export default function GalleryPage() {
     }
   }, [currentDictInfo, setGalleryState])
 
-  return (
-    <Layout>
+  const content = (
       <GalleryContext.Provider value={{ state: galleryState, setState: setGalleryState }}>
-        <div className="relative mb-auto mt-auto flex w-full flex-1 flex-col overflow-y-auto pl-20">
-          <IconX className="absolute right-20 top-10 mr-2 h-7 w-7 cursor-pointer text-gray-400" onClick={onBack} />
-          <div className="mt-20 flex w-full flex-1 flex-col items-center justify-center overflow-y-auto">
-            <div className="flex h-full flex-col overflow-y-auto">
-              <div className="flex h-20 w-full items-center justify-between pb-6 pr-20">
+        <div className={embedded ? "relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden" : "relative mb-auto mt-auto flex w-full flex-1 flex-col overflow-y-auto pl-20"}>
+          {!embedded && <IconX className="absolute right-20 top-10 mr-2 h-7 w-7 cursor-pointer text-gray-400" onClick={onBack} />}
+          <div className={embedded ? "flex min-h-0 w-full flex-1 flex-col items-center overflow-hidden" : "mt-20 flex w-full flex-1 flex-col items-center justify-center overflow-y-auto"}>
+            <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+              <div className={embedded ? "flex min-h-16 w-full shrink-0 flex-wrap items-center justify-between gap-3 pb-3" : "flex h-20 w-full items-center justify-between pb-6 pr-20"}>
                 <LanguageTabSwitcher />
                 <DictRequest />
               </div>
-              <ScrollArea.Root className="flex-1 overflow-y-auto">
+              <ScrollArea.Root className="min-h-0 flex-1 overflow-y-auto">
                 <ScrollArea.Viewport className="h-full w-full ">
                   <div className="mr-4 flex flex-1 flex-col items-start justify-start gap-14 overflow-y-auto">
                     {groupedByCategoryAndTag.map(([category, groupeByTag]) => (
                       <DictionaryGroup key={category} groupedDictsByTag={groupeByTag} />
                     ))}
                   </div>
-                  <div className="flex items-center justify-center pb-10 pt-[20rem] text-gray-500">
+                  <div className={embedded ? "flex items-center justify-center pb-6 pt-16 text-gray-500" : "flex items-center justify-center pb-10 pt-[20rem] text-gray-500"}>
                     <IconInfo className="mr-1 h-5 w-5" />
                     <p className="mr-5 w-10/12 text-xs">
                       本项目的词典数据来自多个开源项目以及社区贡献者的无偿提供。我们深感感激并尊重每一位贡献者的知识产权。
@@ -102,6 +102,6 @@ export default function GalleryPage() {
           </div>
         </div>
       </GalleryContext.Provider>
-    </Layout>
   )
+  return embedded ? content : <Layout>{content}</Layout>
 }
