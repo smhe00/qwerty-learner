@@ -130,3 +130,67 @@ circles/<circleId>/invites/01.json ... 08.json
 4. A real authenticated gateway integration, explicit feature-flag rollout and deployed Blob atomic-create race tests are outstanding. The separate HTTP adapter must stay detached until these Gates pass.
 5. The 8-rotation bound, lifetime seat limit and current 4 daily updates need UX/product sign-off before wider Circle use.
 6. The complete branch remains isolated from `product/main`, `master` and all frontend assets; never merge or deploy automatically.
+
+---
+
+## Iteration 3 — crash recovery and quarantined activity cleanup (2026-10-12)
+
+**Status: implemented in isolated Circle branch; production disabled.**
+
+### 1. Recovery correction: avoid permanent orphan claims
+
+The earlier per-user `join-claims` and per-event `progress-claims` approach introduced a liveness defect. If the elected writer crashed after creating the claim but before writing the seat/report, all later callers could encounter an orphaned `409 in_progress` state forever.
+
+The current kernel **does not create these claim objects**. Instead, every contender scans one deterministic ascending sequence of immutable seat/report slots. Each slot is read strongly, allocated with atomic `onlyIfNew`, and — on a losing create — reread before scanning any later slot. If another request committed the same account or event, all contenders return the existing result.
+
+Properties under **atomic create-only, linearizable strong-read assumptions**:
+
+- A user never occupies two seats in one Circle; capacity never exceeds 12.
+- Two concurrent reports with the same `eventId` cannot consume two daily slots.
+- A pre-write crash does not reserve a seat/event indefinitely; retry can proceed.
+- A committed write with a lost transport response can be recovered by read-back.
+- The account reverse index still precedes any committed seat, including on retry.
+- No time-based lease takeover, force reset or unsafe deletion of stale reservations is used.
+
+Tests include blocked in-flight writers, repeated concurrent same-account admissions, 30-account admissions, and pre-write failure followed by retry. Earlier historical `*-claims` keys are not read or created by current code. These are development-only records; no production migration is needed because Circle endpoints have never been activated.
+
+**Do not claim this algorithm is proven on the live EdgeOne Blob implementation** until a genuine simultaneous-create/read-after-write test validates the required atomic guarantees.
+
+### 2. Quarantined account activity scrub
+
+New internal operation: `scrubAccountActivities(userId)`. It **must only be called from trusted account lifecycle code** and is not exposed in `http.js`.
+
+It first creates the durable, permanent `accounts-disabled/<userId>.json` fence; then uses pre-commit reverse membership indexes to enumerate all related circles. If the account owns a circle, it creates a `closed.json` tombstone.
+
+It attempts to physically delete these narrowly scoped record categories:
+
+- All progress entries authored by that user.
+- All achievement showcase entries authored by that user.
+- All reactions sent by that user.
+- Reactions sent by other currently or historically seated members **to** that user.
+- Any obsolete progress-claims objects, should historical test records exist.
+
+`createCircleBlobStorage.remove(key)` performs a scoped, retried Blob `delete` followed by a strong-read verification. Failure throws rather than claiming success; rerunning the scrub is idempotent. A false / incomplete result is not disguised as a completed account erasure.
+
+**Explicit limitations:**
+
+- The result always returns `fullyErased:false, followUpRequired:true`. It does **not** erase immutable seating/ownership identities, audit references, reverse indexes or disabled tombstones. Storage still contains identifiers.
+- Even if a scrub pass returns, an earlier in-flight writer may commit an object afterward. A deterministic regression test proves this race and verifies that a **second scrub** clears the residual, while the quarantine fence has continuously prevented read access.
+- Guaranteed *physical* erasure requires a proven writer-quiescence/fencing mechanism plus repeatable convergence/auditing, or a transactional backend. No such guarantee is made by this branch.
+- Existing `deleteAccount` remains unchanged. No Circle action is hooked to live account deletion. Thus user-account deletion lifecycle is **not** production-integrated.
+
+### 3. Verification and deployment discipline
+
+The feature-specific Circle Core Gate executes kernel contract tests and lint without changing any frontend files or EdgeOne Maker deployment. The latest commit's exact GitHub Actions result is authoritative. Previous tests passing does not imply final production readiness.
+
+Release blockers still include:
+
+1. Backend `deleteAccount` orchestration and a **true physical identity erasure** strategy;
+2. A live non-production Blob strong-read / conditional-create concurrency proof;
+3. Trusted achievements evidence (local Backup V4 data is not itself proof);
+4. IP/account rate limiting and gateway integration under an explicitly enabled feature flag;
+5. Privacy policies, minors safeguards and retention boundaries;
+6. Performance budget for multi-key Blob reads;
+7. Genuine UI integration only after coordination with the separate UI team.
+
+**Do not merge to `product/main`, push `master`, or enable Circle HTTP until these gates have independent approval.**
