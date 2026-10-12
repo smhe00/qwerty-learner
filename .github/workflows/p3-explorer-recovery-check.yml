@@ -23,7 +23,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: P3 real Dexie V6 persistence and terminal mutation cases
         env:
-          P3_FUZZ_SEEDS: '5'
+          P3_FUZZ_SEEDS: '20'
           P3_FUZZ_STEPS: '5'
         run: npx playwright test --config=tests/e2e/browser-stateful-fuzz.config.ts --project=chrome
       - name: Upload browser trace on failure
