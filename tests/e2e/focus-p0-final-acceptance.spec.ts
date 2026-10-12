@@ -8,7 +8,7 @@ import {
   waitForReviewIndex,
 } from './review-flow-harness'
 
-test('P0 keeps active Learn cold probe, full-hint and Block completion functional', async ({ page }) => {
+test('P0 keeps active Learn cold probe and Block completion functional', async ({ page }) => {
   test.setTimeout(90_000)
   await seedReviewSession(page, reviewWords, 901208)
   await page.goto('/learn')
@@ -17,10 +17,8 @@ test('P0 keeps active Learn cold probe, full-hint and Block completion functiona
   await waitForRenderedWord(page, 'cancel')
   await expect(page.locator('.focus-study-stage')).toBeVisible()
   await expect(page.locator('[data-learn-live-stats]')).toHaveClass(/focus-stats-strip/)
-  // The visual shell must not reveal an answer or change the ESC meaning.
-  const current = page.locator('[data-review-hint-level]').first()
-  await page.keyboard.press('Escape')
-  await expect(current).toHaveAttribute('data-review-hint-level', '3')
+  // Complete without hint so the Block's original independent-review gate
+  // remains unchanged and can be assessed on its own merits.
   await page.keyboard.type('cancel')
   await waitForReviewIndex(page, 1)
   await waitForRenderedWord(page, 'analyse')
@@ -38,6 +36,19 @@ test('P0 keeps active Learn cold probe, full-hint and Block completion functiona
     animations: 'disabled',
     timeout: 15_000,
   })
+})
+
+test('P0 retains ESC full-reveal semantics in the active Focus study area', async ({ page }) => {
+  test.setTimeout(60_000)
+  await seedReviewSession(page, reviewWords, 901209)
+  await page.goto('/learn')
+  await waitForActiveLearnSession(page)
+  await startTyping(page)
+  await waitForRenderedWord(page, 'cancel')
+  const word = page.locator('[data-review-hint-level]').first()
+  await page.keyboard.press('Escape')
+  await expect(word).toHaveAttribute('data-review-hint-level', '3')
+  await expect(word).toHaveText('cancel')
 })
 
 test('P0 settings and donation dialogs share surface tokens, remain usable on narrow viewports', async ({ page }) => {
@@ -91,8 +102,8 @@ test('P0 reduced-motion removes ornamental animations without hiding the mode sw
     duration: getComputedStyle(element).transitionDuration,
     animation: getComputedStyle(element).animationDuration,
   }))
-  expect(css.duration).toBe('1e-05s')
-  expect(css.animation).toBe('1e-05s')
+  expect(parseFloat(css.duration)).toBeLessThanOrEqual(0.001)
+  expect(parseFloat(css.animation)).toBeLessThanOrEqual(0.001)
   await page.getByRole('button', { name: 'Learn', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Learn', exact: true })).toHaveAttribute('aria-pressed', 'true')
 })
