@@ -1129,7 +1129,11 @@ test('five-word short-spacing tail continues with known practice instead of a fi
     },
     { known },
   )
-  await gotoReviewAppReady(page, '/typing')
+  // Do not enter Typing: the earlier test was literally typing the regular
+  // CET-4 word "explosive" while polling the frozen Learn review cursor.
+  await page.goto('/learn')
+  const initial = await waitForActiveLearnSession(page)
+  expect(initial.reviewRecord.sessionKind).toBe('acquisition')
   await startTyping(page)
   const admitted = new Set<string>()
   let practice = 0
