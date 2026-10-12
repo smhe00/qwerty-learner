@@ -38,7 +38,7 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
             </span>
           </div>
         </button>
-        <nav className="focus-header-nav flex min-w-0 max-w-full flex-1 flex-wrap content-center items-center justify-center gap-x-3 gap-y-2 rounded-2xl px-3 py-2.5 transition-colors duration-200 lg:justify-start">
+        <nav className="focus-header-nav flex min-w-0 max-w-full flex-1 flex-wrap content-center items-center justify-center gap-x-2 gap-y-2 rounded-2xl px-2 py-2.5 transition-colors duration-200 lg:justify-start">
           {children}
         </nav>
         {canUseAccount && (
