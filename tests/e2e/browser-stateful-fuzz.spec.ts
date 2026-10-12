@@ -425,7 +425,18 @@ async function routeCycle(page: Page) {
         (Boolean(state.record) && activeWordVisible)
       )
     })
-    .toBe(true)
+    .toBe(true).catch(async (error) => {
+      const state = await readRouteState(page)
+      const diagnostic = await page.evaluate(() => ({
+        text: document.body.textContent?.slice(-400),
+        daily: localStorage.getItem('qwerty.learn.dailySession.v1.cet4')?.slice(0, 550),
+      }))
+      console.error('P3_ROUTE_CYCLE_DIAGNOSTIC', JSON.stringify({
+        path: page.url(), index: state.record?.index, finished: state.record?.isFinished,
+        ...diagnostic,
+      }))
+      throw error
+    })
 }
 
 type InvariantState = {
@@ -803,13 +814,25 @@ test('single-route Learn cancels stale preparation after leaving the mode', asyn
 test('P3 survives route-cache ahead of IndexedDB and refresh during checkpoint window', async ({
   page,
 }) => {
+  // The checkpoint gate applies to the FIRST USER SPELLING write, not the
+  // preceding Learn preparation. Blocking preparation first deadlocks
+  // '正在准备 Learn…' and never exercises the intended durability race.
   await configureHooks(page, {
-    gates: { 'review-persistence': true },
+    gates: {},
     faults: {},
   })
 
   const id = 940001
   await resetAndSeed(page, id)
+  await page.evaluate(() => {
+    const hooks = (window as Window & {
+      __QWERTY_P3_TEST_HOOKS__?: {
+        gates?: Record<string, boolean>
+      }
+    }).__QWERTY_P3_TEST_HOOKS__
+    if (!hooks?.gates) throw new Error('P3 checkpoint hook missing')
+    hooks.gates['review-persistence'] = true
+  })
   await completeCurrent(page)
 
   const routeAhead = await readRouteState(page)
