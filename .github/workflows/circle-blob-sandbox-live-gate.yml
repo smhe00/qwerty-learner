@@ -1,0 +1,47 @@
+name: Circle Blob Isolated Namespace Live Contract
+
+# Explicit feature-branch-only, one-time on workflow file creation/update.
+# Does NOT deploy Maker, modify master/product-main, or write to qwerty-data.
+on:
+  push:
+    branches:
+      - feature/circle-core-blob
+    paths:
+      - '.github/workflows/circle-blob-sandbox-live-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: circle-blob-sandbox-live-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  isolated-namespace-atomicity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Probe real Blob only in explicitly isolated sandbox namespace
+        env:
+          CIRCLE_BLOB_LIVE_ACK: RUN_CIRCLE_SANDBOX_ONLY
+          CIRCLE_TEST_BLOB_STORE: qwerty-circle-sandbox
+          CIRCLE_TEST_PROJECT_ID: makers-yggquqwubqul
+          CIRCLE_TEST_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+        run: |
+          if [ -z "$CIRCLE_TEST_API_TOKEN" ]; then
+            echo "::error::Configured EdgeOne API token is unavailable; refusing live test"
+            exit 1
+          fi
+          if [ "$CIRCLE_TEST_BLOB_STORE" = "qwerty-data" ] || \
+             [ "$CIRCLE_TEST_BLOB_STORE" != "qwerty-circle-sandbox" ]; then
+            echo "::error::Refusing any writes outside Circle sandbox"
+            exit 1
+          fi
+          node scripts/circle-blob-live-contract.mjs
