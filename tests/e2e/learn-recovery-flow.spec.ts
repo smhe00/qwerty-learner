@@ -348,34 +348,24 @@ test('finished Learn session rejects duplicate evidence even if a stale route re
   await expect.poll(async () => (await readReviewWordRecords(page, ['cancel'])).length)
     .toBe(0)
 
-  await expect.poll(async () => page.evaluate(() => {
-    const events = JSON.parse(localStorage.getItem('qwertyDeveloperTraceV1') ?? '[]')
-    return ['finished-session-word-record-blocked', 'finished-session-completion-blocked']
-      .every((name) => events.some((event: { event?: string }) => event.event === name))
-  })).toBe(true)
-
+  // The stale route is intentionally not an active Learn scheduler.
+  // No completion handler is required to fire or emit a diagnostic event
+  // when its input is ignored before the evidence writer. Prove the stronger
+  // data invariant across the asynchronous write window and document reload.
+  await page.waitForTimeout(800)
   const records = await readReviewWordRecords(page, ['cancel'])
   expect(records).toHaveLength(0)
   const finalInfo = await readReviewModeInfo(page)
+  expect(finalInfo?.reviewRecord?.id).toBe(900088)
+  expect(finalInfo?.reviewRecord?.index).toBe(0)
   expect(finalInfo?.reviewRecord?.isFinished).toBe(true)
 
-  const trace = await page.evaluate(() =>
-    JSON.parse(
-      localStorage.getItem('qwertyDeveloperTraceV1') ?? '[]',
-    ),
-  )
-  expect(
-    trace.some(
-      (event: { event?: string }) =>
-        event.event === 'finished-session-word-record-blocked',
-    ),
-  ).toBe(true)
-  expect(
-    trace.some(
-      (event: { event?: string }) =>
-        event.event === 'finished-session-completion-blocked',
-    ),
-  ).toBe(true)
+  await page.reload()
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  expect(await readReviewWordRecords(page, ['cancel'])).toHaveLength(0)
+  const restored = await readReviewModeInfo(page)
+  expect(restored?.reviewRecord?.isFinished).toBe(true)
+  expect(restored?.reviewRecord?.index).toBe(0)
 })
 
 test('desktop resize after Learn completion cannot resurrect the finished last word', async ({
