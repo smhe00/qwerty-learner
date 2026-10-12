@@ -401,7 +401,7 @@ function TypingAnalysis() {
   )
 }
 
-const Analysis = () => {
+const Analysis = ({ embedded = false }: { embedded?: boolean }) => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [, setIsOpenDarkMode] = useAtom(isOpenDarkModeAtom)
@@ -424,20 +424,19 @@ const Analysis = () => {
     [],
   )
 
-  useHotkeys('enter,esc', onBack, { preventDefault: true })
+  useHotkeys('enter,esc', onBack, { preventDefault: true, enabled: !embedded })
 
-  return (
-    <Layout>
-      <div className="flex w-full flex-1 flex-col overflow-y-auto pl-20 pr-20 pt-20">
-        <IconX
+  const content = (
+      <div className={embedded ? 'flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden px-1 py-1 sm:px-3' : 'flex w-full flex-1 flex-col overflow-y-auto pl-20 pr-20 pt-20'}>
+        {!embedded && <IconX
           className="absolute right-20 top-10 mr-2 h-7 w-7 cursor-pointer text-gray-400"
           onClick={onBack}
           role="button"
           tabIndex={0}
           aria-label="返回"
-        />
-        <ScrollArea.Root className="flex-1 overflow-y-auto">
-          <ScrollArea.Viewport className="h-full w-auto pb-[20rem] [&>div]:!block">
+        />}
+        <ScrollArea.Root className="min-h-0 flex-1 overflow-y-auto">
+          <ScrollArea.Viewport className={embedded ? "h-full w-full pb-6 [&>div]:!block" : "h-full w-auto pb-[20rem] [&>div]:!block"}>
             {returnToLearn ? <LearnAnalysis /> : <TypingAnalysis />}
           </ScrollArea.Viewport>
           <ScrollArea.Scrollbar
@@ -447,8 +446,8 @@ const Analysis = () => {
         </ScrollArea.Root>
         <div className="overflow-y-auto" />
       </div>
-    </Layout>
   )
+  return embedded ? content : <Layout>{content}</Layout>
 }
 
 export default Analysis
