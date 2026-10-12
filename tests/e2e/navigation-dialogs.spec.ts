@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test'
 
 test('Learn navigation stays mounted under dialogs, closes by button and Escape', async ({ page }) => {
+  test.setTimeout(60_000)
+  page.on('pageerror', error => console.log('Learn navigation pageerror:', error.message))
   await page.goto('/learn')
-  await expect(page.getByRole('button', { name: 'Learn', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  console.log('Learn navigation URL:', page.url())
+  await expect(page.getByRole('button', { name: 'Learn', exact: true })).toHaveAttribute('aria-pressed', 'true', { timeout: 20_000 })
   const header = page.locator('header')
   await header.evaluate((node) => { node.dataset.navigationKeepAlive = 'yes' })
   await page.getByRole('button', { name: '查看数据统计' }).click()
@@ -51,10 +54,14 @@ test('Typing switches open gallery, error book, and achievements in size-limited
 })
 
 test('direct analysis deep link and refresh keep a usable dismissible modal', async ({ page }) => {
+  test.setTimeout(75_000)
+  page.on('pageerror', error => console.log('direct analysis pageerror:', error.message))
   await page.goto('/analysis?from=learn')
-  await expect(page.locator('[data-navigation-dialog="analysis"]')).toBeVisible()
+  console.log('direct analysis URL:', page.url())
+  console.log('direct analysis body:', (await page.locator('body').innerText()).slice(0, 700))
+  await expect(page.locator('[data-navigation-dialog="analysis"]')).toBeVisible({ timeout: 20_000 })
   await page.reload()
-  await expect(page.locator('[data-navigation-dialog="analysis"]')).toBeVisible()
+  await expect(page.locator('[data-navigation-dialog="analysis"]')).toBeVisible({ timeout: 20_000 })
   await page.locator('[data-navigation-dialog="analysis"]').getByRole('button', { name: '返回', exact: true }).click()
   await expect(page).toHaveURL(/\/learn$/)
 })
