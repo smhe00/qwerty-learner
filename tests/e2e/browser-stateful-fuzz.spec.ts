@@ -135,8 +135,16 @@ async function resetAndSeed(
   ))).toBe(true)
 
   await page.evaluate(async (seededSession) => {
-    localStorage.clear()
-    sessionStorage.clear()
+    // A running S1 document owns workspace/lock state in storage. Clearing
+    // all keys after mount invalidates that guard behind its back and turns a
+    // route durability test into an unrelated workspace bootstrap race.
+    // Playwright already provides a fresh browser context for each test:
+    // replace only the seeded Learn-specific state.
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('qwerty.learn.dailySession.v1.')) {
+        localStorage.removeItem(key)
+      }
+    }
     localStorage.setItem(
       'developerDiagnosticsConfig',
       JSON.stringify({ isOpen: true }),
@@ -174,6 +182,39 @@ async function resetAndSeed(
       }),
     )
 
+    // Current Learn is driven by a frozen daily cohort. A five-word P3
+    // replay must describe the SAME five review targets, with no synthetic
+    // new-word quota; otherwise the app is free to grow a 32-word daily
+    // session while the test incorrectly assumes a terminal five-word Block.
+    const now = Math.floor(Date.now() / 1000)
+    const local = new Date(now * 1000)
+    const dateKey = [
+      local.getFullYear(),
+      String(local.getMonth() + 1).padStart(2, '0'),
+      String(local.getDate()).padStart(2, '0'),
+    ].join('-')
+    localStorage.setItem(
+      'qwerty.learn.dailySession.v1.cet4',
+      JSON.stringify({
+        version: 1,
+        sessionId: `p3-fuzz:${seededSession.id}:${dateKey}`,
+        dict: 'cet4',
+        dateKey,
+        startedAt: now,
+        status: 'active',
+        dailyNewTarget: 1,
+        plannedNewWords: 0,
+        plannedNewWordNames: [],
+        plannedReviewWords: seededSession.words.map((word: { name: string }) => word.name),
+        carryOverAcquisitionWords: [],
+        blockMilestones: [seededSession.words.length],
+        celebratedMilestones: [],
+        accumulatedActiveSeconds: 0,
+        completedBlockIds: [],
+        blockCount: 0,
+      }),
+    )
+
     // Seed via the *current* production Dexie V6 adapter. A second raw
     // indexedDB.open() racing the app's V6 schema upgrade can wait for an
     // unclosed versionchange transaction and conceal the real lifecycle
@@ -198,6 +239,28 @@ async function resetAndSeed(
         await db.wordRecords.clear()
         await db.reviewWordStates.clear()
         await db.reviewRecords.put(seededSession)
+        // ReviewRecord alone is not eligible review evidence in the current
+        // daily planner. Each frozen review target needs a due FSRS state:
+        // otherwise Learn correctly marks the cohort executionExhausted
+        // before any spelling can begin (the exact CI diagnostic observed).
+        const reviewedAt = Math.floor(Date.now() / 1000) - 86_400
+        await db.reviewWordStates.bulkPut(
+          seededSession.words.map((item: { name: string }) => ({
+            dict: seededSession.dict,
+            word: item.name,
+            createdAt: reviewedAt - 86_400,
+            updatedAt: reviewedAt,
+            lastReviewedAt: reviewedAt,
+            nextReviewAt: reviewedAt + 60,
+            reviewCount: 3,
+            lapseCount: 0,
+            cleanStreak: 2,
+            lastOutcome: 'good',
+            lifecycle: 'active',
+            stateVersion: 5,
+            schedulerState: { kind: 'fsrs6', difficulty: 5, stability: 2 },
+          })),
+        )
       },
     )
   }, session)
@@ -206,7 +269,17 @@ async function resetAndSeed(
   await expect(page).toHaveURL(/\/learn$/)
   await expect(
     page.locator('[data-typing-word]').first(),
-  ).toBeVisible()
+  ).toBeVisible({ timeout: 15_000 }).catch(async (error) => {
+    const diagnostics = await page.evaluate(() => ({
+      route: location.pathname,
+      reviewIndex: JSON.parse(localStorage.getItem('reviewModeInfo') || '{}')?.reviewRecord?.index,
+      dailySession: JSON.parse(localStorage.getItem('qwerty.learn.dailySession.v1.cet4') || 'null')?.sessionId,
+      learnStatus: document.querySelector('[role="status"]')?.textContent?.trim()?.slice(0, 160),
+      s1VisibleText: document.body.textContent?.slice(0, 350),
+    }))
+    console.error('P3_SEED_MOUNT_DIAGNOSTIC', JSON.stringify(diagnostics))
+    throw error
+  })
 }
 
 async function readRouteState(page: Page) {
@@ -374,7 +447,18 @@ async function routeCycle(page: Page) {
         (Boolean(state.record) && activeWordVisible)
       )
     })
-    .toBe(true)
+    .toBe(true).catch(async (error) => {
+      const state = await readRouteState(page)
+      const diagnostic = await page.evaluate(() => ({
+        text: document.body.textContent?.slice(-400),
+        daily: localStorage.getItem('qwerty.learn.dailySession.v1.cet4')?.slice(0, 550),
+      }))
+      console.error('P3_ROUTE_CYCLE_DIAGNOSTIC', JSON.stringify({
+        path: page.url(), index: state.record?.index, finished: state.record?.isFinished,
+        ...diagnostic,
+      }))
+      throw error
+    })
 }
 
 type InvariantState = {
@@ -752,13 +836,25 @@ test('single-route Learn cancels stale preparation after leaving the mode', asyn
 test('P3 survives route-cache ahead of IndexedDB and refresh during checkpoint window', async ({
   page,
 }) => {
+  // The checkpoint gate applies to the FIRST USER SPELLING write, not the
+  // preceding Learn preparation. Blocking preparation first deadlocks
+  // '正在准备 Learn…' and never exercises the intended durability race.
   await configureHooks(page, {
-    gates: { 'review-persistence': true },
+    gates: {},
     faults: {},
   })
 
   const id = 940001
   await resetAndSeed(page, id)
+  await page.evaluate(() => {
+    const hooks = (window as Window & {
+      __QWERTY_P3_TEST_HOOKS__?: {
+        gates?: Record<string, boolean>
+      }
+    }).__QWERTY_P3_TEST_HOOKS__
+    if (!hooks?.gates) throw new Error('P3 checkpoint hook missing')
+    hooks.gates['review-persistence'] = true
+  })
   await completeCurrent(page)
 
   const routeAhead = await readRouteState(page)
