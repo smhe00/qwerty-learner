@@ -1150,7 +1150,24 @@ test('five-word short-spacing tail continues with known practice instead of a fi
         const next = (await readReviewModeInfo(page)).reviewRecord
         return next.index !== previousIndex || next.isFinished
       })
-      .toBe(true)
+      .toBe(true).catch(async (error) => {
+        const current = (await readReviewModeInfo(page)).reviewRecord
+        const ui = await page.evaluate(() => ({
+          root: document.body.textContent?.slice(-550),
+          word: [...document.querySelectorAll('[data-typing-word]')].map(node => ({
+            word: node.getAttribute('data-typing-word'),
+            locked: node.getAttribute('data-typing-locked'),
+            active: node.getAttribute('data-typing-active'),
+            input: node.getAttribute('data-typing-input'),
+          })),
+        }))
+        console.error('LEARN_TAIL_DIAGNOSTIC', JSON.stringify({
+          step, previousIndex, currentWord: current.words[current.index]?.name,
+          index: current.index, finished: current.isFinished,
+          phases: current.acquisitionStates, ...ui,
+        }))
+        throw error
+      })
     const after = (await readReviewModeInfo(page)).reviewRecord
     for (const target of targets) {
       if (after.acquisitionStates[target.name]?.phase === 'complete')
