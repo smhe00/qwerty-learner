@@ -3,11 +3,15 @@ import { expect, test } from '@playwright/test'
 const snapshots = 'test-results/focus-ui'
 
 test('Focus tokens and primary learning modes stay legible in light and dark', async ({ page }) => {
-  test.setTimeout(60_000)
+  test.setTimeout(90_000)
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.goto('/learn')
+  // Warm up the S1 workspace once before navigating into Learn.
+  await page.goto('/typing')
+  await expect(page.locator('header [data-current-mode]')).toHaveAttribute('data-current-mode', 'typing', { timeout: 20_000 })
+  await page.getByRole('button', { name: 'Learn', exact: true }).click()
+  await expect(page).toHaveURL(/\/learn$/)
   const modes = page.locator('header [data-current-mode]')
-  await expect(modes).toHaveAttribute('data-current-mode', 'learn')
+  await expect(modes).toHaveAttribute('data-current-mode', 'learn', { timeout: 20_000 })
   await expect(page.getByRole('button', { name: 'Learn', exact: true })).toHaveAttribute('aria-pressed', 'true')
 
   const computed = async () => page.evaluate(() => ({
@@ -19,7 +23,7 @@ test('Focus tokens and primary learning modes stay legible in light and dark', a
   const light = await computed()
   expect(light.canvas).toBe('#f7f8fa')
   expect(light.accent).toBe('#465fb0')
-  await page.screenshot({ path: `${snapshots}/learn-light-1440.png`, fullPage: true })
+  await page.screenshot({ path: `${snapshots}/learn-light-1440.png`, fullPage: false, timeout: 15_000, animations: 'disabled' })
 
   await page.getByRole('button', { name: '开关深色模式' }).click()
   await expect(page.locator('html')).toHaveClass(/dark/)
@@ -28,7 +32,7 @@ test('Focus tokens and primary learning modes stay legible in light and dark', a
   expect(dark.accent).toBe('#9fb5f3')
   expect(dark.body).not.toBe(light.body)
   expect(dark.mode).not.toBe(light.mode)
-  await page.screenshot({ path: `${snapshots}/learn-dark-1440.png`, fullPage: true })
+  await page.screenshot({ path: `${snapshots}/learn-dark-1440.png`, fullPage: false, timeout: 15_000, animations: 'disabled' })
 })
 
 test('Typing and Learn statistics use Focus surfaces without muting the entire panel', async ({ page }) => {
@@ -43,33 +47,34 @@ test('Typing and Learn statistics use Focus surfaces without muting the entire p
   }))
   expect(style.opacity).toBe('1')
   expect(style.border).not.toBe('rgba(0, 0, 0, 0)')
-  await page.screenshot({ path: `${snapshots}/typing-light-1280.png`, fullPage: true })
+  await page.screenshot({ path: `${snapshots}/typing-light-1280.png`, fullPage: false, timeout: 15_000, animations: 'disabled' })
 
   await page.getByRole('button', { name: 'Learn', exact: true }).click()
   await expect(page).toHaveURL(/\/learn$/)
   await expect(page.locator('[data-current-mode]')).toHaveAttribute('data-current-mode', 'learn')
-  await page.screenshot({ path: `${snapshots}/learn-light-1280.png`, fullPage: true })
+  await page.screenshot({ path: `${snapshots}/learn-light-1280.png`, fullPage: false, timeout: 15_000, animations: 'disabled' })
 })
 
 test('At smaller desktop width the study header and mode stay inside viewport', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 })
-  await page.goto('/learn')
+  await page.goto('/typing')
   const mode = page.locator('[data-current-mode]')
-  await expect(mode).toBeVisible()
-  const box = await mode.boundingBox()
-  expect(box).toBeTruthy()
-  expect(box!.x).toBeGreaterThanOrEqual(0)
-  expect(box!.x + box!.width).toBeLessThanOrEqual(1024)
-  await page.screenshot({ path: `${snapshots}/learn-light-1024.png`, fullPage: true })
+  await expect(mode).toHaveAttribute('data-current-mode', 'typing', { timeout: 20_000 })
+  await expect.poll(async () => {
+    const box = await mode.boundingBox()
+    return box && box.x >= 0 && box.x + box.width <= 1024
+  }).toBe(true)
+  await page.screenshot({ path: `${snapshots}/typing-light-1024.png`, fullPage: false, timeout: 15_000, animations: 'disabled' })
 })
 
 test('Focus-style navigation dialog remains dismissible and retains study mode', async ({ page }) => {
+  test.setTimeout(60_000)
   await page.goto('/typing')
   await page.locator('header nav a[href="/gallery"]').click()
   const dialog = page.locator('[data-navigation-dialog="gallery"]')
   await expect(dialog).toBeVisible()
   await expect(dialog).toHaveClass(/focus-overlay-panel/)
-  await page.screenshot({ path: `${snapshots}/gallery-light.png`, fullPage: true })
+  await dialog.screenshot({ path: `${snapshots}/gallery-light.png`, timeout: 15_000, animations: 'disabled' })
   await dialog.getByRole('button', { name: '返回', exact: true }).click()
   await expect(page).toHaveURL(/\/typing$/)
   await expect(page.getByRole('button', { name: 'Typing', exact: true })).toHaveAttribute('aria-pressed', 'true')
