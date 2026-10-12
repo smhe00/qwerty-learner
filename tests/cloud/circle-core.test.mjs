@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createCircleBlobStorage } from '../../cloud-functions/_shared/circle/blob-storage.js'
 import { createCircleService } from '../../cloud-functions/_shared/circle/service.js'
+import { createCircleHttpHandler } from '../../cloud-functions/_shared/circle/http.js'
 
 const clone = (x) => x === null ? null : JSON.parse(JSON.stringify(x))
 class FakeBlob {
@@ -319,4 +320,70 @@ test('Circle listing always scopes returned keys to social namespace', async () 
   assert.deepEqual(await storage.list('user-circles/aa/'),
     ['user-circles/aa/one.json'])
   assert.equal((await storage.list('user-circles/')).length, 1)
+})
+
+test('HTTP routes are disabled by default and cannot weaken rate limiting', async () => {
+  const { service } = setup()
+  const disabled = createCircleHttpHandler({ service })
+  const request = new Request('https://qwerty.example/api/circle/v1', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + owner,
+      'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Hi' }),
+  })
+  await assert.rejects(disabled.handle(request), { code: 'not_found' })
+  assert.throws(() => createCircleHttpHandler({ service, enabled: true }),
+    /rate limiter/)
+})
+
+test('HTTP contract authenticates before parsing, bounds JSON, never accepts actor ID', async () => {
+  const { service } = setup()
+  let limiterCalls = 0
+  const api = createCircleHttpHandler({
+    service, enabled: true, rateLimit: async () => { limiterCalls++; return true },
+  })
+  const req = (path, method = 'GET', body, token = owner, type = 'application/json') =>
+    new Request('https://qwerty.example/api/circle/v1' + path, {
+      method,
+      headers: { Authorization: token ? 'Bearer ' + token : '',
+        'Content-Type': type },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
+  await assert.rejects(api.handle(req('/', 'POST', { name: 'Hi' }, null)),
+    { code: 'missing_token' })
+  await assert.rejects(api.handle(req('/', 'POST', { name: 'Hi' }, owner, 'text/plain')),
+    { code: 'unsupported_media_type' })
+  await assert.rejects(api.handle(req('/', 'POST', { name: 'x'.repeat(9000) })),
+    { code: 'circle_request_too_large' })
+  const created = await api.handle(req('/', 'POST', { name: 'My Circle', userId: eve }))
+  assert.equal(created.status, 201)
+  assert.equal(created.headers.get('cache-control'), 'no-store')
+  assert.equal(created.headers.get('access-control-allow-origin'), null)
+  const first = await created.json()
+  assert.equal(first.ok, true)
+  const id = first.circleId
+  assert.equal((await (await api.handle(req('/' + id))).json()).ownerUserId, owner)
+  await assert.rejects(api.handle(req('/' + id, 'GET', undefined, eve)),
+    { code: 'not_circle_member' })
+  const joined = await api.handle(req('/join', 'POST', {
+    inviteCode: first.inviteCode, userId: eve,
+  }, alice))
+  assert.equal(joined.status, 200)
+  assert.equal((await (await api.handle(req('/' + id))).json()).members.length, 2)
+  const published = await api.handle(req('/' + id + '/progress/' + today(), 'POST',
+    { completed: true, newWords: 32, eventId: 'published_1234', userId: eve }, alice))
+  assert.equal(published.status, 201)
+  const visible = await (await api.handle(req('/' + id + '/progress/' + today()))).json()
+  assert.equal(visible.progress[0].authorUserId, alice)
+  assert.equal(limiterCalls > 4, true)
+})
+
+test('HTTP limiter denies all Circle traffic when blocked', async () => {
+  const { service } = setup()
+  const api = createCircleHttpHandler({ service, enabled: true, rateLimit: async () => false })
+  const request = new Request('https://qwerty.example/api/circle/v1', {
+    method: 'POST', headers: {
+      'Authorization': 'Bearer ' + owner,
+      'Content-Type': 'application/json',
+    }, body: JSON.stringify({ name: 'My Circle' }),
+  })
+  await assert.rejects(api.handle(request), { code: 'circle_rate_limited' })
 })
