@@ -25,6 +25,7 @@ jobs:
         run: >
           yarn eslint
           src/components/Header/index.tsx
+          src/components/Footer/index.tsx
           src/components/ModeSwitcher/index.tsx
           src/components/NavigationOverlay.tsx
           src/pages/Typing/components/Speed/InfoBox.tsx
