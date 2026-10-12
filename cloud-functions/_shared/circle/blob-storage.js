@@ -71,5 +71,25 @@ export function createCircleBlobStorage(blob) {
     throw error
   }
 
-  return Object.freeze({ read, create, list })
+  async function remove(relative) {
+    if (typeof blob.delete !== 'function') {
+      throw new TypeError('Circle Blob does not support delete')
+    }
+    // Removal is deliberately only available through this isolated adapter.
+    // Callers MUST have committed a durable disable/closed tombstone first.
+    const key = ROOT + relative
+    let lastError
+    for (const ms of RETRY_MS) {
+      if (ms) await pause(ms)
+      try {
+        await blob.delete(key)
+        if (await read(relative) === null) return true
+      } catch (caught) { lastError = caught }
+    }
+    // Failed deletes are retried by trusted operators, never acknowledged as
+    // successful. Tombstones remain and access continues to be blocked.
+    throw lastError || new Error('Circle Blob delete did not become visible')
+  }
+
+  return Object.freeze({ read, create, list, remove })
 }
