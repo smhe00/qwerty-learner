@@ -1175,7 +1175,7 @@ export default function WordComponent({
       <InputHandler updateInput={updateInput} />
       <div
         lang={currentLanguageCategory !== 'code' ? currentLanguageCategory : 'en'}
-        className="flex flex-col items-center justify-center pb-1 pt-4"
+        className="focus-word-content flex flex-col items-center justify-center pb-1 pt-4"
       >
         {['romaji', 'hapin'].includes(currentLanguage) && word.notation && <Notation notation={word.notation} />}
         <div
@@ -1226,7 +1226,7 @@ export default function WordComponent({
             data-review-skip-locked={state.isSkipLocked ? 'true' : 'false'}
             onMouseEnter={() => handleHoverWord(true)}
             onMouseLeave={() => handleHoverWord(false)}
-            className={`flex items-center ${isTextSelectable && 'select-all'} justify-center ${wordState.hasWrong ? style.wrong : ''} ${wordState.isFinished ? style.success : ''}`}
+            className={`focus-lexeme flex items-center ${isTextSelectable && 'select-all'} justify-center ${wordState.hasWrong ? style.wrong : ''} ${wordState.isFinished ? style.success : ''}`}
           >
             {wordState.displayWord.split('').map((t, index) => {
               const hintEmphasis =
@@ -1278,7 +1278,7 @@ export default function WordComponent({
         <ExampleCue word={word} revealed={wordState.isFinished} />
         {isManagedReviewHintFlow() && (
           <div
-            className="mt-3 text-center text-xs text-gray-400 dark:text-gray-500"
+            className="focus-hint-helper mt-3 text-center text-xs"
             data-review-hint-help
           >
             {activeHintLevel === 3
