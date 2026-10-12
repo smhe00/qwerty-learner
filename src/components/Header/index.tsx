@@ -18,10 +18,10 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
   }, [setInfoPanelState])
 
   return (
-    <header className="container z-20 mx-auto w-full px-10 py-6">
-      <div className="flex w-full flex-col items-center justify-between gap-y-3 lg:flex-row lg:gap-x-4">
+    <header className="container z-20 mx-auto w-full px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
+      <div className="flex w-full flex-col items-center gap-y-3 lg:flex-row lg:gap-x-3">
         <button
-          className="flex items-center no-underline hover:no-underline"
+          className="flex shrink-0 items-center no-underline hover:no-underline"
           type="button"
           onClick={openAppreciation}
           aria-label="打开赞赏页面"
@@ -38,7 +38,7 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
             </span>
           </div>
         </button>
-        <nav className="my-card on element flex max-w-full flex-1 flex-wrap content-center items-center justify-end gap-x-3 gap-y-2 rounded-xl bg-white p-4 transition-colors duration-300 dark:bg-gray-800">
+        <nav className="my-card flex min-w-0 max-w-full flex-1 flex-wrap content-center items-center justify-center gap-x-3 gap-y-2 rounded-xl bg-white px-3 py-3 transition-colors duration-300 dark:bg-gray-800 lg:justify-start">
           {children}
         </nav>
         {canUseAccount && (
