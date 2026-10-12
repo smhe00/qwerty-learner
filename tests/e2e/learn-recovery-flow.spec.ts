@@ -341,12 +341,23 @@ test('finished Learn session rejects duplicate evidence even if a stale route re
   await waitForRenderedWord(page, 'cancel')
   await page.keyboard.type('cancel')
 
-  await expect(
-    page.locator('[data-learn-result-screen]'),
-  ).toBeVisible({ timeout: 5_000 })
+  // A stale /typing renderer may still display its cached word. Terminal
+  // protection must reject persistence and completion *before* presenting a
+  // new result. Requiring a Learn result card here accidentally tests an
+  // obsolete presentation side effect rather than the data-integrity guard.
+  await expect.poll(async () => (await readReviewWordRecords(page, ['cancel'])).length)
+    .toBe(0)
+
+  await expect.poll(async () => page.evaluate(() => {
+    const events = JSON.parse(localStorage.getItem('qwertyDeveloperTraceV1') ?? '[]')
+    return ['finished-session-word-record-blocked', 'finished-session-completion-blocked']
+      .every((name) => events.some((event: { event?: string }) => event.event === name))
+  })).toBe(true)
 
   const records = await readReviewWordRecords(page, ['cancel'])
   expect(records).toHaveLength(0)
+  const finalInfo = await readReviewModeInfo(page)
+  expect(finalInfo?.reviewRecord?.isFinished).toBe(true)
 
   const trace = await page.evaluate(() =>
     JSON.parse(
