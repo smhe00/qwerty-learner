@@ -16,6 +16,9 @@ const randomId = () => crypto.randomBytes(9).toString('base64url')
 const metaKey = (id) => `circles/${id}/meta.json`
 const closedKey = (id) => `circles/${id}/closed.json`
 const slotKey = (id, slot) => `circles/${id}/seats/${String(slot).padStart(2, '0')}.json`
+const joinClaimKey = (id, uid) => `circles/${id}/join-claims/${uid}.json`
+const progressClaimKey = (id, uid, day, eventId) =>
+  `circles/${id}/progress-claims/${uid}/${day}/${eventId}.json`
 const revokedKey = (id, uid) => `circles/${id}/revoked/${uid}.json`
 const progressKey = (id, uid, day, slot) =>
   `circles/${id}/progress/${uid}/${day}/${String(slot).padStart(2, '0')}.json`
@@ -155,17 +158,43 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
       fail(403, 'membership_revoked', 'Membership was revoked; rejoin is disabled in V1')
     }
     if (uid === meta.ownerUserId) return { circleId: id, role: 'owner' }
-    // Fixed seat CAS: no read-count-then-append race and no capacity overflow.
-    // Same-user retries encounter their own winning immutable seat.
+    // Critical invariant: two concurrent requests from ONE account must not
+    // win different seats. A per-user immutable claim elects one sole writer.
+    // The other contenders may read the eventual seat but must never allocate.
+    const already = (await peers(id)).find((seat) => seat.userId === uid)
+    if (already) {
+      if (await storage.read(revokedKey(id, uid))) {
+        fail(403, 'membership_revoked', 'Membership was revoked')
+      }
+      return { circleId: id, role: 'member' }
+    }
+    const claim = { userId: uid, nonce: randomId(), startedAt: now() }
+    const leader = await storage.create(joinClaimKey(id, uid), claim)
+    if (!leader) {
+      const completed = (await peers(id)).some((seat) => seat.userId === uid)
+      if (completed) {
+        if (await storage.read(revokedKey(id, uid))) {
+          fail(403, 'membership_revoked', 'Membership was revoked')
+        }
+        return { circleId: id, role: 'member' }
+      }
+      // Fail closed if the elected writer crashed. Recovery needs a separately
+      // proven fencing protocol; no unsafe takeover based on elapsed time.
+      fail(409, 'join_in_progress', 'A join claim is pending; retry after the first request')
+    }
     for (let seat = 1; seat <= MAX_PEERS; seat++) {
       const key = slotKey(id, seat)
       const existing = await storage.read(key)
-      if (existing?.userId === uid) return { circleId: id, role: 'member' }
       if (existing) continue
       const won = await storage.create(key, { userId: uid, joinedAt: now() })
-      if (won) return { circleId: id, role: 'member' }
-      const winner = await storage.read(key)
-      if (winner?.userId === uid) return { circleId: id, role: 'member' }
+      if (!won) continue
+      // If owner closed the circle or membership was revoked concurrently,
+      // do not report admission as active.
+      await circle(id)
+      if (await storage.read(revokedKey(id, uid))) {
+        fail(403, 'membership_revoked', 'Membership was revoked')
+      }
+      return { circleId: id, role: 'member' }
     }
     fail(409, 'circle_full', 'Circle has reached its 12-person lifetime seat limit')
   }
@@ -215,8 +244,34 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
     await membership(meta, uid)
     day = eligibleDay(day)
     const data = validateReport(input)
+    // Elect one publisher for each eventId before claiming a daily slot.
+    // This prevents concurrent identical retries from consuming two slots.
+    const reportKeys = Array.from({ length: PROGRESS_SLOTS }, (_v, i) =>
+      progressKey(id, uid, day, i))
+    const previous = await Promise.all(reportKeys.map((key) => storage.read(key)))
+    const committed = previous.find((item) => item?.eventId === data.eventId)
+    if (committed) {
+      if (committed.completed !== data.completed || committed.newWords !== data.newWords) {
+        fail(409, 'idempotency_conflict', 'Event ID was used with different progress')
+      }
+      return committed
+    }
+    const claimKey = progressClaimKey(id, uid, day, data.eventId)
+    const claim = { eventId: data.eventId, newWords: data.newWords,
+      completed: data.completed, nonce: randomId(), startedAt: now() }
+    if (!(await storage.create(claimKey, claim))) {
+      const existingClaim = await storage.read(claimKey)
+      if (existingClaim?.newWords !== data.newWords ||
+          existingClaim?.completed !== data.completed) {
+        fail(409, 'idempotency_conflict', 'Event ID was used with different progress')
+      }
+      const existingReports = await Promise.all(reportKeys.map((key) => storage.read(key)))
+      const matching = existingReports.find((item) => item?.eventId === data.eventId)
+      if (matching) return matching
+      fail(409, 'progress_in_progress', 'Progress event is being committed')
+    }
     for (let slot = 0; slot < PROGRESS_SLOTS; slot++) {
-      const key = progressKey(id, uid, day, slot)
+      const key = reportKeys[slot]
       const prior = await storage.read(key)
       if (prior?.eventId === data.eventId) {
         if (prior.completed !== data.completed || prior.newWords !== data.newWords) {
@@ -230,7 +285,13 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
         completed: data.completed, newWords: data.newWords,
         createdAt: now(), selfReported: true,
       }
-      if (await storage.create(key, report)) return report
+      if (await storage.create(key, report)) {
+        await circle(id)
+        if (await storage.read(revokedKey(id, uid))) {
+          fail(403, 'membership_revoked', 'Membership was revoked')
+        }
+        return report
+      }
       const winner = await storage.read(key)
       if (winner?.eventId === data.eventId) {
         if (winner.completed !== data.completed || winner.newWords !== data.newWords) {
