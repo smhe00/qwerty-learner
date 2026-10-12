@@ -107,24 +107,20 @@ function DesktopRoutes() {
           Qwerty Plus
         </div>
       )}
-      {isAuxiliary && (
-        <Routes>
-          <Route path="/gallery" element={
-            <NavigationOverlay title="选择词库" size="xl"><GalleryPage embedded /></NavigationOverlay>
-          } />
-          <Route path="/analysis" element={
-            <NavigationOverlay title="数据统计" size="xl"><AnalysisPage embedded /></NavigationOverlay>
-          } />
-          <Route path="/achievements" element={
-            <NavigationOverlay title="成就" size="xl"><AchievementsPage embedded /></NavigationOverlay>
-          } />
-          <Route path="/error-book" element={
-            <NavigationOverlay title="错题本" size="lg"><ErrorBook embedded /></NavigationOverlay>
-          } />
-          <Route path="/friend-links" element={
-            <NavigationOverlay title="网站信息" size="md"><FriendLinks embedded /></NavigationOverlay>
-          } />
-        </Routes>
+      {location.pathname === '/gallery' && (
+        <NavigationOverlay title="选择词库" size="xl"><GalleryPage embedded /></NavigationOverlay>
+      )}
+      {location.pathname === '/analysis' && (
+        <NavigationOverlay title="数据统计" size="xl"><AnalysisPage embedded /></NavigationOverlay>
+      )}
+      {location.pathname === '/achievements' && (
+        <NavigationOverlay title="成就" size="xl"><AchievementsPage embedded /></NavigationOverlay>
+      )}
+      {location.pathname === '/error-book' && (
+        <NavigationOverlay title="错题本" size="lg"><ErrorBook embedded /></NavigationOverlay>
+      )}
+      {location.pathname === '/friend-links' && (
+        <NavigationOverlay title="网站信息" size="md"><FriendLinks embedded /></NavigationOverlay>
       )}
     </>
   )
