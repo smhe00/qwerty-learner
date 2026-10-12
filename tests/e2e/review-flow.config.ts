@@ -8,6 +8,7 @@ export default defineConfig({
     'default-learn-header.spec.ts',
     'focus-ui.spec.ts',
     'focus-p0-final-acceptance.spec.ts',
+    'focus-p1-journey.spec.ts',
     'navigation-dialogs.spec.ts',
     'learn-recovery-flow.spec.ts',
     'learn-acquisition-flow.spec.ts',
