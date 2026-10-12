@@ -195,7 +195,6 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
     })
     return { revoked: true }
   }
-  const leaveCircle = (token, id) => revoke(token, id, undefined, false)
   async function leave(token, id) {
     const uid = await actor(token)
     return revoke(token, id, uid, false)
