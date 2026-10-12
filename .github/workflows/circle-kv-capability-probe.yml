@@ -1,13 +1,19 @@
-name: Circle KV Capability Probe
+name: Circle KV Enrollment Read-Only Probe
 
+# READ ONLY: no KV writes, no deployment, no maker build.
 on:
+  push:
+    branches:
+      - feature/circle-core-blob
+    paths:
+      - '.github/workflows/circle-kv-capability-probe.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  kv-probe:
+  kv-enrollment-discovery:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -15,33 +21,86 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20.18.0'
-      - name: Probe EdgeOne KV API capabilities
+      - name: Install official Makers SDK (read-only API)
+        run: npm install --no-save --ignore-scripts --prefix "$RUNNER_TEMP/circle-kv-sdk" @edgeone/makers-sdk
+      - name: Check project capability and KV API access (never print secrets)
         env:
           EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
           EDGEONE_PROJECT_ID: makers-yggquqwubqul
         run: |
+          cd "$RUNNER_TEMP/circle-kv-sdk"
           node --input-type=module <<'JS'
+          import { Makers } from '@edgeone/makers-sdk'
+          const token = process.env.EDGEONE_API_TOKEN || ''
+          const projectId = process.env.EDGEONE_PROJECT_ID
           const report = {
-            check: 'circle_kv_capability_probe_v2',
-            writesAttempted: false,
-            results: {}
+            check: 'circle_kv_enrollment_readonly_20261013',
+            tokenConfigured: !!token,
+            projectIdConfigured: !!projectId,
+            kvWritesAttempted: false,
+            blobWritesAttempted: false,
+            makerDeploymentTriggered: false,
+            capabilityContract: {
+              kvRuntime: 'edge-functions-only',
+              currentCircleBackend: 'cloud-functions',
+              requiresNamespaceAndProjectBinding: true,
+              note: 'No KV binding variable is provided to GitHub Actions; cannot test KV get/put from this runner.'
+            }
           }
-
+          if (!token) {
+            console.log(JSON.stringify({ ...report, outcome: 'MISSING_TOKEN' }))
+            process.exit(0)
+          }
           try {
-            const pkg = await import('@edgeone/makers-sdk')
-            report.results.sdkLoaded = true
-            report.results.exports = Object.keys(pkg)
-
-            for (const key of Object.keys(pkg)) {
-              if (/kv|store|edge|blob/i.test(key)) {
-                report.results.candidateExports ??= []
-                report.results.candidateExports.push(key)
+            const makers = new Makers({ token })
+            const serviceNames = new Set()
+            let x = makers
+            for (let level = 0; x && level < 3; level++, x = Object.getPrototypeOf(x)) {
+              for (const name of Object.getOwnPropertyNames(x)) {
+                if (/kv|namespace|storage|bind|project|edge|function/i.test(name)) {
+                  serviceNames.add(name)
+                }
               }
             }
+            for (const name of Object.keys(makers)) {
+              if (/kv|namespace|storage|bind|project|edge|function/i.test(name)) {
+                serviceNames.add(name)
+              }
+            }
+            report.sdkMatchingServiceNames = [...serviceNames].sort().slice(0, 60)
+            const project = await makers.projects.get({ projectId })
+            report.projectReadable = true
+            const matchingFields = []
+            const scan = (obj, path = '', depth = 0) => {
+              if (!obj || typeof obj !== 'object' || depth > 3) return
+              for (const [key, value] of Object.entries(obj)) {
+                const p = path ? path + '.' + key : key
+                if (/kv|namespace|binding|storage|edgeFunctions|edge_functions/i.test(key)) {
+                  matchingFields.push({ path: p, kind: value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value,
+                    count: Array.isArray(value) ? value.length : undefined })
+                }
+                if (value && typeof value === 'object' && !Array.isArray(value)) scan(value, p, depth + 1)
+              }
+            }
+            scan(project)
+            report.projectKVRelatedMetadata = matchingFields.slice(0, 60)
+            // Discover whether the SDK publicly exposes a read-only namespace
+            // listing API. Do not guess raw HTTP endpoints or call mutations.
+            const kvLike = Object.entries(makers).filter(([k]) => /kv|namespace/i.test(k))
+            report.kvClientDetected = kvLike.length > 0
+            report.kvClientMethods = kvLike.map(([name, service]) => ({
+              name, methods: [...new Set([
+                ...Object.keys(service || {}),
+                ...Object.getOwnPropertyNames(Object.getPrototypeOf(service || {}))
+              ])].filter(k => !k.startsWith('_') && k !== 'constructor').slice(0, 40)
+            }))
+            report.outcome = matchingFields.length || kvLike.length
+              ? 'METADATA_FOUND_REVIEW_REQUIRED'
+              : 'PROJECT_READABLE_BUT_NO_KV_BINDING_STATUS_EXPOSED'
           } catch (e) {
-            report.results.sdkLoaded = false
-            report.results.error = String(e.message)
+            report.outcome = 'READ_ONLY_PROJECT_QUERY_FAILED'
+            report.errorCategory = e?.name || 'Error'
+            // Do not log raw error text: it may include request/response secrets.
           }
-
           console.log(JSON.stringify(report, null, 2))
           JS
