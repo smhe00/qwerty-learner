@@ -16,6 +16,8 @@ const randomId = () => crypto.randomBytes(9).toString('base64url')
 const metaKey = (id) => `circles/${id}/meta.json`
 const closedKey = (id) => `circles/${id}/closed.json`
 const slotKey = (id, slot) => `circles/${id}/seats/${String(slot).padStart(2, '0')}.json`
+const disabledKey = (uid) => `accounts-disabled/${uid}.json`
+const userCircleKey = (uid, id) => `user-circles/${uid}/${id}.json`
 const joinClaimKey = (id, uid) => `circles/${id}/join-claims/${uid}.json`
 const progressClaimKey = (id, uid, day, eventId) =>
   `circles/${id}/progress-claims/${uid}/${day}/${eventId}.json`
@@ -96,13 +98,20 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
   }
   async function actor(token) {
     const auth = await authenticate(token)
-    return validId(auth?.user?.userId ?? auth?.userId)
+    const uid = validId(auth?.user?.userId ?? auth?.userId)
+    if (await storage.read(disabledKey(uid))) {
+      fail(403, 'circle_account_disabled', 'Circle access is disabled for this account')
+    }
+    return uid
   }
   async function circle(id) {
     id = validCircleId(id)
     const meta = await storage.read(metaKey(id))
     if (!meta || meta.schemaVersion !== 1) fail(404, 'circle_not_found', 'Circle not found')
-    if (await storage.read(closedKey(id))) fail(410, 'circle_closed', 'Circle has closed')
+    if (await storage.read(closedKey(id)) ||
+        await storage.read(disabledKey(meta.ownerUserId))) {
+      fail(410, 'circle_closed', 'Circle has closed')
+    }
     return meta
   }
   async function peers(id) {
@@ -112,9 +121,10 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
   async function members(meta) {
     const enrolled = [{ userId: meta.ownerUserId, role: 'owner' },
       ...(await peers(meta.circleId)).map((p) => ({ userId: p.userId, role: 'member' }))]
-    const revoked = await Promise.all(enrolled.map((m) =>
-      storage.read(revokedKey(meta.circleId, m.userId))))
-    return enrolled.filter((_m, i) => !revoked[i])
+    const inactive = await Promise.all(enrolled.map(async (m) =>
+      (await storage.read(revokedKey(meta.circleId, m.userId))) ||
+      (await storage.read(disabledKey(m.userId)))))
+    return enrolled.filter((_m, i) => !inactive[i])
   }
   async function membership(meta, uid) {
     const current = await members(meta)
@@ -140,6 +150,9 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
         ownerUserId: uid, inviteHash: hash(secret),
         createdAt: now(), maxMembers: MAX_PEERS + 1,
       }
+      // A reverse index is durably committed before membership is made
+      // visible; a failed create can leave a harmless dangling index.
+      await storage.create(userCircleKey(uid, id), { circleId: id, userId: uid })
       if (await storage.create(metaKey(id), meta)) {
         return { circleId: id, name: cleanName, inviteCode: `QC-${id}-${secret}` }
       }
@@ -182,14 +195,18 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
       // proven fencing protocol; no unsafe takeover based on elapsed time.
       fail(409, 'join_in_progress', 'A join claim is pending; retry after the first request')
     }
+    // Index first, seat second: deletion/disable can enumerate every circle
+    // in which this actor could ever have become visible.
+    await storage.create(userCircleKey(uid, id), { circleId: id, userId: uid })
     for (let seat = 1; seat <= MAX_PEERS; seat++) {
       const key = slotKey(id, seat)
       const existing = await storage.read(key)
       if (existing) continue
       const won = await storage.create(key, { userId: uid, joinedAt: now() })
       if (!won) continue
-      // If owner closed the circle or membership was revoked concurrently,
+      // If owner closed the circle or the actor was disabled concurrently,
       // do not report admission as active.
+      await actor(token)
       await circle(id)
       if (await storage.read(revokedKey(id, uid))) {
         fail(403, 'membership_revoked', 'Membership was revoked')
@@ -286,6 +303,7 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
         createdAt: now(), selfReported: true,
       }
       if (await storage.create(key, report)) {
+        await actor(token)
         await circle(id)
         if (await storage.read(revokedKey(id, uid))) {
           fail(403, 'membership_revoked', 'Membership was revoked')
@@ -314,6 +332,8 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
     day = validDay(day)
     const reports = await Promise.all(current.map((m) => memberReport(id, m.userId, day)))
     // Prevent a revoke race from returning newly private data.
+    await actor(token)
+    await circle(id)
     await membership(meta, uid)
     const stillActive = await members(meta)
     return reports.filter((report) =>
@@ -348,6 +368,8 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
     if (!current.some((m) => m.userId === targetId)) fail(404, 'member_not_found', 'Member not found')
     const reactions = await Promise.all(current.map((m) =>
       storage.read(reactionKey(id, m.userId, targetId, day))))
+    await actor(token)
+    await circle(id)
     await membership(meta, uid)
     return { count: reactions.filter(Boolean).length }
   }
@@ -380,10 +402,27 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
     }
     const entries = await Promise.all(ids.map((achievementId) =>
       storage.read(achievementKey(id, targetId, achievementId))))
+    await actor(token)
+    await circle(id)
     await membership(meta, uid)
     return entries.filter(Boolean)
   }
+  /**
+   * Call ONLY from trusted account lifecycle code, never from a public
+   * arbitrary-user endpoint. The durable fence prevents later Circle reads
+   * or writes; physical privacy erasure is a separate, required rollout gate.
+   */
+  async function quarantineAccount(userId) {
+    const uid = validId(userId)
+    await storage.create(disabledKey(uid), { userId: uid, disabledAt: now() })
+    // No reverse index may be missing for a committed membership because it
+    // is always created BEFORE the meta/seat record.
+    const references = await storage.list(`user-circles/${uid}/`)
+    return { disabled: true, circleCount: references.length }
+  }
+
   return Object.freeze({
+    quarantineAccount,
     createCircle, joinCircle, getCircle, leaveCircle: leave,
     removeMember, closeCircle, publishProgress, getProgress,
     reactProgress, getReactions, shareAchievement, getShowcase,
