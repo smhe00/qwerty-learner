@@ -47,7 +47,11 @@ jobs:
       - name: Preserve Focus screenshots before the next Playwright invocation
         run: |
           mkdir -p .focus-evidence
-          find test-results/focus-p1 test-results/focus-ui -name '*.png' -type f -exec cp {} .focus-evidence/ \;
+          echo "Screenshot file locations:"
+          find . -type f -name '*.png' -not -path './node_modules/*' | grep -E '/(focus-p1|focus-ui)/' | head -30 || true
+          find . -type f -name '*.png' -not -path './node_modules/*' | grep -E '/(focus-p1|focus-ui)/' | while read -r file; do cp "$file" .focus-evidence/; done
+          ls -lh .focus-evidence/
+          test -n "$(find .focus-evidence -maxdepth 1 -name '*.png' -print -quit)"
       - name: Mode navigation and dialog regressions
         run: >
           npx playwright test
