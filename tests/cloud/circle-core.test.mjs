@@ -12,7 +12,7 @@ class FakeBlob {
   async get(key, options) {
     assert.equal(options.type, 'json')
     assert.equal(options.consistency, 'strong')
-    if (this.failedReads--) { this.failedReads = Math.max(this.failedReads, 0); throw Error('transient read') }
+    if (this.failedReads > 0) { this.failedReads -= 1; throw Error('transient read') }
     return this.objects.has(key) ? clone(this.objects.get(key)) : null
   }
   async setJSON(key, value, options) {
