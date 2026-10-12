@@ -66,3 +66,19 @@ test('Typing switches open gallery, error book, and achievements in size-limited
   await expect(page).toHaveURL(/\/typing$/)
 })
 
+
+test('dictionary detail opens above the gallery dialog and closes without leaving the gallery', async ({ page }) => {
+  test.setTimeout(60_000)
+  await page.goto('/typing')
+  await page.locator('header nav a[href="/gallery"]').click()
+  const gallery = page.locator('[data-navigation-dialog="gallery"]')
+  await expect(gallery).toBeVisible()
+  const card = gallery.locator('[role="button"][tabindex="0"]').first()
+  await expect(card).toBeVisible({ timeout: 20_000 })
+  await card.click()
+  await expect(page.locator('[role="dialog"][data-state="open"]')).toBeVisible()
+  await page.getByRole('button', { name: 'Close' }).click()
+  await expect(gallery).toBeVisible()
+  await gallery.getByRole('button', { name: '返回', exact: true }).click()
+  await expect(page).toHaveURL(/\/typing$/)
+})
