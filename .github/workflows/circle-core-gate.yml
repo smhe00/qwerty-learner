@@ -8,6 +8,7 @@ on:
       - 'cloud-functions/_shared/circle/**'
       - 'tests/cloud/circle-core.test.mjs'
       - 'docs/CIRCLE_CORE_BLOB_V1.md'
+      - 'scripts/circle-blob-live-contract.mjs'
       - '.github/workflows/circle-core-gate.yml'
   workflow_dispatch:
 
@@ -31,8 +32,10 @@ jobs:
       - run: yarn install --frozen-lockfile
       - name: Run Circle kernel and concurrency tests
         run: node --test tests/cloud/circle-core.test.mjs
+      - name: Static-check live probe (never execute with production credentials)
+        run: node --check scripts/circle-blob-live-contract.mjs
       - name: Lint Circle-only backend and tests
-        run: yarn eslint cloud-functions/_shared/circle tests/cloud/circle-core.test.mjs --ext .js,.mjs
+        run: yarn eslint cloud-functions/_shared/circle tests/cloud/circle-core.test.mjs scripts/circle-blob-live-contract.mjs --ext .js,.mjs
       - name: Verify no frontend changed in branch
         env:
           BASE: ${{ github.event.before }}
