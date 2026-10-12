@@ -5,9 +5,45 @@
 > Deployment status: **NOT EXPOSED / NOT RELEASE READY**
 > Contract owner: Circle backend; separate from Learn, Typing, FSRS, cloud V4, UI.
 
+
+> **CURRENT ARCHITECTURE DECISION (2026-10-13) — supersedes all CAS-based assumptions below.**
+>
+> Circle MUST be implemented and evaluated as an **eventually consistent system with NO assumed atomic write primitive** on either EdgeOne Blob or EdgeOne KV. Neither service may be used as a distributed mutex, exclusive seat allocator, atomic counter, put-if-absent, or CAS commit point.
+>
+> **Evidence boundary:** Blob `onlyIfNew` was observed to overwrite existing keys in external Token-mode live tests; see [live findings](./CIRCLE_BLOB_CAS_LIVE_FINDINGS_20261012.md). KV's atomic/consistency API behavior has **not yet been established by an executed KV write test**. For Circle design we intentionally impose the same *no-CAS, eventual-consistency* contract on KV until an independent live capability test proves otherwise. This is a **design constraint**, not a claim that all EdgeOne KV reads are officially documented as eventual, or that KV lacks atomic primitives in every possible product configuration.
+>
+> **Status:** the existing Blob seat reservation implementation, CAS-dependent invite rotation, per-day slot allocation, quarantine tombstones and the passing mock tests are retained solely as **historical experimental code**. They do not establish production correctness. Circle HTTP remains disabled; no release or merge until a new non-CAS design passes consistency, authorization, deletion and fault-injection gates.
+
+## Storage consistency contract — binding for all future Circle work
+
+| Topic | EdgeOne Blob | EdgeOne KV | Circle requirement |
+| --- | --- | --- | --- |
+| Atomic create / `onlyIfNew` | Failed external Token-mode live probe; not trustworthy for Circle | Not verified; **assume unavailable** | No conditional-create locks or exclusive-seat CAS |
+| Cross-key transactions | No supported guarantee for Circle | No supported guarantee established | Never rely on read-modify-write across keys |
+| Concurrent same-key writes | Can overwrite | Conservatively assume overwrite / last-writer behavior | Use unique event keys; never contend on shared authoritative state |
+| Reads / listing | Provider can offer strong object reads in some paths; no atomic multi-key snapshot assumed | No product-specific guarantee asserted yet | Treat read models and listings as potentially stale or incomplete |
+| State convergence | Requires application-defined merge | Requires application-defined merge | Deterministic replay/merge, retries, reconciliation |
+
+**Allowed model:** immutable, unique-key events (e.g. random 128-bit identifiers plus actor and idempotency key); server-validated authorship; deterministic fold of an eventually complete event set; rebuildable projections in Blob and/or KV. Avoid rewriting an authoritative `members.json`, `seat-05.json`, `likes.json`, or `latest.json` as a concurrency control mechanism. A stable logical idempotency key may deduplicate duplicate events during aggregation, **but cannot prevent physical duplicates at write time without a proven uniqueness primitive**.
+
+**Capacity semantics:** a cap such as 12 active members cannot be synchronously enforced using only eventual reads and non-atomic writes. Mark joins **pending** until a deterministic reconciliation rule (e.g. tie-break by server-issued sortable event fields, with a stable eventId tie-break) selects admitted members. Never show a provisional join as irrevocably accepted. If a *hard, instantly enforceable* 12-member cap is required, introduce an independently verified transactional admission service instead of pretending this storage model guarantees it.
+
+**Security is NOT merely eventual:** membership revocation, account deletion and visibility of minors' data cannot rely solely on a stale projected view. Require server-side authorization using an appropriate reliable identity/revocation control; fail closed during uncertainty, suppress private reads, and use tombstones plus auditable physical cleanup. "Eventual consistency" does not authorize temporary leakage or incomplete erasure.
+
+**Acceptance gates for the replacement kernel:**
+1. Two writers joining at capacity; replay outcome converges and no unauthorised membership is exposed.
+2. Same actor retries an event 100 times; projections count it exactly once.
+3. Out-of-order, delayed, duplicate and partially visible events converge to the same result.
+4. Revocation during an in-flight read and account retirement cannot expose protected records.
+5. Loss of view cache can be recovered from events without lost facts.
+6. Live non-production KV/Blob CRUD and latency checks; **never** infer atomicity from a mock.
+7. No changes to `src/`, `product/main`, `master` or Cloud Sync V4 as part of this isolated work.
+
+---
+
 ## Purpose and boundaries
 
-QWERTY Circle is a **shared social data domain** implemented on the existing EdgeOne Blob store. Personal account/workspace data stays in `accounts/` and `users/` and is never copied into Circle records. Circle keys use `social/v1/` exclusively.
+**Historical V1 implementation:** QWERTY Circle is a **shared social data domain** initially prototyped on the existing EdgeOne Blob store. The binding new design assumes non-atomic, eventually consistent Blob/KV (see decision above). Personal account/workspace data stays in `accounts/` and `users/` and is never copied into Circle records. Circle keys use `social/v1/` exclusively.
 
 New files:
 
@@ -54,7 +90,7 @@ The invite code format is `QC-<12-char Circle ID>-<12-char random secret>`. The 
 
 ## Concurrency contract
 
-1. Blob `setJSON(...,{onlyIfNew:true})` is the sole reservation primitive; **must pass a live Blob atomic-create contract test** before endpoints are exposed.
+1. **HISTORICAL / INVALIDATED:** Blob `setJSON(...,{onlyIfNew:true})` was assumed to reserve seats. **Live external-mode testing disproved this assumption. Do not reuse this as a Circle guarantee.**
 2. Fixed 11 immutable peer seats avoid unsafe "read count, then append" capacity checks.
 3. On lost write responses, a strong read verifies whether the candidate committed or a different writer won; a conflicting record is never overwritten.
 4. Progress per-day is bounded to four create-only slots; duplicates with the same event ID and same content return the existing record.
@@ -242,3 +278,16 @@ Even a successful probe demonstrates only the documented single-process, two-cli
 5. Full privacy compliance, retention policies, performance budgets and UI integration require approval before any merge/release.
 
 **Deployment remains prohibited:** no merge to `product/main`, no `master` update and no EdgeOne Maker build triggered by this work.
+
+---
+
+## Next development direction — replace CAS-dependent Circle kernel
+
+1. Freeze the current experimental `cloud-functions/_shared/circle/service.js` APIs as **not production-correct** until migrated away from seat/CAS allocation; the current 33 mock tests verify an imaginary create-only contract and must be replaced or supplemented with eventual-consistency fault tests.
+2. Define an immutable event schema for `CIRCLE_CREATED`, `JOIN_REQUESTED`, `MEMBER_APPROVED`, `MEMBER_LEFT`, `MEMBER_REMOVED`, `PROGRESS_PUBLISHED`, `ACHIEVEMENT_SHARED`, `CLAP_ADDED` and `CIRCLE_CLOSED`, with schema version, immutable `eventId`, actor identity, logical operation id and deterministic conflict ordering.
+3. Implement a pure, deterministic reducer; membership, progress and reaction projections must be disposable caches, never the source of truth. Verify convergence under reorder, dedup, delayed listing, retries, crashes and partial outages.
+4. Use KV (if CRUD is verified) for **small materialized views / hot reads**, Blob for **immutable archival events and larger snapshots**; neither is an authoritative atomic lock. Choosing KV over Blob is a performance/cost/read-path decision, not a substitute for CAS.
+5. Keep privacy/account revocation behind fail-closed authoritative access checks; never permit an older eventually consistent snapshot to re-grant access. Provide retryable erasure with residual auditing.
+6. Coordinate with separate UI work **only after** the event schema, eventual-consistency invariants and REST contract are reviewed. Do not deploy or merge automatically.
+
+**Engineering decision:** No atomic write is assumed for EdgeOne Blob or EdgeOne KV; Circle correctness must not depend on one. The Blob failure is measured; the equivalent KV constraint is deliberately conservative pending real KV tests.
