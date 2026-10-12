@@ -27,6 +27,10 @@ test('Focus tokens and primary learning modes stay legible in light and dark', a
 
   await page.getByRole('button', { name: '开关深色模式' }).click()
   await expect(page.locator('html')).toHaveClass(/dark/)
+  // Background has a deliberate 180ms theme transition. Wait for its final
+  // color rather than interpreting an intermediate frame as a design defect.
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(16, 23, 34)')
+  await expect(page.getByRole('button', { name: 'Learn', exact: true })).toHaveCSS('background-color', 'rgb(159, 181, 243)')
   const dark = await computed()
   expect(dark.canvas).toBe('#101722')
   expect(dark.accent).toBe('#9fb5f3')
