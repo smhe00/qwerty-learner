@@ -69,4 +69,36 @@ jobs:
             console.error('CIRCLE_CAS_GATE_BLOCKED')
             process.exitCode = 1
           }
+
+          // Compare direct store.set() to setJSON() with the same documented
+          // option. This uses only two tiny writes in the isolated sandbox.
+          const rawKey = 'conditional-diagnostic/' +
+            crypto.randomBytes(16).toString('hex') + '.txt'
+          const direct = {
+            check: 'circle_blob_raw_set_only_if_new',
+            firstSucceeded: false, secondSucceeded: false,
+            firstPreserved: false, cleanupConfirmed: false,
+          }
+          try {
+            await store.set(rawKey, 'FIRST', { onlyIfNew: true })
+            direct.firstSucceeded = true
+            try {
+              await store.set(rawKey, 'SECOND', { onlyIfNew: true })
+              direct.secondSucceeded = true
+            } catch {
+              direct.secondSucceeded = false
+            }
+            direct.firstPreserved =
+              (await store.get(rawKey, { type: 'text', consistency: 'strong' })) === 'FIRST'
+          } finally {
+            await store.delete(rawKey)
+            direct.cleanupConfirmed =
+              (await store.get(rawKey, { type: 'text', consistency: 'strong' })) === null
+            console.log(JSON.stringify(direct))
+          }
+          if (!direct.firstSucceeded || direct.secondSucceeded ||
+              !direct.firstPreserved || !direct.cleanupConfirmed) {
+            console.error('CIRCLE_DIRECT_SET_CAS_BLOCKED')
+            process.exitCode = 1
+          }
           JS
