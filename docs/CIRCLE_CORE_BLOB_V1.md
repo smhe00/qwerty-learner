@@ -95,3 +95,38 @@ yarn eslint cloud-functions/_shared/circle tests/cloud/circle-core.test.mjs --ex
 ```
 
 The isolated Circle CI workflow runs only on `feature/circle-core-blob` and performs no production EdgeOne deploy. This document is an implementation checkpoint, **not** a declaration that all production gates have passed.
+
+---
+
+## Iteration 2 — independent backend continuation (2026-10-12)
+
+This section overrides superseded details above without rewriting the initial implementation record.
+
+### Changes delivered
+
+- **Admission single-writer CAS:** the original fixed-seat implementation did not prove same-account concurrency; two identical callers could interleave and occupy two seats. A per-user immutable `join-claims/<userId>.json` record now elects exactly one seat allocator. Other callers can see an already committed seat or receive a safe `409 join_in_progress` while it commits. No time-based lock stealing is permitted.
+- **Progress event idempotency CAS:** the original four daily slots could absorb duplicate simultaneous event-ID publications. `progress-claims/<userId>/<day>/<eventId>.json` selects one publisher; pending concurrent duplicates receive `409 progress_in_progress`.
+- **Reverse membership index:** `user-circles/<userId>/<circleId>.json` is durably written before any Circle metadata or seat claim becomes active, allowing later account lifecycle processing to enumerate all potentially visible memberships, including interrupted joins.
+- **Account quarantine:** the trusted server-only `quarantineAccount(userId)` creates `accounts-disabled/<userId>.json`; actor methods deny access, other members cannot see that user's progress, and owner quarantine makes the owned circle unavailable. This is a privacy **access fence**, not physical erasure or production account-delete integration.
+- **Invite rotation:** `rotateInvite(token,circleId)` is owner-only, CAS-gated with immutable `invites/01..08.json` revisions. Only the latest secret is accepted for new joins, and existing memberships survive rotation. In-flight joins whose validity check preceded rotation may still complete; strict instant cancellation is **not** claimed.
+- **HTTP transport contract:** `createCircleHttpHandler` in `cloud-functions/_shared/circle/http.js` is **not registered** with the existing EdgeOne gateway. It defaults disabled, requires an injected source-IP/account rate limiter before it can be enabled, validates Bearer tokens and bounded JSON bodies, emits no CORS headers, and exposes no account-quarantine endpoint. The gateway must enforce its own CORS and authentication error handling if integration is later approved.
+- **Tests:** deterministic in-flight join/progress barriers, account quarantine, scoped strong listing, route authentication/size/rate limits and invite rotation concurrency. The exact CI status for the latest revision is authoritative; passing older runs does not prove later revisions.
+
+### New storage keys (all prefixed `social/v1/`)
+
+```text
+accounts-disabled/<userId>.json
+user-circles/<userId>/<circleId>.json
+circles/<circleId>/join-claims/<userId>.json
+circles/<circleId>/progress-claims/<userId>/<YYYY-MM-DD>/<eventId>.json
+circles/<circleId>/invites/01.json ... 08.json
+```
+
+### Mandatory release blockers remain
+
+1. A crashed elected writer can leave a permanent pending claim; automatic recovery needs proven fencing semantics or a transaction-capable substrate. Neither safe rejoin nor safe slot reuse is implemented.
+2. **Physical privacy erasure is not implemented.** Account quarantine only prevents API visibility. Linking it to the actual account deletion transaction, removing retained per-user objects/reaction references, and proving retryable partial cleanup are required for public rollout.
+3. The achievement proof callback is not backed by a trusted server-side Learn evidence source; self-reported progress is not verified for reward purposes.
+4. A real authenticated gateway integration, explicit feature-flag rollout and deployed Blob atomic-create race tests are outstanding. The separate HTTP adapter must stay detached until these Gates pass.
+5. The 8-rotation bound, lifetime seat limit and current 4 daily updates need UX/product sign-off before wider Circle use.
+6. The complete branch remains isolated from `product/main`, `master` and all frontend assets; never merge or deploy automatically.
