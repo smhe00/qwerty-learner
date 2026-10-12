@@ -91,6 +91,7 @@ function DesktopRoutes() {
         <Route index element={<RootIndexRoute />} />
         <Route path="/typing" element={<TypingRoute />} />
         <Route path="/learn" element={<LearnPage />} />
+        <Route path="/mobile" element={<MobilePage />} />
         <Route path="/achievements" element={<AchievementsPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
         <Route path="/analysis" element={<AnalysisPage />} />
@@ -209,14 +210,14 @@ function Root() {
     <React.StrictMode>
       <BrowserRouter basename={REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : ''}>
         <Suspense fallback={<Loading />}>
-          <Routes>
-            {isMobile ? (
-              <Route path="/*" element={<Navigate to="/mobile" />} />
-            ) : (
-              <Route path="/*" element={<DesktopRoutes />} />
-            )}
-            <Route path="/mobile" element={<MobilePage />} />
-          </Routes>
+          {isMobile ? (
+            <Routes>
+              <Route path="/mobile" element={<MobilePage />} />
+              <Route path="/*" element={<Navigate to="/mobile" replace />} />
+            </Routes>
+          ) : (
+            <DesktopRoutes />
+          )}
         </Suspense>
       </BrowserRouter>
     </React.StrictMode>
