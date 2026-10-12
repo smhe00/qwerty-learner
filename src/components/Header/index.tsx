@@ -19,7 +19,7 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
 
   return (
     <header className="container z-20 mx-auto w-full px-4 py-3 sm:px-6 lg:px-8 lg:py-4">
-      <div className="flex w-full flex-col items-center gap-y-3 lg:flex-row lg:gap-x-4">
+      <div className="flex w-full items-center gap-x-8 lg:gap-x-12">
         <button
           className="flex shrink-0 items-center rounded-xl no-underline hover:no-underline"
           type="button"
@@ -27,7 +27,7 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
           aria-label="打开赞赏页面"
           title="赞赏本站维护者"
         >
-          <img src={logo} className="mr-3 h-12 w-12 lg:h-14 lg:w-14" alt="Qwerty Plus Logo" />
+          <img src={logo} className="mr-3 h-12 w-12 lg:h-14 w-14" alt="Qwerty Plus Logo" />
           <div className="flex flex-col items-start leading-none">
             <h1 className="whitespace-nowrap text-2xl font-semibold tracking-tight lg:text-3xl">
               <span className="text-slate-800 dark:text-slate-100">Qwerty</span>
@@ -38,7 +38,7 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
             </span>
           </div>
         </button>
-        <nav className="focus-header-nav flex min-w-0 max-w-full flex-1 flex-wrap content-center items-center justify-center gap-x-2 gap-y-2 rounded-2xl px-2 py-2.5 transition-colors duration-200 lg:justify-start">
+        <nav className="focus-header-nav flex min-w-0 flex-1 flex-wrap content-center items-center justify-end gap-x-2 gap-y-2 rounded-2xl px-2 py-2.5 transition-colors duration-200">
           {children}
         </nav>
         {canUseAccount && (
