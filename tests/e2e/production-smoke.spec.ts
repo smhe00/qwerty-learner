@@ -1,4 +1,14 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+
+/** Wait for the asynchronously admitted Learn session, not its idle hint. */
+function activeLearnSessionIdentity(page: Page) {
+  return page.evaluate(() => {
+    const raw = localStorage.getItem('reviewModeInfo')
+    const record = raw ? JSON.parse(raw)?.reviewRecord : undefined
+    if (!record || record.isFinished === true) return null
+    return record.id ?? record.createTime ?? null
+  })
+}
 
 test('production build resolves lazy navigation and preserves Learn session on reload', async ({
   page,
@@ -32,24 +42,17 @@ test('production build resolves lazy navigation and preserves Learn session on r
   await expect(page).toHaveURL(/\/learn$/)
   await expect(page.getByText('按任意键开始')).toBeVisible()
 
-  const before = await page.evaluate(() => {
-    const raw = localStorage.getItem('reviewModeInfo')
-    return raw ? JSON.parse(raw) : undefined
-  })
+  await expect.poll(() => activeLearnSessionIdentity(page), {
+    timeout: 25_000,
+  }).not.toBeNull()
+  const beforeIdentity = await activeLearnSessionIdentity(page)
 
   await page.reload()
   await expect(page).toHaveURL(/\/learn$/)
-
   await expect(page.getByText('按任意键开始')).toBeVisible()
-
-  const after = await page.evaluate(() => {
-    const raw = localStorage.getItem('reviewModeInfo')
-    return raw ? JSON.parse(raw) : undefined
-  })
-
-  expect(after?.reviewRecord?.id ?? after?.reviewRecord?.createTime).toBe(
-    before?.reviewRecord?.id ?? before?.reviewRecord?.createTime,
-  )
+  await expect.poll(() => activeLearnSessionIdentity(page), {
+    timeout: 25_000,
+  }).toBe(beforeIdentity)
   expect(pageErrors).toEqual([])
 })
 
@@ -161,14 +164,11 @@ test('Typing reload does not resurrect unfinished Learn, while re-entering Learn
   await expect(page).toHaveURL(/\/learn$/)
   await expect(page.getByText('按任意键开始')).toBeVisible()
 
-  const learnSession = await page.evaluate(() => {
-    const raw = localStorage.getItem('reviewModeInfo')
-    return raw ? JSON.parse(raw) : undefined
-  })
-  const sessionIdentity =
-    learnSession?.reviewRecord?.id ??
-    learnSession?.reviewRecord?.createTime
-  expect(sessionIdentity).toBeTruthy()
+  await expect.poll(() => activeLearnSessionIdentity(page), {
+    timeout: 25_000,
+  }).not.toBeNull()
+  const sessionIdentity = await activeLearnSessionIdentity(page)
+  expect(sessionIdentity).not.toBeNull()
 
   await page.getByRole('button', {
     name: 'Typing',
@@ -194,12 +194,7 @@ test('Typing reload does not resurrect unfinished Learn, while re-entering Learn
   }).click()
   await expect(page).toHaveURL(/\/learn$/)
 
-  const restored = await page.evaluate(() => {
-    const raw = localStorage.getItem('reviewModeInfo')
-    return raw ? JSON.parse(raw) : undefined
-  })
-  expect(
-    restored?.reviewRecord?.id ??
-      restored?.reviewRecord?.createTime,
-  ).toBe(sessionIdentity)
+  await expect.poll(() => activeLearnSessionIdentity(page), {
+    timeout: 25_000,
+  }).toBe(sessionIdentity)
 })
