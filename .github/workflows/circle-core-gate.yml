@@ -35,7 +35,9 @@ jobs:
       - name: Static-check live probe (never execute with production credentials)
         run: node --check scripts/circle-blob-live-contract.mjs
       - name: Lint Circle-only backend and tests
-        run: yarn eslint cloud-functions/_shared/circle tests/cloud/circle-core.test.mjs scripts/circle-blob-live-contract.mjs --ext .js,.mjs
+        run: yarn eslint cloud-functions/_shared/circle tests/cloud/circle-core.test.mjs --ext .js,.mjs
+      - name: Lint ES module sandbox probe
+        run: yarn eslint scripts/circle-blob-live-contract.mjs --parser-options '{"sourceType":"module"}'
       - name: Verify no frontend changed in branch
         env:
           BASE: ${{ github.event.before }}
