@@ -89,6 +89,12 @@ body,
   color: var(--focus-text-secondary);
 }
 
+/* Keep the primary Start/Pause action aligned at the end of whichever
+   responsive row it occupies; it must never appear as an orphan left tag. */
+.focus-header-nav [data-typing-primary-controls] {
+  margin-inline-start: auto;
+}
+
 .focus-mode-group {
   background: var(--focus-surface-muted);
   border: 1px solid var(--focus-border);
