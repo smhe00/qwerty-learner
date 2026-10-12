@@ -57,7 +57,7 @@ const Footer: React.FC = () => {
       </InfoPanel>
 
       <footer
-        className="mb-1 mt-4 flex w-full flex-wrap items-center justify-center gap-2.5 text-sm ease-in"
+        className="focus-footer mb-1 mt-3 flex w-full flex-wrap items-center justify-center gap-2.5 text-xs ease-in"
         onClick={(event) => event.currentTarget.blur()}
       >
         <a

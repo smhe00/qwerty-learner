@@ -67,7 +67,7 @@ export default function LearnLiveStats() {
 
   return (
     <div
-      className="my-card flex w-3/5 rounded-xl bg-white p-4 py-10 opacity-50 transition-colors duration-300 dark:bg-gray-800"
+      className="focus-stats-strip"
       data-learn-live-stats
     >
       <InfoBox
@@ -82,6 +82,7 @@ export default function LearnLiveStats() {
             : '0/0'
         }
         description="今日进度"
+        prominent
       />
       <InfoBox
         info={

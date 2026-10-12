@@ -716,8 +716,8 @@ export default function WordPanel() {
       currentAcquisitionState?.phase === 'independent')
 
   return (
-    <div className="container flex h-full w-full flex-col items-center justify-center">
-      <div className="container flex h-24 w-full shrink-0 grow-0 justify-between px-12 pt-10">
+    <div className="focus-study-stage flex h-full w-full flex-col items-center justify-center">
+      <div className="flex h-16 w-full shrink-0 grow-0 justify-between px-6 pt-6 sm:px-12">
         {!isReviewMode && isShowPrevAndNextWord && state.isTyping && (
           <>
             <PrevAndNextWord type="prev" />
@@ -725,7 +725,7 @@ export default function WordPanel() {
           </>
         )}
       </div>
-      <div className="container flex flex-grow flex-col items-center justify-center">
+      <div className="flex min-h-0 w-full flex-grow flex-col items-center justify-center">
         {currentWord && (
           <div className="relative flex w-full justify-center">
             {!state.isTyping && (
@@ -761,7 +761,7 @@ export default function WordPanel() {
               }
             >
               {isReviewMode && (
-                <div className="absolute -right-16 top-0 z-20">
+                <div className="absolute -right-14 top-0 z-20">
                   <button
                     type="button"
                     aria-label="Learn 单词菜单"

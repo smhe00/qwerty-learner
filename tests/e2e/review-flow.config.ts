@@ -6,6 +6,8 @@ export default defineConfig({
     'learn-review-flow.spec.ts',
     'learn-shell-ui.spec.ts',
     'default-learn-header.spec.ts',
+    'focus-ui.spec.ts',
+    'focus-p0-final-acceptance.spec.ts',
     'navigation-dialogs.spec.ts',
     'learn-recovery-flow.spec.ts',
     'learn-acquisition-flow.spec.ts',

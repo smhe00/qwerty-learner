@@ -316,9 +316,9 @@ export default function LearnResultScreen() {
       data-learn-block-pause={!isDailyComplete || undefined}
       data-learn-daily-complete={isDailyComplete || undefined}
     >
-      <div className="absolute inset-0 bg-gray-200/95 backdrop-blur-sm dark:bg-gray-900/90" />
+      <div className="absolute inset-0 backdrop-blur-[3px]" style={{ background: "var(--focus-backdrop)" }} />
       <div className="relative flex min-h-screen items-center justify-center py-8">
-        <div className="my-card relative flex w-[90vw] max-w-3xl flex-col rounded-3xl bg-white px-10 py-10 shadow-lg dark:bg-gray-800">
+        <div className="focus-overlay-panel relative flex w-[min(90vw,720px)] flex-col rounded-[22px] px-6 py-8 sm:px-10 sm:py-10">
           <button
             type="button"
             className="absolute right-7 top-5 disabled:cursor-not-allowed disabled:opacity-30"
@@ -334,7 +334,7 @@ export default function LearnResultScreen() {
             <div className="text-sm text-gray-400">
               {currentDictInfo.name} · Learn
             </div>
-            <h1 className="mt-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
+            <h1 className="mt-3 text-[26px] font-semibold tracking-tight">
               {isDailyComplete ? getLearnExtraRoundNames(settlement?.session ?? null) ? '本次加学完成' : '今日学习完成' : milestoneIndex >= 0
                 ? `阶段 ${milestoneIndex + 1} 完成`
                 : settlement?.session.blockMilestones ? '继续学习' : '阶段完成'}
