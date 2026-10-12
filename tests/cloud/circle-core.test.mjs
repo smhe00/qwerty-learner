@@ -87,9 +87,14 @@ test('Concurrent joins never oversubscribe 12-person lifetime capacity', async (
 test('Concurrent retries of one user occupy one seat', async () => {
   const { service } = setup()
   const circle = await service.createCircle(owner, { name: 'Circle' })
-  const results = await Promise.all(Array.from({ length: 16 }, () =>
+  const results = await Promise.allSettled(Array.from({ length: 16 }, () =>
     service.joinCircle(alice, circle.inviteCode)))
-  assert.equal(results.length, 16)
+  assert.ok(results.some((result) => result.status === 'fulfilled'))
+  // A competing request must not allocate another seat just because its first
+  // read raced the initial leader. A 409 pending response is retriable.
+  assert.ok(results.every((result) => result.status === 'fulfilled' ||
+    result.reason?.code === 'join_in_progress'))
+  await service.joinCircle(alice, circle.inviteCode)
   assert.equal((await service.getCircle(owner, circle.circleId)).members.length, 2)
 })
 
@@ -214,4 +219,64 @@ test('No arbitrary ID/path injection and invalid progress is blocked', async () 
     { completed: true, newWords: 1e9, eventId: 'event_0001' }), {
     code: 'invalid_progress',
   })
+})
+
+test('An admission leader stuck between claim and seat does not duplicate seats', async () => {
+  const { blob, service } = setup()
+  const circle = await service.createCircle(owner, { name: 'Race' })
+  const originalSetJSON = blob.setJSON.bind(blob)
+  let unblock
+  const locked = new Promise((resolve) => { unblock = resolve })
+  let entered
+  const arrived = new Promise((resolve) => { entered = resolve })
+  let intercepted = false
+  blob.setJSON = async (key, value, options) => {
+    if (!intercepted && key.includes('/seats/')) {
+      intercepted = true
+      entered()
+      await locked
+    }
+    return originalSetJSON(key, value, options)
+  }
+  const first = service.joinCircle(alice, circle.inviteCode)
+  await arrived
+  await assert.rejects(service.joinCircle(alice, circle.inviteCode),
+    { code: 'join_in_progress' })
+  unblock()
+  await first
+  await service.joinCircle(alice, circle.inviteCode)
+  const snapshot = await service.getCircle(owner, circle.circleId)
+  assert.deepEqual(snapshot.members.map((m) => m.userId), [owner, alice])
+})
+
+test('Concurrent same-event publications cannot consume multiple daily slots', async () => {
+  const { blob, service } = setup()
+  const circle = await service.createCircle(owner, { name: 'Race' })
+  const originalSetJSON = blob.setJSON.bind(blob)
+  let unblock
+  const gate = new Promise((resolve) => { unblock = resolve })
+  let arrived
+  const entering = new Promise((resolve) => { arrived = resolve })
+  let intercepted = false
+  blob.setJSON = async (key, value, options) => {
+    if (!intercepted && key.includes('/progress/') && key.endsWith('/00.json')) {
+      intercepted = true
+      arrived()
+      await gate
+    }
+    return originalSetJSON(key, value, options)
+  }
+  const first = service.publishProgress(owner, circle.circleId, today(),
+    event('same_event_1234', 10))
+  await entering
+  await assert.rejects(service.publishProgress(owner, circle.circleId, today(),
+    event('same_event_1234', 10)), { code: 'progress_in_progress' })
+  unblock()
+  await first
+  const retry = await service.publishProgress(owner, circle.circleId, today(),
+    event('same_event_1234', 10))
+  assert.equal(retry.newWords, 10)
+  const progress = [...blob.objects.keys()].filter((key) => key.includes('/progress/') &&
+    key.endsWith('.json'))
+  assert.equal(progress.length, 1)
 })
