@@ -1,4 +1,5 @@
 import Loading from './components/Loading'
+import NavigationOverlay, { AUXILIARY_PATHS, getAuxiliaryBackground } from './components/NavigationOverlay'
 import './index.css'
 import { ErrorBook } from './pages/ErrorBook'
 import { FriendLinks } from './pages/FriendLinks'
@@ -11,7 +12,7 @@ import React, { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { isBrowserFuzzFaultEnabled } from '@/dev/browser-fuzz-hooks'
 import 'react-app-polyfill/stable'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 const loadAnalysisPage = () => import('./pages/Analysis')
 const loadGalleryPage = () => import('./pages/Gallery-N')
@@ -72,6 +73,46 @@ function TypingRoute() {
   }, [reviewMode.isReviewMode, setReviewMode])
   if (reviewMode.isReviewMode) return <Loading />
   return <TypingPage />
+}
+
+function DesktopRoutes() {
+  const location = useLocation()
+  const isAuxiliary = AUXILIARY_PATHS.has(location.pathname)
+  const background = getAuxiliaryBackground(location.pathname, location.search, location.state)
+  return (
+    <>
+      <Routes location={isAuxiliary && background ? background : location}>
+        <Route index element={<RootIndexRoute />} />
+        <Route path="/typing" element={<TypingRoute />} />
+        <Route path="/learn" element={<LearnPage />} />
+        <Route path="/achievements" element={<AchievementsPage />} />
+        <Route path="/gallery" element={<GalleryPage />} />
+        <Route path="/analysis" element={<AnalysisPage />} />
+        <Route path="/error-book" element={<ErrorBook />} />
+        <Route path="/friend-links" element={<FriendLinks />} />
+        <Route path="/*" element={<Navigate to="/" />} />
+      </Routes>
+      {isAuxiliary && (
+        <Routes>
+          <Route path="/gallery" element={
+            <NavigationOverlay title="选择词库" size="xl"><GalleryPage embedded /></NavigationOverlay>
+          } />
+          <Route path="/analysis" element={
+            <NavigationOverlay title="数据统计" size="xl"><AnalysisPage embedded /></NavigationOverlay>
+          } />
+          <Route path="/achievements" element={
+            <NavigationOverlay title="成就" size="xl"><AchievementsPage embedded /></NavigationOverlay>
+          } />
+          <Route path="/error-book" element={
+            <NavigationOverlay title="错题本" size="lg"><ErrorBook embedded /></NavigationOverlay>
+          } />
+          <Route path="/friend-links" element={
+            <NavigationOverlay title="网站信息" size="md"><FriendLinks embedded /></NavigationOverlay>
+          } />
+        </Routes>
+      )}
+    </>
+  )
 }
 
 function Root() {
@@ -158,17 +199,7 @@ function Root() {
             {isMobile ? (
               <Route path="/*" element={<Navigate to="/mobile" />} />
             ) : (
-              <>
-                <Route index element={<RootIndexRoute />} />
-                <Route path="/typing" element={<TypingRoute />} />
-                <Route path="/learn" element={<LearnPage />} />
-                <Route path="/achievements" element={<AchievementsPage />} />
-                <Route path="/gallery" element={<GalleryPage />} />
-                <Route path="/analysis" element={<AnalysisPage />} />
-                <Route path="/error-book" element={<ErrorBook />} />
-                <Route path="/friend-links" element={<FriendLinks />} />
-                <Route path="/*" element={<Navigate to="/" />} />
-              </>
+              <Route path="/*" element={<DesktopRoutes />} />
             )}
             <Route path="/mobile" element={<MobilePage />} />
           </Routes>
