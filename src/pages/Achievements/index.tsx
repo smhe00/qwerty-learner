@@ -206,6 +206,13 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
           role="dialog"
           aria-modal="true"
           aria-label={`${opened.achievement.title} 文化卡`}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.stopPropagation()
+              event.preventDefault()
+              setOpenAchievementId(undefined)
+            }
+          }}
           onClick={() => setOpenAchievementId(undefined)}
         >
           <article
