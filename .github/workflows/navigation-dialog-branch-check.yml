@@ -1,0 +1,54 @@
+name: Navigation dialog branch check
+
+on:
+  push:
+    branches:
+      - feature/nav-unified-dialogs-20261012
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Lint navigation and modal pages
+        run: >
+          yarn eslint
+          src/app.tsx
+          src/components/NavigationOverlay.tsx
+          src/pages/Gallery-N/index.tsx
+          src/pages/Analysis/index.tsx
+          src/pages/Achievements/index.tsx
+          src/pages/ErrorBook/index.tsx
+          src/pages/FriendLinks/index.tsx
+          src/pages/Typing/components/AnalysisButton/index.tsx
+          src/pages/Typing/components/AchievementsButton/index.tsx
+          src/pages/Typing/components/ErrorBookButton.tsx
+          src/pages/Typing/components/DictChapterButton/index.tsx
+      - name: Verify production bundle
+        run: yarn build
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test navigation overlay interactions
+        run: >
+          npx playwright test
+          --config=tests/e2e/review-flow.config.ts
+          --project=chrome
+          tests/e2e/navigation-dialogs.spec.ts
+      - name: Regression mode navigation
+        run: >
+          npx playwright test
+          --config=tests/e2e/review-flow.config.ts
+          --project=chrome
+          tests/e2e/learn-shell-ui.spec.ts
+          --grep 'Typing and Learn are explicit top-level modes'
