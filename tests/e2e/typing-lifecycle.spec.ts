@@ -443,8 +443,10 @@ test('background pause preserves Typing counters when the page returns to foregr
   await page.keyboard.press('a')
   await page.keyboard.type(currentWord.slice(0, 2))
 
+  // P0 Focus replaces the legacy my-card wrapper with a semantic stats rail.
+  // Read the actual five metric cells, not unrelated visual card containers.
   const readStats = async () =>
-    page.locator('.my-card').last().locator('div').allTextContents()
+    page.locator('.focus-stats-strip .focus-stat-cell').allTextContents()
 
   await expect
     .poll(async () => readStats())
