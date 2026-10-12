@@ -27,11 +27,11 @@ export default function ExampleCue({
     <div
       data-typing-example="visible"
       data-typing-example-revealed={revealed ? 'true' : 'false'}
-      className="mt-4 max-w-3xl whitespace-pre-wrap px-6 text-center font-sans text-base leading-7"
+      className="focus-example-cue mt-4 max-w-3xl whitespace-pre-wrap px-4 text-center font-sans text-base leading-7 sm:px-6"
     >
       <div
         data-typing-example-en="visible"
-        className="text-gray-500 dark:text-gray-300"
+        className="focus-example-en"
       >
         <span>{parts.before}</span>
         <span
@@ -48,7 +48,7 @@ export default function ExampleCue({
       </div>
       <div
         data-typing-example-cn="visible"
-        className="mt-1 text-gray-500 dark:text-gray-300"
+        className="focus-example-cn mt-1"
       >
         {example.cn}
       </div>
