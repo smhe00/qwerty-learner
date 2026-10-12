@@ -19,7 +19,7 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
 
   return (
     <header className="container z-20 mx-auto w-full px-4 py-3 sm:px-6 lg:px-8 lg:py-4">
-      <div className="flex w-full items-center gap-x-8 lg:gap-x-12">
+      <div className="flex w-full items-center justify-between gap-x-8 lg:gap-x-12">
         <button
           className="flex shrink-0 items-center rounded-xl no-underline hover:no-underline"
           type="button"
@@ -33,12 +33,12 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
               <span className="text-slate-800 dark:text-slate-100">Qwerty</span>
               <span className="ml-1.5 font-medium" style={{ color: "var(--focus-brand-warm)" }}>Plus</span>
             </h1>
-            <span className="mt-2 text-[0.65rem] font-medium tracking-[0.1em] lg:text-xs" style={{ color: "var(--focus-text-muted)" }}>
+            <span className="mt-2 text-[0.65rem} font-medium tracking-[0.1em] lg:text-xs" style={{ color: "var(--focus-text-muted)" }}>
               打字 · 背单词 · 云备份
             </span>
           </div>
         </button>
-        <nav className="focus-header-nav flex min-w-0 flex-1 flex-wrap content-center items-center justify-end gap-x-2 gap-y-2 rounded-2xl px-2 py-2.5 transition-colors duration-200">
+        <nav className="focus-header-nav ml-auto flex w-auto max-w-full flex-wrap content-center items-center justify-end gap-x-2 gap-y-2 rounded-2xl px-2 py-2.5 transition-colors duration-200">
           {children}
         </nav>
         {canUseAccount && (
