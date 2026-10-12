@@ -98,8 +98,8 @@ export default function Setting() {
                         <Tab
                           className={({ selected }) =>
                             classNames(
-                              'flex h-14 w-full cursor-pointer items-center gap-2 rounded-lg px-4 py-2 ring-0 focus:outline-none',
-                              selected && 'bg-gray-200 bg-opacity-50 dark:bg-gray-800',
+                              'flex min-h-12 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-400 sm:px-3',
+                              selected && 'bg-[var(--focus-accent-soft)] text-[var(--focus-text)]',
                             )
                           }
                         >
@@ -109,8 +109,8 @@ export default function Setting() {
                         <Tab
                           className={({ selected }) =>
                             classNames(
-                              'flex h-14 w-full cursor-pointer items-center gap-2 rounded-lg px-4 py-2 ring-0 focus:outline-none',
-                              selected && 'bg-gray-200 bg-opacity-50 dark:bg-gray-800',
+                              'flex min-h-12 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-400 sm:px-3',
+                              selected && 'bg-[var(--focus-accent-soft)] text-[var(--focus-text)]',
                             )
                           }
                         >
@@ -120,8 +120,8 @@ export default function Setting() {
                         <Tab
                           className={({ selected }) =>
                             classNames(
-                              'flex h-14 w-full cursor-pointer items-center gap-2 rounded-lg px-4 py-2 ring-0 focus:outline-none',
-                              selected && 'bg-gray-200 bg-opacity-50 dark:bg-gray-800',
+                              'flex min-h-12 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-400 sm:px-3',
+                              selected && 'bg-[var(--focus-accent-soft)] text-[var(--focus-text)]',
                             )
                           }
                         >
@@ -131,8 +131,8 @@ export default function Setting() {
                         <Tab
                           className={({ selected }) =>
                             classNames(
-                              'flex h-14 w-full cursor-pointer items-center gap-2 rounded-lg px-4 py-2 ring-0 focus:outline-none',
-                              selected && 'bg-gray-200 bg-opacity-50 dark:bg-gray-800',
+                              'flex min-h-12 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-400 sm:px-3',
+                              selected && 'bg-[var(--focus-accent-soft)] text-[var(--focus-text)]',
                             )
                           }
                         >
@@ -142,8 +142,8 @@ export default function Setting() {
                         <Tab
                           className={({ selected }) =>
                             classNames(
-                              'flex h-14 w-full cursor-pointer items-center gap-2 rounded-lg px-4 py-2 ring-0 focus:outline-none',
-                              selected && 'bg-gray-200 bg-opacity-50 dark:bg-gray-800',
+                              'flex min-h-12 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-400 sm:px-3',
+                              selected && 'bg-[var(--focus-accent-soft)] text-[var(--focus-text)]',
                             )
                           }
                         >
@@ -153,8 +153,8 @@ export default function Setting() {
                         <Tab
                           className={({ selected }) =>
                             classNames(
-                              'flex h-14 w-full cursor-pointer items-center gap-2 rounded-lg px-4 py-2 ring-0 focus:outline-none',
-                              selected && 'bg-gray-200 bg-opacity-50 dark:bg-gray-800',
+                              'flex min-h-12 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-400 sm:px-3',
+                              selected && 'bg-[var(--focus-accent-soft)] text-[var(--focus-text)]',
                             )
                           }
                         >
