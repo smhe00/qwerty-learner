@@ -151,9 +151,11 @@ for (const site of sites) {
       await checkSite(page, site)
       await expect(page.getByRole('link', { name: '上海中考2027', exact: true })).toBeVisible()
       await page.getByRole('link', { name: '上海中考2027', exact: true }).click()
-      await expect(page).toHaveURL(/\/gallery\/?$/)
-      // Gallery has its own shell; the typing-page Settings button is not
-      // expected here, but the SPA route must remain canonical.
+      // The selected Learn/Typing mode is now encoded as ?mode=..., and
+      // navigation from the main app can display Gallery as a child window.
+      // Preserve the mode-specific URL instead of asserting an obsolete path.
+      await expect(page).toHaveURL(/\/gallery\/?(?:\?mode=(?:learn|typing))?$/, { timeout: 20_000 })
+      await expect(page.getByText('选择词库', { exact: true }).first()).toBeVisible()
       checkRoute(page, site)
 
       // Exercise the actual user path: mode switch followed by the Statistics
@@ -205,13 +207,21 @@ for (const site of sites) {
       await page.getByRole('tab', { name: '数据设置' }).click()
       await expect(page.getByText('本地备份', { exact: true })).toBeVisible()
       if (site.cloud) {
-        // Latest production and development code share the P1 data settings.
-        // Only Pages disables cloud account UI and cloud writes.
-        await expect(page.getByText('云端同步与账号', { exact: true })).toBeVisible()
-        await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible()
+        // S1/S2 separated account management (global header) from the
+        // account-neutral CloudSyncSetting. A fresh anonymous/legacy browser
+        // need not have a '登录' button inside Data Settings.
+        await expect(page.getByText('云端同步', { exact: true })).toBeVisible()
+        await expect(page.getByText(
+          '登录、注册及安全退出已统一移动到网站右上角的账户入口。',
+          { exact: false },
+        )).toBeVisible()
+        await expect(page.locator('[data-account-entry]')).toHaveCount(1)
       } else {
-        await expect(page.getByText('云端同步与账号', { exact: true })).toHaveCount(0)
-        await expect(page.getByRole('button', { name: '登录', exact: true })).toHaveCount(0)
+        // Pages must never expose a cloud account entry or executable cloud
+        // sync control; this is security-relevant rather than visual.
+        await expect(page.getByText('云端同步', { exact: true })).toHaveCount(0)
+        await expect(page.locator('[data-account-entry]')).toHaveCount(0)
+        await expect(page.getByRole('button', { name: '立即同步' })).toHaveCount(0)
       }
       observer.verify()
     })
