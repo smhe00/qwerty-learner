@@ -94,13 +94,10 @@ test('Concurrent joins never oversubscribe 12-person lifetime capacity', async (
 test('Concurrent retries of one user occupy one seat', async () => {
   const { service } = setup()
   const circle = await service.createCircle(owner, { name: 'Circle' })
-  const results = await Promise.allSettled(Array.from({ length: 16 }, () =>
+  const results = await Promise.all(Array.from({ length: 16 }, () =>
     service.joinCircle(alice, circle.inviteCode)))
-  assert.ok(results.some((result) => result.status === 'fulfilled'))
-  // A competing request must not allocate another seat just because its first
-  // read raced the initial leader. A 409 pending response is retriable.
-  assert.ok(results.every((result) => result.status === 'fulfilled' ||
-    result.reason?.code === 'join_in_progress'))
+  assert.equal(results.length, 16)
+  assert.ok(results.every((result) => result.role === 'member'))
   await service.joinCircle(alice, circle.inviteCode)
   assert.equal((await service.getCircle(owner, circle.circleId)).members.length, 2)
 })
@@ -228,7 +225,7 @@ test('No arbitrary ID/path injection and invalid progress is blocked', async () 
   })
 })
 
-test('An admission leader stuck between claim and seat does not duplicate seats', async () => {
+test('A stalled admission can be safely helped by a concurrent retry', async () => {
   const { blob, service } = setup()
   const circle = await service.createCircle(owner, { name: 'Race' })
   const originalSetJSON = blob.setJSON.bind(blob)
@@ -247,8 +244,8 @@ test('An admission leader stuck between claim and seat does not duplicate seats'
   }
   const first = service.joinCircle(alice, circle.inviteCode)
   await arrived
-  await assert.rejects(service.joinCircle(alice, circle.inviteCode),
-    { code: 'join_in_progress' })
+  const second = await service.joinCircle(alice, circle.inviteCode)
+  assert.equal(second.role, 'member')
   unblock()
   await first
   await service.joinCircle(alice, circle.inviteCode)
@@ -276,8 +273,9 @@ test('Concurrent same-event publications cannot consume multiple daily slots', a
   const first = service.publishProgress(owner, circle.circleId, today(),
     event('same_event_1234', 10))
   await entering
-  await assert.rejects(service.publishProgress(owner, circle.circleId, today(),
-    event('same_event_1234', 10)), { code: 'progress_in_progress' })
+  const second = await service.publishProgress(owner, circle.circleId, today(),
+    event('same_event_1234', 10))
+  assert.equal(second.newWords, 10)
   unblock()
   await first
   const retry = await service.publishProgress(owner, circle.circleId, today(),
@@ -423,4 +421,46 @@ test('Two concurrent invite rotations cannot disclose two live codes', async () 
   await service.joinCircle(alice, last.inviteCode)
   await assert.rejects(service.joinCircle(bob, circle.inviteCode),
     { code: 'invalid_invite' })
+})
+
+test('Abandoned pre-write admission can be retried without seat leakage', async () => {
+  const { blob, service } = setup()
+  const circle = await service.createCircle(owner, { name: 'Recover' })
+  const original = blob.setJSON.bind(blob)
+  let failSeat = true
+  blob.setJSON = async (key, value, options) => {
+    if (failSeat && key.includes('/seats/')) {
+      throw new Error('simulated crash before durable seat')
+    }
+    return original(key, value, options)
+  }
+  await assert.rejects(service.joinCircle(alice, circle.inviteCode),
+    /simulated crash/)
+  assert.equal((await service.getCircle(owner, circle.circleId)).members.length, 1)
+  failSeat = false
+  await service.joinCircle(alice, circle.inviteCode)
+  assert.equal((await service.getCircle(owner, circle.circleId)).members.length, 2)
+  assert.equal([...blob.objects.keys()].filter((k) => k.includes('/join-claims/')).length, 0)
+})
+
+test('Abandoned progress write retries the same event and respects idempotency', async () => {
+  const { blob, service } = setup()
+  const circle = await service.createCircle(owner, { name: 'Recover' })
+  const original = blob.setJSON.bind(blob)
+  let failProgress = true
+  blob.setJSON = async (key, value, options) => {
+    if (failProgress && key.includes('/progress/')) {
+      throw new Error('simulated crash before durable report')
+    }
+    return original(key, value, options)
+  }
+  await assert.rejects(service.publishProgress(owner, circle.circleId, today(),
+    event('recover_event_11', 15)), /simulated crash/)
+  failProgress = false
+  const report = await service.publishProgress(owner, circle.circleId, today(),
+    event('recover_event_11', 15))
+  const retry = await service.publishProgress(owner, circle.circleId, today(),
+    event('recover_event_11', 15))
+  assert.deepEqual(report, retry)
+  assert.equal([...blob.objects.keys()].filter((k) => k.includes('/progress-claims/')).length, 0)
 })
