@@ -1,0 +1,41 @@
+name: Focus UI v1 Closure Branch Gate
+
+# Temporary branch-only verification. Remove before merging into product/main.
+on:
+  push:
+    branches:
+      - fix/focus-ui-v1-closure-20261012
+
+permissions:
+  contents: read
+
+jobs:
+  focus-closure:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Validate dictionary contracts
+        run: node --test tests/dictionary/*.test.mjs
+      - name: Build production bundle
+        run: yarn build
+      - name: Verify route persistence and default dictionary in real Chrome
+        run: npx playwright test --config=tests/e2e/production-smoke.config.ts --project=chrome
+      - name: Verify Learn Focus P0-P2 and session lifecycle in real Chrome
+        run: npx playwright test --config=tests/e2e/review-flow.config.ts --project=chrome
+      - name: Verify Typing and Pause controls in real Chrome
+        run: npx playwright test --config=tests/e2e/typing-lifecycle.config.ts --project=chrome
+      - name: Preserve failure traces for audit
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: focus-ui-v1-closure-traces
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14
