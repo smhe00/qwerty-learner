@@ -166,6 +166,180 @@ body,
   color: var(--focus-accent);
 }
 
+/* P1a: content-led learning stage. Min heights absorb phonetic / hint / cue
+   changes without hiding semantic feedback or changing letter measurement. */
+.focus-word-workspace {
+  padding-inline: clamp(12px, 2.5vw, 32px);
+}
+
+.focus-word-layout {
+  min-height: clamp(195px, 31vh, 285px);
+  align-items: center;
+}
+
+.focus-word-stack {
+  min-width: 0;
+  max-width: 100%;
+  text-align: center;
+}
+
+.focus-word-content {
+  min-height: 135px;
+  max-width: 100%;
+}
+
+.focus-lexeme {
+  max-width: min(92vw, 100%);
+  min-height: 1.3em;
+  /* The input engine supplies its own font sizes/letter widths. */
+  transform-origin: center;
+}
+
+.focus-phonetic {
+  color: var(--focus-text-secondary);
+  line-height: 1.65;
+  letter-spacing: 0.015em;
+}
+
+.focus-translation {
+  color: var(--focus-text);
+  line-height: 1.65;
+}
+
+.focus-example-cue {
+  color: var(--focus-text-secondary);
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.focus-example-en {
+  color: var(--focus-text-secondary);
+}
+
+.focus-example-cn {
+  color: var(--focus-text-muted);
+  font-size: 0.9em;
+}
+
+.focus-hint-helper {
+  max-width: min(84vw, 660px);
+  min-height: 1.25rem;
+  line-height: 1.6;
+  color: var(--focus-text-muted);
+}
+
+.focus-word-more {
+  color: var(--focus-text-muted);
+}
+
+.focus-word-more:hover {
+  color: var(--focus-text);
+  background: var(--focus-surface-muted);
+}
+
+/* P1b: completion is a quiet earned moment; feedback never blocks settling
+   or staged cloud sync and remains fully readable without motion. */
+.focus-result-panel {
+  overflow: clip;
+}
+
+.focus-result-panel[data-milestone='true']::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--focus-accent);
+}
+
+.focus-result-eyebrow {
+  color: var(--focus-text-muted);
+  letter-spacing: 0.08em;
+}
+
+.focus-result-heading {
+  color: var(--focus-text);
+  text-wrap: balance;
+}
+
+.focus-result-description {
+  color: var(--focus-text-secondary);
+  line-height: 1.65;
+}
+
+.focus-result-progress {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--focus-surface-muted);
+}
+
+.focus-result-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--focus-accent);
+  transition: width 240ms ease-out;
+}
+
+.focus-result-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.focus-result-metric {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 14px 6px;
+  border: 1px solid var(--focus-border);
+  border-radius: 12px;
+  text-align: center;
+  background: var(--focus-surface);
+}
+
+.focus-result-metric[data-emphasis='primary'] {
+  border-color: var(--focus-accent);
+  background: var(--focus-accent-soft);
+}
+
+.focus-result-metric-label {
+  color: var(--focus-text-muted);
+  font-size: 12px;
+}
+
+.focus-result-metric-value {
+  color: var(--focus-text-secondary);
+  font-weight: 600;
+  font-size: clamp(16px, 1.5vw, 20px);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.focus-result-metric[data-emphasis='primary'] .focus-result-metric-value {
+  color: var(--focus-accent);
+}
+
+.focus-result-metric-detail {
+  color: var(--focus-text-muted);
+  font-size: 11px;
+}
+
+@media (max-width: 760px) {
+  .focus-result-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .focus-word-layout { min-height: 205px; }
+}
+
+@media (max-width: 450px) {
+  .focus-result-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Avoid 3D and scale motion for those who prefer still feedback. */
+@media (prefers-reduced-motion: reduce) {
+  .focus-result-progress-fill { transition: none; }
+}
+
 .focus-overlay-panel {
   background: var(--focus-surface);
   border: 1px solid var(--focus-border);
