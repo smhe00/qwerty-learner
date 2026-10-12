@@ -594,3 +594,87 @@ test('Adversarial interleaved joins keep every user in at most one seat', async 
     assert.equal(snapshot.members.length, 12)
   }
 })
+
+test('Showcase read fails closed if the target is removed during Blob fetch', async () => {
+  const { blob, service } = setup()
+  const circle = await service.createCircle(owner, { name: 'Privacy race' })
+  await service.joinCircle(alice, circle.inviteCode)
+  await service.shareAchievement(alice, circle.circleId, 'ACH_MASTERED_100')
+  const get = blob.get.bind(blob)
+  let unlock
+  const paused = new Promise((resolve) => { unlock = resolve })
+  let entered
+  const barrier = new Promise((resolve) => { entered = resolve })
+  let blocked = false
+  blob.get = async (key, options) => {
+    if (!blocked && key.includes('/showcase/' + alice + '/')) {
+      blocked = true
+      entered()
+      await paused
+    }
+    return get(key, options)
+  }
+  const pending = service.getShowcase(owner, circle.circleId, alice,
+    ['ACH_MASTERED_100'])
+  await barrier
+  await service.removeMember(owner, circle.circleId, alice)
+  unlock()
+  await assert.rejects(pending, { code: 'member_not_found' })
+})
+
+test('Reaction counts exclude newly revoked authors and fail for revoked target', async () => {
+  const { blob, service } = setup()
+  const circle = await service.createCircle(owner, { name: 'Privacy race' })
+  await service.joinCircle(alice, circle.inviteCode)
+  await service.joinCircle(bob, circle.inviteCode)
+  await service.publishProgress(owner, circle.circleId, today(), event('target_00001'))
+  await service.reactProgress(alice, circle.circleId, owner, today())
+  await service.reactProgress(bob, circle.circleId, owner, today())
+  const get = blob.get.bind(blob)
+  let unlock
+  const paused = new Promise((resolve) => { unlock = resolve })
+  let entered
+  const barrier = new Promise((resolve) => { entered = resolve })
+  let blocked = false
+  blob.get = async (key, options) => {
+    if (!blocked && key.includes('/reactions/' + alice + '/' + owner + '/')) {
+      blocked = true
+      entered()
+      await paused
+    }
+    return get(key, options)
+  }
+  const pending = service.getReactions(owner, circle.circleId, owner, today())
+  await barrier
+  await service.removeMember(owner, circle.circleId, alice)
+  unlock()
+  assert.equal((await pending).count, 1)
+  assert.equal((await service.getReactions(owner, circle.circleId, owner, today())).count, 1)
+})
+
+test('Showcase remains inaccessible when account quarantine races a read', async () => {
+  const { blob, service } = setup()
+  const circle = await service.createCircle(owner, { name: 'Quarantine race' })
+  await service.joinCircle(alice, circle.inviteCode)
+  await service.shareAchievement(alice, circle.circleId, 'ACH_MASTERED_100')
+  const get = blob.get.bind(blob)
+  let unlock
+  const paused = new Promise((resolve) => { unlock = resolve })
+  let entered
+  const barrier = new Promise((resolve) => { entered = resolve })
+  let blocked = false
+  blob.get = async (key, options) => {
+    if (!blocked && key.includes('/showcase/' + alice + '/')) {
+      blocked = true
+      entered()
+      await paused
+    }
+    return get(key, options)
+  }
+  const pending = service.getShowcase(owner, circle.circleId, alice,
+    ['ACH_MASTERED_100'])
+  await barrier
+  await service.quarantineAccount(alice)
+  unlock()
+  await assert.rejects(pending, { code: 'member_not_found' })
+})
