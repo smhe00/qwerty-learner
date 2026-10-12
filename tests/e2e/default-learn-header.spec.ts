@@ -33,12 +33,17 @@ test('brand stays adjacent to mode switch and active button is visually unmistak
   await expect(page).toHaveURL(/\/learn$/)
   const brand = page.locator('header button[aria-label="打开赞赏页面"]')
   const modes = page.locator('header [data-current-mode]')
-  const b = await brand.boundingBox()
-  const m = await modes.boundingBox()
-  expect(b).toBeTruthy()
-  expect(m).toBeTruthy()
-  expect(m!.x - (b!.x + b!.width)).toBeLessThan(50)
-  expect(m!.x).toBeGreaterThanOrEqual(b!.x + b!.width - 2)
+  // The / -> /learn cold-start transition can temporarily remount the
+  // Header while S1 hydrates. Sample real layout only after it is stable.
+  await expect(brand).toBeVisible({ timeout: 20_000 })
+  await expect(modes).toHaveAttribute('data-current-mode', 'learn', { timeout: 20_000 })
+  await expect.poll(async () => {
+    const logo = await brand.boundingBox()
+    const switcher = await modes.boundingBox()
+    return !!logo && !!switcher &&
+      switcher.x - (logo.x + logo.width) < 50 &&
+      switcher.x >= logo.x + logo.width - 2
+  }, { timeout: 20_000 }).toBe(true)
 
   const learn = page.getByRole('button', { name: 'Learn', exact: true })
   const typing = page.getByRole('button', { name: 'Typing', exact: true })
