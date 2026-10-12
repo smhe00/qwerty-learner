@@ -4,9 +4,9 @@ import { ErrorBook } from './pages/ErrorBook'
 import { FriendLinks } from './pages/FriendLinks'
 import MobilePage from './pages/Mobile'
 import TypingPage from './pages/Typing'
-import { isOpenDarkModeAtom } from '@/store'
+import { isOpenDarkModeAtom, reviewModeInfoAtom } from '@/store'
 import 'animate.css'
-import { useAtomValue } from 'jotai'
+import { useAtom, useAtomValue } from 'jotai'
 import React, { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { isBrowserFuzzFaultEnabled } from '@/dev/browser-fuzz-hooks'
 import 'react-app-polyfill/stable'
@@ -59,6 +59,19 @@ const AchievementsPage = lazy(() =>
  * and /learn retains its existing durable-checkpoint recovery semantics. */
 function RootIndexRoute() {
   return <Navigate to="/learn" replace />
+}
+
+/** The explicit Typing URL always means Typing, even if a previous tab
+ * persisted an unfinished Learn record. Preserve the record for later resume. */
+function TypingRoute() {
+  const [reviewMode, setReviewMode] = useAtom(reviewModeInfoAtom)
+  useEffect(() => {
+    if (reviewMode.isReviewMode) {
+      setReviewMode((old) => ({ ...old, isReviewMode: false }))
+    }
+  }, [reviewMode.isReviewMode, setReviewMode])
+  if (reviewMode.isReviewMode) return <Loading />
+  return <TypingPage />
 }
 
 function Root() {
@@ -147,7 +160,7 @@ function Root() {
             ) : (
               <>
                 <Route index element={<RootIndexRoute />} />
-                <Route path="/typing" element={<TypingPage />} />
+                <Route path="/typing" element={<TypingRoute />} />
                 <Route path="/learn" element={<LearnPage />} />
                 <Route path="/achievements" element={<AchievementsPage />} />
                 <Route path="/gallery" element={<GalleryPage />} />
