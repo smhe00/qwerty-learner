@@ -1179,7 +1179,7 @@ export default function WordComponent({
       >
         {['romaji', 'hapin'].includes(currentLanguage) && word.notation && <Notation notation={word.notation} />}
         <div
-          className={`tooltip-info relative w-fit bg-transparent p-0 leading-normal shadow-none dark:bg-transparent ${
+          className={`focus-word-token-frame tooltip-info relative w-fit bg-transparent p-0 leading-normal shadow-none dark:bg-transparent ${
             wordDictationConfig.isOpen ? 'tooltip' : ''
           }`}
           data-tip="按 Tab 快捷键显示完整单词"
