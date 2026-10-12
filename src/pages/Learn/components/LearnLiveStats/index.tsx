@@ -69,6 +69,7 @@ export default function LearnLiveStats() {
     <div
       className="focus-stats-strip"
       data-learn-live-stats
+      data-stat-count={extraProgress ? 6 : 5}
     >
       <InfoBox
         info={formatClock(dailySeconds)}
