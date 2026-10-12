@@ -25,10 +25,10 @@ export default function Translation({ trans, showTrans = true, onMouseEnter, onM
 
   const isTextSelectable = useAtomValue(isTextSelectableAtom)
   return (
-    <div className={`flex items-center justify-center  pb-4 pt-5`} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
+    <div className="focus-translation flex min-h-16 items-center justify-center pb-3 pt-4" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
       <span
         data-typing-translation={showTrans ? 'visible' : 'hidden'}
-        className={`max-w-4xl text-center font-sans transition-colors duration-300 dark:text-white dark:text-opacity-80 ${
+        className={`max-w-4xl text-center font-sans transition-colors duration-200 ${
           isShowTransRead && 'pl-8'
         } ${isTextSelectable && 'select-text'}`}
         style={{ fontSize: fontSizeConfig.translateFont.toString() + 'px' }}
