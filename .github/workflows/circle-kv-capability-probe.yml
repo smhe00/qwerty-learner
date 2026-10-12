@@ -22,33 +22,26 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           const report = {
-            check: 'circle_kv_capability_probe',
+            check: 'circle_kv_capability_probe_v2',
             writesAttempted: false,
             results: {}
           }
 
-          const token = process.env.EDGEONE_API_TOKEN
-          const projectId = process.env.EDGEONE_PROJECT_ID
-          if (!token) {
-            console.log(JSON.stringify({ ...report, outcome: 'missing_token' }))
-            process.exit(0)
-          }
-
-          // This first probe intentionally avoids guessing a KV SDK API.
-          // It records available EdgeOne-related packages and leaves actual
-          // KV operations for the correct SDK after API discovery.
           try {
             const pkg = await import('@edgeone/makers-sdk')
-            report.results.makersSdkLoaded = true
-            report.results.exports = Object.keys(pkg).slice(0, 50)
+            report.results.sdkLoaded = true
+            report.results.exports = Object.keys(pkg)
+
+            for (const key of Object.keys(pkg)) {
+              if (/kv|store|edge|blob/i.test(key)) {
+                report.results.candidateExports ??= []
+                report.results.candidateExports.push(key)
+              }
+            }
           } catch (e) {
-            report.results.makersSdkLoaded = false
-            report.results.error = String(e.message).slice(0, 200)
+            report.results.sdkLoaded = false
+            report.results.error = String(e.message)
           }
 
-          console.log(JSON.stringify({
-            ...report,
-            projectIdConfigured: Boolean(projectId),
-            next: 'identify KV SDK/API before mutation tests'
-          }))
+          console.log(JSON.stringify(report, null, 2))
           JS
