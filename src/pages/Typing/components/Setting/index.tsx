@@ -70,11 +70,11 @@ export default function Setting() {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-black bg-opacity-25" />
+            <div className="fixed inset-0" style={{ background: "var(--focus-backdrop)" }} />
           </Transition.Child>
 
           <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4 text-center">
+            <div className="flex min-h-full items-center justify-center p-3 text-center sm:p-5">
               <Transition.Child
                 as={Fragment}
                 enter="ease-out duration-300"
@@ -84,17 +84,17 @@ export default function Setting() {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="flex w-200 flex-col overflow-hidden rounded-2xl bg-white p-0 shadow-xl dark:bg-gray-800">
-                  <div className="relative flex h-22 items-end justify-between rounded-t-lg border-b border-neutral-100 bg-stone-50 px-6 py-3 dark:border-neutral-700 dark:bg-gray-900">
-                    <span className="text-3xl font-bold text-gray-600">设置</span>
-                    <button type="button" onClick={() => setIsOpen(false)} title="关闭对话框">
-                      <IconX className="absolute right-7 top-5 cursor-pointer text-gray-400" />
+                <Dialog.Panel className="focus-overlay-panel flex max-h-[88vh] w-[min(94vw,800px)] min-w-0 flex-col overflow-hidden rounded-[20px] p-0">
+                  <div className="focus-overlay-header relative flex min-h-16 shrink-0 items-center justify-between px-4 py-3 sm:px-6">
+                    <span className="text-xl font-semibold tracking-tight">设置</span>
+                    <button type="button" onClick={() => setIsOpen(false)} aria-label="关闭设置" title="关闭对话框" className="rounded-lg p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400">
+                      <IconX className="h-5 w-5 text-gray-500 dark:text-slate-300" />
                     </button>
                   </div>
 
                   <Tab.Group vertical selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-                    <div className="flex h-120 w-full ">
-                      <Tab.List className="flex h-full w-52 flex-col items-start space-y-3  border-r border-neutral-100 bg-stone-50 px-6 py-3 dark:border-transparent dark:bg-gray-900">
+                    <div className="flex h-[min(70vh,520px)] min-h-0 w-full">
+                      <Tab.List className="flex h-full w-40 shrink-0 flex-col items-start space-y-1 overflow-y-auto border-r border-[var(--focus-border)] bg-[var(--focus-surface-muted)] px-2 py-3 sm:w-52 sm:px-3">
                         <Tab
                           className={({ selected }) =>
                             classNames(
@@ -163,7 +163,7 @@ export default function Setting() {
                         </Tab>
                       </Tab.List>
 
-                      <Tab.Panels className="h-full w-full flex-1">
+                      <Tab.Panels className="h-full min-w-0 flex-1 overflow-y-auto">
                         <Tab.Panel className="flex h-full w-full  focus:outline-none">
                           <SoundSetting />
                         </Tab.Panel>
