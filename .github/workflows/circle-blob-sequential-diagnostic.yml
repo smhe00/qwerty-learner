@@ -1,0 +1,72 @@
+name: Circle Blob Sequential onlyIfNew Diagnostic
+
+on:
+  push:
+    branches:
+      - feature/circle-core-blob
+    paths:
+      - '.github/workflows/circle-blob-sequential-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: circle-blob-sequential-diagnostic-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sequential-conditional-create:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Diagnose sequential onlyIfNew in isolated Circle sandbox
+        env:
+          EDGEONE_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+        run: |
+          node --input-type=module <<'JS'
+          import crypto from 'node:crypto'
+          import { getStore } from '@edgeone/pages-blob'
+          const name = 'qwerty-circle-sandbox'
+          const projectId = 'makers-yggquqwubqul'
+          const token = process.env.EDGEONE_TOKEN
+          if (!token) throw new Error('Missing token; no Blob operations attempted')
+          const store = getStore({ name, projectId, token, consistency: 'strong' })
+          const key = 'conditional-diagnostic/' + crypto.randomBytes(16).toString('hex') + '.json'
+          const first = { diagnostic: true, candidate: 'FIRST' }
+          const second = { diagnostic: true, candidate: 'SECOND' }
+          const result = {
+            check: 'circle_blob_sequential_only_if_new',
+            storeCategory: 'isolated-sandbox',
+            firstSucceeded: false, secondSucceeded: false,
+            firstPreserved: false, cleanupConfirmed: false,
+          }
+          try {
+            await store.setJSON(key, first, { onlyIfNew: true })
+            result.firstSucceeded = true
+            try {
+              await store.setJSON(key, second, { onlyIfNew: true })
+              result.secondSucceeded = true
+            } catch {
+              result.secondSucceeded = false
+            }
+            const final = await store.get(key, { type: 'json', consistency: 'strong' })
+            result.firstPreserved = JSON.stringify(final) === JSON.stringify(first)
+          } finally {
+            await store.delete(key)
+            result.cleanupConfirmed =
+              (await store.get(key, { type: 'json', consistency: 'strong' })) === null
+            console.log(JSON.stringify(result))
+          }
+          if (!result.firstSucceeded || result.secondSucceeded ||
+              !result.firstPreserved || !result.cleanupConfirmed) {
+            console.error('CIRCLE_CAS_GATE_BLOCKED')
+            process.exitCode = 1
+          }
+          JS
