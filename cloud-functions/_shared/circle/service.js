@@ -247,13 +247,15 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
   async function getCircle(token, id) {
     const uid = await actor(token)
     const meta = await circle(id)
-    const current = await membership(meta, uid)
+    await membership(meta, uid)
     await actor(token)
     await circle(id)
-    await membership(meta, uid)
+    // Rebuild the response after authorization revalidation so a member
+    // removed during the read is not accidentally disclosed via stale data.
+    const stillActive = await membership(meta, uid)
     return {
       circleId: meta.circleId, name: meta.name, maxMembers: meta.maxMembers,
-      ownerUserId: meta.ownerUserId, members: current,
+      ownerUserId: meta.ownerUserId, members: stillActive,
     }
   }
   async function revoke(token, id, targetId, remove) {
