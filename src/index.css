@@ -187,6 +187,16 @@ body,
   color: var(--focus-text-muted);
 }
 
+/* Alpha placeholders are not actions: keep GitHub, donation and build
+   identity discoverable without advertising unavailable channels. */
+.focus-footer {
+  color: var(--focus-text-muted);
+}
+
+.focus-footer button:disabled {
+  display: none;
+}
+
 .focus-surface {
   background: var(--focus-surface);
   border: 1px solid var(--focus-border);
