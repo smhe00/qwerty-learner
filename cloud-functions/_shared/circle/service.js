@@ -248,6 +248,9 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
     const uid = await actor(token)
     const meta = await circle(id)
     const current = await membership(meta, uid)
+    await actor(token)
+    await circle(id)
+    await membership(meta, uid)
     return {
       circleId: meta.circleId, name: meta.name, maxMembers: meta.maxMembers,
       ownerUserId: meta.ownerUserId, members: current,
@@ -362,8 +365,13 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
     }
     const key = reactionKey(id, uid, targetId, day)
     const existing = await storage.read(key)
-    if (existing) return existing
-    if (await storage.create(key, reaction)) return reaction
+    if (!existing) await storage.create(key, reaction)
+    await actor(token)
+    await circle(id)
+    const fresh = await membership(meta, uid)
+    if (!fresh.some((m) => m.userId === targetId)) {
+      fail(404, 'progress_not_found', 'No visible progress for this member')
+    }
     return storage.read(key)
   }
   async function getReactions(token, id, targetId, day) {
@@ -377,8 +385,12 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
       storage.read(reactionKey(id, m.userId, targetId, day))))
     await actor(token)
     await circle(id)
-    await membership(meta, uid)
-    return { count: reactions.filter(Boolean).length }
+    const fresh = await membership(meta, uid)
+    if (!fresh.some((m) => m.userId === targetId)) {
+      fail(404, 'member_not_found', 'Member not found')
+    }
+    return { count: reactions.filter((reaction) => reaction &&
+      fresh.some((m) => m.userId === reaction.authorUserId)).length }
   }
   async function shareAchievement(token, id, achievementId) {
     const uid = await actor(token)
@@ -392,9 +404,13 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
     }
     const key = achievementKey(id, uid, achievementId)
     const existing = await storage.read(key)
-    if (existing) return existing
-    const shared = { authorUserId: uid, achievementId, sharedAt: now(), verified: true }
-    if (await storage.create(key, shared)) return shared
+    if (!existing) {
+      const shared = { authorUserId: uid, achievementId, sharedAt: now(), verified: true }
+      await storage.create(key, shared)
+    }
+    await actor(token)
+    await circle(id)
+    await membership(meta, uid)
     return storage.read(key)
   }
   async function getShowcase(token, id, targetId, ids = []) {
@@ -411,7 +427,10 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
       storage.read(achievementKey(id, targetId, achievementId))))
     await actor(token)
     await circle(id)
-    await membership(meta, uid)
+    const fresh = await membership(meta, uid)
+    if (!fresh.some((m) => m.userId === targetId)) {
+      fail(404, 'member_not_found', 'Member not found')
+    }
     return entries.filter(Boolean)
   }
   /**
