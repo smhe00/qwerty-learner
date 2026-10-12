@@ -1,6 +1,6 @@
 # Qwerty Plus · Focus — UI 架构设计规范 v1.0
 
-> 状态：**Approved design direction / P0 implementation started** · 2026-10-12
+> 状态：**Focus UI v1 P0/P1/P2 已实现；工程专项验收通过** · 2026-10-12。收口与剩余线上限制参见 [Focus-UI-v1-Closure-Review.md](./Focus-UI-v1-Closure-Review.md)。
 >
 > 基准代码：`product/main @ 79a1d11da1cb02b7d4d0f70ee8f9445d6f423f80`（PR #7 统一弹窗之后）
 >
