@@ -79,6 +79,9 @@ export function createCircleHttpHandler({ service, enabled = false, rateLimit } 
       const body = await input(request)
       return send(await service.removeMember(token, id, body.memberUserId))
     }
+    if (rest.length === 2 && rest[1] === 'rotate-invite' && method === 'POST') {
+      return send(await service.rotateInvite(token, id))
+    }
     if (rest.length === 2 && rest[1] === 'close' && method === 'POST') {
       return send(await service.closeCircle(token, id))
     }
