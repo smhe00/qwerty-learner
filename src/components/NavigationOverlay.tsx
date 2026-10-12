@@ -52,9 +52,10 @@ type NavigationOverlayProps = {
 }
 
 const sizes = {
-  md: 'max-w-2xl',
-  lg: 'max-w-5xl',
-  xl: 'max-w-7xl',
+  // Window dimensions follow the information load rather than the viewport.
+  md: 'h-auto max-h-[78vh] max-w-2xl',
+  lg: 'h-[min(80vh,800px)] max-w-5xl',
+  xl: 'h-[min(88vh,920px)] max-w-7xl',
 }
 
 export default function NavigationOverlay({ title, size, children }: NavigationOverlayProps) {
@@ -88,7 +89,7 @@ export default function NavigationOverlay({ title, size, children }: NavigationO
         onKeyUp={(event) => event.stopPropagation()}
       >
         <Dialog.Panel
-          className={`flex h-[min(88vh,920px)] min-h-0 w-full ${sizes[size]} flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl dark:border-slate-600 dark:bg-slate-900`}
+          className={`flex min-h-0 w-full ${sizes[size]} flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl dark:border-slate-600 dark:bg-slate-900`}
           data-navigation-dialog={location.pathname.slice(1)}
         >
           <div className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-5 py-3 dark:border-slate-700 dark:bg-slate-800">
