@@ -1,0 +1,42 @@
+name: Circle Core Gate (isolated feature branch)
+
+on:
+  push:
+    branches:
+      - feature/circle-core-blob
+    paths:
+      - 'cloud-functions/_shared/circle/**'
+      - 'tests/cloud/circle-core.test.mjs'
+      - 'docs/CIRCLE_CORE_BLOB_V1.md'
+      - '.github/workflows/circle-core-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: circle-core-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  circle-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Run Circle kernel and concurrency tests
+        run: node --test tests/cloud/circle-core.test.mjs
+      - name: Lint Circle-only backend and tests
+        run: yarn eslint cloud-functions/_shared/circle tests/cloud/circle-core.test.mjs --ext .js,.mjs
+      - name: Verify no frontend changed in branch
+        env:
+          BASE: ${{ github.event.before }}
+        run: |
+          if git rev-parse --verify "${BASE}^{commit}" >/dev/null 2>&1; then
+            git diff --name-only "${BASE}" HEAD | grep -E '^src/|^public/' && exit 1 || true
+          fi
