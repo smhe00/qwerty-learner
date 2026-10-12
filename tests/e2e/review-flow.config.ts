@@ -5,6 +5,7 @@ export default defineConfig({
   testMatch: [
     'learn-review-flow.spec.ts',
     'learn-shell-ui.spec.ts',
+    'default-learn-header.spec.ts',
     'learn-recovery-flow.spec.ts',
     'learn-acquisition-flow.spec.ts',
     'learn-block-size.spec.ts',

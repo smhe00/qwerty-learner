@@ -4,9 +4,9 @@ import { ErrorBook } from './pages/ErrorBook'
 import { FriendLinks } from './pages/FriendLinks'
 import MobilePage from './pages/Mobile'
 import TypingPage from './pages/Typing'
-import { isOpenDarkModeAtom } from '@/store'
+import { isOpenDarkModeAtom, reviewModeInfoAtom } from '@/store'
 import 'animate.css'
-import { useAtomValue } from 'jotai'
+import { useAtom, useAtomValue } from 'jotai'
 import React, { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { isBrowserFuzzFaultEnabled } from '@/dev/browser-fuzz-hooks'
 import 'react-app-polyfill/stable'
@@ -55,30 +55,22 @@ const AchievementsPage = lazy(() =>
   loadRouteWithRefresh('achievements', loadAchievementsPage),
 )
 
-type PersistedLearnRouteState = 'none' | 'active' | 'finished'
-
-function getPersistedLearnRouteState(): PersistedLearnRouteState {
-  const raw = localStorage.getItem('reviewModeInfo')
-  if (!raw) return 'none'
-
-  try {
-    const value = JSON.parse(raw)
-    if (!value?.isReviewMode || !value?.reviewRecord) return 'none'
-    return value.reviewRecord.isFinished ? 'finished' : 'active'
-  } catch {
-    return 'none'
-  }
+/** The homepage always enters Learn. Explicit /typing deep links stay Typing,
+ * and /learn retains its existing durable-checkpoint recovery semantics. */
+function RootIndexRoute() {
+  return <Navigate to="/learn" replace />
 }
 
-function RootIndexRoute() {
-  const learnState = getPersistedLearnRouteState()
-
-  // A full-document navigation to "/" must never resurrect a Learn checkpoint.
-  // This is especially important after terminal completion: the durable record
-  // is already finished, while the Typing reducer starts from isFinished=false.
-  if (learnState !== 'none') {
-    return <Navigate to="/learn" replace />
-  }
+/** The explicit Typing URL always means Typing, even if a previous tab
+ * persisted an unfinished Learn record. Preserve the record for later resume. */
+function TypingRoute() {
+  const [reviewMode, setReviewMode] = useAtom(reviewModeInfoAtom)
+  useEffect(() => {
+    if (reviewMode.isReviewMode) {
+      setReviewMode((old) => ({ ...old, isReviewMode: false }))
+    }
+  }, [reviewMode.isReviewMode, setReviewMode])
+  if (reviewMode.isReviewMode) return <Loading />
   return <TypingPage />
 }
 
@@ -168,7 +160,7 @@ function Root() {
             ) : (
               <>
                 <Route index element={<RootIndexRoute />} />
-                <Route path="/typing" element={<TypingPage />} />
+                <Route path="/typing" element={<TypingRoute />} />
                 <Route path="/learn" element={<LearnPage />} />
                 <Route path="/achievements" element={<AchievementsPage />} />
                 <Route path="/gallery" element={<GalleryPage />} />
