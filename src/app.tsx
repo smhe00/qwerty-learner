@@ -86,8 +86,7 @@ function DesktopRoutes() {
     persistedBackground?.pathname === '/typing'
   return (
     <>
-      {(!isAuxiliary || hasLiveBackground) ? (
-        <Routes location={isAuxiliary && background ? background : location}>
+      <Routes location={isAuxiliary && hasLiveBackground && background ? background : location}>
         <Route index element={<RootIndexRoute />} />
         <Route path="/typing" element={<TypingRoute />} />
         <Route path="/learn" element={<LearnPage />} />
@@ -98,28 +97,20 @@ function DesktopRoutes() {
         <Route path="/error-book" element={<ErrorBook />} />
         <Route path="/friend-links" element={<FriendLinks />} />
         <Route path="/*" element={<Navigate to="/" />} />
-        </Routes>
-      ) : (
-        // Direct /analysis and /gallery links should not boot Learn behind
-        // the modal: a fresh Learn session can legitimately navigate while
-        // initializing and would accidentally dismiss the deep-linked panel.
-        <div className="flex h-screen w-full items-center justify-center bg-slate-100 text-xl font-semibold text-slate-500 dark:bg-slate-950 dark:text-slate-500" aria-hidden="true">
-          Qwerty Plus
-        </div>
-      )}
-      {location.pathname === '/gallery' && (
+      </Routes>
+      {isAuxiliary && hasLiveBackground && location.pathname === '/gallery' && (
         <NavigationOverlay title="选择词库" size="xl"><GalleryPage embedded /></NavigationOverlay>
       )}
-      {location.pathname === '/analysis' && (
+      {isAuxiliary && hasLiveBackground && location.pathname === '/analysis' && (
         <NavigationOverlay title="数据统计" size="xl"><AnalysisPage embedded /></NavigationOverlay>
       )}
-      {location.pathname === '/achievements' && (
+      {isAuxiliary && hasLiveBackground && location.pathname === '/achievements' && (
         <NavigationOverlay title="成就" size="xl"><AchievementsPage embedded /></NavigationOverlay>
       )}
-      {location.pathname === '/error-book' && (
+      {isAuxiliary && hasLiveBackground && location.pathname === '/error-book' && (
         <NavigationOverlay title="错题本" size="lg"><ErrorBook embedded /></NavigationOverlay>
       )}
-      {location.pathname === '/friend-links' && (
+      {isAuxiliary && hasLiveBackground && location.pathname === '/friend-links' && (
         <NavigationOverlay title="网站信息" size="md"><FriendLinks embedded /></NavigationOverlay>
       )}
     </>
