@@ -239,6 +239,28 @@ async function resetAndSeed(
         await db.wordRecords.clear()
         await db.reviewWordStates.clear()
         await db.reviewRecords.put(seededSession)
+        // ReviewRecord alone is not eligible review evidence in the current
+        // daily planner. Each frozen review target needs a due FSRS state:
+        // otherwise Learn correctly marks the cohort executionExhausted
+        // before any spelling can begin (the exact CI diagnostic observed).
+        const reviewedAt = Math.floor(Date.now() / 1000) - 86_400
+        await db.reviewWordStates.bulkPut(
+          seededSession.words.map((item: { name: string }) => ({
+            dict: seededSession.dict,
+            word: item.name,
+            createdAt: reviewedAt - 86_400,
+            updatedAt: reviewedAt,
+            lastReviewedAt: reviewedAt,
+            nextReviewAt: reviewedAt + 60,
+            reviewCount: 3,
+            lapseCount: 0,
+            cleanStreak: 2,
+            lastOutcome: 'good',
+            lifecycle: 'active',
+            stateVersion: 5,
+            schedulerState: { kind: 'fsrs6', difficulty: 5, stability: 2 },
+          })),
+        )
       },
     )
   }, session)
