@@ -27,7 +27,7 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
           aria-label="打开赞赏页面"
           title="赞赏本站维护者"
         >
-          <img src={logo} className="mr-3 h-12 w-12 lg:h-14 w-14" alt="Qwerty Plus Logo" />
+          <img src={logo} className="mr-3 h-12 w-12 lg:h-14 lg:w-14" alt="Qwerty Plus Logo" />
           <div className="flex flex-col items-start leading-none">
             <h1 className="whitespace-nowrap text-2xl font-semibold tracking-tight lg:text-3xl">
               <span className="text-slate-800 dark:text-slate-100">Qwerty</span>
