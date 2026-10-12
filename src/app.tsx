@@ -55,31 +55,10 @@ const AchievementsPage = lazy(() =>
   loadRouteWithRefresh('achievements', loadAchievementsPage),
 )
 
-type PersistedLearnRouteState = 'none' | 'active' | 'finished'
-
-function getPersistedLearnRouteState(): PersistedLearnRouteState {
-  const raw = localStorage.getItem('reviewModeInfo')
-  if (!raw) return 'none'
-
-  try {
-    const value = JSON.parse(raw)
-    if (!value?.isReviewMode || !value?.reviewRecord) return 'none'
-    return value.reviewRecord.isFinished ? 'finished' : 'active'
-  } catch {
-    return 'none'
-  }
-}
-
+/** The homepage always enters Learn. Explicit /typing deep links stay Typing,
+ * and /learn retains its existing durable-checkpoint recovery semantics. */
 function RootIndexRoute() {
-  const learnState = getPersistedLearnRouteState()
-
-  // A full-document navigation to "/" must never resurrect a Learn checkpoint.
-  // This is especially important after terminal completion: the durable record
-  // is already finished, while the Typing reducer starts from isFinished=false.
-  if (learnState !== 'none') {
-    return <Navigate to="/learn" replace />
-  }
-  return <TypingPage />
+  return <Navigate to="/learn" replace />
 }
 
 function Root() {
