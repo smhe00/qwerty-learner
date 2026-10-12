@@ -21,11 +21,12 @@ jobs:
         with:
           node-version: '20.18.0'
       - name: Install EdgeOne official Makers SDK (no postinstall scripts)
-        run: npm install --no-save --ignore-scripts @edgeone/makers-sdk
+        run: npm install --no-save --ignore-scripts --prefix "$RUNNER_TEMP/circle-makers-sdk" @edgeone/makers-sdk
       - name: Read-only lookup of Qwerty Maker project ID
         env:
           EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
         run: |
+          cd "$RUNNER_TEMP/circle-makers-sdk"
           node --input-type=module <<'JS'
           import { Makers } from '@edgeone/makers-sdk'
           const token = process.env.EDGEONE_API_TOKEN
