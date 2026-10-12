@@ -60,20 +60,8 @@ test('P0 settings and donation dialogs share surface tokens, remain usable on na
   await openSettings.click()
   // Match the actual Settings dialog, not unrelated dormant HeadlessUI panels.
   const settings = page.locator('[role="dialog"]:has(button[aria-label="关闭设置"])')
-  console.log('settings visibility diagnosis', await page.evaluate(() => {
-    const el = document.querySelector('[role="dialog"]:has(button[aria-label="关闭设置"])')
-    if (!el) return { found: false }
-    const chain: Array<{tag: string; classes: string; display: string; visibility: string; opacity: string; rect: string; ariaHidden: string | null}> = []
-    let node: Element | null = el
-    for (let depth = 0; node && depth < 7; depth++, node = node.parentElement) {
-      const css = getComputedStyle(node)
-      chain.push({ tag: node.tagName, classes: node.className.toString().slice(0, 150),
-        display: css.display, visibility: css.visibility, opacity: css.opacity,
-        rect: JSON.stringify(node.getBoundingClientRect().toJSON()), ariaHidden: node.getAttribute('aria-hidden') })
-    }
-    return { found: true, chain }
-  }))
-  await expect(settings).toBeVisible()
+  // HeadlessUI's outer dialog owns fixed-position children and has zero
+  // layout height by design; assert the visible panel, not its outer portal.
   await expect(settings.locator('.focus-overlay-panel')).toBeVisible()
   const bounds = await settings.locator('.focus-overlay-panel').boundingBox()
   expect(bounds).toBeTruthy()
@@ -102,7 +90,6 @@ test('P0 settings and donation dialogs share surface tokens, remain usable on na
 
   await page.getByRole('button', { name: '打开赞赏页面' }).click()
   const donate = page.locator('[role="dialog"]:has-text("赞赏 Qwerty Plus")')
-  await expect(donate).toBeVisible()
   await expect(donate.locator('.focus-overlay-panel')).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(donate).toHaveCount(0)
