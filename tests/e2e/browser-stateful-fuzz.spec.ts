@@ -135,8 +135,16 @@ async function resetAndSeed(
   ))).toBe(true)
 
   await page.evaluate(async (seededSession) => {
-    localStorage.clear()
-    sessionStorage.clear()
+    // A running S1 document owns workspace/lock state in storage. Clearing
+    // all keys after mount invalidates that guard behind its back and turns a
+    // route durability test into an unrelated workspace bootstrap race.
+    // Playwright already provides a fresh browser context for each test:
+    // replace only the seeded Learn-specific state.
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('qwerty.learn.dailySession.v1.')) {
+        localStorage.removeItem(key)
+      }
+    }
     localStorage.setItem(
       'developerDiagnosticsConfig',
       JSON.stringify({ isOpen: true }),
@@ -174,6 +182,39 @@ async function resetAndSeed(
       }),
     )
 
+    // Current Learn is driven by a frozen daily cohort. A five-word P3
+    // replay must describe the SAME five review targets, with no synthetic
+    // new-word quota; otherwise the app is free to grow a 32-word daily
+    // session while the test incorrectly assumes a terminal five-word Block.
+    const now = Math.floor(Date.now() / 1000)
+    const local = new Date(now * 1000)
+    const dateKey = [
+      local.getFullYear(),
+      String(local.getMonth() + 1).padStart(2, '0'),
+      String(local.getDate()).padStart(2, '0'),
+    ].join('-')
+    localStorage.setItem(
+      'qwerty.learn.dailySession.v1.cet4',
+      JSON.stringify({
+        version: 1,
+        sessionId: `p3-fuzz:${seededSession.id}:${dateKey}`,
+        dict: 'cet4',
+        dateKey,
+        startedAt: now,
+        status: 'active',
+        dailyNewTarget: 1,
+        plannedNewWords: 0,
+        plannedNewWordNames: [],
+        plannedReviewWords: seededSession.words.map((word: { name: string }) => word.name),
+        carryOverAcquisitionWords: [],
+        blockMilestones: [seededSession.words.length],
+        celebratedMilestones: [],
+        accumulatedActiveSeconds: 0,
+        completedBlockIds: [],
+        blockCount: 0,
+      }),
+    )
+
     // Seed via the *current* production Dexie V6 adapter. A second raw
     // indexedDB.open() racing the app's V6 schema upgrade can wait for an
     // unclosed versionchange transaction and conceal the real lifecycle
@@ -206,7 +247,17 @@ async function resetAndSeed(
   await expect(page).toHaveURL(/\/learn$/)
   await expect(
     page.locator('[data-typing-word]').first(),
-  ).toBeVisible()
+  ).toBeVisible({ timeout: 15_000 }).catch(async (error) => {
+    const diagnostics = await page.evaluate(() => ({
+      route: location.pathname,
+      reviewIndex: JSON.parse(localStorage.getItem('reviewModeInfo') || '{}')?.reviewRecord?.index,
+      dailySession: JSON.parse(localStorage.getItem('qwerty.learn.dailySession.v1.cet4') || 'null')?.sessionId,
+      learnStatus: document.querySelector('[role="status"]')?.textContent?.trim()?.slice(0, 160),
+      s1VisibleText: document.body.textContent?.slice(0, 350),
+    }))
+    console.error('P3_SEED_MOUNT_DIAGNOSTIC', JSON.stringify(diagnostics))
+    throw error
+  })
 }
 
 async function readRouteState(page: Page) {
