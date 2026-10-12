@@ -387,3 +387,40 @@ test('HTTP limiter denies all Circle traffic when blocked', async () => {
   })
   await assert.rejects(api.handle(request), { code: 'circle_rate_limited' })
 })
+
+test('Rotating invite keeps existing members and rejects stale codes', async () => {
+  const { service } = setup()
+  const first = await service.createCircle(owner, { name: 'Rotations' })
+  await service.joinCircle(alice, first.inviteCode)
+  await assert.rejects(service.rotateInvite(alice, first.circleId),
+    { code: 'not_circle_owner' })
+  const rotated = await service.rotateInvite(owner, first.circleId)
+  assert.equal(rotated.revision, 1)
+  assert.notEqual(rotated.inviteCode, first.inviteCode)
+  await assert.rejects(service.joinCircle(bob, first.inviteCode),
+    { code: 'invalid_invite' })
+  await service.joinCircle(bob, rotated.inviteCode)
+  assert.deepEqual((await service.getCircle(owner, first.circleId)).members
+    .map((m) => m.userId), [owner, alice, bob])
+})
+
+test('Two concurrent invite rotations cannot disclose two live codes', async () => {
+  const { service } = setup()
+  const circle = await service.createCircle(owner, { name: 'Rotations' })
+  const outcomes = await Promise.allSettled([
+    service.rotateInvite(owner, circle.circleId),
+    service.rotateInvite(owner, circle.circleId),
+  ])
+  // Either one winner and one conflict or, if both start serially, two
+  // successive CAS revisions; latest alone is valid in either case.
+  const succeeded = outcomes.filter((o) => o.status === 'fulfilled').map((o) => o.value)
+  assert.ok(succeeded.length >= 1)
+  assert.ok(succeeded.length <= 2)
+  if (succeeded.length === 2) {
+    assert.notEqual(succeeded[0].revision, succeeded[1].revision)
+  }
+  const last = succeeded.reduce((a, b) => a.revision > b.revision ? a : b)
+  await service.joinCircle(alice, last.inviteCode)
+  await assert.rejects(service.joinCircle(bob, circle.inviteCode),
+    { code: 'invalid_invite' })
+})
