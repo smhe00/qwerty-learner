@@ -1,18 +1,12 @@
 import { expect, test } from '@playwright/test'
 
-test('direct analysis deep link and refresh keep a usable dismissible modal', async ({ page }) => {
-  test.setTimeout(75_000)
-  page.on('pageerror', error => console.log('direct analysis pageerror:', error.message))
+test('direct analysis deep links remain standalone and reloadable without a fake background session', async ({ page }) => {
   await page.goto('/analysis?from=learn')
-  console.log('direct analysis URL:', page.url())
-  console.log('direct analysis body:', (await page.locator('body').innerText()).slice(0, 700))
-  await expect(page.locator('[data-navigation-dialog="analysis"]')).toBeVisible({ timeout: 20_000 }).catch(async (error) => {
-    console.log('direct analysis after wait:', (await page.locator('body').innerText()).slice(0, 700))
-    throw error
-  })
+  await expect(page.locator('[data-fsrs-shadow-analysis]')).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator('[data-navigation-dialog]')).toHaveCount(0)
   await page.reload()
-  await expect(page.locator('[data-navigation-dialog="analysis"]')).toBeVisible({ timeout: 20_000 })
-  await page.locator('[data-navigation-dialog="analysis"]').getByRole('button', { name: '返回', exact: true }).click()
+  await expect(page.locator('[data-fsrs-shadow-analysis]')).toBeVisible({ timeout: 20_000 })
+  await page.getByRole('button', { name: '返回', exact: true }).click()
   await expect(page).toHaveURL(/\/learn$/)
 })
 
