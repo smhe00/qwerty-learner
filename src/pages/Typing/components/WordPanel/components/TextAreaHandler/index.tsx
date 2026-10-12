@@ -1,7 +1,7 @@
 import type { WordUpdateAction } from '../InputHandler'
 import { TypingContext } from '@/pages/Typing/store'
 import type { FormEvent } from 'react'
-import { useCallback, useContext, useEffect, useRef } from 'react'
+import { useContext, useEffect, useRef } from 'react'
 
 export default function TextAreaHandler({ updateInput }: { updateInput: (updateObj: WordUpdateAction) => void }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -19,6 +19,7 @@ export default function TextAreaHandler({ updateInput }: { updateInput: (updateO
   }, [state.isTyping])
 
   const onInput = (e: FormEvent<HTMLTextAreaElement>) => {
+    if (!state.isTyping) return
     const nativeEvent = e.nativeEvent as InputEvent
     if (!nativeEvent.isComposing && nativeEvent.data !== null) {
       updateInput({ type: 'add', value: nativeEvent.data, event: e })
@@ -29,19 +30,13 @@ export default function TextAreaHandler({ updateInput }: { updateInput: (updateO
     }
   }
 
-  const onBlur = useCallback(() => {
-    if (!textareaRef.current) return
-
-    if (state.isTyping) {
-      textareaRef.current.focus()
-    }
-  }, [state.isTyping])
-
   return (
     <textarea
       className="absolute left-0 top-0 m-0 h-0 w-0 appearance-none overflow-hidden border-0 p-0 focus:outline-none"
       ref={textareaRef}
-      autoFocus
+      data-typing-input-control
+      aria-label="练习输入"
+      tabIndex={-1}
       spellCheck="false"
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
@@ -49,7 +44,6 @@ export default function TextAreaHandler({ updateInput }: { updateInput: (updateO
         }
       }}
       onInput={onInput}
-      onBlur={onBlur}
       onCompositionStart={() => {
         alert('您正在使用输入法，请关闭输入法。')
       }}

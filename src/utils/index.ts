@@ -47,14 +47,20 @@ export const isChineseSymbol = (val: string): boolean =>
   )
 
 export const shouldIgnoreTypingKeyEvent = (event: KeyboardEvent): boolean => {
-  if (event.defaultPrevented) return true
+  if (event.defaultPrevented || event.isComposing) return true
+
+  // Overlays may restore focus to body while closing. Their Escape/Enter keys
+  // still belong to the overlay, never to session resume or spelling.
+  if (document.querySelector('[role="dialog"], [role="listbox"], [id^="headlessui-popover-panel-"]')) return true
 
   const target = event.target
   if (!(target instanceof Element)) return false
 
   // Typing owns the page-level keyboard only when the user is interacting with
   // the learning surface. Modal UI and text-editing controls keep their keys.
-  if (target.closest('[role="dialog"]')) return true
+  if (target.closest(
+    '[role="dialog"], button, a, [role="button"], [role="listbox"], [role="option"], [role="menu"], [role="menuitem"], [role="switch"], [role="slider"]',
+  )) return true
 
   if (
     target instanceof HTMLInputElement ||

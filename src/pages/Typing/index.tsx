@@ -5,7 +5,8 @@ import { DictChapterButton } from './components/DictChapterButton'
 import PronunciationSwitcher from './components/PronunciationSwitcher'
 import ResultScreen from './components/ResultScreen'
 import Speed from './components/Speed'
-import StartButton from './components/StartButton'
+import SessionButton from './components/StartButton'
+import { useSessionKeyboard } from './hooks/useSessionKeyboard'
 import Switcher from './components/Switcher'
 import WordList from './components/WordList'
 import WordPanel from './components/WordPanel'
@@ -36,7 +37,7 @@ import {
   reviewModeInfoAtom,
   typingTransVisibleAtom,
 } from '@/store'
-import { IsDesktop, isLegal, shouldIgnoreTypingKeyEvent } from '@/utils'
+import { IsDesktop } from '@/utils'
 import { getReviewWordStates } from '@/review/repository'
 import { db, useSaveChapterRecord } from '@/utils/db'
 import { putWordReviewRecord } from '@/utils/db/review-record'
@@ -51,7 +52,8 @@ import {
 } from 'react-router-dom'
 import { useImmerReducer } from 'use-immer'
 
-const App: React.FC = () => {
+const App: React.FC<{ autoStart?: boolean }> = ({ autoStart = false }) => {
+  const autoStartPendingRef = useRef(autoStart)
   const typingTransVisible = useAtomValue(typingTransVisibleAtom)
   const [state, dispatch] = useImmerReducer(typingReducer, {
     ...structuredClone(initialState),
@@ -160,10 +162,13 @@ const App: React.FC = () => {
     const onBlur = () => {
       dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })
     }
+    const onVisibilityChange = () => { if (document.hidden) onBlur() }
     window.addEventListener('blur', onBlur)
+    document.addEventListener('visibilitychange', onVisibilityChange)
 
     return () => {
       window.removeEventListener('blur', onBlur)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
     }
   }, [dispatch])
 
@@ -172,20 +177,20 @@ const App: React.FC = () => {
   }, [state.chapterData.words])
 
   useEffect(() => {
-    if (!state.isTyping) {
-      const onKeyDown = (e: KeyboardEvent) => {
-        if (shouldIgnoreTypingKeyEvent(e)) return
-
-        if (!isLoading && e.key !== 'Enter' && (isLegal(e.key) || e.key === ' ') && !e.altKey && !e.ctrlKey && !e.metaKey) {
-          e.preventDefault()
-          dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: true })
-        }
-      }
-      window.addEventListener('keydown', onKeyDown)
-
-      return () => window.removeEventListener('keydown', onKeyDown)
+    if (!isLoading && autoStartPendingRef.current && !state.isFinished) {
+      autoStartPendingRef.current = false
+      dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: true })
     }
-  }, [state.isTyping, isLoading, dispatch])
+  }, [isLoading, state.isFinished, dispatch])
+
+  const toggleSession = useCallback(() => {
+    dispatch({ type: TypingStateActionType.TOGGLE_IS_TYPING })
+  }, [dispatch])
+  useSessionKeyboard({
+    active: state.isTyping,
+    disabled: isLoading || state.isFinished,
+    onToggle: toggleSession,
+  })
 
   useEffect(() => {
     if (words.length === 0) return
@@ -317,6 +322,7 @@ const App: React.FC = () => {
       <Layout>
         <Header>
           <ModeSwitcher />
+          <SessionButton isLoading={isLoading} />
           <DictChapterButton learnMode={isReviewMode} />
           <PronunciationSwitcher learnMode={isReviewMode} />
           <Switcher learnMode={isReviewMode} />
@@ -324,7 +330,6 @@ const App: React.FC = () => {
             className="flex shrink-0 items-center gap-3"
             data-typing-primary-controls
           >
-            <StartButton isLoading={isLoading} />
             {!isLearnSurface && state.isShowSkip && (
               <Tooltip
                 content="跳过该词"

@@ -137,6 +137,11 @@ export class WordTelemetryCollector {
     }
   }
 
+  /** Timestamp for legacy inter-key intervals, excluding all paused time. */
+  activeTime(nowMs: number): number {
+    return this.toActiveTime(nowMs)
+  }
+
   private toActiveTime(nowMs: number): number {
     const currentPauseMs =
       this.pauseStartedAtMs === null ? 0 : Math.max(0, nowMs - this.pauseStartedAtMs)

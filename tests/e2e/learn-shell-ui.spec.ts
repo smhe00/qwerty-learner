@@ -232,7 +232,7 @@ test('developer diagnostics exports a read-only incident bundle from the UI', as
   await expect(page).toHaveURL(/\/typing$/)
 })
 
-test('Learn header keeps dictionary, Start, and Settings aligned with Typing', async ({
+test('Learn header keeps dictionary and pause icon aligned with Typing', async ({
   page,
 }) => {
   await gotoReviewAppReady(page)
@@ -294,9 +294,8 @@ test('Learn header keeps dictionary, Start, and Settings aligned with Typing', a
   expect(
     Math.abs(learnPositions.start - typingPositions.start),
   ).toBeLessThanOrEqual(24)
-  expect(
-    Math.abs(learnPositions.setting - typingPositions.setting),
-  ).toBeLessThanOrEqual(24)
+  expect(learnPositions.setting).toBeGreaterThan(learnPositions.start)
+  expect(typingPositions.setting).toBeGreaterThan(typingPositions.start)
 
   await expect(page.getByText('今日到期', { exact: true })).toHaveCount(0)
   await expect(page.getByText('学习计划', { exact: true })).toHaveCount(0)
@@ -393,7 +392,7 @@ test('Learn reuses Typing controls while preserving Typing-owned preferences', a
       name: '章节切换（Learn 模式禁用）',
       exact: true,
     }),
-  ).toBeDisabled()
+  ).toHaveCount(0)
   await expect(
     page.getByRole('button', {
       name: '选择单词的循环次数',

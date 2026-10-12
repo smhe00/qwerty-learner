@@ -137,11 +137,11 @@ export const typingReducer = (state: TypingState, action: TypingStateAction) => 
       }
       break
     case TypingStateActionType.SET_IS_TYPING:
-      state.isTyping = action.payload
+      state.isTyping = !state.isFinished && action.payload
       break
 
     case TypingStateActionType.TOGGLE_IS_TYPING:
-      state.isTyping = !state.isTyping
+      state.isTyping = !state.isFinished && !state.isTyping
       break
     case TypingStateActionType.REPORT_CORRECT_WORD: {
       state.chapterData.correctCount += 1

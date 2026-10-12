@@ -1,3 +1,4 @@
+import { shouldIgnoreTypingKeyEvent } from '@/utils'
 import { TypingContext, TypingStateActionType } from '../../store'
 import type { TypingState } from '../../store/type'
 import PrevAndNextWord from '../PrevAndNextWord'
@@ -641,11 +642,13 @@ export default function WordPanel() {
 
   useHotkeys(
     'tab',
-    () => {
+    (event) => {
+      if (!state.isTyping || shouldIgnoreTypingKeyEvent(event)) return
+      event.preventDefault()
       handleShowTranslation(true)
     },
-    { enableOnFormTags: true, preventDefault: true },
-    [],
+    { enableOnFormTags: true, preventDefault: false },
+    [state.isTyping],
   )
 
   useHotkeys(
@@ -716,7 +719,7 @@ export default function WordPanel() {
       currentAcquisitionState?.phase === 'independent')
 
   return (
-    <div className="focus-study-stage flex h-full w-full flex-col items-center justify-center">
+    <div data-session-time={state.timerData.time} className="focus-study-stage flex h-full w-full flex-col items-center justify-center">
       <div className="flex h-16 w-full shrink-0 grow-0 justify-between px-6 pt-6 sm:px-12">
         {!isReviewMode && isShowPrevAndNextWord && state.isTyping && (
           <>

@@ -221,6 +221,19 @@ test.describe('review data model', () => {
     })
   })
 
+  test('legacy key timing excludes repeated manual pauses and an open pause', () => {
+    const collector = new WordTelemetryCollector()
+    const first = collector.activeTime(1000)
+    collector.pause(1100)
+    collector.pause(1200)
+    expect(collector.activeTime(5000) - first).toBe(100)
+    collector.resume(5100)
+    expect(collector.activeTime(5200) - first).toBe(200)
+    collector.pause(5300)
+    collector.resume(6300)
+    expect(collector.activeTime(6400) - first).toBe(400)
+  })
+
   test('excludes a background pause from an in-progress attempt', () => {
     const collector = new WordTelemetryCollector()
     collector.resetWord()

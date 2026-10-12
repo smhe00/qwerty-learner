@@ -76,7 +76,7 @@ import {
   wordDictationConfigAtom,
 } from '@/store'
 import type { Word } from '@/typings'
-import { CTRL, getUtcStringForMixpanel } from '@/utils'
+import { CTRL, getUtcStringForMixpanel, shouldIgnoreTypingKeyEvent } from '@/utils'
 import { useSaveWordRecord } from '@/utils/db'
 import { getFirstValidDictionaryExample } from '@/utils/dictionaryExample'
 import type { IWordRecord, PronunciationCue } from '@/utils/db/record'
@@ -140,6 +140,8 @@ export default function WordComponent({
 }: WordComponentProps) {
   // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
   const { state, dispatch } = useContext(TypingContext)!
+  const activeRef = useRef(state.isTyping)
+  activeRef.current = state.isTyping
   const [wordState, setWordState] = useImmer<WordState>(structuredClone(initialWordState))
 
   const wordDictationConfig = useAtomValue(wordDictationConfigAtom)
@@ -281,19 +283,19 @@ export default function WordComponent({
   }, [audioOwnerKey, setWordState])
 
   useEffect(() => {
-    if (state.isTyping) {
-      const now = Date.now()
-      if (document.hidden || !document.hasFocus()) {
-        telemetryCollectorRef.current.pause(now)
-      }
+    const now = Date.now()
+    if (state.isTyping && !document.hidden && document.hasFocus()) {
+      telemetryCollectorRef.current.resume(now)
       telemetryCollectorRef.current.markReady(now)
+    } else {
+      telemetryCollectorRef.current.pause(now)
     }
   }, [state.isTyping, word])
 
   useEffect(() => {
     const pause = () => telemetryCollectorRef.current.pause(Date.now())
     const resumeIfActive = () => {
-      if (!document.hidden && document.hasFocus()) {
+      if (activeRef.current && !document.hidden && document.hasFocus()) {
         telemetryCollectorRef.current.resume(Date.now())
       }
     }
@@ -412,7 +414,7 @@ export default function WordComponent({
 
   const releasePendingFinishNow = useCallback(() => {
     const release = pendingFinishReleaseRef.current
-    if (!release) return
+    if (!release || !activeRef.current) return
 
     pendingFinishReleaseRef.current = null
     if (successAdvanceTimerRef.current) {
@@ -431,6 +433,14 @@ export default function WordComponent({
     })
     release()
   }, [word.name])
+
+  useEffect(() => {
+    // A success timer may expire while paused. Release only after explicit resume.
+    if (state.isTyping && pendingFinishReleaseRef.current &&
+        Date.now() - successFeedbackStartedAtRef.current >= SUCCESS_FEEDBACK_MS) {
+      releasePendingFinishNow()
+    }
+  }, [state.isTyping, releasePendingFinishNow])
 
   const requestSuccessFastForward = useCallback(() => {
     successFastForwardRequestedRef.current = true
@@ -673,11 +683,13 @@ export default function WordComponent({
 
   useHotkeys(
     'tab',
-    () => {
+    (event) => {
+      if (!state.isTyping || shouldIgnoreTypingKeyEvent(event)) return
+      event.preventDefault()
       handleHoverWord(true)
     },
-    { enableOnFormTags: true, preventDefault: true },
-    [],
+    { enableOnFormTags: true, preventDefault: false },
+    [state.isTyping],
   )
 
   useHotkeys(
@@ -825,7 +837,7 @@ export default function WordComponent({
     if (isEqual) {
       // 输入正确时
       setWordState((state) => {
-        state.letterTimeArray.push(Date.now())
+        state.letterTimeArray.push(telemetryCollectorRef.current.activeTime(Date.now()))
         state.correctCount += 1
       })
 
@@ -950,7 +962,7 @@ export default function WordComponent({
   }, [wordState.inputWord])
 
   useEffect(() => {
-    if (wordState.hasWrong) {
+    if (wordState.hasWrong && state.isTyping) {
       const timer = setTimeout(() => {
         acceptedInputLengthRef.current = 0
         inputLockedRef.current = false
@@ -967,7 +979,7 @@ export default function WordComponent({
         clearTimeout(timer)
       }
     }
-  }, [wordState.hasWrong, setWordState])
+  }, [wordState.hasWrong, setWordState, state.isTyping])
 
   useEffect(() => {
     if (wordState.isFinished && !finishNotifiedRef.current) {
@@ -1187,6 +1199,7 @@ export default function WordComponent({
           <div
             data-typing-word={word.name}
             data-typing-input={wordState.inputWord}
+            data-typing-wrong-count={wordState.wrongCount}
             data-typing-accepted-length={acceptedInputLengthRef.current}
             data-typing-target-length={targetLengthRef.current}
             data-typing-locked={inputLockedRef.current ? 'true' : 'false'}

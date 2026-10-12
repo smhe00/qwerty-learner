@@ -23,6 +23,10 @@ on:
       - 'src/resources/dictionary.ts'
       - 'public/dicts/hujiaoxin2027.json'
       - 'src/pages/Typing/components/StartButton/**'
+      - 'src/components/SessionControl/**'
+      - 'src/pages/Typing/hooks/useSessionKeyboard.ts'
+      - 'src/utils/index.ts'
+      - 'tests/e2e/session-pause.spec.ts'
       - 'src/achievement/**'
       - 'src/utils/backup.ts'
       - 'src/utils/time.ts'
@@ -111,6 +115,9 @@ jobs:
           src/pages/Typing/hooks/useWordList.ts
           src/utils/chapter.ts
           src/pages/Typing/components/StartButton
+          src/components/SessionControl
+          src/pages/Typing/hooks/useSessionKeyboard.ts
+          src/utils/index.ts
           src/utils/db
           src/achievement
           src/utils/backup.ts

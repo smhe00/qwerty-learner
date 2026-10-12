@@ -1,3 +1,5 @@
+import SessionControl from '@/components/SessionControl'
+import { useSessionKeyboard } from '@/pages/Typing/hooks/useSessionKeyboard'
 import ModeSwitcher from '@/components/ModeSwitcher'
 import Header from '@/components/Header'
 import Layout from '@/components/Layout'
@@ -67,6 +69,7 @@ export default function LearnPage() {
   const exhaustedToday = dailySession?.status === 'active' && dailySession.executionExhausted === true &&
     dailySession.dateKey === learnLocalDateKey(getUTCUnixTimestamp())
   const canLearnMoreToday = completedToday || exhaustedToday
+  const userStartRequestedRef = useRef(false)
   const autoStartConsumedRef = useRef(isSessionView)
   const learnPageRootRef = useRef<HTMLElement | null>(null)
   const preparationGuardRef = useRef<
@@ -291,13 +294,25 @@ export default function LearnPage() {
     wordList,
   ])
 
+  const startFromKeyboard = useCallback(() => {
+    userStartRequestedRef.current = true
+    startLearn()
+  }, [startLearn])
+  useSessionKeyboard({
+    active: false,
+    disabled: isSessionView || isStarting || !wordList || canLearnMoreToday,
+    onToggle: startFromKeyboard,
+  })
+
   if (isSessionView) {
-    return <TypingPage />
+    return <TypingPage autoStart={userStartRequestedRef.current} />
   }
 
   const renderHeader = () => (
     <Header>
       <ModeSwitcher />
+      {!canLearnMoreToday && <SessionControl active={false} label="开始 Learn"
+        disabled={isStarting || !wordList} onToggle={startFromKeyboard} />}
       <DictChapterButton learnMode />
       <PronunciationSwitcher learnMode />
       <Switcher learnMode />
@@ -350,19 +365,19 @@ export default function LearnPage() {
                 : completedToday
                 ? '今日 Learn 目标已完成，可以再多学五词。'
                 : wordList
-                ? 'Learn 已就绪。可以随时开始，也可以在学习过程中随时暂停。'
+                ? '按任意键开始 Learn；Enter 暂停或继续。'
                 : '正在加载词表…')}
         </span>
 
-        <button
+        {canLearnMoreToday && <button
           type="button"
           className="my-btn-primary w-24 bg-indigo-500 shadow shadow-indigo-300 dark:shadow-indigo-500/60"
           onClick={() => startLearn(canLearnMoreToday)}
           disabled={isStarting || !wordList}
           aria-label={canLearnMoreToday ? '多学五词' : '开始 Learn'}
         >
-          <span className="font-medium">{canLearnMoreToday ? '多学五词' : 'Start'}</span>
-        </button>
+          <span className="font-medium">多学五词</span>
+        </button>}
       </main>
     </Layout>
   )

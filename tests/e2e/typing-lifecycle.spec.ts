@@ -467,7 +467,7 @@ test('background pause preserves Typing counters when the page returns to foregr
   })
   await expect(
     page.getByRole('button', {
-      name: '开始',
+      name: '继续',
       exact: true,
     }),
   ).toBeVisible()

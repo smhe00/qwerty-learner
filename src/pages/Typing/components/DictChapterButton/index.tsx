@@ -36,18 +36,7 @@ export const DictChapterButton = ({
         </NavLink>
       </Tooltip>
 
-      {learnMode ? (
-        <Tooltip content="Learn 模式由程序管理章节">
-          <button
-            type="button"
-            disabled
-            aria-label="章节切换（Learn 模式禁用）"
-            className="cursor-not-allowed rounded-lg px-3 py-1 text-lg text-gray-400 opacity-40 focus:outline-none dark:text-gray-500"
-          >
-            第 {Math.max(0, currentChapter) + 1} 章
-          </button>
-        </Tooltip>
-      ) : (
+      {!learnMode && (
         !isReviewMode && (
           <Tooltip content="章节切换">
             <Listbox value={currentChapter} onChange={setCurrentChapter}>
