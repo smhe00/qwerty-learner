@@ -22,6 +22,14 @@ class FakeBlob {
       .filter((key) => key.startsWith(prefix))
       .map((key) => ({ key })) }
   }
+  failedDeletes = 0
+  async delete(key) {
+    if (this.failedDeletes > 0) {
+      this.failedDeletes--
+      throw new Error('transient delete failure')
+    }
+    this.objects.delete(key)
+  }
   async setJSON(key, value, options) {
     assert.equal(options.onlyIfNew, true)
     if (this.objects.has(key)) throw Error('key already exists')
@@ -463,4 +471,62 @@ test('Abandoned progress write retries the same event and respects idempotency',
     event('recover_event_11', 15))
   assert.deepEqual(report, retry)
   assert.equal([...blob.objects.keys()].filter((k) => k.includes('/progress-claims/')).length, 0)
+})
+
+test('Retired member activity scrub removes progress, showcase and both clap directions', async () => {
+  const { blob, service, storage } = setup()
+  const group = await service.createCircle(owner, { name: 'Erase' })
+  await service.joinCircle(alice, group.inviteCode)
+  await service.joinCircle(bob, group.inviteCode)
+  await service.publishProgress(alice, group.circleId, today(), event('scrub_event_001', 15))
+  await service.publishProgress(bob, group.circleId, today(), event('scrub_event_002', 9))
+  await service.reactProgress(bob, group.circleId, alice, today())
+  await service.reactProgress(alice, group.circleId, bob, today())
+  await service.shareAchievement(alice, group.circleId, 'ACH_MASTERED_100')
+  await service.shareAchievement(bob, group.circleId, 'ACH_MASTERED_100')
+  const result = await service.scrubAccountActivities(alice)
+  assert.equal(result.quarantined, true)
+  assert.equal(result.fullyErased, false)
+  assert.equal(result.followUpRequired, true)
+  assert.equal(result.circlesAffected, 1)
+  assert.equal(result.deleted, 4)
+  assert.deepEqual((await service.getProgress(owner, group.circleId, today()))
+    .map((p) => p.authorUserId), [bob])
+  assert.equal((await service.getReactions(owner, group.circleId, bob, today())).count, 0)
+  assert.ok(await storage.read('circles/' + group.circleId + '/showcase/' +
+    bob + '/ACH_MASTERED_100.json'))
+  const keyList = [...blob.objects.keys()]
+  assert.equal(keyList.some((k) => k.includes('/progress/' + alice + '/')), false)
+  assert.equal(keyList.some((k) => k.includes('/showcase/' + alice + '/')), false)
+  assert.equal(keyList.some((k) => k.includes('/reactions/' + alice + '/')), false)
+  assert.equal(keyList.some((k) => k.includes('/reactions/' + bob + '/' + alice + '/')), false)
+  const again = await service.scrubAccountActivities(alice)
+  assert.equal(again.deleted, 0)
+})
+
+test('Account scrub retries failed deletion and remains safely quarantined', async () => {
+  const { blob, service } = setup()
+  const group = await service.createCircle(owner, { name: 'Erase' })
+  await service.joinCircle(alice, group.inviteCode)
+  await service.publishProgress(alice, group.circleId, today(), event('scrub_retry_11', 8))
+  blob.failedDeletes = 20
+  await assert.rejects(service.scrubAccountActivities(alice), /delete failure/)
+  await assert.rejects(service.getCircle(alice, group.circleId),
+    { code: 'circle_account_disabled' })
+  assert.equal((await service.getProgress(owner, group.circleId, today())).length, 0)
+  blob.failedDeletes = 0
+  const after = await service.scrubAccountActivities(alice)
+  assert.equal(after.deleted, 1)
+  assert.equal(after.quarantined, true)
+})
+
+test('Scrubbing the owner seals the circle before removing owned activity', async () => {
+  const { service, storage } = setup()
+  const group = await service.createCircle(owner, { name: 'Erase' })
+  await service.joinCircle(alice, group.inviteCode)
+  await service.publishProgress(owner, group.circleId, today(), event('owner_scrub_111'))
+  const result = await service.scrubAccountActivities(owner)
+  assert.equal(result.deleted, 1)
+  assert.ok(await storage.read('circles/' + group.circleId + '/closed.json'))
+  await assert.rejects(service.getCircle(alice, group.circleId), { code: 'circle_closed' })
 })
