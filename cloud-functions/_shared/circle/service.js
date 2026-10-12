@@ -59,7 +59,7 @@ function inviteMatches(secret, digest) {
 function ensureName(input) {
   if (typeof input !== 'string') fail(400, 'invalid_name', 'Circle name required')
   const name = input.trim().normalize('NFKC')
-  if (!name || Array.from(name).length > 32 || /[\u0000-\u001f\u007f]/.test(name)) {
+  if (!name || Array.from(name).length > 32 || [...name].some((ch) => { const n = ch.charCodeAt(0); return n < 32 || n === 127 })) {
     fail(400, 'invalid_name', 'Circle name must be 1-32 visible characters')
   }
   return name
