@@ -9,6 +9,7 @@ export default defineConfig({
     'focus-ui.spec.ts',
     'focus-p0-final-acceptance.spec.ts',
     'focus-p1-journey.spec.ts',
+    'focus-p2-accessibility.spec.ts',
     'navigation-dialogs.spec.ts',
     'learn-recovery-flow.spec.ts',
     'learn-acquisition-flow.spec.ts',
