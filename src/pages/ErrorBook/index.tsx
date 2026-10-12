@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import IconX from '~icons/tabler/x'
 
-export function ErrorBook() {
+export function ErrorBook({ embedded = false }: { embedded?: boolean }) {
   const [groupedRecords, setGroupedRecords] = useState<groupedWordRecords[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const totalPages = useMemo(() => Math.ceil(groupedRecords.length / ITEM_PER_PAGE), [groupedRecords.length])
@@ -96,14 +96,14 @@ export function ErrorBook() {
 
   return (
     <>
-      <div className={`relative flex h-screen w-full flex-col items-center pb-4 ease-in ${currentRowDetail && 'blur-sm'}`}>
+      <div className={`relative flex ${embedded ? 'h-full min-h-0' : 'h-screen'} w-full flex-col items-center pb-4 ease-in ${currentRowDetail && 'blur-sm'}`}>
         <div className="mr-8 mt-4 flex w-auto items-center justify-center self-end">
           <h1 className="font-lighter mr-4 w-auto self-end text-gray-500 opacity-70">Tip: 点击错误单词查看详细信息 </h1>
-          <IconX className="h-7 w-7 cursor-pointer text-gray-400" onClick={onBack} />
+          {!embedded && <IconX className="h-7 w-7 cursor-pointer text-gray-400" onClick={onBack} />}
         </div>
 
         <div className="flex w-full flex-1 select-text items-start justify-center overflow-hidden">
-          <div className="flex h-full w-5/6 flex-col pt-10">
+          <div className={embedded ? "flex h-full min-h-0 w-full flex-col pt-3" : "flex h-full w-5/6 flex-col pt-10"}>
             <div className="flex w-full justify-between rounded-lg bg-white px-6 py-5 text-lg text-black shadow-lg dark:bg-gray-800 dark:text-white">
               <span className="basis-2/12">单词</span>
               <span className="basis-6/12">释义</span>
@@ -111,7 +111,7 @@ export function ErrorBook() {
               <span className="basis-1/12">词典</span>
               <DropdownExport renderRecords={sortedRecords} />
             </div>
-            <ScrollArea.Root className="flex-1 overflow-y-auto pt-5">
+            <ScrollArea.Root className="min-h-0 flex-1 overflow-y-auto pt-5">
               <ScrollArea.Viewport className="h-full  ">
                 <div className="flex flex-col gap-3">
                   {renderRecords.map((record) => (
