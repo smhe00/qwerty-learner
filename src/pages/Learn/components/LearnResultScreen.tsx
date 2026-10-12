@@ -46,24 +46,18 @@ function SummaryMetric({
   label,
   value,
   detail,
+  primary = false,
 }: {
   label: string
   value: string | number
   detail?: string
+  primary?: boolean
 }) {
   return (
-    <div className="min-w-32 rounded-2xl bg-indigo-50 px-5 py-4 text-center dark:bg-gray-700">
-      <div className="text-sm text-gray-500 dark:text-gray-400">
-        {label}
-      </div>
-      <div className="mt-2 text-3xl font-semibold text-gray-700 dark:text-white">
-        {value}
-      </div>
-      {detail ? (
-        <div className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-          {detail}
-        </div>
-      ) : null}
+    <div className="focus-result-metric" data-emphasis={primary ? 'primary' : undefined}>
+      <div className="focus-result-metric-label">{label}</div>
+      <div className="focus-result-metric-value">{value}</div>
+      {detail ? <div className="focus-result-metric-detail">{detail}</div> : null}
     </div>
   )
 }
@@ -318,7 +312,8 @@ export default function LearnResultScreen() {
     >
       <div className="absolute inset-0 backdrop-blur-[3px]" style={{ background: "var(--focus-backdrop)" }} />
       <div className="relative flex min-h-screen items-center justify-center py-8">
-        <div className="focus-overlay-panel relative flex w-[min(90vw,720px)] flex-col rounded-[22px] px-6 py-8 sm:px-10 sm:py-10">
+        <div className="focus-overlay-panel focus-result-panel relative flex w-[min(90vw,720px)] flex-col rounded-[22px] px-6 py-8 sm:px-10 sm:py-10"
+          data-milestone={settlement?.milestoneReached !== undefined || isDailyComplete ? 'true' : undefined}>
           <button
             type="button"
             className="absolute right-7 top-5 disabled:cursor-not-allowed disabled:opacity-30"
@@ -331,10 +326,10 @@ export default function LearnResultScreen() {
           </button>
 
           <div className="text-center">
-            <div className="text-sm text-gray-400">
+            <div className="focus-result-eyebrow text-xs font-medium">
               {currentDictInfo.name} · Learn
             </div>
-            <h1 className="mt-3 text-[26px] font-semibold tracking-tight">
+            <h1 className="focus-result-heading mt-3 text-[27px] font-semibold tracking-tight">
               {isDailyComplete ? getLearnExtraRoundNames(settlement?.session ?? null) ? '本次加学完成' : '今日学习完成' : milestoneIndex >= 0
                 ? `阶段 ${milestoneIndex + 1} 完成`
                 : settlement?.session.blockMilestones ? '继续学习' : '阶段完成'}
@@ -364,14 +359,14 @@ export default function LearnResultScreen() {
             ) : null}
 
             {progress && !isDailyComplete ? (
-              <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+              <p className="focus-result-description mt-3 text-sm">
                 今天已经完成 {progress.percent}%。
                 当前状态已保存，按任意键继续下一阶段。
               </p>
             ) : null}
 
             {progress && isDailyComplete ? (
-              <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+              <p className="focus-result-description mt-3 text-sm">
                 {getLearnExtraRoundNames(settlement?.session ?? null) ? '本轮追加的新词已完成，其他未掌握词已保留。' : '今日计划中的复习和新词已经完成最终独立拼写。'}
               </p>
             ) : null}
@@ -379,18 +374,26 @@ export default function LearnResultScreen() {
 
           {progress ? (
             <>
-              <div className="mx-auto mt-7 h-2 w-full max-w-xl overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+              <div
+                className="focus-result-progress mx-auto mt-7 w-full max-w-xl"
+                role="progressbar"
+                aria-label={isExtraRound ? '本轮学习完成进度' : '今日学习完成进度'}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={progress.percent}
+              >
                 <div
-                  className="h-full rounded-full bg-indigo-400 transition-all duration-500"
+                  className="focus-result-progress-fill"
                   style={{ width: `${progress.percent}%` }}
                 />
               </div>
 
-              <div className="mt-8 flex flex-wrap justify-center gap-4">
+              <div className="focus-result-metrics mt-7" data-focus-result-metrics>
                 <SummaryMetric
                   label={isExtraRound ? '本轮进度' : '今日进度'}
                   value={`${progress.completedWords}/${progress.targetWords}`}
                   detail={`${progress.percent}%`}
+                  primary
                 />
                 <SummaryMetric
                   label={isExtraRound ? '本轮新词' : '今日新词'}

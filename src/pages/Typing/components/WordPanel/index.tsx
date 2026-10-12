@@ -725,9 +725,9 @@ export default function WordPanel() {
           </>
         )}
       </div>
-      <div className="flex min-h-0 w-full flex-grow flex-col items-center justify-center">
+      <div className="focus-word-workspace flex min-h-0 w-full flex-grow flex-col items-center justify-center">
         {currentWord && (
-          <div className="relative flex w-full justify-center">
+          <div className="focus-word-layout relative flex w-full justify-center">
             {!state.isTyping && (
               <div className="absolute flex h-full w-full justify-center">
                 <div className="z-10 flex w-full items-center backdrop-blur-sm">
@@ -738,7 +738,7 @@ export default function WordPanel() {
               </div>
             )}
             <div
-              className="relative"
+              className="focus-word-stack relative"
               data-learn-acquisition-phase={
                 currentLearnItemKind === 'acquisition'
                   ? currentAcquisitionState?.phase
@@ -767,7 +767,7 @@ export default function WordPanel() {
                     aria-label="Learn 单词菜单"
                     title="Learn 单词菜单"
                     onClick={() => setIsLearnMenuOpen((open) => !open)}
-                    className="rounded-md px-2 py-1 text-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+                    className="focus-word-more rounded-lg px-2 py-1 text-lg transition-colors"
                   >
                     ⋯
                   </button>
