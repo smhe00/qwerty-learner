@@ -1,0 +1,76 @@
+name: Circle Blob Read-Only Credential Preflight
+
+# Does NOT write to Blob, modify Maker, or deploy any website.
+on:
+  push:
+    branches:
+      - feature/circle-core-blob
+    paths:
+      - '.github/workflows/circle-blob-readonly-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readonly-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Probe configured credentials and READ-ONLY Blob namespaces
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_PROJECT_ID_SECRET: ${{ secrets.EDGEONE_PROJECT_ID }}
+          EDGEONE_PROJECT_ID_VAR: ${{ vars.EDGEONE_PROJECT_ID }}
+          CIRCLE_TEST_BLOB_STORE_SECRET: ${{ secrets.CIRCLE_TEST_BLOB_STORE }}
+          CIRCLE_TEST_BLOB_STORE_VAR: ${{ vars.CIRCLE_TEST_BLOB_STORE }}
+        run: |
+          node --input-type=module <<'JS'
+          import { listStores } from '@edgeone/pages-blob'
+          const token = process.env.EDGEONE_API_TOKEN || ''
+          const configuredProject = process.env.EDGEONE_PROJECT_ID_SECRET ||
+            process.env.EDGEONE_PROJECT_ID_VAR || ''
+          // The old project ID is only a read-only discovery candidate.
+          // It has been reported stale, and must not authorize any writes.
+          const projectId = configuredProject || 'makers-cgemngjuuwle'
+          const sandbox = process.env.CIRCLE_TEST_BLOB_STORE_SECRET ||
+            process.env.CIRCLE_TEST_BLOB_STORE_VAR || ''
+          const validSandbox = /^[a-z0-9-]{8,64}$/.test(sandbox) &&
+            sandbox.endsWith('-circle-sandbox') && sandbox !== 'qwerty-data'
+          const report = {
+            check: 'circle_blob_readonly_preflight_v1',
+            tokenSecretPresent: Boolean(token),
+            projectIdConfigured: Boolean(configuredProject),
+            fallbackIsLegacy: !configuredProject,
+            sandboxStoreConfigured: validSandbox,
+            readOnly: true,
+            blobWritesAttempted: false,
+          }
+          if (!token) {
+            console.log(JSON.stringify({ ...report, outcome: 'MISSING_API_TOKEN_SECRET' }))
+            process.exit(0)
+          }
+          try {
+            const answer = await listStores({ projectId, token, consistency: 'strong' })
+            const stores = Array.isArray(answer?.stores) ? answer.stores : []
+            // Names of private stores and API/HTTP errors are never printed.
+            console.log(JSON.stringify({
+              ...report, outcome: validSandbox && stores.some(s => s.name === sandbox)
+                ? 'READY_FOR_SEPARATE_SANDBOX_GATE' : 'MISSING_ISOLATED_SANDBOX',
+              readPermissionVerified: true,
+              sandboxPresent: validSandbox && stores.some(s => s.name === sandbox),
+              namespaceCount: stores.length,
+            }))
+          } catch {
+            console.log(JSON.stringify({
+              ...report, outcome: 'READ_ONLY_ACCESS_FAILED',
+              readPermissionVerified: false,
+            }))
+          }
+          JS
