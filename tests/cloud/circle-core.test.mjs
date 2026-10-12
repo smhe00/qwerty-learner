@@ -15,6 +15,12 @@ class FakeBlob {
     if (this.failedReads > 0) { this.failedReads -= 1; throw Error('transient read') }
     return this.objects.has(key) ? clone(this.objects.get(key)) : null
   }
+  async list({ prefix, consistency }) {
+    assert.equal(consistency, 'strong')
+    return { blobs: [...this.objects.keys()]
+      .filter((key) => key.startsWith(prefix))
+      .map((key) => ({ key })) }
+  }
   async setJSON(key, value, options) {
     assert.equal(options.onlyIfNew, true)
     if (this.objects.has(key)) throw Error('key already exists')
@@ -279,4 +285,38 @@ test('Concurrent same-event publications cannot consume multiple daily slots', a
   const progress = [...blob.objects.keys()].filter((key) => key.includes('/progress/') &&
     key.endsWith('.json'))
   assert.equal(progress.length, 1)
+})
+
+test('Account quarantine fences access and indexes every durable membership', async () => {
+  const { storage, service } = setup()
+  const first = await service.createCircle(owner, { name: 'First' })
+  const second = await service.createCircle(alice, { name: 'Second' })
+  await service.joinCircle(alice, first.inviteCode)
+  await service.joinCircle(bob, second.inviteCode)
+  await service.publishProgress(alice, first.circleId, today(),
+    event('quarantine_0001', 8))
+  assert.equal((await service.getProgress(owner, first.circleId, today())).length, 1)
+  assert.deepEqual(await service.quarantineAccount(alice),
+    { disabled: true, circleCount: 2 })
+  assert.deepEqual(await service.quarantineAccount(alice),
+    { disabled: true, circleCount: 2 })
+  assert.equal((await service.getProgress(owner, first.circleId, today())).length, 0)
+  assert.deepEqual((await service.getCircle(owner, first.circleId)).members.map((m) => m.userId),
+    [owner])
+  await assert.rejects(service.getCircle(alice, first.circleId),
+    { code: 'circle_account_disabled' })
+  await assert.rejects(service.publishProgress(alice, first.circleId, today(),
+    event('quarantine_0002', 20)), { code: 'circle_account_disabled' })
+  await assert.rejects(service.getCircle(bob, second.circleId),
+    { code: 'circle_closed' })
+  assert.equal((await storage.list('user-circles/alice_0000000001/')).length, 2)
+})
+
+test('Circle listing always scopes returned keys to social namespace', async () => {
+  const { blob, storage } = setup()
+  await storage.create('user-circles/aa/one.json', { ok: true })
+  blob.objects.set('users/private-account/revisions/1.json', { leaked: true })
+  assert.deepEqual(await storage.list('user-circles/aa/'),
+    ['user-circles/aa/one.json'])
+  assert.equal((await storage.list('user-circles/')).length, 1)
 })
