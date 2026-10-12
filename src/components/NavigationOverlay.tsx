@@ -74,7 +74,19 @@ export default function NavigationOverlay({ title, size, children }: NavigationO
   return (
     <Dialog as="div" className="relative z-40" open onClose={close}>
       <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-[3px]" aria-hidden="true" />
-      <div className="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto p-3 sm:p-5">
+      <div
+        className="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto p-3 sm:p-5"
+        onKeyDown={(event) => {
+          // ESC means "don't know" on Learn. Never let dialog keystrokes
+          // reach the still-mounted typing/learning keyboard handlers.
+          event.stopPropagation()
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            close()
+          }
+        }}
+        onKeyUp={(event) => event.stopPropagation()}
+      >
         <Dialog.Panel
           className={`flex h-[min(88vh,920px)] min-h-0 w-full ${sizes[size]} flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl dark:border-slate-600 dark:bg-slate-900`}
           data-navigation-dialog={location.pathname.slice(1)}
