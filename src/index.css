@@ -130,6 +130,12 @@ body,
   color: var(--focus-text);
 }
 
+/* An extra-learning round legitimately has a sixth metric. Keep all six on
+   one row on wide screens, without silently dropping/overlapping a value. */
+.focus-stats-strip[data-stat-count='6'] {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
 .focus-stat-cell {
   min-width: 0;
   min-height: 62px;
@@ -168,6 +174,12 @@ body,
 
 /* P1a: content-led learning stage. Min heights absorb phonetic / hint / cue
    changes without hiding semantic feedback or changing letter measurement. */
+/* At large browser zoom the 100vh shell can become shorter than the
+   input stage and stats. Allow document scrolling instead of clipping them. */
+.focus-app-shell {
+  min-height: 620px;
+}
+
 .focus-word-workspace {
   padding-inline: clamp(12px, 2.5vw, 32px);
 }
@@ -188,10 +200,20 @@ body,
   max-width: 100%;
 }
 
+/* Preserve every character and its original font size at 200% zoom. The
+   token frame reserves a 52px audio-button lane to the right of the word;
+   long words wrap only when there is genuinely insufficient room. */
+.focus-word-token-frame {
+  min-width: 0;
+  max-width: calc(100% - 52px);
+}
+
 .focus-lexeme {
-  max-width: min(92vw, 100%);
+  flex-wrap: wrap;
+  row-gap: 0.04em;
+  max-width: 100%;
   min-height: 1.3em;
-  /* The input engine supplies its own font sizes/letter widths. */
+  /* Do not change Letter inline size, indices or hidden-letter spacing. */
   transform-origin: center;
 }
 
@@ -229,6 +251,8 @@ body,
 }
 
 .focus-word-more {
+  min-width: 44px;
+  min-height: 44px;
   color: var(--focus-text-muted);
 }
 
@@ -390,6 +414,9 @@ a:focus-visible,
     grid-template-columns: repeat(3, minmax(0, 1fr));
     row-gap: 6px;
   }
+  .focus-stats-strip[data-stat-count='6'] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
   .focus-stat-cell:nth-child(4) {
     border-left: 0;
   }
@@ -399,6 +426,9 @@ a:focus-visible,
   .focus-stats-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     padding: 10px 8px;
+  }
+  .focus-stats-strip[data-stat-count='6'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .focus-stat-cell:nth-child(odd) {
     border-left: 0;
