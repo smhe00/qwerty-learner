@@ -106,10 +106,12 @@ test('Learn shows exactly five pressure-free live metrics', async ({ page }) => 
 
 test('Typing control keeps the original five statistics', async ({ page }) => {
   await page.goto('/typing')
-  const strip = page.locator('.my-card').last()
-  await strip.waitFor()
+  // Focus P0 changed the visual shell; verify the same five Typing metrics
+  // through the semantic stats cells rather than an obsolete card classname.
+  const stripCells = page.locator('.focus-stats-strip .focus-stat-cell')
+  await expect(stripCells).toHaveCount(5)
 
-  const cells = (await strip.locator('div').allTextContents()).map((cell) =>
+  const cells = (await stripCells.allTextContents()).map((cell) =>
     cell.trim(),
   )
 
