@@ -678,3 +678,39 @@ test('Showcase remains inaccessible when account quarantine races a read', async
   unlock()
   await assert.rejects(pending, { code: 'member_not_found' })
 })
+
+test('Circle Blob adapter rejects traversal and broad unsafe paths', async () => {
+  const { storage, blob } = setup()
+  for (const unsafe of ['../users/revisions', '/accounts/u', 'circles/../users',
+    'circles//meta.json', 'circles/./meta.json', 'circles/ab\\\\cd',
+    'circles/space name', 'circles/unsafe?query']) {
+    await assert.rejects(storage.read(unsafe), TypeError)
+    await assert.rejects(storage.create(unsafe, { marker: true }), TypeError)
+    await assert.rejects(storage.remove(unsafe), TypeError)
+    await assert.rejects(storage.list(unsafe), TypeError)
+  }
+  assert.equal(blob.objects.size, 0)
+})
+
+test('Retired account audit reports residual activity and structural identity separately', async () => {
+  const { service, storage } = setup()
+  const circle = await service.createCircle(owner, { name: 'Audit' })
+  await service.joinCircle(alice, circle.inviteCode)
+  await service.publishProgress(alice, circle.circleId, today(),
+    event('audit_evt_0001', 12))
+  await service.reactProgress(owner, circle.circleId, alice, today())
+  await assert.rejects(service.auditRetiredAccount(alice),
+    { code: 'account_not_quarantined' })
+  await service.quarantineAccount(alice)
+  const before = await service.auditRetiredAccount(alice)
+  assert.equal(before.activityObjects, 2)
+  assert.ok(before.structuralReferences >= 3)
+  assert.equal(before.fullyErased, false)
+  assert.equal(before.snapshotOnly, true)
+  await service.scrubAccountActivities(alice)
+  const after = await service.auditRetiredAccount(alice)
+  assert.equal(after.activityObjects, 0)
+  assert.equal(after.structuralReferences, before.structuralReferences)
+  assert.equal(after.followUpRequired, true)
+  assert.ok(await storage.read('accounts-disabled/' + alice + '.json'))
+})
