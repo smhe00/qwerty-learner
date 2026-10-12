@@ -8,7 +8,10 @@ for (const blockSize of [5, 50]) {
       sessionStorage.setItem('block-size-seed', 'done')
       localStorage.setItem('memoryConfig', JSON.stringify({ dailyNewWordTarget: 50 }))
     })
-    await gotoReviewAppReady(page)
+    // / defaults to Learn and eagerly prepares a 20-word session before a
+    // user can change the setting. Configure it from the explicit Typing
+    // surface first; the documented change applies to the NEXT Learn block.
+    await gotoReviewAppReady(page, '/typing')
     await page.getByTitle('打开设置对话框').click()
     await page.getByRole('tab', { name: '记忆参数' }).click()
     const control = page.getByRole('spinbutton', { name: '每阶段词数' })
