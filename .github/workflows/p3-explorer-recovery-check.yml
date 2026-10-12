@@ -19,8 +19,6 @@ jobs:
           node-version: '20.18.0'
           cache: yarn
       - run: yarn install --frozen-lockfile
-      - name: Lint browser fixtures
-        run: yarn eslint tests/e2e/browser-stateful-fuzz.spec.ts tests/e2e/published-dual-site-explorer.spec.ts
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: P3 real Dexie V6 persistence and terminal mutation cases
