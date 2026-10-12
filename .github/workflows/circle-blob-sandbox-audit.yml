@@ -1,0 +1,57 @@
+name: Circle Blob Sandbox Residual Read-Only Audit
+
+on:
+  push:
+    branches:
+      - feature/circle-core-blob
+    paths:
+      - '.github/workflows/circle-blob-sandbox-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-test-artifacts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: List only dedicated Circle sandbox test prefixes (no mutations)
+        env:
+          EDGEONE_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+        run: |
+          node --input-type=module <<'JS'
+          import { getStore } from '@edgeone/pages-blob'
+          if (!process.env.EDGEONE_TOKEN) throw new Error('No token, no data read')
+          const store = getStore({
+            name: 'qwerty-circle-sandbox',
+            projectId: 'makers-yggquqwubqul',
+            token: process.env.EDGEONE_TOKEN,
+            consistency: 'strong',
+          })
+          const prefixes = ['social-contract-probe/', 'conditional-diagnostic/']
+          const residualCounts = {}
+          for (const prefix of prefixes) {
+            const result = await store.list({ prefix, consistency: 'strong' })
+            const blobs = Array.isArray(result.blobs) ? result.blobs : []
+            residualCounts[prefix] = blobs.length
+          }
+          const remaining = Object.values(residualCounts).reduce((a, b) => a + b, 0)
+          console.log(JSON.stringify({
+            check: 'circle_sandbox_residual_readonly_audit',
+            isolatedNamespace: true,
+            noWritesOrDeletesAttempted: true,
+            remainingTestObjects: remaining,
+            perPrefixCount: residualCounts,
+          }))
+          if (remaining) {
+            console.error('CIRCLE_SANDBOX_CLEANUP_REQUIRED')
+            process.exitCode = 1
+          }
+          JS
