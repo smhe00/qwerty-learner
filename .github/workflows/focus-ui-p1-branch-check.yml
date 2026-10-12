@@ -46,12 +46,12 @@ jobs:
           tests/e2e/focus-ui.spec.ts
       - name: Preserve Focus screenshots before the next Playwright invocation
         run: |
-          mkdir -p .focus-evidence
+          mkdir -p focus-evidence
           echo "Screenshot file locations:"
           find . -type f -name '*.png' -not -path './node_modules/*' | grep -E '/(focus-p1|focus-ui)/' | head -30 || true
-          find . -type f -name '*.png' -not -path './node_modules/*' | grep -E '/(focus-p1|focus-ui)/' | while read -r file; do cp "$file" .focus-evidence/; done
-          ls -lh .focus-evidence/
-          test -n "$(find .focus-evidence -maxdepth 1 -name '*.png' -print -quit)"
+          find . -type f -name '*.png' -not -path './node_modules/*' | grep -E '/(focus-p1|focus-ui)/' | while read -r file; do cp "$file" focus-evidence/; done
+          ls -lh focus-evidence/
+          test -n "$(find focus-evidence -maxdepth 1 -name '*.png' -print -quit)"
       - name: Mode navigation and dialog regressions
         run: >
           npx playwright test
@@ -64,6 +64,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: focus-p1-evidence
-          path: .focus-evidence/*.png
+          path: focus-evidence/*.png
           retention-days: 10
           if-no-files-found: warn
