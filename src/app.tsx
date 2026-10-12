@@ -79,9 +79,15 @@ function DesktopRoutes() {
   const location = useLocation()
   const isAuxiliary = AUXILIARY_PATHS.has(location.pathname)
   const background = getAuxiliaryBackground(location.pathname, location.search, location.state)
+  const persistedBackground = (location.state as {
+    backgroundLocation?: { pathname: string }
+  } | null)?.backgroundLocation
+  const hasLiveBackground = persistedBackground?.pathname === '/learn' ||
+    persistedBackground?.pathname === '/typing'
   return (
     <>
-      <Routes location={isAuxiliary && background ? background : location}>
+      {(!isAuxiliary || hasLiveBackground) ? (
+        <Routes location={isAuxiliary && background ? background : location}>
         <Route index element={<RootIndexRoute />} />
         <Route path="/typing" element={<TypingRoute />} />
         <Route path="/learn" element={<LearnPage />} />
@@ -91,7 +97,15 @@ function DesktopRoutes() {
         <Route path="/error-book" element={<ErrorBook />} />
         <Route path="/friend-links" element={<FriendLinks />} />
         <Route path="/*" element={<Navigate to="/" />} />
-      </Routes>
+        </Routes>
+      ) : (
+        // Direct /analysis and /gallery links should not boot Learn behind
+        // the modal: a fresh Learn session can legitimately navigate while
+        // initializing and would accidentally dismiss the deep-linked panel.
+        <div className="flex h-screen w-full items-center justify-center bg-slate-100 text-xl font-semibold text-slate-500 dark:bg-slate-950 dark:text-slate-500" aria-hidden="true">
+          Qwerty Plus
+        </div>
+      )}
       {isAuxiliary && (
         <Routes>
           <Route path="/gallery" element={
