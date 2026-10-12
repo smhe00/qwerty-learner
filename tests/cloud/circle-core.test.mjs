@@ -530,3 +530,67 @@ test('Scrubbing the owner seals the circle before removing owned activity', asyn
   assert.ok(await storage.read('circles/' + group.circleId + '/closed.json'))
   await assert.rejects(service.getCircle(alice, group.circleId), { code: 'circle_closed' })
 })
+
+test('An in-flight write after quarantine needs an additional scrub pass', async () => {
+  const { blob, storage, service } = setup()
+  const group = await service.createCircle(owner, { name: 'Race erase' })
+  await service.joinCircle(alice, group.inviteCode)
+  const original = blob.setJSON.bind(blob)
+  let resume
+  const waiting = new Promise((resolve) => { resume = resolve })
+  let release
+  const arrived = new Promise((resolve) => { release = resolve })
+  let blocked = false
+  blob.setJSON = async (key, value, options) => {
+    if (!blocked && key.includes('/progress/' + alice + '/')) {
+      blocked = true
+      release()
+      await waiting
+    }
+    return original(key, value, options)
+  }
+  const pending = service.publishProgress(alice, group.circleId, today(),
+    event('after_fence_001', 8))
+  await arrived
+  const first = await service.scrubAccountActivities(alice)
+  assert.equal(first.deleted, 0)
+  assert.equal(first.fullyErased, false)
+  resume()
+  await assert.rejects(pending, { code: 'circle_account_disabled' })
+  // The durable fence prevents API visibility, but an old in-flight writer
+  // can still leave a private residual record after a successful scrub pass.
+  assert.equal((await service.getProgress(owner, group.circleId, today())).length, 0)
+  assert.equal((await storage.list('circles/' + group.circleId +
+    '/progress/' + alice + '/')).length, 1)
+  const second = await service.scrubAccountActivities(alice)
+  assert.equal(second.deleted, 1)
+  assert.equal((await storage.list('circles/' + group.circleId +
+    '/progress/' + alice + '/')).length, 0)
+})
+
+test('Adversarial interleaved joins keep every user in at most one seat', async () => {
+  for (let round = 0; round < 12; round++) {
+    const { blob, service } = setup()
+    const group = await service.createCircle(owner, { name: 'Stress' })
+    const write = blob.setJSON.bind(blob)
+    let sequence = round
+    blob.setJSON = async (key, value, options) => {
+      if (key.includes('/seats/')) {
+        sequence = ((sequence * 1664525) + 1013904223) >>> 0
+        if (sequence % 3 === 0) await Promise.resolve()
+      }
+      return write(key, value, options)
+    }
+    const users = Array.from({ length: 25 }, (_v, i) =>
+      'student_' + String(i).padStart(6, '0'))
+    const results = await Promise.allSettled(users.flatMap((uid) =>
+      [service.joinCircle(uid, group.inviteCode),
+        service.joinCircle(uid, group.inviteCode)]))
+    assert.ok(results.every((outcome) => outcome.status === 'fulfilled' ||
+      outcome.reason?.code === 'circle_full'))
+    const snapshot = await service.getCircle(owner, group.circleId)
+    assert.equal(new Set(snapshot.members.map((m) => m.userId)).size,
+      snapshot.members.length)
+    assert.equal(snapshot.members.length, 12)
+  }
+})
