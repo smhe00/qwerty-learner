@@ -1,28 +1,13 @@
+/* Focus P1: brief, low-amplitude feedback. Keep the input, hint and
+   completion timing in the Word component unchanged. These are purely visual. */
 .wrong {
-  animation: shake 0.82s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  animation: focusWrongNudge 0.26s ease-out both;
 }
 
-@keyframes shake {
-  10%,
-  90% {
-    transform: translate3d(-1px, 0, 0);
-  }
-
-  20%,
-  80% {
-    transform: translate3d(2px, 0, 0);
-  }
-
-  30%,
-  50%,
-  70% {
-    transform: translate3d(-4px, 0, 0);
-  }
-
-  40%,
-  60% {
-    transform: translate3d(4px, 0, 0);
-  }
+@keyframes focusWrongNudge {
+  0%, 100% { transform: translateX(0); }
+  35% { transform: translateX(-1.5px); }
+  70% { transform: translateX(1px); }
 }
 
 .word-sound {
@@ -43,21 +28,15 @@
   opacity: 0.8;
 }
 
-
 .success {
-  animation: successPulse 0.55s ease-out both;
+  animation: focusSuccessResolve 0.32s ease-out both;
 }
 
-@keyframes successPulse {
-  0% {
-    transform: scale(1);
-  }
+@keyframes focusSuccessResolve {
+  0%, 100% { transform: scale(1); }
+  45% { transform: scale(1.012); }
+}
 
-  45% {
-    transform: scale(1.035);
-  }
-
-  100% {
-    transform: scale(1);
-  }
+@media (prefers-reduced-motion: reduce) {
+  .wrong, .success { animation: none; }
 }
