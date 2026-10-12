@@ -428,8 +428,74 @@ export function createCircleService({ storage, authenticate, verifyAchievement }
     return { disabled: true, circleCount: references.length }
   }
 
+  /**
+   * Trusted, retryable activity scrub AFTER durable quarantine. Removes
+   * user-authored progress, shared achievements and clap records (including
+   * claps from other participants addressed to this user). Does NOT remove
+   * capacity seats, ownership metadata, reverse indexes or tombstones:
+   * those require a separate transactional identity-erasure protocol.
+   *
+   * No HTTP route calls this method. The returned "fullyErased" field is
+   * always false because Blob cannot fence already in-flight old writers.
+   */
+  async function scrubAccountActivities(userId) {
+    const uid = validId(userId)
+    if (typeof storage.list !== 'function' || typeof storage.remove !== 'function') {
+      throw new TypeError('Account scrub requires strong Blob list and delete')
+    }
+    await quarantineAccount(uid)
+    const userRefs = await storage.list(`user-circles/${uid}/`)
+    let deleted = 0
+    let circlesAffected = 0
+    const idPattern = /^user-circles\/[A-Za-z0-9_-]{4,128}\/([A-Za-z0-9_-]{12})\.json$/
+    for (const ref of userRefs) {
+      const match = idPattern.exec(ref)
+      if (!match) throw new Error('Malformed Circle membership reverse index')
+      const id = match[1]
+      const meta = await storage.read(metaKey(id))
+      if (!meta) continue // interrupted circle creation before meta commit
+      circlesAffected++
+      if (meta.ownerUserId === uid) {
+        await storage.create(closedKey(id), { closedBy: uid, closedAt: now(),
+          reason: 'owner_account_retired' })
+      }
+      const seated = await peers(id)
+      const allUserIds = [...new Set([meta.ownerUserId,
+        ...seated.map((seat) => seat.userId)])]
+      const prefixes = [
+        `circles/${id}/progress/${uid}/`,
+        `circles/${id}/showcase/${uid}/`,
+        `circles/${id}/reactions/${uid}/`,
+        `circles/${id}/progress-claims/${uid}/`,
+      ]
+      // Also remove claps from OTHER members addressed to the retired actor.
+      for (const otherUid of allUserIds) {
+        if (otherUid !== uid) {
+          prefixes.push(`circles/${id}/reactions/${otherUid}/${uid}/`)
+        }
+      }
+      const targets = new Set()
+      for (const prefix of prefixes) {
+        const names = await storage.list(prefix)
+        for (const name of names) {
+          if (!name.startsWith(prefix)) throw new Error('Out-of-scope scrub key')
+          targets.add(name)
+        }
+      }
+      for (const name of targets) {
+        await storage.remove(name)
+        deleted++
+      }
+    }
+    return {
+      quarantined: true, circlesAffected, deleted,
+      fullyErased: false, // structural identity and racing writers not purged
+      followUpRequired: true,
+    }
+  }
+
   return Object.freeze({
-    quarantineAccount,
+    quarantineAccount, scrubAccountActivities,
     createCircle, joinCircle, rotateInvite, getCircle, leaveCircle: leave,
     removeMember, closeCircle, publishProgress, getProgress,
     reactProgress, getReactions, shareAchievement, getShowcase,
