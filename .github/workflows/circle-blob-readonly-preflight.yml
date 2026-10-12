@@ -38,7 +38,7 @@ jobs:
             process.env.EDGEONE_PROJECT_ID_VAR || ''
           // The old project ID is only a read-only discovery candidate.
           // It has been reported stale, and must not authorize any writes.
-          const projectId = configuredProject || 'makers-cgemngjuuwle'
+          const projectId = configuredProject || 'makers-yggquqwubqul'
           const sandbox = process.env.CIRCLE_TEST_BLOB_STORE_SECRET ||
             process.env.CIRCLE_TEST_BLOB_STORE_VAR || ''
           const validSandbox = /^[a-z0-9-]{8,64}$/.test(sandbox) &&
@@ -47,7 +47,7 @@ jobs:
             check: 'circle_blob_readonly_preflight_v1',
             tokenSecretPresent: Boolean(token),
             projectIdConfigured: Boolean(configuredProject),
-            fallbackIsLegacy: !configuredProject,
+            fallbackIsDiscoveredCurrent: !configuredProject,
             sandboxStoreConfigured: validSandbox,
             readOnly: true,
             blobWritesAttempted: false,
