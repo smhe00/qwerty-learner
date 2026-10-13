@@ -132,7 +132,13 @@ test('S1 signed-in account can download verified cloud Backup V4 with unchanged 
       payloadEncoding: 'base64', payloadBase64: zipped.toString('base64'),
     } })
   })
-  await page.goto('/?v4-cloud-backup=download')
+  // Exercise the REAL Settings -> cloud download full-page navigation. The
+  // mounted app owns the S1 Web Lock, which a direct test URL would miss.
+  await page.goto('/')
+  await page.getByRole('button', { name: '打开设置对话框' }).click()
+  await page.getByRole('tab', { name: '数据设置' }).click()
+  await page.getByRole('button', { name: '下载云端完整 V4' }).click()
+  await expect(page).toHaveURL(/v4-cloud-backup=download/)
   const save = page.getByRole('button', { name: '下载标准 V4 文件（.gz）' })
   await expect(save).toBeEnabled({ timeout: 25_000 })
   const downloadPending = page.waitForEvent('download', { timeout: 25_000 })
