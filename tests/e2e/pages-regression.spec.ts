@@ -78,13 +78,17 @@ test('published Pages: real Learn keystrokes produce one durable record across r
   await page.goto(site, { waitUntil: 'domcontentloaded' })
   await page.getByRole('button', { name: 'Learn', exact: true }).click()
   await expect(page).toHaveURL(/\/qwerty-learner\/learn\/?$/)
-  await expect(page.getByText('按任意键开始')).toBeVisible()
+  await expect(page.getByText('按任意键开始 Learn；Enter 暂停或继续。')).toBeVisible()
+  // Learn's landing page is deliberately read-only. No WordComponent exists
+  // until a real user start triggers preparation; querying the word before
+  // start was an obsolete Typing-style test and failed every Pages build.
+  await page.keyboard.press('a') // landing start key is consumed, not typed
   const wordNode = page.locator('[data-typing-word]:visible').first()
-  await expect(wordNode).toHaveAttribute('data-typing-word', /\S+/)
+  await expect(wordNode).toHaveAttribute('data-typing-word', /\S+/, { timeout: 30_000 })
+  await expect(wordNode).toHaveAttribute('data-typing-active', 'true', { timeout: 10_000 })
   const word = await wordNode.getAttribute('data-typing-word')
   expect(word).toBeTruthy()
 
-  await page.keyboard.press('a') // start key is not part of the spelling
   await page.keyboard.type(word!)
   await expect.poll(async () => {
     const state = await progress()
