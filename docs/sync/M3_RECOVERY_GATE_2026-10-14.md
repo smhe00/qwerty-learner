@@ -27,3 +27,19 @@ Remaining for promotion of full multi-device functionality:
 
 The presence of these files must not be interpreted as permission to turn on
 \`MULTI_DEVICE_AUTH_ENABLED\` or \`MULTI_DEVICE_EVENT_PILOT_ENABLED\`.
+
+## Etest pilot GitHub Actions activation
+
+GitHub requires a workflow to exist on the default branch for direct
+workflow_dispatch activation; the stable master intentionally does not contain
+experimental testing workflows. Therefore the M1/M3 trial is **push-triggered
+on edgeone-test**, additionally gated by repository Actions variable
+ETEST_M3_PILOT_ENABLED=true. Set this variable and the test Maker's two
+server-side M1/M3 flags before the chosen staging promotion; then ONE
+promotion triggers ONE EdgeOne staging build and the opt-in test job.
+When the variable is absent, experimental writes do not run.
+
+Later test reruns without another staging build may use the GitHub Actions
+re-run capability where permitted, or run the same guarded Node script in
+an isolated CI/local test environment with GITHUB_REF_NAME=edgeone-test,
+GITHUB_RUN_ID set, and QWERTY_SYNC_BASE_URL=https://etest.edgeone.dev/.

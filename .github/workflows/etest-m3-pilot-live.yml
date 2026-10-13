@@ -1,13 +1,18 @@
 name: etest M1+M3 Real Multi-Device Pilot (manual)
+# workflow_dispatch alone cannot activate a workflow that is absent from
+# GitHub's default master branch. Use the staging branch push instead.
+# Set repository Actions variable ETEST_M3_PILOT_ENABLED=true *before*
+# deliberate etest promotion; no extra Maker deployment is necessary.
 on:
-  workflow_dispatch:
+  push:
+    branches: [edgeone-test]
 
 permissions:
   contents: read
 
 jobs:
   live-multi-device:
-    if: github.ref_name == 'edgeone-test'
+    if: github.ref_name == 'edgeone-test' && vars.ETEST_M3_PILOT_ENABLED == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 12
     env:
