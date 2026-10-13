@@ -1,3 +1,5 @@
+> **API checkpoint:** [v2 request contract](./CIRCLE_LIGHT_API_V2.md) now has an offline-tested dispatcher (73 passing Circle tests). Production gate remains closed; no gateway/UI/store deployment occurred.
+
 # Circle light social v1 — simplified product decision
 
 2026-10-13, feature/circle-core-blob only. HTTP CLOSED, no UI/V4 change or deployment.
@@ -65,8 +67,7 @@ members or hide their progress, self-report merging is deterministic, evidence
 callbacks are unnecessary, and social faults stay local while private reads and
 revocation/retirement safety remain guarded.
 
-HTTP is still disabled and not mounted in the production gateway. Basic transport
-adaptation, separately authorized UI work, existing trustworthy identity/private
+HTTP is still disabled and not mounted in the production gateway. Production transport binding, separately authorized UI work, existing trustworthy identity/private
 access integration and isolated real-store verification remain before user use.
 No release, Maker build or live mutation is authorized by this checkpoint.
 These are ordinary MVP integration tasks; hard capacity and official incentives

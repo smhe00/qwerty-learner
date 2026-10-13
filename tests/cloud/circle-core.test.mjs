@@ -1,6 +1,7 @@
 /* eslint-env node */
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { ReadableStream } from 'node:stream/web'
 import { createCircleEventLog, digest, makeEvent } from '../../cloud-functions/_shared/circle/event-log.js'
 import { createCircleRevocationCoordinator, revocationCommand } from '../../cloud-functions/_shared/circle/revocation.js'
 import { createCirclePrivacyMaintenance } from '../../cloud-functions/_shared/circle/privacy.js'
@@ -9,6 +10,8 @@ import { createCircleService } from '../../cloud-functions/_shared/circle/servic
 import { createCircleBlobStorage } from '../../cloud-functions/_shared/circle/blob-storage.js'
 import { createCircleService as historicalService } from '../../cloud-functions/_shared/circle/service-cas-historical.js'
 import { createCircleBlobStorage as historicalStorage } from '../../cloud-functions/_shared/circle/blob-storage-cas-historical.js'
+import { createCircleTransport } from '../../cloud-functions/_shared/circle/transport.js'
+import { AppError } from '../../cloud-functions/_shared/core.js'
 import { createCircleHttpHandler } from '../../cloud-functions/_shared/circle/http.js'
 
 const owner = 'owner_00000001'
@@ -903,4 +906,250 @@ test('malformed activity payloads are skipped while envelope and membership inte
   assert.deepEqual(view.progress, [])
   assert.deepEqual(view.achievements, [])
   assert.deepEqual(reduceCircle(c.circleId, facts(blob)), reduceCircle(c.circleId, facts(blob).reverse()))
+})
+
+function transportSetup(options = {}) {
+  const fixture = setup()
+  const limiterCalls = []
+  const transport = createCircleTransport({ service: fixture.service, rateLimit: async (context) => {
+    limiterCalls.push(context)
+    return options.limit ? options.limit(context) : true
+  }, ...options.transportOptions })
+  return { ...fixture, transport, limiterCalls }
+}
+async function api(transport, path, { token = owner, method = 'GET', body, rawBody, headers = {} } = {}) {
+  const requestHeaders = { ...headers }
+  if (token !== null) requestHeaders.Authorization = 'Bearer ' + token
+  const content = rawBody !== undefined ? rawBody : body !== undefined ? JSON.stringify(body) : undefined
+  if (content !== undefined && !Object.keys(headers).some((k) => k.toLowerCase() === 'content-type')) {
+    requestHeaders['Content-Type'] = 'application/json'
+  }
+  const response = await transport.handle(new Request('https://offline.invalid/api/circle/v2' + path,
+    { method, headers: requestHeaders, body: content }))
+  return { response, status: response.status, data: await response.json() }
+}
+const createBody = { name: 'Light circle', operationId: 'api_create_0001', softMemberLimit: 2 }
+
+test('transport requires complete service and trusted limiter; production gate stays closed', async () => {
+  const { service } = setup()
+  assert.throws(() => createCircleTransport({ service }), /limiter required/)
+  assert.throws(() => createCircleTransport({ service: {}, rateLimit: async () => true }), /Complete/)
+  const closed = createCircleHttpHandler({ service })
+  await assert.rejects(closed.handle(new Request('https://offline.invalid/api/circle/v2')), { code: 'not_found' })
+  assert.throws(() => createCircleHttpHandler({ service, enabled: true }), /gate is closed/)
+})
+
+test('transport offline create/join/progress/showcase/clap/read flow uses v2 IDs and pending writes', async () => {
+  const { transport, limiterCalls } = transportSetup()
+  const created = await api(transport, '', { method: 'POST', body: createBody })
+  assert.equal(created.status, 202)
+  assert.equal(created.data.result.status, 'pending')
+  assert.equal(created.data.consistency, 'eventual')
+  const { circleId, inviteCode } = created.data.result
+  assert.match(circleId, /^[a-f0-9]{24}$/)
+  const joined = await api(transport, '/join', { token: alice, method: 'POST', body: { inviteCode } })
+  assert.equal(joined.status, 202)
+  assert.equal(joined.data.result.admission, 'pending')
+  await api(transport, '/' + circleId + '/progress/' + day,
+    { token: alice, method: 'POST', body: { eventId: 'api_progress_01', completed: true, newWords: 8 } })
+  const shared = await api(transport, '/' + circleId + '/showcase',
+    { token: alice, method: 'POST', body: { achievementId: 'ACH_MASTERED_100' } })
+  assert.equal(shared.status, 202)
+  const clapped = await api(transport, '/' + circleId + '/claps',
+    { method: 'POST', body: { memberUserId: alice, day } })
+  assert.equal(clapped.status, 202)
+  const progress = await api(transport, '/' + circleId + '/progress/' + day)
+  assert.equal(progress.status, 200)
+  assert.equal(progress.data.result[0].selfReported, true)
+  const showcase = await api(transport, '/' + circleId + '/showcase/' + alice + '?ids=ACH_MASTERED_100')
+  assert.equal(showcase.data.result[0].verified, false)
+  const claps = await api(transport, '/' + circleId + '/claps/' + alice + '/' + day)
+  assert.equal(claps.data.result.count, 1)
+  const circle = await api(transport, '/' + circleId)
+  assert.equal(circle.status, 200)
+  assert.equal(circle.data.result.capacity.hardLimit, false)
+  assert.equal(circle.response.headers.get('cache-control'), 'no-store')
+  assert.equal(circle.response.headers.get('access-control-allow-origin'), null)
+  assert.equal(circle.response.headers.get('x-content-type-options'), 'nosniff')
+  assert.ok(limiterCalls.some((c) => c.action === 'getCircle' && c.circleId === circleId && c.token === owner))
+})
+
+test('transport retries same create/progress/clap logical commands without doubling soft counts', async () => {
+  const { transport } = transportSetup()
+  const one = await api(transport, '', { method: 'POST', body: createBody })
+  const two = await api(transport, '', { method: 'POST', body: createBody })
+  assert.equal(one.data.result.circleId, two.data.result.circleId)
+  assert.equal(one.data.result.inviteCode, two.data.result.inviteCode)
+  const { circleId, inviteCode } = one.data.result
+  await api(transport, '/join', { token: alice, method: 'POST', body: { inviteCode } })
+  for (let i = 0; i < 3; i++) {
+    await api(transport, '/' + circleId + '/progress/' + day,
+      { token: alice, method: 'POST', body: { eventId: 'api_progress_01', completed: true, newWords: 8 } })
+    await api(transport, '/' + circleId + '/claps', { method: 'POST', body: { memberUserId: alice, day } })
+  }
+  const view = (await api(transport, '/' + circleId)).data.result
+  assert.equal(view.progress.length, 1)
+  assert.equal(view.progress[0].newWords, 8)
+  assert.equal(view.claps.length, 1)
+})
+
+test('transport supports private leave/remove/close without exposing maintenance routes', async () => {
+  const { transport } = transportSetup()
+  const c = (await api(transport, '', { method: 'POST', body: createBody })).data.result
+  await api(transport, '/join', { token: alice, method: 'POST', body: { inviteCode: c.inviteCode } })
+  await api(transport, '/join', { token: bob, method: 'POST', body: { inviteCode: c.inviteCode } })
+  assert.equal((await api(transport, '/' + c.circleId + '/remove',
+    { token: bob, method: 'POST', body: { memberUserId: alice } })).status, 403)
+  assert.equal((await api(transport, '/' + c.circleId + '/remove',
+    { method: 'POST', body: { memberUserId: alice } })).status, 202)
+  assert.equal((await api(transport, '/' + c.circleId, { token: alice })).status, 403)
+  assert.equal((await api(transport, '/' + c.circleId + '/me', { token: bob, method: 'DELETE' })).status, 202)
+  assert.equal((await api(transport, '/' + c.circleId + '/close', { method: 'POST' })).status, 202)
+  assert.equal((await api(transport, '/' + c.circleId)).status, 403)
+})
+
+test('transport rejects missing token and nonmembers without private response details', async () => {
+  const { transport, create } = transportSetup()
+  const c = await create()
+  const missing = await api(transport, '/' + c.circleId, { token: null })
+  assert.equal(missing.status, 401)
+  assert.deepEqual(missing.data, { ok: false, error: 'missing_token' })
+  const forbidden = await api(transport, '/' + c.circleId, { token: 'visitor_000001' })
+  assert.equal(forbidden.status, 403)
+  assert.deepEqual(forbidden.data, { ok: false, error: 'not_circle_member' })
+})
+
+test('transport limiter is mandatory and denied or unknown limits never invoke mutations', async () => {
+  for (const decision of [false, undefined, 'yes']) {
+    const { blob, transport } = transportSetup({ limit: async () => decision })
+    const result = await api(transport, '', { method: 'POST', body: createBody })
+    assert.equal(result.status, 429)
+    assert.equal(blob.writes.length, 0)
+  }
+})
+
+test('transport rejects actor/role/verified/legacy capacity spoofing fields before service write', async () => {
+  for (const extra of [{ actorUserId: alice }, { role: 'owner' }, { verified: true }, { maxMembers: 2 }]) {
+    const { blob, transport } = transportSetup()
+    const result = await api(transport, '', { method: 'POST', body: { ...createBody, ...extra } })
+    assert.equal(result.status, 400)
+    assert.equal(result.data.error, 'unexpected_field')
+    assert.equal(blob.writes.length, 0)
+  }
+})
+
+test('transport rejects non-JSON, arrays, null and malformed JSON', async () => {
+  const { transport } = transportSetup()
+  assert.equal((await api(transport, '', { method: 'POST', rawBody: '{}', headers: { 'Content-Type': 'text/plain' } })).status, 415)
+  for (const rawBody of ['[]', 'null', '{', '']) {
+    const result = await api(transport, '', { method: 'POST', rawBody })
+    assert.equal(result.status, 400)
+    assert.equal(result.data.error, 'invalid_json')
+  }
+})
+
+test('transport limits UTF-8 bytes and validates declared body length', async () => {
+  const { transport } = transportSetup()
+  const large = await api(transport, '', { method: 'POST', rawBody: JSON.stringify({ name: '汉'.repeat(3000) }) })
+  assert.equal(large.status, 413)
+  assert.equal((await api(transport, '', { method: 'POST', rawBody: '{}', headers: { 'Content-Length': '9000' } })).status, 413)
+  assert.equal((await api(transport, '', { method: 'POST', rawBody: '{}', headers: { 'Content-Length': '1' } })).status, 400)
+  assert.equal((await api(transport, '', { method: 'POST', rawBody: '{}', headers: { 'Content-Length': '-1' } })).status, 400)
+})
+
+test('transport streamed oversized input is cancelled and invalid UTF-8 is rejected', async () => {
+  const { transport, blob } = transportSetup()
+  let cancelled = false
+  let reads = 0
+  const stream = new ReadableStream({
+    pull(controller) { reads++; controller.enqueue(new Uint8Array(6000)); },
+    cancel() { cancelled = true },
+  })
+  const response = await transport.handle(new Request('https://offline.invalid/api/circle/v2',
+    { method: 'POST', headers: { Authorization: 'Bearer ' + owner, 'Content-Type': 'application/json' },
+      body: stream, duplex: 'half' }))
+  assert.equal(response.status, 413)
+  assert.equal(cancelled, true)
+  assert.ok(reads <= 4)
+  const invalid = await transport.handle(new Request('https://offline.invalid/api/circle/v2',
+    { method: 'POST', headers: { Authorization: 'Bearer ' + owner, 'Content-Type': 'application/json' },
+      body: new Uint8Array([255]) }))
+  assert.equal(invalid.status, 400)
+  assert.equal(blob.writes.length, 0)
+})
+
+test('transport rejects legacy IDs, escaped paths, unknown routes and maintenance endpoints', async () => {
+  const { transport, create } = transportSetup()
+  const c = await create()
+  for (const path of ['/' + 'a'.repeat(12), '/' + c.circleId + '/recover',
+    '/' + c.circleId + '/scrub', '/' + c.circleId + '/rotate-invite',
+    '/' + c.circleId + '//close', '/%2e%2e/private', '/' + c.circleId + '/showcase/%2fprivate']) {
+    assert.equal((await api(transport, path)).status, 404)
+  }
+  const legacy = await transport.handle(new Request('https://offline.invalid/api/circle/v1'))
+  assert.equal(legacy.status, 404)
+})
+
+test('transport method/query validation denies unsupported or ambiguous request shapes', async () => {
+  const { transport, create } = transportSetup()
+  const c = await create()
+  assert.equal((await api(transport, '')).status, 405)
+  assert.equal((await api(transport, '/' + c.circleId + '/close', { method: 'GET' })).status, 405)
+  assert.equal((await api(transport, '/' + c.circleId + '?admin=true')).status, 400)
+  assert.equal((await api(transport, '/' + c.circleId + '/showcase/' + owner + '?ids=ACH_MASTERED_100&ids=ACH_MASTERED_100')).status, 400)
+  assert.equal((await api(transport, '/' + c.circleId + '/showcase/' + owner + '?ids=../private')).status, 400)
+})
+
+test('transport returns typed domain errors but sanitizes messages, details and unexpected failures', async () => {
+  const { service, create } = setup()
+  const c = await create()
+  const typed = createCircleTransport({ service: { ...service,
+    getCircle: async () => { throw new AppError(401, 'session_revoked', 'private token detail', { secret: 'credential' }) } },
+  rateLimit: async () => true })
+  const rejected = await api(typed, '/' + c.circleId)
+  assert.equal(rejected.status, 401)
+  assert.deepEqual(rejected.data, { ok: false, error: 'session_revoked' })
+  const broken = createCircleTransport({ service: { ...service,
+    getCircle: async () => { throw Error('raw-storage-key-secret') } }, rateLimit: async () => true })
+  const failure = await api(broken, '/' + c.circleId)
+  assert.equal(failure.status, 500)
+  assert.deepEqual(failure.data, { ok: false, error: 'circle_internal_error' })
+})
+
+test('transport ambiguous append remains UNKNOWN and same operation retry converges', async () => {
+  const { transport, blob } = transportSetup()
+  blob.lostResponse = true
+  const unknown = await api(transport, '', { method: 'POST', body: createBody })
+  assert.equal(unknown.status, 503)
+  assert.deepEqual(unknown.data, { ok: false, error: 'circle_append_unknown' })
+  const retry = await api(transport, '', { method: 'POST', body: createBody })
+  assert.equal(retry.status, 202)
+  const read = await api(transport, '/' + retry.data.result.circleId)
+  assert.equal(read.data.result.members.length, 1)
+})
+
+test('transport response budget fails without silently truncating a private view', async () => {
+  const { service, create } = setup()
+  const c = await create()
+  const limited = createCircleTransport({ service: { ...service,
+    getCircle: async () => ({ members: Array(100).fill({ userId: alice }) }) },
+  rateLimit: async () => true, maxResponseBytes: 256 })
+  const result = await api(limited, '/' + c.circleId)
+  assert.equal(result.status, 503)
+  assert.deepEqual(result.data, { ok: false, error: 'circle_response_too_large' })
+})
+
+test('transport denied limiter cancels unread streams without running a Circle command', async () => {
+  const { transport, blob } = transportSetup({ limit: async () => false })
+  let cancelled = false
+  const stream = new ReadableStream({
+    pull(controller) { controller.enqueue(new Uint8Array(1024)); },
+    cancel() { cancelled = true },
+  })
+  const response = await transport.handle(new Request('https://offline.invalid/api/circle/v2',
+    { method: 'POST', headers: { Authorization: 'Bearer ' + owner, 'Content-Type': 'application/json' },
+      body: stream, duplex: 'half' }))
+  assert.equal(response.status, 429)
+  assert.equal(cancelled, true)
+  assert.equal(blob.writes.length, 0)
 })
