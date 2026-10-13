@@ -1,7 +1,10 @@
 /* eslint-env node */
 import assert from 'node:assert/strict'
+import { createHash, randomBytes } from 'node:crypto'
+import { gzipSync } from 'node:zlib'
 import test from 'node:test'
 import { createEdgeOneBlobStorage } from '../../cloud-functions/_shared/storage/edgeone-blob.js'
+import { createBackendService } from '../../cloud-functions/_shared/core.js'
 
 const clone = (value) => (value === null ? null : JSON.parse(JSON.stringify(value)))
 
@@ -242,4 +245,66 @@ test('failed chunk precommit cannot advance visible revision', async () => {
   }), /permanent part outage/)
   assert.equal(await storage.getLatestRevisionMeta('fault'), null)
   assert.equal(await storage.getLatestRevision('fault'), null)
+})
+
+
+test('end-to-end V4 >1 MiB backend write/read through size-limited Blob, without changing protocol', async () => {
+  const blob = new FakeBlobStore()
+  const originalSet = blob.setJSON.bind(blob)
+  blob.setJSON = async (key, value, options) => {
+    if (Buffer.byteLength(JSON.stringify(value)) > 380000) {
+      throw new Error('simulated production oversized Blob JSON write')
+    }
+    return originalSet(key, value, options)
+  }
+  const storage = createEdgeOneBlobStorage(blob)
+  const service = createBackendService({ storage })
+  const user = await service.register('v4-chunked-backend', 'strong-password-123', 'device-A')
+  const accountId = user.user.userId
+  const names = ['achievementEvents', 'achievementStates', 'chapterRecords',
+    'reviewRecords', 'reviewWordStates', 'wordRecords']
+  const bigTelemetry = randomBytes(1024 * 1024).toString('base64')
+  const tables = names.map(name => ({ name, schema: '++id' }))
+  const data = names.map(name => ({ tableName: name, inbound: true,
+    rows: name === 'wordRecords' ? [{ id: 1, word: 'careful',
+      typingTelemetry: { synthetic: bigTelemetry } }] : [],
+  }))
+  const workspace = {
+    database: { formatName: 'dexie', formatVersion: 1,
+      data: { databaseName: 'RecordDB', databaseVersion: 6, tables, data } },
+    learnRuntime: { dailySessions: {} }, settings: { version: 1, values: {} },
+    navigation: { currentDict: 'test', currentChapter: 0 },
+  }
+  const v4 = { backupFormatVersion: 'qwerty-backup-v4',
+    metadata: { source: { kind: 'account', accountId }, createdAt: '2026-10-13' },
+    workspaceData: workspace }
+  const stable = value => {
+    if (value === null || typeof value !== 'object') return JSON.stringify(value)
+    if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`
+    return `{${Object.keys(value).sort().map(k => `${JSON.stringify(k)}:${stable(value[k])}`).join(',')}}`
+  }
+  const logicalFingerprint = createHash('sha256').update(stable({
+    database: { tables, data }, learnRuntime: workspace.learnRuntime,
+    settings: workspace.settings, navigation: workspace.navigation,
+  })).digest('hex')
+  const payload = gzipSync(Buffer.from(JSON.stringify(v4)))
+  assert.ok(payload.byteLength > 1_000_000, 'must reproduce the observed failing size class')
+  const compressedSha = createHash('sha256').update(payload).digest('hex')
+  const input = { baseRevision: 0, logicalFingerprint,
+    clientFormatVersion: 'qwerty-backup-v4',
+    payloadBase64: payload.toString('base64'), deviceId: 'v4-stress-test' }
+  const written = await service.putSyncV4(user.token, input)
+  assert.equal(written.revision, 1)
+  assert.equal(written.logicalFingerprint, logicalFingerprint)
+  assert.equal(written.payloadSha256, compressedSha)
+  const compact = await storage.getLatestRevisionMeta(accountId)
+  assert.equal(compact.snapshot.payloadBase64, null)
+  assert.ok(compact.snapshot.chunkedPayload.count > 1)
+  assert.equal((await service.syncMeta(user.token)).payloadSha256, compressedSha)
+  const fetched = await service.getSync(user.token)
+  assert.equal(fetched.payloadBase64, input.payloadBase64)
+  assert.equal(fetched.payloadSha256, compressedSha)
+  assert.equal(Buffer.from(fetched.payloadBase64, 'base64').equals(payload), true)
+  await assert.rejects(service.putSyncV4(user.token, input),
+    error => error?.code === 'sync_conflict')
 })
