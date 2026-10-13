@@ -111,6 +111,7 @@ function makeService(env, storage) {
     storage,
     sessionTtlSeconds: numberEnv(env.SESSION_TTL_SECONDS, 7 * 24 * 60 * 60),
     maxSyncBytes: numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024),
+    multiSessionEnabled: env.MULTI_DEVICE_AUTH_ENABLED === 'true',
   })
 }
 
@@ -198,7 +199,9 @@ export async function onRequest(context) {
           // Millisecond-resolution, uncached origin execution time. This is
           // an estimate for clock-skew preflight, not a signed event timestamp.
           serverTimeMs: Date.now(),
-          authMode: 'single-active-session',
+          authMode: env.MULTI_DEVICE_AUTH_ENABLED === 'true'
+            ? 'independent-device-sessions-pilot'
+            : 'single-active-session',
           runtime: process.version,
           capabilities: [
             'snapshot-retention-v1',
@@ -262,6 +265,10 @@ export async function onRequest(context) {
 
     if (request.method === 'GET' && path === '/auth/me') {
       return json({ ok: true, ...(await service.me(bearer(request))) }, 200, cors)
+    }
+
+    if (request.method === 'POST' && path === '/auth/logout') {
+      return json({ ok: true, ...(await service.revokeSession(bearer(request))) }, 200, cors)
     }
 
     if (request.method === 'DELETE' && path === '/auth/account') {

@@ -196,3 +196,13 @@ implemented in the clock-gate commit.
   does not authorize any three-way merge or cloud overwrite.
 - `master` is not yet deployed with `serverTimeMs`. Legacy EdgeOne
   responses lacking it safely fall back to local time.
+
+
+## M1 gated implementation — independent device sessions (development only)
+
+- The EdgeOne service accepts \`MULTI_DEVICE_AUTH_ENABLED=true\` as an **explicit opt-in**; absent/false preserves single-active-session behavior. \`/api/health.authMode\` reports the effective backend mode (not rollout readiness).
+- An opted-in login/password change writes a separate immutable session record at \`accounts/<usernameHash>/independent-sessions/active/<tokenHash>.json\`. A random 256-bit bearer token supplies the unguessable hash key. Concurrent logins never read or increment the same session version. Existing latest legacy token stays valid during opt-in; already-superseded legacy tokens remain revoked.
+- A signed-in device can explicitly revoke **its own** session using \`POST /api/auth/logout\`, which writes \`independent-sessions/revoked/<tokenHash>.json\` as an immutable monotonic marker. Authentication checks the tombstone even when the feature is later disabled. Password change increments account \`authVersion\` and rejects older sessions; deleting an account deletes the independent session prefix before removing identity, with immutable \`userId\` checked on every authentication.
+- No session is automatically deleted while its token may still be valid. Authentication enforces the existing 7-day default token expiry; expired records are retained until later account cleanup (garbage collection not yet implemented). Initial registration token is preserved as an immutable legacy session attached to the identity and is eligible for its own revoke marker.
+- **Gate not open**: multi-device auth does *not* authorize concurrent ordinary V4 snapshot writes. Until M2 merge and M3 safe upload converge, concurrent V4 writers must continue to block or preserve per-device event history. Existing Blob revision \`onlyIfNew\` is not a reliable atomic CAS. Client account workspace isolation is unchanged.
+- **Remaining security work**: current \`getLatestAuth\` is backed by a version listing with eventual-consistency limitations. Strong globally immediate all-device revocation requires a separately verified read/consistency protocol or a storage provider with appropriate guarantees. Neither this switch nor a successful local test proves cross-POP security; keep the switch OFF in production pending Maker fault-injection and revocation tests.

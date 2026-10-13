@@ -214,6 +214,7 @@ export function createBackendService({
   snapshotRetention = DEFAULT_SNAPSHOT_RETENTION,
   sessionHistoryRetention = DEFAULT_SESSION_HISTORY_RETENTION,
   authHistoryRetention = DEFAULT_AUTH_HISTORY_RETENTION,
+  multiSessionEnabled = false,
 }) {
   if (!storage) throw new Error('storage is required')
   if (!Number.isInteger(snapshotRetention) || snapshotRetention < 1) {
@@ -252,6 +253,28 @@ export function createBackendService({
   async function getCurrentSession(identity) {
     const latest = await storage.getLatestSession(identity.usernameHash)
     return latest || identity.initialSession
+  }
+
+  // Independent sessions have unique immutable per-token keys. No shared
+  // monotonically incremented session slot or non-atomic Blob CAS is involved.
+  async function issueIndependentSession(identity, authVersion, deviceId) {
+    if (typeof storage.createIndependentSession !== 'function') {
+      throw new Error('Independent session storage unavailable')
+    }
+    const candidate = createSession(identity, authVersion, 1, sessionTtlSeconds, deviceId)
+    candidate.record.sessionId = randomHex(16)
+    candidate.record.mode = 'independent'
+    if (!(await storage.createIndependentSession(
+      identity.usernameHash, candidate.record.tokenHash, candidate.record
+    ))) {
+      throw new AppError(503, 'session_creation_unverified',
+        'Independent session could not be safely persisted')
+    }
+    return {
+      token: candidate.token,
+      expiresAt: candidate.expiresAt,
+      expiresIn: candidate.expiresIn,
+    }
   }
 
   async function issueNextSession(identity, authVersion, deviceId) {
@@ -302,14 +325,36 @@ export function createBackendService({
       throw new AppError(401, 'invalid_token', 'Invalid session token')
     }
 
-    const currentSession = await getCurrentSession(identity)
-    if (
-      !currentSession ||
-      currentSession.userId !== identity.userId ||
-      currentSession.usernameHash !== identity.usernameHash ||
-      !secureHexEqual(currentSession.tokenHash, parsed.tokenHash)
-    ) {
+    // Legacy latest-session records remain valid if and only if they were
+    // already current. This permits a gated rollout without reviving old tokens.
+    // New sessions live under disjoint random token-hash keys.
+    let currentSession = null
+    if (multiSessionEnabled) {
+      if (typeof storage.getIndependentSession !== 'function') {
+        throw new Error('Independent session storage unavailable')
+      }
+      currentSession = await storage.getIndependentSession(
+        identity.usernameHash, parsed.tokenHash
+      )
+    }
+    if (!currentSession) {
+      const legacySession = await getCurrentSession(identity)
+      if (legacySession &&
+          secureHexEqual(legacySession.tokenHash, parsed.tokenHash)) {
+        currentSession = legacySession
+      }
+    }
+    if (!currentSession ||
+        currentSession.userId !== identity.userId ||
+        currentSession.usernameHash !== identity.usernameHash ||
+        !secureHexEqual(currentSession.tokenHash, parsed.tokenHash)) {
       throw new AppError(401, 'session_revoked', 'Session is no longer current')
+    }
+    // A per-session tombstone is monotonic, never an overwritten active record.
+    // Check even with the feature disabled to respect prior revocations on rollback.
+    if (typeof storage.getSessionRevocation === 'function' &&
+        await storage.getSessionRevocation(identity.usernameHash, parsed.tokenHash)) {
+      throw new AppError(401, 'session_revoked', 'Session was revoked')
     }
 
     if (
@@ -402,7 +447,9 @@ export function createBackendService({
       throw new AppError(401, 'invalid_credentials', 'Invalid username or password')
     }
 
-    const session = await issueNextSession(identity, currentAuth.version, deviceId)
+    const session = multiSessionEnabled
+      ? await issueIndependentSession(identity, currentAuth.version, deviceId)
+      : await issueNextSession(identity, currentAuth.version, deviceId)
     return { user: publicUser(identity), ...session }
   }
 
@@ -413,6 +460,7 @@ export function createBackendService({
       user: publicUser(identity),
       session: {
         version: currentSession.version,
+        sessionId: currentSession.sessionId || null,
         deviceId: currentSession.deviceId || null,
         expiresAt: currentSession.expiresAt,
       },
@@ -453,8 +501,30 @@ export function createBackendService({
       )
     }
 
-    const session = await issueNextSession(identity, nextAuth.version, deviceId)
+    const session = multiSessionEnabled
+      ? await issueIndependentSession(identity, nextAuth.version, deviceId)
+      : await issueNextSession(identity, nextAuth.version, deviceId)
     return { user: publicUser(identity), ...session }
+  }
+
+  async function revokeSession(token) {
+    if (!multiSessionEnabled) {
+      throw new AppError(404, 'not_found', 'Independent sessions are not enabled')
+    }
+    const { identity, currentSession } = await authenticate(token)
+    if (typeof storage.revokeSessionToken !== 'function' ||
+        typeof storage.getSessionRevocation !== 'function') {
+      throw new Error('Independent session revocation storage unavailable')
+    }
+    await storage.revokeSessionToken(identity.usernameHash, currentSession.tokenHash)
+    const marker = await storage.getSessionRevocation(
+      identity.usernameHash, currentSession.tokenHash
+    )
+    if (!marker || marker.revoked !== true) {
+      throw new AppError(503, 'session_revocation_unverified',
+        'Session revocation could not be verified')
+    }
+    return { revoked: true }
   }
 
   function metaFromSnapshot(snapshot) {
@@ -723,6 +793,7 @@ export function createBackendService({
     login,
     me,
     changePassword,
+    revokeSession,
     deleteAccount,
     syncMeta,
     getSync,

@@ -79,6 +79,20 @@ export function createEdgeOneBlobStorage(store) {
     return `${sessionPrefix(usernameHash)}${String(version).padStart(12, '0')}.json`
   }
 
+  function independentSessionPrefix(usernameHash) {
+    return `accounts/${usernameHash}/independent-sessions/`
+  }
+
+  function independentSessionKey(usernameHash, tokenHash) {
+    if (!/^[a-f0-9]{64}$/.test(tokenHash)) throw new Error('Invalid session hash')
+    return `${independentSessionPrefix(usernameHash)}active/${tokenHash}.json`
+  }
+
+  function revocationKey(usernameHash, tokenHash) {
+    if (!/^[a-f0-9]{64}$/.test(tokenHash)) throw new Error('Invalid session hash')
+    return `${independentSessionPrefix(usernameHash)}revoked/${tokenHash}.json`
+  }
+
   function revisionPrefix(userId) {
     return `users/${userId}/revisions/`
   }
@@ -270,6 +284,25 @@ export function createEdgeOneBlobStorage(store) {
       return pruneVersioned(sessionPrefix(usernameHash), keepCount)
     },
 
+    async createIndependentSession(usernameHash, tokenHash, record) {
+      if (record?.tokenHash !== tokenHash) throw new Error('Session hash mismatch')
+      return setJsonOnlyIfNew(independentSessionKey(usernameHash, tokenHash), record)
+    },
+
+    async getIndependentSession(usernameHash, tokenHash) {
+      return strongJson(independentSessionKey(usernameHash, tokenHash))
+    },
+
+    async getSessionRevocation(usernameHash, tokenHash) {
+      return strongJson(revocationKey(usernameHash, tokenHash))
+    },
+
+    async revokeSessionToken(usernameHash, tokenHash) {
+      // Every writer writes identical monotonic evidence to this unique key.
+      // No in-place active-session rewrite, read-modify-write, or CAS is needed.
+      return setJsonOnlyIfNew(revocationKey(usernameHash, tokenHash), { revoked: true })
+    },
+
     async createRevision(userId, revision, snapshot) {
       const encoded = snapshot?.payloadBase64
       if (snapshot?.clientFormatVersion !== 'qwerty-backup-v4' ||
@@ -361,9 +394,11 @@ export function createEdgeOneBlobStorage(store) {
     },
 
     async deleteUserData(usernameHash, userId) {
-      const [authDeleted, sessionsDeleted, revisionsDeleted, revisionPartsDeleted] = await Promise.all([
+      const [authDeleted, sessionsDeleted, independentSessionsDeleted,
+        revisionsDeleted, revisionPartsDeleted] = await Promise.all([
         deletePrefix(authPrefix(usernameHash)),
         deletePrefix(sessionPrefix(usernameHash)),
+        deletePrefix(independentSessionPrefix(usernameHash)),
         deletePrefix(revisionPrefix(userId)),
         deletePrefix(revisionPartsPrefix(userId)),
       ])
@@ -376,7 +411,8 @@ export function createEdgeOneBlobStorage(store) {
       return {
         accountDeleted: account !== null,
         authDeleted,
-        sessionsDeleted,
+        sessionsDeleted: sessionsDeleted + independentSessionsDeleted,
+        independentSessionsDeleted,
         revisionsDeleted,
         revisionPartsDeleted,
       }
