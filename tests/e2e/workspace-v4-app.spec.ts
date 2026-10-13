@@ -149,3 +149,80 @@ test('S1 signed-in account can download verified cloud Backup V4 with unchanged 
   expect(createHash('sha256').update(actual).digest('hex')).toBe(hash)
   await expect(page.getByRole('status')).toContainText('已触发标准 V4 文件下载')
 })
+
+test('signed-in V4 export handles growing Learn/Typing, completed sessions and achievement ledger', async ({ page }) => {
+  await seedSignedInBackup(page)
+  const counts = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    const initial = await h.db.wordRecords.toArray()
+    const base = JSON.parse(JSON.stringify(initial[0]))
+    const words = Array.from({ length: 800 }, (_, i) => {
+      const record = { ...base, word: 'realistic-' + i,
+        timeStamp: base.timeStamp + i,
+        timing: Array.from({ length: 12 }, (_, n) => 75 + (n * 13 + i) % 233),
+        mistakes: { 1: ['x'], 5: ['q'] },
+        typingTelemetry: {
+          telemetryVersion: 2, firstKeyLatencyMs: 250 + i % 200,
+          attempts: Array.from({ length: 4 }, (_, j) => ({
+            startLatencyMs: 100 + j * 21, durationMs: 900 + i % 130,
+            correctPrefixLength: 5, result: j < 3 ? 'wrong' : 'clean',
+            wrongIndex: j < 3 ? j + 1 : undefined, wrongKey: j < 3 ? 'x' : undefined,
+            interKeyIntervalsMs: Array.from({ length: 10 }, (_, k) => 65 + (k * 19 + i) % 166),
+          })),
+        },
+      }
+      delete record.id
+      return record
+    })
+    await h.db.wordRecords.bulkAdd(words)
+    const finished = Array.from({ length: 70 }, (_, i) => ({
+      dict: 'cet4', index: 20, createTime: 1_800_000_000 + i,
+      isFinished: true,
+      words: Array.from({ length: 20 }, (_, j) => ({
+        name: 'word-' + i + '-' + j,
+        trans: ['a vocabulary definition', 'meaning repeated'],
+        example: [{ en: 'An example sentence with word information',
+          cn: '这是一个例句用于复习', start: 12, end: 20 }],
+      })),
+      acquisitionStates: {},
+    }))
+    await h.db.reviewRecords.bulkAdd(finished)
+    const events = Array.from({ length: 350 }, (_, i) => ({
+      eventId: 's1-stress-event:' + i,
+      eventType: 'word_attempt', origin: 'live',
+      sourceRecordId: 1, occurredAt: 1_800_000_000 + i,
+      dict: 'cet4', word: 'word-' + i,
+      metricValues: Object.fromEntries(Array.from({ length: 25 }, (_, j) =>
+        ['metric_' + j, (i + j) % 9 === 0 ? 1 : 0])),
+      unlockedAchievementIds: [],
+    }))
+    await h.db.achievementEvents.bulkAdd(events)
+    const template = await h.db.reviewWordStates.toCollection().first()
+    await h.db.reviewWordStates.bulkAdd(Array.from({ length: 180 }, (_, i) => {
+      const row = { ...template, word: 'longterm-' + i }
+      delete row.id
+      return row
+    }))
+    return {
+      words: await h.db.wordRecords.count(),
+      sessions: await h.db.reviewRecords.count(),
+      events: await h.db.achievementEvents.count(),
+      states: await h.db.reviewWordStates.count(),
+    }
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: '打开设置对话框' }).click()
+  await page.getByRole('tab', { name: '数据设置' }).click()
+  const downloadPending = page.waitForEvent('download', { timeout: 45_000 })
+  await page.getByRole('button', { name: '导出完整备份' }).click()
+  const download = await downloadPending
+  const snapshot = JSON.parse(gunzipSync(await readFile(await download.path() as string)).toString('utf8'))
+  expect(snapshot.metadata.source).toEqual(signedInBackupOwner)
+  const byTable = Object.fromEntries(snapshot.workspaceData.database.data.data.map(
+    (table: { tableName: string; rows: unknown[] }) => [table.tableName, table.rows.length]))
+  expect(byTable.wordRecords).toBe(counts.words)
+  expect(byTable.reviewRecords).toBe(counts.sessions)
+  expect(byTable.achievementEvents).toBe(counts.events)
+  expect(byTable.reviewWordStates).toBe(counts.states)
+  await expect(page.getByRole('status')).toContainText('V4 导出完成')
+})
