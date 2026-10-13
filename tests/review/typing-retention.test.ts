@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { isLearningAttemptId, newLearningAttemptId } from '../../src/utils/db/attempt-identity'
 import test from 'node:test'
 import { compactTypingWordRecord } from '../../src/utils/db/word-record-retention'
 import { analyzeV4SnapshotSize } from '../../src/sync/v4-size-audit'
@@ -182,4 +183,18 @@ test('finished session compaction keeps terminal state, acquisition recovery and
   )
   const unfinished = { ...session, isFinished: false }
   assert.equal(compactFinishedReviewRecord(unfinished), unfinished)
+})
+
+test('new cross-device attempt identity uses secure UUID and is not a local autoincrement key', () => {
+  const ids = new Set(Array.from({ length: 128 }, () => newLearningAttemptId()))
+  assert.equal(ids.size, 128)
+  for (const id of ids) assert.ok(isLearningAttemptId(id))
+  assert.equal(isLearningAttemptId('1'), false)
+  assert.equal(isLearningAttemptId('2026-10-13T08:00:00Z'), false)
+  assert.equal(isLearningAttemptId(undefined), false)
+  // Compaction must preserve identity without generating a fresh attempt.
+  const word = { ...typing(1), attemptId: newLearningAttemptId() }
+  const result = compactTypingWordRecord(word)
+  assert.equal(result.attemptId, word.attemptId)
+  assert.equal(compactTypingWordRecord(result).attemptId, word.attemptId)
 })

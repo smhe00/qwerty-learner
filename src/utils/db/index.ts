@@ -4,6 +4,7 @@ import type {
   WordRecordTelemetry,
 } from './record'
 import { ChapterRecord, WordRecord } from './record'
+import { newLearningAttemptId } from './attempt-identity'
 import { compactTypingWordRecord } from './word-record-retention'
 import { db } from './core'
 export { db } from './core'
@@ -156,6 +157,10 @@ export function useSaveWordRecord() {
 
       let dbID = -1
       try {
+        // Persist a stable origin-independent attempt identity BEFORE writing.
+        // Local autoincrement IDs and second-resolution timestamps are NOT
+        // safe merge identities across devices.
+        wordRecord.attemptId = newLearningAttemptId()
         dbID = await db.wordRecords.add(compactTypingWordRecord(wordRecord))
       } catch (e) {
         console.error(e)

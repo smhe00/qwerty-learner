@@ -96,6 +96,8 @@ export interface LearningContextV1 {
 
 export interface IWordRecord {
   id?: number
+  /** Cross-device immutable identity for this learning attempt; older rows may omit it. */
+  attemptId?: string
   word: string
   timeStamp: number
   // 正常章节为 dictKey, 其他功能则为对应的类型
@@ -146,6 +148,7 @@ export interface LetterMistakes {
 
 export class WordRecord implements IWordRecord {
   id?: number
+  attemptId?: string
   word: string
   timeStamp: number
   dict: string
