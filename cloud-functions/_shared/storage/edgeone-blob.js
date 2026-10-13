@@ -94,7 +94,7 @@ export function createEdgeOneBlobStorage(store) {
   }
 
   function eventBatchPrefix(userId) {
-    return \`users/\${userId}/event-batches/v1/\`
+    return `users/${userId}/event-batches/v1/`
   }
 
   function eventBatchKey(userId, deviceId, batchId, sha256) {
@@ -105,7 +105,7 @@ export function createEdgeOneBlobStorage(store) {
     }
     // The SHA suffix separates conflicting requests that reuse a batch ID.
     // Both survive; a later discovery/replay stage MUST detect that anomaly.
-    return \`\${eventBatchPrefix(userId)}\${deviceId}/\${batchId}-\${sha256}.json\`
+    return `${eventBatchPrefix(userId)}${deviceId}/${batchId}-${sha256}.json`
   }
 
   function revisionPrefix(userId) {
