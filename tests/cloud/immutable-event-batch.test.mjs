@@ -302,3 +302,18 @@ test('M3.2 account deletion removes linked batches and denies re-registered acco
     e => e.code === 'event_chain_not_visible')
   assert.equal([...blob.objects.keys()].filter(k => k.includes('event-batches/v2/')).length, 0)
 })
+
+
+test('M3.2 writer cannot claim another authenticated device ID', async () => {
+  const { service } = setup()
+  const owner = await service.register('chain_device_bound', 'Password123', device(1))
+  const other = await service.login('chain_device_bound', 'Password123', device(2))
+  await assert.rejects(service.publishChainedLearningBatch(other.token, {
+    ...payload(1, 99, 9), sequence: 1, previous: null,
+  }), error => error.code === 'event_device_mismatch')
+  const first = await service.publishChainedLearningBatch(owner.token, {
+    ...payload(1, 99, 9), sequence: 1, previous: null,
+  })
+  assert.equal((await service.readChainedLearningBatch(other.token, first)).batch.sequence, 1,
+    'other authorized devices may read receipts but cannot write under another device')
+})
