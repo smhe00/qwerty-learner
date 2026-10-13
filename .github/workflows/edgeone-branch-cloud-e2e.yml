@@ -10,6 +10,7 @@ on:
       - 'cloud-functions/**'
       - '.env.production'
       - '.github/workflows/edgeone-branch-cloud-e2e.yml'
+      - 'tests/e2e/edgeone-s1-cloud-accounts.*'
   workflow_dispatch:
 
 permissions:
@@ -69,8 +70,10 @@ jobs:
         run: |
           yarn install --frozen-lockfile
           npx playwright install --with-deps chromium
-      - name: Real EdgeOne three-client cloud workflow
-        run: npx playwright test --config=tests/e2e/production-multi-client.config.ts
+      - name: Real EdgeOne S1 account login across three isolated Chromium profiles
+        run: npx playwright test --config=tests/e2e/edgeone-s1-cloud-accounts.config.ts
+      - name: Real EdgeOne V4 upload, download, conflict and Blob endurance
+        run: node tests/cloud/p4b-edgeone-gate-smoke.mjs
       - name: Remove disposable cloud accounts, even on test failure
         if: always() && env.QWERTY_E2E_USERNAME != ''
         run: node tests/cloud/cleanup-production-multi-client.mjs
@@ -78,7 +81,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: edgeone-cloud-e2e-${{ github.ref_name }}-${{ github.run_id }}
+          name: edgeone-cloud-e2e-${{ github.run_id }}
           path: test-results/**/*-redacted-trace.json
           if-no-files-found: ignore
           retention-days: 7
