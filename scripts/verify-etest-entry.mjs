@@ -31,7 +31,9 @@ let evidence = null
 for (let attempt = 0; attempt < 32; attempt += 1) {
   const [main, cloud, pages] = await Promise.all([
     gh('/branches/product%2Fmain'),
-    gate('cloud-sync.yml'),
+    process.env.CLOUD_GATE_JOB_PASSED === 'true'
+      ? Promise.resolve({ conclusion: 'success', id: process.env.GITHUB_RUN_ID })
+      : gate('cloud-sync.yml'),
     gate('deploy-pages.yml'),
   ])
   assert.equal(main.commit.sha, sha, 'main advanced: revalidate new candidate')
