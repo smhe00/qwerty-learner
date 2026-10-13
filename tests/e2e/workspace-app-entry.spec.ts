@@ -609,18 +609,55 @@ test('S1 cancelling logout preserves immutable owner and never renders PointerEv
   })
 })
 
-test('legacy account button requires explicit S1 ownership before login and never posts credentials', async ({ page }) => {
+test('fresh EdgeOne origin opens S1 login without inventing nonexistent V1 migration', async ({ page }) => {
   await page.goto('/')
   await expect(page.locator('[data-account-entry]')).toBeVisible()
   let authCalls = 0
   await page.route('**/api/auth/**', route => { authCalls++; void route.abort() })
   await page.locator('[data-account-entry]').click()
+  await expect(page.getByText('安全账户管理（S1）')).toBeVisible()
+  await expect(page.getByText('S1 V1 数据归属测试（仅限本地开发）')).toHaveCount(0)
+  expect(authCalls).toBe(0)
+  const result = await page.evaluate(async () => {
+    const request = indexedDB.open('QwertyPlusWorkspaceVaultV1')
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+    try {
+      const tx = db.transaction('registry', 'readonly')
+      const req = tx.objectStore('registry').get('head')
+      const registry = await new Promise<any>((resolve, reject) => {
+        req.onsuccess = () => resolve(req.result)
+        req.onerror = () => reject(req.error)
+      })
+      return registry
+    } finally { db.close() }
+  })
+  expect(result.generation).toBe(1)
+  expect(result.active).toEqual({ kind: 'anonymous' })
+})
+
+test('old V1 study data still requires explicit S1 ownership consent before login', async ({ page }) => {
+  await harness(page)
+  await page.evaluate(async () => (window as any).__backupHarness.seed())
+  await page.goto('/')
+  await page.locator('[data-account-entry]').click()
   await expect(page.getByText('S1 V1 数据归属测试（仅限本地开发）')).toBeVisible()
   await expect(page.getByRole('button', { name: '确认归属并建立隔离工作区' })).toBeDisabled()
-  expect(authCalls).toBe(0)
   await page.getByRole('button', { name: '取消，保持 V1' }).click()
   await expect(page.locator('[data-account-entry]')).toBeVisible()
 })
+
+test('fresh origin with pending Learn checkpoint must not skip ownership consent', async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(() => {
+    localStorage.setItem('qwerty.learn.dailySession.v1.cet4', '{"version":1}')
+  })
+  await page.locator('[data-account-entry]').click()
+  await expect(page.getByText('S1 V1 数据归属测试（仅限本地开发）')).toBeVisible()
+})
+
 
 test('S1 registration explicitly copies full anonymous V4 data, preserving original', async ({ page }) => {
   await harness(page)
