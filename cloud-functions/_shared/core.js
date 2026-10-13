@@ -761,8 +761,10 @@ export function createBackendService({
       deviceId: sanitizeDeviceId(input.deviceId),
       clientFormatVersion: V4_FORMAT,
     }
-    // Atomic revision CREATE is the authoritative concurrency gate;
-    // an earlier GET/meta cannot authorize overwriting a newer revision.
+    // Best-effort revision creation detects visible conflicts, but EdgeOne
+    // Blob onlyIfNew is NOT an atomic CAS. Production has one active session;
+    // the independent multi-session pilot explicitly rejects V4 writes above.
+    // M3 must replace shared-revision races with a no-loss event protocol.
     if (!(await storage.createRevision(identity.userId, revision, snapshot))) {
       const latest = storage.getLatestRevisionMeta
         ? await storage.getLatestRevisionMeta(identity.userId)

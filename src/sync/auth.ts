@@ -1,4 +1,5 @@
 import { login, register } from './api'
+import { browserDeviceId } from './device-id'
 import type { CloudAuthState } from './types'
 
 const AUTH_STORAGE_KEY = 'qwerty.cloudAuth.v1'
@@ -64,10 +65,8 @@ function saveAuth(auth: CloudAuthState) {
   return auth
 }
 
-export function browserDeviceId() {
-  const navigatorInfo = typeof navigator === 'undefined' ? 'browser' : navigator.userAgent
-  return `qwerty-web-${navigatorInfo.slice(0, 80)}`
-}
+// Preserve existing imports while device identity moves to a durable module.
+export { browserDeviceId } from './device-id'
 
 export async function registerAndRemember(username: string, password: string) {
   const result = await register(username, password, browserDeviceId())

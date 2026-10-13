@@ -86,11 +86,12 @@ merging account-wide learning data.
 7. Validate six-table counts, key uniqueness, referential integrity, FSRS
    replay and stable canonical fingerprint. A second merge must be
    **idempotent and commutative** for learning evidence.
-8. CAS a new server revision based on verified latest remote revision,
-   recheck the result SHA+logical fingerprint, stage it in crash journal,
-   and restore it to the current workspace through the S1 pre-mount
-   recovery path. A CAS failure means read the latest cloud revision and
-   re-plan; never retry a stale write.
+8. Publish by immutable, collision-free per-device/event-batch objects and
+   verify their durable receipts and canonical fingerprints. Never rely on
+   shared Blob revision CREATE or onlyIfNew as atomic CAS. Materialization
+   must be reproducible from all admitted batches and re-checked before
+   S1 pre-mount restore; a missing or conflicting receipt blocks publication.
+   Recovery retains the exact source snapshots and append-only batches.
 9. Do not delete source backups/revisions as part of reconciliation.
 
 ## Required simulations before auto-merge rollout
@@ -223,3 +224,8 @@ While \`multiSessionEnabled\` is active, \`putSyncV4\` (ordinary and recovery) r
 - The projection **always** returns \`publishReady:false\`. No historical clock-attestation, six-table referential re-key, achievement graph, active-session resolution, durable merge journal, remote append-only publication, or account-scope proof exists in this kernel. None may be inferred from a successful projection.
 
 **Next M2 gate**: verified common ancestor for legacy attempts, total V4 six-table referential repair, strong event-time provenance, account ownership and deterministic audit of all tables. Do not remove the M1 V4 write guard until then.
+
+
+## M1/M3 device identity correction
+
+Before M3 event batching, \`browserDeviceId()\` no longer returns a truncated User-Agent (the same on different machines). \`src/sync/device-id.ts\` creates a random UUIDv4 and persists it in the browser profile's origin-scoped localStorage. Tabs in the same profile share the installation ID; different profiles do not. Individual logins still receive independent opaque bearer tokens and server-side session IDs. Browser storage resets create a new installation ID without retroactively relabeling existing event records. Treat \`deviceId\` as diagnostic/routing metadata, **not** proof of authentication or uniqueness across deliberate profile cloning.
