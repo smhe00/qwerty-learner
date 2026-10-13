@@ -146,18 +146,20 @@ try {
   // intermittent production recovery failures, without creating V3 records.
   // A transport 500 may be ambiguous; inspect remote metadata READ-ONLY
   // and fail rather than retry a potentially committed revision.
-  for (let index = 0; index < 3; index++) {
+  const stressKiB = [256, 512, 1024, 1536, 2048, 2700]
+  for (let index = 0; index < stressKiB.length; index++) {
     const baseRevision = index + 2
     const record = v4Body(first, baseRevision, 'large-' + index)
     const compressed = Buffer.from(record.payloadBase64, 'base64')
     const largeState = JSON.parse(requireGzip(compressed))
     largeState.workspaceData.database.data.data
       .find(table => table.tableName === 'wordRecords').rows[0]
-      .typingTelemetry = { synthetic: crypto.randomBytes(2700 * 1024).toString('base64') }
+      .typingTelemetry = { synthetic: crypto.randomBytes(stressKiB[index] * 1024).toString('base64') }
     const largeBody = v4BodyFromSnapshot(first, baseRevision, largeState)
     const sent = await api('/api/sync/v2', 'PUT', largeBody, first.token)
     const latest = await api('/api/sync/v2/meta', 'GET', undefined, first.token)
     console.log('V4-only large Blob write', JSON.stringify({ attempt: index + 1,
+      sourceKiB: stressKiB[index],
       requestBytes: Buffer.from(largeBody.payloadBase64, 'base64').length,
       status: sent.status, code: sent.value?.error || null,
       observedRevision: latest.value?.revision ?? null,
