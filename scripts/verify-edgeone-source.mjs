@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 const sha = process.env.EXPECTED_SHA
 assert.match(sha || '', /^[a-f0-9]{40}$/, 'Expected source SHA required')
 assert.equal(process.env.GITHUB_REF_NAME, 'edgeone-test', 'Only etest may pass this check')
-const base = 'https://q-test.edgeone.cool/'
+const base = 'https://etest.edgeone.dev/'
 const result = await fetch(new URL('source-commit.txt', base), {
   cache: 'no-store', signal: AbortSignal.timeout(15000),
 })

@@ -5,22 +5,24 @@ Adopted 2026-10-14. This policy **does not authorize a release**.
 | Branch | Purpose | Deployment | Valid E2E |
 |---|---|---|---|
 | \`product/main\` | Continuous development | Auto GitHub Pages, cloud disabled | Learn/Typing/FSRS/UI/local storage |
-| \`edgeone-test\` (\`etest\`) | Selected snapshot, promoted only for cloud validation | Dedicated Maker \`q-test.edgeone.cool\` | Real Blob, V4, account + multi-client sync |
+| \`edgeone-test\` (\`etest\`) | Selected snapshot, promoted only for cloud validation | Dedicated Maker \`etest.edgeone.dev\` | Real Blob, V4, account + multi-client sync |
 | \`master\` | Stable release | Production Maker only after approval | Post-release smoke |
 
-## First deployment — human-only
+## Staging deployment — first manual build completed
 
-The \`edgeone-test\` Git branch exists, but agents must not deploy it to
-EdgeOne or advance it until the user manually performs the **first** staging
-deployment. In the EdgeOne console, open the existing **test** Maker project
-(\`q-test.edgeone.cool\`), switch its Git production/deployment branch from
-\`product/main\` to \`edgeone-test\`, disable auto-builds on main, and manually
-click **Deploy** once. Confirm the staging Blob binding/namespace is separate
-from the production Maker's account and data storage. Keep master Maker
-connected only to \`master\`. Do NOT connect either Maker to everyday main
-pushes.
+On 2026-10-14 the owner confirmed that `https://etest.edgeone.dev/`
+was successfully built from `edgeone-test`. This site **automatically
+deploys changes to `edgeone-test`**; subsequent staging promotions consume
+one Maker build, so only promote when Cloud/Blob validation is actually needed.
 
-No agent is authorized to trigger this first manual deployment.
+`product/main` remains the continuous development source and must NOT be
+bound to an EdgeOne Maker project. Its frequent pushes auto-deploy Pages
+only. Production Maker remains bound to `master`.
+
+**Unverified environmental prerequisite:** test and production Maker projects
+must use independent Blob store bindings/account namespaces. Different
+domains alone do not establish isolation. Use disposable test accounts only;
+do not claim full Cloud E2E before real Blob read/write verification.
 
 ## Later workflow
 
@@ -29,8 +31,8 @@ No agent is authorized to trigger this first manual deployment.
    are intentionally unavailable there.
 2. Only when a cloud-related integration check is required, select a
    committed and validated main SHA and advance \`edgeone-test\` by fast-forward
-   (never force-push). This is a deliberately metered Maker build.
-3. Wait for etest Maker deployment to finish. Verify deployed
+   (never force-push). This is a deliberately metered Maker build; the etest branch push auto-deploys it.
+3. Wait for etest Maker's automatic deployment to finish. Verify deployed
    \`/source-commit.txt\` matches the staging Git SHA (rather than relying
    on health alone), then run three-profile S1 auth and real V4 Blob
    transport/recovery/conflict tests with disposable accounts.

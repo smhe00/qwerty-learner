@@ -1,16 +1,11 @@
 name: Branch EdgeOne Cloud E2E
 
 # Only edgeone-test deploys/tests real cloud E2E. product/main builds Pages.
-# The owner performs the FIRST etest EdgeOne deployment manually.
+# The first manual staging deployment completed 2026-10-14.
+# A future etest push auto-deploys; product/main does not trigger Maker.
 on:
   push:
     branches: [edgeone-test]
-    paths:
-      - 'src/sync/**'
-      - 'cloud-functions/**'
-      - '.env.production'
-      - '.github/workflows/edgeone-branch-cloud-e2e.yml'
-      - 'tests/e2e/edgeone-s1-cloud-accounts.*'
   workflow_dispatch:
 
 permissions:
@@ -26,7 +21,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     env:
-      QWERTY_SYNC_BASE_URL: ${{ 'https://q-test.edgeone.cool/' }}
+      QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -38,7 +33,7 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           if (process.env.GITHUB_REF_NAME !== 'edgeone-test') throw Error('etest only')
-          const expected = 'https://q-test.edgeone.cool/'
+          const expected = 'https://etest.edgeone.dev/'
           const actual = new URL(process.env.QWERTY_SYNC_BASE_URL)
           if (actual.origin !== new URL(expected).origin) throw Error('Wrong EdgeOne test origin')
           const required = 'v4-blob-stage-trace-20261014'
@@ -95,7 +90,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
-      QWERTY_SYNC_BASE_URL: ${{ 'https://q-test.edgeone.cool/' }}
+      QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -105,7 +100,7 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           if (process.env.GITHUB_REF_NAME !== 'edgeone-test') throw Error('etest only')
-          const expected = 'https://q-test.edgeone.cool'
+          const expected = 'https://etest.edgeone.dev'
           if (new URL(process.env.QWERTY_SYNC_BASE_URL).origin !== expected)
             throw Error('Cloud E2E must use branch-matched EdgeOne, never Pages')
           const required = 'v4-blob-stage-trace-20261014'

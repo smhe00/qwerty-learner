@@ -13,8 +13,10 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
       !/^e2e_mc_[0-9]+_[0-9]+_b$/.test(userB)) {
     throw new Error('Only uniquely named disposable EdgeOne E2E accounts are allowed')
   }
-  const expected = process.env.GITHUB_REF_NAME === 'master'
-    ? 'https://qwerty-plus.edgeone.dev' : 'https://q-test.edgeone.cool'
+  if (process.env.GITHUB_REF_NAME !== 'edgeone-test') {
+    throw new Error('Staging cloud E2E only runs on edgeone-test')
+  }
+  const expected = 'https://etest.edgeone.dev'
   expect(new URL(base).origin).toBe(expected)
   const contexts: BrowserContext[] = []
   const open = async (): Promise<Page> => {
