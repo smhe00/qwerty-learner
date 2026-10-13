@@ -318,3 +318,15 @@ profile, is still required. A verified chain is not proof of global sync,
 complete list visibility, source-record preservation, or entitlement to restore
 V4. Both \`MULTI_DEVICE_AUTH_ENABLED\` and
 \`MULTI_DEVICE_EVENT_PILOT_ENABLED\` remain OFF by default.
+
+
+## M3.3 fork and gap observations
+
+The pilot \`GET /api/sync/events/v2/observed\` groups the currently
+visible immutable receipts by \`(deviceId, sequence)\`. Multiple different
+batch receipts at the same device/sequence form a **visible fork**; gaps
+between visible sequence numbers indicate **possibly stale/incomplete
+discovery**. The response always states \`listingIsAuthoritative:false\`
+and \`convergenceComplete:false\`. Tests deliberately conceal fork receipts
+from the listing while allowing exact-key reads: a clean listing NEVER
+certifies absence of forks, a global head, or global convergence.

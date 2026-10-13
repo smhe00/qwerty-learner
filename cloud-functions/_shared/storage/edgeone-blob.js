@@ -379,6 +379,37 @@ export function createEdgeOneBlobStorage(store) {
       return strongJson(chainedBatchKey(userId, deviceId, sequence, batchId, sha256))
     },
 
+
+    async observeImmutableChainedBatches(userId) {
+      const prefix = chainedBatchPrefix(userId)
+      const page = await strongList(prefix)
+      if (!page || !Array.isArray(page.blobs) || page.blobs.length > 512) {
+        throw new Error('Chained batch listing unavailable or exceeds bounded limit')
+      }
+      const pattern = /^(qwerty-web-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/(\d{10})\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})-([a-f0-9]{64})\.json$/i
+      const receipts = page.blobs.map(item => {
+        if (!item || typeof item.key !== 'string' ||
+            !item.key.startsWith(prefix)) throw new Error('Invalid chained batch listing key')
+        const match = pattern.exec(item.key.slice(prefix.length))
+        if (!match) throw new Error('Unexpected chained batch listing key')
+        const seq = Number(match[2])
+        if (!Number.isSafeInteger(seq) || seq < 1 || seq > 1_000_000_000) {
+          throw new Error('Invalid chained batch sequence')
+        }
+        return { deviceId: match[1], sequence: seq,
+          batchId: match[3], sha256: match[4] }
+      })
+      receipts.sort((a, b) =>
+        a.deviceId.localeCompare(b.deviceId) ||
+        a.sequence - b.sequence ||
+        (a.batchId + a.sha256).localeCompare(b.batchId + b.sha256))
+      return {
+        receipts,
+        truncated: Boolean(page.cursor || page.hasMore ||
+          page.nextCursor || page.truncated),
+      }
+    },
+
     async createRevision(userId, revision, snapshot) {
       const encoded = snapshot?.payloadBase64
       if (snapshot?.clientFormatVersion !== 'qwerty-backup-v4' ||

@@ -320,6 +320,10 @@ export async function onRequest(context) {
         ...(await service.readChainedLearningBatch(bearer(request), selector)) },
         200, cors)
     }
+    if (request.method === 'GET' && path === '/sync/events/v2/observed') {
+      return json({ ok: true,
+        ...(await service.observeChainedLearningReceipts(bearer(request))) }, 200, cors)
+    }
     if (request.method === 'POST' && path === '/sync/events/v2/verify') {
       const body = await readJson(request, 8 * 1024)
       return json({ ok: true,

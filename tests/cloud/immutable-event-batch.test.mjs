@@ -317,3 +317,44 @@ test('M3.2 writer cannot claim another authenticated device ID', async () => {
   assert.equal((await service.readChainedLearningBatch(other.token, first)).batch.sequence, 1,
     'other authorized devices may read receipts but cannot write under another device')
 })
+
+
+test('M3.3 detects visible forked sequences and stale-observation gaps without proving completeness', async () => {
+  const { service, blob } = setup()
+  const a = await service.register('chain_observe', 'Password123', device(1))
+  const first = await service.publishChainedLearningBatch(a.token, {
+    ...payload(1, 101, 1), sequence: 1, previous: null,
+  })
+  const parent = { batchId: first.batchId, sha256: first.sha256 }
+  const second = await service.publishChainedLearningBatch(a.token, {
+    ...payload(1, 102, 2), sequence: 2, previous: parent,
+  })
+  const fork = await service.publishChainedLearningBatch(a.token, {
+    ...payload(1, 103, 3), sequence: 2, previous: parent,
+  })
+  const third = await service.publishChainedLearningBatch(a.token, {
+    ...payload(1, 104, 4), sequence: 3,
+    previous: { batchId: second.batchId, sha256: second.sha256 },
+  })
+  const report = await service.observeChainedLearningReceipts(a.token)
+  assert.equal(report.convergenceComplete, false)
+  assert.equal(report.listingIsAuthoritative, false)
+  assert.equal(report.observedCount, 4)
+  assert.deepEqual(report.visibleForks, [device(1) + ':2'])
+  assert.deepEqual(report.visibleGaps, [])
+  assert.equal((await service.verifyChainedLearningHistory(a.token, third)).verified, true)
+  assert.equal((await service.readChainedLearningBatch(a.token, fork)).batch.sequence, 2)
+
+  // A second POP can temporarily omit one immutable object in a list result.
+  const secondKey = [...blob.objects.keys()].find(k =>
+    k.includes('event-batches/v2/') && k.includes(second.sha256))
+  const forkKey = [...blob.objects.keys()].find(k =>
+    k.includes('event-batches/v2/') && k.includes(fork.sha256))
+  assert.ok(secondKey && forkKey)
+  blob.hiddenKeys = new Set([secondKey, forkKey])
+  const stale = await service.observeChainedLearningReceipts(a.token)
+  assert.deepEqual(stale.visibleForks, [])
+  assert.deepEqual(stale.visibleGaps, [device(1) + ':2'])
+  assert.equal(stale.convergenceComplete, false)
+  assert.equal((await service.readChainedLearningBatch(a.token, second)).batch.sequence, 2)
+})

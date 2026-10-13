@@ -856,6 +856,51 @@ export function createBackendService({
       'Sequence ended without a verified genesis batch')
   }
 
+
+  async function observeChainedLearningReceipts(token) {
+    requireChainPilot()
+    const { identity } = await authenticate(token)
+    if (typeof storage.observeImmutableChainedBatches !== 'function') {
+      throw new Error('Chained receipt observation unavailable')
+    }
+    const view = await storage.observeImmutableChainedBatches(identity.userId)
+    const grouped = new Map()
+    const conflicts = []
+    const byDevice = new Map()
+    for (const receipt of view.receipts) {
+      const key = receipt.deviceId + ':' + receipt.sequence
+      const entries = grouped.get(key) || []
+      entries.push(receipt)
+      grouped.set(key, entries)
+      const existing = byDevice.get(receipt.deviceId) || new Set()
+      existing.add(receipt.sequence)
+      byDevice.set(receipt.deviceId, existing)
+    }
+    for (const [key, receipts] of grouped) {
+      if (new Set(receipts.map(item => item.batchId + ':' + item.sha256)).size > 1) {
+        conflicts.push(key)
+      }
+    }
+    const visibleGaps = []
+    for (const [deviceId, numbers] of byDevice) {
+      const maxSequence = Math.max(...numbers)
+      // Bound listing to 512 items. We report gaps in a visible prefix, never
+      // assert the missing objects do not exist in another POP.
+      for (let seq = 1; seq <= maxSequence; seq += 1) {
+        if (!numbers.has(seq)) visibleGaps.push(deviceId + ':' + seq)
+      }
+    }
+    return {
+      observed: view.receipts,
+      observedCount: view.receipts.length,
+      visibleForks: conflicts.sort(),
+      visibleGaps: visibleGaps.sort(),
+      truncated: view.truncated,
+      listingIsAuthoritative: false,
+      convergenceComplete: false,
+    }
+  }
+
   function metaFromSnapshot(snapshot) {
     if (!snapshot) {
       return {
@@ -1138,6 +1183,7 @@ export function createBackendService({
     publishChainedLearningBatch,
     readChainedLearningBatch,
     verifyChainedLearningHistory,
+    observeChainedLearningReceipts,
     deleteAccount,
     syncMeta,
     getSync,
