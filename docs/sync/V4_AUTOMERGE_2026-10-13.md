@@ -44,7 +44,7 @@ Typing evidence retains `attemptId`. No change to six-table V4 schema or
 existing cloud encoding, no rewriting old records, and no automatic merge or
 sync overwrite yet.
 
-## Phase M1: read-only three-way conflict classifier (required gate)
+## Phase M1: read-only three-way conflict classifier (identity gate implemented, full-state gate pending)
 
 For a known prior cloud revision, obtain a verified common-ancestor full V4
 snapshot. If a common ancestor cannot be proven, preserve both branches and
@@ -108,3 +108,14 @@ merging account-wide learning data.
 
 **Not yet enabled**: M1/M2 cloud reconciliation. Until those gates pass,
 production continues to fail closed on `concurrent-edits`, as it should.
+
+## M1 implemented scope
+
+The pure `preflightAttemptIdentity` reports per-dictionary new event
+counts, shared UUIDs, contradictory evidence IDs, and unresolved legacy rows.
+It permits anchored legacy rows ONLY against an explicitly supplied verified
+common ancestor, and only if their immutable evidence remains unchanged in
+both branches. It is a necessary **event identity** test, not permission to
+perform a full V4 merge. The entire six-table merge, FSRS re-evaluation,
+achievement re-keying, session repair, remote CAS and S1 journal are **not**
+wired to production Sync yet.
