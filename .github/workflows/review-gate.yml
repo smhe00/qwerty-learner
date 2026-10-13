@@ -143,6 +143,7 @@ jobs:
             tests/review/evidence-profile.test.ts \
             tests/review/typing-retention.test.ts \
             tests/review/v4-merge-preflight.test.ts \
+            tests/review/v4-clock-gate.test.ts \
             tests/review/audio-policy.test.ts \
             tests/review/scheduler-lifecycle.test.ts \
             tests/review/acquisition-regression.test.ts \
@@ -177,6 +178,9 @@ jobs:
 
       - name: Run read-only V4 auto-merge identity classifier
         run: node --test .review-test/review/v4-merge-preflight.test.mjs
+
+      - name: Run EdgeOne clock-skew auto-merge preflight
+        run: node --test .review-test/review/v4-clock-gate.test.mjs
 
       - name: Run Review audio policy contracts
         run: node --test .review-test/review/audio-policy.test.mjs

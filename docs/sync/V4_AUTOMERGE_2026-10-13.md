@@ -119,3 +119,40 @@ both branches. It is a necessary **event identity** test, not permission to
 perform a full V4 merge. The entire six-table merge, FSRS re-evaluation,
 achievement re-keying, session repair, remote CAS and S1 journal are **not**
 wired to production Sync yet.
+
+## M1.1: per-key conflicts and EdgeOne clock preflight (implemented as opt-in primitives)
+
+**Conflict granularity**: `(dictId, wordName)` is the authoritative FSRS
+memory-state key. Different dictionaries (or independent words in one dict)
+do not compete for the same FSRS state. Different valid `attemptId` values
+within one key represent distinct attempts even at equal timestamps.
+However, cross-table references, `dailySessions`, Session checkpoints,
+achievement grants, user settings and same-record duplicated IDs still require
+whole-workspace reconciliation before any merged V4 can be committed.
+
+**Time source**: QWERTY EdgeOne Cloud Function responds with uncached
+`/api/health.serverTimeMs` in UTC milliseconds. HTTP `Date` is not used
+for this proof: it is only accurate to seconds and may be added/changed by
+intermediaries. Three sequential round trips provide the local/EdgeOne offset
+estimate. The current suggested hard preconditions are:
+- At least two valid probes; acceptable RTT <= 1500 ms.
+- Best probe's |clock offset| plus RTT/2 <= 5000 ms.
+- Spread between sample offsets <= 2000 ms.
+- Auto-merge is **disabled** if origin time capability absent, network slow,
+  machine time jumps, offset too large, or origin instances disagree. Normal
+  offline learning, local export and pre-existing safe Sync paths are NOT gated.
+- The probe never changes the operating-system clock and does not rewrite
+  existing historical word timestamps.
+
+**Critical limitation**: current good clock alignment does not prove that
+hours/days-old attempts were accurately stamped. New learning events will
+need capture-time clock-probe provenance or persisted normalized server-UTC
+timestamps, and validation of clock skew/history across both devices.
+Historical V4 events without that evidence must not be declared safe based
+solely on one fresh probe. Identical seconds remain possible and are not
+automatically anomalous: immutable attempt IDs break identity ties; the FSRS
+replayer needs a deterministic UUID tie-break before enabling merging.
+
+The additive server field and the client-side proof have been added to the
+development branch only. `master` has NOT deployed this capability.
+Neither automatic merge nor cloud overwrite is enabled by this change.

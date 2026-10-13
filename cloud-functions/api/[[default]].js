@@ -195,6 +195,9 @@ export async function onRequest(context) {
           ok: true,
           service: 'qwerty-sync-gateway',
           apiVersion: 1,
+          // Millisecond-resolution, uncached origin execution time. This is
+          // an estimate for clock-skew preflight, not a signed event timestamp.
+          serverTimeMs: Date.now(),
           authMode: 'single-active-session',
           runtime: process.version,
           capabilities: [
