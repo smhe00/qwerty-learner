@@ -4,7 +4,7 @@
  * permission to restore/publish a Backup V4.
  */
 import { isLearningAttemptId } from '@/utils/db/attempt-identity'
-import type { IWordRecord, IChapterRecord } from '@/utils/db/record'
+import type { IChapterRecord, IWordRecord } from '@/utils/db/record'
 import type {
   AchievementEventRecord,
   AchievementStateRecord,
