@@ -99,8 +99,9 @@ for (const path of ['/sync/v2', '/sync/v2/recovery']) {
   })
 }
 
-test('V1 PUT route stays separate from new V4 authorization mechanism', async () => {
+test('retired legacy PUT refuses writes without contacting backend storage', async () => {
   const actual = await request('/sync', 'token-a')
-  assert.equal(actual.status, 200)
-  assert.deepEqual(actual.calls, ['v1'])
+  assert.equal(actual.status, 410)
+  assert.equal(actual.data.error, 'legacy_sync_retired')
+  assert.deepEqual(actual.calls, [])
 })

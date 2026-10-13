@@ -3,7 +3,7 @@
 // Never run against master until API health announces authenticated-write GA.
 import assert from 'node:assert/strict'
 import crypto from 'node:crypto'
-import { gzipSync } from 'node:zlib'
+import { gzipSync, gunzipSync } from 'node:zlib'
 import { verifyCompressedV4 } from '../../cloud-functions/_shared/sync-v4.js'
 
 const base = new URL((process.env.QWERTY_SYNC_BASE_URL ||
@@ -13,6 +13,7 @@ let failure
 const prefix = 'v4_ga_' + Date.now().toString(36) +
   crypto.randomBytes(3).toString('hex')
 const sha256 = content => crypto.createHash('sha256').update(content).digest('hex')
+const requireGzip = bytes => gunzipSync(bytes).toString('utf8')
 function stable(x) {
   if (x === null || typeof x !== 'object') return JSON.stringify(x)
   if (Array.isArray(x)) return '[' + x.map(stable).join(',') + ']'
@@ -88,6 +89,21 @@ function v4Body(user, revision, nonce) {
     deviceId: 'v4-ga-disposable',
   }
 }
+function v4BodyFromSnapshot(user, revision, snapshot) {
+  const data = snapshot.workspaceData
+  const logicalFingerprint = sha256(stable({
+    database: { tables: data.database.data.tables, data: data.database.data.data },
+    learnRuntime: data.learnRuntime, settings: data.settings,
+    navigation: data.navigation,
+  }))
+  const zip = gzipSync(Buffer.from(JSON.stringify(snapshot)))
+  assert.equal(verifyCompressedV4(zip, user.userId, logicalFingerprint).logicalFingerprint,
+    logicalFingerprint)
+  return { baseRevision: revision, payloadBase64: zip.toString('base64'),
+    logicalFingerprint, clientFormatVersion: 'qwerty-backup-v4',
+    deviceId: 'beta-v4-native-blob-test' }
+}
+
 try {
   const health = await api('/api/health')
   expectCode(health, 200, null, 'EdgeOne gateway health')
@@ -102,7 +118,6 @@ try {
 
   const first = await register('first')
   const second = await register('second')
-  const legacy = await register('v3')
 
   const m0 = await api('/api/sync/v2/meta', 'GET', undefined, first.token)
   assert.equal(m0.value?.revision, 0)
@@ -117,14 +132,7 @@ try {
   const stale = await api('/api/sync/v2', 'PUT', v4Body(first, 1, 'stale'),
     first.token)
   expectCode(stale, 409, 'sync_conflict', 'GA stale revision CAS')
-  const oldClient = await api('/api/sync', 'PUT', {
-    baseRevision: 2,
-    payloadBase64: gzipSync(Buffer.from(JSON.stringify({ legacy: true }))).toString('base64'),
-    clientFormatVersion: 'qwerty-backup-v3',
-    deviceId: 'legacy-attempt',
-  }, first.token)
-  expectCode(oldClient, 409, 'sync_upgrade_required', 'V1 downgrade protection')
-  console.log('Fresh V4 and subsequent CAS/V1 downgrade: PASS')
+  console.log('Fresh V4 and stale revision protection: PASS')
 
   assert.equal((await api('/api/sync/v2/meta', 'GET', undefined, second.token)).value?.revision, 0)
   const secondOwn = await api('/api/sync/v2', 'PUT', v4Body(second, 0, 'other-account'),
@@ -134,33 +142,35 @@ try {
   assert.equal((await api('/api/sync/v2/meta', 'GET', undefined, first.token)).value?.revision, 2)
   console.log('Second unlisted account independent V4 write: PASS')
 
-  const historical = await api('/api/sync', 'PUT', {
-    baseRevision: 0,
-    payloadBase64: gzipSync(Buffer.from(JSON.stringify({ oldData: true }))).toString('base64'),
-    clientFormatVersion: 'qwerty-backup-v3',
-    deviceId: 'v3-disposable',
-  }, legacy.token)
-  expectCode(historical, 200, null, 'disposable historical V3')
-  assert.equal(historical.value?.revision, 1)
-  const noAutoMigration = await api('/api/sync/v2', 'PUT',
-    v4Body(legacy, 1, 'reject-auto-migration'), legacy.token)
-  // Even a 500 must not be assumed safe: read back metadata before any retry.
-  // This is a redacted status-only diagnostic; no credentials or payloads.
-  const legacyMeta = await api('/api/sync/v2/meta', 'GET', undefined, legacy.token)
-  console.log('V3-to-V4 refused-write evidence', JSON.stringify({
-    putStatus: noAutoMigration.status,
-    putCode: noAutoMigration.value?.error || null,
-    metaStatus: legacyMeta.status,
-    remoteRevision: legacyMeta.value?.revision ?? null,
-    remoteFormat: legacyMeta.value?.clientFormatVersion ?? null,
-  }))
-  assert.equal(legacyMeta.status, 200, 'read-only verification after refused write')
-  assert.equal(legacyMeta.value?.revision, 1, 'failed ordinary V4 PUT must not advance V3 revision')
-  assert.equal(legacyMeta.value?.clientFormatVersion, 'qwerty-backup-v3',
-    'failed ordinary V4 PUT must not change remote format')
-  expectCode(noAutoMigration, 409, 'sync_migration_required',
-    'Existing V3 cannot be overwritten by normal V4 Sync')
-  console.log('Existing V3 remains V3; no automatic migration: PASS')
+  // V4-only stress: exercise real Blob upload at a size comparable to the
+  // intermittent production recovery failures, without creating V3 records.
+  // A transport 500 may be ambiguous; inspect remote metadata READ-ONLY
+  // and fail rather than retry a potentially committed revision.
+  for (let index = 0; index < 3; index++) {
+    const baseRevision = index + 2
+    const record = v4Body(first, baseRevision, 'large-' + index)
+    const compressed = Buffer.from(record.payloadBase64, 'base64')
+    const largeState = JSON.parse(requireGzip(compressed))
+    largeState.workspaceData.database.data.data
+      .find(table => table.tableName === 'wordRecords').rows[0]
+      .typingTelemetry = { synthetic: crypto.randomBytes(2700 * 1024).toString('base64') }
+    const largeBody = v4BodyFromSnapshot(first, baseRevision, largeState)
+    const sent = await api('/api/sync/v2', 'PUT', largeBody, first.token)
+    const latest = await api('/api/sync/v2/meta', 'GET', undefined, first.token)
+    console.log('V4-only large Blob write', JSON.stringify({ attempt: index + 1,
+      requestBytes: Buffer.from(largeBody.payloadBase64, 'base64').length,
+      status: sent.status, code: sent.value?.error || null,
+      observedRevision: latest.value?.revision ?? null,
+      observedFormat: latest.value?.clientFormatVersion ?? null }))
+    assert.equal(latest.status, 200, 'read-only post-write verification')
+    assert.equal(sent.status, 200, 'native large V4 write HTTP result')
+    assert.equal(latest.value?.revision, baseRevision + 1)
+    assert.equal(latest.value?.clientFormatVersion, 'qwerty-backup-v4')
+    assert.equal(latest.value?.logicalFingerprint, largeBody.logicalFingerprint)
+    assert.equal(latest.value?.payloadSha256,
+      sha256(Buffer.from(largeBody.payloadBase64, 'base64')))
+  }
+  console.log('Native V4 large-payload endurance: PASS')
 } catch (error) {
   failure = error
 } finally {

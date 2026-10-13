@@ -51,3 +51,10 @@ GitHub Issues creation is disabled in this repository (HTTP 410), so this file i
 2. Repair deployment-pointer CI and final UI/Review gates. Retain reproducible CI logs and exact SHA.
 3. Keep Circle isolated and the product UI frozen except for verified P0/P1 defects.
 4. **Only after gates are green**, fast-forward master once and verify EdgeOne live runtime and account-isolated V4 flow. Record rollback pointer and release candidate tag. Until then, master remains the tested production baseline, not a new Beta release.
+
+## Scope change: V3 end-of-support (2026-10-13)
+- Product decision: **no V3 backup import, cloud migration, V3 UI, or V3→V4 acceptance gate** for Beta.
+- Legacy V3 cloud bytes are not deleted or silently overwritten; they are unsupported and must fail closed.
+- V4-only live gate now creates exclusively V4 test accounts and validates multiple multi-MB writes and remote hashes.
+- Separate V4-only concurrency/stale-revision and catastrophic restore checks remain release-critical.
+- Native V4 working workspace capture and restore no longer require an intermediate V3 envelope.

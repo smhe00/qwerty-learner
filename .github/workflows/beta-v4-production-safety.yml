@@ -8,7 +8,6 @@ on:
     paths:
       - '.github/workflows/beta-v4-production-safety.yml'
       - 'tests/cloud/p4b-edgeone-gate-smoke.mjs'
-      - 'tests/cloud/v4-recovery-incident-smoke.mjs'
   workflow_dispatch:
 
 permissions:
@@ -33,7 +32,5 @@ jobs:
           node-version: '20.19.3'
       - name: Verify live gateway before account creation
         run: node tests/cloud/resolve-production-base.mjs
-      - name: Verify V4 GA writes, stale revision protection and account isolation
+      - name: Verify V4-only GA, stale revision, account isolation and large payload endurance
         run: node tests/cloud/p4b-edgeone-gate-smoke.mjs
-      - name: Verify V3 recovery to V4 with synthetic large backup
-        run: node tests/cloud/v4-recovery-incident-smoke.mjs
