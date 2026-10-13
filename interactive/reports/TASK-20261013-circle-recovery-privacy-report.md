@@ -97,3 +97,11 @@ Remote master remains c2e8cbbb4d7a6509b956c36e4245bfab122abfea.
 
 Final git diff --check and forbidden-scope diff: clean. Final Circle lint: exit 0.
 No source changes after the passing 47-test final run.
+
+## Implementation commit
+
+a42175ff87cddcc743a4e5360b80ca507779ff0f
+
+This report-only follow-up records the exact implementation SHA. Final branch
+tip and remote push verification are reported in the user handoff. Push target
+is exclusively refs/heads/feature/circle-core-blob.
