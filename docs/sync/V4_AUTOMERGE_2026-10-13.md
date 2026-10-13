@@ -361,3 +361,22 @@ heads cannot prove unseen devices or forks do not exist. The digest is
 **not** a complete account fingerprint or a V4 snapshot. This is a read-only
 M3 integrity primitive under `MULTI_DEVICE_EVENT_PILOT_ENABLED` (default OFF)
 and does not permit the M1 independent-session pilot to write V4 snapshots.
+
+## M3.6 crash-recoverable client Outbox (development only)
+
+An account+device-scoped IndexedDB queue and pure transition kernel are now
+available in `src/sync/multi-device-outbox*.ts`. Enqueue de-duplicates
+immutable UUID learning evidence, rejects contradictions and oversized rows,
+and drops local numeric IDs/derived FSRS shadows. One in-flight chained batch
+is durably reserved per device; interrupted, ambiguous or rejected POSTs
+retain identical bytes and a fixed batchId. Only POST success **plus**
+authenticated exact-key GET and full event content verification advances the
+local predecessor receipt and removes committed queue rows, transactionally.
+IDB readwrite transactions serialize local tabs. No shared cloud CAS is used.
+
+`flushOneWitnessedOutboxBatch` is a **manual pilot primitive**, not active
+automatic sync. There is no live Learn save hook or Dexie→Outbox atomic
+capture yet: an external recovery scan and owner-verified S1 transaction are
+required before claiming offline data cannot be missed. M2 six-table
+materialization, global completeness proof and M4 remain blocked. The
+`multi-device` backend feature toggles stay disabled by default.

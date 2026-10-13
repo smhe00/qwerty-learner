@@ -78,8 +78,11 @@ async function request<T>(
   // Guarded V4 Sync must not trap a learner on the Block screen forever
   // when the network stalls. Aborting the client request is NOT proof that
   // a server CAS did not commit: the next attempt always rechecks metadata.
-  const abort = path.startsWith('/api/sync/v2') ? new AbortController() : null
-  const deadline = abort ? setTimeout(() => abort.abort(), 90_000) : null
+  const isEventsPilot = path.startsWith('/api/sync/events/v2')
+  const abort = (path.startsWith('/api/sync/v2') || isEventsPilot)
+    ? new AbortController() : null
+  const deadline = abort ? setTimeout(() => abort.abort(),
+    isEventsPilot ? 30_000 : 90_000) : null
   let response: Response
   let text: string
   try {
@@ -237,4 +240,28 @@ export function putSync(
     token,
     body: input,
   })
+}
+/** M3.6 pilot only: these functions cannot be invoked from ordinary Sync UI.
+ * A failed POST, aborted network, or malformed ACK is always ambiguous.
+ * The durable outbox preserves and retries the SAME in-flight bytes.
+ */
+import type { ChainedBatch, ChainedReceipt } from './multi-device-outbox'
+
+type PublishChainedResponse = { ok: true; stored: true; sha256: string } & ChainedReceipt
+type ReadChainedResponse = { ok: true; batch: ChainedBatch & {
+  schemaVersion: 2; accountId: string; sha256: string
+} }
+
+export function publishChainedEventBatch(token: string, batch: ChainedBatch) {
+  return request<PublishChainedResponse>('/api/sync/events/v2', {
+    method: 'POST', token, body: batch,
+  })
+}
+
+export function readChainedEventBatch(token: string, receipt: ChainedReceipt) {
+  const query = new URLSearchParams({
+    deviceId: receipt.deviceId, sequence: String(receipt.sequence),
+    batchId: receipt.batchId, sha256: receipt.sha256,
+  })
+  return request<ReadChainedResponse>('/api/sync/events/v2?' + query, { token })
 }
