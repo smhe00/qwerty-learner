@@ -1,0 +1,39 @@
+name: Beta V4 Production Safety Gate
+
+# Read/write against the already published master EdgeOne endpoint only.
+# No deployment, no project-management API dependency, no personal accounts.
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - '.github/workflows/beta-v4-production-safety.yml'
+      - 'tests/cloud/p4b-edgeone-gate-smoke.mjs'
+      - 'tests/cloud/v4-recovery-incident-smoke.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: beta-v4-production-safety
+  cancel-in-progress: false
+
+jobs:
+  live-v4-safety:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      QWERTY_SYNC_BASE_URL: https://qwerty-plus.edgeone.dev/
+    steps:
+      - name: Checkout test harness (never deploy)
+        uses: actions/checkout@v4
+      - name: Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.3'
+      - name: Verify live gateway before account creation
+        run: node tests/cloud/resolve-production-base.mjs
+      - name: Verify V4 GA writes, stale revision protection and account isolation
+        run: node tests/cloud/p4b-edgeone-gate-smoke.mjs
+      - name: Verify V3 recovery to V4 with synthetic large backup
+        run: node tests/cloud/v4-recovery-incident-smoke.mjs
