@@ -43,3 +43,10 @@ Later test reruns without another staging build may use the GitHub Actions
 re-run capability where permitted, or run the same guarded Node script in
 an isolated CI/local test environment with GITHUB_REF_NAME=edgeone-test,
 GITHUB_RUN_ID set, and QWERTY_SYNC_BASE_URL=https://etest.edgeone.dev/.
+## Outbox fail-closed integrity correction (2026-10-14)
+
+A stale or corrupted queued/in-flight copy with the same UUID as a confirmed
+receipt must not shadow the confirmed evidence ledger during recovery scans.
+The kernel now rejects a contradictory persisted state before staging new
+events; regression coverage includes a forged pending row. Do not interpret
+a successfully read IDB record as proof it has immutable self-consistency.

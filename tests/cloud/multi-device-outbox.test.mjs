@@ -112,3 +112,15 @@ test('repeated full-history rescan does not resend a verified UUID', () => {
     { ...record(1), word: 'contradictory' },
   ]), /outbox-contradictory-attempt/)
 })
+test('outbox never allows damaged queued evidence to shadow acknowledged UUID', () => {
+  let state = stageOutboxAttempts(initialEventOutbox('A', device(1)), [record(1)])
+  state = reserveOutboxBatch(state, uuid(80))
+  state = acknowledgeOutboxBatch(state, receipt(state.inflight))
+  const tampered = {
+    ...state, pending: [{ ...record(1), id: undefined, fsrsShadow: undefined,
+      reviewPolicyShadow: undefined, wrongCount: 5 }],
+  }
+  assert.throws(() => stageOutboxAttempts(tampered, [record(2)]),
+    /outbox-corrupt-confirmed-evidence/)
+  assert.equal(state.pending.length, 0)
+})

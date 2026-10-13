@@ -81,9 +81,16 @@ export function stageOutboxAttempts(
 ): EventOutboxState {
   assertScope(state)
   const evidence = new Map<string, string>(Object.entries(state.confirmedEvidence))
+  // A damaged/stale IDB state must never let pending or in-flight rows
+  // override immutable evidence already confirmed by exact Blob receipt.
   for (const row of [...state.pending, ...(state.inflight?.events ?? [])]) {
     if (!row.attemptId) throw new Error('outbox-corrupt-attempt')
-    evidence.set(row.attemptId, stableWorkspaceJson(row))
+    const content = stableWorkspaceJson(row)
+    const previouslyAccepted = evidence.get(row.attemptId)
+    if (previouslyAccepted !== undefined && previouslyAccepted !== content) {
+      throw new Error('outbox-corrupt-confirmed-evidence')
+    }
+    evidence.set(row.attemptId, content)
   }
   const pending = [...state.pending]
   for (const row of attempts) {
