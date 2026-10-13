@@ -1,3 +1,5 @@
+> **2026-10-13 implementation checkpoint:** [Circle event log v2](./CIRCLE_EVENT_LOG_V2.md) is implemented on the isolated feature branch. CAS kernel and HTTP enabling are disabled; historical code/tests are retained as disabled artifacts. The eventual-consistency decision below remains binding.
+
 # QWERTY Circle Core — Blob-only Kernel (S0 / first implementation)
 
 > Branch: `feature/circle-core-blob`

@@ -7,6 +7,7 @@ import { AppError } from '../core.js'
  * headers and never accepts user identity from request JSON.
  */
 export function createCircleHttpHandler({ service, enabled = false, rateLimit } = {}) {
+  if (enabled) throw new TypeError('Circle v2 HTTP release gate is closed')
   if (!service) throw new TypeError('Circle service is required')
   if (enabled && typeof rateLimit !== 'function') {
     throw new TypeError('Enabling Circle requires a server-side account/IP rate limiter')

@@ -6,7 +6,7 @@ on:
       - feature/circle-core-blob
     paths:
       - 'cloud-functions/_shared/circle/**'
-      - 'tests/cloud/circle-core.test.mjs'
+      - 'tests/cloud/circle*.mjs'
       - 'docs/CIRCLE_CORE_BLOB_V1.md'
       - 'scripts/circle-blob-live-contract.mjs'
       - '.github/workflows/circle-core-gate.yml'
@@ -25,6 +25,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20.18.0'
@@ -35,7 +37,7 @@ jobs:
       - name: Static-check live probe (never execute with production credentials)
         run: node --check scripts/circle-blob-live-contract.mjs
       - name: Lint Circle-only backend and tests
-        run: yarn eslint cloud-functions/_shared/circle tests/cloud/circle-core.test.mjs --ext .js,.mjs
+        run: yarn eslint cloud-functions/_shared/circle tests/cloud/circle-core.test.mjs tests/cloud/circle-core-cas.historical.mjs --ext .js,.mjs
       - name: Lint ES module sandbox probe
         run: yarn eslint scripts/circle-blob-live-contract.mjs --parser-options '{"sourceType":"module","ecmaVersion":2022}'
       - name: Verify no frontend changed in branch

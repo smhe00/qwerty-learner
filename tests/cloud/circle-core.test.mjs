@@ -1,716 +1,391 @@
 /* eslint-env node */
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createCircleBlobStorage } from '../../cloud-functions/_shared/circle/blob-storage.js'
+import { createCircleEventLog, digest, makeEvent } from '../../cloud-functions/_shared/circle/event-log.js'
+import { reduceCircle } from '../../cloud-functions/_shared/circle/reducer.js'
 import { createCircleService } from '../../cloud-functions/_shared/circle/service.js'
+import { createCircleBlobStorage } from '../../cloud-functions/_shared/circle/blob-storage.js'
+import { createCircleService as historicalService } from '../../cloud-functions/_shared/circle/service-cas-historical.js'
+import { createCircleBlobStorage as historicalStorage } from '../../cloud-functions/_shared/circle/blob-storage-cas-historical.js'
 import { createCircleHttpHandler } from '../../cloud-functions/_shared/circle/http.js'
 
-const clone = (x) => x === null ? null : JSON.parse(JSON.stringify(x))
-class FakeBlob {
+const owner = 'owner_00000001'
+const alice = 'alice_00000001'
+const bob = 'bob_000000001'
+const day = '2026-10-13'
+class EventualBlob {
   objects = new Map()
-  ambiguous = false
-  failedReads = 0
-  async get(key, options) {
-    assert.equal(options.type, 'json')
-    assert.equal(options.consistency, 'strong')
-    if (this.failedReads > 0) { this.failedReads -= 1; throw Error('transient read') }
-    return this.objects.has(key) ? clone(this.objects.get(key)) : null
-  }
-  async list({ prefix, consistency }) {
-    assert.equal(consistency, 'strong')
-    return { blobs: [...this.objects.keys()]
-      .filter((key) => key.startsWith(prefix))
-      .map((key) => ({ key })) }
-  }
-  failedDeletes = 0
-  async delete(key) {
-    if (this.failedDeletes > 0) {
-      this.failedDeletes--
-      throw new Error('transient delete failure')
-    }
-    this.objects.delete(key)
-  }
+  hidden = new Set()
+  invisible = new Set()
+  lostResponse = false
+  failList = false
+  writes = []
+  onGet = null
   async setJSON(key, value, options) {
-    assert.equal(options.onlyIfNew, true)
-    if (this.objects.has(key)) throw Error('key already exists')
-    this.objects.set(key, clone(value))
-    if (this.ambiguous) {
-      this.ambiguous = false
-      throw Error('response lost after durable write')
-    }
+    // Model overwriting Blob with NO conditional-create primitive.
+    assert.equal(options, undefined)
+    this.writes.push(key)
+    this.objects.set(key, structuredClone(value))
+    if (this.lostResponse) { this.lostResponse = false; throw Error('lost response') }
+  }
+  async list({ prefix, ...options }) {
+    assert.deepEqual(options, {})
+    if (this.failList) throw Error('outage')
+    return { blobs: [...this.objects.keys()].reverse().filter((key) =>
+      key.startsWith(prefix) && !this.hidden.has(key)).map((key) => ({ key })) }
+  }
+  async get(key, options) {
+    assert.deepEqual(options, { type: 'json' })
+    if (this.onGet) await this.onGet()
+    return this.invisible.has(key) ? null : structuredClone(this.objects.get(key) ?? null)
   }
 }
-function setup() {
-  const blob = new FakeBlob()
-  const storage = createCircleBlobStorage(blob)
-  const service = createCircleService({
-    storage,
-    authenticate: async (token) => {
-      if (token === 'bad') throw Error('invalid token')
-      return { user: { userId: token } }
+function setup({ check, revoke, verifyAchievement } = {}) {
+  const blob = new EventualBlob()
+  const log = createCircleEventLog(blob)
+  const denied = new Set()
+  const closed = new Set()
+  const retired = new Set()
+  const checks = []
+  const trustedAccess = {
+    async check(c) {
+      checks.push(c)
+      if (check && await check(c) !== true) return false
+      // Test-only reliable authority, explicitly independent of Blob visibility.
+      if (closed.has(c.circleId) || retired.has(c.actorUserId) ||
+          denied.has(c.circleId + '/' + c.actorUserId)) return false
+      if (c.subjects?.some((u) => retired.has(u) || denied.has(c.circleId + '/' + u))) return false
+      return true
     },
-    verifyAchievement: async (_userId, id) => id === 'ACH_MASTERED_100',
-  })
-  return { blob, storage, service }
+    async revoke(c) {
+      if (revoke && await revoke(c) !== true) return false
+      if (c.kind === 'circle') closed.add(c.circleId)
+      else denied.add(c.circleId + '/' + c.targetUserId)
+      return true
+    },
+  }
+  const service = createCircleService({ log, trustedAccess,
+    authenticate: async (token) => { if (token === 'bad') throw Error('bad session'); return { userId: token } },
+    inviteKey: 'test-only-server-key-not-a-production-secret',
+    verifyAchievement: verifyAchievement || (async () => true) })
+  const create = (maxMembers = 12) => service.createCircle(owner,
+    { name: 'Circle', operationId: 'create_00001', maxMembers })
+  return { blob, log, service, create, denied, closed, retired, checks }
 }
-const owner = 'owner_0000000001'
-const alice = 'alice_0000000001'
-const bob = 'bob_00000000001'
-const eve = 'eve_00000000001'
-const today = () => new Date().toISOString().slice(0, 10)
-const event = (id, newWords = 32) => ({ completed: true, newWords, eventId: id })
+const publicView = ({ pending, revoked, ...view }) => ({ ...view, pendingCount: pending.length, revokedCount: revoked.length })
+const facts = (blob) => [...blob.objects.values()]
+const event = (circleId, actorUserId, type, operationId, payload) =>
+  makeEvent({ circleId, actorUserId, type, operationId, payload })
 
-test('Circle Blob storage isolates social/v1 and recovers ambiguous create-only commit', async () => {
-  const { blob, storage } = setup()
-  blob.ambiguous = true
-  assert.equal(await storage.create('circles/test/meta.json', { z: 1 }), true)
-  assert.equal(await storage.create('circles/test/meta.json', { z: 1 }), true)
-  assert.equal(await storage.create('circles/test/meta.json', { z: 2 }), false)
-  assert.deepEqual(await storage.read('circles/test/meta.json'), { z: 1 })
-  assert.deepEqual([...blob.objects.keys()], ['social/v1/circles/test/meta.json'])
+test('all CAS entry points and HTTP enabling are disabled', () => {
+  assert.throws(() => createCircleBlobStorage({}), /disabled/)
+  assert.throws(() => historicalService({ storage: {} }), /disabled/)
+  assert.throws(() => historicalStorage({}), /disabled/)
+  assert.throws(() => createCircleHttpHandler({ service: {}, enabled: true }), /gate is closed/)
+  assert.throws(() => createCircleService({}), /independent trusted access/)
 })
 
-test('Invite is secret-bearing, no member access without authentication', async () => {
-  const { blob, service } = setup()
-  const circle = await service.createCircle(owner, { name: '初二英语搭子' })
-  assert.match(circle.inviteCode, /^QC-[A-Za-z0-9_-]{12}-[A-Za-z0-9_-]{12}$/)
-  assert.equal(JSON.stringify([...blob.objects.values()]).includes(circle.inviteCode), false)
-  assert.equal((await service.getCircle(owner, circle.circleId)).members.length, 1)
-  await assert.rejects(service.getCircle(alice, circle.circleId), { code: 'not_circle_member' })
-  await assert.rejects(service.joinCircle(alice, circle.inviteCode.slice(0, -1) + '!'), {
-    code: 'invalid_invite',
-  })
-  const joined = await service.joinCircle(alice, circle.inviteCode)
-  assert.equal(joined.role, 'member')
-  await assert.rejects(service.getCircle('bad', circle.circleId))
+test('create retries use independent physical keys and one logical fact', async () => {
+  const { blob, service, create } = setup()
+  const results = await Promise.all(Array.from({ length: 100 }, () => create()))
+  assert.equal(new Set(blob.writes).size, 100)
+  assert.equal(new Set(results.map((r) => r.circleId)).size, 1)
+  assert.equal(new Set(results.map((r) => r.inviteCode)).size, 1)
+  const view = await service.getCircle(owner, results[0].circleId)
+  assert.equal(view.members.length, 1)
+  assert.equal(view.final, false)
+  assert.equal(view.consistency, 'eventual')
+  assert.ok(blob.writes.every((k) => /^social\/v2\/circles\/[a-f0-9]{24}\/events\/[a-f0-9]{32}\.json$/.test(k)))
+  assert.equal(JSON.stringify(facts(blob)).includes(results[0].inviteCode), false)
 })
 
-test('Concurrent joins never oversubscribe 12-person lifetime capacity', async () => {
-  const { service } = setup()
-  const circle = await service.createCircle(owner, { name: 'Circle' })
-  const users = Array.from({ length: 30 }, (_x, i) => `student_${String(i).padStart(5, '0')}`)
-  const results = await Promise.allSettled(users.map((uid) =>
-    service.joinCircle(uid, circle.inviteCode)))
-  assert.equal(results.filter((r) => r.status === 'fulfilled').length, 11)
-  assert.equal(results.filter((r) => r.status === 'rejected').length, 19)
-  const snapshot = await service.getCircle(owner, circle.circleId)
-  assert.equal(snapshot.members.length, 12)
-  assert.equal(new Set(snapshot.members.map((m) => m.userId)).size, 12)
-  assert.equal(snapshot.maxMembers, 12)
+test('30 concurrent joins all return pending; visible-set provisional selection converges', async () => {
+  const { blob, service, create } = setup()
+  const c = await create()
+  const actors = Array.from({ length: 30 }, (_, i) => 'student_' + String(i).padStart(5, '0'))
+  const results = await Promise.all(actors.map((a) => service.joinCircle(a, c.inviteCode)))
+  assert.ok(results.every((r) => r.admission === 'pending' && r.final === false))
+  const view = await service.getCircle(owner, c.circleId)
+  assert.equal(view.members.length, 12)
+  assert.equal(view.pendingCount, 19)
+  assert.ok(view.members.every((m) => m.status === 'provisional'))
+  assert.deepEqual(publicView(reduceCircle(c.circleId, facts(blob).reverse())), view)
 })
 
-test('Concurrent retries of one user occupy one seat', async () => {
-  const { service } = setup()
-  const circle = await service.createCircle(owner, { name: 'Circle' })
-  const results = await Promise.all(Array.from({ length: 16 }, () =>
-    service.joinCircle(alice, circle.inviteCode)))
-  assert.equal(results.length, 16)
-  assert.ok(results.every((result) => result.role === 'member'))
-  await service.joinCircle(alice, circle.inviteCode)
-  assert.equal((await service.getCircle(owner, circle.circleId)).members.length, 2)
+test('late higher-priority join may displace provisional selection; no hard cap claim', async () => {
+  const { blob, service, create } = setup()
+  const c = await create(2)
+  await service.joinCircle(bob, c.inviteCode)
+  const early = await service.getCircle(owner, c.circleId)
+  await service.joinCircle(alice, c.inviteCode)
+  const lateKey = blob.writes.at(-1)
+  blob.hidden.add(lateKey)
+  assert.deepEqual(await service.getCircle(owner, c.circleId), early)
+  blob.hidden.clear()
+  const converged = await service.getCircle(owner, c.circleId)
+  assert.deepEqual(converged.members.map((m) => m.userId), [owner, alice])
+  assert.deepEqual(converged.pendingCount, 1)
+  await assert.rejects(service.getCircle(bob, c.circleId), { code: 'not_circle_member' })
 })
 
-test('Member cannot remove others, owner cannot exit, revoked members cannot rejoin/read', async () => {
-  const { service } = setup()
-  const circle = await service.createCircle(owner, { name: 'Circle' })
-  await service.joinCircle(alice, circle.inviteCode)
-  await service.joinCircle(bob, circle.inviteCode)
-  await assert.rejects(service.removeMember(alice, circle.circleId, bob), {
-    code: 'not_circle_owner',
-  })
-  await assert.rejects(service.leaveCircle(owner, circle.circleId), {
-    code: 'owner_cannot_leave',
-  })
-  assert.deepEqual(await service.removeMember(owner, circle.circleId, alice), { revoked: true })
-  await assert.rejects(service.getCircle(alice, circle.circleId), { code: 'not_circle_member' })
-  await assert.rejects(service.joinCircle(alice, circle.inviteCode), { code: 'membership_revoked' })
-  assert.deepEqual((await service.getCircle(bob, circle.circleId)).members.map((m) => m.userId),
-    [owner, bob])
+test('100 logical retries of join/progress/achievement/clap count once', async () => {
+  const { blob, service, create } = setup()
+  const c = await create()
+  await Promise.all(Array.from({ length: 100 }, () => service.joinCircle(alice, c.inviteCode)))
+  await Promise.all(Array.from({ length: 100 }, () => service.publishProgress(alice, c.circleId, day,
+    { completed: true, newWords: 12, eventId: 'progress_0001' })))
+  await Promise.all(Array.from({ length: 100 }, () => service.shareAchievement(alice, c.circleId, 'ACH_MASTERED_100')))
+  await Promise.all(Array.from({ length: 100 }, () => service.reactProgress(owner, c.circleId, alice, day)))
+  const view = await service.getCircle(owner, c.circleId)
+  assert.equal(view.members.length, 2)
+  assert.equal(view.progress.length, 1)
+  assert.equal(view.achievements.length, 1)
+  assert.equal(view.claps.length, 1)
+  assert.equal(view.progress[0].selfReported, true)
+  assert.equal(new Set(blob.writes).size, blob.writes.length)
 })
 
-test('Leaving is permanent in V1 and membership remains bounded', async () => {
-  const { service } = setup()
-  const circle = await service.createCircle(owner, { name: 'Circle' })
-  await service.joinCircle(alice, circle.inviteCode)
-  assert.deepEqual(await service.leaveCircle(alice, circle.circleId), { revoked: true })
-  assert.deepEqual(await service.leaveCircle(alice, circle.circleId), { revoked: true })
-  await assert.rejects(service.joinCircle(alice, circle.inviteCode), { code: 'membership_revoked' })
+test('ambiguous response commits, same logical retry converges without readback/CAS', async () => {
+  const { blob, service, create } = setup()
+  blob.lostResponse = true
+  await assert.rejects(create(), { code: 'circle_append_unknown' })
+  const c = await create()
+  assert.equal(facts(blob).length, 2)
+  assert.equal((await service.getCircle(owner, c.circleId)).conflicts.length, 0)
 })
 
-test('Daily progress is own-account authored, bounded, and idempotent', async () => {
-  const { service } = setup()
-  const circle = await service.createCircle(owner, { name: 'Circle' })
-  await service.joinCircle(alice, circle.inviteCode)
-  const day = today()
-  const report = await service.publishProgress(alice, circle.circleId, day,
-    event('event_0001'))
-  const retry = await service.publishProgress(alice, circle.circleId, day,
-    event('event_0001'))
-  assert.deepEqual(report, retry)
-  assert.equal(report.authorUserId, alice)
-  assert.equal(report.selfReported, true)
-  await assert.rejects(
-    service.publishProgress(alice, circle.circleId, day, event('event_0001', 12)),
-    { code: 'idempotency_conflict' },
-  )
-  for (const i of [2, 3, 4]) {
-    await service.publishProgress(alice, circle.circleId, day,
-      event('event_000' + i, i))
+test('same logical operation with conflicting content quarantines view in every order', async () => {
+  const { blob, service, create } = setup()
+  const c = await create()
+  await service.publishProgress(owner, c.circleId, day,
+    { completed: true, newWords: 12, eventId: 'progress_0001' })
+  await service.publishProgress(owner, c.circleId, day,
+    { completed: true, newWords: 13, eventId: 'progress_0001' })
+  const view = publicView(reduceCircle(c.circleId, facts(blob)))
+  assert.equal(view.blocked, true)
+  assert.equal(view.conflicts.length, 1)
+  assert.equal(view.progress.length, 0)
+  assert.deepEqual(publicView(reduceCircle(c.circleId, facts(blob).reverse())), view)
+  await assert.rejects(service.getCircle(owner, c.circleId), { code: 'circle_view_uncertain' })
+})
+
+test('reordering, duplicate observations, late creation and incremental visibility rebuild same view', async () => {
+  const { blob, service, create, log } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  await service.publishProgress(alice, c.circleId, day,
+    { completed: true, newWords: 12, eventId: 'progress_0001' })
+  await service.reactProgress(owner, c.circleId, alice, day)
+  const all = facts(blob)
+  const expected = reduceCircle(c.circleId, all)
+  assert.equal(reduceCircle(c.circleId, all.slice(1)).blocked, true)
+  for (let shift = 0; shift < all.length; shift++) {
+    const reordered = [...all.slice(shift), ...all.slice(0, shift)]
+    assert.deepEqual(reduceCircle(c.circleId, [...reordered, ...reordered]), expected)
   }
-  await assert.rejects(service.publishProgress(alice, circle.circleId, day,
-    event('event_0005')), { code: 'daily_progress_limit' })
-  assert.equal((await service.getProgress(owner, circle.circleId, day))[0].newWords, 4)
-  await assert.rejects(service.publishProgress(eve, circle.circleId, day,
-    event('event_9999')), { code: 'not_circle_member' })
+  blob.invisible.add(blob.writes[0])
+  await assert.rejects(service.getCircle(owner, c.circleId), { code: 'circle_view_uncertain' })
+  blob.invisible.clear()
+  // Disposable materialized view can be discarded and rebuilt from the log.
+  const cache = new Map([[c.circleId, expected]])
+  cache.clear()
+  cache.set(c.circleId, reduceCircle(c.circleId, await log.scan(c.circleId)))
+  assert.deepEqual(cache.get(c.circleId), expected)
 })
 
-test('Concurrent per-day reports stay within four immutable slots', async () => {
-  const { service } = setup()
-  const circle = await service.createCircle(owner, { name: 'Circle' })
-  const jobs = Array.from({ length: 20 }, (_x, i) => service.publishProgress(
-    owner, circle.circleId, today(), event(`evt_${String(i).padStart(8, '0')}`, i)))
-  const results = await Promise.allSettled(jobs)
-  assert.equal(results.filter((r) => r.status === 'fulfilled').length, 4)
-  assert.equal(results.filter((r) => r.status === 'rejected').length, 16)
+test('leave/remove are permanent remove-wins and filter progress, achievements and claps', async () => {
+  const { blob, service, create } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  await service.publishProgress(alice, c.circleId, day,
+    { completed: true, newWords: 1, eventId: 'progress_0001' })
+  await service.shareAchievement(alice, c.circleId, 'ACH_MASTERED_100')
+  await service.reactProgress(owner, c.circleId, alice, day)
+  await assert.rejects(service.removeMember(alice, c.circleId, owner), { code: 'not_circle_owner' })
+  await assert.rejects(service.leaveCircle(owner, c.circleId), { code: 'owner_cannot_leave' })
+  await service.removeMember(owner, c.circleId, alice)
+  const view = await service.getCircle(owner, c.circleId)
+  assert.deepEqual(view.revokedCount, 1)
+  assert.equal(view.progress.length + view.achievements.length + view.claps.length, 0)
+  await assert.rejects(service.joinCircle(alice, c.inviteCode), { code: 'circle_access_uncertain' })
+  assert.deepEqual(publicView(reduceCircle(c.circleId, facts(blob).reverse())), view)
 })
 
-test('Reaction is one immutable clap per actor and requires visible progress', async () => {
-  const { service } = setup()
-  const circle = await service.createCircle(owner, { name: 'Circle' })
-  await service.joinCircle(alice, circle.inviteCode)
-  await service.joinCircle(bob, circle.inviteCode)
-  await assert.rejects(service.reactProgress(alice, circle.circleId, owner, today()), {
-    code: 'progress_not_found',
-  })
-  await service.publishProgress(owner, circle.circleId, today(), event('event_0001'))
-  await Promise.all(Array.from({ length: 8 }, () =>
-    service.reactProgress(alice, circle.circleId, owner, today())))
-  await service.reactProgress(bob, circle.circleId, owner, today())
-  assert.equal((await service.getReactions(owner, circle.circleId, owner, today())).count, 2)
-  await assert.rejects(service.reactProgress(eve, circle.circleId, owner, today()), {
-    code: 'not_circle_member',
-  })
+test('member leave fences first, then logs; delayed leave cannot restore access', async () => {
+  const { blob, service, create } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  await service.leaveCircle(alice, c.circleId)
+  blob.hidden.add(blob.writes.at(-1))
+  await assert.rejects(service.getCircle(alice, c.circleId), { code: 'circle_access_uncertain' })
+  // Old visible membership causes the whole protected view to fail closed.
+  await assert.rejects(service.getCircle(owner, c.circleId), { code: 'circle_access_uncertain' })
+  blob.hidden.clear()
+  assert.deepEqual((await service.getCircle(owner, c.circleId)).revokedCount, 1)
 })
 
-test('Revocation removes visibility of self-reported progress and denies reader', async () => {
-  const { service } = setup()
-  const circle = await service.createCircle(owner, { name: 'Circle' })
-  await service.joinCircle(alice, circle.inviteCode)
-  await service.publishProgress(alice, circle.circleId, today(), event('event_0001'))
-  assert.equal((await service.getProgress(owner, circle.circleId, today())).length, 1)
-  await service.removeMember(owner, circle.circleId, alice)
-  assert.equal((await service.getProgress(owner, circle.circleId, today())).length, 0)
-  await assert.rejects(service.getProgress(alice, circle.circleId, today()), {
-    code: 'not_circle_member',
-  })
+test('close wins over delayed joins and progress; private reads fenced despite hidden close', async () => {
+  const { blob, service, create } = setup()
+  const c = await create()
+  await service.closeCircle(owner, c.circleId)
+  blob.hidden.add(blob.writes.at(-1))
+  await assert.rejects(service.getCircle(owner, c.circleId), { code: 'circle_access_uncertain' })
+  const creation = facts(blob)[0]
+  const delayedJoin = event(c.circleId, alice, 'JOIN_REQUESTED', 'join_request',
+    { inviteHash: creation.payload.inviteHash })
+  const view = reduceCircle(c.circleId, [...facts(blob), delayedJoin])
+  assert.equal(view.closed, true)
+  assert.deepEqual(view.members, [])
 })
 
-test('Showcase requires external authoritative verification; closure blocks access', async () => {
-  const { service, storage } = setup()
-  const circle = await service.createCircle(owner, { name: 'Circle' })
-  await service.joinCircle(alice, circle.inviteCode)
-  await assert.rejects(service.shareAchievement(alice, circle.circleId,
-    'ACH_UNVERIFIED'), { code: 'unverified_achievement' })
-  await service.shareAchievement(alice, circle.circleId, 'ACH_MASTERED_100')
-  assert.equal((await service.getShowcase(owner, circle.circleId, alice,
-    ['ACH_MASTERED_100'])).length, 1)
-  await service.closeCircle(owner, circle.circleId)
-  await assert.rejects(service.getCircle(alice, circle.circleId), { code: 'circle_closed' })
-  await assert.rejects(service.getShowcase(owner, circle.circleId, alice,
-    ['ACH_MASTERED_100']), { code: 'circle_closed' })
-  assert.ok((await storage.read('circles/' + circle.circleId + '/closed.json')))
+test('independent authority denies in-flight reads and retired subjects under stale listings', async () => {
+  const { blob, service, create, retired } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  blob.onGet = async () => retired.add(alice)
+  await assert.rejects(service.getCircle(owner, c.circleId), { code: 'circle_access_uncertain' })
+  blob.onGet = null
+  await assert.rejects(service.getCircle(alice, c.circleId), { code: 'circle_access_uncertain' })
 })
 
-test('No arbitrary ID/path injection and invalid progress is blocked', async () => {
-  const { service } = setup()
-  const circle = await service.createCircle(owner, { name: 'Circle' })
-  await assert.rejects(service.getCircle(owner, '../accounts'), { code: 'invalid_circle' })
-  await assert.rejects(service.publishProgress(owner, circle.circleId, '2026-02-30',
-    event('event_0001')), { code: 'invalid_day' })
-  await assert.rejects(service.publishProgress(owner, circle.circleId, today(),
-    { completed: true, newWords: 1e9, eventId: 'event_0001' }), {
-    code: 'invalid_progress',
-  })
+test('authorization rechecks caller identity before returning private data', async () => {
+  let deny = false
+  const { service, create } = setup({ check: async (c) => {
+    if (deny && c.phase === 'before_return') return false
+    return true
+  } })
+  const c = await create()
+  deny = true
+  await assert.rejects(service.getCircle(owner, c.circleId), { code: 'circle_access_uncertain' })
 })
 
-test('A stalled admission can be safely helped by a concurrent retry', async () => {
-  const { blob, service } = setup()
-  const circle = await service.createCircle(owner, { name: 'Race' })
-  const originalSetJSON = blob.setJSON.bind(blob)
-  let unblock
-  const locked = new Promise((resolve) => { unblock = resolve })
-  let entered
-  const arrived = new Promise((resolve) => { entered = resolve })
-  let intercepted = false
-  blob.setJSON = async (key, value, options) => {
-    if (!intercepted && key.includes('/seats/')) {
-      intercepted = true
-      entered()
-      await locked
-    }
-    return originalSetJSON(key, value, options)
-  }
-  const first = service.joinCircle(alice, circle.inviteCode)
-  await arrived
-  const second = await service.joinCircle(alice, circle.inviteCode)
-  assert.equal(second.role, 'member')
-  unblock()
-  await first
-  await service.joinCircle(alice, circle.inviteCode)
-  const snapshot = await service.getCircle(owner, circle.circleId)
-  assert.deepEqual(snapshot.members.map((m) => m.userId), [owner, alice])
+test('missing/unavailable revocation fence never emits revoke event', async () => {
+  const { blob, service, create } = setup({ revoke: async () => false })
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  const before = blob.writes.length
+  await assert.rejects(service.removeMember(owner, c.circleId, alice), { code: 'circle_revocation_unavailable' })
+  assert.equal(blob.writes.length, before)
 })
 
-test('Concurrent same-event publications cannot consume multiple daily slots', async () => {
-  const { blob, service } = setup()
-  const circle = await service.createCircle(owner, { name: 'Race' })
-  const originalSetJSON = blob.setJSON.bind(blob)
-  let unblock
-  const gate = new Promise((resolve) => { unblock = resolve })
-  let arrived
-  const entering = new Promise((resolve) => { arrived = resolve })
-  let intercepted = false
-  blob.setJSON = async (key, value, options) => {
-    if (!intercepted && key.includes('/progress/') && key.endsWith('/00.json')) {
-      intercepted = true
-      arrived()
-      await gate
-    }
-    return originalSetJSON(key, value, options)
-  }
-  const first = service.publishProgress(owner, circle.circleId, today(),
-    event('same_event_1234', 10))
-  await entering
-  const second = await service.publishProgress(owner, circle.circleId, today(),
-    event('same_event_1234', 10))
-  assert.equal(second.newWords, 10)
-  unblock()
-  await first
-  const retry = await service.publishProgress(owner, circle.circleId, today(),
-    event('same_event_1234', 10))
-  assert.equal(retry.newWords, 10)
-  const progress = [...blob.objects.keys()].filter((key) => key.includes('/progress/') &&
-    key.endsWith('.json'))
-  assert.equal(progress.length, 1)
+test('lost revoke-log response leaves authoritative fence intact, not falsely acknowledged', async () => {
+  const { blob, service, create } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  blob.lostResponse = true
+  await assert.rejects(service.removeMember(owner, c.circleId, alice), { code: 'circle_append_unknown' })
+  blob.hidden.add(blob.writes.at(-1))
+  await assert.rejects(service.getCircle(alice, c.circleId), { code: 'circle_access_uncertain' })
 })
 
-test('Account quarantine fences access and indexes every durable membership', async () => {
-  const { storage, service } = setup()
-  const first = await service.createCircle(owner, { name: 'First' })
-  const second = await service.createCircle(alice, { name: 'Second' })
-  await service.joinCircle(alice, first.inviteCode)
-  await service.joinCircle(bob, second.inviteCode)
-  await service.publishProgress(alice, first.circleId, today(),
-    event('quarantine_0001', 8))
-  assert.equal((await service.getProgress(owner, first.circleId, today())).length, 1)
-  assert.deepEqual(await service.quarantineAccount(alice),
-    { disabled: true, circleCount: 2 })
-  assert.deepEqual(await service.quarantineAccount(alice),
-    { disabled: true, circleCount: 2 })
-  assert.equal((await service.getProgress(owner, first.circleId, today())).length, 0)
-  assert.deepEqual((await service.getCircle(owner, first.circleId)).members.map((m) => m.userId),
-    [owner])
-  await assert.rejects(service.getCircle(alice, first.circleId),
-    { code: 'circle_account_disabled' })
-  await assert.rejects(service.publishProgress(alice, first.circleId, today(),
-    event('quarantine_0002', 20)), { code: 'circle_account_disabled' })
-  await assert.rejects(service.getCircle(bob, second.circleId),
-    { code: 'circle_closed' })
-  assert.equal((await storage.list('user-circles/alice_0000000001/')).length, 2)
+test('authentication, unknown access, fake invite and evidence verification fail closed', async () => {
+  const { service, create } = setup({ verifyAchievement: async () => false })
+  const c = await create()
+  await assert.rejects(service.getCircle('bad', c.circleId))
+  await assert.rejects(service.getCircle(alice, c.circleId), { code: 'not_circle_member' })
+  await assert.rejects(service.joinCircle(alice, c.inviteCode.slice(0, -1) + 'z'), { code: 'invalid_invite' })
+  await assert.rejects(service.shareAchievement(owner, c.circleId, 'ACH_MASTERED_100'), { code: 'achievement_unverified' })
+  const denied = setup({ check: async () => undefined })
+  await assert.rejects(denied.create(), { code: 'circle_access_uncertain' })
 })
 
-test('Circle listing always scopes returned keys to social namespace', async () => {
-  const { blob, storage } = setup()
-  await storage.create('user-circles/aa/one.json', { ok: true })
-  blob.objects.set('users/private-account/revisions/1.json', { leaked: true })
-  assert.deepEqual(await storage.list('user-circles/aa/'),
-    ['user-circles/aa/one.json'])
-  assert.equal((await storage.list('user-circles/')).length, 1)
+test('nonowner removal/closure events cannot change membership in reducer', async () => {
+  const { blob, create } = setup()
+  const c = await create()
+  const forged = [
+    event(c.circleId, alice, 'MEMBER_REMOVED', 'remove_00001', { targetUserId: owner }),
+    event(c.circleId, alice, 'CIRCLE_CLOSED', 'close_circle', {}),
+  ]
+  const view = reduceCircle(c.circleId, [...facts(blob), ...forged])
+  assert.equal(view.closed, false)
+  assert.deepEqual(view.revoked, [])
 })
 
-test('HTTP routes are disabled by default and cannot weaken rate limiting', async () => {
-  const { service } = setup()
-  const disabled = createCircleHttpHandler({ service })
-  const request = new Request('https://qwerty.example/api/circle/v1', {
-    method: 'POST', headers: { Authorization: 'Bearer ' + owner,
-      'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Hi' }),
-  })
-  await assert.rejects(disabled.handle(request), { code: 'not_found' })
-  assert.throws(() => createCircleHttpHandler({ service, enabled: true }),
-    /rate limiter/)
+test('log rejects key escapes, misplaced data, unconsumed pages and overload', async () => {
+  const { blob, log, create } = setup()
+  const c = await create()
+  await assert.rejects(log.scan('../accounts'), /Invalid circle/)
+  const list = blob.list.bind(blob)
+  blob.list = async () => ({ blobs: [{ key: 'accounts/private.json' }] })
+  await assert.rejects(log.scan(c.circleId), /Out-of-scope/)
+  blob.list = async () => ({ blobs: [], nextCursor: 'more' })
+  await assert.rejects(log.scan(c.circleId), /Incomplete/)
+  blob.list = list
+  const wrong = structuredClone(facts(blob)[0])
+  wrong.circleId = 'another_circle'
+  wrong.dedupKey = digest([wrong.circleId, wrong.actorUserId, wrong.type, wrong.operationId])
+  blob.objects.set(blob.writes[0], wrong)
+  await assert.rejects(log.scan(c.circleId), /identity mismatch/)
 })
 
-test('HTTP contract authenticates before parsing, bounds JSON, never accepts actor ID', async () => {
-  const { service } = setup()
-  let limiterCalls = 0
-  const api = createCircleHttpHandler({
-    service, enabled: true, rateLimit: async () => { limiterCalls++; return true },
-  })
-  const req = (path, method = 'GET', body, token = owner, type = 'application/json') =>
-    new Request('https://qwerty.example/api/circle/v1' + path, {
-      method,
-      headers: { Authorization: token ? 'Bearer ' + token : '',
-        'Content-Type': type },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
-  await assert.rejects(api.handle(req('/', 'POST', { name: 'Hi' }, null)),
-    { code: 'missing_token' })
-  await assert.rejects(api.handle(req('/', 'POST', { name: 'Hi' }, owner, 'text/plain')),
-    { code: 'unsupported_media_type' })
-  await assert.rejects(api.handle(req('/', 'POST', { name: 'x'.repeat(9000) })),
-    { code: 'circle_request_too_large' })
-  const created = await api.handle(req('/', 'POST', { name: 'My Circle', userId: eve }))
-  assert.equal(created.status, 201)
-  assert.equal(created.headers.get('cache-control'), 'no-store')
-  assert.equal(created.headers.get('access-control-allow-origin'), null)
-  const first = await created.json()
-  assert.equal(first.ok, true)
-  const id = first.circleId
-  assert.equal((await (await api.handle(req('/' + id))).json()).ownerUserId, owner)
-  await assert.rejects(api.handle(req('/' + id, 'GET', undefined, eve)),
-    { code: 'not_circle_member' })
-  const joined = await api.handle(req('/join', 'POST', {
-    inviteCode: first.inviteCode, userId: eve,
-  }, alice))
-  assert.equal(joined.status, 200)
-  assert.equal((await (await api.handle(req('/' + id))).json()).members.length, 2)
-  const published = await api.handle(req('/' + id + '/progress/' + today(), 'POST',
-    { completed: true, newWords: 32, eventId: 'published_1234', userId: eve }, alice))
-  assert.equal(published.status, 201)
-  const visible = await (await api.handle(req('/' + id + '/progress/' + today()))).json()
-  assert.equal(visible.progress[0].authorUserId, alice)
-  assert.equal(limiterCalls > 4, true)
+test('malformed facts and same physical ID with changed payload fail closed', async () => {
+  const { blob, create } = setup()
+  const c = await create()
+  const e = facts(blob)[0]
+  const bad = { ...e, payload: { ...e.payload, name: 'different' } }
+  assert.throws(() => reduceCircle(c.circleId, [e, bad]), /Physical event collision/)
+  assert.throws(() => reduceCircle(c.circleId, [{ ...e, dedupKey: 'fake' }]), /Invalid Circle event/)
 })
 
-test('HTTP limiter denies all Circle traffic when blocked', async () => {
-  const { service } = setup()
-  const api = createCircleHttpHandler({ service, enabled: true, rateLimit: async () => false })
-  const request = new Request('https://qwerty.example/api/circle/v1', {
-    method: 'POST', headers: {
-      'Authorization': 'Bearer ' + owner,
-      'Content-Type': 'application/json',
-    }, body: JSON.stringify({ name: 'My Circle' }),
-  })
-  await assert.rejects(api.handle(request), { code: 'circle_rate_limited' })
+test('listing outage is not an empty membership or successful projection', async () => {
+  const { blob, service, create } = setup()
+  const c = await create()
+  blob.failList = true
+  await assert.rejects(service.getCircle(owner, c.circleId), /outage/)
 })
 
-test('Rotating invite keeps existing members and rejects stale codes', async () => {
-  const { service } = setup()
-  const first = await service.createCircle(owner, { name: 'Rotations' })
-  await service.joinCircle(alice, first.inviteCode)
-  await assert.rejects(service.rotateInvite(alice, first.circleId),
-    { code: 'not_circle_owner' })
-  const rotated = await service.rotateInvite(owner, first.circleId)
-  assert.equal(rotated.revision, 1)
-  assert.notEqual(rotated.inviteCode, first.inviteCode)
-  await assert.rejects(service.joinCircle(bob, first.inviteCode),
-    { code: 'invalid_invite' })
-  await service.joinCircle(bob, rotated.inviteCode)
-  assert.deepEqual((await service.getCircle(owner, first.circleId)).members
-    .map((m) => m.userId), [owner, alice, bob])
+test('progress rejects impossible dates and invalid command IDs', async () => {
+  const { service, create } = setup()
+  const c = await create()
+  await assert.rejects(service.publishProgress(owner, c.circleId, '2026-02-30',
+    { completed: true, newWords: 1, eventId: 'progress_0001' }), { code: 'invalid_progress' })
+  await assert.rejects(service.publishProgress(owner, c.circleId, day,
+    { completed: true, newWords: 1, eventId: '../secret' }), { code: 'circle_operation_id_required' })
 })
 
-test('Two concurrent invite rotations cannot disclose two live codes', async () => {
-  const { service } = setup()
-  const circle = await service.createCircle(owner, { name: 'Rotations' })
-  const outcomes = await Promise.allSettled([
-    service.rotateInvite(owner, circle.circleId),
-    service.rotateInvite(owner, circle.circleId),
-  ])
-  // Either one winner and one conflict or, if both start serially, two
-  // successive CAS revisions; latest alone is valid in either case.
-  const succeeded = outcomes.filter((o) => o.status === 'fulfilled').map((o) => o.value)
-  assert.ok(succeeded.length >= 1)
-  assert.ok(succeeded.length <= 2)
-  if (succeeded.length === 2) {
-    assert.notEqual(succeeded[0].revision, succeeded[1].revision)
-  }
-  const last = succeeded.reduce((a, b) => a.revision > b.revision ? a : b)
-  await service.joinCircle(alice, last.inviteCode)
-  await assert.rejects(service.joinCircle(bob, circle.inviteCode),
-    { code: 'invalid_invite' })
+
+test('pending and revoked identities are not included in member-facing views', async () => {
+  const { service, create, retired } = setup()
+  const c = await create(2)
+  await service.joinCircle(alice, c.inviteCode)
+  await service.joinCircle(bob, c.inviteCode)
+  retired.add(bob)
+  const view = await service.getCircle(owner, c.circleId)
+  assert.equal(view.pendingCount, 1)
+  assert.equal(JSON.stringify(view).includes(bob), false)
+  retired.clear()
+  await service.removeMember(owner, c.circleId, alice)
+  const after = await service.getCircle(owner, c.circleId)
+  assert.equal(after.revokedCount, 1)
+  assert.equal(JSON.stringify(after).includes(alice), false)
 })
 
-test('Abandoned pre-write admission can be retried without seat leakage', async () => {
-  const { blob, service } = setup()
-  const circle = await service.createCircle(owner, { name: 'Recover' })
-  const original = blob.setJSON.bind(blob)
-  let failSeat = true
-  blob.setJSON = async (key, value, options) => {
-    if (failSeat && key.includes('/seats/')) {
-      throw new Error('simulated crash before durable seat')
-    }
-    return original(key, value, options)
-  }
-  await assert.rejects(service.joinCircle(alice, circle.inviteCode),
-    /simulated crash/)
-  assert.equal((await service.getCircle(owner, circle.circleId)).members.length, 1)
-  failSeat = false
-  await service.joinCircle(alice, circle.inviteCode)
-  assert.equal((await service.getCircle(owner, circle.circleId)).members.length, 2)
-  assert.equal([...blob.objects.keys()].filter((k) => k.includes('/join-claims/')).length, 0)
+test('replay budget exceeded fails closed without silently truncating events', async () => {
+  const { blob, create } = setup()
+  const c = await create()
+  await create()
+  const limited = createCircleEventLog(blob, { maxEvents: 1 })
+  await assert.rejects(limited.scan(c.circleId), /budget exceeded/)
 })
 
-test('Abandoned progress write retries the same event and respects idempotency', async () => {
-  const { blob, service } = setup()
-  const circle = await service.createCircle(owner, { name: 'Recover' })
-  const original = blob.setJSON.bind(blob)
-  let failProgress = true
-  blob.setJSON = async (key, value, options) => {
-    if (failProgress && key.includes('/progress/')) {
-      throw new Error('simulated crash before durable report')
-    }
-    return original(key, value, options)
-  }
-  await assert.rejects(service.publishProgress(owner, circle.circleId, today(),
-    event('recover_event_11', 15)), /simulated crash/)
-  failProgress = false
-  const report = await service.publishProgress(owner, circle.circleId, today(),
-    event('recover_event_11', 15))
-  const retry = await service.publishProgress(owner, circle.circleId, today(),
-    event('recover_event_11', 15))
-  assert.deepEqual(report, retry)
-  assert.equal([...blob.objects.keys()].filter((k) => k.includes('/progress-claims/')).length, 0)
+test('fence succeeds but append fails before commit: access remains denied, reconciliation required', async () => {
+  const { blob, service, create } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  const before = blob.writes.length
+  blob.setJSON = async () => { throw Error('pre-commit outage') }
+  await assert.rejects(service.removeMember(owner, c.circleId, alice), { code: 'circle_append_unknown' })
+  assert.equal(blob.writes.length, before)
+  await assert.rejects(service.getCircle(alice, c.circleId), { code: 'circle_access_uncertain' })
+  await assert.rejects(service.getCircle(owner, c.circleId), { code: 'circle_access_uncertain' })
 })
 
-test('Retired member activity scrub removes progress, showcase and both clap directions', async () => {
-  const { blob, service, storage } = setup()
-  const group = await service.createCircle(owner, { name: 'Erase' })
-  await service.joinCircle(alice, group.inviteCode)
-  await service.joinCircle(bob, group.inviteCode)
-  await service.publishProgress(alice, group.circleId, today(), event('scrub_event_001', 15))
-  await service.publishProgress(bob, group.circleId, today(), event('scrub_event_002', 9))
-  await service.reactProgress(bob, group.circleId, alice, today())
-  await service.reactProgress(alice, group.circleId, bob, today())
-  await service.shareAchievement(alice, group.circleId, 'ACH_MASTERED_100')
-  await service.shareAchievement(bob, group.circleId, 'ACH_MASTERED_100')
-  const result = await service.scrubAccountActivities(alice)
-  assert.equal(result.quarantined, true)
-  assert.equal(result.fullyErased, false)
-  assert.equal(result.followUpRequired, true)
-  assert.equal(result.circlesAffected, 1)
-  assert.equal(result.deleted, 4)
-  assert.deepEqual((await service.getProgress(owner, group.circleId, today()))
-    .map((p) => p.authorUserId), [bob])
-  assert.equal((await service.getReactions(owner, group.circleId, bob, today())).count, 0)
-  assert.ok(await storage.read('circles/' + group.circleId + '/showcase/' +
-    bob + '/ACH_MASTERED_100.json'))
-  const keyList = [...blob.objects.keys()]
-  assert.equal(keyList.some((k) => k.includes('/progress/' + alice + '/')), false)
-  assert.equal(keyList.some((k) => k.includes('/showcase/' + alice + '/')), false)
-  assert.equal(keyList.some((k) => k.includes('/reactions/' + alice + '/')), false)
-  assert.equal(keyList.some((k) => k.includes('/reactions/' + bob + '/' + alice + '/')), false)
-  const again = await service.scrubAccountActivities(alice)
-  assert.equal(again.deleted, 0)
-})
-
-test('Account scrub retries failed deletion and remains safely quarantined', async () => {
-  const { blob, service } = setup()
-  const group = await service.createCircle(owner, { name: 'Erase' })
-  await service.joinCircle(alice, group.inviteCode)
-  await service.publishProgress(alice, group.circleId, today(), event('scrub_retry_11', 8))
-  blob.failedDeletes = 20
-  await assert.rejects(service.scrubAccountActivities(alice), /delete failure/)
-  await assert.rejects(service.getCircle(alice, group.circleId),
-    { code: 'circle_account_disabled' })
-  assert.equal((await service.getProgress(owner, group.circleId, today())).length, 0)
-  blob.failedDeletes = 0
-  const after = await service.scrubAccountActivities(alice)
-  assert.equal(after.deleted, 1)
-  assert.equal(after.quarantined, true)
-})
-
-test('Scrubbing the owner seals the circle before removing owned activity', async () => {
-  const { service, storage } = setup()
-  const group = await service.createCircle(owner, { name: 'Erase' })
-  await service.joinCircle(alice, group.inviteCode)
-  await service.publishProgress(owner, group.circleId, today(), event('owner_scrub_111'))
-  const result = await service.scrubAccountActivities(owner)
-  assert.equal(result.deleted, 1)
-  assert.ok(await storage.read('circles/' + group.circleId + '/closed.json'))
-  await assert.rejects(service.getCircle(alice, group.circleId), { code: 'circle_closed' })
-})
-
-test('An in-flight write after quarantine needs an additional scrub pass', async () => {
-  const { blob, storage, service } = setup()
-  const group = await service.createCircle(owner, { name: 'Race erase' })
-  await service.joinCircle(alice, group.inviteCode)
-  const original = blob.setJSON.bind(blob)
-  let resume
-  const waiting = new Promise((resolve) => { resume = resolve })
-  let release
-  const arrived = new Promise((resolve) => { release = resolve })
-  let blocked = false
-  blob.setJSON = async (key, value, options) => {
-    if (!blocked && key.includes('/progress/' + alice + '/')) {
-      blocked = true
-      release()
-      await waiting
-    }
-    return original(key, value, options)
-  }
-  const pending = service.publishProgress(alice, group.circleId, today(),
-    event('after_fence_001', 8))
-  await arrived
-  const first = await service.scrubAccountActivities(alice)
-  assert.equal(first.deleted, 0)
-  assert.equal(first.fullyErased, false)
-  resume()
-  await assert.rejects(pending, { code: 'circle_account_disabled' })
-  // The durable fence prevents API visibility, but an old in-flight writer
-  // can still leave a private residual record after a successful scrub pass.
-  assert.equal((await service.getProgress(owner, group.circleId, today())).length, 0)
-  assert.equal((await storage.list('circles/' + group.circleId +
-    '/progress/' + alice + '/')).length, 1)
-  const second = await service.scrubAccountActivities(alice)
-  assert.equal(second.deleted, 1)
-  assert.equal((await storage.list('circles/' + group.circleId +
-    '/progress/' + alice + '/')).length, 0)
-})
-
-test('Adversarial interleaved joins keep every user in at most one seat', async () => {
-  for (let round = 0; round < 12; round++) {
-    const { blob, service } = setup()
-    const group = await service.createCircle(owner, { name: 'Stress' })
-    const write = blob.setJSON.bind(blob)
-    let sequence = round
-    blob.setJSON = async (key, value, options) => {
-      if (key.includes('/seats/')) {
-        sequence = ((sequence * 1664525) + 1013904223) >>> 0
-        if (sequence % 3 === 0) await Promise.resolve()
-      }
-      return write(key, value, options)
-    }
-    const users = Array.from({ length: 25 }, (_v, i) =>
-      'student_' + String(i).padStart(6, '0'))
-    const results = await Promise.allSettled(users.flatMap((uid) =>
-      [service.joinCircle(uid, group.inviteCode),
-        service.joinCircle(uid, group.inviteCode)]))
-    assert.ok(results.every((outcome) => outcome.status === 'fulfilled' ||
-      outcome.reason?.code === 'circle_full'))
-    const snapshot = await service.getCircle(owner, group.circleId)
-    assert.equal(new Set(snapshot.members.map((m) => m.userId)).size,
-      snapshot.members.length)
-    assert.equal(snapshot.members.length, 12)
-  }
-})
-
-test('Showcase read fails closed if the target is removed during Blob fetch', async () => {
-  const { blob, service } = setup()
-  const circle = await service.createCircle(owner, { name: 'Privacy race' })
-  await service.joinCircle(alice, circle.inviteCode)
-  await service.shareAchievement(alice, circle.circleId, 'ACH_MASTERED_100')
-  const get = blob.get.bind(blob)
-  let unlock
-  const paused = new Promise((resolve) => { unlock = resolve })
-  let entered
-  const barrier = new Promise((resolve) => { entered = resolve })
-  let blocked = false
-  blob.get = async (key, options) => {
-    if (!blocked && key.includes('/showcase/' + alice + '/')) {
-      blocked = true
-      entered()
-      await paused
-    }
-    return get(key, options)
-  }
-  const pending = service.getShowcase(owner, circle.circleId, alice,
-    ['ACH_MASTERED_100'])
-  await barrier
-  await service.removeMember(owner, circle.circleId, alice)
-  unlock()
-  await assert.rejects(pending, { code: 'member_not_found' })
-})
-
-test('Reaction counts exclude newly revoked authors and fail for revoked target', async () => {
-  const { blob, service } = setup()
-  const circle = await service.createCircle(owner, { name: 'Privacy race' })
-  await service.joinCircle(alice, circle.inviteCode)
-  await service.joinCircle(bob, circle.inviteCode)
-  await service.publishProgress(owner, circle.circleId, today(), event('target_00001'))
-  await service.reactProgress(alice, circle.circleId, owner, today())
-  await service.reactProgress(bob, circle.circleId, owner, today())
-  const get = blob.get.bind(blob)
-  let unlock
-  const paused = new Promise((resolve) => { unlock = resolve })
-  let entered
-  const barrier = new Promise((resolve) => { entered = resolve })
-  let blocked = false
-  blob.get = async (key, options) => {
-    if (!blocked && key.includes('/reactions/' + alice + '/' + owner + '/')) {
-      blocked = true
-      entered()
-      await paused
-    }
-    return get(key, options)
-  }
-  const pending = service.getReactions(owner, circle.circleId, owner, today())
-  await barrier
-  await service.removeMember(owner, circle.circleId, alice)
-  unlock()
-  assert.equal((await pending).count, 1)
-  assert.equal((await service.getReactions(owner, circle.circleId, owner, today())).count, 1)
-})
-
-test('Showcase remains inaccessible when account quarantine races a read', async () => {
-  const { blob, service } = setup()
-  const circle = await service.createCircle(owner, { name: 'Quarantine race' })
-  await service.joinCircle(alice, circle.inviteCode)
-  await service.shareAchievement(alice, circle.circleId, 'ACH_MASTERED_100')
-  const get = blob.get.bind(blob)
-  let unlock
-  const paused = new Promise((resolve) => { unlock = resolve })
-  let entered
-  const barrier = new Promise((resolve) => { entered = resolve })
-  let blocked = false
-  blob.get = async (key, options) => {
-    if (!blocked && key.includes('/showcase/' + alice + '/')) {
-      blocked = true
-      entered()
-      await paused
-    }
-    return get(key, options)
-  }
-  const pending = service.getShowcase(owner, circle.circleId, alice,
-    ['ACH_MASTERED_100'])
-  await barrier
-  await service.quarantineAccount(alice)
-  unlock()
-  await assert.rejects(pending, { code: 'member_not_found' })
-})
-
-test('Circle Blob adapter rejects traversal and broad unsafe paths', async () => {
-  const { storage, blob } = setup()
-  for (const unsafe of ['../users/revisions', '/accounts/u', 'circles/../users',
-    'circles//meta.json', 'circles/./meta.json', 'circles/ab\\\\cd',
-    'circles/space name', 'circles/unsafe?query']) {
-    await assert.rejects(storage.read(unsafe), TypeError)
-    await assert.rejects(storage.create(unsafe, { marker: true }), TypeError)
-    await assert.rejects(storage.remove(unsafe), TypeError)
-    await assert.rejects(storage.list(unsafe), TypeError)
-  }
-  assert.equal(blob.objects.size, 0)
-})
-
-test('Retired account audit reports residual activity and structural identity separately', async () => {
-  const { service, storage } = setup()
-  const circle = await service.createCircle(owner, { name: 'Audit' })
-  await service.joinCircle(alice, circle.inviteCode)
-  await service.publishProgress(alice, circle.circleId, today(),
-    event('audit_evt_0001', 12))
-  await service.reactProgress(owner, circle.circleId, alice, today())
-  await assert.rejects(service.auditRetiredAccount(alice),
-    { code: 'account_not_quarantined' })
-  await service.quarantineAccount(alice)
-  const before = await service.auditRetiredAccount(alice)
-  assert.equal(before.activityObjects, 2)
-  assert.ok(before.structuralReferences >= 3)
-  assert.equal(before.fullyErased, false)
-  assert.equal(before.snapshotOnly, true)
-  await service.scrubAccountActivities(alice)
-  const after = await service.auditRetiredAccount(alice)
-  assert.equal(after.activityObjects, 0)
-  assert.equal(after.structuralReferences, before.structuralReferences)
-  assert.equal(after.followUpRequired, true)
-  assert.ok(await storage.read('accounts-disabled/' + alice + '.json'))
+test('verified progress/achievement publication never receives client identity fields', async () => {
+  const { service, create } = setup()
+  const c = await create()
+  await service.publishProgress(owner, c.circleId, day,
+    { completed: true, newWords: 3, eventId: 'progress_0001', actorUserId: alice, verified: true })
+  const view = await service.getCircle(owner, c.circleId)
+  assert.equal(view.progress[0].authorUserId, owner)
+  assert.equal(view.progress[0].selfReported, true)
 })
