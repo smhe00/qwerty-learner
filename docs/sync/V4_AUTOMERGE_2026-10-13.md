@@ -330,3 +330,16 @@ discovery**. The response always states \`listingIsAuthoritative:false\`
 and \`convergenceComplete:false\`. Tests deliberately conceal fork receipts
 from the listing while allowing exact-key reads: a clean listing NEVER
 certifies absence of forks, a global head, or global convergence.
+
+
+## M3.4 per-chain UUID conflict proof
+
+The bounded \`/api/sync/events/v2/verify\` walk checks every attempt UUID
+across all batches of the claimed chain. An identical UUID with identical
+immutable evidence is counted once and reported in
+\`duplicateAttemptCount\`; the result also returns
+\`uniqueAttemptCount\`. A UUID reused with conflicting record evidence
+raises \`409 event_chain_attempt_conflict\` rather than replaying two
+different outcomes as separate evidence. An intact chain remains only a
+**device-local claimed prefix**, and never grants V4 materialization or
+global convergence.
