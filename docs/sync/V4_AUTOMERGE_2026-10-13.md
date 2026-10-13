@@ -284,3 +284,13 @@ and \`convergenceComplete:false\`. A stale POP may omit a committed object,
 so the absence of a receipt or conflict does not prove globally complete
 sync. A caller with an exact receipt may still perform an independently
 authenticated integrity-checked read. The API is only a verification pilot.
+
+
+## M2.1a monotonic achievement-seen convergence
+
+For duplicate provenance-identical achievement grants, ordinary \`seenAt\`
+and \`cultureCardSeenAt\` observations from multiple devices now converge by
+maximum valid timestamp; they are not treated as duplicate unlocks or
+hard conflicts. Differences in \`unlockedAt\`, \`firstTriggerEventId\`,
+\`sourceRecordId\` or other grant provenance still fail closed.
+The projection remains read-only and not restorable.

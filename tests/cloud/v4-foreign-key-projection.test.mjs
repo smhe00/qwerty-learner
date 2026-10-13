@@ -85,3 +85,27 @@ test('same UUID different immutable word evidence fails closed', () => {
   assert.equal(project({ local: left, remote: right }).reason,
     'contradictory-attempt')
 })
+
+
+test('seen and culture-card observations converge monotonically without minting unlocks', () => {
+  const left = side(mkWord(1, a, 'alpha'))
+  left.events[0].unlockedAchievementIds = ['first']
+  left.states.push({ achievementId: 'first', unlockedAt: 1800000000,
+    firstTriggerEventId: 'word:1', sourceRecordId: 1, seenAt: 1800000020 })
+  const right = structuredClone(left)
+  right.words[0].id = 88
+  right.chapters[0].wordRecordIds = [88]
+  right.events[0].eventId = 'word:88'
+  right.events[0].sourceRecordId = 88
+  right.states[0].firstTriggerEventId = 'word:88'
+  right.states[0].sourceRecordId = 88
+  right.states[0].seenAt = 1800000010
+  right.states[0].cultureCardSeenAt = 1800000030
+  const first = project({ local: left, remote: right })
+  const reverse = project({ local: right, remote: left })
+  assert.equal(first.status, 'projected')
+  assert.equal(first.events.length, 1)
+  assert.deepEqual(first.states, reverse.states)
+  assert.equal(first.states[0].seenAt, 1800000020)
+  assert.equal(first.states[0].cultureCardSeenAt, 1800000030)
+})

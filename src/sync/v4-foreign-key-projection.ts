@@ -95,6 +95,17 @@ function rekeyEvent(
   }
 }
 
+function maxObservation(left?: number, right?: number): number | undefined {
+  const valid = [left, right].filter((value): value is number =>
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0)
+  return valid.length ? Math.max(...valid) : undefined
+}
+
+function achievementCore(state: AchievementStateRecord): string {
+  const { seenAt: _seen, cultureCardSeenAt: _culture, ...core } = state
+  return stableWorkspaceJson(core)
+}
+
 function rekeyState(
   row: AchievementStateRecord,
   sourceIdToUuid: Map<number, string>,
@@ -172,10 +183,23 @@ export function projectV4ForeignKeys(input: {
       for (const state of source.states) {
         const next = rekeyState(state, ids, uuidToNewId)
         const previous = states.get(next.achievementId)
-        if (previous && stableWorkspaceJson(previous) !== stableWorkspaceJson(next)) {
+        if (previous && achievementCore(previous) !== achievementCore(next)) {
           throw new Error('contradictory-achievement-state')
         }
-        states.set(next.achievementId, next)
+        if (previous) {
+          // "Seen" is a monotonic observation, not a new achievement grant.
+          // Never roll back a seen/culture-card marker from either device.
+          const seenAt = maxObservation(previous.seenAt, next.seenAt)
+          const cultureCardSeenAt = maxObservation(
+            previous.cultureCardSeenAt, next.cultureCardSeenAt)
+          states.set(next.achievementId, {
+            ...previous,
+            ...(seenAt === undefined ? {} : { seenAt }),
+            ...(cultureCardSeenAt === undefined ? {} : { cultureCardSeenAt }),
+          })
+        } else {
+          states.set(next.achievementId, next)
+        }
       }
     }
     for (const state of states.values()) {
