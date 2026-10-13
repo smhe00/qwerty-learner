@@ -358,3 +358,37 @@ test('M3.3 detects visible forked sequences and stale-observation gaps without p
   assert.equal(stale.convergenceComplete, false)
   assert.equal((await service.readChainedLearningBatch(a.token, second)).batch.sequence, 2)
 })
+
+
+test('M3.4 repeated identical attempt UUID across linked batches is not double-counted', async () => {
+  const { service } = setup()
+  const user = await service.register('chain_duplicate', 'Password123', device(1))
+  const one = await service.publishChainedLearningBatch(user.token, {
+    ...payload(1, 111, 1), sequence: 1, previous: null,
+  })
+  const two = await service.publishChainedLearningBatch(user.token, {
+    ...payload(1, 112, 1), sequence: 2,
+    previous: { batchId: one.batchId, sha256: one.sha256 },
+  })
+  const result = await service.verifyChainedLearningHistory(user.token, two)
+  assert.equal(result.verified, true)
+  assert.equal(result.uniqueAttemptCount, 1)
+  assert.equal(result.duplicateAttemptCount, 1)
+  assert.equal(result.convergenceComplete, false)
+})
+
+test('M3.4 contradictory same UUID across linked batches blocks replay', async () => {
+  const { service } = setup()
+  const user = await service.register('chain_attempt_conflict', 'Password123', device(1))
+  const one = await service.publishChainedLearningBatch(user.token, {
+    ...payload(1, 121, 1), sequence: 1, previous: null,
+  })
+  const conflict = payload(1, 122, 1)
+  conflict.events[0].wrongCount = 3
+  const two = await service.publishChainedLearningBatch(user.token, {
+    ...conflict, sequence: 2,
+    previous: { batchId: one.batchId, sha256: one.sha256 },
+  })
+  await assert.rejects(service.verifyChainedLearningHistory(user.token, two),
+    e => e.code === 'event_chain_attempt_conflict')
+})
