@@ -155,10 +155,16 @@ for (const site of sites) {
       // navigation from the main app can display Gallery as a child window.
       // Preserve the mode-specific URL instead of asserting an obsolete path.
       await expect(page).toHaveURL(/\/gallery\/?(?:\?mode=(?:learn|typing))?$/, { timeout: 20_000 })
-      // Pages embeds Gallery under the "选择词库" dialog title; the deployed
-      // EdgeOne master still uses the standalone gallery (no modal title).
-      // A visible language selector is the stable, real content in both.
-      await expect(page.getByText('英语', { exact: true }).first()).toBeVisible()
+      // Both the routed gallery and its modal clone can exist in the DOM.
+      // The first exact-text match may belong to a deliberately hidden route.
+      // Require at least one *visible* English selector, not the first DOM node.
+      await expect.poll(async () => {
+        const candidates = await page.getByText('英语', { exact: true }).all()
+        for (const candidate of candidates) {
+          if (await candidate.isVisible()) return true
+        }
+        return false
+      }, { timeout: 25_000 }).toBe(true)
       if (site.name === 'pages') {
         await expect(page.locator('[data-navigation-dialog="gallery"]')).toBeVisible()
       }
