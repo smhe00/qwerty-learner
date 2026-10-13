@@ -1,6 +1,8 @@
 name: Pages Explorer Agent
 
 on:
+  push:
+    branches: [product/main]
   workflow_dispatch:
     inputs:
       source_sha:
@@ -15,17 +17,21 @@ on:
         default: '12'
         required: true
 
+concurrency:
+  group: pages-explorer-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
   explorer:
     runs-on: ubuntu-22.04
-    timeout-minutes: 15
+    timeout-minutes: 23
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.source_sha }}
+          ref: ${{ github.event.inputs.source_sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20.18.0'
@@ -33,11 +39,26 @@ jobs:
       - run: |
           yarn install --frozen-lockfile
           npx playwright install --with-deps chromium
-      - name: Run reproducible isolated explorer
+      - name: Check actually served Pages SHA before browser exploration
         env:
-          PAGES_SOURCE_SHA: ${{ github.event.inputs.source_sha }}
-          EXPLORER_SEED: ${{ github.event.inputs.seed }}
-          EXPLORER_WORD_BUDGET: ${{ github.event.inputs.word_budget }}
+          PAGES_SOURCE_SHA: ${{ github.event.inputs.source_sha || github.sha }}
+        run: |
+          for i in $(seq 1 48); do
+            served=$(curl --connect-timeout 5 --max-time 10 -fsSL               'https://smhe00.github.io/qwerty-learner/source-commit.txt' || true)
+            if [ "$served" = "$PAGES_SOURCE_SHA" ]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::Published Pages is not serving the requested explorer SHA"
+          exit 1
+      - name: Run reproducible isolated explorer
+        id: explorer
+        continue-on-error: true
+        env:
+          PAGES_SOURCE_SHA: ${{ github.event.inputs.source_sha || github.sha }}
+          EXPLORER_SEED: ${{ github.event.inputs.seed || github.run_number }}
+          EXPLORER_WORD_BUDGET: ${{ github.event.inputs.word_budget || '8' }}
           EXPLORER_SEED_COUNT: '3'
         run: >
           npx playwright test
@@ -47,8 +68,40 @@ jobs:
           tests/e2e/pages-explorer-multiblock.spec.ts
           tests/e2e/pages-deferred-v3.spec.ts
           tests/e2e/pages-daily-lifecycle-v3.spec.ts
-          tests/e2e/pages-daily-lifecycle-v3.spec.ts
           --project=chromium --retries=0
+      - name: Run multi-day, multi-block V3 domain simulation (advisory)
+        id: explorer_model
+        continue-on-error: true
+        run: |
+          mkdir -p .explorer-model
+          npx esbuild tests/simulation/system-explorer-v3.test.ts --bundle --platform=node --target=node20 --format=esm --outfile=.explorer-model/v3.test.mjs
+          node --test .explorer-model/v3.test.mjs
+      - name: Verify V3 state-transition coverage boundaries (advisory)
+        id: explorer_coverage
+        continue-on-error: true
+        run: |
+          mkdir -p .explorer-coverage
+          npx esbuild tests/simulation/system-explorer-v3-coverage.test.ts --bundle --platform=node --target=node20 --format=esm --outfile=.explorer-coverage/v3-coverage.test.mjs
+          node --test .explorer-coverage/v3-coverage.test.mjs
+      - name: Report advisory Explorer result separately
+        if: always()
+        env:
+          EXPLORER_OUTCOME: ${{ steps.explorer.outcome }}
+          MODEL_OUTCOME: ${{ steps.explorer_model.outcome }}
+          COVERAGE_OUTCOME: ${{ steps.explorer_coverage.outcome }}
+        run: |
+          echo "Pages Explorer outcome: $EXPLORER_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+          echo "V3 multi-day domain model outcome: $MODEL_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+          echo "V3 state transition coverage outcome: $COVERAGE_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$EXPLORER_OUTCOME" != "success" ]; then
+            echo "::warning::Pages Explorer failed (advisory); inspect its redacted trace artifact."
+          fi
+          if [ "$MODEL_OUTCOME" != "success" ]; then
+            echo "::warning::Explorer V3 multi-day model failed (advisory); inspect simulation logs."
+          fi
+          if [ "$COVERAGE_OUTCOME" != "success" ]; then
+            echo "::warning::Explorer V3 state-transition coverage failed (advisory); inspect coverage boundary assertions."
+          fi
       - name: Preserve replay trace and failures
         if: always()
         uses: actions/upload-artifact@v4

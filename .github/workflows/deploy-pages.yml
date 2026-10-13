@@ -46,57 +46,6 @@ jobs:
         env:
           PAGES_SOURCE_SHA: ${{ github.sha }}
         run: npx playwright test tests/e2e/pages-regression.spec.ts --project=chromium --retries=0
-      - name: Run seeded exploration (advisory, reproducible)
-        id: explorer
-        continue-on-error: true
-        env:
-          PAGES_SOURCE_SHA: ${{ github.sha }}
-          EXPLORER_SEED: ${{ github.run_number }}
-          EXPLORER_WORD_BUDGET: '8'
-          EXPLORER_SEED_COUNT: '3'
-        run: >
-          npx playwright test
-          tests/e2e/pages-explorer.spec.ts
-          tests/e2e/pages-stateful-explorer.spec.ts
-          tests/e2e/pages-explorer-v3.spec.ts
-          tests/e2e/pages-explorer-multiblock.spec.ts
-          tests/e2e/pages-deferred-v3.spec.ts
-          tests/e2e/pages-daily-lifecycle-v3.spec.ts
-          tests/e2e/pages-daily-lifecycle-v3.spec.ts
-          --project=chromium --retries=0
-      - name: Run multi-day, multi-block V3 domain simulation (advisory)
-        id: explorer_model
-        continue-on-error: true
-        run: |
-          mkdir -p .explorer-model
-          npx esbuild tests/simulation/system-explorer-v3.test.ts --bundle --platform=node --target=node20 --format=esm --outfile=.explorer-model/v3.test.mjs
-          node --test .explorer-model/v3.test.mjs
-      - name: Verify V3 state-transition coverage boundaries (advisory)
-        id: explorer_coverage
-        continue-on-error: true
-        run: |
-          mkdir -p .explorer-coverage
-          npx esbuild tests/simulation/system-explorer-v3-coverage.test.ts --bundle --platform=node --target=node20 --format=esm --outfile=.explorer-coverage/v3-coverage.test.mjs
-          node --test .explorer-coverage/v3-coverage.test.mjs
-      - name: Report advisory Explorer result separately
-        if: always()
-        env:
-          EXPLORER_OUTCOME: ${{ steps.explorer.outcome }}
-          MODEL_OUTCOME: ${{ steps.explorer_model.outcome }}
-          COVERAGE_OUTCOME: ${{ steps.explorer_coverage.outcome }}
-        run: |
-          echo "Pages Explorer outcome: $EXPLORER_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
-          echo "V3 multi-day domain model outcome: $MODEL_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
-          echo "V3 state transition coverage outcome: $COVERAGE_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
-          if [ "$EXPLORER_OUTCOME" != "success" ]; then
-            echo "::warning::Pages Explorer failed (advisory); inspect its redacted trace artifact."
-          fi
-          if [ "$MODEL_OUTCOME" != "success" ]; then
-            echo "::warning::Explorer V3 multi-day model failed (advisory); inspect simulation logs."
-          fi
-          if [ "$COVERAGE_OUTCOME" != "success" ]; then
-            echo "::warning::Explorer V3 state-transition coverage failed (advisory); inspect coverage boundary assertions."
-          fi
       - name: Upload redacted browser failures
         if: always()
         uses: actions/upload-artifact@v4
