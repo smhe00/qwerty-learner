@@ -1,0 +1,30 @@
+name: Etest Pilot Admission (read-only)
+
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - 'src/sync/**'
+      - 'cloud-functions/**'
+      - 'tests/cloud/**'
+      - '.github/workflows/etest-entry-gate.yml'
+      - 'scripts/verify-etest-entry.mjs'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: etest-entry-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  admission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify matching Cloud Gate, published Pages and full source SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/verify-etest-entry.mjs
