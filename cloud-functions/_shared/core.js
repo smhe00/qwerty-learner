@@ -754,8 +754,12 @@ export function createBackendService({
 
   async function publishChainedLearningBatch(token, input = {}) {
     requireChainPilot()
-    const { identity } = await authenticate(token)
+    const { identity, currentSession } = await authenticate(token)
     const candidate = validateChainInput(input, identity.userId)
+    if (currentSession.deviceId !== candidate.deviceId) {
+      throw new AppError(403, 'event_device_mismatch',
+        'Batch device ID does not match the authenticated session')
+    }
     if (candidate.sequence > 1) {
       // Resolve the full predecessor receipt by exact key, not an eventually
       // consistent list or shared head. Missing predecessor is retryable.
@@ -823,7 +827,7 @@ export function createBackendService({
     const seen = new Set()
     const entries = []
     let current = selector
-    while (true) {
+    while (current.sequence > 0) {
       const batch = await verifiedChainReceipt(identity.userId, current)
       if (!batch) {
         return {
@@ -848,6 +852,8 @@ export function createBackendService({
       current = { deviceId: batch.deviceId, sequence: batch.sequence - 1,
         ...batch.previous }
     }
+    throw new AppError(503, 'event_chain_integrity_failed',
+      'Sequence ended without a verified genesis batch')
   }
 
   function metaFromSnapshot(snapshot) {
