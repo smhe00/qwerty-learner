@@ -333,6 +333,15 @@ export async function onRequest(context) {
         200, cors)
     }
 
+    // M3.5: cross-device witnessed prefixes only. Never claims discovery
+    // completeness and never authorizes a V4 merge or publication.
+    if (request.method === 'POST' && path === '/sync/events/v2/verify-set') {
+      const body = await readJson(request, 8 * 1024)
+      return json({ ok: true,
+        ...(await service.verifyWitnessedChainSet(bearer(request), body)) },
+        200, cors)
+    }
+
     // Independent immutable event pilot: separate from old V4 revision writer.
     // There is deliberately no "list complete" or auto-restore endpoint yet.
     if (request.method === 'POST' && path === '/sync/events/v1') {

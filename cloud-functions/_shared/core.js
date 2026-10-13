@@ -871,6 +871,113 @@ export function createBackendService({
   }
 
 
+  /**
+   * M3.5: validate a caller-WITNESSED set of immutable per-device heads.
+   * This gives deterministic integrity evidence, NOT a complete account
+   * discovery proof: an eventually consistent Blob list may hide other heads.
+   * No V4 snapshot or learning state is written by this operation.
+   */
+  async function verifyWitnessedChainSet(token, input = {}) {
+    requireChainPilot()
+    const { identity } = await authenticate(token)
+    if (!input || typeof input !== 'object' || Array.isArray(input) ||
+        !Array.isArray(input.heads) || input.heads.length < 1 ||
+        input.heads.length > 4) {
+      throw new AppError(400, 'invalid_event_head_set',
+        'Provide between one and four explicit immutable device heads')
+    }
+    const uniqueHeads = new Map()
+    for (const head of input.heads) {
+      if (!head || typeof head !== 'object' || Array.isArray(head) ||
+          Object.keys(head).sort().join(',') !==
+            'batchId,deviceId,sequence,sha256' ||
+          !EVENT_DEVICE_ID.test(head.deviceId) ||
+          !EVENT_BATCH_UUID.test(head.batchId) ||
+          !EVENT_SHA.test(head.sha256) ||
+          !Number.isSafeInteger(head.sequence) ||
+          head.sequence < 1 || head.sequence > 128) {
+        throw new AppError(400, 'invalid_event_head_set',
+          'Each witnessed head must be a bounded exact receipt')
+      }
+      const key = [head.deviceId, head.sequence, head.batchId, head.sha256].join(':')
+      uniqueHeads.set(key, head)
+    }
+    const heads = [...uniqueHeads.values()].sort((a, b) =>
+      a.deviceId.localeCompare(b.deviceId) ||
+      a.sequence - b.sequence ||
+      a.batchId.localeCompare(b.batchId) ||
+      a.sha256.localeCompare(b.sha256))
+    const witnessed = new Map()
+    const attempts = new Map()
+    const chainLengths = []
+    let receiptsRead = 0
+    let duplicates = 0
+    for (const head of heads) {
+      let current = head
+      let length = 0
+      while (current) {
+        // Limit exact Blob reads under the EdgeOne function deadline. Do not
+        // transform an unverified partial prefix into a successful verdict.
+        if (receiptsRead >= 128) {
+          return { verified: false, reason: 'verification-budget-exceeded',
+            receiptsRead, convergenceComplete: false }
+        }
+        const batch = await verifiedChainReceipt(identity.userId, current)
+        receiptsRead += 1
+        if (!batch) {
+          return { verified: false, reason: 'gap-or-stale-read',
+            missing: current, receiptsRead, convergenceComplete: false }
+        }
+        const deviceSequence = batch.deviceId + ':' + batch.sequence
+        const existing = witnessed.get(deviceSequence)
+        if (existing && existing !== batch.sha256) {
+          throw new AppError(409, 'event_chain_fork_conflict',
+            'Witnessed heads disagree on the same device sequence')
+        }
+        witnessed.set(deviceSequence, batch.sha256)
+        for (const event of batch.events) {
+          const canonical = canonicalEventJson(event)
+          const previous = attempts.get(event.attemptId)
+          if (previous !== undefined) {
+            if (previous !== canonical) {
+              throw new AppError(409, 'event_chain_attempt_conflict',
+                'Witnessed devices disagree on immutable attempt evidence')
+            }
+            duplicates += 1
+          } else {
+            attempts.set(event.attemptId, canonical)
+          }
+        }
+        length += 1
+        current = batch.sequence === 1 ? null : {
+          deviceId: batch.deviceId, sequence: batch.sequence - 1,
+          ...batch.previous,
+        }
+      }
+      chainLengths.push(length)
+    }
+    // Digest is independent of head order, retransmission, local Dexie IDs
+    // and Blob listing order. It covers the witnessed event set ONLY.
+    const canonicalSet = [...attempts].sort(([a], [b]) =>
+      a < b ? -1 : a > b ? 1 : 0)
+    const evidenceSha256 = sha256Hex(canonicalEventJson(canonicalSet))
+    return {
+      verified: true,
+      reason: 'witnessed-heads-verified',
+      witnessSetOnly: true,
+      headCount: heads.length,
+      deviceCount: new Set(heads.map(head => head.deviceId)).size,
+      receiptsRead,
+      chainLengths,
+      uniqueAttemptCount: attempts.size,
+      duplicateAttemptCount: duplicates,
+      evidenceSha256,
+      listingIsAuthoritative: false,
+      convergenceComplete: false,
+      publishReady: false,
+    }
+  }
+
   async function observeChainedLearningReceipts(token) {
     requireChainPilot()
     const { identity } = await authenticate(token)
@@ -1216,6 +1323,7 @@ export function createBackendService({
     publishChainedLearningBatch,
     readChainedLearningBatch,
     verifyChainedLearningHistory,
+    verifyWitnessedChainSet,
     observeChainedLearningReceipts,
     deleteAccount,
     syncMeta,

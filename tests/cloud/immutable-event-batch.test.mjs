@@ -392,3 +392,110 @@ test('M3.4 contradictory same UUID across linked batches blocks replay', async (
   await assert.rejects(service.verifyChainedLearningHistory(user.token, two),
     e => e.code === 'event_chain_attempt_conflict')
 })
+
+test('M3.5 two independent authenticated devices produce a stable witnessed digest', async () => {
+  const { service, blob } = setup()
+  const a = await service.register('witness_multi', 'Password123', device(1))
+  const b = await service.login('witness_multi', 'Password123', device(2))
+  const first = await service.publishChainedLearningBatch(a.token, {
+    ...payload(1, 141, 1), sequence: 1, previous: null,
+  })
+  const second = await service.publishChainedLearningBatch(b.token, {
+    ...payload(2, 142, 2), sequence: 1, previous: null,
+  })
+  const one = await service.verifyWitnessedChainSet(a.token,
+    { heads: [first, second] })
+  const reversed = await service.verifyWitnessedChainSet(b.token,
+    { heads: [second, first, first] })
+  assert.equal(one.verified, true)
+  assert.equal(one.uniqueAttemptCount, 2)
+  assert.equal(one.deviceCount, 2)
+  assert.equal(one.publishReady, false)
+  assert.equal(one.convergenceComplete, false)
+  assert.equal(one.listingIsAuthoritative, false)
+  assert.equal(one.evidenceSha256, reversed.evidenceSha256)
+  assert.equal(reversed.headCount, 2, 'exact repeated head is idempotent')
+  // An eventually consistent listing can completely hide one device.
+  const otherKey = [...blob.objects.keys()].find(k =>
+    k.includes('event-batches/v2/') && k.includes(second.sha256))
+  blob.hiddenKeys = new Set([otherKey])
+  const observed = await service.observeChainedLearningReceipts(a.token)
+  assert.equal(observed.observedCount, 1)
+  assert.equal((await service.verifyWitnessedChainSet(a.token,
+    { heads: [first, second] })).verified, true)
+  assert.equal(observed.convergenceComplete, false)
+})
+
+test('M3.5 blocks conflicting UUID evidence across different device chains', async () => {
+  const { service } = setup()
+  const a = await service.register('witness_contradict', 'Password123', device(1))
+  const b = await service.login('witness_contradict', 'Password123', device(2))
+  const first = await service.publishChainedLearningBatch(a.token, {
+    ...payload(1, 151, 1), sequence: 1, previous: null,
+  })
+  const altered = payload(2, 152, 1)
+  altered.events[0].wrongCount = 2
+  const second = await service.publishChainedLearningBatch(b.token, {
+    ...altered, sequence: 1, previous: null,
+  })
+  await assert.rejects(service.verifyWitnessedChainSet(b.token,
+    { heads: [first, second] }), e => e.code === 'event_chain_attempt_conflict')
+})
+
+test('M3.5 rejects a fork even if both witnessed device histories reach genesis', async () => {
+  const { service } = setup()
+  const a = await service.register('witness_fork', 'Password123', device(1))
+  const one = await service.publishChainedLearningBatch(a.token, {
+    ...payload(1, 161, 1), sequence: 1, previous: null,
+  })
+  const preceding = { batchId: one.batchId, sha256: one.sha256 }
+  const left = await service.publishChainedLearningBatch(a.token, {
+    ...payload(1, 162, 2), sequence: 2, previous: preceding,
+  })
+  const right = await service.publishChainedLearningBatch(a.token, {
+    ...payload(1, 163, 3), sequence: 2, previous: preceding,
+  })
+  await assert.rejects(service.verifyWitnessedChainSet(a.token,
+    { heads: [left, right] }), e => e.code === 'event_chain_fork_conflict')
+})
+
+test('M3.5 missing or tampered witness fails closed and never publishes', async () => {
+  const { service, blob } = setup()
+  const a = await service.register('witness_missing', 'Password123', device(1))
+  const one = await service.publishChainedLearningBatch(a.token, {
+    ...payload(1, 171, 1), sequence: 1, previous: null,
+  })
+  const two = await service.publishChainedLearningBatch(a.token, {
+    ...payload(1, 172, 2), sequence: 2,
+    previous: { batchId: one.batchId, sha256: one.sha256 },
+  })
+  for (const heads of [[], [one, two, one, two, one],
+    [{ ...one, sequence: 129 }], [{ ...one, invalid: 1 }]]) {
+    await assert.rejects(service.verifyWitnessedChainSet(a.token,
+      { heads }), e => e.code === 'invalid_event_head_set')
+  }
+  const key = [...blob.objects.keys()].find(k =>
+    k.includes('event-batches/v2/') && k.includes(one.sha256))
+  const saved = blob.objects.get(key)
+  blob.objects.delete(key)
+  const missing = await service.verifyWitnessedChainSet(a.token, { heads: [two] })
+  assert.equal(missing.verified, false)
+  assert.equal(missing.reason, 'gap-or-stale-read')
+  assert.equal(missing.convergenceComplete, false)
+  blob.objects.set(key, saved)
+  blob.objects.get(key).events[0].word = 'tampered'
+  await assert.rejects(service.verifyWitnessedChainSet(a.token, { heads: [two] }),
+    e => e.code === 'event_chain_integrity_failed')
+})
+
+test('M3.5 cannot accept witnessed event receipts from another account', async () => {
+  const { service } = setup()
+  const a = await service.register('witness_a', 'Password123', device(1))
+  const b = await service.register('witness_b', 'Password123', device(2))
+  const record = await service.publishChainedLearningBatch(a.token, {
+    ...payload(1, 181, 1), sequence: 1, previous: null,
+  })
+  const result = await service.verifyWitnessedChainSet(b.token, { heads: [record] })
+  assert.equal(result.verified, false)
+  assert.equal(result.reason, 'gap-or-stale-read')
+})

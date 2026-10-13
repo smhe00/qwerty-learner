@@ -343,3 +343,21 @@ raises \`409 event_chain_attempt_conflict\` rather than replaying two
 different outcomes as separate evidence. An intact chain remains only a
 **device-local claimed prefix**, and never grants V4 materialization or
 global convergence.
+
+## M3.5 verified cross-device witnessed prefix (implemented in product/main)
+
+Opt-in `POST /api/sync/events/v2/verify-set` accepts 1–4 explicitly
+witnessed immutable chain heads. It independently reads and hashes every
+predecessor receipt (maximum 128 exact Blob reads), compares
+`(deviceId, sequence)` fork evidence, rejects contradicting attempt UUIDs
+**across distinct devices**, and returns an order-independent SHA-256 digest
+of all unique *witnessed* immutable learning attempts. Duplicate retransmission
+of the same head does not change the evidence digest; missing or tampered
+receipts block verification. It does **not** depend on Blob object listings.
+
+The response ALWAYS reports `convergenceComplete:false`,
+`listingIsAuthoritative:false` and `publishReady:false`. Caller-supplied
+heads cannot prove unseen devices or forks do not exist. The digest is
+**not** a complete account fingerprint or a V4 snapshot. This is a read-only
+M3 integrity primitive under `MULTI_DEVICE_EVENT_PILOT_ENABLED` (default OFF)
+and does not permit the M1 independent-session pilot to write V4 snapshots.
