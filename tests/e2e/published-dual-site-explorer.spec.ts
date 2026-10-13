@@ -158,13 +158,30 @@ for (const site of sites) {
       // Both the routed gallery and its modal clone can exist in the DOM.
       // The first exact-text match may belong to a deliberately hidden route.
       // Require at least one *visible* English selector, not the first DOM node.
-      await expect.poll(async () => {
-        const candidates = await page.getByText('英语', { exact: true }).all()
-        for (const candidate of candidates) {
-          if (await candidate.isVisible()) return true
-        }
-        return false
-      }, { timeout: 25_000 }).toBe(true)
+      try {
+        await expect.poll(async () => {
+          const candidates = await page.getByText('英语', { exact: true }).all()
+          for (const candidate of candidates) {
+            if (await candidate.isVisible()) return true
+          }
+          return false
+        }, { timeout: 25_000 }).toBe(true)
+      } catch (error) {
+        // Only public anonymous UI diagnostics, never credentials or IndexedDB.
+        const diagnostic = await page.evaluate(() => ({
+          path: location.pathname,
+          catalogCount: document.querySelectorAll('[data-dictionary-catalog]').length,
+          catalogVisible: [...document.querySelectorAll('[data-dictionary-catalog]')]
+            .some(node => !!(node as HTMLElement).getClientRects().length),
+          galleryDialogCount: document.querySelectorAll('[data-navigation-dialog="gallery"]').length,
+          headingSamples: [...document.querySelectorAll('h1,h2,[role="radiogroup"]')]
+            .filter(node => !!(node as HTMLElement).getClientRects().length)
+            .map(node => (node.textContent || '').trim().slice(0, 60)).slice(0, 10),
+          bodySample: (document.body.innerText || '').slice(0, 500),
+        }))
+        console.error('PUBLISHED_GALLERY_DIAGNOSTIC', JSON.stringify({ site: site.name, ...diagnostic }))
+        throw error
+      }
       if (site.name === 'pages') {
         await expect(page.locator('[data-navigation-dialog="gallery"]')).toBeVisible()
       }
