@@ -136,7 +136,7 @@ for this proof: it is only accurate to seconds and may be added/changed by
 intermediaries. Three sequential round trips provide the local/EdgeOne offset
 estimate. The current suggested hard preconditions are:
 - At least two valid probes; acceptable RTT <= 1500 ms.
-- Best probe's |clock offset| plus RTT/2 <= 5000 ms.
+- Best probe's |clock offset| plus RTT/2 <= 60000 ms. Offset errors <= one minute are treated as acceptable for FSRS; larger stable skews are corrected in new application learning timestamps.
 - Spread between sample offsets <= 2000 ms.
 - Auto-merge is **disabled** if origin time capability absent, network slow,
   machine time jumps, offset too large, or origin instances disagree. Normal
