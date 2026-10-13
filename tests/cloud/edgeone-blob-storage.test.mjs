@@ -173,3 +173,73 @@ test('Blob adapter preflight protects accounts even if provider ignores onlyIfNe
     status: 'active',
   })
 })
+
+
+test('V4 chunked Blob revision commits only a compact manifest and round-trips bytes', async () => {
+  const store = new FakeBlobStore()
+  const storage = createEdgeOneBlobStorage(store)
+  const crypto = await import('node:crypto')
+  const payload = crypto.randomBytes(1024 * 1024)
+  const encoded = payload.toString('base64')
+  const digest = crypto.createHash('sha256').update(payload).digest('hex')
+  // The fake models the production observation: large single JSON writes fail.
+  const originalSet = store.setJSON.bind(store)
+  store.setJSON = async (key, value, options) => {
+    if (JSON.stringify(value).length > 380000) throw new Error('simulated large Blob setJSON 500')
+    return originalSet(key, value, options)
+  }
+  const input = { revision: 1, sizeBytes: payload.length, dataSha256: digest,
+    payloadBase64: encoded, clientFormatVersion: 'qwerty-backup-v4' }
+  assert.equal(await storage.createRevision('chunk-owner', 1, input), true)
+  const manifest = store.objects.get('users/chunk-owner/revisions/000000000001.json')
+  assert.equal(manifest.payloadBase64, null)
+  assert.ok(manifest.chunkedPayload.count > 1)
+  const result = await storage.getLatestRevision('chunk-owner')
+  assert.equal(result.revision, 1)
+  assert.equal(result.snapshot.payloadBase64, encoded)
+  assert.equal(result.snapshot.dataSha256, digest)
+  const summary = await storage.getLatestRevisionMeta('chunk-owner')
+  assert.equal(summary.snapshot.revision, 1)
+  assert.equal(summary.snapshot.payloadBase64, null)
+})
+
+test('V4 chunk corruption fails closed and account deletion also removes parts', async () => {
+  const store = new FakeBlobStore()
+  const storage = createEdgeOneBlobStorage(store)
+  const crypto = await import('node:crypto')
+  const payload = crypto.randomBytes(400000)
+  const sha = crypto.createHash('sha256').update(payload).digest('hex')
+  await storage.createRevision('chunk-owner', 1, { revision: 1, sizeBytes: payload.length,
+    dataSha256: sha, payloadBase64: payload.toString('base64'),
+    clientFormatVersion: 'qwerty-backup-v4' })
+  const key = [...store.objects.keys()].find(key => key.includes('/revision-parts/'))
+  assert.ok(key)
+  store.objects.delete(key)
+  await assert.rejects(storage.getLatestRevision('chunk-owner'), /missing or invalid Blob chunks/)
+  const name = 'f'.repeat(64)
+  await storage.createAccount(name, { userId: 'chunk-owner' })
+  const deleted = await storage.deleteUserData(name, 'chunk-owner')
+  assert.ok(deleted.revisionPartsDeleted >= 1)
+  assert.equal([...store.objects.keys()].filter(k => k.includes('chunk-owner')).length, 0)
+})
+
+test('failed chunk precommit cannot advance visible revision', async () => {
+  const store = new FakeBlobStore()
+  const storage = createEdgeOneBlobStorage(store)
+  const crypto = await import('node:crypto')
+  const bytes = crypto.randomBytes(400000)
+  const sha = crypto.createHash('sha256').update(bytes).digest('hex')
+  const oldSet = store.setJSON.bind(store)
+  store.setJSON = async (key, value, options) => {
+    if (key.includes('revision-parts') && key.includes('0001.json')) {
+      throw new Error('simulated permanent part outage')
+    }
+    return oldSet(key, value, options)
+  }
+  await assert.rejects(storage.createRevision('fault', 1, {
+    revision: 1, sizeBytes: bytes.length, dataSha256: sha,
+    payloadBase64: bytes.toString('base64'), clientFormatVersion: 'qwerty-backup-v4',
+  }), /permanent part outage/)
+  assert.equal(await storage.getLatestRevisionMeta('fault'), null)
+  assert.equal(await storage.getLatestRevision('fault'), null)
+})

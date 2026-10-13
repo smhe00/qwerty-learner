@@ -1,4 +1,11 @@
 /* eslint-env node */
+import crypto from 'node:crypto'
+
+// Keep each Blob value comfortably below the verified Maker JSON write range.
+// This changes only internal Blob representation, never the public V4 API.
+const INLINE_PAYLOAD_CHARS = 192 * 1024
+const PART_CHARS = 192 * 1024 // Must be divisible by four (Base64 quartets).
+const MAX_PARTS = 64
 
 const RETRY_DELAYS_MS = [0, 100, 250, 500]
 
@@ -78,6 +85,49 @@ export function createEdgeOneBlobStorage(store) {
 
   function revisionKey(userId, revision) {
     return `${revisionPrefix(userId)}${String(revision).padStart(12, '0')}.json`
+  }
+
+  function revisionPartsPrefix(userId, revision = null) {
+    return `users/${userId}/revision-parts/` +
+      (revision === null ? '' : `${String(revision).padStart(12, '0')}/`)
+  }
+
+  function partKey(userId, revision, sha, index) {
+    return revisionPartsPrefix(userId, revision) + sha + '/' +
+      String(index).padStart(4, '0') + '.json'
+  }
+
+  async function readManifestParts(userId, revision, manifest) {
+    const layout = manifest?.chunkedPayload
+    if (!layout) return manifest
+    if (layout.version !== 1 ||
+        !/^[a-f0-9]{64}$/.test(layout.sha256 || '') ||
+        layout.sha256 !== manifest.dataSha256 ||
+        !Number.isSafeInteger(layout.count) || layout.count < 1 || layout.count > MAX_PARTS ||
+        !Number.isSafeInteger(layout.encodedLength) || layout.encodedLength < 4 ||
+        layout.encodedLength > layout.count * PART_CHARS) {
+      throw new Error('V4 revision manifest is invalid; refusing incomplete restore')
+    }
+    const parts = await Promise.all(Array.from({ length: layout.count }, (_, index) =>
+      strongJson(partKey(userId, revision, layout.sha256, index))))
+    if (parts.some((part, index) =>
+      !part || part.version !== 1 || part.index !== index ||
+      typeof part.data !== 'string' || part.data.length > PART_CHARS ||
+      !/^[a-zA-Z0-9+/]*={0,2}$/.test(part.data))) {
+      throw new Error('V4 revision has missing or invalid Blob chunks; refusing restore')
+    }
+    const encoded = parts.map(part => part.data).join('')
+    if (encoded.length !== layout.encodedLength ||
+        !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded) ||
+        encoded.length % 4 !== 0) {
+      throw new Error('V4 revision chunk length or Base64 integrity failed')
+    }
+    const bytes = Buffer.from(encoded, 'base64')
+    const sha = crypto.createHash('sha256').update(bytes).digest('hex')
+    if (sha !== layout.sha256 || bytes.length !== manifest.sizeBytes) {
+      throw new Error('V4 revision chunk SHA-256 or byte count mismatch')
+    }
+    return { ...manifest, payloadBase64: encoded }
   }
 
   function authRateLimitPrefix(clientKey) {
@@ -221,21 +271,67 @@ export function createEdgeOneBlobStorage(store) {
     },
 
     async createRevision(userId, revision, snapshot) {
-      return setJsonOnlyIfNew(revisionKey(userId, revision), snapshot)
+      const encoded = snapshot?.payloadBase64
+      if (snapshot?.clientFormatVersion !== 'qwerty-backup-v4' ||
+          typeof encoded !== 'string' || encoded.length <= INLINE_PAYLOAD_CHARS) {
+        return setJsonOnlyIfNew(revisionKey(userId, revision), snapshot)
+      }
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(encoded) || encoded.length % 4 !== 0) {
+        throw new Error('Invalid V4 transport Base64; revision not committed')
+      }
+      const parts = []
+      for (let offset = 0; offset < encoded.length; offset += PART_CHARS) {
+        parts.push(encoded.slice(offset, offset + PART_CHARS))
+      }
+      if (parts.length > MAX_PARTS) {
+        throw new Error('V4 snapshot too large for bounded revision chunks')
+      }
+      const checksum = crypto.createHash('sha256')
+        .update(Buffer.from(encoded, 'base64')).digest('hex')
+      if (checksum !== snapshot.dataSha256) {
+        throw new Error('V4 snapshot transport checksum mismatch; revision not committed')
+      }
+      // Immutable part objects are written *before* a compact revision manifest.
+      // A partial write only leaves unreferenced parts, never a visible revision.
+      // Existing Blob onlyIfNew semantics remain best-effort, not atomic CAS.
+      for (let offset = 0; offset < parts.length; offset += 4) {
+        await Promise.all(parts.slice(offset, offset + 4).map((data, j) =>
+          setJsonOnlyIfNew(partKey(userId, revision, checksum, offset + j), {
+            version: 1, index: offset + j, data,
+          }).then(created => {
+            if (!created) throw new Error('Conflicting V4 immutable Blob chunk')
+          })))
+      }
+      const manifest = {
+        ...snapshot, payloadBase64: null,
+        chunkedPayload: { version: 1, sha256: checksum,
+          count: parts.length, encodedLength: encoded.length },
+      }
+      return setJsonOnlyIfNew(revisionKey(userId, revision), manifest)
     },
 
-    async getLatestRevision(userId) {
+    async getLatestRevisionMeta(userId) {
       const latest = await latestObject(revisionPrefix(userId))
       return latest ? { revision: latest.version, snapshot: latest.value } : null
     },
 
+    async getLatestRevision(userId) {
+      const latest = await latestObject(revisionPrefix(userId))
+      return latest ? {
+        revision: latest.version,
+        snapshot: await readManifestParts(userId, latest.version, latest.value),
+      } : null
+    },
+
     async pruneRevisions(userId, keepCount) {
-      const result = await pruneVersioned(revisionPrefix(userId), keepCount)
-      return {
-        deleted: result.deleted,
-        retained: result.retained,
-        latestRevision: result.latestVersion,
-      }
+      const versions = await listVersioned(revisionPrefix(userId))
+      const obsolete = versions.slice(0, Math.max(0, versions.length - keepCount))
+      await Promise.all(obsolete.map(async revision => {
+        await deleteKey(revision.key)
+        await deletePrefix(revisionPartsPrefix(userId, revision.version))
+      }))
+      return { deleted: obsolete.length, retained: versions.length - obsolete.length,
+        latestRevision: versions.length ? versions[versions.length - 1].version : 0 }
     },
 
     async getAuthRateLimitCounter(clientKey, windowStart) {
@@ -262,10 +358,11 @@ export function createEdgeOneBlobStorage(store) {
     },
 
     async deleteUserData(usernameHash, userId) {
-      const [authDeleted, sessionsDeleted, revisionsDeleted] = await Promise.all([
+      const [authDeleted, sessionsDeleted, revisionsDeleted, revisionPartsDeleted] = await Promise.all([
         deletePrefix(authPrefix(usernameHash)),
         deletePrefix(sessionPrefix(usernameHash)),
         deletePrefix(revisionPrefix(userId)),
+        deletePrefix(revisionPartsPrefix(userId)),
       ])
 
       const account = await strongJson(accountKey(usernameHash))
@@ -278,6 +375,7 @@ export function createEdgeOneBlobStorage(store) {
         authDeleted,
         sessionsDeleted,
         revisionsDeleted,
+        revisionPartsDeleted,
       }
     },
   }
