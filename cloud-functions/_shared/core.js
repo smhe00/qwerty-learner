@@ -825,6 +825,8 @@ export function createBackendService({
         'Invalid receipt or history exceeds bounded verification window')
     }
     const seen = new Set()
+    const attempts = new Map()
+    let totalAttempts = 0
     const entries = []
     let current = selector
     while (current.sequence > 0) {
@@ -839,11 +841,23 @@ export function createBackendService({
         throw new AppError(409, 'event_chain_cycle', 'Chained event cycle detected')
       }
       seen.add(batch.sha256)
+      for (const event of batch.events) {
+        const evidence = canonicalEventJson(event)
+        const prior = attempts.get(event.attemptId)
+        if (prior !== undefined && prior !== evidence) {
+          throw new AppError(409, 'event_chain_attempt_conflict',
+            'Same attempt UUID has contradictory evidence in linked batches')
+        }
+        attempts.set(event.attemptId, evidence)
+        totalAttempts += 1
+      }
       entries.push({ sequence: batch.sequence,
         batchId: batch.batchId, sha256: batch.sha256 })
       if (batch.sequence === 1) {
         return {
           verified: true, reason: 'linked-to-genesis', verifiedCount: entries.length,
+          uniqueAttemptCount: attempts.size,
+          duplicateAttemptCount: totalAttempts - attempts.size,
           receipts: entries.reverse(), convergenceComplete: false,
           // Complete *one claimed device chain*, not all devices or forks.
           deviceChainOnly: true,
