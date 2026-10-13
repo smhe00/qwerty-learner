@@ -5,9 +5,11 @@ on:
     branches:
       - product/main
 
+# Latest main SHA must supersede older Pages builds or long explorer runs.
+# Only the latest successfully published SHA can satisfy the etest gate.
 concurrency:
   group: github-pages-deploy
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: write
