@@ -638,6 +638,17 @@ test('fresh EdgeOne origin opens S1 login without inventing nonexistent V1 migra
   expect(result.active).toEqual({ kind: 'anonymous' })
 })
 
+test('fresh anonymous Learn-mode preference is not mistaken for a V1 checkpoint', async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(() => {
+    // Jotai omits undefined reviewRecord during storage serialization.
+    localStorage.setItem('reviewModeInfo', JSON.stringify({ isReviewMode: true }))
+  })
+  await page.locator('[data-account-entry]').click()
+  await expect(page.getByText('安全账户管理（S1）')).toBeVisible()
+  await expect(page.getByText('S1 V1 数据归属测试（仅限本地开发）')).toHaveCount(0)
+})
+
 test('old V1 study data still requires explicit S1 ownership consent before login', async ({ page }) => {
   await harness(page)
   await page.evaluate(async () => (window as any).__backupHarness.seed())
