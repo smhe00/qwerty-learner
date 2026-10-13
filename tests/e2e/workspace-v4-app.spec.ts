@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
-import { gunzipSync } from 'node:zlib'
+import { gunzipSync, gzipSync } from 'node:zlib'
+import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 
 test('application settings exports complete V4 gzip and validates it without changing Learn records', async ({ page }) => {
@@ -73,4 +74,72 @@ test('application rejects a non-V4 file without modifying the current workspace'
   await page.goto('/tests/e2e/backup-harness.html')
   const data = await page.evaluate(() => (window as any).__backupHarness.inspect())
   expect(data.wordRecord?.fsrsShadow?.algorithmModel).toBe('fsrs-6')
+})
+
+const signedInBackupOwner = { kind: 'account' as const, accountId: 'download-logged-in-test-owner' }
+
+async function seedSignedInBackup(page: import('@playwright/test').Page) {
+  await page.goto('/tests/e2e/backup-harness.html')
+  return page.evaluate(async account => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify({
+      user: { userId: account.accountId, username: 'local-download-test' },
+      token: 'mocked-download-only-token',
+      expiresAt: Math.floor(Date.now() / 1000) + 3600,
+    }))
+    await h.initializeLegacyWorkspace(account)
+    const snapshot = await h.captureWorkingWorkspaceV4(account)
+    return {
+      json: JSON.stringify(snapshot),
+      fingerprint: await h.workspaceFingerprintV4(snapshot),
+    }
+  }, signedInBackupOwner)
+}
+
+test('S1 signed-in account can download its own complete local Backup V4', async ({ page }) => {
+  await seedSignedInBackup(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: '打开设置对话框' }).click()
+  await page.getByRole('tab', { name: '数据设置' }).click()
+  const downloadPending = page.waitForEvent('download', { timeout: 25_000 })
+  await page.getByRole('button', { name: '导出完整备份' }).click()
+  const download = await downloadPending
+  const snapshot = JSON.parse(gunzipSync(await readFile(await download.path() as string)).toString('utf8'))
+  expect(snapshot.backupFormatVersion).toBe('qwerty-backup-v4')
+  expect(snapshot.metadata.source).toEqual(signedInBackupOwner)
+  expect(snapshot.workspaceData.database.data.tables).toHaveLength(6)
+  await expect(page.getByRole('status')).toContainText('V4 导出完成')
+})
+
+test('S1 signed-in account can download verified cloud Backup V4 with unchanged revision', async ({ page }) => {
+  const archive = await seedSignedInBackup(page)
+  const zipped = gzipSync(Buffer.from(archive.json, 'utf8'))
+  const hash = createHash('sha256').update(zipped).digest('hex')
+  const meta = {
+    hasData: true, revision: 7, updatedAt: new Date().toISOString(),
+    sizeBytes: zipped.byteLength, dataSha256: hash, payloadSha256: hash,
+    logicalFingerprint: archive.fingerprint, deviceId: 'mocked-backup-device',
+    clientFormatVersion: 'qwerty-backup-v4',
+  }
+  await page.route('**/api/sync/v2/meta', async route => {
+    await route.fulfill({ json: { ok: true, ...meta } })
+  })
+  await page.route('**/api/sync/v2', async route => {
+    expect(route.request().method()).toBe('GET')
+    await route.fulfill({ json: {
+      ok: true, ...meta,
+      payloadEncoding: 'base64', payloadBase64: zipped.toString('base64'),
+    } })
+  })
+  await page.goto('/?v4-cloud-backup=download')
+  const save = page.getByRole('button', { name: '下载标准 V4 文件（.gz）' })
+  await expect(save).toBeEnabled({ timeout: 25_000 })
+  const downloadPending = page.waitForEvent('download', { timeout: 25_000 })
+  await save.click()
+  const download = await downloadPending
+  expect(download.suggestedFilename()).toBe('Qwerty-Plus-CLOUD-Backup-V4-r7.gz')
+  const actual = await readFile(await download.path() as string)
+  expect(createHash('sha256').update(actual).digest('hex')).toBe(hash)
+  await expect(page.getByRole('status')).toContainText('已触发标准 V4 文件下载')
 })
