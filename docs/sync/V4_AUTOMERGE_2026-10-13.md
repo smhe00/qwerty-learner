@@ -229,3 +229,22 @@ While \`multiSessionEnabled\` is active, \`putSyncV4\` (ordinary and recovery) r
 ## M1/M3 device identity correction
 
 Before M3 event batching, \`browserDeviceId()\` no longer returns a truncated User-Agent (the same on different machines). \`src/sync/device-id.ts\` creates a random UUIDv4 and persists it in the browser profile's origin-scoped localStorage. Tabs in the same profile share the installation ID; different profiles do not. Individual logins still receive independent opaque bearer tokens and server-side session IDs. Browser storage resets create a new installation ID without retroactively relabeling existing event records. Treat \`deviceId\` as diagnostic/routing metadata, **not** proof of authentication or uniqueness across deliberate profile cloning.
+
+
+## M2.1 reference repair projection (development only)
+
+A pure projection in \`src/sync/v4-foreign-key-projection.ts\` reassigns deterministic
+numeric IDs to UUID-addressed word attempts, remaps chapter \`wordRecordIds\`,
+word/mastery achievement \`eventId\` and \`sourceRecordId(s)\`, rewires
+\`firstTriggerEventId\`, and audits grants. Same numeric IDs from two devices
+no longer alias unrelated attempts. Missing or contradictory reference chains
+fail closed. No source object is mutated. A stable \`(dict,word,ts,UUID)\` order
+makes the word-ID projection independent of ingestion order.
+
+**Important residual ambiguity**: legacy chapter rows have no cross-device UUID.
+This projection conservatively retains both copies, which can double-count a
+chapter, and never publishes/commits its output. Achievement duplicates with
+incompatible unlock state fail closed rather than invent a grant. Full six-table
+materialization must solve chapter identity, in-progress \`reviewRecords\`,
+derived \`reviewWordStates\`, active \`dailySessions\`, clock attestations,
+and robust provenance before it can authorize deployment.
