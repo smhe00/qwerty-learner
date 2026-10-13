@@ -91,7 +91,7 @@ jobs:
       group: edgeone-real-multi-client
       cancel-in-progress: false
     env:
-      QWERTY_SYNC_BASE_URL: https://qwerty-plus.edgeone.dev/
+      QWERTY_SYNC_BASE_URL: https://q-test.edgeone.cool/
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -107,8 +107,8 @@ jobs:
           password="E2E-$(openssl rand -hex 16)"
           echo "::add-mask::$password"
           echo "QWERTY_E2E_PASSWORD=$password" >> "$GITHUB_ENV"
-      - name: Require exact live production backend
-        run: node tests/cloud/resolve-production-base.mjs
+      - name: Require main EdgeOne backend, never production or Pages
+        run: node tests/cloud/resolve-main-edgeone-base.mjs
       - name: Install browser without building or deploying
         run: |
           yarn install --frozen-lockfile

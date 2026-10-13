@@ -42,6 +42,12 @@ export class SyncApiError extends Error {
 }
 
 function apiUrl(path: string) {
+  // All EdgeOne Maker frontends must use their OWN origin-scoped /api.
+  // Main q-test must never silently target the production Blob backend.
+  if (typeof window !== 'undefined' &&
+      /(?:^|\.)edgeone\.(?:dev|cool)$/i.test(window.location.hostname)) {
+    return path
+  }
   const configuredBase = String(import.meta.env.VITE_QWERTY_SYNC_BASE_URL || '').trim()
   if (!configuredBase) return path
 

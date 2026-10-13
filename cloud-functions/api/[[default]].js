@@ -217,6 +217,7 @@ export async function onRequest(context) {
             'plain-gzip-sync-v2',
             'learning-state-backup-v3',
             'backup-v4-authenticated-write-ga',
+            'edgeone-same-origin-e2e-v1',
             'backup-v3-explicit-migration-only',
             'account-delete-v1',
             'duplicate-register-protection-v1',
