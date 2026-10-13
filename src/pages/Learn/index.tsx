@@ -270,9 +270,13 @@ export default function LearnPage() {
 
     const routeState = location.state as LearnLocationState | null
     const query = new URLSearchParams(location.search)
+    // Mounting the Learn landing page must be read-only. In particular, an S2
+    // cloud Pull or portable V4 import must not silently replace a restored
+    // historical DailySession simply because today's date has advanced.
+    // Only an explicit workflow continuation may auto-start; otherwise the
+    // user's first keypress/Start action starts preparation.
     const shouldAutoStart =
-      (routeState?.autoStart === true || query.get('block-resume') === '1') ||
-      (routeState?.idle !== true && query.get('block-idle') !== '1')
+      routeState?.autoStart === true || query.get('block-resume') === '1'
 
     if (
       canLearnMoreToday ||
