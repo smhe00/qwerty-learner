@@ -83,3 +83,12 @@ Commit uses already-passed scoped validation in place of the repository's
 pre-commit hook (eslint --fix . and prettier --write .), which would mutate
 forbidden UI/V4 files across the checkout. No acceptance tests were weakened.
 Final implementation commit and post-push references will be recorded below.
+
+## Implementation commit
+
+Implementation + tests + design commit:
+3ce026a4fb2ec172762e678fe9a9c34293016f65
+
+The subsequent report-only commit records this SHA. Its exact tip is obtained
+with git rev-parse HEAD; the final user handoff reports that tip and push
+verification. Push target is exclusively refs/heads/feature/circle-core-blob.
