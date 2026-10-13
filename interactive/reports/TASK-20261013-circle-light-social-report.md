@@ -86,3 +86,11 @@ Final scoped tests: 57 pass / 0 fail / 0 skip. Final lint: exit 0.
 Final full cloud regression: 184 pass / 1 unchanged Windows path failure.
 Final diff --check and UI/V4/gateway/HTTP/dependency/task-pointer scope checks:
 clean. Working source is frozen after these passing scoped gates.
+
+## Implementation commit
+
+1aac9663a0afd842a61c1079f6fbedf66ca98e20
+
+This report-only follow-up records the exact implementation SHA. Final pushed
+tip and remote verification are included in the user handoff. Push target is
+exclusively refs/heads/feature/circle-core-blob.
