@@ -21,7 +21,7 @@ At the start of this pass, both master and product/main pointed to `230c46341364
 | V4 production safety (attempt 1) | **PASS**: normal V4, conflict refusal, account isolation, explicit V3 rev8→V4 rev9 (approximately 2.88 MB compressed) | https://github.com/smhe00/qwerty-learner/actions/runs/38333041165/attempts/1 |
 | V4 production safety (attempt 2) | **FAIL**: 2.88 MB explicit recovery intermittently returned HTTP 500; read-only metadata was still V3 rev8; account cleaned | https://github.com/smhe00/qwerty-learner/actions/runs/38333041165/attempts/2 |
 | EdgeOne Production Verify management SDK | **FAIL**: Makers project lookup ResourceNotFound for configured project ID | https://github.com/smhe00/qwerty-learner/actions/runs/38331740895 |
-| Review Gate on changed UI contract | **RUNNING at record creation**; check latest completed outcome before release | https://github.com/smhe00/qwerty-learner/actions/runs/38333056876 |
+| Review Gate on changed UI contract | **PASS** (completed success) | https://github.com/smhe00/qwerty-learner/actions/runs/38333056876 |
 
 GitHub Issues creation is disabled in this repository (HTTP 410), so this file is the persistent blocking-issue register.
 
