@@ -154,3 +154,151 @@ test('tampered immutable batch is a server integrity failure, not a bad client r
   await assert.rejects(service.readLearningBatch(a.token, receipt),
     e => e.code === 'event_batch_integrity_failed')
 })
+
+
+test('M3.2 per-device immutable chain verifies predecessor and genesis deterministically', async () => {
+  const { service, blob } = setup()
+  const user = await service.register('chain_valid', 'Password123', device(1))
+  const first = await service.publishChainedLearningBatch(user.token, {
+    ...payload(1, 41, 1), sequence: 1, previous: null,
+  })
+  const second = await service.publishChainedLearningBatch(user.token, {
+    ...payload(1, 42, 2), sequence: 2,
+    previous: { batchId: first.batchId, sha256: first.sha256 },
+  })
+  const third = await service.publishChainedLearningBatch(user.token, {
+    ...payload(1, 43, 3), sequence: 3,
+    previous: { batchId: second.batchId, sha256: second.sha256 },
+  })
+  assert.equal(first.predecessorVerified, true)
+  assert.equal(third.convergenceComplete, false)
+  assert.equal([...blob.objects.keys()].filter(k => k.includes('event-batches/v2/')).length, 3)
+  const history = await service.verifyChainedLearningHistory(user.token, third)
+  assert.equal(history.verified, true)
+  assert.equal(history.deviceChainOnly, true)
+  assert.equal(history.convergenceComplete, false)
+  assert.deepEqual(history.receipts.map(x => x.sequence), [1, 2, 3])
+  assert.deepEqual(
+    (await service.readChainedLearningBatch(user.token, second)).batch.previous,
+    { batchId: first.batchId, sha256: first.sha256 },
+  )
+  assert.equal(
+    (await service.publishChainedLearningBatch(user.token, {
+      ...payload(1, 42, 2), sequence: 2,
+      previous: { batchId: first.batchId, sha256: first.sha256 },
+    })).sha256, second.sha256,
+  )
+  assert.equal([...blob.objects.keys()].filter(k => k.includes('event-batches/v2/')).length, 3)
+})
+
+test('M3.2 rejects a missing predecessor; retry succeeds after predecessor returns', async () => {
+  const { service, blob } = setup()
+  const user = await service.register('chain_retry', 'Password123', device(1))
+  const first = await service.publishChainedLearningBatch(user.token, {
+    ...payload(1, 51, 1), sequence: 1, previous: null,
+  })
+  const secondInput = { ...payload(1, 52, 2), sequence: 2,
+    previous: { batchId: first.batchId, sha256: first.sha256 } }
+  const key = [...blob.objects.keys()].find(k =>
+    k.includes('event-batches/v2/') && k.includes(first.sha256))
+  assert.ok(key)
+  const held = blob.objects.get(key)
+  blob.objects.delete(key)
+  await assert.rejects(service.publishChainedLearningBatch(user.token, secondInput),
+    error => error.code === 'event_chain_predecessor_not_visible')
+  assert.equal([...blob.objects.keys()].filter(k => k.includes('event-batches/v2/')).length, 0)
+  blob.objects.set(key, held)
+  const second = await service.publishChainedLearningBatch(user.token, secondInput)
+  assert.equal(second.sequence, 2)
+})
+
+test('M3.2 keeps both forks when same device concurrently appends from same parent', async () => {
+  const { service, blob } = setup()
+  const user = await service.register('chain_fork', 'Password123', device(1))
+  const first = await service.publishChainedLearningBatch(user.token, {
+    ...payload(1, 61, 1), sequence: 1, previous: null,
+  })
+  const parent = { batchId: first.batchId, sha256: first.sha256 }
+  const [a, b] = await Promise.all([
+    service.publishChainedLearningBatch(user.token, {
+      ...payload(1, 62, 2), sequence: 2, previous: parent,
+    }),
+    service.publishChainedLearningBatch(user.token, {
+      ...payload(1, 63, 3), sequence: 2, previous: parent,
+    }),
+  ])
+  assert.notEqual(a.sha256, b.sha256)
+  assert.equal([...blob.objects.keys()].filter(k => k.includes('event-batches/v2/')).length, 3)
+  assert.equal((await service.verifyChainedLearningHistory(user.token, a)).verified, true)
+  assert.equal((await service.verifyChainedLearningHistory(user.token, b)).verified, true)
+  // Neither valid prefix proves it is the exclusive head or globally complete.
+  assert.equal((await service.verifyChainedLearningHistory(user.token, b)).convergenceComplete,
+    false)
+})
+
+test('M3.2 missing middle link and forged successor never validate as complete', async () => {
+  const { service, blob } = setup()
+  const user = await service.register('chain_gap', 'Password123', device(1))
+  const one = await service.publishChainedLearningBatch(user.token, {
+    ...payload(1, 71, 1), sequence: 1, previous: null,
+  })
+  const two = await service.publishChainedLearningBatch(user.token, {
+    ...payload(1, 72, 2), sequence: 2,
+    previous: { batchId: one.batchId, sha256: one.sha256 },
+  })
+  const three = await service.publishChainedLearningBatch(user.token, {
+    ...payload(1, 73, 3), sequence: 3,
+    previous: { batchId: two.batchId, sha256: two.sha256 },
+  })
+  const mid = [...blob.objects.keys()].find(k => k.includes(two.sha256))
+  assert.ok(mid)
+  blob.objects.delete(mid)
+  const report = await service.verifyChainedLearningHistory(user.token, three)
+  assert.equal(report.verified, false)
+  assert.equal(report.reason, 'gap-or-stale-read')
+  assert.equal(report.missing.sequence, 2)
+  await assert.rejects(service.publishChainedLearningBatch(user.token, {
+    ...payload(1, 74, 4), sequence: 4,
+    previous: { batchId: uuid(79), sha256: '0'.repeat(64) },
+  }), error => error.code === 'event_chain_predecessor_not_visible')
+})
+
+test('M3.2 invalid sequence, previous and tampered content fail closed', async () => {
+  const { service, blob } = setup()
+  const user = await service.register('chain_invalid', 'Password123', device(1))
+  for (const input of [
+    { ...payload(1, 81, 1), sequence: 2, previous: null },
+    { ...payload(1, 81, 1), sequence: 1, previous: { batchId: uuid(9),
+      sha256: '0'.repeat(64) } },
+    { ...payload(1, 81, 1), sequence: 0, previous: null },
+    { ...payload(1, 81, 1), sequence: 2,
+      previous: { batchId: uuid(9), sha256: '0'.repeat(64), extra: 1 } },
+  ]) {
+    await assert.rejects(service.publishChainedLearningBatch(user.token, input),
+      e => e.code === 'invalid_event_chain')
+  }
+  const first = await service.publishChainedLearningBatch(user.token, {
+    ...payload(1, 82, 1), sequence: 1, previous: null,
+  })
+  const stored = [...blob.objects.keys()].find(k => k.includes('event-batches/v2/') &&
+    k.includes(first.sha256))
+  assert.ok(stored)
+  blob.objects.get(stored).events[0].word = 'tampered'
+  await assert.rejects(service.readChainedLearningBatch(user.token, first),
+    e => e.code === 'event_chain_integrity_failed')
+})
+
+test('M3.2 account deletion removes linked batches and denies re-registered account', async () => {
+  const { service, blob } = setup()
+  const a = await service.register('chain_recycle', 'Password123', device(1))
+  const head = await service.publishChainedLearningBatch(a.token, {
+    ...payload(1, 90, 1), sequence: 1, previous: null,
+  })
+  const removed = await service.deleteAccount(a.token, 'Password123')
+  assert.equal(removed.deleted.chainedEventBatchesDeleted, 1)
+  const b = await service.register('chain_recycle', 'Password456', device(1))
+  assert.notEqual(a.user.userId, b.user.userId)
+  await assert.rejects(service.readChainedLearningBatch(b.token, head),
+    e => e.code === 'event_chain_not_visible')
+  assert.equal([...blob.objects.keys()].filter(k => k.includes('event-batches/v2/')).length, 0)
+})

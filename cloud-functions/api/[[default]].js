@@ -301,6 +301,32 @@ export async function onRequest(context) {
       )
     }
 
+
+    // M3.2: chained per-device history. Does not authorize V4 restore/sync.
+    if (request.method === 'POST' && path === '/sync/events/v2') {
+      const body = await readJson(request, 110 * 1024)
+      return json({ ok: true,
+        ...(await service.publishChainedLearningBatch(bearer(request), body)) },
+        201, cors)
+    }
+    if (request.method === 'GET' && path === '/sync/events/v2') {
+      const selector = {
+        deviceId: url.searchParams.get('deviceId'),
+        batchId: url.searchParams.get('batchId'),
+        sha256: url.searchParams.get('sha256'),
+        sequence: Number(url.searchParams.get('sequence')),
+      }
+      return json({ ok: true,
+        ...(await service.readChainedLearningBatch(bearer(request), selector)) },
+        200, cors)
+    }
+    if (request.method === 'POST' && path === '/sync/events/v2/verify') {
+      const body = await readJson(request, 8 * 1024)
+      return json({ ok: true,
+        ...(await service.verifyChainedLearningHistory(bearer(request), body)) },
+        200, cors)
+    }
+
     // Independent immutable event pilot: separate from old V4 revision writer.
     // There is deliberately no "list complete" or auto-restore endpoint yet.
     if (request.method === 'POST' && path === '/sync/events/v1') {

@@ -108,6 +108,21 @@ export function createEdgeOneBlobStorage(store) {
     return `${eventBatchPrefix(userId)}${deviceId}/${batchId}-${sha256}.json`
   }
 
+
+  function chainedBatchPrefix(userId) {
+    return `users/${userId}/event-batches/v2/`
+  }
+
+  function chainedBatchKey(userId, deviceId, sequence, batchId, sha256) {
+    if (!/^qwerty-web-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(deviceId) ||
+        !Number.isSafeInteger(sequence) || sequence < 1 || sequence > 1_000_000_000 ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(batchId) ||
+        !/^[a-f0-9]{64}$/.test(sha256)) {
+      throw new Error('Invalid chained batch storage selector')
+    }
+    return `${chainedBatchPrefix(userId)}${deviceId}/${String(sequence).padStart(10, '0')}/${batchId}-${sha256}.json`
+  }
+
   function revisionPrefix(userId) {
     return `users/${userId}/revisions/`
   }
@@ -354,6 +369,16 @@ export function createEdgeOneBlobStorage(store) {
       }
     },
 
+
+    async putImmutableChainedBatch(userId, deviceId, sequence, batchId, sha256, record) {
+      return setJsonOnlyIfNew(
+        chainedBatchKey(userId, deviceId, sequence, batchId, sha256), record)
+    },
+
+    async getImmutableChainedBatch(userId, deviceId, sequence, batchId, sha256) {
+      return strongJson(chainedBatchKey(userId, deviceId, sequence, batchId, sha256))
+    },
+
     async createRevision(userId, revision, snapshot) {
       const encoded = snapshot?.payloadBase64
       if (snapshot?.clientFormatVersion !== 'qwerty-backup-v4' ||
@@ -446,13 +471,15 @@ export function createEdgeOneBlobStorage(store) {
 
     async deleteUserData(usernameHash, userId) {
       const [authDeleted, sessionsDeleted, independentSessionsDeleted,
-        revisionsDeleted, revisionPartsDeleted, eventBatchesDeleted] = await Promise.all([
+        revisionsDeleted, revisionPartsDeleted, eventBatchesDeleted,
+        chainedEventBatchesDeleted] = await Promise.all([
         deletePrefix(authPrefix(usernameHash)),
         deletePrefix(sessionPrefix(usernameHash)),
         deletePrefix(independentSessionPrefix(usernameHash)),
         deletePrefix(revisionPrefix(userId)),
         deletePrefix(revisionPartsPrefix(userId)),
         deletePrefix(eventBatchPrefix(userId)),
+        deletePrefix(chainedBatchPrefix(userId)),
       ])
 
       const account = await strongJson(accountKey(usernameHash))
@@ -467,7 +494,8 @@ export function createEdgeOneBlobStorage(store) {
         independentSessionsDeleted,
         revisionsDeleted,
         revisionPartsDeleted,
-        eventBatchesDeleted,
+        eventBatchesDeleted: eventBatchesDeleted + chainedEventBatchesDeleted,
+        chainedEventBatchesDeleted,
       }
     },
   }

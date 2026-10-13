@@ -25,6 +25,8 @@ const EVENT_BATCH_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3
 const EVENT_DEVICE_ID = /^qwerty-web-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const MAX_EVENT_BATCH_BYTES = 96 * 1024
 const MAX_EVENT_BATCH_ROWS = 32
+const MAX_EVENT_SEQUENCE = 1_000_000_000
+const EVENT_SHA = /^[a-f0-9]{64}$/
 export const SYNC_CLIENT_FORMAT_VERSION = 'qwerty-backup-v3'
 export const SYNC_SUPPORTED_CLIENT_FORMAT_VERSIONS = [
   SYNC_CLIENT_FORMAT_VERSION,
@@ -203,6 +205,44 @@ function validateImmutableEventBatch(input, accountId) {
   }
   const sha256 = sha256Hex(canonical)
   return { ...body, sha256 }
+}
+
+
+// M3.2 - opaque immutable predecessor links; no shared mutable device head.
+function validateChainInput(input, accountId) {
+  const old = validateImmutableEventBatch(input, accountId)
+  if (!Number.isSafeInteger(input.sequence) ||
+      input.sequence < 1 || input.sequence > MAX_EVENT_SEQUENCE ||
+      (input.sequence === 1 && input.previous !== null) ||
+      (input.sequence > 1 &&
+       (!input.previous || typeof input.previous !== 'object' ||
+        Array.isArray(input.previous) ||
+        !EVENT_BATCH_UUID.test(input.previous.batchId) ||
+        !EVENT_SHA.test(input.previous.sha256)))) {
+    throw new AppError(400, 'invalid_event_chain',
+      'A batch must have a positive sequence and exact predecessor receipt')
+  }
+  if (input.previous && (
+      Object.keys(input.previous).sort().join(',') !== 'batchId,sha256')) {
+    throw new AppError(400, 'invalid_event_chain', 'Invalid predecessor shape')
+  }
+  const chain = {
+    schemaVersion: 2,
+    accountId,
+    deviceId: old.deviceId,
+    batchId: old.batchId,
+    sequence: input.sequence,
+    previous: input.previous === null ? null : {
+      batchId: input.previous.batchId,
+      sha256: input.previous.sha256,
+    },
+    events: old.events,
+  }
+  const canonical = canonicalEventJson(chain)
+  if (Buffer.byteLength(canonical, 'utf8') > MAX_EVENT_BATCH_BYTES) {
+    throw new AppError(413, 'event_batch_too_large', 'Chain batch exceeds limit')
+  }
+  return { ...chain, sha256: sha256Hex(canonical) }
 }
 
 function sanitizeDeviceId(deviceId) {
@@ -680,6 +720,136 @@ export function createBackendService({
     }
   }
 
+
+  function requireChainPilot() {
+    requireEventPilot()
+    if (typeof storage.putImmutableChainedBatch !== 'function' ||
+        typeof storage.getImmutableChainedBatch !== 'function') {
+      throw new Error('Chained event storage unavailable')
+    }
+  }
+
+  async function verifiedChainReceipt(accountId, selector) {
+    const record = await storage.getImmutableChainedBatch(
+      accountId, selector.deviceId, selector.sequence,
+      selector.batchId, selector.sha256)
+    if (!record) return null
+    let verified
+    try {
+      verified = validateChainInput(record, accountId)
+    } catch {
+      throw new AppError(503, 'event_chain_integrity_failed',
+        'Chained event batch failed integrity validation')
+    }
+    if (verified.sha256 !== selector.sha256 ||
+        verified.sequence !== selector.sequence ||
+        verified.batchId !== selector.batchId ||
+        verified.deviceId !== selector.deviceId ||
+        canonicalEventJson(verified) !== canonicalEventJson(record)) {
+      throw new AppError(503, 'event_chain_integrity_failed',
+        'Chained event batch does not match its immutable receipt')
+    }
+    return verified
+  }
+
+  async function publishChainedLearningBatch(token, input = {}) {
+    requireChainPilot()
+    const { identity } = await authenticate(token)
+    const candidate = validateChainInput(input, identity.userId)
+    if (candidate.sequence > 1) {
+      // Resolve the full predecessor receipt by exact key, not an eventually
+      // consistent list or shared head. Missing predecessor is retryable.
+      const previous = await verifiedChainReceipt(identity.userId, {
+        deviceId: candidate.deviceId, sequence: candidate.sequence - 1,
+        ...candidate.previous,
+      })
+      if (!previous) {
+        throw new AppError(503, 'event_chain_predecessor_not_visible',
+          'Predecessor not visible: retain this batch and retry')
+      }
+      if (previous.sequence + 1 !== candidate.sequence) {
+        throw new AppError(409, 'event_chain_sequence_conflict',
+          'Predecessor is not the immediately preceding batch')
+      }
+    }
+    const stored = await storage.putImmutableChainedBatch(
+      identity.userId, candidate.deviceId, candidate.sequence,
+      candidate.batchId, candidate.sha256, candidate)
+    const confirmed = await verifiedChainReceipt(identity.userId, candidate)
+    if (!stored || !confirmed) {
+      throw new AppError(503, 'event_chain_unverified',
+        'Chained batch lacks an independently verified receipt')
+    }
+    return {
+      stored: true,
+      accountId: identity.userId,
+      deviceId: candidate.deviceId,
+      sequence: candidate.sequence,
+      batchId: candidate.batchId,
+      sha256: candidate.sha256,
+      attemptCount: candidate.events.length,
+      predecessorVerified: true,
+      convergenceComplete: false,
+    }
+  }
+
+  async function readChainedLearningBatch(token, selector = {}) {
+    requireChainPilot()
+    const { identity } = await authenticate(token)
+    if (!EVENT_DEVICE_ID.test(selector.deviceId) ||
+        !EVENT_BATCH_UUID.test(selector.batchId) ||
+        !EVENT_SHA.test(selector.sha256) ||
+        !Number.isSafeInteger(selector.sequence) ||
+        selector.sequence < 1 || selector.sequence > MAX_EVENT_SEQUENCE) {
+      throw new AppError(400, 'invalid_event_chain_selector', 'Invalid chained batch receipt')
+    }
+    const batch = await verifiedChainReceipt(identity.userId, selector)
+    if (!batch) throw new AppError(404, 'event_chain_not_visible',
+      'Chained batch receipt not visible')
+    return { batch, convergenceComplete: false }
+  }
+
+  async function verifyChainedLearningHistory(token, selector = {}) {
+    requireChainPilot()
+    const { identity } = await authenticate(token)
+    if (!EVENT_DEVICE_ID.test(selector.deviceId) ||
+        !EVENT_BATCH_UUID.test(selector.batchId) ||
+        !EVENT_SHA.test(selector.sha256) ||
+        !Number.isSafeInteger(selector.sequence) ||
+        selector.sequence < 1 || selector.sequence > 128) {
+      throw new AppError(400, 'invalid_event_chain_selector',
+        'Invalid receipt or history exceeds bounded verification window')
+    }
+    const seen = new Set()
+    const entries = []
+    let current = selector
+    while (true) {
+      const batch = await verifiedChainReceipt(identity.userId, current)
+      if (!batch) {
+        return {
+          verified: false, reason: 'gap-or-stale-read', verifiedCount: entries.length,
+          missing: current, convergenceComplete: false,
+        }
+      }
+      if (seen.has(batch.sha256)) {
+        throw new AppError(409, 'event_chain_cycle', 'Chained event cycle detected')
+      }
+      seen.add(batch.sha256)
+      entries.push({ sequence: batch.sequence,
+        batchId: batch.batchId, sha256: batch.sha256 })
+      if (batch.sequence === 1) {
+        return {
+          verified: true, reason: 'linked-to-genesis', verifiedCount: entries.length,
+          receipts: entries.reverse(), convergenceComplete: false,
+          // Complete *one claimed device chain*, not all devices or forks.
+          deviceChainOnly: true,
+        }
+      }
+      current = { deviceId: batch.deviceId, sequence: batch.sequence - 1,
+        ...batch.previous }
+    }
+  }
+
   function metaFromSnapshot(snapshot) {
     if (!snapshot) {
       return {
@@ -959,6 +1129,9 @@ export function createBackendService({
     publishLearningBatch,
     readLearningBatch,
     observeLearningBatchReceipts,
+    publishChainedLearningBatch,
+    readChainedLearningBatch,
+    verifyChainedLearningHistory,
     deleteAccount,
     syncMeta,
     getSync,

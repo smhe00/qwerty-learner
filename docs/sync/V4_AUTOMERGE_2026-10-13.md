@@ -294,3 +294,27 @@ maximum valid timestamp; they are not treated as duplicate unlocks or
 hard conflicts. Differences in \`unlockedAt\`, \`firstTriggerEventId\`,
 \`sourceRecordId\` or other grant provenance still fail closed.
 The projection remains read-only and not restorable.
+
+
+## M3.2 experimental linked device batches (2026-10-14)
+
+The **separate** \`/api/sync/events/v2\` pilot extends immutable batches with
+\`sequence\` (positive, bounded) and \`previous: { batchId, sha256 }\`, or
+\`previous:null\` for genesis. A distinct v2 content-addressed Blob path holds
+each batch; the previous receipt must resolve to a digest-verified batch from
+the same immutable account and device at sequence minus one. An offline device
+may retry after the preceding object becomes visible. The read endpoint accepts
+an exact receipt; \`POST /api/sync/events/v2/verify\` walks at most 128 links
+back to genesis, returns \`verified:true\` only if every referenced predecessor
+passes integrity validation, or \`verified:false\` with the missing receipt.
+This proves the continuity of **one claimed chain**, not of a device's entire
+possible forked history or all other devices.
+
+Forking at the same \`(deviceId, sequence)\` is permitted *in storage* because
+EdgeOne lacks trustworthy CAS; both immutable objects survive. No shared
+mutable head, atomic overwrite, or assertion of fork-exclusivity exists.
+Fork discovery and reconciliation, including collision in a cloned browser
+profile, is still required. A verified chain is not proof of global sync,
+complete list visibility, source-record preservation, or entitlement to restore
+V4. Both \`MULTI_DEVICE_AUTH_ENABLED\` and
+\`MULTI_DEVICE_EVENT_PILOT_ENABLED\` remain OFF by default.
