@@ -3,9 +3,12 @@ import { clearAllLearnDailySessions } from '@/learn/daily-session'
 import CloudSyncSetting from '@/sync/CloudSyncSetting'
 import {
   downloadManualBackupV4,
+  exportManualBackupV4Json,
   inspectManualBackupV4File,
 } from '@/sync/manual-backup-v4'
 import { loadAuth } from '@/sync/auth'
+import { parseWorkspaceV4 } from '@/sync/workspace-v4'
+import { analyzeV4SnapshotSize } from '@/sync/v4-size-audit'
 import { assertLegacyLocalDestructiveOperationAllowed } from '@/sync/workspace-auth-guard'
 import { clearSyncBaseline } from '@/sync/state'
 import { clearLocalLearningData } from '@/utils/db/data-export'
@@ -16,6 +19,7 @@ export default function DataSetting() {
   const [isClearing, setIsClearing] = useState(false)
   const [isV4Busy, setIsV4Busy] = useState(false)
   const [v4Message, setV4Message] = useState('')
+  const [sizeAuditMessage, setSizeAuditMessage] = useState('')
 
   const onClickExportV4 = useCallback(async () => {
     setV4Message('正在生成完整的 Backup V4 快照…')
@@ -53,6 +57,29 @@ export default function DataSetting() {
       }
     })
     input.click()
+  }, [])
+
+  const onClickAuditV4Size = useCallback(async () => {
+    setIsV4Busy(true)
+    setSizeAuditMessage('正在只读分析 V4 容量…')
+    try {
+      const snapshot = parseWorkspaceV4(await exportManualBackupV4Json())
+      const report = await analyzeV4SnapshotSize(snapshot)
+      const kiB = (bytes: number) => (bytes / 1024).toFixed(1) + ' KiB'
+      const rows = report.tables.map((table) =>
+        `${table.name}: ${table.rows} 条，原始 ${kiB(table.rawBytes)}，独立 gzip ${kiB(table.gzipBytes)}`,
+      ).join('\n')
+      const saving = Math.max(0, report.gzipBytes - report.projectedGzipBytesAfterTypingCompaction)
+      setSizeAuditMessage(
+        `完整 V4：原始 ${kiB(report.rawBytes)}；gzip ${kiB(report.gzipBytes)}；HTTP Base64 约 ${kiB(report.httpBase64Bytes)}。\n` +
+        `超过 90 天的 Typing 明细：${report.oldTypingCandidates} 条可优化；预估整包 gzip 可减少 ${kiB(saving)}。\n` +
+        rows + '\n各表 gzip 单独压缩，不可相加。仅分析，未删除、归档、同步或修改任何数据。',
+      )
+    } catch (error) {
+      setSizeAuditMessage('容量分析失败：' + (error instanceof Error ? error.message : String(error)))
+    } finally {
+      setIsV4Busy(false)
+    }
   }, [])
 
   const onClickClearLocalData = useCallback(async () => {
@@ -126,12 +153,25 @@ export default function DataSetting() {
               <button
                 className="my-btn-primary disabled:bg-gray-300"
                 type="button"
+                onClick={() => { void onClickAuditV4Size() }}
+                disabled={isV4Busy || isClearing}
+              >
+                分析备份容量（只读）
+              </button>
+              <button
+                className="my-btn-primary disabled:bg-gray-300"
+                type="button"
                 onClick={() => window.location.assign('/?v4-import=manage')}
                 disabled={isV4Busy || isClearing}
               >
                 导入完整备份 V4（支持跨账号）
               </button>
             </div>
+            {sizeAuditMessage && (
+              <span role="status" className="whitespace-pre-line pl-4 text-left text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                {sizeAuditMessage}
+              </span>
+            )}
             {v4Message && (
               <span role="status" className="pl-4 text-left text-xs leading-relaxed text-gray-600 dark:text-gray-300">
                 {v4Message}
