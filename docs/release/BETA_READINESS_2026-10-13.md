@@ -58,3 +58,20 @@ GitHub Issues creation is disabled in this repository (HTTP 410), so this file i
 - V4-only live gate now creates exclusively V4 test accounts and validates multiple multi-MB writes and remote hashes.
 - Separate V4-only concurrency/stale-revision and catastrophic restore checks remain release-critical.
 - Native V4 working workspace capture and restore no longer require an intermediate V3 envelope.
+
+## Follow-up: V4-only Beta scope, native large-backup finding
+
+### Confirmed production Beta P1 (not a V3 compatibility problem)
+- On the **already-deployed** `master` EdgeOne backend, V4-only synthetic test accounts succeed with ~263,861-byte and ~527,100-byte compressed revisions and fail at ~1,053,601 bytes with HTTP 500 `internal_error`. Read-only recheck showed V4 remote revision unchanged; cleanup succeeded. Evidence: https://github.com/smhe00/qwerty-learner/actions/runs/38336247928
+- Two earlier attempts at ~2.78 MB V4-only compressed backup also failed with HTTP 500 and no observed revision advancement: https://github.com/smhe00/qwerty-learner/actions/runs/38335874983 and https://github.com/smhe00/qwerty-learner/actions/runs/38335987498.
+- This is a **separate V4 production capacity/reliability blocker**. Retiring V3 migration does NOT clear it. Exact platform-level limiting layer is unproven.
+
+### Candidate mitigation (unpublished)
+- `product/main` now stages large immutable Base64 payload chunks under a separate Blob prefix and commits a compact revision manifest only after all parts complete. Reads verify exact compressed SHA-256 and length before returning the established V4 API snapshot. Metadata/CAS preflight reads only the manifest. Existing inline V4 revisions remain readable.
+- This is **not production-verified** and does not constitute proof that an incoming large HTTP request can always reach the function; a request-size or runtime limit could require V4 client/server chunk transport in addition to Blob object chunking.
+- Local Cloud Sync Gate has passed after the change: https://github.com/smhe00/qwerty-learner/actions/runs/38336816669.
+- V4-only S1 workspace recovery / manual import / multi-device browser gates remain release-blocking until a clean pass with no skipped applicable cases. No release from this candidate.
+
+### Unchanged blockers
+- EdgeOne Maker deployment-pointer verification uses an unverified obsolete project ID; fix the project/token linkage without guessing.
+- Keep `master` unchanged until all relevant V4-only staging gates pass. Circle remains isolated; no V3 migrations or V3 backup UI are in Beta scope.
