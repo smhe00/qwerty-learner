@@ -1,10 +1,10 @@
 name: Branch EdgeOne Cloud E2E
 
-# product/main clouds run ONLY against q-test EdgeOne, never Pages.
-# After an explicit master release, repeat the same tests on production EdgeOne.
+# Only edgeone-test deploys/tests real cloud E2E. product/main builds Pages.
+# The owner performs the FIRST etest EdgeOne deployment manually.
 on:
   push:
-    branches: [product/main, master]
+    branches: [edgeone-test]
     paths:
       - 'src/sync/**'
       - 'cloud-functions/**'
@@ -22,10 +22,11 @@ concurrency:
 
 jobs:
   live-browser-cloud:
+    if: github.ref_name == 'edgeone-test'
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     env:
-      QWERTY_SYNC_BASE_URL: ${{ github.ref_name == 'master' && 'https://qwerty-plus.edgeone.dev/' || 'https://q-test.edgeone.cool/' }}
+      QWERTY_SYNC_BASE_URL: ${{ 'https://q-test.edgeone.cool/' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,12 +37,11 @@ jobs:
         shell: bash
         run: |
           node --input-type=module <<'NODE'
-          const expected = process.env.GITHUB_REF_NAME === 'master'
-            ? 'https://qwerty-plus.edgeone.dev/' : 'https://q-test.edgeone.cool/'
+          if (process.env.GITHUB_REF_NAME !== 'edgeone-test') throw Error('etest only')
+          const expected = 'https://q-test.edgeone.cool/'
           const actual = new URL(process.env.QWERTY_SYNC_BASE_URL)
           if (actual.origin !== new URL(expected).origin) throw Error('Wrong EdgeOne test origin')
-          const required = process.env.GITHUB_REF_NAME === 'master'
-            ? 'edgeone-same-origin-e2e-v1' : 'v4-blob-stage-trace-20261014'
+          const required = 'v4-blob-stage-trace-20261014'
           let healthy = false
           for (let index = 0; index < 42; index++) {
             try {
@@ -60,6 +60,10 @@ jobs:
           }
           if (!healthy) throw Error('Branch EdgeOne deployment not verified; no accounts created')
           NODE
+      - name: Verify actually deployed etest frontend SHA
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: node scripts/verify-edgeone-source.mjs
       - name: Create disposable account identifiers for independent browser profiles
         shell: bash
         run: |
@@ -87,10 +91,11 @@ jobs:
           retention-days: 7
 
   real-v4-transport:
+    if: github.ref_name == 'edgeone-test'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
-      QWERTY_SYNC_BASE_URL: ${{ github.ref_name == 'master' && 'https://qwerty-plus.edgeone.dev/' || 'https://q-test.edgeone.cool/' }}
+      QWERTY_SYNC_BASE_URL: ${{ 'https://q-test.edgeone.cool/' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -99,12 +104,11 @@ jobs:
       - name: Verify branch-to-EdgeOne target before creating any accounts
         run: |
           node --input-type=module <<'NODE'
-          const expected = process.env.GITHUB_REF_NAME === 'master'
-            ? 'https://qwerty-plus.edgeone.dev' : 'https://q-test.edgeone.cool'
+          if (process.env.GITHUB_REF_NAME !== 'edgeone-test') throw Error('etest only')
+          const expected = 'https://q-test.edgeone.cool'
           if (new URL(process.env.QWERTY_SYNC_BASE_URL).origin !== expected)
             throw Error('Cloud E2E must use branch-matched EdgeOne, never Pages')
-          const required = process.env.GITHUB_REF_NAME === 'master'
-            ? 'edgeone-same-origin-e2e-v1' : 'v4-blob-stage-trace-20261014'
+          const required = 'v4-blob-stage-trace-20261014'
           let healthy = false
           for (let index = 0; index < 42; index++) {
             try {
@@ -122,5 +126,25 @@ jobs:
           }
           if (!healthy) throw Error('Matching EdgeOne V4 gateway version not deployed')
           NODE
+      - name: Verify actually deployed etest frontend SHA
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: node scripts/verify-edgeone-source.mjs
       - name: Verify real V4 upload, readback, stale conflict and Blob size
         run: node tests/cloud/p4b-edgeone-gate-smoke.mjs
+
+  release-ready:
+    name: Pages + etest Release Readiness (never deploys master)
+    if: github.ref_name == 'edgeone-test'
+    needs: [live-browser-cloud, real-v4-transport]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require same-SHA passing Pages and etest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: node scripts/release-readiness.mjs
