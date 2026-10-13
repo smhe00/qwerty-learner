@@ -324,6 +324,9 @@ export function createEdgeOneBlobStorage(store) {
     },
 
     async pruneRevisions(userId, keepCount) {
+      if (!Number.isInteger(keepCount) || keepCount < 1) {
+        throw new Error('keepCount must be a positive integer')
+      }
       const versions = await listVersioned(revisionPrefix(userId))
       const obsolete = versions.slice(0, Math.max(0, versions.length - keepCount))
       await Promise.all(obsolete.map(async revision => {
