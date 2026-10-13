@@ -19,6 +19,8 @@ on:
       - 'package.json'
       - 'yarn.lock'
       - '.github/workflows/cloud-sync.yml'
+      - '.github/workflows/etest-entry-gate.yml'
+      - 'scripts/verify-etest-entry.mjs'
   workflow_dispatch:
 
 concurrency:
