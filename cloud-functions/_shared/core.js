@@ -687,6 +687,13 @@ export function createBackendService({
    */
   async function putSyncV4(token, input = {}, recovery = false) {
     const { identity } = await authenticate(token)
+    // In pilot auth mode multiple valid writers share one V4 revision slot,
+    // whose EdgeOne Blob onlyIfNew is NOT atomic. Fail closed until the M2/M3
+    // append-only reconciliation protocol provides a no-loss commit path.
+    if (multiSessionEnabled) {
+      throw new AppError(503, 'multi_device_merge_not_ready',
+        'Concurrent-device V4 uploads are disabled until lossless merge is available')
+    }
     const baseRevision = input.baseRevision
     if (!Number.isSafeInteger(baseRevision) || baseRevision < 0) {
       throw new AppError(400, 'invalid_base_revision', 'V4 baseRevision must be a non-negative safe integer')

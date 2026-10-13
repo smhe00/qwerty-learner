@@ -42,6 +42,8 @@ test('parallel logins have independent credentials; revoking one leaves others i
   assert.equal((await service.me(registered.token)).session.deviceId, 'device-A')
   assert.equal((await service.me(b.token)).session.deviceId, 'device-B')
   assert.equal((await service.me(c.token)).session.deviceId, 'device-C')
+  await assert.rejects(service.putSyncV4(c.token, { baseRevision: 0 }),
+    error => error.code === 'multi_device_merge_not_ready')
   assert.notEqual((await service.me(b.token)).session.sessionId,
     (await service.me(c.token)).session.sessionId)
 
