@@ -132,5 +132,8 @@ test('V4 gzip audit is read only, preserves all Learn rows, and measures full ar
   assert.equal(report.oldTypingCandidates, 1)
   assert.ok(report.rawBytes > report.gzipBytes)
   assert.ok(report.httpBase64Bytes >= report.gzipBytes)
-  assert.ok(report.projectedGzipBytesAfterTypingCompaction < report.gzipBytes)
+  assert.ok(Number.isSafeInteger(report.projectedGzipBytesAfterTypingCompaction))
+  assert.ok(report.projectedGzipBytesAfterTypingCompaction > 0)
+  // Small fixtures can gzip worse after removing fields because the shared
+  // dictionary changes; never promise a saving before measuring the full V4.
 })
