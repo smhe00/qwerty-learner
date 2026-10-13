@@ -3,7 +3,7 @@
 // Never run against master until API health announces authenticated-write GA.
 import assert from 'node:assert/strict'
 import crypto from 'node:crypto'
-import { gzipSync, gunzipSync } from 'node:zlib'
+import { gunzipSync, gzipSync } from 'node:zlib'
 import { verifyCompressedV4 } from '../../cloud-functions/_shared/sync-v4.js'
 
 const base = new URL((process.env.QWERTY_SYNC_BASE_URL ||
