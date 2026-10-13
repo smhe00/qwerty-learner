@@ -5,7 +5,7 @@
 import { publishChainedEventBatch, readChainedEventBatch } from './api'
 import { loadAuth } from './auth'
 import { browserDeviceId } from './device-id'
-import { reserveDurableBatch, confirmDurableBatch } from './multi-device-outbox-idb'
+import { confirmDurableBatch, reserveDurableBatch } from './multi-device-outbox-idb'
 import { publishOneImmutableBatch } from './multi-device-outbox-publisher'
 import type { EventPublicationOutcome } from './multi-device-outbox-publisher'
 import { newLearningAttemptId } from '@/utils/db/attempt-identity'
