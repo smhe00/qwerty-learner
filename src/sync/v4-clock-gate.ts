@@ -22,7 +22,8 @@ export type ClockGateResult = {
   validSamples: number
 }
 
-const MAX_ALLOWED_SKEW_MS = 5_000
+export const CLOCK_TOLERANCE_MS = 60_000
+const MAX_ALLOWED_SKEW_MS = CLOCK_TOLERANCE_MS
 const MAX_ROUND_TRIP_MS = 1_500
 const MAX_JITTER_MS = 2_000
 const MIN_SAMPLE_COUNT = 2
@@ -69,7 +70,8 @@ export function evaluateEdgeClock(samples: readonly ClockProbe[]): ClockGateResu
 
 /**
  * Opt-in time check: performed only immediately before planning an
- * auto-merge, never as an unconditional gate on offline learning or export.
+ * auto-merge. Login-related Learn startup may use the measured offset to
+ * adjust app time without changing the OS clock or blocking offline work.
  * No fallback to the HTTP Date header or a guessed offset.
  *
  * The serverTimeMs capability must be deployed to master first; older
