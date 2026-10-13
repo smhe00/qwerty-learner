@@ -83,6 +83,8 @@ test('Portable V4 cross-account import is explicit, full, journaled and never to
   const before = await page.evaluate(async (id) =>
     (window as any).__backupHarness.captureWorkingWorkspaceV4(id), owner)
   const backup = await portableJson(page)
+  const expectedFingerprint = await page.evaluate(async source =>
+    (window as any).__backupHarness.workspaceFingerprintV4(JSON.parse(source)), backup)
   let cloudCalls = 0
   await page.route('**/api/sync/**', async r => {
     cloudCalls++
@@ -105,8 +107,12 @@ test('Portable V4 cross-account import is explicit, full, journaled and never to
       }),
       baseline: await h.loadSyncV2Baseline('v4-import-new-account'),
       pending: await h.manualV4ImportJournalPort.read(),
+      fingerprint: await h.workspaceFingerprintV4(await h.captureWorkingWorkspaceV4({
+        kind: 'account', accountId: 'v4-import-new-account',
+      })),
     }
   })
+  expect(actual.fingerprint).toBe(expectedFingerprint)
   expect(actual.snapshot.metadata.source).toEqual(owner)
   expect(actual.snapshot.workspaceData.navigation.currentChapter).toBe(17)
   expect(actual.snapshot.workspaceData.settings.values.memoryConfig).toMatchObject({
