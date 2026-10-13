@@ -647,9 +647,7 @@ export function createBackendService({
       // The user must have inspected and backed up the exact remote revision.
       const prior = current?.snapshot
       const mode = input.recoveryMode
-      const expectedFormat = mode === 'migrate-v3'
-        ? 'qwerty-backup-v3'
-        : mode === 'replace-v4' ? V4_FORMAT : null
+      const expectedFormat = mode === 'replace-v4' ? V4_FORMAT : null
       if (!prior || !expectedFormat ||
           prior.clientFormatVersion !== expectedFormat ||
           input.expectedRemoteFormat !== expectedFormat ||
@@ -657,16 +655,15 @@ export function createBackendService({
           !/^[a-f0-9]{64}$/.test(input.expectedRemoteSha256) ||
           input.expectedRemoteSha256 !== prior.dataSha256 ||
           input.accountConfirmation !== identity.userId ||
-          (mode === 'replace-v4' &&
-            (!/^[a-f0-9]{64}$/.test(input.expectedRemoteLogicalFingerprint) ||
-              input.expectedRemoteLogicalFingerprint !== prior.logicalFingerprint))) {
+          (!/^[a-f0-9]{64}$/.test(input.expectedRemoteLogicalFingerprint) ||
+            input.expectedRemoteLogicalFingerprint !== prior.logicalFingerprint)) {
         throw new AppError(409, 'recovery_precondition_failed',
           'Explicit recovery confirmation or pinned cloud evidence did not match')
       }
     }
     if (!recovery && current && current.snapshot.clientFormatVersion !== V4_FORMAT) {
-      throw new AppError(409, 'sync_migration_required',
-        'Existing V1 cloud data needs explicit migration; V4 write refused', {
+      throw new AppError(409, 'unsupported_cloud_format',
+        'Only V4 cloud records are supported; old data remains untouched', {
           current: metaFromSnapshot(current.snapshot),
         })
     }

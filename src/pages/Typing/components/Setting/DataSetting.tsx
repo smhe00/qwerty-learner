@@ -8,69 +8,14 @@ import {
 import { loadAuth } from '@/sync/auth'
 import { assertLegacyLocalDestructiveOperationAllowed } from '@/sync/workspace-auth-guard'
 import { clearSyncBaseline } from '@/sync/state'
-import type { ExportProgress, ImportProgress } from '@/utils/db/data-export'
-import { clearLocalLearningData, exportDatabase, importDatabase } from '@/utils/db/data-export'
-import * as Progress from '@radix-ui/react-progress'
+import { clearLocalLearningData } from '@/utils/db/data-export'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { useCallback, useState } from 'react'
 
 export default function DataSetting() {
-  const [isExporting, setIsExporting] = useState(false)
-  const [exportProgress, setExportProgress] = useState(0)
-
-  const [isImporting, setIsImporting] = useState(false)
-  const [importProgress, setImportProgress] = useState(0)
   const [isClearing, setIsClearing] = useState(false)
   const [isV4Busy, setIsV4Busy] = useState(false)
   const [v4Message, setV4Message] = useState('')
-
-  const exportProgressCallback = useCallback(({ totalRows, completedRows, done }: ExportProgress) => {
-    if (done) {
-      setIsExporting(false)
-      setExportProgress(100)
-      return true
-    }
-    if (totalRows) {
-      setExportProgress(Math.floor((completedRows / totalRows) * 100))
-    }
-
-    return true
-  }, [])
-
-  const onClickExport = useCallback(() => {
-    setExportProgress(0)
-    setIsExporting(true)
-    exportDatabase(exportProgressCallback)
-  }, [exportProgressCallback])
-
-  const importProgressCallback = useCallback(({ totalRows, completedRows, done }: ImportProgress) => {
-    if (done) {
-      setIsImporting(false)
-      setImportProgress(100)
-      return true
-    }
-    if (totalRows) {
-      setImportProgress(Math.floor((completedRows / totalRows) * 100))
-    }
-
-    return true
-  }, [])
-
-  const onStartImport = useCallback(() => {
-    setImportProgress(0)
-    setIsImporting(true)
-  }, [])
-
-  const onClickImport = useCallback(() => {
-    void (async () => {
-      try {
-        await assertLegacyLocalDestructiveOperationAllowed()
-        await importDatabase(onStartImport, importProgressCallback)
-      } catch (error) {
-        window.alert('操作已阻止：' + (error instanceof Error ? error.message : String(error)))
-      }
-    })()
-  }, [importProgressCallback, onStartImport])
 
   const onClickExportV4 = useCallback(async () => {
     setV4Message('正在生成完整的 Backup V4 快照…')
@@ -166,7 +111,7 @@ export default function DataSetting() {
                 className="my-btn-primary disabled:bg-gray-300"
                 type="button"
                 onClick={() => { void onClickExportV4() }}
-                disabled={isV4Busy || isExporting || isImporting || isClearing}
+                disabled={isV4Busy || isClearing}
               >
                 {isV4Busy ? 'V4 处理中…' : '导出完整备份'}
               </button>
@@ -174,7 +119,7 @@ export default function DataSetting() {
                 className="my-btn-primary disabled:bg-gray-300"
                 type="button"
                 onClick={onClickInspectV4}
-                disabled={isV4Busy || isExporting || isImporting || isClearing}
+                disabled={isV4Busy || isClearing}
               >
                 验证 V4 备份文件（只读）
               </button>
@@ -182,7 +127,7 @@ export default function DataSetting() {
                 className="my-btn-primary disabled:bg-gray-300"
                 type="button"
                 onClick={() => window.location.assign('/?v4-import=manage')}
-                disabled={isV4Busy || isExporting || isImporting || isClearing}
+                disabled={isV4Busy || isClearing}
               >
                 导入完整备份 V4（支持跨账号）
               </button>
@@ -192,68 +137,6 @@ export default function DataSetting() {
                 {v4Message}
               </span>
             )}
-          </div>
-          <details className="mx-2 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-            <summary className="cursor-pointer font-medium">高级数据操作（谨慎使用）</summary>
-            <p className="mt-2 text-sm text-gray-500">旧格式兼容及清除本地数据。清除后无法撤销。</p>
-          <div className={styles.section}>
-            <span className={styles.sectionLabel}>旧格式导出（V3）</span>
-            <span className={styles.sectionDescription}>
-              旧版文件兼容功能，常规备份请使用上方完整备份。</span>
-            <span className="pl-4 text-left text-sm font-bold leading-tight text-red-500">
-              为了您的数据安全，请不要修改导出的数据文件。
-            </span>
-            <div className="flex h-3 w-full items-center justify-start px-5">
-              <Progress.Root
-                className="translate-z-0 relative h-2 w-11/12 transform  overflow-hidden rounded-full bg-gray-200"
-                value={exportProgress}
-              >
-                <Progress.Indicator
-                  className="cubic-bezier(0.65, 0, 0.35, 1) h-full w-full bg-indigo-400 transition-transform duration-500 ease-out"
-                  style={{ transform: `translateX(-${100 - exportProgress}%)` }}
-                />
-              </Progress.Root>
-              <span className="ml-4 w-10 text-xs font-normal text-gray-600">{`${exportProgress}%`}</span>
-            </div>
-
-            <button
-              className="my-btn-primary ml-4 disabled:bg-gray-300"
-              type="button"
-              onClick={onClickExport}
-              disabled={isExporting}
-              title="导出数据"
-            >
-              导出数据
-            </button>
-          </div>
-          <div className={styles.section}>
-            <span className={styles.sectionLabel}>旧格式导入（V3）</span>
-            <span className={styles.sectionDescription}>
-              请注意，导入数据将<strong className="text-sm font-bold text-red-500"> 完全覆盖 </strong>当前数据。请谨慎操作。
-            </span>
-
-            <div className="flex h-3 w-full items-center justify-start px-5">
-              <Progress.Root
-                className="translate-z-0 relative h-2 w-11/12 transform  overflow-hidden rounded-full bg-gray-200"
-                value={importProgress}
-              >
-                <Progress.Indicator
-                  className="cubic-bezier(0.65, 0, 0.35, 1) h-full w-full bg-indigo-400 transition-transform duration-500 ease-out"
-                  style={{ transform: `translateX(-${100 - importProgress}%)` }}
-                />
-              </Progress.Root>
-              <span className="ml-4 w-10 text-xs font-normal text-gray-600">{`${importProgress}%`}</span>
-            </div>
-
-            <button
-              className="my-btn-primary ml-4 disabled:bg-gray-300"
-              type="button"
-              onClick={onClickImport}
-              disabled={isImporting}
-              title="导入数据"
-            >
-              导入数据
-            </button>
           </div>
           <div className={styles.section}>
             <span className={styles.sectionLabel}>清除本地数据</span>
@@ -268,13 +151,12 @@ export default function DataSetting() {
               className="ml-4 rounded bg-red-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:bg-gray-300"
               type="button"
               onClick={onClickClearLocalData}
-              disabled={isClearing || isExporting || isImporting}
+              disabled={isClearing || isV4Busy}
               title="清除本地学习数据"
             >
               {isClearing ? '正在清除…' : '清除本地数据'}
             </button>
           </div>
-          </details>
         </div>
       </ScrollArea.Viewport>
       <ScrollArea.Scrollbar className="flex touch-none select-none bg-transparent " orientation="vertical"></ScrollArea.Scrollbar>

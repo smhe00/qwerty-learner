@@ -319,8 +319,8 @@ export async function onRequest(context) {
     }
 
     if (request.method === 'PUT' && path === '/sync') {
-      const body = await readJson(request, bodyLimit)
-      return json({ ok: true, ...(await service.putSync(bearer(request), body)) }, 200, cors)
+      throw new AppError(410, 'legacy_sync_retired',
+        'Legacy cloud writes are retired; only V4 sync is supported')
     }
 
     throw new AppError(404, 'not_found', 'Not found')

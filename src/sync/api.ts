@@ -163,7 +163,7 @@ export function getSync(token: string) {
   return request<SyncResponse>('/api/sync', { token })
 }
 
-/** S2 metadata-only preflight; safe when the backend still holds V3 data.
+/** S2 metadata-only preflight; unsupported cloud formats must fail closed.
  * A missing/null logicalFingerprint must BLOCK rather than authorize a push.
  * Not wired to live UI until S1 production rollout and S2 crash gates pass.
  */
@@ -204,8 +204,8 @@ export function putSyncV2Recovery(
     payloadBase64: string
     logicalFingerprint: string
     clientFormatVersion: 'qwerty-backup-v4'
-    recoveryMode: 'replace-v4' | 'migrate-v3'
-    expectedRemoteFormat: 'qwerty-backup-v4' | 'qwerty-backup-v3'
+    recoveryMode: 'replace-v4'
+    expectedRemoteFormat: 'qwerty-backup-v4'
     expectedRemoteSha256: string
     expectedRemoteLogicalFingerprint?: string | null
     accountConfirmation: string

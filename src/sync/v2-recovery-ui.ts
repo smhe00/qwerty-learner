@@ -1,5 +1,5 @@
 /**
- * S2-P3b explicit, non-automatic conflict recovery / V3 migration surface.
+ * S2-P3b explicit, non-automatic V4 conflict recovery surface.
  *
  * Pre-mount only: caller holds the S1 exclusive writer lease, with React and
  * RecordDB writers NOT mounted. Normal Sync still has just ONE action.
@@ -11,7 +11,6 @@ import { loadAuth } from './auth'
 import { compareAndSwapSyncV2Baseline, loadSyncV2Baseline } from './v2-baseline'
 import { payloadV4 } from './v2-manual-executor'
 import {
-  convertVerifiedCloudV3ToV4,
   samePinnedRemote,
   verifyPinnedCloudArchive,
 } from './v2-recovery-archive'
@@ -85,7 +84,7 @@ export async function renderS2RecoveryUI(
   frame.style.cssText = 'max-width:660px;margin:5vh auto;padding:24px;font:15px/1.7 system-ui,sans-serif;color:#334155'
   const heading = elt('h1', '云同步高级恢复（S2）')
   heading.style.cssText = 'font-size:24px;font-weight:600;margin-bottom:8px'
-  const info = elt('p', '正常学习只需要一个 Sync 按钮。仅在同步冲突或旧 V3 云端迁移时使用本页面；不会自动合并两边的学习记录。')
+  const info = elt('p', '正常学习只需要一个同步按钮。只有 V4 双端冲突需要本页面；不会自动合并两边的学习记录。')
   const status = elt('p', '正在检查账号、云端 revision 和完整快照…')
   status.setAttribute('role', 'status')
   status.style.cssText = 'margin:12px 0;white-space:pre-wrap'
@@ -116,7 +115,7 @@ export async function renderS2RecoveryUI(
   if (!pinned.hasData ||
       (pinned.clientFormatVersion !== 'qwerty-backup-v3' &&
        pinned.clientFormatVersion !== 'qwerty-backup-v4')) {
-    status.textContent = '当前云端没有可按 P3b 恢复的 V3/V4 数据。请返回普通 Sync；不做覆盖。'
+    status.textContent = '当前云端没有支持的 V4 数据。旧格式已退役；请返回普通同步，不执行覆盖。'
     return
   }
   const raw = await getSyncV2Snapshot(signed.token)
@@ -136,8 +135,7 @@ export async function renderS2RecoveryUI(
   let gotLocal = false
   let gotCloud = false
   const localButton = button('① 下载本地完整 Backup V4（.gz）')
-  const cloudButton = button('② 下载云端原始 Backup ' +
-    (pinned.clientFormatVersion === 'qwerty-backup-v3' ? 'V3' : 'V4') + '（.gz）')
+  const cloudButton = button('② 下载云端原始 Backup V4（.gz）')
   const localAck = elt('input')
   localAck.type = 'checkbox'
   const cloudAck = elt('input')
@@ -154,9 +152,7 @@ export async function renderS2RecoveryUI(
   for (const [value, label] of [
     ['', '请选择恢复方向'],
     ['keep-local', '保留本地 V4：覆盖云端当前 revision'],
-    ['keep-cloud', pinned.clientFormatVersion === 'qwerty-backup-v3'
-      ? '保留云端 V3：显式转换为 V4，再恢复到本机'
-      : '保留云端 V4：覆盖本机学习记录'],
+    ['keep-cloud', '保留云端 V4：覆盖本机学习记录'],
   ]) {
     const option = elt('option', label)
     option.value = value
@@ -195,7 +191,7 @@ export async function renderS2RecoveryUI(
     } else if (attemptStarted) {
       checklist.textContent = '正在执行；请等待结果，不要重复提交或打开另一标签页。'
     } else if (missing.length === 0) {
-      checklist.textContent = '所有迁移前置条件已满足。⑤ 已解锁；点击后仍会再次显示最终覆盖确认。'
+      checklist.textContent = '所有 V4 恢复前置条件已满足。⑤ 已解锁；点击后仍会再次显示最终覆盖确认。'
     } else {
       checklist.textContent = '⑤ 仍不可执行，请先完成：\n' +
         missing.map(item => '• ' + item).join('\n')
@@ -247,7 +243,7 @@ export async function renderS2RecoveryUI(
         ? '最终确认：以本机数据覆盖云端 revision ' + pinned.revision +
           '。其他设备未同步的进度不会自动合并。云端旧版只能通过备份恢复。'
         : '最终确认：以云端 revision ' + pinned.revision +
-          ' 覆盖本机学习记录。不会自动合并；V3 旧备份可能缺少新增的每日学习状态与设置，这些信息不能凭空恢复。'
+          ' 覆盖本机学习记录。不会自动合并；恢复之前请确认两端 V4 备份均已妥善保存。'
       if (!window.confirm(warning + '\n两份 .gz 备份已检查保存，继续？')) {
         status.textContent = '用户取消；未更改数据。'
         attemptStarted = false
@@ -274,9 +270,8 @@ export async function renderS2RecoveryUI(
           payloadBase64: zip.encoded,
           logicalFingerprint: localFingerprint,
           clientFormatVersion: 'qwerty-backup-v4',
-          recoveryMode: pinned.clientFormatVersion === 'qwerty-backup-v3'
-            ? 'migrate-v3' : 'replace-v4',
-          expectedRemoteFormat: pinned.clientFormatVersion as 'qwerty-backup-v3' | 'qwerty-backup-v4',
+          recoveryMode: 'replace-v4',
+          expectedRemoteFormat: 'qwerty-backup-v4',
           expectedRemoteSha256: pinned.payloadSha256!,
           expectedRemoteLogicalFingerprint: pinned.logicalFingerprint,
           accountConfirmation: accountId,
@@ -292,40 +287,10 @@ export async function renderS2RecoveryUI(
         sessionStorage.setItem('qwerty.s2.last-sync-result',
           '已按确认保留本机学习记录，云端现为 V4 revision ' + uploaded.revision + '。')
       } else {
-        let target: WorkspaceSnapshotV4
-        let targetRevision = pinned.revision
-        let targetHash: string
-        if (pinned.clientFormatVersion === 'qwerty-backup-v4') {
-          const { verifyDownloadedWorkspaceV4 } = await import('./v2-verify-remote')
-          target = await verifyDownloadedWorkspaceV4(accountId, pinned, raw)
-          targetHash = pinned.logicalFingerprint!
-        } else {
-          target = await convertVerifiedCloudV3ToV4(remoteBytes, accountId)
-          targetHash = await workspaceFingerprintV4(target)
-          const zip = await payloadV4(target)
-          submittedPayload = { fingerprint: targetHash, sha256: zip.checksum }
-          // V3 cloud migration is committed BEFORE the local restore journal.
-          // Any failed/revoked/ambiguous HTTP response leaves the original
-          // local DB untouched; the user can inspect the new remote state.
-          await verifyIdentity()
-          const uploaded = await putSyncV2Recovery(signed.token, {
-            baseRevision: pinned.revision, payloadBase64: zip.encoded,
-            clientFormatVersion: 'qwerty-backup-v4',
-            logicalFingerprint: targetHash,
-            recoveryMode: 'migrate-v3', expectedRemoteFormat: 'qwerty-backup-v3',
-            expectedRemoteSha256: pinned.payloadSha256!,
-            accountConfirmation: accountId,
-            deviceId: 'qwerty-s2-explicit-legacy-migration',
-          })
-          if (!responseIsValid(uploaded, pinned.revision + 1, targetHash, zip.checksum)) {
-            throw Error('Legacy migration committed status is not verified')
-          }
-          targetRevision = uploaded.revision
-          const fresh = await getSyncV2Meta(signed.token)
-          if (!samePinnedRemote(uploaded, fresh)) {
-            throw Error('Cloud advanced during legacy migration; local data unchanged')
-          }
-        }
+        const { verifyDownloadedWorkspaceV4 } = await import('./v2-verify-remote')
+        const target: WorkspaceSnapshotV4 = await verifyDownloadedWorkspaceV4(accountId, pinned, raw)
+        const targetRevision = pinned.revision
+        const targetHash = pinned.logicalFingerprint!
         if (oldBaseline && targetRevision <= oldBaseline.baseRevision) {
           throw Error('Cannot restore a non-advancing remote baseline; export and inspect manually')
         }
