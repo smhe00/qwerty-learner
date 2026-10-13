@@ -211,3 +211,15 @@ implemented in the clock-gate commit.
 ### M1 fail-closed write guard
 
 While \`multiSessionEnabled\` is active, \`putSyncV4\` (ordinary and recovery) raises \`503 multi_device_merge_not_ready\`. Login, local work, GET metadata and cloud snapshot reads remain available. This is intentionally conservative: multi-writer optimistic revision numbers on Blob cannot prove atomic exclusion. **Do not turn on the M1 environment flag on any existing sync-dependent site** before planning this temporary read-only cloud behavior, and do not remove the guard before verified M2/M3 event-reconciliation upload replaces conflicting snapshot overwrites.
+
+
+## M2.0 UUID-only evidence convergence projection (development, read-only)
+
+\`src/sync/v4-event-convergence.ts\` computes a **pure, deterministic preview**, not a V4 merge:
+- Require immutable UUIDv4 on every event, reject identity collisions and non-anchored legacy evidence. Preserve distinct UUIDs even if their local Dexie \`id\` collides.
+- Partition by the exact \`(dict,word)\` tuple; sort each history by validated second-resolution timestamp followed by the immutable attempt UUID (not per-device numeric ID).
+- Rebuild the existing active FSRS-6 r=0.84 state on ephemeral deterministic numeric IDs. They are throwaway replay inputs, never persisted or used as foreign keys.
+- Require commutativity, idempotence, no source mutation, duplicate retransmission and same-second events in regression tests.
+- The projection **always** returns \`publishReady:false\`. No historical clock-attestation, six-table referential re-key, achievement graph, active-session resolution, durable merge journal, remote append-only publication, or account-scope proof exists in this kernel. None may be inferred from a successful projection.
+
+**Next M2 gate**: verified common ancestor for legacy attempts, total V4 six-table referential repair, strong event-time provenance, account ownership and deterministic audit of all tables. Do not remove the M1 V4 write guard until then.
