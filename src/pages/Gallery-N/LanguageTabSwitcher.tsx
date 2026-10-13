@@ -1,53 +1,22 @@
-import { GalleryContext } from '.'
-import codeFlag from '@/assets/flags/code.png'
-import deFlag from '@/assets/flags/de.png'
-import enFlag from '@/assets/flags/en.png'
-import idFlag from '@/assets/flags/id.png'
-import jpFlag from '@/assets/flags/ja.png'
-import kkFlag from '@/assets/flags/kk.png'
-import type { LanguageCategoryType } from '@/typings'
+import { catalogSections } from '@/resources/dictionaryCatalog'
+import type { CatalogSection } from '@/resources/dictionaryCatalog'
 import { RadioGroup } from '@headlessui/react'
-import { useCallback, useContext } from 'react'
 
-export type LanguageTabOption = {
-  id: LanguageCategoryType
-  name: string
-  flag: string
-}
-
-const options: LanguageTabOption[] = [
-  { id: 'en', name: '英语', flag: enFlag },
-  { id: 'ja', name: '日语', flag: jpFlag },
-  { id: 'de', name: '德语', flag: deFlag },
-  { id: 'kk', name: '哈萨克语', flag: kkFlag },
-  { id: 'id', name: '印尼语', flag: idFlag },
-  { id: 'code', name: 'Code', flag: codeFlag },
-]
-
-export function LanguageTabSwitcher() {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const { state, setState } = useContext(GalleryContext)!
-
-  const onChangeTab = useCallback(
-    (tab: string) => {
-      setState((draft) => {
-        draft.currentLanguageTab = tab as LanguageCategoryType
-      })
-    },
-    [setState],
-  )
-
+export function LanguageTabSwitcher({ value, onChange }: { value: CatalogSection; onChange: (value: CatalogSection) => void }) {
   return (
-    <RadioGroup value={state.currentLanguageTab} onChange={onChangeTab}>
-      <div className="flex items-center space-x-4">
-        {options.map((option) => (
-          <RadioGroup.Option key={option.id} value={option.id} className="cursor-pointer">
-            {({ checked }) => (
-              <div className={`flex items-center border-b-2 px-2 pb-1 ${checked ? 'border-indigo-500' : 'border-transparent'}`}>
-                <img src={option.flag} className="mr-1.5 h-7 w-7" />
-                <p className={`text-lg font-medium text-gray-700 dark:text-gray-200`}>{option.name}</p>
-              </div>
-            )}
+    <RadioGroup value={value} onChange={onChange} aria-label="词典领域">
+      <div className="flex flex-wrap items-center gap-2">
+        {catalogSections.map((option) => (
+          <RadioGroup.Option
+            key={option.id}
+            value={option.id}
+            className={({ checked }) =>
+              `cursor-pointer rounded-lg border-b-2 px-3 py-2 text-lg font-medium outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+                checked ? 'border-indigo-500 text-indigo-600 dark:text-indigo-300' : 'border-transparent text-gray-600 dark:text-gray-200'
+              }`
+            }
+          >
+            <RadioGroup.Label>{option.name}</RadioGroup.Label>
           </RadioGroup.Option>
         ))}
       </div>

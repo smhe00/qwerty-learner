@@ -77,7 +77,7 @@ export default function DictionaryComponent({ dictionary }: Props) {
   const card = (
     <div
       ref={divRef}
-      className={`group flex h-36 w-80 cursor-pointer items-center justify-center overflow-hidden rounded-lg p-4 text-left shadow-lg focus:outline-none ${
+      className={`group flex h-36 w-full min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg p-4 text-left shadow-lg focus:outline-none ${
         isSelected
           ? 'bg-indigo-400'
           : 'bg-zinc-50 hover:bg-white dark:bg-gray-800 dark:hover:bg-gray-700'

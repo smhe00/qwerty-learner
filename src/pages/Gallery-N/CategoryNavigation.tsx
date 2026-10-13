@@ -1,31 +1,32 @@
+import type { CatalogCategory } from '@/resources/dictionaryCatalog'
 import { RadioGroup } from '@headlessui/react'
-import { useState } from 'react'
 
-interface Props {
-  titles?: string[]
-}
-
-export default function CategoryNavigation({ titles = ['中国考试', '留学考试', '代码练习'] }: Props) {
-  const [selectedTitle, setSelectedTitle] = useState(titles[0])
-
+export default function CategoryNavigation({
+  categories,
+  value,
+  onChange,
+}: {
+  categories: CatalogCategory[]
+  value: string
+  onChange: (value: string) => void
+}) {
   return (
-    <div className="mr-4 flex flex-col items-center justify-center pr-4">
-      <RadioGroup value={selectedTitle} onChange={setSelectedTitle} className="flex flex-col gap-y-3">
-        {titles.map((title) => (
+    <RadioGroup value={value} onChange={onChange} aria-label="学习分类">
+      <div className="flex flex-wrap gap-2">
+        {categories.map((category) => (
           <RadioGroup.Option
-            key={title}
-            value={title}
-            className={({ checked }) => `flex cursor-pointer items-center space-x-2 ${checked ? 'text-gray-800' : 'text-gray-500'}`}
+            key={category.id}
+            value={category.id}
+            className={({ checked }) =>
+              `cursor-pointer rounded-full px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+                checked ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-indigo-100 dark:bg-gray-800 dark:text-gray-200'
+              }`
+            }
           >
-            {({ checked }) => (
-              <>
-                <div className={`mr-1 h-2.5 w-2.5 rounded-full ${checked ? 'bg-indigo-400' : 'bg-indigo-100'}`} />
-                <RadioGroup.Label className="text-lg ">{title}</RadioGroup.Label>
-              </>
-            )}
+            <RadioGroup.Label>{category.name}</RadioGroup.Label>
           </RadioGroup.Option>
         ))}
-      </RadioGroup>
-    </div>
+      </div>
+    </RadioGroup>
   )
 }
