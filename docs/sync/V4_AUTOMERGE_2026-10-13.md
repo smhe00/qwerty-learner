@@ -248,3 +248,28 @@ incompatible unlock state fail closed rather than invent a grant. Full six-table
 materialization must solve chapter identity, in-progress \`reviewRecords\`,
 derived \`reviewWordStates\`, active \`dailySessions\`, clock attestations,
 and robust provenance before it can authorize deployment.
+
+
+## M3.0 append-only publication pilot (developed, OFF by default)
+
+Only when **both** \`MULTI_DEVICE_AUTH_ENABLED=true\` and
+\`MULTI_DEVICE_EVENT_PILOT_ENABLED=true\`, the new authenticated
+\`POST /api/sync/events/v1\` accepts up to 32 complete, UUID-bearing word
+attempts (96 KiB canonical payload), with an independent per-browser
+\`deviceId\` and UUID \`batchId\`. Each payload is canonically SHA-256
+addressed at \`users/<immutable-account-id>/event-batches/v1/
+<deviceId>/<batchId>-<sha256>.json\`. A replay of identical bytes is
+idempotent, and a reused batchId with different evidence produces a
+*second* immutable path rather than overwriting the original. The server
+checks a read-after-write receipt before acknowledging; network ambiguity
+can be retried safely. \`GET /api/sync/events/v1\` retrieves by an exact
+\`deviceId,batchId,sha256\` receipt, authenticates the owner and validates
+the full content digest. Account deletion removes batch objects.
+
+**No event-list/discovery proof yet.** A receipt verifies one batch, not
+that another region/device has observed every committed batch. No V4
+restoration, cloud revision CAS, Blob listing completeness, compaction,
+FSRS materialization or daily Block auto-upload is enabled by this endpoint.
+The existing V4 pilot guard remains active. Expiry/revocation, provenance,
+bounded retention and multi-POP test must pass before enabling the flag
+even on the disposable test site.

@@ -17,3 +17,10 @@ No real EdgeOne multi-region consistency, user-facing pilot or independently aut
 
 ## Current project task coordination
 \`interactive/CURRENT_TASK.md\` still points to TASK-20261011-014 forced session revocation IN_PROGRESS. This work does not close or silently reassign that preexisting P0. Before executor handoff, explicitly coordinate/reconcile these tasks.
+
+
+## Continuation checkpoint — 2026-10-13
+
+- M2.1 read-only foreign-key rewrite implementation: \`22ffdcfcc2591e8495314b7fd0581683d655cc81\`; ESLint-only fix: \`50c7e4960e821c2edac42bbc010dd5aec8ffc941\`.
+- M3.0 additive event-batch publication pilot implemented under separate OFF-by-default flag; inspect commit history after \`50c7e49\`.
+- Full convergence and Maker qualification are not claimed. No production release authorized.

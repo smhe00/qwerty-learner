@@ -21,6 +21,10 @@ const SESSION_CREATE_RETRIES = 8
 const DEFAULT_SNAPSHOT_RETENTION = 3
 const DEFAULT_SESSION_HISTORY_RETENTION = 3
 const DEFAULT_AUTH_HISTORY_RETENTION = 2
+const EVENT_BATCH_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const EVENT_DEVICE_ID = /^qwerty-web-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const MAX_EVENT_BATCH_BYTES = 96 * 1024
+const MAX_EVENT_BATCH_ROWS = 32
 export const SYNC_CLIENT_FORMAT_VERSION = 'qwerty-backup-v3'
 export const SYNC_SUPPORTED_CLIENT_FORMAT_VERSIONS = [
   SYNC_CLIENT_FORMAT_VERSION,
@@ -142,6 +146,65 @@ function validatePayloadBase64(payloadBase64, maxSyncBytes) {
   return buffer
 }
 
+function canonicalEventJson(value, depth = 0) {
+  if (depth > 20) throw new AppError(400, 'invalid_event_batch', 'Event batch nesting limit exceeded')
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') {
+    return JSON.stringify(value)
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) return JSON.stringify(value)
+  if (Array.isArray(value)) {
+    return '[' + value.map(row => canonicalEventJson(row, depth + 1)).join(',') + ']'
+  }
+  if (value && typeof value === 'object' &&
+      (Object.getPrototypeOf(value) === Object.prototype ||
+       Object.getPrototypeOf(value) === null)) {
+    const keys = Object.keys(value).sort()
+    if (keys.some(key => key === '__proto__' || key === 'constructor' ||
+      key === 'prototype')) {
+      throw new AppError(400, 'invalid_event_batch', 'Unsafe event field')
+    }
+    return '{' + keys.map(key =>
+      JSON.stringify(key) + ':' + canonicalEventJson(value[key], depth + 1)).join(',') + '}'
+  }
+  throw new AppError(400, 'invalid_event_batch', 'Event contains unsupported JSON values')
+}
+
+function validateImmutableEventBatch(input, accountId) {
+  if (!input || typeof input !== 'object' || Array.isArray(input) ||
+      !EVENT_DEVICE_ID.test(input.deviceId) ||
+      !EVENT_BATCH_UUID.test(input.batchId) ||
+      !Array.isArray(input.events) || input.events.length < 1 ||
+      input.events.length > MAX_EVENT_BATCH_ROWS) {
+    throw new AppError(400, 'invalid_event_batch', 'Invalid device, batch ID or event count')
+  }
+  const seen = new Set()
+  for (const row of input.events) {
+    if (!row || typeof row !== 'object' || Array.isArray(row) ||
+        !EVENT_BATCH_UUID.test(row.attemptId) ||
+        typeof row.dict !== 'string' || row.dict.length < 1 || row.dict.length > 128 ||
+        typeof row.word !== 'string' || row.word.length < 1 || row.word.length > 128 ||
+        !Number.isSafeInteger(row.timeStamp) || row.timeStamp < 0 ||
+        row.timeStamp > 86_400_000_000 ||
+        !['learn', 'typing'].includes(row.sourceMode) ||
+        Object.prototype.hasOwnProperty.call(row, 'id') ||
+        Object.prototype.hasOwnProperty.call(row, 'fsrsShadow') ||
+        seen.has(row.attemptId)) {
+      throw new AppError(400, 'invalid_event_batch', 'Invalid immutable word attempt')
+    }
+    seen.add(row.attemptId)
+  }
+  const body = {
+    schemaVersion: 1, accountId,
+    deviceId: input.deviceId, batchId: input.batchId, events: input.events,
+  }
+  const canonical = canonicalEventJson(body)
+  if (Buffer.byteLength(canonical, 'utf8') > MAX_EVENT_BATCH_BYTES) {
+    throw new AppError(413, 'event_batch_too_large', 'Event batch exceeds bounded limit')
+  }
+  const sha256 = sha256Hex(canonical)
+  return { ...body, sha256 }
+}
+
 function sanitizeDeviceId(deviceId) {
   return typeof deviceId === 'string' && deviceId.trim()
     ? deviceId.trim().slice(0, 128)
@@ -215,6 +278,7 @@ export function createBackendService({
   sessionHistoryRetention = DEFAULT_SESSION_HISTORY_RETENTION,
   authHistoryRetention = DEFAULT_AUTH_HISTORY_RETENTION,
   multiSessionEnabled = false,
+  eventPilotEnabled = false,
 }) {
   if (!storage) throw new Error('storage is required')
   if (!Number.isInteger(snapshotRetention) || snapshotRetention < 1) {
@@ -527,6 +591,66 @@ export function createBackendService({
     return { revoked: true }
   }
 
+  function requireEventPilot() {
+    if (!multiSessionEnabled || !eventPilotEnabled) {
+      throw new AppError(404, 'not_found', 'Event-batch pilot is disabled')
+    }
+    if (typeof storage.putImmutableEventBatch !== 'function' ||
+        typeof storage.getImmutableEventBatch !== 'function') {
+      throw new Error('Event-batch storage is unavailable')
+    }
+  }
+
+  async function publishLearningBatch(token, input = {}) {
+    requireEventPilot()
+    const { identity } = await authenticate(token)
+    const record = validateImmutableEventBatch(input, identity.userId)
+    const stored = await storage.putImmutableEventBatch(
+      identity.userId, record.deviceId, record.batchId, record.sha256, record
+    )
+    // An ambiguous response, stale read, or differing object is never ACKed.
+    // Retrying the same immutable envelope is safe and idempotent.
+    const confirmed = await storage.getImmutableEventBatch(
+      identity.userId, record.deviceId, record.batchId, record.sha256
+    )
+    if (!stored || !confirmed || canonicalEventJson(confirmed) !== canonicalEventJson(record)) {
+      throw new AppError(503, 'event_batch_unverified',
+        'Published event batch is not yet independently verified')
+    }
+    return {
+      stored: true, accountId: identity.userId, deviceId: record.deviceId,
+      batchId: record.batchId, sha256: record.sha256,
+      attemptCount: record.events.length,
+      // A single durable batch is NOT proof of complete multi-device convergence.
+      convergenceComplete: false,
+    }
+  }
+
+  async function readLearningBatch(token, selector = {}) {
+    requireEventPilot()
+    const { identity } = await authenticate(token)
+    if (!EVENT_DEVICE_ID.test(selector.deviceId) ||
+        !EVENT_BATCH_UUID.test(selector.batchId) ||
+        typeof selector.sha256 !== 'string' ||
+        !/^[a-f0-9]{64}$/.test(selector.sha256)) {
+      throw new AppError(400, 'invalid_event_selector', 'Invalid batch receipt')
+    }
+    const record = await storage.getImmutableEventBatch(
+      identity.userId, selector.deviceId, selector.batchId, selector.sha256
+    )
+    if (!record) throw new AppError(404, 'event_batch_not_visible', 'Batch is not yet visible')
+    const verified = validateImmutableEventBatch(record, identity.userId)
+    if (verified.sha256 !== selector.sha256 ||
+        record.accountId !== identity.userId ||
+        record.deviceId !== selector.deviceId ||
+        record.batchId !== selector.batchId ||
+        canonicalEventJson(record) !== canonicalEventJson(verified)) {
+      throw new AppError(503, 'event_batch_integrity_failed',
+        'Event batch receipt failed integrity check')
+    }
+    return { batch: verified, convergenceComplete: false }
+  }
+
   function metaFromSnapshot(snapshot) {
     if (!snapshot) {
       return {
@@ -803,6 +927,8 @@ export function createBackendService({
     me,
     changePassword,
     revokeSession,
+    publishLearningBatch,
+    readLearningBatch,
     deleteAccount,
     syncMeta,
     getSync,

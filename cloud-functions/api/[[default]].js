@@ -112,6 +112,7 @@ function makeService(env, storage) {
     sessionTtlSeconds: numberEnv(env.SESSION_TTL_SECONDS, 7 * 24 * 60 * 60),
     maxSyncBytes: numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024),
     multiSessionEnabled: env.MULTI_DEVICE_AUTH_ENABLED === 'true',
+    eventPilotEnabled: env.MULTI_DEVICE_EVENT_PILOT_ENABLED === 'true',
   })
 }
 
@@ -298,6 +299,22 @@ export async function onRequest(context) {
         200,
         cors,
       )
+    }
+
+    // Independent immutable event pilot: separate from old V4 revision writer.
+    // There is deliberately no "list complete" or auto-restore endpoint yet.
+    if (request.method === 'POST' && path === '/sync/events/v1') {
+      const body = await readJson(request, 110 * 1024)
+      return json({ ok: true,
+        ...(await service.publishLearningBatch(bearer(request), body)) }, 201, cors)
+    }
+    if (request.method === 'GET' && path === '/sync/events/v1') {
+      return json({ ok: true,
+        ...(await service.readLearningBatch(bearer(request), {
+          deviceId: url.searchParams.get('deviceId'),
+          batchId: url.searchParams.get('batchId'),
+          sha256: url.searchParams.get('sha256'),
+        })) }, 200, cors)
     }
 
     if (request.method === 'PUT' && path === '/sync/v2/recovery') {
