@@ -3,7 +3,7 @@ import { compactAchievementEvent } from '@/achievement/storage-retention'
 import type { AchievementEventRecord } from '@/achievement/types'
 import { assertRestorableWorkspaceV4 } from './workspace-v4'
 import { TYPING_RETENTION_PREVIEW_DAYS, compactTypingWordRecord } from '@/utils/db/word-record-retention'
-import type { IWordRecord, IReviewRecord } from '@/utils/db/record'
+import type { IReviewRecord, IWordRecord } from '@/utils/db/record'
 import { compactFinishedReviewRecord } from '@/utils/db/review-record-retention'
 
 type ExportTable = { tableName: string; rows: unknown[] }

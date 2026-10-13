@@ -3,6 +3,9 @@ import test from 'node:test'
 import { compactTypingWordRecord } from '../../src/utils/db/word-record-retention'
 import { analyzeV4SnapshotSize } from '../../src/sync/v4-size-audit'
 import { compactFinishedReviewRecord } from '../../src/utils/db/review-record-retention'
+import { collectPendingAcquisitionStates } from '../../src/learn/acquisition-recovery'
+import { createLearnAcquisitionState } from '../../src/learn/acquisition'
+import type { IReviewRecord } from '../../src/utils/db/record'
 import { summarizeWordHistory } from '../../src/review/features'
 import { buildOrthographyProfile } from '../../src/review/profile'
 import { rebuildActiveFsrsStateFromWordRecords } from '../../src/review/fsrs/active'
@@ -144,10 +147,8 @@ test('V4 gzip audit is read only, preserves all Learn rows, and measures full ar
 })
 
 test('finished session compaction keeps terminal state, acquisition recovery and goal', () => {
-  const acquired = {
-    phase: 'deferred' as const, attempts: 1, independentInterveningItems: [],
-  }
-  const session = {
+  const acquired = createLearnAcquisitionState()
+  const session: IReviewRecord = {
     id: 77, dict: 'test', index: 2, createTime: NOW - DAY,
     isFinished: true, sessionKind: 'mixed' as const,
     words: [{
@@ -156,7 +157,7 @@ test('finished session compaction keeps terminal state, acquisition recovery and
     }],
     acquisitionStates: { ability: acquired },
     exercisePlans: {},
-    hintStates: { ability: { version: 2 as const } },
+    hintStates: {},
     recommendedGoal: { version: 1 as const, kind: 'session-completion' as const, targetUniqueWords: 1 },
   }
   // Restore only the pending acquisition state; the completed session's
@@ -174,6 +175,11 @@ test('finished session compaction keeps terminal state, acquisition recovery and
   assert.equal(compact.hintStates, undefined)
   assert.ok(JSON.stringify(compact).length < original.length)
   assert.deepEqual(compactFinishedReviewRecord(compact), compact)
+  assert.deepEqual(
+    [...collectPendingAcquisitionStates({ records: [session], wordRecords: [], wordStates: [] })],
+    [...collectPendingAcquisitionStates({ records: [compact], wordRecords: [], wordStates: [] })],
+    'completed-session compaction must not lose pending acquisition evidence',
+  )
   const unfinished = { ...session, isFinished: false }
   assert.equal(compactFinishedReviewRecord(unfinished), unfinished)
 })
