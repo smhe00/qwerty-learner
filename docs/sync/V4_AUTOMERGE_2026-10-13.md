@@ -156,3 +156,21 @@ replayer needs a deterministic UUID tie-break before enabling merging.
 The additive server field and the client-side proof have been added to the
 development branch only. `master` has NOT deployed this capability.
 Neither automatic merge nor cloud overwrite is enabled by this change.
+
+## Blocking prerequisite: single-active-session authentication
+
+As of 2026-10-13, `cloud-functions/_shared/core.js` deliberately
+authenticates only the latest per-user session. A second login revokes the
+first device, and `src/sync/session-revocation.ts` converts its working
+account context to anonymous after explicit confirmation. Therefore stable
+multi-device auto-merge **also requires an intentional authentication
+protocol change**, not merely a new sync merger: multiple independently
+revocable sessions per immutable account, per-device tokens and revocation,
+bounded expiry/retention, account deletion semantics, and full S1 data
+isolation. Preserve defense against session reuse/credential leakage.
+Old single-session behavior must stay until this new protocol is tested.
+An account-wide password reset should revoke every session.
+
+Two signed-in browser tabs that share the same token are not a substitute
+for independently authenticated devices. No multi-device auth change is
+implemented in the clock-gate commit.
