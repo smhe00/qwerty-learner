@@ -144,11 +144,22 @@ try {
   assert.equal(historical.value?.revision, 1)
   const noAutoMigration = await api('/api/sync/v2', 'PUT',
     v4Body(legacy, 1, 'reject-auto-migration'), legacy.token)
+  // Even a 500 must not be assumed safe: read back metadata before any retry.
+  // This is a redacted status-only diagnostic; no credentials or payloads.
+  const legacyMeta = await api('/api/sync/v2/meta', 'GET', undefined, legacy.token)
+  console.log('V3-to-V4 refused-write evidence', JSON.stringify({
+    putStatus: noAutoMigration.status,
+    putCode: noAutoMigration.value?.error || null,
+    metaStatus: legacyMeta.status,
+    remoteRevision: legacyMeta.value?.revision ?? null,
+    remoteFormat: legacyMeta.value?.clientFormatVersion ?? null,
+  }))
+  assert.equal(legacyMeta.status, 200, 'read-only verification after refused write')
+  assert.equal(legacyMeta.value?.revision, 1, 'failed ordinary V4 PUT must not advance V3 revision')
+  assert.equal(legacyMeta.value?.clientFormatVersion, 'qwerty-backup-v3',
+    'failed ordinary V4 PUT must not change remote format')
   expectCode(noAutoMigration, 409, 'sync_migration_required',
     'Existing V3 cannot be overwritten by normal V4 Sync')
-  const legacyMeta = await api('/api/sync/v2/meta', 'GET', undefined, legacy.token)
-  assert.equal(legacyMeta.value?.revision, 1)
-  assert.equal(legacyMeta.value?.clientFormatVersion, 'qwerty-backup-v3')
   console.log('Existing V3 remains V3; no automatic migration: PASS')
 } catch (error) {
   failure = error
