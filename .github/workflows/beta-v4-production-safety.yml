@@ -19,6 +19,7 @@ concurrency:
 
 jobs:
   live-v4-safety:
+    if: github.ref_name == 'master'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:

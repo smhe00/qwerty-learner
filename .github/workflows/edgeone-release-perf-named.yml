@@ -1,12 +1,8 @@
 name: EdgeOne Production Perf V4 test13 test24
 
 # This is verification of ALREADY DEPLOYED master. Does not deploy Maker.
+# Obsolete production-only verification. No automatic main cloud writes.
 on:
-  push:
-    branches: [product/main]
-    paths:
-      - 'tests/cloud/edgeone-release-test13-test24.integration.mjs'
-      - '.github/workflows/edgeone-release-perf-named.yml'
   workflow_dispatch:
 
 permissions:
@@ -19,6 +15,7 @@ concurrency:
 
 jobs:
   live-test13-test24:
+    if: github.ref_name == 'master'
     runs-on: ubuntu-22.04
     timeout-minutes: 22
     steps:
