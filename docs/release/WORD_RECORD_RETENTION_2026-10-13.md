@@ -21,3 +21,10 @@
 - New typing retention unit contracts and application Review Gate.
 - Browser Typing lifecycle, Learn real journey, P4b browser recovery, S1 V4 workspace recovery; production EdgeOne big payload and restore gate remain open.
 - No `master` release before the current V4 HTTP 500 capacity issue is resolved or explicitly accepted by release authority.
+
+## P0.1 growth audit and achievement-event zero pruning
+
+- Audit now counts finished/unfinished `reviewRecords`, zero-valued `achievementEvents.metricValues`, and independently projects hypothetical metric pruning. Each hypothetical gzip saving can be negative and must never be summed with another projection; UI displays a signed delta, not a misleading nonnegative claim.
+- NEW achievement events now omit metric entries whose value is exactly zero. Event IDs, sources, session identity, full unlock lists, event types and positive/negative/non-zero metrics remain unchanged. The runtime computes all values **before** compaction and performs unlock decisions against the full transient vector.
+- This does **not** compact old event records, delete finished sessions, or change Learn `wordRecords`. The finished session counts are diagnostic, not authorization to delete them: acquisition recovery currently walks all historical `acquisitionStates`.
+- Future bound: `achievementEvents` itself still grows one ledger record per Learn attempt. Eliminating those events requires a formally specified idempotency/watermark compaction strategy, since `eventId` prevents duplicate achievement grants and unlock provenance must survive restores.
