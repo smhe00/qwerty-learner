@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { compactTypingWordRecord } from '../../src/utils/db/word-record-retention'
 import { analyzeV4SnapshotSize } from '../../src/sync/v4-size-audit'
+import { compactFinishedReviewRecord } from '../../src/utils/db/review-record-retention'
 import { summarizeWordHistory } from '../../src/review/features'
 import { buildOrthographyProfile } from '../../src/review/profile'
 import { rebuildActiveFsrsStateFromWordRecords } from '../../src/review/fsrs/active'
@@ -132,6 +133,7 @@ test('V4 gzip audit is read only, preserves all Learn rows, and measures full ar
   assert.equal(report.oldTypingCandidates, 1)
   assert.equal(report.finishedReviewSessions, 0)
   assert.equal(report.unfinishedReviewSessions, 0)
+  assert.ok(report.projectedGzipBytesAfterCompletedSessionCompaction > 0)
   assert.equal(report.achievementEventZeroMetrics, 0)
   assert.ok(report.rawBytes > report.gzipBytes)
   assert.ok(report.httpBase64Bytes >= report.gzipBytes)
@@ -139,4 +141,39 @@ test('V4 gzip audit is read only, preserves all Learn rows, and measures full ar
   assert.ok(report.projectedGzipBytesAfterTypingCompaction > 0)
   // Small fixtures can gzip worse after removing fields because the shared
   // dictionary changes; never promise a saving before measuring the full V4.
+})
+
+test('finished session compaction keeps terminal state, acquisition recovery and goal', () => {
+  const acquired = {
+    phase: 'deferred' as const, attempts: 1, independentInterveningItems: [],
+  }
+  const session = {
+    id: 77, dict: 'test', index: 2, createTime: NOW - DAY,
+    isFinished: true, sessionKind: 'mixed' as const,
+    words: [{
+      name: 'ability', trans: ['能力'], usphone: 'a', ukphone: 'a',
+      example: [{ en: 'ability matters', cn: '能力重要', start: 0, end: 7 }],
+    }],
+    acquisitionStates: { ability: acquired },
+    exercisePlans: {},
+    hintStates: { ability: { version: 2 as const } },
+    recommendedGoal: { version: 1 as const, kind: 'session-completion' as const, targetUniqueWords: 1 },
+  }
+  // Restore only the pending acquisition state; the completed session's
+  // former word payload and hint machine cannot be resumed.
+  const original = JSON.stringify(session)
+  const compact = compactFinishedReviewRecord(session)
+  assert.equal(JSON.stringify(session), original)
+  assert.deepEqual(compact.words, [])
+  assert.deepEqual(compact.acquisitionStates, session.acquisitionStates)
+  assert.equal(compact.id, 77)
+  assert.equal(compact.index, 2)
+  assert.equal(compact.isFinished, true)
+  assert.deepEqual(compact.recommendedGoal, session.recommendedGoal)
+  assert.equal(compact.exercisePlans, undefined)
+  assert.equal(compact.hintStates, undefined)
+  assert.ok(JSON.stringify(compact).length < original.length)
+  assert.deepEqual(compactFinishedReviewRecord(compact), compact)
+  const unfinished = { ...session, isFinished: false }
+  assert.equal(compactFinishedReviewRecord(unfinished), unfinished)
 })

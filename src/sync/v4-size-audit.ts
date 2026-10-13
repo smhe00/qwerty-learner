@@ -3,7 +3,8 @@ import { compactAchievementEvent } from '@/achievement/storage-retention'
 import type { AchievementEventRecord } from '@/achievement/types'
 import { assertRestorableWorkspaceV4 } from './workspace-v4'
 import { TYPING_RETENTION_PREVIEW_DAYS, compactTypingWordRecord } from '@/utils/db/word-record-retention'
-import type { IWordRecord } from '@/utils/db/record'
+import type { IWordRecord, IReviewRecord } from '@/utils/db/record'
+import { compactFinishedReviewRecord } from '@/utils/db/review-record-retention'
 
 type ExportTable = { tableName: string; rows: unknown[] }
 type ExportDb = { data: { data: ExportTable[] } }
@@ -26,6 +27,7 @@ export type V4SizeAudit = {
   projectedGzipBytesAfterAchievementCompaction: number
   finishedReviewSessions: number
   unfinishedReviewSessions: number
+  projectedGzipBytesAfterCompletedSessionCompaction: number
 }
 
 /**
@@ -53,6 +55,8 @@ export async function analyzeV4SnapshotSize(
   let achievementEventsWithZeroMetrics = 0
   let finishedReviewSessions = 0
   let unfinishedReviewSessions = 0
+  const completedSessionProjection = JSON.parse(raw) as WorkspaceSnapshotV4
+  const completedDb = completedSessionProjection.workspaceData.database as ExportDb
   for (let i = 0; i < originalDb.data.data.length; i += 1) {
     const table = originalDb.data.data[i]
     const content = JSON.stringify(table.rows)
@@ -63,11 +67,16 @@ export async function analyzeV4SnapshotSize(
       gzipBytes: pako.gzip(content).byteLength,
     })
     if (table.tableName === 'reviewRecords') {
-      for (const record of table.rows) {
-        if (!record || typeof record !== 'object') continue
-        if ((record as { isFinished?: unknown }).isFinished === true) finishedReviewSessions++
-        else unfinishedReviewSessions++
-      }
+      const finishedRows = completedDb.data.data[i]
+      finishedRows.rows = table.rows.map(record => {
+        if (!record || typeof record !== 'object') return record
+        if ((record as IReviewRecord).isFinished !== true) {
+          unfinishedReviewSessions++
+          return record
+        }
+        finishedReviewSessions++
+        return compactFinishedReviewRecord(record as IReviewRecord)
+      })
     }
     if (table.tableName !== 'wordRecords') continue
     projectedDb.data.data[i].rows = table.rows.map((value) => {
@@ -115,5 +124,7 @@ export async function analyzeV4SnapshotSize(
       pako.gzip(JSON.stringify(achievementProjection)).byteLength,
     finishedReviewSessions,
     unfinishedReviewSessions,
+    projectedGzipBytesAfterCompletedSessionCompaction:
+      pako.gzip(JSON.stringify(completedSessionProjection)).byteLength,
   }
 }

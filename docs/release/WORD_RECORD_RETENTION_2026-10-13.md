@@ -28,3 +28,9 @@
 - NEW achievement events now omit metric entries whose value is exactly zero. Event IDs, sources, session identity, full unlock lists, event types and positive/negative/non-zero metrics remain unchanged. The runtime computes all values **before** compaction and performs unlock decisions against the full transient vector.
 - This does **not** compact old event records, delete finished sessions, or change Learn `wordRecords`. The finished session counts are diagnostic, not authorization to delete them: acquisition recovery currently walks all historical `acquisitionStates`.
 - Future bound: `achievementEvents` itself still grows one ledger record per Learn attempt. Eliminating those events requires a formally specified idempotency/watermark compaction strategy, since `eventId` prevents duplicate achievement grants and unlock provenance must survive restores.
+
+## P0.2 finished ReviewRecord retention
+
+- Only **newly finalized** `reviewRecords` are compacted on the serialized `putWordReviewRecord` write. Completed `words[]`, hint and exercise machines, optional/spacing words are dropped. `acquisitionStates` is fully preserved for cross-session pending acquisition recovery. `id`, `dict`, `index`, `createTime`, `isFinished`, `blockSize`, `sessionKind` and `recommendedGoal` remain.
+- Unfinished checkpoints are left bytewise untouched, including their frozen word list and retry/hint state. The existing guard against resurrecting completed sessions remains.
+- The V4 read-only audit independently estimates whole-snapshot gzip savings if historical finished sessions were compacted. This is a **simulation only**. No automatic destructive migration of historical user data.

@@ -71,11 +71,12 @@ export default function DataSetting() {
       ).join('\n')
       const saving = report.gzipBytes - report.projectedGzipBytesAfterTypingCompaction
       const eventSaving = report.gzipBytes - report.projectedGzipBytesAfterAchievementCompaction
+      const sessionSaving = report.gzipBytes - report.projectedGzipBytesAfterCompletedSessionCompaction
       setSizeAuditMessage(
         `完整 V4：原始 ${kiB(report.rawBytes)}；gzip ${kiB(report.gzipBytes)}；HTTP Base64 约 ${kiB(report.httpBase64Bytes)}。\n` +
         `超过 90 天的 Typing 明细：${report.oldTypingCandidates} 条；独立模拟整包 gzip 变化 ${saving >= 0 ? '-' : '+'}${kiB(Math.abs(saving))}。\n` +
         `成就事件：${report.achievementEventsWithZeroMetrics} 条含零指标，共 ${report.achievementEventZeroMetrics} 个冗余零值；独立模拟整包 gzip 变化 ${eventSaving >= 0 ? '-' : '+'}${kiB(Math.abs(eventSaving))}。\n` +
-        `复习 Session：已完成 ${report.finishedReviewSessions} 条，未完成 ${report.unfinishedReviewSessions} 条（历史会话未执行归档）。\n` +
+        `复习 Session：已完成 ${report.finishedReviewSessions} 条，未完成 ${report.unfinishedReviewSessions} 条；独立模拟整包 gzip 变化 ${sessionSaving >= 0 ? '-' : '+'}${kiB(Math.abs(sessionSaving))}（未归档旧数据）。\n` +
         rows + '\n各表 gzip 单独压缩，不可相加。仅分析，未删除、归档、同步或修改任何数据。',
       )
     } catch (error) {
