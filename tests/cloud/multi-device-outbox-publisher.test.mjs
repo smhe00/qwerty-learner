@@ -69,7 +69,7 @@ test('ambiguous timeout retains original batch for identical retry', async () =>
   const lost = await publishOneImmutableBatch('acc-A', h.port)
   assert.equal(lost.status, 'retained')
   assert.equal(h.counts().confirms, 0)
-  assert.equal(JSON.stringify(h.port.reserve().then ? batch : null), original)
+  assert.equal(JSON.stringify((await h.port.reserve()).inflight), original)
   h.port.publish = async () => ({ stored: true, ...ack })
   assert.equal((await publishOneImmutableBatch('acc-A', h.port)).status, 'verified')
   assert.equal(h.counts().confirms, 1)
@@ -104,4 +104,17 @@ test('corrupt or other-owner IDB reservation throws rather than silently retryin
     accountId: 'acc-B' })
   await assert.rejects(publishOneImmutableBatch('acc-A', h.port),
     /outbox-reservation-owner-mismatch/)
+})
+
+test('owner changes after exact GET: no stale durable acknowledgment', async () => {
+  const h = harness()
+  const read = h.port.read
+  h.port.read = async receipt => {
+    const response = await read(receipt)
+    h.setOwner(false)
+    return response
+  }
+  const result = await publishOneImmutableBatch('acc-A', h.port)
+  assert.equal(result.status, 'retained')
+  assert.equal(h.counts().confirms, 0)
 })
