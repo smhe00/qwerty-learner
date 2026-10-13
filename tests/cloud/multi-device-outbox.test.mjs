@@ -94,3 +94,21 @@ test('invalid and oversized immutable attempts are never silently discarded', ()
   assert.throws(() => reserveOutboxBatch(queued, uuid(35)), /attempt-too-large/)
   assert.equal(queued.pending.length, 1)
 })
+test('repeated full-history rescan does not resend a verified UUID', () => {
+  let state = stageOutboxAttempts(initialEventOutbox('A', device(1)),
+    [record(1), record(2)])
+  state = reserveOutboxBatch(state, uuid(50))
+  state = acknowledgeOutboxBatch(state, receipt(state.inflight))
+  assert.equal(Object.keys(state.confirmedEvidence).length, 2)
+  const recovered = JSON.parse(JSON.stringify(state))
+  const rescan = stageOutboxAttempts(recovered, [
+    { ...record(1), id: 1234, fsrsShadow: { sourceRecordId: 1234 } },
+    { ...record(2), id: 5678 },
+    record(3),
+  ])
+  assert.equal(rescan.pending.length, 1)
+  assert.equal(rescan.pending[0].attemptId, uuid(3))
+  assert.throws(() => stageOutboxAttempts(rescan, [
+    { ...record(1), word: 'contradictory' },
+  ]), /outbox-contradictory-attempt/)
+})

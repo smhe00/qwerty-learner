@@ -380,3 +380,12 @@ capture yet: an external recovery scan and owner-verified S1 transaction are
 required before claiming offline data cannot be missed. M2 six-table
 materialization, global completeness proof and M4 remain blocked. The
 `multi-device` backend feature toggles stay disabled by default.
+
+## M3.6.1 durable acknowledged-UUID ledger
+
+To make repeated full-RecordDB scans safe, the account/device IDB outbox now
+persists confirmed UUID→canonical immutable evidence alongside the exact
+verified predecessor receipt. A rescan cannot requeue previously confirmed
+attempts and cannot silently ignore a different payload reusing an accepted
+UUID. This intentionally retains a local integrity ledger; quotas,
+compaction and safe pruning require a later bounded-retention policy.
