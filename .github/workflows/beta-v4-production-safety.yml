@@ -4,7 +4,7 @@ name: Beta V4 Production Safety Gate
 # No deployment, no project-management API dependency, no personal accounts.
 on:
   push:
-    branches: [product/main]
+    branches: [master]
     paths:
       - '.github/workflows/beta-v4-production-safety.yml'
       - 'tests/cloud/p4b-edgeone-gate-smoke.mjs'
