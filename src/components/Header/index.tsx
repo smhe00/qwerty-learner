@@ -34,7 +34,7 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
               <span className="ml-1.5 font-medium" style={{ color: "var(--focus-brand-warm)" }}>Plus</span>
             </h1>
             <span className="mt-2 text-[0.65rem] font-medium tracking-[0.1em] lg:text-xs" style={{ color: "var(--focus-text-muted)" }}>
-              打字 · 记单词 · 云同步
+              练打字 · 记单词 · 云同步
             </span>
           </div>
         </button>
