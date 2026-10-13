@@ -218,6 +218,7 @@ export async function onRequest(context) {
             'learning-state-backup-v3',
             'backup-v4-authenticated-write-ga',
             'edgeone-same-origin-e2e-v1',
+            'v4-blob-stage-trace-20261014',
             'backup-v3-explicit-migration-only',
             'account-delete-v1',
             'duplicate-register-protection-v1',
@@ -360,7 +361,14 @@ export async function onRequest(context) {
 
     if (request.method === 'PUT' && path === '/sync/v2') {
       const token = await requireS2WriteAccount(service, request, env)
-      const body = await readJson(request, bodyLimit)
+      let body
+      try {
+        body = await readJson(request, bodyLimit)
+      } catch (error) {
+        if (error instanceof AppError) throw error
+        throw new AppError(503, 'snapshot_body_read_failed',
+          'Unable to receive V4 request; check remote metadata before retry')
+      }
       return json({ ok: true, ...(await service.putSyncV4(token, body)) }, 200, cors)
     }
 

@@ -1101,9 +1101,15 @@ export function createBackendService({
         error instanceof Error ? error.message : 'Invalid Backup V4 workspace')
     }
 
-    const current = storage.getLatestRevisionMeta
-      ? await storage.getLatestRevisionMeta(identity.userId)
-      : await storage.getLatestRevision(identity.userId)
+    let current
+    try {
+      current = storage.getLatestRevisionMeta
+        ? await storage.getLatestRevisionMeta(identity.userId)
+        : await storage.getLatestRevision(identity.userId)
+    } catch {
+      throw new AppError(503, 'snapshot_metadata_read_failed',
+        'Unable to check V4 revision before write; no upload was attempted')
+    }
     const currentRevision = current ? current.revision : 0
     if (currentRevision !== baseRevision) {
       throw new AppError(409, 'sync_conflict', 'Remote data changed', {

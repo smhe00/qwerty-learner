@@ -162,6 +162,8 @@ try {
       sourceKiB: stressKiB[index],
       requestBytes: Buffer.from(largeBody.payloadBase64, 'base64').length,
       status: sent.status, code: sent.value?.error || null,
+      stage: sent.value?.details?.stage || null,
+      partIndex: sent.value?.details?.partIndex ?? null,
       observedRevision: latest.value?.revision ?? null,
       observedFormat: latest.value?.clientFormatVersion ?? null }))
     assert.equal(latest.status, 200, 'read-only post-write verification')

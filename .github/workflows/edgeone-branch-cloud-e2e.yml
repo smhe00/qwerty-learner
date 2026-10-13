@@ -40,6 +40,8 @@ jobs:
             ? 'https://qwerty-plus.edgeone.dev/' : 'https://q-test.edgeone.cool/'
           const actual = new URL(process.env.QWERTY_SYNC_BASE_URL)
           if (actual.origin !== new URL(expected).origin) throw Error('Wrong EdgeOne test origin')
+          const required = process.env.GITHUB_REF_NAME === 'master'
+            ? 'edgeone-same-origin-e2e-v1' : 'v4-blob-stage-trace-20261014'
           let healthy = false
           for (let index = 0; index < 42; index++) {
             try {
@@ -48,7 +50,7 @@ jobs:
               })
               const health = await result.json()
               if (result.ok && health.service === 'qwerty-sync-gateway' &&
-                  health.capabilities?.includes('edgeone-same-origin-e2e-v1')) {
+                  health.capabilities?.includes(required)) {
                 healthy = true
                 console.log('Matching Maker gateway found, auth mode:', health.authMode)
                 break
@@ -101,13 +103,24 @@ jobs:
             ? 'https://qwerty-plus.edgeone.dev' : 'https://q-test.edgeone.cool'
           if (new URL(process.env.QWERTY_SYNC_BASE_URL).origin !== expected)
             throw Error('Cloud E2E must use branch-matched EdgeOne, never Pages')
-          const r = await fetch(expected + '/api/health', {
-            signal: AbortSignal.timeout(15000),
-          })
-          const health = await r.json()
-          if (!r.ok || health.service !== 'qwerty-sync-gateway' ||
-              !health.capabilities?.includes('edgeone-same-origin-e2e-v1'))
-            throw Error('Matching EdgeOne V4 gateway not deployed')
+          const required = process.env.GITHUB_REF_NAME === 'master'
+            ? 'edgeone-same-origin-e2e-v1' : 'v4-blob-stage-trace-20261014'
+          let healthy = false
+          for (let index = 0; index < 42; index++) {
+            try {
+              const r = await fetch(expected + '/api/health', {
+                cache: 'no-store', signal: AbortSignal.timeout(15000),
+              })
+              const health = await r.json()
+              if (r.ok && health.service === 'qwerty-sync-gateway' &&
+                  health.capabilities?.includes(required)) {
+                healthy = true
+                break
+              }
+            } catch { /* Maker deployment not yet visible in this POP */ }
+            await new Promise(resolve => setTimeout(resolve, 10000))
+          }
+          if (!healthy) throw Error('Matching EdgeOne V4 gateway version not deployed')
           NODE
       - name: Verify real V4 upload, readback, stale conflict and Blob size
         run: node tests/cloud/p4b-edgeone-gate-smoke.mjs
