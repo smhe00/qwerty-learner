@@ -1,6 +1,6 @@
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
 import { assertRestorableWorkspaceV4 } from './workspace-v4'
-import { compactTypingWordRecord, TYPING_RETENTION_PREVIEW_DAYS } from '@/utils/db/word-record-retention'
+import { TYPING_RETENTION_PREVIEW_DAYS, compactTypingWordRecord } from '@/utils/db/word-record-retention'
 import type { IWordRecord } from '@/utils/db/record'
 
 type ExportTable = { tableName: string; rows: unknown[] }
