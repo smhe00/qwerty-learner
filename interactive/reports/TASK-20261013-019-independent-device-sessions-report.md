@@ -41,3 +41,11 @@ No real EdgeOne multi-region consistency, user-facing pilot or independently aut
 2. M3.2 add a durable per-device receipt/watermark or another formally verifiable discovery protocol that tolerates EdgeOne Blob list eventual consistency. Never equate a list snapshot with global completeness.
 3. M4 fault-test no-CAS parallel publication, offline retry, duplicate and contradictory attempts, account-scoped revocation, reset and deletion races; run genuine independent-browser-profile Maker tests with disposable accounts.
 4. Keep \`master\` unchanged until those release gates succeed.
+
+## M2.1a checkpoint and latest CI
+
+- `c6711ddb4db7e1a5807e68c785467bac5f198bf9`: monotonic merge for provenance-identical `seenAt` and `cultureCardSeenAt`, tested with reversed device inputs.
+- `bc1a6d3d0d3698a6226aaef999c6d33e2cf6389a`: invalid observation timestamps block, never get dropped.
+- Previous M3.1 Cloud Sync Gate [#38415704806](https://github.com/smhe00/qwerty-learner/actions/runs/38415704806) SUCCESS. New M2.1a gate [#38416453738](https://github.com/smhe00/qwerty-learner/actions/runs/38416453738) pending final result at report time.
+- GitHub Pages deployment [#38415704825](https://github.com/smhe00/qwerty-learner/actions/runs/38415704825) FAILED on published Learn real-typing regression waiting for a visible `[data-typing-word]` element, separately from Cloud Sync Gate.
+- `master` unchanged; M1 and event pilot flags default OFF; no automatic V4 merge/Block cloud upload enabled.
