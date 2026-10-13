@@ -84,3 +84,22 @@ GitHub Issues creation is disabled in this repository (HTTP 410), so this file i
 
 ### Production rollout hold
 - Dev-only chunked Blob implementation is a candidate and its Cloud Sync backend/unit gate passed. The published `master` site has not adopted it or confirmed that a 1+ MB native V4 write/read works. Releasing this code requires a valid EdgeOne project/deployment identifier and clean V4 core/recovery gates.
+
+## V4 blocker remediation: verified on product/main (2026-10-13)
+
+**Code status (not production release):**
+- `7d146a0054e622a20d8d50df23bfcff9f705addd` — Learn landing is read-only until a real practice key / explicit continuation. Prevents the startup `ensureLearnDailySession()` from replacing historical `completedBlockIds` or bootstrapping FSRS rows immediately after a V4 Pull/Import.
+- `121d4dc09593f51f79007743cb2350cb4a934048` — strict portable V4 import fingerprint regression; do not weaken logical equality.
+- `c258ee4589ce7bcc52ffd7fb35426e0eb7fc38d8` — end-to-end authenticated V4 upload/readback via chunked EdgeOne Blob adapter under simulated 380 KB single-JSON write cap, testing an intentionally >1 MB compressed snapshot.
+- `e1fad2c4d3d025b481f34c557d06284138144234` — updated session keyboard browser assertion to reflect read-only Learn landing (first key starts, does not type).
+
+**Verified gates:**
+- P4b Browser Recovery Release Gate: 31/31 passed, https://github.com/smhe00/qwerty-learner/actions/runs/38339861637.
+- S1 Workspace Browser Gate: 78/78 passed, https://github.com/smhe00/qwerty-learner/actions/runs/38339861702.
+- Learn Real Journey Gate: passed, https://github.com/smhe00/qwerty-learner/actions/runs/38339810452.
+- Cloud Sync Gate (includes >1 MB V4 chunked backend roundtrip): passed, https://github.com/smhe00/qwerty-learner/actions/runs/38340201742.
+
+**Still NOT cleared:**
+- **Production EdgeOne 500 at ~1 MB compressed V4** — only the original published `master` has been tested. Newly chunked Blob implementation must be published through a controlled release and re-run V4-only live size sweep and readback. It is inappropriate to mark this P1 fixed from simulated tests alone.
+- Published Pages tests / Review Gate can involve stale SHA, or assumptions of implicit Learn startup; track independently of V4 data-integrity gates. The old published Pages regression still targets SHA `230c4634`.
+- Verify deployed EdgeOne build identity before production test. No V3 migration or Circle scope.
