@@ -34,6 +34,8 @@ const row = n => ({
 })
 const payload = (deviceNum, batchNum, eventNum) =>
   ({ deviceId: device(deviceNum), batchId: uuid(batchNum), events: [row(eventNum)] })
+const receipt = item => ({ deviceId: item.deviceId, sequence: item.sequence,
+  batchId: item.batchId, sha256: item.sha256 })
 function setup() {
   const blob = new FakeBlob()
   const storage = createEdgeOneBlobStorage(blob)
@@ -404,9 +406,9 @@ test('M3.5 two independent authenticated devices produce a stable witnessed dige
     ...payload(2, 142, 2), sequence: 1, previous: null,
   })
   const one = await service.verifyWitnessedChainSet(a.token,
-    { heads: [first, second] })
+    { heads: [receipt(first), receipt(second)] })
   const reversed = await service.verifyWitnessedChainSet(b.token,
-    { heads: [second, first, first] })
+    { heads: [receipt(second), receipt(first), receipt(first)] })
   assert.equal(one.verified, true)
   assert.equal(one.uniqueAttemptCount, 2)
   assert.equal(one.deviceCount, 2)
@@ -422,7 +424,7 @@ test('M3.5 two independent authenticated devices produce a stable witnessed dige
   const observed = await service.observeChainedLearningReceipts(a.token)
   assert.equal(observed.observedCount, 1)
   assert.equal((await service.verifyWitnessedChainSet(a.token,
-    { heads: [first, second] })).verified, true)
+    { heads: [receipt(first), receipt(second)] })).verified, true)
   assert.equal(observed.convergenceComplete, false)
 })
 
@@ -439,7 +441,7 @@ test('M3.5 blocks conflicting UUID evidence across different device chains', asy
     ...altered, sequence: 1, previous: null,
   })
   await assert.rejects(service.verifyWitnessedChainSet(b.token,
-    { heads: [first, second] }), e => e.code === 'event_chain_attempt_conflict')
+    { heads: [receipt(first), receipt(second)] }), e => e.code === 'event_chain_attempt_conflict')
 })
 
 test('M3.5 rejects a fork even if both witnessed device histories reach genesis', async () => {
@@ -456,7 +458,7 @@ test('M3.5 rejects a fork even if both witnessed device histories reach genesis'
     ...payload(1, 163, 3), sequence: 2, previous: preceding,
   })
   await assert.rejects(service.verifyWitnessedChainSet(a.token,
-    { heads: [left, right] }), e => e.code === 'event_chain_fork_conflict')
+    { heads: [receipt(left), receipt(right)] }), e => e.code === 'event_chain_fork_conflict')
 })
 
 test('M3.5 missing or tampered witness fails closed and never publishes', async () => {
@@ -469,8 +471,8 @@ test('M3.5 missing or tampered witness fails closed and never publishes', async 
     ...payload(1, 172, 2), sequence: 2,
     previous: { batchId: one.batchId, sha256: one.sha256 },
   })
-  for (const heads of [[], [one, two, one, two, one],
-    [{ ...one, sequence: 129 }], [{ ...one, invalid: 1 }]]) {
+  for (const heads of [[], [receipt(one), receipt(two), receipt(one), receipt(two), receipt(one)],
+    [{ ...receipt(one), sequence: 129 }], [{ ...receipt(one), invalid: 1 }]]) {
     await assert.rejects(service.verifyWitnessedChainSet(a.token,
       { heads }), e => e.code === 'invalid_event_head_set')
   }
@@ -478,13 +480,13 @@ test('M3.5 missing or tampered witness fails closed and never publishes', async 
     k.includes('event-batches/v2/') && k.includes(one.sha256))
   const saved = blob.objects.get(key)
   blob.objects.delete(key)
-  const missing = await service.verifyWitnessedChainSet(a.token, { heads: [two] })
+  const missing = await service.verifyWitnessedChainSet(a.token, { heads: [receipt(two)] })
   assert.equal(missing.verified, false)
   assert.equal(missing.reason, 'gap-or-stale-read')
   assert.equal(missing.convergenceComplete, false)
   blob.objects.set(key, saved)
   blob.objects.get(key).events[0].word = 'tampered'
-  await assert.rejects(service.verifyWitnessedChainSet(a.token, { heads: [two] }),
+  await assert.rejects(service.verifyWitnessedChainSet(a.token, { heads: [receipt(two)] }),
     e => e.code === 'event_chain_integrity_failed')
 })
 
@@ -495,7 +497,7 @@ test('M3.5 cannot accept witnessed event receipts from another account', async (
   const record = await service.publishChainedLearningBatch(a.token, {
     ...payload(1, 181, 1), sequence: 1, previous: null,
   })
-  const result = await service.verifyWitnessedChainSet(b.token, { heads: [record] })
+  const result = await service.verifyWitnessedChainSet(b.token, { heads: [receipt(record)] })
   assert.equal(result.verified, false)
   assert.equal(result.reason, 'gap-or-stale-read')
 })
