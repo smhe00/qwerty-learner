@@ -72,8 +72,6 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Real EdgeOne S1 account login across three isolated Chromium profiles
         run: npx playwright test --config=tests/e2e/edgeone-s1-cloud-accounts.config.ts
-      - name: Real EdgeOne V4 upload, download, conflict and Blob endurance
-        run: node tests/cloud/p4b-edgeone-gate-smoke.mjs
       - name: Remove disposable cloud accounts, even on test failure
         if: always() && env.QWERTY_E2E_USERNAME != ''
         run: node tests/cloud/cleanup-production-multi-client.mjs
@@ -85,3 +83,31 @@ jobs:
           path: test-results/**/*-redacted-trace.json
           if-no-files-found: ignore
           retention-days: 7
+
+  real-v4-transport:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      QWERTY_SYNC_BASE_URL: ${{ github.ref_name == 'master' && 'https://qwerty-plus.edgeone.dev/' || 'https://q-test.edgeone.cool/' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+      - name: Verify branch-to-EdgeOne target before creating any accounts
+        run: |
+          node --input-type=module <<'NODE'
+          const expected = process.env.GITHUB_REF_NAME === 'master'
+            ? 'https://qwerty-plus.edgeone.dev' : 'https://q-test.edgeone.cool'
+          if (new URL(process.env.QWERTY_SYNC_BASE_URL).origin !== expected)
+            throw Error('Cloud E2E must use branch-matched EdgeOne, never Pages')
+          const r = await fetch(expected + '/api/health', {
+            signal: AbortSignal.timeout(15000),
+          })
+          const health = await r.json()
+          if (!r.ok || health.service !== 'qwerty-sync-gateway' ||
+              !health.capabilities?.includes('edgeone-same-origin-e2e-v1'))
+            throw Error('Matching EdgeOne V4 gateway not deployed')
+          NODE
+      - name: Verify real V4 upload, readback, stale conflict and Blob size
+        run: node tests/cloud/p4b-edgeone-gate-smoke.mjs

@@ -28,9 +28,26 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
         forbidden.push(parsed.origin)
       }
     })
-    await page.goto(base + '?s1-account=manage', { waitUntil: 'domcontentloaded' })
-    await expect(page.getByRole('dialog', { name: '安全账户管理（S1）' }))
-      .toBeVisible({ timeout: 35000 })
+    const entry = base + '?s1-account=manage'
+    await page.goto(entry, { waitUntil: 'domcontentloaded' })
+    const accountDialog = page.getByRole('dialog', { name: '安全账户管理（S1）' })
+    try {
+      await expect(accountDialog).toBeVisible({ timeout: 12000 })
+    } catch {
+      // S1 first-boot deliberately commits a workspace and reloads into a
+      // fresh JavaScript realm; EdgeOne may also be publishing a new build.
+      // Retry only the pre-login entry. Never retry auth or write operations.
+      const headings = await page.locator('h1,h2,[role="status"]')
+        .allTextContents().catch(() => [])
+      console.log('S1 entry diagnostic', {
+        pathname: new URL(page.url()).pathname,
+        hasAccountDialog: await accountDialog.count().catch(() => 0),
+        headingCount: headings.length,
+        headingSamples: headings.slice(0, 3).map(s => s.slice(0, 60)),
+      })
+      await page.goto(entry, { waitUntil: 'domcontentloaded' })
+      await expect(accountDialog).toBeVisible({ timeout: 35000 })
+    }
     expect(forbidden, 'API calls must stay on the branch-matched EdgeOne origin').toEqual([])
     return page
   }
