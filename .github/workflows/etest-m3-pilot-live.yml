@@ -1,0 +1,25 @@
+name: etest M1+M3 Real Multi-Device Pilot (manual)
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-multi-device:
+    if: github.ref_name == 'edgeone-test'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    env:
+      QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+      - name: Pin actual etest static source
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: node scripts/verify-edgeone-source.mjs
+      - name: Two independent logins and exact Blob receipts
+        run: node tests/cloud/etest-multi-device-pilot.mjs
