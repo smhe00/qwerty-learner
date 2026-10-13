@@ -208,6 +208,19 @@ test('P4b two independent profiles roundtrip, then detect divergent edits withou
           actual?.learnRuntime?.dailySessions),
         navigationFields: diffKeys(expected?.navigation, actual?.navigation),
         databaseFields: diffKeys(expected?.database, actual?.database),
+        dailySessionFields: diffKeys(expected?.learnRuntime?.dailySessions?.cet4,
+          actual?.learnRuntime?.dailySessions?.cet4),
+        databaseTableRows: ['wordRecords', 'chapterRecords', 'reviewRecords',
+          'reviewWordStates', 'achievementEvents', 'achievementStates'].map(name => {
+          const a = expected?.database?.data?.data?.find((t: any) => t.tableName === name)
+          const b = actual?.database?.data?.data?.find((t: any) => t.tableName === name)
+          const rowHash = (row: any) => createHash('sha256').update(JSON.stringify(row)).digest('hex').slice(0, 12)
+          return { name, expectedCount: a?.rows?.length ?? null, actualCount: b?.rows?.length ?? null,
+            expectedHash: rowHash(a?.rows ?? null), actualHash: rowHash(b?.rows ?? null),
+            rowFields: diffKeys(a?.rows?.[0], b?.rows?.[0]),
+            layoutFields: diffKeys(a, b),
+          }
+        }),
       }))
     }
     expect(b1.fingerprint).toBe(server.meta().logicalFingerprint)
