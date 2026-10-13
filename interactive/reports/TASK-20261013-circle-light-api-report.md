@@ -84,3 +84,11 @@ Final scoped tests: 73 pass/0 fail/0 skip. Final lint: exit 0.
 Final full regression: 200 pass/1 pre-existing Windows path failure.
 Final diff --check and forbidden UI/V4/gateway/dependency/task-pointer diff: clean.
 Production gate stays closed and no source changes followed the passing gates.
+
+## Implementation commit
+
+042daf08f3c51f380a4ed9cc23c8b8a8f0b1ef32
+
+This report-only follow-up records the exact implementation SHA. Final pushed
+tip and reference verification are included in the user handoff. Push target is
+exclusively refs/heads/feature/circle-core-blob.
