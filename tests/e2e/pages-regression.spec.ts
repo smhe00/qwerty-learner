@@ -129,7 +129,9 @@ test('published Pages: Typing uses real key input and advances independently', a
  * The small donation QR must already be in the app bundle; opening either
  * entry point must not initiate a separate image fetch or show a blank QR.
  */
-test('published Pages: donation QR is visible immediately after hard refresh without image request', async ({ page, request }) => {
+test('published Pages: donation QR is visible immediately after hard refresh without image request', async ({ page, request, browserName }) => {
+  // Chrome DevTools Protocol is Chromium-only; other browsers exercise the shared page flows above.
+  test.skip(browserName !== 'chromium', 'CDP network cache control is Chromium-only')
   test.setTimeout(120_000)
   await expect.poll(async () => {
     const response = await request.get(site + 'source-commit.txt', { failOnStatusCode: false })
