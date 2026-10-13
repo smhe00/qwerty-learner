@@ -50,11 +50,14 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
     await page.getByRole('button', {
       name: register ? '注册新账户' : '登录已有账户',
     }).click()
+    // Registration and S1 Vault switching deliberately replace the document.
+    // Wait for the navigation before evaluating; transient realm destruction
+    // is not a failed login or permission to skip the durable auth assertion.
+    await expect(page).not.toHaveURL(currentUrl, { timeout: 60000 })
     await expect.poll(async () => page.evaluate(() => {
       const json = localStorage.getItem('qwerty.cloudAuth.v1')
       return json ? JSON.parse(json)?.user?.username : null
-    }), { timeout: 60000 }).toBe(username)
-    await expect(page).not.toHaveURL(currentUrl, { timeout: 60000 })
+    }).catch(() => null), { timeout: 60000 }).toBe(username)
     expect(dialogs.length).toBeGreaterThanOrEqual(register ? 2 : 1)
   }
   try {
