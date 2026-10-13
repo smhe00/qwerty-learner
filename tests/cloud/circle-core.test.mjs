@@ -2,6 +2,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createCircleEventLog, digest, makeEvent } from '../../cloud-functions/_shared/circle/event-log.js'
+import { createCircleRevocationCoordinator, revocationCommand } from '../../cloud-functions/_shared/circle/revocation.js'
+import { createCirclePrivacyMaintenance } from '../../cloud-functions/_shared/circle/privacy.js'
 import { reduceCircle } from '../../cloud-functions/_shared/circle/reducer.js'
 import { createCircleService } from '../../cloud-functions/_shared/circle/service.js'
 import { createCircleBlobStorage } from '../../cloud-functions/_shared/circle/blob-storage.js'
@@ -18,6 +20,7 @@ class EventualBlob {
   hidden = new Set()
   invisible = new Set()
   lostResponse = false
+  lostResponseType = null
   failList = false
   writes = []
   onGet = null
@@ -26,8 +29,9 @@ class EventualBlob {
     assert.equal(options, undefined)
     this.writes.push(key)
     this.objects.set(key, structuredClone(value))
-    if (this.lostResponse) { this.lostResponse = false; throw Error('lost response') }
+    if (this.lostResponse && (!this.lostResponseType || value.type === this.lostResponseType)) { this.lostResponse = false; throw Error('lost response') }
   }
+  async delete(key) { this.objects.delete(key) }
   async list({ prefix, ...options }) {
     assert.deepEqual(options, {})
     if (this.failList) throw Error('outage')
@@ -47,30 +51,37 @@ function setup({ check, revoke, verifyAchievement } = {}) {
   const closed = new Set()
   const retired = new Set()
   const checks = []
+  const receipts = new Map()
+  const retirements = new Map()
   const trustedAccess = {
     async check(c) {
       checks.push(c)
       if (check && await check(c) !== true) return false
       // Test-only reliable authority, explicitly independent of Blob visibility.
-      if (closed.has(c.circleId) || retired.has(c.actorUserId) ||
+      if (closed.has(c.circleId) || retired.has(c.actorUserId) || retirements.get(c.actorUserId)?.status === 'retired' ||
           denied.has(c.circleId + '/' + c.actorUserId)) return false
-      if (c.subjects?.some((u) => retired.has(u) || denied.has(c.circleId + '/' + u))) return false
+      if (c.subjects?.some((u) => retired.has(u) || retirements.get(u)?.status === 'retired' || denied.has(c.circleId + '/' + u))) return false
       return true
     },
     async revoke(c) {
       if (revoke && await revoke(c) !== true) return false
       if (c.kind === 'circle') closed.add(c.circleId)
       else denied.add(c.circleId + '/' + c.targetUserId)
+      receipts.set(c.operationId, { status: 'committed', operationId: c.operationId, commandHash: c.commandHash })
       return true
     },
   }
+  trustedAccess.lookupRevocation = async ({ operationId }) => structuredClone(receipts.get(operationId) ?? null)
+  trustedAccess.authorizeMaintenance = async () => true
+  trustedAccess.lookupRetirement = async ({ userId }) => structuredClone(retirements.get(userId) ?? null)
+  trustedAccess.authorizeMaintenance = async ({ subjects }) => !subjects?.some((u) => retired.has(u) || retirements.get(u)?.status === 'retired')
   const service = createCircleService({ log, trustedAccess,
     authenticate: async (token) => { if (token === 'bad') throw Error('bad session'); return { userId: token } },
     inviteKey: 'test-only-server-key-not-a-production-secret',
     verifyAchievement: verifyAchievement || (async () => true) })
   const create = (maxMembers = 12) => service.createCircle(owner,
     { name: 'Circle', operationId: 'create_00001', maxMembers })
-  return { blob, log, service, create, denied, closed, retired, checks }
+  return { blob, log, service, create, denied, closed, retired, checks, trustedAccess, receipts, retirements }
 }
 const publicView = ({ pending, revoked, ...view }) => ({ ...view, pendingCount: pending.length, revokedCount: revoked.length })
 const facts = (blob) => [...blob.objects.values()]
@@ -259,13 +270,13 @@ test('authorization rechecks caller identity before returning private data', asy
   await assert.rejects(service.getCircle(owner, c.circleId), { code: 'circle_access_uncertain' })
 })
 
-test('missing/unavailable revocation fence never emits revoke event', async () => {
+test('unavailable revocation fence leaves only an inert intent, never a final revoke', async () => {
   const { blob, service, create } = setup({ revoke: async () => false })
   const c = await create()
   await service.joinCircle(alice, c.inviteCode)
   const before = blob.writes.length
   await assert.rejects(service.removeMember(owner, c.circleId, alice), { code: 'circle_revocation_unavailable' })
-  assert.equal(blob.writes.length, before)
+  assert.equal(blob.writes.length, before + 1)
 })
 
 test('lost revoke-log response leaves authoritative fence intact, not falsely acknowledged', async () => {
@@ -273,6 +284,7 @@ test('lost revoke-log response leaves authoritative fence intact, not falsely ac
   const c = await create()
   await service.joinCircle(alice, c.inviteCode)
   blob.lostResponse = true
+  blob.lostResponseType = 'MEMBER_REMOVED'
   await assert.rejects(service.removeMember(owner, c.circleId, alice), { code: 'circle_append_unknown' })
   blob.hidden.add(blob.writes.at(-1))
   await assert.rejects(service.getCircle(alice, c.circleId), { code: 'circle_access_uncertain' })
@@ -373,9 +385,13 @@ test('fence succeeds but append fails before commit: access remains denied, reco
   const c = await create()
   await service.joinCircle(alice, c.inviteCode)
   const before = blob.writes.length
-  blob.setJSON = async () => { throw Error('pre-commit outage') }
+  const set = blob.setJSON.bind(blob)
+  blob.setJSON = async (key, value) => {
+    if (value.type === 'MEMBER_REMOVED') throw Error('pre-commit outage')
+    return set(key, value)
+  }
   await assert.rejects(service.removeMember(owner, c.circleId, alice), { code: 'circle_append_unknown' })
-  assert.equal(blob.writes.length, before)
+  assert.equal(blob.writes.length, before + 1)
   await assert.rejects(service.getCircle(alice, c.circleId), { code: 'circle_access_uncertain' })
   await assert.rejects(service.getCircle(owner, c.circleId), { code: 'circle_access_uncertain' })
 })
@@ -388,4 +404,342 @@ test('verified progress/achievement publication never receives client identity f
   const view = await service.getCircle(owner, c.circleId)
   assert.equal(view.progress[0].authorUserId, owner)
   assert.equal(view.progress[0].selfReported, true)
+})
+
+
+test('recovery after successful fence and failed append restores usable view after restart', async () => {
+  const { blob, service, create, log, trustedAccess } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  const set = blob.setJSON.bind(blob)
+  blob.setJSON = async (key, value) => {
+    if (value.type === 'MEMBER_REMOVED') throw Error('crash after fence')
+    return set(key, value)
+  }
+  await assert.rejects(service.removeMember(owner, c.circleId, alice), { code: 'circle_append_unknown' })
+  await assert.rejects(service.getCircle(owner, c.circleId), { code: 'circle_access_uncertain' })
+  blob.setJSON = set
+  // Fresh coordinator has no in-memory command, cursor, lock or queue state.
+  const restarted = createCircleRevocationCoordinator({ log, trustedAccess })
+  const receipt = await restarted.recover(c.circleId)
+  assert.equal(receipt.appended, 1)
+  assert.equal(receipt.fullyRecovered, false)
+  assert.equal((await service.getCircle(owner, c.circleId)).revokedCount, 1)
+  const again = await restarted.recover(c.circleId)
+  assert.equal(again.appended, 0)
+  assert.equal(again.alreadyVisible, 1)
+})
+
+test('intent append unknown never calls fence; retry and duplicate intent fold once', async () => {
+  const { blob, service, create, receipts, log, trustedAccess } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  blob.lostResponse = true
+  blob.lostResponseType = 'REVOCATION_INTENDED'
+  await assert.rejects(service.removeMember(owner, c.circleId, alice), { code: 'circle_append_unknown' })
+  assert.equal(receipts.size, 0)
+  assert.equal((await service.getCircle(alice, c.circleId)).members.length, 2)
+  const recovery = createCircleRevocationCoordinator({ log, trustedAccess })
+  assert.equal((await recovery.recover(c.circleId)).deferred, 1)
+  await service.removeMember(owner, c.circleId, alice)
+  assert.equal((await recovery.recover(c.circleId)).observed, 1)
+  assert.equal((await service.getCircle(owner, c.circleId)).revokedCount, 1)
+})
+
+test('fence response lost is recovered only using reliable bound receipt', async () => {
+  const { service, create, log, trustedAccess } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  const revoke = trustedAccess.revoke.bind(trustedAccess)
+  trustedAccess.revoke = async (command) => { await revoke(command); throw Error('lost fence response') }
+  await assert.rejects(service.removeMember(owner, c.circleId, alice), { code: 'circle_revocation_unknown' })
+  const recovery = createCircleRevocationCoordinator({ log, trustedAccess })
+  assert.equal((await recovery.recover(c.circleId)).appended, 1)
+  assert.equal((await service.getCircle(owner, c.circleId)).revokedCount, 1)
+})
+
+test('100 recovery workers with hidden final events converge without leases or locks', async () => {
+  const { blob, service, create, log, trustedAccess } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  await service.removeMember(owner, c.circleId, alice)
+  for (const [key, e] of blob.objects) if (e.type === 'MEMBER_REMOVED') blob.hidden.add(key)
+  const worker = () => createCircleRevocationCoordinator({ log, trustedAccess }).recover(c.circleId)
+  await Promise.all(Array.from({ length: 100 }, worker))
+  blob.hidden.clear()
+  const view = await service.getCircle(owner, c.circleId)
+  assert.equal(view.revokedCount, 1)
+  assert.equal(view.members.length, 1)
+  assert.equal(new Set(blob.writes).size, blob.writes.length)
+  assert.deepEqual(reduceCircle(c.circleId, facts(blob)), reduceCircle(c.circleId, facts(blob).reverse()))
+})
+
+test('unfenced forged intent cannot revoke despite maintenance privileges', async () => {
+  const { service, create, log, trustedAccess } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  const command = revocationCommand({ circleId: c.circleId, actorUserId: owner,
+    type: 'MEMBER_REMOVED', targetUserId: alice })
+  await log.append({ circleId: c.circleId, actorUserId: owner, type: 'REVOCATION_INTENDED',
+    operationId: digest(['circle-revocation-v1', command]), payload: { command } })
+  const recovery = createCircleRevocationCoordinator({ log, trustedAccess })
+  assert.equal((await recovery.recover(c.circleId)).deferred, 1)
+  assert.equal((await service.getCircle(alice, c.circleId)).members.length, 2)
+})
+
+test('receipt bound to another command, actor or circle fails closed', async () => {
+  const { service, create, log, trustedAccess } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  await service.removeMember(owner, c.circleId, alice)
+  trustedAccess.lookupRevocation = async ({ operationId }) =>
+    ({ operationId, status: 'committed', commandHash: digest('another command') })
+  const recovery = createCircleRevocationCoordinator({ log, trustedAccess })
+  await assert.rejects(recovery.recover(c.circleId), { code: 'circle_revocation_receipt_invalid' })
+})
+
+test('maintenance denial happens before scan; permission loss during scan stops replay', async () => {
+  const { blob, service, create, log, trustedAccess } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  await service.removeMember(owner, c.circleId, alice)
+  blob.hidden.add(blob.writes.at(-1))
+  trustedAccess.authorizeMaintenance = async () => false
+  const recovery = createCircleRevocationCoordinator({ log, trustedAccess })
+  const before = blob.writes.length
+  await assert.rejects(recovery.recover(c.circleId), { code: 'circle_maintenance_denied' })
+  trustedAccess.authorizeMaintenance = async () => true
+  blob.onGet = async () => { trustedAccess.authorizeMaintenance = async () => false }
+  await assert.rejects(recovery.recover(c.circleId), { code: 'circle_maintenance_denied' })
+  assert.equal(blob.writes.length, before)
+})
+
+test('delayed intent can be recovered later; a partial scan never reports completion', async () => {
+  const { blob, service, create, log, trustedAccess } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  await service.removeMember(owner, c.circleId, alice)
+  for (const [key, e] of blob.objects) if (e.type === 'REVOCATION_INTENDED') blob.hidden.add(key)
+  const recovery = createCircleRevocationCoordinator({ log, trustedAccess })
+  const partial = await recovery.recover(c.circleId)
+  assert.equal(partial.observed, 0)
+  assert.equal(partial.snapshotOnly, true)
+  assert.equal(partial.fullyRecovered, false)
+  blob.hidden.clear()
+  assert.equal((await recovery.recover(c.circleId)).alreadyVisible, 1)
+})
+
+test('leave and closure recover with original actor even after actor access is fenced', async () => {
+  for (const mode of ['leave', 'close']) {
+    const { blob, service, create, log, trustedAccess } = setup()
+    const c = await create()
+    await service.joinCircle(alice, c.inviteCode)
+    const finalType = mode === 'leave' ? 'MEMBER_LEFT' : 'CIRCLE_CLOSED'
+    const set = blob.setJSON.bind(blob)
+    blob.setJSON = async (key, value) => {
+      if (value.type === finalType) throw Error('crash')
+      return set(key, value)
+    }
+    await assert.rejects(mode === 'leave'
+      ? service.leaveCircle(alice, c.circleId) : service.closeCircle(owner, c.circleId),
+    { code: 'circle_append_unknown' })
+    blob.setJSON = set
+    const recovery = createCircleRevocationCoordinator({ log, trustedAccess })
+    assert.equal((await recovery.recover(c.circleId)).appended, 1)
+    const view = reduceCircle(c.circleId, facts(blob))
+    if (mode === 'leave') assert.deepEqual(view.revoked, [alice])
+    else assert.equal(view.closed, true)
+  }
+})
+
+test('malformed or conflicting intent is blocked without executing arbitrary activity', async () => {
+  const { blob, create, log, trustedAccess } = setup()
+  const c = await create()
+  const command = revocationCommand({ circleId: c.circleId, actorUserId: owner,
+    type: 'CIRCLE_CLOSED' })
+  const operationId = digest(['circle-revocation-v1', command])
+  await log.append({ circleId: c.circleId, actorUserId: owner,
+    type: 'REVOCATION_INTENDED', operationId, payload: { command } })
+  await log.append({ circleId: c.circleId, actorUserId: owner,
+    type: 'REVOCATION_INTENDED', operationId, payload: { command: { ...command, type: 'CLAP_ADDED' } } })
+  const recovery = createCircleRevocationCoordinator({ log, trustedAccess })
+  const before = blob.writes.length
+  assert.equal((await recovery.recover(c.circleId)).blocked, 1)
+  assert.equal(blob.writes.length, before)
+})
+
+test('authority outage and unknown lookup cannot be treated as committed receipt', async () => {
+  const { service, create, log, trustedAccess } = setup()
+  const c = await create()
+  await service.closeCircle(owner, c.circleId)
+  const recovery = createCircleRevocationCoordinator({ log, trustedAccess })
+  trustedAccess.lookupRevocation = async () => undefined
+  await assert.rejects(recovery.recover(c.circleId), { code: 'circle_revocation_receipt_invalid' })
+  trustedAccess.lookupRevocation = async () => { throw Error('authority unavailable') }
+  await assert.rejects(recovery.recover(c.circleId), { code: 'circle_revocation_receipt_unavailable' })
+})
+
+test('recovering an acknowledged but invisible final append is safe on retry', async () => {
+  const { blob, service, create, log, trustedAccess } = setup()
+  const c = await create()
+  await service.closeCircle(owner, c.circleId)
+  const finalKey = blob.writes.at(-1)
+  blob.hidden.add(finalKey)
+  blob.lostResponse = true
+  blob.lostResponseType = 'CIRCLE_CLOSED'
+  const recovery = createCircleRevocationCoordinator({ log, trustedAccess })
+  await assert.rejects(recovery.recover(c.circleId), { code: 'circle_append_unknown' })
+  await recovery.recover(c.circleId)
+  blob.hidden.clear()
+  assert.equal(reduceCircle(c.circleId, facts(blob)).closed, true)
+})
+
+
+
+test('retirement scrub removes actor and target records, including nested revocation intents', async () => {
+  const { blob, service, create, log, trustedAccess, retired, retirements } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  await service.publishProgress(alice, c.circleId, day,
+    { completed: true, newWords: 1, eventId: 'progress_0001' })
+  await service.shareAchievement(alice, c.circleId, 'ACH_MASTERED_100')
+  await service.reactProgress(owner, c.circleId, alice, day)
+  await service.removeMember(owner, c.circleId, alice)
+  retired.add(alice)
+  retirements.set(alice, { userId: alice, status: 'retired', fenceId: 'fence_000001' })
+  const cleanup = createCirclePrivacyMaintenance({ log, trustedAccess })
+  const before = await cleanup.auditAccount(c.circleId, alice)
+  assert.equal(before.residualObjects, 6)
+  const report = await cleanup.scrubAccount(c.circleId, alice)
+  assert.equal(report.deleteAcknowledged, 6)
+  assert.equal(report.residualObjects, 0)
+  assert.equal(report.fullyErased, false)
+  assert.equal(report.followUpRequired, true)
+  assert.equal(JSON.stringify(facts(blob)).includes(alice), false)
+  assert.equal((await service.getCircle(owner, c.circleId)).members.length, 1)
+  await assert.rejects(service.getCircle(alice, c.circleId), { code: 'circle_access_uncertain' })
+})
+
+test('active-account cleanup denied before any scan or delete', async () => {
+  const { blob, create, log, trustedAccess } = setup()
+  const c = await create()
+  const cleanup = createCirclePrivacyMaintenance({ log, trustedAccess })
+  const before = blob.objects.size
+  blob.list = async () => { throw Error('must not scan') }
+  await assert.rejects(cleanup.scrubAccount(c.circleId, owner), { code: 'circle_retirement_uncertain' })
+  assert.equal(blob.objects.size, before)
+})
+
+test('hidden retired activity and delayed pre-fence write require repeated cleanup', async () => {
+  const { blob, service, create, log, trustedAccess, retired, retirements } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  retired.add(alice)
+  retirements.set(alice, { userId: alice, status: 'retired', fenceId: 'fence_000001' })
+  const joinKey = blob.writes.at(-1)
+  blob.hidden.add(joinKey)
+  const cleanup = createCirclePrivacyMaintenance({ log, trustedAccess })
+  const early = await cleanup.scrubAccount(c.circleId, alice)
+  assert.equal(early.residualObjects, 0)
+  assert.equal(early.fullyErased, false)
+  blob.hidden.clear()
+  await assert.rejects(service.getCircle(owner, c.circleId), { code: 'circle_access_uncertain' })
+  assert.equal((await cleanup.scrubAccount(c.circleId, alice)).deleteAcknowledged, 1)
+  // Simulation of a request accepted before retirement, landing after cleanup.
+  await log.append({ circleId: c.circleId, actorUserId: alice, type: 'PROGRESS_PUBLISHED',
+    operationId: 'late_progress_01', payload: { day, completed: true, newWords: 1 } })
+  assert.equal((await cleanup.auditAccount(c.circleId, alice)).residualObjects, 1)
+  assert.equal((await cleanup.scrubAccount(c.circleId, alice)).deleteAcknowledged, 1)
+})
+
+test('retired owner cleanup intentionally makes circle unavailable; no owner replacement inferred', async () => {
+  const { service, create, log, trustedAccess, retired, retirements } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  retired.add(owner)
+  retirements.set(owner, { userId: owner, status: 'retired', fenceId: 'fence_owner_01' })
+  const cleanup = createCirclePrivacyMaintenance({ log, trustedAccess })
+  await cleanup.scrubAccount(c.circleId, owner)
+  await assert.rejects(service.getCircle(alice, c.circleId), { code: 'circle_view_uncertain' })
+})
+
+test('maintenance permission loss or changed retirement fence halts destructive work', async () => {
+  const { blob, service, create, log, trustedAccess, retirements } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  retirements.set(alice, { userId: alice, status: 'retired', fenceId: 'fence_000001' })
+  const cleanup = createCirclePrivacyMaintenance({ log, trustedAccess })
+  const before = blob.objects.size
+  trustedAccess.authorizeMaintenance = async () => false
+  await assert.rejects(cleanup.scrubAccount(c.circleId, alice), { code: 'circle_maintenance_denied' })
+  trustedAccess.authorizeMaintenance = async () => true
+  blob.onGet = async () => retirements.set(alice,
+    { userId: alice, status: 'retired', fenceId: 'changed_fence_01' })
+  await assert.rejects(cleanup.scrubAccount(c.circleId, alice), { code: 'circle_retirement_uncertain' })
+  assert.equal(blob.objects.size, before)
+})
+
+test('delete failure is not acknowledged; retry resumes from retained immutable events', async () => {
+  const { blob, service, create, log, trustedAccess, retirements } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  retirements.set(alice, { userId: alice, status: 'retired', fenceId: 'fence_000001' })
+  const cleanup = createCirclePrivacyMaintenance({ log, trustedAccess })
+  const remove = blob.delete.bind(blob)
+  blob.delete = async () => { throw Error('delete outage') }
+  await assert.rejects(cleanup.scrubAccount(c.circleId, alice), /delete outage/)
+  blob.delete = remove
+  assert.equal((await cleanup.scrubAccount(c.circleId, alice)).deleteAcknowledged, 1)
+})
+
+test('delete acknowledgement with stale visibility retains honest residual audit', async () => {
+  const { blob, service, create, log, trustedAccess, retirements } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  retirements.set(alice, { userId: alice, status: 'retired', fenceId: 'fence_000001' })
+  const cleanup = createCirclePrivacyMaintenance({ log, trustedAccess })
+  blob.delete = async () => {} // provider ack, old event still visible
+  const report = await cleanup.scrubAccount(c.circleId, alice)
+  assert.equal(report.deleteAcknowledged, 1)
+  assert.equal(report.residualObjects, 1)
+  assert.equal(report.fullyErased, false)
+})
+
+test('cleanup only affects chosen circle; raw deletion cannot escape social/v2 event scope', async () => {
+  const { blob, service, create, log, trustedAccess, retirements } = setup()
+  const c = await create()
+  const other = await service.createCircle(owner, { name: 'Other', operationId: 'create_other_01' })
+  await service.joinCircle(alice, c.inviteCode)
+  await service.joinCircle(alice, other.inviteCode)
+  retirements.set(alice, { userId: alice, status: 'retired', fenceId: 'fence_000001' })
+  const cleanup = createCirclePrivacyMaintenance({ log, trustedAccess })
+  await cleanup.scrubAccount(c.circleId, alice)
+  assert.equal(facts(blob).filter((e) => e.actorUserId === alice && e.circleId === other.circleId).length, 1)
+  await assert.rejects(log.eraseEvent(c.circleId, '../accounts'), /Invalid event deletion/)
+  await assert.rejects(log.eraseEvent('../accounts', 'a'.repeat(32)), /Invalid circle/)
+})
+
+test('retirement lookup must bind account and fail closed when authority is unavailable', async () => {
+  const { create, log, trustedAccess } = setup()
+  const c = await create()
+  const cleanup = createCirclePrivacyMaintenance({ log, trustedAccess })
+  trustedAccess.lookupRetirement = async () =>
+    ({ status: 'retired', userId: alice, fenceId: 'fence_000001' })
+  await assert.rejects(cleanup.auditAccount(c.circleId, owner), { code: 'circle_retirement_uncertain' })
+  trustedAccess.lookupRetirement = async () => { throw Error('authority outage') }
+  await assert.rejects(cleanup.auditAccount(c.circleId, owner), /authority outage/)
+})
+
+
+test('retirement fence blocks recovery from recreating a deleted identity reference', async () => {
+  const { blob, service, create, log, trustedAccess, retirements } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  await service.removeMember(owner, c.circleId, alice)
+  blob.hidden.add(blob.writes.at(-1))
+  retirements.set(alice, { userId: alice, status: 'retired', fenceId: 'fence_000001' })
+  const before = blob.writes.length
+  const recovery = createCircleRevocationCoordinator({ log, trustedAccess })
+  await assert.rejects(recovery.recover(c.circleId), { code: 'circle_maintenance_denied' })
+  assert.equal(blob.writes.length, before)
 })

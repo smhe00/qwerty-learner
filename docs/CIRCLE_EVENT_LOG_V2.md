@@ -1,3 +1,5 @@
+> **Continuation checkpoint:** [Revocation recovery and retirement cleanup](./CIRCLE_RECOVERY_PRIVACY_V2.md) are implemented as server-only helpers, with 47 passing Circle tests. Production authority, orchestration and live qualification remain blocked.
+
 # Circle event log v2 — executable checkpoint, 2026-10-13
 
 Status: **PARTIAL / isolated kernel implemented / HTTP CLOSED / NOT RELEASE READY**.
@@ -75,7 +77,7 @@ HTTP refuses enabled=true; production gateway remains unchanged.
 
 Run node --test tests/cloud/circle-core.test.mjs and repository ESLint over
 cloud-functions/_shared/circle and active/historical Circle tests.
-25 active tests cover overwriting non-atomic storage, 100 logical retries,
+47 active tests cover overwriting non-atomic storage, 100 logical retries,
 30 joins, delayed displacement, duplicates/permutations, ambiguous responses,
 cache loss/rebuild, close/remove/leave, stale revoke/retirement checks,
 fence/log failures, identity suppression, malformed facts, key/pagination/
@@ -86,11 +88,12 @@ durability, latency or multi-region certification.
 
 1. Implement/qualify independent trusted identity/revocation authority and
    account retirement lifecycle without speculative V4 changes.
-2. Durable revocation outbox/recovery: fence success plus missing event may leave
-   Circle unavailable. This checkpoint proves safe denial, not recovery. Revoked
-   callers cannot replay normal private commands; trusted maintenance must retry.
-3. Physical erasure, residual auditing and late-writer cleanup of v2 events are
-   unfinished. Append-only history must not be advertised as erased.
+2. Immutable revocation intents and trusted-receipt replay are implemented.
+   Production authority/provider, reliable scheduling, inventory and retry/
+   dead-letter orchestration remain unqualified.
+3. Retired-account event scrub/residual audit helpers are implemented, requiring
+   an independent irreversible retirement fence. Full erasure certification,
+   inventory, late-writer settling and retention policies remain unfinished.
 4. Review minors/visibility, server-private raw storage and authorship, invite
    brute-force/rate limits, replay limits and conflict quarantine denial-of-service.
 5. Qualify isolated nonproduction listing/durability/latency without CAS. No live
@@ -99,5 +102,5 @@ durability, latency or multi-region certification.
    Persistent projections, replay efficiency, compaction and HTTP remain future
    work. Historical v1 data is not migrated.
 
-Next developer: trusted revocation outbox/recovery and privacy cleanup first;
+Next developer: qualified trusted authority/provider and inventory/orchestration first;
 keep HTTP CLOSED, preserve UI/V4 and protected branches, then qualify live store.

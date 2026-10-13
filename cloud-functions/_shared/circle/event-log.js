@@ -8,7 +8,7 @@ export const canonical = (value) => JSON.stringify(value, (_key, item) =>
 export const digest = (value) => crypto.createHash('sha256').update(canonical(value)).digest('hex')
 const safe = (value) => typeof value === 'string' && /^[A-Za-z0-9_-]{8,128}$/.test(value)
 const TYPES = new Set(['CIRCLE_CREATED', 'JOIN_REQUESTED', 'MEMBER_LEFT', 'MEMBER_REMOVED',
-  'CIRCLE_CLOSED', 'PROGRESS_PUBLISHED', 'ACHIEVEMENT_SHARED', 'CLAP_ADDED'])
+  'CIRCLE_CLOSED', 'REVOCATION_INTENDED', 'PROGRESS_PUBLISHED', 'ACHIEVEMENT_SHARED', 'CLAP_ADDED'])
 export function logicalKey(event) {
   return digest([event.circleId, event.actorUserId, event.type, event.operationId])
 }
@@ -52,6 +52,13 @@ export function createCircleEventLog(blob, { maxEvents = 10000 } = {}) {
         throw error
       }
       return { eventId: event.eventId, dedupKey: event.dedupKey, status: 'pending' }
+    },
+    // Destructive method is server-only and used exclusively behind the
+    // independent retirement/maintenance guard. It never claims full erasure.
+    async eraseEvent(circleId, eventId) {
+      if (typeof eventId !== 'string' || !/^[a-f0-9]{32}$/.test(eventId) ||
+          typeof blob.delete !== 'function') throw new TypeError('Invalid event deletion')
+      await blob.delete(root(circleId) + eventId + '.json')
     },
     async scan(circleId) {
       const prefix = root(circleId)

@@ -3,6 +3,7 @@ import crypto from 'node:crypto'
 import { AppError } from '../core.js'
 import { digest } from './event-log.js'
 import { reduceCircle } from './reducer.js'
+import { createCircleRevocationCoordinator, revocationCommand } from './revocation.js'
 
 const fail = (status, code) => { throw new AppError(status, code, code) }
 const valid = (v) => typeof v === 'string' && /^[A-Za-z0-9_-]{8,128}$/.test(v)
@@ -23,6 +24,7 @@ export function createCircleService({ log, authenticate, trustedAccess, verifyAc
       typeof trustedAccess?.check !== 'function' || typeof inviteKey !== 'string' || inviteKey.length < 32) {
     throw new TypeError('Circle needs event log, independent trusted access and server invite key')
   }
+  const revocations = createCircleRevocationCoordinator({ log, trustedAccess })
   async function actor(token) {
     const auth = await authenticate(token)
     return uid(auth?.user?.userId ?? auth?.userId)
@@ -58,13 +60,6 @@ export function createCircleService({ log, authenticate, trustedAccess, verifyAc
     // Denied response does not roll back an event; external fence still applies.
     await guard(token, ctx.actorUserId, { ...ctx.proof, phase: 'after_append' })
     return receipt
-  }
-  async function fence(ctx, kind, targetUserId) {
-    if (typeof trustedAccess.revoke !== 'function' ||
-        await trustedAccess.revoke({ circleId: ctx.proof.circleId,
-          actorUserId: ctx.actorUserId, targetUserId, kind }) !== true) {
-      fail(503, 'circle_revocation_unavailable')
-    }
   }
   return Object.freeze({
     async createCircle(token, { name, operationId, maxMembers = 12 } = {}) {
@@ -107,24 +102,20 @@ export function createCircleService({ log, authenticate, trustedAccess, verifyAc
     async leaveCircle(token, circleId) {
       const ctx = await context(token, circleId, 'leave')
       if (ctx.actorUserId === ctx.view.meta.ownerUserId) fail(403, 'owner_cannot_leave')
-      await fence(ctx, 'member', ctx.actorUserId)
-      // Fence intentionally denies the actor now; no post-fence private read.
-      return log.append({ circleId, actorUserId: ctx.actorUserId,
-        type: 'MEMBER_LEFT', operationId: 'leave_circle', payload: {} })
+      return revocations.execute({ token, proof: ctx.proof,
+        command: revocationCommand({ circleId, actorUserId: ctx.actorUserId, type: 'MEMBER_LEFT' }) })
     },
     async removeMember(token, circleId, targetUserId) {
       uid(targetUserId)
       const ctx = await context(token, circleId, 'remove', true)
       if (targetUserId === ctx.actorUserId) fail(403, 'owner_cannot_leave')
-      await fence(ctx, 'member', targetUserId)
-      return log.append({ circleId, actorUserId: ctx.actorUserId, type: 'MEMBER_REMOVED',
-        operationId: digest(['remove', targetUserId]), payload: { targetUserId } })
+      return revocations.execute({ token, proof: ctx.proof, command: revocationCommand({
+        circleId, actorUserId: ctx.actorUserId, type: 'MEMBER_REMOVED', targetUserId }) })
     },
     async closeCircle(token, circleId) {
       const ctx = await context(token, circleId, 'close', true)
-      await fence(ctx, 'circle')
-      return log.append({ circleId, actorUserId: ctx.actorUserId,
-        type: 'CIRCLE_CLOSED', operationId: 'close_circle', payload: {} })
+      return revocations.execute({ token, proof: ctx.proof,
+        command: revocationCommand({ circleId, actorUserId: ctx.actorUserId, type: 'CIRCLE_CLOSED' }) })
     },
     async publishProgress(token, circleId, day, input) {
       const ctx = await context(token, circleId, 'publish_progress')
