@@ -96,9 +96,12 @@ function rekeyEvent(
 }
 
 function maxObservation(left?: number, right?: number): number | undefined {
-  const valid = [left, right].filter((value): value is number =>
-    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0)
-  return valid.length ? Math.max(...valid) : undefined
+  const values = [left, right].filter((value): value is number =>
+    value !== undefined)
+  if (values.some(value => !Number.isSafeInteger(value) || value < 0)) {
+    throw new Error('invalid-achievement-observation')
+  }
+  return values.length ? Math.max(...values) : undefined
 }
 
 function achievementCore(state: AchievementStateRecord): string {
