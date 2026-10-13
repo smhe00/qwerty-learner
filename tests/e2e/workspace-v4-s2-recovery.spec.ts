@@ -84,11 +84,11 @@ test('P3b visibly identifies missing backup downloads before recovery can start'
   await expect(page.getByText('点击②从本页面下载云端原始备份')).toBeVisible()
   await expect(apply).toBeDisabled()
   const cloudDownload = page.waitForEvent('download')
-  await page.getByRole('button', { name: /② 下载云端原始 Backup V3/ }).click()
+  await page.getByRole('button', { name: /② 下载云端原始 Backup V4/ }).click()
   await cloudDownload
   await page.getByLabel('已确认本地备份保存成功').check()
   await page.getByLabel('已确认云端原始备份保存成功').check()
-  await expect(page.getByText('所有迁移前置条件已满足。⑤ 已解锁；点击后仍会再次显示最终覆盖确认。')).toBeVisible()
+  await expect(page.getByText('所有 V4 恢复前置条件已满足。⑤ 已解锁；点击后仍会再次显示最终覆盖确认。')).toBeVisible()
   await expect(apply).toBeEnabled()
   expect(writes).toBe(0)
 })
@@ -205,7 +205,7 @@ test('P3b HTTP 500 with unchanged remote rechecks meta read-only without retry',
   await expect(page.getByRole('button', {
     name: '⑤ 我已备份两端数据，继续执行选定方向',
   })).toBeDisabled()
-  await expect(page.getByText(/格式 qwerty-backup-v3，Revision 3/)).toBeVisible()
+  await expect(page.getByText(/格式 qwerty-backup-v4，Revision 3/)).toBeVisible()
 })
 
 test('P3b ambiguous HTTP 500 after durable commit identifies exact V4 and never retries', async ({ page }) => {
