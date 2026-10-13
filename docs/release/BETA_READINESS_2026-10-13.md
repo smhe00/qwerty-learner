@@ -75,3 +75,12 @@ GitHub Issues creation is disabled in this repository (HTTP 410), so this file i
 ### Unchanged blockers
 - EdgeOne Maker deployment-pointer verification uses an unverified obsolete project ID; fix the project/token linkage without guessing.
 - Keep `master` unchanged until all relevant V4-only staging gates pass. Circle remains isolated; no V3 migrations or V3 backup UI are in Beta scope.
+
+### Additional V4-only browser release blockers (confirmed on 2026-10-13)
+- https://github.com/smhe00/qwerty-learner/actions/runs/38337054205: P4b browser recovery gate, 29 passed / 2 failed. The failing V4 cases are (1) portable V4 account import changed `dailySessions.cet4.completedBlockIds` from the staged test snapshot (`['test:block']`) to `[]`, and (2) a different browser's post-Pull snapshot fingerprint differs from the uploaded V4 logical fingerprint.
+- https://github.com/smhe00/qwerty-learner/actions/runs/38337054129: S1 workspace browser gate, 77 passed / 1 failed (same V4 multi-device fingerprint regression).
+- Sanitized evidence in the follow-up test: `V4_RESTORED_FINGERPRINT_MISMATCH` reports differences under `database.data` and `learnRuntime.dailySessions.cet4`, with `settings` and `navigation` unchanged. The database difference may include export ordering; its semantic significance has **not** been established. Do not waive the fingerprint assertion or drop DailySession evidence.
+- These failures are **V4-only**; they are neither V3 upgrade requirements nor grounds to loosen the recovery integrity gate.
+
+### Production rollout hold
+- Dev-only chunked Blob implementation is a candidate and its Cloud Sync backend/unit gate passed. The published `master` site has not adopted it or confirmed that a 1+ MB native V4 write/read works. Releasing this code requires a valid EdgeOne project/deployment identifier and clean V4 core/recovery gates.
