@@ -73,9 +73,12 @@ export async function isFreshEmptyLegacyWorkspace(): Promise<boolean> {
     const reviewRaw = localStorage.getItem('reviewModeInfo')
     if (reviewRaw !== null) {
       const parsed = JSON.parse(reviewRaw) as unknown
-      if (!parsed || typeof parsed !== 'object' ||
-          !('reviewRecord' in parsed) ||
-          (parsed as { reviewRecord: unknown }).reviewRecord !== null) {
+      // Jotai JSON.stringify omits reviewRecord when it is undefined.
+      // Both an absent field and an explicit null mean no active checkpoint.
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) ||
+          typeof (parsed as { isReviewMode?: unknown }).isReviewMode !== 'boolean' ||
+          ('reviewRecord' in parsed &&
+            (parsed as { reviewRecord?: unknown }).reviewRecord != null)) {
         return false
       }
     }
