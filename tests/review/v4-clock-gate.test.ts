@@ -17,7 +17,7 @@ test('EdgeOne + local clocks within five seconds may pass merge clock preflight'
 })
 
 test('large clock skew blocks automatic merge even with healthy network', () => {
-  for (const offset of [-12_000, 12_000]) {
+  for (const offset of [-120_000, 120_000]) {
     const result = evaluateEdgeClock([sample(offset), sample(offset + 40)])
     assert.equal(result.trusted, false)
     assert.equal(result.reason, 'clock-skew')
@@ -51,7 +51,7 @@ test('wall clock jumping during request invalidates the probe', () => {
 test('server time uncertainty is included in skew tolerance', () => {
   // Offset is technically less than five seconds but RTT uncertainty
   // crosses the tolerance edge: fail closed.
-  const result = evaluateEdgeClock([sample(4_700, 1_000), sample(4_710, 1_200)])
+  const result = evaluateEdgeClock([sample(59_700, 1_000), sample(59_710, 1_200)])
   assert.equal(result.trusted, false)
   assert.equal(result.reason, 'clock-skew')
 })

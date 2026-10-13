@@ -99,6 +99,10 @@ export default function LearnPage() {
     // a calibrated clock already. Auth-free browsers perform no network IO.
     // Promise is shared with explicit startLearn() to avoid duplicate probes.
     void ensureSignedInLearnClock()
+    const refresh = window.setInterval(() => {
+      void ensureSignedInLearnClock()
+    }, 30 * 60 * 1000)
+    return () => window.clearInterval(refresh)
   }, [])
 
 

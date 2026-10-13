@@ -89,7 +89,7 @@ export async function probeEdgeClock(
       const response = await fetcher(endpoint, {
         method: 'GET', cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' },
-        signal: AbortSignal.timeout(3_000),
+        signal: AbortSignal.timeout(1_200),
       })
       const json = await response.json() as { serverTimeMs?: unknown; ok?: unknown }
       const roundTripMs = performance.now() - begin

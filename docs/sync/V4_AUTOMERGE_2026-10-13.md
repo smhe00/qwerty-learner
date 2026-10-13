@@ -174,3 +174,25 @@ An account-wide password reset should revoke every session.
 Two signed-in browser tabs that share the same token are not a substitute
 for independently authenticated devices. No multi-device auth change is
 implemented in the clock-gate commit.
+
+## Learn startup clock calibration (implemented 2026-10-13)
+
+- While authenticated, entering Learn prewarms EdgeOne /api/health time.
+  Starting a NEW Learn session awaits the same deduplicated probe, before
+  creating DailySession or preparing FSRS review candidates.
+- Three fast samples, each with 1.2s per-request abort; failures do not block
+  offline study or fabricate time trust. Anonymous/expired accounts skip probes.
+  Refresh every 30 minutes while Learn is open.
+- **60-second tolerance**: stable |local/EdgeOne offset| <= 60s is ignored.
+  Larger stable offsets shift application learning timestamps via a
+  monotonic-anchored clock. OS clock and historical records remain unchanged.
+- WordRecord, Learn DailySession preparation, review outcome, and scheduler
+  default timestamps share the corrected UTC provider.
+- The calibrated epoch anchor is scoped to immutable account ID **and token**.
+  Logging out/switching accounts falls back to local time. A temporary offline
+  period retains the previously trusted monotonic clock anchor, avoiding an
+  abrupt backwards jump after the cache refresh deadline.
+- A fresh accurate clock cannot prove old event timestamps were correct; it
+  does not authorize any three-way merge or cloud overwrite.
+- `master` is not yet deployed with `serverTimeMs`. Legacy EdgeOne
+  responses lacking it safely fall back to local time.

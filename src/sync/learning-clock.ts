@@ -33,6 +33,7 @@ let pending: { accountId: string; token: string; result: Promise<LearnClockCalib
 let unavailableUntil: { accountId: string; token: string; untilMonoMs: number } | null = null
 
 function signedInIdentity(): { accountId: string; token: string } | null {
+  if (typeof localStorage === 'undefined') return null
   // A token can be held by a local isolated account even if it is expired.
   // Do not ever use a revoked/expired account calibration for anonymous work.
   const auth = loadAuth({ preserveExpired: true })
@@ -48,12 +49,12 @@ export function learningClockEpochMs(): number {
   const identity = signedInIdentity()
   const current = calibration
   if (!current || !sameIdentity(identity, current) ||
-      performance.now() - current.calibratedAtMonoMs > MAX_CALIBRATION_AGE_MS ||
       current.appliedOffsetMs === 0) {
     return Date.now()
   }
-  // Monotonic elapsed time avoids a later OS time change corrupting study
-  // events between calibrations. No historical data is ever rewritten.
+  // Keep the last trusted anchor until a successful refresh: falling back
+  // when cache TTL expires would abruptly move persisted learning times.
+  // Monotonic elapsed time tolerates OS changes mid-session.
   return current.serverEpochAtMonoMs +
     (performance.now() - current.calibratedAtMonoMs)
 }
