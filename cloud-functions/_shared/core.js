@@ -509,7 +509,9 @@ export function createBackendService({
 
   async function syncMeta(token) {
     const { identity } = await authenticate(token)
-    const current = await storage.getLatestRevision(identity.userId)
+    const current = storage.getLatestRevisionMeta
+      ? await storage.getLatestRevisionMeta(identity.userId)
+      : await storage.getLatestRevision(identity.userId)
     return metaFromSnapshot(current ? current.snapshot : null)
   }
 
@@ -634,7 +636,9 @@ export function createBackendService({
         error instanceof Error ? error.message : 'Invalid Backup V4 workspace')
     }
 
-    const current = await storage.getLatestRevision(identity.userId)
+    const current = storage.getLatestRevisionMeta
+      ? await storage.getLatestRevisionMeta(identity.userId)
+      : await storage.getLatestRevision(identity.userId)
     const currentRevision = current ? current.revision : 0
     if (currentRevision !== baseRevision) {
       throw new AppError(409, 'sync_conflict', 'Remote data changed', {
@@ -683,7 +687,9 @@ export function createBackendService({
     // Atomic revision CREATE is the authoritative concurrency gate;
     // an earlier GET/meta cannot authorize overwriting a newer revision.
     if (!(await storage.createRevision(identity.userId, revision, snapshot))) {
-      const latest = await storage.getLatestRevision(identity.userId)
+      const latest = storage.getLatestRevisionMeta
+        ? await storage.getLatestRevisionMeta(identity.userId)
+        : await storage.getLatestRevision(identity.userId)
       throw new AppError(409, 'sync_conflict', 'Remote data changed during V4 CAS', {
         current: metaFromSnapshot(latest?.snapshot || null),
       })
