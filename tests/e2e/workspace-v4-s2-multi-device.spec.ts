@@ -194,35 +194,6 @@ test('P4b two independent profiles roundtrip, then detect divergent edits withou
     expect(b1.preservedFsrs).toBe(true)
     // P4b regression: application hydration MUST NOT materialize defaults
     // into localStorage and silently dirty a freshly restored workspace.
-    if (b1.fingerprint !== server.meta().logicalFingerprint) {
-      // Synthetic fixture diagnostics: report field names only, never payloads.
-      const expected = server.snapshot()?.workspaceData
-      const actual = b1.workspaceData
-      const diffKeys = (a: Record<string, unknown> = {}, b: Record<string, unknown> = {}) =>
-        [...new Set([...Object.keys(a), ...Object.keys(b)])]
-          .filter(key => JSON.stringify(a[key]) !== JSON.stringify(b[key])).sort()
-      console.log('V4_RESTORED_FINGERPRINT_MISMATCH', JSON.stringify({
-        workspaceFields: diffKeys(expected, actual),
-        settingsKeys: diffKeys(expected?.settings?.values, actual?.settings?.values),
-        dailySessionDicts: diffKeys(expected?.learnRuntime?.dailySessions,
-          actual?.learnRuntime?.dailySessions),
-        navigationFields: diffKeys(expected?.navigation, actual?.navigation),
-        databaseFields: diffKeys(expected?.database, actual?.database),
-        dailySessionFields: diffKeys(expected?.learnRuntime?.dailySessions?.cet4,
-          actual?.learnRuntime?.dailySessions?.cet4),
-        databaseTableRows: ['wordRecords', 'chapterRecords', 'reviewRecords',
-          'reviewWordStates', 'achievementEvents', 'achievementStates'].map(name => {
-          const a = expected?.database?.data?.data?.find((t: any) => t.tableName === name)
-          const b = actual?.database?.data?.data?.find((t: any) => t.tableName === name)
-          const rowHash = (row: any) => createHash('sha256').update(JSON.stringify(row)).digest('hex').slice(0, 12)
-          return { name, expectedCount: a?.rows?.length ?? null, actualCount: b?.rows?.length ?? null,
-            expectedHash: rowHash(a?.rows ?? null), actualHash: rowHash(b?.rows ?? null),
-            rowFields: diffKeys(a?.rows?.[0], b?.rows?.[0]),
-            layoutFields: diffKeys(a, b),
-          }
-        }),
-      }))
-    }
     expect(b1.fingerprint).toBe(server.meta().logicalFingerprint)
 
     await addWord(A.page, 'A')

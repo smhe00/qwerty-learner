@@ -30,27 +30,22 @@ test('homepage defaults to Learn; explicit Typing and Learn links survive reload
   await expect(page).toHaveURL(/\/typing$/)
 })
 
-test('brand is separated from the right-aligned toolbar and active mode remains clear in both themes', async ({ page }) => {
+test('brand stays adjacent to mode switch and active button is visually unmistakable in both themes', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
   await expect(page).toHaveURL(/\/learn$/)
   const brand = page.locator('header button[aria-label="打开赞赏页面"]')
   const modes = page.locator('header [data-current-mode]')
-  // The / -> /learn cold-start transition can temporarily remount the Header.
-  // Accepted focus-UI design: brand stays left, nav is auto-width and right-aligned.
+  // The / -> /learn cold-start transition can temporarily remount the
+  // Header while S1 hydrates. Sample real layout only after it is stable.
   await expect(brand).toBeVisible({ timeout: 20_000 })
   await expect(modes).toHaveAttribute('data-current-mode', 'learn', { timeout: 20_000 })
-  const navigation = page.locator('header nav.focus-header-nav')
-  await expect(navigation).toBeVisible()
   await expect.poll(async () => {
     const logo = await brand.boundingBox()
     const switcher = await modes.boundingBox()
-    const toolbar = await navigation.boundingBox()
-    const header = await page.locator('header').boundingBox()
-    return !!logo && !!switcher && !!toolbar && !!header &&
-      toolbar.x - (logo.x + logo.width) >= 48 &&
-      switcher.x >= toolbar.x &&
-      toolbar.x + toolbar.width >= header.x + header.width * 0.65
+    return !!logo && !!switcher &&
+      switcher.x - (logo.x + logo.width) < 50 &&
+      switcher.x >= logo.x + logo.width - 2
   }, { timeout: 20_000 }).toBe(true)
 
   const learn = page.getByRole('button', { name: 'Learn', exact: true })

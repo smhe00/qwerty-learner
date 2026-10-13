@@ -1,0 +1,85 @@
+name: Maker One-Account V4 Migration Preview Gate
+
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - '.env.production'
+      - 'src/index.tsx'
+      - 'src/sync/CloudSyncSetting.tsx'
+      - 'src/sync/workspace-*.ts'
+      - 'src/sync/v2-*.ts'
+      - 'tests/e2e/maker-v4-migration-preview.*'
+      - '.github/workflows/maker-v4-migration-preview.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: maker-migration-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  prod-preview:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Build real production bundle with migration flags
+        run: yarn build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify S1 backup consent and S2 recovery in production preview
+        id: migration
+        run: >
+          npx playwright test
+          --config=tests/e2e/maker-v4-migration-preview.config.ts
+      - name: Upload failed traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maker-v4-migration-preview-traces
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Persist Maker migration preview status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RESULT: ${{ steps.migration.outcome }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ "$RESULT" = success ]; then
+            STATE=success
+            DESCRIPTION='Production V4 migration consent and S2 recovery UI PASS'
+          else
+            STATE=failure
+            DESCRIPTION='Production V4 migration preview not passing'
+          fi
+          export STATE DESCRIPTION
+          python3 - <<'PY' > /tmp/maker-migration-status.json
+          import os, json
+          print(json.dumps({
+            'context': 'maker/v4-migration-preview',
+            'state': os.environ['STATE'],
+            'description': os.environ['DESCRIPTION'],
+            'target_url': 'https://github.com/' + os.environ['REPOSITORY'] +
+                          '/actions/runs/' + os.environ['RUN_ID']
+          }))
+          PY
+          curl --fail --silent --show-error --retry 2 -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/maker-migration-status.json \
+            "https://api.github.com/repos/${REPOSITORY}/statuses/${SHA}" >/dev/null

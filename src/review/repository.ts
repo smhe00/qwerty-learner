@@ -18,7 +18,6 @@ import {
 import { CURRENT_REVIEW_STATE_VERSION, createInitialReviewWordState } from './types'
 import type { IReviewWordState, ReviewOutcome } from './types'
 import { db } from '@/utils/db/core'
-import { getUTCUnixTimestamp } from '@/utils/time'
 
 export async function getReviewWordState(dict: string, word: string): Promise<IReviewWordState | undefined> {
   return db.reviewWordStates.where('[dict+word]').equals([dict, word]).first()
@@ -224,7 +223,7 @@ export async function applyReviewOutcome(
 
 export async function bootstrapReviewWordStatesForDictionary(
   dict: string,
-  legacyDueAt = getUTCUnixTimestamp(),
+  legacyDueAt = Math.floor(Date.now() / 1000),
 ): Promise<number> {
   return db.transaction('rw', db.wordRecords, db.reviewWordStates, async () => {
     const [records, existingStates] = await Promise.all([
@@ -307,7 +306,7 @@ export async function bootstrapReviewWordStatesForDictionary(
 
 export async function rebuildReviewWordStatesForDictionary(
   dict: string,
-  legacyDueAt = getUTCUnixTimestamp(),
+  legacyDueAt = Math.floor(Date.now() / 1000),
 ): Promise<number> {
   return db.transaction('rw', db.wordRecords, db.reviewWordStates, async () => {
     const [records, previousStates] = await Promise.all([
@@ -361,7 +360,7 @@ export async function rebuildReviewWordStatesForDictionary(
 export async function excludeLearningWord(
   dict: string,
   word: string,
-  now = getUTCUnixTimestamp(),
+  now = Math.floor(Date.now() / 1000),
 ): Promise<IReviewWordState> {
   return db.transaction(
     'rw',
@@ -402,7 +401,7 @@ export async function excludeLearningWord(
 export async function restoreLearningWord(
   dict: string,
   word: string,
-  now = getUTCUnixTimestamp(),
+  now = Math.floor(Date.now() / 1000),
 ): Promise<IReviewWordState | undefined> {
   return db.transaction('rw', db.reviewWordStates, async () => {
     const existing = await getReviewWordState(dict, word)
@@ -426,7 +425,7 @@ export async function restoreLearningWord(
 export async function completeLearningAcquisition(
   dict: string,
   word: string,
-  now = getUTCUnixTimestamp(),
+  now = Math.floor(Date.now() / 1000),
 ): Promise<IReviewWordState> {
   return db.transaction('rw', db.reviewWordStates, async () => {
     const existing = await getReviewWordState(dict, word)

@@ -111,8 +111,6 @@ function makeService(env, storage) {
     storage,
     sessionTtlSeconds: numberEnv(env.SESSION_TTL_SECONDS, 7 * 24 * 60 * 60),
     maxSyncBytes: numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024),
-    multiSessionEnabled: env.MULTI_DEVICE_AUTH_ENABLED === 'true',
-    eventPilotEnabled: env.MULTI_DEVICE_EVENT_PILOT_ENABLED === 'true',
   })
 }
 
@@ -197,12 +195,7 @@ export async function onRequest(context) {
           ok: true,
           service: 'qwerty-sync-gateway',
           apiVersion: 1,
-          // Millisecond-resolution, uncached origin execution time. This is
-          // an estimate for clock-skew preflight, not a signed event timestamp.
-          serverTimeMs: Date.now(),
-          authMode: env.MULTI_DEVICE_AUTH_ENABLED === 'true'
-            ? 'independent-device-sessions-pilot'
-            : 'single-active-session',
+          authMode: 'single-active-session',
           runtime: process.version,
           capabilities: [
             'snapshot-retention-v1',
@@ -217,7 +210,6 @@ export async function onRequest(context) {
             'plain-gzip-sync-v2',
             'learning-state-backup-v3',
             'backup-v4-authenticated-write-ga',
-            'edgeone-same-origin-e2e-v1',
             'backup-v3-explicit-migration-only',
             'account-delete-v1',
             'duplicate-register-protection-v1',
@@ -269,10 +261,6 @@ export async function onRequest(context) {
       return json({ ok: true, ...(await service.me(bearer(request))) }, 200, cors)
     }
 
-    if (request.method === 'POST' && path === '/auth/logout') {
-      return json({ ok: true, ...(await service.revokeSession(bearer(request))) }, 200, cors)
-    }
-
     if (request.method === 'DELETE' && path === '/auth/account') {
       const body = await readJson(request, 64 * 1024)
       return json(
@@ -300,56 +288,6 @@ export async function onRequest(context) {
         200,
         cors,
       )
-    }
-
-
-    // M3.2: chained per-device history. Does not authorize V4 restore/sync.
-    if (request.method === 'POST' && path === '/sync/events/v2') {
-      const body = await readJson(request, 110 * 1024)
-      return json({ ok: true,
-        ...(await service.publishChainedLearningBatch(bearer(request), body)) },
-        201, cors)
-    }
-    if (request.method === 'GET' && path === '/sync/events/v2') {
-      const selector = {
-        deviceId: url.searchParams.get('deviceId'),
-        batchId: url.searchParams.get('batchId'),
-        sha256: url.searchParams.get('sha256'),
-        sequence: Number(url.searchParams.get('sequence')),
-      }
-      return json({ ok: true,
-        ...(await service.readChainedLearningBatch(bearer(request), selector)) },
-        200, cors)
-    }
-    if (request.method === 'GET' && path === '/sync/events/v2/observed') {
-      return json({ ok: true,
-        ...(await service.observeChainedLearningReceipts(bearer(request))) }, 200, cors)
-    }
-    if (request.method === 'POST' && path === '/sync/events/v2/verify') {
-      const body = await readJson(request, 8 * 1024)
-      return json({ ok: true,
-        ...(await service.verifyChainedLearningHistory(bearer(request), body)) },
-        200, cors)
-    }
-
-    // Independent immutable event pilot: separate from old V4 revision writer.
-    // There is deliberately no "list complete" or auto-restore endpoint yet.
-    if (request.method === 'POST' && path === '/sync/events/v1') {
-      const body = await readJson(request, 110 * 1024)
-      return json({ ok: true,
-        ...(await service.publishLearningBatch(bearer(request), body)) }, 201, cors)
-    }
-    if (request.method === 'GET' && path === '/sync/events/v1/observed') {
-      return json({ ok: true,
-        ...(await service.observeLearningBatchReceipts(bearer(request))) }, 200, cors)
-    }
-    if (request.method === 'GET' && path === '/sync/events/v1') {
-      return json({ ok: true,
-        ...(await service.readLearningBatch(bearer(request), {
-          deviceId: url.searchParams.get('deviceId'),
-          batchId: url.searchParams.get('batchId'),
-          sha256: url.searchParams.get('sha256'),
-        })) }, 200, cors)
     }
 
     if (request.method === 'PUT' && path === '/sync/v2/recovery') {
@@ -381,8 +319,8 @@ export async function onRequest(context) {
     }
 
     if (request.method === 'PUT' && path === '/sync') {
-      throw new AppError(410, 'legacy_sync_retired',
-        'Legacy cloud writes are retired; only V4 sync is supported')
+      const body = await readJson(request, bodyLimit)
+      return json({ ok: true, ...(await service.putSync(bearer(request), body)) }, 200, cors)
     }
 
     throw new AppError(404, 'not_found', 'Not found')

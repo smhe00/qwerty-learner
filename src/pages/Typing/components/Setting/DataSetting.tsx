@@ -3,23 +3,74 @@ import { clearAllLearnDailySessions } from '@/learn/daily-session'
 import CloudSyncSetting from '@/sync/CloudSyncSetting'
 import {
   downloadManualBackupV4,
-  exportManualBackupV4Json,
   inspectManualBackupV4File,
 } from '@/sync/manual-backup-v4'
 import { loadAuth } from '@/sync/auth'
-import { parseWorkspaceV4 } from '@/sync/workspace-v4'
-import { analyzeV4SnapshotSize } from '@/sync/v4-size-audit'
 import { assertLegacyLocalDestructiveOperationAllowed } from '@/sync/workspace-auth-guard'
 import { clearSyncBaseline } from '@/sync/state'
-import { clearLocalLearningData } from '@/utils/db/data-export'
+import type { ExportProgress, ImportProgress } from '@/utils/db/data-export'
+import { clearLocalLearningData, exportDatabase, importDatabase } from '@/utils/db/data-export'
+import * as Progress from '@radix-ui/react-progress'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { useCallback, useState } from 'react'
 
 export default function DataSetting() {
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportProgress, setExportProgress] = useState(0)
+
+  const [isImporting, setIsImporting] = useState(false)
+  const [importProgress, setImportProgress] = useState(0)
   const [isClearing, setIsClearing] = useState(false)
   const [isV4Busy, setIsV4Busy] = useState(false)
   const [v4Message, setV4Message] = useState('')
-  const [sizeAuditMessage, setSizeAuditMessage] = useState('')
+
+  const exportProgressCallback = useCallback(({ totalRows, completedRows, done }: ExportProgress) => {
+    if (done) {
+      setIsExporting(false)
+      setExportProgress(100)
+      return true
+    }
+    if (totalRows) {
+      setExportProgress(Math.floor((completedRows / totalRows) * 100))
+    }
+
+    return true
+  }, [])
+
+  const onClickExport = useCallback(() => {
+    setExportProgress(0)
+    setIsExporting(true)
+    exportDatabase(exportProgressCallback)
+  }, [exportProgressCallback])
+
+  const importProgressCallback = useCallback(({ totalRows, completedRows, done }: ImportProgress) => {
+    if (done) {
+      setIsImporting(false)
+      setImportProgress(100)
+      return true
+    }
+    if (totalRows) {
+      setImportProgress(Math.floor((completedRows / totalRows) * 100))
+    }
+
+    return true
+  }, [])
+
+  const onStartImport = useCallback(() => {
+    setImportProgress(0)
+    setIsImporting(true)
+  }, [])
+
+  const onClickImport = useCallback(() => {
+    void (async () => {
+      try {
+        await assertLegacyLocalDestructiveOperationAllowed()
+        await importDatabase(onStartImport, importProgressCallback)
+      } catch (error) {
+        window.alert('操作已阻止：' + (error instanceof Error ? error.message : String(error)))
+      }
+    })()
+  }, [importProgressCallback, onStartImport])
 
   const onClickExportV4 = useCallback(async () => {
     setV4Message('正在生成完整的 Backup V4 快照…')
@@ -57,33 +108,6 @@ export default function DataSetting() {
       }
     })
     input.click()
-  }, [])
-
-  const onClickAuditV4Size = useCallback(async () => {
-    setIsV4Busy(true)
-    setSizeAuditMessage('正在只读分析 V4 容量…')
-    try {
-      const snapshot = parseWorkspaceV4(await exportManualBackupV4Json())
-      const report = await analyzeV4SnapshotSize(snapshot)
-      const kiB = (bytes: number) => (bytes / 1024).toFixed(1) + ' KiB'
-      const rows = report.tables.map((table) =>
-        `${table.name}: ${table.rows} 条，原始 ${kiB(table.rawBytes)}，独立 gzip ${kiB(table.gzipBytes)}`,
-      ).join('\n')
-      const saving = report.gzipBytes - report.projectedGzipBytesAfterTypingCompaction
-      const eventSaving = report.gzipBytes - report.projectedGzipBytesAfterAchievementCompaction
-      const sessionSaving = report.gzipBytes - report.projectedGzipBytesAfterCompletedSessionCompaction
-      setSizeAuditMessage(
-        `完整 V4：原始 ${kiB(report.rawBytes)}；gzip ${kiB(report.gzipBytes)}；HTTP Base64 约 ${kiB(report.httpBase64Bytes)}。\n` +
-        `超过 90 天的 Typing 明细：${report.oldTypingCandidates} 条；独立模拟整包 gzip 变化 ${saving >= 0 ? '-' : '+'}${kiB(Math.abs(saving))}。\n` +
-        `成就事件：${report.achievementEventsWithZeroMetrics} 条含零指标，共 ${report.achievementEventZeroMetrics} 个冗余零值；独立模拟整包 gzip 变化 ${eventSaving >= 0 ? '-' : '+'}${kiB(Math.abs(eventSaving))}。\n` +
-        `复习 Session：已完成 ${report.finishedReviewSessions} 条，未完成 ${report.unfinishedReviewSessions} 条；独立模拟整包 gzip 变化 ${sessionSaving >= 0 ? '-' : '+'}${kiB(Math.abs(sessionSaving))}（未归档旧数据）。\n` +
-        rows + '\n各表 gzip 单独压缩，不可相加。仅分析，未删除、归档、同步或修改任何数据。',
-      )
-    } catch (error) {
-      setSizeAuditMessage('容量分析失败：' + (error instanceof Error ? error.message : String(error)))
-    } finally {
-      setIsV4Busy(false)
-    }
   }, [])
 
   const onClickClearLocalData = useCallback(async () => {
@@ -142,7 +166,7 @@ export default function DataSetting() {
                 className="my-btn-primary disabled:bg-gray-300"
                 type="button"
                 onClick={() => { void onClickExportV4() }}
-                disabled={isV4Busy || isClearing}
+                disabled={isV4Busy || isExporting || isImporting || isClearing}
               >
                 {isV4Busy ? 'V4 处理中…' : '导出完整备份'}
               </button>
@@ -150,37 +174,86 @@ export default function DataSetting() {
                 className="my-btn-primary disabled:bg-gray-300"
                 type="button"
                 onClick={onClickInspectV4}
-                disabled={isV4Busy || isClearing}
+                disabled={isV4Busy || isExporting || isImporting || isClearing}
               >
                 验证 V4 备份文件（只读）
               </button>
               <button
                 className="my-btn-primary disabled:bg-gray-300"
                 type="button"
-                onClick={() => { void onClickAuditV4Size() }}
-                disabled={isV4Busy || isClearing}
-              >
-                分析备份容量（只读）
-              </button>
-              <button
-                className="my-btn-primary disabled:bg-gray-300"
-                type="button"
                 onClick={() => window.location.assign('/?v4-import=manage')}
-                disabled={isV4Busy || isClearing}
+                disabled={isV4Busy || isExporting || isImporting || isClearing}
               >
                 导入完整备份 V4（支持跨账号）
               </button>
             </div>
-            {sizeAuditMessage && (
-              <span role="status" className="whitespace-pre-line pl-4 text-left text-xs leading-relaxed text-gray-600 dark:text-gray-300">
-                {sizeAuditMessage}
-              </span>
-            )}
             {v4Message && (
               <span role="status" className="pl-4 text-left text-xs leading-relaxed text-gray-600 dark:text-gray-300">
                 {v4Message}
               </span>
             )}
+          </div>
+          <details className="mx-2 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+            <summary className="cursor-pointer font-medium">高级数据操作（谨慎使用）</summary>
+            <p className="mt-2 text-sm text-gray-500">旧格式兼容及清除本地数据。清除后无法撤销。</p>
+          <div className={styles.section}>
+            <span className={styles.sectionLabel}>旧格式导出（V3）</span>
+            <span className={styles.sectionDescription}>
+              旧版文件兼容功能，常规备份请使用上方完整备份。</span>
+            <span className="pl-4 text-left text-sm font-bold leading-tight text-red-500">
+              为了您的数据安全，请不要修改导出的数据文件。
+            </span>
+            <div className="flex h-3 w-full items-center justify-start px-5">
+              <Progress.Root
+                className="translate-z-0 relative h-2 w-11/12 transform  overflow-hidden rounded-full bg-gray-200"
+                value={exportProgress}
+              >
+                <Progress.Indicator
+                  className="cubic-bezier(0.65, 0, 0.35, 1) h-full w-full bg-indigo-400 transition-transform duration-500 ease-out"
+                  style={{ transform: `translateX(-${100 - exportProgress}%)` }}
+                />
+              </Progress.Root>
+              <span className="ml-4 w-10 text-xs font-normal text-gray-600">{`${exportProgress}%`}</span>
+            </div>
+
+            <button
+              className="my-btn-primary ml-4 disabled:bg-gray-300"
+              type="button"
+              onClick={onClickExport}
+              disabled={isExporting}
+              title="导出数据"
+            >
+              导出数据
+            </button>
+          </div>
+          <div className={styles.section}>
+            <span className={styles.sectionLabel}>旧格式导入（V3）</span>
+            <span className={styles.sectionDescription}>
+              请注意，导入数据将<strong className="text-sm font-bold text-red-500"> 完全覆盖 </strong>当前数据。请谨慎操作。
+            </span>
+
+            <div className="flex h-3 w-full items-center justify-start px-5">
+              <Progress.Root
+                className="translate-z-0 relative h-2 w-11/12 transform  overflow-hidden rounded-full bg-gray-200"
+                value={importProgress}
+              >
+                <Progress.Indicator
+                  className="cubic-bezier(0.65, 0, 0.35, 1) h-full w-full bg-indigo-400 transition-transform duration-500 ease-out"
+                  style={{ transform: `translateX(-${100 - importProgress}%)` }}
+                />
+              </Progress.Root>
+              <span className="ml-4 w-10 text-xs font-normal text-gray-600">{`${importProgress}%`}</span>
+            </div>
+
+            <button
+              className="my-btn-primary ml-4 disabled:bg-gray-300"
+              type="button"
+              onClick={onClickImport}
+              disabled={isImporting}
+              title="导入数据"
+            >
+              导入数据
+            </button>
           </div>
           <div className={styles.section}>
             <span className={styles.sectionLabel}>清除本地数据</span>
@@ -195,12 +268,13 @@ export default function DataSetting() {
               className="ml-4 rounded bg-red-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:bg-gray-300"
               type="button"
               onClick={onClickClearLocalData}
-              disabled={isClearing || isV4Busy}
+              disabled={isClearing || isExporting || isImporting}
               title="清除本地学习数据"
             >
               {isClearing ? '正在清除…' : '清除本地数据'}
             </button>
           </div>
+          </details>
         </div>
       </ScrollArea.Viewport>
       <ScrollArea.Scrollbar className="flex touch-none select-none bg-transparent " orientation="vertical"></ScrollArea.Scrollbar>

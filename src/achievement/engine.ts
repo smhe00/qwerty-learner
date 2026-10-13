@@ -26,7 +26,6 @@ import {
   evaluateChapterLongTermMasteryRatio,
   evaluateNewUnitLearnStarted,
 } from './unit-evaluator'
-import { compactAchievementEvent } from './storage-retention'
 import type {
   AchievementEventRecord,
   AchievementStateRecord,
@@ -113,10 +112,10 @@ async function persistEventAndUnlocks(
         })
       }
 
-      await db.achievementEvents.add(compactAchievementEvent({
+      await db.achievementEvents.add({
         ...event,
         unlockedAchievementIds,
-      }))
+      })
 
       return unlocks
     },
@@ -323,7 +322,7 @@ export async function recordVoluntaryContinueIntent(input: {
       },
       unlockedAchievementIds: [],
     }
-    await db.achievementEvents.add(compactAchievementEvent(event))
+    await db.achievementEvents.add(event)
   })
 }
 

@@ -155,33 +155,10 @@ for (const site of sites) {
       // navigation from the main app can display Gallery as a child window.
       // Preserve the mode-specific URL instead of asserting an obsolete path.
       await expect(page).toHaveURL(/\/gallery\/?(?:\?mode=(?:learn|typing))?$/, { timeout: 20_000 })
-      // Both the routed gallery and its modal clone can exist in the DOM.
-      // The first exact-text match may belong to a deliberately hidden route.
-      // Require at least one *visible* English selector, not the first DOM node.
-      try {
-        await expect.poll(async () => {
-          const candidates = await page.getByText('英语', { exact: true }).all()
-          for (const candidate of candidates) {
-            if (await candidate.isVisible()) return true
-          }
-          return false
-        }, { timeout: 25_000 }).toBe(true)
-      } catch (error) {
-        // Only public anonymous UI diagnostics, never credentials or IndexedDB.
-        const diagnostic = await page.evaluate(() => ({
-          path: location.pathname,
-          catalogCount: document.querySelectorAll('[data-dictionary-catalog]').length,
-          catalogVisible: [...document.querySelectorAll('[data-dictionary-catalog]')]
-            .some(node => !!(node as HTMLElement).getClientRects().length),
-          galleryDialogCount: document.querySelectorAll('[data-navigation-dialog="gallery"]').length,
-          headingSamples: [...document.querySelectorAll('h1,h2,[role="radiogroup"]')]
-            .filter(node => !!(node as HTMLElement).getClientRects().length)
-            .map(node => (node.textContent || '').trim().slice(0, 60)).slice(0, 10),
-          bodySample: (document.body.innerText || '').slice(0, 500),
-        }))
-        console.error('PUBLISHED_GALLERY_DIAGNOSTIC', JSON.stringify({ site: site.name, ...diagnostic }))
-        throw error
-      }
+      // Pages embeds Gallery under the "选择词库" dialog title; the deployed
+      // EdgeOne master still uses the standalone gallery (no modal title).
+      // A visible language selector is the stable, real content in both.
+      await expect(page.getByText('英语', { exact: true }).first()).toBeVisible()
       if (site.name === 'pages') {
         await expect(page.locator('[data-navigation-dialog="gallery"]')).toBeVisible()
       }

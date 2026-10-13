@@ -8,16 +8,16 @@ import {
   DAILY_SESSION_PREFIX,
   WORKSPACE_SETTING_KEYS,
   assertRestorableWorkspaceV4,
-  captureDailySessions,
-  captureWorkspaceSettings,
-  createWorkspaceV4,
+  migrateV3ToWorkspaceV4,
   parseWorkspaceV4,
   workspaceFingerprintV4,
 } from './workspace-v4'
 import type { WorkspaceIdentityV4, WorkspaceSnapshotV4 } from './workspace-v4'
 import { assertV4SourceRowsMatchExport } from './v4-table-audit'
 import {
-  readLearningState,
+  BACKUP_FORMAT_VERSION,
+  exportBackupJson,
+  importBackupJson,
   resetReviewModeInfoAfterRestore,
   restoreLearningState,
 } from '@/utils/backup'
@@ -96,16 +96,11 @@ export async function captureWorkingWorkspaceV4(
   // Flush the known serialized Learn ReviewRecord writer. This is not a
   // substitute for the external cross-tab lock and all-writer quiescence.
   await flushReviewRecordWrites()
-  const databaseBlob = await timed('dexie-export', () => db.export())
-  const snapshot = createWorkspaceV4({
-    database: JSON.parse(await databaseBlob.text()),
-    learnRuntime: { dailySessions: captureDailySessions(localStorage) },
-    settings: captureWorkspaceSettings(localStorage),
-    navigation: readLearningState(),
-  }, {
+  const v3 = await timed('dexie-export', () => exportBackupJson())
+  const snapshot = migrateV3ToWorkspaceV4(v3, {
     source,
     createdAt: new Date().toISOString(),
-  })
+  }, { storage: localStorage })
   // Counts are read from actual RecordDB, not from the serialized export.
   // This fails closed if an incomplete export omits rows from a live table.
   const entries = await timed('source-rows-read', () => Promise.all(
@@ -173,18 +168,14 @@ export async function restoreWorkingWorkspaceV4(
       (expectedSource.kind === 'account' && actual.accountId === expectedSource.accountId))
   if (!matches) throw new Error('Cross-workspace restore refused without explicit import consent')
 
-  // Import V4's validated Dexie payload directly. No V3 envelope,
-  // conversion or legacy partial-table recovery path is involved.
-  await db.import(new Blob([JSON.stringify(checked.workspaceData.database)], {
-    type: 'application/json',
-  }), {
-    acceptVersionDiff: true,
-    acceptMissingTables: false,
-    acceptNameDiff: false,
-    acceptChangedPrimaryKey: false,
-    overwriteValues: true,
-    clearTablesBeforeImport: true,
+  // Reuse the audited V3 database import path for the durable tables. V1
+  // remains V3-only; this conversion happens solely within the S1 adapter.
+  const legacyEnvelope = JSON.stringify({
+    backupFormatVersion: BACKUP_FORMAT_VERSION,
+    learningState: checked.workspaceData.navigation,
+    database: checked.workspaceData.database,
   })
+  await importBackupJson(legacyEnvelope, { clientFormatVersion: BACKUP_FORMAT_VERSION })
   applyWorkspaceStorage(checked)
 }
 

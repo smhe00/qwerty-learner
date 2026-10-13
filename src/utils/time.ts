@@ -5,8 +5,6 @@
  * use wall-clock timestamps without importing the broad utils barrel, which
  * also pulls UI/store/audio dependencies.
  */
-import { learningClockEpochMs } from '@/sync/learning-clock'
-
 export function getUTCUnixTimestamp(): number {
-  return Math.floor(learningClockEpochMs() / 1000)
+  return Math.floor(Date.now() / 1000)
 }

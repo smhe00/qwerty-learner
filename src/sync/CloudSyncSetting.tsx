@@ -150,7 +150,7 @@ export default function CloudSyncSetting() {
                 <button type="button" className="text-sm underline disabled:opacity-50"
                   disabled={!enabled || expired}
                   onClick={() => window.location.assign('/?s2-recovery=manage')}>
-                  高级恢复（V4 冲突处理）
+                  高级恢复 / 版本迁移
                 </button>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">

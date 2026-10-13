@@ -13,7 +13,7 @@ await build({ entryPoints: [resolve(root, 'src/sync/workspace-v4.ts')],
   outfile: target, bundle: true, platform: 'node', target: 'node20', format: 'esm' })
 after(() => rmSync(tmp, { recursive: true, force: true }))
 const { WORKSPACE_V4_FORMAT, captureWorkspaceSettings, captureDailySessions,
-  createWorkspaceV4, parseWorkspaceV4, workspaceFingerprintV4
+  createWorkspaceV4, migrateV3ToWorkspaceV4, parseWorkspaceV4, workspaceFingerprintV4
 } = await import(pathToFileURL(target).href)
 
 const source = { kind: 'account', accountId: 'a-fresh-id-1' }
@@ -65,17 +65,20 @@ test('settings and runtime captures are allowlisted and exclude credentials', ()
   assert.ok(!JSON.stringify(sessions).includes('SECRET'))
 })
 
-test('native V4 snapshot retains unfinished DailySession and preferences', () => {
-  const snapshot = createWorkspaceV4({
-    database: db,
-    learnRuntime: { dailySessions: captureDailySessions(store) },
-    settings: captureWorkspaceSettings(store),
-    navigation: { currentDict: 'dict', currentChapter: 4 },
-  }, metadata)
-  assert.equal(snapshot.backupFormatVersion, WORKSPACE_V4_FORMAT)
-  assert.equal(snapshot.workspaceData.navigation.currentChapter, 4)
-  assert.deepEqual(snapshot.workspaceData.learnRuntime.dailySessions.dict, daily)
-  assert.deepEqual(parseWorkspaceV4(JSON.stringify(snapshot)), JSON.parse(JSON.stringify(snapshot)))
+test('V3 migrates to V4 without destroying unfinished DailySession or preferences', () => {
+  const legacy = JSON.stringify({
+    backupFormatVersion: 'qwerty-backup-v3',
+    database: db, learningState: { currentDict: 'dict', currentChapter: 4 },
+  })
+  const result = migrateV3ToWorkspaceV4(legacy, metadata, { storage: store })
+  assert.equal(result.backupFormatVersion, WORKSPACE_V4_FORMAT)
+  assert.equal(result.workspaceData.navigation.currentChapter, 4)
+  assert.deepEqual(result.workspaceData.learnRuntime.dailySessions.dict, daily)
+  assert.deepEqual(result.workspaceData.database, db)
+  assert.deepEqual(parseWorkspaceV4(JSON.stringify(result)), JSON.parse(JSON.stringify(result)))
+  const historical = migrateV3ToWorkspaceV4(legacy, metadata)
+  assert.equal(Object.keys(historical.workspaceData.learnRuntime.dailySessions).length, 0)
+  assert.equal(Object.keys(historical.workspaceData.settings.values).length, 0)
 })
 
 test('V4 fingerprint ignores metadata, object keys, Dexie row and table ordering', async () => {
@@ -114,4 +117,5 @@ test('malicious/unknown setting names or forged identity cannot enter V4', () =>
   forged.workspaceData.settings.values = {}
   forged.metadata.source = { kind: 'account', accountId: '' }
   assert.throws(() => parseWorkspaceV4(JSON.stringify(forged)), /Invalid Backup V4 envelope/)
+  assert.throws(() => migrateV3ToWorkspaceV4('{"backupFormatVersion":"qwerty-backup-v2"}', metadata))
 })

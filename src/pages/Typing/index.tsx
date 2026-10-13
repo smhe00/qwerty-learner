@@ -40,7 +40,6 @@ import {
 import { IsDesktop } from '@/utils'
 import { getReviewWordStates } from '@/review/repository'
 import { db, useSaveChapterRecord } from '@/utils/db'
-import { getUTCUnixTimestamp } from '@/utils/time'
 import { putWordReviewRecord } from '@/utils/db/review-record'
 import { wordListFetcher } from '@/utils/wordListFetcher'
 import { useMixPanelChapterLogUploader } from '@/utils/mixpanel'
@@ -110,7 +109,7 @@ const App: React.FC<{ autoStart?: boolean }> = ({ autoStart = false }) => {
 
         ensureLearnDailySession({
           dict: record.dict,
-          now: getUTCUnixTimestamp(),
+          now: Math.floor(Date.now() / 1000),
           dailyNewTarget: memoryConfig.dailyNewWordTarget,
           dictionaryWords: dictionaryWords.map((word) => word.name),
           wordRecords,

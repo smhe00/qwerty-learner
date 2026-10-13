@@ -34,7 +34,6 @@ import {
 } from '@/learn/lifecycle'
 import { estimateLearnInteractionStrain } from '@/learn/strain'
 import { ReviewRecord } from './record'
-import { compactFinishedReviewRecord } from './review-record-retention'
 import type { TErrorWordData } from '@/pages/Gallery-N/hooks/useErrorWords'
 import { selectReviewCandidates } from '@/review/due'
 import type { ReviewSelectionMode } from '@/review/due'
@@ -164,7 +163,7 @@ export async function putWordReviewRecord(record: ReviewRecord) {
           return record.id
         }
       }
-      return db.reviewRecords.put(compactFinishedReviewRecord(record))
+      return db.reviewRecords.put(record)
     },
   )
 

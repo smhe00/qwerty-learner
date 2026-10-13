@@ -330,17 +330,10 @@ test('spelling completion never auto-pronounces or waits for pronunciation playb
 test('Typing control keeps key and wrong sounds on the root route', async ({ page }) => {
   await installAudioSpy(page)
   await seedTypingSession(page)
-  // The root route now intentionally redirects to Learn. This regression
-  // tests Typing sounds, so enter its explicit route and consume one start key.
-  await page.goto('/typing')
-  await expect(page).toHaveURL(/\/typing$/)
+  await page.goto('/')
 
   const wordEl = page.locator('[data-typing-word]').first()
   await wordEl.waitFor()
-  // Wait for the dictionary and Start control to become ready; an early key
-  // during the loading state is intentionally ignored by the session handler.
-  await page.getByRole('button', { name: '开始', exact: true }).click()
-  await expect(page.getByRole('button', { name: '暂停', exact: true })).toBeVisible()
   const word = (await wordEl.getAttribute('data-typing-word')) ?? ''
 
   await clearAudioLog(page)

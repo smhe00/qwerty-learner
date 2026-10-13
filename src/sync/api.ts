@@ -42,12 +42,6 @@ export class SyncApiError extends Error {
 }
 
 function apiUrl(path: string) {
-  // All EdgeOne Maker frontends must use their OWN origin-scoped /api.
-  // Main q-test must never silently target the production Blob backend.
-  if (typeof window !== 'undefined' &&
-      /(?:^|\.)edgeone\.(?:dev|cool)$/i.test(window.location.hostname)) {
-    return path
-  }
   const configuredBase = String(import.meta.env.VITE_QWERTY_SYNC_BASE_URL || '').trim()
   if (!configuredBase) return path
 
@@ -169,7 +163,7 @@ export function getSync(token: string) {
   return request<SyncResponse>('/api/sync', { token })
 }
 
-/** S2 metadata-only preflight; unsupported cloud formats must fail closed.
+/** S2 metadata-only preflight; safe when the backend still holds V3 data.
  * A missing/null logicalFingerprint must BLOCK rather than authorize a push.
  * Not wired to live UI until S1 production rollout and S2 crash gates pass.
  */
@@ -210,8 +204,8 @@ export function putSyncV2Recovery(
     payloadBase64: string
     logicalFingerprint: string
     clientFormatVersion: 'qwerty-backup-v4'
-    recoveryMode: 'replace-v4'
-    expectedRemoteFormat: 'qwerty-backup-v4'
+    recoveryMode: 'replace-v4' | 'migrate-v3'
+    expectedRemoteFormat: 'qwerty-backup-v4' | 'qwerty-backup-v3'
     expectedRemoteSha256: string
     expectedRemoteLogicalFingerprint?: string | null
     accountConfirmation: string

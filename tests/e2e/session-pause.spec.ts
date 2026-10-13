@@ -241,12 +241,9 @@ test('a practice key after clicking a mode starts the session and releases heade
   await page.route('**/dicts/**', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(reviewWords) }))
   await page.goto('/typing')
   await page.getByRole('button', { name: 'Learn', exact: true }).click()
-  // The Learn landing stays read-only until a real practice key arrives.
-  // The first key starts preparation; it must not be inserted into the word.
-  await expect(page.getByText(/按任意键开始 Learn/)).toBeVisible()
-  await page.keyboard.press('a')
   const word = page.locator('[data-typing-word]').first()
   await expect(word).toBeVisible({ timeout: 30_000 })
+  await page.keyboard.press('a')
   await expect(word).toHaveAttribute('data-typing-active', 'true')
   await expect(word).toHaveAttribute('data-typing-input', '')
   await page.keyboard.type('ca')
