@@ -273,3 +273,14 @@ FSRS materialization or daily Block auto-upload is enabled by this endpoint.
 The existing V4 pilot guard remains active. Expiry/revocation, provenance,
 bounded retention and multi-POP test must pass before enabling the flag
 even on the disposable test site.
+
+
+## M3.1 observed receipt catalog (not authoritative)
+
+\`GET /api/sync/events/v1/observed\` lists at most 512 currently observed
+batch receipts, detects **visible** reuse of \`(deviceId,batchId)\` with
+different hashes, and explicitly reports \`listingIsAuthoritative:false\`
+and \`convergenceComplete:false\`. A stale POP may omit a committed object,
+so the absence of a receipt or conflict does not prove globally complete
+sync. A caller with an exact receipt may still perform an independently
+authenticated integrity-checked read. The API is only a verification pilot.

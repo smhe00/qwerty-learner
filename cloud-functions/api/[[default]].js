@@ -308,6 +308,10 @@ export async function onRequest(context) {
       return json({ ok: true,
         ...(await service.publishLearningBatch(bearer(request), body)) }, 201, cors)
     }
+    if (request.method === 'GET' && path === '/sync/events/v1/observed') {
+      return json({ ok: true,
+        ...(await service.observeLearningBatchReceipts(bearer(request))) }, 200, cors)
+    }
     if (request.method === 'GET' && path === '/sync/events/v1') {
       return json({ ok: true,
         ...(await service.readLearningBatch(bearer(request), {

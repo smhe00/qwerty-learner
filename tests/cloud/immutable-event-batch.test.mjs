@@ -9,7 +9,8 @@ class FakeBlob {
   constructor() { this.objects = new Map(); this.ambiguous = false; this.ignoreOnlyIfNew = false }
   async get(key) { return this.objects.has(key) ? clone(this.objects.get(key)) : null }
   async list({ prefix }) { return { blobs: [...this.objects.keys()]
-    .filter(key => key.startsWith(prefix)).map(key => ({ key })) } }
+    .filter(key => key.startsWith(prefix) && !this.hiddenKeys?.has(key))
+    .map(key => ({ key })) } }
   async setJSON(key, value, opts = {}) {
     if (opts.onlyIfNew && this.objects.has(key) && !this.ignoreOnlyIfNew) {
       throw new Error('object exists')
@@ -115,4 +116,41 @@ test('account deletion removes batches; old token cannot access new user with sa
     error => error.code === 'event_batch_not_visible')
   await assert.rejects(service.readLearningBatch(a.token, receipt),
     error => error.code === 'session_revoked')
+})
+
+
+test('observed catalog is not complete even when all visible receipts are listed', async () => {
+  const { service, blob } = setup()
+  const a = await service.register('event_observed', 'Password123', device(1))
+  const first = await service.publishLearningBatch(a.token, payload(1, 12, 4))
+  const second = await service.publishLearningBatch(a.token, payload(1, 12, 5))
+  const other = await service.publishLearningBatch(a.token, payload(2, 13, 6))
+  const view = await service.observeLearningBatchReceipts(a.token)
+  assert.equal(view.observedCount, 3)
+  assert.equal(view.convergenceComplete, false)
+  assert.equal(view.listingIsAuthoritative, false)
+  assert.deepEqual(view.conflictingBatchIds, [device(1) + ':' + uuid(12)])
+  assert.equal((await service.readLearningBatch(a.token, other)).batch.events.length, 1)
+  const hidden = [...blob.objects.keys()].find(k => k.endsWith(second.sha256 + '.json'))
+  assert.ok(hidden)
+  blob.hiddenKeys = new Set([hidden])
+  const stale = await service.observeLearningBatchReceipts(a.token)
+  assert.equal(stale.observedCount, 2)
+  assert.deepEqual(stale.conflictingBatchIds, [])
+  assert.equal(stale.convergenceComplete, false)
+  assert.equal((await service.readLearningBatch(a.token, second)).batch.events[0].attemptId,
+    uuid(5))
+  assert.equal((await service.readLearningBatch(a.token, first)).batch.events[0].attemptId,
+    uuid(4))
+})
+
+test('tampered immutable batch is a server integrity failure, not a bad client request', async () => {
+  const { service, blob } = setup()
+  const a = await service.register('event_tampered', 'Password123', device(1))
+  const receipt = await service.publishLearningBatch(a.token, payload(1, 20, 7))
+  const key = [...blob.objects.keys()].find(k => k.endsWith(receipt.sha256 + '.json'))
+  assert.ok(key)
+  blob.objects.get(key).events[0].word = 'tampered'
+  await assert.rejects(service.readLearningBatch(a.token, receipt),
+    e => e.code === 'event_batch_integrity_failed')
 })

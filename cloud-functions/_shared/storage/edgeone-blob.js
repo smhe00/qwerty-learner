@@ -328,6 +328,32 @@ export function createEdgeOneBlobStorage(store) {
       return strongJson(eventBatchKey(userId, deviceId, batchId, sha256))
     },
 
+    async observeImmutableEventBatches(userId) {
+      // Strong list on one POP is still not a globally complete event history.
+      const prefix = eventBatchPrefix(userId)
+      const page = await strongList(prefix)
+      if (!page || !Array.isArray(page.blobs) || page.blobs.length > 512) {
+        throw new Error('Bounded event observation unavailable')
+      }
+      const pattern = /^qwerty-web-([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})-([0-9a-f]{64})\.json$/i
+      const receipts = page.blobs.map(item => {
+        if (!item || typeof item.key !== 'string' ||
+            !item.key.startsWith(prefix)) throw new Error('Malformed event key')
+        const hit = pattern.exec(item.key.slice(prefix.length))
+        if (!hit) throw new Error('Unrecognized event key')
+        return { deviceId: 'qwerty-web-' + hit[1],
+          batchId: hit[2], sha256: hit[3] }
+      })
+      receipts.sort((a, b) =>
+        (a.deviceId + a.batchId + a.sha256).localeCompare(
+          b.deviceId + b.batchId + b.sha256))
+      return {
+        receipts,
+        truncated: Boolean(page.cursor || page.hasMore ||
+          page.truncated || page.nextCursor),
+      }
+    },
+
     async createRevision(userId, revision, snapshot) {
       const encoded = snapshot?.payloadBase64
       if (snapshot?.clientFormatVersion !== 'qwerty-backup-v4' ||

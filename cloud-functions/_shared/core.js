@@ -639,7 +639,13 @@ export function createBackendService({
       identity.userId, selector.deviceId, selector.batchId, selector.sha256
     )
     if (!record) throw new AppError(404, 'event_batch_not_visible', 'Batch is not yet visible')
-    const verified = validateImmutableEventBatch(record, identity.userId)
+    let verified
+    try {
+      verified = validateImmutableEventBatch(record, identity.userId)
+    } catch {
+      throw new AppError(503, 'event_batch_integrity_failed',
+        'Event batch failed payload validation')
+    }
     if (verified.sha256 !== selector.sha256 ||
         record.accountId !== identity.userId ||
         record.deviceId !== selector.deviceId ||
@@ -649,6 +655,29 @@ export function createBackendService({
         'Event batch receipt failed integrity check')
     }
     return { batch: verified, convergenceComplete: false }
+  }
+
+  async function observeLearningBatchReceipts(token) {
+    requireEventPilot()
+    const { identity } = await authenticate(token)
+    if (typeof storage.observeImmutableEventBatches !== 'function') {
+      throw new Error('Event-batch receipt discovery unavailable')
+    }
+    const view = await storage.observeImmutableEventBatches(identity.userId)
+    const seen = new Map()
+    const conflicts = new Set()
+    for (const receipt of view.receipts) {
+      const key = receipt.deviceId + ':' + receipt.batchId
+      const previous = seen.get(key)
+      if (previous && previous !== receipt.sha256) conflicts.add(key)
+      else seen.set(key, receipt.sha256)
+    }
+    return {
+      observed: view.receipts, observedCount: view.receipts.length,
+      conflictingBatchIds: [...conflicts].sort(),
+      truncated: view.truncated,
+      convergenceComplete: false, listingIsAuthoritative: false,
+    }
   }
 
   function metaFromSnapshot(snapshot) {
@@ -929,6 +958,7 @@ export function createBackendService({
     revokeSession,
     publishLearningBatch,
     readLearningBatch,
+    observeLearningBatchReceipts,
     deleteAccount,
     syncMeta,
     getSync,
