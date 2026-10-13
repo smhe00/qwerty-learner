@@ -308,3 +308,59 @@ test('end-to-end V4 >1 MiB backend write/read through size-limited Blob, without
   await assert.rejects(service.putSyncV4(user.token, input),
     error => error?.code === 'sync_conflict')
 })
+
+
+test('large V4 revisions serialize per-part writes and prove exact receipts', async () => {
+  const blob = new FakeBlobStore()
+  const storage = createEdgeOneBlobStorage(blob)
+  const bytes = randomBytes(1024 * 1024)
+  const sha = createHash('sha256').update(bytes).digest('hex')
+  let concurrent = 0
+  let peak = 0
+  let partChecks = 0
+  const setJSON = blob.setJSON.bind(blob)
+  const get = blob.get.bind(blob)
+  blob.setJSON = async (key, value, options) => {
+    if (key.includes('/revision-parts/')) {
+      concurrent++
+      peak = Math.max(peak, concurrent)
+      await new Promise(resolve => setTimeout(resolve, 1))
+      try { return await setJSON(key, value, options) } finally { concurrent-- }
+    }
+    return setJSON(key, value, options)
+  }
+  blob.get = async key => {
+    if (key.includes('/revision-parts/')) partChecks++
+    return get(key)
+  }
+  await storage.createRevision('sequential-owner', 1, {
+    revision: 1, sizeBytes: bytes.length, dataSha256: sha,
+    payloadBase64: bytes.toString('base64'), clientFormatVersion: 'qwerty-backup-v4',
+  })
+  assert.equal(peak, 1, 'do not fan out Blob operations during large writes')
+  assert.ok(partChecks > 2, 'verify chunk by exact-key strong read')
+  assert.equal((await storage.getLatestRevision('sequential-owner')).snapshot.dataSha256, sha)
+})
+
+test('V4 partial Blob upload reports stage/index and never exposes new revision', async () => {
+  const blob = new FakeBlobStore()
+  const storage = createEdgeOneBlobStorage(blob)
+  const bytes = randomBytes(500_000)
+  const sha = createHash('sha256').update(bytes).digest('hex')
+  const oldSet = blob.setJSON.bind(blob)
+  blob.setJSON = async (key, value, opts) => {
+    if (key.includes('revision-parts/') && key.includes('0002.json')) {
+      throw new Error('simulated storage outage on third part')
+    }
+    return oldSet(key, value, opts)
+  }
+  await assert.rejects(
+    storage.createRevision('test-bounded-stage', 1, {
+      revision: 1, sizeBytes: bytes.length, dataSha256: sha,
+      payloadBase64: bytes.toString('base64'), clientFormatVersion: 'qwerty-backup-v4',
+    }),
+    error => error.name === 'SnapshotBlobStageError' &&
+      error.stage === 'chunk_precommit' && error.partIndex === 2,
+  )
+  assert.equal(await storage.getLatestRevisionMeta('test-bounded-stage'), null)
+})

@@ -9,6 +9,20 @@ const MAX_PARTS = 64
 
 const RETRY_DELAYS_MS = [0, 100, 250, 500]
 
+/** Structured, non-credential stage information for real Maker failures. */
+export class SnapshotBlobStageError extends Error {
+  constructor(stage, cause, index = null) {
+    super('V4 Blob ' + stage + ' failed' +
+      (index === null ? '' : ' at part ' + index) +
+      ': ' + (cause instanceof Error ? cause.message : String(cause)))
+    this.name = 'SnapshotBlobStageError'
+    this.stage = stage
+    this.partIndex = index
+    this.cause = cause
+  }
+}
+
+
 function sleep(ms) {
   return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve()
 }
@@ -432,22 +446,33 @@ export function createEdgeOneBlobStorage(store) {
         throw new Error('V4 snapshot transport checksum mismatch; revision not committed')
       }
       // Immutable part objects are written *before* a compact revision manifest.
-      // A partial write only leaves unreferenced parts, never a visible revision.
-      // Existing Blob onlyIfNew semantics remain best-effort, not atomic CAS.
-      for (let offset = 0; offset < parts.length; offset += 4) {
-        await Promise.all(parts.slice(offset, offset + 4).map((data, j) =>
-          setJsonOnlyIfNew(partKey(userId, revision, checksum, offset + j), {
-            version: 1, index: offset + j, data,
-          }).then(created => {
-            if (!created) throw new Error('Conflicting V4 immutable Blob chunk')
-          })))
+      // Sequential writes bound pressure on Makers Blob under large uploads;
+      // each exact-key strong read verifies durable evidence before commit.
+      // No shared CAS/atomic-onlyIfNew behavior is assumed.
+      for (let index = 0; index < parts.length; index++) {
+        const key = partKey(userId, revision, checksum, index)
+        const candidate = { version: 1, index, data: parts[index] }
+        try {
+          const stored = await setJsonOnlyIfNew(key, candidate)
+          if (!stored) throw new Error('immutable part key already has other evidence')
+          const observed = await strongJson(key)
+          if (!jsonEquivalent(observed, candidate)) {
+            throw new Error('immutable part not verified after write')
+          }
+        } catch (error) {
+          throw new SnapshotBlobStageError('chunk_precommit', error, index)
+        }
       }
       const manifest = {
         ...snapshot, payloadBase64: null,
         chunkedPayload: { version: 1, sha256: checksum,
           count: parts.length, encodedLength: encoded.length },
       }
-      return setJsonOnlyIfNew(revisionKey(userId, revision), manifest)
+      try {
+        return await setJsonOnlyIfNew(revisionKey(userId, revision), manifest)
+      } catch (error) {
+        throw new SnapshotBlobStageError('manifest_commit', error)
+      }
     },
 
     async getLatestRevisionMeta(userId) {

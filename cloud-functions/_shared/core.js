@@ -1153,7 +1153,20 @@ export function createBackendService({
     // Blob onlyIfNew is NOT an atomic CAS. Production has one active session;
     // the independent multi-session pilot explicitly rejects V4 writes above.
     // M3 must replace shared-revision races with a no-loss event protocol.
-    if (!(await storage.createRevision(identity.userId, revision, snapshot))) {
+    let created
+    try {
+      created = await storage.createRevision(identity.userId, revision, snapshot)
+    } catch (error) {
+      // Preserve ambiguity: NEVER retry with another payload after a transport
+      // error. Client must first re-read revision/SHA/fingerprint.
+      if (error?.name === 'SnapshotBlobStageError') {
+        throw new AppError(503, 'snapshot_blob_stage_failed',
+          'V4 Blob storage unavailable; recheck remote metadata before retrying',
+          { stage: error.stage, partIndex: error.partIndex })
+      }
+      throw error
+    }
+    if (!created) {
       const latest = storage.getLatestRevisionMeta
         ? await storage.getLatestRevisionMeta(identity.userId)
         : await storage.getLatestRevision(identity.userId)
