@@ -1,3 +1,5 @@
+> **Current product scope (2026-10-13):** [Light social v1](./CIRCLE_LIGHT_SOCIAL_V1.md) supersedes earlier seat/capacity selection, official achievement evidence and whole-circle activity-conflict requirements. Capacity is advisory, shares are self-reported, and private-access safeguards remain.
+
 > **2026-10-13 implementation checkpoint:** [Circle event log v2](./CIRCLE_EVENT_LOG_V2.md) is implemented on the isolated feature branch. CAS kernel and HTTP enabling are disabled; historical code/tests are retained as disabled artifacts. The eventual-consistency decision below remains binding.
 
 # QWERTY Circle Core — Blob-only Kernel (S0 / first implementation)

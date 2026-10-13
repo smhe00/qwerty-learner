@@ -5,12 +5,13 @@ const userId = (v) => typeof v === 'string' && /^[A-Za-z0-9_-]{8,128}$/.test(v)
 const day = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) &&
   Number.isFinite(Date.parse(v + 'T00:00:00Z')) &&
   new Date(v + 'T00:00:00Z').toISOString().slice(0, 10) === v
+const ACTIVITY = new Set(['PROGRESS_PUBLISHED', 'ACHIEVEMENT_SHARED', 'CLAP_ADDED'])
 
 /**
- * Pure visible-set reducer. Never an authorization oracle or final admission.
- * Logical operations with conflicting payloads are quarantined as a whole.
- * Permanent remove-wins membership and close-wins circle policy for this version.
- * No rejoin, invite rotation, mutable totals, wall-clock or arrival-order decisions.
+ * Light social visible-set reducer; never an authorization oracle.
+ * Capacity is advisory; every valid visible join remains a member.
+ * Activity conflicts are omitted without disabling unrelated encouragement.
+ * Creation/membership/revocation conflicts still fail closed.
  */
 export function reduceCircle(circleId, input) {
   const groups = new Map()
@@ -26,33 +27,41 @@ export function reduceCircle(circleId, input) {
     groups.set(event.dedupKey, group)
   }
   const conflicts = []
+  const blockingConflicts = []
   const events = []
   for (const [key, group] of groups) {
     const facts = new Set(group.map((e) => canonical(e.payload)))
-    if (facts.size !== 1) { conflicts.push(key); continue }
-    // Physical event IDs do not participate in semantic ordering or view hashes.
+    if (facts.size !== 1) {
+      conflicts.push(key)
+      if (!ACTIVITY.has(group[0].type)) blockingConflicts.push(key)
+      continue
+    }
     const { eventId: _eventId, ...logical } = group[0]
     void _eventId
     events.push(logical)
   }
   events.sort((a, b) => cmp(a.dedupKey, b.dedupKey))
   conflicts.sort(cmp)
+  blockingConflicts.sort(cmp)
   const view = { schemaVersion: 2, circleId, consistency: 'eventual',
-    admission: 'provisional', final: false, conflicts, meta: null, closed: false,
-    members: [], pending: [], revoked: [], progress: [], achievements: [], claps: [] }
+    admission: 'eventual', final: false, conflicts, blockingConflicts,
+    ignoredActivityConflicts: conflicts.length - blockingConflicts.length, ignoredInvalidActivities: 0,
+    meta: null, closed: false, members: [], pending: [], revoked: [],
+    progress: [], achievements: [], claps: [] }
   const creates = events.filter((e) => e.type === 'CIRCLE_CREATED')
-  // An ambiguous creation never selects an arbitrary owner.
-  if (creates.length !== 1 || conflicts.length) {
+  if (creates.length !== 1 || blockingConflicts.length) {
     view.blocked = true
     view.viewHash = digest(view)
     return view
   }
   const created = creates[0]
   const p = created.payload
+  // Historical maxMembers is accepted only as an advisory hint.
+  const softMemberLimit = p.softMemberLimit ?? p.maxMembers ?? 12
   if (typeof p.name !== 'string' || !p.name.trim() || Array.from(p.name).length > 32 ||
-      !Number.isInteger(p.maxMembers) || p.maxMembers < 2 || p.maxMembers > 12 ||
+      !Number.isInteger(softMemberLimit) || softMemberLimit < 2 || softMemberLimit > 100 ||
       !/^[a-f0-9]{64}$/.test(p.inviteHash || '')) throw new Error('Invalid creation fact')
-  view.meta = { ownerUserId: created.actorUserId, name: p.name, maxMembers: p.maxMembers }
+  view.meta = { ownerUserId: created.actorUserId, name: p.name, softMemberLimit }
   const owner = created.actorUserId
   view.closed = events.some((e) => e.type === 'CIRCLE_CLOSED' && e.actorUserId === owner)
   const revoked = new Set(events.filter((e) =>
@@ -64,12 +73,10 @@ export function reduceCircle(circleId, input) {
   const candidates = [...new Set(events.filter((e) => e.type === 'JOIN_REQUESTED' &&
     e.payload.inviteHash === p.inviteHash && e.actorUserId !== owner &&
     !revoked.has(e.actorUserId)).map((e) => e.actorUserId))].sort(cmp)
-  // Stable identity order is intentionally simple, not fairness or anti-Sybil.
   if (!view.closed) {
-    const selected = [owner, ...candidates.slice(0, p.maxMembers - 1)]
+    const selected = [owner, ...candidates]
     view.members = selected.map((uid) => ({ userId: uid,
-      role: uid === owner ? 'owner' : 'member', status: 'provisional' }))
-    view.pending = candidates.slice(p.maxMembers - 1)
+      role: uid === owner ? 'owner' : 'member', status: 'member' }))
     const member = new Set(selected)
     const progress = new Map()
     for (const e of events) {
@@ -78,17 +85,27 @@ export function reduceCircle(circleId, input) {
       if (e.type === 'PROGRESS_PUBLISHED') {
         if (!day(d.day) || typeof d.completed !== 'boolean' ||
             !Number.isInteger(d.newWords) || d.newWords < 0 || d.newWords > 256) {
-          throw new Error('Invalid progress fact')
+          view.ignoredInvalidActivities++
+          continue
         }
-        // Canonical logical-key winner for a daily report, never accumulated totals.
-        progress.set(e.actorUserId + '/' + d.day, { authorUserId: e.actorUserId,
-          day: d.day, completed: d.completed, newWords: d.newWords, selfReported: true })
+        const key = e.actorUserId + '/' + d.day
+        const prior = progress.get(key)
+        // Coarse encouragement: completed OR and highest daily self-report.
+        // Never sum retries or pretend these are verified learning statistics.
+        progress.set(key, { authorUserId: e.actorUserId, day: d.day,
+          completed: Boolean(prior?.completed || d.completed),
+          newWords: Math.max(prior?.newWords ?? 0, d.newWords), selfReported: true })
       }
       if (e.type === 'ACHIEVEMENT_SHARED') {
-        if (!/^ACH_[A-Z0-9_]{3,72}$/.test(d.achievementId || '') || d.verified !== true) {
-          throw new Error('Invalid achievement fact')
+        if (typeof d.achievementId !== 'string' || !/^ACH_[A-Z0-9_]{3,72}$/.test(d.achievementId) ||
+            (d.selfReported !== true && d.verified !== true)) {
+          view.ignoredInvalidActivities++
+          continue
         }
-        view.achievements.push({ authorUserId: e.actorUserId, achievementId: d.achievementId })
+        // Historical verified shares remain readable as ordinary social shares;
+        // the Circle feed never issues an official achievement or entitlement.
+        view.achievements.push({ authorUserId: e.actorUserId, achievementId: d.achievementId,
+          selfReported: true, verified: false })
       }
     }
     view.progress = [...progress.values()].sort((a, b) => cmp(canonical(a), canonical(b)))
@@ -101,6 +118,8 @@ export function reduceCircle(circleId, input) {
     view.claps = [...new Map(claps.map((a) => [canonical(a), a])).values()]
       .sort((a, b) => cmp(canonical(a), canonical(b)))
   }
+  view.capacity = { softMemberLimit, memberCount: view.members.length,
+    aboveSoftLimit: view.members.length > softMemberLimit, hardLimit: false }
   view.viewHash = digest(view)
   return view
 }

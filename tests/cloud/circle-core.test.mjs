@@ -44,7 +44,7 @@ class EventualBlob {
     return this.invisible.has(key) ? null : structuredClone(this.objects.get(key) ?? null)
   }
 }
-function setup({ check, revoke, verifyAchievement } = {}) {
+function setup({ check, revoke } = {}) {
   const blob = new EventualBlob()
   const log = createCircleEventLog(blob)
   const denied = new Set()
@@ -72,15 +72,14 @@ function setup({ check, revoke, verifyAchievement } = {}) {
     },
   }
   trustedAccess.lookupRevocation = async ({ operationId }) => structuredClone(receipts.get(operationId) ?? null)
-  trustedAccess.authorizeMaintenance = async () => true
   trustedAccess.lookupRetirement = async ({ userId }) => structuredClone(retirements.get(userId) ?? null)
   trustedAccess.authorizeMaintenance = async ({ subjects }) => !subjects?.some((u) => retired.has(u) || retirements.get(u)?.status === 'retired')
   const service = createCircleService({ log, trustedAccess,
     authenticate: async (token) => { if (token === 'bad') throw Error('bad session'); return { userId: token } },
     inviteKey: 'test-only-server-key-not-a-production-secret',
-    verifyAchievement: verifyAchievement || (async () => true) })
-  const create = (maxMembers = 12) => service.createCircle(owner,
-    { name: 'Circle', operationId: 'create_00001', maxMembers })
+  })
+  const create = (softMemberLimit = 12) => service.createCircle(owner,
+    { name: 'Circle', operationId: 'create_00001', softMemberLimit })
   return { blob, log, service, create, denied, closed, retired, checks, trustedAccess, receipts, retirements }
 }
 const publicView = ({ pending, revoked, ...view }) => ({ ...view, pendingCount: pending.length, revokedCount: revoked.length })
@@ -110,20 +109,22 @@ test('create retries use independent physical keys and one logical fact', async 
   assert.equal(JSON.stringify(facts(blob)).includes(results[0].inviteCode), false)
 })
 
-test('30 concurrent joins all return pending; visible-set provisional selection converges', async () => {
+test('30 concurrent joins converge without seats or overflow waiting list', async () => {
   const { blob, service, create } = setup()
   const c = await create()
   const actors = Array.from({ length: 30 }, (_, i) => 'student_' + String(i).padStart(5, '0'))
   const results = await Promise.all(actors.map((a) => service.joinCircle(a, c.inviteCode)))
   assert.ok(results.every((r) => r.admission === 'pending' && r.final === false))
   const view = await service.getCircle(owner, c.circleId)
-  assert.equal(view.members.length, 12)
-  assert.equal(view.pendingCount, 19)
-  assert.ok(view.members.every((m) => m.status === 'provisional'))
+  assert.equal(view.members.length, 31)
+  assert.equal(view.pendingCount, 0)
+  assert.equal(view.capacity.aboveSoftLimit, true)
+  assert.equal(view.capacity.hardLimit, false)
+  assert.ok(view.members.every((m) => m.status === 'member'))
   assert.deepEqual(publicView(reduceCircle(c.circleId, facts(blob).reverse())), view)
 })
 
-test('late higher-priority join may displace provisional selection; no hard cap claim', async () => {
+test('late visible joins do not displace members even above a soft limit of two', async () => {
   const { blob, service, create } = setup()
   const c = await create(2)
   await service.joinCircle(bob, c.inviteCode)
@@ -134,9 +135,11 @@ test('late higher-priority join may displace provisional selection; no hard cap 
   assert.deepEqual(await service.getCircle(owner, c.circleId), early)
   blob.hidden.clear()
   const converged = await service.getCircle(owner, c.circleId)
-  assert.deepEqual(converged.members.map((m) => m.userId), [owner, alice])
-  assert.deepEqual(converged.pendingCount, 1)
-  await assert.rejects(service.getCircle(bob, c.circleId), { code: 'not_circle_member' })
+  assert.deepEqual(converged.members.map((m) => m.userId), [owner, alice, bob])
+  assert.equal(converged.pendingCount, 0)
+  assert.equal(converged.capacity.memberCount, 3)
+  assert.equal(converged.capacity.aboveSoftLimit, true)
+  assert.equal((await service.getCircle(bob, c.circleId)).members.length, 3)
 })
 
 test('100 logical retries of join/progress/achievement/clap count once', async () => {
@@ -165,7 +168,7 @@ test('ambiguous response commits, same logical retry converges without readback/
   assert.equal((await service.getCircle(owner, c.circleId)).conflicts.length, 0)
 })
 
-test('same logical operation with conflicting content quarantines view in every order', async () => {
+test('conflicting self-report is omitted without disabling the circle in any order', async () => {
   const { blob, service, create } = setup()
   const c = await create()
   await service.publishProgress(owner, c.circleId, day,
@@ -173,11 +176,16 @@ test('same logical operation with conflicting content quarantines view in every 
   await service.publishProgress(owner, c.circleId, day,
     { completed: true, newWords: 13, eventId: 'progress_0001' })
   const view = publicView(reduceCircle(c.circleId, facts(blob)))
-  assert.equal(view.blocked, true)
+  assert.equal(view.blocked, undefined)
   assert.equal(view.conflicts.length, 1)
+  assert.equal(view.ignoredActivityConflicts, 1)
+  assert.equal(view.blockingConflicts.length, 0)
   assert.equal(view.progress.length, 0)
   assert.deepEqual(publicView(reduceCircle(c.circleId, facts(blob).reverse())), view)
-  await assert.rejects(service.getCircle(owner, c.circleId), { code: 'circle_view_uncertain' })
+  assert.deepEqual(await service.getCircle(owner, c.circleId), view)
+  await service.publishProgress(owner, c.circleId, day,
+    { completed: true, newWords: 15, eventId: 'progress_0002' })
+  assert.equal((await service.getCircle(owner, c.circleId)).progress[0].newWords, 15)
 })
 
 test('reordering, duplicate observations, late creation and incremental visibility rebuild same view', async () => {
@@ -290,13 +298,14 @@ test('lost revoke-log response leaves authoritative fence intact, not falsely ac
   await assert.rejects(service.getCircle(alice, c.circleId), { code: 'circle_access_uncertain' })
 })
 
-test('authentication, unknown access, fake invite and evidence verification fail closed', async () => {
-  const { service, create } = setup({ verifyAchievement: async () => false })
+test('authentication, unknown access and fake invite still fail closed in light social mode', async () => {
+  const { service, create } = setup()
   const c = await create()
   await assert.rejects(service.getCircle('bad', c.circleId))
   await assert.rejects(service.getCircle(alice, c.circleId), { code: 'not_circle_member' })
   await assert.rejects(service.joinCircle(alice, c.inviteCode.slice(0, -1) + 'z'), { code: 'invalid_invite' })
-  await assert.rejects(service.shareAchievement(owner, c.circleId, 'ACH_MASTERED_100'), { code: 'achievement_unverified' })
+  await service.shareAchievement(owner, c.circleId, 'ACH_MASTERED_100')
+  assert.equal((await service.getCircle(owner, c.circleId)).achievements[0].verified, false)
   const denied = setup({ check: async () => undefined })
   await assert.rejects(denied.create(), { code: 'circle_access_uncertain' })
 })
@@ -356,20 +365,19 @@ test('progress rejects impossible dates and invalid command IDs', async () => {
 })
 
 
-test('pending and revoked identities are not included in member-facing views', async () => {
-  const { service, create, retired } = setup()
+test('removed identities stay hidden while soft-limit members remain visible', async () => {
+  const { service, create } = setup()
   const c = await create(2)
   await service.joinCircle(alice, c.inviteCode)
   await service.joinCircle(bob, c.inviteCode)
-  retired.add(bob)
   const view = await service.getCircle(owner, c.circleId)
-  assert.equal(view.pendingCount, 1)
-  assert.equal(JSON.stringify(view).includes(bob), false)
-  retired.clear()
+  assert.equal(view.pendingCount, 0)
+  assert.equal(view.members.length, 3)
   await service.removeMember(owner, c.circleId, alice)
   const after = await service.getCircle(owner, c.circleId)
   assert.equal(after.revokedCount, 1)
   assert.equal(JSON.stringify(after).includes(alice), false)
+  assert.equal(after.members.some((m) => m.userId === bob), true)
 })
 
 test('replay budget exceeded fails closed without silently truncating events', async () => {
@@ -396,7 +404,7 @@ test('fence succeeds but append fails before commit: access remains denied, reco
   await assert.rejects(service.getCircle(owner, c.circleId), { code: 'circle_access_uncertain' })
 })
 
-test('verified progress/achievement publication never receives client identity fields', async () => {
+test('self-reported publication never receives client identity or verified fields', async () => {
   const { service, create } = setup()
   const c = await create()
   await service.publishProgress(owner, c.circleId, day,
@@ -742,4 +750,157 @@ test('retirement fence blocks recovery from recreating a deleted identity refere
   const recovery = createCircleRevocationCoordinator({ log, trustedAccess })
   await assert.rejects(recovery.recover(c.circleId), { code: 'circle_maintenance_denied' })
   assert.equal(blob.writes.length, before)
+})
+
+test('soft member hint accepts legacy input without imposing a limit', async () => {
+  const { blob, service } = setup()
+  const c = await service.createCircle(owner, { name: 'Soft', operationId: 'legacy_create_01', maxMembers: 2 })
+  await service.joinCircle(alice, c.inviteCode)
+  await service.joinCircle(bob, c.inviteCode)
+  const view = await service.getCircle(owner, c.circleId)
+  assert.equal(view.meta.softMemberLimit, 2)
+  assert.equal(view.capacity.hardLimit, false)
+  assert.equal(view.members.length, 3)
+  const creation = facts(blob).find((e) => e.type === 'CIRCLE_CREATED')
+  assert.equal(creation.payload.maxMembers, undefined)
+  assert.equal(creation.payload.softMemberLimit, 2)
+  await assert.rejects(service.createCircle(owner,
+    { name: 'Bad', operationId: 'bad_create_0001', softMemberLimit: 2, maxMembers: 4 }),
+  { code: 'invalid_circle_input' })
+  await assert.rejects(service.createCircle(owner,
+    { name: 'Bad', operationId: 'bad_create_0002', softMemberLimit: -1 }),
+  { code: 'invalid_circle_input' })
+})
+
+test('historical creation maxMembers is replayed as a soft hint only', async () => {
+  const { blob, service, create } = setup()
+  const c = await create(2)
+  await service.joinCircle(alice, c.inviteCode)
+  await service.joinCircle(bob, c.inviteCode)
+  const events = facts(blob)
+  const legacy = structuredClone(events[0])
+  legacy.payload.maxMembers = legacy.payload.softMemberLimit
+  delete legacy.payload.softMemberLimit
+  const view = reduceCircle(c.circleId, [legacy, ...events.slice(1)])
+  assert.equal(view.members.length, 3)
+  assert.equal(view.pending.length, 0)
+  assert.equal(view.capacity.aboveSoftLimit, true)
+  assert.equal(view.meta.softMemberLimit, 2)
+})
+
+test('daily encouragement merges completed OR and highest self-report without summing updates', async () => {
+  const { blob, service, create } = setup()
+  const c = await create()
+  for (const [i, completed, newWords] of [[1, false, 4], [2, true, 8], [3, false, 32], [4, false, 6]]) {
+    await service.publishProgress(owner, c.circleId, day,
+      { eventId: 'daily_event_000' + i, completed, newWords })
+  }
+  const view = await service.getCircle(owner, c.circleId)
+  assert.deepEqual(view.progress, [{ authorUserId: owner, day, completed: true, newWords: 32, selfReported: true }])
+  assert.deepEqual(reduceCircle(c.circleId, facts(blob)), reduceCircle(c.circleId, facts(blob).reverse()))
+  assert.deepEqual(await service.getProgress(owner, c.circleId, day), view.progress)
+})
+
+test('soft achievements need no evidence provider and never issue a verified badge', async () => {
+  const { service, create, log, trustedAccess } = setup()
+  const c = await create()
+  let evidenceCalls = 0
+  const light = createCircleService({ log, trustedAccess,
+    authenticate: async (token) => ({ userId: token }),
+    inviteKey: 'test-only-server-key-not-a-production-secret',
+    verifyAchievement: async () => { evidenceCalls++; throw Error('must not call external evidence') } })
+  await light.shareAchievement(owner, c.circleId, 'ACH_MASTERED_100')
+  assert.equal(evidenceCalls, 0)
+  await assert.rejects(light.shareAchievement(owner, c.circleId, ['ACH_MASTERED_100']), { code: 'invalid_achievement' })
+  const entries = await service.getShowcase(owner, c.circleId, owner)
+  assert.deepEqual(entries, [{ authorUserId: owner, achievementId: 'ACH_MASTERED_100',
+    selfReported: true, verified: false }])
+  await assert.rejects(service.shareAchievement(owner, c.circleId,
+    { achievementId: 'ACH_MASTERED_100', verified: true }), { code: 'invalid_achievement' })
+})
+
+test('historical verified and new social shares fold to one nonauthoritative display', async () => {
+  const { service, create, log } = setup()
+  const c = await create()
+  await log.append({ circleId: c.circleId, actorUserId: owner, type: 'ACHIEVEMENT_SHARED',
+    operationId: digest(['achievement', 'ACH_MASTERED_100']),
+    payload: { achievementId: 'ACH_MASTERED_100', verified: true } })
+  await service.shareAchievement(owner, c.circleId, 'ACH_MASTERED_100')
+  const view = await service.getCircle(owner, c.circleId)
+  assert.equal(view.achievements.length, 1)
+  assert.equal(view.achievements[0].verified, false)
+  assert.equal(view.achievements[0].selfReported, true)
+  assert.equal(view.ignoredActivityConflicts, 0)
+})
+
+test('small read APIs retain private membership guards and remove target activity after revocation', async () => {
+  const { service, create } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  await service.publishProgress(alice, c.circleId, day,
+    { completed: true, newWords: 8, eventId: 'progress_0001' })
+  await service.shareAchievement(alice, c.circleId, 'ACH_MASTERED_100')
+  await service.reactProgress(owner, c.circleId, alice, day)
+  assert.equal((await service.getProgress(owner, c.circleId, day)).length, 1)
+  assert.deepEqual(await service.getReactions(owner, c.circleId, alice, day), { count: 1, consistency: 'eventual' })
+  assert.equal((await service.getShowcase(owner, c.circleId, alice, ['ACH_MASTERED_100'])).length, 1)
+  await assert.rejects(service.getProgress('visitor_00001', c.circleId, day), { code: 'not_circle_member' })
+  await assert.rejects(service.getReactions('visitor_00001', c.circleId, alice, day), { code: 'not_circle_member' })
+  await assert.rejects(service.getShowcase('visitor_00001', c.circleId, alice), { code: 'not_circle_member' })
+  await service.removeMember(owner, c.circleId, alice)
+  assert.deepEqual(await service.getProgress(owner, c.circleId, day), [])
+  await assert.rejects(service.getReactions(owner, c.circleId, alice, day), { code: 'progress_not_found' })
+  await assert.rejects(service.getShowcase(owner, c.circleId, alice), { code: 'member_not_found' })
+})
+
+test('light read queries validate dates, identifier arrays and bounded input', async () => {
+  const { service, create } = setup()
+  const c = await create()
+  await assert.rejects(service.getProgress(owner, c.circleId, '2026-02-30'), { code: 'invalid_day' })
+  await assert.rejects(service.getReactions(owner, c.circleId, owner, 'invalid'), { code: 'invalid_day' })
+  await assert.rejects(service.getShowcase(owner, c.circleId, owner, ['../accounts']), { code: 'invalid_achievement' })
+  await assert.rejects(service.getShowcase(owner, c.circleId, owner, Array(25).fill('ACH_MASTERED_100')),
+    { code: 'invalid_achievement' })
+})
+
+test('overflow never removes prior progress or blocks an existing member posting', async () => {
+  const { service, create } = setup()
+  const c = await create(2)
+  await service.joinCircle(bob, c.inviteCode)
+  await service.publishProgress(bob, c.circleId, day,
+    { completed: true, newWords: 8, eventId: 'progress_0001' })
+  await service.joinCircle(alice, c.inviteCode)
+  await service.shareAchievement(bob, c.circleId, 'ACH_MASTERED_100')
+  const view = await service.getCircle(bob, c.circleId)
+  assert.equal(view.capacity.aboveSoftLimit, true)
+  assert.equal(view.progress[0].authorUserId, bob)
+  assert.equal(view.achievements[0].authorUserId, bob)
+})
+
+test('light social conflict isolation does not weaken creation or revocation integrity', async () => {
+  const { blob, create } = setup()
+  const c = await create()
+  const creation = facts(blob)[0]
+  const conflicting = event(c.circleId, owner, 'CIRCLE_CREATED', creation.operationId,
+    { ...creation.payload, name: 'another owner state' })
+  const view = reduceCircle(c.circleId, [...facts(blob), conflicting])
+  assert.equal(view.blocked, true)
+  assert.equal(view.blockingConflicts.length, 1)
+  assert.equal(view.ignoredActivityConflicts, 0)
+  assert.deepEqual(view.members, [])
+})
+
+test('malformed activity payloads are skipped while envelope and membership integrity stay strict', async () => {
+  const { blob, service, create, log } = setup()
+  const c = await create()
+  await log.append({ circleId: c.circleId, actorUserId: owner, type: 'PROGRESS_PUBLISHED',
+    operationId: 'bad_progress_01', payload: { day: 'invalid', completed: true, newWords: -1 } })
+  await log.append({ circleId: c.circleId, actorUserId: owner, type: 'ACHIEVEMENT_SHARED',
+    operationId: 'bad_achievement_01', payload: { achievementId: '../private', selfReported: true } })
+  const view = await service.getCircle(owner, c.circleId)
+  assert.equal(view.members.length, 1)
+  assert.equal(view.ignoredInvalidActivities, 2)
+  assert.deepEqual(view.progress, [])
+  assert.deepEqual(view.achievements, [])
+  assert.deepEqual(reduceCircle(c.circleId, facts(blob)), reduceCircle(c.circleId, facts(blob).reverse()))
 })

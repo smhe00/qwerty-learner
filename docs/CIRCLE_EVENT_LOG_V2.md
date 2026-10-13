@@ -1,3 +1,5 @@
+> **Current product scope (2026-10-13):** [Light social v1](./CIRCLE_LIGHT_SOCIAL_V1.md) supersedes earlier seat/capacity selection, official achievement evidence and whole-circle activity-conflict requirements. Capacity is advisory, shares are self-reported, and private-access safeguards remain.
+
 > **Continuation checkpoint:** [Revocation recovery and retirement cleanup](./CIRCLE_RECOVERY_PRIVACY_V2.md) are implemented as server-only helpers, with 47 passing Circle tests. Production authority, orchestration and live qualification remain blocked.
 
 # Circle event log v2 — executable checkpoint, 2026-10-13

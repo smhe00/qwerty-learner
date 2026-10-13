@@ -9,6 +9,9 @@ const fail = (status, code) => { throw new AppError(status, code, code) }
 const valid = (v) => typeof v === 'string' && /^[A-Za-z0-9_-]{8,128}$/.test(v)
 const op = (v) => { if (!valid(v)) fail(400, 'circle_operation_id_required'); return v }
 const uid = (v) => { if (!valid(v)) fail(400, 'invalid_user'); return v }
+const calendarDay = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) &&
+  Number.isFinite(Date.parse(v + 'T00:00:00Z')) &&
+  new Date(v + 'T00:00:00Z').toISOString().slice(0, 10) === v
 const id = (v) => { if (!valid(v)) fail(400, 'invalid_circle'); return v }
 
 /**
@@ -19,7 +22,7 @@ const id = (v) => { if (!valid(v)) fail(400, 'invalid_circle'); return v }
  * trustedAccess.revoke durably fences access BEFORE publishing revoke/close.
  * Checks around an asynchronous operation do not make network delivery atomic.
  */
-export function createCircleService({ log, authenticate, trustedAccess, verifyAchievement, inviteKey } = {}) {
+export function createCircleService({ log, authenticate, trustedAccess, inviteKey } = {}) {
   if (!log?.scan || !log?.append || typeof authenticate !== 'function' ||
       typeof trustedAccess?.check !== 'function' || typeof inviteKey !== 'string' || inviteKey.length < 32) {
     throw new TypeError('Circle needs event log, independent trusted access and server invite key')
@@ -61,13 +64,21 @@ export function createCircleService({ log, authenticate, trustedAccess, verifyAc
     await guard(token, ctx.actorUserId, { ...ctx.proof, phase: 'after_append' })
     return receipt
   }
+  async function readView(token, circleId) {
+    const ctx = await context(token, circleId, 'read')
+    await guard(token, ctx.actorUserId, { ...ctx.proof, phase: 'before_return' })
+    const { pending, revoked, ...visible } = ctx.view
+    return { ...visible, pendingCount: pending.length, revokedCount: revoked.length }
+  }
   return Object.freeze({
-    async createCircle(token, { name, operationId, maxMembers = 12 } = {}) {
+    async createCircle(token, { name, operationId, softMemberLimit, maxMembers } = {}) {
+      const memberHint = softMemberLimit ?? maxMembers ?? 12
       const actorUserId = await actor(token)
       op(operationId)
       if (typeof name !== 'string' || !name.trim() || Array.from(name.trim().normalize('NFKC')).length > 32 ||
           Array.from(name).some((ch) => ch.codePointAt(0) < 32 || ch.codePointAt(0) === 127) ||
-          !Number.isInteger(maxMembers) || maxMembers < 2 || maxMembers > 12) {
+          !Number.isInteger(memberHint) || memberHint < 2 || memberHint > 100 ||
+          (softMemberLimit !== undefined && maxMembers !== undefined && softMemberLimit !== maxMembers)) {
         fail(400, 'invalid_circle_input')
       }
       const circleId = digest(['circle', actorUserId, operationId]).slice(0, 24)
@@ -75,7 +86,7 @@ export function createCircleService({ log, authenticate, trustedAccess, verifyAc
         .update(JSON.stringify([circleId, actorUserId, operationId])).digest('hex').slice(0, 32)
       const ctx = { actorUserId, proof: { circleId, action: 'create', subjects: [actorUserId] } }
       const receipt = await write(token, ctx, 'CIRCLE_CREATED', operationId,
-        { name: name.trim().normalize('NFKC'), maxMembers, inviteHash: digest(secret) })
+        { name: name.trim().normalize('NFKC'), softMemberLimit: memberHint, inviteHash: digest(secret) })
       return { ...receipt, circleId, inviteCode: 'QC2-' + circleId + '-' + secret }
     },
     async joinCircle(token, inviteCode) {
@@ -93,11 +104,31 @@ export function createCircleService({ log, authenticate, trustedAccess, verifyAc
       return { ...await write(token, { actorUserId, proof }, 'JOIN_REQUESTED',
         'join_request', { inviteHash }), circleId, admission: 'pending', final: false }
     },
-    async getCircle(token, circleId) {
-      const ctx = await context(token, circleId, 'read')
-      await guard(token, ctx.actorUserId, { ...ctx.proof, phase: 'before_return' })
-      const { pending, revoked, ...visible } = ctx.view
-      return { ...visible, pendingCount: pending.length, revokedCount: revoked.length }
+    getCircle: readView,
+    async getProgress(token, circleId, day) {
+      if (!calendarDay(day)) fail(400, 'invalid_day')
+      return (await readView(token, circleId)).progress.filter((p) => p.day === day)
+    },
+    async getReactions(token, circleId, targetUserId, day) {
+      uid(targetUserId)
+      if (!calendarDay(day)) fail(400, 'invalid_day')
+      const view = await readView(token, circleId)
+      if (!view.progress.some((p) => p.authorUserId === targetUserId && p.day === day)) {
+        fail(404, 'progress_not_found')
+      }
+      return { count: view.claps.filter((c) => c.authorUserId === targetUserId && c.day === day).length,
+        consistency: 'eventual' }
+    },
+    async getShowcase(token, circleId, targetUserId, ids = []) {
+      uid(targetUserId)
+      if (!Array.isArray(ids) || ids.length > 24 ||
+          ids.some((id) => typeof id !== 'string' || !/^ACH_[A-Z0-9_]{3,72}$/.test(id))) {
+        fail(400, 'invalid_achievement')
+      }
+      const view = await readView(token, circleId)
+      if (!view.members.some((m) => m.userId === targetUserId)) fail(404, 'member_not_found')
+      return view.achievements.filter((a) => a.authorUserId === targetUserId &&
+        (!ids.length || ids.includes(a.achievementId)))
     },
     async leaveCircle(token, circleId) {
       const ctx = await context(token, circleId, 'leave')
@@ -130,13 +161,9 @@ export function createCircleService({ log, authenticate, trustedAccess, verifyAc
     },
     async shareAchievement(token, circleId, achievementId) {
       const ctx = await context(token, circleId, 'share_achievement')
-      if (!/^ACH_[A-Z0-9_]{3,72}$/.test(achievementId || '') ||
-          typeof verifyAchievement !== 'function' ||
-          await verifyAchievement(ctx.actorUserId, achievementId) !== true) {
-        fail(403, 'achievement_unverified')
-      }
-      return write(token, ctx, 'ACHIEVEMENT_SHARED', digest(['achievement', achievementId]),
-        { achievementId, verified: true })
+      if (typeof achievementId !== 'string' || !/^ACH_[A-Z0-9_]{3,72}$/.test(achievementId)) fail(400, 'invalid_achievement')
+      return write(token, ctx, 'ACHIEVEMENT_SHARED', digest(['social-achievement', achievementId]),
+        { achievementId, selfReported: true })
     },
     async reactProgress(token, circleId, targetUserId, day) {
       uid(targetUserId)

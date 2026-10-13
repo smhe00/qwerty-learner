@@ -1,3 +1,5 @@
+> **Current product scope (2026-10-13):** [Light social v1](./CIRCLE_LIGHT_SOCIAL_V1.md) supersedes earlier seat/capacity selection, official achievement evidence and whole-circle activity-conflict requirements. Capacity is advisory, shares are self-reported, and private-access safeguards remain.
+
 # Circle v2 — revocation recovery and retirement cleanup
 
 Checkpoint: 2026-10-13, isolated feature/circle-core-blob, HTTP CLOSED.
