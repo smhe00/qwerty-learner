@@ -113,6 +113,44 @@ function v4BodyFromSnapshot(user, revision, snapshot) {
     deviceId: 'beta-v4-native-blob-test' }
 }
 
+// Native binary readback is pinned to revision+SHA. Never use the legacy
+// JSON/Base64 GET for the new binary V4 storage layout.
+async function getBinaryV4(token, expected) {
+  const manifest = await api('/api/sync/v2/binary/manifest', 'GET', undefined, token)
+  expectCode(manifest, 200, null, 'binary V4 manifest')
+  assert.equal(manifest.value?.revision, expected.revision)
+  assert.equal(manifest.value?.payloadSha256, expected.payloadSha256)
+  assert.equal(manifest.value?.payloadEncoding, 'binary')
+  assert.ok(Number.isSafeInteger(manifest.value?.count) &&
+    manifest.value.count >= 1 && manifest.value.count <= 64)
+  assert.equal(manifest.value.partSha256s?.length, manifest.value.count)
+  const parts = []
+  let size = 0
+  for (let index = 0; index < manifest.value.count; index++) {
+    const selector = new URLSearchParams({
+      revision: String(manifest.value.revision),
+      sha: manifest.value.payloadSha256, index: String(index),
+    })
+    const res = await fetch(new URL('/api/sync/v2/binary/part?' + selector, base), {
+      headers: { Authorization: 'Bearer ' + token },
+      signal: AbortSignal.timeout(20000),
+      redirect: 'error',
+    })
+    assert.equal(res.status, 200, 'binary GET part HTTP')
+    const part = Buffer.from(await res.arrayBuffer())
+    assert.ok(part.length > 0 && part.length <= 192 * 1024)
+    assert.equal(sha256(part), manifest.value.partSha256s[index],
+      'binary GET immutable part SHA')
+    size += part.length
+    parts.push(part)
+  }
+  assert.equal(size, manifest.value.sizeBytes, 'binary GET full byte length')
+  const payload = Buffer.concat(parts)
+  assert.equal(sha256(payload), manifest.value.payloadSha256,
+    'binary GET full SHA')
+  return payload
+}
+
 // Native 192-KiB BINARY multipart route; test against REAL EdgeOne, not in-memory Blob.
 async function apiBinaryPart(data, token, payloadSha256, partSha256, index, count) {
   const response = await fetch(new URL('/api/sync/v2/parts', base), {
@@ -236,8 +274,8 @@ try {
     'Production has not deployed the V4 GA API; do not write')
   assert.ok(health.value?.capabilities?.includes('v4-http-stage-trace-v1'),
     'Maker stage timing capability not deployed; do not infer bottlenecks')
-  assert.ok(health.value?.capabilities?.includes('v4-http-binary-192k-v1'),
-    '192-KiB binary protocol not deployed; refuse real upload')
+  assert.ok(health.value?.capabilities?.includes('v4-end-to-end-binary-v1'),
+    'Native Blob persistence + download protocol not deployed; refuse real upload')
   console.log('V4 GA deployed backend capability: PASS')
 
   expectCode(await api('/api/sync/v2', 'PUT', '{}'), 401,
@@ -301,24 +339,12 @@ try {
     assert.equal(latest.value?.logicalFingerprint, largeBody.logicalFingerprint)
     assert.equal(latest.value?.payloadSha256,
       sha256(Buffer.from(largeBody.payloadBase64, 'base64')))
-    // Metadata does not prove all Blob chunks can be reconstructed.
-    // Exact GET must return the original gzip bytes, not only a matching SHA.
-    const restored = await api('/api/sync/v2', 'GET', undefined, first.token)
-    assert.equal(restored.status, 200, 'V4 multipart full payload readback HTTP')
-    if (typeof restored.value?.payloadBase64 !== 'string') {
-      console.error('V4 full GET body failure', JSON.stringify({
-        sourceKiB: stressKiB[index], status: restored.status,
-        responseBytes: restored.responseBytes,
-        declaredBytes: restored.declaredBytes,
-        parseFailure: restored.parseFailure,
-        responseFormat: restored.value?.clientFormatVersion ?? null,
-        observedRevision: restored.value?.revision ?? null,
-      }))
-      assert.fail('V4 GET 200 lacks parseable payloadBase64; not proof of Blob corruption')
-    }
-    assert.equal(sha256(Buffer.from(restored.value.payloadBase64, 'base64')),
-      sha256(Buffer.from(largeBody.payloadBase64, 'base64')),
-      'full V4 Blob round-trip SHA-256 is byte-exact')
+    // Metadata alone is insufficient. Read EACH actual native Blob chunk
+    // through the authenticated binary endpoint and verify the whole gzip SHA.
+    assert.equal(latest.value?.storageEncoding, 'binary')
+    const restored = await getBinaryV4(first.token, latest.value)
+    assert.deepEqual(restored, Buffer.from(largeBody.payloadBase64, 'base64'),
+      'binary V4 GET round-trip must be byte-exact')
   }
   console.log('V4 HTTP multipart large-payload endurance: PASS')
 } catch (error) {
