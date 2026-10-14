@@ -68,32 +68,26 @@ function corsHeaders(request, configuredOrigin) {
     : {}
 }
 
-// Bound streaming reads BEFORE allocation. A binary part never uses request.text().
+// EdgeOne Maker has repeatedly failed request.body.getReader().read()
+// at 192 KiB even when 32 KiB succeeds. Use the standard Request.arrayBuffer()
+// receive path, then validate the hard 192-KiB size (no Base64 conversion).
+// The Content-Length bound is checked before receiving when available.
+// This changes the body primitive, NOT the request timeout, part size,
+// revision CAS, immutable SHA evidence, or binary Blob layout.
 async function readBinaryPart(request, maxBytes) {
   const declaredLength = request.headers.get('content-length')
   if (declaredLength !== null && (!/^\d+$/.test(declaredLength) ||
       Number(declaredLength) > maxBytes)) {
     throw new AppError(413, 'request_too_large', 'V4 binary part exceeds 192 KiB')
   }
-  const reader = request.body?.getReader()
-  if (!reader) throw new AppError(400, 'invalid_v4_upload_part', 'Missing V4 binary body')
-  const chunks = []
-  let received = 0
-  try {
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      received += value.byteLength
-      if (received > maxBytes) {
-        await reader.cancel().catch(() => {})
-        throw new AppError(413, 'request_too_large', 'V4 binary part exceeds 192 KiB')
-      }
-      chunks.push(Buffer.from(value))
-    }
-  } finally {
-    reader.releaseLock()
+  const arrayBuffer = await request.arrayBuffer()
+  if (!arrayBuffer.byteLength || arrayBuffer.byteLength > maxBytes) {
+    throw new AppError(413, 'request_too_large', 'V4 binary part outside 192-KiB limit')
   }
-  return Buffer.concat(chunks, received)
+  if (declaredLength !== null && Number(declaredLength) !== arrayBuffer.byteLength) {
+    throw new AppError(400, 'invalid_v4_upload_part', 'Binary part declared length mismatch')
+  }
+  return Buffer.from(arrayBuffer)
 }
 
 async function readJson(request, maxBytes) {
