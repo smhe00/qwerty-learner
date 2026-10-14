@@ -104,7 +104,12 @@ test('multi-request V4 stages without revision; commit verifies full six-table V
   assert.equal(meta.revision, 1)
   assert.equal(meta.logicalFingerprint, f.manifest.logicalFingerprint)
   assert.equal((await f.service.getSync(f.token)).payloadBase64.length > 0, true)
-  // Identical commit cannot advance an already committed revision.
+  // Cleanup removes the staged parts; the same manifest cannot be reused.
+  await assert.rejects(commitV4Upload(f.storage, f.service, f.token,
+    f.accountId, f.manifest, 4 * 1024 * 1024),
+  error => error.code === 'v4_upload_part_not_visible')
+  // Re-staging identical immutable content reaches the original CAS gate.
+  await upload(f)
   await assert.rejects(commitV4Upload(f.storage, f.service, f.token,
     f.accountId, f.manifest, 4 * 1024 * 1024),
   error => error.code === 'sync_conflict' &&
