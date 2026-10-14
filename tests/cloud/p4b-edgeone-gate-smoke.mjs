@@ -40,6 +40,36 @@ async function api(path, method = 'GET', body, token) {
   return { status: response.status, value, responseBytes: Buffer.byteLength(text),
     declaredBytes: response.headers.get('content-length'), parseFailure }
 }
+// EdgeOne may reject even a tiny legacy JSON/Base64 PUT before body parsing.
+// Legacy writes are tested solely to seed an old master-format V4 revision;
+// new user sync writes use native binary 512-KiB parts. Retry identical JSON
+// ONLY after confirming the cloud is still at its original revision.
+// A 500, timeout, changed revision or unknown result is NOT safe to retry.
+async function legacyV4PutWithRevisionProof(input, token, label) {
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    const result = await api('/api/sync/v2', 'PUT', input, token)
+    if (result.status !== 503 ||
+        result.value?.error !== 'snapshot_body_read_failed') return result
+    const observed = await api('/api/sync/v2/meta', 'GET', undefined, token)
+    assert.equal(observed.status, 200, label + ': meta preflight unavailable')
+    if (observed.value?.revision !== input.baseRevision) {
+      // Cannot prove no commit. NEVER retry an ambiguous legacy PUT.
+      // A deliberately stale CAS can report 409 if the body is readable.
+      // Returning the original error keeps the gate fail-closed.
+      console.error('Legacy V4 body-read preflight did not match revision',
+        JSON.stringify({ label, attempt,
+          expectedRevision: input.baseRevision,
+          observedRevision: observed.value?.revision }))
+      return result
+    }
+    if (attempt === 5) return result
+    console.warn('Legacy V4 fixture request body failed before V4 validation; ' +
+      'verified unchanged revision before identical replay',
+    JSON.stringify({ label, attempt, revision: input.baseRevision }))
+  }
+  throw Error('unreachable legacy V4 receiver state')
+}
+
 function expectCode(result, status, code, label) {
   assert.equal(result.status, status,
     label + ': unexpected HTTP ' + result.status +
@@ -289,12 +319,12 @@ try {
 
   const m0 = await api('/api/sync/v2/meta', 'GET', undefined, first.token)
   assert.equal(m0.value?.revision, 0)
-  const firstPush = await api('/api/sync/v2', 'PUT', v4Body(first, 0, 'one'),
-    first.token)
+  const firstPush = await legacyV4PutWithRevisionProof(
+    v4Body(first, 0, 'one'), first.token, 'first V4 legacy fixture')
   expectCode(firstPush, 200, null, 'GA first V4 upload')
   assert.equal(firstPush.value?.revision, 1)
-  const secondPush = await api('/api/sync/v2', 'PUT', v4Body(first, 1, 'two'),
-    first.token)
+  const secondPush = await legacyV4PutWithRevisionProof(
+    v4Body(first, 1, 'two'), first.token, 'second V4 legacy fixture')
   expectCode(secondPush, 200, null, 'GA subsequent V4 upload')
   assert.equal(secondPush.value?.revision, 2)
   const stale = await api('/api/sync/v2', 'PUT', v4Body(first, 1, 'stale'),
@@ -303,8 +333,9 @@ try {
   console.log('Fresh V4 and stale revision protection: PASS')
 
   assert.equal((await api('/api/sync/v2/meta', 'GET', undefined, second.token)).value?.revision, 0)
-  const secondOwn = await api('/api/sync/v2', 'PUT', v4Body(second, 0, 'other-account'),
-    second.token)
+  const secondOwn = await legacyV4PutWithRevisionProof(
+    v4Body(second, 0, 'other-account'), second.token,
+    'other-account V4 legacy migration fixture')
   expectCode(secondOwn, 200, null, 'second normal user without allowlist')
   assert.equal(secondOwn.value?.revision, 1)
   assert.equal((await api('/api/sync/v2/meta', 'GET', undefined, first.token)).value?.revision, 2)
