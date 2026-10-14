@@ -1,0 +1,60 @@
+name: Circle Core Gate (isolated feature branch)
+
+on:
+  push:
+    branches:
+      - feature/circle-core-blob
+      - feature/circle-etest-ready
+    paths:
+      - 'cloud-functions/_shared/circle/**'
+      - 'cloud-functions/api/**'
+      - 'tests/cloud/circle*.mjs'
+      - 'docs/CIRCLE_CORE_BLOB_V1.md'
+      - 'scripts/circle-blob-live-contract.mjs'
+      - '.github/workflows/circle-core-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: circle-core-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  circle-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Run Circle kernel and concurrency tests
+        run: node --test tests/cloud/circle-core.test.mjs tests/cloud/circle-trusted-access.test.mjs tests/cloud/circle-eventual-access.test.mjs tests/cloud/circle-etest-gateway.test.mjs
+      - name: Check production gateway syntax without deploying
+        run: node --check 'cloud-functions/api/[[default]].js'
+      - name: Lint production gateway with Circle gate
+        run: yarn eslint 'cloud-functions/api/[[default]].js' --ext .js
+      - name: Static-check live probe (never execute with production credentials)
+        run: node --check scripts/circle-blob-live-contract.mjs
+      - name: Lint Circle-only backend and tests
+        run: yarn eslint cloud-functions/_shared/circle tests/cloud/circle-core.test.mjs tests/cloud/circle-trusted-access.test.mjs tests/cloud/circle-eventual-access.test.mjs tests/cloud/circle-etest-gateway.test.mjs tests/cloud/circle-core-cas.historical.mjs --ext .js,.mjs
+      - name: Lint ES module sandbox probe
+        run: yarn eslint scripts/circle-blob-live-contract.mjs --parser-options '{"sourceType":"module","ecmaVersion":2022}'
+      - name: Regression tests for existing Cloud V4 storage, auth and staging routes
+        run: |
+          node --test tests/cloud/backend-core.test.mjs tests/cloud/multi-session-auth.test.mjs tests/cloud/edgeone-blob-storage.test.mjs tests/cloud/s2-write-route.test.mjs
+      - name: Verify current etest frontend still builds
+        run: yarn build
+      - name: Verify no frontend changed in branch
+        env:
+          BASE: ${{ github.event.before }}
+        run: |
+          if git rev-parse --verify "${BASE}^{commit}" >/dev/null 2>&1; then
+            git diff --name-only "${BASE}" HEAD | grep -E '^src/|^public/' && exit 1 || true
+          fi
