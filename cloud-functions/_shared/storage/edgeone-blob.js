@@ -494,6 +494,11 @@ export function createEdgeOneBlobStorage(store) {
     },
 
     async putV4UploadPart(userId, payloadSha256, index, partSha256, content) {
+      if (content?.version === 3) {
+        if (!Buffer.isBuffer(content.data)) throw new Error('Expected binary V4 part')
+        return setBinaryOnlyIfNew(binaryUploadKey(userId, payloadSha256,
+          content.count, index, partSha256), content.data)
+      }
       const key = uploadKey(userId, payloadSha256, index, partSha256)
       if (content?.version !== 2) return setJsonOnlyIfNew(key, content)
       // A 192-KiB raw binary HTTP part expands to 256 KiB of Base64.
@@ -515,7 +520,13 @@ export function createEdgeOneBlobStorage(store) {
       return true
     },
 
-    async getV4UploadPart(userId, payloadSha256, index, partSha256) {
+    async getV4UploadPart(userId, payloadSha256, index, partSha256, count) {
+      if (Number.isSafeInteger(count) && count >= 1 && count <= 192) {
+        const bytes = await strongBinary(binaryUploadKey(
+          userId, payloadSha256, count, index, partSha256))
+        if (bytes !== null) return { version: 3, index, count,
+          payloadSha256, partSha256, data: bytes }
+      }
       const key = uploadKey(userId, payloadSha256, index, partSha256)
       const old = await strongJson(key)
       if (old !== null) return old
@@ -542,7 +553,9 @@ export function createEdgeOneBlobStorage(store) {
     },
 
     async deleteV4UploadParts(userId, payloadSha256) {
-      return deletePrefix(uploadPrefix(userId, payloadSha256))
+      const old = await deletePrefix(uploadPrefix(userId, payloadSha256))
+      const binary = await deletePrefix(`users/${userId}/v4-http-parts/v3/${payloadSha256}/`)
+      return old + binary
     },
 
     async createRevision(userId, revision, snapshot) {
