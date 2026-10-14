@@ -11,6 +11,8 @@ export const V4_HTTP_PART_CHARS = 32 * 1024
 export const V4_HTTP_MAX_PARTS = 192
 const SHA = /^[0-9a-f]{64}$/
 const PART_B64 = /^[A-Za-z0-9+/]*={0,2}$/
+const msNow = () => performance.now()
+const ms = (start) => Math.round((msNow() - start) * 10) / 10
 
 function validSha(value) {
   return typeof value === 'string' && SHA.test(value)
@@ -39,21 +41,40 @@ export async function receiveV4UploadPart(storage, userId, input) {
       typeof storage.getV4UploadPart !== 'function') {
     throw new AppError(503, 'v4_upload_storage_unavailable', 'V4 part storage unavailable')
   }
+
   const content = { version: 1, index, count, payloadSha256, partSha256, data }
+  const started = msNow()
+  const timings = {}
+  let failureStage = 'blob_write'
   try {
-    const saved = await storage.putV4UploadPart(
-      userId, payloadSha256, index, partSha256, content)
-    if (!saved) throw new Error('Staged V4 part key contains different evidence')
-    const observed = await storage.getV4UploadPart(
-      userId, payloadSha256, index, partSha256)
-    if (JSON.stringify(observed) !== JSON.stringify(content)) {
-      throw new Error('V4 upload part readback mismatch')
+    const writeStart = msNow()
+    try {
+      const saved = await storage.putV4UploadPart(
+        userId, payloadSha256, index, partSha256, content)
+      if (!saved) throw new Error('Staged V4 part key contains different evidence')
+    } finally {
+      timings.blobWriteMs = ms(writeStart)
+    }
+    failureStage = 'blob_readback'
+    const readStart = msNow()
+    try {
+      const observed = await storage.getV4UploadPart(
+        userId, payloadSha256, index, partSha256)
+      if (JSON.stringify(observed) !== JSON.stringify(content)) {
+        throw new Error('V4 upload part readback mismatch')
+      }
+    } finally {
+      timings.blobReadbackMs = ms(readStart)
     }
   } catch {
+    timings.serverTotalMs = ms(started)
+    // Fixed stage codes only. Never disclose storage keys, account IDs or payloads.
     throw new AppError(503, 'v4_upload_part_unverified',
-      'V4 part write cannot be verified; retry the identical part')
+      'V4 part write cannot be verified; retry the identical part',
+      { failureStage, timings })
   }
-  return { received: true, payloadSha256, partSha256, index }
+  timings.serverTotalMs = ms(started)
+  return { received: true, payloadSha256, partSha256, index, timings }
 }
 
 export async function commitV4Upload(storage, service, token, userId, input, maxSyncBytes,
@@ -69,16 +90,21 @@ export async function commitV4Upload(storage, service, token, userId, input, max
   if (typeof storage.getV4UploadPart !== 'function') {
     throw new AppError(503, 'v4_upload_storage_unavailable', 'V4 part storage unavailable')
   }
+
+  const started = msNow()
+  const timings = {}
   const parts = []
-  for (let index = 0; index < count; index++) {
-    let record
-    try {
-      record = await storage.getV4UploadPart(
-        userId, payloadSha256, index, partSha256s[index])
-    } catch {
-      throw new AppError(503, 'v4_upload_part_not_visible',
-        'Staged V4 part is not readable; retry the same manifest')
-    }
+  const readStart = msNow()
+  try {
+    for (let index = 0; index < count; index++) {
+      let record
+      try {
+        record = await storage.getV4UploadPart(
+          userId, payloadSha256, index, partSha256s[index])
+      } catch {
+        throw new AppError(503, 'v4_upload_part_not_visible',
+          'Staged V4 part is not readable; retry the same manifest')
+      }
     if (!record || record.version !== 1 || record.index !== index ||
         record.count !== count || record.payloadSha256 !== payloadSha256 ||
         record.partSha256 !== partSha256s[index] ||
@@ -90,8 +116,18 @@ export async function commitV4Upload(storage, service, token, userId, input, max
       throw new AppError(503, 'v4_upload_part_not_visible',
         'Staged V4 part is incomplete or inconsistent')
     }
-    parts.push(record.data)
+
+      parts.push(record.data)
+    }
+  } catch (error) {
+    timings.partsReadMs = ms(readStart)
+    timings.serverTotalMs = ms(started)
+    if (error instanceof AppError) {
+      error.details = { failureStage: 'part_lookup', timings }
+    }
+    throw error
   }
+  timings.partsReadMs = ms(readStart)
   const encoded = parts.join('')
   if (encoded.length > Math.ceil(maxSyncBytes / 3) * 4 + 4) {
     throw new AppError(413, 'request_too_large', 'Reconstructed V4 payload exceeds account quota')
@@ -107,14 +143,31 @@ export async function commitV4Upload(storage, service, token, userId, input, max
   const canonical = {
     ...metadata, payloadBase64: encoded, clientFormatVersion: 'qwerty-backup-v4',
   }
-  const result = recovery
-    ? await service.putSyncV4Recovery(token, canonical)
-    : await service.putSyncV4(token, canonical)
+
+  const commitStart = msNow()
+  let result
+  try {
+    result = recovery
+      ? await service.putSyncV4Recovery(token, canonical)
+      : await service.putSyncV4(token, canonical)
+  } catch (error) {
+    timings.commitCoreMs = ms(commitStart)
+    timings.serverTotalMs = ms(started)
+    if (error instanceof AppError) {
+      error.details = { failureStage: 'commit_core', timings }
+    }
+    // The outcome of a failed commit can be ambiguous. Never retry it here.
+    throw error
+  }
+  timings.commitCoreMs = ms(commitStart)
   // Cleanup is maintenance only, AFTER durable revision commit.
+  const cleanupStart = msNow()
   try {
     await storage.deleteV4UploadParts?.(userId, payloadSha256)
   } catch {
     // Lost cleanup response never changes published revision semantics.
   }
-  return result
+  timings.cleanupMs = ms(cleanupStart)
+  timings.serverTotalMs = ms(started)
+  return { ...result, timings }
 }
