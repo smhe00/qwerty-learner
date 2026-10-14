@@ -7,7 +7,7 @@ if (!targetSha || !/^[a-f0-9]{40}$/.test(targetSha)) throw new Error('Missing ve
 test('published Pages: matching SHA, cloud disabled, Learn route and reload durability', async ({ page, request }) => {
   test.setTimeout(120_000)
   await expect.poll(async () => {
-    const result = await request.get(site + 'source-commit.txt', { failOnStatusCode: false })
+    const result = await request.get(site + 'source-commit.txt?pages_probe=' + targetSha + '-' + Date.now(), { failOnStatusCode: false })
     return result.ok() ? (await result.text()).trim() : ''
   }, { timeout: 90000, intervals: [1000, 2000, 5000] }).toBe(targetSha)
   await page.goto(site, { waitUntil: 'domcontentloaded' })
@@ -38,7 +38,7 @@ test('published Pages: matching SHA, cloud disabled, Learn route and reload dura
 test('published Pages: real Learn keystrokes produce one durable record across refresh', async ({ page, request }) => {
   test.setTimeout(120_000)
   await expect.poll(async () => {
-    const response = await request.get(site + 'source-commit.txt', { failOnStatusCode: false })
+    const response = await request.get(site + 'source-commit.txt?pages_probe=' + targetSha + '-' + Date.now(), { failOnStatusCode: false })
     return response.ok() ? (await response.text()).trim() : ''
   }, { timeout: 90_000, intervals: [1000, 2000, 5000] }).toBe(targetSha)
 
@@ -109,7 +109,7 @@ test('published Pages: real Learn keystrokes produce one durable record across r
 test('published Pages: Typing uses real key input and advances independently', async ({ page, request }) => {
   test.setTimeout(90_000)
   await expect.poll(async () => {
-    const response = await request.get(site + 'source-commit.txt', { failOnStatusCode: false })
+    const response = await request.get(site + 'source-commit.txt?pages_probe=' + targetSha + '-' + Date.now(), { failOnStatusCode: false })
     return response.ok() ? (await response.text()).trim() : ''
   }, { timeout: 60_000, intervals: [1000, 2000, 5000] }).toBe(targetSha)
 
@@ -138,7 +138,7 @@ test('published Pages: donation QR is visible immediately after hard refresh wit
   test.skip(browserName !== 'chromium', 'CDP network cache control is Chromium-only')
   test.setTimeout(120_000)
   await expect.poll(async () => {
-    const response = await request.get(site + 'source-commit.txt', { failOnStatusCode: false })
+    const response = await request.get(site + 'source-commit.txt?pages_probe=' + targetSha + '-' + Date.now(), { failOnStatusCode: false })
     return response.ok() ? (await response.text()).trim() : ''
   }, { timeout: 90_000, intervals: [1000, 2000, 5000] }).toBe(targetSha)
 

@@ -23,6 +23,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   explorer:
@@ -39,19 +40,11 @@ jobs:
       - run: |
           yarn install --frozen-lockfile
           npx playwright install --with-deps chromium
-      - name: Check actually served Pages SHA before browser exploration
+      - name: Wait for actual Pages deployment and source SHA propagation
         env:
+          GH_TOKEN: ${{ github.token }}
           PAGES_SOURCE_SHA: ${{ github.event.inputs.source_sha || github.sha }}
-        run: |
-          for i in $(seq 1 48); do
-            served=$(curl --connect-timeout 5 --max-time 10 -fsSL               'https://smhe00.github.io/qwerty-learner/source-commit.txt' || true)
-            if [ "$served" = "$PAGES_SOURCE_SHA" ]; then
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "::error::Published Pages is not serving the requested explorer SHA"
-          exit 1
+        run: node scripts/wait-pages-deployment.mjs
       - name: Run reproducible isolated explorer
         id: explorer
         continue-on-error: true

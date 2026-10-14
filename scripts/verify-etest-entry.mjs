@@ -28,7 +28,7 @@ async function gate(file) {
     r.status === 'completed')
 }
 let evidence = null
-for (let attempt = 0; attempt < 32; attempt += 1) {
+for (let attempt = 0; attempt < 80; attempt += 1) {
   const [main, cloud, pages] = await Promise.all([
     gh('/branches/product%2Fmain'),
     process.env.CLOUD_GATE_JOB_PASSED === 'true'
@@ -40,16 +40,16 @@ for (let attempt = 0; attempt < 32; attempt += 1) {
   if (cloud && cloud.conclusion !== 'success')
     throw new Error('Cloud Sync Gate failed on candidate')
   if (pages && pages.conclusion !== 'success')
-    throw new Error('Pages browser gate failed on candidate')
+    throw new Error('Pages publish/regression workflow failed on candidate: https://github.com/' + repo + '/actions/runs/' + pages.id)
   if (cloud && pages) {
     evidence = { cloudRun: cloud.id, pagesRun: pages.id }
     break
   }
-  if (attempt === 31) throw new Error('Pages/Cloud gate did not complete')
+  if (attempt === 79) throw new Error('Pages/Cloud gate did not complete')
   await new Promise(resolve => setTimeout(resolve, 15000))
 }
 const live = await fetch(
-  'https://smhe00.github.io/qwerty-learner/source-commit.txt',
+  'https://smhe00.github.io/qwerty-learner/source-commit.txt?pages_probe=' + sha + '-' + Date.now(),
   { cache: 'no-store', signal: AbortSignal.timeout(15000) },
 )
 assert.equal(live.status, 200, 'Live Pages source marker missing')

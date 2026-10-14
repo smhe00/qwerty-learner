@@ -13,6 +13,7 @@ concurrency:
 
 permissions:
   contents: write
+  actions: read
 
 env:
   REACT_APP_DEPLOY_ENV: pages
@@ -42,6 +43,16 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build
+      - name: Wait for actual Pages deployment (exact artifact SHA)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PAGES_SOURCE_SHA: ${{ github.sha }}
+        run: node scripts/wait-pages-deployment.mjs deployment
+      - name: Wait for published source SHA propagation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PAGES_SOURCE_SHA: ${{ github.sha }}
+        run: node scripts/wait-pages-deployment.mjs propagation
       - name: Install Chromium for published browser regression
         run: npx playwright install --with-deps chromium
       - name: Check published SHA and main browser path

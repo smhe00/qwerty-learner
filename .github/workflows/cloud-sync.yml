@@ -23,6 +23,7 @@ on:
       - '.github/workflows/pages-explorer.yml'
       - '.github/workflows/etest-entry-gate.yml'
       - 'scripts/verify-etest-entry.mjs'
+      - 'scripts/wait-pages-deployment.mjs'
       - 'scripts/probe-etest-blob-single-object.mjs'
       - 'scripts/benchmark-master-etest-v4.mjs'
       - '.github/workflows/benchmark-master-etest-v4.yml'
@@ -116,7 +117,7 @@ jobs:
       contents: read
       actions: read
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 25
     env:
       CLOUD_GATE_JOB_PASSED: 'true'
     steps:
