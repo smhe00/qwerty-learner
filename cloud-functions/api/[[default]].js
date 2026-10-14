@@ -180,7 +180,9 @@ async function requireS2WriteAccount(service, request, env) {
     throw new AppError(503, 's2_writes_temporarily_disabled',
       'Cloud V4 writes are temporarily unavailable')
   }
-  return token
+  // Return the verified identity to avoid a second EdgeOne Blob-backed
+  // session lookup within the same authorized HTTP request.
+  return { token, account: session }
 }
 
 async function enforceAuthRateLimit(context, storage, env, cors) {
@@ -446,8 +448,7 @@ export async function onRequest(context) {
     // Bounded HTTP parts avoid the EdgeOne request.text() large-body limit.
     // A part never advances the published V4 revision.
     if (request.method === 'POST' && path === '/sync/v2/parts') {
-      const token = await requireS2WriteAccount(service, request, env)
-      const account = await service.me(token)
+      const { token, account } = await requireS2WriteAccount(service, request, env)
       let body
       const contentType = request.headers.get('content-type')?.split(';')[0]
         .trim().toLowerCase()
@@ -498,8 +499,7 @@ export async function onRequest(context) {
     }
     if (request.method === 'POST' &&
         (path === '/sync/v2/commit' || path === '/sync/v2/commit/recovery')) {
-      const token = await requireS2WriteAccount(service, request, env)
-      const account = await service.me(token)
+      const { token, account } = await requireS2WriteAccount(service, request, env)
       // Maker request.text() can fail even on small JSON. Use the bounded
       // arrayBuffer receiver already proven for legacy V4 and native parts.
       // Ambiguous responses remain fail-closed: never retry the final commit.
@@ -512,13 +512,13 @@ export async function onRequest(context) {
     }
 
     if (request.method === 'PUT' && path === '/sync/v2/recovery') {
-      const token = await requireS2WriteAccount(service, request, env)
+      const { token } = await requireS2WriteAccount(service, request, env)
       const body = await readJson(request, bodyLimit)
       return json({ ok: true, ...(await service.putSyncV4Recovery(token, body)) }, 200, cors)
     }
 
     if (request.method === 'PUT' && path === '/sync/v2') {
-      const token = await requireS2WriteAccount(service, request, env)
+      const { token } = await requireS2WriteAccount(service, request, env)
       let body
       try {
         body = await readLegacyV4Json(request, bodyLimit)
@@ -551,7 +551,7 @@ export async function onRequest(context) {
       } })
     }
     if (request.method === 'POST' && path === '/sync/v2/binary/migrate') {
-      const token = await requireS2WriteAccount(service, request, env)
+      const { token } = await requireS2WriteAccount(service, request, env)
       const expected = await readJson(request, 4 * 1024)
       return json({ ok: true,
         ...(await service.migrateSyncV4Binary(token, expected)) }, 200, cors)
