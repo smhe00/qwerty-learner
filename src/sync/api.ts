@@ -450,7 +450,7 @@ export async function getSyncV2SnapshotBinary(token: string): Promise<{
       manifest.count !== Math.ceil(manifest.sizeBytes / manifest.chunkBytes) ||
       manifest.partSha256s?.length !== manifest.count ||
       !manifest.partSha256s.every(sha => /^[a-f0-9]{64}$/.test(sha)) ||
-      manifest.sizeBytes > 4 * 1024 * 1024 || manifest.sizeBytes < 1) {
+      manifest.sizeBytes > 16 * 1024 * 1024 || manifest.sizeBytes < 1) {
     throw new SyncApiError(503, 'invalid_binary_manifest',
       'Cloud binary V4 manifest failed structural validation')
   }
