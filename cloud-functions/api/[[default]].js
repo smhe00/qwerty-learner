@@ -281,6 +281,7 @@ export async function onRequest(context) {
             'v4-http-stage-trace-v1',
             'v4-http-binary-192k-v1',
             'v4-end-to-end-binary-v1',
+            'v4-binary-direct-512k-v1',
             'backup-v3-explicit-migration-only',
             'account-delete-v1',
             'duplicate-register-protection-v1',
