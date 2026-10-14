@@ -215,3 +215,41 @@ test('Circle kernel with bridged V4 sessions fails private reads closed on indep
   await assert.rejects(service.getCircle('owner_token', c.circleId),
     { code: 'circle_access_uncertain' })
 })
+
+
+test('session revoked between list and private response denies entire Circle read', async () => {
+  const f = fixture()
+  const objects = new Map()
+  let revokeWhileScanning = false
+  const blob = {
+    async setJSON(key, value) { objects.set(key, structuredClone(value)) },
+    async get(key) { return structuredClone(objects.get(key) ?? null) },
+    async list({ prefix }) {
+      if (revokeWhileScanning) f.versions.set(owner, 2)
+      return { blobs: [...objects.keys()].filter((key) =>
+        key.startsWith(prefix)).map((key) => ({ key })) }
+    },
+  }
+  const service = createCircleService({
+    log: createCircleEventLog(blob), authenticate: f.bridge.authenticate,
+    trustedAccess: f.bridge.trustedAccess,
+    inviteKey: 'test-only-invite-signing-secret-of-32-bytes',
+  })
+  const c = await service.createCircle('owner_token',
+    { name: 'Race', operationId: 'create_race_0001' })
+  revokeWhileScanning = true
+  await assert.rejects(service.getCircle('owner_token', c.circleId),
+    { code: 'circle_access_uncertain' })
+})
+
+test('authority boolean ack is not accepted as durable revocation receipt', async () => {
+  const f = fixture()
+  f.authority.commitRevocation = async () => true
+  const cmd = { circleId, actorUserId: owner, type: 'MEMBER_REMOVED',
+    operationId: 'remove_00002', payload: { targetUserId: member } }
+  assert.equal(await f.bridge.trustedAccess.revoke({
+    token: 'owner_token', actorUserId: owner, circleId,
+    kind: 'member', targetUserId: member, command: cmd, operationId, commandHash,
+  }), false)
+  assert.equal(await f.bridge.trustedAccess.lookupRevocation({ operationId, commandHash }), null)
+})
