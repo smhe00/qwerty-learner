@@ -161,7 +161,8 @@ class SharedMockCloud {
   }
 
   async connect(context: BrowserContext) {
-    await context.route(/\\/api\\/sync\\/v2(?:\\/|$|\\?)/, r => this.route(r))
+    await context.route(url => url.pathname === '/api/sync/v2' ||
+      url.pathname.startsWith('/api/sync/v2/'), r => this.route(r))
   }
 }
 
