@@ -6,7 +6,7 @@ import test from 'node:test'
 import { createBackendService } from '../../cloud-functions/_shared/core.js'
 import { createEdgeOneBlobStorage } from '../../cloud-functions/_shared/storage/edgeone-blob.js'
 import {
-  commitV4Upload, receiveV4UploadPart, V4_HTTP_PART_CHARS,
+  V4_HTTP_PART_CHARS, commitV4Upload, receiveV4UploadPart,
 } from '../../cloud-functions/_shared/v4-http-parts.js'
 import { verifyCompressedV4 } from '../../cloud-functions/_shared/sync-v4.js'
 
