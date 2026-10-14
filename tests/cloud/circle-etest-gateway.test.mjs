@@ -157,5 +157,8 @@ test('etest test-account deletion refuses orphaned social events; ordinary accou
   }), false)
   assert.equal(blocksCircleEtestAccountDeletion({
     hostname: 'etest.edgeone.dev', env: { ...env, CIRCLE_ETEST_ENABLED: 'false' }, userId: owner,
+  }), true, 'Turning off Circle must not remove the deletion safety fence')
+  assert.equal(blocksCircleEtestAccountDeletion({
+    hostname: 'etest.edgeone.dev', env: { ...env, CIRCLE_ETEST_USER_IDS: '' }, userId: owner,
   }), false)
 })
