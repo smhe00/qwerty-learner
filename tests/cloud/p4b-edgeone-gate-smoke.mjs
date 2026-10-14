@@ -29,8 +29,16 @@ async function api(path, method = 'GET', body, token) {
       typeof body === 'string' ? body : JSON.stringify(body),
     redirect: 'error', signal: AbortSignal.timeout(20000),
   })
-  const value = await response.json().catch(() => null)
-  return { status: response.status, value }
+  // Preserve redacted diagnostics when a large 200 response is malformed.
+  // Never print or persist a user's Base64 snapshot.
+  const text = await response.text()
+  let value = null
+  let parseFailure = null
+  try { value = JSON.parse(text) } catch (error) {
+    parseFailure = error instanceof Error ? error.name : 'parse_error'
+  }
+  return { status: response.status, value, responseBytes: Buffer.byteLength(text),
+    declaredBytes: response.headers.get('content-length'), parseFailure }
 }
 function expectCode(result, status, code, label) {
   assert.equal(result.status, status,
@@ -105,13 +113,31 @@ function v4BodyFromSnapshot(user, revision, snapshot) {
     deviceId: 'beta-v4-native-blob-test' }
 }
 
-// Native bounded multipart route; test against REAL EdgeOne, not in-memory Blob.
+// Native 192-KiB BINARY multipart route; test against REAL EdgeOne, not in-memory Blob.
+async function apiBinaryPart(data, token, payloadSha256, partSha256, index, count) {
+  const response = await fetch(new URL('/api/sync/v2/parts', base), {
+    method: 'POST', headers: {
+      Accept: 'application/json', Authorization: 'Bearer ' + token,
+      'Content-Type': 'application/octet-stream',
+      'X-Qwerty-Payload-Sha256': payloadSha256,
+      'X-Qwerty-Part-Sha256': partSha256,
+      'X-Qwerty-Part-Index': String(index),
+      'X-Qwerty-Part-Count': String(count),
+    }, body: data, redirect: 'error', signal: AbortSignal.timeout(20000),
+  })
+  const text = await response.text()
+  let value = null
+  try { value = JSON.parse(text) } catch { /* Redacted invalid ACK below. */ }
+  return { status: response.status, value,
+    responseBytes: Buffer.byteLength(text) }
+}
 // A part may be retried identically, but ambiguous final revision MUST
 // be checked by GET meta and never blindly overwritten.
 async function uploadLargeV4(record, token) {
-  const payloadSha256 = sha256(Buffer.from(record.payloadBase64, 'base64'))
-  const chars = 32 * 1024
-  const count = Math.ceil(record.payloadBase64.length / chars)
+  const raw = Buffer.from(record.payloadBase64, 'base64')
+  const payloadSha256 = sha256(raw)
+  const bytesPerPart = 192 * 1024
+  const count = Math.ceil(raw.length / bytesPerPart)
   assert.ok(count >= 1 && count <= 192)
   const partSha256s = []
   const uploadStarted = performance.now()
@@ -120,19 +146,18 @@ async function uploadLargeV4(record, token) {
   let partBlobWriteMs = 0
   let slowestPart = { index: -1, elapsedMs: 0 }
   for (let index = 0; index < count; index++) {
-    const data = record.payloadBase64.slice(index * chars, (index + 1) * chars)
+    const data = raw.subarray(index * bytesPerPart, (index + 1) * bytesPerPart)
     const partSha256 = sha256(data)
     partSha256s.push(partSha256)
     // Only retry the exact immutable part; never retry an ambiguous
-    // final /commit. Transient Maker body-read failures can occur at 32 KiB.
+    // final /commit. Verify Maker's real 192-KiB raw-body behavior.
     let staged
     for (let attempt = 0; attempt < 6; attempt++) {
 
       const started = performance.now()
       try {
-        staged = await api('/api/sync/v2/parts', 'POST', {
-          payloadSha256, count, index, data, partSha256,
-        }, token)
+        staged = await apiBinaryPart(data, token, payloadSha256, partSha256,
+          index, count)
       } catch (error) {
         const elapsedMs = Math.round(performance.now() - started)
         console.error('V4 part attempt failed', JSON.stringify({
@@ -211,6 +236,8 @@ try {
     'Production has not deployed the V4 GA API; do not write')
   assert.ok(health.value?.capabilities?.includes('v4-http-stage-trace-v1'),
     'Maker stage timing capability not deployed; do not infer bottlenecks')
+  assert.ok(health.value?.capabilities?.includes('v4-http-binary-192k-v1'),
+    '192-KiB binary protocol not deployed; refuse real upload')
   console.log('V4 GA deployed backend capability: PASS')
 
   expectCode(await api('/api/sync/v2', 'PUT', '{}'), 401,
@@ -278,8 +305,20 @@ try {
     // Exact GET must return the original gzip bytes, not only a matching SHA.
     const restored = await api('/api/sync/v2', 'GET', undefined, first.token)
     assert.equal(restored.status, 200, 'V4 multipart full payload readback HTTP')
-    assert.equal(restored.value?.payloadBase64, largeBody.payloadBase64,
-      'full V4 Blob round-trip is byte-exact')
+    if (typeof restored.value?.payloadBase64 !== 'string') {
+      console.error('V4 full GET body failure', JSON.stringify({
+        sourceKiB: stressKiB[index], status: restored.status,
+        responseBytes: restored.responseBytes,
+        declaredBytes: restored.declaredBytes,
+        parseFailure: restored.parseFailure,
+        responseFormat: restored.value?.clientFormatVersion ?? null,
+        observedRevision: restored.value?.revision ?? null,
+      }))
+      assert.fail('V4 GET 200 lacks parseable payloadBase64; not proof of Blob corruption')
+    }
+    assert.equal(sha256(Buffer.from(restored.value.payloadBase64, 'base64')),
+      sha256(Buffer.from(largeBody.payloadBase64, 'base64')),
+      'full V4 Blob round-trip SHA-256 is byte-exact')
   }
   console.log('V4 HTTP multipart large-payload endurance: PASS')
 } catch (error) {
