@@ -52,6 +52,14 @@ class SharedMockCloud {
     const url = new URL(request.url())
     const pathname = url.pathname
     const method = request.method()
+    if (method === 'OPTIONS') {
+      await r.fulfill({ status: 204, headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+        'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Qwerty-Payload-Sha256, X-Qwerty-Part-Sha256, X-Qwerty-Part-Index, X-Qwerty-Part-Count',
+      } })
+      return
+    }
     if (method === 'GET' && pathname.endsWith('/meta')) {
       if (this.failNextMeta) {
         this.failNextMeta = false
