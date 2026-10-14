@@ -124,7 +124,8 @@ async function uploadLargeV4(record, token) {
     assert.equal(staged.value?.received, true)
     assert.equal(staged.value?.partSha256, partSha256)
   }
-  const { payloadBase64: _bytes, ...meta } = record
+  const meta = { ...record }
+  delete meta.payloadBase64
   return api('/api/sync/v2/commit', 'POST', {
     ...meta, payloadSha256, count, partSha256s,
   }, token)
