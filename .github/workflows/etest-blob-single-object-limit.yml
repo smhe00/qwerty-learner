@@ -15,7 +15,15 @@ permissions:
   contents: read
 
 jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check probe syntax without credentials or Blob writes
+        run: node --check scripts/probe-etest-blob-single-object.mjs
+
   isolated-blob-limit:
+    needs: [syntax]
     if: >-
       github.ref_name == 'product/main' &&
       vars.ETEST_BLOB_LIMIT_PROBE_ENABLED == 'true' &&
