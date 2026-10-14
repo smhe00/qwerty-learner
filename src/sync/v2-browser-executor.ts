@@ -5,7 +5,8 @@
  *
  * Deliberately not called by Cloud Sync V1 UI or mounted React handlers.
  */
-import { getSyncV2Meta, getSyncV2Snapshot, putSyncV2 } from './api'
+import { getSyncV2Meta, getSyncV2MetaWithBinaryMigration,
+  getSyncV2SnapshotBinary, putSyncV2Binary } from './api'
 import { loadAuth } from './auth'
 import { compareAndSwapSyncV2Baseline, loadSyncV2Baseline } from './v2-baseline'
 import { executeManualSyncV2 } from './v2-manual-executor'
@@ -55,9 +56,17 @@ export async function executePreMountManualSyncV2(
     readBaseline: () => loadSyncV2Baseline(accountId),
     compareAndSwapBaseline: (expected, next) =>
       compareAndSwapSyncV2Baseline(accountId, expected, next),
-    getMeta: () => getSyncV2Meta(auth.token),
-    getSnapshot: () => getSyncV2Snapshot(auth.token),
-    put: input => putSyncV2(auth.token, { ...input, deviceId: 'qwerty-web-s2-manual' }),
+    // The first authenticated read migrates a legacy V4 cloud revision once;
+    // the second read only checks metadata (no mutation after Pull staging).
+    getMeta: async () => {
+      await recheck()
+      const remote = await getSyncV2Meta(auth.token)
+      return remote.hasData && remote.storageEncoding !== 'binary'
+        ? getSyncV2MetaWithBinaryMigration(auth.token) : remote
+    },
+    getSnapshot: () => getSyncV2SnapshotBinary(auth.token),
+    put: input => putSyncV2Binary(auth.token,
+      { ...input, deviceId: 'qwerty-web-s2-manual' }),
     saveSource: snapshot => saveWorkspaceToVault(identity, snapshot),
     journal: syncV2PullJournalPort,
   })
