@@ -83,7 +83,7 @@ function fixture(local, meta, baseline = null) {
     async put(input) {
       state.calls.push('upload')
       state.uploaded = input
-      const bytes = Buffer.from(input.payloadBase64, 'base64')
+      const bytes = Buffer.from(input.payloadBytes)
       return { ...absent(), hasData: true, revision: input.baseRevision + 1,
         logicalFingerprint: input.logicalFingerprint,
         clientFormatVersion: 'qwerty-backup-v4',
