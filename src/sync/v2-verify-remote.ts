@@ -10,7 +10,7 @@ import { assertRestorableWorkspaceV4, parseWorkspaceV4, workspaceFingerprintV4 }
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
 import type { RemoteBinarySnapshot, RemoteSnapshot, RemoteSyncMeta } from './types'
 
-const MAX_COMPRESSED_BYTES = 4 * 1024 * 1024
+const MAX_COMPRESSED_BYTES = 16 * 1024 * 1024
 const MAX_INFLATED_BYTES = 32 * 1024 * 1024
 const SHA256 = /^[a-f0-9]{64}$/
 
