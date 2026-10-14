@@ -33,11 +33,11 @@ jobs:
           cache: yarn
       - run: yarn install --frozen-lockfile
       - name: Run Circle kernel and concurrency tests
-        run: node --test tests/cloud/circle-core.test.mjs
+        run: node --test tests/cloud/circle-core.test.mjs tests/cloud/circle-trusted-access.test.mjs
       - name: Static-check live probe (never execute with production credentials)
         run: node --check scripts/circle-blob-live-contract.mjs
       - name: Lint Circle-only backend and tests
-        run: yarn eslint cloud-functions/_shared/circle tests/cloud/circle-core.test.mjs tests/cloud/circle-core-cas.historical.mjs --ext .js,.mjs
+        run: yarn eslint cloud-functions/_shared/circle tests/cloud/circle-core.test.mjs tests/cloud/circle-trusted-access.test.mjs tests/cloud/circle-core-cas.historical.mjs --ext .js,.mjs
       - name: Lint ES module sandbox probe
         run: yarn eslint scripts/circle-blob-live-contract.mjs --parser-options '{"sourceType":"module","ecmaVersion":2022}'
       - name: Verify no frontend changed in branch
