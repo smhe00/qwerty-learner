@@ -372,7 +372,7 @@ test('listing outage is not an empty membership or successful projection', async
   const { blob, service, create } = setup()
   const c = await create()
   blob.failList = true
-  await assert.rejects(service.getCircle(owner, c.circleId), /outage/)
+  await assert.rejects(service.getCircle(owner, c.circleId), { code: 'circle_view_uncertain' })
 })
 
 test('progress rejects impossible dates and invalid command IDs', async () => {
