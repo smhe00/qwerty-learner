@@ -258,6 +258,7 @@ export async function onRequest(context) {
             'v4-http-multipart-v1',
             'v4-http-stage-trace-v1',
             'v4-http-binary-192k-v1',
+            'v4-end-to-end-binary-v1',
             'backup-v3-explicit-migration-only',
             'account-delete-v1',
             'duplicate-register-protection-v1',
@@ -499,6 +500,33 @@ export async function onRequest(context) {
           'Unable to receive V4 request; check remote metadata before retry')
       }
       return json({ ok: true, ...(await service.putSyncV4(token, body)) }, 200, cors)
+    }
+
+    // Authenticated pinned binary download; every part comes directly from
+    // the immutable native Blob object and is SHA checked before response.
+    if (request.method === 'GET' && path === '/sync/v2/binary/manifest') {
+      return json({ ok: true,
+        ...(await service.getSyncV4BinaryManifest(bearer(request))) }, 200, cors)
+    }
+    if (request.method === 'GET' && path === '/sync/v2/binary/part') {
+      const revisionParam = url.searchParams.get('revision') || ''
+      const indexParam = url.searchParams.get('index') || ''
+      if (!/^\\d+$/.test(revisionParam) || !/^\\d+$/.test(indexParam)) {
+        throw new AppError(400, 'invalid_binary_part_selector',
+          'Binary revision and part index must be decimal integers')
+      }
+      const bytes = await service.getSyncV4BinaryPart(bearer(request),
+        Number(revisionParam), url.searchParams.get('sha') || '', Number(indexParam))
+      return new Response(bytes, { status: 200, headers: {
+        ...cors, 'Content-Type': 'application/octet-stream',
+        'Content-Length': String(bytes.length), 'Cache-Control': 'no-store',
+      } })
+    }
+    if (request.method === 'POST' && path === '/sync/v2/binary/migrate') {
+      const token = await requireS2WriteAccount(service, request, env)
+      const expected = await readJson(request, 4 * 1024)
+      return json({ ok: true,
+        ...(await service.migrateSyncV4Binary(token, expected)) }, 200, cors)
     }
 
     if (request.method === 'GET' && path === '/sync/v2/meta') {
