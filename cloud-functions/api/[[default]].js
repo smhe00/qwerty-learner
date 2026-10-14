@@ -296,7 +296,8 @@ export async function onRequest(context) {
       // Until Circle has an audited deletion inventory, refuse deleting
       // explicitly allowlisted pilot identities (no orphaned social events).
       // All non-pilot and production users retain existing V4 semantics.
-      if (url.hostname === 'etest.edgeone.dev' && env.CIRCLE_ETEST_ENABLED === 'true') {
+      if (url.hostname === 'etest.edgeone.dev' &&
+          String(env.CIRCLE_ETEST_USER_IDS || '').trim()) {
         const me = await service.me(bearer(request))
         if (blocksCircleEtestAccountDeletion({
           hostname: url.hostname, env, userId: me.user?.userId,
