@@ -104,6 +104,32 @@ function v4BodyFromSnapshot(user, revision, snapshot) {
     deviceId: 'beta-v4-native-blob-test' }
 }
 
+// Native bounded multipart route; test against REAL EdgeOne, not in-memory Blob.
+// A part may be retried identically, but ambiguous final revision MUST
+// be checked by GET meta and never blindly overwritten.
+async function uploadLargeV4(record, token) {
+  const payloadSha256 = sha256(Buffer.from(record.payloadBase64, 'base64'))
+  const chars = 96 * 1024
+  const count = Math.ceil(record.payloadBase64.length / chars)
+  assert.ok(count >= 1 && count <= 64)
+  const partSha256s = []
+  for (let index = 0; index < count; index++) {
+    const data = record.payloadBase64.slice(index * chars, (index + 1) * chars)
+    const partSha256 = sha256(data)
+    partSha256s.push(partSha256)
+    const staged = await api('/api/sync/v2/parts', 'POST', {
+      payloadSha256, count, index, data, partSha256,
+    }, token)
+    expectCode(staged, 200, null, 'immutable multipart upload ' + index)
+    assert.equal(staged.value?.received, true)
+    assert.equal(staged.value?.partSha256, partSha256)
+  }
+  const { payloadBase64: _bytes, ...meta } = record
+  return api('/api/sync/v2/commit', 'POST', {
+    ...meta, payloadSha256, count, partSha256s,
+  }, token)
+}
+
 try {
   const health = await api('/api/health')
   expectCode(health, 200, null, 'EdgeOne gateway health')
@@ -156,7 +182,7 @@ try {
       .find(table => table.tableName === 'wordRecords').rows[0]
       .typingTelemetry = { synthetic: crypto.randomBytes(stressKiB[index] * 1024).toString('base64') }
     const largeBody = v4BodyFromSnapshot(first, baseRevision, largeState)
-    const sent = await api('/api/sync/v2', 'PUT', largeBody, first.token)
+    const sent = await uploadLargeV4(largeBody, first.token)
     const latest = await api('/api/sync/v2/meta', 'GET', undefined, first.token)
     console.log('V4-only large Blob write', JSON.stringify({ attempt: index + 1,
       sourceKiB: stressKiB[index],
@@ -167,14 +193,14 @@ try {
       observedRevision: latest.value?.revision ?? null,
       observedFormat: latest.value?.clientFormatVersion ?? null }))
     assert.equal(latest.status, 200, 'read-only post-write verification')
-    assert.equal(sent.status, 200, 'native large V4 write HTTP result')
+    assert.equal(sent.status, 200, 'multipart large V4 write HTTP result')
     assert.equal(latest.value?.revision, baseRevision + 1)
     assert.equal(latest.value?.clientFormatVersion, 'qwerty-backup-v4')
     assert.equal(latest.value?.logicalFingerprint, largeBody.logicalFingerprint)
     assert.equal(latest.value?.payloadSha256,
       sha256(Buffer.from(largeBody.payloadBase64, 'base64')))
   }
-  console.log('Native V4 large-payload endurance: PASS')
+  console.log('V4 HTTP multipart large-payload endurance: PASS')
 } catch (error) {
   failure = error
 } finally {
