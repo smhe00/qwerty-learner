@@ -128,7 +128,7 @@ export async function commitV4Upload(storage, service, token, userId, input, max
         throw new AppError(503, 'v4_upload_part_not_visible',
           'Staged V4 part is not readable; retry the same manifest')
       }
-      if (!record || ![1, 2, 3].includes(record.version) ||
+      if (!record || ![1, 3].includes(record.version) ||
           record.index !== index || record.count !== count ||
           record.payloadSha256 !== payloadSha256 ||
           record.partSha256 !== partSha256s[index] ||
@@ -151,24 +151,16 @@ export async function commitV4Upload(storage, service, token, userId, input, max
         }
         decoded = record.data
       } else {
+        // Legacy 32-KiB JSON/Base64 stage exists only for pending old
+        // Backup V4 uploads; the old 192-KiB binary staging v2 is retired.
         if (typeof record.data !== 'string' || !PART_B64.test(record.data) ||
-            record.data.length % 4 !== 0 ||
-            (record.version === 1 &&
-              (!record.data.length || record.data.length > V4_HTTP_PART_CHARS ||
-               (index !== count - 1 && record.data.length !== V4_HTTP_PART_CHARS))) ||
-            (record.version === 2 && (record.data.length < 4 ||
-               record.data.length > Math.ceil(V4_HTTP_PART_BYTES / 3) * 4))) {
+            record.data.length % 4 !== 0 || !record.data.length ||
+            record.data.length > V4_HTTP_PART_CHARS ||
+            (index !== count - 1 && record.data.length !== V4_HTTP_PART_CHARS)) {
           throw new AppError(503, 'v4_upload_part_not_visible',
-            'Legacy part size or encoding invalid')
+            'Legacy V4 JSON part size or encoding invalid')
         }
-        decoded = record.version === 2 ? Buffer.from(record.data, 'base64') : null
-        if (record.version === 2 && (!decoded.length ||
-            decoded.length > V4_HTTP_PART_BYTES ||
-            (index !== count - 1 && decoded.length !== V4_HTTP_PART_BYTES) ||
-            decoded.toString('base64') !== record.data)) {
-          throw new AppError(503, 'v4_upload_part_not_visible',
-            'Legacy binary staging failed integrity check')
-        }
+        decoded = null
       }
       const hash = crypto.createHash('sha256')
         .update(record.version === 1 ? record.data : decoded).digest('hex')
