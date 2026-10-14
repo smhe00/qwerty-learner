@@ -150,14 +150,9 @@ test('pending join visibility and retries never require a CAS or leader election
   assert.equal(new Set(blob.writes).size, blob.writes.length)
 })
 test('dozens of peer joins converge under soft-only capacity', async () => {
-  const { service, create, blob } = setup()
+  const { create, blob } = setup()
   const c = await create()
   const peers = Array.from({ length: 35 }, (_, i) => 'student_' + String(i).padStart(5, '0'))
-  await Promise.all(peers.map(async (token) => {
-    const name = token
-    // Each user is authenticated through the injected production-shaped backend.
-    return name
-  }))
   // Existing sessions fixture only has four accounts. A separate authenticated
   // callback models newly issued V4 accounts without introducing fake CAS.
   const many = createCircleEventualService({
