@@ -25,7 +25,17 @@ jobs:
         env:
           QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
           EXPECTED_SHA: 59e467f40b8edd3fef7043af9f258554e2183b7e
-        run: node scripts/verify-edgeone-source.mjs
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict'
+          assert.equal(new URL(process.env.QWERTY_SYNC_BASE_URL).origin, 'https://etest.edgeone.dev')
+          const r = await fetch('https://etest.edgeone.dev/source-commit.txt', {cache:'no-store', signal:AbortSignal.timeout(15000)})
+          assert.equal(r.status, 200, 'etest source marker missing')
+          const marker = (await r.text()).trim()
+          assert.match(marker, /^[a-f0-9]{7,40}$/)
+          assert.ok(process.env.EXPECTED_SHA.startsWith(marker), 'etest source differs from audited 59e467f')
+          console.log('PASS etest live frontend source', marker)
+          NODE
       - name: Install Playwright Chromium
         run: |
           yarn install --frozen-lockfile
