@@ -17,7 +17,8 @@ export type PerfSample = {
   attempt?: number
   outcome?: 'ok' | 'failed'
   failureStage?: 'http_request' | 'blob_write' | 'blob_readback' |
-    'part_lookup' | 'commit_core' | 'receipt'
+    'part_lookup' | 'commit_core' | 'revision_chunk' |
+    'revision_manifest' | 'receipt'
   failureCategory?: 'network_timeout' | 'network_failure' | 'blob_storage' |
     'server_failure' | 'http_failure' | 'invalid_receipt'
   httpStatus?: number
@@ -68,7 +69,8 @@ export function readPerfSamples(): PerfSample[] {
         sample.attempt >= 1 && sample.attempt <= 6)) &&
       (sample.outcome === undefined || ['ok', 'failed'].includes(sample.outcome)) &&
       (sample.failureStage === undefined || ['http_request', 'blob_write',
-        'blob_readback', 'part_lookup', 'commit_core', 'receipt'].includes(sample.failureStage)) &&
+        'blob_readback', 'part_lookup', 'commit_core',
+        'revision_chunk', 'revision_manifest', 'receipt'].includes(sample.failureStage)) &&
       (sample.failureCategory === undefined || ['network_timeout', 'network_failure',
         'blob_storage', 'server_failure', 'http_failure',
         'invalid_receipt'].includes(sample.failureCategory)) &&
@@ -164,7 +166,8 @@ export function recordV4TransportSample(sample: Omit<PerfSample, 'at' | 'flow'>)
   }
   if (sample.outcome === 'ok' || sample.outcome === 'failed') fixed.outcome = sample.outcome
   if (sample.failureStage && ['http_request', 'blob_write', 'blob_readback',
-    'part_lookup', 'commit_core', 'receipt'].includes(sample.failureStage)) {
+    'part_lookup', 'commit_core', 'revision_chunk',
+        'revision_manifest', 'receipt'].includes(sample.failureStage)) {
     fixed.failureStage = sample.failureStage
   }
   if (sample.failureCategory && ['network_timeout', 'network_failure',
