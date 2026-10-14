@@ -75,3 +75,26 @@ replay/read isolation -> verified cleanup.
 
 Do not deploy a new Maker build or move `product/main`,
 `edgeone-test` or `master` from this read-only audit.
+
+## Independent binary-V4/Circle compatibility gate — PASS
+
+GitHub Actions [run 38637237310](https://github.com/smhe00/qwerty-learner/actions/runs/38637237310) succeeded against the actual
+`edgeone-test` application source snapshot `30e0be26c05eef1eb3c85c644e85f8e22c30270c`
+(with **only** this audit branch's workflows/docs added):
+
+- **124/124 tests pass**: Circle event kernel, Circle staged HTTP,
+  eventual member permissions, session handling, and binary V4 multipart/part retry.
+- Circle and current staging Cloud Functions gateway ESLint pass.
+- An active-runtime grep over Circle modules reports **no Base64
+  dependency**. Explicitly excluded archived `service-cas-historical.js`,
+  which contains `crypto.randomBytes(9).toString('base64url')` for historical
+  random identifiers. That retired CAS implementation is not used by the
+  current Event Log / transport / assembled Circle service. Its archived
+  identifier encoding is unrelated to V4 Base64 transport.
+- The test did **not** connect as a Circle user or write etest Blob data.
+- This pass does not supersede the independent failing *live V4 large
+  multipart write* test in staging run 38634270287.
+
+**Final admission blocker:** Circle etest HTTP is still 404 without
+credentials. It must be explicitly configured/enabled within the *etest
+only* Maker environment before a controlled Circle HTTP E2E.
