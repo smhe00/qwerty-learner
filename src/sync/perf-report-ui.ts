@@ -39,7 +39,8 @@ export function renderPerfReportUI(root: HTMLElement | null): void {
     const header = document.createElement('tr')
     for (const heading of ['时间', '流程', '阶段', '分片/重试', '结果/失败阶段',
       '类别/HTTP', 'HTTP耗时(ms)', 'Blob写(ms)', 'Blob验证(ms)',
-      '提交读取(ms)', '提交核心(ms)', '清理(ms)', '服务端总(ms)', '大小(KiB)']) {
+      '提交读取(ms)', '提交核心(ms)', 'Revision写(ms)', 'Revision验证(ms)',
+      'Manifest(ms)', 'Revision分片数', '清理(ms)', '服务端总(ms)', '大小(KiB)']) {
       const th = document.createElement('th')
       th.textContent = heading
       th.style.cssText = 'padding:8px;text-align:left;border-bottom:1px solid #94a3b8'
@@ -56,7 +57,9 @@ export function renderPerfReportUI(root: HTMLElement | null): void {
         [sample.failureCategory, sample.httpStatus].filter(value => value !== undefined).join('/') || '—',
         sample.elapsedMs ?? '—', sample.blobWriteMs ?? '—',
         sample.blobReadbackMs ?? '—', sample.partsReadMs ?? '—',
-        sample.commitCoreMs ?? '—', sample.cleanupMs ?? '—',
+        sample.commitCoreMs ?? '—', sample.revisionWriteMs ?? '—',
+        sample.revisionReadbackMs ?? '—', sample.revisionManifestMs ?? '—',
+        sample.revisionChunkCount ?? '—', sample.cleanupMs ?? '—',
         sample.serverTotalMs ?? '—',
         sample.sizeBytes === undefined ? '—' : (sample.sizeBytes / 1024).toFixed(2),
       ]
