@@ -14,7 +14,21 @@ const sha = data => crypto.createHash('sha256').update(data).digest('hex')
 const clone = value => value === null ? null : structuredClone(value)
 class Blob {
   constructor() { this.objects = new Map(); this.lostAck = false }
-  async get(key) { return this.objects.has(key) ? clone(this.objects.get(key)) : null }
+  async get(key, options = {}) {
+    if (!this.objects.has(key)) return null
+    const raw = this.objects.get(key)
+    if (options.type === 'arrayBuffer') {
+      if (!(raw instanceof ArrayBuffer)) throw Error('expected binary Blob data')
+      return raw.slice(0)
+    }
+    return clone(raw)
+  }
+  async set(key, value, options = {}) {
+    if (options.onlyIfNew && this.objects.has(key)) throw Error('already exists')
+    if (!(value instanceof ArrayBuffer)) throw Error('expected ArrayBuffer input')
+    this.objects.set(key, value.slice(0))
+    if (this.lostAck) { this.lostAck = false; throw Error('ambiguous ACK') }
+  }
   async list({ prefix }) {
     return { blobs: [...this.objects.keys()].filter(key => key.startsWith(prefix))
       .map(key => ({ key })) }
@@ -100,17 +114,17 @@ function binaryFixture(f) {
   return { ...f, parts, manifest: { ...f.manifest, count,
     partSha256s: parts.map(part => part.partSha256) } }
 }
-test('192-KiB raw HTTP parts use two bounded Blob JSON shards, exact V4 restore', async () => {
+test('192-KiB raw HTTP parts use native binary Blob objects and restore', async () => {
   const f = binaryFixture(await fixture(620 * 1024))
   assert.ok(f.parts.length >= 3)
   assert.equal(f.parts[0].data.length, V4_HTTP_PART_BYTES)
   await upload(f)
   const staging = [...f.raw.objects.entries()]
     .filter(([key]) => key.includes('/v4-http-parts/'))
-  assert.equal(staging.length, f.parts.reduce((n, part) =>
-    n + Math.ceil(part.data.toString('base64').length / (128 * 1024)), 0))
-  assert.ok(staging.every(([, part]) => part.version === 2 &&
-    part.data.length <= 128 * 1024 && part.data.length > 0))
+  assert.equal(staging.length, f.parts.length)
+  assert.ok(staging.every(([key, data]) => key.endsWith('.bin') &&
+    data instanceof ArrayBuffer && data.byteLength > 0 &&
+    data.byteLength <= V4_HTTP_PART_BYTES))
   assert.equal((await f.service.syncMeta(f.token)).revision, 0)
   const saved = await commitV4Upload(f.storage, f.service, f.token,
     f.accountId, f.manifest, 4 * 1024 * 1024)
@@ -123,7 +137,7 @@ test('192-KiB raw HTTP parts use two bounded Blob JSON shards, exact V4 restore'
     error.code === 'sync_conflict' &&
     error.details.current.revision === 1)
 })
-test('binary part byte-limit, immutable SHA and missing child shard block commits', async () => {
+test('binary part byte-limit, immutable SHA and missing native Blob object block commits', async () => {
   const f = binaryFixture(await fixture(460 * 1024))
   await assert.rejects(receiveV4UploadPart(f.storage, f.accountId,
     { ...f.parts[0], data: Buffer.alloc(V4_HTTP_PART_BYTES + 1) }),
@@ -133,13 +147,55 @@ test('binary part byte-limit, immutable SHA and missing child shard block commit
   error => error.code === 'v4_upload_part_sha_mismatch')
   await upload(f)
   const doomed = [...f.raw.objects.keys()].find(k =>
-    k.includes('/v4-http-parts/') && k.endsWith('-1.json'))
+    k.includes('/v4-http-parts/v3/') && k.endsWith('.bin'))
   assert.ok(doomed)
   f.raw.objects.delete(doomed)
   await assert.rejects(commitV4Upload(f.storage, f.service, f.token,
     f.accountId, f.manifest, 4 * 1024 * 1024),
   error => error.code === 'v4_upload_part_not_visible')
   assert.equal((await f.service.syncMeta(f.token)).revision, 0)
+})
+test('legacy V4 cloud revision migrates once to native binary without logical changes', async () => {
+  const f = await fixture(270 * 1024)
+  const oldPayload = f.parts.map(p => p.data).join('')
+  const old = await f.service.putSyncV4(f.token, {
+    ...f.manifest, payloadBase64: oldPayload,
+  })
+  assert.equal(old.revision, 1)
+  assert.equal(old.storageEncoding, 'base64')
+  const migrated = await f.service.migrateSyncV4Binary(f.token, {
+    baseRevision: old.revision, payloadSha256: old.payloadSha256,
+    logicalFingerprint: old.logicalFingerprint,
+  })
+  assert.equal(migrated.migrated, true)
+  assert.equal(migrated.revision, 2)
+  assert.equal(migrated.storageEncoding, 'binary')
+  assert.equal(migrated.payloadSha256, old.payloadSha256)
+  assert.equal(migrated.logicalFingerprint, old.logicalFingerprint)
+  const manifest = await f.service.getSyncV4BinaryManifest(f.token)
+  const parts = []
+  for (let index = 0; index < manifest.count; index++) {
+    parts.push(await f.service.getSyncV4BinaryPart(f.token,
+      manifest.revision, manifest.payloadSha256, index))
+  }
+  assert.equal(sha(Buffer.concat(parts)), old.payloadSha256)
+  assert.equal((await f.service.migrateSyncV4Binary(f.token, {
+    baseRevision: old.revision, payloadSha256: old.payloadSha256,
+    logicalFingerprint: old.logicalFingerprint,
+  })).migrated, false)
+  assert.equal((await f.service.syncMeta(f.token)).revision, 2)
+})
+test('pinned binary download refuses stale revision and wrong full SHA', async () => {
+  const f = binaryFixture(await fixture(470 * 1024))
+  await upload(f)
+  const meta = await commitV4Upload(f.storage, f.service, f.token,
+    f.accountId, f.manifest, 4 * 1024 * 1024)
+  await assert.rejects(f.service.getSyncV4BinaryPart(f.token,
+    meta.revision - 1, meta.payloadSha256, 0), error =>
+    error.code === 'sync_conflict')
+  await assert.rejects(f.service.getSyncV4BinaryPart(f.token,
+    meta.revision, 'f'.repeat(64), 0), error =>
+    error.code === 'sync_conflict')
 })
 test('legacy JSON upload remains readable after binary protocol deployment', async () => {
   const f = await fixture()
