@@ -162,7 +162,11 @@ export async function commitV4Upload(storage, service, token, userId, input, max
       const partIndex = Number.isSafeInteger(error.details?.partIndex) &&
         error.details.partIndex >= 0 && error.details.partIndex < 192
         ? error.details.partIndex : undefined
-      error.details = { failureStage, partIndex, timings }
+      // Preserve the V4 CAS conflict's current revision/SHA evidence.
+      // Diagnostics must NEVER change the recovery contract.
+      const existing = error.details && typeof error.details === 'object'
+        ? error.details : {}
+      error.details = { ...existing, failureStage, partIndex, timings }
     }
     // The outcome of a failed commit can be ambiguous. Never retry it here.
     throw error
