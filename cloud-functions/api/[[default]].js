@@ -1,6 +1,7 @@
 /* eslint-env node */
 import { getStore } from '@edgeone/pages-blob'
 import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
+import { blocksCircleEtestAccountDeletion, createCircleEtestGateway } from '../_shared/circle/etest-gateway.js'
 import { AppError, createBackendService } from '../_shared/core.js'
 import { isS2WriteEnabled } from '../_shared/s2-write-gate.js'
 import { createEdgeOneBlobStorage } from '../_shared/storage/edgeone-blob.js'
@@ -219,6 +220,12 @@ export async function onRequest(context) {
     })
   }
 
+  // No Circle store/session initialization on production and unenabled hosts.
+  if ((path === '/circle/v2' || path.startsWith('/circle/v2/')) &&
+      (url.hostname !== 'etest.edgeone.dev' || env.CIRCLE_ETEST_ENABLED !== 'true')) {
+    return json({ ok: false, error: 'not_found' }, 404, cors)
+  }
+
   try {
     if (request.method === 'GET' && (path === '/' || path === '/health')) {
       return json(
@@ -266,6 +273,16 @@ export async function onRequest(context) {
     const bodyLimit =
       Math.ceil(numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024) * 1.5) + 256 * 1024
 
+    // Only the explicit etest pilot can reach the Circle Cloud Function.
+    // The Circle Store is isolated from the V4 backup namespace.
+    if (path === '/circle/v2' || path.startsWith('/circle/v2/')) {
+      const result = await createCircleEtestGateway({
+        backend: service, getStore, rateStorage: storage,
+      }).handle(context)
+      for (const [key, value] of Object.entries(cors)) result.headers.set(key, value)
+      return result
+    }
+
     if (
       request.method === 'POST' &&
       (path === '/auth/register' || path === '/auth/login')
@@ -307,6 +324,18 @@ export async function onRequest(context) {
     }
 
     if (request.method === 'DELETE' && path === '/auth/account') {
+      // Keep pilot Circle identities undeletable until an auditable scrub,
+      // even after the pilot flag is disabled. All other V4 accounts unchanged.
+      if (url.hostname === 'etest.edgeone.dev' &&
+          String(env.CIRCLE_ETEST_USER_IDS || '').trim()) {
+        const me = await service.me(bearer(request))
+        if (blocksCircleEtestAccountDeletion({
+          hostname: url.hostname, env, userId: me.user?.userId,
+        })) {
+          throw new AppError(409, 'circle_etest_deletion_requires_cleanup',
+            'Circle test account cleanup must complete before account deletion')
+        }
+      }
       const body = await readJson(request, 64 * 1024)
       return json(
         {
