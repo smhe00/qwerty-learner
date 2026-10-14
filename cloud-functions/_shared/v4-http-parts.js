@@ -70,7 +70,18 @@ export async function receiveV4UploadPart(storage, userId, input) {
     try {
       const observed = await storage.getV4UploadPart(
         userId, payloadSha256, index, partSha256, count, wirePartBytes)
-      if (JSON.stringify(observed) !== JSON.stringify(content)) {
+      // Native 512-KiB Blob bodies are verified byte-wise. JSON.stringify
+      // on Buffer expands binary into millions of decimal characters and
+      // needlessly increases Maker CPU/memory pressure.
+      const matches = binary
+        ? observed?.version === 3 &&
+          observed.index === content.index && observed.count === content.count &&
+          observed.wirePartBytes === V4_HTTP_PART_BYTES &&
+          observed.payloadSha256 === content.payloadSha256 &&
+          observed.partSha256 === content.partSha256 &&
+          Buffer.isBuffer(observed.data) && observed.data.equals(data)
+        : JSON.stringify(observed) === JSON.stringify(content)
+      if (!matches) {
         throw new Error('V4 upload part readback mismatch')
       }
     } finally {
