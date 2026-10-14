@@ -1,0 +1,35 @@
+name: Master V4 Base64 once (35134ca0, disposable)
+on:
+  push:
+    branches: [codex/master-v4-once-20261015]
+    paths: ['.github/workflows/master-v4-once-20261015.yml']
+permissions:
+  contents: read
+concurrency:
+  group: master-v4-once-20261015
+  cancel-in-progress: false
+jobs:
+  benchmark:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+      - name: Validate script syntax
+        run: node --check scripts/master-v4-once-20261015.mjs
+      - name: Production master only, four single PUTs, disposable account cleanup
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V4_MASTER_BENCH_ACK: MASTER_ONLY_DISPOSABLE_35134ca0
+        run: node scripts/master-v4-once-20261015.mjs
+      - name: Preserve redacted benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: master-v4-once-${{ github.run_id }}
+          path: master-v4-benchmark-results.json
+          retention-days: 14
+          if-no-files-found: warn
