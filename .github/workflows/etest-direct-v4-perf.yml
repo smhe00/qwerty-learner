@@ -1,0 +1,34 @@
+name: Etest Direct V4 Performance (64-511 KiB)
+
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - 'scripts/benchmark-etest-direct-v4.mjs'
+      - '.github/workflows/etest-direct-v4-perf.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: etest-direct-v4-perf
+  cancel-in-progress: false
+
+jobs:
+  direct-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Verify benchmark syntax
+        run: node --check scripts/benchmark-etest-direct-v4.mjs
+      - name: Measure disposable account single-request gzip V4
+        env:
+          ETEST_DIRECT_BENCH_ACK: ISOLATED_512K_DIRECT
+        run: node scripts/benchmark-etest-direct-v4.mjs
