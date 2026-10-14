@@ -98,3 +98,27 @@ GitHub Actions [run 38637237310](https://github.com/smhe00/qwerty-learner/action
 **Final admission blocker:** Circle etest HTTP is still 404 without
 credentials. It must be explicitly configured/enabled within the *etest
 only* Maker environment before a controlled Circle HTTP E2E.
+
+## Updated staging snapshot after concurrent V4 changes
+
+The other process advanced both `product/main` and `edgeone-test`
+during this audit, so the original live probe's SHA was superseded.
+
+**Second current live probe PASS:**
+https://github.com/smhe00/qwerty-learner/actions/runs/38637517008
+
+- New `edgeone-test` HEAD:
+  `46617beb34b1c24dc31a12dbd04c45de3a275cea`.
+- Live `source-commit.txt` HTTP 200, marker `46617be`,
+  prefix matching new HEAD (not the older 30e0be2).
+- `/api/health` HTTP 200 with the V4 binary transport capabilities.
+- Unauthenticated `GET /api/circle/v2` **still 404 not_found**.
+- No account creation, Circle Blob writes, Maker build or staging
+  branch mutation. Since Circle remains disabled, no authenticated
+  Circle end-to-end conclusion can be reached.
+
+**Offline compatibility:** 124 tests and active-Circle Base64-free
+static scan passed on the prior `30e0be2` application snapshot. The
+concurrent new commit changes V4 gzip quota defaults, not Circle modules;
+it was not included in that specific 124-test run. Do not mislabel the
+old binary-Circle compatibility run as full execution on the new SHA.
