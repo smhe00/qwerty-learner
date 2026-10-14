@@ -15,6 +15,61 @@ function auth(expiresAt: number) {
   }
 }
 
+/** Exercise the actual native multipart HTTP contract, not legacy PUT.
+ * All local test requests remain isolated and SHA validated before CAS.
+ */
+async function installBinaryMock(
+  page: Page,
+  onCommit: (metadata: any, bytes: Buffer) => Promise<Record<string, unknown>>,
+) {
+  const staged = new Map<string, Buffer>()
+  await page.route('**/api/sync/v2/parts', async route => {
+    const request = route.request()
+    if (request.method() === 'OPTIONS') {
+      await route.fulfill({ status: 204, headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers':
+          'Authorization, Content-Type, X-Qwerty-Payload-Sha256, X-Qwerty-Part-Sha256, X-Qwerty-Part-Index, X-Qwerty-Part-Count',
+      } })
+      return
+    }
+    expect(request.method()).toBe('POST')
+    const headers = request.headers()
+    const payloadSha = headers['x-qwerty-payload-sha256']
+    const partSha = headers['x-qwerty-part-sha256']
+    const index = Number(headers['x-qwerty-part-index'])
+    const count = Number(headers['x-qwerty-part-count'])
+    const bytes = request.postDataBuffer()
+    expect(bytes).not.toBeNull()
+    expect(bytes!.length).toBeGreaterThan(0)
+    expect(bytes!.length).toBeLessThanOrEqual(192 * 1024)
+    expect(index).toBeGreaterThanOrEqual(0)
+    expect(index).toBeLessThan(count)
+    expect(createHash('sha256').update(bytes!).digest('hex')).toBe(partSha)
+    staged.set(payloadSha + ':' + count + ':' + index + ':' + partSha, Buffer.from(bytes!))
+    await route.fulfill({ json: {
+      ok: true, received: true, payloadSha256: payloadSha,
+      partSha256: partSha, index,
+    } })
+  })
+  await page.route('**/api/sync/v2/commit', async route => {
+    const input = route.request().postDataJSON()
+    expect(input.clientFormatVersion).toBe('qwerty-backup-v4')
+    expect(input.logicalFingerprint).toMatch(/^[0-9a-f]{64}$/)
+    expect(input.partSha256s).toHaveLength(input.count)
+    const bytes = Buffer.concat(input.partSha256s.map((sha: string, index: number) => {
+      const value = staged.get(input.payloadSha256 + ':' + input.count +
+        ':' + index + ':' + sha)
+      expect(value).toBeDefined()
+      return value!
+    }))
+    expect(createHash('sha256').update(bytes).digest('hex')).toBe(input.payloadSha256)
+    const result = await onCommit(input, bytes)
+    await route.fulfill({ json: { ok: true, ...result } })
+  })
+}
+
 test('guarded S2 V4 Sync pushes once then resolves identical local/cloud as no-op', async ({ page }) => {
   let meta: any = {
     hasData: false, revision: 0, updatedAt: null, sizeBytes: 0,
@@ -25,22 +80,17 @@ test('guarded S2 V4 Sync pushes once then resolves identical local/cloud as no-o
   await page.route('**/api/sync/v2/meta', async route => {
     await route.fulfill({ json: { ok: true, ...meta } })
   })
-  await page.route('**/api/sync/v2', async route => {
-    if (route.request().method() !== 'PUT') throw Error('unexpected S2 method')
-    const input = route.request().postDataJSON()
+  await installBinaryMock(page, async (input, bytes) => {
     expect(input.baseRevision).toBe(0)
-    expect(input.clientFormatVersion).toBe('qwerty-backup-v4')
-    expect(input.logicalFingerprint).toMatch(/^[0-9a-f]{64}$/)
     uploads++
-    const bytes = Buffer.from(input.payloadBase64, 'base64')
     meta = { ...meta,
       hasData: true, revision: 1, sizeBytes: bytes.byteLength,
       dataSha256: createHash('sha256').update(bytes).digest('hex'),
       payloadSha256: createHash('sha256').update(bytes).digest('hex'),
       logicalFingerprint: input.logicalFingerprint,
-      clientFormatVersion: 'qwerty-backup-v4',
+      clientFormatVersion: 'qwerty-backup-v4', storageEncoding: 'binary',
     }
-    await route.fulfill({ json: { ok: true, ...meta } })
+    return meta
   })
   await ready(page)
   const outcome = await page.evaluate(async (identity) => {
@@ -107,17 +157,16 @@ test('development Sync route leaves mounted app, executes CAS and returns with f
       deviceId: null, clientFormatVersion: null,
     } })
   })
-  await page.route('**/api/sync/v2', async route => {
-    const input = route.request().postDataJSON()
+  await installBinaryMock(page, async (input, bytes) => {
     uploads++
-    const bytes = Buffer.from(input.payloadBase64, 'base64')
     const sha = createHash('sha256').update(bytes).digest('hex')
-    await route.fulfill({ json: { ok: true,
+    return {
       hasData: true, revision: 1, updatedAt: new Date().toISOString(),
       sizeBytes: bytes.length, dataSha256: sha, payloadSha256: sha,
       logicalFingerprint: input.logicalFingerprint,
       deviceId: 's2-ui-test', clientFormatVersion: 'qwerty-backup-v4',
-    } })
+      storageEncoding: 'binary',
+    }
   })
   await ready(page)
   await page.evaluate(async identity => {
