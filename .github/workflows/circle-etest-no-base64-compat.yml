@@ -1,0 +1,49 @@
+name: Circle compatibility on current etest binary V4 snapshot
+
+# Never touches edgeone-test or invokes EdgeOne Maker. Read-only repository
+# plus offline Node tests against the exact staging application code snapshot.
+on:
+  push:
+    branches:
+      - feature/circle-readonly-live-probe-20261015
+    paths:
+      - '.github/workflows/circle-etest-no-base64-compat.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-compat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Ensure source code exactly matches etest binary transport commit
+        shell: bash
+        run: |
+          git diff --name-only 30e0be26c05eef1eb3c85c644e85f8e22c30270c HEAD |
+            tee /tmp/circle-probe-added-files.txt
+          if grep -E '^(cloud-functions/|src/|public/|tests/|scripts/)' /tmp/circle-probe-added-files.txt; then
+            echo 'Unexpected app-code change in read-only probe'
+            exit 1
+          fi
+      - run: yarn install --frozen-lockfile
+      - name: Run Circle kernel, etest API, and binary V4 transport regressions
+        run: |
+          node --test tests/cloud/circle-core.test.mjs tests/cloud/circle-etest-gateway.test.mjs tests/cloud/circle-eventual-access.test.mjs tests/cloud/circle-trusted-access.test.mjs tests/cloud/v4-http-parts.test.mjs tests/cloud/v4-http-part-retry.test.mjs tests/cloud/multi-session-auth.test.mjs
+      - name: Lint Circle and staging gateway without changing deployment
+        run: |
+          yarn eslint cloud-functions/_shared/circle tests/cloud/circle-core.test.mjs tests/cloud/circle-etest-gateway.test.mjs tests/cloud/circle-eventual-access.test.mjs tests/cloud/circle-trusted-access.test.mjs --ext .js,.mjs
+          yarn eslint 'cloud-functions/api/[[default]].js' --ext .js
+      - name: Verify Circle event path has no Base64 encoder/decoder
+        shell: bash
+        run: |
+          if grep -inER 'base64|base64url|atob\(|btoa\(' cloud-functions/_shared/circle --include='*.js'; then
+            echo 'Circle unexpectedly references Base64'
+            exit 1
+          fi
+          echo 'Circle data path has no Base64 references'
