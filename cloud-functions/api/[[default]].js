@@ -448,7 +448,7 @@ export async function onRequest(context) {
     // Bounded HTTP parts avoid the EdgeOne request.text() large-body limit.
     // A part never advances the published V4 revision.
     if (request.method === 'POST' && path === '/sync/v2/parts') {
-      const { token, account } = await requireS2WriteAccount(service, request, env)
+      const { account } = await requireS2WriteAccount(service, request, env)
       let body
       const contentType = request.headers.get('content-type')?.split(';')[0]
         .trim().toLowerCase()
