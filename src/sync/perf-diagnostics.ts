@@ -27,6 +27,10 @@ export type PerfSample = {
   commitCoreMs?: number
   cleanupMs?: number
   serverTotalMs?: number
+  revisionWriteMs?: number
+  revisionReadbackMs?: number
+  revisionManifestMs?: number
+  revisionChunkCount?: number
 }
 
 const KEY = 'qwerty.perf-diagnostics.v1'
@@ -70,8 +74,12 @@ export function readPerfSamples(): PerfSample[] {
         'invalid_receipt'].includes(sample.failureCategory)) &&
       (sample.httpStatus === undefined || (Number.isInteger(sample.httpStatus) &&
         sample.httpStatus >= 0 && sample.httpStatus <= 599)) &&
+      (sample.revisionChunkCount === undefined ||
+        (Number.isSafeInteger(sample.revisionChunkCount) &&
+          sample.revisionChunkCount >= 0 && sample.revisionChunkCount <= 192)) &&
       ['blobWriteMs','blobReadbackMs','partsReadMs','commitCoreMs',
-        'cleanupMs','serverTotalMs'].every(key => sample[key] === undefined ||
+        'cleanupMs','serverTotalMs','revisionWriteMs','revisionReadbackMs',
+        'revisionManifestMs'].every(key => sample[key] === undefined ||
         (typeof sample[key] === 'number' && Number.isFinite(sample[key]) &&
           sample[key] >= 0 && sample[key] <= 600000))
     )).slice(-MAX_SAMPLES)
@@ -134,7 +142,8 @@ export function recordV4TransportSample(sample: Omit<PerfSample, 'at' | 'flow'>)
   const fixed: PerfSample = { at: new Date().toISOString(),
     flow: 'sync', stage: sample.stage }
   for (const key of ['elapsedMs', 'blobWriteMs', 'blobReadbackMs', 'partsReadMs',
-    'commitCoreMs', 'cleanupMs', 'serverTotalMs'] as const) {
+    'commitCoreMs', 'cleanupMs', 'serverTotalMs',
+    'revisionWriteMs', 'revisionReadbackMs', 'revisionManifestMs'] as const) {
     const value = sample[key]
     if (typeof value === 'number' && Number.isFinite(value) &&
         value >= 0 && value <= 600000) fixed[key] = Math.round(value * 10) / 10
@@ -148,6 +157,11 @@ export function recordV4TransportSample(sample: Omit<PerfSample, 'at' | 'flow'>)
   }
   if (Number.isSafeInteger(sample.httpStatus) && sample.httpStatus! >= 0 &&
       sample.httpStatus! <= 599) fixed.httpStatus = sample.httpStatus
+  if (typeof sample.revisionChunkCount === 'number' &&
+      Number.isSafeInteger(sample.revisionChunkCount) &&
+      sample.revisionChunkCount >= 0 && sample.revisionChunkCount <= 192) {
+    fixed.revisionChunkCount = sample.revisionChunkCount
+  }
   if (sample.outcome === 'ok' || sample.outcome === 'failed') fixed.outcome = sample.outcome
   if (sample.failureStage && ['http_request', 'blob_write', 'blob_readback',
     'part_lookup', 'commit_core', 'receipt'].includes(sample.failureStage)) {
