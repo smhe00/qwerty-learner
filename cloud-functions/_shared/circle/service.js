@@ -15,26 +15,44 @@ const calendarDay = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v
 const id = (v) => { if (!valid(v)) fail(400, 'invalid_circle'); return v }
 
 /**
- * Isolated server kernel; NOT wired to HTTP or V4.
- * trustedAccess.check is an INDEPENDENT reliable identity/revocation authority,
- * not a Blob view or authenticate alone. It must cover actor, action, circle,
- * viewHash and all subjects, and fail closed on unknown state.
- * trustedAccess.revoke durably fences access BEFORE publishing revoke/close.
- * Checks around an asynchronous operation do not make network delivery atomic.
+ * Isolated server kernel (HTTP not mounted).
+ *
+ * accessModel='eventual' is the light-social product mode. The authenticated
+ * account identity is rechecked at request boundaries; membership,
+ * owner rights and revocation come from the visible Blob event replay.
+ * A remote node may retain an old view until the Blob convergence window.
+ * This is deliberately NOT immediate/global access revocation, and the raw
+ * Blob objects must remain server-private.
+ *
+ * accessModel='fenced' preserves the historical independently-authorized
+ * experimental contract for compatibility tests; it is not a requirement for
+ * light-social Circle launch. Retirement/physical erasure remain separate.
  */
-export function createCircleService({ log, authenticate, trustedAccess, inviteKey } = {}) {
-  if (!log?.scan || !log?.append || typeof authenticate !== 'function' ||
-      typeof trustedAccess?.check !== 'function' || typeof inviteKey !== 'string' || inviteKey.length < 32) {
-    throw new TypeError('Circle needs event log, independent trusted access and server invite key')
+export function createCircleService({
+  log, authenticate, trustedAccess, inviteKey, accessModel = 'fenced',
+} = {}) {
+  if (accessModel !== 'eventual' && accessModel !== 'fenced') {
+    throw new TypeError('Unknown Circle access model')
   }
-  const revocations = createCircleRevocationCoordinator({ log, trustedAccess })
+  if (!log?.scan || !log?.append || typeof authenticate !== 'function' ||
+      typeof inviteKey !== 'string' || inviteKey.length < 32 ||
+      (accessModel === 'fenced' && typeof trustedAccess?.check !== 'function')) {
+    throw new TypeError('Circle needs event log, independent trusted access in fenced mode and server invite key')
+  }
+  if (accessModel === 'eventual' && trustedAccess !== undefined) {
+    throw new TypeError('Eventual Circle must not silently mix fencing models')
+  }
+  const revocations = accessModel === 'fenced'
+    ? createCircleRevocationCoordinator({ log, trustedAccess })
+    : null
   async function actor(token) {
     const auth = await authenticate(token)
     return uid(auth?.user?.userId ?? auth?.userId)
   }
   async function guard(token, actorUserId, context) {
     if (await actor(token) !== actorUserId ||
-        await trustedAccess.check({ ...context, actorUserId, token }) !== true) {
+        (accessModel === 'fenced' &&
+          await trustedAccess.check({ ...context, actorUserId, token }) !== true)) {
       fail(403, 'circle_access_uncertain')
     }
   }
@@ -62,7 +80,8 @@ export function createCircleService({ log, authenticate, trustedAccess, inviteKe
     await guard(token, ctx.actorUserId, { ...ctx.proof, phase: 'before_append' })
     const receipt = await log.append({ circleId: ctx.proof.circleId,
       actorUserId: ctx.actorUserId, type, operationId: op(operationId), payload })
-    // Denied response does not roll back an event; external fence still applies.
+    // Eventual mode rechecks session only. This receipt is NOT a final
+    // global membership/authorization result; stale nodes may disagree.
     await guard(token, ctx.actorUserId, { ...ctx.proof, phase: 'after_append' })
     return receipt
   }
@@ -135,20 +154,35 @@ export function createCircleService({ log, authenticate, trustedAccess, inviteKe
     async leaveCircle(token, circleId) {
       const ctx = await context(token, circleId, 'leave')
       if (ctx.actorUserId === ctx.view.meta.ownerUserId) fail(403, 'owner_cannot_leave')
-      return revocations.execute({ token, proof: ctx.proof,
-        command: revocationCommand({ circleId, actorUserId: ctx.actorUserId, type: 'MEMBER_LEFT' }) })
+      const command = revocationCommand({
+        circleId, actorUserId: ctx.actorUserId, type: 'MEMBER_LEFT',
+      })
+      return accessModel === 'eventual'
+        ? { ...await write(token, ctx, command.type, command.operationId, command.payload),
+          consistency: 'eventual', final: false }
+        : revocations.execute({ token, proof: ctx.proof, command })
     },
     async removeMember(token, circleId, targetUserId) {
       uid(targetUserId)
       const ctx = await context(token, circleId, 'remove', true)
       if (targetUserId === ctx.actorUserId) fail(403, 'owner_cannot_leave')
-      return revocations.execute({ token, proof: ctx.proof, command: revocationCommand({
-        circleId, actorUserId: ctx.actorUserId, type: 'MEMBER_REMOVED', targetUserId }) })
+      const command = revocationCommand({
+        circleId, actorUserId: ctx.actorUserId, type: 'MEMBER_REMOVED', targetUserId,
+      })
+      return accessModel === 'eventual'
+        ? { ...await write(token, ctx, command.type, command.operationId, command.payload),
+          consistency: 'eventual', final: false }
+        : revocations.execute({ token, proof: ctx.proof, command })
     },
     async closeCircle(token, circleId) {
       const ctx = await context(token, circleId, 'close', true)
-      return revocations.execute({ token, proof: ctx.proof,
-        command: revocationCommand({ circleId, actorUserId: ctx.actorUserId, type: 'CIRCLE_CLOSED' }) })
+      const command = revocationCommand({
+        circleId, actorUserId: ctx.actorUserId, type: 'CIRCLE_CLOSED',
+      })
+      return accessModel === 'eventual'
+        ? { ...await write(token, ctx, command.type, command.operationId, command.payload),
+          consistency: 'eventual', final: false }
+        : revocations.execute({ token, proof: ctx.proof, command })
     },
     async publishProgress(token, circleId, day, input) {
       const ctx = await context(token, circleId, 'publish_progress')
@@ -176,4 +210,13 @@ export function createCircleService({ log, authenticate, trustedAccess, inviteKe
         { targetUserId, day })
     },
   })
+}
+
+/**
+ * Preferred light-social entry point. Explicitly accepts up to the provider's
+ * propagation delay for leave/remove/close; it needs no atomic write, CAS,
+ * external fencing service or revocation receipt store.
+ */
+export function createCircleEventualService({ log, authenticate, inviteKey } = {}) {
+  return createCircleService({ log, authenticate, inviteKey, accessModel: 'eventual' })
 }
