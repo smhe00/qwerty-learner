@@ -1,0 +1,47 @@
+name: Circle Eventual Blob Sandbox Smoke
+
+# Explicit branch-only sandbox event smoke; NEVER a Maker build.
+on:
+  push:
+    branches:
+      - feature/circle-core-blob
+    paths:
+      - '.github/workflows/circle-eventual-blob-sandbox.yml'
+      - 'scripts/circle-eventual-blob-sandbox.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: circle-eventual-blob-sandbox-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  event-convergence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Static check sandbox event runner
+        run: |
+          node --check scripts/circle-eventual-blob-sandbox.mjs
+          yarn eslint scripts/circle-eventual-blob-sandbox.mjs --parser-options '{"sourceType":"module","ecmaVersion":2022}'
+      - name: Run isolated non-atomic event Blob contract (no Maker build)
+        env:
+          CIRCLE_EVENTUAL_BLOB_ACK: RUN_EVENTUAL_CIRCLE_SANDBOX_ONLY
+          CIRCLE_TEST_BLOB_STORE: qwerty-circle-sandbox
+          CIRCLE_TEST_PROJECT_ID: makers-yggquqwubqul
+          CIRCLE_TEST_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+        run: |
+          if [ -z "$CIRCLE_TEST_API_TOKEN" ]; then
+            echo "::error::Missing EdgeOne credential; sandbox test refused"
+            exit 1
+          fi
+          test "$CIRCLE_TEST_BLOB_STORE" = qwerty-circle-sandbox
+          node scripts/circle-eventual-blob-sandbox.mjs
