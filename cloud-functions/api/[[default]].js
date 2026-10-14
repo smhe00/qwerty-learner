@@ -97,7 +97,7 @@ async function readBinaryPart(request, maxBytes) {
 async function readLegacyV4Json(request, maxBytes) {
   const length = request.headers.get('content-length')
   if (length !== null &&
-      (!/^\\d+$/.test(length) || Number(length) > maxBytes)) {
+      (!/^\d+$/.test(length) || Number(length) > maxBytes)) {
     throw new AppError(413, 'request_too_large', 'Legacy V4 JSON body exceeds limit')
   }
   const bytes = await request.arrayBuffer()
