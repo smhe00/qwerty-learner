@@ -155,7 +155,14 @@ export async function commitV4Upload(storage, service, token, userId, input, max
     Object.assign(timings, storage.getLastV4RevisionTiming?.() || {})
     timings.serverTotalMs = ms(started)
     if (error instanceof AppError) {
-      error.details = { failureStage: 'commit_core', timings }
+      const blobStage = error.code === 'snapshot_blob_stage_failed'
+        ? error.details?.stage : null
+      const failureStage = blobStage === 'chunk_precommit' ? 'revision_chunk'
+        : blobStage === 'manifest_commit' ? 'revision_manifest' : 'commit_core'
+      const partIndex = Number.isSafeInteger(error.details?.partIndex) &&
+        error.details.partIndex >= 0 && error.details.partIndex < 192
+        ? error.details.partIndex : undefined
+      error.details = { failureStage, partIndex, timings }
     }
     // The outcome of a failed commit can be ambiguous. Never retry it here.
     throw error
