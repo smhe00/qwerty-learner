@@ -14,7 +14,8 @@ await build({ entryPoints: [resolve(root, 'src/sync/v4-http-part-retry.ts')],
   outfile: target, bundle: true, platform: 'node', format: 'esm',
   target: 'node20', tsconfig: resolve(root, 'tsconfig.json') })
 test.after(() => rmSync(tmp, { recursive: true, force: true }))
-const { retryIdenticalV4Part, V4_PART_RETRY_DELAY_MS } =
+const { retryIdenticalV4Part, V4_PART_RETRY_DELAY_MS,
+  stageImmutableV4Parts, V4_PART_MAX_IN_FLIGHT } =
   await import(pathToFileURL(target).href)
 
 const retryable = error => error.code === 'v4_upload_body_read_failed' ||
@@ -67,4 +68,58 @@ test('successful first attempt does not pause or duplicate a part', async () => 
   }, retryable, pause), 10)
   assert.equal(count, 1)
   assert.deepEqual(delay, [])
+})
+
+const tick = () => new Promise(resolve => setImmediate(resolve))
+
+test('bounded immutable staging uses three workers and awaits every receipt', async () => {
+  const started = []
+  const releases = new Map()
+  const staging = stageImmutableV4Parts([0, 1, 2, 3, 4], async index => {
+    started.push(index)
+    await new Promise(resolve => releases.set(index, resolve))
+  })
+  assert.equal(V4_PART_MAX_IN_FLIGHT, 3)
+  assert.deepEqual(started, [0, 1, 2])
+  releases.get(1)()
+  await tick()
+  assert.deepEqual(started, [0, 1, 2, 3])
+  releases.get(2)()
+  await tick()
+  assert.deepEqual(started, [0, 1, 2, 3, 4])
+  // The overall barrier cannot finish while any part is in flight.
+  let finished = false
+  staging.then(() => { finished = true })
+  await tick()
+  assert.equal(finished, false)
+  for (const i of [0, 3, 4]) releases.get(i)()
+  await staging
+  assert.equal(finished, true)
+})
+
+test('staging failure drains in-flight workers but starts no new part', async () => {
+  const started = []
+  const releases = new Map()
+  const failure = new Error('unverified immutable stage')
+  const staging = stageImmutableV4Parts([0, 1, 2, 3], async index => {
+    started.push(index)
+    await new Promise(resolve => releases.set(index, resolve))
+    if (index === 1) throw failure
+  }, 2)
+  assert.deepEqual(started, [0, 1])
+  releases.get(1)()
+  await tick()
+  assert.deepEqual(started, [0, 1])
+  releases.get(0)()
+  await assert.rejects(staging, error => error === failure)
+  assert.deepEqual(started, [0, 1])
+})
+
+test('invalid staging parallelism fails before issuing any requests', async () => {
+  for (const limit of [0, -1, 4, 1.5, NaN]) {
+    let attempts = 0
+    await assert.rejects(stageImmutableV4Parts([1],
+      async () => { attempts++ }, limit), /invalid-v4-stage-concurrency/)
+    assert.equal(attempts, 0)
+  }
 })
