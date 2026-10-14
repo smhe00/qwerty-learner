@@ -160,7 +160,7 @@ function makeService(env, storage) {
   return createBackendService({
     storage,
     sessionTtlSeconds: numberEnv(env.SESSION_TTL_SECONDS, 7 * 24 * 60 * 60),
-    maxSyncBytes: numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024),
+    maxSyncBytes: numberEnv(env.MAX_SYNC_BYTES, 16 * 1024 * 1024),
     multiSessionEnabled: env.MULTI_DEVICE_AUTH_ENABLED === 'true',
     eventPilotEnabled: env.MULTI_DEVICE_EVENT_PILOT_ENABLED === 'true',
   })
@@ -295,7 +295,7 @@ export async function onRequest(context) {
     const storage = makeStorage(env)
     const service = makeService(env, storage)
     const bodyLimit =
-      Math.ceil(numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024) * 1.5) + 256 * 1024
+      Math.ceil(numberEnv(env.MAX_SYNC_BYTES, 16 * 1024 * 1024) * 1.5) + 256 * 1024
 
     // Only the explicit etest pilot can reach the Circle Cloud Function.
     // The Circle Store is isolated from the V4 backup namespace.
@@ -522,7 +522,7 @@ export async function onRequest(context) {
           }
           // 192 parts was the old 32-KiB transport limit, not permission to
           // stage ~36 MiB when this account's max compressed gzip is 4 MiB.
-          const maxBytes = numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024)
+          const maxBytes = numberEnv(env.MAX_SYNC_BYTES, 16 * 1024 * 1024)
           if (body.count > Math.ceil(maxBytes / body.wirePartBytes) ||
               (body.index === body.count - 1 &&
                 (body.count - 1) * body.wirePartBytes + body.data.length > maxBytes)) {
@@ -553,7 +553,7 @@ export async function onRequest(context) {
       // Ambiguous responses remain fail-closed: never retry the final commit.
       const body = await readLegacyV4Json(request, 16 * 1024)
       const recovery = path === '/sync/v2/commit/recovery'
-      const maxBytes = numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024)
+      const maxBytes = numberEnv(env.MAX_SYNC_BYTES, 16 * 1024 * 1024)
       return json({ ok: true,
         ...(await commitV4Upload(storage, service, token, account.user.userId,
           body, maxBytes, recovery)) }, 200, cors)
