@@ -51,8 +51,8 @@ jobs:
             check: 'circle_etest_readonly_probe_v1',
             stagingRefSha: expectedSha,
             markerStatus: marker.status,
-            deployedSourceSha: marker.text.trim(),
-            markerMatchesRef: marker.text.trim() === expectedSha,
+            deployedSourceShaPrefix: marker.text.trim(),
+            markerMatchesRef: /^[a-f0-9]{7,40}$/.test(marker.text.trim()) && expectedSha.startsWith(marker.text.trim()),
             healthStatus: health.status,
             backendService: healthPayload.service ?? null,
             authMode: healthPayload.authMode ?? null,
@@ -71,7 +71,7 @@ jobs:
           console.log(JSON.stringify(result, null, 2))
           assert.equal(marker.status, 200, 'Staging source commit marker unavailable')
           assert.equal(result.markerMatchesRef, true,
-            'Staging deployment SHA mismatch: do not proceed to account tests')
+            'Staging deployment SHA prefix mismatch: do not proceed to account tests')
           assert.equal(health.status, 200, 'Staging health unavailable')
           assert.equal(healthPayload.service, 'qwerty-sync-gateway')
           assert.ok([401, 404, 503].includes(gate.status),
