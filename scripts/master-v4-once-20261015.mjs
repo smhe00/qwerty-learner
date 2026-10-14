@@ -127,12 +127,12 @@ async function preflight() {
     const response = await fetch(ORIGIN + path, {
       redirect: 'error', signal: AbortSignal.timeout(15000),
     })
-    assert.equal(response.status, 200)
+    assert.equal(response.status, 200, 'Production asset ' + path)
     const js = await response.text()
     if (js.includes(EXPECTED_MASTER.slice(0, 7))) assetPinned = true
     console.log('MASTER_ASSET_CHECK ' + JSON.stringify({ path, bytes: Buffer.byteLength(js), expectedStamp: assetPinned }))
     for (const match of js.matchAll(/["']((?:\.\/|\/?assets\/)[A-Za-z0-9_.-]+\.js)["']/g)) {
-      const child = new URL(match[1], ORIGIN + path)
+      const child = new URL(match[1].startsWith('assets/') ? '/' + match[1] : match[1], ORIGIN + path)
       if (child.origin === ORIGIN && child.pathname.startsWith('/assets/') &&
           !visited.has(child.pathname)) queue.push(child.pathname)
     }
