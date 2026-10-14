@@ -1,5 +1,5 @@
 import type { CloudUser, RemoteSnapshot, RemoteSyncMeta } from './types'
-import { planV4UploadParts } from './v4-http-part-plan'
+import { planV4UploadParts, V4_HTTP_PART_BYTES } from './v4-http-part-plan'
 import { retryIdenticalV4Part } from './v4-http-part-retry'
 import { type PerfSample, recordV4TransportSample } from './perf-diagnostics'
 
@@ -310,6 +310,7 @@ async function putV4Multipart(
               'X-Qwerty-Part-Sha256': part.partSha256,
               'X-Qwerty-Part-Index': String(part.index),
               'X-Qwerty-Part-Count': String(plan.parts.length),
+              'X-Qwerty-Chunk-Bytes': String(V4_HTTP_PART_BYTES),
             },
           })
         } catch (error) {
@@ -397,7 +398,9 @@ export async function getSyncV2SnapshotBinary(token: string): Promise<{
   if (!manifest.hasData || manifest.payloadEncoding !== 'binary' ||
       !manifest.payloadSha256 || !/^[a-f0-9]{64}$/.test(manifest.payloadSha256) ||
       !Number.isSafeInteger(manifest.count) || manifest.count < 1 ||
-      manifest.count > 64 || manifest.chunkBytes !== 192 * 1024 ||
+      manifest.count > 64 ||
+      ![192 * 1024, 2 * 1024 * 1024].includes(manifest.chunkBytes) ||
+      manifest.count !== Math.ceil(manifest.sizeBytes / manifest.chunkBytes) ||
       manifest.partSha256s?.length !== manifest.count ||
       !manifest.partSha256s.every(sha => /^[a-f0-9]{64}$/.test(sha)) ||
       manifest.sizeBytes > 4 * 1024 * 1024 || manifest.sizeBytes < 1) {
