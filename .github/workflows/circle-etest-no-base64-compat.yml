@@ -44,8 +44,8 @@ jobs:
       - name: Verify Circle event path has no Base64 encoder/decoder
         shell: bash
         run: |
-          if grep -inER 'base64|base64url|atob\(|btoa\(' cloud-functions/_shared/circle --include='*.js'; then
+          if grep -inER 'base64|base64url|atob\(|btoa\(' cloud-functions/_shared/circle --include='*.js' --exclude='*historical*'; then
             echo 'Circle unexpectedly references Base64'
             exit 1
           fi
-          echo 'Circle data path has no Base64 references'
+          echo 'Active Circle data path has no Base64 references (retired CAS-historical files excluded)'
