@@ -230,18 +230,26 @@ function v4Failure(error: unknown, isCommit: boolean): {
   failureStage: PerfSample['failureStage']
   failureCategory: PerfSample['failureCategory']
   httpStatus?: number
+  partIndex?: number
 } {
   if (error instanceof SyncApiError) {
     const details = v4ErrorDetails(error)
     const serverStage = details.failureStage
     const stage = ['blob_write', 'blob_readback', 'part_lookup',
-      'commit_core'].includes(String(serverStage))
+      'commit_core', 'revision_chunk', 'revision_manifest'].includes(String(serverStage))
       ? serverStage : isCommit ? 'commit_core' : 'http_request'
     const category = stage === 'blob_write' || stage === 'blob_readback' ||
-      stage === 'part_lookup' ? 'blob_storage'
+      stage === 'part_lookup' || stage === 'revision_chunk' ||
+      stage === 'revision_manifest' ? 'blob_storage'
       : error.status >= 500 ? 'server_failure' : 'http_failure'
+    const partIndex = error.details && typeof error.details === 'object' &&
+      'partIndex' in error.details &&
+      typeof error.details.partIndex === 'number' &&
+      Number.isSafeInteger(error.details.partIndex) &&
+      error.details.partIndex >= 0 && error.details.partIndex < 192
+      ? error.details.partIndex : undefined
     return { failureStage: stage, failureCategory: category,
-      httpStatus: error.status }
+      httpStatus: error.status, partIndex }
   }
   if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
     return { failureStage: 'http_request', failureCategory: 'network_timeout' }
