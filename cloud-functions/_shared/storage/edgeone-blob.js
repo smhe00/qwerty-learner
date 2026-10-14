@@ -65,6 +65,11 @@ function jsonEquivalent(left, right) {
 export function createEdgeOneBlobStorage(store) {
   const strongJson = (key) =>
     withRetry(() => store.get(key, { type: 'json', consistency: 'strong' }))
+  const strongBinary = async (key) => {
+    const value = await withRetry(() =>
+      store.get(key, { type: 'arrayBuffer', consistency: 'strong' }))
+    return value === null ? null : Buffer.from(value)
+  }
 
   const strongList = (prefix) =>
     withRetry(() => store.list({ prefix, consistency: 'strong' }))
@@ -145,6 +150,16 @@ export function createEdgeOneBlobStorage(store) {
       (payloadSha256 === null ? '' : payloadSha256 + '/')
   }
 
+  function binaryUploadKey(userId, payloadSha256, count, index, partSha256) {
+    if (!/^[a-f0-9]{64}$/.test(payloadSha256) ||
+        !/^[a-f0-9]{64}$/.test(partSha256) ||
+        !Number.isSafeInteger(count) || count < 1 || count > 192 ||
+        !Number.isSafeInteger(index) || index < 0 || index >= count) {
+      throw new Error('Invalid binary V4 upload selector')
+    }
+    return `users/${userId}/v4-http-parts/v3/${payloadSha256}/${count}/${String(index).padStart(3, '0')}-${partSha256}.bin`
+  }
+
   function uploadKey(userId, payloadSha256, index, partSha256) {
     if (!Number.isSafeInteger(index) || index < 0 || index > 191 ||
         !/^[a-f0-9]{64}$/.test(partSha256)) {
@@ -170,6 +185,10 @@ export function createEdgeOneBlobStorage(store) {
   function partKey(userId, revision, sha, index) {
     return revisionPartsPrefix(userId, revision) + sha + '/' +
       String(index).padStart(4, '0') + '.json'
+  }
+  function binaryRevisionKey(userId, revision, sha, index) {
+    return revisionPartsPrefix(userId, revision) + sha + '/' +
+      String(index).padStart(4, '0') + '.bin'
   }
 
   async function readManifestParts(userId, revision, manifest) {
@@ -221,6 +240,34 @@ export function createEdgeOneBlobStorage(store) {
   function parseRateLimitCounterWindow(key) {
     const match = /\/windows\/(\d+)\.json$/.exec(key)
     return match ? Number(match[1]) : null
+  }
+
+  async function setBinaryOnlyIfNew(key, bytes) {
+    // Contents are immutable, yet Blob onlyIfNew is NOT an atomic CAS.
+    // Recover ambiguous acknowledgments by comparing exact bytes after a
+    // strong read. Never accept a conflicting object as our own.
+    let lastError
+    const expected = Buffer.from(bytes)
+    for (const delayMs of RETRY_DELAYS_MS) {
+      if (delayMs > 0) await sleep(delayMs)
+      try {
+        const body = expected.buffer.slice(expected.byteOffset,
+          expected.byteOffset + expected.byteLength)
+        await store.set(key, body, { onlyIfNew: true })
+        const observed = await strongBinary(key)
+        if (observed !== null && observed.equals(expected)) return true
+        throw new Error('Binary Blob write not verified')
+      } catch (error) {
+        lastError = error
+      }
+      try {
+        const existing = await strongBinary(key)
+        if (existing !== null) return existing.equals(expected)
+      } catch (error) {
+        lastError = error
+      }
+    }
+    throw lastError
   }
 
   async function setJsonOnlyIfNew(key, value) {
