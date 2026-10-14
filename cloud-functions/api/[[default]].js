@@ -71,7 +71,7 @@ function corsHeaders(request, configuredOrigin) {
 // Bound streaming reads BEFORE allocation. A binary part never uses request.text().
 async function readBinaryPart(request, maxBytes) {
   const declaredLength = request.headers.get('content-length')
-  if (declaredLength !== null && (!/^\\d+$/.test(declaredLength) ||
+  if (declaredLength !== null && (!/^\d+$/.test(declaredLength) ||
       Number(declaredLength) > maxBytes)) {
     throw new AppError(413, 'request_too_large', 'V4 binary part exceeds 192 KiB')
   }
@@ -437,7 +437,7 @@ export async function onRequest(context) {
           const indexHeader = request.headers.get('x-qwerty-part-index')
           const countHeader = request.headers.get('x-qwerty-part-count')
           // Reject malformed metadata without trusting parseInt's prefix parsing.
-          if (!/^\\d+$/.test(indexHeader || '') || !/^\\d+$/.test(countHeader || '')) {
+          if (!/^\d+$/.test(indexHeader || '') || !/^\d+$/.test(countHeader || '')) {
             throw new AppError(400, 'invalid_v4_upload_part', 'Invalid binary part selector')
           }
           body = {
@@ -511,7 +511,7 @@ export async function onRequest(context) {
     if (request.method === 'GET' && path === '/sync/v2/binary/part') {
       const revisionParam = url.searchParams.get('revision') || ''
       const indexParam = url.searchParams.get('index') || ''
-      if (!/^\\d+$/.test(revisionParam) || !/^\\d+$/.test(indexParam)) {
+      if (!/^\d+$/.test(revisionParam) || !/^\d+$/.test(indexParam)) {
         throw new AppError(400, 'invalid_binary_part_selector',
           'Binary revision and part index must be decimal integers')
       }
