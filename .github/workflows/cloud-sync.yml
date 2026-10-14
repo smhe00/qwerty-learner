@@ -23,6 +23,8 @@ on:
       - '.github/workflows/pages-explorer.yml'
       - '.github/workflows/etest-entry-gate.yml'
       - 'scripts/verify-etest-entry.mjs'
+      - 'scripts/probe-etest-blob-single-object.mjs'
+      - '.github/workflows/etest-blob-single-object-limit.yml'
   workflow_dispatch:
 
 concurrency:
