@@ -1,0 +1,35 @@
+name: Etest 5.9 MB gzip V4 Latency (isolated)
+
+on:
+  push:
+    branches:
+      - perf/etest-5p9mb-20261015
+    paths:
+      - 'scripts/benchmark-etest-5p9mb-gzip.mjs'
+      - '.github/workflows/perf-etest-5p9mb-gzip.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: etest-5p9mb-gzip-isolated
+  cancel-in-progress: false
+
+jobs:
+  etest-gzip-5p9mb:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Check isolated benchmark syntax
+        run: node --check scripts/benchmark-etest-5p9mb-gzip.mjs
+      - name: Measure 5.9 MB compressed gzip multipart sync on etest only
+        env:
+          ETEST_5P9M_ACK: ISOLATED_ETEST_5900000_GZIP
+        run: node scripts/benchmark-etest-5p9mb-gzip.mjs
