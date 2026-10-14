@@ -8,7 +8,7 @@
  */
 import { assertRestorableWorkspaceV4, parseWorkspaceV4, workspaceFingerprintV4 } from './workspace-v4'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
-import type { RemoteSnapshot, RemoteSyncMeta } from './types'
+import type { RemoteBinarySnapshot, RemoteSnapshot, RemoteSyncMeta } from './types'
 
 const MAX_COMPRESSED_BYTES = 4 * 1024 * 1024
 const MAX_INFLATED_BYTES = 32 * 1024 * 1024
@@ -69,7 +69,7 @@ async function boundedInflate(payload: Uint8Array): Promise<string> {
 export async function verifyDownloadedWorkspaceV4(
   expectedOwnerId: string,
   observedMeta: RemoteSyncMeta,
-  remote: RemoteSnapshot,
+  remote: RemoteSnapshot | RemoteBinarySnapshot,
 ): Promise<WorkspaceSnapshotV4> {
   if (!expectedOwnerId || !expectedOwnerId.trim()) throw new Error('Missing V4 account owner')
   if (!observedMeta.hasData || !remote.hasData ||
@@ -81,12 +81,14 @@ export async function verifyDownloadedWorkspaceV4(
       remote.logicalFingerprint !== observedMeta.logicalFingerprint ||
       !SHA256.test(observedMeta.payloadSha256 || '') ||
       remote.payloadSha256 !== observedMeta.payloadSha256 ||
-      remote.payloadEncoding !== 'base64' ||
-      !remote.payloadBase64) {
+      !['binary', 'base64'].includes(remote.payloadEncoding)) {
     throw new Error('V4 cloud metadata changed, is incomplete, or format unsupported')
   }
-  const compressed = decodeBase64(remote.payloadBase64)
-  if (compressed.byteLength !== remote.sizeBytes ||
+  const compressed = remote.payloadEncoding === 'binary'
+    ? remote.payloadBytes : decodeBase64(remote.payloadBase64 || '')
+  if (!(compressed instanceof Uint8Array) ||
+      compressed.byteLength > MAX_COMPRESSED_BYTES ||
+      compressed.byteLength !== remote.sizeBytes ||
       compressed.byteLength !== observedMeta.sizeBytes ||
       await digest(compressed) !== observedMeta.payloadSha256) {
     throw new Error('V4 cloud compressed payload checksum or size mismatch')
