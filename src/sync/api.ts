@@ -353,6 +353,7 @@ async function putV4Multipart(
       recovery ? '/api/sync/v2/commit/recovery' : '/api/sync/v2/commit',
       { method: 'POST', token, body: {
         ...metadata, payloadSha256: plan.payloadSha256, count: plan.parts.length,
+        wirePartBytes: V4_HTTP_PART_BYTES,
         partSha256s: plan.parts.map(part => part.partSha256),
       } },
     )
@@ -399,7 +400,7 @@ export async function getSyncV2SnapshotBinary(token: string): Promise<{
       !manifest.payloadSha256 || !/^[a-f0-9]{64}$/.test(manifest.payloadSha256) ||
       !Number.isSafeInteger(manifest.count) || manifest.count < 1 ||
       manifest.count > 64 ||
-      ![192 * 1024, 2 * 1024 * 1024].includes(manifest.chunkBytes) ||
+      ![192 * 1024, 512 * 1024].includes(manifest.chunkBytes) ||
       manifest.count !== Math.ceil(manifest.sizeBytes / manifest.chunkBytes) ||
       manifest.partSha256s?.length !== manifest.count ||
       !manifest.partSha256s.every(sha => /^[a-f0-9]{64}$/.test(sha)) ||
