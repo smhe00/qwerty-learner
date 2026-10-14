@@ -1,3 +1,5 @@
+> **2026-10-14 live qualification checkpoint:** [Isolated Blob eventual-event smoke](./CIRCLE_EVENTUAL_BLOB_LIVE_20261014.md) **PASSED** using 13 distinct objects (12 concurrent joins), deterministic replay, no CAS, and verified sandbox key cleanup. [Circle CI](https://github.com/smhe00/qwerty-learner/actions/runs/38519544610): **74/74 tests**, ESLint clean. This is external SDK path only, *not* deployed API or multi-region assurance; independent trusted access remains a release blocker.
+
 > **Current product scope (2026-10-13):** [Light social v1](./CIRCLE_LIGHT_SOCIAL_V1.md) supersedes earlier seat/capacity selection, official achievement evidence and whole-circle activity-conflict requirements. Capacity is advisory, shares are self-reported, and private-access safeguards remain.
 
 > **Continuation checkpoint:** [Revocation recovery and retirement cleanup](./CIRCLE_RECOVERY_PRIVACY_V2.md) are implemented as server-only helpers, with 47 passing Circle tests. Production authority, orchestration and live qualification remain blocked.
