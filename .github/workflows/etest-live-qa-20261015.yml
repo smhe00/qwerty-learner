@@ -1,0 +1,46 @@
+name: Etest Live Anonymous Explorer QA (one-off)
+
+on:
+  push:
+    branches: [qa/etest-e2e-audit-20261015]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: etest-live-qa-20261015
+  cancel-in-progress: false
+
+jobs:
+  etest-browser-real-site:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Ensure deployed site matches audited etest source
+        env:
+          QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
+          EXPECTED_SHA: 59e467f40b8edd3fef7043af9f258554e2183b7e
+        run: node scripts/verify-edgeone-source.mjs
+      - name: Install Playwright Chromium
+        run: |
+          yarn install --frozen-lockfile
+          npx playwright install --with-deps chromium
+      - name: Run anonymous live-site UX, Learn durability, Typing, mobile, seeded Explorer
+        run: |
+          npx playwright test tests/e2e/etest-live-explorer.spec.ts \
+            --project=chromium --workers=1 --retries=0 --reporter=list
+      - name: Upload redacted anonymous checkpoints only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etest-anonymous-e2e-${{ github.run_id }}
+          path: |
+            test-results/**/*-learn-checkpoints.json
+            test-results/**/*-route-explorer-*.json
+          if-no-files-found: ignore
+          retention-days: 7
