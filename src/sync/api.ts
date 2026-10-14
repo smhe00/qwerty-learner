@@ -214,6 +214,9 @@ type V4RecoveryInput = V4PutInput & {
   expectedRemoteLogicalFingerprint?: string | null
   accountConfirmation: string
 }
+export type V4BinaryRecoveryInput = Omit<V4RecoveryInput, 'payloadBase64'> & {
+  payloadBytes: Uint8Array
+}
 const V4_MULTIPART_THRESHOLD_CHARS = 128 * 1024
 
 type V4Timings = Pick<PerfSample, 'blobWriteMs' | 'blobReadbackMs' |
@@ -285,7 +288,8 @@ function v4Record(
  * Unknown final commit outcome MUST be reconciled by remote meta first.
  */
 async function putV4Multipart(
-  token: string, input: V4PutInput | V4RecoveryInput | V4BinaryPutInput,
+  token: string,
+  input: V4PutInput | V4RecoveryInput | V4BinaryPutInput | V4BinaryRecoveryInput,
   recovery: boolean,
 ): Promise<SyncMetaResponse> {
   const compressed = 'payloadBytes' in input ? input.payloadBytes :
@@ -500,6 +504,13 @@ export async function getSyncV2MetaWithBinaryMigration(
       'Cloud migration changed protected revision evidence')
   }
   return current
+}
+
+/** User-confirmed explicit recovery: original pinned SHA and account-ID
+ * safeguards are unchanged, only the gzip wire representation is binary.
+ */
+export function putSyncV2BinaryRecovery(token: string, input: V4BinaryRecoveryInput) {
+  return putV4Multipart(token, input, true)
 }
 
 /** Explicit recovery retains its original server confirmation preconditions. */
