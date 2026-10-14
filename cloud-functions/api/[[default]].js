@@ -189,6 +189,13 @@ export async function onRequest(context) {
     })
   }
 
+  // Constant-time closed gate: on production/ordinary sites, Circle cannot
+  // initialize storage or reveal whether a Circle object exists.
+  if ((path === '/circle/v2' || path.startsWith('/circle/v2/')) &&
+      (url.hostname !== 'etest.edgeone.dev' || env.CIRCLE_ETEST_ENABLED !== 'true')) {
+    return json({ ok: false, error: 'not_found' }, 404, cors)
+  }
+
   try {
     if (request.method === 'GET' && (path === '/' || path === '/health')) {
       return json(
