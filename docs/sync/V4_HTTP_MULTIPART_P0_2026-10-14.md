@@ -13,7 +13,7 @@ request.text() intermittently failed before any Blob write on 512-KiB to
   daily sessions, settings and navigation. Small snapshots retain original
   PUT /api/sync/v2 and explicit recovery PUT.
 - Larger Base64 gzip uses immutable, account-scoped, content-addressed parts:
-  POST /api/sync/v2/parts, at most 96 KiB Base64 each, 64 parts total.
+  POST /api/sync/v2/parts, at most 32 KiB Base64 each, 192 parts total.
 - Every part includes SHA256 of its literal Base64 data, index, count and
   full compressed-gzip SHA256. Server validates and performs Blob exact-key
   readback before returning a receipt. No revision is advanced.
@@ -53,3 +53,10 @@ six-table event merge, M4 automated event synchronization and Backup V5.
 - Old large PUT may still fail in older clients; updated frontend sends parts.
 - Must pass main Cloud Gate, published Pages gate, and real etest Maker gate
   on exactly the same promoted SHA before considering release.
+
+## Etest first live attempt
+
+The first etest deployment (7c27c935) passed the V4 auth/CAS setup but
+its first 96-KiB POST part received an HTTP 500 before any new revision.
+The stage unit was reduced to 32 KiB and unknown body-read exceptions
+are now mapped to a retryable, unambiguous 503 with explicit code.

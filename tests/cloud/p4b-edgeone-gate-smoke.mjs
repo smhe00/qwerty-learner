@@ -34,7 +34,8 @@ async function api(path, method = 'GET', body, token) {
 }
 function expectCode(result, status, code, label) {
   assert.equal(result.status, status,
-    label + ': unexpected HTTP status ' + result.status)
+    label + ': unexpected HTTP ' + result.status +
+    ', error=' + (result.value?.error || 'unknown'))
   if (code) assert.equal(result.value?.error, code, label + ': error code')
 }
 async function register(suffix) {
@@ -109,9 +110,9 @@ function v4BodyFromSnapshot(user, revision, snapshot) {
 // be checked by GET meta and never blindly overwritten.
 async function uploadLargeV4(record, token) {
   const payloadSha256 = sha256(Buffer.from(record.payloadBase64, 'base64'))
-  const chars = 96 * 1024
+  const chars = 32 * 1024
   const count = Math.ceil(record.payloadBase64.length / chars)
-  assert.ok(count >= 1 && count <= 64)
+  assert.ok(count >= 1 && count <= 192)
   const partSha256s = []
   for (let index = 0; index < count; index++) {
     const data = record.payloadBase64.slice(index * chars, (index + 1) * chars)

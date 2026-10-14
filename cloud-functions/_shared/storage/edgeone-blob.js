@@ -146,7 +146,7 @@ export function createEdgeOneBlobStorage(store) {
   }
 
   function uploadKey(userId, payloadSha256, index, partSha256) {
-    if (!Number.isSafeInteger(index) || index < 0 || index > 63 ||
+    if (!Number.isSafeInteger(index) || index < 0 || index > 191 ||
         !/^[a-f0-9]{64}$/.test(partSha256)) {
       throw new Error('Invalid V4 upload part selector')
     }

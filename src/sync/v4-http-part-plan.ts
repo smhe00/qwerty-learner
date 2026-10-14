@@ -2,8 +2,8 @@
  * P0 HTTP-only transport. V4 remains a complete logical Backup V4 gzip.
  * This is independent of Memory Ledger logical sharding.
  */
-export const V4_HTTP_PART_CHARS = 96 * 1024
-export const V4_HTTP_MAX_PARTS = 64
+export const V4_HTTP_PART_CHARS = 32 * 1024
+export const V4_HTTP_MAX_PARTS = 192
 
 function asHex(bytes: ArrayBuffer): string {
   return Array.from(new Uint8Array(bytes), value =>

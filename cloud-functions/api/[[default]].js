@@ -369,7 +369,14 @@ export async function onRequest(context) {
     if (request.method === 'POST' && path === '/sync/v2/parts') {
       const token = await requireS2WriteAccount(service, request, env)
       const account = await service.me(token)
-      const body = await readJson(request, 110 * 1024)
+      let body
+      try {
+        body = await readJson(request, 48 * 1024)
+      } catch (error) {
+        if (error instanceof AppError) throw error
+        throw new AppError(503, 'v4_upload_body_read_failed',
+          'Unable to receive bounded V4 part; retry the identical part')
+      }
       return json({ ok: true,
         ...(await receiveV4UploadPart(storage, account.user.userId, body)) },
         200, cors)

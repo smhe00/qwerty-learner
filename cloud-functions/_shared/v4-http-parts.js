@@ -7,8 +7,8 @@
 import crypto from 'node:crypto'
 import { AppError } from './core.js'
 
-export const V4_HTTP_PART_CHARS = 96 * 1024
-export const V4_HTTP_MAX_PARTS = 64
+export const V4_HTTP_PART_CHARS = 32 * 1024
+export const V4_HTTP_MAX_PARTS = 192
 const SHA = /^[0-9a-f]{64}$/
 const PART_B64 = /^[A-Za-z0-9+/]*={0,2}$/
 
