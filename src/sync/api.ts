@@ -98,7 +98,7 @@ async function request<T>(
       method,
       headers,
       body: binary === undefined ? (body === undefined ? undefined : JSON.stringify(body))
-        : new Blob([new Uint8Array(binary)]),
+        : new Uint8Array(binary),
       signal: abort?.signal,
     })
     text = await response.text()
