@@ -200,6 +200,12 @@ try {
     assert.equal(latest.value?.logicalFingerprint, largeBody.logicalFingerprint)
     assert.equal(latest.value?.payloadSha256,
       sha256(Buffer.from(largeBody.payloadBase64, 'base64')))
+    // Metadata does not prove all Blob chunks can be reconstructed.
+    // Exact GET must return the original gzip bytes, not only a matching SHA.
+    const restored = await api('/api/sync/v2', 'GET', undefined, first.token)
+    assert.equal(restored.status, 200, 'V4 multipart full payload readback HTTP')
+    assert.equal(restored.value?.payloadBase64, largeBody.payloadBase64,
+      'full V4 Blob round-trip is byte-exact')
   }
   console.log('V4 HTTP multipart large-payload endurance: PASS')
 } catch (error) {
