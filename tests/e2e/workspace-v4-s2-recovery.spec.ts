@@ -38,6 +38,14 @@ async function seed(page: Page) {
   stagedParts.set(page, parts)
   await page.route('**/api/sync/v2/parts', async route => {
     const req = route.request()
+    if (req.method() === 'OPTIONS') {
+      await route.fulfill({ status: 204, headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Qwerty-Payload-Sha256, X-Qwerty-Part-Sha256, X-Qwerty-Part-Index, X-Qwerty-Part-Count',
+      } })
+      return
+    }
     const header = req.headers()
     const body = req.postDataBuffer()
     const sha = header['x-qwerty-part-sha256']
