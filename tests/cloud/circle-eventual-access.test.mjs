@@ -126,7 +126,7 @@ test('server identity, invitations and owner permissions stay required', async (
   const { service, sessions, create } = setup()
   const c = await create()
   await assert.rejects(service.getCircle(bob, c.circleId), { code: 'not_circle_member' })
-  await assert.rejects(service.removeMember(bob, c.circleId, owner), { code: 'not_circle_member' })
+  await assert.rejects(service.removeMember(bob, c.circleId, owner), { code: 'not_circle_owner' })
   await assert.rejects(service.joinCircle(bob, c.inviteCode.slice(0, -1) + 'x'), { code: 'invalid_invite' })
   await service.joinCircle(alice, c.inviteCode)
   await assert.rejects(service.removeMember(alice, c.circleId, owner), { code: 'not_circle_owner' })
