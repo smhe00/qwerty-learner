@@ -66,7 +66,10 @@ function apiUrl(path: string) {
 
 async function request<T>(
   path: string,
-  { method = 'GET', token, body }: { method?: string; token?: string; body?: unknown } = {},
+  { method = 'GET', token, body, binary, partHeaders }: {
+    method?: string; token?: string; body?: unknown
+    binary?: Uint8Array; partHeaders?: Record<string, string>
+  } = {},
 ): Promise<T> {
   if (import.meta.env.VITE_QWERTY_SYNC_DISABLED === 'true' || REACT_APP_DEPLOY_ENV === 'pages') {
     throw new SyncApiError(403, 'cloud_disabled', 'GitHub Pages 测试版禁用云账号和云同步。')
@@ -76,6 +79,8 @@ async function request<T>(
   }
 
   if (body !== undefined) headers['Content-Type'] = 'application/json'
+  if (binary !== undefined) headers['Content-Type'] = 'application/octet-stream'
+  if (partHeaders) Object.assign(headers, partHeaders)
   if (token) headers.Authorization = `Bearer ${token}`
 
   // Guarded V4 Sync must not trap a learner on the Block screen forever
@@ -92,7 +97,8 @@ async function request<T>(
     response = await fetch(apiUrl(path), {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: binary === undefined ? (body === undefined ? undefined : JSON.stringify(body))
+        : new Blob([new Uint8Array(binary)]),
       signal: abort?.signal,
     })
     text = await response.text()
@@ -288,9 +294,12 @@ async function putV4Multipart(
         let reply: V4PartReply
         try {
           reply = await request<V4PartReply>('/api/sync/v2/parts', {
-            method: 'POST', token, body: {
-              payloadSha256: plan.payloadSha256, count: plan.parts.length,
-              index: part.index, data: part.data, partSha256: part.partSha256,
+            method: 'POST', token, binary: part.data,
+            partHeaders: {
+              'X-Qwerty-Payload-Sha256': plan.payloadSha256,
+              'X-Qwerty-Part-Sha256': part.partSha256,
+              'X-Qwerty-Part-Index': String(part.index),
+              'X-Qwerty-Part-Count': String(plan.parts.length),
             },
           })
         } catch (error) {
