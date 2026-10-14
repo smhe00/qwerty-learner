@@ -6,7 +6,8 @@
  * Two immutable backups must be downloaded and acknowledged before either
  * side can be deliberately replaced. This surface never auto-merges.
  */
-import { SyncApiError, getSyncV2Meta, getSyncV2Snapshot, putSyncV2Recovery } from './api'
+import { SyncApiError, getSyncV2Meta, getSyncV2Snapshot,
+  getSyncV2SnapshotBinary, putSyncV2BinaryRecovery } from './api'
 import { loadAuth } from './auth'
 import { compareAndSwapSyncV2Baseline, loadSyncV2Baseline } from './v2-baseline'
 import { payloadV4 } from './v2-manual-executor'
@@ -118,7 +119,9 @@ export async function renderS2RecoveryUI(
     status.textContent = '当前云端没有支持的 V4 数据。旧格式已退役；请返回普通同步，不执行覆盖。'
     return
   }
-  const raw = await getSyncV2Snapshot(signed.token)
+  const raw = pinned.storageEncoding === 'binary'
+    ? await getSyncV2SnapshotBinary(signed.token)
+    : await getSyncV2Snapshot(signed.token)
   const remoteBytes = await verifyPinnedCloudArchive(pinned, raw)
   const confirmedMeta = await getSyncV2Meta(signed.token)
   if (!samePinnedRemote(pinned, confirmedMeta)) {
@@ -207,8 +210,8 @@ export async function renderS2RecoveryUI(
 
   localButton.addEventListener('click', () => {
     void (async () => {
-      await downloadGzip(Uint8Array.from(atob((await payloadV4(local)).encoded),
-        c => c.charCodeAt(0)), 'Qwerty-Plus-LOCAL-V4-' + pinned.revision + '.gz')
+      await downloadGzip((await payloadV4(local)).bytes,
+        'Qwerty-Plus-LOCAL-V4-' + pinned.revision + '.gz')
       gotLocal = true
       localAck.checked = false
       status.textContent = '已触发本地备份下载；检查文件保存后勾选确认。'
@@ -265,9 +268,9 @@ export async function renderS2RecoveryUI(
         const zip = await payloadV4(local)
         submittedPayload = { fingerprint: localFingerprint, sha256: zip.checksum }
         await verifyIdentity()
-        const uploaded = await putSyncV2Recovery(signed.token, {
+        const uploaded = await putSyncV2BinaryRecovery(signed.token, {
           baseRevision: pinned.revision,
-          payloadBase64: zip.encoded,
+          payloadBytes: zip.bytes,
           logicalFingerprint: localFingerprint,
           clientFormatVersion: 'qwerty-backup-v4',
           recoveryMode: 'replace-v4',
