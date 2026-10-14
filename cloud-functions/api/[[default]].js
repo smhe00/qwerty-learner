@@ -1,7 +1,7 @@
 /* eslint-env node */
 import { getStore } from '@edgeone/pages-blob'
 import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
-import { createCircleEtestGateway, blocksCircleEtestAccountDeletion } from '../_shared/circle/etest-gateway.js'
+import { blocksCircleEtestAccountDeletion, createCircleEtestGateway } from '../_shared/circle/etest-gateway.js'
 import { AppError, createBackendService } from '../_shared/core.js'
 import { isS2WriteEnabled } from '../_shared/s2-write-gate.js'
 import { createEdgeOneBlobStorage } from '../_shared/storage/edgeone-blob.js'
