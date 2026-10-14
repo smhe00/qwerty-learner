@@ -39,7 +39,9 @@ export function createCircleService({ log, authenticate, trustedAccess, inviteKe
     }
   }
   async function snapshot(circleId) {
-    const events = await log.scan(id(circleId))
+    let events
+    try { events = await log.scan(id(circleId)) }
+    catch { fail(503, 'circle_view_uncertain') }
     const view = reduceCircle(circleId, events)
     if (view.blocked || !view.meta) fail(503, 'circle_view_uncertain')
     if (view.closed) fail(410, 'circle_closed')
