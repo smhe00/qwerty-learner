@@ -2,7 +2,7 @@
  * Unified standard V4 cloud backup export. Read-only, independent of local
  * RecordDB and Sync baseline; exported .gz is accepted by local V4 import.
  */
-import { getSyncV2Meta, getSyncV2Snapshot } from './api'
+import { getSyncV2Meta, getSyncV2Snapshot, getSyncV2SnapshotBinary } from './api'
 import { loadAuth } from './auth'
 import { samePinnedRemote, verifyPinnedCloudArchive } from './v2-recovery-archive'
 import { verifyDownloadedWorkspaceV4 } from './v2-verify-remote'
@@ -74,7 +74,9 @@ export async function renderCloudV4BackupUI(
     void (async () => {
       status.textContent = '正在校验云端原始压缩文件、Revision 与 SHA-256…'
       await checkOwner()
-      const remote = await getSyncV2Snapshot(auth.token)
+      const remote = pinned.storageEncoding === 'binary'
+        ? await getSyncV2SnapshotBinary(auth.token)
+        : await getSyncV2Snapshot(auth.token)
       const bytes = await verifyPinnedCloudArchive(pinned, remote)
       await verifyDownloadedWorkspaceV4(id, pinned, remote)
       await checkOwner()
