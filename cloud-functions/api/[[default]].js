@@ -1,6 +1,7 @@
 /* eslint-env node */
 import { getStore } from '@edgeone/pages-blob'
 import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
+import { createCircleEtestGateway } from '../_shared/circle/etest-gateway.js'
 import { AppError, createBackendService } from '../_shared/core.js'
 import { isS2WriteEnabled } from '../_shared/s2-write-gate.js'
 import { createEdgeOneBlobStorage } from '../_shared/storage/edgeone-blob.js'
@@ -225,6 +226,17 @@ export async function onRequest(context) {
     const bodyLimit =
       Math.ceil(numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024) * 1.5) + 256 * 1024
 
+    // Optional Circle pilot is completely unavailable on every non-etest host
+    // and requires an isolated Store, explicit opt-in and allowlisted accounts.
+    // This branch does NOT activate any production endpoint.
+    if (path === '/circle/v2' || path.startsWith('/circle/v2/')) {
+      const result = await createCircleEtestGateway({
+        backend: service, getStore, rateStorage: storage,
+      }).handle(context)
+      for (const [key, value] of Object.entries(cors)) result.headers.set(key, value)
+      return result
+    }
+
     if (
       request.method === 'POST' &&
       (path === '/auth/register' || path === '/auth/login')
@@ -262,6 +274,18 @@ export async function onRequest(context) {
     }
 
     if (request.method === 'DELETE' && path === '/auth/account') {
+      // Circle pilot deliberately has no automatic data-erasure inventory yet.
+      // Refuse account deletion for Circle test identities rather than return
+      // success and leave orphaned identity-bearing social events behind.
+      // Unrelated accounts and all non-etest hosts keep V4 behavior unchanged.
+      if (url.hostname === 'etest.edgeone.dev' && env.CIRCLE_ETEST_ENABLED === 'true') {
+        const me = await service.me(bearer(request))
+        const allow = String(env.CIRCLE_ETEST_USER_IDS || '').split(',').map((x) => x.trim())
+        if (allow.includes(me.user?.userId)) {
+          throw new AppError(409, 'circle_etest_deletion_requires_cleanup',
+            'Circle test account cleanup must be completed before deleting the account')
+        }
+      }
       const body = await readJson(request, 64 * 1024)
       return json(
         {
