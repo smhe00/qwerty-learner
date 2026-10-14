@@ -15,6 +15,17 @@ function response(status, error) {
   })
 }
 
+
+/** Account erasure cannot be acknowledged until Circle has an inventory
+ * and retryable cleanup protocol. Etest-only guard, never a production override.
+ */
+export function blocksCircleEtestAccountDeletion({ hostname, env, userId } = {}) {
+  if (hostname !== HOST || env?.CIRCLE_ETEST_ENABLED !== 'true' ||
+      !SAFE_USER_ID.test(userId || '')) return false
+  return String(env.CIRCLE_ETEST_USER_IDS || '').split(',')
+    .map((id) => id.trim()).includes(userId)
+}
+
 /**
  * Separately gated, TEST ACCOUNT ONLY Cloud Function adapter.
  * This factory has no side effects until handle() is called, and returns a
