@@ -416,6 +416,15 @@ export async function onRequest(context) {
             index: Number(indexHeader), count: Number(countHeader),
             data: await readBinaryPart(request, 192 * 1024),
           }
+          // 192 parts was the old 32-KiB transport limit, not permission to
+          // stage ~36 MiB when this account's max compressed gzip is 4 MiB.
+          const maxBytes = numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024)
+          if (body.count > Math.ceil(maxBytes / (192 * 1024)) ||
+              (body.index === body.count - 1 &&
+                (body.count - 1) * (192 * 1024) + body.data.length > maxBytes)) {
+            throw new AppError(413, 'request_too_large',
+              'V4 binary upload exceeds compressed account quota')
+          }
         } else if (contentType === 'application/json') {
           // Compatibility for open tabs using legacy 32-KiB Base64 JSON parts.
           body = await readJson(request, 48 * 1024)
