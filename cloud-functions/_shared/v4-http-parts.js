@@ -7,7 +7,8 @@
 import crypto from 'node:crypto'
 import { AppError } from './core.js'
 
-export const V4_HTTP_PART_CHARS = 32 * 1024
+export const V4_HTTP_PART_CHARS = 32 * 1024 // Legacy JSON/Base64 transport only.
+export const V4_HTTP_PART_BYTES = 192 * 1024 // New octet-stream HTTP transport.
 export const V4_HTTP_MAX_PARTS = 192
 const SHA = /^[0-9a-f]{64}$/
 const PART_B64 = /^[A-Za-z0-9+/]*={0,2}$/
@@ -23,17 +24,21 @@ function invalidPart() {
 
 export async function receiveV4UploadPart(storage, userId, input) {
   const { payloadSha256, index, count, data, partSha256 } = input || {}
+  const binary = Buffer.isBuffer(data)
+  const legacy = typeof data === 'string'
   if (!validSha(payloadSha256) || !validSha(partSha256) ||
       !Number.isSafeInteger(index) || !Number.isSafeInteger(count) ||
-      count < 1 || count > V4_HTTP_MAX_PARTS ||
-      index < 0 || index >= count ||
-      typeof data !== 'string' || !data.length ||
-      data.length > V4_HTTP_PART_CHARS ||
-      data.length % 4 !== 0 || !PART_B64.test(data) ||
-      (index !== count - 1 && data.length !== V4_HTTP_PART_CHARS)) {
+      count < 1 || count > V4_HTTP_MAX_PARTS || index < 0 || index >= count ||
+      (!binary && !legacy) ||
+      (legacy && (!data.length || data.length > V4_HTTP_PART_CHARS ||
+        data.length % 4 !== 0 || !PART_B64.test(data) ||
+        (index !== count - 1 && data.length !== V4_HTTP_PART_CHARS))) ||
+      (binary && (!data.length || data.length > V4_HTTP_PART_BYTES ||
+        (index !== count - 1 && data.length !== V4_HTTP_PART_BYTES)))) {
     invalidPart()
   }
-  if (crypto.createHash('sha256').update(data, 'utf8').digest('hex') !== partSha256) {
+  if (crypto.createHash('sha256').update(data, legacy ? 'utf8' : undefined)
+    .digest('hex') !== partSha256) {
     throw new AppError(400, 'v4_upload_part_sha_mismatch',
       'Part content does not match its immutable SHA')
   }
@@ -42,7 +47,10 @@ export async function receiveV4UploadPart(storage, userId, input) {
     throw new AppError(503, 'v4_upload_storage_unavailable', 'V4 part storage unavailable')
   }
 
-  const content = { version: 1, index, count, payloadSha256, partSha256, data }
+  // No Base64 on the browser → Maker wire. Blob still stores bounded JSON
+  // shards; the adapter converts each binary transport part to Base64 there.
+  const content = { version: binary ? 2 : 1, index, count, payloadSha256,
+    partSha256, data: binary ? data.toString('base64') : data }
   const started = msNow()
   const timings = {}
   let failureStage = 'blob_write'
@@ -105,19 +113,46 @@ export async function commitV4Upload(storage, service, token, userId, input, max
         throw new AppError(503, 'v4_upload_part_not_visible',
           'Staged V4 part is not readable; retry the same manifest')
       }
-    if (!record || record.version !== 1 || record.index !== index ||
-        record.count !== count || record.payloadSha256 !== payloadSha256 ||
-        record.partSha256 !== partSha256s[index] ||
-        typeof record.data !== 'string' ||
-        record.data.length > V4_HTTP_PART_CHARS ||
-        record.data.length % 4 !== 0 ||
-        crypto.createHash('sha256').update(record.data, 'utf8').digest('hex') !==
-          record.partSha256) {
-      throw new AppError(503, 'v4_upload_part_not_visible',
-        'Staged V4 part is incomplete or inconsistent')
-    }
-
-      parts.push(record.data)
+      if (!record || ![1, 2].includes(record.version) ||
+          record.index !== index || record.count !== count ||
+          record.payloadSha256 !== payloadSha256 ||
+          record.partSha256 !== partSha256s[index] ||
+          typeof record.data !== 'string' || !PART_B64.test(record.data) ||
+          record.data.length % 4 !== 0 ||
+          (record.version === 1 &&
+            (record.data.length < 1 || record.data.length > V4_HTTP_PART_CHARS ||
+             (index !== count - 1 && record.data.length !== V4_HTTP_PART_CHARS))) ||
+          (record.version === 2 &&
+            (record.data.length < 4 || record.data.length > Math.ceil(V4_HTTP_PART_BYTES / 3) * 4))) {
+        throw new AppError(503, 'v4_upload_part_not_visible',
+          'Staged V4 part is incomplete or inconsistent')
+      }
+      // A manifest must never combine old Base64-character parts and new
+      // binary-byte parts, even if all individual immutable SHA keys exist.
+      if (index > 0 && record.version !== parts[0].version) {
+        throw new AppError(400, 'v4_upload_mixed_transport',
+          'V4 multipart manifest mixes incompatible wire protocols')
+      }
+      const decoded = record.version === 2 ? Buffer.from(record.data, 'base64') : null
+      const validLength = record.version === 2
+        ? decoded.length > 0 && decoded.length <= V4_HTTP_PART_BYTES &&
+          (index === count - 1 || decoded.length === V4_HTTP_PART_BYTES) &&
+          decoded.toString('base64') === record.data
+        : true
+      const hash = crypto.createHash('sha256')
+        .update(record.version === 2 ? decoded : record.data)
+        .digest('hex')
+      if (!validLength || hash !== record.partSha256) {
+        throw new AppError(503, 'v4_upload_part_not_visible',
+          'V4 upload part SHA or byte length mismatch')
+      }
+      parts.push({ version: record.version, data: record.version === 2
+        ? decoded : record.data })
+      if (parts.reduce((total, part) => total +
+        (part.version === 2 ? part.data.length : part.data.length * 3 / 4), 0)
+        > maxSyncBytes + 2) {
+        throw new AppError(413, 'request_too_large', 'V4 staged upload exceeds account quota')
+      }
     }
   } catch (error) {
     timings.partsReadMs = ms(readStart)
@@ -128,11 +163,9 @@ export async function commitV4Upload(storage, service, token, userId, input, max
     throw error
   }
   timings.partsReadMs = ms(readStart)
-  const encoded = parts.join('')
-  if (encoded.length > Math.ceil(maxSyncBytes / 3) * 4 + 4) {
-    throw new AppError(413, 'request_too_large', 'Reconstructed V4 payload exceeds account quota')
-  }
-  const binary = Buffer.from(encoded, 'base64')
+  const binary = parts[0].version === 2
+    ? Buffer.concat(parts.map(part => part.data))
+    : Buffer.from(parts.map(part => part.data).join(''), 'base64')
   if (binary.length > maxSyncBytes ||
       crypto.createHash('sha256').update(binary).digest('hex') !== payloadSha256) {
     throw new AppError(400, 'v4_upload_payload_sha_mismatch',
@@ -141,7 +174,8 @@ export async function commitV4Upload(storage, service, token, userId, input, max
   // The V4 service performs identity, logical fingerprint, complete six-table
   // validation, recovery preconditions, revision checks and final Blob commit.
   const canonical = {
-    ...metadata, payloadBase64: encoded, clientFormatVersion: 'qwerty-backup-v4',
+    ...metadata, payloadBase64: binary.toString('base64'),
+    clientFormatVersion: 'qwerty-backup-v4',
   }
 
   const commitStart = msNow()
