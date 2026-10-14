@@ -488,7 +488,9 @@ export function createEdgeOneBlobStorage(store) {
             typeof next.data !== 'string') return null
         segments.push(next)
       }
-      const { segmentIndex: _index, segmentCount: _count, ...rest } = first
+      const rest = { ...first }
+      delete rest.segmentIndex
+      delete rest.segmentCount
       return { ...rest, data: segments.map(item => item.data).join('') }
     },
 
