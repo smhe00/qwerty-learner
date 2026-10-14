@@ -562,7 +562,7 @@ export function createEdgeOneBlobStorage(store) {
         const bytes = snapshot.payloadBytes
         const sha = crypto.createHash('sha256').update(bytes).digest('hex')
         if (bytes.length !== snapshot.sizeBytes || sha !== snapshot.dataSha256 ||
-            !bytes.length || bytes.length > 4 * 1024 * 1024) {
+            !bytes.length || bytes.length > 16 * 1024 * 1024) {
           throw new Error('Invalid V4 binary revision evidence')
         }
         const chunkBytes = 512 * 1024
