@@ -3,6 +3,24 @@ import { gzipSync } from 'node:zlib'
 import { expect, test, type Page } from '@playwright/test'
 
 const owner = { kind: 'account' as const, accountId: 'p3b-immutable-account' }
+const stagedParts = new WeakMap<Page, Map<string, Buffer>>()
+const chunkSha = (part: Buffer) =>
+  createHash('sha256').update(part).digest('hex')
+
+function assembledRecovery(page: Page, input: any): Buffer {
+  const parts = stagedParts.get(page)
+  expect(parts).toBeDefined()
+  expect(input.partSha256s).toHaveLength(input.count)
+  const data = input.partSha256s.map((sha: string, index: number) => {
+    const part = parts?.get(input.payloadSha256 + ':' + input.count +
+      ':' + index + ':' + sha)
+    expect(part).toBeDefined()
+    return part!
+  })
+  const result = Buffer.concat(data)
+  expect(chunkSha(result)).toBe(input.payloadSha256)
+  return result
+}
 
 async function seed(page: Page) {
   await page.goto('/tests/e2e/backup-harness.html')
@@ -16,6 +34,27 @@ async function seed(page: Page) {
     }))
     await h.initializeLegacyWorkspace(identity)
   }, owner)
+  const parts = new Map<string, Buffer>()
+  stagedParts.set(page, parts)
+  await page.route('**/api/sync/v2/parts', async route => {
+    const req = route.request()
+    const header = req.headers()
+    const body = req.postDataBuffer()
+    const sha = header['x-qwerty-part-sha256']
+    const index = Number(header['x-qwerty-part-index'])
+    const count = Number(header['x-qwerty-part-count'])
+    const whole = header['x-qwerty-payload-sha256']
+    expect(body).toBeTruthy()
+    expect(chunkSha(body!)).toBe(sha)
+    expect(body!.length).toBeLessThanOrEqual(192 * 1024)
+    expect(index).toBeGreaterThanOrEqual(0)
+    expect(index).toBeLessThan(count)
+    parts.set(whole + ':' + count + ':' + index + ':' + sha, Buffer.from(body!))
+    await route.fulfill({ json: {
+      ok: true, received: true, index,
+      payloadSha256: whole, partSha256: sha,
+    } })
+  })
 }
 
 async function remoteFixture(page: Page) {
@@ -59,7 +98,7 @@ test('P3b visibly identifies missing backup downloads before recovery can start'
   let writes = 0
   await page.route('**/api/sync/v2/meta', r => r.fulfill({ json: { ok: true, ...fixture.meta } }))
   await page.route('**/api/sync/v2', r => r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
-  await page.route('**/api/sync/v2/recovery', async r => {
+  await page.route('**/api/sync/v2/commit/recovery', async r => {
     writes++
     await r.fulfill({ status: 500, json: { error: 'unexpected_recovery_write' } })
   })
@@ -100,7 +139,7 @@ test('P3b V4 divergence stays read-only until both backups, ID and explicit cons
   let uploads = 0
   await page.route('**/api/sync/v2/meta', r => r.fulfill({ json: { ok: true, ...meta } }))
   await page.route('**/api/sync/v2', r => r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
-  await page.route('**/api/sync/v2/recovery', async r => {
+  await page.route('**/api/sync/v2/commit/recovery', async r => {
     uploads++
     const input = r.request().postDataJSON()
     expect(input.accountConfirmation).toBe(owner.accountId)
@@ -108,7 +147,7 @@ test('P3b V4 divergence stays read-only until both backups, ID and explicit cons
     expect(input.expectedRemoteLogicalFingerprint).toBe(fixture.meta.logicalFingerprint)
     expect(input.recoveryMode).toBe('replace-v4')
     expect(input.baseRevision).toBe(3)
-    const zipped = Buffer.from(input.payloadBase64, 'base64')
+    const zipped = assembledRecovery(page, input)
     const hash = createHash('sha256').update(zipped).digest('hex')
     meta = { ...meta, revision: 4, logicalFingerprint: input.logicalFingerprint,
       payloadSha256: hash, dataSha256: hash, sizeBytes: zipped.length }
@@ -141,7 +180,7 @@ test('P3b stale deployed server 403 explains release mismatch and disallows retr
   let writes = 0
   await page.route('**/api/sync/v2/meta', r => r.fulfill({ json: { ok: true, ...fixture.meta } }))
   await page.route('**/api/sync/v2', r => r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
-  await page.route('**/api/sync/v2/recovery', async r => {
+  await page.route('**/api/sync/v2/commit/recovery', async r => {
     writes++
     await r.fulfill({ status: 403, json: {
       ok: false, error: 's2_write_not_enabled',
@@ -185,7 +224,7 @@ test('P3b HTTP 500 with unchanged remote rechecks meta read-only without retry',
   })
   await page.route('**/api/sync/v2', r =>
     r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
-  await page.route('**/api/sync/v2/recovery', async r => {
+  await page.route('**/api/sync/v2/commit/recovery', async r => {
     writes++
     await r.fulfill({ status: 500, json: {
       ok: false, error: 'internal_error', message: 'Internal server error',
@@ -217,10 +256,10 @@ test('P3b ambiguous HTTP 500 after durable commit identifies exact V4 and never 
     r.fulfill({ json: { ok: true, ...current } }))
   await page.route('**/api/sync/v2', r =>
     r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
-  await page.route('**/api/sync/v2/recovery', async r => {
+  await page.route('**/api/sync/v2/commit/recovery', async r => {
     writes++
     const posted = r.request().postDataJSON()
-    const bytes = Buffer.from(posted.payloadBase64, 'base64')
+    const bytes = assembledRecovery(page, posted)
     const sha = createHash('sha256').update(bytes).digest('hex')
     current = { ...current, revision: 4, sizeBytes: bytes.length,
       clientFormatVersion: 'qwerty-backup-v4',
@@ -257,7 +296,7 @@ test('P3b stale cloud revision after backup cancels before any recovery CAS or r
     await r.fulfill({ json: { ok: true, ...meta } })
   })
   await page.route('**/api/sync/v2', r => r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
-  await page.route('**/api/sync/v2/recovery', async r => {
+  await page.route('**/api/sync/v2/commit/recovery', async r => {
     recoveryCalls++
     await r.abort()
   })
@@ -282,7 +321,7 @@ test('P3b keep-cloud V4 restores only after pinned verification and durable jour
   let recoveryWrites = 0
   await page.route('**/api/sync/v2/meta', r => r.fulfill({ json: { ok: true, ...fixture.meta } }))
   await page.route('**/api/sync/v2', r => r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
-  await page.route('**/api/sync/v2/recovery', async r => {
+  await page.route('**/api/sync/v2/commit/recovery', async r => {
     recoveryWrites++
     await r.abort()
   })
