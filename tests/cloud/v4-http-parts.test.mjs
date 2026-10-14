@@ -150,3 +150,51 @@ test('recovery cannot bypass server confirmation and stale base revision', async
     error.code === 'recovery_precondition_failed' || error.code === 'sync_conflict')
   assert.equal((await f.service.syncMeta(f.token)).revision, 0)
 })
+
+test('successful part exposes server Blob write/readback latency without private keys', async () => {
+  const f = await fixture()
+  const reply = await receiveV4UploadPart(f.storage, f.accountId, f.parts[0])
+  for (const name of ['blobWriteMs', 'blobReadbackMs', 'serverTotalMs']) {
+    assert.ok(Number.isFinite(reply.timings[name]) && reply.timings[name] >= 0)
+  }
+  assert.ok(reply.timings.serverTotalMs >= reply.timings.blobWriteMs)
+  assert.equal(JSON.stringify(reply.timings).includes(f.accountId), false)
+})
+test('server failure reports fixed Blob phase and timings, never internal errors', async () => {
+  const f = await fixture()
+  const failWrite = { putV4UploadPart: async () => { throw Error('secret storage location') },
+    getV4UploadPart: f.storage.getV4UploadPart.bind(f.storage) }
+  await assert.rejects(receiveV4UploadPart(failWrite, f.accountId, f.parts[0]),
+    error => error.code === 'v4_upload_part_unverified' &&
+      error.details.failureStage === 'blob_write' &&
+      Number.isFinite(error.details.timings.blobWriteMs) &&
+      !JSON.stringify(error.details).includes('secret'))
+  const failRead = { putV4UploadPart: f.storage.putV4UploadPart.bind(f.storage),
+    getV4UploadPart: async () => { throw Error('secret read location') } }
+  await assert.rejects(receiveV4UploadPart(failRead, f.accountId, f.parts[0]),
+    error => error.code === 'v4_upload_part_unverified' &&
+      error.details.failureStage === 'blob_readback' &&
+      Number.isFinite(error.details.timings.blobReadbackMs) &&
+      !JSON.stringify(error.details).includes('secret'))
+})
+test('commit splits staged Blob reads, V4 core commit and cleanup durations', async () => {
+  const f = await fixture()
+  await upload(f)
+  const reply = await commitV4Upload(f.storage, f.service, f.token, f.accountId,
+    f.manifest, 4 * 1024 * 1024)
+  assert.equal(reply.revision, 1)
+  for (const name of ['partsReadMs', 'commitCoreMs', 'cleanupMs', 'serverTotalMs']) {
+    assert.ok(Number.isFinite(reply.timings[name]) && reply.timings[name] >= 0)
+  }
+  assert.ok(reply.timings.serverTotalMs >= reply.timings.commitCoreMs)
+  assert.equal(JSON.stringify(reply.timings).includes(f.accountId), false)
+})
+test('missing commit part carries part_lookup failure stage, no revision advance', async () => {
+  const f = await fixture()
+  await assert.rejects(commitV4Upload(f.storage, f.service, f.token, f.accountId,
+    f.manifest, 4 * 1024 * 1024),
+  error => error.code === 'v4_upload_part_not_visible' &&
+    error.details.failureStage === 'part_lookup' &&
+    Number.isFinite(error.details.timings.partsReadMs))
+  assert.equal((await f.service.syncMeta(f.token)).revision, 0)
+})
