@@ -56,13 +56,12 @@ export async function executePreMountManualSyncV2(
     readBaseline: () => loadSyncV2Baseline(accountId),
     compareAndSwapBaseline: (expected, next) =>
       compareAndSwapSyncV2Baseline(accountId, expected, next),
-    // The first authenticated read migrates a legacy V4 cloud revision once;
-    // the second read only checks metadata (no mutation after Pull staging).
-    getMeta: async () => {
+    // Read-only metadata for deterministic conflict/noop/push/pull decision.
+    getMeta: () => getSyncV2Meta(auth.token),
+    // Only after noop/pull is authorized may the old cloud revision migrate.
+    migrateBinary: async pinned => {
       await recheck()
-      const remote = await getSyncV2Meta(auth.token)
-      return remote.hasData && remote.storageEncoding !== 'binary'
-        ? getSyncV2MetaWithBinaryMigration(auth.token) : remote
+      return getSyncV2MetaWithBinaryMigration(auth.token, pinned)
     },
     getSnapshot: () => getSyncV2SnapshotBinary(auth.token),
     put: input => putSyncV2Binary(auth.token,
