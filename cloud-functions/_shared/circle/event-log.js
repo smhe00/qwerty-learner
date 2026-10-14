@@ -75,7 +75,10 @@ export function createCircleEventLog(blob, { maxEvents = 10000 } = {}) {
           throw new Error('Out-of-scope Circle event key')
         }
         const event = await blob.get(key, { type: 'json' })
-        if (event === null) continue // temporarily invisible, never assume deletion
+        // The listing may be ahead of object reads. A known key returning null
+        // could be a not-yet-visible membership removal or circle closure.
+        // Never construct an authorized view by silently discarding such a key.
+        if (event === null) throw new Error('Circle listed event temporarily unreadable')
         validateEvent(event)
         if (event.circleId !== circleId || key !== prefix + event.eventId + '.json') {
           throw new Error('Circle event identity mismatch')
