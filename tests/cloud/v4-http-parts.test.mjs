@@ -239,6 +239,34 @@ test('new binary final commit never stores Base64 in binary revision manifest', 
   assert.equal(revisions.length, manifest.chunkedPayload.count)
   assert.ok(revisions.every(([, chunk]) => chunk instanceof ArrayBuffer))
 })
+test('master Base64 Backup V4 inline revision upgrades automatically into 512-KiB binary', async () => {
+  const f = await fixture(30 * 1024)
+  const originalBytes = Buffer.from(f.parts.map(p => p.data).join(''), 'base64')
+  const old = await f.service.putSyncV4(f.token, {
+    ...f.manifest, payloadBase64: originalBytes.toString('base64'),
+  })
+  assert.equal(old.storageEncoding, 'base64')
+  const before = [...f.raw.objects.entries()].find(([key]) =>
+    key.includes('/revisions/') && key.endsWith('.json'))?.[1]
+  assert.equal(before?.payloadBase64, originalBytes.toString('base64'))
+  assert.equal(before?.chunkedPayload, undefined)
+
+  const upgraded = await f.service.migrateSyncV4Binary(f.token, {
+    baseRevision: old.revision,
+    payloadSha256: old.payloadSha256,
+    logicalFingerprint: old.logicalFingerprint,
+  })
+  assert.equal(upgraded.revision, old.revision + 1)
+  assert.equal(upgraded.payloadSha256, old.payloadSha256)
+  assert.equal(upgraded.logicalFingerprint, old.logicalFingerprint)
+  assert.equal(upgraded.storageEncoding, 'binary')
+  const manifest = await f.service.getSyncV4BinaryManifest(f.token)
+  assert.equal(manifest.chunkBytes, 512 * 1024)
+  assert.equal(manifest.count, 1)
+  assert.deepEqual(await f.service.getSyncV4BinaryPart(f.token, manifest.revision,
+    manifest.payloadSha256, 0), originalBytes)
+})
+
 test('legacy JSON upload remains readable after binary protocol deployment', async () => {
   const f = await fixture()
   assert.equal(typeof f.parts[0].data, 'string')
