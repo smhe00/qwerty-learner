@@ -1,5 +1,6 @@
 import type { CloudUser, RemoteSnapshot, RemoteSyncMeta } from './types'
 import { planV4UploadParts } from './v4-http-part-plan'
+import { retryIdenticalV4Part } from './v4-http-part-retry'
 
 type ApiErrorBody = {
   error?: string
@@ -213,18 +214,23 @@ async function putV4Multipart(
 ): Promise<SyncMetaResponse> {
   const plan = await planV4UploadParts(input.payloadBase64)
   for (const part of plan.parts) {
-    const response = await request<{
-      ok: true
-      received: true
-      payloadSha256: string
-      partSha256: string
-      index: number
-    }>('/api/sync/v2/parts', {
-      method: 'POST', token, body: {
-        payloadSha256: plan.payloadSha256, count: plan.parts.length,
-        index: part.index, data: part.data, partSha256: part.partSha256,
-      },
-    })
+    const response = await retryIdenticalV4Part(
+      () => request<{
+        ok: true
+        received: true
+        payloadSha256: string
+        partSha256: string
+        index: number
+      }>('/api/sync/v2/parts', {
+        method: 'POST', token, body: {
+          payloadSha256: plan.payloadSha256, count: plan.parts.length,
+          index: part.index, data: part.data, partSha256: part.partSha256,
+        },
+      }),
+      error => !(error instanceof SyncApiError) ||
+        (error.status >= 500 && error.status <= 599) ||
+        error.code === 'invalid_response',
+    )
     if (!response.received || response.index !== part.index ||
         response.payloadSha256 !== plan.payloadSha256 ||
         response.partSha256 !== part.partSha256) {

@@ -118,11 +118,27 @@ async function uploadLargeV4(record, token) {
     const data = record.payloadBase64.slice(index * chars, (index + 1) * chars)
     const partSha256 = sha256(data)
     partSha256s.push(partSha256)
-    const staged = await api('/api/sync/v2/parts', 'POST', {
-      payloadSha256, count, index, data, partSha256,
-    }, token)
+    // Only retry the exact immutable part; never retry an ambiguous
+    // final /commit. Transient Maker body-read failures can occur at 32 KiB.
+    let staged
+    for (let attempt = 0; attempt < 6; attempt++) {
+      try {
+        staged = await api('/api/sync/v2/parts', 'POST', {
+          payloadSha256, count, index, data, partSha256,
+        }, token)
+      } catch (error) {
+        if (attempt === 5) throw error
+        staged = { status: 503, value: { error: 'network_error' } }
+      }
+      if (staged.status === 200) break
+      if (staged.status < 500 || staged.status > 599 || attempt === 5) break
+      await new Promise(resolve => setTimeout(resolve,
+        [0, 150, 350, 750, 1500, 3000][attempt + 1]))
+    }
     expectCode(staged, 200, null, 'immutable multipart upload ' + index)
     assert.equal(staged.value?.received, true)
+    assert.equal(staged.value?.payloadSha256, payloadSha256)
+    assert.equal(staged.value?.index, index)
     assert.equal(staged.value?.partSha256, partSha256)
   }
   const meta = { ...record }
