@@ -1,8 +1,7 @@
 /**
- * V4 upload wire protocol v2: bounded 192-KiB binary HTTP chunks.
- * Input remains the canonical Backup V4 gzip Base64 representation, but no
- * Base64 encoding is sent in the per-part browser → Maker HTTP requests.
- * The Maker Blob adapter independently uses bounded JSON storage shards.
+ * Binary-only HTTP multipart for canonical Backup V4 gzip bytes.
+ * Raw bytes are never Base64-encoded on the new Sync V2 path.
+ * Historical Base64 support is server-side read-only compatibility.
  */
 export const V4_HTTP_PART_BYTES = 192 * 1024
 export const V4_HTTP_MAX_PARTS = 192
@@ -12,18 +11,13 @@ function asHex(bytes: ArrayBuffer): string {
     value.toString(16).padStart(2, '0')).join('')
 }
 
-export async function planV4UploadParts(payloadBase64: string): Promise<{
+export async function planV4UploadParts(bytes: Uint8Array): Promise<{
   payloadSha256: string
   parts: { index: number; data: Uint8Array; partSha256: string }[]
 }> {
-  if (!payloadBase64 || payloadBase64.length % 4 !== 0 ||
-      !/^[A-Za-z0-9+/]*={0,2}$/.test(payloadBase64) ||
-      payloadBase64.length > Math.ceil(V4_HTTP_PART_BYTES * V4_HTTP_MAX_PARTS / 3) * 4) {
-    throw new Error('v4-upload-invalid-encoding-or-size')
-  }
-  const bytes = Uint8Array.from(atob(payloadBase64), value => value.charCodeAt(0))
-  if (bytes.length > V4_HTTP_PART_BYTES * V4_HTTP_MAX_PARTS) {
-    throw new Error('v4-upload-invalid-encoding-or-size')
+  if (!(bytes instanceof Uint8Array) || !bytes.length ||
+      bytes.length > V4_HTTP_PART_BYTES * V4_HTTP_MAX_PARTS) {
+    throw new Error('v4-upload-invalid-binary-size')
   }
   const payloadSha256 = asHex(await crypto.subtle.digest('SHA-256', bytes))
   const parts = []
