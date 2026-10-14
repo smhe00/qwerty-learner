@@ -1,6 +1,7 @@
 import type { CloudUser, RemoteSnapshot, RemoteSyncMeta } from './types'
 import { planV4UploadParts } from './v4-http-part-plan'
 import { retryIdenticalV4Part } from './v4-http-part-retry'
+import { recordV4TransportSample, type PerfSample } from './perf-diagnostics'
 
 type ApiErrorBody = {
   error?: string
@@ -206,6 +207,61 @@ type V4RecoveryInput = V4PutInput & {
 }
 const V4_MULTIPART_THRESHOLD_CHARS = 128 * 1024
 
+type V4Timings = Pick<PerfSample, 'blobWriteMs' | 'blobReadbackMs' |
+  'partsReadMs' | 'commitCoreMs' | 'cleanupMs' | 'serverTotalMs'>
+type V4StageDetails = { failureStage?: PerfSample['failureStage']; timings?: V4Timings }
+type V4PartReply = { ok: true; received: true; payloadSha256: string;
+  partSha256: string; index: number; timings?: V4Timings }
+type V4CommitReply = SyncMetaResponse & { timings?: V4Timings }
+
+function v4TimeNow(): number {
+  return typeof performance !== 'undefined' ? performance.now() : Date.now()
+}
+function v4Elapsed(start: number): number {
+  return Math.max(0, v4TimeNow() - start)
+}
+function v4ErrorDetails(error: unknown): V4StageDetails {
+  const details = error instanceof SyncApiError ? error.details : null
+  return details && typeof details === 'object' ? details as V4StageDetails : {}
+}
+function v4Failure(error: unknown, isCommit: boolean): {
+  failureStage: PerfSample['failureStage']
+  failureCategory: PerfSample['failureCategory']
+  httpStatus?: number
+} {
+  if (error instanceof SyncApiError) {
+    const details = v4ErrorDetails(error)
+    const serverStage = details.failureStage
+    const stage = ['blob_write', 'blob_readback', 'part_lookup',
+      'commit_core'].includes(String(serverStage))
+      ? serverStage : isCommit ? 'commit_core' : 'http_request'
+    const category = stage === 'blob_write' || stage === 'blob_readback' ||
+      stage === 'part_lookup' ? 'blob_storage'
+      : error.status >= 500 ? 'server_failure' : 'http_failure'
+    return { failureStage: stage, failureCategory: category,
+      httpStatus: error.status }
+  }
+  if (error instanceof Error && error.name === 'AbortError') {
+    return { failureStage: 'http_request', failureCategory: 'network_timeout' }
+  }
+  return { failureStage: 'http_request', failureCategory: 'network_failure' }
+}
+
+/** Timings are observation-only; no new retry or commit semantics. */
+function v4Record(
+  stage: 'v4-part' | 'v4-commit', elapsedMs: number,
+  partIndex: number | undefined, attempt: number | undefined,
+  sizeBytes: number, outcome: 'ok' | 'failed',
+  timing?: V4Timings, error?: unknown,
+): void {
+  const failure = error === undefined ? {} : v4Failure(error, stage === 'v4-commit')
+  recordV4TransportSample({
+    stage, elapsedMs, partIndex, attempt, sizeBytes, outcome,
+    ...timing, ...failure,
+  })
+}
+
+
 /** Immutable account-scoped parts; only the final manifest invokes V4 CAS.
  * Unknown final commit outcome MUST be reconciled by remote meta first.
  */
@@ -214,23 +270,43 @@ async function putV4Multipart(
 ): Promise<SyncMetaResponse> {
   const plan = await planV4UploadParts(input.payloadBase64)
   for (const part of plan.parts) {
+    let attempt = 0
     const response = await retryIdenticalV4Part(
-      () => request<{
-        ok: true
-        received: true
-        payloadSha256: string
-        partSha256: string
-        index: number
-      }>('/api/sync/v2/parts', {
-        method: 'POST', token, body: {
-          payloadSha256: plan.payloadSha256, count: plan.parts.length,
-          index: part.index, data: part.data, partSha256: part.partSha256,
-        },
-      }),
+      async () => {
+        const started = v4TimeNow()
+        attempt++
+        let reply: V4PartReply
+        try {
+          reply = await request<V4PartReply>('/api/sync/v2/parts', {
+            method: 'POST', token, body: {
+              payloadSha256: plan.payloadSha256, count: plan.parts.length,
+              index: part.index, data: part.data, partSha256: part.partSha256,
+            },
+          })
+        } catch (error) {
+          v4Record('v4-part', v4Elapsed(started), part.index,
+            attempt, part.data.length, 'failed',
+            v4ErrorDetails(error).timings, error)
+          throw error
+        }
+        if (!reply.received || reply.index !== part.index ||
+            reply.payloadSha256 !== plan.payloadSha256 ||
+            reply.partSha256 !== part.partSha256) {
+          const mismatch = new SyncApiError(503, 'v4_upload_part_receipt_mismatch',
+            'Cloud part acknowledgement is unverified; local V4 snapshot was preserved')
+          v4Record('v4-part', v4Elapsed(started), part.index,
+            attempt, part.data.length, 'failed', reply.timings, mismatch)
+          throw mismatch
+        }
+        v4Record('v4-part', v4Elapsed(started), part.index,
+          attempt, part.data.length, 'ok', reply.timings)
+        return reply
+      },
       error => !(error instanceof SyncApiError) ||
         (error.status >= 500 && error.status <= 599) ||
         error.code === 'invalid_response',
     )
+    // Retain explicit receipt verification at the caller boundary.
     if (!response.received || response.index !== part.index ||
         response.payloadSha256 !== plan.payloadSha256 ||
         response.partSha256 !== part.partSha256) {
@@ -239,13 +315,24 @@ async function putV4Multipart(
     }
   }
   const { payloadBase64: _payload, ...metadata } = input
-  return request<SyncMetaResponse>(
-    recovery ? '/api/sync/v2/commit/recovery' : '/api/sync/v2/commit',
-    { method: 'POST', token, body: {
-      ...metadata, payloadSha256: plan.payloadSha256, count: plan.parts.length,
-      partSha256s: plan.parts.map(part => part.partSha256),
-    } },
-  )
+  const started = v4TimeNow()
+  try {
+    const reply = await request<V4CommitReply>(
+      recovery ? '/api/sync/v2/commit/recovery' : '/api/sync/v2/commit',
+      { method: 'POST', token, body: {
+        ...metadata, payloadSha256: plan.payloadSha256, count: plan.parts.length,
+        partSha256s: plan.parts.map(part => part.partSha256),
+      } },
+    )
+    v4Record('v4-commit', v4Elapsed(started), undefined, undefined,
+      plan.parts.length, 'ok', reply.timings)
+    return reply
+  } catch (error) {
+    v4Record('v4-commit', v4Elapsed(started), undefined, undefined,
+      plan.parts.length, 'failed', v4ErrorDetails(error).timings, error)
+    // Final commit is NEVER automatically retried after an ambiguous response.
+    throw error
+  }
 }
 
 export function putSyncV2(token: string, input: V4PutInput) {
