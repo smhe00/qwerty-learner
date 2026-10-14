@@ -152,6 +152,7 @@ export async function commitV4Upload(storage, service, token, userId, input, max
       : await service.putSyncV4(token, canonical)
   } catch (error) {
     timings.commitCoreMs = ms(commitStart)
+    Object.assign(timings, storage.getLastV4RevisionTiming?.() || {})
     timings.serverTotalMs = ms(started)
     if (error instanceof AppError) {
       error.details = { failureStage: 'commit_core', timings }
@@ -160,6 +161,7 @@ export async function commitV4Upload(storage, service, token, userId, input, max
     throw error
   }
   timings.commitCoreMs = ms(commitStart)
+  Object.assign(timings, storage.getLastV4RevisionTiming?.() || {})
   // Cleanup is maintenance only, AFTER durable revision commit.
   const cleanupStart = msNow()
   try {
