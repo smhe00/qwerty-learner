@@ -90,7 +90,7 @@ export async function receiveV4UploadPart(storage, userId, input) {
 export async function commitV4Upload(storage, service, token, userId, input, maxSyncBytes,
   recovery = false) {
   const { payloadSha256, partSha256s, count, wirePartBytes, ...metadata } = input || {}
-  const binaryBytes = wirePartBytes
+  const binaryBytes = wirePartBytes === undefined ? V4_HTTP_PART_BYTES : wirePartBytes
   if (!validSha(payloadSha256) || !Array.isArray(partSha256s) ||
       !Number.isSafeInteger(count) || count < 1 || count > V4_HTTP_MAX_PARTS ||
       count !== partSha256s.length || !partSha256s.every(validSha) ||
