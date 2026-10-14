@@ -1,3 +1,5 @@
+> **2026-10-14 identity integration checkpoint:** [Fail-closed V4 session / independent authority bridge](./CIRCLE_TRUSTED_AUTHORITY_ADAPTER_20261014.md) is implemented and tested on the isolated branch. Its authorization/fence/retirement provider remains unprovisioned, so HTTP stays CLOSED; do not interpret this adapter as a production strong-consistency guarantee.
+
 > **2026-10-14 live qualification checkpoint:** [Isolated Blob eventual-event smoke](./CIRCLE_EVENTUAL_BLOB_LIVE_20261014.md) **PASSED** using 13 distinct objects (12 concurrent joins), deterministic replay, no CAS, and verified sandbox key cleanup. [Circle CI](https://github.com/smhe00/qwerty-learner/actions/runs/38519544610): **74/74 tests**, ESLint clean. This is external SDK path only, *not* deployed API or multi-region assurance; independent trusted access remains a release blocker.
 
 > **Current product scope (2026-10-13):** [Light social v1](./CIRCLE_LIGHT_SOCIAL_V1.md) supersedes earlier seat/capacity selection, official achievement evidence and whole-circle activity-conflict requirements. Capacity is advisory, shares are self-reported, and private-access safeguards remain.
