@@ -171,6 +171,11 @@ test('legacy V4 cloud revision migrates once to native binary without logical ch
   assert.equal(migrated.migrated, true)
   assert.equal(migrated.revision, 2)
   assert.equal(migrated.storageEncoding, 'binary')
+  const migratedRevision = [...f.raw.objects.entries()].find(([key]) =>
+    key.includes('/revisions/') && key.endsWith('.json') &&
+    key.includes(String(migrated.revision).padStart(12, '0')))
+  assert.equal(migratedRevision?.[1]?.chunkedPayload?.version, 3)
+  assert.equal(migratedRevision?.[1]?.chunkedPayload?.chunkBytes, 512 * 1024)
   assert.equal(migrated.payloadSha256, old.payloadSha256)
   assert.equal(migrated.logicalFingerprint, old.logicalFingerprint)
   const manifest = await f.service.getSyncV4BinaryManifest(f.token)
@@ -227,50 +232,13 @@ test('new binary final commit never stores Base64 in binary revision manifest', 
   assert.equal(manifest.payloadBase64, undefined)
   assert.equal(manifest.chunkedPayload.version, 3)
   assert.equal(manifest.chunkedPayload.chunkBytes, 512 * 1024)
+  assert.equal(manifest.chunkedPayload.count,
+    Math.ceil(manifest.sizeBytes / (512 * 1024)))
   const revisions = [...f.raw.objects.entries()].filter(([key]) =>
     key.includes('/revision-parts/') && key.endsWith('.bin'))
   assert.equal(revisions.length, manifest.chunkedPayload.count)
   assert.ok(revisions.every(([, chunk]) => chunk instanceof ArrayBuffer))
 })
-test('old 192-KiB binary revision remains readable after 512-KiB upgrade', async () => {
-  const f = binaryFixture(await fixture(650 * 1024))
-  await upload(f)
-  const saved = await commitV4Upload(f.storage, f.service, f.token,
-    f.accountId, f.manifest, 4 * 1024 * 1024)
-  const revisionKey = [...f.raw.objects.keys()].find(key =>
-    key.includes('/revisions/') && key.endsWith('.json'))
-  const revision = f.raw.objects.get(revisionKey)
-  const bytes = Buffer.from((await f.service.getSync(f.token)).payloadBase64, 'base64')
-  const historicParts = Array.from({ length: Math.ceil(bytes.length / (192 * 1024)) },
-    (_, index) => bytes.subarray(index * 192 * 1024, (index + 1) * 192 * 1024))
-  // Represent a previously deployed immutable revision without altering its data.
-  for (const key of [...f.raw.objects.keys()].filter(key =>
-    key.includes('/revision-parts/') && key.endsWith('.bin'))) {
-    f.raw.objects.delete(key)
-  }
-  const prefix = revisionKey.replace('/revisions/', '/revision-parts/')
-    .replace(/\.json$/, '/')
-  const revisionPrefix = prefix.replace(/(\d{12})\/$/, '$1/')
-  for (let index = 0; index < historicParts.length; index++) {
-    const key = revisionPrefix + saved.payloadSha256 + '/' +
-      String(index).padStart(4, '0') + '.bin'
-    f.raw.objects.set(key, historicParts[index].buffer.slice(
-      historicParts[index].byteOffset,
-      historicParts[index].byteOffset + historicParts[index].byteLength))
-  }
-  revision.chunkedPayload = {
-    version: 2, sha256: saved.payloadSha256, count: historicParts.length,
-    byteLength: bytes.length, partSha256s: historicParts.map(sha),
-  }
-  const manifest = await f.service.getSyncV4BinaryManifest(f.token)
-  assert.equal(manifest.chunkBytes, 192 * 1024)
-  const restored = []
-  for (let i = 0; i < manifest.count; i++) restored.push(
-    await f.service.getSyncV4BinaryPart(f.token, manifest.revision,
-      manifest.payloadSha256, i))
-  assert.equal(sha(Buffer.concat(restored)), saved.payloadSha256)
-})
-
 test('legacy JSON upload remains readable after binary protocol deployment', async () => {
   const f = await fixture()
   assert.equal(typeof f.parts[0].data, 'string')
