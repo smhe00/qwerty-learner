@@ -23,6 +23,30 @@ async function installBinaryMock(
   onCommit: (metadata: any, bytes: Buffer) => Promise<Record<string, unknown>>,
 ) {
   const staged = new Map<string, Buffer>()
+  // The <=512-KiB path now commits in one native binary request.
+  // Require the same SHA/CAS evidence as the staged multipart mock.
+  await page.route('**/api/sync/v2/binary/direct', async route => {
+    const request = route.request()
+    expect(request.method()).toBe('POST')
+    const headers = request.headers()
+    const bytes = request.postDataBuffer()
+    expect(bytes).not.toBeNull()
+    expect(bytes!.length).toBeGreaterThan(0)
+    expect(bytes!.length).toBeLessThanOrEqual(512 * 1024)
+    const sha = createHash('sha256').update(bytes!).digest('hex')
+    expect(headers['x-qwerty-payload-sha256']).toBe(sha)
+    expect(headers['x-qwerty-logical-fingerprint']).toMatch(/^[0-9a-f]{64}$/)
+    const baseRevision = Number(headers['x-qwerty-base-revision'])
+    expect(Number.isSafeInteger(baseRevision)).toBe(true)
+    expect(baseRevision).toBeGreaterThanOrEqual(0)
+    const input = {
+      baseRevision, logicalFingerprint: headers['x-qwerty-logical-fingerprint'],
+      clientFormatVersion: 'qwerty-backup-v4',
+      deviceId: headers['x-qwerty-device-id'],
+    }
+    const result = await onCommit(input, Buffer.from(bytes!))
+    await route.fulfill({ json: { ok: true, ...result } })
+  })
   await page.route('**/api/sync/v2/parts', async route => {
     const request = route.request()
     if (request.method() === 'OPTIONS') {
