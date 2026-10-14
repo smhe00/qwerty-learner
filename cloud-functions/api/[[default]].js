@@ -4,6 +4,7 @@ import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
 import { AppError, createBackendService } from '../_shared/core.js'
 import { isS2WriteEnabled } from '../_shared/s2-write-gate.js'
 import { createEdgeOneBlobStorage } from '../_shared/storage/edgeone-blob.js'
+import { receiveV4UploadPart, commitV4Upload } from '../_shared/v4-http-parts.js'
 
 const TRUSTED_FRONTEND_ORIGINS = [
   'https://qwerty-plus.edgeone.dev',
@@ -219,6 +220,7 @@ export async function onRequest(context) {
             'backup-v4-authenticated-write-ga',
             'edgeone-same-origin-e2e-v1',
             'v4-blob-stage-trace-20261014',
+            'v4-http-multipart-v1',
             'backup-v3-explicit-migration-only',
             'account-delete-v1',
             'duplicate-register-protection-v1',
@@ -360,6 +362,28 @@ export async function onRequest(context) {
           batchId: url.searchParams.get('batchId'),
           sha256: url.searchParams.get('sha256'),
         })) }, 200, cors)
+    }
+
+    // Bounded HTTP parts avoid the EdgeOne request.text() large-body limit.
+    // A part never advances the published V4 revision.
+    if (request.method === 'POST' && path === '/sync/v2/parts') {
+      const token = await requireS2WriteAccount(service, request, env)
+      const account = await service.me(token)
+      const body = await readJson(request, 110 * 1024)
+      return json({ ok: true,
+        ...(await receiveV4UploadPart(storage, account.user.userId, body)) },
+        200, cors)
+    }
+    if (request.method === 'POST' &&
+        (path === '/sync/v2/commit' || path === '/sync/v2/commit/recovery')) {
+      const token = await requireS2WriteAccount(service, request, env)
+      const account = await service.me(token)
+      const body = await readJson(request, 16 * 1024)
+      const recovery = path === '/sync/v2/commit/recovery'
+      const maxBytes = numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024)
+      return json({ ok: true,
+        ...(await commitV4Upload(storage, service, token, account.user.userId,
+          body, maxBytes, recovery)) }, 200, cors)
     }
 
     if (request.method === 'PUT' && path === '/sync/v2/recovery') {

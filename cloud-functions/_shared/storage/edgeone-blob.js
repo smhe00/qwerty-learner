@@ -137,6 +137,23 @@ export function createEdgeOneBlobStorage(store) {
     return `${chainedBatchPrefix(userId)}${deviceId}/${String(sequence).padStart(10, '0')}/${batchId}-${sha256}.json`
   }
 
+  function uploadPrefix(userId, payloadSha256 = null) {
+    if (payloadSha256 !== null && !/^[a-f0-9]{64}$/.test(payloadSha256)) {
+      throw new Error('Invalid V4 upload SHA')
+    }
+    return 'users/' + userId + '/v4-http-parts/v1/' +
+      (payloadSha256 === null ? '' : payloadSha256 + '/')
+  }
+
+  function uploadKey(userId, payloadSha256, index, partSha256) {
+    if (!Number.isSafeInteger(index) || index < 0 || index > 63 ||
+        !/^[a-f0-9]{64}$/.test(partSha256)) {
+      throw new Error('Invalid V4 upload part selector')
+    }
+    return uploadPrefix(userId, payloadSha256) +
+      String(index).padStart(3, '0') + '-' + partSha256 + '.json'
+  }
+
   function revisionPrefix(userId) {
     return `users/${userId}/revisions/`
   }
@@ -424,6 +441,19 @@ export function createEdgeOneBlobStorage(store) {
       }
     },
 
+    async putV4UploadPart(userId, payloadSha256, index, partSha256, content) {
+      return setJsonOnlyIfNew(
+        uploadKey(userId, payloadSha256, index, partSha256), content)
+    },
+
+    async getV4UploadPart(userId, payloadSha256, index, partSha256) {
+      return strongJson(uploadKey(userId, payloadSha256, index, partSha256))
+    },
+
+    async deleteV4UploadParts(userId, payloadSha256) {
+      return deletePrefix(uploadPrefix(userId, payloadSha256))
+    },
+
     async createRevision(userId, revision, snapshot) {
       const encoded = snapshot?.payloadBase64
       if (snapshot?.clientFormatVersion !== 'qwerty-backup-v4' ||
@@ -528,7 +558,7 @@ export function createEdgeOneBlobStorage(store) {
     async deleteUserData(usernameHash, userId) {
       const [authDeleted, sessionsDeleted, independentSessionsDeleted,
         revisionsDeleted, revisionPartsDeleted, eventBatchesDeleted,
-        chainedEventBatchesDeleted] = await Promise.all([
+        chainedEventBatchesDeleted, pendingV4PartsDeleted] = await Promise.all([
         deletePrefix(authPrefix(usernameHash)),
         deletePrefix(sessionPrefix(usernameHash)),
         deletePrefix(independentSessionPrefix(usernameHash)),
@@ -536,6 +566,7 @@ export function createEdgeOneBlobStorage(store) {
         deletePrefix(revisionPartsPrefix(userId)),
         deletePrefix(eventBatchPrefix(userId)),
         deletePrefix(chainedBatchPrefix(userId)),
+        deletePrefix(uploadPrefix(userId)),
       ])
 
       const account = await strongJson(accountKey(usernameHash))
@@ -552,6 +583,7 @@ export function createEdgeOneBlobStorage(store) {
         revisionPartsDeleted,
         eventBatchesDeleted: eventBatchesDeleted + chainedEventBatchesDeleted,
         chainedEventBatchesDeleted,
+        pendingV4PartsDeleted,
       }
     },
   }
