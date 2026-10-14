@@ -147,3 +147,56 @@ Require both deployed frontend SHA and binary Maker capability before any
 real disposable-account stress. Do not update production master from this
 work. Do not claim reliability of 192-KiB Maker raw-body reads before real
 EdgeOne verification, or waive byte-exact 2048/2700 KiB GET checks.
+
+## Native binary Sync V4 architecture and one-click migration (2026-10-14)
+
+**New write/read path (product/main only, not GA):**
+- Local V4 workspace snapshot: canonical six-table JSON => `pako.gzip` =>
+  `Uint8Array`; calculate SHA-256 on raw gzip bytes. Do NOT allocate a
+  Base64 string in the guarded S2 manual Sync executor.
+- HTTP POST /sync/v2/parts: bounded 192-KiB `application/octet-stream`,
+  immutable payload/part SHA-256 and exact part index/count in headers.
+- Maker stages raw immutable byte objects via EdgeOne `store.set(ArrayBuffer)`
+  and verifies via `store.get(type: 'arrayBuffer', consistency:'strong')`.
+  V3 staging keys embed payload SHA + part count + index + part SHA.
+- Commit reconstructs Buffer, verifies gzip SHA and **complete canonical
+  Backup V4 six-table content**. Server storage creates native 192-KiB
+  immutable Blob revision chunks and only then creates its JSON metadata
+  manifest (v2 binary layout). Metadata is small; payload is binary.
+  The old Base64-backed revision layout remains read-only compatible.
+- GET /sync/v2/binary/manifest returns revision, full gzip SHA, logical
+  fingerprint, length, exact chunk count and per-part SHA values.
+  GET /sync/v2/binary/part pins each request to **revision + full SHA +
+  part index**, refuses stale revisions, serves binary bytes, and verifies
+  each SHA before HTTP 200. The browser checks all per-part SHAs,
+  total byte length and full SHA before bounded inflation and V4 validation.
+
+**One user action, recoverable steps (NOT atomic across devices):**
+1. Pre-mount S1 writer lease and authenticated owner/workspace witness.
+2. Read remote metadata. If old format, send exact pinned
+   `baseRevision + payloadSha256 + logicalFingerprint` to
+   POST /sync/v2/binary/migrate. Server reads and verifies the old full
+   snapshot, then creates a NEW native binary V4 revision using the same
+   logical and gzip digests. It does not overwrite the old revision in place.
+3. On ambiguous migrate response, re-read remote metadata. Continue
+   only if new binary revision has EXACT original logical/SHA evidence
+   and expected revision increment. Otherwise fail closed. A repeated
+   migration request for a revision already binary is an idempotent no-op.
+4. The normal S2 preflight then decides noop/push/pull against the new
+   binary revision. Pull restores only through the existing durable
+   pre-mount journal. Push uses existing CAS and full V4 validation.
+5. The local Dexie learning records and original local workspace JSON never
+   contained Base64 in the first place. Only the former S2 *transient
+   snapshot transport* used Base64; this is now raw gzip bytes.
+6. Do not remove legacy Blob storage or manually clear local data.
+   Old snapshots/revisions remain available under existing retention policy.
+   Historical V1/V3 and backup import compatibility is separate and
+   remains read-only/explicitly guarded; **new S2 Sync** uses zero Base64.
+
+No change to Backup V4 logical format, FSRS memory logic, multi-device
+safety contract, explicit recovery evidence, original request timeout,
+or max compressed/inflated bytes. No claim of true Blob atomic CAS.
+Deployment requires exact-SHA main Cloud Gate and Pages gate, then
+staged etest native Blob read/write verification, migration replay,
+large (up to 2700 KiB) byte-exact download, and app regression tests.
+Never promote to master merely because unit tests pass.
