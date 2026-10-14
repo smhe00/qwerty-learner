@@ -1,0 +1,79 @@
+name: Circle etest read-only live probe
+
+# Runs ONLY on this isolated feature branch. It does not move or deploy
+# edgeone-test, does not create accounts, and never writes Circle Blob data.
+on:
+  push:
+    branches:
+      - feature/circle-readonly-live-probe-20261015
+    paths:
+      - '.github/workflows/circle-etest-readonly-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  etest-observe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Verify real EdgeOne deployment SHA and unauthenticated Circle gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict'
+          const base = 'https://etest.edgeone.dev'
+          async function read(url, headers = {}) {
+            const resp = await fetch(url, {
+              cache: 'no-store', redirect: 'follow',
+              headers: { 'Cache-Control': 'no-cache', ...headers },
+              signal: AbortSignal.timeout(15000),
+            })
+            const text = await resp.text()
+            return { status: resp.status, text: text.slice(0, 12000) }
+          }
+          const github = await read('https://api.github.com/repos/smhe00/qwerty-learner/git/ref/heads/edgeone-test', {
+            Authorization: 'Bearer ' + process.env.GH_TOKEN,
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+          })
+          assert.equal(github.status, 200, 'Unable to read staging ref')
+          const expectedSha = JSON.parse(github.text).object.sha
+          const marker = await read(base + '/source-commit.txt')
+          const health = await read(base + '/api/health')
+          const gate = await read(base + '/api/circle/v2')
+          let healthPayload = {}
+          let gatePayload = {}
+          try { healthPayload = JSON.parse(health.text) } catch {}
+          try { gatePayload = JSON.parse(gate.text) } catch {}
+          const result = {
+            check: 'circle_etest_readonly_probe_v1',
+            stagingRefSha: expectedSha,
+            markerStatus: marker.status,
+            deployedSourceSha: marker.text.trim(),
+            markerMatchesRef: marker.text.trim() === expectedSha,
+            healthStatus: health.status,
+            backendService: healthPayload.service ?? null,
+            authMode: healthPayload.authMode ?? null,
+            binaryCapabilities: (healthPayload.capabilities || []).filter(s =>
+              /binary|multipart|base64/i.test(s)),
+            circleUnauthenticatedHttpStatus: gate.status,
+            circleErrorCode: gatePayload.error ?? null,
+            classification: gate.status === 404 ? 'circle_disabled_or_not_mounted' :
+              gate.status === 503 ? 'circle_config_or_runtime_unavailable' :
+              gate.status === 401 ? 'circle_gateway_mounted_and_bearer_required' :
+              'unexpected_gate_status',
+            noAccountsCreated: true,
+            noBlobWrites: true,
+            noMakerBuildTriggered: true,
+          }
+          console.log(JSON.stringify(result, null, 2))
+          assert.equal(marker.status, 200, 'Staging source commit marker unavailable')
+          assert.equal(result.markerMatchesRef, true,
+            'Staging deployment SHA mismatch: do not proceed to account tests')
+          assert.equal(health.status, 200, 'Staging health unavailable')
+          assert.equal(healthPayload.service, 'qwerty-sync-gateway')
+          assert.ok([401, 404, 503].includes(gate.status),
+            'Circle endpoint returned unexpected unauthenticated status')
+          NODE
