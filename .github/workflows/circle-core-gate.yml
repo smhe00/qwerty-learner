@@ -6,7 +6,7 @@ on:
       - feature/circle-core-blob
     paths:
       - 'cloud-functions/_shared/circle/**'
-      - 'cloud-functions/api/[[default]].js'
+      - 'cloud-functions/api/**'
       - 'tests/cloud/circle*.mjs'
       - 'docs/CIRCLE_CORE_BLOB_V1.md'
       - 'scripts/circle-blob-live-contract.mjs'
