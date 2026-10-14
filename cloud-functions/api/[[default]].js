@@ -79,7 +79,7 @@ async function readBinaryPart(request, maxBytes) {
   const chunks = []
   let received = 0
   try {
-    while (true) {
+    for (;;) {
       const { done, value } = await reader.read()
       if (done) break
       received += value.byteLength
