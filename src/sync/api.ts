@@ -464,8 +464,9 @@ export async function getSyncV2SnapshotBinary(token: string): Promise<{
  * revision to native binary with no learning-state mutation. A failed/ambiguous
  * migration is reconciled using fresh cloud metadata before continuing.
  */
-export async function getSyncV2MetaWithBinaryMigration(token: string) {
-  const prior = await getSyncV2Meta(token)
+export async function getSyncV2MetaWithBinaryMigration(
+  token: string, prior: RemoteSyncMeta,
+) {
   if (!prior.hasData || prior.clientFormatVersion !== 'qwerty-backup-v4' ||
       prior.storageEncoding === 'binary') return prior
   if (!prior.payloadSha256 || !prior.logicalFingerprint) {
