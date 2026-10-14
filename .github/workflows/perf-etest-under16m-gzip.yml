@@ -1,0 +1,34 @@
+name: Etest near-16-MiB gzip V4 Latency (isolated)
+
+on:
+  push:
+    branches: [perf/etest-under16m-20261015]
+    paths:
+      - 'scripts/benchmark-etest-under16m-gzip.mjs'
+      - '.github/workflows/perf-etest-under16m-gzip.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: etest-under16m-gzip-isolated
+  cancel-in-progress: false
+
+jobs:
+  etest-gzip-under16m:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Validate standalone test syntax
+        run: node --check scripts/benchmark-etest-under16m-gzip.mjs
+      - name: Real near-16-MiB compressed V4 multipart upload and SHA readback
+        env:
+          ETEST_16M_ACK: ISOLATED_ETEST_UNDER_16M_GZIP
+        run: node scripts/benchmark-etest-under16m-gzip.mjs
