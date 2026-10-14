@@ -33,3 +33,4 @@ jobs:
           path: master-v4-benchmark-results.json
           retention-days: 14
           if-no-files-found: warn
+# Follow referenced Vite chunks when checking the production release stamp.

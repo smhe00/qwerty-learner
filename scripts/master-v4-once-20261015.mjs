@@ -118,12 +118,27 @@ async function preflight() {
   const assets = [...text.matchAll(/src=["'](\/assets\/[^"']+\.js)["']/g)].map(x => x[1])
   assert.ok(assets.length)
   let assetPinned = false
-  for (const path of assets) {
+  const visited = new Set()
+  const queue = [...assets]
+  while (queue.length && visited.size < 100 && !assetPinned) {
+    const path = queue.shift()
+    if (visited.has(path)) continue
+    visited.add(path)
     const response = await fetch(ORIGIN + path, {
       redirect: 'error', signal: AbortSignal.timeout(15000),
     })
     assert.equal(response.status, 200)
-    if ((await response.text()).includes(EXPECTED_MASTER.slice(0, 7))) assetPinned = true
+    const js = await response.text()
+    if (js.includes(EXPECTED_MASTER.slice(0, 7))) assetPinned = true
+    console.log('MASTER_ASSET_CHECK ' + JSON.stringify({ path, bytes: Buffer.byteLength(js), expectedStamp: assetPinned }))
+    for (const match of js.matchAll(/["']((?:\.\/|\/?assets\/)[A-Za-z0-9_.-]+\.js)["']/g)) {
+      const child = new URL(match[1], ORIGIN + path)
+      if (child.origin === ORIGIN && child.pathname.startsWith('/assets/') &&
+          !visited.has(child.pathname)) queue.push(child.pathname)
+    }
+    if (js.includes('Version')) {
+      console.log('MASTER_ASSET_VERSION_CONTEXT ' + JSON.stringify(js.match(/.{0,80}Version.{0,160}/g)?.slice(0,4)))
+    }
   }
   assert.ok(assetPinned, 'Loaded production JS must contain master release stamp')
   const health = await request('/api/health')
