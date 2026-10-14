@@ -430,6 +430,16 @@ export async function onRequest(context) {
         if (contentType === 'application/octet-stream') {
           const indexHeader = request.headers.get('x-qwerty-part-index')
           const countHeader = request.headers.get('x-qwerty-part-count')
+          // Legacy deployed tabs omit this header and retain 192-KiB chunks.
+          const declaredChunk = request.headers.get('x-qwerty-chunk-bytes')
+          const wirePartBytes = declaredChunk === null ? 192 * 1024
+            : Number(declaredChunk)
+          if (![192 * 1024, 256 * 1024].includes(wirePartBytes) ||
+              (declaredChunk !== null &&
+                declaredChunk !== String(wirePartBytes))) {
+            throw new AppError(400, 'invalid_v4_upload_part',
+              'Unsupported immutable HTTP chunk layout')
+          }
           // Reject malformed metadata without trusting parseInt's prefix parsing.
           if (!/^\d+$/.test(indexHeader || '') || !/^\d+$/.test(countHeader || '')) {
             throw new AppError(400, 'invalid_v4_upload_part', 'Invalid binary part selector')
@@ -438,14 +448,14 @@ export async function onRequest(context) {
             payloadSha256: request.headers.get('x-qwerty-payload-sha256'),
             partSha256: request.headers.get('x-qwerty-part-sha256'),
             index: Number(indexHeader), count: Number(countHeader),
-            data: await readBinaryPart(request, 192 * 1024),
+            wirePartBytes, data: await readBinaryPart(request, wirePartBytes),
           }
           // 192 parts was the old 32-KiB transport limit, not permission to
           // stage ~36 MiB when this account's max compressed gzip is 4 MiB.
           const maxBytes = numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024)
-          if (body.count > Math.ceil(maxBytes / (192 * 1024)) ||
+          if (body.count > Math.ceil(maxBytes / body.wirePartBytes) ||
               (body.index === body.count - 1 &&
-                (body.count - 1) * (192 * 1024) + body.data.length > maxBytes)) {
+                (body.count - 1) * body.wirePartBytes + body.data.length > maxBytes)) {
             throw new AppError(413, 'request_too_large',
               'V4 binary upload exceeds compressed account quota')
           }
