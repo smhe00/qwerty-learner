@@ -1,0 +1,72 @@
+name: Production Beta Exact-SHA Read-Only Probe
+
+on:
+  push:
+    branches: [ops/prod-beta-source-probe-20261015]
+    paths: ['.github/workflows/production-beta-source-probe.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  verify-deployed-beta:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    steps:
+      - name: Verify exact live master and gated public API
+        env:
+          EXPECTED_MASTER_SHA: 97e46d0da23467c07595f9565f52fc529e1d980a
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict'
+          assert.equal(process.env.GITHUB_REF_NAME, 'ops/prod-beta-source-probe-20261015')
+          const expected = process.env.EXPECTED_MASTER_SHA
+          const base = 'https://qwerty-plus.edgeone.dev'
+          const required = [
+            'v4-binary-direct-512k-v1',
+            'v4-end-to-end-binary-v1',
+            'backup-v4-authenticated-write-ga',
+          ]
+          let last = ''
+          for (let attempt = 1; attempt <= 48; attempt++) {
+            try {
+              const markerRes = await fetch(base + '/source-commit.txt?probe=' + attempt, {
+                cache: 'no-store', signal: AbortSignal.timeout(12000),
+              })
+              const marker = (await markerRes.text()).trim()
+              const markerMatched = markerRes.ok &&
+                /^[a-f0-9]{7,40}$/.test(marker) && expected.startsWith(marker)
+              if (markerMatched) {
+                const healthRes = await fetch(base + '/api/health?probe=' + attempt, {
+                  cache: 'no-store', signal: AbortSignal.timeout(12000),
+                })
+                const health = healthRes.ok ? await healthRes.json() : null
+                const circle = await fetch(base + '/api/circle/v2?probe=' + attempt, {
+                  cache: 'no-store', signal: AbortSignal.timeout(12000),
+                })
+                if (health?.service === 'qwerty-sync-gateway' &&
+                    required.every(cap => health.capabilities?.includes(cap)) &&
+                    circle.status === 404) {
+                  console.log('PRODUCTION_BETA_SOURCE_MATCH ' + JSON.stringify({
+                    fullExpectedSha: expected, servedMarker: marker,
+                    service: health.service, authMode: health.authMode,
+                    directBinary: true, existingV4Binary: true,
+                    circleProdHttp: circle.status,
+                  }))
+                  process.exit(0)
+                }
+                last = 'new marker but missing backend capability / prod Circle guard ' +
+                  JSON.stringify({service: health?.service, circleStatus:circle.status})
+              } else {
+                last = 'old or missing marker HTTP ' + markerRes.status +
+                  ' served=' + marker.slice(0, 40)
+              }
+              console.log('PRODUCTION_BETA_NOT_READY ' + JSON.stringify({attempt,last}))
+            } catch (err) {
+              last = err instanceof Error ? err.name : 'network_error'
+              console.log('PRODUCTION_BETA_NOT_READY ' + JSON.stringify({attempt,last}))
+            }
+            if (attempt < 48) await new Promise(resolve => setTimeout(resolve, 10000))
+          }
+          throw new Error('PRODUCTION_BETA_SHA_UNVERIFIED: '+last)
+          NODE
