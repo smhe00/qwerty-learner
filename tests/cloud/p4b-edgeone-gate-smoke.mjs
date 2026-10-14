@@ -114,6 +114,11 @@ async function uploadLargeV4(record, token) {
   const count = Math.ceil(record.payloadBase64.length / chars)
   assert.ok(count >= 1 && count <= 192)
   const partSha256s = []
+  const uploadStarted = performance.now()
+  let partHttpMs = 0
+  let partServerMs = 0
+  let partBlobWriteMs = 0
+  let slowestPart = { index: -1, elapsedMs: 0 }
   for (let index = 0; index < count; index++) {
     const data = record.payloadBase64.slice(index * chars, (index + 1) * chars)
     const partSha256 = sha256(data)
@@ -122,13 +127,38 @@ async function uploadLargeV4(record, token) {
     // final /commit. Transient Maker body-read failures can occur at 32 KiB.
     let staged
     for (let attempt = 0; attempt < 6; attempt++) {
+
+      const started = performance.now()
       try {
         staged = await api('/api/sync/v2/parts', 'POST', {
           payloadSha256, count, index, data, partSha256,
         }, token)
       } catch (error) {
+        const elapsedMs = Math.round(performance.now() - started)
+        console.error('V4 part attempt failed', JSON.stringify({
+          partIndex: index, count, attempt: attempt + 1, elapsedMs,
+          failureStage: 'http_request',
+          failureCategory: error?.name === 'TimeoutError' ||
+            error?.name === 'AbortError' ? 'network_timeout' : 'network_failure',
+        }))
         if (attempt === 5) throw error
         staged = { status: 503, value: { error: 'network_error' } }
+      }
+      const elapsedMs = Math.round(performance.now() - started)
+      partHttpMs += elapsedMs
+      const server = staged.value?.timings || staged.value?.details?.timings || {}
+      partServerMs += server.serverTotalMs || 0
+      partBlobWriteMs += server.blobWriteMs || 0
+      if (elapsedMs > slowestPart.elapsedMs) slowestPart = { index, elapsedMs }
+      if (elapsedMs >= 1500 || staged.status !== 200 || index % 8 === 0) {
+        console.log('V4 part stage', JSON.stringify({
+          partIndex: index, count, attempt: attempt + 1, elapsedMs,
+          status: staged.status, code: staged.value?.error || null,
+          failureStage: staged.value?.details?.failureStage || null,
+          serverTotalMs: server.serverTotalMs ?? null,
+          blobWriteMs: server.blobWriteMs ?? null,
+          blobReadbackMs: server.blobReadbackMs ?? null,
+        }))
       }
       if (staged.status === 200) break
       if (staged.status < 500 || staged.status > 599 || attempt === 5) break
@@ -143,9 +173,34 @@ async function uploadLargeV4(record, token) {
   }
   const meta = { ...record }
   delete meta.payloadBase64
-  return api('/api/sync/v2/commit', 'POST', {
-    ...meta, payloadSha256, count, partSha256s,
-  }, token)
+
+  const commitStarted = performance.now()
+  try {
+    const reply = await api('/api/sync/v2/commit', 'POST', {
+      ...meta, payloadSha256, count, partSha256s,
+    }, token)
+    console.log('V4 transport timing', JSON.stringify({
+      count, totalMs: Math.round(performance.now() - uploadStarted),
+      partsHttpMs: Math.round(partHttpMs),
+      partsServerMs: Math.round(partServerMs),
+      partsBlobWriteMs: Math.round(partBlobWriteMs),
+      slowestPart,
+      commitHttpMs: Math.round(performance.now() - commitStarted),
+      commitStatus: reply.status, commitCode: reply.value?.error || null,
+      commitFailureStage: reply.value?.details?.failureStage || null,
+      commitServer: reply.value?.timings || reply.value?.details?.timings || null,
+    }))
+    return reply
+  } catch (error) {
+    console.error('V4 commit attempt failed', JSON.stringify({
+      count, partsHttpMs: Math.round(partHttpMs),
+      partsServerMs: Math.round(partServerMs),
+      slowestPart, commitHttpMs: Math.round(performance.now() - commitStarted),
+      failureCategory: error?.name === 'TimeoutError' ||
+        error?.name === 'AbortError' ? 'network_timeout' : 'network_failure',
+    }))
+    throw error
+  }
 }
 
 try {
