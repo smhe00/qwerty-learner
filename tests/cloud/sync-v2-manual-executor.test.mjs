@@ -116,6 +116,49 @@ function fixture(local, meta, baseline = null) {
   }
   return { port, state }
 }
+test('format-only binary migration after noop keeps fingerprint and adopts revision', async () => {
+  const local = snap()
+  const old = await cloud(local, 5)
+  old.meta.storageEncoding = 'base64'
+  const f = fixture(local, old.meta, {
+    accountId: id, baseRevision: 5, logicalFingerprint: old.meta.logicalFingerprint,
+  })
+  f.port.migrateBinary = async pinned => {
+    f.state.calls.push('migrate')
+    assert.equal(pinned.revision, 5)
+    return { ...pinned, revision: 6, storageEncoding: 'binary' }
+  }
+  const result = await executeManualSyncV2(f.port)
+  assert.deepEqual(result, { status: 'noop', revision: 6 })
+  assert.equal(f.state.baseline.baseRevision, 6)
+  assert.ok(f.state.calls.indexOf('migrate') > f.state.calls.indexOf('capture'))
+  assert.equal(f.state.calls.includes('upload'), false)
+})
+test('format-only cloud migration does not create a fake concurrent-edit conflict', async () => {
+  const old = await cloud(snap(), 5)
+  old.meta.storageEncoding = 'base64'
+  const f = fixture(snap(4), old.meta, {
+    accountId: id, baseRevision: 5, logicalFingerprint: old.meta.logicalFingerprint,
+  })
+  f.port.migrateBinary = async () => { throw Error('MIGRATION SHOULD NOT RUN') }
+  const result = await executeManualSyncV2(f.port)
+  assert.deepEqual(result, { status: 'pushed', revision: 6 })
+  assert.equal(f.state.uploaded.baseRevision, 5)
+  assert.equal(f.state.calls.includes('migrate'), false)
+})
+test('conflicted legacy cloud must not auto-migrate before user resolves content', async () => {
+  const old = await cloud(snap(3), 5)
+  old.meta.storageEncoding = 'base64'
+  const f = fixture(snap(4), old.meta, {
+    accountId: id, baseRevision: 4,
+    logicalFingerprint: await workspaceFingerprintV4(snap(2)),
+  })
+  f.port.migrateBinary = async () => { throw Error('CONFLICT MUST BLOCK MIGRATION') }
+  const result = await executeManualSyncV2(f.port)
+  assert.equal(result.status, 'conflict')
+  assert.equal(f.state.calls.includes('migrate'), false)
+})
+
 test('S2 canonical equality uses metadata-only noop without gzip/cloud payload', async () => {
   const local = snap()
   const c = await cloud(local, 5)
