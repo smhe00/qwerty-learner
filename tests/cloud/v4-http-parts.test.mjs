@@ -107,7 +107,8 @@ test('192-KiB raw HTTP parts use two bounded Blob JSON shards, exact V4 restore'
   await upload(f)
   const staging = [...f.raw.objects.entries()]
     .filter(([key]) => key.includes('/v4-http-parts/'))
-  assert.equal(staging.length, f.parts.length * 2)
+  assert.equal(staging.length, f.parts.reduce((n, part) =>
+    n + Math.ceil(part.data.toString('base64').length / (128 * 1024)), 0))
   assert.ok(staging.every(([, part]) => part.version === 2 &&
     part.data.length <= 128 * 1024 && part.data.length > 0))
   assert.equal((await f.service.syncMeta(f.token)).revision, 0)
