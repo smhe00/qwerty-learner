@@ -1,0 +1,53 @@
+name: Beta Pages Cross-Browser Published Regression
+
+# Staging-only: tests the already deployed GitHub Pages site.
+# Does not touch EdgeOne or master deployment.
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - '.github/workflows/beta-pages-crossbrowser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: beta-pages-crossbrowser
+  cancel-in-progress: true
+
+jobs:
+  published-regression:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.3'
+          cache: yarn
+      - name: Pin the actually published Pages commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          published=$(curl --connect-timeout 5 --max-time 20 -fsSL https://smhe00.github.io/qwerty-learner/source-commit.txt)
+          if ! [[ "$published" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Published Pages revision missing"
+            exit 1
+          fi
+          echo "PAGES_SOURCE_SHA=$published" >> "$GITHUB_ENV"
+          echo "Pinned published Pages revision ${published:0:12}"
+      - name: Install all tested browser engines
+        run: |
+          yarn install --frozen-lockfile
+          npx playwright install --with-deps chromium firefox webkit
+      - name: Run real published-site regression in all browsers
+        run: npx playwright test tests/e2e/pages-regression.spec.ts --retries=0 --workers=1
+      - name: Retain failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beta-pages-crossbrowser-${{ github.run_id }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7

@@ -1,15 +1,11 @@
 /**
  * Unified standard V4 cloud backup export. Read-only, independent of local
  * RecordDB and Sync baseline; exported .gz is accepted by local V4 import.
- * Historical V3 is converted *only* if its six-table payload is complete.
  */
-import { getSyncV2Meta, getSyncV2Snapshot } from './api'
+import { getSyncV2Meta, getSyncV2Snapshot, getSyncV2SnapshotBinary } from './api'
 import { loadAuth } from './auth'
-import {
-  convertVerifiedCloudV3ToV4, samePinnedRemote, verifyPinnedCloudArchive,
-} from './v2-recovery-archive'
+import { samePinnedRemote, verifyPinnedCloudArchive } from './v2-recovery-archive'
 import { verifyDownloadedWorkspaceV4 } from './v2-verify-remote'
-import { assertRestorableWorkspaceV4 } from './workspace-v4'
 import { workspaceRegistryPort } from './workspace-vault'
 import type { GuardedWorkspaceBoot } from './workspace-bootstrap'
 
@@ -64,16 +60,11 @@ export async function renderCloudV4BackupUI(
     status.textContent = '该账号云端没有可以下载的备份。'
     return
   }
-  if (pinned.clientFormatVersion !== 'qwerty-backup-v3' &&
-      pinned.clientFormatVersion !== 'qwerty-backup-v4') {
-    status.textContent = '云端原始格式暂不支持安全转换；没有下载，也不会修改任何数据。'
+  if (pinned.clientFormatVersion !== 'qwerty-backup-v4') {
+    status.textContent = '云端不是 V4 格式，旧备份已停止支持；不会下载、修改或覆盖任何数据。'
     return
   }
-  status.textContent = '云端 Revision ' + pinned.revision + '，原始格式：' +
-    pinned.clientFormatVersion + '\n' +
-    (pinned.clientFormatVersion === 'qwerty-backup-v3'
-      ? '旧 V3 中没有保存的每日会话及设置无法凭空补齐；标准 V4 会保留原有学习记录并将缺失字段设为空。'
-      : '云端原始文件是标准 V4，可直接进行完整校验后下载。')
+  status.textContent = '云端 Revision ' + pinned.revision + '，标准 Backup V4。将校验完整性后下载。'
   save.disabled = false
   let busy = false
   save.addEventListener('click', () => {
@@ -83,24 +74,18 @@ export async function renderCloudV4BackupUI(
     void (async () => {
       status.textContent = '正在校验云端原始压缩文件、Revision 与 SHA-256…'
       await checkOwner()
-      const remote = await getSyncV2Snapshot(auth.token)
+      const remote = pinned.storageEncoding === 'binary'
+        ? await getSyncV2SnapshotBinary(auth.token)
+        : await getSyncV2Snapshot(auth.token)
       const bytes = await verifyPinnedCloudArchive(pinned, remote)
-      let standard = bytes
-      if (pinned.clientFormatVersion === 'qwerty-backup-v4') {
-        await verifyDownloadedWorkspaceV4(id, pinned, remote)
-      } else {
-        const converted = await convertVerifiedCloudV3ToV4(bytes, id)
-        assertRestorableWorkspaceV4(converted)
-        const pako = await import('pako')
-        standard = pako.gzip(JSON.stringify(converted))
-      }
+      await verifyDownloadedWorkspaceV4(id, pinned, remote)
       await checkOwner()
       const latest = await getSyncV2Meta(auth.token)
       if (!samePinnedRemote(pinned, latest)) {
         throw new Error('云端 Revision 在导出期间发生变化，请重新读取云端状态')
       }
       const { saveAs } = await import('file-saver')
-      saveAs(new Blob([standard], { type: 'application/gzip' }),
+      saveAs(new Blob([bytes], { type: 'application/gzip' }),
         'Qwerty-Plus-CLOUD-Backup-V4-r' + pinned.revision + '.gz')
       status.textContent = '已触发标准 V4 文件下载；云端与本地数据均未修改。'
     })().catch(error => {

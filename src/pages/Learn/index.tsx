@@ -8,6 +8,7 @@ import { waitForBrowserFuzzGate } from '@/dev/browser-fuzz-hooks'
 import { prepareLearnSession } from '@/learn/controller'
 import { addLearnDailyNewWords, learnLocalDateKey, loadLearnDailySession } from '@/learn/daily-session'
 import { flushLearnPersistence } from '@/learn/persistence'
+import { ensureSignedInLearnClock } from '@/sync/learning-clock'
 import TypingPage from '@/pages/Typing'
 import { DictChapterButton } from '@/pages/Typing/components/DictChapterButton'
 import PronunciationSwitcher from '@/pages/Typing/components/PronunciationSwitcher'
@@ -92,6 +93,18 @@ export default function LearnPage() {
   useEffect(() => {
     errorWordDataRef.current = errorWordData
   }, [errorWordData])
+  
+  useEffect(() => {
+    // Warm up as soon as Learn opens so the first practice key normally has
+    // a calibrated clock already. Auth-free browsers perform no network IO.
+    // Promise is shared with explicit startLearn() to avoid duplicate probes.
+    void ensureSignedInLearnClock()
+    const refresh = window.setInterval(() => {
+      void ensureSignedInLearnClock()
+    }, 30 * 60 * 1000)
+    return () => window.clearInterval(refresh)
+  }, [])
+
 
   useEffect(() => {
     preparationGuard.activate()
@@ -181,6 +194,11 @@ export default function LearnPage() {
     const prepare = async () => {
       try {
         await waitForBrowserFuzzGate('learn-preparation')
+        // Anchor session creation and FSRS timestamps to a fresh or cached
+        // EdgeOne clock observation for authenticated users. Offline study
+        // still starts if EdgeOne cannot be reached.
+        await ensureSignedInLearnClock()
+        if (!isCurrent()) return
         if (addFiveWords) {
           await flushLearnPersistence()
           const [wordRecords, wordStates] = await Promise.all([
@@ -270,9 +288,13 @@ export default function LearnPage() {
 
     const routeState = location.state as LearnLocationState | null
     const query = new URLSearchParams(location.search)
+    // Mounting the Learn landing page must be read-only. In particular, an S2
+    // cloud Pull or portable V4 import must not silently replace a restored
+    // historical DailySession simply because today's date has advanced.
+    // Only an explicit workflow continuation may auto-start; otherwise the
+    // user's first keypress/Start action starts preparation.
     const shouldAutoStart =
-      (routeState?.autoStart === true || query.get('block-resume') === '1') ||
-      (routeState?.idle !== true && query.get('block-idle') !== '1')
+      routeState?.autoStart === true || query.get('block-resume') === '1'
 
     if (
       canLearnMoreToday ||

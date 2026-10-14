@@ -22,6 +22,17 @@ export default defineConfig(async ({ mode }) => {
   return {
     base,
     plugins: [
+      // Staging E2E must check the live frontend SHA, not only /api/health.
+      {
+        name: 'published-source-marker',
+        generateBundle() {
+          this.emitFile({
+            type: 'asset',
+            fileName: 'source-commit.txt',
+            source: latestCommitHash + '\n',
+          })
+        },
+      },
       react({ babel: { plugins: [jotaiDebugLabel, jotaiReactRefresh] } }),
       visualizer() as PluginOption,
       Icons({

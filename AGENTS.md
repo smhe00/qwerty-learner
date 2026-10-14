@@ -4,11 +4,13 @@ This file is the mandatory entry point for any coding agent working in this repo
 
 ## 1. Repository roles
 
-- **Development branch:** `product/main`
-- **Release branch:** `master`
-- `master` is the public/release branch, **not** the upstream development branch.
-- EdgeOne Maker is bound to `master`. Do **not** merge/sync/push `product/main` to `master` unless the active task explicitly authorizes a release.
-- Routine development, tests, simulation, documentation and agent coordination happen on `product/main`.
+- **Development:** `product/main`, auto-deployed to GitHub Pages with cloud disabled.
+- **Staging:** `edgeone-test` (short: `etest`), promoted manually from `product/main` for real EdgeOne Cloud/Blob E2E only.
+- **Production:** `master`, publicly released only upon explicit authorization.
+- The owner completed the **first** manual `edgeone-test` deployment on 2026-10-14. This project auto-deploys future etest pushes; advance the branch only when real Cloud/Blob validation is required.
+- Maker staging site is `https://etest.edgeone.dev/`. The owner confirms staging and production use completely independent Blob namespaces. Staging Blob is activated automatically on its first write. Production Maker is `https://qwerty-plus.edgeone.dev/`. Never use Pages to certify cloud synchronization.
+- Before any master update the IDENTICAL SHA must pass published Pages regression, etest real-Cloud browser E2E and Blob transport, and the `release-ready` check. An explicit user release request remains mandatory.
+- Routine development and agent coordination happen on `product/main`; NEVER bind a Maker project to its pushes.
 
 ## 2. Control architecture
 
@@ -86,8 +88,10 @@ Unless an active task explicitly overrides them:
 - never commit secrets, tokens, credentials or user backups
 - never weaken tests/gates merely to make CI pass
 - never silently change Typing/upstream behavior while fixing Learn
-- avoid unnecessary EdgeOne builds
-- do not perform repeated release builds from `product/main`
+- avoid unnecessary Maker builds; `product/main` changes must only build Pages
+- do not advance `edgeone-test` for routine UI changes; every etest push auto-deploys and consumes a Maker build
+- do not advance `master` without passing Pages AND etest for exactly the same SHA and an explicit release authorization
+- GitHub Actions alone cannot block unauthorized direct pushes; configure master branch protection/rulesets when permissions allow
 
 If a task conflicts with these defaults, the task must state the override explicitly.
 

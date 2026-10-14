@@ -179,33 +179,6 @@ export function createWorkspaceV4(
   return snapshot
 }
 
-/** Converts V3 content without altering its source, revision, or cloud hashes.
- * Existing current-browser settings/runtime are used ONLY for explicit one-time
- * same-browser migration. Historical imports without them leave those fields empty. */
-export function migrateV3ToWorkspaceV4(
-  legacyJson: string,
-  metadata: WorkspaceSnapshotV4['metadata'],
-  options: { storage?: StorageReader } = {},
-): WorkspaceSnapshotV4 {
-  const parsed: unknown = JSON.parse(legacyJson)
-  if (!isRecord(parsed) ||
-      parsed.backupFormatVersion !== 'qwerty-backup-v3' ||
-      !isRecord(parsed.database) ||
-      !isNavigation(parsed.learningState)) {
-    throw new Error('Not a supported qwerty-backup-v3 envelope')
-  }
-  return createWorkspaceV4({
-    database: parsed.database,
-    learnRuntime: {
-      dailySessions: options.storage ? captureDailySessions(options.storage) : {},
-    },
-    settings: options.storage
-      ? captureWorkspaceSettings(options.storage)
-      : { version: 1, values: {} },
-    navigation: parsed.learningState,
-  }, metadata)
-}
-
 /** Stable recursive JSON representation; arrays retain sequence semantics. */
 export function stableWorkspaceJson(value: unknown): string {
   if (value === null || typeof value !== 'object') {

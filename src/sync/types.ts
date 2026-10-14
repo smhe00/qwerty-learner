@@ -22,11 +22,18 @@ export type RemoteSyncMeta = {
   logicalFingerprint?: string | null
   deviceId: string | null
   clientFormatVersion: string | null
+  /** Historical V4 Blob revisions are migrated on the next guarded Sync. */
+  storageEncoding?: 'base64' | 'binary' | null
 }
 
 export type RemoteSnapshot = RemoteSyncMeta & {
   payloadEncoding: 'base64'
   payloadBase64: string | null
+}
+
+export type RemoteBinarySnapshot = RemoteSyncMeta & {
+  payloadEncoding: 'binary'
+  payloadBytes: Uint8Array
 }
 
 export type LocalState = {

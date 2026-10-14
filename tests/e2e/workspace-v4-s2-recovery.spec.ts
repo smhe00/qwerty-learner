@@ -3,6 +3,24 @@ import { gzipSync } from 'node:zlib'
 import { expect, test, type Page } from '@playwright/test'
 
 const owner = { kind: 'account' as const, accountId: 'p3b-immutable-account' }
+const stagedParts = new WeakMap<Page, Map<string, Buffer>>()
+const chunkSha = (part: Buffer) =>
+  createHash('sha256').update(part).digest('hex')
+
+function assembledRecovery(page: Page, input: any): Buffer {
+  const parts = stagedParts.get(page)
+  expect(parts).toBeDefined()
+  expect(input.partSha256s).toHaveLength(input.count)
+  const data = input.partSha256s.map((sha: string, index: number) => {
+    const part = parts?.get(input.payloadSha256 + ':' + input.count +
+      ':' + index + ':' + sha)
+    expect(part).toBeDefined()
+    return part!
+  })
+  const result = Buffer.concat(data)
+  expect(chunkSha(result)).toBe(input.payloadSha256)
+  return result
+}
 
 async function seed(page: Page) {
   await page.goto('/tests/e2e/backup-harness.html')
@@ -16,27 +34,50 @@ async function seed(page: Page) {
     }))
     await h.initializeLegacyWorkspace(identity)
   }, owner)
+  const parts = new Map<string, Buffer>()
+  stagedParts.set(page, parts)
+  await page.route('**/api/sync/v2/parts', async route => {
+    const req = route.request()
+    if (req.method() === 'OPTIONS') {
+      await route.fulfill({ status: 204, headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Qwerty-Payload-Sha256, X-Qwerty-Part-Sha256, X-Qwerty-Part-Index, X-Qwerty-Part-Count',
+      } })
+      return
+    }
+    const header = req.headers()
+    const body = req.postDataBuffer()
+    const sha = header['x-qwerty-part-sha256']
+    const index = Number(header['x-qwerty-part-index'])
+    const count = Number(header['x-qwerty-part-count'])
+    const whole = header['x-qwerty-payload-sha256']
+    expect(body).toBeTruthy()
+    expect(chunkSha(body!)).toBe(sha)
+    expect(body!.length).toBeLessThanOrEqual(512 * 1024)
+    expect(index).toBeGreaterThanOrEqual(0)
+    expect(index).toBeLessThan(count)
+    parts.set(whole + ':' + count + ':' + index + ':' + sha, Buffer.from(body!))
+    await route.fulfill({ json: {
+      ok: true, received: true, index,
+      payloadSha256: whole, partSha256: sha,
+    } })
+  })
 }
 
-async function remoteFixture(page: Page, version: 'v3' | 'v4') {
-  const exported = await page.evaluate(async ({ id, format }) => {
+async function remoteFixture(page: Page) {
+  const exported = await page.evaluate(async id => {
     const h = (window as any).__backupHarness
-    if (format === 'v3') {
-      const legacy = JSON.parse(await h.exportBackupJson())
-      legacy.learningState.currentChapter = 17
-      return { data: JSON.stringify(legacy), hash: null }
-    }
     const snapshot = await h.captureWorkingWorkspaceV4({ kind: 'account', accountId: id })
     snapshot.workspaceData.navigation.currentChapter = 17
     return { data: JSON.stringify(snapshot), hash: await h.workspaceFingerprintV4(snapshot) }
-  }, { id: owner.accountId, format: version })
+  }, owner.accountId)
   const raw = gzipSync(Buffer.from(exported.data, 'utf8'))
   const sha = createHash('sha256').update(raw).digest('hex')
   const meta = {
     hasData: true, revision: 3, updatedAt: '2026-10-10T00:00:00Z',
     sizeBytes: raw.length, dataSha256: sha, payloadSha256: sha,
-    logicalFingerprint: exported.hash, clientFormatVersion: version === 'v3'
-      ? 'qwerty-backup-v3' : 'qwerty-backup-v4',
+    logicalFingerprint: exported.hash, clientFormatVersion: 'qwerty-backup-v4',
     deviceId: 'p3b-remote',
   }
   return { meta, snapshot: { ...meta, payloadBase64: raw.toString('base64'),
@@ -59,13 +100,13 @@ async function archiveBoth(page: Page) {
   await page.getByLabel('确认不可变账户 ID').fill(owner.accountId)
 }
 
-test('P3b visibly identifies missing backup downloads before migration can start', async ({ page }) => {
+test('P3b visibly identifies missing backup downloads before recovery can start', async ({ page }) => {
   await seed(page)
-  const fixture = await remoteFixture(page, 'v3')
+  const fixture = await remoteFixture(page)
   let writes = 0
   await page.route('**/api/sync/v2/meta', r => r.fulfill({ json: { ok: true, ...fixture.meta } }))
   await page.route('**/api/sync/v2', r => r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
-  await page.route('**/api/sync/v2/recovery', async r => {
+  await page.route('**/api/sync/v2/commit/recovery', async r => {
     writes++
     await r.fulfill({ status: 500, json: { error: 'unexpected_recovery_write' } })
   })
@@ -90,23 +131,23 @@ test('P3b visibly identifies missing backup downloads before migration can start
   await expect(page.getByText('点击②从本页面下载云端原始备份')).toBeVisible()
   await expect(apply).toBeDisabled()
   const cloudDownload = page.waitForEvent('download')
-  await page.getByRole('button', { name: /② 下载云端原始 Backup V3/ }).click()
+  await page.getByRole('button', { name: /② 下载云端原始 Backup V4/ }).click()
   await cloudDownload
   await page.getByLabel('已确认本地备份保存成功').check()
   await page.getByLabel('已确认云端原始备份保存成功').check()
-  await expect(page.getByText('所有迁移前置条件已满足。⑤ 已解锁；点击后仍会再次显示最终覆盖确认。')).toBeVisible()
+  await expect(page.getByText('所有 V4 恢复前置条件已满足。⑤ 已解锁；点击后仍会再次显示最终覆盖确认。')).toBeVisible()
   await expect(apply).toBeEnabled()
   expect(writes).toBe(0)
 })
 
 test('P3b V4 divergence stays read-only until both backups, ID and explicit consent', async ({ page }) => {
   await seed(page)
-  const fixture = await remoteFixture(page, 'v4')
+  const fixture = await remoteFixture(page)
   let meta = fixture.meta
   let uploads = 0
   await page.route('**/api/sync/v2/meta', r => r.fulfill({ json: { ok: true, ...meta } }))
   await page.route('**/api/sync/v2', r => r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
-  await page.route('**/api/sync/v2/recovery', async r => {
+  await page.route('**/api/sync/v2/commit/recovery', async r => {
     uploads++
     const input = r.request().postDataJSON()
     expect(input.accountConfirmation).toBe(owner.accountId)
@@ -114,7 +155,7 @@ test('P3b V4 divergence stays read-only until both backups, ID and explicit cons
     expect(input.expectedRemoteLogicalFingerprint).toBe(fixture.meta.logicalFingerprint)
     expect(input.recoveryMode).toBe('replace-v4')
     expect(input.baseRevision).toBe(3)
-    const zipped = Buffer.from(input.payloadBase64, 'base64')
+    const zipped = assembledRecovery(page, input)
     const hash = createHash('sha256').update(zipped).digest('hex')
     meta = { ...meta, revision: 4, logicalFingerprint: input.logicalFingerprint,
       payloadSha256: hash, dataSha256: hash, sizeBytes: zipped.length }
@@ -143,11 +184,11 @@ test('P3b V4 divergence stays read-only until both backups, ID and explicit cons
 
 test('P3b stale deployed server 403 explains release mismatch and disallows retry', async ({ page }) => {
   await seed(page)
-  const fixture = await remoteFixture(page, 'v3')
+  const fixture = await remoteFixture(page)
   let writes = 0
   await page.route('**/api/sync/v2/meta', r => r.fulfill({ json: { ok: true, ...fixture.meta } }))
   await page.route('**/api/sync/v2', r => r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
-  await page.route('**/api/sync/v2/recovery', async r => {
+  await page.route('**/api/sync/v2/commit/recovery', async r => {
     writes++
     await r.fulfill({ status: 403, json: {
       ok: false, error: 's2_write_not_enabled',
@@ -182,7 +223,7 @@ test('P3b stale deployed server 403 explains release mismatch and disallows retr
 
 test('P3b HTTP 500 with unchanged remote rechecks meta read-only without retry', async ({ page }) => {
   await seed(page)
-  const fixture = await remoteFixture(page, 'v3')
+  const fixture = await remoteFixture(page)
   let reads = 0
   let writes = 0
   await page.route('**/api/sync/v2/meta', async r => {
@@ -191,7 +232,7 @@ test('P3b HTTP 500 with unchanged remote rechecks meta read-only without retry',
   })
   await page.route('**/api/sync/v2', r =>
     r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
-  await page.route('**/api/sync/v2/recovery', async r => {
+  await page.route('**/api/sync/v2/commit/recovery', async r => {
     writes++
     await r.fulfill({ status: 500, json: {
       ok: false, error: 'internal_error', message: 'Internal server error',
@@ -211,22 +252,22 @@ test('P3b HTTP 500 with unchanged remote rechecks meta read-only without retry',
   await expect(page.getByRole('button', {
     name: '⑤ 我已备份两端数据，继续执行选定方向',
   })).toBeDisabled()
-  await expect(page.getByText(/格式 qwerty-backup-v3，Revision 3/)).toBeVisible()
+  await expect(page.getByText(/格式 qwerty-backup-v4，Revision 3/)).toBeVisible()
 })
 
 test('P3b ambiguous HTTP 500 after durable commit identifies exact V4 and never retries', async ({ page }) => {
   await seed(page)
-  const fixture = await remoteFixture(page, 'v3')
+  const fixture = await remoteFixture(page)
   let current = fixture.meta
   let writes = 0
   await page.route('**/api/sync/v2/meta', r =>
     r.fulfill({ json: { ok: true, ...current } }))
   await page.route('**/api/sync/v2', r =>
     r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
-  await page.route('**/api/sync/v2/recovery', async r => {
+  await page.route('**/api/sync/v2/commit/recovery', async r => {
     writes++
     const posted = r.request().postDataJSON()
-    const bytes = Buffer.from(posted.payloadBase64, 'base64')
+    const bytes = assembledRecovery(page, posted)
     const sha = createHash('sha256').update(bytes).digest('hex')
     current = { ...current, revision: 4, sizeBytes: bytes.length,
       clientFormatVersion: 'qwerty-backup-v4',
@@ -252,37 +293,9 @@ test('P3b ambiguous HTTP 500 after durable commit identifies exact V4 and never 
   await expect(page.getByText(/格式 qwerty-backup-v4，Revision 4/)).toBeVisible()
 })
 
-test('P3b V3 migration keeps old cloud backup and uses separate account-pinned CAS', async ({ page }) => {
-  await seed(page)
-  const fixture = await remoteFixture(page, 'v3')
-  let migrated: any = null
-  await page.route('**/api/sync/v2/meta', r => r.fulfill({ json: { ok: true, ...fixture.meta } }))
-  await page.route('**/api/sync/v2', r => r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
-  await page.route('**/api/sync/v2/recovery', async r => {
-    migrated = r.request().postDataJSON()
-    const bytes = Buffer.from(migrated.payloadBase64, 'base64')
-    const sha = createHash('sha256').update(bytes).digest('hex')
-    await r.fulfill({ json: { ok: true, ...fixture.meta,
-      revision: 4, clientFormatVersion: 'qwerty-backup-v4',
-      logicalFingerprint: migrated.logicalFingerprint, dataSha256: sha,
-      payloadSha256: sha, sizeBytes: bytes.length } })
-  })
-  await page.goto('/?s2-recovery=manage')
-  await archiveBoth(page)
-  await page.locator('select').selectOption('keep-local')
-  page.once('dialog', d => d.accept())
-  await page.getByText('⑤ 我已备份两端数据，继续执行选定方向').click()
-  await expect(page.getByText('已按确认保留本机学习记录，云端现为 V4 revision 4。')).toBeVisible({
-    timeout: 20_000,
-  })
-  expect(migrated.recoveryMode).toBe('migrate-v3')
-  expect(migrated.expectedRemoteSha256).toBe(fixture.meta.payloadSha256)
-  expect(migrated.expectedRemoteFormat).toBe('qwerty-backup-v3')
-})
-
 test('P3b stale cloud revision after backup cancels before any recovery CAS or restore', async ({ page }) => {
   await seed(page)
-  const fixture = await remoteFixture(page, 'v4')
+  const fixture = await remoteFixture(page)
   let metaCalls = 0
   let recoveryCalls = 0
   await page.route('**/api/sync/v2/meta', async r => {
@@ -291,7 +304,7 @@ test('P3b stale cloud revision after backup cancels before any recovery CAS or r
     await r.fulfill({ json: { ok: true, ...meta } })
   })
   await page.route('**/api/sync/v2', r => r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
-  await page.route('**/api/sync/v2/recovery', async r => {
+  await page.route('**/api/sync/v2/commit/recovery', async r => {
     recoveryCalls++
     await r.abort()
   })
@@ -312,11 +325,11 @@ test('P3b stale cloud revision after backup cancels before any recovery CAS or r
 
 test('P3b keep-cloud V4 restores only after pinned verification and durable journal', async ({ page }) => {
   await seed(page)
-  const fixture = await remoteFixture(page, 'v4')
+  const fixture = await remoteFixture(page)
   let recoveryWrites = 0
   await page.route('**/api/sync/v2/meta', r => r.fulfill({ json: { ok: true, ...fixture.meta } }))
   await page.route('**/api/sync/v2', r => r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
-  await page.route('**/api/sync/v2/recovery', async r => {
+  await page.route('**/api/sync/v2/commit/recovery', async r => {
     recoveryWrites++
     await r.abort()
   })
@@ -344,46 +357,3 @@ test('P3b keep-cloud V4 restores only after pinned verification and durable jour
   expect(persisted).toEqual({ chapter: 17, revision: 3, pending: null })
 })
 
-test('P3b keep-cloud V3 explicitly migrates to V4 then restores with CAS', async ({ page }) => {
-  await seed(page)
-  const fixture = await remoteFixture(page, 'v3')
-  let current = fixture.meta
-  let migrated: any = null
-  await page.route('**/api/sync/v2/meta', r => r.fulfill({ json: { ok: true, ...current } }))
-  await page.route('**/api/sync/v2', r => r.fulfill({ json: { ok: true, ...fixture.snapshot } }))
-  await page.route('**/api/sync/v2/recovery', async r => {
-    migrated = r.request().postDataJSON()
-    const bytes = Buffer.from(migrated.payloadBase64, 'base64')
-    const sha = createHash('sha256').update(bytes).digest('hex')
-    current = {
-      ...current, revision: 4, sizeBytes: bytes.length,
-      clientFormatVersion: 'qwerty-backup-v4',
-      logicalFingerprint: migrated.logicalFingerprint,
-      payloadSha256: sha, dataSha256: sha,
-    }
-    await r.fulfill({ json: { ok: true, ...current } })
-  })
-  await page.goto('/?s2-recovery=manage')
-  await archiveBoth(page)
-  await page.locator('select').selectOption('keep-cloud')
-  page.once('dialog', d => d.accept())
-  await page.getByText('⑤ 我已备份两端数据，继续执行选定方向').click()
-  await expect(page.getByText('已完成云端学习数据安全恢复。')).toBeVisible({
-    timeout: 8000,
-  })
-  expect(migrated.recoveryMode).toBe('migrate-v3')
-  expect(migrated.expectedRemoteSha256).toBe(fixture.meta.payloadSha256)
-  await page.goto('/tests/e2e/backup-harness.html')
-  await expect.poll(() => page.evaluate(() =>
-    Boolean((window as any).__backupHarness?.inspect),
-  )).toBe(true)
-  const persisted = await page.evaluate(async () => {
-    const h = (window as any).__backupHarness
-    return {
-      chapter: (await h.inspect()).currentChapter,
-      revision: (await h.loadSyncV2Baseline('p3b-immutable-account')).baseRevision,
-      pending: await h.syncV2PullJournalPort.read(),
-    }
-  })
-  expect(persisted).toEqual({ chapter: 17, revision: 4, pending: null })
-})

@@ -15,7 +15,7 @@ await build({ entryPoints: [resolve(root, 'src/sync/perf-diagnostics.ts')],
 after(() => rmSync(tmp, { recursive: true, force: true }))
 const {
   clearPerfSamples, readPerfSamples, recordPerfSize,
-  startPerfStage, timePerfStage,
+  startPerfStage, timePerfStage, recordV4TransportSample,
 } = await import(pathToFileURL(out).href)
 
 function storage() {
@@ -47,9 +47,9 @@ test('privacy-safe diagnostics only retain stage, flow, durations and byte count
 
 test('bounded and fail-open when sessionStorage unavailable or full', () => {
   globalThis.sessionStorage = storage()
-  for (let i = 0; i < 220; i++) recordPerfSize('sync', 'payload-gzip', i)
-  assert.equal(readPerfSamples().length, 160)
-  assert.equal(readPerfSamples().at(-1).sizeBytes, 219)
+  for (let i = 0; i < 800; i++) recordPerfSize('sync', 'payload-gzip', i)
+  assert.equal(readPerfSamples().length, 768)
+  assert.equal(readPerfSamples().at(-1).sizeBytes, 799)
   globalThis.sessionStorage = {
     getItem() { throw Error('storage unavailable') },
     setItem() { throw Error('storage full') },
@@ -58,4 +58,29 @@ test('bounded and fail-open when sessionStorage unavailable or full', () => {
   assert.doesNotThrow(() => recordPerfSize('sync', 'payload-gzip', 4))
   assert.deepEqual(readPerfSamples(), [])
   assert.doesNotThrow(clearPerfSamples)
+})
+
+test('V4 transport samples preserve fixed phase and attempt, strip secrets', () => {
+  globalThis.sessionStorage = storage()
+  recordV4TransportSample({
+    stage: 'v4-part', partIndex: 7, attempt: 2, outcome: 'failed',
+    elapsedMs: 145.3, sizeBytes: 32768,
+    failureStage: 'blob_readback', failureCategory: 'blob_storage',
+    httpStatus: 503, blobWriteMs: 82, blobReadbackMs: 23,
+    token: 'secret-test-token', url: 'https://private.invalid',
+  })
+  recordV4TransportSample({
+    stage: 'v4-commit', elapsedMs: 2300, outcome: 'ok',
+    partsReadMs: 400, commitCoreMs: 1600, cleanupMs: 200,
+  })
+  const rows = readPerfSamples()
+  assert.equal(rows.length, 2)
+  assert.equal(rows[0].partIndex, 7)
+  assert.equal(rows[0].attempt, 2)
+  assert.equal(rows[0].failureCategory, 'blob_storage')
+  assert.equal(rows[0].blobWriteMs, 82)
+  assert.equal(rows[1].stage, 'v4-commit')
+  assert.equal(rows[1].commitCoreMs, 1600)
+  assert.equal(JSON.stringify(rows).includes('secret-test-token'), false)
+  assert.equal(JSON.stringify(rows).includes('private.invalid'), false)
 })

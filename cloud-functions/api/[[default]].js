@@ -1,9 +1,12 @@
 /* eslint-env node */
+import crypto from 'node:crypto'
 import { getStore } from '@edgeone/pages-blob'
 import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
+import { blocksCircleEtestAccountDeletion, createCircleEtestGateway } from '../_shared/circle/etest-gateway.js'
 import { AppError, createBackendService } from '../_shared/core.js'
 import { isS2WriteEnabled } from '../_shared/s2-write-gate.js'
 import { createEdgeOneBlobStorage } from '../_shared/storage/edgeone-blob.js'
+import { commitV4Upload, receiveV4UploadPart } from '../_shared/v4-http-parts.js'
 
 const TRUSTED_FRONTEND_ORIGINS = [
   'https://qwerty-plus.edgeone.dev',
@@ -66,6 +69,53 @@ function corsHeaders(request, configuredOrigin) {
     : {}
 }
 
+// EdgeOne Maker has repeatedly failed request.body.getReader().read()
+// at 192 KiB even when 32 KiB succeeds. Use the standard Request.arrayBuffer()
+// receive path, then validate the declared 512-KiB size (no Base64 conversion).
+// The Content-Length bound is checked before receiving when available.
+// This changes the body primitive, NOT the request timeout, part size,
+// revision CAS, immutable SHA evidence, or binary Blob layout.
+async function readBinaryPart(request, maxBytes) {
+  const declaredLength = request.headers.get('content-length')
+  if (declaredLength !== null && (!/^\d+$/.test(declaredLength) ||
+      Number(declaredLength) > maxBytes)) {
+    throw new AppError(413, 'request_too_large', 'V4 binary part exceeds limit')
+  }
+  const arrayBuffer = await request.arrayBuffer()
+  if (!arrayBuffer.byteLength || arrayBuffer.byteLength > maxBytes) {
+    throw new AppError(413, 'request_too_large', 'V4 binary part outside limit')
+  }
+  if (declaredLength !== null && Number(declaredLength) !== arrayBuffer.byteLength) {
+    throw new AppError(400, 'invalid_v4_upload_part', 'Binary part declared length mismatch')
+  }
+  return Buffer.from(arrayBuffer)
+}
+
+// Legacy master V4 JSON PUT remains the migration fixture input.
+// EdgeOne's request.text() intermittently fails even for small valid bodies.
+// Receive bounded UTF-8 JSON through the same proven arrayBuffer primitive
+// used by native binary parts. This does NOT encode gzip as Base64 on S2.
+async function readLegacyV4Json(request, maxBytes) {
+  const length = request.headers.get('content-length')
+  if (length !== null &&
+      (!/^\d+$/.test(length) || Number(length) > maxBytes)) {
+    throw new AppError(413, 'request_too_large', 'Legacy V4 JSON body exceeds limit')
+  }
+  const bytes = await request.arrayBuffer()
+  if (bytes.byteLength > maxBytes) {
+    throw new AppError(413, 'request_too_large', 'Legacy V4 JSON body exceeds limit')
+  }
+  if (length !== null && Number(length) !== bytes.byteLength) {
+    throw new AppError(400, 'invalid_json', 'Legacy V4 JSON length mismatch')
+  }
+  if (!bytes.byteLength) return {}
+  try {
+    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
+  } catch {
+    throw new AppError(400, 'invalid_json', 'Request body must contain valid JSON')
+  }
+}
+
 async function readJson(request, maxBytes) {
   const text = await request.text()
 
@@ -110,7 +160,9 @@ function makeService(env, storage) {
   return createBackendService({
     storage,
     sessionTtlSeconds: numberEnv(env.SESSION_TTL_SECONDS, 7 * 24 * 60 * 60),
-    maxSyncBytes: numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024),
+    maxSyncBytes: numberEnv(env.MAX_SYNC_BYTES, 16 * 1024 * 1024),
+    multiSessionEnabled: env.MULTI_DEVICE_AUTH_ENABLED === 'true',
+    eventPilotEnabled: env.MULTI_DEVICE_EVENT_PILOT_ENABLED === 'true',
   })
 }
 
@@ -129,7 +181,9 @@ async function requireS2WriteAccount(service, request, env) {
     throw new AppError(503, 's2_writes_temporarily_disabled',
       'Cloud V4 writes are temporarily unavailable')
   }
-  return token
+  // Return the verified identity to avoid a second EdgeOne Blob-backed
+  // session lookup within the same authorized HTTP request.
+  return { token, account: session }
 }
 
 async function enforceAuthRateLimit(context, storage, env, cors) {
@@ -182,10 +236,16 @@ export async function onRequest(context) {
       headers: {
         ...cors,
         'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-        'Access-Control-Allow-Headers': 'Authorization,Content-Type',
+        'Access-Control-Allow-Headers': 'Authorization,Content-Type,X-Qwerty-Payload-Sha256,X-Qwerty-Part-Sha256,X-Qwerty-Part-Index,X-Qwerty-Part-Count,X-Qwerty-Base-Revision,X-Qwerty-Logical-Fingerprint,X-Qwerty-Device-Id',
         'Access-Control-Max-Age': '86400',
       },
     })
+  }
+
+  // No Circle store/session initialization on production and unenabled hosts.
+  if ((path === '/circle/v2' || path.startsWith('/circle/v2/')) &&
+      (url.hostname !== 'etest.edgeone.dev' || env.CIRCLE_ETEST_ENABLED !== 'true')) {
+    return json({ ok: false, error: 'not_found' }, 404, cors)
   }
 
   try {
@@ -195,7 +255,12 @@ export async function onRequest(context) {
           ok: true,
           service: 'qwerty-sync-gateway',
           apiVersion: 1,
-          authMode: 'single-active-session',
+          // Millisecond-resolution, uncached origin execution time. This is
+          // an estimate for clock-skew preflight, not a signed event timestamp.
+          serverTimeMs: Date.now(),
+          authMode: env.MULTI_DEVICE_AUTH_ENABLED === 'true'
+            ? 'independent-device-sessions-pilot'
+            : 'single-active-session',
           runtime: process.version,
           capabilities: [
             'snapshot-retention-v1',
@@ -210,6 +275,13 @@ export async function onRequest(context) {
             'plain-gzip-sync-v2',
             'learning-state-backup-v3',
             'backup-v4-authenticated-write-ga',
+            'edgeone-same-origin-e2e-v1',
+            'v4-blob-stage-trace-20261014',
+            'v4-http-multipart-v1',
+            'v4-http-stage-trace-v1',
+            'v4-http-binary-192k-v1',
+            'v4-end-to-end-binary-v1',
+            'v4-binary-direct-512k-v1',
             'backup-v3-explicit-migration-only',
             'account-delete-v1',
             'duplicate-register-protection-v1',
@@ -223,7 +295,17 @@ export async function onRequest(context) {
     const storage = makeStorage(env)
     const service = makeService(env, storage)
     const bodyLimit =
-      Math.ceil(numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024) * 1.5) + 256 * 1024
+      Math.ceil(numberEnv(env.MAX_SYNC_BYTES, 16 * 1024 * 1024) * 1.5) + 256 * 1024
+
+    // Only the explicit etest pilot can reach the Circle Cloud Function.
+    // The Circle Store is isolated from the V4 backup namespace.
+    if (path === '/circle/v2' || path.startsWith('/circle/v2/')) {
+      const result = await createCircleEtestGateway({
+        backend: service, getStore, rateStorage: storage,
+      }).handle(context)
+      for (const [key, value] of Object.entries(cors)) result.headers.set(key, value)
+      return result
+    }
 
     if (
       request.method === 'POST' &&
@@ -261,7 +343,23 @@ export async function onRequest(context) {
       return json({ ok: true, ...(await service.me(bearer(request))) }, 200, cors)
     }
 
+    if (request.method === 'POST' && path === '/auth/logout') {
+      return json({ ok: true, ...(await service.revokeSession(bearer(request))) }, 200, cors)
+    }
+
     if (request.method === 'DELETE' && path === '/auth/account') {
+      // Keep pilot Circle identities undeletable until an auditable scrub,
+      // even after the pilot flag is disabled. All other V4 accounts unchanged.
+      if (url.hostname === 'etest.edgeone.dev' &&
+          String(env.CIRCLE_ETEST_USER_IDS || '').trim()) {
+        const me = await service.me(bearer(request))
+        if (blocksCircleEtestAccountDeletion({
+          hostname: url.hostname, env, userId: me.user?.userId,
+        })) {
+          throw new AppError(409, 'circle_etest_deletion_requires_cleanup',
+            'Circle test account cleanup must complete before account deletion')
+        }
+      }
       const body = await readJson(request, 64 * 1024)
       return json(
         {
@@ -290,16 +388,221 @@ export async function onRequest(context) {
       )
     }
 
+
+    // M3.2: chained per-device history. Does not authorize V4 restore/sync.
+    if (request.method === 'POST' && path === '/sync/events/v2') {
+      const body = await readJson(request, 110 * 1024)
+      return json({ ok: true,
+        ...(await service.publishChainedLearningBatch(bearer(request), body)) },
+        201, cors)
+    }
+    if (request.method === 'GET' && path === '/sync/events/v2') {
+      const selector = {
+        deviceId: url.searchParams.get('deviceId'),
+        batchId: url.searchParams.get('batchId'),
+        sha256: url.searchParams.get('sha256'),
+        sequence: Number(url.searchParams.get('sequence')),
+      }
+      return json({ ok: true,
+        ...(await service.readChainedLearningBatch(bearer(request), selector)) },
+        200, cors)
+    }
+    if (request.method === 'GET' && path === '/sync/events/v2/observed') {
+      return json({ ok: true,
+        ...(await service.observeChainedLearningReceipts(bearer(request))) }, 200, cors)
+    }
+    if (request.method === 'POST' && path === '/sync/events/v2/verify') {
+      const body = await readJson(request, 8 * 1024)
+      return json({ ok: true,
+        ...(await service.verifyChainedLearningHistory(bearer(request), body)) },
+        200, cors)
+    }
+
+    // M3.5: cross-device witnessed prefixes only. Never claims discovery
+    // completeness and never authorizes a V4 merge or publication.
+    if (request.method === 'POST' && path === '/sync/events/v2/verify-set') {
+      const body = await readJson(request, 8 * 1024)
+      return json({ ok: true,
+        ...(await service.verifyWitnessedChainSet(bearer(request), body)) },
+        200, cors)
+    }
+
+    // Independent immutable event pilot: separate from old V4 revision writer.
+    // There is deliberately no "list complete" or auto-restore endpoint yet.
+    if (request.method === 'POST' && path === '/sync/events/v1') {
+      const body = await readJson(request, 110 * 1024)
+      return json({ ok: true,
+        ...(await service.publishLearningBatch(bearer(request), body)) }, 201, cors)
+    }
+    if (request.method === 'GET' && path === '/sync/events/v1/observed') {
+      return json({ ok: true,
+        ...(await service.observeLearningBatchReceipts(bearer(request))) }, 200, cors)
+    }
+    if (request.method === 'GET' && path === '/sync/events/v1') {
+      return json({ ok: true,
+        ...(await service.readLearningBatch(bearer(request), {
+          deviceId: url.searchParams.get('deviceId'),
+          batchId: url.searchParams.get('batchId'),
+          sha256: url.searchParams.get('sha256'),
+        })) }, 200, cors)
+    }
+
+    // Single-request fast path for a SINGLE <=512-KiB native gzip chunk.
+    // No separate staging/commit HTTP round trip; the ordinary V4 service
+    // still performs six-table, identity, fingerprint and revision-CAS
+    // validation, writing native 512-KiB Blob revision objects.
+    // An ambiguous response MUST NOT trigger an automatic commit retry.
+    if (request.method === 'POST' && path === '/sync/v2/binary/direct') {
+      const { token } = await requireS2WriteAccount(service, request, env)
+      const contentType = request.headers.get('content-type')?.split(';')[0]
+        .trim().toLowerCase()
+      if (contentType !== 'application/octet-stream') {
+        throw new AppError(415, 'unsupported_v4_part_encoding',
+          'Direct V4 upload must be native binary')
+      }
+      const revision = request.headers.get('x-qwerty-base-revision') || ''
+      const fingerprint = request.headers.get('x-qwerty-logical-fingerprint') || ''
+      const declaredSha = request.headers.get('x-qwerty-payload-sha256') || ''
+      const deviceId = request.headers.get('x-qwerty-device-id') || undefined
+      if (!/^\d+$/.test(revision) || !Number.isSafeInteger(Number(revision)) ||
+          !/^[a-f0-9]{64}$/.test(fingerprint) ||
+          !/^[a-f0-9]{64}$/.test(declaredSha) ||
+          (deviceId && deviceId.length > 128)) {
+        throw new AppError(400, 'invalid_v4_direct_metadata',
+          'Direct V4 write has invalid bounded metadata')
+      }
+      let payloadBytes
+      try {
+        payloadBytes = await readBinaryPart(request, 512 * 1024)
+      } catch (error) {
+        if (error instanceof AppError) throw error
+        // No write has started at this point. By contrast, failures after
+        // service.putSyncV4Binary remain potentially committed and fail closed.
+        throw new AppError(503, 'v4_direct_body_read_failed',
+          'Direct V4 request was not received; no commit was attempted')
+      }
+      if (crypto.createHash('sha256').update(payloadBytes).digest('hex') !== declaredSha) {
+        throw new AppError(400, 'v4_direct_payload_sha_mismatch',
+          'Direct V4 gzip bytes do not match declared SHA')
+      }
+      return json({ ok: true, ...(await service.putSyncV4Binary(token, {
+        baseRevision: Number(revision),
+        logicalFingerprint: fingerprint, payloadBytes,
+        ...(deviceId ? { deviceId } : {}),
+        clientFormatVersion: 'qwerty-backup-v4',
+      })) }, 200, cors)
+    }
+
+    // Bounded HTTP parts avoid the EdgeOne request.text() large-body limit.
+    // A part never advances the published V4 revision.
+    if (request.method === 'POST' && path === '/sync/v2/parts') {
+      const { account } = await requireS2WriteAccount(service, request, env)
+      let body
+      const contentType = request.headers.get('content-type')?.split(';')[0]
+        .trim().toLowerCase()
+      try {
+        if (contentType === 'application/octet-stream') {
+          const indexHeader = request.headers.get('x-qwerty-part-index')
+          const countHeader = request.headers.get('x-qwerty-part-count')
+          const declaredChunk = request.headers.get('x-qwerty-chunk-bytes')
+          const wirePartBytes = 512 * 1024
+          if (declaredChunk !== String(wirePartBytes)) {
+            throw new AppError(400, 'invalid_v4_upload_part',
+              'Binary V4 requires 512-KiB HTTP parts')
+          }
+          // Reject malformed metadata without trusting parseInt's prefix parsing.
+          if (!/^\d+$/.test(indexHeader || '') || !/^\d+$/.test(countHeader || '')) {
+            throw new AppError(400, 'invalid_v4_upload_part', 'Invalid binary part selector')
+          }
+          body = {
+            payloadSha256: request.headers.get('x-qwerty-payload-sha256'),
+            partSha256: request.headers.get('x-qwerty-part-sha256'),
+            index: Number(indexHeader), count: Number(countHeader),
+            wirePartBytes, data: await readBinaryPart(request, wirePartBytes),
+          }
+          // 192 parts was the old 32-KiB transport limit, not permission to
+          // stage ~36 MiB when this account's max compressed gzip is 4 MiB.
+          const maxBytes = numberEnv(env.MAX_SYNC_BYTES, 16 * 1024 * 1024)
+          if (body.count > Math.ceil(maxBytes / body.wirePartBytes) ||
+              (body.index === body.count - 1 &&
+                (body.count - 1) * body.wirePartBytes + body.data.length > maxBytes)) {
+            throw new AppError(413, 'request_too_large',
+              'V4 binary upload exceeds compressed account quota')
+          }
+        } else if (contentType === 'application/json') {
+          // Compatibility for open tabs using legacy 32-KiB Base64 JSON parts.
+          body = await readJson(request, 48 * 1024)
+        } else {
+          throw new AppError(415, 'unsupported_v4_part_encoding',
+            'V4 parts must use octet-stream or legacy JSON')
+        }
+      } catch (error) {
+        if (error instanceof AppError) throw error
+        throw new AppError(503, 'v4_upload_body_read_failed',
+          'Unable to receive bounded V4 part; retry the identical part')
+      }
+      return json({ ok: true,
+        ...(await receiveV4UploadPart(storage, account.user.userId, body)) },
+        200, cors)
+    }
+    if (request.method === 'POST' &&
+        (path === '/sync/v2/commit' || path === '/sync/v2/commit/recovery')) {
+      const { token, account } = await requireS2WriteAccount(service, request, env)
+      // Maker request.text() can fail even on small JSON. Use the bounded
+      // arrayBuffer receiver already proven for legacy V4 and native parts.
+      // Ambiguous responses remain fail-closed: never retry the final commit.
+      const body = await readLegacyV4Json(request, 16 * 1024)
+      const recovery = path === '/sync/v2/commit/recovery'
+      const maxBytes = numberEnv(env.MAX_SYNC_BYTES, 16 * 1024 * 1024)
+      return json({ ok: true,
+        ...(await commitV4Upload(storage, service, token, account.user.userId,
+          body, maxBytes, recovery)) }, 200, cors)
+    }
+
     if (request.method === 'PUT' && path === '/sync/v2/recovery') {
-      const token = await requireS2WriteAccount(service, request, env)
+      const { token } = await requireS2WriteAccount(service, request, env)
       const body = await readJson(request, bodyLimit)
       return json({ ok: true, ...(await service.putSyncV4Recovery(token, body)) }, 200, cors)
     }
 
     if (request.method === 'PUT' && path === '/sync/v2') {
-      const token = await requireS2WriteAccount(service, request, env)
-      const body = await readJson(request, bodyLimit)
+      const { token } = await requireS2WriteAccount(service, request, env)
+      let body
+      try {
+        body = await readLegacyV4Json(request, bodyLimit)
+      } catch (error) {
+        if (error instanceof AppError) throw error
+        throw new AppError(503, 'snapshot_body_read_failed',
+          'Unable to receive V4 request; check remote metadata before retry')
+      }
       return json({ ok: true, ...(await service.putSyncV4(token, body)) }, 200, cors)
+    }
+
+    // Authenticated pinned binary download; every part comes directly from
+    // the immutable native Blob object and is SHA checked before response.
+    if (request.method === 'GET' && path === '/sync/v2/binary/manifest') {
+      return json({ ok: true,
+        ...(await service.getSyncV4BinaryManifest(bearer(request))) }, 200, cors)
+    }
+    if (request.method === 'GET' && path === '/sync/v2/binary/part') {
+      const revisionParam = url.searchParams.get('revision') || ''
+      const indexParam = url.searchParams.get('index') || ''
+      if (!/^\d+$/.test(revisionParam) || !/^\d+$/.test(indexParam)) {
+        throw new AppError(400, 'invalid_binary_part_selector',
+          'Binary revision and part index must be decimal integers')
+      }
+      const bytes = await service.getSyncV4BinaryPart(bearer(request),
+        Number(revisionParam), url.searchParams.get('sha') || '', Number(indexParam))
+      return new Response(bytes, { status: 200, headers: {
+        ...cors, 'Content-Type': 'application/octet-stream',
+        'Content-Length': String(bytes.length), 'Cache-Control': 'no-store',
+      } })
+    }
+    if (request.method === 'POST' && path === '/sync/v2/binary/migrate') {
+      const { token } = await requireS2WriteAccount(service, request, env)
+      const expected = await readJson(request, 4 * 1024)
+      return json({ ok: true,
+        ...(await service.migrateSyncV4Binary(token, expected)) }, 200, cors)
     }
 
     if (request.method === 'GET' && path === '/sync/v2/meta') {
@@ -319,8 +622,8 @@ export async function onRequest(context) {
     }
 
     if (request.method === 'PUT' && path === '/sync') {
-      const body = await readJson(request, bodyLimit)
-      return json({ ok: true, ...(await service.putSync(bearer(request), body)) }, 200, cors)
+      throw new AppError(410, 'legacy_sync_retired',
+        'Legacy cloud writes are retired; only V4 sync is supported')
     }
 
     throw new AppError(404, 'not_found', 'Not found')

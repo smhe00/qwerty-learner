@@ -2,16 +2,8 @@ name: Production Multi-Client E2E Gate
 
 # Runs against the ALREADY DEPLOYED master/EdgeOne site.
 # It never syncs product/main to master or requests a Maker build.
+# Obsolete production-only verification. No automatic main cloud writes.
 on:
-  push:
-    branches:
-      - product/main
-    paths:
-      - '.github/workflows/production-multi-client-gate.yml'
-      - 'tests/e2e/production-multi-client.spec.ts'
-      - 'tests/e2e/production-multi-client.config.ts'
-      - 'tests/cloud/resolve-production-base.mjs'
-      - 'tests/cloud/cleanup-production-multi-client.mjs'
   workflow_dispatch:
 
 permissions:
@@ -23,6 +15,7 @@ concurrency:
 
 jobs:
   multi-client:
+    if: github.ref_name == 'master'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:

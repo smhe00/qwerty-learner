@@ -7,7 +7,7 @@ if (!targetSha || !/^[a-f0-9]{40}$/.test(targetSha)) throw new Error('Missing ve
 test('published Pages: matching SHA, cloud disabled, Learn route and reload durability', async ({ page, request }) => {
   test.setTimeout(120_000)
   await expect.poll(async () => {
-    const result = await request.get(site + 'source-commit.txt', { failOnStatusCode: false })
+    const result = await request.get(site + 'source-commit.txt?pages_probe=' + targetSha + '-' + Date.now(), { failOnStatusCode: false })
     return result.ok() ? (await result.text()).trim() : ''
   }, { timeout: 90000, intervals: [1000, 2000, 5000] }).toBe(targetSha)
   await page.goto(site, { waitUntil: 'domcontentloaded' })
@@ -38,7 +38,7 @@ test('published Pages: matching SHA, cloud disabled, Learn route and reload dura
 test('published Pages: real Learn keystrokes produce one durable record across refresh', async ({ page, request }) => {
   test.setTimeout(120_000)
   await expect.poll(async () => {
-    const response = await request.get(site + 'source-commit.txt', { failOnStatusCode: false })
+    const response = await request.get(site + 'source-commit.txt?pages_probe=' + targetSha + '-' + Date.now(), { failOnStatusCode: false })
     return response.ok() ? (await response.text()).trim() : ''
   }, { timeout: 90_000, intervals: [1000, 2000, 5000] }).toBe(targetSha)
 
@@ -78,13 +78,17 @@ test('published Pages: real Learn keystrokes produce one durable record across r
   await page.goto(site, { waitUntil: 'domcontentloaded' })
   await page.getByRole('button', { name: 'Learn', exact: true }).click()
   await expect(page).toHaveURL(/\/qwerty-learner\/learn\/?$/)
-  await expect(page.getByText('按任意键开始')).toBeVisible()
+  await expect(page.getByText('按任意键开始 Learn；Enter 暂停或继续。')).toBeVisible()
+  // Learn's landing page is deliberately read-only. No WordComponent exists
+  // until a real user start triggers preparation; querying the word before
+  // start was an obsolete Typing-style test and failed every Pages build.
+  await page.keyboard.press('a') // landing start key is consumed, not typed
   const wordNode = page.locator('[data-typing-word]:visible').first()
-  await expect(wordNode).toHaveAttribute('data-typing-word', /\S+/)
+  await expect(wordNode).toHaveAttribute('data-typing-word', /\S+/, { timeout: 30_000 })
+  await expect(wordNode).toHaveAttribute('data-typing-active', 'true', { timeout: 10_000 })
   const word = await wordNode.getAttribute('data-typing-word')
   expect(word).toBeTruthy()
 
-  await page.keyboard.press('a') // start key is not part of the spelling
   await page.keyboard.type(word!)
   await expect.poll(async () => {
     const state = await progress()
@@ -105,7 +109,7 @@ test('published Pages: real Learn keystrokes produce one durable record across r
 test('published Pages: Typing uses real key input and advances independently', async ({ page, request }) => {
   test.setTimeout(90_000)
   await expect.poll(async () => {
-    const response = await request.get(site + 'source-commit.txt', { failOnStatusCode: false })
+    const response = await request.get(site + 'source-commit.txt?pages_probe=' + targetSha + '-' + Date.now(), { failOnStatusCode: false })
     return response.ok() ? (await response.text()).trim() : ''
   }, { timeout: 60_000, intervals: [1000, 2000, 5000] }).toBe(targetSha)
 
@@ -129,10 +133,12 @@ test('published Pages: Typing uses real key input and advances independently', a
  * The small donation QR must already be in the app bundle; opening either
  * entry point must not initiate a separate image fetch or show a blank QR.
  */
-test('published Pages: donation QR is visible immediately after hard refresh without image request', async ({ page, request }) => {
+test('published Pages: donation QR is visible immediately after hard refresh without image request', async ({ page, request, browserName }) => {
+  // Chrome DevTools Protocol is Chromium-only; other browsers exercise the shared page flows above.
+  test.skip(browserName !== 'chromium', 'CDP network cache control is Chromium-only')
   test.setTimeout(120_000)
   await expect.poll(async () => {
-    const response = await request.get(site + 'source-commit.txt', { failOnStatusCode: false })
+    const response = await request.get(site + 'source-commit.txt?pages_probe=' + targetSha + '-' + Date.now(), { failOnStatusCode: false })
     return response.ok() ? (await response.text()).trim() : ''
   }, { timeout: 90_000, intervals: [1000, 2000, 5000] }).toBe(targetSha)
 
