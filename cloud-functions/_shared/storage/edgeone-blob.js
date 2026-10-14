@@ -529,58 +529,24 @@ export function createEdgeOneBlobStorage(store) {
         return setBinaryOnlyIfNew(binaryUploadKey(userId, payloadSha256,
           content.count, index, partSha256), content.data)
       }
-      const key = uploadKey(userId, payloadSha256, index, partSha256)
-      if (content?.version !== 2) return setJsonOnlyIfNew(key, content)
-      // A 192-KiB raw binary HTTP part expands to 256 KiB of Base64.
-      // Keep EACH Blob JSON object <= 128 KiB of Base64, respecting the
-      // existing Maker Blob JSON envelope; no native binary Blob API assumed.
-      if (typeof content.data !== 'string' || !content.data.length ||
-          content.data.length > 256 * 1024 || content.data.length % 4 !== 0) {
-        throw new Error('Invalid binary staging content')
-      }
-      const size = 128 * 1024
-      const count = Math.ceil(content.data.length / size)
-      for (let segmentIndex = 0; segmentIndex < count; segmentIndex++) {
-        const candidate = { ...content, data: content.data.slice(
-          segmentIndex * size, (segmentIndex + 1) * size),
-        segmentIndex, segmentCount: count }
-        const segmentKey = key.replace(/\.json$/, '-' + segmentIndex + '.json')
-        if (!await setJsonOnlyIfNew(segmentKey, candidate)) return false
-      }
-      return true
+      if (content?.version !== 1) throw new Error('Unsupported V4 upload stage')
+      return setJsonOnlyIfNew(uploadKey(userId, payloadSha256, index, partSha256),
+        content)
     },
 
-    async getV4UploadPart(userId, payloadSha256, index, partSha256, count, wirePartBytes) {
+    async getV4UploadPart(userId, payloadSha256, index, partSha256, count,
+      wirePartBytes) {
       if (Number.isSafeInteger(count) && count >= 1 && count <= 192) {
         const bytes = await strongBinary(binaryUploadKey(
           userId, payloadSha256, count, index, partSha256))
-        if (bytes !== null) return { version: 3, index, count,
-          payloadSha256, partSha256, data: bytes,
-          ...(wirePartBytes === undefined ? {} : { wirePartBytes }) }
+        if (bytes !== null) return {
+          version: 3, index, count, payloadSha256, partSha256, data: bytes,
+          ...(wirePartBytes === undefined ? {} : { wirePartBytes }),
+        }
       }
-      const key = uploadKey(userId, payloadSha256, index, partSha256)
-      const old = await strongJson(key)
-      if (old !== null) return old
-      const first = await strongJson(key.replace(/\.json$/, '-0.json'))
-      if (first === null) return null
-      if (first.version !== 2 || first.segmentIndex !== 0 ||
-          !Number.isSafeInteger(first.segmentCount) ||
-          first.segmentCount < 1 || first.segmentCount > 2) return null
-      const segments = [first]
-      for (let n = 1; n < first.segmentCount; n++) {
-        const next = await strongJson(key.replace(/\.json$/, '-' + n + '.json'))
-        if (next === null || next.version !== 2 ||
-            next.segmentCount !== first.segmentCount ||
-            next.segmentIndex !== n || next.index !== index ||
-            next.count !== first.count || next.partSha256 !== partSha256 ||
-            next.payloadSha256 !== payloadSha256 ||
-            typeof next.data !== 'string') return null
-        segments.push(next)
-      }
-      const rest = { ...first }
-      delete rest.segmentIndex
-      delete rest.segmentCount
-      return { ...rest, data: segments.map(item => item.data).join('') }
+      // Backward reading of original 32-KiB Base64 JSON stages is separate
+      // from the retired 192-KiB binary staging format.
+      return strongJson(uploadKey(userId, payloadSha256, index, partSha256))
     },
 
     async deleteV4UploadParts(userId, payloadSha256) {
