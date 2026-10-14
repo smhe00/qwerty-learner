@@ -204,6 +204,9 @@ type V4PutInput = {
   deviceId?: string
   clientFormatVersion: 'qwerty-backup-v4'
 }
+export type V4BinaryPutInput = Omit<V4PutInput, 'payloadBase64'> & {
+  payloadBytes: Uint8Array
+}
 type V4RecoveryInput = V4PutInput & {
   recoveryMode: 'replace-v4'
   expectedRemoteFormat: 'qwerty-backup-v4'
@@ -282,9 +285,12 @@ function v4Record(
  * Unknown final commit outcome MUST be reconciled by remote meta first.
  */
 async function putV4Multipart(
-  token: string, input: V4PutInput | V4RecoveryInput, recovery: boolean,
+  token: string, input: V4PutInput | V4RecoveryInput | V4BinaryPutInput,
+  recovery: boolean,
 ): Promise<SyncMetaResponse> {
-  const plan = await planV4UploadParts(input.payloadBase64)
+  const compressed = 'payloadBytes' in input ? input.payloadBytes :
+    Uint8Array.from(atob(input.payloadBase64), char => char.charCodeAt(0))
+  const plan = await planV4UploadParts(compressed)
   for (const part of plan.parts) {
     let attempt = 0
     const response = await retryIdenticalV4Part(
@@ -333,7 +339,9 @@ async function putV4Multipart(
         'Cloud part acknowledgement is unverified; local V4 snapshot was preserved')
     }
   }
-  const { payloadBase64: _payload, ...metadata } = input
+  const metadata = { ...input } as Record<string, unknown>
+  delete metadata.payloadBase64
+  delete metadata.payloadBytes
   const started = v4TimeNow()
   try {
     const reply = await request<V4CommitReply>(
@@ -361,6 +369,136 @@ export function putSyncV2(token: string, input: V4PutInput) {
   return request<SyncMetaResponse>('/api/sync/v2', {
     method: 'PUT', token, body: input,
   })
+}
+
+/** New Sync writer: gzip remains raw Uint8Array from local snapshot
+ * through HTTP, Maker SHA verification and native Blob storage.
+ */
+export function putSyncV2Binary(token: string, input: V4BinaryPutInput) {
+  return putV4Multipart(token, input, false)
+}
+
+type BinaryManifest = SyncMetaResponse & {
+  payloadEncoding: 'binary'
+  partSha256s: string[]
+  count: number
+  chunkBytes: number
+}
+
+export async function getSyncV2SnapshotBinary(token: string): Promise<{
+  payloadEncoding: 'binary'
+  payloadBytes: Uint8Array
+} & RemoteSyncMeta> {
+  const manifest = await request<BinaryManifest>('/api/sync/v2/binary/manifest', { token })
+  if (!manifest.hasData || manifest.payloadEncoding !== 'binary' ||
+      !manifest.payloadSha256 || !/^[a-f0-9]{64}$/.test(manifest.payloadSha256) ||
+      !Number.isSafeInteger(manifest.count) || manifest.count < 1 ||
+      manifest.count > 64 || manifest.chunkBytes !== 192 * 1024 ||
+      manifest.partSha256s?.length !== manifest.count ||
+      !manifest.partSha256s.every(sha => /^[a-f0-9]{64}$/.test(sha)) ||
+      manifest.sizeBytes > 4 * 1024 * 1024 || manifest.sizeBytes < 1) {
+    throw new SyncApiError(503, 'invalid_binary_manifest',
+      'Cloud binary V4 manifest failed structural validation')
+  }
+  const parts: Uint8Array[] = []
+  let total = 0
+  for (let index = 0; index < manifest.count; index++) {
+    const params = new URLSearchParams({
+      revision: String(manifest.revision),
+      sha: manifest.payloadSha256,
+      index: String(index),
+    })
+    const abort = new AbortController()
+    const deadline = setTimeout(() => abort.abort(), 90_000)
+    let response: Response
+    let bytes: Uint8Array
+    try {
+      response = await fetch(apiUrl('/api/sync/v2/binary/part?' + params), {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: abort.signal,
+        cache: 'no-store',
+      })
+      if (!response.ok) throw new SyncApiError(response.status,
+        'v4_binary_part_failed', 'Pinned binary V4 download failed')
+      bytes = new Uint8Array(await response.arrayBuffer())
+    } finally {
+      clearTimeout(deadline)
+    }
+    if (!bytes.length || bytes.length > manifest.chunkBytes ||
+        (index !== manifest.count - 1 && bytes.length !== manifest.chunkBytes)) {
+      throw new SyncApiError(503, 'v4_binary_part_size_mismatch',
+        'Binary V4 part has incorrect bounded size')
+    }
+    const digest = await crypto.subtle.digest('SHA-256', bytes)
+    const sha = [...new Uint8Array(digest)]
+      .map(x => x.toString(16).padStart(2, '0')).join('')
+    if (sha !== manifest.partSha256s[index]) {
+      throw new SyncApiError(503, 'v4_binary_part_sha_mismatch',
+        'Binary V4 part checksum differs from pinned manifest')
+    }
+    total += bytes.length
+    if (total > manifest.sizeBytes) {
+      throw new SyncApiError(503, 'v4_binary_total_size_mismatch',
+        'Binary V4 download exceeds declared compressed bytes')
+    }
+    parts.push(bytes)
+  }
+  if (total !== manifest.sizeBytes) {
+    throw new SyncApiError(503, 'v4_binary_total_size_mismatch',
+      'Binary V4 download is incomplete')
+  }
+  const all = new Uint8Array(total)
+  let offset = 0
+  for (const part of parts) { all.set(part, offset); offset += part.length }
+  const digest = await crypto.subtle.digest('SHA-256', all)
+  const sha = [...new Uint8Array(digest)].map(x =>
+    x.toString(16).padStart(2, '0')).join('')
+  if (sha !== manifest.payloadSha256) {
+    throw new SyncApiError(503, 'v4_binary_total_sha_mismatch',
+      'Complete binary V4 download failed SHA verification')
+  }
+  return { ...manifest, payloadEncoding: 'binary', payloadBytes: all }
+}
+
+/** One guarded manual Sync transparently migrates a legacy Base64 Blob
+ * revision to native binary with no learning-state mutation. A failed/ambiguous
+ * migration is reconciled using fresh cloud metadata before continuing.
+ */
+export async function getSyncV2MetaWithBinaryMigration(token: string) {
+  const prior = await getSyncV2Meta(token)
+  if (!prior.hasData || prior.clientFormatVersion !== 'qwerty-backup-v4' ||
+      prior.storageEncoding === 'binary') return prior
+  if (!prior.payloadSha256 || !prior.logicalFingerprint) {
+    throw new SyncApiError(409, 'v4_binary_migration_missing_evidence',
+      'Legacy cloud revision has no verified V4 SHA or fingerprint')
+  }
+  try {
+    await request<SyncMetaResponse>('/api/sync/v2/binary/migrate', {
+      method: 'POST', token, body: {
+        baseRevision: prior.revision,
+        payloadSha256: prior.payloadSha256,
+        logicalFingerprint: prior.logicalFingerprint,
+      },
+    })
+  } catch (error) {
+    // A lost migration response can still mean the immutable binary revision
+    // committed. Only a fresh, verified meta record resolves the ambiguity.
+    const current = await getSyncV2Meta(token)
+    if (current.storageEncoding !== 'binary' ||
+        current.payloadSha256 !== prior.payloadSha256 ||
+        current.logicalFingerprint !== prior.logicalFingerprint ||
+        current.revision !== prior.revision + 1) throw error
+    return current
+  }
+  const current = await getSyncV2Meta(token)
+  if (current.storageEncoding !== 'binary' ||
+      current.payloadSha256 !== prior.payloadSha256 ||
+      current.logicalFingerprint !== prior.logicalFingerprint ||
+      current.revision !== prior.revision + 1) {
+    throw new SyncApiError(409, 'v4_binary_migration_changed',
+      'Cloud migration changed protected revision evidence')
+  }
+  return current
 }
 
 /** Explicit recovery retains its original server confirmation preconditions. */
