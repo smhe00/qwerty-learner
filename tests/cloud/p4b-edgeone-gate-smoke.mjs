@@ -308,6 +308,35 @@ try {
   assert.equal((await api('/api/sync/v2/meta', 'GET', undefined, first.token)).value?.revision, 2)
   console.log('Second unlisted account independent V4 write: PASS')
 
+  // One-click migration of an existing Base64 cloud revision is a separate
+  // storage-only CAS step. It must preserve the exact gzip SHA and the
+  // learning-state logical fingerprint, then become idempotent. All accounts
+  // here are disposable; never migrate a real user's account from CI.
+  const oldSecond = await api('/api/sync/v2/meta', 'GET', undefined, second.token)
+  assert.equal(oldSecond.value?.storageEncoding, 'base64')
+  const pinnedOld = {
+    baseRevision: oldSecond.value.revision,
+    payloadSha256: oldSecond.value.payloadSha256,
+    logicalFingerprint: oldSecond.value.logicalFingerprint,
+  }
+  const migrated = await api('/api/sync/v2/binary/migrate', 'POST',
+    pinnedOld, second.token)
+  expectCode(migrated, 200, null, 'legacy V4 to binary migration')
+  assert.equal(migrated.value?.storageEncoding, 'binary')
+  assert.equal(migrated.value?.revision, oldSecond.value.revision + 1)
+  assert.equal(migrated.value?.payloadSha256, oldSecond.value.payloadSha256)
+  assert.equal(migrated.value?.logicalFingerprint, oldSecond.value.logicalFingerprint)
+  const migratedBytes = await getBinaryV4(second.token, migrated.value)
+  assert.deepEqual(migratedBytes,
+    Buffer.from(v4Body(second, 0, 'other-account').payloadBase64, 'base64'),
+    'migration must preserve byte-exact V4 gzip')
+  const again = await api('/api/sync/v2/binary/migrate', 'POST',
+    pinnedOld, second.token)
+  expectCode(again, 200, null, 'idempotent second binary migration')
+  assert.equal(again.value?.migrated, false)
+  assert.equal(again.value?.revision, migrated.value.revision)
+  console.log('Existing V4 one-action binary migration, SHA and idempotence: PASS')
+
   // V4-only stress: exercise real Blob upload at a size comparable to the
   // intermittent production recovery failures, without creating V3 records.
   // A transport 500 may be ambiguous; inspect remote metadata READ-ONLY
