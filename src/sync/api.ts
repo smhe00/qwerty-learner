@@ -208,7 +208,9 @@ type V4RecoveryInput = V4PutInput & {
 const V4_MULTIPART_THRESHOLD_CHARS = 128 * 1024
 
 type V4Timings = Pick<PerfSample, 'blobWriteMs' | 'blobReadbackMs' |
-  'partsReadMs' | 'commitCoreMs' | 'cleanupMs' | 'serverTotalMs'>
+  'partsReadMs' | 'commitCoreMs' | 'cleanupMs' | 'serverTotalMs' |
+  'revisionWriteMs' | 'revisionReadbackMs' | 'revisionManifestMs' |
+  'revisionChunkCount'>
 type V4StageDetails = { failureStage?: PerfSample['failureStage']; timings?: V4Timings }
 type V4PartReply = { ok: true; received: true; payloadSha256: string;
   partSha256: string; index: number; timings?: V4Timings }
