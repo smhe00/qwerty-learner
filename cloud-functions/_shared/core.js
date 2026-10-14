@@ -1054,6 +1054,7 @@ export function createBackendService({
           : null,
       deviceId: snapshot.deviceId || null,
       clientFormatVersion: snapshot.clientFormatVersion || null,
+      storageEncoding: snapshot.payloadEncoding === 'binary' ? 'binary' : 'base64',
     }
   }
 
@@ -1095,7 +1096,9 @@ export function createBackendService({
     return {
       ...metaFromSnapshot(current.snapshot),
       payloadEncoding: 'base64',
-      payloadBase64: current.snapshot.payloadBase64,
+      payloadBase64: current.snapshot.payloadBase64 ||
+        (Buffer.isBuffer(current.snapshot.payloadBytes)
+          ? current.snapshot.payloadBytes.toString('base64') : null),
     }
   }
 
@@ -1196,9 +1199,12 @@ export function createBackendService({
     if (input.clientFormatVersion !== V4_FORMAT) {
       throw new AppError(400, 'unsupported_sync_format', 'V4 endpoint requires qwerty-backup-v4')
     }
-    const payload = validatePayloadBase64(input.payloadBase64, maxSyncBytes)
-    if (payload.length < 2 || payload[0] !== 0x1f || payload[1] !== 0x8b) {
-      throw new AppError(400, 'invalid_payload', 'Sync V4 payload must be gzip-compressed')
+    const native = Buffer.isBuffer(input.payloadBytes)
+    const payload = native ? input.payloadBytes :
+      validatePayloadBase64(input.payloadBase64, maxSyncBytes)
+    if (payload.length > maxSyncBytes || payload.length < 2 ||
+        payload[0] !== 0x1f || payload[1] !== 0x8b) {
+      throw new AppError(400, 'invalid_payload', 'Sync V4 payload must be bounded gzip')
     }
     let verified
     try {
@@ -1257,8 +1263,9 @@ export function createBackendService({
       sizeBytes: payload.length,
       dataSha256: crypto.createHash('sha256').update(payload).digest('hex'),
       logicalFingerprint: verified.logicalFingerprint,
-      payloadEncoding: 'base64',
-      payloadBase64: input.payloadBase64,
+      payloadEncoding: native ? 'binary' : 'base64',
+      ...(native ? { payloadBytes: payload } :
+        { payloadBase64: input.payloadBase64 }),
       deviceId: sanitizeDeviceId(input.deviceId),
       clientFormatVersion: V4_FORMAT,
     }
@@ -1292,6 +1299,94 @@ export function createBackendService({
         storage.pruneRevisions(identity.userId, snapshotRetention))
     }
     return metaFromSnapshot(snapshot)
+  }
+
+  /**
+   * New binary transport: no Base64 in the client, Maker staging, V4
+   * validator, or persisted Blob. Old V4 data remains read compatible.
+   */
+  async function getSyncV4BinaryManifest(token) {
+    const { identity } = await authenticate(token)
+    const latest = await storage.getLatestRevisionMeta(identity.userId)
+    const snapshot = latest?.snapshot
+    const layout = snapshot?.chunkedPayload
+    if (!snapshot || layout?.version !== 2 ||
+        snapshot.clientFormatVersion !== V4_FORMAT ||
+        snapshot.payloadEncoding !== 'binary') {
+      throw new AppError(409, 'v4_binary_migration_required',
+        'Cloud revision has not been migrated to binary')
+    }
+    return { ...metaFromSnapshot(snapshot), payloadEncoding: 'binary',
+      chunkBytes: 192 * 1024, count: layout.count,
+      partSha256s: layout.partSha256s }
+  }
+
+  async function getSyncV4BinaryPart(token, revision, sha, index) {
+    const { identity } = await authenticate(token)
+    const latest = await storage.getLatestRevisionMeta(identity.userId)
+    if (!latest || latest.revision !== revision ||
+        latest.snapshot?.dataSha256 !== sha ||
+        latest.snapshot?.chunkedPayload?.version !== 2) {
+      throw new AppError(409, 'sync_conflict',
+        'Binary revision changed during download', {
+          current: metaFromSnapshot(latest?.snapshot || null),
+        })
+    }
+    const record = await storage.getBinaryRevisionPart(identity.userId,
+      revision, sha, index)
+    if (!record) {
+      throw new AppError(503, 'v4_binary_part_unavailable',
+        'Pinned binary Blob part cannot be read')
+    }
+    return record.bytes
+  }
+
+  async function migrateSyncV4Binary(token, expected = {}) {
+    const { identity } = await authenticate(token)
+    if (multiSessionEnabled) {
+      throw new AppError(503, 'multi_device_merge_not_ready',
+        'Binary format migration requires the same single-writer V4 safeguard')
+    }
+    const latest = await storage.getLatestRevisionMeta(identity.userId)
+    const snapshot = latest?.snapshot
+    if (!snapshot || snapshot.clientFormatVersion !== V4_FORMAT) {
+      throw new AppError(409, 'unsupported_cloud_format',
+        'Only existing Backup V4 can be migrated to binary')
+    }
+    if (snapshot.payloadEncoding === 'binary' &&
+        snapshot.chunkedPayload?.version === 2) {
+      return { ...metaFromSnapshot(snapshot), migrated: false }
+    }
+    if (!Number.isSafeInteger(expected.baseRevision) ||
+        expected.baseRevision !== latest.revision ||
+        expected.payloadSha256 !== snapshot.dataSha256 ||
+        expected.logicalFingerprint !== snapshot.logicalFingerprint) {
+      throw new AppError(409, 'sync_conflict',
+        'Migration must pin the exact existing cloud revision and evidence', {
+          current: metaFromSnapshot(snapshot),
+        })
+    }
+    const full = await storage.getLatestRevision(identity.userId)
+    if (!full || full.revision !== latest.revision ||
+        full.snapshot.dataSha256 !== snapshot.dataSha256 ||
+        typeof full.snapshot.payloadBase64 !== 'string') {
+      throw new AppError(503, 'v4_migration_source_unavailable',
+        'Old revision readback could not be verified')
+    }
+    const bytes = validatePayloadBase64(full.snapshot.payloadBase64, maxSyncBytes)
+    if (crypto.createHash('sha256').update(bytes).digest('hex') !==
+        snapshot.dataSha256) {
+      throw new AppError(503, 'v4_migration_source_unverified',
+        'Old revision SHA does not match stored evidence')
+    }
+    const result = await putSyncV4(token, {
+      baseRevision: latest.revision,
+      clientFormatVersion: V4_FORMAT,
+      logicalFingerprint: snapshot.logicalFingerprint,
+      deviceId: 'qwerty-binary-storage-migration',
+      payloadBytes: bytes,
+    })
+    return { ...result, migrated: true }
   }
 
   async function cleanupTestUser(usernameInput) {
@@ -1331,6 +1426,9 @@ export function createBackendService({
     putSync,
     putSyncV4,
     putSyncV4Recovery: (token, input) => putSyncV4(token, input, true),
+    putSyncV4Binary: (token, input) => putSyncV4(token, input, false),
+    putSyncV4BinaryRecovery: (token, input) => putSyncV4(token, input, true),
+    migrateSyncV4Binary, getSyncV4BinaryManifest, getSyncV4BinaryPart,
     cleanupTestUser,
   }
 }
