@@ -1,7 +1,7 @@
 /* eslint-env node */
 import { getStore } from '@edgeone/pages-blob'
 import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
-import { createCircleEtestGateway } from '../_shared/circle/etest-gateway.js'
+import { createCircleEtestGateway, blocksCircleEtestAccountDeletion } from '../_shared/circle/etest-gateway.js'
 import { AppError, createBackendService } from '../_shared/core.js'
 import { isS2WriteEnabled } from '../_shared/s2-write-gate.js'
 import { createEdgeOneBlobStorage } from '../_shared/storage/edgeone-blob.js'
@@ -287,8 +287,9 @@ export async function onRequest(context) {
       // Unrelated accounts and all non-etest hosts keep V4 behavior unchanged.
       if (url.hostname === 'etest.edgeone.dev' && env.CIRCLE_ETEST_ENABLED === 'true') {
         const me = await service.me(bearer(request))
-        const allow = String(env.CIRCLE_ETEST_USER_IDS || '').split(',').map((x) => x.trim())
-        if (allow.includes(me.user?.userId)) {
+        if (blocksCircleEtestAccountDeletion({
+          hostname: url.hostname, env, userId: me.user?.userId,
+        })) {
           throw new AppError(409, 'circle_etest_deletion_requires_cleanup',
             'Circle test account cleanup must be completed before deleting the account')
         }
