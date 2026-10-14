@@ -1,3 +1,39 @@
+# Final revision: HTTP / native Blob 512 KiB (2026-10-14)
+
+This section supersedes all earlier 192-KiB binary-layout proposals below.
+Those earlier notes are historical incident analysis, not current behavior.
+
+- **Normal Sync V2:** gzip bytes, 512-KiB HTTP `application/octet-stream`
+  parts, exactly 512-KiB native binary Blob staging parts, followed by
+  512-KiB immutable native Blob revision objects and a manifest.
+  Each part and the complete gzip are SHA-256 verified; staged payloads
+  are deleted after successful commit. Staging and revision keys remain
+  distinct. Zero-copy object reuse was **not** implemented.
+- **No 192-KiB binary compatibility:** new HTTP uploads explicitly
+  require `X-Qwerty-Chunk-Bytes: 524288`, and new revision manifests
+  use `chunkedPayload.version = 3` and `chunkBytes = 524288`.
+  Previously deployed 192-KiB binary revisions (v2 layout) are not
+  read by this revision.
+- **Old master Base64 Backup V4 DOES migrate automatically:** the
+  legacy JSON/Base64 revision *read path* remains solely so a normal
+  authenticated guarded Sync can pin the existing revision + compressed
+  SHA-256 + logical fingerprint, restore and verify the old payload,
+  and produce a new native-512-KiB revision without changing learning
+  content. This is Backup V4-to-V4 storage migration, **not** automatic
+  Backup V3-to-V4 migration. On ambiguous response, metadata is reread;
+  no blind overwrite.
+- No increase to client timeouts, no removal of six-table validation,
+  no change to CAS or single-active-session safeguards. `master`
+  remains untouched until etest acceptance.
+- Real etest must verify Maker can receive full 512-KiB requests and
+  write/read full 512-KiB Blob objects, SHA-confirm all sizes through
+  2.7 MiB, and exercise old Base64 V4 migration and idempotence on
+  **disposable accounts** before promotion.
+
+---
+
+## Historical 192-KiB investigation (superseded)
+
 # P0: bounded HTTP V4 upload, no Backup V5 (2026-10-14)
 
 ## Root cause
