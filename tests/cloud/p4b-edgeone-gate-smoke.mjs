@@ -201,6 +201,28 @@ async function apiBinaryPart(data, token, payloadSha256, partSha256, index, coun
   return { status: response.status, value,
     responseBytes: Buffer.byteLength(text) }
 }
+// A single <=512-KiB native gzip is committed in ONE HTTP call.
+// The same V4 CAS + SHA and native Blob revision verification still apply.
+async function apiDirectBinaryV4(record, token, shaOverride = null) {
+  const raw = Buffer.from(record.payloadBase64, 'base64')
+  assert.ok(raw.length > 0 && raw.length <= 512 * 1024)
+  const started = performance.now()
+  const response = await fetch(new URL('/api/sync/v2/binary/direct', base), {
+    method: 'POST', headers: {
+      Accept: 'application/json', Authorization: 'Bearer ' + token,
+      'Content-Type': 'application/octet-stream',
+      'X-Qwerty-Payload-Sha256': shaOverride || sha256(raw),
+      'X-Qwerty-Base-Revision': String(record.baseRevision),
+      'X-Qwerty-Logical-Fingerprint': record.logicalFingerprint,
+    }, body: raw, redirect: 'error', signal: AbortSignal.timeout(20000),
+  })
+  const rawResponse = await response.text()
+  let value = null
+  try { value = JSON.parse(rawResponse) } catch { /* must fail closed */ }
+  return { status: response.status, value,
+    elapsedMs: Math.round(performance.now() - started) }
+}
+
 // A part may be retried identically, but ambiguous final revision MUST
 // be checked by GET meta and never blindly overwritten.
 async function uploadLargeV4(record, token, concurrency = 3) {
@@ -387,6 +409,41 @@ try {
   assert.equal(again.value?.migrated, false)
   assert.equal(again.value?.revision, migrated.value.revision)
   console.log('Existing V4 one-action binary migration, SHA and idempotence: PASS')
+
+  // Fast path: actual compressed 256-KiB V4 in one native HTTP request.
+  // Never emulate success with early UI acknowledgement. Read back all
+  // native revision bytes and verify SHA after the direct commit.
+  const fastRevision = migrated.value.revision
+  const fastSeed = v4Body(second, fastRevision, 'fast-v4-direct')
+  const fastState = JSON.parse(requireGzip(Buffer.from(fastSeed.payloadBase64, 'base64')))
+  fastState.workspaceData.database.data.data
+    .find(table => table.tableName === 'wordRecords').rows[0]
+    .typingTelemetry = { synthetic: crypto.randomBytes(256 * 1024).toString('base64') }
+  const fastBody = v4BodyFromSnapshot(second, fastRevision, fastState)
+  const direct = await apiDirectBinaryV4(fastBody, second.token)
+  expectCode(direct, 200, null, 'single-request native V4 fast commit')
+  const directMeta = await api('/api/sync/v2/meta', 'GET', undefined, second.token)
+  assert.equal(directMeta.value?.revision, fastRevision + 1)
+  assert.equal(directMeta.value?.payloadSha256,
+    sha256(Buffer.from(fastBody.payloadBase64, 'base64')))
+  assert.equal(directMeta.value?.logicalFingerprint, fastBody.logicalFingerprint)
+  assert.equal(directMeta.value?.storageEncoding, 'binary')
+  assert.deepEqual(await getBinaryV4(second.token, directMeta.value),
+    Buffer.from(fastBody.payloadBase64, 'base64'))
+  console.log('V4 direct native fast-path write', JSON.stringify({
+    compressedBytes: Buffer.from(fastBody.payloadBase64, 'base64').length,
+    httpCommitMs: direct.elapsedMs, revision: directMeta.value.revision,
+    roundTripAndSha: 'PASS',
+  }))
+  // A corrupted declared SHA must fail before any revision mutation.
+  const invalidFast = { ...fastBody, baseRevision: fastRevision + 1 }
+  const rejected = await apiDirectBinaryV4(
+    invalidFast, second.token, '0'.repeat(64))
+  expectCode(rejected, 400, 'v4_direct_payload_sha_mismatch',
+    'direct fast path declared SHA mismatch')
+  assert.equal((await api('/api/sync/v2/meta', 'GET', undefined, second.token))
+    .value?.revision, fastRevision + 1)
+  console.log('Direct fast-path strict SHA and revision protection: PASS')
 
   // V4-only stress: exercise real Blob upload at a size comparable to the
   // intermittent production recovery failures, without creating V3 records.
