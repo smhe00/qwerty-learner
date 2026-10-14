@@ -18,7 +18,7 @@ import { assertRestorableWorkspaceV4, workspaceFingerprintV4 } from './workspace
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
 import type { PullJournalPort } from './v2-pull-transaction'
 import type { SyncV2Baseline } from './v2-policy'
-import type { RemoteSnapshot, RemoteSyncMeta } from './types'
+import type { RemoteBinarySnapshot, RemoteSnapshot, RemoteSyncMeta } from './types'
 
 export type S2ExecutionResult =
   | { status: 'noop'; revision: number }
@@ -36,10 +36,12 @@ export type SyncV2ExecutionPort = {
   readBaseline(): Promise<SyncV2Baseline | null>
   compareAndSwapBaseline(expected: SyncV2Baseline | null, next: SyncV2Baseline): Promise<void>
   getMeta(): Promise<RemoteSyncMeta>
-  getSnapshot(): Promise<RemoteSnapshot>
+  /** On-demand, pinned cloud-only legacy-to-binary layout conversion. */
+  migrateBinary?(oldMeta: RemoteSyncMeta): Promise<RemoteSyncMeta>
+  getSnapshot(): Promise<RemoteSnapshot | RemoteBinarySnapshot>
   put(input: {
     baseRevision: number
-    payloadBase64: string
+    payloadBytes: Uint8Array
     logicalFingerprint: string
     clientFormatVersion: 'qwerty-backup-v4'
   }): Promise<RemoteSyncMeta>
@@ -54,7 +56,7 @@ function base(accountId: string, revision: number, hash: string): SyncV2Baseline
 const SHA256 = /^[a-f0-9]{64}$/
 
 export async function payloadV4(snapshot: WorkspaceSnapshotV4): Promise<{
-  encoded: string
+  bytes: Uint8Array
   checksum: string
 }> {
   const pako = await import('pako')
@@ -66,11 +68,7 @@ export async function payloadV4(snapshot: WorkspaceSnapshotV4): Promise<{
   const digest = await crypto.subtle.digest('SHA-256', compressed)
   const checksum = [...new Uint8Array(digest)]
     .map(c => c.toString(16).padStart(2, '0')).join('')
-  const chunks: string[] = []
-  for (let i = 0; i < compressed.length; i += 0x8000) {
-    chunks.push(String.fromCharCode(...compressed.subarray(i, i + 0x8000)))
-  }
-  return { encoded: btoa(chunks.join('')), checksum }
+  return { bytes: compressed, checksum }
 }
 
 function sameRemote(a: RemoteSyncMeta, b: RemoteSyncMeta): boolean {
@@ -113,23 +111,45 @@ export async function executeManualSyncV2(port: SyncV2ExecutionPort): Promise<S2
   if (decision.action === 'blocked' || decision.action === 'conflict') {
     return { status: decision.action, reason: decision.reason }
   }
+  // Do not migrate cloud metadata before the deterministic Sync decision:
+  // a format-only revision increment must NEVER count as a concurrent edit.
+  // Push writes binary directly; blocked/conflicted data is not migrated.
+  let activeRemote = remote
+  if ((decision.action === 'noop' || decision.action === 'pull') &&
+      remote.hasData && remote.storageEncoding === 'base64') {
+    if (!port.migrateBinary) {
+      throw new Error('Legacy binary migration requires authenticated guarded adapter')
+    }
+    await port.assertQuiescentOwner()
+    const moved = await timePerfStage('sync', 'binary-cloud-migration', () =>
+      port.migrateBinary!(remote))
+    if (moved.storageEncoding !== 'binary' ||
+        moved.revision !== remote.revision + 1 ||
+        moved.payloadSha256 !== remote.payloadSha256 ||
+        moved.logicalFingerprint !== remote.logicalFingerprint ||
+        moved.sizeBytes !== remote.sizeBytes ||
+        moved.clientFormatVersion !== remote.clientFormatVersion) {
+      throw new Error('Binary migration changed immutable cloud content evidence')
+    }
+    activeRemote = moved
+  }
   if (decision.action === 'noop') {
     // For an empty remote with no actual checkpoint, no durable revision
     // exists to adopt. Otherwise metadata-only rebase is safe only because
     // canonical local and cloud fingerprints were proven equal.
-    if (remote.hasData) {
+    if (activeRemote.hasData) {
       await port.assertQuiescentOwner()
       await port.compareAndSwapBaseline(baseline,
-        base(port.accountId, remote.revision, preflight.localFingerprint))
+        base(port.accountId, activeRemote.revision, preflight.localFingerprint))
     }
-    return { status: 'noop', revision: remote.revision }
+    return { status: 'noop', revision: activeRemote.revision }
   }
   if (decision.action === 'push') {
     const bytes = await timePerfStage('sync', 'payload-prepare', () => payloadV4(local))
     await port.assertQuiescentOwner()
     const uploaded = await timePerfStage('sync', 'upload-request', () => port.put({
       baseRevision: remote.revision,
-      payloadBase64: bytes.encoded,
+      payloadBytes: bytes.bytes,
       logicalFingerprint: preflight.localFingerprint,
       clientFormatVersion: 'qwerty-backup-v4',
     }))
@@ -151,9 +171,9 @@ export async function executeManualSyncV2(port: SyncV2ExecutionPort): Promise<S2
   // Pull never selects an arbitrary older cloud revision after discovery.
   const cloud = await timePerfStage('sync', 'download-request', () => port.getSnapshot())
   const verified = await timePerfStage('sync', 'verify-downloaded', () =>
-    verifyDownloadedWorkspaceV4(port.accountId, remote, cloud))
+    verifyDownloadedWorkspaceV4(port.accountId, activeRemote, cloud))
   const confirmed = await timePerfStage('sync', 'remote-meta-recheck', () => port.getMeta())
-  if (!sameRemote(remote, confirmed)) {
+  if (!sameRemote(activeRemote, confirmed)) {
     throw new Error('S2 remote revision changed before Pull staging')
   }
   if (await workspaceFingerprintV4(verified) !== cloud.logicalFingerprint) {

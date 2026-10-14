@@ -1,11 +1,7 @@
 name: P4b Maker V4 Data-Preserving Rollback
 
+# Obsolete production-only verification. No automatic main cloud writes.
 on:
-  push:
-    branches: [product/main]
-    paths:
-      - 'tests/cloud/p4b-maker-data-rollback.integration.mjs'
-      - '.github/workflows/p4b-maker-data-rollback.yml'
   workflow_dispatch:
 
 permissions:
@@ -18,6 +14,7 @@ concurrency:
 
 jobs:
   hold-v4-witness-across-deployment:
+    if: github.ref_name == 'master'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

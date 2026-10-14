@@ -1,0 +1,47 @@
+name: etest Blob Single Object Limit (opt-in, no deployment)
+
+# Direct Blob SDK test from the Actions runner: differentiates a 6 MB
+# Cloud Functions HTTP request limit from a 25 MB native Blob object limit.
+# Intentionally never touches master, qwerty-data, or V4 snapshots.
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - 'scripts/probe-etest-blob-single-object.mjs'
+      - '.github/workflows/etest-blob-single-object-limit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check probe syntax without credentials or Blob writes
+        run: node --check scripts/probe-etest-blob-single-object.mjs
+
+  isolated-blob-limit:
+    needs: [syntax]
+    if: >-
+      github.ref_name == 'product/main' &&
+      vars.ETEST_BLOB_LIMIT_PROBE_ENABLED == 'true' &&
+      vars.ETEST_BLOB_PROJECT_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ETEST_BLOB_PROJECT_ID: ${{ vars.ETEST_BLOB_PROJECT_ID }}
+      ETEST_BLOB_STORE: qwerty-blob-limit-sandbox
+      ETEST_BLOB_PROBE_ACK: RUN_ETEST_BLOB_SINGLE_OBJECT_LIMIT_ONLY
+      EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Install pinned SDK
+        run: yarn install --frozen-lockfile
+      - name: Probe 6 MB versus 25 MB single immutable test objects
+        run: node scripts/probe-etest-blob-single-object.mjs

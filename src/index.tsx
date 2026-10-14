@@ -368,6 +368,23 @@ async function start(): Promise<void> {
     }
     if (new URLSearchParams(window.location.search).get('s1-account') === 'manage') {
       if (boot.mode === 'legacy') {
+        // A genuinely empty new EdgeOne origin has no V1 data to assign.
+        // Only bypass the legacy ownership consent after a read-only proof
+        // that ALL legacy stores and learning/session state are empty.
+        const { isFreshEmptyLegacyWorkspace } = await import('./sync/workspace-pristine')
+        if (await isFreshEmptyLegacyWorkspace()) {
+          gateUI('正在初始化新的本机学习空间', '已确认本浏览器没有旧学习记录，正在创建匿名 S1 工作区…')
+          const { initializeLegacyWorkspace } = await import('./sync/workspace-coordinator')
+          await initializeLegacyWorkspace({ kind: 'anonymous' })
+          boot.release()
+          boot = undefined
+          // A fresh JS realm is mandatory after the durable registry CAS:
+          // modules imported during the first snapshot can cache old atoms.
+          window.location.replace('/?s1-account=manage')
+          return
+        }
+        // Existing or uncertain V1 histories still require full backup and
+        // explicit consent. An uninitialized registry is NOT proof of no data.
         // Old V1 users must establish isolated ownership once before logging
         // in/out through the new unified account dialog.
         if (import.meta.env.DEV ||

@@ -19,6 +19,15 @@ on:
       - 'package.json'
       - 'yarn.lock'
       - '.github/workflows/cloud-sync.yml'
+      - '.github/workflows/deploy-pages.yml'
+      - '.github/workflows/pages-explorer.yml'
+      - '.github/workflows/etest-entry-gate.yml'
+      - 'scripts/verify-etest-entry.mjs'
+      - 'scripts/wait-pages-deployment.mjs'
+      - 'scripts/probe-etest-blob-single-object.mjs'
+      - 'scripts/benchmark-master-etest-v4.mjs'
+      - '.github/workflows/benchmark-master-etest-v4.yml'
+      - '.github/workflows/etest-blob-single-object-limit.yml'
   workflow_dispatch:
 
 concurrency:
@@ -100,3 +109,20 @@ jobs:
             -H "Content-Type: application/json" \
             --data-binary @/tmp/cloud-sync-status.json \
             "https://api.github.com/repos/${REPOSITORY}/statuses/${SHA}" > /dev/null
+
+  staging-pilot-readiness:
+    name: Exact-SHA Pages + Cloud Staging Admission
+    needs: [cloud-backend]
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLOUD_GATE_JOB_PASSED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check live Pages regression and latest main SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/verify-etest-entry.mjs

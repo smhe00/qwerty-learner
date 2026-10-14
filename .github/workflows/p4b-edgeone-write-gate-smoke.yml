@@ -11,6 +11,7 @@ concurrency:
 
 jobs:
   isolated-api-smoke:
+    if: github.ref_name == 'master'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     permissions:

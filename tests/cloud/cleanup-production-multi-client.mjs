@@ -31,20 +31,49 @@ async function request(path, options = {}) {
   return { response, result }
 }
 
+// A login is safe to retry on transient 5xx; it does not delete or
+// overwrite learning data. Never blindly replay a possibly committed DELETE.
+async function loginDisposable(username) {
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    let answer
+    let lastError = null
+    try {
+      answer = await request('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password, deviceId: 'ci-e2e-cleanup' }),
+      })
+    } catch (error) {
+      lastError = error
+    }
+    if (answer && ![429, 500, 502, 503, 504].includes(answer.response.status)) {
+      return answer
+    }
+    if (attempt === 4) {
+      throw new Error('Cleanup login remained unavailable after bounded retries: ' +
+        (answer ? 'HTTP ' + answer.response.status :
+          (lastError instanceof Error ? lastError.name : 'network_error')))
+    }
+    console.log('Transient cleanup login failure for disposable identity; retry', attempt)
+    await new Promise(resolve => setTimeout(resolve, 500 * attempt))
+  }
+  throw new Error('Unreachable cleanup login state')
+}
+
 let failures = 0
 for (const username of users) {
   try {
     // Only registered test users whose password we generated may be deleted.
-    const login = await request('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ username, password, deviceId: 'ci-e2e-cleanup' }),
-    })
+    const login = await loginDisposable(username)
     if (login.response.status === 401 || login.result?.error === 'invalid_credentials') {
       console.log('Test identity does not exist or cannot be authenticated; no deletion:', username)
       continue
     }
     if (!login.response.ok || !login.result?.token) {
       throw new Error(`Cleanup authentication HTTP ${login.response.status}`)
+    }
+    if (login.result?.user?.username &&
+        login.result.user.username !== username) {
+      throw new Error('Cleanup login account identity mismatch')
     }
     const deletion = await request('/api/auth/account', {
       method: 'DELETE',

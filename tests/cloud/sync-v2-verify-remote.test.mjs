@@ -92,6 +92,6 @@ test('oversized, malformed and old-format V4 payloads are blocked', async () => 
     ...meta, clientFormatVersion: 'qwerty-backup-v3',
   }, remote), /format unsupported/)
   await assert.rejects(verifyDownloadedWorkspaceV4(owner, meta, {
-    ...remote, payloadBase64: 'A'.repeat(6 * 1024 * 1024),
+    ...remote, payloadBase64: 'A'.repeat(24 * 1024 * 1024),
   }), /Base64/)
 })

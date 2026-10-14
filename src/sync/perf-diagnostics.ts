@@ -13,10 +13,29 @@ export type PerfSample = {
   stage: string
   elapsedMs?: number
   sizeBytes?: number
+  partIndex?: number
+  attempt?: number
+  outcome?: 'ok' | 'failed'
+  failureStage?: 'http_request' | 'blob_write' | 'blob_readback' |
+    'part_lookup' | 'commit_core' | 'revision_chunk' |
+    'revision_manifest' | 'receipt'
+  failureCategory?: 'network_timeout' | 'network_failure' | 'blob_storage' |
+    'server_failure' | 'http_failure' | 'invalid_receipt'
+  httpStatus?: number
+  blobWriteMs?: number
+  blobReadbackMs?: number
+  partsReadMs?: number
+  commitCoreMs?: number
+  cleanupMs?: number
+  serverTotalMs?: number
+  revisionWriteMs?: number
+  revisionReadbackMs?: number
+  revisionManifestMs?: number
+  revisionChunkCount?: number
 }
 
 const KEY = 'qwerty.perf-diagnostics.v1'
-const MAX_SAMPLES = 160
+const MAX_SAMPLES = 768
 const MAX_STAGE_LENGTH = 64
 
 function store(): Storage | null {
@@ -42,7 +61,29 @@ export function readPerfSamples(): PerfSample[] {
       (sample.elapsedMs === undefined ||
         (typeof sample.elapsedMs === 'number' && Number.isFinite(sample.elapsedMs))) &&
       (sample.sizeBytes === undefined ||
-        (typeof sample.sizeBytes === 'number' && Number.isSafeInteger(sample.sizeBytes)))
+        (typeof sample.sizeBytes === 'number' && Number.isSafeInteger(sample.sizeBytes))) &&
+      /^[a-z0-9.-]+$/.test(sample.stage) &&
+      (sample.partIndex === undefined || (Number.isSafeInteger(sample.partIndex) &&
+        sample.partIndex >= 0 && sample.partIndex < 192)) &&
+      (sample.attempt === undefined || (Number.isSafeInteger(sample.attempt) &&
+        sample.attempt >= 1 && sample.attempt <= 6)) &&
+      (sample.outcome === undefined || ['ok', 'failed'].includes(sample.outcome)) &&
+      (sample.failureStage === undefined || ['http_request', 'blob_write',
+        'blob_readback', 'part_lookup', 'commit_core',
+        'revision_chunk', 'revision_manifest', 'receipt'].includes(sample.failureStage)) &&
+      (sample.failureCategory === undefined || ['network_timeout', 'network_failure',
+        'blob_storage', 'server_failure', 'http_failure',
+        'invalid_receipt'].includes(sample.failureCategory)) &&
+      (sample.httpStatus === undefined || (Number.isInteger(sample.httpStatus) &&
+        sample.httpStatus >= 0 && sample.httpStatus <= 599)) &&
+      (sample.revisionChunkCount === undefined ||
+        (Number.isSafeInteger(sample.revisionChunkCount) &&
+          sample.revisionChunkCount >= 0 && sample.revisionChunkCount <= 192)) &&
+      ['blobWriteMs','blobReadbackMs','partsReadMs','commitCoreMs',
+        'cleanupMs','serverTotalMs','revisionWriteMs','revisionReadbackMs',
+        'revisionManifestMs'].every(key => sample[key] === undefined ||
+        (typeof sample[key] === 'number' && Number.isFinite(sample[key]) &&
+          sample[key] >= 0 && sample[key] <= 600000))
     )).slice(-MAX_SAMPLES)
   } catch {
     return []
@@ -91,4 +132,48 @@ export async function timePerfStage<T>(
 export function recordPerfSize(flow: PerfFlow, stage: string, bytes: number): void {
   if (!Number.isSafeInteger(bytes) || bytes < 0) return
   append({ at: new Date().toISOString(), flow, stage, sizeBytes: bytes })
+}
+
+/** Redacted per-HTTP-part evidence; all names are fixed enums and the caller
+ * cannot pass payloads, identifiers, tokens, URLs or exception messages.
+ * Server duration fields come from the authenticated Maker response, not
+ * from guessed network/Blob attribution.
+ */
+export function recordV4TransportSample(sample: Omit<PerfSample, 'at' | 'flow'>): void {
+  if (sample.stage !== 'v4-part' && sample.stage !== 'v4-commit') return
+  const fixed: PerfSample = { at: new Date().toISOString(),
+    flow: 'sync', stage: sample.stage }
+  for (const key of ['elapsedMs', 'blobWriteMs', 'blobReadbackMs', 'partsReadMs',
+    'commitCoreMs', 'cleanupMs', 'serverTotalMs',
+    'revisionWriteMs', 'revisionReadbackMs', 'revisionManifestMs'] as const) {
+    const value = sample[key]
+    if (typeof value === 'number' && Number.isFinite(value) &&
+        value >= 0 && value <= 600000) fixed[key] = Math.round(value * 10) / 10
+  }
+  if (Number.isSafeInteger(sample.partIndex) && sample.partIndex! >= 0 &&
+      sample.partIndex! < 192) fixed.partIndex = sample.partIndex
+  if (Number.isSafeInteger(sample.attempt) && sample.attempt! >= 1 &&
+      sample.attempt! <= 6) fixed.attempt = sample.attempt
+  if (Number.isSafeInteger(sample.sizeBytes) && sample.sizeBytes! >= 0) {
+    fixed.sizeBytes = sample.sizeBytes
+  }
+  if (Number.isSafeInteger(sample.httpStatus) && sample.httpStatus! >= 0 &&
+      sample.httpStatus! <= 599) fixed.httpStatus = sample.httpStatus
+  if (typeof sample.revisionChunkCount === 'number' &&
+      Number.isSafeInteger(sample.revisionChunkCount) &&
+      sample.revisionChunkCount >= 0 && sample.revisionChunkCount <= 192) {
+    fixed.revisionChunkCount = sample.revisionChunkCount
+  }
+  if (sample.outcome === 'ok' || sample.outcome === 'failed') fixed.outcome = sample.outcome
+  if (sample.failureStage && ['http_request', 'blob_write', 'blob_readback',
+    'part_lookup', 'commit_core', 'revision_chunk',
+        'revision_manifest', 'receipt'].includes(sample.failureStage)) {
+    fixed.failureStage = sample.failureStage
+  }
+  if (sample.failureCategory && ['network_timeout', 'network_failure',
+    'blob_storage', 'server_failure', 'http_failure',
+    'invalid_receipt'].includes(sample.failureCategory)) {
+    fixed.failureCategory = sample.failureCategory
+  }
+  append(fixed)
 }

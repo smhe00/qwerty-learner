@@ -15,6 +15,7 @@ import { EXPLICIT_SPACE } from '@/constants'
 import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import useKeySounds from '@/hooks/useKeySounds'
 import { trackLearnPersistence } from '@/learn/persistence'
+import { getUTCUnixTimestamp } from '@/utils/time'
 import type { LearnItemKind } from '@/learn/session'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import { classifyTypingError } from '@/review/classifier'
@@ -1016,7 +1017,7 @@ export default function WordComponent({
 
       const currentRecordForPolicy: IWordRecord = {
         word: word.name,
-        timeStamp: Math.floor(Date.now() / 1000),
+        timeStamp: getUTCUnixTimestamp(),
         dict: currentDictInfo.id,
         chapter: effectiveChapter,
         timing: [],
@@ -1124,7 +1125,7 @@ export default function WordComponent({
               !isAcquisitionAttempt &&
               reviewRatingDecision?.eligible
             ) {
-              const now = Math.floor(Date.now() / 1000)
+              const now = getUTCUnixTimestamp()
               void trackLearnPersistence(
                 applyReviewOutcome(
                   currentDictInfo.id,

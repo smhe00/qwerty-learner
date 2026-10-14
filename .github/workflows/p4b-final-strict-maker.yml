@@ -1,11 +1,7 @@
 name: P4b Maker Final Strict Account Gate
 
+# Obsolete production-only verification. No automatic main cloud writes.
 on:
-  push:
-    branches: [product/main]
-    paths:
-      - 'tests/cloud/p4b-final-strict-maker-smoke.mjs'
-      - '.github/workflows/p4b-final-strict-maker.yml'
   workflow_dispatch:
 
 permissions:
@@ -14,6 +10,7 @@ permissions:
 
 jobs:
   final-strict:
+    if: github.ref_name == 'master'
     runs-on: ubuntu-latest
     timeout-minutes: 16
     steps:

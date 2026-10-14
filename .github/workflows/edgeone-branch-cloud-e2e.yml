@@ -1,0 +1,145 @@
+name: Branch EdgeOne Cloud E2E
+
+# Only edgeone-test deploys/tests real cloud E2E. product/main builds Pages.
+# The first manual staging deployment completed 2026-10-14.
+# A future etest push auto-deploys; product/main does not trigger Maker.
+on:
+  push:
+    branches: [edgeone-test]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: edgeone-branch-cloud-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  live-browser-cloud:
+    if: github.ref_name == 'edgeone-test'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    env:
+      QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Wait for branch-matched EdgeOne backend capability
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          if (process.env.GITHUB_REF_NAME !== 'edgeone-test') throw Error('etest only')
+          const expected = 'https://etest.edgeone.dev/'
+          const actual = new URL(process.env.QWERTY_SYNC_BASE_URL)
+          if (actual.origin !== new URL(expected).origin) throw Error('Wrong EdgeOne test origin')
+          const required = 'v4-end-to-end-binary-v1'
+          let healthy = false
+          for (let index = 0; index < 42; index++) {
+            try {
+              const result = await fetch(new URL('/api/health', expected), {
+                cache: 'no-store', signal: AbortSignal.timeout(10000),
+              })
+              const health = await result.json()
+              if (result.ok && health.service === 'qwerty-sync-gateway' &&
+                  health.capabilities?.includes(required)) {
+                healthy = true
+                console.log('Matching Maker gateway found, auth mode:', health.authMode)
+                break
+              }
+            } catch { /* Not yet visible in this POP */ }
+            await new Promise(resolve => setTimeout(resolve, 10000))
+          }
+          if (!healthy) throw Error('Branch EdgeOne deployment not verified; no accounts created')
+          NODE
+      - name: Verify actually deployed etest frontend SHA
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: node scripts/verify-edgeone-source.mjs
+      - name: Create disposable account identifiers for independent browser profiles
+        shell: bash
+        run: |
+          echo "QWERTY_E2E_USERNAME=e2e_mc_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_a" >> "$GITHUB_ENV"
+          echo "QWERTY_E2E_USERNAME_B=e2e_mc_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_b" >> "$GITHUB_ENV"
+          password="E2E-$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          echo "QWERTY_E2E_PASSWORD=$password" >> "$GITHUB_ENV"
+      - name: Install browser tests
+        run: |
+          yarn install --frozen-lockfile
+          npx playwright install --with-deps chromium
+      - name: Real EdgeOne S1 account login across three isolated Chromium profiles
+        run: npx playwright test --config=tests/e2e/edgeone-s1-cloud-accounts.config.ts
+      - name: Remove disposable cloud accounts, even on test failure
+        if: always() && env.QWERTY_E2E_USERNAME != ''
+        run: node tests/cloud/cleanup-production-multi-client.mjs
+      - name: Retain redacted failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: edgeone-cloud-e2e-${{ github.run_id }}
+          path: test-results/**/*-redacted-trace.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  real-v4-transport:
+    if: github.ref_name == 'edgeone-test'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+      - name: Verify branch-to-EdgeOne target before creating any accounts
+        run: |
+          node --input-type=module <<'NODE'
+          if (process.env.GITHUB_REF_NAME !== 'edgeone-test') throw Error('etest only')
+          const expected = 'https://etest.edgeone.dev'
+          if (new URL(process.env.QWERTY_SYNC_BASE_URL).origin !== expected)
+            throw Error('Cloud E2E must use branch-matched EdgeOne, never Pages')
+          const required = 'v4-end-to-end-binary-v1'
+          let healthy = false
+          for (let index = 0; index < 42; index++) {
+            try {
+              const r = await fetch(expected + '/api/health', {
+                cache: 'no-store', signal: AbortSignal.timeout(15000),
+              })
+              const health = await r.json()
+              if (r.ok && health.service === 'qwerty-sync-gateway' &&
+                  health.capabilities?.includes(required)) {
+                healthy = true
+                break
+              }
+            } catch { /* Maker deployment not yet visible in this POP */ }
+            await new Promise(resolve => setTimeout(resolve, 10000))
+          }
+          if (!healthy) throw Error('Matching EdgeOne V4 gateway version not deployed')
+          NODE
+      - name: Verify actually deployed etest frontend SHA
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: node scripts/verify-edgeone-source.mjs
+      - name: Verify real V4 upload, readback, stale conflict and Blob size
+        run: node tests/cloud/p4b-edgeone-gate-smoke.mjs
+
+  release-ready:
+    name: Pages + etest Release Readiness (never deploys master)
+    if: github.ref_name == 'edgeone-test'
+    needs: [live-browser-cloud, real-v4-transport]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require same-SHA passing Pages and etest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: node scripts/release-readiness.mjs

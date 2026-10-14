@@ -16,16 +16,18 @@ const OWNER = { kind: 'account' as const, accountId: 'p4b-same-immutable-account
 
 class SharedMockCloud {
   private current: any = null
+  private readonly uploads = new Map<string, Buffer>()
   successfulWrites = 0
   refusedCAS = 0
   failNextMeta = false
   failNextPut = false
   loseNextCommitAck = false
   readonly byRevision = new Map<number, any>()
+  private readonly CHUNK_BYTES = 512 * 1024
 
   snapshot() {
     return this.current
-      ? JSON.parse(gunzipSync(Buffer.from(this.current.payloadBase64, 'base64')).toString('utf8'))
+      ? JSON.parse(gunzipSync(this.current.payloadBytes).toString('utf8'))
       : null
   }
 
@@ -33,81 +35,203 @@ class SharedMockCloud {
     if (!this.current) return {
       hasData: false, revision: 0, updatedAt: null, sizeBytes: 0,
       dataSha256: null, payloadSha256: null, logicalFingerprint: null,
-      deviceId: null, clientFormatVersion: null,
+      deviceId: null, clientFormatVersion: null, storageEncoding: null,
     }
-    const { payloadBase64: _payloadBase64, payloadEncoding: _payloadEncoding, ...meta } = this.current
-    return meta
+    const record = { ...this.current }
+    delete record.payloadBytes
+    return record
+  }
+
+  private async error(r: Route, status: number, code: string) {
+    await r.fulfill({ status, json: { ok: false, error: code,
+      message: 'P4b deterministic failure injection' } })
   }
 
   async route(r: Route) {
     const request = r.request()
     const url = new URL(request.url())
     const pathname = url.pathname
-    if (request.method() === 'GET') {
-      if (pathname.endsWith('/meta') && this.failNextMeta) {
+    const method = request.method()
+    if (method === 'OPTIONS') {
+      await r.fulfill({ status: 204, headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+        'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Qwerty-Payload-Sha256, X-Qwerty-Part-Sha256, X-Qwerty-Part-Index, X-Qwerty-Part-Count',
+      } })
+      return
+    }
+    if (method === 'GET' && pathname.endsWith('/meta')) {
+      if (this.failNextMeta) {
         this.failNextMeta = false
-        await r.fulfill({ status: 503, json: {
-          ok: false, error: 'temporary_unavailable',
-          message: 'P4b injected metadata read outage',
+        await this.error(r, 503, 'temporary_unavailable')
+      } else await r.fulfill({ json: { ok: true, ...this.meta() } })
+      return
+    }
+    if (method === 'GET' && pathname.endsWith('/binary/manifest')) {
+      if (!this.current) { await this.error(r, 409, 'missing_revision'); return }
+      const payload: Buffer = this.current.payloadBytes
+      const parts = Array.from({ length: Math.ceil(payload.length / this.CHUNK_BYTES) },
+        (_, i) => payload.subarray(i * this.CHUNK_BYTES, (i + 1) * this.CHUNK_BYTES))
+      await r.fulfill({ json: { ok: true, ...this.meta(),
+        payloadEncoding: 'binary', chunkBytes: this.CHUNK_BYTES,
+        count: parts.length, partSha256s: parts.map(p =>
+          createHash('sha256').update(p).digest('hex')) } })
+      return
+    }
+    if (method === 'GET' && pathname.endsWith('/binary/part')) {
+      if (!this.current || Number(url.searchParams.get('revision')) !==
+          this.current.revision || url.searchParams.get('sha') !==
+          this.current.payloadSha256) {
+        await this.error(r, 409, 'sync_conflict'); return
+      }
+      const i = Number(url.searchParams.get('index'))
+      const data: Buffer = this.current.payloadBytes
+      if (!Number.isSafeInteger(i) || i < 0 ||
+          i >= Math.ceil(data.length / this.CHUNK_BYTES)) {
+        await this.error(r, 400, 'invalid_binary_part_selector'); return
+      }
+      await r.fulfill({ status: 200, contentType: 'application/octet-stream',
+        body: data.subarray(i * this.CHUNK_BYTES, (i + 1) * this.CHUNK_BYTES) })
+      return
+    }
+    // Current client uses one native binary POST for gzip <= 512 KiB.
+    // Preserve CAS, SHA and the two deterministic failure injections used
+    // by the multipart path; this is a protocol mock, not a bypass.
+    if (method === 'POST' && pathname.endsWith('/binary/direct')) {
+      if (this.failNextPut) {
+        this.failNextPut = false
+        await this.error(r, 503, 'temporary_unavailable')
+        return
+      }
+      const headers = request.headers()
+      const bytes = request.postDataBuffer()
+      const payloadSha = headers['x-qwerty-payload-sha256']
+      const fingerprint = headers['x-qwerty-logical-fingerprint']
+      const baseRevision = Number(headers['x-qwerty-base-revision'])
+      const currentRevision = this.current?.revision ?? 0
+      const shaPattern = /^[a-f0-9]{64}$/
+      if (!bytes || bytes.length < 1 || bytes.length > this.CHUNK_BYTES ||
+          !shaPattern.test(payloadSha || '') || !shaPattern.test(fingerprint || '') ||
+          !Number.isSafeInteger(baseRevision) || baseRevision < 0 ||
+          createHash('sha256').update(bytes).digest('hex') !== payloadSha) {
+        await this.error(r, 400, 'invalid_v4_direct_payload')
+        return
+      }
+      if (baseRevision !== currentRevision) {
+        this.refusedCAS++
+        await r.fulfill({ status: 409, json: {
+          ok: false, error: 'sync_conflict', message: 'revision conflict',
+          details: { current: this.meta() },
         } })
         return
       }
-      if (pathname.endsWith('/meta')) {
-        await r.fulfill({ json: { ok: true, ...this.meta() } })
-      } else {
-        await r.fulfill({ json: { ok: true, ...this.meta(),
-          payloadEncoding: 'base64', payloadBase64: this.current?.payloadBase64 ?? null } })
+      try {
+        const parsed = JSON.parse(gunzipSync(bytes).toString('utf8'))
+        if (parsed.backupFormatVersion !== 'qwerty-backup-v4' ||
+            parsed.metadata?.source?.accountId !== OWNER.accountId) {
+          await this.error(r, 400, 'invalid_v4_direct_snapshot')
+          return
+        }
+      } catch {
+        await this.error(r, 400, 'invalid_v4_direct_gzip')
+        return
       }
+      this.current = {
+        hasData: true, revision: currentRevision + 1,
+        updatedAt: '2026-10-10T00:00:00Z',
+        sizeBytes: bytes.length, dataSha256: payloadSha,
+        payloadSha256: payloadSha, logicalFingerprint: fingerprint,
+        clientFormatVersion: 'qwerty-backup-v4',
+        deviceId: headers['x-qwerty-device-id'] || 'simulated-device',
+        payloadBytes: Buffer.from(bytes), storageEncoding: 'binary',
+      }
+      this.successfulWrites++
+      this.byRevision.set(this.current.revision, { ...this.current })
+      if (this.loseNextCommitAck) {
+        this.loseNextCommitAck = false
+        await this.error(r, 503, 'response_lost_after_commit')
+        return
+      }
+      await r.fulfill({ json: { ok: true, ...this.meta() } })
       return
     }
-    if (request.method() !== 'PUT' || pathname.endsWith('/recovery')) {
-      throw new Error('Test cloud rejected unexpected API method')
-    }
-    if (this.failNextPut) {
-      this.failNextPut = false
-      await r.fulfill({ status: 503, json: {
-        ok: false, error: 'temporary_unavailable',
-        message: 'P4b injected precommit outage',
-      } })
+    if (method === 'POST' && pathname.endsWith('/parts')) {
+      const headers = request.headers()
+      const payloadSha = headers['x-qwerty-payload-sha256']
+      const partSha = headers['x-qwerty-part-sha256']
+      const index = Number(headers['x-qwerty-part-index'])
+      const count = Number(headers['x-qwerty-part-count'])
+      const body = request.postDataBuffer()
+      if (!body || !payloadSha || !partSha ||
+          !Number.isSafeInteger(index) || !Number.isSafeInteger(count) ||
+          index < 0 || index >= count || count > 192 ||
+          !body.length || body.length > this.CHUNK_BYTES ||
+          (index !== count - 1 && body.length !== this.CHUNK_BYTES) ||
+          createHash('sha256').update(body).digest('hex') !== partSha) {
+        await this.error(r, 400, 'invalid_v4_upload_part'); return
+      }
+      this.uploads.set(payloadSha + ':' + count + ':' + index + ':' + partSha,
+        Buffer.from(body))
+      await r.fulfill({ json: { ok: true, received: true,
+        payloadSha256: payloadSha, partSha256: partSha, index } })
       return
     }
-    const body = request.postDataJSON()
-    const currentRevision = this.current?.revision ?? 0
-    // The in-memory state assignment is our linearizable CAS point.
-    if (body.baseRevision !== currentRevision) {
-      this.refusedCAS++
-      await r.fulfill({ status: 409, json: {
-        ok: false, error: 'sync_conflict', message: 'revision conflict',
-        details: { current: this.meta() },
-      } })
+    if (method === 'POST' && pathname.endsWith('/commit')) {
+      if (this.failNextPut) {
+        this.failNextPut = false
+        await this.error(r, 503, 'temporary_unavailable')
+        return
+      }
+      const input = request.postDataJSON()
+      const currentRevision = this.current?.revision ?? 0
+      if (input.baseRevision !== currentRevision) {
+        this.refusedCAS++
+        await r.fulfill({ status: 409, json: {
+          ok: false, error: 'sync_conflict', message: 'revision conflict',
+          details: { current: this.meta() },
+        } })
+        return
+      }
+      if (!Array.isArray(input.partSha256s) ||
+          input.partSha256s.length !== input.count || input.count < 1) {
+        await this.error(r, 400, 'invalid_v4_upload_manifest'); return
+      }
+      const parts = input.partSha256s.map((partSha: string, index: number) =>
+        this.uploads.get(input.payloadSha256 + ':' + input.count + ':' +
+          index + ':' + partSha))
+      if (parts.some((part: Buffer | undefined) => !part)) {
+        await this.error(r, 503, 'v4_upload_part_not_visible'); return
+      }
+      const gzip = Buffer.concat(parts as Buffer[])
+      const sha = createHash('sha256').update(gzip).digest('hex')
+      if (sha !== input.payloadSha256) {
+        await this.error(r, 400, 'v4_upload_payload_sha_mismatch'); return
+      }
+      this.current = {
+        hasData: true, revision: currentRevision + 1,
+        updatedAt: '2026-10-10T00:00:00Z',
+        sizeBytes: gzip.length, dataSha256: sha, payloadSha256: sha,
+        logicalFingerprint: input.logicalFingerprint,
+        clientFormatVersion: 'qwerty-backup-v4',
+        deviceId: 'simulated-device', payloadBytes: gzip,
+        storageEncoding: 'binary',
+      }
+      this.successfulWrites++
+      this.byRevision.set(this.current.revision, { ...this.current })
+      if (this.loseNextCommitAck) {
+        this.loseNextCommitAck = false
+        await this.error(r, 503, 'response_lost_after_commit')
+        return
+      }
+      await r.fulfill({ json: { ok: true, ...this.meta() } })
       return
     }
-    const gzip = Buffer.from(body.payloadBase64, 'base64')
-    const sha = createHash('sha256').update(gzip).digest('hex')
-    this.current = {
-      hasData: true, revision: currentRevision + 1,
-      updatedAt: '2026-10-10T00:00:00Z',
-      sizeBytes: gzip.length, dataSha256: sha, payloadSha256: sha,
-      logicalFingerprint: body.logicalFingerprint,
-      clientFormatVersion: 'qwerty-backup-v4',
-      deviceId: 'simulated-device', payloadBase64: body.payloadBase64,
-      payloadEncoding: 'base64',
-    }
-    this.successfulWrites++
-    this.byRevision.set(this.current.revision, { ...this.current })
-    if (this.loseNextCommitAck) {
-      this.loseNextCommitAck = false
-      await r.fulfill({ status: 503, json: {
-        ok: false, error: 'response_lost_after_commit',
-        message: 'P4b injected postcommit missing acknowledgement',
-      } })
-      return
-    }
-    await r.fulfill({ json: { ok: true, ...this.meta() } })
+    throw new Error('P4b mock rejected unexpected binary V4 request')
   }
 
   async connect(context: BrowserContext) {
-    await context.route(/\/api\/sync\/v2(?:\/|$|\?)/, r => this.route(r))
+    await context.route(url => url.pathname === '/api/sync/v2' ||
+      url.pathname.startsWith('/api/sync/v2/'), r => this.route(r))
   }
 }
 
@@ -194,6 +318,35 @@ test('P4b two independent profiles roundtrip, then detect divergent edits withou
     expect(b1.preservedFsrs).toBe(true)
     // P4b regression: application hydration MUST NOT materialize defaults
     // into localStorage and silently dirty a freshly restored workspace.
+    if (b1.fingerprint !== server.meta().logicalFingerprint) {
+      // Synthetic fixture diagnostics: report field names only, never payloads.
+      const expected = server.snapshot()?.workspaceData
+      const actual = b1.workspaceData
+      const diffKeys = (a: Record<string, unknown> = {}, b: Record<string, unknown> = {}) =>
+        [...new Set([...Object.keys(a), ...Object.keys(b)])]
+          .filter(key => JSON.stringify(a[key]) !== JSON.stringify(b[key])).sort()
+      console.log('V4_RESTORED_FINGERPRINT_MISMATCH', JSON.stringify({
+        workspaceFields: diffKeys(expected, actual),
+        settingsKeys: diffKeys(expected?.settings?.values, actual?.settings?.values),
+        dailySessionDicts: diffKeys(expected?.learnRuntime?.dailySessions,
+          actual?.learnRuntime?.dailySessions),
+        navigationFields: diffKeys(expected?.navigation, actual?.navigation),
+        databaseFields: diffKeys(expected?.database, actual?.database),
+        dailySessionFields: diffKeys(expected?.learnRuntime?.dailySessions?.cet4,
+          actual?.learnRuntime?.dailySessions?.cet4),
+        databaseTableRows: ['wordRecords', 'chapterRecords', 'reviewRecords',
+          'reviewWordStates', 'achievementEvents', 'achievementStates'].map(name => {
+          const a = expected?.database?.data?.data?.find((t: any) => t.tableName === name)
+          const b = actual?.database?.data?.data?.find((t: any) => t.tableName === name)
+          const rowHash = (row: any) => createHash('sha256').update(JSON.stringify(row)).digest('hex').slice(0, 12)
+          return { name, expectedCount: a?.rows?.length ?? null, actualCount: b?.rows?.length ?? null,
+            expectedHash: rowHash(a?.rows ?? null), actualHash: rowHash(b?.rows ?? null),
+            rowFields: diffKeys(a?.rows?.[0], b?.rows?.[0]),
+            layoutFields: diffKeys(a, b),
+          }
+        }),
+      }))
+    }
     expect(b1.fingerprint).toBe(server.meta().logicalFingerprint)
 
     await addWord(A.page, 'A')
