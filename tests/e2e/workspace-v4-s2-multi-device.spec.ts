@@ -23,7 +23,7 @@ class SharedMockCloud {
   failNextPut = false
   loseNextCommitAck = false
   readonly byRevision = new Map<number, any>()
-  private readonly CHUNK_BYTES = 192 * 1024
+  private readonly CHUNK_BYTES = 512 * 1024
 
   snapshot() {
     return this.current
