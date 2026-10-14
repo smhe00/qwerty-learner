@@ -629,7 +629,8 @@ export function createEdgeOneBlobStorage(store) {
             throw new SnapshotBlobStageError('chunk_precommit', error, i)
           }
         }
-        const { payloadBytes: _bytes, ...fields } = snapshot
+        const fields = { ...snapshot }
+        delete fields.payloadBytes
         const manifest = { ...fields, payloadEncoding: 'binary',
           chunkedPayload: { version: 2, sha256: sha,
             count: parts.length, byteLength: bytes.length, partSha256s } }
