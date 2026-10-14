@@ -1,0 +1,33 @@
+name: Master vs Etest V4 Write Benchmark (disposable)
+
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - '.github/workflows/benchmark-master-etest-v4.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v4-master-etest-disposable-benchmark
+  cancel-in-progress: false
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Confirm JavaScript benchmark syntax
+        run: node --check scripts/benchmark-master-etest-v4.mjs
+      - name: Measure disposable master Base64 vs etest native V4 writes
+        env:
+          V4_BENCHMARK_ACK: RUN_DISPOSABLE_MASTER_VS_ETEST_BENCHMARK
+        run: node scripts/benchmark-master-etest-v4.mjs
