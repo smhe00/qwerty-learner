@@ -7,7 +7,7 @@
 import type { RemoteBinarySnapshot, RemoteSnapshot, RemoteSyncMeta } from './types'
 
 const HASH = /^[0-9a-f]{64}$/
-const MAX_ARCHIVE_BYTES = 4 * 1024 * 1024
+const MAX_ARCHIVE_BYTES = 16 * 1024 * 1024
 
 export function samePinnedRemote(
   a: RemoteSyncMeta,
