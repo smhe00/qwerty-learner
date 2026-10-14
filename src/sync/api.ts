@@ -1,4 +1,5 @@
 import type { CloudUser, RemoteSnapshot, RemoteSyncMeta } from './types'
+import { planV4UploadParts } from './v4-http-part-plan'
 
 type ApiErrorBody = {
   error?: string
@@ -188,39 +189,73 @@ export function getSyncV2Snapshot(token: string) {
 }
 
 /** S2 verified V4 CAS endpoint. No ordinary UI/legacy V1 caller. */
-export function putSyncV2(
-  token: string,
-  input: {
-    baseRevision: number
-    logicalFingerprint: string
-    payloadBase64: string
-    deviceId?: string
-    clientFormatVersion: 'qwerty-backup-v4'
-  },
-) {
+type V4PutInput = {
+  baseRevision: number
+  logicalFingerprint: string
+  payloadBase64: string
+  deviceId?: string
+  clientFormatVersion: 'qwerty-backup-v4'
+}
+type V4RecoveryInput = V4PutInput & {
+  recoveryMode: 'replace-v4'
+  expectedRemoteFormat: 'qwerty-backup-v4'
+  expectedRemoteSha256: string
+  expectedRemoteLogicalFingerprint?: string | null
+  accountConfirmation: string
+}
+const V4_MULTIPART_THRESHOLD_CHARS = 128 * 1024
+
+/** Immutable account-scoped parts; only the final manifest invokes V4 CAS.
+ * Unknown final commit outcome MUST be reconciled by remote meta first.
+ */
+async function putV4Multipart(
+  token: string, input: V4PutInput | V4RecoveryInput, recovery: boolean,
+): Promise<SyncMetaResponse> {
+  const plan = await planV4UploadParts(input.payloadBase64)
+  for (const part of plan.parts) {
+    const response = await request<{
+      ok: true
+      received: true
+      payloadSha256: string
+      partSha256: string
+      index: number
+    }>('/api/sync/v2/parts', {
+      method: 'POST', token, body: {
+        payloadSha256: plan.payloadSha256, count: plan.parts.length,
+        index: part.index, data: part.data, partSha256: part.partSha256,
+      },
+    })
+    if (!response.received || response.index !== part.index ||
+        response.payloadSha256 !== plan.payloadSha256 ||
+        response.partSha256 !== part.partSha256) {
+      throw new SyncApiError(503, 'v4_upload_part_receipt_mismatch',
+        'Cloud part acknowledgement is unverified; local V4 snapshot was preserved')
+    }
+  }
+  const { payloadBase64: _payload, ...metadata } = input
+  return request<SyncMetaResponse>(
+    recovery ? '/api/sync/v2/commit/recovery' : '/api/sync/v2/commit',
+    { method: 'POST', token, body: {
+      ...metadata, payloadSha256: plan.payloadSha256, count: plan.parts.length,
+      partSha256s: plan.parts.map(part => part.partSha256),
+    } },
+  )
+}
+
+export function putSyncV2(token: string, input: V4PutInput) {
+  if (input.payloadBase64.length > V4_MULTIPART_THRESHOLD_CHARS) {
+    return putV4Multipart(token, input, false)
+  }
   return request<SyncMetaResponse>('/api/sync/v2', {
     method: 'PUT', token, body: input,
   })
 }
 
-/** Explicit recovery only. Never reachable from the ordinary Sync button.
- * Server verifies immutable account, pinned remote SHA and format, and CAS.
- */
-export function putSyncV2Recovery(
-  token: string,
-  input: {
-    baseRevision: number
-    payloadBase64: string
-    logicalFingerprint: string
-    clientFormatVersion: 'qwerty-backup-v4'
-    recoveryMode: 'replace-v4'
-    expectedRemoteFormat: 'qwerty-backup-v4'
-    expectedRemoteSha256: string
-    expectedRemoteLogicalFingerprint?: string | null
-    accountConfirmation: string
-    deviceId?: string
-  },
-) {
+/** Explicit recovery retains its original server confirmation preconditions. */
+export function putSyncV2Recovery(token: string, input: V4RecoveryInput) {
+  if (input.payloadBase64.length > V4_MULTIPART_THRESHOLD_CHARS) {
+    return putV4Multipart(token, input, true)
+  }
   return request<SyncMetaResponse>('/api/sync/v2/recovery', {
     method: 'PUT', token, body: input,
   })
