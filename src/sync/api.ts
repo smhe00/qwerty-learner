@@ -380,11 +380,54 @@ export function putSyncV2(token: string, input: V4PutInput) {
   })
 }
 
+/** A one-part snapshot needs one HTTP request, not stage + commit.
+ * It still has immutable SHA, six-table validation and V4 CAS on Maker.
+ * Never automatically replay an ambiguous direct write.
+ */
+async function putSyncV2BinaryDirect(
+  token: string, input: V4BinaryPutInput,
+): Promise<SyncMetaResponse> {
+  const plan = await planV4UploadParts(input.payloadBytes)
+  if (plan.parts.length !== 1) throw new Error('v4-direct-requires-one-part')
+  const started = v4TimeNow()
+  try {
+    const reply = await request<SyncMetaResponse>('/api/sync/v2/binary/direct', {
+      method: 'POST', token, binary: input.payloadBytes,
+      partHeaders: {
+        'X-Qwerty-Payload-Sha256': plan.payloadSha256,
+        'X-Qwerty-Base-Revision': String(input.baseRevision),
+        'X-Qwerty-Logical-Fingerprint': input.logicalFingerprint,
+        ...(input.deviceId ? { 'X-Qwerty-Device-Id': input.deviceId } : {}),
+      },
+    })
+    if (reply.revision !== input.baseRevision + 1 ||
+        reply.payloadSha256 !== plan.payloadSha256 ||
+        reply.logicalFingerprint !== input.logicalFingerprint ||
+        reply.storageEncoding !== 'binary') {
+      throw new SyncApiError(503, 'v4_direct_commit_receipt_mismatch',
+        'Direct V4 commit receipt is incomplete; remote revision must be rechecked')
+    }
+    v4Record('v4-commit', v4Elapsed(started), undefined, undefined,
+      input.payloadBytes.length, 'ok')
+    return reply
+  } catch (error) {
+    v4Record('v4-commit', v4Elapsed(started), undefined, undefined,
+      input.payloadBytes.length, 'failed', v4ErrorDetails(error).timings, error)
+    // Unknown result may already be durable; normal V4 recovery must read
+    // remote revision + SHA before any subsequent user-initiated attempt.
+    throw error
+  }
+}
+
 /** New Sync writer: gzip remains raw Uint8Array from local snapshot
  * through HTTP, Maker SHA verification and native Blob storage.
+ * HTTP and native Blob objects never exceed 512 KiB. Larger gzip uses
+ * bounded parallel immutable staging followed by one guarded commit.
  */
 export function putSyncV2Binary(token: string, input: V4BinaryPutInput) {
-  return putV4Multipart(token, input, false)
+  return input.payloadBytes.length <= V4_HTTP_PART_BYTES
+    ? putSyncV2BinaryDirect(token, input)
+    : putV4Multipart(token, input, false)
 }
 
 type BinaryManifest = SyncMetaResponse & {
