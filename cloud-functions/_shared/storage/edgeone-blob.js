@@ -194,10 +194,9 @@ export function createEdgeOneBlobStorage(store) {
   async function readManifestParts(userId, revision, manifest) {
     const layout = manifest?.chunkedPayload
     if (!layout) return manifest
-    if (layout.version === 2 || layout.version === 3) {
-      // v2 = historical 192-KiB objects; v3 = native 512-KiB objects.
-      const chunkBytes = layout.version === 3 ? 512 * 1024 : 192 * 1024
-      if (layout.version === 3 && layout.chunkBytes !== chunkBytes)
+    if (layout.version === 3) {
+      const chunkBytes = 512 * 1024
+      if (layout.chunkBytes !== chunkBytes)
         throw new Error('Binary revision chunk size evidence invalid')
       if (!/^[a-f0-9]{64}$/.test(layout.sha256 || '') ||
           layout.sha256 !== manifest.dataSha256 ||
@@ -730,11 +729,11 @@ export function createEdgeOneBlobStorage(store) {
       }
       const manifest = await strongJson(revisionKey(userId, revision))
       const layout = manifest?.chunkedPayload
-      if (!layout || ![2, 3].includes(layout.version) || layout.sha256 !== sha ||
+      if (!layout || layout.version !== 3 || layout.sha256 !== sha ||
           manifest.revision !== revision || index >= layout.count ||
           !Array.isArray(layout.partSha256s)) return null
-      const chunkBytes = layout.version === 3 ? 512 * 1024 : 192 * 1024
-      if (layout.version === 3 && layout.chunkBytes !== chunkBytes)
+      const chunkBytes = 512 * 1024
+      if (layout.chunkBytes !== chunkBytes)
         throw new Error('Binary revision chunk size evidence invalid')
       const bytes = await strongBinary(binaryRevisionKey(userId, revision, sha, index))
       if (!bytes || !bytes.length || bytes.length > chunkBytes ||
