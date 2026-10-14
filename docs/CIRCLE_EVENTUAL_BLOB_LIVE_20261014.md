@@ -57,3 +57,43 @@ Sequence: append one CIRCLE_CREATED event, then concurrently append 12 distinct 
 ## Next gate
 
 Implement and qualify a production-independent trusted access/fence/retirement adapter, explicit account/IP limiter and account-delete orchestration. Keep `http.js` hard closed and no `product/main`/release changes until the isolation, identity and privacy gates are independently signed off.
+
+---
+
+## Follow-up live smoke v2 — eventual removal and closure (2026-10-14)
+
+**PASS** — [GitHub Actions run 38536214514](https://github.com/smhe00/qwerty-learner/actions/runs/38536214514). The v2 probe extends the previous 13-object test by appending `MEMBER_REMOVED` and `CIRCLE_CLOSED` in the same isolated sandbox, still with **zero CAS**, conditional writes, remote locks, Maker builds or user-data mutations.
+
+Verified JSON:
+
+```json
+{
+  "check": "circle_eventual_blob_live_v2",
+  "storage": "isolated-sandbox",
+  "operations": 15,
+  "casUsed": false,
+  "concurrency": 12,
+  "converged": true,
+  "removalConverged": true,
+  "closureConverged": true,
+  "physicalKeysDistinct": true,
+  "cleanupConfirmed": true,
+  "deploymentTriggered": false,
+  "elapsedMs": 8630,
+  "lastObservedCount": 13,
+  "removalVisibilityElapsedMs": 5216,
+  "closureVisibilityElapsedMs": 5338,
+  "cleanupFailures": 0
+}
+```
+
+- `MEMBER_REMOVED` was reflected as `revoked` and removed the targeted member from the replayed membership list.
+- `CIRCLE_CLOSED` converged to `closed: true` with no visible members, progress or claps.
+- All 15 distinct event objects were deleted and immediately verified absent through the same strong-read API-token SDK path.
+- The observed ~5 s times include polling/round trips, and do **not** define a hard provider SLA or a multi-region upper bound.
+- No live HTTP gateway, deleted-account physical erasure or V4 interoperation was tested in this run.
+
+**Updated offline implementation:** the light-social `createCircleEventualService` authorizes by replayed membership events and current V4 session checks, not by any independent strong revoke service. The previous fenced-mode adapter remains historical/optional, but is not a new Circle dependency. The [architecture decision](./CIRCLE_EVENTUAL_ACCESS_DECISION_20261014.md) documents the accepted propagation window and remaining deletion/privacy gates.
+
+**Circle Core Gate:** [run 38536040835](https://github.com/smhe00/qwerty-learner/actions/runs/38536040835) — **92/92 active tests PASS**, 0 failures, scoped ESLint clean.
+
