@@ -36,7 +36,7 @@ jobs:
           const expected = 'https://etest.edgeone.dev/'
           const actual = new URL(process.env.QWERTY_SYNC_BASE_URL)
           if (actual.origin !== new URL(expected).origin) throw Error('Wrong EdgeOne test origin')
-          const required = 'v4-http-binary-192k-v1'
+          const required = 'v4-end-to-end-binary-v1'
           let healthy = false
           for (let index = 0; index < 42; index++) {
             try {
@@ -103,7 +103,7 @@ jobs:
           const expected = 'https://etest.edgeone.dev'
           if (new URL(process.env.QWERTY_SYNC_BASE_URL).origin !== expected)
             throw Error('Cloud E2E must use branch-matched EdgeOne, never Pages')
-          const required = 'v4-http-binary-192k-v1'
+          const required = 'v4-end-to-end-binary-v1'
           let healthy = false
           for (let index = 0; index < 42; index++) {
             try {
