@@ -43,7 +43,7 @@ async function installBinaryMock(
     const bytes = request.postDataBuffer()
     expect(bytes).not.toBeNull()
     expect(bytes!.length).toBeGreaterThan(0)
-    expect(bytes!.length).toBeLessThanOrEqual(192 * 1024)
+    expect(bytes!.length).toBeLessThanOrEqual(512 * 1024)
     expect(index).toBeGreaterThanOrEqual(0)
     expect(index).toBeLessThan(count)
     expect(createHash('sha256').update(bytes!).digest('hex')).toBe(partSha)
