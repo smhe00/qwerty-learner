@@ -4,6 +4,7 @@ import { AppError } from '../core.js'
 const fail = (status, code) => { throw new AppError(status, code, code) }
 const safe = (value) => typeof value === 'string' && /^[A-Za-z0-9_-]{8,128}$/.test(value)
 const hash = (value) => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value)
+const policyName = (value) => typeof value === 'string' && /^[a-z_]{2,64}$/.test(value)
 const functionNames = ['check', 'commitRevocation', 'lookupRevocation',
   'authorizeMaintenance', 'lookupRetirement']
 
@@ -59,9 +60,9 @@ export function createCircleTrustedAccessAdapter({
   // transferable permit. Never pass the bearer token into the policy provider.
   async function check({ token, actorUserId, circleId, action, phase, subjects,
     viewHash } = {}) {
-    if (!safe(actorUserId) || !safe(circleId) || !safe(action) || !safe(phase) ||
-        !Array.isArray(subjects) || subjects.some((subject) => !safe(subject)) ||
-        subjects.length > 10000 ||
+    if (!safe(actorUserId) || !safe(circleId) || !policyName(action) || !policyName(phase) ||
+        (subjects !== undefined && (!Array.isArray(subjects) ||
+          subjects.some((subject) => !safe(subject)) || subjects.length > 10000)) ||
         (viewHash !== undefined && !hash(viewHash))) return false
     try {
       const session = await authenticate(token)
@@ -69,7 +70,7 @@ export function createCircleTrustedAccessAdapter({
       return (await authority.check({
         actorUserId, sessionVersion: session.sessionVersion,
         sessionExpiresAt: session.expiresAt, circleId, action, phase,
-        subjects: [...new Set(subjects)].sort(), viewHash,
+        subjects: [...new Set(subjects || [])].sort(), viewHash,
       })) === true
     } catch { return false }
   }
@@ -109,7 +110,7 @@ export function createCircleTrustedAccessAdapter({
   }
 
   async function authorizeMaintenance(scope = {}) {
-    if (!safe(scope.circleId) || !safe(scope.action) ||
+    if (!safe(scope.circleId) || !policyName(scope.action) ||
         (scope.userId !== undefined && !safe(scope.userId)) ||
         (scope.subjects !== undefined &&
           (!Array.isArray(scope.subjects) || scope.subjects.some((s) => !safe(s))))) return false
