@@ -1310,14 +1310,14 @@ export function createBackendService({
     const latest = await storage.getLatestRevisionMeta(identity.userId)
     const snapshot = latest?.snapshot
     const layout = snapshot?.chunkedPayload
-    if (!snapshot || ![2, 3].includes(layout?.version) ||
+    if (!snapshot || layout?.version !== 3 ||
         snapshot.clientFormatVersion !== V4_FORMAT ||
         snapshot.payloadEncoding !== 'binary') {
       throw new AppError(409, 'v4_binary_migration_required',
         'Cloud revision has not been migrated to binary')
     }
     return { ...metaFromSnapshot(snapshot), payloadEncoding: 'binary',
-      chunkBytes: layout.version === 3 ? 512 * 1024 : 192 * 1024,
+      chunkBytes: 512 * 1024,
       count: layout.count,
       partSha256s: layout.partSha256s }
   }
@@ -1327,7 +1327,7 @@ export function createBackendService({
     const latest = await storage.getLatestRevisionMeta(identity.userId)
     if (!latest || latest.revision !== revision ||
         latest.snapshot?.dataSha256 !== sha ||
-        ![2, 3].includes(latest.snapshot?.chunkedPayload?.version)) {
+        latest.snapshot?.chunkedPayload?.version !== 3) {
       throw new AppError(409, 'sync_conflict',
         'Binary revision changed during download', {
           current: metaFromSnapshot(latest?.snapshot || null),
