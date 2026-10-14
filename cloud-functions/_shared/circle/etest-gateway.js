@@ -20,8 +20,9 @@ function response(status, error) {
  * and retryable cleanup protocol. Etest-only guard, never a production override.
  */
 export function blocksCircleEtestAccountDeletion({ hostname, env, userId } = {}) {
-  if (hostname !== HOST || env?.CIRCLE_ETEST_ENABLED !== 'true' ||
-      !SAFE_USER_ID.test(userId || '')) return false
+  // Disabling the feature cannot silently disable data-erasure protection.
+  // Only remove the allowlist AFTER an independently audited Circle scrub.
+  if (hostname !== HOST || !SAFE_USER_ID.test(userId || '')) return false
   return String(env.CIRCLE_ETEST_USER_IDS || '').split(',')
     .map((id) => id.trim()).includes(userId)
 }
