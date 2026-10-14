@@ -90,6 +90,31 @@ async function readBinaryPart(request, maxBytes) {
   return Buffer.from(arrayBuffer)
 }
 
+// Legacy master V4 JSON PUT remains the migration fixture input.
+// EdgeOne's request.text() intermittently fails even for small valid bodies.
+// Receive bounded UTF-8 JSON through the same proven arrayBuffer primitive
+// used by native binary parts. This does NOT encode gzip as Base64 on S2.
+async function readLegacyV4Json(request, maxBytes) {
+  const length = request.headers.get('content-length')
+  if (length !== null &&
+      (!/^\\d+$/.test(length) || Number(length) > maxBytes)) {
+    throw new AppError(413, 'request_too_large', 'Legacy V4 JSON body exceeds limit')
+  }
+  const bytes = await request.arrayBuffer()
+  if (bytes.byteLength > maxBytes) {
+    throw new AppError(413, 'request_too_large', 'Legacy V4 JSON body exceeds limit')
+  }
+  if (length !== null && Number(length) !== bytes.byteLength) {
+    throw new AppError(400, 'invalid_json', 'Legacy V4 JSON length mismatch')
+  }
+  if (!bytes.byteLength) return {}
+  try {
+    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
+  } catch {
+    throw new AppError(400, 'invalid_json', 'Request body must contain valid JSON')
+  }
+}
+
 async function readJson(request, maxBytes) {
   const text = await request.text()
 
@@ -493,7 +518,7 @@ export async function onRequest(context) {
       const token = await requireS2WriteAccount(service, request, env)
       let body
       try {
-        body = await readJson(request, bodyLimit)
+        body = await readLegacyV4Json(request, bodyLimit)
       } catch (error) {
         if (error instanceof AppError) throw error
         throw new AppError(503, 'snapshot_body_read_failed',
