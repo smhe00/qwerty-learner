@@ -3,7 +3,7 @@
  * Raw bytes are never Base64-encoded on the new Sync V2 path.
  * Historical Base64 support is server-side read-only compatibility.
  */
-export const V4_HTTP_PART_BYTES = 256 * 1024
+export const V4_HTTP_PART_BYTES = 512 * 1024
 export const V4_HTTP_MAX_PARTS = 192
 
 function asHex(bytes: ArrayBuffer): string {
