@@ -194,6 +194,33 @@ export function createEdgeOneBlobStorage(store) {
   async function readManifestParts(userId, revision, manifest) {
     const layout = manifest?.chunkedPayload
     if (!layout) return manifest
+    if (layout.version === 2) {
+      if (!/^[a-f0-9]{64}$/.test(layout.sha256 || '') ||
+          layout.sha256 !== manifest.dataSha256 ||
+          !Number.isSafeInteger(layout.count) || layout.count < 1 ||
+          layout.count > MAX_PARTS ||
+          !Number.isSafeInteger(layout.byteLength) || layout.byteLength < 1 ||
+          layout.byteLength !== manifest.sizeBytes ||
+          !Array.isArray(layout.partSha256s) ||
+          layout.partSha256s.length !== layout.count ||
+          !layout.partSha256s.every(sha => /^[a-f0-9]{64}$/.test(sha))) {
+        throw new Error('Binary revision manifest invalid')
+      }
+      const parts = await Promise.all(Array.from({ length: layout.count }, (_, index) =>
+        strongBinary(binaryRevisionKey(userId, revision, layout.sha256, index))))
+      if (parts.some((p, i) => !p ||
+          p.length < 1 || p.length > 192 * 1024 ||
+          (i !== layout.count - 1 && p.length !== 192 * 1024) ||
+          crypto.createHash('sha256').update(p).digest('hex') !== layout.partSha256s[i])) {
+        throw new Error('Binary revision part failed integrity verification')
+      }
+      const bytes = Buffer.concat(parts)
+      if (bytes.length !== layout.byteLength ||
+          crypto.createHash('sha256').update(bytes).digest('hex') !== layout.sha256) {
+        throw new Error('Binary revision full SHA/byte length mismatch')
+      }
+      return { ...manifest, payloadBytes: bytes }
+    }
     if (layout.version !== 1 ||
         !/^[a-f0-9]{64}$/.test(layout.sha256 || '') ||
         layout.sha256 !== manifest.dataSha256 ||
@@ -560,6 +587,63 @@ export function createEdgeOneBlobStorage(store) {
 
     async createRevision(userId, revision, snapshot) {
       lastV4RevisionTiming = null
+      if (snapshot?.clientFormatVersion === 'qwerty-backup-v4' &&
+          Buffer.isBuffer(snapshot.payloadBytes)) {
+        const bytes = snapshot.payloadBytes
+        const sha = crypto.createHash('sha256').update(bytes).digest('hex')
+        if (bytes.length !== snapshot.sizeBytes || sha !== snapshot.dataSha256 ||
+            !bytes.length || bytes.length > 4 * 1024 * 1024) {
+          throw new Error('Invalid V4 binary revision evidence')
+        }
+        const chunkBytes = 192 * 1024
+        const parts = Array.from({ length: Math.ceil(bytes.length / chunkBytes) }, (_, i) =>
+          bytes.subarray(i * chunkBytes, (i + 1) * chunkBytes))
+        if (parts.length > MAX_PARTS) throw new Error('Excessive binary V4 chunks')
+        const partSha256s = parts.map(part =>
+          crypto.createHash('sha256').update(part).digest('hex'))
+        const timing = { revisionChunkCount: parts.length,
+          revisionWriteMs: 0, revisionReadbackMs: 0, revisionManifestMs: 0 }
+        lastV4RevisionTiming = timing
+        const elapsed = start => Math.round((performance.now() - start) * 10) / 10
+        for (let i = 0; i < parts.length; i++) {
+          const key = binaryRevisionKey(userId, revision, sha, i)
+          try {
+            const started = performance.now()
+            try {
+              if (!await setBinaryOnlyIfNew(key, parts[i])) {
+                throw new Error('Immutable binary revision evidence conflicts')
+              }
+            } finally {
+              timing.revisionWriteMs += elapsed(started)
+            }
+            const readStart = performance.now()
+            try {
+              const observed = await strongBinary(key)
+              if (!observed || !observed.equals(parts[i])) {
+                throw new Error('Binary revision chunk readback mismatch')
+              }
+            } finally {
+              timing.revisionReadbackMs += elapsed(readStart)
+            }
+          } catch (error) {
+            throw new SnapshotBlobStageError('chunk_precommit', error, i)
+          }
+        }
+        const { payloadBytes: _bytes, ...fields } = snapshot
+        const manifest = { ...fields, payloadEncoding: 'binary',
+          chunkedPayload: { version: 2, sha256: sha,
+            count: parts.length, byteLength: bytes.length, partSha256s } }
+        const started = performance.now()
+        try {
+          return await setJsonOnlyIfNew(revisionKey(userId, revision), manifest)
+        } catch (error) {
+          throw new SnapshotBlobStageError('manifest_commit', error)
+        } finally {
+          timing.revisionManifestMs = elapsed(started)
+          timing.revisionWriteMs = Math.round(timing.revisionWriteMs * 10) / 10
+          timing.revisionReadbackMs = Math.round(timing.revisionReadbackMs * 10) / 10
+        }
+      }
       const encoded = snapshot?.payloadBase64
       if (snapshot?.clientFormatVersion !== 'qwerty-backup-v4' ||
           typeof encoded !== 'string' || encoded.length <= INLINE_PAYLOAD_CHARS) {
@@ -630,6 +714,27 @@ export function createEdgeOneBlobStorage(store) {
           revisionTiming[key] = Math.round(revisionTiming[key] * 10) / 10
         }
       }
+    },
+
+    async getBinaryRevisionPart(userId, revision, sha, index) {
+      if (!Number.isSafeInteger(revision) || revision < 1 ||
+          !/^[a-f0-9]{64}$/.test(sha) ||
+          !Number.isSafeInteger(index) || index < 0 || index >= MAX_PARTS) {
+        throw new Error('Invalid binary revision selector')
+      }
+      const manifest = await strongJson(revisionKey(userId, revision))
+      const layout = manifest?.chunkedPayload
+      if (!layout || layout.version !== 2 || layout.sha256 !== sha ||
+          manifest.revision !== revision || index >= layout.count ||
+          !Array.isArray(layout.partSha256s)) return null
+      const bytes = await strongBinary(binaryRevisionKey(userId, revision, sha, index))
+      if (!bytes || !bytes.length || bytes.length > 192 * 1024 ||
+          (index !== layout.count - 1 && bytes.length !== 192 * 1024) ||
+          crypto.createHash('sha256').update(bytes).digest('hex') !==
+            layout.partSha256s[index]) {
+        throw new Error('Binary revision chunk missing or corrupt')
+      }
+      return { bytes, manifest }
     },
 
     async getLatestRevisionMeta(userId) {
