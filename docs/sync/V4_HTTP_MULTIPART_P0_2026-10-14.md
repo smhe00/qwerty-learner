@@ -12,11 +12,22 @@ request.text() intermittently failed before any Blob write on 512-KiB to
 - Backup remains exactly qwerty-backup-v4, still carries all six Dexie tables,
   daily sessions, settings and navigation. Small snapshots retain original
   PUT /api/sync/v2 and explicit recovery PUT.
-- Larger Base64 gzip uses immutable, account-scoped, content-addressed parts:
-  POST /api/sync/v2/parts, at most 32 KiB Base64 each, 192 parts total.
-- Every part includes SHA256 of its literal Base64 data, index, count and
-  full compressed-gzip SHA256. Server validates and performs Blob exact-key
-  readback before returning a receipt. No revision is advanced.
+- Browser uploads of larger snapshots use **192 KiB raw gzip binary**
+  per POST /api/sync/v2/parts (`Content-Type: application/octet-stream`),
+  up to 192 requests. The single-body small-snapshot V4 PUT remains legacy
+  JSON/Base64 to avoid extra round trips. Base64 is no longer on the *multipart
+  HTTP request body*; the canonical Backup V4 format is unchanged.
+- The binary POST carries only bounded metadata headers:
+  `X-Qwerty-Payload-Sha256`, `X-Qwerty-Part-Sha256`,
+  `X-Qwerty-Part-Index`, `X-Qwerty-Part-Count`.
+  All indices, bounds, raw-byte SHA-256 and receipts are strictly validated.
+- Maker's Blob JSON adapter does **not** assume the SDK supports binary
+  objects. It splits the internal Base64 representation of each 192-KiB
+  binary upload into up to two immutable **128 KiB Base64** Blob JSON
+  records. This avoids oversized Blob writes and provides exact-key
+  readback and per-part checksums. Staging has format version 2; old
+  version-1 Base64/32-KiB stage records remain readable for open tabs.
+  Mixed versions in a single manifest fail closed. No revision is advanced.
 - POST /api/sync/v2/commit sends only part hashes and original V4 metadata.
   Server retrieves exact keys (no Blob list), checks part SHA, count, full
   gzip SHA and size; then calls the UNMODIFIED putSyncV4 validator for account
@@ -34,7 +45,7 @@ request.text() intermittently failed before any Blob write on 512-KiB to
 
 ## Real etest acceptance
 
-The updated branch E2E requires v4-http-multipart-v1 in /api/health AND a
+The updated branch E2E requires v4-http-binary-192k-v1 in /api/health AND a
 matching deployed frontend SHA. Tests use disposable accounts only. After
 normal V4 auth and CAS tests, it uploads random 256, 512, 1024, 1536, 2048,
 2700 KiB source burdens as small HTTP parts, confirms each reported cloud
@@ -113,3 +124,26 @@ Only after capturing that evidence should the hot path be changed:
 A release gate must not be cleared by simply raising test or fetch timeouts,
 skipping the 2700 KiB case, allowing a partial V4 revision, or treating
 ambiguous final responses as safe to replay.
+
+## 192-KiB raw transport update (development branch only)
+
+The previous 32-KiB HTTP/Base64 setting was a conservative workaround, **not**
+a proven EdgeOne maximum. On live etest at commit 85c9cbb2, 2048 KiB required
+86 HTTP calls, with 107.7 seconds cumulative HTTP time but only 8 seconds
+server-side staging time. Some 32-KiB requests still returned retryable 503
+v4_upload_body_read_failed. This justified testing a larger raw-body request
+without increasing the existing 20s/test and 90s/browser request timeouts.
+
+The same etest revision passed upload and final commit for 2048 KiB but
+failed its full GET despite HTTP 200 (not enough evidence of Blob corruption).
+The updated smoke test preserves only the redacted response byte count,
+declared Content-Length, parse-failure category and metadata. Full-response
+download is **still JSON/Base64**, not binary; a future independently gated
+download transport is needed to remove Base64 from all network traffic.
+
+**Deployment discipline:** commit and CI on product/main; advance
+edgeone-test only after passing Cloud Gate and release-admission checks.
+Require both deployed frontend SHA and binary Maker capability before any
+real disposable-account stress. Do not update production master from this
+work. Do not claim reliability of 192-KiB Maker raw-body reads before real
+EdgeOne verification, or waive byte-exact 2048/2700 KiB GET checks.
