@@ -106,7 +106,10 @@ test('multi-request V4 stages without revision; commit verifies full six-table V
   assert.equal((await f.service.getSync(f.token)).payloadBase64.length > 0, true)
   // Identical commit cannot advance an already committed revision.
   await assert.rejects(commitV4Upload(f.storage, f.service, f.token,
-    f.accountId, f.manifest, 4 * 1024 * 1024))
+    f.accountId, f.manifest, 4 * 1024 * 1024),
+  error => error.code === 'sync_conflict' &&
+    error.details?.current?.revision === 1 &&
+    error.details.failureStage === 'commit_core')
   assert.equal((await f.service.syncMeta(f.token)).revision, 1)
 })
 test('ambiguous immutable stage ACK, identical retry and account separation', async () => {
