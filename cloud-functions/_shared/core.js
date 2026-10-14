@@ -1355,7 +1355,7 @@ export function createBackendService({
         'Only existing Backup V4 can be migrated to binary')
     }
     if (snapshot.payloadEncoding === 'binary' &&
-        snapshot.chunkedPayload?.version === 2) {
+        snapshot.chunkedPayload?.version === 3) {
       return { ...metaFromSnapshot(snapshot), migrated: false }
     }
     if (!Number.isSafeInteger(expected.baseRevision) ||
