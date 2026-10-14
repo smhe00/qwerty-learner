@@ -38,13 +38,15 @@ const guardedStore = {
 const log = createCircleEventLog(guardedStore)
 const totalJoins = 12
 const result = {
-  check: 'circle_eventual_blob_live_v1',
+  check: 'circle_eventual_blob_live_v2',
   storage: 'isolated-sandbox',
   circleIdLength: circleId.length,
   operations: 1 + totalJoins,
   casUsed: false,
   concurrency: totalJoins,
   converged: false,
+  removalConverged: false,
+  closureConverged: false,
   physicalKeysDistinct: false,
   cleanupConfirmed: false,
   deploymentTriggered: false,
@@ -92,6 +94,57 @@ try {
   result.elapsedMs = Date.now() - start
   result.lastObservedCount = lastObserved
   assert.equal(result.converged, true, 'Events not fully visible within bounded convergence window')
+
+  // A removal needs NO independent strong fence: it is an immutable event
+  // and becomes remove-wins after all keys are visible. This does NOT test
+  // immediate privacy revocation, which the product explicitly does not claim.
+  const removedUserId = 'probe_guest_000000'
+  const appendStart = Date.now()
+  await log.append({ circleId, actorUserId: creator, type: 'MEMBER_REMOVED',
+    operationId: 'probe_remove_00001', payload: { targetUserId: removedUserId } })
+  result.operations++
+  for (let attempt = 0; attempt < 40; attempt++) {
+    try {
+      const events = await log.scan(circleId)
+      if (events.length === result.operations) {
+        const view = reduceCircle(circleId, events)
+        if (view.revoked.includes(removedUserId) &&
+            !view.members.some((m) => m.userId === removedUserId) &&
+            view.members.length === result.operations - 2) {
+          result.removalConverged = true
+          break
+        }
+      }
+    } catch { /* retry known visibility gaps; never treat as absence */ }
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+  }
+  result.removalVisibilityElapsedMs = Date.now() - appendStart
+  assert.equal(result.removalConverged, true,
+    'Remove-wins state did not converge in bounded sandbox probe')
+
+  const closeStart = Date.now()
+  await log.append({ circleId, actorUserId: creator, type: 'CIRCLE_CLOSED',
+    operationId: 'probe_close_00001', payload: {} })
+  result.operations++
+  for (let attempt = 0; attempt < 40; attempt++) {
+    try {
+      const events = await log.scan(circleId)
+      if (events.length === result.operations) {
+        const view = reduceCircle(circleId, events)
+        if (view.closed && view.members.length === 0 &&
+            view.progress.length === 0 && view.claps.length === 0) {
+          result.closureConverged = true
+          break
+        }
+      }
+    } catch { /* retry until full visible snapshot */ }
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+  }
+  result.closureVisibilityElapsedMs = Date.now() - closeStart
+  assert.equal(result.closureConverged, true,
+    'Close-wins state did not converge in bounded sandbox probe')
+  result.physicalKeysDistinct = writtenKeys.size === result.operations
+  assert.equal(result.physicalKeysDistinct, true, 'Collision after revocation/closure')
 } catch (error) {
   primaryError = error
   result.primaryFailure = error?.name || 'Error'
