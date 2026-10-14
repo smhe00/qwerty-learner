@@ -70,7 +70,7 @@ function corsHeaders(request, configuredOrigin) {
 
 // EdgeOne Maker has repeatedly failed request.body.getReader().read()
 // at 192 KiB even when 32 KiB succeeds. Use the standard Request.arrayBuffer()
-// receive path, then validate the hard 192-KiB size (no Base64 conversion).
+// receive path, then validate the declared 512-KiB size (no Base64 conversion).
 // The Content-Length bound is checked before receiving when available.
 // This changes the body primitive, NOT the request timeout, part size,
 // revision CAS, immutable SHA evidence, or binary Blob layout.
@@ -78,11 +78,11 @@ async function readBinaryPart(request, maxBytes) {
   const declaredLength = request.headers.get('content-length')
   if (declaredLength !== null && (!/^\d+$/.test(declaredLength) ||
       Number(declaredLength) > maxBytes)) {
-    throw new AppError(413, 'request_too_large', 'V4 binary part exceeds 192 KiB')
+    throw new AppError(413, 'request_too_large', 'V4 binary part exceeds limit')
   }
   const arrayBuffer = await request.arrayBuffer()
   if (!arrayBuffer.byteLength || arrayBuffer.byteLength > maxBytes) {
-    throw new AppError(413, 'request_too_large', 'V4 binary part outside 192-KiB limit')
+    throw new AppError(413, 'request_too_large', 'V4 binary part outside limit')
   }
   if (declaredLength !== null && Number(declaredLength) !== arrayBuffer.byteLength) {
     throw new AppError(400, 'invalid_v4_upload_part', 'Binary part declared length mismatch')
@@ -430,15 +430,11 @@ export async function onRequest(context) {
         if (contentType === 'application/octet-stream') {
           const indexHeader = request.headers.get('x-qwerty-part-index')
           const countHeader = request.headers.get('x-qwerty-part-count')
-          // Legacy deployed tabs omit this header and retain 192-KiB chunks.
           const declaredChunk = request.headers.get('x-qwerty-chunk-bytes')
-          const wirePartBytes = declaredChunk === null ? 192 * 1024
-            : Number(declaredChunk)
-          if (![192 * 1024, 512 * 1024].includes(wirePartBytes) ||
-              (declaredChunk !== null &&
-                declaredChunk !== String(wirePartBytes))) {
+          const wirePartBytes = 512 * 1024
+          if (declaredChunk !== String(wirePartBytes)) {
             throw new AppError(400, 'invalid_v4_upload_part',
-              'Unsupported immutable HTTP chunk layout')
+              'Binary V4 requires 512-KiB HTTP parts')
           }
           // Reject malformed metadata without trusting parseInt's prefix parsing.
           if (!/^\d+$/.test(indexHeader || '') || !/^\d+$/.test(countHeader || '')) {
