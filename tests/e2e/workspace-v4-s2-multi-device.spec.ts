@@ -94,6 +94,67 @@ class SharedMockCloud {
         body: data.subarray(i * this.CHUNK_BYTES, (i + 1) * this.CHUNK_BYTES) })
       return
     }
+    // Current client uses one native binary POST for gzip <= 512 KiB.
+    // Preserve CAS, SHA and the two deterministic failure injections used
+    // by the multipart path; this is a protocol mock, not a bypass.
+    if (method === 'POST' && pathname.endsWith('/binary/direct')) {
+      if (this.failNextPut) {
+        this.failNextPut = false
+        await this.error(r, 503, 'temporary_unavailable')
+        return
+      }
+      const headers = request.headers()
+      const bytes = request.postDataBuffer()
+      const payloadSha = headers['x-qwerty-payload-sha256']
+      const fingerprint = headers['x-qwerty-logical-fingerprint']
+      const baseRevision = Number(headers['x-qwerty-base-revision'])
+      const currentRevision = this.current?.revision ?? 0
+      const shaPattern = /^[a-f0-9]{64}$/
+      if (!bytes || bytes.length < 1 || bytes.length > this.CHUNK_BYTES ||
+          !shaPattern.test(payloadSha || '') || !shaPattern.test(fingerprint || '') ||
+          !Number.isSafeInteger(baseRevision) || baseRevision < 0 ||
+          createHash('sha256').update(bytes).digest('hex') !== payloadSha) {
+        await this.error(r, 400, 'invalid_v4_direct_payload')
+        return
+      }
+      if (baseRevision !== currentRevision) {
+        this.refusedCAS++
+        await r.fulfill({ status: 409, json: {
+          ok: false, error: 'sync_conflict', message: 'revision conflict',
+          details: { current: this.meta() },
+        } })
+        return
+      }
+      try {
+        const parsed = JSON.parse(gunzipSync(bytes).toString('utf8'))
+        if (parsed.backupFormatVersion !== 'qwerty-backup-v4' ||
+            parsed.metadata?.source?.accountId !== OWNER.accountId) {
+          await this.error(r, 400, 'invalid_v4_direct_snapshot')
+          return
+        }
+      } catch {
+        await this.error(r, 400, 'invalid_v4_direct_gzip')
+        return
+      }
+      this.current = {
+        hasData: true, revision: currentRevision + 1,
+        updatedAt: '2026-10-10T00:00:00Z',
+        sizeBytes: bytes.length, dataSha256: payloadSha,
+        payloadSha256: payloadSha, logicalFingerprint: fingerprint,
+        clientFormatVersion: 'qwerty-backup-v4',
+        deviceId: headers['x-qwerty-device-id'] || 'simulated-device',
+        payloadBytes: Buffer.from(bytes), storageEncoding: 'binary',
+      }
+      this.successfulWrites++
+      this.byRevision.set(this.current.revision, { ...this.current })
+      if (this.loseNextCommitAck) {
+        this.loseNextCommitAck = false
+        await this.error(r, 503, 'response_lost_after_commit')
+        return
+      }
+      await r.fulfill({ json: { ok: true, ...this.meta() } })
+      return
+    }
     if (method === 'POST' && pathname.endsWith('/parts')) {
       const headers = request.headers()
       const payloadSha = headers['x-qwerty-payload-sha256']
