@@ -1,6 +1,6 @@
 import type { CloudUser, RemoteSnapshot, RemoteSyncMeta } from './types'
 import { V4_HTTP_PART_BYTES, planV4UploadParts } from './v4-http-part-plan'
-import { retryIdenticalV4Part } from './v4-http-part-retry'
+import { retryIdenticalV4Part, stageImmutableV4Parts } from './v4-http-part-retry'
 import { type PerfSample, recordV4TransportSample } from './perf-diagnostics'
 
 type ApiErrorBody = {
@@ -295,7 +295,10 @@ async function putV4Multipart(
   const compressed = 'payloadBytes' in input ? input.payloadBytes :
     Uint8Array.from(atob(input.payloadBase64), char => char.charCodeAt(0))
   const plan = await planV4UploadParts(compressed)
-  for (const part of plan.parts) {
+  // At most three independent content-addressed stage requests in flight.
+  // The barrier waits for all in-flight requests to settle before commit;
+  // no retry or concurrency is permitted for an ambiguous CAS commit.
+  await stageImmutableV4Parts(plan.parts, async part => {
     let attempt = 0
     const response = await retryIdenticalV4Part(
       async () => {
@@ -343,7 +346,7 @@ async function putV4Multipart(
       throw new SyncApiError(503, 'v4_upload_part_receipt_mismatch',
         'Cloud part acknowledgement is unverified; local V4 snapshot was preserved')
     }
-  }
+  })
   const metadata = { ...input } as Record<string, unknown>
   delete metadata.payloadBase64
   delete metadata.payloadBytes
