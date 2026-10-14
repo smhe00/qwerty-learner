@@ -500,7 +500,10 @@ export async function onRequest(context) {
         (path === '/sync/v2/commit' || path === '/sync/v2/commit/recovery')) {
       const token = await requireS2WriteAccount(service, request, env)
       const account = await service.me(token)
-      const body = await readJson(request, 16 * 1024)
+      // Maker request.text() can fail even on small JSON. Use the bounded
+      // arrayBuffer receiver already proven for legacy V4 and native parts.
+      // Ambiguous responses remain fail-closed: never retry the final commit.
+      const body = await readLegacyV4Json(request, 16 * 1024)
       const recovery = path === '/sync/v2/commit/recovery'
       const maxBytes = numberEnv(env.MAX_SYNC_BYTES, 4 * 1024 * 1024)
       return json({ ok: true,
