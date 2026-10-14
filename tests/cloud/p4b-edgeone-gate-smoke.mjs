@@ -121,6 +121,7 @@ async function getBinaryV4(token, expected) {
   assert.equal(manifest.value?.revision, expected.revision)
   assert.equal(manifest.value?.payloadSha256, expected.payloadSha256)
   assert.equal(manifest.value?.payloadEncoding, 'binary')
+  assert.equal(manifest.value.chunkBytes, 512 * 1024)
   assert.ok(Number.isSafeInteger(manifest.value?.count) &&
     manifest.value.count >= 1 && manifest.value.count <= 64)
   assert.equal(manifest.value.partSha256s?.length, manifest.value.count)
@@ -138,7 +139,7 @@ async function getBinaryV4(token, expected) {
     })
     assert.equal(res.status, 200, 'binary GET part HTTP')
     const part = Buffer.from(await res.arrayBuffer())
-    assert.ok(part.length > 0 && part.length <= 192 * 1024)
+    assert.ok(part.length > 0 && part.length <= 512 * 1024)
     assert.equal(sha256(part), manifest.value.partSha256s[index],
       'binary GET immutable part SHA')
     size += part.length
@@ -151,7 +152,7 @@ async function getBinaryV4(token, expected) {
   return payload
 }
 
-// Native 192-KiB BINARY multipart route; test against REAL EdgeOne, not in-memory Blob.
+// Native 512-KiB BINARY multipart route; test against REAL EdgeOne, not in-memory Blob.
 async function apiBinaryPart(data, token, payloadSha256, partSha256, index, count) {
   const response = await fetch(new URL('/api/sync/v2/parts', base), {
     method: 'POST', headers: {
@@ -161,6 +162,7 @@ async function apiBinaryPart(data, token, payloadSha256, partSha256, index, coun
       'X-Qwerty-Part-Sha256': partSha256,
       'X-Qwerty-Part-Index': String(index),
       'X-Qwerty-Part-Count': String(count),
+      'X-Qwerty-Chunk-Bytes': String(512 * 1024),
     }, body: data, redirect: 'error', signal: AbortSignal.timeout(20000),
   })
   const text = await response.text()
@@ -174,7 +176,7 @@ async function apiBinaryPart(data, token, payloadSha256, partSha256, index, coun
 async function uploadLargeV4(record, token) {
   const raw = Buffer.from(record.payloadBase64, 'base64')
   const payloadSha256 = sha256(raw)
-  const bytesPerPart = 192 * 1024
+  const bytesPerPart = 512 * 1024
   const count = Math.ceil(raw.length / bytesPerPart)
   assert.ok(count >= 1 && count <= 192)
   const partSha256s = []
@@ -188,7 +190,7 @@ async function uploadLargeV4(record, token) {
     const partSha256 = sha256(data)
     partSha256s.push(partSha256)
     // Only retry the exact immutable part; never retry an ambiguous
-    // final /commit. Verify Maker's real 192-KiB raw-body behavior.
+    // final /commit. Verify Maker's real 512-KiB raw-body behavior.
     let staged
     for (let attempt = 0; attempt < 6; attempt++) {
 
@@ -240,7 +242,7 @@ async function uploadLargeV4(record, token) {
   const commitStarted = performance.now()
   try {
     const reply = await api('/api/sync/v2/commit', 'POST', {
-      ...meta, payloadSha256, count, partSha256s,
+      ...meta, payloadSha256, count, wirePartBytes: 512 * 1024, partSha256s,
     }, token)
     console.log('V4 transport timing', JSON.stringify({
       count, totalMs: Math.round(performance.now() - uploadStarted),
