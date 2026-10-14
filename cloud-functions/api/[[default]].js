@@ -1,4 +1,5 @@
 /* eslint-env node */
+import crypto from 'node:crypto'
 import { getStore } from '@edgeone/pages-blob'
 import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
 import { blocksCircleEtestAccountDeletion, createCircleEtestGateway } from '../_shared/circle/etest-gateway.js'
@@ -235,7 +236,7 @@ export async function onRequest(context) {
       headers: {
         ...cors,
         'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-        'Access-Control-Allow-Headers': 'Authorization,Content-Type,X-Qwerty-Payload-Sha256,X-Qwerty-Part-Sha256,X-Qwerty-Part-Index,X-Qwerty-Part-Count',
+        'Access-Control-Allow-Headers': 'Authorization,Content-Type,X-Qwerty-Payload-Sha256,X-Qwerty-Part-Sha256,X-Qwerty-Part-Index,X-Qwerty-Part-Count,X-Qwerty-Base-Revision,X-Qwerty-Logical-Fingerprint,X-Qwerty-Device-Id',
         'Access-Control-Max-Age': '86400',
       },
     })
@@ -443,6 +444,52 @@ export async function onRequest(context) {
           batchId: url.searchParams.get('batchId'),
           sha256: url.searchParams.get('sha256'),
         })) }, 200, cors)
+    }
+
+    // Single-request fast path for a SINGLE <=512-KiB native gzip chunk.
+    // No separate staging/commit HTTP round trip; the ordinary V4 service
+    // still performs six-table, identity, fingerprint and revision-CAS
+    // validation, writing native 512-KiB Blob revision objects.
+    // An ambiguous response MUST NOT trigger an automatic commit retry.
+    if (request.method === 'POST' && path === '/sync/v2/binary/direct') {
+      const { token } = await requireS2WriteAccount(service, request, env)
+      const contentType = request.headers.get('content-type')?.split(';')[0]
+        .trim().toLowerCase()
+      if (contentType !== 'application/octet-stream') {
+        throw new AppError(415, 'unsupported_v4_part_encoding',
+          'Direct V4 upload must be native binary')
+      }
+      const revision = request.headers.get('x-qwerty-base-revision') || ''
+      const fingerprint = request.headers.get('x-qwerty-logical-fingerprint') || ''
+      const declaredSha = request.headers.get('x-qwerty-payload-sha256') || ''
+      const deviceId = request.headers.get('x-qwerty-device-id') || undefined
+      if (!/^\d+$/.test(revision) || !Number.isSafeInteger(Number(revision)) ||
+          !/^[a-f0-9]{64}$/.test(fingerprint) ||
+          !/^[a-f0-9]{64}$/.test(declaredSha) ||
+          (deviceId && deviceId.length > 128)) {
+        throw new AppError(400, 'invalid_v4_direct_metadata',
+          'Direct V4 write has invalid bounded metadata')
+      }
+      let payloadBytes
+      try {
+        payloadBytes = await readBinaryPart(request, 512 * 1024)
+      } catch (error) {
+        if (error instanceof AppError) throw error
+        // No write has started at this point. By contrast, failures after
+        // service.putSyncV4Binary remain potentially committed and fail closed.
+        throw new AppError(503, 'v4_direct_body_read_failed',
+          'Direct V4 request was not received; no commit was attempted')
+      }
+      if (crypto.createHash('sha256').update(payloadBytes).digest('hex') !== declaredSha) {
+        throw new AppError(400, 'v4_direct_payload_sha_mismatch',
+          'Direct V4 gzip bytes do not match declared SHA')
+      }
+      return json({ ok: true, ...(await service.putSyncV4Binary(token, {
+        baseRevision: Number(revision),
+        logicalFingerprint: fingerprint, payloadBytes,
+        ...(deviceId ? { deviceId } : {}),
+        clientFormatVersion: 'qwerty-backup-v4',
+      })) }, 200, cors)
     }
 
     // Bounded HTTP parts avoid the EdgeOne request.text() large-body limit.
