@@ -67,6 +67,34 @@ function corsHeaders(request, configuredOrigin) {
     : {}
 }
 
+// Bound streaming reads BEFORE allocation. A binary part never uses request.text().
+async function readBinaryPart(request, maxBytes) {
+  const declaredLength = request.headers.get('content-length')
+  if (declaredLength !== null && (!/^\\d+$/.test(declaredLength) ||
+      Number(declaredLength) > maxBytes)) {
+    throw new AppError(413, 'request_too_large', 'V4 binary part exceeds 192 KiB')
+  }
+  const reader = request.body?.getReader()
+  if (!reader) throw new AppError(400, 'invalid_v4_upload_part', 'Missing V4 binary body')
+  const chunks = []
+  let received = 0
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      received += value.byteLength
+      if (received > maxBytes) {
+        await reader.cancel().catch(() => {})
+        throw new AppError(413, 'request_too_large', 'V4 binary part exceeds 192 KiB')
+      }
+      chunks.push(Buffer.from(value))
+    }
+  } finally {
+    reader.releaseLock()
+  }
+  return Buffer.concat(chunks, received)
+}
+
 async function readJson(request, maxBytes) {
   const text = await request.text()
 
@@ -185,7 +213,7 @@ export async function onRequest(context) {
       headers: {
         ...cors,
         'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-        'Access-Control-Allow-Headers': 'Authorization,Content-Type',
+        'Access-Control-Allow-Headers': 'Authorization,Content-Type,X-Qwerty-Payload-Sha256,X-Qwerty-Part-Sha256,X-Qwerty-Part-Index,X-Qwerty-Part-Count',
         'Access-Control-Max-Age': '86400',
       },
     })
@@ -221,7 +249,8 @@ export async function onRequest(context) {
             'edgeone-same-origin-e2e-v1',
             'v4-blob-stage-trace-20261014',
             'v4-http-multipart-v1',
-             'v4-http-stage-trace-v1',
+            'v4-http-stage-trace-v1',
+            'v4-http-binary-192k-v1',
             'backup-v3-explicit-migration-only',
             'account-delete-v1',
             'duplicate-register-protection-v1',
@@ -371,8 +400,29 @@ export async function onRequest(context) {
       const token = await requireS2WriteAccount(service, request, env)
       const account = await service.me(token)
       let body
+      const contentType = request.headers.get('content-type')?.split(';')[0]
+        .trim().toLowerCase()
       try {
-        body = await readJson(request, 48 * 1024)
+        if (contentType === 'application/octet-stream') {
+          const indexHeader = request.headers.get('x-qwerty-part-index')
+          const countHeader = request.headers.get('x-qwerty-part-count')
+          // Reject malformed metadata without trusting parseInt's prefix parsing.
+          if (!/^\\d+$/.test(indexHeader || '') || !/^\\d+$/.test(countHeader || '')) {
+            throw new AppError(400, 'invalid_v4_upload_part', 'Invalid binary part selector')
+          }
+          body = {
+            payloadSha256: request.headers.get('x-qwerty-payload-sha256'),
+            partSha256: request.headers.get('x-qwerty-part-sha256'),
+            index: Number(indexHeader), count: Number(countHeader),
+            data: await readBinaryPart(request, 192 * 1024),
+          }
+        } else if (contentType === 'application/json') {
+          // Compatibility for open tabs using legacy 32-KiB Base64 JSON parts.
+          body = await readJson(request, 48 * 1024)
+        } else {
+          throw new AppError(415, 'unsupported_v4_part_encoding',
+            'V4 parts must use octet-stream or legacy JSON')
+        }
       } catch (error) {
         if (error instanceof AppError) throw error
         throw new AppError(503, 'v4_upload_body_read_failed',
