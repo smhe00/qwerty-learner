@@ -194,7 +194,11 @@ export function createEdgeOneBlobStorage(store) {
   async function readManifestParts(userId, revision, manifest) {
     const layout = manifest?.chunkedPayload
     if (!layout) return manifest
-    if (layout.version === 2) {
+    if (layout.version === 2 || layout.version === 3) {
+      // v2 = historical 192-KiB objects; v3 = native 512-KiB objects.
+      const chunkBytes = layout.version === 3 ? 512 * 1024 : 192 * 1024
+      if (layout.version === 3 && layout.chunkBytes !== chunkBytes)
+        throw new Error('Binary revision chunk size evidence invalid')
       if (!/^[a-f0-9]{64}$/.test(layout.sha256 || '') ||
           layout.sha256 !== manifest.dataSha256 ||
           !Number.isSafeInteger(layout.count) || layout.count < 1 ||
@@ -209,8 +213,8 @@ export function createEdgeOneBlobStorage(store) {
       const parts = await Promise.all(Array.from({ length: layout.count }, (_, index) =>
         strongBinary(binaryRevisionKey(userId, revision, layout.sha256, index))))
       if (parts.some((p, i) => !p ||
-          p.length < 1 || p.length > 192 * 1024 ||
-          (i !== layout.count - 1 && p.length !== 192 * 1024) ||
+          p.length < 1 || p.length > chunkBytes ||
+          (i !== layout.count - 1 && p.length !== chunkBytes) ||
           crypto.createHash('sha256').update(p).digest('hex') !== layout.partSha256s[i])) {
         throw new Error('Binary revision part failed integrity verification')
       }
@@ -547,12 +551,13 @@ export function createEdgeOneBlobStorage(store) {
       return true
     },
 
-    async getV4UploadPart(userId, payloadSha256, index, partSha256, count) {
+    async getV4UploadPart(userId, payloadSha256, index, partSha256, count, wirePartBytes) {
       if (Number.isSafeInteger(count) && count >= 1 && count <= 192) {
         const bytes = await strongBinary(binaryUploadKey(
           userId, payloadSha256, count, index, partSha256))
         if (bytes !== null) return { version: 3, index, count,
-          payloadSha256, partSha256, data: bytes }
+          payloadSha256, partSha256, data: bytes,
+          ...(wirePartBytes === undefined ? {} : { wirePartBytes }) }
       }
       const key = uploadKey(userId, payloadSha256, index, partSha256)
       const old = await strongJson(key)
@@ -595,7 +600,7 @@ export function createEdgeOneBlobStorage(store) {
             !bytes.length || bytes.length > 4 * 1024 * 1024) {
           throw new Error('Invalid V4 binary revision evidence')
         }
-        const chunkBytes = 192 * 1024
+        const chunkBytes = 512 * 1024
         const parts = Array.from({ length: Math.ceil(bytes.length / chunkBytes) }, (_, i) =>
           bytes.subarray(i * chunkBytes, (i + 1) * chunkBytes))
         if (parts.length > MAX_PARTS) throw new Error('Excessive binary V4 chunks')
@@ -632,7 +637,7 @@ export function createEdgeOneBlobStorage(store) {
         const fields = { ...snapshot }
         delete fields.payloadBytes
         const manifest = { ...fields, payloadEncoding: 'binary',
-          chunkedPayload: { version: 2, sha256: sha,
+          chunkedPayload: { version: 3, chunkBytes, sha256: sha,
             count: parts.length, byteLength: bytes.length, partSha256s } }
         const started = performance.now()
         try {
@@ -725,12 +730,15 @@ export function createEdgeOneBlobStorage(store) {
       }
       const manifest = await strongJson(revisionKey(userId, revision))
       const layout = manifest?.chunkedPayload
-      if (!layout || layout.version !== 2 || layout.sha256 !== sha ||
+      if (!layout || ![2, 3].includes(layout.version) || layout.sha256 !== sha ||
           manifest.revision !== revision || index >= layout.count ||
           !Array.isArray(layout.partSha256s)) return null
+      const chunkBytes = layout.version === 3 ? 512 * 1024 : 192 * 1024
+      if (layout.version === 3 && layout.chunkBytes !== chunkBytes)
+        throw new Error('Binary revision chunk size evidence invalid')
       const bytes = await strongBinary(binaryRevisionKey(userId, revision, sha, index))
-      if (!bytes || !bytes.length || bytes.length > 192 * 1024 ||
-          (index !== layout.count - 1 && bytes.length !== 192 * 1024) ||
+      if (!bytes || !bytes.length || bytes.length > chunkBytes ||
+          (index !== layout.count - 1 && bytes.length !== chunkBytes) ||
           crypto.createHash('sha256').update(bytes).digest('hex') !==
             layout.partSha256s[index]) {
         throw new Error('Binary revision chunk missing or corrupt')
@@ -791,7 +799,8 @@ export function createEdgeOneBlobStorage(store) {
     async deleteUserData(usernameHash, userId) {
       const [authDeleted, sessionsDeleted, independentSessionsDeleted,
         revisionsDeleted, revisionPartsDeleted, eventBatchesDeleted,
-        chainedEventBatchesDeleted, pendingV4PartsDeleted] = await Promise.all([
+        chainedEventBatchesDeleted, pendingV4PartsDeleted,
+        pendingBinaryV4PartsDeleted] = await Promise.all([
         deletePrefix(authPrefix(usernameHash)),
         deletePrefix(sessionPrefix(usernameHash)),
         deletePrefix(independentSessionPrefix(usernameHash)),
@@ -800,6 +809,7 @@ export function createEdgeOneBlobStorage(store) {
         deletePrefix(eventBatchPrefix(userId)),
         deletePrefix(chainedBatchPrefix(userId)),
         deletePrefix(uploadPrefix(userId)),
+        deletePrefix(`users/${userId}/v4-http-parts/v3/`),
       ])
 
       const account = await strongJson(accountKey(usernameHash))
@@ -816,7 +826,7 @@ export function createEdgeOneBlobStorage(store) {
         revisionPartsDeleted,
         eventBatchesDeleted: eventBatchesDeleted + chainedEventBatchesDeleted,
         chainedEventBatchesDeleted,
-        pendingV4PartsDeleted,
+        pendingV4PartsDeleted: pendingV4PartsDeleted + pendingBinaryV4PartsDeleted,
       }
     },
   }
