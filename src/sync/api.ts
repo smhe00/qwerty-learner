@@ -1,5 +1,5 @@
 import type { CloudUser, RemoteSnapshot, RemoteSyncMeta } from './types'
-import { planV4UploadParts, V4_HTTP_PART_BYTES } from './v4-http-part-plan'
+import { V4_HTTP_PART_BYTES, planV4UploadParts } from './v4-http-part-plan'
 import { retryIdenticalV4Part } from './v4-http-part-retry'
 import { type PerfSample, recordV4TransportSample } from './perf-diagnostics'
 
