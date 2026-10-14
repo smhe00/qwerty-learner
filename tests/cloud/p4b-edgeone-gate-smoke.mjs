@@ -203,22 +203,23 @@ async function apiBinaryPart(data, token, payloadSha256, partSha256, index, coun
 }
 // A part may be retried identically, but ambiguous final revision MUST
 // be checked by GET meta and never blindly overwritten.
-async function uploadLargeV4(record, token) {
+async function uploadLargeV4(record, token, concurrency = 3) {
+  assert.ok(Number.isSafeInteger(concurrency) && concurrency >= 1 && concurrency <= 3)
   const raw = Buffer.from(record.payloadBase64, 'base64')
   const payloadSha256 = sha256(raw)
   const bytesPerPart = 512 * 1024
   const count = Math.ceil(raw.length / bytesPerPart)
   assert.ok(count >= 1 && count <= 192)
-  const partSha256s = []
+  const partSha256s = Array.from({ length: count }, (_, index) =>
+    sha256(raw.subarray(index * bytesPerPart, (index + 1) * bytesPerPart)))
   const uploadStarted = performance.now()
   let partHttpMs = 0
   let partServerMs = 0
   let partBlobWriteMs = 0
   let slowestPart = { index: -1, elapsedMs: 0 }
-  for (let index = 0; index < count; index++) {
+  const stagePart = async index => {
     const data = raw.subarray(index * bytesPerPart, (index + 1) * bytesPerPart)
-    const partSha256 = sha256(data)
-    partSha256s.push(partSha256)
+    const partSha256 = partSha256s[index]
     // Only retry the exact immutable part; never retry an ambiguous
     // final /commit. Verify Maker's real 512-KiB raw-body behavior.
     let staged
@@ -266,6 +267,23 @@ async function uploadLargeV4(record, token) {
     assert.equal(staged.value?.index, index)
     assert.equal(staged.value?.partSha256, partSha256)
   }
+  // Stage different immutable keys concurrently; after any failure, stop
+  // scheduling new work and drain existing in-flight parts before rejecting.
+  // Only the all-receipts barrier may proceed to /commit.
+  let nextIndex = 0
+  let failed = false
+  let firstFailure
+  const worker = async () => {
+    while (!failed && nextIndex < count) {
+      const index = nextIndex++
+      try { await stagePart(index) } catch (error) {
+        if (!failed) { failed = true; firstFailure = error }
+      }
+    }
+  }
+  await Promise.all(Array.from(
+    { length: Math.min(concurrency, count) }, () => worker()))
+  if (failed) throw firstFailure
   const meta = { ...record }
   delete meta.payloadBase64
 
@@ -275,7 +293,7 @@ async function uploadLargeV4(record, token) {
       ...meta, payloadSha256, count, wirePartBytes: 512 * 1024, partSha256s,
     }, token)
     console.log('V4 transport timing', JSON.stringify({
-      count, totalMs: Math.round(performance.now() - uploadStarted),
+      count, concurrency, totalMs: Math.round(performance.now() - uploadStarted),
       partsHttpMs: Math.round(partHttpMs),
       partsServerMs: Math.round(partServerMs),
       partsBlobWriteMs: Math.round(partBlobWriteMs),
