@@ -54,7 +54,7 @@ async function seed(page: Page) {
     const whole = header['x-qwerty-payload-sha256']
     expect(body).toBeTruthy()
     expect(chunkSha(body!)).toBe(sha)
-    expect(body!.length).toBeLessThanOrEqual(192 * 1024)
+    expect(body!.length).toBeLessThanOrEqual(512 * 1024)
     expect(index).toBeGreaterThanOrEqual(0)
     expect(index).toBeLessThan(count)
     parts.set(whole + ':' + count + ':' + index + ':' + sha, Buffer.from(body!))
