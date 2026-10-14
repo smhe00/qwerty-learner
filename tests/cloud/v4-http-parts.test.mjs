@@ -6,7 +6,7 @@ import test from 'node:test'
 import { createBackendService } from '../../cloud-functions/_shared/core.js'
 import { createEdgeOneBlobStorage } from '../../cloud-functions/_shared/storage/edgeone-blob.js'
 import {
-  V4_HTTP_PART_CHARS, commitV4Upload, receiveV4UploadPart,
+  V4_HTTP_PART_BYTES, V4_HTTP_PART_CHARS, commitV4Upload, receiveV4UploadPart,
 } from '../../cloud-functions/_shared/v4-http-parts.js'
 import { verifyCompressedV4 } from '../../cloud-functions/_shared/sync-v4.js'
 
@@ -32,7 +32,7 @@ function stable(x) {
   return '{' + Object.keys(x).sort().filter(k => x[k] !== undefined)
     .map(k => JSON.stringify(k) + ':' + stable(x[k])).join(',') + '}'
 }
-async function fixture() {
+async function fixture(telemetryBytes = 180 * 1024) {
   const raw = new Blob()
   const storage = createEdgeOneBlobStorage(raw)
   const service = createBackendService({ storage })
@@ -46,7 +46,7 @@ async function fixture() {
   const data = tableNames.map(tableName => ({ tableName, inbound: true,
     rows: tableName === 'wordRecords' ? [{
       id: 1, word: 'example', dict: 'test',
-      typingTelemetry: { synthetic: crypto.randomBytes(180 * 1024).toString('base64') },
+      typingTelemetry: { synthetic: crypto.randomBytes(telemetryBytes).toString('base64') },
     }] : [],
   }))
   const workspaceData = {
@@ -88,6 +88,65 @@ async function fixture() {
   }
   return { raw, storage, service, token, accountId, parts, manifest }
 }
+function binaryFixture(f) {
+  const binary = Buffer.from(f.parts.map(p => p.data).join(''), 'base64')
+  const count = Math.ceil(binary.length / V4_HTTP_PART_BYTES)
+  const parts = Array.from({ length: count }, (_, index) => {
+    const data = binary.subarray(index * V4_HTTP_PART_BYTES,
+      (index + 1) * V4_HTTP_PART_BYTES)
+    return { payloadSha256: f.manifest.payloadSha256, index, count,
+      partSha256: sha(data), data }
+  })
+  return { ...f, parts, manifest: { ...f.manifest, count,
+    partSha256s: parts.map(part => part.partSha256) } }
+}
+test('192-KiB raw HTTP parts use two bounded Blob JSON shards, exact V4 restore', async () => {
+  const f = binaryFixture(await fixture(620 * 1024))
+  assert.ok(f.parts.length >= 3)
+  assert.equal(f.parts[0].data.length, V4_HTTP_PART_BYTES)
+  await upload(f)
+  const staging = [...f.raw.objects.entries()]
+    .filter(([key]) => key.includes('/v4-http-parts/'))
+  assert.equal(staging.length, f.parts.length * 2)
+  assert.ok(staging.every(([, part]) => part.version === 2 &&
+    part.data.length <= 128 * 1024 && part.data.length > 0))
+  assert.equal((await f.service.syncMeta(f.token)).revision, 0)
+  const saved = await commitV4Upload(f.storage, f.service, f.token,
+    f.accountId, f.manifest, 4 * 1024 * 1024)
+  assert.equal(saved.revision, 1)
+  assert.equal(sha(Buffer.from((await f.service.getSync(f.token)).payloadBase64,
+    'base64')), f.manifest.payloadSha256)
+  await upload(f)
+  await assert.rejects(commitV4Upload(f.storage, f.service, f.token,
+    f.accountId, f.manifest, 4 * 1024 * 1024), error =>
+    error.code === 'sync_conflict' &&
+    error.details.current.revision === 1)
+})
+test('binary part byte-limit, immutable SHA and missing child shard block commits', async () => {
+  const f = binaryFixture(await fixture(460 * 1024))
+  await assert.rejects(receiveV4UploadPart(f.storage, f.accountId,
+    { ...f.parts[0], data: Buffer.alloc(V4_HTTP_PART_BYTES + 1) }),
+  error => error.code === 'invalid_v4_upload_part')
+  await assert.rejects(receiveV4UploadPart(f.storage, f.accountId,
+    { ...f.parts[0], data: Buffer.from(f.parts[0].data).fill(13) }),
+  error => error.code === 'v4_upload_part_sha_mismatch')
+  await upload(f)
+  const doomed = [...f.raw.objects.keys()].find(k =>
+    k.includes('/v4-http-parts/') && k.endsWith('-1.json'))
+  assert.ok(doomed)
+  f.raw.objects.delete(doomed)
+  await assert.rejects(commitV4Upload(f.storage, f.service, f.token,
+    f.accountId, f.manifest, 4 * 1024 * 1024),
+  error => error.code === 'v4_upload_part_not_visible')
+  assert.equal((await f.service.syncMeta(f.token)).revision, 0)
+})
+test('legacy JSON upload remains readable after binary protocol deployment', async () => {
+  const f = await fixture()
+  assert.equal(typeof f.parts[0].data, 'string')
+  await upload(f)
+  assert.equal((await commitV4Upload(f.storage, f.service, f.token,
+    f.accountId, f.manifest, 4 * 1024 * 1024)).revision, 1)
+})
 async function upload(f) {
   for (const part of f.parts) {
     const accepted = await receiveV4UploadPart(f.storage, f.accountId, part)
