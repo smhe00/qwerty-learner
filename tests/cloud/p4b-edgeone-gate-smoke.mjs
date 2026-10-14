@@ -209,6 +209,8 @@ try {
   assert.equal(health.value?.service, 'qwerty-sync-gateway')
   assert.ok(health.value?.capabilities?.includes('backup-v4-authenticated-write-ga'),
     'Production has not deployed the V4 GA API; do not write')
+  assert.ok(health.value?.capabilities?.includes('v4-http-stage-trace-v1'),
+    'Maker stage timing capability not deployed; do not infer bottlenecks')
   console.log('V4 GA deployed backend capability: PASS')
 
   expectCode(await api('/api/sync/v2', 'PUT', '{}'), 401,
