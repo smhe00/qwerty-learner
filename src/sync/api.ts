@@ -1,7 +1,7 @@
 import type { CloudUser, RemoteSnapshot, RemoteSyncMeta } from './types'
 import { planV4UploadParts } from './v4-http-part-plan'
 import { retryIdenticalV4Part } from './v4-http-part-retry'
-import { recordV4TransportSample, type PerfSample } from './perf-diagnostics'
+import { type PerfSample, recordV4TransportSample } from './perf-diagnostics'
 
 type ApiErrorBody = {
   error?: string
@@ -241,7 +241,7 @@ function v4Failure(error: unknown, isCommit: boolean): {
     return { failureStage: stage, failureCategory: category,
       httpStatus: error.status }
   }
-  if (error instanceof Error && error.name === 'AbortError') {
+  if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
     return { failureStage: 'http_request', failureCategory: 'network_timeout' }
   }
   return { failureStage: 'http_request', failureCategory: 'network_failure' }
