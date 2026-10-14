@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/circle-core-blob
+      - feature/circle-etest-ready
     paths:
       - 'cloud-functions/_shared/circle/**'
       - 'cloud-functions/api/**'
