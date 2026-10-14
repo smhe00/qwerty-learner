@@ -434,7 +434,7 @@ export async function onRequest(context) {
           const declaredChunk = request.headers.get('x-qwerty-chunk-bytes')
           const wirePartBytes = declaredChunk === null ? 192 * 1024
             : Number(declaredChunk)
-          if (![192 * 1024, 256 * 1024].includes(wirePartBytes) ||
+          if (![192 * 1024, 512 * 1024].includes(wirePartBytes) ||
               (declaredChunk !== null &&
                 declaredChunk !== String(wirePartBytes))) {
             throw new AppError(400, 'invalid_v4_upload_part',
