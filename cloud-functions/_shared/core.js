@@ -313,7 +313,7 @@ function secureHexEqual(left, right) {
 export function createBackendService({
   storage,
   sessionTtlSeconds = 7 * 24 * 60 * 60,
-  maxSyncBytes = 4 * 1024 * 1024,
+  maxSyncBytes = 16 * 1024 * 1024,
   snapshotRetention = DEFAULT_SNAPSHOT_RETENTION,
   sessionHistoryRetention = DEFAULT_SESSION_HISTORY_RETENTION,
   authHistoryRetention = DEFAULT_AUTH_HISTORY_RETENTION,
