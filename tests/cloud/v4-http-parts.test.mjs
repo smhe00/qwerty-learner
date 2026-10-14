@@ -187,6 +187,10 @@ test('commit splits staged Blob reads, V4 core commit and cleanup durations', as
     assert.ok(Number.isFinite(reply.timings[name]) && reply.timings[name] >= 0)
   }
   assert.ok(reply.timings.serverTotalMs >= reply.timings.commitCoreMs)
+  assert.ok(reply.timings.revisionChunkCount >= 1)
+  for (const name of ['revisionWriteMs', 'revisionReadbackMs', 'revisionManifestMs']) {
+    assert.ok(Number.isFinite(reply.timings[name]) && reply.timings[name] >= 0)
+  }
   assert.equal(JSON.stringify(reply.timings).includes(f.accountId), false)
 })
 test('missing commit part carries part_lookup failure stage, no revision advance', async () => {
