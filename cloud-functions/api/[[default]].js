@@ -221,6 +221,7 @@ export async function onRequest(context) {
             'edgeone-same-origin-e2e-v1',
             'v4-blob-stage-trace-20261014',
             'v4-http-multipart-v1',
+             'v4-http-stage-trace-v1',
             'backup-v3-explicit-migration-only',
             'account-delete-v1',
             'duplicate-register-protection-v1',
