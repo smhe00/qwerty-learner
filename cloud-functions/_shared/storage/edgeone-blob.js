@@ -306,7 +306,12 @@ export function createEdgeOneBlobStorage(store) {
     return blobs.length
   }
 
+  // One Maker request owns one storage adapter. Never persist trace in Blob.
+  let lastV4RevisionTiming = null
   return {
+    getLastV4RevisionTiming() {
+      return lastV4RevisionTiming ? { ...lastV4RevisionTiming } : null
+    },
     async createAccount(usernameHash, identity) {
       const key = accountKey(usernameHash)
       const existing = await strongJson(key)
@@ -455,6 +460,7 @@ export function createEdgeOneBlobStorage(store) {
     },
 
     async createRevision(userId, revision, snapshot) {
+      lastV4RevisionTiming = null
       const encoded = snapshot?.payloadBase64
       if (snapshot?.clientFormatVersion !== 'qwerty-backup-v4' ||
           typeof encoded !== 'string' || encoded.length <= INLINE_PAYLOAD_CHARS) {
@@ -475,6 +481,12 @@ export function createEdgeOneBlobStorage(store) {
       if (checksum !== snapshot.dataSha256) {
         throw new Error('V4 snapshot transport checksum mismatch; revision not committed')
       }
+      const revisionTiming = {
+        revisionChunkCount: parts.length,
+        revisionWriteMs: 0, revisionReadbackMs: 0, revisionManifestMs: 0,
+      }
+      lastV4RevisionTiming = revisionTiming
+      const elapsed = start => Math.round((performance.now() - start) * 10) / 10
       // Immutable part objects are written *before* a compact revision manifest.
       // Sequential writes bound pressure on Makers Blob under large uploads;
       // each exact-key strong read verifies durable evidence before commit.
@@ -483,11 +495,21 @@ export function createEdgeOneBlobStorage(store) {
         const key = partKey(userId, revision, checksum, index)
         const candidate = { version: 1, index, data: parts[index] }
         try {
-          const stored = await setJsonOnlyIfNew(key, candidate)
-          if (!stored) throw new Error('immutable part key already has other evidence')
-          const observed = await strongJson(key)
-          if (!jsonEquivalent(observed, candidate)) {
-            throw new Error('immutable part not verified after write')
+          const writeStart = performance.now()
+          try {
+            const stored = await setJsonOnlyIfNew(key, candidate)
+            if (!stored) throw new Error('immutable part key already has other evidence')
+          } finally {
+            revisionTiming.revisionWriteMs += elapsed(writeStart)
+          }
+          const readStart = performance.now()
+          try {
+            const observed = await strongJson(key)
+            if (!jsonEquivalent(observed, candidate)) {
+              throw new Error('immutable part not verified after write')
+            }
+          } finally {
+            revisionTiming.revisionReadbackMs += elapsed(readStart)
           }
         } catch (error) {
           throw new SnapshotBlobStageError('chunk_precommit', error, index)
@@ -498,10 +520,16 @@ export function createEdgeOneBlobStorage(store) {
         chunkedPayload: { version: 1, sha256: checksum,
           count: parts.length, encodedLength: encoded.length },
       }
+      const manifestStart = performance.now()
       try {
         return await setJsonOnlyIfNew(revisionKey(userId, revision), manifest)
       } catch (error) {
         throw new SnapshotBlobStageError('manifest_commit', error)
+      } finally {
+        revisionTiming.revisionManifestMs = elapsed(manifestStart)
+        for (const key of ['revisionWriteMs', 'revisionReadbackMs']) {
+          revisionTiming[key] = Math.round(revisionTiming[key] * 10) / 10
+        }
       }
     },
 
