@@ -400,7 +400,7 @@ export async function getSyncV2SnapshotBinary(token: string): Promise<{
       !manifest.payloadSha256 || !/^[a-f0-9]{64}$/.test(manifest.payloadSha256) ||
       !Number.isSafeInteger(manifest.count) || manifest.count < 1 ||
       manifest.count > 64 ||
-      ![192 * 1024, 512 * 1024].includes(manifest.chunkBytes) ||
+      manifest.chunkBytes !== 512 * 1024 ||
       manifest.count !== Math.ceil(manifest.sizeBytes / manifest.chunkBytes) ||
       manifest.partSha256s?.length !== manifest.count ||
       !manifest.partSha256s.every(sha => /^[a-f0-9]{64}$/.test(sha)) ||
