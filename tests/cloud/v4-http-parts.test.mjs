@@ -197,6 +197,39 @@ test('pinned binary download refuses stale revision and wrong full SHA', async (
     meta.revision, 'f'.repeat(64), 0), error =>
     error.code === 'sync_conflict')
 })
+test('wrong pinned SHA cannot migrate existing Base64 V4 cloud or change revision', async () => {
+  const f = await fixture(275 * 1024)
+  const base64 = f.parts.map(part => part.data).join('')
+  const previous = await f.service.putSyncV4(f.token, {
+    ...f.manifest, payloadBase64: base64,
+  })
+  await assert.rejects(f.service.migrateSyncV4Binary(f.token, {
+    baseRevision: previous.revision,
+    payloadSha256: 'b'.repeat(64),
+    logicalFingerprint: previous.logicalFingerprint,
+  }), error => error.code === 'sync_conflict')
+  assert.equal((await f.service.syncMeta(f.token)).revision, 1)
+  assert.equal((await f.service.syncMeta(f.token)).storageEncoding, 'base64')
+  assert.equal((await f.service.getSync(f.token)).payloadBase64, base64)
+})
+test('new binary final commit never stores Base64 in binary revision manifest', async () => {
+  const f = binaryFixture(await fixture(350 * 1024))
+  await upload(f)
+  const meta = await commitV4Upload(f.storage, f.service, f.token,
+    f.accountId, f.manifest, 4 * 1024 * 1024)
+  assert.equal(meta.storageEncoding, 'binary')
+  const manifests = [...f.raw.objects.entries()].filter(([key]) =>
+    key.includes('/revisions/') && key.endsWith('.json'))
+  assert.equal(manifests.length, 1)
+  const manifest = manifests[0][1]
+  assert.equal(manifest.payloadEncoding, 'binary')
+  assert.equal(manifest.payloadBase64, undefined)
+  assert.equal(manifest.chunkedPayload.version, 2)
+  const revisions = [...f.raw.objects.entries()].filter(([key]) =>
+    key.includes('/revision-parts/') && key.endsWith('.bin'))
+  assert.equal(revisions.length, manifest.chunkedPayload.count)
+  assert.ok(revisions.every(([, chunk]) => chunk instanceof ArrayBuffer))
+})
 test('legacy JSON upload remains readable after binary protocol deployment', async () => {
   const f = await fixture()
   assert.equal(typeof f.parts[0].data, 'string')
