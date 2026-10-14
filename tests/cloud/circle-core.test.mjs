@@ -215,6 +215,23 @@ test('reordering, duplicate observations, late creation and incremental visibili
   assert.deepEqual(cache.get(c.circleId), expected)
 })
 
+test('listed but unreadable event fails closed instead of omitting a privacy-critical fact', async () => {
+  const { blob, service, create, log } = setup()
+  const c = await create()
+  await service.joinCircle(alice, c.inviteCode)
+  await service.publishProgress(alice, c.circleId, day,
+    { completed: true, newWords: 11, eventId: 'progress_0001' })
+  const unreadableKey = blob.writes.at(-1)
+  blob.invisible.add(unreadableKey)
+  // The listing advertises this key; do not silently present a partial view.
+  await assert.rejects(log.scan(c.circleId), /listed event temporarily unreadable/)
+  await assert.rejects(service.getCircle(owner, c.circleId), { code: 'circle_view_uncertain' })
+  blob.invisible.clear()
+  const recovered = await service.getCircle(owner, c.circleId)
+  assert.equal(recovered.progress.length, 1)
+  assert.equal(recovered.progress[0].newWords, 11)
+})
+
 test('leave/remove are permanent remove-wins and filter progress, achievements and claps', async () => {
   const { blob, service, create } = setup()
   const c = await create()
