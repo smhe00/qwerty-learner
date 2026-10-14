@@ -8,7 +8,8 @@ import crypto from 'node:crypto'
 import { AppError } from './core.js'
 
 export const V4_HTTP_PART_CHARS = 32 * 1024 // Legacy JSON/Base64 transport only.
-export const V4_HTTP_PART_BYTES = 192 * 1024 // New octet-stream HTTP transport.
+export const V4_HTTP_PART_BYTES = 512 * 1024 // New octet-stream HTTP transport.
+const LEGACY_BINARY_PART_BYTES = 192 * 1024 // Previously deployed binary clients
 export const V4_HTTP_MAX_PARTS = 192
 const SHA = /^[0-9a-f]{64}$/
 const PART_B64 = /^[A-Za-z0-9+/]*={0,2}$/
@@ -23,7 +24,8 @@ function invalidPart() {
 }
 
 export async function receiveV4UploadPart(storage, userId, input) {
-  const { payloadSha256, index, count, data, partSha256 } = input || {}
+  const { payloadSha256, index, count, data, partSha256, wirePartBytes } = input || {}
+  const binaryBytes = wirePartBytes === undefined ? LEGACY_BINARY_PART_BYTES : wirePartBytes
   const binary = Buffer.isBuffer(data)
   const legacy = typeof data === 'string'
   if (!validSha(payloadSha256) || !validSha(partSha256) ||
@@ -33,8 +35,9 @@ export async function receiveV4UploadPart(storage, userId, input) {
       (legacy && (!data.length || data.length > V4_HTTP_PART_CHARS ||
         data.length % 4 !== 0 || !PART_B64.test(data) ||
         (index !== count - 1 && data.length !== V4_HTTP_PART_CHARS))) ||
-      (binary && (!data.length || data.length > V4_HTTP_PART_BYTES ||
-        (index !== count - 1 && data.length !== V4_HTTP_PART_BYTES)))) {
+      (binary && (![LEGACY_BINARY_PART_BYTES, V4_HTTP_PART_BYTES].includes(binaryBytes) ||
+        !data.length || data.length > binaryBytes ||
+        (index !== count - 1 && data.length !== binaryBytes)))) {
     invalidPart()
   }
   if (crypto.createHash('sha256').update(data, legacy ? 'utf8' : undefined)
@@ -50,7 +53,7 @@ export async function receiveV4UploadPart(storage, userId, input) {
   // Binary v3 stages raw bytes in Blob directly. Legacy JSON Base64 v1
   // remains readable for older deployed tabs, without re-encoding new parts.
   const content = { version: binary ? 3 : 1, index, count, payloadSha256,
-    partSha256, data }
+    partSha256, data, ...(wirePartBytes === undefined ? {} : { wirePartBytes }) }
   const started = msNow()
   const timings = {}
   let failureStage = 'blob_write'
@@ -67,7 +70,7 @@ export async function receiveV4UploadPart(storage, userId, input) {
     const readStart = msNow()
     try {
       const observed = await storage.getV4UploadPart(
-        userId, payloadSha256, index, partSha256, count)
+        userId, payloadSha256, index, partSha256, count, wirePartBytes)
       if (JSON.stringify(observed) !== JSON.stringify(content)) {
         throw new Error('V4 upload part readback mismatch')
       }
@@ -87,10 +90,12 @@ export async function receiveV4UploadPart(storage, userId, input) {
 
 export async function commitV4Upload(storage, service, token, userId, input, maxSyncBytes,
   recovery = false) {
-  const { payloadSha256, partSha256s, count, ...metadata } = input || {}
+  const { payloadSha256, partSha256s, count, wirePartBytes, ...metadata } = input || {}
+  const binaryBytes = wirePartBytes === undefined ? LEGACY_BINARY_PART_BYTES : wirePartBytes
   if (!validSha(payloadSha256) || !Array.isArray(partSha256s) ||
       !Number.isSafeInteger(count) || count < 1 || count > V4_HTTP_MAX_PARTS ||
       count !== partSha256s.length || !partSha256s.every(validSha) ||
+      ![LEGACY_BINARY_PART_BYTES, V4_HTTP_PART_BYTES].includes(binaryBytes) ||
       !Number.isSafeInteger(maxSyncBytes) || maxSyncBytes < 1) {
     throw new AppError(400, 'invalid_v4_upload_manifest',
       'Invalid V4 upload manifest or part hashes')
@@ -108,7 +113,7 @@ export async function commitV4Upload(storage, service, token, userId, input, max
       let record
       try {
         record = await storage.getV4UploadPart(
-          userId, payloadSha256, index, partSha256s[index], count)
+          userId, payloadSha256, index, partSha256s[index], count, wirePartBytes)
       } catch {
         throw new AppError(503, 'v4_upload_part_not_visible',
           'Staged V4 part is not readable; retry the same manifest')
@@ -116,7 +121,9 @@ export async function commitV4Upload(storage, service, token, userId, input, max
       if (!record || ![1, 2, 3].includes(record.version) ||
           record.index !== index || record.count !== count ||
           record.payloadSha256 !== payloadSha256 ||
-          record.partSha256 !== partSha256s[index]) {
+          record.partSha256 !== partSha256s[index] ||
+          (record.version === 3 &&
+           (record.wirePartBytes ?? LEGACY_BINARY_PART_BYTES) !== binaryBytes)) {
         throw new AppError(503, 'v4_upload_part_not_visible',
           'Staged V4 part is incomplete or inconsistent')
       }
@@ -127,8 +134,8 @@ export async function commitV4Upload(storage, service, token, userId, input, max
       let decoded
       if (record.version === 3) {
         if (!Buffer.isBuffer(record.data) || !record.data.length ||
-            record.data.length > V4_HTTP_PART_BYTES ||
-            (index !== count - 1 && record.data.length !== V4_HTTP_PART_BYTES)) {
+            record.data.length > binaryBytes ||
+            (index !== count - 1 && record.data.length !== binaryBytes)) {
           throw new AppError(503, 'v4_upload_part_not_visible',
             'Binary V4 part size or format invalid')
         }
