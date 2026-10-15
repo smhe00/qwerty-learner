@@ -50,13 +50,22 @@ async function enterAccount(page: Page, register: boolean) {
   await page.goto(base, {waitUntil:'domcontentloaded'})
 }
 
-async function manualSync(page: Page, checkpoint: string) {
+async function manualSync(page: Page, checkpoint: string, pulling = false) {
   await page.goto(base, {waitUntil:'domcontentloaded'})
   await page.getByRole('button',{name:'打开设置对话框'}).click()
   await page.getByRole('tab',{name:'数据设置'}).click()
   const button = page.getByRole('button',{name:'立即同步'})
   await expect(button).toBeEnabled({timeout:15000})
   await button.click()
+  if (pulling) {
+    // Pull is two-phase: journal stage + fresh boot restoration; the generic
+    // sync-result toast is intentionally not produced by pull-reload-required.
+    await expect.poll(async() => (await readLearn(page).catch(() =>
+      ({learnRows:-1,allRows:-1}))).learnRows, {
+      timeout:90000, message:'durable V4 cloud Pull into second browser '+checkpoint
+    }).toBe(2)
+    return 'pull-restored-two-learn-rows'
+  }
   const status = page.getByRole('status').filter({hasText:/同步完成：/})
   await expect(status, 'S2 sync outcome after '+checkpoint).toBeVisible({timeout:90000})
   const value = await status.innerText()
@@ -126,8 +135,8 @@ test('etest actual Learn -> manual V4 sync -> other isolated browser restore -> 
     await enterAccount(b,false)
     expect((await readLearn(b)).learnRows).toBe(0)
     checkpoints.push({event:'B-isolated-empty',count:0})
-    const pull=await manualSync(b,'browser B')
-    expect(pull).toMatch(/已安全恢复|已经一致/)
+    const pull=await manualSync(b,'browser B',true)
+    expect(pull).toBe('pull-restored-two-learn-rows')
     await expect.poll(async()=>(await readLearn(b)).learnRows,{timeout:30000}).toBe(2)
     checkpoints.push({event:'B-restores-two',count:2})
     await b.reload({waitUntil:'domcontentloaded'})
