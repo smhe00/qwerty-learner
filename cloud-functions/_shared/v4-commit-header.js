@@ -54,7 +54,7 @@ export function readV4CommitHeaders(request) {
       partSha256s.length !== count || !partSha256s.every(s => SHA.test(s))) invalid()
   const deviceId = field('device-id')
   if (deviceId !== null && (deviceId.length < 1 || deviceId.length > 128 ||
-      /[\x00-\x1f\x7f]/.test(deviceId))) invalid()
+      [...deviceId].some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127))) invalid()
   return { baseRevision, count, payloadSha256: rawSha,
     partSha256s, logicalFingerprint: rawLogical,
     wirePartBytes: CHUNK_BYTES,
