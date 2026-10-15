@@ -11,8 +11,7 @@ async function setupSample(page: Page) {
     await h.initializeLegacyWorkspace({ kind: 'anonymous' })
     const snapshot = await h.captureWorkingWorkspaceV4({ kind: 'anonymous' })
     const report = await h.analyzeV4SnapshotSize(snapshot)
-    const fingerprint = await h.workspaceFingerprintV4(snapshot)
-    return { report, fingerprint }
+    return { report }
   })
 }
 
@@ -22,9 +21,34 @@ async function openData(page: Page) {
   await page.getByRole('tab', { name: '数据设置' }).click()
 }
 
+async function readDurableRows(page: Page) {
+  return page.evaluate(async () => {
+    const names = ['wordRecords','chapterRecords','reviewRecords',
+      'reviewWordStates','achievementEvents','achievementStates']
+    const db = await new Promise<IDBDatabase>((resolve,reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onsuccess=()=>resolve(request.result)
+      request.onerror=()=>reject(request.error)
+    })
+    try {
+      const data: Record<string, unknown[]> = {}
+      for (const name of names) {
+        data[name] = await new Promise<unknown[]>((resolve,reject) => {
+          const request = db.transaction(name,'readonly')
+            .objectStore(name).getAll()
+          request.onsuccess=()=>resolve(request.result)
+          request.onerror=()=>reject(request.error)
+        })
+      }
+      return JSON.stringify(data)
+    } finally { db.close() }
+  })
+}
+
 test('V4 capacity overview reflects actual gzip snapshot, not obsolete HTTP Base64', async ({ page }) => {
   const expected = await setupSample(page)
   await openData(page)
+  const beforeRows = await readDurableRows(page)
   await expect(page.getByRole('button', { name: '导出完整备份' })).toBeVisible()
   await expect(page.getByRole('button', { name: '分析备份容量（只读）' })).toBeVisible()
   await page.getByRole('button', { name: '分析备份容量（只读）' }).click()
@@ -62,12 +86,9 @@ test('V4 capacity overview reflects actual gzip snapshot, not obsolete HTTP Base
   await expect(section).toContainText('没有验证精简后的文件可用于恢复')
   await expect(section).toContainText('只读分析：未修改、上传、归档或删除')
 
-  await page.goto('/tests/e2e/backup-harness.html')
-  const after = await page.evaluate(async () => {
-    const h = (window as any).__backupHarness
-    return h.workspaceFingerprintV4(await h.captureWorkingWorkspaceV4({kind:'anonymous'}))
-  })
-  expect(after, 'capacity analysis must not modify learning data').toBe(expected.fingerprint)
+  expect(await readDurableRows(page),
+    'the read-only capacity audit must not change any durable table rows')
+    .toBe(beforeRows)
 })
 
 test('Data heading and descriptions remain legible in dark mode', async ({page}) => {
