@@ -118,11 +118,13 @@ test('leaving Learn while dictionary preparation is pending cannot navigate back
   })
   let intercepted = false
 
-  await page.addInitScript(() => {
-    localStorage.setItem(
-      'reviewModeInfo',
-      JSON.stringify({ isReviewMode: false }),
-    )
+  // The pristine browser first establishes its S1 anonymous workspace.
+  // A page.addInitScript storage mutation would re-run during its mandatory
+  // first-boot reload and violate the S1 anti-stale-writer witness.
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  await page.evaluate(() => {
+    localStorage.setItem('reviewModeInfo', JSON.stringify({ isReviewMode: false }))
   })
 
   await page.route('**/dicts/**', async (route) => {
