@@ -13,10 +13,17 @@ async function harness(page: Page): Promise<void> {
   )).toBe(true)
 }
 
-test('P0: new browser without Web Locks reaches learning app instead of safety wall', async ({ page }) => {
+test('P0: Web-Locks-less new browser survives refresh without the safety wall', async ({ page }) => {
   await withoutWebLocks(page)
+  await page.addInitScript(() => {
+    Object.defineProperty(crypto, 'randomUUID', { configurable: true, value: undefined })
+  })
   await page.goto('/')
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  for (let i = 0; i < 2; i++) {
+    await page.reload()
+    await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  }
   await expect(page.getByText('学习数据安全检查未通过')).toHaveCount(0)
 })
 
@@ -64,6 +71,35 @@ test('P0: two Web-Locks-less tabs cannot both acquire a writer lease', async ({ 
     } catch { return false }
   })).toBe(true)
   await second.close()
+})
+
+test('P0: copied tab identity cannot steal a live fallback lease', async ({ page, context }) => {
+  await withoutWebLocks(page)
+  await harness(page)
+  const owner = await page.evaluate(async () => {
+    ;(window as any).__fallbackLease =
+      await (window as any).__backupHarness.acquireWorkspaceWriterLease()
+    return sessionStorage.getItem('qwerty.s1.writer-tab-token')
+  })
+  expect(owner).toMatch(/^[0-9a-f]{32}$/)
+  const clone = await context.newPage()
+  await clone.addInitScript(ownerToken => {
+    Object.defineProperty(navigator, 'locks', { configurable: true, value: undefined })
+    sessionStorage.setItem('qwerty.s1.writer-tab-token', ownerToken!)
+  }, owner)
+  await harness(clone)
+  const rejected = await clone.evaluate(async () => {
+    try {
+      const lease = await (window as any).__backupHarness.acquireWorkspaceWriterLease()
+      lease.release()
+      return false
+    } catch (error) {
+      return String(error).includes('Another tab owns')
+    }
+  })
+  expect(rejected).toBe(true)
+  await page.evaluate(() => (window as any).__fallbackLease.release())
+  await clone.close()
 })
 
 test('P0: native Web Locks and fallback tabs share the same writer election', async ({ page, context }) => {
