@@ -18,7 +18,7 @@ export default function V4SizeReport({ report }: { report: V4SizeAudit }) {
 
   return (
     <section data-v4-size-report aria-label="备份容量分析结果" className="mt-4 w-full min-w-0 rounded-xl border border-[var(--focus-border)] bg-[var(--focus-surface-muted)] p-4 text-[var(--focus-text)]">
-      <div className="mb-3 text-sm font-semibold">当前本地 V4 容量</div>
+      <div className="mb-3 text-sm font-semibold">当前备份容量</div>
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-lg bg-[var(--focus-surface)] px-3 py-3">
           <div className="text-xs text-[var(--focus-text-secondary)]">完整备份 · gzip</div>
@@ -30,10 +30,10 @@ export default function V4SizeReport({ report }: { report: V4SizeAudit }) {
         </div>
       </div>
       <p className="mt-3 text-xs leading-relaxed text-[var(--focus-text-secondary)]">
-        整包 gzip 压缩率约 {compression}%。这里只估算备份文件的数据大小，不是 IndexedDB 的磁盘占用，也不包含 HTTP 请求、重试或存储服务开销。V4 同步使用二进制 gzip，不再按 Base64 估算流量。
+        压缩率约 {compression}%。显示的是备份文件估算大小，不是浏览器实际磁盘占用。
       </p>
       <details className="mt-3 border-t border-[var(--focus-border)] pt-3">
-        <summary className="cursor-pointer select-none text-sm font-medium">六张数据表 · 详细占用</summary>
+        <summary className="cursor-pointer select-none text-sm font-medium">数据表明细</summary>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full text-left text-xs tabular-nums">
             <thead className="border-b border-[var(--focus-border)] text-[var(--focus-text-secondary)]">
@@ -61,7 +61,7 @@ export default function V4SizeReport({ report }: { report: V4SizeAudit }) {
         </div>
       </details>
       <details className="mt-3 border-t border-[var(--focus-border)] pt-3">
-        <summary className="cursor-pointer select-none text-sm font-medium">历史数据精简潜力 · 仅模拟</summary>
+        <summary className="cursor-pointer select-none text-sm font-medium">精简潜力（模拟）</summary>
         <div className="mt-3 space-y-3 text-xs leading-relaxed text-[var(--focus-text-secondary)]">
           <p>超过 90 天的 Typing 明细候选 {report.oldTypingCandidates} 条；独立模拟整包 gzip {signedChange(report.gzipBytes, report.projectedGzipBytesAfterTypingCompaction)}。</p>
           <p>成就事件 {report.achievementEventsWithZeroMetrics} 条涉及 {report.achievementEventZeroMetrics} 个值为零的指标；独立模拟 {signedChange(report.gzipBytes, report.projectedGzipBytesAfterAchievementCompaction)}。</p>
@@ -69,7 +69,7 @@ export default function V4SizeReport({ report }: { report: V4SizeAudit }) {
           <p>以上是三个分别修改内存副本后的估算，不可直接相加；没有验证精简后的文件可用于恢复，也不能据此删除学习历史。</p>
         </div>
       </details>
-      <p className="mt-3 text-xs text-[var(--focus-text-secondary)]">只读分析：未修改、上传、归档或删除任何学习数据。</p>
+      <p className="mt-3 text-xs text-[var(--focus-text-secondary)]">仅分析，未修改学习数据。</p>
     </section>
   )
 }
