@@ -1,0 +1,37 @@
+name: Etest Lexeme Release Live Deployment Confirmation
+
+on:
+  push:
+    branches: [qa/etest-lexeme-deploy-confirm-20261015]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-deployed-etest:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    steps:
+      - name: Poll production EdgeOne eTest marker without triggering Maker builds
+        env:
+          TARGET_SHA: 6424780a7f97dd1165807bb6f5dd7d27e1897217
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 80); do
+            marker=$(curl -4 --retry 1 --silent --show-error --fail --max-time 12 \
+              -H 'Cache-Control: no-cache' \
+              "https://etest.edgeone.dev/source-commit.txt?release-check=20261015" 2>/dev/null | tr -d '\r\n') || marker=""
+            if [[ -n "$marker" && "${TARGET_SHA}" == "$marker"* ]]; then
+              echo "PASS: live etest serves expected release source $marker"
+              curl -4 --fail --silent --show-error --max-time 15 \
+                'https://etest.edgeone.dev/learn' -o /dev/null
+              echo "PASS: live etest Learn route responds successfully"
+              exit 0
+            fi
+            if (( attempt % 8 == 1 )); then
+              echo "Waiting for new Maker deployment: attempt $attempt, marker=$marker"
+            fi
+            sleep 5
+          done
+          echo "::error::etest frontend still not at expected commit after polling."
+          exit 1
