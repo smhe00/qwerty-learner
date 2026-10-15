@@ -79,6 +79,20 @@ jobs:
       - name: Beta visible Alpha removal, Data, Learn layout and V4 import E2E
         run: npx playwright test --config=tests/e2e/beta-rc-ui.config.ts --project=chromium --workers=1 --retries=0 --reporter=list
 
+  beta-recovery-delta:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
+      - name: Focus previous failing current-UI and concurrent-CAS cases
+        run: npx playwright test tests/e2e/workspace-v4-app.spec.ts tests/e2e/workspace-app-entry.spec.ts tests/e2e/workspace-v4-s2-multi-device.spec.ts --config=tests/e2e/workspace-v4.config.ts --project=chromium --workers=1 --retries=0 --reporter=list
+
   beta-recovery-chromium:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
