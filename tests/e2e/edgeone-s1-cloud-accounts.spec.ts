@@ -196,12 +196,20 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
     await signIn(a1, userA, true)
     await a1.reload({ waitUntil: 'domcontentloaded' })
     await expect(a1.getByText('学习数据安全检查未通过')).toHaveCount(0)
+    // Account A has no prior dictionary selection. A new S1 account must
+    // not inherit the obsolete zhongkaohexin default from the empty reset.
+    expect(await a1.evaluate(() =>
+      JSON.parse(localStorage.getItem('currentDict') || 'null')))
+      .toBe('shanghai-zhongkao-2027')
     const aId = await a1.evaluate(() =>
       JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || '{}').user?.userId)
     expect(aId).toBeTruthy()
 
     const b1 = await open()
     await signIn(b1, userB, true)
+    expect(await b1.evaluate(() =>
+      JSON.parse(localStorage.getItem('currentDict') || 'null')))
+      .toBe('shanghai-zhongkao-2027')
     const bId = await b1.evaluate(() =>
       JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || '{}').user?.userId)
     expect(bId).toBeTruthy()
@@ -211,6 +219,9 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
     await signIn(a2, userA, false)
     await a2.reload({ waitUntil: 'domcontentloaded' })
     await expect(a2.getByText('学习数据安全检查未通过')).toHaveCount(0)
+    expect(await a2.evaluate(() =>
+      JSON.parse(localStorage.getItem('currentDict') || 'null')))
+      .toBe('shanghai-zhongkao-2027')
     const latest = await a2.evaluate(async () => {
       const auth = JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || '{}')
       const res = await fetch('/api/auth/me', {
