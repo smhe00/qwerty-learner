@@ -7,6 +7,7 @@
  * crash-journaled pull executor may restore anything.
  */
 import { assertRestorableWorkspaceV4, parseWorkspaceV4, workspaceFingerprintV4 } from './workspace-v4'
+import { sha256Hex } from './sha256-compat'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
 import type { RemoteBinarySnapshot, RemoteSnapshot, RemoteSyncMeta } from './types'
 
@@ -15,9 +16,7 @@ const MAX_INFLATED_BYTES = 32 * 1024 * 1024
 const SHA256 = /^[a-f0-9]{64}$/
 
 async function digest(bytes: Uint8Array): Promise<string> {
-  const result = await crypto.subtle.digest('SHA-256', bytes)
-  return [...new Uint8Array(result)]
-    .map(value => value.toString(16).padStart(2, '0')).join('')
+  return sha256Hex(bytes)
 }
 
 function decodeBase64(encoded: string): Uint8Array {
