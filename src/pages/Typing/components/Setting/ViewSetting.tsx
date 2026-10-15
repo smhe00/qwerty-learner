@@ -1,6 +1,7 @@
 import styles from './index.module.css'
 import { defaultFontSizeConfig } from '@/constants'
-import { fontSizeConfigAtom } from '@/store'
+import { fontSizeConfigAtom, isTextSelectableAtom } from '@/store'
+import { Switch } from '@headlessui/react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import * as Slider from '@radix-ui/react-slider'
 import { useAtom } from 'jotai'
@@ -8,6 +9,7 @@ import { useCallback } from 'react'
 
 export default function ViewSetting() {
   const [fontSizeConfig, setFontsizeConfig] = useAtom(fontSizeConfigAtom)
+  const [isTextSelectable, setIsTextSelectable] = useAtom(isTextSelectableAtom)
 
   const onChangeForeignFontSize = useCallback(
     (value: [number]) => {
@@ -77,6 +79,23 @@ export default function ViewSetting() {
                 </Slider.Root>
                 <span className="ml-4 w-10 text-xs font-normal text-gray-600">{fontSizeConfig.translateFont}px</span>
               </div>
+            </div>
+          </div>
+          <div className={styles.section}>
+            <span className={styles.sectionLabel}>文本选择</span>
+            <span className={styles.sectionDescription}>
+              Learn 和 Typing 共用。允许使用鼠标选中练习页面的文字，不改变判分或学习进度。
+            </span>
+            <div className={styles.switchBlock}>
+              <span className={styles.blockLabel}>允许选择练习文本</span>
+              <Switch
+                checked={isTextSelectable}
+                onChange={setIsTextSelectable}
+                className="switch-root"
+                aria-label="允许选择练习文本"
+              >
+                <span aria-hidden="true" className="switch-thumb" />
+              </Switch>
             </div>
           </div>
           <button className="my-btn-primary ml-4 disabled:bg-gray-300" type="button" onClick={onResetFontSize} title="重置字体设置">
