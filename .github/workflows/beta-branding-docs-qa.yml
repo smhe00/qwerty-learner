@@ -1,0 +1,19 @@
+name: Beta Branding Source Audit (No Maker)
+on:
+  push:
+    branches: [release/beta-branding-docs-20261015]
+permissions:
+  contents: read
+jobs:
+  alpha-source-audit:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find all user-facing Alpha and pre-Beta references
+        run: |
+          echo '=== UI / public / package references ==='
+          grep -RInEi 'alpha|0\\.2\\.0-alpha' src public index.html package.json --include='*.tsx' --include='*.ts' --include='*.html' --include='*.json' --include='*.css' | head -180 || true
+          echo '=== Active README and guides ==='
+          grep -nEi 'alpha|backup-v3|single.current.session|20.word|手工上传|手工云同步|手动上传|默认词库' README.md docs/README.md docs/CLOUD_SYNC_USER_GUIDE.md docs/LEARN_USER_GUIDE_V1.md | head -160 || true
+          echo '=== Docs with Alpha in file path (historical) ==='
+          find docs -iname '*alpha*' -type f | sort
