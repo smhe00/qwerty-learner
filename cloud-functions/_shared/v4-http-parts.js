@@ -222,7 +222,15 @@ export async function commitV4Upload(storage, service, token, userId, input, max
         ? error.details : {}
       error.details = { ...existing, failureStage, partIndex, timings }
     }
-    // The outcome of a failed commit can be ambiguous. Never retry it here.
+    // Unknown commit failures are ambiguous too. Keep the caller from
+    // classifying them as generic 500 without stage or recovery information.
+    // Do not expose Error.message: it may include Blob storage paths/keys.
+    // NEVER auto-retry the final CAS commit; client must recheck meta/SHA.
+    if (!(error instanceof AppError)) {
+      throw new AppError(503, 'v4_commit_core_unavailable',
+        'V4 commit outcome is uncertain; recheck cloud revision and SHA before retry',
+        { failureStage: 'commit_core', timings })
+    }
     throw error
   }
   timings.commitCoreMs = ms(commitStart)
