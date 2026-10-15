@@ -39,6 +39,17 @@ jobs:
         run: yarn eslint src/pages/Typing/components/Setting/DataSetting.tsx src/pages/Typing/components/Setting/DeveloperSetting.tsx src/pages/Typing/components/Setting/V4SizeReport.tsx src/components/Footer/index.tsx src/pages/Mobile/index.tsx
       - name: Build exact combined Beta RC
         run: yarn build
+      - name: Verify Maker static SPA deep links have real HTML entry files
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict'
+          import { readFileSync } from 'node:fs'
+          const root=readFileSync('build/index.html','utf8')
+          for(const route of ['typing','learn','analysis','gallery','achievements','error-book','friend-links','mobile']){
+            assert.equal(readFileSync('build/'+route+'/index.html','utf8'),root,route+' has mismatched HTML entry')
+          }
+          console.log('PASS: 8 physical SPA route HTML entry files are present')
+          NODE
       - name: V4 binary staging, CAS, portability and error protection
         run: |
           node --test \
