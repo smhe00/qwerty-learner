@@ -55,11 +55,9 @@ async function manualSync(page: Page, checkpoint: string) {
   const button = page.getByRole('button',{name:'立即同步'})
   await expect(button).toBeEnabled({timeout:15000})
   await button.click()
-  const message = await expect.poll(() => page.evaluate(() =>
-    sessionStorage.getItem('qwerty.s2.last-sync-result')), {
-      timeout:90000, message:'S2 sync outcome after '+checkpoint
-    }).toMatch(/同步完成：/)
-  const value = await page.evaluate(() => sessionStorage.getItem('qwerty.s2.last-sync-result'))
+  const status = page.getByRole('status').filter({hasText:/同步完成：/})
+  await expect(status, 'S2 sync outcome after '+checkpoint).toBeVisible({timeout:90000})
+  const value = await status.innerText()
   expect(value).toContain('同步完成：')
   return value
 }
