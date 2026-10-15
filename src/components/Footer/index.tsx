@@ -4,7 +4,7 @@ import { infoPanelStateAtom } from '@/store'
 import { recordOpenInfoPanelAction } from '@/utils'
 import { useAtom } from 'jotai'
 import type React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import IconMail from '~icons/material-symbols/mail'
 import IconCoffee2 from '~icons/mdi/coffee'
 import IconInfo from '~icons/tabler/info-circle'
@@ -21,7 +21,7 @@ const disabledChannelClass =
 
 const Footer: React.FC = () => {
   const [infoPanelState, setInfoPanelState] = useAtom(infoPanelStateAtom)
-  const [showLicenseInfo, setShowLicenseInfo] = React.useState(false)
+  const [showLicenseInfo, setShowLicenseInfo] = useState(false)
 
   const openDonate = useCallback(() => {
     recordOpenInfoPanelAction('donate', 'footer')
