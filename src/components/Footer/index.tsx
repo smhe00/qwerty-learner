@@ -7,6 +7,7 @@ import type React from 'react'
 import { useCallback } from 'react'
 import IconMail from '~icons/material-symbols/mail'
 import IconCoffee2 from '~icons/mdi/coffee'
+import IconInfo from '~icons/tabler/info-circle'
 import IconXiaoHongShu from '~icons/my-icons/xiaohongshu'
 import RiLinksLine from '~icons/ri/links-line'
 import IconTwitter from '~icons/ri/twitter-fill'
@@ -20,6 +21,7 @@ const disabledChannelClass =
 
 const Footer: React.FC = () => {
   const [infoPanelState, setInfoPanelState] = useAtom(infoPanelStateAtom)
+  const [showLicenseInfo, setShowLicenseInfo] = React.useState(false)
 
   const openDonate = useCallback(() => {
     recordOpenInfoPanelAction('donate', 'footer')
@@ -56,6 +58,25 @@ const Footer: React.FC = () => {
           <p className="mt-4 text-xs leading-5 text-slate-400 dark:text-slate-500">
             不赞赏也没关系，认真学会一个词就是支持。
           </p>
+        </div>
+      </InfoPanel>
+
+      <InfoPanel
+        openState={showLicenseInfo}
+        title="关于 Qwerty Plus"
+        icon={IconInfo}
+        buttonClassName="bg-slate-700 hover:bg-slate-600"
+        iconClassName="bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200"
+        onClose={() => setShowLicenseInfo(false)}
+      >
+        <div className="space-y-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+          <p>Qwerty Plus 基于 Qwerty Learner 修改开发，新增 Learn 智能复习、云同步等功能。</p>
+          <p>遵循 GNU GPL-3.0 许可证。保留原项目版权声明；软件按许可证约定提供，不附带任何担保。</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-indigo-600 dark:text-indigo-300">
+            <a href="https://github.com/RealKai42/qwerty-learner" target="_blank" rel="noreferrer" className="hover:underline">原项目</a>
+            <a href="https://github.com/smhe00/qwerty-learner" target="_blank" rel="noreferrer" className="hover:underline">完整源码</a>
+            <a href="https://github.com/smhe00/qwerty-learner/blob/master/LICENSE" target="_blank" rel="noreferrer" className="hover:underline">GPL-3.0 协议</a>
+          </div>
         </div>
       </InfoPanel>
 
@@ -159,9 +180,15 @@ const Footer: React.FC = () => {
           <IconFlagChina fontSize={16} />
         </button>
 
-        <span className="select-none text-gray-500 dark:text-gray-400">
-          Qwerty Plus Beta
-        </span>
+        <span className="select-none text-gray-500 dark:text-gray-400">Qwerty Plus Beta</span>
+        <button
+          type="button"
+          className="text-slate-400 transition-colors hover:text-slate-600 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 dark:text-slate-500 dark:hover:text-slate-300"
+          title="查看开源来源与许可"
+          onClick={() => setShowLicenseInfo(true)}
+        >
+          开源 · GPL-3.0
+        </button>
 
         <a
           className="select-none rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600 hover:bg-slate-300 hover:text-slate-800 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
