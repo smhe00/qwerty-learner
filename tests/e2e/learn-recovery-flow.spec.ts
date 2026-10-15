@@ -59,9 +59,19 @@ test('invalid persisted Learn session self-heals through the single Learn contro
   ).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByText('按任意键开始')).toBeVisible()
 
+  // Opening Learn must not prepare a session or mutate restored data.
+  const idleInfo = await readReviewModeInfo(page)
+  expect(idleInfo?.isReviewMode).toBe(true)
+  expect(idleInfo?.reviewRecord).toBeUndefined()
+
+  const start = page.getByRole('button', { name: '开始 Learn', exact: true })
+  await expect(start).toBeVisible()
+  await start.click()
+  await expect.poll(async () => {
+    const info = await readReviewModeInfo(page)
+    return Boolean(info?.isReviewMode && info?.reviewRecord && !info.reviewRecord.isFinished)
+  }).toBe(true)
   const info = await readReviewModeInfo(page)
-  expect(info?.isReviewMode).toBe(true)
-  expect(info?.reviewRecord?.isFinished).toBe(false)
   expect(info?.reviewRecord?.words?.length).toBeGreaterThan(0)
 })
 
