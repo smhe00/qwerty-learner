@@ -1,3 +1,5 @@
+> **HISTORICAL / SUPERSEDED:** This file records the original Alpha release baseline and is not a statement about the current Beta product. See [Beta user guide](./BETA_USER_GUIDE_ZH.md) and [current README](../README.md). Keep old names, tags and protocol examples for audit history only.
+
 # Learn Alpha 1 Release Baseline
 
 > Product version: `0.2.0-alpha.1`
