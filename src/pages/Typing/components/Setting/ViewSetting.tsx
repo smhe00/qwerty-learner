@@ -37,7 +37,7 @@ export default function ViewSetting() {
 
   return (
     <ScrollArea.Root className="flex-1 select-none overflow-y-auto ">
-      <ScrollArea.Viewport className="h-full w-full px-3">
+      <ScrollArea.Viewport className="h-full w-full">
         <div className={styles.tabContent}>
           <div className={styles.section}>
             <span className={styles.sectionLabel}>字体设置</span>
@@ -98,7 +98,7 @@ export default function ViewSetting() {
               </Switch>
             </div>
           </div>
-          <button className="my-btn-primary ml-4 disabled:bg-gray-300" type="button" onClick={onResetFontSize} title="重置字体设置">
+          <button className="min-h-10 self-start rounded-lg border border-[var(--focus-border)] bg-[var(--focus-surface)] px-4 py-2 text-sm font-medium text-[var(--focus-text)] transition-colors hover:bg-[var(--focus-surface-muted)]" type="button" onClick={onResetFontSize} title="重置字体设置">
             重置字体设置
           </button>
         </div>
