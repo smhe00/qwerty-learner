@@ -69,15 +69,15 @@ export default function DataSetting() {
   }, [])
 
   const onClickExportV4 = useCallback(async () => {
-    setV4Message('正在生成完整的 Backup V4 快照…')
+    setV4Message('正在准备完整备份…')
     setIsV4Busy(true)
     try {
       const info = await downloadManualBackupV4()
       setV4Message(
-        `V4 导出完成：${info.tableCount} 张数据表、${info.dailySessions} 个每日学习会话、${info.settingCount} 项个人设置。`,
+        `备份已导出：${info.tableCount} 张表、${info.dailySessions} 个学习会话、${info.settingCount} 项设置。`,
       )
     } catch (error) {
-      setV4Message('V4 导出失败：' + (error instanceof Error ? error.message : String(error)))
+      setV4Message('备份导出失败：' + (error instanceof Error ? error.message : String(error)))
     } finally {
       setIsV4Busy(false)
     }
@@ -91,14 +91,14 @@ export default function DataSetting() {
       const file = input.files?.[0]
       if (!file) return
       setIsV4Busy(true)
-      setV4Message('正在只读校验 Backup V4 文件…')
+      setV4Message('正在校验备份文件…')
       try {
         const info = await inspectManualBackupV4File(file)
         setV4Message(
-          `V4 校验通过：${info.tableCount} 张表、${info.dailySessions} 个每日学习会话、${info.settingCount} 项设置；来源：${info.owner}。未修改本地数据。`,
+          `校验通过：${info.tableCount} 张表、${info.dailySessions} 个学习会话、${info.settingCount} 项设置；来源：${info.owner}。本地数据未改变。`,
         )
       } catch (error) {
-        setV4Message('V4 校验失败：' + (error instanceof Error ? error.message : String(error)))
+        setV4Message('备份校验失败：' + (error instanceof Error ? error.message : String(error)))
       } finally {
         setIsV4Busy(false)
       }
@@ -175,7 +175,7 @@ export default function DataSetting() {
           <section aria-label="本地备份" className="min-w-0">
             <div className="mb-1 text-base font-semibold text-[var(--focus-text)]">本地备份</div>
             <p className="mb-4 text-sm leading-relaxed text-[var(--focus-text-secondary)]">
-              保存学习进度、FSRS 记忆状态、成就和个人设置。导入将替换当前工作区，不合并数据。
+              包含学习记录、记忆进度、成就和设置。导入会替换本地数据，不会合并。
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -184,7 +184,7 @@ export default function DataSetting() {
                 onClick={() => { void onClickExportV4() }}
                 disabled={isV4Busy || isClearing}
               >
-                {isV4Busy ? 'V4 处理中…' : '导出完整备份'}
+                {isV4Busy ? '处理中…' : '导出完整备份'}
               </button>
               <button
                 className="min-h-10 rounded-lg border border-[var(--focus-border)] bg-[var(--focus-surface)] px-4 py-2 text-sm font-medium text-[var(--focus-text)] transition-colors hover:bg-[var(--focus-surface-muted)] disabled:opacity-50"
@@ -192,7 +192,7 @@ export default function DataSetting() {
                 onClick={() => window.location.assign('/?v4-import=manage')}
                 disabled={isV4Busy || isClearing}
               >
-                导入完整备份 V4（支持跨账号）
+                导入完整备份
               </button>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
@@ -202,7 +202,7 @@ export default function DataSetting() {
                 onClick={onClickInspectV4}
                 disabled={isV4Busy || isClearing}
               >
-                验证 V4 备份文件（只读）
+                校验备份文件
               </button>
               <button
                 className="rounded-md py-1 text-left text-sm text-[var(--focus-text-secondary)] underline-offset-4 transition-colors hover:text-[var(--focus-text)] hover:underline disabled:opacity-50"
@@ -210,7 +210,7 @@ export default function DataSetting() {
                 onClick={() => { void onClickAuditV4Size() }}
                 disabled={isV4Busy || isClearing}
               >
-                {isV4Busy && !sizeAuditReport ? '分析备份容量中…' : '分析备份容量（只读）'}
+                {isV4Busy && !sizeAuditReport ? '正在分析…' : '分析备份容量'}
               </button>
             </div>
             {v4Message && (
