@@ -17,10 +17,53 @@ export const WORKING_DB_LEASE_DATABASE = 'QwertyPlusWriterLeaseV1'
 
 const STORE = 'leases'
 const KEY = 'working-db'
+const TAB_OWNER_KEY = 'qwerty.s1.writer-tab-token'
+const PRESENCE_CHANNEL = 'qwerty-plus.s1.writer-presence'
 const TTL_MS = 15_000
 const RENEW_MS = 2_000
 
-type LeaseRow = { key: string; owner: string; expiresAt: number }
+type LeaseRow = { key: string; owner: string; instance: string; expiresAt: number }
+
+function randomToken(): string {
+  if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function') {
+    throw new Error('Secure random API unavailable: S1 writer ownership refused')
+  }
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)),
+    byte => byte.toString(16).padStart(2, '0')).join('')
+}
+
+/**
+ * sessionStorage survives reload in the SAME tab. A copied/duplicated tab
+ * may inherit that token too: challenge the previous document over a
+ * BroadcastChannel before accepting a same-tab reacquisition.
+ */
+async function tabOwner(): Promise<string> {
+  if (typeof BroadcastChannel === 'undefined') return randomToken()
+  const existing = sessionStorage.getItem(TAB_OWNER_KEY)
+  if (existing && /^[0-9a-f]{32}$/.test(existing)) {
+    const channel = new BroadcastChannel(PRESENCE_CHANNEL)
+    const challenge = randomToken()
+    const active = await new Promise<boolean>(resolve => {
+      let finished = false
+      const complete = (value: boolean) => {
+        if (finished) return
+        finished = true
+        channel.close()
+        resolve(value)
+      }
+      channel.onmessage = event => {
+        const data = event.data as { kind?: string; owner?: string; challenge?: string }
+        if (data?.kind === 'alive' && data.owner === existing &&
+            data.challenge === challenge) complete(true)
+      }
+      channel.postMessage({ kind: 'probe', owner: existing, challenge })
+      window.setTimeout(() => complete(false), 120)
+    })
+    if (active) throw new Error('Another tab owns the active workspace writer lease')
+    return existing
+  }
+  return randomToken()
+}
 type LeaseAction = 'acquire' | 'renew' | 'release'
 
 function openLeaseDatabase(): Promise<IDBDatabase> {
@@ -40,7 +83,7 @@ function openLeaseDatabase(): Promise<IDBDatabase> {
 }
 
 /** A read/compare/write in ONE readwrite transaction is atomic across tabs. */
-function updateLease(db: IDBDatabase, owner: string, action: LeaseAction): Promise<boolean> {
+function updateLease(db: IDBDatabase, owner: string, instance: string, action: LeaseAction): Promise<boolean> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite')
     const store = tx.objectStore(STORE)
@@ -49,16 +92,16 @@ function updateLease(db: IDBDatabase, owner: string, action: LeaseAction): Promi
     request.onsuccess = () => {
       const current = request.result as LeaseRow | undefined
       if (action === 'release') {
-        if (current?.owner === owner) store.delete(KEY)
+        if (current?.owner === owner && current.instance === instance) store.delete(KEY)
         accepted = true
       } else if (action === 'renew') {
-        if (current?.owner === owner) {
-          store.put({ key: KEY, owner, expiresAt: Date.now() + TTL_MS })
+        if (current?.owner === owner && current.instance === instance) {
+          store.put({ key: KEY, owner, instance, expiresAt: Date.now() + TTL_MS })
           accepted = true
         }
       } else if (!current || current.owner === owner ||
                  current.expiresAt <= Date.now()) {
-        store.put({ key: KEY, owner, expiresAt: Date.now() + TTL_MS })
+        store.put({ key: KEY, owner, instance, expiresAt: Date.now() + TTL_MS })
         accepted = true
       }
     }
@@ -70,18 +113,12 @@ function updateLease(db: IDBDatabase, owner: string, action: LeaseAction): Promi
 }
 
 async function acquireIndexedDbWriterLease(): Promise<WorkingDbLease> {
+  const owner = await tabOwner()
+  const instance = randomToken()
   const db = await openLeaseDatabase()
-  // getRandomValues predates randomUUID in Safari and embedded browsers that
-  // also lack Web Locks. Never fall back to Math.random for a lock owner.
-  if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function') {
-    db.close()
-    throw new Error('Secure random API unavailable: S1 writer ownership refused')
-  }
-  const randomBytes = crypto.getRandomValues(new Uint8Array(16))
-  const owner = Array.from(randomBytes, byte => byte.toString(16).padStart(2, '0')).join('')
   let acquired = false
   try {
-    acquired = await updateLease(db, owner, 'acquire')
+    acquired = await updateLease(db, owner, instance, 'acquire')
   } catch (error) {
     db.close()
     throw error
@@ -91,16 +128,29 @@ async function acquireIndexedDbWriterLease(): Promise<WorkingDbLease> {
     throw new Error('Another tab owns the active workspace writer lease')
   }
 
+  const presence = typeof BroadcastChannel === 'undefined'
+    ? undefined : new BroadcastChannel(PRESENCE_CHANNEL)
+  if (presence) {
+    presence.onmessage = event => {
+      const data = event.data as { kind?: string; owner?: string; challenge?: string }
+      if (data?.kind === 'probe' && data.owner === owner) {
+        presence.postMessage({ kind: 'alive', owner, challenge: data.challenge })
+      }
+    }
+    sessionStorage.setItem(TAB_OWNER_KEY, owner)
+  }
+
   let released = false
   let checking = false
   const release = () => {
     if (released) return
     released = true
     clearInterval(interval)
+    presence?.close()
     window.removeEventListener('unload', release)
     window.removeEventListener('focus', check)
     document.removeEventListener('visibilitychange', onVisibilityChange)
-    void updateLease(db, owner, 'release').catch(() => {
+    void updateLease(db, owner, instance, 'release').catch(() => {
       // Abandoned leases expire after TTL; never mutate learning data here.
     }).finally(() => db.close())
   }
@@ -109,6 +159,7 @@ async function acquireIndexedDbWriterLease(): Promise<WorkingDbLease> {
     // Never keep a possibly stale mounted writer alive after lease loss.
     released = true
     clearInterval(interval)
+    presence?.close()
     window.removeEventListener('unload', release)
     window.removeEventListener('focus', check)
     document.removeEventListener('visibilitychange', onVisibilityChange)
@@ -118,7 +169,7 @@ async function acquireIndexedDbWriterLease(): Promise<WorkingDbLease> {
   const check = () => {
     if (released || checking) return
     checking = true
-    void updateLease(db, owner, 'renew')
+    void updateLease(db, owner, instance, 'renew')
       .then(ok => { if (!ok) ownershipLost() })
       .catch(() => ownershipLost())
       .finally(() => { checking = false })
