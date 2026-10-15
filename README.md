@@ -1,241 +1,81 @@
-# Qwerty Plus — Learn Alpha
+# QWERTY Plus — Beta
 
-> 当前产品版本：`0.2.0-alpha.1`  
-> 集成产品主线：`product/main`  
-> Alpha 发布访问地址：https://qwerty-plus.edgeone.dev/（EdgeOne 项目域名，非自定义域名）。
+> **版本：`0.2.0-beta.1`** · **产品：打字 & 背单词**  
+> 开发主线：`product/main` · Beta 验证站：[etest.edgeone.dev](https://etest.edgeone.dev/)  
+> 发布站：[qwerty-plus.edgeone.dev](https://qwerty-plus.edgeone.dev/)（`master`；正式 Beta 是否已上线以该站实际部署版本为准）
 
-Qwerty Plus Learn Alpha 是基于开源项目
-[Qwerty Learner](https://github.com/RealKai42/qwerty-learner)
-持续演进的独立产品分支。
+QWERTY Plus 基于 [Qwerty Learner](https://github.com/RealKai42/qwerty-learner) 持续开发，在保留 Typing 打字练习的同时，增加 Learn 长期记忆学习、FSRS-6 复习调度、学习成就以及可选的云同步。产品面向持续积累词汇和练习英文拼写的用户。
 
-当前产品保留原有 Typing 练习，同时新增独立的 **Learn 长期学习模式**，
-用于把“看过/打过单词”进一步转化为可验证的独立回忆和长期复习。
+目前为 **Beta 测试版本**：功能已覆盖日常学习、恢复与同步的主要流程，但长期学习效果、不同设备环境下的稳定性仍需持续验证。**重要学习数据建议定期导出完整本地备份。**
 
-本仓库当前处于 **受控 Alpha** 阶段：核心学习流程、数据边界和控制稳定性
-已经通过自动化 Gate，但长期学习效率与个体参数仍需要真实用户数据继续验证。
+## 核心功能
 
-## 当前产品模型
+| 模式 | 用途 |
+| --- | --- |
+| **Typing · 打字** | 词库与章节练习、拼写熟悉、发音、音标、释义和输入统计。 |
+| **Learn · 学习** | 新词引入、逐步提示、独立拼写检验、到期复习、FSRS-6 长期调度与进度统计。 |
 
-### Typing
+- 支持中考等英语词库，包括**上海中考 2027**和**沪教新初 2027**等；可在词库页面选择。
+- Learn 的每日新词目标默认为 **32 个**，可以在设置中调整；已到期复习按学习计划安排。
+- 学习中可以随时退出，系统保存学习会话和长期记忆进度；数据首先写入本地浏览器。
+- Learn 默认任意键开始，**Enter 暂停**，**Esc 表示不会、进入提示流程**。拼写完成后可继续下一个词。
+- 成就与学习统计用于查看持续学习情况，不代替长期掌握的判定。
 
-Typing 保留上游 Qwerty Learner 的章节练习逻辑，适合：
+## 数据备份与云同步
 
-- 键盘输入训练；
-- 单词熟悉；
-- 发音、音标和释义辅助；
-- 章节化练习与原有 Typing 工作流。
+QWERTY Plus 采用 **local-first** 模型：不注册账号也可以学习，本地学习记录保存在浏览器 IndexedDB。
 
-Typing 不直接修改 Learn 的长期记忆 scheduler。
+- **完整备份**：数据设置支持导出、校验、导入标准 `qwerty-backup-v4` 备份（gzip）。备份包含学习记录、记忆状态、成就、会话与相关设置。
+- **跨账号导入**：可把备份恢复到当前本地工作区，但会**替换当前工作区数据**，不会自动合并；操作前应保存当前完整备份并确认接收身份。
+- **可选云账号**：注册登录后，可以通过统一的“同步”入口协调本地与云端备份，支持云备份导出及高级冲突恢复。
+- **自动同步**：每日学习会话完成后支持自动同步；“每个 Block 完成后自动同步”由用户选择，默认关闭。
+- **冲突保护**：两端数据不一致时不会静默覆盖；需备份双方并明确选择保留本地或保留云端。失败或结果不确定时，不要盲目重复覆盖。
+- **数据安全**：云端通过 HTTPS 和账号会话进行访问控制，**云备份不是端到端加密（E2EE）**。请妥善保管账号密码及导出的备份文件。
 
-### Learn
+> 备份中的 `V4` 是文件与协议版本，并非产品的 Alpha/Beta 发布标识。更详细的操作步骤见 [Beta 使用指南](./docs/BETA_USER_GUIDE_ZH.md) 和 [云同步指南](./docs/CLOUD_SYNC_USER_GUIDE.md)。
 
-Learn 管理长期学习：
+## 支持环境与 Beta 边界
 
-```text
-新词 Acquisition
-Exposure
-  -> Supported Recall
-  -> Independent Recall
-  -> ACTIVE
+- 优先支持桌面端 **Chrome / Edge**；移动端目前以介绍和基础浏览为主，不作为完整 Learn 学习环境的主要验收基线。
+- Beta 不承诺自动合并多设备上的不同学习历史，也不提供云备份端到端加密。
+- 学习系统不保证对所有学习者都达到最优记忆效率；个性化策略还需要长期真实数据验证。
+- 如遇进度、备份、账号或同步异常，请先保留当前本地备份，再使用设置中的**开发诊断 → 导出现场诊断包**协助排查。诊断包可能包含学习数据，只应提供给可信开发者。
 
-到期 Review
-Cold Probe
-  -> Rating Gate
-  -> Scheduler
-```
+## 快速开始
 
-核心原则：
-
-- 看着答案输入正确，不等于已经掌握；
-- 只有无提示、无错误、满足间隔要求的 Independent Recall 才能形成新的独立掌握证据；
-- 提示、强支架、Recovery Window 都可以改善训练体验，但不能降低长期掌握标准；
-- Due Review 优先于新增词。
-
-## Learn Alpha 当前能力
-
-- Typing / Learn 一级模式分离；
-- 沪教版新初中英语 2027 词库作为默认词库（1751 词）；
-- 双语例句与语境提示；
-- 分阶段新词 Acquisition；
-- 到期长期 Review；
-- Hint 0/1/2/3；
-- Dynamic Scaffold S0/S1/S2/S3；
-- 基于具体错误位置的 targeted support；
-- Interaction Strain EWMA + hysteresis；
-- bounded Recovery Window；
-- 每日新词 quota 与 Learn workload plan；
-- Learn 专属统计；
-- 手工移出/恢复长期学习计划；
-- 本地备份/恢复；
-- 可选云账号与手工云同步。
-
-## 控制稳定性
-
-Learn 的自适应学习控制不是无限自由变化的模型。
-
-当前版本对关键控制量设置了明确边界：
-
-```text
-strain                         in [0, 1]
-daily new-word target          <= 20
-Recovery Window                <= 2 elevated / <= 3 recovery
-Acquisition assistedCycles     <= 2
-Independent mastery admission  only from valid S3 evidence
-```
-
-CI 中包含独立的 **Learn Control Stability Gate**，验证：
-
-- EWMA BIBO boundedness；
-- hysteresis / no-chatter；
-- Acquisition finite termination；
-- Recovery Window bounded / non-recursive；
-- quota saturation；
-- due-first backlog behavior；
-- deterministic virtual-learner closed-loop regression；
-- 防止“通过过度帮助换取表面稳定”的效率回归。
-
-这不等于已经证明对所有真实学生全局最优。Alpha 阶段的重点之一，
-就是用真实长期保持数据继续校准效率目标。
-
-## Alpha 学习目标
-
-产品最终追求的不是短期“正确率最高”，而是：
-
-```text
-在可接受的心理负担下
-用尽可能少的有效学习时间
-获得尽可能多的长期可独立回忆
-```
-
-长期希望用类似下列指标评估策略：
-
-```text
-7-day retained words / active learning hour
-30-day retained words / active learning hour
-```
-
-当前版本尚未启用自动 Personal Calibration。控制参数仍使用经过约束的
-全局策略，避免在没有稳定性边界前进入高风险自适应参数学习。
-
-## Alpha 客户使用说明
-
-首次试用、数据说明、云同步限制和反馈重点请阅读：
-
-- [Alpha 客户使用说明](./docs/ALPHA_CUSTOMER_GUIDE_ZH.md)
-
-完整文档入口：
-
-- [文档索引](./docs/README.md)
-- [Learn 使用指南](./docs/LEARN_USER_GUIDE_V1.md)
-- [Learn 架构](./docs/LEARN_ARCHITECTURE_V1.md)
-- [云账号与同步说明](./docs/CLOUD_SYNC_USER_GUIDE.md)
-
-## 数据与云同步
-
-产品采用 local-first 模型：
-
-- 不登录也可以学习；
-- 本地 IndexedDB 是日常工作数据库；
-- 云同步是可选能力；
-- 当前云同步为手动上传/下载；
-- 云端存在 revision 冲突保护；
-- 同一账号只保留一个当前有效云会话；
-- 当前云快照 **不是端到端加密**。
-
-当前备份格式：
-
-```text
-qwerty-backup-v3
-```
-
-并兼容恢复：
-
-```text
-qwerty-dexie-gzip-v2
-```
-
-更详细的信息见
-[云账号与同步使用说明](./docs/CLOUD_SYNC_USER_GUIDE.md)。
-
-## Alpha 平台范围
-
-当前核心学习流程的自动化发布 Gate 以桌面 Chrome 环境为主要浏览器基线。
-
-移动端当前主要提供产品介绍页面，**不是本次 Learn Alpha 的主要验证入口**。
-Alpha 用户建议使用桌面 Chrome / Edge 访问。
-
-## 开发与验证
-
-环境：
-
-- Node.js 20（CI 基线）；
-- Yarn；
-- Vite / React。
-
-启动：
+需要 Node.js 20 和 Yarn：
 
 ```bash
 yarn install
 yarn dev
 ```
 
-构建：
+构建与基础检查：
 
 ```bash
 yarn build
+yarn lint
 ```
 
-关键集成 Gate 位于：
+具体测试和发布门禁见 [文档索引](./docs/README.md) 与 [Beta Readiness](./docs/release/BETA_READINESS_2026-10-13.md)。**只有同一候选 SHA 的相关门禁全部通过且生产站点完成验收，才视为正式 Beta 发布完成。**
 
-```text
-.github/workflows/review-gate.yml
-```
+## 分支与发布
 
-目前 Gate 包含：
+| 分支 | 用途 |
+| --- | --- |
+| `product/main` | 开发主线与版本集成 |
+| `edgeone-test` | etest 测试站，云存储与生产环境隔离 |
+| `master` | EdgeOne Maker 正式发布站 |
 
-- lint；
-- Learn/Review domain tests；
-- formal model checker；
-- Learn Control Stability Gate；
-- Typing audio formal model；
-- FSRS shadow/G3 contracts；
-- Typing lifecycle browser gate；
-- production build/smoke；
-- multi-word Learn/Review browser gate。
+EdgeOne Maker 构建次数有限，因此不能因普通开发提交持续更新 `master`。Beta 候选版本在测试站通过验收后，才将经过确认的版本发布到 `master`。
 
-## 分支约定
+## 文档
 
-开发真源：
-
-```text
-product/main
-```
-
-EdgeOne Maker 发布分支：
-
-```text
-master
-```
-
-日常开发只进入 `product/main`。GitHub Actions 中的 lint、测试、Playwright
-和本地 `yarn build` 可以正常运行，但不会触发 EdgeOne Maker 部署。
-
-`master` 不与 `product/main` 持续同步；只有达到明确发布里程碑后才同步一次。
-每次更新 `master` 都视为一次正式发布动作，并会触发 EdgeOne Maker
-Production 构建，因此必须节省使用。
-
-具体约定见：
-
-- [Branch Strategy](./docs/BRANCH_STRATEGY.md)
+- [Beta 用户使用指南](./docs/BETA_USER_GUIDE_ZH.md)
+- [云账号、备份和同步](./docs/CLOUD_SYNC_USER_GUIDE.md)
+- [Learn 设计与使用语义](./docs/LEARN_USER_GUIDE_V1.md)
+- [文档索引与历史资料](./docs/README.md)
 
 ## 开源来源与许可证
 
-本项目基于：
-
-- [RealKai42/qwerty-learner](https://github.com/RealKai42/qwerty-learner)
-
-并继续遵循仓库中的 GPL-3.0 许可证要求。原项目在词库、Typing 交互、
-UI 与开源社区方面提供了基础能力；本 fork 的 Learn、Review、控制稳定性、
-云同步和相关产品能力在此基础上持续演进。
-
-详见 [LICENSE](./LICENSE)。
+本项目基于 [RealKai42/qwerty-learner](https://github.com/RealKai42/qwerty-learner) 开发，沿用仓库的 **GPL-3.0** 许可证。感谢原项目在词库、Typing 交互与社区建设方面提供的基础。详见 [LICENSE](./LICENSE)。
