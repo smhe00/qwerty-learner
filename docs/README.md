@@ -2,6 +2,7 @@
 
 > 产品阶段：**Beta `0.2.0-beta.1`** · 开发主线：`product/main`  
 > 此目录保留用户指南、工程规范和历史研发记录。**历史发布文档不代表当前运行行为。**
+> **当前正式网站：[q.smhe.cn](https://q.smhe.cn/)**（由 `master` 发布）；测试站：[etest.edgeone.dev](https://etest.edgeone.dev/)（`edgeone-test`）。旧 EdgeOne 默认域名不再作为对外正式入口。
 
 ## 用户指南（当前）
 
