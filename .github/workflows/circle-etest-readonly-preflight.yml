@@ -1,0 +1,34 @@
+name: Circle etest API read-only preflight (no Maker)
+
+# Safe independent live check: one unauthenticated body-free POST,
+# plus read-only health and deployment source checks.
+on:
+  push:
+    branches:
+      - feature/circle-parallel-replay-20261016
+    paths:
+      - '.github/workflows/circle-etest-readonly-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: circle-etest-readonly-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  no-credentials-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+      - name: Run offline etest API journey contract tests
+        run: node --test tests/cloud/circle-etest-live-journey.test.mjs
+      - name: Check public etest API gate without user credentials
+        run: |
+          unset CIRCLE_OWNER_TOKEN CIRCLE_MEMBER_TOKEN CIRCLE_LIVE_ACK
+          node scripts/circle-etest-live-journey.mjs --preflight
