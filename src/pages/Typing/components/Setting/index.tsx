@@ -115,7 +115,7 @@ export default function Setting() {
                           }
                         >
                           <IconAdjustmentsHorizontal className="mr-2 text-neutral-500  dark:text-neutral-300" />
-                          <span className="text-neutral-500 dark:text-neutral-300">高级设置</span>
+                          <span className="text-neutral-500 dark:text-neutral-300">打字练习</span>
                         </Tab>
                         <Tab
                           className={({ selected }) =>
@@ -126,7 +126,7 @@ export default function Setting() {
                           }
                         >
                           <IconBrain className="mr-2 text-neutral-500 dark:text-neutral-300" />
-                          <span className="text-neutral-500 dark:text-neutral-300">记忆参数</span>
+                          <span className="text-neutral-500 dark:text-neutral-300">学习计划</span>
                         </Tab>
                         <Tab
                           className={({ selected }) =>
@@ -137,7 +137,7 @@ export default function Setting() {
                           }
                         >
                           <IconEye className="mr-2 text-neutral-500  dark:text-neutral-300" />
-                          <span className="text-neutral-500 dark:text-neutral-300">显示设置</span>
+                          <span className="text-neutral-500 dark:text-neutral-300">外观显示</span>
                         </Tab>
                         <Tab
                           className={({ selected }) =>
@@ -148,7 +148,7 @@ export default function Setting() {
                           }
                         >
                           <IconDatabaseCog className="mr-2 text-neutral-500  dark:text-neutral-300" />
-                          <span className="text-neutral-500 dark:text-neutral-300">数据设置</span>
+                          <span className="text-neutral-500 dark:text-neutral-300">数据与备份</span>
                         </Tab>
                         <Tab
                           className={({ selected }) =>
