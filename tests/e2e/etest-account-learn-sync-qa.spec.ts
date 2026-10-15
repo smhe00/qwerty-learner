@@ -43,7 +43,9 @@ async function enterAccount(page: Page, register: boolean) {
   await page.getByPlaceholder('用户名').fill(user!)
   await page.getByPlaceholder('账户密码').fill(password!)
   if (register) await page.getByPlaceholder('注册密码确认').fill(password!)
+  const accountUrl=page.url()
   await page.getByRole('button',{name:register?'注册新账户':'登录已有账户'}).click()
+  await expect(page).not.toHaveURL(accountUrl,{timeout:60000})
   await expect.poll(()=>owner(page), {timeout:60000}).toBe(user)
   await page.goto(base, {waitUntil:'domcontentloaded'})
 }
@@ -82,9 +84,13 @@ test('etest actual Learn -> manual V4 sync -> other isolated browser restore -> 
     await enterAccount(a,true)
     expect((await readLearn(a)).learnRows).toBe(0)
     checkpoints.push({event:'new-account-empty',count:0})
-    await a.goto(base+'learn',{waitUntil:'domcontentloaded'})
+    await a.goto(base,{waitUntil:'domcontentloaded'})
+    await a.getByRole('button',{name:'Learn',exact:true}).click()
+    await expect(a).toHaveURL(/\/learn\/?$/,{timeout:25000})
     const prompt=a.getByText(/按任意键(?:开始|继续)/).first()
     const pause=a.getByRole('button',{name:'暂停',exact:true})
+    await expect.poll(async()=> (await prompt.isVisible().catch(()=>false)) ||
+      (await pause.isVisible().catch(()=>false)), {timeout:25000}).toBe(true)
     if (await prompt.isVisible().catch(()=>false)) await a.keyboard.press('a')
     await expect(pause).toBeVisible({timeout:20000})
     for(let i=1;i<=2;i++){
