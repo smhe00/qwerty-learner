@@ -190,8 +190,12 @@ body,
 }
 
 .focus-word-stack {
+  /* Size the stack from the whole word, not the minimum width of a flex
+     container whose letters are allowed to wrap. Reserve the audio/menu
+     lane at this outer level rather than subtracting it from the word. */
   min-width: 0;
-  max-width: 100%;
+  width: max-content;
+  max-width: calc(100% - 52px);
   text-align: center;
 }
 
@@ -200,12 +204,14 @@ body,
   max-width: 100%;
 }
 
-/* Preserve every character and its original font size at 200% zoom. The
-   token frame reserves a 52px audio-button lane to the right of the word;
-   long words wrap only when there is genuinely insufficient room. */
+/* Keep ordinary words at their full intrinsic width; the stack above
+   reserves space for controls. Wrap individual letters only after the word
+   exceeds the actual available viewport width (e.g. long words at 200% zoom).
+   Do not shrink a fit-content frame by 52px: that made `technology` wrap. */
 .focus-word-token-frame {
   min-width: 0;
-  max-width: calc(100% - 52px);
+  width: max-content;
+  max-width: 100%;
 }
 
 .focus-lexeme {
