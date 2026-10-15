@@ -12,7 +12,7 @@ const MobilePage: React.FC = () => {
               <span className="text-slate-800">Qwerty</span>
               <span className="ml-1.5 text-slate-500">Plus</span>
             </h1>
-            <p className="mt-0.5 text-xs text-slate-400">Learn Alpha 1</p>
+            <p className="mt-0.5 text-xs text-slate-400">Qwerty Plus Beta</p>
           </div>
         </div>
       </header>
@@ -20,7 +20,7 @@ const MobilePage: React.FC = () => {
       <main className="mx-auto flex max-w-3xl flex-col gap-10 px-6 py-12">
         <section>
           <div className="mb-4 inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600">
-            受控 Alpha
+            Beta 测试版
           </div>
           <h2 className="text-3xl font-bold leading-tight tracking-tight text-slate-900">
             Qwerty Plus
@@ -36,7 +36,7 @@ const MobilePage: React.FC = () => {
         <section className="rounded-2xl border border-amber-100 bg-amber-50/60 p-5">
           <h3 className="font-semibold text-amber-900">当前移动端说明</h3>
           <p className="mt-2 text-sm leading-6 text-amber-800/80">
-            Learn Alpha 当前以桌面 Chrome / Edge 为主要验证环境。移动端完整学习体验尚未开放，
+            当前以桌面 Chrome / Edge 为主要验证环境。移动端完整学习体验尚未开放，
             本页面仅用于说明版本状态。
           </p>
         </section>
@@ -67,7 +67,7 @@ const MobilePage: React.FC = () => {
         </section>
 
         <section className="rounded-2xl border border-slate-200 p-5">
-          <h3 className="font-semibold text-slate-800">Alpha 渠道状态</h3>
+          <h3 className="font-semibold text-slate-800">渠道状态</h3>
           <p className="mt-2 text-sm leading-6 text-slate-500">
             Qwerty Plus 当前尚未公布正式域名、公开社群或客户联系方式。相关入口会在准备完成后开放。
           </p>
@@ -82,7 +82,7 @@ const MobilePage: React.FC = () => {
       </main>
 
       <footer className="border-t border-slate-100 px-6 py-6 text-center text-xs text-slate-400">
-        Qwerty Plus Alpha · 当前版本以桌面端学习流程为主
+        Qwerty Plus Beta · 当前版本以桌面端学习流程为主
       </footer>
     </div>
   )
