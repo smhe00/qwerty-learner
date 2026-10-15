@@ -225,6 +225,28 @@ async function apiDirectBinaryV4(record, token, shaOverride = null) {
 
 // A part may be retried identically, but ambiguous final revision MUST
 // be checked by GET meta and never blindly overwritten.
+// Production native multipart Commit: metadata-only, with NO HTTP body.
+// It removes Maker's intermittent JSON body-read failure point.
+async function apiHeaderCommit(record, token, payloadSha256, partSha256s) {
+  const response = await fetch(new URL('/api/sync/v2/commit', base), {
+    method: 'POST', headers: {
+      Accept: 'application/json', Authorization: 'Bearer ' + token,
+      'X-Qwerty-Commit-Protocol': 'header-v1',
+      'X-Qwerty-Base-Revision': String(record.baseRevision),
+      'X-Qwerty-Logical-Fingerprint': record.logicalFingerprint,
+      'X-Qwerty-Payload-Sha256': payloadSha256,
+      'X-Qwerty-Part-Count': String(partSha256s.length),
+      'X-Qwerty-Part-Sha256s': partSha256s.join(','),
+      'X-Qwerty-Chunk-Bytes': String(512 * 1024),
+      'X-Qwerty-Device-Id': record.deviceId || 'v4-ga-disposable',
+    }, redirect: 'error', signal: AbortSignal.timeout(20000),
+  })
+  const content = await response.text()
+  let value = null
+  try { value = JSON.parse(content) } catch { value = null }
+  return { status: response.status, value, responseBytes: content.length }
+}
+
 async function uploadLargeV4(record, token, concurrency = 3) {
   assert.ok(Number.isSafeInteger(concurrency) && concurrency >= 1 && concurrency <= 3)
   const raw = Buffer.from(record.payloadBase64, 'base64')
@@ -311,9 +333,7 @@ async function uploadLargeV4(record, token, concurrency = 3) {
 
   const commitStarted = performance.now()
   try {
-    const reply = await api('/api/sync/v2/commit', 'POST', {
-      ...meta, payloadSha256, count, wirePartBytes: 512 * 1024, partSha256s,
-    }, token)
+    const reply = await apiHeaderCommit(meta, token, payloadSha256, partSha256s)
     console.log('V4 transport timing', JSON.stringify({
       count, concurrency, totalMs: Math.round(performance.now() - uploadStarted),
       partsHttpMs: Math.round(partHttpMs),

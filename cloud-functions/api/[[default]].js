@@ -7,6 +7,7 @@ import { AppError, createBackendService } from '../_shared/core.js'
 import { isS2WriteEnabled } from '../_shared/s2-write-gate.js'
 import { createEdgeOneBlobStorage } from '../_shared/storage/edgeone-blob.js'
 import { commitV4Upload, receiveV4UploadPart } from '../_shared/v4-http-parts.js'
+import { hasV4CommitHeaders, readV4CommitHeaders } from '../_shared/v4-commit-header.js'
 
 const TRUSTED_FRONTEND_ORIGINS = [
   'https://qwerty-plus.edgeone.dev',
@@ -547,12 +548,37 @@ export async function onRequest(context) {
     }
     if (request.method === 'POST' &&
         (path === '/sync/v2/commit' || path === '/sync/v2/commit/recovery')) {
-      const { token, account } = await requireS2WriteAccount(service, request, env)
-      // Maker request.text() can fail even on small JSON. Use the bounded
-      // arrayBuffer receiver already proven for legacy V4 and native parts.
-      // Ambiguous responses remain fail-closed: never retry the final commit.
-      const body = await readLegacyV4Json(request, 16 * 1024)
+      let validated
+      try {
+        validated = await requireS2WriteAccount(service, request, env)
+      } catch (error) {
+        if (error instanceof AppError) throw error
+        throw new AppError(503, 'v4_commit_auth_preflight_unavailable',
+          'Unable to validate account session for V4 commit',
+          { failureStage: 'auth_preflight' })
+      }
+      const { token, account } = validated
       const recovery = path === '/sync/v2/commit/recovery'
+      if (recovery && hasV4CommitHeaders(request)) {
+        throw new AppError(400, 'invalid_v4_commit_headers',
+          'Recovery requires an explicit JSON request and pinned evidence')
+      }
+      // Bodyless native multipart commit avoids EdgeOne Maker's intermittent
+      // request.arrayBuffer failures on even tiny JSON payloads.
+      // Existing JSON commits remain accepted for already-open clients.
+      let body
+      if (!recovery && hasV4CommitHeaders(request)) {
+        body = readV4CommitHeaders(request)
+      } else {
+        try {
+          body = await readLegacyV4Json(request, 16 * 1024)
+        } catch (error) {
+          if (error instanceof AppError) throw error
+          throw new AppError(503, 'v4_commit_body_read_failed',
+            'Unable to read legacy V4 commit body; confirm cloud revision before retry',
+            { failureStage: 'commit_body' })
+        }
+      }
       const maxBytes = numberEnv(env.MAX_SYNC_BYTES, 16 * 1024 * 1024)
       return json({ ok: true,
         ...(await commitV4Upload(storage, service, token, account.user.userId,

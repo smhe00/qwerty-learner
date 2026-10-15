@@ -354,11 +354,24 @@ async function putV4Multipart(
   try {
     const reply = await request<V4CommitReply>(
       recovery ? '/api/sync/v2/commit/recovery' : '/api/sync/v2/commit',
-      { method: 'POST', token, body: {
-        ...metadata, payloadSha256: plan.payloadSha256, count: plan.parts.length,
-        wirePartBytes: V4_HTTP_PART_BYTES,
-        partSha256s: plan.parts.map(part => part.partSha256),
-      } },
+      recovery
+        ? { method: 'POST', token, body: {
+          ...metadata, payloadSha256: plan.payloadSha256, count: plan.parts.length,
+          wirePartBytes: V4_HTTP_PART_BYTES,
+          partSha256s: plan.parts.map(part => part.partSha256),
+        } }
+        : { method: 'POST', token, partHeaders: {
+          // No JSON body: EdgeOne Maker can sporadically fail to consume even
+          // tiny POST bodies. Staged blobs are already immutable/SHA pinned.
+          'X-Qwerty-Commit-Protocol': 'header-v1',
+          'X-Qwerty-Base-Revision': String(input.baseRevision),
+          'X-Qwerty-Logical-Fingerprint': input.logicalFingerprint,
+          'X-Qwerty-Payload-Sha256': plan.payloadSha256,
+          'X-Qwerty-Part-Count': String(plan.parts.length),
+          'X-Qwerty-Part-Sha256s': plan.parts.map(part => part.partSha256).join(','),
+          'X-Qwerty-Chunk-Bytes': String(V4_HTTP_PART_BYTES),
+          ...(input.deviceId ? { 'X-Qwerty-Device-Id': input.deviceId } : {}),
+        } },
     )
     v4Record('v4-commit', v4Elapsed(started), undefined, undefined,
       plan.parts.length, 'ok', reply.timings)
