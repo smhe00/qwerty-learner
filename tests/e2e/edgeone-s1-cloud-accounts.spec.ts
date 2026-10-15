@@ -64,6 +64,31 @@ test('P0: fresh etest browser can learn anonymously before opening login (native
       await expect(page.getByText('学习数据安全检查未通过')).toHaveCount(0)
       // A login entry must not silently erase the anonymous study record.
       expect(await recordCount()).toBe(before)
+
+      // P0 published-site regression: from real anonymous learning, the
+      // Settings action must perform a GUARDED S1 reset, not call the
+      // old legacy destructive API which always refuses generation > 0.
+      await page.goto(base!, { waitUntil: 'domcontentloaded' })
+      await expect(page.getByRole('button', { name: '打开设置对话框' }))
+        .toBeVisible({ timeout: 30_000 })
+      await page.getByRole('button', { name: '打开设置对话框' }).click()
+      await page.getByRole('tab', { name: '数据设置' }).click()
+      await page.getByText('高级操作 · 清除本地数据').click()
+      await page.getByRole('button', { name: '清除本地数据', exact: true }).click()
+      await expect(page.getByRole('heading', { name: '清除当前工作区的本地学习数据' }))
+        .toBeVisible({ timeout: 30_000 })
+      await page.getByLabel('我确认仅清除当前工作区的本地学习记录').check()
+      page.once('dialog', dialog => dialog.accept())
+      await page.getByRole('button', { name: '确认清除本地学习数据' }).click()
+      await expect(page.getByText(/当前工作区的本地学习记录已清除/))
+        .toBeVisible({ timeout: 35_000 })
+      await expect.poll(recordCount, { timeout: 20_000 }).toBe(0)
+      await page.reload({ waitUntil: 'domcontentloaded' })
+      await expect(page.getByText('学习数据安全检查未通过')).toHaveCount(0)
+      await page.goto(new URL('/?s1-account=manage', base).toString())
+      await expect(page.getByRole('dialog', { name: '安全账户管理（S1）' }))
+        .toBeVisible({ timeout: 30_000 })
+      expect(await recordCount()).toBe(0)
     } finally {
       await context.close()
     }
