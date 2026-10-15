@@ -27,7 +27,7 @@ jobs:
           import assert from 'node:assert/strict'
           const r=await fetch('https://etest.edgeone.dev/source-commit.txt',{cache:'no-store',signal:AbortSignal.timeout(15000)})
           assert.equal(r.status,200)
-          assert.ok('59e467f40b8edd3fef7043af9f258554e2183b7e'.startsWith((await r.text()).trim()))
+          assert.ok('e54720945961331f3d3676556378392614fd3782'.startsWith((await r.text()).trim()))
           console.log('PASS: target etest deploy pinned')
           NODE
       - name: Generate two uniquely isolated disposable identifiers
