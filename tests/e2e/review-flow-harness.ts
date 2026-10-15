@@ -390,12 +390,19 @@ export async function waitForActiveLearnSession(
     const idleStart = page.getByRole('button', { name: '开始 Learn', exact: true })
     // Wait for the landing or a restored word to mount before checking
     // availability. An immediate isVisible() after page.goto() races React.
-    await expect.poll(async () =>
-      (await idleStart.isVisible().catch(() => false)) ||
-      (await page.locator('[data-typing-word]').first().isVisible().catch(() => false)),
-    ).toBe(true)
+    await expect.poll(async () => {
+      const securityWall = page.getByText('学习数据安全检查未通过')
+      if (await securityWall.isVisible().catch(() => false)) {
+        throw Error('S1 safety gate blocked the review fixture before Learn mount: ' +
+          await page.locator('body').innerText())
+      }
+      return (await idleStart.isVisible().catch(() => false)) ||
+        (await page.locator('[data-typing-word]').first().isVisible().catch(() => false))
+    }, { timeout: 20_000 }).toBe(true)
     if (await idleStart.isVisible().catch(() => false)) {
-      await expect(idleStart).toBeEnabled()
+      // Cold dictionary hydration can outlive route mount, especially on CI.
+      // Do not bypass a disabled control; wait for the product to enable it.
+      await expect(idleStart).toBeEnabled({ timeout: 20_000 })
       await idleStart.click()
     }
   }
