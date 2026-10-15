@@ -7,6 +7,9 @@ on:
     paths:
       - 'src/sync/workspace-*'
       - 'src/sync/sha256-compat.ts'
+      - 'src/sync/api.ts'
+      - 'src/sync/v4-http-part-plan.ts'
+      - 'src/sync/v2-recovery-archive.ts'
       - 'src/sync/v4-table-audit.ts'
       - 'src/sync/v2-verify-remote.ts'
       - 'src/sync/v2-manual-executor.ts'
