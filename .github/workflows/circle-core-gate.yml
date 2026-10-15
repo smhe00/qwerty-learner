@@ -6,6 +6,7 @@ on:
       - feature/circle-core-blob
       - feature/circle-etest-ready
       - feature/circle-main-merge-20261014
+      - feature/circle-parallel-replay-20261016
       - product/main
     paths:
       - 'cloud-functions/_shared/circle/**'
