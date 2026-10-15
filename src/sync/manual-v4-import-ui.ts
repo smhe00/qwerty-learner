@@ -93,8 +93,54 @@ export async function renderManualV4ImportUI(
   const status = elt('p', '只读等待选择 V4 备份文件…')
   status.style.cssText = 'white-space:pre-wrap;color:#475569'
   status.setAttribute('role', 'status')
-  const preview = elt('p', '当前接收账号 ID：' + ownerText(owner) + '\n尚未选择文件。')
+  // Keep the destination identity visible, selectable and copyable before
+  // and after the backup is inspected. Anonymous workspaces have no numeric
+  // account ID: LOCAL-ANONYMOUS is the exact confirmation token.
+  const preview = elt('div')
   preview.style.cssText = 'white-space:pre-wrap;padding:12px;background:#f1f5f9;border-radius:6px'
+  const sourcePreview = elt('div')
+  const destinationRow = elt('div')
+  destinationRow.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:8px'
+  const destinationLabel = elt('span', '当前接收账号 ID：')
+  const destinationId = elt('code', confirmation(owner))
+  destinationId.style.cssText = 'font-weight:600;user-select:text;overflow-wrap:anywhere'
+  const copyDestination = elt('button', '复制')
+  copyDestination.type = 'button'
+  copyDestination.setAttribute('aria-label', '复制当前接收账号 ID')
+  copyDestination.style.cssText = 'padding:2px 10px;border:1px solid #64748b;border-radius:5px;cursor:pointer;background:#fff'
+  const copyFeedback = elt('span')
+  copyFeedback.setAttribute('role', 'status')
+  copyFeedback.setAttribute('aria-live', 'polite')
+  destinationRow.append(destinationLabel, destinationId, copyDestination)
+  if (owner.kind === 'anonymous') {
+    destinationRow.append(elt('span', '（本机匿名工作区）'))
+  }
+  destinationRow.append(copyFeedback)
+  const backupPreview = elt('div', '尚未选择文件。')
+  preview.append(sourcePreview, destinationRow, backupPreview)
+  copyDestination.addEventListener('click', () => {
+    void (async () => {
+      try {
+        const value = confirmation(owner)
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(value)
+        } else {
+          // Clipboard API can be unavailable in restricted browser contexts.
+          const selection = document.createRange()
+          selection.selectNodeContents(destinationId)
+          const chosen = window.getSelection()
+          chosen?.removeAllRanges()
+          chosen?.addRange(selection)
+          const copied = document.execCommand('copy')
+          chosen?.removeAllRanges()
+          if (!copied) throw new Error('Clipboard unavailable')
+        }
+        copyFeedback.textContent = '已复制'
+      } catch {
+        copyFeedback.textContent = '复制失败，请手动选中上方 ID'
+      }
+    })()
+  })
   const actions = elt('div')
   actions.style.cssText = 'display:grid;gap:12px;margin-top:18px'
   const button = (label: string) => {
@@ -181,9 +227,8 @@ export async function renderManualV4ImportUI(
       const counts = rows.map(entry => entry.tableName + ': ' + entry.rows.length).join('、')
       candidateJson = json
       plan = checked
-      preview.textContent = '备份来源 ID：' + ownerText(checked.originalOwner) +
-        '\n当前接收账号 ID：' + ownerText(owner) +
-        '\n' + (checked.needsCrossOwnerConsent
+      sourcePreview.textContent = '备份来源 ID：' + ownerText(checked.originalOwner)
+      backupPreview.textContent = (checked.needsCrossOwnerConsent
           ? '⚠ 账号 ID 不同；导入后数据归属当前账号。' : '相同账号恢复。') +
         '\n六张表：' + counts +
         '\n每日学习会话：' + Object.keys(parsed.workspaceData.learnRuntime.dailySessions).length +
