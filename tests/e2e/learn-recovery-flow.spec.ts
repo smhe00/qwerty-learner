@@ -622,7 +622,24 @@ test('legacy sync baseline requires same-revision cloud evidence before treating
 
   const proven = await page.evaluate(async (remoteEvidence) => {
     const h = (window as any).__backupHarness
+    const original = await h.inspectLocalState()
+    // The Learn landing is now deliberately read-only. To exercise legacy
+    // same-revision reconciliation, explicitly simulate an internal FSRS
+    // rehydration write with NO accepted learning/user-action evidence.
+    const derived = await h.db.reviewWordStates
+      .where('[dict+word]').equals(['cet4', 'backup-fsrs-word']).first()
+    if (!derived) throw new Error('legacy reconciliation fixture is missing')
+    await h.db.reviewWordStates.put({
+      ...derived,
+      updatedAt: Number(derived.updatedAt) + 1,
+    })
     const local = await h.inspectLocalState()
+    if (local.fingerprint === original.fingerprint) {
+      throw new Error('derived-only test mutation did not change snapshot')
+    }
+    if (local.userActionFingerprint !== original.userActionFingerprint) {
+      throw new Error('derived-only mutation changed user action projection')
+    }
     const baseline = h.loadSyncBaseline('legacy-user')
     const remote = { revision: 11, hasData: true }
     const before = h.assessSyncState(local, remote, baseline)
