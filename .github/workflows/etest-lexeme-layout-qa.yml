@@ -1,0 +1,28 @@
+name: Etest Lexeme Layout and Data Visibility Gate (No Maker)
+
+on:
+  push:
+    branches: [fix/etest-lexeme-nowrap-20261015]
+
+permissions:
+  contents: read
+
+jobs:
+  layout-acceptance:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 19
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Lint changed Focus and Data sources
+        run: yarn eslint src/pages/Typing/components/Setting/DataSetting.tsx
+      - name: Production app build
+        run: yarn build
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run responsive typography and local/Cloud data E2E
+        run: npx playwright test --config=tests/e2e/etest-lexeme-qa.config.ts --project=chromium --workers=1 --retries=0 --reporter=list
