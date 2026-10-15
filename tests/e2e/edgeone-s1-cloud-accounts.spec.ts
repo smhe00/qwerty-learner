@@ -18,6 +18,8 @@ test('P0: fresh etest browser can learn anonymously before opening login (native
       if (missingWebLocks) {
         await context.addInitScript(() => {
           Object.defineProperty(navigator, 'locks', { configurable: true, value: undefined })
+          Object.defineProperty(crypto, 'subtle', { configurable: true, value: undefined })
+          Object.defineProperty(crypto, 'randomUUID', { configurable: true, value: undefined })
         })
       }
       const page = await context.newPage()
@@ -89,6 +91,9 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
       // production EdgeOne code path, not a mocked workspace controller.
       await context.addInitScript(() => {
         Object.defineProperty(navigator, 'locks', {
+          configurable: true, value: undefined,
+        })
+        Object.defineProperty(crypto, 'subtle', {
           configurable: true, value: undefined,
         })
         Object.defineProperty(crypto, 'randomUUID', {
