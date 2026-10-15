@@ -267,6 +267,10 @@ async function resetAndSeed(
 
   await page.goto('/learn')
   await expect(page).toHaveURL(/\/learn$/)
+  // The current Learn shell intentionally waits for a practice key before
+  // preparing the frozen cohort; a mounted word is not the idle contract.
+  await expect(page.getByText(/按任意键(?:开始|继续)/)).toBeVisible()
+  await page.keyboard.press('a')
   await expect(
     page.locator('[data-typing-word]').first(),
   ).toBeVisible({ timeout: 15_000 }).catch(async (error) => {
@@ -433,6 +437,8 @@ async function routeCycle(page: Page) {
     .poll(() => new URL(page.url()).pathname)
     .toMatch(/\/learn$/)
 
+  // Returning to Learn is an idle state until the next explicit practice key.
+  await ensureTypingStarted(page)
   await expect
     .poll(async () => {
       const state = await readRouteState(page)
@@ -802,6 +808,9 @@ test('single-route Learn cancels stale preparation after leaving the mode', asyn
   })
 
   await page.goto('/learn')
+  // Trigger preparation explicitly; Learn does not start on route mount.
+  await expect(page.getByText(/按任意键(?:开始|继续)/)).toBeVisible()
+  await page.keyboard.press('a')
   await waitForTraceEvent(
     page,
     'p3-browser-fuzz-gate-wait',
