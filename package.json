@@ -62,7 +62,7 @@
   "scripts": {
     "dev": "vite",
     "start": "vite",
-    "build": "cross-env CI=false vite build",
+    "build": "cross-env CI=false vite build && node scripts/emit-edgeone-spa-entries.mjs",
     "test": "echo \"No tests\"",
     "test:e2e": "playwright test",
     "lint": "eslint .",
