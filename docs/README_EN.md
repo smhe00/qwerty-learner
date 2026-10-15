@@ -1,3 +1,5 @@
+> **Historical upstream documentation:** This page describes the original QWERTY Learner, not the current QWERTY Plus Beta product. For current features, online links, backups and release status, see the [QWERTY Plus README](../README.md).
+
 <div align=center>
   <img src="https://github.com/RealKai42/qwerty-learner/blob/master/src/assets/logo.svg"/>
 </div>
