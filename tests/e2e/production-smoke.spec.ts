@@ -41,6 +41,8 @@ test('production build resolves lazy navigation and preserves Learn session on r
   await page.getByRole('button', { name: 'Learn', exact: true }).click()
   await expect(page).toHaveURL(/\/learn$/)
   await expect(page.getByText('按任意键开始')).toBeVisible()
+  // Learn deliberately creates/restores the practice session on the first key.
+  await page.keyboard.press('a')
 
   await expect.poll(() => activeLearnSessionIdentity(page), {
     timeout: 25_000,
@@ -50,6 +52,7 @@ test('production build resolves lazy navigation and preserves Learn session on r
   await page.reload()
   await expect(page).toHaveURL(/\/learn$/)
   await expect(page.getByText('按任意键开始')).toBeVisible()
+  await page.keyboard.press('a')
   await expect.poll(() => activeLearnSessionIdentity(page), {
     timeout: 25_000,
   }).toBe(beforeIdentity)
@@ -163,6 +166,8 @@ test('Typing reload does not resurrect unfinished Learn, while re-entering Learn
   }).click()
   await expect(page).toHaveURL(/\/learn$/)
   await expect(page.getByText('按任意键开始')).toBeVisible()
+  // Learn deliberately creates/restores the practice session on the first key.
+  await page.keyboard.press('a')
 
   await expect.poll(() => activeLearnSessionIdentity(page), {
     timeout: 25_000,
@@ -193,6 +198,8 @@ test('Typing reload does not resurrect unfinished Learn, while re-entering Learn
     exact: true,
   }).click()
   await expect(page).toHaveURL(/\/learn$/)
+  await expect(page.getByText('按任意键开始')).toBeVisible()
+  await page.keyboard.press('a')
 
   await expect.poll(() => activeLearnSessionIdentity(page), {
     timeout: 25_000,
