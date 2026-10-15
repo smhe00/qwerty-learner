@@ -6,10 +6,7 @@
 export const V4_HTTP_PART_BYTES = 512 * 1024
 export const V4_HTTP_MAX_PARTS = 192
 
-function asHex(bytes: ArrayBuffer): string {
-  return Array.from(new Uint8Array(bytes), value =>
-    value.toString(16).padStart(2, '0')).join('')
-}
+import { sha256Hex } from './sha256-compat'
 
 export async function planV4UploadParts(bytes: Uint8Array): Promise<{
   payloadSha256: string
@@ -19,11 +16,11 @@ export async function planV4UploadParts(bytes: Uint8Array): Promise<{
       bytes.length > V4_HTTP_PART_BYTES * V4_HTTP_MAX_PARTS) {
     throw new Error('v4-upload-invalid-binary-size')
   }
-  const payloadSha256 = asHex(await crypto.subtle.digest('SHA-256', bytes))
+  const payloadSha256 = await sha256Hex(bytes)
   const parts = []
   for (let offset = 0; offset < bytes.length; offset += V4_HTTP_PART_BYTES) {
     const data = bytes.subarray(offset, offset + V4_HTTP_PART_BYTES)
-    const partSha256 = asHex(await crypto.subtle.digest('SHA-256', data))
+    const partSha256 = await sha256Hex(data)
     parts.push({ index: parts.length, data, partSha256 })
   }
   return { payloadSha256, parts }
