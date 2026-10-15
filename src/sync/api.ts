@@ -1,5 +1,6 @@
 import type { CloudUser, RemoteSnapshot, RemoteSyncMeta } from './types'
 import { V4_HTTP_PART_BYTES, planV4UploadParts } from './v4-http-part-plan'
+import { sha256Hex } from './sha256-compat'
 import { retryIdenticalV4Part, stageImmutableV4Parts } from './v4-http-part-retry'
 import { type PerfSample, recordV4TransportSample } from './perf-diagnostics'
 
@@ -496,9 +497,7 @@ export async function getSyncV2SnapshotBinary(token: string): Promise<{
       throw new SyncApiError(503, 'v4_binary_part_size_mismatch',
         'Binary V4 part has incorrect bounded size')
     }
-    const digest = await crypto.subtle.digest('SHA-256', bytes)
-    const sha = [...new Uint8Array(digest)]
-      .map(x => x.toString(16).padStart(2, '0')).join('')
+    const sha = await sha256Hex(bytes)
     if (sha !== manifest.partSha256s[index]) {
       throw new SyncApiError(503, 'v4_binary_part_sha_mismatch',
         'Binary V4 part checksum differs from pinned manifest')
@@ -517,9 +516,7 @@ export async function getSyncV2SnapshotBinary(token: string): Promise<{
   const all = new Uint8Array(total)
   let offset = 0
   for (const part of parts) { all.set(part, offset); offset += part.length }
-  const digest = await crypto.subtle.digest('SHA-256', all)
-  const sha = [...new Uint8Array(digest)].map(x =>
-    x.toString(16).padStart(2, '0')).join('')
+  const sha = await sha256Hex(all)
   if (sha !== manifest.payloadSha256) {
     throw new SyncApiError(503, 'v4_binary_total_sha_mismatch',
       'Complete binary V4 download failed SHA verification')
