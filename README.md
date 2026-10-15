@@ -32,7 +32,7 @@ QWERTY Plus 采用 **local-first** 模型：不注册账号也可以学习，本
 - **冲突保护**：两端数据不一致时不会静默覆盖；需备份双方并明确选择保留本地或保留云端。失败或结果不确定时，不要盲目重复覆盖。
 - **数据安全**：云端通过 HTTPS 和账号会话进行访问控制，**云备份不是端到端加密（E2EE）**。请妥善保管账号密码及导出的备份文件。
 
-> 备份中的 `V4` 是文件与协议版本，并非产品的 Alpha/Beta 发布标识。更详细的操作步骤见 [Beta 使用指南](./docs/BETA_USER_GUIDE_ZH.md) 和 [云同步指南](./docs/CLOUD_SYNC_USER_GUIDE.md)。
+> 备份中的 `V4` 仅表示备份格式，不代表产品发布阶段。更详细的操作步骤见 [Beta 使用指南](./docs/BETA_USER_GUIDE_ZH.md) 和 [云同步指南](./docs/CLOUD_SYNC_USER_GUIDE.md)。
 
 ## 支持环境与 Beta 边界
 
