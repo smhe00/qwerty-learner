@@ -9,6 +9,9 @@ const extensions = new Set(['.tsx', '.jsx', '.ts', '.js', '.css', '.html', '.jso
 const files = ['index.html', 'README.md', 'docs/BETA_USER_GUIDE_ZH.md',
   'docs/CLOUD_SYNC_USER_GUIDE.md', 'docs/LEARN_USER_GUIDE_V1.md']
 const visit = (dir) => {
+  // Vocabulary entries like “Alpha-Beta Pruning” are legitimate English terms,
+  // never release-stage UI labels. Do not rewrite or scan dictionary content.
+  if (dir === join('public', 'dicts')) return
   for (const name of readdirSync(dir)) {
     const p = join(dir, name)
     if (statSync(p).isDirectory()) visit(p)
