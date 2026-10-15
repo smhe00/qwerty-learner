@@ -385,7 +385,8 @@ test('P4b three independent profiles competing CAS admit one winner and retain a
       B.page.goto('/?s2-sync=run'), C.page.goto('/?s2-sync=run')])
     await Promise.all([A.page, B.page, C.page].map(page =>
       expect.poll(async () => page.evaluate(() =>
-        !window.location.href.includes('s2-sync=run'))).toBe(true)))
+        !window.location.href.includes('s2-sync=run')).catch(() => false))
+        .toBe(true)))
     expect(server.successfulWrites).toBe(2)
     // Concurrent stale clients may be blocked by preflight metadata (no
     // PUT) or rejected by the server CAS itself. Both are safe outcomes.
