@@ -50,7 +50,7 @@ export function readV4CommitHeaders(request) {
   const count = Number(rawCount)
   const partSha256s = rawParts.split(',')
   if (!Number.isSafeInteger(baseRevision) || !Number.isSafeInteger(count) ||
-      count < 2 || count > MAX_PARTS || count > Math.ceil(LIMIT / CHUNK_BYTES) ||
+      count < 1 || count > MAX_PARTS || count > Math.ceil(LIMIT / CHUNK_BYTES) ||
       partSha256s.length !== count || !partSha256s.every(s => SHA.test(s))) invalid()
   const deviceId = field('device-id')
   if (deviceId !== null && (deviceId.length < 1 || deviceId.length > 128 ||
