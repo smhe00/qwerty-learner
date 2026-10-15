@@ -62,9 +62,13 @@ async function open(page:Page, name:Name){
   await page.getByPlaceholder('账户密码').fill(password)
   await page.getByPlaceholder('注册密码确认').fill(password)
   await page.getByRole('button',{name:'注册新账户'}).click()
+  // S1 registration is a PRE-MOUNT owner transition and intentionally
+  // replaces the document. Wait for navigation; its previous execution
+  // context must not be treated as a failed registration.
+  await expect(page).not.toHaveURL(/s1-account=manage/,{timeout:60000})
   await expect.poll(async()=>page.evaluate(()=>
-    JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1')||'null')?.user?.username||null),
-  {timeout:60000}).toBe(username(name))
+    JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1')||'null')?.user?.username||null)
+    .catch(()=>null),{timeout:60000}).toBe(username(name))
   await page.goto(base,{waitUntil:'domcontentloaded'})
   const id=await accountId(page)
   expect(id).toMatch(/^[a-f0-9]{16,}$/)
