@@ -1,0 +1,28 @@
+name: Data Backup UI and V4 Audit QA (No Maker)
+
+on:
+  push:
+    branches: [fix/data-backup-ui-audit-20261015]
+
+permissions:
+  contents: read
+
+jobs:
+  ui-and-audit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Lint modified Data components
+        run: yarn eslint src/pages/Typing/components/Setting/DataSetting.tsx src/pages/Typing/components/Setting/V4SizeReport.tsx src/sync/v4-size-audit.ts
+      - name: Production build
+        run: yarn build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Chromium dark-mode and true V4 capacity report E2E
+        run: npx playwright test --config=tests/e2e/data-cloud-visibility.config.ts --project=chromium --workers=1 --retries=0 --reporter=list
