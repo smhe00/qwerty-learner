@@ -26,6 +26,7 @@ import { flushReviewRecordWrites } from '@/store/reviewInfoAtom'
 import { db } from '@/utils/db/core'
 import Dexie from 'dexie'
 import { timePerfStage } from './perf-diagnostics'
+import { secureRandomUuid } from './sha256-compat'
 import type { PerfFlow } from './perf-diagnostics'
 
 /**
@@ -53,7 +54,7 @@ async function verifyV4RoundTripInDisposableDatabase(
       data: Array<{ tableName: string; rows: unknown[] }>
     }
   }
-  const name = 'qwerty-v4-export-audit-' + crypto.randomUUID()
+  const name = 'qwerty-v4-export-audit-' + secureRandomUuid()
   const shadow = new Dexie(name)
   try {
     const stores = Object.fromEntries(original.data.tables.map(table =>
