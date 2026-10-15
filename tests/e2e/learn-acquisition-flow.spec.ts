@@ -75,7 +75,7 @@ test('Learn exposes only one unfinished session and cannot create a duplicate fr
   await page.goto('/learn')
   await expect(page).toHaveURL(/\/learn$/)
   await expect(
-    page.getByRole('button', { name: '开始', exact: true }),
+    page.getByRole('button', { name: '开始 Learn', exact: true }),
   ).toBeVisible()
   await expect(page.getByText('Continue', { exact: true })).toHaveCount(0)
   await expect(
