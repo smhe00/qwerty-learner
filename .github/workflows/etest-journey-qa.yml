@@ -1,5 +1,5 @@
 name: Etest Real User Journey QA (one-off)
-# Observe S2 completion toast; require durable Learn cursor advancement before typing next word.
+# Verify cross-browser S2 Pull by durable restored IndexedDB rows, not ephemeral toast.
 
 on:
   push:
