@@ -388,6 +388,12 @@ export async function waitForActiveLearnSession(
   // running sessions remain untouched.
   if (new URL(page.url()).pathname === '/learn') {
     const idleStart = page.getByRole('button', { name: '开始 Learn', exact: true })
+    // Wait for the landing or a restored word to mount before checking
+    // availability. An immediate isVisible() after page.goto() races React.
+    await expect.poll(async () =>
+      (await idleStart.isVisible().catch(() => false)) ||
+      (await page.locator('[data-typing-word]').first().isVisible().catch(() => false)),
+    ).toBe(true)
     if (await idleStart.isVisible().catch(() => false)) {
       await expect(idleStart).toBeEnabled()
       await idleStart.click()
@@ -452,9 +458,19 @@ export async function readRenderedAttemptState(
 }
 
 export async function startTyping(page: import('@playwright/test').Page) {
-  await expect(page.getByText('按任意键开始')).toBeVisible()
-  // The first legal key starts Typing and is intentionally not part of the word.
-  await page.keyboard.press('a')
+  const idlePrompt = page.getByText('按任意键开始')
+  const pauseButton = page.getByRole('button', { name: '暂停', exact: true })
+  // An explicit Learn-start action now auto-starts the spelling engine;
+  // legacy fixture users may arrive either paused or already practicing.
+  await expect.poll(async () =>
+    (await idlePrompt.isVisible().catch(() => false)) ||
+    (await pauseButton.isVisible().catch(() => false)),
+  ).toBe(true)
+  if (await idlePrompt.isVisible().catch(() => false)) {
+    // The first legal key starts Typing and is not part of the word.
+    await page.keyboard.press('a')
+  }
+  await expect(pauseButton).toBeVisible()
 }
 
 export async function readReviewWordRecords(
