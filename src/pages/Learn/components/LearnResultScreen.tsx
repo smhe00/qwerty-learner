@@ -1,4 +1,5 @@
 import { addLearnDailyNewWords, getLearnExtraRoundNames, loadLearnDailySession } from '@/learn/daily-session'
+import FiveMoreButton from './FiveMoreButton'
 import { db } from '@/utils/db/core'
 import { getReviewWordStates } from '@/review/repository'
 import { wordListFetcher } from '@/utils/wordListFetcher'
@@ -488,7 +489,12 @@ export default function LearnResultScreen() {
 
           {extraWordsMessage ? <p className="mt-4 text-center text-sm text-gray-500" role="status">{extraWordsMessage}</p> : null}
           <div className="mt-7 flex justify-center gap-4">
-            {isDailyComplete ? <button className="my-btn h-12 px-8 text-base disabled:opacity-50" type="button" disabled={addingWords || blockSyncHandoff} onClick={() => void learnFiveMore()}>多学五词</button> : null}
+            {isDailyComplete ? (
+              <FiveMoreButton
+                disabled={addingWords || blockSyncHandoff}
+                onClick={() => void learnFiveMore()}
+              />
+            ) : null}
             {isDailyComplete ? (
               <button
                 className="my-btn-primary h-12 px-8 text-base font-bold disabled:opacity-40"
