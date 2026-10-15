@@ -24,19 +24,16 @@ test('Focus standard English technology stays on one line at desktop and tablet 
 
   for (const width of [1474, 1024, 768, 480, 390]) {
     await page.setViewportSize({ width, height: 900 })
-    const layout = await page.evaluate(() => {
-      const word = document.querySelector('[data-typing-word="technology"]') as HTMLElement
-      const spans = [...word.children] as HTMLElement[]
-      const rects = spans.map(el => el.getBoundingClientRect())
-      return {
-        rows: new Set(rects.map(r => Math.round(r.top))).size,
-        visible: rects.every(r => r.width > 0 && r.left >= -1 && r.right <= window.innerWidth + 1),
-        letterCount: spans.length,
-      }
-    })
-    expect(layout.letterCount).toBe(sample.length)
-    expect(layout.rows, `Unexpected technology wrap at viewport ${width}`).toBe(1)
-    expect(layout.visible, `Clipped technology letters at viewport ${width}`).toBe(true)
+    // The Learn route can remount its exercise while responsive listeners
+    // recalculate layout. Wait for the exact word again before sampling boxes.
+    const token = page.locator('[data-typing-word="technology"]')
+    await expect(token).toBeVisible({ timeout: 15_000 })
+    await expect.poll(async () => token.evaluate(word => {
+      const rects = [...word.children].map(el => el.getBoundingClientRect())
+      return rects.length === 10 && rects.every(r => r.width > 0 &&
+        r.left >= -1 && r.right <= window.innerWidth + 1) &&
+        new Set(rects.map(r => Math.round(r.top))).size === 1
+    }), { timeout: 12_000, message: `technology should not wrap or clip at viewport ${width}` }).toBe(true)
   }
   // Geometry-only correction must not change the spelling or input handling.
   await page.keyboard.type('tech')
