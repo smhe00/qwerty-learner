@@ -50,39 +50,37 @@ jobs:
         run: npx playwright test tests/e2e/workspace-v4-manual-import.spec.ts tests/e2e/workspace-v4-s2-recovery.spec.ts --config=tests/e2e/workspace-v4.config.ts --project=chromium --workers=1 --retries=0 --reporter=list
 
   four-account-real-etest:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
       EXPECTED_ETEST_SHA: e54720945961331f3d3676556378392614fd3782
+      NODE_OPTIONS: --dns-result-order=ipv4first
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20.18.0'
           cache: yarn
-      - name: Verify new etest deployment SHA before creating ANY accounts
+      - name: Verify etest deployed SHA over IPv4 (no accounts until pinned)
         run: |
-          node --input-type=module <<'NODE'
-          import assert from 'node:assert/strict'
-          const expected=process.env.EXPECTED_ETEST_SHA
-          let marker=''
-          for(let i=0;i<24;i++){
-            try{
-              const r=await fetch('https://etest.edgeone.dev/source-commit.txt',{
-                cache:'no-store',signal:AbortSignal.timeout(10000)})
-              if(r.ok()){
-                marker=(await r.text()).trim()
-                if(/^[a-f0-9]{7,40}$/.test(marker)&&expected.startsWith(marker)){
-                  console.log('PASS: deployed etest source SHA',marker)
-                  process.exit(0)
-                }
-              }
-            }catch{}
-            await new Promise(resolve=>setTimeout(resolve,3500))
-          }
-          assert.fail('Etest SHA unverified; refusing to create disposable accounts: '+marker)
-          NODE
+          set -euo pipefail
+          echo "Checking DNS and curl egress on independent Ubuntu 24 runner"
+          getent ahostsv4 etest.edgeone.dev | head -n 3 || true
+          marker=""
+          for attempt in $(seq 1 15); do
+            marker=$(curl -4 --silent --show-error --fail --max-time 12 \
+              --header 'Cache-Control: no-cache' \
+              'https://etest.edgeone.dev/source-commit.txt' 2>/dev/null | tr -d '\\r\\n') || marker=""
+            if [[ -n "$marker" && "${EXPECTED_ETEST_SHA}" == "$marker"* ]]; then
+              echo "PASS: etest live pinned source SHA $marker"
+              exit 0
+            fi
+            echo "Etest cannot be pinned from this runner; attempt $attempt"
+            sleep 4
+          done
+          echo "::error::No validated etest SHA; no user accounts created."
+          exit 1
       - name: Generate bounded disposable identities (never real accounts)
         run: |
           echo "QWERTY_E2E_USER_PREFIX=e2e_xa_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
