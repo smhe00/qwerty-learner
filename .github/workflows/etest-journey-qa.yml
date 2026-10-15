@@ -1,0 +1,55 @@
+name: Etest Real User Journey QA (one-off)
+
+on:
+  push:
+    branches: [qa/etest-e2e-audit-20261015]
+    paths: [.github/workflows/etest-journey-qa.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  actual-user-journey:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 16
+    env:
+      QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Validate actually served etest source without touching Maker
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict'
+          const r=await fetch('https://etest.edgeone.dev/source-commit.txt',{cache:'no-store',signal:AbortSignal.timeout(15000)})
+          assert.equal(r.status,200)
+          assert.ok('59e467f40b8edd3fef7043af9f258554e2183b7e'.startsWith((await r.text()).trim()))
+          console.log('PASS: target etest deploy pinned')
+          NODE
+      - name: Generate two uniquely isolated disposable identifiers
+        run: |
+          echo "QWERTY_E2E_USERNAME=e2e_mc_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_a" >> "$GITHUB_ENV"
+          echo "QWERTY_E2E_USERNAME_B=e2e_mc_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_b" >> "$GITHUB_ENV"
+          pass="E2E-$(openssl rand -hex 16)"
+          echo "::add-mask::$pass"
+          echo "QWERTY_E2E_PASSWORD=$pass" >> "$GITHUB_ENV"
+      - name: Install browser test dependencies
+        run: |
+          yarn install --frozen-lockfile
+          npx playwright install --with-deps chromium
+      - name: Verify real Learn to S2 sync to isolated browser B restore
+        run: npx playwright test tests/e2e/etest-account-learn-sync-qa.spec.ts --project=chromium --workers=1 --retries=0 --reporter=list
+      - name: Delete disposable account even if UI E2E failed
+        if: always() && env.QWERTY_E2E_USERNAME != ''
+        run: node tests/cloud/cleanup-production-multi-client.mjs
+      - name: Keep redacted numeric checkpoints only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etest-user-journey-${{ github.run_id }}
+          path: test-results/**/*-redacted.json
+          if-no-files-found: ignore
+          retention-days: 7
