@@ -1,0 +1,55 @@
+name: Beta RC Etest Live Marker Deep Links No-Deploy Gate
+
+on:
+  push:
+    branches: [qa/beta-rc-live-20261015]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-beta-etest:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      EXPECTED_SHA: 1af869d323f8b49fed142188943ade0521b9c628
+    steps:
+      - name: Wait for actually deployed Beta RC SHA, verify root and SPA routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          marker=""
+          for attempt in $(seq 1 80); do
+            marker=$(curl -4 --silent --show-error --fail --max-time 12 \
+              -H 'Cache-Control: no-cache' \
+              'https://etest.edgeone.dev/source-commit.txt?beta-rc=20261015' 2>/dev/null | tr -d '\r\n') || marker=""
+            if [[ -n "$marker" && "$EXPECTED_SHA" == "$marker"* ]]; then
+              echo "PASS published Beta candidate commit marker: $marker"
+              break
+            fi
+            (( attempt % 10 == 1 )) && echo "Waiting Maker deployment attempt=$attempt marker=$marker" || true
+            sleep 6
+          done
+          if [[ -z "$marker" || "$EXPECTED_SHA" != "$marker"* ]]; then
+            echo "::error::Cannot prove deployed Beta SHA. Refuse cloud validation."
+            exit 1
+          fi
+          for route in / /learn /learn/ /typing /typing/ /mobile /analysis /gallery /achievements /error-book; do
+            status=$(curl -4 -L --silent --show-error --max-time 18 \
+              -H 'Cache-Control: no-cache' -o /tmp/beta-document.html \
+              -w '%{http_code}' "https://etest.edgeone.dev$route") || status="curl-failed"
+            echo "BETALIVE_ROUTE $route $status"
+            if [[ "$status" != "200" ]]; then
+              echo "::error::Beta SPA direct HTTP route $route is not 200 ($status)"
+              exit 1
+            fi
+            if ! grep -q 'Qwerty Plus.*Beta' /tmp/beta-document.html; then
+              echo "::error::Unexpected Beta HTML title on $route"
+              exit 1
+            fi
+            if grep -qi 'Alpha' /tmp/beta-document.html; then
+              echo "::error::Alpha remains in published HTML of $route"
+              exit 1
+            fi
+          done
+          echo "PASS: published Beta entrypoint, 10 routes and Alpha-free live HTML"
