@@ -21,7 +21,7 @@ const snapshot = {
     database: { formatName: 'dexie', data: { tables: [], data: [] } },
     settings: { version: 1, values: {} },
     learnRuntime: { dailySessions: {} },
-    navigation: { currentDict: 'zhongkaohexin', currentChapter: 0 },
+    navigation: { currentDict: 'shanghai-zhongkao-2027', currentChapter: 0 },
   },
   metadata: { createdAt: '2026-10-10', source: { kind: 'account', accountId: id } },
 }
@@ -36,6 +36,14 @@ test('S2 empty V4 logical snapshot and empty cloud is a transport-free noop', as
   assert.equal(out.hasMeaningfulState, false)
   assert.equal(out.decision.action, 'noop')
   assert.equal(out.decision.baselineOnly, true)
+})
+
+test('S2 explicitly selected Zhongkao Core is meaningful, not silently replaced', async () => {
+  const selected = structuredClone(snapshot)
+  selected.workspaceData.navigation.currentDict = 'zhongkaohexin'
+  const out = await preflightManualSyncV2(selected, id, absent, null)
+  assert.equal(out.hasMeaningfulState, true)
+  assert.equal(out.decision.action, 'push')
 })
 
 test('S2 local V4 and identical cloud hash is a metadata-only noop', async () => {
