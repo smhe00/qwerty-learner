@@ -6,6 +6,12 @@ on:
       - product/main
     paths:
       - 'src/sync/workspace-*'
+      - 'src/sync/sha256-compat.ts'
+      - 'src/sync/v4-table-audit.ts'
+      - 'src/sync/v2-verify-remote.ts'
+      - 'src/sync/v2-manual-executor.ts'
+      - 'src/sync/workspace-v4.ts'
+      - 'src/sync/snapshot.ts'
       - 'src/sync/auth.ts'
       - 'src/sync/auto.ts'
       - 'src/sync/CloudSyncSetting.tsx'
