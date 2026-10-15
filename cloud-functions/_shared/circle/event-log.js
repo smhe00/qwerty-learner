@@ -34,9 +34,12 @@ export function makeEvent({ circleId, actorUserId, type, operationId, payload })
  * A lost response is UNKNOWN: retry the command with the SAME operationId.
  * Listing/get may omit committed objects; replay is only a visible-set snapshot.
  */
-export function createCircleEventLog(blob, { maxEvents = 10000 } = {}) {
+export function createCircleEventLog(blob, { maxEvents = 10000, readConcurrency = 8 } = {}) {
   if (!blob?.get || !blob?.setJSON || !blob?.list ||
-      !Number.isSafeInteger(maxEvents) || maxEvents < 1) throw new TypeError('Invalid event store')
+      !Number.isSafeInteger(maxEvents) || maxEvents < 1 ||
+      !Number.isSafeInteger(readConcurrency) || readConcurrency < 1 || readConcurrency > 32) {
+    throw new TypeError('Invalid event store')
+  }
   const root = (id) => {
     if (!safe(id)) throw new TypeError('Invalid circle ID')
     return 'social/v2/circles/' + id + '/events/'
@@ -68,23 +71,38 @@ export function createCircleEventLog(blob, { maxEvents = 10000 } = {}) {
           result.hasMore || result.truncated) throw new Error('Incomplete Circle listing')
       const keys = [...new Set(result.blobs.map(({ key }) => key))]
       if (keys.length > maxEvents) throw new Error('Circle replay budget exceeded')
-      const events = []
+      // Reject out-of-scope listings before issuing any Blob GET.
       for (const key of keys) {
         if (typeof key !== 'string' || !key.startsWith(prefix) ||
             !/^[a-f0-9]{32}\.json$/.test(key.slice(prefix.length))) {
           throw new Error('Out-of-scope Circle event key')
         }
-        const event = await blob.get(key, { type: 'json' })
-        // The listing may be ahead of object reads. A known key returning null
-        // could be a not-yet-visible membership removal or circle closure.
-        // Never construct an authorized view by silently discarding such a key.
-        if (event === null) throw new Error('Circle listed event temporarily unreadable')
-        validateEvent(event)
-        if (event.circleId !== circleId || key !== prefix + event.eventId + '.json') {
-          throw new Error('Circle event identity mismatch')
-        }
-        events.push(event)
       }
+      // Bounded read fanout: avoid N sequential remote GETs without assuming
+      // linearizable listing, transactional snapshots, locks, or CAS.
+      const events = new Array(keys.length)
+      let next = 0
+      let failure = null
+      await Promise.all(Array.from({ length: Math.min(readConcurrency, keys.length) }, async () => {
+        while (!failure && next < keys.length) {
+          const index = next++
+          const key = keys[index]
+          try {
+            const event = await blob.get(key, { type: 'json' })
+            // A listed but unreadable object could be removal/closure. Never
+            // omit it or return a partially authorized view.
+            if (event === null) throw new Error('Circle listed event temporarily unreadable')
+            validateEvent(event)
+            if (event.circleId !== circleId || key !== prefix + event.eventId + '.json') {
+              throw new Error('Circle event identity mismatch')
+            }
+            events[index] = event
+          } catch (error) {
+            failure ||= error
+          }
+        }
+      }))
+      if (failure) throw failure
       return events
     },
   })
