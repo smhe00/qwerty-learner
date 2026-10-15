@@ -5,6 +5,7 @@ import { initializeLegacyWorkspace, transitionWorkingWorkspace } from '../../src
 import { acquireWorkspaceWriterLease } from '../../src/sync/workspace-lock'
 import { captureWorkingWorkspaceV4, resetWorkingWorkspaceToEmpty, restoreWorkingWorkspaceV4 } from '../../src/sync/workspace-v4-browser'
 import { createWorkspaceV4, workspaceFingerprintV4 } from '../../src/sync/workspace-v4'
+import { analyzeV4SnapshotSize } from '../../src/sync/v4-size-audit'
 import { loadSyncV2Baseline, compareAndSwapSyncV2Baseline } from '../../src/sync/v2-baseline'
 import { syncV2PullJournalPort } from '../../src/sync/v2-pull-journal'
 import { manualV4ImportJournalPort } from '../../src/sync/manual-v4-import-journal'
@@ -309,6 +310,7 @@ async function inspectTableContract() {
   loadSyncBaseline,
   saveSyncBaseline,
   captureWorkingWorkspaceV4,
+  analyzeV4SnapshotSize,
   resetWorkingWorkspaceToEmpty,
   restoreWorkingWorkspaceV4,
   createWorkspaceV4,
