@@ -1,19 +1,39 @@
-name: Beta Branding Source Audit (No Maker)
+name: Beta Public Copy, README and UI Gate (No Maker)
 on:
   push:
     branches: [release/beta-branding-docs-20261015]
+    paths:
+      - '.github/workflows/beta-branding-docs-qa.yml'
 permissions:
   contents: read
 jobs:
-  alpha-source-audit:
+  beta-copy-and-build:
     runs-on: ubuntu-22.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Find all user-facing Alpha and pre-Beta references
-        run: |
-          echo '=== UI / public / package references ==='
-          grep -RInEi 'alpha|0\\.2\\.0-alpha' src public index.html package.json --include='*.tsx' --include='*.ts' --include='*.html' --include='*.json' --include='*.css' | head -180 || true
-          echo '=== Active README and guides ==='
-          grep -nEi 'alpha|backup-v3|single.current.session|20.word|手工上传|手工云同步|手动上传|默认词库' README.md docs/README.md docs/CLOUD_SYNC_USER_GUIDE.md docs/LEARN_USER_GUIDE_V1.md | head -160 || true
-          echo '=== Docs with Alpha in file path (historical) ==='
-          find docs -iname '*alpha*' -type f | sort
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: No Alpha customer-facing source strings and accurate Beta documentation
+        run: node scripts/check-beta-branding.mjs
+      - name: Lint modified live UI
+        run: yarn eslint src/components/DonateCard/index.tsx src/pages/Typing/components/ResultScreen/AuthorButton.tsx src/pages/Typing/components/ResultScreen/index.tsx src/pages/Typing/components/ShareButton/SharePicDialog.tsx src/pages/FriendLinks/index.tsx src/pages/Gallery-N/DictRequest.tsx src/utils/trackEvent.ts src/utils/mixpanel.ts
+      - name: Build Beta release candidate without Maker deployment
+        run: yarn build
+
+  beta-branding-browser:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
+      - name: Live page title metadata footer donation and mobile Beta E2E
+        run: npx playwright test tests/e2e/beta-rc-branding.spec.ts --config=tests/e2e/beta-rc-ui.config.ts --project=chromium --workers=1 --retries=0 --reporter=list
