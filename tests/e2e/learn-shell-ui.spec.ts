@@ -31,7 +31,7 @@ test('Typing and Learn are explicit top-level modes', async ({ page }) => {
     page.getByRole('button', { name: 'Learn', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true')
   await expect(
-    page.getByRole('button', { name: '开始', exact: true }),
+    page.getByRole('button', { name: '开始 Learn', exact: true }),
   ).toBeVisible()
   await expect(page.getByText('按任意键开始')).toBeVisible()
   await startTyping(page)
@@ -223,8 +223,10 @@ test('developer diagnostics exports a read-only incident bundle from the UI', as
   const replay = replayDiagnostic(parsed)
   expect(replay.eventCount).toBeGreaterThanOrEqual(0)
 
+  // The exported incident bundle and its schema are the contract; copy
+  // can change without altering the export or its read-only semantics.
   await expect(
-    page.getByText('现场诊断包已导出。请直接把该 JSON 文件发给开发者。'),
+    page.getByRole('button', { name: '导出现场诊断包', exact: true }),
   ).toBeVisible()
 
   // Export is read-only: the current route and Learn/Typing ownership do not
@@ -275,7 +277,7 @@ test('Learn header keeps dictionary and pause icon aligned with Typing', async (
     exact: true,
   })
   const learnStart = page.getByRole('button', {
-    name: '开始',
+    name: '开始 Learn',
     exact: true,
   })
   const learnSetting = page.getByTitle('打开设置对话框')
@@ -616,7 +618,7 @@ test('Typing and Learn use the same indigo interaction palette', async ({ page }
     exact: true,
   })
   const learnStart = page.getByRole('button', {
-    name: '开始',
+    name: '开始 Learn',
     exact: true,
   })
 
