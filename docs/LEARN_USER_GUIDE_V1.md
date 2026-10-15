@@ -114,38 +114,11 @@ Learn 会继续安排其他词；如果没有，则会提示稍后继续。
 Acquisition 全程不产生 Again / Hard / Good / Easy，因此不会增加
 reviewCount / lapseCount。
 
-### P3 每日新词额度
+### Beta 每日新词目标
 
-新词不再固定为“每次最多 20 个”。系统根据近期记忆质量给出每日目标：
+当前默认每日引入新词目标为 **32 个**，可在设置中调整。目标统计的是当日首次进入学习计划的词数，不是每次进入 Learn 都额外获得一批额度。
 
-```text
-记忆压力高    → 5 个/天
-中等          → 10 个/天
-稳定/样本不足 → 20 个/天
-```
-
-主要反馈信号是：
-
-- 当前 Due：只要还有到期 Review，就先复习，不新增；
-- 最近 30 天 Again 比例；
-- 今天有效 Cold Probe 一次通过率；
-- 最近 Learn 交互负荷（连续错误、Hint 深度、纠错次数和非 Exposure
-  停顿）。
-
-交互负荷只作为**减速保护**：明显吃力时会自动降低后续新词量；状态轻松
-不会突破原本由记忆质量决定的上限。这个信号只使用 Learn 记录，不读取
-Typing 表现，也不会在学生界面显示“情绪分数”。
-
-当前 Interaction Strain 使用 V2：EWMA 观察器外增加 hysteresis，
-避免分数在边界附近轻微波动时频繁在 low / elevated / recovery 之间切换。
-控制参数仍是全局受约束参数，当前没有启用自动 Personal Calibration。
-
-Cold Probe 至少有 5 个有效样本才参与当天调速；Rating Gate 判定无效的
-尝试不会被当作“通过”。
-
-每日额度控制的是**今天第一次进入 Acquisition 的新词数**。例如今日目标 10 个、已经首次引入 7 个，再次进入 Learn 最多只会再引入 3 个新词，而不是重新获得 10 个额度。
-
-“首次引入”和“独立掌握”是两个指标：某词即使因为间隔不足暂未完成 Independent admission，也已经消耗了当天的新词额度。它会保留为 pending Acquisition，延时满足后可直接继续 Independent，不会再占一个 fresh slot。
+系统会结合到期复习、当前工作量和学习状态安排实际顺序；提示帮助完成拼写不等于独立掌握。旧版研发文档出现的 5 / 10 / 20 档位属于历史方案，不是当前 Beta 的默认配置。
 
 ### P4 今日 Learn 计划
 
@@ -386,31 +359,18 @@ Learn
 
 ---
 
-## 10. Alpha 1 当前边界
+## 10. Beta 当前边界
 
-当前已经实际启用：
+当前运行版本包含：
 
-- Typing / Learn 产品边界；
-- 分阶段 Acquisition；
-- due Review + Rating Gate；
-- basic-v2 长期间隔；
-- Dynamic Scaffold V1.1；
-- Interaction Strain V2 hysteresis；
-- Recovery Window V1；
-- quota V2 + P4 daily plan；
-- Learn Statistics；
-- 手工移出 / 恢复；
-- Control Stability Gate。
+- Typing / Learn 独立模式与分阶段新词引入；
+- 到期复习、Hint、Dynamic Scaffold 和受控的 Recovery Window；
+- FSRS-6 长期调度（目标保留率配置基线 r=0.84）；
+- 默认每天 32 个新词的可配置目标与每日学习会话；
+- 学习统计、成就、完整 Backup V4、本地与可选云端恢复；
+- 自动同步策略以及遇到本地/云端冲突时的人工选择。
 
-当前尚未启用：
-
-- 自动 Personal Calibration；
-- 完整 FSRS-6 主调度；
-- 自动跨设备 record-level merge；
-- 以真实 7/30 天 retention 数据在线自动修改控制参数。
-
-Alpha 阶段会先收集真实长期保持结果，再决定慢时间尺度的个性化参数学习。
-
+Beta **尚未承诺**：对每位用户在线训练最优记忆参数、不同设备的逐词自动合并、云端端到端加密和完整移动端学习体验。阶段性学习数据仍用于进一步评价长期记忆效率。
 
 ## 动态学习支架
 
