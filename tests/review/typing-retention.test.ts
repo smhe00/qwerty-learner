@@ -140,7 +140,9 @@ test('V4 gzip audit is read only, preserves all Learn rows, and measures full ar
   assert.ok(report.projectedGzipBytesAfterCompletedSessionCompaction > 0)
   assert.equal(report.achievementEventZeroMetrics, 0)
   assert.ok(report.rawBytes > report.gzipBytes)
-  assert.ok(report.httpBase64Bytes >= report.gzipBytes)
+  // Binary V4 transport has no Base64 upload-size field.
+  assert.ok(report.gzipBytes > 0)
+  assert.equal('httpBase64Bytes' in report, false)
   assert.ok(Number.isSafeInteger(report.projectedGzipBytesAfterTypingCompaction))
   assert.ok(report.projectedGzipBytesAfterTypingCompaction > 0)
   // Small fixtures can gzip worse after removing fields because the shared
