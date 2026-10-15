@@ -7,7 +7,7 @@ const userB = process.env.QWERTY_E2E_USERNAME_B
 const password = process.env.QWERTY_E2E_PASSWORD
 
 test('P0: fresh etest browser can learn anonymously before opening login (native and fallback locks)', async ({ browser }) => {
-  test.setTimeout(120_000)
+  test.setTimeout(180_000)
   if (process.env.GITHUB_REF_NAME !== 'edgeone-test' ||
     new URL(base || '').origin !== 'https://etest.edgeone.dev') {
     throw Error('Only branch-matched etest may exercise the real first-visit path')
