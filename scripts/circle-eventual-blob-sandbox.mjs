@@ -145,6 +145,26 @@ try {
     'Close-wins state did not converge in bounded sandbox probe')
   result.physicalKeysDistinct = writtenKeys.size === result.operations
   assert.equal(result.physicalKeysDistinct, true, 'Collision after revocation/closure')
+
+  // Compare the same fully visible event set using sequential vs bounded
+  // parallel SDK GETs. Latencies are diagnostics, not a hard speed SLA:
+  // provider caching and request variance can change timings.
+  const serialLog = createCircleEventLog(guardedStore, { readConcurrency: 1 })
+  const serialStart = Date.now()
+  const serialEvents = await serialLog.scan(circleId)
+  const serialMs = Date.now() - serialStart
+  const parallelStart = Date.now()
+  const parallelEvents = await log.scan(circleId)
+  const parallelMs = Date.now() - parallelStart
+  assert.equal(serialEvents.length, result.operations)
+  assert.equal(parallelEvents.length, result.operations)
+  assert.deepEqual(serialEvents.map((e) => e.eventId).sort(),
+    parallelEvents.map((e) => e.eventId).sort(),
+    'Parallel and serial replay must reconstruct exactly the same visible facts')
+  result.replayComparison = {
+    events: result.operations, serialMs, parallelMs, readConcurrency: 8,
+    resultEquivalent: true, performanceGuarantee: false,
+  }
 } catch (error) {
   primaryError = error
   result.primaryFailure = error?.name || 'Error'
