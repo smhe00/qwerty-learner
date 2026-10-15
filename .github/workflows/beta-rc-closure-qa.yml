@@ -11,6 +11,24 @@ permissions:
   contents: read
 
 jobs:
+  beta-review-retention:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Native binary V4 sizing, Learn evidence and compaction Review contract
+        run: |
+          mkdir -p .review-test/review
+          npx esbuild tests/review/typing-retention.test.ts \
+            --bundle --platform=node --target=node20 --format=esm \
+            --outfile=.review-test/review/typing-retention.test.mjs
+          node --test .review-test/review/typing-retention.test.mjs
+
   beta-build-and-v4-contract:
     runs-on: ubuntu-22.04
     timeout-minutes: 18
