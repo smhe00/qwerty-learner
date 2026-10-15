@@ -88,7 +88,7 @@ test(`five-more prioritizes unfinished recall and caps the complete round at fiv
     const dateKey = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-')
     localStorage.setItem('currentDict', JSON.stringify('cet4'))
     localStorage.setItem('reviewModeInfo', JSON.stringify({ isReviewMode: false }))
-    localStorage.setItem('qwerty.learn.dailySession.v1.cet4', JSON.stringify({ version: 1, sessionId: 'failed-terminal', dict: 'cet4', dateKey, startedAt: now - 60, status: 'active', dailyNewTarget: 1, plannedNewWords: 1, plannedNewWordNames: ['cancel'], plannedReviewWords: [], carryOverAcquisitionWords: [], accumulatedActiveSeconds: 0, completedBlockIds: [], blockCount: 0 }))
+    localStorage.setItem('qwerty.learn.dailySession.v1.cet4', JSON.stringify({ version: 1, sessionId: 'failed-terminal', dict: 'cet4', dateKey, startedAt: now - 60, status: 'active', executionExhausted: true, dailyNewTarget: 1, plannedNewWords: 1, plannedNewWordNames: ['cancel'], plannedReviewWords: [], carryOverAcquisitionWords: [], accumulatedActiveSeconds: 0, completedBlockIds: [], blockCount: 0 }))
     await new Promise<void>((resolve, reject) => {
       const req = indexedDB.open('RecordDB')
       req.onerror = () => reject(req.error)
