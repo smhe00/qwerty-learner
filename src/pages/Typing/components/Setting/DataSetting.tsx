@@ -122,7 +122,17 @@ export default function DataSetting() {
   }, [])
 
   const onClickClearLocalData = useCallback(async () => {
+    // A real S1 workspace must NEVER clear active Dexie tables in mounted
+    // React. Navigate to the dedicated pre-mount writer-locked V4 transaction.
     try {
+      const registry = await workspaceRegistryPort.read()
+      if (registry.generation > 0) {
+        if (registry.pending) {
+          throw new Error('存在未完成的工作区恢复事务，不能清除学习记录')
+        }
+        window.location.assign('/?s1-clear=manage')
+        return
+      }
       await assertLegacyLocalDestructiveOperationAllowed()
     } catch (error) {
       window.alert('操作已阻止：' + (error instanceof Error ? error.message : String(error)))
