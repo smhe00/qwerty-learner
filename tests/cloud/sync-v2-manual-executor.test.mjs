@@ -36,7 +36,7 @@ function snap(chapter = 0) {
       } },
       learnRuntime: { dailySessions: {} },
       settings: { version: 1, values: {} },
-      navigation: { currentDict: 'zhongkaohexin', currentChapter: chapter },
+      navigation: { currentDict: 'shanghai-zhongkao-2027', currentChapter: chapter },
     },
   }
 }
