@@ -104,7 +104,7 @@ export default function Setting() {
                           }
                         >
                           <IconEar className="mr-2 text-neutral-500  dark:text-neutral-300" />
-                          <span className="text-neutral-500 dark:text-neutral-300 ">音效设置</span>
+                          <span className="text-neutral-500 dark:text-neutral-300 ">声音与发音</span>
                         </Tab>
                         <Tab
                           className={({ selected }) =>
