@@ -63,3 +63,11 @@ test('registration copies V4 before S1 account switch, empty account does not co
   assert.match(ui, /if \(copy\)\s*\{[\s\S]*?copyAnonymousWorkspaceForNewRegistration/)
   assert.match(ui, /await switchAuthenticatedWorkspace/)
 })
+
+test('empty account activation never selects legacy Zhongkao core vocabulary', () => {
+  const source = readFileSync(resolve(root, 'src/sync/workspace-v4-browser.ts'), 'utf8')
+  const reset = source.split('export async function resetWorkingWorkspaceToEmpty()')[1]
+  assert.ok(reset, 'empty workspace initializer is missing')
+  assert.match(reset, /restoreLearningState\(\{\s*currentDict:\s*DEFAULT_DICTIONARY_ID/)
+  assert.doesNotMatch(reset, /currentDict:\s*['"]zhongkaohexin['"]/)
+})
