@@ -1,3 +1,4 @@
+# Recheck current etest deployment and Circle HTTP gate, 2026-10-16. Read-only.
 # Recheck latest independently promoted etest ref after 2026-10-15 parallel staging update.
 name: Circle etest read-only live probe
 
