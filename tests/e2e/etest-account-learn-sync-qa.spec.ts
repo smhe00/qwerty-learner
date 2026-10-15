@@ -98,8 +98,22 @@ test('etest actual Learn -> manual V4 sync -> other isolated browser restore -> 
       await expect(word).toHaveAttribute('data-typing-word',/\S+/,{timeout:20000})
       const spell=await word.getAttribute('data-typing-word')
       expect(spell).toBeTruthy()
+      const before=await a.evaluate(() => {
+        const value=localStorage.getItem('reviewModeInfo')
+        const record=value ? JSON.parse(value)?.reviewRecord : null
+        return {index:record?.index ?? null,finished:record?.isFinished===true}
+      })
       await a.keyboard.type(spell!)
       await expect.poll(async()=>(await readLearn(a)).learnRows,{timeout:25000}).toBe(i)
+      await expect.poll(async() => {
+        const value=await a.evaluate(() => {
+          const raw=localStorage.getItem('reviewModeInfo')
+          const rec=raw ? JSON.parse(raw)?.reviewRecord : null
+          return {index:rec?.index ?? null,finished:rec?.isFinished===true}
+        })
+        return value.finished || (before.index!==null && value.index!==null &&
+          value.index>before.index)
+      },{timeout:20000}).toBe(true)
     }
     checkpoints.push({event:'learn-two-words',count:2})
     await a.reload({waitUntil:'domcontentloaded'})
