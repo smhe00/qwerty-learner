@@ -47,12 +47,7 @@ jobs:
       - run: yarn install --frozen-lockfile
       - run: npx playwright install --with-deps chromium
       - name: Real Chromium local import + mock-injected cloud conflict, stale 409 and ambiguous 500
-        run: |
-          npx playwright test \\
-            tests/e2e/workspace-v4-manual-import.spec.ts \\
-            tests/e2e/workspace-v4-s2-recovery.spec.ts \\
-            --config=tests/e2e/workspace-v4.config.ts \\
-            --project=chromium --workers=1 --retries=0 --reporter=list
+        run: npx playwright test tests/e2e/workspace-v4-manual-import.spec.ts tests/e2e/workspace-v4-s2-recovery.spec.ts --config=tests/e2e/workspace-v4.config.ts --project=chromium --workers=1 --retries=0 --reporter=list
 
   four-account-real-etest:
     runs-on: ubuntu-22.04
