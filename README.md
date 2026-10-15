@@ -78,4 +78,8 @@ EdgeOne Maker 构建次数有限，因此不能因普通开发提交持续更新
 
 ## 开源来源与许可证
 
-本项目基于 [RealKai42/qwerty-learner](https://github.com/RealKai42/qwerty-learner) 开发，沿用仓库的 **GPL-3.0** 许可证。感谢原项目在词库、Typing 交互与社区建设方面提供的基础。详见 [LICENSE](./LICENSE)。
+Qwerty Plus 是基于 [RealKai42/qwerty-learner](https://github.com/RealKai42/qwerty-learner) 修改开发的版本。感谢原作者和贡献者。与原项目相比，本项目增加了 Learn 长期记忆、FSRS-6 复习、云同步和成就系统等功能；具体改动可在本仓库 Git 历史中查阅。
+
+本项目按 **GNU GPL-3.0** 发布。使用、修改及再分发须遵守 [LICENSE](./LICENSE)；原有源码中的版权、许可证声明应予保留，原项目版权归原权利人所有。软件按许可证约定提供，不附带任何担保。
+
+[完整源码及修改历史](https://github.com/smhe00/qwerty-learner) · [原项目](https://github.com/RealKai42/qwerty-learner) · [GPL-3.0](./LICENSE)
