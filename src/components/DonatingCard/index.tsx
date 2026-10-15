@@ -11,7 +11,7 @@ type DonatingCardProps = {
 export const DonatingCard = ({ className }: DonatingCardProps) => {
   return (
     <div className={`flex w-full flex-col items-center justify-center ${className ?? ''}`}>
-      <div className="rounded-[1.5rem] border border-amber-100 bg-amber-50/60 p-3 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/20">
+      <div className="rounded-[20px] border border-slate-200/80 bg-slate-50 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800/50">
         <img
           src={appreciationQr}
           width={288}
@@ -19,10 +19,10 @@ export const DonatingCard = ({ className }: DonatingCardProps) => {
           loading="eager"
           decoding="sync"
           alt="何世明的微信赞赏码"
-          className="h-72 w-72 rounded-[1.15rem] bg-white object-contain"
+          className="h-64 w-64 max-w-full rounded-xl bg-white object-contain sm:h-72 sm:w-72"
         />
       </div>
-      <div className="mt-3 text-sm font-medium text-gray-600 dark:text-gray-300">微信扫一扫自愿赞赏，不影响任何功能</div>
+      <div className="mt-3 text-sm font-medium text-slate-600 dark:text-slate-300">微信扫一扫 · 随心赞赏</div>
     </div>
   )
 }
