@@ -115,7 +115,7 @@ export default function Setting() {
                             )
                           }
                         >
-                          <IconEar className="mr-2 text-inherit" />
+                          <IconEar className="shrink-0 text-inherit" />
                           <span className="text-inherit ">声音与发音</span>
                         </Tab>
                         <Tab
@@ -126,8 +126,8 @@ export default function Setting() {
                             )
                           }
                         >
-                          <IconAdjustmentsHorizontal className="mr-2 text-neutral-500  dark:text-neutral-300" />
-                          <span className="text-neutral-500 dark:text-neutral-300">打字练习</span>
+                          <IconAdjustmentsHorizontal className="shrink-0 text-inherit" />
+                          <span className="text-inherit">打字练习</span>
                         </Tab>
                         <Tab
                           className={({ selected }) =>
@@ -137,8 +137,8 @@ export default function Setting() {
                             )
                           }
                         >
-                          <IconBrain className="mr-2 text-neutral-500 dark:text-neutral-300" />
-                          <span className="text-neutral-500 dark:text-neutral-300">学习计划</span>
+                          <IconBrain className="shrink-0 text-inherit" />
+                          <span className="text-inherit">学习计划</span>
                         </Tab>
                         <Tab
                           className={({ selected }) =>
@@ -148,8 +148,8 @@ export default function Setting() {
                             )
                           }
                         >
-                          <IconEye className="mr-2 text-neutral-500  dark:text-neutral-300" />
-                          <span className="text-neutral-500 dark:text-neutral-300">外观显示</span>
+                          <IconEye className="shrink-0 text-inherit" />
+                          <span className="text-inherit">外观显示</span>
                         </Tab>
                         <Tab
                           className={({ selected }) =>
@@ -159,8 +159,8 @@ export default function Setting() {
                             )
                           }
                         >
-                          <IconDatabaseCog className="mr-2 text-neutral-500  dark:text-neutral-300" />
-                          <span className="text-neutral-500 dark:text-neutral-300">数据与备份</span>
+                          <IconDatabaseCog className="shrink-0 text-inherit" />
+                          <span className="text-inherit">数据与备份</span>
                         </Tab>
                         <Tab
                           className={({ selected }) =>
@@ -170,8 +170,8 @@ export default function Setting() {
                             )
                           }
                         >
-                          <IconBug className="mr-2 text-neutral-500 dark:text-neutral-300" />
-                          <span className="text-neutral-500 dark:text-neutral-300">开发诊断</span>
+                          <IconBug className="shrink-0 text-inherit" />
+                          <span className="text-inherit">开发诊断</span>
                         </Tab>
                       </Tab.List>
 
