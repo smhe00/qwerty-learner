@@ -7,6 +7,7 @@
  * this function. The decision is not transfer authorization by itself:
  * Push must use CAS and Pull must journal a verified revision before restore.
  */
+import { DEFAULT_DICTIONARY_ID } from '@/resources/defaultDictionary'
 import { workspaceFingerprintV4 } from './workspace-v4'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
 import { decideManualSyncV2 } from './v2-policy'
@@ -29,7 +30,7 @@ export function snapshotHasMeaningfulStateV4(snapshot: WorkspaceSnapshotV4): boo
     tables.some(table => (table.rows?.length ?? 0) > 0) ||
     Object.keys(data.learnRuntime.dailySessions).length > 0 ||
     Object.keys(data.settings.values).length > 0 ||
-    data.navigation.currentDict !== 'zhongkaohexin' ||
+    data.navigation.currentDict !== DEFAULT_DICTIONARY_ID ||
     data.navigation.currentChapter !== 0,
   )
 }
