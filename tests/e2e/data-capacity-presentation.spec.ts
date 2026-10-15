@@ -50,8 +50,8 @@ test('V4 capacity overview reflects actual gzip snapshot, not obsolete HTTP Base
   await openData(page)
   const beforeRows = await readDurableRows(page)
   await expect(page.getByRole('button', { name: '导出完整备份' })).toBeVisible()
-  await expect(page.getByRole('button', { name: '分析备份容量（只读）' })).toBeVisible()
-  await page.getByRole('button', { name: '分析备份容量（只读）' }).click()
+  await expect(page.getByRole('button', { name: '分析备份容量' })).toBeVisible()
+  await page.getByRole('button', { name: '分析备份容量' }).click()
 
   const section = page.locator('[data-v4-size-report]')
   await expect(section).toBeVisible({ timeout: 35_000 })
@@ -72,19 +72,19 @@ test('V4 capacity overview reflects actual gzip snapshot, not obsolete HTTP Base
   expect(Math.abs(displayedKiB(metrics[1]) - expected.report.rawBytes / 1024))
     .toBeLessThan(1)
   await expect(section).not.toContainText('HTTP Base64 约')
-  await expect(section).toContainText('不是 IndexedDB 的磁盘占用')
+  await expect(section).toContainText('不是浏览器实际磁盘占用')
   await expect(section).toContainText('不可直接相加')
 
   await expect(section.getByRole('table')).not.toBeVisible()
-  await section.getByText('六张数据表 · 详细占用').click()
+  await section.getByText('数据表明细').click()
   await expect(section.getByRole('table')).toBeVisible()
   await expect(section.locator('tbody tr')).toHaveCount(6)
   for (const item of expected.report.tables) {
     await expect(section.getByRole('row').filter({ hasText:item.name })).toContainText(String(item.rows))
   }
-  await section.getByText('历史数据精简潜力 · 仅模拟').click()
+  await section.getByText('精简潜力（模拟）').click()
   await expect(section).toContainText('没有验证精简后的文件可用于恢复')
-  await expect(section).toContainText('只读分析：未修改、上传、归档或删除')
+  await expect(section).toContainText('仅分析，未修改学习数据')
 
   expect(await readDurableRows(page),
     'the read-only capacity audit must not change any durable table rows')
