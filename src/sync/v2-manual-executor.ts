@@ -13,6 +13,7 @@
  */
 import { preflightManualSyncV2 } from './v2-preflight'
 import { recordPerfSize, timePerfStage } from './perf-diagnostics'
+import { sha256Hex } from './sha256-compat'
 import { verifyDownloadedWorkspaceV4 } from './v2-verify-remote'
 import { assertRestorableWorkspaceV4, workspaceFingerprintV4 } from './workspace-v4'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
@@ -65,9 +66,7 @@ export async function payloadV4(snapshot: WorkspaceSnapshotV4): Promise<{
   const compressed = await timePerfStage('sync', 'gzip-compression', async () =>
     pako.gzip(raw))
   recordPerfSize('sync', 'payload-gzip', compressed.byteLength)
-  const digest = await crypto.subtle.digest('SHA-256', compressed)
-  const checksum = [...new Uint8Array(digest)]
-    .map(c => c.toString(16).padStart(2, '0')).join('')
+  const checksum = await sha256Hex(compressed)
   return { bytes: compressed, checksum }
 }
 
