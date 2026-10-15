@@ -1,0 +1,32 @@
+name: Etest V4 Commit P0 Regression (no Maker deploy)
+
+on:
+  push:
+    branches: [fix/etest-v4-commit-p0-20261015]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  targeted-backend-and-client:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Strict header parser + old V4 multipart/server/storage regressions
+        run: |
+          node --test \
+            tests/cloud/v4-commit-headers.test.mjs \
+            tests/cloud/v4-http-parts.test.mjs \
+            tests/cloud/edgeone-blob-storage.test.mjs \
+            tests/cloud/sync-v4-server.test.mjs
+      - name: Lint changed sources
+        run: yarn eslint src/sync/api.ts cloud-functions/_shared/v4-commit-header.js cloud-functions/_shared/v4-http-parts.js cloud-functions/api/'[[default]].js' tests/cloud/v4-commit-headers.test.mjs tests/cloud/p4b-edgeone-gate-smoke.mjs
+      - name: Build production frontend (no Maker deployment)
+        run: yarn build
