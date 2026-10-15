@@ -1,4 +1,5 @@
 name: Etest Real User Journey QA (one-off)
+# Observe rendered S2 completion toast; last-result sessionStorage is consumed on boot.
 
 on:
   push:
