@@ -27,6 +27,7 @@ import { db } from '@/utils/db/core'
 import Dexie from 'dexie'
 import { timePerfStage } from './perf-diagnostics'
 import { secureRandomUuid } from './sha256-compat'
+import { DEFAULT_DICTIONARY_ID } from '@/resources/defaultDictionary'
 import type { PerfFlow } from './perf-diagnostics'
 
 /**
@@ -195,5 +196,5 @@ export async function resetWorkingWorkspaceToEmpty(): Promise<void> {
     for (const table of db.tables) await table.clear()
   })
   clearWorkspaceStorage()
-  restoreLearningState({ currentDict: 'zhongkaohexin', currentChapter: 0 })
+  restoreLearningState({ currentDict: DEFAULT_DICTIONARY_ID, currentChapter: 0 })
 }
