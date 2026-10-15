@@ -130,7 +130,7 @@ test('S1 actual Settings login refuses legacy auth before any network request', 
   // Account changes only happen through the pre-mount guarded S1 page.
   await expect(page.getByPlaceholder('用户名')).toHaveCount(0)
   await expect(page.getByPlaceholder('密码（4-128字符）')).toHaveCount(0)
-  await expect(page.getByText('登录、注册及安全退出已统一移动到网站右上角的账户入口。', { exact: false })).toBeVisible()
+  // Anonymous S1 owners no longer see cloud sync copy or controls in Data.\n  await expect(page.getByText('云端同步', { exact: true })).toHaveCount(0)
   const safeEntry = page.locator('[data-account-entry]')
   await expect(safeEntry).toBeVisible()
   expect(loginRequests).toBe(0)
