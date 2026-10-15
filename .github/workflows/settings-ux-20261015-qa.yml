@@ -1,0 +1,28 @@
+name: Settings UX and Plain Language QA (No Maker)
+
+on:
+  push:
+    branches: [fix/settings-developer-style-copy-20261015]
+
+permissions:
+  contents: read
+
+jobs:
+  settings-ux:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Lint settings UI
+        run: yarn eslint src/pages/Typing/components/Setting/DeveloperSetting.tsx src/pages/Typing/components/Setting/DataSetting.tsx src/pages/Typing/components/Setting/V4SizeReport.tsx src/sync/CloudSyncSetting.tsx
+      - name: Build product
+        run: yarn build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify Data and Developer settings UX
+        run: npx playwright test --config=tests/e2e/data-cloud-visibility.config.ts --project=chromium --workers=1 --retries=0 --reporter=list
