@@ -1,5 +1,5 @@
 import styles from './index.module.css'
-import { isIgnoreCaseAtom, isShowAnswerOnHoverAtom, isShowPrevAndNextWordAtom, isTextSelectableAtom, randomConfigAtom } from '@/store'
+import { isIgnoreCaseAtom, isShowAnswerOnHoverAtom, isShowPrevAndNextWordAtom, randomConfigAtom } from '@/store'
 import { Switch } from '@headlessui/react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { useAtom } from 'jotai'
@@ -9,7 +9,6 @@ export default function AdvancedSetting() {
   const [randomConfig, setRandomConfig] = useAtom(randomConfigAtom)
   const [isShowPrevAndNextWord, setIsShowPrevAndNextWord] = useAtom(isShowPrevAndNextWordAtom)
   const [isIgnoreCase, setIsIgnoreCase] = useAtom(isIgnoreCaseAtom)
-  const [isTextSelectable, setIsTextSelectable] = useAtom(isTextSelectableAtom)
   const [isShowAnswerOnHover, setIsShowAnswerOnHover] = useAtom(isShowAnswerOnHoverAtom)
 
   const onToggleRandom = useCallback(
@@ -36,12 +35,6 @@ export default function AdvancedSetting() {
     [setIsIgnoreCase],
   )
 
-  const onToggleTextSelectable = useCallback(
-    (checked: boolean) => {
-      setIsTextSelectable(checked)
-    },
-    [setIsTextSelectable],
-  )
   const onToggleShowAnswerOnHover = useCallback(
     (checked: boolean) => {
       setIsShowAnswerOnHover(checked)
@@ -86,18 +79,6 @@ export default function AdvancedSetting() {
               </Switch>
               <span className="text-right text-xs font-normal leading-tight text-gray-600">{`忽略大小写已${
                 isIgnoreCase ? '开启' : '关闭'
-              }`}</span>
-            </div>
-          </div>
-          <div className={styles.section}>
-            <span className={styles.sectionLabel}>是否允许选择文本</span>
-            <span className={styles.sectionDescription}>开启后，可以通过鼠标选择文本 </span>
-            <div className={styles.switchBlock}>
-              <Switch checked={isTextSelectable} onChange={onToggleTextSelectable} className="switch-root">
-                <span aria-hidden="true" className="switch-thumb" />
-              </Switch>
-              <span className="text-right text-xs font-normal leading-tight text-gray-600">{`选择文本已${
-                isTextSelectable ? '开启' : '关闭'
               }`}</span>
             </div>
           </div>
