@@ -90,8 +90,10 @@ export async function seedReviewSession(
   words: ReviewWord[],
   id: number,
 ) {
-  await page.addInitScript(
-    ({ seededWords, recordId }) => {
+  const seed = ({ seededWords, recordId }: {
+    seededWords: ReviewWord[]
+    recordId: number
+  }) => {
       const seedKey = `qwerty:e2e:review-session-seed:${recordId}`
       if (sessionStorage.getItem(seedKey) === 'done') return
       sessionStorage.setItem(seedKey, 'done')
@@ -185,9 +187,17 @@ export async function seedReviewSession(
           rate: 1,
         }),
       )
-    },
-    { seededWords: words, recordId: id },
-  )
+  }
+  const args = { seededWords: words, recordId: id }
+  // A pre-boot fixture must be installed before first navigation. After an
+  // isolated S1 page has mounted, however, addInitScript would run before
+  // the next writer guard and corrupt its sealed localStorage witness.
+  // Apply the SAME seed directly in the already-guarded tab instead.
+  if (page.url() === 'about:blank') {
+    await page.addInitScript(seed, args)
+  } else {
+    await page.evaluate(seed, args)
+  }
 }
 
 export async function seedAcquisitionSession(
