@@ -7,19 +7,64 @@ import {
   inspectManualBackupV4File,
 } from '@/sync/manual-backup-v4'
 import { loadAuth } from '@/sync/auth'
+import { workspaceRegistryPort } from '@/sync/workspace-vault'
 import { parseWorkspaceV4 } from '@/sync/workspace-v4'
 import { analyzeV4SnapshotSize } from '@/sync/v4-size-audit'
 import { assertLegacyLocalDestructiveOperationAllowed } from '@/sync/workspace-auth-guard'
 import { clearSyncBaseline } from '@/sync/state'
 import { clearLocalLearningData } from '@/utils/db/data-export'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 export default function DataSetting() {
   const [isClearing, setIsClearing] = useState(false)
   const [isV4Busy, setIsV4Busy] = useState(false)
   const [v4Message, setV4Message] = useState('')
   const [sizeAuditMessage, setSizeAuditMessage] = useState('')
+  // Cloud controls remain hidden until the S1 owner and an unexpired login
+  // are verified together. A stored token alone is insufficient.
+  const [showCloudControls, setShowCloudControls] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    let generation = 0
+    const verifyOwner = () => {
+      const requestId = ++generation
+      setShowCloudControls(false)
+      void workspaceRegistryPort.read()
+        .then(registry => {
+          if (!active || requestId !== generation) return
+          const auth = loadAuth({ preserveExpired: true })
+          setShowCloudControls(
+            !registry.pending &&
+            registry.generation > 0 &&
+            registry.active.kind === 'account' &&
+            auth !== null &&
+            auth.user.userId === registry.active.accountId &&
+            auth.expiresAt * 1000 > Date.now(),
+          )
+        })
+        .catch(() => {
+          if (active && requestId === generation) setShowCloudControls(false)
+        })
+    }
+    verifyOwner()
+    // Logging out in another tab or returning to an expired session must
+    // hide the cloud actions, even if the Data dialog stays mounted.
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === 'qwerty.cloudAuth.v1' || event.key === null) verifyOwner()
+    }
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('focus', verifyOwner)
+    document.addEventListener('visibilitychange', verifyOwner)
+    return () => {
+      active = false
+      ++generation
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('focus', verifyOwner)
+      document.removeEventListener('visibilitychange', verifyOwner)
+    }
+  }, [])
 
   const onClickExportV4 = useCallback(async () => {
     setV4Message('正在生成完整的 Backup V4 快照…')
@@ -94,7 +139,9 @@ export default function DataSetting() {
       return
     }
     const confirmed = window.confirm(
-      '将清除本浏览器中的练习记录、章节记录和智能复习数据。云端账号和云端备份不会被删除。此操作不可撤销；如需保留本地数据，请先导出或上传到云端。是否继续？',
+      showCloudControls
+        ? '将清除本浏览器中的练习记录、章节记录和智能复习数据。云端账号和云端备份不会被删除。此操作不可撤销；如需保留本地数据，请先导出或上传到云端。是否继续？'
+        : '将清除本浏览器中的练习记录、章节记录和智能复习数据。此操作不可撤销；如需保留本地数据，请先导出完整本地备份。是否继续？',
     )
     if (!confirmed) return
 
@@ -113,20 +160,22 @@ export default function DataSetting() {
       localStorage.removeItem('reviewModeInfo')
       clearAllLearnDailySessions()
 
-      window.alert('本地学习数据已清除，默认词库已恢复为“中考核心词”。云端账号和云端备份均未删除。')
+      window.alert(showCloudControls
+        ? '本地学习数据已清除，默认词库已恢复为“中考核心词”。云端账号和云端备份均未删除。'
+        : '本地学习数据已清除，默认词库已恢复为“中考核心词”。')
       window.location.reload()
     } catch (error) {
       console.error('清除本地数据失败：', error)
       window.alert('清除本地数据失败，请刷新页面后重试。')
       setIsClearing(false)
     }
-  }, [])
+  }, [showCloudControls])
 
   return (
     <ScrollArea.Root className="flex-1 select-none overflow-y-auto ">
       <ScrollArea.Viewport className="h-full w-full px-3">
         <div className={styles.tabContent}>
-          {REACT_APP_DEPLOY_ENV !== 'pages' && <section className={styles.section}>
+          {REACT_APP_DEPLOY_ENV !== 'pages' && showCloudControls && <section className={styles.section}>
             <span className={styles.sectionLabel}>云端同步</span>
             <CloudSyncSetting />
           </section>}
@@ -135,7 +184,9 @@ export default function DataSetting() {
             <span className={styles.sectionDescription}>
               完整备份学习记录、FSRS、成就、未完成的学习会话及个人设置。
               可以在这里校验 V4 文件的完整性；校验是只读操作，不会覆盖任何学习记录。
-              本地导出、云端导出均使用标准 Backup V4；可从同一入口导入并恢复到当前账号。不同账号 ID 将被明确提示，导入前会备份当前工作区。
+              {showCloudControls
+                ? '本地导出、云端导出均使用标准 Backup V4；可从同一入口导入并恢复到当前账号。不同账号 ID 将被明确提示，导入前会备份当前工作区。'
+                : '标准 Backup V4 文件可在本机导入与恢复；若备份来自不同账号，导入时会明确提示并要求确认。'}
             </span>
             <div className="flex flex-wrap gap-2 pl-4">
               <button
@@ -186,10 +237,14 @@ export default function DataSetting() {
             <span className={styles.sectionLabel}>清除本地数据</span>
             <span className={styles.sectionDescription}>
               清除当前浏览器中的练习记录、章节记录和智能复习数据，并将词库和章节进度恢复为首次使用状态。
-              <strong className="font-bold text-red-500"> 不会删除云端账号或云端备份，也不会修改其他设备的数据。</strong>
+              {showCloudControls && <strong className="font-bold text-red-500">
+                不会删除云端账号或云端备份，也不会修改其他设备的数据。
+              </strong>}
             </span>
             <span className="pl-4 text-left text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-              清除后如已存在云端备份，可在“云端同步”中重新下载恢复。建议操作前先导出或确认云端备份是最新版本。
+              {showCloudControls
+                ? '清除后如已存在云端备份，可在“云端同步”中重新下载恢复。建议操作前先导出或确认云端备份是最新版本。'
+                : '清除后只能通过事先保存的本地备份恢复，请在清除前导出完整备份。'}
             </span>
             <button
               className="ml-4 rounded bg-red-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:bg-gray-300"
