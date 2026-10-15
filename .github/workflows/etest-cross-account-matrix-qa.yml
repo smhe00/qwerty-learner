@@ -1,4 +1,5 @@
 name: Etest V4 Cross-Account Backup Full Branch Matrix
+# QA rerun: S1 owner-registration navigation is now awaited before storage read.
 
 on:
   push:
