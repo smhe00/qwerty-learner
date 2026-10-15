@@ -54,6 +54,8 @@ export async function recoverPendingManualV4Import(): Promise<boolean> {
   refreshWorkspaceMigrationWitness()
   await manualV4ImportJournalPort.finalize(pending)
   sessionStorage.setItem('qwerty.s1.last-account-result',
-    '本地完整 V4 恢复完成，云端尚未覆盖。请检查数据后再手动同步。')
+    pending.purpose === 'clear-local-learning'
+      ? '当前工作区的本地学习记录已清除，云端和其他账号工作区未改变。'
+      : '本地完整 V4 恢复完成，云端尚未覆盖。请检查数据后再手动同步。')
   return true
 }
