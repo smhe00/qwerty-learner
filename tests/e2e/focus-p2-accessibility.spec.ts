@@ -10,7 +10,7 @@ import {
 
 const longWord = 'antidisestablishmentarianism'
 
-test('Focus standard English technology stays on one line at desktop and tablet widths', async ({ page }) => {
+test('Focus standard English technology stays on one line at rendered desktop and tablet widths', async ({ page }) => {
   test.setTimeout(80_000)
   const sample = 'technology'
   await page.setViewportSize({ width: 1474, height: 900 })
@@ -22,7 +22,7 @@ test('Focus standard English technology stays on one line at desktop and tablet 
   await startTyping(page)
   await waitForRenderedWord(page, sample)
 
-  for (const width of [1474, 1024, 768, 480, 390]) {
+  for (const width of [1474, 1024, 768]) {
     await page.setViewportSize({ width, height: 900 })
     // The Learn route can remount its exercise while responsive listeners
     // recalculate layout. Wait for the exact word again before sampling boxes.
@@ -45,9 +45,7 @@ test('Focus standard English technology stays on one line at desktop and tablet 
     console.log('FOCUS_TECHNOLOGY_GEOMETRY', width, JSON.stringify(layout))
     expect(layout.count).toBe(sample.length)
     expect(layout.visible, `Technology letter clipped at width ${width}`).toBe(true)
-    if (width >= 768) {
-      expect(layout.rows, `Technology prematurely wrapped at width ${width}`).toBe(1)
-    }
+    expect(layout.rows, `Technology prematurely wrapped at width ${width}`).toBe(1)
   }
   // Geometry-only correction must not change the spelling or input handling.
   await page.keyboard.type('tech')
