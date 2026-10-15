@@ -9,6 +9,7 @@ import { openWorkspaceVault, workspaceRegistryPort } from './workspace-vault'
 import { assertRestorableWorkspaceV4, parseWorkspaceV4, workspaceFingerprintV4 } from './workspace-v4'
 import type { WorkspaceIdentityV4, WorkspaceSnapshotV4 } from './workspace-v4'
 import { same } from './workspace-transition'
+import { secureRandomUuid } from './sha256-compat'
 
 const REGISTRY = 'registry'
 const SNAPSHOTS = 'snapshots'
@@ -20,6 +21,8 @@ const SHA256 = /^[a-f0-9]{64}$/
 
 export type PendingManualV4Import = {
   version: 1
+  /** Optional operation label; old journals without it remain fully valid. */
+  purpose?: 'clear-local-learning'
   owner: WorkspaceIdentityV4
   originalOwner: WorkspaceIdentityV4
   registryGeneration: number
@@ -49,7 +52,9 @@ function complete(tx: IDBTransaction): Promise<void> {
 function parseStored(value: unknown): StoredImport {
   if (!value || typeof value !== 'object') throw new Error('Corrupt manual V4 import journal')
   const record = value as Partial<StoredImport>
-  if (record.version !== 1 || !record.owner || !record.originalOwner ||
+  if (record.version !== 1 ||
+      (record.purpose !== undefined && record.purpose !== 'clear-local-learning') ||
+      !record.owner || !record.originalOwner ||
       !Number.isSafeInteger(record.registryGeneration) ||
       Number(record.registryGeneration) < 1 ||
       !SHA256.test(record.fingerprint ?? '') ||
@@ -95,8 +100,9 @@ export const manualV4ImportJournalPort = {
     registryGeneration: number
     original: WorkspaceSnapshotV4
     candidate: WorkspaceSnapshotV4
+    purpose?: 'clear-local-learning'
   }): Promise<PendingManualV4Import> {
-    const { owner, originalOwner, registryGeneration, original, candidate } = input
+    const { owner, originalOwner, registryGeneration, original, candidate, purpose } = input
     assertRestorableWorkspaceV4(original)
     assertRestorableWorkspaceV4(candidate)
     if (!same(original.metadata.source, owner) ||
@@ -109,9 +115,9 @@ export const manualV4ImportJournalPort = {
     ])
     const rollbackKey = 'manual-import-rollback:' +
       (owner.kind === 'account' ? encodeURIComponent(owner.accountId) : 'anonymous') +
-      ':' + crypto.randomUUID()
+      ':' + secureRandomUuid()
     const stored: StoredImport = {
-      version: 1, owner, originalOwner, registryGeneration, fingerprint,
+      version: 1, purpose, owner, originalOwner, registryGeneration, fingerprint,
       originalFingerprint, rollbackKey, snapshotJson: JSON.stringify(candidate),
     }
     const db = await openWorkspaceVault()
