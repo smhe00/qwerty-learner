@@ -68,3 +68,31 @@ test('cross-tab logout revokes visible cloud actions without removing local back
   })
   await assertLocalOnly(page)
 })
+
+test('expired S1 session hides cloud actions', async ({ page }) => {
+  await seedAccount(page)
+  await showData(page)
+  await expect(page.getByRole('button', { name: '立即同步' })).toBeVisible()
+  await page.evaluate(() => {
+    const key = 'qwerty.cloudAuth.v1'
+    const auth = JSON.parse(localStorage.getItem(key)!)
+    auth.expiresAt = Math.floor(Date.now() / 1000) - 1
+    localStorage.setItem(key, JSON.stringify(auth))
+    window.dispatchEvent(new StorageEvent('storage', { key }))
+  })
+  await assertLocalOnly(page)
+})
+
+test('wrong auth account never exposes another workspace cloud actions', async ({ page }) => {
+  await seedAccount(page)
+  await showData(page)
+  await expect(page.getByRole('button', { name: '立即同步' })).toBeVisible()
+  await page.evaluate(() => {
+    const key = 'qwerty.cloudAuth.v1'
+    const auth = JSON.parse(localStorage.getItem(key)!)
+    auth.user.userId = 'foreign-owner'
+    localStorage.setItem(key, JSON.stringify(auth))
+    window.dispatchEvent(new StorageEvent('storage', { key }))
+  })
+  await assertLocalOnly(page)
+})
