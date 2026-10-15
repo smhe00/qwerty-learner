@@ -1,5 +1,5 @@
 name: Etest Real User Journey QA (one-off)
-# Observe rendered S2 completion toast; wait for S1 workspace navigation before Learn.
+# Observe S2 completion toast; require durable Learn cursor advancement before typing next word.
 
 on:
   push:
