@@ -145,17 +145,17 @@ export default function CloudSyncSetting() {
                 <button type="button" className="my-btn-primary disabled:opacity-50"
                   disabled={!enabled || expired}
                   onClick={() => window.location.assign('/?v4-cloud-backup=download')}>
-                  下载云端完整 V4
+                  下载云端备份
                 </button>
                 <button type="button" className="text-sm underline disabled:opacity-50"
                   disabled={!enabled || expired}
                   onClick={() => window.location.assign('/?s2-recovery=manage')}>
-                  高级恢复（V4 冲突处理）
+                  处理同步冲突
                 </button>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                本地导入 V4 后不会自动覆盖云端。若云端与本地出现分歧，
-                请先保存双方备份，再通过高级恢复确认保留方向。
+                导入备份不会自动覆盖云端。如两端数据不同，
+                请先保存两端备份，再选择保留哪一份。
               </p>
             </>
           )}
