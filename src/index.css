@@ -391,7 +391,7 @@ body,
   color: var(--focus-text-muted);
 }
 
-/* Alpha placeholders are not actions: keep GitHub, donation and build
+/* Unavailable channel placeholders are not actions: keep GitHub, donation and build
    identity discoverable without advertising unavailable channels. */
 .focus-footer {
   color: var(--focus-text-muted);
