@@ -1148,3 +1148,115 @@ test('S1 seal detects stale V5 settings modification after the owner tab closes'
     (window as any).__backupHarness.db.wordRecords.count())).toBe(1)
   await reopened.close()
 })
+
+
+test('P0: new anonymous learner clears recorded words through S1 journal and keeps workspaces valid', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  await page.goto('/learn')
+  const active = await waitForActiveLearnSession(page)
+  const firstWord = active.reviewRecord.words[0].name as string
+  await startTyping(page)
+  await waitForRenderedWord(page, firstWord)
+  await page.keyboard.type(firstWord)
+  await expect.poll(async () => (await readReviewModeInfo(page))?.reviewRecord?.index ?? 0)
+    .toBeGreaterThan(0)
+  await page.getByRole('button', { name: '打开设置对话框' }).click()
+  await page.getByRole('tab', { name: '数据设置' }).click()
+  await page.getByText('高级操作 · 清除本地数据').click()
+  await page.getByRole('button', { name: '清除本地数据', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '清除当前工作区的本地学习数据' }))
+    .toBeVisible()
+  const reset = page.getByRole('button', { name: '确认清除本地学习数据' })
+  await expect(reset).toBeDisabled()
+  await page.getByLabel('我确认仅清除当前工作区的本地学习记录').check()
+  await expect(reset).toBeEnabled()
+  page.once('dialog', dialog => dialog.accept())
+  await reset.click()
+  await expect(page.getByText(/当前工作区的本地学习记录已清除/))
+    .toBeVisible({ timeout: 40_000 })
+  await harness(page)
+  const after = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    const registry = await h.workspaceRegistryPort.read()
+    const snapshot = await h.captureWorkingWorkspaceV4(h.ANONYMOUS)
+    const tables = (snapshot.workspaceData.database as any).data.data as
+      Array<{ tableName: string; rows: unknown[] }>
+    return {
+      rows: tables.map(t => ({ name: t.tableName, count: t.rows.length })),
+      sessions: Object.keys(snapshot.workspaceData.learnRuntime.dailySessions),
+      navigation: snapshot.workspaceData.navigation,
+      registry,
+      pending: await h.manualV4ImportJournalPort.read(),
+      backup: Boolean(await h.loadWorkspaceFromVault(h.ANONYMOUS)),
+    }
+  })
+  expect(after.rows).toHaveLength(6)
+  expect(after.rows.every(t => t.count === 0)).toBe(true)
+  expect(after.sessions).toEqual([])
+  expect(after.navigation).toEqual({ currentDict: 'zhongkaohexin', currentChapter: 0 })
+  expect(after.registry.active).toEqual({ kind: 'anonymous' })
+  expect(after.registry.generation).toBe(1)
+  expect(after.pending).toBeNull()
+  expect(after.backup).toBe(true)
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  await expect(page.getByText('学习数据安全检查未通过')).toHaveCount(0)
+})
+
+test('P0: S1 clear cancellation retains the exact original workspace', async ({ page }) => {
+  await harness(page)
+  await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+  })
+  await page.goto('/?s1-clear=manage')
+  await expect(page.getByRole('heading', { name: '清除当前工作区的本地学习数据' }))
+    .toBeVisible()
+  await page.getByRole('button', { name: '取消，返回学习' }).click()
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  await harness(page)
+  const before = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    return { records: await h.db.wordRecords.count(),
+      journal: await h.manualV4ImportJournalPort.read() }
+  })
+  expect(before).toEqual({ records: 1, journal: null })
+})
+
+test('P0: S1 local clear leaves other saved account vault and authentication unchanged', async ({ page }) => {
+  await harness(page)
+  const identity = { kind: 'account' as const, accountId: 'account-preserved-on-clear' }
+  await page.evaluate(async (id) => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+    const account = { kind: 'account', accountId: id }
+    const snapshot = await h.captureWorkingWorkspaceV4(account)
+    await h.saveWorkspaceToVault(account, snapshot)
+  }, identity.accountId)
+  await page.goto('/?s1-clear=manage')
+  await expect(page.getByText('LOCAL-ANONYMOUS')).toBeVisible()
+  await page.getByLabel('我确认仅清除当前工作区的本地学习记录').check()
+  page.once('dialog', dialog => dialog.accept())
+  await page.getByRole('button', { name: '确认清除本地学习数据' }).click()
+  await expect(page.getByText(/当前工作区的本地学习记录已清除/))
+    .toBeVisible({ timeout: 40_000 })
+  await harness(page)
+  const result = await page.evaluate(async id => {
+    const h = (window as any).__backupHarness
+    const account = await h.loadWorkspaceFromVault({ kind: 'account', accountId: id })
+    return {
+      current: await h.db.wordRecords.count(),
+      otherRecords: (account?.workspaceData.database as any)?.data?.data
+        ?.find((row: any) => row.tableName === 'wordRecords')?.rows?.length,
+      registry: await h.workspaceRegistryPort.read(),
+      pending: await h.manualV4ImportJournalPort.read(),
+    }
+  }, identity.accountId)
+  expect(result.current).toBe(0)
+  expect(result.otherRecords).toBe(1)
+  expect(result.registry.active).toEqual({ kind: 'anonymous' })
+  expect(result.pending).toBeNull()
+})
