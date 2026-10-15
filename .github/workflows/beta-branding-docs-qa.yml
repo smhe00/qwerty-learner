@@ -1,5 +1,5 @@
 name: Beta Public Copy, README and UI Gate (No Maker)
-# Final candidate: README references only Beta while archived Alpha snapshots stay historical.
+# Final candidate: active Beta copy only; technical algorithms, archived Alpha records and dictionary vocabulary remain untouched.
 on:
   push:
     branches: [release/beta-branding-docs-20261015]
