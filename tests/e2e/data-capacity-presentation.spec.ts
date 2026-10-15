@@ -36,7 +36,7 @@ test('V4 capacity overview reflects actual gzip snapshot, not obsolete HTTP Base
   // 1 KiB, and independently verify all durable table row counts below.
   const metrics = await section.locator('.grid > div').allTextContents()
   const displayedKiB = (text: string) => {
-    const match = text.match(/([0-9]+(?:\\.[0-9]+)?)\\s*KiB/)
+    const match = text.match(/([0-9]+(?:\.[0-9]+)?)\s*KiB/)
     if (!match) throw new Error('Missing KiB metric: ' + text)
     return Number(match[1])
   }
