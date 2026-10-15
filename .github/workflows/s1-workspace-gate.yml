@@ -16,6 +16,8 @@ on:
       - 'src/utils/db/data-export.ts'
       - 'tests/e2e/workspace-v4*'
       - 'tests/e2e/workspace-app-entry.spec.ts'
+      - 'tests/e2e/workspace-lock-compat.spec.ts'
+      - 'tests/e2e/workspace-v4.config.ts'
       - 'tests/e2e/backup-harness.ts'
       - '.github/workflows/s1-workspace-gate.yml'
   workflow_dispatch:
