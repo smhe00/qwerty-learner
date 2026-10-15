@@ -18,8 +18,9 @@ const env = Object.freeze({
   CIRCLE_OWNER_TOKEN: ownerToken, CIRCLE_MEMBER_TOKEN: memberToken,
 })
 
-function fixture({ enabled = true, wrongSession = false } = {}) {
+function fixture({ enabled = true, wrongSession = false, delayedCreation = false } = {}) {
   const events = new Map()
+  let hideCreationOnce = delayedCreation
   const calls = []
   const logs = []
   const backend = {
@@ -37,8 +38,10 @@ function fixture({ enabled = true, wrongSession = false } = {}) {
     },
     async get(key) { return structuredClone(events.get(key) ?? null) },
     async list({ prefix }) {
-      return { blobs: [...events.keys()].filter((key) => key.startsWith(prefix))
-        .map((key) => ({ key })) }
+      const keys = [...events.entries()].filter(([key, event]) =>
+        key.startsWith(prefix) && !(hideCreationOnce && event.type === 'CIRCLE_CREATED'))
+      hideCreationOnce = false
+      return { blobs: keys.map(([key]) => ({ key })) }
     },
   }
   const assembly = createCircleEventualAssembly({
@@ -120,6 +123,15 @@ test('full opt-in etest HTTP journey uses immutable sessions and leaves explicit
   assert.ok(f.calls.some((c) => c.path === '/api/auth/me' && c.hasAuth))
   assert.ok(f.logs.some((v) => v.includes('retained')))
   assert.ok(f.logs.every((v) => !v.includes(ownerToken) && !v.includes(memberToken)))
+})
+
+test('live workflow retries a newly created circle invisible on its first Blob listing', async () => {
+  const f = fixture({ delayedCreation: true })
+  const result = await f.run('run')
+  assert.equal(result.pass, true)
+  assert.equal(f.events.size, 6)
+  assert.ok(f.calls.filter((c) => c.method === 'GET' &&
+    /^\/api\/circle\/v2\/[a-f0-9]{24}$/.test(c.path)).length >= 5)
 })
 
 test('live journey refuses an unknown mode without calling network or touching social data', async () => {
