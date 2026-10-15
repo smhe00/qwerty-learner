@@ -193,7 +193,7 @@ async function advanced(page:Page, owner:string, choice:'keep-local'|'keep-cloud
   await expect(apply).toBeDisabled()
   await page.getByLabel('确认不可变账户 ID').fill(owner)
   await expect(apply).toBeEnabled()
-  page.once('dialog',d=>cancel?d.dismiss():d.accept())
+  dialogChoices.set(page,cancel?'dismiss':'accept')
   await apply.click()
   if(cancel) {
     await expect(page.getByText(/用户取消/)).toBeVisible({timeout:15000})
