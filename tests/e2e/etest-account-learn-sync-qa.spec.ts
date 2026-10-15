@@ -75,7 +75,7 @@ test('etest actual Learn -> manual V4 sync -> other isolated browser restore -> 
     const context=await browser.newContext({serviceWorkers:'block'})
     contexts.push(context)
     const page=await context.newPage()
-    page.on('dialog',dialog=>void dialog.dismiss().catch(()=>{}))
+    page.on('dialog',dialog=>void (dialog.message().includes('复制到新账户') ? dialog.dismiss() : dialog.accept()).catch(()=>{}))
     return page
   }
   try {
