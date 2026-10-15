@@ -22,7 +22,7 @@ const PRESENCE_CHANNEL = 'qwerty-plus.s1.writer-presence'
 const TTL_MS = 15_000
 const RENEW_MS = 2_000
 
-type LeaseRow = { key: string; owner: string; instance: string; expiresAt: number }
+type LeaseRow = { key: string; owner: string; instance: string; kind?: 'native' | 'fallback'; expiresAt: number }
 
 function randomToken(): string {
   if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function') {
@@ -83,7 +83,8 @@ function openLeaseDatabase(): Promise<IDBDatabase> {
 }
 
 /** A read/compare/write in ONE readwrite transaction is atomic across tabs. */
-function updateLease(db: IDBDatabase, owner: string, instance: string, action: LeaseAction): Promise<boolean> {
+function updateLease(db: IDBDatabase, owner: string, instance: string, action: LeaseAction,
+  kind: 'native' | 'fallback'): Promise<boolean> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite')
     const store = tx.objectStore(STORE)
@@ -96,12 +97,16 @@ function updateLease(db: IDBDatabase, owner: string, instance: string, action: L
         accepted = true
       } else if (action === 'renew') {
         if (current?.owner === owner && current.instance === instance) {
-          store.put({ key: KEY, owner, instance, expiresAt: Date.now() + TTL_MS })
+          store.put({ key: KEY, owner, instance, kind, expiresAt: Date.now() + TTL_MS })
           accepted = true
         }
       } else if (!current || current.owner === owner ||
-                 current.expiresAt <= Date.now()) {
-        store.put({ key: KEY, owner, instance, expiresAt: Date.now() + TTL_MS })
+                 current.expiresAt <= Date.now() ||
+                 (kind === 'native' && current.kind === 'native')) {
+        // A newly granted native Web Lock PROVES the previous native holder
+        // has exited; safely reclaim its IDB sidecar without waiting for TTL.
+        // A native tab must NEVER preempt a fallback holder.
+        store.put({ key: KEY, owner, instance, kind, expiresAt: Date.now() + TTL_MS })
         accepted = true
       }
     }
@@ -112,13 +117,13 @@ function updateLease(db: IDBDatabase, owner: string, instance: string, action: L
   })
 }
 
-async function acquireIndexedDbWriterLease(): Promise<WorkingDbLease> {
+async function acquireIndexedDbWriterLease(kind: 'native' | 'fallback'): Promise<WorkingDbLease> {
   const owner = await tabOwner()
   const instance = randomToken()
   const db = await openLeaseDatabase()
   let acquired = false
   try {
-    acquired = await updateLease(db, owner, instance, 'acquire')
+    acquired = await updateLease(db, owner, instance, 'acquire', kind)
   } catch (error) {
     db.close()
     throw error
@@ -150,7 +155,7 @@ async function acquireIndexedDbWriterLease(): Promise<WorkingDbLease> {
     window.removeEventListener('unload', release)
     window.removeEventListener('focus', check)
     document.removeEventListener('visibilitychange', onVisibilityChange)
-    void updateLease(db, owner, instance, 'release').catch(() => {
+    void updateLease(db, owner, instance, 'release', kind).catch(() => {
       // Abandoned leases expire after TTL; never mutate learning data here.
     }).finally(() => db.close())
   }
@@ -169,7 +174,7 @@ async function acquireIndexedDbWriterLease(): Promise<WorkingDbLease> {
   const check = () => {
     if (released || checking) return
     checking = true
-    void updateLease(db, owner, instance, 'renew')
+    void updateLease(db, owner, instance, 'renew', kind)
       .then(ok => { if (!ok) ownershipLost() })
       .catch(() => ownershipLost())
       .finally(() => { checking = false })
@@ -219,27 +224,32 @@ function acquireNativeWebLock(): Promise<WorkingDbLease> {
 }
 
 export async function acquireWorkspaceWriterLease(): Promise<WorkingDbLease> {
-  // Acquire this for BOTH supported and unsupported Web Locks browsers.
-  // Otherwise one class of tabs could write while the other held a lock.
-  const idbLease = await acquireIndexedDbWriterLease()
-  if (typeof navigator === 'undefined' || !navigator.locks) return idbLease
-
-  let nativeLease: WorkingDbLease
-  try {
-    nativeLease = await acquireNativeWebLock()
-  } catch (error) {
-    if (error instanceof Error &&
-        error.message === 'Another tab owns the active workspace writer lease') {
-      idbLease.release()
-      throw error
+  // The native lifetime lock is acquired FIRST. A fresh native lock is proof
+  // that a previously closed native tab cannot still own the writer, letting
+  // a successor reclaim an orphaned IDB sidecar without a startup delay.
+  let nativeLease: WorkingDbLease | undefined
+  if (typeof navigator !== 'undefined' && navigator.locks) {
+    try {
+      nativeLease = await acquireNativeWebLock()
+    } catch (error) {
+      if (error instanceof Error &&
+          error.message === 'Another tab owns the active workspace writer lease') {
+        throw error
+      }
+      // A browser policy can expose navigator.locks but reject request().
+      // Fall back to the common transactional IDB election in that case.
     }
-    // API may exist yet be disabled by a browser policy. The transactional
-    // IndexedDB lease still provides shared writer election.
-    return idbLease
+  }
+  let idbLease: WorkingDbLease
+  try {
+    idbLease = await acquireIndexedDbWriterLease(nativeLease ? 'native' : 'fallback')
+  } catch (error) {
+    nativeLease?.release()
+    throw error
   }
   return {
     release: () => {
-      nativeLease.release()
+      nativeLease?.release()
       idbLease.release()
     },
   }
