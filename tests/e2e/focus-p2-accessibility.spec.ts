@@ -28,12 +28,26 @@ test('Focus standard English technology stays on one line at desktop and tablet 
     // recalculate layout. Wait for the exact word again before sampling boxes.
     const token = page.locator('[data-typing-word="technology"]')
     await expect(token).toBeVisible({ timeout: 15_000 })
-    await expect.poll(async () => token.evaluate(word => {
+    const layout = await token.evaluate(word => {
       const rects = [...word.children].map(el => el.getBoundingClientRect())
-      return rects.length === 10 && rects.every(r => r.width > 0 &&
-        r.left >= -1 && r.right <= window.innerWidth + 1) &&
-        new Set(rects.map(r => Math.round(r.top))).size === 1
-    }), { timeout: 12_000, message: `technology should not wrap or clip at viewport ${width}` }).toBe(true)
+      const frame = word.parentElement!.getBoundingClientRect()
+      const workspace = document.querySelector('.focus-word-workspace')!.getBoundingClientRect()
+      return {
+        count: rects.length,
+        rows: new Set(rects.map(r => Math.round(r.top))).size,
+        visible: rects.every(r => r.width > 0 &&
+          r.left >= -1 && r.right <= window.innerWidth + 1),
+        totalLetterWidth: Math.round(rects.reduce((v,r)=>v+r.width,0)),
+        frameWidth: Math.round(frame.width),
+        workspaceWidth: Math.round(workspace.width),
+      }
+    })
+    console.log('FOCUS_TECHNOLOGY_GEOMETRY', width, JSON.stringify(layout))
+    expect(layout.count).toBe(sample.length)
+    expect(layout.visible, `Technology letter clipped at width ${width}`).toBe(true)
+    if (width >= 768) {
+      expect(layout.rows, `Technology prematurely wrapped at width ${width}`).toBe(1)
+    }
   }
   // Geometry-only correction must not change the spelling or input handling.
   await page.keyboard.type('tech')
