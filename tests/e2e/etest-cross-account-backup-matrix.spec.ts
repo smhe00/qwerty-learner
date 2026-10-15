@@ -77,11 +77,16 @@ async function open(page:Page, name:Name){
 async function learn(page:Page, count:number){
   const before=await learnRows(page)
   await page.goto(base+'learn',{waitUntil:'domcontentloaded'})
+  const prompt=page.getByText(/按任意键(?:开始|继续)/).first()
+  const pause=page.getByRole('button',{name:'暂停',exact:true})
+  // First visit to /learn is an idle landing screen; WordPanel is mounted
+  // only AFTER the learner explicitly begins a session.
+  await expect.poll(async()=>await prompt.isVisible().catch(()=>false) ||
+    await pause.isVisible().catch(()=>false),{timeout:35000}).toBe(true)
+  if(await prompt.isVisible().catch(()=>false))await page.keyboard.press('a')
+  await expect(pause).toBeVisible({timeout:30000})
   const word=page.locator('[data-typing-word]:visible').first()
   await expect(word).toBeVisible({timeout:35000})
-  const prompt=page.getByText(/按任意键(?:开始|继续)/).first()
-  if(await prompt.isVisible().catch(()=>false))await page.keyboard.press('a')
-  await expect(page.getByRole('button',{name:'暂停',exact:true})).toBeVisible({timeout:25000})
   for(let i=1;i<=count;i++){
     await expect(word).toHaveAttribute('data-typing-word',/\S+/,{timeout:30000})
     const spell=await word.getAttribute('data-typing-word')
