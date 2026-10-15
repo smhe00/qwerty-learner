@@ -121,7 +121,7 @@ export default function SoundSetting() {
 
   return (
     <ScrollArea.Root className="flex-1 select-none overflow-y-auto ">
-      <ScrollArea.Viewport className="h-full w-full px-3">
+      <ScrollArea.Viewport className="h-full w-full">
         <div className={styles.tabContent}>
           <div className={styles.section}>
             <span className={styles.sectionLabel}>单词发音</span>
