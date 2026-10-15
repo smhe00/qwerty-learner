@@ -492,8 +492,10 @@ test('Learn reuses Typing controls while preserving Typing-owned preferences', a
     ),
   ).toBe(before.chapter)
 
-  const info = await readReviewModeInfo(page)
-  const firstWord = info?.reviewRecord?.words?.[0]?.name as string
+  // The Learn landing is read-only; a real start must precede access to
+  // the generated acquisition record and its first word.
+  const info = await waitForActiveLearnSession(page)
+  const firstWord = info.reviewRecord.words[0].name as string
   await startTyping(page)
   await waitForRenderedWord(page, firstWord)
   const rendered = page.locator(
