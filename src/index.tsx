@@ -215,6 +215,29 @@ async function start(): Promise<void> {
       boot.release()
       return
     }
+    // P0 first-visit admission: initialize genuinely empty browser storage
+    // BEFORE mounting React/RecordDB writers or allowing anonymous study.
+    // Otherwise a new visitor can learn words in legacy mode and be mistaken
+    // for a pre-S1 V1 user when they first click Login.
+    //
+    // This is fail-closed and read-only until the emptiness proof succeeds:
+    // any old word, Learn checkpoint, unknown storage key, auth identity or
+    // inaccessible IndexedDB keeps the explicit legacy migration path.
+    // The exclusive S1 writer lease is held across proof + registry CAS.
+    if (boot.mode === 'legacy') {
+      const { isFreshEmptyLegacyWorkspace } = await import('./sync/workspace-pristine')
+      if (await isFreshEmptyLegacyWorkspace()) {
+        gateUI('正在准备学习空间', '正在初始化本机匿名学习记录…')
+        const { initializeLegacyWorkspace } = await import('./sync/workspace-coordinator')
+        await initializeLegacyWorkspace({ kind: 'anonymous' })
+        boot.release()
+        boot = undefined
+        // Snapshot initialization imports storage-backed modules. Reload the
+        // SAME requested route in a new JS realm before any app hydration.
+        window.location.replace(window.location.href)
+        return
+      }
+    }
     if (
       (import.meta.env.DEV ||
         (REACT_APP_DEPLOY_ENV !== 'pages' &&
@@ -368,21 +391,8 @@ async function start(): Promise<void> {
     }
     if (new URLSearchParams(window.location.search).get('s1-account') === 'manage') {
       if (boot.mode === 'legacy') {
-        // A genuinely empty new EdgeOne origin has no V1 data to assign.
-        // Only bypass the legacy ownership consent after a read-only proof
-        // that ALL legacy stores and learning/session state are empty.
-        const { isFreshEmptyLegacyWorkspace } = await import('./sync/workspace-pristine')
-        if (await isFreshEmptyLegacyWorkspace()) {
-          gateUI('正在初始化新的本机学习空间', '已确认本浏览器没有旧学习记录，正在创建匿名 S1 工作区…')
-          const { initializeLegacyWorkspace } = await import('./sync/workspace-coordinator')
-          await initializeLegacyWorkspace({ kind: 'anonymous' })
-          boot.release()
-          boot = undefined
-          // A fresh JS realm is mandatory after the durable registry CAS:
-          // modules imported during the first snapshot can cache old atoms.
-          window.location.replace('/?s1-account=manage')
-          return
-        }
+        // Old or uncertain V1 data can never be silently assigned to S1.
+        // The truly empty-origin case was handled before the app mounted.
         // Existing or uncertain V1 histories still require full backup and
         // explicit consent. An uninitialized registry is NOT proof of no data.
         // Old V1 users must establish isolated ownership once before logging
