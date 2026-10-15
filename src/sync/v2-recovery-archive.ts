@@ -5,6 +5,7 @@
  * even if the cloud retention policy later prunes earlier revisions.
  */
 import type { RemoteBinarySnapshot, RemoteSnapshot, RemoteSyncMeta } from './types'
+import { sha256Hex } from './sha256-compat'
 
 const HASH = /^[0-9a-f]{64}$/
 const MAX_ARCHIVE_BYTES = 16 * 1024 * 1024
@@ -58,9 +59,7 @@ export async function verifyPinnedCloudArchive(
       bytes[0] !== 0x1f || bytes[1] !== 0x8b) {
     throw new Error('Cloud archive size/gzip signature mismatch')
   }
-  const hash = await crypto.subtle.digest('SHA-256', bytes)
-  const actual = [...new Uint8Array(hash)]
-    .map(x => x.toString(16).padStart(2, '0')).join('')
+  const actual = await sha256Hex(bytes)
   if (actual !== pinned.payloadSha256) {
     throw new Error('Cloud archive transport SHA-256 mismatch')
   }
