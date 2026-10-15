@@ -10,6 +10,49 @@ import {
 
 const longWord = 'antidisestablishmentarianism'
 
+test('Focus standard English technology stays on one line at rendered desktop and tablet widths', async ({ page }) => {
+  test.setTimeout(80_000)
+  const sample = 'technology'
+  await page.setViewportSize({ width: 1474, height: 900 })
+  await seedReviewSession(page, [{
+    name: sample, trans: ['科技'], usphone: 'tekˈnɑlədʒi', ukphone: 'tekˈnɒlədʒi',
+  }], 902100)
+  await page.goto('/learn')
+  await waitForActiveLearnSession(page)
+  await startTyping(page)
+  await waitForRenderedWord(page, sample)
+
+  for (const width of [1474, 1024, 768]) {
+    await page.setViewportSize({ width, height: 900 })
+    // The Learn route can remount its exercise while responsive listeners
+    // recalculate layout. Wait for the exact word again before sampling boxes.
+    const token = page.locator('[data-typing-word="technology"]')
+    await expect(token).toBeVisible({ timeout: 15_000 })
+    const layout = await token.evaluate(word => {
+      const rects = [...word.children].map(el => el.getBoundingClientRect())
+      const frame = word.parentElement!.getBoundingClientRect()
+      const workspace = document.querySelector('.focus-word-workspace')!.getBoundingClientRect()
+      return {
+        count: rects.length,
+        rows: new Set(rects.map(r => Math.round(r.top))).size,
+        visible: rects.every(r => r.width > 0 &&
+          r.left >= -1 && r.right <= window.innerWidth + 1),
+        totalLetterWidth: Math.round(rects.reduce((v,r)=>v+r.width,0)),
+        frameWidth: Math.round(frame.width),
+        workspaceWidth: Math.round(workspace.width),
+      }
+    })
+    console.log('FOCUS_TECHNOLOGY_GEOMETRY', width, JSON.stringify(layout))
+    expect(layout.count).toBe(sample.length)
+    expect(layout.visible, `Technology letter clipped at width ${width}`).toBe(true)
+    expect(layout.rows, `Technology prematurely wrapped at width ${width}`).toBe(1)
+  }
+  // Geometry-only correction must not change the spelling or input handling.
+  await page.keyboard.type('tech')
+  await expect(page.locator('[data-typing-word="technology"]'))
+    .toHaveAttribute('data-typing-input', 'tech')
+})
+
 test('Focus P2 keeps every long-word letter inside the zoomed study viewport', async ({ page }) => {
   test.setTimeout(80_000)
   await page.setViewportSize({ width: 1024, height: 430 })
