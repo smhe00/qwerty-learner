@@ -387,6 +387,48 @@ test('real V5 old-JS tab cannot reopen or mutate RecordDB after V6 S1 rollout fe
 })
 
 
+test('S1 fresh anonymous and new account both default to Shanghai 2027, explicit choices remain isolated', async ({ page }) => {
+  await harness(page)
+  const result = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.initializeLegacyWorkspace(h.ANONYMOUS)
+    const before = await h.captureWorkingWorkspaceV4(h.ANONYMOUS)
+    const target = { kind: 'account', accountId: 's1-shanghai-new-account' }
+    const credential = {
+      token: 'fixture-token-shanghai',
+      expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      user: { userId: target.accountId, username: 'shanghai-user' },
+    }
+    const lease = await h.acquireWorkspaceWriterLease()
+    try {
+      await h.switchAuthenticatedWorkspace(target, credential)
+      const newAccount = JSON.parse(localStorage.getItem('currentDict') || 'null')
+      // A deliberate selection must be retained by this account's V4 vault.
+      localStorage.setItem('currentDict', JSON.stringify('cet4'))
+      await h.switchAuthenticatedWorkspace(h.ANONYMOUS, null)
+      const anonymousAfterLogout = JSON.parse(localStorage.getItem('currentDict') || 'null')
+      await h.switchAuthenticatedWorkspace(target, credential)
+      const accountAfterRelogin = JSON.parse(localStorage.getItem('currentDict') || 'null')
+      return {
+        anonymousBeforeLogin: before.workspaceData.navigation.currentDict,
+        newAccount,
+        anonymousAfterLogout,
+        accountAfterRelogin,
+        active: (await h.workspaceRegistryPort.read()).active,
+      }
+    } finally {
+      lease.release()
+    }
+  })
+  expect(result).toEqual({
+    anonymousBeforeLogin: 'shanghai-zhongkao-2027',
+    newAccount: 'shanghai-zhongkao-2027',
+    anonymousAfterLogout: 'shanghai-zhongkao-2027',
+    accountAfterRelogin: 'cet4',
+    active: { kind: 'account', accountId: 's1-shanghai-new-account' },
+  })
+})
+
 test('S1 anonymous to account switch commits auth only after registry activation', async ({ page }) => {
   await harness(page)
   const outcome = await page.evaluate(async () => {
@@ -1194,7 +1236,7 @@ test('P0: new anonymous learner clears recorded words through S1 journal and kee
   expect(after.rows).toHaveLength(6)
   expect(after.rows.every(t => t.count === 0)).toBe(true)
   expect(after.sessions).toEqual([])
-  expect(after.navigation).toEqual({ currentDict: 'zhongkaohexin', currentChapter: 0 })
+  expect(after.navigation).toEqual({ currentDict: 'shanghai-zhongkao-2027', currentChapter: 0 })
   expect(after.registry.active).toEqual({ kind: 'anonymous' })
   expect(after.registry.generation).toBe(1)
   expect(after.pending).toBeNull()
