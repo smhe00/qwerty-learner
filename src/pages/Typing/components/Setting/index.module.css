@@ -1,24 +1,43 @@
+/* Shared Focus UI styling for the legacy audio, display, Learn and Typing panels.
+ * Preserve existing component behavior and persistent settings keys. */
 .tab-content {
-  @apply flex w-full flex-col items-start justify-start gap-10 overflow-y-auto pb-40 pl-6 pr-9 pt-8;
+  @apply flex w-full min-w-0 flex-col gap-6 px-5 py-6 pb-10 sm:px-6;
 }
 
 .section {
-  @apply flex w-full flex-col items-start gap-4;
+  @apply flex w-full min-w-0 flex-col items-start gap-3 rounded-xl border p-4;
+  border-color: var(--focus-border);
+  background: var(--focus-surface);
 }
+
 .section-label {
-  @apply pb-0 text-xl font-medium text-gray-600;
+  @apply text-base font-semibold leading-snug;
+  color: var(--focus-text);
 }
+
 .section-description {
-  @apply -mt-1 pl-4 text-left text-xs font-normal leading-tight text-gray-600;
+  @apply -mt-1 text-left text-sm font-normal leading-relaxed;
+  color: var(--focus-text-secondary);
 }
 
 .block {
-  @apply flex w-full flex-col items-start gap-2 py-0 pl-4;
+  @apply flex w-full min-w-0 flex-col items-start gap-2;
 }
+
 .block-label {
-  @apply font-medium text-gray-600;
+  @apply text-sm font-medium;
+  color: var(--focus-text);
 }
+
 .switch-block {
   composes: block;
-  @apply flex-row items-center justify-between;
+  @apply min-h-10 flex-row items-center justify-between gap-4 rounded-lg px-3 py-2;
+  background: var(--focus-surface-muted);
+}
+
+/* Apply a legible foreground in both themes, including sliders and states
+ * emitted by the unchanged legacy settings controls. */
+.tab-content :global(.text-gray-600),
+.tab-content :global(.text-neutral-500) {
+  color: var(--focus-text-secondary);
 }
