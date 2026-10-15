@@ -1,4 +1,5 @@
 import { clearAllLearnDailySessions } from '@/learn/daily-session'
+import { DEFAULT_DICTIONARY_ID } from '@/resources/defaultDictionary'
 import { db } from '@/utils/db'
 import { peakImportFile } from 'dexie-export-import'
 
@@ -47,14 +48,14 @@ function parseStoredValue<T>(key: string, fallback: T): T {
 }
 
 export function readLearningState(): BackupLearningState {
-  const currentDict = parseStoredValue<string>('currentDict', 'zhongkaohexin')
+  const currentDict = parseStoredValue<string>('currentDict', DEFAULT_DICTIONARY_ID)
   const rawChapter = parseStoredValue<number>('currentChapter', 0)
   const currentChapter =
     Number.isInteger(rawChapter) && Number(rawChapter) >= 0 ? Number(rawChapter) : 0
 
   return {
     currentDict:
-      typeof currentDict === 'string' && currentDict.trim() ? currentDict : 'zhongkaohexin',
+      typeof currentDict === 'string' && currentDict.trim() ? currentDict : DEFAULT_DICTIONARY_ID,
     currentChapter,
   }
 }
@@ -98,7 +99,7 @@ export function restoreLearningState(state: BackupLearningState) {
   const currentDict =
     typeof state.currentDict === 'string' && state.currentDict.trim()
       ? state.currentDict
-      : 'zhongkaohexin'
+      : DEFAULT_DICTIONARY_ID
   const currentChapter =
     Number.isInteger(state.currentChapter) && state.currentChapter >= 0
       ? state.currentChapter
