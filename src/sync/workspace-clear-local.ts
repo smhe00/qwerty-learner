@@ -5,6 +5,7 @@
  * The caller must own the pre-mount exclusive writer lease. No authenticated
  * identity, cloud account, other workspace snapshot, or settings are erased.
  */
+import { DEFAULT_DICTIONARY_ID } from '@/resources/defaultDictionary'
 import { loadAuth } from './auth'
 import { manualV4ImportJournalPort } from './manual-v4-import-journal'
 import { syncV2PullJournalPort } from './v2-pull-journal'
@@ -35,7 +36,7 @@ export function clearedLearningWorkspaceV4(original: WorkspaceSnapshotV4): Works
   }
   for (const entry of database.data.data) entry.rows = []
   next.workspaceData.learnRuntime.dailySessions = {}
-  next.workspaceData.navigation = { currentDict: 'zhongkaohexin', currentChapter: 0 }
+  next.workspaceData.navigation = { currentDict: DEFAULT_DICTIONARY_ID, currentChapter: 0 }
   return createWorkspaceV4(next.workspaceData, {
     source: structuredClone(original.metadata.source),
     createdAt: new Date().toISOString(),
