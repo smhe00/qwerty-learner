@@ -7,6 +7,7 @@ import {
   readLearningState,
 } from '@/utils/backup'
 import { db } from '@/utils/db/core'
+import { DEFAULT_DICTIONARY_ID } from '@/resources/defaultDictionary'
 import { sha256Hex as sha256BytesHex } from './sha256-compat'
 
 export const CLIENT_FORMAT_VERSION = BACKUP_FORMAT_VERSION
@@ -134,7 +135,7 @@ async function stateFromJson(json: string): Promise<LocalState> {
   const learningState = readLearningState()
   const hasMeaningfulState =
     recordCount > 0 ||
-    learningState.currentDict !== 'zhongkaohexin' ||
+    learningState.currentDict !== DEFAULT_DICTIONARY_ID ||
     learningState.currentChapter !== 0
 
   return {
