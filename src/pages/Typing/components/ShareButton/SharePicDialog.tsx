@@ -178,7 +178,7 @@ export default function SharePicDialog({ showState, setShowState, randomChoose }
               <div className="ml-5 mt-2 self-start text-xs text-gray-600">{`第 ${currentChapter + 1} 章`}</div>
             </div>
             <div className="mb-3 ml-5 mt-auto">
-              <div className="text-xs">Qwerty Plus · Learn Alpha</div>
+              <div className="text-xs">Qwerty Plus · Learn Beta</div>
               <div className="mt-1 text-xs font-normal text-gray-400">Typing + Long-term Learn</div>
             </div>
             <div className="absolute -right-9 bottom-10 ">
