@@ -44,7 +44,7 @@ export default function AdvancedSetting() {
 
   return (
     <ScrollArea.Root className="flex-1 select-none overflow-y-auto ">
-      <ScrollArea.Viewport className="h-full w-full px-3">
+      <ScrollArea.Viewport className="h-full w-full">
         <div className={styles.tabContent}>
           <div className={styles.section}>
             <span className={styles.sectionLabel}>章节乱序</span>
@@ -59,7 +59,7 @@ export default function AdvancedSetting() {
             </div>
           </div>
           <div className={styles.section}>
-            <span className={styles.sectionLabel}>练习时展示上一个/下一个单词</span>
+            <span className={styles.sectionLabel}>前后单词提示</span>
             <span className={styles.sectionDescription}>开启后，练习中会在上方展示上一个/下一个单词</span>
             <div className={styles.switchBlock}>
               <Switch checked={isShowPrevAndNextWord} onChange={onToggleLastAndNextWord} className="switch-root">
@@ -71,7 +71,7 @@ export default function AdvancedSetting() {
             </div>
           </div>
           <div className={styles.section}>
-            <span className={styles.sectionLabel}>是否忽略大小写</span>
+            <span className={styles.sectionLabel}>忽略大小写</span>
             <span className={styles.sectionDescription}>开启后，输入时不区分大小写，如输入“hello”和“Hello”都会被认为是正确的</span>
             <div className={styles.switchBlock}>
               <Switch checked={isIgnoreCase} onChange={onToggleIgnoreCase} className="switch-root">
@@ -83,8 +83,8 @@ export default function AdvancedSetting() {
             </div>
           </div>
           <div className={styles.section}>
-            <span className={styles.sectionLabel}>是否允许默写模式下显示提示</span>
-            <span className={styles.sectionDescription}>开启后，可以通过鼠标 hover 单词显示正确答案 </span>
+            <span className={styles.sectionLabel}>鼠标悬停显示答案</span>
+            <span className={styles.sectionDescription}>仅在 Typing 默写练习中使用。鼠标悬停在单词上显示答案；Learn 提示流程不会因此改变。 </span>
             <div className={styles.switchBlock}>
               <Switch checked={isShowAnswerOnHover} onChange={onToggleShowAnswerOnHover} className="switch-root">
                 <span aria-hidden="true" className="switch-thumb" />
