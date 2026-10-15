@@ -1,0 +1,83 @@
+name: Qwerty Plus Beta RC Closure Gate (No Maker Deployment)
+
+on:
+  push:
+    branches: [release/beta-rc-20261015]
+    paths:
+      - '.github/workflows/beta-rc-closure-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  beta-build-and-v4-contract:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Verify all customer-facing Beta metadata and semver
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict'
+          import { readFileSync } from 'node:fs'
+          const pkg=JSON.parse(readFileSync('package.json','utf8'))
+          assert.equal(pkg.version,'0.2.0-beta.1')
+          for(const path of ['index.html','src/components/Footer/index.tsx','src/pages/Mobile/index.tsx']){
+            const content=readFileSync(path,'utf8')
+            assert.doesNotMatch(content,/alpha/i,path+' still exposes Alpha')
+          }
+          assert.match(readFileSync('src/components/Footer/index.tsx','utf8'),/Qwerty Plus Beta/)
+          console.log('PASS Beta branding and version contract')
+          NODE
+      - name: Lint merged Settings and browser changes
+        run: yarn eslint src/pages/Typing/components/Setting/DataSetting.tsx src/pages/Typing/components/Setting/DeveloperSetting.tsx src/pages/Typing/components/Setting/V4SizeReport.tsx src/components/Footer/index.tsx src/pages/Mobile/index.tsx
+      - name: Build exact combined Beta RC
+        run: yarn build
+      - name: V4 binary staging, CAS, portability and error protection
+        run: |
+          node --test \
+            tests/cloud/v4-commit-headers.test.mjs \
+            tests/cloud/v4-http-parts.test.mjs \
+            tests/cloud/v4-http-part-retry.test.mjs \
+            tests/cloud/sync-v4-server.test.mjs \
+            tests/cloud/edgeone-blob-storage.test.mjs \
+            tests/cloud/sync-v2-policy.test.mjs \
+            tests/cloud/sync-v2-preflight.test.mjs \
+            tests/cloud/sync-v2-manual-executor.test.mjs \
+            tests/cloud/sync-v2-pull-transaction.test.mjs \
+            tests/cloud/sync-v2-recovery-archive.test.mjs \
+            tests/cloud/manual-v4-import-plan.test.mjs
+
+  beta-ui-chromium:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
+      - name: Beta visible Alpha removal, Data, Learn layout and V4 import E2E
+        run: npx playwright test --config=tests/e2e/beta-rc-ui.config.ts --project=chromium --workers=1 --retries=0 --reporter=list
+
+  beta-recovery-chromium:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
+      - name: S1 and V4 cloud recovery integrity browser gate
+        run: npx playwright test --config=tests/e2e/workspace-v4.config.ts --project=chromium --workers=1 --retries=0 --reporter=list
