@@ -17,9 +17,11 @@ async function assertLocalOnly(page: Page) {
   await expect(page.getByText('云端同步', { exact: true })).toHaveCount(0)
   await expect(page.getByLabel('每个 Block 完成后自动同步')).toHaveCount(0)
   for (const name of ['导出完整备份','验证 V4 备份文件（只读）',
-    '分析备份容量（只读）','导入完整备份 V4（支持跨账号）','清除本地数据']) {
+    '分析备份容量（只读）','导入完整备份 V4（支持跨账号）']) {
     await expect(page.getByRole('button', { name })).toBeVisible()
   }
+  await page.getByText('高级操作 · 清除本地数据').click()
+  await expect(page.getByRole('button', { name: '清除本地数据' })).toBeVisible()
   await expect(page.getByRole('tabpanel').filter({ hasText: '本地备份' }))
     .not.toContainText('云端备份')
 }
