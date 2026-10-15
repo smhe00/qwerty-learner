@@ -126,6 +126,11 @@ export async function runCircleEtestJourney({
     assert.match(circleId || '', /^[a-f0-9]{24}$/, 'Invalid server circle ID')
     assert.match(created.inviteCode || '', /^QC2-[a-f0-9]{24}-[a-f0-9]{32}$/)
     const path = '/api/circle/v2/' + circleId
+    // An acknowledged append is not immediately visible on every Blob node.
+    await waitFor('new circle visibility before invitation', async () => {
+      const r = await request(fetchImpl, path, { token: owner })
+      return r.status === 200 && r.value?.result?.meta?.ownerUserId === ownerId
+    })
     const joined = await post('/api/circle/v2/join', member,
       { inviteCode: created.inviteCode }, 'join circle')
     assert.equal(joined.final, false, 'Join must not claim immediate finality')
