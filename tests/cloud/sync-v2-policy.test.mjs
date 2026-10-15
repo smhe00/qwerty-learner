@@ -163,3 +163,61 @@ test('S2 step 1 never performs HTTP, IndexedDB, or localStorage operations', () 
   assert.equal(decide(input).action, 'push')
   assert.equal(input.local.logicalFingerprint, B)
 })
+
+
+/**
+ * Cross-account Backup V4 matrix. Both local .gz and cloud-exported .gz use
+ * the identical portable import contract: source provenance is rewritten to
+ * the receiving account, and its old cloud baseline is INVALIDATED.
+ *
+ * All here are ordinary Sync decisions, before any explicit recovery.
+ * The two recovery directions are tested at the browser/user level.
+ */
+test('cross-account Backup V4 two-source x six-state decision matrix never silently overwrites', () => {
+  for (const origin of ['local-cross-account', 'cloud-export-cross-account']) {
+    const nullBaseline = null
+    const targetLocal = { logicalFingerprint: B, hasMeaningfulState: true }
+    const absent = { hasData:false, revision:0, logicalFingerprint:null, clientFormatVersion:null }
+    const installed = { hasData:true, revision:4, logicalFingerprint:A, clientFormatVersion:'qwerty-backup-v4' }
+    const cases = [
+      { name:'target cloud absent: upload imported local', remote:absent,
+        local:targetLocal, baseline:nullBaseline, action:'push', reason:'local-changed', rev:0 },
+      { name:'cloud equals imported: noop, rebase only', remote:{...installed,logicalFingerprint:B},
+        local:targetLocal, baseline:nullBaseline, action:'noop', reason:'identical', rev:4 },
+      { name:'target cloud distinct: prohibit implicit overwrite', remote:installed,
+        local:targetLocal, baseline:nullBaseline, action:'conflict', reason:'unbound-local', rev:4 },
+      { name:'empty local with target cloud: safe pull', remote:installed,
+        local:{ logicalFingerprint:B, hasMeaningfulState:false }, baseline:nullBaseline,
+        action:'pull', reason:'remote-changed', rev:4 },
+      { name:'target cloud legacy V3: blocked', remote:{...installed,clientFormatVersion:'qwerty-backup-v3'},
+        local:targetLocal, baseline:nullBaseline, action:'blocked', reason:'remote-format-unsupported', rev:4 },
+      { name:'target cloud missing fingerprint: blocked', remote:{...installed,logicalFingerprint:null},
+        local:targetLocal, baseline:nullBaseline, action:'blocked', reason:'remote-fingerprint-missing', rev:4 },
+    ]
+    for (const c of cases) {
+      const input={activeWorkspace:workspace,authenticatedAccountId:workspace.accountId,
+        local:c.local,remote:c.remote,baseline:c.baseline}
+      const original=structuredClone(input)
+      const result=decideManualSyncV2(input)
+      assert.equal(result.action,c.action,origin+' / '+c.name)
+      assert.equal(result.reason,c.reason,origin+' / '+c.name)
+      assert.equal(result.remoteRevision,c.rev,origin+' / '+c.name)
+      assert.deepEqual(input,original,'decision kernel must not mutate '+origin)
+    }
+    // Invalidated import baseline must NEVER accidentally use previous account
+    // baseline to authorize a push. A surviving wrong-owner baseline blocks.
+    const bad=decideManualSyncV2({
+      activeWorkspace:workspace,authenticatedAccountId:workspace.accountId,
+      local:targetLocal,remote:installed,
+      baseline:{accountId:'source-account',baseRevision:4,logicalFingerprint:A},
+    })
+    assert.deepEqual([bad.action,bad.reason],['blocked','baseline-owner-mismatch'])
+    // Simulate a previously reconciled replica and both sides editing.
+    const concurrent=decideManualSyncV2({
+      activeWorkspace:workspace,authenticatedAccountId:workspace.accountId,
+      local:targetLocal,remote:{...installed,revision:5,logicalFingerprint:C},
+      baseline:{accountId:workspace.accountId,baseRevision:4,logicalFingerprint:A},
+    })
+    assert.deepEqual([concurrent.action,concurrent.reason],['conflict','concurrent-edits'])
+  }
+})
