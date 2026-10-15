@@ -45,10 +45,20 @@ jobs:
           const marker = await read(base + '/source-commit.txt')
           const health = await read(base + '/api/health')
           const gate = await read(base + '/api/circle/v2')
+          // Without a bearer and with deliberately invalid create input, no Circle mutation is possible.
+          const createProbeResponse = await fetch(base + '/api/circle/v2', {
+            method: 'POST', cache: 'no-store', redirect: 'follow',
+            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+            body: '{}', signal: AbortSignal.timeout(15000),
+          })
+          const createProbe = { status: createProbeResponse.status,
+            text: (await createProbeResponse.text()).slice(0, 12000) }
           let healthPayload = {}
           let gatePayload = {}
           try { healthPayload = JSON.parse(health.text) } catch {}
           try { gatePayload = JSON.parse(gate.text) } catch {}
+          let createProbePayload = {}
+          try { createProbePayload = JSON.parse(createProbe.text) } catch {}
           const result = {
             check: 'circle_etest_readonly_probe_v1',
             stagingRefSha: expectedSha,
@@ -62,9 +72,11 @@ jobs:
               /binary|multipart|base64/i.test(s)),
             circleUnauthenticatedHttpStatus: gate.status,
             circleErrorCode: gatePayload.error ?? null,
-            classification: gate.status === 404 ? 'circle_disabled_or_not_mounted' :
-              gate.status === 503 ? 'circle_config_or_runtime_unavailable' :
-              gate.status === 401 ? 'circle_gateway_mounted_and_bearer_required' :
+            circleCreateNoTokenStatus: createProbe.status,
+            circleCreateNoTokenError: createProbePayload.error ?? null,
+            classification: createProbe.status === 404 ? 'circle_disabled_or_not_mounted' :
+              createProbe.status === 503 ? 'circle_config_or_runtime_unavailable' :
+              createProbe.status === 401 ? 'circle_gateway_mounted_and_bearer_required' :
               'unexpected_gate_status',
             noAccountsCreated: true,
             noBlobWrites: true,
@@ -76,6 +88,8 @@ jobs:
             'Staging deployment SHA prefix mismatch: do not proceed to account tests')
           assert.equal(health.status, 200, 'Staging health unavailable')
           assert.equal(healthPayload.service, 'qwerty-sync-gateway')
-          assert.ok([401, 404, 503].includes(gate.status),
-            'Circle endpoint returned unexpected unauthenticated status')
+          assert.ok([404, 405, 503].includes(gate.status),
+            'Circle GET endpoint returned unexpected unauthenticated status')
+          assert.ok([401, 404, 503].includes(createProbe.status),
+            'Circle POST endpoint returned unexpected unauthenticated status')
           NODE
