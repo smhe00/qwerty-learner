@@ -1,0 +1,55 @@
+name: Etest V4 Bodyless Commit Real Blob Stress
+
+on:
+  push:
+    branches: [qa/etest-v4-commit-stress-20261015]
+
+permissions:
+  contents: read
+
+jobs:
+  pinned-etest-stress:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 22
+    env:
+      QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
+      EXPECTED_ETEST_SHA: e54720945961331f3d3676556378392614fd3782
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Wait for deployed etest frontend SHA (no Maker build)
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict'
+          assert.equal(process.env.GITHUB_REF_NAME,'qa/etest-v4-commit-stress-20261015')
+          let seen=''
+          for(let attempt=0;attempt<60;attempt++){
+            try{
+              const r=await fetch('https://etest.edgeone.dev/source-commit.txt',{
+                cache:'no-store',signal:AbortSignal.timeout(12000),
+                headers:{'Cache-Control':'no-cache'}
+              })
+              seen=r.ok()?(await r.text()).trim():String(r.status)
+              if(/^[a-f0-9]{7,40}$/.test(seen)&&process.env.EXPECTED_ETEST_SHA.startsWith(seen)){
+                console.log('DEPLOYED_ETEST_MATCH',seen)
+                process.exit(0)
+              }
+            }catch(error){seen=error?.name||'fetch-failed'}
+            if(attempt%4===0)console.log('Waiting for etest SHA, current marker:',seen)
+            await new Promise(resolve=>setTimeout(resolve,12000))
+          }
+          throw Error('etest did not deploy expected fixed SHA; no test accounts were created')
+          NODE
+      - name: Install no-mock backend integration dependencies
+        run: yarn install --frozen-lockfile
+      - name: Three full real-Blob V4 commit series; cleanup per series
+        run: |
+          set -euo pipefail
+          for i in 1 2 3; do
+            echo "=== ETEST_BODYLESS_V4_STRESS series $i of 3 ==="
+            node tests/cloud/p4b-edgeone-gate-smoke.mjs
+          done
+          echo "ETEST_BODYLESS_V4_STRESS 3/3 PASS"
