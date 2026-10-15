@@ -6,6 +6,7 @@ const prefix = process.env.QWERTY_E2E_USER_PREFIX!
 const password = process.env.QWERTY_E2E_PASSWORD!
 type Name = 'a'|'b'|'c'|'d'
 const username = (n:Name) => prefix+'_'+n
+const dialogChoices = new WeakMap<Page,'accept'|'dismiss'>()
 const checkpoints: Array<{case:string,localRows?:number,remoteRevision?:number,result:string}> = []
 const add = (name:string, result:string, rows?:number, revision?:number) =>
   checkpoints.push({case:name,result,localRows:rows,remoteRevision:revision})
@@ -142,7 +143,7 @@ async function importV4(page:Page, gz:Buffer, targetId:string, cancel=false){
   await expect(apply,'cross-owner requires separate consent').toBeDisabled()
   await page.getByLabel(/我明确同意把来源不同 ID/).check()
   await expect(apply).toBeEnabled()
-  page.once('dialog',d=>cancel?d.dismiss():d.accept())
+  dialogChoices.set(page,cancel?'dismiss':'accept')
   await apply.click()
   if(cancel){
     await expect(page.getByText(/操作已取消/)).toBeVisible({timeout:10000})
@@ -196,8 +197,8 @@ async function advanced(page:Page, owner:string, choice:'keep-local'|'keep-cloud
     await expect.poll(async()=>(await getMeta(page)).revision,{timeout:30000})
       .toBe(before.revision+1)
   } else {
-    await expect.poll(async()=>(await page.locator('body').innerText())
-      .includes('恢复'),{timeout:90000}).toBe(true)
+    await expect.poll(async()=>!new URL(page.url()).searchParams.has('s2-recovery'),
+      {timeout:90000}).toBe(true)
     await page.goto(base,{waitUntil:'domcontentloaded'})
     expect((await getMeta(page)).revision).toBe(before.revision)
   }
@@ -211,7 +212,12 @@ test('cross-account LOCAL/CLOUD Backup V4: empty, identical, divergent, both ove
   const contexts:BrowserContext[]=[]
   const make=async()=>{const c=await browser.newContext({acceptDownloads:true,serviceWorkers:'block'})
     contexts.push(c);const p=await c.newPage()
-    p.on('dialog',d=>void (d.message().includes('复制到新账户')?d.dismiss():d.accept()).catch(()=>{}))
+    p.on('dialog',d=>{
+      const choice=dialogChoices.get(p)
+      dialogChoices.delete(p)
+      void (choice==='dismiss'||(!choice&&d.message().includes('复制到新账户'))
+        ?d.dismiss():d.accept()).catch(()=>{})
+    })
     return p
   }
   try{
