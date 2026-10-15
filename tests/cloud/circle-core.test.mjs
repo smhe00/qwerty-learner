@@ -232,6 +232,59 @@ test('listed but unreadable event fails closed instead of omitting a privacy-cri
   assert.equal(recovered.progress[0].newWords, 11)
 })
 
+test('bounded parallel replay retains event order and fails closed on unreadable keys', async () => {
+  const { blob, log, service, create } = setup()
+  const c = await create()
+  await Promise.all(Array.from({ length: 12 }, (_, i) => log.append({
+    circleId: c.circleId, actorUserId: owner, type: 'PROGRESS_PUBLISHED',
+    operationId: 'progress_' + String(i).padStart(5, '0'),
+    payload: { day, completed: true, newWords: i },
+  })))
+  const rawGet = blob.get.bind(blob)
+  let active = 0
+  let peak = 0
+  blob.get = async (...args) => {
+    active++
+    peak = Math.max(peak, active)
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      return await rawGet(...args)
+    } finally { active-- }
+  }
+  const parallel = createCircleEventLog(blob, { readConcurrency: 3 })
+  const observed = await parallel.scan(c.circleId)
+  const expectedIds = [...blob.objects.values()].reverse().map((e) => e.eventId)
+  assert.deepEqual(observed.map((e) => e.eventId), expectedIds)
+  assert.equal(peak, 3, 'Concurrent GETs must use the configured bound')
+  peak = 0
+  const serial = createCircleEventLog(blob, { readConcurrency: 1 })
+  assert.deepEqual((await serial.scan(c.circleId)).map((e) => e.eventId), expectedIds)
+  assert.equal(peak, 1)
+  for (const invalid of [0, -1, 1.5, 33, Infinity]) {
+    assert.throws(() => createCircleEventLog(blob, { readConcurrency: invalid }), /Invalid event store/)
+  }
+  blob.invisible.add(blob.writes[4])
+  await assert.rejects(parallel.scan(c.circleId), /listed event temporarily unreadable/)
+  await assert.rejects(service.getCircle(owner, c.circleId), { code: 'circle_view_uncertain' })
+  blob.invisible.clear()
+  assert.equal((await parallel.scan(c.circleId)).length, 13)
+})
+
+test('parallel replay validates full listing scope before any Blob GET', async () => {
+  const { blob, log, create } = setup()
+  const c = await create()
+  const originalGet = blob.get.bind(blob)
+  const originalList = blob.list.bind(blob)
+  let reads = 0
+  blob.get = async (...args) => { reads++; return originalGet(...args) }
+  blob.list = async (options) => {
+    const result = await originalList(options)
+    return { blobs: [...result.blobs, { key: 'accounts/leak.json' }] }
+  }
+  await assert.rejects(log.scan(c.circleId), /Out-of-scope Circle event key/)
+  assert.equal(reads, 0, 'Do not access any data when listing scope is invalid')
+})
+
 test('leave/remove are permanent remove-wins and filter progress, achievements and claps', async () => {
   const { blob, service, create } = setup()
   const c = await create()

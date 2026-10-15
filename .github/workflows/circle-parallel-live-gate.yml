@@ -1,0 +1,48 @@
+name: Circle Parallel Replay (isolated real Blob)
+
+# Runs once on this workflow's creation/update; can be manually retried.
+# Never changes EdgeOne Maker deployments or production data.
+on:
+  push:
+    branches:
+      - feature/circle-parallel-replay-20261016
+    paths:
+      - '.github/workflows/circle-parallel-live-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: circle-parallel-sandbox-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  bounded-read-live-sandbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Verify sandbox probe syntax and no environment dependency at import
+        run: node --check scripts/circle-eventual-blob-sandbox.mjs
+      - name: Verify serial and parallel reads of temporary sandbox events
+        env:
+          CIRCLE_EVENTUAL_BLOB_ACK: RUN_EVENTUAL_CIRCLE_SANDBOX_ONLY
+          CIRCLE_TEST_BLOB_STORE: qwerty-circle-sandbox
+          CIRCLE_TEST_PROJECT_ID: makers-yggquqwubqul
+          CIRCLE_TEST_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+        run: |
+          if [ -z "$CIRCLE_TEST_API_TOKEN" ]; then
+            echo "::error::Circle sandbox token unavailable; refusing all Blob operations"
+            exit 1
+          fi
+          if [ "$CIRCLE_TEST_BLOB_STORE" != "qwerty-circle-sandbox" ]; then
+            echo "::error::Only the isolated Circle sandbox Store is allowed"
+            exit 1
+          fi
+          node scripts/circle-eventual-blob-sandbox.mjs
