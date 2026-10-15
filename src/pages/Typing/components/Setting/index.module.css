@@ -31,7 +31,8 @@
 
 .switch-block {
   composes: block;
-  @apply min-h-10 flex-row items-center justify-between gap-4 rounded-lg px-3 py-2;
+  @apply flex-row items-center justify-between gap-4 rounded-lg px-3 py-2;
+  min-height: 2.5rem;
   background: var(--focus-surface-muted);
 }
 
