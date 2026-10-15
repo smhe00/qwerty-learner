@@ -274,7 +274,7 @@ const ResultScreen = () => {
                   type="button"
                   disabled
                   className="cursor-not-allowed opacity-35"
-                  title="Qwerty Plus Alpha：小红书渠道暂未开放"
+                  title="Qwerty Plus Beta：小红书渠道暂未开放"
                   aria-label="小红书渠道暂未开放"
                 >
                   <IconXiaoHongShu fontSize={15} className="text-gray-500" />
@@ -296,7 +296,7 @@ const ResultScreen = () => {
                   className="cursor-not-allowed text-gray-500 opacity-35 dark:text-gray-400"
                   type="button"
                   disabled
-                  title="Qwerty Plus Alpha：社区渠道暂未开放"
+                  title="Qwerty Plus Beta：社区渠道暂未开放"
                   aria-label="社区渠道暂未开放"
                 >
                   <IconWechat fontSize={16} className="text-gray-500" />
