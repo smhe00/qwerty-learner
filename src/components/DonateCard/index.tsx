@@ -110,7 +110,7 @@ export const DonateCard = () => {
                     </p>
 
                     <p className="mx-auto px-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                      Qwerty Plus 当前处于 Alpha 阶段。源码与 GPL-3.0 许可证信息以当前项目仓库为准。
+                      Qwerty Plus 当前为 Beta 测试版。源码和 GPL-3.0 许可信息请参阅项目仓库。
                     </p>
                   </div>
 
