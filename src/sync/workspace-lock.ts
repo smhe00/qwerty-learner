@@ -1,18 +1,130 @@
 /**
- * S1 opt-in single-writer tab lease.
+ * S1 single-writer ownership for the mounted working RecordDB.
  *
- * All future entry points to the working RecordDB MUST acquire and keep this
- * lease for the entire mounted app lifetime BEFORE React/DB hydration. A
- * background tab which cannot obtain it must not mount the app or write to DB.
- * This module is not wired into V1 bootstrap; capability remains disabled.
+ * Web Locks is the preferred lifetime lock, but it is unavailable in some
+ * otherwise supported browsers/webviews. All modern tabs also acquire an
+ * IndexedDB transactional lease so a Web-Locks-less tab participates in the
+ * SAME writer election. Never silently proceed without an exclusive lease.
+ *
+ * A short, renewed IDB lease allows recovery after a browser crash. On loss
+ * of ownership (including background-tab suspension), the stale document is
+ * reloaded before it can be used again. Neither the lock nor its renewal
+ * touches learning tables or user data.
  */
 export type WorkingDbLease = { release(): void }
 export const WORKING_DB_LOCK = 'qwerty-plus.s1.working-db-writer'
+export const WORKING_DB_LEASE_DATABASE = 'QwertyPlusWriterLeaseV1'
 
-export async function acquireWorkspaceWriterLease(): Promise<WorkingDbLease> {
-  if (typeof navigator === 'undefined' || !navigator.locks) {
-    throw new Error('Web Locks API unavailable: S1 writer ownership refused')
+const STORE = 'leases'
+const KEY = 'working-db'
+const TTL_MS = 15_000
+const RENEW_MS = 2_000
+
+type LeaseRow = { key: string; owner: string; expiresAt: number }
+type LeaseAction = 'acquire' | 'renew' | 'release'
+
+function openLeaseDatabase(): Promise<IDBDatabase> {
+  if (typeof indexedDB === 'undefined') {
+    return Promise.reject(new Error('IndexedDB unavailable: S1 writer ownership refused'))
   }
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(WORKING_DB_LEASE_DATABASE, 1)
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore(STORE, { keyPath: 'key' })
+    }
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error ??
+      Error('IndexedDB writer lease initialization failed'))
+    request.onblocked = () => reject(Error('IndexedDB writer lease upgrade blocked by another tab'))
+  })
+}
+
+/** A read/compare/write in ONE readwrite transaction is atomic across tabs. */
+function updateLease(db: IDBDatabase, owner: string, action: LeaseAction): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite')
+    const store = tx.objectStore(STORE)
+    const request = store.get(KEY)
+    let accepted = false
+    request.onsuccess = () => {
+      const current = request.result as LeaseRow | undefined
+      if (action === 'release') {
+        if (current?.owner === owner) store.delete(KEY)
+        accepted = true
+      } else if (action === 'renew') {
+        if (current?.owner === owner) {
+          store.put({ key: KEY, owner, expiresAt: Date.now() + TTL_MS })
+          accepted = true
+        }
+      } else if (!current || current.owner === owner ||
+                 current.expiresAt <= Date.now()) {
+        store.put({ key: KEY, owner, expiresAt: Date.now() + TTL_MS })
+        accepted = true
+      }
+    }
+    request.onerror = () => reject(request.error ?? Error('Cannot inspect writer lease'))
+    tx.oncomplete = () => resolve(accepted)
+    tx.onerror = () => reject(tx.error ?? Error('Writer lease transaction failed'))
+    tx.onabort = () => reject(tx.error ?? Error('Writer lease transaction aborted'))
+  })
+}
+
+async function acquireIndexedDbWriterLease(): Promise<WorkingDbLease> {
+  const db = await openLeaseDatabase()
+  const owner = crypto.randomUUID()
+  let acquired = false
+  try {
+    acquired = await updateLease(db, owner, 'acquire')
+  } catch (error) {
+    db.close()
+    throw error
+  }
+  if (!acquired) {
+    db.close()
+    throw new Error('Another tab owns the active workspace writer lease')
+  }
+
+  let released = false
+  let checking = false
+  const release = () => {
+    if (released) return
+    released = true
+    clearInterval(interval)
+    window.removeEventListener('pagehide', release)
+    window.removeEventListener('focus', check)
+    document.removeEventListener('visibilitychange', onVisibilityChange)
+    void updateLease(db, owner, 'release').finally(() => db.close())
+  }
+  const ownershipLost = () => {
+    if (released) return
+    // Never keep a possibly stale mounted writer alive after lease loss.
+    released = true
+    clearInterval(interval)
+    window.removeEventListener('pagehide', release)
+    window.removeEventListener('focus', check)
+    document.removeEventListener('visibilitychange', onVisibilityChange)
+    db.close()
+    window.location.reload()
+  }
+  const check = () => {
+    if (released || checking) return
+    checking = true
+    void updateLease(db, owner, 'renew')
+      .then(ok => { if (!ok) ownershipLost() })
+      .catch(() => ownershipLost())
+      .finally(() => { checking = false })
+  }
+  const onVisibilityChange = () => {
+    if (!document.hidden) check()
+  }
+  const interval = window.setInterval(check, RENEW_MS)
+  window.addEventListener('pagehide', release)
+  window.addEventListener('focus', check)
+  document.addEventListener('visibilitychange', onVisibilityChange)
+  return { release }
+}
+
+function acquireNativeWebLock(): Promise<WorkingDbLease> {
   let releaseHold: (() => void) | undefined
   const hold = new Promise<void>(resolve => { releaseHold = resolve })
   let resolved = false
@@ -42,4 +154,31 @@ export async function acquireWorkspaceWriterLease(): Promise<WorkingDbLease> {
       if (!resolved) reject(error)
     })
   })
+}
+
+export async function acquireWorkspaceWriterLease(): Promise<WorkingDbLease> {
+  // Acquire this for BOTH supported and unsupported Web Locks browsers.
+  // Otherwise one class of tabs could write while the other held a lock.
+  const idbLease = await acquireIndexedDbWriterLease()
+  if (typeof navigator === 'undefined' || !navigator.locks) return idbLease
+
+  let nativeLease: WorkingDbLease
+  try {
+    nativeLease = await acquireNativeWebLock()
+  } catch (error) {
+    if (error instanceof Error &&
+        error.message === 'Another tab owns the active workspace writer lease') {
+      idbLease.release()
+      throw error
+    }
+    // API may exist yet be disabled by a browser policy. The transactional
+    // IndexedDB lease still provides shared writer election.
+    return idbLease
+  }
+  return {
+    release: () => {
+      nativeLease.release()
+      idbLease.release()
+    },
+  }
 }
