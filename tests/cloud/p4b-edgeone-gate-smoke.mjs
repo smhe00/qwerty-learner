@@ -243,7 +243,7 @@ async function apiHeaderCommit(record, token, payloadSha256, partSha256s) {
   })
   const content = await response.text()
   let value = null
-  try { value = JSON.parse(content) } catch {}
+  try { value = JSON.parse(content) } catch { value = null }
   return { status: response.status, value, responseBytes: content.length }
 }
 
