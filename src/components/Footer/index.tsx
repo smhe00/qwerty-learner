@@ -42,7 +42,7 @@ const Footer: React.FC = () => {
       >
         <div className="flex flex-col items-center text-center">
           <p className="mb-2 text-base font-medium text-gray-700 dark:text-gray-200">
-            Qwerty Plus 当前处于 Alpha 阶段。
+            Qwerty Plus · 打字与长期记忆学习。
           </p>
           <p className="mb-5 text-sm leading-6 text-gray-500 dark:text-gray-400">
             本版本新增长期 Learn、自适应学习控制与云同步等能力。赞赏完全自愿，不影响任何功能。
@@ -78,7 +78,7 @@ const Footer: React.FC = () => {
           disabled
           className={disabledChannelClass}
           aria-label="小红书渠道暂未开放"
-          title="Alpha 阶段暂未开放"
+          title="渠道暂未开放"
         >
           <IconXiaoHongShu fontSize={14} />
         </button>
@@ -88,7 +88,7 @@ const Footer: React.FC = () => {
           disabled
           className={disabledChannelClass}
           aria-label="微信社群暂未开放"
-          title="Alpha 阶段暂未开放"
+          title="渠道暂未开放"
         >
           <IconWechat2 fontSize={16} />
         </button>
@@ -98,7 +98,7 @@ const Footer: React.FC = () => {
           disabled
           className={disabledChannelClass}
           aria-label="X 渠道暂未开放"
-          title="Alpha 阶段暂未开放"
+          title="渠道暂未开放"
         >
           <IconTwitter fontSize={16} />
         </button>
@@ -121,7 +121,7 @@ const Footer: React.FC = () => {
           disabled
           className={disabledChannelClass}
           aria-label="VSCode 插件渠道暂未开放"
-          title="Alpha 阶段暂未开放"
+          title="渠道暂未开放"
         >
           <IconVisualstudiocode fontSize={14} />
         </button>
@@ -131,7 +131,7 @@ const Footer: React.FC = () => {
           disabled
           className={disabledChannelClass}
           aria-label="联系邮箱暂未开放"
-          title="Alpha 阶段暂未开放"
+          title="渠道暂未开放"
         >
           <IconMail fontSize={16} />
         </button>
@@ -141,7 +141,7 @@ const Footer: React.FC = () => {
           disabled
           className={disabledChannelClass}
           aria-label="友链暂未开放"
-          title="Alpha 阶段暂未开放"
+          title="渠道暂未开放"
         >
           <RiLinksLine fontSize={14} />
         </button>
@@ -151,13 +151,13 @@ const Footer: React.FC = () => {
           disabled
           className={disabledChannelClass}
           aria-label="大陆镜像暂未开放"
-          title="Alpha 阶段暂未开放"
+          title="渠道暂未开放"
         >
           <IconFlagChina fontSize={16} />
         </button>
 
         <span className="select-none text-gray-500 dark:text-gray-400">
-          Qwerty Plus Alpha
+          Qwerty Plus Beta
         </span>
 
         <a
