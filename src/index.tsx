@@ -363,6 +363,16 @@ async function start(): Promise<void> {
       window.location.replace('/')
       return
     }
+    if (new URLSearchParams(window.location.search).get('s1-clear') === 'manage') {
+      if (boot.mode !== 'isolated' || boot.registry.pending) {
+        throw new Error('本地学习数据清除必须在 S1 安全工作区内执行。')
+      }
+      // Like full V4 imports and S2 pulls, a destructive local reset must
+      // execute in the exclusive, unmounted writer-locked document.
+      const { renderClearLocalLearningUI } = await import('./sync/workspace-clear-local-ui')
+      await renderClearLocalLearningUI(root, boot)
+      return
+    }
     if (new URLSearchParams(window.location.search).get('v4-import') === 'manage') {
       if (boot.mode !== 'isolated') {
         throw new Error('完整 V4 导入需要先建立 S1 隔离工作区。')
