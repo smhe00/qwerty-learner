@@ -90,17 +90,19 @@ async function acquireIndexedDbWriterLease(): Promise<WorkingDbLease> {
     if (released) return
     released = true
     clearInterval(interval)
-    window.removeEventListener('pagehide', release)
+    window.removeEventListener('unload', release)
     window.removeEventListener('focus', check)
     document.removeEventListener('visibilitychange', onVisibilityChange)
-    void updateLease(db, owner, 'release').finally(() => db.close())
+    void updateLease(db, owner, 'release').catch(() => {
+      // Abandoned leases expire after TTL; never mutate learning data here.
+    }).finally(() => db.close())
   }
   const ownershipLost = () => {
     if (released) return
     // Never keep a possibly stale mounted writer alive after lease loss.
     released = true
     clearInterval(interval)
-    window.removeEventListener('pagehide', release)
+    window.removeEventListener('unload', release)
     window.removeEventListener('focus', check)
     document.removeEventListener('visibilitychange', onVisibilityChange)
     db.close()
@@ -118,7 +120,9 @@ async function acquireIndexedDbWriterLease(): Promise<WorkingDbLease> {
     if (!document.hidden) check()
   }
   const interval = window.setInterval(check, RENEW_MS)
-  window.addEventListener('pagehide', release)
+  // Do not release on pagehide: a BFCache page can retain pending DB writers.
+  // Unload runs only for torn-down documents; TTL handles crashes and mobile.
+  window.addEventListener('unload', release)
   window.addEventListener('focus', check)
   document.addEventListener('visibilitychange', onVisibilityChange)
   return { release }
