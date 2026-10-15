@@ -8,6 +8,7 @@ import ViewSetting from '@/pages/Typing/components/Setting/ViewSetting'
 import { Dialog, Tab, Transition } from '@headlessui/react'
 import classNames from 'classnames'
 import { Fragment, useContext, useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import IconCog6Tooth from '~icons/heroicons/cog-6-tooth-solid'
 import IconEye from '~icons/heroicons/eye-solid'
 import IconAdjustmentsHorizontal from '~icons/tabler/adjustments-horizontal'
@@ -18,8 +19,11 @@ import IconEar from '~icons/tabler/ear'
 import IconX from '~icons/tabler/x'
 
 export default function Setting() {
+  const location = useLocation()
+  // Same route authority as ModeSwitcher: /learn and /typing share one dialog.
+  const isLearnMode = location.pathname.startsWith('/learn')
   const [isOpen, setIsOpen] = useState(false)
-  const [selectedTabIndex, setSelectedTabIndex] = useState(0)
+  const [selectedTabIndex, setSelectedTabIndex] = useState(() => isLearnMode ? 2 : 1)
   const { dispatch } = useContext(TypingContext) ?? {}
 
   function closeModal() {
@@ -27,6 +31,9 @@ export default function Setting() {
   }
 
   function openModal() {
+    // Reopening settings focuses the active mode, not the previously visited tab.
+    // The separate data-settings shortcut below deliberately takes precedence.
+    setSelectedTabIndex(isLearnMode ? 2 : 1)
     setIsOpen(true)
     if (dispatch) {
       dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })
@@ -86,7 +93,12 @@ export default function Setting() {
               >
                 <Dialog.Panel className="focus-overlay-panel flex max-h-[88vh] w-[min(94vw,800px)] min-w-0 flex-col overflow-hidden rounded-[20px] p-0">
                   <div className="focus-overlay-header relative flex min-h-16 shrink-0 items-center justify-between px-4 py-3 sm:px-6">
-                    <span className="text-xl font-semibold tracking-tight">设置</span>
+                    <div className="min-w-0 text-left">
+                      <Dialog.Title className="text-xl font-semibold tracking-tight">设置</Dialog.Title>
+                      <p className="text-xs text-[var(--focus-text-secondary)]">
+                        当前：{isLearnMode ? 'Learn 学习' : 'Typing 打字'} · 两种模式共用声音、显示和数据
+                      </p>
+                    </div>
                     <button type="button" onClick={() => setIsOpen(false)} aria-label="关闭设置" title="关闭对话框" className="rounded-lg p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400">
                       <IconX className="h-5 w-5 text-gray-500 dark:text-slate-300" />
                     </button>
@@ -103,8 +115,8 @@ export default function Setting() {
                             )
                           }
                         >
-                          <IconEar className="mr-2 text-neutral-500  dark:text-neutral-300" />
-                          <span className="text-neutral-500 dark:text-neutral-300 ">声音与发音</span>
+                          <IconEar className="mr-2 text-inherit" />
+                          <span className="text-inherit ">声音与发音</span>
                         </Tab>
                         <Tab
                           className={({ selected }) =>
@@ -163,7 +175,17 @@ export default function Setting() {
                         </Tab>
                       </Tab.List>
 
-                      <Tab.Panels className="h-full min-w-0 flex-1 overflow-y-auto">
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <p className="shrink-0 border-b border-[var(--focus-border)] px-5 py-2 text-left text-xs text-[var(--focus-text-secondary)]" aria-live="polite" data-settings-scope={selectedTabIndex === 2 ? 'learn' : selectedTabIndex === 1 ? 'typing' : 'shared'}>
+                          {selectedTabIndex === 2
+                            ? '仅影响 Learn 学习模式 · 不改变当前学习进度'
+                            : selectedTabIndex === 1
+                              ? '仅影响 Typing 打字模式 · 不改变 Learn 的学习计划'
+                              : selectedTabIndex === 5
+                                ? '用于排查问题 · 不影响学习和打字设置'
+                                : '通用设置 · Learn 和 Typing 共用'}
+                        </p>
+                        <Tab.Panels className="min-h-0 min-w-0 flex-1 overflow-y-auto">
                         <Tab.Panel className="flex h-full w-full  focus:outline-none">
                           <SoundSetting />
                         </Tab.Panel>
@@ -183,6 +205,7 @@ export default function Setting() {
                           <DeveloperSetting />
                         </Tab.Panel>
                       </Tab.Panels>
+                      </div>
                     </div>
                   </Tab.Group>
                 </Dialog.Panel>
