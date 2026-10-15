@@ -1,4 +1,4 @@
-import styles from './index.module.css'
+import V4SizeReport from './V4SizeReport'
 import { clearAllLearnDailySessions } from '@/learn/daily-session'
 import CloudSyncSetting from '@/sync/CloudSyncSetting'
 import {
@@ -10,6 +10,7 @@ import { loadAuth } from '@/sync/auth'
 import { workspaceRegistryPort } from '@/sync/workspace-vault'
 import { parseWorkspaceV4 } from '@/sync/workspace-v4'
 import { analyzeV4SnapshotSize } from '@/sync/v4-size-audit'
+import type { V4SizeAudit } from '@/sync/v4-size-audit'
 import { assertLegacyLocalDestructiveOperationAllowed } from '@/sync/workspace-auth-guard'
 import { clearSyncBaseline } from '@/sync/state'
 import { clearLocalLearningData } from '@/utils/db/data-export'
@@ -20,7 +21,8 @@ export default function DataSetting() {
   const [isClearing, setIsClearing] = useState(false)
   const [isV4Busy, setIsV4Busy] = useState(false)
   const [v4Message, setV4Message] = useState('')
-  const [sizeAuditMessage, setSizeAuditMessage] = useState('')
+  const [sizeAuditReport, setSizeAuditReport] = useState<V4SizeAudit | null>(null)
+  const [sizeAuditError, setSizeAuditError] = useState('')
   // Cloud controls remain hidden until the S1 owner and an unexpired login
   // are verified together. A stored token alone is insufficient.
   const [showCloudControls, setShowCloudControls] = useState(false)
@@ -106,26 +108,14 @@ export default function DataSetting() {
 
   const onClickAuditV4Size = useCallback(async () => {
     setIsV4Busy(true)
-    setSizeAuditMessage('正在只读分析 V4 容量…')
+    setSizeAuditReport(null)
+    setSizeAuditError('')
     try {
       const snapshot = parseWorkspaceV4(await exportManualBackupV4Json())
       const report = await analyzeV4SnapshotSize(snapshot)
-      const kiB = (bytes: number) => (bytes / 1024).toFixed(1) + ' KiB'
-      const rows = report.tables.map((table) =>
-        `${table.name}: ${table.rows} 条，原始 ${kiB(table.rawBytes)}，独立 gzip ${kiB(table.gzipBytes)}`,
-      ).join('\n')
-      const saving = report.gzipBytes - report.projectedGzipBytesAfterTypingCompaction
-      const eventSaving = report.gzipBytes - report.projectedGzipBytesAfterAchievementCompaction
-      const sessionSaving = report.gzipBytes - report.projectedGzipBytesAfterCompletedSessionCompaction
-      setSizeAuditMessage(
-        `完整 V4：原始 ${kiB(report.rawBytes)}；gzip ${kiB(report.gzipBytes)}；HTTP Base64 约 ${kiB(report.httpBase64Bytes)}。\n` +
-        `超过 90 天的 Typing 明细：${report.oldTypingCandidates} 条；独立模拟整包 gzip 变化 ${saving >= 0 ? '-' : '+'}${kiB(Math.abs(saving))}。\n` +
-        `成就事件：${report.achievementEventsWithZeroMetrics} 条含零指标，共 ${report.achievementEventZeroMetrics} 个冗余零值；独立模拟整包 gzip 变化 ${eventSaving >= 0 ? '-' : '+'}${kiB(Math.abs(eventSaving))}。\n` +
-        `复习 Session：已完成 ${report.finishedReviewSessions} 条，未完成 ${report.unfinishedReviewSessions} 条；独立模拟整包 gzip 变化 ${sessionSaving >= 0 ? '-' : '+'}${kiB(Math.abs(sessionSaving))}（未归档旧数据）。\n` +
-        rows + '\n各表 gzip 单独压缩，不可相加。仅分析，未删除、归档、同步或修改任何数据。',
-      )
+      setSizeAuditReport(report)
     } catch (error) {
-      setSizeAuditMessage('容量分析失败：' + (error instanceof Error ? error.message : String(error)))
+      setSizeAuditError('容量分析失败：' + (error instanceof Error ? error.message : String(error)))
     } finally {
       setIsV4Busy(false)
     }
@@ -172,25 +162,24 @@ export default function DataSetting() {
   }, [showCloudControls])
 
   return (
-    <ScrollArea.Root className="flex-1 select-none overflow-y-auto ">
-      <ScrollArea.Viewport className="h-full w-full px-3">
-        <div className={styles.tabContent}>
-          {REACT_APP_DEPLOY_ENV !== 'pages' && showCloudControls && <section className={styles.section}>
-            <span className={styles.sectionLabel}>云端同步</span>
-            <CloudSyncSetting />
-          </section>}
-          <div className={styles.section}>
-            <span className={styles.sectionLabel}>本地备份</span>
-            <span className={styles.sectionDescription}>
-              完整备份学习记录、FSRS、成就、未完成的学习会话及个人设置。
-              可以在这里校验 V4 文件的完整性；校验是只读操作，不会覆盖任何学习记录。
-              {showCloudControls
-                ? '本地导出、云端导出均使用标准 Backup V4；可从同一入口导入并恢复到当前账号。不同账号 ID 将被明确提示，导入前会备份当前工作区。'
-                : '标准 Backup V4 文件可在本机导入与恢复；若备份来自不同账号，导入时会明确提示并要求确认。'}
-            </span>
-            <div className="flex flex-wrap gap-2 pl-4">
+    <ScrollArea.Root className="flex-1 min-w-0 overflow-y-auto">
+      <ScrollArea.Viewport className="h-full w-full">
+        <div className="flex min-w-0 w-full flex-col gap-6 px-5 py-6 pb-10 sm:px-6">
+          {REACT_APP_DEPLOY_ENV !== 'pages' && showCloudControls && (
+            <section className="min-w-0 rounded-xl border border-[var(--focus-border)] bg-[var(--focus-surface)] p-4" aria-label="云端同步">
+              <h3 className="mb-3 text-base font-semibold text-[var(--focus-text)]">云端同步</h3>
+              <CloudSyncSetting />
+            </section>
+          )}
+
+          <section aria-label="本地备份" className="min-w-0">
+            <div className="mb-1 text-base font-semibold text-[var(--focus-text)]">本地备份</div>
+            <p className="mb-4 text-sm leading-relaxed text-[var(--focus-text-secondary)]">
+              保存学习进度、FSRS 记忆状态、成就和个人设置。导入将替换当前工作区，不合并数据。
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
               <button
-                className="my-btn-primary disabled:bg-gray-300"
+                className="min-h-10 rounded-lg bg-[var(--focus-accent)] px-4 py-2 text-sm font-medium text-[var(--focus-accent-ink)] transition-opacity hover:opacity-90 disabled:opacity-50"
                 type="button"
                 onClick={() => { void onClickExportV4() }}
                 disabled={isV4Busy || isClearing}
@@ -198,23 +187,7 @@ export default function DataSetting() {
                 {isV4Busy ? 'V4 处理中…' : '导出完整备份'}
               </button>
               <button
-                className="my-btn-primary disabled:bg-gray-300"
-                type="button"
-                onClick={onClickInspectV4}
-                disabled={isV4Busy || isClearing}
-              >
-                验证 V4 备份文件（只读）
-              </button>
-              <button
-                className="my-btn-primary disabled:bg-gray-300"
-                type="button"
-                onClick={() => { void onClickAuditV4Size() }}
-                disabled={isV4Busy || isClearing}
-              >
-                分析备份容量（只读）
-              </button>
-              <button
-                className="my-btn-primary disabled:bg-gray-300"
+                className="min-h-10 rounded-lg border border-[var(--focus-border)] bg-[var(--focus-surface)] px-4 py-2 text-sm font-medium text-[var(--focus-text)] transition-colors hover:bg-[var(--focus-surface-muted)] disabled:opacity-50"
                 type="button"
                 onClick={() => window.location.assign('/?v4-import=manage')}
                 disabled={isV4Busy || isClearing}
@@ -222,43 +195,60 @@ export default function DataSetting() {
                 导入完整备份 V4（支持跨账号）
               </button>
             </div>
-            {sizeAuditMessage && (
-              <span role="status" className="whitespace-pre-line pl-4 text-left text-xs leading-relaxed text-gray-600 dark:text-gray-300">
-                {sizeAuditMessage}
-              </span>
-            )}
+            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+              <button
+                className="rounded-md py-1 text-left text-sm text-[var(--focus-text-secondary)] underline-offset-4 transition-colors hover:text-[var(--focus-text)] hover:underline disabled:opacity-50"
+                type="button"
+                onClick={onClickInspectV4}
+                disabled={isV4Busy || isClearing}
+              >
+                验证 V4 备份文件（只读）
+              </button>
+              <button
+                className="rounded-md py-1 text-left text-sm text-[var(--focus-text-secondary)] underline-offset-4 transition-colors hover:text-[var(--focus-text)] hover:underline disabled:opacity-50"
+                type="button"
+                onClick={() => { void onClickAuditV4Size() }}
+                disabled={isV4Busy || isClearing}
+              >
+                {isV4Busy && !sizeAuditReport ? '分析备份容量中…' : '分析备份容量（只读）'}
+              </button>
+            </div>
             {v4Message && (
-              <span role="status" className="pl-4 text-left text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+              <p role="status" className="mt-3 break-words text-sm leading-relaxed text-[var(--focus-text-secondary)]">
                 {v4Message}
-              </span>
+              </p>
             )}
-          </div>
-          <div className={styles.section}>
-            <span className={styles.sectionLabel}>清除本地数据</span>
-            <span className={styles.sectionDescription}>
-              清除当前浏览器中的练习记录、章节记录和智能复习数据，并将词库和章节进度恢复为首次使用状态。
-              {showCloudControls && <strong className="font-bold text-red-500">
-                不会删除云端账号或云端备份，也不会修改其他设备的数据。
-              </strong>}
-            </span>
-            <span className="pl-4 text-left text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-              {showCloudControls
-                ? '清除后如已存在云端备份，可在“云端同步”中重新下载恢复。建议操作前先导出或确认云端备份是最新版本。'
-                : '清除后只能通过事先保存的本地备份恢复，请在清除前导出完整备份。'}
-            </span>
-            <button
-              className="ml-4 rounded bg-red-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:bg-gray-300"
-              type="button"
-              onClick={onClickClearLocalData}
-              disabled={isClearing || isV4Busy}
-              title="清除本地学习数据"
-            >
-              {isClearing ? '正在清除…' : '清除本地数据'}
-            </button>
-          </div>
+            {sizeAuditReport && <V4SizeReport report={sizeAuditReport} />}
+            {sizeAuditError && (
+              <p role="alert" className="mt-3 break-words text-sm leading-relaxed text-red-500">{sizeAuditError}</p>
+            )}
+          </section>
+
+          <section className="border-t border-[var(--focus-border)] pt-5">
+            <details className="group">
+              <summary className="cursor-pointer select-none text-sm font-medium text-[var(--focus-text-secondary)] transition-colors hover:text-[var(--focus-text)]">
+                高级操作 · 清除本地数据
+              </summary>
+              <div className="mt-3 space-y-3 pl-1">
+                <p className="text-sm leading-relaxed text-[var(--focus-text-secondary)]">
+                  清除当前工作区的学习记录、章节记录及智能复习数据。操作不可撤销；请先导出完整备份。
+                  {showCloudControls && ' 不会删除云端账号或云端备份。'}
+                </p>
+                <button
+                  className="min-h-9 rounded-lg border border-red-500/50 bg-transparent px-4 py-2 text-sm font-medium text-red-500 transition-colors hover:bg-red-500/10 disabled:opacity-50"
+                  type="button"
+                  onClick={onClickClearLocalData}
+                  disabled={isClearing || isV4Busy}
+                  title="清除本地学习数据"
+                >
+                  {isClearing ? '正在清除…' : '清除本地数据'}
+                </button>
+              </div>
+            </details>
+          </section>
         </div>
       </ScrollArea.Viewport>
-      <ScrollArea.Scrollbar className="flex touch-none select-none bg-transparent " orientation="vertical"></ScrollArea.Scrollbar>
+      <ScrollArea.Scrollbar className="flex touch-none select-none bg-transparent" orientation="vertical" />
     </ScrollArea.Root>
   )
 }
