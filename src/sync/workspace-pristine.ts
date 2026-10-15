@@ -17,7 +17,9 @@ const SAFE_PREFERENCES = new Set<string>([
   'currentChapter',
   'reviewModeInfo',
 ])
-const KNOWN_DATABASES = new Set(['RecordDB', 'QwertyPlusWorkspaceVaultV1'])
+// The short-lived writer election DB contains only a lease, never learning data.
+const WRITER_LEASE_DATABASE = 'QwertyPlusWriterLeaseV1'
+const KNOWN_DATABASES = new Set(['RecordDB', 'QwertyPlusWorkspaceVaultV1', WRITER_LEASE_DATABASE])
 
 async function storeIsEmpty(db: IDBDatabase, name: string): Promise<boolean> {
   return new Promise((resolve, reject) => {
@@ -87,6 +89,9 @@ export async function isFreshEmptyLegacyWorkspace(): Promise<boolean> {
     const databases = await indexedDB.databases()
     for (const entry of databases) {
       if (!entry.name || !KNOWN_DATABASES.has(entry.name)) return false
+      // The current tab necessarily holds this lease while checking whether
+      // an otherwise pristine browser can enter the account setup flow.
+      if (entry.name === WRITER_LEASE_DATABASE) continue
       if (!await databaseIsEmpty(entry.name)) return false
     }
     return true
