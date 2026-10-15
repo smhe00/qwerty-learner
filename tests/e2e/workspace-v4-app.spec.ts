@@ -44,14 +44,14 @@ test('application settings exports complete V4 gzip and validates it without cha
   expect(snapshot.workspaceData.learnRuntime.dailySessions.cet4.completedBlockIds).toEqual(['block-1'])
   expect(snapshot.workspaceData.settings.values.memoryConfig.blockSize).toBe(1)
   expect(json).not.toContain('DO_NOT_EXPORT')
-  await expect(page.getByRole('status')).toContainText('V4 导出完成')
+  await expect(page.getByRole('status')).toContainText('备份已导出')
 
   const fileChooser = page.waitForEvent('filechooser')
-  await page.getByRole('button', { name: '验证 V4 备份文件（只读）' }).click()
+  await page.getByRole('button', { name: '校验备份文件' }).click()
   const chooser = await fileChooser
   await chooser.setFiles({ name: 'v4-test.gz', mimeType: 'application/gzip', buffer })
-  await expect(page.getByRole('status')).toContainText('V4 校验通过')
-  await expect(page.getByRole('status')).toContainText('未修改本地数据')
+  await expect(page.getByRole('status')).toContainText('校验通过')
+  await expect(page.getByRole('status')).toContainText('本地数据未改变')
 
   await page.goto('/tests/e2e/backup-harness.html')
   const data = await page.evaluate(() => (window as any).__backupHarness.inspect())
@@ -67,10 +67,10 @@ test('application rejects a non-V4 file without modifying the current workspace'
   await page.getByRole('button', { name: '打开设置对话框' }).click()
   await page.getByRole('tab', { name: '数据设置' }).click()
   const fileChooser = page.waitForEvent('filechooser')
-  await page.getByRole('button', { name: '验证 V4 备份文件（只读）' }).click()
+  await page.getByRole('button', { name: '校验备份文件' }).click()
   const chooser = await fileChooser
   await chooser.setFiles({ name: 'bad.gz', mimeType: 'application/gzip', buffer: Buffer.from('not gzip') })
-  await expect(page.getByRole('status')).toContainText('V4 校验失败')
+  await expect(page.getByRole('status')).toContainText('备份校验失败')
   await page.goto('/tests/e2e/backup-harness.html')
   const data = await page.evaluate(() => (window as any).__backupHarness.inspect())
   expect(data.wordRecord?.fsrsShadow?.algorithmModel).toBe('fsrs-6')
@@ -109,7 +109,7 @@ test('S1 signed-in account can download its own complete local Backup V4', async
   expect(snapshot.backupFormatVersion).toBe('qwerty-backup-v4')
   expect(snapshot.metadata.source).toEqual(signedInBackupOwner)
   expect(snapshot.workspaceData.database.data.tables).toHaveLength(6)
-  await expect(page.getByRole('status')).toContainText('V4 导出完成')
+  await expect(page.getByRole('status')).toContainText('备份已导出')
 })
 
 test('S1 signed-in account can download verified cloud Backup V4 with unchanged revision', async ({ page }) => {
@@ -137,7 +137,7 @@ test('S1 signed-in account can download verified cloud Backup V4 with unchanged 
   await page.goto('/')
   await page.getByRole('button', { name: '打开设置对话框' }).click()
   await page.getByRole('tab', { name: '数据设置' }).click()
-  await page.getByRole('button', { name: '下载云端完整 V4' }).click()
+  await page.getByRole('button', { name: '下载云端备份' }).click()
   await expect(page).toHaveURL(/v4-cloud-backup=download/)
   const save = page.getByRole('button', { name: '下载标准 V4 文件（.gz）' })
   await expect(save).toBeEnabled({ timeout: 25_000 })
@@ -224,5 +224,5 @@ test('signed-in V4 export handles growing Learn/Typing, completed sessions and a
   expect(byTable.reviewRecords).toBe(counts.sessions)
   expect(byTable.achievementEvents).toBe(counts.events)
   expect(byTable.reviewWordStates).toBe(counts.states)
-  await expect(page.getByRole('status')).toContainText('V4 导出完成')
+  await expect(page.getByRole('status')).toContainText('备份已导出')
 })
