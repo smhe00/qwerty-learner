@@ -38,7 +38,7 @@ test('anonymous V4 destination displays exact LOCAL-ANONYMOUS value and copies i
   const confirmation = page.getByLabel('确认当前接收账号 ID')
   await expect(confirmation).toHaveValue('')
   await confirmation.focus()
-  await page.keyboard.press('ControlOrMeta+V')
+  await page.keyboard.press('Control+V')
   await expect(confirmation).toHaveValue(destinationToken)
 })
 
