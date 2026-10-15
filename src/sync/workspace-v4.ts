@@ -3,6 +3,7 @@
  * change the existing CloudSync V1 payload, or access browser globals.
  */
 import type { LearnDailySessionV1 } from '@/learn/daily-session'
+import { sha256Hex } from './sha256-compat'
 
 export const WORKSPACE_V4_FORMAT = 'qwerty-backup-v4' as const
 export const WORKSPACE_SETTINGS_VERSION = 1 as const
@@ -235,8 +236,8 @@ export async function workspaceFingerprintV4(snapshot: WorkspaceSnapshotV4): Pro
   const encoded = new TextEncoder().encode(
     stableWorkspaceJson(canonicalWorkspaceData(snapshot.workspaceData)),
   )
-  const bytes = await crypto.subtle.digest('SHA-256', encoded)
-  return [...new Uint8Array(bytes)].map(x => x.toString(16).padStart(2, '0')).join('')
+  // Identical SHA-256 output with or without browser SubtleCrypto.
+  return sha256Hex(encoded)
 }
 
 /** A V4 envelope may be inspected without a complete table manifest,
