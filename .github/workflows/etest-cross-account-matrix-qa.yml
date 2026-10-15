@@ -1,0 +1,83 @@
+name: Etest V4 Cross-Account Backup Full Branch Matrix
+
+on:
+  push:
+    branches: [qa/etest-cross-account-backup-matrix-20261015]
+    paths: [.github/workflows/etest-cross-account-matrix-qa.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  decision-and-local-contract:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Cross-account consent, import journal, S2 all-policy-branches, recovery gate
+        run: |
+          node --test \
+            tests/cloud/manual-v4-import-plan.test.mjs \
+            tests/cloud/sync-v2-policy.test.mjs \
+            tests/cloud/sync-v2-preflight.test.mjs \
+            tests/cloud/sync-v2-manual-executor.test.mjs \
+            tests/cloud/sync-v2-recovery-archive.test.mjs \
+            tests/cloud/sync-v2-pull-transaction.test.mjs
+      - name: Lint cross-account QA source
+        run: yarn eslint tests/e2e/etest-cross-account-backup-matrix.spec.ts tests/cloud/etest-cross-account-cleanup.mjs tests/cloud/sync-v2-policy.test.mjs
+
+  four-account-real-etest:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
+      EXPECTED_ETEST_SHA: e54720945961331f3d3676556378392614fd3782
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Verify new etest deployment SHA before creating ANY accounts
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict'
+          const expected=process.env.EXPECTED_ETEST_SHA
+          let marker=''
+          for(let i=0;i<12;i++){
+            try{
+              const r=await fetch('https://etest.edgeone.dev/source-commit.txt',{
+                cache:'no-store',signal:AbortSignal.timeout(10000)})
+              if(r.ok()){
+                marker=(await r.text()).trim()
+                if(/^[a-f0-9]{7,40}$/.test(marker)&&expected.startsWith(marker)){
+                  console.log('PASS: deployed etest source SHA',marker)
+                  process.exit(0)
+                }
+              }
+            }catch{}
+            await new Promise(resolve=>setTimeout(resolve,3500))
+          }
+          assert.fail('Etest SHA unverified; refusing to create disposable accounts: '+marker)
+          NODE
+      - name: Generate bounded disposable identities (never real accounts)
+        run: |
+          echo "QWERTY_E2E_USER_PREFIX=e2e_xa_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
+          password="E2E-$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          echo "QWERTY_E2E_PASSWORD=$password" >> "$GITHUB_ENV"
+      - name: Install Playwright browser
+        run: |
+          yarn install --frozen-lockfile
+          npx playwright install --with-deps chromium
+      - name: Four real account owner rebinding, cloud CAS, both overwrite choices
+        run: npx playwright test tests/e2e/etest-cross-account-backup-matrix.spec.ts --project=chromium --workers=1 --retries=0 --reporter=list
+      - name: Cleanup ALL four disposable identities regardless of failure
+        if: always() && env.QWERTY_E2E_USER_PREFIX != ''
+        run: node tests/cloud/etest-cross-account-cleanup.mjs
