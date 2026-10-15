@@ -1,3 +1,5 @@
+> **旧上流プロジェクトの参考資料です。** このページは現在の QWERTY Plus Beta の仕様・公開先を説明するものではありません。最新情報は [QWERTY Plus README](../README.md) をご覧ください。
+
 <div align=center>
 <img  src="../src/assets/logo.svg"/>
 </div>
