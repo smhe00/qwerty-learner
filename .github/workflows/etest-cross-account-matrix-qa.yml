@@ -1,5 +1,5 @@
 name: Etest V4 Cross-Account Backup Full Branch Matrix
-# QA rerun: Learn starts from idle landing before querying WordPanel.
+# QA rerun: advanced recovery confirmation uses one serialized dialog handler.
 
 on:
   push:
