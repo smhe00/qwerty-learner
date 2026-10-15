@@ -7,6 +7,7 @@ import {
   readLearningState,
 } from '@/utils/backup'
 import { db } from '@/utils/db/core'
+import { sha256Hex as sha256BytesHex } from './sha256-compat'
 
 export const CLIENT_FORMAT_VERSION = BACKUP_FORMAT_VERSION
 
@@ -28,12 +29,7 @@ function stableStringify(value: unknown): string {
 }
 
 async function sha256Hex(value: string) {
-  const bytes = new TextEncoder().encode(value)
-  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes)
-
-  return [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('')
+  return sha256BytesHex(new TextEncoder().encode(value))
 }
 
 function logicalBackupData(json: string) {
