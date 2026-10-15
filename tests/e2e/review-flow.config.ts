@@ -9,6 +9,7 @@ export default defineConfig({
     'learn-review-flow.spec.ts',
     'learn-shell-ui.spec.ts',
     'default-learn-header.spec.ts',
+    'settings-mode-navigation.spec.ts',
     'focus-ui.spec.ts',
     'focus-p0-final-acceptance.spec.ts',
     'focus-p1-journey.spec.ts',
