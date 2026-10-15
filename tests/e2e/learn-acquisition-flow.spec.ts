@@ -534,17 +534,18 @@ for (const reason of ['spacing', 'assistance'] as const) {
   test(`${reason}-deferred acquisition resumes as Independent after its delay`, async ({
     page,
   }) => {
-    await page.addInitScript(() => {
+    // Initialize pristine S1 before fixture writes. An init script would
+    // replay unjournaled storage writes across the mandatory first-boot
+    // reload and correctly trip the S1 anti-stale-tab witness.
+    await gotoReviewAppReady(page, '/typing')
+    await page.evaluate(() => {
       localStorage.setItem('currentDict', JSON.stringify('cet4'))
       localStorage.setItem('currentChapter', JSON.stringify(-1))
       localStorage.setItem(
         'reviewModeInfo',
-        JSON.stringify({
-          isReviewMode: false,
-        }),
+        JSON.stringify({ isReviewMode: false }),
       )
     })
-    await gotoReviewAppReady(page, '/typing')
 
     const resumeAfter = Math.floor(Date.now() / 1000) - 1
     await page.evaluate(
