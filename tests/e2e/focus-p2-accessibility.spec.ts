@@ -10,6 +10,40 @@ import {
 
 const longWord = 'antidisestablishmentarianism'
 
+test('Focus standard English technology stays on one line at desktop and tablet widths', async ({ page }) => {
+  test.setTimeout(80_000)
+  const sample = 'technology'
+  await page.setViewportSize({ width: 1474, height: 900 })
+  await seedReviewSession(page, [{
+    name: sample, trans: ['科技'], usphone: 'tekˈnɑlədʒi', ukphone: 'tekˈnɒlədʒi',
+  }], 902100)
+  await page.goto('/learn')
+  await waitForActiveLearnSession(page)
+  await startTyping(page)
+  await waitForRenderedWord(page, sample)
+
+  for (const width of [1474, 1024, 768, 480, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    const layout = await page.evaluate(() => {
+      const word = document.querySelector('[data-typing-word="technology"]') as HTMLElement
+      const spans = [...word.children] as HTMLElement[]
+      const rects = spans.map(el => el.getBoundingClientRect())
+      return {
+        rows: new Set(rects.map(r => Math.round(r.top))).size,
+        visible: rects.every(r => r.width > 0 && r.left >= -1 && r.right <= window.innerWidth + 1),
+        letterCount: spans.length,
+      }
+    })
+    expect(layout.letterCount).toBe(sample.length)
+    expect(layout.rows, `Unexpected technology wrap at viewport ${width}`).toBe(1)
+    expect(layout.visible, `Clipped technology letters at viewport ${width}`).toBe(true)
+  }
+  // Geometry-only correction must not change the spelling or input handling.
+  await page.keyboard.type('tech')
+  await expect(page.locator('[data-typing-word="technology"]'))
+    .toHaveAttribute('data-typing-input', 'tech')
+})
+
 test('Focus P2 keeps every long-word letter inside the zoomed study viewport', async ({ page }) => {
   test.setTimeout(80_000)
   await page.setViewportSize({ width: 1024, height: 430 })
