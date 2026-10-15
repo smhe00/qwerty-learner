@@ -21,20 +21,8 @@ jobs:
           node-version: '20.18.0'
           cache: yarn
       - run: yarn install --frozen-lockfile
-      - name: Verify all customer-facing Beta metadata and semver
-        run: |
-          node --input-type=module <<'NODE'
-          import assert from 'node:assert/strict'
-          import { readFileSync } from 'node:fs'
-          const pkg=JSON.parse(readFileSync('package.json','utf8'))
-          assert.equal(pkg.version,'0.2.0-beta.1')
-          for(const path of ['index.html','src/components/Footer/index.tsx','src/pages/Mobile/index.tsx']){
-            const content=readFileSync(path,'utf8')
-            assert.doesNotMatch(content,/alpha/i,path+' still exposes Alpha')
-          }
-          assert.match(readFileSync('src/components/Footer/index.tsx','utf8'),/Qwerty Plus Beta/)
-          console.log('PASS Beta branding and version contract')
-          NODE
+      - name: Verify complete Beta customer-facing labels and active documentation
+        run: node scripts/check-beta-branding.mjs
       - name: Lint merged Settings and browser changes
         run: yarn eslint src/pages/Typing/components/Setting/DataSetting.tsx src/pages/Typing/components/Setting/DeveloperSetting.tsx src/pages/Typing/components/Setting/V4SizeReport.tsx src/components/Footer/index.tsx src/pages/Mobile/index.tsx
       - name: Build exact combined Beta RC
