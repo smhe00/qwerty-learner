@@ -101,11 +101,27 @@ test('B login revokes A; A confirmation completes S1 durable anonymous switch', 
     // Do not interpret server-side revocation as local data deletion.
     await alert.getByRole('button',
       { name: '确认退出并切换到本机匿名工作区' }).click()
-    await expect.poll(async () => pageA.evaluate(() =>
-      !localStorage.getItem('qwerty.cloudAuth.v1') &&
-      window.location.pathname === '/' &&
-      !window.location.search.includes('s1-session-revoked')),
-    { timeout: 30000 }).toBe(true)
+    // A confirmed S1 handoff can navigate twice: first into the guarded
+    // pre-mount switch, then back to the ordinary app. Inspect the URL from
+    // Playwright (outside the replaced JS realm) and allow the old realm to
+    // disappear during navigation. We still require durable auth deletion
+    // AND the normal application URL before accepting success.
+    await expect.poll(() => {
+      const url = new URL(pageA.url())
+      return url.pathname === '/' &&
+        !url.searchParams.has('s1-session-revoked')
+    }, { timeout: 30000 }).toBe(true)
+    await expect.poll(async () => {
+      try {
+        return await pageA.evaluate(() => localStorage.getItem('qwerty.cloudAuth.v1'))
+      } catch (error) {
+        if (error instanceof Error &&
+            /Execution context was destroyed|navigation/i.test(error.message)) {
+          return '__navigation_in_progress__'
+        }
+        throw error
+      }
+    }, { timeout: 30000 }).toBeNull()
 
     await pageA.goto('/tests/e2e/backup-harness.html')
     const recovered = await pageA.evaluate(async identity => {
