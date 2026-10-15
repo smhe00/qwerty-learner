@@ -44,3 +44,18 @@ test('external data-settings shortcut still opens Data & Backup even in Learn mo
   await expect(page.getByRole('tab', { name: '数据与备份' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByText('本地备份', { exact: true })).toBeVisible()
 })
+
+test('compact settings navigation is horizontal and preserves access to all sections', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto('/learn')
+  await openSettings(page)
+  await expect(page.getByRole('tablist')).toHaveAttribute('aria-orientation', 'horizontal')
+  const dataTab = page.getByRole('tab', { name: '数据与备份' })
+  await dataTab.click()
+  await expect(dataTab).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByText('本地备份', { exact: true })).toBeVisible()
+  const sizes = await page.getByRole('dialog').evaluate(el => ({
+    width: el.clientWidth, documentWidth: el.scrollWidth,
+  }))
+  expect(sizes.documentWidth).toBeLessThanOrEqual(sizes.width + 1)
+})
