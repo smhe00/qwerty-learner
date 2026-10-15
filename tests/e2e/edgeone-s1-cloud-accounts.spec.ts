@@ -6,6 +6,68 @@ const userA = process.env.QWERTY_E2E_USERNAME
 const userB = process.env.QWERTY_E2E_USERNAME_B
 const password = process.env.QWERTY_E2E_PASSWORD
 
+test('P0: fresh etest browser can learn anonymously before opening login (native and fallback locks)', async ({ browser }) => {
+  test.setTimeout(120_000)
+  if (process.env.GITHUB_REF_NAME !== 'edgeone-test' ||
+    new URL(base || '').origin !== 'https://etest.edgeone.dev') {
+    throw Error('Only branch-matched etest may exercise the real first-visit path')
+  }
+  for (const missingWebLocks of [false, true]) {
+    const context = await browser.newContext({ serviceWorkers: 'block' })
+    try {
+      if (missingWebLocks) {
+        await context.addInitScript(() => {
+          Object.defineProperty(navigator, 'locks', { configurable: true, value: undefined })
+        })
+      }
+      const page = await context.newPage()
+      // The previous E2E went directly to ?s1-account=manage and never
+      // exercised an anonymous learner who decides to log in later.
+      await page.goto(base!, { waitUntil: 'domcontentloaded' })
+      await expect(page.getByRole('button', { name: '打开设置对话框' }))
+        .toBeVisible({ timeout: 40_000 })
+      await page.goto(new URL('/learn', base).toString())
+      const start = page.getByRole('button', { name: '开始 Learn', exact: true })
+      await expect(start).toBeVisible({ timeout: 30_000 })
+      await start.click()
+      const word = page.locator('[data-typing-word]').first()
+      await expect(word).toBeVisible({ timeout: 30_000 })
+      const spelling = await word.getAttribute('data-typing-word')
+      expect(spelling).toBeTruthy()
+      if (await page.getByText('按任意键开始').isVisible().catch(() => false)) {
+        await page.keyboard.press('a')
+      }
+      await page.keyboard.type(spelling!)
+      const recordCount = async () => page.evaluate(async () => {
+        const request = indexedDB.open('RecordDB')
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          request.onsuccess = () => resolve(request.result)
+          request.onerror = () => reject(request.error)
+        })
+        try {
+          const record = db.transaction('wordRecords', 'readonly')
+            .objectStore('wordRecords').count()
+          return await new Promise<number>((resolve, reject) => {
+            record.onsuccess = () => resolve(record.result)
+            record.onerror = () => reject(record.error)
+          })
+        } finally { db.close() }
+      })
+      await expect.poll(recordCount, { timeout: 30_000 }).toBeGreaterThan(0)
+      const before = await recordCount()
+      await page.locator('[data-account-entry]').click()
+      await expect(page.getByRole('dialog', { name: '安全账户管理（S1）' }))
+        .toBeVisible({ timeout: 30_000 })
+      await expect(page.getByText('S1 本机学习数据归属确认')).toHaveCount(0)
+      await expect(page.getByText('学习数据安全检查未通过')).toHaveCount(0)
+      // A login entry must not silently erase the anonymous study record.
+      expect(await recordCount()).toBe(before)
+    } finally {
+      await context.close()
+    }
+  }
+})
+
 test('two cloud identities in three isolated Chromium S1 profiles', async ({ browser }) => {
   test.setTimeout(180_000)
   if (!base || !userA || !userB || !password ||
