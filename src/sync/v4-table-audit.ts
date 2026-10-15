@@ -1,3 +1,4 @@
+import { sha256Hex } from './sha256-compat'
 /**
  * P4b-0: independent source-table-count audit of a full Backup V4 export.
  * The six required tables are the only durable learning tables. Comparing
@@ -132,9 +133,7 @@ async function rowsSha256(rows: unknown[]): Promise<string> {
   const canonical = stableWorkspaceJson(
     jsonRows(rows).map(row => stableWorkspaceJson(row)).sort(),
   )
-  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical))
-  return [...new Uint8Array(hash)]
-    .map(byte => byte.toString(16).padStart(2, '0')).join('')
+  return sha256Hex(new TextEncoder().encode(canonical))
 }
 
 export async function assertV4SourceRowsMatchExport(
