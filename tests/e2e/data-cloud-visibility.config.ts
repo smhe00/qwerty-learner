@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: '.',
-  testMatch: ['data-cloud-visibility.spec.ts','data-capacity-presentation.spec.ts'],
+  testMatch: ['data-cloud-visibility.spec.ts','data-capacity-presentation.spec.ts','developer-settings-style.spec.ts'],
   fullyParallel: false,
   retries: 0,
   workers: 1,
