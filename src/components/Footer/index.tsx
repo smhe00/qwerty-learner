@@ -41,18 +41,21 @@ const Footer: React.FC = () => {
         onClose={closeDonate}
       >
         <div className="flex flex-col items-center text-center">
-          <p className="mb-2 text-base font-medium text-gray-700 dark:text-gray-200">
-            Qwerty Plus · 打字与长期记忆学习。
+          <span className="mb-3 rounded-full border border-amber-200/70 bg-amber-50 px-3 py-1 text-[11px] font-semibold tracking-wide text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+            给独立开发加一点续航
+          </span>
+          <p className="text-lg font-semibold tracking-tight text-slate-800 dark:text-slate-100">
+            单词免费背，咖啡可以请。
           </p>
-          <p className="mb-5 text-sm leading-6 text-gray-500 dark:text-gray-400">
-            本版本新增长期 Learn、自适应学习控制与云同步等能力。赞赏完全自愿，不影响任何功能。
+          <p className="mb-4 mt-2 max-w-sm text-sm leading-6 text-slate-500 dark:text-slate-400">
+            觉得 Qwerty Plus 好用？请开发者喝杯咖啡，让智能复习和云同步继续进化。
           </p>
 
           <DonatingCard />
 
-          <div className="mt-5 w-full border-t border-gray-100 pt-4 text-xs leading-5 text-gray-400 dark:border-gray-700 dark:text-gray-500">
-            Qwerty Plus 基于 GPL-3.0 开源项目演进。源码与许可证信息以当前仓库为准。
-          </div>
+          <p className="mt-4 text-xs leading-5 text-slate-400 dark:text-slate-500">
+            不赞赏也没关系，认真学会一个词就是支持。
+          </p>
         </div>
       </InfoPanel>
 
