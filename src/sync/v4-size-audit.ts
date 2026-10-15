@@ -18,7 +18,6 @@ export type V4TableSize = {
 export type V4SizeAudit = {
   rawBytes: number
   gzipBytes: number
-  httpBase64Bytes: number
   tables: V4TableSize[]
   oldTypingCandidates: number
   projectedGzipBytesAfterTypingCompaction: number
@@ -113,7 +112,6 @@ export async function analyzeV4SnapshotSize(
   return {
     rawBytes: encoder.encode(raw).byteLength,
     gzipBytes,
-    httpBase64Bytes: Math.ceil(gzipBytes / 3) * 4,
     tables,
     oldTypingCandidates,
     projectedGzipBytesAfterTypingCompaction:
