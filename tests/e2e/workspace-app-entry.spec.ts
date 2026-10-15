@@ -1,4 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
+import {
+  readReviewModeInfo,
+  startTyping,
+  waitForActiveLearnSession,
+  waitForRenderedWord,
+} from './review-flow-harness'
 
 async function harness(page: Page) {
   await page.goto('/tests/e2e/backup-harness.html')
@@ -638,6 +644,73 @@ test('fresh EdgeOne origin opens S1 login without inventing nonexistent V1 migra
   expect(result.active).toEqual({ kind: 'anonymous' })
 })
 
+test('P0: fresh browser studies a word anonymously then opens S1 login without V1 consent or record loss', async ({ page }) => {
+  // Start from an untouched browser origin. Auto-initialization must precede
+  // any Learn database writer, not be delayed until the first Login click.
+  await page.goto('/')
+  await expect(page.locator('[data-account-entry]')).toBeVisible()
+  await page.goto('/learn')
+  const info = await waitForActiveLearnSession(page)
+  const firstWord = info.reviewRecord.words[0]?.name as string
+  expect(firstWord).toBeTruthy()
+  await startTyping(page)
+  await waitForRenderedWord(page, firstWord)
+  await page.keyboard.type(firstWord)
+  await expect.poll(async () => {
+    const state = await readReviewModeInfo(page)
+    return state?.reviewRecord?.index ?? 0
+  }).toBeGreaterThan(0)
+
+  // The completed spelling must be durable, not only visible in React.
+  await expect.poll(async () => page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+    try {
+      const tx = db.transaction('wordRecords', 'readonly')
+      const request = tx.objectStore('wordRecords').count()
+      return await new Promise<number>((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+      })
+    } finally { db.close() }
+  })).toBeGreaterThan(0)
+
+  const learnedBeforeLogin = await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('RecordDB')
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+    try {
+      const request = db.transaction('wordRecords', 'readonly').objectStore('wordRecords').count()
+      return await new Promise<number>((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+      })
+    } finally { db.close() }
+  })
+  await page.locator('[data-account-entry]').click()
+  await expect(page.getByRole('dialog', { name: '安全账户管理（S1）' })).toBeVisible()
+  await expect(page.getByText(/V1.*数据归属/)).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '登录已有账户' })).toBeVisible()
+  await harness(page)
+  const after = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    return {
+      registry: await h.workspaceRegistryPort.read(),
+      count: await h.db.wordRecords.count(),
+      anonymous: Boolean(await h.loadWorkspaceFromVault(h.ANONYMOUS)),
+    }
+  })
+  expect(after.registry.active).toEqual({ kind: 'anonymous' })
+  expect(after.registry.generation).toBe(1)
+  expect(after.anonymous).toBe(true)
+  expect(after.count).toBe(learnedBeforeLogin)
+})
+
 test('fresh anonymous Learn-mode preference is not mistaken for a V1 checkpoint', async ({ page }) => {
   await page.goto('/')
   await page.evaluate(() => {
@@ -660,13 +733,16 @@ test('old V1 study data still requires explicit S1 ownership consent before logi
   await expect(page.locator('[data-account-entry]')).toBeVisible()
 })
 
-test('fresh origin with pending Learn checkpoint must not skip ownership consent', async ({ page }) => {
-  await page.goto('/')
+test('pre-existing V1 Learn checkpoint cannot be auto-initialized as fresh S1', async ({ page }) => {
+  // Simulate a PRE-S1 browser with a durable checkpoint before app boot.
+  await harness(page)
   await page.evaluate(() => {
     localStorage.setItem('qwerty.learn.dailySession.v1.cet4', '{"version":1}')
   })
+  await page.goto('/')
   await page.locator('[data-account-entry]').click()
   await expect(page.getByText('S1 V1 数据归属测试（仅限本地开发）')).toBeVisible()
+  await expect(page.getByRole('button', { name: '确认归属并建立隔离工作区' })).toBeDisabled()
 })
 
 
