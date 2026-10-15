@@ -71,7 +71,14 @@ function updateLease(db: IDBDatabase, owner: string, action: LeaseAction): Promi
 
 async function acquireIndexedDbWriterLease(): Promise<WorkingDbLease> {
   const db = await openLeaseDatabase()
-  const owner = crypto.randomUUID()
+  // getRandomValues predates randomUUID in Safari and embedded browsers that
+  // also lack Web Locks. Never fall back to Math.random for a lock owner.
+  if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function') {
+    db.close()
+    throw new Error('Secure random API unavailable: S1 writer ownership refused')
+  }
+  const randomBytes = crypto.getRandomValues(new Uint8Array(16))
+  const owner = Array.from(randomBytes, byte => byte.toString(16).padStart(2, '0')).join('')
   let acquired = false
   try {
     acquired = await updateLease(db, owner, 'acquire')
