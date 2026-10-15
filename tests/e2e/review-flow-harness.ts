@@ -382,6 +382,17 @@ export async function readReviewModeInfo(page: import('@playwright/test').Page) 
 export async function waitForActiveLearnSession(
   page: import('@playwright/test').Page,
 ) {
+  // The current Learn landing is intentionally read-only. Legacy fixtures
+  // must start a real user session before asserting durable session state.
+  // Only click when an idle start control is actually present; restored
+  // running sessions remain untouched.
+  if (new URL(page.url()).pathname === '/learn') {
+    const idleStart = page.getByRole('button', { name: '开始 Learn', exact: true })
+    if (await idleStart.isVisible().catch(() => false)) {
+      await expect(idleStart).toBeEnabled()
+      await idleStart.click()
+    }
+  }
   await expect
     .poll(
       async () => {
