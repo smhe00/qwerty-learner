@@ -5,6 +5,26 @@ async function openSettings(page: Page) {
   const open = page.getByRole('button', { name: '打开设置对话框' })
   await expect(open).toBeVisible({ timeout: 30_000 })
   await open.click()
+  const diag = await page.evaluate(() => {
+    const btn = document.querySelector<HTMLButtonElement>('button[aria-label="打开设置对话框"]')
+    const dlg = document.querySelector<HTMLElement>('[role="dialog"]')
+    const active = document.activeElement as HTMLElement | null
+    const walk = (node: HTMLElement | null) => {
+      const ancestors: string[] = []
+      for (let el = node, depth = 0; el && depth < 6; el = el.parentElement, depth++) {
+        const style = getComputedStyle(el)
+        const box = el.getBoundingClientRect()
+        ancestors.push([el.tagName, el.className?.toString().slice(0, 85),
+          'display=' + style.display, 'visibility=' + style.visibility,
+          'opacity=' + style.opacity, 'rect=' + box.width + 'x' + box.height].join(' '))
+      }
+      return ancestors
+    }
+    return { buttonActive: btn?.getAttribute('data-toolbar-active'),
+      button: walk(btn), dialog: walk(dlg), active: active?.outerHTML.slice(0, 200),
+      modalCount: document.querySelectorAll('[role="dialog"]').length }
+  })
+  console.log('SETTINGS_POINTER_DIAG', JSON.stringify(diag))
   await expect(page.getByRole('dialog')).toBeVisible()
 }
 
