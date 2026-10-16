@@ -1,0 +1,19 @@
+/* Image mist composes in front of artwork, but behind real text/actions. */
+.song-picture-mist { position:absolute;inset:0;z-index:2;pointer-events:none;
+  overflow:hidden;isolation:isolate;border-radius:inherit; }
+.song-picture-mist-fallback {position:absolute;inset:0;background:#e8e9df70;}
+.song-picture-mist[data-theme="dark"] .song-picture-mist-fallback {background:#1a283080;}
+.song-picture-mist img {position:absolute;display:block;width:122%;height:100%;left:-11%;
+  object-fit:cover;user-select:none;pointer-events:none;will-change:transform;}
+.song-picture-mist-far {opacity:.73;animation:song-mist-wander 7s ease-in-out 1 both;}
+.song-picture-mist-near {opacity:.93;animation:song-mist-wander-near 8s ease-in-out 1 both;}
+.song-picture-mist[data-status="hidden"] .song-picture-mist-far,
+.song-picture-mist[data-status="hidden"] .song-picture-mist-near {opacity:1;}
+.song-picture-mist[data-status="hidden"] .song-picture-mist-fallback{background:#e2e3daaa;}
+.song-picture-mist[data-theme="dark"][data-status="hidden"] .song-picture-mist-fallback{background:#15212abb;}
+.song-picture-mist[data-drift="no"] img{animation:none;}
+@keyframes song-mist-wander { from{transform:translate3d(-2%,0,0)} to{transform:translate3d(1%,0,0)} }
+@keyframes song-mist-wander-near { from{transform:translate3d(3%,0,0)} to{transform:translate3d(-1%,0,0)} }
+@media(prefers-reduced-motion:reduce) {
+  .song-picture-mist img {animation:none !important;will-change:auto;}
+}
