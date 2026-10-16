@@ -223,10 +223,10 @@ export async function processLiveLearnWordRecord(
           )
     const crossedThreshold =
       conditionSatisfied(achievement.condition, value) &&
-      achievementEvidenceSatisfied(achievement.condition, throughCurrent, dictionaryWords) &&
+      achievementEvidenceSatisfied(achievement.condition, throughCurrent, dictionaryWords, current.dict) &&
       (previousValue === null ||
         !conditionSatisfied(achievement.condition, previousValue) ||
-        !achievementEvidenceSatisfied(achievement.condition, beforeCurrent, dictionaryWords))
+        !achievementEvidenceSatisfied(achievement.condition, beforeCurrent, dictionaryWords, current.dict))
 
     if (crossedThreshold) {
       candidates.push({ achievement, value })
