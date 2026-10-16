@@ -114,6 +114,7 @@ function profile(arm: Arm) {
 function simulate(
   arm: Arm, persona: Persona, seed: number, hypothesis: MemoryHypothesis,
   useCommonReinforcement = false,
+  delayedFailureRescueGain = 0,
 ): SimulationMetrics {
   const scheduler = fsrs(profile(arm))
   const words: HiddenWord[] = []
@@ -205,6 +206,14 @@ function simulate(
               word.reinforcementAfter = wordCompletions + 5
             }
             consumeMemoryPractice(word, now, success, persona, hypothesis)
+            // Sensitivity: failed non-FSRS delayed practice is followed by
+            // QWERTY's Hint and corrective encoding. The strength benefit is
+            // UNKNOWN without real observations; sweep it rather than assume
+            // either zero or a full independent Good.
+            if (arm === 'X' && isExtra && !success && delayedFailureRescueGain > 0) {
+              word.strengthDays = Math.min(120,
+                word.strengthDays * (1 + delayedFailureRescueGain))
+            }
             wordCompletions += 1
             now += needed
             dayActive += needed
@@ -421,5 +430,37 @@ test('G6-3b: fixed 10m delayed reinforcement must beat a realistic shared 4-word
     personas: PERSONAS.map(p => p.id),
     hypotheses,
     matrix,
+  }))
+})
+
+
+test('G6-3c: sensitivity to Hint rescue gain after FAILED delayed non-FSRS practice', () => {
+  const hypotheses: MemoryHypothesis[] = ['spacing-sensitive', 'repetition-sensitive']
+  const gains = [0, 0.2, 0.5, 1.0]
+  const rows = hypotheses.flatMap(hypothesis => {
+    const baseline = PERSONAS.flatMap(persona =>
+      SEEDS.map(seed => simulate('A', persona, seed, hypothesis, true)))
+    return [
+      { arm: 'A', hypothesis, rescueGain: null, summary: summarize(baseline) },
+      ...gains.map(rescueGain => {
+        const x = PERSONAS.flatMap(persona =>
+          SEEDS.map(seed => simulate('X', persona, seed, hypothesis, true, rescueGain)))
+        assert.ok(x.some(row => row.extraTraining > 0))
+        assert.ok(x.every(row => row.worstDayActiveMinutes <= DAILY_BUDGET / MIN + 1e-6))
+        return { arm: 'X', hypothesis, rescueGain, summary: summarize(x) }
+      }),
+    ]
+  })
+  assert.equal(rows.length, 10)
+  console.log('G6_DELAYED_HINT_RESCUE_SENSITIVITY ' + JSON.stringify({
+    disclaimer: 'Synthetic; rescue strength multiplier after failed 10m retrial is uncalibrated. Not human-study evidence.',
+    gains, hypotheses, matrix: rows.map(row => ({
+      arm: row.arm, hypothesis: row.hypothesis, rescueGain: row.rescueGain,
+      retention7: row.summary.independentProbe7.passRate,
+      retention30: row.summary.independentProbe30.passRate,
+      activeMinutes: row.summary.activeMinutes,
+      extraTraining: row.summary.extraTraining,
+      commonReinforcement: row.summary.commonReinforcements,
+    })),
   }))
 })
