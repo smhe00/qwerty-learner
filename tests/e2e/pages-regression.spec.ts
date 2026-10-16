@@ -178,3 +178,44 @@ test('published Pages: donation QR is visible immediately after hard refresh wit
   expect(qrRequests).toEqual([])
   expect(pageErrors).toEqual([])
 })
+
+
+test('published Pages: Song gallery opens inside Focus and offers safe desktop/mobile visual demos', async ({ page, request }) => {
+  test.setTimeout(120_000)
+  await expect.poll(async () => {
+    const response = await request.get(site + 'source-commit.txt?pages_probe=' + targetSha + '-' + Date.now(), { failOnStatusCode: false })
+    return response.ok() ? (await response.text()).trim() : ''
+  }, { timeout: 90_000, intervals: [1000, 2000, 5000] }).toBe(targetSha)
+
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await page.goto(site, { waitUntil: 'domcontentloaded' })
+  await page.getByRole('button', { name: '查看成就' }).click()
+  await expect(page.locator('[data-navigation-dialog="achievements"]')).toBeVisible()
+  await expect(page.getByRole('heading', { name: '成就雅集' })).toBeVisible()
+  await page.getByRole('button', { name: '赏鉴 · 百词基石样板' }).click()
+  await expect(page.locator('.song-master-scroll-sheet')).toBeVisible()
+  await expect(page.getByText('演示藏品 · 不会写入学习数据')).toBeVisible()
+  await page.getByRole('button', { name: /重播钤印/ }).click()
+  await page.getByRole('button', { name: '关闭册页' }).click()
+  await page.getByRole('button', { name: '预览夜卷暗主题' }).click()
+  await expect(page.locator('[data-song-achievement-gallery]')).toHaveAttribute('data-song-theme', 'dark')
+  expect(errors).toEqual([])
+
+  const mobile = await page.context().newPage()
+  try {
+    await mobile.setViewportSize({ width: 390, height: 844 })
+    await mobile.goto(site, { waitUntil: 'domcontentloaded' })
+    await mobile.getByRole('link', { name: '打开成就雅集' }).click()
+    await expect(mobile).toHaveURL(/\/achievements\/?$/)
+    await expect(mobile.getByRole('heading', { name: '成就雅集' })).toBeVisible()
+    await mobile.getByRole('button', { name: '赏鉴 · 百词基石样板' }).click()
+    await expect(mobile.locator('.song-master-scroll-sheet')).toBeVisible()
+    await mobile.getByRole('button', { name: '关闭册页' }).click()
+    await expect.poll(() => mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true)
+    await mobile.getByRole('button', { name: '返回', exact: true }).click()
+    await expect(mobile).toHaveURL(/\/mobile\/?$/)
+  } finally {
+    await mobile.close()
+  }
+})
