@@ -207,6 +207,7 @@ test('published Pages: Song gallery opens inside Focus and offers safe desktop/m
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 } })
   const mobile = await mobileContext.newPage()
   const mobileErrors: string[] = []
+  mobile.on('framenavigated', frame => { if (frame === mobile.mainFrame()) console.log('song-mobile-navigated', frame.url()) })
   mobile.on('pageerror', error => {
     mobileErrors.push(error.message)
     console.log('song-mobile-runtime-error', error.stack ?? error.message)
@@ -243,6 +244,11 @@ test('published Pages: Song gallery opens inside Focus and offers safe desktop/m
         href: location.href,
         innerWidth: window.innerWidth,
         text: document.body.innerText.slice(0, 950),
+        readyState: document.readyState,
+        rootPresent: Boolean(document.getElementById('root')),
+        rootHTML: document.getElementById('root')?.innerHTML.slice(0, 1000),
+        documentTitle: document.title,
+        scriptSources: [...document.querySelectorAll('script[src]')].map(x => x.getAttribute('src')).slice(0, 8),
         galleryPresent: Boolean(gallery),
         galleryDisplay: gallery ? getComputedStyle(gallery).display : null,
         galleryVisibility: gallery ? getComputedStyle(gallery).visibility : null,
