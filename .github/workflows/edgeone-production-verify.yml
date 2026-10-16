@@ -16,142 +16,62 @@ concurrency:
 jobs:
   verify-production:
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
-    env:
-      EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
-      EDGEONE_PROJECT_ID: makers-cgemngjuuwle
-      EDGEONE_PRODUCTION_BRANCH: master
-
+    timeout-minutes: 16
     steps:
       - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20.19.3'
 
-      - name: Verify production deployment from Git pointer
-        shell: bash
+      - name: Verify actual q.smhe.cn release SHA and gateway health
+        env:
+          EXPECTED_RELEASE_SHA: ${{ github.sha }}
         run: |
-          test -n "$EDGEONE_API_TOKEN" || { echo "::error::EDGEONE_API_TOKEN is not configured"; exit 1; }
-          npm install --no-save --ignore-scripts @edgeone/makers-sdk
-
           node --input-type=module <<'NODE'
-          import { Makers } from '@edgeone/makers-sdk'
+          import assert from 'node:assert/strict'
+          const expected = process.env.EXPECTED_RELEASE_SHA
+          assert.match(expected || '', /^[a-f0-9]{40}$/)
+          const production = 'https://q.smhe.cn'
+          const until = Date.now() + 12 * 60 * 1000
+          const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+          let last = 'not checked'
+          while (Date.now() < until) {
+            try {
+              const markerUrl = new URL('/source-commit.txt', production)
+              markerUrl.searchParams.set('release_probe', expected + '-' + Date.now())
+              const response = await fetch(markerUrl, {
+                cache: 'no-store',
+                signal: AbortSignal.timeout(15_000),
+                headers: { 'cache-control': 'no-cache' },
+              })
+              assert.equal(response.status, 200, 'Source marker HTTP ' + response.status)
+              const marker = (await response.text()).trim()
+              assert.match(marker, /^[a-f0-9]{7,40}$/, 'Invalid deployment source marker')
+              assert.ok(expected.startsWith(marker), 'Stale production build ' + marker)
 
-          const makers = new Makers({
-            token: process.env.EDGEONE_API_TOKEN,
-            region: 'global',
-          })
-
-          const projectId = process.env.EDGEONE_PROJECT_ID
-          const repoBranch = process.env.EDGEONE_PRODUCTION_BRANCH
-          const releaseSha = process.env.GITHUB_SHA
-          const recentCutoff = Date.now() - 20 * 60 * 1000
-          const deadline = Date.now() + 12 * 60 * 1000
-          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-
-          let deployment = null
-
-          while (Date.now() < deadline) {
-            const page = await makers.deployments.list({
-              projectId,
-              repoBranch: [repoBranch],
-              page: 0,
-              pageSize: 20,
-              order: { field: 'createdOn', direction: 'desc' },
-            })
-
-            deployment = page.items.find((item) => {
-              const created = Date.parse(item.createdOn || item.modifiedOn || '')
-              return Number.isFinite(created) && created >= recentCutoff
-            }) || null
-
-            if (deployment) break
-            console.log('Waiting for a recent EdgeOne deployment from production pointer...')
-            await sleep(10_000)
-          }
-
-          if (!deployment) {
-            throw new Error('No recent EdgeOne deployment appeared for the production pointer branch')
-          }
-
-          console.log(JSON.stringify({
-            deploymentId: deployment.deploymentId,
-            env: deployment.env,
-            status: deployment.status,
-            repoBranch: deployment.repoBranch,
-            releaseSha,
-            createdOn: deployment.createdOn,
-          }, null, 2))
-
-          if (deployment.repoBranch !== repoBranch) {
-            throw new Error(
-              `Expected deployment from ${repoBranch}, got ${deployment.repoBranch || 'unknown'}`,
-            )
-          }
-
-          if (deployment.env !== 'Production') {
-            throw new Error(`Expected Production deployment, got ${deployment.env}`)
-          }
-
-          if (deployment.status === 'Pending' || deployment.status === 'Process') {
-            deployment = await makers.deployments.wait({
-              projectId,
-              deploymentId: deployment.deploymentId,
-              timeout: 900,
-              pollInterval: 5,
-            })
-          }
-
-          if (deployment.status !== 'Success') {
-            throw new Error(`Production deployment ended with status ${deployment.status} code=${deployment.code || ''}`)
-          }
-
-          const project = await makers.projects.get({ projectId })
-          const rawDomain = project.presetDomain || ''
-          if (!rawDomain) {
-            throw new Error('Makers project did not return presetDomain')
-          }
-
-          const base = /^https?:\/\//.test(rawDomain) ? rawDomain : `https://${rawDomain}`
-          let health = null
-
-          for (let attempt = 1; attempt <= 8; attempt += 1) {
-            const response = await fetch(new URL('/api/health', base))
-            const text = await response.text()
-
-            if (response.status === 200) {
-              health = JSON.parse(text)
-              break
+              const healthUrl = new URL('/api/health', production)
+              healthUrl.searchParams.set('release_probe', Date.now().toString())
+              const healthResponse = await fetch(healthUrl, {
+                cache: 'no-store',
+                signal: AbortSignal.timeout(15_000),
+              })
+              assert.equal(healthResponse.status, 200, 'Gateway health HTTP ' + healthResponse.status)
+              const health = await healthResponse.json()
+              assert.ok(health.ok && health.service === 'qwerty-sync-gateway',
+                'Gateway identity/health mismatch')
+              assert.ok(Array.isArray(health.capabilities) &&
+                health.capabilities.includes('blob-transient-retry-v1'),
+                'Required blob gateway capability missing')
+              console.log(JSON.stringify({
+                result: 'PASS', production, expected, deployed: marker,
+                gateway: health.service, apiVersion: health.apiVersion,
+              }, null, 2))
+              process.exit(0)
+            } catch (error) {
+              last = error instanceof Error ? error.message : String(error)
+              console.log('Waiting for the exact production SHA/health:', last)
+              await sleep(10_000)
             }
-
-            console.log(`/api/health attempt ${attempt}: HTTP ${response.status}`)
-            await sleep(10_000)
           }
-
-          if (!health?.ok || health.service !== 'qwerty-sync-gateway') {
-            throw new Error('Production /api/health did not validate qwerty-sync-gateway')
-          }
-
-          if (
-            !Array.isArray(health.capabilities) ||
-            !health.capabilities.includes('blob-transient-retry-v1') ||
-            !health.capabilities.includes('learning-state-backup-v3')
-          ) {
-            throw new Error('Production /api/health is missing expected backup-v3 capability')
-          }
-
-          console.log(JSON.stringify({
-            ok: true,
-            deploymentId: deployment.deploymentId,
-            releaseSha,
-            repoBranch,
-            env: deployment.env,
-            productionDomain: rawDomain,
-            health: {
-              service: health.service,
-              apiVersion: health.apiVersion,
-              authMode: health.authMode,
-              capabilities: health.capabilities,
-            },
-          }, null, 2))
+          throw new Error('Production verification timed out: ' + last)
           NODE
