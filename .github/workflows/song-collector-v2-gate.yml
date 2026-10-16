@@ -5,6 +5,7 @@ on:
     branches:
       - feat/song-collector-v2
       - fix/song-collector-dark-rarity-and-lock-mist
+      - fix/song-collector-auto-grid-20261017
     paths:
       - 'src/pages/Achievements/**'
       - 'tests/song-collector-v2/**'
