@@ -1,0 +1,45 @@
+name: FSRS-6 G6 Research Probe
+
+on:
+  push:
+    branches:
+      - research/fsrs6-full-model-20261016
+    paths:
+      - 'tests/fsrs/g6-short-term-research.test.ts'
+      - 'docs/research/FSRS6_FULL_MODEL_RESEARCH.md'
+      - '.github/workflows/fsrs6-g6-research.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fsrs6-g6-research-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-short-term-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact research ref
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20.18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+
+      - name: Install pinned dependency tree
+        run: yarn install --frozen-lockfile
+
+      - name: Build standalone research-only probe
+        run: |
+          mkdir -p .g6-test
+          npx esbuild tests/fsrs/g6-short-term-research.test.ts \
+            --bundle --platform=node --target=node20 --format=esm \
+            --outfile=.g6-test/g6-short-term-research.test.mjs
+
+      - name: Exercise exact native FSRS card and replay behavior
+        run: node --test .g6-test/g6-short-term-research.test.mjs
