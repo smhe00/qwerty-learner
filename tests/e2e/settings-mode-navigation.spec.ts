@@ -51,6 +51,7 @@ test('external data-settings shortcut still opens Data & Backup even in Learn mo
 test('compact settings navigation is horizontal and preserves access to all sections', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto('/')
+  await page.waitForTimeout(1500)
   console.log('MOBILE_HEADER_DIAG', JSON.stringify(await page.evaluate(() => {
     const btn = document.querySelector<HTMLElement>('button[aria-label="打开设置对话框"]')
     const ancestors = []
@@ -61,7 +62,7 @@ test('compact settings navigation is horizontal and preserves access to all sect
         display: s.display, visibility: s.visibility, overflow: s.overflow,
         size: [box.width, box.height], hidden: el.getAttribute('aria-hidden') })
     }
-    return { ready: document.readyState, route: location.pathname, ancestors,
+    return { ready: document.readyState, route: location.pathname, text: document.body.innerText.slice(0, 1400), root: document.querySelector('#root')?.outerHTML.slice(0, 1400), ancestors,
       dialogs: [...document.querySelectorAll('[role="dialog"]')].map(el => el.outerHTML.slice(0, 160)) }
   })))
   await openSettings(page)
@@ -113,7 +114,9 @@ test('saved American voice and custom daily/stage preferences survive new defaul
 test('375px mobile header keeps settings and mode buttons visibly reachable', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto('/typing')
+  await page.waitForTimeout(1500)
   console.log('MOBILE_TYPING_DIAG', JSON.stringify(await page.evaluate(() => ({
+    text: document.body.innerText.slice(0, 1400), root: document.querySelector('#root')?.outerHTML.slice(0, 1400),
     settings: [...document.querySelectorAll('button')].filter(b => b.getAttribute('aria-label') === '打开设置对话框').map(b => ({
       html: b.outerHTML.slice(0, 230), rect: b.getBoundingClientRect().toJSON(),
       display: getComputedStyle(b).display,
