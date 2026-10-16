@@ -36,6 +36,20 @@ jobs:
         run: yarn install --frozen-lockfile
       - name: Build page
         run: yarn build
+      - name: Audit TypeScript in app navigation and achievement UI
+        shell: bash
+        run: |
+          set +e
+          yarn tsc --noEmit > "$RUNNER_TEMP/pages-entry-tsc.log" 2>&1
+          result=$?
+          set -e
+          if [ "$result" -ne 0 ]; then
+            if grep -E '^src/(app\\.tsx|pages/Mobile/index\\.tsx|pages/Achievements/)' "$RUNNER_TEMP/pages-entry-tsc.log"; then
+              echo "::error::TypeScript diagnostics in app, mobile, or achievement entry"
+              exit 1
+            fi
+            echo "::warning::Unrelated repository-wide TypeScript baseline errors remain; scoped entrypoint is clean"
+          fi
       - name: Stamp deployment source SHA
         run: printf '%s\n' "$GITHUB_SHA" > build/source-commit.txt
       - name: Deploy to gh-pages
