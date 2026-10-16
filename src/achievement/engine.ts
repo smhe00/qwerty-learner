@@ -4,6 +4,7 @@ import { wordListFetcher } from '@/utils/wordListFetcher'
 import {
   type AchievementDefinition,
   achievementDefinitions,
+  achievementById,
 } from '@/resources/achievementCulture'
 import { db } from '@/utils/db'
 import {
@@ -28,10 +29,12 @@ import {
 } from './unit-evaluator'
 import { compactAchievementEvent } from './storage-retention'
 import { achievementEvidenceSatisfied, countEvidenceDays } from './eligibility'
+import { planAchievementAwards } from './award-pacing'
 import type {
   AchievementEventRecord,
   AchievementStateRecord,
   AchievementUnlock,
+  PendingAchievementAward,
 } from './types'
 
 type AchievementCandidate = {
@@ -75,6 +78,8 @@ function p0EventAchievements(): AchievementDefinition[] {
   )
 }
 
+const PENDING_EVENT_ID = 'achievement:pending'
+
 async function persistEventAndUnlocks(
   event: AchievementEventRecord,
   candidates: AchievementCandidate[],
@@ -87,33 +92,60 @@ async function persistEventAndUnlocks(
       const duplicate = await db.achievementEvents.get(event.eventId)
       if (duplicate) return []
 
+      // Both the evidence and delayed grant queue are part of the existing
+      // S1-owned V4 ledger. No localStorage fallback or data migration.
+      const [queueEvent, unlockedStates] = await Promise.all([
+        db.achievementEvents.get(PENDING_EVENT_ID),
+        db.achievementStates.toArray(),
+      ])
+      const newlyQualified: PendingAchievementAward[] = candidates.map(
+        ({ achievement, value }) => ({
+          achievementId: achievement.id,
+          firstTriggerEventId: event.eventId,
+          triggeredAt: event.occurredAt,
+          metricValue: value,
+          sourceRecordId: event.sourceRecordId ?? event.sourceRecordIds?.at(-1),
+          sessionId: event.sessionId,
+        }),
+      )
+      const plan = planAchievementAwards({
+        now: event.occurredAt,
+        unlockedStates,
+        pending: queueEvent?.pendingAwards ?? [],
+        newlyQualified,
+      })
       const unlocks: AchievementUnlock[] = []
       const unlockedAchievementIds: string[] = []
-
-      for (const candidate of candidates) {
-        const existing = await db.achievementStates.get(
-          candidate.achievement.id,
-        )
-        if (existing) continue
-
+      if (plan.awarded) {
+        const award = plan.awarded
+        const achievement = achievementById.get(award.achievementId)
+        if (!achievement) throw new Error('Missing achievement definition for queued award')
         const state: AchievementStateRecord = {
-          achievementId: candidate.achievement.id,
+          achievementId: award.achievementId,
           unlockedAt: event.occurredAt,
-          firstTriggerEventId: event.eventId,
-          sourceRecordId:
-            event.sourceRecordId ?? event.sourceRecordIds?.at(-1),
-          sessionId: event.sessionId,
+          firstTriggerEventId: award.firstTriggerEventId,
+          sourceRecordId: award.sourceRecordId,
+          sessionId: award.sessionId,
         }
-
         await db.achievementStates.add(state)
-        unlockedAchievementIds.push(candidate.achievement.id)
-        unlocks.push({
-          achievement: candidate.achievement,
-          state,
-          metricValue: candidate.value,
-        })
+        unlockedAchievementIds.push(award.achievementId)
+        unlocks.push({ achievement, state, metricValue: award.metricValue })
       }
 
+      if (plan.waiting.length > 0) {
+        await db.achievementEvents.put({
+          eventId: PENDING_EVENT_ID,
+          eventType: 'unlock_queue',
+          origin: 'live',
+          occurredAt: event.occurredAt,
+          dict: event.dict,
+          metricValues: {},
+          unlockedAchievementIds: [],
+          pendingAwards: plan.waiting,
+        })
+      } else if (queueEvent) {
+        await db.achievementEvents.delete(PENDING_EVENT_ID)
+      }
       await db.achievementEvents.add(compactAchievementEvent({
         ...event,
         unlockedAchievementIds,
