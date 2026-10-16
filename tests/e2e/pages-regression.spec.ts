@@ -206,6 +206,18 @@ test('published Pages: Song gallery opens inside Focus and offers safe desktop/m
   // the same S1 writer lock as the still-mounted desktop Learn workspace.
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 } })
   const mobile = await mobileContext.newPage()
+  const mobileErrors: string[] = []
+  mobile.on('pageerror', error => {
+    mobileErrors.push(error.message)
+    console.log('song-mobile-runtime-error', error.stack ?? error.message)
+  })
+  mobile.on('console', entry => {
+    if (entry.type() === 'error') console.log('song-mobile-console-error', entry.text())
+  })
+  mobile.on('requestfailed', request => console.log('song-mobile-requestfailed', request.url(), request.failure()?.errorText))
+  mobile.on('response', response => {
+    if (response.status() >= 400) console.log('song-mobile-http-error', response.status(), response.url())
+  })
   try {
     await mobile.goto(site, { waitUntil: 'domcontentloaded' })
     await expect.poll(() => mobile.evaluate(() => window.location.pathname), {
@@ -240,6 +252,7 @@ test('published Pages: Song gallery opens inside Focus and offers safe desktop/m
         headingRect: box ? [box.x, box.y, box.width, box.height] : null,
       }
     }))
+    if (mobileErrors.length) console.log('song-mobile-errors-total', mobileErrors)
     await expect(mobile.getByRole('heading', { name: '成就雅集' })).toBeVisible({ timeout: 10000 })
     await mobile.getByRole('button', { name: '赏鉴 · 百词基石样板' }).click()
     await expect(mobile.locator('.song-master-scroll-sheet')).toBeVisible()
