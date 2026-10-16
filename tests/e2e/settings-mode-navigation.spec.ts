@@ -80,3 +80,37 @@ test('compact settings navigation is horizontal and preserves access to all sect
   }))
   expect(sizes.documentWidth).toBeLessThanOrEqual(sizes.width + 1)
 })
+
+test('fresh workspace uses British voice, 20 new words and 10 per stage with minimum 1', async ({ page }) => {
+  await gotoReviewAppReady(page, '/typing')
+  await expect(page.getByRole('button', { name: '发音及音标切换：英音' })).toBeVisible()
+  await page.evaluate(() => window.dispatchEvent(new Event('qwerty:open-data-settings')))
+  await page.getByRole('tab', { name: '学习计划' }).click()
+  await expect(page.getByRole('spinbutton', { name: '每日新词目标' })).toHaveValue('20')
+  const stage = page.getByRole('spinbutton', { name: '每阶段词数' })
+  await expect(stage).toHaveValue('10')
+  await expect(stage).toHaveAttribute('min', '1')
+  await stage.fill('1')
+  await stage.blur()
+  await expect(stage).toHaveValue('1')
+  await expect.poll(() => page.evaluate(() =>
+    JSON.parse(localStorage.getItem('memoryConfig')!).blockSize)).toBe(1)
+})
+
+test('saved American voice and custom daily/stage preferences survive new defaults', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('stored-settings-seeded')) return
+    sessionStorage.setItem('stored-settings-seeded', 'yes')
+    localStorage.setItem('pronunciation', JSON.stringify({
+      isOpen: true, volume: 1, type: 'us', name: '美音',
+      isLoop: false, isTransRead: false, transVolume: 1, rate: 1,
+    }))
+    localStorage.setItem('memoryConfig', JSON.stringify({ dailyNewWordTarget: 37, blockSize: 7 }))
+  })
+  await gotoReviewAppReady(page, '/typing')
+  await expect(page.getByRole('button', { name: '发音及音标切换：美音' })).toBeVisible()
+  await page.evaluate(() => window.dispatchEvent(new Event('qwerty:open-data-settings')))
+  await page.getByRole('tab', { name: '学习计划' }).click()
+  await expect(page.getByRole('spinbutton', { name: '每日新词目标' })).toHaveValue('37')
+  await expect(page.getByRole('spinbutton', { name: '每阶段词数' })).toHaveValue('7')
+})
