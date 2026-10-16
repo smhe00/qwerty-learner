@@ -1,7 +1,7 @@
 import type { AchievementDefinition } from '@/resources/achievementCulture'
 import { SongMistLayer } from './SongMistLayer'
 import { getApprovedSongVisualPack, songAssetUrl } from './spec'
-import type { SongTheme, SongSafeZone } from './spec'
+import type { SongSafeZone, SongTheme } from './spec'
 import './song-image-composer.css'
 
 type Variant = 'card' | 'detail'
