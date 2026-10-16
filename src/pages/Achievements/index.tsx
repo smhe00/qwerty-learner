@@ -203,7 +203,7 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
             <div className="song-empty">此卷尚无成就，继续学习后便会渐渐丰盈。</div>
           )}
           <p className="mt-5 text-center text-xs leading-6 text-[#83796b]">
-            素笺墨印 · 汝窑天青 · 泥金朱砂　｜　每枚朱印只为真正达成的进步而落
+            素笺墨印 · 汝窑天青 · 泥金朱砂 ｜ 每枚朱印只为真正达成的进步而落
           </p>
         </div>
       </main>
