@@ -1,0 +1,82 @@
+name: Circle P0 etest live admission 2026-10-16
+
+# No etest/main/master refs moved. No Maker deployment. No account, Blob or write calls.
+on:
+  push:
+    branches:
+      - qa/circle-p0-etest-20261016
+    paths:
+      - '.github/workflows/circle-p0-etest-live-20261016.yml'
+permissions:
+  contents: read
+
+jobs:
+  read-only-p0-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe exact deployed etest SHA, runtime and Circle access gate
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict'
+          const site = 'https://etest.edgeone.dev'
+          const req = async (path, options = {}) => {
+            const r = await fetch(site + path, {
+              cache: 'no-store', redirect: 'follow',
+              signal: AbortSignal.timeout(18000), ...options,
+            })
+            const raw = (await r.text()).slice(0, 32768)
+            let body = null
+            try { body = JSON.parse(raw) } catch {}
+            return { http: r.status, raw, body }
+          }
+          const gh = await fetch('https://api.github.com/repos/smhe00/qwerty-learner/git/ref/heads/edgeone-test', {
+            headers: { Authorization: 'Bearer ' + process.env.GITHUB_TOKEN,
+              Accept: 'application/vnd.github+json' },
+            signal: AbortSignal.timeout(15000),
+          })
+          assert.equal(gh.status, 200, 'Cannot inspect etest GitHub HEAD')
+          const expected = (await gh.json()).object.sha
+          const stamp = await req('/source-commit.txt')
+          const published = stamp.raw.trim()
+          const shaMatches = /^[a-f0-9]{7,40}$/.test(published) && expected.startsWith(published)
+          const health = await req('/api/health')
+          const circle = await req('/api/circle/v2')
+          const report = {
+            check: 'circle-p0-etest-20261016',
+            branchSha: expected,
+            deployedShaPrefix: published,
+            deployedShaMatchesBranch: shaMatches,
+            healthHttp: health.http,
+            healthService: health.body?.service || null,
+            binaryTransport: (health.body?.capabilities || []).filter(x => /binary|multipart|base64/i.test(x)),
+            circleHttpUnauthenticated: circle.http,
+            circleErrorCode: circle.body?.error || null,
+            circleState: circle.http === 401 ? 'enabled-requires-auth' :
+              circle.http === 404 ? 'blocked-disabled-or-unmounted' :
+              circle.http === 503 ? 'blocked-config-or-runtime' : 'unexpected',
+            noWrites: true, noAccountsCreated: true, noMakerBuild: true,
+          }
+          console.log('CIRCLE_P0_LIVE_REPORT=' + JSON.stringify(report))
+          if (!shaMatches || stamp.http !== 200) {
+            throw Error('Cannot verify etest deployment matches its own source branch')
+          }
+          assert.equal(health.http, 200, 'Etest /api/health unavailable')
+          assert.equal(health.body?.service, 'qwerty-sync-gateway')
+          if (circle.http === 404) {
+            throw Error('CIRCLE_P0_BLOCKED: Circle etest env gate is disabled or route absent; must activate in etest Maker environment')
+          }
+          if (circle.http === 503) {
+            throw Error('CIRCLE_P0_BLOCKED: Circle etest configuration or trusted IP/runtime unavailable')
+          }
+          assert.equal(circle.http, 401, 'Unexpected Circle unauthenticated behavior')
+          const negative = await req('/api/circle/v2/' + 'a'.repeat(24), {
+            headers: { Authorization: 'Bearer invalid-not-a-session' },
+          })
+          console.log('CIRCLE_P0_INVALID_TOKEN=' + JSON.stringify({
+            http: negative.http, error: negative.body?.error || null,
+          }))
+          assert.equal(negative.http, 401, 'Invalid Circle bearer was not denied')
+          NODE
