@@ -20,6 +20,8 @@ const ErrorBookButton = ({
   return (
     <button
       type="button"
+      data-toolbar-trigger
+      tabIndex={-1}
       onClick={toErrorBook}
       disabled={disabled}
       aria-disabled={disabled}
