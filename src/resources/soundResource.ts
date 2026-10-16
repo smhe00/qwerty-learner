@@ -45,7 +45,7 @@ export const correctSoundResources: SoundResource[] = [{ key: '1', name: '声音
 
 export const LANG_PRON_MAP: LanguagePronunciationMap = {
   en: {
-    defaultPronIndex: 0,
+    defaultPronIndex: 1,
     pronunciation: [
       {
         name: '美音',
@@ -58,7 +58,7 @@ export const LANG_PRON_MAP: LanguagePronunciationMap = {
     ],
   },
   code: {
-    defaultPronIndex: 0,
+    defaultPronIndex: 1,
     pronunciation: [
       {
         name: '美音',
