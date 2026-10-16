@@ -29,6 +29,7 @@ const PERSONAS = [
   { id: 'fatigued', initial: 1.18, gain: 0.62, slip: 0.075, attendance: 0.82 },
 ] as const
 
+type MemoryHypothesis = 'spacing-sensitive' | 'repetition-sensitive'
 type Arm = 'A' | 'B' | 'C' | 'D' | 'X' | 'Y'
 const ARMS: Arm[] = ['A', 'B', 'C', 'D', 'X', 'Y']
 type Persona = typeof PERSONAS[number]
@@ -44,6 +45,7 @@ type HiddenWord = {
 }
 type SimulationMetrics = {
   arm: Arm
+  hypothesis: MemoryHypothesis
   persona: string
   seed: number
   admitted: number
@@ -80,11 +82,13 @@ function chance(word: HiddenWord, at: number): number {
   return Math.max(0.001, Math.min(0.999,
     Math.exp(-0.65 * elapsedDays / word.strengthDays)))
 }
-function consumeMemoryPractice(word: HiddenWord, at: number, success: boolean, persona: Persona): void {
+function consumeMemoryPractice(word: HiddenWord, at: number, success: boolean, persona: Persona, hypothesis: MemoryHypothesis): void {
   const gapDays = Math.max(0, at - word.lastAt) / DAY
   if (success) {
     // Massed recalls help less than spaced independent retrieval in this toy learner.
-    const spacing = Math.min(1.8, Math.sqrt(gapDays + 0.02))
+    const spacing = hypothesis === 'spacing-sensitive'
+      ? Math.min(1.8, Math.sqrt(gapDays + 0.02))
+      : Math.min(1.8, 0.75 + 0.30 * Math.sqrt(gapDays + 0.02))
     word.strengthDays = Math.min(120, word.strengthDays *
       (1 + persona.gain * spacing) + 0.15)
   } else {
@@ -104,7 +108,7 @@ function profile(arm: Arm) {
   }
 }
 
-function simulate(arm: Arm, persona: Persona, seed: number): SimulationMetrics {
+function simulate(arm: Arm, persona: Persona, seed: number, hypothesis: MemoryHypothesis): SimulationMetrics {
   const scheduler = fsrs(profile(arm))
   const words: HiddenWord[] = []
   const probes: Record<1 | 7 | 30 | 90, { ok: number; total: number }> = {
@@ -186,7 +190,7 @@ function simulate(arm: Arm, persona: Persona, seed: number): SimulationMetrics {
                 word.extraDue = null
               }
             }
-            consumeMemoryPractice(word, now, success, persona)
+            consumeMemoryPractice(word, now, success, persona, hypothesis)
             now += needed
             dayActive += needed
             totalActive += needed
@@ -255,7 +259,7 @@ function simulate(arm: Arm, persona: Persona, seed: number): SimulationMetrics {
   const spentMinutes = totalActive / MIN
   const overdueEnd = words.filter(word => word.dueAt <= BASE + DAYS * DAY).length
   return {
-    arm, persona: persona.id, seed, admitted: words.length,
+    arm, hypothesis, persona: persona.id, seed, admitted: words.length,
     meanActiveMinutes: spentMinutes / DAYS,
     reviewAttempts: attempts, lapses,
     sameDayIndependent, extraTraining,
@@ -278,7 +282,7 @@ function summarize(rows: SimulationMetrics[]) {
     return { passRate: rounded(good / Math.max(1, eligible)), eligible, passed: good }
   }
   return {
-    arm: rows[0].arm, runs: rows.length,
+    arm: rows[0].arm, hypothesis: rows[0].hypothesis, runs: rows.length,
     admitted: mean(x => x.admitted),
     activeMinutes: mean(x => x.spentMinutes),
     dailyActiveMinutes: mean(x => x.meanActiveMinutes),
@@ -296,8 +300,9 @@ function summarize(rows: SimulationMetrics[]) {
 }
 
 test('G6-3: fixed budget closed-loop learner compares native vs extra training vs extra FSRS feedback', () => {
-  const runs = ARMS.flatMap(arm =>
-    PERSONAS.flatMap(persona => SEEDS.map(seed => simulate(arm, persona, seed))))
+  const hypotheses: MemoryHypothesis[] = ['spacing-sensitive', 'repetition-sensitive']
+  const runs = hypotheses.flatMap(hypothesis => ARMS.flatMap(arm =>
+    PERSONAS.flatMap(persona => SEEDS.map(seed => simulate(arm, persona, seed, hypothesis)))))
   for (const r of runs) {
     assert.ok(r.spentMinutes >= 0)
     assert.ok(r.worstDayActiveMinutes <= DAILY_BUDGET / MIN + 1e-6,
@@ -308,9 +313,9 @@ test('G6-3: fixed budget closed-loop learner compares native vs extra training v
     assert.ok(r.eligible30 <= r.admitted)
     assert.ok(r.overdueEnd <= r.admitted)
   }
-  const matrix = ARMS.map(arm =>
-    summarize(runs.filter(r => r.arm === arm)))
-  assert.equal(matrix.length, 6)
+  const matrix = hypotheses.flatMap(hypothesis => ARMS.map(arm =>
+    summarize(runs.filter(r => r.arm === arm && r.hypothesis === hypothesis))))
+  assert.equal(matrix.length, 12)
   assert.ok(matrix.some(x => x.sameDayIndependent > 0))
   assert.ok(matrix.some(x => x.extraTraining > 0))
   // A/B are NOT assumed equal: even with empty step arrays a New/Review
@@ -330,7 +335,7 @@ test('G6-3: fixed budget closed-loop learner compares native vs extra training v
   }))
   console.log('G6_CLOSED_LOOP_SYNTHETIC_MATRIX ' + JSON.stringify({
     days: DAYS, dictionary: DICTIONARY, personas: PERSONAS.map(x => x.id),
-    seeds: SEEDS, budgetMinutesPerDay: DAILY_BUDGET / MIN,
+    seeds: SEEDS, hypotheses, budgetMinutesPerDay: DAILY_BUDGET / MIN,
     model: 'synthetic latent memory; not empirical efficacy',
     matrix,
   }))
