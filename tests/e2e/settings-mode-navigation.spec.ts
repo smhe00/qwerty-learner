@@ -1,3 +1,4 @@
+import { gotoReviewAppReady } from './review-flow-harness'
 import { expect, test, type Page } from '@playwright/test'
 
 async function openSettings(page: Page) {
@@ -8,7 +9,7 @@ async function openSettings(page: Page) {
 }
 
 test('Learn opens its learning plan; Typing preferences are separately reachable', async ({ page }) => {
-  await page.goto('/learn')
+  await gotoReviewAppReady(page, '/')
   await openSettings(page)
   await expect(page.getByRole('tab', { name: '学习计划' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.locator('[data-settings-scope="learn"]')).toBeVisible()
@@ -23,7 +24,7 @@ test('Learn opens its learning plan; Typing preferences are separately reachable
 })
 
 test('Typing opens its own preferences; shared appearance retains text-selection control', async ({ page }) => {
-  await page.goto('/typing')
+  await gotoReviewAppReady(page, '/typing')
   await openSettings(page)
   await expect(page.getByRole('tab', { name: '打字练习' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.locator('[data-settings-scope="typing"]')).toBeVisible()
@@ -38,7 +39,7 @@ test('Typing opens its own preferences; shared appearance retains text-selection
 })
 
 test('external data-settings shortcut still opens Data & Backup even in Learn mode', async ({ page }) => {
-  await page.goto('/learn')
+  await gotoReviewAppReady(page, '/')
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 30_000 })
   await page.evaluate(() => window.dispatchEvent(new Event('qwerty:open-data-settings')))
   await expect(page.getByRole('tab', { name: '数据与备份' })).toHaveAttribute('aria-selected', 'true')
@@ -47,7 +48,7 @@ test('external data-settings shortcut still opens Data & Backup even in Learn mo
 
 test('compact settings navigation is horizontal and preserves access to all sections', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto('/learn')
+  await gotoReviewAppReady(page, '/')
   await openSettings(page)
   await expect(page.getByRole('tablist')).toHaveAttribute('aria-orientation', 'horizontal')
   const dataTab = page.getByRole('tab', { name: '数据与备份' })
