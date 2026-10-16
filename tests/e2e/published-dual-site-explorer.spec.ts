@@ -236,15 +236,12 @@ for (const site of sites) {
       await page.getByRole('tab', { name: '数据与备份' }).click()
       await expect(page.getByText('本地备份', { exact: true })).toBeVisible()
       if (site.cloud) {
-        // S1/S2 separated account management (global header) from the
-        // account-neutral CloudSyncSetting. A fresh anonymous/legacy browser
-        // need not have a '登录' button inside Data Settings.
-        await expect(page.getByText('云端同步', { exact: true })).toBeVisible()
-        await expect(page.getByText(
-          '登录、注册及安全退出已统一移动到网站右上角的账户入口。',
-          { exact: false },
-        )).toBeVisible()
+        // S1 intentionally hides cloud controls until a verified account
+        // owns the workspace. Anonymous visitors see backup controls and
+        // the account entry, never an executable upload action.
+        await expect(page.getByText('云端同步', { exact: true })).toHaveCount(0)
         await expect(page.locator('[data-account-entry]')).toHaveCount(1)
+        await expect(page.getByRole('button', { name: '立即同步' })).toHaveCount(0)
       } else {
         // Pages must never expose a cloud account entry or executable cloud
         // sync control; this is security-relevant rather than visual.
