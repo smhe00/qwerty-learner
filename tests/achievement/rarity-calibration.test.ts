@@ -55,9 +55,9 @@ test('new unit badge requires entering three distinct real dictionary units', ()
     name: 'w' + i, trans: [], usphone: '', ukphone: '',
   })) as Word[]
   const records = [attempt(1, 'w0'), attempt(2, 'w19'), attempt(3, 'w20')]
-  assert.equal(achievementEvidenceSatisfied(cond, records, dict), false)
-  assert.equal(achievementEvidenceSatisfied(cond, [...records, attempt(4, 'w40')], dict), true)
-  assert.equal(achievementEvidenceSatisfied(cond, [...records, attempt(4, 'unknown')], dict), false)
+  assert.equal(achievementEvidenceSatisfied(cond, records, dict, 'dict'), false)
+  assert.equal(achievementEvidenceSatisfied(cond, [...records, attempt(4, 'w40')], dict, 'dict'), true)
+  assert.equal(achievementEvidenceSatisfied(cond, [...records, attempt(4, 'unknown')], dict, 'dict'), false)
 })
 
 test('no-hint streak must persist into a second actual Learn day', () => {
