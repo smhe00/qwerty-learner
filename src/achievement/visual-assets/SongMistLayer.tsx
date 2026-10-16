@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { songMistImageUrls } from './spec'
 import type { SongTheme } from './spec'
 import './song-mist.css'
@@ -14,7 +13,6 @@ export function SongMistLayer({ status, theme, drift = true }: {
   theme: SongTheme
   drift?: boolean
 }) {
-  const [failed, setFailed] = useState(false)
   const images = songMistImageUrls(theme)
   if (status === 'unlocked') return null
   return (
@@ -26,14 +24,12 @@ export function SongMistLayer({ status, theme, drift = true }: {
       aria-hidden="true"
     >
       <span className="song-picture-mist-fallback" />
-      {!failed && (
-        <>
+      <>
           <img className="song-picture-mist-far" src={images.far} alt="" loading="lazy"
-            draggable={false} onError={() => setFailed(true)} />
+            draggable={false} onError={(e) => { e.currentTarget.dataset.failed = 'true' }} />
           <img className="song-picture-mist-near" src={images.near} alt="" loading="lazy"
             draggable={false} onError={() => setFailed(true)} />
-        </>
-      )}
+      </>
     </span>
   )
 }
