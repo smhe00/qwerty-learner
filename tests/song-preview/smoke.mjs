@@ -27,6 +27,15 @@ async function checkViewport(name, width, height) {
   assert.equal(response.status(), 200)
   await page.locator('.song-preview-gallery').waitFor()
   assert.equal(await page.locator('.song-picture-mist').count() > 0, true, 'at least one locked card has mist')
+  await page.waitForTimeout(750)
+  const fogImages = await page.locator('.song-picture-mist-near').count()
+  console.log(name + ' cloud diagnostic:', {
+    fogImages, brokenImages,
+    imageUrls: await page.locator('.song-picture-mist img').evaluateAll(
+      nodes => nodes.map(node => ({ src: node.currentSrc, complete: node.complete, width: node.naturalWidth }))
+    ),
+  })
+  assert.ok(fogImages > 0, name + ' no image fog found; broken requests: ' + brokenImages.join('; '))
   await page.locator('.song-picture-mist-near').first().evaluate(img => img.decode())
   assert.deepEqual(brokenImages, [], name + ' missing WebP layer')
 
