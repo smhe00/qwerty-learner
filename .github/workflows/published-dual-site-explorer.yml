@@ -38,20 +38,26 @@ jobs:
         run: |
           yarn install --frozen-lockfile
           npx playwright install --with-deps chromium
-      - name: Pin the currently served Pages SHA immediately before real-site tests
+      - name: Wait for this commit's published Pages SHA before real-site tests
         shell: bash
         run: |
           set -euo pipefail
-          published=$(curl --connect-timeout 5 --max-time 20 -fsSL \
-            'https://smhe00.github.io/qwerty-learner/source-commit.txt')
-          if ! [[ "$published" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "::error::Published Pages source-commit.txt is missing or malformed"
+          expected="$GITHUB_SHA"
+          published=""
+          for attempt in $(seq 1 72); do
+            published=$(curl --connect-timeout 5 --max-time 20 -fsSL \
+              "https://smhe00.github.io/qwerty-learner/source-commit.txt?sha=$expected&try=$attempt" || true)
+            if [ "$published" = "$expected" ]; then
+              echo "PAGES_SOURCE_SHA=$expected" >> "$GITHUB_ENV"
+              echo "PASS: Pages deployed commit ${expected:0:12}"
+              break
+            fi
+            echo "Waiting for Pages commit ${expected:0:12}; served ${published:0:12} (attempt $attempt/72)"
+            sleep 10
+          done
+          if [ "$published" != "$expected" ]; then
+            echo "::error::Pages did not deploy expected ${expected:0:12} before browser test window"
             exit 1
-          fi
-          echo "PAGES_SOURCE_SHA=$published" >> "$GITHUB_ENV"
-          echo "Test target: actually published Pages SHA ${published:0:12}"
-          if [ "$published" != "$GITHUB_SHA" ]; then
-            echo "::notice::Pages is at ${published:0:12}, while test harness is ${GITHUB_SHA:0:12}; this gate tests the actually served version, not an unpublished SHA."
           fi
       - name: Run identical anonymous Explorer coverage against both published URLs
         run: >-
