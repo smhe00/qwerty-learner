@@ -1,0 +1,22 @@
+/* Local transition only: keeps Headless UI Dialog/Flex overlay untouched. */
+.song-gallery { isolation: isolate; }
+.song-portal-entry {
+  position:absolute;inset:0;z-index:8;overflow:hidden;pointer-events:none;
+  border-radius:inherit;animation:song-portal-hide .76s ease both;
+}
+.song-portal-paper {position:absolute;inset:0;background:#f7f4eddd;
+  animation:song-portal-paper-out .76s ease both;}
+.song-portal-entry[data-theme="dark"] .song-portal-paper {background:#14232bdf;}
+.song-portal-mist {position:absolute;bottom:-9%;width:120%;height:86%;left:-10%;
+  object-fit:cover;opacity:.92;user-select:none;}
+.song-portal-mist-far {animation:song-portal-mist-out .76s ease-out both;}
+.song-portal-mist-near {animation:song-portal-mist-near-out .76s ease-out both;}
+@keyframes song-portal-hide {0%,63%{visibility:visible;opacity:1;}100%{visibility:hidden;opacity:0;}}
+@keyframes song-portal-paper-out {0%{opacity:1;}70%{opacity:.72;}100%{opacity:0;}}
+@keyframes song-portal-mist-out {0%{transform:translate3d(-7%,2%,0);opacity:1;}100%{transform:translate3d(10%,-7%,0);opacity:0;}}
+@keyframes song-portal-mist-near-out {0%{transform:translate3d(6%,6%,0);opacity:1;}100%{transform:translate3d(-5%,-4%,0);opacity:0;}}
+@media (prefers-reduced-motion:reduce) {
+  .song-portal-entry{animation:none;display:none;}
+}
+
+.song-picture-mist img[data-failed="true"], .song-portal-entry img[data-failed="true"] {visibility:hidden !important;}

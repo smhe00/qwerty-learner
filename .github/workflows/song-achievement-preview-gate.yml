@@ -1,0 +1,50 @@
+name: Song Achievement Preview Gate
+
+on:
+  push:
+    branches:
+      - design/achievement-song-aesthetic-20261016
+    paths:
+      - 'src/pages/Achievements/**'
+      - 'src/achievement/visual-assets/**'
+      - 'src/song-preview/**'
+      - 'public/assets/achievements/song/**'
+      - 'scripts/validate-song-art-assets.mjs'
+      - '.gitattributes'
+      - 'docs/design/Song-Achievement-Collection-v1.md'
+      - '.github/workflows/song-achievement-preview-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn validate:achievement-culture
+      - run: node scripts/validate-song-art-assets.mjs
+      - run: yarn eslint src/pages/Achievements src/achievement/visual-assets src/song-preview --ext .ts,.tsx
+      - name: Audit TypeScript in achievement UI
+        shell: bash
+        run: |
+          set +e
+          yarn tsc --noEmit > "$RUNNER_TEMP/song-tsc.log" 2>&1
+          result=$?
+          set -e
+          if [ "$result" -ne 0 ]; then
+            if grep -E '^src/(pages/Achievements|achievement/visual-assets|song-preview)/' "$RUNNER_TEMP/song-tsc.log"; then
+              echo "::error::TypeScript errors detected in Song Achievement UI"
+              exit 1
+            fi
+            total=$(grep -c '^src/' "$RUNNER_TEMP/song-tsc.log" || true)
+            echo "::warning::Repository-wide TypeScript has $total diagnostics outside changed Achievement UI; baseline debt remains."
+          fi
+      - run: yarn build

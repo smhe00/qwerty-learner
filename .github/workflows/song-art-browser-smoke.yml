@@ -1,0 +1,54 @@
+name: Song Art Browser Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - design/achievement-song-aesthetic-20261016
+    paths:
+      - 'tests/song-preview/**'
+      - 'src/achievement/visual-assets/**'
+      - 'public/assets/achievements/song/**'
+      - 'src/song-preview/**'
+      - 'preview/song-achievements/**'
+      - 'vite.song-preview.config.ts'
+      - '.github/workflows/song-art-browser-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Install Chromium for independent browser verification
+        run: yarn playwright install --with-deps chromium
+      - name: Verify actual image resources and build preview
+        run: |
+          node scripts/validate-song-art-assets.mjs
+          yarn vite build --config vite.song-preview.config.ts
+      - name: Run browser at desktop and mobile viewports
+        shell: bash
+        run: |
+          yarn vite preview --config vite.song-preview.config.ts --host 127.0.0.1 --port 4321 > "$RUNNER_TEMP/song-vite.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4321/qwerty-learner/previews/song-achievements/ > /dev/null; then break; fi
+            sleep 1
+          done
+          node tests/song-preview/smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: song-browser-screenshots
+          path: tests/song-preview/artifacts/*.png
+          if-no-files-found: ignore
+          retention-days: 7
