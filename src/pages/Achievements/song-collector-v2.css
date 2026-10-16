@@ -63,7 +63,7 @@
    tablet/mobile column presets. The minimum card size changes smoothly with
    the viewport; auto-fill preserves the same width on an incomplete last row. */
 .song-v2-grid{
- --song-v2-card-min:clamp(170px,calc(12vw + 125px),218px);
+ --song-v2-card-min:clamp(160px,calc(12vw + 116px),218px);
  display:grid;
  grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--song-v2-card-min)),1fr));
  gap:18px 20px;
