@@ -1,3 +1,5 @@
+/** Older unfinished sessions without an explicit blockSize were created at 20. */
+export const LEGACY_LEARN_BLOCK_SIZE = 20
 export const DEFAULT_LEARN_BLOCK_SIZE = 10
 export const MIN_LEARN_BLOCK_SIZE = 1
 export const MAX_LEARN_BLOCK_SIZE = 50
