@@ -59,7 +59,16 @@
 .song-v2-sort{position:relative;flex-shrink:0;}
 .song-v2-sort select{appearance:auto;padding:9px 10px;border:1px solid #cebda6;color:#665e51;
  background:#fdf9f1d9;border-radius:10px;font-family:inherit;font-size:12px;min-width:133px;}
-.song-v2-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 20px;align-items:stretch;}
+/* Card count is determined by the gallery's *available width*, not desktop/
+   tablet/mobile column presets. The minimum card size changes smoothly with
+   the viewport; auto-fill preserves the same width on an incomplete last row. */
+.song-v2-grid{
+ --song-v2-card-min:clamp(170px,calc(12vw + 125px),218px);
+ display:grid;
+ grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--song-v2-card-min)),1fr));
+ gap:18px 20px;
+ align-items:stretch;
+}
 .song-v2-card{
  --song-card-tone:#af9c82;
  display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;isolation:isolate;
@@ -174,7 +183,7 @@
 }
 @media(max-width:620px){
  .song-v2-collection{padding:18px 13px 14px;}
- .song-v2-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;}
+ .song-v2-grid{gap:11px;}
  .song-v2-header{height:130px;}
  .song-v2-header-group{gap:12px;padding-top:8px;}
  .song-v2-progress-ring{width:66px;height:66px;padding:6px;}
@@ -198,7 +207,7 @@
  .song-v2-detail blockquote p{font-size:13px;}
 }
 @media(max-width:370px){
- .song-v2-grid{grid-template-columns:1fr;max-width:275px;margin-inline:auto;}
+ /* Auto-fill already collapses narrow viewports to one portrait card. */
  .song-v2-header-painting{display:none;}
  .song-v2-filter{font-size:10px;padding:6px 7px;}
  .song-v2-footer{flex-wrap:wrap;}
