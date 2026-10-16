@@ -72,7 +72,7 @@ test('P0: fresh etest browser can learn anonymously before opening login (native
       await expect(page.getByRole('button', { name: '打开设置对话框' }))
         .toBeVisible({ timeout: 30_000 })
       await page.getByRole('button', { name: '打开设置对话框' }).click()
-      await page.getByRole('tab', { name: '数据设置' }).click()
+      await page.getByRole('tab', { name: '数据与备份' }).click()
       await page.getByText('高级操作 · 清除本地数据').click()
       await page.getByRole('button', { name: '清除本地数据', exact: true }).click()
       await expect(page.getByRole('heading', { name: '清除当前工作区的本地学习数据' }))
@@ -90,7 +90,9 @@ test('P0: fresh etest browser can learn anonymously before opening login (native
         .toBeVisible({ timeout: 30_000 })
       expect(await recordCount()).toBe(0)
     } finally {
-      await context.close()
+      // On Playwright's timeout the test is already terminated; do not let a
+      // context.close() rejection obscure the actual failed locator/step.
+      await context.close().catch(() => {})
     }
   }
 })
