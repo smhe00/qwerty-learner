@@ -49,8 +49,11 @@ test('popover icons remain mouse clickable while Learn unavailable icons stay di
   const sound = page.getByRole('button', { name: '音效设置' })
   await sound.click()
   await expect(page.getByText('开关按键音', { exact: true })).toBeVisible()
-  await expect(sound).not.toBeFocused()
+  // Headless UI keeps ownership focus inside an open Popover; the trigger
+  // is not tabbable and Enter cannot close/reopen it.
+  await expect(sound).toHaveAttribute('tabindex', '-1')
   await sound.focus()
   await page.keyboard.press('Enter')
+  await page.keyboard.press('Space')
   await expect(page.getByText('开关按键音', { exact: true })).toBeVisible()
 })
