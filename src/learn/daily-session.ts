@@ -1,3 +1,4 @@
+import { DEFAULT_LEARN_BLOCK_SIZE } from './block-size'
 import {
   isAcquisitionIntroductionRecord,
   isCompletedAcquisitionRecord,
@@ -65,7 +66,7 @@ function uniqueNames(values: Iterable<string>): string[] {
 }
 
 /** Balance Block milestones across the fixed daily cohort; never create a one-word tail. */
-export function planLearnBlockMilestones(total: number, targetSize = 20): number[] {
+export function planLearnBlockMilestones(total: number, targetSize = DEFAULT_LEARN_BLOCK_SIZE): number[] {
   if (total <= 0) return []
   const blocks = Math.max(1, Math.ceil(total / targetSize))
   const base = Math.floor(total / blocks)
