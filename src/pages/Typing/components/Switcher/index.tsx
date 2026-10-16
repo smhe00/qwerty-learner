@@ -12,7 +12,7 @@ import { isOpenDarkModeAtom, typingTransVisibleAtom } from '@/store'
 import { CTRL } from '@/utils'
 import { useAtom } from 'jotai'
 import { useContext } from 'react'
-import type { FocusEvent, KeyboardEvent } from 'react'
+import type { FocusEvent, KeyboardEvent, MouseEvent } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import IconMoon from '~icons/heroicons/moon-solid'
 import IconSun from '~icons/heroicons/sun-solid'
@@ -76,7 +76,7 @@ export default function Switcher({
   // Prevent it before Headless UI's Popover focus-management runs. Blurring
   // mid-click caused the next popover to immediately close after another
   // panel had already restored focus (Learn -> analysis -> audio settings).
-  const preventPointerFocus = (event: React.MouseEvent<HTMLDivElement>) => {
+  const preventPointerFocus = (event: MouseEvent<HTMLDivElement>) => {
     const trigger = (event.target as HTMLElement).closest<HTMLButtonElement>(
       'button[data-toolbar-trigger]',
     )
