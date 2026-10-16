@@ -85,7 +85,7 @@ test('saved American voice and custom daily/stage preferences survive new defaul
 test('small-screen visitors remain on the documented /mobile landing page', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto('/learn')
-  await expect(page).toHaveURL(/\\/mobile\\/?$/)
+  await expect(page).toHaveURL(/\/mobile\/?$/)
   await expect(page.getByRole('heading', { name: '当前移动端说明' })).toBeVisible()
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toHaveCount(0)
 })
