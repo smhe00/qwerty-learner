@@ -55,9 +55,10 @@ jobs:
           }
           if (!healthy) throw Error('Branch EdgeOne deployment not verified; no accounts created')
           NODE
-      - name: Verify actually deployed etest frontend SHA
+      - name: Wait for actually deployed etest frontend SHA
         env:
           EXPECTED_SHA: ${{ github.sha }}
+          EDGEONE_WAIT_MS: '600000'
         run: node scripts/verify-edgeone-source.mjs
       - name: Create disposable account identifiers for independent browser profiles
         shell: bash
@@ -121,9 +122,10 @@ jobs:
           }
           if (!healthy) throw Error('Matching EdgeOne V4 gateway version not deployed')
           NODE
-      - name: Verify actually deployed etest frontend SHA
+      - name: Wait for actually deployed etest frontend SHA
         env:
           EXPECTED_SHA: ${{ github.sha }}
+          EDGEONE_WAIT_MS: '600000'
         run: node scripts/verify-edgeone-source.mjs
       - name: Verify real V4 upload, readback, stale conflict and Blob size
         run: node tests/cloud/p4b-edgeone-gate-smoke.mjs
