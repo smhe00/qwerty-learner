@@ -4,23 +4,38 @@ import {
   markAchievementCultureCardSeen,
 } from '@/achievement'
 import Layout from '@/components/Layout'
-import { db } from '@/utils/db'
+import { SongArtwork, SongSeal } from './SongArtwork'
+import './song-achievement.css'
 import {
   achievementDefinitions,
   getAchievementCulture,
 } from '@/resources/achievementCulture'
+import type { AchievementDefinition, AchievementRarity } from '@/resources/achievementCulture'
+import { db } from '@/utils/db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate } from 'react-router-dom'
 import IconX from '~icons/tabler/x'
 
-const rarityLabel = {
-  common: '普通',
-  rare: '稀有',
-  epic: '史诗',
-  legendary: '传说',
-} as const
+type Filter = 'all' | 'unlocked' | 'locked' | 'rare'
+type Tier = 'ink' | 'celadon' | 'cinnabar'
+
+const tierFor = (rarity: AchievementRarity): Tier =>
+  rarity === 'common' ? 'ink' : rarity === 'rare' ? 'celadon' : 'cinnabar'
+
+const tierLabel: Record<Tier, string> = {
+  ink: '素笺墨印',
+  celadon: '汝窑天青',
+  cinnabar: '泥金朱砂',
+}
+
+const formatDate = (timeSeconds: number) => {
+  const date = new Date(timeSeconds * 1000)
+  return Number.isNaN(date.getTime())
+    ? '已收入雅藏'
+    : [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('.')
+}
 
 export default function AchievementsPage({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate()
@@ -38,222 +53,201 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
       })
     },
     [],
-    {
-      longTermMasteredWords: 0,
-      activeLearnDaysInLast10: 0,
-    },
+    { longTermMasteredWords: 0, activeLearnDaysInLast10: 0 },
   )
+  const [filter, setFilter] = useState<Filter>('all')
   const [openAchievementId, setOpenAchievementId] = useState<string>()
+  const [demoOpen, setDemoOpen] = useState(false)
 
   const stateById = useMemo(
     () => new Map(states.map((state) => [state.achievementId, state])),
     [states],
   )
+  // Intentionally retain the existing P0 scope and unlock engine contract.
   const achievements = useMemo(
-    () =>
-      achievementDefinitions.filter(
-        (achievement) =>
-          achievement.enabled &&
-          achievement.presentation.rollout === 'p0',
-      ),
+    () => achievementDefinitions.filter((achievement) =>
+      achievement.enabled && achievement.presentation.rollout === 'p0',
+    ),
     [],
   )
-  const unlockedCount = achievements.filter((achievement) =>
-    stateById.has(achievement.id),
-  ).length
+  const unlockedCount = achievements.filter((achievement) => stateById.has(achievement.id)).length
+  const rareCount = achievements.filter((achievement) => achievement.rarity !== 'common').length
+  const filteredAchievements = achievements.filter((achievement) => {
+    const unlocked = stateById.has(achievement.id)
+    return filter === 'all' ||
+      (filter === 'unlocked' && unlocked) ||
+      (filter === 'locked' && !unlocked) ||
+      (filter === 'rare' && achievement.rarity !== 'common')
+  })
+  const demoAchievement = achievements.find((achievement) =>
+    !achievement.hidden && achievement.rarity === 'epic',
+  ) ?? achievements.find((achievement) => !achievement.hidden && achievement.rarity === 'rare') ?? achievements[0]
+  const openedCulture = openAchievementId ? getAchievementCulture(openAchievementId) : null
+  const presentedAchievement = demoOpen ? demoAchievement : openedCulture?.achievement
+  const presentedCulture = demoOpen && demoAchievement
+    ? getAchievementCulture(demoAchievement.id)
+    : openedCulture
+  const presentedState = presentedAchievement ? stateById.get(presentedAchievement.id) : undefined
+  const closeModal = () => {
+    setDemoOpen(false)
+    setOpenAchievementId(undefined)
+  }
 
   const close = () => navigate('/learn')
-  useHotkeys('esc', close, { preventDefault: true, enabled: !embedded })
+  useHotkeys('esc', close, { preventDefault: true, enabled: !embedded && !openAchievementId && !demoOpen })
 
   const openCulture = (achievementId: string) => {
     if (!stateById.has(achievementId)) return
+    setDemoOpen(false)
     setOpenAchievementId(achievementId)
     void markAchievementCultureCardSeen(achievementId).catch((error) => {
       console.error('failed to mark culture card seen', error)
     })
   }
 
-  const opened = openAchievementId
-    ? getAchievementCulture(openAchievementId)
-    : null
-
   const content = (
     <>
-      <main className={embedded ? 'mx-auto flex w-full flex-col px-2 pb-6 pt-2 sm:px-4' : 'container mx-auto flex w-full flex-1 flex-col px-10 pb-12 pt-8'}>
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="text-sm font-medium tracking-[0.16em] text-indigo-400">
-              ACHIEVEMENTS
-            </div>
-            <h1 className="mt-2 text-3xl font-semibold text-gray-800 dark:text-gray-100">
-              成就
-            </h1>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              已解锁 {unlockedCount} / {achievements.length} · 记录能力变化，而不是刷次数。
-            </p>
-          </div>
-          {!embedded && <button
-            type="button"
-            onClick={close}
-            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-            aria-label="返回 Learn"
-            title="返回 Learn"
-          >
-            <IconX className="h-6 w-6" />
-          </button>}
-        </div>
-
-        <section
-          className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
-          aria-label="成就收藏"
-        >
-          {achievements.map((achievement) => {
-            const state = stateById.get(achievement.id)
-            const locked = state === undefined
-            const hideIdentity = locked && achievement.hidden
-            const culture = getAchievementCulture(achievement.id)
-            const progress =
-              achievement.id === 'ACH_MASTERED_100'
-                ? {
-                    value: visibleProgress.longTermMasteredWords,
-                    target: achievement.condition.target,
-                    label: '长期掌握',
-                  }
-                : achievement.id === 'ACH_7_OF_10'
-                  ? {
-                      value: visibleProgress.activeLearnDaysInLast10,
-                      target: achievement.condition.target,
-                      label: '最近 10 天学习',
-                    }
-                  : undefined
-
-            return (
-              <button
-                key={achievement.id}
-                type="button"
-                disabled={locked}
-                onClick={() => openCulture(achievement.id)}
-                className={`rounded-2xl border p-5 text-left transition ${
-                  locked
-                    ? 'cursor-default border-gray-200 bg-gray-50 opacity-65 dark:border-gray-700 dark:bg-gray-800/60'
-                    : achievement.rarity === 'legendary'
-                      ? 'border-indigo-300 bg-white shadow-md ring-2 ring-indigo-200 hover:-translate-y-0.5 hover:shadow-lg dark:border-indigo-500/50 dark:bg-gray-800 dark:ring-indigo-400/30'
-                      : achievement.rarity === 'epic'
-                        ? 'border-indigo-200 bg-white shadow-sm ring-1 ring-indigo-100 hover:-translate-y-0.5 hover:shadow-md dark:border-indigo-500/40 dark:bg-gray-800 dark:ring-indigo-400/20'
-                        : 'border-indigo-100 bg-white shadow-sm hover:-translate-y-0.5 hover:shadow-md dark:border-gray-700 dark:bg-gray-800'
-                }`}
-                data-achievement-id={achievement.id}
-                data-achievement-locked={locked ? 'true' : 'false'}
+      <main className={embedded ? 'w-full px-1 pb-5 pt-1' : 'container mx-auto w-full flex-1 px-3 pb-10 pt-6 sm:px-8'}>
+        <div className="song-gallery px-4 py-5 sm:px-7 sm:py-7" data-song-achievement-gallery>
+          <header className="flex flex-wrap items-start justify-between gap-5">
+            <div className="flex items-center gap-4">
+              <div
+                className="song-progress-ring"
+                style={{ background: 'conic-gradient(#7a9a95 ' + (achievements.length ? unlockedCount / achievements.length * 100 : 0) + '%,#d9d5cc 0)' }}
+                aria-label={'已解锁 ' + unlockedCount + '/' + achievements.length}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-                      {hideIdentity ? '？？？' : achievement.title}
-                    </div>
-                    <div className="mt-1 text-xs text-gray-400">
-                      {hideIdentity
-                        ? '隐藏成就'
-                        : `${rarityLabel[achievement.rarity]} · ${achievement.artDirection.symbol}`}
-                    </div>
-                  </div>
-                  <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-500 dark:bg-gray-700 dark:text-gray-300">
-                    {locked ? '未解锁' : '已解锁'}
-                  </span>
+                <div className="song-progress-core">
+                  <strong>{unlockedCount}</strong>
+                  <small>/ {achievements.length}</small>
                 </div>
-
-                <p className="mt-4 min-h-[2.5rem] text-sm text-gray-500 dark:text-gray-400">
-                  {hideIdentity
-                    ? '条件保持隐藏，等真正发生时再揭晓。'
-                    : achievement.copy.reflection}
-                </p>
-
-                {!locked && culture?.primary ? (
-                  <div className="mt-4 border-l-2 border-indigo-100 pl-3 text-xs text-gray-400 dark:border-indigo-500/30">
-                    {culture.primary.text}
-                  </div>
-                ) : null}
-
-                {!locked && progress ? (
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between text-xs text-gray-400">
-                      <span>{progress.label}</span>
-                      <span>
-                        {Math.min(progress.value, progress.target)} / {progress.target}
-                      </span>
-                    </div>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
-                      <div
-                        className="h-full rounded-full bg-indigo-400 transition-all"
-                        style={{
-                          width: `${Math.min(
-                            100,
-                            (progress.value / progress.target) * 100,
-                          )}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                ) : null}
+              </div>
+              <div>
+                <div className="song-eyebrow">QWERTY PLUS · COLLECTION</div>
+                <h1 className="song-heading mt-1">成就雅集</h1>
+                <p className="song-subtitle mt-1">以指为笔，收集属于你的成长印记。</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button type="button" className="song-demo-button" onClick={() => { setOpenAchievementId(undefined); setDemoOpen(true) }}>
+                演示 · 展卷钤印
               </button>
-            )
-          })}
-        </section>
+              {!embedded && (
+                <button type="button" onClick={close} aria-label="返回 Learn" title="返回 Learn"
+                  className="rounded-lg border border-[#d8d0c1] p-2 text-[#665f54] hover:bg-[#ece5d7]">
+                  <IconX className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+          </header>
+
+          <nav className="mb-6 mt-7 flex flex-wrap gap-2" aria-label="筛选成就">
+            {([
+              ['all', '全部', achievements.length],
+              ['unlocked', '已解锁', unlockedCount],
+              ['locked', '未解锁', achievements.length - unlockedCount],
+              ['rare', '珍藏', rareCount],
+            ] as const).map(([key, label, count]) => (
+              <button key={key} className="song-filter" aria-pressed={filter === key}
+                type="button" onClick={() => setFilter(key)}>
+                {label}（{count}）
+              </button>
+            ))}
+          </nav>
+
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="成就收藏">
+            {filteredAchievements.map((achievement: AchievementDefinition) => {
+              const state = stateById.get(achievement.id)
+              const locked = state === undefined
+              const hideIdentity = locked && achievement.hidden
+              const title = hideIdentity ? '秘藏' : achievement.title
+              const tier = hideIdentity ? 'ink' : tierFor(achievement.rarity)
+              const progress =
+                achievement.id === 'ACH_MASTERED_100'
+                  ? { value: visibleProgress.longTermMasteredWords, target: achievement.condition.target, label: '长期掌握' }
+                  : achievement.id === 'ACH_7_OF_10'
+                    ? { value: visibleProgress.activeLearnDaysInLast10, target: achievement.condition.target, label: '最近 10 天学习' }
+                    : undefined
+              return (
+                <button key={achievement.id} type="button" disabled={locked}
+                  onClick={() => openCulture(achievement.id)}
+                  className="song-card" data-tier={tier}
+                  data-legendary={achievement.rarity === 'legendary' && !hideIdentity ? 'true' : 'false'}
+                  data-achievement-id={achievement.id}
+                  data-achievement-locked={locked ? 'true' : 'false'}
+                  aria-label={title + (locked ? '，未解锁' : '，已解锁，查看文化卡')}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="song-tier-label">{hideIdentity ? '静待机缘' : tierLabel[tier]}</span>
+                    <span className="text-xs text-[#716b62]">{locked ? '○ 未解锁' : '✓ 已解锁'}</span>
+                  </div>
+                  <SongArtwork category={achievement.category} hidden={hideIdentity} />
+                  <SongSeal title={title} rarity={achievement.rarity} unlocked={!locked} />
+                  <div className="song-card-title">{title}</div>
+                  <div className="song-card-body">
+                    {hideIdentity ? '藏于卷中，机缘到时自会显现。' : achievement.copy.reflection}
+                  </div>
+                  <div className="song-card-footer">
+                    {state ? '已钤印 · ' + formatDate(state.unlockedAt) : '尚未钤印 · 待君解锁'}
+                    {state && progress && (
+                      <div className="mt-2">
+                        <div className="flex justify-between"><span>{progress.label}</span><span>{Math.min(progress.value,progress.target)} / {progress.target}</span></div>
+                        <div className="song-card-progress"><div style={{width: Math.min(100, progress.value / Math.max(1, progress.target) * 100) + '%'}} /></div>
+                      </div>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
+          </section>
+          {filteredAchievements.length === 0 && (
+            <div className="song-empty">此卷尚无成就，继续学习后便会渐渐丰盈。</div>
+          )}
+          <p className="mt-5 text-center text-xs leading-6 text-[#83796b]">
+            素笺墨印 · 汝窑天青 · 泥金朱砂　｜　每枚朱印只为真正达成的进步而落
+          </p>
+        </div>
       </main>
 
-      {opened && openAchievementId && stateById.has(openAchievementId) ? (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 px-6 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-label={`${opened.achievement.title} 文化卡`}
+      {presentedAchievement && presentedCulture && (demoOpen || presentedState) && (
+        <div className="song-modal-backdrop" role="dialog" aria-modal="true"
+          aria-label={(demoOpen ? '解锁动效演示：' : '成就文化卡：') + presentedAchievement.title}
+          onClick={closeModal}
           onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              event.stopPropagation()
-              event.preventDefault()
-              setOpenAchievementId(undefined)
-            }
-          }}
-          onClick={() => setOpenAchievementId(undefined)}
-        >
-          <article
-            className="w-full max-w-xl rounded-3xl bg-white p-8 shadow-xl dark:bg-gray-800"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="text-xs font-medium tracking-[0.18em] text-indigo-400">
-              文化卡
+            event.stopPropagation()
+            if (event.key === 'Escape') { event.preventDefault(); closeModal() }
+          }}>
+          <article className="song-scroll" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="song-modal-close" onClick={closeModal} autoFocus aria-label="关闭成就卷轴">×</button>
+            <div className="song-eyebrow mb-3">QWERTY PLUS · ACHIEVEMENT</div>
+            <div className="song-modal-heading">{demoOpen ? '成就达成 · 演示' : '收录雅藏'}</div>
+            <div className="song-modal-stamp">
+              <SongSeal title={presentedAchievement.title} rarity={presentedAchievement.rarity} unlocked large />
             </div>
-            <h2 className="mt-2 text-2xl font-semibold text-gray-800 dark:text-gray-100">
-              {opened.achievement.title}
-            </h2>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              {opened.achievement.copy.unlockMessage}
-            </p>
-
-            {opened.primary ? (
-              <div className="mt-6 rounded-2xl bg-indigo-50 px-6 py-5 dark:bg-gray-700">
-                <div className="text-lg leading-8 text-gray-700 dark:text-gray-100">
-                  {opened.primary.text}
-                </div>
-                <div className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-                  {opened.primary.source}
-                  {opened.primary.author ? ` · ${opened.primary.author}` : ''}
-                </div>
-                <p className="mt-4 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                  {opened.primary.studentMeaning}
+            <div className="song-modal-title">{presentedAchievement.title}</div>
+            <span className="song-tier-label mt-3 inline-block" style={{color: tierFor(presentedAchievement.rarity) === 'ink' ? '#80776d' : tierFor(presentedAchievement.rarity) === 'celadon' ? '#567f79' : '#b83b2b'}}>
+              {tierLabel[tierFor(presentedAchievement.rarity)]}
+            </span>
+            <p className="song-modal-copy mt-4">{presentedAchievement.copy.unlockMessage}</p>
+            {presentedCulture.primary && (
+              <div className="song-modal-culture">
+                <p className="text-lg">{presentedCulture.primary.text}</p>
+                <p className="mt-2 text-xs text-[#786e62]">
+                  {presentedCulture.primary.source}
+                  {presentedCulture.primary.author ? ' · ' + presentedCulture.primary.author : ''}
                 </p>
+                <p className="mt-3 text-xs leading-6 text-[#716759]">{presentedCulture.primary.studentMeaning}</p>
               </div>
-            ) : null}
-
-            <button
-              type="button"
-              className="my-btn-primary mt-7 h-11 px-6"
-              onClick={() => setOpenAchievementId(undefined)}
-            >
-              收好
+            )}
+            <p className="mt-5 text-sm tracking-widest text-[#aa4f36]">落朱成印，录入雅藏。</p>
+            <p className="mt-2 text-xs text-[#85776b]">
+              {demoOpen ? '视觉演示 · 不会解锁或写入任何学习数据' : presentedState ? '钤印于 ' + formatDate(presentedState.unlockedAt) : ''}
+            </p>
+            <button type="button" className="song-modal-primary relative z-10 mt-6" onClick={closeModal}>
+              {demoOpen ? '收起演示' : '收好此卷'}
             </button>
           </article>
         </div>
-      ) : null}
+      )}
     </>
   )
   return embedded ? content : <Layout>{content}</Layout>
