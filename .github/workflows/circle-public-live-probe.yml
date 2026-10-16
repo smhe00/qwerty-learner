@@ -1,0 +1,66 @@
+name: Circle Public API Read-Only Live Probe
+
+on:
+  push:
+    branches:
+      - feature/circle-direct-api-20261017
+    paths:
+      - '.github/workflows/circle-public-live-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - name: Match master deployment before probing Circle auth without creating data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict'
+          const base = 'https://q.smhe.cn'
+          const gh = await fetch('https://api.github.com/repos/smhe00/qwerty-learner/git/ref/heads/master', {
+            headers: { Authorization: 'Bearer ' + process.env.GH_TOKEN,
+              Accept: 'application/vnd.github+json' },
+            signal: AbortSignal.timeout(15000),
+          })
+          assert.equal(gh.status, 200)
+          const expectedSha = (await gh.json()).object.sha
+          const limit = Date.now() + 12 * 60 * 1000
+          const sleep = ms => new Promise(r => setTimeout(r, ms))
+          let matched = false
+          for (; Date.now() < limit;) {
+            try {
+              const marker = await fetch(base + '/source-commit.txt?t=' + Date.now(), {
+                cache: 'no-store', signal: AbortSignal.timeout(15000),
+                headers: { 'Cache-Control': 'no-cache' },
+              })
+              const text = (await marker.text()).trim()
+              if (marker.status === 200 && /^[a-f0-9]{7,40}$/.test(text) && expectedSha.startsWith(text)) {
+                matched = true
+                break
+              }
+            } catch {}
+            await sleep(10000)
+          }
+          assert.equal(matched, true, 'Circle live probe refuses stale master deployment')
+          const create = await fetch(base + '/api/circle/v2', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: '{}', cache: 'no-store', signal: AbortSignal.timeout(15000),
+          })
+          const payload = await create.json()
+          assert.equal(create.status, 401, 'Circle POST must require V4 bearer token')
+          assert.equal(payload.error, 'missing_token')
+          const read = await fetch(base + '/api/circle/v2/' + '0'.repeat(24), {
+            cache: 'no-store', signal: AbortSignal.timeout(15000),
+          })
+          const readPayload = await read.json()
+          assert.equal(read.status, 401, 'Circle GET must require V4 bearer token')
+          assert.equal(readPayload.error, 'missing_token')
+          console.log(JSON.stringify({ status: 'PASS', scope: 'public Circle API only, unauthenticated',
+            production: base, masterSha: expectedSha, createHttp: create.status,
+            readHttp: read.status, userAccountsTouched: 0, blobWrites: 0, makerBuilds: 0 }))
+          NODE
