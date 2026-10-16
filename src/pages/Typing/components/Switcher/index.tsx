@@ -12,6 +12,7 @@ import { isOpenDarkModeAtom, typingTransVisibleAtom } from '@/store'
 import { CTRL } from '@/utils'
 import { useAtom } from 'jotai'
 import { useContext } from 'react'
+import type { KeyboardEvent, MouseEvent } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import IconMoon from '~icons/heroicons/moon-solid'
 import IconSun from '~icons/heroicons/sun-solid'
@@ -52,8 +53,29 @@ export default function Switcher({
     [learnMode, transVisible],
   )
 
+  // The small toolbar icons are pointer actions, not Learn/Typing keyboard targets.
+  // Intercept only their trigger buttons, never the controls inside popovers.
+  const blockIconKeyboardActivation = (event: KeyboardEvent<HTMLDivElement>) => {
+    if ((event.key === 'Enter' || event.key === ' ') &&
+      (event.target as HTMLElement).closest('button[data-toolbar-trigger]')) {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+  }
+
+  const releaseIconFocus = (event: MouseEvent<HTMLDivElement>) => {
+    const trigger = (event.target as HTMLElement).closest<HTMLButtonElement>(
+      'button[data-toolbar-trigger]',
+    )
+    trigger?.blur()
+  }
+
   return (
-    <div className="flex items-center justify-center gap-2">
+    <div
+      className="focus-toolbar-icons flex items-center justify-center gap-1"
+      onKeyDownCapture={blockIconKeyboardActivation}
+      onClickCapture={releaseIconFocus}
+    >
       <Tooltip content="音效设置">
         <SoundSwitcher />
       </Tooltip>
@@ -89,6 +111,9 @@ export default function Switcher({
         }
       >
         <button
+          data-toolbar-trigger
+          data-toolbar-active={transVisible && !learnMode}
+          tabIndex={-1}
           className={`p-[2px] ${
             learnMode
               ? 'cursor-not-allowed text-gray-400 opacity-40'
@@ -121,6 +146,9 @@ export default function Switcher({
 
       <Tooltip className="h-7 w-7" content="开关深色模式">
         <button
+          data-toolbar-trigger
+          data-toolbar-active={isOpenDarkMode}
+          tabIndex={-1}
           className="p-[2px] text-lg text-indigo-500 focus:outline-none"
           type="button"
           onClick={(e) => {
