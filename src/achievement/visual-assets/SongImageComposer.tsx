@@ -1,3 +1,4 @@
+import { getAchievementCulture } from '@/resources/achievementCulture'
 import type { AchievementDefinition } from '@/resources/achievementCulture'
 import { SongMistLayer } from './SongMistLayer'
 import { getApprovedSongVisualPack, songAssetUrl } from './spec'
@@ -30,6 +31,7 @@ export function SongImageComposer({
   if (!pack) return null
 
   const art = pack[theme]
+  const culture = getAchievementCulture(achievement.id)?.primary
   const date = unlocked && Number.isFinite(unlockedAt)
     ? new Date(unlockedAt * 1000).toLocaleDateString('zh-CN', {
         year: 'numeric', month: 'long', day: 'numeric',
@@ -67,6 +69,9 @@ export function SongImageComposer({
           ? '云中有物，静待机缘。'
           : achievement.copy.unlockMessage}
       </div>
+      {culture && unlocked && <div className="song-image-content song-image-culture" style={textStyle(pack.safe.culture)}>
+        <blockquote>{culture.text}<span className="song-image-culture-source">{culture.source}</span></blockquote>
+      </div>}
       <div className="song-image-seal-place" style={textStyle(pack.safe.seal)}>
         {playCeremony && unlocked && (
           <img src={songAssetUrl(pack.seal.press)}
