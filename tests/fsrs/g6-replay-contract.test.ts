@@ -54,7 +54,7 @@ test('G6-2: all four native FSRS states can be reconstructed exactly from durabl
     assert.ok(verifyG6Snapshot(serialized, context, profile, history))
     assert.equal(original.snapshot.appliedEventIds.length, 4)
     assert.equal(original.card.reps, 4)
-    assert.equal(original.card.lapses, 1)
+    // D remains in Learning until its own 10m step completes; a day-4 Again\n    // on this fixed trace is NOT an FSRS Review lapse. Do not equate event labels.\n    assert.equal(original.card.lapses, profile.id === 'D' ? 0 : 1)
     assert.ok(Number.isFinite(original.card.due.getTime()))
     // Native FSRS card attributes that the production D/S-only state lacks.
     assert.equal(typeof original.card.learning_steps, 'number')
