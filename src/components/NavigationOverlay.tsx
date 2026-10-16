@@ -61,6 +61,7 @@ const sizes = {
 export default function NavigationOverlay({ title, size, children }: NavigationOverlayProps) {
   const navigate = useNavigate()
   const location = useLocation()
+  const isAchievementCollection = location.pathname === '/achievements'
   const saved = (location.state as NavigationOverlayState | null)?.backgroundLocation
   const background = getAuxiliaryBackground(location.pathname, location.search, location.state)
 
@@ -89,22 +90,24 @@ export default function NavigationOverlay({ title, size, children }: NavigationO
         onKeyUp={(event) => event.stopPropagation()}
       >
         <Dialog.Panel
-          className={`focus-overlay-panel flex min-h-0 w-full ${sizes[size]} flex-col overflow-hidden rounded-[20px]`}
+          className={`focus-overlay-panel flex min-h-0 w-full ${isAchievementCollection ? '!max-w-[900px] !h-[min(94vh,1010px)] !rounded-[25px]' : sizes[size]} flex-col overflow-hidden rounded-[20px]`}
           data-navigation-dialog={location.pathname.slice(1)}
         >
-          <div className="focus-overlay-header flex shrink-0 items-center justify-between px-5 py-3.5">
-            <Dialog.Title className="text-lg font-semibold tracking-tight">{title}</Dialog.Title>
-            <button
-              type="button"
-              className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400 dark:text-slate-300 dark:hover:bg-slate-700"
-              onClick={close}
-              aria-label="返回"
-              title="关闭窗口并返回原页面"
-            >
-              <IconX className="h-5 w-5" />
-            </button>
-          </div>
-          <div className="focus-overlay-body min-h-0 flex-1 overflow-auto p-3 sm:p-5" data-navigation-dialog-body>
+          {isAchievementCollection ? <Dialog.Title className="sr-only">{title}</Dialog.Title> : (
+            <div className="focus-overlay-header flex shrink-0 items-center justify-between px-5 py-3.5">
+              <Dialog.Title className="text-lg font-semibold tracking-tight">{title}</Dialog.Title>
+              <button
+                type="button"
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400 dark:text-slate-300 dark:hover:bg-slate-700"
+                onClick={close}
+                aria-label="返回"
+                title="关闭窗口并返回原页面"
+              >
+                <IconX className="h-5 w-5" />
+              </button>
+            </div>
+          )}
+          <div className={`focus-overlay-body min-h-0 flex-1 overflow-auto ${isAchievementCollection ? "!p-0" : "p-3 sm:p-5"}`} data-navigation-dialog-body>
             {children}
           </div>
         </Dialog.Panel>

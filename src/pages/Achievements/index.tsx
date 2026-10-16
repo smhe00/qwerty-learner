@@ -3,29 +3,29 @@ import {
   getAchievementStates,
   markAchievementCultureCardSeen,
 } from '@/achievement'
-import Layout from '@/components/Layout'
 import { SongMistLayer } from '@/achievement/visual-assets/SongMistLayer'
 import { SongPortalEntry } from '@/achievement/visual-assets/SongPortalEntry'
-import { SongImageComposer } from '@/achievement/visual-assets/SongImageComposer'
-import { getApprovedSongVisualPack } from '@/achievement/visual-assets/spec'
-import { isOpenDarkModeAtom } from '@/store'
-import { useAtomValue } from 'jotai'
-import { SongArtwork, SongSeal } from './SongArtwork'
-import { HundredWordsCeremony, HundredWordsMuseumCard } from './SongMasterpiece'
-import './song-achievement.css'
+import Layout from '@/components/Layout'
 import {
   achievementDefinitions,
   getAchievementCulture,
 } from '@/resources/achievementCulture'
 import type { AchievementDefinition, AchievementRarity } from '@/resources/achievementCulture'
+import { isOpenDarkModeAtom } from '@/store'
 import { db } from '@/utils/db'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import IconX from '~icons/tabler/x'
+import './song-achievement.css'
+import './song-collector-v2.css'
 
 type Filter = 'all' | 'unlocked' | 'locked' | 'rare'
+type Sort = 'default' | 'rarity' | 'recent'
+type Theme = 'light' | 'dark'
 type Tier = 'ink' | 'celadon' | 'cinnabar'
 
 const tierFor = (rarity: AchievementRarity): Tier =>
@@ -36,269 +36,276 @@ const tierLabel: Record<Tier, string> = {
   celadon: '汝窑天青',
   cinnabar: '泥金朱砂',
 }
+const rarityRank: Record<AchievementRarity, number> = {
+  common: 0, rare: 1, epic: 2, legendary: 3,
+}
 
-const formatDate = (timeSeconds: number) => {
-  const date = new Date(timeSeconds * 1000)
-  return Number.isNaN(date.getTime())
-    ? '已收入雅藏'
-    : [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('.')
+/** The seven picture tiles are compositional studies from the approved target image.
+ * They are decorative only. Achievement names, statuses and dates are live DOM text. */
+function artIndexFor(achievement: AchievementDefinition, hiddenLocked: boolean): number {
+  if (hiddenLocked) return 3 // anonymous cloud-covered gourd
+  switch (achievement.category) {
+    case 'memory': case 'milestone': return 1
+    case 'skill': case 'craft': return 0
+    case 'growth': case 'exploration': return 6
+    case 'consistency': return 4
+    case 'recovery': return 5
+    default: return 2
+  }
+}
+const spriteOffset = (index: number) => ({
+  '--song-art-x': (index % 3) * 50 + '%',
+  '--song-art-y': Math.floor(index / 3) * 50 + '%',
+}) as CSSProperties
+
+function formatDate(epochSeconds: number) {
+  const date = new Date(epochSeconds * 1000)
+  return Number.isFinite(date.getTime()) ? [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('.') : '已收入雅藏'
+}
+function CollectionCard({ achievement, unlockedAt, theme, onOpen }: {
+  achievement: AchievementDefinition
+  unlockedAt?: number
+  theme: Theme
+  onOpen: () => void
+}) {
+  const unlocked = unlockedAt !== undefined
+  const hiddenLocked = !unlocked && achievement.hidden
+  const title = hiddenLocked ? '秘藏 · 云中待启' : achievement.title
+  const tier = hiddenLocked ? 'ink' : tierFor(achievement.rarity)
+  const art = artIndexFor(achievement, hiddenLocked)
+  return (
+    <button
+      type="button"
+      className="song-v2-card"
+      data-tier={tier}
+      data-unlocked={unlocked ? 'true' : 'false'}
+      data-hidden={hiddenLocked ? 'true' : 'false'}
+      data-achievement-id={hiddenLocked ? undefined : achievement.id}
+      onClick={onOpen}
+      aria-label={title + (unlocked ? '，已解锁，查看藏品' : '，未解锁，查看线索')}
+    >
+      <span className="song-v2-corner song-v2-corner-tl" aria-hidden="true" />
+      <span className="song-v2-corner song-v2-corner-tr" aria-hidden="true" />
+      <span className="song-v2-corner song-v2-corner-bl" aria-hidden="true" />
+      <span className="song-v2-corner song-v2-corner-br" aria-hidden="true" />
+      <span className="song-v2-card-tier">{hiddenLocked ? '云中秘藏' : tierLabel[tier]}</span>
+      <div className="song-v2-card-art" aria-hidden="true">
+        <span className="song-v2-card-artwork" style={spriteOffset(art)} />
+        {!unlocked && <SongMistLayer status={hiddenLocked ? 'hidden' : 'locked'} theme={theme} drift={false} />}
+      </div>
+      {unlocked && <span className="song-v2-card-seal" aria-hidden="true">雅<br />藏</span>}
+      <div className="song-v2-card-text">
+        <h2>{title}</h2>
+        <p>{hiddenLocked ? '云深不知处，机缘至时自会显现。' : achievement.copy.unlockMessage}</p>
+        <span className="song-v2-card-caption">{hiddenLocked ? '大巧若拙，玄机自现。' : achievement.copy.reflection}</span>
+      </div>
+      <div className="song-v2-card-status">
+        <span className={unlocked ? 'song-v2-status-dot unlocked' : 'song-v2-status-dot'} aria-hidden="true">
+          {unlocked ? '✓' : '♧'}
+        </span>
+        <span>{unlocked ? '已解锁' : '未解锁'}</span>
+        {unlocked && <time dateTime={new Date(unlockedAt * 1000).toISOString().slice(0, 10)}>{formatDate(unlockedAt)}</time>}
+      </div>
+    </button>
+  )
+}
+
+function CollectionDetail({ achievement, unlockedAt, sample, theme, onClose }: {
+  achievement: AchievementDefinition
+  unlockedAt?: number
+  sample: boolean
+  theme: Theme
+  onClose: () => void
+}) {
+  const unlocked = unlockedAt !== undefined || sample
+  const hiddenLocked = achievement.hidden && !unlocked
+  const culture = hiddenLocked ? undefined : getAchievementCulture(achievement.id)?.primary
+  const artIndex = artIndexFor(achievement, hiddenLocked)
+  const [replay, setReplay] = useState(0)
+  const title = hiddenLocked ? '云中秘藏' : achievement.title
+  const tier = hiddenLocked ? 'ink' : tierFor(achievement.rarity)
+  return (
+    <div className="song-v2-detail-backdrop" role="presentation" onKeyDown={(event) => {
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onClose() }
+    }} onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onClose()
+    }}>
+      <article className="song-v2-detail" role="dialog" aria-modal="true" aria-label={title + '，成就藏品'}>
+        <button type="button" className="song-v2-detail-close" onClick={onClose} autoFocus aria-label="关闭藏品"><IconX /></button>
+        <div className="song-v2-detail-inner" key={replay} data-play={unlocked ? 'yes' : 'no'} data-theme={theme}>
+          <span className="song-v2-scroll-axis left" aria-hidden="true" />
+          <span className="song-v2-scroll-axis right" aria-hidden="true" />
+          <div className="song-v2-eyebrow">QWERTY PLUS · 宋韵雅藏</div>
+          <h2 className="song-v2-detail-heading">{unlocked ? '成 就 达 成' : '云 中 待 启'}</h2>
+          <div className="song-v2-detail-art" aria-hidden="true">
+            <span className="song-v2-detail-painting" style={spriteOffset(artIndex)} />
+            {!unlocked && <SongMistLayer theme={theme} status={hiddenLocked ? 'hidden' : 'locked'} />}
+            {unlocked && <span className="song-v2-detail-vermilion">雅 藏<br />钤 印</span>}
+          </div>
+          <span className="song-v2-detail-tier">{hiddenLocked ? '静待机缘' : tierLabel[tier]}</span>
+          <h3>{title}</h3>
+          <p className="song-v2-detail-copy">{hiddenLocked ? '云山深处，尚有未启之卷。' : achievement.copy.unlockMessage}</p>
+          {culture && <blockquote>
+            <p>{culture.text}</p>
+            <small>{culture.source}{culture.author ? ' · ' + culture.author : ''}</small>
+          </blockquote>}
+          <p className="song-v2-detail-stamp-caption">
+            {sample ? '视觉演示 · 不解锁、不写入学习数据' : unlockedAt ? '钤印于 ' + formatDate(unlockedAt) : '藏于云中 · 待君解锁'}
+          </p>
+          <div className="song-v2-detail-actions">
+            {unlocked && <button type="button" onClick={() => setReplay(value => value + 1)}>↻ 重播钤印</button>}
+            <button type="button" className="song-v2-detail-primary" onClick={onClose}>收卷入藏</button>
+          </div>
+        </div>
+      </article>
+    </div>
+  )
 }
 
 export default function AchievementsPage({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate()
-  const isDarkTheme = useAtomValue(isOpenDarkModeAtom)
-  const [themePreview, setThemePreview] = useState<'light' | 'dark' | null>(null)
-  const songTheme = themePreview ?? (isDarkTheme ? 'dark' : 'light')
+  const location = useLocation()
+  const dark = useAtomValue(isOpenDarkModeAtom)
+  const [previewTheme, setPreviewTheme] = useState<Theme | null>(null)
+  const theme: Theme = previewTheme ?? (dark ? 'dark' : 'light')
   const states = useLiveQuery(() => getAchievementStates(), [], [])
-  const visibleProgress = useLiveQuery(
-    async () => {
-      const [wordStates, wordRecords] = await Promise.all([
-        db.reviewWordStates.toArray(),
-        db.wordRecords.toArray(),
-      ])
-      return buildAchievementVisibleProgress({
-        wordStates,
-        wordRecords,
-        now: Math.floor(Date.now() / 1000),
-      })
-    },
-    [],
-    { longTermMasteredWords: 0, activeLearnDaysInLast10: 0 },
-  )
+  const visibleProgress = useLiveQuery(async () => {
+    const [wordStates, wordRecords] = await Promise.all([
+      db.reviewWordStates.toArray(), db.wordRecords.toArray(),
+    ])
+    return buildAchievementVisibleProgress({ wordStates, wordRecords, now: Math.floor(Date.now() / 1000) })
+  }, [], { longTermMasteredWords: 0, activeLearnDaysInLast10: 0 })
   const [filter, setFilter] = useState<Filter>('all')
-  const [openAchievementId, setOpenAchievementId] = useState<string>()
-  const [demoOpen, setDemoOpen] = useState(false)
-  const [masterSampleOpen, setMasterSampleOpen] = useState(false)
+  const [sort, setSort] = useState<Sort>('default')
+  const [detailId, setDetailId] = useState<string>()
+  const [sample, setSample] = useState(false)
 
-  const stateById = useMemo(
-    () => new Map(states.map((state) => [state.achievementId, state])),
-    [states],
+  const achievements = useMemo(() => achievementDefinitions.filter(
+    achievement => achievement.enabled && achievement.presentation.rollout === 'p0',
+  ), [])
+  const stateById = useMemo(() =>
+    new Map(states.map(state => [state.achievementId, state])), [states],
   )
-  // Intentionally retain the existing P0 scope and unlock engine contract.
-  const achievements = useMemo(
-    () => achievementDefinitions.filter((achievement) =>
-      achievement.enabled && achievement.presentation.rollout === 'p0',
-    ),
-    [],
-  )
-  const unlockedCount = achievements.filter((achievement) => stateById.has(achievement.id)).length
-  const rareCount = achievements.filter((achievement) => achievement.rarity !== 'common').length
-  const filteredAchievements = achievements.filter((achievement) => {
-    const unlocked = stateById.has(achievement.id)
-    return filter === 'all' ||
-      (filter === 'unlocked' && unlocked) ||
-      (filter === 'locked' && !unlocked) ||
-      (filter === 'rare' && achievement.rarity !== 'common')
+  const unlockedCount = achievements.filter(a => stateById.has(a.id)).length
+  const rareCount = achievements.filter(a => a.rarity !== 'common').length
+  const filtered = achievements.filter(a => {
+    const unlocked = stateById.has(a.id)
+    return filter === 'all' || (filter === 'unlocked' && unlocked) ||
+      (filter === 'locked' && !unlocked) || (filter === 'rare' && a.rarity !== 'common')
+  }).sort((a, b) => sort === 'rarity'
+    ? rarityRank[b.rarity] - rarityRank[a.rarity]
+    : sort === 'recent'
+      ? (stateById.get(b.id)?.unlockedAt ?? 0) - (stateById.get(a.id)?.unlockedAt ?? 0)
+      : 0)
+  const selected = detailId ? achievements.find(a => a.id === detailId) : undefined
+  const state = selected ? stateById.get(selected.id) : undefined
+
+  const close = () => {
+    const from = (location.state as { backgroundLocation?: { pathname: string } } | null)?.backgroundLocation
+    if (from?.pathname === '/typing' || from?.pathname === '/learn') navigate(-1)
+    else navigate(embedded ? '/mobile' : '/learn', { replace: true })
+  }
+  const closeDetail = () => { setDetailId(undefined); setSample(false) }
+  useHotkeys('esc', close, {
+    preventDefault: true,
+    enabled: !embedded && !detailId,
   })
-  const demoAchievement = achievements.find((achievement) =>
-    !achievement.hidden && achievement.rarity === 'epic',
-  ) ?? achievements.find((achievement) => !achievement.hidden && achievement.rarity === 'rare') ?? achievements[0]
-  const openedCulture = openAchievementId ? getAchievementCulture(openAchievementId) : null
-  const presentedAchievement = demoOpen ? demoAchievement : openedCulture?.achievement
-  const presentedCulture = demoOpen && demoAchievement
-    ? getAchievementCulture(demoAchievement.id)
-    : openedCulture
-  const presentedState = presentedAchievement ? stateById.get(presentedAchievement.id) : undefined
-  const closeModal = () => {
-    setMasterSampleOpen(false)
-    setDemoOpen(false)
-    setOpenAchievementId(undefined)
+
+  const openDetail = (achievement: AchievementDefinition) => {
+    setSample(false)
+    setDetailId(achievement.id)
+    if (stateById.has(achievement.id)) {
+      void markAchievementCultureCardSeen(achievement.id).catch(error => {
+        console.error('failed to mark culture card seen', error)
+      })
+    }
   }
 
-  const close = () => navigate('/learn')
-  useHotkeys('esc', close, { preventDefault: true, enabled: !embedded && !openAchievementId && !demoOpen })
-
-  const openCulture = (achievementId: string) => {
-    if (!stateById.has(achievementId)) return
-    setDemoOpen(false)
-    setOpenAchievementId(achievementId)
-    void markAchievementCultureCardSeen(achievementId).catch((error) => {
-      console.error('failed to mark culture card seen', error)
-    })
-  }
-
-  const content = (
-    <>
-      <main className={embedded ? 'w-full px-1 pb-5 pt-1' : 'container mx-auto w-full flex-1 px-3 pb-10 pt-6 sm:px-8'}>
-        <div className="song-gallery px-4 py-5 sm:px-7 sm:py-7" data-song-achievement-gallery data-song-theme={songTheme}>
-          <SongPortalEntry theme={songTheme} />
-          <header className="flex flex-wrap items-start justify-between gap-5">
-            <div className="flex items-center gap-4">
-              <div
-                className="song-progress-ring"
-                style={{ background: 'conic-gradient(#7a9a95 ' + (achievements.length ? unlockedCount / achievements.length * 100 : 0) + '%,#d9d5cc 0)' }}
-                aria-label={'已解锁 ' + unlockedCount + '/' + achievements.length}
-              >
-                <div className="song-progress-core">
-                  <strong>{unlockedCount}</strong>
-                  <small>/ {achievements.length}</small>
-                </div>
-              </div>
-              <div>
-                <div className="song-eyebrow">QWERTY PLUS · COLLECTION</div>
-                <h1 className="song-heading mt-1">成就雅集</h1>
-                <p className="song-subtitle mt-1">以指为笔，收集属于你的成长印记。</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <button type="button" className="song-demo-button"
-                onClick={() => { setOpenAchievementId(undefined); setDemoOpen(false); setMasterSampleOpen(true) }}>
-                赏鉴 · 百词基石样板
-              </button>
-              <button type="button" className="song-demo-button"
-                onClick={() => setThemePreview(current => current === 'dark' ? 'light' : 'dark')}
-                aria-label={songTheme === 'dark' ? '预览晨卷亮主题' : '预览夜卷暗主题'}>
-                {songTheme === 'dark' ? '晨卷预览' : '夜卷预览'}
-              </button>
-              <button type="button" className="song-demo-button" onClick={() => { setOpenAchievementId(undefined); setDemoOpen(true) }}>
-                演示 · 展卷钤印
-              </button>
-              {!embedded && (
-                <button type="button" onClick={close} aria-label="返回 Learn" title="返回 Learn"
-                  className="rounded-lg border border-[#d8d0c1] p-2 text-[#665f54] hover:bg-[#ece5d7]">
-                  <IconX className="h-5 w-5" />
-                </button>
-              )}
-            </div>
-          </header>
-
-          <nav className="mb-6 mt-7 flex flex-wrap gap-2" aria-label="筛选成就">
-            {([
-              ['all', '全部', achievements.length],
-              ['unlocked', '已解锁', unlockedCount],
-              ['locked', '未解锁', achievements.length - unlockedCount],
-              ['rare', '珍藏', rareCount],
-            ] as const).map(([key, label, count]) => (
-              <button key={key} className="song-filter" aria-pressed={filter === key}
-                type="button" onClick={() => setFilter(key)}>
-                {label}（{count}）
-              </button>
-            ))}
-          </nav>
-
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="成就收藏">
-            {filteredAchievements.map((achievement: AchievementDefinition) => {
-              const state = stateById.get(achievement.id)
-              const locked = state === undefined
-              const hideIdentity = locked && achievement.hidden
-              const title = hideIdentity ? '秘藏' : achievement.title
-              const tier = hideIdentity ? 'ink' : tierFor(achievement.rarity)
-              const progress =
-                achievement.id === 'ACH_MASTERED_100'
-                  ? { value: visibleProgress.longTermMasteredWords, target: achievement.condition.target, label: '长期掌握' }
-                  : achievement.id === 'ACH_7_OF_10'
-                    ? { value: visibleProgress.activeLearnDaysInLast10, target: achievement.condition.target, label: '最近 10 天学习' }
-                    : undefined
-              // Art packs go live only after explicit image review and asset gate.
-              // The old SVG prototype is research fallback, never an approved pack.
-              if (getApprovedSongVisualPack(achievement, !locked)) {
-                return (
-                  <SongImageComposer key={achievement.id} achievement={achievement}
-                    theme={songTheme} variant="card" unlockedAt={state?.unlockedAt}
-                    onOpen={state ? () => openCulture(achievement.id) : undefined} />
-                )
-              }
-              if (achievement.id === 'ACH_MASTERED_100' && state) {
-                return (
-                  <HundredWordsMuseumCard
-                    key={achievement.id}
-                    date={formatDate(state.unlockedAt)}
-                    onOpen={() => openCulture(achievement.id)}
-                  />
-                )
-              }
-              return (
-                <button key={achievement.id} type="button" disabled={locked}
-                  onClick={() => openCulture(achievement.id)}
-                  className="song-card" data-tier={tier}
-                  data-legendary={achievement.rarity === 'legendary' && !hideIdentity ? 'true' : 'false'}
-                  data-achievement-id={achievement.id}
-                  data-achievement-locked={locked ? 'true' : 'false'}
-                  aria-label={title + (locked ? '，未解锁' : '，已解锁，查看文化卡')}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="song-tier-label">{hideIdentity ? '静待机缘' : tierLabel[tier]}</span>
-                    <span className="text-xs text-[#716b62]">{locked ? '○ 未解锁' : '✓ 已解锁'}</span>
-                  </div>
-                  <SongArtwork category={achievement.category} hidden={hideIdentity} />
-                  {locked && <SongMistLayer status={hideIdentity ? 'hidden' : 'locked'} theme={songTheme} />}
-                  <SongSeal title={title} rarity={achievement.rarity} unlocked={!locked} />
-                  <div className="song-card-title">{title}</div>
-                  <div className="song-card-body">
-                    {hideIdentity ? '藏于卷中，机缘到时自会显现。' : achievement.copy.reflection}
-                  </div>
-                  <div className="song-card-footer">
-                    {state ? '已钤印 · ' + formatDate(state.unlockedAt) : '尚未钤印 · 待君解锁'}
-                    {state && progress && (
-                      <div className="mt-2">
-                        <div className="flex justify-between"><span>{progress.label}</span><span>{Math.min(progress.value,progress.target)} / {progress.target}</span></div>
-                        <div className="song-card-progress"><div style={{width: Math.min(100, progress.value / Math.max(1, progress.target) * 100) + '%'}} /></div>
-                      </div>
-                    )}
-                  </div>
-                </button>
-              )
-            })}
-          </section>
-          {filteredAchievements.length === 0 && (
-            <div className="song-empty">此卷尚无成就，继续学习后便会渐渐丰盈。</div>
-          )}
-          <p className="mt-5 text-center text-xs leading-6 text-[#83796b]">
-            素笺墨印 · 汝窑天青 · 泥金朱砂 ｜ 每枚朱印只为真正达成的进步而落
-          </p>
+  const spriteStyle = {
+    '--song-sprite-url': 'url("' + import.meta.env.BASE_URL + 'assets/achievements/song/gallery/sprite.webp")',
+  } as CSSProperties
+  const main = (
+    <main className="song-v2-collection" data-song-achievement-gallery data-song-theme={theme} style={spriteStyle}>
+      <SongPortalEntry theme={theme} />
+      <button type="button" className="song-v2-close" aria-label="返回 Learn" onClick={close}>
+        <IconX className="h-6 w-6" />
+      </button>
+      <header className="song-v2-header">
+        <div className="song-v2-header-painting" aria-hidden="true" />
+        <div className="song-v2-header-group">
+          <div className="song-v2-progress-ring"
+            style={{ background: 'conic-gradient(#54877e ' + (achievements.length ? unlockedCount / achievements.length * 100 : 0) + '%,#d9d5cc 0)' }}
+            aria-label={'已解锁 ' + unlockedCount + '/' + achievements.length}>
+            <div><strong>{unlockedCount}</strong><span>/ {achievements.length}</span></div>
+          </div>
+          <div className="song-v2-header-words">
+            <div className="song-v2-eyebrow">QWERTY PLUS · COLLECTION</div>
+            <h1>成就雅集</h1>
+            <p>以指为笔，收集属于你的成长印记。</p>
+          </div>
         </div>
-      </main>
+      </header>
 
-      {masterSampleOpen && (
-        <HundredWordsCeremony onClose={closeModal} sample />
-      )}
-      {openAchievementId === 'ACH_MASTERED_100' && presentedState && (
-        <HundredWordsCeremony
-          onClose={closeModal}
-          unlockedAt={presentedState.unlockedAt}
-        />
-      )}
-      {presentedAchievement && presentedCulture && (demoOpen || presentedState) && openAchievementId !== 'ACH_MASTERED_100' && (
-        <div className="song-modal-backdrop" role="dialog" aria-modal="true"
-          aria-label={(demoOpen ? '解锁动效演示：' : '成就文化卡：') + presentedAchievement.title}
-          onClick={closeModal}
-          onKeyDown={(event) => {
-            event.stopPropagation()
-            if (event.key === 'Escape') { event.preventDefault(); closeModal() }
-          }}>
-          <article className="song-scroll" onClick={(event) => event.stopPropagation()}>
-            <button type="button" className="song-modal-close" onClick={closeModal} autoFocus aria-label="关闭成就卷轴">×</button>
-            <div className="song-eyebrow mb-3">QWERTY PLUS · ACHIEVEMENT</div>
-            <div className="song-modal-heading">{demoOpen ? '成就达成 · 演示' : '收录雅藏'}</div>
-            <div className="song-modal-stamp">
-              <SongSeal title={presentedAchievement.title} rarity={presentedAchievement.rarity} unlocked large />
-            </div>
-            <div className="song-modal-title">{presentedAchievement.title}</div>
-            <span className="song-tier-label mt-3 inline-block" style={{color: tierFor(presentedAchievement.rarity) === 'ink' ? '#80776d' : tierFor(presentedAchievement.rarity) === 'celadon' ? '#567f79' : '#b83b2b'}}>
-              {tierLabel[tierFor(presentedAchievement.rarity)]}
-            </span>
-            <p className="song-modal-copy mt-4">{presentedAchievement.copy.unlockMessage}</p>
-            {presentedCulture.primary && (
-              <div className="song-modal-culture">
-                <p className="text-lg">{presentedCulture.primary.text}</p>
-                <p className="mt-2 text-xs text-[#786e62]">
-                  {presentedCulture.primary.source}
-                  {presentedCulture.primary.author ? ' · ' + presentedCulture.primary.author : ''}
-                </p>
-                <p className="mt-3 text-xs leading-6 text-[#716759]">{presentedCulture.primary.studentMeaning}</p>
-              </div>
-            )}
-            <p className="mt-5 text-sm tracking-widest text-[#aa4f36]">落朱成印，录入雅藏。</p>
-            <p className="mt-2 text-xs text-[#85776b]">
-              {demoOpen ? '视觉演示 · 不会解锁或写入任何学习数据' : presentedState ? '钤印于 ' + formatDate(presentedState.unlockedAt) : ''}
-            </p>
-            <button type="button" className="song-modal-primary relative z-10 mt-6" onClick={closeModal}>
-              {demoOpen ? '收起演示' : '收好此卷'}
-            </button>
-          </article>
-        </div>
-      )}
-    </>
+      <div className="song-v2-controls">
+        <nav className="song-v2-filters" aria-label="筛选成就">
+          {([
+            ['all', '全部', achievements.length],
+            ['unlocked', '已解锁', unlockedCount],
+            ['locked', '未解锁', achievements.length - unlockedCount],
+            ['rare', '珍藏', rareCount],
+          ] as const).map(([key, label, count]) => (
+            <button key={key} className="song-v2-filter" type="button" aria-pressed={filter === key}
+              onClick={() => setFilter(key)}>{label} ({count})</button>
+          ))}
+        </nav>
+        <label className="song-v2-sort">
+          <span className="sr-only">成就排序</span>
+          <select value={sort} onChange={event => setSort(event.target.value as Sort)}>
+            <option value="default">按默认排序</option>
+            <option value="rarity">按稀有度</option>
+            <option value="recent">最近解锁</option>
+          </select>
+        </label>
+      </div>
+
+      <section className="song-v2-grid" aria-label="成就收藏">
+        {filtered.map(achievement => (
+          <CollectionCard
+            key={achievement.id}
+            achievement={achievement}
+            unlockedAt={stateById.get(achievement.id)?.unlockedAt}
+            theme={theme}
+            onOpen={() => openDetail(achievement)}
+          />
+        ))}
+      </section>
+      {filtered.length === 0 && <p className="song-v2-empty">此卷尚无成就，继续修行，自有新章。</p>}
+      <footer className="song-v2-footer">
+        <span>素笺墨印 · 汝窑天青 · 泥金朱砂</span>
+        <span className="song-v2-footer-actions">
+          <button type="button" onClick={() => setPreviewTheme(theme === 'light' ? 'dark' : 'light')}>
+            {theme === 'light' ? '夜卷' : '晨卷'}
+          </button>
+          <button type="button" onClick={() => { setDetailId('ACH_MASTERED_100'); setSample(true) }}>
+            展卷演示
+          </button>
+        </span>
+      </footer>
+
+      {selected && <CollectionDetail
+        key={selected.id + ':' + String(sample)}
+        achievement={selected}
+        unlockedAt={sample ? undefined : state?.unlockedAt}
+        sample={sample}
+        theme={theme}
+        onClose={closeDetail}
+      />}
+      <span className="sr-only">长期掌握 {visibleProgress.longTermMasteredWords} 个词；近十天活跃 {visibleProgress.activeLearnDaysInLast10} 天</span>
+    </main>
   )
-  return embedded ? content : <Layout>{content}</Layout>
+  return embedded ? main : <Layout>{main}</Layout>
 }
