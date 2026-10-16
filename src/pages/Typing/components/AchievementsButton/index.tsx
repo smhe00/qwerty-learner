@@ -9,6 +9,8 @@ export default function AchievementsButton() {
   return (
     <Tooltip className="h-7 w-7" content="查看成就">
       <button
+        data-toolbar-trigger
+        tabIndex={-1}
         className="p-[2px] text-lg text-indigo-500 focus:outline-none"
         type="button"
         onClick={(event) => {
