@@ -12,7 +12,7 @@ import { isOpenDarkModeAtom, typingTransVisibleAtom } from '@/store'
 import { CTRL } from '@/utils'
 import { useAtom } from 'jotai'
 import { useContext } from 'react'
-import type { KeyboardEvent, MouseEvent } from 'react'
+import type { FocusEvent, KeyboardEvent, MouseEvent } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import IconMoon from '~icons/heroicons/moon-solid'
 import IconSun from '~icons/heroicons/sun-solid'
@@ -63,6 +63,15 @@ export default function Switcher({
     }
   }
 
+  const preventIconFocus = (event: FocusEvent<HTMLDivElement>) => {
+    // Headless UI may restore focus to the opener after closing a dialog.
+    // Send it back to the study page rather than trapping the next Enter.
+    const trigger = (event.target as HTMLElement).closest<HTMLButtonElement>(
+      'button[data-toolbar-trigger]',
+    )
+    trigger?.blur()
+  }
+
   const releaseIconFocus = (event: MouseEvent<HTMLDivElement>) => {
     const trigger = (event.target as HTMLElement).closest<HTMLButtonElement>(
       'button[data-toolbar-trigger]',
@@ -74,6 +83,7 @@ export default function Switcher({
     <div
       className="focus-toolbar-icons flex min-w-0 max-w-full flex-wrap items-center justify-center gap-1"
       onKeyDownCapture={blockIconKeyboardActivation}
+      onFocusCapture={preventIconFocus}
       onClickCapture={releaseIconFocus}
     >
       <Tooltip content="音效设置">
