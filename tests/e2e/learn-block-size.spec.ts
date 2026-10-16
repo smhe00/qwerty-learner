@@ -1,27 +1,27 @@
 import { test, expect } from '@playwright/test'
 import { gotoReviewAppReady, readReviewModeInfo, waitForActiveLearnSession } from './review-flow-harness'
 
-for (const blockSize of [5, 50]) {
+for (const blockSize of [1, 5, 50]) {
   test(`memory setting persists ${blockSize} and creates a matching Learn block`, async ({ page }) => {
     await page.addInitScript(() => {
       if (sessionStorage.getItem('block-size-seed')) return
       sessionStorage.setItem('block-size-seed', 'done')
       localStorage.setItem('memoryConfig', JSON.stringify({ dailyNewWordTarget: 50 }))
     })
-    // / defaults to Learn and eagerly prepares a 20-word session before a
+    // / defaults to Learn and eagerly prepares a default-size session before a
     // user can change the setting. Configure it from the explicit Typing
     // surface first; the documented change applies to the NEXT Learn block.
     await gotoReviewAppReady(page, '/typing')
     await page.getByTitle('打开设置对话框').click()
     await page.getByRole('tab', { name: '学习计划' }).click()
     const control = page.getByRole('spinbutton', { name: '每阶段词数' })
-    await expect(control).toHaveValue('20')
-    await expect(control).toHaveAttribute('min', '5')
+    await expect(control).toHaveValue('10')
+    await expect(control).toHaveAttribute('min', '1')
     await expect(control).toHaveAttribute('max', '50')
-    await control.fill('2')
-    await expect(control).toHaveValue('2')
+    await control.fill('0')
+    await expect(control).toHaveValue('0')
     await control.blur()
-    await expect(control).toHaveValue('5')
+    await expect(control).toHaveValue('1')
     await control.fill('60')
     await expect(control).toHaveValue('60')
     await control.blur()
@@ -71,10 +71,10 @@ test('block size allows clearing and multi-digit editing before validating on co
   await expect(control).toHaveValue('20')
   expect(await saved()).toBe(35)
   await control.press('Enter')
-  await expect.poll(saved).toBe(20)
+  await expect.poll(saved).toBe(10)
   await control.fill('60')
   await expect(control).toHaveValue('60')
-  expect(await saved()).toBe(20)
+  expect(await saved()).toBe(10)
   await control.blur()
   await expect(control).toHaveValue('50')
   await expect.poll(saved).toBe(50)
