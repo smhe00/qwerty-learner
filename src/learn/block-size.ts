@@ -1,5 +1,5 @@
-export const DEFAULT_LEARN_BLOCK_SIZE = 20
-export const MIN_LEARN_BLOCK_SIZE = 5
+export const DEFAULT_LEARN_BLOCK_SIZE = 10
+export const MIN_LEARN_BLOCK_SIZE = 1
 export const MAX_LEARN_BLOCK_SIZE = 50
 
 export function normalizeLearnBlockSize(value: unknown): number {
