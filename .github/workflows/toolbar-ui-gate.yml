@@ -1,0 +1,48 @@
+name: Toolbar UI Gate
+
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - 'src/pages/Typing/components/Switcher/**'
+      - 'src/pages/Typing/components/SoundSwitcher/**'
+      - 'src/pages/Typing/components/LoopWordSwitcher/**'
+      - 'src/pages/Typing/components/WordDictationSwitcher/**'
+      - 'src/pages/Typing/components/Setting/**'
+      - 'src/pages/Typing/components/AnalysisButton/**'
+      - 'src/pages/Typing/components/ErrorBookButton.tsx'
+      - 'src/pages/Typing/components/AchievementsButton/**'
+      - 'src/pages/Typing/components/HandPositionIllustration/**'
+      - 'src/index.css'
+      - 'tests/e2e/toolbar-icon-focus.spec.ts'
+      - 'tests/e2e/review-flow.config.ts'
+      - '.github/workflows/toolbar-ui-gate.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: toolbar-ui-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  toolbar:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Verify pointer-only navbar and Focus UI icons
+        run: >
+          npx playwright test
+          tests/e2e/toolbar-icon-focus.spec.ts
+          --config=tests/e2e/review-flow.config.ts
+          --project=chrome
+          --retries=0
