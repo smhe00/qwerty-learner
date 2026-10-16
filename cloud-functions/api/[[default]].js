@@ -2,7 +2,7 @@
 import crypto from 'node:crypto'
 import { getStore } from '@edgeone/pages-blob'
 import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
-import { blocksCircleEtestAccountDeletion, createCircleEtestGateway } from '../_shared/circle/etest-gateway.js'
+import { circleAccountHasActivity, createCircleOpenGateway } from '../_shared/circle/open-gateway.js'
 import { AppError, createBackendService } from '../_shared/core.js'
 import { isS2WriteEnabled } from '../_shared/s2-write-gate.js'
 import { createEdgeOneBlobStorage } from '../_shared/storage/edgeone-blob.js'
@@ -243,12 +243,6 @@ export async function onRequest(context) {
     })
   }
 
-  // No Circle store/session initialization on production and unenabled hosts.
-  if ((path === '/circle/v2' || path.startsWith('/circle/v2/')) &&
-      (url.hostname !== 'etest.edgeone.dev' || env.CIRCLE_ETEST_ENABLED !== 'true')) {
-    return json({ ok: false, error: 'not_found' }, 404, cors)
-  }
-
   try {
     if (request.method === 'GET' && (path === '/' || path === '/health')) {
       return json(
@@ -276,6 +270,7 @@ export async function onRequest(context) {
             'plain-gzip-sync-v2',
             'learning-state-backup-v3',
             'backup-v4-authenticated-write-ga',
+            'circle-api-v2-authenticated',
             'edgeone-same-origin-e2e-v1',
             'v4-blob-stage-trace-20261014',
             'v4-http-multipart-v1',
@@ -298,10 +293,9 @@ export async function onRequest(context) {
     const bodyLimit =
       Math.ceil(numberEnv(env.MAX_SYNC_BYTES, 16 * 1024 * 1024) * 1.5) + 256 * 1024
 
-    // Only the explicit etest pilot can reach the Circle Cloud Function.
-    // The Circle Store is isolated from the V4 backup namespace.
+    // Circle uses authenticated V4 sessions and a social/ Blob key namespace.
     if (path === '/circle/v2' || path.startsWith('/circle/v2/')) {
-      const result = await createCircleEtestGateway({
+      const result = await createCircleOpenGateway({
         backend: service, getStore, rateStorage: storage,
       }).handle(context)
       for (const [key, value] of Object.entries(cors)) result.headers.set(key, value)
@@ -349,17 +343,15 @@ export async function onRequest(context) {
     }
 
     if (request.method === 'DELETE' && path === '/auth/account') {
-      // Keep pilot Circle identities undeletable until an auditable scrub,
-      // even after the pilot flag is disabled. All other V4 accounts unchanged.
-      if (url.hostname === 'etest.edgeone.dev' &&
-          String(env.CIRCLE_ETEST_USER_IDS || '').trim()) {
-        const me = await service.me(bearer(request))
-        if (blocksCircleEtestAccountDeletion({
-          hostname: url.hostname, env, userId: me.user?.userId,
-        })) {
-          throw new AppError(409, 'circle_etest_deletion_requires_cleanup',
-            'Circle test account cleanup must complete before account deletion')
-        }
+      // The Circle API is available to authenticated accounts. An account
+      // that has written Circle events must not be permanently deleted until
+      // its social event references can be independently scrubbed.
+      const me = await service.me(bearer(request))
+      if (await circleAccountHasActivity({
+        getStore, env, userId: me.user?.userId,
+      })) {
+        throw new AppError(409, 'circle_deletion_requires_cleanup',
+          'Circle data cleanup must complete before account deletion')
       }
       const body = await readJson(request, 64 * 1024)
       return json(
