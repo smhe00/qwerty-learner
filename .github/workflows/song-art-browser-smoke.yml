@@ -8,6 +8,7 @@ on:
     paths:
       - 'tests/song-preview/**'
       - 'src/achievement/visual-assets/**'
+      - 'public/assets/achievements/song/**'
       - 'src/song-preview/**'
       - 'preview/song-achievements/**'
       - 'vite.song-preview.config.ts'
