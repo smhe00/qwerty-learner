@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import type { MouseEvent } from 'react'
-import type { AchievementDefinition } from '@/resources/achievementCulture'
 import './song-masterpiece.css'
 
 /**
@@ -169,8 +168,8 @@ export function HundredWordsMuseumCard({ onOpen, unlocked = true, date = '2026.1
   )
 }
 
-export function HundredWordsCeremony({ achievement, onClose, sample = false }: {
-  achievement?: AchievementDefinition; onClose: () => void; sample?: boolean
+export function HundredWordsCeremony({ onClose, sample = false, unlockedAt }: {
+  onClose: () => void; sample?: boolean; unlockedAt?: number
 }) {
   const [playId, setPlayId] = useState(0)
   const [motion, setMotion] = useState(() => typeof window !== 'undefined' &&
@@ -221,7 +220,9 @@ export function HundredWordsCeremony({ achievement, onClose, sample = false }: {
           <div className="song-master-footnote"><span className="song-master-footnote-mark" aria-hidden="true">印</span>落朱成印 · 录入雅藏 <span className="song-master-footnote-mark" aria-hidden="true">记</span></div>
           <div className="song-master-inscription">
             <span>{sample ? '演示藏品 · 不会写入学习数据' : '已收录至成就雅集'}</span>
-            <time dateTime="2026-10-16">二〇二六年十月十六日</time>
+            <time dateTime={sample || !unlockedAt ? '2026-10-16' : new Date(unlockedAt * 1000).toISOString().slice(0, 10)}>
+              {sample || !unlockedAt ? '二〇二六年十月十六日' : new Date(unlockedAt * 1000).toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric'})}
+            </time>
           </div>
           <SongMountains/>
           <div className="song-master-actions">
