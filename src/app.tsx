@@ -117,6 +117,27 @@ function DesktopRoutes() {
   )
 }
 
+/**
+ * A read-only visual doorway to Achievements on narrow screens.
+ * Learn/Typing remain desktop-only; no mobile learning/session UI is enabled.
+ */
+function MobileAchievementsRoute() {
+  const navigate = useNavigate()
+  return (
+    <div className="min-h-screen bg-[#f7f4ed] px-2 py-3 text-[#2c2a29] dark:bg-[#1d292c] dark:text-[#eee8dc]">
+      <header className="mx-auto mb-3 flex w-full max-w-5xl items-center justify-between gap-3 px-2">
+        <span className="text-sm font-semibold tracking-wide">QWERTY Plus · 成就雅集</span>
+        <button type="button" onClick={() => navigate('/mobile')}
+          className="rounded-lg border border-[#b9ae9a] px-3 py-2 text-sm dark:border-[#71847b]"
+          aria-label="返回移动端说明">
+          返回
+        </button>
+      </header>
+      <AchievementsPage embedded />
+    </div>
+  )
+}
+
 function Root() {
   const darkMode = useAtomValue(isOpenDarkModeAtom)
 
@@ -200,6 +221,7 @@ function Root() {
           {isMobile ? (
             <Routes>
               <Route path="/mobile" element={<MobilePage />} />
+              <Route path="/achievements" element={<MobileAchievementsRoute />} />
               <Route path="/*" element={<Navigate to="/mobile" replace />} />
             </Routes>
           ) : (
