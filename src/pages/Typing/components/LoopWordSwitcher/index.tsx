@@ -30,6 +30,9 @@ export default function LoopWordSwitcher({
     <>
       <Popover className="relative">
         <Popover.Button
+          data-toolbar-trigger
+          data-toolbar-active={!disabled && loopTimes !== 1}
+          tabIndex={-1}
           className={`p-[2px] ${
             disabled
               ? 'cursor-not-allowed text-gray-400 opacity-40'
