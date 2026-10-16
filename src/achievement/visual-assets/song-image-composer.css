@@ -45,3 +45,9 @@
   .song-image-composer:not([data-user-replay="true"]) .song-image-press,
   .song-image-composer:not([data-user-replay="true"]) .song-image-print {animation:none !important;}
 }
+
+.song-image-culture {font-size:clamp(10px,1vw,14px);line-height:1.75;color:#686454;}
+.song-image-culture blockquote {margin:0;max-width:100%;}
+.song-image-culture-source {display:block;margin-top:.45em;font-size:.8em;color:#987b58;}
+.song-image-composer[data-theme="dark"] .song-image-culture {color:#d4c9b5;}
+.song-image-composer[data-theme="dark"] .song-image-culture-source {color:#d3b78e;}
