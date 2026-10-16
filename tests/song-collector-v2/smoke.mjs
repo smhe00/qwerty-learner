@@ -12,10 +12,11 @@ async function checkDesktop() {
   const errors = []
   page.on('pageerror',e=>errors.push(e.message))
   try {
-    await page.goto(base+'/achievements', {waitUntil:'domcontentloaded'})
+    await page.goto(base+'/learn', {waitUntil:'domcontentloaded'})
+    await page.getByRole('button', { name: '查看成就' }).click()
     await page.locator('[data-song-achievement-gallery]').waitFor({timeout:20000})
     assert.equal(await page.locator('[data-navigation-dialog="achievements"]').count(), 1)
-    assert.equal(await page.locator('.focus-overlay-header').count(),0,'No redundant Focus menu/header')
+    assert.equal(await page.locator('[data-navigation-dialog="achievements"] .focus-overlay-header').count(),0,'No redundant achievement header')
     const cards=page.locator('.song-v2-card')
     assert.equal(await cards.count(),19,'P0 card count preserved')
     const gallery = page.locator('.song-v2-grid')
