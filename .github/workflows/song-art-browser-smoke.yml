@@ -7,6 +7,10 @@ on:
       - design/achievement-song-aesthetic-20261016
     paths:
       - 'tests/song-preview/**'
+      - 'src/achievement/visual-assets/**'
+      - 'src/song-preview/**'
+      - 'preview/song-achievements/**'
+      - 'vite.song-preview.config.ts'
       - '.github/workflows/song-art-browser-smoke.yml'
 
 permissions:
