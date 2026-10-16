@@ -35,7 +35,9 @@ for (const blockSize of [1, 5, 10, 50]) {
 
 test('a saved 50-word block survives recovery independently of changed settings', () => {
   assert.equal(shouldRotateOversizedLearnSession({ sessionKind: 'acquisition', words: words.slice(0, 50), blockSize: 50 }), false)
-  assert.equal(shouldRotateOversizedLearnSession({ sessionKind: 'acquisition', words: words.slice(0, 11) }), true, 'legacy checkpoint keeps default size guard')
+  assert.equal(shouldRotateOversizedLearnSession({ sessionKind: 'acquisition', words: words.slice(0, 11), blockSize: 10 }), true, 'new checkpoints use the 10-word guard')
+  assert.equal(shouldRotateOversizedLearnSession({ sessionKind: 'acquisition', words: words.slice(0, 20) }), false, 'legacy checkpoint without size preserves its original 20-word cohort')
+  assert.equal(shouldRotateOversizedLearnSession({ sessionKind: 'acquisition', words: words.slice(0, 21) }), true)
 })
 
 
