@@ -31,10 +31,10 @@ export default function SoundSwitcher() {
   useEffect(() => {
     if (!open) return
 
-    const onPointerDown = (event: globalThis.PointerEvent) => {
+    const onPointerDown = (event: PointerEvent) => {
       if (!containerRef.current?.contains(event.target as Node)) setOpen(false)
     }
-    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+    const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       event.preventDefault()
       event.stopImmediatePropagation()
