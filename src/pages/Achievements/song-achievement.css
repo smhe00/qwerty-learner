@@ -84,3 +84,65 @@
 @keyframes song-stamp { 0% { opacity:0; transform:translateY(-19px) scale(1.45) rotate(-9deg) } 70% { opacity:1; transform:translateY(2px) scale(.95) rotate(-6deg)} 100% {opacity:1;transform:translateY(0) scale(1) rotate(-6deg)} }
 @media (prefers-reduced-motion: reduce) { .song-gallery *, .song-scroll, .song-modal-stamp { animation:none !important; transition:none !important; } }
 @media (max-width:640px) { .song-gallery {border-radius: 13px;} .song-card { min-height: 292px; } .song-filter {padding:7px 11px;} .song-scroll {padding:30px 25px;} .song-progress-ring {width:65px;height:65px;} }
+
+
+/* All image cloud and theme adjustments are achievement-scoped. */
+.song-card > .song-tier-label,
+.song-card > .song-card-title,
+.song-card > .song-card-body,
+.song-card > .song-card-footer,
+.song-card > div:first-of-type {
+  position: relative;
+  z-index: 3;
+}
+.song-card > .song-artwork,
+.song-card > .song-seal {
+  position: relative;
+  z-index: 1;
+}
+.song-card > .song-seal {
+  position: absolute;
+}
+.song-gallery[data-song-theme="dark"] {
+  --song-paper: #1d292c;
+  --song-ink: #eee8dc;
+  --song-muted: #b9b6a8;
+  --song-line: #53635f;
+  background:
+    radial-gradient(ellipse at 91% 1%,#42534f88,transparent 36%),
+    radial-gradient(ellipse at 4% 90%,#74624c46,transparent 46%),#1d292c;
+  border-color: #4e6059;
+}
+.song-gallery[data-song-theme="dark"] .song-card {
+  color: #e9e5d9;
+  background: linear-gradient(145deg,#35413e,#222b2b);
+  border-color:#64716a;
+}
+.song-gallery[data-song-theme="dark"] .song-card[data-tier="celadon"] {
+  background:linear-gradient(150deg,#304b47,#223136);
+  border-color:#7d9b8d;
+}
+.song-gallery[data-song-theme="dark"] .song-card[data-tier="cinnabar"] {
+  background:linear-gradient(150deg,#55442f,#28272a);
+  border-color:#ab8b56;
+}
+.song-gallery[data-song-theme="dark"] .song-card-body,
+.song-gallery[data-song-theme="dark"] .song-card-footer,
+.song-gallery[data-song-theme="dark"] .song-subtitle,
+.song-gallery[data-song-theme="dark"] .song-card > div:first-of-type span:not(.song-tier-label) {
+  color:#cbc3b3;
+}
+.song-gallery[data-song-theme="dark"] .song-filter,
+.song-gallery[data-song-theme="dark"] .song-demo-button {
+  background:#243533;
+  color:#d9d2c0;
+  border-color:#6c7971;
+}
+.song-gallery[data-song-theme="dark"] .song-filter[aria-pressed="true"] {
+  background:#7b9e92;
+  color:#172420;
+}
+.song-gallery[data-song-theme="dark"] .song-progress-core {
+  background:#1d292c;
+}
+.song-gallery[data-song-theme="dark"] .song-card-progress{background:#66756b;}
