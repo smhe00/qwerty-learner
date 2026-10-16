@@ -204,7 +204,7 @@ export function HundredWordsCeremony({ onClose, sample = false, unlockedAt }: {
           <div className="song-master-heading-rule" aria-hidden="true"><span/>◆<span/></div>
           <div className="song-master-dialog-visual">
             <span className="song-master-back-halo" aria-hidden="true"/>
-            <div className="song-master-sidepoem" aria-hidden="true">天 青 待 雨　·　静 水 流 深</div>
+            <div className="song-master-sidepoem" aria-hidden="true">天 青 待 雨 · 静 水 流 深</div>
             <RuLotusBowl/>
             <div className="song-master-floating-seal"><HundredWordSeal size="large"/></div>
             <div className="song-master-seal-impact" aria-hidden="true"/>
