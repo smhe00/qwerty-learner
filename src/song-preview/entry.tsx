@@ -167,7 +167,7 @@ function App() {
           <footer className="song-preview-footer"><span>素笺墨印</span><span>汝窑天青</span><span>泥金朱砂</span> · 成就不是终点，而是成长的印记</footer>
         </div>
       </main>
-      {selected?.id === 'ACH_MASTERED_100' && <HundredWordsCeremony achievement={selected} sample onClose={close} />}
+      {selected?.id === 'ACH_MASTERED_100' && <HundredWordsCeremony sample onClose={close} />}
       {selected && selected.id !== 'ACH_MASTERED_100' && <div className="song-modal-backdrop" role="presentation" onClick={close}>
         <article className="song-scroll song-preview-scroll" role="dialog" aria-modal="true" aria-label={selected.title+'成就详情'} onClick={e=>e.stopPropagation()}>
           <button type="button" className="song-modal-close" onClick={close} aria-label="关闭" autoFocus>×</button>
