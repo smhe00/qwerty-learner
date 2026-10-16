@@ -6,6 +6,8 @@ import {
 import Layout from '@/components/Layout'
 import { SongMistLayer } from '@/achievement/visual-assets/SongMistLayer'
 import { SongPortalEntry } from '@/achievement/visual-assets/SongPortalEntry'
+import { SongImageComposer } from '@/achievement/visual-assets/SongImageComposer'
+import { getApprovedSongVisualPack } from '@/achievement/visual-assets/spec'
 import { isOpenDarkModeAtom } from '@/store'
 import { useAtomValue } from 'jotai'
 import { SongArtwork, SongSeal } from './SongArtwork'
@@ -175,6 +177,15 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
                   : achievement.id === 'ACH_7_OF_10'
                     ? { value: visibleProgress.activeLearnDaysInLast10, target: achievement.condition.target, label: '最近 10 天学习' }
                     : undefined
+              // Art packs go live only after explicit image review and asset gate.
+              // The old SVG prototype is research fallback, never an approved pack.
+              if (getApprovedSongVisualPack(achievement, !locked)) {
+                return (
+                  <SongImageComposer key={achievement.id} achievement={achievement}
+                    theme={songTheme} variant="card" unlockedAt={state?.unlockedAt}
+                    onOpen={state ? () => openCulture(achievement.id) : undefined} />
+                )
+              }
               if (achievement.id === 'ACH_MASTERED_100' && state) {
                 return (
                   <HundredWordsMuseumCard
