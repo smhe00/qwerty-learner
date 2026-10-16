@@ -1,7 +1,7 @@
 [
   {
     "id": "ACH_FIRST_DECODE",
-    "title": "初次破译",
+    "title": "独立开篇",
     "category": "breakthrough",
     "rarity": "common",
     "themes": [
@@ -15,7 +15,9 @@
       "operator": "gte",
       "target": 1,
       "window": null,
-      "constraints": {}
+      "constraints": {
+        "minIndependentUniqueWords": 16
+      }
     },
     "culture": {
       "primaryId": "CUL_LAOZI_001",
@@ -25,8 +27,8 @@
       ]
     },
     "copy": {
-      "unlockMessage": "你第一次靠自己把一个新词完整拼出来了。",
-      "reflection": "千里很远，但第一步已经发生。"
+      "unlockMessage": "在 Learn 中独立拼对 16 个不同的词，正式开启自己的记忆旅程。",
+      "reflection": "第一份真正值得收藏的进步，不靠重复刷同一个词。"
     },
     "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
     "artDirection": {
@@ -101,9 +103,11 @@
     "condition": {
       "metric": "consecutive_independent_correct_no_hint",
       "operator": "gte",
-      "target": 10,
+      "target": 64,
       "window": null,
-      "constraints": {}
+      "constraints": {
+        "minActiveDays": 2
+      }
     },
     "culture": {
       "primaryId": "CUL_LAOZI_002",
@@ -113,8 +117,8 @@
       ]
     },
     "copy": {
-      "unlockMessage": "连续 10 个词没有使用提示。",
-      "reflection": "提示逐渐退场，你开始真正依靠自己的记忆。"
+      "unlockMessage": "跨越至少两天，累计保持连续 64 次无提示独立正确。",
+      "reflection": "不是偶然手感，而是可以持续的独立能力。"
     },
     "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
     "artDirection": {
@@ -189,10 +193,10 @@
     "condition": {
       "metric": "session_second_half_accuracy_gain_pp",
       "operator": "gte",
-      "target": 20,
+      "target": 40,
       "window": null,
       "constraints": {
-        "minWords": 12
+        "minWords": 32
       }
     },
     "culture": {
@@ -202,7 +206,7 @@
       ]
     },
     "copy": {
-      "unlockMessage": "这一轮后半段明显比前半段更稳。",
+      "unlockMessage": "在至少 32 词的学习中，后半段正确率提升 40 个百分点。",
       "reflection": "状态不是固定的，你可以在一次学习里把自己带起来。"
     },
     "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
@@ -222,7 +226,7 @@
   },
   {
     "id": "ACH_RECOVER_1",
-    "title": "失而复得",
+    "title": "拾遗成章",
     "category": "recovery",
     "rarity": "common",
     "themes": [
@@ -236,7 +240,9 @@
       "operator": "gte",
       "target": 1,
       "window": null,
-      "constraints": {}
+      "constraints": {
+        "minRecoveredUniqueWords": 6
+      }
     },
     "culture": {
       "primaryId": "CUL_LUYOU_001",
@@ -246,8 +252,8 @@
       ]
     },
     "copy": {
-      "unlockMessage": "一个曾经不会的词，被你重新找回来了。",
-      "reflection": "忘记不是终点，重新想起来才是记忆真正变强的过程。"
+      "unlockMessage": "独立找回 6 个曾经答错的不同单词。",
+      "reflection": "真正珍贵的成长，是忘掉的知识重新变成自己的。"
     },
     "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
     "artDirection": {
@@ -278,7 +284,7 @@
     "condition": {
       "metric": "word_independent_correct_after_prior_failures",
       "operator": "gte",
-      "target": 3,
+      "target": 5,
       "window": null,
       "constraints": {}
     },
@@ -290,7 +296,7 @@
       ]
     },
     "copy": {
-      "unlockMessage": "这个词曾至少失败 3 次，现在你独立答对了。",
+      "unlockMessage": "一个曾经失败至少 5 次的词，现在独立答对了。",
       "reflection": "错误没有定义你，后来发生的改变才会。"
     },
     "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
@@ -413,7 +419,7 @@
     "condition": {
       "metric": "repeated_error_position_resolved",
       "operator": "gte",
-      "target": 1,
+      "target": 2,
       "window": null,
       "constraints": {
         "samePositionFailuresAtLeast": 2
@@ -427,7 +433,7 @@
       ]
     },
     "copy": {
-      "unlockMessage": "一个反复出错的位置被你准确修正。",
+      "unlockMessage": "一个难词中至少两处反复出错的位置，被独立纠正。",
       "reflection": "真正的精进，往往发生在这些不起眼的细节里。"
     },
     "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
@@ -686,7 +692,7 @@
     "condition": {
       "metric": "audio_only_independent_correct_count",
       "operator": "gte",
-      "target": 10,
+      "target": 48,
       "window": null,
       "constraints": {}
     },
@@ -697,7 +703,7 @@
       ]
     },
     "copy": {
-      "unlockMessage": "仅凭声音独立拼对了 10 个词。",
+      "unlockMessage": "纯听音、没有文字提示，独立正确完成 48 次拼写。",
       "reflection": "耳朵听到的声音，已经能直接连接到拼写。"
     },
     "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
@@ -761,7 +767,7 @@
   },
   {
     "id": "ACH_DAILY_GOAL",
-    "title": "今日笃行",
+    "title": "五日笃行",
     "category": "consistency",
     "rarity": "common",
     "themes": [
@@ -775,7 +781,9 @@
       "operator": "gte",
       "target": 1,
       "window": null,
-      "constraints": {}
+      "constraints": {
+        "minGoalDays": 5
+      }
     },
     "culture": {
       "primaryId": "CUL_ZHONGYONG_001",
@@ -784,8 +792,8 @@
       ]
     },
     "copy": {
-      "unlockMessage": "你第一次完整完成了系统建议的 Learn 目标。",
-      "reflection": "不求很多，先把答应自己的这一程认真走完。"
+      "unlockMessage": "在五个不同的学习日完成推荐的 Learn 日目标。",
+      "reflection": "偶尔做到不难，连续积累才足以成为荣誉。"
     },
     "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
     "artDirection": {
@@ -804,7 +812,7 @@
   },
   {
     "id": "ACH_CONTINUE",
-    "title": "再启一程",
+    "title": "再启三程",
     "category": "consistency",
     "rarity": "common",
     "themes": [
@@ -819,7 +827,8 @@
       "target": 1,
       "window": null,
       "constraints": {
-        "afterRecommendedGoalCompleted": true
+        "afterRecommendedGoalCompleted": true,
+        "minContinueDays": 3
       }
     },
     "culture": {
@@ -830,7 +839,7 @@
       ]
     },
     "copy": {
-      "unlockMessage": "完成建议目标后，你仍主动选择再学一程。",
+      "unlockMessage": "在三个不同的日子，达标后仍主动继续学习并完成新的尝试。",
       "reflection": "已经完成，仍愿意更进一步。"
     },
     "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
@@ -897,7 +906,7 @@
   },
   {
     "id": "ACH_NEW_UNIT",
-    "title": "新境初开",
+    "title": "三境开拓",
     "category": "exploration",
     "rarity": "common",
     "themes": [
@@ -911,7 +920,9 @@
       "operator": "gte",
       "target": 1,
       "window": null,
-      "constraints": {}
+      "constraints": {
+        "minStartedUnits": 3
+      }
     },
     "culture": {
       "primaryId": "CUL_QUYUAN_001",
@@ -920,8 +931,8 @@
       ]
     },
     "copy": {
-      "unlockMessage": "你第一次进入一个新的学习单元。",
-      "reflection": "陌生不是危险，而是地图上还没走过的地方。"
+      "unlockMessage": "在同一词库中真正进入三个不同的学习单元。",
+      "reflection": "新的边界不只在远方，更在每一步真正开始时。"
     },
     "antiGaming": "Only count normal Learn attempts; imported/history-replayed events do not unlock.",
     "artDirection": {
