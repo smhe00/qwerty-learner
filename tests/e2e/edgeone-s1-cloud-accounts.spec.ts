@@ -6,14 +6,15 @@ const userA = process.env.QWERTY_E2E_USERNAME
 const userB = process.env.QWERTY_E2E_USERNAME_B
 const password = process.env.QWERTY_E2E_PASSWORD
 
-test('P0: fresh etest browser can learn anonymously before opening login (native and fallback locks)', async ({ browser }) => {
+for (const missingWebLocks of [false, true]) {
+test(`P0: fresh etest anonymous Learn, account and clear (${missingWebLocks ? 'fallback' : 'native'} locks)`, async ({ browser }) => {
   test.setTimeout(180_000)
   if (process.env.GITHUB_REF_NAME !== 'edgeone-test' ||
     new URL(base || '').origin !== 'https://etest.edgeone.dev') {
     throw Error('Only branch-matched etest may exercise the real first-visit path')
   }
-  for (const missingWebLocks of [false, true]) {
     const context = await browser.newContext({ serviceWorkers: 'block' })
+    console.log('P0 staging browser startup', { missingWebLocks })
     try {
       if (missingWebLocks) {
         await context.addInitScript(() => {
@@ -25,9 +26,11 @@ test('P0: fresh etest browser can learn anonymously before opening login (native
       const page = await context.newPage()
       // The previous E2E went directly to ?s1-account=manage and never
       // exercised an anonymous learner who decides to log in later.
+      console.log('P0 staging checkpoint: loading anonymous entry')
       await page.goto(base!, { waitUntil: 'domcontentloaded' })
       await expect(page.getByRole('button', { name: '打开设置对话框' }))
         .toBeVisible({ timeout: 40_000 })
+      console.log('P0 staging checkpoint: entering Learn')
       await page.goto(new URL('/learn', base).toString())
       const start = page.getByRole('button', { name: '开始 Learn', exact: true })
       await expect(start).toBeVisible({ timeout: 30_000 })
@@ -55,8 +58,10 @@ test('P0: fresh etest browser can learn anonymously before opening login (native
           })
         } finally { db.close() }
       })
+      console.log('P0 staging checkpoint: waiting for persistent learning evidence')
       await expect.poll(recordCount, { timeout: 30_000 }).toBeGreaterThan(0)
       const before = await recordCount()
+      console.log('P0 staging checkpoint: opening account entry')
       await page.locator('[data-account-entry]').click()
       await expect(page.getByRole('dialog', { name: '安全账户管理（S1）' }))
         .toBeVisible({ timeout: 30_000 })
@@ -94,8 +99,8 @@ test('P0: fresh etest browser can learn anonymously before opening login (native
       // context.close() rejection obscure the actual failed locator/step.
       await context.close().catch(() => {})
     }
-  }
 })
+}
 
 test('two cloud identities in three isolated Chromium S1 profiles', async ({ browser }) => {
   test.setTimeout(180_000)
