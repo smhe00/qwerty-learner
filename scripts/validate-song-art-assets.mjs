@@ -26,7 +26,8 @@ for (const name of requiredFog) {
   const bytes = fs.readFileSync(full)
   if (bytes.length < 500 || bytes.length > 150000 ||
       bytes.toString('ascii', 0, 4) !== 'RIFF' ||
-      bytes.toString('ascii', 8, 12) !== 'WEBP') {
+      bytes.toString('ascii', 8, 12) !== 'WEBP' ||
+      bytes.readUInt32LE(4) + 8 !== bytes.length) {
     errors.push('Invalid/corrupted or oversize WebP image: ' + rel)
   } else {
     console.log('OK ' + rel + ': ' + bytes.length + ' bytes')
