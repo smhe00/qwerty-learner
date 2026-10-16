@@ -1,0 +1,46 @@
+.song-preview-shell { min-height:100vh; width:100%; display:flex; background:#f2f0e9; color:#2c2a29; font-family:"Noto Serif SC","Songti SC",SimSun,serif; }
+.song-preview-sidebar { width:220px; flex:none; position:sticky; top:0; height:100vh; padding:26px 16px; border-right:1px solid #e0dacd; background:linear-gradient(180deg,#f7f4ed,#e9e8dd); display:flex; flex-direction:column; }
+.song-preview-brand { display:flex; gap:11px; align-items:center; padding:0 7px 25px; border-bottom:1px solid #d8d1c3; }
+.song-preview-brand-seal { border:2px solid #b83b2b; border-radius:4px; background:#b83b2b; color:#fdf8ee; width:37px; height:39px; line-height:16px; display:grid;place-content:center;text-align:center;font-weight:bold;font-size:14px; }
+.song-preview-brand strong { display:block; white-space:nowrap; font-size:18px; letter-spacing:.018em; font-family:Georgia,serif; }
+.song-preview-brand small { display:block; font-size:10px; margin-top:7px; letter-spacing:.13em; color:#898273; }
+.song-preview-sidebar-nav { margin-top:27px; display:flex; flex-direction:column; gap:9px; }
+.song-preview-nav-item { display:flex; align-items:center; gap:15px; padding:12px 15px; font-size:13px; letter-spacing:.05em; color:#6f6a61; border-radius:8px; }
+.song-preview-nav-item span { width:23px; font:21px/1.2 system-ui; color:#6d726b; text-align:center; }
+.song-preview-nav-current { background:linear-gradient(90deg,#dfe6df,#e6e7df); color:#2c4844; font-weight:650; box-shadow:inset 3px 0 #62837c; }
+.song-preview-aside-ink { margin-top:auto; text-align:center; color:#999084; font-size:12px; line-height:1.8; }
+.song-preview-aside-ink svg {width:100%;height:auto;}
+.song-preview-main { flex:1; min-width:0; max-width:1900px; padding:0 22px 30px; }
+.song-preview-topbar { min-height:82px; display:flex;justify-content:space-between;align-items:center;gap:18px; padding:12px 12px 16px; }
+.song-preview-breadcrumb { font-size:13px; color:#625e56; letter-spacing:.06em; }
+.song-preview-breadcrumb span { color:#a49c90; margin:0 12px; }
+.song-preview-topcontrols { display:flex; align-items:center; gap:21px; }
+.song-preview-search { display:flex;align-items:center;gap:9px;border:1px solid #d8d1c4;border-radius:25px;padding:7px 13px;background:#fff8;color:#726b62; }
+.song-preview-search span { font:24px system-ui;line-height:1; }
+.song-preview-search input { border:0; background:transparent; outline:0; font-size:12px; width:146px; }
+.song-preview-user {font-size:13px;white-space:nowrap;}
+.song-preview-user span {margin-left:7px;color:#938a7a;}
+.song-preview-gallery {max-width:1370px;margin:auto;overflow:hidden;min-height:calc(100vh - 118px);box-shadow:0 9px 40px #54452e0a;}
+.song-preview-header { display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:126px; }
+.song-preview-title-wrap {display:flex;align-items:center;gap:21px;}
+.song-preview-graphic { opacity:.7;align-self:flex-start; }
+.song-preview-demo-tip {display:flex;justify-content:space-between;align-items:center;gap:10px;margin:6px 0 17px;padding:8px 12px;border-left:2px solid #7a9a95;background:#dfe5de8a;color:#66776d;font-size:11px;line-height:1.6;font-family:system-ui,sans-serif;}
+.song-preview-demo-tip button { color:#466e64;text-decoration:underline;white-space:nowrap; }
+.song-preview-toolbar {display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
+.song-preview-filters {display:flex;flex-wrap:wrap;gap:8px;}
+.song-preview-reveal-button {font-size:12px;padding:10px 14px;border:1px solid #bfa686;background:#fff7e9;border-radius:8px;color:#765e38;white-space:nowrap;}
+.song-preview-reveal-button:hover {background:#f1e2c8;}
+.song-preview-reveal-button span {color:#b83b2b;margin-right:7px;}
+.song-preview-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;}
+.song-preview-card {min-height:323px;}
+.song-preview-card .song-artwork {height:139px;}
+.song-preview-card:hover {cursor:pointer;}
+.song-preview-status {font-size:11px;color:#696c63;white-space:nowrap;}
+.song-preview-footer {font-size:11px;color:#867b6b;text-align:center;letter-spacing:.04em;padding:25px 0 7px;}
+.song-preview-footer span {margin-right:11px;}
+.song-preview-scroll {overflow:auto;z-index:2;}
+.song-preview-close-menu {display:none;}
+@media (max-width:1160px){.song-preview-sidebar{width:170px;}.song-preview-grid{gap:12px;}.song-preview-card{padding:18px 16px;}.song-preview-main{padding:0 12px 18px;}}
+@media (max-width:900px){.song-preview-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.song-preview-sidebar{width:70px;padding:18px 7px;}.song-preview-brand{justify-content:center;padding:4px 0 24px;}.song-preview-brand div{display:none;}.song-preview-nav-item{font-size:0;padding:12px 16px;}.song-preview-nav-item span{font-size:22px;}.song-preview-aside-ink{display:none;}}
+@media (max-width:600px){.song-preview-sidebar{display:none;}.song-preview-main{padding:0 7px 20px;}.song-preview-topbar{min-height:57px;padding:7px 9px;}.song-preview-topcontrols{gap:7px;}.song-preview-search{padding:5px 8px;}.song-preview-search input{width:87px;}.song-preview-user{display:none;}.song-preview-gallery{border-radius:10px;}.song-preview-header{min-height:112px;}.song-preview-graphic{display:none;}.song-preview-title-wrap{gap:12px;}.song-preview-toolbar{justify-content:start;}.song-preview-reveal-button{width:100%;}.song-preview-grid{gap:11px;}.song-preview-card{min-height:310px;}.song-preview-card .song-card-title{font-size:17px;}.song-preview-card .song-artwork{height:110px;}.song-preview-card .song-seal{top:105px;right:12px;width:36px;}.song-preview-card .song-card-body{font-size:11px;}.song-preview-card .song-tier-label{padding:3px 7px;font-size:9px;}.song-preview-status{font-size:9px;}.song-preview-demo-tip{flex-direction:column;align-items:start;}.song-preview-footer{font-size:10px;line-height:1.8;}}
+@media (max-width:360px){.song-preview-grid{grid-template-columns:1fr;}.song-preview-card{min-height:310px;}.song-preview-card .song-artwork{height:140px;}.song-preview-card .song-seal{top:128px;right:20px;width:47px;}}
