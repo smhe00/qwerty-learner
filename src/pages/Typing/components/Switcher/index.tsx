@@ -69,6 +69,11 @@ export default function Switcher({
     const trigger = (event.target as HTMLElement).closest<HTMLButtonElement>(
       'button[data-toolbar-trigger]',
     )
+    // Headless UI uses focus ownership to keep its Popover open. Blurring its
+    // trigger during the same click closes the newly opened panel. Those
+    // triggers remain outside Tab order and Enter/Space activation is blocked
+    // by blockIconKeyboardActivation instead.
+    if (trigger?.hasAttribute('data-headlessui-state')) return
     trigger?.blur()
   }
 
