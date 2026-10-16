@@ -48,35 +48,6 @@ test('external data-settings shortcut still opens Data & Backup even in Learn mo
   await expect(page.getByText('本地备份', { exact: true })).toBeVisible()
 })
 
-test('compact settings navigation is horizontal and preserves access to all sections', async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto('/')
-  await page.waitForTimeout(1500)
-  console.log('MOBILE_HEADER_DIAG', JSON.stringify(await page.evaluate(() => {
-    const btn = document.querySelector<HTMLElement>('button[aria-label="打开设置对话框"]')
-    const ancestors = []
-    for (let el = btn, i = 0; el && i < 9; el = el.parentElement, i++) {
-      const s = getComputedStyle(el)
-      const box = el.getBoundingClientRect()
-      ancestors.push({ tag: el.tagName, klass: String(el.className).slice(0, 85),
-        display: s.display, visibility: s.visibility, overflow: s.overflow,
-        size: [box.width, box.height], hidden: el.getAttribute('aria-hidden') })
-    }
-    return { ready: document.readyState, route: location.pathname, text: document.body.innerText.slice(0, 1400), root: document.querySelector('#root')?.outerHTML.slice(0, 1400), ancestors,
-      dialogs: [...document.querySelectorAll('[role="dialog"]')].map(el => el.outerHTML.slice(0, 160)) }
-  })))
-  await openSettings(page)
-  await expect(page.getByRole('tablist')).toHaveAttribute('aria-orientation', 'horizontal')
-  const dataTab = page.getByRole('tab', { name: '数据与备份' })
-  await dataTab.click()
-  await expect(dataTab).toHaveAttribute('aria-selected', 'true')
-  await expect(page.getByText('本地备份', { exact: true })).toBeVisible()
-  const sizes = await page.locator('.focus-overlay-panel').evaluate(el => ({
-    width: el.clientWidth, documentWidth: el.scrollWidth,
-  }))
-  expect(sizes.documentWidth).toBeLessThanOrEqual(sizes.width + 1)
-})
-
 test('fresh workspace uses British voice, 20 new words and 10 per stage with minimum 1', async ({ page }) => {
   await gotoReviewAppReady(page, '/typing')
   await expect(page.getByRole('button', { name: '发音及音标切换：英音' })).toBeVisible()
@@ -111,25 +82,10 @@ test('saved American voice and custom daily/stage preferences survive new defaul
   await expect(page.getByRole('spinbutton', { name: '每阶段词数' })).toHaveValue('7')
 })
 
-test('375px mobile header keeps settings and mode buttons visibly reachable', async ({ page }) => {
+test('small-screen visitors remain on the documented /mobile landing page', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto('/typing')
-  await page.waitForTimeout(1500)
-  console.log('MOBILE_TYPING_DIAG', JSON.stringify(await page.evaluate(() => ({
-    text: document.body.innerText.slice(0, 1400), root: document.querySelector('#root')?.outerHTML.slice(0, 1400),
-    settings: [...document.querySelectorAll('button')].filter(b => b.getAttribute('aria-label') === '打开设置对话框').map(b => ({
-      html: b.outerHTML.slice(0, 230), rect: b.getBoundingClientRect().toJSON(),
-      display: getComputedStyle(b).display,
-    })),
-    dialogs: [...document.querySelectorAll('[role="dialog"]')].map(el => el.outerHTML.slice(0, 180)),
-  }))))
-  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Learn', exact: true })).toBeVisible()
-  const geometry = await page.locator('header .focus-header-nav').evaluate((nav) => {
-    const rect = nav.getBoundingClientRect()
-    return { x: rect.x, right: rect.right, width: rect.width }
-  })
-  expect(geometry.width).toBeGreaterThan(300)
-  expect(geometry.x).toBeGreaterThanOrEqual(0)
-  expect(geometry.right).toBeLessThanOrEqual(375)
+  await page.goto('/learn')
+  await expect(page).toHaveURL(/\\/mobile\\/?$/)
+  await expect(page.getByRole('heading', { name: '当前移动端说明' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toHaveCount(0)
 })
