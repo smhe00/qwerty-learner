@@ -22,6 +22,8 @@ const AnalysisButton = ({
   return (
     <button
       type="button"
+      data-toolbar-trigger
+      tabIndex={-1}
       onClick={toAnalysis}
       disabled={disabled}
       aria-disabled={disabled}
