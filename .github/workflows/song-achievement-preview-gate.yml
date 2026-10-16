@@ -10,6 +10,7 @@ on:
       - 'src/song-preview/**'
       - 'public/assets/achievements/song/**'
       - 'scripts/validate-song-art-assets.mjs'
+      - '.gitattributes'
       - 'docs/design/Song-Achievement-Collection-v1.md'
       - '.github/workflows/song-achievement-preview-gate.yml'
   workflow_dispatch:
