@@ -440,6 +440,70 @@ body,
   background: var(--focus-surface);
 }
 
+/* Settings only: the legacy headless controls used a brighter indigo than
+   the Focus UI accent, plus unrelated gray surfaces in dark mode. Retain the
+   same semantic tokens as the study surface without recoloring other dialogs. */
+.focus-settings-dialog [role='tab'] {
+  color: var(--focus-text-secondary);
+  transition: color 150ms ease, background-color 150ms ease;
+}
+
+.focus-settings-dialog [role='tab']:not([aria-selected='true']):hover {
+  color: var(--focus-text);
+  background: var(--focus-surface);
+}
+
+.focus-settings-dialog [role='tab'][aria-selected='true'] {
+  color: var(--focus-accent);
+  background: var(--focus-accent-soft);
+  box-shadow: inset 3px 0 0 var(--focus-accent);
+  font-weight: 600;
+}
+
+.focus-settings-dialog .switch-root {
+  background: var(--focus-border);
+}
+
+.focus-settings-dialog .switch-root[data-headlessui-state~='checked'],
+.focus-settings-dialog .switch-root[aria-checked='true'] {
+  background: var(--focus-accent);
+}
+
+.focus-settings-dialog .slider > span:nth-child(1) {
+  background: var(--focus-surface-muted);
+}
+
+.focus-settings-dialog .slider > span:nth-child(1) > span:nth-child(1) {
+  background: var(--focus-accent);
+}
+
+.focus-settings-dialog .slider > span:nth-child(2) {
+  background: var(--focus-surface);
+  border-color: var(--focus-border);
+}
+
+.focus-settings-dialog .listbox-button,
+.focus-settings-dialog .listbox-options {
+  background: var(--focus-surface);
+  color: var(--focus-text);
+  border: 1px solid var(--focus-border);
+  box-shadow: var(--focus-shadow-panel);
+}
+
+.focus-settings-dialog .listbox-button span:nth-of-type(1),
+.focus-settings-dialog .listbox-options > li {
+  color: var(--focus-text);
+}
+
+.focus-settings-dialog .listbox-options > li[data-headlessui-state~='active'] {
+  background: var(--focus-accent-soft);
+  color: var(--focus-accent);
+}
+
+.focus-settings-dialog .listbox-options-icon {
+  color: var(--focus-accent);
+}
+
 .focus-muted-label {
   color: var(--focus-text-muted);
 }
