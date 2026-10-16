@@ -13,6 +13,8 @@
 3. [「百词基石」精修制作单 v1](./production/Hundred-Words-Masterpiece-v1.md) — 汝窑青瓷莲花碗、宣纸宋锦、专属朱砂印的图像生产规格，明确画面文本安全区、真正压印时序、UI 合成和人工验收。
 4. [目标概念图与视觉对照](./references/README.md) — 在 Git 中归档的、确实存在的目标图 WebP 压缩参考版。用于视觉质量与构图对比，不当作线上美术资源。
 
+5. [图片优先实施检查点（2026-10-16）](./production/Implementation-Checkpoint-20261016.md) — Git 已落地的透明 WebP 雾层、动态图片合成组件、入境过渡、CI 门禁，以及尚未获批的精品器物与场景母版。
+
 ## 入库目标图
 
 [![原始设计方向：成就雅集与中央卷轴弹窗](./references/target-02-gallery-concept.webp)](./references/target-02-gallery-concept.webp)
