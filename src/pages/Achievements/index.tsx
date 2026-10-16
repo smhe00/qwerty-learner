@@ -47,7 +47,8 @@ const formatDate = (timeSeconds: number) => {
 export default function AchievementsPage({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate()
   const isDarkTheme = useAtomValue(isOpenDarkModeAtom)
-  const songTheme = isDarkTheme ? 'dark' : 'light'
+  const [themePreview, setThemePreview] = useState<'light' | 'dark' | null>(null)
+  const songTheme = themePreview ?? (isDarkTheme ? 'dark' : 'light')
   const states = useLiveQuery(() => getAchievementStates(), [], [])
   const visibleProgress = useLiveQuery(
     async () => {
@@ -67,6 +68,7 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
   const [filter, setFilter] = useState<Filter>('all')
   const [openAchievementId, setOpenAchievementId] = useState<string>()
   const [demoOpen, setDemoOpen] = useState(false)
+  const [masterSampleOpen, setMasterSampleOpen] = useState(false)
 
   const stateById = useMemo(
     () => new Map(states.map((state) => [state.achievementId, state])),
@@ -98,6 +100,7 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
     : openedCulture
   const presentedState = presentedAchievement ? stateById.get(presentedAchievement.id) : undefined
   const closeModal = () => {
+    setMasterSampleOpen(false)
     setDemoOpen(false)
     setOpenAchievementId(undefined)
   }
@@ -138,6 +141,15 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <button type="button" className="song-demo-button"
+                onClick={() => { setOpenAchievementId(undefined); setDemoOpen(false); setMasterSampleOpen(true) }}>
+                赏鉴 · 百词基石样板
+              </button>
+              <button type="button" className="song-demo-button"
+                onClick={() => setThemePreview(current => current === 'dark' ? 'light' : 'dark')}
+                aria-label={songTheme === 'dark' ? '预览晨卷亮主题' : '预览夜卷暗主题'}>
+                {songTheme === 'dark' ? '晨卷预览' : '夜卷预览'}
+              </button>
               <button type="button" className="song-demo-button" onClick={() => { setOpenAchievementId(undefined); setDemoOpen(true) }}>
                 演示 · 展卷钤印
               </button>
@@ -237,6 +249,9 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
         </div>
       </main>
 
+      {masterSampleOpen && (
+        <HundredWordsCeremony onClose={closeModal} sample />
+      )}
       {openAchievementId === 'ACH_MASTERED_100' && presentedState && (
         <HundredWordsCeremony
           onClose={closeModal}
