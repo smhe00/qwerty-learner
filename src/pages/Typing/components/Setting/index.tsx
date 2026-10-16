@@ -44,10 +44,7 @@ export default function Setting() {
     // Reopening settings focuses the active mode, not the previously visited tab.
     // The separate data-settings shortcut below deliberately takes precedence.
     setSelectedTabIndex(isLearnMode ? 2 : 1)
-    // Mount after the pointer activation has finished. Otherwise the newly
-    // mounted Headless UI outside-click observer may dismiss the dialog from
-    // the very click which opened it (especially in fresh S1 workspaces).
-    window.requestAnimationFrame(() => setIsOpen(true))
+    setIsOpen(true)
     if (dispatch) {
       dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })
     }
@@ -74,12 +71,7 @@ export default function Setting() {
         data-toolbar-active={isOpen}
         tabIndex={-1}
         aria-label="打开设置对话框"
-        onClick={(event) => {
-          // Do not let the opening pointer event become an outside-click
-          // dismissal when Headless UI installs its dialog listeners.
-          event.stopPropagation()
-          openModal()
-        }}
+        onClick={openModal}
         className={`flex items-center justify-center rounded p-[2px] text-lg text-indigo-500 outline-none transition-colors duration-300 ease-in-out hover:bg-indigo-400 hover:text-white  ${
           isOpen && 'bg-indigo-500 text-white'
         }`}
