@@ -9,6 +9,7 @@ export interface AchievementEventRecord {
     | 'session_completed'
     | 'word_mastered'
     | 'continue_intent'
+    | 'unlock_queue'
   origin: AchievementEventOrigin
   sourceRecordId?: number
   sourceRecordIds?: number[]
@@ -18,6 +19,17 @@ export interface AchievementEventRecord {
   word?: string
   metricValues: Record<string, number>
   unlockedAchievementIds: string[]
+  /** Durable delayed grants; stored only on the unique unlock_queue event. */
+  pendingAwards?: PendingAchievementAward[]
+}
+
+export interface PendingAchievementAward {
+  achievementId: string
+  firstTriggerEventId: string
+  triggeredAt: number
+  metricValue: number
+  sourceRecordId?: number
+  sessionId?: string
 }
 
 export interface AchievementStateRecord {
