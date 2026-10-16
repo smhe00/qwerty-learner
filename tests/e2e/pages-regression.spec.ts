@@ -206,7 +206,20 @@ test('published Pages: Song gallery opens inside Focus and offers safe desktop/m
   try {
     await mobile.setViewportSize({ width: 390, height: 844 })
     await mobile.goto(site, { waitUntil: 'domcontentloaded' })
-    await mobile.getByRole('link', { name: '打开成就雅集' }).click()
+    await expect.poll(() => mobile.evaluate(() => window.location.pathname), {
+      timeout: 15000,
+    }).toMatch(/\/(?:mobile|learn)\/?$/)
+    const entryLink = mobile.getByRole('link', { name: '打开成就雅集' })
+    if (await entryLink.count() === 0) {
+      console.log('mobile-entry-diagnostic', await mobile.evaluate(() => ({
+        width: window.innerWidth,
+        pathname: window.location.pathname,
+        title: document.title,
+        body: document.body.innerText.slice(0, 1400),
+      })))
+    }
+    await expect(entryLink).toBeVisible({ timeout: 12000 })
+    await entryLink.click()
     await expect(mobile).toHaveURL(/\/achievements\/?$/)
     await expect(mobile.getByRole('heading', { name: '成就雅集' })).toBeVisible()
     await mobile.getByRole('button', { name: '赏鉴 · 百词基石样板' }).click()
