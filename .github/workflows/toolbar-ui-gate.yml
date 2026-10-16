@@ -15,6 +15,9 @@ on:
       - 'src/pages/Typing/components/HandPositionIllustration/**'
       - 'src/index.css'
       - 'tests/e2e/toolbar-icon-focus.spec.ts'
+      - 'tests/e2e/settings-mode-navigation.spec.ts'
+      - 'tests/e2e/session-pause.spec.ts'
+      - 'tests/e2e/pages-regression.spec.ts'
       - 'tests/e2e/review-flow.config.ts'
       - '.github/workflows/toolbar-ui-gate.yml'
   workflow_dispatch:
@@ -45,4 +48,19 @@ jobs:
           tests/e2e/toolbar-icon-focus.spec.ts
           --config=tests/e2e/review-flow.config.ts
           --project=chrome
+          --retries=0
+      - name: Verify settings mode navigation in both modes
+        run: >
+          npx playwright test
+          tests/e2e/settings-mode-navigation.spec.ts
+          --config=tests/e2e/review-flow.config.ts
+          --project=chrome
+          --retries=0
+      - name: Verify Enter cannot activate small settings toolbar trigger
+        run: >
+          npx playwright test
+          tests/e2e/session-pause.spec.ts
+          --config=tests/e2e/review-flow.config.ts
+          --project=chrome
+          --grep="settings controls"
           --retries=0
