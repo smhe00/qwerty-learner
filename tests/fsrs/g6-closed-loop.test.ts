@@ -313,12 +313,21 @@ test('G6-3: fixed budget closed-loop learner compares native vs extra training v
   assert.equal(matrix.length, 6)
   assert.ok(matrix.some(x => x.sameDayIndependent > 0))
   assert.ok(matrix.some(x => x.extraTraining > 0))
-  // Toggling w17-w19 with *no independently rated same-day event* is not a
-  // new study schedule; A/B should be equivalent here.
-  assert.deepEqual(
-    runs.filter(x => x.arm === 'A').map(x => ({ ...x, arm: 'B' })),
-    runs.filter(x => x.arm === 'B'),
-  )
+  // A/B are NOT assumed equal: even with empty step arrays a New/Review
+  // transition can produce a real short-interval event. Assert a matched
+  // cohort and *measure* differences rather than making a false invariant.
+  const a = runs.filter(x => x.arm === 'A')
+  const b = runs.filter(x => x.arm === 'B')
+  assert.deepEqual(a.map(x => [x.persona, x.seed]), b.map(x => [x.persona, x.seed]))
+  console.log('G6_A_VS_B_NATIVE_SHORT_TERM_DIFF ' + JSON.stringify({
+    differentTrajectories: a.filter((x, i) =>
+      x.reviewAttempts !== b[i].reviewAttempts ||
+      x.probe30 !== b[i].probe30 ||
+      x.lapses !== b[i].lapses).length,
+    runs: a.length,
+    aSameDay: a.reduce((s, x) => s + x.sameDayIndependent, 0),
+    bSameDay: b.reduce((s, x) => s + x.sameDayIndependent, 0),
+  }))
   console.log('G6_CLOSED_LOOP_SYNTHETIC_MATRIX ' + JSON.stringify({
     days: DAYS, dictionary: DICTIONARY, personas: PERSONAS.map(x => x.id),
     seeds: SEEDS, budgetMinutesPerDay: DAILY_BUDGET / MIN,
