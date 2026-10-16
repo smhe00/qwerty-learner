@@ -28,7 +28,7 @@ export function SongMistLayer({ status, theme, drift = true }: {
           <img className="song-picture-mist-far" src={images.far} alt="" loading="lazy"
             draggable={false} onError={(e) => { e.currentTarget.dataset.failed = 'true' }} />
           <img className="song-picture-mist-near" src={images.near} alt="" loading="lazy"
-            draggable={false} onError={() => setFailed(true)} />
+            draggable={false} onError={(e) => { e.currentTarget.dataset.failed = 'true' }} />
       </>
     </span>
   )
