@@ -27,6 +27,7 @@ import {
   evaluateNewUnitLearnStarted,
 } from './unit-evaluator'
 import { compactAchievementEvent } from './storage-retention'
+import { achievementEvidenceSatisfied, countEvidenceDays } from './eligibility'
 import type {
   AchievementEventRecord,
   AchievementStateRecord,
@@ -154,6 +155,12 @@ export async function processLiveLearnWordRecord(
 
   const values = new Map<string, number>()
   const candidates: AchievementCandidate[] = []
+  const throughCurrent = records.filter((record) =>
+    record.sourceMode === 'learn' &&
+    (record.timeStamp < current.timeStamp ||
+      (record.timeStamp === current.timeStamp && (record.id ?? 0) <= sourceRecordId)),
+  )
+  const beforeCurrent = throughCurrent.filter((record) => record.id !== sourceRecordId)
 
   for (const achievement of p0WordAchievements()) {
     const value =
@@ -184,8 +191,10 @@ export async function processLiveLearnWordRecord(
           )
     const crossedThreshold =
       conditionSatisfied(achievement.condition, value) &&
+      achievementEvidenceSatisfied(achievement.condition, throughCurrent, dictionaryWords) &&
       (previousValue === null ||
-        !conditionSatisfied(achievement.condition, previousValue))
+        !conditionSatisfied(achievement.condition, previousValue) ||
+        !achievementEvidenceSatisfied(achievement.condition, beforeCurrent, dictionaryWords))
 
     if (crossedThreshold) {
       candidates.push({ achievement, value })
@@ -193,7 +202,8 @@ export async function processLiveLearnWordRecord(
   }
 
   if (options.sessionId) {
-    const intents = (await db.achievementEvents.toArray())
+    const eventHistory = await db.achievementEvents.toArray()
+    const intents = eventHistory
       .filter(
         (event) =>
           event.eventType === 'continue_intent' &&
@@ -219,7 +229,10 @@ export async function processLiveLearnWordRecord(
           attemptAt: current.timeStamp,
         })
         values.set(achievement.condition.metric, value)
-        if (conditionSatisfied(achievement.condition, value)) {
+        const minContinueDays = Number(achievement.condition.constraints.minContinueDays ?? 1)
+        if (conditionSatisfied(achievement.condition, value) &&
+            countEvidenceDays(eventHistory, achievement.condition.metric,
+              current.timeStamp, value > 0) >= minContinueDays) {
           candidates.push({ achievement, value })
         }
       }
@@ -270,6 +283,7 @@ export async function processLiveLearnSessionCompletion(input: {
 
   const values = new Map<string, number>()
   const candidates: AchievementCandidate[] = []
+  const eventHistory = await db.achievementEvents.toArray()
 
   for (const achievement of p0SessionAchievements()) {
     const value = evaluateSessionMetric(achievement.condition, {
@@ -278,7 +292,10 @@ export async function processLiveLearnSessionCompletion(input: {
     })
     if (value === null) continue
     values.set(achievement.condition.metric, value)
-    if (conditionSatisfied(achievement.condition, value)) {
+    const minGoalDays = Number(achievement.condition.constraints.minGoalDays ?? 1)
+    if (conditionSatisfied(achievement.condition, value) &&
+        countEvidenceDays(eventHistory, achievement.condition.metric,
+          input.completedAt, value > 0) >= minGoalDays) {
       candidates.push({ achievement, value })
     }
   }
