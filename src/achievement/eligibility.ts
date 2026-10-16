@@ -32,6 +32,7 @@ export function achievementEvidenceSatisfied(
   condition: AchievementCondition,
   records: IWordRecord[],
   dictionaryWords: Word[] = [],
+  dictionaryId?: string,
 ): boolean {
   const constraints = condition.constraints
   const learn = records.filter((record) => record.sourceMode === 'learn')
@@ -67,7 +68,7 @@ export function achievementEvidenceSatisfied(
   if (typeof constraints.minStartedUnits === 'number') {
     const membership = buildAchievementUnitMembership(dictionaryWords)
     const units = new Set(
-      learn.filter((record) => membership.has(record.word))
+      learn.filter((record) => record.dict === dictionaryId && membership.has(record.word))
         .map((record) => membership.get(record.word)!.unitIndex),
     )
     if (units.size < constraints.minStartedUnits) return false
