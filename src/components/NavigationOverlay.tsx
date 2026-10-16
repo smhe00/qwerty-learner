@@ -90,7 +90,7 @@ export default function NavigationOverlay({ title, size, children }: NavigationO
         onKeyUp={(event) => event.stopPropagation()}
       >
         <Dialog.Panel
-          className={`focus-overlay-panel flex min-h-0 w-full ${isAchievementCollection ? '!max-w-[900px] !h-[min(94vh,1010px)] !rounded-[25px]' : sizes[size]} flex-col overflow-hidden rounded-[20px]`}
+          className={`focus-overlay-panel flex min-h-0 w-full ${isAchievementCollection ? '!max-w-[1200px] !h-[min(94vh,1010px)] !rounded-[25px]' : sizes[size]} flex-col overflow-hidden rounded-[20px]`}
           data-navigation-dialog={location.pathname.slice(1)}
         >
           {isAchievementCollection ? <Dialog.Title className="sr-only">{title}</Dialog.Title> : (
