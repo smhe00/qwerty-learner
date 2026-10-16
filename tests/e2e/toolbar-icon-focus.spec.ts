@@ -33,6 +33,7 @@ test('mouse click toggles dark mode, but Enter/Space or retained icon focus cann
   await expect.poll(darkState).toBe(!original)
   await expect(darkButton).not.toBeFocused()
   await darkButton.focus()
+  await expect(darkButton).not.toBeFocused()
   await page.keyboard.press('Enter')
   await page.keyboard.press('Space')
   await expect.poll(darkState).toBe(!original)
