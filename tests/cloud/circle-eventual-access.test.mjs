@@ -56,8 +56,12 @@ function hideEvent(blob, type) {
 }
 test('eventual factory rejects invalid configuration and forbids ambiguous mixed policy', () => {
   const s = setup()
-  assert.throws(() => createCircleEventualService({ log: s.log, authenticate: async () => {} }),
-    /invite key/)
+  assert.equal(typeof createCircleEventualService({
+    log: s.log, authenticate: (t) => s.backend.me(t),
+  }).createCircle, 'function', 'High-entropy UUIDv4 creates need no deployment key')
+  assert.throws(() => createCircleEventualService({
+    log: s.log, authenticate: (t) => s.backend.me(t), inviteKey: 'short',
+  }), /invite key/)
   assert.throws(() => createCircleService({
     log: s.log, authenticate: (t) => s.backend.me(t), inviteKey: key, accessModel: 'unknown',
   }), /Unknown Circle access model/)

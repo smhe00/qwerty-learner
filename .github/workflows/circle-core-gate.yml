@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/circle-core-blob
+      - feature/circle-direct-api-20261017
       - feature/circle-etest-ready
       - feature/circle-main-merge-20261014
       - product/main
@@ -37,7 +38,7 @@ jobs:
           cache: yarn
       - run: yarn install --frozen-lockfile
       - name: Run Circle kernel and concurrency tests
-        run: node --test tests/cloud/circle-core.test.mjs tests/cloud/circle-trusted-access.test.mjs tests/cloud/circle-eventual-access.test.mjs tests/cloud/circle-etest-gateway.test.mjs
+        run: node --test tests/cloud/circle-core.test.mjs tests/cloud/circle-trusted-access.test.mjs tests/cloud/circle-eventual-access.test.mjs tests/cloud/circle-etest-gateway.test.mjs tests/cloud/circle-open-gateway.test.mjs
       - name: Check production gateway syntax without deploying
         run: node --check 'cloud-functions/api/[[default]].js'
       - name: Lint production gateway with Circle gate
@@ -45,7 +46,7 @@ jobs:
       - name: Static-check live probe (never execute with production credentials)
         run: node --check scripts/circle-blob-live-contract.mjs
       - name: Lint Circle-only backend and tests
-        run: yarn eslint cloud-functions/_shared/circle tests/cloud/circle-core.test.mjs tests/cloud/circle-trusted-access.test.mjs tests/cloud/circle-eventual-access.test.mjs tests/cloud/circle-etest-gateway.test.mjs tests/cloud/circle-core-cas.historical.mjs --ext .js,.mjs
+        run: yarn eslint cloud-functions/_shared/circle tests/cloud/circle-core.test.mjs tests/cloud/circle-trusted-access.test.mjs tests/cloud/circle-eventual-access.test.mjs tests/cloud/circle-etest-gateway.test.mjs tests/cloud/circle-open-gateway.test.mjs tests/cloud/circle-core-cas.historical.mjs --ext .js,.mjs
       - name: Lint ES module sandbox probe
         run: yarn eslint scripts/circle-blob-live-contract.mjs --parser-options '{"sourceType":"module","ecmaVersion":2022}'
       - name: Regression tests for existing Cloud V4 storage, auth and staging routes
