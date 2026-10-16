@@ -2,7 +2,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { AppError } from '../../cloud-functions/_shared/core.js'
-import { onRequest } from '../../cloud-functions/api/[[default]].js'
 import { resetAuthRateLimitMemoryForTest } from '../../cloud-functions/_shared/auth-rate-limit.js'
 import {
   blocksCircleEtestAccountDeletion, createCircleEtestGateway,
@@ -69,20 +68,15 @@ function fixture() {
   return { gateway, call, context, blobs, stores }
 }
 
-test('production and non-pilot routes return 404 without opening any Blob Store', async () => {
+test('retired pilot gateway remains closed off etest without opening Blob Store', async () => {
   const f = fixture()
   assert.equal((await f.call('https://qwerty-plus.edgeone.dev/api/circle/v2')).status, 404)
   assert.equal((await f.call('https://etest.edgeone.dev/api/circle/v2', {
     env: { CIRCLE_ETEST_ENABLED: 'false' },
   })).status, 404)
   assert.equal(f.stores.length, 0)
-  // Live gateway also must reject before constructing the existing Blob client.
-  const direct = await onRequest({ request: new Request('https://qwerty-plus.edgeone.dev/api/circle/v2'),
-    env: { CIRCLE_ETEST_ENABLED: 'true' } })
-  assert.equal(direct.status, 404)
-  const disabled = await onRequest({ request: new Request('https://etest.edgeone.dev/api/circle/v2'),
-    env: { CIRCLE_ETEST_ENABLED: 'false' } })
-  assert.equal(disabled.status, 404)
+  // Historical pilot handler remains closed outside etest. The active
+  // public gateway is validated separately in circle-open-gateway.test.mjs.
 })
 test('pilot is closed without explicit isolated namespace, secret or test account allowlist', async () => {
   for (const change of [
