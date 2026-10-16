@@ -72,6 +72,9 @@ export default function WordDictationSwitcher({
       {({ open }) => (
         <>
           <Popover.Button
+            data-toolbar-trigger
+            data-toolbar-active={!disabled && wordDictationConfig.isOpen}
+            tabIndex={-1}
             className={`flex items-center justify-center rounded p-[2px] text-lg ${
               disabled
                 ? 'cursor-not-allowed text-gray-400 opacity-40'
