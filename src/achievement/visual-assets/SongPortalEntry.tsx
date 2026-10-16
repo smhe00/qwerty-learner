@@ -15,7 +15,7 @@ export function SongPortalEntry({ theme }: { theme: SongTheme }) {
           <img src={far} alt="" className="song-portal-mist song-portal-mist-far"
             onError={(e) => { e.currentTarget.dataset.failed = 'true' }} draggable={false} />
           <img src={near} alt="" className="song-portal-mist song-portal-mist-near"
-            onError={() => setImageFailed(true)} draggable={false} />
+            onError={(e) => { e.currentTarget.dataset.failed = 'true' }} draggable={false} />
       </>
     </div>
   )
