@@ -183,7 +183,11 @@ export async function processLiveLearnWordRecord(
 
   // User-window metrics span dictionaries; word-scoped evaluators explicitly
   // isolate current dict+word so cross-library homographs cannot leak state.
-  const records = await db.wordRecords.toArray()
+  const [records, existingStates] = await Promise.all([
+    db.wordRecords.toArray(),
+    db.achievementStates.toArray(),
+  ])
+  const completedIds = new Set(existingStates.map(state => state.achievementId))
 
   const values = new Map<string, number>()
   const candidates: AchievementCandidate[] = []
@@ -195,6 +199,9 @@ export async function processLiveLearnWordRecord(
   const beforeCurrent = throughCurrent.filter((record) => record.id !== sourceRecordId)
 
   for (const achievement of p0WordAchievements()) {
+    // Lifetime achievements do not need rescoring after a verified unlock.
+    // This avoids re-sorting thousands of historic word attempts per keystroke.
+    if (completedIds.has(achievement.id)) continue
     const value =
       achievement.condition.metric === 'new_unit_learn_started'
         ? evaluateNewUnitLearnStarted({
