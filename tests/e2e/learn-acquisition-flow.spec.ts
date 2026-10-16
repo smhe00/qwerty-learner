@@ -184,7 +184,7 @@ test('Learn starts new acquisition with exposure and does not admit after visibl
   await page.goto('/learn')
   const info = await waitForActiveLearnSession(page)
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
-  expect(info?.reviewRecord?.words?.length).toBe(20)
+  expect(info?.reviewRecord?.words?.length).toBe(10)
 
   const firstWord = info?.reviewRecord?.words?.[0]?.name as string
   expect(firstWord).toBeTruthy()
@@ -827,8 +827,8 @@ test('Learn weak review pressure does not silently override the configured daily
   const info = await waitForActiveLearnSession(page)
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
   // Weak memory signals remain diagnostics, but the explicit daily target is
-  // 32 and a single internal Block remains capped at 20.
-  expect(info?.reviewRecord?.words).toHaveLength(20)
+  // the explicitly configured daily goal, with a default 10-word Block.
+  expect(info?.reviewRecord?.words).toHaveLength(10)
 })
 
 test('Learn workload budget is advisory and does not shrink the configured daily target', async ({
@@ -921,8 +921,8 @@ test('Learn workload budget is advisory and does not shrink the configured daily
   const info = await waitForActiveLearnSession(page)
   expect(info?.reviewRecord?.sessionKind).toBe('acquisition')
   // Fifteen minutes of prior effort may affect diagnostics, but it must not
-  // silently reduce the explicit 32-new-word DailySession target.
-  expect(info?.reviewRecord?.words).toHaveLength(20)
+  // silently reduce the explicit DailySession target (20 by default).
+  expect(info?.reviewRecord?.words).toHaveLength(10)
 })
 
 test('visible first-acquisition copy never auto-enters the hint ladder after repeated mistakes', async ({
