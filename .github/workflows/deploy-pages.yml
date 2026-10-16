@@ -44,7 +44,7 @@ jobs:
           result=$?
           set -e
           if [ "$result" -ne 0 ]; then
-            if grep -E '^src/(app\\.tsx|pages/Mobile/index\\.tsx|pages/Achievements/)' "$RUNNER_TEMP/pages-entry-tsc.log"; then
+            if grep -E '^src/(app[.]tsx|pages/Mobile/index[.]tsx|pages/Achievements/)' "$RUNNER_TEMP/pages-entry-tsc.log"; then
               echo "::error::TypeScript diagnostics in app, mobile, or achievement entry"
               exit 1
             fi
