@@ -50,7 +50,20 @@ test('external data-settings shortcut still opens Data & Backup even in Learn mo
 
 test('compact settings navigation is horizontal and preserves access to all sections', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
-  await gotoReviewAppReady(page, '/')
+  await page.goto('/')
+  console.log('MOBILE_HEADER_DIAG', JSON.stringify(await page.evaluate(() => {
+    const btn = document.querySelector<HTMLElement>('button[aria-label="打开设置对话框"]')
+    const ancestors = []
+    for (let el = btn, i = 0; el && i < 9; el = el.parentElement, i++) {
+      const s = getComputedStyle(el)
+      const box = el.getBoundingClientRect()
+      ancestors.push({ tag: el.tagName, klass: String(el.className).slice(0, 85),
+        display: s.display, visibility: s.visibility, overflow: s.overflow,
+        size: [box.width, box.height], hidden: el.getAttribute('aria-hidden') })
+    }
+    return { ready: document.readyState, route: location.pathname, ancestors,
+      dialogs: [...document.querySelectorAll('[role="dialog"]')].map(el => el.outerHTML.slice(0, 160)) }
+  })))
   await openSettings(page)
   await expect(page.getByRole('tablist')).toHaveAttribute('aria-orientation', 'horizontal')
   const dataTab = page.getByRole('tab', { name: '数据与备份' })
@@ -99,7 +112,14 @@ test('saved American voice and custom daily/stage preferences survive new defaul
 
 test('375px mobile header keeps settings and mode buttons visibly reachable', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
-  await gotoReviewAppReady(page, '/typing')
+  await page.goto('/typing')
+  console.log('MOBILE_TYPING_DIAG', JSON.stringify(await page.evaluate(() => ({
+    settings: [...document.querySelectorAll('button')].filter(b => b.getAttribute('aria-label') === '打开设置对话框').map(b => ({
+      html: b.outerHTML.slice(0, 230), rect: b.getBoundingClientRect().toJSON(),
+      display: getComputedStyle(b).display,
+    })),
+    dialogs: [...document.querySelectorAll('[role="dialog"]')].map(el => el.outerHTML.slice(0, 180)),
+  }))))
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Learn', exact: true })).toBeVisible()
   const geometry = await page.locator('header .focus-header-nav').evaluate((nav) => {
