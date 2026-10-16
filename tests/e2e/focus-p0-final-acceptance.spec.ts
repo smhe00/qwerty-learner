@@ -66,7 +66,7 @@ test('P0 settings and donation dialogs share surface tokens, remain usable on na
   const bounds = await settings.locator('.focus-overlay-panel').boundingBox()
   expect(bounds).toBeTruthy()
   expect(bounds!.width).toBeLessThanOrEqual(760)
-  await expect(settings.getByText('记忆参数', { exact: true })).toBeVisible()
+  await expect(settings.getByText('学习计划', { exact: true })).toBeVisible()
   await page.screenshot({
     path: 'test-results/focus-ui/settings-light-760.png',
     fullPage: false,
