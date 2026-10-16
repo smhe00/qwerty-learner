@@ -41,6 +41,8 @@ type HiddenWord = {
   card: Card
   dueAt: number
   extraDue: number | null
+  // G6-3b common QWERTY same-session reinforcement after four other words.
+  reinforcementAfter: number | null
   attempts: number
 }
 type SimulationMetrics = {
@@ -54,6 +56,7 @@ type SimulationMetrics = {
   lapses: number
   sameDayIndependent: number
   extraTraining: number
+  commonReinforcements: number
   maxDueBacklog: number
   overdueEnd: number
   probe1: number
@@ -108,7 +111,10 @@ function profile(arm: Arm) {
   }
 }
 
-function simulate(arm: Arm, persona: Persona, seed: number, hypothesis: MemoryHypothesis): SimulationMetrics {
+function simulate(
+  arm: Arm, persona: Persona, seed: number, hypothesis: MemoryHypothesis,
+  useCommonReinforcement = false,
+): SimulationMetrics {
   const scheduler = fsrs(profile(arm))
   const words: HiddenWord[] = []
   const probes: Record<1 | 7 | 30 | 90, { ok: number; total: number }> = {
@@ -120,6 +126,8 @@ function simulate(arm: Arm, persona: Persona, seed: number, hypothesis: MemoryHy
   let lapses = 0
   let sameDayIndependent = 0
   let extraTraining = 0
+  let commonReinforcements = 0
+  let wordCompletions = 0
   let maxDueBacklog = 0
   let newIndex = 0
   let worstDayActive = 0
@@ -190,11 +198,46 @@ function simulate(arm: Arm, persona: Persona, seed: number, hypothesis: MemoryHy
                 word.extraDue = null
               }
             }
+            // A failed canonical review may request QWERTY's native
+            // four-intervening-word reinforcement. It never creates an FSRS
+            // rating; the extra 10m path, if present, remains separate.
+            if (useCommonReinforcement && !isExtra && rating === Rating.Again) {
+              word.reinforcementAfter = wordCompletions + 5
+            }
             consumeMemoryPractice(word, now, success, persona, hypothesis)
+            wordCompletions += 1
             now += needed
             dayActive += needed
             totalActive += needed
             continue
+          }
+
+          // Shared existing QWERTY reinforcement: after four intervening
+          // words, before optional new acquisition. This is NOT an FSRS
+          // rating even when independent corrective spelling succeeds.
+          // Long-term due cold probes always outrank it, avoiding pre-test
+          // contamination. Unfinished reinforcements expire at session end.
+          if (useCommonReinforcement) {
+            const ready = words.find(word =>
+              word.reinforcementAfter !== null &&
+              word.reinforcementAfter <= wordCompletions &&
+              word.dueAt > now)
+            if (ready && dayActive + 35_000 <= DAILY_BUDGET &&
+                now + 35_000 <= windowEnd) {
+              const p = chance(ready, now)
+              const recall = unit(seed, persona.id, 'common-reinforcement', ready.id, ready.attempts)
+              const success = recall < p
+              consumeMemoryPractice(ready, now, success, persona, hypothesis)
+              // Conservatively treat the corrective completion as training
+              // with some pedagogical benefit, but no FSRS rating.
+              ready.reinforcementAfter = null
+              commonReinforcements++
+              wordCompletions++
+              now += 35_000
+              dayActive += 35_000
+              totalActive += 35_000
+              continue
+            }
           }
 
           // New acquisition before idle waiting, due-first.
@@ -215,9 +258,10 @@ function simulate(arm: Arm, persona: Persona, seed: number, hypothesis: MemoryHy
             }
             words.push({
               id, admittedAt: now, lastAt: now, strengthDays: strength,
-              card, dueAt, extraDue: null, attempts: 0,
+              card, dueAt, extraDue: null, reinforcementAfter: null, attempts: 0,
             })
             introducedToday++
+            wordCompletions++
             now += 55_000
             dayActive += 55_000
             totalActive += 55_000
@@ -234,6 +278,11 @@ function simulate(arm: Arm, persona: Persona, seed: number, hypothesis: MemoryHy
           }
         }
         assert.ok(iteration <= 100, 'possible nonterminating FSRS due loop')
+        // QWERTY's same-session reinforcement is not a persistent cross-day
+        // due claim: it is forfeited when the study window ends.
+        if (useCommonReinforcement) {
+          for (const word of words) word.reinforcementAfter = null
+        }
       }
     }
     worstDayActive = Math.max(worstDayActive, dayActive)
@@ -262,7 +311,7 @@ function simulate(arm: Arm, persona: Persona, seed: number, hypothesis: MemoryHy
     arm, hypothesis, persona: persona.id, seed, admitted: words.length,
     meanActiveMinutes: spentMinutes / DAYS,
     reviewAttempts: attempts, lapses,
-    sameDayIndependent, extraTraining,
+    sameDayIndependent, extraTraining, commonReinforcements,
     maxDueBacklog, overdueEnd,
     probe1: probes[1].ok, probe7: probes[7].ok, probe30: probes[30].ok,
     probe90: probes[90].ok, eligible1: probes[1].total,
@@ -290,6 +339,7 @@ function summarize(rows: SimulationMetrics[]) {
     lapses: mean(x => x.lapses),
     sameDayIndependent: mean(x => x.sameDayIndependent),
     extraTraining: mean(x => x.extraTraining),
+    commonReinforcements: mean(x => x.commonReinforcements),
     maxDueBacklog: mean(x => x.maxDueBacklog),
     overdueEnd: mean(x => x.overdueEnd),
     maxDayMinutes: mean(x => x.worstDayActiveMinutes),
@@ -337,6 +387,39 @@ test('G6-3: fixed budget closed-loop learner compares native vs extra training v
     days: DAYS, dictionary: DICTIONARY, personas: PERSONAS.map(x => x.id),
     seeds: SEEDS, hypotheses, budgetMinutesPerDay: DAILY_BUDGET / MIN,
     model: 'synthetic latent memory; not empirical efficacy',
+    matrix,
+  }))
+})
+
+
+test('G6-3b: fixed 10m delayed reinforcement must beat a realistic shared 4-word baseline, not a stripped one', () => {
+  const hypotheses: MemoryHypothesis[] = ['spacing-sensitive', 'repetition-sensitive']
+  const studyArms: Arm[] = ['A', 'X', 'C']
+  const runs = hypotheses.flatMap(hypothesis => studyArms.flatMap(arm =>
+    PERSONAS.flatMap(persona =>
+      SEEDS.map(seed => simulate(arm, persona, seed, hypothesis, true)))))
+  for (const run of runs) {
+    assert.ok(run.commonReinforcements >= 0)
+    assert.ok(run.spentMinutes > 0)
+    assert.ok(run.worstDayActiveMinutes <= DAILY_BUDGET / MIN + 1e-6)
+    assert.ok(run.maxDueBacklog <= DICTIONARY)
+    assert.ok(run.overdueEnd <= run.admitted)
+  }
+  assert.ok(runs.some(run => run.commonReinforcements > 0),
+    'existing four-word reinforcement must actually execute')
+  assert.ok(runs.some(run => run.arm === 'X' && run.extraTraining > 0),
+    'X must actually execute fixed-time non-FSRS extra practice')
+  assert.ok(runs.some(run => run.arm === 'C' && run.sameDayIndependent > 0),
+    'C must actually execute native FSRS Relearning')
+  const matrix = hypotheses.flatMap(hypothesis =>
+    studyArms.map(arm =>
+      summarize(runs.filter(run => run.hypothesis === hypothesis && run.arm === arm))))
+  console.log('G6_DELAYED_REINFORCEMENT_SHARED_BASELINE ' + JSON.stringify({
+    explanation: 'all arms use identical simplified four-intervening-word reinforcement, hard daily active budget, no real student data',
+    days: DAYS,
+    seeds: SEEDS,
+    personas: PERSONAS.map(p => p.id),
+    hypotheses,
     matrix,
   }))
 })
