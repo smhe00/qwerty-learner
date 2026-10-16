@@ -127,7 +127,7 @@ function App() {
             </div>
             <div className="song-preview-master-work">
               {museumAchievement && <HundredWordsMuseumCard onOpen={()=>open(museumAchievement.id,true)} unlocked date="2026.10.16"/>}
-              <p>展品 01　/　汝窑天青　/　SVG 工笔器物　/　交互原型</p>
+              <p>展品 01 / 汝窑天青 / SVG 工笔器物 / 交互原型</p>
             </div>
           </section>
           <div className="song-preview-archive-title"><span>其余成就 · 早期通用样板</span><small>以下仍是概念卡片，尚未逐件精修</small></div>
