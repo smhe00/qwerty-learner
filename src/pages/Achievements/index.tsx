@@ -4,6 +4,10 @@ import {
   markAchievementCultureCardSeen,
 } from '@/achievement'
 import Layout from '@/components/Layout'
+import { SongMistLayer } from '@/achievement/visual-assets/SongMistLayer'
+import { SongPortalEntry } from '@/achievement/visual-assets/SongPortalEntry'
+import { isOpenDarkModeAtom } from '@/store'
+import { useAtomValue } from 'jotai'
 import { SongArtwork, SongSeal } from './SongArtwork'
 import { HundredWordsCeremony, HundredWordsMuseumCard } from './SongMasterpiece'
 import './song-achievement.css'
@@ -40,6 +44,8 @@ const formatDate = (timeSeconds: number) => {
 
 export default function AchievementsPage({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate()
+  const isDarkTheme = useAtomValue(isOpenDarkModeAtom)
+  const songTheme = isDarkTheme ? 'dark' : 'light'
   const states = useLiveQuery(() => getAchievementStates(), [], [])
   const visibleProgress = useLiveQuery(
     async () => {
@@ -110,6 +116,7 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
     <>
       <main className={embedded ? 'w-full px-1 pb-5 pt-1' : 'container mx-auto w-full flex-1 px-3 pb-10 pt-6 sm:px-8'}>
         <div className="song-gallery px-4 py-5 sm:px-7 sm:py-7" data-song-achievement-gallery>
+          <SongPortalEntry theme={songTheme} />
           <header className="flex flex-wrap items-start justify-between gap-5">
             <div className="flex items-center gap-4">
               <div
@@ -191,6 +198,7 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
                     <span className="text-xs text-[#716b62]">{locked ? '○ 未解锁' : '✓ 已解锁'}</span>
                   </div>
                   <SongArtwork category={achievement.category} hidden={hideIdentity} />
+                  {locked && <SongMistLayer status={hideIdentity ? 'hidden' : 'locked'} theme={songTheme} />}
                   <SongSeal title={title} rarity={achievement.rarity} unlocked={!locked} />
                   <div className="song-card-title">{title}</div>
                   <div className="song-card-body">
