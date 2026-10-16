@@ -74,8 +74,8 @@ export const hintSoundsConfigAtom = atomForConfig('hintSoundsConfig', {
 export const pronunciationConfigAtom = atomForConfig('pronunciation', {
   isOpen: true,
   volume: 1,
-  type: 'us' as PronunciationType,
-  name: '美音',
+  type: 'uk' as PronunciationType,
+  name: '英音',
   isLoop: false,
   isTransRead: false,
   transVolume: 1,
@@ -93,7 +93,7 @@ export const randomConfigAtom = atomForConfig('randomConfig', {
 })
 
 export const memoryConfigAtom = atomForConfig('memoryConfig', {
-  dailyNewWordTarget: 32,
+  dailyNewWordTarget: 20,
   blockSize: DEFAULT_LEARN_BLOCK_SIZE,
 })
 
@@ -126,7 +126,7 @@ export const isReviewModeAtom = atom((get) => get(reviewModeInfoAtom).isReviewMo
 
 export const phoneticConfigAtom = atomForConfig('phoneticConfig', {
   isOpen: true,
-  type: 'us' as PhoneticType,
+  type: 'uk' as PhoneticType,
 })
 
 export const isOpenDarkModeAtom = atomWithStorage('isOpenDarkModeAtom', window.matchMedia('(prefers-color-scheme: dark)').matches)
