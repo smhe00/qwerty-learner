@@ -7,6 +7,7 @@ on:
       - design/achievement-song-aesthetic-20261016
     paths:
       - 'scripts/generate-song-mist.py'
+      - '.gitattributes'
       - '.github/workflows/song-mist-assets.yml'
 
 permissions:
