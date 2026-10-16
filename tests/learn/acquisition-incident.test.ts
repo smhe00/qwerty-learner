@@ -393,7 +393,8 @@ test('daily new-word identities and balanced milestones remain frozen', () => {
   })
   assert.deepEqual(daily.plannedNewWordNames, ['alpha', 'bravo', 'charlie'])
   assert.deepEqual(daily.blockMilestones, [3])
-  assert.deepEqual(planLearnBlockMilestones(105), [18, 36, 54, 71, 88, 105])
+  assert.deepEqual(planLearnBlockMilestones(105), [10, 20, 30, 40, 50, 60, 69, 78, 87, 96, 105])
+  assert.deepEqual(planLearnBlockMilestones(105, 20), [18, 36, 54, 71, 88, 105])
   const candidates = planLearnAcquisitionCandidates({
     words, states: [], pendingStates: new Map(), introducedWords: [],
     freshLimit: 20, now: NOW, allowedNewWordNames: daily.plannedNewWordNames,
