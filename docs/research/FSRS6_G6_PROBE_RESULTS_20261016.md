@@ -39,9 +39,25 @@ Thus the relearning step itself changes the state and due immediately; **a subse
 
 ## Next tasks (not yet completed)
 
-- [ ] G6-1: Reuse the *production* Rating Gate in a research-only event-classification test; explicitly test ESC surrender, assisted completion, spelling mistake vs recall failure, pause and retry.
+- [x] G6-1 unit bridge: Call the real production Rating Gate from an isolated research test; verify canonical independent Good, ESC/cold-probe failure Again, assisted/training/diagnostic/attention suppression and no duplicate native rating. Full UI / pause-and-retry replay remains pending.
 - [ ] G6-2: Replay full `Card` state with chronological event IDs, across refresh, state reconstruction, and V4 import/export, without mutating current production schemas.
 - [ ] G6-3: Extend independent latent-strength simulations to minute-level steps, compare A/B/C/D with matched time budgets, and report 1/7/30/90-day independent spelling outcomes plus active minutes and P95 workload.
 - [ ] G6-4: Report the actual improvement (or failure); decide whether any promotion merits a separate production proposal.
 
 **Research decision at this checkpoint:** G6-0 PASS. No integration/promotion decision. Keep production unchanged.
+
+## G6-1 Rating Gate bridge checkpoint
+
+**Run:** https://github.com/smhe00/qwerty-learner/actions/runs/38838999967  
+**SHA:** `990f25ca109e95ad63cb3f56af410bce2b75cb9a`  
+**Result:** PASS: **7 / 7** research tests (four native-model + three production-Rating-Gate bridge tests).
+
+The tests call **`src/review/state-machine.ts::decideReviewRating()`**, not a newly invented classifier. Verified:
+- unassisted canonical Good is eligible;
+- recall failure and frozen/surrendered cold probe are eligible Again;
+- assisted Good, ordinary training, diagnostic probe, attention-uncertain attempt, and assisted reinforcement are ineligible;
+- only the two eligible review outputs reach the native relearning scheduler (reps=2, lapses=1) and the native due is precisely 10 minutes after the lapse.
+
+Scope caveat: unit fixtures construct classification and evidence explicitly; **real UI keystrokes, ESC plumbing, focus interruptions, durable source-event identity, V4 workspace merge, and all review decision edge cases are not yet covered**. This is a trustworthy guard against obvious assisted-Good contamination, **not** a proof that full native Relearning can be enabled in production.
+
+**Updated research state:** G6-0 PASS; G6-1 gate-bridge unit subset PASS; G6-2/3/4 pending. No release or mainline promotion.
