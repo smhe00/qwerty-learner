@@ -65,3 +65,14 @@ CSS-only animations are used for this research sample to avoid new runtime depen
 ## 6. Current state
 
 Research sample implemented on this branch: live gallery skin, artwork/visual seal, locked ghost, date inscription, filters and an isolated '演示 · 展卷钤印' modal. **No proof of runtime build/E2E is claimed until those checks actually run.** The modal demonstrates graphics; it is not yet attached to the live unlock queue.
+
+
+## 7. Research-branch implementation checkpoint (2026-10-16)
+
+- Branch created from product/main at \`7a4f37e2611e1b091fc9813e195a17d60ea09884\`.
+- Implemented SVG artwork families and presentation seals, styled live achievement gallery, rarity/locked/date projection, filters and a visual-only reveal animation.
+- Branch-local no-deploy GitHub Action: \`.github/workflows/song-achievement-preview-gate.yml\`.
+- CI run \`38862203806\` succeeded: install, achievement-culture validation, UI ESLint, scoped Achievement UI TypeScript diagnostic audit and Vite build.
+- Full repository \`tsc --noEmit\` is not green due to many diagnostics in modules outside \`src/pages/Achievements\`; the scoped UI audit warns rather than hiding them. This is not a claim that full-project typecheck passed.
+- Not yet done: live unlock-queue ceremony integration, curated unique per-achievement glyph outlines, browser screenshot comparison, Playwright cross-viewport and release gates.
+- No push to \`product/main\`, \`edgeone-test\`, \`gh-pages\`, or \`master\`, and no Maker preview deployment.
