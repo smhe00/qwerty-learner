@@ -5,6 +5,7 @@ import {
 } from '@/achievement'
 import Layout from '@/components/Layout'
 import { SongArtwork, SongSeal } from './SongArtwork'
+import { HundredWordsCeremony, HundredWordsMuseumCard } from './SongMasterpiece'
 import './song-achievement.css'
 import {
   achievementDefinitions,
@@ -167,6 +168,15 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
                   : achievement.id === 'ACH_7_OF_10'
                     ? { value: visibleProgress.activeLearnDaysInLast10, target: achievement.condition.target, label: '最近 10 天学习' }
                     : undefined
+              if (achievement.id === 'ACH_MASTERED_100' && state) {
+                return (
+                  <HundredWordsMuseumCard
+                    key={achievement.id}
+                    date={formatDate(state.unlockedAt)}
+                    onOpen={() => openCulture(achievement.id)}
+                  />
+                )
+              }
               return (
                 <button key={achievement.id} type="button" disabled={locked}
                   onClick={() => openCulture(achievement.id)}
@@ -208,7 +218,13 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
         </div>
       </main>
 
-      {presentedAchievement && presentedCulture && (demoOpen || presentedState) && (
+      {openAchievementId === 'ACH_MASTERED_100' && presentedState && (
+        <HundredWordsCeremony
+          onClose={closeModal}
+          unlockedAt={presentedState.unlockedAt}
+        />
+      )}
+      {presentedAchievement && presentedCulture && (demoOpen || presentedState) && openAchievementId !== 'ACH_MASTERED_100' && (
         <div className="song-modal-backdrop" role="dialog" aria-modal="true"
           aria-label={(demoOpen ? '解锁动效演示：' : '成就文化卡：') + presentedAchievement.title}
           onClick={closeModal}
