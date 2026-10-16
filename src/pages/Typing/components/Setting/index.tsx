@@ -71,7 +71,12 @@ export default function Setting() {
         data-toolbar-active={isOpen}
         tabIndex={-1}
         aria-label="打开设置对话框"
-        onClick={openModal}
+        onClick={(event) => {
+          // Do not let the opening pointer event become an outside-click
+          // dismissal when Headless UI installs its dialog listeners.
+          event.stopPropagation()
+          openModal()
+        }}
         className={`flex items-center justify-center rounded p-[2px] text-lg text-indigo-500 outline-none transition-colors duration-300 ease-in-out hover:bg-indigo-400 hover:text-white  ${
           isOpen && 'bg-indigo-500 text-white'
         }`}
