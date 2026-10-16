@@ -1,0 +1,29 @@
+name: Song Achievement Preview Gate
+
+on:
+  push:
+    branches:
+      - design/achievement-song-aesthetic-20261016
+    paths:
+      - 'src/pages/Achievements/**'
+      - 'docs/design/Song-Achievement-Collection-v1.md'
+      - '.github/workflows/song-achievement-preview-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn validate:achievement-culture
+      - run: yarn eslint src/pages/Achievements --ext .ts,.tsx
+      - run: yarn build
