@@ -59,21 +59,23 @@ export function SongArtwork({ category, hidden = false }: ArtworkProps) {
 export function SongSeal({ title, rarity, unlocked, large = false }: { title: string; rarity: AchievementRarity; unlocked: boolean; large?: boolean }) {
   const characters = Array.from(title.replace(/[\s·？！。，]/g, '')).slice(0, 2)
   const gourd = rarity === 'legendary'
+  const pigment = unlocked ? '#B83B2B' : '#A9A39A'
+  const paper = '#F7F4ED'
   return (
     <svg className={'song-seal ' + (unlocked ? 'song-seal--inked' : 'song-seal--ghost') + (large ? ' song-seal--large' : '')}
       viewBox="0 0 92 100" role="img" aria-label={unlocked ? title + '朱砂印' : '尚未钤印'}>
       {gourd ? (
-        <path d="M29 23C13 5 10 38 26 48C5 66 18 93 46 94C74 93 87 66 66 48C82 38 79 5 63 23Q46 34 29 23Z" fill="currentColor" />
+        <path d="M29 23C13 5 10 38 26 48C5 66 18 93 46 94C74 93 87 66 66 48C82 38 79 5 63 23Q46 34 29 23Z" fill={pigment} />
       ) : (
-        <rect x="10" y="10" width="72" height="80" rx="5" fill="currentColor" />
+        <rect x="10" y="10" width="72" height="80" rx="5" fill={pigment} />
       )}
       {gourd ? (
-        <path d="M29 30Q46 39 63 30M27 54Q46 44 65 54" stroke="var(--song-paper)" fill="none" opacity=".8" strokeWidth="1.5" />
+        <path d="M29 30Q46 39 63 30M27 54Q46 44 65 54" stroke={paper} fill="none" opacity=".8" strokeWidth="1.5" />
       ) : (
-        <rect x="15.5" y="15.5" width="61" height="69" rx="2" stroke="var(--song-paper)" strokeWidth="1.5" fill="none" opacity=".85" />
+        <rect x="15.5" y="15.5" width="61" height="69" rx="2" stroke={paper} strokeWidth="1.5" fill="none" opacity=".85" />
       )}
-      <text x="46" y="48" textAnchor="middle" fill="var(--song-paper)" fontSize="28" fontFamily="STKaiti,KaiTi,serif">{characters[0] || '雅'}</text>
-      <text x="46" y="77" textAnchor="middle" fill="var(--song-paper)" fontSize="28" fontFamily="STKaiti,KaiTi,serif">{characters[1] || '集'}</text>
+      <text x="46" y="48" textAnchor="middle" fill={paper} fontSize="28" fontFamily="STKaiti,KaiTi,serif">{characters[0] || '雅'}</text>
+      <text x="46" y="77" textAnchor="middle" fill={paper} fontSize="28" fontFamily="STKaiti,KaiTi,serif">{characters[1] || '集'}</text>
     </svg>
   )
 }
