@@ -16,6 +16,7 @@ import { db } from '@/utils/db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useLocation, useNavigate } from 'react-router-dom'
 import IconX from '~icons/tabler/x'
@@ -55,7 +56,7 @@ function artIndexFor(achievement: AchievementDefinition, hiddenLocked: boolean):
 const spriteOffset = (index: number) => ({
   '--song-art-x': (index % 3) * 50 + '%',
   '--song-art-y': Math.floor(index / 3) * 50 + '%',
-}) as React.CSSProperties
+}) as CSSProperties
 
 function formatDate(epochSeconds: number) {
   const date = new Date(epochSeconds * 1000)
@@ -128,7 +129,9 @@ function CollectionDetail({ achievement, unlockedAt, sample, theme, onClose }: {
   const title = hiddenLocked ? '云中秘藏' : achievement.title
   const tier = hiddenLocked ? 'ink' : tierFor(achievement.rarity)
   return (
-    <div className="song-v2-detail-backdrop" role="presentation" onMouseDown={(event) => {
+    <div className="song-v2-detail-backdrop" role="presentation" onKeyDown={(event) => {
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onClose() }
+    }} onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose()
     }}>
       <article className="song-v2-detail" role="dialog" aria-modal="true" aria-label={title + '，成就藏品'}>
@@ -222,8 +225,11 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
     }
   }
 
+  const spriteStyle = {
+    '--song-sprite-url': 'url("' + import.meta.env.BASE_URL + 'assets/achievements/song/gallery/sprite.webp")',
+  } as CSSProperties
   const main = (
-    <main className="song-v2-collection" data-song-achievement-gallery data-song-theme={theme}>
+    <main className="song-v2-collection" data-song-achievement-gallery data-song-theme={theme} style={spriteStyle}>
       <SongPortalEntry theme={theme} />
       <button type="button" className="song-v2-close" aria-label="返回 Learn" onClick={close}>
         <IconX className="h-6 w-6" />
