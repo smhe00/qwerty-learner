@@ -15,7 +15,8 @@ function isIndependentLearnSuccess(record: IWordRecord): boolean {
     record.wrongCount === 0 &&
     record.learningContext?.reviewHint === undefined &&
     record.reviewEvidence?.retrievalValidity === 'independent' &&
-    record.reviewRatingDecision?.rating !== 'again'
+    record.reviewRatingDecision?.rating !== 'again' &&
+    record.reviewRatingDecision?.eligible !== false
 }
 
 /** Natural local study day, matching the Learn daily session contract. */
