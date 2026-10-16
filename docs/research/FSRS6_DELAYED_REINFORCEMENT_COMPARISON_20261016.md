@@ -70,3 +70,30 @@ Baseline A at 7d/30d: spacing 74.44%/57.20%, repetition 76.38%/56.69%. Even gene
 - **Complete production-behavior parity:** NOT YET.
 - **Real-user educational benefit:** UNKNOWN.
 - **Release / merge:** BLOCKED (no modification to main/etest/master).
+
+
+## Follow-up: only use the delayed practice if four-word reinforcement did not happen (G6-3d)
+
+**CI:** [G6-3d 23/23 PASS](https://github.com/smhe00/qwerty-learner/actions/runs/38860091653).  
+This candidate does **not** replace existing practice. Instead, after Again it attempts common four-word reinforcement; if the current study window closes before the shared reinforcement executes, a saved fallback task becomes due no earlier than the original Again+10m timestamp. No FSRS Rating is written. If the common reinforcement is completed, the extra task is cancelled. Research-only synthetic mechanism; exact production session-termination/recovery logic not reused yet.
+
+| Hypothesis | Arm | 7d | 30d | Extra delayed drills per run |
+|---|---|---:|---:|---:|
+| Spacing | A | 74.44% | 57.20% | 0 |
+| Spacing | X always | 65.90% | 55.22% | 195.8 |
+| Spacing | X missed-only | 67.48% | 55.07% | 150.35 |
+| Spacing | X missed-only + assumed 50% strength rescue on failure | 70.01% | 56.35% | 131.0 |
+| Spacing | C native | 78.45% | 61.93% | 0 (155.3 native same-day graded attempts) |
+| Repetition | A | 76.38% | 56.69% | 0 |
+| Repetition | X always | 74.06% | 54.01% | 153.6 |
+| Repetition | X missed-only | 72.27% | 52.28% | 128.4 |
+| Repetition | X missed-only + assumed 50% strength rescue on failure | 76.33% | 54.71% | 113.35 |
+| Repetition | C native | 80.86% | 58.78% | 0 (132.1 native same-day graded attempts) |
+
+Conditional rescue reduces the number of additional repetitions (by about 24–45 per run here), but **still does not robustly exceed the shared baseline A** at both 7 and 30 days, including the favorable 50% after-failure Hint rescue assumption.
+
+### Research decision
+
+The incremental **fixed-time and ungraded** reminder is not currently justified as a general feature. Retain it only as a possible option for a more targeted *missed-remediation recovery* policy if future task-completion telemetry or real recall data suggests unmet demand. The scientifically meaningful next focus remains **FSRS-native Relearning with properly validated independent ratings**, not an extra unconditional timer.
+
+Even this improved study is **not** a matched actual-realized-time clinical A/B test. The simulated strengths, word cohort admissions, practice costs, missed due dates, and native state transition counts vary by arm. Test success means algorithmic invariants and deterministic reproducibility, not proven educational effect. Production code and all release refs remain untouched.
