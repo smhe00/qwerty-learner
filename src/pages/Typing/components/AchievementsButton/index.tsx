@@ -7,7 +7,7 @@ export default function AchievementsButton() {
   const location = useLocation()
 
   return (
-    <Tooltip className="h-7 w-7" content="查看成就">
+    <Tooltip className="h-9 w-9" content="查看成就">
       <button
         data-toolbar-trigger
         tabIndex={-1}
