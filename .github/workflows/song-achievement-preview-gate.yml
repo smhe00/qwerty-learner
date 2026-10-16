@@ -26,4 +26,5 @@ jobs:
       - run: yarn install --frozen-lockfile
       - run: yarn validate:achievement-culture
       - run: yarn eslint src/pages/Achievements --ext .ts,.tsx
+      - run: yarn tsc --noEmit
       - run: yarn build
