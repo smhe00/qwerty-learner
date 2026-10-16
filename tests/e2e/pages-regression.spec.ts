@@ -180,7 +180,7 @@ test('published Pages: donation QR is visible immediately after hard refresh wit
 })
 
 
-test('published Pages: Song gallery opens inside Focus and offers safe desktop/mobile visual demos', async ({ page, request }) => {
+test('published Pages: Song gallery opens inside Focus and offers safe desktop/mobile visual demos', async ({ page, request, browser }) => {
   test.setTimeout(120_000)
   await expect.poll(async () => {
     const response = await request.get(site + 'source-commit.txt?pages_probe=' + targetSha + '-' + Date.now(), { failOnStatusCode: false })
@@ -202,9 +202,11 @@ test('published Pages: Song gallery opens inside Focus and offers safe desktop/m
   await expect(page.locator('[data-song-achievement-gallery]')).toHaveAttribute('data-song-theme', 'dark')
   expect(errors).toEqual([])
 
-  const mobile = await page.context().newPage()
+  // Mobile simulates a distinct device, not another live tab fighting for
+  // the same S1 writer lock as the still-mounted desktop Learn workspace.
+  const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 } })
+  const mobile = await mobileContext.newPage()
   try {
-    await mobile.setViewportSize({ width: 390, height: 844 })
     await mobile.goto(site, { waitUntil: 'domcontentloaded' })
     await expect.poll(() => mobile.evaluate(() => window.location.pathname), {
       timeout: 15000,
@@ -229,6 +231,6 @@ test('published Pages: Song gallery opens inside Focus and offers safe desktop/m
     await mobile.getByRole('button', { name: '返回', exact: true }).click()
     await expect(mobile).toHaveURL(/\/mobile\/?$/)
   } finally {
-    await mobile.close()
+    await mobileContext.close()
   }
 })
