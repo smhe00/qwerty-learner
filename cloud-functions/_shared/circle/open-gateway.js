@@ -33,8 +33,7 @@ export function createCircleOpenGateway({ backend, getStore, rateStorage } = {})
       const clientIp = typeof context.clientIp === 'string' ? context.clientIp.trim() : ''
       if (!clientIp || clientIp.length > 128) return response(503, 'circle_client_ip_unavailable')
       try {
-        // Test environment only: always use the explicitly named isolated Store.
-        // Never reuse the production V4 backup store as a Circle default.
+        // Existing private V4 store, strictly separate social/v2/ keys.
         const store = getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' })
         const scopedBlob = Object.freeze({
           async setJSON(key, event) {
@@ -87,7 +86,7 @@ export function createCircleOpenGateway({ backend, getStore, rateStorage } = {})
           maxEvents: 2000,
         }).transport.handle(request)
       } catch {
-        return response(503, 'circle_etest_unavailable')
+        return response(503, 'circle_unavailable')
       }
     },
   })
