@@ -10,16 +10,30 @@ const origin = process.env.SONG_PREVIEW_ORIGIN || 'http://127.0.0.1:4321'
 const url = origin + '/qwerty-learner/previews/song-achievements/'
 const screenshots = 'tests/song-preview/artifacts'
 await mkdir(screenshots, { recursive: true })
+const fogUrl = url + 'assets/achievements/song/shared/mist/far-light.webp'
+const fogResponse = await fetch(fogUrl)
+const fogBytes = new Uint8Array(await fogResponse.arrayBuffer())
+console.log('Static fog resource probe:', {
+  url:fogUrl,
+  status:fogResponse.status,
+  mime:fogResponse.headers.get('content-type'),
+  head:Array.from(fogBytes.slice(0,12)),
+  size:fogBytes.length,
+})
 const browser = await chromium.launch({ headless: true })
 
 async function checkViewport(name, width, height) {
   const page = await browser.newPage({ viewport: { width, height }, reducedMotion: 'no-preference' })
   const pageErrors = []
   const brokenImages = []
+  const fogResponses = []
+  const resourceFailures = []
+  page.on('requestfailed', req => resourceFailures.push(req.url() + ' ' + req.failure()?.errorText))
   page.on('pageerror', error => pageErrors.push(error.message))
   page.on('response', resp => {
-    if (resp.url().includes('/assets/achievements/song/') && resp.status() >= 400) {
-      brokenImages.push(resp.url() + ' status ' + resp.status())
+    if (resp.url().includes('/assets/achievements/song/')) {
+      fogResponses.push({url:resp.url(),status:resp.status(),contentType:resp.headers()['content-type']})
+      if (resp.status() >= 400) brokenImages.push(resp.url() + ' status ' + resp.status())
     }
   })
 
@@ -30,7 +44,7 @@ async function checkViewport(name, width, height) {
   await page.waitForTimeout(750)
   const fogImages = await page.locator('.song-picture-mist-near').count()
   console.log(name + ' cloud diagnostic:', {
-    fogImages, brokenImages,
+    fogImages, brokenImages, fogResponses, resourceFailures,
     imageUrls: await page.locator('.song-picture-mist img').evaluateAll(
       nodes => nodes.map(node => ({ src: node.currentSrc, complete: node.complete, width: node.naturalWidth }))
     ),
