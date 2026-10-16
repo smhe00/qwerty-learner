@@ -89,3 +89,53 @@ test('small-screen visitors remain on the documented /mobile landing page', asyn
   await expect(page.getByRole('heading', { name: '当前移动端说明' })).toBeVisible()
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toHaveCount(0)
 })
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`settings ${theme} palette uses Focus accent for selected tab, switch and slider`, async ({ page }) => {
+    await gotoReviewAppReady(page, '/typing')
+    const darkButton = page.getByRole('button', { name: '开关深色模式' })
+    const isDark = () => page.locator('html').evaluate(el => el.classList.contains('dark'))
+    if ((await isDark()) !== (theme === 'dark')) await darkButton.click()
+    await expect.poll(isDark).toBe(theme === 'dark')
+    await openSettings(page)
+
+    const panel = page.locator('.focus-settings-dialog')
+    const current = page.getByRole('tab', { name: '打字练习' })
+    await expect(current).toHaveAttribute('aria-selected', 'true')
+
+    const tabColors = await current.evaluate(el => {
+      const probe = document.createElement('span')
+      probe.style.color = 'var(--focus-accent)'
+      el.appendChild(probe)
+      const accent = getComputedStyle(probe).color
+      probe.remove()
+      return { accent, selected: getComputedStyle(el).color }
+    })
+    expect(tabColors.selected).toBe(tabColors.accent)
+
+    const checkedSwitch = panel.locator('.switch-root[aria-checked="true"]').first()
+    await expect(checkedSwitch).toBeVisible()
+    const switchColor = await checkedSwitch.evaluate(el => {
+      const probe = document.createElement('span')
+      probe.style.backgroundColor = 'var(--focus-accent)'
+      el.appendChild(probe)
+      const accent = getComputedStyle(probe).backgroundColor
+      probe.remove()
+      return { accent, checked: getComputedStyle(el).backgroundColor }
+    })
+    expect(switchColor.checked).toBe(switchColor.accent)
+
+    await page.getByRole('tab', { name: '外观显示' }).click()
+    const range = panel.locator('.slider > span:nth-child(1) > span:nth-child(1)').first()
+    await expect(range).toBeVisible()
+    const rangeColor = await range.evaluate(el => {
+      const probe = document.createElement('span')
+      probe.style.backgroundColor = 'var(--focus-accent)'
+      el.appendChild(probe)
+      const accent = getComputedStyle(probe).backgroundColor
+      probe.remove()
+      return { accent, range: getComputedStyle(el).backgroundColor }
+    })
+    expect(rangeColor.range).toBe(rangeColor.accent)
+  })
+}
