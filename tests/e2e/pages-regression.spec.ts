@@ -223,7 +223,24 @@ test('published Pages: Song gallery opens inside Focus and offers safe desktop/m
     await expect(entryLink).toBeVisible({ timeout: 12000 })
     await entryLink.click()
     await expect(mobile).toHaveURL(/\/achievements\/?$/)
-    await expect(mobile.getByRole('heading', { name: '成就雅集' })).toBeVisible()
+    console.log('mobile-achievement-render', await mobile.evaluate(() => {
+      const gallery = document.querySelector('[data-song-achievement-gallery]')
+      const h1 = gallery?.querySelector('h1')
+      const box = h1?.getBoundingClientRect()
+      return {
+        href: location.href,
+        innerWidth: window.innerWidth,
+        text: document.body.innerText.slice(0, 950),
+        galleryPresent: Boolean(gallery),
+        galleryDisplay: gallery ? getComputedStyle(gallery).display : null,
+        galleryVisibility: gallery ? getComputedStyle(gallery).visibility : null,
+        headingText: h1?.textContent,
+        headingDisplay: h1 ? getComputedStyle(h1).display : null,
+        headingVisibility: h1 ? getComputedStyle(h1).visibility : null,
+        headingRect: box ? [box.x, box.y, box.width, box.height] : null,
+      }
+    }))
+    await expect(mobile.getByRole('heading', { name: '成就雅集' })).toBeVisible({ timeout: 10000 })
     await mobile.getByRole('button', { name: '赏鉴 · 百词基石样板' }).click()
     await expect(mobile.locator('.song-master-scroll-sheet')).toBeVisible()
     await mobile.getByRole('button', { name: '关闭册页' }).click()
