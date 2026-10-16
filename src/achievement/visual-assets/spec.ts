@@ -25,7 +25,7 @@ export type SongVisualPack = {
   light: SongVisualImages
   dark: SongVisualImages
   seal: { red: string; ghost: string; press: string }
-  safe: Record<'title' | 'description' | 'culture' | 'date' | 'seal', SongSafeZone>
+  safe: Record<'title' | 'description' | 'culture' | 'date' | 'seal' | 'controls', SongSafeZone>
 }
 
 /** The first real art pack is deliberately unapproved until image-quality review. */
@@ -59,6 +59,7 @@ const visualPacks: Record<string, SongVisualPack> = {
       culture: { x: .14, y: .72, w: .72, h: .14 },
       date: { x: .2, y: .86, w: .6, h: .08 },
       seal: { x: .69, y: .42, w: .19, h: .17 },
+      controls: { x: .18, y: .92, w: .64, h: .07 },
     },
   },
 }
