@@ -15,6 +15,7 @@ on:
       - 'src/pages/Typing/components/HandPositionIllustration/**'
       - 'src/index.css'
       - 'tests/e2e/toolbar-icon-focus.spec.ts'
+      - 'tests/e2e/learn-shell-ui.spec.ts'
       - 'tests/e2e/settings-mode-navigation.spec.ts'
       - 'tests/e2e/session-pause.spec.ts'
       - 'tests/e2e/pages-regression.spec.ts'
@@ -63,4 +64,12 @@ jobs:
           --config=tests/e2e/typing-lifecycle.config.ts
           --project=chrome
           --grep="settings controls"
+          --retries=0
+      - name: Verify Learn pronunciation-to-sound popover focus handoff
+        run: >
+          npx playwright test
+          tests/e2e/learn-shell-ui.spec.ts
+          --config=tests/e2e/review-flow.config.ts
+          --project=chrome
+          --grep="Learn reuses Typing controls while preserving Typing-owned preferences"
           --retries=0
