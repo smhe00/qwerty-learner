@@ -8,6 +8,9 @@ on:
       - 'preview/song-achievements/**'
       - 'src/song-preview/**'
       - 'src/pages/Achievements/**'
+      - 'src/achievement/visual-assets/**'
+      - 'public/assets/achievements/song/**'
+      - 'scripts/validate-song-art-assets.mjs'
       - 'src/resources/achievementCulture/**'
       - 'vite.song-preview.config.ts'
       - '.github/workflows/song-achievement-web-preview.yml'
@@ -37,6 +40,8 @@ jobs:
         run: yarn install --frozen-lockfile
       - name: Validate achievement definitions
         run: yarn validate:achievement-culture
+      - name: Validate real raster assets
+        run: node scripts/validate-song-art-assets.mjs
       - name: Lint standalone preview and artwork
         run: yarn eslint src/song-preview src/pages/Achievements --ext .ts,.tsx
       - name: Build standalone preview without Learn DB startup
