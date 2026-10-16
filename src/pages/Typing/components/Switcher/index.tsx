@@ -72,7 +72,7 @@ export default function Switcher({
 
   return (
     <div
-      className="focus-toolbar-icons flex items-center justify-center gap-1"
+      className="focus-toolbar-icons flex min-w-0 max-w-full flex-wrap items-center justify-center gap-1"
       onKeyDownCapture={blockIconKeyboardActivation}
       onClickCapture={releaseIconFocus}
     >
@@ -81,7 +81,7 @@ export default function Switcher({
       </Tooltip>
 
       <Tooltip
-        className="h-7 w-7"
+        className="h-9 w-9"
         content={
           learnMode
             ? 'Learn 模式由程序管理循环次数'
@@ -92,7 +92,7 @@ export default function Switcher({
       </Tooltip>
 
       <Tooltip
-        className="h-7 w-7"
+        className="h-9 w-9"
         content={
           learnMode
             ? 'Learn 模式由程序决定字母显示'
@@ -103,7 +103,7 @@ export default function Switcher({
       </Tooltip>
 
       <Tooltip
-        className="h-7 w-7"
+        className="h-9 w-9"
         content={
           learnMode
             ? 'Learn 模式由程序决定释义显示'
@@ -138,13 +138,13 @@ export default function Switcher({
         <ErrorBookButton disabled={learnMode} />
       </Tooltip>
 
-      <Tooltip className="h-7 w-7" content="查看数据统计">
+      <Tooltip className="h-9 w-9" content="查看数据统计">
         <AnalysisButton learnMode={learnMode} />
       </Tooltip>
 
       <AchievementsButton />
 
-      <Tooltip className="h-7 w-7" content="开关深色模式">
+      <Tooltip className="h-9 w-9" content="开关深色模式">
         <button
           data-toolbar-trigger
           data-toolbar-active={isOpenDarkMode}
@@ -165,7 +165,7 @@ export default function Switcher({
         </button>
       </Tooltip>
 
-      <Tooltip className="h-7 w-7" content="指法图示">
+      <Tooltip className="h-9 w-9" content="指法图示">
         <HandPositionIllustration />
       </Tooltip>
 
