@@ -1,0 +1,47 @@
+/* Image composition is deliberately independent of the legacy SVG sample. */
+.song-image-composer {position:relative;isolation:isolate;width:100%;aspect-ratio:3/4;
+  overflow:hidden;background:#f7f4ed;border:1px solid #d8cbb3;
+  color:#2c2a29;font-family:"Noto Serif SC","Songti SC","STSong",serif;}
+.song-image-composer[data-theme="dark"] {background:#1b282b;color:#f2e7d5;border-color:#6e6555;}
+.song-image-scene {position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
+.song-image-artifact {position:absolute;inset:14% 10% 31%;width:80%;height:55%;object-fit:contain;z-index:1;}
+.song-image-content {position:absolute;z-index:4;overflow-wrap:anywhere;display:flex;align-items:center;justify-content:center;text-align:center;}
+.song-image-title {font-weight:700;font-size:clamp(18px,2vw,32px);letter-spacing:.16em;}
+.song-image-description {font-size:clamp(11px,1.1vw,15px);line-height:1.65;}
+.song-image-inscription {font-size:clamp(10px,1vw,13px);color:#a34636;}
+.song-image-seal-place {position:absolute;z-index:5;pointer-events:none;}
+.song-image-seal-place img {position:absolute;width:100%;height:100%;inset:0;object-fit:contain;}
+.song-image-press {z-index:2;opacity:0;}
+.song-image-print {z-index:1;opacity:1;}
+.song-image-composer[data-ceremony="play"] .song-image-press {
+  animation:song-image-press-action 1.6s cubic-bezier(.2,.7,.28,1) both;
+}
+.song-image-composer[data-ceremony="play"] .song-image-print {
+  animation:song-image-impression 1.6s ease both;
+}
+@keyframes song-image-press-action {
+  0%,58% {opacity:0;transform:translateY(-50%) rotate(-7deg) scale(1.14);}
+  64% {opacity:1;transform:translateY(-8%) rotate(-2deg) scale(1.05);}
+  74% {opacity:1;transform:none;}
+  82% {opacity:1;transform:translateY(-3%) scale(1.02);}
+  100% {opacity:0;transform:translateY(-23%) scale(1.1);}
+}
+@keyframes song-image-impression {
+  0%,71% {opacity:0;filter:blur(2px);}
+  76% {opacity:.85;filter:blur(.5px);}
+  100% {opacity:1;filter:none;}
+}
+.song-image-card-action {display:block;width:100%;text-align:initial;}
+.song-image-card-action:focus-visible {outline:3px solid #77978e;outline-offset:4px;}
+.song-image-card-action .song-image-composer {transition:box-shadow .18s,transform .18s;}
+.song-image-card-action:hover .song-image-composer {transform:translateY(-2px);box-shadow:0 7px 18px #45433826;}
+.song-image-composer[data-variant="detail"] {width:min(100%,640px);max-height:80vh;margin:auto;aspect-ratio:4/5;}
+@media(max-width:480px) {
+  .song-image-composer[data-variant="detail"] {max-height:87dvh;}
+  .song-image-title {font-size:clamp(16px,5vw,26px);}
+  .song-image-description {font-size:12px;}
+}
+@media(prefers-reduced-motion:reduce) {
+  .song-image-composer:not([data-user-replay="true"]) .song-image-press,
+  .song-image-composer:not([data-user-replay="true"]) .song-image-print {animation:none !important;}
+}
