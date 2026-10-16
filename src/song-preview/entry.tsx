@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { SongArtwork, SongSeal } from '../pages/Achievements/SongArtwork'
+import { HundredWordsCeremony, HundredWordsMuseumCard } from '../pages/Achievements/SongMasterpiece'
 import { achievementDefinitions, getAchievementCulture } from '../resources/achievementCulture'
 import type { AchievementDefinition, AchievementRarity } from '../resources/achievementCulture'
 import '../index.css'
@@ -39,6 +40,7 @@ function App() {
   })
   const selected = demos.find(item => item.id === dialogId)
   const culture = selected ? getAchievementCulture(selected.id) : null
+  const museumAchievement = demos.find(item => item.id === 'ACH_MASTERED_100')
   const open = (id: string, isCeremony: boolean) => { setDialogId(id); setCeremony(isCeremony) }
   const close = () => setDialogId(null)
   useEffect(() => {
@@ -109,12 +111,32 @@ function App() {
               {showAllUnlocked ? '恢复模拟状态' : '展示全部解锁'}
             </button>
           </div>
+          <section className="song-preview-master-stage" aria-label="百词基石精修藏品，优先验收">
+            <div className="song-preview-master-curator">
+              <span className="song-preview-master-no">SONG COLLECTION · DETAIL STUDY 01</span>
+              <div className="song-preview-master-label">首件精修 · 百词基石</div>
+              <h2>一字一印<br/><em>百字成章</em></h2>
+              <div className="song-preview-curator-rule"/>
+              <p>让成就从一张彩色卡片，成为真正值得收藏的器物。</p>
+              <p>专门为「百词基石」绘制汝窑天青莲花碗：天青釉色、器型弧线、开片暗纹、描金口沿，以及朱砂白文四字方印。</p>
+              <p className="song-preview-curator-note">此页是独立展厅。正式产品仍沿用 Focus UI 原有的弹出成就窗口；不会改成全屏站点。</p>
+              <div className="song-preview-master-ctas">
+                <button type="button" className="song-preview-master-primary" onClick={()=>open('ACH_MASTERED_100',true)}>展卷 · 落朱钤印 <span aria-hidden="true">↗</span></button>
+                <span>电脑与手机均可重播动画</span>
+              </div>
+            </div>
+            <div className="song-preview-master-work">
+              {museumAchievement && <HundredWordsMuseumCard onOpen={()=>open(museumAchievement.id,true)} unlocked date="2026.10.16"/>}
+              <p>展品 01　/　汝窑天青　/　SVG 工笔器物　/　交互原型</p>
+            </div>
+          </section>
+          <div className="song-preview-archive-title"><span>其余成就 · 早期通用样板</span><small>以下仍是概念卡片，尚未逐件精修</small></div>
           <div className="song-preview-toolbar">
             <div className="song-preview-filters" role="group" aria-label="筛选成就">
               {([['all','全部',demos.length],['unlocked','已解锁',count],['locked','未解锁',demos.length-count],['rare','珍藏',demos.filter(x => x.rarity!=='common').length]] as const)
                 .map(([id,label,num]) => <button key={id} type="button" className="song-filter" aria-pressed={filter===id} onClick={()=>setFilter(id)}>{label}（{num}）</button>)}
             </div>
-            <button className="song-preview-reveal-button" onClick={()=>open(demos.find(x => x.rarity === 'legendary')?.id ?? demos[0].id,true)}>
+            <button className="song-preview-reveal-button" onClick={()=>open('ACH_MASTERED_100',true)}>
               <span>✿</span> 展卷钤印 · 动画演示
             </button>
           </div>
@@ -145,7 +167,8 @@ function App() {
           <footer className="song-preview-footer"><span>素笺墨印</span><span>汝窑天青</span><span>泥金朱砂</span> · 成就不是终点，而是成长的印记</footer>
         </div>
       </main>
-      {selected && <div className="song-modal-backdrop" role="presentation" onClick={close}>
+      {selected?.id === 'ACH_MASTERED_100' && <HundredWordsCeremony achievement={selected} sample onClose={close} />}
+      {selected && selected.id !== 'ACH_MASTERED_100' && <div className="song-modal-backdrop" role="presentation" onClick={close}>
         <article className="song-scroll song-preview-scroll" role="dialog" aria-modal="true" aria-label={selected.title+'成就详情'} onClick={e=>e.stopPropagation()}>
           <button type="button" className="song-modal-close" onClick={close} aria-label="关闭" autoFocus>×</button>
           <div className="song-eyebrow mb-3">QWERTY PLUS · ACHIEVEMENT</div>
