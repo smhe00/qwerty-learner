@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { SongArtwork, SongSeal } from '../pages/Achievements/SongArtwork'
 import { HundredWordsCeremony, HundredWordsMuseumCard } from '../pages/Achievements/SongMasterpiece'
+import { SongMistLayer } from '../achievement/visual-assets/SongMistLayer'
+import { SongPortalEntry } from '../achievement/visual-assets/SongPortalEntry'
+import type { SongTheme } from '../achievement/visual-assets/spec'
 import { achievementDefinitions, getAchievementCulture } from '../resources/achievementCulture'
 import type { AchievementDefinition, AchievementRarity } from '../resources/achievementCulture'
 import '../index.css'
@@ -25,6 +28,7 @@ const sampleDate = (index: number) => ['2026.09.12', '2026.09.28', '2026.10.01',
 
 function App() {
   const [filter, setFilter] = useState<Filter>('all')
+  const [theme, setTheme] = useState<SongTheme>('light')
   const [dialogId, setDialogId] = useState<string | null>(null)
   const [ceremony, setCeremony] = useState(false)
   const [showAllUnlocked, setShowAllUnlocked] = useState(false)
@@ -85,7 +89,8 @@ function App() {
             <div className="song-preview-user">墨客 <span>⌄</span></div>
           </div>
         </div>
-        <div className="song-gallery song-preview-gallery px-4 py-6 sm:px-7 sm:py-8">
+        <div className="song-gallery song-preview-gallery px-4 py-6 sm:px-7 sm:py-8" data-song-theme={theme}>
+          <SongPortalEntry key={theme} theme={theme} />
           <header className="song-preview-header">
             <div className="song-preview-title-wrap">
               <div className="song-progress-ring" style={{ background: 'conic-gradient(#7a9a95 '+(demos.length?count/demos.length*100:0)+'%, #d8d4ca 0)' }}>
@@ -107,9 +112,12 @@ function App() {
           </header>
           <div className="song-preview-demo-tip">
             <span>视觉演示站 · 所有成就状态均为模拟，不读取或保存学习数据</span>
-            <button type="button" onClick={() => setShowAllUnlocked(x => !x)}>
+            <div className="song-preview-mist-controls">
+              <button type="button" onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}>{theme === 'light' ? '切换夜卷主题' : '切换晨卷主题'}</button>
+              <button type="button" onClick={() => setShowAllUnlocked(x => !x)}>
               {showAllUnlocked ? '恢复模拟状态' : '展示全部解锁'}
-            </button>
+              </button>
+            </div>
           </div>
           <section className="song-preview-master-stage" aria-label="百词基石精修藏品，优先验收">
             <div className="song-preview-master-curator">
@@ -153,6 +161,7 @@ function App() {
                     <span className="song-preview-status">{isUnlocked ? '✓ 已解锁' : '◇ 未解锁'}</span>
                   </div>
                   <SongArtwork category={item.category} hidden={item.hidden && !isUnlocked}/>
+                  {!isUnlocked && <SongMistLayer status={item.hidden ? 'hidden' : 'locked'} theme={theme}/>}
                   <SongSeal title={item.title} rarity={item.rarity} unlocked={isUnlocked}/>
                   <div className="song-card-title">{item.title}</div>
                   <div className="song-card-body">{item.copy.reflection}</div>
