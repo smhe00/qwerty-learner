@@ -41,6 +41,9 @@ async function checkViewport(name, width, height) {
   assert.equal(response.status(), 200)
   await page.locator('.song-preview-gallery').waitFor()
   assert.equal(await page.locator('.song-picture-mist').count() > 0, true, 'at least one locked card has mist')
+  // Locked artworks sit below the curator showcase and use native lazy loading.
+  // A browser smoke must scroll them into the viewport before demanding decode.
+  await page.locator('.song-picture-mist').first().scrollIntoViewIfNeeded()
   await page.waitForFunction(() => Array.from(document.querySelectorAll('.song-picture-mist-near')).some(img => img.naturalWidth > 0), null, { timeout: 12000 })
   const fogImages = await page.locator('.song-picture-mist-near').count()
   console.log(name + ' cloud diagnostic:', {
