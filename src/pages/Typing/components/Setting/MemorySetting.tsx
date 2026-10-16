@@ -9,7 +9,7 @@ const MIN_DAILY_NEW_WORD_TARGET = 1
 const MAX_DAILY_NEW_WORD_TARGET = 200
 
 function normalizeDailyNewWordTarget(value: number): number {
-  if (!Number.isFinite(value)) return 32
+  if (!Number.isFinite(value)) return 20
   return Math.min(
     MAX_DAILY_NEW_WORD_TARGET,
     Math.max(MIN_DAILY_NEW_WORD_TARGET, Math.floor(value)),
@@ -48,7 +48,7 @@ export default function MemorySetting() {
           <div className={styles.section}>
             <span className={styles.sectionLabel}>每日新词目标</span>
             <span className={styles.sectionDescription}>
-              Learn 每天自动引入的新词目标。默认 32；未完成的额度不会累积到下一天。
+              Learn 每天自动引入的新词目标。默认 20；未完成的额度不会累积到下一天。
             </span>
             <div className={styles.block}>
               <label
@@ -80,7 +80,7 @@ export default function MemorySetting() {
           <div className={styles.section}>
             <span className={styles.sectionLabel}>每阶段词数</span>
             <span className={styles.sectionDescription}>
-              Learn 每个学习阶段的单词数量。默认 20；调整后从下一阶段生效，剩余词数不足时按实际数量安排。
+              Learn 每个学习阶段的单词数量。默认 10；调整后从下一阶段生效，剩余词数不足时按实际数量安排。
             </span>
             <div className={styles.block}>
               <label className={styles.blockLabel} htmlFor="learn-block-size">单词 / 阶段</label>
