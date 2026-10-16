@@ -44,7 +44,25 @@ async function checkViewport(name, width, height) {
   // Locked artworks sit below the curator showcase and use native lazy loading.
   // A browser smoke must scroll them into the viewport before demanding decode.
   await page.locator('.song-picture-mist').first().scrollIntoViewIfNeeded()
-  await page.waitForFunction(() => Array.from(document.querySelectorAll('.song-picture-mist-near')).some(img => img.naturalWidth > 0), null, { timeout: 12000 })
+  await page.waitForTimeout(1200)
+  const imageStates = await page.locator('.song-picture-mist-near').evaluateAll(nodes =>
+    nodes.map(node => ({src:node.currentSrc,complete:node.complete,width:node.naturalWidth,failed:node.dataset.failed}))
+  )
+  const blobDecode = await page.evaluate(async relative => {
+    const response = await fetch(relative)
+    const blob = await response.blob()
+    try {
+      const bitmap = await createImageBitmap(blob)
+      const size = {width:bitmap.width,height:bitmap.height}
+      bitmap.close()
+      return {status:response.status,mime:blob.type,decoded:size}
+    } catch (error) {
+      return {status:response.status,mime:blob.type,error:String(error)}
+    }
+  }, 'assets/achievements/song/shared/mist/near-light.webp')
+  console.log(name + ' image decoded state', imageStates, blobDecode)
+  assert.ok(imageStates.some(item => item.width > 0), name + ' lazy loaded fog not decoded: ' + JSON.stringify({imageStates,blobDecode}))
+
   const fogImages = await page.locator('.song-picture-mist-near').count()
   console.log(name + ' cloud diagnostic:', {
     fogImages, brokenImages, fogResponses, resourceFailures,
