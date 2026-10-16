@@ -18,3 +18,5 @@
 @media (prefers-reduced-motion:reduce) {
   .song-portal-entry{animation:none;display:none;}
 }
+
+.song-picture-mist img[data-failed="true"], .song-portal-entry img[data-failed="true"] {visibility:hidden !important;}
