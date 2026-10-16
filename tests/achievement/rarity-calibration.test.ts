@@ -78,13 +78,13 @@ test('goal and voluntary continuation count distinct local calendar days, not re
     dict: 'dict', metricValues: { [metric]: 1 }, unlockedAchievementIds: [],
   })
   const metric = 'first_recommended_learn_goal_completed'
-  const history = [event(1, 0, metric), event(2, 0, metric), event(3, 1, metric), event(4, 2, metric)]
+  const history = [event(1, 0, metric), event(2, 0, metric), event(3, 1, metric), event(4, 2, metric), event(5, 3, metric)]
   assert.equal(countEvidenceDays(history, metric, START + 3 * DAY, true), 4)
   assert.equal(countEvidenceDays(history, metric, START + 4 * DAY, true), 4 + 1)
   const continueMetric = 'voluntary_continue_after_session'
   assert.equal(countEvidenceDays([event(1, 0, continueMetric), event(2, 0, continueMetric)],
     continueMetric, START + DAY, true), 2)
-  assert.equal(countEvidenceDays([event(1, 0, continueMetric), event(2, DAY, continueMetric)],
+  assert.equal(countEvidenceDays([event(1, 0, continueMetric), event(2, 1, continueMetric)],
     continueMetric, START + 2 * DAY, true), 3)
 })
 
