@@ -6,6 +6,10 @@ on:
       - design/achievement-song-aesthetic-20261016
     paths:
       - 'src/pages/Achievements/**'
+      - 'src/achievement/visual-assets/**'
+      - 'src/song-preview/**'
+      - 'public/assets/achievements/song/**'
+      - 'scripts/validate-song-art-assets.mjs'
       - 'docs/design/Song-Achievement-Collection-v1.md'
       - '.github/workflows/song-achievement-preview-gate.yml'
   workflow_dispatch:
@@ -25,7 +29,8 @@ jobs:
           cache: yarn
       - run: yarn install --frozen-lockfile
       - run: yarn validate:achievement-culture
-      - run: yarn eslint src/pages/Achievements --ext .ts,.tsx
+      - run: node scripts/validate-song-art-assets.mjs
+      - run: yarn eslint src/pages/Achievements src/achievement/visual-assets src/song-preview --ext .ts,.tsx
       - name: Audit TypeScript in achievement UI
         shell: bash
         run: |
@@ -34,7 +39,7 @@ jobs:
           result=$?
           set -e
           if [ "$result" -ne 0 ]; then
-            if grep -E '^src/pages/Achievements/' "$RUNNER_TEMP/song-tsc.log"; then
+            if grep -E '^src/(pages/Achievements|achievement/visual-assets|song-preview)/' "$RUNNER_TEMP/song-tsc.log"; then
               echo "::error::TypeScript errors detected in Song Achievement UI"
               exit 1
             fi
