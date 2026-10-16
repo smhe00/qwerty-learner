@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { AppError } from '../../cloud-functions/_shared/core.js'
 import { resetAuthRateLimitMemoryForTest } from '../../cloud-functions/_shared/auth-rate-limit.js'
-import { createCircleOpenGateway, circleAccountHasActivity } from '../../cloud-functions/_shared/circle/open-gateway.js'
+import { circleAccountHasActivity, createCircleOpenGateway } from '../../cloud-functions/_shared/circle/open-gateway.js'
 
 const owner = 'a'.repeat(32)
 const student = 'b'.repeat(32)
