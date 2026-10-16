@@ -22,7 +22,7 @@ test('published Pages: matching SHA, cloud disabled, Learn route and reload dura
     expect(page.url()).not.toContain('~and~')
   }
   await page.getByRole('button', { name: '打开设置对话框' }).click()
-  await page.getByRole('tab', { name: '数据设置' }).click()
+  await page.getByRole('tab', { name: '数据与备份' }).click()
   // P1 removes the entire cloud account/sync section in Pages builds.
   // Verify local backup remains available and cloud actions are absent.
   await expect(page.getByText('本地备份', { exact: true })).toBeVisible()
