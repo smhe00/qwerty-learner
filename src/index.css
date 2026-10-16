@@ -89,6 +89,59 @@ body,
   color: var(--focus-text-secondary);
 }
 
+/* One visual contract for the compact icon actions in Learn/Typing navigation.
+   Keyboard focus and Enter belong to the word/session controls, not these
+   pointer-only triggers. Do not style the popover/dialog's interactive content. */
+.focus-header-nav .focus-toolbar-icons button[data-toolbar-trigger] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--focus-text-secondary);
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+  box-shadow: none;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+
+.focus-header-nav .focus-toolbar-icons button[data-toolbar-trigger] > svg,
+.focus-header-nav .focus-toolbar-icons button[data-toolbar-trigger] > .icon,
+.focus-header-nav .focus-toolbar-icons button[data-toolbar-trigger] > div > svg {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+}
+
+.focus-header-nav .focus-toolbar-icons button[data-toolbar-trigger]:not(:disabled):hover {
+  color: var(--focus-text);
+  background: var(--focus-surface-muted);
+}
+
+.focus-header-nav .focus-toolbar-icons button[data-toolbar-trigger][data-toolbar-active='true']:not(:disabled) {
+  color: var(--focus-accent);
+  background: var(--focus-accent-soft);
+}
+
+.focus-header-nav .focus-toolbar-icons button[data-toolbar-trigger]:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+  color: var(--focus-text-muted);
+  background: transparent;
+}
+
+.focus-header-nav .focus-toolbar-icons button[data-toolbar-trigger]:focus,
+.focus-header-nav .focus-toolbar-icons button[data-toolbar-trigger]:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 /* Keep the primary Start/Pause action aligned at the end of whichever
    responsive row it occupies; it must never appear as an orphan left tag. */
 .focus-header-nav [data-typing-primary-controls] {
