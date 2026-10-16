@@ -115,7 +115,7 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
   const content = (
     <>
       <main className={embedded ? 'w-full px-1 pb-5 pt-1' : 'container mx-auto w-full flex-1 px-3 pb-10 pt-6 sm:px-8'}>
-        <div className="song-gallery px-4 py-5 sm:px-7 sm:py-7" data-song-achievement-gallery>
+        <div className="song-gallery px-4 py-5 sm:px-7 sm:py-7" data-song-achievement-gallery data-song-theme={songTheme}>
           <SongPortalEntry theme={songTheme} />
           <header className="flex flex-wrap items-start justify-between gap-5">
             <div className="flex items-center gap-4">
