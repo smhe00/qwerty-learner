@@ -1,0 +1,65 @@
+name: Circle P0 etest Maker env metadata audit
+on:
+  push:
+    branches:
+      - qa/circle-p0-etest-20261016
+    paths:
+      - '.github/workflows/circle-p0-etest-env-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Install official Makers SDK (no postinstall)
+        run: npm install --no-save --ignore-scripts --prefix "$RUNNER_TEMP/circle-makers-sdk" @edgeone/makers-sdk
+      - name: Read project identity and Circle ENV NAMES ONLY (no values or writes)
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+        run: |
+          cd "$RUNNER_TEMP/circle-makers-sdk"
+          node --input-type=module <<'NODE'
+          import { Makers } from '@edgeone/makers-sdk'
+          const token = process.env.EDGEONE_API_TOKEN
+          if (!token) {
+            console.log('CIRCLE_ETEST_ENV_AUDIT=' + JSON.stringify({ state: 'NO_EDGEONE_SDK_TOKEN', noWrite: true }))
+            process.exit(0)
+          }
+          const makers = new Makers({ token })
+          const items = []
+          try {
+            for await (const p of makers.projects.listAll()) {
+              // Only exact site binding is sufficient to authorize reading env names.
+              let detail
+              try { detail = await makers.projects.get({ projectId: p.projectId }) }
+              catch { continue }
+              const domains = [detail.presetDomain, p.presetDomain,
+                ...(Array.isArray(detail.domains) ? detail.domains : []),
+                ...(Array.isArray(detail.customDomains) ? detail.customDomains : []),
+              ].map(v => typeof v === 'string' ? v.toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '') : '')
+              if (!domains.includes('etest.edgeone.dev')) continue
+              items.push(p.projectId)
+            }
+          } catch {
+            console.log('CIRCLE_ETEST_ENV_AUDIT=' + JSON.stringify({ state: 'PROJECT_DISCOVERY_UNAVAILABLE', noWrite: true }))
+            process.exit(0)
+          }
+          if (items.length !== 1) {
+            console.log('CIRCLE_ETEST_ENV_AUDIT=' + JSON.stringify({ state: 'EXACT_ETEST_PROJECT_NOT_UNIQUE', matchCount: items.length, noWrite: true }))
+            process.exit(0)
+          }
+          const wanted = ['CIRCLE_ETEST_ENABLED', 'CIRCLE_ETEST_BLOB_STORE',
+            'CIRCLE_ETEST_INVITE_KEY', 'CIRCLE_ETEST_USER_IDS']
+          try {
+            const vars = await makers.projects.listEnvs({ projectId: items[0] })
+            const names = new Set(vars.map(v => v.key))
+            console.log('CIRCLE_ETEST_ENV_AUDIT=' + JSON.stringify({
+              state: 'PROJECT_FOUND',
+              selectedKeys: Object.fromEntries(wanted.map(k => [k, names.has(k)])),
+              valuesReadIntoLogs: false, noWrite: true, noDeployment: true,
+            }))
+          } catch {
+            console.log('CIRCLE_ETEST_ENV_AUDIT=' + JSON.stringify({ state: 'ENV_READ_UNAVAILABLE', noWrite: true }))
+          }
+          NODE
