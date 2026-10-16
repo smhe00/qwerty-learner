@@ -1,0 +1,66 @@
+name: Song Image Mist Asset Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - design/achievement-song-aesthetic-20261016
+    paths:
+      - 'scripts/generate-song-mist.py'
+      - '.github/workflows/song-mist-assets.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: song-mist-assets
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+        with:
+          ref: design/achievement-song-aesthetic-20261016
+          persist-credentials: true
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install image raster tools
+        run: python -m pip install 'Pillow>=10,<12'
+      - name: Generate deterministic RGBA cloud pack
+        run: python scripts/generate-song-mist.py
+      - name: Check alpha, resolution, file sizes, and complete theme set
+        shell: bash
+        run: |
+          python - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          root = Path('public/assets/achievements/song/shared/mist')
+          expected = {'near-light', 'near-dark', 'far-light', 'far-dark'}
+          assert {p.stem for p in root.glob('*.webp')} == expected
+          for p in root.glob('*.webp'):
+              image = Image.open(p)
+              assert image.size == (1024, 512), p
+              assert 'A' in image.getbands(), p
+              lo, hi = image.getchannel('A').getextrema()
+              assert lo == 0 and hi > 5, (p, lo, hi)
+              assert p.stat().st_size < 150000, p
+              print(p, p.stat().st_size, (lo, hi))
+          PY
+      - name: Commit binary artwork only to the isolated research branch
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/assets/achievements/song/shared/mist/
+          if git diff --cached --quiet; then
+            echo 'Mist pack unchanged'
+          else
+            git commit -m 'art(song): deterministic image cloud veils for locked achievements'
+            git push origin HEAD:design/achievement-song-aesthetic-20261016
+          fi
