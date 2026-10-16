@@ -1,5 +1,6 @@
 import logo from '@/assets/logo.svg'
 import type React from 'react'
+import { Link } from 'react-router-dom'
 
 const MobilePage: React.FC = () => {
   return (
@@ -39,6 +40,17 @@ const MobilePage: React.FC = () => {
             当前以桌面 Chrome / Edge 为主要验证环境。移动端完整学习体验尚未开放，
             本页面仅用于说明版本状态。
           </p>
+        </section>
+
+        <section className="rounded-2xl border border-[#bccdc3] bg-[#f5f4eb] p-5">
+          <h3 className="text-lg font-semibold text-[#345c54]">成就雅集 · 移动端视觉体验</h3>
+          <p className="mt-2 text-sm leading-6 text-[#61726b]">
+            可查看云雾锁定、明暗主题和展卷钤印效果；仅开放成就展示，手机端完整 Learn/Typing 尚未启用。
+          </p>
+          <Link to="/achievements"
+            className="mt-4 inline-flex min-h-[44px] items-center rounded-lg bg-[#557c72] px-5 py-2.5 text-sm font-semibold text-white">
+            打开成就雅集
+          </Link>
         </section>
 
         <section className="grid gap-4">
