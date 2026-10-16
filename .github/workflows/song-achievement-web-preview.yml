@@ -6,6 +6,7 @@ on:
       - design/achievement-song-aesthetic-20261016
     paths:
       - 'preview/song-achievements/**'
+      - 'src/song-preview/**'
       - 'src/pages/Achievements/**'
       - 'src/resources/achievementCulture/**'
       - 'vite.song-preview.config.ts'
@@ -37,7 +38,7 @@ jobs:
       - name: Validate achievement definitions
         run: yarn validate:achievement-culture
       - name: Lint standalone preview and artwork
-        run: yarn eslint preview/song-achievements src/pages/Achievements --ext .ts,.tsx
+        run: yarn eslint src/song-preview src/pages/Achievements --ext .ts,.tsx
       - name: Build standalone preview without Learn DB startup
         run: yarn vite build --config vite.song-preview.config.ts
       - name: Add preview marker and verify HTML entry
