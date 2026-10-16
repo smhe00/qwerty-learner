@@ -20,8 +20,24 @@ async function checkDesktop() {
     const cards=page.locator('.song-v2-card')
     assert.equal(await cards.count(),19,'P0 card count preserved')
     const gallery = page.locator('.song-v2-grid')
-    const columns=await gallery.evaluate(x=>getComputedStyle(x).gridTemplateColumns.split(' ').filter(Boolean).length)
-    assert.equal(columns,3,'desktop must be three-column gallery')
+    const countColumns = () => gallery.evaluate(x=>getComputedStyle(x).gridTemplateColumns.split(' ').filter(Boolean).length)
+    const wideColumns=await countColumns()
+    assert.equal(wideColumns,4,'wide desktop should grow to four portrait columns')
+    // Resize *the grid itself* to exercise actual container width, independent
+    // of device/user-agent labels and without remounting the Learn workspace.
+    for (const [width,expected] of [[500,2],[790,3]]) {
+      await gallery.evaluate((node,w)=>{node.style.width=w+'px'},width)
+      assert.equal(await countColumns(),expected,
+        'container '+width+'px should produce '+expected+' columns')
+    }
+    await gallery.evaluate(node=>node.style.removeProperty('width'))
+    assert.equal(await countColumns(),wideColumns,'restoring available width restores columns')
+    const cardWidths=await cards.evaluateAll(nodes=>[
+      nodes[0].getBoundingClientRect().width,
+      nodes[nodes.length-1].getBoundingClientRect().width,
+    ])
+    assert.ok(Math.abs(cardWidths[0]-cardWidths[1])<2,
+      'Incomplete last row must not stretch cards: '+JSON.stringify(cardWidths))
     const box=await cards.first().boundingBox()
     const ratio=box.width/box.height
     console.log('Portrait card desktop geometry', box, 'ratio',ratio)
@@ -101,7 +117,15 @@ async function checkMobile() {
     await page.goto(base+'/achievements',{waitUntil:'domcontentloaded'})
     await page.locator('[data-song-achievement-gallery]').waitFor({timeout:20000})
     const n=await page.locator('.song-v2-grid').evaluate(x=>getComputedStyle(x).gridTemplateColumns.split(' ').filter(Boolean).length)
-    assert.equal(n,2,'390px phone two-column collector')
+    assert.equal(n,2,'390px phone naturally fits two portrait cards')
+    await page.setViewportSize({width:320,height:844})
+    const narrow=await page.locator('.song-v2-grid').evaluate(x=>
+      getComputedStyle(x).gridTemplateColumns.split(' ').filter(Boolean).length)
+    assert.equal(narrow,1,'320px phone should automatically use one column')
+    const narrowDims=await page.evaluate(()=>({width:document.documentElement.scrollWidth,viewport:innerWidth}))
+    assert.ok(narrowDims.width<=narrowDims.viewport+2,
+      '320px gallery must not overflow '+JSON.stringify(narrowDims))
+    await page.setViewportSize({width:390,height:844})
     const dims=await page.evaluate(()=>({width:document.documentElement.scrollWidth,viewport:innerWidth}))
     assert.ok(dims.width<=dims.viewport+2,'No horizontal overflow '+JSON.stringify(dims))
     await page.screenshot({path:dir+'/mobile.png',fullPage:false})
