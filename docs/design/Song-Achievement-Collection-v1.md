@@ -1,3 +1,5 @@
+> **ARCHIVED / 被新架构替代（2026-10-16）**：以下是第一代 SVG/CSS 技术原型记录。图片优先正式视觉方案、未解锁云雾、亮暗双主题 Focus 入境、原始需求与目标图，请以 [成就雅集视觉文档集](./achievement-song-collection/README.md) 为准。当前原型可通过研究分支独立 Pages 预览，但并未达到目标图的视觉质量。
+
 # QWERTY Plus · 宋韵成就雅集（独立研究分支）
 
 > Scope: \`design/achievement-song-aesthetic-20261016\`. Base: \`product/main\` @ \`7a4f37e2611e1b091fc9813e195a17d60ea09884\`.
