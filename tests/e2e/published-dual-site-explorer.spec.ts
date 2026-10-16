@@ -8,7 +8,7 @@ import { writeFileSync } from 'node:fs'
  */
 const sites = [
   { name: 'pages', base: 'https://smhe00.github.io/qwerty-learner/', origin: 'https://smhe00.github.io', prefix: '/qwerty-learner/', cloud: false },
-  { name: 'edgeone', base: 'https://qwerty-plus.edgeone.dev/', origin: 'https://qwerty-plus.edgeone.dev', prefix: '/', cloud: true },
+  { name: 'edgeone', base: 'https://q.smhe.cn/', origin: 'https://q.smhe.cn', prefix: '/', cloud: true },
 ] as const
 type Site = (typeof sites)[number]
 
