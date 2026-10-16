@@ -105,7 +105,7 @@ export default function Setting() {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="focus-overlay-panel flex max-h-[88vh] w-[min(94vw,800px)] min-w-0 flex-col overflow-hidden rounded-[20px] p-0">
+                <Dialog.Panel className="focus-overlay-panel focus-settings-dialog flex max-h-[88vh] w-[min(94vw,800px)] min-w-0 flex-col overflow-hidden rounded-[20px] p-0">
                   <div className="focus-overlay-header relative flex min-h-16 shrink-0 items-center justify-between px-4 py-3 sm:px-6">
                     <div className="min-w-0 text-left">
                       <Dialog.Title className="text-xl font-semibold tracking-tight">设置</Dialog.Title>
