@@ -44,7 +44,10 @@ export default function Setting() {
     // Reopening settings focuses the active mode, not the previously visited tab.
     // The separate data-settings shortcut below deliberately takes precedence.
     setSelectedTabIndex(isLearnMode ? 2 : 1)
-    setIsOpen(true)
+    // Mount after the pointer activation has finished. Otherwise the newly
+    // mounted Headless UI outside-click observer may dismiss the dialog from
+    // the very click which opened it (especially in fresh S1 workspaces).
+    window.requestAnimationFrame(() => setIsOpen(true))
     if (dispatch) {
       dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })
     }
