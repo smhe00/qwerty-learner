@@ -29,3 +29,12 @@
 3. 最后补近远雾质量评审和响应式排版，走 Storybook/独立 preview 浏览器 E2E、Focus overlay 实网前门禁；用户明确批准后才能考虑合入主线。
 
 注：本轮图像生成产物主要是整页概念流程板，没有符合生产约束的“无字器物透明图”，**不按资产表入库，也不会标记美术已完成**。
+
+
+## 浏览器真实验证与二进制完整性收口（同日追加）
+
+- 问题：仓库原有 `.gitattributes` 使用 `* text eol=lf`，未给 `*.webp` 声明 binary。Git 上传过程将 WebP 内部换行字节归一化，产生 HTTP 200、`Content-Type: image/webp`，但 Chromium `createImageBitmap()` 报 `InvalidStateError: The source image could not be decoded`。仅检查 Pillow 打开图片不足以发现。
+- 修复：研究分支增加 `*.webp binary` / `*.avif binary`；生成器补齐 RIFF 字节对齐；`validate-song-art-assets.mjs` 增加文件 `RIFF` 声明长度检查；从 GitHub 原始存储重新检查四张均为偶数字节。
+- 真实浏览器：[Song Art Browser Smoke #38881748027](https://github.com/smhe00/qwerty-learner/actions/runs/38881748027) **成功**。Chromium 1440×900 桌面与 390×844 手机，真实 WebP 加载、明暗切换、盖印动画及主动重播、ESC 关闭、零横向溢出均通过。
+- 已部署：[Song Web Preview #38881820825](https://github.com/smhe00/qwerty-learner/actions/runs/38881820825) **成功**，`gh-pages/previews/song-achievements/assets/achievements/song/shared/mist/` 四张 WebP 均为可验证的偶数 RIFF 长度，原地址继续使用。
+- 该通过结论**仅代表浏览器技术演示和云雾图可靠加载**，不表示汝窑碗与卷轴高质量静态母版已经完成，更不表示已通过真正美术审图。
