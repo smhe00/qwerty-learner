@@ -233,7 +233,7 @@ for (const site of sites) {
       }
 
       await page.getByRole('button', { name: '打开设置对话框' }).click()
-      await page.getByRole('tab', { name: '数据设置' }).click()
+      await page.getByRole('tab', { name: '数据与备份' }).click()
       await expect(page.getByText('本地备份', { exact: true })).toBeVisible()
       if (site.cloud) {
         // S1/S2 separated account management (global header) from the
