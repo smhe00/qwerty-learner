@@ -3,8 +3,8 @@ import { idDictionaryMap } from '@/resources/dictionary'
 import { wordListFetcher } from '@/utils/wordListFetcher'
 import {
   type AchievementDefinition,
-  achievementDefinitions,
   achievementById,
+  achievementDefinitions,
 } from '@/resources/achievementCulture'
 import { db } from '@/utils/db'
 import {
