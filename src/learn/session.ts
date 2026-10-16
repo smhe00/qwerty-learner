@@ -1,4 +1,4 @@
-import { DEFAULT_LEARN_BLOCK_SIZE, normalizeLearnBlockSize } from './block-size'
+import { DEFAULT_LEARN_BLOCK_SIZE, LEGACY_LEARN_BLOCK_SIZE, normalizeLearnBlockSize } from './block-size'
 import {
   LEARN_ACQUISITION_EXPOSURE_POLICY_VERSION,
   createLearnAcquisitionExercisePlanForState,
@@ -113,19 +113,21 @@ export function shouldRotateOversizedLearnSession(
   // closed by the new-word compatibility guard.
   if (snapshot.sessionKind === 'review') return false
 
+  // New checkpoints persist their chosen blockSize; older checkpoints did
+  // not, and must retain the historical 20-word guard when recovering.
+  // Using today's default of 10 here could rotate unfinished legacy work.
+  const cohortLimit = snapshot.blockSize === undefined
+    ? LEGACY_LEARN_BLOCK_SIZE
+    : normalizeLearnBlockSize(snapshot.blockSize)
   if (snapshot.sessionKind === 'mixed') {
-    return (
-      countLearnSessionAcquisitionWords(snapshot) >
-      normalizeLearnBlockSize(snapshot.blockSize)
-    )
+    return countLearnSessionAcquisitionWords(snapshot) > cohortLimit
   }
 
   // Explicit acquisition and metadata-less legacy checkpoints use the queue
   // as the conservative cohort signal. Repeated supported/independent
   // occurrences do not increase the logical-word count.
   return (
-    countLearnSessionLogicalWords(snapshot) >
-    normalizeLearnBlockSize(snapshot.blockSize)
+    countLearnSessionLogicalWords(snapshot) > cohortLimit
   )
 }
 
