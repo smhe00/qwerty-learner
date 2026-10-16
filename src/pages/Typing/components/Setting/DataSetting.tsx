@@ -161,8 +161,8 @@ export default function DataSetting() {
       clearAllLearnDailySessions()
 
       window.alert(showCloudControls
-        ? '本地学习数据已清除，默认词库已恢复为“中考核心词”。云端账号和云端备份均未删除。'
-        : '本地学习数据已清除，默认词库已恢复为“中考核心词”。')
+        ? '本地学习数据已清除，默认词库已恢复为“上海中考2027”。云端账号和云端备份均未删除。'
+        : '本地学习数据已清除，默认词库已恢复为“上海中考2027”。')
       window.location.reload()
     } catch (error) {
       console.error('清除本地数据失败：', error)
