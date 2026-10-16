@@ -11,6 +11,7 @@ on:
       - 'tests/fsrs/g6-replay-contract.test.ts'
       - 'tests/fsrs/g6-closed-loop.test.ts'
       - 'tests/fsrs/g6-scheduler-switch.test.ts'
+      - 'tests/fsrs/g6-v4-envelope.test.ts'
       - 'docs/research/FSRS6_FULL_MODEL_RESEARCH.md'
       - '.github/workflows/fsrs6-g6-research.yml'
   workflow_dispatch:
@@ -42,9 +43,9 @@ jobs:
       - name: Build standalone research-only probe
         run: |
           mkdir -p .g6-test
-          npx esbuild tests/fsrs/g6-short-term-research.test.ts tests/fsrs/g6-rating-gate-bridge.test.ts tests/fsrs/g6-replay-contract.test.ts tests/fsrs/g6-closed-loop.test.ts tests/fsrs/g6-scheduler-switch.test.ts \
+          npx esbuild tests/fsrs/g6-short-term-research.test.ts tests/fsrs/g6-rating-gate-bridge.test.ts tests/fsrs/g6-replay-contract.test.ts tests/fsrs/g6-closed-loop.test.ts tests/fsrs/g6-scheduler-switch.test.ts tests/fsrs/g6-v4-envelope.test.ts \
             --bundle --platform=node --target=node20 --format=esm \
             --outdir=.g6-test --out-extension:.js=.mjs
 
       - name: Exercise exact native FSRS card and replay behavior
-        run: node --test .g6-test/g6-short-term-research.test.mjs .g6-test/g6-rating-gate-bridge.test.mjs .g6-test/g6-replay-contract.test.mjs .g6-test/g6-closed-loop.test.mjs .g6-test/g6-scheduler-switch.test.mjs
+        run: node --test .g6-test/g6-short-term-research.test.mjs .g6-test/g6-rating-gate-bridge.test.mjs .g6-test/g6-replay-contract.test.mjs .g6-test/g6-closed-loop.test.mjs .g6-test/g6-scheduler-switch.test.mjs .g6-test/g6-v4-envelope.test.mjs
