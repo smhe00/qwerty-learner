@@ -43,6 +43,7 @@ type HiddenWord = {
   extraDue: number | null
   // G6-3b common QWERTY same-session reinforcement after four other words.
   reinforcementAfter: number | null
+  conditionalDelayAt: number | null
   attempts: number
 }
 type SimulationMetrics = {
@@ -115,6 +116,7 @@ function simulate(
   arm: Arm, persona: Persona, seed: number, hypothesis: MemoryHypothesis,
   useCommonReinforcement = false,
   delayedFailureRescueGain = 0,
+  onlyDelayIfCommonReinforcementMissed = false,
 ): SimulationMetrics {
   const scheduler = fsrs(profile(arm))
   const words: HiddenWord[] = []
@@ -194,7 +196,13 @@ function simulate(
               word.card = scheduler.next(word.card, new Date(now), rating).card
               word.dueAt = word.card.due.getTime()
               if ((arm === 'X' || arm === 'Y') && rating === Rating.Again) {
-                word.extraDue = now + 10 * MIN
+                if (arm === 'X' && useCommonReinforcement &&
+                    onlyDelayIfCommonReinforcementMissed) {
+                  word.conditionalDelayAt = now + 10 * MIN
+                  word.extraDue = null
+                } else {
+                  word.extraDue = now + 10 * MIN
+                }
               } else if (word.extraDue !== null && word.dueAt <= now) {
                 word.extraDue = null
               }
@@ -240,6 +248,9 @@ function simulate(
               // Conservatively treat the corrective completion as training
               // with some pedagogical benefit, but no FSRS rating.
               ready.reinforcementAfter = null
+              // Four-word reinforcement fulfilled this forgetting event.
+              // Do not also schedule a redundant 10m rescue.
+              ready.conditionalDelayAt = null
               commonReinforcements++
               wordCompletions++
               now += 35_000
@@ -267,7 +278,8 @@ function simulate(
             }
             words.push({
               id, admittedAt: now, lastAt: now, strengthDays: strength,
-              card, dueAt, extraDue: null, reinforcementAfter: null, attempts: 0,
+              card, dueAt, extraDue: null, reinforcementAfter: null,
+              conditionalDelayAt: null, attempts: 0,
             })
             introducedToday++
             wordCompletions++
@@ -290,7 +302,17 @@ function simulate(
         // QWERTY's same-session reinforcement is not a persistent cross-day
         // due claim: it is forfeited when the study window ends.
         if (useCommonReinforcement) {
-          for (const word of words) word.reinforcementAfter = null
+          for (const word of words) {
+            // At session exit, fall back to the existing 10m-relative due
+            // *only* when same-session reinforcement was not completed.
+            if (onlyDelayIfCommonReinforcementMissed &&
+                word.reinforcementAfter !== null &&
+                word.conditionalDelayAt !== null) {
+              word.extraDue = word.conditionalDelayAt
+            }
+            word.reinforcementAfter = null
+            word.conditionalDelayAt = null
+          }
         }
       }
     }
@@ -461,6 +483,52 @@ test('G6-3c: sensitivity to Hint rescue gain after FAILED delayed non-FSRS pract
       activeMinutes: row.summary.activeMinutes,
       extraTraining: row.summary.extraTraining,
       commonReinforcement: row.summary.commonReinforcements,
+    })),
+  }))
+})
+
+
+test('G6-3d: conditional delayed reinforcement triggers only after the 4-word reinforcement was missed', () => {
+  const hypotheses: MemoryHypothesis[] = ['spacing-sensitive', 'repetition-sensitive']
+  const rows = hypotheses.flatMap(hypothesis => {
+    const perArm = (arm: Arm, rescueGain = 0, conditional = false) =>
+      PERSONAS.flatMap(persona => SEEDS.map(seed =>
+        simulate(arm, persona, seed, hypothesis, true, rescueGain, conditional)))
+    const a = perArm('A')
+    const x = perArm('X')
+    const fallback = perArm('X', 0, true)
+    const fallbackWithHint = perArm('X', 0.5, true)
+    const c = perArm('C')
+    assert.ok(x.reduce((n,row) => n + row.extraTraining,0) >
+      fallback.reduce((n,row) => n + row.extraTraining,0),
+      'fallback must skip 10m drills already satisfied by common reinforcement')
+    assert.ok(fallback.some(row => row.extraTraining > 0),
+      'the conditional fallback must genuinely execute on missed reinforcement')
+    const matrix = [
+      { arm:'A', rows:a },
+      { arm:'X-all', rows:x },
+      { arm:'X-missed-only', rows:fallback },
+      { arm:'X-missed-plus-hint50', rows:fallbackWithHint },
+      { arm:'C', rows:c },
+    ]
+    for(const item of matrix) assert.ok(item.rows.every(row =>
+      row.worstDayActiveMinutes <= DAILY_BUDGET / MIN + 1e-6))
+    return matrix.map(item => ({
+      arm:item.arm,hypothesis,
+      results:summarize(item.rows),
+    }))
+  })
+  console.log('G6_CONDITIONAL_DELAYED_REINFORCEMENT ' + JSON.stringify({
+    qualifier:'Synthetic study. Four-word reinforcement is approximate; missed-only fallback keeps original Again+10m timestamp and may be resumed in a later window.',
+    personas:PERSONAS.map(p=>p.id),seeds:SEEDS,days:DAYS,rows:rows.map(row=>({
+      arm:row.arm,hypothesis:row.hypothesis,
+      r7:row.results.independentProbe7.passRate,
+      r30:row.results.independentProbe30.passRate,
+      totalActiveMinutes:row.results.activeMinutes,
+      commonReinforcements:row.results.commonReinforcements,
+      nonFsrsDelayedTrials:row.results.extraTraining,
+      sameDayFsrsRatings:row.results.sameDayIndependent,
+      maxDueBacklog:row.results.maxDueBacklog,
     })),
   }))
 })
