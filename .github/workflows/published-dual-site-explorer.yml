@@ -23,7 +23,7 @@ jobs:
     timeout-minutes: 28
     env:
       PAGES_SOURCE_SHA: ${{ github.sha }}
-      QWERTY_SYNC_BASE_URL: https://qwerty-plus.edgeone.dev/
+      QWERTY_SYNC_BASE_URL: https://q.smhe.cn/
       CI: 'true'
     steps:
       - name: Checkout development test harness; do not deploy master
