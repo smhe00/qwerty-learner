@@ -6,6 +6,7 @@ on:
       - research/fsrs6-full-model-20261016
     paths:
       - 'tests/fsrs/g6-short-term-research.test.ts'
+      - 'tests/fsrs/g6-rating-gate-bridge.test.ts'
       - 'docs/research/FSRS6_FULL_MODEL_RESEARCH.md'
       - '.github/workflows/fsrs6-g6-research.yml'
   workflow_dispatch:
@@ -37,9 +38,9 @@ jobs:
       - name: Build standalone research-only probe
         run: |
           mkdir -p .g6-test
-          npx esbuild tests/fsrs/g6-short-term-research.test.ts \
+          npx esbuild tests/fsrs/g6-short-term-research.test.ts tests/fsrs/g6-rating-gate-bridge.test.ts \
             --bundle --platform=node --target=node20 --format=esm \
-            --outfile=.g6-test/g6-short-term-research.test.mjs
+            --outdir=.g6-test --out-extension:.js=.mjs
 
       - name: Exercise exact native FSRS card and replay behavior
-        run: node --test .g6-test/g6-short-term-research.test.mjs
+        run: node --test .g6-test/g6-short-term-research.test.mjs .g6-test/g6-rating-gate-bridge.test.mjs
