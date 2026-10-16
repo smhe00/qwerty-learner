@@ -471,9 +471,28 @@ test('Learn reuses Typing controls while preserving Typing-owned preferences', a
   })
   await expect(soundButton).toBeEnabled()
   await soundButton.click()
-  await expect(
-    page.getByText('开关按键音', { exact: true }),
-  ).toBeVisible()
+  const soundTitle = page.getByText('开关按键音', { exact: true })
+  if (!(await soundTitle.isVisible().catch(() => false))) {
+    const snapshot = await page.evaluate(() => ({
+      focused: document.activeElement?.outerHTML.slice(0, 180),
+      buttons: [...document.querySelectorAll('button')].filter(
+        btn => /音效设置|发音口音/.test(btn.getAttribute('aria-label') || ''),
+      ).map(btn => ({
+        label: btn.getAttribute('aria-label'),
+        expanded: btn.getAttribute('aria-expanded'),
+        headlessState: btn.getAttribute('data-headlessui-state'),
+        html: btn.outerHTML.slice(0, 220),
+      })),
+      soundLabels: [...document.querySelectorAll('span')].filter(
+        el => el.textContent === '开关按键音',
+      ).map(el => ({
+        visible: Boolean(el.getClientRects().length),
+        parents: el.parentElement?.parentElement?.outerHTML.slice(0, 250),
+      })),
+    }))
+    console.log('LEARN_SOUND_POPOVER_DIAG', JSON.stringify(snapshot))
+  }
+  await expect(soundTitle).toBeVisible()
   await page.keyboard.press('Escape')
 
   const afterLanding = await page.evaluate(() => ({
