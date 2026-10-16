@@ -76,7 +76,7 @@ jobs:
       - name: Bundle achievement domain tests
         run: |
           mkdir -p .achievement-test
-          npx esbuild tests/achievement/domain.test.ts tests/achievement/formal-model.test.ts tests/achievement/session.test.ts tests/achievement/mastery.test.ts tests/achievement/event.test.ts tests/achievement/rarity-calibration.test.ts --bundle --platform=node --target=node20 --format=esm --outdir=.achievement-test --out-extension:.js=.mjs
+          npx esbuild tests/achievement/domain.test.ts tests/achievement/formal-model.test.ts tests/achievement/session.test.ts tests/achievement/mastery.test.ts tests/achievement/event.test.ts tests/achievement/rarity-calibration.test.ts tests/achievement/award-pacing.test.ts --bundle --platform=node --target=node20 --format=esm --outdir=.achievement-test --out-extension:.js=.mjs
 
       - name: Run achievement domain tests
         run: node --test .achievement-test/domain.test.mjs
@@ -95,6 +95,9 @@ jobs:
 
       - name: Verify hard-earned achievement calibration
         run: node --test .achievement-test/rarity-calibration.test.mjs
+
+      - name: Verify one-award-per-day pacing and durable backlog
+        run: node --test .achievement-test/award-pacing.test.mjs
 
       - name: Build Qwerty Plus
         run: yarn build
