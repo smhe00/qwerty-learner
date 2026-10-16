@@ -74,7 +74,7 @@ test('block size allows clearing and multi-digit editing before validating on co
   await expect.poll(saved).toBe(20)
   await control.fill('60')
   await expect(control).toHaveValue('60')
-  expect(await saved()).toBe(10)
+  expect(await saved()).toBe(20)
   await control.blur()
   await expect(control).toHaveValue('50')
   await expect.poll(saved).toBe(50)
