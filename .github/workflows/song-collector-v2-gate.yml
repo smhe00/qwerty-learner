@@ -6,6 +6,7 @@ on:
       - feat/song-collector-v2
     paths:
       - 'src/pages/Achievements/**'
+      - 'tests/song-collector-v2/**'
       - 'src/components/NavigationOverlay.tsx'
       - 'public/assets/achievements/song/gallery/**'
       - '.github/workflows/song-collector-v2-gate.yml'
@@ -57,3 +58,23 @@ jobs:
           PY
       - name: Build product app
         run: yarn build
+      - name: Install Playwright Chromium
+        run: yarn playwright install --with-deps chromium
+      - name: Verify portrait layout in real Chromium
+        shell: bash
+        run: |
+          yarn vite preview --host 127.0.0.1 --port 4321 > "$RUNNER_TEMP/song-vite.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 25); do
+            if curl -fsS http://127.0.0.1:4321/ >/dev/null; then break; fi
+            sleep 1
+          done
+          node tests/song-collector-v2/smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: song-collector-layout-screenshots
+          path: tests/song-collector-v2/artifacts/*.png
+          if-no-files-found: ignore
+          retention-days: 7
