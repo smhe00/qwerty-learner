@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/song-collector-v2
+      - fix/song-collector-dark-rarity-and-lock-mist
     paths:
       - 'src/pages/Achievements/**'
       - 'tests/song-collector-v2/**'
