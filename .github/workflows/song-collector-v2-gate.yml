@@ -1,0 +1,59 @@
+name: Song Collector V2 Gate
+
+on:
+  push:
+    branches:
+      - feat/song-collector-v2
+    paths:
+      - 'src/pages/Achievements/**'
+      - 'src/components/NavigationOverlay.tsx'
+      - 'public/assets/achievements/song/gallery/**'
+      - '.github/workflows/song-collector-v2-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Validate real achievement catalog
+        run: yarn validate:achievement-culture
+      - name: Lint changes
+        run: yarn eslint src/pages/Achievements src/components/NavigationOverlay.tsx --ext .ts,.tsx
+      - name: Gate changed source TypeScript
+        shell: bash
+        run: |
+          set +e
+          yarn tsc --noEmit > "$RUNNER_TEMP/song-collector-tsc.log" 2>&1
+          result=$?
+          set -e
+          if [ "$result" -ne 0 ]; then
+            if grep -E '^src/(pages/Achievements/|components/NavigationOverlay[.]tsx)' "$RUNNER_TEMP/song-collector-tsc.log"; then
+              echo "::error::Song collector TypeScript diagnostics"
+              exit 1
+            fi
+            echo "::warning::Unrelated repository-wide TypeScript baseline errors remain"
+          fi
+      - name: Verify raster reference artwork WebP and RIFF bytes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import struct
+          p = Path('public/assets/achievements/song/gallery/sprite.webp')
+          b = p.read_bytes()
+          assert b[:4] == b'RIFF' and b[8:12] == b'WEBP'
+          assert struct.unpack('<I', b[4:8])[0] + 8 == len(b)
+          assert 5000 < len(b) < 250000
+          print('Approved target gallery artwork bytes:', len(b))
+          PY
+      - name: Build product app
+        run: yarn build
