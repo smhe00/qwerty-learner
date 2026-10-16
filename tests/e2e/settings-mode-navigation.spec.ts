@@ -96,3 +96,17 @@ test('saved American voice and custom daily/stage preferences survive new defaul
   await expect(page.getByRole('spinbutton', { name: '每日新词目标' })).toHaveValue('37')
   await expect(page.getByRole('spinbutton', { name: '每阶段词数' })).toHaveValue('7')
 })
+
+test('375px mobile header keeps settings and mode buttons visibly reachable', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+  await gotoReviewAppReady(page, '/typing')
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Learn', exact: true })).toBeVisible()
+  const geometry = await page.locator('header .focus-header-nav').evaluate((nav) => {
+    const rect = nav.getBoundingClientRect()
+    return { x: rect.x, right: rect.right, width: rect.width }
+  })
+  expect(geometry.width).toBeGreaterThan(300)
+  expect(geometry.x).toBeGreaterThanOrEqual(0)
+  expect(geometry.right).toBeLessThanOrEqual(375)
+})
