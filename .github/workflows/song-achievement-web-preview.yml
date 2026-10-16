@@ -1,0 +1,59 @@
+name: Song Achievement Web Preview
+
+on:
+  push:
+    branches:
+      - design/achievement-song-aesthetic-20261016
+    paths:
+      - 'preview/song-achievements/**'
+      - 'src/pages/Achievements/**'
+      - 'src/resources/achievementCulture/**'
+      - 'vite.song-preview.config.ts'
+      - '.github/workflows/song-achievement-web-preview.yml'
+  workflow_dispatch:
+
+# Serialize writes to gh-pages with the existing main Pages publisher.
+concurrency:
+  group: github-pages-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout research branch
+        uses: actions/checkout@v4
+      - name: Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Install pinned dependencies
+        run: yarn install --frozen-lockfile
+      - name: Validate achievement definitions
+        run: yarn validate:achievement-culture
+      - name: Lint standalone preview and artwork
+        run: yarn eslint preview/song-achievements src/pages/Achievements --ext .ts,.tsx
+      - name: Build standalone preview without Learn DB startup
+        run: yarn vite build --config vite.song-preview.config.ts
+      - name: Add preview marker and verify HTML entry
+        shell: bash
+        run: |
+          test -f .song-preview-build/index.html
+          grep -q 'assets/' .song-preview-build/index.html
+          printf '%s\n' "$GITHUB_SHA" > .song-preview-build/preview-commit.txt
+          grep -R -q '宋韵' preview/song-achievements/index.html
+      - name: Publish only the preview subdirectory, preserving main Pages files
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./.song-preview-build
+          destination_dir: previews/song-achievements
+          keep_files: true
+          commit_message: "preview(song): isolated gallery from ${{ github.sha }}"
+      - name: Print preview address
+        run: echo 'https://smhe00.github.io/qwerty-learner/previews/song-achievements/' >> "$GITHUB_STEP_SUMMARY"
