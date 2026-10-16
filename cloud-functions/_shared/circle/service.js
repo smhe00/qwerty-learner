@@ -35,7 +35,7 @@ export function createCircleService({
     throw new TypeError('Unknown Circle access model')
   }
   if (!log?.scan || !log?.append || typeof authenticate !== 'function' ||
-      typeof inviteKey !== 'string' || inviteKey.length < 32 ||
+      (inviteKey !== undefined && (typeof inviteKey !== 'string' || inviteKey.length < 32)) ||
       (accessModel === 'fenced' && typeof trustedAccess?.check !== 'function')) {
     throw new TypeError('Circle needs event log, independent trusted access in fenced mode and server invite key')
   }
@@ -102,8 +102,16 @@ export function createCircleService({
           (softMemberLimit !== undefined && maxMembers !== undefined && softMemberLimit !== maxMembers)) {
         fail(400, 'invalid_circle_input')
       }
+      // Production requires no deployment secret. In that mode, operationId
+      // MUST contain >=122 bits of client-generated UUIDv4 entropy, because
+      // it also acts as an unrecoverable private HMAC key for this invitation.
+      // Keeping the same operationId preserves deterministic retry semantics.
+      if (inviteKey === undefined &&
+          !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(operationId)) {
+        fail(400, 'circle_random_operation_id_required')
+      }
       const circleId = digest(['circle', actorUserId, operationId]).slice(0, 24)
-      const secret = crypto.createHmac('sha256', inviteKey)
+      const secret = crypto.createHmac('sha256', inviteKey ?? operationId)
         .update(JSON.stringify([circleId, actorUserId, operationId])).digest('hex').slice(0, 32)
       const ctx = { actorUserId, proof: { circleId, action: 'create', subjects: [actorUserId] } }
       const receipt = await write(token, ctx, 'CIRCLE_CREATED', operationId,
