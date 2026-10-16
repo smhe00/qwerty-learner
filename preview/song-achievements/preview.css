@@ -100,3 +100,29 @@
  .song-preview-master-stage .song-master-artplate {height:208px;}
  .song-preview-archive-title {flex-direction:column;gap:5px;}
 }
+
+
+.song-preview-mist-controls {display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.song-preview-mist-controls button {color:#466e64;text-decoration:underline;white-space:nowrap;}
+.song-preview-gallery[data-song-theme="dark"] .song-preview-demo-tip {
+  background:#31423c;color:#d8ded4;border-color:#99b9a8;
+}
+.song-preview-gallery[data-song-theme="dark"] .song-preview-demo-tip button {
+  color:#c1d5c8;
+}
+.song-preview-gallery[data-song-theme="dark"] .song-preview-archive-title>span,
+.song-preview-gallery[data-song-theme="dark"] .song-preview-archive-title small,
+.song-preview-gallery[data-song-theme="dark"] .song-preview-master-curator h2,
+.song-preview-gallery[data-song-theme="dark"] .song-preview-master-curator p {
+  color:#eee8dc;
+}
+.song-preview-gallery[data-song-theme="dark"] .song-preview-master-stage {
+  background:linear-gradient(150deg,#253538,#3a3532);
+  border-color:#83765d;
+}
+.song-preview-gallery[data-song-theme="dark"] .song-preview-master-stage .song-master-card {
+  color:#293a35;
+}
+@media(max-width:600px) {
+  .song-preview-mist-controls {width:100%;justify-content:space-between;gap:9px;}
+}
