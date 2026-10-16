@@ -50,6 +50,17 @@ def create_layer(name: str, target: Path) -> None:
     output = Image.new("RGBA", (WIDTH, HEIGHT), pigment + (0,))
     output.putalpha(Image.frombytes("L", (WIDTH, HEIGHT), bytes(alpha)))
     output.save(target, "WEBP", quality=86, method=6, lossless=False)
+    # Some Pillow/libwebp builds emit odd-length RIFF files while declaring
+    # the padded even length in bytes 4..7. Pillow tolerates the missing pad;
+    # Chromium's strict WebP decoder refuses the image. Restore RIFF padding.
+    encoded = target.read_bytes()
+    assert encoded[:4] == b"RIFF" and encoded[8:12] == b"WEBP", target
+    riff_size = int.from_bytes(encoded[4:8], byteorder="little") + 8
+    if len(encoded) + 1 == riff_size:
+        encoded += b"\x00"
+    if len(encoded) != riff_size:
+        raise ValueError(f"Invalid WebP RIFF length {len(encoded)} != {riff_size}: {target}")
+    target.write_bytes(encoded)
     assert target.stat().st_size > 1500, f"Unexpectedly empty fog layer: {target}"
     print(f"{name}: {target.stat().st_size} bytes -> {target}")
 
