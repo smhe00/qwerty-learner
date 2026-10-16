@@ -98,9 +98,8 @@
  background-size:300% 300%;background-position:var(--song-art-x) var(--song-art-y);
  background-repeat:no-repeat;filter:saturate(.87) contrast(1.02);}
 .song-v2-card[data-unlocked="false"] .song-v2-card-artwork{filter:saturate(.65) contrast(.94);}
-.song-v2-card-art .song-picture-mist{z-index:2;opacity:.42;mix-blend-mode:normal;}
-.song-v2-card[data-hidden="true"] .song-v2-card-art .song-picture-mist{opacity:.87;}
-.song-v2-card .song-picture-mist-fallback{background:#ebece24d;}
+/* Locked mist now spans the complete card rather than the artwork's
+   gradient-masked crop. Dynamic headings remain in a legible layer above. */
 .song-v2-card-seal{position:absolute;top:43%;right:12px;z-index:5;color:#fff8ed;background:#b33b2b;
  border:2px solid #b33b2b;outline:1px solid #fff8ed;outline-offset:-5px;
  width:29px;height:36px;display:grid;place-items:center;line-height:1.05;font-size:11px;font-weight:bold;transform:rotate(-7deg);
@@ -223,6 +222,91 @@
 .song-v2-collection[data-song-theme="dark"] .song-v2-card-text p,
 .song-v2-collection[data-song-theme="dark"] .song-v2-card-caption,
 .song-v2-collection[data-song-theme="dark"] .song-v2-card-status{color:#d1c6b0;}
-.song-v2-collection[data-song-theme="dark"] .song-v2-card-tier{color:#eee5d4;}
+/* Tier labels are themed below; do not inherit a pale capsule background
+   with pale text, which made the label illegible in night mode. */
 .song-v2-collection[data-song-theme="dark"] .song-v2-card-artwork{filter:brightness(.77) saturate(.74);}
 .song-v2-collection[data-song-theme="dark"] .song-v2-close{background:#2f403d;color:#ece7dc;}
+
+
+/* Full-portrait cloud veil: real WebP mist + gradual color haze. The
+   artwork remains only partially visible, with usable text and buttons above. */
+.song-v2-card-lock-mist {
+  position:absolute;
+  inset:0;
+  z-index:3;
+  pointer-events:none;
+  overflow:hidden;
+  border-radius:inherit;
+  isolation:isolate;
+  background:linear-gradient(160deg,#f3f2e6ad 0%,#d9e5df92 26%,#f1f1e4b2 70%,#ebe8d896 100%);
+}
+.song-v2-card-lock-mist .song-picture-mist {
+  inset:0;
+  opacity:.94;
+  z-index:1;
+  border-radius:inherit;
+}
+.song-v2-card-lock-mist .song-picture-mist-fallback {
+  background:linear-gradient(155deg,#eff2e7ad 2%,#e4ebe5a0 40%,#f4f0e3a6 95%);
+}
+.song-v2-card-lock-mist .song-picture-mist-far {
+  opacity:.95;
+  filter:contrast(1.18);
+}
+.song-v2-card-lock-mist .song-picture-mist-near {
+  opacity:1;
+  filter:contrast(1.22);
+}
+.song-v2-card[data-unlocked="false"] .song-v2-card-artwork {
+  filter:saturate(.4) contrast(.8) brightness(1.12);
+}
+.song-v2-card[data-unlocked="false"] .song-v2-card-text {
+  opacity:.78;
+}
+.song-v2-card[data-hidden="true"] .song-v2-card-lock-mist {
+  background:linear-gradient(160deg,#e7e8e2dd,#cbd6d1de 50%,#e8e9e0e8);
+}
+.song-v2-card[data-hidden="true"] .song-v2-card-lock-mist .song-picture-mist {
+  opacity:1;
+}
+.song-v2-card[data-hidden="true"] .song-v2-card-artwork {
+  filter:grayscale(.8) blur(2px) opacity(.52);
+}
+/* Dark theme has its own cool moonlit fog. Using low-contrast dark ink
+   alone makes the cloud indistinguishable from the dark card surface. */
+.song-v2-collection[data-song-theme="dark"] .song-v2-card-lock-mist {
+  background:linear-gradient(156deg,#637873a8,#81918ba1 44%,#596d6caa 100%);
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card-lock-mist .song-picture-mist-fallback {
+  background:linear-gradient(160deg,#a3b3a376,#748a85ac 55%,#a2aca37d);
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-hidden="true"] .song-v2-card-lock-mist {
+  background:linear-gradient(155deg,#83918acf,#71827fe6,#929c90d9);
+}
+
+/* Rarity capsules: explicit colored paper/ink combinations in dark mode.
+   Preserve the three tiers without reverting to modern saturated badges. */
+.song-v2-collection[data-song-theme="dark"] .song-v2-card-tier {
+  background:#3b4642;
+  color:#f3e7d1;
+  border:1px solid #978b74;
+  box-shadow:inset 0 0 0 1px #53645d,0 1px 3px #111c1b66;
+  text-shadow:0 1px #1f2a27a8;
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-tier="celadon"] .song-v2-card-tier {
+  background:#345c55;
+  color:#e9f4e8;
+  border-color:#86afa3;
+  box-shadow:inset 0 0 0 1px #4a716a,0 1px 3px #111c1b66;
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-tier="cinnabar"] .song-v2-card-tier {
+  background:#624831;
+  color:#ffe6af;
+  border-color:#bd9a62;
+  box-shadow:inset 0 0 0 1px #795c42,0 1px 3px #111c1b66;
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-hidden="true"] .song-v2-card-tier {
+  background:#454a47;
+  color:#e9e3d3;
+  border-color:#8c9385;
+}

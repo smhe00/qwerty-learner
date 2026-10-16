@@ -95,8 +95,12 @@ function CollectionCard({ achievement, unlockedAt, theme, onOpen }: {
       <span className="song-v2-card-tier">{hiddenLocked ? '云中秘藏' : tierLabel[tier]}</span>
       <div className="song-v2-card-art" aria-hidden="true">
         <span className="song-v2-card-artwork" style={spriteOffset(art)} />
-        {!unlocked && <SongMistLayer status={hiddenLocked ? 'hidden' : 'locked'} theme={theme} drift={false} />}
       </div>
+      {!unlocked && (
+        <span className="song-v2-card-lock-mist" aria-hidden="true">
+          <SongMistLayer status={hiddenLocked ? 'hidden' : 'locked'} theme={theme} />
+        </span>
+      )}
       {unlocked && <span className="song-v2-card-seal" aria-hidden="true">雅<br />藏</span>}
       <div className="song-v2-card-text">
         <h2>{title}</h2>
