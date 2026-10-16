@@ -5,14 +5,16 @@ import { planLearnAcquisitionCandidates, selectLearnMixedSessionItems, shouldRot
 
 const words = Array.from({ length: 70 }, (_, i) => ({ name: `word-${i}`, trans: [], usphone: '', ukphone: '' }))
 
-test('block size defaults to 20 and accepts only integer sizes 5–50', () => {
-  for (const value of [undefined, null, NaN, Infinity, '50']) assert.equal(normalizeLearnBlockSize(value), 20)
-  assert.equal(normalizeLearnBlockSize(4), 5)
+test('block size defaults to 10 and accepts only integer sizes 1–50', () => {
+  for (const value of [undefined, null, NaN, Infinity, '50']) assert.equal(normalizeLearnBlockSize(value), 10)
+  assert.equal(normalizeLearnBlockSize(0), 1)
+  assert.equal(normalizeLearnBlockSize(1), 1)
+  assert.equal(normalizeLearnBlockSize(4), 4)
   assert.equal(normalizeLearnBlockSize(51), 50)
   assert.equal(normalizeLearnBlockSize(23.9), 23)
 })
 
-for (const blockSize of [5, 20, 50]) {
+for (const blockSize of [1, 5, 10, 50]) {
   test(`block size ${blockSize} limits fresh, pending, Review and mixed cohorts`, () => {
     const base = { words, states: [], pendingStates: new Map(), introducedWords: [], freshLimit: 70, now: 1800000000, blockSize }
     assert.equal(planLearnAcquisitionCandidates(base).freshWords.length, blockSize)
@@ -33,7 +35,7 @@ for (const blockSize of [5, 20, 50]) {
 
 test('a saved 50-word block survives recovery independently of changed settings', () => {
   assert.equal(shouldRotateOversizedLearnSession({ sessionKind: 'acquisition', words: words.slice(0, 50), blockSize: 50 }), false)
-  assert.equal(shouldRotateOversizedLearnSession({ sessionKind: 'acquisition', words: words.slice(0, 21) }), true, 'legacy checkpoint keeps default size guard')
+  assert.equal(shouldRotateOversizedLearnSession({ sessionKind: 'acquisition', words: words.slice(0, 11) }), true, 'legacy checkpoint keeps default size guard')
 })
 
 
