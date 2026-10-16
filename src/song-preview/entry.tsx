@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { SongArtwork, SongSeal } from '../pages/Achievements/SongArtwork'
 import { achievementDefinitions, getAchievementCulture } from '../resources/achievementCulture'
@@ -27,17 +27,16 @@ function App() {
   const [dialogId, setDialogId] = useState<string | null>(null)
   const [ceremony, setCeremony] = useState(false)
   const [showAllUnlocked, setShowAllUnlocked] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const unlocked = (id: string) => showAllUnlocked || sampleUnlocked.has(id)
   const count = demos.filter(item => unlocked(item.id)).length
   const [search, setSearch] = useState('')
-  const visible = useMemo(() => demos.filter(item => {
+  const visible = demos.filter(item => {
     const eligible = filter === 'all' ||
       (filter === 'unlocked' && unlocked(item.id)) ||
       (filter === 'locked' && !unlocked(item.id)) ||
       (filter === 'rare' && item.rarity !== 'common')
     return eligible && item.title.includes(search.trim())
-  }), [filter, showAllUnlocked, search])
+  })
   const selected = demos.find(item => item.id === dialogId)
   const culture = selected ? getAchievementCulture(selected.id) : null
   const open = (id: string, isCeremony: boolean) => { setDialogId(id); setCeremony(isCeremony) }
@@ -143,7 +142,7 @@ function App() {
             })}
           </div>
           {!visible.length && <div className="song-empty">未找到相符的成就。</div>}
-          <footer className="song-preview-footer"><span>素笺墨印</span><span>汝窑天青</span><span>泥金朱砂</span>　·　成就不是终点，而是成长的印记</footer>
+          <footer className="song-preview-footer"><span>素笺墨印</span><span>汝窑天青</span><span>泥金朱砂</span> · 成就不是终点，而是成长的印记</footer>
         </div>
       </main>
       {selected && <div className="song-modal-backdrop" role="presentation" onClick={close}>
@@ -162,11 +161,11 @@ function App() {
           </div>}
           <p className="mt-5 text-sm tracking-widest text-[#aa4f36]">落朱成印，录入雅藏。</p>
           <p className="mt-2 text-xs text-[#85776b]">演示日期 · 2026.10.16 · 此为视觉样例</p>
-          <button type="button" className="song-modal-primary relative z-10 mt-6" onClick={close}>收好此卷　→</button>
+          <button type="button" className="song-modal-primary relative z-10 mt-6" onClick={close}>收好此卷 →</button>
         </article>
       </div>}
-      {menuOpen && <button className="song-preview-close-menu" type="button" onClick={()=>setMenuOpen(false)}>关闭目录</button>}
     </div>
   )
 }
-createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>)
+const root = document.getElementById('root')
+if (root) createRoot(root).render(<React.StrictMode><App /></React.StrictMode>)
