@@ -31,7 +31,7 @@ async function checkDesktop() {
       assert.ok(src?.endsWith('/assets/achievements/song/first-batch/'+id+'.webp'),id)
       const response=await page.request.get(new URL(src,base).toString())
       assert.equal(response.status(),200,id+' bespoke artwork must return HTTP 200')
-      assert.match(response.headers()['content-type']||'',/image\\/webp/,id)
+      assert.match(response.headers()['content-type']||'',/image\/webp/,id)
     }
     const firstArt=illustrated.first().locator('.song-v2-card-full-illustration')
     await firstArt.scrollIntoViewIfNeeded()
