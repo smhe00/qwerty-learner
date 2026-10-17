@@ -97,9 +97,16 @@
 .song-v2-corner-tr{top:6px;right:6px;border-right:2px double;border-top:2px double;border-top-right-radius:8px;}
 .song-v2-corner-bl{bottom:6px;left:6px;border-left:2px double;border-bottom:2px double;border-bottom-left-radius:8px;}
 .song-v2-corner-br{bottom:6px;right:6px;border-right:2px double;border-bottom:2px double;border-bottom-right-radius:8px;}
+/* Four painted/DOM category plaques share one Shoujin-inspired title treatment.
+   Never bundle commercial Shoujin font files without a webfont licence. An
+   installed licensed Shoujin face wins; platform calligraphic fonts remain
+   readable if that face is unavailable. */
 .song-v2-card-tier {position:relative;z-index:5;max-width:84%;min-width:91px;padding:4px 11px;
- font-size:12px;letter-spacing:.19em;border:1px solid color-mix(in srgb,var(--song-card-tone) 75%,#a7a093);
- color:#463e31;border-radius:99px;background:color-mix(in srgb,var(--song-card-tone) 24%,#fdf9ef);line-height:1.4;
+ font-family:"FZShouJinShu-S10S","FZShouJinShuS10","方正瘦金书简体","宋徽宗瘦金书","瘦金体",
+   "STKaiti","Kaiti SC","KaiTi","楷体",serif;
+ font-size:clamp(13px,1.25vw,16px);font-weight:400;font-synthesis:none;
+ letter-spacing:.12em;border:1px solid color-mix(in srgb,var(--song-card-tone) 75%,#a7a093);
+ color:#463e31;border-radius:99px;background:color-mix(in srgb,var(--song-card-tone) 24%,#fdf9ef);line-height:1.25;
  white-space:nowrap;}
 .song-v2-card-art {position:relative;align-self:stretch;flex:1;min-height:0;z-index:1;margin:-2px 0 -5px;
  overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 74%,transparent 100%);mask-image:linear-gradient(to bottom,#000 0%,#000 74%,transparent 100%);}
@@ -506,7 +513,7 @@
 .song-complete-showcase .song-v2-card[data-plaque-source="art"] .song-v2-card-tier {
   position:absolute;
   z-index:6;
-  top:5.2%;
+  top:4.2%;
   left:50%;
   transform:translateX(-50%);
   display:flex;
@@ -517,7 +524,8 @@
   min-width:0;
   height:8.1%;
   min-height:0;
-  padding:0 1px;
+  /* Slightly raise visible glyphs within the painted cartouche. */
+  padding:0 1px .22em;
   margin:0;
   border:0;
   border-radius:0;
@@ -526,9 +534,9 @@
   background:transparent;
   color:#554c3d;
   text-shadow:0 1px 1px #fff9efb2;
-  font-size:clamp(11px,1.25vw,15px);
-  letter-spacing:.13em;
-  line-height:1.15;
+  font-size:clamp(13px,1.35vw,17px);
+  letter-spacing:.11em;
+  line-height:1;
   white-space:nowrap;
 }
 /* The second (celadon) collection has its own painted pale-green plaque. */
@@ -539,6 +547,11 @@
 .song-v2-card[data-plaque-source="overlay"] .song-v2-card-tier {
   position:relative;
   z-index:6;
+  display:inline-flex;
+  justify-content:center;
+  align-items:center;
+  min-height:27px;
+  padding:4px 12px 6px;
 }
 /* Night mode may tint/brighten painted ink but must not add a second oval. */
 .song-v2-collection[data-song-theme="dark"] .song-v2-card[data-plaque-source="art"] .song-v2-card-tier,
