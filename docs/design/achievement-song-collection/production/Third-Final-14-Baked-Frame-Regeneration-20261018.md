@@ -35,6 +35,29 @@
 
 **反向要求：** No text, no Chinese characters, no lettering, no captions, no labels, no title, no watermarks, no checkmarks, no stamps, no extra badge, no outer UI chrome, no rectangular cutout with a second border, no screenshot-like mockup, no collage; blank ornamented top cartouche baked into the image; one standalone portrait scene.
 
+## 泥金朱砂八张：从成就语义推导画面（制作执行单）
+
+> 从 `src/resources/achievementCulture/achievements.json` 的 `condition`、`copy.unlockMessage`、`copy.reflection`、`artDirection` 以及 culture primaryId 对照生成，不是仅从四字标题猜测。高阶泥金朱砂属于艺术档位，不等于八项的业务 rarity。
+
+| ID | 成就实际触发语义 | 主景 / 视觉寓意 | 色彩、关系与不可误画之处 |
+|---|---|---|---|
+| `ACH_NO_HINT_25` **独立成章** | 连续25个词不用提示自行正确完成；能力独立，而非偶然蒙对 | **一叶孤舟**独自顺着清澈宽阔的江面穿越云山，水面平稳而开阔，船帆坚定、无牵引绳，极远处是新晨光。正面情绪是自信掌控、从容自主，不是悲凉孤独 | 青玉、墨蓝、微金光。不得画别人带领的队伍、外部援手、答题界面或“25”字样 |
+| `ACH_ERROR_POSITION_FIXED` **毫厘得正** | 一个难词中至少两个反复写错的位置得到独立纠正；细节处主动求精 | **精工修玉**：放大的宋代玉尺、竹篾规和半成品玉佩，两个微小错缝处以极细金线精准对准；旁边静置磨石与青玉屑，远处虚化一线清溪入海 | 细致工笔、冷青玉与温金形成“差之毫厘”的对比。不可出现现代工程尺数字、单词、电脑键盘或错误红叉 |
+| `ACH_FAILURE_RECOVERY_SESSION` **重整旗鼓** | 连续出错后没有退出，继续练习并再次独立答对 | **风雨后新草复生**：近景被风雨压倒的草仍留清晰雨痕，背风处几株新生青芽重新挺起，云隙金光照亮一条继续向前的山路；可有泊岸再启航的小舟，但不是战斗场面 | 风雨墨青与复苏浅绿、少许朱砂暖点；表达“失败仍能回来”，不能画已经无人可救的废墟、败军、奖牌 |
+| `ACH_WEEKLY_GAIN` **更上一层** | 与上一七天比较，近期 Cold Probe 正确率提升至少十个百分点；是自己的进步，不是击败他人 | **两重云台与登高楼阁**：近处较低的阶台与远处更高的一层，由优雅弧形石径接续，站上新层后江山视野展开；重点是“比昨天的自己多看见一点”，不是“一步登天” | 清晨青灰与阶台淡金线，引导目光从低到高；不画排行榜、比赛领奖台、10% 数字或陡峭无人能行的悬崖 |
+| `ACH_MASTERED_100` **百词基石** | 一百个单词进入长期稳定掌握；长期基础首次成形 | **积石铺路与汝窑莲花碗**：一枚近景小石与连续整齐渐远的河石步道（不用真的画100颗），步道通向柔和山水；一只宋式汝窑天青莲花碗置于书案或石台边，体现可珍藏的稳固基石 | 青瓷天青、米白、微金；重点是铺成“可走的路”，而不是石头孤峰或杂乱石堆 |
+| `ACH_MASTERED_500` **五百成林** | 五百个单词进入长期掌握，许多微小积累已形成规模 | **从毫末到森林**：近景幼苗与年轮可见的古木并置，层层林木向山后展开，根脉与溪水自然连接，让微小的记忆积累形成自我维持的苍翠之林 | 黛青、青绿与克制金箔，疏密有章；不能用五百个数字或五百个复制树点来象征数量 |
+| `ACH_RECOVER_5_STABLE` **百炼** | 难词多次失败后最终进入稳定掌握；在反复挫折中形成坚韧 | **竹石与砺石**：雨打风吹后仍扎根岩缝的翠竹，近景磨石上留多次打磨的纹路，细微光泽从粗粝石纹中出现；画面沉静、坚韧、不猛烈夸耀 | 黛青与朱砂、小面积金光；体现真正掌握的韧性，不能只有巨锤、烈火、胜利旗帜 |
+| `ACH_90_DAY` **岁寒不忘** | 至少九十天后仍无需提示独立回忆；持久记忆经时间验证 | **雪中长青松柏**：四季流转的细腻色层从远山春夏秋融入近景初冬积雪，苍松仍青，枝头透过沉静晨曦；一溪长流，意象是经历时间仍留存 | 深青、月白、极少沉金；不得画日历页、90字、倒计时或单纯高饱和雪景 |
+
+### 单图无字提示模板（每次只填一项意境）
+
+**主提示要求：** One single **portrait** Song-dynasty Chinese gongbi and ink-wash artwork, created as a standalone full-bleed collectible background, 960×1391 final pixel master. Use the **exact same** original first-batch `ACH_FIRST_DECODE.webp` compositional template: same exterior narrow gold outlined rectangle with matching symmetrical four-corner Song-cloud filigree, same interior parchment margin and delicate cloud curls, **one identical built-in empty ruyi-shaped horizontal cartouche near the top**, and the same lower-half subtle rice-paper mist fade for later live HTML text. Inside the scene depict [one concrete concept above] at museum-quality craftsmanship with extraordinary visual storytelling. Restrained Song palette, soft natural lighting, elegant atmospheric perspective; artistic content differs per ID but the border, blank title frame and safe text zones are identical.
+
+**Hard negatives:** ABSOLUTELY NO Chinese or Western letters, numbers, typography, labels, calligraphy, text-like ink marks, carved words, seals, stamps, checkmarks, UI/status elements, watermark, second plaque, second exterior border, collage, grid, multiple cards, artificial screenshot mockup, modern symbols or modern architecture. Draw the **blank** top label decoration as part of the base painting; all words, red seal and user-specific data are overlay resources, not painted content.
+
+**制作方式：** **每次独立生成一张**，不得提交宫格概念图；逐图核对尺寸、主视觉独特性和与第一批边框的逐像素几何一致性，不合格则不得计数。当前生成器多次误生成有字宫格图，此类输出全部判废，不进入资产目录。
+
 ## 图像与代码双重 Gate
 
 - 14 张全部是新源图，输出 960×1391，逐张 `ACH_*.webp` 覆盖各自原路径，不使用额外的运行时图形边框，编号保持不变。
