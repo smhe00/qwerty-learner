@@ -41,10 +41,10 @@ async function checkDesktop() {
       assert.equal(style.position,'absolute',source+' must align words to painted cartouche')
     }
     for(const [key,count,label] of visualGroups) {
-      await page.getByRole('button',{name:new RegExp((key==='hidden'?'秘藏':label.slice(0,2))+' \\('+count+'\\)')}).click()
+      await page.getByRole('button',{name:(key==='hidden'?'秘藏':label.slice(0,2))+' ('+count+')'}).click()
       assert.equal(await cards.count(),count,'Filter '+label)
     }
-    await page.getByRole('button',{name:/全部 \\(34\\)/}).click()
+    await page.getByRole('button',{name:'全部 (34)'}).click()
     assert.equal(await cards.count(),34)
     const illustrated=page.locator('.song-v2-card[data-art-source="first-batch"]')
     assert.equal(await illustrated.count(),10,
@@ -282,9 +282,9 @@ async function checkCompleteMuseum() {
       assert.equal(style.border,'none')
       assert.equal(style.shadow,'none')
     }
-    await page.getByRole('button',{name:/秘藏 \\(6\\)/}).click()
+    await page.getByRole('button',{name:'秘藏 (6)'}).click()
     assert.equal(await cards.count(),6)
-    await page.getByRole('button',{name:/全部 \\(34\\)/}).click()
+    await page.getByRole('button',{name:'全部 (34)'}).click()
 
     const allIds=await cards.evaluateAll(nodes=>nodes.map(n=>n.dataset.achievementId))
     assert.equal(new Set(allIds).size,34,'All IDs unique')
