@@ -106,8 +106,13 @@
  border:1px solid color-mix(in srgb,var(--song-card-tone) 75%,#a7a093);
  color:#463e31;border-radius:99px;background:color-mix(in srgb,var(--song-card-tone) 24%,#fdf9ef);line-height:1.25;
  white-space:nowrap;}
-.song-v2-plaque-lettering {display:block;width:110px;height:32px;max-width:100%;
-  object-fit:contain;pointer-events:none;user-select:none;}
+/* Each title uses the same optical ink box, independent of which batch owns
+   the border artwork. The frame is an independent decorative layer. */
+.song-v2-plaque-lettering {display:block;width:100%;height:100%;max-width:100%;
+  object-fit:contain;pointer-events:none;user-select:none;position:relative;z-index:1;}
+.song-v2-plaque-frame {position:absolute;z-index:0;
+  top:-18%;left:-8%;width:116%;height:136%;max-width:none;
+  object-fit:fill;pointer-events:none;user-select:none;}
 .song-v2-plaque-lettering[hidden] {display:none;}
 .song-v2-plaque-fallback {position:absolute;inset:0;display:flex;
  align-items:center;justify-content:center;color:transparent;
@@ -557,15 +562,40 @@
 .song-v2-card[data-tier="celadon"][data-plaque-source="art"] .song-v2-card-tier {
   color:#3f5550;
 }
-/* Batch 3 and final six have no painted cartouche: one genuine DOM plaque. */
+/* Batch 3 + final six use their own ruyi SVG border rather than a plain
+   CSS pill. Their title *glyphs* align to precisely the same ink box as
+   the first 20 cards, preventing a larger apparent font size. */
 .song-v2-card[data-plaque-source="overlay"] .song-v2-card-tier {
-  position:relative;
+  position:absolute;
   z-index:6;
-  display:inline-flex;
+  top:4.2%;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
   justify-content:center;
   align-items:center;
-  min-height:27px;
-  padding:4px 12px 6px;
+  width:67%;
+  max-width:75%;
+  min-width:0;
+  height:8.1%;
+  min-height:0;
+  padding:0 1px .22em;
+  margin:0;
+  background:transparent;
+  border:0;
+  border-radius:0;
+  outline:0;
+  box-shadow:none;
+  line-height:1;
+  white-space:nowrap;
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-plaque-source="overlay"] .song-v2-card-tier {
+  background:transparent;
+  border:0;
+  box-shadow:none;
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-plaque-source="overlay"] .song-v2-plaque-frame {
+  filter:brightness(.48) saturate(.72);
 }
 /* Night mode may tint/brighten painted ink but must not add a second oval. */
 .song-v2-collection[data-song-theme="dark"] .song-v2-card[data-plaque-source="art"] .song-v2-card-tier,
