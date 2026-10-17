@@ -281,7 +281,9 @@ export async function generateLearnMixedSessionRecord(
       : null
   const completed = dailySession ? new Set(deriveLearnExecutionProgress({ session: dailySession, wordRecords }).independentCompletedWords) : new Set<string>()
   const dueWords = extraNames
-    ? words.filter(word => plannedReviewNames?.has(word.name) && !completed.has(word.name))
+    ? selectReviewCandidates(reviewCandidates, states, now, 'force')
+        .map(item => item.originData)
+        .filter(word => plannedReviewNames?.has(word.name) && !completed.has(word.name))
     : rankDueReviewCandidates(
         selectReviewCandidates(reviewCandidates, states, now, 'due'), states,
       ).map(item => item.originData).filter(word => plannedReviewNames === null || plannedReviewNames.has(word.name))

@@ -491,3 +491,45 @@ test('five-more resumes unfinished reviews and carry-over before adding fresh wo
   assert.equal(progress.carryOverTargetWords, 1)
   assert.equal(progress.newTargetWords, 3)
 })
+
+test('five-more skips manually excluded reviews and acquisitions without claiming mastery', () => {
+  const original = {
+    ...createLearnDailySession({ dict: 'daily-test', now: START, dailyNewTarget: 1, dictionaryWords: ['new', 'fresh'], wordRecords: [], wordStates: [] }),
+    plannedReviewWords: ['excluded-review', 'active-review'],
+    carryOverAcquisitionWords: ['excluded-carry'],
+    executionExhausted: true,
+  }
+  const excluded = ['excluded-review', 'excluded-carry', 'new'].map(word => ({
+    ...reviewState(word, START - 1),
+    lifecycle: 'excluded' as const,
+    exclusion: { reason: 'manual' as const, excludedAt: START + 1 },
+  }))
+  const input = {
+    session: original,
+    now: START + 2,
+    dictionaryWords: ['excluded-review', 'active-review', 'excluded-carry', 'new', 'fresh'],
+    wordRecords: [],
+    wordStates: [...excluded, reviewState('active-review', START + 86_400)],
+  }
+  const extra = addLearnDailyNewWords(input)
+  assert.deepEqual(getLearnExtraRoundNames(extra), ['active-review', 'fresh'])
+  assert.deepEqual(extra.plannedReviewWords, original.plannedReviewWords)
+  assert.deepEqual(extra.carryOverAcquisitionWords, original.carryOverAcquisitionWords)
+  assert.equal(deriveLearnDailyProgress({ session: extra, wordRecords: [] }).completedWords, 0)
+  const restored = addLearnDailyNewWords({ ...input, wordStates: input.wordStates.map(state => state.word === 'excluded-review' ? { ...state, lifecycle: 'active' as const, exclusion: undefined } : state) })
+  assert.deepEqual(getLearnExtraRoundNames(restored), ['excluded-review', 'active-review', 'fresh'])
+})
+
+test('five-more does not reopen an exhausted cohort containing only excluded words', () => {
+  const original = {
+    ...createLearnDailySession({ dict: 'daily-test', now: START, dailyNewTarget: 1, dictionaryWords: ['new'], wordRecords: [], wordStates: [] }),
+    executionExhausted: true,
+  }
+  assert.equal(addLearnDailyNewWords({
+    session: original,
+    now: START + 2,
+    dictionaryWords: ['new'],
+    wordRecords: [],
+    wordStates: [{ ...reviewState('new', START), lifecycle: 'excluded' }],
+  }), original)
+})

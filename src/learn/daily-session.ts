@@ -434,12 +434,15 @@ export function addLearnDailyNewWords(input: {
     ...Array.from(firstAcquisitionIntroductionByWord(input.wordRecords).keys()),
   ])
   const completed = new Set(deriveLearnDailyProgress({ session, wordRecords: input.wordRecords }).independentCompletedWords)
+  const excluded = new Set(input.wordStates
+    .filter(state => state.dict === session.dict && state.lifecycle === 'excluded')
+    .map(state => state.word))
   const dictionary = new Set(input.dictionaryWords)
   const optionalPending = Array.from(firstAcquisitionIntroductionByWord(input.wordRecords).keys())
     .filter(name => !input.wordStates.some(state => state.word === name) &&
       !input.wordRecords.some(record => record.word === name && isCompletedAcquisitionRecord(record)))
   const unfinished = uniqueNames([...session.plannedReviewWords, ...session.carryOverAcquisitionWords, ...(session.plannedNewWordNames ?? []), ...optionalPending])
-    .filter(name => dictionary.has(name) && !completed.has(name)).slice(0, 5)
+    .filter(name => dictionary.has(name) && !excluded.has(name) && !completed.has(name)).slice(0, 5)
   const added = uniqueNames(input.dictionaryWords).filter(name => !known.has(name)).slice(0, 5 - unfinished.length)
   const round = [...unfinished, ...added]
   if (!round.length) return session
