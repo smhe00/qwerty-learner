@@ -44,7 +44,7 @@ async function checkDesktop() {
       assert.ok(src?.endsWith('/assets/achievements/song/second-batch/'+id+'.webp'),id)
       const response=await page.request.get(new URL(src,base).toString())
       assert.equal(response.status(),200,id)
-      assert.match(response.headers()['content-type']||'',/image\\/webp/,id)
+      assert.ok((response.headers()['content-type']||'').includes('image/webp'),id)
     }
     const secondArt=page.locator('.song-v2-card[data-art-source="second-batch"]').first().locator('img')
     await secondArt.scrollIntoViewIfNeeded()
@@ -120,6 +120,8 @@ async function checkDesktop() {
     await page.locator('.song-v2-detail').waitFor()
     await page.keyboard.press('Escape')
     await page.locator('.song-v2-detail').waitFor({state:'detached'})
+    await page.getByRole('button',{name:'展卷演示'}).click()
+    await page.locator('.song-v2-detail').waitFor()
     await page.getByRole('button',{name:'重播钤印'}).click()
     await page.getByRole('button',{name:'关闭藏品'}).click()
     await page.getByRole('button',{name:'夜卷'}).click()
