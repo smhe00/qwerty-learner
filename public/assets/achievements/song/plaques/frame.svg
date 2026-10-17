@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 126" aria-hidden="true">
+  <!-- Original Song-inspired ruyi cartouche; decoration only, no type glyphs. -->
+  <path d="M123 12H517C541 12 558 29 560 48C561 55 566 59 573 62C566 67 561 73 560 80C557 100 540 114 517 114H123C100 114 83 100 80 80C79 73 74 67 67 62C74 57 79 51 80 44C83 26 100 12 123 12Z" fill="#fff7e8" fill-opacity=".87" stroke="#ad895a" stroke-width="4.6" stroke-linejoin="round"/>
+  <g fill="#f5e9d4" fill-opacity=".73" stroke="#ad895a" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M80 40C70 38 61 41 58 50C48 47 41 51 41 59C34 61 32 70 38 74C42 77 47 77 51 75C48 85 52 92 61 94C62 103 73 108 81 100C74 95 70 88 73 82C63 82 59 75 64 69C53 68 52 57 63 56C64 46 70 43 80 48Z"/>
+    <path d="M560 40C570 38 579 41 582 50C592 47 599 51 599 59C606 61 608 70 602 74C598 77 593 77 589 75C592 85 588 92 579 94C578 103 567 108 559 100C566 95 570 88 567 82C577 82 581 75 576 69C587 68 588 57 577 56C576 46 570 43 560 48Z"/>
+  </g>
+  <g fill="none" stroke="#b49365" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M78 50C68 51 67 58 72 63C65 67 68 76 78 76M65 58C57 61 59 67 66 66M60 76C57 82 62 87 69 83"/>
+    <path d="M562 50C572 51 573 58 568 63C575 67 572 76 562 76M575 58C583 61 581 67 574 66M580 76C583 82 578 87 571 83"/>
+  </g>
+  <g fill="none" stroke="#b49365" stroke-width="2.1" opacity=".65">
+    <path d="M120 17H520M120 109H520"/>
+  </g>
+</svg>
