@@ -41,7 +41,7 @@ async function checkDesktop() {
       assert.equal(style.position,'absolute',source+' must align words to painted cartouche')
     }
     for(const [key,count,label] of visualGroups) {
-      await page.getByRole('button',{name:new RegExp(label.slice(0,2)+' \\('+count+'\\)')}).click()
+      await page.getByRole('button',{name:new RegExp((key==='hidden'?'秘藏':label.slice(0,2))+' \\('+count+'\\)')}).click()
       assert.equal(await cards.count(),count,'Filter '+label)
     }
     await page.getByRole('button',{name:/全部 \\(34\\)/}).click()
