@@ -46,7 +46,7 @@ async function checkDesktop() {
       assert.equal(response.status(),200,id)
       assert.ok((response.headers()['content-type']||'').includes('image/webp'),id)
     }
-    const secondArt=page.locator('.song-v2-card[data-art-source="second-batch"]').first().locator('img')
+    const secondArt=page.locator('.song-v2-card[data-art-source="second-batch"]').first().locator('img.song-v2-card-full-illustration')
     await secondArt.scrollIntoViewIfNeeded()
     await secondArt.evaluate(img=>img.decode())
     assert.deepEqual(await secondArt.evaluate(img=>[img.naturalWidth,img.naturalHeight]),[640,928],
