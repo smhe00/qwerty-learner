@@ -40,6 +40,27 @@ for(const a of manifest.entries){
  assert.ok(image.length < 160*1024,a.id+' oversized')
  console.log('PASS '+a.id+' '+(image.length/1024).toFixed(1)+'KiB')
 }
+// The four calligraphic plaque titles are compact, original vector paths.
+// Do not regress to an unlicensed font, embedded raster, or a second art frame.
+const titleTiers=['ink','celadon','cinnabar','hidden']
+assert.deepEqual(readdirSync(path.join(root,'plaques')).filter(name=>name.endsWith('.svg')).sort(),
+  titleTiers.map(tier=>tier+'.svg').sort())
+for(const tier of titleTiers) {
+  const svg=readFileSync(path.join(root,'plaques',tier+'.svg'),'utf8')
+  assert.match(svg,/^<svg[^>]+viewBox=/,tier+' vector viewport')
+  assert.match(svg,/<path[^>]+fill-rule="evenodd"[^>]+d="M/,tier+' drawn lettering')
+  assert.ok(!/<(?:text|font|image|script|foreignObject|use)\\b|@font-face/i.test(svg),
+    tier+' may not depend on external font or embedded bitmap')
+  assert.ok(svg.length<8000,tier+' plaque excessive payload')
+}
+const plaqueComponent=readFileSync('src/achievement/visual-assets/SongPlaqueLabel.tsx','utf8')
+const liveGallery=readFileSync('src/pages/Achievements/index.tsx','utf8')
+assert.ok(plaqueComponent.includes('assets/achievements/song/plaques/'))
+assert.ok(plaqueComponent.includes('song-v2-plaque-fallback'))
+assert.ok(liveGallery.includes('<SongPlaqueLabel'))
+assert.ok(preview.includes('<SongPlaqueLabel'))
+console.log('PASS four font-independent transparent vector titles reused across live and 34/34 museum')
+
 // Reject data-writing module imports, ignoring explanatory comments.
 const importLines=preview.split(String.fromCharCode(10)).filter(line=>line.trimStart().startsWith('import '))
 for(const forbidden of ['@/utils/db','@/achievement/repository','@/pages/Learn']) {
