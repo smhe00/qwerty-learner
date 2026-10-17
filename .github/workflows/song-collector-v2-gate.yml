@@ -9,6 +9,7 @@ on:
       - feat/song-achievement-art-batch1-20261017
       - feat/achievement-34-cards-art-batch2-20261017
       - feat/song-achievement-art-batch3-8-20261017
+      - feat/song-complete-34-showcase-final-six-20261017
     paths:
       - 'src/pages/Achievements/**'
       - 'tests/song-collector-v2/**'
@@ -17,15 +18,22 @@ on:
       - 'public/assets/achievements/song/first-batch/**'
       - 'public/assets/achievements/song/second-batch/**'
       - 'public/assets/achievements/song/third-batch/**'
+      - 'public/assets/achievements/song/final-batch/**'
+      - 'src/song-complete/**'
+      - 'preview/song-complete/**'
+      - 'vite.config.ts'
       - 'src/achievement/visual-assets/firstBatch.ts'
       - 'src/achievement/visual-assets/secondBatch.ts'
       - 'src/achievement/visual-assets/thirdBatch.ts'
+      - 'src/achievement/visual-assets/finalBatch.ts'
       - 'docs/design/achievement-song-collection/assets/First-Batch-20261017.json'
       - 'docs/design/achievement-song-collection/assets/Second-Batch-20261017.json'
       - 'docs/design/achievement-song-collection/assets/Third-Batch-20261017.json'
+      - 'docs/design/achievement-song-collection/assets/Final-Six-20261017.json'
       - 'scripts/validate-song-first-batch-art.mjs'
       - 'scripts/validate-song-second-batch-art.mjs'
       - 'scripts/validate-song-third-batch-art.mjs'
+      - 'scripts/validate-song-final-gallery.mjs'
       - '.github/workflows/song-collector-v2-gate.yml'
   workflow_dispatch:
 
@@ -51,8 +59,10 @@ jobs:
         run: node scripts/validate-song-second-batch-art.mjs
       - name: Validate eight third-batch original illustrations and real rarity
         run: node scripts/validate-song-third-batch-art.mjs
+      - name: Verify final six artworks and all 34 unique IDs
+        run: node scripts/validate-song-final-gallery.mjs
       - name: Lint changes
-        run: yarn eslint src/pages/Achievements src/components/NavigationOverlay.tsx src/achievement/visual-assets/firstBatch.ts src/achievement/visual-assets/secondBatch.ts src/achievement/visual-assets/thirdBatch.ts --ext .ts,.tsx
+        run: yarn eslint src/pages/Achievements src/components/NavigationOverlay.tsx src/achievement/visual-assets/firstBatch.ts src/achievement/visual-assets/secondBatch.ts src/achievement/visual-assets/thirdBatch.ts src/achievement/visual-assets/finalBatch.ts src/song-complete --ext .ts,.tsx
       - name: Gate changed source TypeScript
         shell: bash
         run: |
@@ -61,7 +71,7 @@ jobs:
           result=$?
           set -e
           if [ "$result" -ne 0 ]; then
-            if grep -E '^src/(pages/Achievements/|components/NavigationOverlay[.]tsx|achievement/visual-assets/(firstBatch|secondBatch|thirdBatch)[.]ts)' "$RUNNER_TEMP/song-collector-tsc.log"; then
+            if grep -E '^src/(pages/Achievements/|components/NavigationOverlay[.]tsx|achievement/visual-assets/(firstBatch|secondBatch|thirdBatch|finalBatch)[.]ts|song-complete/)' "$RUNNER_TEMP/song-collector-tsc.log"; then
               echo "::error::Song collector TypeScript diagnostics"
               exit 1
             fi
@@ -81,6 +91,10 @@ jobs:
           PY
       - name: Build product app
         run: yarn build
+      - name: Verify standalone all-unlocked museum HTML in actual production build
+        run: |
+          test -f build/preview/song-complete/index.html
+          grep -q 'assets/' build/preview/song-complete/index.html
       - name: Install Playwright Chromium
         run: yarn playwright install --with-deps chromium
       - name: Verify portrait layout in real Chromium

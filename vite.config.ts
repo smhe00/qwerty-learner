@@ -53,6 +53,14 @@ export default defineConfig(async ({ mode }) => {
       minify: true,
       outDir: 'build',
       sourcemap: false,
+      // Publish the strictly read-only 34/34 museum as a separate static
+      // HTML entry. It does not boot Learn, account, IndexedDB or sync.
+      rollupOptions: {
+        input: {
+          app: path.resolve(__dirname, 'index.html'),
+          songComplete: path.resolve(__dirname, 'preview/song-complete/index.html'),
+        },
+      },
     },
     esbuild: {
       drop: mode === 'development' ? [] : ['console', 'debugger'],
