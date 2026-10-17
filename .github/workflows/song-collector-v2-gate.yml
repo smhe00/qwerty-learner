@@ -10,6 +10,7 @@ on:
       - feat/achievement-34-cards-art-batch2-20261017
       - feat/song-achievement-art-batch3-8-20261017
       - feat/song-complete-34-showcase-final-six-20261017
+      - fix/song-visual-four-tiers-and-native-plaques-20261018
     paths:
       - 'src/pages/Achievements/**'
       - 'tests/song-collector-v2/**'
@@ -26,10 +27,12 @@ on:
       - 'src/achievement/visual-assets/secondBatch.ts'
       - 'src/achievement/visual-assets/thirdBatch.ts'
       - 'src/achievement/visual-assets/finalBatch.ts'
+      - 'src/achievement/visual-assets/visualTiers.ts'
       - 'docs/design/achievement-song-collection/assets/First-Batch-20261017.json'
       - 'docs/design/achievement-song-collection/assets/Second-Batch-20261017.json'
       - 'docs/design/achievement-song-collection/assets/Third-Batch-20261017.json'
       - 'docs/design/achievement-song-collection/assets/Final-Six-20261017.json'
+      - 'docs/design/achievement-song-collection/assets/Four-Tier-Visual-Contract-20261018.md'
       - 'scripts/validate-song-first-batch-art.mjs'
       - 'scripts/validate-song-second-batch-art.mjs'
       - 'scripts/validate-song-third-batch-art.mjs'
@@ -62,7 +65,7 @@ jobs:
       - name: Verify final six artworks and all 34 unique IDs
         run: node scripts/validate-song-final-gallery.mjs
       - name: Lint changes
-        run: yarn eslint src/pages/Achievements src/components/NavigationOverlay.tsx src/achievement/visual-assets/firstBatch.ts src/achievement/visual-assets/secondBatch.ts src/achievement/visual-assets/thirdBatch.ts src/achievement/visual-assets/finalBatch.ts src/song-complete --ext .ts,.tsx
+        run: yarn eslint src/pages/Achievements src/components/NavigationOverlay.tsx src/achievement/visual-assets/firstBatch.ts src/achievement/visual-assets/secondBatch.ts src/achievement/visual-assets/thirdBatch.ts src/achievement/visual-assets/finalBatch.ts src/achievement/visual-assets/visualTiers.ts src/song-complete --ext .ts,.tsx
       - name: Gate changed source TypeScript
         shell: bash
         run: |
@@ -71,7 +74,7 @@ jobs:
           result=$?
           set -e
           if [ "$result" -ne 0 ]; then
-            if grep -E '^src/(pages/Achievements/|components/NavigationOverlay[.]tsx|achievement/visual-assets/(firstBatch|secondBatch|thirdBatch|finalBatch)[.]ts|song-complete/)' "$RUNNER_TEMP/song-collector-tsc.log"; then
+            if grep -E '^src/(pages/Achievements/|components/NavigationOverlay[.]tsx|achievement/visual-assets/(firstBatch|secondBatch|thirdBatch|finalBatch|visualTiers)[.]ts|song-complete/)' "$RUNNER_TEMP/song-collector-tsc.log"; then
               echo "::error::Song collector TypeScript diagnostics"
               exit 1
             fi
