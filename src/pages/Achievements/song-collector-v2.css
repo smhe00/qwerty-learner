@@ -109,11 +109,11 @@
 .song-v2-plaque-lettering {display:block;width:110px;height:32px;max-width:100%;
   object-fit:contain;pointer-events:none;user-select:none;}
 .song-v2-plaque-lettering[hidden] {display:none;}
-.song-v2-plaque-fallback {position:absolute;width:1px;height:1px;margin:-1px;padding:0;
- overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+.song-v2-plaque-fallback {position:absolute;inset:0;display:flex;
+ align-items:center;justify-content:center;color:transparent;
+ pointer-events:none;white-space:nowrap;user-select:none;}
 .song-v2-plaque-lettering[hidden] + .song-v2-plaque-fallback {
- position:static;width:auto;height:auto;margin:0;overflow:visible;clip:auto;
- font-size:inherit;line-height:inherit;}
+ color:inherit;}
 .song-v2-collection[data-song-theme="dark"] .song-v2-plaque-lettering {
  filter:brightness(0) invert(.94) sepia(.12);
 }
