@@ -40,8 +40,13 @@ for(const a of manifest.entries){
  assert.ok(image.length < 160*1024,a.id+' oversized')
  console.log('PASS '+a.id+' '+(image.length/1024).toFixed(1)+'KiB')
 }
-for(const forbidden of ['@/utils/db','@/achievement/repository','@/pages/Learn','localStorage.setItem','indexedDB.open','markAchievementCultureCardSeen']){
- assert.ok(!preview.includes(forbidden),'unsafe read-only showcase dependency '+forbidden)
+// Scan code import edges, not comments explaining intentionally absent APIs.
+for(const forbidden of ['@/utils/db','@/achievement/repository','@/pages/Learn']) {
+ const imports=new RegExp('(?:from\\\\s*|import\\\\s*\\\\()[\\\\' + String.fromCharCode(34) + ']'+forbidden,'g')
+ assert.ok(!imports.test(preview),'unsafe read-only showcase import '+forbidden)
+}
+for(const forbidden of ['localStorage.setItem','indexedDB.open','markAchievementCultureCardSeen']) {
+ assert.ok(!preview.includes(forbidden),'unsafe persistence API '+forbidden)
 }
 assert.ok(preview.includes('data-showcase-all-unlocked="true"'))
 assert.ok(preview.includes('all.length !== 34'))
