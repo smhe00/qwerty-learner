@@ -7,15 +7,20 @@ on:
       - fix/song-collector-dark-rarity-and-lock-mist
       - fix/song-collector-auto-grid-20261017
       - feat/song-achievement-art-batch1-20261017
+      - feat/achievement-34-cards-art-batch2-20261017
     paths:
       - 'src/pages/Achievements/**'
       - 'tests/song-collector-v2/**'
       - 'src/components/NavigationOverlay.tsx'
       - 'public/assets/achievements/song/gallery/**'
       - 'public/assets/achievements/song/first-batch/**'
+      - 'public/assets/achievements/song/second-batch/**'
       - 'src/achievement/visual-assets/firstBatch.ts'
+      - 'src/achievement/visual-assets/secondBatch.ts'
       - 'docs/design/achievement-song-collection/assets/First-Batch-20261017.json'
+      - 'docs/design/achievement-song-collection/assets/Second-Batch-20261017.json'
       - 'scripts/validate-song-first-batch-art.mjs'
+      - 'scripts/validate-song-second-batch-art.mjs'
       - '.github/workflows/song-collector-v2-gate.yml'
   workflow_dispatch:
 
@@ -37,8 +42,10 @@ jobs:
         run: yarn validate:achievement-culture
       - name: Verify ten independent pictures against real rarity and sha256
         run: node scripts/validate-song-first-batch-art.mjs
+      - name: Validate second ten independent pictures and catalogue identity
+        run: node scripts/validate-song-second-batch-art.mjs
       - name: Lint changes
-        run: yarn eslint src/pages/Achievements src/components/NavigationOverlay.tsx src/achievement/visual-assets/firstBatch.ts --ext .ts,.tsx
+        run: yarn eslint src/pages/Achievements src/components/NavigationOverlay.tsx src/achievement/visual-assets/firstBatch.ts src/achievement/visual-assets/secondBatch.ts --ext .ts,.tsx
       - name: Gate changed source TypeScript
         shell: bash
         run: |
@@ -47,7 +54,7 @@ jobs:
           result=$?
           set -e
           if [ "$result" -ne 0 ]; then
-            if grep -E '^src/(pages/Achievements/|components/NavigationOverlay[.]tsx|achievement/visual-assets/firstBatch[.]ts)' "$RUNNER_TEMP/song-collector-tsc.log"; then
+            if grep -E '^src/(pages/Achievements/|components/NavigationOverlay[.]tsx|achievement/visual-assets/(firstBatch|secondBatch)[.]ts)' "$RUNNER_TEMP/song-collector-tsc.log"; then
               echo "::error::Song collector TypeScript diagnostics"
               exit 1
             fi
