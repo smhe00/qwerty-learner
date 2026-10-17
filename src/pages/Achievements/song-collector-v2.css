@@ -393,3 +393,50 @@
 .song-v2-card:disabled:hover { transform:none; box-shadow:0 3px 10px #66563e18,inset 0 0 0 5px #fff8eaa3; }
 .song-v2-card:disabled:focus {outline:0;}
 .song-v2-card[data-unlocked="true"] { cursor:pointer; }
+
+
+/* Third image-only art series: preserves ink/gold scroll decoration but keeps
+   all card labels, rarity, unlock state and stamped dates live in DOM. */
+.song-v2-card[data-art-source="third-batch"] {
+  background:#f8f3e6;
+  border-color:#bc9d71;
+}
+.song-v2-card[data-art-source="third-batch"]::before {
+  border-color:transparent;
+}
+.song-v2-card[data-art-source="third-batch"] .song-v2-corner {
+  opacity:0;
+}
+.song-v2-card[data-art-source="third-batch"] .song-v2-card-art {
+  opacity:0;
+  pointer-events:none;
+}
+.song-v2-card[data-art-source="third-batch"] .song-v2-card-tier {
+  box-shadow:0 2px 6px #3f352628;
+}
+.song-v2-card[data-art-source="third-batch"] .song-v2-card-text,
+.song-v2-card[data-art-source="third-batch"] .song-v2-card-status {
+  text-shadow:0 1px 2px #fffdfbd9;
+}
+.song-v2-card[data-art-source="third-batch"]::after {
+  content:"";
+  position:absolute;inset:42% 0 0;z-index:2;pointer-events:none;
+  background:linear-gradient(to bottom,transparent 0%,#f8f4e2a3 24%,#fbf5e8ef 53%,#fbf5e8f2 100%);
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-art-source="third-batch"] {
+  background:#252e2e;
+  border-color:#877963;
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-art-source="third-batch"]::after {
+  background:linear-gradient(to bottom,transparent 0%,#242d2daa 26%,#242d2bef 55%,#242d2bf7 100%);
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-art-source="third-batch"] .song-v2-card-text,
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-art-source="third-batch"] .song-v2-card-status {
+  text-shadow:0 1px 3px #172024f0;
+}
+.song-v2-card[data-unlocked="false"][data-art-source="third-batch"] .song-v2-card-full-illustration {
+  filter:saturate(.62) contrast(.86);
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-unlocked="false"][data-art-source="third-batch"] .song-v2-card-full-illustration {
+  filter:brightness(.5) saturate(.5) contrast(.9);
+}
