@@ -7,6 +7,7 @@ import { SongMistLayer } from '@/achievement/visual-assets/SongMistLayer'
 import { SongPortalEntry } from '@/achievement/visual-assets/SongPortalEntry'
 import { getFirstBatchAchievementArtUrl } from '@/achievement/visual-assets/firstBatch'
 import { getSecondBatchAchievementArtUrl } from '@/achievement/visual-assets/secondBatch'
+import { getThirdBatchAchievementArtUrl } from '@/achievement/visual-assets/thirdBatch'
 import Layout from '@/components/Layout'
 import {
   achievementDefinitions,
@@ -79,7 +80,7 @@ function CollectionCard({ achievement, unlockedAt, theme, onOpen }: {
   const title = hiddenLocked ? '秘藏 · 云中待启' : achievement.title
   const tier = hiddenLocked ? 'ink' : tierFor(achievement.rarity)
   const art = artIndexFor(achievement, hiddenLocked)
-  const specialArtUrl = getSecondBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getFirstBatchAchievementArtUrl(achievement.id, hiddenLocked)
+  const specialArtUrl = getThirdBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getSecondBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getFirstBatchAchievementArtUrl(achievement.id, hiddenLocked)
   return (
     <button
       type="button"
@@ -87,7 +88,7 @@ function CollectionCard({ achievement, unlockedAt, theme, onOpen }: {
       data-tier={tier}
       data-unlocked={unlocked ? 'true' : 'false'}
       data-hidden={hiddenLocked ? 'true' : 'false'}
-      data-art-source={getSecondBatchAchievementArtUrl(achievement.id, hiddenLocked) ? 'second-batch' : specialArtUrl ? 'first-batch' : 'sprite'}
+      data-art-source={getThirdBatchAchievementArtUrl(achievement.id, hiddenLocked) ? 'third-batch' : getSecondBatchAchievementArtUrl(achievement.id, hiddenLocked) ? 'second-batch' : specialArtUrl ? 'first-batch' : 'sprite'}
       data-achievement-id={hiddenLocked ? undefined : achievement.id}
       disabled={!unlocked}
       onClick={unlocked ? onOpen : undefined}
@@ -143,7 +144,7 @@ function CollectionDetail({ achievement, unlockedAt, sample, theme, onClose }: {
   const hiddenLocked = achievement.hidden && !unlocked
   const culture = hiddenLocked ? undefined : getAchievementCulture(achievement.id)?.primary
   const artIndex = artIndexFor(achievement, hiddenLocked)
-  const specialArtUrl = getSecondBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getFirstBatchAchievementArtUrl(achievement.id, hiddenLocked)
+  const specialArtUrl = getThirdBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getSecondBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getFirstBatchAchievementArtUrl(achievement.id, hiddenLocked)
   const [replay, setReplay] = useState(0)
   const title = hiddenLocked ? '云中秘藏' : achievement.title
   const tier = hiddenLocked ? 'ink' : tierFor(achievement.rarity)
