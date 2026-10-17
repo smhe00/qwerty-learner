@@ -88,8 +88,9 @@ function CollectionCard({ achievement, unlockedAt, theme, onOpen }: {
       data-hidden={hiddenLocked ? 'true' : 'false'}
       data-art-source={specialArtUrl ? 'first-batch' : 'sprite'}
       data-achievement-id={hiddenLocked ? undefined : achievement.id}
-      onClick={onOpen}
-      aria-label={title + (unlocked ? '，已解锁，查看藏品' : '，未解锁，查看线索')}
+      disabled={!unlocked}
+      onClick={unlocked ? onOpen : undefined}
+      aria-label={title + (unlocked ? '，已解锁，查看藏品' : '，未解锁')}
     >
       {specialArtUrl && <img
         className="song-v2-card-full-illustration"
@@ -204,7 +205,7 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
   const [sample, setSample] = useState(false)
 
   const achievements = useMemo(() => achievementDefinitions.filter(
-    achievement => achievement.enabled && achievement.presentation.rollout === 'p0',
+    achievement => achievement.enabled,
   ), [])
   const stateById = useMemo(() =>
     new Map(states.map(state => [state.achievementId, state])), [states],
@@ -235,6 +236,9 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
   })
 
   const openDetail = (achievement: AchievementDefinition) => {
+    // The collection is a complete 34-card catalogue, not an unlock bypass.
+    // P1/P2 items stay locked until awarded by the normal achievement engine.
+    if (!stateById.has(achievement.id)) return
     setSample(false)
     setDetailId(achievement.id)
     if (stateById.has(achievement.id)) {
