@@ -1,10 +1,9 @@
 import {
   completeLearnDailySession,
-  deriveLearnDailyProgress,
+  continueLearnDailyPlan,
   deriveLearnExecutionProgress,
   ensureLearnDailySession,
   getLearnExtraRoundNames,
-  saveLearnDailySession,
 } from './daily-session'
 import type { LearnDailySessionV1 } from './daily-session'
 import { buildLearnDailyPlan } from './plan'
@@ -118,50 +117,32 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
 
   await dependencies.bootstrap(dictId, now)
 
-  const unfinished = await dependencies.getLatestSession(dictId)
-  if (unfinished) {
-    const [wordRecords, wordStates] = await Promise.all([
-      dependencies.getWordRecords(dictId),
-      dependencies.getWordStates(dictId),
-    ])
-    const dailySession = ensureLearnDailySession({
-      dict: dictId,
-      now,
-      dailyNewTarget: input.dailyNewWordTarget ?? 32,
-      dictionaryWords: words.map((word) => word.name),
-      wordRecords,
-      wordStates,
-    })
-
-    return {
-      kind: 'session',
-      source: 'restored',
-      record: unfinished,
-      diagnostics: {
-        now,
-        dailySession,
-      },
-    }
-  }
-
   const [wordRecords, wordStates] = await Promise.all([
     dependencies.getWordRecords(dictId),
     dependencies.getWordStates(dictId),
   ])
+  let dailySession = continueLearnDailyPlan(ensureLearnDailySession({
+    dict: dictId,
+    now,
+    dailyNewTarget: input.dailyNewWordTarget ?? 32,
+    dictionaryWords: words.map(word => word.name),
+    wordRecords,
+    wordStates,
+  }))
+  const unfinished = await dependencies.getLatestSession(dictId)
+  if (unfinished) {
+    return {
+      kind: 'session', source: 'restored', record: unfinished,
+      diagnostics: { now, dailySession },
+    }
+  }
+
   const stats = buildLearnStatsSnapshot({
     now,
     dict: dictId,
     wordRecords,
     wordStates,
     dictionaryWords: words.map((word) => word.name),
-  })
-  let dailySession = ensureLearnDailySession({
-    dict: dictId,
-    now,
-    dailyNewTarget: input.dailyNewWordTarget ?? 32,
-    dictionaryWords: words.map((word) => word.name),
-    wordRecords,
-    wordStates,
   })
   const recoveredDailyProgress = deriveLearnExecutionProgress({
     session: dailySession,
@@ -171,13 +152,7 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
     dailySession.status === 'active' &&
     recoveredDailyProgress.complete
   ) {
-    dailySession = deriveLearnDailyProgress({ session: dailySession, wordRecords }).complete
-      ? completeLearnDailySession(dailySession, now)
-      : saveLearnDailySession({ ...dailySession, executionExhausted: true })
-  }
-
-  if (dailySession.executionExhausted && recoveredDailyProgress.complete) {
-    return wait('daily-complete', '本次加学已完成；未掌握的原计划词已保留。', { now, stats, dailySession, allowedNewWordsNow: 0 })
+    dailySession = completeLearnDailySession(dailySession, now)
   }
 
   if (dailySession.status === 'completed') {
@@ -307,11 +282,9 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
   if (dailySession.status === 'active' && recoveredDailyProgress.remainingWords > 0 &&
       nextResumeAt === undefined &&
       recoveredDailyProgress.introducedNewWords >= recoveredDailyProgress.newTargetWords) {
-    dailySession = saveLearnDailySession({ ...dailySession, executionExhausted: true })
-    diagnostics.dailySession = dailySession
     return wait(
       'deferred',
-      '本次可执行练习已经结束；未通过最终测试的单词已保留，下一学习日继续。',
+      `今日计划还有 ${recoveredDailyProgress.remainingWords} 词未完成，当前词库不足以穿插练习，请稍后继续学习。`,
       diagnostics,
     )
   }

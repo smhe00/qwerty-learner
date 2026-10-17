@@ -12,3 +12,9 @@ Deliverables: lifecycle-safe extra-round selection; regression tests; evidence-b
 Validation: exact incident-source progress/controller replay; daily-session plus relevant Learn/scheduler tests; changed-source ESLint; production build. Record existing failures separately.
 
 Status: REVIEW. See report for all results, limitations, and follow-up choices. Publish the isolated branch if available; otherwise preserve the local commit and patch for handoff.
+
+## Follow-up scope explicitly requested by the user
+
+Continue all unfinished daily words through the normal Continue action; do not require five-more. When short retry spacing is insufficient, interleave weaker previously learned words or introduce new words dynamically. Preserve lifecycle exclusions, admission evidence and real spacing. Keep the same isolated branch; no product/main integration or master/etest deployment.
+
+Acceptance: an exhausted legacy five-word boundary must not stop the daily plan; weak/new interleaving must permit eventual completion and survive reload; practice must not emit scheduler ratings or enlarge the frozen target; completed-day five-more remains available. Required checks include domain/controller tests, real Chromium + IndexedDB keyboard journeys and production build. Add the new regression tests to maintained CI. Follow-up report: interactive/reports/INCIDENT-20261017-continue-plan.md.

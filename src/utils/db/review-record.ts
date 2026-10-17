@@ -1,3 +1,4 @@
+import { hasLearnRetrySpacing, planLearnContinuation } from '@/learn/continuation'
 import { normalizeLearnBlockSize } from '@/learn/block-size'
 import { db } from './core'
 import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
@@ -25,8 +26,11 @@ import {
   shouldRotateOversizedLearnSession,
 } from '@/learn/session'
 import {
+  MIN_INDEPENDENT_INTERVENING_ITEMS,
   createLearnAcquisitionExercisePlanForState,
+  createLearnAcquisitionState,
   deferredAcquisitionCohortResumeTimes,
+  resumeDeferredAcquisition,
 } from '@/learn/acquisition'
 import type { LearnAcquisitionState } from '@/learn/acquisition'
 import {
@@ -280,7 +284,10 @@ export async function generateLearnMixedSessionRecord(
       ? new Set(dailySession.plannedReviewWords.filter(name => !extraNames || extraNames.includes(name)))
       : null
   const completed = dailySession ? new Set(deriveLearnExecutionProgress({ session: dailySession, wordRecords }).independentCompletedWords) : new Set<string>()
-  const dueWords = extraNames
+  const continuation = dailySession?.status === 'active' && dailySession.continueUnfinishedPlan
+    ? planLearnContinuation({ session: dailySession, words: canonicalizeLearningWords(words), states, records: wordRecords, now })
+    : undefined
+  const dueWords = continuation ? continuation.readyReviews : extraNames
     ? selectReviewCandidates(reviewCandidates, states, now, 'force')
         .map(item => item.originData)
         .filter(word => plannedReviewNames?.has(word.name) && !completed.has(word.name))
@@ -321,12 +328,12 @@ export async function generateLearnMixedSessionRecord(
     allowedAcquisitionNames: getLearnExtraRoundNames(dailySession) ?? (dailySession?.plannedNewWordNames
       ? [...dailySession.carryOverAcquisitionWords, ...dailySession.plannedNewWordNames]
       : undefined),
-    continuous: dueWords.length > 0,
-    spacingCandidateNames: dueWords.map((word) => word.name),
-    allowTerminalProbeOnIdle: dueWords.length === 0,
+    continuous: (continuation?.spacingWords.length ?? dueWords.length) >= MIN_INDEPENDENT_INTERVENING_ITEMS,
+    spacingCandidateNames: (continuation?.spacingWords ?? dueWords).map((word) => word.name),
+    allowTerminalProbeOnIdle: !continuation && dueWords.length === 0,
     now,
   })
-  const acquisitionCandidates = [
+  const acquisitionCandidates: Array<{ word: Word; state?: LearnAcquisitionState; resumed: boolean; practice?: boolean }> = [
     ...candidatePlan.resumed.map(({ word, state }) => ({
       word,
       state,
@@ -338,6 +345,27 @@ export async function generateLearnMixedSessionRecord(
       resumed: false as const,
     })),
   ]
+
+  const known = new Set([
+    ...(dailySession?.plannedNewWordNames ?? []),
+    ...(dailySession?.carryOverAcquisitionWords ?? []),
+    ...states.map(state => state.word),
+    ...wordRecords.filter(isAcquisitionIntroductionRecord).map(record => record.word),
+    ...Array.from(pending.keys()),
+  ])
+  const optionalNewWords = canonicalizeLearningWords(words).filter(word => !known.has(word.name))
+    .slice(0, normalizeLearnBlockSize(blockSize))
+  // A cooling target keeps the plan open. Supply actual work rather than
+  // forcing an early probe or routing the learner through "five more".
+  if (continuation && (dailyProgress?.remainingWords ?? 0) > 0 &&
+      dueWords.length === 0 && acquisitionCandidates.length === 0) {
+    const practice = continuation.spacingWords.slice(0, MIN_INDEPENDENT_INTERVENING_ITEMS)
+    const fresh = optionalNewWords.slice(0, Math.max(0, MIN_INDEPENDENT_INTERVENING_ITEMS - practice.length))
+    if (practice.length + fresh.length >= MIN_INDEPENDENT_INTERVENING_ITEMS) acquisitionCandidates.push(
+      ...practice.map(word => ({ word, state: { ...createLearnAcquisitionState(), spacingOnly: true }, resumed: true, practice: true })),
+      ...fresh.map(word => ({ word, resumed: false })),
+    )
+  }
 
   const selection = selectLearnMixedSessionItems({
     blockSize,
@@ -409,31 +437,24 @@ export async function generateLearnMixedSessionRecord(
   )
   // Optional introductions supply real intervening work, but never expand the frozen target.
   if (dailySession?.status === 'active' && dailySession.plannedNewWordNames && !getLearnExtraRoundNames(dailySession)) {
-    const known = new Set([
-      ...dailySession.plannedNewWordNames,
-      ...dailySession.carryOverAcquisitionWords,
-      ...states.map(state => state.word),
-      ...wordRecords.filter(isAcquisitionIntroductionRecord).map(record => record.word),
-      ...Array.from(pending.keys()),
-    ])
-    record.optionalNewWords = canonicalizeLearningWords(words).filter(word => !known.has(word.name)).slice(0, normalizeLearnBlockSize(blockSize))
+    record.optionalNewWords = optionalNewWords
   }
   record.blockSize = normalizeLearnBlockSize(blockSize)
   record.itemKinds = itemKinds
   if (hasAcquisition) {
     record.acquisitionStates = acquisitionStates
     record.spacingWords = selectLearnSpacingWords({
-      words: dueWords,
+      words: continuation?.spacingWords ?? dueWords,
       states,
       excludedNames: selectedWords.map((word) => word.name),
     })
   }
-  record.recommendedGoal = {
+  const targetWords = selectedWords.filter(word => !acquisitionStates[word.name]?.spacingOnly &&
+    !optionalNewWords.some(optional => optional.name === word.name))
+  if (targetWords.length > 0) record.recommendedGoal = {
     version: 1,
     kind: 'session-completion',
-    targetUniqueWords: new Set(
-      selectedWords.map((word) => word.name),
-    ).size,
+    targetUniqueWords: new Set(targetWords.map(word => word.name)).size,
   }
   record.id = await db.reviewRecords.add(record)
   return record
@@ -450,10 +471,22 @@ async function getPendingAcquisitionStates(
   ])
   const pending = collectPendingAcquisitionStates({ records, wordRecords, wordStates })
   const daily = loadLearnDailySession(dictID)
-  // A user-requested round allows a new attempt, retaining the real spacing state.
+  // Actual interleaving can satisfy the delay even when new filler words
+  // have not themselves reached admission. Reload alone supplies no credit.
   for (const [name, state] of Array.from(pending)) {
-    if (daily?.extraRoundStartedAt && daily.extraRoundWordNames?.includes(name) &&
-        state.terminalProbeAttemptedAt !== undefined && state.terminalProbeAttemptedAt < daily.extraRoundStartedAt) {
+    const now = getUTCUnixTimestamp()
+    if (daily?.continueUnfinishedPlan && state.phase === 'deferred' &&
+        wordRecords.some(record => record.word === name && record.sourceMode === 'learn') &&
+        hasLearnRetrySpacing(name, wordRecords, now)) {
+      const resumed = resumeDeferredAcquisition({
+        ...state, terminalProbe: undefined, terminalProbeAttemptedAt: undefined, resumeAfter: now,
+      }, now)
+      if (resumed) pending.set(name, resumed)
+      continue
+    }
+    if (state.terminalProbeAttemptedAt !== undefined &&
+        ((daily?.continueUnfinishedPlan && hasLearnRetrySpacing(name, wordRecords, getUTCUnixTimestamp())) ||
+        (daily?.extraRoundStartedAt && daily.extraRoundWordNames?.includes(name) && state.terminalProbeAttemptedAt < daily.extraRoundStartedAt))) {
       pending.set(name, { ...state, terminalProbeAttemptedAt: undefined })
     }
   }

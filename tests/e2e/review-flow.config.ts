@@ -20,6 +20,7 @@ export default defineConfig({
     'learn-acquisition-flow.spec.ts',
     'learn-block-size.spec.ts',
     'learn-extra-words.spec.ts',
+    'learn-continue-plan.spec.ts',
     'learn-legacy-compat.spec.ts',
   ],
   fullyParallel: false,

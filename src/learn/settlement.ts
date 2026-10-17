@@ -2,9 +2,10 @@ import { processLiveLearnSessionCompletion } from '@/achievement'
 import { getAchievementSessionId } from '@/achievement/session'
 import {
   completeLearnDailySession,
-  deriveLearnDailyProgress,
+  continueLearnDailyPlan,
   deriveLearnExecutionProgress,
   loadLearnDailySession,
+  reconcileLearnDailySession,
   recordLearnBlockCompletion,
   saveLearnDailySession,
 } from './daily-session'
@@ -16,6 +17,7 @@ import { flushLearnPersistence } from './persistence'
 import { autoSyncCompletedLearnSession } from '@/sync/auto'
 import type { LearnAutoSyncResult } from '@/sync/auto'
 import { db } from '@/utils/db/core'
+import { getReviewWordStates } from '@/review/repository'
 import type { ReviewRecord } from '@/utils/db/record'
 
 export type LearnBlockSettlement = {
@@ -90,6 +92,7 @@ export async function settleLearnBlockDurably(
     .where('dict')
     .equals(record.dict)
     .toArray()
+  session = continueLearnDailyPlan(reconcileLearnDailySession(session, await getReviewWordStates(record.dict)))
   const progress = deriveLearnExecutionProgress({
     session,
     wordRecords,
@@ -113,9 +116,7 @@ export async function settleLearnBlockDurably(
   }
 
   if (progress.complete) {
-    session = deriveLearnDailyProgress({ session, wordRecords }).complete
-      ? completeLearnDailySession(session, now)
-      : saveLearnDailySession({ ...session, executionExhausted: true })
+    session = completeLearnDailySession(session, now)
     await flushLearnPersistence()
   }
 

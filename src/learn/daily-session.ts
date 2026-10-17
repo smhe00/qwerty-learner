@@ -27,8 +27,12 @@ export type LearnDailySessionV1 = {
   /** Frozen identities for one explicit round of up to five unfinished/new words. */
   extraRoundWordNames?: string[]
   extraRoundStartedAt?: number
-  /** No executable work remains today; unresolved words are retained. */
+  /** Legacy exhaustion checkpoint; ordinary Continue now reopens unfinished work. */
   executionExhausted?: boolean
+  /** Continue the whole unfinished plan, including legitimately spaced retries. */
+  continueUnfinishedPlan?: boolean
+  /** Lifecycle exclusions resolve work without manufacturing mastery evidence. */
+  excludedWordNames?: string[]
   extraNewWordCount?: number
   plannedNewWords: number
   /** Frozen identities for newly introduced words, optional on legacy V1 sessions. */
@@ -252,7 +256,7 @@ export function ensureLearnDailySession(input: {
   const today = learnLocalDateKey(input.now)
 
   if (existing?.dateKey === today) {
-    return existing
+    return reconcileLearnDailySession(existing, input.wordStates)
   }
 
   if (existing?.status === 'active') {
@@ -263,6 +267,27 @@ export function ensureLearnDailySession(input: {
   }
 
   return saveLearnDailySession(createLearnDailySession(input))
+}
+
+export function reconcileLearnDailySession(
+  session: LearnDailySessionV1,
+  wordStates: IReviewWordState[],
+): LearnDailySessionV1 {
+  const excludedWordNames = wordStates
+    .filter(state => state.dict === session.dict && state.lifecycle === 'excluded')
+    .map(state => state.word).sort()
+  if (JSON.stringify(session.excludedWordNames ?? []) === JSON.stringify(excludedWordNames)) return session
+  return saveLearnDailySession({ ...session, excludedWordNames })
+}
+
+/** Start/Continue never narrows unfinished daily work to a legacy five-word round. */
+export function continueLearnDailyPlan(session: LearnDailySessionV1): LearnDailySessionV1 {
+  if (session.status !== 'active' || (session.continueUnfinishedPlan && !session.executionExhausted)) return session
+  return saveLearnDailySession({
+    ...session,
+    continueUnfinishedPlan: true,
+    executionExhausted: undefined,
+  })
 }
 
 function isIndependentCleanReview(record: IWordRecord): boolean {
@@ -299,10 +324,13 @@ export function deriveLearnDailyProgress(input: {
     (record) => record.dict === session.dict,
   )
 
-  const reviewTargets = uniqueNames(session.plannedReviewWords)
+  const excluded = new Set(session.excludedWordNames ?? [])
+  const reviewTargets = uniqueNames(session.plannedReviewWords).filter(name => !excluded.has(name))
   const carryOverTargets = uniqueNames(
     session.carryOverAcquisitionWords,
-  )
+  ).filter(name => !excluded.has(name))
+  const newTargetWords = Math.max(0, session.plannedNewWords -
+    uniqueNames(session.plannedNewWordNames ?? []).filter(name => excluded.has(name)).length)
 
   const firstIntroductions = firstAcquisitionIntroductionByWord(records)
   const introducedNewWordNames = [...firstIntroductions.values()]
@@ -312,9 +340,10 @@ export function deriveLearnDailyProgress(input: {
       return diff !== 0 ? diff : (left.id ?? 0) - (right.id ?? 0)
     })
     .map((record) => record.word)
+    .filter(word => !excluded.has(word))
     .filter((word) => !carryOverTargets.includes(word))
     .filter((word) => !session.plannedNewWordNames || session.plannedNewWordNames.includes(word))
-    .slice(0, session.plannedNewWords)
+    .slice(0, newTargetWords)
 
   const completedReviewNames = reviewTargets.filter((word) =>
     hasRecordAfter(
@@ -352,7 +381,7 @@ export function deriveLearnDailyProgress(input: {
   const targetWords =
     reviewTargets.length +
     carryOverTargets.length +
-    session.plannedNewWords
+    newTargetWords
   const completedWords = Math.min(
     targetWords,
     independentCompletedWords.length,
@@ -372,7 +401,7 @@ export function deriveLearnDailyProgress(input: {
     completedReviewWords: completedReviewNames.length,
     carryOverTargetWords: carryOverTargets.length,
     completedCarryOverWords: completedCarryOverNames.length,
-    newTargetWords: session.plannedNewWords,
+    newTargetWords,
     introducedNewWords: introducedNewWordNames.length,
     completedNewWords: completedNewNames.length,
     independentCompletedWords,
@@ -467,6 +496,7 @@ export function addLearnDailyNewWords(input: {
 /** Legacy add-five sessions recover the most recently appended five identities. */
 export function getLearnExtraRoundNames(session: LearnDailySessionV1 | null): string[] | undefined {
   if (!session) return undefined
+  if (session.continueUnfinishedPlan) return undefined
   if (session.extraRoundWordNames) return session.extraRoundWordNames
   if (!(session.extraNewWordCount ?? 0)) return undefined
   return session.plannedNewWordNames?.slice(-Math.min(5, session.extraNewWordCount ?? 0))

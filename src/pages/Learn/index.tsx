@@ -70,7 +70,7 @@ export default function LearnPage() {
     dailySession.dateKey === learnLocalDateKey(getUTCUnixTimestamp())
   const exhaustedToday = dailySession?.status === 'active' && dailySession.executionExhausted === true &&
     dailySession.dateKey === learnLocalDateKey(getUTCUnixTimestamp())
-  const canLearnMoreToday = completedToday || exhaustedToday
+  const canLearnMoreToday = completedToday
   const userStartRequestedRef = useRef(false)
   const autoStartConsumedRef = useRef(isSessionView)
   const learnPageRootRef = useRef<HTMLElement | null>(null)
@@ -334,7 +334,7 @@ export default function LearnPage() {
   const renderHeader = () => (
     <Header>
       <ModeSwitcher />
-      {!canLearnMoreToday && <SessionControl active={false} label="开始 Learn"
+      {!canLearnMoreToday && <SessionControl active={false} label={dailySession?.status === 'active' ? '继续学习' : '开始 Learn'}
         disabled={isStarting || !wordList} onToggle={startFromKeyboard} />}
       <DictChapterButton learnMode />
       <PronunciationSwitcher learnMode />
@@ -384,13 +384,25 @@ export default function LearnPage() {
             ? '正在准备 Learn…'
             : statusText ||
               (exhaustedToday
-                ? '本次可执行练习已经结束；未通过最终测试的单词已保留，可再多学五词。'
+                ? '今日计划尚未完成，按任意键继续学习；需要间隔时会穿插薄弱词或新词。'
                 : completedToday
                 ? '今日 Learn 目标已完成，可以再多学五词。'
                 : wordList
                 ? '按任意键开始 Learn；Enter 暂停或继续。'
                 : '正在加载词表…')}
         </span>
+
+        {dailySession?.status === 'active' && !completedToday && (
+          <button
+            type="button"
+            aria-label="继续今日计划"
+            className="my-btn-primary h-12 px-8 text-base font-bold disabled:opacity-40"
+            disabled={isStarting || !wordList}
+            onClick={startFromKeyboard}
+          >
+            继续学习
+          </button>
+        )}
 
         {canLearnMoreToday && (
           <FiveMoreButton
