@@ -140,7 +140,6 @@ function CollectionDetail({ achievement, unlockedAt, sample, theme, onClose }: {
   const [replay, setReplay] = useState(0)
   const title = hiddenLocked ? '云中秘藏' : achievement.title
   const visual = getSongVisualGroup(achievement.id)
-  const tier = visual.key
   return (
     <div className="song-v2-detail-backdrop" role="presentation" onKeyDown={(event) => {
       if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onClose() }
