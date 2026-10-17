@@ -37,7 +37,7 @@ async function checkDesktop() {
       assert.ok(src?.endsWith('/assets/achievements/song/plaques/'+key+'.svg'),label)
       const response=await page.request.get(new URL(src,base).toString())
       assert.equal(response.status(),200,label+' font-free title must exist')
-      assert.match(response.headers()['content-type']||'',/image\\/svg\\+xml/,label)
+      assert.ok((response.headers()['content-type']||'').includes('image/svg+xml'),label)
       await art.evaluate(img=>img.decode())
       const visible=await art.evaluate(img=>[img.naturalWidth,img.naturalHeight,img.hidden])
       assert.ok(visible[0]>0 && visible[1]>0 && !visible[2],label+' image must decode')
