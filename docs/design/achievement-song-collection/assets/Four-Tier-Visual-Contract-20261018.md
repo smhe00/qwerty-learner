@@ -15,9 +15,9 @@
 
 ## DOM 题签契约
 
-- 所有题签**文字**始终由 DOM 提供，便于响应式布局、主题切换和可访问性。图片上已有的素笺/汝窑题签装饰要保留，不能在上面再放白底或青底椭圆。
-- 前 20 张：`data-plaque-source="art"`，题签 DOM **transparent background, border none, box-shadow none**，仅对准原画中预留的题签位置；明暗主题只调整字体色和阴影。
-- 后 14 张：`data-plaque-source="overlay"`，保留单一 DOM 圆角题签；不修改底层无文字主视觉图。
+- 四组固定题签“素笺墨印 / 汝窑天青 / 泥金朱砂 / 云中秘藏”分别复用 `public/assets/achievements/song/plaques/{ink,celadon,cinnabar,hidden}.svg`，共 16 字，属于独立生成并矢量化的原创瘦金书**风格**笔画，SVG 只包含透明底矢量路径；不内置字体文件、不使用商业字库轮廓。视觉文字由 SVG 提供，但**中文文本仍保留在 DOM**，作为可访问文字及图片加载失败时的回退。
+- 前 20 张：`data-plaque-source="art"`，原画装饰框保留，DOM 题签容器 **transparent background, border none, box-shadow none**，仅居中叠加透明 SVG 字形；夜卷用 CSS 滤镜改变墨色，不加第二个框。
+- 后 14 张：`data-plaque-source="overlay"`，保留单一 DOM 圆角题签边框，其中文字换为相同 SVG 字形；不修改底层无文字主视觉图。
 - 页面卡片 `data-tier` 和筛选排序使用视觉档位。真正的成就解锁依然读取实际 `achievementStates`。
 - 隐藏且尚未解锁成就继续不加载其专属图片，而采用通用雾影。此时可以显示“云中秘藏”的**美术档位**，但不可泄露真正成就名称与条件。
 - 单独的 [34/34 视觉展厅](https://smhe00.github.io/qwerty-learner/preview/song-complete/) 可以展示全部原画，并明确标注只是展示模式，不读写学习记录。
