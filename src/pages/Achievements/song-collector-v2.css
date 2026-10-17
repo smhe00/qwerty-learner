@@ -319,3 +319,55 @@
   color:#e9e3d3;
   border-color:#8c9385;
 }
+
+
+/* Per-achievement, text-free art v1. Assets deliberately fill the complete
+   0.69 portrait, unlike the previous single shared crop sprite. */
+.song-v2-card-full-illustration {
+  position:absolute;inset:0;width:100%;height:100%;z-index:0;
+  display:block;object-fit:cover;object-position:center;
+  user-select:none;pointer-events:none;
+}
+.song-v2-card[data-art-source="first-batch"] {
+  background:#f8f3e6;
+  border-color:#bc9d71;
+}
+.song-v2-card[data-art-source="first-batch"]::before {
+  border-color:transparent;
+}
+.song-v2-card[data-art-source="first-batch"] .song-v2-corner {
+  opacity:0; /* Artwork includes a detailed Song-weave corner border. */
+}
+.song-v2-card[data-art-source="first-batch"] .song-v2-card-art {
+  pointer-events:none;
+  opacity:0; /* Reserve flex spacing but don't paint the old category sprite. */
+}
+.song-v2-card[data-art-source="first-batch"] .song-v2-card-tier {
+  box-shadow:0 2px 6px #3f352628;
+}
+.song-v2-card[data-art-source="first-batch"] .song-v2-card-text {
+  text-shadow:0 1px 2px #fffdfbb8;
+}
+.song-v2-card[data-art-source="first-batch"] .song-v2-card-status {
+  text-shadow:0 1px 2px #fffdfbbb;
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-art-source="first-batch"] {
+  background:#252e2e;border-color:#877963;
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card-full-illustration {
+  filter:brightness(.46) saturate(.60) contrast(1.10) sepia(.11);
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-art-source="first-batch"] .song-v2-card-text,
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-art-source="first-batch"] .song-v2-card-status {
+  text-shadow:0 1px 3px #172024f0;
+}
+.song-v2-card[data-unlocked="false"][data-art-source="first-batch"] .song-v2-card-full-illustration {
+  filter:saturate(.62) contrast(.86);
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-unlocked="false"][data-art-source="first-batch"] .song-v2-card-full-illustration {
+  filter:brightness(.50) saturate(.5) contrast(.9);
+}
+.song-v2-detail-illustration {
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:center 47%;display:block;user-select:none;
+}
