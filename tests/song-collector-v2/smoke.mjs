@@ -19,6 +19,25 @@ async function checkDesktop() {
     assert.equal(await page.locator('[data-navigation-dialog="achievements"] .focus-overlay-header').count(),0,'No redundant achievement header')
     const cards=page.locator('.song-v2-card')
     assert.equal(await cards.count(),19,'P0 card count preserved')
+    const illustrated=page.locator('.song-v2-card[data-art-source="first-batch"]')
+    assert.equal(await illustrated.count(),9,
+      'Nine P0 cards should show bespoke first-batch art; ACH_FIRST_TRY stays P1')
+    for(const id of ['ACH_FIRST_DECODE','ACH_WARMING_UP','ACH_NEW_UNIT','ACH_DAILY_GOAL',
+                     'ACH_7_OF_10','ACH_RECOVER_1','ACH_AUDIO_10','ACH_NO_HINT_10','ACH_7_DAY']){
+      const card=page.locator('.song-v2-card[data-achievement-id="'+id+'"]')
+      assert.equal(await card.getAttribute('data-art-source'),'first-batch',id)
+      const art=card.locator('img.song-v2-card-full-illustration')
+      const src=await art.getAttribute('src')
+      assert.ok(src?.endsWith('/assets/achievements/song/first-batch/'+id+'.webp'),id)
+      const response=await page.request.get(new URL(src,base).toString())
+      assert.equal(response.status(),200,id+' bespoke artwork must return HTTP 200')
+      assert.match(response.headers()['content-type']||'',/image\\/webp/,id)
+    }
+    const firstArt=illustrated.first().locator('.song-v2-card-full-illustration')
+    await firstArt.scrollIntoViewIfNeeded()
+    await firstArt.evaluate(img=>img.decode())
+    assert.deepEqual(await firstArt.evaluate(img=>[img.naturalWidth,img.naturalHeight]),[960,1391],
+      'Bespoke WebP must decode at intended full portrait aspect ratio')
     const gallery = page.locator('.song-v2-grid')
     const countColumns = () => gallery.evaluate(x=>getComputedStyle(x).gridTemplateColumns.split(' ').filter(Boolean).length)
     const wideColumns=await countColumns()
@@ -118,6 +137,10 @@ async function checkMobile() {
     await page.locator('[data-song-achievement-gallery]').waitFor({timeout:20000})
     const n=await page.locator('.song-v2-grid').evaluate(x=>getComputedStyle(x).gridTemplateColumns.split(' ').filter(Boolean).length)
     assert.equal(n,2,'390px phone naturally fits two portrait cards')
+    const customArt=page.locator('.song-v2-card[data-art-source="first-batch"]')
+    assert.equal(await customArt.count(),9)
+    await customArt.first().scrollIntoViewIfNeeded()
+    await customArt.first().locator('.song-v2-card-full-illustration').evaluate(img=>img.decode())
     await page.setViewportSize({width:320,height:844})
     const narrow=await page.locator('.song-v2-grid').evaluate(x=>
       getComputedStyle(x).gridTemplateColumns.split(' ').filter(Boolean).length)
