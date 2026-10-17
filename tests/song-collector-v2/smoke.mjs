@@ -351,7 +351,7 @@ async function checkCompleteMuseum() {
     }
     const carved=page.locator('.song-v2-card[data-achievement-id="ACH_HIDDEN_CRAFT"]')
     await carved.scrollIntoViewIfNeeded()
-    await carved.locator('img').evaluate(img=>img.decode())
+    await carved.locator('img.song-v2-card-full-illustration').evaluate(img=>img.decode())
     await carved.click()
     await page.getByRole('dialog',{name:/如琢如磨/}).waitFor()
     await page.getByRole('button',{name:'重播钤印'}).click()
