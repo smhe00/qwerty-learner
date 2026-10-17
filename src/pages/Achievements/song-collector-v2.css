@@ -386,3 +386,10 @@
 .song-v2-collection[data-song-theme="dark"] .song-v2-card[data-art-source="first-batch"]::after {
   background:linear-gradient(to bottom,transparent 0%,#242d2daa 26%,#242d2bef 55%,#242d2bf7 100%);
 }
+
+/* Locked awards are collectible silhouettes only, never interactive previews.
+   Preserve card styling without disabled-button browser dimming. */
+.song-v2-card:disabled { cursor:default; opacity:1; }
+.song-v2-card:disabled:hover { transform:none; box-shadow:0 3px 10px #66563e18,inset 0 0 0 5px #fff8eaa3; }
+.song-v2-card:disabled:focus {outline:0;}
+.song-v2-card[data-unlocked="true"] { cursor:pointer; }
