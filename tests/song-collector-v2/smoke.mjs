@@ -46,6 +46,27 @@ async function checkDesktop() {
       assert.equal(response.status(),200,id)
       assert.ok((response.headers()['content-type']||'').includes('image/webp'),id)
     }
+    const batch3Ids=['ACH_NO_HINT_25','ACH_ERROR_POSITION_FIXED',
+      'ACH_FAILURE_RECOVERY_SESSION','ACH_WEEKLY_GAIN','ACH_MASTERED_100',
+      'ACH_MASTERED_500','ACH_RECOVER_5_STABLE','ACH_90_DAY']
+    assert.equal(await page.locator('.song-v2-card[data-art-source="third-batch"]').count(),8,
+      'Third generation must contain exactly 8 real artwork cards')
+    for(const id of batch3Ids) {
+      const card=page.locator('.song-v2-card[data-achievement-id="'+id+'"]')
+      assert.equal(await card.getAttribute('data-art-source'),'third-batch',id)
+      const url=await card.locator('img.song-v2-card-full-illustration').getAttribute('src')
+      assert.ok(url?.endsWith('/assets/achievements/song/third-batch/'+id+'.webp'),id)
+      const response=await page.request.get(new URL(url,base).toString())
+      assert.equal(response.status(),200,'third-batch asset '+id)
+      assert.ok((response.headers()['content-type']||'').includes('image/webp'),id)
+    }
+    assert.equal(await page.locator('.song-v2-card[data-art-source="sprite"]').count(),6,
+      '34 total = 10 + 10 + 8 images and 6 unillustrated catalog silhouettes')
+    const thirdArt=page.locator('.song-v2-card[data-art-source="third-batch"]').first().locator('img.song-v2-card-full-illustration')
+    await thirdArt.scrollIntoViewIfNeeded()
+    await thirdArt.evaluate(img=>img.decode())
+    assert.deepEqual(await thirdArt.evaluate(img=>[img.naturalWidth,img.naturalHeight]),[640,928],
+      'Third-batch PNG-derived WebP decoded at expected size')
     const secondArt=page.locator('.song-v2-card[data-art-source="second-batch"]').first().locator('img.song-v2-card-full-illustration')
     await secondArt.scrollIntoViewIfNeeded()
     await secondArt.evaluate(img=>img.decode())
@@ -160,6 +181,10 @@ async function checkMobile() {
     await page.locator('[data-song-achievement-gallery]').waitFor({timeout:20000})
     const n=await page.locator('.song-v2-grid').evaluate(x=>getComputedStyle(x).gridTemplateColumns.split(' ').filter(Boolean).length)
     assert.equal(n,2,'390px phone naturally fits two portrait cards')
+    assert.equal(await page.locator('.song-v2-card').count(),34)
+    assert.equal(await page.locator('.song-v2-card[data-art-source="third-batch"]').count(),8)
+    assert.equal(await page.locator('.song-v2-card:disabled').count(),34,
+      'Fresh local profile has no unlocked cards; all must be inert')
     const customArt=page.locator('.song-v2-card[data-art-source="first-batch"]')
     assert.equal(await customArt.count(),10)
     await customArt.first().scrollIntoViewIfNeeded()
