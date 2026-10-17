@@ -9,12 +9,14 @@ import { getFirstBatchAchievementArtUrl } from '@/achievement/visual-assets/firs
 import { getSecondBatchAchievementArtUrl } from '@/achievement/visual-assets/secondBatch'
 import { getThirdBatchAchievementArtUrl } from '@/achievement/visual-assets/thirdBatch'
 import { getFinalBatchAchievementArtUrl } from '@/achievement/visual-assets/finalBatch'
+import { getSongVisualGroup, songVisualGroups, songVisualRank } from '@/achievement/visual-assets/visualTiers'
+import type { SongVisualTier } from '@/achievement/visual-assets/visualTiers'
 import Layout from '@/components/Layout'
 import {
   achievementDefinitions,
   getAchievementCulture,
 } from '@/resources/achievementCulture'
-import type { AchievementDefinition, AchievementRarity } from '@/resources/achievementCulture'
+import type { AchievementDefinition } from '@/resources/achievementCulture'
 import { isOpenDarkModeAtom } from '@/store'
 import { db } from '@/utils/db'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -27,22 +29,9 @@ import IconX from '~icons/tabler/x'
 import './song-achievement.css'
 import './song-collector-v2.css'
 
-type Filter = 'all' | 'unlocked' | 'locked' | 'rare'
-type Sort = 'default' | 'rarity' | 'recent'
+type Filter = 'all' | 'unlocked' | 'locked' | SongVisualTier
+type Sort = 'default' | 'tier' | 'recent'
 type Theme = 'light' | 'dark'
-type Tier = 'ink' | 'celadon' | 'cinnabar'
-
-const tierFor = (rarity: AchievementRarity): Tier =>
-  rarity === 'common' ? 'ink' : rarity === 'rare' ? 'celadon' : 'cinnabar'
-
-const tierLabel: Record<Tier, string> = {
-  ink: '素笺墨印',
-  celadon: '汝窑天青',
-  cinnabar: '泥金朱砂',
-}
-const rarityRank: Record<AchievementRarity, number> = {
-  common: 0, rare: 1, epic: 2, legendary: 3,
-}
 
 /** The seven picture tiles are compositional studies from the approved target image.
  * They are decorative only. Achievement names, statuses and dates are live DOM text. */
@@ -79,7 +68,8 @@ function CollectionCard({ achievement, unlockedAt, theme, onOpen }: {
   const unlocked = unlockedAt !== undefined
   const hiddenLocked = !unlocked && achievement.hidden
   const title = hiddenLocked ? '秘藏 · 云中待启' : achievement.title
-  const tier = hiddenLocked ? 'ink' : tierFor(achievement.rarity)
+  const visual = getSongVisualGroup(achievement.id)
+  const tier = visual.key
   const art = artIndexFor(achievement, hiddenLocked)
   const specialArtUrl = getFinalBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getThirdBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getSecondBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getFirstBatchAchievementArtUrl(achievement.id, hiddenLocked)
   return (
@@ -87,6 +77,7 @@ function CollectionCard({ achievement, unlockedAt, theme, onOpen }: {
       type="button"
       className="song-v2-card"
       data-tier={tier}
+      data-plaque-source={visual.hasPaintedPlaque ? 'art' : 'overlay'}
       data-unlocked={unlocked ? 'true' : 'false'}
       data-hidden={hiddenLocked ? 'true' : 'false'}
       data-art-source={getFinalBatchAchievementArtUrl(achievement.id, hiddenLocked) ? 'final-batch' : getThirdBatchAchievementArtUrl(achievement.id, hiddenLocked) ? 'third-batch' : getSecondBatchAchievementArtUrl(achievement.id, hiddenLocked) ? 'second-batch' : specialArtUrl ? 'first-batch' : 'sprite'}
@@ -108,7 +99,7 @@ function CollectionCard({ achievement, unlockedAt, theme, onOpen }: {
       <span className="song-v2-corner song-v2-corner-tr" aria-hidden="true" />
       <span className="song-v2-corner song-v2-corner-bl" aria-hidden="true" />
       <span className="song-v2-corner song-v2-corner-br" aria-hidden="true" />
-      <span className="song-v2-card-tier">{hiddenLocked ? '云中秘藏' : tierLabel[tier]}</span>
+      <span className="song-v2-card-tier">{visual.label}</span>
       <div className="song-v2-card-art" aria-hidden="true">
         {!specialArtUrl && <span className="song-v2-card-artwork" style={spriteOffset(art)} />}
       </div>
@@ -148,7 +139,8 @@ function CollectionDetail({ achievement, unlockedAt, sample, theme, onClose }: {
   const specialArtUrl = getFinalBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getThirdBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getSecondBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getFirstBatchAchievementArtUrl(achievement.id, hiddenLocked)
   const [replay, setReplay] = useState(0)
   const title = hiddenLocked ? '云中秘藏' : achievement.title
-  const tier = hiddenLocked ? 'ink' : tierFor(achievement.rarity)
+  const visual = getSongVisualGroup(achievement.id)
+  const tier = visual.key
   return (
     <div className="song-v2-detail-backdrop" role="presentation" onKeyDown={(event) => {
       if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onClose() }
@@ -169,7 +161,7 @@ function CollectionDetail({ achievement, unlockedAt, sample, theme, onClose }: {
             {!unlocked && <SongMistLayer theme={theme} status={hiddenLocked ? 'hidden' : 'locked'} />}
             {unlocked && <span className="song-v2-detail-vermilion">雅 藏<br />钤 印</span>}
           </div>
-          <span className="song-v2-detail-tier">{hiddenLocked ? '静待机缘' : tierLabel[tier]}</span>
+          <span className="song-v2-detail-tier">{visual.label}</span>
           <h3>{title}</h3>
           <p className="song-v2-detail-copy">{hiddenLocked ? '云山深处，尚有未启之卷。' : achievement.copy.unlockMessage}</p>
           {culture && <blockquote>
@@ -209,18 +201,17 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
 
   const achievements = useMemo(() => achievementDefinitions.filter(
     achievement => achievement.enabled,
-  ), [])
+  ).sort((a,b) => songVisualRank(a.id) - songVisualRank(b.id)), [])
   const stateById = useMemo(() =>
     new Map(states.map(state => [state.achievementId, state])), [states],
   )
   const unlockedCount = achievements.filter(a => stateById.has(a.id)).length
-  const rareCount = achievements.filter(a => a.rarity !== 'common').length
   const filtered = achievements.filter(a => {
     const unlocked = stateById.has(a.id)
     return filter === 'all' || (filter === 'unlocked' && unlocked) ||
-      (filter === 'locked' && !unlocked) || (filter === 'rare' && a.rarity !== 'common')
-  }).sort((a, b) => sort === 'rarity'
-    ? rarityRank[b.rarity] - rarityRank[a.rarity]
+      (filter === 'locked' && !unlocked) || getSongVisualGroup(a.id).key === filter
+  }).sort((a, b) => sort === 'tier'
+    ? songVisualRank(a.id) - songVisualRank(b.id)
     : sort === 'recent'
       ? (stateById.get(b.id)?.unlockedAt ?? 0) - (stateById.get(a.id)?.unlockedAt ?? 0)
       : 0)
@@ -282,7 +273,7 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
             ['all', '全部', achievements.length],
             ['unlocked', '已解锁', unlockedCount],
             ['locked', '未解锁', achievements.length - unlockedCount],
-            ['rare', '珍藏', rareCount],
+            ...songVisualGroups.map(group => [group.key, group.tab, group.ids.length] as const),
           ] as const).map(([key, label, count]) => (
             <button key={key} className="song-v2-filter" type="button" aria-pressed={filter === key}
               onClick={() => setFilter(key)}>{label} ({count})</button>
@@ -292,7 +283,7 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
           <span className="sr-only">成就排序</span>
           <select value={sort} onChange={event => setSort(event.target.value as Sort)}>
             <option value="default">按默认排序</option>
-            <option value="rarity">按稀有度</option>
+            <option value="tier">按雅集档位</option>
             <option value="recent">最近解锁</option>
           </select>
         </label>
