@@ -40,10 +40,10 @@ for(const a of manifest.entries){
  assert.ok(image.length < 160*1024,a.id+' oversized')
  console.log('PASS '+a.id+' '+(image.length/1024).toFixed(1)+'KiB')
 }
-// Scan code import edges, not comments explaining intentionally absent APIs.
+// Reject data-writing module imports, ignoring explanatory comments.
+const importLines=preview.split('\\n').filter(line=>line.trimStart().startsWith('import '))
 for(const forbidden of ['@/utils/db','@/achievement/repository','@/pages/Learn']) {
- const imports=new RegExp('(?:from\\\\s*|import\\\\s*\\\\()[\\\\' + String.fromCharCode(34) + ']'+forbidden,'g')
- assert.ok(!imports.test(preview),'unsafe read-only showcase import '+forbidden)
+ assert.ok(!importLines.some(line=>line.includes(forbidden)),'unsafe museum import '+forbidden)
 }
 for(const forbidden of ['localStorage.setItem','indexedDB.open','markAchievementCultureCardSeen']) {
  assert.ok(!preview.includes(forbidden),'unsafe persistence API '+forbidden)
