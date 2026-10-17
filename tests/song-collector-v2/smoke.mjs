@@ -18,10 +18,10 @@ async function checkDesktop() {
     assert.equal(await page.locator('[data-navigation-dialog="achievements"]').count(), 1)
     assert.equal(await page.locator('[data-navigation-dialog="achievements"] .focus-overlay-header').count(),0,'No redundant achievement header')
     const cards=page.locator('.song-v2-card')
-    assert.equal(await cards.count(),19,'P0 card count preserved')
+    assert.equal(await cards.count(),34,'Full 34-achievement catalogue should be visible')
     const illustrated=page.locator('.song-v2-card[data-art-source="first-batch"]')
-    assert.equal(await illustrated.count(),9,
-      'Nine P0 cards should show bespoke first-batch art; ACH_FIRST_TRY stays P1')
+    assert.equal(await illustrated.count(),10,
+      'Ten first-batch art pieces are visible, including P1 catalogue items')
     for(const id of ['ACH_FIRST_DECODE','ACH_WARMING_UP','ACH_NEW_UNIT','ACH_DAILY_GOAL',
                      'ACH_7_OF_10','ACH_RECOVER_1','ACH_AUDIO_10','ACH_NO_HINT_10','ACH_7_DAY']){
       const card=page.locator('.song-v2-card[data-achievement-id="'+id+'"]')
@@ -33,11 +33,29 @@ async function checkDesktop() {
       assert.equal(response.status(),200,id+' bespoke artwork must return HTTP 200')
       assert.match(response.headers()['content-type']||'',/image\/webp/,id)
     }
+    const batch2Ids=['ACH_20_OF_30','ACH_CONTINUE','ACH_HINT_REDUCTION',
+      'ACH_AUDIO_50','ACH_RECOVER_3','ACH_SPACED_20','ACH_CHAPTER_80',
+      'ACH_30_DAY','ACH_TRUE_MEMORY','ACH_OLD_RIVAL']
+    assert.equal(await page.locator('.song-v2-card[data-art-source="second-batch"]').count(),10)
+    for(const id of batch2Ids){
+      const card=page.locator('.song-v2-card[data-achievement-id="'+id+'"]')
+      assert.equal(await card.getAttribute('data-art-source'),'second-batch',id)
+      const src=await card.locator('.song-v2-card-full-illustration').getAttribute('src')
+      assert.ok(src?.endsWith('/assets/achievements/song/second-batch/'+id+'.webp'),id)
+      const response=await page.request.get(new URL(src,base).toString())
+      assert.equal(response.status(),200,id)
+      assert.ok((response.headers()['content-type']||'').includes('image/webp'),id)
+    }
+    const secondArt=page.locator('.song-v2-card[data-art-source="second-batch"]').first().locator('img.song-v2-card-full-illustration')
+    await secondArt.scrollIntoViewIfNeeded()
+    await secondArt.evaluate(img=>img.decode())
+    assert.deepEqual(await secondArt.evaluate(img=>[img.naturalWidth,img.naturalHeight]),[640,928],
+      'Second-batch real WebP resolution')
     const firstArt=illustrated.first().locator('.song-v2-card-full-illustration')
     await firstArt.scrollIntoViewIfNeeded()
     await firstArt.evaluate(img=>img.decode())
     assert.deepEqual(await firstArt.evaluate(img=>[img.naturalWidth,img.naturalHeight]),[960,1391],
-      'Bespoke WebP must decode at intended full portrait aspect ratio')
+      'Bespoke first-batch WebP decodes at portrait aspect ratio')
     const gallery = page.locator('.song-v2-grid')
     const countColumns = () => gallery.evaluate(x=>getComputedStyle(x).gridTemplateColumns.split(' ').filter(Boolean).length)
     const wideColumns=await countColumns()
@@ -93,7 +111,12 @@ async function checkDesktop() {
     assert.equal(await mistImage.evaluate(image => image.naturalWidth>0),true,
       'Real WebP fog decoded (not a gradient-only fallback)')
     await page.screenshot({path:dir+'/desktop.png',fullPage:false})
-    await page.locator('.song-v2-card').first().click()
+    // Locked cards are inert: neither pointer nor keyboard nor synthetic click opens a detail.
+    assert.equal(await lockedCards.first().isDisabled(),true,'unlocked-only interaction gate')
+    await lockedCards.first().evaluate(el=>el.click())
+    assert.equal(await page.locator('.song-v2-detail').count(),0,'locked programmatic click must not show a detail')
+    assert.equal(await page.locator('.song-v2-card:disabled').count(),await lockedCards.count())
+    await page.getByRole('button',{name:'展卷演示'}).click()
     await page.locator('.song-v2-detail').waitFor()
     await page.keyboard.press('Escape')
     await page.locator('.song-v2-detail').waitFor({state:'detached'})
@@ -138,7 +161,7 @@ async function checkMobile() {
     const n=await page.locator('.song-v2-grid').evaluate(x=>getComputedStyle(x).gridTemplateColumns.split(' ').filter(Boolean).length)
     assert.equal(n,2,'390px phone naturally fits two portrait cards')
     const customArt=page.locator('.song-v2-card[data-art-source="first-batch"]')
-    assert.equal(await customArt.count(),9)
+    assert.equal(await customArt.count(),10)
     await customArt.first().scrollIntoViewIfNeeded()
     await customArt.first().locator('.song-v2-card-full-illustration').evaluate(img=>img.decode())
     await page.setViewportSize({width:320,height:844})

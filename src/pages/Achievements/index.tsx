@@ -6,6 +6,7 @@ import {
 import { SongMistLayer } from '@/achievement/visual-assets/SongMistLayer'
 import { SongPortalEntry } from '@/achievement/visual-assets/SongPortalEntry'
 import { getFirstBatchAchievementArtUrl } from '@/achievement/visual-assets/firstBatch'
+import { getSecondBatchAchievementArtUrl } from '@/achievement/visual-assets/secondBatch'
 import Layout from '@/components/Layout'
 import {
   achievementDefinitions,
@@ -78,7 +79,7 @@ function CollectionCard({ achievement, unlockedAt, theme, onOpen }: {
   const title = hiddenLocked ? '秘藏 · 云中待启' : achievement.title
   const tier = hiddenLocked ? 'ink' : tierFor(achievement.rarity)
   const art = artIndexFor(achievement, hiddenLocked)
-  const specialArtUrl = getFirstBatchAchievementArtUrl(achievement.id, hiddenLocked)
+  const specialArtUrl = getSecondBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getFirstBatchAchievementArtUrl(achievement.id, hiddenLocked)
   return (
     <button
       type="button"
@@ -86,10 +87,11 @@ function CollectionCard({ achievement, unlockedAt, theme, onOpen }: {
       data-tier={tier}
       data-unlocked={unlocked ? 'true' : 'false'}
       data-hidden={hiddenLocked ? 'true' : 'false'}
-      data-art-source={specialArtUrl ? 'first-batch' : 'sprite'}
+      data-art-source={getSecondBatchAchievementArtUrl(achievement.id, hiddenLocked) ? 'second-batch' : specialArtUrl ? 'first-batch' : 'sprite'}
       data-achievement-id={hiddenLocked ? undefined : achievement.id}
-      onClick={onOpen}
-      aria-label={title + (unlocked ? '，已解锁，查看藏品' : '，未解锁，查看线索')}
+      disabled={!unlocked}
+      onClick={unlocked ? onOpen : undefined}
+      aria-label={title + (unlocked ? '，已解锁，查看藏品' : '，未解锁')}
     >
       {specialArtUrl && <img
         className="song-v2-card-full-illustration"
@@ -141,7 +143,7 @@ function CollectionDetail({ achievement, unlockedAt, sample, theme, onClose }: {
   const hiddenLocked = achievement.hidden && !unlocked
   const culture = hiddenLocked ? undefined : getAchievementCulture(achievement.id)?.primary
   const artIndex = artIndexFor(achievement, hiddenLocked)
-  const specialArtUrl = getFirstBatchAchievementArtUrl(achievement.id, hiddenLocked)
+  const specialArtUrl = getSecondBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getFirstBatchAchievementArtUrl(achievement.id, hiddenLocked)
   const [replay, setReplay] = useState(0)
   const title = hiddenLocked ? '云中秘藏' : achievement.title
   const tier = hiddenLocked ? 'ink' : tierFor(achievement.rarity)
@@ -204,7 +206,7 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
   const [sample, setSample] = useState(false)
 
   const achievements = useMemo(() => achievementDefinitions.filter(
-    achievement => achievement.enabled && achievement.presentation.rollout === 'p0',
+    achievement => achievement.enabled,
   ), [])
   const stateById = useMemo(() =>
     new Map(states.map(state => [state.achievementId, state])), [states],
@@ -235,9 +237,12 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
   })
 
   const openDetail = (achievement: AchievementDefinition) => {
+    // The collection is a complete 34-card catalogue, not an unlock bypass.
+    // P1/P2 items stay locked until awarded by the normal achievement engine.
+    if (!stateById.has(achievement.id)) return
     setSample(false)
     setDetailId(achievement.id)
-    if (stateById.has(achievement.id)) {
+    {
       void markAchievementCultureCardSeen(achievement.id).catch(error => {
         console.error('failed to mark culture card seen', error)
       })

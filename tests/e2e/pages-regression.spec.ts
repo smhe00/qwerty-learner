@@ -193,7 +193,10 @@ test('published Pages: Song gallery opens inside Focus and offers safe desktop/m
   await page.getByRole('button', { name: '查看成就' }).click()
   await expect(page.locator('[data-navigation-dialog="achievements"]')).toBeVisible()
   await expect(page.getByRole('heading', { name: '成就雅集' })).toBeVisible()
-  await expect(page.locator('.song-v2-card')).toHaveCount(19)
+  await expect(page.locator('.song-v2-card')).toHaveCount(34)
+  await expect(page.locator('.song-v2-card[data-unlocked="false"]:disabled')).toHaveCount(34)
+  await page.locator('.song-v2-card:disabled').first().evaluate(el => el.click())
+  await expect(page.locator('.song-v2-detail')).toHaveCount(0)
   await expect.poll(async () => {
     const first = await page.locator('.song-v2-card').first().boundingBox()
     return first ? first.width / first.height : 0
@@ -265,7 +268,8 @@ test('published Pages: Song gallery opens inside Focus and offers safe desktop/m
     }))
     if (mobileErrors.length) console.log('song-mobile-errors-total', mobileErrors)
     await expect(mobile.getByRole('heading', { name: '成就雅集' })).toBeVisible({ timeout: 10000 })
-    await expect(mobile.locator('.song-v2-card')).toHaveCount(19)
+    await expect(mobile.locator('.song-v2-card')).toHaveCount(34)
+    await expect(mobile.locator('.song-v2-card[data-unlocked="false"]:disabled')).toHaveCount(34)
     await mobile.getByRole('button', { name: '展卷演示' }).click()
     await expect(mobile.locator('.song-v2-detail')).toBeVisible()
     await mobile.getByRole('button', { name: '关闭藏品' }).click()
