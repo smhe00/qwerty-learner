@@ -5,6 +5,7 @@ import {
 } from '@/achievement'
 import { SongMistLayer } from '@/achievement/visual-assets/SongMistLayer'
 import { SongPortalEntry } from '@/achievement/visual-assets/SongPortalEntry'
+import { getFirstBatchAchievementArtUrl } from '@/achievement/visual-assets/firstBatch'
 import Layout from '@/components/Layout'
 import {
   achievementDefinitions,
@@ -77,6 +78,7 @@ function CollectionCard({ achievement, unlockedAt, theme, onOpen }: {
   const title = hiddenLocked ? '秘藏 · 云中待启' : achievement.title
   const tier = hiddenLocked ? 'ink' : tierFor(achievement.rarity)
   const art = artIndexFor(achievement, hiddenLocked)
+  const specialArtUrl = getFirstBatchAchievementArtUrl(achievement.id, hiddenLocked)
   return (
     <button
       type="button"
@@ -84,17 +86,27 @@ function CollectionCard({ achievement, unlockedAt, theme, onOpen }: {
       data-tier={tier}
       data-unlocked={unlocked ? 'true' : 'false'}
       data-hidden={hiddenLocked ? 'true' : 'false'}
+      data-art-source={specialArtUrl ? 'first-batch' : 'sprite'}
       data-achievement-id={hiddenLocked ? undefined : achievement.id}
       onClick={onOpen}
       aria-label={title + (unlocked ? '，已解锁，查看藏品' : '，未解锁，查看线索')}
     >
+      {specialArtUrl && <img
+        className="song-v2-card-full-illustration"
+        src={specialArtUrl}
+        alt=""
+        aria-hidden="true"
+        decoding="async"
+        loading="lazy"
+        draggable={false}
+      />}
       <span className="song-v2-corner song-v2-corner-tl" aria-hidden="true" />
       <span className="song-v2-corner song-v2-corner-tr" aria-hidden="true" />
       <span className="song-v2-corner song-v2-corner-bl" aria-hidden="true" />
       <span className="song-v2-corner song-v2-corner-br" aria-hidden="true" />
       <span className="song-v2-card-tier">{hiddenLocked ? '云中秘藏' : tierLabel[tier]}</span>
       <div className="song-v2-card-art" aria-hidden="true">
-        <span className="song-v2-card-artwork" style={spriteOffset(art)} />
+        {!specialArtUrl && <span className="song-v2-card-artwork" style={spriteOffset(art)} />}
       </div>
       {!unlocked && (
         <span className="song-v2-card-lock-mist" aria-hidden="true">
@@ -129,6 +141,7 @@ function CollectionDetail({ achievement, unlockedAt, sample, theme, onClose }: {
   const hiddenLocked = achievement.hidden && !unlocked
   const culture = hiddenLocked ? undefined : getAchievementCulture(achievement.id)?.primary
   const artIndex = artIndexFor(achievement, hiddenLocked)
+  const specialArtUrl = getFirstBatchAchievementArtUrl(achievement.id, hiddenLocked)
   const [replay, setReplay] = useState(0)
   const title = hiddenLocked ? '云中秘藏' : achievement.title
   const tier = hiddenLocked ? 'ink' : tierFor(achievement.rarity)
@@ -146,7 +159,9 @@ function CollectionDetail({ achievement, unlockedAt, sample, theme, onClose }: {
           <div className="song-v2-eyebrow">QWERTY PLUS · 宋韵雅藏</div>
           <h2 className="song-v2-detail-heading">{unlocked ? '成 就 达 成' : '云 中 待 启'}</h2>
           <div className="song-v2-detail-art" aria-hidden="true">
-            <span className="song-v2-detail-painting" style={spriteOffset(artIndex)} />
+            {specialArtUrl
+              ? <img src={specialArtUrl} alt="" className="song-v2-detail-illustration" draggable={false} />
+              : <span className="song-v2-detail-painting" style={spriteOffset(artIndex)} />}
             {!unlocked && <SongMistLayer theme={theme} status={hiddenLocked ? 'hidden' : 'locked'} />}
             {unlocked && <span className="song-v2-detail-vermilion">雅 藏<br />钤 印</span>}
           </div>
