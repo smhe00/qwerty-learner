@@ -615,3 +615,12 @@
 .song-v2-collection[data-song-theme="dark"] .song-v2-card[data-tier="hidden"] {
   background:linear-gradient(155deg,#344240,#232f30);
 }
+
+/* Highest-priority night override: the hidden-tier theme normally restores
+   a solid pill. The ornate SVG supplies the ONLY frame in both themes. */
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-tier="hidden"][data-plaque-source="overlay"] .song-v2-card-tier,
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-tier="cinnabar"][data-plaque-source="overlay"] .song-v2-card-tier {
+  background:transparent;
+  border:0;
+  box-shadow:none;
+}
