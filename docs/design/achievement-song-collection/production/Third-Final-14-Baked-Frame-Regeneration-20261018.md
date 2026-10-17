@@ -44,6 +44,14 @@
 - Chromium 桌面、手机和全 34 展厅，黑白主题及隐藏成就的未解锁安全行为需重新验收；不碰发奖条件、FSRS、云同步 V4。
 - **未经过图片人工视觉核准，不能合并至 `product/main`；绝不自动发布 `master` 或 `edgeone-test`。**
 
+## 用户确认的最终交付目标（2026-10-18）
+
+- **重制完成后必须更新正式开发分支 `product/main`（用户所说的 main）**，不是只留在研究分支或展示对比图。
+- 将八张 `public/assets/achievements/song/third-batch/ACH_*.webp` 和六张 `public/assets/achievements/song/final-batch/ACH_*.webp` **按原 ID、原文件路径替换原图**；前 20 张 `first-batch` 和 `second-batch` 保持不变。
+- 同次变更必须同步更新两批 manifest 的实际尺寸、SHA 和字节数；删除第三、四批额外绘制的 `plaques/frame.svg` 图层及其用法，将这 14 张也改成与第一批相同的图片自带框 + 独立书法文字图层。
+- 图片经过逐张视觉核验，并通过资源、构建、Chromium 桌面及移动端 Gate 后，**才合并到 `product/main`，并验证 34/34 展厅**。不以 CSS 模拟或放大旧图冒充重制完成。
+- 不触碰 `master`、`edgeone-test` 等正式或云测试分支，除非另外明确授权。
+
 ## 当前判定
 
 现有第三、四批 14 张 WebP 还是多宫格裁切的旧图，不符合母版；目前在 `product/main` 的 `plaques/frame.svg` 是此前的过渡方案，**不能认定为最终解决办法**。现有 AI 生成的带文字卡片合成图也不符合“无字背景”合同，禁止使用。
