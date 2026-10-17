@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { createRoot } from 'react-dom/client'
 import { achievementDefinitions, getAchievementCulture } from '@/resources/achievementCulture'
-import type { AchievementDefinition, AchievementRarity } from '@/resources/achievementCulture'
+import type { AchievementDefinition } from '@/resources/achievementCulture'
+import { getSongVisualGroup, songVisualGroups, songVisualRank } from '@/achievement/visual-assets/visualTiers'
+import type { SongVisualTier } from '@/achievement/visual-assets/visualTiers'
 import { getFirstBatchAchievementArtUrl } from '@/achievement/visual-assets/firstBatch'
 import { getSecondBatchAchievementArtUrl } from '@/achievement/visual-assets/secondBatch'
 import { getThirdBatchAchievementArtUrl } from '@/achievement/visual-assets/thirdBatch'
@@ -16,12 +18,7 @@ import './showcase.css'
  * Learn, account, sync, S1, or AchievementsPage. The UI's 34/34 is fictional
  * presentation state; no user's achievements are read, written or modified.
  */
-const all = achievementDefinitions.filter(a => a.enabled)
-const rarityOrder: Record<AchievementRarity, number> = { common:0, rare:1, epic:2, legendary:3 }
-const label: Record<AchievementRarity,string> = {
-  common:'素笺墨印',rare:'汝窑天青',epic:'泥金朱砂',legendary:'泥金朱砂',
-}
-const tier = (r: AchievementRarity) => r === 'common' ? 'ink' : r === 'rare' ? 'celadon' : 'cinnabar'
+const all = achievementDefinitions.filter(a => a.enabled).sort((a,b) => songVisualRank(a.id)-songVisualRank(b.id))
 const artUrl = (id: string) =>
   getFinalBatchAchievementArtUrl(id,false) ??
   getThirdBatchAchievementArtUrl(id,false) ??
@@ -32,18 +29,18 @@ if (all.length !== 34 || assets.some(([,url])=>!url)) {
   throw new Error('Song complete museum requires exactly 34 ID-matched pieces')
 }
 
-type Filter = 'all' | 'common' | 'rare' | 'epic' | 'legendary'
+type Filter = 'all' | SongVisualTier
 type Theme = 'light' | 'dark'
 function Museum() {
   const [theme,setTheme] = useState<Theme>('light')
   const [filter,setFilter] = useState<Filter>('all')
-  const [sort,setSort] = useState<'default'|'rarity'>('default')
+  const [sort,setSort] = useState<'default'|'tier'>('default')
   const [selected,setSelected] = useState<AchievementDefinition | null>(null)
   const [replay,setReplay] = useState(0)
   const [failed,setFailed] = useState<string[]>([])
   const display = useMemo(() => all
-    .filter(a => filter === 'all' || a.rarity === filter)
-    .sort((a,b)=>sort==='rarity'?rarityOrder[b.rarity]-rarityOrder[a.rarity]:0),[filter,sort])
+    .filter(a => filter === 'all' || getSongVisualGroup(a.id).key === filter)
+    .sort((a,b)=>sort==='tier'?songVisualRank(a.id)-songVisualRank(b.id):0),[filter,sort])
   useEffect(()=>{
     if(!selected)return
     const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape'){e.stopPropagation();setSelected(null)}}
@@ -72,12 +69,9 @@ function Museum() {
       </div>
     </header>
     <div className="song-v2-controls">
-      <nav className="song-v2-filters" aria-label="按照稀有度筛选">
+      <nav className="song-v2-filters" aria-label="按照宋韵雅集档位筛选">
         {([
-          ['all','全部',34],['common','素笺',all.filter(a=>a.rarity==='common').length],
-          ['rare','汝窑',all.filter(a=>a.rarity==='rare').length],
-          ['epic','泥金',all.filter(a=>a.rarity==='epic').length],
-          ['legendary','传奇',all.filter(a=>a.rarity==='legendary').length],
+          ['all','全部',34], ...songVisualGroups.map(group => [group.key,group.tab,group.ids.length] as const),
         ] as const).map(([key,title,count])=>
           <button className="song-v2-filter" type="button" aria-pressed={filter===key}
             onClick={()=>setFilter(key)} key={key}>{title} ({count})</button>)}
@@ -87,8 +81,8 @@ function Museum() {
           {theme==='light'?'夜卷':'晨卷'}
         </button>
         <label className="song-v2-sort"><span className="sr-only">排序</span>
-          <select value={sort} onChange={e=>setSort(e.target.value as 'default'|'rarity')}>
-            <option value="default">默认排序</option><option value="rarity">按稀有度</option>
+          <select value={sort} onChange={e=>setSort(e.target.value as 'default'|'tier')}>
+            <option value="default">默认排序</option><option value="tier">按雅集档位</option>
           </select>
         </label>
       </div>
@@ -96,9 +90,10 @@ function Museum() {
     <section className="song-v2-grid" aria-label="三十四项完整成就收藏">
       {display.map(a=> {
         const image=artUrl(a.id)
+        const visual=getSongVisualGroup(a.id)
         return <button className="song-v2-card" type="button" key={a.id}
           data-achievement-id={a.id} data-unlocked="true" data-demo-unlocked="true"
-          data-tier={tier(a.rarity)} data-art-source="complete-museum"
+          data-tier={visual.key} data-plaque-source={visual.hasPaintedPlaque ? 'art' : 'overlay'} data-art-source="complete-museum"
           aria-label={a.title+'，演示解锁，打开画卷'}
           onClick={()=>{setReplay(0);setSelected(a)}}>
           <img className="song-v2-card-full-illustration" src={image} alt="" loading="lazy" decoding="async"
@@ -107,7 +102,7 @@ function Museum() {
           <span className="song-v2-corner song-v2-corner-tr" aria-hidden="true" />
           <span className="song-v2-corner song-v2-corner-bl" aria-hidden="true" />
           <span className="song-v2-corner song-v2-corner-br" aria-hidden="true" />
-          <span className="song-v2-card-tier">{label[a.rarity]}</span>
+          <span className="song-v2-card-tier">{visual.label}</span>
           <div className="song-v2-card-art" aria-hidden="true" />
           <span className="song-v2-card-seal" aria-hidden="true">雅<br/>藏</span>
           <div className="song-v2-card-text"><h2>{a.title}</h2>
@@ -136,7 +131,7 @@ function Museum() {
             <img src={artUrl(selected.id)} className="song-v2-detail-illustration" alt="" />
             <span className="song-v2-detail-vermilion">雅 藏<br/>钤 印</span>
           </div>
-          <span className="song-v2-detail-tier">{label[selected.rarity]}</span>
+          <span className="song-v2-detail-tier">{getSongVisualGroup(selected.id).label}</span>
           <h3>{selected.title}</h3><p className="song-v2-detail-copy">{selected.copy.unlockMessage}</p>
           {getAchievementCulture(selected.id)?.primary && <blockquote>
             <p>{getAchievementCulture(selected.id)?.primary?.text}</p>

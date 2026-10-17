@@ -19,6 +19,33 @@ async function checkDesktop() {
     assert.equal(await page.locator('[data-navigation-dialog="achievements"] .focus-overlay-header').count(),0,'No redundant achievement header')
     const cards=page.locator('.song-v2-card')
     assert.equal(await cards.count(),34,'Full 34-achievement catalogue should be visible')
+    // Museum rank is the 10/10/8/6 ART batch, not the FSRS achievement rarity.
+    const visualGroups=[['ink',10,'素笺墨印'],['celadon',10,'汝窑天青'],
+      ['cinnabar',8,'泥金朱砂'],['hidden',6,'云中秘藏']]
+    for(const [key,count,label] of visualGroups) {
+      const group=page.locator('.song-v2-card[data-tier="'+key+'"]')
+      assert.equal(await group.count(),count,'Visual tier '+label)
+      assert.equal(await group.first().locator('.song-v2-card-tier').innerText(),label)
+    }
+    assert.equal(await page.locator('.song-v2-card[data-plaque-source="art"]').count(),20)
+    assert.equal(await page.locator('.song-v2-card[data-plaque-source="overlay"]').count(),14)
+    for(const source of ['first-batch','second-batch']) {
+      const plaque=page.locator('.song-v2-card[data-art-source="'+source+'"] .song-v2-card-tier').first()
+      const style=await plaque.evaluate(node=>{
+        const css=getComputedStyle(node)
+        return {background:css.backgroundColor,border:css.borderTopStyle,shadow:css.boxShadow,position:css.position}
+      })
+      assert.equal(style.background,'rgba(0, 0, 0, 0)',source+' must NOT draw a second oval')
+      assert.equal(style.border,'none',source+' must NOT draw a second border')
+      assert.equal(style.shadow,'none',source+' must NOT draw a second shadow')
+      assert.equal(style.position,'absolute',source+' must align words to painted cartouche')
+    }
+    for(const [key,count,label] of visualGroups) {
+      await page.getByRole('button',{name:(key==='hidden'?'秘藏':label.slice(0,2))+' ('+count+')'}).click()
+      assert.equal(await cards.count(),count,'Filter '+label)
+    }
+    await page.getByRole('button',{name:'全部 (34)'}).click()
+    assert.equal(await cards.count(),34)
     const illustrated=page.locator('.song-v2-card[data-art-source="first-batch"]')
     assert.equal(await illustrated.count(),10,
       'Ten first-batch art pieces are visible, including P1 catalogue items')
@@ -235,6 +262,30 @@ async function checkCompleteMuseum() {
     assert.equal(await page.locator('.song-v2-card[data-unlocked="true"]').count(),34)
     assert.equal(await page.locator('.song-v2-card:disabled').count(),0)
     assert.equal(await page.locator('img.song-v2-card-full-illustration').count(),34)
+    const visualCounts=[['ink',10],['celadon',10],['cinnabar',8],['hidden',6]]
+    for(const [name,n] of visualCounts) {
+      assert.equal(await page.locator('.song-v2-card[data-tier="'+name+'"]').count(),n,
+        'Full museum artistically arranged '+name)
+    }
+    assert.equal(await page.locator('.song-v2-card[data-plaque-source="art"]').count(),20)
+    assert.equal(await page.locator('.song-v2-card[data-plaque-source="overlay"]').count(),14)
+    assert.equal(await page.getByRole('button',{name:/传奇/}).count(),0,
+      'Legendary should not appear as a visual tier in the preview')
+    for(const source of ['first-batch','second-batch']) {
+      const exemplar=page.locator('.song-v2-card img[src*="/'+source+'/"]').first().locator('..')
+      const box=exemplar.locator('.song-v2-card-tier')
+      const style=await box.evaluate(node=>{
+        const cs=getComputedStyle(node)
+        return {background:cs.backgroundColor,border:cs.borderTopStyle,shadow:cs.boxShadow}
+      })
+      assert.equal(style.background,'rgba(0, 0, 0, 0)',source+' painted frame must be reused')
+      assert.equal(style.border,'none')
+      assert.equal(style.shadow,'none')
+    }
+    await page.getByRole('button',{name:'秘藏 (6)'}).click()
+    assert.equal(await cards.count(),6)
+    await page.getByRole('button',{name:'全部 (34)'}).click()
+
     const allIds=await cards.evaluateAll(nodes=>nodes.map(n=>n.dataset.achievementId))
     assert.equal(new Set(allIds).size,34,'All IDs unique')
     const ids=['ACH_MASTERED_1000','ACH_HIDDEN_90_DIFFICULT','ACH_HIDDEN_CRAFT',

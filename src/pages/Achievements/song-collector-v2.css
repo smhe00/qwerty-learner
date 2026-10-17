@@ -486,3 +486,75 @@
 .song-v2-collection[data-song-theme="dark"] .song-v2-card[data-unlocked="false"][data-art-source="final-batch"] .song-v2-card-full-illustration {
   filter:brightness(.5) saturate(.5) contrast(.9);
 }
+
+/* Song museum visual ranks follow the four illustration collections (10/10/8/6).
+   The award engine's common/rare/epic/legendary rarity remains separate.
+   The final group is Yunzhong Micang, not a UI label named "legendary". */
+.song-v2-card[data-tier="hidden"] {
+  --song-card-tone:#878c88;
+  border-color:#a9aaa1;
+  background:linear-gradient(155deg,#eaeee9,#faf8ee 66%,#e7e9e4);
+}
+.song-v2-card[data-tier="hidden"] .song-v2-card-tier {
+  color:#4e605b;
+  border-color:#97ada4;
+  background:#e4e9e3e9;
+}
+/* Batch 1 and batch 2 bitmaps already INCLUDE the decorative cartouche.
+   Draw TEXT ONLY on that original art: never add a second CSS oval/frame. */
+.song-v2-card[data-plaque-source="art"] .song-v2-card-tier,
+.song-complete-showcase .song-v2-card[data-plaque-source="art"] .song-v2-card-tier {
+  position:absolute;
+  z-index:6;
+  top:5.2%;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:67%;
+  max-width:75%;
+  min-width:0;
+  height:8.1%;
+  min-height:0;
+  padding:0 1px;
+  margin:0;
+  border:0;
+  border-radius:0;
+  outline:0;
+  box-shadow:none;
+  background:transparent;
+  color:#554c3d;
+  text-shadow:0 1px 1px #fff9efb2;
+  font-size:clamp(11px,1.25vw,15px);
+  letter-spacing:.13em;
+  line-height:1.15;
+  white-space:nowrap;
+}
+/* The second (celadon) collection has its own painted pale-green plaque. */
+.song-v2-card[data-tier="celadon"][data-plaque-source="art"] .song-v2-card-tier {
+  color:#3f5550;
+}
+/* Batch 3 and final six have no painted cartouche: one genuine DOM plaque. */
+.song-v2-card[data-plaque-source="overlay"] .song-v2-card-tier {
+  position:relative;
+  z-index:6;
+}
+/* Night mode may tint/brighten painted ink but must not add a second oval. */
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-plaque-source="art"] .song-v2-card-tier,
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-tier="celadon"][data-plaque-source="art"] .song-v2-card-tier {
+  background:transparent;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+  color:#eee8d9;
+  text-shadow:0 1px 3px #0c1815,0 0 5px #162720b8;
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-tier="hidden"] .song-v2-card-tier {
+  color:#e9e3d4;
+  background:#3a4848;
+  border-color:#7faaa6;
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-tier="hidden"] {
+  background:linear-gradient(155deg,#344240,#232f30);
+}
