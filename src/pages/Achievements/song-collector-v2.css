@@ -371,3 +371,18 @@
   position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
   object-position:center 47%;display:block;user-select:none;
 }
+
+
+/* Feathered area below the art: the image contains no title or date, and
+   DOM copy must remain readable even in the compact two-column layout. */
+.song-v2-card[data-art-source="first-batch"]::after {
+  content:"";
+  position:absolute;
+  inset:42% 0 0;
+  z-index:2;
+  pointer-events:none;
+  background:linear-gradient(to bottom,transparent 0%,#f8f4e2a3 24%,#fbf5e8ef 53%,#fbf5e8f2 100%);
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-art-source="first-batch"]::after {
+  background:linear-gradient(to bottom,transparent 0%,#242d2daa 26%,#242d2bef 55%,#242d2bf7 100%);
+}
