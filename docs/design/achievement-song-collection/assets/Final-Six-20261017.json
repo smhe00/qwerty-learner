@@ -1,0 +1,88 @@
+{
+  "collection": "song-portrait-final-six",
+  "version": "2026-10-17-v1",
+  "status": "preview",
+  "provenance": "Six distinct decorative image-only compositions cropped from a single six-panel 3×2 generated composition, upscaled to 640×928 WebP; title, date, seal and lock fog remain browser-rendered",
+  "security": "Production does not load custom hidden art while locked. Public complete museum intentionally reveals hidden artwork as a labelled read-only spoiler.",
+  "museumUrl": "/qwerty-learner/preview/song-complete/",
+  "entries": [
+    {
+      "id": "ACH_MASTERED_1000",
+      "title": "千词成山",
+      "rarity": "legendary",
+      "rollout": "p2",
+      "hidden": false,
+      "imageConcept": "汝窑珍珠碗与海潮山河",
+      "artFile": "ACH_MASTERED_1000.webp",
+      "width": 640,
+      "height": 928,
+      "sizeBytes": 118294,
+      "sha256": "aba79468cace3b68b372cf347bb041353b0c1aceb7396cf56e15d6b74cbe2f1f"
+    },
+    {
+      "id": "ACH_HIDDEN_90_DIFFICULT",
+      "title": "长风",
+      "rarity": "legendary",
+      "rollout": "p2",
+      "hidden": true,
+      "imageConcept": "云巅仙鹤与远日",
+      "artFile": "ACH_HIDDEN_90_DIFFICULT.webp",
+      "width": 640,
+      "height": 928,
+      "sizeBytes": 128284,
+      "sha256": "73f1cb8c9ad185333d6d3a670a74a5feb089f7d54322e036bfc847d8b3d6d520"
+    },
+    {
+      "id": "ACH_HIDDEN_CRAFT",
+      "title": "如琢如磨",
+      "rarity": "epic",
+      "rollout": "p0",
+      "hidden": true,
+      "imageConcept": "玉雕工坊与梅枝",
+      "artFile": "ACH_HIDDEN_CRAFT.webp",
+      "width": 640,
+      "height": 928,
+      "sizeBytes": 111036,
+      "sha256": "d46d4ab98dfaab9d3beb1cfcdeebfff1a744d3fc46c8cd5d31ea760bc2754d89"
+    },
+    {
+      "id": "ACH_HIDDEN_DAWN",
+      "title": "柳暗花明",
+      "rarity": "epic",
+      "rollout": "p0",
+      "hidden": true,
+      "imageConcept": "桃花云海破晓",
+      "artFile": "ACH_HIDDEN_DAWN.webp",
+      "width": 640,
+      "height": 928,
+      "sizeBytes": 103152,
+      "sha256": "b3da47e0501347afa75141777dbbeb5bdc690f4dfdbd4a1bd7b23fc5ec12d818"
+    },
+    {
+      "id": "ACH_HIDDEN_FINISH_STRONG",
+      "title": "慎终如始",
+      "rarity": "epic",
+      "rollout": "p1",
+      "hidden": true,
+      "imageConcept": "鹰立险峰凌空而起",
+      "artFile": "ACH_HIDDEN_FINISH_STRONG.webp",
+      "width": 640,
+      "height": 928,
+      "sizeBytes": 128980,
+      "sha256": "124c7ef5fcbd3097c3fdf5a2a45f2752131d78fea0c02c9e5bc9728d38c0cbc9"
+    },
+    {
+      "id": "ACH_HIDDEN_SMALL_STEPS",
+      "title": "跬步成途",
+      "rarity": "rare",
+      "rollout": "p1",
+      "hidden": true,
+      "imageConcept": "松下石径步步向远山",
+      "artFile": "ACH_HIDDEN_SMALL_STEPS.webp",
+      "width": 640,
+      "height": 928,
+      "sizeBytes": 137964,
+      "sha256": "f5742db46a4db88f3d1f543eabc4ff6a959a2ae97030578d80b31130b5b43d"
+    }
+  ]
+}
