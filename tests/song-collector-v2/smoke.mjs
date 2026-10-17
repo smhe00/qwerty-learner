@@ -27,6 +27,28 @@ async function checkDesktop() {
       assert.equal(await group.count(),count,'Visual tier '+label)
       assert.equal(await group.first().locator('.song-v2-card-tier').innerText(),label)
     }
+    // Each of the 34 cards displays one of just four original font-free
+    // SVG title pictures. Accessible DOM labels remain available underneath.
+    assert.equal(await page.locator('img.song-v2-plaque-lettering').count(),34)
+    for (const [key, ,label] of visualGroups) {
+      const title=page.locator('.song-v2-card[data-tier="'+key+'"]').first().locator('.song-v2-card-tier')
+      const art=title.locator('img.song-v2-plaque-lettering')
+      const src=await art.getAttribute('src')
+      assert.ok(src?.endsWith('/assets/achievements/song/plaques/'+key+'.svg'),label)
+      const response=await page.request.get(new URL(src,base).toString())
+      assert.equal(response.status(),200,label+' font-free title must exist')
+      assert.match(response.headers()['content-type']||'',/image\\/svg\\+xml/,label)
+      await art.evaluate(img=>img.decode())
+      const visible=await art.evaluate(img=>[img.naturalWidth,img.naturalHeight,img.hidden])
+      assert.ok(visible[0]>0 && visible[1]>0 && !visible[2],label+' image must decode')
+      const centered=await title.evaluate(el=>{
+        const a=el.querySelector('.song-v2-plaque-lettering').getBoundingClientRect()
+        const b=el.getBoundingClientRect()
+        return [Math.abs((a.left+a.right-b.left-b.right)/2),
+          Math.abs((a.top+a.bottom-b.top-b.bottom)/2)]
+      })
+      assert.ok(centered.every(delta=>delta<2),label+' title image should be centered')
+    }
     assert.equal(await page.locator('.song-v2-card[data-plaque-source="art"]').count(),20)
     assert.equal(await page.locator('.song-v2-card[data-plaque-source="overlay"]').count(),14)
     for(const source of ['first-batch','second-batch']) {
