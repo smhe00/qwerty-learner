@@ -44,7 +44,7 @@ for(const a of manifest.entries){
 // Do not regress to an unlicensed font, embedded raster, or a second art frame.
 const titleTiers=['ink','celadon','cinnabar','hidden']
 assert.deepEqual(readdirSync(path.join(root,'plaques')).filter(name=>name.endsWith('.svg')).sort(),
-  titleTiers.map(tier=>tier+'.svg').sort())
+  [...titleTiers.map(tier=>tier+'.svg'),'frame.svg'].sort())
 for(const tier of titleTiers) {
   const svg=readFileSync(path.join(root,'plaques',tier+'.svg'),'utf8')
   assert.match(svg,/^<svg[^>]+viewBox=/,tier+' vector viewport')
@@ -54,10 +54,19 @@ for(const tier of titleTiers) {
     tier+' may not depend on external font or embedded bitmap')
   assert.ok(svg.length<8000,tier+' plaque excessive payload')
 }
+// One frame is reused by the 8 cinnabar + 6 hidden card titles; it must
+// contain no typography and never duplicate the painted first-batch frames.
+const frame=readFileSync(path.join(root,'plaques','frame.svg'),'utf8')
+assert.match(frame,/^<svg[^>]+viewBox=/,'ornamental SVG viewport')
+assert.match(frame,/<path[^>]+stroke=/,'ornamental outlines')
+assert.ok(!['<text','<font','<image','<script','<foreignObject','<use','@font-face']
+  .some(tag=>frame.toLowerCase().includes(tag.toLowerCase())),
+  'the ornament is a pure vector border')
 const plaqueComponent=readFileSync('src/achievement/visual-assets/SongPlaqueLabel.tsx','utf8')
 const liveGallery=readFileSync('src/pages/Achievements/index.tsx','utf8')
 assert.ok(plaqueComponent.includes('assets/achievements/song/plaques/'))
 assert.ok(plaqueComponent.includes('song-v2-plaque-fallback'))
+assert.ok(plaqueComponent.includes('needsFrame') && plaqueComponent.includes('frame.svg'))
 assert.ok(liveGallery.includes('<SongPlaqueLabel'))
 assert.ok(preview.includes('<SongPlaqueLabel'))
 console.log('PASS four font-independent transparent vector titles reused across live and 34/34 museum')
