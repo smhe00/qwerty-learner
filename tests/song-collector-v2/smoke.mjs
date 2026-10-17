@@ -60,8 +60,14 @@ async function checkDesktop() {
       assert.equal(response.status(),200,'third-batch asset '+id)
       assert.ok((response.headers()['content-type']||'').includes('image/webp'),id)
     }
-    assert.equal(await page.locator('.song-v2-card[data-art-source="sprite"]').count(),6,
-      '34 total = 10 + 10 + 8 images and 6 unillustrated catalog silhouettes')
+    assert.equal(await page.locator('.song-v2-card[data-art-source="final-batch"]').count(),1,
+      'Only the non-hidden final-batch award may load bespoke art in an unearned profile')
+    const realHidden=['ACH_HIDDEN_90_DIFFICULT','ACH_HIDDEN_CRAFT','ACH_HIDDEN_DAWN',
+      'ACH_HIDDEN_FINISH_STRONG','ACH_HIDDEN_SMALL_STEPS']
+    for(const id of realHidden)
+      assert.equal(await page.locator('img[src*="final-batch/'+id+'.webp"]').count(),0,
+        'Never request real hidden artwork in a locked account: '+id)
+    assert.equal(await page.locator('.song-v2-card[data-art-source="sprite"]').count(),5)
     const thirdArt=page.locator('.song-v2-card[data-art-source="third-batch"]').first().locator('img.song-v2-card-full-illustration')
     await thirdArt.scrollIntoViewIfNeeded()
     await thirdArt.evaluate(img=>img.decode())
@@ -212,8 +218,66 @@ async function checkMobile() {
     assert.deepEqual(errors,[],'No mobile runtime exception')
   }finally{await context.close()}
 }
+async function checkCompleteMuseum() {
+  const context=await browser.newContext({viewport:{width:1365,height:850}})
+  const page=await context.newPage()
+  const errors=[]
+  page.on('pageerror',e=>errors.push(e.message))
+  await context.addInitScript(() => {
+    indexedDB.open=()=>{throw new Error('Read-only museum must never open IndexedDB')}
+  })
+  try{
+    const response=await page.goto(base+'/preview/song-complete/',{waitUntil:'domcontentloaded'})
+    assert.equal(response?.status(),200,'Direct showroom link serves actual HTML')
+    await page.locator('[data-showcase-all-unlocked="true"]').waitFor({timeout:20000})
+    const cards=page.locator('.song-v2-card')
+    assert.equal(await cards.count(),34,'Exactly 34 works')
+    assert.equal(await page.locator('.song-v2-card[data-unlocked="true"]').count(),34)
+    assert.equal(await page.locator('.song-v2-card:disabled').count(),0)
+    assert.equal(await page.locator('img.song-v2-card-full-illustration').count(),34)
+    const allIds=await cards.evaluateAll(nodes=>nodes.map(n=>n.dataset.achievementId))
+    assert.equal(new Set(allIds).size,34,'All IDs unique')
+    const ids=['ACH_MASTERED_1000','ACH_HIDDEN_90_DIFFICULT','ACH_HIDDEN_CRAFT',
+      'ACH_HIDDEN_DAWN','ACH_HIDDEN_FINISH_STRONG','ACH_HIDDEN_SMALL_STEPS']
+    for(const id of ids) {
+      const card=page.locator('.song-v2-card[data-achievement-id="'+id+'"]')
+      assert.equal(await card.count(),1,id)
+      const art=card.locator('img.song-v2-card-full-illustration')
+      const src=await art.getAttribute('src')
+      assert.ok(src?.endsWith('/assets/achievements/song/final-batch/'+id+'.webp'),id)
+      const resp=await page.request.get(new URL(src,base).toString())
+      assert.equal(resp.status(),200,id)
+      assert.ok((resp.headers()['content-type']||'').includes('image/webp'),id)
+    }
+    const carved=page.locator('.song-v2-card[data-achievement-id="ACH_HIDDEN_CRAFT"]')
+    await carved.scrollIntoViewIfNeeded()
+    await carved.locator('img').evaluate(img=>img.decode())
+    await carved.click()
+    await page.getByRole('dialog',{name:/如琢如磨/}).waitFor()
+    await page.getByRole('button',{name:'重播钤印'}).click()
+    await page.getByRole('button',{name:'收卷入藏'}).click()
+    await page.getByRole('button',{name:'夜卷'}).click()
+    assert.equal(await page.locator('[data-showcase-all-unlocked="true"]').getAttribute('data-song-theme'),'dark')
+    await page.screenshot({path:dir+'/complete-museum-desktop.png',fullPage:false})
+    const data=await page.evaluate(async()=>({
+      local:localStorage.length,session:sessionStorage.length,dbs:(await indexedDB.databases()).length,
+    }))
+    assert.deepEqual(data,{local:0,session:0,dbs:0},'No learning data touched')
+    assert.deepEqual(errors,[])
+  }finally{await context.close()}
+  const mobile=await browser.newPage({viewport:{width:390,height:844}})
+  try{
+    await mobile.goto(base+'/preview/song-complete/',{waitUntil:'domcontentloaded'})
+    await mobile.locator('[data-showcase-all-unlocked="true"]').waitFor()
+    assert.equal(await mobile.locator('.song-v2-card').count(),34)
+    assert.ok(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2))
+    await mobile.screenshot({path:dir+'/complete-museum-mobile.png',fullPage:false})
+  }finally{await mobile.close()}
+}
+
 try{
   await checkDesktop()
   await checkMobile()
-  console.log('PASS song collector portrait gallery: desktop + mobile')
+  await checkCompleteMuseum()
+  console.log('PASS Song portrait collection and 34/34 read-only showroom')
 }finally{await browser.close()}
