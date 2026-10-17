@@ -49,7 +49,8 @@ for(const tier of titleTiers) {
   const svg=readFileSync(path.join(root,'plaques',tier+'.svg'),'utf8')
   assert.match(svg,/^<svg[^>]+viewBox=/,tier+' vector viewport')
   assert.match(svg,/<path[^>]+fill-rule="evenodd"[^>]+d="M/,tier+' drawn lettering')
-  assert.ok(!/<(?:text|font|image|script|foreignObject|use)\\b|@font-face/i.test(svg),
+  assert.ok(!['<text','<font','<image','<script','<foreignObject','<use','@font-face']
+    .some(tag=>svg.toLowerCase().includes(tag.toLowerCase())),
     tier+' may not depend on external font or embedded bitmap')
   assert.ok(svg.length<8000,tier+' plaque excessive payload')
 }
