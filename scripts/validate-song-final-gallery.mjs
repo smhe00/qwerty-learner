@@ -41,7 +41,7 @@ for(const a of manifest.entries){
  console.log('PASS '+a.id+' '+(image.length/1024).toFixed(1)+'KiB')
 }
 // Reject data-writing module imports, ignoring explanatory comments.
-const importLines=preview.split('\\n').filter(line=>line.trimStart().startsWith('import '))
+const importLines=preview.split(String.fromCharCode(10)).filter(line=>line.trimStart().startsWith('import '))
 for(const forbidden of ['@/utils/db','@/achievement/repository','@/pages/Learn']) {
  assert.ok(!importLines.some(line=>line.includes(forbidden)),'unsafe museum import '+forbidden)
 }
