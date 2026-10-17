@@ -3,6 +3,7 @@ name: Song Collector V2 Gate
 on:
   push:
     branches:
+      - product/main
       - feat/song-collector-v2
       - fix/song-collector-dark-rarity-and-lock-mist
       - fix/song-collector-auto-grid-20261017
@@ -20,6 +21,7 @@ on:
       - 'public/assets/achievements/song/second-batch/**'
       - 'public/assets/achievements/song/third-batch/**'
       - 'public/assets/achievements/song/final-batch/**'
+      - 'public/assets/achievements/song/plaques/**'
       - 'src/song-complete/**'
       - 'preview/song-complete/**'
       - 'vite.config.ts'
@@ -28,6 +30,7 @@ on:
       - 'src/achievement/visual-assets/thirdBatch.ts'
       - 'src/achievement/visual-assets/finalBatch.ts'
       - 'src/achievement/visual-assets/visualTiers.ts'
+      - 'src/achievement/visual-assets/SongPlaqueLabel.tsx'
       - 'docs/design/achievement-song-collection/assets/First-Batch-20261017.json'
       - 'docs/design/achievement-song-collection/assets/Second-Batch-20261017.json'
       - 'docs/design/achievement-song-collection/assets/Third-Batch-20261017.json'
@@ -65,7 +68,7 @@ jobs:
       - name: Verify final six artworks and all 34 unique IDs
         run: node scripts/validate-song-final-gallery.mjs
       - name: Lint changes
-        run: yarn eslint src/pages/Achievements src/components/NavigationOverlay.tsx src/achievement/visual-assets/firstBatch.ts src/achievement/visual-assets/secondBatch.ts src/achievement/visual-assets/thirdBatch.ts src/achievement/visual-assets/finalBatch.ts src/achievement/visual-assets/visualTiers.ts src/song-complete --ext .ts,.tsx
+        run: yarn eslint src/pages/Achievements src/components/NavigationOverlay.tsx src/achievement/visual-assets/firstBatch.ts src/achievement/visual-assets/secondBatch.ts src/achievement/visual-assets/thirdBatch.ts src/achievement/visual-assets/finalBatch.ts src/achievement/visual-assets/visualTiers.ts src/achievement/visual-assets/SongPlaqueLabel.tsx src/song-complete --ext .ts,.tsx
       - name: Gate changed source TypeScript
         shell: bash
         run: |
@@ -74,7 +77,7 @@ jobs:
           result=$?
           set -e
           if [ "$result" -ne 0 ]; then
-            if grep -E '^src/(pages/Achievements/|components/NavigationOverlay[.]tsx|achievement/visual-assets/(firstBatch|secondBatch|thirdBatch|finalBatch|visualTiers)[.]ts|song-complete/)' "$RUNNER_TEMP/song-collector-tsc.log"; then
+            if grep -E '^src/(pages/Achievements/|components/NavigationOverlay[.]tsx|achievement/visual-assets/(firstBatch|secondBatch|thirdBatch|finalBatch|visualTiers)[.]ts|achievement/visual-assets/SongPlaqueLabel[.]tsx|song-complete/)' "$RUNNER_TEMP/song-collector-tsc.log"; then
               echo "::error::Song collector TypeScript diagnostics"
               exit 1
             fi
