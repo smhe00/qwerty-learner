@@ -1,10 +1,10 @@
 {
   "collection": "song-portrait-third-batch",
-  "version": "2026-10-18-v2-selective-seven",
-  "status": "visual-preview",
-  "artworkMethod": "Seven ID-matched, individually generated, border-free Song scenes cropped to 960×1391 and paired with the genuine pixel-extracted shared original PNG frame/cartouche; ACH_90_DAY remains its original 640×928 v1 preview art.",
+  "version": "2026-10-19-v3-third-batch-complete",
+  "status": "visual-complete",
+  "artworkMethod": "Eight individually generated, border-free 960×1391 Song scenes. Original shared transparent PNG exterior frame + blank title cartouche overlay at runtime; lettering and seal are live independent layers.",
   "goal": "Picture-only master visual; dynamic React labels/seal/date/fog continue to be overlaid at runtime",
-  "note": "Third artistic batch contains rarity rare/epic/legendary. Grade and rollout are preserved from achievements.json. No hidden IDs in this batch. Selective artwork replacement only: first two batches (20), ACH_90_DAY and all final six are unchanged. Framework art overlay is conditional per achievement ID.",
+  "note": "Third batch has 8 individually generated scene images. Art rank and rollout remain unchanged from the achievement catalog. Original 960×1391 decorative frame and empty title are shared PNG overlays, not re-generated per scene. First two batches and final six remain untouched.",
   "entries": [
     {
       "id": "ACH_NO_HINT_25",
@@ -111,11 +111,11 @@
       "rollout": "p2",
       "hidden": false,
       "artFile": "ACH_90_DAY.webp",
-      "imageConcept": "长河金霞，岁寒不忘",
-      "width": 640,
-      "height": 928,
-      "sizeBytes": 92274,
-      "sha256": "6818094609a9f9d8e924abd25cd0f7cfb379b5cf9ba94b0bb143ac6d11506ba2",
+      "imageConcept": "雪中苍松与寒梅经岁不凋，长河金霞映照九十日后的恒久记忆",
+      "width": 960,
+      "height": 1391,
+      "sizeBytes": 153010,
+      "sha256": "03df3208a80b0b0c6e4e3e647fe1a02adec4ef5687a2e01ede56d701db0dc4e8",
       "batchIndex": 8
     }
   ]

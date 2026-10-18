@@ -625,7 +625,7 @@
   box-shadow:none;
 }
 
-/* Seven re-painted third-batch backgrounds are strictly WITHOUT baked borders.
+/* Eight re-painted third-batch backgrounds are strictly WITHOUT baked borders.
    Both genuine first-batch ornament layers share the original 960x1391
    coordinate system, scaled once with the portrait. Old 27 images untouched. */
 .song-v2-card[data-shared-frame="true"] .song-v2-shared-ornaments {

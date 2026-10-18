@@ -35,7 +35,7 @@ for (const entry of manifest.entries) {
   assert.ok(buf.length < 160 * 1024, id + ' oversized first screen art')
   console.log('PASS ' + id + ' ' + (buf.length / 1024).toFixed(1) + 'KiB rarity=' + entry.rarity + ', rollout=' + entry.rollout)
 }
-const newIds = ["ACH_NO_HINT_25","ACH_ERROR_POSITION_FIXED","ACH_FAILURE_RECOVERY_SESSION","ACH_WEEKLY_GAIN","ACH_MASTERED_100","ACH_MASTERED_500","ACH_RECOVER_5_STABLE"]
+const newIds = ["ACH_NO_HINT_25","ACH_ERROR_POSITION_FIXED","ACH_FAILURE_RECOVERY_SESSION","ACH_WEEKLY_GAIN","ACH_MASTERED_100","ACH_MASTERED_500","ACH_RECOVER_5_STABLE","ACH_90_DAY"]
 assert.ok(code.includes('usesOriginalSongFrameOverlay'))
 for (const entry of manifest.entries) {
   const isNew=newIds.includes(entry.id)
@@ -49,4 +49,4 @@ for (const name of ['song_outer_border.png','song_empty_title_frame.png']) {
   assert.deepEqual([png.readUInt32BE(16),png.readUInt32BE(20)],[960,1391],
     name+' exact master coordinates')
 }
-console.log('PASS 7 individually refreshed third-batch scenes + 1 preserved original; all original rarity/rollout unchanged')
+console.log('PASS all 8 independently refreshed third-batch scenes with shared original frame; rarity/rollout unchanged')

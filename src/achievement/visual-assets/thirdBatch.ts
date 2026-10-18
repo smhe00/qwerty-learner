@@ -20,9 +20,9 @@ export function getThirdBatchAchievementArtUrl(id: string, hiddenLocked = false)
   return (import.meta.env.BASE_URL || '/') + 'assets/achievements/song/third-batch/' + id + '.webp'
 }
 
-/** Only these seven third-batch scenes have been replaced with individually
- * reviewed 960×1391 border-free paintings. The eighth (ACH_90_DAY) and all
- * other artwork retain their original frame and image without modification. */
+/** All eight third-batch scenes are independently generated border-free
+ * 960×1391 paintings. The original shared PNG border and empty title apply
+ * exclusively to these eight; the other 26 achievement cards are unchanged. */
 const sharedOriginalFrameIds: ReadonlySet<string> = new Set([
   "ACH_NO_HINT_25",
   "ACH_ERROR_POSITION_FIXED",
@@ -30,6 +30,7 @@ const sharedOriginalFrameIds: ReadonlySet<string> = new Set([
   "ACH_WEEKLY_GAIN",
   "ACH_MASTERED_100",
   "ACH_MASTERED_500",
-  "ACH_RECOVER_5_STABLE"
+  "ACH_RECOVER_5_STABLE",
+  "ACH_90_DAY"
 ])
 export const usesOriginalSongFrameOverlay = (id: string): boolean => sharedOriginalFrameIds.has(id)

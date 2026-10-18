@@ -27,13 +27,13 @@ async function checkDesktop() {
       assert.equal(await group.count(),count,'Visual tier '+label)
       assert.equal(await group.first().locator('.song-v2-card-tier').innerText(),label)
     }
-    // Seven refreshed scenes reuse the original PNG frames. The seven
-    // unreplaced later scenes keep their old SVG frame, first 20 are untouched.
+    // All eight third-batch scenes reuse the original PNG frames. The final
+    // six keep their previous SVG frame; first twenty remain untouched.
     assert.equal(await page.locator('img.song-v2-plaque-lettering').count(),34)
-    assert.equal(await page.locator('img.song-v2-plaque-frame').count(),7)
-    assert.equal(await page.locator('img.song-v2-shared-outer-border').count(),7)
-    assert.equal(await page.locator('img.song-v2-shared-cartouche').count(),7)
-    assert.equal(await page.locator('.song-v2-card[data-shared-frame="true"]').count(),7)
+    assert.equal(await page.locator('img.song-v2-plaque-frame').count(),6)
+    assert.equal(await page.locator('img.song-v2-shared-outer-border').count(),8)
+    assert.equal(await page.locator('img.song-v2-shared-cartouche').count(),8)
+    assert.equal(await page.locator('.song-v2-card[data-shared-frame="true"]').count(),8)
     assert.equal(await page.locator('.song-v2-card[data-tier="ink"] .song-v2-shared-ornaments').count(),0)
     assert.equal(await page.locator('.song-v2-card[data-tier="celadon"] .song-v2-shared-ornaments').count(),0)
     let referenceInkBox = null
@@ -140,7 +140,7 @@ async function checkDesktop() {
       const response=await page.request.get(new URL(url,base).toString())
       assert.equal(response.status(),200,'third-batch asset '+id)
       assert.ok((response.headers()['content-type']||'').includes('image/webp'),id)
-      const isNew=id!=='ACH_90_DAY'
+      const isNew=true // all eight third-batch IDs have original master overlays
       assert.equal(await card.getAttribute('data-shared-frame'),isNew?'true':'false',id+' original frame policy')
       assert.equal(await card.locator('.song-v2-shared-ornaments img').count(),isNew?2:0,id+' overlay count')
       assert.equal(await card.locator('.song-v2-plaque-frame').count(),isNew?0:1,id+' old frame policy')
@@ -162,6 +162,11 @@ async function checkDesktop() {
       assert.equal(await page.locator('img[src*="final-batch/'+id+'.webp"]').count(),0,
         'Never request real hidden artwork in a locked account: '+id)
     assert.equal(await page.locator('.song-v2-card[data-art-source="sprite"]').count(),5)
+    const lastThird=page.locator('.song-v2-card[data-achievement-id="ACH_90_DAY"] img.song-v2-card-full-illustration')
+    await lastThird.scrollIntoViewIfNeeded()
+    await lastThird.evaluate(img=>img.decode())
+    assert.deepEqual(await lastThird.evaluate(img=>[img.naturalWidth,img.naturalHeight]),[960,1391],
+      'ACH_90_DAY must be replaced with independent 960×1391 art')
     const thirdArt=page.locator('.song-v2-card[data-art-source="third-batch"]').first().locator('img.song-v2-card-full-illustration')
     await thirdArt.scrollIntoViewIfNeeded()
     await thirdArt.evaluate(img=>img.decode())
