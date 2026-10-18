@@ -9,16 +9,7 @@ type Props = { tier: SongVisualTier; label: string }
  */
 export function SongPlaqueLabel({ tier, label }: Props) {
   const artBase = import.meta.env.BASE_URL + 'assets/achievements/song/plaques/'
-  const needsFrame = tier === 'cinnabar' || tier === 'hidden'
   return <span className="song-v2-card-tier">
-    {needsFrame && <img
-      className="song-v2-plaque-frame"
-      src={artBase + 'frame.svg'}
-      alt=""
-      aria-hidden="true"
-      draggable={false}
-      decoding="async"
-    />}
     <img
       className="song-v2-plaque-lettering"
       src={artBase + tier + '.svg'}
