@@ -8,23 +8,24 @@
   "assets": [
     {
       "filename": "song_outer_border.png",
-      "sha256": "c166ca938749174d20b14aa26efb83b3b030dde7f60a6b6d1df87bae4ef5737f",
-      "bytes": 123065,
+      "sha256": "6b62d93c72ac914ad3047b3e502c90666b021fd01b2a39c52962dd6103544b0b",
+      "bytes": 119529,
       "imageSize": [
         960,
         1391
       ],
-      "opaquePixels": 26692
+      "opaquePixels": 26373
     },
     {
       "filename": "song_empty_title_frame.png",
-      "sha256": "f7c3b0bbb262b9788f024b9287a212e44d7e172a153c2120f780192a645e7e95",
-      "bytes": 31007,
+      "sha256": "2844eeb06510ac848294462e6baa98965d83e1580fda1394897c7287ecd32db7",
+      "bytes": 39173,
       "imageSize": [
         960,
         1391
       ],
-      "opaquePixels": 4980
+      "opaquePixels": 45618,
+      "paperInteriorPixels": 40638
     }
   ],
   "registration": "top-left 0,0; no scale, same geometry on all artwork"
