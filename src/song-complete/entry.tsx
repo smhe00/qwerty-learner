@@ -5,6 +5,7 @@ import { achievementDefinitions, getAchievementCulture } from '@/resources/achie
 import type { AchievementDefinition } from '@/resources/achievementCulture'
 import { getSongVisualGroup, songVisualGroups, songVisualRank } from '@/achievement/visual-assets/visualTiers'
 import { SongPlaqueLabel } from '@/achievement/visual-assets/SongPlaqueLabel'
+import { SongSharedOrnaments } from '@/achievement/visual-assets/SongSharedOrnaments'
 import type { SongVisualTier } from '@/achievement/visual-assets/visualTiers'
 import { getFirstBatchAchievementArtUrl } from '@/achievement/visual-assets/firstBatch'
 import { getSecondBatchAchievementArtUrl } from '@/achievement/visual-assets/secondBatch'
@@ -103,7 +104,8 @@ function Museum() {
           <span className="song-v2-corner song-v2-corner-tr" aria-hidden="true" />
           <span className="song-v2-corner song-v2-corner-bl" aria-hidden="true" />
           <span className="song-v2-corner song-v2-corner-br" aria-hidden="true" />
-          <SongPlaqueLabel tier={visual.key} label={visual.label} />
+          {(visual.key === 'cinnabar' || visual.key === 'hidden') && <SongSharedOrnaments />}
+      <SongPlaqueLabel tier={visual.key} label={visual.label} />
           <div className="song-v2-card-art" aria-hidden="true" />
           <span className="song-v2-card-seal" aria-hidden="true">雅<br/>藏</span>
           <div className="song-v2-card-text"><h2>{a.title}</h2>
