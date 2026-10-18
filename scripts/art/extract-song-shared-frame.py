@@ -31,8 +31,8 @@ a=np.where((r>g+5)&(g>b+8)&(r>72),a,0)
 # Extra 40px-wide edge bands would capture bamboo, inkstones and mountains.
 edge=((x>=14)&(x<=946)&(((y>=12)&(y<=31))|((y>=1352)&(y<=1378))))
 edge|=(((x>=17)&(x<=34))|((x>=927)&(x<=945)))&(y>=29)&(y<=1360)
-edge|=(((x>=13)&(x<=126))|((x>=834)&(x<=947)))&(y>=12)&(y<=108)
-edge|=(((x>=13)&(x<=121))|((x>=838)&(x<=947)))&(y>=1285)&(y<=1380)
+edge|=(((x>=13)&(x<=126))|((x>=869)&(x<=947)))&(y>=12)&(y<=108)
+edge|=(((x>=13)&(x<=121))|((x>=863)&(x<=947)))&(y>=1285)&(y<=1380)
 edge&=(x>11)&(x<949)&(y>8)&(y<1381)
 # Exactly the blank original ruyi cartouche; stop above the scenic foliage.
 title=(x>198)&(x<762)&(y>29)&(y<156)
@@ -58,7 +58,32 @@ def matte(name,roi):
                 "bytes":dest.stat().st_size,"imageSize":[W,H],
                 "opaquePixels":int(np.count_nonzero(alpha>210))}
 outer,s0=matte("song_outer_border.png",edge)
-plaque,s1=matte("song_empty_title_frame.png",title)
+# Fill the cartouche with its *original, unaltered rice-paper pixels*.
+# Segment its interior from the real gold contour; don't draw a new shape.
+# This keeps the title readable over any newly generated painting.
+from PIL import ImageFilter, ImageDraw
+border_alpha=np.asarray(matte("song_cartouche_contour_tmp.png",title)[0].getchannel("A"))
+barrier=Image.fromarray(np.where(border_alpha>55,255,0).astype("uint8"),"L")
+barrier=barrier.filter(ImageFilter.MaxFilter(9))
+inside_image=barrier.copy()
+ImageDraw.floodfill(inside_image,(480,88),128,thresh=0)
+interior=np.asarray(inside_image)==128
+n_inside=int(np.count_nonzero(interior))
+assert 16000<n_inside<65000, f"Title outline is broken (flood interior={n_inside})"
+# Use a filled parchment backing beneath the extracted calligraphic outline.
+frame_strokes=np.asarray(matte("song_cartouche_contour_tmp.png",title)[0])
+title_alpha=np.maximum(frame_strokes[:,:,3],np.where(interior,246,0)).astype("uint8")
+title_rgb=np.asarray(original).copy()
+title_rgb[title_alpha==0,:]=0
+plaque=Image.fromarray(np.dstack((title_rgb,title_alpha)),"RGBA")
+(DEST/"song_cartouche_contour_tmp.png").unlink()
+plaque_path=DEST/"song_empty_title_frame.png"
+plaque.save(plaque_path,optimize=True)
+s1={"filename":"song_empty_title_frame.png",
+    "sha256":hashlib.sha256(plaque_path.read_bytes()).hexdigest(),
+    "bytes":plaque_path.stat().st_size,"imageSize":[W,H],
+    "opaquePixels":int(np.count_nonzero(title_alpha>210)),
+    "paperInteriorPixels":n_inside}
 both=Image.alpha_composite(outer,plaque)
 both.save(DEST/"song_frame_combined.png",optimize=True)
 # Preview on actual raw reference, and independently over a contrasting paper.
