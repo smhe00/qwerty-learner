@@ -26,13 +26,16 @@ a=np.clip((chroma-34)/25,0,1)*np.clip((240-luma)/53,0,1)
 a=np.where((r>g+5)&(g>b+8)&(r>72),a,0)
 # True frame and filigree regions of approved first-batch raw artwork.
 # Critically, DO NOT capture scene, clouds, foliage, or surrounding paper fill.
-edge=((x>=13)&(x<=946)&((y<47)|(y>1331)))
-edge|=(((x<46)|(x>914))&(y>=14)&(y<=1377))
-edge|=(((x<135)|(x>826))&(y<132))
-edge|=(((x<142)|(x>819))&(y>1250))
+# Stroke-only extraction ROI: slim gold rule through the long edges;
+# elaborate corner filigree is included only where its actual ornament lies.
+# Extra 40px-wide edge bands would capture bamboo, inkstones and mountains.
+edge=((x>=14)&(x<=946)&(((y>=12)&(y<=31))|((y>=1352)&(y<=1378))))
+edge|=(((x>=17)&(x<=34))|((x>=927)&(x<=945)))&(y>=29)&(y<=1360)
+edge|=(((x>=13)&(x<=126))|((x>=834)&(x<=947)))&(y>=12)&(y<=108)
+edge|=(((x>=13)&(x<=121))|((x>=838)&(x<=947)))&(y>=1285)&(y<=1380)
 edge&=(x>11)&(x<949)&(y>8)&(y<1381)
-# Exactly the blank original ruyi cartouche: no calligraphy, no scene pixels.
-title=(x>198)&(x<762)&(y>30)&(y<169)
+# Exactly the blank original ruyi cartouche; stop above the scenic foliage.
+title=(x>198)&(x<762)&(y>29)&(y<156)
 
 def matte(name,roi):
     mask=(np.clip(a,0,1)*roi.astype(np.float32))
