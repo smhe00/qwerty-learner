@@ -229,9 +229,9 @@ test('published Pages: Song gallery opens inside Focus and offers safe desktop/m
   })
   try {
     await mobile.goto(site, { waitUntil: 'domcontentloaded' })
-    await expect.poll(() => mobile.evaluate(() => window.location.pathname), {
-      timeout: 15000,
-    }).toMatch(/\/(?:mobile|learn)\/?$/)
+    // Full-page redirects replace the execution context; waitForURL is
+    // navigation-safe, unlike polling page.evaluate during an active redirect.
+    await mobile.waitForURL(/\/(?:mobile|learn)\/?$/, { timeout: 15000 })
     const entryLink = mobile.getByRole('link', { name: '打开成就雅集' })
     if (await entryLink.count() === 0) {
       console.log('mobile-entry-diagnostic', await mobile.evaluate(() => ({
