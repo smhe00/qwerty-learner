@@ -110,9 +110,23 @@
    the border artwork. The frame is an independent decorative layer. */
 .song-v2-plaque-lettering {display:block;width:100%;height:100%;max-width:100%;
   object-fit:contain;pointer-events:none;user-select:none;position:relative;z-index:1;}
-.song-v2-plaque-frame {position:absolute;z-index:0;
-  top:-18%;left:-8%;width:116%;height:136%;max-width:none;
-  object-fit:fill;pointer-events:none;user-select:none;}
+/* Extracted FROM the first-batch original master at 960×1391.
+   These transparent PNG images are displayed ONLY on the last 8+6 cards.
+   The first 20 keep their original art-embedded ornaments, untouched. */
+.song-v2-shared-ornaments {
+  position:absolute;inset:0;z-index:4;display:block;
+  width:100%;height:100%;pointer-events:none;user-select:none;
+}
+.song-v2-shared-ornaments img {
+  display:block;position:absolute;inset:0;width:100%;height:100%;
+  object-fit:fill;pointer-events:none;user-select:none;
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-shared-outer-border {
+  filter:brightness(.86) saturate(.70);
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-shared-cartouche {
+  filter:brightness(.50) saturate(.66);
+}
 .song-v2-plaque-lettering[hidden] {display:none;}
 .song-v2-plaque-fallback {position:absolute;inset:0;display:flex;
  align-items:center;justify-content:center;color:transparent;
@@ -562,9 +576,8 @@
 .song-v2-card[data-tier="celadon"][data-plaque-source="art"] .song-v2-card-tier {
   color:#3f5550;
 }
-/* Batch 3 + final six use their own ruyi SVG border rather than a plain
-   CSS pill. Their title *glyphs* align to precisely the same ink box as
-   the first 20 cards, preventing a larger apparent font size. */
+/* Batch 3 + final six place their font-independent four-character SVG
+   title OVER the extracted true-master PNG cartouche at matching geometry. */
 .song-v2-card[data-plaque-source="overlay"] .song-v2-card-tier {
   position:absolute;
   z-index:6;
@@ -594,9 +607,6 @@
   border:0;
   box-shadow:none;
 }
-.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-plaque-source="overlay"] .song-v2-plaque-frame {
-  filter:brightness(.48) saturate(.72);
-}
 /* Night mode may tint/brighten painted ink but must not add a second oval. */
 .song-v2-collection[data-song-theme="dark"] .song-v2-card[data-plaque-source="art"] .song-v2-card-tier,
 .song-v2-collection[data-song-theme="dark"] .song-v2-card[data-tier="celadon"][data-plaque-source="art"] .song-v2-card-tier {
@@ -616,8 +626,8 @@
   background:linear-gradient(155deg,#344240,#232f30);
 }
 
-/* Highest-priority night override: the hidden-tier theme normally restores
-   a solid pill. The ornate SVG supplies the ONLY frame in both themes. */
+/* Highest-priority night override: never restore a second pill.
+   The extracted pixel-registered PNG supplies the ONLY ornament. */
 .song-v2-collection[data-song-theme="dark"] .song-v2-card[data-tier="hidden"][data-plaque-source="overlay"] .song-v2-card-tier,
 .song-v2-collection[data-song-theme="dark"] .song-v2-card[data-tier="cinnabar"][data-plaque-source="overlay"] .song-v2-card-tier {
   background:transparent;
