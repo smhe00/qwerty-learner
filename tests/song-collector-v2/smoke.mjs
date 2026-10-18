@@ -27,10 +27,14 @@ async function checkDesktop() {
       assert.equal(await group.count(),count,'Visual tier '+label)
       assert.equal(await group.first().locator('.song-v2-card-tier').innerText(),label)
     }
-    // All four tiers use identical ink-box dimensions. Only the later 14
-    // need the extra vector cartouche, because the first 20 have a painted one.
+    // The first 20 keep their baked-in ornament; ONLY the final 8+6 cards
+    // receive both pixel-registered transparent originals (not a CSS/SVG frame).
     assert.equal(await page.locator('img.song-v2-plaque-lettering').count(),34)
-    assert.equal(await page.locator('img.song-v2-plaque-frame').count(),14)
+    assert.equal(await page.locator('img.song-v2-plaque-frame').count(),0)
+    assert.equal(await page.locator('.song-v2-card[data-tier="ink"] .song-v2-shared-ornaments').count(),0)
+    assert.equal(await page.locator('.song-v2-card[data-tier="celadon"] .song-v2-shared-ornaments').count(),0)
+    assert.equal(await page.locator('img.song-v2-shared-outer-border').count(),14)
+    assert.equal(await page.locator('img.song-v2-shared-cartouche').count(),14)
     let referenceInkBox = null
     for (const [key, ,label] of visualGroups) {
       const title=page.locator('.song-v2-card[data-tier="'+key+'"]').first().locator('.song-v2-card-tier')
@@ -58,22 +62,30 @@ async function checkDesktop() {
         assert.ok(Math.abs(inkBox.width-referenceInkBox.width)<1,
           label+' title must have same width as 素笺墨印')
       } else referenceInkBox=inkBox
-      const frame=title.locator('.song-v2-plaque-frame')
-      const needsFrame = key === 'cinnabar' || key === 'hidden'
-      assert.equal(await frame.count(),needsFrame?1:0,label+' decorative frame presence')
-      if (needsFrame) {
+      const card=page.locator('.song-v2-card[data-tier="'+key+'"]').first()
+      const needsShared = key === 'cinnabar' || key === 'hidden'
+      const pngBorders=card.locator('img.song-v2-shared-outer-border, img.song-v2-shared-cartouche')
+      assert.equal(await pngBorders.count(),needsShared?2:0,label+' shared original layers')
+      if (needsShared) {
+        const names=['song_outer_border.png','song_empty_title_frame.png']
+        for(let i=0;i<2;i++){
+          const border=pngBorders.nth(i)
+          const url=await border.getAttribute('src')
+          assert.ok(url?.endsWith('/assets/achievements/song/shared/'+names[i]))
+          const response=await page.request.get(new URL(url,base).toString())
+          assert.equal(response.status(),200,label+' shared original layer must exist')
+          assert.ok((response.headers()['content-type']||'').includes('image/png'))
+          await border.evaluate(img=>img.decode())
+          assert.deepEqual(await border.evaluate(img=>[img.naturalWidth,img.naturalHeight]),[960,1391])
+          const box=await border.boundingBox()
+          const cardBox=await card.boundingBox()
+          assert.ok(box&&cardBox&&Math.abs(box.width-cardBox.width)<3&&Math.abs(box.height-cardBox.height)<3,
+            label+' shared layer must fill the artwork coordinate plane')
+        }
         assert.equal(await title.evaluate(el=>getComputedStyle(el).backgroundColor),
-          'rgba(0, 0, 0, 0)',label+' no old CSS pill behind ornamental frame')
+          'rgba(0, 0, 0, 0)',label+' no CSS pill behind real artwork frame')
         assert.equal(await title.evaluate(el=>getComputedStyle(el).borderTopStyle),
           'none',label+' no duplicate CSS outline')
-        const frameUrl=await frame.getAttribute('src')
-        assert.ok(frameUrl?.endsWith('/assets/achievements/song/plaques/frame.svg'))
-        const frameResponse=await page.request.get(new URL(frameUrl,base).toString())
-        assert.equal(frameResponse.status(),200,label+' ornamental frame must load')
-        await frame.evaluate(img=>img.decode())
-        const box=await frame.boundingBox()
-        assert.ok(box && box.width>inkBox.width && box.height>inkBox.height,
-          label+' scrollwork border must surround title without reducing ink size')
       }
     }
     assert.equal(await page.locator('.song-v2-card[data-plaque-source="art"]').count(),20)
