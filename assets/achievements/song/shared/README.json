@@ -1,0 +1,32 @@
+{
+  "source": "public/assets/achievements/song/first-batch/ACH_FIRST_DECODE.webp",
+  "sourceSha256": "8ae7cb31e0e5097af1219633070ed6950e4156b1dee740a198223d59943a3908",
+  "canvasSize": [
+    960,
+    1391
+  ],
+  "assets": [
+    {
+      "filename": "song_outer_border.png",
+      "sha256": "6b62d93c72ac914ad3047b3e502c90666b021fd01b2a39c52962dd6103544b0b",
+      "bytes": 119529,
+      "imageSize": [
+        960,
+        1391
+      ],
+      "opaquePixels": 26373
+    },
+    {
+      "filename": "song_empty_title_frame.png",
+      "sha256": "2844eeb06510ac848294462e6baa98965d83e1580fda1394897c7287ecd32db7",
+      "bytes": 39173,
+      "imageSize": [
+        960,
+        1391
+      ],
+      "opaquePixels": 45618,
+      "paperInteriorPixels": 40638
+    }
+  ],
+  "registration": "top-left 0,0; no scale, same geometry on all artwork"
+}
