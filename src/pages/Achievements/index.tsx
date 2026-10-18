@@ -6,6 +6,7 @@ import {
 import { SongMistLayer } from '@/achievement/visual-assets/SongMistLayer'
 import { SongPortalEntry } from '@/achievement/visual-assets/SongPortalEntry'
 import { SongPlaqueLabel } from '@/achievement/visual-assets/SongPlaqueLabel'
+import { SongSharedOrnaments } from '@/achievement/visual-assets/SongSharedOrnaments'
 import { getFirstBatchAchievementArtUrl } from '@/achievement/visual-assets/firstBatch'
 import { getSecondBatchAchievementArtUrl } from '@/achievement/visual-assets/secondBatch'
 import { getThirdBatchAchievementArtUrl } from '@/achievement/visual-assets/thirdBatch'
@@ -100,6 +101,7 @@ function CollectionCard({ achievement, unlockedAt, theme, onOpen }: {
       <span className="song-v2-corner song-v2-corner-tr" aria-hidden="true" />
       <span className="song-v2-corner song-v2-corner-bl" aria-hidden="true" />
       <span className="song-v2-corner song-v2-corner-br" aria-hidden="true" />
+      {(tier === 'cinnabar' || tier === 'hidden') && <SongSharedOrnaments />}
       <SongPlaqueLabel tier={tier} label={visual.label} />
       <div className="song-v2-card-art" aria-hidden="true">
         {!specialArtUrl && <span className="song-v2-card-artwork" style={spriteOffset(art)} />}
