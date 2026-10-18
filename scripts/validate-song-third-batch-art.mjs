@@ -35,4 +35,18 @@ for (const entry of manifest.entries) {
   assert.ok(buf.length < 160 * 1024, id + ' oversized first screen art')
   console.log('PASS ' + id + ' ' + (buf.length / 1024).toFixed(1) + 'KiB rarity=' + entry.rarity + ', rollout=' + entry.rollout)
 }
-console.log('PASS all 10 third-batch images; 5 P0, 4 P1, 1 P2; no rarity/rollout changed')
+const newIds = ["ACH_NO_HINT_25","ACH_ERROR_POSITION_FIXED","ACH_FAILURE_RECOVERY_SESSION","ACH_WEEKLY_GAIN","ACH_MASTERED_100","ACH_MASTERED_500","ACH_RECOVER_5_STABLE"]
+assert.ok(code.includes('usesOriginalSongFrameOverlay'))
+for (const entry of manifest.entries) {
+  const isNew=newIds.includes(entry.id)
+  assert.deepEqual([entry.width,entry.height],isNew?[960,1391]:[640,928],
+    entry.id+' selectively rebuilt dimensions')
+}
+const sharedRoot=path.resolve('public/assets/achievements/song/shared')
+for (const name of ['song_outer_border.png','song_empty_title_frame.png']) {
+  const png=readFileSync(path.join(sharedRoot,name))
+  assert.equal(png.toString('ascii',1,4),'PNG',name+' PNG magic')
+  assert.deepEqual([png.readUInt32BE(16),png.readUInt32BE(20)],[960,1391],
+    name+' exact master coordinates')
+}
+console.log('PASS 7 individually refreshed third-batch scenes + 1 preserved original; all original rarity/rollout unchanged')

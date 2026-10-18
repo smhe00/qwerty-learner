@@ -27,10 +27,15 @@ async function checkDesktop() {
       assert.equal(await group.count(),count,'Visual tier '+label)
       assert.equal(await group.first().locator('.song-v2-card-tier').innerText(),label)
     }
-    // All four tiers use identical ink-box dimensions. Only the later 14
-    // need the extra vector cartouche, because the first 20 have a painted one.
+    // Seven refreshed scenes reuse the original PNG frames. The seven
+    // unreplaced later scenes keep their old SVG frame, first 20 are untouched.
     assert.equal(await page.locator('img.song-v2-plaque-lettering').count(),34)
-    assert.equal(await page.locator('img.song-v2-plaque-frame').count(),14)
+    assert.equal(await page.locator('img.song-v2-plaque-frame').count(),7)
+    assert.equal(await page.locator('img.song-v2-shared-outer-border').count(),7)
+    assert.equal(await page.locator('img.song-v2-shared-cartouche').count(),7)
+    assert.equal(await page.locator('.song-v2-card[data-shared-frame="true"]').count(),7)
+    assert.equal(await page.locator('.song-v2-card[data-tier="ink"] .song-v2-shared-ornaments').count(),0)
+    assert.equal(await page.locator('.song-v2-card[data-tier="celadon"] .song-v2-shared-ornaments').count(),0)
     let referenceInkBox = null
     for (const [key, ,label] of visualGroups) {
       const title=page.locator('.song-v2-card[data-tier="'+key+'"]').first().locator('.song-v2-card-tier')
@@ -59,7 +64,7 @@ async function checkDesktop() {
           label+' title must have same width as 素笺墨印')
       } else referenceInkBox=inkBox
       const frame=title.locator('.song-v2-plaque-frame')
-      const needsFrame = key === 'cinnabar' || key === 'hidden'
+      const needsFrame = key === 'hidden' // first cinnabar card is a refreshed border-free image
       assert.equal(await frame.count(),needsFrame?1:0,label+' decorative frame presence')
       if (needsFrame) {
         assert.equal(await title.evaluate(el=>getComputedStyle(el).backgroundColor),
@@ -135,6 +140,19 @@ async function checkDesktop() {
       const response=await page.request.get(new URL(url,base).toString())
       assert.equal(response.status(),200,'third-batch asset '+id)
       assert.ok((response.headers()['content-type']||'').includes('image/webp'),id)
+      const isNew=id!=='ACH_90_DAY'
+      assert.equal(await card.getAttribute('data-shared-frame'),isNew?'true':'false',id+' original frame policy')
+      assert.equal(await card.locator('.song-v2-shared-ornaments img').count(),isNew?2:0,id+' overlay count')
+      assert.equal(await card.locator('.song-v2-plaque-frame').count(),isNew?0:1,id+' old frame policy')
+      if(isNew){
+        for(const art of await card.locator('.song-v2-shared-ornaments img').all()){
+          const ref=await art.getAttribute('src')
+          const response=await page.request.get(new URL(ref,base).toString())
+          assert.equal(response.status(),200,id+' master ornament')
+          await art.evaluate(img=>img.decode())
+          assert.deepEqual(await art.evaluate(img=>[img.naturalWidth,img.naturalHeight]),[960,1391],id+' overlay geometry')
+        }
+      }
     }
     assert.equal(await page.locator('.song-v2-card[data-art-source="final-batch"]').count(),1,
       'Only the non-hidden final-batch award may load bespoke art in an unearned profile')
@@ -147,8 +165,8 @@ async function checkDesktop() {
     const thirdArt=page.locator('.song-v2-card[data-art-source="third-batch"]').first().locator('img.song-v2-card-full-illustration')
     await thirdArt.scrollIntoViewIfNeeded()
     await thirdArt.evaluate(img=>img.decode())
-    assert.deepEqual(await thirdArt.evaluate(img=>[img.naturalWidth,img.naturalHeight]),[640,928],
-      'Third-batch PNG-derived WebP decoded at expected size')
+    assert.deepEqual(await thirdArt.evaluate(img=>[img.naturalWidth,img.naturalHeight]),[960,1391],
+      'Refreshed third-batch border-free WebP decodes at original master size')
     const secondArt=page.locator('.song-v2-card[data-art-source="second-batch"]').first().locator('img.song-v2-card-full-illustration')
     await secondArt.scrollIntoViewIfNeeded()
     await secondArt.evaluate(img=>img.decode())

@@ -5,6 +5,8 @@ import { achievementDefinitions, getAchievementCulture } from '@/resources/achie
 import type { AchievementDefinition } from '@/resources/achievementCulture'
 import { getSongVisualGroup, songVisualGroups, songVisualRank } from '@/achievement/visual-assets/visualTiers'
 import { SongPlaqueLabel } from '@/achievement/visual-assets/SongPlaqueLabel'
+import { SongSharedOrnaments } from '@/achievement/visual-assets/SongSharedOrnaments'
+import { usesOriginalSongFrameOverlay } from '@/achievement/visual-assets/thirdBatch'
 import type { SongVisualTier } from '@/achievement/visual-assets/visualTiers'
 import { getFirstBatchAchievementArtUrl } from '@/achievement/visual-assets/firstBatch'
 import { getSecondBatchAchievementArtUrl } from '@/achievement/visual-assets/secondBatch'
@@ -92,9 +94,10 @@ function Museum() {
       {display.map(a=> {
         const image=artUrl(a.id)
         const visual=getSongVisualGroup(a.id)
+        const sharedFrame=usesOriginalSongFrameOverlay(a.id)
         return <button className="song-v2-card" type="button" key={a.id}
           data-achievement-id={a.id} data-unlocked="true" data-demo-unlocked="true"
-          data-tier={visual.key} data-plaque-source={visual.hasPaintedPlaque ? 'art' : 'overlay'} data-art-source="complete-museum"
+          data-tier={visual.key} data-plaque-source={visual.hasPaintedPlaque ? 'art' : 'overlay'} data-art-source="complete-museum" data-shared-frame={sharedFrame ? 'true' : 'false'}
           aria-label={a.title+'，演示解锁，打开画卷'}
           onClick={()=>{setReplay(0);setSelected(a)}}>
           <img className="song-v2-card-full-illustration" src={image} alt="" loading="lazy" decoding="async"
@@ -103,7 +106,8 @@ function Museum() {
           <span className="song-v2-corner song-v2-corner-tr" aria-hidden="true" />
           <span className="song-v2-corner song-v2-corner-bl" aria-hidden="true" />
           <span className="song-v2-corner song-v2-corner-br" aria-hidden="true" />
-          <SongPlaqueLabel tier={visual.key} label={visual.label} />
+          {sharedFrame && <SongSharedOrnaments />}
+          <SongPlaqueLabel tier={visual.key} label={visual.label} sharedOriginalFrame={sharedFrame} />
           <div className="song-v2-card-art" aria-hidden="true" />
           <span className="song-v2-card-seal" aria-hidden="true">雅<br/>藏</span>
           <div className="song-v2-card-text"><h2>{a.title}</h2>

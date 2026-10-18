@@ -624,3 +624,22 @@
   border:0;
   box-shadow:none;
 }
+
+/* Seven re-painted third-batch backgrounds are strictly WITHOUT baked borders.
+   Both genuine first-batch ornament layers share the original 960x1391
+   coordinate system, scaled once with the portrait. Old 27 images untouched. */
+.song-v2-card[data-shared-frame="true"] .song-v2-shared-ornaments {
+  position:absolute;inset:0;z-index:4;display:block;
+  width:100%;height:100%;pointer-events:none;user-select:none;
+}
+.song-v2-card[data-shared-frame="true"] .song-v2-shared-ornaments img {
+  position:absolute;inset:0;display:block;
+  width:100%;height:100%;object-fit:fill;
+  pointer-events:none;user-select:none;
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-shared-frame="true"] .song-v2-shared-outer-border {
+  filter:brightness(.86) saturate(.70);
+}
+.song-v2-collection[data-song-theme="dark"] .song-v2-card[data-shared-frame="true"] .song-v2-shared-cartouche {
+  filter:brightness(.50) saturate(.66);
+}

@@ -6,6 +6,8 @@ import {
 import { SongMistLayer } from '@/achievement/visual-assets/SongMistLayer'
 import { SongPortalEntry } from '@/achievement/visual-assets/SongPortalEntry'
 import { SongPlaqueLabel } from '@/achievement/visual-assets/SongPlaqueLabel'
+import { SongSharedOrnaments } from '@/achievement/visual-assets/SongSharedOrnaments'
+import { usesOriginalSongFrameOverlay } from '@/achievement/visual-assets/thirdBatch'
 import { getFirstBatchAchievementArtUrl } from '@/achievement/visual-assets/firstBatch'
 import { getSecondBatchAchievementArtUrl } from '@/achievement/visual-assets/secondBatch'
 import { getThirdBatchAchievementArtUrl } from '@/achievement/visual-assets/thirdBatch'
@@ -73,12 +75,14 @@ function CollectionCard({ achievement, unlockedAt, theme, onOpen }: {
   const tier = visual.key
   const art = artIndexFor(achievement, hiddenLocked)
   const specialArtUrl = getFinalBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getThirdBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getSecondBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getFirstBatchAchievementArtUrl(achievement.id, hiddenLocked)
+  const sharedFrame = usesOriginalSongFrameOverlay(achievement.id) && !!specialArtUrl
   return (
     <button
       type="button"
       className="song-v2-card"
       data-tier={tier}
       data-plaque-source={visual.hasPaintedPlaque ? 'art' : 'overlay'}
+      data-shared-frame={sharedFrame ? 'true' : 'false'}
       data-unlocked={unlocked ? 'true' : 'false'}
       data-hidden={hiddenLocked ? 'true' : 'false'}
       data-art-source={getFinalBatchAchievementArtUrl(achievement.id, hiddenLocked) ? 'final-batch' : getThirdBatchAchievementArtUrl(achievement.id, hiddenLocked) ? 'third-batch' : getSecondBatchAchievementArtUrl(achievement.id, hiddenLocked) ? 'second-batch' : specialArtUrl ? 'first-batch' : 'sprite'}
@@ -100,7 +104,8 @@ function CollectionCard({ achievement, unlockedAt, theme, onOpen }: {
       <span className="song-v2-corner song-v2-corner-tr" aria-hidden="true" />
       <span className="song-v2-corner song-v2-corner-bl" aria-hidden="true" />
       <span className="song-v2-corner song-v2-corner-br" aria-hidden="true" />
-      <SongPlaqueLabel tier={tier} label={visual.label} />
+      {sharedFrame && <SongSharedOrnaments />}
+      <SongPlaqueLabel tier={tier} label={visual.label} sharedOriginalFrame={sharedFrame} />
       <div className="song-v2-card-art" aria-hidden="true">
         {!specialArtUrl && <span className="song-v2-card-artwork" style={spriteOffset(art)} />}
       </div>

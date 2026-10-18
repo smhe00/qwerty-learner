@@ -1,15 +1,15 @@
 import type { SongVisualTier } from './visualTiers'
 
-type Props = { tier: SongVisualTier; label: string }
+type Props = { tier: SongVisualTier; label: string; sharedOriginalFrame?: boolean }
 
 /**
  * Four original, font-independent Shoujin-inspired title pictures.
  * All 34 award cards reuse the same four inline-safe SVG resources.
  * Accessible live text stays in the DOM; if an SVG fails, show the text.
  */
-export function SongPlaqueLabel({ tier, label }: Props) {
+export function SongPlaqueLabel({ tier, label, sharedOriginalFrame = false }: Props) {
   const artBase = import.meta.env.BASE_URL + 'assets/achievements/song/plaques/'
-  const needsFrame = tier === 'cinnabar' || tier === 'hidden'
+  const needsFrame = (tier === 'cinnabar' || tier === 'hidden') && !sharedOriginalFrame
   return <span className="song-v2-card-tier">
     {needsFrame && <img
       className="song-v2-plaque-frame"
