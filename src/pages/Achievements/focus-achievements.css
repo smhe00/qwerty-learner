@@ -1,0 +1,66 @@
+/* Focus UI: deliberately quiet and independent of Song art styles. */
+.focus-achievements {
+  --fa-text:#27343c;--fa-muted:#73808b;--fa-line:#dce4e8;
+  --fa-surface:#ffffff;--fa-background:#f6f8fa;--fa-accent:#43877d;
+  position:relative;min-height:100%;width:100%;margin:0 auto;
+  overflow:auto;padding:clamp(22px,3vw,40px);box-sizing:border-box;
+  background:var(--fa-background);color:var(--fa-text);
+  font-family:ui-sans-serif,system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+}
+.focus-achievements[data-theme="dark"] {
+  --fa-text:#e7edf1;--fa-muted:#a4afb9;--fa-line:#43515b;
+  --fa-surface:#252e35;--fa-background:#1c242b;--fa-accent:#87c5b7;
+}
+.focus-achievements-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;max-width:1100px;margin:0 auto 25px;}
+.focus-achievements-eyebrow{font-size:10px;letter-spacing:.17em;font-weight:650;color:var(--fa-accent);margin:0 0 11px;}
+.focus-achievements-header h1{font-size:clamp(27px,3vw,35px);font-weight:650;line-height:1.22;margin:0 0 10px;letter-spacing:-.035em;}
+.focus-achievements-intro{font-size:13px;line-height:1.7;color:var(--fa-muted);}
+.focus-achievements-back,.focus-achievements-art-entry{display:inline-flex;align-items:center;justify-content:center;gap:7px;flex-shrink:0;border:1px solid var(--fa-line);background:var(--fa-surface);color:var(--fa-text);border-radius:10px;padding:9px 12px;font-size:12px;font-weight:550;transition:border-color .16s,background .16s;}
+.focus-achievements-back:hover,.focus-achievements-art-entry:hover{border-color:var(--fa-accent);background:var(--fa-background);}
+.focus-achievements-overview{max-width:1100px;margin:0 auto 27px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;background:var(--fa-surface);border:1px solid var(--fa-line);border-radius:15px;overflow:hidden;}
+.focus-achievements-metric{padding:22px clamp(13px,3vw,27px);min-width:0;}
+.focus-achievements-metric + .focus-achievements-metric{border-left:1px solid var(--fa-line);}
+.focus-achievements-metric small{display:block;color:var(--fa-muted);font-size:12px;}
+.focus-achievements-metric p{margin:7px 0 0;white-space:nowrap;}
+.focus-achievements-metric strong{font-size:clamp(23px,3vw,34px);font-weight:650;letter-spacing:-.04em;font-variant-numeric:tabular-nums;}
+.focus-achievements-metric span{font-size:12px;color:var(--fa-muted);}
+.focus-achievements-progress{height:3px;grid-column:1 / -1;background:var(--fa-line);}
+.focus-achievements-progress>span{display:block;height:100%;background:var(--fa-accent);transition:width .2s;}
+.focus-achievements-toolbar{max-width:1100px;margin:0 auto 17px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;}
+.focus-achievements-filters{display:flex;flex-wrap:wrap;gap:7px;}
+.focus-achievements-filter{display:flex;align-items:center;gap:9px;background:transparent;border:1px solid transparent;color:var(--fa-muted);border-radius:9px;padding:7px 11px;font-size:12px;}
+.focus-achievements-filter[aria-pressed="true"]{background:var(--fa-surface);border-color:var(--fa-line);color:var(--fa-text);font-weight:650;}
+.focus-achievements-filter>span{font-variant-numeric:tabular-nums;font-size:11px;opacity:.72;}
+.focus-achievements-art-entry{color:var(--fa-accent);border-color:color-mix(in srgb,var(--fa-accent) 34%,var(--fa-line));}
+.focus-achievements-grid{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;}
+.focus-achievements-item{min-width:0;min-height:94px;display:flex;gap:13px;align-items:center;text-align:left;padding:16px;border-radius:12px;border:1px solid var(--fa-line);background:var(--fa-surface);color:var(--fa-text);transition:transform .15s,border-color .15s;}
+.focus-achievements-item:disabled{cursor:default;opacity:.77;}
+.focus-achievements-item:not(:disabled):hover{border-color:var(--fa-accent);transform:translateY(-1px);}
+.focus-achievements-symbol{width:35px;height:35px;flex-shrink:0;display:grid;place-items:center;border-radius:11px;background:var(--fa-background);color:var(--fa-muted);}
+.focus-achievements-symbol.earned{color:var(--fa-accent);background:color-mix(in srgb,var(--fa-accent) 12%,var(--fa-surface));}
+.focus-achievements-item-body{display:flex;flex:1;min-width:0;flex-direction:column;gap:6px;}
+.focus-achievements-item-body strong{font-size:14px;font-weight:620;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.focus-achievements-item-body small{font-size:12px;color:var(--fa-muted);line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.focus-achievements-status{flex-shrink:0;font-size:11px;color:var(--fa-muted);}
+.focus-achievements-status.earned{color:var(--fa-accent);font-weight:650;}
+.focus-achievements-empty{max-width:1100px;margin:0 auto;padding:40px;color:var(--fa-muted);text-align:center;font-size:13px;}
+.focus-achievements-footer{max-width:1100px;margin:25px auto 0;display:flex;justify-content:space-between;gap:15px;font-size:11px;color:var(--fa-muted);}
+.focus-achievements-detail-backdrop{position:fixed;inset:0;background:#141d2480;z-index:80;display:grid;place-items:center;padding:20px;}
+.focus-achievements-detail{width:min(440px,100%);position:relative;border-radius:17px;border:1px solid var(--fa-line);background:var(--fa-surface);padding:32px;color:var(--fa-text);box-shadow:0 24px 80px #07121b26;}
+.focus-achievements-detail-close{position:absolute;top:13px;right:13px;border-radius:8px;padding:7px;color:var(--fa-muted);}
+.focus-achievements-detail-mark{width:44px;height:44px;display:grid;place-items:center;background:color-mix(in srgb,var(--fa-accent) 14%,var(--fa-surface));color:var(--fa-accent);border-radius:12px;margin-bottom:19px;}
+.focus-achievements-detail h2{font-size:23px;margin:0 0 14px;font-weight:650;}
+.focus-achievements-detail>p:not(.focus-achievements-eyebrow){font-size:14px;line-height:1.75;margin:0 0 14px;}
+.focus-achievements-detail .focus-achievements-detail-reflection{color:var(--fa-muted);}
+.focus-achievements-detail>small{color:var(--fa-muted);font-size:12px;}
+.focus-achievements button:focus-visible{outline:2px solid var(--fa-accent);outline-offset:3px;}
+@media(max-width:700px){
+  .focus-achievements{padding:20px 16px 36px;}
+  .focus-achievements-header{margin-bottom:22px;}
+  .focus-achievements-overview{margin-bottom:22px;}
+  .focus-achievements-metric{padding:17px 10px;}
+  .focus-achievements-metric small{font-size:10px;}
+  .focus-achievements-grid{grid-template-columns:1fr;gap:9px;}
+  .focus-achievements-item{min-height:79px;padding:13px;}
+  .focus-achievements-toolbar{align-items:flex-start;}
+}

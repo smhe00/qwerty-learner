@@ -8,6 +8,8 @@ import { SongPortalEntry } from '@/achievement/visual-assets/SongPortalEntry'
 import { SongPlaqueLabel } from '@/achievement/visual-assets/SongPlaqueLabel'
 import { SongSharedOrnaments } from '@/achievement/visual-assets/SongSharedOrnaments'
 import { getSongLockedBackUrl } from '@/achievement/visual-assets/lockedBacks'
+import { assessSongArtAccess } from '@/achievement/song-art-access'
+import { FocusAchievements } from './FocusAchievements'
 import { usesOriginalSongFrameOverlay } from '@/achievement/visual-assets/thirdBatch'
 import { getFirstBatchAchievementArtUrl } from '@/achievement/visual-assets/firstBatch'
 import { getSecondBatchAchievementArtUrl } from '@/achievement/visual-assets/secondBatch'
@@ -198,14 +200,23 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
   const location = useLocation()
   const dark = useAtomValue(isOpenDarkModeAtom)
   const [previewTheme, setPreviewTheme] = useState<Theme | null>(null)
+  const [collectionView, setCollectionView] = useState<'focus' | 'song'>('focus')
   const theme: Theme = previewTheme ?? (dark ? 'dark' : 'light')
   const states = useLiveQuery(() => getAchievementStates(), [], [])
   const visibleProgress = useLiveQuery(async () => {
     const [wordStates, wordRecords] = await Promise.all([
       db.reviewWordStates.toArray(), db.wordRecords.toArray(),
     ])
-    return buildAchievementVisibleProgress({ wordStates, wordRecords, now: Math.floor(Date.now() / 1000) })
-  }, [], { longTermMasteredWords: 0, activeLearnDaysInLast10: 0 })
+    const now = Math.floor(Date.now() / 1000)
+    return {
+      ...buildAchievementVisibleProgress({ wordStates, wordRecords, now }),
+      songAccess: assessSongArtAccess(wordRecords, now),
+    }
+  }, [], {
+    longTermMasteredWords: 0,
+    activeLearnDaysInLast10: 0,
+    songAccess: { eligible: false, activeDays: 0, bestStreak: 0 },
+  })
   const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useState<Sort>('default')
   const [detailId, setDetailId] = useState<string>()
@@ -280,6 +291,10 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
       </header>
 
       <div className="song-v2-controls">
+        <button type="button" className="song-v2-return-focus" onClick={() => {
+          closeDetail()
+          setCollectionView('focus')
+        }}>返回简洁版</button>
         <nav className="song-v2-filters" aria-label="筛选成就">
           {([
             ['all', '全部', achievements.length],
@@ -336,5 +351,22 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
       <span className="sr-only">长期掌握 {visibleProgress.longTermMasteredWords} 个词；近十天活跃 {visibleProgress.activeLearnDaysInLast10} 天</span>
     </main>
   )
-  return embedded ? main : <Layout>{main}</Layout>
+  const showSong = visibleProgress.songAccess.eligible && collectionView === 'song'
+  const content = showSong ? main : (
+    <FocusAchievements
+      achievements={achievements}
+      states={stateById}
+      access={visibleProgress.songAccess}
+      masteredWords={visibleProgress.longTermMasteredWords}
+      theme={theme}
+      onClose={close}
+      onOpenSong={() => { closeDetail(); setCollectionView('song') }}
+      onSeen={id => {
+        void markAchievementCultureCardSeen(id).catch(error => {
+          console.error('failed to mark achievement seen', error)
+        })
+      }}
+    />
+  )
+  return embedded ? content : <Layout>{content}</Layout>
 }

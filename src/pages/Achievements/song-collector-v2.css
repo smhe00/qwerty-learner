@@ -710,3 +710,11 @@
   color:#212c2b;
   text-shadow:0 1px 2px #fffdf3a6;
 }
+
+/* Single unobtrusive opt-out from the optional Song art experience. */
+.song-v2-return-focus {
+  display:inline-flex;align-items:center;border:1px solid #d4c5ac;border-radius:8px;
+  background:#fffaf2;color:#4e635c;padding:8px 13px;font:500 12px system-ui,sans-serif;
+  margin:0 0 12px;
+}
+.song-v2-return-focus:hover {border-color:#648a80;background:#f3f8f3;}
