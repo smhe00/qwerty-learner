@@ -1,0 +1,22 @@
+{
+  "title": "Song collection / locked tier artwork",
+  "version": "2026-10-19",
+  "source": "approved generated PNG art",
+  "display": "unearned awards only; unlocked images unchanged",
+  "imageSize": [
+    960,
+    1391
+  ],
+  "fileNames": [
+    "locked/ink.webp",
+    "locked/celadon.webp",
+    "locked/cinnabar.webp",
+    "locked/hidden.webp"
+  ],
+  "rules": {
+    "ink": "background and achievement title only",
+    "celadon": "background and achievement title only",
+    "cinnabar": "background and achievement title only",
+    "hidden": "background only, no visible text, no card interaction"
+  }
+}

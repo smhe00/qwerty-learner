@@ -195,6 +195,11 @@ test('published Pages: Song gallery opens inside Focus and offers safe desktop/m
   await expect(page.getByRole('heading', { name: '成就雅集' })).toBeVisible()
   await expect(page.locator('.song-v2-card')).toHaveCount(34)
   await expect(page.locator('.song-v2-card[data-unlocked="false"]:disabled')).toHaveCount(34)
+  await expect(page.locator('.song-v2-card[data-art-source="locked-tier"]')).toHaveCount(34)
+  await expect(page.locator('.song-v2-card .song-v2-locked-background')).toHaveCount(34)
+  await expect(page.locator('.song-v2-card[data-tier="hidden"] .song-v2-locked-name')).toHaveCount(0)
+  await expect(page.locator('.song-v2-card[data-tier="hidden"]')).toHaveCount(6)
+  await expect(page.locator('.song-v2-card .song-v2-card-full-illustration')).toHaveCount(0)
   await page.locator('.song-v2-card:disabled').first().evaluate(el => el.click())
   await expect(page.locator('.song-v2-detail')).toHaveCount(0)
   await expect.poll(async () => {

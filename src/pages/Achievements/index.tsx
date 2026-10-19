@@ -7,6 +7,7 @@ import { SongMistLayer } from '@/achievement/visual-assets/SongMistLayer'
 import { SongPortalEntry } from '@/achievement/visual-assets/SongPortalEntry'
 import { SongPlaqueLabel } from '@/achievement/visual-assets/SongPlaqueLabel'
 import { SongSharedOrnaments } from '@/achievement/visual-assets/SongSharedOrnaments'
+import { getSongLockedBackUrl } from '@/achievement/visual-assets/lockedBacks'
 import { usesOriginalSongFrameOverlay } from '@/achievement/visual-assets/thirdBatch'
 import { getFirstBatchAchievementArtUrl } from '@/achievement/visual-assets/firstBatch'
 import { getSecondBatchAchievementArtUrl } from '@/achievement/visual-assets/secondBatch'
@@ -70,63 +71,69 @@ function CollectionCard({ achievement, unlockedAt, theme, onOpen }: {
 }) {
   const unlocked = unlockedAt !== undefined
   const hiddenLocked = !unlocked && achievement.hidden
-  const title = hiddenLocked ? '秘藏 · 云中待启' : achievement.title
+  const title = achievement.title
   const visual = getSongVisualGroup(achievement.id)
   const tier = visual.key
   const art = artIndexFor(achievement, hiddenLocked)
-  const specialArtUrl = getFinalBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getThirdBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getSecondBatchAchievementArtUrl(achievement.id, hiddenLocked) ?? getFirstBatchAchievementArtUrl(achievement.id, hiddenLocked)
-  const sharedFrame = usesOriginalSongFrameOverlay(achievement.id) && !!specialArtUrl
+  // Locked backs are shared by artistic tier: never mount or request a bespoke
+  // illustration until the award has truly been earned.
+  const specialArtUrl = unlocked
+    ? getFinalBatchAchievementArtUrl(achievement.id, false) ?? getThirdBatchAchievementArtUrl(achievement.id, false) ?? getSecondBatchAchievementArtUrl(achievement.id, false) ?? getFirstBatchAchievementArtUrl(achievement.id, false)
+    : undefined
+  const sharedFrame = unlocked && usesOriginalSongFrameOverlay(achievement.id) && !!specialArtUrl
   return (
     <button
       type="button"
       className="song-v2-card"
       data-tier={tier}
       data-plaque-source={visual.hasPaintedPlaque ? 'art' : 'overlay'}
+      data-locked-tier={!unlocked ? tier : undefined}
       data-shared-frame={sharedFrame ? 'true' : 'false'}
       data-unlocked={unlocked ? 'true' : 'false'}
       data-hidden={hiddenLocked ? 'true' : 'false'}
-      data-art-source={getFinalBatchAchievementArtUrl(achievement.id, hiddenLocked) ? 'final-batch' : getThirdBatchAchievementArtUrl(achievement.id, hiddenLocked) ? 'third-batch' : getSecondBatchAchievementArtUrl(achievement.id, hiddenLocked) ? 'second-batch' : specialArtUrl ? 'first-batch' : 'sprite'}
+      data-art-source={!unlocked ? 'locked-tier' : getFinalBatchAchievementArtUrl(achievement.id, false) ? 'final-batch' : getThirdBatchAchievementArtUrl(achievement.id, false) ? 'third-batch' : getSecondBatchAchievementArtUrl(achievement.id, false) ? 'second-batch' : specialArtUrl ? 'first-batch' : 'sprite'}
       data-achievement-id={hiddenLocked ? undefined : achievement.id}
       disabled={!unlocked}
       onClick={unlocked ? onOpen : undefined}
-      aria-label={title + (unlocked ? '，已解锁，查看藏品' : '，未解锁')}
+      aria-label={unlocked ? title + '，已解锁，查看藏品' : hiddenLocked ? '秘藏，尚未解锁' : title + '，未解锁'}
     >
-      {specialArtUrl && <img
-        className="song-v2-card-full-illustration"
-        src={specialArtUrl}
-        alt=""
-        aria-hidden="true"
-        decoding="async"
-        loading="lazy"
-        draggable={false}
-      />}
-      <span className="song-v2-corner song-v2-corner-tl" aria-hidden="true" />
-      <span className="song-v2-corner song-v2-corner-tr" aria-hidden="true" />
-      <span className="song-v2-corner song-v2-corner-bl" aria-hidden="true" />
-      <span className="song-v2-corner song-v2-corner-br" aria-hidden="true" />
-      {sharedFrame && <SongSharedOrnaments />}
-      <SongPlaqueLabel tier={tier} label={visual.label} sharedOriginalFrame={sharedFrame} />
-      <div className="song-v2-card-art" aria-hidden="true">
-        {!specialArtUrl && <span className="song-v2-card-artwork" style={spriteOffset(art)} />}
-      </div>
-      {!unlocked && (
-        <span className="song-v2-card-lock-mist" aria-hidden="true">
-          <SongMistLayer status={hiddenLocked ? 'hidden' : 'locked'} theme={theme} />
-        </span>
+      {!unlocked ? (
+        <>
+          <img className="song-v2-locked-background"
+            src={getSongLockedBackUrl(tier)} alt="" aria-hidden="true"
+            decoding="async" loading="lazy" draggable={false} />
+          {/* Secret awards never reveal their title or any other on-card copy. */}
+          {!hiddenLocked && <h2 className="song-v2-locked-name">{title}</h2>}
+        </>
+      ) : (
+        <>
+          {specialArtUrl && <img
+            className="song-v2-card-full-illustration"
+            src={specialArtUrl} alt="" aria-hidden="true"
+            decoding="async" loading="lazy" draggable={false}
+          />}
+          <span className="song-v2-corner song-v2-corner-tl" aria-hidden="true" />
+          <span className="song-v2-corner song-v2-corner-tr" aria-hidden="true" />
+          <span className="song-v2-corner song-v2-corner-bl" aria-hidden="true" />
+          <span className="song-v2-corner song-v2-corner-br" aria-hidden="true" />
+          {sharedFrame && <SongSharedOrnaments />}
+          <SongPlaqueLabel tier={tier} label={visual.label} sharedOriginalFrame={sharedFrame} />
+          <div className="song-v2-card-art" aria-hidden="true">
+            {!specialArtUrl && <span className="song-v2-card-artwork" style={spriteOffset(art)} />}
+          </div>
+          <span className="song-v2-card-seal" aria-hidden="true">雅<br />藏</span>
+          <div className="song-v2-card-text">
+            <h2>{title}</h2>
+            <p>{achievement.copy.unlockMessage}</p>
+            <span className="song-v2-card-caption">{achievement.copy.reflection}</span>
+          </div>
+          <div className="song-v2-card-status">
+            <span className="song-v2-status-dot unlocked" aria-hidden="true">✓</span>
+            <span>已解锁</span>
+            <time dateTime={new Date(unlockedAt * 1000).toISOString().slice(0, 10)}>{formatDate(unlockedAt)}</time>
+          </div>
+        </>
       )}
-      {unlocked && <span className="song-v2-card-seal" aria-hidden="true">雅<br />藏</span>}
-      <div className="song-v2-card-text">
-        <h2>{title}</h2>
-        <p>{hiddenLocked ? '云深不知处，机缘至时自会显现。' : achievement.copy.unlockMessage}</p>
-        <span className="song-v2-card-caption">{hiddenLocked ? '大巧若拙，玄机自现。' : achievement.copy.reflection}</span>
-      </div>
-      <div className="song-v2-card-status">
-        <span className={unlocked ? 'song-v2-status-dot unlocked' : 'song-v2-status-dot'} aria-hidden="true">
-          {unlocked ? '✓' : '♧'}
-        </span>
-        <span>{unlocked ? '已解锁' : '未解锁'}</span>
-        {unlocked && <time dateTime={new Date(unlockedAt * 1000).toISOString().slice(0, 10)}>{formatDate(unlockedAt)}</time>}
-      </div>
     </button>
   )
 }

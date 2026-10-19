@@ -19,169 +19,50 @@ async function checkDesktop() {
     assert.equal(await page.locator('[data-navigation-dialog="achievements"] .focus-overlay-header').count(),0,'No redundant achievement header')
     const cards=page.locator('.song-v2-card')
     assert.equal(await cards.count(),34,'Full 34-achievement catalogue should be visible')
-    // Museum rank is the 10/10/8/6 ART batch, not the FSRS achievement rarity.
     const visualGroups=[['ink',10,'素笺墨印'],['celadon',10,'汝窑天青'],
       ['cinnabar',8,'泥金朱砂'],['hidden',6,'云中秘藏']]
-    for(const [key,count,label] of visualGroups) {
-      const group=page.locator('.song-v2-card[data-tier="'+key+'"]')
-      assert.equal(await group.count(),count,'Visual tier '+label)
-      assert.equal(await group.first().locator('.song-v2-card-tier').innerText(),label)
-    }
-    // All eight third-batch scenes reuse the original PNG frames. The final
-    // six keep their previous SVG frame; first twenty remain untouched.
-    assert.equal(await page.locator('img.song-v2-plaque-lettering').count(),34)
-    assert.equal(await page.locator('img.song-v2-plaque-frame').count(),6)
-    assert.equal(await page.locator('img.song-v2-shared-outer-border').count(),8)
-    assert.equal(await page.locator('img.song-v2-shared-cartouche').count(),8)
-    assert.equal(await page.locator('.song-v2-card[data-shared-frame="true"]').count(),8)
-    assert.equal(await page.locator('.song-v2-card[data-tier="ink"] .song-v2-shared-ornaments').count(),0)
-    assert.equal(await page.locator('.song-v2-card[data-tier="celadon"] .song-v2-shared-ornaments').count(),0)
-    let referenceInkBox = null
-    for (const [key, ,label] of visualGroups) {
-      const title=page.locator('.song-v2-card[data-tier="'+key+'"]').first().locator('.song-v2-card-tier')
-      const art=title.locator('img.song-v2-plaque-lettering')
-      const src=await art.getAttribute('src')
-      assert.ok(src?.endsWith('/assets/achievements/song/plaques/'+key+'.svg'),label)
-      const response=await page.request.get(new URL(src,base).toString())
-      assert.equal(response.status(),200,label+' font-free title must exist')
-      assert.ok((response.headers()['content-type']||'').includes('image/svg+xml'),label)
-      await art.evaluate(img=>img.decode())
-      const visible=await art.evaluate(img=>[img.naturalWidth,img.naturalHeight,img.hidden])
-      assert.ok(visible[0]>0 && visible[1]>0 && !visible[2],label+' image must decode')
-      const centered=await title.evaluate(el=>{
-        const a=el.querySelector('.song-v2-plaque-lettering').getBoundingClientRect()
-        const b=el.getBoundingClientRect()
-        return [Math.abs((a.left+a.right-b.left-b.right)/2),
-          Math.abs((a.top+a.bottom-b.top-b.bottom)/2)]
-      })
-      assert.ok(centered.every(delta=>delta<2),label+' title image should be centered')
-      const inkBox = await art.boundingBox()
-      assert.ok(inkBox && inkBox.width>10 && inkBox.height>10,label+' title size should be nonzero')
-      if (referenceInkBox) {
-        assert.ok(Math.abs(inkBox.height-referenceInkBox.height)<1,
-          label+' title must have same visual height as 素笺墨印')
-        assert.ok(Math.abs(inkBox.width-referenceInkBox.width)<1,
-          label+' title must have same width as 素笺墨印')
-      } else referenceInkBox=inkBox
-      const frame=title.locator('.song-v2-plaque-frame')
-      const needsFrame = key === 'hidden' // first cinnabar card is a refreshed border-free image
-      assert.equal(await frame.count(),needsFrame?1:0,label+' decorative frame presence')
-      if (needsFrame) {
-        assert.equal(await title.evaluate(el=>getComputedStyle(el).backgroundColor),
-          'rgba(0, 0, 0, 0)',label+' no old CSS pill behind ornamental frame')
-        assert.equal(await title.evaluate(el=>getComputedStyle(el).borderTopStyle),
-          'none',label+' no duplicate CSS outline')
-        const frameUrl=await frame.getAttribute('src')
-        assert.ok(frameUrl?.endsWith('/assets/achievements/song/plaques/frame.svg'))
-        const frameResponse=await page.request.get(new URL(frameUrl,base).toString())
-        assert.equal(frameResponse.status(),200,label+' ornamental frame must load')
-        await frame.evaluate(img=>img.decode())
-        const box=await frame.boundingBox()
-        assert.ok(box && box.width>inkBox.width && box.height>inkBox.height,
-          label+' scrollwork border must surround title without reducing ink size')
+    assert.equal(await page.locator('.song-v2-card:disabled').count(),34,
+      'Fresh account must have exactly 34 inert locked cards')
+    assert.equal(await page.locator('.song-v2-card[data-art-source="locked-tier"]').count(),34)
+    assert.equal(await page.locator('img.song-v2-card-full-illustration').count(),0,
+      'Locked gallery must not mount any bespoke art')
+    assert.equal(await page.locator('.song-v2-plaque-lettering, .song-v2-plaque-frame, .song-v2-shared-ornaments, .song-v2-card-lock-mist, .song-v2-card-status').count(),0,
+      'Locked cards must contain only their level background and optional title')
+    for(const [tier,count,label] of visualGroups){
+      const group=page.locator('.song-v2-card[data-tier="'+tier+'"]')
+      assert.equal(await group.count(),count,'Locked group '+label)
+      for(const card of await group.all()){
+        const img=card.locator('.song-v2-locked-background')
+        assert.equal(await img.count(),1,tier+' must have one tier-specific background')
+        const url=await img.getAttribute('src')
+        assert.ok(url?.endsWith('/assets/achievements/song/locked/'+tier+'.webp'),tier)
+        const response=await page.request.get(new URL(url,base).toString())
+        assert.equal(response.status(),200,tier+' background reachable')
+        assert.ok((response.headers()['content-type']||'').includes('image/webp'))
+        await img.evaluate(el=>el.decode())
+        assert.deepEqual(await img.evaluate(el=>[el.naturalWidth,el.naturalHeight]),[960,1391])
+        const inner=(await card.innerText()).trim()
+        if(tier==='hidden'){
+          assert.equal(inner,'','Secret locked card may not show ANY words')
+          assert.equal(await card.locator('.song-v2-locked-name').count(),0)
+          assert.ok((await card.getAttribute('aria-label')).startsWith('秘藏'))
+        }else{
+          assert.equal(await card.locator('.song-v2-locked-name').count(),1)
+          assert.equal(inner,await card.locator('.song-v2-locked-name').innerText(),
+            tier+' must show ONLY its own achievement title')
+          assert.ok(inner.length>0)
+        }
       }
     }
-    assert.equal(await page.locator('.song-v2-card[data-plaque-source="art"]').count(),20)
-    assert.equal(await page.locator('.song-v2-card[data-plaque-source="overlay"]').count(),14)
-    for(const source of ['first-batch','second-batch']) {
-      const plaque=page.locator('.song-v2-card[data-art-source="'+source+'"] .song-v2-card-tier').first()
-      const style=await plaque.evaluate(node=>{
-        const css=getComputedStyle(node)
-        return {background:css.backgroundColor,border:css.borderTopStyle,shadow:css.boxShadow,position:css.position}
-      })
-      assert.equal(style.background,'rgba(0, 0, 0, 0)',source+' must NOT draw a second oval')
-      assert.equal(style.border,'none',source+' must NOT draw a second border')
-      assert.equal(style.shadow,'none',source+' must NOT draw a second shadow')
-      assert.equal(style.position,'absolute',source+' must align words to painted cartouche')
-    }
-    for(const [key,count,label] of visualGroups) {
+    const forbiddenPaths=['/first-batch/','/second-batch/','/third-batch/','/final-batch/']
+    const mountedSources=await page.locator('.song-v2-card img').evaluateAll(imgs=>imgs.map(el=>el.src))
+    assert.equal(mountedSources.filter(src=>forbiddenPaths.some(path=>src.includes(path))).length,0,
+      'Locked catalogue must not mount individual achievement images')
+    for(const [key,count,label] of visualGroups){
       await page.getByRole('button',{name:(key==='hidden'?'秘藏':label.slice(0,2))+' ('+count+')'}).click()
       assert.equal(await cards.count(),count,'Filter '+label)
     }
     await page.getByRole('button',{name:'全部 (34)'}).click()
-    assert.equal(await cards.count(),34)
-    const illustrated=page.locator('.song-v2-card[data-art-source="first-batch"]')
-    assert.equal(await illustrated.count(),10,
-      'Ten first-batch art pieces are visible, including P1 catalogue items')
-    for(const id of ['ACH_FIRST_DECODE','ACH_WARMING_UP','ACH_NEW_UNIT','ACH_DAILY_GOAL',
-                     'ACH_7_OF_10','ACH_RECOVER_1','ACH_AUDIO_10','ACH_NO_HINT_10','ACH_7_DAY']){
-      const card=page.locator('.song-v2-card[data-achievement-id="'+id+'"]')
-      assert.equal(await card.getAttribute('data-art-source'),'first-batch',id)
-      const art=card.locator('img.song-v2-card-full-illustration')
-      const src=await art.getAttribute('src')
-      assert.ok(src?.endsWith('/assets/achievements/song/first-batch/'+id+'.webp'),id)
-      const response=await page.request.get(new URL(src,base).toString())
-      assert.equal(response.status(),200,id+' bespoke artwork must return HTTP 200')
-      assert.match(response.headers()['content-type']||'',/image\/webp/,id)
-    }
-    const batch2Ids=['ACH_20_OF_30','ACH_CONTINUE','ACH_HINT_REDUCTION',
-      'ACH_AUDIO_50','ACH_RECOVER_3','ACH_SPACED_20','ACH_CHAPTER_80',
-      'ACH_30_DAY','ACH_TRUE_MEMORY','ACH_OLD_RIVAL']
-    assert.equal(await page.locator('.song-v2-card[data-art-source="second-batch"]').count(),10)
-    for(const id of batch2Ids){
-      const card=page.locator('.song-v2-card[data-achievement-id="'+id+'"]')
-      assert.equal(await card.getAttribute('data-art-source'),'second-batch',id)
-      const src=await card.locator('.song-v2-card-full-illustration').getAttribute('src')
-      assert.ok(src?.endsWith('/assets/achievements/song/second-batch/'+id+'.webp'),id)
-      const response=await page.request.get(new URL(src,base).toString())
-      assert.equal(response.status(),200,id)
-      assert.ok((response.headers()['content-type']||'').includes('image/webp'),id)
-    }
-    const batch3Ids=['ACH_NO_HINT_25','ACH_ERROR_POSITION_FIXED',
-      'ACH_FAILURE_RECOVERY_SESSION','ACH_WEEKLY_GAIN','ACH_MASTERED_100',
-      'ACH_MASTERED_500','ACH_RECOVER_5_STABLE','ACH_90_DAY']
-    assert.equal(await page.locator('.song-v2-card[data-art-source="third-batch"]').count(),8,
-      'Third generation must contain exactly 8 real artwork cards')
-    for(const id of batch3Ids) {
-      const card=page.locator('.song-v2-card[data-achievement-id="'+id+'"]')
-      assert.equal(await card.getAttribute('data-art-source'),'third-batch',id)
-      const url=await card.locator('img.song-v2-card-full-illustration').getAttribute('src')
-      assert.ok(url?.endsWith('/assets/achievements/song/third-batch/'+id+'.webp'),id)
-      const response=await page.request.get(new URL(url,base).toString())
-      assert.equal(response.status(),200,'third-batch asset '+id)
-      assert.ok((response.headers()['content-type']||'').includes('image/webp'),id)
-      const isNew=true // all eight third-batch IDs have original master overlays
-      assert.equal(await card.getAttribute('data-shared-frame'),isNew?'true':'false',id+' original frame policy')
-      assert.equal(await card.locator('.song-v2-shared-ornaments img').count(),isNew?2:0,id+' overlay count')
-      assert.equal(await card.locator('.song-v2-plaque-frame').count(),isNew?0:1,id+' old frame policy')
-      if(isNew){
-        for(const art of await card.locator('.song-v2-shared-ornaments img').all()){
-          const ref=await art.getAttribute('src')
-          const response=await page.request.get(new URL(ref,base).toString())
-          assert.equal(response.status(),200,id+' master ornament')
-          await art.evaluate(img=>img.decode())
-          assert.deepEqual(await art.evaluate(img=>[img.naturalWidth,img.naturalHeight]),[960,1391],id+' overlay geometry')
-        }
-      }
-    }
-    assert.equal(await page.locator('.song-v2-card[data-art-source="final-batch"]').count(),1,
-      'Only the non-hidden final-batch award may load bespoke art in an unearned profile')
-    const realHidden=['ACH_HIDDEN_90_DIFFICULT','ACH_HIDDEN_CRAFT','ACH_HIDDEN_DAWN',
-      'ACH_HIDDEN_FINISH_STRONG','ACH_HIDDEN_SMALL_STEPS']
-    for(const id of realHidden)
-      assert.equal(await page.locator('img[src*="final-batch/'+id+'.webp"]').count(),0,
-        'Never request real hidden artwork in a locked account: '+id)
-    assert.equal(await page.locator('.song-v2-card[data-art-source="sprite"]').count(),5)
-    const lastThird=page.locator('.song-v2-card[data-achievement-id="ACH_90_DAY"] img.song-v2-card-full-illustration')
-    await lastThird.scrollIntoViewIfNeeded()
-    await lastThird.evaluate(img=>img.decode())
-    assert.deepEqual(await lastThird.evaluate(img=>[img.naturalWidth,img.naturalHeight]),[960,1391],
-      'ACH_90_DAY must be replaced with independent 960×1391 art')
-    const thirdArt=page.locator('.song-v2-card[data-art-source="third-batch"]').first().locator('img.song-v2-card-full-illustration')
-    await thirdArt.scrollIntoViewIfNeeded()
-    await thirdArt.evaluate(img=>img.decode())
-    assert.deepEqual(await thirdArt.evaluate(img=>[img.naturalWidth,img.naturalHeight]),[960,1391],
-      'Refreshed third-batch border-free WebP decodes at original master size')
-    const secondArt=page.locator('.song-v2-card[data-art-source="second-batch"]').first().locator('img.song-v2-card-full-illustration')
-    await secondArt.scrollIntoViewIfNeeded()
-    await secondArt.evaluate(img=>img.decode())
-    assert.deepEqual(await secondArt.evaluate(img=>[img.naturalWidth,img.naturalHeight]),[640,928],
-      'Second-batch real WebP resolution')
-    const firstArt=illustrated.first().locator('.song-v2-card-full-illustration')
-    await firstArt.scrollIntoViewIfNeeded()
-    await firstArt.evaluate(img=>img.decode())
-    assert.deepEqual(await firstArt.evaluate(img=>[img.naturalWidth,img.naturalHeight]),[960,1391],
-      'Bespoke first-batch WebP decodes at portrait aspect ratio')
     const gallery = page.locator('.song-v2-grid')
     const countColumns = () => gallery.evaluate(x=>getComputedStyle(x).gridTemplateColumns.split(' ').filter(Boolean).length)
     const wideColumns=await countColumns()
@@ -213,29 +94,9 @@ async function checkDesktop() {
     assert.equal(resp.status(),200,'real reference art image loaded')
     assert.match(resp.headers()['content-type']||'',/image\/webp/)
     const lockedCards = page.locator('.song-v2-card[data-unlocked="false"]')
-    assert.ok(await lockedCards.count()>0,'At least one locked card is present')
-    assert.equal(await page.locator('.song-v2-card[data-unlocked="true"] .song-v2-card-lock-mist').count(),0,
-      'Unlocked awards never receive a cloud veil')
-    assert.equal(await page.locator('.song-v2-card-lock-mist').count(),await lockedCards.count(),
-      'Every locked card has a full-card mist overlay')
-    const geometry = await lockedCards.first().evaluate(card => {
-      const cardBox = card.getBoundingClientRect()
-      const overlayBox = card.querySelector('.song-v2-card-lock-mist').getBoundingClientRect()
-      return {
-        width:overlayBox.width/cardBox.width,
-        height:overlayBox.height/cardBox.height,
-        left:overlayBox.left-cardBox.left,
-        top:overlayBox.top-cardBox.top,
-      }
-    })
-    assert.ok(geometry.width>.97 && geometry.height>.97,
-      'Cloud veil must cover full card, not only illustration: '+JSON.stringify(geometry))
-    assert.equal(Math.abs(geometry.left)<2 && Math.abs(geometry.top)<2,true,
-      'Fog layer aligned to card edges')
-    const mistImage=page.locator('.song-v2-card-lock-mist .song-picture-mist-near').first()
-    await mistImage.evaluate(image => image.decode())
-    assert.equal(await mistImage.evaluate(image => image.naturalWidth>0),true,
-      'Real WebP fog decoded (not a gradient-only fallback)')
+    assert.equal(await lockedCards.count(),34)
+    assert.equal(await page.locator('.song-v2-card-lock-mist').count(),0)
+    assert.equal(await page.locator('.song-v2-card[data-tier="hidden"] .song-v2-card-text').count(),0)
     await page.screenshot({path:dir+'/desktop.png',fullPage:false})
     // Locked cards are inert: neither pointer nor keyboard nor synthetic click opens a detail.
     assert.equal(await lockedCards.first().isDisabled(),true,'unlocked-only interaction gate')
@@ -252,25 +113,8 @@ async function checkDesktop() {
     await page.getByRole('button',{name:'关闭藏品'}).click()
     await page.getByRole('button',{name:'夜卷'}).click()
     assert.equal(await page.locator('[data-song-achievement-gallery]').getAttribute('data-song-theme'),'dark')
-    const darkTiers=await page.locator('.song-v2-card-tier').evaluateAll(nodes => {
-      const luminance = color => {
-        const channels=(color.match(/[0-9.]+/g)||[]).slice(0,3).map(Number)
-        const linear=channels.map(channel=>{
-          const c=channel/255
-          return c<=.04045 ? c/12.92 : Math.pow((c+.055)/1.055,2.4)
-        })
-        return .2126*linear[0]+.7152*linear[1]+.0722*linear[2]
-      }
-      return nodes.map(node=>{
-        const css=getComputedStyle(node)
-        const a=luminance(css.color),b=luminance(css.backgroundColor)
-        return {text:node.textContent.trim(),ink:css.color,paper:css.backgroundColor,
-          contrast:(Math.max(a,b)+.05)/(Math.min(a,b)+.05)}
-      })
-    })
-    assert.ok(darkTiers.length>0 && darkTiers.every(item=>item.text && item.contrast>=4.5),
-      'All dark rarity labels must be readable: '+JSON.stringify(darkTiers))
-    await page.locator('.song-v2-card-lock-mist .song-picture-mist-near').first().evaluate(img=>img.decode())
+    assert.equal(await page.locator('.song-v2-card[data-tier="hidden"] .song-v2-locked-name').count(),0)
+    assert.equal(await page.locator('.song-v2-card-lock-mist').count(),0)
     await page.screenshot({path:dir+'/desktop-dark-locked.png',fullPage:false})
     assert.deepEqual(errors,[], 'No runtime exceptions')
   } finally {await page.close()}
@@ -287,13 +131,12 @@ async function checkMobile() {
     const n=await page.locator('.song-v2-grid').evaluate(x=>getComputedStyle(x).gridTemplateColumns.split(' ').filter(Boolean).length)
     assert.equal(n,2,'390px phone naturally fits two portrait cards')
     assert.equal(await page.locator('.song-v2-card').count(),34)
-    assert.equal(await page.locator('.song-v2-card[data-art-source="third-batch"]').count(),8)
+    assert.equal(await page.locator('.song-v2-card[data-art-source="locked-tier"]').count(),34)
     assert.equal(await page.locator('.song-v2-card:disabled').count(),34,
       'Fresh local profile has no unlocked cards; all must be inert')
-    const customArt=page.locator('.song-v2-card[data-art-source="first-batch"]')
-    assert.equal(await customArt.count(),10)
-    await customArt.first().scrollIntoViewIfNeeded()
-    await customArt.first().locator('.song-v2-card-full-illustration').evaluate(img=>img.decode())
+    const lockedArt=page.locator('.song-v2-card[data-locked-tier="celadon"] .song-v2-locked-background').first()
+    await lockedArt.scrollIntoViewIfNeeded()
+    await lockedArt.evaluate(img=>img.decode())
     await page.setViewportSize({width:320,height:844})
     const narrow=await page.locator('.song-v2-grid').evaluate(x=>
       getComputedStyle(x).gridTemplateColumns.split(' ').filter(Boolean).length)
@@ -309,7 +152,8 @@ async function checkMobile() {
     assert.equal(await page.locator('[data-song-achievement-gallery]').getAttribute('data-song-theme'),'dark')
     const mobileLocked=page.locator('.song-v2-card[data-unlocked="false"]')
     assert.ok(await mobileLocked.count()>0,'mobile locked card must be present')
-    assert.equal(await page.locator('.song-v2-card-lock-mist').count(),await mobileLocked.count())
+    assert.equal(await page.locator('.song-v2-card-lock-mist').count(),0)
+    assert.equal(await page.locator('.song-v2-card[data-tier="hidden"] .song-v2-locked-name').count(),0)
     await page.screenshot({path:dir+'/mobile-dark-locked.png',fullPage:false})
     await page.getByRole('button',{name:'展卷演示'}).click()
     await page.locator('.song-v2-detail').waitFor()
