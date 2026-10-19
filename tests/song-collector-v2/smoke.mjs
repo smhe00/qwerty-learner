@@ -38,7 +38,7 @@ async function addLearnDays(page, dayOffsets) {
 
 async function assertFocusBeforeUnlock(page) {
   await page.locator('[data-focus-achievement-gallery]').waitFor({timeout:20000})
-  assert.equal(await page.getByRole('heading',{name:'成就'}).count(),1)
+  assert.equal(await page.locator('[data-focus-achievement-gallery]').getByRole('heading',{name:'成就'}).count(),1)
   assert.equal(await page.locator('.focus-achievements-item').count(),34)
   assert.equal(await page.locator('.focus-achievements-item:disabled').count(),34)
   assert.equal(await page.locator('.focus-achievements-item[data-unlocked="true"]').count(),0)
