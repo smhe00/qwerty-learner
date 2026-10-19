@@ -7,6 +7,53 @@ const dir = 'tests/song-collector-v2/artifacts'
 await mkdir(dir, {recursive:true})
 const browser = await chromium.launch({headless:true})
 
+/** Browser fixture only: seed genuine Learn WordRecord-shaped evidence into
+ * an isolated ephemeral IndexedDB. Never award states or bypass product access.
+ */
+async function addLearnDays(page, dayOffsets) {
+  await page.evaluate(async offsets => {
+    const request=indexedDB.open('RecordDB')
+    const database=await new Promise((resolve,reject)=>{
+      request.onsuccess=()=>resolve(request.result)
+      request.onerror=()=>reject(request.error)
+    })
+    try {
+      const tx=database.transaction('wordRecords','readwrite')
+      const table=tx.objectStore('wordRecords')
+      for(const offset of offsets){
+        const d=new Date()
+        d.setHours(0,1,0,0)
+        d.setDate(d.getDate()-offset)
+        table.add({word:'test',dict:'test-dict',chapter:0,timeStamp:Math.floor(d.getTime()/1000),
+          sourceMode:'learn',timing:[100],wrongCount:0,mistakes:{}})
+      }
+      await new Promise((resolve,reject)=>{
+        tx.oncomplete=()=>resolve()
+        tx.onerror=()=>reject(tx.error)
+        tx.onabort=()=>reject(tx.error)
+      })
+    } finally {database.close()}
+  },dayOffsets)
+}
+
+async function assertFocusBeforeUnlock(page) {
+  await page.locator('[data-focus-achievement-gallery]').waitFor({timeout:20000})
+  assert.equal(await page.getByRole('heading',{name:'成就'}).count(),1)
+  assert.equal(await page.locator('.focus-achievements-item').count(),34)
+  assert.equal(await page.locator('.focus-achievements-item:disabled').count(),34)
+  assert.equal(await page.locator('.focus-achievements-item[data-unlocked="true"]').count(),0)
+  assert.equal(await page.locator('.focus-achievements-item').first().isDisabled(),true)
+  assert.equal(await page.locator('.focus-achievements-item').first().locator('img').count(),0)
+  assert.equal(await page.locator('.song-v2-card,.song-v2-collection,.song-v2-header').count(),0,
+    'Art collector must be entirely unmounted before qualified and explicitly chosen')
+  assert.equal(await page.getByRole('button',{name:'开启宋韵雅藏'}).count(),0,
+    'No decorative-mode entry before three consecutive Learn days')
+  const secrets=page.locator('.focus-achievements-item:not([data-achievement-id])')
+  assert.equal(await secrets.count(),5,'Real hidden awards never leak their title in Focus')
+  assert.equal(await secrets.first().innerText().then(t=>t.includes('隐藏成就')),true)
+}
+
+
 async function checkDesktop() {
   const page = await browser.newPage({ viewport:{width:1440,height:900},reducedMotion:'no-preference' })
   const errors = []
@@ -14,7 +61,18 @@ async function checkDesktop() {
   try {
     await page.goto(base+'/learn', {waitUntil:'domcontentloaded'})
     await page.getByRole('button', { name: '查看成就' }).click()
-    await page.locator('[data-song-achievement-gallery]').waitFor({timeout:20000})
+    await assertFocusBeforeUnlock(page)
+    // Two separate Learn days cannot open the illustrated collection.
+    await addLearnDays(page,[2,1])
+    await page.reload({waitUntil:'domcontentloaded'})
+    await assertFocusBeforeUnlock(page)
+    await addLearnDays(page,[0])
+    await page.reload({waitUntil:'domcontentloaded'})
+    await page.locator('[data-focus-achievement-gallery]').waitFor({timeout:20000})
+    await page.getByRole('button',{name:'开启宋韵雅藏'}).waitFor()
+    assert.equal(await page.locator('[data-song-achievement-gallery]').count(),0)
+    await page.getByRole('button',{name:'开启宋韵雅藏'}).click()
+    await page.locator('[data-song-achievement-gallery]').waitFor()
     assert.equal(await page.locator('[data-navigation-dialog="achievements"]').count(), 1)
     assert.equal(await page.locator('[data-navigation-dialog="achievements"] .focus-overlay-header').count(),0,'No redundant achievement header')
     const cards=page.locator('.song-v2-card')
@@ -119,6 +177,10 @@ async function checkDesktop() {
     assert.equal(await page.locator('.song-v2-card[data-tier="hidden"] .song-v2-locked-name').count(),0)
     assert.equal(await page.locator('.song-v2-card-lock-mist').count(),0)
     await page.screenshot({path:dir+'/desktop-dark-locked.png',fullPage:false})
+    await page.getByRole('button',{name:'返回简洁版'}).click()
+    await page.locator('[data-focus-achievement-gallery]').waitFor()
+    assert.equal(await page.locator('[data-song-achievement-gallery]').count(),0,
+      'Returning to Focus must unmount Song art again')
     assert.deepEqual(errors,[], 'No runtime exceptions')
   } finally {await page.close()}
 }
@@ -130,7 +192,12 @@ async function checkMobile() {
   page.on('pageerror',e=>errors.push(e.message))
   try{
     await page.goto(base+'/achievements',{waitUntil:'domcontentloaded'})
-    await page.locator('[data-song-achievement-gallery]').waitFor({timeout:20000})
+    await assertFocusBeforeUnlock(page)
+    await addLearnDays(page,[2,1,0])
+    await page.reload({waitUntil:'domcontentloaded'})
+    await page.locator('[data-focus-achievement-gallery]').waitFor({timeout:20000})
+    await page.getByRole('button',{name:'开启宋韵雅藏'}).click()
+    await page.locator('[data-song-achievement-gallery]').waitFor()
     const n=await page.locator('.song-v2-grid').evaluate(x=>getComputedStyle(x).gridTemplateColumns.split(' ').filter(Boolean).length)
     assert.equal(n,2,'390px phone naturally fits two portrait cards')
     assert.equal(await page.locator('.song-v2-card').count(),34)
