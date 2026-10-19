@@ -180,7 +180,7 @@ test('published Pages: donation QR is visible immediately after hard refresh wit
 })
 
 
-test('published Pages: Song gallery opens inside Focus and offers safe desktop/mobile visual demos', async ({ page, request, browser }) => {
+test('published Pages: Focus achievements default is accessible on desktop/mobile and keeps Song art hidden', async ({ page, request, browser }) => {
   test.setTimeout(120_000)
   await expect.poll(async () => {
     const response = await request.get(site + 'source-commit.txt?pages_probe=' + targetSha + '-' + Date.now(), { failOnStatusCode: false })
@@ -192,7 +192,7 @@ test('published Pages: Song gallery opens inside Focus and offers safe desktop/m
   await page.goto(site, { waitUntil: 'domcontentloaded' })
   await page.getByRole('button', { name: '查看成就' }).click()
   await expect(page.locator('[data-navigation-dialog="achievements"]')).toBeVisible()
-  await expect(page.getByRole('heading', { name: '成就' })).toBeVisible()
+  await expect(page.locator('[data-focus-achievement-gallery]').getByRole('heading', { name: '成就' })).toBeVisible()
   await expect(page.locator('.focus-achievements-item')).toHaveCount(34)
   await expect(page.locator('.focus-achievements-item:disabled')).toHaveCount(34)
   await expect(page.locator('.focus-achievements-item:not([data-achievement-id])')).toHaveCount(5)
@@ -259,7 +259,7 @@ test('published Pages: Song gallery opens inside Focus and offers safe desktop/m
       }
     }))
     if (mobileErrors.length) console.log('song-mobile-errors-total', mobileErrors)
-    await expect(mobile.getByRole('heading', { name: '成就' })).toBeVisible({ timeout: 10000 })
+    await expect(mobile.locator('[data-focus-achievement-gallery]').getByRole('heading', { name: '成就' })).toBeVisible({ timeout: 10000 })
     await expect(mobile.locator('.focus-achievements-item')).toHaveCount(34)
     await expect(mobile.locator('.focus-achievements-item[data-unlocked="false"]:disabled')).toHaveCount(34)
     await expect(mobile.getByRole('button', { name: '开启宋韵雅藏' })).toHaveCount(0)
