@@ -28,7 +28,7 @@ export function assessSongArtAccess(
     if (!Number.isFinite(date.getTime())) continue
     dayIndices.add(Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY_MS))
   }
-  const days = [...dayIndices].sort((a, b) => a - b)
+  const days = Array.from(dayIndices).sort((a, b) => a - b)
   let streak = 0
   let longest = 0
   let last: number | undefined
