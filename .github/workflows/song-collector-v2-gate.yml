@@ -70,7 +70,7 @@ jobs:
         run: node scripts/validate-song-final-gallery.mjs
       - name: Validate the three-day Focus / Song entitlement
         run: |
-          ./node_modules/.bin/esbuild src/achievement/song-art-access.ts --bundle --platform=node --format=esm --outfile=/tmp/qwerty-song-access.mjs
+          ./node_modules/.bin/esbuild src/achievement/song-art-access.ts --bundle --platform=node --target=es2020 --format=esm --outfile=/tmp/qwerty-song-access.mjs
           node tests/song-collector-v2/access-gate.mjs
       - name: Lint changes
         run: yarn eslint src/achievement/song-art-access.ts src/pages/Achievements src/components/NavigationOverlay.tsx src/achievement/visual-assets/firstBatch.ts src/achievement/visual-assets/secondBatch.ts src/achievement/visual-assets/thirdBatch.ts src/achievement/visual-assets/finalBatch.ts src/achievement/visual-assets/visualTiers.ts src/achievement/visual-assets/SongPlaqueLabel.tsx src/song-complete --ext .ts,.tsx
