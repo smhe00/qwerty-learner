@@ -39,6 +39,9 @@ async function checkDesktop() {
         const response=await page.request.get(new URL(url,base).toString())
         assert.equal(response.status(),200,tier+' background reachable')
         assert.ok((response.headers()['content-type']||'').includes('image/webp'))
+        // Browser loading="lazy" defers offscreen images; scroll before decode
+        // to avoid waiting forever on a card below the fold.
+        await img.scrollIntoViewIfNeeded()
         await img.evaluate(el=>el.decode())
         assert.deepEqual(await img.evaluate(el=>[el.naturalWidth,el.naturalHeight]),[960,1391])
         const inner=(await card.innerText()).trim()
