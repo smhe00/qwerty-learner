@@ -19,7 +19,7 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
 
   return (
     <header className="container z-20 mx-auto w-full px-4 py-3 sm:px-6 lg:px-8 lg:py-4">
-      <div className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-3 lg:flex-nowrap lg:gap-x-12">
+      <div className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-3 xl:flex-nowrap xl:gap-x-12">
         <button
           className="flex shrink-0 items-center rounded-xl no-underline hover:no-underline"
           type="button"
@@ -38,7 +38,7 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
             </span>
           </div>
         </button>
-        <nav className="focus-header-nav order-3 flex w-full min-w-0 flex-wrap content-center items-center justify-center gap-x-2 gap-y-2 rounded-2xl px-2 py-2.5 transition-colors duration-200 lg:order-none lg:ml-auto lg:w-auto lg:justify-end">
+        <nav className="focus-header-nav order-3 flex w-full min-w-0 flex-wrap content-center items-center justify-center gap-x-2 gap-y-2 rounded-2xl px-2 py-2.5 transition-colors duration-200 xl:order-none xl:ml-auto xl:w-auto xl:justify-end">
           {children}
         </nav>
         {canUseAccount && (

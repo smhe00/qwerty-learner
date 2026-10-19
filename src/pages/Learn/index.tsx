@@ -333,12 +333,16 @@ export default function LearnPage() {
 
   const renderHeader = () => (
     <Header>
-      <ModeSwitcher />
-      {!canLearnMoreToday && <SessionControl active={false} label="开始 Learn"
-        disabled={isStarting || !wordList} onToggle={startFromKeyboard} />}
-      <DictChapterButton learnMode />
-      <PronunciationSwitcher learnMode />
-      <Switcher learnMode />
+      <div className="focus-toolbar-primary-row" data-toolbar-row="primary">
+        <ModeSwitcher />
+        {!canLearnMoreToday && <SessionControl active={false} label="开始 Learn"
+          disabled={isStarting || !wordList} onToggle={startFromKeyboard} />}
+        <DictChapterButton learnMode />
+        <PronunciationSwitcher learnMode />
+      </div>
+      <div className="focus-toolbar-icons-row" data-toolbar-row="icons">
+        <Switcher learnMode />
+      </div>
     </Header>
   )
 

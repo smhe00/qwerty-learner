@@ -83,3 +83,75 @@ test('Focus-style navigation dialog remains dismissible and retains study mode',
   await expect(page).toHaveURL(/\/typing$/)
   await expect(page.getByRole('button', { name: 'Typing', exact: true })).toHaveAttribute('aria-pressed', 'true')
 })
+
+
+test('study toolbar uses one row or two rows, splitting only after pronunciation; narrow widths use mobile layout', async ({ page }) => {
+  test.setTimeout(90_000)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/typing')
+  await expect(page.locator('[data-toolbar-row="primary"]')).toBeVisible({ timeout: 20_000 })
+
+  for (const width of [1440, 1280, 1100, 1024, 900, 768, 701]) {
+    await page.setViewportSize({ width, height: 900 })
+    const nav = page.locator('header nav.focus-header-nav')
+    const primary = nav.locator('[data-toolbar-row="primary"]')
+    const icons = nav.locator('[data-toolbar-row="icons"]')
+    await expect(primary).toBeVisible()
+    await expect(icons).toBeVisible()
+
+    const layout = await nav.evaluate((element) => {
+      const primaryRow = element.querySelector<HTMLElement>('[data-toolbar-row="primary"]')
+      const iconRow = element.querySelector<HTMLElement>('[data-toolbar-row="icons"]')
+      if (!primaryRow || !iconRow) throw new Error('Expected the two explicit toolbar rows')
+      const navStyle = getComputedStyle(element)
+      const contentWidth = element.clientWidth -
+        Number.parseFloat(navStyle.paddingLeft) - Number.parseFloat(navStyle.paddingRight)
+      const primaryRect = primaryRow.getBoundingClientRect()
+      const iconRect = iconRow.getBoundingClientRect()
+      const primaryChildren = Array.from(primaryRow.children).map(child => child.getBoundingClientRect())
+      const iconStrip = iconRow.querySelector<HTMLElement>('.focus-toolbar-icons')
+      const pronunciation = primaryRow.querySelector(
+        'button[aria-label^="发音口音"], button[aria-label^="发音及音标切换"]',
+      )
+      if (!iconStrip || !pronunciation) throw new Error('Pronunciation and icon strip must be present')
+      const iconChildren = Array.from(iconStrip.children).map(child => child.getBoundingClientRect())
+      return {
+        contentWidth,
+        primaryWidth: primaryRect.width,
+        iconsWidth: iconRect.width,
+        primaryTop: primaryRect.top,
+        primaryBottom: primaryRect.bottom,
+        primaryCenterY: primaryRect.top + primaryRect.height / 2,
+        iconsTop: iconRect.top,
+        iconsCenterY: iconRect.top + iconRect.height / 2,
+        primaryWrap: getComputedStyle(primaryRow).flexWrap,
+        iconsWrap: getComputedStyle(iconRow).flexWrap,
+        iconStripWrap: getComputedStyle(iconStrip).flexWrap,
+        iconStripOverflow: iconChildren.some(rect =>
+          rect.left < iconStrip.getBoundingClientRect().left - 1 ||
+          rect.right > iconStrip.getBoundingClientRect().right + 1),
+        primaryChildrenOverflow: primaryChildren.some(rect =>
+          rect.left < primaryRect.left - 1 || rect.right > primaryRect.right + 1 ||
+          rect.top < primaryRect.top - 1 || rect.bottom > primaryRect.bottom + 1),
+        iconsFollowPrimary: primaryRow.nextElementSibling === iconRow,
+        pronunciationInPrimary: primaryRow.contains(pronunciation),
+      }
+    })
+    expect(layout.primaryWidth, 'primary controls must fit at ' + width + 'px').toBeLessThanOrEqual(layout.contentWidth + 1)
+    expect(layout.iconsWidth, 'icon row must fit at ' + width + 'px').toBeLessThanOrEqual(layout.contentWidth + 1)
+    expect(layout.primaryWrap).toBe('nowrap')
+    expect(layout.iconsWrap).toBe('nowrap')
+    expect(layout.iconStripWrap).toBe('nowrap')
+    expect(layout.iconStripOverflow).toBe(false)
+    expect(layout.primaryChildrenOverflow).toBe(false)
+    expect(layout.iconsFollowPrimary).toBe(true)
+    expect(layout.pronunciationInPrimary).toBe(true)
+    if (Math.abs(layout.primaryCenterY - layout.iconsCenterY) >= 8) {
+      expect(layout.iconsTop).toBeGreaterThanOrEqual(layout.primaryBottom - 1)
+    }
+  }
+
+  await page.setViewportSize({ width: 700, height: 900 })
+  await expect(page).toHaveURL(/\/mobile$/, { timeout: 10_000 })
+  await expect(page.locator('header nav.focus-header-nav')).toHaveCount(0)
+})

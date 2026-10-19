@@ -322,29 +322,33 @@ const App: React.FC<{ autoStart?: boolean }> = ({ autoStart = false }) => {
       )}
       <Layout>
         <Header>
-          <ModeSwitcher />
-          <SessionButton isLoading={isLoading} />
-          <DictChapterButton learnMode={isReviewMode} />
-          <PronunciationSwitcher learnMode={isReviewMode} />
-          <Switcher learnMode={isReviewMode} />
-          <div
-            className="flex shrink-0 items-center gap-3"
-            data-typing-primary-controls
-          >
-            {!isLearnSurface && state.isShowSkip && (
-              <Tooltip
-                content="跳过该词"
-                className="shrink-0"
-              >
-                <button
-                  className="my-btn-primary w-20 shrink-0 whitespace-nowrap bg-orange-400"
-                  type="button"
-                  onClick={skipWord}
+          <div className="focus-toolbar-primary-row" data-toolbar-row="primary">
+            <ModeSwitcher />
+            <SessionButton isLoading={isLoading} />
+            <DictChapterButton learnMode={isReviewMode} />
+            <PronunciationSwitcher learnMode={isReviewMode} />
+          </div>
+          <div className="focus-toolbar-icons-row" data-toolbar-row="icons">
+            <Switcher learnMode={isReviewMode} />
+            <div
+              className="flex shrink-0 items-center gap-3"
+              data-typing-primary-controls
+            >
+              {!isLearnSurface && state.isShowSkip && (
+                <Tooltip
+                  content="跳过该词"
+                  className="shrink-0"
                 >
-                  Skip
-                </button>
-              </Tooltip>
-            )}
+                  <button
+                    className="my-btn-primary w-20 shrink-0 whitespace-nowrap bg-orange-400"
+                    type="button"
+                    onClick={skipWord}
+                  >
+                    Skip
+                  </button>
+                </Tooltip>
+              )}
+            </div>
           </div>
         </Header>
         <div className="container mx-auto flex h-full flex-1 flex-col items-center justify-center pb-5">

@@ -14,6 +14,10 @@ import 'react-app-polyfill/stable'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
+// Below this width the keyboard-first Learn/Typing toolbar no longer has a
+// reliable two-row fit; use the dedicated narrow-screen layout instead.
+const MOBILE_LAYOUT_BREAKPOINT = 700
+
 const loadAnalysisPage = () => import('./pages/Analysis')
 const loadGalleryPage = () => import('./pages/Gallery-N')
 const loadLearnPage = () => import('./pages/Learn')
@@ -174,12 +178,12 @@ function Root() {
     darkMode ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark')
   }, [darkMode])
 
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 600)
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= MOBILE_LAYOUT_BREAKPOINT)
   const wasMobileRef = useRef(isMobile)
 
   useEffect(() => {
     const handleResize = () => {
-      const nextIsMobile = window.innerWidth <= 600
+      const nextIsMobile = window.innerWidth <= MOBILE_LAYOUT_BREAKPOINT
       const wasMobile = wasMobileRef.current
       wasMobileRef.current = nextIsMobile
       setIsMobile(nextIsMobile)

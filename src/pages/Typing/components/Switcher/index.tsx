@@ -90,7 +90,7 @@ export default function Switcher({
 
   return (
     <div
-      className="focus-toolbar-icons flex min-w-0 max-w-full flex-wrap items-center justify-center gap-1"
+      className="focus-toolbar-icons flex min-w-max max-w-none shrink-0 flex-nowrap items-center justify-center gap-1"
       onKeyDownCapture={blockIconKeyboardActivation}
       onKeyUpCapture={blockIconKeyboardActivation}
       onFocusCapture={preventIconFocus}

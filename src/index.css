@@ -89,6 +89,35 @@ body,
   color: var(--focus-text-secondary);
 }
 
+/* The header is two indivisible groups: primary controls through pronunciation,
+   then the compact icon strip. Flex may put the icon strip on row two, but
+   neither group is allowed to wrap internally into a third line. */
+.focus-header-nav .focus-toolbar-primary-row,
+.focus-header-nav .focus-toolbar-icons-row {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.5rem;
+  width: max-content;
+  min-width: max-content;
+  max-width: none;
+}
+
+.focus-header-nav .focus-toolbar-primary-row > *,
+.focus-header-nav .focus-toolbar-icons-row > * {
+  flex-shrink: 0;
+}
+
+.focus-header-nav .focus-toolbar-icons {
+  display: flex;
+  flex-wrap: nowrap;
+  width: max-content;
+  min-width: max-content;
+  max-width: none;
+  flex-shrink: 0;
+}
+
 /* One visual contract for the compact icon actions in Learn/Typing navigation.
    Keyboard focus and Enter belong to the word/session controls, not these
    pointer-only triggers. Do not style the popover/dialog's interactive content. */
