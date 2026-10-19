@@ -95,7 +95,7 @@ function CollectionCard({ achievement, unlockedAt, theme, onOpen }: {
       data-achievement-id={hiddenLocked ? undefined : achievement.id}
       disabled={!unlocked}
       onClick={unlocked ? onOpen : undefined}
-      aria-label={unlocked ? title + '，已解锁，查看藏品' : hiddenLocked ? '秘藏，尚未解锁' : title + '，未解锁'}
+      aria-label={unlocked ? title + '，已解锁，查看藏品' : tier === 'hidden' ? '秘藏，尚未解锁' : title + '，未解锁'}
     >
       {!unlocked ? (
         <>
@@ -103,7 +103,7 @@ function CollectionCard({ achievement, unlockedAt, theme, onOpen }: {
             src={getSongLockedBackUrl(tier)} alt="" aria-hidden="true"
             decoding="async" loading="lazy" draggable={false} />
           {/* Secret awards never reveal their title or any other on-card copy. */}
-          {!hiddenLocked && <h2 className="song-v2-locked-name">{title}</h2>}
+          {tier !== 'hidden' && <h2 className="song-v2-locked-name">{title}</h2>}
         </>
       ) : (
         <>
