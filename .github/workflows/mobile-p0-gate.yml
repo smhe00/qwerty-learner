@@ -1,0 +1,56 @@
+name: Mobile P0 Gate
+
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - 'src/app.tsx'
+      - 'src/pages/Mobile/**'
+      - 'tests/e2e/mobile-p0.*'
+      - '.github/workflows/mobile-p0-gate.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: mobile-p0-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-p0:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Build production bundle
+        run: yarn build
+      - name: Audit scoped Mobile TypeScript
+        shell: bash
+        run: |
+          set +e
+          yarn tsc --noEmit > "$RUNNER_TEMP/mobile-tsc.log" 2>&1
+          result=$?
+          set -e
+          if [ "$result" -ne 0 ] && grep -E '^src/(app[.]tsx|pages/Mobile/)' "$RUNNER_TEMP/mobile-tsc.log"; then
+            echo "::error::Mobile P0 TypeScript diagnostics"
+            exit 1
+          fi
+      - name: Lint Mobile P0
+        run: yarn eslint src/pages/Mobile src/app.tsx tests/e2e/mobile-p0.spec.ts
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify Mobile P0 routes, masking and no learning writes
+        run: npx playwright test --config=tests/e2e/mobile-p0.config.ts --project=chromium --retries=0
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-p0-${{ github.run_id }}
+          path: test-results/
+          retention-days: 7
