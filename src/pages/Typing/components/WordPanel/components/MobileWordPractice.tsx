@@ -409,6 +409,7 @@ export default function MobileWordPractice({
 
   const continueAfterFeedback = () => {
     if (paused || isSaving || !feedback) return
+    setIsSaving(true)
     onFinish(feedback.result)
   }
 
