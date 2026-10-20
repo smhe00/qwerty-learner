@@ -448,7 +448,7 @@ export default function MobileWordPractice({
                   {word.usphone ? '美 /' + word.usphone + '/' : ''}
                 </p>
               )}
-              <button type="button" className="mobile-practice-audio" onClick={playTargetAudio} disabled={paused || isSaving}>
+              <button type="button" className="mobile-practice-audio" onClick={playTargetAudio} disabled={paused || isSaving || hasError}>
                 <Volume2 size={18} aria-hidden="true" />
                 {isPlaying ? '正在播放…' : hasError ? '音频暂不可用' : '播放发音'}
               </button>
@@ -481,9 +481,9 @@ export default function MobileWordPractice({
               ) : (
                 <div data-mobile-answer-revealed>
                   <p className="mobile-practice-word">{word.name}</p>
-                  <button type="button" className="mobile-practice-audio" onClick={playTargetAudio} disabled={paused || isSaving}>
+                  <button type="button" className="mobile-practice-audio" onClick={playTargetAudio} disabled={paused || isSaving || hasError}>
                     <Volume2 size={18} aria-hidden="true" />
-                    {isPlaying ? '正在播放…' : '播放发音'}
+                    {isPlaying ? '正在播放…' : hasError ? '音频暂不可用' : '播放发音'}
                   </button>
                   <p className="mobile-practice-meaning">{meanings}</p>
                   {exampleParts && (
@@ -522,9 +522,9 @@ export default function MobileWordPractice({
                   <p className="mobile-practice-example">{exampleText}</p>
                 </div>
               ) : task === 'audio' ? (
-                <button type="button" className="mobile-practice-audio" onClick={playTargetAudio} disabled={paused || isSaving}>
+                <button type="button" className="mobile-practice-audio" onClick={playTargetAudio} disabled={paused || isSaving || hasError}>
                   <Headphones size={18} aria-hidden="true" />
-                  {isPlaying ? '正在播放…' : hasError ? '重试发音' : '播放目标单词发音'}
+                  {isPlaying ? '正在播放…' : hasError ? '音频暂不可用' : '播放目标单词发音'}
                 </button>
               ) : (
                 <p className="mobile-practice-word">{word.name}</p>
