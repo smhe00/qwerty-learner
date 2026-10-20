@@ -42,6 +42,8 @@ test('Mobile Learn runs real keyboard-free tasks and persists a deliberate respo
   if (task === 'exposure') {
     await page.getByRole('button', { name: '我看好了，继续' }).click()
   } else if (task === 'recall') {
+    await page.getByRole('button', { name: '显示答案' }).click()
+    await expect(page.locator('[data-mobile-answer-revealed]')).toBeVisible()
     await page.getByRole('button', { name: '记得' }).click()
   } else {
     if (task === 'audio') {
