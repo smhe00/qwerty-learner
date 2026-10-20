@@ -42,7 +42,7 @@ export default function MobilePage() {
           {checkpoint ? '可恢复的学习位置 · 第 ' + resume + ' / ' + checkpoint.words.length + ' 词'
             : '当前没有可恢复的 Learn 会话'}
         </p>
-        <Link className="mobile-start-link" to="/mobile/study" aria-label="开始手机学习">
+        <Link className="mobile-start-link" to="/mobile/study" aria-label={checkpoint ? "继续手机学习" : "开始手机学习"}>
           {checkpoint ? '继续学习' : '开始手机学习'} <ChevronRight size={19} aria-hidden="true"/>
         </Link>
         <p className="mobile-p0-note">手机学习 · 无需键盘输入</p>

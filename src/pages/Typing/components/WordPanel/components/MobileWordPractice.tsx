@@ -76,7 +76,7 @@ function conditionForTask(
     purpose: 'training',
     source: 'adaptive-policy',
     audio: task === 'audio' ? 'automatic' : 'none',
-    meaning: task === 'meaning-choice' ? 'visible' : 'hidden',
+    meaning: task === 'meaning-choice' || task === 'recall' ? 'visible' : 'hidden',
     phonetic: task === 'exposure' ? 'visible' : 'hidden',
     letters: task === 'recall'
       ? { mode: 'all-hidden' }

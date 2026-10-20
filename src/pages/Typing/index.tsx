@@ -354,7 +354,7 @@ const App: React.FC<{ autoStart?: boolean; mobile?: boolean }> = ({ autoStart = 
         isReviewMode ? <LearnResultScreen /> : <ResultScreen />
       )}
       {mobile ? (
-        <div className="focus-mobile-learn-shell" data-mobile-learn-shell>
+        <div className="focus-mobile-learn-shell mobile-app mobile-study" data-mobile-learn-shell>
           <header className="focus-mobile-learn-header">
             <button type="button" className="focus-mobile-round-action"
               onClick={() => void leaveMobileLearn()}
