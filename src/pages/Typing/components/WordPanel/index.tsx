@@ -724,7 +724,7 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
       <div className="mobile-practice-host">
         {currentWord && (
           <MobileWordPractice
-            key={currentWordRenderKey}
+            key={String(currentWordRenderKey) + ':' + currentWord.name + ':' + (currentAcquisitionState?.phase ?? 'review')}
             word={currentWord}
             queue={state.chapterData.words}
             onFinish={onFinish}
@@ -733,7 +733,6 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
             recordKind={currentAcquisitionState?.spacingOnly ? 'practice' : currentLearnItemKind}
             acquisitionState={currentAcquisitionState}
             reviewAttemptRole={currentReviewAttemptRole}
-            audioOwnerKey={currentAudioOwnerKey}
             paused={!state.isTyping}
             onResume={() => dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: true })}
           />

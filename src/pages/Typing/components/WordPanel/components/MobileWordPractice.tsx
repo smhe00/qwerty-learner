@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { Headphones, Volume2 } from 'lucide-react'
 import { useAtomValue } from 'jotai'
 import usePronunciationSound from '@/hooks/usePronunciation'
-import { createLearnAcquisitionExercisePlanForState } from '@/learn/acquisition'
 import type { LearnAcquisitionState } from '@/learn/acquisition'
 import type { LearnItemKind } from '@/learn/session'
 import type { ExerciseConditionV1 } from '@/review/condition'
@@ -32,7 +31,6 @@ type MobileWordPracticeProps = {
   recordKind: LearnItemKind
   acquisitionState?: LearnAcquisitionState
   reviewAttemptRole?: ReviewAttemptRole
-  audioOwnerKey: string
   paused: boolean
   onResume: () => void
 }
@@ -94,7 +92,6 @@ function learningContextForTask(
   audioPlayed: boolean,
 ): LearningContextV1 {
   const hiddenAnswer = task === 'recall'
-  const answerVisible = !hiddenAnswer
   return {
     version: 1,
     answerVisibilityAtStart: hiddenAnswer ? 'hidden' : 'full',
@@ -126,7 +123,6 @@ export default function MobileWordPractice({
   recordKind,
   acquisitionState,
   reviewAttemptRole,
-  audioOwnerKey,
   paused,
   onResume,
 }: MobileWordPracticeProps) {
@@ -321,6 +317,10 @@ export default function MobileWordPractice({
 
   const submitChoice = () => {
     if (!selectedChoice || paused || isSaving || feedback) return
+    if (task === 'audio' && !audioPlayed && !hasError) {
+      setError('请先播放发音，再确认答案。')
+      return
+    }
     const correct = selectedChoice === word.name
     void saveAttempt({
       mode: task,

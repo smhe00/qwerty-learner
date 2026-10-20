@@ -43,6 +43,9 @@ test('Mobile Learn runs real keyboard-free tasks and persists a deliberate respo
   } else if (task === 'recall') {
     await page.getByRole('button', { name: '记得' }).click()
   } else {
+    if (task === 'audio') {
+      await page.getByRole('button', { name: /播放目标单词发音|重试发音/ }).click()
+    }
     await page.locator('[data-mobile-choice]').first().click()
     await page.getByRole('button', { name: '确认选择' }).click()
   }
