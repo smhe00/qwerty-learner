@@ -66,6 +66,10 @@ test('Mobile P0 restores a real persisted checkpoint, keeps the word masked and 
       db.close()
     }
   })
+  // Native IndexedDB writes bypass Dexie's liveQuery notifications; refresh
+  // to exercise recovery from the persisted database exactly as a new visit.
+  await page.reload()
+  await expect(page.locator('[data-mobile-menu]')).toBeVisible()
   await expect(page.getByText(/可恢复的学习位置/)).toBeVisible()
   const snapshot = () => page.evaluate(async () => {
     const req = indexedDB.open('RecordDB')
