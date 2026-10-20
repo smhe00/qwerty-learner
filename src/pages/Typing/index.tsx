@@ -38,7 +38,7 @@ import {
   typingTransVisibleAtom,
 } from '@/store'
 import { flushLearnPersistence } from '@/learn/persistence'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Pause, Play } from 'lucide-react'
 import { getReviewWordStates } from '@/review/repository'
 import { db, useSaveChapterRecord } from '@/utils/db'
 import { getUTCUnixTimestamp } from '@/utils/time'
@@ -328,6 +328,25 @@ const App: React.FC<{ autoStart?: boolean; mobile?: boolean }> = ({ autoStart = 
   const currentPosition = totalWords > 0 ? Math.min(state.chapterData.index + 1, totalWords) : 0
   const progressPercent = totalWords > 0 ? (currentPosition / totalWords) * 100 : 0
 
+  if (mobile && state.isFinished) {
+    return (
+      <TypingContext.Provider value={{ state, dispatch }}>
+        <main className="mobile-app mobile-study" data-mobile-complete>
+          <div className="mobile-study-inner">
+            <section className="mobile-today mobile-study-start-card">
+              <p className="mobile-eyebrow">SESSION COMPLETE</p>
+              <h1>本轮学习完成</h1>
+              <p className="mobile-today-summary">已完成本轮学习任务，学习记录已保存。</p>
+              <button type="button" className="mobile-start-link" onClick={() => void leaveMobileLearn()}>
+                返回手机菜单
+              </button>
+            </section>
+          </div>
+        </main>
+      </TypingContext.Provider>
+    )
+  }
+
   return (
     <TypingContext.Provider value={{ state: state, dispatch }}>
       {!mobile && state.isFinished && !isReviewMode && <DonateCard />}
@@ -341,6 +360,12 @@ const App: React.FC<{ autoStart?: boolean; mobile?: boolean }> = ({ autoStart = 
               onClick={() => void leaveMobileLearn()}
               aria-label="返回主菜单" title="保存进度并返回主菜单">
               <ArrowLeft size={21} aria-hidden="true" />
+            </button>
+            <button type="button" className="focus-mobile-round-action"
+              onClick={toggleSession}
+              aria-label={state.isTyping ? '暂停学习' : '继续学习'}
+              title={state.isTyping ? '暂停学习' : '继续学习'}>
+              {state.isTyping ? <Pause size={19} aria-hidden="true" /> : <Play size={19} aria-hidden="true" />}
             </button>
             <div className="min-w-0 flex-1">
               <div className="focus-mobile-progress-track" aria-label="学习进度">

@@ -45,7 +45,7 @@ type LearnLocationState = {
   idle?: boolean
 }
 
-export default function LearnPage() {
+export default function LearnPage({ mobile = false }: { mobile?: boolean } = {}) {
   const navigate = useNavigate()
   const location = useLocation()
   const currentRouteRef = useRef(location.pathname)
@@ -166,7 +166,7 @@ export default function LearnPage() {
     const words = wordList
     const isCurrent = () =>
       claim.isCurrent() &&
-      currentRouteRef.current === '/learn'
+      currentRouteRef.current === (mobile ? '/mobile/study' : '/learn')
 
     setIsStarting(true)
     setStatusText('')
@@ -188,7 +188,7 @@ export default function LearnPage() {
       setIsStarting(false)
       setStatusText('')
       autoStartConsumedRef.current = true
-      navigate('/learn', { replace: true, state: null })
+      navigate(mobile ? '/mobile/study' : '/learn', { replace: true, state: null })
       setIsSessionView(true)
     }
 
@@ -282,6 +282,7 @@ export default function LearnPage() {
     preparationGuard,
     setReviewModeInfo,
     wordList,
+    mobile,
   ])
 
   useEffect(() => {
@@ -295,7 +296,7 @@ export default function LearnPage() {
     // Only an explicit workflow continuation may auto-start; otherwise the
     // user's first keypress/Start action starts preparation.
     const shouldAutoStart =
-      routeState?.autoStart === true || query.get('block-resume') === '1'
+      mobile || routeState?.autoStart === true || query.get('block-resume') === '1'
 
     if (
       canLearnMoreToday ||
@@ -315,6 +316,7 @@ export default function LearnPage() {
     location.search,
     startLearn,
     wordList,
+    mobile,
   ])
 
   const startFromKeyboard = useCallback(() => {
@@ -323,12 +325,57 @@ export default function LearnPage() {
   }, [startLearn])
   useSessionKeyboard({
     active: false,
-    disabled: isSessionView || isStarting || !wordList || canLearnMoreToday,
+    disabled: mobile || isSessionView || isStarting || !wordList || canLearnMoreToday,
     onToggle: startFromKeyboard,
   })
 
   if (isSessionView) {
-    return <TypingPage autoStart={userStartRequestedRef.current} />
+    return <TypingPage autoStart={mobile || userStartRequestedRef.current} mobile={mobile} />
+  }
+
+  if (mobile) {
+    return (
+      <main data-mobile-study-start className="mobile-app mobile-study">
+        <div className="mobile-study-inner">
+          <header className="mobile-study-top">
+            <button type="button" className="mobile-back" onClick={() => navigate('/mobile')} aria-label="返回主菜单">‹ 返回</button>
+            <span className="mobile-study-context">{currentDictInfo.name}</span>
+            <span className="mobile-study-count">Learn</span>
+          </header>
+          <section className="mobile-today mobile-study-start-card">
+            <p className="mobile-eyebrow">TODAY · LEARN</p>
+            <h1>{canLearnMoreToday ? '今日目标已完成' : '正在准备学习'}</h1>
+            <p className="mobile-today-summary" role={wordListError && !wordList ? 'alert' : 'status'}>
+              {isStarting
+                ? '正在准备复习与新词…'
+                : wordListError && !wordList
+                  ? '词库加载失败，请检查网络后重试。'
+                  : statusText || (canLearnMoreToday
+                    ? '今日计划已完成，可以追加少量新词。'
+                    : wordList ? '正在组织复习和新词…' : '正在加载词库…')}
+            </p>
+            {wordListError && !wordList && (
+              <button type="button" className="mobile-practice-primary" onClick={() => void retryWordList()}>
+                重新加载词库
+              </button>
+            )}
+            {!isStarting && statusText && wordList && !canLearnMoreToday && (
+              <button type="button" className="mobile-practice-primary" onClick={() => startLearn()}>
+                重试学习
+              </button>
+            )}
+            {canLearnMoreToday && (
+              <button type="button" className="mobile-practice-primary" disabled={isStarting || !wordList} onClick={() => startLearn(true)}>
+                再学五词
+              </button>
+            )}
+            <button type="button" className="mobile-start-link" onClick={() => navigate('/mobile')}>
+              返回菜单
+            </button>
+          </section>
+        </div>
+      </main>
+    )
   }
 
   const renderHeader = () => (

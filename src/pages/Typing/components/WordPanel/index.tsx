@@ -6,6 +6,7 @@ import Progress from '../Progress'
 import Phonetic from './components/Phonetic'
 import Translation from './components/Translation'
 import WordComponent from './components/Word'
+import MobileWordPractice from './components/MobileWordPractice'
 import type { WordFinishResult } from './components/Word'
 import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
@@ -50,7 +51,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
-export default function WordPanel() {
+export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
   // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
   const { state, dispatch } = useContext(TypingContext)!
   const phoneticConfig = useAtomValue(phoneticConfigAtom)
@@ -717,6 +718,29 @@ export default function WordPanel() {
     (currentLearnItemKind === 'review' ||
       currentAcquisitionState?.phase === 'supported' ||
       currentAcquisitionState?.phase === 'independent')
+
+  if (mobile) {
+    return (
+      <div className="mobile-practice-host">
+        {currentWord && (
+          <MobileWordPractice
+            key={currentWordRenderKey}
+            word={currentWord}
+            queue={state.chapterData.words}
+            onFinish={onFinish}
+            exercisePlan={currentExercisePlan}
+            itemKind={currentLearnItemKind}
+            recordKind={currentAcquisitionState?.spacingOnly ? 'practice' : currentLearnItemKind}
+            acquisitionState={currentAcquisitionState}
+            reviewAttemptRole={currentReviewAttemptRole}
+            audioOwnerKey={currentAudioOwnerKey}
+            paused={!state.isTyping}
+            onResume={() => dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: true })}
+          />
+        )}
+      </div>
+    )
+  }
 
   return (
     <div data-session-time={state.timerData.time} className="focus-study-stage flex h-full w-full flex-col items-center justify-center">
