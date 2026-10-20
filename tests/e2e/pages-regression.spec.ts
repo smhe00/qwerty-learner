@@ -202,71 +202,27 @@ test('published Pages: Focus achievements default is accessible on desktop/mobil
   await expect(page.locator('.focus-achievements-detail')).toHaveCount(0)
   expect(errors).toEqual([])
 
-  // Mobile simulates a distinct device, not another live tab fighting for
-  // the same S1 writer lock as the still-mounted desktop Learn workspace.
+  // Mobile P0 is a separate menu-first app shell. P2 integrations (including
+  // achievements and sign-in) remain unavailable rather than opening a blank
+  // mobile screen. This context must not fight the desktop S1 writer lock.
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 } })
   const mobile = await mobileContext.newPage()
-  const mobileErrors: string[] = []
-  mobile.on('framenavigated', frame => { if (frame === mobile.mainFrame()) console.log('song-mobile-navigated', frame.url()) })
-  mobile.on('pageerror', error => {
-    mobileErrors.push(error.message)
-    console.log('song-mobile-runtime-error', error.stack ?? error.message)
-  })
-  mobile.on('console', entry => {
-    if (entry.type() === 'error') console.log('song-mobile-console-error', entry.text())
-  })
-  mobile.on('requestfailed', request => console.log('song-mobile-requestfailed', request.url(), request.failure()?.errorText))
-  mobile.on('response', response => {
-    if (response.status() >= 400) console.log('song-mobile-http-error', response.status(), response.url())
-  })
   try {
     await mobile.goto(site, { waitUntil: 'domcontentloaded' })
-    // Full-page redirects replace the execution context; waitForURL is
-    // navigation-safe, unlike polling page.evaluate during an active redirect.
     await mobile.waitForURL(/\/(?:mobile|learn)\/?$/, { timeout: 15000 })
-    const entryLink = mobile.locator('[data-mobile-menu] a[href$="/achievements"]')
-    if (await entryLink.count() === 0) {
-      console.log('mobile-entry-diagnostic', await mobile.evaluate(() => ({
-        width: window.innerWidth,
-        pathname: window.location.pathname,
-        title: document.title,
-        body: document.body.innerText.slice(0, 1400),
-      })))
-    }
-    await expect(entryLink).toBeVisible({ timeout: 12000 })
-    await entryLink.click()
-    await expect(mobile).toHaveURL(/\/achievements\/?$/)
-    console.log('mobile-achievement-render', await mobile.evaluate(() => {
-      const gallery = document.querySelector('[data-focus-achievement-gallery]')
-      const h1 = gallery?.querySelector('h1')
-      const box = h1?.getBoundingClientRect()
-      return {
-        href: location.href,
-        innerWidth: window.innerWidth,
-        text: document.body.innerText.slice(0, 950),
-        readyState: document.readyState,
-        rootPresent: Boolean(document.getElementById('root')),
-        rootHTML: document.getElementById('root')?.innerHTML.slice(0, 1000),
-        documentTitle: document.title,
-        scriptSources: [...document.querySelectorAll('script[src]')].map(x => x.getAttribute('src')).slice(0, 8),
-        galleryPresent: Boolean(gallery),
-        galleryDisplay: gallery ? getComputedStyle(gallery).display : null,
-        galleryVisibility: gallery ? getComputedStyle(gallery).visibility : null,
-        headingText: h1?.textContent,
-        headingDisplay: h1 ? getComputedStyle(h1).display : null,
-        headingVisibility: h1 ? getComputedStyle(h1).visibility : null,
-        headingRect: box ? [box.x, box.y, box.width, box.height] : null,
-      }
-    }))
-    if (mobileErrors.length) console.log('song-mobile-errors-total', mobileErrors)
-    await expect(mobile.locator('[data-focus-achievement-gallery]').getByRole('heading', { name: '成就' })).toBeVisible({ timeout: 10000 })
-    await expect(mobile.locator('.focus-achievements-item')).toHaveCount(34)
-    await expect(mobile.locator('.focus-achievements-item[data-unlocked="false"]:disabled')).toHaveCount(34)
-    await expect(mobile.getByRole('button', { name: '开启宋韵雅藏' })).toHaveCount(0)
-    await expect(mobile.locator('.song-v2-card')).toHaveCount(0)
+    await expect(mobile.locator('[data-mobile-menu]')).toBeVisible({ timeout: 12000 })
+    await expect(mobile.getByText('成就', { exact: true })).toBeVisible()
+    await expect(mobile.getByText('移动端成就即将开放')).toBeVisible()
+    await expect(mobile.locator('[data-mobile-menu] a[href$="/achievements"]')).toHaveCount(0)
+    await mobile.getByRole('link', { name: '进入沉浸学习页面' }).click()
+    await expect(mobile).toHaveURL(/\/mobile\/study$/)
+    await expect(mobile.locator('[data-mobile-study]')).toBeVisible()
+    await expect(mobile.getByText('学习界面预览 · 不会记录拼写结果')).toBeVisible()
+    await expect(mobile.locator('header nav.focus-header-nav')).toHaveCount(0)
     await expect.poll(() => mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true)
-    await mobile.getByRole('button', { name: '返回', exact: true }).click()
+    await mobile.getByRole('link', { name: '返回主菜单' }).click()
     await expect(mobile).toHaveURL(/\/mobile\/?$/)
+    await expect(mobile.locator('[data-mobile-menu]')).toBeVisible()
   } finally {
     await mobileContext.close()
   }

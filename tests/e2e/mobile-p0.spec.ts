@@ -10,7 +10,7 @@ test('Mobile P0 uses an independent menu, not a scaled desktop toolbar', async (
   await expect(menu.getByRole('link', { name: '进入沉浸学习页面' })).toBeVisible()
   await expect(menu.getByText('账号与云同步', { exact: true })).toBeVisible()
   await expect(menu.getByText('设置', { exact: true })).toBeVisible()
-  await expect(menu.getByText('即将开放', { exact: true })).toHaveCount(4)
+  await expect(menu.getByText('即将开放', { exact: true })).toHaveCount(5)
   await expect(page.locator('header nav.focus-header-nav')).toHaveCount(0)
   const bounds = await page.evaluate(() => ({
     width: document.documentElement.scrollWidth, viewport: window.innerWidth,

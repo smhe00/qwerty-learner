@@ -15,6 +15,7 @@ export default function MobilePage() {
   const dictionary = useAtomValue(currentDictInfoAtom)
   const auth = loadAuth({ preserveExpired: true })
   const menus = [
+    { title: '成就', subtitle: '移动端成就即将开放', icon: Medal },
     { title: '词库', subtitle: '移动端选择即将开放', icon: BookOpen },
     { title: '学习记录', subtitle: '移动端统计即将开放', icon: LayoutGrid },
     { title: '账号与云同步', subtitle: auth ? '已登录 · ' + auth.user.username : '未登录 · 即将开放', icon: Cloud },
@@ -49,11 +50,6 @@ export default function MobilePage() {
 
       <section className="mobile-home-menu" aria-label="功能菜单">
         <h2>更多功能</h2>
-        <Link className="mobile-menu-item" to="/achievements">
-          <span className="mobile-menu-icon"><Medal size={20} aria-hidden="true"/></span>
-          <span className="mobile-menu-text"><strong>成就</strong><small>查看已获得的学习成就</small></span>
-          <ChevronRight size={18} className="mobile-menu-chevron" aria-hidden="true" />
-        </Link>
         {menus.map(item => <div className="mobile-menu-item mobile-menu-unavailable" key={item.title}
           aria-label={item.title + '，后续版本开放'}>
           <span className="mobile-menu-icon"><item.icon size={20} aria-hidden="true"/></span>
