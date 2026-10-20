@@ -183,8 +183,8 @@ export default function LearnPage({ mobile = false }: { mobile?: boolean } = {})
         reviewRecord: record,
       })
 
-      // /learn is the only Learn route. Switching from preparation to the
-      // spelling engine is a local state transition, not navigation.
+      // Keep the user on the matching Learn route. Mobile shares this session
+      // controller but renders a keyboard-free interaction surface.
       setIsStarting(false)
       setStatusText('')
       autoStartConsumedRef.current = true
@@ -290,11 +290,10 @@ export default function LearnPage({ mobile = false }: { mobile?: boolean } = {})
 
     const routeState = location.state as LearnLocationState | null
     const query = new URLSearchParams(location.search)
-    // Mounting the Learn landing page must be read-only. In particular, an S2
-    // cloud Pull or portable V4 import must not silently replace a restored
-    // historical DailySession simply because today's date has advanced.
-    // Only an explicit workflow continuation may auto-start; otherwise the
-    // user's first keypress/Start action starts preparation.
+    // Desktop Learn stays opt-in unless a workflow explicitly requests start.
+    // Mobile Learn is intentionally immersive: entering /mobile/study starts
+    // the next due/new-word session automatically. Never mutate a restored
+    // historical DailySession merely because today's date has advanced.
     const shouldAutoStart =
       mobile || routeState?.autoStart === true || query.get('block-resume') === '1'
 
