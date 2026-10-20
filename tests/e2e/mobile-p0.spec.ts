@@ -53,7 +53,7 @@ test('Mobile Learn runs real keyboard-free tasks and persists a deliberate respo
     await page.getByRole('button', { name: '记得' }).click()
   } else {
     if (task === 'audio') {
-      const audioButton = page.getByRole('button', { name: /播放目标单词发音/ })
+      const audioButton = page.locator('.mobile-practice-audio')
       if (await audioButton.isEnabled()) await audioButton.click()
     }
     await page.locator('[data-mobile-choice]').first().click()
