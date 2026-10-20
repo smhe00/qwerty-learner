@@ -37,7 +37,8 @@ import {
   reviewModeInfoAtom,
   typingTransVisibleAtom,
 } from '@/store'
-import { IsDesktop } from '@/utils'
+import { flushLearnPersistence } from '@/learn/persistence'
+import { ArrowLeft } from 'lucide-react'
 import { getReviewWordStates } from '@/review/repository'
 import { db, useSaveChapterRecord } from '@/utils/db'
 import { getUTCUnixTimestamp } from '@/utils/time'
@@ -53,7 +54,7 @@ import {
 } from 'react-router-dom'
 import { useImmerReducer } from 'use-immer'
 
-const App: React.FC<{ autoStart?: boolean }> = ({ autoStart = false }) => {
+const App: React.FC<{ autoStart?: boolean; mobile?: boolean }> = ({ autoStart = false, mobile = false }) => {
   const autoStartPendingRef = useRef(autoStart)
   const typingTransVisible = useAtomValue(typingTransVisibleAtom)
   const [state, dispatch] = useImmerReducer(typingReducer, {
@@ -135,15 +136,24 @@ const App: React.FC<{ autoStart?: boolean }> = ({ autoStart = false }) => {
   ])
 
   useEffect(() => {
-    // 检测用户设备
-    if (!IsDesktop()) {
-      setTimeout(() => {
-        alert(
-          ' Qwerty Plus 目的为提高键盘工作者的英语输入效率，目前暂未适配移动端，希望您使用桌面端浏览器访问。如您使用的是 Ipad 等平板电脑设备，可以使用外接键盘使用本软件。',
-        )
-      }, 500)
+    if (!mobile) return
+    return () => {
+      dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })
+      void flushLearnPersistence().catch((error) => {
+        console.error('failed to flush Learn persistence on mobile exit', error)
+      })
     }
-  }, [])
+  }, [dispatch, mobile])
+
+  const leaveMobileLearn = useCallback(async () => {
+    dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })
+    try {
+      await flushLearnPersistence()
+    } catch (error) {
+      console.error('failed to flush Learn persistence before returning to menu', error)
+    }
+    navigate('/mobile')
+  }, [dispatch, navigate])
 
   // 在组件挂载和currentDictId改变时，检查当前字典是否存在，如果不存在，则将其重置为默认值
   useEffect(() => {
@@ -188,8 +198,8 @@ const App: React.FC<{ autoStart?: boolean }> = ({ autoStart = false }) => {
     dispatch({ type: TypingStateActionType.TOGGLE_IS_TYPING })
   }, [dispatch])
   useSessionKeyboard({
-    active: state.isTyping,
-    disabled: isLoading || state.isFinished,
+    active: !mobile && state.isTyping,
+    disabled: mobile || isLoading || state.isFinished,
     onToggle: toggleSession,
   })
 
@@ -314,62 +324,86 @@ const App: React.FC<{ autoStart?: boolean }> = ({ autoStart = false }) => {
 
   useConfetti(state.isFinished)
 
+  const totalWords = state.chapterData.words.length
+  const currentPosition = totalWords > 0 ? Math.min(state.chapterData.index + 1, totalWords) : 0
+  const progressPercent = totalWords > 0 ? (currentPosition / totalWords) * 100 : 0
+
   return (
     <TypingContext.Provider value={{ state: state, dispatch }}>
-      {state.isFinished && !isReviewMode && <DonateCard />}
+      {!mobile && state.isFinished && !isReviewMode && <DonateCard />}
       {state.isFinished && (
         isReviewMode ? <LearnResultScreen /> : <ResultScreen />
       )}
-      <Layout>
-        <Header>
-          <div className="focus-toolbar-primary-row" data-toolbar-row="primary">
-            <ModeSwitcher />
-            <SessionButton isLoading={isLoading} />
-            <DictChapterButton learnMode={isReviewMode} />
-            <PronunciationSwitcher learnMode={isReviewMode} />
-          </div>
-          <div className="focus-toolbar-icons-row" data-toolbar-row="icons">
-            <Switcher learnMode={isReviewMode} />
-            <div
-              className="flex shrink-0 items-center gap-3"
-              data-typing-primary-controls
-            >
-              {!isLearnSurface && state.isShowSkip && (
-                <Tooltip
-                  content="跳过该词"
-                  className="shrink-0"
-                >
-                  <button
-                    className="my-btn-primary w-20 shrink-0 whitespace-nowrap bg-orange-400"
-                    type="button"
-                    onClick={skipWord}
-                  >
-                    Skip
-                  </button>
-                </Tooltip>
-              )}
+      {mobile ? (
+        <div className="focus-mobile-learn-shell" data-mobile-learn-shell>
+          <header className="focus-mobile-learn-header">
+            <button type="button" className="focus-mobile-round-action"
+              onClick={() => void leaveMobileLearn()}
+              aria-label="返回主菜单" title="保存进度并返回主菜单">
+              <ArrowLeft size={21} aria-hidden="true" />
+            </button>
+            <div className="min-w-0 flex-1">
+              <div className="focus-mobile-progress-track" aria-label="学习进度">
+                <span style={{ width: progressPercent + '%' }} />
+              </div>
+              <p className="mt-1 text-right text-[11px]" style={{ color: 'var(--focus-text-muted)' }}>
+                {currentPosition} / {totalWords}
+              </p>
             </div>
-          </div>
-        </Header>
-        <div className="container mx-auto flex h-full flex-1 flex-col items-center justify-center pb-5">
-          <div className="container relative mx-auto flex h-full flex-col items-center">
-            <div className="container flex flex-grow items-center justify-center">
-              {isLoading ? (
-                <div className="flex flex-col items-center justify-center ">
-                  <div
-                    className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid  border-indigo-400 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"
-                    role="status"
-                  ></div>
-                </div>
-              ) : (
-                !state.isFinished && <WordPanel />
-              )}
-            </div>
-            {isLearnSurface ? <LearnLiveStats /> : <Speed />}
-          </div>
+          </header>
+          <main className="focus-mobile-learn-main">
+            {isLoading ? (
+              <div className="flex flex-1 items-center justify-center" role="status" aria-label="正在加载学习内容">
+                <span className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-400 border-r-transparent" />
+              </div>
+            ) : (
+              !state.isFinished && <WordPanel mobile />
+            )}
+          </main>
         </div>
-      </Layout>
-      <WordList />
+      ) : (
+        <>
+          <Layout>
+            <Header>
+              <div className="focus-toolbar-primary-row" data-toolbar-row="primary">
+                <ModeSwitcher />
+                <SessionButton isLoading={isLoading} />
+                <DictChapterButton learnMode={isReviewMode} />
+                <PronunciationSwitcher learnMode={isReviewMode} />
+              </div>
+              <div className="focus-toolbar-icons-row" data-toolbar-row="icons">
+                <Switcher learnMode={isReviewMode} />
+                <div className="flex shrink-0 items-center gap-3" data-typing-primary-controls>
+                  {!isLearnSurface && state.isShowSkip && (
+                    <Tooltip content="跳过该词" className="shrink-0">
+                      <button className="my-btn-primary w-20 shrink-0 whitespace-nowrap bg-orange-400"
+                        type="button" onClick={skipWord}>
+                        Skip
+                      </button>
+                    </Tooltip>
+                  )}
+                </div>
+              </div>
+            </Header>
+            <div className="container mx-auto flex h-full flex-1 flex-col items-center justify-center pb-5">
+              <div className="container relative mx-auto flex h-full flex-col items-center">
+                <div className="container flex flex-grow items-center justify-center">
+                  {isLoading ? (
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-400 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"
+                        role="status" />
+                    </div>
+                  ) : (
+                    !state.isFinished && <WordPanel />
+                  )}
+                </div>
+                {isLearnSurface ? <LearnLiveStats /> : <Speed />}
+              </div>
+            </div>
+          </Layout>
+          <WordList />
+        </>
+      )}
     </TypingContext.Provider>
   )
 }
