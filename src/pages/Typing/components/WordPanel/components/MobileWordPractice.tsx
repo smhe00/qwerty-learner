@@ -148,9 +148,15 @@ export default function MobileWordPractice({
     [example],
   )
   const choices = useMemo(() => {
-    const distractors = queue
+    const uniqueCandidates = queue
       .filter((candidate) => candidate.name !== word.name && candidate.name.trim().length > 0)
       .filter((candidate, index, all) => all.findIndex((other) => other.name === candidate.name) === index)
+    const targetMeaning = word.trans?.filter(Boolean).join('；')
+    const distinctMeaningCandidates = uniqueCandidates.filter(
+      (candidate) => candidate.trans?.filter(Boolean).join('；') !== targetMeaning,
+    )
+    const distractorPool = distinctMeaningCandidates.length >= 3 ? distinctMeaningCandidates : uniqueCandidates
+    const distractors = distractorPool
       .sort((a, b) => stableKey(a.name) - stableKey(b.name))
       .slice(0, 3)
     return [...distractors, word].sort((a, b) => stableKey(a.name) - stableKey(b.name))
@@ -444,7 +450,7 @@ export default function MobileWordPractice({
               )}
               <button type="button" className="mobile-practice-audio" onClick={playTargetAudio} disabled={paused || isSaving}>
                 <Volume2 size={18} aria-hidden="true" />
-                {isPlaying ? '正在播放…' : hasError ? '重试发音' : '播放发音'}
+                {isPlaying ? '正在播放…' : hasError ? '音频暂不可用' : '播放发音'}
               </button>
               <p className="mobile-practice-meaning">{meanings}</p>
               {exampleParts && (
@@ -552,9 +558,9 @@ export default function MobileWordPractice({
           <p className="mobile-eyebrow">ANSWER</p>
           <h1>{feedback.title}</h1>
           <p className="mobile-practice-word">{word.name}</p>
-          <button type="button" className="mobile-practice-audio" onClick={playTargetAudio} disabled={paused || isSaving}>
+          <button type="button" className="mobile-practice-audio" onClick={playTargetAudio} disabled={paused || isSaving || hasError}>
             <Volume2 size={18} aria-hidden="true" />
-            {isPlaying ? '正在播放…' : '播放发音'}
+            {isPlaying ? '正在播放…' : hasError ? '音频暂不可用' : '播放发音'}
           </button>
           <p className="mobile-practice-meaning">{meanings}</p>
           {exampleParts && (
