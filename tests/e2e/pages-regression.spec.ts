@@ -224,7 +224,7 @@ test('published Pages: Focus achievements default is accessible on desktop/mobil
     // Full-page redirects replace the execution context; waitForURL is
     // navigation-safe, unlike polling page.evaluate during an active redirect.
     await mobile.waitForURL(/\/(?:mobile|learn)\/?$/, { timeout: 15000 })
-    const entryLink = mobile.getByRole('link', { name: '打开成就雅集' })
+    const entryLink = mobile.locator('[data-mobile-menu] a[href$="/achievements"]')
     if (await entryLink.count() === 0) {
       console.log('mobile-entry-diagnostic', await mobile.evaluate(() => ({
         width: window.innerWidth,
@@ -237,7 +237,7 @@ test('published Pages: Focus achievements default is accessible on desktop/mobil
     await entryLink.click()
     await expect(mobile).toHaveURL(/\/achievements\/?$/)
     console.log('mobile-achievement-render', await mobile.evaluate(() => {
-      const gallery = document.querySelector('[data-song-achievement-gallery]')
+      const gallery = document.querySelector('[data-focus-achievement-gallery]')
       const h1 = gallery?.querySelector('h1')
       const box = h1?.getBoundingClientRect()
       return {
