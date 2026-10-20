@@ -82,11 +82,13 @@ test('saved American voice and custom daily/stage preferences survive new defaul
   await expect(page.getByRole('spinbutton', { name: '每阶段词数' })).toHaveValue('7')
 })
 
-test('small-screen visitors remain on the documented /mobile landing page', async ({ page }) => {
+test('small-screen visitors enter the independent Mobile P0 menu', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto('/learn')
   await expect(page).toHaveURL(/\/mobile\/?$/)
-  await expect(page.getByRole('heading', { name: '当前移动端说明' })).toBeVisible()
+  await expect(page.locator('[data-mobile-menu]')).toBeVisible()
+  await expect(page.getByRole('link', { name: '进入沉浸学习页面' })).toBeVisible()
+  await expect(page.getByText('设置', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toHaveCount(0)
 })
 
