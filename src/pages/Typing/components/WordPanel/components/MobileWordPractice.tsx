@@ -16,7 +16,7 @@ import { currentDictInfoAtom } from '@/store'
 import type { Word } from '@/typings'
 import { getUTCUnixTimestamp } from '@/utils/time'
 import { getFirstValidDictionaryExample, maskDictionaryExample } from '@/utils/dictionaryExample'
-import { db, useSaveWordRecord } from '@/utils/db'
+import { useSaveWordRecord } from '@/utils/db'
 import type { IWordRecord, LearningContextV1 } from '@/utils/db/record'
 import type { WordFinishResult } from './Word'
 
@@ -36,8 +36,6 @@ type MobileWordPracticeProps = {
 }
 
 type PendingRecallAttempt = {
-  id: number
-  record: IWordRecord
   condition: ExerciseConditionV1
   learningContext: LearningContextV1
   policyDecision: ReviewPolicyDecisionV1
@@ -247,6 +245,7 @@ export default function MobileWordPractice({
         'mobile-multidimensional-learning',
         'mobile-task-' + input.mode,
         independentEvidence ? 'independent-retrieval' : 'assisted-practice',
+        ...(input.mode === 'recall' ? ['recall-committed-before-answer-reveal'] : []),
         'self-rated-' + input.grade,
       ],
     }
@@ -269,13 +268,17 @@ export default function MobileWordPractice({
     correct: boolean
     title: string
     detail: string
+    condition?: ExerciseConditionV1
+    learningContext?: LearningContextV1
+    policyDecision?: ReviewPolicyDecisionV1
+    allowRevealedRecall?: boolean
   }) => {
-    if (paused || isSaving || feedback || revealedAttempt) return
+    if (paused || isSaving || feedback || (revealedAttempt && !input.allowRevealedRecall)) return
     setIsSaving(true)
     setError('')
-    const condition = getCondition(input.mode)
-    const context = learningContextForTask(input.mode, Boolean(exampleParts), audioPlayed)
-    const policyDecision = getPolicyDecision(condition, input.mode)
+    const condition = input.condition ?? getCondition(input.mode)
+    const context = input.learningContext ?? learningContextForTask(input.mode, Boolean(exampleParts), audioPlayed)
+    const policyDecision = input.policyDecision ?? getPolicyDecision(condition, input.mode)
     const { classification, evidence, reviewRatingDecision } = makeEvidence({
       mode: input.mode,
       grade: input.grade,
@@ -322,6 +325,7 @@ export default function MobileWordPractice({
         reviewRatingDecision,
         reviewEvidence: evidence,
       }
+      if (input.allowRevealedRecall) setRevealedAttempt(null)
       setFeedback({
         result,
         correct: input.correct,
@@ -335,99 +339,41 @@ export default function MobileWordPractice({
     }
   }
 
-  const startRecallAttempt = async () => {
+  const startRecallAttempt = () => {
     if (paused || isSaving || feedback || revealedAttempt) return
-    setIsSaving(true)
     setError('')
     const mode: MobileTask = 'recall'
     const condition = getCondition(mode)
     const context = learningContextForTask(mode, Boolean(exampleParts), false)
     const policyDecision = getPolicyDecision(condition, mode)
-    const record: IWordRecord = {
-      word: word.name,
-      timeStamp: getUTCUnixTimestamp(),
-      dict: currentDictInfo.id,
-      chapter: -1,
-      timing: [],
-      wrongCount: 0,
-      mistakes: {},
-      learningContext: context,
-      exerciseCondition: condition,
-      reviewPolicyDecision: policyDecision,
-      sourceMode: 'learn',
-      learnItemKind: recordKind,
-    }
-
-    try {
-      const id = await saveWordRecord({
-        word: word.name,
-        wrongCount: 0,
-        letterTimeArray: [],
-        letterMistake: {},
-        learningContext: context,
-        exerciseCondition: condition,
-        reviewPolicyDecision: policyDecision,
-        sourceMode: 'learn',
-        learnItemKind: recordKind,
-      })
-      if (id <= 0) throw new Error('学习记录未能持久化，当前单词没有推进。')
-      record.id = id
-      setRevealedAttempt({ id, record, condition, learningContext: context, policyDecision, mode })
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : String(saveError))
-    } finally {
-      setIsSaving(false)
-    }
+    // Freeze the retrieval condition before revealing the answer. Persist only
+    // after self-rating so an abandoned reveal cannot affect the scheduler.
+    setRevealedAttempt({ condition, learningContext: context, policyDecision, mode })
   }
 
-  const submitGrade = async (grade: ReviewOutcome) => {
+  const submitGrade = (grade: ReviewOutcome) => {
     const pending = revealedAttempt
     if (!pending || paused || isSaving || feedback) return
-    setIsSaving(true)
-    setError('')
     const wrongCount = grade === 'again' ? 1 : 0
-    const { classification, evidence, reviewRatingDecision } = makeEvidence({
+    const title = grade === 'again'
+      ? '已标记为需要巩固'
+      : grade === 'hard'
+        ? '已记录：这次回忆比较费力'
+        : grade === 'easy'
+          ? '已记录：可以轻松回忆'
+          : '已记录：能够回忆'
+    void saveAttempt({
       mode: pending.mode,
       grade,
       wrongCount,
+      correct: grade !== 'again',
+      title,
+      detail: '记忆评价已保存，可继续下一项。',
       condition: pending.condition,
+      learningContext: pending.learningContext,
+      policyDecision: pending.policyDecision,
+      allowRevealedRecall: true,
     })
-    const patch: Partial<IWordRecord> = { wrongCount, reviewEvidence: evidence }
-    if (reviewRatingDecision !== undefined) patch.reviewRatingDecision = reviewRatingDecision
-    try {
-      const updated = await db.wordRecords.update(pending.id, patch)
-      if (updated === 0) throw new Error('学习结果更新失败，请重试。')
-      const record: IWordRecord = {
-        ...pending.record,
-        wrongCount,
-        reviewEvidence: evidence,
-        ...(reviewRatingDecision !== undefined ? { reviewRatingDecision } : {}),
-      }
-      const result: WordFinishResult = {
-        record,
-        wrongCount,
-        classification,
-        reviewRatingDecision,
-        reviewEvidence: evidence,
-      }
-      setRevealedAttempt(null)
-      setFeedback({
-        result,
-        correct: grade !== 'again',
-        title: grade === 'again'
-          ? '已标记为需要巩固'
-          : grade === 'hard'
-            ? '已记录：这次回忆比较费力'
-            : grade === 'easy'
-              ? '已记录：可以轻松回忆'
-              : '已记录：能够回忆',
-        detail: '记忆评价已保存，可继续下一项。',
-      })
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : String(saveError))
-    } finally {
-      setIsSaving(false)
-    }
   }
 
   const submitChoice = () => {
@@ -525,8 +471,8 @@ export default function MobileWordPractice({
                       <p className="mobile-practice-example-cn">{example?.cn}</p>
                     </div>
                   )}
-                  <button type="button" className="mobile-practice-primary" onClick={() => void startRecallAttempt()} disabled={paused || isSaving}>
-                    {isSaving ? '正在保存…' : '显示答案'}
+                  <button type="button" className="mobile-practice-primary" onClick={startRecallAttempt} disabled={paused || isSaving}>
+                    显示答案
                   </button>
                 </>
               ) : (
@@ -555,7 +501,7 @@ export default function MobileWordPractice({
                         key={grade}
                         type="button"
                         className="mobile-practice-grade"
-                        onClick={() => void submitGrade(grade)}
+                        onClick={() => submitGrade(grade)}
                         disabled={paused || isSaving}
                       >
                         <strong>{label}</strong>
