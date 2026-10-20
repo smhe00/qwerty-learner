@@ -246,6 +246,7 @@ export default function MobileWordPractice({
         'mobile-task-' + input.mode,
         independentEvidence ? 'independent-retrieval' : 'assisted-practice',
         ...(input.mode === 'recall' ? ['recall-committed-before-answer-reveal'] : []),
+        ...(input.mode === 'audio' && !audioPlayed ? ['audio-cue-not-played'] : []),
         'self-rated-' + input.grade,
       ],
     }
@@ -378,10 +379,6 @@ export default function MobileWordPractice({
 
   const submitChoice = () => {
     if (!selectedChoice || paused || isSaving || feedback || revealedAttempt) return
-    if (task === 'audio' && !audioPlayed && !hasError) {
-      setError('请先播放发音，再确认答案。')
-      return
-    }
     const correct = selectedChoice === word.name
     void saveAttempt({
       mode: task,
@@ -412,7 +409,7 @@ export default function MobileWordPractice({
   const prompt = task === 'context'
     ? '阅读句子，选择最适合填入空白的单词。'
     : task === 'audio'
-      ? '先播放发音，再选择听到的单词。'
+      ? (hasError ? '音频暂不可用，请根据词形选择。' : '先播放发音，再选择听到的单词。')
       : task === 'meaning-choice'
         ? '选择这个单词最符合的中文意思。'
         : '先在脑中回忆英文，再显示答案并评价回忆情况。'

@@ -1,4 +1,22 @@
 import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
+
+async function countWordRecords(page: Page): Promise<number> {
+  return page.evaluate(async () => {
+    const request = indexedDB.open('RecordDB')
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+    try {
+      return await new Promise<number>((resolve, reject) => {
+        const count = db.transaction('wordRecords', 'readonly').objectStore('wordRecords').count()
+        count.onsuccess = () => resolve(count.result)
+        count.onerror = () => reject(count.error)
+      })
+    } finally { db.close() }
+  })
+}
 
 test.use({ viewport: { width: 390, height: 844 } })
 
@@ -23,20 +41,7 @@ test('Mobile Learn runs real keyboard-free tasks and persists a deliberate respo
   await expect(page.locator('input, textarea, [data-typing-input-control]')).toHaveCount(0)
   await expect(page.locator('[data-mode-option="typing"]')).toHaveCount(0)
 
-  const before = await page.evaluate(async () => {
-    const request = indexedDB.open('RecordDB')
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      request.onsuccess = () => resolve(request.result)
-      request.onerror = () => reject(request.error)
-    })
-    try {
-      return await new Promise<number>((resolve, reject) => {
-        const count = db.transaction('wordRecords', 'readonly').objectStore('wordRecords').count()
-        count.onsuccess = () => resolve(count.result)
-        count.onerror = () => reject(count.error)
-      })
-    } finally { db.close() }
-  })
+  const before = await countWordRecords(page)
 
   const task = await page.locator('[data-mobile-word-practice]').getAttribute('data-mobile-task')
   if (task === 'exposure') {
@@ -44,6 +49,7 @@ test('Mobile Learn runs real keyboard-free tasks and persists a deliberate respo
   } else if (task === 'recall') {
     await page.getByRole('button', { name: '显示答案' }).click()
     await expect(page.locator('[data-mobile-answer-revealed]')).toBeVisible()
+    expect(await countWordRecords(page)).toBe(before)
     await page.getByRole('button', { name: '记得' }).click()
   } else {
     if (task === 'audio') {
@@ -54,20 +60,7 @@ test('Mobile Learn runs real keyboard-free tasks and persists a deliberate respo
   }
 
   await expect(page.locator('[data-mobile-feedback]')).toBeVisible()
-  const after = await page.evaluate(async () => {
-    const request = indexedDB.open('RecordDB')
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      request.onsuccess = () => resolve(request.result)
-      request.onerror = () => reject(request.error)
-    })
-    try {
-      return await new Promise<number>((resolve, reject) => {
-        const count = db.transaction('wordRecords', 'readonly').objectStore('wordRecords').count()
-        count.onsuccess = () => resolve(count.result)
-        count.onerror = () => reject(count.error)
-      })
-    } finally { db.close() }
-  })
+  const after = await countWordRecords(page)
   expect(after).toBeGreaterThan(before)
 
   await page.getByRole('button', { name: '继续', exact: true }).click()
