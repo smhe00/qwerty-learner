@@ -38,7 +38,6 @@ type MobileWordPracticeProps = {
 type SavedAttempt = {
   result: WordFinishResult
   correct: boolean
-  grade: ReviewOutcome
   title: string
   detail: string
 }
@@ -285,7 +284,6 @@ export default function MobileWordPractice({
       setFeedback({
         result,
         correct: input.correct,
-        grade: input.grade,
         title: input.title,
         detail: input.detail,
       })

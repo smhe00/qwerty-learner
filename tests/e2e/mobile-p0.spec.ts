@@ -19,6 +19,7 @@ test('Mobile uses an independent menu and hides the desktop Typing switcher', as
 test('Mobile Learn runs real keyboard-free tasks and persists a deliberate response', async ({ page }) => {
   await page.goto('/mobile/study')
   await expect(page.locator('[data-mobile-word-practice]')).toBeVisible({ timeout: 45_000 })
+  await expect(page.getByRole('button', { name: '暂停学习' })).toBeVisible({ timeout: 45_000 })
   await expect(page.locator('input, textarea, [data-typing-input-control]')).toHaveCount(0)
   await expect(page.locator('[data-mode-option="typing"]')).toHaveCount(0)
 
@@ -74,6 +75,7 @@ test('Mobile Learn runs real keyboard-free tasks and persists a deliberate respo
 test('Mobile Learn can pause and resume without exposing a keyboard', async ({ page }) => {
   await page.goto('/mobile/study')
   await expect(page.locator('[data-mobile-word-practice]')).toBeVisible({ timeout: 45_000 })
+  await expect(page.getByRole('button', { name: '暂停学习' })).toBeVisible({ timeout: 45_000 })
   await page.getByRole('button', { name: '暂停学习' }).click()
   await expect(page.locator('[data-mobile-paused]')).toBeVisible()
   await expect(page.locator('input, textarea, [data-typing-input-control]')).toHaveCount(0)

@@ -6,6 +6,9 @@ on:
     paths:
       - 'src/app.tsx'
       - 'src/pages/Mobile/**'
+      - 'src/pages/Learn/index.tsx'
+      - 'src/pages/Typing/index.tsx'
+      - 'src/pages/Typing/components/WordPanel/**'
       - 'tests/e2e/mobile-p0.*'
       - '.github/workflows/mobile-p0-gate.yml'
   workflow_dispatch:
@@ -37,15 +40,15 @@ jobs:
           yarn tsc --noEmit > "$RUNNER_TEMP/mobile-tsc.log" 2>&1
           result=$?
           set -e
-          if [ "$result" -ne 0 ] && grep -E '^src/(app[.]tsx|pages/Mobile/)' "$RUNNER_TEMP/mobile-tsc.log"; then
+          if [ "$result" -ne 0 ] && grep -E '^src/(app[.]tsx|pages/Mobile/|pages/Learn/index[.]tsx|pages/Typing/index[.]tsx|pages/Typing/components/WordPanel/)' "$RUNNER_TEMP/mobile-tsc.log"; then
             echo "::error::Mobile P0 TypeScript diagnostics"
             exit 1
           fi
-      - name: Lint Mobile P0
-        run: yarn eslint src/pages/Mobile src/app.tsx
+      - name: Lint mobile learning surface and shared session adapter
+        run: yarn eslint src/pages/Mobile src/pages/Learn/index.tsx src/pages/Typing/index.tsx src/pages/Typing/components/WordPanel/index.tsx src/pages/Typing/components/WordPanel/components/MobileWordPractice.tsx src/app.tsx
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Verify Mobile P0 routes, masking and no learning writes
+      - name: Verify keyboard-free mobile learning and persisted task evidence
         run: npx playwright test --config=tests/e2e/mobile-p0.config.ts --project=chromium --retries=0
       - name: Upload failure traces
         if: failure()
