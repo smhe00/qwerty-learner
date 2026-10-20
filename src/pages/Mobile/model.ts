@@ -47,7 +47,7 @@ export function mobileStudyPresentation(record: IReviewRecord | null) {
       before: parts.before,
       masked: parts.masked,
       after: parts.after,
-      translation: example!.cn,
+      translation: example ? example.cn : '',
     } : null,
     /** Without an example, Cold Probe permits translation as semantic fallback. */
     meaningFallback: !example ? word.trans?.filter(Boolean).join('；') ?? '' : null,

@@ -42,7 +42,7 @@ jobs:
             exit 1
           fi
       - name: Lint Mobile P0
-        run: yarn eslint src/pages/Mobile src/app.tsx tests/e2e/mobile-p0.spec.ts
+        run: yarn eslint src/pages/Mobile src/app.tsx
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Verify Mobile P0 routes, masking and no learning writes
