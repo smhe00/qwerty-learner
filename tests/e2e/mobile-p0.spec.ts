@@ -75,7 +75,7 @@ test('Mobile Learn can pause and resume without exposing a keyboard', async ({ p
   await page.getByRole('button', { name: '暂停学习' }).click()
   await expect(page.locator('[data-mobile-paused]')).toBeVisible()
   await expect(page.locator('input, textarea, [data-typing-input-control]')).toHaveCount(0)
-  await page.getByRole('button', { name: '继续学习' }).click()
+  await page.locator('[data-mobile-paused]').getByRole('button', { name: '继续学习' }).click()
   await expect(page.locator('[data-mobile-paused]')).toHaveCount(0)
   await expect(page.locator('[data-mobile-word-practice]')).toBeVisible()
 })
