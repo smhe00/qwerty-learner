@@ -4,6 +4,7 @@ import './index.css'
 import { ErrorBook } from './pages/ErrorBook'
 import { FriendLinks } from './pages/FriendLinks'
 import MobilePage from './pages/Mobile'
+import MobileStudyPage from './pages/Mobile/MobileStudy'
 import TypingPage from './pages/Typing'
 import { isOpenDarkModeAtom, reviewModeInfoAtom } from '@/store'
 import 'animate.css'
@@ -121,10 +122,7 @@ function DesktopRoutes() {
   )
 }
 
-/**
- * A read-only visual doorway to Achievements on narrow screens.
- * Learn/Typing remain desktop-only; no mobile learning/session UI is enabled.
- */
+/** Mobile achievements remain a standalone page opened from the Mobile menu. */
 function MobileAchievementsRoute() {
   const navigate = useNavigate()
   return (
@@ -225,6 +223,7 @@ function Root() {
           {isMobile ? (
             <Routes>
               <Route path="/mobile" element={<MobilePage />} />
+              <Route path="/mobile/study" element={<MobileStudyPage />} />
               <Route path="/achievements" element={<MobileAchievementsRoute />} />
               <Route path="/*" element={<Navigate to="/mobile" replace />} />
             </Routes>

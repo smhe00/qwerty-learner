@@ -1,103 +1,67 @@
 import logo from '@/assets/logo.svg'
-import type React from 'react'
+import { loadAuth } from '@/sync/auth'
+import { currentDictInfoAtom } from '@/store'
+import { useAtomValue } from 'jotai'
+import { BookOpen, ChevronRight, CircleUserRound, Cloud, LayoutGrid, Medal, Settings2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useMobileCheckpoint } from './useMobileCheckpoint'
+import './mobile-app.css'
 
-const MobilePage: React.FC = () => {
-  return (
-    <div className="min-h-screen bg-white text-slate-800">
-      <header className="border-b border-slate-100 bg-white px-6 py-5">
-        <div className="mx-auto flex max-w-3xl items-center gap-3">
-          <img src={logo} className="h-11 w-11" alt="Qwerty Plus Logo" />
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">
-              <span className="text-slate-800">Qwerty</span>
-              <span className="ml-1.5 text-slate-500">Plus</span>
-            </h1>
-            <p className="mt-0.5 text-xs text-slate-400">Qwerty Plus Beta</p>
-          </div>
+/** Mobile P0 is a separate menu-first app shell; not a scaled desktop Header.
+ * Nonfunctional P2 entries are deliberately disabled rather than fake links.
+ */
+export default function MobilePage() {
+  const { checkpoint } = useMobileCheckpoint()
+  const dictionary = useAtomValue(currentDictInfoAtom)
+  const auth = loadAuth({ preserveExpired: true })
+  const menus = [
+    { title: '词库', subtitle: '移动端选择即将开放', icon: BookOpen },
+    { title: '学习记录', subtitle: '移动端统计即将开放', icon: LayoutGrid },
+    { title: '账号与云同步', subtitle: auth ? '已登录 · ' + auth.user.username : '未登录 · 即将开放', icon: Cloud },
+    { title: '设置', subtitle: '移动端设置即将开放', icon: Settings2 },
+  ]
+  const resume = checkpoint ? Math.min(checkpoint.index + 1, checkpoint.words.length) : null
+
+  return <main data-mobile-menu className="mobile-app mobile-home">
+    <div className="mobile-home-inner">
+      <header className="mobile-brand">
+        <img src={logo} width={40} height={40} alt="" aria-hidden="true" />
+        <div className="mobile-brand-name">
+          <h1>QWERTY <span>Plus</span></h1>
+          <small>把专注留给每一个单词</small>
         </div>
+        <CircleUserRound size={22} aria-label={auth ? '账号已登录' : '尚未登录'} className="mobile-user-status" />
       </header>
 
-      <main className="mx-auto flex max-w-3xl flex-col gap-10 px-6 py-12">
-        <section>
-          <div className="mb-4 inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600">
-            Beta 测试版
-          </div>
-          <h2 className="text-3xl font-bold leading-tight tracking-tight text-slate-900">
-            Qwerty Plus
-            <br />
-            Typing + Long-term Learn
-          </h2>
-          <p className="mt-5 text-base leading-7 text-slate-600">
-            Qwerty Plus 在原有打字练习基础上增加长期 Learn：新词分阶段学习、独立回忆、
-            到期复习、自适应支架与云同步等能力。
-          </p>
-        </section>
+      <section className="mobile-today" aria-labelledby="mobile-today-title">
+        <p className="mobile-eyebrow">TODAY · LEARN</p>
+        <h2 id="mobile-today-title">继续积累，一词一词来。</h2>
+        <p className="mobile-today-dictionary">{dictionary.name}</p>
+        <p className="mobile-today-summary" data-mobile-checkpoint-status>
+          {checkpoint ? '可恢复的学习位置 · 第 ' + resume + ' / ' + checkpoint.words.length + ' 词'
+            : '当前没有可恢复的 Learn 会话'}
+        </p>
+        <Link className="mobile-start-link" to="/mobile/study" aria-label="进入沉浸学习页面">
+          {checkpoint ? '查看学习位置' : '预览学习页面'} <ChevronRight size={19} aria-hidden="true"/>
+        </Link>
+        <p className="mobile-p0-note">Mobile P0 · 学习界面预览，暂不提交拼写成绩</p>
+      </section>
 
-        <section className="rounded-2xl border border-amber-100 bg-amber-50/60 p-5">
-          <h3 className="font-semibold text-amber-900">当前移动端说明</h3>
-          <p className="mt-2 text-sm leading-6 text-amber-800/80">
-            当前以桌面 Chrome / Edge 为主要验证环境。移动端完整学习体验尚未开放，
-            本页面仅用于说明版本状态。
-          </p>
-        </section>
-
-        <section className="rounded-2xl border border-[#bccdc3] bg-[#f5f4eb] p-5">
-          <h3 className="text-lg font-semibold text-[#345c54]">成就雅集 · 移动端视觉体验</h3>
-          <p className="mt-2 text-sm leading-6 text-[#61726b]">
-            可查看云雾锁定、明暗主题和展卷钤印效果；仅开放成就展示，手机端完整 Learn/Typing 尚未启用。
-          </p>
-          <Link to="/achievements"
-            className="mt-4 inline-flex min-h-[44px] items-center rounded-lg bg-[#557c72] px-5 py-2.5 text-sm font-semibold text-white">
-            打开成就雅集
-          </Link>
-        </section>
-
-        <section className="grid gap-4">
-          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
-            <h3 className="font-semibold text-slate-800">Typing</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              保留章节化打字、音标、发音、释义与原有练习体验。
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
-            <h3 className="font-semibold text-slate-800">Learn</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              通过 Exposure → Supported Recall → Independent Recall 建立长期记忆证据，
-              再按到期时间复习。
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
-            <h3 className="font-semibold text-slate-800">自适应控制</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              根据错误、Hint、停顿和独立回忆结果动态调整支架、恢复窗口和新词负荷，
-              但不会降低长期掌握标准。
-            </p>
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-slate-200 p-5">
-          <h3 className="font-semibold text-slate-800">渠道状态</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Qwerty Plus 当前尚未公布正式域名、公开社群或客户联系方式。相关入口会在准备完成后开放。
-          </p>
-          <button
-            type="button"
-            disabled
-            className="mt-4 cursor-not-allowed rounded-full bg-slate-200 px-5 py-2.5 text-sm font-medium text-slate-400"
-          >
-            正式入口待公布
-          </button>
-        </section>
-      </main>
-
-      <footer className="border-t border-slate-100 px-6 py-6 text-center text-xs text-slate-400">
-        Qwerty Plus Beta · 当前版本以桌面端学习流程为主
-      </footer>
+      <section className="mobile-home-menu" aria-label="功能菜单">
+        <h2>更多功能</h2>
+        <Link className="mobile-menu-item" to="/achievements">
+          <span className="mobile-menu-icon"><Medal size={20} aria-hidden="true"/></span>
+          <span className="mobile-menu-text"><strong>成就</strong><small>查看已获得的学习成就</small></span>
+          <ChevronRight size={18} className="mobile-menu-chevron" aria-hidden="true" />
+        </Link>
+        {menus.map(item => <div className="mobile-menu-item mobile-menu-unavailable" key={item.title}
+          aria-label={item.title + '，后续版本开放'}>
+          <span className="mobile-menu-icon"><item.icon size={20} aria-hidden="true"/></span>
+          <span className="mobile-menu-text"><strong>{item.title}</strong><small>{item.subtitle}</small></span>
+          <span className="mobile-soon">即将开放</span>
+        </div>)}
+      </section>
+      <footer className="mobile-home-footer">手机端独立界面 · 与桌面共享学习数据</footer>
     </div>
-  )
+  </main>
 }
-
-export default MobilePage
