@@ -189,3 +189,15 @@ test('observer failure cannot interrupt committed recovery, invalid rollback dec
   await assert.rejects(recover(f.journal, f.replica, 'not-a-decision'),
     /m4-invalid-recovery-decision/)
 })
+
+test('journal preflight validates generation and source/candidate integrity', async () => {
+  const f = fixture({ stage: true })
+  await assert.rejects(run(f), /crash after stage/)
+  const pending = structuredClone(f.state.pending)
+  await validate(pending)
+  pending.registryGeneration = 0
+  await assert.rejects(validate(pending), /m4-invalid-transaction-identity/)
+  pending.registryGeneration = 3
+  pending.candidate.workspaceData.navigation.currentChapter = 101
+  await assert.rejects(validate(pending), /m4-journal-fingerprint-mismatch/)
+})
