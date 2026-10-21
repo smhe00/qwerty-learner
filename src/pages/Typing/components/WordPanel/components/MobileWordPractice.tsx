@@ -41,6 +41,8 @@ type PendingRecallAttempt = {
   condition: ExerciseConditionV1
   learningContext: LearningContextV1
   policyDecision: ReviewPolicyDecisionV1
+  // Captured while the answer and its spelling are still hidden.
+  grade: ReviewOutcome
 }
 
 type SavedAttempt = {
@@ -287,7 +289,7 @@ export default function MobileWordPractice({
   const makeEvidence = (mode: MobileTask, grade: ReviewOutcome, wrongCount: number, condition: ExerciseConditionV1) => {
     const cause: TypingErrorClassification['cause'] = wrongCount > 0
       ? 'recall'
-      : grade === 'hard' && itemKind === 'review' ? 'uncertain' : 'clean'
+      : grade === 'hard' ? 'uncertain' : 'clean'
     const classification = classificationFor(cause)
     const independent = mode === 'recall' && isCoreRecall
     const evidence: ReviewEvidenceV1 = {
@@ -300,7 +302,9 @@ export default function MobileWordPractice({
       reasonCodes: [
         'mobile-multidimensional-learning', 'mobile-task-' + mode,
         independent ? 'independent-retrieval' : 'assisted-practice',
-        ...(mode === 'recall' ? ['recall-committed-before-answer-reveal'] : []),
+        ...(mode === 'recall'
+          ? ['self-report-not-spelling', 'self-rated-before-answer-reveal']
+          : ['recognition-or-training-evidence']),
         ...(mode === 'audio' && !audioPlayed ? ['audio-cue-not-played'] : []),
         'self-rated-' + grade,
       ],
@@ -383,24 +387,52 @@ export default function MobileWordPractice({
     }
   }
 
-  const revealAnswer = () => {
+  const rateRecall = (grade: ReviewOutcome) => {
     if (paused || feedback || revealedAttempt || isSaving) return
+    // Freeze ALL cold-probe conditions at the decision moment, before the
+    // English answer is exposed. This is a self-report, NOT spelling proof.
     const condition = getCondition('recall')
-    setRevealedAttempt({
+    const frozen: PendingRecallAttempt = {
+      grade,
       condition,
       learningContext: learningContextForTask('recall', Boolean(maskedExample), false, false),
       policyDecision: getPolicy(condition, 'recall'),
+    }
+    setRevealedAttempt(frozen)
+    if (grade !== 'good') {
+      void saveAttempt({
+        mode: 'recall', grade, wrongCount: grade === 'again' ? 1 : 0,
+        title: grade === 'again' ? '还需要巩固' : '已标记为模糊',
+        frozen,
+      })
+    }
+    // Good waits for a short verification window; if the user recognizes a
+    // mismatch in the revealed answer, one tap downgrades this attempt.
+  }
+
+  const correctRecall = () => {
+    if (!revealedAttempt || revealedAttempt.grade !== 'good' || isSaving || feedback) return
+    void saveAttempt({
+      mode: 'recall', grade: 'again', wrongCount: 1,
+      title: '已纠正为忘了', frozen: revealedAttempt,
     })
   }
 
-  const rateRecall = (grade: ReviewOutcome) => {
-    if (!revealedAttempt) return
-    void saveAttempt({
-      mode: 'recall', grade, wrongCount: grade === 'again' ? 1 : 0,
-      title: grade === 'again' ? '还需要巩固' : grade === 'hard' ? '已标记为模糊' : '记住了',
-      frozen: revealedAttempt,
-    })
-  }
+  // Capture and hold the pending Good until the user has had time to inspect
+  // the answer. On pause, the timer is cancelled and restarts on resume.
+  // Abandoning the page before submission does not write a false Good.
+  const saveAttemptRef = useRef(saveAttempt)
+  saveAttemptRef.current = saveAttempt
+  useEffect(() => {
+    if (!revealedAttempt || revealedAttempt.grade !== 'good' || paused || feedback || error) return
+    const timeout = window.setTimeout(() => {
+      void saveAttemptRef.current({
+        mode: 'recall', grade: 'good', wrongCount: 0,
+        title: '记住了（自评）', frozen: revealedAttempt,
+      })
+    }, 2600)
+    return () => window.clearTimeout(timeout)
+  }, [revealedAttempt, paused, feedback, error])
 
   const choose = (name: string) => {
     if (task === 'audio' && !audioPlayed) return
@@ -450,6 +482,7 @@ export default function MobileWordPractice({
       data-mobile-task={task}
       data-mobile-word={word.name}
       data-mobile-next-mode={feedback ? feedback.autoAdvance ? 'auto' : 'manual' : 'pending'}
+      data-mobile-recall-stage={task === 'recall' ? feedback ? 'saved' : revealedAttempt ? 'verification' : 'unrevealed' : undefined}
       aria-label="手机单词学习"
     >
       <header className="mobile-practice-head">
@@ -492,7 +525,7 @@ export default function MobileWordPractice({
                 <h2 className="mobile-practice-word" style={{ fontSize: wordFontSize }}>{word.name}</h2>
               </div>
             ) : (
-              <p className="mobile-practice-cue">回忆英文单词</p>
+              <p className="mobile-practice-cue">先在心中回忆，再判断是否记得</p>
             )
           ) : task === 'audio' ? (
             <div className="mobile-practice-audio-hero" aria-hidden="true"><Headphones size={35} strokeWidth={1.6} /></div>
@@ -524,8 +557,8 @@ export default function MobileWordPractice({
                     </>
                   )
                   : <p className="mobile-practice-cue">哪个意思与这个词相符？</p>}
-          {task === 'recall' && revealedAttempt && !feedback && (
-            <p className="mobile-practice-cue mobile-practice-recall-cue">刚才想起来了吗？</p>
+          {task === 'recall' && revealedAttempt?.grade === 'good' && !feedback && (
+            <p className="mobile-practice-cue mobile-practice-recall-cue">核对你刚才的回忆 · 不一致请点「记错了」</p>
           )}
         </div>
 
@@ -564,12 +597,27 @@ export default function MobileWordPractice({
             {isSaving ? '正在保存…' : '继续学习'}
           </button>
         ) : task === 'recall' ? (
-          !revealedAttempt ? (
-            <button type="button" className="mobile-practice-primary" onClick={revealAnswer} disabled={paused || isSaving}>
-              显示答案
-            </button>
+          revealedAttempt ? (
+            revealedAttempt.grade === 'good' ? (
+              <button
+                type="button"
+                className="mobile-practice-primary mobile-practice-correction"
+                data-mobile-recall-correct
+                onClick={error
+                  ? () => void saveAttempt({
+                      mode: 'recall', grade: 'good', wrongCount: 0,
+                      title: '记住了（自评）', frozen: revealedAttempt,
+                    })
+                  : correctRecall}
+                disabled={paused || isSaving}
+              >
+                {isSaving ? '正在保存…' : error ? '保存失败 · 重试' : '记错了 · 改为忘了'}
+              </button>
+            ) : (
+              <p className="mobile-practice-next-hint" role="status">正在保存回忆结果…</p>
+            )
           ) : (
-            <div className="mobile-practice-grade-grid" aria-label="回忆难度">
+            <div className="mobile-practice-grade-grid" aria-label="回忆程度（回答前判断）">
               {RECALL_GRADES.map(({ rating, label }) => (
                 <button
                   key={rating}
