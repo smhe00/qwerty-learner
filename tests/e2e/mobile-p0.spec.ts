@@ -61,6 +61,9 @@ test('Mobile single-tap choice or two-tap recall saves then advances automatical
   const task = await taskView.getAttribute('data-mobile-task')
   const before = await countWordRecords(page)
   if (task === 'exposure') {
+    await expect.poll(async () => page.evaluate(() =>
+      (window as Window & { __mobileAudioAutoCalls?: number }).__mobileAudioAutoCalls ?? 0,
+    )).toBeGreaterThan(0)
     await page.getByRole('button', { name: '继续学习' }).click()
   } else if (task === 'recall') {
     await page.getByRole('button', { name: '显示答案' }).click()

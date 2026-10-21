@@ -98,6 +98,7 @@ function learningContextForTask(
   task: MobileTask,
   hasExample: boolean,
   audioPlayed: boolean,
+  manuallyPlayed: boolean,
 ): LearningContextV1 {
   const hidden = task === 'recall'
   return {
@@ -117,8 +118,8 @@ function learningContextForTask(
     pronunciationPlayed: audioPlayed,
     pronunciationPlayedBeforeFirstKey: audioPlayed,
     pronunciationPlayCount: audioPlayed ? 1 : 0,
-    pronunciationAutomaticPlayCount: audioPlayed ? 1 : 0,
-    pronunciationRequestedPlayCount: 0,
+    pronunciationAutomaticPlayCount: audioPlayed && !manuallyPlayed ? 1 : 0,
+    pronunciationRequestedPlayCount: manuallyPlayed ? 1 : 0,
   }
 }
 
@@ -135,9 +136,11 @@ export default function MobileWordPractice({
   const [error, setError] = useState('')
   const [audioState, setAudioState] = useState<AudioState>('idle')
   const [audioPlayed, setAudioPlayed] = useState(false)
+  const [manualAudioPlayed, setManualAudioPlayed] = useState(false)
   const [audioFallback, setAudioFallback] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const autoAudioAttempted = useRef(false)
+  const playbackWasRequestedRef = useRef(false)
   const submittingRef = useRef(false)
   const finishedRef = useRef(false)
 
@@ -179,7 +182,8 @@ export default function MobileWordPractice({
   const wantsAutomaticSound = task === 'audio' || task === 'exposure'
   const source = pronunciation.type ? generateWordSoundSrc(word.name, pronunciation.type) : ''
 
-  const playSound = useCallback(() => {
+  const playSound = useCallback((requested = false) => {
+    playbackWasRequestedRef.current = requested
     if (!source) {
       setAudioState('error')
       return
@@ -195,6 +199,7 @@ export default function MobileWordPractice({
       owned.addEventListener('playing', () => {
         if (audioRef.current !== owned) return
         setAudioPlayed(true)
+        if (playbackWasRequestedRef.current) setManualAudioPlayed(true)
         setAudioState('playing')
       })
       owned.addEventListener('ended', () => {
@@ -238,7 +243,7 @@ export default function MobileWordPractice({
     }
     if (wantsAutomaticSound && !autoAudioAttempted.current) {
       autoAudioAttempted.current = true
-      playSound()
+      playSound(false)
     }
   }, [paused, wantsAutomaticSound, playSound])
 
@@ -294,7 +299,7 @@ export default function MobileWordPractice({
     setError('')
     const condition = input.frozen?.condition ?? getCondition(input.mode)
     const context = input.frozen?.learningContext ??
-      learningContextForTask(input.mode, Boolean(maskedExample), audioPlayed)
+      learningContextForTask(input.mode, Boolean(maskedExample), audioPlayed, manualAudioPlayed)
     const policyDecision = input.frozen?.policyDecision ?? getPolicy(condition, input.mode)
     const { classification, evidence, reviewRatingDecision } = makeEvidence(
       input.mode, input.grade, input.wrongCount, condition,
@@ -350,7 +355,7 @@ export default function MobileWordPractice({
     const condition = getCondition('recall')
     setRevealedAttempt({
       condition,
-      learningContext: learningContextForTask('recall', Boolean(maskedExample), false),
+      learningContext: learningContextForTask('recall', Boolean(maskedExample), false, false),
       policyDecision: getPolicy(condition, 'recall'),
     })
   }
@@ -387,7 +392,7 @@ export default function MobileWordPractice({
     return () => window.clearTimeout(timeout)
   }, [feedback, onFinish, paused])
 
-  const playAgain = () => playSound()
+  const playAgain = () => playSound(true)
   const title = task === 'exposure' ? '认识新词'
     : task === 'context' ? '语境选择'
     : task === 'audio' ? '听音辨词'
