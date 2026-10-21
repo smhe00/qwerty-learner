@@ -9,8 +9,8 @@
  * V4 candidate but grants NO M4 staging, IDB, or cloud write authority.
  */
 import {
-  assertRestorableWorkspaceV4,
   REQUIRED_RESTORABLE_V4_TABLES,
+  assertRestorableWorkspaceV4,
   workspaceFingerprintV4,
 } from './workspace-v4'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
