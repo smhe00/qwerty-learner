@@ -8,7 +8,7 @@
  * serialize RecordDB, localStorage or multi-POP EdgeOne operations.
  */
 import { openWorkspaceVault } from './workspace-vault'
-import { parseWorkspaceV4, workspaceFingerprintV4 } from './workspace-v4'
+import { parseWorkspaceV4 } from './workspace-v4'
 import { validatePendingM4Merge } from './m4-merge-transaction'
 import { secureRandomUuid } from './sha256-compat'
 import type { M4Decision, M4JournalPort, PendingM4Merge } from './m4-merge-transaction'
