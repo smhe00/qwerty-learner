@@ -66,6 +66,16 @@ FSRS-6、Acquisition、成就和每日学习进度只能从同一份已验证的
 
 **余下关键阻塞**：落实由服务器及 S1 授权的真实 common-ancestor 读取，补足缺 UUID 历史的可验证祖先重键（不可凭数字碰撞猜测），同词并发复习挑战组仲裁、六表事务导入/回滚和最终一致性设备枚举审计，随后才可启用 etest 的隔离试验。
 
+### M4.1 完整 V4 事务与回滚底座（2026-10-22）
+
+- `src/sync/m4-merge-transaction.ts`：提供**独立、尚未激活**的六表事务核心；读取并验证完整原始 V4 的指纹后，在破坏性导入前要求`journal.stage`持久保存 **候选+原始回滚快照**。导入后从真实 RecordDB、DailySession、设置和导航重新捕获 V4 并核对指纹，之后才允许`seal/finalize`。
+- `src/sync/m4-merge-journal.ts`：复用 S1 Workspace Vault 的 `registry/snapshots` 两个 object store，通过单个 IndexedDB `readwrite` 事务原子保存 rollback 档案及待提交候选。重读时校验完整 SHA、所属账户和 S1 generation；finalize CAS 校验后保留独立 rollback 档案，`apply` 时失效化旧版 S2 snapshot baseline，**不发布云端任何数据**。
+- `src/sync/m4-merge-browser-recovery.ts`：实现受 S1 独占写入锁约束的真实 V4 导入/校验适配器，仅接受显式`apply`或`rollback`；尚未被启动入口调用。故障时不删除 journal；恢复完成后才可以清除 journal 并要求重新挂载应用。
+- 旧版`manual-v4-import-journal.ts`和`v2-pull-journal.ts`在新事务挂起时拒绝另一个导入/拉取事务，防止两种恢复动作同时操作本地 V4。
+- `tests/cloud/m4-merge-transaction.test.mjs`覆盖原始指纹变化、跨账号、六表缺失、持久化后崩溃、导入中崩溃、回读不一致、seal/finalize 中断、恢复重试、显式回滚和 journal 篡改。
+
+**不得误判为可发布**：本轮只有事务核心和隔离 Vault port，还没有受信任的共同祖先取证/六表真正可恢复候选，也没有将 M4 journal 挂到 pre-mount boot recovery；因此目前没有自动合并可执行入口。下一步要把 pre-mount 阻断/恢复判定、跨设备祖先证明、真实 Dexie 事务故障测试贯通后才能启用 etest。整个实验默认不执行任何新写入行为。
+
 ## 完成判据
 
 - 本机保存 -> 事件批次永久稳定 -> 另一设备验证/下载 -> 六表合并 -> FSRS replay -> 前台继续学习。
