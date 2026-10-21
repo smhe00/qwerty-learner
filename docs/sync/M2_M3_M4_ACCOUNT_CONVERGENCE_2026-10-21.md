@@ -76,6 +76,16 @@ FSRS-6、Acquisition、成就和每日学习进度只能从同一份已验证的
 
 **不得误判为可发布**：本轮只有事务核心和隔离 Vault port，还没有受信任的共同祖先取证/六表真正可恢复候选，现在 S1 启动前检查已发现挂起的 M4 journal；S1 generation、当前登录账户和完整 V4 指纹都匹配时，会在挂载任何数据写入者前**重放已暂存的 V4 候选，核对六表和设置后强制重新加载**。账户不一致或 journal 损坏则阻止挂载。注意：这只恢复先前已存储的事务，不启用新的自动合并或云端写入，因此仍没有自动合并可执行入口。已添加真实 Chromium/IndexedDB 的候选应用、断电模拟回滚及互斥测试；仍需通过浏览器门禁、可信共同祖先与真实六表融合闭环才能启用 etest。整个实验默认不执行任何新写入行为。
 
+### M2.7–M2.8 保守 V4 快进与 S2 Pull 祖先存证（2026-10-22）
+
+开发提交在 `product/main`；不会触发 EdgeOne etest 或正式站发布。
+
+- **整份 V4 快进候选（只读）**：`src/sync/v4-fast-forward-preview.ts` 验证不可变账户 ID、6 张表的 manifest + 实际数据分组、Dexie schema 与钉住的祖先 SHA。祖先相同且只有一端变化，可生成**原封不动的整份 Backup V4 快进候选**，不必把章节和 ReviewSession 的本地数字 ID 错误拼接；两端独立变化则返回 `both-devices-changed-requires-six-table-merge`。它包含完整 settings/每日 Session，因此不同本地状态也会保守阻断而不是悄悄覆盖。候选深拷贝、`publishReady:false`、`convergenceComplete:false`，不得直接调用 M4 写入。
+- **已验证祖先持久留存**：`v2-pull-journal.ts` 在已验证 S2 Pull 完整恢复之后，原子提交云端基线+待写入日志清理时，同时在 S1 vault 的 `snapshots` 存档对应的**完整云端 V4 祖先副本**（每账户保留最近一次 S2 Pull 存证）。仅记录该设备真实恢复过的云端 revision、V4 指纹、账户及 S1 generation，不复用未知格式，不从本机时间推测祖先。
+- **祖先读取二次校验**：`src/sync/m2-pinned-s2-ancestor.ts` 读取时验证当前 S1 账户、存证元数据、完整数据指纹，且要求当前 S2 baseline revision+fingerprint 与存证严格一致。之后 Push/Noop/M4 导致基线变化，旧存证不允许继续被视为当前祖先。损坏数据直接报错，不会变成空历史。
+- **回归**：`tests/cloud/v4-fast-forward-preview.test.mjs` 覆盖本机/远端单端变化、双端冲突、伪造 SHA、跨账户、缺失六表、Dexie schema 变化、不丢弃不同 UI/每日状态；`tests/e2e/workspace-v4-m2-ancestor.spec.ts` 使用真实 Chromium IDB 验证 S2 Pull 后祖先和 baseline 一起落盘、跨刷新读取、基线失效、归档内容篡改阻断。
+- **严格证明边界**：本地有原始 V4 与服务器曾经确认的 revision，只说明**本设备**曾经在该云端版本恢复过数据。不能证明远端设备也拥有同一父本，更不能证明 EdgeOne Blob 已枚举全部设备。要执行任何双端三方合并，还必须有第二设备的独立可核实父本见证、完整设备事件链和跨 POP 收敛证据。暂无自动六表写回/云端发布入口。
+
 ## 完成判据
 
 - 本机保存 -> 事件批次永久稳定 -> 另一设备验证/下载 -> 六表合并 -> FSRS replay -> 前台继续学习。
