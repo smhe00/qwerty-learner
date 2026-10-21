@@ -501,3 +501,83 @@ test('M3.5 cannot accept witnessed event receipts from another account', async (
   assert.equal(result.verified, false)
   assert.equal(result.reason, 'gap-or-stale-read')
 })
+
+test('M2.10 server checkout receipt uses authenticated device, exact V4 meta and chained head', async () => {
+  const { storage, service, blob } = setup()
+  const first = await service.register('checkout_service_a', 'Password123', device(1))
+  const second = await service.login('checkout_service_a', 'Password123', device(2))
+  const owner = first.user.userId
+  const cloudFingerprint = 'd'.repeat(64)
+  await storage.createRevision(owner, 1, {
+    schemaVersion: 1, revision: 1, updatedAt: '2026-10-22T00:00:00Z',
+    sizeBytes: 12, dataSha256: 'e'.repeat(64),
+    logicalFingerprint: cloudFingerprint,
+    payloadEncoding: 'base64', payloadBase64: 'H4sI',
+    deviceId: device(1), clientFormatVersion: 'qwerty-backup-v4',
+  })
+  const chain = await service.publishChainedLearningBatch(first.token, {
+    ...payload(1, 801, 11), sequence: 1, previous: null,
+  })
+  const confirmed = await service.issueChainedCheckout(first.token, {
+    cloudRevision: 1, cloudFingerprint, eventHead: receipt(chain),
+  })
+  assert.equal(confirmed.verifiedExactReceipt, true)
+  assert.equal(confirmed.convergenceComplete, false)
+  const verified = await service.readChainedCheckout(second.token, confirmed.receipt)
+  assert.equal(verified.deviceId, device(1))
+  assert.equal(verified.cloudRevision, 1)
+  assert.equal(verified.cloudFingerprint, cloudFingerprint)
+  assert.equal(verified.scope, 'device-declared-checkout-only')
+  assert.equal(verified.publishReady, false)
+  const keys = [...blob.objects.keys()].filter(key => key.includes('/device-checkouts/v1/'))
+  assert.equal(keys.length, 1)
+  assert.equal(keys[0].includes(device(1)), true)
+  await assert.rejects(service.issueChainedCheckout(second.token, {
+    cloudRevision: 1, cloudFingerprint, eventHead: receipt(chain),
+  }), /checkout-request-invalid/)
+  await assert.rejects(service.issueChainedCheckout(first.token, {
+    cloudRevision: 1, cloudFingerprint: 'f'.repeat(64),
+    eventHead: receipt(chain),
+  }), /checkout-cloud-revision-not-verified/)
+  await assert.rejects(service.issueChainedCheckout(first.token, {
+    cloudRevision: 1, cloudFingerprint,
+    eventHead: { ...receipt(chain), sha256: '0'.repeat(64) },
+  }), /checkout-event-head-not-verified/)
+  assert.equal(keys.length, 1)
+})
+
+test('M2.10 checkout read refuses foreign-account access or modified Blob contents', async () => {
+  const { storage, service, blob } = setup()
+  const a = await service.register('checkout_replay_a', 'Password123', device(1))
+  const b = await service.register('checkout_replay_b', 'Password123', device(2))
+  const cloudFingerprint = 'a'.repeat(64)
+  await storage.createRevision(a.user.userId, 1, {
+    schemaVersion: 1, revision: 1, updatedAt: '2026-10-22T00:00:00Z',
+    sizeBytes: 12, dataSha256: 'e'.repeat(64),
+    logicalFingerprint: cloudFingerprint,
+    payloadEncoding: 'base64', payloadBase64: 'H4sI',
+    deviceId: device(1), clientFormatVersion: 'qwerty-backup-v4',
+  })
+  const head = await service.publishChainedLearningBatch(a.token, {
+    ...payload(1, 802, 12), sequence: 1, previous: null,
+  })
+  const { receipt: selector } = await service.issueChainedCheckout(a.token, {
+    cloudRevision: 1, cloudFingerprint, eventHead: receipt(head),
+  })
+  assert.equal(await service.readChainedCheckout(b.token, selector), null)
+  const key = [...blob.objects.keys()].find(name => name.includes('/device-checkouts/v1/'))
+  assert.ok(key)
+  blob.objects.get(key).cloudRevision = 2
+  await assert.rejects(service.readChainedCheckout(a.token, selector),
+    /checkout-receipt-content-sha-mismatch/)
+})
+
+test('M2.10 checkout interface remains unavailable when M3 event pilot is off', async () => {
+  const store = createEdgeOneBlobStorage(new FakeBlob())
+  const service = createBackendService({ storage: store, multiSessionEnabled: true })
+  const a = await service.register('checkout_off', 'Password123', device(1))
+  await assert.rejects(service.issueChainedCheckout(a.token, {}),
+    e => e.code === 'not_found')
+  await assert.rejects(service.readChainedCheckout(a.token, {}),
+    e => e.code === 'not_found')
+})
