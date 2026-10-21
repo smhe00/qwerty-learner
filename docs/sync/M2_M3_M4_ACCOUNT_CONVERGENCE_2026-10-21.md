@@ -40,7 +40,7 @@ FSRS-6、Acquisition、成就和每日学习进度只能从同一份已验证的
 
 代码仅提交到 `product/main`，无 EdgeOne 开关、无 IndexedDB 写入：
 
-- `src/sync/v4-event-convergence.ts`：独立设备同 `(dict,word)` 在 60 秒模糊窗口内存在两次有资格的 Review，且至少一次正向评级时，返回 `concurrent-review-conflict`，拒绝 FSRS 两次成功重放；相同 UUID、其他词库、非合格训练不误判。**60 秒只是保守冲突门禁，不是用户真实练习相同的数学证明，更不是最终仲裁结果**。没有可验证的挑战组身份前，严禁猜测保留哪条 Good。事件原样保留。
+- `src/sync/v4-event-convergence.ts`：独立设备同 `(dict,word)` 在 60 秒模糊窗口内存在两次可能推进调度器的 Review（含无评级门禁的历史记录）时，返回 `concurrent-review-conflict`，拒绝 FSRS 两次评级（包括重复 Good 或 Again）重放；相同 UUID、其他词库、非合格训练不误判。**60 秒只是保守冲突门禁，不是用户真实练习相同的数学证明，更不是最终仲裁结果**。没有可验证的挑战组身份前，严禁猜测保留哪条 Good。事件原样保留。
 - `src/sync/v4-six-table-projection.ts`：基于既有 `projectV4ForeignKeys` 与 `projectUuidLearningConvergence`，加入剩余两表的 read-only audit。`reviewWordStates` 仅从经验证的单词事件重放，检测无法解释的 reviewCount、手工排除、旧调度状态和重复主键，失败即拒绝；`reviewRecords` 的原始 ID 按本机/远端单独标记，仅提供 `sessionEvidence`，**不伪造可恢复的 ReviewRecord 合并数据**。
 - `tests/cloud/v4-event-convergence.test.mjs`、`tests/cloud/v4-six-table-projection.test.mjs`：同词并发、跨词库、重复 UUID、悬空复习状态、手工排除、Session ID 撞号、源快照只读契约。
 - 任何 `status:'projected'` 的输出仍有 `publishReady:false` 和 `convergenceComplete:false`；不能把这份候选写入六表或展示为已同步。
