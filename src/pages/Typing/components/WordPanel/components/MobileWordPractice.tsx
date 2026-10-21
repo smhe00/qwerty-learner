@@ -5,6 +5,8 @@ import { generateWordSoundSrc } from '@/hooks/usePronunciation'
 import { createLearnAcquisitionExercisePlanForState } from '@/learn/acquisition'
 import type { LearnAcquisitionState } from '@/learn/acquisition'
 import type { LearnItemKind } from '@/learn/session'
+import { selectLearnTask } from '@/learn/task-selector'
+import type { LearnExerciseKind, LearnExercisePreference, LearnTaskHistoryEvent } from '@/learn/task-selector'
 import type { TypingErrorClassification } from '@/review/classifier'
 import type { ExerciseConditionV1 } from '@/review/condition'
 import { createCanonicalReviewProbePlan, createReviewPolicyDecision } from '@/review/decision'
@@ -18,11 +20,12 @@ import { currentDictInfoAtom, pronunciationConfigAtom } from '@/store'
 import type { Word } from '@/typings'
 import { getFirstValidDictionaryExample, maskDictionaryExample } from '@/utils/dictionaryExample'
 import { useSaveWordRecord } from '@/utils/db'
+import { db } from '@/utils/db/core'
 import type { IWordRecord, LearningContextV1 } from '@/utils/db/record'
 import { getUTCUnixTimestamp } from '@/utils/time'
 import type { WordFinishResult } from './Word'
 
-type MobileTask = 'exposure' | 'context' | 'audio' | 'meaning-choice' | 'recall' | 'spelling'
+type MobileTask = LearnExerciseKind
 type AudioState = 'idle' | 'playing' | 'played' | 'tap' | 'error'
 
 type MobileWordPracticeProps = {
@@ -34,6 +37,7 @@ type MobileWordPracticeProps = {
   recordKind: LearnItemKind
   acquisitionState?: LearnAcquisitionState
   reviewAttemptRole?: ReviewAttemptRole
+  exercisePreference?: LearnExercisePreference
   paused: boolean
   onResume: () => void
 }
@@ -131,7 +135,7 @@ function learningContextForTask(
 
 export default function MobileWordPractice({
   word, queue, onFinish, exercisePlan, itemKind, recordKind,
-  acquisitionState, reviewAttemptRole, paused, onResume,
+  acquisitionState, reviewAttemptRole, exercisePreference = 'auto', paused, onResume,
 }: MobileWordPracticeProps) {
   const dict = useAtomValue(currentDictInfoAtom)
   const pronunciation = useAtomValue(pronunciationConfigAtom)
@@ -139,7 +143,9 @@ export default function MobileWordPractice({
   const [revealedAttempt, setRevealedAttempt] = useState<PendingRecallAttempt | null>(null)
   const [feedback, setFeedback] = useState<SavedAttempt | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [preferSpelling, setPreferSpelling] = useState(false)
+  const [manualExercise, setManualExercise] = useState<'tap-recall' | 'cold-spelling' | null>(null)
+  const [taskHistory, setTaskHistory] = useState<LearnTaskHistoryEvent[]>([])
+  const [pendingSpelling, setPendingSpelling] = useState<string | null>(null)
   const [spellingInput, setSpellingInput] = useState('')
   const [error, setError] = useState('')
   const [audioState, setAudioState] = useState<AudioState>('idle')
@@ -151,6 +157,20 @@ export default function MobileWordPractice({
   const playbackWasRequestedRef = useRef(false)
   const submittingRef = useRef(false)
   const finishedRef = useRef(false)
+
+  // Read-only historical evidence. Selection never changes the FSRS event or
+  // the word allotted by the shared Learn session.
+  useEffect(() => {
+    let active = true
+    void db.wordRecords.where('word').equals(word.name)
+      .filter((row) => row.dict === dict.id && row.sourceMode === 'learn')
+      .toArray()
+      .then((rows) => {
+        if (active && !submittingRef.current) setTaskHistory(rows)
+      })
+      .catch((reason) => console.warn('Study task history unavailable, using recall fallback', reason))
+    return () => { active = false }
+  }, [word.name, dict.id])
 
   const example = useMemo(() => getFirstValidDictionaryExample(word), [word])
   const maskedExample = example ? maskDictionaryExample(example) : null
@@ -196,16 +216,19 @@ export default function MobileWordPractice({
   }, [queue, word])
 
   const phase = itemKind === 'acquisition' ? acquisitionState?.phase : undefined
-  const baseTask: MobileTask = itemKind !== 'acquisition'
-    ? 'recall'
-    : phase === 'exposure' ? 'exposure'
-      : phase === 'guided'
-        ? maskedExample && choices.length > 1 ? 'context'
-          : choices.length > 1 ? 'meaning-choice' : 'recall'
-        : phase === 'supported'
-          ? audioFallback ? 'meaning-choice' : choices.length > 1 ? 'audio' : 'recall'
-          : 'recall'
-  const task: MobileTask = baseTask === 'recall' && preferSpelling ? 'spelling' : baseTask
+  const selection = selectLearnTask({
+    itemKind,
+    acquisitionPhase: phase,
+    hasContext: Boolean(maskedExample),
+    choicesAvailable: choices.length > 1,
+    audioAvailable: !audioFallback,
+    goal: 'vocabulary-and-spelling',
+    preference: manualExercise ?? exercisePreference,
+    hasTextInput: true,
+    history: taskHistory,
+  })
+  const task: MobileTask = selection.exercise
+
   const isCoreRecall = itemKind === 'review' || (itemKind === 'acquisition' && phase === 'independent')
   // Phone-only Acquisition must obey the SAME Independent admission plan as
   // desktop spelling. Never silently substitute the Review canonical policy:
@@ -297,10 +320,13 @@ export default function MobileWordPractice({
           )
       : createReviewPolicyDecision('mobile-multidimensional-learning-v1', ['mobile-task-' + mode], condition.version)
 
-  const makeEvidence = (mode: MobileTask, grade: ReviewOutcome, wrongCount: number, condition: ExerciseConditionV1) => {
-    const cause: TypingErrorClassification['cause'] = wrongCount > 0
-      ? 'recall'
-      : grade === 'hard' ? 'uncertain' : 'clean'
+  const makeEvidence = (
+    mode: MobileTask, grade: ReviewOutcome, wrongCount: number,
+    condition: ExerciseConditionV1,
+    adjudicatedCause?: 'spelling' | 'recall',
+  ) => {
+    const cause: TypingErrorClassification['cause'] = adjudicatedCause ??
+      (wrongCount > 0 ? 'recall' : grade === 'hard' ? 'uncertain' : 'clean')
     const classification = classificationFor(cause)
     const independent = (mode === 'recall' || mode === 'spelling') && isCoreRecall
     const evidence: ReviewEvidenceV1 = {
@@ -316,7 +342,11 @@ export default function MobileWordPractice({
         ...(mode === 'recall'
           ? ['self-report-not-spelling', 'self-rated-before-answer-reveal']
           : mode === 'spelling'
-            ? [wrongCount === 0 ? 'objective-spelling-clean' : 'objective-spelling-mismatch', 'typed-with-answer-hidden']
+            ? [
+                wrongCount === 0 ? 'objective-spelling-clean' : 'objective-spelling-mismatch',
+                'typed-with-answer-hidden',
+                ...(adjudicatedCause === 'spelling' ? ['learner-confirmed-recalled-but-misspelled'] : []),
+              ]
             : ['recognition-or-training-evidence']),
         ...(mode === 'audio' && !audioPlayed ? ['audio-cue-not-played'] : []),
         mode === 'recall'
@@ -337,6 +367,8 @@ export default function MobileWordPractice({
     mode: MobileTask; grade: ReviewOutcome; wrongCount: number
     title: string
     frozen?: PendingRecallAttempt
+    adjudicatedCause?: 'spelling' | 'recall'
+    submittedSpelling?: string
   }) => {
     if (paused || submittingRef.current || feedback) return
     submittingRef.current = true
@@ -347,8 +379,17 @@ export default function MobileWordPractice({
       learningContextForTask(input.mode, Boolean(maskedExample), audioPlayed, manualAudioPlayed)
     const policyDecision = input.frozen?.policyDecision ?? getPolicy(condition, input.mode)
     const { classification, evidence, reviewRatingDecision } = makeEvidence(
-      input.mode, input.grade, input.wrongCount, condition,
+      input.mode, input.grade, input.wrongCount, condition, input.adjudicatedCause,
     )
+    const mistakes: Record<number, string[]> = {}
+    if (input.mode === 'spelling' && input.wrongCount > 0 && input.submittedSpelling) {
+      const submitted = input.submittedSpelling.toLowerCase()
+      const correct = word.name.toLowerCase()
+      const firstDifferent = Array.from(correct).findIndex((ch, i) =>
+        Array.from(submitted)[i] !== ch)
+      const index = firstDifferent < 0 ? 0 : firstDifferent
+      mistakes[index] = [Array.from(submitted)[index] ?? '∅']
+    }
     const record: IWordRecord = {
       word: word.name,
       timeStamp: getUTCUnixTimestamp(),
@@ -356,7 +397,7 @@ export default function MobileWordPractice({
       chapter: -1,
       timing: [],
       wrongCount: input.wrongCount,
-      mistakes: {},
+      mistakes,
       learningContext: context,
       exerciseCondition: condition,
       reviewPolicyDecision: policyDecision,
@@ -370,7 +411,7 @@ export default function MobileWordPractice({
         word: word.name,
         wrongCount: input.wrongCount,
         letterTimeArray: [],
-        letterMistake: {},
+        letterMistake: mistakes,
         learningContext: context,
         exerciseCondition: condition,
         reviewPolicyDecision: policyDecision,
@@ -450,18 +491,32 @@ export default function MobileWordPractice({
   }, [revealedAttempt, paused, feedback, error])
 
   const submitSpelling = () => {
-    if (task !== 'spelling' || isSaving || paused || feedback) return
+    if (task !== 'spelling' || isSaving || paused || feedback || pendingSpelling) return
     const attempted = spellingInput.trim().normalize('NFKC')
     if (!attempted) return
     const expected = word.name.trim().normalize('NFKC')
-    const correct = attempted.toLocaleLowerCase() === expected.toLocaleLowerCase()
-    // Raw attempt evidence intentionally distinguishes typed cold spelling
-    // from self-rated recall; a failed spelling is an Again, not a Good.
+    if (attempted.toLocaleLowerCase() === expected.toLocaleLowerCase()) {
+      void saveAttempt({
+        mode: 'spelling', grade: 'good', wrongCount: 0,
+        title: '独立拼写正确',
+      })
+    } else {
+      // Hold the WRONG answer without revealing the target. Only the learner
+      // can distinguish a remembered word with a typo from a true recall
+      // failure. Never guess a memory failure from edit distance.
+      setPendingSpelling(attempted)
+    }
+  }
+
+  const resolveSpellingMismatch = (memoryWasIntact: boolean) => {
+    if (!pendingSpelling || submittingRef.current || paused || feedback) return
     void saveAttempt({
       mode: 'spelling',
-      grade: correct ? 'good' : 'again',
-      wrongCount: correct ? 0 : 1,
-      title: correct ? '独立拼写正确' : '拼写未通过 · 请核对',
+      grade: memoryWasIntact ? 'hard' : 'again',
+      wrongCount: 1,
+      adjudicatedCause: memoryWasIntact ? 'spelling' : 'recall',
+      submittedSpelling: pendingSpelling,
+      title: memoryWasIntact ? '记住了词义，拼写需巩固' : '暂时忘了 · 继续巩固',
     })
   }
 
@@ -512,6 +567,7 @@ export default function MobileWordPractice({
       data-mobile-word-practice
       data-mobile-task={task}
       data-mobile-policy={activePlan?.decision.policyVersion ?? 'training'}
+      data-mobile-selector={selection.reason}
       data-mobile-word={word.name}
       data-mobile-next-mode={feedback ? feedback.autoAdvance ? 'auto' : 'manual' : 'pending'}
       data-mobile-recall-stage={task === 'recall' ? feedback ? 'saved' : revealedAttempt ? 'verification' : 'unrevealed' : undefined}
@@ -611,12 +667,16 @@ export default function MobileWordPractice({
       </div>
 
       <footer className="mobile-practice-actions" data-mobile-action-zone>
-        {!feedback && !revealedAttempt && (task === 'recall' || task === 'spelling') && (
+        {!feedback && !revealedAttempt && !pendingSpelling &&
+          isCoreRecall && (task === 'recall' || task === 'spelling') && (
           <button
             type="button"
             className="mobile-practice-mode-toggle"
             data-mobile-interaction-toggle
-            onClick={() => { setPreferSpelling((previous) => !previous); setSpellingInput('') }}
+            onClick={() => {
+              setManualExercise(task === 'recall' ? 'cold-spelling' : 'tap-recall')
+              setSpellingInput('')
+            }}
             disabled={paused || isSaving}
           >
             {task === 'recall' ? '改用独立拼写' : '改用轻触回忆'}
@@ -643,6 +703,16 @@ export default function MobileWordPractice({
           })} disabled={paused || isSaving}>
             {isSaving ? '正在保存…' : '继续学习'}
           </button>
+        ) : task === 'spelling' && pendingSpelling ? (
+          <div className="mobile-practice-spelling-judgment" data-mobile-spelling-judgment>
+            <p>刚才输入了「{pendingSpelling}」。在查看正确答案前，请判断：</p>
+            <button type="button" className="mobile-practice-grade" data-mobile-spelling-cause="spelling"
+              disabled={paused || isSaving}
+              onClick={() => resolveSpellingMismatch(true)}>想起来了，只是拼错</button>
+            <button type="button" className="mobile-practice-grade" data-mobile-spelling-cause="recall"
+              disabled={paused || isSaving}
+              onClick={() => resolveSpellingMismatch(false)}>没有想起来</button>
+          </div>
         ) : task === 'spelling' ? (
           <form
             className="mobile-practice-spelling-form"
@@ -659,7 +729,7 @@ export default function MobileWordPractice({
               spellCheck={false}
               value={spellingInput}
               onChange={(event) => setSpellingInput(event.target.value)}
-              disabled={paused || isSaving}
+              disabled={paused || isSaving || Boolean(pendingSpelling)}
             />
             <button type="submit" className="mobile-practice-primary" disabled={paused || isSaving || !spellingInput.trim()}>
               {isSaving ? '正在保存…' : '确认拼写'}
