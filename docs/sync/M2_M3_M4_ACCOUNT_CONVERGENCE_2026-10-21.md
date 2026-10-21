@@ -36,6 +36,17 @@ FSRS-6、Acquisition、成就和每日学习进度只能从同一份已验证的
 
 暂不主动推送 \`edgeone-test\` 和 \`master\`，直至完整 six-table merge、预检/回滚协议和账户自动接续门禁满足。
 
+## 2026-10-22 增量：M2.4 冲突仲裁门禁与六表只读候选
+
+代码仅提交到 `product/main`，无 EdgeOne 开关、无 IndexedDB 写入：
+
+- `src/sync/v4-event-convergence.ts`：独立设备同 `(dict,word)` 在 60 秒模糊窗口内存在两次有资格的 Review，且至少一次正向评级时，返回 `concurrent-review-conflict`，拒绝 FSRS 两次成功重放；相同 UUID、其他词库、非合格训练不误判。**60 秒只是保守冲突门禁，不是用户真实练习相同的数学证明，更不是最终仲裁结果**。没有可验证的挑战组身份前，严禁猜测保留哪条 Good。事件原样保留。
+- `src/sync/v4-six-table-projection.ts`：基于既有 `projectV4ForeignKeys` 与 `projectUuidLearningConvergence`，加入剩余两表的 read-only audit。`reviewWordStates` 仅从经验证的单词事件重放，检测无法解释的 reviewCount、手工排除、旧调度状态和重复主键，失败即拒绝；`reviewRecords` 的原始 ID 按本机/远端单独标记，仅提供 `sessionEvidence`，**不伪造可恢复的 ReviewRecord 合并数据**。
+- `tests/cloud/v4-event-convergence.test.mjs`、`tests/cloud/v4-six-table-projection.test.mjs`：同词并发、跨词库、重复 UUID、悬空复习状态、手工排除、Session ID 撞号、源快照只读契约。
+- 任何 `status:'projected'` 的输出仍有 `publishReady:false` 和 `convergenceComplete:false`；不能把这份候选写入六表或展示为已同步。
+
+**下一阶段阻塞**：建立来源可验证的跨设备挑战/Session 身份和共同祖先，确定 ReviewRecord 去重/接续语义；补足 FSRS 冲突仲裁与旧历史重放证明；最后才可以做独立事务 journal + crash/rollback 和 etest 实网验收。EdgeOne Blob 的最终一致列表不得当作设备全集。
+
 ## 完成判据
 
 - 本机保存 -> 事件批次永久稳定 -> 另一设备验证/下载 -> 六表合并 -> FSRS replay -> 前台继续学习。
