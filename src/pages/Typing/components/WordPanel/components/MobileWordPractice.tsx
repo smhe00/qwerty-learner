@@ -146,10 +146,28 @@ export default function MobileWordPractice({
 
   const example = useMemo(() => getFirstValidDictionaryExample(word), [word])
   const maskedExample = example ? maskDictionaryExample(example) : null
-  const exampleText = maskedExample
-    ? maskedExample.before + maskedExample.masked + maskedExample.after
-    : ''
   const meanings = word.trans?.filter(Boolean).join('；') || '暂无释义'
+  const exampleFontSize = example && example.en.length > 140
+    ? 'clamp(12px, 3.2vw, 14px)'
+    : example && example.en.length > 88
+      ? 'clamp(13px, 3.5vw, 15px)'
+      : 'clamp(15px, 4.2vw, 18px)'
+
+  // The dictionary's validated start/end coordinates identify the target
+  // surface exactly. A cold recall or cloze task highlights ONLY its mask,
+  // never the answer; reveal and exposure highlight the actual target.
+  const renderExample = (showAnswer: boolean) => {
+    if (!maskedExample) return null
+    return (
+      <p className="mobile-practice-example" style={{ fontSize: exampleFontSize }} data-mobile-example>
+        {maskedExample.before}
+        <mark className={showAnswer ? 'mobile-practice-keyword' : 'mobile-practice-blank'} data-mobile-keyword>
+          {showAnswer ? maskedExample.surface : maskedExample.masked}
+        </mark>
+        {maskedExample.after}
+      </p>
+    )
+  }
   const choices = useMemo(() => {
     const seen = new Set<string>()
     const targetMeaning = word.trans?.filter(Boolean).join('；')
@@ -464,39 +482,40 @@ export default function MobileWordPractice({
         </div>
 
         <div className="mobile-practice-example-slot" data-mobile-example-slot>
-          {feedback ? (
-            example ? <p className="mobile-practice-example">{example.en}</p> : null
-          ) : task === 'exposure' ? (
-            example ? <p className="mobile-practice-example">{example.en}</p> : null
-          ) : task === 'recall' ? (
-            <>
-              {maskedExample && (
-                <p className="mobile-practice-example">{revealedAttempt ? example?.en : exampleText}</p>
-              )}
-              {revealedAttempt && <p className="mobile-practice-cue">刚才想起来了吗？</p>}
-            </>
-          ) : task === 'audio' ? (
-            <>
-              <p className="mobile-practice-cue">
-                {audioState === 'playing' ? '正在发音…' : audioPlayed ? '选出刚才听到的单词' : '正在准备发音…'}
-              </p>
-              {audioPlayed && (
-                <button type="button" className="mobile-practice-replay" onClick={playAgain} disabled={paused || isSaving}>
-                  <Volume2 size={17} aria-hidden="true" /> 再听一遍
-                </button>
-              )}
-            </>
-          ) : task === 'context' ? (
-            <p className="mobile-practice-example mobile-practice-context">{exampleText}</p>
-          ) : (
-            <p className="mobile-practice-cue">哪个意思与这个词相符？</p>
+          {feedback || task === 'exposure'
+            ? renderExample(true)
+            : task === 'recall'
+              ? renderExample(Boolean(revealedAttempt))
+              : task === 'context'
+                ? renderExample(false)
+                : task === 'audio'
+                  ? (
+                    <>
+                      <p className="mobile-practice-cue">
+                        {audioState === 'playing' ? '正在发音…' : audioPlayed ? '选出刚才听到的单词' : '正在准备发音…'}
+                      </p>
+                      {audioPlayed && (
+                        <button type="button" className="mobile-practice-replay" onClick={playAgain} disabled={paused || isSaving}>
+                          <Volume2 size={17} aria-hidden="true" /> 再听一遍
+                        </button>
+                      )}
+                    </>
+                  )
+                  : <p className="mobile-practice-cue">哪个意思与这个词相符？</p>}
+          {task === 'recall' && revealedAttempt && !feedback && (
+            <p className="mobile-practice-cue mobile-practice-recall-cue">刚才想起来了吗？</p>
           )}
         </div>
 
         <div className="mobile-practice-meaning-slot" data-mobile-meaning-slot>
-          {(feedback || task === 'exposure' || task === 'recall') && (
-            <p className="mobile-practice-meaning" title={meanings}>{meanings}</p>
-          )}
+          <div className="mobile-practice-definition-scroll" data-mobile-definition-scroll>
+            {(feedback || task === 'exposure' || task === 'recall') && (
+              <p className="mobile-practice-meaning">{meanings}</p>
+            )}
+            {(feedback || task === 'exposure' || (task === 'recall' && Boolean(revealedAttempt))) && example?.cn && (
+              <p className="mobile-practice-example-cn" data-mobile-example-cn>{example.cn}</p>
+            )}
+          </div>
         </div>
       </div>
 

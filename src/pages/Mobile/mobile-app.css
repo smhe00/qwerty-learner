@@ -121,25 +121,27 @@
 .mobile-practice-title-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 .mobile-practice-title-row h1 { font-size: 19px; font-weight: 650; letter-spacing: -.03em; line-height: 1.4; margin: 0; }
 .mobile-practice-step { color: var(--mobile-muted); font-size: 12px; white-space: nowrap; }
-/* Stable three-zone reading area. Content never vertically centers the word. */
+/* P0.2: the study content flows top-down; unused height belongs to meaning. */
 .mobile-practice-reading {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 8px;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  align-content: start;
+  gap: 0;
   min-height: 0;
   min-width: 0;
   flex: 1 1 0;
   overflow: hidden;
-  padding: 10px 6px 16px;
+  padding: 4px 6px 10px;
 }
 .mobile-practice-word-slot {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
   min-height: min-content;
   align-self: start;
+  flex: none;
   text-align: center;
 }
 .mobile-practice-word,
@@ -155,7 +157,7 @@
   flex: 0 0 auto;
   margin: 0;
   color: var(--mobile-text);
-  line-height: 1.32;
+  line-height: 1.28;
   font-weight: 650;
   letter-spacing: -.025em;
   text-align: center;
@@ -171,71 +173,110 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 5px;
   min-width: 0;
   min-height: 0;
-  max-height: 100%;
   overflow: hidden;
   text-align: center;
+  margin-top: 18px;
+  margin-bottom: 12px;
 }
 .mobile-practice-example {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
-  line-clamp: 4;
-  width: 100%;
-  max-width: 470px;
-  max-height: 100%;
-  margin: 0;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-  font-size: clamp(14px, 3.9vw, 17px);
-  line-height: 1.75;
-  text-align: center;
-}
-.mobile-practice-context { font-size: clamp(17px, 4.4vw, 20px); }
-.mobile-practice-meaning-slot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  min-width: 0;
-  min-height: 0;
-  align-self: end;
-  width: 100%;
-}
-.mobile-practice-meaning {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
   line-clamp: 3;
   width: 100%;
-  min-width: 0;
-  max-height: 5.4em;
+  max-width: 470px;
+  min-height: 4.65em; /* stable three-line visual area */
+  max-height: 4.65em;
   margin: 0;
   overflow: hidden;
   overflow-wrap: anywhere;
+  line-height: 1.55;
+  text-align: center;
+}
+.mobile-practice-example-slot:has(.mobile-practice-example) { min-height: 0; }
+.mobile-practice-example mark {
+  font: inherit;
+  font-weight: 700;
+  padding: 0 2px;
+  border-radius: 4px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.mobile-practice-keyword {
+  color: var(--mobile-accent);
+  background: color-mix(in srgb, var(--mobile-accent) 11%, transparent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--mobile-accent) 36%, transparent);
+  text-underline-offset: 3px;
+}
+.mobile-practice-blank {
+  color: var(--mobile-accent);
+  background: color-mix(in srgb, var(--mobile-accent) 9%, transparent);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  letter-spacing: 1px;
+}
+.mobile-practice-recall-cue { margin-top: 2px; }
+.mobile-practice-meaning-slot {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  align-items: stretch;
+  overflow: hidden;
+}
+.mobile-practice-definition-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 3px 4px 10px;
+  scrollbar-width: thin;
+  text-align: center;
+}
+.mobile-practice-meaning {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
   color: var(--mobile-text);
   font-size: clamp(15px, 4vw, 17px);
-  line-height: 1.8;
+  line-height: 1.7;
   text-align: center;
+}
+.mobile-practice-example-cn {
+  margin: 12px 0 0;
+  color: var(--mobile-muted);
+  border-top: 1px solid var(--mobile-line);
+  padding: 10px 4px 0;
+  font-size: 12px;
+  line-height: 1.55;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 .mobile-practice-actions {
   display: flex;
   flex-direction: column;
   flex: 0 0 auto;
   width: 100%;
-  min-height: 104px;
+  min-height: 118px;
   justify-content: flex-end;
-  padding: 10px 0 max(22px, env(safe-area-inset-bottom));
+  padding: 10px 0 max(40px, calc(env(safe-area-inset-bottom) + 26px));
   border-top: 1px solid var(--mobile-line);
   background: var(--mobile-surface);
 }
 .mobile-practice-primary {
   display: inline-flex;
   width: 100%;
-  min-height: 60px;
+  min-height: 68px;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -251,7 +292,7 @@
 .mobile-practice-choices { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; width: 100%; }
 .mobile-practice-choice {
   display: flex;
-  min-height: 62px;
+  min-height: 70px;
   justify-content: center;
   align-items: center;
   border: 1px solid var(--mobile-line);
@@ -268,7 +309,7 @@
 }
 .mobile-practice-choice:active, .mobile-practice-grade:active { background: var(--mobile-line); }
 .mobile-practice-grade-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 9px; width: 100%; }
-.mobile-practice-grade { min-height: 60px; border: 1px solid var(--mobile-line); border-radius: 13px; color: var(--mobile-text); background: var(--focus-surface-muted,#f6f8fa); font-size: 16px; font-weight: 650; touch-action: manipulation; }
+.mobile-practice-grade { min-height: 68px; border: 1px solid var(--mobile-line); border-radius: 13px; color: var(--mobile-text); background: var(--focus-surface-muted,#f6f8fa); font-size: 16px; font-weight: 650; touch-action: manipulation; }
 .mobile-practice-grade[data-mobile-grade="good"] { background: var(--mobile-accent); border-color: var(--mobile-accent); color: var(--focus-accent-ink,#fff); }
 .mobile-practice-next-hint { display: flex; min-height: 60px; align-items: center; justify-content: center; color: var(--mobile-muted); margin: 0; font-size: 13px; }
 .mobile-practice-error { color: #af362c; margin: 0 0 9px; text-align: center; font-size: 12px; }
@@ -283,9 +324,9 @@
 }
 @media (max-height: 630px) {
   .mobile-practice-head { padding-top: 6px; }
-  .mobile-practice-reading { padding: 8px 5px; }
-  .mobile-practice-reading { gap: 4px; padding-top: 6px; padding-bottom: 8px; }
-  .mobile-practice-meaning { -webkit-line-clamp: 2; line-clamp: 2; max-height: 3.6em; }
-  .mobile-practice-example { -webkit-line-clamp: 3; line-clamp: 3; }
-  .mobile-practice-actions { padding-top: 6px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+  .mobile-practice-reading { padding: 2px 5px 6px; }
+  .mobile-practice-example-slot { margin-top: 9px; margin-bottom: 6px; }
+  .mobile-practice-actions { padding-top: 6px; padding-bottom: max(23px, calc(env(safe-area-inset-bottom) + 13px)); }
+  .mobile-practice-primary { min-height: 64px; }
+  .mobile-practice-choice, .mobile-practice-grade { min-height: 62px; }
 }
