@@ -122,3 +122,18 @@ test('eligible failed + positive concurrent Review also quarantines; training do
   })
   assert.equal(project({ local: [positive], remote: [training] }).status, 'projected')
 })
+
+test('two explicit Again grades and potentially eligible legacy Review also quarantine', () => {
+  const again = (uuid, time) => row(uuid, time, {
+    reviewRatingDecision: { eligible: true, rating: 'again', confidence: 1,
+      reasonCodes: ['m2-test'] },
+  })
+  assert.equal(project({ local: [again(uuids[1], t0)],
+    remote: [again(uuids[2], t0 + 5)] }).reason,
+  'concurrent-review-conflict')
+  const oldReview = row(uuids[2], t0 + 5, {
+    reviewRatingDecision: undefined, learnItemKind: undefined,
+  })
+  assert.equal(project({ local: [row(uuids[1], t0)], remote: [oldReview] }).reason,
+    'concurrent-review-conflict')
+})
