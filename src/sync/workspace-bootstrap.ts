@@ -65,11 +65,25 @@ export async function prepareGuardedWorkspaceBoot(
     // staged V4 snapshot is the recovery authority before app hydration.
     const { syncV2PullJournalPort } = await import('./v2-pull-journal')
     const { manualV4ImportJournalPort } = await import('./manual-v4-import-journal')
-    const [pendingPull, pendingImport] = await timePerfStage('startup', 'journal-check', () =>
-      Promise.all([syncV2PullJournalPort.read(), manualV4ImportJournalPort.read()]))
+    const { m4MergeJournalPort } = await import('./m4-merge-journal')
+    const [pendingPull, pendingImport, pendingMerge] = await timePerfStage(
+      'startup', 'journal-check',
+      () => Promise.all([
+        syncV2PullJournalPort.read(),
+        manualV4ImportJournalPort.read(),
+        m4MergeJournalPort.read(),
+      ]),
+    )
     if ((pendingPull && pendingImport) ||
-        (before.pending && (pendingPull || pendingImport))) {
-      throw new Error('Conflicting S1, S2 and manual V4 recovery journals')
+        (before.pending && (pendingPull || pendingImport || pendingMerge)) ||
+        (pendingMerge && (pendingPull || pendingImport))) {
+      throw new Error('Conflicting S1, S2, manual V4 or M4 recovery journals')
+    }
+    // M4 is not activated: NO mounted writer may run over a staged candidate
+    // or partial restore. Explicit pre-mount recovery under S1 lock must be
+    // implemented and admitted before the merge executor can be enabled.
+    if (pendingMerge) {
+      throw new Error('M4 merge journal pending: recover or roll back before app mount')
     }
     if (before.generation === 0) {
       // An already-migrated browser must never silently fall back to V1

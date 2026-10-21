@@ -115,3 +115,27 @@ test('real IndexedDB: staging a manual V4 import is refused while M4 transaction
   expect(result.blocked).toBe(true)
   expect(result.m4Preserved).toBe(true)
 })
+
+test('pending M4 prevents normal S1 app hydration until explicit recovery', async ({ page }) => {
+  await init(page)
+  await stage(page, 33)
+  const result = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    let didMount = false
+    let blocked = ''
+    try {
+      await h.mountGuardedWorkspaceApp(async () => { didMount = true })
+    } catch (e) {
+      blocked = String(e)
+    }
+    const remains = (await h.m4MergeJournalPort.read()) !== null
+    const restored = await h.recoverPendingM4Merge('rollback')
+    return { didMount, blocked, remains, restored,
+      pending: await h.m4MergeJournalPort.read() }
+  })
+  expect(result.didMount).toBe(false)
+  expect(result.blocked).toContain('M4 merge journal pending')
+  expect(result.remains).toBe(true)
+  expect(result.restored).toBe(true)
+  expect(result.pending).toBeNull()
+})
