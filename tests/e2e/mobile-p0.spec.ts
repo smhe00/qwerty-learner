@@ -571,8 +571,9 @@ test('Unified selector keeps cold memory eligibility while recommending spelling
     reviewRatingDecision: { eligible: true, rating: 'hard' },
     reviewEvidence: { errorCause: 'spelling', reasonCodes: ['objective-spelling-mismatch'] } }
   expect(selectLearnTask({ ...base, history: [misspelled] }).exercise).toBe('spelling')
-  expect(selectLearnTask({ ...base, history: [misspelled, verified] }).exercise).toBe('recall')
+  expect(selectLearnTask({ ...base, history: [misspelled, { ...verified, timeStamp: 7 }] }).exercise).toBe('recall')
   expect(selectLearnTask({ ...base, history: positive, preference: 'cold-spelling' }).exercise).toBe('spelling')
+  expect(selectLearnTask({ ...base, history: positive, itemKind: 'practice' }).exercise).toBe('recall')
 })
 
 test('Phone spelling mismatch distinguishes remembered typo from recall failure before revealing answer', async ({ page }) => {

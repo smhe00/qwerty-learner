@@ -58,6 +58,11 @@ export function selectLearnTask(input: {
     policyVersion: LEARN_TASK_SELECTOR_VERSION,
   })
 
+  if (input.itemKind === 'practice') {
+    // Deferred filler / reinforcement is scheduler-neutral. Never promote a
+    // spelling checkpoint here merely because orthography remains unverified.
+    return choose('recall', 'supported')
+  }
   if (input.itemKind === 'acquisition') {
     if (input.acquisitionPhase === 'exposure') return choose('exposure', 'exposure')
     if (input.acquisitionPhase === 'guided') {

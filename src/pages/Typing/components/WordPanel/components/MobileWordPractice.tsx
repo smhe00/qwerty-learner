@@ -387,10 +387,14 @@ export default function MobileWordPractice({
     if (input.mode === 'spelling' && input.wrongCount > 0 && input.submittedSpelling) {
       const submitted = input.submittedSpelling.toLowerCase()
       const correct = word.name.toLowerCase()
+      const submittedChars = Array.from(submitted)
       const firstDifferent = Array.from(correct).findIndex((ch, i) =>
-        Array.from(submitted)[i] !== ch)
-      const index = firstDifferent < 0 ? 0 : firstDifferent
-      mistakes[index] = [Array.from(submitted)[index] ?? '∅']
+        submittedChars[i] !== ch)
+      // Trailing extra characters have no corresponding target letter:
+      // preserve the failed event without inventing a positional mistake.
+      if (firstDifferent >= 0) {
+        mistakes[firstDifferent] = [submittedChars[firstDifferent] ?? '∅']
+      }
     }
     const record: IWordRecord = {
       word: word.name,
