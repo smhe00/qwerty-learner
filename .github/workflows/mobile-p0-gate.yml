@@ -9,6 +9,8 @@ on:
       - 'src/pages/Learn/index.tsx'
       - 'src/pages/Typing/index.tsx'
       - 'src/pages/Typing/components/WordPanel/**'
+      - 'src/review/learn-review-commit.ts'
+      - 'tests/learn/mobile-review-commit-contract.test.mjs'
       - 'tests/e2e/mobile-p0.*'
       - '.github/workflows/mobile-p0-gate.yml'
   workflow_dispatch:
@@ -46,6 +48,8 @@ jobs:
           fi
       - name: Lint mobile learning surface and shared session adapter
         run: yarn eslint src/pages/Mobile src/pages/Learn/index.tsx src/pages/Typing/index.tsx src/pages/Typing/components/WordPanel/index.tsx src/pages/Typing/components/WordPanel/components/MobileWordPractice.tsx src/app.tsx
+      - name: Validate shared Learn review commit contract
+        run: node --test tests/learn/mobile-review-commit-contract.test.mjs
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Verify keyboard-free mobile learning and persisted task evidence

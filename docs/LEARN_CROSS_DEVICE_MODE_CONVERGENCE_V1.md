@@ -190,6 +190,13 @@ type UnifiedLearningAttemptV1 = {
 
 **发布原则：** P0、P1 可独立在 \`product/main\` / Pages 验证；跨设备自动融合不能借用当前保守 V4 全快照同步“先上线再补证明”。不得在 Merge Gate 通过前把 P2 只读投影宣称为正式可写合并能力。
 
+## P0 迭代记录（2026-10-21）
+
+- 已将手机、电脑有效 Review 的派生 FSRS 落库复用同一入口 `src/review/learn-review-commit.ts`；只有已持久化记录的 `review` 且 `RatingDecision.eligible=true` 才会调用 `applyReviewOutcome`。更新仍是后台追踪的派生任务，可由 `flushLearnPersistence` 排空；不把日志写入与投影更新误称为原子事务。
+- 手机 Recall 调整为**答案揭晓前一次自评级**。先判断「忘了 / 模糊 / 记得」，然后显示答案。自评 Good 保留 2.6 秒核对窗口；用户发现不一致可点「记错了」改为 Again，只有核对窗口结束且未更正才写入 Good。Hard / Again 仍手动推进下一词。
+- 手机原始证据标记 `self-rated-before-answer-reveal` 与 `self-report-not-spelling`；不产生独立拼写正确证据。Hard 不得通过 Acquisition 的 clean admission gate。
+- **仅代表同设备 P0 改动**。并没有启用多设备自动写入融合，也没有解决既有历史数据的所有重放/时钟/冲突问题。是否通过回归门禁，以对应 GitHub Actions 运行结果为准。
+
 ## 9. 当前实现差距与代码入口
 
 - \`src/pages/Mobile/MobileStudy.tsx\`、\`src/pages/Learn/index.tsx\`：手机和桌面已共享 Learn 会话控制器。

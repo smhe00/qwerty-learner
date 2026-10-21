@@ -50,7 +50,7 @@ test('Mobile keeps the independent app menu without Typing controls', async ({ p
   expect(bounds.width).toBeLessThanOrEqual(bounds.viewport + 1)
 })
 
-test('Mobile single-tap choice or two-tap recall saves then advances automatically', async ({ page }) => {
+test('Mobile single-tap choice or pre-reveal self-rating saves then advances automatically', async ({ page }) => {
   await mockWordPronunciation(page)
   await page.goto('/mobile/study')
   const taskView = page.locator('[data-mobile-word-practice]')
@@ -66,11 +66,15 @@ test('Mobile single-tap choice or two-tap recall saves then advances automatical
     )).toBeGreaterThan(0)
     await page.getByRole('button', { name: '继续学习' }).click()
   } else if (task === 'recall') {
-    await page.getByRole('button', { name: '显示答案' }).click()
-    await expect(page.locator('[data-mobile-answer-revealed]')).toBeVisible()
+    await expect(page.locator('[data-mobile-answer-revealed]')).toHaveCount(0)
     await expect(page.locator('[data-mobile-grade]')).toHaveCount(3)
     expect(await countWordRecords(page)).toBe(before)
     await page.locator('[data-mobile-grade="good"]').click()
+    await expect(page.locator('[data-mobile-answer-revealed]')).toBeVisible()
+    await expect(taskView).toHaveAttribute('data-mobile-recall-stage', 'verification')
+    // The positive self-report is still amendable and not durable yet.
+    expect(await countWordRecords(page)).toBe(before)
+    await expect(taskView.locator('[data-mobile-recall-correct]')).toBeVisible()
   } else {
     if (task === 'audio') {
       await expect.poll(async () => page.evaluate(() =>
@@ -161,7 +165,8 @@ test('Mobile full word stays at the top when a long definition occupies all rema
     const practice = page.locator('[data-mobile-word-practice]')
     await expect(practice).toBeVisible({ timeout: 45_000 })
     if (await practice.getAttribute('data-mobile-task') === 'recall') {
-      await page.getByRole('button', { name: '显示答案' }).click()
+      await practice.locator('[data-mobile-grade="hard"]').click()
+      await expect(practice.locator('.mobile-practice-word')).toBeVisible()
     }
 
     const result = await practice.evaluate((element) => {
@@ -246,7 +251,8 @@ test('Mobile example uses three lines and highlights only the hidden cloze befor
       const masked = await keyword.textContent()
       expect(masked).toMatch(/_{3,}/)
       if (mode === 'recall') {
-        await practice.getByRole('button', { name: '显示答案' }).click()
+        expect(await countWordRecords(page)).toBe(0)
+        await practice.locator('[data-mobile-grade="good"]').click()
         await expect(keyword).toHaveClass(/mobile-practice-keyword/)
         const revealed = await keyword.textContent()
         expect(revealed).not.toContain('_')
@@ -270,7 +276,6 @@ test('Mobile never auto-advances after Hard or wrong; manual next preserves one 
     if (task === 'exposure') {
       await taskView.getByRole('button', { name: '继续学习' }).click()
     } else if (task === 'recall') {
-      await taskView.getByRole('button', { name: '显示答案' }).click()
       await taskView.locator('[data-mobile-grade="hard"]').click()
     } else {
       const choices = taskView.locator('[data-mobile-choice]')
@@ -304,4 +309,75 @@ test('Mobile never auto-advances after Hard or wrong; manual next preserves one 
     await expect(taskView.locator('[data-mobile-feedback]')).toHaveCount(0, { timeout: 7_000 })
   }
   throw new Error('Expected a wrong or Hard response within eight learning tasks')
+})
+
+
+test('Mobile self-report Good can be corrected to Again before saving', async ({ page }) => {
+  await mockWordPronunciation(page)
+  await page.goto('/mobile/study')
+  const taskView = page.locator('[data-mobile-word-practice]')
+  await expect(taskView).toBeVisible({ timeout: 45_000 })
+
+  // The first new session is typically Exposure. Continue through the
+  // training phases until the first recall; no hard-coded word or order.
+  for (let turn = 0; turn < 36; turn += 1) {
+    const task = await taskView.getAttribute('data-mobile-task')
+    if (task === 'recall') {
+      const before = await countWordRecords(page)
+      await expect(taskView).toHaveAttribute('data-mobile-recall-stage', 'unrevealed')
+      await expect(taskView.locator('[data-mobile-answer-revealed]')).toHaveCount(0)
+      await taskView.locator('[data-mobile-grade="good"]').click()
+      await expect(taskView.locator('[data-mobile-answer-revealed]')).toBeVisible()
+      expect(await countWordRecords(page)).toBe(before)
+      await taskView.locator('[data-mobile-recall-correct]').click()
+      await expect(taskView.locator('[data-mobile-feedback]')).toBeVisible()
+      await expect(taskView).toHaveAttribute('data-mobile-next-mode', 'manual')
+      expect(await countWordRecords(page)).toBe(before + 1)
+      const rows = await page.evaluate(async (name: string) => {
+        const request = indexedDB.open('RecordDB')
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          request.onsuccess = () => resolve(request.result)
+          request.onerror = () => reject(request.error)
+        })
+        try {
+          return await new Promise<Array<{
+            reviewEvidence?: { memoryGrade: string; reasonCodes: string[] }
+            reviewRatingDecision?: { rating: string | null; eligible: boolean }
+          }>>((resolve, reject) => {
+            const request = db.transaction('wordRecords', 'readonly')
+              .objectStore('wordRecords').getAll()
+            request.onsuccess = () => resolve(request.result.filter(
+              (row: { word: string }) => row.word === name,
+            ))
+            request.onerror = () => reject(request.error)
+          })
+        } finally { db.close() }
+      }, (await taskView.getAttribute('data-mobile-word'))!)
+      const record = rows.at(-1)!
+      expect(record.reviewEvidence?.memoryGrade).toBe('again')
+      expect(record.reviewEvidence?.reasonCodes).toContain('self-rated-before-answer-reveal')
+      // No second Good event may be fabricated by a pending timer.
+      await page.waitForTimeout(3200)
+      expect(await countWordRecords(page)).toBe(before + 1)
+      await expect(taskView.locator('[data-mobile-manual-next]')).toBeVisible()
+      return
+    }
+
+    if (task === 'exposure') {
+      await taskView.getByRole('button', { name: '继续学习' }).click()
+    } else {
+      const choices = taskView.locator('[data-mobile-choice]')
+      await expect(choices.first()).toBeEnabled({ timeout: 15_000 })
+      const target = await taskView.getAttribute('data-mobile-word')
+      const labels = await choices.allTextContents()
+      const index = task === 'meaning-choice' ? 0 : labels.findIndex(label => label.trim() === target)
+      await choices.nth(Math.max(0, index)).click()
+    }
+    await expect(taskView.locator('[data-mobile-feedback]')).toBeVisible({ timeout: 15_000 })
+    if (await taskView.getAttribute('data-mobile-next-mode') === 'manual') {
+      await taskView.locator('[data-mobile-manual-next]').click()
+    }
+    await expect(taskView.locator('[data-mobile-feedback]')).toHaveCount(0, { timeout: 7_000 })
+  }
+  throw new Error('No recall task reached within 36 scheduled tasks')
 })
