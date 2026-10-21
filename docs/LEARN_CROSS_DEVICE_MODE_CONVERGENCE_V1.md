@@ -8,6 +8,8 @@
 >
 > **命名：** 将现有界面中的“手机记忆模式”视为 **轻触记忆（Tap Recall）学习方式**，而非仅属于手机的学习系统。手机与电脑属于设备呈现层；Learn / Typing 属于产品任务边界；Tap Recall / Cold Spelling / Listening / Recognition 属于 Learn 内的练习交互方式。
 
+**新增：** [《三种终端场景共用一个 Learn 引擎 — V1》](./LEARN_UNIFIED_ENGINE_THREE_SCENARIOS_V1.md)，明确单手机、单电脑、手机电脑混用均可完整闭环的实施架构与验收门禁。
+
 ## 1. 不可违反的设计决策
 
 1. **一个账号 + 一个词库 + 一个单词 = 一份长期记忆模型。** 不为 \`phone\` 和 \`desktop\` 分别维护真实进度；设备、输入方式是证据字段，不是词库或账户的第二份身份。
