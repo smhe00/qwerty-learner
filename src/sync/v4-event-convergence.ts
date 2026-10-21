@@ -44,21 +44,21 @@ function validAttempt(row: IWordRecord): row is IWordRecord & { attemptId: strin
 
 /**
  * Two independent devices may grade the same scheduled Review while offline.
- * Both ratings are evidence, but applying both as separate FSRS successes
- * would manufacture an additional interval. Until M4 has an authenticated
+ * Both ratings are evidence, but replaying two grades (Good OR Again) for one
+ * physical test would manufacture scheduler history. Until M4 has an authenticated
  * arbitration group, quarantine the entire projection. Timestamps are in
  * seconds; 60s is a conservative ambiguity window, NOT proof of identity.
  */
 const REVIEW_RACE_WINDOW_SECONDS = 60
 
-function eligibleReview(row: IWordRecord): boolean {
-  return row.sourceMode === 'learn' &&
-    row.learnItemKind === 'review' && row.chapter === -1 &&
-    row.reviewRatingDecision?.eligible === true
-}
-
-function positiveReview(row: IWordRecord): boolean {
-  return row.reviewRatingDecision?.rating !== 'again'
+function possibleSchedulerReview(row: IWordRecord): boolean {
+  // Modern eligible Review plus UUID-tagged historical Review without an
+  // explicit decision. Only an explicit ineligible gate is safe to exclude.
+  // Both double-Good and double-Again would corrupt the FSRS replay.
+  return row.chapter === -1 && row.sourceMode !== 'typing' &&
+    row.learnItemKind !== 'acquisition' &&
+    row.learnItemKind !== 'practice' &&
+    row.reviewRatingDecision?.eligible !== false
 }
 
 function hasConcurrentReviewAmbiguity(
@@ -68,7 +68,7 @@ function hasConcurrentReviewAmbiguity(
   const localIds = new Set(local.map(row => row.attemptId))
   const remoteByWord = new Map<string, IWordRecord[]>()
   for (const row of remote) {
-    if (!eligibleReview(row) || localIds.has(row.attemptId)) continue
+    if (!possibleSchedulerReview(row) || localIds.has(row.attemptId)) continue
     const key = JSON.stringify([row.dict, row.word])
     const group = remoteByWord.get(key) ?? []
     group.push(row)
@@ -78,7 +78,7 @@ function hasConcurrentReviewAmbiguity(
     group.sort((a, b) => a.timeStamp - b.timeStamp)
   }
   for (const row of local) {
-    if (!eligibleReview(row)) continue
+    if (!possibleSchedulerReview(row)) continue
     const group = remoteByWord.get(JSON.stringify([row.dict, row.word]))
     if (!group) continue
     // Lower-bound search avoids quadratic replay on frequently reviewed words.
@@ -94,8 +94,7 @@ function hasConcurrentReviewAmbiguity(
     }
     for (let i = lo; i < group.length &&
         group[i].timeStamp <= row.timeStamp + REVIEW_RACE_WINDOW_SECONDS; i++) {
-      if (group[i].attemptId !== row.attemptId &&
-          (positiveReview(row) || positiveReview(group[i]))) {
+      if (group[i].attemptId !== row.attemptId) {
         return true
       }
     }
