@@ -500,6 +500,9 @@ test('Phone-only cold spelling validates correct orthography without a second FS
 })
 
 test('Desktop Learn switches between keyboard spelling and the same Tap Recall without changing the session', async ({ page }) => {
+  // The mobile E2E suite defaults to 390px. A desktop-specific path must
+  // run with a desktop viewport, otherwise the responsive app redirects.
+  await page.setViewportSize({ width: 1280, height: 800 })
   await mockWordPronunciation(page)
   await page.goto('/learn')
   // Use the real desktop entry rather than a seeded cross-route fixture:
