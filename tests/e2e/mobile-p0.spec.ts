@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { reviewWords, seedAcquisitionSession } from './review-flow-harness'
+import { reviewWords, seedAcquisitionSession, seedReviewSession, waitForActiveLearnSession } from './review-flow-harness'
 
 async function countWordRecords(page: Page): Promise<number> {
   return page.evaluate(async () => {
@@ -466,4 +466,49 @@ test('Phone-only uncertain Independent recall does not falsely admit a new word'
   expect(after.records[0].wrongCount).toBe(0)
   expect(after.state).toBeNull()
   await expect(practice.locator('[data-mobile-manual-next]')).toBeVisible()
+})
+
+
+test('Phone-only cold spelling validates correct orthography without a second FSRS engine', async ({ page }) => {
+  await mockWordPronunciation(page)
+  await seedAcquisitionSession(page, reviewWords, 930003, 'independent', 4)
+  await page.goto('/mobile/study')
+  const practice = page.locator('[data-mobile-word-practice]')
+  await expect(practice).toBeVisible({ timeout: 45_000 })
+  const word = (await practice.getAttribute('data-mobile-word'))!
+  await expect(practice).toHaveAttribute('data-mobile-task', 'recall')
+  await expect(practice.locator('input')).toHaveCount(0)
+  await practice.locator('[data-mobile-interaction-toggle]').click()
+  await expect(practice).toHaveAttribute('data-mobile-task', 'spelling')
+  await expect(practice.locator('[data-mobile-answer-revealed]')).toHaveCount(0)
+  await expect(practice.locator('.mobile-practice-word')).toHaveCount(0)
+  const input = practice.getByRole('textbox', { name: '独立拼写单词' })
+  await expect(input).toBeVisible()
+  await input.fill(word)
+  await practice.getByRole('button', { name: '确认拼写' }).click()
+  await expect.poll(async () => (await readWordLearningEvidence(page, word)).state?.lifecycle,
+    { timeout: 12_000 }).toBe('active')
+  const saved = await readWordLearningEvidence(page, word)
+  expect(saved.records).toHaveLength(1)
+  expect(saved.records[0].reviewEvidence?.reasonCodes).toContain('objective-spelling-clean')
+  expect(saved.records[0].reviewEvidence?.reasonCodes).not.toContain('self-report-not-spelling')
+})
+
+test('Desktop Learn switches between keyboard spelling and identical Tap Recall practice without resetting the session', async ({ page }) => {
+  await mockWordPronunciation(page)
+  await seedReviewSession(page, reviewWords, 930004)
+  await page.goto('/learn')
+  const session = await waitForActiveLearnSession(page)
+  const beforeId = session?.reviewRecord?.id
+  await expect(page.getByRole('button', { name: '切换轻触记忆' })).toBeVisible()
+  await page.getByRole('button', { name: '切换轻触记忆' }).click()
+  const tap = page.locator('[data-desktop-tap-study]')
+  await expect(tap).toBeVisible()
+  await expect(tap.locator('[data-mobile-word-practice]')).toHaveAttribute('data-mobile-task', 'recall')
+  await expect(tap.locator('[data-mobile-word-practice]')).toHaveAttribute('data-mobile-policy', 'canonical-review-probe-v1')
+  await tap.getByRole('button', { name: '返回键盘拼写' }).click()
+  await expect(page.locator('[data-desktop-tap-study]')).toHaveCount(0)
+  await expect(page.locator('[data-typing-word]').first()).toBeVisible()
+  const afterId = await page.evaluate(() => JSON.parse(localStorage.getItem('reviewModeInfo') || '{}').reviewRecord?.id)
+  expect(afterId).toBe(beforeId)
 })

@@ -51,3 +51,21 @@ test('Independent phone acquisition resolves the real phase policy rather than u
   assert.match(code, /itemKind === 'acquisition'/)
   assert.match(code, /data-mobile-policy=\{activePlan\?\.decision\.policyVersion/)
 })
+
+
+test('Desktop Tap Recall reuses mobile component and WordPanel onFinish instead of duplicating the scheduler', async () => {
+  const panel = await read('src/pages/Typing/components/WordPanel/index.tsx')
+  assert.match(panel, /mobile \|\| \(isReviewMode && desktopTapRecall\)/)
+  assert.match(panel, /data-desktop-tap-study/)
+  assert.match(panel, /<MobileWordPractice/)
+  assert.match(panel, /onFinish=\{onFinish\}/)
+})
+
+test('Mobile cold spelling is a separately tagged objective result, not a self-report', async () => {
+  const mobile = await read('src/pages/Typing/components/WordPanel/components/MobileWordPractice.tsx')
+  assert.match(mobile, /objective-spelling-clean/)
+  assert.match(mobile, /objective-spelling-mismatch/)
+  assert.match(mobile, /const submitSpelling = \(\) =>/)
+  assert.match(mobile, /<form\s+className="mobile-practice-spelling-form"/)
+  assert.match(mobile, /task === 'spelling' \|\| mode === 'recall'|mode === 'recall' \|\| mode === 'spelling'/)
+})
