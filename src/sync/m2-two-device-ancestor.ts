@@ -16,6 +16,8 @@
  */
 import type { LocalS2PullAncestor } from './m2-pinned-s2-ancestor'
 import type { ChainedReceipt } from './multi-device-outbox'
+import { previewDisjointWordV4 } from './v4-disjoint-word-candidate'
+import type { DisjointWordV4Candidate } from './v4-disjoint-word-candidate'
 import { inspectPinnedV4FastForward } from './v4-fast-forward-preview'
 import type { FullV4FastForwardPreview } from './v4-fast-forward-preview'
 import { workspaceFingerprintV4 } from './workspace-v4'
@@ -60,6 +62,12 @@ export type TwoDeviceAncestorPreview =
       ancestorRevision: number; ancestorFingerprint: string;
       remoteDeviceId: string; remoteHead: ChainedReceipt;
       fastForward: Extract<FullV4FastForwardPreview, { status: 'projected' }> }
+  | { status: 'projected';
+      reason: 'two-witness-disjoint-word-preview-only';
+      publishReady: false; convergenceComplete: false;
+      ancestorRevision: number; ancestorFingerprint: string;
+      remoteDeviceId: string; remoteHead: ChainedReceipt;
+      disjoint: Extract<DisjointWordV4Candidate, { status: 'projected' }> }
 
 function blocked(reason: string): TwoDeviceAncestorPreview {
   return { status: 'blocked', reason, publishReady: false,
@@ -133,7 +141,27 @@ export async function inspectTwoDevicePinnedAncestor(input: {
     })
     await verifier.assertOwner()
     if (fastForward.status !== 'projected') {
-      return blocked('two-witness-v4:' + fastForward.reason)
+      if (fastForward.reason !==
+          'both-devices-changed-requires-six-table-merge') {
+        return blocked('two-witness-v4:' + fastForward.reason)
+      }
+      const disjoint = await previewDisjointWordV4({
+        accountId, pinnedAncestorFingerprint: localPin.fingerprint,
+        ancestor: localPin.snapshot, local: input.local, remote: input.remote,
+      })
+      await verifier.assertOwner()
+      if (disjoint.status !== 'projected') {
+        return blocked('two-witness-v4:' + disjoint.reason)
+      }
+      return {
+        status: 'projected',
+        reason: 'two-witness-disjoint-word-preview-only',
+        publishReady: false, convergenceComplete: false,
+        ancestorRevision: localPin.revision,
+        ancestorFingerprint: localPin.fingerprint,
+        remoteDeviceId, remoteHead: { ...remoteWitness.eventHead },
+        disjoint,
+      }
     }
     return {
       status: 'projected', reason: 'two-witness-fast-forward-preview-only',
