@@ -14,7 +14,6 @@
  * Without replay verified against the actual device event heads and
  * journaled M4 admission, this is a candidate, never permission to publish.
  */
-import type { IWordRecord } from '@/utils/db/record'
 import type { IReviewWordState } from '@/review/types'
 import { isLearningAttemptId } from '@/utils/db/attempt-identity'
 import { previewConservativeThreeWayV4 } from './v4-conservative-three-way'
@@ -30,7 +29,6 @@ type Row = Record<string, unknown>
 type Collection = { tableName: string; rows: Row[] }
 type Database = { data: { data: Collection[]; tables: unknown[] } }
 type Source = 'local' | 'remote'
-const TABLES = ['wordRecords', 'reviewWordStates'] as const
 const PROTECTED = ['chapterRecords', 'reviewRecords',
   'achievementEvents', 'achievementStates'] as const
 const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0
