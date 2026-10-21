@@ -86,6 +86,16 @@ FSRS-6、Acquisition、成就和每日学习进度只能从同一份已验证的
 - **回归**：`tests/cloud/v4-fast-forward-preview.test.mjs` 覆盖本机/远端单端变化、双端冲突、伪造 SHA、跨账户、缺失六表、Dexie schema 变化、不丢弃不同 UI/每日状态；`tests/e2e/workspace-v4-m2-ancestor.spec.ts` 使用真实 Chromium IDB 验证 S2 Pull 后祖先和 baseline 一起落盘、跨刷新读取、基线失效、归档内容篡改阻断。
 - **严格证明边界**：本地有原始 V4 与服务器曾经确认的 revision，只说明**本设备**曾经在该云端版本恢复过数据。不能证明远端设备也拥有同一父本，更不能证明 EdgeOne Blob 已枚举全部设备。要执行任何双端三方合并，还必须有第二设备的独立可核实父本见证、完整设备事件链和跨 POP 收敛证据。暂无自动六表写回/云端发布入口。
 
+### M2.9–M2.11 第二设备 checkout 存证（2026-10-22）
+
+当前仍仅在 `product/main` 开发，未部署 etest/master。实现分三层：
+
+1. **双设备门禁（只读）**：`src/sync/m2-two-device-ancestor.ts` 不把两个相同 SHA 或已认证 M3 事件链误判成共享历史。只有本机 S2 Pull 存证完整、不同远端 deviceId 的 checkout 回执经独立账户 API 精确认证、云端 revision+指纹一致、远端事件链前缀被服务端精确读取认证时，才继续检查完整 V4 的快进候选。任何双端不同修改仍拒绝走快进。结果永远 `publishReady:false`、`convergenceComplete:false`。
+2. **服务端回执**：`cloud-functions/_shared/device-checkout.js` 创建独立的随机 UUID 回执和 SHA-256 内容寻址；服务端 `core.js` 从已认证 session 提取**账户和设备 ID**，先核对当前云端 V4 revision/指纹，以及真实的 M3 链式事件头，再保存并按精确键回读；Blob 存储隔离在 `users/{accountId}/device-checkouts/v1/`，不依赖 list 或 atomic CAS。账户删除同时清除此目录。
+3. **API 与浏览器只读连接**：试验接口 `POST /api/sync/events/v2/checkout` 和 `GET /api/sync/events/v2/checkout?deviceId=...&checkoutId=...&sha256=...` 受现有 `MULTI_DEVICE_EVENT_PILOT_ENABLED` 开关限制（默认关闭）。`src/sync/api.ts` 暴露 API；`src/sync/m2-two-device-browser.ts` 校验 S1 generation、当前账号和 token 不变，从 vault 取本机真 S2 Pull 祖先，精确读取远端回执并再次通过已有 M3 verify-set 核实事件链前缀。这一桥接不在普通 Learn/Sync UI 中调用。
+4. **证据范围必须严格区分**：回执表示**某个真实认证设备会话向服务器申报了自己使用的云端版本**，不是可信执行环境 attestation，无法从网络独立证明浏览器 IndexedDB 的本地内容完整，也不能证明所有设备、所有 POP 的事件已列举完整。若远端版本已被更新，服务端只接受当前可验证版本的新申报；旧版回执按精确 key 查询但不自动适用未来合并。
+5. **仍缺关键闭环**：对活跃/刚注册的设备实现真实 S2 下载完成后的自动回执提交、定义远端当前完整 V4 来源和长久可验证的历史基线、两端不同修改的 FSRS/Session/Chapter 冲突仲裁、M4 事务写回准入及跨 POP 实网验证。绝不将只读候选伪装成可写回的融合结果。
+
 ## 完成判据
 
 - 本机保存 -> 事件批次永久稳定 -> 另一设备验证/下载 -> 六表合并 -> FSRS replay -> 前台继续学习。
