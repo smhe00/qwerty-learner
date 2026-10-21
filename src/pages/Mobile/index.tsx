@@ -45,7 +45,7 @@ export default function MobilePage() {
         <Link className="mobile-start-link" to="/mobile/study" aria-label={checkpoint ? "继续手机学习" : "开始手机学习"}>
           {checkpoint ? '继续学习' : '开始手机学习'} <ChevronRight size={19} aria-hidden="true"/>
         </Link>
-        <p className="mobile-p0-note">手机学习 · 无需键盘输入</p>
+        <p className="mobile-p0-note">轻触学习为主 · 需要时可选择独立拼写</p>
       </section>
 
       <section className="mobile-home-menu" aria-label="功能菜单">

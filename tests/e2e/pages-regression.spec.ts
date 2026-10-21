@@ -202,25 +202,24 @@ test('published Pages: Focus achievements default is accessible on desktop/mobil
   await expect(page.locator('.focus-achievements-detail')).toHaveCount(0)
   expect(errors).toEqual([])
 
-  // Mobile P0 is a separate menu-first app shell. P2 integrations (including
-  // achievements and sign-in) remain unavailable rather than opening a blank
-  // mobile screen. This context must not fight the desktop S1 writer lock.
+  // Mobile P0 has an independent menu and a REAL Learn session. Account,
+  // achievements and statistics are intentionally disabled until P2.
+  // Do not assert obsolete Alpha-preview copy or a fake non-persistent demo.
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 } })
   const mobile = await mobileContext.newPage()
   try {
-    await mobile.goto(site, { waitUntil: 'domcontentloaded' })
-    await mobile.waitForURL(/\/(?:mobile|learn)\/?$/, { timeout: 15000 })
-    await expect(mobile.locator('[data-mobile-menu]')).toBeVisible({ timeout: 12000 })
+    await mobile.goto(site + 'mobile', { waitUntil: 'domcontentloaded' })
+    await expect(mobile.locator('[data-mobile-menu]')).toBeVisible({ timeout: 20_000 })
     await expect(mobile.getByText('成就', { exact: true })).toBeVisible()
     await expect(mobile.getByText('移动端成就即将开放')).toBeVisible()
     await expect(mobile.locator('[data-mobile-menu] a[href$="/achievements"]')).toHaveCount(0)
-    await mobile.getByRole('link', { name: '进入沉浸学习页面' }).click()
-    await expect(mobile).toHaveURL(/\/mobile\/study$/)
-    await expect(mobile.locator('[data-mobile-study]')).toBeVisible()
-    await expect(mobile.getByText('学习界面预览 · 不会记录拼写结果')).toBeVisible()
+    await expect(mobile.getByRole('link', { name: /(?:开始|继续)手机学习/ })).toBeVisible()
+    await mobile.getByRole('link', { name: /(?:开始|继续)手机学习/ }).click()
+    await expect(mobile).toHaveURL(/\/mobile\/study\/?$/)
+    await expect(mobile.locator('[data-mobile-word-practice]')).toBeVisible({ timeout: 45_000 })
     await expect(mobile.locator('header nav.focus-header-nav')).toHaveCount(0)
     await expect.poll(() => mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true)
-    await mobile.getByRole('link', { name: '返回主菜单' }).click()
+    await mobile.getByRole('button', { name: '返回主菜单' }).click()
     await expect(mobile).toHaveURL(/\/mobile\/?$/)
     await expect(mobile.locator('[data-mobile-menu]')).toBeVisible()
   } finally {
