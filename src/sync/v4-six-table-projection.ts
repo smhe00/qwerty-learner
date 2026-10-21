@@ -61,7 +61,7 @@ export type SixTableConvergencePreview =
     }
   }
 
-const fail = (reason: string): SixTableConvergencePreview =>
+const fail = (reason: string): Extract<SixTableConvergencePreview, { status: 'blocked' }> =>
   ({ status: 'blocked', reason, publishReady: false, convergenceComplete: false })
 
 const validId = (id: unknown): id is number =>
