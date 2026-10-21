@@ -134,7 +134,7 @@ test('two divergent device heads require six-table arbitration despite same ance
   input.local = snap('local')
   const result = await inspect(input)
   assert.equal(result.reason,
-    'two-witness-v4:both-devices-changed-requires-six-table-merge')
+    'two-witness-v4:disjoint-v4-invalid:disjoint-local-ancestor-record-rewritten')
   assert.equal(result.publishReady, false)
 })
 test('returned evidence is detached from verifier receipt input', async () => {
@@ -143,4 +143,49 @@ test('returned evidence is detached from verifier receipt input', async () => {
   assert.equal(result.status, 'projected')
   result.remoteHead.sequence = 42
   assert.equal(head.sequence, 3)
+})
+
+test('validated two-device ancestor routes independent words to complete V4 disjoint candidate', async () => {
+  const input = await fixture()
+  const base = structuredClone(input.localPin.snapshot)
+  base.workspaceData.database.data.data.find(
+    x => x.tableName === 'wordRecords').rows[0] = {
+    id: 1, dict: 'school', word: 'initial', chapter: 0,
+    attemptId: '00000000-0000-4000-8000-000000000101',
+    timeStamp: 1800000000, timing: [], wrongCount: 0,
+    mistakes: {}, sourceMode: 'learn', learnItemKind: 'acquisition',
+  }
+  const pinned = await fingerprint(base)
+  input.localPin.snapshot = base
+  input.localPin.fingerprint = pinned
+  const oldVerify = input.verifier.verifyRemoteCheckout
+  input.verifier.verifyRemoteCheckout = async deviceId => {
+    const receipt = await oldVerify(deviceId)
+    return { ...receipt, cloudFingerprint: pinned }
+  }
+  input.local = structuredClone(base)
+  input.remote = structuredClone(base)
+  const get = s => s.workspaceData.database.data.data.find(
+    x => x.tableName === 'wordRecords').rows
+  get(input.local).push({ ...get(input.local)[0], id: 2, word: 'banana',
+    attemptId: '00000000-0000-4000-8000-000000000102' })
+  get(input.remote).push({ ...get(input.remote)[0], id: 2, word: 'cherry',
+    attemptId: '00000000-0000-4000-8000-000000000103' })
+  const outcome = await inspect(input)
+  assert.equal(outcome.status, 'projected', outcome.reason)
+  assert.equal(outcome.reason, 'two-witness-disjoint-word-preview-only')
+  assert.equal(outcome.publishReady, false)
+  assert.equal(outcome.disjoint.candidateFingerprint,
+    await fingerprint(outcome.disjoint.candidate))
+  assert.deepEqual(get(outcome.disjoint.candidate).map(r => r.word),
+    ['initial','banana','cherry'])
+  assert.deepEqual(get(outcome.disjoint.candidate).map(r => r.id), [1,2,3])
+  assert.equal(outcome.disjoint.requiresFullFsrsAndCloudAdmission,true)
+})
+test('missing remote checkout witness rejects disjoint merge before processing snapshots', async () => {
+  const input = await fixture({ noCheckout: true })
+  input.local = snap('local')
+  input.remote = snap('remote')
+  assert.equal((await inspect(input)).reason,
+    'two-witness-independent-checkout-unverified')
 })
