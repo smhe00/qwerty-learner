@@ -184,6 +184,16 @@ export function useSaveWordRecord() {
           })
       }
 
+      // Independent M3 pilot transport, opt-in ONLY on etest and only AFTER
+      // the authoritative WordRecord is durably saved. Its own recovery scan
+      // repairs a crash between this write and the separate IDB outbox.
+      // Never treat an event receipt as a V4 account convergence verdict.
+      if (dbID > 0 && import.meta.env.VITE_QWERTY_M3_PILOT_AUTO === 'true') {
+        void import('@/sync/m3-publication-browser')
+          .then(({ scheduleEtestM3Publication }) => scheduleEtestM3Publication())
+          .catch(error => console.warn('M3 pilot not scheduled; original WordRecord retained', error))
+      }
+
       return dbID
     },
     [
