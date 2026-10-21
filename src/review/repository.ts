@@ -17,9 +17,9 @@ import {
 } from '@/learn/lifecycle'
 import { CURRENT_REVIEW_STATE_VERSION, createInitialReviewWordState } from './types'
 import type { IReviewWordState, ReviewOutcome } from './types'
-import type { IWordRecord } from '@/utils/db/record'
 import { db } from '@/utils/db/core'
 import { getUTCUnixTimestamp } from '@/utils/time'
+import { needsFsrsProjectionRecovery } from './projection-recovery'
 
 export async function getReviewWordState(dict: string, word: string): Promise<IReviewWordState | undefined> {
   return db.reviewWordStates.where('[dict+word]').equals([dict, word]).first()
@@ -221,29 +221,6 @@ export async function applyReviewOutcome(
   }
 
   return result.state
-}
-
-/**
- * Conservative repair for an interrupted or pre-fix mobile Review commit.
- * Only modern eligible, durable review events can trigger FSRS replay here.
- * Negative or unverified training events never promote memory proficiency.
- */
-export function needsFsrsProjectionRecovery(
-  state: IReviewWordState,
-  records: readonly IWordRecord[],
-): boolean {
-  const eligible = records.filter((row) =>
-    row.sourceMode === 'learn' &&
-    row.learnItemKind === 'review' &&
-    row.reviewRatingDecision?.eligible === true,
-  )
-  if (eligible.length === 0) return false
-  const newest = eligible.reduce(
-    (max, row) => Math.max(max, row.timeStamp),
-    0,
-  )
-  return eligible.length > state.reviewCount ||
-    newest > (state.lastReviewedAt ?? 0)
 }
 
 export async function bootstrapReviewWordStatesForDictionary(

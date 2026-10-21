@@ -72,6 +72,7 @@ import {
   shouldDropLegacyTypingSeededState,
 } from '../../src/review/rebuild'
 import { buildOrthographyProfile } from '../../src/review/profile'
+import { needsFsrsProjectionRecovery } from '../../src/review/projection-recovery'
 import {
   MAX_REINFORCEMENT_GAP,
   buildReviewSessionExercisePlans,
@@ -717,4 +718,46 @@ test('manually requested pronunciation marks an otherwise canonical retrieval as
 
   assert.equal(evidence.retrievalValidity, 'assisted')
   assert.ok(evidence.reasonCodes.includes('requested-audio-cue'))
+})
+
+
+test('FSRS replay recovery is triggered only by newer or uncounted eligible Learn Reviews', () => {
+  const state = createInitialReviewWordState('cet4', 'memory', 100)
+  const grade: IWordRecord = {
+    id: 1,
+    dict: 'cet4',
+    word: 'memory',
+    chapter: -1,
+    timeStamp: 200,
+    timing: [],
+    wrongCount: 0,
+    mistakes: {},
+    sourceMode: 'learn',
+    learnItemKind: 'review',
+    reviewRatingDecision: {
+      eligible: true,
+      rating: 'good',
+      confidence: 1,
+      reasonCodes: ['self-rated-before-answer-reveal'],
+    },
+  }
+  assert.equal(needsFsrsProjectionRecovery(state, [grade]), true)
+  const recovered = { ...state, reviewCount: 1, lastReviewedAt: 200 }
+  assert.equal(needsFsrsProjectionRecovery(recovered, [grade]), false)
+
+  const newer = { ...grade, id: 2, timeStamp: 300 }
+  assert.equal(needsFsrsProjectionRecovery(recovered, [grade, newer]), true)
+  const sameSecond = { ...grade, id: 3, timeStamp: 200 }
+  assert.equal(needsFsrsProjectionRecovery(recovered, [grade, sameSecond]), true)
+
+  assert.equal(needsFsrsProjectionRecovery(state, [{
+    ...grade, reviewRatingDecision: { eligible: false, rating: null,
+      reason: 'training-event', reasonCodes: ['training'] },
+  }]), false)
+  assert.equal(needsFsrsProjectionRecovery(state, [{
+    ...grade, learnItemKind: 'acquisition',
+  }]), false)
+  assert.equal(needsFsrsProjectionRecovery(state, [{
+    ...grade, sourceMode: 'typing',
+  }]), false)
 })
