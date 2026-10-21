@@ -7,6 +7,7 @@ import Phonetic from './components/Phonetic'
 import Translation from './components/Translation'
 import WordComponent from './components/Word'
 import MobileWordPractice from './components/MobileWordPractice'
+import '@/pages/Mobile/mobile-app.css'
 import type { WordFinishResult } from './components/Word'
 import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
@@ -62,6 +63,9 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
   const [currentReviewHintLevel, setCurrentReviewHintLevel] =
     useState<ReviewHintLevel | null>(null)
   const [isLearnMenuOpen, setIsLearnMenuOpen] = useState(false)
+  // Exercise preference changes presentation only: no second memory state,
+  // no new daily quota, no cross-device cursor mutation.
+  const [desktopTapRecall, setDesktopTapRecall] = useState(false)
   const [isExcludingWord, setIsExcludingWord] = useState(false)
   const { times: loopWordTimes } = useAtomValue(loopWordConfigAtom)
   const currentWord = state.chapterData.words[state.chapterData.index]
@@ -728,31 +732,59 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
       currentAcquisitionState?.phase === 'supported' ||
       currentAcquisitionState?.phase === 'independent')
 
-  if (mobile) {
+  if (mobile || (isReviewMode && desktopTapRecall)) {
     return (
-      <div className="mobile-practice-host">
-        {currentWord && (
-          <MobileWordPractice
-            key={String(currentWordRenderKey) + ':' + currentWord.name + ':' + (currentAcquisitionState?.phase ?? 'review')}
-            word={currentWord}
-            queue={state.chapterData.words}
-            onFinish={onFinish}
-            exercisePlan={currentExercisePlan}
-            itemKind={currentLearnItemKind}
-            recordKind={currentAcquisitionState?.spacingOnly ? 'practice' : currentLearnItemKind}
-            acquisitionState={currentAcquisitionState}
-            reviewAttemptRole={currentReviewAttemptRole}
-            paused={!state.isTyping}
-            onResume={() => dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: true })}
-          />
+      <div
+        className={mobile ? 'mobile-practice-host' : 'mobile-app desktop-tap-learn-frame'}
+        {...(!mobile ? { 'data-desktop-tap-study': true } : {})}
+      >
+        {!mobile && (
+          <div className="desktop-tap-learn-toolbar">
+            <span>轻触记忆 · 与手机共用学习进度</span>
+            <button
+              type="button"
+              onClick={() => setDesktopTapRecall(false)}
+              aria-label="返回键盘拼写"
+            >
+              返回键盘拼写
+            </button>
+          </div>
         )}
+        <div className={mobile ? 'mobile-practice-inner' : 'mobile-practice-host'}>
+          {currentWord && (
+            <MobileWordPractice
+              key={String(currentWordRenderKey) + ':' + currentWord.name + ':' + (currentAcquisitionState?.phase ?? 'review')}
+              word={currentWord}
+              queue={state.chapterData.words}
+              onFinish={onFinish}
+              exercisePlan={currentExercisePlan}
+              itemKind={currentLearnItemKind}
+              recordKind={currentAcquisitionState?.spacingOnly ? 'practice' : currentLearnItemKind}
+              acquisitionState={currentAcquisitionState}
+              reviewAttemptRole={currentReviewAttemptRole}
+              paused={!state.isTyping}
+              onResume={() => dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: true })}
+            />
+          )}
+        </div>
       </div>
     )
   }
 
+
   return (
     <div data-session-time={state.timerData.time} className="focus-study-stage flex h-full w-full flex-col items-center justify-center">
       <div className="flex h-16 w-full shrink-0 grow-0 justify-between px-6 pt-6 sm:px-12">
+        {isReviewMode && (
+          <button
+            type="button"
+            className="desktop-tap-entry"
+            onClick={() => setDesktopTapRecall(true)}
+            aria-label="切换轻触记忆"
+          >
+            切换轻触记忆
+          </button>
+        )}
         {!isReviewMode && isShowPrevAndNextWord && state.isTyping && (
           <>
             <PrevAndNextWord type="prev" />

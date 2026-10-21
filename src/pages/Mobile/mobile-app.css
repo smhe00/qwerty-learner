@@ -353,3 +353,64 @@
   .mobile-practice-primary { min-height: 64px; }
   .mobile-practice-choice, .mobile-practice-grade { min-height: 62px; }
 }
+
+
+/* Desktop can render exactly the same Tap Recall exercise component.
+   The desktop wrapper owns dimensions only, never a separate Learn engine. */
+.desktop-tap-learn-frame.mobile-app {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  max-width: 760px;
+  padding: 10px 24px;
+  background: var(--focus-canvas, #f7f8fa);
+}
+.desktop-tap-learn-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  min-height: 50px;
+  padding: 0 8px;
+  font-size: 13px;
+  color: var(--mobile-muted);
+}
+.desktop-tap-learn-toolbar button,
+.desktop-tap-entry {
+  min-height: 40px;
+  padding: 7px 16px;
+  border: 1px solid var(--focus-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--focus-surface, #fff);
+  color: var(--focus-text, #1e293b);
+  font-size: 13px;
+  cursor: pointer;
+}
+.desktop-tap-learn-frame > .mobile-practice-host {
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 0;
+}
+.desktop-tap-learn-frame .mobile-practice {
+  min-height: 0;
+  height: 100%;
+  max-width: 600px;
+  padding: 0 22px;
+  border: 1px solid var(--mobile-line);
+  border-radius: 18px;
+  box-shadow: var(--focus-shadow-panel, 0 3px 22px #00000008);
+}
+.mobile-practice-inner {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+}
+@media (max-height: 700px) {
+  .desktop-tap-learn-frame .mobile-practice {
+    padding: 0 12px;
+  }
+}
