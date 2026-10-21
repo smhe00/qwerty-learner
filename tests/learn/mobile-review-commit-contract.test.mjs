@@ -31,3 +31,14 @@ test('Mobile review Good is frozen before reveal and can be corrected before per
   assert.match(code, /'self-report-not-spelling'/)
   assert.doesNotMatch(code, /(?:onClick|onKeyDown)=\{revealAnswer\}/)
 })
+
+
+test('FSRS bootstrapping repairs stale cached state only for newer eligible durable review events', async () => {
+  const source = await read('src/review/repository.ts')
+  assert.match(source, /export function needsFsrsProjectionRecovery\(/)
+  assert.match(source, /row\.reviewRatingDecision\?\.eligible === true/)
+  assert.match(source, /eligible\.length > state\.reviewCount/)
+  assert.match(source, /newest > \(state\.lastReviewedAt \?\? 0\)/)
+  assert.match(source, /if \(needsFsrsProjectionRecovery\(existing, wordRecords\)\)/)
+  assert.match(source, /rebuildActiveFsrsStateFromWordRecords\(/)
+})

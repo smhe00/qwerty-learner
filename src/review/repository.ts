@@ -17,6 +17,7 @@ import {
 } from '@/learn/lifecycle'
 import { CURRENT_REVIEW_STATE_VERSION, createInitialReviewWordState } from './types'
 import type { IReviewWordState, ReviewOutcome } from './types'
+import type { IWordRecord } from '@/utils/db/record'
 import { db } from '@/utils/db/core'
 import { getUTCUnixTimestamp } from '@/utils/time'
 
@@ -222,6 +223,29 @@ export async function applyReviewOutcome(
   return result.state
 }
 
+/**
+ * Conservative repair for an interrupted or pre-fix mobile Review commit.
+ * Only modern eligible, durable review events can trigger FSRS replay here.
+ * Negative or unverified training events never promote memory proficiency.
+ */
+export function needsFsrsProjectionRecovery(
+  state: IReviewWordState,
+  records: readonly IWordRecord[],
+): boolean {
+  const eligible = records.filter((row) =>
+    row.sourceMode === 'learn' &&
+    row.learnItemKind === 'review' &&
+    row.reviewRatingDecision?.eligible === true,
+  )
+  if (eligible.length === 0) return false
+  const newest = eligible.reduce(
+    (max, row) => Math.max(max, row.timeStamp),
+    0,
+  )
+  return eligible.length > state.reviewCount ||
+    newest > (state.lastReviewedAt ?? 0)
+}
+
 export async function bootstrapReviewWordStatesForDictionary(
   dict: string,
   legacyDueAt = getUTCUnixTimestamp(),
@@ -277,6 +301,24 @@ export async function bootstrapReviewWordStatesForDictionary(
     for (const [word, wordRecords] of recordsByWord) {
       const existing = existingByWord.get(word)
       if (existing) {
+        if (needsFsrsProjectionRecovery(existing, wordRecords)) {
+          const rebuilt = rebuildActiveFsrsStateFromWordRecords(
+            dict, word, wordRecords, { legacyDueAt },
+          )
+          if (rebuilt) {
+            await db.reviewWordStates.put({
+              ...rebuilt,
+              id: existing.id,
+              lifecycle: existing.lifecycle ?? rebuilt.lifecycle,
+              ...(existing.exclusion ? { exclusion: existing.exclusion } : {}),
+            })
+            changedCount += 1
+            continue
+          }
+          // An incomplete acquisition or corrupt history must not become
+          // a fabricated mastered state. Leave evidence for diagnosis.
+          console.warn('Learn FSRS projection recovery skipped', { dict, word })
+        }
         const refreshed = reactivateReviewStateFromLearningEvidence(
           existing,
           wordRecords,
