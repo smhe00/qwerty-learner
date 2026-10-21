@@ -8,6 +8,8 @@ import { createWorkspaceV4, workspaceFingerprintV4 } from '../../src/sync/worksp
 import { analyzeV4SnapshotSize } from '../../src/sync/v4-size-audit'
 import { loadSyncV2Baseline, compareAndSwapSyncV2Baseline } from '../../src/sync/v2-baseline'
 import { syncV2PullJournalPort } from '../../src/sync/v2-pull-journal'
+import { recoverPendingSyncV2Pull } from '../../src/sync/v2-pull-recovery'
+import { loadPinnedLocalS2PullAncestor } from '../../src/sync/m2-pinned-s2-ancestor'
 import { manualV4ImportJournalPort } from '../../src/sync/manual-v4-import-journal'
 import { m4MergeJournalPort } from '../../src/sync/m4-merge-journal'
 import { recoverPendingM4Merge } from '../../src/sync/m4-merge-browser-recovery'
@@ -320,6 +322,8 @@ async function inspectTableContract() {
   loadSyncV2Baseline,
   compareAndSwapSyncV2Baseline,
   syncV2PullJournalPort,
+  recoverPendingSyncV2Pull,
+  loadPinnedLocalS2PullAncestor,
   manualV4ImportJournalPort,
   m4MergeJournalPort,
   recoverPendingM4Merge,
