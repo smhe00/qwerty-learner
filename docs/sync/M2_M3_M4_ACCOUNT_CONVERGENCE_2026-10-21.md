@@ -54,6 +54,18 @@ FSRS-6、Acquisition、成就和每日学习进度只能从同一份已验证的
 - 六表只读投影对每端重复/畸形 UUID fail-closed；跨端相同 UUID 及完全一致 Session 内容可标记 `matchedSessionPairs`，但仍**不能作为合并授权**。如果 UUID 相同但进度游标或任意内容不同，直接拒绝本轮候选，并保留双方原始数据。
 - 保持 `publishReady:false` / `convergenceComplete:false`；已匹配 UUID ≠ 已有共同祖先证明。尚未实现跨设备 Session 游标自动接续、离线并发冲突仲裁和六表恢复事务。真实 EdgeOne Blob 测试需等这些门禁通过后在隔离 `etest` 进行。
 
+### M2.6 共同祖先三方 Session 候选 + 六表联合检查（2026-10-22）
+
+代码实现于 `src/sync/v4-session-three-way.ts`、`src/sync/v4-six-table-projection.ts`，测试实现于 `tests/cloud/v4-session-three-way.test.mjs` 和 `tests/cloud/v4-six-table-projection.test.mjs`。
+
+1. **祖先必须外部验明**：调用方需独立确证账户所有权、共同祖先 V4 来源、完整快照和已钉住的祖先摘要；`pinnedAncestorDigest` 只保证输入的 Session 行与钉住的 bytes 一致，**不能单独证明祖先真实属于两设备**。未取得可信祖先时绝不能调用写入路径。
+2. **三方冲突规则**：`local==base, remote!=base` 只生成远端候选；反之生成本机候选；两端相同更新仅产生一个候选；两端各自推进成不同内容、祖先缺失、终态倒退、会话身份/不可变头变化立即阻断。新出现的不同 UUID 并列保留，不按时间戳推测同一 Session。
+3. **历史行保护**：缺 UUID、重复 UUID、同一设备重复数字主键全部阻断；不能从时间推测旧记录身份。终态压缩后的空 `words` 与完成游标允许存在，但没有因此可推断其它设备已经完成。
+4. **接到六表预览**：`inspectV4ThreeWaySixTableCandidate` 先运行祖先三方检查，再联合检查单词不可变事件、章节与成就外键、FSRS 重放及全部 Session 来源。默认 `projectV4SixTableEvidence` 对相同 UUID 分叉仍维持严格拒绝；独立三方门禁通过才允许*只读候选*标记。
+5. **安全边界不变**：所有结果 `publishReady:false`、`convergenceComplete:false`；不修改 IndexedDB、原 V4、每日 Session 游标或云端，不能据此报告多设备收敛。
+
+**余下关键阻塞**：落实由服务器及 S1 授权的真实 common-ancestor 读取，补足缺 UUID 历史的可验证祖先重键（不可凭数字碰撞猜测），同词并发复习挑战组仲裁、六表事务导入/回滚和最终一致性设备枚举审计，随后才可启用 etest 的隔离试验。
+
 ## 完成判据
 
 - 本机保存 -> 事件批次永久稳定 -> 另一设备验证/下载 -> 六表合并 -> FSRS replay -> 前台继续学习。
