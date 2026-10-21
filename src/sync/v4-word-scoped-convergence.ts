@@ -185,19 +185,11 @@ export function projectWordScopedConvergence(input: {
       }
       const rows = [...unique.values()].sort((a, b) =>
         a.timeStamp - b.timeStamp || compare(a.attemptId!, b.attemptId!))
-      const shadow = rows.map((row, i) => ({
-        ...row, id: i + 1,
-        ...(row.attemptId === pair.suppressed
-          ? { reviewRatingDecision: {
-              eligible: false as const,
-              rating: null,
-              reason: 'non-cold-attempt' as const,
-              reasonCodes: ['duplicate-same-fsrs-base-preview-only'],
-            } } : {}),
-      }))
+      const replayOnly = rows.map((row, i) => ({ ...row, id: i + 1 }))
       try {
         const state = rebuildActiveFsrsStateFromWordRecords(
-          rows[0].dict, rows[0].word, shadow) ?? null
+          rows[0].dict, rows[0].word, replayOnly,
+          { suppressedAttemptIds: new Set([pair.suppressed]) }) ?? null
         words.push({ dict: rows[0].dict, word: rows[0].word,
           status: 'projected', reason: 'same-base-duplicate-preview-only',
           attemptIds: rows.map(r => r.attemptId!), fsrsState: state,

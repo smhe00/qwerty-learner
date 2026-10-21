@@ -85,7 +85,13 @@ export function rebuildActiveFsrsStateFromWordRecords(
   dict: string,
   word: string,
   records: readonly IWordRecord[],
-  options?: { legacyDueAt?: number },
+  options?: {
+    legacyDueAt?: number
+    /** Explicit adjudicated duplicate grades. Raw immutable attempts remain
+     * visible, but these UUIDs MUST NOT advance FSRS. Without trusted
+     * adjudication the caller must not supply this mask. */
+    suppressedAttemptIds?: ReadonlySet<string>
+  },
 ): IReviewWordState | undefined {
   const sorted = [...records].sort(compareRecordOrder)
   const firstAdmission = sorted.find(isCompletedAcquisitionRecord)
@@ -119,7 +125,9 @@ export function rebuildActiveFsrsStateFromWordRecords(
     const afterAdmission =
       !firstAdmission ||
       compareRecordOrder(record, firstAdmission) > 0
-    const outcome = afterAdmission
+    const outcome = afterAdmission &&
+      !(record.attemptId &&
+        options?.suppressedAttemptIds?.has(record.attemptId))
       ? inferReviewOutcomeFromWordRecord(record, priorRecords)
       : undefined
 
