@@ -785,27 +785,35 @@ export function createEdgeOneBlobStorage(store) {
     },
 
     async deleteUserData(usernameHash, userId) {
-      const [authDeleted, sessionsDeleted, independentSessionsDeleted,
-        revisionsDeleted, revisionPartsDeleted, eventBatchesDeleted,
-        chainedEventBatchesDeleted, pendingV4PartsDeleted,
-        pendingBinaryV4PartsDeleted] = await Promise.all([
-        deletePrefix(authPrefix(usernameHash)),
-        deletePrefix(sessionPrefix(usernameHash)),
-        deletePrefix(independentSessionPrefix(usernameHash)),
+      // EdgeOne's Blob does not provide atomic multi-key deletes, and a
+      // 10-way simultaneous strong-list/delete burst can produce HTTP 500.
+      // Bound load to 3 independent prefixes per stage. Keep auth and
+      // account identity UNTIL durable content cleanup is complete so a
+      // transient failure can be retried by an authenticated caller.
+      const [revisionsDeleted, revisionPartsDeleted,
+        eventBatchesDeleted] = await Promise.all([
         deletePrefix(revisionPrefix(userId)),
         deletePrefix(revisionPartsPrefix(userId)),
         deletePrefix(eventBatchPrefix(userId)),
+      ])
+      const [chainedEventBatchesDeleted, deviceCheckoutsDeleted,
+        pendingV4PartsDeleted] = await Promise.all([
         deletePrefix(chainedBatchPrefix(userId)),
         deletePrefix(deviceCheckoutPrefix(userId)),
         deletePrefix(uploadPrefix(userId)),
-        deletePrefix(`users/${userId}/v4-http-parts/v3/`),
       ])
-
+      const pendingBinaryV4PartsDeleted =
+        await deletePrefix(`users/${userId}/v4-http-parts/v3/`)
+      // Session deletions are postponed until all user-owned records are
+      // gone. Password auth is last, followed by account identity.
+      const [sessionsDeleted, independentSessionsDeleted] =
+        await Promise.all([
+          deletePrefix(sessionPrefix(usernameHash)),
+          deletePrefix(independentSessionPrefix(usernameHash)),
+        ])
+      const authDeleted = await deletePrefix(authPrefix(usernameHash))
       const account = await strongJson(accountKey(usernameHash))
-      if (account !== null) {
-        await deleteKey(accountKey(usernameHash))
-      }
-
+      if (account !== null) await deleteKey(accountKey(usernameHash))
       return {
         accountDeleted: account !== null,
         authDeleted,
@@ -815,8 +823,10 @@ export function createEdgeOneBlobStorage(store) {
         revisionPartsDeleted,
         eventBatchesDeleted: eventBatchesDeleted + chainedEventBatchesDeleted,
         chainedEventBatchesDeleted,
+        deviceCheckoutsDeleted,
         pendingV4PartsDeleted: pendingV4PartsDeleted + pendingBinaryV4PartsDeleted,
       }
+
     },
   }
 }

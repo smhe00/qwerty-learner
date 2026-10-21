@@ -621,3 +621,35 @@ test('M2.10 exact checkout receipt survives stale Blob listing without claiming 
     cloudRevision: 1, cloudFingerprint: sha, eventHead: receipt(batch),
   }), /checkout-cloud-revision-not-verified/)
 })
+
+test('account delete bounds Blob list load and removes device checkout namespace', async () => {
+  class LimitedListBlob extends FakeBlob {
+    constructor() { super(); this.activeLists = 0; this.peakLists = 0; this.limit = false }
+    async list(request) {
+      this.activeLists++
+      this.peakLists = Math.max(this.peakLists, this.activeLists)
+      try {
+        if (this.limit && this.activeLists > 3) {
+          throw new Error('Blob strong-list overload')
+        }
+        await new Promise(resolve => setTimeout(resolve, 2))
+        return super.list(request)
+      } finally { this.activeLists-- }
+    }
+  }
+  const blob = new LimitedListBlob()
+  const storage = createEdgeOneBlobStorage(blob)
+  const service = createBackendService({ storage })
+  const user = await service.register('bounded_deletion_checkout', 'Password123', device(1))
+  await storage.putImmutableDeviceCheckout(user.user.userId, device(1),
+    uuid(992), 'b'.repeat(64), { version: 1, disposable: true })
+  const ownedPrefix = 'users/' + user.user.userId + '/device-checkouts/v1/'
+  assert.ok([...blob.objects.keys()].some(key => key.startsWith(ownedPrefix)))
+  blob.limit = true
+  blob.peakLists = 0
+  const deleted = await service.deleteAccount(user.token, 'Password123')
+  assert.equal(deleted.deleted.accountDeleted, true)
+  assert.equal(deleted.deleted.deviceCheckoutsDeleted, 1)
+  assert.ok(blob.peakLists <= 3)
+  assert.equal([...blob.objects.keys()].some(key => key.startsWith(ownedPrefix)), false)
+})

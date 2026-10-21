@@ -75,11 +75,26 @@ for (const username of users) {
         login.result.user.username !== username) {
       throw new Error('Cleanup login account identity mismatch')
     }
-    const deletion = await request('/api/auth/account', {
+    const deleteWithToken = token => request('/api/auth/account', {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${login.result.token}` },
+      headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify({ currentPassword: password }),
     })
+    let deletion = await deleteWithToken(login.result.token)
+    if (!deletion.response.ok && deletion.response.status >= 500) {
+      // A DELETE error may mean partially finished Blob operations.
+      // Never issue an unverified blind repeat; first authenticate this
+      // exact disposable owner again. Successful re-login proves the
+      // account still exists with the expected generated credentials.
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      const recovery = await loginDisposable(username)
+      if (!recovery.response.ok ||
+          recovery.result?.user?.username !== username ||
+          !recovery.result?.token) {
+        throw new Error('Cleanup outcome ambiguous: server 5xx, identity not reverified')
+      }
+      deletion = await deleteWithToken(recovery.result.token)
+    }
     if (!deletion.response.ok || deletion.result?.deleted?.accountDeleted !== true) {
       throw new Error(`Cleanup delete HTTP ${deletion.response.status}`)
     }
