@@ -12,7 +12,11 @@ export function isLegacyMobilePostRevealEvidence(
   record: Pick<IWordRecord, 'reviewEvidence'>,
 ): boolean {
   const reasons = record.reviewEvidence?.reasonCodes
+  // The pre-fix flaw affected only post-reveal *self-rated recall*.
+  // Objective phone spelling is a distinct modern evidence method and must
+  // never be suppressed by this compatibility filter.
   return reasons?.includes('mobile-multidimensional-learning') === true &&
+    reasons.includes('mobile-task-recall') &&
     !reasons.includes('self-rated-before-answer-reveal')
 }
 

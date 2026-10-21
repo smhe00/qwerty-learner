@@ -73,6 +73,7 @@ import {
 } from '../../src/review/rebuild'
 import { buildOrthographyProfile } from '../../src/review/profile'
 import { needsFsrsProjectionRecovery } from '../../src/review/projection-recovery'
+import { isCleanIndependentAcquisitionRecord, isValidModernAcquisitionAdmissionRecord } from '../../src/learn/admission'
 import { isLegacyMobilePostRevealEvidence, isUnverifiedLegacyMobilePositiveReview } from '../../src/review/legacy-mobile-evidence'
 import {
   MAX_REINFORCEMENT_GAP,
@@ -796,4 +797,30 @@ test('Legacy post-reveal mobile positives never advance memory or acquisition re
   assert.equal(isLegacyMobilePostRevealEvidence(newMobile), false)
   assert.equal(inferReviewOutcomeFromWordRecord(newMobile, []), 'good')
   assert.equal(needsFsrsProjectionRecovery(state, [newMobile]), true)
+})
+
+
+test('Phone objective spelling is not misidentified as legacy post-reveal self-rating', () => {
+  const source: IWordRecord = {
+    word: 'accurate', dict: 'cet4', chapter: -1, timeStamp: 500,
+    timing: [], wrongCount: 0, mistakes: {},
+    sourceMode: 'learn', learnItemKind: 'acquisition',
+    reviewEvidence: {
+      version: 1, memoryGrade: 'good', errorCause: 'clean', confidence: 1,
+      evidenceStrength: 1, retrievalValidity: 'independent',
+      reasonCodes: ['mobile-multidimensional-learning', 'mobile-task-spelling',
+        'objective-spelling-clean', 'typed-with-answer-hidden'],
+    },
+    reviewPolicyDecision: {
+      version: 1, policyVersion: 'learn-acquisition-independent-v1',
+      conditionVersion: 1, reasonCodes: ['spacing-eligible'],
+    },
+    learningContext: {
+      version: 1, answerVisibilityAtStart: 'hidden',
+      answerVisibleRatioAtStart: 0, answerRevealed: false,
+    },
+  }
+  assert.equal(isLegacyMobilePostRevealEvidence(source), false)
+  assert.equal(isCleanIndependentAcquisitionRecord(source), true)
+  assert.equal(isValidModernAcquisitionAdmissionRecord(source), true)
 })

@@ -486,6 +486,11 @@ test('Phone-only cold spelling validates correct orthography without a second FS
   await expect(input).toBeVisible()
   await input.fill(word)
   await practice.getByRole('button', { name: '确认拼写' }).click()
+  await expect.poll(async () => (await readWordLearningEvidence(page, word)).records.length,
+    { timeout: 12_000 }).toBe(1)
+  const evidence = (await readWordLearningEvidence(page, word)).records[0]
+  expect(evidence.reviewPolicyDecision?.policyVersion).toBe('learn-acquisition-independent-v1')
+  expect(evidence.reviewPolicyDecision?.reasonCodes).toContain('spacing-eligible')
   await expect.poll(async () => (await readWordLearningEvidence(page, word)).state?.lifecycle,
     { timeout: 12_000 }).toBe('active')
   const saved = await readWordLearningEvidence(page, word)
