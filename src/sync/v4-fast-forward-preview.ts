@@ -34,7 +34,15 @@ function blocked(reason: string): FullV4FastForwardPreview {
 }
 
 function assertIdentity(snapshot: WorkspaceSnapshotV4, accountId: string): void {
-  assertRestorableWorkspaceV4(snapshot)
+  try {
+    assertRestorableWorkspaceV4(snapshot)
+  } catch (error) {
+    if (error instanceof Error &&
+        error.message.includes('missing or duplicate durable tables')) {
+      throw new Error('ancestor-incomplete-six-table-export')
+    }
+    throw error
+  }
   if (snapshot.metadata.source.kind !== 'account' ||
       snapshot.metadata.source.accountId !== accountId) {
     throw new Error('ancestor-workspace-account-mismatch')
