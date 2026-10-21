@@ -16,6 +16,8 @@ import type { SyncV2Baseline } from './v2-policy'
 import type { PendingSyncV2Pull, PullJournalPort } from './v2-pull-transaction'
 
 const STORE = 'registry'
+const SNAPSHOTS = 'snapshots'
+const ANCESTOR_PREFIX = 'm2-s2pull-ancestor:'
 const HEAD = 'head'
 const JOURNAL = 'sync-v2-pull-journal:v1'
 const M4_MERGE = 'sync-m4-merge-journal:v1'
@@ -174,9 +176,26 @@ export const syncV2PullJournalPort: PullJournalPort = {
   },
 
   async finalize(pending: PendingSyncV2Pull): Promise<void> {
+    // This archive is a locally pinned, authenticated S2 Pull source
+    // *only*. It is NOT proof that a second device shares this ancestor.
+    // Complete fingerprint validation must happen before the IDB tx starts.
+    assertRestorableWorkspaceV4(pending.snapshot)
+    if (pending.snapshot.metadata.source.kind !== 'account' ||
+        pending.snapshot.metadata.source.accountId !== pending.accountId ||
+        await workspaceFingerprintV4(pending.snapshot) !== pending.fingerprint) {
+      throw new Error('S2 Pull ancestor snapshot cannot be pinned')
+    }
+    const ancestorKey = ANCESTOR_PREFIX + encodeURIComponent(pending.accountId)
+    const ancestor = {
+      key: ancestorKey, version: 1, accountId: pending.accountId,
+      revision: pending.revision, fingerprint: pending.fingerprint,
+      registryGeneration: pending.registryGeneration,
+      snapshotJson: JSON.stringify(pending.snapshot),
+      storedAt: new Date().toISOString(),
+    }
     const db = await openWorkspaceVault()
     try {
-      const tx = db.transaction(STORE, 'readwrite')
+      const tx = db.transaction([STORE, SNAPSHOTS], 'readwrite')
       const complete = done(tx)
       try {
         const store = tx.objectStore(STORE)
@@ -203,6 +222,10 @@ export const syncV2PullJournalPort: PullJournalPort = {
           syncedAt: new Date().toISOString(),
         }
         assertNextSyncV2Baseline(pending.accountId, pending.oldBaseline, nextBaseline)
+        // One atomic vault transaction publishes both the new S2 baseline
+        // and its full, independently fingerprinted historical snapshot.
+        // A partially committed baseline must never masquerade as ancestry.
+        tx.objectStore(SNAPSHOTS).put(ancestor)
         store.put(nextBaseline, baselineKey(pending.accountId))
         store.delete(JOURNAL)
         await complete
