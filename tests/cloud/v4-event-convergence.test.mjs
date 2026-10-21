@@ -36,7 +36,9 @@ const admission = () => row(uuids[0], t0, {
 test('M2 event projection is commutative/idempotent and FSRS replay is stable', () => {
   const a = admission()
   const b = row(uuids[1], t0 + 86_400)
-  const c = row(uuids[2], t0 + 86_400, {
+  // Separate legitimate sessions by >60s; a simultaneous competing review
+  // is covered by the quarantine test below.
+  const c = row(uuids[2], t0 + 86_461, {
     reviewRatingDecision: { eligible: true, rating: 'hard', confidence: 1,
       reasonCodes: ['m2-test'] },
   })
