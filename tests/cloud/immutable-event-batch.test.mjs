@@ -653,3 +653,29 @@ test('account delete bounds Blob list load and removes device checkout namespace
   assert.ok(blob.peakLists <= 3)
   assert.equal([...blob.objects.keys()].some(key => key.startsWith(ownedPrefix)), false)
 })
+
+test('FSRS pre-probe fingerprint is carried intact by authenticated immutable event transport', async () => {
+  const { service } = setup()
+  const account = await service.register('review_base_anchor', 'Password123', device(1))
+  const valid = { ...row(333), reviewBaseStateFingerprint: 'a'.repeat(64) }
+  const published = await service.publishChainedLearningBatch(account.token, {
+    deviceId: device(1), batchId: uuid(944), sequence: 1,
+    previous: null, events: [valid],
+  })
+  const detail = await service.readChainedLearningBatch(account.token, receipt(published))
+  assert.equal(detail.batch.events[0].reviewBaseStateFingerprint, valid.reviewBaseStateFingerprint)
+  for (const bad of [
+    { ...valid, attemptId: uuid(334), reviewBaseStateFingerprint: 'invalid' },
+    { ...valid, attemptId: uuid(335), sourceMode: 'typing' },
+    { ...valid, attemptId: uuid(336), chapter: 0 },
+    { ...valid, attemptId: uuid(337),
+      reviewRatingDecision: { eligible: false, rating: null } },
+  ]) {
+    await assert.rejects(service.publishChainedLearningBatch(account.token, {
+      deviceId: device(1), batchId: uuid(944 + Number(bad.attemptId.slice(-2))),
+      sequence: 2, previous: {
+        batchId: published.batchId, sha256: published.sha256,
+      }, events: [bad],
+    }), e => e.code === 'invalid_event_batch')
+  }
+})

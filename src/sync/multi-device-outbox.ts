@@ -66,7 +66,12 @@ export function immutableAttempt(row: IWordRecord): IWordRecord {
       typeof core.word !== 'string' || !core.word || core.word.length > 128 ||
       !Number.isSafeInteger(core.timeStamp) ||
       core.timeStamp < 0 || core.timeStamp > 86_400_000_000 ||
-      (core.sourceMode !== 'learn' && core.sourceMode !== 'typing')) {
+      (core.sourceMode !== 'learn' && core.sourceMode !== 'typing') ||
+      (core.reviewBaseStateFingerprint !== undefined &&
+        (!/^[0-9a-f]{64}$/.test(core.reviewBaseStateFingerprint) ||
+          core.sourceMode !== 'learn' ||
+          core.chapter !== -1 ||
+          core.reviewRatingDecision?.eligible !== true))) {
     throw new Error('outbox-invalid-immutable-attempt')
   }
   // JSON round trip removes optional undefined fields and any mutable proxy

@@ -194,6 +194,11 @@ function validateImmutableEventBatch(input, accountId) {
         !['learn', 'typing'].includes(row.sourceMode) ||
         Object.prototype.hasOwnProperty.call(row, 'id') ||
         Object.prototype.hasOwnProperty.call(row, 'fsrsShadow') ||
+        (row.reviewBaseStateFingerprint !== undefined &&
+          (!/^[0-9a-f]{64}$/.test(row.reviewBaseStateFingerprint) ||
+            row.sourceMode !== 'learn' ||
+            row.chapter !== -1 ||
+            row.reviewRatingDecision?.eligible !== true)) ||
         seen.has(row.attemptId)) {
       throw new AppError(400, 'invalid_event_batch', 'Invalid immutable word attempt')
     }
