@@ -13,7 +13,7 @@
  */
 import assert from 'node:assert/strict'
 import crypto from 'node:crypto'
-import { gzipSync, gunzipSync } from 'node:zlib'
+import { gzipSync } from 'node:zlib'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -247,31 +247,7 @@ finally {
     // Never operate on non-disposable identity. If a server 5xx means
     // ambiguous deletion, reauthenticate before a bounded retry.
     try {
-      assert.ok(user.username.startsWith('e2e_merge_'))
-      let token = user.firstToken ?? user.secondToken
-      if (token) {
-        for (let attempt = 0; attempt < 2; attempt++) {
-          const deleted = await api('/api/auth/account', token, 'DELETE',
-            JSON.stringify({ currentPassword: user.password }),
-            { 'Content-Type': 'application/json' })
-          if (deleted.status === 200 && deleted.response?.deleted?.accountDeleted) {
-            token = null
-            break
-          }
-          if (deleted.status < 500 || attempt === 1)
-            throw Error('Disposal failed: HTTP ' + deleted.status)
-          await sleep(1500)
-          const recovered = await api('/api/auth/login', null, 'POST',
-            JSON.stringify({ username: user.username, password: user.password,
-              deviceId: user.firstDevice }),
-            { 'Content-Type': 'application/json' })
-          const identity = recovered.response?.user
-          if (recovered.status !== 200 || identity?.userId !== userId ||
-              !recovered.response?.token) throw Error('Ambiguous account deletion; cannot safely retry')
-          token = recovered.response.token
-        }
-        if (token) throw Error('Disposable account cleanup was not acknowledged')
-      }
+      await disposeIsolatedMergeAccount()
     } catch (e) {
       console.error('Disposable merge pilot account CLEANUP FAILURE')
       failure ||= e
@@ -302,4 +278,32 @@ function checksumStable(snapshot) {
     database: sorted, learnRuntime: data.learnRuntime,
     settings: data.settings, navigation: data.navigation,
   }))
+}
+
+async function disposeIsolatedMergeAccount() {
+  assert.ok(user.username.startsWith('e2e_merge_'))
+  let token = user.firstToken ?? user.secondToken
+  if (token) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const deleted = await api('/api/auth/account', token, 'DELETE',
+        JSON.stringify({ currentPassword: user.password }),
+        { 'Content-Type': 'application/json' })
+      if (deleted.status === 200 && deleted.response?.deleted?.accountDeleted) {
+        token = null
+        break
+      }
+      if (deleted.status < 500 || attempt === 1)
+        throw Error('Disposal failed: HTTP ' + deleted.status)
+      await sleep(1500)
+      const recovered = await api('/api/auth/login', null, 'POST',
+        JSON.stringify({ username: user.username, password: user.password,
+          deviceId: user.firstDevice }),
+        { 'Content-Type': 'application/json' })
+      const identity = recovered.response?.user
+      if (recovered.status !== 200 || identity?.userId !== userId ||
+          !recovered.response?.token) throw Error('Ambiguous account deletion; cannot safely retry')
+      token = recovered.response.token
+    }
+    if (token) throw Error('Disposable account cleanup was not acknowledged')
+  }
 }
