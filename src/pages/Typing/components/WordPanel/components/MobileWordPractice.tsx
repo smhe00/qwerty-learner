@@ -179,7 +179,7 @@ export default function MobileWordPractice({
   const wantsAutomaticSound = task === 'audio' || task === 'exposure'
   const source = pronunciation.type ? generateWordSoundSrc(word.name, pronunciation.type) : ''
 
-  const playSound = useCallback((automatic: boolean) => {
+  const playSound = useCallback(() => {
     if (!source) {
       setAudioState('error')
       return
@@ -238,7 +238,7 @@ export default function MobileWordPractice({
     }
     if (wantsAutomaticSound && !autoAudioAttempted.current) {
       autoAudioAttempted.current = true
-      playSound(true)
+      playSound()
     }
   }, [paused, wantsAutomaticSound, playSound])
 
@@ -387,7 +387,7 @@ export default function MobileWordPractice({
     return () => window.clearTimeout(timeout)
   }, [feedback, onFinish, paused])
 
-  const playAgain = () => playSound(false)
+  const playAgain = () => playSound()
   const title = task === 'exposure' ? '认识新词'
     : task === 'context' ? '语境选择'
     : task === 'audio' ? '听音辨词'
