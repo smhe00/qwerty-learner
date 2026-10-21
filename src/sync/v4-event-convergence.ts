@@ -24,7 +24,7 @@ export type EventConvergenceProjection = {
   /** Always false: full 6-table / clock / journal / cloud proof is absent. */
   publishReady: false
   reason: 'none' | 'identity-conflict' | 'legacy-unverified' |
-    'invalid-event' | 'fsrs-replay-failed'
+    'invalid-event' | 'fsrs-replay-failed' | 'concurrent-review-conflict'
   sharedAttempts: number
   uniqueAttempts: number
   words: ProjectedWord[]
@@ -40,6 +40,67 @@ function validAttempt(row: IWordRecord): row is IWordRecord & { attemptId: strin
     typeof row.word === 'string' && row.word.length > 0 &&
     Number.isSafeInteger(row.timeStamp) && row.timeStamp >= 0 &&
     row.timeStamp <= 8_640_000_000_000
+}
+
+/**
+ * Two independent devices may grade the same scheduled Review while offline.
+ * Both ratings are evidence, but applying both as separate FSRS successes
+ * would manufacture an additional interval. Until M4 has an authenticated
+ * arbitration group, quarantine the entire projection. Timestamps are in
+ * seconds; 60s is a conservative ambiguity window, NOT proof of identity.
+ */
+const REVIEW_RACE_WINDOW_SECONDS = 60
+
+function eligibleReview(row: IWordRecord): boolean {
+  return row.sourceMode === 'learn' &&
+    row.learnItemKind === 'review' && row.chapter === -1 &&
+    row.reviewRatingDecision?.eligible === true
+}
+
+function positiveReview(row: IWordRecord): boolean {
+  return row.reviewRatingDecision?.rating !== 'again'
+}
+
+function hasConcurrentReviewAmbiguity(
+  local: readonly IWordRecord[],
+  remote: readonly IWordRecord[],
+): boolean {
+  const localIds = new Set(local.map(row => row.attemptId))
+  const remoteByWord = new Map<string, IWordRecord[]>()
+  for (const row of remote) {
+    if (!eligibleReview(row) || localIds.has(row.attemptId)) continue
+    const key = JSON.stringify([row.dict, row.word])
+    const group = remoteByWord.get(key) ?? []
+    group.push(row)
+    remoteByWord.set(key, group)
+  }
+  for (const group of remoteByWord.values()) {
+    group.sort((a, b) => a.timeStamp - b.timeStamp)
+  }
+  for (const row of local) {
+    if (!eligibleReview(row)) continue
+    const group = remoteByWord.get(JSON.stringify([row.dict, row.word]))
+    if (!group) continue
+    // Lower-bound search avoids quadratic replay on frequently reviewed words.
+    let lo = 0
+    let hi = group.length
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1
+      if (group[mid].timeStamp < row.timeStamp - REVIEW_RACE_WINDOW_SECONDS) {
+        lo = mid + 1
+      } else {
+        hi = mid
+      }
+    }
+    for (let i = lo; i < group.length &&
+        group[i].timeStamp <= row.timeStamp + REVIEW_RACE_WINDOW_SECONDS; i++) {
+      if (group[i].attemptId !== row.attemptId &&
+          (positiveReview(row) || positiveReview(group[i]))) {
+        return true
+      }
+    }
+  }
+  return false
 }
 
 function blocked(
@@ -63,6 +124,9 @@ export function projectUuidLearningConvergence(input: {
   }
   if (!input.local.every(validAttempt) || !input.remote.every(validAttempt)) {
     return blocked('invalid-event')
+  }
+  if (hasConcurrentReviewAmbiguity(input.local, input.remote)) {
+    return blocked('concurrent-review-conflict')
   }
 
   const unique = new Map<string, IWordRecord & { attemptId: string }>()
