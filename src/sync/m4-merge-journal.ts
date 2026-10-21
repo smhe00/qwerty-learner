@@ -194,11 +194,16 @@ export const m4MergeJournalPort: M4JournalPort = {
           request<unknown>(registry.get(MANUAL)),
           request<unknown>(registry.get(PULL)),
         ])
-        parseRollback(rollback, record.rollbackKey, pending.originalFingerprint)
+        const rollbackStored = parseRollback(
+          rollback, record.rollbackKey, pending.originalFingerprint,
+        )
+        // Never await a SHA computation inside a live IDB transaction.
+        // Exact serialization matches the same staged snapshots that were
+        // already fingerprint-verified before this transaction opened.
         if (!sameAccount(head, pending) || !journalMatches(record, pending) ||
             manual !== undefined || pull !== undefined ||
-            await workspaceFingerprintV4(parseWorkspaceV4(record.candidateJson)) !==
-              pending.candidateFingerprint) {
+            rollbackStored.json !== JSON.stringify(pending.original) ||
+            record.candidateJson !== JSON.stringify(pending.candidate)) {
           throw new Error('m4-finalize-cas-conflict')
         }
         // Rollback archive is RETAINED after the journal is removed.
