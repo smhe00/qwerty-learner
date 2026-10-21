@@ -9,6 +9,8 @@ import { analyzeV4SnapshotSize } from '../../src/sync/v4-size-audit'
 import { loadSyncV2Baseline, compareAndSwapSyncV2Baseline } from '../../src/sync/v2-baseline'
 import { syncV2PullJournalPort } from '../../src/sync/v2-pull-journal'
 import { manualV4ImportJournalPort } from '../../src/sync/manual-v4-import-journal'
+import { m4MergeJournalPort } from '../../src/sync/m4-merge-journal'
+import { recoverPendingM4Merge } from '../../src/sync/m4-merge-browser-recovery'
 import { preparePortableV4Import, rebindPortableV4Import } from '../../src/sync/manual-v4-import-plan'
 import { executePreMountManualSyncV2 } from '../../src/sync/v2-browser-executor'
 import { loadWorkspaceFromVault, saveWorkspaceToVault, workspaceRegistryPort, openWorkspaceVault } from '../../src/sync/workspace-vault'
@@ -319,6 +321,8 @@ async function inspectTableContract() {
   compareAndSwapSyncV2Baseline,
   syncV2PullJournalPort,
   manualV4ImportJournalPort,
+  m4MergeJournalPort,
+  recoverPendingM4Merge,
   preparePortableV4Import,
   rebindPortableV4Import,
   executePreMountManualSyncV2,
