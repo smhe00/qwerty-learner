@@ -9,6 +9,7 @@ import type { ExerciseConditionV1 } from '@/review/condition'
 import { createCanonicalReviewProbePlan, createReviewPolicyDecision } from '@/review/decision'
 import type { ReviewExercisePlanV1, ReviewPolicyDecisionV1 } from '@/review/decision'
 import type { ReviewEvidenceV1 } from '@/review/evidence'
+import { scheduleLearnReviewCommit } from '@/review/learn-review-commit'
 import { decideReviewRating } from '@/review/state-machine'
 import type { RatingDecision, ReviewAttemptRole } from '@/review/state-machine'
 import type { ReviewOutcome } from '@/review/types'
@@ -361,6 +362,13 @@ export default function MobileWordPractice({
       })
       if (id <= 0) throw new Error('学习记录保存失败，本词尚未推进。')
       record.id = id
+      scheduleLearnReviewCommit({
+        dict: dict.id,
+        word: word.name,
+        itemKind: recordKind,
+        wordRecordId: id,
+        decision: reviewRatingDecision,
+      })
       setFeedback({
         result: { record, wrongCount: input.wrongCount, classification, reviewRatingDecision, reviewEvidence: evidence },
         autoAdvance: input.grade === 'good' && input.wrongCount === 0,

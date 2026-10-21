@@ -14,7 +14,6 @@ import { WordPronunciationIcon } from '@/components/WordPronunciationIcon'
 import { EXPLICIT_SPACE } from '@/constants'
 import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import useKeySounds from '@/hooks/useKeySounds'
-import { trackLearnPersistence } from '@/learn/persistence'
 import { getUTCUnixTimestamp } from '@/utils/time'
 import type { LearnItemKind } from '@/learn/session'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
@@ -60,7 +59,7 @@ import {
   decideWordInput,
   shouldPlayAutomaticPronunciation,
 } from '@/review/machine'
-import { applyReviewOutcome } from '@/review/repository'
+import { scheduleLearnReviewCommit } from '@/review/learn-review-commit'
 import { decideReviewRating } from '@/review/state-machine'
 import type {
   RatingDecision,
@@ -1120,27 +1119,13 @@ export default function WordComponent({
             reviewProgressReleased = true
             notifyFinished()
 
-            if (
-              wordRecordId > 0 &&
-              !isAcquisitionAttempt &&
-              reviewRatingDecision?.eligible
-            ) {
-              const now = getUTCUnixTimestamp()
-              void trackLearnPersistence(
-                applyReviewOutcome(
-                  currentDictInfo.id,
-                  word.name,
-                  reviewRatingDecision.rating,
-                  now,
-                  wordRecordId,
-                ),
-              ).catch((error) => {
-                console.error(
-                  'failed to persist derived review scheduler state',
-                  error,
-                )
-              })
-            }
+            scheduleLearnReviewCommit({
+              dict: currentDictInfo.id,
+              word: word.name,
+              itemKind: learnItemKind,
+              wordRecordId,
+              decision: reviewRatingDecision,
+            })
             return
           }
 
