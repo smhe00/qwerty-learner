@@ -319,7 +319,9 @@ export default function MobileWordPractice({
             ? [wrongCount === 0 ? 'objective-spelling-clean' : 'objective-spelling-mismatch', 'typed-with-answer-hidden']
             : ['recognition-or-training-evidence']),
         ...(mode === 'audio' && !audioPlayed ? ['audio-cue-not-played'] : []),
-        'self-rated-' + grade,
+        mode === 'recall'
+          ? 'self-rated-' + grade
+          : mode === 'spelling' ? 'objectively-checked-' + grade : 'choice-graded-' + grade,
       ],
     }
     let reviewRatingDecision: RatingDecision | undefined
