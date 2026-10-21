@@ -14,6 +14,8 @@ import { projectUuidLearningConvergence } from './v4-event-convergence'
 import { isReviewSessionId } from '@/utils/db/review-session-identity'
 import { stableWorkspaceJson } from './workspace-v4'
 import { projectV4ForeignKeys } from './v4-foreign-key-projection'
+import { inspectThreeWayReviewSessions } from './v4-session-three-way'
+import type { ThreeWayReviewSessionPreview } from './v4-session-three-way'
 
 export type V4SixTableSource = {
   words: readonly IWordRecord[]
@@ -180,10 +182,10 @@ function inspectStates(
 }
 
 /** No IDB, network, V4 vault, settings or sessions are modified. */
-export function projectV4SixTableEvidence(input: {
+function projectV4SixTableEvidenceCore(input: {
   local: V4SixTableSource
   remote: V4SixTableSource
-}): SixTableConvergencePreview {
+}, allowThreeWaySessionCandidate: boolean): SixTableConvergencePreview {
   const references = projectV4ForeignKeys(input)
   if (references.status === 'blocked') return fail('foreign-keys:' + references.reason)
   const replay = projectUuidLearningConvergence({
@@ -196,9 +198,12 @@ export function projectV4SixTableEvidence(input: {
       ...inspectSessions(input.remote, 'remote'),
     ].sort((a, b) => a.createdAt - b.createdAt ||
       cmp(a.origin, b.origin) || a.sourceId - b.sourceId)
-    const matchedSessionPairs = inspectCrossDeviceSessionIdentity(
-      input.local.reviewRecords, input.remote.reviewRecords,
-    )
+    // This exception is ONLY reached by the async wrapper after a pinned
+    // ancestor three-way check. It never enables writing or publishing.
+    const matchedSessionPairs = allowThreeWaySessionCandidate ? 0 :
+      inspectCrossDeviceSessionIdentity(
+        input.local.reviewRecords, input.remote.reviewRecords,
+      )
     const replayByWord = new Map<string, IReviewWordState>()
     for (const word of replay.words) {
       if (word.fsrsState) {
@@ -229,4 +234,48 @@ export function projectV4SixTableEvidence(input: {
   } catch (error) {
     return fail(error instanceof Error ? error.message : 'invalid-review-tables')
   }
+}
+
+/** Default two-way audit remains strictly fail-closed on diverged session UUID. */
+export function projectV4SixTableEvidence(input: {
+  local: V4SixTableSource
+  remote: V4SixTableSource
+}): SixTableConvergencePreview {
+  return projectV4SixTableEvidenceCore(input, false)
+}
+
+export type ThreeWaySixTableCandidate =
+  | { status: 'blocked'; publishReady: false; convergenceComplete: false;
+      reason: string }
+  | (Extract<SixTableConvergencePreview, { status: 'projected' }> & {
+      sessionThreeWay: Extract<ThreeWayReviewSessionPreview, { status: 'projected' }>
+    })
+
+/**
+ * A validated session three-way plan can accompany the six-table *preview*.
+ * Neither the digest nor this combinator authenticate the original ancestor.
+ * A caller must independently validate S1 owner, pinned V4 source, complete
+ * event heads, and an undo journal before any future write-capable API exists.
+ *
+ * The default two-way function is NOT relaxed. Session candidates are returned
+ * separately and never substituted into active device cursors.
+ */
+export async function inspectV4ThreeWaySixTableCandidate(input: {
+  local: V4SixTableSource
+  remote: V4SixTableSource
+  ancestorSessions: readonly IReviewRecord[]
+  pinnedAncestorDigest: string
+}): Promise<ThreeWaySixTableCandidate> {
+  const sessions = await inspectThreeWayReviewSessions({
+    ancestor: input.ancestorSessions,
+    pinnedAncestorDigest: input.pinnedAncestorDigest,
+    local: input.local.reviewRecords,
+    remote: input.remote.reviewRecords,
+  })
+  if (sessions.status !== 'projected') {
+    return fail('three-way-session:' + sessions.reason)
+  }
+  const evidence = projectV4SixTableEvidenceCore(input, true)
+  if (evidence.status !== 'projected') return evidence
+  return { ...evidence, sessionThreeWay: sessions }
 }

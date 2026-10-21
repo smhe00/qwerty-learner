@@ -13,7 +13,16 @@ await build({ entryPoints: [resolve(root, 'src/sync/v4-six-table-projection.ts')
   outfile: out, bundle: true, platform: 'node', format: 'esm', target: 'node20',
   tsconfig: resolve(root, 'tsconfig.json') })
 after(() => rmSync(tmp, { recursive: true, force: true }))
-const { projectV4SixTableEvidence: project } = await import(pathToFileURL(out).href)
+const { projectV4SixTableEvidence: project,
+  inspectV4ThreeWaySixTableCandidate: project3Way } =
+  await import(pathToFileURL(out).href)
+
+const threeWayBundle = join(tmp, 'session-3way.mjs')
+await build({ entryPoints: [resolve(root, 'src/sync/v4-session-three-way.ts')],
+  outfile: threeWayBundle, bundle: true, platform: 'node', format: 'esm',
+  target: 'node20', tsconfig: resolve(root, 'tsconfig.json') })
+const { digestThreeWayReviewSessionAncestor: digestSessions } =
+  await import(pathToFileURL(threeWayBundle).href)
 
 const t0 = 1_800_000_000
 const ids = [
@@ -178,4 +187,44 @@ test('completed compacted sessions retain UUID despite empty Word[] and terminal
   assert.equal(project({ local, remote: { words: [], chapters: [],
     reviewRecords: [], reviewWordStates: [], events: [], states: [],
   } }).reason, 'invalid-review-session')
+})
+
+test('verified three-way session candidate combines with six-table FSRS projection', async () => {
+  const local = side(mkWord(ids[0]))
+  const remote = structuredClone(local)
+  const uuid = '00000000-0000-4000-8000-000000000095'
+  const ancestor = [mkSession(false)]
+  ancestor[0].sessionId = uuid
+  local.reviewRecords[0].sessionId = uuid
+  remote.reviewRecords[0].sessionId = uuid
+  remote.reviewRecords[0].isFinished = false
+  remote.reviewRecords[0].index = 0
+  const expected = await digestSessions(ancestor)
+  assert.equal(project({ local, remote }).reason, 'divergent-review-session-identity')
+  const result = await project3Way({
+    local, remote, ancestorSessions: ancestor, pinnedAncestorDigest: expected,
+  })
+  assert.equal(result.status, 'projected', result.reason)
+  assert.equal(result.publishReady, false)
+  assert.equal(result.convergenceComplete, false)
+  assert.equal(result.sessionThreeWay.counts.localAdvance, 1)
+  assert.equal(result.sessionThreeWay.sessions[0].record.isFinished, true)
+  assert.equal(result.reviewWordStates[0].reviewCount, 1)
+  assert.equal(result.stats.uniqueAttempts, 1)
+  assert.equal(result.sessionEvidence.length, 2, 'origin-local cursors never rewritten')
+})
+
+test('3-way candidate requires pinned ancestor and full six-table integrity', async () => {
+  const local = side(mkWord(ids[0]))
+  const remote = structuredClone(local)
+  const uuid = '00000000-0000-4000-8000-000000000094'
+  local.reviewRecords[0].sessionId = uuid
+  remote.reviewRecords[0].sessionId = uuid
+  const ancestor = structuredClone(local.reviewRecords)
+  const expected = await digestSessions(ancestor)
+  assert.equal((await project3Way({ local, remote, ancestorSessions: ancestor,
+    pinnedAncestorDigest: 'f'.repeat(64) })).reason, 'three-way-session:ancestor-digest-mismatch')
+  local.chapters[0].wordRecordIds = [987]
+  assert.equal((await project3Way({ local, remote, ancestorSessions: ancestor,
+    pinnedAncestorDigest: expected })).reason, 'foreign-keys:dangling-word-reference')
 })
