@@ -43,3 +43,11 @@ test('FSRS bootstrapping repairs stale cached state only for newer eligible dura
   assert.match(caller, /if \(needsFsrsProjectionRecovery\(existing, wordRecords\)\)/)
   assert.match(caller, /rebuildActiveFsrsStateFromWordRecords\(/)
 })
+
+
+test('Independent phone acquisition resolves the real phase policy rather than using Review fallback', async () => {
+  const code = await read('src/pages/Typing/components/WordPanel/components/MobileWordPractice.tsx')
+  assert.match(code, /createLearnAcquisitionExercisePlanForState\(acquisitionState\)/)
+  assert.match(code, /itemKind === 'acquisition'/)
+  assert.match(code, /data-mobile-policy=\{activePlan\?\.decision\.policyVersion/)
+})

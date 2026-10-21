@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
+import { reviewWords, seedAcquisitionSession } from './review-flow-harness'
 
 async function countWordRecords(page: Page): Promise<number> {
   return page.evaluate(async () => {
@@ -380,4 +381,89 @@ test('Mobile self-report Good can be corrected to Again before saving', async ({
     await expect(taskView.locator('[data-mobile-feedback]')).toHaveCount(0, { timeout: 7_000 })
   }
   throw new Error('No recall task reached within 36 scheduled tasks')
+})
+
+
+async function readWordLearningEvidence(page: Page, word: string) {
+  return page.evaluate(async (name) => {
+    const request = indexedDB.open('RecordDB')
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+    try {
+      const tx = db.transaction(['wordRecords', 'reviewWordStates'], 'readonly')
+      const [records, states] = await Promise.all([
+        new Promise<Array<{
+          word: string; sourceMode?: string; learnItemKind?: string; wrongCount: number
+          reviewPolicyDecision?: { policyVersion: string; reasonCodes: string[] }
+          reviewEvidence?: { reasonCodes: string[] }
+        }>>((resolve, reject) => {
+          const req = tx.objectStore('wordRecords').getAll()
+          req.onsuccess = () => resolve(req.result)
+          req.onerror = () => reject(req.error)
+        }),
+        new Promise<Array<{
+          dict: string; word: string; lifecycle?: string; schedulerState?: { kind: string }
+        }>>((resolve, reject) => {
+          const req = tx.objectStore('reviewWordStates').getAll()
+          req.onsuccess = () => resolve(req.result)
+          req.onerror = () => reject(req.error)
+        }),
+      ])
+      return {
+        records: records.filter((row) => row.word === name && row.sourceMode === 'learn'),
+        state: states.find((row) => row.dict === 'cet4' && row.word === name) ?? null,
+      }
+    } finally { db.close() }
+  }, word)
+}
+
+test('Phone-only Independent Good admits a new word into the same durable FSRS state as desktop', async ({ page }) => {
+  await mockWordPronunciation(page)
+  await seedAcquisitionSession(page, reviewWords, 930001, 'independent', 4)
+  await page.goto('/mobile/study')
+  const practice = page.locator('[data-mobile-word-practice]')
+  await expect(practice).toBeVisible({ timeout: 45_000 })
+  await expect(practice).toHaveAttribute('data-mobile-task', 'recall')
+  await expect(practice).toHaveAttribute('data-mobile-policy', 'learn-acquisition-independent-v1')
+  const word = (await practice.getAttribute('data-mobile-word'))!
+  const before = await readWordLearningEvidence(page, word)
+  expect(before.state).toBeNull()
+  expect(before.records).toHaveLength(0)
+
+  await practice.locator('[data-mobile-grade="good"]').click()
+  await expect(practice.locator('[data-mobile-answer-revealed]')).toBeVisible()
+  await expect(practice).toHaveAttribute('data-mobile-recall-stage', 'verification')
+  // No synthetic Good may be written until the answer-check window closes.
+  expect((await readWordLearningEvidence(page, word)).records).toHaveLength(0)
+  await expect.poll(async () => (await readWordLearningEvidence(page, word)).records.length,
+    { timeout: 12_000 }).toBe(1)
+  await expect.poll(async () => (await readWordLearningEvidence(page, word)).state?.lifecycle,
+    { timeout: 12_000 }).toBe('active')
+  const after = await readWordLearningEvidence(page, word)
+  expect(after.state?.schedulerState?.kind).toBe('fsrs-6')
+  expect(after.records[0].learnItemKind).toBe('acquisition')
+  expect(after.records[0].reviewPolicyDecision?.policyVersion).toBe('learn-acquisition-independent-v1')
+  expect(after.records[0].reviewPolicyDecision?.reasonCodes).toContain('spacing-eligible')
+  expect(after.records[0].reviewEvidence?.reasonCodes).toContain('self-rated-before-answer-reveal')
+  expect(after.records[0].reviewEvidence?.reasonCodes).toContain('self-report-not-spelling')
+})
+
+test('Phone-only uncertain Independent recall does not falsely admit a new word', async ({ page }) => {
+  await mockWordPronunciation(page)
+  await seedAcquisitionSession(page, reviewWords, 930002, 'independent', 4)
+  await page.goto('/mobile/study')
+  const practice = page.locator('[data-mobile-word-practice]')
+  await expect(practice).toBeVisible({ timeout: 45_000 })
+  await expect(practice).toHaveAttribute('data-mobile-task', 'recall')
+  const word = (await practice.getAttribute('data-mobile-word'))!
+  await practice.locator('[data-mobile-grade="hard"]').click()
+  await expect(practice.locator('[data-mobile-feedback]')).toBeVisible()
+  await page.waitForTimeout(500)
+  const after = await readWordLearningEvidence(page, word)
+  expect(after.records).toHaveLength(1)
+  expect(after.records[0].wrongCount).toBe(0)
+  expect(after.state).toBeNull()
+  await expect(practice.locator('[data-mobile-manual-next]')).toBeVisible()
 })
