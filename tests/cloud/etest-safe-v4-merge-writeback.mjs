@@ -159,12 +159,6 @@ try {
   userId = register.user.userId
   user.firstToken = register.token
   assert.ok(userId && user.firstToken)
-  const login = must(await api('/api/auth/login', null, 'POST',
-    JSON.stringify({ username: user.username, password: user.password,
-      deviceId: user.secondDevice }), { 'Content-Type': 'application/json' }),
-  200, 'second independent device login')
-  assert.equal(login.user.userId, userId)
-  user.secondToken = login.token
   assert.notEqual(user.firstDevice, user.secondDevice)
   assert.equal((await metadata(user.firstToken)).revision, 0)
 
@@ -172,6 +166,16 @@ try {
   const baseFingerprint = checksumStable(ancestor)
   must(await upload(user.firstToken, 0, ancestor, baseFingerprint),
     200, 'disposable initial six-table V4 upload')
+  await visibleRevision(user.firstToken, 1, baseFingerprint)
+  // Take independent device B online AFTER A has captured its working copy.
+  // This works both in M1 multi-session mode and in the production-style
+  // single-active-session fallback (B invalidates A's old token).
+  const login = must(await api('/api/auth/login', null, 'POST',
+    JSON.stringify({ username: user.username, password: user.password,
+      deviceId: user.secondDevice }), { 'Content-Type': 'application/json' }),
+  200, 'second device login')
+  assert.equal(login.user.userId, userId)
+  user.secondToken = login.token
   await visibleRevision(user.secondToken, 1, baseFingerprint)
   const downloadedAncestor = await readPinned(user.secondToken, 1, baseFingerprint)
   assert.equal(checksumStable(downloadedAncestor), baseFingerprint)
@@ -189,6 +193,16 @@ try {
   assert.notEqual(localFingerprint, remoteFingerprint)
   must(await upload(user.secondToken, 1, remote, remoteFingerprint),
     200, 'device B independent preference write')
+  await visibleRevision(user.secondToken, 2, remoteFingerprint)
+  // Re-authenticate device A after its offline work. A's obsolete local
+  // revision is still 1. Never assume single-active-session allows both
+  // bearer tokens to stay live until M1 is enabled on etest.
+  const resumeA = must(await api('/api/auth/login', null, 'POST',
+    JSON.stringify({ username: user.username, password: user.password,
+      deviceId: user.firstDevice }), { 'Content-Type': 'application/json' }),
+  200, 'device A reconnect')
+  assert.equal(resumeA.user.userId, userId)
+  user.firstToken = resumeA.token
   await visibleRevision(user.firstToken, 2, remoteFingerprint)
   const serverRemote = await readPinned(user.firstToken, 2, remoteFingerprint)
 
@@ -217,6 +231,15 @@ try {
   // candidate into a real CAS cloud write after both pinned reads.
   must(await upload(user.firstToken, 2, merged, preview.candidateFingerprint),
     200, 'etest disposable-account merged V4 writeback')
+  await visibleRevision(user.firstToken, 3, preview.candidateFingerprint)
+  // A second independent device must download the resulting full V4 and
+  // verify all six tables, not trust the publisher's own local copy.
+  const resumeB = must(await api('/api/auth/login', null, 'POST',
+    JSON.stringify({ username: user.username, password: user.password,
+      deviceId: user.secondDevice }), { 'Content-Type': 'application/json' }),
+  200, 'device B post-merge readback')
+  assert.equal(resumeB.user.userId, userId)
+  user.secondToken = resumeB.token
   await visibleRevision(user.secondToken, 3, preview.candidateFingerprint)
   const final = await readPinned(user.secondToken, 3, preview.candidateFingerprint)
   assert.equal(checksumStable(final), preview.candidateFingerprint)
@@ -239,7 +262,7 @@ try {
   assert.equal(unsafe.status, 'blocked')
   assert.equal(unsafe.reason,
     'both-devices-changed-learning-unit-requires-fsrs-replay')
-  assert.equal((await metadata(user.firstToken)).revision, 3)
+  assert.equal((await metadata(user.secondToken)).revision, 3)
   console.log('PASS etest: 2-device account, exact ancestor, stale CAS 409, safe-subset 6-table writeback, full readback, concurrent FSRS BLOCKED')
 } catch (error) { failure = error }
 finally {
@@ -282,7 +305,7 @@ function checksumStable(snapshot) {
 
 async function disposeIsolatedMergeAccount() {
   assert.ok(user.username.startsWith('e2e_merge_'))
-  let token = user.firstToken ?? user.secondToken
+  let token = user.secondToken ?? user.firstToken
   if (token) {
     for (let attempt = 0; attempt < 2; attempt++) {
       const deleted = await api('/api/auth/account', token, 'DELETE',
