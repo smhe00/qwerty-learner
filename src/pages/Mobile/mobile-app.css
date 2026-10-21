@@ -137,7 +137,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
   min-height: min-content;
   align-self: start;
@@ -163,6 +163,26 @@
   text-align: center;
 }
 .mobile-practice-revealed-word { min-width: 0; }
+.mobile-practice-word-tap {
+  display: inline-flex;
+  max-width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  overflow-wrap: anywhere;
+  text-align: center;
+  touch-action: manipulation;
+}
+.mobile-practice-word-tap span { min-width: 0; overflow-wrap: anywhere; }
+.mobile-practice-word-tap svg { flex: 0 0 16px; color: var(--mobile-muted); }
+
 .mobile-practice-phonetic { margin: 0; color: var(--mobile-muted); font-size: 12px; line-height: 1.4; }
 .mobile-practice-cue { margin: 0; color: var(--mobile-muted); font-size: 13px; line-height: 1.6; text-align: center; }
 .mobile-practice-replay { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 5px 12px; color: var(--mobile-muted); font-size: 12px; }
@@ -180,7 +200,7 @@
   overflow: hidden;
   text-align: center;
   flex: 0 0 auto;
-  margin-top: 14px;
+  margin-top: 10px;
   margin-bottom: 10px;
 }
 .mobile-practice-example {

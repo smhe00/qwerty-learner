@@ -458,13 +458,22 @@ export default function MobileWordPractice({
             </>
           ) : task === 'exposure' ? (
             <>
-              <h2 className="mobile-practice-word" style={{ fontSize: wordFontSize }}>{word.name}</h2>
+              <h2 className="mobile-practice-word" style={{ fontSize: wordFontSize }}>
+                <button
+                  type="button"
+                  className="mobile-practice-word-tap"
+                  onClick={playAgain}
+                  disabled={paused}
+                  aria-label={'点击单词重听发音：' + word.name}
+                  title="点击单词重听发音"
+                >
+                  <span>{word.name}</span>
+                  <Volume2 size={16} aria-hidden="true" />
+                </button>
+              </h2>
               {(word.ukphone || word.usphone) && (
                 <p className="mobile-practice-phonetic">{word.ukphone ? '/' + word.ukphone + '/' : '/' + word.usphone + '/'}</p>
               )}
-              <button type="button" className="mobile-practice-replay" onClick={playAgain} disabled={paused} aria-label="再听一遍">
-                <Volume2 size={18} aria-hidden="true" /> {audioState === 'playing' ? '正在发音' : '再听一遍'}
-              </button>
             </>
           ) : task === 'recall' ? (
             revealedAttempt ? (
