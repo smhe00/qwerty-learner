@@ -60,6 +60,8 @@ import {
   shouldPlayAutomaticPronunciation,
 } from '@/review/machine'
 import { scheduleLearnReviewCommit } from '@/review/learn-review-commit'
+import { fingerprintReviewBaseState } from '@/review/fsrs/state-fingerprint'
+import { getReviewWordState } from '@/review/repository'
 import { decideReviewRating } from '@/review/state-machine'
 import type {
   RatingDecision,
@@ -170,6 +172,8 @@ export default function WordComponent({
   const previousMeaningVisibleRef = useRef(meaningVisible)
   const historySummaryRef = useRef<WordHistorySummary | undefined>(undefined)
   const historyRecordsRef = useRef<IWordRecord[]>([])
+  // Frozen BEFORE the first spelling input, not reconstructed after grading.
+  const reviewBaseStateFingerprintRef = useRef<string | undefined>(undefined)
   const exerciseConditionRef = useRef<ExerciseConditionV1 | undefined>(undefined)
   const reviewPolicyDecisionRef = useRef<ReviewPolicyDecisionV1 | undefined>(undefined)
   const acceptedInputLengthRef = useRef(0)
@@ -328,6 +332,33 @@ export default function WordComponent({
     }
     previousMeaningVisibleRef.current = meaningVisible
   }, [meaningVisible, word])
+
+  useEffect(() => {
+    let cancelled = false
+    reviewBaseStateFingerprintRef.current = undefined
+    if (!isLearnAttempt || learnItemKind !== 'review') {
+      return () => { cancelled = true }
+    }
+    // A Review's durable FSRS state is sampled while this word is READY.
+    // If the user types before the async snapshot arrives, do NOT guess a
+    // parent state or stamp an after-the-fact fingerprint. Safe fallback:
+    // unanchored duplicate ratings still quarantine in M2.
+    void getReviewWordState(currentDictInfo.id, word.name)
+      .then(async state => {
+        const digest = state ? await fingerprintReviewBaseState(state) : null
+        if (!cancelled && digest &&
+            acceptedInputLengthRef.current === 0 &&
+            !inputLockedRef.current) {
+          reviewBaseStateFingerprintRef.current = digest
+        }
+      }).catch(() => {
+        // Missing source evidence must not prevent offline learning.
+      })
+    return () => {
+      cancelled = true
+      reviewBaseStateFingerprintRef.current = undefined
+    }
+  }, [currentDictInfo.id, isLearnAttempt, learnItemKind, word.name])
 
   useEffect(() => {
     let cancelled = false
@@ -1060,6 +1091,15 @@ export default function WordComponent({
       if (reviewRatingDecision) {
         currentRecordForPolicy.reviewRatingDecision = reviewRatingDecision
       }
+      const reviewBaseStateFingerprint =
+        isLearnAttempt && learnItemKind === 'review' &&
+        reviewRatingDecision?.eligible === true
+          ? reviewBaseStateFingerprintRef.current
+          : undefined
+      if (reviewBaseStateFingerprint) {
+        currentRecordForPolicy.reviewBaseStateFingerprint =
+          reviewBaseStateFingerprint
+      }
 
       const notifyFinished = () => {
         const result: WordFinishResult = {
@@ -1090,6 +1130,7 @@ export default function WordComponent({
             reviewEvidence,
             reviewRatingDecision,
             reviewPolicyShadow: nextExerciseShadow ?? undefined,
+            reviewBaseStateFingerprint,
             sourceMode: isLearnAttempt ? 'learn' : 'typing',
             learnItemKind: isLearnAttempt
               ? learnItemKind ?? 'review'

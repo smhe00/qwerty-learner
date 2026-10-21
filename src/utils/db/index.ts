@@ -99,6 +99,7 @@ export function useSaveWordRecord() {
       reviewEvidence,
       reviewRatingDecision,
       reviewPolicyShadow,
+      reviewBaseStateFingerprint,
       sourceMode,
       learnItemKind,
     }: {
@@ -113,6 +114,7 @@ export function useSaveWordRecord() {
       reviewEvidence?: ReviewEvidenceV1
       reviewRatingDecision?: RatingDecision
       reviewPolicyShadow?: ReviewPolicyShadowV1
+      reviewBaseStateFingerprint?: string
       sourceMode?: 'typing' | 'learn'
       learnItemKind?: LearnItemKind
     }) => {
@@ -154,6 +156,11 @@ export function useSaveWordRecord() {
         sourceMode,
         learnItemKind,
       )
+      if (sourceMode === 'learn' && learnItemKind === 'review' &&
+          reviewRatingDecision?.eligible === true &&
+          reviewBaseStateFingerprint) {
+        wordRecord.reviewBaseStateFingerprint = reviewBaseStateFingerprint
+      }
 
       let dbID = -1
       try {

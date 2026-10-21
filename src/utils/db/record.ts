@@ -153,6 +153,7 @@ export interface LetterMistakes {
 export class WordRecord implements IWordRecord {
   id?: number
   attemptId?: string
+  reviewBaseStateFingerprint?: string
   word: string
   timeStamp: number
   dict: string
