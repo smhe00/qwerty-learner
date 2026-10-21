@@ -79,9 +79,11 @@ function classificationFor(cause: TypingErrorClassification['cause']): TypingErr
     confidence: cause === 'uncertain' ? 0.75 : 1,
     scores: cause === 'recall'
       ? { recall: 1, spelling: 0, motor: 0 }
-      : cause === 'uncertain'
-        ? { recall: 1 / 3, spelling: 1 / 3, motor: 1 / 3 }
-        : { recall: 0, spelling: 0, motor: 0 },
+      : cause === 'spelling'
+        ? { recall: 0, spelling: 1, motor: 0 }
+        : cause === 'uncertain'
+          ? { recall: 1 / 3, spelling: 1 / 3, motor: 1 / 3 }
+          : { recall: 0, spelling: 0, motor: 0 },
   }
 }
 
@@ -97,10 +99,10 @@ function conditionForTask(
     purpose: 'training',
     source: 'adaptive-policy',
     audio: task === 'audio' ? 'automatic' : 'none',
-    meaning: task === 'meaning-choice' || task === 'recall' ? 'visible' : 'hidden',
+    meaning: task === 'meaning-choice' || task === 'recall' || task === 'spelling' ? 'visible' : 'hidden',
     phonetic: task === 'exposure' ? 'visible' : 'hidden',
-    letters: { mode: task === 'recall' ? 'all-hidden' : 'all-visible' },
-    probeDimension: task === 'audio' ? 'audio' : task === 'recall' ? 'none' : 'meaning',
+    letters: { mode: task === 'recall' || task === 'spelling' ? 'all-hidden' : 'all-visible' },
+    probeDimension: task === 'audio' ? 'audio' : task === 'recall' || task === 'spelling' ? 'none' : 'meaning',
   }
 }
 

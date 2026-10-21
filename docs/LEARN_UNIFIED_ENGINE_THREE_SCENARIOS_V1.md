@@ -132,6 +132,15 @@ type AttemptResult = {
 - 读取/上传完成不表示云数据已全面收敛；UI 区分「本机已保存」「上传待融合」「已融合」。旧账号 epoch 的事件不得在云重置后复活。
 - 当前 Pages 测试站禁云，因此只能验证单设备同源切换；多设备实网 Gate 必须使用独立 `etest` 云空间，切勿污染 `master`。
 
+## P0/P1 增量：统一练习选择策略（2026-10-21）
+
+- 新增 `src/learn/task-selector.ts` 作为**不修改长期调度**的纯函数任务选择器：任务由既有 Acquisition/Review 状态机决定；在有效 Cold Probe 上根据同词历史选择独立回忆或拼写形式。默认考试取向 `vocabulary-and-spelling`，但目前**尚未提供完整的学习目标设置 UI**，需后续接入账号设置。
+- 当前实验门槛为最近一次干净独立拼写验证之后累计三次**有效且已在答案揭晓前提交**的 Good 自评，或存在尚未纠正的客观拼写错误。满足时选择拼写挑战；如无输入能力/偏好轻触，则保持轻触，不因设备造成无法完成的情况。三次为版本化待验证参数，不代表固定题型占比。
+- 所有 choice/listening/guided/supported 题都不依赖这种选择器结果推进 FSRS；独立阶段延用 Acquisition 策略与 spacing，Review 依旧经 Rating Gate，不产生第二套 FSRS。
+- 手机拼写失败后不再无条件判为 Again：**在揭晓英文答案前**要求用户明确区分「想起来但拼错」与「没想起」，分别产生 `errorCause=spelling`（Hard）和 `errorCause=recall`（Again）。两者都不算无误独立拼写、不允许新词直接 admission；完整拼写正确才产生 `objective-spelling-clean`。
+- UI 操作能力：桌面轻触复用同一组件但支持强制轻触偏好；手机按需临时打开系统键盘。历史事件保留选择策略和来源证据；这**不意味着跨设备 V4 自动合并已经上线**。
+- 必须通过 Mobile P0、Review Gate、Learn Real Journey 和 Pages 实际发布验收，再考虑推广至主站。
+
 ## G. 实施顺序（有明确 Gate）
 
 ### P0 — 单引擎契约及手机新词闭环

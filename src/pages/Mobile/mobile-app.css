@@ -452,3 +452,29 @@
 .mobile-practice-spelling-form input:focus-visible {
   outline: 2px solid var(--mobile-accent);
 }
+
+
+/* Pre-reveal classification for a failed independent spelling attempt. */
+.mobile-practice-spelling-judgment {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  width: 100%;
+}
+.mobile-practice-spelling-judgment p {
+  margin: 0 0 3px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--mobile-muted);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.mobile-practice-spelling-judgment button {
+  width: 100%;
+  min-height: 49px;
+  font-size: 14px;
+  color: var(--mobile-text);
+  background: var(--mobile-surface);
+  border: 1px solid var(--mobile-line);
+  border-radius: 12px;
+}

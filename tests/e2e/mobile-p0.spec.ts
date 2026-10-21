@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { reviewWords, seedAcquisitionSession } from './review-flow-harness'
+import { selectLearnTask } from '../../src/learn/task-selector'
 
 async function countWordRecords(page: Page): Promise<number> {
   return page.evaluate(async () => {
@@ -525,4 +526,97 @@ test('Desktop Learn switches between keyboard spelling and the same Tap Recall w
   await expect(page.locator('[data-typing-word]').first()).toBeVisible()
   const afterId = await page.evaluate(() => JSON.parse(localStorage.getItem('reviewModeInfo') || '{}').reviewRecord?.id)
   expect(afterId).toBe(beforeId)
+})
+
+
+test('Unified selector keeps cold memory eligibility while recommending spelling from real past evidence', () => {
+  const base = {
+    itemKind: 'review' as const,
+    hasContext: true,
+    choicesAvailable: true,
+    audioAvailable: true,
+    goal: 'vocabulary-and-spelling' as const,
+    preference: 'auto' as const,
+    hasTextInput: true,
+  }
+  const successfulRecall = (timeStamp: number) => ({
+    timeStamp,
+    learnItemKind: 'review',
+    reviewRatingDecision: { eligible: true, rating: 'good' },
+    reviewEvidence: {
+      errorCause: 'clean',
+      reasonCodes: ['self-rated-before-answer-reveal', 'self-report-not-spelling'],
+    },
+  })
+  const positive = [successfulRecall(1), successfulRecall(2), successfulRecall(3)]
+  expect(selectLearnTask({ ...base, history: positive }).exercise).toBe('spelling')
+  expect(selectLearnTask({ ...base, history: positive }).reason).toBe('spelling-verification-due')
+  expect(selectLearnTask({ ...base, history: positive, goal: 'vocabulary' }).exercise).toBe('recall')
+  expect(selectLearnTask({ ...base, history: positive, preference: 'tap-recall' }).exercise).toBe('recall')
+  expect(selectLearnTask({ ...base, history: positive, hasTextInput: false }).exercise).toBe('recall')
+  expect(selectLearnTask({ ...base, history: positive, itemKind: 'acquisition', acquisitionPhase: 'exposure' }).exercise).toBe('exposure')
+  expect(selectLearnTask({ ...base, history: positive, itemKind: 'acquisition', acquisitionPhase: 'guided' }).exercise).toBe('context')
+  expect(selectLearnTask({ ...base, history: positive, itemKind: 'acquisition', acquisitionPhase: 'guided', choicesAvailable: false }).exercise).toBe('recall')
+  expect(selectLearnTask({ ...base, history: positive, itemKind: 'acquisition', acquisitionPhase: 'supported', choicesAvailable: false }).exercise).toBe('recall')
+
+  const recognized = { timeStamp: 4, learnItemKind: 'acquisition',
+    reviewRatingDecision: { eligible: false, rating: null },
+    reviewEvidence: { errorCause: 'clean', reasonCodes: ['recognition-or-training-evidence'] } }
+  expect(selectLearnTask({ ...base, history: [recognized, recognized, recognized] }).exercise).toBe('recall')
+  const verified = { timeStamp: 5, learnItemKind: 'review',
+    reviewRatingDecision: { eligible: true, rating: 'good' },
+    reviewEvidence: { errorCause: 'clean', reasonCodes: ['objective-spelling-clean'] } }
+  expect(selectLearnTask({ ...base, history: [...positive, verified] }).exercise).toBe('recall')
+  const misspelled = { timeStamp: 6, learnItemKind: 'review',
+    reviewRatingDecision: { eligible: true, rating: 'hard' },
+    reviewEvidence: { errorCause: 'spelling', reasonCodes: ['objective-spelling-mismatch'] } }
+  expect(selectLearnTask({ ...base, history: [misspelled] }).exercise).toBe('spelling')
+  expect(selectLearnTask({ ...base, history: [misspelled, verified] }).exercise).toBe('recall')
+  expect(selectLearnTask({ ...base, history: positive, preference: 'cold-spelling' }).exercise).toBe('spelling')
+})
+
+test('Phone spelling mismatch distinguishes remembered typo from recall failure before revealing answer', async ({ page }) => {
+  await mockWordPronunciation(page)
+  await seedAcquisitionSession(page, reviewWords, 930005, 'independent', 4)
+  await page.goto('/mobile/study')
+  const practice = page.locator('[data-mobile-word-practice]')
+  await expect(practice).toBeVisible({ timeout: 45_000 })
+  const word = (await practice.getAttribute('data-mobile-word'))!
+  await practice.locator('[data-mobile-interaction-toggle]').click()
+  await expect(practice).toHaveAttribute('data-mobile-task', 'spelling')
+  const input = practice.getByRole('textbox', { name: '独立拼写单词' })
+  await input.fill(word + 'x')
+  await practice.getByRole('button', { name: '确认拼写' }).click()
+  await expect(practice.locator('[data-mobile-spelling-judgment]')).toBeVisible()
+  await expect(practice.locator('[data-mobile-answer-revealed]')).toHaveCount(0)
+  expect((await readWordLearningEvidence(page, word)).records).toHaveLength(0)
+  await practice.locator('[data-mobile-spelling-cause="spelling"]').click()
+  await expect(practice.locator('[data-mobile-feedback]')).toBeVisible()
+  const saved = await readWordLearningEvidence(page, word)
+  expect(saved.records).toHaveLength(1)
+  expect(saved.records[0].wrongCount).toBe(1)
+  expect(saved.records[0].reviewEvidence?.reasonCodes).toContain('learner-confirmed-recalled-but-misspelled')
+  expect(saved.records[0].reviewEvidence?.reasonCodes).toContain('objective-spelling-mismatch')
+  expect(saved.records[0].reviewEvidence?.reasonCodes).not.toContain('self-report-not-spelling')
+  expect(saved.state).toBeNull()
+  await expect(practice.locator('[data-mobile-manual-next]')).toBeVisible()
+})
+
+test('Phone spelling mismatch can be explicitly adjudicated as real memory failure', async ({ page }) => {
+  await mockWordPronunciation(page)
+  await seedAcquisitionSession(page, reviewWords, 930006, 'independent', 4)
+  await page.goto('/mobile/study')
+  const practice = page.locator('[data-mobile-word-practice]')
+  await expect(practice).toBeVisible({ timeout: 45_000 })
+  const word = (await practice.getAttribute('data-mobile-word'))!
+  await practice.locator('[data-mobile-interaction-toggle]').click()
+  await practice.getByRole('textbox', { name: '独立拼写单词' }).fill(word + 'x')
+  await practice.getByRole('button', { name: '确认拼写' }).click()
+  await practice.locator('[data-mobile-spelling-cause="recall"]').click()
+  await expect(practice.locator('[data-mobile-feedback]')).toBeVisible()
+  const saved = await readWordLearningEvidence(page, word)
+  expect(saved.records).toHaveLength(1)
+  expect(saved.records[0].wrongCount).toBe(1)
+  expect(saved.records[0].reviewEvidence?.reasonCodes).not.toContain('learner-confirmed-recalled-but-misspelled')
+  expect(saved.state).toBeNull()
 })

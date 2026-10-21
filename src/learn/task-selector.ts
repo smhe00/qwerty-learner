@@ -62,14 +62,14 @@ export function selectLearnTask(input: {
     if (input.acquisitionPhase === 'exposure') return choose('exposure', 'exposure')
     if (input.acquisitionPhase === 'guided') {
       return choose(
-        input.hasContext && input.choicesAvailable
-          ? 'context' : 'meaning-choice',
+        !input.choicesAvailable ? 'recall' :
+          input.hasContext ? 'context' : 'meaning-choice',
         'guided',
       )
     }
     if (input.acquisitionPhase === 'supported') {
-      return choose(input.audioAvailable && input.choicesAvailable
-        ? 'audio' : 'meaning-choice', 'supported')
+      return choose(!input.choicesAvailable ? 'recall' :
+        input.audioAvailable ? 'audio' : 'meaning-choice', 'supported')
     }
   }
   // A Review or Independent Acquisition MUST reach a real cold probe.
