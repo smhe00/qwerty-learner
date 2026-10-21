@@ -643,3 +643,41 @@ export function verifyWitnessedChainedEventHeads(
     method: 'POST', token, body: { heads },
   })
 }
+
+/** M2.10 independent server-recorded device checkout *declaration* pilot.
+ * The server issues the receipt only for its authenticated device session,
+ * exact current V4 revision and an already-present chained event prefix.
+ * Does NOT attest browser IndexedDB state or authorize cloud merges.
+ */
+export type DeviceCheckoutSelector = {
+  deviceId: string
+  checkoutId: string
+  sha256: string
+}
+export type VerifiedDeviceCheckoutReply = {
+  ok: true
+  verifiedExactReceipt: boolean
+  publishReady?: false
+  convergenceComplete: false
+  scope?: 'device-declared-checkout-only'
+  accountId?: string
+  deviceId?: string
+  cloudRevision?: number
+  cloudFingerprint?: string
+  eventHead?: ChainedReceipt
+}
+export function declareChainedDeviceCheckout(
+  token: string,
+  input: { cloudRevision: number; cloudFingerprint: string; eventHead: ChainedReceipt },
+) {
+  return request<{ ok: true; verifiedExactReceipt: true;
+    receipt: DeviceCheckoutSelector; publishReady: false; convergenceComplete: false }>(
+    '/api/sync/events/v2/checkout', { method: 'POST', token, body: input })
+}
+export function readChainedDeviceCheckout(
+  token: string, selector: DeviceCheckoutSelector,
+) {
+  const query = new URLSearchParams(selector)
+  return request<VerifiedDeviceCheckoutReply>(
+    '/api/sync/events/v2/checkout?' + query, { token })
+}
