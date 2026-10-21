@@ -99,6 +99,9 @@ export interface IWordRecord {
   id?: number
   /** Cross-device immutable identity for this learning attempt; older rows may omit it. */
   attemptId?: string
+  /** Optional SHA-256 of the FSRS state actually displayed before this
+   * Review probe. Never inferred from an after-the-fact timestamp or device. */
+  reviewBaseStateFingerprint?: string
   word: string
   timeStamp: number
   // 正常章节为 dictKey, 其他功能则为对应的类型
