@@ -414,3 +414,41 @@
     padding: 0 12px;
   }
 }
+
+
+/* Optional on-demand orthography check; keyboard never occupies the
+   default mobile Tap Recall page. */
+.mobile-practice-mode-toggle {
+  display: block;
+  min-height: 38px;
+  align-self: center;
+  margin: 0 auto 9px;
+  padding: 6px 18px;
+  color: var(--mobile-muted);
+  font-size: 13px;
+  background: transparent;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.mobile-practice-spelling-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+.mobile-practice-spelling-form input {
+  width: 100%;
+  min-height: 54px;
+  padding: 11px 18px;
+  border: 1px solid var(--mobile-line);
+  border-radius: 12px;
+  background: var(--mobile-surface);
+  color: var(--mobile-text);
+  font-size: 18px;
+  text-align: center;
+  outline-offset: 2px;
+}
+.mobile-practice-spelling-form input:focus-visible {
+  outline: 2px solid var(--mobile-accent);
+}

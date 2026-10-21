@@ -22,7 +22,7 @@ import type { IWordRecord, LearningContextV1 } from '@/utils/db/record'
 import { getUTCUnixTimestamp } from '@/utils/time'
 import type { WordFinishResult } from './Word'
 
-type MobileTask = 'exposure' | 'context' | 'audio' | 'meaning-choice' | 'recall'
+type MobileTask = 'exposure' | 'context' | 'audio' | 'meaning-choice' | 'recall' | 'spelling'
 type AudioState = 'idle' | 'playing' | 'played' | 'tap' | 'error'
 
 type MobileWordPracticeProps = {
@@ -87,7 +87,7 @@ function conditionForTask(
   plan?: ReviewExercisePlanV1,
 ): ExerciseConditionV1 {
   if (task === 'exposure' && plan) return plan.condition
-  if (task === 'recall' && isCoreRecall && plan) return plan.condition
+  if ((task === 'recall' || task === 'spelling') && isCoreRecall && plan) return plan.condition
   return {
     version: 1,
     purpose: 'training',
@@ -106,7 +106,7 @@ function learningContextForTask(
   audioPlayed: boolean,
   manuallyPlayed: boolean,
 ): LearningContextV1 {
-  const hidden = task === 'recall'
+  const hidden = task === 'recall' || task === 'spelling'
   return {
     version: 1,
     answerVisibilityAtStart: hidden ? 'hidden' : 'full',
@@ -114,8 +114,8 @@ function learningContextForTask(
     answerRevealed: false,
     revealedBeforeFirstKey: false,
     revealCount: 0,
-    exampleVisibleAtStart: hasExample && (task === 'exposure' || task === 'context' || task === 'recall'),
-    meaningVisibleAtStart: task === 'exposure' || task === 'recall' || task === 'meaning-choice',
+    exampleVisibleAtStart: hasExample && (task === 'exposure' || task === 'context' || task === 'recall' || task === 'spelling'),
+    meaningVisibleAtStart: task === 'exposure' || task === 'recall' || task === 'spelling' || task === 'meaning-choice',
     meaningRevealed: false,
     meaningRevealedBeforeFirstKey: false,
     meaningRevealCount: 0,
@@ -139,6 +139,8 @@ export default function MobileWordPractice({
   const [revealedAttempt, setRevealedAttempt] = useState<PendingRecallAttempt | null>(null)
   const [feedback, setFeedback] = useState<SavedAttempt | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [preferSpelling, setPreferSpelling] = useState(false)
+  const [spellingInput, setSpellingInput] = useState('')
   const [error, setError] = useState('')
   const [audioState, setAudioState] = useState<AudioState>('idle')
   const [audioPlayed, setAudioPlayed] = useState(false)
@@ -194,7 +196,7 @@ export default function MobileWordPractice({
   }, [queue, word])
 
   const phase = itemKind === 'acquisition' ? acquisitionState?.phase : undefined
-  const task: MobileTask = itemKind !== 'acquisition'
+  const baseTask: MobileTask = itemKind !== 'acquisition'
     ? 'recall'
     : phase === 'exposure' ? 'exposure'
       : phase === 'guided'
@@ -203,6 +205,7 @@ export default function MobileWordPractice({
         : phase === 'supported'
           ? audioFallback ? 'meaning-choice' : choices.length > 1 ? 'audio' : 'recall'
           : 'recall'
+  const task: MobileTask = baseTask === 'recall' && preferSpelling ? 'spelling' : baseTask
   const isCoreRecall = itemKind === 'review' || (itemKind === 'acquisition' && phase === 'independent')
   // Phone-only Acquisition must obey the SAME Independent admission plan as
   // desktop spelling. Never silently substitute the Review canonical policy:
@@ -299,7 +302,7 @@ export default function MobileWordPractice({
       ? 'recall'
       : grade === 'hard' ? 'uncertain' : 'clean'
     const classification = classificationFor(cause)
-    const independent = mode === 'recall' && isCoreRecall
+    const independent = (mode === 'recall' || mode === 'spelling') && isCoreRecall
     const evidence: ReviewEvidenceV1 = {
       version: 1,
       memoryGrade: grade,
@@ -312,13 +315,15 @@ export default function MobileWordPractice({
         independent ? 'independent-retrieval' : 'assisted-practice',
         ...(mode === 'recall'
           ? ['self-report-not-spelling', 'self-rated-before-answer-reveal']
-          : ['recognition-or-training-evidence']),
+          : mode === 'spelling'
+            ? [wrongCount === 0 ? 'objective-spelling-clean' : 'objective-spelling-mismatch', 'typed-with-answer-hidden']
+            : ['recognition-or-training-evidence']),
         ...(mode === 'audio' && !audioPlayed ? ['audio-cue-not-played'] : []),
         'self-rated-' + grade,
       ],
     }
     let reviewRatingDecision: RatingDecision | undefined
-    if (itemKind === 'review' && reviewAttemptRole && mode === 'recall') {
+    if (itemKind === 'review' && reviewAttemptRole && (mode === 'recall' || mode === 'spelling')) {
       reviewRatingDecision = decideReviewRating({
         attemptRole: reviewAttemptRole, condition, classification, evidence,
       })
@@ -442,6 +447,22 @@ export default function MobileWordPractice({
     return () => window.clearTimeout(timeout)
   }, [revealedAttempt, paused, feedback, error])
 
+  const submitSpelling = () => {
+    if (task !== 'spelling' || isSaving || paused || feedback) return
+    const attempted = spellingInput.trim().normalize('NFKC')
+    if (!attempted) return
+    const expected = word.name.trim().normalize('NFKC')
+    const correct = attempted.toLocaleLowerCase() === expected.toLocaleLowerCase()
+    // Raw attempt evidence intentionally distinguishes typed cold spelling
+    // from self-rated recall; a failed spelling is an Again, not a Good.
+    void saveAttempt({
+      mode: 'spelling',
+      grade: correct ? 'good' : 'again',
+      wrongCount: correct ? 0 : 1,
+      title: correct ? '独立拼写正确' : '拼写未通过 · 请核对',
+    })
+  }
+
   const choose = (name: string) => {
     if (task === 'audio' && !audioPlayed) return
     const correct = name === word.name
@@ -466,7 +487,7 @@ export default function MobileWordPractice({
   }, [feedback, paused, advanceAfterFeedback])
 
   const playAgain = () => playSound(true)
-  const title = task === 'exposure' ? '认识新词'
+  const title = task === 'spelling' ? '独立拼写' : task === 'exposure' ? '认识新词'
     : task === 'context' ? '语境选择'
     : task === 'audio' ? '听音辨词'
     : task === 'meaning-choice' ? '词义识别' : '主动回忆'
@@ -536,6 +557,8 @@ export default function MobileWordPractice({
             ) : (
               <p className="mobile-practice-cue">先在心中回忆，再判断是否记得</p>
             )
+          ) : task === 'spelling' ? (
+            <p className="mobile-practice-cue">根据词义，完整拼写英文单词</p>
           ) : task === 'audio' ? (
             <div className="mobile-practice-audio-hero" aria-hidden="true"><Headphones size={35} strokeWidth={1.6} /></div>
           ) : task === 'meaning-choice' ? (
@@ -548,7 +571,9 @@ export default function MobileWordPractice({
         <div className="mobile-practice-example-slot" data-mobile-example-slot>
           {feedback || task === 'exposure'
             ? renderExample(true)
-            : task === 'recall'
+            : task === 'spelling'
+              ? renderExample(false)
+              : task === 'recall'
               ? renderExample(Boolean(revealedAttempt))
               : task === 'context'
                 ? renderExample(false)
@@ -573,7 +598,7 @@ export default function MobileWordPractice({
 
         <div className="mobile-practice-meaning-slot" data-mobile-meaning-slot>
           <div className="mobile-practice-definition-scroll" data-mobile-definition-scroll>
-            {(feedback || task === 'exposure' || task === 'recall') && (
+            {(feedback || task === 'exposure' || task === 'recall' || task === 'spelling') && (
               <p className="mobile-practice-meaning">{meanings}</p>
             )}
             {(feedback || task === 'exposure' || (task === 'recall' && Boolean(revealedAttempt))) && example?.cn && (
@@ -584,6 +609,17 @@ export default function MobileWordPractice({
       </div>
 
       <footer className="mobile-practice-actions" data-mobile-action-zone>
+        {!feedback && !revealedAttempt && (task === 'recall' || task === 'spelling') && (
+          <button
+            type="button"
+            className="mobile-practice-mode-toggle"
+            data-mobile-interaction-toggle
+            onClick={() => { setPreferSpelling((previous) => !previous); setSpellingInput('') }}
+            disabled={paused || isSaving}
+          >
+            {task === 'recall' ? '改用独立拼写' : '改用轻触回忆'}
+          </button>
+        )}
         {error && <p className="mobile-practice-error" role="alert">{error}</p>}
         {feedback ? (
           feedback.autoAdvance ? (
@@ -605,6 +641,28 @@ export default function MobileWordPractice({
           })} disabled={paused || isSaving}>
             {isSaving ? '正在保存…' : '继续学习'}
           </button>
+        ) : task === 'spelling' ? (
+          <form
+            className="mobile-practice-spelling-form"
+            data-mobile-spelling-form
+            onSubmit={(event) => { event.preventDefault(); submitSpelling() }}
+          >
+            <input
+              type="text"
+              aria-label="独立拼写单词"
+              placeholder="输入完整英文单词"
+              autoCapitalize="none"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              value={spellingInput}
+              onChange={(event) => setSpellingInput(event.target.value)}
+              disabled={paused || isSaving}
+            />
+            <button type="submit" className="mobile-practice-primary" disabled={paused || isSaving || !spellingInput.trim()}>
+              {isSaving ? '正在保存…' : '确认拼写'}
+            </button>
+          </form>
         ) : task === 'recall' ? (
           revealedAttempt ? (
             revealedAttempt.grade === 'good' ? (
