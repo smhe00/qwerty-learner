@@ -18,6 +18,7 @@ import type { PendingSyncV2Pull, PullJournalPort } from './v2-pull-transaction'
 const STORE = 'registry'
 const HEAD = 'head'
 const JOURNAL = 'sync-v2-pull-journal:v1'
+const M4_MERGE = 'sync-m4-merge-journal:v1'
 const BASE_PREFIX = 'sync-v2-baseline:'
 const SHA256 = /^[a-f0-9]{64}$/
 
@@ -142,12 +143,13 @@ export const syncV2PullJournalPort: PullJournalPort = {
       const complete = done(tx)
       try {
         const store = tx.objectStore(STORE)
-        const [existing, registry, base] = await Promise.all([
+        const [existing, registry, base, pendingMerge] = await Promise.all([
           req<unknown>(store.get(JOURNAL)),
           req<any>(store.get(HEAD)),
           req<unknown>(store.get(baselineKey(pending.accountId))),
+          req<unknown>(store.get(M4_MERGE)),
         ])
-        if (existing !== undefined ||
+        if (existing !== undefined || pendingMerge !== undefined ||
             !registry || registry.generation !== pending.registryGeneration ||
             registry.pending !== null ||
             !same(registry.active, { kind: 'account', accountId: pending.accountId }) ||

@@ -16,6 +16,7 @@ const SNAPSHOTS = 'snapshots'
 const HEAD = 'head'
 const JOURNAL = 'manual-v4-import-journal:v1'
 const S2_PULL = 'sync-v2-pull-journal:v1'
+const M4_MERGE = 'sync-m4-merge-journal:v1'
 const BASELINE = 'sync-v2-baseline:'
 const SHA256 = /^[a-f0-9]{64}$/
 
@@ -126,14 +127,16 @@ export const manualV4ImportJournalPort = {
       const done = complete(tx)
       try {
         const registryStore = tx.objectStore(REGISTRY)
-        const [head, pending, pendingPull] = await Promise.all([
+        const [head, pending, pendingPull, pendingMerge] = await Promise.all([
           req<any>(registryStore.get(HEAD)),
           req<unknown>(registryStore.get(JOURNAL)),
           req<unknown>(registryStore.get(S2_PULL)),
+          req<unknown>(registryStore.get(M4_MERGE)),
         ])
         if (!head || head.generation !== registryGeneration || head.pending ||
             !same(head.active, owner) ||
-            pending !== undefined || pendingPull !== undefined) {
+            pending !== undefined || pendingPull !== undefined ||
+            pendingMerge !== undefined) {
           throw new Error('Manual V4 import conflicts with another S1/S2 transaction')
         }
         tx.objectStore(SNAPSHOTS).put({
