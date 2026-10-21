@@ -56,7 +56,8 @@ function result(words: ScopedWordPreview[], reason = 'none'): ScopedAccountPrevi
   const good = words.filter(w => w.status === 'projected').length
   const bad = words.length - good
   return {
-    status: bad === 0 ? 'projected' : good > 0 ? 'partial' : 'blocked',
+    status: reason !== 'none' || words.length === 0 ? 'blocked' :
+      bad === 0 ? 'projected' : good > 0 ? 'partial' : 'blocked',
     publishReady: false, convergenceComplete: false,
     reason,
     words,
