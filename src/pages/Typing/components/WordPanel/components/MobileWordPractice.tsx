@@ -2,6 +2,7 @@ import { Headphones, Volume2 } from 'lucide-react'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { generateWordSoundSrc } from '@/hooks/usePronunciation'
+import { createLearnAcquisitionExercisePlanForState } from '@/learn/acquisition'
 import type { LearnAcquisitionState } from '@/learn/acquisition'
 import type { LearnItemKind } from '@/learn/session'
 import type { TypingErrorClassification } from '@/review/classifier'
@@ -203,7 +204,14 @@ export default function MobileWordPractice({
           ? audioFallback ? 'meaning-choice' : choices.length > 1 ? 'audio' : 'recall'
           : 'recall'
   const isCoreRecall = itemKind === 'review' || (itemKind === 'acquisition' && phase === 'independent')
-  const activePlan = exercisePlan ?? (isCoreRecall ? createCanonicalReviewProbePlan() : undefined)
+  // Phone-only Acquisition must obey the SAME Independent admission plan as
+  // desktop spelling. Never silently substitute the Review canonical policy:
+  // that would save a Good self-report but prevent this new word's admission.
+  const activePlan = exercisePlan ??
+    (itemKind === 'acquisition' && acquisitionState &&
+      acquisitionState.phase !== 'complete' && acquisitionState.phase !== 'deferred'
+      ? createLearnAcquisitionExercisePlanForState(acquisitionState)
+      : isCoreRecall ? createCanonicalReviewProbePlan() : undefined)
   const wantsAutomaticSound = task === 'audio' || task === 'exposure'
   const source = generateWordSoundSrc(word.name, pronunciation.type || 'uk')
 
@@ -480,6 +488,7 @@ export default function MobileWordPractice({
       className="mobile-practice"
       data-mobile-word-practice
       data-mobile-task={task}
+      data-mobile-policy={activePlan?.decision.policyVersion ?? 'training'}
       data-mobile-word={word.name}
       data-mobile-next-mode={feedback ? feedback.autoAdvance ? 'auto' : 'manual' : 'pending'}
       data-mobile-recall-stage={task === 'recall' ? feedback ? 'saved' : revealedAttempt ? 'verification' : 'unrevealed' : undefined}
