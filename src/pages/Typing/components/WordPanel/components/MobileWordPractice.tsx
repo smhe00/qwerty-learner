@@ -45,7 +45,9 @@ type PendingRecallAttempt = {
 type SavedAttempt = {
   result: WordFinishResult
   title: string
-  correct: boolean
+  // Only an unassisted full-success response advances without another tap.
+  // A Hard self-rating or a wrong choice needs time for reviewing feedback.
+  autoAdvance: boolean
 }
 
 const RECALL_GRADES: Array<{ rating: ReviewOutcome; label: string }> = [
@@ -361,7 +363,7 @@ export default function MobileWordPractice({
       record.id = id
       setFeedback({
         result: { record, wrongCount: input.wrongCount, classification, reviewRatingDecision, reviewEvidence: evidence },
-        correct: input.correct,
+        autoAdvance: input.grade === 'good' && input.wrongCount === 0,
         title: input.title,
       })
       setRevealedAttempt(null)
@@ -403,17 +405,19 @@ export default function MobileWordPractice({
     })
   }
 
+  const advanceAfterFeedback = useCallback((saved: SavedAttempt) => {
+    if (paused || finishedRef.current) return
+    finishedRef.current = true
+    onFinish(saved.result)
+  }, [onFinish, paused])
+
   useEffect(() => {
-    if (!feedback || paused) return
-    // Retain the feedback briefly, then progress without another tap. Pausing
-    // or leaving the screen cancels this timer; never advance in background.
-    const timeout = window.setTimeout(() => {
-      if (finishedRef.current) return
-      finishedRef.current = true
-      onFinish(feedback.result)
-    }, feedback.correct ? 1000 : 1550)
+    if (!feedback?.autoAdvance || paused) return
+    // Full success: briefly acknowledge the saved answer, then proceed.
+    // Wrong and uncertain answers remain visible until an explicit next tap.
+    const timeout = window.setTimeout(() => advanceAfterFeedback(feedback), 1000)
     return () => window.clearTimeout(timeout)
-  }, [feedback, onFinish, paused])
+  }, [feedback, paused, advanceAfterFeedback])
 
   const playAgain = () => playSound(true)
   const title = task === 'exposure' ? '认识新词'
@@ -439,6 +443,7 @@ export default function MobileWordPractice({
       data-mobile-word-practice
       data-mobile-task={task}
       data-mobile-word={word.name}
+      data-mobile-next-mode={feedback ? feedback.autoAdvance ? 'auto' : 'manual' : 'pending'}
       aria-label="手机单词学习"
     >
       <header className="mobile-practice-head">
@@ -533,7 +538,19 @@ export default function MobileWordPractice({
       <footer className="mobile-practice-actions" data-mobile-action-zone>
         {error && <p className="mobile-practice-error" role="alert">{error}</p>}
         {feedback ? (
-          <p className="mobile-practice-next-hint" role="status">已保存 · 自动进入下一个</p>
+          feedback.autoAdvance ? (
+            <p className="mobile-practice-next-hint" role="status">已保存 · 自动进入下一个</p>
+          ) : (
+            <button
+              type="button"
+              className="mobile-practice-primary"
+              data-mobile-manual-next
+              onClick={() => advanceAfterFeedback(feedback)}
+              disabled={paused}
+            >
+              看清答案后 · 下一词
+            </button>
+          )
         ) : task === 'exposure' ? (
           <button type="button" className="mobile-practice-primary" onClick={() => void saveAttempt({
             mode: 'exposure', grade: 'good', wrongCount: 0, title: '初次学习完成', correct: true,
