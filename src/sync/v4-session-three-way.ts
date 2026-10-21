@@ -134,14 +134,16 @@ export async function inspectThreeWayReviewSessions(input: {
       if (!local && !remote) continue
       // Independently created, stable UUID sessions may exist on just one
       // device. Historical UUID-less rows are rejected by validate().
+      if (ancestor && local && remote) {
+        // Check pinned ancestry before cross-device equality to distinguish
+        // a broken immutable header from a genuine two-device conflict.
+        assertEvolution(ancestor, local)
+        assertEvolution(ancestor, remote)
+      }
       if (local && remote &&
           (local.dict !== remote.dict || local.createTime !== remote.createTime ||
            local.sessionKind !== remote.sessionKind)) {
         return fail('session-immutable-header-conflict')
-      }
-      if (ancestor && local && remote) {
-        assertEvolution(ancestor, local)
-        assertEvolution(ancestor, remote)
       }
       const a = ancestor ? logical(ancestor) : undefined
       const l = local ? logical(local) : undefined
