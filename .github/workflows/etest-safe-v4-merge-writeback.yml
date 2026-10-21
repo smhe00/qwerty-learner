@@ -1,0 +1,39 @@
+name: etest Safe V4 Merge Writeback Pilot
+
+on:
+  push:
+    branches: [edgeone-test]
+    paths:
+      - 'tests/cloud/etest-safe-v4-merge-writeback.mjs'
+      - '.github/workflows/etest-safe-v4-merge-writeback.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: etest-safe-merge-writeback-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  safe-subset-cloud-writeback:
+    if: github.ref_name == 'edgeone-test'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 22
+    env:
+      QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Install pinned esbuild for real product merge implementation
+        run: yarn install --frozen-lockfile
+      - name: Require exact deployed etest SHA before creating a disposable account
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          EDGEONE_WAIT_MS: '600000'
+        run: node scripts/verify-edgeone-source.mjs
+      - name: Exercise two-device safe subset automatic candidate writeback with real V4 Blob
+        run: node tests/cloud/etest-safe-v4-merge-writeback.mjs
