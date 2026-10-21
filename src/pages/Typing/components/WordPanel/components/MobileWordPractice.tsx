@@ -147,9 +147,11 @@ export default function MobileWordPractice({
   const example = useMemo(() => getFirstValidDictionaryExample(word), [word])
   const maskedExample = example ? maskDictionaryExample(example) : null
   const meanings = word.trans?.filter(Boolean).join('；') || '暂无释义'
-  const exampleFontSize = example && example.en.length > 140
-    ? 'clamp(12px, 3.2vw, 14px)'
-    : example && example.en.length > 88
+  const exampleFontSize = example && example.en.length > 205
+    ? 'clamp(11px, 2.9vw, 13px)'
+    : example && example.en.length > 140
+      ? 'clamp(12px, 3.2vw, 14px)'
+      : example && example.en.length > 88
       ? 'clamp(13px, 3.5vw, 15px)'
       : 'clamp(15px, 4.2vw, 18px)'
 

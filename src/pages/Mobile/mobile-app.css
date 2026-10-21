@@ -197,7 +197,6 @@
   line-height: 1.55;
   text-align: center;
 }
-.mobile-practice-example-slot:has(.mobile-practice-example) { min-height: 0; }
 .mobile-practice-example mark {
   font: inherit;
   font-weight: 700;
@@ -208,6 +207,7 @@
 }
 .mobile-practice-keyword {
   color: var(--mobile-accent);
+  background: rgba(75, 100, 170, .11);
   background: color-mix(in srgb, var(--mobile-accent) 11%, transparent);
   text-decoration: underline;
   text-decoration-color: color-mix(in srgb, var(--mobile-accent) 36%, transparent);
@@ -215,6 +215,7 @@
 }
 .mobile-practice-blank {
   color: var(--mobile-accent);
+  background: rgba(75, 100, 170, .09);
   background: color-mix(in srgb, var(--mobile-accent) 9%, transparent);
   text-decoration: underline;
   text-decoration-thickness: 2px;
@@ -319,8 +320,8 @@
 @media (max-width: 360px) {
   .mobile-practice-host { padding: 0 10px; }
   .mobile-practice-head { padding-top: 9px; }
-  .mobile-practice-choice { min-height: 60px; padding: 8px; font-size: 14px; }
-  .mobile-practice-grade { min-height: 58px; font-size: 15px; }
+  .mobile-practice-choice { min-height: 68px; padding: 8px; font-size: 14px; }
+  .mobile-practice-grade { min-height: 64px; font-size: 15px; }
 }
 @media (max-height: 630px) {
   .mobile-practice-head { padding-top: 6px; }

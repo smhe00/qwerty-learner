@@ -142,57 +142,106 @@ test('Mobile narrow screens keep the actions visible without horizontal scroll',
 })
 
 
-test('Mobile prioritizes full word at top; long explanations truncate below the example', async ({ page }) => {
+test('Mobile full word stays at the top when a long definition occupies all remaining room', async ({ page }) => {
   await mockWordPronunciation(page)
-  await page.setViewportSize({ width: 320, height: 568 })
+  for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }]) {
+    await page.setViewportSize(viewport)
+    await page.goto('/mobile/study')
+    const practice = page.locator('[data-mobile-word-practice]')
+    await expect(practice).toBeVisible({ timeout: 45_000 })
+    if (await practice.getAttribute('data-mobile-task') === 'recall') {
+      await page.getByRole('button', { name: '显示答案' }).click()
+    }
+
+    const result = await practice.evaluate((element) => {
+      const reading = element.querySelector('[data-mobile-reading]') as HTMLElement
+      const wordSlot = element.querySelector('[data-mobile-word-slot]') as HTMLElement
+      const exampleSlot = element.querySelector('[data-mobile-example-slot]') as HTMLElement
+      const meaningSlot = element.querySelector('[data-mobile-meaning-slot]') as HTMLElement
+      const content = element.querySelector('[data-mobile-definition-scroll]') as HTMLElement
+      const word = wordSlot.querySelector('.mobile-practice-word') as HTMLElement | null
+      const meaning = meaningSlot.querySelector('.mobile-practice-meaning') as HTMLElement | null
+      // The same layout must handle unusually long content regardless of
+      // the randomly scheduled learning task.
+      if (!word) {
+        wordSlot.innerHTML = '<h2 class="mobile-practice-word">characteristicallylongtargetword</h2>'
+      }
+      if (!meaning) {
+        content.innerHTML = '<p class="mobile-practice-meaning"></p>'
+      }
+      const longMeaning = content.querySelector('.mobile-practice-meaning') as HTMLElement
+      const shownWord = wordSlot.querySelector('.mobile-practice-word') as HTMLElement
+      longMeaning.textContent = '中文释义与复习说明，'.repeat(90)
+      const first = shownWord.getBoundingClientRect()
+      const firstScroll = content.scrollHeight
+      const firstClient = content.clientHeight
+      const example = exampleSlot.getBoundingClientRect()
+      const definitions = meaningSlot.getBoundingClientRect()
+      return {
+        wordTop: first.top,
+        wordBottom: first.bottom,
+        wordHeight: first.height,
+        wordScrollHeight: shownWord.scrollHeight,
+        readingTop: reading.getBoundingClientRect().top,
+        readingBottom: reading.getBoundingClientRect().bottom,
+        exampleTop: example.top,
+        exampleBottom: example.bottom,
+        definitionTop: definitions.top,
+        definitionBottom: definitions.bottom,
+        lineClamp: getComputedStyle(longMeaning).webkitLineClamp,
+        definitionClient: firstClient,
+        definitionScroll: firstScroll,
+        wordClipped: shownWord.scrollWidth > shownWord.clientWidth + 1,
+      }
+    })
+    expect(result.wordTop).toBeGreaterThanOrEqual(result.readingTop - 1)
+    expect(result.wordBottom).toBeLessThanOrEqual(result.readingBottom + 1)
+    expect(result.wordHeight).toBeGreaterThanOrEqual(result.wordScrollHeight - 1)
+    expect(result.wordClipped).toBe(false)
+    expect(result.exampleTop).toBeGreaterThanOrEqual(result.wordBottom - 1)
+    expect(result.exampleTop - result.wordBottom).toBeLessThan(35)
+    expect(result.definitionTop).toBeGreaterThanOrEqual(result.exampleBottom - 1)
+    expect(result.definitionBottom).toBeLessThanOrEqual(result.readingBottom + 1)
+    expect(result.lineClamp).toBe('none')
+    expect(result.definitionScroll).toBeGreaterThan(result.definitionClient)
+    await expect(page.locator('[data-mobile-action-zone]')).toBeVisible()
+  }
+})
+
+test('Mobile example uses three lines and highlights only the hidden cloze before reveal', async ({ page }) => {
+  await mockWordPronunciation(page)
   await page.goto('/mobile/study')
   const practice = page.locator('[data-mobile-word-practice]')
   await expect(practice).toBeVisible({ timeout: 45_000 })
-
-  if (await practice.getAttribute('data-mobile-task') === 'recall') {
-    await page.getByRole('button', { name: '显示答案' }).click()
-  }
-
-  const word = practice.locator('[data-mobile-word-slot] .mobile-practice-word')
-  if (await word.count() > 0) {
-    const before = await word.boundingBox()
-    expect(before).not.toBeNull()
-    const result = await word.evaluate((element) => {
-      const root = element.closest('[data-mobile-reading]')
-      const wordSlot = root?.querySelector('[data-mobile-word-slot]')
-      const exampleSlot = root?.querySelector('[data-mobile-example-slot]')
-      const meaningSlot = root?.querySelector('[data-mobile-meaning-slot]')
-      const meaning = meaningSlot?.querySelector('.mobile-practice-meaning')
-      if (meaning) meaning.textContent = '非常冗长的中文释义与补充说明；'.repeat(100)
-      const rect = element.getBoundingClientRect()
-      const slotRect = wordSlot?.getBoundingClientRect()
-      const readingRect = root?.getBoundingClientRect()
-      const exampleRect = exampleSlot?.getBoundingClientRect()
-      const meaningRect = meaningSlot?.getBoundingClientRect()
-      const meaningLine = meaning ? parseFloat(getComputedStyle(meaning).lineHeight) : 0
+  const mode = await practice.getAttribute('data-mobile-task')
+  const example = practice.locator('[data-mobile-example]')
+  if (await example.count()) {
+    const metrics = await example.evaluate((element) => {
+      const css = getComputedStyle(element)
       return {
-        wordTop: rect.top, wordBottom: rect.bottom, wordVisibleHeight: element.scrollHeight,
-        wordBoxHeight: rect.height,
-        wordOverflow: element.scrollWidth - element.clientWidth,
-        readingTop: readingRect?.top ?? 0, readingBottom: readingRect?.bottom ?? 0,
-        slotTop: slotRect?.top ?? 0,
-        exampleCenter: exampleRect ? (exampleRect.top + exampleRect.bottom) / 2 : 0,
-        meaningTop: meaningRect?.top ?? 0,
-        meaningHeight: meaning?.getBoundingClientRect().height ?? 0,
-        meaningLine,
+        lines: css.webkitLineClamp,
+        reservedHeight: element.getBoundingClientRect().height,
+        fontSize: parseFloat(css.fontSize),
+        lineHeight: parseFloat(css.lineHeight),
       }
     })
-    const after = await word.boundingBox()
-    expect(after).not.toBeNull()
-    expect(after!.y).toBeCloseTo(before!.y, 0)
-    expect(result.wordTop).toBeGreaterThanOrEqual(result.readingTop - 1)
-    expect(result.wordBottom).toBeLessThanOrEqual(result.readingBottom + 1)
-    expect(result.wordBoxHeight).toBeGreaterThanOrEqual(result.wordVisibleHeight - 1)
-    expect(result.wordOverflow).toBeLessThanOrEqual(1)
-    expect(result.meaningTop).toBeGreaterThan(result.wordBottom)
-    expect(result.exampleCenter).toBeGreaterThan(result.wordBottom)
-    if (result.meaningLine > 0) expect(result.meaningHeight).toBeLessThanOrEqual(result.meaningLine * 2 + 2)
+    expect(metrics.lines).toBe('3')
+    expect(metrics.reservedHeight).toBeLessThanOrEqual(metrics.fontSize * 1.55 * 3 + 2)
+    expect(metrics.reservedHeight).toBeGreaterThanOrEqual(metrics.fontSize * 1.55 * 2.8)
+    const keyword = example.locator('[data-mobile-keyword]')
+    await expect(keyword).toHaveCount(1)
+    if (mode === 'recall' || mode === 'context') {
+      await expect(keyword).toHaveClass(/mobile-practice-blank/)
+      const masked = await keyword.textContent()
+      expect(masked).toMatch(/_{3,}/)
+      if (mode === 'recall') {
+        await practice.getByRole('button', { name: '显示答案' }).click()
+        await expect(keyword).toHaveClass(/mobile-practice-keyword/)
+        const revealed = await keyword.textContent()
+        expect(revealed).not.toContain('_')
+      }
+    } else {
+      await expect(keyword).toHaveClass(/mobile-practice-keyword/)
+    }
   }
-
-  await expect(page.locator('[data-mobile-action-zone]')).toBeVisible()
 })
