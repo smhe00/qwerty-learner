@@ -35,7 +35,7 @@ const receipt = (deviceNum, seq, batchNum) => ({
 const canonical = value => {
   if (value === null || typeof value !== 'object') return JSON.stringify(value)
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']'
-  return '{' + Object.keys(value).sort().map(k =>
+  return '{' + Object.keys(value).filter(k => value[k] !== undefined).sort().map(k =>
     JSON.stringify(k) + ':' + canonical(value[k])).join(',') + '}'
 }
 const hash = value => createHash('sha256').update(canonical(value)).digest('hex')

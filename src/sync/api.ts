@@ -622,3 +622,24 @@ export function readChainedEventBatch(token: string, receipt: ChainedReceipt) {
   })
   return request<ReadChainedResponse>('/api/sync/events/v2?' + query, { token })
 }
+
+
+/** M3.5 authenticated cross-device prefix verification, NOT complete account
+ * discovery and NOT permission to overwrite a V4 snapshot.
+ */
+export type WitnessedSetReply = {
+  ok: true
+  verified: boolean
+  uniqueAttemptCount?: number
+  evidenceSha256?: string
+  publishReady: false
+  convergenceComplete: false
+  listingIsAuthoritative?: false
+}
+export function verifyWitnessedChainedEventHeads(
+  token: string, heads: ChainedReceipt[],
+) {
+  return request<WitnessedSetReply>('/api/sync/events/v2/verify-set', {
+    method: 'POST', token, body: { heads },
+  })
+}
