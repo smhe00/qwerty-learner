@@ -1,0 +1,32 @@
+name: etest Three-Account Isolation E2E
+
+on:
+  push:
+    branches: [edgeone-test]
+    paths:
+      - 'tests/cloud/etest-isolated-accounts.mjs'
+      - '.github/workflows/etest-three-account-isolation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-account-v4:
+    if: github.ref_name == 'edgeone-test'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 18
+    env:
+      QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+      - name: Require exact etest source SHA before touching disposable accounts
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          EDGEONE_WAIT_MS: '600000'
+        run: node scripts/verify-edgeone-source.mjs
+      - name: Verify real three-account V4 ownership, isolation, deletion
+        run: node tests/cloud/etest-isolated-accounts.mjs
