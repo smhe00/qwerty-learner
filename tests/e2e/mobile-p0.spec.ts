@@ -442,7 +442,7 @@ test('Phone-only Independent Good admits a new word into the same durable FSRS s
   await expect.poll(async () => (await readWordLearningEvidence(page, word)).state?.lifecycle,
     { timeout: 12_000 }).toBe('active')
   const after = await readWordLearningEvidence(page, word)
-  expect(after.state?.schedulerState?.kind).toBe('fsrs-6')
+  expect(after.state?.schedulerState?.kind).toBe('fsrs6')
   expect(after.records[0].learnItemKind).toBe('acquisition')
   expect(after.records[0].reviewPolicyDecision?.policyVersion).toBe('learn-acquisition-independent-v1')
   expect(after.records[0].reviewPolicyDecision?.reasonCodes).toContain('spacing-eligible')
