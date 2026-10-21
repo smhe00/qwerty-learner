@@ -8,6 +8,13 @@ async function init(page: import('@playwright/test').Page) {
   await page.evaluate(async identity => {
     const h = (window as any).__backupHarness
     await h.seed()
+    // Explicit migration requires the authenticated immutable account to
+    // match the S1 destination before any V4 database ownership is assigned.
+    localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify({
+      token: 'm4-browser-fixture-only',
+      expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      user: { userId: identity.accountId, username: 'm4-browser-test' },
+    }))
     await h.initializeLegacyWorkspace(identity)
   }, owner)
 }
