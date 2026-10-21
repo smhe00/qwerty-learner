@@ -34,11 +34,12 @@ test('Mobile review Good is frozen before reveal and can be corrected before per
 
 
 test('FSRS bootstrapping repairs stale cached state only for newer eligible durable review events', async () => {
-  const source = await read('src/review/repository.ts')
+  const source = await read('src/review/projection-recovery.ts')
+  const caller = await read('src/review/repository.ts')
   assert.match(source, /export function needsFsrsProjectionRecovery\(/)
   assert.match(source, /row\.reviewRatingDecision\?\.eligible === true/)
   assert.match(source, /eligible\.length > state\.reviewCount/)
   assert.match(source, /newest > \(state\.lastReviewedAt \?\? 0\)/)
-  assert.match(source, /if \(needsFsrsProjectionRecovery\(existing, wordRecords\)\)/)
-  assert.match(source, /rebuildActiveFsrsStateFromWordRecords\(/)
+  assert.match(caller, /if \(needsFsrsProjectionRecovery\(existing, wordRecords\)\)/)
+  assert.match(caller, /rebuildActiveFsrsStateFromWordRecords\(/)
 })
