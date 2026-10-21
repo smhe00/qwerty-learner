@@ -115,6 +115,7 @@ function inspectSessions(
 function inspectCrossDeviceSessionIdentity(
   local: readonly IReviewRecord[],
   remote: readonly IReviewRecord[],
+  allowDivergentCandidate = false,
 ): number {
   const bySessionId = new Map<string, string>()
   for (const row of local) {
@@ -130,7 +131,12 @@ function inspectCrossDeviceSessionIdentity(
     if (left === undefined) continue
     const { id: _remoteId, ...logicalRow } = row
     if (left !== stableWorkspaceJson(logicalRow)) {
-      throw new Error('divergent-review-session-identity')
+      if (!allowDivergentCandidate) {
+        throw new Error('divergent-review-session-identity')
+      }
+      // A separately verified three-way ancestor resolves only candidates.
+      // This row is not an identical copy and cannot be counted as a match.
+      continue
     }
     matched++
   }
@@ -200,10 +206,10 @@ function projectV4SixTableEvidenceCore(input: {
       cmp(a.origin, b.origin) || a.sourceId - b.sourceId)
     // This exception is ONLY reached by the async wrapper after a pinned
     // ancestor three-way check. It never enables writing or publishing.
-    const matchedSessionPairs = allowThreeWaySessionCandidate ? 0 :
-      inspectCrossDeviceSessionIdentity(
-        input.local.reviewRecords, input.remote.reviewRecords,
-      )
+    const matchedSessionPairs = inspectCrossDeviceSessionIdentity(
+      input.local.reviewRecords, input.remote.reviewRecords,
+      allowThreeWaySessionCandidate,
+    )
     const replayByWord = new Map<string, IReviewWordState>()
     for (const word of replay.words) {
       if (word.fsrsState) {
