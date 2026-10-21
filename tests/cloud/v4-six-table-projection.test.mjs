@@ -119,3 +119,49 @@ test('concurrent cross-device Good is quarantined before six-table FSRS replay',
   const remote = side(mkWord(ids[1], t0 + 10))
   assert.equal(project({ local, remote }).reason, 'fsrs:concurrent-review-conflict')
 })
+
+test('immutable session UUID can identify identical snapshots despite numeric ID relocation', () => {
+  const local = side(mkWord(ids[0]))
+  const remote = structuredClone(local)
+  const uuid = '00000000-0000-4000-8000-000000000099'
+  local.reviewRecords[0].sessionId = uuid
+  remote.reviewRecords[0].sessionId = uuid
+  remote.reviewRecords[0].id = 100
+  remote.words[0].id = 99
+  remote.chapters[0].wordRecordIds = [99]
+  const result = project({ local, remote })
+  assert.equal(result.status, 'projected', result.reason)
+  assert.equal(result.stats.matchedSessionPairs, 1)
+  assert.equal(result.stats.sessionRowsNeedingAncestry, 2)
+  assert.equal(result.convergenceComplete, false)
+  assert.deepEqual(result.sessionEvidence.map(item => item.sessionId), [uuid, uuid])
+})
+
+test('same session UUID with divergent cursor must be blocked rather than merged', () => {
+  const local = side(mkWord(ids[0]))
+  const remote = structuredClone(local)
+  const uuid = '00000000-0000-4000-8000-000000000098'
+  local.reviewRecords[0].sessionId = uuid
+  remote.reviewRecords[0].sessionId = uuid
+  remote.reviewRecords[0].index = 0
+  remote.reviewRecords[0].isFinished = false
+  assert.equal(project({ local, remote }).reason,
+    'divergent-review-session-identity')
+})
+
+test('duplicate or malformed session UUID is rejected; legacy collision is never deduped', () => {
+  const local = side(mkWord(ids[0]))
+  const remote = structuredClone(local)
+  const uuid = '00000000-0000-4000-8000-000000000097'
+  local.reviewRecords[0].sessionId = 'fake-id'
+  assert.equal(project({ local, remote }).reason, 'invalid-review-session-id')
+  local.reviewRecords[0].sessionId = uuid
+  local.reviewRecords.push({ ...structuredClone(local.reviewRecords[0]), id: 2 })
+  assert.equal(project({ local, remote }).reason, 'invalid-review-session-id')
+  delete local.reviewRecords[0].sessionId
+  delete local.reviewRecords[1].sessionId
+  const valid = project({ local, remote })
+  assert.equal(valid.status, 'projected', valid.reason)
+  assert.equal(valid.stats.matchedSessionPairs, 0)
+  assert.equal(valid.sessionEvidence.length, 3)
+})

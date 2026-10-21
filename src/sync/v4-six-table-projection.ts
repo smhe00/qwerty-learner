@@ -11,6 +11,8 @@ import type { AchievementEventRecord, AchievementStateRecord } from '@/achieveme
 import type { IReviewWordState } from '@/review/types'
 import type { IChapterRecord, IReviewRecord, IWordRecord } from '@/utils/db/record'
 import { projectUuidLearningConvergence } from './v4-event-convergence'
+import { isReviewSessionId } from '@/utils/db/review-session-identity'
+import { stableWorkspaceJson } from './workspace-v4'
 import { projectV4ForeignKeys } from './v4-foreign-key-projection'
 
 export type V4SixTableSource = {
@@ -25,6 +27,7 @@ export type V4SixTableSource = {
 type SessionEvidence = {
   origin: 'local' | 'remote'
   sourceId: number
+  sessionId?: string
   dict: string
   createdAt: number
   completed: boolean
@@ -51,6 +54,8 @@ export type SixTableConvergencePreview =
       projectedReviewStates: number
       sessionRowsNeedingAncestry: number
       activeSessionRows: number
+      /** Same UUID and identical content, still NOT authorized for restore. */
+      matchedSessionPairs: number
     }
   }
 
@@ -71,6 +76,7 @@ function inspectSessions(
   origin: SessionEvidence['origin'],
 ): SessionEvidence[] {
   const seenIds = new Set<number>()
+  const seenUuids = new Set<string>()
   return source.reviewRecords.map(row => {
     if (!validId(row.id) || seenIds.has(row.id) ||
         typeof row.dict !== 'string' || !row.dict ||
@@ -81,11 +87,51 @@ function inspectSessions(
         typeof row.isFinished !== 'boolean') {
       throw new Error('invalid-review-session')
     }
+    if (row.sessionId !== undefined) {
+      if (!isReviewSessionId(row.sessionId) || seenUuids.has(row.sessionId)) {
+        throw new Error('invalid-review-session-id')
+      }
+      seenUuids.add(row.sessionId)
+    }
     seenIds.add(row.id)
-    return { origin, sourceId: row.id, dict: row.dict,
+    return { origin, sourceId: row.id,
+      ...(row.sessionId === undefined ? {} : { sessionId: row.sessionId }),
+      dict: row.dict,
       createdAt: row.createTime, completed: row.isFinished,
       wordCount: row.words.length }
   })
+}
+
+/**
+ * An equal immutable Session UUID with changed session contents is NOT a safe
+ * duplicate: a cursor may have advanced independently on two devices.
+ * Comparing timestamps, numeric IDs or just the UUID is insufficient.
+ * Keep both session rows and fail closed on divergent copies. Verified common
+ * ancestry plus an explicit reconciliation protocol is needed to merge them.
+ */
+function inspectCrossDeviceSessionIdentity(
+  local: readonly IReviewRecord[],
+  remote: readonly IReviewRecord[],
+): number {
+  const bySessionId = new Map<string, string>()
+  for (const row of local) {
+    if (row.sessionId) {
+      const { id: _localId, ...logicalRow } = row
+      bySessionId.set(row.sessionId, stableWorkspaceJson(logicalRow))
+    }
+  }
+  let matched = 0
+  for (const row of remote) {
+    if (!row.sessionId) continue
+    const left = bySessionId.get(row.sessionId)
+    if (left === undefined) continue
+    const { id: _remoteId, ...logicalRow } = row
+    if (left !== stableWorkspaceJson(logicalRow)) {
+      throw new Error('divergent-review-session-identity')
+    }
+    matched++
+  }
+  return matched
 }
 
 /**
@@ -149,6 +195,9 @@ export function projectV4SixTableEvidence(input: {
       ...inspectSessions(input.remote, 'remote'),
     ].sort((a, b) => a.createdAt - b.createdAt ||
       cmp(a.origin, b.origin) || a.sourceId - b.sourceId)
+    const matchedSessionPairs = inspectCrossDeviceSessionIdentity(
+      input.local.reviewRecords, input.remote.reviewRecords,
+    )
     const replayByWord = new Map<string, IReviewWordState>()
     for (const word of replay.words) {
       if (word.fsrsState) {
@@ -173,6 +222,7 @@ export function projectV4SixTableEvidence(input: {
         projectedReviewStates: rebuilt.length,
         sessionRowsNeedingAncestry: sessions.length,
         activeSessionRows: sessions.filter(row => !row.completed).length,
+        matchedSessionPairs,
       },
     }
   } catch (error) {

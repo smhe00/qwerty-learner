@@ -1,4 +1,5 @@
 import { getUTCUnixTimestamp } from '../time'
+import { newReviewSessionId } from './review-session-identity'
 import type { LearnAcquisitionState } from '@/learn/acquisition'
 import type { LearnItemKind, LearnSessionKind } from '@/learn/session'
 import type { ExerciseConditionV1 } from '@/review/condition'
@@ -304,6 +305,8 @@ export interface LearnRecommendedGoalV1 {
 
 export interface IReviewRecord {
   id?: number
+  /** Immutable UUIDv4 assigned once at creation, absent in legacy sessions. */
+  sessionId?: string
   dict: string
   // 当前练习进度
   index: number
@@ -343,6 +346,7 @@ export interface IReviewRecord {
 
 export class ReviewRecord implements IReviewRecord {
   id?: number
+  sessionId?: string
   dict: string
   index: number
   createTime: number
@@ -366,6 +370,7 @@ export class ReviewRecord implements IReviewRecord {
     exercisePlans?: Record<string, ReviewExercisePlanV1>,
     sessionKind: LearnSessionKind = 'review',
   ) {
+    this.sessionId = newReviewSessionId()
     this.dict = dict
     this.index = 0
     this.createTime = getUTCUnixTimestamp()
