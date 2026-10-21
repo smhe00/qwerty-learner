@@ -165,3 +165,17 @@ test('duplicate or malformed session UUID is rejected; legacy collision is never
   assert.equal(valid.stats.matchedSessionPairs, 0)
   assert.equal(valid.sessionEvidence.length, 3)
 })
+
+test('completed compacted sessions retain UUID despite empty Word[] and terminal cursor', () => {
+  const local = side(mkWord(ids[0]))
+  local.reviewRecords[0].sessionId = '00000000-0000-4000-8000-000000000096'
+  local.reviewRecords[0].words = []
+  local.reviewRecords[0].index = 1
+  assert.equal(project({ local, remote: { words: [], chapters: [],
+    reviewRecords: [], reviewWordStates: [], events: [], states: [],
+  } }).status, 'projected')
+  local.reviewRecords[0].isFinished = false
+  assert.equal(project({ local, remote: { words: [], chapters: [],
+    reviewRecords: [], reviewWordStates: [], events: [], states: [],
+  } }).reason, 'invalid-review-session')
+})

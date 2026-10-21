@@ -83,7 +83,8 @@ function inspectSessions(
         !validSeconds(row.createTime) ||
         !Array.isArray(row.words) ||
         !Number.isSafeInteger(row.index) || row.index < 0 ||
-        row.index > row.words.length ||
+        (row.index > row.words.length &&
+          !(row.isFinished === true && row.words.length === 0)) ||
         typeof row.isFinished !== 'boolean') {
       throw new Error('invalid-review-session')
     }

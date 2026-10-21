@@ -18,6 +18,8 @@ export function compactFinishedReviewRecord<T extends IReviewRecord>(record: T):
 
   return {
     ...(record.id === undefined ? {} : { id: record.id }),
+    // Compaction must preserve cross-device provenance, including after reload.
+    ...(record.sessionId === undefined ? {} : { sessionId: record.sessionId }),
     dict: record.dict,
     index: record.index,
     createTime: record.createTime,
