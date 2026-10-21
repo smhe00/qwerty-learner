@@ -47,6 +47,13 @@ FSRS-6、Acquisition、成就和每日学习进度只能从同一份已验证的
 
 **下一阶段阻塞**：建立来源可验证的跨设备挑战/Session 身份和共同祖先，确定 ReviewRecord 去重/接续语义；补足 FSRS 冲突仲裁与旧历史重放证明；最后才可以做独立事务 journal + crash/rollback 和 etest 实网验收。EdgeOne Blob 的最终一致列表不得当作设备全集。
 
+### M2.5 Session UUID 与终态压缩保护（2026-10-22）
+
+- 新产生的 `ReviewRecord` 在构造时由安全随机源分配 `sessionId` (UUIDv4)；Dexie 自增 `id` 仅作为设备内主键，不参与跨设备身份判断。`review-session-identity.ts` 复用现有 CSPRNG 实现；历史 Session 缺 UUID 时保持缺失，不按时间戳或本地 ID 填补。
+- `compactFinishedReviewRecord` 保留新 UUID。终态 Session 允许 `index>0` 且 `words=[]`（既有历史压缩约定），未完成的 Session 不豁免游标越界。
+- 六表只读投影对每端重复/畸形 UUID fail-closed；跨端相同 UUID 及完全一致 Session 内容可标记 `matchedSessionPairs`，但仍**不能作为合并授权**。如果 UUID 相同但进度游标或任意内容不同，直接拒绝本轮候选，并保留双方原始数据。
+- 保持 `publishReady:false` / `convergenceComplete:false`；已匹配 UUID ≠ 已有共同祖先证明。尚未实现跨设备 Session 游标自动接续、离线并发冲突仲裁和六表恢复事务。真实 EdgeOne Blob 测试需等这些门禁通过后在隔离 `etest` 进行。
+
 ## 完成判据
 
 - 本机保存 -> 事件批次永久稳定 -> 另一设备验证/下载 -> 六表合并 -> FSRS replay -> 前台继续学习。
