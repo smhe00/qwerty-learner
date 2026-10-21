@@ -991,7 +991,7 @@ export default function WordComponent({
       })
 
       const telemetry = telemetryCollectorRef.current.snapshot()
-      const lastWrongIndex = [...telemetry.attempts]
+      const lastWrongIndex = [...(telemetry?.attempts ?? [])]
         .reverse()
         .find(
           (attempt) =>

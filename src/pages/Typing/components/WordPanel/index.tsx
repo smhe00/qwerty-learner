@@ -45,7 +45,7 @@ import {
   phoneticConfigAtom,
   reviewModeInfoAtom,
 } from '@/store'
-import type { Word } from '@/typings'
+import type { Word, WordWithIndex } from '@/typings'
 import { getFirstValidDictionaryExample } from '@/utils/dictionaryExample'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
@@ -251,7 +251,7 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
             reviewModeInfo.reviewRecord?.reinforcementCounts,
           itemStates:
             reviewModeInfo.reviewRecord?.itemStates,
-          nextExerciseShadow,
+          nextExerciseShadow: nextExerciseShadow ?? undefined,
         })
 
         if (dailyComplete) {
@@ -264,8 +264,9 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
           setReviewModeInfo((old) => {
           if (!old.reviewRecord) return old
 
-          const words: Word[] =
-            resolution.projection.queue.map((word) => ({
+          const words: WordWithIndex[] =
+            resolution.projection.queue.map((word, index) => ({
+              index,
               name: word.name,
               trans: [...word.trans],
               usphone: word.usphone,
@@ -344,7 +345,15 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
           dispatch({
             type: TypingStateActionType.NEXT_WORD,
             payload: {
-              insertWord: resolution.insertWord,
+              insertWord: resolution.insertWord
+                ? {
+                    index: resolution.insertWord.index,
+                    word: {
+                      ...resolution.insertWord.word,
+                      index: resolution.insertWord.index,
+                    },
+                  }
+                : undefined,
             },
           })
           return
@@ -497,7 +506,7 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
         if (!projection.isFinished) {
           dispatch({
             type: TypingStateActionType.NEXT_WORD,
-            payload: { projectedWords: projection.queue },
+            payload: { projectedWords: projection.queue.map((word, index) => ({ ...word, index })) },
           })
         } else {
           appendDeveloperTrace({
