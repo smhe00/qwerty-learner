@@ -12,6 +12,7 @@
 > - `REVIEW_STATE_MACHINE_V2.md`
 > - `REVIEW_CANONICAL_PROBE_V1.md`
 > - `REVIEW_HINT_LADDER_V1.md`
+> - [`LEARN_CROSS_DEVICE_MODE_CONVERGENCE_V1.md`](./LEARN_CROSS_DEVICE_MODE_CONVERGENCE_V1.md) — 未来跨设备/跨学习方式融合目标与 P0–P4 门禁（设计，不代表已上线）
 >
 > This document defines the product-level boundary between **Typing** and
 > **Learn**, the long-term learning lifecycle, manual exclusion semantics,
