@@ -1,6 +1,10 @@
 /* eslint-env node */
 import crypto from 'node:crypto'
 import { V4_FORMAT, verifyCompressedV4 } from './sync-v4.js'
+import {
+  issueDeviceCheckoutDeclaration,
+  readDeviceCheckoutDeclaration,
+} from './device-checkout.js'
 
 export class AppError extends Error {
   constructor(statusCode, code, message, details) {
@@ -797,6 +801,52 @@ export function createBackendService({
     }
   }
 
+  /**
+   * M2.10: authenticated device checkout DECLARATION pilot.
+   * Requires an existing immutable event head and an exact current V4
+   * revision/sha. This does NOT prove the caller's local IDB contents or
+   * provide any authorization for automatic six-table merging.
+   */
+  async function issueChainedCheckout(token, input = {}) {
+    requireChainPilot()
+    const { identity, currentSession } = await authenticate(token)
+    return issueDeviceCheckoutDeclaration({
+      accountId: identity.userId, deviceId: currentSession.deviceId,
+    }, input, {
+      verifyExactCloudRevision: async (accountId, revision, fingerprint) => {
+        if (accountId !== identity.userId) return false
+        const current = storage.getLatestRevisionMeta
+          ? await storage.getLatestRevisionMeta(accountId)
+          : await storage.getLatestRevision(accountId)
+        return Boolean(current && current.revision === revision &&
+          current.snapshot?.clientFormatVersion === V4_FORMAT &&
+          current.snapshot.logicalFingerprint === fingerprint)
+      },
+      verifyExactChainedHead: async (accountId, head) => Boolean(
+        accountId === identity.userId &&
+        await verifiedChainReceipt(accountId, head),
+      ),
+      putImmutable: (accountId, deviceId, checkoutId, checksum, record) =>
+        storage.putImmutableDeviceCheckout(
+          accountId, deviceId, checkoutId, checksum, record),
+      readExact: (accountId, deviceId, checkoutId, checksum) =>
+        storage.getImmutableDeviceCheckout(
+          accountId, deviceId, checkoutId, checksum),
+    })
+  }
+
+  async function readChainedCheckout(token, selector = {}) {
+    requireChainPilot()
+    const { identity, currentSession } = await authenticate(token)
+    return readDeviceCheckoutDeclaration({
+      accountId: identity.userId, deviceId: currentSession.deviceId,
+    }, selector, {
+      readExact: (accountId, deviceId, checkoutId, checksum) =>
+        storage.getImmutableDeviceCheckout(
+          accountId, deviceId, checkoutId, checksum),
+    })
+  }
+
   async function readChainedLearningBatch(token, selector = {}) {
     requireChainPilot()
     const { identity } = await authenticate(token)
@@ -1418,6 +1468,8 @@ export function createBackendService({
     observeLearningBatchReceipts,
     publishChainedLearningBatch,
     readChainedLearningBatch,
+    issueChainedCheckout,
+    readChainedCheckout,
     verifyChainedLearningHistory,
     verifyWitnessedChainSet,
     observeChainedLearningReceipts,

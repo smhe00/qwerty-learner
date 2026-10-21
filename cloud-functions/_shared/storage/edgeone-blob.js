@@ -142,6 +142,20 @@ export function createEdgeOneBlobStorage(store) {
     return `${chainedBatchPrefix(userId)}${deviceId}/${String(sequence).padStart(10, '0')}/${batchId}-${sha256}.json`
   }
 
+  function deviceCheckoutPrefix(userId) {
+    return `users/${userId}/device-checkouts/v1/`
+  }
+
+  function deviceCheckoutKey(userId, deviceId, checkoutId, checksum) {
+    const validDevice = /^qwerty-web-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    if (!validDevice.test(deviceId) || !validUuid.test(checkoutId) ||
+        !/^[a-f0-9]{64}$/.test(checksum)) {
+      throw new Error('Invalid device checkout immutable selector')
+    }
+    return `${deviceCheckoutPrefix(userId)}${deviceId}/${checkoutId}-${checksum}.json`
+  }
+
   function uploadPrefix(userId, payloadSha256 = null) {
     if (payloadSha256 !== null && !/^[a-f0-9]{64}$/.test(payloadSha256)) {
       throw new Error('Invalid V4 upload SHA')
@@ -493,6 +507,15 @@ export function createEdgeOneBlobStorage(store) {
     },
 
 
+    async putImmutableDeviceCheckout(userId, deviceId, checkoutId, checksum, record) {
+      return setJsonOnlyIfNew(
+        deviceCheckoutKey(userId, deviceId, checkoutId, checksum), record)
+    },
+
+    async getImmutableDeviceCheckout(userId, deviceId, checkoutId, checksum) {
+      return strongJson(deviceCheckoutKey(userId, deviceId, checkoutId, checksum))
+    },
+
     async observeImmutableChainedBatches(userId) {
       const prefix = chainedBatchPrefix(userId)
       const page = await strongList(prefix)
@@ -773,6 +796,7 @@ export function createEdgeOneBlobStorage(store) {
         deletePrefix(revisionPartsPrefix(userId)),
         deletePrefix(eventBatchPrefix(userId)),
         deletePrefix(chainedBatchPrefix(userId)),
+        deletePrefix(deviceCheckoutPrefix(userId)),
         deletePrefix(uploadPrefix(userId)),
         deletePrefix(`users/${userId}/v4-http-parts/v3/`),
       ])

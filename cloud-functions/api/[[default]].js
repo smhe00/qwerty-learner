@@ -411,6 +411,27 @@ export async function onRequest(context) {
         200, cors)
     }
 
+    // M2.10 device-bound checkout declarations; pilot disabled by default.
+    // Both endpoints require a live account session. No automatic merge.
+    if (request.method === 'POST' && path === '/sync/events/v2/checkout') {
+      const body = await readJson(request, 8 * 1024)
+      return json({ ok: true,
+        ...(await service.issueChainedCheckout(bearer(request), body)) },
+      201, cors)
+    }
+    if (request.method === 'GET' && path === '/sync/events/v2/checkout') {
+      const selector = {
+        deviceId: url.searchParams.get('deviceId'),
+        checkoutId: url.searchParams.get('checkoutId'),
+        sha256: url.searchParams.get('sha256'),
+      }
+      return json({ ok: true,
+        ...(await service.readChainedCheckout(bearer(request), selector) || {
+          verifiedExactReceipt: false,
+          convergenceComplete: false,
+        }) }, 200, cors)
+    }
+
     // M3.5: cross-device witnessed prefixes only. Never claims discovery
     // completeness and never authorizes a V4 merge or publication.
     if (request.method === 'POST' && path === '/sync/events/v2/verify-set') {
