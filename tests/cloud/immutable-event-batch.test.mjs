@@ -581,3 +581,43 @@ test('M2.10 checkout interface remains unavailable when M3 event pilot is off', 
   await assert.rejects(service.readChainedCheckout(a.token, {}),
     e => e.code === 'not_found')
 })
+
+test('M2.10 exact checkout receipt survives stale Blob listing without claiming completion', async () => {
+  const { storage, service, blob } = setup()
+  const account = await service.register('checkout_stale_list',
+    'Password123', device(1))
+  const sha = 'c'.repeat(64)
+  await storage.createRevision(account.user.userId, 1, {
+    schemaVersion: 1, revision: 1, updatedAt: '2026-10-22T00:00:00Z',
+    sizeBytes: 12, dataSha256: 'e'.repeat(64),
+    logicalFingerprint: sha, payloadEncoding: 'base64',
+    payloadBase64: 'H4sI', clientFormatVersion: 'qwerty-backup-v4',
+  })
+  const batch = await service.publishChainedLearningBatch(account.token, {
+    ...payload(1, 909, 19), sequence: 1, previous: null,
+  })
+  const issued = await service.issueChainedCheckout(account.token, {
+    cloudRevision: 1, cloudFingerprint: sha, eventHead: receipt(batch),
+  })
+  const storedKey = [...blob.objects.keys()].find(k =>
+    k.includes('/device-checkouts/v1/'))
+  assert.ok(storedKey)
+  blob.hiddenKeys = new Set([storedKey])
+  const readBack = await service.readChainedCheckout(
+    account.token, issued.receipt)
+  assert.equal(readBack.cloudFingerprint, sha)
+  assert.equal(readBack.verifiedExactReceipt, true)
+  assert.equal(readBack.convergenceComplete, false)
+  assert.equal(readBack.publishReady, false)
+  // A new cloud revision cannot be falsely registered as the old one
+  // even though the old receipt remains a valid historical declaration.
+  await storage.createRevision(account.user.userId, 2, {
+    schemaVersion: 1, revision: 2, updatedAt: '2026-10-22T00:01:00Z',
+    sizeBytes: 12, dataSha256: 'f'.repeat(64),
+    logicalFingerprint: 'a'.repeat(64), payloadEncoding: 'base64',
+    payloadBase64: 'H4sI', clientFormatVersion: 'qwerty-backup-v4',
+  })
+  await assert.rejects(service.issueChainedCheckout(account.token, {
+    cloudRevision: 1, cloudFingerprint: sha, eventHead: receipt(batch),
+  }), /checkout-cloud-revision-not-verified/)
+})
