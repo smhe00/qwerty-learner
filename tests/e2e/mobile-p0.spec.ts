@@ -83,7 +83,18 @@ test('Mobile single-tap choice or two-tap recall saves then advances automatical
   await expect(page.locator('[data-mobile-feedback]')).toBeVisible()
   expect(await countWordRecords(page)).toBe(before + 1)
   await expect(page.getByRole('button', { name: '确认选择' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: '继续', exact: true })).toHaveCount(0)
+  const nextMode = await taskView.getAttribute('data-mobile-next-mode')
+  if (nextMode === 'manual') {
+    await expect(page.locator('[data-mobile-manual-next]')).toBeVisible()
+    // An incorrect choice must leave its explanation on screen.
+    await page.waitForTimeout(1800)
+    await expect(page.locator('[data-mobile-feedback]')).toBeVisible()
+    expect(await countWordRecords(page)).toBe(before + 1)
+    await page.locator('[data-mobile-manual-next]').click()
+  } else {
+    expect(nextMode).toBe('auto')
+    await expect(page.locator('[data-mobile-manual-next]')).toHaveCount(0)
+  }
   await expect(page.locator('[data-mobile-feedback]')).toHaveCount(0, { timeout: 7_000 })
   await expect(page.locator('[data-mobile-word-practice], [data-mobile-complete]')).toBeVisible()
 })
@@ -244,4 +255,53 @@ test('Mobile example uses three lines and highlights only the hidden cloze befor
       await expect(keyword).toHaveClass(/mobile-practice-keyword/)
     }
   }
+})
+
+
+test('Mobile never auto-advances after Hard or wrong; manual next preserves one saved attempt', async ({ page }) => {
+  await mockWordPronunciation(page)
+  await page.goto('/mobile/study')
+  const taskView = page.locator('[data-mobile-word-practice]')
+  await expect(taskView).toBeVisible({ timeout: 45_000 })
+
+  for (let turn = 0; turn < 8; turn += 1) {
+    const task = await taskView.getAttribute('data-mobile-task')
+    const before = await countWordRecords(page)
+    if (task === 'exposure') {
+      await taskView.getByRole('button', { name: '继续学习' }).click()
+    } else if (task === 'recall') {
+      await taskView.getByRole('button', { name: '显示答案' }).click()
+      await taskView.locator('[data-mobile-grade="hard"]').click()
+    } else {
+      const choices = taskView.locator('[data-mobile-choice]')
+      await expect(choices.first()).toBeEnabled({ timeout: 15_000 })
+      const target = await taskView.getAttribute('data-mobile-word')
+      // On cloze/audio tasks, choose a definitely wrong English spelling.
+      // On meaning-choice tasks, any wrong answer is enough; if the first
+      // option happens to be right the loop proceeds to another task.
+      const labels = await choices.allTextContents()
+      const wrongIndex = task === 'meaning-choice' ? 0 : labels.findIndex(label => label.trim() !== target)
+      await choices.nth(Math.max(0, wrongIndex)).click()
+    }
+
+    await expect(taskView.locator('[data-mobile-feedback]')).toBeVisible({ timeout: 15_000 })
+    const nextMode = await taskView.getAttribute('data-mobile-next-mode')
+    if (nextMode === 'manual') {
+      expect(await countWordRecords(page)).toBe(before + 1)
+      await expect(taskView.locator('[data-mobile-manual-next]')).toBeVisible()
+      const finishedWord = await taskView.getAttribute('data-mobile-word')
+      await page.waitForTimeout(2000)
+      await expect(taskView.locator('[data-mobile-feedback]')).toBeVisible()
+      await expect(taskView).toHaveAttribute('data-mobile-word', finishedWord!)
+      expect(await countWordRecords(page)).toBe(before + 1)
+      await taskView.locator('[data-mobile-manual-next]').click()
+      await expect(taskView.locator('[data-mobile-feedback]')).toHaveCount(0, { timeout: 7_000 })
+      expect(await countWordRecords(page)).toBe(before + 1)
+      return
+    }
+
+    expect(nextMode).toBe('auto')
+    await expect(taskView.locator('[data-mobile-feedback]')).toHaveCount(0, { timeout: 7_000 })
+  }
+  throw new Error('Expected a wrong or Hard response within eight learning tasks')
 })

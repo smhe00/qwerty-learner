@@ -315,7 +315,7 @@ export default function MobileWordPractice({
 
   const saveAttempt = async (input: {
     mode: MobileTask; grade: ReviewOutcome; wrongCount: number
-    title: string; correct: boolean
+    title: string
     frozen?: PendingRecallAttempt
   }) => {
     if (paused || submittingRef.current || feedback) return
@@ -390,7 +390,6 @@ export default function MobileWordPractice({
     void saveAttempt({
       mode: 'recall', grade, wrongCount: grade === 'again' ? 1 : 0,
       title: grade === 'again' ? '还需要巩固' : grade === 'hard' ? '已标记为模糊' : '记住了',
-      correct: grade !== 'again',
       frozen: revealedAttempt,
     })
   }
@@ -401,7 +400,6 @@ export default function MobileWordPractice({
     void saveAttempt({
       mode: task, grade: correct ? 'good' : 'again', wrongCount: correct ? 0 : 1,
       title: correct ? '答对了' : '再记一下这个词',
-      correct,
     })
   }
 
@@ -553,7 +551,7 @@ export default function MobileWordPractice({
           )
         ) : task === 'exposure' ? (
           <button type="button" className="mobile-practice-primary" onClick={() => void saveAttempt({
-            mode: 'exposure', grade: 'good', wrongCount: 0, title: '初次学习完成', correct: true,
+            mode: 'exposure', grade: 'good', wrongCount: 0, title: '初次学习完成',
           })} disabled={paused || isSaving}>
             {isSaving ? '正在保存…' : '继续学习'}
           </button>
