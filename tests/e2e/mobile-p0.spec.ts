@@ -116,3 +116,27 @@ test('Mobile pause freezes its word and resume does not open a keyboard', async 
   await expect(page.locator('[data-mobile-paused]')).toHaveCount(0)
   await expect(page.locator('[data-mobile-word-practice]')).toBeVisible()
 })
+
+
+test('Mobile narrow screens keep the actions visible without horizontal scroll', async ({ page }) => {
+  await mockWordPronunciation(page)
+  for (const width of [320, 360, 430]) {
+    await page.setViewportSize({ width, height: 740 })
+    await page.goto('/mobile/study')
+    await expect(page.locator('[data-mobile-word-practice]')).toBeVisible({ timeout: 45_000 })
+    const bounds = await page.evaluate(() => {
+      const footer = document.querySelector('[data-mobile-action-zone]')?.getBoundingClientRect()
+      return {
+        pageWidth: document.documentElement.scrollWidth,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        footerBottom: footer?.bottom ?? 0,
+        footerTop: footer?.top ?? 0,
+      }
+    })
+    expect(bounds.pageWidth).toBeLessThanOrEqual(bounds.viewportWidth + 1)
+    expect(bounds.footerBottom).toBeLessThanOrEqual(bounds.viewportHeight + 1)
+    expect(bounds.footerBottom).toBeGreaterThan(bounds.viewportHeight * .72)
+    expect(bounds.footerTop).toBeGreaterThan(bounds.viewportHeight * .5)
+  }
+})

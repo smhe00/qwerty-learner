@@ -180,7 +180,7 @@ export default function MobileWordPractice({
   const isCoreRecall = itemKind === 'review' || (itemKind === 'acquisition' && phase === 'independent')
   const activePlan = exercisePlan ?? (isCoreRecall ? createCanonicalReviewProbePlan() : undefined)
   const wantsAutomaticSound = task === 'audio' || task === 'exposure'
-  const source = pronunciation.type ? generateWordSoundSrc(word.name, pronunciation.type) : ''
+  const source = generateWordSoundSrc(word.name, pronunciation.type || 'uk')
 
   const playSound = useCallback((requested = false) => {
     playbackWasRequestedRef.current = requested
@@ -227,6 +227,9 @@ export default function MobileWordPractice({
 
   useEffect(() => {
     return () => {
+      // React StrictMode replays mount effects in development. Re-arm the
+      // initial sound so replayed setup still gets its own live audio owner.
+      autoAudioAttempted.current = false
       const audio = audioRef.current
       audioRef.current = null
       if (audio) {
