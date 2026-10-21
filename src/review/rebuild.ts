@@ -3,6 +3,7 @@ import {
   isCompletedAcquisitionRecord,
 } from '@/learn/admission'
 import { isActiveLearningState } from '@/learn/lifecycle'
+import { isUnverifiedLegacyMobilePositiveReview } from './legacy-mobile-evidence'
 import { classifyTypingError } from './classifier'
 import { summarizeWordHistory } from './features'
 import { readLearningContext } from './learning-context'
@@ -101,6 +102,7 @@ export function inferReviewOutcomeFromWordRecord(
   // Ordinary learning records remain valuable evidence for profiles/seeding,
   // but must never advance the long-term scheduler.
   if (!isLongTermReviewRecord(record)) return undefined
+  if (isUnverifiedLegacyMobilePositiveReview(record)) return undefined
 
   // Modern records already contain the scheduler-neutral Rating Gate result.
   // It is the authoritative replay event. Explicitly ineligible attempts must

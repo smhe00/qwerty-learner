@@ -1,3 +1,4 @@
+import { isUnverifiedLegacyMobilePositiveReview } from './legacy-mobile-evidence'
 import type { IReviewWordState } from './types'
 import type { IWordRecord } from '@/utils/db/record'
 
@@ -13,7 +14,8 @@ export function needsFsrsProjectionRecovery(
   const eligible = records.filter((row) =>
     row.sourceMode === 'learn' &&
     row.learnItemKind === 'review' &&
-    row.reviewRatingDecision?.eligible === true,
+    row.reviewRatingDecision?.eligible === true &&
+    !isUnverifiedLegacyMobilePositiveReview(row),
   )
   if (eligible.length === 0) return false
   const newest = eligible.reduce(

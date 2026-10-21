@@ -3,6 +3,7 @@ import {
   isAcquisitionIntroductionRecord,
   isCompletedAcquisitionRecord,
 } from './admission'
+import { isUnverifiedLegacyMobilePositiveReview } from '@/review/legacy-mobile-evidence'
 import type { IReviewWordState } from '@/review/types'
 import type { IWordRecord } from '@/utils/db/record'
 
@@ -271,6 +272,7 @@ function isIndependentCleanReview(record: IWordRecord): boolean {
     record.learnItemKind !== 'acquisition' &&
       record.learnItemKind !== 'practice' &&
     record.reviewRatingDecision?.eligible === true &&
+    !isUnverifiedLegacyMobilePositiveReview(record) &&
     record.reviewEvidence?.retrievalValidity === 'independent' &&
     record.reviewEvidence?.errorCause === 'clean'
   )

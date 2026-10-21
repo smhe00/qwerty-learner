@@ -3,6 +3,7 @@ import {
   LEARN_ACQUISITION_INDEPENDENT_POLICY_VERSION,
   LEARN_ACQUISITION_SUPPORTED_POLICY_VERSION,
 } from './acquisition'
+import { isLegacyMobilePostRevealEvidence } from '@/review/legacy-mobile-evidence'
 import type { IWordRecord } from '@/utils/db/record'
 
 export const LEGACY_ACQUISITION_POLICY_VERSION =
@@ -62,6 +63,7 @@ export function isCleanIndependentAcquisitionRecord(
     record.wrongCount === 0 &&
     record.learningContext?.reviewHint === undefined &&
     record.learningContext?.answerRevealed !== true &&
+    !isLegacyMobilePostRevealEvidence(record) &&
     record.reviewEvidence?.errorCause === 'clean' &&
     record.reviewEvidence.retrievalValidity === 'independent'
   )

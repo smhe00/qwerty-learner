@@ -73,6 +73,7 @@ import {
 } from '../../src/review/rebuild'
 import { buildOrthographyProfile } from '../../src/review/profile'
 import { needsFsrsProjectionRecovery } from '../../src/review/projection-recovery'
+import { isLegacyMobilePostRevealEvidence, isUnverifiedLegacyMobilePositiveReview } from '../../src/review/legacy-mobile-evidence'
 import {
   MAX_REINFORCEMENT_GAP,
   buildReviewSessionExercisePlans,
@@ -760,4 +761,39 @@ test('FSRS replay recovery is triggered only by newer or uncounted eligible Lear
   assert.equal(needsFsrsProjectionRecovery(state, [{
     ...grade, sourceMode: 'typing',
   }]), false)
+})
+
+
+test('Legacy post-reveal mobile positives never advance memory or acquisition replay', () => {
+  const oldMobile: IWordRecord = {
+    dict: 'cet4', word: 'unsafe', chapter: -1, timeStamp: 200,
+    timing: [], wrongCount: 0, mistakes: {},
+    sourceMode: 'learn', learnItemKind: 'review',
+    reviewRatingDecision: { eligible: true, rating: 'good', confidence: 1,
+      reasonCodes: ['mobile-task-recall'] },
+    reviewEvidence: { version: 1, memoryGrade: 'good', errorCause: 'clean',
+      confidence: 1, evidenceStrength: 1, retrievalValidity: 'independent',
+      reasonCodes: ['mobile-multidimensional-learning',
+        'recall-committed-before-answer-reveal', 'self-rated-good'] },
+  }
+  assert.equal(isLegacyMobilePostRevealEvidence(oldMobile), true)
+  assert.equal(isUnverifiedLegacyMobilePositiveReview(oldMobile), true)
+  assert.equal(inferReviewOutcomeFromWordRecord(oldMobile, []), undefined)
+
+  const state = { ...createInitialReviewWordState('cet4', 'unsafe', 100),
+    reviewCount: 0 }
+  assert.equal(needsFsrsProjectionRecovery(state, [oldMobile]), false)
+  const oldAgain: IWordRecord = { ...oldMobile, wrongCount: 1,
+    reviewRatingDecision: { eligible: true, rating: 'again', confidence: 1,
+      reasonCodes: ['old-mobile-negative'] } }
+  assert.equal(isUnverifiedLegacyMobilePositiveReview(oldAgain), false)
+  assert.equal(inferReviewOutcomeFromWordRecord(oldAgain, []), 'again')
+
+  const newMobile: IWordRecord = { ...oldMobile,
+    reviewEvidence: { ...oldMobile.reviewEvidence!,
+      reasonCodes: ['mobile-multidimensional-learning',
+        'self-rated-before-answer-reveal', 'self-report-not-spelling'] } }
+  assert.equal(isLegacyMobilePostRevealEvidence(newMobile), false)
+  assert.equal(inferReviewOutcomeFromWordRecord(newMobile, []), 'good')
+  assert.equal(needsFsrsProjectionRecovery(state, [newMobile]), true)
 })

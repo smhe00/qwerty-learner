@@ -197,6 +197,10 @@ type UnifiedLearningAttemptV1 = {
 - 手机原始证据标记 `self-rated-before-answer-reveal` 与 `self-report-not-spelling`；不产生独立拼写正确证据。Hard 不得通过 Acquisition 的 clean admission gate。
 - **仅代表同设备 P0 改动**。并没有启用多设备自动写入融合，也没有解决既有历史数据的所有重放/时钟/冲突问题。是否通过回归门禁，以对应 GitHub Actions 运行结果为准。
 
+### 历史手机自评兼容边界
+
+P0 前的早期手机版曾在**展示答案之后**才选择记忆程度，部分记录却误用 `recall-committed-before-answer-reveal` 原因码。已新增保守的旧记录鉴别：旧版正向 `Good / Hard` 保留原始记录，但不参与 FSRS 历史重放、启动缺失事件补算或新词 Acquisition admission；真正答前自评的新事件须包含 `self-rated-before-answer-reveal`。旧版 Again 保留保守复习失败语义。此规则是修正信任证据，而不是删除用户作答历史。
+
 ## 9. 当前实现差距与代码入口
 
 - \`src/pages/Mobile/MobileStudy.tsx\`、\`src/pages/Learn/index.tsx\`：手机和桌面已共享 Learn 会话控制器。
