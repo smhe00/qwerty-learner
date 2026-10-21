@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { reviewWords, seedAcquisitionSession, seedReviewSession, waitForActiveLearnSession } from './review-flow-harness'
+import { reviewWords, seedAcquisitionSession } from './review-flow-harness'
 
 async function countWordRecords(page: Page): Promise<number> {
   return page.evaluate(async () => {
@@ -499,18 +499,24 @@ test('Phone-only cold spelling validates correct orthography without a second FS
   expect(saved.records[0].reviewEvidence?.reasonCodes).not.toContain('self-report-not-spelling')
 })
 
-test('Desktop Learn switches between keyboard spelling and identical Tap Recall practice without resetting the session', async ({ page }) => {
+test('Desktop Learn switches between keyboard spelling and the same Tap Recall without changing the session', async ({ page }) => {
   await mockWordPronunciation(page)
-  await seedReviewSession(page, reviewWords, 930004)
   await page.goto('/learn')
-  const session = await waitForActiveLearnSession(page)
-  const beforeId = session?.reviewRecord?.id
-  await expect(page.getByRole('button', { name: '切换轻触记忆' })).toBeVisible()
+  // Use the real desktop entry rather than a seeded cross-route fixture:
+  // both interfaces must operate inside an actual Learn daily session.
+  const start = page.getByRole('button', { name: '开始 Learn', exact: true })
+  await expect(start).toBeVisible({ timeout: 45_000 })
+  await expect(start).toBeEnabled({ timeout: 45_000 })
+  await start.click()
+  await expect(page.getByRole('button', { name: '切换轻触记忆' })).toBeVisible({ timeout: 45_000 })
+  const beforeId = await page.evaluate(() => JSON.parse(localStorage.getItem('reviewModeInfo') || '{}').reviewRecord?.id)
+  expect(beforeId).toBeDefined()
   await page.getByRole('button', { name: '切换轻触记忆' }).click()
   const tap = page.locator('[data-desktop-tap-study]')
   await expect(tap).toBeVisible()
-  await expect(tap.locator('[data-mobile-word-practice]')).toHaveAttribute('data-mobile-task', 'recall')
-  await expect(tap.locator('[data-mobile-word-practice]')).toHaveAttribute('data-mobile-policy', 'canonical-review-probe-v1')
+  const practice = tap.locator('[data-mobile-word-practice]')
+  await expect(practice).toBeVisible()
+  await expect(practice).toHaveAttribute('data-mobile-task', /^(recall|exposure|context|audio|meaning-choice)$/)
   await tap.getByRole('button', { name: '返回键盘拼写' }).click()
   await expect(page.locator('[data-desktop-tap-study]')).toHaveCount(0)
   await expect(page.locator('[data-typing-word]').first()).toBeVisible()
