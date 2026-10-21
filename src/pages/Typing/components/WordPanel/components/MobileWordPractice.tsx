@@ -655,8 +655,23 @@ export default function MobileWordPractice({
                     </>
                   )
                   : <p className="mobile-practice-cue">哪个意思与这个词相符？</p>}
-          {task === 'recall' && revealedAttempt?.grade === 'good' && !feedback && (
-            <p className="mobile-practice-cue mobile-practice-recall-cue">核对你刚才的回忆 · 不一致请点「记错了」</p>
+          {task === 'recall' && revealedAttempt?.grade === 'good' && !feedback && !error && (
+            <div className="mobile-practice-recall-check">
+              <p className="mobile-practice-cue mobile-practice-recall-cue">
+                核对答案 · 若记错，请点右侧圆点
+              </p>
+              <button
+                type="button"
+                className="mobile-practice-recall-correction-dot"
+                data-mobile-recall-correct
+                aria-label="我记错了，改为忘了"
+                title="我记错了 · 改为忘了"
+                onClick={correctRecall}
+                disabled={paused || isSaving}
+              >
+                <span aria-hidden="true" className="mobile-practice-recall-correction-mark" />
+              </button>
+            </div>
           )}
         </div>
 
@@ -744,20 +759,23 @@ export default function MobileWordPractice({
         ) : task === 'recall' ? (
           revealedAttempt ? (
             revealedAttempt.grade === 'good' ? (
-              <button
-                type="button"
-                className="mobile-practice-primary mobile-practice-correction"
-                data-mobile-recall-correct
-                onClick={error
-                  ? () => void saveAttempt({
-                      mode: 'recall', grade: 'good', wrongCount: 0,
-                      title: '记住了（自评）', frozen: revealedAttempt,
-                    })
-                  : correctRecall}
-                disabled={paused || isSaving}
-              >
-                {isSaving ? '正在保存…' : error ? '保存失败 · 重试' : '记错了 · 改为忘了'}
-              </button>
+              error ? (
+                <button
+                  type="button"
+                  className="mobile-practice-primary"
+                  onClick={() => void saveAttempt({
+                    mode: 'recall', grade: 'good', wrongCount: 0,
+                    title: '记住了（自评）', frozen: revealedAttempt,
+                  })}
+                  disabled={paused || isSaving}
+                >
+                  {isSaving ? '正在保存…' : '保存失败 · 重试'}
+                </button>
+              ) : (
+                <p className="mobile-practice-next-hint" role="status">
+                  {isSaving ? '正在保存…' : '核对中 · 即将自动保存'}
+                </p>
+              )
             ) : (
               <p className="mobile-practice-next-hint" role="status">正在保存回忆结果…</p>
             )

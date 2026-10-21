@@ -244,6 +244,47 @@
   letter-spacing: 1px;
 }
 .mobile-practice-recall-cue { margin-top: 2px; }
+.mobile-practice-recall-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+.mobile-practice-recall-check .mobile-practice-recall-cue {
+  font-size: 11px;
+}
+.mobile-practice-recall-correction-dot {
+  display: inline-flex;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid #d5b199;
+  border-radius: 50%;
+  background: #fcf6f0;
+  color: #aa6847;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.mobile-practice-recall-correction-mark {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.mobile-practice-recall-correction-dot:hover {
+  background: #f4e6d9;
+}
+.mobile-practice-recall-correction-dot:focus-visible {
+  outline: 2px solid #aa6847;
+  outline-offset: 3px;
+}
+
 .mobile-practice-meaning-slot {
   display: flex;
   flex-direction: column;

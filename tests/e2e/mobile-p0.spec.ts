@@ -76,7 +76,16 @@ test('Mobile single-tap choice or pre-reveal self-rating saves then advances aut
     await expect(taskView).toHaveAttribute('data-mobile-recall-stage', 'verification')
     // The positive self-report is still amendable and not durable yet.
     expect(await countWordRecords(page)).toBe(before)
-    await expect(taskView.locator('[data-mobile-recall-correct]')).toBeVisible()
+    const correction = taskView.locator('[data-mobile-recall-correct]')
+    await expect(correction).toBeVisible()
+    await expect(correction).toHaveAttribute('aria-label', '我记错了，改为忘了')
+    const correctionBox = await correction.boundingBox()
+    const actionBox = await taskView.locator('[data-mobile-action-zone]').boundingBox()
+    expect(correctionBox).not.toBeNull()
+    expect(actionBox).not.toBeNull()
+    expect(correctionBox!.width).toBeLessThanOrEqual(34)
+    expect(correctionBox!.height).toBeLessThanOrEqual(34)
+    expect(correctionBox!.y + correctionBox!.height).toBeLessThan(actionBox!.y)
   } else {
     if (task === 'audio') {
       await expect.poll(async () => page.evaluate(() =>
