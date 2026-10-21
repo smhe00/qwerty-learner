@@ -83,3 +83,40 @@ test('identical spelling in different dictionaries gives distinct FSRS states', 
   assert.deepEqual(x.words.map(w => w.dict), ['book-A', 'book-B'])
   assert.deepEqual(x.words.map(w => w.fsrsState.reviewCount), [0, 0])
 })
+
+test('two physical devices cannot double-Good a word inside ambiguity window', () => {
+  const older = row(uuids[1], t0 + 86_400)
+  const competing = row(uuids[2], t0 + 86_421)
+  const x = project({ local: [admission(), older], remote: [competing] })
+  assert.equal(x.status, 'blocked')
+  assert.equal(x.reason, 'concurrent-review-conflict')
+  assert.equal(x.publishReady, false)
+  assert.deepEqual(x.words, [])
+  assert.equal(project({ local: [competing], remote: [admission(), older] }).reason,
+    'concurrent-review-conflict')
+})
+
+test('shared UUID, unrelated dictionaries and spaced sessions are not races', () => {
+  const first = row(uuids[1], t0 + 86_400)
+  const later = row(uuids[2], t0 + 86_461)
+  assert.equal(project({ local: [first], remote: [later] }).status, 'projected')
+  assert.equal(project({ local: [first], remote: [first] }).status, 'projected')
+  assert.equal(project({ local: [first], remote: [
+    row(uuids[2], first.timeStamp, { dict: 'different-book' }),
+  ] }).status, 'projected')
+})
+
+test('eligible failed + positive concurrent Review also quarantines; training does not', () => {
+  const positive = row(uuids[1], t0 + 86_400)
+  const failed = row(uuids[2], positive.timeStamp, {
+    reviewRatingDecision: { eligible: true, rating: 'again', confidence: 1,
+      reasonCodes: ['m2-test'] },
+  })
+  assert.equal(project({ local: [positive], remote: [failed] }).reason,
+    'concurrent-review-conflict')
+  const training = row(uuids[2], positive.timeStamp, {
+    reviewRatingDecision: { eligible: false, rating: 'good', confidence: 1,
+      reasonCodes: ['assisted'] },
+  })
+  assert.equal(project({ local: [positive], remote: [training] }).status, 'projected')
+})
