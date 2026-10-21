@@ -79,12 +79,6 @@ export async function prepareGuardedWorkspaceBoot(
         (pendingMerge && (pendingPull || pendingImport))) {
       throw new Error('Conflicting S1, S2, manual V4 or M4 recovery journals')
     }
-    // M4 is not activated: NO mounted writer may run over a staged candidate
-    // or partial restore. Explicit pre-mount recovery under S1 lock must be
-    // implemented and admitted before the merge executor can be enabled.
-    if (pendingMerge) {
-      throw new Error('M4 merge journal pending: recover or roll back before app mount')
-    }
     if (before.generation === 0) {
       // An already-migrated browser must never silently fall back to V1
       // when its isolated IndexedDB registry has been removed or corrupted.
@@ -122,7 +116,7 @@ export async function prepareGuardedWorkspaceBoot(
     // reconciliation and resealing; without such an intent stale V5 changes
     // must be rejected before any credential mutation.
     const hasAuthIntent = localStorage.getItem('qwerty.s1.auth-transition.v1') !== null
-    if (!before.pending && !hasAuthIntent && !pendingPull && !pendingImport) {
+    if (!before.pending && !hasAuthIntent && !pendingPull && !pendingImport && !pendingMerge) {
       assertWorkspaceMigrationWitness()
     }
 
@@ -153,7 +147,7 @@ export async function prepareGuardedWorkspaceBoot(
       // This recovery follows a validated durable S1 auth transition intent
       // whose target is already the committed registry owner.
       refreshWorkspaceMigrationWitness()
-    } else if (!pendingPull && !pendingImport) {
+    } else if (!pendingPull && !pendingImport && !pendingMerge) {
       // A staged Pull or V4 file restore may change settings before its
       // journal finalizes. Otherwise enforce stale-V5 writer detection.
       assertWorkspaceMigrationWitness()
@@ -166,6 +160,27 @@ export async function prepareGuardedWorkspaceBoot(
       : { kind: 'anonymous' }
     if (!same(registry.active, expected)) {
       throw new Error('Active workspace and authenticated account differ: writes blocked')
+    }
+
+    if (pendingMerge) {
+      // Under the exclusive pre-mount S1 writer lock, reapply the exact
+      // staged target. No untrusted remote read or new merge happens here.
+      if (registry.pending ||
+          registry.generation !== pendingMerge.registryGeneration ||
+          registry.active.kind !== 'account' ||
+          registry.active.accountId !== pendingMerge.accountId) {
+        throw new Error('M4 recovery owner or S1 generation changed: writes blocked')
+      }
+      report(onStage, 'recovering')
+      const { recoverPendingM4Merge } = await import('./m4-merge-browser-recovery')
+      if (!(await recoverPendingM4Merge('apply'))) {
+        throw new Error('M4 recovery journal disappeared: writes blocked')
+      }
+      sessionStorage.setItem('qwerty.s2.last-sync-result',
+        '本机学习数据事务已安全恢复；其他设备是否完成同步尚未确认。')
+      recovered = true
+      // Reload discards any pre-restore module-level storage caches.
+      throw new Error('M4 merge recovery completed; reload required before mounting app')
     }
 
     if (pendingPull) {

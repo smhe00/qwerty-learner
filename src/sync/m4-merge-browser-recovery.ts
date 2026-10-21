@@ -1,11 +1,11 @@
 /**
- * Inactive M4 browser recovery adapter.
+ * M4 pre-mount browser recovery adapter.
  *
  * This module MUST run pre-mount, while holding the S1 exclusive writer
- * lease and after all RecordDB writers have stopped. It is deliberately NOT
- * invoked from workspace-bootstrap, cloud settings, Learn or mobile code.
- * Do not activate until authenticated M2 ancestry, full six-table candidate,
- * S1 generation ownership and recovery gates have passed.
+ * lease and after all RecordDB writers have stopped. workspace-bootstrap
+ * invokes it ONLY for an already durable transaction with a matching
+ * authenticated account and S1 generation. No automatic M4 merge staging
+ * exists until verified M2 ancestry and complete six-table gates pass.
  *
  * Explicit apply or rollback; never infer success from absence of a remote
  * batch or use last-writer-wins. Both choices verify a full restored V4.

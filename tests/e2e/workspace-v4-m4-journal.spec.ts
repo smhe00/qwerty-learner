@@ -123,26 +123,60 @@ test('real IndexedDB: staging a manual V4 import is refused while M4 transaction
   expect(result.m4Preserved).toBe(true)
 })
 
-test('pending M4 prevents normal S1 app hydration until explicit recovery', async ({ page }) => {
+test('S1 boot resumes a complete pending M4 journal before any writer mounts', async ({ page }) => {
   await init(page)
-  await stage(page, 33)
+  const before = await stage(page, 33)
   const result = await page.evaluate(async () => {
     const h = (window as any).__backupHarness
     let didMount = false
-    let blocked = ''
+    let reason = ''
+    const phases: string[] = []
     try {
-      await h.mountGuardedWorkspaceApp(async () => { didMount = true })
-    } catch (e) {
-      blocked = String(e)
+      await h.mountGuardedWorkspaceApp(async () => { didMount = true },
+        (stage: string) => { phases.push(stage) })
+    } catch (error) {
+      reason = String(error)
     }
-    const remains = (await h.m4MergeJournalPort.read()) !== null
-    const restored = await h.recoverPendingM4Merge('rollback')
-    return { didMount, blocked, remains, restored,
+    const restored = await h.captureWorkingWorkspaceV4({
+      kind: 'account', accountId: 'm4-pilot-browser-test',
+    })
+    return { didMount, reason, phases,
+      fingerprint: await h.workspaceFingerprintV4(restored),
+      chapter: restored.workspaceData.navigation.currentChapter,
       pending: await h.m4MergeJournalPort.read() }
   })
   expect(result.didMount).toBe(false)
-  expect(result.blocked).toContain('M4 merge journal pending')
-  expect(result.remains).toBe(true)
-  expect(result.restored).toBe(true)
+  expect(result.reason).toContain('M4 merge recovery completed; reload required')
+  expect(result.phases).toContain('recovering')
+  expect(result.phases).toContain('restart-required')
+  expect(result.fingerprint).toBe(before.candidateFingerprint)
+  expect(result.chapter).toBe(33)
   expect(result.pending).toBeNull()
+})
+
+test('S1 owner mismatch cannot consume or replay staged M4', async ({ page }) => {
+  await init(page)
+  await stage(page, 34)
+  const result = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    const auth = JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1')!)
+    auth.user.userId = 'foreign-account'
+    localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify(auth))
+    let didMount = false
+    let reason = ''
+    try {
+      await h.mountGuardedWorkspaceApp(async () => { didMount = true })
+    } catch (error) { reason = String(error) }
+    const state = await h.captureWorkingWorkspaceV4({
+      kind: 'account', accountId: 'm4-pilot-browser-test',
+    })
+    return { didMount, reason,
+      pending: (await h.m4MergeJournalPort.read()) !== null,
+      chapter: state.workspaceData.navigation.currentChapter }
+  })
+  expect(result.didMount).toBe(false)
+  expect(result.reason).not.toContain('M4 merge recovery completed')
+  expect(result.reason).toMatch(/account|auth|workspace|账户|身份|S1/i)
+  expect(result.pending).toBe(true)
+  expect(result.chapter).not.toBe(34)
 })
