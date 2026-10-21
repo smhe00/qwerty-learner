@@ -140,3 +140,59 @@ test('Mobile narrow screens keep the actions visible without horizontal scroll',
     expect(bounds.footerTop).toBeGreaterThan(bounds.viewportHeight * .5)
   }
 })
+
+
+test('Mobile prioritizes full word at top; long explanations truncate below the example', async ({ page }) => {
+  await mockWordPronunciation(page)
+  await page.setViewportSize({ width: 320, height: 568 })
+  await page.goto('/mobile/study')
+  const practice = page.locator('[data-mobile-word-practice]')
+  await expect(practice).toBeVisible({ timeout: 45_000 })
+
+  if (await practice.getAttribute('data-mobile-task') === 'recall') {
+    await page.getByRole('button', { name: '显示答案' }).click()
+  }
+
+  const word = practice.locator('[data-mobile-word-slot] .mobile-practice-word')
+  if (await word.count() > 0) {
+    const before = await word.boundingBox()
+    expect(before).not.toBeNull()
+    const result = await word.evaluate((element) => {
+      const root = element.closest('[data-mobile-reading]')
+      const wordSlot = root?.querySelector('[data-mobile-word-slot]')
+      const exampleSlot = root?.querySelector('[data-mobile-example-slot]')
+      const meaningSlot = root?.querySelector('[data-mobile-meaning-slot]')
+      const meaning = meaningSlot?.querySelector('.mobile-practice-meaning')
+      if (meaning) meaning.textContent = '非常冗长的中文释义与补充说明；'.repeat(100)
+      const rect = element.getBoundingClientRect()
+      const slotRect = wordSlot?.getBoundingClientRect()
+      const readingRect = root?.getBoundingClientRect()
+      const exampleRect = exampleSlot?.getBoundingClientRect()
+      const meaningRect = meaningSlot?.getBoundingClientRect()
+      const meaningLine = meaning ? parseFloat(getComputedStyle(meaning).lineHeight) : 0
+      return {
+        wordTop: rect.top, wordBottom: rect.bottom, wordVisibleHeight: element.scrollHeight,
+        wordBoxHeight: rect.height,
+        wordOverflow: element.scrollWidth - element.clientWidth,
+        readingTop: readingRect?.top ?? 0, readingBottom: readingRect?.bottom ?? 0,
+        slotTop: slotRect?.top ?? 0,
+        exampleCenter: exampleRect ? (exampleRect.top + exampleRect.bottom) / 2 : 0,
+        meaningTop: meaningRect?.top ?? 0,
+        meaningHeight: meaning?.getBoundingClientRect().height ?? 0,
+        meaningLine,
+      }
+    })
+    const after = await word.boundingBox()
+    expect(after).not.toBeNull()
+    expect(after!.y).toBeCloseTo(before!.y, 0)
+    expect(result.wordTop).toBeGreaterThanOrEqual(result.readingTop - 1)
+    expect(result.wordBottom).toBeLessThanOrEqual(result.readingBottom + 1)
+    expect(result.wordBoxHeight).toBeGreaterThanOrEqual(result.wordVisibleHeight - 1)
+    expect(result.wordOverflow).toBeLessThanOrEqual(1)
+    expect(result.meaningTop).toBeGreaterThan(result.wordBottom)
+    expect(result.exampleCenter).toBeGreaterThan(result.wordBottom)
+    if (result.meaningLine > 0) expect(result.meaningHeight).toBeLessThanOrEqual(result.meaningLine * 2 + 2)
+  }
+
+  await expect(page.locator('[data-mobile-action-zone]')).toBeVisible()
+})

@@ -121,33 +121,106 @@
 .mobile-practice-title-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 .mobile-practice-title-row h1 { font-size: 19px; font-weight: 650; letter-spacing: -.03em; line-height: 1.4; margin: 0; }
 .mobile-practice-step { color: var(--mobile-muted); font-size: 12px; white-space: nowrap; }
+/* Stable three-zone reading area. Content never vertically centers the word. */
 .mobile-practice-reading {
-  display: flex;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
   min-height: 0;
+  min-width: 0;
   flex: 1 1 0;
-  flex-direction: column;
-  justify-content: center;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 16px 6px;
+  overflow: hidden;
+  padding: 10px 6px 16px;
 }
-.mobile-practice-lesson, .mobile-practice-feedback, .mobile-practice-lesson [data-mobile-answer-revealed] {
+.mobile-practice-word-slot {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  width: 100%;
+  gap: 5px;
+  min-width: 0;
+  min-height: min-content;
+  align-self: start;
   text-align: center;
 }
-.mobile-practice-word { margin: 0; font-size: clamp(30px, 8vw, 39px); line-height: 1.5; font-weight: 650; letter-spacing: -.025em; overflow-wrap: anywhere; }
-.mobile-practice-meaning { margin: 0; font-size: clamp(16px, 4.5vw, 18px); line-height: 1.8; overflow-wrap: anywhere; }
-.mobile-practice-phonetic { margin: -12px 0 0; color: var(--mobile-muted); font-size: 13px; }
-.mobile-practice-cue { margin: 0; font-size: 13px; line-height: 1.65; color: var(--mobile-muted); }
-.mobile-practice-example { margin: 0; padding: 14px 8px 0; border-top: 1px solid var(--mobile-line); width: 100%; max-width: 470px; font-size: 15px; line-height: 1.9; overflow-wrap: anywhere; }
-.mobile-practice-context { border: 0; padding-top: 0; font-size: 19px; }
-.mobile-practice-replay { display: inline-flex; align-items: center; gap: 7px; min-height: 42px; padding: 8px 16px; color: var(--mobile-muted); font-size: 12px; }
-.mobile-practice-audio-hero { display: grid; place-items: center; width: 80px; height: 80px; border-radius: 50%; background: var(--focus-surface-muted,#f1f4f7); color: var(--mobile-accent); }
-.mobile-practice-feedback-status { margin: 0; font-size: 14px; font-weight: 650; color: var(--mobile-muted); }
+.mobile-practice-word,
+.mobile-practice-revealed-word {
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+.mobile-practice-word {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--mobile-text);
+  line-height: 1.32;
+  font-weight: 650;
+  letter-spacing: -.025em;
+  text-align: center;
+}
+.mobile-practice-revealed-word { min-width: 0; }
+.mobile-practice-phonetic { margin: 0; color: var(--mobile-muted); font-size: 12px; line-height: 1.4; }
+.mobile-practice-cue { margin: 0; color: var(--mobile-muted); font-size: 13px; line-height: 1.6; text-align: center; }
+.mobile-practice-replay { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 5px 12px; color: var(--mobile-muted); font-size: 12px; }
+.mobile-practice-audio-hero { display: grid; place-items: center; width: 70px; height: 70px; border-radius: 50%; background: var(--focus-surface-muted,#f1f4f7); color: var(--mobile-accent); }
+.mobile-practice-feedback-status { margin: 0 0 4px; color: var(--mobile-muted); font-size: 13px; font-weight: 650; }
+
+.mobile-practice-example-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  text-align: center;
+}
+.mobile-practice-example {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  width: 100%;
+  max-width: 470px;
+  max-height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: clamp(14px, 3.9vw, 17px);
+  line-height: 1.75;
+  text-align: center;
+}
+.mobile-practice-context { font-size: clamp(17px, 4.4vw, 20px); }
+.mobile-practice-meaning-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  min-height: 0;
+  align-self: end;
+  width: 100%;
+}
+.mobile-practice-meaning {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  width: 100%;
+  min-width: 0;
+  max-height: 5.4em;
+  margin: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  color: var(--mobile-text);
+  font-size: clamp(15px, 4vw, 17px);
+  line-height: 1.8;
+  text-align: center;
+}
 .mobile-practice-actions {
   display: flex;
   flex-direction: column;
@@ -211,6 +284,8 @@
 @media (max-height: 630px) {
   .mobile-practice-head { padding-top: 6px; }
   .mobile-practice-reading { padding: 8px 5px; }
-  .mobile-practice-lesson, .mobile-practice-feedback, .mobile-practice-lesson [data-mobile-answer-revealed] { gap: 8px; }
+  .mobile-practice-reading { gap: 4px; padding-top: 6px; padding-bottom: 8px; }
+  .mobile-practice-meaning { -webkit-line-clamp: 2; line-clamp: 2; max-height: 3.6em; }
+  .mobile-practice-example { -webkit-line-clamp: 3; line-clamp: 3; }
   .mobile-practice-actions { padding-top: 6px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
 }

@@ -403,6 +403,16 @@ export default function MobileWordPractice({
   const audioRequiresTap = task === 'audio' && !audioPlayed && audioState !== 'error'
   const audioFailed = task === 'audio' && audioState === 'error'
 
+  // Reserve the top line for the complete orthographic answer. Long words
+  // shrink before wrapping; neither examples nor definitions may push it away.
+  const wordFontSize = word.name.length > 26
+    ? 'clamp(17px, 4.7vw, 24px)'
+    : word.name.length > 18
+      ? 'clamp(19px, 6vw, 29px)'
+      : word.name.length > 12
+        ? 'clamp(23px, 7vw, 35px)'
+        : 'clamp(29px, 8.4vw, 40px)'
+
   return (
     <section
       className="mobile-practice"
@@ -419,66 +429,75 @@ export default function MobileWordPractice({
         </div>
       </header>
 
-      <div className="mobile-practice-reading">
-        {feedback ? (
-          <div className="mobile-practice-feedback" data-mobile-feedback role="status">
-            <p className="mobile-practice-feedback-status">{feedback.title}</p>
-            <h2 className="mobile-practice-word">{word.name}</h2>
-            <p className="mobile-practice-meaning">{meanings}</p>
-            {example && <p className="mobile-practice-example">{example.en}</p>}
-          </div>
-        ) : task === 'exposure' ? (
-          <div className="mobile-practice-lesson">
-            <h2 className="mobile-practice-word">{word.name}</h2>
-            {(word.ukphone || word.usphone) && (
-              <p className="mobile-practice-phonetic">{word.ukphone ? '/' + word.ukphone + '/' : '/' + word.usphone + '/'}</p>
-            )}
-            <button type="button" className="mobile-practice-replay" onClick={playAgain} disabled={paused} aria-label="再听一遍">
-              <Volume2 size={18} aria-hidden="true" /> {audioState === 'playing' ? '正在发音' : '再听一遍'}
-            </button>
-            <p className="mobile-practice-meaning">{meanings}</p>
-            {example && <p className="mobile-practice-example">{example.en}</p>}
-          </div>
-        ) : task === 'recall' ? (
-          <div className="mobile-practice-lesson">
-            {revealedAttempt ? (
-              <div data-mobile-answer-revealed>
-                <h2 className="mobile-practice-word">{word.name}</h2>
-                <p className="mobile-practice-meaning">{meanings}</p>
-                {example && <p className="mobile-practice-example">{example.en}</p>}
-                <p className="mobile-practice-cue">刚才想起来了吗？</p>
+      <div className="mobile-practice-reading" data-mobile-reading>
+        <div className="mobile-practice-word-slot" data-mobile-word-slot>
+          {feedback ? (
+            <>
+              <p className="mobile-practice-feedback-status" data-mobile-feedback role="status">{feedback.title}</p>
+              <h2 className="mobile-practice-word" style={{ fontSize: wordFontSize }}>{word.name}</h2>
+            </>
+          ) : task === 'exposure' ? (
+            <>
+              <h2 className="mobile-practice-word" style={{ fontSize: wordFontSize }}>{word.name}</h2>
+              {(word.ukphone || word.usphone) && (
+                <p className="mobile-practice-phonetic">{word.ukphone ? '/' + word.ukphone + '/' : '/' + word.usphone + '/'}</p>
+              )}
+              <button type="button" className="mobile-practice-replay" onClick={playAgain} disabled={paused} aria-label="再听一遍">
+                <Volume2 size={18} aria-hidden="true" /> {audioState === 'playing' ? '正在发音' : '再听一遍'}
+              </button>
+            </>
+          ) : task === 'recall' ? (
+            revealedAttempt ? (
+              <div className="mobile-practice-revealed-word" data-mobile-answer-revealed>
+                <h2 className="mobile-practice-word" style={{ fontSize: wordFontSize }}>{word.name}</h2>
               </div>
             ) : (
-              <>
-                <p className="mobile-practice-cue">看意思，在心中想出英文</p>
-                <p className="mobile-practice-meaning">{meanings}</p>
-                {maskedExample && <p className="mobile-practice-example">{exampleText}</p>}
-              </>
-            )}
-          </div>
-        ) : task === 'audio' ? (
-          <div className="mobile-practice-lesson">
-            <div className="mobile-practice-audio-hero" aria-hidden="true"><Headphones size={35} strokeWidth={1.6}/></div>
-            <p className="mobile-practice-cue">
-              {audioState === 'playing' ? '正在发音…' : audioPlayed ? '选出刚才听到的单词' : '正在准备发音…'}
-            </p>
-            {audioPlayed && (
-              <button type="button" className="mobile-practice-replay" onClick={playAgain} disabled={paused || isSaving}>
-                <Volume2 size={17} aria-hidden="true"/> 再听一遍
-              </button>
-            )}
-          </div>
-        ) : task === 'context' ? (
-          <div className="mobile-practice-lesson">
-            <p className="mobile-practice-cue">选出句子中缺少的词</p>
+              <p className="mobile-practice-cue">回忆英文单词</p>
+            )
+          ) : task === 'audio' ? (
+            <div className="mobile-practice-audio-hero" aria-hidden="true"><Headphones size={35} strokeWidth={1.6} /></div>
+          ) : task === 'meaning-choice' ? (
+            <h2 className="mobile-practice-word" style={{ fontSize: wordFontSize }}>{word.name}</h2>
+          ) : (
+            <p className="mobile-practice-cue">选出空缺的单词</p>
+          )}
+        </div>
+
+        <div className="mobile-practice-example-slot" data-mobile-example-slot>
+          {feedback ? (
+            example ? <p className="mobile-practice-example">{example.en}</p> : null
+          ) : task === 'exposure' ? (
+            example ? <p className="mobile-practice-example">{example.en}</p> : null
+          ) : task === 'recall' ? (
+            <>
+              {maskedExample && (
+                <p className="mobile-practice-example">{revealedAttempt ? example?.en : exampleText}</p>
+              )}
+              {revealedAttempt && <p className="mobile-practice-cue">刚才想起来了吗？</p>}
+            </>
+          ) : task === 'audio' ? (
+            <>
+              <p className="mobile-practice-cue">
+                {audioState === 'playing' ? '正在发音…' : audioPlayed ? '选出刚才听到的单词' : '正在准备发音…'}
+              </p>
+              {audioPlayed && (
+                <button type="button" className="mobile-practice-replay" onClick={playAgain} disabled={paused || isSaving}>
+                  <Volume2 size={17} aria-hidden="true" /> 再听一遍
+                </button>
+              )}
+            </>
+          ) : task === 'context' ? (
             <p className="mobile-practice-example mobile-practice-context">{exampleText}</p>
-          </div>
-        ) : (
-          <div className="mobile-practice-lesson">
+          ) : (
             <p className="mobile-practice-cue">哪个意思与这个词相符？</p>
-            <h2 className="mobile-practice-word">{word.name}</h2>
-          </div>
-        )}
+          )}
+        </div>
+
+        <div className="mobile-practice-meaning-slot" data-mobile-meaning-slot>
+          {(feedback || task === 'exposure' || task === 'recall') && (
+            <p className="mobile-practice-meaning" title={meanings}>{meanings}</p>
+          )}
+        </div>
       </div>
 
       <footer className="mobile-practice-actions" data-mobile-action-zone>
