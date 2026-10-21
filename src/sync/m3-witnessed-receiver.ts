@@ -8,7 +8,7 @@
  */
 import type { IWordRecord } from '@/utils/db/record'
 import { sha256Hex } from './sha256-compat'
-import { immutableAttempt, type ChainedReceipt } from './multi-device-outbox'
+import { type ChainedReceipt, immutableAttempt } from './multi-device-outbox'
 import { stableWorkspaceJson } from './workspace-v4'
 import { projectUuidLearningConvergence } from './v4-event-convergence'
 import type { EventConvergenceProjection } from './v4-event-convergence'
