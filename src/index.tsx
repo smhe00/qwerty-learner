@@ -70,6 +70,7 @@ let starting = false
 let releasedForPageHide = false
 let mounted = false
 let stopSessionRevocationMonitor: (() => void) | undefined
+let stopEtestM3BackgroundMonitor: (() => void) | undefined
 
 function gateUI(title: string, detail: string, action?: string): void {
   if (!root || mounted) return
@@ -428,6 +429,16 @@ async function start(): Promise<void> {
     if (boot.mode === 'isolated') {
       const { startSessionRevocationMonitor } = await import('./sync/session-revocation')
       stopSessionRevocationMonitor = startSessionRevocationMonitor(boot.registry)
+      // Only an S1-owned etest account, never the production origin or Pages.
+      // Background scans recover crashes after the WordRecord commit without
+      // modifying any snapshot. The browser adapter rechecks ownership.
+      if (boot.registry.active.kind === 'account' &&
+          import.meta.env.VITE_QWERTY_M3_PILOT_AUTO === 'true' &&
+          window.location.hostname === 'etest.edgeone.dev') {
+        const { startEtestM3BackgroundMonitor } =
+          await import('./sync/m3-background-browser')
+        stopEtestM3BackgroundMonitor = startEtestM3BackgroundMonitor()
+      }
     }
     showS1AccountResult()
   } catch (error) {
@@ -451,6 +462,7 @@ async function start(): Promise<void> {
 
 window.addEventListener('pagehide', () => {
   stopSessionRevocationMonitor?.()
+  stopEtestM3BackgroundMonitor?.()
   // A page restored from BFCache must never reuse an expired writer lease.
   releasedForPageHide = true
   // Do NOT release the writer lease while the React tree and its async DB

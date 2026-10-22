@@ -165,3 +165,10 @@ FSRS-6、Acquisition、成就和每日学习进度只能从同一份已验证的
 - `v4-lossless-evidence-audit.ts` 在 FSRS-6/Session 三方归并结束后，独立复核三份来源 Backup V4 的全部 `attemptId`，候选必须存在**恰好一次且不可变事实完全一致**的并集；设备内 numeric ID 和 FSRS shadow 可以重新映射，源数据不改写。
 - 同时核对 `ReviewSession.sessionId` 并集与祖先无 UUID Legacy 行的字节级完整保留；被遗漏、伪造、重复、跨设备同 UUID 不同证据的候选即使通过 FSRS 缓存校验，也明确阻止进入候选出口。
 - **范围**：这是必要条件而非充分条件；章节、成就和 DailySession 的独立修改仍由原有保守合并门禁阻断。没有改变对无共同祖先设备的保护，不提供 cloud writeback 或自动 M4 restore 授权。
+
+
+### M3.9 连续自动恢复（仅 etest opt-in，2026-10-22）
+
+- 新增 `m3-continuous-drain.ts` 纯调度器，在 S1 成功挂载的 etest 账号页启动：首次延迟 2 秒、闲置 45 秒扫描、批次未清 1 秒续传、失败指数退避至 120 秒；网络恢复和可见性恢复自动触发补扫。与现有 Learn WordRecord debounce 并存，实际同一浏览器仅允许一个 M3 publication Promise。
+- 生命周期 `pagehide` 中止后续定时器/事件监听；完成正在执行的网络调用也不产生新的定时器。每一次 IDB / 网络异步均继续受现有 S1 owner/account/generation/token 校验。
+- M3 仅证明不可变事件已交付；没有启动跨端完整事件自动发现，没有打开六表云端/本地自动覆盖；M1/M3 后端环境试验开关仍需独立 etest 验证。普通 production/master 和 Pages 不会启动此调度器。
