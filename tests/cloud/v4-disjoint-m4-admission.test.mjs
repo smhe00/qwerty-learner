@@ -212,3 +212,31 @@ test('M4 cloud adoption requires exact pin ownership, digest and higher revision
     assert.equal(verdict.admissionReady,false)
   }
 })
+
+
+test('M4 cloud adoption blocks a missing local UUID ReviewSession even if words merge',async()=>{
+  const base=snap(),local=structuredClone(base),cloud=structuredClone(base)
+  const localSession={id:1,
+    sessionId:'00000000-0000-4000-8000-000000000321',
+    dict:'shanghai',createTime:1800000300,index:0,
+    words:[{name:'apple',trans:[]}],isFinished:false,sessionKind:'review'}
+  local.workspaceData.database.data.data
+    .find(t=>t.tableName==='reviewRecords').rows.push(localSession)
+  words(cloud).push(word('banana',2,2))
+  const decision=await inspectAdoption({
+    accountId,pin:await pinOf(base),local,verifiedCloud:cloud,
+    cloudRevision:4,cloudFingerprint:await hash(cloud)})
+  assert.equal(decision.status,'blocked')
+  assert.equal(decision.reason,'m4-adoption-cloud-missing-local-merge')
+})
+
+test('M4 cloud adoption blocks replacing local navigation preferences with cloud defaults',async()=>{
+  const base=snap(),local=structuredClone(base),cloud=structuredClone(base)
+  local.workspaceData.navigation.currentChapter=3
+  words(cloud).push(word('banana',2,2))
+  const decision=await inspectAdoption({
+    accountId,pin:await pinOf(base),local,verifiedCloud:cloud,
+    cloudRevision:4,cloudFingerprint:await hash(cloud)})
+  assert.equal(decision.status,'blocked')
+  assert.equal(decision.reason,'m4-adoption-cloud-missing-local-merge')
+})
