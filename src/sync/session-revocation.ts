@@ -87,9 +87,27 @@ export function startSessionRevocationMonitor(registry: Registry): () => void {
     title.id = 'qwerty-revoked-title'
     title.style.cssText = 'font-size:22px;font-weight:650;margin:0 0 12px'
     const detail = addText('p',
-      '此设备的云端会话已被新登录取代。确认后，将完整保存本机属于原账号的学习记录，并安全切换到本机匿名工作区。未同步进度不会自动上传或合并，也不会被删除。')
-    const note = addText('p', '请确认退出；切换过程中不要关闭页面。')
+      '此设备的云端会话已被另一台设备登录取代。本机原账号的学习记录仍安全保留，失效会话不能上传或覆盖云端。重新登录同一个账号后，可以继续尝试自动同步；如果尚不能安全融合，记录会继续保留在本机。')
+    const note = addText('p', '优先重新登录原账号以接续学习；也可以将原账号数据独立保存后退出到匿名工作区。')
     note.setAttribute('role', 'status')
+    const reauth = addText('button', '重新登录当前账号并继续')
+    reauth.type = 'button'
+    reauth.style.cssText = 'margin-top:12px;margin-right:10px;padding:10px 16px;' +
+      'border:0;border-radius:7px;color:#fff;background:#155e75;cursor:pointer'
+    reauth.addEventListener('click', () => {
+      if (!currentAuth()) {
+        note.textContent = '会话或工作区身份已改变；请刷新后重新检查。'
+        reauth.disabled = true
+        return
+      }
+      // Navigating to the S1 PRE-MOUNT account screen relinquishes the
+      // existing RecordDB writer. Unlike a logout, this does not switch
+      // workspace identity, touch IndexedDB or erase the local outbox.
+      reauth.disabled = true
+      confirm.disabled = true
+      note.textContent = '正在进入安全登录页面；本机原账号学习记录保持不变…'
+      window.location.replace('/?s1-account=manage')
+    })
     const confirm = addText('button', '确认退出并切换到本机匿名工作区')
     confirm.type = 'button'
     confirm.style.cssText = 'margin-top:12px;padding:10px 16px;' +
@@ -114,7 +132,7 @@ export function startSessionRevocationMonitor(registry: Registry): () => void {
         confirm.disabled = false
       }
     })
-    panel.append(title, detail, note, confirm)
+    panel.append(title, detail, note, reauth, confirm)
     shell.append(panel)
     document.body.append(shell)
     confirm.focus()
