@@ -205,7 +205,8 @@ export async function previewDisjointWordV4(input: {
       const checkSide = (side: Row[]): Row[] => {
         const indexed = indexById(side)
         for (const original of legacy) {
-          if (json(indexed.get(original.id as number)) !== json(original)) {
+          const candidate = indexed.get(original.id as number)
+          if (!candidate || json(candidate) !== json(original)) {
             throw new Error('disjoint-legacy-session-changed')
           }
         }
