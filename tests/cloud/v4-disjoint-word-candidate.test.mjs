@@ -406,6 +406,46 @@ test('concurrently divergent session cursors block even if word events can merge
   assert.equal(p.status,'blocked')
   assert.equal(p.reason,'disjoint-review-sessions:concurrent-session-advance-conflict')
 })
+test('unchanged legacy ReviewSessions coexist with independently created UUID sessions', async () => {
+  const a=snap()
+  const old=session(7)
+  delete old.sessionId
+  rows(a,'reviewRecords').push(old)
+  const l=structuredClone(a),r=structuredClone(a)
+  // Two browsers both allocate local ID 8; UUID is their global identity.
+  rows(l,'reviewRecords').push(session(8,11))
+  rows(r,'reviewRecords').push(session(8,12))
+  const result=await inspect(a,l,r)
+  assert.equal(result.status,'projected',result.reason)
+  assert.deepEqual(rows(result.candidate,'reviewRecords').map(s=>s.id),[7,8,9])
+  assert.deepEqual(rows(result.candidate,'reviewRecords')[0],old,
+    'legacy row must remain byte-for-byte unchanged')
+  assert.deepEqual(new Set(rows(result.candidate,'reviewRecords')
+    .slice(1).map(s=>s.sessionId)),new Set([uuid(11),uuid(12)]))
+  const swapped=await inspect(a,r,l)
+  assert.equal(swapped.status,'projected',swapped.reason)
+  assert.equal(swapped.candidateFingerprint,result.candidateFingerprint)
+  assert.equal(result.publishReady,false)
+})
+test('legacy session rewrite still blocks when other UUID sessions are valid', async () => {
+  const a=snap()
+  const old=session(7)
+  delete old.sessionId
+  rows(a,'reviewRecords').push(old)
+  const l=structuredClone(a),r=structuredClone(a)
+  rows(l,'reviewRecords').push(session(8,11))
+  rows(r,'reviewRecords').push(session(8,12))
+  rows(r,'reviewRecords')[0].index=1
+  const result=await inspect(a,l,r)
+  assert.equal(result.status,'blocked')
+  assert.equal(result.reason,'disjoint-legacy-session-changed')
+  // A deleted legacy row is not a legitimate cross-device deletion.
+  rows(r,'reviewRecords').shift()
+  const missing=await inspect(a,l,r)
+  assert.equal(missing.status,'blocked')
+  assert.equal(missing.reason,'disjoint-legacy-session-changed')
+})
+
 test('legacy session cannot be rewritten or dropped by a competing branch',async()=>{
   const a=snap()
   const legacy=session(1)

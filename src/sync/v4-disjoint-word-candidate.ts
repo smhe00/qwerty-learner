@@ -11,7 +11,7 @@
  * ReviewRecord changes require UUID-backed three-way cursor arbitration; no legacy NEW attempt; no unproven scheduler-only update.
  * For overlapping words, all history must have UUID, be replayable and
  * agree with each device's persisted review-count evidence.
- * Four untouched tables are kept EXACTLY.
+ * Untouched chapter, achievement and daily-session data are kept EXACTLY.
  *
  * Without replay verified against the actual device event heads and
  * journaled M4 admission, this is a candidate, never permission to publish.
@@ -21,6 +21,7 @@ import type { IReviewWordState } from '@/review/types'
 import type { IReviewRecord, IWordRecord } from '@/utils/db/record'
 import { projectUuidLearningConvergence } from './v4-event-convergence'
 import { isLearningAttemptId } from '@/utils/db/attempt-identity'
+import { isReviewSessionId } from '@/utils/db/review-session-identity'
 import { previewConservativeThreeWayV4 } from './v4-conservative-three-way'
 import {
   digestThreeWayReviewSessionAncestor,
@@ -190,27 +191,52 @@ export async function previewDisjointWordV4(input: {
     // that table unchanged; otherwise their identity cannot be proven.
     const baseSessions = table(ancestor, 'reviewRecords').rows
     let mergedSessions: Row[] | null = null
+    const localSessions = table(local, 'reviewRecords').rows
+    const remoteSessions = table(remote, 'reviewRecords').rows
     const baselineSessions = json(baseSessions)
-    if (json(table(local, 'reviewRecords').rows) !== baselineSessions ||
-        json(table(remote, 'reviewRecords').rows) !== baselineSessions) {
+    if (json(localSessions) !== baselineSessions ||
+        json(remoteSessions) !== baselineSessions) {
+      // Existing installations can contain old sessions without UUIDs.
+      // They remain opaque, IMMUTABLE ancestor rows: verify exact primary
+      // keys and full content on BOTH sides before excluding them from the
+      // UUID-only classifier. Never backfill UUIDs from time or numeric IDs.
+      const legacy = baseSessions.filter(r => !isReviewSessionId(r.sessionId))
+      const legacyIds = new Set(legacy.map(r => r.id as number))
+      const checkSide = (side: Row[]): Row[] => {
+        const indexed = indexById(side)
+        for (const original of legacy) {
+          if (json(indexed.get(original.id as number)) !== json(original)) {
+            throw new Error('disjoint-legacy-session-changed')
+          }
+        }
+        return side.filter(r => !legacyIds.has(r.id as number))
+      }
+      indexById(baseSessions)
+      const modernAncestor = baseSessions.filter(
+        r => !legacyIds.has(r.id as number))
+      const modernLocal = checkSide(localSessions)
+      const modernRemote = checkSide(remoteSessions)
       const review = await inspectThreeWayReviewSessions({
-        ancestor: baseSessions as unknown as IReviewRecord[],
+        ancestor: modernAncestor as unknown as IReviewRecord[],
         pinnedAncestorDigest:
           await digestThreeWayReviewSessionAncestor(
-            baseSessions as unknown as IReviewRecord[]),
-        local: table(local, 'reviewRecords').rows as unknown as IReviewRecord[],
-        remote: table(remote, 'reviewRecords').rows as unknown as IReviewRecord[],
+            modernAncestor as unknown as IReviewRecord[]),
+        local: modernLocal as unknown as IReviewRecord[],
+        remote: modernRemote as unknown as IReviewRecord[],
       })
       if (review.status !== 'projected') {
         return blocked('disjoint-review-sessions:' + review.reason)
       }
       const ancestorIds = new Map<string, number>(
-        baseSessions.map(r => [r.sessionId as string, r.id as number]))
+        modernAncestor.map(r => [r.sessionId as string, r.id as number]))
       let nextId = Math.max(0, ...baseSessions.map(r => r.id as number))
-      mergedSessions = review.sessions.map(({ sessionId, record }) => ({
-        ...structuredClone(record),
-        id: ancestorIds.get(sessionId) ?? ++nextId,
-      }))
+      mergedSessions = [
+        ...legacy.map(r => structuredClone(r)),
+        ...review.sessions.map(({ sessionId, record }) => ({
+          ...structuredClone(record),
+          id: ancestorIds.get(sessionId) ?? ++nextId,
+        })),
+      ].sort((a, b) => (a.id as number) - (b.id as number))
     }
     const baseWords = table(ancestor, 'wordRecords').rows
     const baseIds = indexById(baseWords)
