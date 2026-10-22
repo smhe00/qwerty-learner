@@ -288,7 +288,10 @@ export async function previewDisjointWordV4(input: {
       .filter((id): id is string => typeof id === 'string'))
     for (const row of [...additions.local, ...additions.remote]
       .sort((a, b) => (a.timeStamp as number) - (b.timeStamp as number) ||
-        compare(String(a.attemptId), String(b.attemptId)))) {
+        compare(String(a.attemptId), String(b.attemptId)) ||
+        // Duplicate UUIDs may carry different device-local shadow metadata.
+        // Canonical selection must be independent of local/remote order.
+        compare(json(a), json(b)))) {
       if (mergedAttemptIds.has(row.attemptId as string)) continue
       mergedWords.push(cloneWithNewId(row, ++maxWordId))
       mergedAttemptIds.add(row.attemptId as string)

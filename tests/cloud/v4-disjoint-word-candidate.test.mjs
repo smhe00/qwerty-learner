@@ -327,3 +327,25 @@ test('single-device stale, fabricated or missing scheduler evidence blocks', asy
   rows(lost,'reviewWordStates').length = 0
   assert.equal((await inspect(a,lost,untouched)).status,'blocked')
 })
+
+test('same UUID with different origin-local shadow remains order independent', async () => {
+  const a = snap(), l = structuredClone(a), r = structuredClone(a)
+  rows(l,'wordRecords').push(record('banana',2,uuid(2),{
+    fsrsShadow:{version:1,sourceRecordId:2,marker:'first'},
+  }))
+  rows(r,'wordRecords').push(record('banana',99,uuid(2),{
+    timeStamp:1800000002,
+    fsrsShadow:{version:1,sourceRecordId:99,marker:'second'},
+  }))
+  const left = await inspect(a,l,r)
+  const right = await inspect(a,r,l)
+  assert.equal(left.status,'projected',left.reason)
+  assert.equal(right.status,'projected',right.reason)
+  assert.equal(left.candidateFingerprint,right.candidateFingerprint,
+    'cross-device order cannot change canonical V4 bytes')
+  const merged = rows(left.candidate,'wordRecords')
+  assert.equal(merged.length,2)
+  assert.equal(merged[1].attemptId,uuid(2))
+  assert.equal(merged[1].id,2)
+  assert.equal(merged[1].fsrsShadow.sourceRecordId,2)
+})
