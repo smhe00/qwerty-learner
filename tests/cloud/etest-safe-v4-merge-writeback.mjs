@@ -8,8 +8,10 @@
  * changes independent preferences. The actual cloud CAS writeback and exact
  * gzip/SHA/readback are tested. No live user/automatic app merge is enabled.
  *
- * This is NOT two independent FSRS histories merging. Both-side learning
- * mutations are explicitly rejected, and cloud old-revision CAS is exercised.
+ * The pilot now also tests independently observed Good/Again on the SAME
+ * word with complete immutable events and verified per-device FSRS replay.
+ * Old-revision CAS remains mandatory; protected session/achievement mutations
+ * and incomplete histories still block. This is NOT enabled in user UI.
  */
 import assert from 'node:assert/strict'
 import crypto from 'node:crypto'
@@ -30,6 +32,8 @@ const prefix = 'e2e_merge_' + process.env.GITHUB_RUN_ID + '_' +
   (process.env.GITHUB_RUN_ATTEMPT || '1')
 const temp = mkdtempSync(join(tmpdir(), 'qwerty-merge-cloud-'))
 const built = join(temp, 'candidate.mjs')
+const disjointBuilt = join(temp, 'time-replay-candidate.mjs')
+const fsrsBuilt = join(temp, 'fsrs-rebuild.mjs')
 const here = fileURLToPath(new URL('../../', import.meta.url))
 const names = ['achievementEvents', 'achievementStates', 'chapterRecords',
   'reviewRecords', 'reviewWordStates', 'wordRecords']
@@ -140,11 +144,23 @@ async function upload(token, baseRevision, snapshot, fingerprint) {
 
 let user = null, userId = null, failure = null
 try {
-  await build({ entryPoints: [resolve(here, 'src/sync/v4-conservative-three-way.ts')],
-    outfile: built, bundle: true, platform: 'node', format: 'esm',
-    target: 'node20', tsconfig: resolve(here, 'tsconfig.json') })
+  await Promise.all([
+    build({ entryPoints: [resolve(here, 'src/sync/v4-conservative-three-way.ts')],
+      outfile: built, bundle: true, platform: 'node', format: 'esm',
+      target: 'node20', tsconfig: resolve(here, 'tsconfig.json') }),
+    build({ entryPoints: [resolve(here, 'src/sync/v4-disjoint-word-candidate.ts')],
+      outfile: disjointBuilt, bundle: true, platform: 'node', format: 'esm',
+      target: 'node20', tsconfig: resolve(here, 'tsconfig.json') }),
+    build({ entryPoints: [resolve(here, 'src/review/fsrs/active.ts')],
+      outfile: fsrsBuilt, bundle: true, platform: 'node', format: 'esm',
+      target: 'node20', tsconfig: resolve(here, 'tsconfig.json') }),
+  ])
   const { previewConservativeThreeWayV4: inspect } =
     await import(pathToFileURL(built).href)
+  const { previewDisjointWordV4: mergeChronologically } =
+    await import(pathToFileURL(disjointBuilt).href)
+  const { rebuildActiveFsrsStateFromWordRecords: replayFsrs } =
+    await import(pathToFileURL(fsrsBuilt).href)
   const health = must(await api('/api/health'), 200, 'etest health')
   assert.equal(health.service, 'qwerty-sync-gateway')
   assert.ok(health.capabilities.includes('v4-binary-direct-512k-v1'))
@@ -263,7 +279,80 @@ try {
   assert.equal(unsafe.reason,
     'both-devices-changed-learning-unit-requires-fsrs-replay')
   assert.equal((await metadata(user.secondToken)).revision, 3)
-  console.log('PASS etest: 2-device account, exact ancestor, stale CAS 409, safe-subset 6-table writeback, full readback, concurrent FSRS BLOCKED')
+
+  // M2.14: two REAL independent reviews on the SAME word, minutes apart or
+  // the SAME second. Neither is discarded merely for sharing an FSRS base.
+  // The first current V4 is an EXACT cloud-pinned common ancestor.
+  const twoDeviceBase = final
+  const commonHash = checksumStable(twoDeviceBase)
+  const studyA = structuredClone(twoDeviceBase)
+  const studyB = structuredClone(twoDeviceBase)
+  const rowsOf = (snap, name) => snap.workspaceData.database.data.data.find(
+    entry => entry.tableName === name).rows
+  const reviewAId = crypto.randomUUID(), reviewBId = crypto.randomUUID()
+  const rating = (uuid, text, timeStamp) => ({
+    ...word(3, uuid), dict: 'test-dict', word: 'word-1', chapter: -1,
+    learnItemKind: 'review', timeStamp,
+    reviewBaseStateFingerprint: 'd'.repeat(64),
+    reviewRatingDecision: { eligible: true, rating: text,
+      confidence: 1, reasonCodes: ['test'] },
+  })
+  rowsOf(studyA, 'wordRecords').push(rating(reviewAId, 'good', 1800090000))
+  rowsOf(studyB, 'wordRecords').push(rating(reviewBId, 'again', 1800090000))
+  for (const branch of [studyA, studyB]) {
+    const state = replayFsrs('test-dict', 'word-1',
+      rowsOf(branch, 'wordRecords').filter(r => r.word === 'word-1'))
+    assert.equal(state?.reviewCount, 1, 'each branch has one genuine FSRS rating')
+    rowsOf(branch, 'reviewWordStates').push({ ...state, id: 1 })
+  }
+  const branchHash = checksumStable(studyB)
+  must(await upload(user.secondToken, 3, studyB, branchHash),
+    200, 'device B publishes own Same-Word Again evidence')
+  await visibleRevision(user.secondToken, 4, branchHash)
+  const switchA = must(await api('/api/auth/login', null, 'POST',
+    JSON.stringify({ username: user.username, password: user.password,
+      deviceId: user.firstDevice }), { 'Content-Type': 'application/json' }),
+  200, 'device A reconnect after same-word offline review')
+  assert.equal(switchA.user.userId, userId)
+  user.firstToken = switchA.token
+  assert.equal((await upload(user.firstToken, 3, studyA, checksumStable(studyA))).status,
+    409, 'device A stale revision 3 must never overwrite B')
+  const witnessedB = await readPinned(user.firstToken, 4, branchHash)
+  const twoGrades = await mergeChronologically({
+    accountId: userId, pinnedAncestorFingerprint: commonHash,
+    ancestor: twoDeviceBase, local: studyA, remote: witnessedB,
+  })
+  assert.equal(twoGrades.status, 'projected', twoGrades.reason)
+  assert.equal(twoGrades.chronologicallyReplayedWords, 1)
+  assert.equal(twoGrades.publishReady, false)
+  assert.equal(twoGrades.convergenceComplete, false)
+  const mergedWord = rowsOf(twoGrades.candidate, 'wordRecords')
+    .filter(x => x.word === 'word-1')
+  assert.equal(mergedWord.length, 3, 'original + Good + Again all kept')
+  assert.deepEqual(new Set(mergedWord.map(x => x.attemptId)),
+    new Set([rowsOf(twoDeviceBase, 'wordRecords')[0].attemptId,
+      reviewAId, reviewBId]))
+  const mergedState = rowsOf(twoGrades.candidate, 'reviewWordStates')
+    .find(x => x.word === 'word-1')
+  assert.equal(mergedState.reviewCount, 2, 'both actual reviews feed FSRS')
+  const recomputed = replayFsrs('test-dict','word-1',mergedWord)
+  assert.equal(mergedState.nextReviewAt, recomputed.nextReviewAt)
+  assert.equal(mergedState.schedulerState.stability, recomputed.schedulerState.stability)
+  must(await upload(user.firstToken, 4, twoGrades.candidate,
+    twoGrades.candidateFingerprint), 200,
+  'etest disposable same-word BOTH grades six-table V4 CAS writeback')
+  await visibleRevision(user.firstToken, 5, twoGrades.candidateFingerprint)
+  const switchB = must(await api('/api/auth/login', null, 'POST',
+    JSON.stringify({ username: user.username, password: user.password,
+      deviceId: user.secondDevice }), { 'Content-Type': 'application/json' }),
+  200, 'device B reads merged FSRS state')
+  user.secondToken = switchB.token
+  const verified = await readPinned(user.secondToken, 5, twoGrades.candidateFingerprint)
+  assert.equal(checksumStable(verified), twoGrades.candidateFingerprint)
+  assert.equal(rowsOf(verified,'reviewWordStates').find(r => r.word === 'word-1').reviewCount,2)
+  assert.equal(new Set(rowsOf(verified, 'wordRecords')
+    .filter(x => x.word === 'word-1').map(r => r.attemptId)).size,3)
+  console.log('PASS etest: real V4 Blob CAS, old revision 409, six-table safe subset; two SAME-word Good/Again attempts, stable chronological FSRS replay, real commit and independent-device readback')
 } catch (error) { failure = error }
 finally {
   if (user) {
