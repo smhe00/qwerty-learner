@@ -1,7 +1,7 @@
 ---
 protocol_version: "1.1"
 task_id: "TASK-20261023-mobile-account"
-status: "IN_PROGRESS"
+status: "REVIEW"
 executor: "Codex (independent mobile UI task)"
 target_branch: "product/main"
 claim_base_commit: "596c856417efdfb3870ed7ccdea6060fd37937e4"
