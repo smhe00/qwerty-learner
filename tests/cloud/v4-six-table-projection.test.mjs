@@ -123,10 +123,14 @@ test('duplicate review session keys are detected per origin', () => {
   } }).reason, 'invalid-review-session')
 })
 
-test('concurrent cross-device Good is quarantined before six-table FSRS replay', () => {
+test('concurrent cross-device Good remains two study facts in six-table preview', () => {
   const local = side(mkWord(ids[0]))
   const remote = side(mkWord(ids[1], t0 + 10))
-  assert.equal(project({ local, remote }).reason, 'fsrs:concurrent-review-conflict')
+  const result = project({ local, remote })
+  assert.equal(result.status, 'projected', result.reason)
+  assert.equal(result.stats.uniqueAttempts, 2)
+  assert.equal(result.publishReady, false)
+  assert.equal(result.convergenceComplete, false)
 })
 
 test('immutable session UUID can identify identical snapshots despite numeric ID relocation', () => {

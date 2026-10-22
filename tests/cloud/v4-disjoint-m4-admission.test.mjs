@@ -123,12 +123,16 @@ test('crash during M4 restore keeps whole snapshot and restores original via exp
   assert.equal(await hash(f.state.snapshot),await hash(local))
   assert.equal(f.state.pending,null)
 })
-test('same-word modifications cannot generate a candidate for journal admission',async () => {
+test('same-word independent attempts yield candidate but require separate journal/cloud admission',async () => {
   const base=snap(),local=structuredClone(base),remote=structuredClone(base)
   words(local).push(word('banana',2,2))
   words(remote).push(word('banana',2,3))
   const result=await preview({accountId,pinnedAncestorFingerprint:await hash(base),
     ancestor:base,local,remote})
-  assert.equal(result.status,'blocked')
-  assert.equal(result.candidate,undefined)
+  assert.equal(result.status,'projected',result.reason)
+  assert.equal(result.chronologicallyReplayedWords,1)
+  assert.equal(result.publishReady,false)
+  assert.equal(result.convergenceComplete,false)
+  assert.equal(words(result.candidate).length,3)
+  assert.equal(result.candidateFingerprint,await hash(result.candidate))
 })
