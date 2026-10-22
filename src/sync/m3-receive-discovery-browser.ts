@@ -55,7 +55,7 @@ export async function inspectEtestVisibleDeviceHeads(): Promise<{
     }
     const proof = await inspectOwnedWitnessedHistory(selection.heads)
     await assertOwner()
-    if (proof.status !== 'projected' ||
+    if (proof.status !== 'witnessed' ||
         proof.publishReady !== false ||
         proof.convergenceComplete !== false) {
       return denied('witnessed-event-prefix-not-verified')
