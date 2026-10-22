@@ -193,3 +193,10 @@ FSRS-6、Acquisition、成就和每日学习进度只能从同一份已验证的
 - 在后台可选周期中读取既有 `GET /api/sync/events/v2/observed` 列表作为 **hints**，拒绝截断、可见缺口、同序列分叉、错误 UUID 与超过 4 个设备。仅对每个设备已观察到的最高前缀执行现有 `verify-set` 与精确 Blob 链回读。
 - 有意保持 `listingIsAuthoritative:false`、`publishReady:false`、`convergenceComplete:false`；不知道是否有未被当前 POP 列出的设备，不能据此发布全账号 V4、M4 本地覆盖或向用户显示“同步完成”。
 - `m3-receive-discovery-browser.ts` 仅在 etest 的实验开关下运行；普通生产模式不可调用。真正全端自动采纳仍被安全门禁阻断。
+
+
+### etest 受限 M1+M3 自动实网试验开关（2026-10-22）
+
+- EdgeOne 函数仅在 **Request.url 精确 HTTPS origin = etest.edgeone.dev** 时自动启用多设备独立登录与事件 Pilot；`q.smhe.cn`、正式 `qwerty-plus.edgeone.dev`、Pages/预览域名不匹配，保持原环境变量约束。生产云端依旧不会自动融合/修改 V4。
+- 前端的 `VITE_QWERTY_M3_PILOT_AUTO=true` 继续由 `etestM3PilotEnabled()` 严格核对实际页面 hostname，因此正式主站不会启用；配置仅允许本次隔离试验。
+- edgeone-test 分支推送自动运行现有独立账号测试，测试代码限定该域名并在结束后删除临时账号。这个试验验证 M1/M3 并发身份和事件存证，并不代表 M2/M4 六表自动采纳完成。

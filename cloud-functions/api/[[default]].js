@@ -1,4 +1,5 @@
 /* eslint-env node */
+import { isIsolatedEtestPilotOrigin } from '../_shared/etest-pilot-origin.js'
 import crypto from 'node:crypto'
 import { getStore } from '@edgeone/pages-blob'
 import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
@@ -157,13 +158,17 @@ function makeStorage(env) {
   return createEdgeOneBlobStorage(store)
 }
 
-function makeService(env, storage) {
+function makeService(env, storage, request) {
+  // Only the isolated, exact HTTPS etest Maker origin may enable the
+  // independent-session / immutable-event pilot without environment flags.
+  // Production/master hostnames are explicitly NOT included.
+  const isolatedEtest = isIsolatedEtestPilotOrigin(request.url)
   return createBackendService({
     storage,
     sessionTtlSeconds: numberEnv(env.SESSION_TTL_SECONDS, 7 * 24 * 60 * 60),
     maxSyncBytes: numberEnv(env.MAX_SYNC_BYTES, 16 * 1024 * 1024),
-    multiSessionEnabled: env.MULTI_DEVICE_AUTH_ENABLED === 'true',
-    eventPilotEnabled: env.MULTI_DEVICE_EVENT_PILOT_ENABLED === 'true',
+    multiSessionEnabled: env.MULTI_DEVICE_AUTH_ENABLED === 'true' || isolatedEtest,
+    eventPilotEnabled: env.MULTI_DEVICE_EVENT_PILOT_ENABLED === 'true' || isolatedEtest,
   })
 }
 
@@ -253,7 +258,7 @@ export async function onRequest(context) {
           // Millisecond-resolution, uncached origin execution time. This is
           // an estimate for clock-skew preflight, not a signed event timestamp.
           serverTimeMs: Date.now(),
-          authMode: env.MULTI_DEVICE_AUTH_ENABLED === 'true'
+          authMode: (env.MULTI_DEVICE_AUTH_ENABLED === 'true' || isIsolatedEtestPilotOrigin(request.url))
             ? 'independent-device-sessions-pilot'
             : 'single-active-session',
           runtime: process.version,
@@ -289,7 +294,7 @@ export async function onRequest(context) {
     }
 
     const storage = makeStorage(env)
-    const service = makeService(env, storage)
+    const service = makeService(env, storage, request)
     const bodyLimit =
       Math.ceil(numberEnv(env.MAX_SYNC_BYTES, 16 * 1024 * 1024) * 1.5) + 256 * 1024
 
