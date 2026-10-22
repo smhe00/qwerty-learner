@@ -1,7 +1,7 @@
 ---
 protocol_version: "1.1"
 task_id: "TASK-20261023-mobile-account-legacy-preview"
-status: "IN_PROGRESS"
+status: "REVIEW"
 executor: "Codex (independent mobile UI fix)"
 target_branch: "product/main"
 claim_base_commit: "618f3b222cae3fd9605387a99797b2619b8d0126"
