@@ -35,6 +35,7 @@ import {
 } from './workspace-v4'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
 import { auditV4LosslessEvidenceUnion } from './v4-lossless-evidence-audit'
+import { mergeDailySessionsThreeWay } from './v4-daily-session-three-way'
 
 type Row = Record<string, unknown>
 type Collection = { tableName: string; rows: Row[] }
@@ -180,10 +181,16 @@ export async function previewDisjointWordV4(input: {
         return blocked('disjoint-protected-table-changed:' + name)
       }
     }
-    const sessions = json(ancestor.workspaceData.learnRuntime)
-    if (json(local.workspaceData.learnRuntime) !== sessions ||
-        json(remote.workspaceData.learnRuntime) !== sessions) {
-      return blocked('disjoint-daily-session-changed')
+    // DailySessions are keyed by dictionary. Independently advanced
+    // DIFFERENT dictionaries can coexist; two divergent edits of the SAME
+    // dictionary still block to avoid losing an active learning cursor.
+    const daily = mergeDailySessionsThreeWay({
+      ancestor: ancestor.workspaceData.learnRuntime,
+      local: local.workspaceData.learnRuntime,
+      remote: remote.workspaceData.learnRuntime,
+    })
+    if (daily.status !== 'merged') {
+      return blocked('disjoint-daily-session:' + daily.reason)
     }
     // ReviewRecord has a stable cross-device UUID, unlike its Dexie ID.
     // Only materialize sessions after pinned-ancestor three-way arbitration.
@@ -453,6 +460,7 @@ export async function previewDisjointWordV4(input: {
       seenStateIds.add(id)
       normalizedStates.push({ ...structuredClone(row), id })
     }
+    candidate.workspaceData.learnRuntime.dailySessions = daily.dailySessions
     table(candidate, 'wordRecords').rows = mergedWords
     table(candidate, 'reviewWordStates').rows = normalizedStates
     if (mergedSessions) {

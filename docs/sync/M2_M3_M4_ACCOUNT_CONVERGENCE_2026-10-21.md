@@ -172,3 +172,10 @@ FSRS-6、Acquisition、成就和每日学习进度只能从同一份已验证的
 - 新增 `m3-continuous-drain.ts` 纯调度器，在 S1 成功挂载的 etest 账号页启动：首次延迟 2 秒、闲置 45 秒扫描、批次未清 1 秒续传、失败指数退避至 120 秒；网络恢复和可见性恢复自动触发补扫。与现有 Learn WordRecord debounce 并存，实际同一浏览器仅允许一个 M3 publication Promise。
 - 生命周期 `pagehide` 中止后续定时器/事件监听；完成正在执行的网络调用也不产生新的定时器。每一次 IDB / 网络异步均继续受现有 S1 owner/account/generation/token 校验。
 - M3 仅证明不可变事件已交付；没有启动跨端完整事件自动发现，没有打开六表云端/本地自动覆盖；M1/M3 后端环境试验开关仍需独立 etest 验证。普通 production/master 和 Pages 不会启动此调度器。
+
+
+### M2.17 DailySession 按词典保守三方融合（2026-10-22）
+
+- 新增独立纯函数 `v4-daily-session-three-way.ts`，与现有完整 V4 事件合并候选连接。允许不同词典分别在两个设备新增会话；允许同一词典只有一端推进、另一端保持共同祖先；允许两端完全一致的推进。不选 max(index)、最新时间或状态较大者。
+- 同一词典两端创建独立 sessionId 或分别改变进度时必须阻断，不能在单个 `dailySessions[dict]` 槽位内吞掉任一设备的会话；从祖先删除会话和出现未知未来 runtime 字段也阻断。历史 Chapter/Achievement 仍是受保护表。
+- 所有输出仍 `publishReady:false`，不授权 M4 本地采纳或完整 V4 云端写回；跨设备同词不同记录完整保留、不重新计数已存 UUID。
