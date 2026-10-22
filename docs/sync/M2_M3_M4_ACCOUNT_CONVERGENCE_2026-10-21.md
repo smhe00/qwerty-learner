@@ -152,3 +152,10 @@ FSRS-6、Acquisition、成就和每日学习进度只能从同一份已验证的
 - **测试**：`tests/cloud/m2-checkout-declaration.test.mjs` 覆盖成功存证与身份、伪造事件头、失效云版本、修改本地祖先、服务器错回执、超时及写后身份切换。此条记录只证明代码和测试已提交；最终 PASS 必须以对应 GitHub Actions run 的结果为准。
 - **明确保留**：已有 immutable UUID 事件归并、FSRS-6 重新计算、六表候选、ReviewSession UUID 三方仲裁、已有云端 CAS/409 确认写回、M4 Journal / Crash Recovery 均不改、不重造。DailySession/章节/成就跨设备独立变化仍为保守门禁。
 - **下一步**：核实当前提交的完整 CI，检查已存在 outbox durable `confirmedHead` 的所有权与稳定读接口，给该 checkout 入口增加一次性受控调用/receipt 持久化机制；随后建立真正的只读跨设备候选编排，完成非丢失验收后才设计自动 M4 采用和云端 CAS。未经进一步 gate 不允许 claim “all devices synced”，且绝不触碰 `master`。
+
+
+### M3 → M2.12 自动存证试验闭环（2026-10-22 后续）
+
+- 仅 `VITE_QWERTY_M3_PILOT_AUTO=true` 且域名为 `etest.edgeone.dev` 时，在原有 M3 已确认的上传批次耗尽、Durable Outbox 确认无 pending/inflight 且 device `confirmedHead` 存在后，触发独立 checkout 声明及精确回读。出错、离线、身份切换、云 revision 变化只记录阻断，不清空 outbox，不影响本地学习。
+- 新增纯逻辑 `src/sync/m3-checkout-cycle.ts` 和独立合同测试；`m3-publication-browser.ts` 复用本地 outbox、M2.12 的隔离浏览器适配，不创建新的同步算法/新的 Journal；仅允许 `declared-checkout-only`，`publishReady:false`，`convergenceComplete:false`。
+- **强制边界**：checkout 只是两端明确祖先的证据之一，不保证其他设备已经发现、不代表六表自动合并完成。当前普通生产页面与 `master` 不启用；没有独立六表可恢复候选 + M4 与完整 CAS 事务和 409/断网/跨 POP 实测前，不准宣称无感同步完成。

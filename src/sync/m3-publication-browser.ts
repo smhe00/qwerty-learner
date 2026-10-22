@@ -4,6 +4,8 @@
  * Called exclusively from an S1-mounted Learn tab holding its writer lease.
  */
 import { loadAuth } from './auth'
+import { inspectEventOutbox } from './multi-device-outbox-idb'
+import { tryDeclareCheckoutAfterPublication } from './m3-checkout-cycle'
 import { browserDeviceId } from './device-id'
 import { runM3PublicationCycle } from './m3-publication-cycle'
 import type { M3PublicationCycleResult } from './m3-publication-cycle'
@@ -48,11 +50,31 @@ export async function runEtestM3Publication(): Promise<M3PublicationCycleResult>
         throw new Error('pilot-owner-changed')
       }
     }
-    return runM3PublicationCycle({
+    const published = await runM3PublicationCycle({
       assertOwner,
       recover: () => recoverOwnedLearningEvents(),
       publish: () => flushOneWitnessedOutboxBatch({ accountId, deviceId, token }),
     })
+    // A verified immutable M3 upload may optionally issue a separate
+    // etest-only checkout declaration. Neither a receipt nor a failed
+    // declaration ever authorizes local V4 restore/cloud overwrite.
+    const checkout = await tryDeclareCheckoutAfterPublication({
+      accountId, deviceId, published,
+      port: {
+        assertOwner,
+        readOutbox: () => inspectEventOutbox(accountId, deviceId),
+        declare: async head => {
+          // Lazy import avoids ordinary Learn startup or non-etest behavior.
+          const { declareOwnedEtestCheckout } =
+            await import('./m2-checkout-declaration-browser')
+          return declareOwnedEtestCheckout(head)
+        },
+      },
+    })
+    if (checkout.status === 'blocked') {
+      console.warn('M3 etest checkout retained uploaded evidence:', checkout.reason)
+    }
+    return published
   })()
   try { return await running } finally { running = null }
 }
