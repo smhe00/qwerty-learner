@@ -1,7 +1,7 @@
 ---
 protocol_version: "1.1"
 task_id: "TASK-20261023-mobile-account-writer-handoff"
-status: "PARTIAL"
+status: "IN_PROGRESS"
 target_branch: "product/main"
 base_commit: "09383bdb306494d8d3a0788c7e77261881a50485"
 executor: "Codex"
@@ -21,3 +21,6 @@ Acceptance: normal touch and keyboard activation do not create another tab even 
 ## Device correction and open diagnosis
 
 User corrected the earlier response: manually entering /mobile/account in the same Huawei browser tab also remained blocked. Do not use the withdrawn claim of successful direct entry as evidence for a new-tab root cause. The deployed change covers link policy and transient handoff only; persistent Huawei occupation is not yet reproduced or fixed with evidence. Awaiting user check after fully exiting/reopening browser while retaining site data. No unsafe force-steal or storage deletion authorized or implemented.
+
+
+Latest device result on deployed 0a7054e8: after exiting/reopening Huawei browser, tapping login shows preparation then the NEW neutral busy title. Therefore the scoped first iteration does not fix the actual persistent device issue. Next iteration replaces the home history entry and exposes read-only native/lease heartbeat diagnostics; no root cause claim before actual-device metadata.

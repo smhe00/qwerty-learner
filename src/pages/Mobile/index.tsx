@@ -16,12 +16,12 @@ export default function MobilePage() {
   const dictionary = useAtomValue(currentDictInfoAtom)
   const auth = loadAuth({ preserveExpired: true })
   const accountHref = (REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : '') + '/mobile/account'
-  // A normal tap must replace this document in the same browsing context.
+  // Replace the home history entry so the account flow does not retain it.
   // Some mobile browsers otherwise apply a new-tab policy to ordinary links.
   const openAccount = (event: MouseEvent<HTMLAnchorElement>) => {
     if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
     event.preventDefault()
-    window.location.assign(accountHref)
+    window.location.replace(accountHref)
   }
   const expired = !!auth && auth.expiresAt * 1000 <= Date.now()
   const menus = [

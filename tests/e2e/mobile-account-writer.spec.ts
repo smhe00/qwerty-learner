@@ -42,6 +42,7 @@ for (const entry of ['avatar', 'menu']) {
         }
       })
     })
+    const historyLength = await page.evaluate(() => history.length)
     const link =
       entry === 'avatar' ? page.getByRole('link', { name: '登录或注册', exact: true }) : page.getByRole('link', { name: /账号与云同步/ })
     if (entry === 'avatar') await link.tap()
@@ -51,6 +52,7 @@ for (const entry of ['avatar', 'menu']) {
     }
     await expect(page.locator('[data-mobile-account]')).toBeVisible()
     expect(context.pages()).toHaveLength(1)
+    expect(await page.evaluate(() => history.length)).toBe(historyLength)
     expect(await page.evaluate(() => sessionStorage.getItem('account-click-handled'))).toBe('true')
   })
 }
@@ -104,6 +106,58 @@ for (const mode of ['native', 'fallback']) {
     await expect(page.getByRole('heading', { name: '学习数据暂时被占用' })).toBeVisible({ timeout: 15_000 })
     await expect(page.locator('[data-mobile-account], [data-mobile-menu]')).toHaveCount(0)
     expect(apiCalls).toBe(0)
+    await page.evaluate(() => {
+      ;(window as any).__diagnosticTransactions = []
+      const transaction = IDBDatabase.prototype.transaction
+      IDBDatabase.prototype.transaction = function (...args: Parameters<IDBDatabase['transaction']>) {
+        ;(window as any).__diagnosticTransactions.push({ name: this.name, mode: args[1] })
+        return transaction.apply(this, args)
+      }
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: {
+          writeText: async (text: string) => {
+            ;(window as any).__copiedWriterDiagnostic = text
+          },
+        },
+      })
+    })
+    await page.getByRole('button', { name: '复制诊断信息' }).tap()
+    await expect.poll(() => page.evaluate(() => Boolean((window as any).__copiedWriterDiagnostic))).toBe(true)
+    const diagnostics = await page.evaluate(() => ({
+      result: JSON.parse((window as any).__copiedWriterDiagnostic),
+      transactions: (window as any).__diagnosticTransactions,
+    }))
+    expect(diagnostics.result.samples).toHaveLength(2)
+    for (const sample of diagnostics.result.samples) {
+      expect(sample.native.supported).toBe(mode === 'native')
+      if (mode === 'native') expect(sample.native.held).toBe(1)
+      expect(sample.lease).toMatchObject({ state: 'present', kind: mode, sameTabOwner: false })
+      expect(sample.lease.remainingMs).toBeGreaterThan(0)
+      expect(sample.lease.owner).toBeUndefined()
+      expect(sample.lease.instance).toBeUndefined()
+    }
+    expect(diagnostics.transactions).toHaveLength(2)
+    expect(diagnostics.transactions.every((tx: any) => tx.name === 'QwertyPlusWriterLeaseV1' && tx.mode === 'readonly')).toBe(true)
+    if (mode === 'native') {
+      await page.evaluate(() =>
+        Object.defineProperty(navigator, 'clipboard', {
+          configurable: true,
+          value: {
+            writeText: async () => {
+              throw new Error('clipboard denied')
+            },
+          },
+        }),
+      )
+      await page.getByRole('button', { name: '复制诊断信息' }).tap()
+      const output = page.getByRole('textbox', { name: '占用诊断信息' })
+      await expect(output).toBeVisible()
+      expect(JSON.parse(await output.inputValue()).samples).toHaveLength(2)
+      await expect(output).toHaveAttribute('readonly', '')
+    }
+
+    expect(apiCalls).toBe(0)
     expect(await owner.evaluate(() => (window as any).__backupHarness.db.wordRecords.count())).toBe(1)
     const documentId = await page.evaluate(() => {
       ;(window as any).__documentId = crypto.randomUUID()
@@ -120,3 +174,22 @@ for (const mode of ['native', 'fallback']) {
     await records(page)
   })
 }
+
+test('read-only diagnostics do not create a missing lease database', async ({ page }) => {
+  await page.goto('/tests/e2e/backup-harness.html')
+  await page.addScriptTag({
+    type: 'module',
+    content:
+      "import { inspectWorkspaceWriter } from '/src/sync/workspace-lock-diagnostics.ts'; window.__inspectWriter = inspectWorkspaceWriter",
+  })
+  await expect.poll(() => page.evaluate(() => Boolean((window as any).__inspectWriter))).toBe(true)
+  const result = await page.evaluate(async () => {
+    const before = (await indexedDB.databases()).some((db) => db.name === 'QwertyPlusWriterLeaseV1')
+    const info = await (window as any).__inspectWriter()
+    const after = (await indexedDB.databases()).some((db) => db.name === 'QwertyPlusWriterLeaseV1')
+    return { before, after, info }
+  })
+  expect(result.before).toBe(false)
+  expect(result.after).toBe(false)
+  expect(result.info.lease).toEqual({ state: 'missing' })
+})
