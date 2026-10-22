@@ -8,6 +8,7 @@ import { build } from 'esbuild'
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const dir = mkdtempSync(join(tmpdir(), 'qwerty-disjoint-v4-'))
 const output = join(dir, 'disjoint.mjs'), workspace = join(dir, 'v4.mjs')
+const activeBundle = join(dir, 'fsrs.mjs')
 await Promise.all([
   build({ entryPoints: [resolve(root, 'src/sync/v4-disjoint-word-candidate.ts')],
     bundle: true, platform: 'node', format: 'esm', target: 'node20',
@@ -15,10 +16,15 @@ await Promise.all([
   build({ entryPoints: [resolve(root, 'src/sync/workspace-v4.ts')],
     bundle: true, platform: 'node', format: 'esm', target: 'node20',
     outfile: workspace, tsconfig: resolve(root, 'tsconfig.json') }),
+  build({ entryPoints: [resolve(root, 'src/review/fsrs/active.ts')],
+    bundle: true, platform: 'node', format: 'esm', target: 'node20',
+    outfile: activeBundle, tsconfig: resolve(root, 'tsconfig.json') }),
 ])
 after(() => rmSync(dir, { force: true, recursive: true }))
 const { previewDisjointWordV4: preview } = await import(pathToFileURL(output).href)
 const { workspaceFingerprintV4: hash } = await import(pathToFileURL(workspace).href)
+const { rebuildActiveFsrsStateFromWordRecords: replay } =
+  await import(pathToFileURL(activeBundle).href)
 const names = ['wordRecords', 'chapterRecords', 'reviewRecords',
   'reviewWordStates', 'achievementEvents', 'achievementStates']
 const accountId = 'account-immutable-disjoint'
@@ -210,4 +216,60 @@ test('same word study facts with different scores and no 60s conflict are never 
   // Unsafe missing/stale reviewWordStates must block, not invent a durable state.
   assert.equal(p.status,'blocked')
   assert.match(p.reason,/unverified-device-fsrs|missing-fsrs-history/)
+})
+
+test('two real independent reviews on the SAME word are both replayed into durable V4', async () => {
+  const a = snap()
+  // Derive all scheduler states from actual immutable attempt histories.
+  const base = replay('school','apple',rows(a,'wordRecords'))
+  assert.ok(base)
+  rows(a,'reviewWordStates')[0] = { ...base, id: 1 }
+  const l = structuredClone(a), r = structuredClone(a)
+  const rated = (id,rating,stamp) => record('apple',2,uuid(id),{
+    chapter:-1,timeStamp:stamp,learnItemKind:'review',
+    reviewRatingDecision:{eligible:true,rating,confidence:1,
+      reasonCodes:['test']},
+    reviewBaseStateFingerprint:'e'.repeat(64),
+  })
+  const good = rated(2,'good',1800001000)
+  const again = rated(3,'again',1800001000)
+  rows(l,'wordRecords').push(good)
+  rows(r,'wordRecords').push(again)
+  rows(l,'reviewWordStates')[0] = {
+    ...replay('school','apple',rows(l,'wordRecords')),id:1 }
+  rows(r,'reviewWordStates')[0] = {
+    ...replay('school','apple',rows(r,'wordRecords')),id:1 }
+  const before = structuredClone({ a,l,r })
+  const merged = await inspect(a,l,r)
+  assert.equal(merged.status,'projected',merged.reason)
+  assert.equal(merged.chronologicallyReplayedWords,1)
+  assert.equal(merged.candidateFingerprint,await hash(merged.candidate))
+  assert.equal(merged.publishReady,false)
+  const finalWords = rows(merged.candidate,'wordRecords')
+  assert.equal(finalWords.length,3)
+  assert.deepEqual(finalWords.map(x=>x.attemptId),[uuid(1),uuid(2),uuid(3)])
+  assert.deepEqual(finalWords.map(x=>x.id),[1,2,3])
+  const state = rows(merged.candidate,'reviewWordStates')[0]
+  assert.equal(state.id,1)
+  assert.equal(state.reviewCount,2)
+  assert.equal(state.lastOutcome,'again')
+  const replayed = replay('school','apple',finalWords)
+  assert.equal(state.reviewCount,replayed.reviewCount)
+  assert.equal(state.nextReviewAt,replayed.nextReviewAt)
+  assert.equal(state.schedulerState.stability,replayed.schedulerState.stability)
+  assert.deepEqual({a,l,r},before)
+  const reversed = await inspect(a,r,l)
+  assert.equal(reversed.status,'projected',reversed.reason)
+  assert.equal(reversed.candidateFingerprint,merged.candidateFingerprint)
+})
+test('a forged per-device review count is refused even if its word events are intact', async () => {
+  const a = snap(), l = structuredClone(a), r = structuredClone(a)
+  const ev = record('apple',2,uuid(2),{chapter:-1,learnItemKind:'review',
+    reviewRatingDecision:{eligible:true,rating:'good',reasonCodes:['test']} })
+  rows(l,'wordRecords').push(ev)
+  rows(r,'wordRecords').push(record('apple',2,uuid(3),{
+    chapter:-1,learnItemKind:'review',
+    reviewRatingDecision:{eligible:true,rating:'again',reasonCodes:['test']} }))
+  rows(l,'reviewWordStates')[0].reviewCount=999
+  assert.equal((await inspect(a,l,r)).status,'blocked')
 })
