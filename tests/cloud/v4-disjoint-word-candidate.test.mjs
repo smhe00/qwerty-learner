@@ -154,7 +154,44 @@ test('changes to chapter, malformed sessions, achievements or DailySession are b
     plannedReviewWords: [], carryOverAcquisitionWords: [],
     completedBlockIds: [],
   }
-  assert.equal((await inspect(a,l,r)).reason, 'disjoint-daily-session-changed')
+  const sessionMerge = await inspect(a,l,r)
+  assert.equal(sessionMerge.status,'projected',sessionMerge.reason)
+  assert.deepEqual(sessionMerge.candidate.workspaceData.learnRuntime.dailySessions,
+    l.workspaceData.learnRuntime.dailySessions)
+})
+test('disjoint-dictionary DailySessions merge with independent word learning events',async()=>{
+  const a=snap(),l=structuredClone(a),r=structuredClone(a)
+  const make=dict=>({
+    version:1,dict,dateKey:'2026-10-22',
+    sessionId:'learning-'+dict,startedAt:1800000000,status:'active',
+    dailyNewTarget:20,plannedNewWords:1,blockCount:0,
+    plannedReviewWords:[],carryOverAcquisitionWords:[],
+    completedBlockIds:[],accumulatedActiveSeconds:0,
+  })
+  l.workspaceData.learnRuntime.dailySessions.school=make('school')
+  r.workspaceData.learnRuntime.dailySessions.math=make('math')
+  rows(l,'wordRecords').push(record('banana',2,uuid(2)))
+  rows(r,'wordRecords').push(record('cherry',2,uuid(3)))
+  const x=await inspect(a,l,r)
+  assert.equal(x.status,'projected',x.reason)
+  assert.equal(rows(x.candidate,'wordRecords').length,3)
+  assert.deepEqual(Object.keys(x.candidate.workspaceData.learnRuntime.dailySessions),
+    ['math','school'])
+})
+test('independent same-dictionary DailySessions never overwrite one another',async()=>{
+  const a=snap(),l=structuredClone(a),r=structuredClone(a)
+  const base={
+    version:1,dict:'school',dateKey:'2026-10-22',
+    startedAt:1800000000,status:'active',dailyNewTarget:20,
+    plannedNewWords:1,blockCount:0,plannedReviewWords:[],
+    carryOverAcquisitionWords:[],completedBlockIds:[],
+    accumulatedActiveSeconds:0,
+  }
+  l.workspaceData.learnRuntime.dailySessions.school={...base,sessionId:'L'}
+  r.workspaceData.learnRuntime.dailySessions.school={...base,sessionId:'R'}
+  const x=await inspect(a,l,r)
+  assert.equal(x.status,'blocked')
+  assert.equal(x.reason,'disjoint-daily-session:concurrent-daily-session-divergence:school')
 })
 test('FSRS scheduler updates require a same-side new attempt and cannot regress', async () => {
   const a = snap(), l = structuredClone(a), r = structuredClone(a)
