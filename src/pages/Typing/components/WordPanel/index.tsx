@@ -760,6 +760,7 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
               desktop={!mobile}
               paused={!state.isTyping}
               onResume={() => dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: true })}
+              onTogglePause={() => dispatch({ type: TypingStateActionType.TOGGLE_IS_TYPING })}
             />
           )}
         </div>

@@ -140,6 +140,19 @@ function MobileAchievementsRoute() {
   )
 }
 
+/** An explicit mobile study route stays mounted through tablet rotation. */
+function ResponsiveRoutes({ isMobile }: { isMobile: boolean }) {
+  const location = useLocation()
+  if (location.pathname === '/mobile/study') return <MobileStudyPage />
+  return isMobile ? (
+    <Routes>
+      <Route path="/mobile" element={<MobilePage />} />
+      <Route path="/achievements" element={<MobileAchievementsRoute />} />
+      <Route path="/*" element={<Navigate to="/mobile" replace />} />
+    </Routes>
+  ) : <DesktopRoutes />
+}
+
 function Root() {
   const darkMode = useAtomValue(isOpenDarkModeAtom)
 
@@ -220,16 +233,7 @@ function Root() {
     <React.StrictMode>
       <BrowserRouter basename={REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : ''}>
         <Suspense fallback={<Loading />}>
-          {isMobile ? (
-            <Routes>
-              <Route path="/mobile" element={<MobilePage />} />
-              <Route path="/mobile/study" element={<MobileStudyPage />} />
-              <Route path="/achievements" element={<MobileAchievementsRoute />} />
-              <Route path="/*" element={<Navigate to="/mobile" replace />} />
-            </Routes>
-          ) : (
-            <DesktopRoutes />
-          )}
+          <ResponsiveRoutes isMobile={isMobile} />
         </Suspense>
       </BrowserRouter>
     </React.StrictMode>

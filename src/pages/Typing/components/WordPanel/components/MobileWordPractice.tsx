@@ -1,6 +1,9 @@
-import { Headphones, Volume2 } from 'lucide-react'
+import { Hand, Headphones, Keyboard, Volume2 } from 'lucide-react'
+import { useSessionKeyboard } from '@/pages/Typing/hooks/useSessionKeyboard'
+import { useMobileKeyboardIntent } from '@/pages/Typing/hooks/useMobileKeyboardIntent'
+import { mobileLearnInputAtom } from '@/pages/Typing/store/mobileLearnInput'
 import { useTapRecallKeyboard } from '@/pages/Typing/hooks/useTapRecallKeyboard'
-import { useAtomValue } from 'jotai'
+import { useAtom, useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { generateWordSoundSrc } from '@/hooks/usePronunciation'
 import { createLearnAcquisitionExercisePlanForState } from '@/learn/acquisition'
@@ -42,6 +45,7 @@ type MobileWordPracticeProps = {
   desktop?: boolean
   paused: boolean
   onResume: () => void
+  onTogglePause: () => void
 }
 
 type PendingRecallAttempt = {
@@ -139,8 +143,10 @@ function learningContextForTask(
 
 export default function MobileWordPractice({
   word, queue, onFinish, exercisePlan, itemKind, recordKind,
-  acquisitionState, reviewAttemptRole, exercisePreference = 'auto', desktop = false, paused, onResume,
+  acquisitionState, reviewAttemptRole, exercisePreference = 'auto', desktop = false, paused, onResume, onTogglePause,
 }: MobileWordPracticeProps) {
+  const [mobileInput, setMobileInput] = useAtom(mobileLearnInputAtom)
+  const keyboardControls = desktop || mobileInput.keyboardUsed
   const dict = useAtomValue(currentDictInfoAtom)
   const pronunciation = useAtomValue(pronunciationConfigAtom)
   const saveWordRecord = useSaveWordRecord()
@@ -163,13 +169,20 @@ export default function MobileWordPractice({
   const finishedRef = useRef(false)
   const surfaceRef = useRef<HTMLElement>(null)
   const spellingInputRef = useRef<HTMLInputElement>(null)
-  useTapRecallKeyboard(surfaceRef, desktop && !paused && !isSaving)
+  useTapRecallKeyboard(surfaceRef, keyboardControls && !paused && !isSaving)
+  useSessionKeyboard({ active: !paused, disabled: desktop || !mobileInput.keyboardUsed, onToggle: onTogglePause })
+  // Once an answer or decision exists, pin this card's presentation. A keyboard
+  // signal may prefer spelling for the NEXT card without changing this one.
+  const mobilePreference = useRef(mobileInput.preference)
+  if (!revealedAttempt && !feedback && !pendingSpelling && !isSaving) {
+    mobilePreference.current = mobileInput.preference
+  }
 
-  const shortcut = (key: string, alias?: string) => desktop ? {
+  const shortcut = (key: string, alias?: string) => keyboardControls ? {
     'data-desktop-shortcut': key.toLowerCase() + (alias ? ' ' + alias : ''),
     'aria-keyshortcuts': key === 'Space' ? 'Space' : key.toUpperCase() + (alias ? ' ' + alias : ''),
   } : {}
-  const keyHint = (key: string) => desktop ? <kbd className="desktop-tap-key" aria-hidden="true">{key}</kbd> : null
+  const keyHint = (key: string) => keyboardControls ? <kbd className="desktop-tap-key" aria-hidden="true">{key}</kbd> : null
 
   // Read-only historical evidence. Selection never changes the FSRS event or
   // the word allotted by the shared Learn session.
@@ -236,17 +249,49 @@ export default function MobileWordPractice({
     choicesAvailable: choices.length > 1,
     audioAvailable: !audioFallback,
     goal: 'vocabulary-and-spelling',
-    preference: manualExercise ?? exercisePreference,
+    preference: manualExercise ?? (desktop ? exercisePreference : mobilePreference.current),
     hasTextInput: true,
     history: taskHistory,
   })
   const task: MobileTask = selection.exercise
 
   useEffect(() => {
-    if (desktop && task === 'spelling' && !paused && !pendingSpelling && !feedback) {
+    if ((desktop || mobileInput.keyboardUsed || mobileInput.preference === 'cold-spelling' || manualExercise === 'cold-spelling') &&
+        task === 'spelling' && !paused && !pendingSpelling && !feedback) {
       spellingInputRef.current?.focus()
     }
-  }, [desktop, task, paused, pendingSpelling, feedback])
+  }, [desktop, mobileInput.keyboardUsed, mobileInput.preference, manualExercise, task, paused, pendingSpelling, feedback])
+
+  useMobileKeyboardIntent(!desktop, (key) => {
+    if (mobileInput.keyboardUsed && (key === 'Enter' || paused)) return false
+    if (paused) {
+      setMobileInput((old) => ({ ...old, keyboardUsed: true }))
+      onResume()
+      return true
+    }
+    if (key === 'Enter') {
+      setMobileInput((old) => ({ ...old, keyboardUsed: true }))
+      onTogglePause()
+      return true
+    }
+    // An explicit touch preference wins over automatic spelling adoption.
+    if (mobileInput.preference === 'tap-recall') {
+      if (mobileInput.keyboardUsed) return false
+      setMobileInput((old) => ({ ...old, keyboardUsed: true }))
+      return true
+    }
+    const canEnterSpelling = (task === 'spelling' || (task === 'recall' && (itemKind === 'review' || phase === 'independent'))) &&
+      !revealedAttempt && !feedback && !pendingSpelling && !isSaving && !submittingRef.current
+    if (mobileInput.keyboardUsed && !canEnterSpelling) return false
+    setMobileInput({ preference: 'cold-spelling', keyboardUsed: true })
+    if (canEnterSpelling) {
+      setManualExercise('cold-spelling')
+      setSpellingInput((old) => old + key)
+      spellingInputRef.current?.focus()
+    }
+    // Exposure/feedback keeps its current task; only the next cold card adopts.
+    return true
+  })
 
   const isCoreRecall = itemKind === 'review' || (itemKind === 'acquisition' && phase === 'independent')
   // Phone-only Acquisition must obey the SAME Independent admission plan as
@@ -589,6 +634,8 @@ export default function MobileWordPractice({
       ref={surfaceRef}
       className="mobile-practice"
       data-desktop-tap-practice={desktop || undefined}
+      data-mobile-keyboard-practice={!desktop && mobileInput.keyboardUsed || undefined}
+      data-keyboard-practice={keyboardControls || undefined}
       data-mobile-word-practice
       data-mobile-task={task}
       data-mobile-policy={activePlan?.decision.policyVersion ?? 'training'}
@@ -599,7 +646,35 @@ export default function MobileWordPractice({
       aria-label={desktop ? '轻触单词学习' : '手机单词学习'}
     >
       <header className="mobile-practice-head">
-        <span className="mobile-eyebrow">LEARN</span>
+        <div className="mobile-practice-input-row">
+          <span className="mobile-eyebrow">LEARN</span>
+          {!desktop && (
+            <button
+              type="button"
+              className="mobile-input-preference"
+              data-mobile-input-preference={mobileInput.preference}
+              aria-label={'学习方式：' + (mobileInput.preference === 'cold-spelling' ? '拼写' : '轻触')}
+              title={mobileInput.preference === 'cold-spelling' ? '切换到轻触' : '切换到拼写'}
+              disabled={paused || isSaving || Boolean(revealedAttempt || feedback || pendingSpelling)}
+              onClick={(event) => {
+                const preference = mobileInput.preference === 'cold-spelling' ? 'tap-recall' : 'cold-spelling'
+                setManualExercise(null)
+                setMobileInput((old) => ({ ...old, preference }))
+                if (event.detail > 0) event.currentTarget.blur()
+              }}
+            >
+              {mobileInput.preference === 'cold-spelling' ? <Keyboard size={15} aria-hidden="true" /> : <Hand size={15} aria-hidden="true" />}
+              {mobileInput.preference === 'cold-spelling' ? '拼写' : '轻触'}
+            </button>
+          )}
+        </div>
+        {!desktop && (mobileInput.keyboardUsed || mobileInput.preference === 'cold-spelling') && (
+          <p className="mobile-keyboard-hint" role="status" data-mobile-keyboard-hint>
+            {mobileInput.preference === 'cold-spelling'
+              ? task === 'spelling' ? (mobileInput.keyboardUsed ? '键盘输入 · Enter 确认拼写' : '拼写模式 · 输入后确认') : '回忆阶段优先拼写'
+              : '键盘操作可用 · 也可继续轻触'}
+          </p>
+        )}
         <div className="mobile-practice-title-row">
           <h1>{title}</h1>
           <span className="mobile-practice-step">{phase === 'independent' ? '独立回忆' : phase === 'supported' ? '巩固' : '学习中'}</span>
@@ -679,7 +754,7 @@ export default function MobileWordPractice({
           {task === 'recall' && revealedAttempt?.grade === 'good' && !feedback && !error && (
             <div className="mobile-practice-recall-check">
               <p className="mobile-practice-cue mobile-practice-recall-cue">
-                {desktop ? '核对答案 · 若记错，按 X 或点击纠正' : '核对答案 · 若记错，请点右侧圆点'}
+                {keyboardControls ? '核对答案 · 若记错，按 X 或点击纠正' : '核对答案 · 若记错，请点右侧圆点'}
               </p>
               <button
                 type="button"
@@ -691,7 +766,7 @@ export default function MobileWordPractice({
                 onClick={correctRecall}
                 disabled={paused || isSaving}
               >
-                {desktop ? <>我记错了 {keyHint('X')}</> : <span aria-hidden="true" className="mobile-practice-recall-correction-mark" />}
+                {keyboardControls ? <>我记错了 {keyHint('X')}</> : <span aria-hidden="true" className="mobile-practice-recall-correction-mark" />}
               </button>
             </div>
           )}
@@ -718,7 +793,9 @@ export default function MobileWordPractice({
             data-mobile-interaction-toggle
             {...shortcut('W')}
             onClick={() => {
-              setManualExercise(task === 'recall' ? 'cold-spelling' : 'tap-recall')
+              const preference = task === 'recall' ? 'cold-spelling' : 'tap-recall'
+              setManualExercise(preference)
+              if (!desktop) setMobileInput((old) => ({ ...old, preference }))
               setSpellingInput('')
             }}
             disabled={paused || isSaving}
@@ -777,7 +854,7 @@ export default function MobileWordPractice({
               onChange={(event) => setSpellingInput(event.target.value)}
               disabled={paused || isSaving || Boolean(pendingSpelling)}
             />
-            <button type="submit" className="mobile-practice-primary" aria-keyshortcuts={desktop ? 'Enter' : undefined} disabled={paused || isSaving || !spellingInput.trim()}>
+            <button type="submit" className="mobile-practice-primary" aria-keyshortcuts={keyboardControls ? 'Enter' : undefined} disabled={paused || isSaving || !spellingInput.trim()}>
               {isSaving ? '正在保存…' : '确认拼写'} {keyHint('Enter')}
             </button>
           </form>
@@ -850,7 +927,7 @@ export default function MobileWordPractice({
             ))}
           </div>
         )}
-        {desktop && (
+        {keyboardControls && (
           <div className="desktop-tap-shortcuts" aria-label="键盘操作提示" data-desktop-shortcuts>
             <span>{keyHint('Enter')}{!paused && task === 'spelling' && !pendingSpelling && !feedback ? '输入时确认拼写' : '暂停 / 继续'}</span>
             <span>{keyHint('Tab')}切换控件</span>
@@ -862,7 +939,7 @@ export default function MobileWordPractice({
       {paused && (
         <div className="mobile-practice-overlay" data-mobile-paused role="status">
           <p>学习已暂停</p>
-          <button type="button" className="mobile-practice-primary" onClick={onResume}>继续学习</button>
+          <button type="button" className="mobile-practice-primary" onClick={onResume}>继续学习 {keyHint('Enter')}</button>
         </div>
       )}
     </section>

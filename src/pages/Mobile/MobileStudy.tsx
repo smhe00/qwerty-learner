@@ -4,7 +4,7 @@ import './mobile-app.css'
 const LearnPage = lazy(() => import('@/pages/Learn'))
 
 /** Mobile uses the shared Learn session controller and scheduler, with a
- * separate interaction surface that never opens the virtual keyboard. */
+ * separate interaction surface. Keyboard input is opt-in by key or explicit selection. */
 export default function MobileStudyPage() {
   return (
     <Suspense fallback={

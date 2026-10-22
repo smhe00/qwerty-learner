@@ -10,6 +10,7 @@ export default defineConfig({
     'learn-shell-ui.spec.ts',
     'learn-exercise-switcher.spec.ts',
     'desktop-tap-keyboard.spec.ts',
+    'mobile-keyboard-spelling.spec.ts',
     'default-learn-header.spec.ts',
     'settings-mode-navigation.spec.ts',
     'toolbar-icon-focus.spec.ts',
