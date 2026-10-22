@@ -36,13 +36,13 @@ import {
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
 import { auditV4LosslessEvidenceUnion } from './v4-lossless-evidence-audit'
 import { mergeDailySessionsThreeWay } from './v4-daily-session-three-way'
+import { mergeUuidChapterRecords } from './v4-chapter-record-three-way'
 
 type Row = Record<string, unknown>
 type Collection = { tableName: string; rows: Row[] }
 type Database = { data: { data: Collection[]; tables: unknown[] } }
 type Source = 'local' | 'remote'
-const PROTECTED = ['chapterRecords',
-  'achievementEvents', 'achievementStates'] as const
+const PROTECTED = ['achievementEvents', 'achievementStates'] as const
 const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0
 const key = (dict: string, word: string) => JSON.stringify([dict, word])
 const json = (value: unknown) => stableWorkspaceJson(value)
@@ -461,6 +461,23 @@ export async function previewDisjointWordV4(input: {
       normalizedStates.push({ ...structuredClone(row), id })
     }
     candidate.workspaceData.learnRuntime.dailySessions = daily.dailySessions
+    const chapters = mergeUuidChapterRecords({
+      ancestor: table(ancestor, 'chapterRecords').rows,
+      ancestorWords: baseWords,
+      local: {
+        chapters: table(local, 'chapterRecords').rows,
+        words: table(local, 'wordRecords').rows,
+      },
+      remote: {
+        chapters: table(remote, 'chapterRecords').rows,
+        words: table(remote, 'wordRecords').rows,
+      },
+      candidateWords: mergedWords,
+    })
+    if (chapters.status !== 'merged') {
+      return blocked('disjoint-chapter-records:' + chapters.reason)
+    }
+    table(candidate, 'chapterRecords').rows = chapters.rows
     table(candidate, 'wordRecords').rows = mergedWords
     table(candidate, 'reviewWordStates').rows = normalizedStates
     if (mergedSessions) {

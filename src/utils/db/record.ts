@@ -1,5 +1,6 @@
 import { getUTCUnixTimestamp } from '../time'
 import { newReviewSessionId } from './review-session-identity'
+import { newLearningAttemptId } from './attempt-identity'
 import type { LearnAcquisitionState } from '@/learn/acquisition'
 import type { LearnItemKind, LearnSessionKind } from '@/learn/session'
 import type { ExerciseConditionV1 } from '@/review/condition'
@@ -232,6 +233,8 @@ export class WordRecord implements IWordRecord {
 }
 
 export interface IChapterRecord {
+  /** Immutable UUID for new chapter completions; legacy rows omit it. */
+  chapterRecordId?: string
   // 正常章节为 dictKey, 其他功能则为对应的类型
   dict: string
   // 在错题场景中为 -1
@@ -254,6 +257,7 @@ export interface IChapterRecord {
 }
 
 export class ChapterRecord implements IChapterRecord {
+  chapterRecordId?: string
   dict: string
   chapter: number | null
   timeStamp: number
@@ -276,6 +280,7 @@ export class ChapterRecord implements IChapterRecord {
     wordNumber: number,
     wordRecordIds: number[],
   ) {
+    this.chapterRecordId = newLearningAttemptId()
     this.dict = dict
     this.chapter = chapter
     this.timeStamp = getUTCUnixTimestamp()

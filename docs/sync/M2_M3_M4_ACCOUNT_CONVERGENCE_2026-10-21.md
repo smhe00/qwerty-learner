@@ -179,3 +179,10 @@ FSRS-6、Acquisition、成就和每日学习进度只能从同一份已验证的
 - 新增独立纯函数 `v4-daily-session-three-way.ts`，与现有完整 V4 事件合并候选连接。允许不同词典分别在两个设备新增会话；允许同一词典只有一端推进、另一端保持共同祖先；允许两端完全一致的推进。不选 max(index)、最新时间或状态较大者。
 - 同一词典两端创建独立 sessionId 或分别改变进度时必须阻断，不能在单个 `dailySessions[dict]` 槽位内吞掉任一设备的会话；从祖先删除会话和出现未知未来 runtime 字段也阻断。历史 Chapter/Achievement 仍是受保护表。
 - 所有输出仍 `publishReady:false`，不授权 M4 本地采纳或完整 V4 云端写回；跨设备同词不同记录完整保留、不重新计数已存 UUID。
+
+
+### M2.18 ChapterRecord UUID 与 WordRecord 数字外键安全重映射
+
+- 新产生的 ChapterRecord 具有独立的随机 `chapterRecordId`，旧章节记录保留原样，不补写历史、不调整 Dexie schema。
+- 并发完成的两端 ChapterRecord 使用 UUID 去重/检查不可变内容，按 `wordRecords.attemptId` 将不同设备的 `wordRecordIds` 映射到候选真实数字主键；不沿用来源端的数字 ID 猜测外键。
+- 新章节无 UUID、同 UUID 不同内容、修改/删除祖先、未知外键或指向不同词典，一律 fail-closed。章节可正确归并仅是完整 V4 **只读候选**；云端/本地自动发布仍必须独立验证。
