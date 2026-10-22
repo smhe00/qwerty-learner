@@ -1,0 +1,46 @@
+name: etest Three-Device Automatic Fork E2E
+# Only staging. All 3 live Browser RecordDBs must auto-converge.
+on:
+  push:
+    branches: [edgeone-test]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: etest-three-device-fork-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  three-real-learn-devices:
+    if: github.ref_name == 'edgeone-test'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 23
+    env:
+      QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Verify actual deployed etest source SHA
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          EDGEONE_WAIT_MS: '600000'
+        run: node scripts/verify-edgeone-source.mjs
+      - name: Install browser
+        run: |
+          yarn install --frozen-lockfile
+          npx playwright install --with-deps chromium
+      - name: Three real Learn profiles offline fork and zero-click converge
+        run: npx playwright test --config=tests/e2e/etest-three-device-auto-fork.config.ts
+      - name: Retain redacted failure evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etest-3way-auto-fork-${{ github.run_id }}
+          path: test-results/**/*-redacted-trace.json
+          if-no-files-found: ignore
+          retention-days: 7
