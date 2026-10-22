@@ -85,10 +85,17 @@ export async function inspectM4CloudAdoption(input: {
     if (merged.status !== 'projected') {
       return denied('m4-adoption-six-table:' + merged.reason)
     }
-    // This exact cloud snapshot MUST already contain all independently
-    // identified local attempts, sessions, FSRS state and controls; when it
-    // differs, the client must not silently lose local edits by adopting it.
-    if (merged.candidateFingerprint !== actualCloud) {
+    // Projection may synthesize deterministic derived FSRS rows even when
+    // the raw cloud snapshot already includes EVERY local immutable attempt.
+    // Compare both sides through the SAME full-six-table normalizer, never
+    // a raw-cloud SHA against a replay-generated projection SHA. Normalized
+    // local+cloud must exactly equal normalized cloud+cloud; otherwise local
+    // learning evidence, sessions, settings or other durable data are absent.
+    const cloudOnly = await previewDisjointWordV4({
+      ...previewInput, local: verifiedCloud, remote: verifiedCloud,
+    })
+    if (cloudOnly.status !== 'projected' ||
+        merged.candidateFingerprint !== cloudOnly.candidateFingerprint) {
       return denied('m4-adoption-cloud-missing-local-merge')
     }
     return { status: 'verified-candidate',
