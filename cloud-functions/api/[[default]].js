@@ -286,7 +286,13 @@ export async function onRequest(context) {
             'backup-v3-explicit-migration-only',
             'account-delete-v1',
             'duplicate-register-protection-v1',
+            // Distinguishes a new backend runtime from a new static build.
+            'etest-m1m3-origin-gate-v1',
           ],
+          // Host is already apparent from the request URL; this probe
+          // never exposes credentials, account IDs, store names, or env.
+          pilotRequestHost: new URL(request.url).hostname,
+          pilotOriginMatched: isIsolatedEtestPilotOrigin(request.url),
         },
         200,
         cors,
