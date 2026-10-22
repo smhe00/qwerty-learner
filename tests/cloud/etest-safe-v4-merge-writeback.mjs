@@ -441,6 +441,164 @@ try {
   assert.deepEqual(new Set(sessionsOf(finalSessions).map(s => s.sessionId)),
     new Set([sessionUuidA, sessionUuidB]))
   assert.equal(checksumStable(finalSessions), sessionProjection.candidateFingerprint)
+
+  // M2/M4 black-box CLOUD SUBSTRATE: THREE distinct device forks all share
+  // the exact revision-7 ancestor. B and C retain their local branches while
+  // disconnected (NO cloud calls) and reconnect after cloud has moved twice.
+  // The script, not product UI, explicitly invokes the safe candidate
+  // algorithm; this proves event conservation and CAS, NOT autonomy.
+  const forkBase = finalSessions
+  const forkBaseSha = checksumStable(forkBase)
+  assert.equal(forkBaseSha, sessionProjection.candidateFingerprint)
+  const forkId = Math.max(...rowsOf(forkBase, 'wordRecords').map(r => r.id)) + 1
+  const aFork = structuredClone(forkBase)
+  const bFork = structuredClone(forkBase)
+  const cFork = structuredClone(forkBase)
+  const deviceIds = {
+    a: crypto.randomUUID(), b: crypto.randomUUID(), c: crypto.randomUUID(),
+  }
+  const chapterIds = {
+    a: crypto.randomUUID(), b: crypto.randomUUID(), c: crypto.randomUUID(),
+  }
+  const addOfflineBranch = (snapshot, suffix, attemptId, chapterRecordId) => {
+    rowsOf(snapshot, 'wordRecords').push({
+      ...word(forkId, attemptId), word: 'triple-fork-' + suffix,
+      timeStamp: 1800200000,
+    })
+    rowsOf(snapshot, 'chapterRecords').push({
+      id: 1, chapterRecordId, dict: 'test-dict', chapter: 0,
+      timeStamp: 1800200050, time: 9, correctCount: 8,
+      wrongCount: 0, wordCount: 1, correctWordIndexes: [0],
+      wordNumber: 1, wordRecordIds: [forkId],
+    })
+  }
+  addOfflineBranch(aFork, 'a', deviceIds.a, chapterIds.a)
+  addOfflineBranch(bFork, 'b', deviceIds.b, chapterIds.b)
+  addOfflineBranch(cFork, 'c', deviceIds.c, chapterIds.c)
+  const frozenForkB = checksumStable(bFork)
+  const frozenForkC = checksumStable(cFork)
+  assert.notEqual(frozenForkB, frozenForkC)
+  assert.notEqual(checksumStable(aFork), frozenForkB)
+  // B and C are now logically OFFLINE. No cloud API call is made using
+  // their tokens until each one is explicitly reconnected below.
+  const loginForkA = must(await api('/api/auth/login', null, 'POST',
+    JSON.stringify({ username: user.username, password: user.password,
+      deviceId: user.firstDevice }), { 'Content-Type': 'application/json' }),
+  200, 'fork A reconnect')
+  user.firstToken = loginForkA.token
+  const aForkSha = checksumStable(aFork)
+  must(await upload(user.firstToken, 7, aFork, aForkSha),
+    200, 'A commits first of three independent divergent branches')
+  await visibleRevision(user.firstToken, 8, aForkSha)
+
+  // Device B returns after A advanced the cloud. 409 MUST preserve B's
+  // uncommitted immutable learning + ChapterRecord references.
+  const loginForkB = must(await api('/api/auth/login', null, 'POST',
+    JSON.stringify({ username: user.username, password: user.password,
+      deviceId: user.secondDevice }), { 'Content-Type': 'application/json' }),
+  200, 'offline fork B reconnect')
+  user.secondToken = loginForkB.token
+  const rejectedB = await upload(user.secondToken, 7, bFork, frozenForkB)
+  assert.equal(rejectedB.status, 409, 'offline fork B must never overwrite A')
+  await visibleRevision(user.secondToken, 8, aForkSha)
+  assert.equal(checksumStable(bFork), frozenForkB,
+    'failed stale commit must not destroy B local evidence')
+  const pinnedA = await readPinned(user.secondToken, 8, aForkSha)
+  const mergeAB = await mergeChronologically({
+    accountId: userId, pinnedAncestorFingerprint: forkBaseSha,
+    ancestor: forkBase, local: bFork, remote: pinnedA,
+  })
+  assert.equal(mergeAB.status, 'projected',
+    'offline A/B must have admissible event-union candidate: ' + mergeAB.reason)
+  assert.equal(mergeAB.publishReady, false)
+  assert.equal(mergeAB.convergenceComplete, false)
+  must(await upload(user.secondToken, 8,
+    mergeAB.candidate, mergeAB.candidateFingerprint),
+  200, 'B explicit E2E safe fork merge CAS (pilot only)')
+  await visibleRevision(user.secondToken, 9, mergeAB.candidateFingerprint)
+
+  // Device C still has an INDEPENDENT older revision-7 local fork, not
+  // a copy of A/B. This third branch must survive a SECOND CAS collision.
+  const thirdDevice = 'qwerty-web-' + crypto.randomUUID()
+  const loginForkC = must(await api('/api/auth/login', null, 'POST',
+    JSON.stringify({ username: user.username, password: user.password,
+      deviceId: thirdDevice }), { 'Content-Type': 'application/json' }),
+  200, 'offline third device C reconnect')
+  assert.equal(loginForkC.user.userId, userId)
+  const tokenC = loginForkC.token
+  const rejectedC = await upload(tokenC, 7, cFork, frozenForkC)
+  assert.equal(rejectedC.status, 409, 'third stale fork C cannot erase A+B')
+  await visibleRevision(tokenC, 9, mergeAB.candidateFingerprint)
+  assert.equal(checksumStable(cFork), frozenForkC,
+    'C local pending history remains byte-for-byte unchanged')
+  const pinnedAB = await readPinned(tokenC, 9, mergeAB.candidateFingerprint)
+  const mergeABC = await mergeChronologically({
+    accountId: userId, pinnedAncestorFingerprint: forkBaseSha,
+    ancestor: forkBase, local: cFork, remote: pinnedAB,
+  })
+  assert.equal(mergeABC.status, 'projected',
+    'third independent C must admit complete three-way evidence: ' + mergeABC.reason)
+  assert.equal(mergeABC.publishReady, false,
+    'no product writeback authorization may be inferred from this E2E pilot')
+  assert.equal(mergeABC.convergenceComplete, false)
+  const expectedAttempts = new Set([
+    ...rowsOf(forkBase, 'wordRecords').map(r => r.attemptId),
+    ...Object.values(deviceIds),
+  ])
+  assert.equal(expectedAttempts.size,
+    rowsOf(forkBase, 'wordRecords').length + 3)
+  assert.deepEqual(new Set(rowsOf(mergeABC.candidate, 'wordRecords')
+    .map(r => r.attemptId)), expectedAttempts,
+    'both previous committed branches + offline C must preserve ALL attempts')
+  const expectedChapters = new Set(Object.values(chapterIds))
+  const candidateChapters = rowsOf(mergeABC.candidate, 'chapterRecords')
+  assert.deepEqual(new Set(candidateChapters.map(r => r.chapterRecordId)),
+    expectedChapters, 'all three independently created chapter sessions survived')
+  for (const row of candidateChapters) {
+    assert.equal(row.wordRecordIds.length, 1)
+    const ref = rowsOf(mergeABC.candidate, 'wordRecords')
+      .find(w => w.id === row.wordRecordIds[0])
+    assert.ok(ref, 'chapter must reference a real rebased V4 word primary key')
+    assert.equal(ref.dict, row.dict)
+    assert.equal(ref.word.startsWith('triple-fork-'), true)
+  }
+  must(await upload(tokenC, 9,
+    mergeABC.candidate, mergeABC.candidateFingerprint),
+  200, 'C explicit E2E three-way lossless six-table CAS writeback')
+  await visibleRevision(tokenC, 10, mergeABC.candidateFingerprint)
+
+  // Independent D has never participated and must see the union from
+  // the real EdgeOne Blob, not any of the JavaScript candidate objects.
+  const loginForkD = must(await api('/api/auth/login', null, 'POST',
+    JSON.stringify({ username: user.username, password: user.password,
+      deviceId: 'qwerty-web-' + crypto.randomUUID() }),
+    { 'Content-Type': 'application/json' }),
+  200, 'fourth observer of 3-way fork')
+  const tokenD = loginForkD.token
+  await visibleRevision(tokenD, 10, mergeABC.candidateFingerprint)
+  const observedABC = await readPinned(tokenD, 10, mergeABC.candidateFingerprint)
+  assert.equal(checksumStable(observedABC), mergeABC.candidateFingerprint)
+  assert.equal(observedABC.workspaceData.database.data.data.length, 6)
+  assert.deepEqual(new Set(rowsOf(observedABC, 'wordRecords')
+    .map(r => r.attemptId)), expectedAttempts,
+    'independent observer must download complete immutable three-fork union')
+  assert.deepEqual(new Set(rowsOf(observedABC, 'chapterRecords')
+    .map(r => r.chapterRecordId)), expectedChapters)
+  for (const row of rowsOf(observedABC, 'chapterRecords')) {
+    const target = rowsOf(observedABC, 'wordRecords')
+      .find(w => w.id === row.wordRecordIds[0])
+    assert.ok(target)
+    assert.equal(target.dict, row.dict)
+    assert.ok(target.word.startsWith('triple-fork-'))
+  }
+  assert.deepEqual(rowsOf(observedABC, 'reviewRecords'),
+    rowsOf(forkBase, 'reviewRecords'))
+  assert.deepEqual(rowsOf(observedABC, 'achievementEvents'),
+    rowsOf(forkBase, 'achievementEvents'))
+  assert.deepEqual(rowsOf(observedABC, 'achievementStates'),
+    rowsOf(forkBase, 'achievementStates'))
+  console.log('PASS etest triple offline forks: distinct A/B/C WordRecord UUIDs, two stale CAS 409, two pinned six-table joins, chapter foreign keys, independent D exact Blob readback')
+
   console.log('PASS etest: real V4 Blob CAS, old revision 409, six-table safe subset; two SAME-word Good/Again attempts, stable chronological FSRS replay, real commit and independent-device readback')
 } catch (error) { failure = error }
 finally {
