@@ -1,0 +1,24 @@
+{
+  "expected": "0a7054e8776dc30d6c4fbc92e499cf441e8fac31",
+  "startedAt": "2026-10-22T23:08:34.463Z",
+  "authRequests": 0,
+  "modes": [
+    {
+      "mode": "native",
+      "entries": 4,
+      "refresh": true,
+      "exclusive": true,
+      "retry": true
+    },
+    {
+      "mode": "fallback",
+      "entries": 4,
+      "refresh": true,
+      "exclusive": true,
+      "retry": true
+    }
+  ],
+  "marker": "0a7054e",
+  "status": "PASS",
+  "finishedAt": "2026-10-22T23:08:59.683Z"
+}

@@ -1,6 +1,6 @@
 # Mobile account writer handoff
 
-2026-10-23 Asia/Shanghai. REVIEW; exact-SHA CI and etest deployment pending. Base 09383bdb306494d8d3a0788c7e77261881a50485. CURRENT_TASK remains owned by the independent cloud-convergence executor. No Huawei real-device reproduction or confirmed root cause claimed.
+2026-10-23 Asia/Shanghai. PARTIAL: scoped change deployed and verified; Huawei persistent occupation remains unresolved. Base 09383bdb306494d8d3a0788c7e77261881a50485. CURRENT_TASK remains owned by the independent cloud-convergence executor. No Huawei real-device reproduction or confirmed root cause claimed.
 
 ## Problem and change
 
@@ -30,3 +30,30 @@ Mobile account boot alone retries contention for a 3-second budget, always acqui
 ## Deployment boundary and next steps
 
 Push reviewed candidate to product/main after upstream recheck. Wait for identical SHA Cloud Sync Gate, deployed/published Pages regression, Etest Admission and Mobile P0 Gate. Promote only that candidate to edgeone-test, verify marker and repeated real mobile entry + contention/retry in a fresh browser context without creating accounts. master unchanged. A permanently frozen live owner still cannot safely be forcibly stolen; no universal force-takeover button is included. Huawei actual-device result remains to be confirmed by the user.
+
+
+## Actual deployment and exact-SHA evidence
+
+Source / deployed staging candidate: 0a7054e8776dc30d6c4fbc92e499cf441e8fac31 (0a7054e8). Confirmed all identical-SHA prerequisites before normal FF push from c187c73e to edgeone-test:
+
+- Cloud Sync Gate 39868174726 SUCCESS (Linux backend contracts/build and exact Pages admission).
+- Deployment to GitHub Pages 39868174987 SUCCESS, including actual deployment, live SHA propagation and published browser regression.
+- Etest Pilot Admission 39868174972 SUCCESS.
+- Mobile P0 Gate 39868174738 SUCCESS, including all 17 account tests and Pages preview.
+- P4b Browser Recovery Release Gate 39868174624 SUCCESS.
+
+Live etest marker initially remained c187c73 after push; no premature deployment claim. Marker subsequently changed to 0a7054e, verified before testing. Fresh isolated Chrome phone contexts, no existing user profile/accounts: 4 home-to-account activations in each of native and fallback modes (8 total), one visible tab, repeated return, persistent second-tab exclusion, same-document safe retry after first owner closes, and account refresh all PASS. Auth requests=0; no accounts created or changed. Started 2026-10-22T23:08:34.463Z, finished 23:08:59.683Z (2026-10-23 Asia/Shanghai). Machine evidence: interactive/reports/evidence/TASK-20261023-mobile-account-writer-live.json. This verifies simulated Chrome modes, not Huawei firmware/browser behavior.
+
+## Full CI limitations (do not describe all gates as green)
+
+- S1 Workspace Browser Gate 39868174832 FAILED: 104 pass / 5 fail. All five wait 120s for old tab name 数据设置 in workspace-v4-app.spec.ts. Current UI uses 数据与备份. git diff base..candidate is empty for both that settings UI and those tests; static selector mismatch is pre-existing. No assertion changed or gate bypassed. Other 104 cases including native/fallback writer compatibility and pagehide pass in CI.
+- Review Gate 39868174658 FAILED: 114 pass / 2 fail. Learn extra-words case waits for enabled Start Learn; desktop alignment difference 4.484375 exceeds <=4. Neither corresponding source/test changed in this patch. Causality/baseline reproduction of those two failures has not been established; do not label them fixed or simply flaky.
+- Staging Safe V4 Merge Writeback 39869338870 SUCCESS. Other live cloud/multi-device pilots may still wait for unrelated backend capability; no full multi-device certification follows.
+
+## Corrected user evidence / remaining work
+
+User initially replied that direct entry worked, then explicitly corrected it: entering /mobile/account in the same Huawei tab ALSO remains blocked. The successful-direct-entry observation is withdrawn. Do not infer that Huawei new-tab policy caused this incident. Current scoped change can address a transient release/new-context race, but is not evidence that this persistent device issue is solved.
+
+Awaiting user result after fully exiting/reopening Huawei browser without clearing site data. If persistent on current source, next work must capture native lock availability/held lock state, lease kind/expiry/heartbeat and same-tab ownership diagnostics from the actual device before changing ownership policy. A safe cooperative handoff requires old writers to stop before ownership transfer; no blindly forced native steal or IDB lease override. The original app's pending-writer/pagehide safety remains intact.
+
+Remote master checked unchanged at 6d7839b9a9fd7a31459a19aeca948227b1f7b3c2. This report/evidence completion is committed to product/main without another etest rebuild; application source matches the staging candidate.
