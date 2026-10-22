@@ -137,6 +137,8 @@ for (const mode of ['native', 'fallback']) {
       expect(sample.lease.owner).toBeUndefined()
       expect(sample.lease.instance).toBeUndefined()
     }
+    const expiryTimes = diagnostics.result.samples.map((sample: any) => Date.parse(sample.observedAt) + sample.lease.remainingMs)
+    expect(expiryTimes[1]).toBeGreaterThan(expiryTimes[0])
     expect(diagnostics.transactions).toHaveLength(2)
     expect(diagnostics.transactions.every((tx: any) => tx.name === 'QwertyPlusWriterLeaseV1' && tx.mode === 'readonly')).toBe(true)
     if (mode === 'native') {

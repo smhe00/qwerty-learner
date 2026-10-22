@@ -493,7 +493,7 @@ async function start(): Promise<void> {
               try {
                 const { inspectWorkspaceWriter } = await import('./sync/workspace-lock-diagnostics')
                 const first = await inspectWorkspaceWriter()
-                await new Promise<void>(resolve => window.setTimeout(resolve, 1500))
+                await new Promise<void>(resolve => window.setTimeout(resolve, 2500))
                 const second = await inspectWorkspaceWriter()
                 const text = JSON.stringify({ version: LATEST_COMMIT_HASH,
                   browser: navigator.userAgent, path: window.location.pathname,
