@@ -28,6 +28,7 @@ import {
   evaluateNewUnitLearnStarted,
 } from './unit-evaluator'
 import { compactAchievementEvent } from './storage-retention'
+import { achievementAttemptEventIds } from './attempt-event-id'
 import { achievementEvidenceSatisfied, countEvidenceDays } from './eligibility'
 import { planAchievementAwards } from './award-pacing'
 import type {
@@ -169,12 +170,15 @@ export async function processLiveLearnWordRecord(
 ): Promise<AchievementUnlock[]> {
   if (!Number.isInteger(sourceRecordId) || sourceRecordId <= 0) return []
 
-  const eventId = `word:${sourceRecordId}`
-  const alreadyProcessed = await db.achievementEvents.get(eventId)
-  if (alreadyProcessed) return []
-
   const current = await db.wordRecords.get(sourceRecordId)
   if (!current || !isLiveLearnRecord(current)) return []
+  const identity = achievementAttemptEventIds('word', sourceRecordId, current)
+  const eventId = identity.primary
+  // Old installs may have numeric "word:N" keys even for UUID-backed
+  // attempts. Both forms are tested to preserve live-only idempotence.
+  for (const candidate of identity.all) {
+    if (await db.achievementEvents.get(candidate)) return []
+  }
 
   const dictionary = idDictionaryMap[current.dict]
   const dictionaryWords = dictionary
@@ -396,9 +400,15 @@ export async function processLiveLongTermMasteryCrossing(input: {
     return []
   }
 
-  const eventId = `mastery:${input.sourceRecordId}`
-  const alreadyProcessed = await db.achievementEvents.get(eventId)
-  if (alreadyProcessed) return []
+  const evidence = await db.wordRecords.get(input.sourceRecordId)
+  if (!evidence || evidence.dict !== input.dict ||
+      evidence.word !== input.word) return []
+  const identity = achievementAttemptEventIds(
+    'mastery', input.sourceRecordId, evidence)
+  const eventId = identity.primary
+  for (const candidate of identity.all) {
+    if (await db.achievementEvents.get(candidate)) return []
+  }
 
   const states = await db.reviewWordStates.toArray()
   const masteredCount =

@@ -200,3 +200,9 @@ FSRS-6、Acquisition、成就和每日学习进度只能从同一份已验证的
 - EdgeOne 函数仅在 **Request.url 精确 HTTPS origin = etest.edgeone.dev** 时自动启用多设备独立登录与事件 Pilot；`q.smhe.cn`、正式 `qwerty-plus.edgeone.dev`、Pages/预览域名不匹配，保持原环境变量约束。生产云端依旧不会自动融合/修改 V4。
 - 前端的 `VITE_QWERTY_M3_PILOT_AUTO=true` 继续由 `etestM3PilotEnabled()` 严格核对实际页面 hostname，因此正式主站不会启用；配置仅允许本次隔离试验。
 - edgeone-test 分支推送自动运行现有独立账号测试，测试代码限定该域名并在结束后删除临时账号。这个试验验证 M1/M3 并发身份和事件存证，并不代表 M2/M4 六表自动采纳完成。
+
+
+### Achievement Word/Mastery 事件身份去 Origin 数字 ID 冲突（2026-10-22）
+
+- 新的 Learn WordRecord 带有 UUID 时，成就 `word_attempt` 与 `word_mastered` 的 `eventId` 改为 `word:<attemptId>` / `mastery:<attemptId>`，不再以来源端数字 `id` 作为跨端身份；遗留缺 UUID 记录仍保留旧 `word:N` / `mastery:N`，所有旧事件不迁移不重新生成。
+- 处理现场新记录前同时核查新旧事件键，旧安装中已有数值事件不会重复颁奖；后续成就跨端安全六表归并仍必须做累计计奖、`achievement:pending` 队列仲裁和源外键校验，未开放自动 V4 写回。
