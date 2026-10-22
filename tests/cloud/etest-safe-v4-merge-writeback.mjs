@@ -618,6 +618,9 @@ try {
     { 'Content-Type': 'application/json' }),
   200, 'fourth observer of 3-way fork')
   const tokenD = loginForkD.token
+  // D is the most recent verified session: reuse it for cleanup, instead
+  // of generating another login that may trip EdgeOne 429 rate limiting.
+  user.cleanupToken = tokenD
   await visibleRevision(tokenD, 10, mergeABC.candidateFingerprint)
   const observedABC = await readPinned(tokenD, 10, mergeABC.candidateFingerprint)
   assert.equal(checksumStable(observedABC), mergeABC.candidateFingerprint)
@@ -686,19 +689,35 @@ async function disposeIsolatedMergeAccount() {
   assert.ok(user.username.startsWith('e2e_merge_'))
   assert.ok(userId, 'Cannot delete a disposable account without verified owner')
   const authenticatedCleanup = async () => {
-    // Device A/B login can revoke the other's bearer in legacy M1 mode.
-    // Never reuse a potentially expired token from an earlier study step.
-    const response = await api('/api/auth/login', null, 'POST',
-      JSON.stringify({ username: user.username, password: user.password,
-        deviceId: user.firstDevice }),
-      { 'Content-Type': 'application/json' })
-    if (response.status !== 200 ||
-        response.response?.user?.userId !== userId ||
-        response.response?.user?.username !== user.username ||
-        !response.response?.token) {
-      throw Error('Disposable cleanup account ownership not reverified')
+    // First verify the ALREADY authenticated final observer token. This
+    // avoids avoidable login-rate 429 after multiple A/B/C handoffs.
+    if (user.cleanupToken) {
+      const me = await api('/api/auth/me', user.cleanupToken)
+      if (me.status === 200 && me.response?.user?.userId === userId &&
+          me.response?.user?.username === user.username) return user.cleanupToken
+      // An inconsistent authenticated identity is not safe to ignore.
+      if (me.status === 200) throw Error('Disposable cleanup bearer owner mismatch')
     }
-    return response.response.token
+    // Only when the final token is confirmed invalid, reauthenticate. A
+    // bounded 429 wait never authorizes deletion of any non-E2E account.
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const response = await api('/api/auth/login', null, 'POST',
+        JSON.stringify({ username: user.username, password: user.password,
+          deviceId: user.firstDevice }),
+        { 'Content-Type': 'application/json' })
+      if (response.status === 200) {
+        if (response.response?.user?.userId !== userId ||
+            response.response?.user?.username !== user.username ||
+            !response.response?.token) {
+          throw Error('Disposable cleanup account ownership not reverified')
+        }
+        user.cleanupToken = response.response.token
+        return response.response.token
+      }
+      if (response.status !== 429 || attempt === 3) break
+      await sleep(6000 * (attempt + 1))
+    }
+    throw Error('Disposable cleanup account ownership not reverified')
   }
   let token = await authenticatedCleanup()
   for (let attempt = 0; attempt < 4; attempt++) {
