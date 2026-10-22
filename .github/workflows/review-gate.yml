@@ -25,8 +25,10 @@ on:
       - 'src/pages/Typing/components/StartButton/**'
       - 'src/components/SessionControl/**'
       - 'src/pages/Typing/hooks/useSessionKeyboard.ts'
+      - 'src/pages/Typing/hooks/useTapRecallKeyboard.ts'
       - 'src/utils/index.ts'
       - 'tests/e2e/session-pause.spec.ts'
+      - 'tests/e2e/desktop-tap-keyboard.spec.ts'
       - 'tests/e2e/default-learn-header.spec.ts'
       - 'tests/e2e/published-dual-site-explorer.spec.ts'
       - 'src/achievement/**'
@@ -128,6 +130,7 @@ jobs:
           src/pages/Typing/components/StartButton
           src/components/SessionControl
           src/pages/Typing/hooks/useSessionKeyboard.ts
+          src/pages/Typing/hooks/useTapRecallKeyboard.ts
           src/utils/index.ts
           src/utils/db
           src/achievement

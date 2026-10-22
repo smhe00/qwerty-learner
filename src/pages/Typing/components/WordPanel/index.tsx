@@ -74,6 +74,7 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
   const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
   const isReviewMode = useAtomValue(isReviewModeAtom)
+  const isTapPractice = mobile || (isReviewMode && desktopTapRecall)
   const currentLearnItemKind: LearnItemKind =
     currentWord && reviewModeInfo.reviewRecord
       ? resolveLearnItemKindForWord(
@@ -661,7 +662,7 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
       event.preventDefault()
       handleShowTranslation(true)
     },
-    { enableOnFormTags: true, preventDefault: false },
+    { enabled: !isTapPractice, enableOnFormTags: true, preventDefault: false },
     [state.isTyping],
   )
 
@@ -670,7 +671,7 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
     () => {
       handleShowTranslation(false)
     },
-    { enableOnFormTags: true, keyup: true, preventDefault: true },
+    { enabled: !isTapPractice, enableOnFormTags: true, keyup: true, preventDefault: true },
     [],
   )
 
@@ -732,7 +733,7 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
       currentAcquisitionState?.phase === 'supported' ||
       currentAcquisitionState?.phase === 'independent')
 
-  if (mobile || (isReviewMode && desktopTapRecall)) {
+  if (isTapPractice) {
     return (
       <div
         className={mobile ? 'mobile-practice-host' : 'mobile-app desktop-tap-learn-frame'}
@@ -740,7 +741,7 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
       >
         {!mobile && (
           <div className="desktop-tap-learn-toolbar">
-            <span>轻触记忆 · 与手机共用学习进度</span>
+            <span>轻触 · 键盘 / 鼠标均可操作</span>
           </div>
         )}
         <div className={mobile ? 'mobile-practice-inner' : 'mobile-practice-host'}>
@@ -756,6 +757,7 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
               acquisitionState={currentAcquisitionState}
               reviewAttemptRole={currentReviewAttemptRole}
               exercisePreference={mobile ? 'auto' : 'tap-recall'}
+              desktop={!mobile}
               paused={!state.isTyping}
               onResume={() => dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: true })}
             />

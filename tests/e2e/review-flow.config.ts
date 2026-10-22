@@ -9,6 +9,7 @@ export default defineConfig({
     'learn-review-flow.spec.ts',
     'learn-shell-ui.spec.ts',
     'learn-exercise-switcher.spec.ts',
+    'desktop-tap-keyboard.spec.ts',
     'default-learn-header.spec.ts',
     'settings-mode-navigation.spec.ts',
     'toolbar-icon-focus.spec.ts',
