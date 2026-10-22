@@ -14,7 +14,7 @@ jobs:
   live-multi-device:
     if: github.ref_name == 'edgeone-test'
     runs-on: ubuntu-22.04
-    timeout-minutes: 12
+    timeout-minutes: 19
     env:
       QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
     steps:
@@ -24,7 +24,13 @@ jobs:
           node-version: '20.18.0'
       - name: Pin actual etest static source
         env:
-          EXPECTED_SHA: ${{ github.sha }}
+          EXPECTED_SHA: ${'        run: node scripts/verify-edgeone-source.mjs
+      - name: Require matching live etest backend M1+M3 capability
+        run: node tests/cloud/etest-m1m3-pilot-preflight.mjs
+      - name: Two independent logins and exact Blob receipts
+        run: node tests/cloud/etest-multi-device-pilot.mjs
+}{{ github.sha }}
+          EDGEONE_WAIT_MS: '600000'
         run: node scripts/verify-edgeone-source.mjs
       - name: Two independent logins and exact Blob receipts
         run: node tests/cloud/etest-multi-device-pilot.mjs

@@ -132,6 +132,7 @@ jobs:
 
   release-ready:
     name: Pages + etest Release Readiness (never deploys master)
+    timeout-minutes: 20
     if: github.ref_name == 'edgeone-test'
     needs: [live-browser-cloud, real-v4-transport]
     runs-on: ubuntu-latest

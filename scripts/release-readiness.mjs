@@ -39,6 +39,31 @@ const deployed = await fetch('https://smhe00.github.io/qwerty-learner/source-com
 })
 assert.equal(deployed.status, 200, 'Pages deployed SHA marker missing')
 assert.equal((await deployed.text()).trim(), sha, 'Pages serves a different commit')
+// The existing Pages/Cloud E2E jobs cannot prove that 3 offline Learn
+// workspaces automatically adopt one another. Require a separate HARD
+// Playwright UI run for this exact SHA before any release-ready claim.
+const acceptanceDeadline = Date.now() + 12 * 60_000
+let browserResult = null
+while (Date.now() < acceptanceDeadline) {
+  const query = new URLSearchParams({
+    branch: 'edgeone-test', head_sha: sha, per_page: '30',
+  })
+  const runs = await gh('/actions/workflows/etest-three-device-auto-fork.yml/runs?' + query)
+  browserResult = runs.workflow_runs?.find(run =>
+    run.head_sha === sha && run.head_branch === 'edgeone-test')
+  if (browserResult?.status === 'completed') break
+  await new Promise(resolve => setTimeout(resolve, 10_000))
+}
+assert.ok(browserResult &&
+  browserResult.status === 'completed' &&
+  browserResult.conclusion === 'success',
+  'Hard 3-device offline auto-convergence E2E did NOT pass on this SHA; ' +
+  'refusing release-ready declaration. Run=' +
+  String(browserResult?.html_url ?? '(not started)'))
+console.log(JSON.stringify({
+  hardThreeDeviceE2ERun: browserResult.id,
+  hardThreeDeviceE2EStatus: browserResult.conclusion,
+}))
 console.log(JSON.stringify({
   sameCommit: sha, passedPagesRun: pass.id, etestCloudJobsPassed: true,
   releaseAuthorized: false, // still requires explicit user approval

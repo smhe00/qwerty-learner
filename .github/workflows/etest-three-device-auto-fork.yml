@@ -16,7 +16,7 @@ jobs:
   three-real-learn-devices:
     if: github.ref_name == 'edgeone-test'
     runs-on: ubuntu-22.04
-    timeout-minutes: 23
+    timeout-minutes: 25
     env:
       QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
     steps:
@@ -30,6 +30,8 @@ jobs:
           EXPECTED_SHA: ${{ github.sha }}
           EDGEONE_WAIT_MS: '600000'
         run: node scripts/verify-edgeone-source.mjs
+      - name: Verify exact backend M1+M3 pilot before account creation
+        run: node tests/cloud/etest-m1m3-pilot-preflight.mjs
       - name: Install browser
         run: |
           yarn install --frozen-lockfile
