@@ -154,6 +154,40 @@ test('Blob adapter retries transient delete operations during cleanup', async ()
 })
 
 
+test('account cleanup bounds concurrent Blob deletes while keeping owner identity last', async () => {
+  const store = new FakeBlobStore()
+  const hash = 'c'.repeat(64)
+  const userId = 'bounded-delete-user'
+  const storage = createEdgeOneBlobStorage(store)
+  await storage.createAccount(hash, { userId, status: 'active' })
+  for (let i = 1; i <= 18; i++) {
+    await storage.createRevision(userId, i, { revision: i })
+    await storage.createSessionVersion(hash, i, { version: i })
+    store.objects.set('users/' + userId + '/event-batches/v1/' +
+      String(i).padStart(4, '0') + '.json', { batch: i })
+  }
+  const original = store.delete.bind(store)
+  let active = 0
+  let maximum = 0
+  store.delete = async key => {
+    active++
+    maximum = Math.max(maximum, active)
+    try {
+      // Simulate slow EdgeOne POP deletes without changing content semantics.
+      await new Promise(resolve => setTimeout(resolve, 3))
+      return await original(key)
+    } finally {
+      active--
+    }
+  }
+  const deleted = await storage.deleteUserData(hash, userId)
+  assert.equal(deleted.accountDeleted, true)
+  assert.equal(deleted.revisionsDeleted, 18)
+  assert.equal(deleted.sessionsDeleted, 18)
+  assert.ok(maximum <= 6, 'delete concurrency must be <= 3 prefixes x 2')
+  assert.equal(store.objects.size, 0, 'all account-owned keys removed')
+})
+
 test('Blob adapter preflight protects accounts even if provider ignores onlyIfNew', async () => {
   const store = new FakeBlobStore()
   const storage = createEdgeOneBlobStorage(store)

@@ -393,7 +393,14 @@ export function createEdgeOneBlobStorage(store) {
 
   async function deletePrefix(prefix) {
     const { blobs = [] } = await strongList(prefix)
-    await Promise.all(blobs.map((blob) => deleteKey(blob.key)))
+    // The provider can reject a large concurrent strong-delete burst with a
+    // transient 500. Each account deletion already has up to three prefixes
+    // in flight; at most TWO object deletes per prefix bounds total parallel
+    // delete traffic to six without ever deleting outside the exact prefix.
+    for (let index = 0; index < blobs.length; index += 2) {
+      await Promise.all(blobs.slice(index, index + 2)
+        .map(blob => deleteKey(blob.key)))
+    }
     return blobs.length
   }
 
