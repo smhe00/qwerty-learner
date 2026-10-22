@@ -136,13 +136,15 @@ test('historic rows cannot be removed or silently rewritten', async () => {
   rows(d, 'wordRecords').pop()
   assert.equal((await inspect(a,d,r)).status,'blocked')
 })
-test('changes to chapter, sessions, achievements or DailySession are blocked', async () => {
+test('changes to chapter, malformed sessions, achievements or DailySession are blocked', async () => {
   for (const name of ['chapterRecords','reviewRecords',
     'achievementEvents','achievementStates']) {
     const a = snap(), l = structuredClone(a), r = structuredClone(a)
     rows(l,name).push({ id: 2, test: 'changed' })
     assert.equal((await inspect(a,l,r)).reason,
-      'disjoint-protected-table-changed:' + name)
+      name === 'reviewRecords'
+        ? 'disjoint-review-sessions:invalid-or-legacy-session'
+        : 'disjoint-protected-table-changed:' + name)
   }
   const a = snap(), l = structuredClone(a), r = structuredClone(a)
   l.workspaceData.learnRuntime.dailySessions.school = {
@@ -348,4 +350,77 @@ test('same UUID with different origin-local shadow remains order independent', a
   assert.equal(merged[1].attemptId,uuid(2))
   assert.equal(merged[1].id,2)
   assert.equal(merged[1].fsrsShadow.sourceRecordId,2)
+})
+
+const session = (id, uuidId = id) => ({
+  id, sessionId: uuid(uuidId), dict: 'school', index: 0,
+  createTime: 1800000000, isFinished: false, sessionKind: 'review',
+  words: [{name:'apple',trans:['苹果']}, {name:'banana',trans:['香蕉']}],
+})
+test('different new ReviewSessions are merged with deterministic numeric IDs', async () => {
+  const a = snap(), l = structuredClone(a), r = structuredClone(a)
+  rows(a,'reviewRecords').push(session(1))
+  for (const branch of [l,r]) {
+    branch.workspaceData.database = structuredClone(a.workspaceData.database)
+  }
+  rows(l,'reviewRecords').push(session(2,2))
+  rows(r,'reviewRecords').push(session(2,3))
+  rows(l,'wordRecords').push(record('banana',2,uuid(5)))
+  rows(r,'wordRecords').push(record('cherry',2,uuid(6)))
+  const before = structuredClone({a,l,r})
+  const p = await inspect(a,l,r)
+  assert.equal(p.status,'projected',p.reason)
+  const sessions = rows(p.candidate,'reviewRecords')
+  assert.deepEqual(sessions.map(s=>s.sessionId),[uuid(1),uuid(2),uuid(3)])
+  assert.deepEqual(sessions.map(s=>s.id),[1,2,3])
+  assert.deepEqual(rows(p.candidate,'wordRecords').map(w=>w.id),[1,2,3])
+  assert.equal(await hash(p.candidate),p.candidateFingerprint)
+  const swapped = await inspect(a,r,l)
+  assert.equal(swapped.status,'projected',swapped.reason)
+  assert.equal(swapped.candidateFingerprint,p.candidateFingerprint)
+  assert.equal(p.publishReady,false)
+  assert.deepEqual({a,l,r},before)
+})
+test('ancestor session cursor may advance on one device without losing new word facts', async () => {
+  const a=snap()
+  rows(a,'reviewRecords').push(session(1))
+  const l=structuredClone(a),r=structuredClone(a)
+  rows(l,'reviewRecords')[0].index=1
+  rows(l,'wordRecords').push(record('banana',2,uuid(2)))
+  rows(r,'wordRecords').push(record('cherry',2,uuid(3)))
+  const p=await inspect(a,l,r)
+  assert.equal(p.status,'projected',p.reason)
+  assert.equal(rows(p.candidate,'reviewRecords')[0].index,1)
+  assert.equal(rows(p.candidate,'reviewRecords')[0].id,1)
+  assert.equal(rows(p.candidate,'wordRecords').length,3)
+})
+test('concurrently divergent session cursors block even if word events can merge',async()=>{
+  const a=snap()
+  rows(a,'reviewRecords').push(session(1))
+  const l=structuredClone(a),r=structuredClone(a)
+  rows(l,'reviewRecords')[0].index=1
+  rows(r,'reviewRecords')[0].index=2
+  rows(l,'wordRecords').push(record('banana',2,uuid(2)))
+  rows(r,'wordRecords').push(record('cherry',2,uuid(3)))
+  const p=await inspect(a,l,r)
+  assert.equal(p.status,'blocked')
+  assert.equal(p.reason,'disjoint-review-sessions:concurrent-session-advance-conflict')
+})
+test('legacy session cannot be rewritten or dropped by a competing branch',async()=>{
+  const a=snap()
+  const legacy=session(1)
+  delete legacy.sessionId
+  rows(a,'reviewRecords').push(legacy)
+  const l=structuredClone(a),r=structuredClone(a)
+  rows(l,'reviewRecords')[0].index=1
+  assert.equal((await inspect(a,l,r)).status,'blocked')
+  const gone=structuredClone(a)
+  rows(gone,'reviewRecords').pop()
+  assert.equal((await inspect(a,gone,r)).status,'blocked')
+  // Unchanged legacy history is preserved byte-for-byte.
+  rows(l,'reviewRecords')[0].index=0
+  rows(l,'wordRecords').push(record('banana',2,uuid(2)))
+  const p=await inspect(a,l,r)
+  assert.equal(p.status,'projected',p.reason)
+  assert.deepEqual(rows(p.candidate,'reviewRecords'),rows(a,'reviewRecords'))
 })

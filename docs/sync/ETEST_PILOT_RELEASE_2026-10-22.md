@@ -37,3 +37,10 @@ etest 验证后若真实 EdgeOne 云同步的单端快进、双端并发和断�
 - 缺失、过期、伪造的 ReviewWordState 直接阻断候选，禁止将单端缓存状态静默并入完整 V4。不可验证的旧学习历史保持保守阻断，不把这种拒绝解释成用户记录丢失。
 - 保留既有的 UUID 去重、数字 WordRecord 主键重映射和 FSRS shadow sourceRecordId 关联修正；测试补入真实独立 Good、交换设备顺序确定性、过期/伪造状态拒绝。
 - 此更改仍**仅为只读候选与隔离测试**：`publishReady:false`、`convergenceComplete:false`，不开放 M4 自动应用，不写回正式 Blob；需 CI 和 etest 验证后再评估。
+
+## M2.16 ReviewSession 三方仲裁接入完整 V4 候选
+
+- 单词事件归并之前，对 `reviewRecords` 单独执行 UUID 三方比较（整体 Backup V4 的祖先 SHA 已在只读前置校验绑定）。原有 Session 数字主键固定，新建 Session 根据 UUID 排序重键，不跨设备直接复用相同数字 ID。
+- 单端游标前进、两端独立新增 Session 可进入完整六表候选；同 UUID 双端不同推进、祖先 Session 丢失、畸形/旧版无 UUID 的被修改 Session 保守拒绝。原有无 UUID Session 如未被改动，保持原样。
+- `chapterRecords`、成就事件/状态、DailySession 仍不得分叉；候选继续 `publishReady:false`、`convergenceComplete:false`，不触发 IndexedDB 或云端写入。生产用户自动合并未开启。
+- 测试覆盖数字主键撞号、交换设备来源输出相同 SHA、单端 Session 前进、双端 Session 分叉拒绝、Legacy Session 阻断及不改动原始快照。

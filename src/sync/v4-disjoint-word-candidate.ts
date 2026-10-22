@@ -7,8 +7,8 @@
  * independently identified attempt is kept and chronologically replayed.
  *
  * Strict constraints: externally authenticated common ancestor; base rows
- * immutable; no changes to chapter, review-session, achievement tables or
- * daily sessions; no legacy NEW attempt; no unproven scheduler-only update.
+ * immutable; no changes to chapter, achievement tables or daily sessions;
+ * ReviewRecord changes require UUID-backed three-way cursor arbitration; no legacy NEW attempt; no unproven scheduler-only update.
  * For overlapping words, all history must have UUID, be replayable and
  * agree with each device's persisted review-count evidence.
  * Four untouched tables are kept EXACTLY.
@@ -18,10 +18,14 @@
  */
 import { rebuildActiveFsrsStateFromWordRecords } from '@/review/fsrs/active'
 import type { IReviewWordState } from '@/review/types'
-import type { IWordRecord } from '@/utils/db/record'
+import type { IReviewRecord, IWordRecord } from '@/utils/db/record'
 import { projectUuidLearningConvergence } from './v4-event-convergence'
 import { isLearningAttemptId } from '@/utils/db/attempt-identity'
 import { previewConservativeThreeWayV4 } from './v4-conservative-three-way'
+import {
+  digestThreeWayReviewSessionAncestor,
+  inspectThreeWayReviewSessions,
+} from './v4-session-three-way'
 import { inspectPinnedV4FastForward } from './v4-fast-forward-preview'
 import {
   assertRestorableWorkspaceV4,
@@ -34,7 +38,7 @@ type Row = Record<string, unknown>
 type Collection = { tableName: string; rows: Row[] }
 type Database = { data: { data: Collection[]; tables: unknown[] } }
 type Source = 'local' | 'remote'
-const PROTECTED = ['chapterRecords', 'reviewRecords',
+const PROTECTED = ['chapterRecords',
   'achievementEvents', 'achievementStates'] as const
 const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0
 const key = (dict: string, word: string) => JSON.stringify([dict, word])
@@ -178,6 +182,35 @@ export async function previewDisjointWordV4(input: {
     if (json(local.workspaceData.learnRuntime) !== sessions ||
         json(remote.workspaceData.learnRuntime) !== sessions) {
       return blocked('disjoint-daily-session-changed')
+    }
+    // ReviewRecord has a stable cross-device UUID, unlike its Dexie ID.
+    // Only materialize sessions after pinned-ancestor three-way arbitration.
+    // A divergent same-session cursor must block, never choose max(index).
+    // Legacy sessions are permitted only if all three snapshots preserve
+    // that table unchanged; otherwise their identity cannot be proven.
+    const baseSessions = table(ancestor, 'reviewRecords').rows
+    let mergedSessions: Row[] | null = null
+    const baselineSessions = json(baseSessions)
+    if (json(table(local, 'reviewRecords').rows) !== baselineSessions ||
+        json(table(remote, 'reviewRecords').rows) !== baselineSessions) {
+      const review = await inspectThreeWayReviewSessions({
+        ancestor: baseSessions as unknown as IReviewRecord[],
+        pinnedAncestorDigest:
+          await digestThreeWayReviewSessionAncestor(
+            baseSessions as unknown as IReviewRecord[]),
+        local: table(local, 'reviewRecords').rows as unknown as IReviewRecord[],
+        remote: table(remote, 'reviewRecords').rows as unknown as IReviewRecord[],
+      })
+      if (review.status !== 'projected') {
+        return blocked('disjoint-review-sessions:' + review.reason)
+      }
+      const ancestorIds = new Map<string, number>(
+        baseSessions.map(r => [r.sessionId as string, r.id as number]))
+      let nextId = Math.max(0, ...baseSessions.map(r => r.id as number))
+      mergedSessions = review.sessions.map(({ sessionId, record }) => ({
+        ...structuredClone(record),
+        id: ancestorIds.get(sessionId) ?? ++nextId,
+      }))
     }
     const baseWords = table(ancestor, 'wordRecords').rows
     const baseIds = indexById(baseWords)
@@ -394,6 +427,9 @@ export async function previewDisjointWordV4(input: {
     }
     table(candidate, 'wordRecords').rows = mergedWords
     table(candidate, 'reviewWordStates').rows = normalizedStates
+    if (mergedSessions) {
+      table(candidate, 'reviewRecords').rows = mergedSessions
+    }
     assertRestorableWorkspaceV4(candidate)
     return {
       status: 'projected', reason: 'disjoint-word-full-v4-preview-only',
