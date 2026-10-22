@@ -119,6 +119,13 @@ export function auditV4LosslessEvidenceUnion(
   input: Input,
 ): V4LosslessEvidenceAudit {
   try {
+    const owner = input.ancestor.metadata.source
+    if (owner.kind !== 'account' || !owner.accountId ||
+        [input.local, input.remote, input.candidate].some(snapshot =>
+          snapshot.metadata.source.kind !== 'account' ||
+          snapshot.metadata.source.accountId !== owner.accountId)) {
+      throw Error('lossless-cross-account-or-anonymous-snapshot')
+    }
     const uniqueAttempts = checkedUnion(input, 'wordRecords', 'attemptId')
     const sessionIds = checkedUnion(input, 'reviewRecords', 'sessionId')
     return { status: 'verified', uniqueAttempts, sessionIds,

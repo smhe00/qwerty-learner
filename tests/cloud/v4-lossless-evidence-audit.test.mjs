@@ -127,3 +127,13 @@ test('changed legacy session cursor is not silently adopted', () => {
   assert.equal(audit(f).reason,
     'lossless-new-or-changed-legacy:reviewRecords')
 })
+
+test('account ownership of all four complete snapshots is required', () => {
+  const f = fixture()
+  f.remote.metadata.source.accountId = 'account-B'
+  assert.equal(audit(f).reason,
+    'lossless-cross-account-or-anonymous-snapshot')
+  const g = fixture()
+  g.candidate.metadata.source = { kind: 'anonymous' }
+  assert.equal(audit(g).status, 'blocked')
+})

@@ -3,8 +3,12 @@ name: etest Safe V4 Merge Writeback Pilot
 on:
   push:
     branches: [edgeone-test]
+    # Every deliberate etest promotion must re-prove real six-table V4
+    # writeback on disposable accounts. Never silently reuse old CI evidence.
     paths:
       - 'tests/cloud/etest-safe-v4-merge-writeback.mjs'
+      - 'src/sync/**'
+      - 'tests/cloud/**'
       - '.github/workflows/etest-safe-v4-merge-writeback.yml'
   workflow_dispatch:
 
