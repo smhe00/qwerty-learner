@@ -89,9 +89,9 @@ body,
   color: var(--focus-text-secondary);
 }
 
-/* The header is two indivisible groups: primary controls through pronunciation,
-   then the compact icon strip. Flex may put the icon strip on row two, but
-   neither group is allowed to wrap internally into a third line. */
+/* Keep the main learning controls together. Pronunciation leads the icon
+   group, so it moves with that group when the toolbar wraps. The nav centers
+   each flex line independently; neither group wraps into a third line. */
 .focus-header-nav .focus-toolbar-primary-row,
 .focus-header-nav .focus-toolbar-icons-row {
   display: flex;

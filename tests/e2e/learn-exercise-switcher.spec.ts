@@ -32,10 +32,11 @@ test('one chapter-slot control carries the landing preference into the same paus
   const start = page.getByRole('button', { name: '开始 Learn', exact: true })
   await expect(start).toBeEnabled()
   await expect(control(page)).toHaveCount(1)
-  await expect(control(page)).toHaveAttribute('aria-label', '学习方式：拼写记忆')
+  await expect(control(page)).toHaveCSS('font-size', '16px')
+  await expect(control(page)).toHaveAttribute('aria-label', '学习方式：拼写')
   const landing = await learningSnapshot(page)
   await control(page).click()
-  await expect(control(page)).toHaveAttribute('aria-label', '学习方式：轻触记忆')
+  await expect(control(page)).toHaveAttribute('aria-label', '学习方式：轻触')
   expect(await learningSnapshot(page)).toEqual(landing)
   await start.click()
   await expect(page.locator('[data-desktop-tap-study] [data-mobile-word-practice]')).toBeVisible()
@@ -45,14 +46,14 @@ test('one chapter-slot control carries the landing preference into the same paus
   expect(JSON.parse(paused.review || '{}').reviewRecord?.id).toBeDefined()
   await control(page).focus()
   await page.keyboard.press('Enter')
-  await expect(control(page)).toHaveAttribute('aria-label', '学习方式：拼写记忆')
+  await expect(control(page)).toHaveAttribute('aria-label', '学习方式：拼写')
   await expect(control(page)).toBeFocused()
   await expect(page.locator('[data-desktop-tap-study]')).toHaveCount(0)
   await expect(page.locator('header [data-session-control]')).toHaveAttribute('aria-label', /^(开始|继续)$/)
   expect(await learningSnapshot(page)).toEqual(paused)
   await page.screenshot({ path: testInfo.outputPath('pc-spelling-light.png'), fullPage: true })
   await page.keyboard.press('Space')
-  await expect(control(page)).toHaveAttribute('aria-label', '学习方式：轻触记忆')
+  await expect(control(page)).toHaveAttribute('aria-label', '学习方式：轻触')
   await expect(page.locator('[data-desktop-tap-study]')).toBeVisible()
   await expect(page.locator('header [data-session-control]')).toHaveAttribute('aria-label', /^(开始|继续)$/)
   expect(await learningSnapshot(page)).toEqual(paused)
@@ -66,7 +67,7 @@ test('chapter-slot control stays aligned and stable at desktop widths in both th
   await page.getByRole('button', { name: 'Learn', exact: true }).click()
   const row = page.locator('header [data-toolbar-row="primary"]')
   const dictionary = row.locator('a[href="/gallery?mode=learn"]')
-  const pronunciation = row.getByRole('button', { name: /发音口音/ })
+  const pronunciation = page.locator('header [data-toolbar-row="icons"]').getByRole('button', { name: /发音口音/ })
   for (const dark of [false, true]) {
     if (dark) {
       await page.getByRole('button', { name: '开关深色模式' }).click()
@@ -83,8 +84,11 @@ test('chapter-slot control stays aligned and stable at desktop widths in both th
         const dictionaryBox = (await dictionary.boundingBox())!
         const pronunciationBox = (await pronunciation.boundingBox())!
         expect(buttonBox.x).toBeGreaterThanOrEqual(dictionaryBox.x + dictionaryBox.width)
-        expect(buttonBox.x + buttonBox.width).toBeLessThanOrEqual(pronunciationBox.x)
-        expect(Math.abs(buttonBox.y - pronunciationBox.y)).toBeLessThanOrEqual(3)
+        if (Math.abs(buttonBox.y - pronunciationBox.y) <= 3) {
+          expect(buttonBox.x + buttonBox.width).toBeLessThanOrEqual(pronunciationBox.x)
+        } else {
+          expect(pronunciationBox.y).toBeGreaterThanOrEqual(buttonBox.y + buttonBox.height)
+        }
         const size = { width: buttonBox.width, height: buttonBox.height }
         if (originalSize) expect(size).toEqual(originalSize)
         originalSize = size

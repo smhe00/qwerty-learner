@@ -384,9 +384,9 @@ export default function LearnPage({ mobile = false }: { mobile?: boolean } = {})
         {!canLearnMoreToday && <SessionControl active={false} label="开始 Learn"
           disabled={isStarting || !wordList} onToggle={startFromKeyboard} />}
         <DictChapterButton learnMode />
-        <PronunciationSwitcher learnMode />
       </div>
       <div className="focus-toolbar-icons-row" data-toolbar-row="icons">
+        <PronunciationSwitcher learnMode />
         <Switcher learnMode />
       </div>
     </Header>

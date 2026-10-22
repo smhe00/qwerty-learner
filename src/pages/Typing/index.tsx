@@ -394,9 +394,9 @@ const App: React.FC<{ autoStart?: boolean; mobile?: boolean }> = ({ autoStart = 
                 <ModeSwitcher />
                 <SessionButton isLoading={isLoading} />
                 <DictChapterButton learnMode={isReviewMode} />
-                <PronunciationSwitcher learnMode={isReviewMode} />
               </div>
               <div className="focus-toolbar-icons-row" data-toolbar-row="icons">
+                <PronunciationSwitcher learnMode={isReviewMode} />
                 <Switcher learnMode={isReviewMode} />
                 <div className="flex shrink-0 items-center gap-3" data-typing-primary-controls>
                   {!isLearnSurface && state.isShowSkip && (

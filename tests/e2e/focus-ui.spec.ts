@@ -85,73 +85,90 @@ test('Focus-style navigation dialog remains dismissible and retains study mode',
 })
 
 
-test('study toolbar uses one row or two rows, splitting only after pronunciation; narrow widths use mobile layout', async ({ page }) => {
-  test.setTimeout(90_000)
-  await page.setViewportSize({ width: 1440, height: 900 })
-  await page.goto('/typing')
-  await expect(page.locator('[data-toolbar-row="primary"]')).toBeVisible({ timeout: 20_000 })
+for (const mode of ['typing', 'learn'] as const) {
+  test(mode + ': wrapped toolbar centers both rows with pronunciation leading row two', async ({ page }) => {
+    test.setTimeout(90_000)
+    await page.setViewportSize({ width: 1920, height: 900 })
+    await page.goto('/' + mode)
+    await expect(page.locator('[data-toolbar-row="primary"]')).toBeVisible({ timeout: 20_000 })
+    let sawSingleRow = false
+    let sawTwoRows = false
 
-  for (const width of [1440, 1280, 1100, 1024, 900, 768, 701]) {
-    await page.setViewportSize({ width, height: 900 })
-    const nav = page.locator('header nav.focus-header-nav')
-    const primary = nav.locator('[data-toolbar-row="primary"]')
-    const icons = nav.locator('[data-toolbar-row="icons"]')
-    await expect(primary).toBeVisible()
-    await expect(icons).toBeVisible()
-
-    const layout = await nav.evaluate((element) => {
-      const primaryRow = element.querySelector<HTMLElement>('[data-toolbar-row="primary"]')
-      const iconRow = element.querySelector<HTMLElement>('[data-toolbar-row="icons"]')
-      if (!primaryRow || !iconRow) throw new Error('Expected the two explicit toolbar rows')
-      const navStyle = getComputedStyle(element)
-      const contentWidth = element.clientWidth -
-        Number.parseFloat(navStyle.paddingLeft) - Number.parseFloat(navStyle.paddingRight)
-      const primaryRect = primaryRow.getBoundingClientRect()
-      const iconRect = iconRow.getBoundingClientRect()
-      const primaryChildren = Array.from(primaryRow.children).map(child => child.getBoundingClientRect())
-      const iconStrip = iconRow.querySelector<HTMLElement>('.focus-toolbar-icons')
-      const pronunciation = primaryRow.querySelector(
-        'button[aria-label^="发音口音"], button[aria-label^="发音及音标切换"]',
-      )
-      if (!iconStrip || !pronunciation) throw new Error('Pronunciation and icon strip must be present')
-      const iconChildren = Array.from(iconStrip.children).map(child => child.getBoundingClientRect())
-      return {
-        contentWidth,
-        primaryWidth: primaryRect.width,
-        iconsWidth: iconRect.width,
-        primaryTop: primaryRect.top,
-        primaryBottom: primaryRect.bottom,
-        primaryCenterY: primaryRect.top + primaryRect.height / 2,
-        iconsTop: iconRect.top,
-        iconsCenterY: iconRect.top + iconRect.height / 2,
-        primaryWrap: getComputedStyle(primaryRow).flexWrap,
-        iconsWrap: getComputedStyle(iconRow).flexWrap,
-        iconStripWrap: getComputedStyle(iconStrip).flexWrap,
-        iconStripOverflow: iconChildren.some(rect =>
-          rect.left < iconStrip.getBoundingClientRect().left - 1 ||
-          rect.right > iconStrip.getBoundingClientRect().right + 1),
-        primaryChildrenOverflow: primaryChildren.some(rect =>
-          rect.left < primaryRect.left - 1 || rect.right > primaryRect.right + 1 ||
-          rect.top < primaryRect.top - 1 || rect.bottom > primaryRect.bottom + 1),
-        iconsFollowPrimary: primaryRow.nextElementSibling === iconRow,
-        pronunciationInPrimary: primaryRow.contains(pronunciation),
+    for (const width of [1920, 1600, 1536, 1440, 1366, 1280, 1100, 1024, 900, 768, 701]) {
+      await page.setViewportSize({ width, height: 900 })
+      const nav = page.locator('header nav.focus-header-nav')
+      await expect(nav.locator('[data-toolbar-row="primary"]')).toBeVisible()
+      await expect(nav.locator('[data-toolbar-row="icons"]')).toBeVisible()
+      const layout = await nav.evaluate((element) => {
+        const primary = element.querySelector<HTMLElement>('[data-toolbar-row="primary"]')!
+        const secondary = element.querySelector<HTMLElement>('[data-toolbar-row="icons"]')!
+        const strip = secondary.querySelector<HTMLElement>('.focus-toolbar-icons')!
+        const pronunciation = secondary.querySelector<HTMLElement>(
+          'button[aria-label^="发音口音"], button[aria-label^="发音及音标切换"]',
+        )!
+        if (!strip || !pronunciation) throw Error('Pronunciation must lead the secondary group')
+        const style = getComputedStyle(element)
+        const nav = element.getBoundingClientRect()
+        const leftInset = parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft)
+        const rightInset = parseFloat(style.borderRightWidth) + parseFloat(style.paddingRight)
+        const contentWidth = nav.width - leftInset - rightInset
+        const p = primary.getBoundingClientRect()
+        const s = secondary.getBoundingClientRect()
+        const a = pronunciation.getBoundingClientRect()
+        const i = strip.getBoundingClientRect()
+        return {
+          contentWidth,
+          navCenter: nav.left + leftInset + contentWidth / 2,
+          primaryWidth: p.width, secondaryWidth: s.width,
+          primaryCenterX: p.left + p.width / 2, secondaryCenterX: s.left + s.width / 2,
+          primaryCenterY: p.top + p.height / 2, secondaryCenterY: s.top + s.height / 2,
+          primaryBottom: p.bottom, secondaryTop: s.top,
+          primaryWrap: getComputedStyle(primary).flexWrap,
+          secondaryWrap: getComputedStyle(secondary).flexWrap,
+          stripWrap: getComputedStyle(strip).flexWrap,
+          pronunciationTop: a.top, pronunciationRight: a.right, stripLeft: i.left,
+          pronunciationFirst: secondary.firstElementChild?.contains(pronunciation),
+          groupsAdjacent: primary.nextElementSibling === secondary,
+          childrenOverflow: [primary, secondary].some(group => {
+            const box = group.getBoundingClientRect()
+            return Array.from(group.children).some(child => {
+              const rect = child.getBoundingClientRect()
+              return rect.left < box.left - 1 || rect.right > box.right + 1 ||
+                rect.top < box.top - 1 || rect.bottom > box.bottom + 1
+            })
+          }),
+          stripOverflow: Array.from(strip.children).some(child => {
+            const rect = child.getBoundingClientRect()
+            return rect.left < i.left - 1 || rect.right > i.right + 1
+          }),
+          viewportOverflow: document.documentElement.scrollWidth > innerWidth + 1,
+        }
+      })
+      expect(layout.primaryWidth).toBeLessThanOrEqual(layout.contentWidth + 1)
+      expect(layout.secondaryWidth).toBeLessThanOrEqual(layout.contentWidth + 1)
+      expect(layout.primaryWrap).toBe('nowrap')
+      expect(layout.secondaryWrap).toBe('nowrap')
+      expect(layout.stripWrap).toBe('nowrap')
+      expect(layout.childrenOverflow).toBe(false)
+      expect(layout.stripOverflow).toBe(false)
+      expect(layout.viewportOverflow).toBe(false)
+      expect(layout.groupsAdjacent).toBe(true)
+      expect(layout.pronunciationFirst).toBe(true)
+      expect(layout.pronunciationRight).toBeLessThanOrEqual(layout.stripLeft)
+      if (Math.abs(layout.primaryCenterY - layout.secondaryCenterY) >= 8) {
+        sawTwoRows = true
+        expect(layout.secondaryTop).toBeGreaterThanOrEqual(layout.primaryBottom - 1)
+        expect(layout.pronunciationTop).toBeGreaterThanOrEqual(layout.primaryBottom - 1)
+        expect(Math.abs(layout.primaryCenterX - layout.navCenter)).toBeLessThanOrEqual(1)
+        expect(Math.abs(layout.secondaryCenterX - layout.navCenter)).toBeLessThanOrEqual(1)
+      } else {
+        sawSingleRow = true
       }
-    })
-    expect(layout.primaryWidth, 'primary controls must fit at ' + width + 'px').toBeLessThanOrEqual(layout.contentWidth + 1)
-    expect(layout.iconsWidth, 'icon row must fit at ' + width + 'px').toBeLessThanOrEqual(layout.contentWidth + 1)
-    expect(layout.primaryWrap).toBe('nowrap')
-    expect(layout.iconsWrap).toBe('nowrap')
-    expect(layout.iconStripWrap).toBe('nowrap')
-    expect(layout.iconStripOverflow).toBe(false)
-    expect(layout.primaryChildrenOverflow).toBe(false)
-    expect(layout.iconsFollowPrimary).toBe(true)
-    expect(layout.pronunciationInPrimary).toBe(true)
-    if (Math.abs(layout.primaryCenterY - layout.iconsCenterY) >= 8) {
-      expect(layout.iconsTop).toBeGreaterThanOrEqual(layout.primaryBottom - 1)
     }
-  }
-
-  await page.setViewportSize({ width: 700, height: 900 })
-  await expect(page).toHaveURL(/\/mobile$/, { timeout: 10_000 })
-  await expect(page.locator('header nav.focus-header-nav')).toHaveCount(0)
-})
+    expect(sawSingleRow).toBe(true)
+    expect(sawTwoRows).toBe(true)
+    await page.setViewportSize({ width: 700, height: 900 })
+    await expect(page).toHaveURL(/\/mobile$/, { timeout: 10_000 })
+    await expect(page.locator('header nav.focus-header-nav')).toHaveCount(0)
+  })
+}
