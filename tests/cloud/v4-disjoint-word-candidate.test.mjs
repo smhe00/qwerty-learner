@@ -144,7 +144,9 @@ test('changes to chapter, malformed sessions, achievements or DailySession are b
     assert.equal((await inspect(a,l,r)).reason,
       name === 'reviewRecords'
         ? 'disjoint-review-sessions:invalid-or-legacy-session'
-        : 'disjoint-protected-table-changed:' + name)
+        : name === 'chapterRecords'
+          ? 'disjoint-chapter-records:new-chapter-lacks-valid-immutable-identity'
+          : 'disjoint-protected-table-changed:' + name)
   }
   const a = snap(), l = structuredClone(a), r = structuredClone(a)
   l.workspaceData.learnRuntime.dailySessions.school = {
