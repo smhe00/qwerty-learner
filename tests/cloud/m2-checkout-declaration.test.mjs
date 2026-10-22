@@ -180,3 +180,30 @@ test('ambiguous POST error does not invent a success or change local V4', async 
   assert.deepEqual(input.pin.snapshot, before)
   assert.equal(input.calls.includes('read'), false)
 })
+
+test('malformed server selector or a different device cannot qualify exact readback', async () => {
+  for (const selector of [
+    { ...receipt, deviceId: 'qwerty-web-00000000-0000-4000-8000-000000000099' },
+    { ...receipt, sha256: 'invalid-sha' },
+  ]) {
+    const input = await fixture({ post: { receipt: selector } })
+    assert.equal((await declare(input)).reason,
+      'checkout-server-declaration-unverified')
+    assert.equal(input.calls.includes('read'), false)
+  }
+})
+test('same sequence but different immutable event UUID cannot pass readback', async () => {
+  const input = await fixture({ readback: {
+    eventHead: { ...head,
+      batchId: '00000000-0000-4000-8000-000000000099' },
+  } })
+  assert.equal((await declare(input)).reason,
+    'checkout-exact-readback-unverified')
+})
+test('invalid event-head sequence blocks without any cloud request', async () => {
+  const input = await fixture()
+  input.eventHead = { ...head, sequence: 129 }
+  assert.equal((await declare(input)).reason,
+    'checkout-local-identity-or-head-invalid')
+  assert.deepEqual(input.calls, [])
+})
