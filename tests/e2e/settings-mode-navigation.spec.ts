@@ -87,7 +87,7 @@ test('small-screen visitors enter the independent Mobile P0 menu', async ({ page
   await page.goto('/learn')
   await expect(page).toHaveURL(/\/mobile\/?$/)
   await expect(page.locator('[data-mobile-menu]')).toBeVisible()
-  await expect(page.getByRole('link', { name: '进入沉浸学习页面' })).toBeVisible()
+  await expect(page.getByRole('link', { name: /^(开始|继续)手机学习$/ })).toBeVisible()
   await expect(page.getByText('设置', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toHaveCount(0)
 })
