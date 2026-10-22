@@ -1,7 +1,7 @@
 ---
 protocol_version: "1.1"
 task_id: "TASK-20261023-mobile-account-writer-handoff"
-status: "IN_PROGRESS"
+status: "PARTIAL"
 target_branch: "product/main"
 base_commit: "09383bdb306494d8d3a0788c7e77261881a50485"
 executor: "Codex"
@@ -24,3 +24,6 @@ User corrected the earlier response: manually entering /mobile/account in the sa
 
 
 Latest device result on deployed 0a7054e8: after exiting/reopening Huawei browser, tapping login shows preparation then the NEW neutral busy title. Therefore the scoped first iteration does not fix the actual persistent device issue. Next iteration replaces the home history entry and exposes read-only native/lease heartbeat diagnostics; no root cause claim before actual-device metadata.
+
+
+Iteration 2 deployed and targeted-live verified at f8d4f5877252040f4bad1a7e8fdb739a58ef36e9. Native/fallback phone contexts pass 8 total entries, replace-history check, busy exclusion, readonly diagnostic copying, same-document retry and refresh; auth requests=0. Huawei user has been asked to retry current deployed version and paste diagnostics if still blocked. Do not mark Huawei root cause/resolution complete before that evidence.

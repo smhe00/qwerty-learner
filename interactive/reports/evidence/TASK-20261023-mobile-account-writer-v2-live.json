@@ -1,0 +1,28 @@
+{
+  "expected": "f8d4f5877252040f4bad1a7e8fdb739a58ef36e9",
+  "startedAt": "2026-10-22T23:33:58.881Z",
+  "authRequests": 0,
+  "modes": [
+    {
+      "mode": "native",
+      "entries": 4,
+      "refresh": true,
+      "exclusive": true,
+      "retry": true,
+      "diagnostics": true,
+      "historyReplaced": true
+    },
+    {
+      "mode": "fallback",
+      "entries": 4,
+      "refresh": true,
+      "exclusive": true,
+      "retry": true,
+      "diagnostics": true,
+      "historyReplaced": true
+    }
+  ],
+  "marker": "f8d4f58",
+  "status": "PASS",
+  "finishedAt": "2026-10-22T23:37:00.883Z"
+}

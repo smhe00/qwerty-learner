@@ -72,3 +72,26 @@ User confirmed deployed 0a7054e8 behavior after exiting/reopening: home login sh
 
 
 Iteration-2 follow-up: diagnostic samples are 2.5 seconds apart to span the 2-second renewal interval. Both native and fallback persistent-owner cases verify the sampled expiry actually advances for a live owner; clipboard fallback remains covered. Focused changed cases 2/2 PASS (28.61s). a44a4673 is an intermediate development candidate, not promoted to etest; promote only the follow-up exact SHA after prerequisites, avoiding an unnecessary Maker build.
+
+
+## Iteration 2 actual deployment / final checkpoint
+
+Final source and stage SHA: f8d4f5877252040f4bad1a7e8fdb739a58ef36e9. The intermediate a44a4673 was not separately deployed. Matching-SHA prerequisites all SUCCESS before normal FF to etest:
+
+- Cloud Sync Gate 39871183968, including cloud-backend job 120145743247 and Exact-SHA Pages + Cloud Staging Admission job 120146161238. Standalone Etest Admission workflow did not trigger on the final index/tests-only follow-up; the identical admission script ran successfully inside Cloud Gate, validating current main and live published source SHA.
+- Deployment to GitHub Pages 39871184065, including actual deployment and published regression.
+- Mobile P0 Gate 39871184070, including current 18 account/writer cases and cloud-disabled Pages preview.
+- P4b Browser Recovery Gate 39871184053 SUCCESS.
+
+Waited for actual staging marker to change from 0a7054e to f8d4f58; no premature availability claim. Fresh isolated native/fallback Chrome phone contexts then PASS: 4 home-account entries each, same tab and unchanged history count, persistent second-tab exclusion, 2-sample diagnostic copy from actual lazy-loaded staging module, retry only after owner exits with document identity preserved, and account refresh. Auth requests=0, no test accounts created by this targeted browser procedure. Machine proof: interactive/reports/evidence/TASK-20261023-mobile-account-writer-v2-live.json. UTC execution 2026-10-22T23:33:58.881Z..23:37:00.883Z includes deployment wait; Asia/Shanghai date 2026-10-23. Actual Huawei confirmation is still pending and is not replaced by these simulated-mode results.
+
+### Other current gates / unresolved CI
+
+- S1 Workspace Browser Gate 39871183962 FAILED, 104 pass / 5 fail, all same pre-existing 数据设置 selectors waiting for UI now labelled 数据与备份; those test/UI files are unchanged by both iterations.
+- Review Gate 39871183951 FAILED, 114 pass / 2 fail: extra-words Start disabled and Learn/Typing header difference 4.484375 >4, same observations as iteration 1. Corresponding logic/tests unchanged; no claim of baseline reproduction or root-cause fix for these two failures.
+- Staging Safe V4 Merge Writeback 39872599923 FAILED. The actual CAS, chronological six-table/FSRS replay, stale-409 and independent readback assertions logged PASS, but final disposable-account ownership re-verification encountered login HTTP 429 after earlier transient 500 responses; cleanup refused with `Disposable cleanup account ownership not reverified`. A test-created account may remain; its cleanup is UNVERIFIED. Do not blindly rerun mutating pilot or delete any account without re-verifying exact fixture ownership. No credentials were retrieved/exposed and no manual deletion attempted by this task. This is separate from the local writer UI symptom, which occurs before auth requests.
+- Other M1/M3/three-device/live E2E gates may remain pending/backend-gated; this work does not certify whole cloud convergence or a master release.
+
+### User follow-up needed
+
+User confirmed Google mobile Chrome is normal while Huawei on 0a7054e8 remains blocked after exit/reopen. Latest request: in Huawei current tab open /mobile?writer-check=f8d4f587 and tap login; if blocked, copy diagnostics and paste into chat, or report normal. Diagnosis can then use native held-count, lease kind/expiry progression, same-session token match and actual browser/version. Preserve Huawei site data; no force steal. Status PARTIAL while actual-device outcome is pending. master remains 6d7839b9a9fd7a31459a19aeca948227b1f7b3c2. Final report/evidence-only commit goes to product/main without another Maker deployment; app source stays identical to tested staging f8d4f587.
