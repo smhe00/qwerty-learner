@@ -160,14 +160,16 @@ function makeStorage(env) {
 
 function makeService(env, storage, request) {
   // Only the isolated, exact HTTPS etest Maker origin may enable the
-  // independent-session / immutable-event pilot without environment flags.
+  // immutable-event pilot without an independent-session requirement.
   // Production/master hostnames are explicitly NOT included.
   const isolatedEtest = isIsolatedEtestPilotOrigin(request.url)
   return createBackendService({
     storage,
     sessionTtlSeconds: numberEnv(env.SESSION_TTL_SECONDS, 7 * 24 * 60 * 60),
     maxSyncBytes: numberEnv(env.MAX_SYNC_BYTES, 16 * 1024 * 1024),
-    multiSessionEnabled: env.MULTI_DEVICE_AUTH_ENABLED === 'true' || isolatedEtest,
+    // Single-login is a product invariant. Expired/revoked sessions
+    // never authorize cloud mutation, even on isolated etest.
+    multiSessionEnabled: false,
     eventPilotEnabled: env.MULTI_DEVICE_EVENT_PILOT_ENABLED === 'true' || isolatedEtest,
   })
 }
@@ -258,9 +260,7 @@ export async function onRequest(context) {
           // Millisecond-resolution, uncached origin execution time. This is
           // an estimate for clock-skew preflight, not a signed event timestamp.
           serverTimeMs: Date.now(),
-          authMode: (env.MULTI_DEVICE_AUTH_ENABLED === 'true' || isIsolatedEtestPilotOrigin(request.url))
-            ? 'independent-device-sessions-pilot'
-            : 'single-active-session',
+          authMode: 'single-active-session',
           runtime: process.version,
           capabilities: [
             'snapshot-retention-v1',
@@ -287,7 +287,7 @@ export async function onRequest(context) {
             'account-delete-v1',
             'duplicate-register-protection-v1',
             // Distinguishes a new backend runtime from a new static build.
-            'etest-m1m3-origin-gate-v1',
+            'etest-single-session-relay-v1',
           ],
           // Host is already apparent from the request URL; this probe
           // never exposes credentials, account IDs, store names, or env.

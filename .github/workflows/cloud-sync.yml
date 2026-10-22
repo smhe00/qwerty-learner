@@ -73,6 +73,7 @@ jobs:
         run: |
           node --check tests/cloud/etest-safe-v4-merge-writeback.mjs
           node --check tests/cloud/etest-m1m3-pilot-preflight.mjs
+          node --check tests/cloud/etest-multi-device-pilot.mjs
           node --check scripts/release-readiness.mjs
           npx playwright test --list --config=tests/e2e/etest-three-device-auto-fork.config.ts
       - name: Lint cloud sync code

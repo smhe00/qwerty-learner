@@ -1,17 +1,22 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 
 /**
- * Hard BLACK-BOX criterion: actual Learn UI; 3 isolated Chromium contexts;
- * B/C offline for independent branch creation, then staggered reconnect.
- * No manual Sync, reload, direct snapshot mutation, or merge API calls.
- * Deliberately FAILS until M2/M4 automatically adopt all immutable attempts.
+ * HARD single-active-session E2E: three real browser profiles independently
+ * learn while offline, then reconnect together. Only the LAST valid token
+ * may use cloud until the other devices explicitly reauthenticate.
+ *
+ * Reauth is permissible; manual Sync, direct merge APIs, test writes to
+ * IndexedDB or forced page reloads to trigger sync are NOT.
+ *
+ * Fails until complete automatic full-V4 local adoption & writeback works.
  */
 const base = process.env.QWERTY_SYNC_BASE_URL ?? ''
-const origin = 'https://etest.edgeone.dev'
-const uuidV4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-type RecordRow = { id: number; attemptId: string; dict: string; word: string; timeStamp: number }
+const expectedOrigin = 'https://etest.edgeone.dev'
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-async function records(page: Page): Promise<RecordRow[]> {
+type Event = { id: number; attemptId: string; dict: string; word: string; timeStamp: number }
+
+async function records(page: Page): Promise<Event[]> {
   return page.evaluate(async () => {
     const request = indexedDB.open('RecordDB')
     const db = await new Promise<IDBDatabase>((ok, fail) => {
@@ -19,42 +24,45 @@ async function records(page: Page): Promise<RecordRow[]> {
       request.onerror = () => fail(request.error)
     })
     try {
-      const req = db.transaction('wordRecords', 'readonly').objectStore('wordRecords').getAll()
-      return await new Promise<RecordRow[]>((ok, fail) => {
-        req.onsuccess = () => ok(req.result as RecordRow[])
+      const req = db.transaction('wordRecords', 'readonly')
+        .objectStore('wordRecords').getAll()
+      return await new Promise<Event[]>((ok, fail) => {
+        req.onsuccess = () => ok(req.result as Event[])
         req.onerror = () => fail(req.error)
       })
     } finally { db.close() }
   })
 }
-async function jsonApi(path: string, method: string, body: object, token?: string) {
+async function api(path: string, method: string, input: object, token?: string) {
   const response = await fetch(new URL(path, base), {
     method, redirect: 'error', cache: 'no-store',
     headers: { 'Content-Type': 'application/json',
       ...(token ? { Authorization: 'Bearer ' + token } : {}) },
-    body: JSON.stringify(body), signal: AbortSignal.timeout(40_000),
+    body: JSON.stringify(input),
+    signal: AbortSignal.timeout(40_000),
   })
-  const result = await response.json()
-  return { status: response.status, body: result }
+  return { status: response.status, body: await response.json() }
 }
-async function loginUi(page: Page, username: string, password: string) {
+async function openAccount(page: Page, username: string, password: string) {
   await page.goto(new URL('/?s1-account=manage', base).href,
     { waitUntil: 'domcontentloaded' })
   const dialog = page.getByRole('dialog', { name: '安全账户管理（S1）' })
-  await expect(dialog).toBeVisible({ timeout: 45_000 })
+  await expect(dialog).toBeVisible({ timeout: 55_000 })
   await page.getByPlaceholder('用户名').fill(username)
   await page.getByPlaceholder('账户密码').fill(password)
-  page.on('dialog', async confirm => {
-    await confirm.accept()
-  })
-  await page.getByRole('button', { name: '登录已有账户' }).click()
-  await expect.poll(() => page.evaluate(() => {
-    const auth = localStorage.getItem('qwerty.cloudAuth.v1')
-    return auth ? JSON.parse(auth)?.user?.username : null
+  page.on('dialog', d => d.accept())
+  const reauth = page.getByRole('button', { name: '重新登录当前账户' })
+  const signIn = page.getByRole('button', { name: '登录已有账户' })
+  if (await reauth.isVisible().catch(() => false)) await reauth.click()
+  else await signIn.click()
+  await expect.poll(async () => page.evaluate(() => {
+    const raw = localStorage.getItem('qwerty.cloudAuth.v1')
+    const item = raw ? JSON.parse(raw) : null
+    return item?.user?.username ?? null
   }).catch(() => null), { timeout: 60_000 }).toBe(username)
   await expect(page.getByText('学习数据安全检查未通过')).toHaveCount(0)
 }
-async function launchLearn(page: Page) {
+async function beginLearn(page: Page) {
   await page.goto(new URL('/learn', base).href, { waitUntil: 'domcontentloaded' })
   const start = page.getByRole('button', { name: '开始 Learn', exact: true })
   await expect(start).toBeVisible({ timeout: 35_000 })
@@ -65,104 +73,127 @@ async function launchLearn(page: Page) {
   expect(spelling).toBeTruthy()
   return spelling!
 }
-async function studyOne(page: Page, spelling: string) {
-  const oldIds = new Set((await records(page)).map(r => r.attemptId))
+async function study(page: Page, spelling: string): Promise<Event> {
+  const seen = new Set((await records(page)).map(r => r.attemptId))
   if (await page.getByText('按任意键开始').isVisible().catch(() => false)) {
     await page.keyboard.press('a')
   }
   await page.keyboard.type(spelling)
-  let created: RecordRow | undefined
+  let added: Event | undefined
   await expect.poll(async () => {
-    created = (await records(page)).find(r => r.attemptId && !oldIds.has(r.attemptId))
-    return created?.attemptId ?? null
-  }, { timeout: 45_000 }).not.toBeNull()
-  expect(created?.attemptId).toMatch(uuidV4)
-  return created!
+    added = (await records(page)).find(r => r.attemptId && !seen.has(r.attemptId))
+    return added?.attemptId ?? null
+  }, { timeout: 50_000 }).not.toBeNull()
+  expect(added?.attemptId).toMatch(uuid)
+  return added!
+}
+async function authStatus(page: Page) {
+  return page.evaluate(async () => {
+    const raw = localStorage.getItem('qwerty.cloudAuth.v1')
+    const token = raw ? JSON.parse(raw)?.token : null
+    if (!token) return { status: 0, error: 'no-token' }
+    const res = await fetch('/api/auth/me', {
+      headers: { Authorization: 'Bearer ' + token },
+      cache: 'no-store',
+    })
+    const body = await res.json()
+    return { status: res.status, error: body.error || null }
+  })
+}
+async function assertDurable(page: Page, event: Event) {
+  const rows = (await records(page)).filter(x => x.attemptId === event.attemptId)
+  expect(rows).toHaveLength(1)
+  expect(rows[0].dict).toBe(event.dict)
+  expect(rows[0].word).toBe(event.word)
+  expect(rows[0].timeStamp).toBe(event.timeStamp)
 }
 
-test('three-device offline B/C forks automatically converge through true UI', async ({ browser }) => {
-  test.setTimeout(390_000)
+test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 adoption', async ({ browser }) => {
+  test.setTimeout(700_000)
   expect(process.env.GITHUB_REF_NAME).toBe('edgeone-test')
-  expect(new URL(base).origin).toBe(origin)
-  expect(process.env.GITHUB_RUN_ID).toMatch(/^[0-9]+$/)
+  expect(new URL(base).origin).toBe(expectedOrigin)
+  expect(process.env.GITHUB_RUN_ID).toMatch(/^\d+$/)
   const username = 'e2e_fork_' + process.env.GITHUB_RUN_ID + '_' +
     (process.env.GITHUB_RUN_ATTEMPT || '1')
   const password = 'E2E-' + crypto.randomUUID() + '-test'
   const contexts: BrowserContext[] = []
-  let accountId: string | undefined
+  let userId: string | undefined
   try {
-    const registration = await jsonApi('/api/auth/register', 'POST', {
+    const newAccount = await api('/api/auth/register', 'POST', {
       username, password, deviceId: 'qwerty-web-' + crypto.randomUUID(),
     })
-    expect(registration.status).toBe(201)
-    accountId = registration.body.user?.userId
-    expect(accountId).toBeTruthy()
+    expect(newAccount.status).toBe(201)
+    userId = newAccount.body.user?.userId
+    expect(userId).toBeTruthy()
     const pages: Page[] = []
     for (let i = 0; i < 3; i++) {
-      const context = await browser.newContext({ serviceWorkers: 'block' })
-      contexts.push(context)
-      const page = await context.newPage()
-      pages.push(page)
-      await loginUi(page, username, password)
+      const ctx = await browser.newContext({ serviceWorkers: 'block' })
+      contexts.push(ctx)
+      pages.push(await ctx.newPage())
     }
-    const authMode = await pages[0].evaluate(async () =>
-      (await (await fetch('/api/health', { cache: 'no-store' })).json()).authMode)
-    expect(authMode).toBe('independent-device-sessions-pilot')
-    const words = []
-    for (const page of pages) words.push(await launchLearn(page))
-    expect((await Promise.all(pages.map(records))).map(r => r.length))
-      .toEqual([0, 0, 0])
-    // REAL browser network isolation, not synthetic skip of fetch calls.
-    await contexts[1].setOffline(true)
-    await contexts[2].setOffline(true)
-    const branchA = await studyOne(pages[0], words[0])
-    const branchB = await studyOne(pages[1], words[1])
-    const branchC = await studyOne(pages[2], words[2])
-    const oracle = new Map([branchA, branchB, branchC].map(x => [x.attemptId, x]))
-    expect(oracle.size).toBe(3)
-    const finalIds = [...oracle.keys()].sort()
-    for (let i = 0; i < 3; i++) {
-      const local = await records(pages[i])
-      expect(local.some(r => r.attemptId === [branchA, branchB, branchC][i].attemptId))
-        .toBe(true)
+    // Production policy: signing in on B invalidates A; signing in on C
+    // invalidates B. Each learns while OFFLINE with its own durable RecordDB.
+    const health = await pages[0].request.get(new URL('/api/health', base).href)
+    expect((await health.json()).authMode).toBe('single-active-session')
+    const branches: Event[] = []
+    for (let i = 0; i < pages.length; i++) {
+      await openAccount(pages[i], username, password)
+      const spelling = await beginLearn(pages[i])
+      await contexts[i].setOffline(true)
+      branches.push(await study(pages[i], spelling))
+      await assertDurable(pages[i], branches[i])
     }
-    // No manual sync, reload, login or test code calling application internals.
-    await contexts[1].setOffline(false)
-    await expect.poll(async () =>
-      (await records(pages[1])).some(r => r.attemptId === branchA.attemptId),
-      { timeout: 150_000 }).toBe(true)
-    await contexts[2].setOffline(false)
-    await Promise.all(pages.map(async (page, i) => {
-      await expect.poll(async () =>
-        (await records(page)).filter(r => oracle.has(r.attemptId))
-          .map(r => r.attemptId).sort(),
-        { timeout: 180_000, message: 'device ' + i + ' no automatic convergence' })
-        .toEqual(finalIds)
-    }))
-    for (const page of pages) {
-      const final = await records(page)
-      for (const [id, original] of oracle) {
-        const one = final.filter(row => row.attemptId === id)
-        expect(one).toHaveLength(1)
-        expect(one[0].dict).toBe(original.dict)
-        expect(one[0].word).toBe(original.word)
-        expect(one[0].timeStamp).toBe(original.timeStamp)
+    expect(new Set(branches.map(x => x.attemptId)).size).toBe(3)
+    // All three reconnect simultaneously, but only C has a valid cloud
+    // session. Revoked A/B MUST NOT upload or erase their local branches.
+    await Promise.all(contexts.map(ctx => ctx.setOffline(false)))
+    for (let i = 0; i < 2; i++) {
+      await expect.poll(async () => (await authStatus(pages[i])).error,
+        { timeout: 25_000 }).toBe('session_revoked')
+      await assertDurable(pages[i], branches[i])
+    }
+    expect((await authStatus(pages[2])).status).toBe(200)
+
+    // From here onward the ONLY permitted user action is to reauthenticate
+    // the old session when it needs cloud access. No manual Sync is clicked.
+    const expected = branches.map(r => r.attemptId).sort()
+    for (const i of [0, 1, 2, 0, 1, 2]) {
+      await openAccount(pages[i], username, password)
+      await expect.poll(async () => (await authStatus(pages[i])).status,
+        { timeout: 20_000 }).toBe(200)
+      // The last relogin must see the complete preserved event union.
+      if (i === 2) {
+        await expect.poll(async () => {
+          const rows = await records(pages[i])
+          return rows.filter(r => expected.includes(r.attemptId))
+            .map(r => r.attemptId).sort()
+        }, {
+          timeout: 150_000,
+          message: 'full-V4 automatic convergence after single-session handoff',
+        }).toEqual(expected)
       }
+      await assertDurable(pages[i], branches[i])
     }
-    console.log('PASS black-box: 3 real Learn devices, offline forks and zero-click convergence')
+    // Every previously reauthenticated device must retain its own WordRecord.
+    // Sync completion is only proven by the exact full union on the final
+    // active client; a server M3 event witness alone cannot pass this test.
+    for (let i = 0; i < pages.length; i++) {
+      await assertDurable(pages[i], branches[i])
+    }
+    console.log('PASS: single-session three offline forks auto-merged after staged reauth')
   } finally {
     await Promise.allSettled(contexts.map(ctx => ctx.close()))
-    if (accountId) {
-      // Cleanup requires fresh credentials and exact disposable account owner.
-      expect(username).toMatch(/^e2e_fork_[0-9]+_[0-9]+$/)
-      const login = await jsonApi('/api/auth/login', 'POST',
-        { username, password, deviceId: 'qwerty-web-' + crypto.randomUUID() })
-      expect(login.status).toBe(200)
-      expect(login.body.user?.userId).toBe(accountId)
-      const deleted = await jsonApi('/api/auth/account', 'DELETE',
-        { currentPassword: password }, login.body.token)
-      expect(deleted.status).toBe(200)
-      expect(deleted.body.deleted?.accountDeleted).toBe(true)
+    if (userId) {
+      expect(username).toMatch(/^e2e_fork_\d+_\d+$/)
+      const fresh = await api('/api/auth/login', 'POST', {
+        username, password, deviceId: 'qwerty-web-' + crypto.randomUUID(),
+      })
+      expect(fresh.status).toBe(200)
+      expect(fresh.body.user?.userId).toBe(userId)
+      const removed = await api('/api/auth/account', 'DELETE',
+        { currentPassword: password }, fresh.body.token)
+      expect(removed.status).toBe(200)
+      expect(removed.body.deleted?.accountDeleted).toBe(true)
     }
   }
 })

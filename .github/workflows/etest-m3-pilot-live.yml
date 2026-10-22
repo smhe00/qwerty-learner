@@ -1,4 +1,4 @@
-name: etest M1+M3 Real Multi-Device Pilot
+name: etest Single-Session M3 Device Relay
 on:
   push:
     branches: [edgeone-test]
@@ -24,7 +24,7 @@ jobs:
           EXPECTED_SHA: ${{ github.sha }}
           EDGEONE_WAIT_MS: '600000'
         run: node scripts/verify-edgeone-source.mjs
-      - name: Require branch-matched backend M1+M3 pilot before account creation
+      - name: Require branch-matched single-session backend before account creation
         run: node tests/cloud/etest-m1m3-pilot-preflight.mjs
-      - name: Two independent logins and exact immutable Blob receipts
+      - name: A to B to A login relay and exact immutable Blob receipts
         run: node tests/cloud/etest-multi-device-pilot.mjs

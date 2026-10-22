@@ -1,5 +1,5 @@
-name: etest Three-Device Automatic Fork E2E
-# Only staging. All 3 live Browser RecordDBs must auto-converge.
+name: etest Single-Session Three-Device Offline Relay E2E
+# Only staging. Sequential login, 3 offline branches, automatic V4 reconciliation after reauth.
 on:
   push:
     branches: [edgeone-test]
@@ -30,13 +30,13 @@ jobs:
           EXPECTED_SHA: ${{ github.sha }}
           EDGEONE_WAIT_MS: '600000'
         run: node scripts/verify-edgeone-source.mjs
-      - name: Verify exact backend M1+M3 pilot before account creation
+      - name: Verify exact single-session backend before account creation
         run: node tests/cloud/etest-m1m3-pilot-preflight.mjs
       - name: Install browser
         run: |
           yarn install --frozen-lockfile
           npx playwright install --with-deps chromium
-      - name: Three real Learn profiles offline fork and zero-click converge
+      - name: Three real Learn profiles offline fork, reauth and auto reconcile
         run: npx playwright test --config=tests/e2e/etest-three-device-auto-fork.config.ts
       - name: Retain redacted failure evidence only
         if: always()
