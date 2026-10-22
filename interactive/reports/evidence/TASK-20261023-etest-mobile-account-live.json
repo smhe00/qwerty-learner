@@ -1,0 +1,15 @@
+{
+  "expected": "c187c73ee4fd9ff25fbb133d5c2be1768ecae2f2",
+  "startedAt": "2026-10-22T22:26:54.382Z",
+  "registered": true,
+  "login": true,
+  "logout": true,
+  "cleanup": true,
+  "marker": "c187c73",
+  "authMode": "single-active-session",
+  "registrationAttempted": true,
+  "attemptedUsername": "e2e_mob_1792708014799_932fb9",
+  "testUsername": "e2e_mob_1792708014799_932fb9",
+  "status": "PASS",
+  "finishedAt": "2026-10-22T22:27:05.485Z"
+}

@@ -1,7 +1,7 @@
 ---
 protocol_version: "1.1"
 task_id: "TASK-20261023-etest-mobile-account-routes"
-status: "IN_PROGRESS"
+status: "REVIEW"
 executor: "Codex (independent mobile UI / staging verification)"
 target_branch: "product/main"
 claim_base_commit: "28d8b3bf86cbf42facb24bf091a50151c404e21f"
@@ -44,11 +44,17 @@ release_to_master: false
 
 本次不重造 S1/认证/云同步，也不改后端开关。前一修复的手机账号 11/11 已通过，当前改动只涉及 HTML 路由、构建出口与测试/CI。
 
-## 剩余动作（本检查点尚未完成）
+## etest 现场验收（手机账号范围已完成）
 
-1. 正常推送 product/main，等待最终同 SHA Cloud + Pages + Admission；不得把本地通过写成远端已绿。
-2. 同 SHA 正常快进 edgeone-test，再读取真正部署的 source marker。
-3. 在手机尺寸独立 profile 用唯一临时用户名/随机密码测试真实注册、退出、重新登录、/auth/me 身份确认；密码仅在进程内存、不录 trace/视频/截图。删除只由本测试确认创建的账号，并验证新登录被拒绝；不盲重试注册或未知结果的删除。
-4. 单独记录旧候选真实 V4 transport / M1M3 等失败，不将手机账号通过称为完整云同步已通过；master 不发布。
+- 最终验收候选 c187c73ee4fd9ff25fbb133d5c2be1768ecae2f2，包含上述源码修复及本报告初始检查点。Cloud Sync Gate [39864212948](https://github.com/smhe00/qwerty-learner/actions/runs/39864212948)、Pages [39864212911](https://github.com/smhe00/qwerty-learner/actions/runs/39864212911)、Admission [39864212825](https://github.com/smhe00/qwerty-learner/actions/runs/39864212825) 同 SHA 均 SUCCESS，实际 Pages marker 完整匹配后才正常快进 edgeone-test：28d8b3bf → c187c73e。
+- 实际 etest marker 为 c187c73（严格匹配候选前缀）。手机尺寸独立 Chrome profile，真实同源 API，无路由 mock，完成注册 → 手机首页显示正确用户名 → 安全退出回匿名 → 重新登录 → /api/auth/me 与不可变 userId 一致。
+- 注册使用随机唯一 fixture 身份，HTTP 201 回执确认创建后才允许清理。注册没有复制原学习资料，整个 profile 为临时空白数据。密码只在进程内存，异常消息脱敏，未开启 trace、视频或截图。
+- 账号测试全过程 PASS，约 11 秒；结束时用本 fixture 的凭据重新确认身份，DELETE 只执行一次且响应成功，再确认新登录返回 401 / invalid_credentials，cleanup=true。没有遗留本次临时账号，也没有操作用户真实账号。
+- 脱敏实测结果已保存到 interactive/reports/evidence/TASK-20261023-etest-mobile-account-live.json（无密码、token 或用户学习数据）。
+- 当前 backend authMode 是 single-active-session。手机单账号验证成功不等于 M1/M3 多设备认证或自动收敛已完成。独立的 etest M1M3 / 三设备 E2E 在检查 backend pilot，Branch EdgeOne Cloud E2E 仍执行中；不得报告全部云测试通过。Safe V4 Writeback Pilot 同候选运行 39864673627 已成功，其他结果另按实际 CI 状态核对。
 
-状态 IN_PROGRESS。继续者可检查 .review-test/etest-mobile-account-live-result.json（无密码）和对应 GitHub E2E run。分支推进和临时账号清理结果必须按实际事实补充。
+## 最终交付边界
+
+状态 REVIEW。手机登录入口和真实账号流程已验证，可从 https://etest.edgeone.dev/mobile/account 试用。master 始终未改，仍为 6d7839b9a9fd7a31459a19aeca948227b1f7b3c2。此报告/证据的完成记录另行提交 product/main，**不为纯报告再次推进 etest 触发 Maker 构建**；etest 固定为实际验收的 c187c73e，主线与该候选应用源码一致，仅 interactive 交付记录向前。
+
+后续完整云同步和任何 master 发布仍需按最终候选重新核对既有门禁与明确发布授权。CURRENT_TASK 归属保留，不对并行同步实现作额外修改。阻塞依赖 None（手机账号范围）。

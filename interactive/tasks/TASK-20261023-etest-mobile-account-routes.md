@@ -1,7 +1,7 @@
 ---
 protocol_version: "1.1"
 task_id: "TASK-20261023-etest-mobile-account-routes"
-status: "IN_PROGRESS"
+status: "REVIEW"
 executor: "Codex (independent mobile UI / staging verification)"
 target_branch: "product/main"
 claim_base_commit: "28d8b3bf86cbf42facb24bf091a50151c404e21f"
