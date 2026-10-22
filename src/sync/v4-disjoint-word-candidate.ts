@@ -2,19 +2,24 @@
  * M2.13: disjoint-word, COMPLETE Backup V4 candidate (read-only).
  *
  * A word-level independent edit is not a workspace-wide conflict. This
- * narrow admission permits two clients to append attempts for DIFFERENT
- * words with origin-local colliding Dexie primary keys, and to update each
- * word's own persisted scheduler state independently.
+ * narrow admission permits two clients to append attempts, including for
+ * the SAME word, with origin-local colliding Dexie primary keys. Every
+ * independently identified attempt is kept and chronologically replayed.
  *
  * Strict constraints: externally authenticated common ancestor; base rows
  * immutable; no changes to chapter, review-session, achievement tables or
- * daily sessions; no overlapping edited word; no legacy NEW attempt; no
- * unproven scheduler-only update. Four untouched tables are kept EXACTLY.
+ * daily sessions; no legacy NEW attempt; no unproven scheduler-only update.
+ * For overlapping words, all history must have UUID, be replayable and
+ * agree with each device's persisted review-count evidence.
+ * Four untouched tables are kept EXACTLY.
  *
  * Without replay verified against the actual device event heads and
  * journaled M4 admission, this is a candidate, never permission to publish.
  */
+import { rebuildActiveFsrsStateFromWordRecords } from '@/review/fsrs/active'
 import type { IReviewWordState } from '@/review/types'
+import type { IWordRecord } from '@/utils/db/record'
+import { projectUuidLearningConvergence } from './v4-event-convergence'
 import { isLearningAttemptId } from '@/utils/db/attempt-identity'
 import { previewConservativeThreeWayV4 } from './v4-conservative-three-way'
 import { inspectPinnedV4FastForward } from './v4-fast-forward-preview'
@@ -46,6 +51,7 @@ export type DisjointWordV4Candidate =
       localNewAttempts: number
       remoteNewAttempts: number
       updatedWordStates: number
+      chronologicallyReplayedWords: number
       requiresFullFsrsAndCloudAdmission: true }
 
 function blocked(reason: string): DisjointWordV4Candidate {
@@ -128,6 +134,12 @@ function withoutId(value: Row | undefined): string {
 function isStateChange(base: Row | undefined, changed: Row | undefined): boolean {
   return withoutId(base) !== withoutId(changed)
 }
+/** Derived, origin-local scheduler hints do not identify the original study. */
+function immutableAttempt(row: Row): string {
+  const { id: _id, fsrsShadow: _fsrsShadow,
+    reviewPolicyShadow: _policyShadow, ...evidence } = row
+  return json(evidence)
+}
 function validateSchedulerRow(row: Row, word: string): void {
   const state = row as unknown as IReviewWordState
   if (state.schedulerState?.kind !== 'fsrs6' ||
@@ -178,7 +190,8 @@ export async function previewDisjointWordV4(input: {
     const touched: Record<Source, Set<string>> = {
       local: new Set<string>(), remote: new Set<string>(),
     }
-    const attempts = new Set<string>()
+    const attempts = new Map<string, string>()
+    const originalIds = new Set<string>()
     for (const row of baseWords) {
       wordKey(row)
       if (row.attemptId !== undefined) {
@@ -186,19 +199,27 @@ export async function previewDisjointWordV4(input: {
             attempts.has(row.attemptId)) {
           return blocked('disjoint-invalid-ancestor-attempt-id')
         }
-        attempts.add(row.attemptId)
+        attempts.set(row.attemptId, immutableAttempt(row))
+        originalIds.add(row.attemptId)
       }
     }
     for (const origin of ['local', 'remote'] as const) {
       for (const row of additions[origin]) {
         const k = wordKey(row)
         if (!isLearningAttemptId(row.attemptId) ||
-            attempts.has(row.attemptId) ||
             !Number.isSafeInteger(row.timeStamp) ||
             (row.timeStamp as number) < 0) {
           return blocked('disjoint-unverified-new-attempt')
         }
-        attempts.add(row.attemptId)
+        if (originalIds.has(row.attemptId)) {
+          return blocked('disjoint-ancestor-uuid-reused')
+        }
+        const evidence = immutableAttempt(row)
+        if (attempts.has(row.attemptId) &&
+            attempts.get(row.attemptId) !== evidence) {
+          return blocked('disjoint-contradictory-attempt')
+        }
+        attempts.set(row.attemptId, evidence)
         touched[origin].add(k)
       }
     }
@@ -229,9 +250,18 @@ export async function previewDisjointWordV4(input: {
         updates[origin].set(k, after)
       }
     }
-    for (const k of touched.local) {
-      if (touched.remote.has(k)) {
-        return blocked('disjoint-overlapping-word:' + k)
+    const overlapping = [...touched.local].filter(k => touched.remote.has(k))
+    // Never treat two distinct UUIDs as a duplicate merely because they
+    // review the same word within a minute or share an old FSRS base digest.
+    for (const k of overlapping) {
+      const localRows = table(local, 'wordRecords').rows.filter(r => wordKey(r) === k)
+      const remoteRows = table(remote, 'wordRecords').rows.filter(r => wordKey(r) === k)
+      const replay = projectUuidLearningConvergence({
+        local: localRows as IWordRecord[],
+        remote: remoteRows as IWordRecord[],
+      })
+      if (replay.status !== 'projected' || replay.words.length !== 1) {
+        return blocked('disjoint-overlap-unreplayable:' + replay.reason)
       }
     }
     // Existing conservative three-way logic handles UI settings and
@@ -254,13 +284,55 @@ export async function previewDisjointWordV4(input: {
     // remain valid. New origin-local numeric IDs are never blindly copied.
     let maxWordId = Math.max(0, ...baseIds.keys())
     const mergedWords = structuredClone(baseWords)
+    const mergedAttemptIds = new Set(baseWords.map(r => r.attemptId)
+      .filter((id): id is string => typeof id === 'string'))
     for (const row of [...additions.local, ...additions.remote]
       .sort((a, b) => (a.timeStamp as number) - (b.timeStamp as number) ||
         compare(String(a.attemptId), String(b.attemptId)))) {
+      if (mergedAttemptIds.has(row.attemptId as string)) continue
       mergedWords.push(cloneWithNewId(row, ++maxWordId))
+      mergedAttemptIds.add(row.attemptId as string)
     }
     for (const source of ['local', 'remote'] as const) {
-      for (const [k, state] of updates[source]) chosenStates.set(k, state)
+      for (const [k, state] of updates[source]) {
+        if (!overlapping.includes(k)) chosenStates.set(k, state)
+      }
+    }
+    for (const k of overlapping) {
+      const mergedHistory = mergedWords.filter(r => wordKey(r) === k)
+      const [dict, word] = JSON.parse(k) as [string, string]
+      const hasReview = mergedHistory.some(r =>
+        r.chapter === -1 && r.reviewRatingDecision &&
+        (r.reviewRatingDecision as { eligible?: boolean }).eligible === true)
+      // A complete, pinned history can be replayed, but missing or legacy
+      // evidence must not manufacture a new durable FSRS state.
+      const sorted = [...mergedHistory].sort((a,b) =>
+        (a.timeStamp as number) - (b.timeStamp as number) ||
+        compare(String(a.attemptId), String(b.attemptId)))
+      const replayed = rebuildActiveFsrsStateFromWordRecords(
+        dict, word, sorted as IWordRecord[])
+      if (hasReview && (!replayed || replayed.reviewCount === 0)) {
+        return blocked('disjoint-overlap-missing-fsrs-history')
+      }
+      const before = baseStates.get(k)
+      if (before && (before.lifecycle === 'excluded' || before.exclusion)) {
+        return blocked('disjoint-overlap-excluded-state')
+      }
+      for (const source of ['local','remote'] as const) {
+        const sourceRows = table(input[source], 'wordRecords').rows
+          .filter(r => wordKey(r) === k)
+        const originReplay = rebuildActiveFsrsStateFromWordRecords(
+          dict, word, sourceRows as IWordRecord[])
+        const stored = stateByKey(table(input[source], 'reviewWordStates').rows).get(k)
+        if (stored && (
+          !originReplay ||
+          stored.reviewCount !== originReplay.reviewCount ||
+          (stored.lastOutcome !== undefined &&
+            stored.lastOutcome !== originReplay.lastOutcome))) {
+          return blocked('disjoint-overlap-unverified-device-fsrs:' + source)
+        }
+      }
+      if (replayed) chosenStates.set(k, replayed as unknown as Row)
     }
     const stateRows = [...chosenStates.entries()].sort(([a], [b]) =>
       compare(a, b))
@@ -287,6 +359,7 @@ export async function previewDisjointWordV4(input: {
       localNewAttempts: additions.local.length,
       remoteNewAttempts: additions.remote.length,
       updatedWordStates: updates.local.size + updates.remote.size,
+      chronologicallyReplayedWords: overlapping.length,
       requiresFullFsrsAndCloudAdmission: true,
     }
   } catch (error) {
