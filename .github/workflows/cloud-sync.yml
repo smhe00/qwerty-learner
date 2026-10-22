@@ -8,6 +8,8 @@ on:
       - 'cloud-functions/**'
       - 'tests/cloud/**'
       - 'src/sync/**'
+      - 'src/index.tsx'
+      - 'src/utils/db/record.ts'
       - 'src/utils/backup.ts'
       - 'src/utils/db/index.ts'
       - 'src/utils/db/data-export.ts'
