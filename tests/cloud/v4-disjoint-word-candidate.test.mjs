@@ -203,6 +203,54 @@ test('re-upload of same independently identified attempt once per device is idem
   assert.equal(rows(p.candidate,'wordRecords').length,2)
   assert.equal(rows(p.candidate,'wordRecords')[1].attemptId,uuid(2))
 })
+const daily = (dict, marker = 1) => ({
+  version:1,sessionId:dict+':2026-10-22:'+marker,
+  dict,dateKey:'2026-10-22',startedAt:1800000000+marker,
+  status:'active',dailyNewTarget:1,plannedNewWords:1,
+  plannedReviewWords:[],carryOverAcquisitionWords:[],
+  accumulatedActiveSeconds:0,completedBlockIds:[],blockCount:0,
+})
+test('different dictionaries can merge independently changed DailySession plans', async()=>{
+  const a=snap(),l=structuredClone(a),r=structuredClone(a)
+  l.workspaceData.learnRuntime.dailySessions.school=daily('school')
+  r.workspaceData.learnRuntime.dailySessions.cet4=daily('cet4')
+  rows(l,'wordRecords').push(record('banana',2,uuid(2)))
+  rows(r,'wordRecords').push(record('cherry',2,uuid(3),{dict:'cet4'}))
+  const result=await inspect(a,l,r)
+  assert.equal(result.status,'projected',result.reason)
+  assert.deepEqual(Object.keys(result.candidate.workspaceData.learnRuntime.dailySessions),
+    ['cet4','school'])
+  assert.equal(rows(result.candidate,'wordRecords').length,3)
+  const swapped=await inspect(a,r,l)
+  assert.equal(swapped.status,'projected',swapped.reason)
+  assert.equal(swapped.candidateFingerprint,result.candidateFingerprint)
+})
+test('divergent DailySessions for the same dictionary block rather than select a winner',async()=>{
+  const a=snap(),l=structuredClone(a),r=structuredClone(a)
+  l.workspaceData.learnRuntime.dailySessions.school=daily('school',1)
+  r.workspaceData.learnRuntime.dailySessions.school=daily('school',2)
+  const result=await inspect(a,l,r)
+  assert.equal(result.status,'blocked')
+  assert.equal(result.reason,'disjoint-daily-session-conflict:school')
+})
+test('one-sided DailySession must not erase opposite-device activity in its dictionary',async()=>{
+  const a=snap(),l=structuredClone(a),r=structuredClone(a)
+  l.workspaceData.learnRuntime.dailySessions.school=daily('school')
+  rows(r,'wordRecords').push(record('banana',2,uuid(2)))
+  const result=await inspect(a,l,r)
+  assert.equal(result.status,'blocked')
+  assert.equal(result.reason,'disjoint-daily-session-conflict:school')
+})
+test('deleting ancestor DailySession must not be inferred from an absent key',async()=>{
+  const a=snap()
+  a.workspaceData.learnRuntime.dailySessions.school=daily('school')
+  const l=structuredClone(a),r=structuredClone(a)
+  delete l.workspaceData.learnRuntime.dailySessions.school
+  const result=await inspect(a,l,r)
+  assert.equal(result.status,'blocked')
+  assert.equal(result.reason,'disjoint-daily-session-removal-unverified:school')
+})
+
 test('same word study facts with different scores and no 60s conflict are never dropped', async () => {
   const a = snap(), l = structuredClone(a), r = structuredClone(a)
   const g = record('apple',2,uuid(2),{ chapter:-1,
