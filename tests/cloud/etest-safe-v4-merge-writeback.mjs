@@ -177,6 +177,51 @@ async function upload(token, baseRevision, snapshot, fingerprint) {
   throw Error('unreachable direct upload state')
 }
 
+/**
+ * A stale V4 POST may fail BEFORE BODY PARSING on Maker with the specific
+ * v4_direct_body_read_failed code instead of reaching the revision CAS.
+ * Because the server raises that code before putSyncV4Binary, retrying
+ * EXACTLY the same bytes is safe ONLY after remote SHA/revision is reread.
+ * Unknown 5xx/timeouts are never replayed. No new mutation is authorized.
+ */
+async function proveStaleForkRejected(token, staleRevision, local, expectedRevision, expectedSha) {
+  const bytes = gzipSync(Buffer.from(JSON.stringify(local)))
+  const localSha = checksumStable(local)
+  assert.equal(verifyCompressedV4(bytes, userId, localSha).logicalFingerprint,
+    localSha, 'stale study evidence remains fully parseable')
+  const headers = {
+    'Content-Type': 'application/octet-stream',
+    'X-Qwerty-Payload-Sha256': checksum(bytes),
+    'X-Qwerty-Base-Revision': String(staleRevision),
+    'X-Qwerty-Logical-Fingerprint': localSha,
+  }
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const result = await api('/api/sync/v2/binary/direct',
+      token, 'POST', bytes, headers)
+    if (result.status === 409) {
+      await visibleRevision(token, expectedRevision, expectedSha)
+      return
+    }
+    if (result.status === 503 &&
+        result.response?.error === 'v4_direct_body_read_failed') {
+      // Specific, independently verified PRE-WRITE failure. This cannot
+      // substitute for a successful CAS; confirm exact remote bytes intact.
+      await visibleRevision(token, expectedRevision, expectedSha)
+      const pinned = await readPinned(token, expectedRevision, expectedSha)
+      assert.equal(checksumStable(pinned), expectedSha)
+      if (attempt < 3) {
+        console.log('Stale revision CAS pre-read 503, exact remote preserved; bounded identical retry', attempt)
+        await sleep(850 * attempt)
+        continue
+      }
+      throw Error('Stale CAS not observed: repeated provable pre-write EdgeOne 503, no data overwritten')
+    }
+    throw Error('Unsafe or ambiguous stale V4 POST response HTTP ' + result.status +
+      ' code=' + String(result.response?.error ?? 'unknown'))
+  }
+  throw Error('Stale fork CAS not verified')
+}
+
 let user = null, userId = null, failure = null
 try {
   await Promise.all([
@@ -498,8 +543,7 @@ try {
       deviceId: user.secondDevice }), { 'Content-Type': 'application/json' }),
   200, 'offline fork B reconnect')
   user.secondToken = loginForkB.token
-  const rejectedB = await upload(user.secondToken, 7, bFork, frozenForkB)
-  assert.equal(rejectedB.status, 409, 'offline fork B must never overwrite A')
+  await proveStaleForkRejected(user.secondToken, 7, bFork, 8, aForkSha)
   await visibleRevision(user.secondToken, 8, aForkSha)
   assert.equal(checksumStable(bFork), frozenForkB,
     'failed stale commit must not destroy B local evidence')
@@ -526,8 +570,7 @@ try {
   200, 'offline third device C reconnect')
   assert.equal(loginForkC.user.userId, userId)
   const tokenC = loginForkC.token
-  const rejectedC = await upload(tokenC, 7, cFork, frozenForkC)
-  assert.equal(rejectedC.status, 409, 'third stale fork C cannot erase A+B')
+  await proveStaleForkRejected(tokenC, 7, cFork, 9, mergeAB.candidateFingerprint)
   await visibleRevision(tokenC, 9, mergeAB.candidateFingerprint)
   assert.equal(checksumStable(cFork), frozenForkC,
     'C local pending history remains byte-for-byte unchanged')
