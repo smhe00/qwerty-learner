@@ -73,6 +73,65 @@ async function context(browser: Browser, server: SessionServer) {
   return ctx
 }
 
+test('revoked device can reauthenticate same account without losing offline records', async ({ browser }) => {
+  const server = new SessionServer()
+  const a = await context(browser, server)
+  const b = await context(browser, server)
+  try {
+    const pageA = await setupAccount(a, TOKEN_A, true)
+    const pageB = await setupAccount(b, TOKEN_B, false)
+    await pageA.goto('/')
+    // B becomes sole valid session; the stale A must retain its IDB data.
+    const signed = await pageB.evaluate(async () =>
+      (await fetch('/api/auth/login', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'revocation-test', password: 'testing' }),
+      })).json())
+    expect(signed.token).toBe(TOKEN_B)
+    await pageA.waitForTimeout(5500)
+    await pageA.bringToFront()
+    const alert = pageA.getByRole('alertdialog')
+    await expect(alert).toBeVisible({ timeout: 25_000 })
+    await expect(alert).toContainText('原账号的学习记录仍安全保留')
+    await alert.getByRole('button', { name: '重新登录当前账号并继续' }).click()
+
+    // S1 account reauth happens pre-mount and MUST NOT stage an
+    // account-to-anonymous transaction or discard local WorkSpace V4.
+    await expect(pageA).toHaveURL(/s1-account=manage/, { timeout: 25_000 })
+    const manage = pageA.getByRole('dialog', { name: '安全账户管理（S1）' })
+    await expect(manage).toBeVisible({ timeout: 25_000 })
+    const oldOwner = await pageA.evaluate(async () => {
+      const h = (window as any).__backupHarness
+      return h ? (await h.workspaceRegistryPort.read()).active : null
+    }).catch(() => null)
+    // In the pre-mount login realm, no React/RecordDB writer is present.
+    expect(oldOwner).toBeNull()
+    await pageA.getByPlaceholder('用户名').fill('revocation-test')
+    await pageA.getByPlaceholder('账户密码').fill('testing')
+    await manage.getByRole('button', { name: '重新登录当前账户' }).click()
+    await expect.poll(async () => pageA.evaluate(() => {
+      const auth = localStorage.getItem('qwerty.cloudAuth.v1')
+      return auth ? JSON.parse(auth).token : null
+    }).catch(() => null), { timeout: 35_000 }).toBe(TOKEN_B)
+
+    await pageA.goto('/tests/e2e/backup-harness.html')
+    const after = await pageA.evaluate(async () => {
+      const h = (window as any).__backupHarness
+      const reg = await h.workspaceRegistryPort.read()
+      const rows = await h.db.wordRecords.toArray()
+      return { active: reg.active, pending: reg.pending,
+        attemptWords: rows.map((row: any) => row.word),
+        token: JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || '{}').token }
+    })
+    expect(after.active).toEqual(OWNER)
+    expect(after.pending).toBeNull()
+    expect(after.attemptWords).toContain('backup-fsrs-word')
+    expect(after.token).toBe(TOKEN_B)
+  } finally {
+    await Promise.all([a.close(), b.close()])
+  }
+})
+
 test('B login revokes A; A confirmation completes S1 durable anonymous switch', async ({ browser }) => {
   const server = new SessionServer()
   const a = await context(browser, server)
