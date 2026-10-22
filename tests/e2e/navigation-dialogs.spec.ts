@@ -62,7 +62,7 @@ test('Typing switches open gallery, error book, and achievements in size-limited
   await page.getByRole('button', { name: '查看成就' }).click()
   await expect(page.locator('[data-navigation-dialog="achievements"]')).toBeVisible()
   await expect(header).toHaveAttribute('data-navigation-keep-alive', 'yes')
-  await page.locator('[data-navigation-dialog="achievements"]').getByRole('button', { name: '返回', exact: true }).click()
+  await page.locator('[data-navigation-dialog="achievements"]').getByRole('button', { name: '返回 Learn', exact: true }).click()
   await expect(page).toHaveURL(/\/typing$/)
 })
 
