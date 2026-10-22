@@ -361,6 +361,7 @@ export async function previewDisjointWordV4(input: {
             stored.lastOutcome !== replayed.lastOutcome ||
             stored.nextReviewAt !== replayed.nextReviewAt ||
             stored.schedulerState?.kind !== 'fsrs6' ||
+            replayed.schedulerState.kind !== 'fsrs6' ||
             stored.schedulerState.difficulty !==
               replayed.schedulerState.difficulty ||
             stored.schedulerState.stability !==
