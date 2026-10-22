@@ -82,3 +82,17 @@ test('dictionary detail opens above the gallery dialog and closes without leavin
   await gallery.getByRole('button', { name: '返回', exact: true }).click()
   await expect(page).toHaveURL(/\/typing$/)
 })
+
+
+test('unreleased M4 cloud adoption cannot be invoked by a URL on ordinary builds', async ({ page }) => {
+  test.setTimeout(60_000)
+  await page.goto('/?m4-adopt=manage')
+  await expect(page.getByRole('heading', { name: '学习数据安全检查未通过' }))
+    .toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText('M4 云端合并接续尚未在此部署启用。'))
+    .toBeVisible()
+  // No anonymous/account data ownership is changed by the disabled route.
+  await page.goto('/learn')
+  await expect(page.getByRole('button', { name: 'Learn', exact: true }))
+    .toBeVisible({ timeout: 20_000 })
+})
