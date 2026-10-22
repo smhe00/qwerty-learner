@@ -262,3 +262,59 @@ export function presentMobileAccount(view: AccountView) {
   heading.focus()
   return { setBusy }
 }
+
+/** Read-only preview for legacy storage. Never imports auth or workspace IO. */
+export function renderMobileAccountPreview(root: HTMLElement | null): void {
+  if (!root) throw new Error('Missing mobile account preview root')
+  const overlay = el('div')
+  const main = el('section')
+  const heading = el('h1')
+  heading.id = 'account-dialog-title'
+  main.setAttribute('aria-labelledby', heading.id)
+  const current = el('p')
+  const authState = el('p')
+  const guidance = el('p')
+  const status = el('p')
+  status.setAttribute('role', 'status')
+  const actions = el('div')
+  const username = el('input')
+  username.autocomplete = 'username'
+  username.setAttribute('aria-label', '用户名')
+  const password = el('input')
+  password.type = 'password'
+  password.setAttribute('aria-label', '账户密码')
+  const passwordConfirm = el('input')
+  passwordConfirm.type = 'password'
+  passwordConfirm.autocomplete = 'new-password'
+  passwordConfirm.setAttribute('aria-label', '注册密码确认')
+  // These controls intentionally have NO authentication or transition listeners.
+  // Removing a disabled attribute cannot turn a preview into a login operation.
+  const login = el('button', '登录')
+  const register = el('button', '注册并登录')
+  const back = el('button', '返回')
+  for (const button of [login, register, back]) button.type = 'button'
+  back.addEventListener('click', () => window.location.replace(REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner/mobile' : '/mobile'))
+  actions.append(username, password, passwordConfirm, login, register, back)
+  main.append(heading, current, authState, guidance, actions, status)
+  overlay.append(main)
+  root.replaceChildren(overlay)
+  presentMobileAccount({
+    overlay,
+    main,
+    heading,
+    current,
+    authState,
+    guidance,
+    status,
+    actions,
+    username,
+    password,
+    passwordConfirm,
+    controls: [login, register, back],
+    active: { kind: 'anonymous' },
+    auth: null,
+    cloudDisabled: true,
+  })
+  overlay.setAttribute('data-mobile-account-readonly-preview', '')
+  guidance.textContent = '此页仅供界面预览，本机原有学习记录和账号信息保持不变。'
+}
