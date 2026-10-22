@@ -14,11 +14,13 @@ export default function MobilePage() {
   const { checkpoint } = useMobileCheckpoint()
   const dictionary = useAtomValue(currentDictInfoAtom)
   const auth = loadAuth({ preserveExpired: true })
+  const accountHref = (REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : '') + '/mobile/account'
+  const expired = !!auth && auth.expiresAt * 1000 <= Date.now()
   const menus = [
     { title: '成就', subtitle: '移动端成就即将开放', icon: Medal },
     { title: '词库', subtitle: '移动端选择即将开放', icon: BookOpen },
     { title: '学习记录', subtitle: '移动端统计即将开放', icon: LayoutGrid },
-    { title: '账号与云同步', subtitle: auth ? '已登录 · ' + auth.user.username : '未登录 · 即将开放', icon: Cloud },
+    { title: '账号与云同步', subtitle: auth ? (expired ? '登录已过期 · ' : '已登录 · ') + auth.user.username : '登录或注册 · 使用账号学习空间', icon: Cloud, href: accountHref },
     { title: '设置', subtitle: '移动端设置即将开放', icon: Settings2 },
   ]
   const resume = checkpoint ? Math.min(checkpoint.index + 1, checkpoint.words.length) : null
@@ -31,7 +33,9 @@ export default function MobilePage() {
           <h1>QWERTY <span>Plus</span></h1>
           <small>把专注留给每一个单词</small>
         </div>
-        <CircleUserRound size={22} aria-label={auth ? '账号已登录' : '尚未登录'} className="mobile-user-status" />
+        <a href={accountHref} className="mobile-user-status mobile-account-entry" aria-label={auth ? '账号：' + auth.user.username + (expired ? '，登录已过期' : '') : '登录或注册'} data-mobile-account-entry>
+          <CircleUserRound size={24} aria-hidden="true" />
+        </a>
       </header>
 
       <section className="mobile-today" aria-labelledby="mobile-today-title">
@@ -50,7 +54,11 @@ export default function MobilePage() {
 
       <section className="mobile-home-menu" aria-label="功能菜单">
         <h2>更多功能</h2>
-        {menus.map(item => <div className="mobile-menu-item mobile-menu-unavailable" key={item.title}
+        {menus.map(item => item.href ? <a className="mobile-menu-item" href={item.href} key={item.title}>
+          <span className="mobile-menu-icon"><item.icon size={20} aria-hidden="true"/></span>
+          <span className="mobile-menu-text"><strong>{item.title}</strong><small>{item.subtitle}</small></span>
+          <ChevronRight size={18} aria-hidden="true" className="mobile-menu-chevron" />
+        </a> : <div className="mobile-menu-item mobile-menu-unavailable" key={item.title}
           aria-label={item.title + '，后续版本开放'}>
           <span className="mobile-menu-icon"><item.icon size={20} aria-hidden="true"/></span>
           <span className="mobile-menu-text"><strong>{item.title}</strong><small>{item.subtitle}</small></span>

@@ -3,7 +3,8 @@
  * tree must not exist while switching IndexedDB and per-workspace settings.
  * Only the active guarded entry may render this surface under the writer lease.
  */
-import { login, register } from './api'
+import { SyncApiError, login, register } from './api'
+import { presentMobileAccount } from './mobile-account-view'
 import { browserDeviceId, loadAuth } from './auth'
 import { reauthenticateSameWorkspace, switchAuthenticatedWorkspace } from './workspace-auth-transaction'
 import { copyAnonymousWorkspaceForNewRegistration } from './workspace-coordinator'
@@ -32,8 +33,10 @@ const explanation = '切换账户前，本机完整 V4 工作区将安全保存�
   '如果登录账号在本机没有旧工作区，将创建一个空工作区；后续由 S2 同步云端数据。'
 
 /** No React, domain writer, or workspace IO is imported before S1 boot. */
-export function renderS1AccountManagement(root: HTMLElement | null, active: Workspace): void {
+export function renderS1AccountManagement(root: HTMLElement | null, active: Workspace, options: { mobile?: boolean; cloudDisabled?: boolean } = {}): void {
   if (!root) throw new Error('Missing S1 account UI root')
+  const mobile = options.mobile === true
+  let mobileView: ReturnType<typeof presentMobileAccount> | undefined
   // The live learning application cannot stay mounted while S1 switches
   // databases. Render a modal-looking PRE-MOUNT document instead of a React
   // dialog that could race ongoing IndexedDB writers.
@@ -102,16 +105,27 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
   }
 
   const controls: HTMLButtonElement[] = []
+  let isBusy = false
   const setBusy = (busy: boolean, note: string) => {
-    status.textContent = '状态：' + note
+    isBusy = busy
+    status.textContent = (mobile ? '' : '状态：') + note
     controls.forEach(control => { control.disabled = busy })
+    mobileView?.setBusy(busy)
   }
   const safeRun = (action: () => Promise<void>) => {
+    if (isBusy) return
     setBusy(true, '准备中…')
     void action().catch(error => {
-      const detail = error instanceof TypeError && /fetch|network/i.test(error.message)
+      let detail = error instanceof TypeError && /fetch|network/i.test(error.message)
         ? '无法连接云端认证服务（网络、DNS 或 EdgeOne API 暂不可用）。请检查 /api/health 后再重试；本地学习记录保持不变。'
         : error instanceof Error ? error.message : String(error)
+      if (mobile) {
+        if (error instanceof SyncApiError) {
+          detail = ({ invalid_credentials: '用户名或密码不正确，请重新输入。', username_taken: '这个用户名已被使用，请换一个。', invalid_username: '用户名需为 3–32 个字符，不能包含空格或特殊路径字符。', invalid_password: '密码需为 4–128 位。', cloud_disabled: '此开发预览暂不提供登录和注册。' } as Record<string, string>)[error.code] || '暂时无法完成认证，请稍后重试。'
+        } else if (error instanceof TypeError) detail = '暂时无法连接服务，请检查网络后重试。'
+        setBusy(false, detail + ' 本机学习记录仍保留。')
+        return
+      }
       setBusy(false, '操作未完成；未删除本地工作区。' + detail +
         '。如提示事务中断，请重新加载以执行恢复。')
     })
@@ -119,15 +133,15 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
   const phase = (p: Phase) => setBusy(true,
     ({
       saving: '正在持久化当前完整学习记录…',
-      prepared: '事务日志已提交，正在准备目标工作区…',
+      prepared: mobile ? '正在准备账号学习空间…' : '事务日志已提交，正在准备目标工作区…',
       restoring: '正在恢复目标账户学习记录…',
       recovering: '正在故障恢复…',
-      complete: '工作区切换成功，正在重新载入…',
+      complete: mobile ? '已完成，正在返回学习…' : '工作区切换成功，正在重新载入…',
       failed: '事务中断，需要验证恢复状态…',
     } as Record<Phase,string>)[p])
   const navigate = (message?: string) => {
     if (message) sessionStorage.setItem('qwerty.s1.last-account-result', message)
-    window.location.replace('/')
+    window.location.replace(mobile ? (REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner/mobile' : '/mobile') : '/')
   }
   const reauth = async () => {
     const signed = credential(await login(username.value.trim(), password.value, browserDeviceId()))
@@ -159,8 +173,9 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
     if (!username.value.trim() || password.value.length < 4 || password.value !== passwordConfirm?.value) {
       throw new Error('请检查用户名与两次输入的注册密码')
     }
-    const copy = window.confirm(
-      '是否将当前匿名工作区的全部学习数据复制到新账户？\n' +
+    const copy = window.confirm(mobile
+      ? '是否把本机匿名学习记录复制到新账号？\n确定：复制记录；取消：新账号从空白开始。本机匿名记录始终保留。'
+      : '是否将当前匿名工作区的全部学习数据复制到新账户？\n' +
       '确定：复制完整 V4 数据；取消：新账户从空白开始。匿名原记录始终保留。'
     )
     if (!window.confirm('确认使用该用户名注册新账户？注册成功后会切换到新账户。')) {
@@ -182,7 +197,7 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
     // No fetch is permitted here: offline/stalled DNS/auth revocation must
     // never prevent the user from leaving a locally isolated account.
     let warning = '将退出当前账户并切换到本机匿名工作区。完整本地学习记录会保留在原账户工作区。'
-    warning += '\nS1 不自动上传：本次退出前的未同步学习进度仍只保存在本机。'
+    warning += mobile ? '\n退出前的未同步学习进度仍只保存在本机。' : '\nS1 不自动上传：本次退出前的未同步学习进度仍只保存在本机。'
     if (!auth || auth.expiresAt * 1000 <= Date.now()) {
       warning += '\n云端会话已过期；离线退出仍可完成。'
     }
@@ -208,9 +223,10 @@ export function renderS1AccountManagement(root: HTMLElement | null, active: Work
   main.append(heading,current,authState,guidance,actions,status)
   overlay.append(main)
   root.replaceChildren(overlay)
+  if (mobile) mobileView = presentMobileAccount({ overlay, main, heading, current, authState, guidance, status, actions, username, password, passwordConfirm, controls, active, auth: accountAuth, cloudDisabled: options.cloudDisabled === true })
   // Keep focus inside the account surface rather than starting a typing
   // session in the background. Input focus does not send auth requests.
-  username.focus()
+  if (!mobile) username.focus()
   void workspaceRegistryPort.read().then(registry => {
     if (registry.pending || !same(registry.active, active)) {
       controls.forEach(x => { x.disabled = true })

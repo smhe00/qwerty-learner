@@ -131,7 +131,7 @@ test('S1 actual Settings login refuses legacy auth before any network request', 
   })
   await page.goto('/')
   await page.getByRole('button', { name: '打开设置对话框' }).click()
-  await page.getByRole('tab', { name: '数据设置' }).click()
+  await page.getByRole('tab', { name: '数据与备份' }).click()
   // S1 intentionally removes the old V1 credential form entirely.
   // Account changes only happen through the pre-mount guarded S1 page.
   await expect(page.getByPlaceholder('用户名')).toHaveCount(0)
@@ -1204,7 +1204,7 @@ test('P0: new anonymous learner clears recorded words through S1 journal and kee
   await expect.poll(async () => (await readReviewModeInfo(page))?.reviewRecord?.index ?? 0)
     .toBeGreaterThan(0)
   await page.getByRole('button', { name: '打开设置对话框' }).click()
-  await page.getByRole('tab', { name: '数据设置' }).click()
+  await page.getByRole('tab', { name: '数据与备份' }).click()
   await page.getByText('高级操作 · 清除本地数据').click()
   await page.getByRole('button', { name: '清除本地数据', exact: true }).click()
   await expect(page.getByRole('heading', { name: '清除当前工作区的本地学习数据' }))

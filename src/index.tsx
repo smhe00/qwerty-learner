@@ -400,7 +400,8 @@ async function start(): Promise<void> {
       await renderS2RecoveryUI(root, boot)
       return
     }
-    if (new URLSearchParams(window.location.search).get('s1-account') === 'manage') {
+    const mobileAccount = window.location.pathname.replace(/\/$/, '').endsWith('/mobile/account')
+    if (mobileAccount || new URLSearchParams(window.location.search).get('s1-account') === 'manage') {
       if (boot.mode === 'legacy') {
         // Old or uncertain V1 data can never be silently assigned to S1.
         // The truly empty-origin case was handled before the app mounted.
@@ -417,7 +418,10 @@ async function start(): Promise<void> {
         throw new Error('账号管理需要 S1 安全工作区，旧版数据不能直接切换账号。')
       }
       const { renderS1AccountManagement } = await import('./sync/workspace-account-ui')
-      renderS1AccountManagement(root, boot.registry.active)
+      renderS1AccountManagement(root, boot.registry.active, {
+        mobile: mobileAccount,
+        cloudDisabled: REACT_APP_DEPLOY_ENV === 'pages' || import.meta.env.VITE_QWERTY_SYNC_DISABLED === 'true',
+      })
       return
     }
     // Importing the old app initializes store atoms and DB modules. This
