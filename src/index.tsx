@@ -435,9 +435,16 @@ async function start(): Promise<void> {
       if (boot.registry.active.kind === 'account' &&
           import.meta.env.VITE_QWERTY_M3_PILOT_AUTO === 'true' &&
           window.location.hostname === 'etest.edgeone.dev') {
-        const { startEtestM3BackgroundMonitor } =
-          await import('./sync/m3-background-browser')
-        stopEtestM3BackgroundMonitor = startEtestM3BackgroundMonitor()
+        try {
+          const { startEtestM3BackgroundMonitor } =
+            await import('./sync/m3-background-browser')
+          stopEtestM3BackgroundMonitor = startEtestM3BackgroundMonitor()
+        } catch (error) {
+          // Optional network/pilot module loading can fail offline. NEVER
+          // propagate to the outer boot catch, which would release the
+          // exclusive S1 writer lease AFTER React has mounted.
+          console.warn('etest M3 background disabled; local writer lease retained', error)
+        }
       }
     }
     showS1AccountResult()
