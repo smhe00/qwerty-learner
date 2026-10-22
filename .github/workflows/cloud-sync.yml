@@ -7,6 +7,8 @@ on:
     paths:
       - 'cloud-functions/**'
       - 'tests/cloud/**'
+      - 'tests/e2e/etest-three-device-auto-fork.*'
+      - '.github/workflows/etest-three-device-auto-fork.yml'
       - 'src/sync/**'
       - 'src/index.tsx'
       - 'src/utils/db/record.ts'
@@ -60,6 +62,10 @@ jobs:
       - name: Run cloud backend contract tests
         run: yarn test:cloud
 
+      - name: Verify staging E2E scenario syntax without network or accounts
+        run: |
+          node --check tests/cloud/etest-safe-v4-merge-writeback.mjs
+          npx playwright test --list --config=tests/e2e/etest-three-device-auto-fork.config.ts
       - name: Lint cloud sync code
         run: yarn eslint cloud-functions tests/cloud --ext .js,.mjs
 
