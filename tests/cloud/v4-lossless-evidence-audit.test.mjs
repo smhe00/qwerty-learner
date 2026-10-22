@@ -138,11 +138,13 @@ test('account ownership of all four complete snapshots is required', () => {
   assert.equal(audit(g).status, 'blocked')
 })
 
-test('same session UUID with conflicting device state blocks before any V4 write', () => {
+test('duplicate ReviewSession UUID within a source device blocks before V4 write', () => {
   const f = fixture()
-  rows(f.remote, 'reviewRecords')[0].sessionId = uuid(10)
-  rows(f.remote, 'reviewRecords')[0].index = 10
-  assert.equal(audit(f).status, 'blocked')
+  rows(f.remote, 'reviewRecords').push({
+    ...session(3, uuid(11)), index: 10,
+  })
+  assert.equal(audit(f).reason,
+    'lossless-invalid-source-uuid:reviewRecords')
 })
 test('candidate may not silently discard an unchanged ancestor attempt', () => {
   const f = fixture()
