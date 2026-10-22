@@ -30,7 +30,7 @@ function sample(){
       words:[base,left]},
     remote:{chapters:[structuredClone(original),chapter(2,12,[2])],
       words:[base,right]},
-    candidateWords:[base,left,{...right,id:3}],
+    candidateWords:[structuredClone(base),structuredClone(left),{...structuredClone(right),id:3}],
   }
 }
 test('two devices finish separate chapters using colliding numeric primary keys',()=>{
