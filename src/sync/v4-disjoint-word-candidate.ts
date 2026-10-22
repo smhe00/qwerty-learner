@@ -354,7 +354,8 @@ export async function previewDisjointWordV4(input: {
           dict, word, sourceHistory as IWordRecord[])
         const stored = stateByKey(table(input[origin], 'reviewWordStates').rows)
           .get(k) as IReviewWordState | undefined
-        if (!replayed || !stored || stored.lifecycle !== 'active' ||
+        if (!replayed || !stored ||
+            (stored.lifecycle !== undefined && stored.lifecycle !== 'active') ||
             stored.exclusion || stored.reviewCount !== replayed.reviewCount ||
             stored.lapseCount !== replayed.lapseCount ||
             stored.cleanStreak !== replayed.cleanStreak ||
