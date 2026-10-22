@@ -136,7 +136,7 @@ test('historic rows cannot be removed or silently rewritten', async () => {
   rows(d, 'wordRecords').pop()
   assert.equal((await inspect(a,d,r)).status,'blocked')
 })
-test('changes to chapter, malformed sessions, achievements or DailySession are blocked', async () => {
+test('protected tables and malformed ReviewSessions block; uncontested DailySession is kept', async () => {
   for (const name of ['chapterRecords','reviewRecords',
     'achievementEvents','achievementStates']) {
     const a = snap(), l = structuredClone(a), r = structuredClone(a)
@@ -154,7 +154,10 @@ test('changes to chapter, malformed sessions, achievements or DailySession are b
     plannedReviewWords: [], carryOverAcquisitionWords: [],
     completedBlockIds: [],
   }
-  assert.equal((await inspect(a,l,r)).reason, 'disjoint-daily-session-changed')
+  const oneSide = await inspect(a,l,r)
+  assert.equal(oneSide.status, 'projected', oneSide.reason)
+  assert.deepEqual(oneSide.candidate.workspaceData.learnRuntime.dailySessions,
+    l.workspaceData.learnRuntime.dailySessions)
 })
 test('FSRS scheduler updates require a same-side new attempt and cannot regress', async () => {
   const a = snap(), l = structuredClone(a), r = structuredClone(a)
