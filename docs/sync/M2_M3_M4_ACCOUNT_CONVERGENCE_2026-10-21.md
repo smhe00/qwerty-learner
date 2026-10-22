@@ -102,3 +102,42 @@ FSRS-6、Acquisition、成就和每日学习进度只能从同一份已验证的
 - 两设备先后/同时/离线学习，最后得到同一 \`(workspace,dict,word)\` 历史和调度结果。
 - 重试重复事件、不完整列表、掉电/崩溃、不一致修改，原始历史不丢失；不可合并时保持单机正常学习并明确说明同步未完成。
 - 账户登出切换不能跨账号泄露、合并或复写。
+
+## 2026-10-22 对齐审计：避免重复实现与互相覆盖（执行前必读）
+
+> 本节以截至 `product/main=f4918eb8b8a906c650c666af0b4f4f7b4fe05cfe` 的真实代码、etest 云端实测及 GitHub CI 为准。本文早期“尚未实现”“未经 etest 实测”等表述是各开发阶段的历史快照，不应在后续任务中当作最新结论；优先按本节核实后执行，不删除历史过程证据。
+
+### 已实现与证据（不得重复开发）
+
+| 能力 | 现有实现/证据 | 截至该提交的实际边界 |
+|---|---|---|
+| S1 账户隔离与独占写入、S2 完整 Backup V4 | 既有 `workspace-vault`、S2 Pull/Push、V4 备份协议 | 正式站既有同步能力；不要重做账户模型、V4 编码或迁移 |
+| M3 不可变事件/outbox 与认证读回 | `m3-publication-cycle.ts`、`m3-publication-browser.ts`、`m3-witnessed-receiver.ts` | etest 专用开关，事件已上传不等于多设备完整收敛 |
+| 确认过的真实云端 CAS 写回（不是模拟） | `tests/cloud/etest-safe-v4-merge-writeback.mjs`，`edgeone-test` 提交 `bd5c3d7bd7d7d7f720d48601007f7388d9154409`；Actions run `39704080782` 为 **success** | 临时独立账号：Revision 409 防旧版本覆盖、Good/Again 同词事件完整保留、FSRS-6 复算、完整六表 V4 Blob CAS 写回、第二设备独立读回均 PASS。仅是受控实网测试脚本；不代表普通浏览器已自动触发 |
+| M2 祖先与会话证明 | `m2-pinned-s2-ancestor.ts`、`m2-two-device-browser.ts`、`v4-session-three-way.ts` | 共同祖先认证、checkout 见证与 UUID ReviewSession 三方仲裁均有代码；不可把仅有 SHA 相同或服务器事件链前缀当成全部设备已收敛 |
+| 完整 V4 候选与同词 FSRS 归并 | `v4-disjoint-word-candidate.ts`、`v4-event-convergence.ts`、`v4-word-scoped-convergence.ts` | 单端合格 Review 亦重放核验 FSRS；跨设备同词不按 1 分钟窗口删除事件；ReviewSession 的两端独立新增、单端推进可三方合并；仍 `publishReady:false`、`convergenceComplete:false` |
+| M4 本地事务与掉电恢复 | `m4-merge-transaction.ts`、`m4-merge-journal.ts`、`m4-merge-browser-recovery.ts`；P4b Browser Recovery Gate success | 完整原始快照+候选先 journal、后 restore/readback/seal/finalize，挂起事务可恢复；**尚无普通自动合并入口**，不得重复实现另一个互相竞争的导入 journal |
+
+### 当前分支与门禁（禁止混淆）
+
+- `product/main` HEAD 为 `f4918eb8b8a906c650c666af0b4f4f7b4fe05cfe`，比 `edgeone-test` 领先 6 提交，比 `master` 领先 146 提交；`edgeone-test` HEAD 是 `bd5c3d7bd7d7d7f720d48601007f7388d9154409`，`master` 是 `6d7839b9a9fd7a31459a19aeca948227b1f7b3c2`。下次执行时必须重新读取分支 SHA，不得默认仍是这些值。
+- `b4035403f2b3864eef0d5dc8d4540a2735f1bcf5`：Cloud Sync Gate、etest 只读准入、P4b Browser Recovery Gate PASS。
+- `f4918eb8...`：Published Dual-Site Explorer 与 Pages Explorer Agent PASS；**Review Gate FAILURE（91 通过、2 失败）**。失败点为 `navigation-dialogs.spec.ts` 对两个 `header` 的 strict locator，以及 `settings-mode-navigation.spec.ts` 仍寻找旧手机学习入口文案“进入沉浸学习页面”；不应把这两项说成同步算法失败，也不得跳过完整 Review Gate。需先将测试断言与现 UI 语义对齐，并重新验证。
+- 正式站 `master` 未包含本轮 M2.15/M2.16 代码，最新 `product/main` 的浏览器行为不得被说成正式站已上线。
+
+### 后续最短路径：只补连接，不推翻现有实现
+
+1. **P0 恢复工程绿灯**：修复上述两个过期/不唯一的 UI 断言，只改测试或确认实际 UI 缺陷；完整 Review Gate、Cloud Gate、P4b 和双站 Explorer 分别检查。避免其他 Agent 同时改这些测试文件。
+2. **P1 收紧可恢复六表候选的边界**：直接复用 `v4-disjoint-word-candidate`、`v4-session-three-way` 及 FSRS replay。只补章节、成就、DailySession 与实际跨设备数据的阻断/仲裁缺口；不以简单时间窗口去重，不更改 FSRS-6 正式算法或账户 ID。
+3. **P2 浏览器受限编排**：复用现有 S2 远端快照读取、独立 checkout/事件凭据核验和 etest 已证明的 Revision CAS 写回，再与 M4 持久 journal/原位 restore 串联。入口须绑定同一 S1 账户+generation、真实写入锁、当前本地快照指纹及云端 revision；每次异步边界重新核对所有权；云端写回后精确读回，无全设备收敛证明时不能显示“已同步”。遇到 409、5xx 不确定提交、断网与页面崩溃，保留原始事实和回滚凭证后核实/重试，不直接覆盖。
+4. **P3 etest 分阶段验证**：先纯只读 dry-run 和确定性合同测试；再隔离临时账号真实 CAS→另一设备读回→本地 M4 恢复，覆盖两手机、两电脑及混用、同词不同时/同时学习、账号切换、离线、跨 POP 不完整可见性。默认功能开关关闭，不让 etest 影响正式 Blob。
+5. **P4 发布边界**：只有该 SHA 下完整 CI、真实 EdgeOne 后端和浏览器恢复门禁均 PASS，且无自动覆盖风险，才讨论 `edgeone-test` → `master` 发布。未经额外发布指令不推送正式站。
+
+### 每项未来开发的开工审计表
+
+- 先查询现有类/函数、调用链、测试、部署开关与对应历史提交，明确是「已存在、仅测试、仅只读、已接入真实浏览器、生产已启用」哪种状态。
+- 任务写清楚**复用入口**、**唯一新增边界**、**禁止触碰的模块/分支**、**验证场景**、**失败时如何保留旧数据**。不再将“补编排”变成“重写 CAS / 重造 journal / 重设 FSRS”。
+- 每次提交前重检目标分支 HEAD；若并行 Agent 已改动目标文件，停止直接覆盖，重新审计差异和合同测试。按最后提交的精确 SHA 关联门禁，不引用旧 commit 的 PASS 充当新版本验收。
+
+关联实测：https://github.com/smhe00/qwerty-learner/actions/runs/39704080782
+
