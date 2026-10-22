@@ -103,20 +103,23 @@ test('unmodified ancestor reference IDs survive, so four tables remain unchanged
   assert.deepEqual(rows(p.candidate, 'chapterRecords'), rows(a, 'chapterRecords'))
   assert.deepEqual(rows(p.candidate, 'chapterRecords')[0].wordRecordIds,[1])
 })
-test('same word edited on both machines cannot silently double-grade or overwrite', async () => {
+test('same word on both machines is a mergeable learning fact, not a time conflict', async () => {
   const a = snap(), l = structuredClone(a), r = structuredClone(a)
   rows(l, 'wordRecords').push(record('apple', 2, uuid(2)))
   rows(r, 'wordRecords').push(record('apple', 2, uuid(3)))
   const p = await inspect(a, l, r)
-  assert.equal(p.status,'blocked')
-  assert.match(p.reason,/disjoint-overlapping-word/)
-  assert.equal(p.candidate, undefined)
+  assert.equal(p.status, 'projected', p.reason)
+  assert.equal(p.chronologicallyReplayedWords, 1)
+  assert.deepEqual(rows(p.candidate, 'wordRecords').map(x => x.attemptId),
+    [uuid(1), uuid(2), uuid(3)])
+  assert.deepEqual(rows(p.candidate, 'wordRecords').map(x => x.id), [1,2,3])
+  assert.equal(p.publishReady, false)
 })
 test('same attempt ID reused in another word blocks even if local IDs differ', async () => {
   const a = snap(), l = structuredClone(a), r = structuredClone(a)
   rows(l, 'wordRecords').push(record('banana', 2, uuid(2)))
   rows(r, 'wordRecords').push(record('cherry', 2, uuid(2)))
-  assert.equal((await inspect(a,l,r)).reason,'disjoint-unverified-new-attempt')
+  assert.equal((await inspect(a,l,r)).reason,'disjoint-contradictory-attempt')
 })
 test('historic rows cannot be removed or silently rewritten', async () => {
   const a = snap(), l = structuredClone(a), r = structuredClone(a)
@@ -179,4 +182,32 @@ test('new FSRS shadow numeric reference must be rebased to its new primary key',
   assert.equal(p.status,'projected',p.reason)
   const banana = rows(p.candidate,'wordRecords').find(x=>x.word==='banana')
   assert.equal(banana.fsrsShadow.sourceRecordId,banana.id)
+})
+
+test('re-upload of same independently identified attempt once per device is idempotent', async () => {
+  const a = snap(), l = structuredClone(a), r = structuredClone(a)
+  rows(l,'wordRecords').push(record('banana',2,uuid(2)))
+  rows(r,'wordRecords').push(record('banana',2,uuid(2)))
+  const p = await inspect(a,l,r)
+  assert.equal(p.status,'projected',p.reason)
+  assert.equal(p.localNewAttempts,1)
+  assert.equal(p.remoteNewAttempts,1)
+  assert.equal(rows(p.candidate,'wordRecords').length,2)
+  assert.equal(rows(p.candidate,'wordRecords')[1].attemptId,uuid(2))
+})
+test('same word study facts with different scores and no 60s conflict are never dropped', async () => {
+  const a = snap(), l = structuredClone(a), r = structuredClone(a)
+  const g = record('apple',2,uuid(2),{ chapter:-1,
+    timeStamp:1800001000, learnItemKind:'review',
+    reviewRatingDecision:{eligible:true,rating:'good',confidence:1,reasonCodes:['test']} })
+  const f = record('apple',2,uuid(3),{ chapter:-1,
+    timeStamp:1800001000, learnItemKind:'review',
+    reviewRatingDecision:{eligible:true,rating:'again',confidence:1,reasonCodes:['test']} })
+  rows(l,'wordRecords').push(g)
+  rows(r,'wordRecords').push(f)
+  const p = await inspect(a,l,r)
+  // The preserved FSRS base state in this fixture is not a verified replay.
+  // Unsafe missing/stale reviewWordStates must block, not invent a durable state.
+  assert.equal(p.status,'blocked')
+  assert.match(p.reason,/unverified-device-fsrs|missing-fsrs-history/)
 })
