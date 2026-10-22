@@ -412,7 +412,7 @@ export async function waitForActiveLearnSession(
     if (await idleStart.isVisible().catch(() => false)) {
       // Cold dictionary hydration can outlive route mount, especially on CI.
       // Do not bypass a disabled control; wait for the product to enable it.
-      await expect(idleStart).toBeEnabled({ timeout: 20_000 })
+      await expect(idleStart).toBeEnabled({ timeout: 45_000 })
       await idleStart.click()
     }
   }

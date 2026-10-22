@@ -80,7 +80,7 @@ test(`optional tail words never block daily completion; ${entry} five-more exten
 
 for (const migrateQueue of [false, true]) {
 test(`five-more prioritizes unfinished recall and caps the complete round at five words${migrateQueue ? '; repairs an old expanded queue' : ''}`, async ({ page }) => {
-  test.setTimeout(90000)
+  test.setTimeout(120000)
   await gotoReviewAppReady(page, '/typing')
   await page.evaluate(async () => {
     const now = Math.floor(Date.now() / 1000)

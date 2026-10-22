@@ -40,19 +40,37 @@ const names = ['achievementEvents', 'achievementStates', 'chapterRecords',
 
 function sleep(ms) { return new Promise(done => setTimeout(done, ms)) }
 async function api(path, token, method = 'GET', body, headers = {}) {
-  const req = await fetch(new URL(path, origin), {
-    method, headers: {
-      Accept: 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}),
-      ...headers,
-    },
-    ...(body === undefined ? {} : { body }),
-    cache: 'no-store', redirect: 'error',
-    signal: AbortSignal.timeout(40_000),
-  })
-  const raw = await req.text()
-  let response
-  try { response = JSON.parse(raw) } catch { response = null }
-  return { status: req.status, response }
+  // Login and immutable/metadata GET are safe to retry after a transient
+  // EdgeOne POP failure. POST V4, registration and DELETE are NOT replayable:
+  // a 5xx/timeout may conceal a committed write or a partial account delete.
+  const retryable = (method === 'GET' ||
+    (method === 'POST' && path === '/api/auth/login'))
+  for (let attempt = 1; attempt <= (retryable ? 4 : 1); attempt++) {
+    try {
+      const req = await fetch(new URL(path, origin), {
+        method, headers: {
+          Accept: 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}),
+          ...headers,
+        },
+        ...(body === undefined ? {} : { body }),
+        cache: 'no-store', redirect: 'error',
+        signal: AbortSignal.timeout(40_000),
+      })
+      const raw = await req.text()
+      let response
+      try { response = JSON.parse(raw) } catch { response = null }
+      if (!retryable || ![429, 500, 502, 503, 504].includes(req.status) ||
+          attempt === 4) return { status: req.status, response }
+      console.log('Transient etest read/login error; bounded retry', path,
+        'HTTP', req.status, attempt)
+    } catch (error) {
+      if (!retryable || attempt === 4) throw error
+      console.log('Transient etest read/login network error; bounded retry',
+        path, attempt)
+    }
+    await sleep(700 * attempt)
+  }
+  throw Error('unreachable test transport state')
 }
 function must(r, code, what) {
   assert.equal(r.status, code, what + ': HTTP ' + r.status +
@@ -450,7 +468,7 @@ async function disposeIsolatedMergeAccount() {
   assert.ok(user.username.startsWith('e2e_merge_'))
   let token = user.secondToken ?? user.firstToken
   if (token) {
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < 4; attempt++) {
       const deleted = await api('/api/auth/account', token, 'DELETE',
         JSON.stringify({ currentPassword: user.password }),
         { 'Content-Type': 'application/json' })
@@ -458,9 +476,9 @@ async function disposeIsolatedMergeAccount() {
         token = null
         break
       }
-      if (deleted.status < 500 || attempt === 1)
+      if (deleted.status < 500 || attempt === 3)
         throw Error('Disposal failed: HTTP ' + deleted.status)
-      await sleep(1500)
+      await sleep(1500 * (attempt + 1))
       const recovered = await api('/api/auth/login', null, 'POST',
         JSON.stringify({ username: user.username, password: user.password,
           deviceId: user.firstDevice }),
