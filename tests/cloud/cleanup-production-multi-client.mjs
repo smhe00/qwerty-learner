@@ -80,24 +80,48 @@ for (const username of users) {
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify({ currentPassword: password }),
     })
-    let deletion = await deleteWithToken(login.result.token)
-    if (!deletion.response.ok && deletion.response.status >= 500) {
-      // A DELETE error may mean partially finished Blob operations.
-      // Never issue an unverified blind repeat; first authenticate this
-      // exact disposable owner again. Successful re-login proves the
-      // account still exists with the expected generated credentials.
-      await new Promise(resolve => setTimeout(resolve, 1500))
+    // A 5xx or timeout on DELETE leaves the outcome UNKNOWN. Retry only
+    // after a fresh successful login for this exact disposable identity.
+    // EdgeOne deleteUserData performs multiple eventually consistent
+    // prefix removals; a bounded retry can finish the partial cleanup.
+    let token = login.result.token
+    let deleted = false
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      let deletion
+      let error
+      try {
+        deletion = await deleteWithToken(token)
+      } catch (cause) {
+        error = cause
+      }
+      if (deletion?.response.ok &&
+          deletion.result?.deleted?.accountDeleted === true) {
+        deleted = true
+        break
+      }
+      const transient = error || (deletion && (
+        deletion.response.status >= 500 ||
+        deletion.response.status === 429))
+      if (!transient) {
+        throw new Error('Cleanup delete HTTP ' +
+          (deletion?.response.status ?? 'unknown'))
+      }
+      if (attempt === 4) {
+        throw new Error('Cleanup delete remained ambiguous after verified retries: ' +
+          (deletion ? 'HTTP ' + deletion.response.status :
+            (error instanceof Error ? error.name : 'network_error')))
+      }
+      await new Promise(resolve => setTimeout(resolve, 1500 * attempt))
       const recovery = await loginDisposable(username)
       if (!recovery.response.ok ||
           recovery.result?.user?.username !== username ||
           !recovery.result?.token) {
-        throw new Error('Cleanup outcome ambiguous: server 5xx, identity not reverified')
+        throw new Error('Cleanup outcome ambiguous: owner no longer verifiable after DELETE')
       }
-      deletion = await deleteWithToken(recovery.result.token)
+      token = recovery.result.token
+      console.log('Transient partial cleanup reverified disposable owner; retry', attempt)
     }
-    if (!deletion.response.ok || deletion.result?.deleted?.accountDeleted !== true) {
-      throw new Error(`Cleanup delete HTTP ${deletion.response.status}`)
-    }
+    if (!deleted) throw new Error('Cleanup delete unverified')
     console.log('Deleted disposable E2E cloud identity:', username)
   } catch (error) {
     failures++
