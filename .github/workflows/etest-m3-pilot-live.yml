@@ -1,11 +1,8 @@
-name: etest M1+M3 Real Multi-Device Pilot (manual)
-# workflow_dispatch alone cannot activate a workflow that is absent from
-# GitHub's default master branch. Use the staging branch push instead.
-# The exact-isolated etest origin now enables test-only M1+M3; the test
-# script requires the same host and disposable account namespace. No master writes.
+name: etest M1+M3 Real Multi-Device Pilot
 on:
   push:
     branches: [edgeone-test]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -24,13 +21,10 @@ jobs:
           node-version: '20.18.0'
       - name: Pin actual etest static source
         env:
-          EXPECTED_SHA: ${'        run: node scripts/verify-edgeone-source.mjs
-      - name: Require matching live etest backend M1+M3 capability
-        run: node tests/cloud/etest-m1m3-pilot-preflight.mjs
-      - name: Two independent logins and exact Blob receipts
-        run: node tests/cloud/etest-multi-device-pilot.mjs
-}{{ github.sha }}
+          EXPECTED_SHA: ${{ github.sha }}
           EDGEONE_WAIT_MS: '600000'
         run: node scripts/verify-edgeone-source.mjs
-      - name: Two independent logins and exact Blob receipts
+      - name: Require branch-matched backend M1+M3 pilot before account creation
+        run: node tests/cloud/etest-m1m3-pilot-preflight.mjs
+      - name: Two independent logins and exact immutable Blob receipts
         run: node tests/cloud/etest-multi-device-pilot.mjs
