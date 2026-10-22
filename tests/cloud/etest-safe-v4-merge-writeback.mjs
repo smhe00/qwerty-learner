@@ -352,6 +352,60 @@ try {
   assert.equal(rowsOf(verified,'reviewWordStates').find(r => r.word === 'word-1').reviewCount,2)
   assert.equal(new Set(rowsOf(verified, 'wordRecords')
     .filter(x => x.word === 'word-1').map(r => r.attemptId)).size,3)
+  // A separate real-cloud six-table round trip for the NEW ReviewSession
+  // three-way merge. Both devices independently create session UUIDs with the
+  // SAME local numeric ID. No historical word/FSRS rows are discarded.
+  const sessionA = structuredClone(verified)
+  const sessionB = structuredClone(verified)
+  const sessionsOf = snap => rowsOf(snap, 'reviewRecords')
+  const newSession = (sessionId) => ({
+    id: 1, sessionId, dict: 'test-dict', index: 0,
+    createTime: 1800096000, isFinished: false,
+    sessionKind: 'review',
+    words: [{ name: 'word-1', trans: ['test'] }],
+  })
+  const sessionUuidA = crypto.randomUUID()
+  const sessionUuidB = crypto.randomUUID()
+  sessionsOf(sessionA).push(newSession(sessionUuidA))
+  sessionsOf(sessionB).push(newSession(sessionUuidB))
+  const sessionRemoteSha = checksumStable(sessionB)
+  must(await upload(user.secondToken, 5, sessionB, sessionRemoteSha),
+    200, 'device B independently publishes ReviewSession')
+  await visibleRevision(user.secondToken, 6, sessionRemoteSha)
+  const loginSessionA = must(await api('/api/auth/login', null, 'POST',
+    JSON.stringify({ username: user.username, password: user.password,
+      deviceId: user.firstDevice }), { 'Content-Type': 'application/json' }),
+  200, 'device A independently reconnects for ReviewSession replay')
+  user.firstToken = loginSessionA.token
+  assert.equal((await upload(user.firstToken, 5, sessionA,
+    checksumStable(sessionA))).status, 409,
+  'stale ReviewSession must not overwrite the independent device')
+  const sessionPinnedB = await readPinned(user.firstToken, 6, sessionRemoteSha)
+  const sessionProjection = await mergeChronologically({
+    accountId: userId, pinnedAncestorFingerprint: twoGrades.candidateFingerprint,
+    ancestor: verified, local: sessionA, remote: sessionPinnedB,
+  })
+  assert.equal(sessionProjection.status, 'projected', sessionProjection.reason)
+  assert.deepEqual(new Set(sessionsOf(sessionProjection.candidate)
+    .map(s => s.sessionId)), new Set([sessionUuidA, sessionUuidB]))
+  assert.deepEqual(sessionsOf(sessionProjection.candidate)
+    .map(s => s.id), [1, 2], 'colliding local numeric session IDs rekeyed')
+  assert.equal(rowsOf(sessionProjection.candidate, 'wordRecords').length,
+    rowsOf(verified, 'wordRecords').length)
+  must(await upload(user.firstToken, 6,
+    sessionProjection.candidate, sessionProjection.candidateFingerprint),
+  200, 'disposable six-table ReviewSession V4 CAS writeback')
+  await visibleRevision(user.firstToken, 7, sessionProjection.candidateFingerprint)
+  const loginSessionB = must(await api('/api/auth/login', null, 'POST',
+    JSON.stringify({ username: user.username, password: user.password,
+      deviceId: user.secondDevice }), { 'Content-Type': 'application/json' }),
+  200, 'device B reads merged ReviewSessions')
+  user.secondToken = loginSessionB.token
+  const finalSessions = await readPinned(user.secondToken, 7,
+    sessionProjection.candidateFingerprint)
+  assert.deepEqual(new Set(sessionsOf(finalSessions).map(s => s.sessionId)),
+    new Set([sessionUuidA, sessionUuidB]))
+  assert.equal(checksumStable(finalSessions), sessionProjection.candidateFingerprint)
   console.log('PASS etest: real V4 Blob CAS, old revision 409, six-table safe subset; two SAME-word Good/Again attempts, stable chronological FSRS replay, real commit and independent-device readback')
 } catch (error) { failure = error }
 finally {
