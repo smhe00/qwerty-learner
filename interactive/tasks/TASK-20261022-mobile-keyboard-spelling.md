@@ -1,7 +1,7 @@
 ---
 protocol_version: "1.1"
 task_id: "TASK-20261022-mobile-keyboard-spelling"
-status: "IN_PROGRESS"
+status: "REVIEW"
 executor: "Codex (independent UI task)"
 target_branch: "product/main"
 claim_base_commit: "a87ee0dfbf94727b0bf869a74623973ce7fe2389"
