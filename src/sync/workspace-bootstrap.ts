@@ -48,11 +48,11 @@ function report(
  */
 export async function prepareGuardedWorkspaceBoot(
   onStage?: (stage: WorkspaceBootStage) => void,
-  options: { allowLegacy?: boolean } = {},
+  options: { allowLegacy?: boolean; writerWaitMs?: number } = {},
 ): Promise<GuardedWorkspaceBoot> {
   report(onStage, 'locking')
   const lease = await timePerfStage('startup', 'writer-lease', () =>
-    acquireWorkspaceWriterLease()).catch(error => {
+    acquireWorkspaceWriterLease({ waitMs: options.writerWaitMs })).catch(error => {
     report(onStage, 'blocked')
     throw error
   })

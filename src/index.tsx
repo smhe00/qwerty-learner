@@ -72,7 +72,7 @@ let mounted = false
 let stopSessionRevocationMonitor: (() => void) | undefined
 let stopEtestM3BackgroundMonitor: (() => void) | undefined
 
-function gateUI(title: string, detail: string, action?: string): void {
+function gateUI(title: string, detail: string, action?: string, onRetry: () => void = () => window.location.reload()): void {
   if (!root || mounted) return
   root.replaceChildren()
   const panel = document.createElement('section')
@@ -90,7 +90,7 @@ function gateUI(title: string, detail: string, action?: string): void {
     retry.textContent = action
     retry.type = 'button'
     retry.style.cssText = 'margin-top:20px;border:1px solid #64748b;border-radius:6px;padding:8px 16px'
-    retry.addEventListener('click', () => window.location.reload())
+    retry.addEventListener('click', onRetry)
     panel.append(retry)
   }
   root.append(panel)
@@ -211,7 +211,10 @@ async function start(): Promise<void> {
       renderLearnBlockSyncScreen(root, null)
     }
     boot = await timePerfStage('startup', 'guarded-bootstrap', () =>
-      prepareGuardedWorkspaceBoot(onStage, { allowLegacy: true }))
+      prepareGuardedWorkspaceBoot(onStage, {
+        allowLegacy: true,
+        writerWaitMs: /\/mobile\/account\/?$/.test(window.location.pathname) ? 3000 : 0,
+      }))
     if (releasedForPageHide) {
       boot.release()
       return
@@ -470,7 +473,13 @@ async function start(): Promise<void> {
       return
     }
     if (message.includes('Another tab owns')) {
-      gateUI('另一个标签页正在使用学习数据', '为防止两个标签页同时写入而损坏学习进度，本页暂不启动。请关闭其他 Qwerty Plus 标签页，再重试。', '重试')
+      if (/\/mobile\/account\/?$/.test(window.location.pathname)) {
+        gateUI('学习数据暂时被占用',
+          '页面切换或其他页面仍在使用学习数据。请稍后在此重试；若仍无法进入，请关闭其他 Qwerty Plus 页面。本机学习记录会保留。',
+          '在此重试', () => { void start() })
+      } else {
+        gateUI('另一个标签页正在使用学习数据', '为防止两个标签页同时写入而损坏学习进度，本页暂不启动。请关闭其他 Qwerty Plus 标签页，再重试。', '重试')
+      }
     } else {
       gateUI('学习数据安全检查未通过', '已阻止本页写入，现有学习数据不会因此被清空。原因：' + message, '重新检查')
     }

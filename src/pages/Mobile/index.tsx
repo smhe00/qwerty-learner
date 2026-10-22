@@ -4,6 +4,7 @@ import { currentDictInfoAtom } from '@/store'
 import { useAtomValue } from 'jotai'
 import { BookOpen, ChevronRight, CircleUserRound, Cloud, LayoutGrid, Medal, Settings2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import type { MouseEvent } from 'react'
 import { useMobileCheckpoint } from './useMobileCheckpoint'
 import './mobile-app.css'
 
@@ -15,6 +16,13 @@ export default function MobilePage() {
   const dictionary = useAtomValue(currentDictInfoAtom)
   const auth = loadAuth({ preserveExpired: true })
   const accountHref = (REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : '') + '/mobile/account'
+  // A normal tap must replace this document in the same browsing context.
+  // Some mobile browsers otherwise apply a new-tab policy to ordinary links.
+  const openAccount = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
+    event.preventDefault()
+    window.location.assign(accountHref)
+  }
   const expired = !!auth && auth.expiresAt * 1000 <= Date.now()
   const menus = [
     { title: '成就', subtitle: '移动端成就即将开放', icon: Medal },
@@ -33,7 +41,7 @@ export default function MobilePage() {
           <h1>QWERTY <span>Plus</span></h1>
           <small>把专注留给每一个单词</small>
         </div>
-        <a href={accountHref} className="mobile-user-status mobile-account-entry" aria-label={auth ? '账号：' + auth.user.username + (expired ? '，登录已过期' : '') : '登录或注册'} data-mobile-account-entry>
+        <a href={accountHref} target="_self" onClick={openAccount} className="mobile-user-status mobile-account-entry" aria-label={auth ? '账号：' + auth.user.username + (expired ? '，登录已过期' : '') : '登录或注册'} data-mobile-account-entry>
           <CircleUserRound size={24} aria-hidden="true" />
         </a>
       </header>
@@ -54,7 +62,7 @@ export default function MobilePage() {
 
       <section className="mobile-home-menu" aria-label="功能菜单">
         <h2>更多功能</h2>
-        {menus.map(item => item.href ? <a className="mobile-menu-item" href={item.href} key={item.title}>
+        {menus.map(item => item.href ? <a className="mobile-menu-item" href={item.href} target="_self" onClick={openAccount} key={item.title}>
           <span className="mobile-menu-icon"><item.icon size={20} aria-hidden="true"/></span>
           <span className="mobile-menu-text"><strong>{item.title}</strong><small>{item.subtitle}</small></span>
           <ChevronRight size={18} aria-hidden="true" className="mobile-menu-chevron" />

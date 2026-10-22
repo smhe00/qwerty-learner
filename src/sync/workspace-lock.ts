@@ -223,7 +223,7 @@ function acquireNativeWebLock(): Promise<WorkingDbLease> {
   })
 }
 
-export async function acquireWorkspaceWriterLease(): Promise<WorkingDbLease> {
+async function acquireWorkspaceWriterLeaseOnce(): Promise<WorkingDbLease> {
   // The native lifetime lock is acquired FIRST. A fresh native lock is proof
   // that a previously closed native tab cannot still own the writer, letting
   // a successor reclaim an orphaned IDB sidecar without a startup delay.
@@ -252,5 +252,27 @@ export async function acquireWorkspaceWriterLease(): Promise<WorkingDbLease> {
       nativeLease?.release()
       idbLease.release()
     },
+  }
+}
+
+/** Wait only for an ordinary release; never steal a live native/fallback lease.
+ * Callers outside the account entry retain immediate contention detection.
+ */
+export async function acquireWorkspaceWriterLease(
+  options: { waitMs?: number } = {},
+): Promise<WorkingDbLease> {
+  const waitMs = Number.isFinite(options.waitMs)
+    ? Math.min(3000, Math.max(0, options.waitMs ?? 0)) : 0
+  const deadline = performance.now() + waitMs
+  for (;;) {
+    try {
+      return await acquireWorkspaceWriterLeaseOnce()
+    } catch (error) {
+      const remaining = deadline - performance.now()
+      if (!(error instanceof Error) ||
+          error.message !== 'Another tab owns the active workspace writer lease' ||
+          remaining <= 0) throw error
+      await new Promise<void>(resolve => window.setTimeout(resolve, Math.min(150, remaining)))
+    }
   }
 }
