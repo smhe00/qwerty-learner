@@ -503,3 +503,38 @@ test('legacy session cannot be rewritten or dropped by a competing branch',async
   assert.equal(p.status,'projected',p.reason)
   assert.deepEqual(rows(p.candidate,'reviewRecords'),rows(a,'reviewRecords'))
 })
+
+test('two independently finished chapters rebase colliding numeric WordRecord links',async()=>{
+  const a=snap(),l=structuredClone(a),r=structuredClone(a)
+  rows(l,'wordRecords').push(record('banana',2,uuid(2)))
+  rows(r,'wordRecords').push(record('cherry',2,uuid(3)))
+  const chapter=(n)=>({
+    id:1,chapterRecordId:uuid(n),dict:'school',chapter:0,
+    timeStamp:1800003600,time:10,correctCount:5,wrongCount:0,
+    wordCount:1,correctWordIndexes:[0],wordNumber:1,
+    wordRecordIds:[2],
+  })
+  rows(l,'chapterRecords').push(chapter(11))
+  rows(r,'chapterRecords').push(chapter(12))
+  const out=await inspect(a,l,r)
+  assert.equal(out.status,'projected',out.reason)
+  assert.deepEqual(rows(out.candidate,'chapterRecords').map(x=>x.wordRecordIds),
+    [[2],[3]])
+  const inverse=await inspect(a,r,l)
+  assert.equal(inverse.status,'projected',inverse.reason)
+  assert.equal(inverse.candidateFingerprint,out.candidateFingerprint)
+  assert.equal(out.convergenceComplete,false)
+})
+test('invalid chapter source foreign key blocks full V4 and preserves originals',async()=>{
+  const a=snap(),l=structuredClone(a),r=structuredClone(a)
+  rows(l,'wordRecords').push(record('banana',2,uuid(2)))
+  rows(l,'chapterRecords').push({
+    id:1,chapterRecordId:uuid(11),dict:'school',chapter:0,
+    timeStamp:1800003600,wordRecordIds:[999],
+  })
+  const saved=structuredClone({a,l,r})
+  const out=await inspect(a,l,r)
+  assert.equal(out.status,'blocked')
+  assert.equal(out.reason,'disjoint-chapter-records:dangling-source-word-reference')
+  assert.deepEqual({a,l,r},saved)
+})

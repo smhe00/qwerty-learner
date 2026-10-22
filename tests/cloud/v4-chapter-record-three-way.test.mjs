@@ -85,3 +85,9 @@ test('ancestor pre-UUID chapter is still byte-for-byte preserved',()=>{
   assert.equal(x.status,'merged',x.reason)
   assert.deepEqual(x.rows[0],a.ancestor[0])
 })
+
+test('even duplicate UUID with identical payload on one device is rejected',()=>{
+  const f=sample()
+  f.local.chapters.push({...f.local.chapters[1],id:3})
+  assert.equal(merge(f).reason,'duplicate-origin-chapter-uuid')
+})

@@ -55,6 +55,7 @@ export function mergeUuidChapterRecords(input: Input): ChapterUnionResult {
     for (const side of [input.local, input.remote]) {
       const chapterIndex = index(side.chapters)
       const sourceWords = index(side.words)
+      const seenChapterIds = new Set<string>()
       for (const [id, row] of baseline) {
         if (!chapterIndex.has(id) || json(chapterIndex.get(id)) !== json(row)) {
           throw Error('ancestor-chapter-deleted-or-rewritten')
@@ -69,6 +70,10 @@ export function mergeUuidChapterRecords(input: Input): ChapterUnionResult {
             !Array.isArray(row.wordRecordIds)) {
           throw Error('new-chapter-lacks-valid-immutable-identity')
         }
+        if (seenChapterIds.has(uuid)) {
+          throw Error('duplicate-origin-chapter-uuid')
+        }
+        seenChapterIds.add(uuid)
         const remapped: number[] = []
         for (const wordId of row.wordRecordIds) {
           if (!Number.isSafeInteger(wordId) || wordId < 1) {
