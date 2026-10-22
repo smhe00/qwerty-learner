@@ -141,3 +141,14 @@ FSRS-6、Acquisition、成就和每日学习进度只能从同一份已验证的
 
 关联实测：https://github.com/smhe00/qwerty-learner/actions/runs/39704080782
 
+
+
+## 2026-10-22 回滚后安全续接检查点（3547113 → 29577be）
+
+- **恢复确认**：恢复提交 `3547113f08333880fe5f9490b4afc730851b1e86` 的 tree SHA 与用户指定的 `959b8c9328c1ed02207a6f9f728e04866759699d` 完全相同（`1d8b34218e6c7900e7938e65f654b88297c419f7`）。已撤销 `89a7208..1db71fd` 九个后续错误方向实验提交；不得从那些提交恢复未审查的自动采纳/覆盖流程。
+- **分支**：恢复时 `edgeone-test` 同指向 `3547113`，正式 `master=6d7839b9a9fd7a31459a19aeca948227b1f7b3c2` 未改。恢复提交的 Cloud Sync、P4b Browser Recovery、etest read-only admission、Learn Real Journey、Dual-Site Explorer 和 EdgeOne Cloud E2E GitHub Actions 均已有成功记录；Review Gate 在恢复后运行成功，另有其余较长的 browser gate 需按最终 SHA 核验。受控云端 CAS 写回的真实成功证据仍是 `959b8c9` 的 etest run `39767760596`。不能把这个成功误写成用户无感自动合并已上线。
+- **唯一新增边界 M2.12**：`src/sync/m2-checkout-declaration.ts` 仅在可信本机 S2 Pull 存证、匹配的实时云 V4 revision/fingerprint、精确认证的 M3 本设备事件头成立时，允许向既有 checkout API 提交独立设备声明；必须对服务端新回执 GET 精确回读，并在每个异步边界复核 S1 owner。此类成功只允许返回 `declared-checkout-only` + `publishReady:false` + `convergenceComplete:false`。
+- **适配与开关**：`m2-checkout-declaration-browser.ts` 只提供显式可调用的 etest-only 门禁适配函数，复用现有服务端 `POST/GET /api/sync/events/v2/checkout` 和 S1/M3 元件；未连接普通 Learn、S2、M4 或任何后台定时器，生产站默认不触发。
+- **测试**：`tests/cloud/m2-checkout-declaration.test.mjs` 覆盖成功存证与身份、伪造事件头、失效云版本、修改本地祖先、服务器错回执、超时及写后身份切换。此条记录只证明代码和测试已提交；最终 PASS 必须以对应 GitHub Actions run 的结果为准。
+- **明确保留**：已有 immutable UUID 事件归并、FSRS-6 重新计算、六表候选、ReviewSession UUID 三方仲裁、已有云端 CAS/409 确认写回、M4 Journal / Crash Recovery 均不改、不重造。DailySession/章节/成就跨设备独立变化仍为保守门禁。
+- **下一步**：核实当前提交的完整 CI，检查已存在 outbox durable `confirmedHead` 的所有权与稳定读接口，给该 checkout 入口增加一次性受控调用/receipt 持久化机制；随后建立真正的只读跨设备候选编排，完成非丢失验收后才设计自动 M4 采用和云端 CAS。未经进一步 gate 不允许 claim “all devices synced”，且绝不触碰 `master`。
