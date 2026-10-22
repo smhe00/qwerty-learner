@@ -137,3 +137,39 @@ test('account ownership of all four complete snapshots is required', () => {
   g.candidate.metadata.source = { kind: 'anonymous' }
   assert.equal(audit(g).status, 'blocked')
 })
+
+test('same session UUID with conflicting device state blocks before any V4 write', () => {
+  const f = fixture()
+  rows(f.remote, 'reviewRecords')[0].sessionId = uuid(10)
+  rows(f.remote, 'reviewRecords')[0].index = 10
+  assert.equal(audit(f).status, 'blocked')
+})
+test('candidate may not silently discard an unchanged ancestor attempt', () => {
+  const f = fixture()
+  rows(f.candidate, 'wordRecords').shift()
+  assert.equal(audit(f).reason,
+    'lossless-missing-original-evidence:wordRecords')
+})
+test('malformed or duplicate primary keys and absent tables fail closed', () => {
+  const cases = [
+    f => { rows(f.local, 'wordRecords')[1].id = 1 },
+    f => { rows(f.candidate, 'wordRecords')[2].id = 1 },
+    f => { f.remote.workspaceData.database.data.data =
+      f.remote.workspaceData.database.data.data.filter(x =>
+        x.tableName !== 'reviewRecords') },
+  ]
+  for (const modify of cases) {
+    const f = fixture()
+    modify(f)
+    assert.equal(audit(f).status, 'blocked')
+  }
+})
+test('reordered distinct UUID evidence never changes verified membership', () => {
+  const f = fixture()
+  rows(f.candidate, 'wordRecords').reverse()
+  rows(f.candidate, 'reviewRecords').reverse()
+  const before = structuredClone(f)
+  const result = audit(f)
+  assert.equal(result.status, 'verified', result.reason)
+  assert.deepEqual(f, before)
+})
