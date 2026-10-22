@@ -159,3 +159,9 @@ FSRS-6、Acquisition、成就和每日学习进度只能从同一份已验证的
 - 仅 `VITE_QWERTY_M3_PILOT_AUTO=true` 且域名为 `etest.edgeone.dev` 时，在原有 M3 已确认的上传批次耗尽、Durable Outbox 确认无 pending/inflight 且 device `confirmedHead` 存在后，触发独立 checkout 声明及精确回读。出错、离线、身份切换、云 revision 变化只记录阻断，不清空 outbox，不影响本地学习。
 - 新增纯逻辑 `src/sync/m3-checkout-cycle.ts` 和独立合同测试；`m3-publication-browser.ts` 复用本地 outbox、M2.12 的隔离浏览器适配，不创建新的同步算法/新的 Journal；仅允许 `declared-checkout-only`，`publishReady:false`，`convergenceComplete:false`。
 - **强制边界**：checkout 只是两端明确祖先的证据之一，不保证其他设备已经发现、不代表六表自动合并完成。当前普通生产页面与 `master` 不启用；没有独立六表可恢复候选 + M4 与完整 CAS 事务和 409/断网/跨 POP 实测前，不准宣称无感同步完成。
+
+### 六表候选出口的独立学习证据守恒门禁
+
+- `v4-lossless-evidence-audit.ts` 在 FSRS-6/Session 三方归并结束后，独立复核三份来源 Backup V4 的全部 `attemptId`，候选必须存在**恰好一次且不可变事实完全一致**的并集；设备内 numeric ID 和 FSRS shadow 可以重新映射，源数据不改写。
+- 同时核对 `ReviewSession.sessionId` 并集与祖先无 UUID Legacy 行的字节级完整保留；被遗漏、伪造、重复、跨设备同 UUID 不同证据的候选即使通过 FSRS 缓存校验，也明确阻止进入候选出口。
+- **范围**：这是必要条件而非充分条件；章节、成就和 DailySession 的独立修改仍由原有保守合并门禁阻断。没有改变对无共同祖先设备的保护，不提供 cloud writeback 或自动 M4 restore 授权。

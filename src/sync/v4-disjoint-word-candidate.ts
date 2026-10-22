@@ -34,6 +34,7 @@ import {
   workspaceFingerprintV4,
 } from './workspace-v4'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
+import { auditV4LosslessEvidenceUnion } from './v4-lossless-evidence-audit'
 
 type Row = Record<string, unknown>
 type Collection = { tableName: string; rows: Row[] }
@@ -456,6 +457,14 @@ export async function previewDisjointWordV4(input: {
     table(candidate, 'reviewWordStates').rows = normalizedStates
     if (mergedSessions) {
       table(candidate, 'reviewRecords').rows = mergedSessions
+    }
+    // Re-keyed rows must preserve the complete immutable event union. A
+    // syntactically valid six-table candidate can still lose an event.
+    const noLoss = auditV4LosslessEvidenceUnion({
+      ancestor, local, remote, candidate,
+    })
+    if (noLoss.status !== 'verified') {
+      return blocked('disjoint-lossless-evidence:' + noLoss.reason)
     }
     assertRestorableWorkspaceV4(candidate)
     return {
