@@ -334,7 +334,7 @@ for (const site of sites) {
       observer.verify()
     })
 
-    test('mobile Alpha information shell stays accessible across navigation and reload', async ({ browser }) => {
+    test('mobile shell matches each published release across navigation and reload', async ({ browser }) => {
       test.setTimeout(100_000)
       const context = await browser.newContext({
         viewport: { width: 390, height: 844 },
@@ -343,24 +343,30 @@ for (const site of sites) {
       try {
         const page = await context.newPage()
         const observer = await inspect(page)
+        // Pages tracks product/main Mobile P0. Production EdgeOne deliberately
+        // remains on its older guarded information screen until release.
+        const assertMobileShell = async () => {
+          await expect(page).toHaveURL(/\/mobile\/?$/, { timeout: 20_000 })
+          if (site.name === 'pages') {
+            await expect(page.locator('[data-mobile-menu]')).toBeVisible()
+            await expect(page.getByRole('heading', { name: 'QWERTY Plus' })).toBeVisible()
+            await expect(page.getByRole('link',
+              { name: /^(开始|继续)手机学习$/ })).toBeVisible()
+          } else {
+            await expect(page.getByRole('heading', { name: '当前移动端说明' })).toBeVisible()
+            await expect(page.getByText(/移动端完整学习体验尚未开放/)).toBeVisible()
+          }
+          await expect(page.locator('[data-typing-word]:visible')).toHaveCount(0)
+        }
         await page.goto(site.base, { waitUntil: 'domcontentloaded' })
         checkRoute(page, site)
-        await expect(page).toHaveURL(/\/mobile\/?$/, { timeout: 20_000 })
-        await expect(page.getByRole('heading', { name: '当前移动端说明' })).toBeVisible()
-        await expect(page.getByText(/移动端完整学习体验尚未开放/)).toBeVisible()
-        await expect(page.locator('[data-typing-word]:visible')).toHaveCount(0)
-
-        // The published mobile channel does not yet expose keyboard Learn.
-        // Routing to Learn must preserve the announced mobile experience,
-        // not render an incomplete/hidden desktop keyboard.
+        await assertMobileShell()
         await page.goto(site.base + 'learn', { waitUntil: 'domcontentloaded' })
         checkRoute(page, site)
-        await expect(page).toHaveURL(/\/mobile\/?$/, { timeout: 20_000 })
-        await expect(page.getByRole('heading', { name: '当前移动端说明' })).toBeVisible()
+        await assertMobileShell()
         await page.reload({ waitUntil: 'domcontentloaded' })
         checkRoute(page, site)
-        await expect(page).toHaveURL(/\/mobile\/?$/)
-        await expect(page.getByRole('heading', { name: '当前移动端说明' })).toBeVisible()
+        await assertMobileShell()
         observer.verify()
       } finally {
         await context.close()
