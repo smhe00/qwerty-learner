@@ -5,7 +5,10 @@ import { pathToFileURL } from 'node:url'
 
 export async function waitForPages({ repo, sha, token, phase = 'all', fetcher = fetch,
   now = Date.now, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)),
-  deploymentTimeout = 600_000, propagationTimeout = 180_000, log = console.log }) {
+  // GitHub-hosted Pages builds have been observed succeeding after ~13min.
+  // Wait for the exact GitHub Pages deployment, never accept branch pushes
+  // or a marker alone as evidence of a successful live deployment.
+  deploymentTimeout = 1_800_000, propagationTimeout = 180_000, log = console.log }) {
   if (!/^[\w.-]+\/[\w.-]+$/.test(repo || '') || !/^[a-f0-9]{40}$/.test(sha || '') || !token)
     throw new Error('Pages gate requires repository, full source SHA and read token')
   if (!['all', 'deployment', 'propagation'].includes(phase)) throw new Error('Invalid Pages gate phase')
