@@ -151,13 +151,30 @@ async function upload(token, baseRevision, snapshot, fingerprint) {
   assert.ok(bytes.length > 0 && bytes.length < 512 * 1024)
   assert.equal(verifyCompressedV4(bytes, userId, fingerprint).logicalFingerprint,
     fingerprint, 'server canonical V4 verification')
-  // Fail closed on a 500/timeout: do not re-upload an ambiguous commit.
-  return api('/api/sync/v2/binary/direct', token, 'POST', bytes, {
+  const send = () => api('/api/sync/v2/binary/direct', token, 'POST', bytes, {
     'Content-Type': 'application/octet-stream',
     'X-Qwerty-Payload-Sha256': checksum(bytes),
     'X-Qwerty-Base-Revision': String(baseRevision),
     'X-Qwerty-Logical-Fingerprint': fingerprint,
   })
+  // Only this ONE server error is provably pre-write. The EdgeOne handler
+  // throws it before service.putSyncV4Binary is invoked. Recheck the cloud
+  // revision before a bounded replay of EXACTLY the same gzip bytes.
+  // All other 5xx, timeouts, missing bodies and CAS conflicts fail closed.
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const result = await send()
+    if (result.status !== 503 ||
+        result.response?.error !== 'v4_direct_body_read_failed' ||
+        attempt === 3) return result
+    const observed = await metadata(token)
+    if (observed.revision !== baseRevision) {
+      throw Error('Ambiguous cloud revision after explicit pre-write body error')
+    }
+    console.log('Confirmed pre-commit EdgeOne body read failure; retrying exact V4 bytes',
+      attempt)
+    await sleep(1000 * attempt)
+  }
+  throw Error('unreachable direct upload state')
 }
 
 let user = null, userId = null, failure = null
