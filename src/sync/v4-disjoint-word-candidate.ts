@@ -334,6 +334,44 @@ export async function previewDisjointWordV4(input: {
       }
       if (replayed) chosenStates.set(k, replayed as unknown as Row)
     }
+    // A single-device review is not automatically trustworthy either. A
+    // real eligible grade MUST be represented by the persisted scheduler
+    // state on that device and must replay from its immutable event history.
+    // Otherwise a stale or forged ReviewWordState would silently enter V4.
+    for (const origin of ['local', 'remote'] as const) {
+      const other: Source = origin === 'local' ? 'remote' : 'local'
+      const reviewed = new Set(additions[origin]
+        .filter(r => r.chapter === -1 &&
+          (r.reviewRatingDecision as { eligible?: boolean } | undefined)
+            ?.eligible === true)
+        .map(wordKey))
+      for (const k of reviewed) {
+        if (touched[other].has(k)) continue // Both sides: audited above.
+        const [dict, word] = JSON.parse(k) as [string, string]
+        const sourceHistory = table(input[origin], 'wordRecords').rows
+          .filter(r => wordKey(r) === k)
+        const replayed = rebuildActiveFsrsStateFromWordRecords(
+          dict, word, sourceHistory as IWordRecord[])
+        const stored = stateByKey(table(input[origin], 'reviewWordStates').rows)
+          .get(k) as IReviewWordState | undefined
+        if (!replayed || !stored || stored.lifecycle !== 'active' ||
+            stored.exclusion || stored.reviewCount !== replayed.reviewCount ||
+            stored.lapseCount !== replayed.lapseCount ||
+            stored.cleanStreak !== replayed.cleanStreak ||
+            stored.lastOutcome !== replayed.lastOutcome ||
+            stored.nextReviewAt !== replayed.nextReviewAt ||
+            stored.schedulerState?.kind !== 'fsrs6' ||
+            stored.schedulerState.difficulty !==
+              replayed.schedulerState.difficulty ||
+            stored.schedulerState.stability !==
+              replayed.schedulerState.stability) {
+          return blocked('disjoint-single-side-unverified-device-fsrs:' + origin)
+        }
+        // The canonical projection is derived from evidence, never copied
+        // from an independently mutable cached ReviewWordState.
+        chosenStates.set(k, replayed as unknown as Row)
+      }
+    }
     const stateRows = [...chosenStates.entries()].sort(([a], [b]) =>
       compare(a, b))
     const seenStateIds = new Set<number>()

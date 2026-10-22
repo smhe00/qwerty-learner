@@ -29,3 +29,11 @@
 ## 升级门禁
 
 etest 验证后若真实 EdgeOne 云同步的单端快进、双端并发和断网重试全部通过，再评估受限开启 M3、追加真正六表融合，并在独立审计后讨论正式站发布。未经批准绝不自动升级 `master`。
+
+
+## M2.15 单端独立 Review 候选 FSRS 完整性门禁
+
+- 在 `v4-disjoint-word-candidate.ts` 中，过去仅有双端同时触碰同一个单词才对 FSRS 调度器重新计算。现对仅一台设备新增的**合格 Review 评级**也重新按完整 WordRecord 事件重放；检查源设备缓存的 reviewCount、lapseCount、cleanStreak、lastOutcome、nextReviewAt、FSRS D/S 与重放结果一致。
+- 缺失、过期、伪造的 ReviewWordState 直接阻断候选，禁止将单端缓存状态静默并入完整 V4。不可验证的旧学习历史保持保守阻断，不把这种拒绝解释成用户记录丢失。
+- 保留既有的 UUID 去重、数字 WordRecord 主键重映射和 FSRS shadow sourceRecordId 关联修正；测试补入真实独立 Good、交换设备顺序确定性、过期/伪造状态拒绝。
+- 此更改仍**仅为只读候选与隔离测试**：`publishReady:false`、`convergenceComplete:false`，不开放 M4 自动应用，不写回正式 Blob；需 CI 和 etest 验证后再评估。

@@ -273,3 +273,57 @@ test('a forged per-device review count is refused even if its word events are in
   rows(l,'reviewWordStates')[0].reviewCount=999
   assert.equal((await inspect(a,l,r)).status,'blocked')
 })
+
+test('single-device rated review is replayed, never trusted from cached FSRS', async () => {
+  const a = snap()
+  const seeded = replay('school', 'apple', rows(a, 'wordRecords'))
+  assert.ok(seeded)
+  rows(a, 'reviewWordStates')[0] = { ...seeded, id: 1 }
+  const l = structuredClone(a), r = structuredClone(a)
+  const grade = record('apple', 2, uuid(2), {
+    chapter: -1, timeStamp: 1800001000, learnItemKind: 'review',
+    reviewRatingDecision: { eligible: true, rating: 'good',
+      confidence: 1, reasonCodes: ['test'] },
+  })
+  rows(l, 'wordRecords').push(grade)
+  const trusted = replay('school','apple', rows(l, 'wordRecords'))
+  assert.ok(trusted)
+  rows(l, 'reviewWordStates')[0] = { ...trusted, id: 1 }
+  const projected = await inspect(a, l, r)
+  assert.equal(projected.status, 'projected', projected.reason)
+  assert.equal(projected.candidateFingerprint, await hash(projected.candidate))
+  assert.equal(rows(projected.candidate, 'reviewWordStates')[0].reviewCount, 1)
+  assert.equal(rows(projected.candidate, 'reviewWordStates')[0].nextReviewAt,
+    trusted.nextReviewAt)
+  assert.deepEqual(rows(projected.candidate, 'wordRecords').map(x => x.id),
+    [1, 2])
+  const reverse = await inspect(a, r, l)
+  assert.equal(reverse.status, 'projected', reverse.reason)
+  assert.equal(reverse.candidateFingerprint, projected.candidateFingerprint)
+  assert.equal(projected.publishReady, false)
+})
+
+test('single-device stale, fabricated or missing scheduler evidence blocks', async () => {
+  const a = snap()
+  rows(a, 'reviewWordStates')[0] = {
+    ...replay('school','apple',rows(a,'wordRecords')), id: 1 }
+  const good = record('apple',2,uuid(2), {
+    chapter:-1,timeStamp:1800001000, learnItemKind:'review',
+    reviewRatingDecision:{eligible:true,rating:'good',reasonCodes:['test']},
+  })
+  const stale = structuredClone(a), untouched = structuredClone(a)
+  rows(stale, 'wordRecords').push(good)
+  assert.equal((await inspect(a,stale,untouched)).reason,
+    'disjoint-single-side-unverified-device-fsrs:local')
+
+  const forged = structuredClone(stale)
+  rows(forged,'reviewWordStates')[0] = {
+    ...replay('school','apple',rows(forged,'wordRecords')), id:1 }
+  rows(forged,'reviewWordStates')[0].schedulerState.stability += 0.5
+  assert.equal((await inspect(a,untouched,forged)).reason,
+    'disjoint-single-side-unverified-device-fsrs:remote')
+
+  const lost = structuredClone(forged)
+  rows(lost,'reviewWordStates').length = 0
+  assert.equal((await inspect(a,lost,untouched)).status,'blocked')
+})
