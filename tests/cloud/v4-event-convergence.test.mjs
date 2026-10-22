@@ -36,8 +36,7 @@ const admission = () => row(uuids[0], t0, {
 test('M2 event projection is commutative/idempotent and FSRS replay is stable', () => {
   const a = admission()
   const b = row(uuids[1], t0 + 86_400)
-  // Separate legitimate sessions by >60s; a simultaneous competing review
-  // is covered by the quarantine test below.
+  // Every distinct attempt is a study fact, regardless of spacing.
   const c = row(uuids[2], t0 + 86_461, {
     reviewRatingDecision: { eligible: true, rating: 'hard', confidence: 1,
       reasonCodes: ['m2-test'] },
@@ -86,54 +85,55 @@ test('identical spelling in different dictionaries gives distinct FSRS states', 
   assert.deepEqual(x.words.map(w => w.fsrsState.reviewCount), [0, 0])
 })
 
-test('two physical devices cannot double-Good a word inside ambiguity window', () => {
-  const older = row(uuids[1], t0 + 86_400)
-  const competing = row(uuids[2], t0 + 86_421)
-  const x = project({ local: [admission(), older], remote: [competing] })
-  assert.equal(x.status, 'blocked')
-  assert.equal(x.reason, 'concurrent-review-conflict')
-  assert.equal(x.publishReady, false)
-  assert.deepEqual(x.words, [])
-  assert.equal(project({ local: [competing], remote: [admission(), older] }).reason,
-    'concurrent-review-conflict')
-})
 
-test('shared UUID, unrelated dictionaries and spaced sessions are not races', () => {
+test('two devices both Good inside 60s remain two legitimate FSRS reviews', () => {
   const first = row(uuids[1], t0 + 86_400)
-  const later = row(uuids[2], t0 + 86_461)
-  assert.equal(project({ local: [first], remote: [later] }).status, 'projected')
-  assert.equal(project({ local: [first], remote: [first] }).status, 'projected')
-  assert.equal(project({ local: [first], remote: [
-    row(uuids[2], first.timeStamp, { dict: 'different-book' }),
-  ] }).status, 'projected')
+  const second = row(uuids[2], t0 + 86_421)
+  const x = project({ local: [admission(), first], remote: [second] })
+  assert.equal(x.status, 'projected')
+  assert.equal(x.uniqueAttempts, 3)
+  assert.equal(x.words[0].fsrsState.reviewCount, 2)
+  const inverse = project({ local: [second], remote: [first, admission()] })
+  assert.deepEqual(x.words, inverse.words)
 })
-
-test('eligible failed + positive concurrent Review also quarantines; training does not', () => {
-  const positive = row(uuids[1], t0 + 86_400)
-  const failed = row(uuids[2], positive.timeStamp, {
-    reviewRatingDecision: { eligible: true, rating: 'again', confidence: 1,
-      reasonCodes: ['m2-test'] },
+test('Good and Again at identical timestamp both count; attemptId resolves tie deterministically', () => {
+  const first = row(uuids[1], t0 + 86_400)
+  const second = row(uuids[2], t0 + 86_400, {
+    reviewRatingDecision: { eligible: true, rating: 'again',
+      confidence: 1, reasonCodes: ['m2-test'] },
   })
-  assert.equal(project({ local: [positive], remote: [failed] }).reason,
-    'concurrent-review-conflict')
-  const training = row(uuids[2], positive.timeStamp, {
-    reviewRatingDecision: { eligible: false, rating: 'good', confidence: 1,
+  const x = project({ local: [admission(), second], remote: [first] })
+  const y = project({ local: [first], remote: [second, admission()] })
+  assert.equal(x.status, 'projected')
+  assert.equal(x.words[0].fsrsState.reviewCount, 2)
+  assert.equal(x.words[0].fsrsState.lastOutcome, 'again')
+  assert.deepEqual(x.words, y.words)
+  assert.deepEqual(x.words[0].attemptIds, uuids.slice(0,3))
+})
+test('two ratings from an identical prior base digest still remain two real reviews', () => {
+  const digest = 'c'.repeat(64)
+  const a = row(uuids[1], t0 + 86_400, { reviewBaseStateFingerprint: digest })
+  const b = row(uuids[2], t0 + 86_800, { reviewBaseStateFingerprint: digest })
+  const r = project({ local: [admission(), a], remote: [b] })
+  assert.equal(r.status, 'projected')
+  assert.equal(r.words[0].fsrsState.reviewCount, 2)
+})
+test('retransmitting the identical attemptId only counts one review', () => {
+  const a = admission()
+  const b = row(uuids[1], t0 + 86_400)
+  const r = project({ local: [a,b], remote: [b,a] })
+  assert.equal(r.status, 'projected')
+  assert.equal(r.uniqueAttempts, 2)
+  assert.equal(r.words[0].fsrsState.reviewCount, 1)
+})
+test('independent training remains evidence without advancing FSRS', () => {
+  const a = admission()
+  const b = row(uuids[1], t0 + 86_400)
+  const training = row(uuids[2], t0 + 86_400, {
+    reviewRatingDecision: { eligible: false, rating: null,
       reasonCodes: ['assisted'] },
   })
-  assert.equal(project({ local: [positive], remote: [training] }).status, 'projected')
-})
-
-test('two explicit Again grades and potentially eligible legacy Review also quarantine', () => {
-  const again = (uuid, time) => row(uuid, time, {
-    reviewRatingDecision: { eligible: true, rating: 'again', confidence: 1,
-      reasonCodes: ['m2-test'] },
-  })
-  assert.equal(project({ local: [again(uuids[1], t0)],
-    remote: [again(uuids[2], t0 + 5)] }).reason,
-  'concurrent-review-conflict')
-  const oldReview = row(uuids[2], t0 + 5, {
-    reviewRatingDecision: undefined, learnItemKind: undefined,
-  })
-  assert.equal(project({ local: [row(uuids[1], t0)], remote: [oldReview] }).reason,
-    'concurrent-review-conflict')
+  const r = project({ local: [a,b], remote: [training] })
+  assert.equal(r.status, 'projected')
+  assert.equal(r.words[0].fsrsState.reviewCount, 1)
 })

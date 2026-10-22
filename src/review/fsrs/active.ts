@@ -34,6 +34,13 @@ function compareRecordOrder(
   if (left.timeStamp !== right.timeStamp) {
     return left.timeStamp - right.timeStamp
   }
+  // Cross-device auto-increment IDs can collide or differ. An attempt UUID
+  // is an immutable, origin-independent secondary order. Legacy records
+  // without UUID keep their historical numeric-ID fallback.
+  if (left.attemptId && right.attemptId &&
+      left.attemptId !== right.attemptId) {
+    return left.attemptId < right.attemptId ? -1 : 1
+  }
   return (left.id ?? 0) - (right.id ?? 0)
 }
 

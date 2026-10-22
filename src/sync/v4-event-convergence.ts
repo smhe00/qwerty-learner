@@ -24,7 +24,7 @@ export type EventConvergenceProjection = {
   /** Always false: full 6-table / clock / journal / cloud proof is absent. */
   publishReady: false
   reason: 'none' | 'identity-conflict' | 'legacy-unverified' |
-    'invalid-event' | 'fsrs-replay-failed' | 'concurrent-review-conflict'
+    'invalid-event' | 'fsrs-replay-failed'
   sharedAttempts: number
   uniqueAttempts: number
   words: ProjectedWord[]
@@ -43,65 +43,11 @@ function validAttempt(row: IWordRecord): row is IWordRecord & { attemptId: strin
 }
 
 /**
- * Two independent devices may grade the same scheduled Review while offline.
- * Both ratings are evidence, but replaying two grades (Good OR Again) for one
- * physical test would manufacture scheduler history. Until M4 has an authenticated
- * arbitration group, quarantine the entire projection. Timestamps are in
- * seconds; 60s is a conservative ambiguity window, NOT proof of identity.
+ * Independent learning attempts are facts, not cross-device scheduler
+ * revisions. Never infer duplicates from their proximity or their pre-probe
+ * FSRS base fingerprints. A real repeated study is replayed as a real study.
+ * The sole duplicate identity is immutable attemptId.
  */
-const REVIEW_RACE_WINDOW_SECONDS = 60
-
-function possibleSchedulerReview(row: IWordRecord): boolean {
-  // Modern eligible Review plus UUID-tagged historical Review without an
-  // explicit decision. Only an explicit ineligible gate is safe to exclude.
-  // Both double-Good and double-Again would corrupt the FSRS replay.
-  return row.chapter === -1 && row.sourceMode !== 'typing' &&
-    row.learnItemKind !== 'acquisition' &&
-    row.learnItemKind !== 'practice' &&
-    row.reviewRatingDecision?.eligible !== false
-}
-
-function hasConcurrentReviewAmbiguity(
-  local: readonly IWordRecord[],
-  remote: readonly IWordRecord[],
-): boolean {
-  const localIds = new Set(local.map(row => row.attemptId))
-  const remoteByWord = new Map<string, IWordRecord[]>()
-  for (const row of remote) {
-    if (!possibleSchedulerReview(row) || localIds.has(row.attemptId)) continue
-    const key = JSON.stringify([row.dict, row.word])
-    const group = remoteByWord.get(key) ?? []
-    group.push(row)
-    remoteByWord.set(key, group)
-  }
-  for (const group of remoteByWord.values()) {
-    group.sort((a, b) => a.timeStamp - b.timeStamp)
-  }
-  for (const row of local) {
-    if (!possibleSchedulerReview(row)) continue
-    const group = remoteByWord.get(JSON.stringify([row.dict, row.word]))
-    if (!group) continue
-    // Lower-bound search avoids quadratic replay on frequently reviewed words.
-    let lo = 0
-    let hi = group.length
-    while (lo < hi) {
-      const mid = (lo + hi) >>> 1
-      if (group[mid].timeStamp < row.timeStamp - REVIEW_RACE_WINDOW_SECONDS) {
-        lo = mid + 1
-      } else {
-        hi = mid
-      }
-    }
-    for (let i = lo; i < group.length &&
-        group[i].timeStamp <= row.timeStamp + REVIEW_RACE_WINDOW_SECONDS; i++) {
-      if (group[i].attemptId !== row.attemptId) {
-        return true
-      }
-    }
-  }
-  return false
-}
-
 function blocked(
   reason: Exclude<EventConvergenceProjection['reason'], 'none'>,
 ): EventConvergenceProjection {
@@ -124,10 +70,6 @@ export function projectUuidLearningConvergence(input: {
   if (!input.local.every(validAttempt) || !input.remote.every(validAttempt)) {
     return blocked('invalid-event')
   }
-  if (hasConcurrentReviewAmbiguity(input.local, input.remote)) {
-    return blocked('concurrent-review-conflict')
-  }
-
   const unique = new Map<string, IWordRecord & { attemptId: string }>()
   for (const row of [...input.local, ...input.remote]) {
     // Immutable primary evidence was verified by preflight; derived shadow
