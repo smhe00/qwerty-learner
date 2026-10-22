@@ -438,12 +438,12 @@ test('legacy session rewrite still blocks when other UUID sessions are valid', a
   rows(r,'reviewRecords')[0].index=1
   const result=await inspect(a,l,r)
   assert.equal(result.status,'blocked')
-  assert.equal(result.reason,'disjoint-legacy-session-changed')
+  assert.equal(result.reason,'disjoint-v4-invalid:disjoint-legacy-session-changed')
   // A deleted legacy row is not a legitimate cross-device deletion.
   rows(r,'reviewRecords').shift()
   const missing=await inspect(a,l,r)
   assert.equal(missing.status,'blocked')
-  assert.equal(missing.reason,'disjoint-legacy-session-changed')
+  assert.equal(missing.reason,'disjoint-v4-invalid:disjoint-legacy-session-changed')
 })
 
 test('legacy session cannot be rewritten or dropped by a competing branch',async()=>{
