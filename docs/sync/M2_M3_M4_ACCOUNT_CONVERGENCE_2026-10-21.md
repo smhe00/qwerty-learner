@@ -186,3 +186,10 @@ FSRS-6、Acquisition、成就和每日学习进度只能从同一份已验证的
 - 新产生的 ChapterRecord 具有独立的随机 `chapterRecordId`，旧章节记录保留原样，不补写历史、不调整 Dexie schema。
 - 并发完成的两端 ChapterRecord 使用 UUID 去重/检查不可变内容，按 `wordRecords.attemptId` 将不同设备的 `wordRecordIds` 映射到候选真实数字主键；不沿用来源端的数字 ID 猜测外键。
 - 新章节无 UUID、同 UUID 不同内容、修改/删除祖先、未知外键或指向不同词典，一律 fail-closed。章节可正确归并仅是完整 V4 **只读候选**；云端/本地自动发布仍必须独立验证。
+
+
+### M3.10 非权威 Blob 发现 → 精确事件链校验（etest 只读）
+
+- 在后台可选周期中读取既有 `GET /api/sync/events/v2/observed` 列表作为 **hints**，拒绝截断、可见缺口、同序列分叉、错误 UUID 与超过 4 个设备。仅对每个设备已观察到的最高前缀执行现有 `verify-set` 与精确 Blob 链回读。
+- 有意保持 `listingIsAuthoritative:false`、`publishReady:false`、`convergenceComplete:false`；不知道是否有未被当前 POP 列出的设备，不能据此发布全账号 V4、M4 本地覆盖或向用户显示“同步完成”。
+- `m3-receive-discovery-browser.ts` 仅在 etest 的实验开关下运行；普通生产模式不可调用。真正全端自动采纳仍被安全门禁阻断。

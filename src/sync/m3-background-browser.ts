@@ -8,8 +8,25 @@ import { etestM3PilotEnabled, runEtestM3Publication } from './m3-publication-bro
 
 export function startEtestM3BackgroundMonitor(): () => void {
   if (!etestM3PilotEnabled()) return () => undefined
+  let lastDiscoveryAt = 0
   return startM3ContinuousDrain({
-    run: runEtestM3Publication,
+    run: async () => {
+      const published = await runEtestM3Publication()
+      // Receiver is intentionally read-only; never treat a partial Blob
+      // listing as complete device discovery or a writable merge candidate.
+      if (published.status !== 'blocked' &&
+          Date.now() - lastDiscoveryAt >= 60_000) {
+        lastDiscoveryAt = Date.now()
+        const { inspectEtestVisibleDeviceHeads } =
+          await import('./m3-receive-discovery-browser')
+        const observed = await inspectEtestVisibleDeviceHeads()
+        if (observed.status === 'blocked' &&
+            observed.reason !== 'receipt-observation-no-observed-device-heads') {
+          console.warn('etest M3 received only partial evidence:', observed.reason)
+        }
+      }
+      return published
+    },
     schedule: (callback, delay) => window.setTimeout(callback, delay),
     cancel: handle => window.clearTimeout(handle as number),
     isOnline: () => navigator.onLine,

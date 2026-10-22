@@ -644,6 +644,15 @@ export function verifyWitnessedChainedEventHeads(
   })
 }
 
+/** Read-only, eventually-consistent receipt observation. Only gives discovery
+ * HINTS, never a complete device set or full V4 merge authorization.
+ */
+export function observeChainedLearningReceipts(token: string) {
+  return request<import('./m3-observed-chained-heads').ObservedChainedReceiptSet & {
+    ok: true
+  }>('/api/sync/events/v2/observed', { token })
+}
+
 /** M2.10 independent server-recorded device checkout *declaration* pilot.
  * The server issues the receipt only for its authenticated device session,
  * exact current V4 revision and an already-present chained event prefix.
