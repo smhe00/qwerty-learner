@@ -118,3 +118,25 @@ test('owner changes after exact GET: no stale durable acknowledgment', async () 
   assert.equal(result.status, 'retained')
   assert.equal(h.counts().confirms, 0)
 })
+
+test('single-session 401 revoked retains exact offline outbox until same-account reauth', async () => {
+  const h = harness()
+  const preserved = JSON.stringify((await h.port.reserve()).inflight)
+  // Device B logged in while A was offline. Token A has no right to
+  // publish; this MUST NOT create an acknowledged or discarded attempt.
+  h.port.publish = async () => {
+    const err = new Error('session_revoked')
+    err.status = 401
+    throw err
+  }
+  const revoked = await publishOneImmutableBatch('acc-A', h.port)
+  assert.equal(revoked.status, 'retained')
+  assert.match(revoked.reason, /session_revoked/)
+  assert.equal(h.counts().confirms, 0)
+  assert.equal(JSON.stringify((await h.port.reserve()).inflight), preserved)
+  // Only after explicit reauthentication on the SAME account may the
+  // queued original bytes be sent/read back and durably acknowledged.
+  h.port.publish = async () => ({ stored: true, ...ack })
+  assert.equal((await publishOneImmutableBatch('acc-A', h.port)).status, 'verified')
+  assert.equal(h.counts().confirms, 1)
+})
