@@ -260,3 +260,23 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
     await Promise.allSettled(contexts.map(context => context.close()))
   }
 })
+
+
+test('etest phone account entry and refresh keep the real login route instead of falling back to home', async ({ browser }) => {
+  if (process.env.GITHUB_REF_NAME !== 'edgeone-test' || new URL(base || '').origin !== 'https://etest.edgeone.dev') {
+    throw Error('Mobile account entry may only probe etest')
+  }
+  const context = await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'})
+  try {
+    const page = await context.newPage()
+    await page.goto(new URL('/mobile', base).href, {waitUntil:'domcontentloaded'})
+    await expect(page.locator('[data-mobile-account-entry]')).toBeVisible({timeout:30000})
+    await page.locator('[data-mobile-account-entry]').click()
+    await expect(page).toHaveURL(/\/mobile\/account\/?$/)
+    await expect(page.getByRole('heading',{name:'登录 QWERTY Plus'})).toBeVisible({timeout:30000})
+    await expect(page.getByRole('button',{name:'登录',exact:true})).toBeEnabled()
+    await page.reload({waitUntil:'domcontentloaded'})
+    await expect(page.getByRole('heading',{name:'登录 QWERTY Plus'})).toBeVisible({timeout:30000})
+    await expect(page.locator('[data-mobile-menu]')).toHaveCount(0)
+  } finally { await context.close().catch(()=>{}) }
+})

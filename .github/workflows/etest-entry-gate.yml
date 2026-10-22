@@ -5,6 +5,9 @@ on:
     branches: [product/main]
     paths:
       - 'src/sync/**'
+      - 'index.html'
+      - 'public/404.html'
+      - 'scripts/emit-edgeone-spa-entries.mjs'
       - 'cloud-functions/**'
       - 'tests/cloud/**'
       - '.github/workflows/etest-entry-gate.yml'

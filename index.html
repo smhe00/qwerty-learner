@@ -25,7 +25,7 @@
             } catch (error) {
               restored = ''
             }
-            if (/^\/(?:typing|learn|analysis|gallery|achievements|error-book|friend-links|mobile)(?:[?#]|$)/.test(restored)) {
+            if (/^\/(?:typing|learn|analysis|gallery|achievements|error-book|friend-links|mobile(?:\/(?:study|account))?)(?:[?#]|$)/.test(restored)) {
               window.history.replaceState(window.history.state, null, restored)
             } else {
               window.history.replaceState(window.history.state, null, '/')

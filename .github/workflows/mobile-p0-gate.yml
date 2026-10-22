@@ -5,6 +5,9 @@ on:
     branches: [product/main]
     paths:
       - 'src/app.tsx'
+      - 'index.html'
+      - 'public/404.html'
+      - 'scripts/emit-edgeone-spa-entries.mjs'
       - 'src/index.tsx'
       - 'src/sync/workspace-account-ui.ts'
       - 'src/sync/mobile-account*'

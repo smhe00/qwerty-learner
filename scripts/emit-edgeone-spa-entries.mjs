@@ -23,6 +23,7 @@ if (process.env.REACT_APP_DEPLOY_ENV === 'pages') {
   const routes = [
     'typing', 'learn', 'analysis', 'gallery',
     'achievements', 'error-book', 'friend-links', 'mobile',
+    'mobile/study', 'mobile/account',
   ]
   for (const route of routes) {
     const folder = path.join(buildDir, route)

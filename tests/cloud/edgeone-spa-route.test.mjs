@@ -112,3 +112,17 @@ test('GitHub Pages retains the original encoded deep-link decoder', () => {
     '/qwerty-learner/learn',
   )
 })
+
+
+test('EdgeOne preserves only the two named nested mobile routes across 404 recovery', () => {
+  const origin = 'https://etest.edgeone.dev'
+  for (const route of ['/mobile/account', '/mobile/study']) {
+    assert.equal(runIndexBoot(runNotFoundPage(origin + route)), route)
+    assert.equal(runIndexBoot(runNotFoundPage(origin + route + '/?from=mobile#top')), route + '?from=mobile#top')
+    assert.equal(runIndexBoot(origin + '/?qwerty-route=' + encodeURIComponent(route + '/unexpected')), '/')
+  }
+  for (const route of ['/mobile/admin', '/mobile/account/unexpected', '/mobile/api/health', '/api/auth/login']) {
+    assert.equal(runNotFoundPage(origin + route), origin + '/')
+  }
+  assert.equal(runIndexBoot('https://smhe00.github.io/qwerty-learner/?/mobile/account'), '/qwerty-learner/mobile/account')
+})
