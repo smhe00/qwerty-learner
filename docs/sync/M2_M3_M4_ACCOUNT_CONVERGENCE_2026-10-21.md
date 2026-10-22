@@ -141,13 +141,3 @@ FSRS-6、Acquisition、成就和每日学习进度只能从同一份已验证的
 
 关联实测：https://github.com/smhe00/qwerty-learner/actions/runs/39704080782
 
-
-## 2026-10-22 M4.1 云端回写后的本机安全接续（本轮新增）
-
-- 基线 `edgeone-test=959b8c9328c1ed02207a6f9f728e04866759699d` 的 [真实 Safe V4 Merge Writeback Pilot](https://github.com/smhe00/qwerty-learner/actions/runs/39767760596) 与 [Branch EdgeOne Cloud E2E](https://github.com/smhe00/qwerty-learner/actions/runs/39767760644) 均通过；Cloud CAS/另一设备读回**已经实现**，此迭代绝不重造或改变。
-- 新增 `src/sync/m4-cloud-adoption.ts`：先核对真实 S2 Pull 祖先、不可变账户、源指纹和更高的云端 revision。只在本机完全未改（远端快进），或已有完整六表候选验证**云端确实含有本机全部尝试、ReviewSession、单词复习进度和控制状态**时，允许本地接续；否则拒绝并保留本机数据。候选保持 `convergenceComplete:false`，不代表所有设备都收敛。
-- 新增 `src/sync/m4-cloud-adoption-browser.ts`：独占 S1 pre-mount lease 下复用 `getSyncV2Meta`、`getSyncV2SnapshotBinary`、`verifyDownloadedWorkspaceV4`、`loadPinnedLocalS2PullAncestor` 和 `m4MergeJournalPort.stage`，在异步边界核对账户/generation/witness，元数据二次读回确认 revision 不变；仅**持久暂存**原始本地完整快照与被验证云端候选，后续由现有 `workspace-bootstrap` 的 M4 crash recovery 恢复、回读、sealed/finalize 和重启完成。不新增竞争性的 localStorage 临时 journal，也不从挂载 React 导入。
-- `src/index.tsx` 新增仅供隔离站点的显式预挂载测试入口 `?m4-adopt=manage`，必须同时匹配主机 `etest.edgeone.dev` 及构建变量 `VITE_QWERTY_M4_ADOPTION_PILOT=true`，并由操作者主动点击核验。**默认关闭**，生产站/Pages 不可启动此功能；测试站也须刻意开启环境开关后才能进行真人/Chromium 接续回归。
-- `tests/cloud/v4-disjoint-m4-admission.test.mjs` 新增独立祖先、不同设备事件完整包含、云端遗漏本地历史、错误账户和旧 revision 的正反向合同测试；`tests/e2e/navigation-dialogs.spec.ts` 验证未启用时直接访问地址必被拒绝。
-- 下一步仍缺：将云端跨设备完整合并候选变成具有服务器与本地重放证据的发布准入，自动申请并审计多设备事件头、M1/M3 实网权限和真实多设备场景；本功能只是“云端已经成功合并写回之后”的**受限本机接纳端**，不是整个双向自动合并，也不能被宣传为正式站已 GA。
-

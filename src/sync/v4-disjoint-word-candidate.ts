@@ -7,8 +7,7 @@
  * independently identified attempt is kept and chronologically replayed.
  *
  * Strict constraints: externally authenticated common ancestor; base rows
- * immutable; no changes to chapter/achievement tables; DailySession plans
- * may only merge on disjoint dictionary activity without unilateral removal;
+ * immutable; no changes to chapter, achievement tables or daily sessions;
  * ReviewRecord changes require UUID-backed three-way cursor arbitration; no legacy NEW attempt; no unproven scheduler-only update.
  * For overlapping words, all history must have UUID, be replayable and
  * agree with each device's persisted review-count evidence.
@@ -180,14 +179,11 @@ export async function previewDisjointWordV4(input: {
         return blocked('disjoint-protected-table-changed:' + name)
       }
     }
-    // DailySession is keyed by dictionary. A disjoint dictionary plan may
-    // advance independently, but two different plans for the SAME dictionary
-    // or a competing device's learning activity in that dictionary block.
-    const runtimeOf = (snapshot: WorkspaceSnapshotV4) =>
-      snapshot.workspaceData.learnRuntime.dailySessions
-    const baseDaily = runtimeOf(ancestor)
-    const localDaily = runtimeOf(local)
-    const remoteDaily = runtimeOf(remote)
+    const sessions = json(ancestor.workspaceData.learnRuntime)
+    if (json(local.workspaceData.learnRuntime) !== sessions ||
+        json(remote.workspaceData.learnRuntime) !== sessions) {
+      return blocked('disjoint-daily-session-changed')
+    }
     // ReviewRecord has a stable cross-device UUID, unlike its Dexie ID.
     // Only materialize sessions after pinned-ancestor three-way arbitration.
     // A divergent same-session cursor must block, never choose max(index).
@@ -250,60 +246,6 @@ export async function previewDisjointWordV4(input: {
         baseWords, table(local, 'wordRecords').rows, 'local'),
       remote: verifyImmutableAncestorRows(
         baseWords, table(remote, 'wordRecords').rows, 'remote'),
-    }
-    const changedSessionDicts = (source: WorkspaceSnapshotV4) => {
-      const base = new Map(baseSessions.map(row =>
-        [typeof row.sessionId === 'string'
-          ? 'uuid:' + row.sessionId : 'legacy:' + String(row.id), row]))
-      const changed = new Set<string>()
-      for (const row of table(source, 'reviewRecords').rows) {
-        const identity = typeof row.sessionId === 'string'
-          ? 'uuid:' + row.sessionId : 'legacy:' + String(row.id)
-        const previous = base.get(identity)
-        const { id: _id, ...logical } = row
-        const { id: _baseId, ...original } = previous ?? { id: null }
-        if (!previous || json(logical) !== json(original)) {
-          changed.add(row.dict as string)
-        }
-      }
-      return changed
-    }
-    const dictionaryActivity: Record<Source, Set<string>> = {
-      local: new Set([
-        ...additions.local.map(row => row.dict as string),
-        ...changedSessionDicts(local),
-      ]),
-      remote: new Set([
-        ...additions.remote.map(row => row.dict as string),
-        ...changedSessionDicts(remote),
-      ]),
-    }
-    const mergedDaily: typeof baseDaily = {}
-    for (const dict of [...new Set([
-      ...Object.keys(baseDaily), ...Object.keys(localDaily),
-      ...Object.keys(remoteDaily),
-    ])].sort()) {
-      const present = (data: typeof baseDaily) =>
-        Object.prototype.hasOwnProperty.call(data, dict)
-          ? json({ present: true, session: data[dict] })
-          : json({ present: false })
-      const a = present(baseDaily)
-      const l = present(localDaily)
-      const r = present(remoteDaily)
-      let selected: typeof baseDaily
-      if (l === r) selected = localDaily
-      else if (l === a && !dictionaryActivity.local.has(dict)) {
-        selected = remoteDaily
-      } else if (r === a && !dictionaryActivity.remote.has(dict)) {
-        selected = localDaily
-      } else {
-        return blocked('disjoint-daily-session-conflict:' + dict)
-      }
-      if (Object.prototype.hasOwnProperty.call(selected, dict)) {
-        mergedDaily[dict] = structuredClone(selected[dict])
-      } else if (Object.prototype.hasOwnProperty.call(baseDaily, dict)) {
-        return blocked('disjoint-daily-session-removal-unverified:' + dict)
-      }
     }
     const touched: Record<Source, Set<string>> = {
       local: new Set<string>(), remote: new Set<string>(),
@@ -398,7 +340,6 @@ export async function previewDisjointWordV4(input: {
       return blocked('disjoint-controls:' + control.reason)
     }
     const candidate = control.candidate
-    candidate.workspaceData.learnRuntime.dailySessions = mergedDaily
     // Keep ancestor IDs stable: existing chapter/achievement references
     // remain valid. New origin-local numeric IDs are never blindly copied.
     let maxWordId = Math.max(0, ...baseIds.keys())

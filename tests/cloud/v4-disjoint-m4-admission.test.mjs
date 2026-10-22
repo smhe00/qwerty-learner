@@ -10,7 +10,6 @@ const root = fileURLToPath(new URL('../../', import.meta.url))
 const dir = mkdtempSync(join(tmpdir(), 'qwerty-disjoint-m4-'))
 await Promise.all([
   ['candidate', 'src/sync/v4-disjoint-word-candidate.ts'],
-  ['adoption', 'src/sync/m4-cloud-adoption.ts'],
   ['m4', 'src/sync/m4-merge-transaction.ts'],
   ['v4', 'src/sync/workspace-v4.ts'],
 ].map(([out, entry]) => build({
@@ -21,8 +20,6 @@ await Promise.all([
 after(() => rmSync(dir, { recursive: true, force: true }))
 const { previewDisjointWordV4: preview } =
   await import(pathToFileURL(join(dir,'candidate.mjs')).href)
-const { inspectM4CloudAdoption: inspectAdoption } =
-  await import(pathToFileURL(join(dir,'adoption.mjs')).href)
 const { executeM4Merge: apply, recoverM4Merge: recover } =
   await import(pathToFileURL(join(dir,'m4.mjs')).href)
 const { workspaceFingerprintV4: hash } =
@@ -138,105 +135,4 @@ test('same-word independent attempts yield candidate but require separate journa
   assert.equal(result.convergenceComplete,false)
   assert.equal(words(result.candidate).length,3)
   assert.equal(result.candidateFingerprint,await hash(result.candidate))
-})
-
-
-const pinOf = async (snapshot, revision = 3) => ({
-  status:'pinned-local-s2-pull-only', accountId, revision,
-  fingerprint:await hash(snapshot), snapshot,
-  publishReady:false, convergenceComplete:false,
-})
-
-test('M4 cloud adoption accepts authenticated ancestor fast-forward only if local unchanged',async()=>{
-  const base=snap(),remote=structuredClone(base)
-  words(remote).push(word('banana',2,2))
-  const result=await inspectAdoption({accountId,pin:await pinOf(base),
-    local:structuredClone(base),verifiedCloud:remote,
-    cloudRevision:4,cloudFingerprint:await hash(remote)})
-  assert.equal(result.status,'verified-candidate',result.reason)
-  assert.equal(result.reason,'remote-fast-forward')
-  assert.equal(result.admissionReady,true)
-  assert.equal(result.convergenceComplete,false)
-  assert.equal(result.candidateFingerprint,await hash(remote))
-})
-
-test('M4 cloud adoption accepts proven complete local overlap after remote CAS merge',async()=>{
-  const base=snap(),local=structuredClone(base),remote=structuredClone(base)
-  words(local).push(word('banana',2,2))
-  words(remote).push(word('cherry',2,3))
-  const merged=await preview({accountId,pinnedAncestorFingerprint:await hash(base),
-    ancestor:base,local,remote})
-  assert.equal(merged.status,'projected',merged.reason)
-  const decision=await inspectAdoption({accountId,pin:await pinOf(base),
-    local,verifiedCloud:merged.candidate,cloudRevision:4,
-    cloudFingerprint:merged.candidateFingerprint})
-  assert.equal(decision.status,'verified-candidate',decision.reason)
-  assert.equal(decision.reason,'cloud-already-contains-local-merge')
-  assert.equal(decision.candidateFingerprint,merged.candidateFingerprint)
-  const f=replica(local)
-  await apply(f.journal,f.device,{accountId,registryGeneration:2,
-    expectedOriginalFingerprint:decision.originalFingerprint,
-    candidate:decision.candidate})
-  assert.deepEqual(new Set(words(f.state.snapshot).map(x=>x.word)),
-    new Set(['apple','banana','cherry']))
-  assert.equal(await hash(f.state.rollback[0]),await hash(local),
-    'pre-adoption original must survive the M4 immutable rollback')
-})
-
-test('M4 cloud adoption blocks cloud missing a local independent attempt',async()=>{
-  const base=snap(),local=structuredClone(base),remote=structuredClone(base)
-  words(local).push(word('banana',2,2))
-  words(remote).push(word('cherry',2,3))
-  const decision=await inspectAdoption({accountId,pin:await pinOf(base),
-    local,verifiedCloud:remote,cloudRevision:5,
-    cloudFingerprint:await hash(remote)})
-  assert.equal(decision.status,'blocked')
-  assert.equal(decision.admissionReady,false)
-  assert.equal(decision.reason,'m4-adoption-cloud-missing-local-merge')
-})
-
-test('M4 cloud adoption requires exact pin ownership, digest and higher revision',async()=>{
-  const base=snap(),remote=structuredClone(base)
-  words(remote).push(word('banana',2,2))
-  const pin=await pinOf(base)
-  const common={accountId,local:structuredClone(base),
-    verifiedCloud:remote,cloudRevision:4,cloudFingerprint:await hash(remote)}
-  for(const props of [
-    {pin:null}, {pin:{...pin,accountId:'foreign'}},
-    {pin:{...pin,fingerprint:'0'.repeat(64)}},
-    {cloudRevision:3},{cloudFingerprint:'0'.repeat(64)},
-    {accountId:'foreign'},
-  ]){
-    const verdict=await inspectAdoption({...common,pin,...props})
-    assert.equal(verdict.status,'blocked')
-    assert.equal(verdict.admissionReady,false)
-  }
-})
-
-
-test('M4 cloud adoption blocks a missing local UUID ReviewSession even if words merge',async()=>{
-  const base=snap(),local=structuredClone(base),cloud=structuredClone(base)
-  const localSession={id:1,
-    sessionId:'00000000-0000-4000-8000-000000000321',
-    dict:'shanghai',createTime:1800000300,index:0,
-    words:[{name:'apple',trans:[]}],isFinished:false,sessionKind:'review'}
-  local.workspaceData.database.data.data
-    .find(t=>t.tableName==='reviewRecords').rows.push(localSession)
-  words(cloud).push(word('banana',2,2))
-  const decision=await inspectAdoption({
-    accountId,pin:await pinOf(base),local,verifiedCloud:cloud,
-    cloudRevision:4,cloudFingerprint:await hash(cloud)})
-  assert.equal(decision.status,'blocked')
-  assert.equal(decision.reason,'m4-adoption-cloud-missing-local-merge')
-})
-
-test('M4 cloud adoption blocks replacing local navigation preferences with cloud defaults',async()=>{
-  const base=snap(),local=structuredClone(base),cloud=structuredClone(base)
-  local.workspaceData.navigation.currentChapter=3
-  words(cloud).push(word('banana',2,2))
-  const decision=await inspectAdoption({
-    accountId,pin:await pinOf(base),local,verifiedCloud:cloud,
-    cloudRevision:4,cloudFingerprint:await hash(cloud)})
-  assert.equal(decision.status,'blocked')
-  assert.equal(decision.reason,'m4-adoption-cloud-missing-local-merge')
 })

@@ -363,63 +363,6 @@ async function start(): Promise<void> {
       window.location.replace('/')
       return
     }
-    // M4 post-CAS adoption: an explicit, ETESТ-only pre-mount pilot.
-    // This is deliberately NOT launched from mounted React, background
-    // timers, ordinary S2 Sync or the production website. The guard
-    // validates full V4 cloud readback and no local data loss, then ONLY
-    // stages the crash-safe M4 journal. A new boot applies the journal.
-    if (new URLSearchParams(window.location.search).get('m4-adopt') === 'manage') {
-      if (boot.mode !== 'isolated' || boot.registry.pending ||
-          boot.registry.active.kind !== 'account' ||
-          window.location.hostname !== 'etest.edgeone.dev' ||
-          import.meta.env.VITE_QWERTY_M4_ADOPTION_PILOT !== 'true') {
-        throw new Error('M4 云端合并接续尚未在此部署启用。')
-      }
-      gateUI('云端合并接续测试',
-        '将检查同账号的真实云端 V4 是否完整保留本机学习记录。' +
-        '验证失败不会覆盖本机数据；通过后会先保存完整回滚快照，再重新加载恢复。')
-      const panel = root?.querySelector('section')
-      if (!panel) throw new Error('M4 adoption confirmation panel unavailable')
-      const approve = document.createElement('button')
-      approve.type = 'button'
-      approve.textContent = '核验并安全接纳云端记录'
-      approve.style.cssText = 'margin-top:20px;border:1px solid #64748b;border-radius:6px;padding:8px 16px'
-      approve.addEventListener('click', () => {
-        approve.disabled = true
-        gateUI('正在核验云端合并',
-          '正在检查共同祖先、本机记录完整性、云端 Revision 和安全恢复凭据…')
-        const adoptionBoot: GuardedWorkspaceBoot = boot!
-        void (async () => {
-          try {
-            const { stageEtestPreMountM4CloudAdoption } =
-              await import('./sync/m4-cloud-adoption-browser')
-            const decision = await stageEtestPreMountM4CloudAdoption(adoptionBoot)
-            // A staged journal is NOT a completed restore: the next guarded
-            // boot will replay/readback and require one further fresh realm.
-            const note = decision.status === 'staged-reload-required'
-              ? '已核验云端记录并提交本机恢复事务；正在安全重启。'
-              : '云端合并未接纳，本机数据未覆盖：' + decision.reason
-            sessionStorage.setItem('qwerty.s2.last-sync-result', note)
-          } catch (error) {
-            sessionStorage.setItem('qwerty.s2.last-sync-result',
-              '云端合并结果未确认，已保留本机事务凭据：' +
-              (error instanceof Error ? error.message : String(error)))
-          }
-          // A partly staged journal is recovered BEFORE the app can mount.
-          window.location.replace('/?m4-adopt=result')
-        })()
-      })
-      const cancel = document.createElement('button')
-      cancel.type = 'button'
-      cancel.textContent = '返回学习'
-      cancel.style.cssText = 'margin-left:12px;padding:8px 12px'
-      cancel.addEventListener('click', () => {
-        boot?.release()
-        window.location.replace('/')
-      })
-      panel.append(approve, cancel)
-      return
-    }
     if (new URLSearchParams(window.location.search).get('s1-clear') === 'manage') {
       if (boot.mode !== 'isolated' || boot.registry.pending) {
         throw new Error('本地学习数据清除必须在 S1 安全工作区内执行。')
