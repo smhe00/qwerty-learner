@@ -8,6 +8,7 @@ export default defineConfig({
   testMatch: [
     'learn-review-flow.spec.ts',
     'learn-shell-ui.spec.ts',
+    'learn-exercise-switcher.spec.ts',
     'default-learn-header.spec.ts',
     'settings-mode-navigation.spec.ts',
     'toolbar-icon-focus.spec.ts',

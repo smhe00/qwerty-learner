@@ -420,17 +420,6 @@
   font-size: 13px;
   color: var(--mobile-muted);
 }
-.desktop-tap-learn-toolbar button,
-.desktop-tap-entry {
-  min-height: 40px;
-  padding: 7px 16px;
-  border: 1px solid var(--focus-border, #e2e8f0);
-  border-radius: 12px;
-  background: var(--focus-surface, #fff);
-  color: var(--focus-text, #1e293b);
-  font-size: 13px;
-  cursor: pointer;
-}
 .desktop-tap-learn-frame > .mobile-practice-host {
   flex: 1 1 0;
   min-height: 0;

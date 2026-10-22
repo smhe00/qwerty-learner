@@ -1,3 +1,4 @@
+import LearnExerciseSwitcher from './LearnExerciseSwitcher'
 import Tooltip from '@/components/Tooltip'
 import { currentChapterAtom, currentDictInfoAtom, isReviewModeAtom } from '@/store'
 import range from '@/utils/range'
@@ -36,15 +37,7 @@ export const DictChapterButton = ({
         </NavLink>
       </Tooltip>
 
-      {learnMode && (
-        <span
-          aria-hidden="true"
-          data-learn-chapter-placeholder
-          className="invisible shrink-0 select-none px-3 py-1 text-lg"
-        >
-          第 1 章
-        </span>
-      )}
+      {learnMode && <LearnExerciseSwitcher />}
       {!learnMode && (
         !isReviewMode && (
           <Tooltip content="章节切换">

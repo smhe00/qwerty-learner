@@ -1,6 +1,7 @@
 import { shouldIgnoreTypingKeyEvent } from '@/utils'
 import { TypingContext, TypingStateActionType } from '../../store'
 import type { TypingState } from '../../store/type'
+import { desktopLearnExerciseAtom } from '../../store/learnExercise'
 import PrevAndNextWord from '../PrevAndNextWord'
 import Progress from '../Progress'
 import Phonetic from './components/Phonetic'
@@ -63,9 +64,8 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
   const [currentReviewHintLevel, setCurrentReviewHintLevel] =
     useState<ReviewHintLevel | null>(null)
   const [isLearnMenuOpen, setIsLearnMenuOpen] = useState(false)
-  // Exercise preference changes presentation only: no second memory state,
-  // no new daily quota, no cross-device cursor mutation.
-  const [desktopTapRecall, setDesktopTapRecall] = useState(false)
+  // The header owns the presentation toggle; both views keep this session.
+  const desktopTapRecall = useAtomValue(desktopLearnExerciseAtom) === 'tap-recall'
   const [isExcludingWord, setIsExcludingWord] = useState(false)
   const { times: loopWordTimes } = useAtomValue(loopWordConfigAtom)
   const currentWord = state.chapterData.words[state.chapterData.index]
@@ -741,13 +741,6 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
         {!mobile && (
           <div className="desktop-tap-learn-toolbar">
             <span>轻触记忆 · 与手机共用学习进度</span>
-            <button
-              type="button"
-              onClick={() => setDesktopTapRecall(false)}
-              aria-label="返回键盘拼写"
-            >
-              返回键盘拼写
-            </button>
           </div>
         )}
         <div className={mobile ? 'mobile-practice-inner' : 'mobile-practice-host'}>
@@ -776,16 +769,6 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
   return (
     <div data-session-time={state.timerData.time} className="focus-study-stage flex h-full w-full flex-col items-center justify-center">
       <div className="flex h-16 w-full shrink-0 grow-0 justify-between px-6 pt-6 sm:px-12">
-        {isReviewMode && (
-          <button
-            type="button"
-            className="desktop-tap-entry"
-            onClick={() => setDesktopTapRecall(true)}
-            aria-label="切换轻触记忆"
-          >
-            切换轻触记忆
-          </button>
-        )}
         {!isReviewMode && isShowPrevAndNextWord && state.isTyping && (
           <>
             <PrevAndNextWord type="prev" />
