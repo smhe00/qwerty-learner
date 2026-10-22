@@ -19,7 +19,7 @@ test('Learn navigation stays mounted under dialogs, closes by button and Escape'
   // marker only after the intended session-view Header is mounted.
   await expect(page.getByText('按任意键开始')).toBeVisible({ timeout: 20_000 })
   await expect(page.getByRole('button', { name: 'Learn', exact: true })).toHaveAttribute('aria-pressed', 'true', { timeout: 20_000 })
-  const header = page.locator('header')
+  const header = page.locator('header').filter({ has: page.locator('nav') }).first()
   await header.evaluate((node) => { node.dataset.navigationKeepAlive = 'yes' })
   await page.getByRole('button', { name: '查看数据统计' }).click()
   await expect(page).toHaveURL(/\/analysis\?from=learn$/)
@@ -44,7 +44,7 @@ test('Learn navigation stays mounted under dialogs, closes by button and Escape'
 test('Typing switches open gallery, error book, and achievements in size-limited dialogs', async ({ page }) => {
   await page.goto('/typing')
   await expect(page.getByRole('button', { name: 'Typing', exact: true })).toHaveAttribute('aria-pressed', 'true')
-  const header = page.locator('header')
+  const header = page.locator('header').filter({ has: page.locator('nav') }).first()
   await header.evaluate((node) => { node.dataset.navigationKeepAlive = 'yes' })
 
   await page.locator('header nav a[href="/gallery"]').click()
