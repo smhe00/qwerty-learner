@@ -12,9 +12,76 @@
  */
 import { inspectPinnedV4FastForward } from './v4-fast-forward-preview'
 import { previewDisjointWordV4 } from './v4-disjoint-word-candidate'
-import { workspaceFingerprintV4 } from './workspace-v4'
+import { stableWorkspaceJson, workspaceFingerprintV4 } from './workspace-v4'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
 import type { LocalS2PullAncestor } from './m2-pinned-s2-ancestor'
+
+type Row = Record<string, unknown>
+function rows(snapshot: WorkspaceSnapshotV4, table: string): Row[] {
+  const database = snapshot.workspaceData.database as {
+    data: { data: Array<{ tableName: string; rows: Row[] }> }
+  }
+  const result = database.data.data.find(value => value.tableName === table)
+  if (!result || !Array.isArray(result.rows)) throw Error('m4-adoption-incomplete-table:' + table)
+  return result.rows
+}
+function attemptEvidence(row: Row): string {
+  const { id: _id, fsrsShadow: _derived, reviewPolicyShadow: _policy, ...evidence } = row
+  return stableWorkspaceJson(evidence)
+}
+function sessionEvidence(row: Row): string {
+  const { id: _localId, ...content } = row
+  return stableWorkspaceJson(content)
+}
+/**
+ * The full-six-table projection has separately validated immutable
+ * ancestor rows, FSRS replay and ReviewSession ancestry. Here require
+ * actual materialized cloud content to contain every LOCAL UUID, session
+ * and progress state before staging the cloud bytes for destructive import.
+ * Cannot equate local numeric IDs for new rows from two devices.
+ */
+function cloudRetainsLocal(
+  local: WorkspaceSnapshotV4, cloud: WorkspaceSnapshotV4,
+  projected: WorkspaceSnapshotV4,
+): boolean {
+  const cloudAttempts = new Map(rows(cloud, 'wordRecords')
+    .filter(row => typeof row.attemptId === 'string')
+    .map(row => [row.attemptId, attemptEvidence(row)]))
+  for (const row of rows(local, 'wordRecords')) {
+    if (typeof row.attemptId === 'string') {
+      if (cloudAttempts.get(row.attemptId) !== attemptEvidence(row)) return false
+    } else {
+      const match = rows(cloud, 'wordRecords').find(r => r.id === row.id)
+      if (!match || stableWorkspaceJson(match) !== stableWorkspaceJson(row)) return false
+    }
+  }
+  const cloudSessions = new Map(rows(cloud, 'reviewRecords')
+    .filter(row => typeof row.sessionId === 'string')
+    .map(row => [row.sessionId, sessionEvidence(row)]))
+  for (const session of rows(local, 'reviewRecords')) {
+    if (typeof session.sessionId === 'string') {
+      if (cloudSessions.get(session.sessionId) !== sessionEvidence(session)) return false
+    } else {
+      const match = rows(cloud, 'reviewRecords').find(r => r.id === session.id)
+      if (!match || stableWorkspaceJson(match) !== stableWorkspaceJson(session)) return false
+    }
+  }
+  const stateKey = (r: Row) => JSON.stringify([r.dict, r.word])
+  const cloudStates = new Map(rows(cloud, 'reviewWordStates')
+    .map(row => [stateKey(row), row]))
+  for (const state of rows(local, 'reviewWordStates')) {
+    const current = cloudStates.get(stateKey(state))
+    if (!current || !Number.isSafeInteger(current.reviewCount) ||
+        !Number.isSafeInteger(state.reviewCount) ||
+        (current.reviewCount as number) < (state.reviewCount as number)) return false
+  }
+  return stableWorkspaceJson(projected.workspaceData.settings) ===
+      stableWorkspaceJson(cloud.workspaceData.settings) &&
+    stableWorkspaceJson(projected.workspaceData.navigation) ===
+      stableWorkspaceJson(cloud.workspaceData.navigation) &&
+    stableWorkspaceJson(projected.workspaceData.learnRuntime) ===
+      stableWorkspaceJson(cloud.workspaceData.learnRuntime)
+}
 
 export type M4CloudAdoptionGate =
   | { status: 'blocked'; reason: string; admissionReady: false;
@@ -85,17 +152,13 @@ export async function inspectM4CloudAdoption(input: {
     if (merged.status !== 'projected') {
       return denied('m4-adoption-six-table:' + merged.reason)
     }
-    // Projection may synthesize deterministic derived FSRS rows even when
-    // the raw cloud snapshot already includes EVERY local immutable attempt.
-    // Compare both sides through the SAME full-six-table normalizer, never
-    // a raw-cloud SHA against a replay-generated projection SHA. Normalized
-    // local+cloud must exactly equal normalized cloud+cloud; otherwise local
-    // learning evidence, sessions, settings or other durable data are absent.
-    const cloudOnly = await previewDisjointWordV4({
-      ...previewInput, local: verifiedCloud, remote: verifiedCloud,
-    })
-    if (cloudOnly.status !== 'projected' ||
-        merged.candidateFingerprint !== cloudOnly.candidateFingerprint) {
+    // Re-projecting cloud+cloud can change WHICH acquisition-only words
+    // count as "overlapping", synthesizing FSRS derived rows not present in
+    // the raw published V4. Instead compare every LOCAL immutable attempt
+    // and ReviewSession with the *materialized* cloud content, verify
+    // monotonic scheduler counts, and require controls/runtime to equal
+    // the six-table projection. Fail closed for any missing local evidence.
+    if (!cloudRetainsLocal(local, verifiedCloud, merged.candidate)) {
       return denied('m4-adoption-cloud-missing-local-merge')
     }
     return { status: 'verified-candidate',
