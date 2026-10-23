@@ -165,7 +165,7 @@ export async function adoptWitnessedM3AtGuardedBoot(
     // Dexie export and verifies all six source tables. Nothing is imported
     // into the real working DB until this independent audit passes.
     const candidate = await materializeAuditedM4CandidateV4(
-      projection.candidate,
+      projection.candidate, original,
       (step, detail) => trace('scratch', {
         step, ...(detail ?? {}),
       }),
