@@ -763,3 +763,63 @@ test('S2 three-device stale CAS simulation chooses one immutable V4 winner per r
   }), error => error?.code === 'sync_upgrade_required')
   assert.equal((await service.syncMeta(user.token)).revision, 2)
 })
+
+
+test('binary migration idempotence requires the original pinned revision and migration identity', async () => {
+  const storage = new MemoryStorage()
+  storage.getLatestRevisionMeta = storage.getLatestRevision.bind(storage)
+  const service = createBackendService({ storage })
+  const registration = await service.register(
+    's2_binary_migration_guard', 'strong-password-123', 'device-1')
+  const owner = registration.user.userId
+  const pinned = {
+    baseRevision: 1,
+    payloadSha256: 'a'.repeat(64),
+    logicalFingerprint: 'b'.repeat(64),
+  }
+  const migrated = {
+    revision: 2,
+    clientFormatVersion: 'qwerty-backup-v4',
+    payloadEncoding: 'binary',
+    chunkedPayload: { version: 3 },
+    dataSha256: pinned.payloadSha256,
+    logicalFingerprint: pinned.logicalFingerprint,
+    deviceId: 'qwerty-binary-storage-migration',
+  }
+  storage.revisions.set(`${owner}:2`, clone(migrated))
+  const again = await service.migrateSyncV4Binary(registration.token, pinned)
+  assert.equal(again.revision, 2)
+  assert.equal(again.migrated, false)
+  assert.equal(storage.revisions.size, 1, 'idempotent check must not write another revision')
+
+  for (const changed of [
+    { ...pinned, baseRevision: 0 },
+    { ...pinned, payloadSha256: 'c'.repeat(64) },
+    { ...pinned, logicalFingerprint: 'd'.repeat(64) },
+  ]) {
+    await assert.rejects(
+      service.migrateSyncV4Binary(registration.token, changed),
+      error => error?.code === 'sync_conflict',
+      'stale/forged migration proof must not be accepted',
+    )
+  }
+  storage.revisions.set(`${owner}:2`, {
+    ...migrated, deviceId: 'ordinary-v4-writer',
+  })
+  await assert.rejects(
+    service.migrateSyncV4Binary(registration.token, pinned),
+    error => error?.code === 'sync_conflict',
+    'ordinary V4 uploads cannot impersonate idempotent migrations',
+  )
+  assert.equal(storage.revisions.size, 1)
+
+  storage.getLatestRevisionMeta = async () => {
+    throw new Error('transient/blob-unavailable')
+  }
+  await assert.rejects(
+    service.migrateSyncV4Binary(registration.token, pinned),
+    error => error?.code === 'v4_migration_metadata_unavailable' &&
+      error.status === 503,
+    'an unreadable Blob revision must retain ambiguous status, never HTTP 500',
+  )
+})
