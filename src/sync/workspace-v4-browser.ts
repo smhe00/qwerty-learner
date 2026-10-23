@@ -89,6 +89,76 @@ async function verifyV4RoundTripInDisposableDatabase(
   }
 }
 
+/**
+ * Materialize an M4 merge candidate through an ISOLATED temporary Dexie DB
+ * before staging any restore to the real RecordDB. A V4 export contains
+ * Typeson $types descriptors, while incoming M3 records are plain JSON.
+ * Combining those representations by hand does not produce canonical V4
+ * export bytes. Re-exporting from a scratch DB produces EXACTLY the Typeson
+ * and rowCount manifest that the real post-restore readback will produce.
+ *
+ * Independently audit the staged candidate against all six shadow raw tables
+ * BEFORE applying its normalized export. Any import alteration/missing row
+ * fails closed without touching the user's active working database.
+ */
+export async function materializeAuditedM4CandidateV4(
+  candidate: WorkspaceSnapshotV4,
+): Promise<WorkspaceSnapshotV4> {
+  assertRestorableWorkspaceV4(candidate)
+  const original = candidate.workspaceData.database as {
+    formatName: string
+    formatVersion: number
+    data: {
+      databaseName: string
+      databaseVersion: number
+      tables: Array<{ name: string; schema: string; rowCount?: number }>
+      data: Array<{ tableName: string; rows: unknown[] }>
+    }
+  }
+  const name = 'qwerty-m4-candidate-scratch-' + secureRandomUuid()
+  const shadow = new Dexie(name)
+  try {
+    shadow.version(original.data.databaseVersion).stores(
+      Object.fromEntries(original.data.tables.map(entry =>
+        [entry.name, entry.schema])),
+    )
+    const shadowExport = { ...original,
+      data: { ...original.data, databaseName: name } }
+    await shadow.import(new Blob([JSON.stringify(shadowExport)], {
+      type: 'application/json',
+    }), {
+      acceptNameDiff: false,
+      acceptVersionDiff: true,
+      acceptMissingTables: false,
+      acceptChangedPrimaryKey: false,
+      overwriteValues: true,
+      clearTablesBeforeImport: true,
+    })
+    const sourceEntries = await Promise.all(
+      shadow.tables.filter(table => [
+        'wordRecords', 'chapterRecords', 'reviewRecords',
+        'reviewWordStates', 'achievementEvents', 'achievementStates',
+      ].includes(table.name)).map(async table =>
+        [table.name, await table.toCollection().raw().toArray()] as const),
+    )
+    const shadowRows = Object.fromEntries(sourceEntries) as
+      Parameters<typeof assertV4SourceRowsMatchExport>[1]
+    // Audit the proposed mixed-format archive against what Dexie actually
+    // imported, including NaN/undefined Typeson annotations.
+    await assertV4SourceRowsMatchExport(candidate, shadowRows)
+    const canonical = structuredClone(candidate)
+    const normalizedBlob = await shadow.export()
+    const normalizedDb = JSON.parse(await normalizedBlob.text()) as typeof original
+    normalizedDb.data.databaseName = original.data.databaseName
+    canonical.workspaceData.database = normalizedDb
+    await assertV4SourceRowsMatchExport(canonical, shadowRows)
+    return canonical
+  } finally {
+    shadow.close()
+    await shadow.delete()
+  }
+}
+
 export async function captureWorkingWorkspaceV4(
   source: WorkspaceIdentityV4,
   diagnosticFlow?: PerfFlow,
