@@ -56,7 +56,9 @@ export async function adoptWitnessedM3AtGuardedBoot(
       !['/', '/learn', '/mobile', '/mobile/study'].includes(pathname)) {
     return skip('non-learn-route')
   }
-  if (window.location.search && !accountManagement) {
+  const autoReconcile = pathname === '/' &&
+    window.location.search === '?m4-reconcile=1'
+  if (window.location.search && !accountManagement && !autoReconcile) {
     return skip('account-or-tool-query')
   }
   const auth = loadAuth()

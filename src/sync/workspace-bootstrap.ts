@@ -236,6 +236,14 @@ export async function prepareGuardedWorkspaceBoot(
         }
         if (adoption.status === 'blocked') {
           console.warn('M4 witnessed prefix was NOT applied:', adoption.reason)
+          if (window.location.search === '?m4-reconcile=1') {
+            // Do not repeatedly disrupt an idle user on a deterministic
+            // blocker. Retry only after explicit reauthentication.
+            sessionStorage.setItem('qwerty.etest.m4.idleBlocked', '1')
+          }
+        }
+        if (window.location.search === '?m4-reconcile=1') {
+          window.history.replaceState(null, '', '/')
         }
       } catch (error) {
         if (error instanceof Error &&
