@@ -173,23 +173,50 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
     }
     const currentUrl = page.url()
     const dialogs: string[] = []
+    const authStatuses: string[] = []
+    // Strictly redacted metadata: no URL query string, usernames, tokens,
+    // request/response body or password may enter uploaded CI logs.
+    const onAuthResponse = (response: import('@playwright/test').Response) => {
+      try {
+        const path = new URL(response.url()).pathname
+        if (path === '/api/auth/register' || path === '/api/auth/login') {
+          authStatuses.push(path + ':HTTP-' + response.status())
+        }
+      } catch { /* Ignore navigation noise */ }
+    }
+    page.on('response', onAuthResponse)
     page.on('dialog', async dialog => {
       dialogs.push(dialog.message())
       if (dialog.message().includes('复制到新账户')) await dialog.dismiss()
       else await dialog.accept()
     })
-    await page.getByRole('button', {
-      name: register ? '注册新账户' : '登录已有账户',
-    }).click()
-    // Registration and S1 Vault switching deliberately replace the document.
-    // Wait for the navigation before evaluating; transient realm destruction
-    // is not a failed login or permission to skip the durable auth assertion.
-    await expect(page).not.toHaveURL(currentUrl, { timeout: 60000 })
-    await expect.poll(async () => page.evaluate(() => {
-      const json = localStorage.getItem('qwerty.cloudAuth.v1')
-      return json ? JSON.parse(json)?.user?.username : null
-    }).catch(() => null), { timeout: 60000 }).toBe(username)
-    expect(dialogs.length).toBeGreaterThanOrEqual(register ? 2 : 1)
+    try {
+      await page.getByRole('button', {
+        name: register ? '注册新账户' : '登录已有账户',
+      }).click()
+      // Registration and S1 Vault switching deliberately replace the
+      // document. Never repeat a possibly successful registration.
+      await expect(page).not.toHaveURL(currentUrl, { timeout: 60000 })
+      await expect.poll(async () => page.evaluate(() => {
+        const json = localStorage.getItem('qwerty.cloudAuth.v1')
+        return json ? JSON.parse(json)?.user?.username : null
+      }).catch(() => null), { timeout: 60000 }).toBe(username)
+      expect(dialogs.length).toBeGreaterThanOrEqual(register ? 2 : 1)
+    } catch (error) {
+      console.error('S1 etest auth checkpoint', {
+        kind: register ? 'registration' : 'login',
+        api: authStatuses,
+        dialogCount: dialogs.length,
+        pagePath: new URL(page.url()).pathname,
+        status: (await page.locator('[role="status"]').allTextContents()
+          .catch(() => [])).slice(0, 3).map(s => s.slice(0, 180)),
+        hasSafetyBlock: await page.getByText('学习数据安全检查未通过')
+          .isVisible().catch(() => false),
+      })
+      throw error
+    } finally {
+      page.off('response', onAuthResponse)
+    }
   }
   try {
     // Critical first-visit regression: a completely fresh HTTPS profile
