@@ -1,5 +1,5 @@
 /* eslint-env node */
-import { isIsolatedEtestPilotOrigin } from '../_shared/etest-pilot-origin.js'
+import { isIsolatedEtestPilotOrigin, isImmutableEventPilotEnabled } from '../_shared/etest-pilot-origin.js'
 import crypto from 'node:crypto'
 import { getStore } from '@edgeone/pages-blob'
 import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
@@ -159,10 +159,9 @@ function makeStorage(env) {
 }
 
 function makeService(env, storage, request) {
-  // Only the isolated, exact HTTPS etest Maker origin may enable the
-  // immutable-event pilot without an independent-session requirement.
-  // Production/master hostnames are explicitly NOT included.
-  const isolatedEtest = isIsolatedEtestPilotOrigin(request.url)
+  // Maker receives an internal function hostname even for etest.
+  // Never use untrusted Origin, Host, forwarded host or Request.url to
+  // infer deployment identity. Opt in ONLY via isolated Maker project env.
   return createBackendService({
     storage,
     sessionTtlSeconds: numberEnv(env.SESSION_TTL_SECONDS, 7 * 24 * 60 * 60),
@@ -170,7 +169,7 @@ function makeService(env, storage, request) {
     // Single-login is a product invariant. Expired/revoked sessions
     // never authorize cloud mutation, even on isolated etest.
     multiSessionEnabled: false,
-    eventPilotEnabled: env.MULTI_DEVICE_EVENT_PILOT_ENABLED === 'true' || isolatedEtest,
+    eventPilotEnabled: isImmutableEventPilotEnabled(env),
   })
 }
 
@@ -263,8 +262,7 @@ export async function onRequest(context) {
           authMode: 'single-active-session',
           // Diagnostic only. Authentication remains SINGLE-active regardless
           // of append-only event pilot availability.
-          eventPilotMode: (env.MULTI_DEVICE_EVENT_PILOT_ENABLED === 'true' ||
-            isIsolatedEtestPilotOrigin(request.url))
+          eventPilotMode: isImmutableEventPilotEnabled(env)
             ? 'immutable-events-only'
             : 'disabled',
           runtime: process.version,
