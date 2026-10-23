@@ -25,6 +25,7 @@ import { DonateCard } from '@/components/DonateCard'
 import LearnLiveStats from '@/pages/Learn/components/LearnLiveStats'
 import LearnResultScreen from '@/pages/Learn/components/LearnResultScreen'
 import MobileResult from '@/pages/Mobile/MobileResult'
+import { useMobileVisualViewport } from '@/pages/Mobile/useMobileVisualViewport'
 import Header from '@/components/Header'
 import Tooltip from '@/components/Tooltip'
 import { DEFAULT_DICTIONARY_ID } from '@/resources/defaultDictionary'
@@ -58,11 +59,13 @@ import { useImmerReducer } from 'use-immer'
 
 const App: React.FC<{ autoStart?: boolean; mobile?: boolean }> = ({ autoStart = false, mobile = false }) => {
   const autoStartPendingRef = useRef(autoStart)
+  const mobileShellRef = useRef<HTMLDivElement>(null)
   const typingTransVisible = useAtomValue(typingTransVisibleAtom)
   const [state, dispatch] = useImmerReducer(typingReducer, {
     ...structuredClone(initialState),
     isTransVisible: typingTransVisible,
   })
+  useMobileVisualViewport(mobile && !state.isFinished, mobileShellRef)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const { words } = useWordList()
   const navigate = useNavigate()
@@ -190,12 +193,19 @@ const App: React.FC<{ autoStart?: boolean; mobile?: boolean }> = ({ autoStart = 
     const onVisibilityChange = () => { if (document.hidden) onBlur() }
     window.addEventListener('blur', onBlur)
     document.addEventListener('visibilitychange', onVisibilityChange)
+    const onPageShow = (event: PageTransitionEvent) => { if (event.persisted) onBlur() }
+    if (mobile) {
+      window.addEventListener('pagehide', onBlur)
+      window.addEventListener('pageshow', onPageShow)
+    }
 
     return () => {
       window.removeEventListener('blur', onBlur)
       document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('pagehide', onBlur)
+      window.removeEventListener('pageshow', onPageShow)
     }
-  }, [dispatch])
+  }, [dispatch, mobile])
 
   useEffect(() => {
     state.chapterData.words?.length > 0 ? setIsLoading(false) : setIsLoading(true)
@@ -359,7 +369,7 @@ const App: React.FC<{ autoStart?: boolean; mobile?: boolean }> = ({ autoStart = 
         isReviewMode ? <LearnResultScreen /> : <ResultScreen />
       )}
       {mobile ? (
-        <div className="focus-mobile-learn-shell mobile-app mobile-study" data-mobile-learn-shell>
+        <div ref={mobileShellRef} className="focus-mobile-learn-shell mobile-app mobile-study" data-mobile-learn-shell>
           <header className="focus-mobile-learn-header">
             <button type="button" className="focus-mobile-round-action"
               onClick={() => void leaveMobileLearn()} disabled={mobileLeaving}

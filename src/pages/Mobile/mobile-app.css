@@ -626,3 +626,16 @@
 .mobile-save-dialog p { font-size: 14px; line-height: 1.8; margin: 16px 0 22px; color: var(--mobile-muted); }
 
 .mobile-app.mobile-save-shield { min-height: 0; width: auto; }
+
+/* Visual viewport tracks the on-screen keyboard without disabling pinch zoom. */
+.focus-mobile-learn-shell[data-mobile-viewport] { position: fixed; inset: var(--mobile-viewport-top) 0 auto; height: var(--mobile-viewport-height); }
+.focus-mobile-learn-shell[data-mobile-compact=true] .mobile-practice-head { padding-top: 4px; padding-bottom: 3px; }
+.focus-mobile-learn-shell[data-mobile-compact=true] .mobile-practice-actions { min-height: 0; padding: 6px 0 max(8px, env(safe-area-inset-bottom)); }
+.focus-mobile-learn-shell[data-mobile-compact=true] .mobile-practice-primary,
+.focus-mobile-learn-shell[data-mobile-compact=true] .mobile-practice-grade,
+.focus-mobile-learn-shell[data-mobile-compact=true] .mobile-practice-choice { min-height: 44px; padding: 9px; }
+.focus-mobile-learn-shell[data-mobile-compact=true] .mobile-practice-spelling-form input { min-height: 48px; padding: 8px 12px; }
+.focus-mobile-learn-shell[data-mobile-compact=true] .mobile-practice-mode-toggle,
+.focus-mobile-learn-shell[data-mobile-compact=true] .mobile-keyboard-hint,
+.focus-mobile-learn-shell[data-mobile-compact=true] .desktop-tap-shortcuts { display: none; }
+.mobile-audio-hint { margin: 6px 0; color: var(--mobile-muted); font-size: 12px; line-height: 1.6; }

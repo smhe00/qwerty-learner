@@ -10,7 +10,7 @@ test('Mobile and desktop write the same durable FSRS projection after WordRecord
     read('src/pages/Typing/components/WordPanel/components/Word/index.tsx'),
     read('src/review/learn-review-commit.ts'),
   ])
-  assert.match(mobile, /const id = await saveWordRecord\(/)
+  assert.match(mobile, /const id = await trackLearnPersistence\(\s*saveWordRecord\(/)
   assert.match(mobile, /record\.id = id\s+scheduleLearnReviewCommit\(/)
   assert.match(desktop, /const wordRecordId = await saveWordRecord\(/)
   assert.match(desktop, /scheduleLearnReviewCommit\(/)

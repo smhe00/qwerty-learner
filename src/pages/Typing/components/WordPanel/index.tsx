@@ -220,6 +220,11 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
         return
       }
 
+      // A same-document mobile return can restore a saved card after the old
+      // Typing reducer was unmounted. Reattach its existing durable ID only.
+      if (mobile && record.id && !state.chapterData.wordRecordIds.includes(record.id)) {
+        dispatch({ type: TypingStateActionType.ADD_WORD_RECORD_ID, payload: record.id })
+      }
       let dailyComplete = false
       if (isReviewMode && (reviewModeInfo.reviewRecord?.optionalNewWords?.length || getLearnExtraRoundNames(loadLearnDailySession(currentDictId)))) {
         await flushLearnPersistence()
@@ -557,6 +562,8 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
     },
     [
       currentDictId,
+      mobile,
+      state.chapterData.wordRecordIds,
       currentLearnItemKind,
       currentReviewAttemptRole,
       currentWordExerciseCount,
@@ -749,6 +756,8 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
             <MobileWordPractice
               key={String(currentWordRenderKey) + ':' + currentWord.name + ':' + (currentAcquisitionState?.phase ?? 'review')}
               word={currentWord}
+              resumeKey={mobile ? JSON.stringify([currentDictId, reviewModeInfo.reviewRecord?.id, reviewModeInfo.reviewRecord?.createTime,
+                state.chapterData.index, currentWord.name, currentAcquisitionState?.phase, currentReviewAttemptRole, currentExercisePlan?.condition]) : undefined}
               queue={state.chapterData.words}
               onFinish={onFinish}
               exercisePlan={currentExercisePlan}
