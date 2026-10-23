@@ -8,6 +8,7 @@ on:
       - 'cloud-functions/**'
       - 'tests/cloud/**'
       - 'tests/e2e/etest-three-device-auto-fork.*'
+      - 'tests/e2e/edgeone-s1-cloud-accounts.*'
       - 'tests/e2e/workspace-v4-app.spec.ts'
       - 'tests/e2e/workspace-v4-session-revoked.spec.ts'
       - '.github/workflows/etest-three-device-auto-fork.yml'
@@ -78,6 +79,7 @@ jobs:
           node --check tests/cloud/etest-multi-device-pilot.mjs
           node --check scripts/release-readiness.mjs
           npx playwright test --list --config=tests/e2e/etest-three-device-auto-fork.config.ts
+          npx playwright test --list --config=tests/e2e/edgeone-s1-cloud-accounts.config.ts
       - name: Lint cloud sync code
         run: yarn eslint cloud-functions tests/cloud --ext .js,.mjs
 
