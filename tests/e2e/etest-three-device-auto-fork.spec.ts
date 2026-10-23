@@ -54,6 +54,17 @@ async function openAccount(page: Page, username: string, password: string) {
   const reauth = page.getByRole('button', { name: '重新登录当前账户' })
   const signIn = page.getByRole('button', { name: '登录已有账户' })
   const previousUrl = page.url()
+  const authStatuses: string[] = []
+  // Status only: avoid exposing user identity, token or response bodies.
+  const onAuthResponse = (response: import('@playwright/test').Response) => {
+    try {
+      const path = new URL(response.url()).pathname
+      if (path === '/api/auth/login' || path === '/api/auth/register') {
+        authStatuses.push(path + ':HTTP-' + response.status())
+      }
+    } catch { /* Ignore unrelated navigation */ }
+  }
+  page.on('response', onAuthResponse)
   try {
     if (await reauth.isVisible().catch(() => false)) await reauth.click()
     else await signIn.click()
@@ -71,11 +82,14 @@ async function openAccount(page: Page, username: string, password: string) {
     // evidence. Do not retry an uncertain S1 ownership transition.
     console.error('S1 relay login checkpoint failed', {
       path: new URL(page.url()).pathname,
+      authStatuses,
       hasLoginDialog: await dialog.isVisible().catch(() => false),
       status: (await page.locator('[role="status"]').allTextContents()
         .catch(() => [])).slice(0, 3).map(x => x.slice(0, 120)),
     })
     throw error
+  } finally {
+    page.off('response', onAuthResponse)
   }
 }
 async function beginLearn(page: Page) {
