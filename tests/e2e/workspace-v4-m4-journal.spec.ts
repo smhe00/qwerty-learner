@@ -180,3 +180,53 @@ test('S1 owner mismatch cannot consume or replay staged M4', async ({ page }) =>
   expect(result.pending).toBe(true)
   expect(result.chapter).not.toBe(34)
 })
+
+
+test('real Dexie: scratch M4 class mappings preserve full six-table V4 fingerprint after restore', async ({ page }) => {
+  await init(page)
+  const outcome = await page.evaluate(async identity => {
+    const h = (window as any).__backupHarness
+    const original = await h.captureWorkingWorkspaceV4(identity)
+    const candidate = structuredClone(original)
+    const groups = candidate.workspaceData.database.data.data
+    const words = groups.find((group: any) => group.tableName === 'wordRecords')
+    const raw = await h.db.wordRecords.toCollection().raw().toArray()
+    const id = Math.max(...raw.map((record: any) => record.id)) + 1
+    const extra = { ...structuredClone(raw[0]), id,
+      word: 'm4-scratch-added-fixture', timeStamp: raw[0].timeStamp + 1,
+      attemptId: 'm4-scratch-synthetic-' + id }
+    words.rows.push(extra)
+    const manifest = candidate.workspaceData.database.data.tables.find(
+      (entry: any) => entry.name === 'wordRecords')
+    if (manifest.rowCount !== undefined) manifest.rowCount = words.rows.length
+    const materialized = await h.materializeAuditedM4CandidateV4(candidate, original)
+    const before = await h.workspaceFingerprintV4(materialized)
+    await h.restoreWorkingWorkspaceV4(materialized, identity)
+    const readback = await h.captureWorkingWorkspaceV4(identity)
+    const after = await h.workspaceFingerprintV4(readback)
+    const names = ['wordRecords', 'chapterRecords', 'reviewRecords',
+      'reviewWordStates', 'achievementEvents', 'achievementStates']
+    const tableRows = (snapshot: any, name: string) =>
+      snapshot.workspaceData.database.data.data.find(
+        (item: any) => item.tableName === name)?.rows ?? []
+    const sameTables = names.map(name => ({
+      name, before: JSON.stringify(tableRows(materialized, name)),
+      after: JSON.stringify(tableRows(readback, name)),
+    })).map(({ name, before, after }) => ({ name, equal: before === after }))
+    const rootType = (snapshot: any, name: string) =>
+      tableRows(snapshot, name)[0]?.$types?.[''] ?? null
+    return { before, after,
+      materializedTypes: ['wordRecords', 'reviewRecords'].map(
+        name => rootType(materialized, name)),
+      liveTypes: ['wordRecords', 'reviewRecords'].map(
+        name => rootType(readback, name)),
+      sameTables, count: await h.db.wordRecords.count(),
+      newWord: (await h.db.wordRecords.get(id))?.word }
+  }, owner)
+  expect(outcome.count).toBe(2)
+  expect(outcome.newWord).toBe('m4-scratch-added-fixture')
+  expect(outcome.materializedTypes).toEqual(outcome.liveTypes)
+  expect(outcome.materializedTypes).toEqual(['userObject', 'userObject'])
+  expect(outcome.sameTables.every((x: any) => x.equal)).toBe(true)
+  expect(outcome.before).toBe(outcome.after)
+})
