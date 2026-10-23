@@ -448,7 +448,7 @@ async function start(): Promise<void> {
       // Background scans recover crashes after the WordRecord commit without
       // modifying any snapshot. The browser adapter rechecks ownership.
       if (boot.registry.active.kind === 'account' &&
-          import.meta.env.VITE_QWERTY_M3_PILOT_AUTO === 'true' &&
+          window.location.protocol === 'https:' &&
           window.location.hostname === 'etest.edgeone.dev') {
         try {
           const { startEtestM3BackgroundMonitor } =
