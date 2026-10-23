@@ -411,9 +411,16 @@ export async function waitForActiveLearnSession(
     }, { timeout: 20_000 }).toBe(true)
     if (await idleStart.isVisible().catch(() => false)) {
       // Cold dictionary hydration can outlive route mount, especially on CI.
-      // Do not bypass a disabled control; wait for the product to enable it.
-      await expect(idleStart).toBeEnabled({ timeout: 45_000 })
-      await idleStart.click()
+      // Queue repair can also auto-start and REMOVE this transient button.
+      // Wait for either actual practice or an enabled user start; never force
+      // a disabled button or require it to survive successful auto-resume.
+      const activeWord = page.locator('[data-typing-word]').first()
+      await expect.poll(async () =>
+        (await activeWord.isVisible().catch(() => false)) ||
+        (await idleStart.isEnabled().catch(() => false)),
+      { timeout: 45_000 }).toBe(true)
+      if (!(await activeWord.isVisible().catch(() => false)) &&
+          await idleStart.isEnabled().catch(() => false)) await idleStart.click()
     }
   }
   await expect

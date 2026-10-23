@@ -44,7 +44,7 @@ export const DictChapterButton = ({
             <Listbox value={currentChapter} onChange={setCurrentChapter}>
               <Listbox.Button
                 onKeyDown={handleKeyDown}
-                className="rounded-lg px-3 py-1 text-lg transition-colors duration-300 ease-in-out hover:bg-indigo-400 hover:text-white focus:outline-none dark:text-white dark:text-opacity-60 dark:hover:text-opacity-100"
+                className="min-w-[5rem] rounded-lg px-3 py-1 text-lg transition-colors duration-300 ease-in-out hover:bg-indigo-400 hover:text-white focus:outline-none dark:text-white dark:text-opacity-60 dark:hover:text-opacity-100"
               >
                 第 {currentChapter + 1} 章
               </Listbox.Button>
