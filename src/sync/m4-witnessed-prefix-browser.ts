@@ -32,16 +32,39 @@ export async function adoptWitnessedM3AtGuardedBoot(
   registry: Registry,
   options: { preMountAccountManagement?: boolean } = {},
 ): Promise<WitnessedM4BootResult> {
-  // etest-only, count/status diagnostics. Never log account IDs, device IDs,
-  // bearer tokens, words, UUIDs or any raw learning-event payload.
+  // Production Vite intentionally drops ALL console calls. Persist bounded,
+  // anonymized diagnostics in this etest tab's sessionStorage instead.
+  // Never store bearer tokens, account/device IDs, UUIDs, words, raw errors,
+  // or server payloads. An observer must NEVER alter a sync outcome.
   const trace = (phase: string, counters: Record<string, string | number | boolean> = {}) => {
-    if (etestM3PilotEnabled()) console.info('QWERTY_M4_TRACE ' +
-      JSON.stringify({ phase, ...counters }))
+    if (!etestM3PilotEnabled()) return
+    try {
+      const key = 'qwerty.etest.m4.stageTrace.v1'
+      const allowed = /^[a-z][a-z0-9-]{0,63}$/
+      const clean: Record<string, string | number | boolean> = { phase }
+      for (const [name, value] of Object.entries(counters)) {
+        if (!allowed.test(name)) continue
+        if (typeof value === 'number' && Number.isSafeInteger(value) &&
+            value >= 0 && value <= 100000) clean[name] = value
+        else if (typeof value === 'boolean') clean[name] = value
+        else if (typeof value === 'string' && allowed.test(value)) clean[name] = value
+      }
+      const previous = sessionStorage.getItem(key)
+      const parsed: unknown = previous ? JSON.parse(previous) : []
+      const items = Array.isArray(parsed) ? parsed.slice(-47) : []
+      items.push(clean)
+      sessionStorage.setItem(key, JSON.stringify(items))
+    } catch { /* No diagnostic observer can interrupt M4 or login */ }
   }
-  const skip = (reason: string): WitnessedM4BootResult =>
-    ({ status: 'skipped', reason })
-  const blocked = (reason: string): WitnessedM4BootResult =>
-    ({ status: 'blocked', reason })
+  const skip = (reason: string): WitnessedM4BootResult => {
+    trace('skipped', { reason })
+    return { status: 'skipped', reason }
+  }
+  const blocked = (reason: string): WitnessedM4BootResult => {
+    trace('blocked', { reason })
+    return { status: 'blocked', reason }
+  }
+  trace('entered')
   if (!etestM3PilotEnabled() || registry.pending ||
       registry.generation < 1 || registry.active.kind !== 'account' ||
       !navigator.onLine) return skip('inactive-etest-account-or-offline')
