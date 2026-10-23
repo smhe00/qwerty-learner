@@ -47,3 +47,33 @@ Any missing history, non-authoritative POP enumeration, uncertain 503,
 broken session lineage, account mismatch or FSRS incompatibility must
 fail closed and preserve original local snapshots. No production master
 release may be inferred from a passed event-transport pilot.
+
+## EdgeOne Makers: isolated event-pilot activation (2026-10-23)
+
+**Confirmed live finding:** `Request.url.hostname` inside the etest Cloud
+Function was `pages-pro-26-cfa3.pages-scf-sg-pro.qcloudteo.com`, not
+`etest.edgeone.dev`. The public-domain fallback was therefore both
+nonfunctional and an unsafe authorization boundary. The runtime now requires
+an **explicit Maker project variable**:
+
+- Configure `MULTI_DEVICE_EVENT_PILOT_ENABLED=true` in the **dedicated
+  etest Maker project only**, under its Project Settings → Environment
+  Variables. Redeploy etest after changing the variable; existing deployments
+  may retain their prior environment.
+- Leave the variable **unset** on the production Maker project and all other
+  projects. There is no reason to enable independent-login
+  `MULTI_DEVICE_AUTH_ENABLED`: single-active-session stays enforced.
+- `GET /api/health` on etest must report
+  `authMode=single-active-session` and
+  `eventPilotMode=immutable-events-only`.
+  The runtime `pilotRequestHost` is **diagnostic only**.
+- The test `etest-m1m3-pilot-preflight.mjs` aborts before creating any account
+  if the backend variable has not propagated. Do not bypass this step.
+- Authentication, device-bound receipts and immutable storage checks still
+  apply to every individual event operation. Revoked sessions must return
+  401 and retain their local outbox.
+
+**Not an authorization to release:** enabling the M3 event pilot does
+not enable V4 automatic merge/adoption. The hard three-real-browser,
+single-session offline-reconnect scenario must pass separately, including
+local durable six-table evidence, before master publication.
