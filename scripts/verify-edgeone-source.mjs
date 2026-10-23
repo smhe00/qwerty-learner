@@ -5,7 +5,7 @@ const sha = process.env.EXPECTED_SHA
 assert.match(sha || '', /^[a-f0-9]{40}$/, 'Expected source SHA required')
 assert.equal(process.env.GITHUB_REF_NAME, 'edgeone-test', 'Only etest may pass this check')
 
-const base = 'https://etest.edgeone.dev/'
+const base = 'https://t.smhe.cn/'
 const waitMs = Math.max(0, Math.min(900_000, Number(process.env.EDGEONE_WAIT_MS || '0') || 0))
 const deadline = Date.now() + waitMs
 let last = 'unavailable'

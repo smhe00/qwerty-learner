@@ -6,7 +6,7 @@ import crypto from 'node:crypto'
 import { gzipSync } from 'node:zlib'
 import { verifyCompressedV4 } from '../cloud-functions/_shared/sync-v4.js'
 
-const origin = 'https://etest.edgeone.dev/'
+const origin = 'https://t.smhe.cn/'
 const expectedSha = '30e0be26c05eef1eb3c85c644e85f8e22c30270c'
 if (process.env.ETEST_DIRECT_BENCH_ACK !== 'ISOLATED_512K_DIRECT') {
   throw Error('Explicit etest-only benchmark acknowledgement required')

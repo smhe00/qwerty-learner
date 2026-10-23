@@ -449,7 +449,7 @@ async function start(): Promise<void> {
       // modifying any snapshot. The browser adapter rechecks ownership.
       if (boot.registry.active.kind === 'account' &&
           window.location.protocol === 'https:' &&
-          window.location.hostname === 'etest.edgeone.dev') {
+          window.location.hostname === 't.smhe.cn') {
         try {
           const { startEtestM3BackgroundMonitor } =
             await import('./sync/m3-background-browser')

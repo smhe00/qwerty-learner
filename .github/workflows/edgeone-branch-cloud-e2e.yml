@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     env:
-      QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
+      QWERTY_SYNC_BASE_URL: https://t.smhe.cn/
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,7 +33,7 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           if (process.env.GITHUB_REF_NAME !== 'edgeone-test') throw Error('etest only')
-          const expected = 'https://etest.edgeone.dev/'
+          const expected = 'https://t.smhe.cn/'
           const actual = new URL(process.env.QWERTY_SYNC_BASE_URL)
           if (actual.origin !== new URL(expected).origin) throw Error('Wrong EdgeOne test origin')
           const required = 'v4-end-to-end-binary-v1'
@@ -91,7 +91,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
-      QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
+      QWERTY_SYNC_BASE_URL: https://t.smhe.cn/
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -101,7 +101,7 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           if (process.env.GITHUB_REF_NAME !== 'edgeone-test') throw Error('etest only')
-          const expected = 'https://etest.edgeone.dev'
+          const expected = 'https://t.smhe.cn'
           if (new URL(process.env.QWERTY_SYNC_BASE_URL).origin !== expected)
             throw Error('Cloud E2E must use branch-matched EdgeOne, never Pages')
           const required = 'v4-end-to-end-binary-v1'

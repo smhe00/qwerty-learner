@@ -197,7 +197,7 @@ export function useSaveWordRecord() {
       // Never treat an event receipt as a V4 account convergence verdict.
       if (dbID > 0 && typeof window !== 'undefined' &&
           window.location.protocol === 'https:' &&
-          window.location.hostname === 'etest.edgeone.dev') {
+          window.location.hostname === 't.smhe.cn') {
         void import('@/sync/m3-publication-browser')
           .then(({ scheduleEtestM3Publication }) => scheduleEtestM3Publication())
           .catch(error => console.warn('M3 pilot not scheduled; original WordRecord retained', error))

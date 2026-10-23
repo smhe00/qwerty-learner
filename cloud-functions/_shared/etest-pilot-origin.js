@@ -11,7 +11,7 @@ export function isIsolatedEtestPilotOrigin(input) {
   try {
     const url = new URL(input)
     return url.protocol === 'https:' &&
-      url.hostname === 'etest.edgeone.dev' &&
+      url.hostname === 't.smhe.cn' &&
       (url.port === '' || url.port === '443') &&
       !url.username && !url.password
   } catch {

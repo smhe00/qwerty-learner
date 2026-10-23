@@ -3,7 +3,7 @@ import { AppError } from '../core.js'
 import { checkAuthRateLimit } from '../auth-rate-limit.js'
 import { createCircleEventualAssembly } from './assembly.js'
 
-const HOST = 'etest.edgeone.dev'
+const HOST = 't.smhe.cn'
 const STORE = 'qwerty-circle-sandbox'
 const SAFE_USER_ID = /^[A-Za-z0-9_-]{8,128}$/
 const KEY = /^social\/v2\/circles\/[a-f0-9]{24}\/events\/[a-f0-9]{32}\.json$/

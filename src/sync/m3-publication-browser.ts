@@ -19,7 +19,7 @@ let timer: ReturnType<typeof setTimeout> | null = null
 export function etestM3PilotEnabled(): boolean {
   return typeof window !== 'undefined' &&
     window.location.protocol === 'https:' &&
-    window.location.hostname === 'etest.edgeone.dev'
+    window.location.hostname === 't.smhe.cn'
 }
 
 export async function runEtestM3Publication(): Promise<M3PublicationCycleResult> {

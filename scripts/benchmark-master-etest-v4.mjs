@@ -15,7 +15,7 @@ if (process.env.V4_BENCHMARK_ACK !== 'RUN_DISPOSABLE_MASTER_VS_ETEST_BENCHMARK')
 }
 const targets = [
   { label: 'master', url: 'https://qwerty-plus.edgeone.dev/', binary: false },
-  { label: 'etest', url: 'https://etest.edgeone.dev/', binary: true },
+  { label: 'etest', url: 'https://t.smhe.cn/', binary: true },
 ]
 const sha = buf => crypto.createHash('sha256').update(buf).digest('hex')
 const perf = () => performance.now()
