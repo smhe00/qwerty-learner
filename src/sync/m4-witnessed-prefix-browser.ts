@@ -10,6 +10,7 @@
  * the immutable original/candidate M4 journal.
  */
 import { loadAuth } from './auth'
+import { db } from '@/utils/db/core'
 import { browserDeviceId } from './device-id'
 import { executeM4Merge } from './m4-merge-transaction'
 import { m4MergeJournalPort } from './m4-merge-journal'
@@ -18,7 +19,8 @@ import { selectObservedChainedHeads } from './m3-observed-chained-heads'
 import { inspectOwnedWitnessedHistory } from './m3-witnessed-browser'
 import { etestM3PilotEnabled, runEtestM3Publication } from './m3-publication-browser'
 import { previewMonotonicWitnessedM4 } from './m4-witnessed-prefix-candidate'
-import { captureWorkingWorkspaceV4, restoreWorkingWorkspaceV4 } from './workspace-v4-browser'
+import { captureWorkingWorkspaceV4, restoreWorkingWorkspaceV4,
+  materializeAuditedM4CandidateV4 } from './workspace-v4-browser'
 import { workspaceFingerprintV4 } from './workspace-v4'
 import { refreshWorkspaceMigrationWitness } from './workspace-storage-witness'
 import { workspaceRegistryPort } from './workspace-vault'
@@ -137,8 +139,15 @@ export async function adoptWitnessedM3AtGuardedBoot(
     }
     const original = await captureWorkingWorkspaceV4({ kind: 'account', accountId })
     await assertOwner()
+    // captureWorkingWorkspaceV4 already audits its entire Dexie export
+    // against independently read raw source data under this S1 lease.
+    // Use fresh RAW rows, not Typeson's export-only $types descriptors,
+    // for immutable attempt identity comparisons and FSRS replay.
+    const liveWordRecords = await db.wordRecords.toCollection().raw().toArray()
+    await assertOwner()
     const projection = await previewMonotonicWitnessedM4({
-      accountId, local: original, witnessedEvents: proof.remoteEvents,
+      accountId, local: original, liveWordRecords,
+      witnessedEvents: proof.remoteEvents,
     })
     await assertOwner()
     trace('candidate', { status: projection.status,
@@ -152,6 +161,12 @@ export async function adoptWitnessedM3AtGuardedBoot(
       return blocked('M4-prefix-candidate:' + projection.reason)
     }
     if (projection.status === 'unchanged') return skip(projection.reason)
+    // A scratch DB materializes the mixed M3/V4 candidate into a canonical
+    // Dexie export and verifies all six source tables. Nothing is imported
+    // into the real working DB until this independent audit passes.
+    const candidate = await materializeAuditedM4CandidateV4(projection.candidate)
+    await assertOwner()
+    trace('materialized', { added: projection.newlyAdoptedAttempts })
     // Both V4 snapshots are archived atomically in the S1 vault BEFORE a
     // single working DB row or setting is overwritten.
     await executeM4Merge(m4MergeJournalPort, {
@@ -162,7 +177,7 @@ export async function adoptWitnessedM3AtGuardedBoot(
     }, {
       accountId, registryGeneration: registry.generation,
       expectedOriginalFingerprint: await workspaceFingerprintV4(original),
-      candidate: projection.candidate,
+      candidate,
     }, phase => trace('transaction', { step: phase }))
     // executeM4Merge validates post-restore full V4 fingerprint and keeps a
     // rollback archive. A fresh document is required to discard stale module
