@@ -125,6 +125,19 @@ export function renderS1AccountManagement(
     if (message) sessionStorage.setItem('qwerty.s1.last-account-result', message)
     window.location.replace((REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : '') + (mobile ? '/mobile' : '/'))
   }
+  // Pre-M4 authentication checkpoints: production builds strip console calls.
+  // These etest-only session flags contain no identity or learning contents.
+  const markLoginSync = (phase: string) => {
+    if (window.location.hostname !== 't.smhe.cn') return
+    try {
+      const key = 'qwerty.etest.m4.stageTrace.v1'
+      const previous = sessionStorage.getItem(key)
+      const parsed: unknown = previous ? JSON.parse(previous) : []
+      const history = Array.isArray(parsed) ? parsed.slice(-47) : []
+      history.push({ phase })
+      sessionStorage.setItem(key, JSON.stringify(history))
+    } catch { /* A diagnostic is never required for safe authentication */ }
+  }
   /** Pilot only: sign-in is the LAST moment this device is guaranteed to
    * have the active account token before a fast handoff to another device.
    * The pre-mount S1 page holds the exclusive writer lease. Drain durable M3
@@ -132,6 +145,7 @@ export function renderS1AccountManagement(
    * device's still-in-flight startup upload. Never block login on failure:
    * unfinished evidence stays in the crash-safe local outbox. */
   const publishPendingAfterAuthentication = async () => {
+    markLoginSync('auth-start')
     sessionStorage.removeItem('qwerty.etest.m4.idleBlocked')
     if (window.location.protocol !== 'https:' ||
         window.location.hostname !== 't.smhe.cn' || !navigator.onLine) return
@@ -141,6 +155,7 @@ export function renderS1AccountManagement(
       // is sufficient for the three-device relay while keeping sign-in finite.
       for (let n = 0; n < 2; n++) {
         const result = await runEtestM3Publication()
+        markLoginSync(result.status === 'blocked' ? 'auth-m3-blocked' : 'auth-m3-complete')
         if (result.status === 'blocked') {
           console.warn('Etest login M3 outbox retained:', result.reason)
           break
@@ -151,15 +166,19 @@ export function renderS1AccountManagement(
       // The account-management page is itself S1-pre-mount and writer-locked,
       // so perform monotonic M4 local adoption BEFORE releasing that lease.
       // A later normal boot will retry if a POP has not exposed the receipts.
+      markLoginSync('auth-before-m4')
       const { adoptWitnessedM3AtGuardedBoot } =
         await import('./m4-witnessed-prefix-browser')
       const registry = await workspaceRegistryPort.read()
       const adopted = await adoptWitnessedM3AtGuardedBoot(registry,
         { preMountAccountManagement: true })
+      markLoginSync(adopted.status === 'blocked' ? 'auth-m4-blocked' :
+        adopted.status === 'adopted' ? 'auth-m4-adopted' : 'auth-m4-skipped')
       if (adopted.status === 'blocked') {
         console.warn('Etest login witnessed M4 adoption deferred:', adopted.reason)
       }
     } catch (error) {
+      markLoginSync('auth-exception')
       console.warn('Etest login M3 upload deferred; local outbox kept', error)
     }
   }
