@@ -26,7 +26,7 @@ import { verifyCompressedV4 } from '../../cloud-functions/_shared/sync-v4.js'
 assert.equal(process.env.GITHUB_REF_NAME, 'edgeone-test', 'etest only')
 assert.match(process.env.GITHUB_RUN_ID || '', /^\d+$/)
 const origin = new URL(process.env.QWERTY_SYNC_BASE_URL || '')
-assert.equal(origin.origin, 'https://etest.edgeone.dev', 'never test master')
+assert.equal(origin.origin, 'https://t.smhe.cn', 'never test master')
 const checksum = x => crypto.createHash('sha256').update(x).digest('hex')
 const prefix = 'e2e_merge_' + process.env.GITHUB_RUN_ID + '_' +
   (process.env.GITHUB_RUN_ATTEMPT || '1')

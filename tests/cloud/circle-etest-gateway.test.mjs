@@ -71,7 +71,7 @@ function fixture() {
 test('retired pilot gateway remains closed off etest without opening Blob Store', async () => {
   const f = fixture()
   assert.equal((await f.call('https://qwerty-plus.edgeone.dev/api/circle/v2')).status, 404)
-  assert.equal((await f.call('https://etest.edgeone.dev/api/circle/v2', {
+  assert.equal((await f.call('https://t.smhe.cn/api/circle/v2', {
     env: { CIRCLE_ETEST_ENABLED: 'false' },
   })).status, 404)
   assert.equal(f.stores.length, 0)
@@ -86,7 +86,7 @@ test('pilot is closed without explicit isolated namespace, secret or test accoun
     { CIRCLE_ETEST_USER_IDS: '../accounts' },
   ]) {
     const f = fixture()
-    const result = await f.call('https://etest.edgeone.dev/api/circle/v2', { env: change })
+    const result = await f.call('https://t.smhe.cn/api/circle/v2', { env: change })
     assert.equal(result.status, 503)
     assert.equal(result.body.error, 'circle_etest_not_configured')
     assert.equal(f.stores.length, 0)
@@ -94,7 +94,7 @@ test('pilot is closed without explicit isolated namespace, secret or test accoun
 })
 test('pilot rejects missing trusted edge IP and session/allowlist abuse', async () => {
   const f = fixture()
-  const url = 'https://etest.edgeone.dev/api/circle/v2'
+  const url = 'https://t.smhe.cn/api/circle/v2'
   assert.equal((await f.call(url, { clientIp: ' '.repeat(3) })).status, 503)
   assert.equal((await f.call(url, { method: 'POST', token: 'expired',
     body: { name: 'wrong', operationId: 'create_test_001' } })).status, 401)
@@ -106,7 +106,7 @@ test('pilot rejects missing trusted edge IP and session/allowlist abuse', async 
 })
 test('etest end-to-end server transport writes only unique Circle Blob event keys', async () => {
   const f = fixture()
-  const url = 'https://etest.edgeone.dev/api/circle/v2'
+  const url = 'https://t.smhe.cn/api/circle/v2'
   const create = await f.call(url, { method: 'POST',
     body: { name: 'Classroom', operationId: 'create_test_001' } })
   assert.equal(create.status, 202)
@@ -132,7 +132,7 @@ test('etest end-to-end server transport writes only unique Circle Blob event key
 })
 test('per-IP limiter caps bursts without claiming strong global atomic counters', async () => {
   const f = fixture()
-  const url = 'https://etest.edgeone.dev/api/circle/v2/' + 'd'.repeat(24)
+  const url = 'https://t.smhe.cn/api/circle/v2/' + 'd'.repeat(24)
   const outcomes = []
   for (let i = 0; i < 62; i++) outcomes.push((await f.call(url)).status)
   assert.equal(outcomes.at(-1), 429)
@@ -141,18 +141,18 @@ test('per-IP limiter caps bursts without claiming strong global atomic counters'
 })
 test('etest test-account deletion refuses orphaned social events; ordinary accounts unchanged', () => {
   assert.equal(blocksCircleEtestAccountDeletion({
-    hostname: 'etest.edgeone.dev', env, userId: owner,
+    hostname: 't.smhe.cn', env, userId: owner,
   }), true)
   assert.equal(blocksCircleEtestAccountDeletion({
-    hostname: 'etest.edgeone.dev', env, userId: visitor,
+    hostname: 't.smhe.cn', env, userId: visitor,
   }), false)
   assert.equal(blocksCircleEtestAccountDeletion({
     hostname: 'qwerty-plus.edgeone.dev', env, userId: owner,
   }), false)
   assert.equal(blocksCircleEtestAccountDeletion({
-    hostname: 'etest.edgeone.dev', env: { ...env, CIRCLE_ETEST_ENABLED: 'false' }, userId: owner,
+    hostname: 't.smhe.cn', env: { ...env, CIRCLE_ETEST_ENABLED: 'false' }, userId: owner,
   }), true, 'Turning off Circle must not remove the deletion safety fence')
   assert.equal(blocksCircleEtestAccountDeletion({
-    hostname: 'etest.edgeone.dev', env: { ...env, CIRCLE_ETEST_USER_IDS: '' }, userId: owner,
+    hostname: 't.smhe.cn', env: { ...env, CIRCLE_ETEST_USER_IDS: '' }, userId: owner,
   }), false)
 })

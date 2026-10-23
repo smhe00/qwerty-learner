@@ -115,7 +115,7 @@ test('GitHub Pages retains the original encoded deep-link decoder', () => {
 
 
 test('EdgeOne preserves only the two named nested mobile routes across 404 recovery', () => {
-  const origin = 'https://etest.edgeone.dev'
+  const origin = 'https://t.smhe.cn'
   for (const route of ['/mobile/account', '/mobile/study']) {
     assert.equal(runIndexBoot(runNotFoundPage(origin + route)), route)
     assert.equal(runIndexBoot(runNotFoundPage(origin + route + '/?from=mobile#top')), route + '?from=mobile#top')

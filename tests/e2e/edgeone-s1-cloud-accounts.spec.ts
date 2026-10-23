@@ -10,7 +10,7 @@ for (const missingWebLocks of [false, true]) {
 test(`P0: fresh etest anonymous Learn, account and clear (${missingWebLocks ? 'fallback' : 'native'} locks)`, async ({ browser }) => {
   test.setTimeout(180_000)
   if (process.env.GITHUB_REF_NAME !== 'edgeone-test' ||
-    new URL(base || '').origin !== 'https://etest.edgeone.dev') {
+    new URL(base || '').origin !== 'https://t.smhe.cn') {
     throw Error('Only branch-matched etest may exercise the real first-visit path')
   }
     const context = await browser.newContext({ serviceWorkers: 'block' })
@@ -112,7 +112,7 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
   if (process.env.GITHUB_REF_NAME !== 'edgeone-test') {
     throw new Error('Staging cloud E2E only runs on edgeone-test')
   }
-  const expected = 'https://etest.edgeone.dev'
+  const expected = 'https://t.smhe.cn'
   expect(new URL(base).origin).toBe(expected)
   const contexts: BrowserContext[] = []
   const open = async (noWebLocks = false): Promise<Page> => {
@@ -290,7 +290,7 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
 
 
 test('etest phone account entry and refresh keep the real login route instead of falling back to home', async ({ browser }) => {
-  if (process.env.GITHUB_REF_NAME !== 'edgeone-test' || new URL(base || '').origin !== 'https://etest.edgeone.dev') {
+  if (process.env.GITHUB_REF_NAME !== 'edgeone-test' || new URL(base || '').origin !== 'https://t.smhe.cn') {
     throw Error('Mobile account entry may only probe etest')
   }
   const context = await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'})

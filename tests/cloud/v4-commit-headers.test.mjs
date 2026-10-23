@@ -17,7 +17,7 @@ function headers(fields = {}) {
     ...fields }
 }
 function req(fields = {}, body = undefined) {
-  return new Request('https://etest.edgeone.dev/api/sync/v2/commit',
+  return new Request('https://t.smhe.cn/api/sync/v2/commit',
     { method:'POST', headers:headers(fields), body })
 }
 test('native header V4 manifest is complete, strict, and does not consume body', () => {
@@ -59,7 +59,7 @@ test('invalid manifest, noncanonical counters, body, and encoding are rejected',
     error=>error?.code==='invalid_v4_commit_headers')
 })
 test('legacy clients are detected without parsing body', () => {
-  const r=new Request('https://etest.edgeone.dev/api/sync/v2/commit',{
+  const r=new Request('https://t.smhe.cn/api/sync/v2/commit',{
     method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
   assert.equal(hasV4CommitHeaders(r),false)
 })

@@ -11,7 +11,7 @@ import { expect, test, type BrowserContext, type Page } from '@playwright/test'
  * Fails until complete automatic full-V4 local adoption & writeback works.
  */
 const base = process.env.QWERTY_SYNC_BASE_URL ?? ''
-const expectedOrigin = 'https://etest.edgeone.dev'
+const expectedOrigin = 'https://t.smhe.cn'
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 type Event = { id: number; attemptId: string; dict: string; word: string; timeStamp: number }

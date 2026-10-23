@@ -11,7 +11,7 @@ import { randomBytes, randomUUID } from 'node:crypto'
  */
 const base = process.env.QWERTY_SYNC_BASE_URL
 assert.equal(process.env.GITHUB_REF_NAME, 'edgeone-test')
-assert.equal(new URL(base).origin, 'https://etest.edgeone.dev')
+assert.equal(new URL(base).origin, 'https://t.smhe.cn')
 assert.match(process.env.GITHUB_RUN_ID || '', /^\d+$/)
 const username = 'e2e_m3_' + process.env.GITHUB_RUN_ID + '_' +
   (process.env.GITHUB_RUN_ATTEMPT || '1')
@@ -20,7 +20,7 @@ const deviceA = 'qwerty-web-' + randomUUID()
 const deviceB = 'qwerty-web-' + randomUUID()
 async function call(method, path, token, input, status = 200) {
   const url = new URL(path, base)
-  assert.equal(url.origin, 'https://etest.edgeone.dev')
+  assert.equal(url.origin, 'https://t.smhe.cn')
   const response = await fetch(url, {
     method, cache: 'no-store', redirect: 'error',
     headers: { Accept: 'application/json',

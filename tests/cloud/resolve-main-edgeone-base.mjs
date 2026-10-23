@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { appendFileSync } from 'node:fs'
 
-const base = 'https://etest.edgeone.dev/'
+const base = 'https://t.smhe.cn/'
 const configured = new URL(process.env.QWERTY_SYNC_BASE_URL || base)
 assert.equal(configured.origin, new URL(base).origin,
   'Cloud development E2E MUST target the etest EdgeOne origin')

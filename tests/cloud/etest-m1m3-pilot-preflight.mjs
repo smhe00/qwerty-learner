@@ -9,7 +9,7 @@ import assert from 'node:assert/strict'
  */
 assert.equal(process.env.GITHUB_REF_NAME, 'edgeone-test')
 const url = new URL(process.env.QWERTY_SYNC_BASE_URL || '')
-assert.equal(url.origin, 'https://etest.edgeone.dev')
+assert.equal(url.origin, 'https://t.smhe.cn')
 const deadline = Date.now() + 180_000
 let reason = 'not checked'
 for (;;) {
