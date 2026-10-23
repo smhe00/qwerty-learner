@@ -1,8 +1,17 @@
 /**
- * Deliberate ETESТ-ONLY runtime gate. A CORS Origin, arbitrary Host header,
- * or build-time flag MUST NOT activate cloud event pilots on master.
- * Trust only the runtime Request.url representing the matched Maker project.
+ * EdgeOne Makers routes a public etest URL through an INTERNAL Node cloud
+ * function hostname. Neither Request.url nor caller-supplied Origin/Host/
+ * forwarding headers establishes the deployed Maker PROJECT identity.
+ *
+ * Security invariant: an immutable-learning-event pilot is enabled only
+ * through an explicit runtime environment variable configured on a
+ * dedicated Maker project, never via a browser-supplied hostname.
  */
+export function isImmutableEventPilotEnabled(env) {
+  return env?.MULTI_DEVICE_EVENT_PILOT_ENABLED === 'true'
+}
+
+/** Diagnostic ONLY. Never use this to authorize data writes. */
 export function isIsolatedEtestPilotOrigin(input) {
   try {
     const url = new URL(input)
