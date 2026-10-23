@@ -819,7 +819,7 @@ test('binary migration idempotence requires the original pinned revision and mig
   await assert.rejects(
     service.migrateSyncV4Binary(registration.token, pinned),
     error => error?.code === 'v4_migration_metadata_unavailable' &&
-      error.status === 503,
+      error.statusCode === 503,
     'an unreadable Blob revision must retain ambiguous status, never HTTP 500',
   )
 })
