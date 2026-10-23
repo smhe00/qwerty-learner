@@ -1,16 +1,11 @@
 /**
- * EdgeOne Makers routes a public etest URL through an INTERNAL Node cloud
- * function hostname. Neither Request.url nor caller-supplied Origin/Host/
- * forwarding headers establishes the deployed Maker PROJECT identity.
- *
- * Security invariant: an immutable-learning-event pilot is enabled only
- * through an explicit runtime environment variable configured on a
- * dedicated Maker project, never via a browser-supplied hostname.
+ * Deployment URL diagnostic only.
+ * EdgeOne Maker rewrites the inbound Request.url to its own internal host;
+ * neither that host nor caller-controlled Origin/Host headers can certify a
+ * project. Append-only event API is enabled without an environment toggle;
+ * live bearer authorization, account/device binding and immutable receipts
+ * still apply to each request. Single-active-session remains mandatory.
  */
-export function isImmutableEventPilotEnabled(env) {
-  return env?.MULTI_DEVICE_EVENT_PILOT_ENABLED === 'true'
-}
-
 /** Diagnostic ONLY. Never use this to authorize data writes. */
 export function isIsolatedEtestPilotOrigin(input) {
   try {
