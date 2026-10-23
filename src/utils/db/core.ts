@@ -87,6 +87,15 @@ class RecordDB extends Dexie {
 
 export const db = new RecordDB()
 
-db.wordRecords.mapToClass(WordRecord)
-db.chapterRecords.mapToClass(ChapterRecord)
-db.reviewRecords.mapToClass(ReviewRecord)
+/**
+ * Keep mapped read/export semantics identical between the live RecordDB and
+ * the isolated M4 candidate materialization database. Dexie export's Typeson
+ * userObject markers depend on these class mappings, not only table schema.
+ */
+export function applyRecordClassMappings(target: Dexie): void {
+  target.table('wordRecords').mapToClass(WordRecord)
+  target.table('chapterRecords').mapToClass(ChapterRecord)
+  target.table('reviewRecords').mapToClass(ReviewRecord)
+}
+
+applyRecordClassMappings(db)
