@@ -74,6 +74,37 @@ export function normalizeTaggedExportRow(exported: unknown, rawSource: unknown):
     const last = pieces[pieces.length - 1]
     const origin = (expected as Record<string, unknown>)[last]
     const encoded = (current as Record<string, unknown>)[last]
+    if (type === '#' && typeof encoded === 'string' &&
+        encoded.startsWith('#') && origin !== null &&
+        typeof origin === 'object') {
+      // Typeson serializes repeated references as '#words.0', with an
+      // independent $types[path]='#' tag. It is NOT a literal string in IDB.
+      // Accept a reference ONLY if the *independently read raw IDB row*
+      // proves that the referenced object has the SAME identity, not merely
+      // identical properties. A forged alias or unknown encoding fails closed.
+      const targetPath = encoded.slice(1)
+      const targetParts = targetPath.split('.')
+      if (!targetPath || targetPath === path ||
+          targetParts.some(piece => !piece ||
+            piece === '__proto__' || piece === 'constructor' ||
+            piece === 'prototype')) return row
+      let rawTarget: unknown = rawSource
+      let exportedTarget: unknown = row
+      for (const part of targetParts) {
+        if (!rawTarget || typeof rawTarget !== 'object' ||
+            !exportedTarget || typeof exportedTarget !== 'object') return row
+        rawTarget = (rawTarget as Record<string, unknown>)[part]
+        exportedTarget = (exportedTarget as Record<string, unknown>)[part]
+      }
+      if (rawTarget !== origin || !exportedTarget ||
+          typeof exportedTarget !== 'object') return row
+      // The audited hash uses JSON semantics for BOTH raw and decoded rows.
+      // This clone expands only an independently verified alias. Cyclic or
+      // unserializable source data must fail closed, never be silently dropped.
+      const duplicate = JSON.parse(JSON.stringify(origin)) as unknown
+      ;(current as Record<string, unknown>)[last] = duplicate
+      continue
+    }
     if (type === 'arrayNonindexKeys' &&
         Array.isArray(origin) && Array.isArray(encoded)) {
       // Typeson annotates arrays even when only index values are present.
