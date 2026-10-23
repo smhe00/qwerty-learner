@@ -1,0 +1,122 @@
+/**
+ * Etest M4.1 pre-mount bridge. The caller MUST already own the exclusive S1
+ * writer lease; no React/typing/ReviewRecord writer may be mounted.
+ *
+ * M3 immutable receipts are only a non-authoritative, observed prefix. This
+ * bridge NEVER claims all devices have published, and NEVER uploads a V4 to
+ * cloud. Applying a monotonic, exactly witnessed subset is permitted only
+ * because every local row and every untouched workspace component survives.
+ * Interrupted full-V4 restore is recovered on the next guarded boot using
+ * the immutable original/candidate M4 journal.
+ */
+import { loadAuth } from './auth'
+import { browserDeviceId } from './device-id'
+import { executeM4Merge } from './m4-merge-transaction'
+import { m4MergeJournalPort } from './m4-merge-journal'
+import { observeChainedLearningReceipts } from './api'
+import { selectObservedChainedHeads } from './m3-observed-chained-heads'
+import { inspectOwnedWitnessedHistory } from './m3-witnessed-browser'
+import { etestM3PilotEnabled, runEtestM3Publication } from './m3-publication-browser'
+import { previewMonotonicWitnessedM4 } from './m4-witnessed-prefix-candidate'
+import { captureWorkingWorkspaceV4, restoreWorkingWorkspaceV4 } from './workspace-v4-browser'
+import { workspaceFingerprintV4 } from './workspace-v4'
+import { refreshWorkspaceMigrationWitness } from './workspace-storage-witness'
+import { workspaceRegistryPort } from './workspace-vault'
+import type { Registry } from './workspace-vault'
+
+export type WitnessedM4BootResult =
+  | { status: 'skipped' | 'blocked'; reason: string }
+  | { status: 'adopted'; newAttempts: number; scope: 'verified-prefix-only' }
+
+export async function adoptWitnessedM3AtGuardedBoot(
+  registry: Registry,
+): Promise<WitnessedM4BootResult> {
+  const skip = (reason: string): WitnessedM4BootResult =>
+    ({ status: 'skipped', reason })
+  const blocked = (reason: string): WitnessedM4BootResult =>
+    ({ status: 'blocked', reason })
+  if (!etestM3PilotEnabled() || registry.pending ||
+      registry.generation < 1 || registry.active.kind !== 'account' ||
+      !navigator.onLine) return skip('inactive-etest-account-or-offline')
+  // Account management, imports and recovery must never be interrupted by a
+  // background adoption or an unexpected in-between document reload.
+  if (!['/', '/learn', '/mobile', '/mobile/study'].includes(
+    window.location.pathname.replace(/\/$/, '') || '/')) {
+    return skip('non-learn-route')
+  }
+  if (window.location.search) return skip('account-or-tool-query')
+  const auth = loadAuth()
+  const accountId = registry.active.accountId
+  if (!auth?.token || auth.user.userId !== accountId ||
+      auth.expiresAt * 1000 <= Date.now()) return skip('auth-required')
+  const token = auth.token
+  const deviceId = browserDeviceId()
+  const assertOwner = async () => {
+    const now = await workspaceRegistryPort.read()
+    const current = loadAuth()
+    if (now.generation !== registry.generation || now.pending ||
+        now.active.kind !== 'account' || now.active.accountId !== accountId ||
+        current?.user.userId !== accountId || current.token !== token ||
+        current.expiresAt * 1000 <= Date.now() ||
+        browserDeviceId() !== deviceId || !etestM3PilotEnabled()) {
+      throw new Error('m4-witnessed-owner-or-session-changed')
+    }
+  }
+  try {
+    await assertOwner()
+    // Publish this device's outstanding offline attempts BEFORE inspecting
+    // remote prefixes. Stale login tokens fail closed without any local loss.
+    const sent = await runEtestM3Publication()
+    await assertOwner()
+    if (sent.status === 'blocked') return blocked('m3-publication:' + sent.reason)
+    const observation = await observeChainedLearningReceipts(token)
+    await assertOwner()
+    const heads = selectObservedChainedHeads(observation)
+    if (heads.status !== 'heads-observed-only') {
+      return skip('no-complete-observed-prefix:' + heads.reason)
+    }
+    // This inspector independently verifies server account ownership, exact
+    // chains, every raw immutable event and the canonical set digest.
+    const proof = await inspectOwnedWitnessedHistory(heads.heads)
+    await assertOwner()
+    if (proof.status !== 'witnessed' || proof.reason !== 'verified-prefix-only' ||
+        proof.publishReady !== false || proof.convergenceComplete !== false) {
+      return blocked('M3-witness-evidence-unverified')
+    }
+    const original = await captureWorkingWorkspaceV4({ kind: 'account', accountId })
+    await assertOwner()
+    const projection = await previewMonotonicWitnessedM4({
+      accountId, local: original, witnessedEvents: proof.remoteEvents,
+    })
+    await assertOwner()
+    if (projection.status === 'blocked') {
+      return blocked('M4-prefix-candidate:' + projection.reason)
+    }
+    if (projection.status === 'unchanged') return skip(projection.reason)
+    // Both V4 snapshots are archived atomically in the S1 vault BEFORE a
+    // single working DB row or setting is overwritten.
+    await executeM4Merge(m4MergeJournalPort, {
+      capture: async scope => captureWorkingWorkspaceV4({ kind: 'account', accountId: scope }),
+      restore: (snapshot, scope) => restoreWorkingWorkspaceV4(snapshot,
+        { kind: 'account', accountId: scope }),
+      seal: async () => { refreshWorkspaceMigrationWitness() },
+    }, {
+      accountId, registryGeneration: registry.generation,
+      expectedOriginalFingerprint: await workspaceFingerprintV4(original),
+      candidate: projection.candidate,
+    })
+    // executeM4Merge validates post-restore full V4 fingerprint and keeps a
+    // rollback archive. A fresh document is required to discard stale module
+    // caches initialized during the unmounted restore.
+    return { status: 'adopted', newAttempts: projection.newlyAdoptedAttempts,
+      scope: 'verified-prefix-only' }
+  } catch (error) {
+    // Never interpret an unknown failure as a successful merge. If M4 staging
+    // started, the durable journal remains and must recover next boot.
+    if (error instanceof Error &&
+        error.message.includes('m4-merge-interrupted-recovery-required')) {
+      throw error
+    }
+    return blocked(error instanceof Error ? error.message : 'unknown')
+  }
+}
