@@ -1,5 +1,5 @@
 /* eslint-env node */
-import { isIsolatedEtestPilotOrigin, isImmutableEventPilotEnabled } from '../_shared/etest-pilot-origin.js'
+import { isImmutableEventPilotEnabled, isIsolatedEtestPilotOrigin } from '../_shared/etest-pilot-origin.js'
 import crypto from 'node:crypto'
 import { getStore } from '@edgeone/pages-blob'
 import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
