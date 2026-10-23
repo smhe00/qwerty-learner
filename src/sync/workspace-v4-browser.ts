@@ -24,7 +24,7 @@ import {
 } from '@/utils/backup'
 import { clearAllLearnDailySessions } from '@/learn/daily-session'
 import { flushReviewRecordWrites } from '@/store/reviewInfoAtom'
-import { db } from '@/utils/db/core'
+import { applyRecordClassMappings, db } from '@/utils/db/core'
 import Dexie from 'dexie'
 import { timePerfStage } from './perf-diagnostics'
 import { sameLosslessIndexedDbValue } from './m4-lossless-idb-compare'
@@ -143,6 +143,11 @@ export async function materializeAuditedM4CandidateV4(
       Object.fromEntries(original.data.tables.map(entry =>
         [entry.name, entry.schema])),
     )
+    // Restore the same Dexie read-side classes as RecordDB BEFORE re-export.
+    // Without these maps, shadow.export() omits Typeson root "userObject"
+    // markers while the live RecordDB's db.export() adds them. That made
+    // byte-for-byte V4 fingerprints reject identical stored learning rows.
+    applyRecordClassMappings(shadow)
     const shadowExport = { ...original,
       data: { ...original.data, databaseName: name } }
     currentStage = 'import'
