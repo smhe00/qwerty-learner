@@ -19,7 +19,6 @@ jobs:
     timeout-minutes: 25
     env:
       QWERTY_SYNC_BASE_URL: https://etest.edgeone.dev/
-      QWERTY_REQUIRE_EVENT_PILOT: 'false'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
