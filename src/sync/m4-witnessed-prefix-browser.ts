@@ -166,8 +166,8 @@ export async function adoptWitnessedM3AtGuardedBoot(
     // into the real working DB until this independent audit passes.
     const candidate = await materializeAuditedM4CandidateV4(
       projection.candidate,
-      (step, kind) => trace('scratch', {
-        step, ...(kind ? { kind } : {}),
+      (step, detail) => trace('scratch', {
+        step, ...(detail ?? {}),
       }),
     )
     await assertOwner()
