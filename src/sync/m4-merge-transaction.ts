@@ -4,7 +4,8 @@
  * six-table candidate, S1 owner and exclusive writer lock. This kernel never
  * establishes cloud convergence or authorizes an M2 read-only projection.
  */
-import { assertRestorableWorkspaceV4, workspaceFingerprintV4 } from './workspace-v4'
+import { assertRestorableWorkspaceV4, canonicalWorkspaceData,
+  stableWorkspaceJson, workspaceFingerprintV4 } from './workspace-v4'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
 
 const SHA = /^[a-f0-9]{64}$/
@@ -58,11 +59,55 @@ export async function validatePendingM4Merge(p: PendingM4Merge): Promise<void> {
     throw new Error('m4-journal-fingerprint-mismatch')
   }
 }
-async function verify(replica: M4ReplicaPort, accountId: string, expected: string) {
+/**
+ * Report ONLY a fixed-size structural category, never a row, key, word,
+ * account identifier, timestamp or fingerprint. Fingerprints may compare
+ * differently after a Typeson export/import cycle, but that is NOT authority
+ * to accept changed durable learning records.
+ */
+export function classifyM4ReadbackDifference(
+  expected: WorkspaceSnapshotV4,
+  actual: WorkspaceSnapshotV4,
+): string {
+  const before = canonicalWorkspaceData(expected.workspaceData) as Record<string, unknown>
+  const after = canonicalWorkspaceData(actual.workspaceData) as Record<string, unknown>
+  const differs = (a: unknown, b: unknown) =>
+    stableWorkspaceJson(a) !== stableWorkspaceJson(b)
+  if (differs(before.learnRuntime, after.learnRuntime)) return 'learnruntime'
+  if (differs(before.settings, after.settings)) return 'settings'
+  if (differs(before.navigation, after.navigation)) return 'navigation'
+  const db1 = before.database as { tables?: unknown[]; data?: unknown[] }
+  const db2 = after.database as { tables?: unknown[]; data?: unknown[] }
+  if (differs(db1.tables, db2.tables)) return 'tablemanifest'
+  if (Array.isArray(db1.data) && Array.isArray(db2.data)) {
+    const names = ['wordRecords', 'chapterRecords', 'reviewRecords',
+      'reviewWordStates', 'achievementEvents', 'achievementStates']
+    const groups = (value: unknown[]) => new Map(
+      value.filter(x => x && typeof x === 'object' &&
+        'tableName' in x).map(x => {
+        const group = x as { tableName: string }
+        return [group.tableName, x]
+      }),
+    )
+    const a = groups(db1.data), b = groups(db2.data)
+    for (const name of names) {
+      if (differs(a.get(name), b.get(name))) {
+        // Never concatenate an unknown table name into diagnostic output.
+        return 'table-' + name.toLowerCase()
+      }
+    }
+  }
+  return 'databaseother'
+}
+async function verify(
+  replica: M4ReplicaPort, accountId: string, expected: string,
+  target: WorkspaceSnapshotV4,
+) {
   const actual = await replica.capture(accountId)
   assertOwner(actual, accountId)
   if (await workspaceFingerprintV4(actual) !== expected) {
-    throw new Error('m4-full-v4-readback-mismatch')
+    throw new Error('m4-full-v4-readback-mismatch:' +
+      classifyM4ReadbackDifference(target, actual))
   }
 }
 /**
@@ -86,7 +131,7 @@ export async function recoverM4Merge(
   notify(observer, 'restore')
   await replica.restore(target, pending.accountId)
   notify(observer, 'verify')
-  await verify(replica, pending.accountId, fingerprint)
+  await verify(replica, pending.accountId, fingerprint, target)
   notify(observer, 'seal')
   await replica.seal()
   notify(observer, 'finalize')
