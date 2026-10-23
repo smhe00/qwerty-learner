@@ -23,4 +23,4 @@ jobs:
       - name: Historical browser failures and new alias regression
         run: >
           npx playwright test --config=tests/e2e/workspace-v4.config.ts
-          --grep "real application loads unchanged legacy records|six-table, 832-row|legacy review row 38"
+          --grep "real application loads unchanged legacy records|six-table, 832-row|legacy review row 38|unsupported negative zero"
