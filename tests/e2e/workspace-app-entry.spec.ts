@@ -18,7 +18,11 @@ test('real application loads unchanged legacy records after guarded boot', async
     await h.seed()
   })
   await page.goto('/')
-  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  // The first guarded legacy boot may initialize modules and load optional
+  // dictionary resources; require eventual FULL app readiness, not a
+  // hard-coded 5s CSS/button timing race.
+  await expect(page.getByRole('button', { name: '打开设置对话框' }))
+    .toBeVisible({ timeout: 15_000 })
   await harness(page)
   const records = await page.evaluate(() => (window as any).__backupHarness.db.wordRecords.count())
   expect(records).toBe(1)
