@@ -23,6 +23,7 @@ on:
       - 'tests/e2e/mobile-p0.*'
       - 'tests/e2e/mobile-learning-loop.spec.ts'
       - 'tests/e2e/mobile-stability.spec.ts'
+      - 'tests/e2e/mobile-ergonomics.spec.ts'
       - 'src/pages/Typing/hooks/useMobileWordAudio.ts'
       - 'src/pages/Typing/store/mobilePracticeDraft.ts'
       - 'tests/e2e/mobile-account*'
@@ -63,7 +64,7 @@ jobs:
             exit 1
           fi
       - name: Lint mobile learning surface and shared session adapter
-        run: yarn eslint src/pages/Mobile src/pages/Learn/index.tsx src/pages/Typing/index.tsx src/pages/Typing/components/WordPanel/index.tsx src/pages/Typing/components/WordPanel/components/MobileWordPractice.tsx src/app.tsx src/index.tsx src/sync/workspace-account-ui.ts src/sync/mobile-account-view.ts src/sync/workspace-lock.ts src/sync/workspace-lock-diagnostics.ts src/sync/workspace-bootstrap.ts
+        run: yarn eslint src/pages/Mobile src/pages/Learn/index.tsx src/pages/Typing/index.tsx src/pages/Typing/components/WordPanel/index.tsx src/pages/Typing/components/WordPanel/components/MobileWordPractice.tsx src/pages/Typing/components/WordPanel/components/MobilePracticeExample.tsx src/app.tsx src/index.tsx src/sync/workspace-account-ui.ts src/sync/mobile-account-view.ts src/sync/workspace-lock.ts src/sync/workspace-lock-diagnostics.ts src/sync/workspace-bootstrap.ts
       - name: Validate shared Learn review commit contract
         run: node --test tests/learn/mobile-review-commit-contract.test.mjs
       - name: Install Chromium

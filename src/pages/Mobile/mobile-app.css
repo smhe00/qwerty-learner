@@ -635,7 +635,27 @@
 .focus-mobile-learn-shell[data-mobile-compact=true] .mobile-practice-grade,
 .focus-mobile-learn-shell[data-mobile-compact=true] .mobile-practice-choice { min-height: 44px; padding: 9px; }
 .focus-mobile-learn-shell[data-mobile-compact=true] .mobile-practice-spelling-form input { min-height: 48px; padding: 8px 12px; }
-.focus-mobile-learn-shell[data-mobile-compact=true] .mobile-practice-mode-toggle,
 .focus-mobile-learn-shell[data-mobile-compact=true] .mobile-keyboard-hint,
 .focus-mobile-learn-shell[data-mobile-compact=true] .desktop-tap-shortcuts { display: none; }
 .mobile-audio-hint { margin: 6px 0; color: var(--mobile-muted); font-size: 12px; line-height: 1.6; }
+
+/* Mobile ergonomics: retain compact visuals with generous touch targets. */
+.focus-mobile-learn-shell .mobile-practice-replay { min-height: 44px; }
+.focus-mobile-learn-shell .mobile-practice-mode-toggle { display: flex; width: 100%; min-height: 44px; margin: 0 0 8px; text-decoration: none; }
+.mobile-practice-secondary, .mobile-example-toggle { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 9px 12px; border: 1px solid var(--mobile-line); border-radius: 10px; background: var(--mobile-surface); color: var(--mobile-text); font-size: 14px; line-height: 1.5; touch-action: manipulation; }
+.mobile-practice-verification p { margin: 0 0 6px; text-align: center; color: var(--mobile-muted); font-size: 12px; line-height: 1.5; }
+.mobile-practice-verification > button { width: 100%; margin-bottom: 8px; }
+.mobile-practice-verification-buttons { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+.mobile-practice-verification-buttons button { min-height: 48px; padding: 10px 8px; font-size: 15px; }
+.mobile-practice-auto-feedback { display: flex; align-items: center; gap: 10px; }
+.mobile-practice-auto-feedback .mobile-practice-next-hint { flex: 1; min-height: 48px; }
+.mobile-practice-auto-feedback button { flex-shrink: 0; }
+.mobile-example-toggle { align-self: center; border-color: transparent; color: var(--mobile-accent); background: transparent; }
+.mobile-practice-example[data-expanded=true] { display: block; -webkit-line-clamp: unset; line-clamp: unset; min-height: 0; max-height: none; overflow: visible; }
+.mobile-practice-reading[data-example-expanded=true] { display: block; overflow-y: auto; overscroll-behavior: contain; }
+.mobile-practice-reading[data-example-expanded=true] .mobile-practice-definition-scroll { overflow: visible; max-height: none; }
+.mobile-practice-reading[data-example-expanded=true] .mobile-practice-example-slot { overflow: visible; }
+.mobile-detail-page { overflow: visible; }
+.mobile-settings-actions { position: sticky; bottom: 0; padding: 10px 0 max(8px, env(safe-area-inset-bottom)); background: var(--mobile-background); z-index: 1; }
+.mobile-settings-actions .mobile-settings-saved { min-height: 0; margin: 8px 0 0; }
+.mobile-preview-action { display: flex; gap: 8px; width: 100%; margin-top: 18px; }
