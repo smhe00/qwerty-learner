@@ -7,6 +7,7 @@ import { loadAuth } from './sync/auth'
 import { startPerfStage, timePerfStage } from './sync/perf-diagnostics'
 import { DAILY_SESSION_PREFIX, WORKSPACE_SETTING_KEYS } from './sync/workspace-v4'
 import { prepareGuardedWorkspaceBoot } from './sync/workspace-bootstrap'
+import { learningEventSyncEnabled } from './sync/learning-sync-policy'
 import type { Workspace } from './sync/workspace-transition'
 import type { GuardedWorkspaceBoot, WorkspaceBootStage } from './sync/workspace-bootstrap'
 
@@ -444,12 +445,10 @@ async function start(): Promise<void> {
     if (boot.mode === 'isolated') {
       const { startSessionRevocationMonitor } = await import('./sync/session-revocation')
       stopSessionRevocationMonitor = startSessionRevocationMonitor(boot.registry)
-      // Only an S1-owned etest account, never the production origin or Pages.
+      // Only an S1-owned account on an approved cloud origin, never Pages.
       // Background scans recover crashes after the WordRecord commit without
       // modifying any snapshot. The browser adapter rechecks ownership.
-      if (boot.registry.active.kind === 'account' &&
-          window.location.protocol === 'https:' &&
-          window.location.hostname === 't.smhe.cn') {
+      if (boot.registry.active.kind === 'account' && learningEventSyncEnabled()) {
         try {
           const { startEtestM3BackgroundMonitor } =
             await import('./sync/m3-background-browser')

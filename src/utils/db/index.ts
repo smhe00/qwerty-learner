@@ -10,6 +10,7 @@ import { db } from './core'
 export { db } from './core'
 import { getAchievementSessionId } from '@/achievement/session'
 import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
+import { learningEventSyncEnabled } from '@/sync/learning-sync-policy'
 import type { LearnItemKind } from '@/learn/session'
 import type { ExerciseConditionV1 } from '@/review/condition'
 import type {
@@ -191,13 +192,11 @@ export function useSaveWordRecord() {
           })
       }
 
-      // Etest-host-only M3 append transport, activated without build env AFTER
+      // Approved-origin M3 append transport, activated without build opt-in AFTER
       // the authoritative WordRecord is durably saved. Its own recovery scan
       // repairs a crash between this write and the separate IDB outbox.
       // Never treat an event receipt as a V4 account convergence verdict.
-      if (dbID > 0 && typeof window !== 'undefined' &&
-          window.location.protocol === 'https:' &&
-          window.location.hostname === 't.smhe.cn') {
+      if (dbID > 0 && learningEventSyncEnabled()) {
         void import('@/sync/m3-publication-browser')
           .then(({ scheduleEtestM3Publication }) => scheduleEtestM3Publication())
           .catch(error => console.warn('M3 pilot not scheduled; original WordRecord retained', error))

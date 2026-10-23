@@ -1,0 +1,46 @@
+name: Production Single-Session Three-Device Sync Acceptance
+
+# Deployment requires explicit owner release authorization and exact-SHA etest
+# gates BEFORE master advances. This lane validates the resulting real site.
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-three-device-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  production-learning-sync:
+    if: github.ref_name == 'master'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      QWERTY_SYNC_BASE_URL: https://q.smhe.cn/
+      QWERTY_PRODUCTION_SYNC_ACCEPTANCE: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Require exact production SHA and single-session backend before account creation
+        run: node scripts/verify-production-learning-sync.mjs
+      - name: Install browser
+        run: |
+          yarn install --frozen-lockfile
+          npx playwright install --with-deps chromium
+      - name: Three real Learn profiles with a unique disposable account and strict cleanup
+        run: npx playwright test --config=tests/e2e/etest-three-device-auto-fork.config.ts
+      - name: Retain redacted acceptance evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-3way-sync-${{ github.run_id }}
+          path: test-results/**/*-redacted-trace.json
+          if-no-files-found: ignore
+          retention-days: 14

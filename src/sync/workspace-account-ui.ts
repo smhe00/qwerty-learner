@@ -12,6 +12,7 @@ import { copyAnonymousWorkspaceForNewRegistration } from './workspace-coordinato
 import { same } from './workspace-transition'
 import type { Phase, Workspace } from './workspace-transition'
 import { workspaceRegistryPort } from './workspace-vault'
+import { learningEventSyncEnabled } from './learning-sync-policy'
 
 function node<K extends keyof HTMLElementTagNameMap>(tag: K, text = ''): HTMLElementTagNameMap[K] {
   const result = document.createElement(tag)
@@ -126,9 +127,9 @@ export function renderS1AccountManagement(
     window.location.replace((REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : '') + (mobile ? '/mobile' : '/'))
   }
   // Pre-M4 authentication checkpoints: production builds strip console calls.
-  // These etest-only session flags contain no identity or learning contents.
+  // These bounded session flags contain no identity or learning contents.
   const markLoginSync = (phase: string) => {
-    if (window.location.hostname !== 't.smhe.cn') return
+    if (!learningEventSyncEnabled()) return
     try {
       const key = 'qwerty.etest.m4.stageTrace.v1'
       const previous = sessionStorage.getItem(key)
@@ -138,7 +139,7 @@ export function renderS1AccountManagement(
       sessionStorage.setItem(key, JSON.stringify(history))
     } catch { /* A diagnostic is never required for safe authentication */ }
   }
-  /** Pilot only: sign-in is the LAST moment this device is guaranteed to
+  /** Sign-in is the LAST moment this device is guaranteed to
    * have the active account token before a fast handoff to another device.
    * The pre-mount S1 page holds the exclusive writer lease. Drain durable M3
    * events before navigating, so a subsequent login cannot cancel the first
@@ -147,8 +148,7 @@ export function renderS1AccountManagement(
   const publishPendingAfterAuthentication = async () => {
     markLoginSync('auth-start')
     sessionStorage.removeItem('qwerty.etest.m4.idleBlocked')
-    if (window.location.protocol !== 'https:' ||
-        window.location.hostname !== 't.smhe.cn' || !navigator.onLine) return
+    if (!learningEventSyncEnabled() || !navigator.onLine) return
     try {
       const { runEtestM3Publication } = await import('./m3-publication-browser')
       // One cycle publishes at most 2 x 32 attempts. A bounded second cycle

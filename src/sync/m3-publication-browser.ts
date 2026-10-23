@@ -1,5 +1,5 @@
 /**
- * Etest-host-scoped M3 append-only event publisher (no build env required).
+ * Approved-origin M3 append-only event publisher (no build opt-in required).
  * Never restores/mutates learning data or V4 revision.
  * Called exclusively from an S1-mounted Learn tab holding its writer lease.
  */
@@ -12,15 +12,13 @@ import type { M3PublicationCycleResult } from './m3-publication-cycle'
 import { flushOneWitnessedOutboxBatch } from './multi-device-outbox-transport'
 import { recoverOwnedLearningEvents } from './multi-device-recovery-browser'
 import { workspaceRegistryPort } from './workspace-vault'
+import { learningEventSyncEnabled as etestM3PilotEnabled } from './learning-sync-policy'
+
+// Keep historical adapter names; all entry points share the rollout policy.
+export { etestM3PilotEnabled }
 
 let running: Promise<M3PublicationCycleResult> | null = null
 let timer: ReturnType<typeof setTimeout> | null = null
-
-export function etestM3PilotEnabled(): boolean {
-  return typeof window !== 'undefined' &&
-    window.location.protocol === 'https:' &&
-    window.location.hostname === 't.smhe.cn'
-}
 
 export async function runEtestM3Publication(): Promise<M3PublicationCycleResult> {
   if (!etestM3PilotEnabled()) return { status: 'blocked', reason: 'pilot-disabled' }

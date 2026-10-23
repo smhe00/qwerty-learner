@@ -17,6 +17,7 @@ import { acquireWorkspaceWriterLease } from './workspace-lock'
 import { same } from './workspace-transition'
 import type { Registry, Workspace } from './workspace-transition'
 import { workspaceRegistryPort } from './workspace-vault'
+import { learningEventSyncEnabled } from './learning-sync-policy'
 
 export type WorkspaceBootStage =
   | 'locking'
@@ -216,14 +217,11 @@ export async function prepareGuardedWorkspaceBoot(
     if (localStorage.getItem(S1_MIGRATION_WITNESS_KEY) === 'v1') {
       refreshWorkspaceMigrationWitness()
     }
-    // Etest only: under the S1 exclusive pre-mount writer lease, first drain
+    // On approved origins, under the S1 exclusive pre-mount writer lease, drain
     // this device's immutable offline events, then optionally adopt a strictly
     // verified, monotonic remote PREFIX through an M4 undo journal. Never use
-    // Blob listing as evidence of whole-account convergence. Production stays
-    // on its existing S1/S2 behavior.
-    if (registry.active.kind === 'account' &&
-        window.location.protocol === 'https:' &&
-        window.location.hostname === 't.smhe.cn') {
+    // Blob listing as evidence of whole-account convergence.
+    if (registry.active.kind === 'account' && learningEventSyncEnabled()) {
       try {
         const { adoptWitnessedM3AtGuardedBoot } =
           await import('./m4-witnessed-prefix-browser')

@@ -12,7 +12,10 @@ import { writeFile } from 'node:fs/promises'
  * Fails until complete automatic full-V4 local adoption & writeback works.
  */
 const base = process.env.QWERTY_SYNC_BASE_URL ?? ''
-const expectedOrigin = 'https://t.smhe.cn'
+// Production is permitted ONLY by its dedicated master release workflow.
+// An accidental base-URL override on staging can never create a prod account.
+const productionAcceptance = process.env.QWERTY_PRODUCTION_SYNC_ACCEPTANCE === 'true'
+const expectedOrigin = productionAcceptance ? 'https://q.smhe.cn' : 'https://t.smhe.cn'
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 type Event = { id: number; attemptId: string; dict: string; word: string; timeStamp: number }
@@ -214,7 +217,7 @@ async function assertDurable(page: Page, event: Event) {
 
 test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 adoption', async ({ browser }, testInfo) => {
   test.setTimeout(700_000)
-  expect(process.env.GITHUB_REF_NAME).toBe('edgeone-test')
+  expect(process.env.GITHUB_REF_NAME).toBe(productionAcceptance ? 'master' : 'edgeone-test')
   expect(new URL(base).origin).toBe(expectedOrigin)
   expect(process.env.GITHUB_RUN_ID).toMatch(/^\d+$/)
   const username = 'e2e_fork_' + process.env.GITHUB_RUN_ID + '_' +
@@ -225,12 +228,26 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
   let userId: string | undefined
   const failures: unknown[] = []
   try {
-    const newAccount = await api('/api/auth/register', 'POST', {
-      username, password, deviceId: 'qwerty-web-' + crypto.randomUUID(),
+    // No account creation until the actual deployment and single-session
+    // gateway match this exact source SHA. Applies to staging AND production.
+    const expectedSha = process.env.GITHUB_SHA ?? ''
+    expect(expectedSha).toMatch(/^[a-f0-9]{40}$/)
+    const marker = await fetch(new URL('/source-commit.txt?sync_probe=' +
+      expectedSha + '-' + Date.now(), base), {
+      cache: 'no-store', signal: AbortSignal.timeout(15_000),
     })
-    expect(newAccount.status).toBe(201)
-    userId = newAccount.body.user?.userId
-    expect(userId).toBeTruthy()
+    expect(marker.status).toBe(200)
+    const deployedSha = (await marker.text()).trim()
+    expect(deployedSha).toMatch(/^[a-f0-9]{7,40}$/)
+    expect(expectedSha.startsWith(deployedSha), 'actual deployment matches test SHA').toBe(true)
+    const health = await fetch(new URL('/api/health', base), {
+      cache: 'no-store', signal: AbortSignal.timeout(15_000),
+    })
+    expect(health.status).toBe(200)
+    const healthBody = await health.json()
+    expect(healthBody.authMode).toBe('single-active-session')
+    expect(healthBody.eventPilotMode).toBe('immutable-events-only')
+    expect(healthBody.capabilities).toContain('single-session-event-no-env-v1')
     const pages: Page[] = []
     for (let i = 0; i < 3; i++) {
       const ctx = await browser.newContext({ serviceWorkers: 'block' })
@@ -239,10 +256,31 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
       pages.push(page)
       profilePages.push(page)
     }
+    if (productionAcceptance) {
+      const assetStatuses: number[] = []
+      pages[0].on('response', response => {
+        const url = new URL(response.url())
+        if (url.origin === expectedOrigin &&
+            /^\/assets\/[^/]+\.js$/.test(url.pathname)) assetStatuses.push(response.status())
+      })
+      await pages[0].goto(base, { waitUntil: 'domcontentloaded' })
+      const footer = pages[0].getByRole('link', { name: /^当前版本 [a-f0-9]+，查看对应 Git commit$/ })
+      await expect(footer).toBeVisible({ timeout: 60_000 })
+      const version = (await footer.getAttribute('href'))?.split('/').pop() ?? ''
+      expect(version).toMatch(/^[a-f0-9]{7,40}$/)
+      expect(expectedSha.startsWith(version), 'rendered production footer matches release').toBe(true)
+      expect(assetStatuses.length, 'real browser loaded production JavaScript').toBeGreaterThan(0)
+      expect(assetStatuses.every(status => status === 200), 'loaded production assets succeeded').toBe(true)
+      console.log('PRODUCTION_BROWSER_VERSION_VERIFIED', JSON.stringify({ loadedScripts: assetStatuses.length }))
+    }
+    const newAccount = await api('/api/auth/register', 'POST', {
+      username, password, deviceId: 'qwerty-web-' + crypto.randomUUID(),
+    })
+    expect(newAccount.status).toBe(201)
+    userId = newAccount.body.user?.userId
+    expect(userId).toBeTruthy()
     // Production policy: signing in on B invalidates A; signing in on C
     // invalidates B. Each learns while OFFLINE with its own durable RecordDB.
-    const health = await pages[0].request.get(new URL('/api/health', base).href)
-    expect((await health.json()).authMode).toBe('single-active-session')
     const branches: Event[] = []
     for (let i = 0; i < pages.length; i++) {
       await openAccount(pages[i], username, password)
