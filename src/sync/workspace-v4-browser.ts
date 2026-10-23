@@ -180,7 +180,7 @@ export async function materializeAuditedM4CandidateV4(
   } catch (error) {
     const name = error instanceof Error ? error.name : 'UnknownError'
     const message = error instanceof Error ? error.message : ''
-    const mismatch = /^Backup V4 source\/export row-payload mismatch: (wordRecords|chapterRecords|reviewRecords|reviewWordStates|achievementEvents|achievementStates) at row (\\d+), different fields: (.*)$/.exec(message)
+    const mismatch = /^Backup V4 source\/export row-payload mismatch: (wordRecords|chapterRecords|reviewRecords|reviewWordStates|achievementEvents|achievementStates) at row (\d+), different fields: (.*)$/.exec(message)
     const firstField = mismatch?.[3]?.split(',')[0] ?? ''
     const normalizedField = firstField.toLowerCase().replace(/[^a-z0-9-]/g, '')
     stage(currentStage + '-failed', {
