@@ -132,6 +132,7 @@ export function renderS1AccountManagement(
    * device's still-in-flight startup upload. Never block login on failure:
    * unfinished evidence stays in the crash-safe local outbox. */
   const publishPendingAfterAuthentication = async () => {
+    sessionStorage.removeItem('qwerty.etest.m4.idleBlocked')
     if (window.location.protocol !== 'https:' ||
         window.location.hostname !== 't.smhe.cn' || !navigator.onLine) return
     try {
