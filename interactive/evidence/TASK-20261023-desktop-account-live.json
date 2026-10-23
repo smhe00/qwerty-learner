@@ -1,0 +1,112 @@
+{
+  "date": "2026-10-23",
+  "stagingOrigin": "https://t.smhe.cn/",
+  "accountImplementation": "e782627a3f5f5b377b8d369516a665f915cdcb66",
+  "ui": {
+    "expected": "e782627a3f5f5b377b8d369516a665f915cdcb66",
+    "origin": "https://t.smhe.cn",
+    "startedAt": "2026-10-23T03:07:12.391Z",
+    "accountCreation": false,
+    "modes": [
+      {
+        "layout": "desktop",
+        "marker": "e782627",
+        "sameTab": true,
+        "registrationPolicy": true,
+        "returnToStudy": true
+      },
+      {
+        "layout": "mobile",
+        "marker": "e782627",
+        "sameTab": true,
+        "registrationPolicy": true,
+        "returnToStudy": true
+      }
+    ],
+    "authRequests": 1,
+    "missingAccountCode": "account_not_found",
+    "status": "PASS",
+    "finishedAt": "2026-10-23T03:07:25.191Z"
+  },
+  "password": {
+    "authResponses": [
+      {
+        "path": "/api/auth/register",
+        "status": 201
+      },
+      {
+        "path": "/api/auth/me",
+        "status": 200
+      },
+      {
+        "path": "/api/auth/change-password",
+        "status": 200
+      },
+      {
+        "path": "/api/auth/login",
+        "status": 401,
+        "error": "incorrect_password"
+      },
+      {
+        "path": "/api/auth/login",
+        "status": 200
+      },
+      {
+        "path": "/api/auth/me",
+        "status": 200
+      },
+      {
+        "path": "/api/auth/me",
+        "status": 200
+      },
+      {
+        "path": "/api/auth/login",
+        "status": 200
+      },
+      {
+        "path": "/api/auth/me",
+        "status": 200
+      },
+      {
+        "path": "/api/auth/account",
+        "status": 200
+      },
+      {
+        "path": "/api/auth/login",
+        "status": 401
+      }
+    ],
+    "expected": "337af788e64c1e0faed11f35be03d262d7d31b8f",
+    "origin": "https://t.smhe.cn",
+    "fixture": "e2e_pc_mvkeilab_d14e79",
+    "startedAt": "2026-10-23T03:19:28.067Z",
+    "registered": true,
+    "passwordChanged": true,
+    "oldPasswordRejected": true,
+    "newPasswordLogin": true,
+    "cleanup": true,
+    "marker": "337af78",
+    "oldPasswordResponse": {
+      "status": 401,
+      "error": "incorrect_password"
+    },
+    "status": "PASS",
+    "finishedAt": "2026-10-23T03:20:03.573Z"
+  },
+  "testFixtureCleanupDebt": {
+    "fixture": "e2e_pc_mvke3zf7_178cb4",
+    "firstScriptFailure": "Test-created account identity not captured",
+    "cause": "Validation script expected register HTTP 200; actual endpoint returns 201. Successful app navigation observed, but credentials were not retained before browser close.",
+    "presenceProbe": {
+      "status": 401,
+      "error": "incorrect_password",
+      "message": "Password is incorrect",
+      "retryAfter": null
+    },
+    "cleanup": "PENDING: no retained password/token and no authorized admin erasure endpoint in this checkout; no deletion attempted against unknown identities.",
+    "learningActions": 0
+  },
+  "credentialsIncluded": false,
+  "automaticInactiveAccountCleanupImplemented": false,
+  "masterModified": false
+}
