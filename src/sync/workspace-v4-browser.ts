@@ -12,6 +12,7 @@ import {
   captureWorkspaceSettings,
   createWorkspaceV4,
   parseWorkspaceV4,
+  stableWorkspaceJson,
   workspaceFingerprintV4,
 } from './workspace-v4'
 import type { WorkspaceIdentityV4, WorkspaceSnapshotV4 } from './workspace-v4'
@@ -26,6 +27,7 @@ import { flushReviewRecordWrites } from '@/store/reviewInfoAtom'
 import { db } from '@/utils/db/core'
 import Dexie from 'dexie'
 import { timePerfStage } from './perf-diagnostics'
+import { sameLosslessIndexedDbValue } from './m4-lossless-idb-compare'
 import { secureRandomUuid } from './sha256-compat'
 import { DEFAULT_DICTIONARY_ID } from '@/resources/defaultDictionary'
 import type { PerfFlow } from './perf-diagnostics'
@@ -103,6 +105,7 @@ async function verifyV4RoundTripInDisposableDatabase(
  */
 export async function materializeAuditedM4CandidateV4(
   candidate: WorkspaceSnapshotV4,
+  originalWorkspace: WorkspaceSnapshotV4,
   onStage?: (step: string, detail?: {
     kind?: string; table?: string; field?: string; row?: number
   }) => void,
@@ -116,6 +119,11 @@ export async function materializeAuditedM4CandidateV4(
   }
   stage('validate')
   assertRestorableWorkspaceV4(candidate)
+  assertRestorableWorkspaceV4(originalWorkspace)
+  if (stableWorkspaceJson(originalWorkspace.metadata.source) !==
+      stableWorkspaceJson(candidate.metadata.source)) {
+    throw new Error('m4-scratch-source-account-mismatch')
+  }
   const original = candidate.workspaceData.database as {
     formatName: string
     formatVersion: number
@@ -160,11 +168,54 @@ export async function materializeAuditedM4CandidateV4(
     )
     const shadowRows = Object.fromEntries(sourceEntries) as
       Parameters<typeof assertV4SourceRowsMatchExport>[1]
-    // Audit the proposed mixed-format archive against what Dexie actually
-    // imported, including NaN/undefined Typeson annotations.
+    // The original S1 source has already passed its independent six-table
+    // raw-row audit. M4 must preserve reviewRecords byte-for-byte. A nested
+    // Typeson Word[] export sometimes differs from its decoded IDB shape, so
+    // only this known untouched table may use a SECOND, independent source
+    // check instead of the transport-only representation comparison.
+    const originalReview = (originalWorkspace.workspaceData.database as typeof original)
+      .data.data.find(x => x.tableName === 'reviewRecords')?.rows
+    const proposedReview = original.data.data.find(x =>
+      x.tableName === 'reviewRecords')?.rows
+    if (!originalReview || !proposedReview ||
+        stableWorkspaceJson(originalReview) !== stableWorkspaceJson(proposedReview)) {
+      throw new Error('m4-scratch-review-export-was-modified')
+    }
+
+    const auditCandidateWithUnchangedReviewProof = async (
+      snapshot: WorkspaceSnapshotV4,
+    ): Promise<void> => {
+      try {
+        await assertV4SourceRowsMatchExport(snapshot, shadowRows)
+      } catch (error) {
+        if (!(error instanceof Error) ||
+            !/^Backup V4 source\/export row-payload mismatch: reviewRecords at row \d+, different fields: words$/.test(error.message)) {
+          throw error
+        }
+        // Never assume the Typeson encoding is harmless: verify every raw
+        // ReviewRecord field against the STILL-OWNED live local RecordDB.
+        // This catches word substitutions, missing sessions, undefined/NaN
+        // changes, dates, sparse arrays and unknown structured-clone shapes.
+        const liveReview = await db.reviewRecords.toCollection().raw().toArray()
+        if (!sameLosslessIndexedDbValue(liveReview, shadowRows.reviewRecords)) {
+          throw new Error('m4-scratch-review-source-readback-mismatch')
+        }
+        const forAudit = structuredClone(snapshot)
+        const tables = (forAudit.workspaceData.database as typeof original).data.data
+        const reviewGroup = tables.find(x => x.tableName === 'reviewRecords')
+        if (!reviewGroup) throw new Error('m4-scratch-review-table-missing')
+        reviewGroup.rows = structuredClone(shadowRows.reviewRecords)
+        // The other FIVE tables still undergo their full, independent field
+        // audit. Only the reviewRecords row representation is substituted,
+        // and only after the real original/decoded contents match losslessly.
+        await assertV4SourceRowsMatchExport(forAudit, shadowRows)
+        stage('review-unchanged-verified')
+      }
+    }
+
     currentStage = 'audit-proposal'
     stage(currentStage)
-    await assertV4SourceRowsMatchExport(candidate, shadowRows)
+    await auditCandidateWithUnchangedReviewProof(candidate)
     const canonical = structuredClone(candidate)
     currentStage = 'export'
     stage(currentStage)
@@ -174,7 +225,7 @@ export async function materializeAuditedM4CandidateV4(
     canonical.workspaceData.database = normalizedDb
     currentStage = 'audit-normalized'
     stage(currentStage)
-    await assertV4SourceRowsMatchExport(canonical, shadowRows)
+    await auditCandidateWithUnchangedReviewProof(canonical)
     stage('validated')
     return canonical
   } catch (error) {
