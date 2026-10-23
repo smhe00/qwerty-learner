@@ -13,6 +13,8 @@ export async function inspectEtestVisibleDeviceHeads(): Promise<{
   status: 'observed-only' | 'blocked'
   reason?: string
   observedDevices?: number
+  /** Verified witnessed event IDs absent from this device's durable WordRecords. */
+  missingLocalAttempts?: number
   publishReady: false
   convergenceComplete: false
 }> {
@@ -60,9 +62,16 @@ export async function inspectEtestVisibleDeviceHeads(): Promise<{
         proof.convergenceComplete !== false) {
       return denied('witnessed-event-prefix-not-verified')
     }
-    // Merely observing more devices does not imply M4 adoption or convergence.
+    // Verify the immutable UUID set against local WordRecords. A nonzero
+    // difference authorizes only a safe *pre-mount check*, never a live write.
+    const missingLocalAttempts = proof.remoteAttemptCount -
+      proof.projection.sharedAttempts
+    if (proof.projection.status !== 'projected' ||
+        !Number.isSafeInteger(missingLocalAttempts) || missingLocalAttempts < 0) {
+      return denied('witness-projection-incomplete')
+    }
     return { status: 'observed-only', observedDevices: selection.heads.length,
-      publishReady: false, convergenceComplete: false }
+      missingLocalAttempts, publishReady: false, convergenceComplete: false }
   } catch (error) {
     return denied('observed-prefix-error:' +
       (error instanceof Error ? error.message : 'unknown'))
