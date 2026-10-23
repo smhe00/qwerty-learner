@@ -497,3 +497,54 @@ test('six-table, 832-row, deterministic Typeson matrix exports V4 intact', async
   expect(result.firstWord).toBe('matrix-word-0')
   expect(result.lastWord).toBe('matrix-word-511')
 })
+
+/**
+ * Historical ReviewRecord.words can contain repeated references to the same
+ * dictionary Word object. Raw IDB structured-clone retains the alias, whereas
+ * JSON and Typeson use different serialized representations. A raw six-table
+ * fallback must prove lossless roundtrip before accepting such a V4 archive.
+ */
+test('real Dexie: legacy review row 38 with aliased words passes only a lossless V4 export', async ({ page }) => {
+  await ready(page)
+  const result = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.clearAllTables()
+    const rows = Array.from({ length: 64 }, (_, i) => {
+      const shared = {
+        name: 'historical-review-' + i, trans: ['释义', 'repeat'],
+        usphone: '', ukphone: '',
+        example: [{ en: 'word example', cn: '中文', start: 0, end: 4 }],
+      }
+      return {
+        dict: 'cet4', index: 0, createTime: i + 1, isFinished: false,
+        words: i === 38 ? [shared, shared] : [shared],
+      }
+    })
+    await h.db.reviewRecords.bulkAdd(rows)
+    const original = await h.db.reviewRecords.toCollection().raw().toArray()
+    const aliased = original[38].words[0] === original[38].words[1]
+    const before = JSON.stringify(original)
+    const snapshot = await h.captureWorkingWorkspaceV4({
+      kind: 'account', accountId: 'historical-alias-synthetic',
+    })
+    const after = await h.db.reviewRecords.toCollection().raw().toArray()
+    const source = { words: [original[38].words[0], original[38].words[0]] }
+    const duplicate = { words: [
+      { ...original[38].words[0] },
+      { ...original[38].words[0] },
+    ] }
+    return {
+      aliased, sourcePreserved: before === JSON.stringify(after),
+      aliasPreserved: after[38].words[0] === after[38].words[1],
+      malformedAliasRejected: !h.sameLosslessIndexedDbValue(source, duplicate),
+      fullExportRows: snapshot.workspaceData.database.data.data
+        .find((entry: any) => entry.tableName === 'reviewRecords').rows.length,
+      format: snapshot.backupFormatVersion,
+    }
+  })
+  expect(result).toEqual({
+    aliased: true, sourcePreserved: true, aliasPreserved: true,
+    malformedAliasRejected: true, fullExportRows: 64,
+    format: 'qwerty-backup-v4',
+  })
+})
