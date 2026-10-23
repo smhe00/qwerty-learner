@@ -10,6 +10,10 @@ import assert from 'node:assert/strict'
 assert.equal(process.env.GITHUB_REF_NAME, 'edgeone-test')
 const url = new URL(process.env.QWERTY_SYNC_BASE_URL || '')
 assert.equal(url.origin, 'https://etest.edgeone.dev')
+// Only the M3 immutable-receipt job requires the separate project env flag.
+// Hard browser reconciliation must run and expose actual local/V4 failures
+// even before the Event Pilot is configured in the EdgeOne console.
+const requireEventPilot = process.env.QWERTY_REQUIRE_EVENT_PILOT !== 'false'
 const deadline = Date.now() + 180_000
 let reason = 'not checked'
 for (;;) {
@@ -20,9 +24,9 @@ for (;;) {
     const h = await resp.json()
     const current = h.capabilities?.includes('etest-single-session-relay-v1')
     const eventPilot = h.eventPilotMode === 'immutable-events-only'
-    if (resp.ok && current && eventPilot &&
+    if (resp.ok && current && (!requireEventPilot || eventPilot) &&
         h.authMode === 'single-active-session') {
-      console.log('PASS: etest backend single active session (M1 not needed)')
+      console.log('PASS: etest backend single active session; event pilot required=' + requireEventPilot + ' active=' + eventPilot)
       break
     }
     reason = 'HTTP ' + resp.status +
