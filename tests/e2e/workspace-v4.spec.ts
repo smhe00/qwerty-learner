@@ -385,7 +385,10 @@ test('six-table, 832-row, deterministic Typeson matrix exports V4 intact', async
         numeric: {
           first: i % 7 === 0 ? NaN : i,
           second: i % 11 === 0 ? Infinity : -Infinity,
-          signedZero: -0,
+          // Dexie ExportImport 4.0.7 does NOT revive -0 losslessly.
+          // The dedicated fail-closed regression below must reject -0
+          // rather than quietly change stored data during restore.
+          signedZero: 0,
         },
         history: sparse,
         eventAt: new Date(Date.UTC(2026, 0, 1 + (i % 28))),
@@ -496,6 +499,40 @@ test('six-table, 832-row, deterministic Typeson matrix exports V4 intact', async
   expect(result.encodedTypedRows).toBeGreaterThan(500)
   expect(result.firstWord).toBe('matrix-word-0')
   expect(result.lastWord).toBe('matrix-word-511')
+})
+
+
+test('legacy Dexie 4.0.7 exporter rejects unsupported negative zero without altering learning rows', async ({ page }) => {
+  await ready(page)
+  const result = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.clearAllTables()
+    await h.db.wordRecords.add({
+      word: 'signed-zero-export-probe', dict: 'cet4',
+      chapter: 1, timeStamp: 1_700_000_000,
+      fsrsShadow: { numeric: { signedZero: -0 } },
+    })
+    const before = await h.db.wordRecords.toCollection().raw().first()
+    let error = ''
+    try {
+      await h.captureWorkingWorkspaceV4({
+        kind: 'account', accountId: 'signed-zero-probe-account',
+      })
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : String(caught)
+    }
+    const after = await h.db.wordRecords.toCollection().raw().first()
+    return {
+      blocked: /independent roundtrip value mismatch: wordRecords fields fsrsShadow/.test(error),
+      sourceNegativeZero: Object.is(before?.fsrsShadow?.numeric?.signedZero, -0),
+      persistedNegativeZero: Object.is(after?.fsrsShadow?.numeric?.signedZero, -0),
+      count: await h.db.wordRecords.count(),
+    }
+  })
+  expect(result).toEqual({
+    blocked: true, sourceNegativeZero: true, persistedNegativeZero: true,
+    count: 1,
+  })
 })
 
 /**
