@@ -1,8 +1,24 @@
 # Authorized M4 production release — 2026-10-23
 
-Status: IN_PROGRESS. Single executor: Codex.
+Status: COMPLETE for canonical production q.smhe.cn. Single executor: Codex.
 Execution base: `01ed8574da7a231482bf6911038a1fe04e277392`.
 Prior report: `interactive/reports/CODEX-P0-M4-SEAL-THREE-DEVICE-20261023-report.md`.
+
+## Final outcome
+
+Released application: `a2dc907c9c0f6e8924f441fa360ebabd317233dd`.
+product/main, edgeone-test and master were normally fast-forwarded to this
+identical qualified SHA. Production source/health and actual Footer/assets
+verified, then real production A/B/C each achieved exact 3/3 immutable attempts,
+finalized M4 and no pending journal; test-account DELETE200/accountDeleted:true.
+Production acceptance: https://github.com/smhe00/qwerty-learner/actions/runs/39970051251 .
+
+The historical qwerty-plus.edgeone.dev hostname still serves 2f80afb, without
+the new event capability. Its allowlist entry is dormant until that host
+receives new code; it was not deployed or certified by this release. Do not
+assume it shares q.smhe.cn storage or migrate accounts/records between them.
+This release's verified production scope is the canonical q.smhe.cn site.
+The final report records this limitation and inherited legacy workflow status.
 
 ## Authorization and objective
 

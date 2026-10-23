@@ -1,5 +1,12 @@
 # P0 M4 seal diagnosis — 2026-10-23
 
+Subsequent owner-authorized production release: canonical q.smhe.cn now serves
+`a2dc907c9c0f6e8924f441fa360ebabd317233dd`, with real production three-device
+acceptance PASS at 2026-10-23 22:35 Asia/Shanghai. See
+`CODEX-P0-M4-PRODUCTION-RELEASE-20261023-report.md` for current deployment,
+authorization and legacy-alias limits. The diagnosis checkpoint below retains
+the earlier exact-SHA evidence and its then-unreleased production status.
+
 Status: COMPLETE — reported M4 seal fault fixed; exact-SHA real etest acceptance PASS.
 Validated application SHA: `01ed8574da7a231482bf6911038a1fe04e277392`.
 Root-fix SHA: `51868a7ef1a1414fa963db6f871aa39e613afb7e`.
