@@ -103,7 +103,14 @@ async function verifyV4RoundTripInDisposableDatabase(
  */
 export async function materializeAuditedM4CandidateV4(
   candidate: WorkspaceSnapshotV4,
+  onStage?: (step: string, errorKind?: string) => void,
 ): Promise<WorkspaceSnapshotV4> {
+  // Diagnostic observer reports only fixed workflow stages and error names,
+  // never keys, words, event contents or exception messages.
+  const stage = (step: string, errorKind?: string) => {
+    try { onStage?.(step, errorKind) } catch { /* observer is non-authoritative */ }
+  }
+  stage('validate')
   assertRestorableWorkspaceV4(candidate)
   const original = candidate.workspaceData.database as {
     formatName: string
@@ -117,13 +124,17 @@ export async function materializeAuditedM4CandidateV4(
   }
   const name = 'qwerty-m4-candidate-scratch-' + secureRandomUuid()
   const shadow = new Dexie(name)
+  let currentStage = 'schema'
   try {
+    stage(currentStage)
     shadow.version(original.data.databaseVersion).stores(
       Object.fromEntries(original.data.tables.map(entry =>
         [entry.name, entry.schema])),
     )
     const shadowExport = { ...original,
       data: { ...original.data, databaseName: name } }
+    currentStage = 'import'
+    stage(currentStage)
     await shadow.import(new Blob([JSON.stringify(shadowExport)], {
       type: 'application/json',
     }), {
@@ -134,6 +145,8 @@ export async function materializeAuditedM4CandidateV4(
       overwriteValues: true,
       clearTablesBeforeImport: true,
     })
+    currentStage = 'readback'
+    stage(currentStage)
     const sourceEntries = await Promise.all(
       shadow.tables.filter(table => [
         'wordRecords', 'chapterRecords', 'reviewRecords',
@@ -145,14 +158,25 @@ export async function materializeAuditedM4CandidateV4(
       Parameters<typeof assertV4SourceRowsMatchExport>[1]
     // Audit the proposed mixed-format archive against what Dexie actually
     // imported, including NaN/undefined Typeson annotations.
+    currentStage = 'audit-proposal'
+    stage(currentStage)
     await assertV4SourceRowsMatchExport(candidate, shadowRows)
     const canonical = structuredClone(candidate)
+    currentStage = 'export'
+    stage(currentStage)
     const normalizedBlob = await shadow.export()
     const normalizedDb = JSON.parse(await normalizedBlob.text()) as typeof original
     normalizedDb.data.databaseName = original.data.databaseName
     canonical.workspaceData.database = normalizedDb
+    currentStage = 'audit-normalized'
+    stage(currentStage)
     await assertV4SourceRowsMatchExport(canonical, shadowRows)
+    stage('validated')
     return canonical
+  } catch (error) {
+    const name = error instanceof Error ? error.name : 'UnknownError'
+    stage(currentStage + '-failed', /^[A-Za-z]{1,40}$/.test(name) ? name : 'OtherError')
+    throw error
   } finally {
     shadow.close()
     await shadow.delete()
