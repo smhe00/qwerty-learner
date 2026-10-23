@@ -26,7 +26,7 @@ test('Mobile review Good is frozen before reveal and can be corrected before per
   assert.match(code, /setRevealedAttempt\(frozen\)/)
   assert.match(code, /if \(grade !== 'good'\)/)
   assert.match(code, /if \(!revealedAttempt \|\| revealedAttempt\.grade !== 'good'/)
-  assert.match(code, /setTimeout\(\(\) => \{\s*void saveAttemptRef\.current/)
+  assert.match(code, /setTimeout\(\(\) => \{\s*if \(!desktop && readingHeldRef\.current\) return\s*void saveAttemptRef\.current/)
   assert.match(code, /'self-rated-before-answer-reveal'/)
   assert.match(code, /'self-report-not-spelling'/)
   assert.doesNotMatch(code, /(?:onClick|onKeyDown)=\{revealAnswer\}/)

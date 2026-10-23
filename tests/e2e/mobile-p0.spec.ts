@@ -85,9 +85,10 @@ test('Mobile single-tap choice or pre-reveal self-rating saves then advances aut
     const actionBox = await taskView.locator('[data-mobile-action-zone]').boundingBox()
     expect(correctionBox).not.toBeNull()
     expect(actionBox).not.toBeNull()
-    expect(correctionBox!.width).toBeLessThanOrEqual(34)
-    expect(correctionBox!.height).toBeLessThanOrEqual(34)
-    expect(correctionBox!.y + correctionBox!.height).toBeLessThan(actionBox!.y)
+    expect(correctionBox!.width).toBeGreaterThanOrEqual(44)
+    expect(correctionBox!.height).toBeGreaterThanOrEqual(44)
+    expect(correctionBox!.y).toBeGreaterThanOrEqual(actionBox!.y)
+    expect(correctionBox!.y + correctionBox!.height).toBeLessThanOrEqual(actionBox!.y + actionBox!.height)
   } else {
     if (task === 'audio') {
       await expect.poll(async () => page.evaluate(() =>

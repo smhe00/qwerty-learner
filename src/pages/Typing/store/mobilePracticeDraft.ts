@@ -24,6 +24,8 @@ type Draft = {
   pendingSpelling: string | null
   spellingInput: string
   error: string
+  readingHeld: boolean
+  exampleExpanded: boolean
   frozenTask: LearnExerciseKind | null
 }
 const initial = (): Draft => ({
@@ -34,6 +36,8 @@ const initial = (): Draft => ({
   pendingSpelling: null,
   spellingInput: '',
   error: '',
+  readingHeld: false,
+  exampleExpanded: false,
   frozenTask: null,
 })
 // UI only: never localStorage/IndexedDB/cloud data. A full document replacement
@@ -67,6 +71,8 @@ export function useMobilePracticeDraft(key?: string) {
       setPendingSpelling: field('pendingSpelling'),
       setSpellingInput: field('spellingInput'),
       setError: field('error'),
+      setReadingHeld: field('readingHeld'),
+      setExampleExpanded: field('exampleExpanded'),
       setFrozenTask: field('frozenTask'),
     }
   }, [setDraft])

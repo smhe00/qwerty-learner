@@ -1,4 +1,5 @@
 import MobilePageFrame from './MobilePageFrame'
+import MobilePronunciationPreview from './MobilePronunciationPreview'
 import { MAX_LEARN_BLOCK_SIZE, MIN_LEARN_BLOCK_SIZE, normalizeLearnBlockSize } from '@/learn/block-size'
 import { LANG_PRON_MAP } from '@/resources/soundResource'
 import { currentDictInfoAtom, isOpenDarkModeAtom, memoryConfigAtom, phoneticConfigAtom, pronunciationConfigAtom } from '@/store'
@@ -19,6 +20,8 @@ export default function MobileSettings() {
   const voices = LANG_PRON_MAP[dictionary.language].pronunciation
   const [voice, setVoice] = useState(String(pronunciation.type))
   const [saved, setSaved] = useState(false)
+  const [dirty, setDirty] = useState(false)
+  const selectedVoice = voices.find((item) => String(item.pron) === voice)?.pron ?? pronunciation.type
   const [error, setError] = useState('')
   // Persisted configuration hydrates after the initial render.
   useEffect(() => {
@@ -32,9 +35,13 @@ export default function MobileSettings() {
   }, [pronunciation.volume, pronunciation.rate, pronunciation.type])
   return (
     <MobilePageFrame title="学习设置">
+      <p className="mobile-page-description">学习计划和发音调整后需保存；下方显示设置立即生效。</p>
       <form
         className="mobile-settings-form"
-        onChange={() => setSaved(false)}
+        onChange={() => {
+          setSaved(false)
+          setDirty(true)
+        }}
         onSubmit={(event) => {
           event.preventDefault()
           setError('')
@@ -60,6 +67,7 @@ export default function MobileSettings() {
             const phonetic = next && PRONUNCIATION_PHONETIC_MAP[next.pron]
             if (phonetic) setPhonetic((old) => ({ ...old, type: phonetic }))
             setSaved(true)
+            setDirty(false)
           } catch {
             setSaved(false)
             setError('设置未能完整保存，请重试。')
@@ -137,21 +145,30 @@ export default function MobileSettings() {
               onChange={(event) => setRate(Number(event.target.value))}
             />
           </label>
+          <MobilePronunciationPreview
+            key={String(selectedVoice) + ':' + volume + ':' + rate}
+            voice={selectedVoice}
+            volume={volume}
+            rate={rate}
+          />
         </section>
-        <button type="submit" className="mobile-start-link">
-          保存设置
-        </button>
-        {error && (
-          <p role="alert" className="mobile-local-error">
-            {error}
+        <div className="mobile-settings-actions">
+          <button type="submit" className="mobile-start-link">
+            保存设置
+          </button>
+          {error && (
+            <p role="alert" className="mobile-local-error">
+              {error}
+            </p>
+          )}
+          <p role="status" className="mobile-settings-saved">
+            {saved ? '设置已保存在本机。' : dirty ? '有未保存的设置，请点击保存。' : '设置保存在此浏览器，手机与桌面界面共用。'}
           </p>
-        )}
-        <p role="status" className="mobile-settings-saved">
-          {saved ? '设置已保存在本机。' : '设置保存在此浏览器，手机与桌面界面共用。'}
-        </p>
+        </div>
       </form>
       <section className="mobile-settings-card">
         <h2>显示</h2>
+        <p>立即生效，无需点击保存。</p>
         <label className="mobile-theme-setting">
           深色模式
           <input

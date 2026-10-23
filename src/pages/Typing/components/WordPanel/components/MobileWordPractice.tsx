@@ -1,3 +1,4 @@
+import MobilePracticeExample from './MobilePracticeExample'
 import type { WordFinishResult } from './Word'
 import { generateWordSoundSrc } from '@/hooks/usePronunciation'
 import { createLearnAcquisitionExercisePlanForState } from '@/learn/acquisition'
@@ -150,6 +151,10 @@ export default function MobileWordPractice({
     pendingSpelling,
     spellingInput,
     error,
+    readingHeld,
+    exampleExpanded,
+    setReadingHeld,
+    setExampleExpanded,
     setRevealedAttempt,
     setFeedback,
     setIsSaving,
@@ -161,6 +166,17 @@ export default function MobileWordPractice({
     discard: discardDraft,
   } = draft
   const [taskHistory, setTaskHistory] = useState<LearnTaskHistoryEvent[]>([])
+  // The ref also closes the gap between a pointer event and React's timer cleanup.
+  const readingHeldRef = useRef(readingHeld)
+  readingHeldRef.current = readingHeld
+  const holdReading = () => {
+    if (desktop) return
+    readingHeldRef.current = true
+    setReadingHeld(true)
+  }
+  const inspectReading = () => {
+    if (feedback || revealedAttempt?.grade === 'good') holdReading()
+  }
   const composingRef = useRef(false)
   const [audioFallback, setAudioFallback] = useState(false)
   const submittingRef = useRef(false)
@@ -209,32 +225,32 @@ export default function MobileWordPractice({
   }, [word.name, dict.id])
 
   const example = useMemo(() => getFirstValidDictionaryExample(word), [word])
-  const maskedExample = example ? maskDictionaryExample(example) : null
+  const maskedExample = useMemo(() => (example ? maskDictionaryExample(example) : null), [example])
   const meanings = word.trans?.filter(Boolean).join('；') || '暂无释义'
-  const exampleFontSize =
-    example && example.en.length > 205
-      ? 'clamp(11px, 2.9vw, 13px)'
-      : example && example.en.length > 140
-      ? 'clamp(12px, 3.2vw, 14px)'
-      : example && example.en.length > 88
-      ? 'clamp(13px, 3.5vw, 15px)'
-      : 'clamp(15px, 4.2vw, 18px)'
+  const exampleFontSize = !desktop
+    ? 'clamp(14px, 3.8vw, 17px)'
+    : example && example.en.length > 205
+    ? 'clamp(11px, 2.9vw, 13px)'
+    : example && example.en.length > 140
+    ? 'clamp(12px, 3.2vw, 14px)'
+    : example && example.en.length > 88
+    ? 'clamp(13px, 3.5vw, 15px)'
+    : 'clamp(15px, 4.2vw, 18px)'
 
-  // The dictionary's validated start/end coordinates identify the target
-  // surface exactly. A cold recall or cloze task highlights ONLY its mask,
-  // never the answer; reveal and exposure highlight the actual target.
-  const renderExample = (showAnswer: boolean) => {
-    if (!maskedExample) return null
-    return (
-      <p className="mobile-practice-example" style={{ fontSize: exampleFontSize }} data-mobile-example>
-        {maskedExample.before}
-        <mark className={showAnswer ? 'mobile-practice-keyword' : 'mobile-practice-blank'} data-mobile-keyword>
-          {showAnswer ? maskedExample.surface : maskedExample.masked}
-        </mark>
-        {maskedExample.after}
-      </p>
+  const renderExample = (showAnswer: boolean) =>
+    maskedExample && (
+      <MobilePracticeExample
+        example={maskedExample}
+        showAnswer={showAnswer}
+        fontSize={exampleFontSize}
+        expanded={!desktop && exampleExpanded}
+        expandable={!desktop}
+        onToggle={() => {
+          holdReading()
+          setExampleExpanded(!exampleExpanded)
+        }}
+      />
     )
-  }
   const choices = useMemo(() => {
     const seen = new Set<string>()
     const targetMeaning = word.trans?.filter(Boolean).join('；')
@@ -323,6 +339,7 @@ export default function MobileWordPractice({
       : isCoreRecall
       ? createCanonicalReviewProbePlan()
       : undefined)
+  const mobileModeIsSpelling = isCoreRecall ? task === 'spelling' : mobileInput.preference === 'cold-spelling'
   const wantsAutomaticSound = task === 'audio' || task === 'exposure'
   const source = generateWordSoundSrc(word.name, pronunciation.type || 'uk')
 
@@ -528,8 +545,9 @@ export default function MobileWordPractice({
   const saveAttemptRef = useRef(saveAttempt)
   saveAttemptRef.current = saveAttempt
   useEffect(() => {
-    if (!revealedAttempt || revealedAttempt.grade !== 'good' || paused || feedback || error) return
+    if (!revealedAttempt || revealedAttempt.grade !== 'good' || paused || feedback || error || (!desktop && readingHeld)) return
     const timeout = window.setTimeout(() => {
+      if (!desktop && readingHeldRef.current) return
       void saveAttemptRef.current({
         mode: 'recall',
         grade: 'good',
@@ -539,7 +557,7 @@ export default function MobileWordPractice({
       })
     }, 2600)
     return () => window.clearTimeout(timeout)
-  }, [revealedAttempt, paused, feedback, error])
+  }, [revealedAttempt, paused, feedback, error, desktop, readingHeld])
 
   const submitSpelling = () => {
     if (task !== 'spelling' || isSaving || paused || feedback || pendingSpelling) return
@@ -601,12 +619,15 @@ export default function MobileWordPractice({
   )
 
   useEffect(() => {
-    if (!feedback?.autoAdvance || paused || error) return
+    if (!feedback?.autoAdvance || paused || error || (!desktop && readingHeld)) return
     // Full success: briefly acknowledge the saved answer, then proceed.
     // Wrong and uncertain answers remain visible until an explicit next tap.
-    const timeout = window.setTimeout(() => void advanceAfterFeedback(feedback), 1000)
+    const timeout = window.setTimeout(() => {
+      if (!desktop && readingHeldRef.current) return
+      void advanceAfterFeedback(feedback)
+    }, 1000)
     return () => window.clearTimeout(timeout)
-  }, [feedback, paused, error, advanceAfterFeedback])
+  }, [feedback, paused, error, advanceAfterFeedback, desktop, readingHeld])
 
   const playAgain = () => playSound(true)
   const title =
@@ -648,36 +669,14 @@ export default function MobileWordPractice({
       data-mobile-policy={activePlan?.decision.policyVersion ?? 'training'}
       data-mobile-selector={selection.reason}
       data-mobile-word={word.name}
-      data-mobile-next-mode={feedback ? (feedback.autoAdvance ? 'auto' : 'manual') : 'pending'}
+      data-mobile-next-mode={feedback ? (feedback.autoAdvance && !(readingHeld && !desktop) ? 'auto' : 'manual') : 'pending'}
+      data-mobile-reading-held={(!desktop && readingHeld) || undefined}
       data-mobile-recall-stage={task === 'recall' ? (feedback ? 'saved' : revealedAttempt ? 'verification' : 'unrevealed') : undefined}
       aria-label={desktop ? '轻触单词学习' : '手机单词学习'}
     >
       <header className="mobile-practice-head">
         <div className="mobile-practice-input-row">
           <span className="mobile-eyebrow">LEARN</span>
-          {!desktop && (
-            <button
-              type="button"
-              className="mobile-input-preference"
-              data-mobile-input-preference={mobileInput.preference}
-              aria-label={'学习方式：' + (mobileInput.preference === 'cold-spelling' ? '拼写' : '轻触')}
-              title={mobileInput.preference === 'cold-spelling' ? '切换到轻触' : '切换到拼写'}
-              disabled={paused || isSaving || Boolean(revealedAttempt || feedback || pendingSpelling)}
-              onClick={(event) => {
-                const preference = mobileInput.preference === 'cold-spelling' ? 'tap-recall' : 'cold-spelling'
-                setManualExercise(null)
-                setMobileInput((old) => ({ ...old, preference }))
-                if (event.detail > 0) event.currentTarget.blur()
-              }}
-            >
-              {mobileInput.preference === 'cold-spelling' ? (
-                <Keyboard size={15} aria-hidden="true" />
-              ) : (
-                <Hand size={15} aria-hidden="true" />
-              )}
-              {mobileInput.preference === 'cold-spelling' ? '拼写' : '轻触'}
-            </button>
-          )}
         </div>
         {!desktop && (mobileInput.keyboardUsed || mobileInput.preference === 'cold-spelling') && (
           <p className="mobile-keyboard-hint" role="status" data-mobile-keyboard-hint>
@@ -696,7 +695,14 @@ export default function MobileWordPractice({
         </div>
       </header>
 
-      <div className="mobile-practice-reading" data-mobile-reading>
+      <div
+        className="mobile-practice-reading"
+        data-mobile-reading
+        data-example-expanded={(!desktop && exampleExpanded) || undefined}
+        onPointerDown={inspectReading}
+        onScrollCapture={inspectReading}
+        onFocusCapture={inspectReading}
+      >
         <div className="mobile-practice-word-slot" data-mobile-word-slot>
           {feedback ? (
             <>
@@ -704,7 +710,24 @@ export default function MobileWordPractice({
                 {feedback.title}
               </p>
               <h2 className="mobile-practice-word" style={{ fontSize: wordFontSize }}>
-                {word.name}
+                {desktop ? (
+                  word.name
+                ) : (
+                  <button
+                    type="button"
+                    className="mobile-practice-word-tap"
+                    onClick={() => {
+                      holdReading()
+                      playAgain()
+                    }}
+                    disabled={paused}
+                    {...shortcut('R')}
+                    aria-label={'重听答案发音：' + word.name}
+                  >
+                    <span>{word.name}</span>
+                    <Volume2 size={16} aria-hidden="true" />
+                  </button>
+                )}
               </h2>
             </>
           ) : task === 'exposure' ? (
@@ -737,7 +760,24 @@ export default function MobileWordPractice({
             revealedAttempt ? (
               <div className="mobile-practice-revealed-word" data-mobile-answer-revealed>
                 <h2 className="mobile-practice-word" style={{ fontSize: wordFontSize }}>
-                  {word.name}
+                  {desktop ? (
+                    word.name
+                  ) : (
+                    <button
+                      type="button"
+                      className="mobile-practice-word-tap"
+                      onClick={() => {
+                        holdReading()
+                        playAgain()
+                      }}
+                      disabled={paused}
+                      {...shortcut('R')}
+                      aria-label={'重听答案发音：' + word.name}
+                    >
+                      <span>{word.name}</span>
+                      <Volume2 size={16} aria-hidden="true" />
+                    </button>
+                  )}
                 </h2>
               </div>
             ) : (
@@ -787,7 +827,7 @@ export default function MobileWordPractice({
           ) : (
             <p className="mobile-practice-cue">哪个意思与这个词相符？</p>
           )}
-          {task === 'recall' && revealedAttempt?.grade === 'good' && !feedback && !error && (
+          {desktop && task === 'recall' && revealedAttempt?.grade === 'good' && !feedback && !error && (
             <div className="mobile-practice-recall-check">
               <p className="mobile-practice-cue mobile-practice-recall-cue">
                 {keyboardControls ? '核对答案 · 若记错，按 X 或点击纠正' : '核对答案 · 若记错，请点右侧圆点'}
@@ -827,19 +867,34 @@ export default function MobileWordPractice({
       </div>
 
       <footer className="mobile-practice-actions" data-mobile-action-zone>
-        {!feedback && !revealedAttempt && !pendingSpelling && isCoreRecall && (task === 'recall' || task === 'spelling') && (
+        {!desktop && !feedback && !revealedAttempt && !pendingSpelling && (
+          <button
+            type="button"
+            className="mobile-input-preference mobile-practice-mode-toggle"
+            data-mobile-input-preference={mobileInput.preference}
+            data-mobile-interaction-toggle={isCoreRecall || undefined}
+            aria-label={'学习方式：' + (mobileModeIsSpelling ? '拼写' : '轻触')}
+            {...(isCoreRecall ? shortcut('W') : {})}
+            disabled={paused || isSaving}
+            onClick={(event) => {
+              const preference = mobileModeIsSpelling ? 'tap-recall' : 'cold-spelling'
+              setManualExercise(isCoreRecall ? preference : null)
+              setMobileInput((old) => ({ ...old, preference }))
+              if (event.detail > 0) event.currentTarget.blur()
+            }}
+          >
+            {mobileModeIsSpelling ? <Keyboard size={16} aria-hidden="true" /> : <Hand size={16} aria-hidden="true" />}
+            {mobileModeIsSpelling ? '拼写 · 切换为轻触' : '轻触 · 切换为拼写'} {keyHint('W')}
+          </button>
+        )}
+        {desktop && !feedback && !revealedAttempt && !pendingSpelling && isCoreRecall && (task === 'recall' || task === 'spelling') && (
           <button
             type="button"
             className="mobile-practice-mode-toggle"
             data-mobile-interaction-toggle
             {...shortcut('W')}
-            onClick={() => {
-              const preference = task === 'recall' ? 'cold-spelling' : 'tap-recall'
-              setManualExercise(preference)
-              if (!desktop) setMobileInput((old) => ({ ...old, preference }))
-              setSpellingInput('')
-            }}
             disabled={paused || isSaving}
+            onClick={() => setManualExercise(task === 'recall' ? 'cold-spelling' : 'tap-recall')}
           >
             {task === 'recall' ? '改用独立拼写' : '改用轻触回忆'} {keyHint('W')}
           </button>
@@ -854,10 +909,23 @@ export default function MobileWordPractice({
             <button type="button" className="mobile-practice-primary" onClick={() => void advanceAfterFeedback(feedback)} disabled={paused}>
               重试继续学习
             </button>
-          ) : feedback.autoAdvance ? (
-            <p className="mobile-practice-next-hint" role="status">
-              已保存 · 自动进入下一个
-            </p>
+          ) : feedback.autoAdvance && (desktop || !readingHeld) ? (
+            <div className="mobile-practice-auto-feedback">
+              <p className="mobile-practice-next-hint" role="status">
+                已保存 · 自动进入下一个
+              </p>
+              {!desktop && (
+                <button
+                  type="button"
+                  className="mobile-practice-secondary"
+                  data-mobile-reading-hold
+                  disabled={paused}
+                  onClick={holdReading}
+                >
+                  停留查看
+                </button>
+              )}
+            </div>
           ) : (
             <button
               type="button"
@@ -978,9 +1046,52 @@ export default function MobileWordPractice({
                 {isSaving ? '正在保存…' : '保存失败 · 重试'} {keyHint('Space')}
               </button>
             ) : revealedAttempt.grade === 'good' ? (
-              <p className="mobile-practice-next-hint" role="status">
-                {isSaving ? '正在保存…' : '核对中 · 即将自动保存'}
-              </p>
+              desktop ? (
+                <p className="mobile-practice-next-hint" role="status">
+                  {isSaving ? '正在保存…' : '核对中 · 即将自动保存'}
+                </p>
+              ) : (
+                <div className="mobile-practice-verification">
+                  <p role="status">
+                    {isSaving ? '正在保存…' : readingHeld ? '正在查看 · 确认后再保存' : '核对答案 · 将自动保存，可停留查看'}
+                  </p>
+                  {!readingHeld && (
+                    <button
+                      type="button"
+                      className="mobile-practice-secondary"
+                      data-mobile-reading-hold
+                      onClick={holdReading}
+                      disabled={paused || isSaving}
+                    >
+                      停留查看
+                    </button>
+                  )}
+                  <div className="mobile-practice-verification-buttons">
+                    <button
+                      type="button"
+                      className="mobile-practice-secondary"
+                      data-mobile-recall-correct
+                      {...shortcut('X')}
+                      aria-label="我记错了，改为忘了"
+                      disabled={paused || isSaving}
+                      onClick={correctRecall}
+                    >
+                      我记错了 {keyHint('X')}
+                    </button>
+                    <button
+                      type="button"
+                      className="mobile-practice-primary"
+                      data-mobile-recall-confirm
+                      disabled={paused || isSaving}
+                      onClick={() =>
+                        void saveAttempt({ mode: 'recall', grade: 'good', wrongCount: 0, title: '记住了（自评）', frozen: revealedAttempt })
+                      }
+                    >
+                      确认记得
+                    </button>
+                  </div>
+                </div>
+              )
             ) : (
               <p className="mobile-practice-next-hint" role="status">
                 正在保存回忆结果…
