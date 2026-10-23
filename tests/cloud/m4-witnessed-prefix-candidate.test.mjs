@@ -159,3 +159,31 @@ test('untouched custom state is preserved, exclusion refuses replay', async () =
   assert.equal((await preview({ accountId, local: excluded,
     witnessedEvents: [evidence(7, 'unseen')] })).status, 'blocked')
 })
+
+
+test('Dexie Typeson transport markers cannot cause a false same-UUID conflict', async () => {
+  const local = snapshot([admission(1)])
+  const raw = structuredClone(rows(local, 'wordRecords'))
+  rows(local, 'wordRecords')[0].$types = { '': 'userObject' }
+  const witnessed = [admission(1), evidence(2)]
+  const verified = await preview({ accountId, local, liveWordRecords: raw,
+    witnessedEvents: witnessed })
+  assert.equal(verified.status, 'candidate', verified.reason)
+  assert.equal(verified.newlyAdoptedAttempts, 1)
+  // A transport descriptor without independently audited live evidence is
+  // never discarded on faith; unknown/forged markers still fail closed.
+  const unverified = await preview({ accountId, local, witnessedEvents: witnessed })
+  assert.equal(unverified.status, 'blocked')
+  assert.equal(unverified.reason, 'm4-prefix-typeson-requires-live-source')
+  const corrupt = structuredClone(local)
+  rows(corrupt, 'wordRecords')[0].word = 'tampered'
+  const mismatched = await preview({ accountId, local: corrupt,
+    liveWordRecords: raw, witnessedEvents: witnessed })
+  assert.equal(mismatched.status, 'blocked')
+  assert.equal(mismatched.reason, 'm4-prefix-export-live-payload-mismatch')
+  const contradiction = await preview({ accountId, local,
+    liveWordRecords: raw,
+    witnessedEvents: [{ ...admission(1), word: 'different' }, evidence(2)] })
+  assert.equal(contradiction.status, 'blocked')
+  assert.equal(contradiction.reason, 'm4-prefix-conflicting-local-attempt')
+})
