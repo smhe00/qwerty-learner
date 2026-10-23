@@ -117,8 +117,21 @@ async function verifyV4RoundTripInDisposableDatabase(
         }
         seen.add(key)
         if (!sameLosslessIndexedDbValue(sourceRow, restoredByKey.get(key))) {
-          // No row values or identifying primary keys leave this process.
-          throw new Error('Backup V4 independent roundtrip value mismatch: ' + name)
+          // Diagnostic field NAMES ONLY. Never include primary keys, word
+          // contents, array elements, or account/device identifiers.
+          const originalFields = sourceRow as Record<string, unknown>
+          const restoredFields = restoredByKey.get(key) as Record<string, unknown>
+          const fields = [...new Set([
+            ...Object.keys(originalFields), ...Object.keys(restoredFields),
+          ])].sort()
+          const changed = fields.find(field =>
+            !Object.prototype.hasOwnProperty.call(originalFields, field) ||
+            !Object.prototype.hasOwnProperty.call(restoredFields, field) ||
+            !sameLosslessIndexedDbValue(originalFields[field], restoredFields[field]))
+          const safeField = changed && /^[a-zA-Z][a-zA-Z0-9]{0,50}$/.test(changed)
+            ? changed : 'shared-object-alias-or-unknown'
+          throw new Error('Backup V4 independent roundtrip value mismatch: ' +
+            name + ' field ' + safeField)
         }
       }
     }
