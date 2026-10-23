@@ -197,8 +197,11 @@ export async function adoptWitnessedM3AtGuardedBoot(
     // message, user payload or account identity. The S1 journal remains.
     const cause = error instanceof Error ? error.cause : undefined
     if (cause instanceof Error) {
-      const found = /^m4-full-v4-readback-mismatch:(learnruntime|settings|navigation|tablemanifest|table-wordrecords|table-chapterrecords|table-reviewrecords|table-reviewwordstates|table-achievementevents|table-achievementstates|databaseother)$/.exec(cause.message)
-      if (found) trace('readback-mismatch', { component: found[1] })
+      const found = /^m4-full-v4-readback-mismatch:(learnruntime|settings|navigation|tablemanifest|table-wordrecords|table-chapterrecords|table-reviewrecords|table-reviewwordstates|table-achievementevents|table-achievementstates|databaseother)(?::([a-z][a-z0-9-]{0,63}))?$/.exec(cause.message)
+      if (found) trace('readback-mismatch', {
+        component: found[1],
+        ...(found[2] ? { detail: found[2] } : {}),
+      })
     }
     // Never interpret an unknown failure as a successful merge. If M4 staging
     // started, the durable journal remains and must recover next boot.
