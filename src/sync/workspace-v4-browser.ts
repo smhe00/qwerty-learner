@@ -78,13 +78,50 @@ async function verifyV4RoundTripInDisposableDatabase(
       acceptChangedPrimaryKey: false,
       clearTablesBeforeImport: true,
     })
-    const roundTripped = structuredClone(snapshot)
-    const tables = (roundTripped.workspaceData.database as typeof original).data.data
-    for (const table of tables) {
-      if (!(table.tableName in sourceRows)) continue
-      table.rows = await shadow.table(table.tableName).toCollection().raw().toArray()
+    // The fast audit is deliberately JSON/canonical-payload based. It can
+    // reject an otherwise faithful Typeson export if a persisted ReviewRecord
+    // has shared Word[] objects or other losslessly cloneable IDB values.
+    // The fallback must compare the ACTUAL imported IDB rows, not pass those
+    // rows through the same JSON normalization that already failed.
+    //
+    // Pair rows by durable primary key: row order is not data evidence.
+    // A missing, duplicate or changed row blocks even if counts happen to
+    // match. This path never touches the real RecordDB or rewrites the export.
+    const keyOf = (row: unknown): string | null => {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) return null
+      const record = row as Record<string, unknown>
+      const key = record.id ?? record.eventId ?? record.achievementId
+      if ((typeof key !== 'string' || key.length === 0) &&
+          (typeof key !== 'number' || !Number.isSafeInteger(key))) return null
+      return typeof key + ':' + String(key)
     }
-    await assertV4SourceRowsMatchExport(roundTripped, sourceRows)
+    for (const name of Object.keys(sourceRows) as Array<keyof typeof sourceRows>) {
+      const originalRows = sourceRows[name]
+      const restoredRows = await shadow.table(name).toCollection().raw().toArray()
+      if (originalRows.length !== restoredRows.length) {
+        throw new Error('Backup V4 independent roundtrip row-count mismatch: ' + name)
+      }
+      const restoredByKey = new Map<string, unknown>()
+      for (const row of restoredRows) {
+        const key = keyOf(row)
+        if (key === null || restoredByKey.has(key)) {
+          throw new Error('Backup V4 independent roundtrip invalid key: ' + name)
+        }
+        restoredByKey.set(key, row)
+      }
+      const seen = new Set<string>()
+      for (const sourceRow of originalRows) {
+        const key = keyOf(sourceRow)
+        if (key === null || seen.has(key) || !restoredByKey.has(key)) {
+          throw new Error('Backup V4 independent roundtrip missing row: ' + name)
+        }
+        seen.add(key)
+        if (!sameLosslessIndexedDbValue(sourceRow, restoredByKey.get(key))) {
+          // No row values or identifying primary keys leave this process.
+          throw new Error('Backup V4 independent roundtrip value mismatch: ' + name)
+        }
+      }
+    }
   } finally {
     shadow.close()
     await shadow.delete()
