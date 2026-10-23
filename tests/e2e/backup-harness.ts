@@ -3,7 +3,7 @@ import { assertLegacyAuthChangeAllowed, assertLegacyCloudMutationAllowed, assert
 import { mountGuardedWorkspaceApp } from '../../src/sync/workspace-bootstrap'
 import { initializeLegacyWorkspace, transitionWorkingWorkspace } from '../../src/sync/workspace-coordinator'
 import { acquireWorkspaceWriterLease } from '../../src/sync/workspace-lock'
-import { captureWorkingWorkspaceV4, resetWorkingWorkspaceToEmpty, restoreWorkingWorkspaceV4 } from '../../src/sync/workspace-v4-browser'
+import { captureWorkingWorkspaceV4, materializeAuditedM4CandidateV4, resetWorkingWorkspaceToEmpty, restoreWorkingWorkspaceV4 } from '../../src/sync/workspace-v4-browser'
 import { createWorkspaceV4, workspaceFingerprintV4 } from '../../src/sync/workspace-v4'
 import { analyzeV4SnapshotSize } from '../../src/sync/v4-size-audit'
 import { loadSyncV2Baseline, compareAndSwapSyncV2Baseline } from '../../src/sync/v2-baseline'
@@ -314,6 +314,7 @@ async function inspectTableContract() {
   loadSyncBaseline,
   saveSyncBaseline,
   captureWorkingWorkspaceV4,
+  materializeAuditedM4CandidateV4,
   analyzeV4SnapshotSize,
   resetWorkingWorkspaceToEmpty,
   restoreWorkingWorkspaceV4,
