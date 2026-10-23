@@ -13,6 +13,8 @@ import { loadPinnedLocalS2PullAncestor } from '../../src/sync/m2-pinned-s2-ances
 import { manualV4ImportJournalPort } from '../../src/sync/manual-v4-import-journal'
 import { m4MergeJournalPort } from '../../src/sync/m4-merge-journal'
 import { recoverPendingM4Merge } from '../../src/sync/m4-merge-browser-recovery'
+import { executeM4Merge, recoverM4Merge } from '../../src/sync/m4-merge-transaction'
+import { assertWorkspaceMigrationWitness, installWorkspaceStorageWriterGuard, refreshWorkspaceMigrationWitness } from '../../src/sync/workspace-storage-witness'
 import { preparePortableV4Import, rebindPortableV4Import } from '../../src/sync/manual-v4-import-plan'
 import { executePreMountManualSyncV2 } from '../../src/sync/v2-browser-executor'
 import { loadWorkspaceFromVault, saveWorkspaceToVault, workspaceRegistryPort, openWorkspaceVault } from '../../src/sync/workspace-vault'
@@ -328,6 +330,11 @@ async function inspectTableContract() {
   manualV4ImportJournalPort,
   m4MergeJournalPort,
   recoverPendingM4Merge,
+  executeM4Merge,
+  recoverM4Merge,
+  assertWorkspaceMigrationWitness,
+  installWorkspaceStorageWriterGuard,
+  refreshWorkspaceMigrationWitness,
   preparePortableV4Import,
   rebindPortableV4Import,
   executePreMountManualSyncV2,

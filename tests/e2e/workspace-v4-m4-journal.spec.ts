@@ -44,6 +44,62 @@ async function stage(page: import('@playwright/test').Page, candidateChapter: nu
   }, { owner, candidateChapter })
 }
 
+test('M4 seal under installed S1 guard completes and still rejects direct witness writes', async ({ page }) => {
+  await init(page)
+  const result = await page.evaluate(async identity => {
+    const h = (window as any).__backupHarness
+    const lease = await h.acquireWorkspaceWriterLease()
+    try {
+      h.installWorkspaceStorageWriterGuard()
+      const original = await h.captureWorkingWorkspaceV4(identity)
+      const candidate = structuredClone(original)
+      candidate.workspaceData.navigation.currentChapter = 41
+      const phases: string[] = []
+      let errorCategory = ''
+      try {
+        await h.executeM4Merge(h.m4MergeJournalPort, {
+          capture: () => h.captureWorkingWorkspaceV4(identity),
+          restore: (snapshot: unknown) => h.restoreWorkingWorkspaceV4(snapshot, identity),
+          seal: async () => h.refreshWorkspaceMigrationWitness(),
+        }, {
+          accountId: identity.accountId,
+          registryGeneration: (await h.workspaceRegistryPort.read()).generation,
+          expectedOriginalFingerprint: await h.workspaceFingerprintV4(original), candidate,
+        }, (phase: string) => phases.push(phase))
+      } catch (error) {
+        // Fixture-only exception; no account data or snapshots are emitted.
+        const cause = (error as Error).cause as Error | undefined
+        errorCategory = cause?.message === 'S1 migration witness is managed by the guarded writer only'
+          ? 'guard-rejected-managed-seal' : 'other'
+      }
+      const pending = await h.m4MergeJournalPort.read()
+      const current = await h.captureWorkingWorkspaceV4(identity)
+      const witnessKey = 'qwerty.s1.workspace-migrated.v1'
+      const rejects = (action: () => void) => {
+        try { action(); return false } catch { return true }
+      }
+      return { errorCategory, phases, pending: pending !== null,
+        rollbackIntact: pending ?
+          await h.workspaceFingerprintV4(pending.original) === await h.workspaceFingerprintV4(original) : null,
+        candidateIntact: pending ?
+          await h.workspaceFingerprintV4(pending.candidate) === await h.workspaceFingerprintV4(candidate) : null,
+        exactCandidate: await h.workspaceFingerprintV4(current) === await h.workspaceFingerprintV4(candidate),
+        sealed: h.assertWorkspaceMigrationWitness(),
+        rejectsSet: rejects(() => localStorage.setItem(witnessKey, 'forged')),
+        rejectsRemove: rejects(() => localStorage.removeItem(witnessKey)),
+        rejectsClear: rejects(() => localStorage.clear()),
+      }
+    } finally { lease.release() }
+  }, owner)
+  console.log('M4_GUARDED_SEAL', JSON.stringify(result))
+  expect(result.errorCategory).toBe('')
+  expect(result.phases).toEqual(['capture', 'stage', 'restore', 'verify', 'seal', 'finalize', 'complete'])
+  expect(result.pending).toBe(false)
+  expect(result.exactCandidate).toBe(true)
+  expect(result.sealed).toBe('sealed')
+  expect(result.rejectsSet && result.rejectsRemove && result.rejectsClear).toBe(true)
+})
+
 test('real IndexedDB: crash after M4 staging keeps six-table rollback and restores after reload', async ({ page }) => {
   await init(page)
   const expected = await stage(page, 29)
@@ -79,6 +135,66 @@ test('real IndexedDB: crash after M4 staging keeps six-table rollback and restor
   expect(result.count).toBeGreaterThan(0)
   expect(result.chapter).not.toBe(29)
 })
+
+for (const crash of ['restore', 'seal', 'finalize'] as const) {
+  test(`guarded M4 crash at ${crash} preserves both full snapshots and boots idempotently`, async ({ page }) => {
+    await init(page)
+    const saved = await stage(page, 43)
+    const interrupted = await page.evaluate(async ({ identity, crash }) => {
+      const h = (window as any).__backupHarness
+      const lease = await h.acquireWorkspaceWriterLease()
+      try {
+        h.installWorkspaceStorageWriterGuard()
+        const pending = await h.m4MergeJournalPort.read()
+        const journal = { ...h.m4MergeJournalPort,
+          finalize: async (...args: unknown[]) => {
+            if (crash === 'finalize') throw new Error('fixture-crash')
+            await h.m4MergeJournalPort.finalize(...args)
+          } }
+        // Use the production recovery kernel with a single injected crash.
+        // Its stored snapshots remain the independent recovery authority.
+        try {
+          await h.recoverM4Merge(journal, {
+            capture: () => h.captureWorkingWorkspaceV4(identity),
+            restore: async (snapshot: unknown) => {
+              await h.restoreWorkingWorkspaceV4(snapshot, identity)
+              if (crash === 'restore') {
+                await h.db.wordRecords.clear()
+                throw new Error('fixture-crash')
+              }
+            },
+            seal: async () => {
+              if (crash === 'seal') throw new Error('fixture-crash')
+              h.refreshWorkspaceMigrationWitness()
+            },
+          }, 'apply')
+        } catch { /* The next real boot must recover this staged transaction. */ }
+        const after = await h.m4MergeJournalPort.read()
+        return { retained: after !== null,
+          originalIntact: await h.workspaceFingerprintV4(after.original) === pending.originalFingerprint,
+          candidateIntact: await h.workspaceFingerprintV4(after.candidate) === pending.candidateFingerprint }
+      } finally { lease.release() }
+    }, { identity: owner, crash })
+    expect(interrupted).toEqual({ retained: true, originalIntact: true, candidateIntact: true })
+    await page.reload()
+    await expect.poll(() => page.evaluate(() => Boolean((window as any).__backupHarness))).toBe(true)
+    const recovered = await page.evaluate(async identity => {
+      const h = (window as any).__backupHarness
+      let mounted = false
+      let restart = false
+      try { await h.mountGuardedWorkspaceApp(() => { mounted = true }) }
+      catch (error) { restart = String(error).includes('M4 merge recovery completed; reload required') }
+      const snapshot = await h.captureWorkingWorkspaceV4(identity)
+      return { mounted, restart, fingerprint: await h.workspaceFingerprintV4(snapshot),
+        pending: await h.m4MergeJournalPort.read(), secondReplay: await h.recoverPendingM4Merge('apply') }
+    }, owner)
+    expect(recovered.mounted).toBe(false)
+    expect(recovered.restart).toBe(true)
+    expect(recovered.fingerprint).toBe(saved.candidateFingerprint)
+    expect(recovered.pending).toBeNull()
+    expect(recovered.secondReplay).toBe(false)
+  })
+}
 
 test('real IndexedDB: verified candidate apply clears journal only after full V4 readback', async ({ page }) => {
   await init(page)

@@ -1,4 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
+import { writeFile } from 'node:fs/promises'
 
 /**
  * HARD single-active-session E2E: three real browser profiles independently
@@ -32,6 +33,54 @@ async function records(page: Page): Promise<Event[]> {
       })
     } finally { db.close() }
   })
+}
+async function journalEvidence(page: Page) {
+  return page.evaluate(async () => {
+    const req = indexedDB.open('QwertyPlusWorkspaceVaultV1')
+    const vault = await new Promise<IDBDatabase>((ok, fail) => {
+      req.onsuccess = () => ok(req.result)
+      req.onerror = () => fail(req.error)
+    })
+    const read = (store: string, key: string) => new Promise<any>((ok, fail) => {
+      const req = vault.transaction(store, 'readonly').objectStore(store).get(key)
+      req.onsuccess = () => ok(req.result)
+      req.onerror = () => fail(req.error)
+    })
+    try {
+      const pending = await read('registry', 'sync-m4-merge-journal:v1')
+      if (!pending) return { pending: false }
+      const rollback = await read('snapshots', pending.rollbackKey)
+      const original = JSON.parse(rollback.json), candidate = JSON.parse(pending.candidateJson)
+      // Independent implementation of the V4 logical digest. Only boolean
+      // comparisons and per-table counts leave this browser; no IDs/digests.
+      const stable = (value: any): string => {
+        if (value === null || typeof value !== 'object') return JSON.stringify(value)
+        if (Array.isArray(value)) return '[' + value.map(stable).join(',') + ']'
+        return '{' + Object.keys(value).sort().filter(k => value[k] !== undefined)
+          .map(k => JSON.stringify(k) + ':' + stable(value[k])).join(',') + '}'
+      }
+      const sort = (values: any[], key: (v: any) => any) => values
+        .map(value => ({ value, key: stable(key(value)) }))
+        .sort((a, b) => a.key.localeCompare(b.key)).map(x => x.value)
+      const fingerprint = async (snapshot: any) => {
+        const data = snapshot.workspaceData, db = data.database.data
+        const logical = { database: {
+          tables: sort(db.tables, t => t.name),
+          data: sort(db.data.map((g: any) => ({ ...g, rows: sort(g.rows, x => x) })), g => g.tableName),
+        }, learnRuntime: data.learnRuntime, settings: data.settings, navigation: data.navigation }
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stable(logical)))
+        return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('')
+      }
+      const names = ['wordRecords', 'chapterRecords', 'reviewRecords',
+        'reviewWordStates', 'achievementEvents', 'achievementStates']
+      const counts = (snap: any) => Object.fromEntries(names.map(name => [name,
+        snap.workspaceData.database.data.data.find((g: any) => g.tableName === name)?.rows.length ?? -1]))
+      return { pending: true,
+        originalVerified: await fingerprint(original) === pending.originalFingerprint,
+        candidateVerified: await fingerprint(candidate) === pending.candidateFingerprint,
+        originalCounts: counts(original), candidateCounts: counts(candidate) }
+    } finally { vault.close() }
+  }).catch(() => ({ unavailable: true }))
 }
 async function api(path: string, method: string, input: object, token?: string) {
   const response = await fetch(new URL(path, base), {
@@ -137,7 +186,7 @@ async function study(page: Page, spelling: string): Promise<Event> {
     added = (await records(page)).find(r => r.attemptId && !seen.has(r.attemptId))
     return added?.attemptId ?? null
   }, { timeout: 50_000 }).not.toBeNull()
-  expect(added?.attemptId).toMatch(uuid)
+  expect(uuid.test(added?.attemptId ?? ''), 'new attempt has a UUID').toBe(true)
   return added!
 }
 async function authStatus(page: Page) {
@@ -155,13 +204,13 @@ async function authStatus(page: Page) {
 }
 async function assertDurable(page: Page, event: Event) {
   const rows = (await records(page)).filter(x => x.attemptId === event.attemptId)
-  expect(rows).toHaveLength(1)
-  expect(rows[0].dict).toBe(event.dict)
-  expect(rows[0].word).toBe(event.word)
-  expect(rows[0].timeStamp).toBe(event.timeStamp)
+  expect(rows.length, 'exactly one immutable attempt').toBe(1)
+  expect(rows[0].dict === event.dict, 'immutable dictionary preserved').toBe(true)
+  expect(rows[0].word === event.word, 'immutable word preserved').toBe(true)
+  expect(rows[0].timeStamp === event.timeStamp, 'immutable timestamp preserved').toBe(true)
 }
 
-test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 adoption', async ({ browser }) => {
+test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 adoption', async ({ browser }, testInfo) => {
   test.setTimeout(700_000)
   expect(process.env.GITHUB_REF_NAME).toBe('edgeone-test')
   expect(new URL(base).origin).toBe(expectedOrigin)
@@ -172,6 +221,7 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
   const contexts: BrowserContext[] = []
   const profilePages: Page[] = []
   let userId: string | undefined
+  const failures: unknown[] = []
   try {
     const newAccount = await api('/api/auth/register', 'POST', {
       username, password, deviceId: 'qwerty-web-' + crypto.randomUUID(),
@@ -213,23 +263,24 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
     // From here onward the ONLY permitted user action is to reauthenticate
     // the old session when it needs cloud access. No manual Sync is clicked.
     const expected = branches.map(r => r.attemptId).sort()
-    for (const i of [0, 1, 2, 0, 1, 2]) {
+    for (const [handoff, i] of [0, 1, 2, 0, 1, 2].entries()) {
       await openAccount(pages[i], username, password)
       await expect.poll(async () => (await authStatus(pages[i])).status,
         { timeout: 20_000 }).toBe(200)
       // The last relogin must see the complete preserved event union.
-      if (i === 2) {
+      if (handoff >= 2) {
         await expect.poll(async () => {
           // Background S1-preboot adoption deliberately replaces the document.
           // A transient destroyed JS context is not a data result; retry
           // the READ-ONLY poll after navigation, retaining the strict 3/3 gate.
           const rows = await records(pages[i]).catch(() => [])
-          return rows.filter(r => expected.includes(r.attemptId))
-            .map(r => r.attemptId).sort()
+          const found = rows.map(r => r.attemptId).sort()
+          return found.length === expected.length &&
+            found.every((id, index) => id === expected[index])
         }, {
           timeout: 150_000,
           message: 'full-V4 automatic convergence after single-session handoff',
-        }).toEqual(expected)
+        }).toBe(true)
       }
       await assertDurable(pages[i], branches[i])
     }
@@ -237,9 +288,13 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
     // Sync completion is only proven by the exact full union on the final
     // active client; a server M3 event witness alone cannot pass this test.
     for (let i = 0; i < pages.length; i++) {
-      await assertDurable(pages[i], branches[i])
+      for (const branch of branches) await assertDurable(pages[i], branch)
+      expect((await records(pages[i])).length, 'exact three-attempt final union').toBe(3)
     }
     console.log('PASS: single-session three offline forks auto-merged after staged reauth')
+  } catch (error) {
+    failures.push(error)
+    console.error('E2E_M4_APPLICATION_FAILED')
   } finally {
     const diagnostic = await Promise.all(profilePages.map(async (page, index) => {
       const rows = await records(page).catch(() => [])
@@ -263,21 +318,42 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
           return safe
         }).filter(Boolean)
       }).catch(() => [])
-      return { index, localRows: rows.length, witnessPhases: phases }
+      return { index, localRows: rows.length, witnessPhases: phases,
+        journal: await journalEvidence(page) }
     }))
     console.log('E2E_M4_THREE_DEVICE_COUNTS', JSON.stringify(diagnostic))
+    await writeFile(testInfo.outputPath('m4-three-device-redacted-trace.json'),
+      JSON.stringify({ applicationFailed: failures.length > 0, profiles: diagnostic }, null, 2))
     await Promise.allSettled(contexts.map(ctx => ctx.close()))
-    if (userId) {
+    try { if (userId) {
       expect(username).toMatch(/^e2e_fork_\d+_\d+$/)
       const fresh = await api('/api/auth/login', 'POST', {
         username, password, deviceId: 'qwerty-web-' + crypto.randomUUID(),
       })
       expect(fresh.status).toBe(200)
-      expect(fresh.body.user?.userId).toBe(userId)
+      expect(fresh.body.user?.userId === userId, 'cleanup identity matches created account').toBe(true)
       const removed = await api('/api/auth/account', 'DELETE',
         { currentPassword: password }, fresh.body.token)
+      // Fixed diagnostic codes only, never provider messages or account IDs.
+      console.log('E2E_ACCOUNT_CLEANUP', JSON.stringify({ status: removed.status,
+        stage: ['identity', 'circle-activity', 'request-body', 'content-delete'].includes(
+          removed.body.details?.stage) ? removed.body.details.stage : 'unspecified' }))
       expect(removed.status).toBe(200)
       expect(removed.body.deleted?.accountDeleted).toBe(true)
+    } } catch (error) {
+      failures.push(error)
+      console.error('E2E_ACCOUNT_CLEANUP_FAILED')
     }
+  }
+  if (failures.length === 1) throw failures[0]
+  if (failures.length > 1) {
+    const combined = new AggregateError(failures,
+      'Application convergence and disposable-account cleanup failed independently')
+    // Playwright 1.40 serializes Error.stack, not AggregateError.errors.
+    // Preserve both assertion stacks so teardown cannot hide the first error.
+    combined.stack = [combined.message, ...failures.map((error, index) =>
+      (index === 0 ? 'APPLICATION: ' : 'CLEANUP: ') +
+      (error instanceof Error ? error.stack : 'non-error failure'))].join('\n')
+    throw combined
   }
 })

@@ -248,6 +248,7 @@ export async function onRequest(context) {
     })
   }
 
+  let accountDeletionStage = 'identity'
   try {
     if (request.method === 'GET' && (path === '/' || path === '/health')) {
       return json(
@@ -360,13 +361,16 @@ export async function onRequest(context) {
       // that has written Circle events must not be permanently deleted until
       // its social event references can be independently scrubbed.
       const me = await service.me(bearer(request))
+      accountDeletionStage = 'circle-activity'
       if (await circleAccountHasActivity({
         getStore, env, userId: me.user?.userId,
       })) {
         throw new AppError(409, 'circle_deletion_requires_cleanup',
           'Circle data cleanup must complete before account deletion')
       }
+      accountDeletionStage = 'request-body'
       const body = await readJson(request, 64 * 1024)
+      accountDeletionStage = 'content-delete'
       return json(
         {
           ok: true,
@@ -681,6 +685,15 @@ export async function onRequest(context) {
     throw new AppError(404, 'not_found', 'Not found')
   } catch (error) {
     logApiError(request, path, error)
+
+    if (request.method === 'DELETE' && path === '/auth/account' &&
+        !(error instanceof AppError)) {
+      // Fixed stage only: provider errors may contain private Blob paths.
+      // An unavailable check MUST keep deletion failed and retryable.
+      return json({ ok: false, error: 'account_delete_unavailable',
+        message: 'Account deletion could not be verified',
+        details: { stage: accountDeletionStage } }, 500, cors)
+    }
 
     if (error instanceof AppError) {
       return json(

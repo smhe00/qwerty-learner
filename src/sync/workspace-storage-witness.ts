@@ -24,6 +24,9 @@ const PROTECTED = new Set<string>([
 ])
 const VERSION = 'v2:'
 let guardInstalled = false
+// Only the managed writer retains this capability after the public Storage
+// methods are guarded. Full-V4 transactions still need an explicit seal.
+let guardedRefresh: (() => void) | undefined
 
 function protectedKey(key: string): boolean {
   return PROTECTED.has(key) || key.startsWith(DAILY_SESSION_PREFIX)
@@ -65,7 +68,8 @@ export function assertWorkspaceMigrationWitness(): 'legacy' | 'sealed' {
 
 /** Write only the tiny digest, not a duplicate backup of private data. */
 export function refreshWorkspaceMigrationWitness(): void {
-  localStorage.setItem(S1_MIGRATION_WITNESS_KEY, integrityFingerprint(localStorage))
+  if (guardedRefresh) guardedRefresh()
+  else localStorage.setItem(S1_MIGRATION_WITNESS_KEY, integrityFingerprint(localStorage))
 }
 
 /** Install before importing React/any application writer and while holding the Web Lock. */
@@ -97,5 +101,6 @@ export function installWorkspaceStorageWriterGuard(): void {
     }
     originalClear.call(this)
   }
+  guardedRefresh = refresh
   guardInstalled = true
 }

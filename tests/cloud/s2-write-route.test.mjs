@@ -2,11 +2,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { build } from 'esbuild'
+import { fileURLToPath } from 'node:url'
 
 // Actual EdgeOne route integration with mocked account service/storage.
 // Backend V4 content/ownership/CAS contracts are tested independently.
 const calls = []
-const source = new URL('../../cloud-functions/api/[[default]].js', import.meta.url).pathname
+const source = fileURLToPath(new URL('../../cloud-functions/api/[[default]].js', import.meta.url))
 const result = await build({ entryPoints: [source], bundle: true, write: false,
   format: 'esm', platform: 'node', target: 'node20', plugins: [{
     name: 'mock-edgeone', setup(build) {
@@ -47,13 +48,13 @@ const result = await build({ entryPoints: [source], bundle: true, write: false,
 globalThis.__p4bCalls = calls
 const { onRequest } = await import('data:text/javascript;base64,' +
   Buffer.from(result.outputFiles[0].text).toString('base64'))
-async function request(path, token, env = {}, body = '{}') {
+async function request(path, token, env = {}, body = '{}', method = 'PUT') {
   calls.length = 0
   const headers = { 'Content-Type': 'application/json' }
   if (token) headers.Authorization = 'Bearer ' + token
   const response = await onRequest({ env,
     request: new Request('https://qwerty-plus.edgeone.dev/api' + path, {
-      method: 'PUT', headers, body,
+      method, headers, body,
     }) })
   return { status: response.status, data: await response.json(), calls: [...calls] }
 }
@@ -104,4 +105,15 @@ test('retired legacy PUT refuses writes without contacting backend storage', asy
   assert.equal(actual.status, 410)
   assert.equal(actual.data.error, 'legacy_sync_retired')
   assert.deepEqual(actual.calls, [])
+})
+
+test('account deletion keeps an unavailable Circle safety check RED with only a fixed stage', async () => {
+  // The mock's short account ID fails the real Circle activity validation.
+  // This must never become permission to delete or disclose provider errors.
+  const actual = await request('/auth/account', 'token-a', {}, '{}', 'DELETE')
+  assert.equal(actual.status, 500)
+  assert.equal(actual.data.error, 'account_delete_unavailable')
+  assert.deepEqual(actual.data.details, { stage: 'circle-activity' })
+  assert.deepEqual(actual.calls, ['auth'])
+  assert.ok(!JSON.stringify(actual.data).includes('id-a'))
 })

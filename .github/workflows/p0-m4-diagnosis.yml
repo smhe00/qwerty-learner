@@ -1,0 +1,44 @@
+name: P0 M4 Diagnosis Safety
+
+# Validate the isolated diagnosis branch before proposing any promotion.
+# No deployment, real account creation, release status or gate overrides.
+on:
+  push:
+    branches: [codex/m4-seal-diagnosis-20261023]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p0-m4-diagnosis-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cloud-contracts:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn test:cloud
+      - run: yarn eslint cloud-functions tests/cloud --ext .js,.mjs
+      - run: yarn eslint src/sync --ext .ts,.tsx
+      - run: yarn build
+      - run: npx playwright test --list --config=tests/e2e/etest-three-device-auto-fork.config.ts
+  workspace-browser:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --config=tests/e2e/workspace-v4.config.ts
