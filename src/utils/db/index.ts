@@ -191,11 +191,13 @@ export function useSaveWordRecord() {
           })
       }
 
-      // Independent M3 pilot transport, opt-in ONLY on etest and only AFTER
+      // Etest-host-only M3 append transport, activated without build env AFTER
       // the authoritative WordRecord is durably saved. Its own recovery scan
       // repairs a crash between this write and the separate IDB outbox.
       // Never treat an event receipt as a V4 account convergence verdict.
-      if (dbID > 0 && import.meta.env.VITE_QWERTY_M3_PILOT_AUTO === 'true') {
+      if (dbID > 0 && typeof window !== 'undefined' &&
+          window.location.protocol === 'https:' &&
+          window.location.hostname === 'etest.edgeone.dev') {
         void import('@/sync/m3-publication-browser')
           .then(({ scheduleEtestM3Publication }) => scheduleEtestM3Publication())
           .catch(error => console.warn('M3 pilot not scheduled; original WordRecord retained', error))
