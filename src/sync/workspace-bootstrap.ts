@@ -18,6 +18,7 @@ import { same } from './workspace-transition'
 import type { Registry, Workspace } from './workspace-transition'
 import { workspaceRegistryPort } from './workspace-vault'
 import { learningEventSyncEnabled } from './learning-sync-policy'
+import { shouldCheckAccountV4AtStartup } from './account-startup-v4'
 
 export type WorkspaceBootStage =
   | 'locking'
@@ -216,6 +217,32 @@ export async function prepareGuardedWorkspaceBoot(
     // cannot update this digest when the owner page is no longer alive.
     if (localStorage.getItem(S1_MIGRATION_WITNESS_KEY) === 'v1') {
       refreshWorkspaceMigrationWitness()
+    }
+    // Inspect the FULL cloud account before event-prefix adoption. A clean
+    // single-sided remote update is downloaded and durably journaled; a
+    // divergent history remains pending and neither side is overwritten.
+    if (
+      shouldCheckAccountV4AtStartup({
+        pathname: window.location.pathname,
+        search: window.location.search,
+        account: registry.active.kind === 'account',
+        liveAuth: !!auth?.token && auth.expiresAt * 1000 > Date.now(),
+        enabled: learningEventSyncEnabled() && import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true',
+        online: navigator.onLine,
+      })
+    ) {
+      const { checkAccountV4AfterAuthentication } = await import('./account-login-v4-check')
+      const result = await checkAccountV4AfterAuthentication()
+      // Fixed status only: no identity, token, payload or private error.
+      sessionStorage.setItem('qwerty.s2.startup-check.v1', result.status)
+      if (result.status !== 'noop') {
+        sessionStorage.setItem('qwerty.s2.last-sync-result', result.detail)
+      }
+      if (result.status === 'pull-staged') {
+        recovered = true
+        throw new Error('S2 Pull staged; reload required before mounting app')
+      }
+      if (!result.canContinue) throw new Error('S2 startup workspace is not ready')
     }
     // On approved origins, under the S1 exclusive pre-mount writer lease, drain
     // this device's immutable offline events, then optionally adopt a strictly

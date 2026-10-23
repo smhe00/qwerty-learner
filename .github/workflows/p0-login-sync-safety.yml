@@ -42,5 +42,9 @@ jobs:
           cache: yarn
       - run: yarn install --frozen-lockfile
       - run: yarn test:cloud
+      - run: git fetch --depth=1 origin a2dc907c9c0f6e8924f441fa360ebabd317233dd
+      - name: Reject new TypeScript diagnostics against production source baseline
+        run: node scripts/audit-login-sync-types.mjs
+      - run: npx playwright test --config=tests/e2e/etest-login-v4-history.config.ts --list
       - run: yarn eslint src/sync --ext .ts,.tsx
       - run: yarn build

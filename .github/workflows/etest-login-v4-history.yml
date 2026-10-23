@@ -1,0 +1,40 @@
+name: etest Historical Login Full-V4 E2E
+on:
+  push:
+    branches: [edgeone-test]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: etest-login-history
+  cancel-in-progress: false
+jobs:
+  historical-login:
+    if: github.ref_name == 'edgeone-test'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    env:
+      QWERTY_SYNC_BASE_URL: https://t.smhe.cn/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Require exact deployed staging SHA before creating disposable account
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          EDGEONE_WAIT_MS: '600000'
+        run: node scripts/verify-edgeone-source.mjs
+      - run: yarn install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
+      - name: Historical six-table login and conflict safety
+        run: npx playwright test --config=tests/e2e/etest-login-v4-history.config.ts
+      - name: Redacted proof only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etest-login-history-${{ github.run_id }}
+          path: test-results/**/*-redacted-trace.json
+          if-no-files-found: ignore
+          retention-days: 7

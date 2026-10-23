@@ -5,6 +5,7 @@
  */
 import { SyncApiError, changePassword, login, register } from './api'
 import { browserDeviceId, loadAuth } from './auth'
+import { learningEventSyncEnabled } from './learning-sync-policy'
 import { presentAccount } from './mobile-account-view'
 import type { CloudAuthState } from './types'
 import { reauthenticateSameWorkspace, switchAuthenticatedWorkspace } from './workspace-auth-transaction'
@@ -12,7 +13,6 @@ import { copyAnonymousWorkspaceForNewRegistration } from './workspace-coordinato
 import { same } from './workspace-transition'
 import type { Phase, Workspace } from './workspace-transition'
 import { workspaceRegistryPort } from './workspace-vault'
-import { learningEventSyncEnabled } from './learning-sync-policy'
 
 function node<K extends keyof HTMLElementTagNameMap>(tag: K, text = ''): HTMLElementTagNameMap[K] {
   const result = document.createElement(tag)
@@ -137,7 +137,9 @@ export function renderS1AccountManagement(
       const history = Array.isArray(parsed) ? parsed.slice(-47) : []
       history.push({ phase })
       sessionStorage.setItem(key, JSON.stringify(history))
-    } catch { /* A diagnostic is never required for safe authentication */ }
+    } catch {
+      /* A diagnostic is never required for safe authentication */
+    }
   }
   /** Sign-in is the LAST moment this device is guaranteed to
    * have the active account token before a fast handoff to another device.
@@ -153,11 +155,12 @@ export function renderS1AccountManagement(
     // was inspected. First perform the SAME-ACCOUNT six-table S2 preflight.
     // Safe single-sided changes may be CAS uploaded or journal-staged for
     // restore; a divergent historical workspace remains intact and PENDING.
-    const { checkAccountV4AfterAuthentication } =
-      await import('./account-login-v4-check')
+    const { checkAccountV4AfterAuthentication } = await import('./account-login-v4-check')
+    setBusy(true, '正在检查云端完整学习记录…')
     const cloudV4 = await checkAccountV4AfterAuthentication()
-    markLoginSync(cloudV4.status === 'pending' ? 'auth-v4-pending' :
-      cloudV4.status === 'pull-staged' ? 'auth-v4-pull-staged' : 'auth-v4-checked')
+    markLoginSync(
+      cloudV4.status === 'pending' ? 'auth-v4-pending' : cloudV4.status === 'pull-staged' ? 'auth-v4-pull-staged' : 'auth-v4-checked',
+    )
     if (!cloudV4.canContinue || !learningEventSyncEnabled() || !navigator.onLine) {
       return cloudV4.detail
     }
@@ -177,19 +180,17 @@ export function renderS1AccountManagement(
           break
         }
         if (result.status === 'idle' || result.remaining === 0) break
+        if (n === 1) summary += ' 部分学习事件仍待发布，尚未确认完整同步。'
       }
       // The next device can revoke this bearer immediately after navigation.
       // The account-management page is itself S1-pre-mount and writer-locked,
       // so perform monotonic M4 local adoption BEFORE releasing that lease.
       // A later normal boot will retry if a POP has not exposed the receipts.
       markLoginSync('auth-before-m4')
-      const { adoptWitnessedM3AtGuardedBoot } =
-        await import('./m4-witnessed-prefix-browser')
+      const { adoptWitnessedM3AtGuardedBoot } = await import('./m4-witnessed-prefix-browser')
       const registry = await workspaceRegistryPort.read()
-      const adopted = await adoptWitnessedM3AtGuardedBoot(registry,
-        { preMountAccountManagement: true })
-      markLoginSync(adopted.status === 'blocked' ? 'auth-m4-blocked' :
-        adopted.status === 'adopted' ? 'auth-m4-adopted' : 'auth-m4-skipped')
+      const adopted = await adoptWitnessedM3AtGuardedBoot(registry, { preMountAccountManagement: true })
+      markLoginSync(adopted.status === 'blocked' ? 'auth-m4-blocked' : adopted.status === 'adopted' ? 'auth-m4-adopted' : 'auth-m4-skipped')
       if (adopted.status === 'blocked') {
         summary += ' 学习事件自动融合暂被安全检查阻止。'
         console.warn('Etest login witnessed M4 adoption deferred:', adopted.reason)
@@ -209,7 +210,7 @@ export function renderS1AccountManagement(
     setBusy(true, '正在保全本机待同步学习记录…')
     const syncNote = await publishPendingAfterAuthentication()
     setBusy(true, '账户会话更新成功，工作区保持不变。')
-    navigate('重新登录成功，工作区身份与学习数据保持不变。' + syncNote)
+    navigate('重新登录成功。' + syncNote)
   }
   const loginAction = async () => {
     if (!username.value.trim() || password.value.length < 4) {
@@ -222,7 +223,7 @@ export function renderS1AccountManagement(
       }
       await reauthenticateSameWorkspace(signed)
       const syncNote = await publishPendingAfterAuthentication()
-      navigate('当前账户已重新认证，学习进度未改变。' + syncNote)
+      navigate('当前账户已重新认证。' + syncNote)
       return
     }
     if (!window.confirm('将从匿名工作区切换到“' + signed.user.username + '”。' + '匿名学习进度会独立保存，不合并到已有账户。确认继续？')) {
