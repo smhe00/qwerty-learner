@@ -1,5 +1,5 @@
 /* eslint-env node */
-import { isImmutableEventPilotEnabled, isIsolatedEtestPilotOrigin } from '../_shared/etest-pilot-origin.js'
+import { isIsolatedEtestPilotOrigin } from '../_shared/etest-pilot-origin.js'
 import crypto from 'node:crypto'
 import { getStore } from '@edgeone/pages-blob'
 import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
@@ -159,9 +159,8 @@ function makeStorage(env) {
 }
 
 function makeService(env, storage) {
-  // Maker receives an internal function hostname even for etest.
-  // Never use untrusted Origin, Host, forwarded host or Request.url to
-  // infer deployment identity. Opt in ONLY via isolated Maker project env.
+  // Append-only authenticated receipts need no Maker environment variable.
+  // They cannot overwrite V4. Single-active-session remains enforced here.
   return createBackendService({
     storage,
     sessionTtlSeconds: numberEnv(env.SESSION_TTL_SECONDS, 7 * 24 * 60 * 60),
@@ -169,7 +168,7 @@ function makeService(env, storage) {
     // Single-login is a product invariant. Expired/revoked sessions
     // never authorize cloud mutation, even on isolated etest.
     multiSessionEnabled: false,
-    eventPilotEnabled: isImmutableEventPilotEnabled(env),
+    eventPilotEnabled: true,
   })
 }
 
@@ -260,11 +259,9 @@ export async function onRequest(context) {
           // an estimate for clock-skew preflight, not a signed event timestamp.
           serverTimeMs: Date.now(),
           authMode: 'single-active-session',
-          // Diagnostic only. Authentication remains SINGLE-active regardless
-          // of append-only event pilot availability.
-          eventPilotMode: isImmutableEventPilotEnabled(env)
-            ? 'immutable-events-only'
-            : 'disabled',
+          // Authenticated immutable receipts are available without project env.
+          // This does NOT enable concurrent login or full V4 auto-adoption.
+          eventPilotMode: 'immutable-events-only',
           runtime: process.version,
           capabilities: [
             'snapshot-retention-v1',
@@ -292,6 +289,7 @@ export async function onRequest(context) {
             'duplicate-register-protection-v1',
             // Distinguishes a new backend runtime from a new static build.
             'etest-single-session-relay-v1',
+            'single-session-event-no-env-v1',
           ],
           // Host is already apparent from the request URL; this probe
           // never exposes credentials, account IDs, store names, or env.
@@ -426,7 +424,7 @@ export async function onRequest(context) {
         200, cors)
     }
 
-    // M2.10 device-bound checkout declarations; pilot disabled by default.
+    // M2.10 device-bound checkout declarations; always bearer-authenticated.
     // Both endpoints require a live account session. No automatic merge.
     if (request.method === 'POST' && path === '/sync/events/v2/checkout') {
       const body = await readJson(request, 8 * 1024)
