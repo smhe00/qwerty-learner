@@ -22,7 +22,7 @@ import { captureWorkingWorkspaceV4, restoreWorkingWorkspaceV4 } from './workspac
 import { workspaceFingerprintV4 } from './workspace-v4'
 import { refreshWorkspaceMigrationWitness } from './workspace-storage-witness'
 import { workspaceRegistryPort } from './workspace-vault'
-import type { Registry } from './workspace-vault'
+import type { Registry } from './workspace-transition'
 
 export type WitnessedM4BootResult =
   | { status: 'skipped' | 'blocked'; reason: string }

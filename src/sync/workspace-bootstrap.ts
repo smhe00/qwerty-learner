@@ -216,6 +216,39 @@ export async function prepareGuardedWorkspaceBoot(
     if (localStorage.getItem(S1_MIGRATION_WITNESS_KEY) === 'v1') {
       refreshWorkspaceMigrationWitness()
     }
+    // Etest only: under the S1 exclusive pre-mount writer lease, first drain
+    // this device's immutable offline events, then optionally adopt a strictly
+    // verified, monotonic remote PREFIX through an M4 undo journal. Never use
+    // Blob listing as evidence of whole-account convergence. Production stays
+    // on its existing S1/S2 behavior.
+    if (registry.active.kind === 'account' &&
+        window.location.protocol === 'https:' &&
+        window.location.hostname === 't.smhe.cn') {
+      try {
+        const { adoptWitnessedM3AtGuardedBoot } =
+          await import('./m4-witnessed-prefix-browser')
+        const adoption = await adoptWitnessedM3AtGuardedBoot(registry)
+        if (adoption.status === 'adopted') {
+          recovered = true
+          // The restore initialized Dexie/atoms before the React mount. A
+          // fresh JS realm avoids using stale in-memory state after recovery.
+          throw new Error('M4 merge recovery completed; reload required before mounting app')
+        }
+        if (adoption.status === 'blocked') {
+          console.warn('M4 witnessed prefix was NOT applied:', adoption.reason)
+        }
+      } catch (error) {
+        if (error instanceof Error &&
+            (error.message.includes('M4 merge recovery completed; reload required') ||
+             error.message.includes('m4-merge-interrupted-recovery-required'))) {
+          recovered = true
+          throw error
+        }
+        // Network/read failures leave the full local workspace and durable
+        // outbox intact; offline etest users must still be able to learn.
+        console.warn('M4 witnessed prefix adoption deferred:', error)
+      }
+    }
     installWorkspaceStorageWriterGuard()
     setIsolatedAuthRetention(true)
     report(onStage, 'ready')
