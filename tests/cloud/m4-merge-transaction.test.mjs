@@ -20,7 +20,8 @@ await Promise.all([
 ])
 after(() => rmSync(dir, { recursive: true, force: true }))
 const { executeM4Merge: execute, recoverM4Merge: recover,
-  validatePendingM4Merge: validate } = await import(pathToFileURL(mod).href)
+  validatePendingM4Merge: validate,
+  classifyM4ReadbackDifference: classify } = await import(pathToFileURL(mod).href)
 const { workspaceFingerprintV4: fingerprint } = await import(pathToFileURL(workspace).href)
 
 const accountId = 'immutable-A'
@@ -200,4 +201,44 @@ test('journal preflight validates generation and source/candidate integrity', as
   pending.registryGeneration = 3
   pending.candidate.workspaceData.navigation.currentChapter = 101
   await assert.rejects(validate(pending), /m4-journal-fingerprint-mismatch/)
+})
+
+
+test('readback mismatch identifies only safe V4 component and never leaks row contents', async () => {
+  const cases = [
+    ['learnruntime', s => { s.workspaceData.learnRuntime.dailySessions.school.blockCount++ }],
+    ['settings', s => { s.workspaceData.settings.values.pronunciation = 'other' }],
+    ['navigation', s => { s.workspaceData.navigation.currentChapter++ }],
+    ['table-wordrecords', s => {
+      s.workspaceData.database.data.data
+        .find(t => t.tableName === 'wordRecords').rows[0].word = 'secret-value'
+    }],
+    ['table-reviewrecords', s => {
+      s.workspaceData.database.data.data
+        .find(t => t.tableName === 'reviewRecords').rows[0].index++
+    }],
+    ['tablemanifest', s => {
+      s.workspaceData.database.data.tables[0].schema += ',secret-index'
+    }],
+  ]
+  for (const [code, mutate] of cases) {
+    const readback = structuredClone(candidate)
+    mutate(readback)
+    const category = classify(candidate, readback)
+    assert.equal(category, code)
+    assert.doesNotMatch(category, /secret|immutable-a|school:day/)
+  }
+})
+
+test('a failed V4 verify retains recovery journal and reports component only', async () => {
+  const f = fixture()
+  f.replica.capture = async () => {
+    const snapshot = structuredClone(f.state.working)
+    snapshot.workspaceData.database.data.data
+      .find(t => t.tableName === 'reviewRecords').rows[0].index += 1
+    return snapshot
+  }
+  await assert.rejects(run(f), /m4-merge-interrupted-recovery-required/)
+  assert.equal(f.state.finalized.length, 0)
+  assert.ok(f.state.pending)
 })
