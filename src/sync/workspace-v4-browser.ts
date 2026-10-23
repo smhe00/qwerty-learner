@@ -128,10 +128,31 @@ async function verifyV4RoundTripInDisposableDatabase(
             !Object.prototype.hasOwnProperty.call(originalFields, field) ||
             !Object.prototype.hasOwnProperty.call(restoredFields, field) ||
             !sameLosslessIndexedDbValue(originalFields[field], restoredFields[field]))
-          const safeField = changed && /^[a-zA-Z][a-zA-Z0-9]{0,50}$/.test(changed)
-            ? changed : 'shared-object-alias-or-unknown'
+          // Follow only validated FIELD NAMES (never values or row keys)
+          // to isolate an unsupported Typeson conversion. Depth is bounded.
+          const safeName = (input: string): string =>
+            /^[a-zA-Z][a-zA-Z0-9]{0,50}$/.test(input) ? input :
+              /^(0|[1-9][0-9]{0,3})$/.test(input) ? 'element' : 'field'
+          let left: unknown = changed ? originalFields[changed] : originalFields
+          let right: unknown = changed ? restoredFields[changed] : restoredFields
+          const parts = [safeName(changed ?? 'unknown')]
+          for (let depth = 0; depth < 5; depth++) {
+            if (!left || !right || typeof left !== 'object' ||
+                typeof right !== 'object') break
+            const a = left as Record<string, unknown>
+            const b = right as Record<string, unknown>
+            const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].sort()
+            const delta = keys.find(k =>
+              !Object.prototype.hasOwnProperty.call(a, k) ||
+              !Object.prototype.hasOwnProperty.call(b, k) ||
+              !sameLosslessIndexedDbValue(a[k], b[k]))
+            if (delta === undefined) break
+            parts.push(safeName(delta))
+            left = a[delta]
+            right = b[delta]
+          }
           throw new Error('Backup V4 independent roundtrip value mismatch: ' +
-            name + ' field ' + safeField)
+            name + ' fields ' + parts.join('.'))
         }
       }
     }
