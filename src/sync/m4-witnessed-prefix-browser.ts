@@ -47,7 +47,9 @@ export async function adoptWitnessedM3AtGuardedBoot(
         if (typeof value === 'number' && Number.isSafeInteger(value) &&
             value >= 0 && value <= 100000) clean[name] = value
         else if (typeof value === 'boolean') clean[name] = value
-        else if (typeof value === 'string' && allowed.test(value)) clean[name] = value
+        else if (typeof value === 'string' && value.length <= 96 &&
+          value.split(':').length <= 2 &&
+          value.split(':').every(part => allowed.test(part))) clean[name] = value
       }
       const previous = sessionStorage.getItem(key)
       const parsed: unknown = previous ? JSON.parse(previous) : []
@@ -154,7 +156,7 @@ export async function adoptWitnessedM3AtGuardedBoot(
       accountId, registryGeneration: registry.generation,
       expectedOriginalFingerprint: await workspaceFingerprintV4(original),
       candidate: projection.candidate,
-    }, phase => trace('transaction', { phaseState: phase }))
+    }, phase => trace('transaction', { step: phase }))
     // executeM4Merge validates post-restore full V4 fingerprint and keeps a
     // rollback archive. A fresh document is required to discard stale module
     // caches initialized during the unmounted restore.
