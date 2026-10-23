@@ -15,6 +15,7 @@ import type { IWordRecord } from '@/utils/db/record'
 import type { IReviewWordState } from '@/review/types'
 import { immutableAttempt } from './multi-device-outbox'
 import { projectUuidLearningConvergence } from './v4-event-convergence'
+import { normalizeTaggedExportRow } from './v4-table-audit'
 import {
   assertRestorableWorkspaceV4, stableWorkspaceJson, workspaceFingerprintV4,
 } from './workspace-v4'
@@ -54,11 +55,14 @@ function validId(value: unknown): value is number {
 export async function previewMonotonicWitnessedM4(input: {
   accountId: string
   local: WorkspaceSnapshotV4
+  /** Real raw IDB rows pinned under the same exclusive S1 lease as the audited
+   * V4 export. Never compare Typeson export descriptors as event evidence. */
+  liveWordRecords?: readonly IWordRecord[]
   /** Canonical, server-verified events from complete explicit chain prefixes. */
   witnessedEvents: readonly IWordRecord[]
 }): Promise<MonotonicM4Candidate> {
   try {
-    const { accountId, local, witnessedEvents } = input
+    const { accountId, local, witnessedEvents, liveWordRecords } = input
     if (!accountId || local.metadata.source.kind !== 'account' ||
         local.metadata.source.accountId !== accountId ||
         !Array.isArray(witnessedEvents) || witnessedEvents.length > 4096) {
@@ -68,23 +72,52 @@ export async function previewMonotonicWitnessedM4(input: {
     const originalWords = table(local, 'wordRecords')
     const wordsByUuid = new Map<string, string>()
     const existingIds = new Set<number>()
+    const liveById = new Map<number, IWordRecord>()
+    if (liveWordRecords) {
+      if (liveWordRecords.length !== originalWords.length) {
+        return fail('m4-prefix-export-live-row-count-mismatch')
+      }
+      for (const record of liveWordRecords) {
+        if (!validId(record.id) || liveById.has(record.id)) {
+          return fail('m4-prefix-invalid-live-word-primary-key')
+        }
+        liveById.set(record.id, record)
+      }
+    }
+    const localIdentityRows: IWordRecord[] = []
     let lastWordId = 0
-    for (const raw of originalWords) {
-      if (!validId(raw.id) || existingIds.has(raw.id)) {
+    for (const exported of originalWords) {
+      if (!validId(exported.id) || existingIds.has(exported.id)) {
         return fail('m4-prefix-invalid-local-primary-key')
       }
-      existingIds.add(raw.id)
-      lastWordId = Math.max(lastWordId, raw.id)
-      // We cannot invent identity for legacy rows or silently collapse them.
-      if (typeof raw.attemptId !== 'string') {
+      existingIds.add(exported.id)
+      lastWordId = Math.max(lastWordId, exported.id)
+      const live = liveWordRecords ? liveById.get(exported.id) : undefined
+      if (liveWordRecords && !live) return fail('m4-prefix-export-live-id-mismatch')
+      if (!live && Object.prototype.hasOwnProperty.call(exported, '$types')) {
+        return fail('m4-prefix-typeson-requires-live-source')
+      }
+      const source = (live ?? exported) as IWordRecord
+      // Dexie export's $types is a transport descriptor, NOT a persisted
+      // immutable event field. Require independent exact live-row evidence
+      // before ignoring it; a forged or contradictory marker fails closed.
+      if (live) {
+        const normalized = normalizeTaggedExportRow(exported, live)
+        const json = (value: unknown) =>
+          stableWorkspaceJson(JSON.parse(JSON.stringify(value)))
+        if (json(normalized) !== json(live)) {
+          return fail('m4-prefix-export-live-payload-mismatch')
+        }
+      }
+      if (typeof source.attemptId !== 'string') {
         return fail('m4-prefix-unanchored-legacy-attempt')
       }
-      const canonical = immutableAttempt(raw as IWordRecord)
+      const canonical = immutableAttempt(source)
       if (wordsByUuid.has(canonical.attemptId!)) {
         return fail('m4-prefix-duplicate-local-attempt')
       }
-      wordsByUuid.set(canonical.attemptId!,
-        stableWorkspaceJson(canonical))
+      localIdentityRows.push(source)
+      wordsByUuid.set(canonical.attemptId!, stableWorkspaceJson(canonical))
     }
 
     const incoming = new Map<string, IWordRecord>()
@@ -118,7 +151,7 @@ export async function previewMonotonicWitnessedM4(input: {
       return fail('m4-prefix-primary-key-exhausted')
     }
     const projected = projectUuidLearningConvergence({
-      local: originalWords as IWordRecord[],
+      local: localIdentityRows,
       remote: [...incoming.values()],
     })
     if (projected.status !== 'projected') {
