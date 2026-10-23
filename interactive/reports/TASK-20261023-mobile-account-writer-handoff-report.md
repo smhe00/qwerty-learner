@@ -1,6 +1,6 @@
 # Mobile account writer handoff
 
-2026-10-23 Asia/Shanghai. PARTIAL: scoped change deployed and verified; Huawei persistent occupation remains unresolved. Base 09383bdb306494d8d3a0788c7e77261881a50485. CURRENT_TASK remains owned by the independent cloud-convergence executor. No Huawei real-device reproduction or confirmed root cause claimed.
+2026-10-23 Asia/Shanghai. REVIEW: deployed mobile login entry confirmed normal by the Huawei user; exact browser lifecycle cause remains unproven. Base 09383bdb306494d8d3a0788c7e77261881a50485. CURRENT_TASK remains owned by the independent cloud-convergence executor. No Huawei real-device reproduction or confirmed root cause claimed.
 
 ## Problem and change
 
@@ -95,3 +95,10 @@ Waited for actual staging marker to change from 0a7054e to f8d4f58; no premature
 ### User follow-up needed
 
 User confirmed Google mobile Chrome is normal while Huawei on 0a7054e8 remains blocked after exit/reopen. Latest request: in Huawei current tab open /mobile?writer-check=f8d4f587 and tap login; if blocked, copy diagnostics and paste into chat, or report normal. Diagnosis can then use native held-count, lease kind/expiry progression, same-session token match and actual browser/version. Preserve Huawei site data; no force steal. Status PARTIAL while actual-device outcome is pending. master remains 6d7839b9a9fd7a31459a19aeca948227b1f7b3c2. Final report/evidence-only commit goes to product/main without another Maker deployment; app source stays identical to tested staging f8d4f587.
+
+
+## Huawei real-device acceptance, 2026-10-23 Asia/Shanghai
+
+User replied exactly 已正常 to the current-tab /mobile?writer-check=f8d4f587 Huawei home -> Login test request. This supersedes the pending-device state above: the reported login-entry occupation symptom is user-confirmed resolved at deployed f8d4f5877252040f4bad1a7e8fdb739a58ef36e9. No raw device diagnostics or personal learning data were collected. This is user-reported acceptance, distinct from an independently proven browser-internal cause. No force-steal was required. Task status REVIEW; unrelated CI failures and full-release boundaries remain unchanged.
+
+Development main independently advanced after 9a2e4b1c with cloud/session and fixture-cleanup work (including 87d4bbbb); integrated only via ff-only pull. This documentation update neither certifies nor deploys those independent source changes. It does not advance etest or master. Note: this checkout tracks only product/main in remote.origin.fetch; verify edgeone-test using ls-remote rather than its stale local remote-tracking ref.

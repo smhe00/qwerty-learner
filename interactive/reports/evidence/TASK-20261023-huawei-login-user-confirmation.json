@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-23",
+  "timezone": "Asia/Shanghai",
+  "source": "direct_user_reply",
+  "deployedCheckpoint": "f8d4f5877252040f4bad1a7e8fdb739a58ef36e9",
+  "browser": "Huawei mobile browser (user-described Chromium core)",
+  "scope": "mobile home login entry previously blocked by writer ownership",
+  "reply": "已正常",
+  "result": "USER_CONFIRMED_NORMAL",
+  "diagnosticsCollected": false,
+  "rootCauseIndependentlyProven": false,
+  "fullCloudFlowsCertified": false
+}

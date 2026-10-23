@@ -1,7 +1,7 @@
 ---
 protocol_version: "1.1"
 task_id: "TASK-20261023-mobile-account-writer-handoff"
-status: "PARTIAL"
+status: "REVIEW"
 target_branch: "product/main"
 base_commit: "09383bdb306494d8d3a0788c7e77261881a50485"
 executor: "Codex"
@@ -27,3 +27,8 @@ Latest device result on deployed 0a7054e8: after exiting/reopening Huawei browse
 
 
 Iteration 2 deployed and targeted-live verified at f8d4f5877252040f4bad1a7e8fdb739a58ef36e9. Native/fallback phone contexts pass 8 total entries, replace-history check, busy exclusion, readonly diagnostic copying, same-document retry and refresh; auth requests=0. Huawei user has been asked to retry current deployed version and paste diagnostics if still blocked. Do not mark Huawei root cause/resolution complete before that evidence.
+
+
+## Huawei device confirmation, 2026-10-23 Asia/Shanghai
+
+In direct reply to the deployed f8d4f587 request (Huawei current tab -> mobile home -> login; paste diagnostics only if still blocked), user answered exactly: 已正常. The home-to-login entry symptom is user-confirmed resolved on this Huawei browser. No additional diagnostics or learning data were collected. This does not prove the precise browser cache/lock cause or certify all cloud flows. Scoped task is REVIEW; broader CI limitations remain recorded.
