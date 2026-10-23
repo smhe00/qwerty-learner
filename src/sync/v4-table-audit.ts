@@ -37,7 +37,7 @@ function jsonRows(rows: unknown[]): unknown[] {
  * unknown type or changed ordinary value still fails the SHA audit.
  * Do not mutate the original archive: Typeson markers must survive import.
  */
-function normalizeTaggedExportRow(exported: unknown, rawSource: unknown): unknown {
+export function normalizeTaggedExportRow(exported: unknown, rawSource: unknown): unknown {
   if (!exported || typeof exported !== 'object' || Array.isArray(exported) ||
       !rawSource || typeof rawSource !== 'object' || Array.isArray(rawSource)) {
     return exported
