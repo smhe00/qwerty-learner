@@ -220,7 +220,10 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
       // The last relogin must see the complete preserved event union.
       if (i === 2) {
         await expect.poll(async () => {
-          const rows = await records(pages[i])
+          // Background S1-preboot adoption deliberately replaces the document.
+          // A transient destroyed JS context is not a data result; retry
+          // the READ-ONLY poll after navigation, retaining the strict 3/3 gate.
+          const rows = await records(pages[i]).catch(() => [])
           return rows.filter(r => expected.includes(r.attemptId))
             .map(r => r.attemptId).sort()
         }, {
