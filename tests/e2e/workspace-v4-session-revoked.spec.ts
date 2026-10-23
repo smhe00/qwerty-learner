@@ -98,7 +98,7 @@ test('revoked device can reauthenticate same account without losing offline reco
     // S1 account reauth happens pre-mount and MUST NOT stage an
     // account-to-anonymous transaction or discard local WorkSpace V4.
     await expect(pageA).toHaveURL(/s1-account=manage/, { timeout: 25_000 })
-    const manage = pageA.getByRole('dialog', { name: '安全账户管理（S1）' })
+    const manage = pageA.locator('[data-account]')
     await expect(manage).toBeVisible({ timeout: 25_000 })
     const oldOwner = await pageA.evaluate(async () => {
       const h = (window as any).__backupHarness
@@ -106,9 +106,10 @@ test('revoked device can reauthenticate same account without losing offline reco
     }).catch(() => null)
     // In the pre-mount login realm, no React/RecordDB writer is present.
     expect(oldOwner).toBeNull()
-    await pageA.getByPlaceholder('用户名').fill('revocation-test')
-    await pageA.getByPlaceholder('账户密码').fill('testing')
-    await manage.getByRole('button', { name: '重新登录当前账户' }).click()
+    await manage.getByRole('button', { name: '重新验证登录', exact: true }).click()
+    await pageA.getByLabel('用户名', { exact: true }).fill('revocation-test')
+    await pageA.getByLabel('账户密码', { exact: true }).fill('testing')
+    await manage.getByRole('button', { name: '确认重新登录', exact: true }).click()
     await expect.poll(async () => pageA.evaluate(() => {
       const auth = localStorage.getItem('qwerty.cloudAuth.v1')
       return auth ? JSON.parse(auth).token : null

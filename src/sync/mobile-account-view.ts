@@ -19,6 +19,8 @@ type AccountView = {
   active: Workspace
   auth: CloudAuthState | null
   cloudDisabled: boolean
+  mobile?: boolean
+  onChangePassword?: (currentPassword: string, newPassword: string) => void
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, text = '', className = '') {
@@ -29,7 +31,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, text = '', className 
 }
 
 /** Presentation only. Authentication and workspace transitions stay in S1. */
-export function presentMobileAccount(view: AccountView) {
+export function presentAccount(view: AccountView) {
   const {
     overlay,
     main,
@@ -46,6 +48,8 @@ export function presentMobileAccount(view: AccountView) {
     active,
     auth,
     cloudDisabled,
+    mobile = true,
+    onChangePassword,
   } = view
   const anonymous = active.kind === 'anonymous'
   const expired = !!auth && auth.expiresAt * 1000 <= Date.now()
@@ -66,7 +70,10 @@ export function presentMobileAccount(view: AccountView) {
     node.style.cssText = ''
   document.body.classList.add('mobile-account-document')
   overlay.className = 'mobile-account-page'
-  overlay.dataset.mobileAccount = ''
+  overlay.dataset.account = ''
+  overlay.dataset.accountLayout = mobile ? 'mobile' : 'desktop'
+  if (mobile) overlay.dataset.mobileAccount = ''
+  else overlay.dataset.desktopAccount = ''
   overlay.dataset.theme = dark ? 'dark' : 'light'
   overlay.setAttribute('role', 'main')
   main.className = 'mobile-account-card'
@@ -164,7 +171,15 @@ export function presentMobileAccount(view: AccountView) {
     passwordConfirm.maxLength = 128
     passwordConfirm.placeholder = '再次输入密码'
   }
-  form.append(inputs, actions)
+  const registrationNotice = el('aside', '', 'mobile-account-registration-notice')
+  registrationNotice.id = 'account-registration-notice'
+  registrationNotice.setAttribute('aria-label', '注册须知')
+  registrationNotice.append(
+    el('strong', '注册须知'),
+    el('p', '暂不支持账号找回或密码重置，请妥善保存用户名和密码。登录后可在“我的账号”中修改密码。'),
+    el('p', '连续超过 6 个月未使用的账号将自动删除。'),
+  )
+  form.append(inputs, registrationNotice, actions)
   for (const button of authButtons) {
     button.className = 'mobile-account-primary'
     button.addEventListener(
@@ -180,7 +195,10 @@ export function presentMobileAccount(view: AccountView) {
   }
   form.addEventListener('submit', (event) => event.preventDefault())
   const updateMode = () => {
-    const registration = mode === 'register'
+    const registration = anonymous && mode === 'register'
+    registrationNotice.hidden = !registration
+    if (registration) form.setAttribute('aria-describedby', registrationNotice.id)
+    else form.removeAttribute('aria-describedby')
     loginTab.setAttribute('aria-selected', String(!registration))
     registerTab.setAttribute('aria-selected', String(registration))
     loginTab.tabIndex = registration ? -1 : 0
@@ -240,6 +258,64 @@ export function presentMobileAccount(view: AccountView) {
     main.insertBefore(secondary, form)
     controls.push(reauthToggle)
   }
+  if (!anonymous && onChangePassword) {
+    const passwordToggle = el('button', '修改密码', 'mobile-account-secondary')
+    passwordToggle.type = 'button'
+    passwordToggle.setAttribute('aria-expanded', 'false')
+    passwordToggle.setAttribute('aria-controls', 'account-change-password')
+    const passwordForm = el('form', '', 'mobile-account-change-password')
+    passwordForm.id = 'account-change-password'
+    passwordForm.setAttribute('aria-label', '修改密码')
+    passwordForm.hidden = true
+    passwordForm.append(el('p', '修改密码需要验证当前密码；修改后其他设备需要重新登录。', 'mobile-account-description'))
+    const passwordInput = (title: string, id: string, autocomplete: string) => {
+      const wrapper = el('div', '', 'mobile-account-field')
+      const label = el('label', title)
+      label.htmlFor = id
+      const input = el('input')
+      input.id = id
+      input.type = 'password'
+      input.autocomplete = autocomplete
+      input.required = true
+      input.minLength = 4
+      input.maxLength = 128
+      wrapper.append(label, input)
+      passwordForm.append(wrapper)
+      fields.push(input)
+      return input
+    }
+    const currentPassword = passwordInput('当前密码', 'account-current-password', 'current-password')
+    const newPassword = passwordInput('新密码', 'account-new-password', 'new-password')
+    const confirmPassword = passwordInput('确认新密码', 'account-confirm-new-password', 'new-password')
+    const validate = () => {
+      newPassword.setCustomValidity(newPassword.value === currentPassword.value ? '新密码不能与当前密码相同' : '')
+      confirmPassword.setCustomValidity(confirmPassword.value !== newPassword.value ? '两次输入的新密码不一致' : '')
+    }
+    for (const input of [currentPassword, newPassword, confirmPassword]) input.addEventListener('input', validate)
+    const submit = el('button', '确认修改密码', 'mobile-account-primary')
+    submit.type = 'submit'
+    passwordForm.append(submit)
+    passwordForm.addEventListener('submit', (event) => {
+      event.preventDefault()
+      if (!busy && !cloudDisabled && !expired && passwordForm.reportValidity()) onChangePassword(currentPassword.value, newPassword.value)
+    })
+    passwordToggle.addEventListener('click', () => {
+      passwordForm.hidden = !passwordForm.hidden
+      passwordToggle.setAttribute('aria-expanded', String(!passwordForm.hidden))
+      if (passwordForm.hidden) {
+        passwordForm.reset()
+        newPassword.setCustomValidity('')
+        confirmPassword.setCustomValidity('')
+      } else if (!mobile) currentPassword.focus()
+    })
+    if (expired) {
+      passwordToggle.hidden = true
+      passwordToggle.textContent = '修改密码（请先重新登录）'
+    }
+    controls.push(passwordToggle, submit)
+    authButtons.push(submit)
+    main.append(passwordToggle, passwordForm)
+  }
   back.className = 'mobile-account-secondary'
   back.textContent = anonymous ? '暂不登录，继续本机学习' : '返回学习'
   main.append(guidance, back)
@@ -259,12 +335,14 @@ export function presentMobileAccount(view: AccountView) {
     if (passwordConfirm) passwordConfirm.disabled = next || cloudDisabled || mode !== 'register'
   }
   setBusy(false)
-  heading.focus()
+  if (!mobile && !form.hidden && !cloudDisabled) username.focus()
+  else heading.focus()
   return { setBusy }
 }
 
 /** Read-only preview for legacy storage. Never imports auth or workspace IO. */
-export function renderMobileAccountPreview(root: HTMLElement | null): void {
+export function renderAccountPreview(root: HTMLElement | null, options: { mobile?: boolean } = {}): void {
+  const mobile = options.mobile !== false
   if (!root) throw new Error('Missing mobile account preview root')
   const overlay = el('div')
   const main = el('section')
@@ -293,12 +371,14 @@ export function renderMobileAccountPreview(root: HTMLElement | null): void {
   const register = el('button', '注册并登录')
   const back = el('button', '返回')
   for (const button of [login, register, back]) button.type = 'button'
-  back.addEventListener('click', () => window.location.replace(REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner/mobile' : '/mobile'))
+  back.addEventListener('click', () =>
+    window.location.replace((REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : '') + (mobile ? '/mobile' : '/')),
+  )
   actions.append(username, password, passwordConfirm, login, register, back)
   main.append(heading, current, authState, guidance, actions, status)
   overlay.append(main)
   root.replaceChildren(overlay)
-  presentMobileAccount({
+  presentAccount({
     overlay,
     main,
     heading,
@@ -314,7 +394,9 @@ export function renderMobileAccountPreview(root: HTMLElement | null): void {
     active: { kind: 'anonymous' },
     auth: null,
     cloudDisabled: true,
+    mobile,
   })
-  overlay.setAttribute('data-mobile-account-readonly-preview', '')
+  overlay.setAttribute('data-account-readonly-preview', '')
+  if (mobile) overlay.setAttribute('data-mobile-account-readonly-preview', '')
   guidance.textContent = '此页仅供界面预览，本机原有学习记录和账号信息保持不变。'
 }

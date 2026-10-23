@@ -63,7 +63,7 @@ test(`P0: fresh etest anonymous Learn, account and clear (${missingWebLocks ? 'f
       const before = await recordCount()
       console.log('P0 staging checkpoint: opening account entry')
       await page.locator('[data-account-entry]').click()
-      await expect(page.getByRole('dialog', { name: '安全账户管理（S1）' }))
+      await expect(page.locator('[data-account]'))
         .toBeVisible({ timeout: 30_000 })
       await expect(page.getByText('S1 本机学习数据归属确认')).toHaveCount(0)
       await expect(page.getByText('学习数据安全检查未通过')).toHaveCount(0)
@@ -91,7 +91,7 @@ test(`P0: fresh etest anonymous Learn, account and clear (${missingWebLocks ? 'f
       await page.reload({ waitUntil: 'domcontentloaded' })
       await expect(page.getByText('学习数据安全检查未通过')).toHaveCount(0)
       await page.goto(new URL('/?s1-account=manage', base).toString())
-      await expect(page.getByRole('dialog', { name: '安全账户管理（S1）' }))
+      await expect(page.locator('[data-account]'))
         .toBeVisible({ timeout: 30_000 })
       expect(await recordCount()).toBe(0)
     } finally {
@@ -143,7 +143,7 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
     })
     const entry = base + '?s1-account=manage'
     await page.goto(entry, { waitUntil: 'domcontentloaded' })
-    const accountDialog = page.getByRole('dialog', { name: '安全账户管理（S1）' })
+    const accountDialog = page.locator('[data-account]')
     try {
       await expect(accountDialog).toBeVisible({ timeout: 12000 })
     } catch {
@@ -166,10 +166,11 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
     return page
   }
   const signIn = async (page: Page, username: string, register: boolean) => {
-    await page.getByPlaceholder('用户名').fill(username)
-    await page.getByPlaceholder('账户密码').fill(password)
+    if (register) await page.getByRole('tab', { name: '注册', exact: true }).click()
+    await page.getByLabel('用户名', { exact: true }).fill(username)
+    await page.getByLabel('账户密码', { exact: true }).fill(password)
     if (register) {
-      await page.getByPlaceholder('注册密码确认').fill(password)
+      await page.getByLabel('注册密码确认', { exact: true }).fill(password)
     }
     const currentUrl = page.url()
     const dialogs: string[] = []
@@ -187,12 +188,12 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
     page.on('response', onAuthResponse)
     page.on('dialog', async dialog => {
       dialogs.push(dialog.message())
-      if (dialog.message().includes('复制到新账户')) await dialog.dismiss()
+      if (dialog.message().includes('是否把本机匿名学习记录')) await dialog.dismiss()
       else await dialog.accept()
     })
     try {
       await page.getByRole('button', {
-        name: register ? '注册新账户' : '登录已有账户',
+        name: register ? '注册并登录' : '登录', exact: true,
       }).click()
       // Registration and S1 Vault switching deliberately replace the
       // document. Never repeat a possibly successful registration.

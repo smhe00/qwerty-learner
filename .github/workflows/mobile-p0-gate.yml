@@ -22,6 +22,8 @@ on:
       - 'tests/learn/mobile-review-commit-contract.test.mjs'
       - 'tests/e2e/mobile-p0.*'
       - 'tests/e2e/mobile-account*'
+      - 'tests/e2e/desktop-account*'
+      - 'src/components/Header/index.tsx'
       - '.github/workflows/mobile-p0-gate.yml'
   workflow_dispatch:
 
@@ -64,7 +66,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Verify keyboard-free mobile learning and persisted task evidence
         run: npx playwright test --config=tests/e2e/mobile-p0.config.ts --project=chromium --retries=0
-      - name: Verify guarded mobile login and isolated account transitions
+      - name: Verify shared PC/phone login and isolated account transitions
         run: npx playwright test --config=tests/e2e/mobile-account.config.ts --project=chrome --retries=0
       - name: Build cloud-disabled Pages login preview
         env:

@@ -46,13 +46,15 @@ async function api(path: string, method: string, input: object, token?: string) 
 async function openAccount(page: Page, username: string, password: string) {
   await page.goto(new URL('/?s1-account=manage', base).href,
     { waitUntil: 'domcontentloaded' })
-  const dialog = page.getByRole('dialog', { name: '安全账户管理（S1）' })
+  const dialog = page.locator('[data-account]')
   await expect(dialog).toBeVisible({ timeout: 55_000 })
-  await page.getByPlaceholder('用户名').fill(username)
-  await page.getByPlaceholder('账户密码').fill(password)
+  const reauthToggle = page.getByRole('button', { name: '重新验证登录', exact: true })
+  if (await reauthToggle.isVisible().catch(() => false)) await reauthToggle.click()
+  await page.getByLabel('用户名', { exact: true }).fill(username)
+  await page.getByLabel('账户密码', { exact: true }).fill(password)
   page.on('dialog', d => d.accept())
-  const reauth = page.getByRole('button', { name: '重新登录当前账户' })
-  const signIn = page.getByRole('button', { name: '登录已有账户' })
+  const reauth = page.getByRole('button', { name: '确认重新登录', exact: true })
+  const signIn = page.getByRole('button', { name: '登录', exact: true })
   const previousUrl = page.url()
   const authStatuses: string[] = []
   // Status only: avoid exposing user identity, token or response bodies.

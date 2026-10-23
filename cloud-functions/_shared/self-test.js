@@ -47,7 +47,7 @@ export async function runBackendSelfTest(service) {
 
     await expectError(
       () => service.login(username, 'Definitely-Wrong-Password'),
-      'invalid_credentials',
+      'incorrect_password',
     )
     pass('wrong-password-rejected')
 
@@ -140,7 +140,7 @@ export async function runBackendSelfTest(service) {
     await expectError(() => service.me(login2.token), 'session_revoked')
     pass('pre-change-session-revoked')
 
-    await expectError(() => service.login(username, password1), 'invalid_credentials')
+    await expectError(() => service.login(username, password1), 'incorrect_password')
     pass('old-password-rejected')
 
     const login3 = await service.login(username, password2, 'device-c')

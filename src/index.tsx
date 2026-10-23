@@ -406,11 +406,11 @@ async function start(): Promise<void> {
     const mobileAccount = window.location.pathname.replace(/\/$/, '').endsWith('/mobile/account')
     if (mobileAccount || new URLSearchParams(window.location.search).get('s1-account') === 'manage') {
       const cloudDisabled = REACT_APP_DEPLOY_ENV === 'pages' || import.meta.env.VITE_QWERTY_SYNC_DISABLED === 'true'
-      if (mobileAccount && cloudDisabled && boot.mode === 'legacy') {
+      if (cloudDisabled && boot.mode === 'legacy') {
         // Presentation only: do not import authentication/transition handlers
         // or assign legacy learning data merely to show a cloud-disabled preview.
-        const { renderMobileAccountPreview } = await import('./sync/mobile-account-view')
-        renderMobileAccountPreview(root)
+        const { renderAccountPreview } = await import('./sync/mobile-account-view')
+        renderAccountPreview(root, { mobile: mobileAccount })
         return
       }
       if (boot.mode === 'legacy') {

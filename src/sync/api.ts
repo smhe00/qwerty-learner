@@ -162,6 +162,14 @@ export function login(username: string, password: string, deviceId?: string) {
   })
 }
 
+export function changePassword(token: string, currentPassword: string, newPassword: string, deviceId?: string) {
+  return request<AuthResponse>('/api/auth/change-password', {
+    method: 'POST',
+    token,
+    body: { currentPassword, newPassword, deviceId },
+  })
+}
+
 export function getMe(token: string) {
   return request<{ ok: true; user: CloudUser }>('/api/auth/me', { token })
 }

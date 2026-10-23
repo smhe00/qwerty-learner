@@ -552,12 +552,12 @@ export function createBackendService({
     const identity = await storage.getAccount(usernameHash)
 
     if (!identity || identity.status !== 'active') {
-      throw new AppError(401, 'invalid_credentials', 'Invalid username or password')
+      throw new AppError(401, 'account_not_found', 'Account does not exist')
     }
 
     const currentAuth = await getCurrentAuth(identity)
     if (!(await verifyPassword(password, currentAuth.password))) {
-      throw new AppError(401, 'invalid_credentials', 'Invalid username or password')
+      throw new AppError(401, 'incorrect_password', 'Password is incorrect')
     }
 
     const session = multiSessionEnabled

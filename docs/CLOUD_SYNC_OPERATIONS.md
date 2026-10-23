@@ -166,6 +166,8 @@ Never log:
 Operational monitoring should aggregate counts by HTTP status/error code, especially:
 
 ```text
+account_not_found
+incorrect_password
 invalid_credentials
 session_revoked
 sync_conflict
@@ -173,6 +175,8 @@ session_update_conflict
 account_update_conflict
 internal_error
 ```
+
+Login returns HTTP 401 with `account_not_found` for absent/inactive accounts and `incorrect_password` for an existing account with the wrong password. Current-password verification for password changes/account deletion retains `invalid_credentials`. The shared PC/phone account page keeps a generic fallback for older gateways.
 
 ## Backup and recovery
 

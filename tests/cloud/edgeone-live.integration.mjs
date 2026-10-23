@@ -371,7 +371,7 @@ try {
     },
   })
   assert.equal(duplicatePasswordLogin.status, 401)
-  assert.equal(duplicatePasswordLogin.json?.error, 'invalid_credentials')
+  assert.equal(duplicatePasswordLogin.json?.error, 'incorrect_password')
 
   const originalPasswordLogin = await request('/api/auth/login', {
     method: 'POST',
@@ -503,7 +503,7 @@ try {
     },
   })
   assert.equal(afterDeleteLogin.status, 401)
-  assert.equal(afterDeleteLogin.json?.error, 'invalid_credentials')
+  assert.equal(afterDeleteLogin.json?.error, 'account_not_found')
 
   const [authAfterDelete, sessionsAfterDelete, revisionsAfterDelete] = await Promise.all([
     listVersions(`accounts/${usernameHash}/auth/`),

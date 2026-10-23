@@ -358,7 +358,7 @@ test('account deletion removes account, sessions and snapshots while requiring c
   )
   await assert.rejects(
     () => service.login(username, password, 'deleted-login'),
-    (error) => error?.code === 'invalid_credentials',
+    (error) => error?.code === 'account_not_found',
   )
 
   const registeredAgain = await service.register(
@@ -473,7 +473,7 @@ test('duplicate registration preserves the original account and revisions', asyn
 
   await assert.rejects(
     () => service.login(username, replacementPassword, 'duplicate-new-password'),
-    (error) => error?.code === 'invalid_credentials',
+    (error) => error?.code === 'incorrect_password',
   )
 
   const originalLogin = await service.login(
@@ -822,4 +822,17 @@ test('binary migration idempotence requires the original pinned revision and mig
       error.statusCode === 503,
     'an unreadable Blob revision must retain ambiguous status, never HTTP 500',
   )
+})
+
+
+test('login distinguishes missing account and wrong password without issuing a session', async () => {
+  const storage = new MemoryStorage()
+  const service = createBackendService({ storage })
+  await assert.rejects(() => service.login('not_registered', 'test-password'), error => error.statusCode === 401 && error.code === 'account_not_found')
+  const registered = await service.register('existing_user', 'test-password')
+  await assert.rejects(() => service.login('existing_user', 'wrong-password'), error => error.statusCode === 401 && error.code === 'incorrect_password')
+  const current = await service.me(registered.token)
+  assert.equal(current.user.userId, registered.user.userId)
+  const signed = await service.login('existing_user', 'test-password')
+  assert.equal(signed.user.userId, registered.user.userId)
 })

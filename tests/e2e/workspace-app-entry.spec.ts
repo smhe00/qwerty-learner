@@ -134,7 +134,7 @@ test('S1 actual Settings login refuses legacy auth before any network request', 
   await page.getByRole('tab', { name: '数据与备份' }).click()
   // S1 intentionally removes the old V1 credential form entirely.
   // Account changes only happen through the pre-mount guarded S1 page.
-  await expect(page.getByPlaceholder('用户名')).toHaveCount(0)
+  await expect(page.getByLabel('用户名', { exact: true })).toHaveCount(0)
   await expect(page.getByPlaceholder('密码（4-128字符）')).toHaveCount(0)
   // Anonymous S1 owners no longer see cloud sync copy or controls in Data.\n  await expect(page.getByText('云端同步', { exact: true })).toHaveCount(0)
   const safeEntry = page.locator('[data-account-entry]')
@@ -146,8 +146,8 @@ test('S1 actual Settings login refuses legacy auth before any network request', 
   // hidden by the responsive transition/scroll container.
   await page.keyboard.press('Escape')
   await safeEntry.click()
-  await expect(page.getByRole('heading', { name: '安全账户管理（S1）' })).toBeVisible()
-  await expect(page.getByRole('button', { name: '登录已有账户' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '登录 QWERTY Plus' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible()
   expect(loginRequests).toBe(0)
 })
 
@@ -575,10 +575,10 @@ test('actual S1 account UI login then offline logout preserves both local worksp
   })
   page.on('dialog', dialog => { void dialog.accept() })
   await page.goto('/?s1-account=manage')
-  await expect(page.getByText('安全账户管理（S1）')).toBeVisible()
+  await expect(page.getByText('登录 QWERTY Plus')).toBeVisible()
   await page.getByRole('textbox', { name: '用户名' }).fill('web-user')
   await page.getByLabel('账户密码').fill('test-pass')
-  await page.getByRole('button', { name: '登录已有账户' }).click()
+  await page.getByRole('button', { name: '登录', exact: true }).click()
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
   await harness(page)
   const afterLogin = await page.evaluate(async () => {
@@ -628,8 +628,8 @@ test('S1 cancelling logout preserves immutable owner and never renders PointerEv
   const account = page.locator('[data-account-entry]')
   await expect(account).toContainText('cancel-account')
   await account.click()
-  await expect(page.getByRole('dialog', { name: '安全账户管理（S1）' })).toBeVisible()
-  const back = page.getByRole('button', { name: '取消并返回学习' })
+  await expect(page.locator('[data-account]')).toBeVisible()
+  const back = page.getByRole('button', { name: '返回学习', exact: true })
   let logoutConfirmShown = false
   page.once('dialog', async dialog => {
     logoutConfirmShown = true
@@ -663,7 +663,7 @@ test('fresh EdgeOne origin opens S1 login without inventing nonexistent V1 migra
   let authCalls = 0
   await page.route('**/api/auth/**', route => { authCalls++; void route.abort() })
   await page.locator('[data-account-entry]').click()
-  await expect(page.getByText('安全账户管理（S1）')).toBeVisible()
+  await expect(page.getByText('登录 QWERTY Plus')).toBeVisible()
   await expect(page.getByText('S1 V1 数据归属测试（仅限本地开发）')).toHaveCount(0)
   expect(authCalls).toBe(0)
   const result = await page.evaluate(async () => {
@@ -735,9 +735,9 @@ test('P0: fresh browser studies a word anonymously then opens S1 login without V
     } finally { db.close() }
   })
   await page.locator('[data-account-entry]').click()
-  await expect(page.getByRole('dialog', { name: '安全账户管理（S1）' })).toBeVisible()
+  await expect(page.locator('[data-account]')).toBeVisible()
   await expect(page.getByText(/V1.*数据归属/)).toHaveCount(0)
-  await expect(page.getByRole('button', { name: '登录已有账户' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible()
   await harness(page)
   const after = await page.evaluate(async () => {
     const h = (window as any).__backupHarness
@@ -760,7 +760,7 @@ test('fresh anonymous Learn-mode preference is not mistaken for a V1 checkpoint'
     localStorage.setItem('reviewModeInfo', JSON.stringify({ isReviewMode: true }))
   })
   await page.locator('[data-account-entry]').click()
-  await expect(page.getByText('安全账户管理（S1）')).toBeVisible()
+  await expect(page.getByText('登录 QWERTY Plus')).toBeVisible()
   await expect(page.getByText('S1 V1 数据归属测试（仅限本地开发）')).toHaveCount(0)
 })
 
@@ -806,8 +806,9 @@ test('S1 registration explicitly copies full anonymous V4 data, preserving origi
   await page.goto('/?s1-account=manage')
   await page.getByRole('textbox', { name: '用户名' }).fill('new-username')
   await page.getByLabel('账户密码').fill('test-pass')
+  await page.getByRole('tab', { name: '注册', exact: true }).click()
   await page.getByLabel('注册密码确认').fill('test-pass')
-  await page.getByRole('button', { name: '注册新账户' }).click()
+  await page.getByRole('button', { name: '注册并登录', exact: true }).click()
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
   await harness(page)
   const outcome = await page.evaluate(async () => {
@@ -840,8 +841,8 @@ test('S1 failed cloud login does not modify anonymous workspace', async ({ page 
   await page.goto('/?s1-account=manage')
   await page.getByRole('textbox', { name: '用户名' }).fill('invalid')
   await page.getByLabel('账户密码').fill('wrongpassword')
-  await page.getByRole('button', { name: '登录已有账户' }).click()
-  await expect(page.getByRole('status')).toContainText('操作未完成')
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await expect(page.getByRole('status')).toContainText('用户名或密码不正确')
   await harness(page)
   const outcome = await page.evaluate(async () => {
     const h = (window as any).__backupHarness

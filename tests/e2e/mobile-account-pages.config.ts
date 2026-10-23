@@ -4,7 +4,7 @@ const port = process.env.QWERTY_TEST_PORT || '4194'
 const baseURL = 'http://127.0.0.1:' + port
 export default defineConfig({
   testDir: '.',
-  testMatch: ['mobile-account-pages.spec.ts'],
+  testMatch: ['mobile-account-pages.spec.ts', 'desktop-account-pages.spec.ts'],
   workers: 1,
   retries: 0,
   timeout: 45_000,

@@ -30,7 +30,7 @@ test('P0: Web-Locks-less new browser survives refresh without the safety wall', 
 test('P0: new browser without Web Locks can initialize its empty S1 account workspace', async ({ page }) => {
   await withoutWebLocks(page)
   await page.goto('/?s1-account=manage')
-  await expect(page.getByRole('heading', { name: '安全账户管理（S1）' }))
+  await expect(page.getByRole('heading', { name: '登录 QWERTY Plus' }))
     .toBeVisible({ timeout: 30_000 })
   await expect(page.getByText('学习数据安全检查未通过')).toHaveCount(0)
 })
@@ -102,10 +102,10 @@ test('P0: pristine S1 startup, login entry and reload work with no crypto.subtle
     .toBeVisible({ timeout: 30_000 })
   await expect(page.getByText('学习数据安全检查未通过')).toHaveCount(0)
   await page.goto('/?s1-account=manage')
-  await expect(page.getByRole('heading', { name: '安全账户管理（S1）' }))
+  await expect(page.getByRole('heading', { name: '登录 QWERTY Plus' }))
     .toBeVisible({ timeout: 30_000 })
   await page.reload()
-  await expect(page.getByRole('heading', { name: '安全账户管理（S1）' }))
+  await expect(page.getByRole('heading', { name: '登录 QWERTY Plus' }))
     .toBeVisible({ timeout: 30_000 })
   await harness(page)
   const state = await page.evaluate(async () => {
