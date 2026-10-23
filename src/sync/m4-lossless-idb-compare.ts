@@ -9,6 +9,11 @@
 export function sameLosslessIndexedDbValue(a: unknown, b: unknown): boolean {
   const activeLeft = new WeakSet<object>()
   const activeRight = new WeakSet<object>()
+  // Check shared-reference topology, not only nested field values. A
+  // structured-clone payload with two aliases must NOT be mistaken for one
+  // that duplicated the same Word object into independent instances.
+  const leftToRight = new WeakMap<object, object>()
+  const rightToLeft = new WeakMap<object, object>()
   let visited = 0
 
   const equal = (left: unknown, right: unknown, depth: number): boolean => {
@@ -17,6 +22,12 @@ export function sameLosslessIndexedDbValue(a: unknown, b: unknown): boolean {
     if (!left || !right || typeof left !== 'object' ||
         typeof right !== 'object') return false
     if (activeLeft.has(left) || activeRight.has(right)) return false
+    const mappedRight = leftToRight.get(left)
+    const mappedLeft = rightToLeft.get(right)
+    if ((mappedRight !== undefined && mappedRight !== right) ||
+        (mappedLeft !== undefined && mappedLeft !== left)) return false
+    leftToRight.set(left, right)
+    rightToLeft.set(right, left)
 
     if (left instanceof Date || right instanceof Date) {
       return left instanceof Date && right instanceof Date &&
