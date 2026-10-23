@@ -109,7 +109,9 @@ export async function adoptWitnessedM3AtGuardedBoot(
     // remote prefixes. Stale login tokens fail closed without any local loss.
     const sent = await runEtestM3Publication()
     await assertOwner()
-    trace('published', { status: sent.status, ...('remaining' in sent ?
+    trace('published', { status: sent.status,
+      ...('reason' in sent ? { reason: sent.reason } : {}),
+      ...('remaining' in sent ?
       { remaining: sent.remaining } : {}), ...('scanned' in sent ?
       { scanned: sent.scanned } : {}) })
     if (sent.status === 'blocked') return blocked('m3-publication:' + sent.reason)
@@ -117,7 +119,8 @@ export async function adoptWitnessedM3AtGuardedBoot(
     await assertOwner()
     const heads = selectObservedChainedHeads(observation)
     trace('observed', { reportedReceipts: observation.observedCount,
-      status: heads.status, ...('heads' in heads ? { visibleDevices: heads.heads.length } : {}) })
+      status: heads.status, ...('reason' in heads ? { reason: heads.reason } : {}),
+      ...('heads' in heads ? { visibleDevices: heads.heads.length } : {}) })
     if (heads.status !== 'heads-observed-only') {
       return skip('no-complete-observed-prefix:' + heads.reason)
     }
@@ -125,7 +128,7 @@ export async function adoptWitnessedM3AtGuardedBoot(
     // chains, every raw immutable event and the canonical set digest.
     const proof = await inspectOwnedWitnessedHistory(heads.heads)
     await assertOwner()
-    trace('witnessed', { status: proof.status,
+    trace('witnessed', { status: proof.status, reason: proof.reason,
       ...(proof.status === 'witnessed' ?
         { verifiedAttempts: proof.remoteAttemptCount } : {}) })
     if (proof.status !== 'witnessed' || proof.reason !== 'verified-prefix-only' ||
@@ -139,6 +142,10 @@ export async function adoptWitnessedM3AtGuardedBoot(
     })
     await assertOwner()
     trace('candidate', { status: projection.status,
+      ...(projection.status === 'blocked' ? {
+        reason: projection.reason.split(':')[0],
+        detail: projection.reason.split(':')[1] ?? 'none',
+      } : {}),
       ...(projection.status === 'candidate' ?
         { added: projection.newlyAdoptedAttempts } : {}) })
     if (projection.status === 'blocked') {
