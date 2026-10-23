@@ -102,7 +102,8 @@ export function normalizeTaggedExportRow(exported: unknown, rawSource: unknown):
       // This clone expands only an independently verified alias. Cyclic or
       // unserializable source data must fail closed, never be silently dropped.
       const duplicate = JSON.parse(JSON.stringify(origin)) as unknown
-      ;(current as Record<string, unknown>)[last] = duplicate
+      const destination = current as Record<string, unknown>
+      destination[last] = duplicate
       continue
     }
     if (type === 'arrayNonindexKeys' &&
