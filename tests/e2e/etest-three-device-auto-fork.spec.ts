@@ -53,14 +53,30 @@ async function openAccount(page: Page, username: string, password: string) {
   page.on('dialog', d => d.accept())
   const reauth = page.getByRole('button', { name: '重新登录当前账户' })
   const signIn = page.getByRole('button', { name: '登录已有账户' })
-  if (await reauth.isVisible().catch(() => false)) await reauth.click()
-  else await signIn.click()
-  await expect.poll(async () => page.evaluate(() => {
-    const raw = localStorage.getItem('qwerty.cloudAuth.v1')
-    const item = raw ? JSON.parse(raw) : null
-    return item?.user?.username ?? null
-  }).catch(() => null), { timeout: 60_000 }).toBe(username)
-  await expect(page.getByText('学习数据安全检查未通过')).toHaveCount(0)
+  const previousUrl = page.url()
+  try {
+    if (await reauth.isVisible().catch(() => false)) await reauth.click()
+    else await signIn.click()
+    // S1 is a PRE-MOUNT account transaction: it must finish and replace
+    // the document before the new auth state can be inspected reliably.
+    await expect(page).not.toHaveURL(previousUrl, { timeout: 60_000 })
+    await expect.poll(async () => page.evaluate(() => {
+      const raw = localStorage.getItem('qwerty.cloudAuth.v1')
+      const item = raw ? JSON.parse(raw) : null
+      return item?.user?.username ?? null
+    }).catch(() => null), { timeout: 60_000 }).toBe(username)
+    await expect(page.getByText('学习数据安全检查未通过')).toHaveCount(0)
+  } catch (error) {
+    // Redact credentials; keep only the public navigational failure
+    // evidence. Do not retry an uncertain S1 ownership transition.
+    console.error('S1 relay login checkpoint failed', {
+      path: new URL(page.url()).pathname,
+      hasLoginDialog: await dialog.isVisible().catch(() => false),
+      status: (await page.locator('[role="status"]').allTextContents()
+        .catch(() => [])).slice(0, 3).map(x => x.slice(0, 120)),
+    })
+    throw error
+  }
 }
 async function beginLearn(page: Page) {
   await page.goto(new URL('/learn', base).href, { waitUntil: 'domcontentloaded' })
