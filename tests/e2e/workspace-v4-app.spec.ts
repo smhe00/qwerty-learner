@@ -30,7 +30,7 @@ test('application settings exports complete V4 gzip and validates it without cha
   const settings = page.getByRole('button', { name: '打开设置对话框' })
   await expect(settings).toBeVisible()
   await settings.click()
-  await page.getByRole('tab', { name: '数据设置' }).click()
+  await page.getByRole('tab', { name: '数据与备份' }).click()
 
   const downloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: '导出完整备份' }).click()
@@ -65,7 +65,7 @@ test('application rejects a non-V4 file without modifying the current workspace'
   await page.evaluate(() => (window as any).__backupHarness.seed())
   await page.goto('/')
   await page.getByRole('button', { name: '打开设置对话框' }).click()
-  await page.getByRole('tab', { name: '数据设置' }).click()
+  await page.getByRole('tab', { name: '数据与备份' }).click()
   const fileChooser = page.waitForEvent('filechooser')
   await page.getByRole('button', { name: '校验备份文件' }).click()
   const chooser = await fileChooser
@@ -101,7 +101,7 @@ test('S1 signed-in account can download its own complete local Backup V4', async
   await seedSignedInBackup(page)
   await page.goto('/')
   await page.getByRole('button', { name: '打开设置对话框' }).click()
-  await page.getByRole('tab', { name: '数据设置' }).click()
+  await page.getByRole('tab', { name: '数据与备份' }).click()
   const downloadPending = page.waitForEvent('download', { timeout: 25_000 })
   await page.getByRole('button', { name: '导出完整备份' }).click()
   const download = await downloadPending
@@ -136,7 +136,7 @@ test('S1 signed-in account can download verified cloud Backup V4 with unchanged 
   // mounted app owns the S1 Web Lock, which a direct test URL would miss.
   await page.goto('/')
   await page.getByRole('button', { name: '打开设置对话框' }).click()
-  await page.getByRole('tab', { name: '数据设置' }).click()
+  await page.getByRole('tab', { name: '数据与备份' }).click()
   await page.getByRole('button', { name: '下载云端备份' }).click()
   await expect(page).toHaveURL(/v4-cloud-backup=download/)
   const save = page.getByRole('button', { name: '下载标准 V4 文件（.gz）' })
@@ -212,7 +212,7 @@ test('signed-in V4 export handles growing Learn/Typing, completed sessions and a
   })
   await page.goto('/')
   await page.getByRole('button', { name: '打开设置对话框' }).click()
-  await page.getByRole('tab', { name: '数据设置' }).click()
+  await page.getByRole('tab', { name: '数据与备份' }).click()
   const downloadPending = page.waitForEvent('download', { timeout: 45_000 })
   await page.getByRole('button', { name: '导出完整备份' }).click()
   const download = await downloadPending
