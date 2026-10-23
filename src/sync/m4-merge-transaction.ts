@@ -65,6 +65,60 @@ export async function validatePendingM4Merge(p: PendingM4Merge): Promise<void> {
  * differently after a Typeson export/import cycle, but that is NOT authority
  * to accept changed durable learning records.
  */
+/**
+ * Compare the V4 exported WordRecord rows by their persistent numeric IDs.
+ * Return ONLY constant schema-level diagnosis codes. The values and the IDs
+ * themselves never leave this function or enter diagnostic logs.
+ */
+export function classifyM4WordRecordDifference(
+  expected: WorkspaceSnapshotV4,
+  actual: WorkspaceSnapshotV4,
+): string {
+  const records = (snapshot: WorkspaceSnapshotV4): unknown[] =>
+    (((snapshot.workspaceData.database as {
+      data: { data: Array<{ tableName: string; rows: unknown[] }> }
+    }).data.data.find(g => g.tableName === 'wordRecords'))?.rows ?? [])
+  const before = records(expected)
+  const after = records(actual)
+  if (before.length !== after.length) return 'row-count'
+  const toMap = (arr: unknown[]) => {
+    const result = new Map<number, Record<string, unknown>>()
+    for (const value of arr) {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+      const row = value as Record<string, unknown>
+      if (typeof row.id !== 'number' || !Number.isSafeInteger(row.id) ||
+          result.has(row.id)) return null
+      result.set(row.id, row)
+    }
+    return result
+  }
+  const left = toMap(before), right = toMap(after)
+  if (!left || !right) return 'invalid-ids'
+  if ([...left.keys()].some(id => !right.has(id))) return 'row-ids'
+  const known = new Set(['id', 'attemptId', 'word', 'dict',
+    'chapter', 'timeStamp', 'wrongCount', 'mistakes', 'timing',
+    'typingTelemetry', 'fsrsState', 'learnItemKind', 'sourceMode',
+    'errorCount', 'trans', 'sourceRecordId', '$types'])
+  for (const [id, row] of left) {
+    const found = right.get(id)!
+    if (stableWorkspaceJson(row) === stableWorkspaceJson(found)) continue
+    const fields = [...new Set([...Object.keys(row), ...Object.keys(found)])].sort()
+    const diff = fields.filter(key => {
+      const a = row[key], b = found[key]
+      return a === undefined || b === undefined ? a !== b :
+        stableWorkspaceJson(a) !== stableWorkspaceJson(b)
+    })
+    if (!diff.length) return 'row-encoding'
+    if (diff.length === 1 && diff[0] === '$types') return 'typeson-only'
+    const first = diff[0]
+    if (!known.has(first)) return 'field-other'
+    if (first === '$types') return 'typeson-and-fields'
+    // Lowercasing field names avoids exposing arbitrary source strings.
+    return 'field-' + first.toLowerCase()
+  }
+  return 'row-order-or-group-metadata'
+}
+
 export function classifyM4ReadbackDifference(
   expected: WorkspaceSnapshotV4,
   actual: WorkspaceSnapshotV4,
@@ -107,8 +161,10 @@ async function verify(
   const actual = await replica.capture(accountId)
   assertOwner(actual, accountId)
   if (await workspaceFingerprintV4(actual) !== expected) {
-    throw new Error('m4-full-v4-readback-mismatch:' +
-      classifyM4ReadbackDifference(target, actual))
+    const component = classifyM4ReadbackDifference(target, actual)
+    const detail = component === 'table-wordrecords' ?
+      ':' + classifyM4WordRecordDifference(target, actual) : ''
+    throw new Error('m4-full-v4-readback-mismatch:' + component + detail)
   }
 }
 /**
