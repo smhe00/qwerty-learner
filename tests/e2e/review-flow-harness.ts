@@ -415,12 +415,18 @@ export async function waitForActiveLearnSession(
       // Wait for either actual practice or an enabled user start; never force
       // a disabled button or require it to survive successful auto-resume.
       const activeWord = page.locator('[data-typing-word]').first()
+      // isEnabled auto-waits for a missing node, unlike isVisible. Queue
+      // repair can remove Start between probes; bound that single probe so
+      // it cannot consume the entire poll while a real word is already ready.
+      const canStart = async () =>
+        (await idleStart.isVisible().catch(() => false)) &&
+        (await idleStart.isEnabled({ timeout: 250 }).catch(() => false))
       await expect.poll(async () =>
         (await activeWord.isVisible().catch(() => false)) ||
-        (await idleStart.isEnabled().catch(() => false)),
+        (await canStart()),
       { timeout: 45_000 }).toBe(true)
       if (!(await activeWord.isVisible().catch(() => false)) &&
-          await idleStart.isEnabled().catch(() => false)) await idleStart.click()
+          await canStart()) await idleStart.click()
     }
   }
   await expect
