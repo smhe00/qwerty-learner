@@ -164,7 +164,12 @@ export async function adoptWitnessedM3AtGuardedBoot(
     // A scratch DB materializes the mixed M3/V4 candidate into a canonical
     // Dexie export and verifies all six source tables. Nothing is imported
     // into the real working DB until this independent audit passes.
-    const candidate = await materializeAuditedM4CandidateV4(projection.candidate)
+    const candidate = await materializeAuditedM4CandidateV4(
+      projection.candidate,
+      (step, kind) => trace('scratch', {
+        step, ...(kind ? { kind } : {}),
+      }),
+    )
     await assertOwner()
     trace('materialized', { added: projection.newlyAdoptedAttempts })
     // Both V4 snapshots are archived atomically in the S1 vault BEFORE a
