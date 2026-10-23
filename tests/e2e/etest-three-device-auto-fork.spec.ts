@@ -170,7 +170,6 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
     (process.env.GITHUB_RUN_ATTEMPT || '1')
   const password = 'E2E-' + crypto.randomUUID() + '-test'
   const contexts: BrowserContext[] = []
-  const m4Traces: string[][] = [[], [], []]
   const profilePages: Page[] = []
   let userId: string | undefined
   try {
@@ -185,20 +184,6 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
       const ctx = await browser.newContext({ serviceWorkers: 'block' })
       contexts.push(ctx)
       const page = await ctx.newPage()
-      // Only consume our own count/status protocol. Never record browser
-      // messages, account credentials, user words, UUIDs or API payloads.
-      page.on('console', message => {
-        const line = message.text()
-        if (!line.startsWith('QWERTY_M4_TRACE ')) return
-        if (m4Traces[i].length >= 50) return
-        try {
-          const item = JSON.parse(line.slice('QWERTY_M4_TRACE '.length))
-          if (typeof item.phase === 'string' &&
-              /^[a-z]+$/.test(item.phase)) {
-            m4Traces[i].push(JSON.stringify(item).slice(0, 160))
-          }
-        } catch { /* No raw log capture */ }
-      })
       pages.push(page)
       profilePages.push(page)
     }
@@ -255,8 +240,27 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
   } finally {
     const diagnostic = await Promise.all(profilePages.map(async (page, index) => {
       const rows = await records(page).catch(() => [])
-      return { index, localRows: rows.length,
-        witnessPhases: m4Traces[index] }
+      // Production build drops console calls. Read ONLY the explicitly
+      // redacted etest session diagnostic; never read auth or learning data.
+      const phases = await page.evaluate(() => {
+        const raw = sessionStorage.getItem('qwerty.etest.m4.stageTrace.v1')
+        const entries: unknown = raw ? JSON.parse(raw) : []
+        if (!Array.isArray(entries)) return []
+        const allowed = /^[a-z][a-z0-9-]{0,63}$/
+        return entries.slice(-48).map(item => {
+          if (!item || typeof item !== 'object') return null
+          const safe: Record<string, string | number | boolean> = {}
+          for (const [name, value] of Object.entries(item)) {
+            if (!allowed.test(name)) continue
+            if (typeof value === 'string' && allowed.test(value)) safe[name] = value
+            else if (typeof value === 'number' && Number.isSafeInteger(value) &&
+              value >= 0 && value <= 100000) safe[name] = value
+            else if (typeof value === 'boolean') safe[name] = value
+          }
+          return safe
+        }).filter(Boolean)
+      }).catch(() => [])
+      return { index, localRows: rows.length, witnessPhases: phases }
     }))
     console.log('E2E_M4_THREE_DEVICE_COUNTS', JSON.stringify(diagnostic))
     await Promise.allSettled(contexts.map(ctx => ctx.close()))
