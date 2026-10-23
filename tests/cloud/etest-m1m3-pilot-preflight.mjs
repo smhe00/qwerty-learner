@@ -4,16 +4,12 @@ import assert from 'node:assert/strict'
 /**
  * etest backend prerequisite for the SINGLE-ACTIVE-SESSION relay.
  * A new frontend SHA never establishes an EdgeOne Function's auth mode.
- * Immutable event pilot availability is independently tested by the real
- * M3 receipt relay script; neither test is full-V4 reconciliation.
+ * Authenticated immutable event transport must be available on this code SHA
+ * without an EdgeOne Maker env toggle; neither test is full-V4 reconciliation.
  */
 assert.equal(process.env.GITHUB_REF_NAME, 'edgeone-test')
 const url = new URL(process.env.QWERTY_SYNC_BASE_URL || '')
 assert.equal(url.origin, 'https://etest.edgeone.dev')
-// Only the M3 immutable-receipt job requires the separate project env flag.
-// Hard browser reconciliation must run and expose actual local/V4 failures
-// even before the Event Pilot is configured in the EdgeOne console.
-const requireEventPilot = process.env.QWERTY_REQUIRE_EVENT_PILOT !== 'false'
 const deadline = Date.now() + 180_000
 let reason = 'not checked'
 for (;;) {
@@ -22,11 +18,11 @@ for (;;) {
       cache: 'no-store', signal: AbortSignal.timeout(12_000),
     })
     const h = await resp.json()
-    const current = h.capabilities?.includes('etest-single-session-relay-v1')
+    const current = h.capabilities?.includes('single-session-event-no-env-v1')
     const eventPilot = h.eventPilotMode === 'immutable-events-only'
-    if (resp.ok && current && (!requireEventPilot || eventPilot) &&
+    if (resp.ok && current && eventPilot &&
         h.authMode === 'single-active-session') {
-      console.log('PASS: etest backend single active session; event pilot required=' + requireEventPilot + ' active=' + eventPilot)
+      console.log('PASS: etest single session and bearer-authenticated events; no Maker environment configuration required')
       break
     }
     reason = 'HTTP ' + resp.status +
