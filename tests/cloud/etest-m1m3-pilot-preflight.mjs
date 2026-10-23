@@ -19,13 +19,17 @@ for (;;) {
     })
     const h = await resp.json()
     const current = h.capabilities?.includes('etest-single-session-relay-v1')
-    if (resp.ok && current && h.authMode === 'single-active-session') {
+    const eventPilot = h.eventPilotMode === 'immutable-events-only'
+    if (resp.ok && current && eventPilot &&
+        h.authMode === 'single-active-session') {
       console.log('PASS: etest backend single active session (M1 not needed)')
       break
     }
     reason = 'HTTP ' + resp.status +
       ' backendMarker=' + String(Boolean(current)) +
       ' authMode=' + String(h.authMode) +
+      ' eventPilotMode=' + String(h.eventPilotMode) +
+      ' runtimeHost=' + String(h.pilotRequestHost) +
       ' originMatched=' + String(h.pilotOriginMatched)
   } catch (err) {
     reason = err instanceof Error ? err.message : String(err)

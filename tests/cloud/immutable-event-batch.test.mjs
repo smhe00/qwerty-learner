@@ -43,6 +43,39 @@ function setup() {
     eventPilotEnabled: true })
   return { blob, storage, service }
 }
+
+test('single-active session allows authenticated chained evidence relay but rejects revoked tokens', async () => {
+  const storage = createEdgeOneBlobStorage(new FakeBlob())
+  const service = createBackendService({ storage,
+    multiSessionEnabled: false, eventPilotEnabled: true })
+  const a = await service.register('event_single_relay', 'Password123', device(1))
+  const first = await service.publishChainedLearningBatch(a.token, {
+    ...payload(1, 191, 101), sequence: 1, previous: null,
+  })
+  const b = await service.login('event_single_relay', 'Password123', device(2))
+  await assert.rejects(service.me(a.token), e => e.code === 'session_revoked')
+  await assert.rejects(service.publishChainedLearningBatch(a.token, {
+    ...payload(1, 192, 102), sequence: 1, previous: null,
+  }), e => e.code === 'session_revoked')
+  const second = await service.publishChainedLearningBatch(b.token, {
+    ...payload(2, 193, 103), sequence: 1, previous: null,
+  })
+  const heads = [receipt(first), receipt(second)]
+  const onB = await service.verifyWitnessedChainSet(b.token, { heads })
+  assert.equal(onB.verified, true)
+  assert.equal(onB.uniqueAttemptCount, 2)
+  assert.equal(onB.publishReady, false)
+  assert.equal(onB.convergenceComplete, false)
+  await assert.rejects(service.revokeSession(b.token),
+    e => e.code === 'not_found')
+  const newA = await service.login('event_single_relay', 'Password123', device(1))
+  await assert.rejects(service.me(b.token), e => e.code === 'session_revoked')
+  const onA = await service.verifyWitnessedChainSet(newA.token,
+    { heads: [...heads].reverse() })
+  assert.equal(onA.evidenceSha256, onB.evidenceSha256)
+  assert.equal(onA.convergenceComplete, false)
+})
+
 test('M3 pilot disabled by default even when independent auth is on', async () => {
   const store = createEdgeOneBlobStorage(new FakeBlob())
   const service = createBackendService({ storage: store, multiSessionEnabled: true })

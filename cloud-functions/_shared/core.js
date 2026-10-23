@@ -641,7 +641,10 @@ export function createBackendService({
   }
 
   function requireEventPilot() {
-    if (!multiSessionEnabled || !eventPilotEnabled) {
+    // Immutable append-only learning evidence is independent of how many
+    // login sessions are valid. Every operation below still authenticates
+    // its CURRENT bearer and checks the submitting device ID.
+    if (!eventPilotEnabled) {
       throw new AppError(404, 'not_found', 'Event-batch pilot is disabled')
     }
     if (typeof storage.putImmutableEventBatch !== 'function' ||

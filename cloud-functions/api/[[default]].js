@@ -261,6 +261,12 @@ export async function onRequest(context) {
           // an estimate for clock-skew preflight, not a signed event timestamp.
           serverTimeMs: Date.now(),
           authMode: 'single-active-session',
+          // Diagnostic only. Authentication remains SINGLE-active regardless
+          // of append-only event pilot availability.
+          eventPilotMode: (env.MULTI_DEVICE_EVENT_PILOT_ENABLED === 'true' ||
+            isIsolatedEtestPilotOrigin(request.url))
+            ? 'immutable-events-only'
+            : 'disabled',
           runtime: process.version,
           capabilities: [
             'snapshot-retention-v1',
