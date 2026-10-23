@@ -32,6 +32,12 @@ export async function adoptWitnessedM3AtGuardedBoot(
   registry: Registry,
   options: { preMountAccountManagement?: boolean } = {},
 ): Promise<WitnessedM4BootResult> {
+  // etest-only, count/status diagnostics. Never log account IDs, device IDs,
+  // bearer tokens, words, UUIDs or any raw learning-event payload.
+  const trace = (phase: string, counters: Record<string, string | number | boolean> = {}) => {
+    if (etestM3PilotEnabled()) console.info('QWERTY_M4_TRACE ' +
+      JSON.stringify({ phase, ...counters }))
+  }
   const skip = (reason: string): WitnessedM4BootResult =>
     ({ status: 'skipped', reason })
   const blocked = (reason: string): WitnessedM4BootResult =>
@@ -76,10 +82,15 @@ export async function adoptWitnessedM3AtGuardedBoot(
     // remote prefixes. Stale login tokens fail closed without any local loss.
     const sent = await runEtestM3Publication()
     await assertOwner()
+    trace('published', { status: sent.status, ...('remaining' in sent ?
+      { remaining: sent.remaining } : {}), ...('scanned' in sent ?
+      { scanned: sent.scanned } : {}) })
     if (sent.status === 'blocked') return blocked('m3-publication:' + sent.reason)
     const observation = await observeChainedLearningReceipts(token)
     await assertOwner()
     const heads = selectObservedChainedHeads(observation)
+    trace('observed', { reportedReceipts: observation.observedCount,
+      status: heads.status, ...('heads' in heads ? { visibleDevices: heads.heads.length } : {}) })
     if (heads.status !== 'heads-observed-only') {
       return skip('no-complete-observed-prefix:' + heads.reason)
     }
@@ -87,6 +98,9 @@ export async function adoptWitnessedM3AtGuardedBoot(
     // chains, every raw immutable event and the canonical set digest.
     const proof = await inspectOwnedWitnessedHistory(heads.heads)
     await assertOwner()
+    trace('witnessed', { status: proof.status,
+      ...(proof.status === 'witnessed' ?
+        { verifiedAttempts: proof.remoteAttemptCount } : {}) })
     if (proof.status !== 'witnessed' || proof.reason !== 'verified-prefix-only' ||
         proof.publishReady !== false || proof.convergenceComplete !== false) {
       return blocked('M3-witness-evidence-unverified')
@@ -97,6 +111,9 @@ export async function adoptWitnessedM3AtGuardedBoot(
       accountId, local: original, witnessedEvents: proof.remoteEvents,
     })
     await assertOwner()
+    trace('candidate', { status: projection.status,
+      ...(projection.status === 'candidate' ?
+        { added: projection.newlyAdoptedAttempts } : {}) })
     if (projection.status === 'blocked') {
       return blocked('M4-prefix-candidate:' + projection.reason)
     }
@@ -112,13 +129,15 @@ export async function adoptWitnessedM3AtGuardedBoot(
       accountId, registryGeneration: registry.generation,
       expectedOriginalFingerprint: await workspaceFingerprintV4(original),
       candidate: projection.candidate,
-    })
+    }, phase => trace('transaction', { phaseState: phase }))
     // executeM4Merge validates post-restore full V4 fingerprint and keeps a
     // rollback archive. A fresh document is required to discard stale module
     // caches initialized during the unmounted restore.
+    trace('adopted', { added: projection.newlyAdoptedAttempts })
     return { status: 'adopted', newAttempts: projection.newlyAdoptedAttempts,
       scope: 'verified-prefix-only' }
   } catch (error) {
+    trace('blocked', { at: 'exception' })
     // Never interpret an unknown failure as a successful merge. If M4 staging
     // started, the durable journal remains and must recover next boot.
     if (error instanceof Error &&
