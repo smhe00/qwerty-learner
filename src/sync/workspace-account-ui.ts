@@ -125,9 +125,36 @@ export function renderS1AccountManagement(
     if (message) sessionStorage.setItem('qwerty.s1.last-account-result', message)
     window.location.replace((REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : '') + (mobile ? '/mobile' : '/'))
   }
+  /** Pilot only: sign-in is the LAST moment this device is guaranteed to
+   * have the active account token before a fast handoff to another device.
+   * The pre-mount S1 page holds the exclusive writer lease. Drain durable M3
+   * events before navigating, so a subsequent login cannot cancel the first
+   * device's still-in-flight startup upload. Never block login on failure:
+   * unfinished evidence stays in the crash-safe local outbox. */
+  const publishPendingAfterAuthentication = async () => {
+    if (window.location.protocol !== 'https:' ||
+        window.location.hostname !== 't.smhe.cn' || !navigator.onLine) return
+    try {
+      const { runEtestM3Publication } = await import('./m3-publication-browser')
+      // One cycle publishes at most 2 x 32 attempts. A bounded second cycle
+      // is sufficient for the three-device relay while keeping sign-in finite.
+      for (let n = 0; n < 2; n++) {
+        const result = await runEtestM3Publication()
+        if (result.status === 'blocked') {
+          console.warn('Etest login M3 outbox retained:', result.reason)
+          break
+        }
+        if (result.status === 'idle' || result.remaining === 0) break
+      }
+    } catch (error) {
+      console.warn('Etest login M3 upload deferred; local outbox kept', error)
+    }
+  }
   const reauth = async () => {
     const signed = credential(await login(username.value.trim(), password.value, browserDeviceId()))
     await reauthenticateSameWorkspace(signed)
+    setBusy(true, '正在保全本机待同步学习记录…')
+    await publishPendingAfterAuthentication()
     setBusy(true, '账户会话更新成功，工作区保持不变。')
     navigate('重新登录成功，工作区身份与学习数据保持不变。')
   }
@@ -140,13 +167,17 @@ export function renderS1AccountManagement(
       if (active.accountId !== signed.user.userId) {
         throw new Error('当前属于另一账户，必须先明确退出到匿名工作区')
       }
-      return reauthenticateSameWorkspace(signed).then(() => navigate('当前账户已重新认证，学习进度未改变。'))
+      await reauthenticateSameWorkspace(signed)
+      await publishPendingAfterAuthentication()
+      navigate('当前账户已重新认证，学习进度未改变。')
+      return
     }
     if (!window.confirm('将从匿名工作区切换到“' + signed.user.username + '”。' + '匿名学习进度会独立保存，不合并到已有账户。确认继续？')) {
       setBusy(false, '用户已取消登录切换')
       return
     }
     await switchAuthenticatedWorkspace({ kind: 'account', accountId: signed.user.userId }, signed, phase)
+    await publishPendingAfterAuthentication()
     setBusy(true, '登录及本地隔离工作区切换完成。')
     navigate('登录成功，已进入独立的账户学习工作区。')
   }
@@ -166,6 +197,7 @@ export function renderS1AccountManagement(
       await copyAnonymousWorkspaceForNewRegistration(signed.user.userId)
     }
     await switchAuthenticatedWorkspace({ kind: 'account', accountId: signed.user.userId }, signed, phase)
+    await publishPendingAfterAuthentication()
     setBusy(true, '注册成功，当前工作区已切换。')
     navigate(copy ? '注册成功，匿名学习记录已复制，新旧工作区分别保留。' : '注册成功，已建立独立空白工作区。')
   }
