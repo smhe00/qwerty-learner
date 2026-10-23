@@ -19,8 +19,8 @@ import { selectObservedChainedHeads } from './m3-observed-chained-heads'
 import { inspectOwnedWitnessedHistory } from './m3-witnessed-browser'
 import { etestM3PilotEnabled, runEtestM3Publication } from './m3-publication-browser'
 import { previewMonotonicWitnessedM4 } from './m4-witnessed-prefix-candidate'
-import { captureWorkingWorkspaceV4, restoreWorkingWorkspaceV4,
-  materializeAuditedM4CandidateV4 } from './workspace-v4-browser'
+import { captureWorkingWorkspaceV4, materializeAuditedM4CandidateV4,
+  restoreWorkingWorkspaceV4 } from './workspace-v4-browser'
 import { workspaceFingerprintV4 } from './workspace-v4'
 import { refreshWorkspaceMigrationWitness } from './workspace-storage-witness'
 import { workspaceRegistryPort } from './workspace-vault'
