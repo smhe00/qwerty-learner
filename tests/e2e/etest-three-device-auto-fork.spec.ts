@@ -68,8 +68,29 @@ async function openAccount(page: Page, username: string, password: string) {
   }
   page.on('response', onAuthResponse)
   try {
-    if (await reauth.isVisible().catch(() => false)) await reauth.click()
-    else await signIn.click()
+    // A staging-only disposable test account may retry ONE explicit HTTP 500.
+    // No retry for timeouts/unknown POST outcomes or a successful auth,
+    // which could otherwise revoke a valid single-active session.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = page.waitForResponse(r => {
+        try { return new URL(r.url()).pathname === '/api/auth/login' }
+        catch { return false }
+      }, { timeout: 45_000 })
+      if (await reauth.isVisible().catch(() => false)) await reauth.click()
+      else await signIn.click()
+      const status = (await response).status()
+      if (status === 500 && attempt === 0 && page.url() === previousUrl) {
+        console.log('E2E_AUTH_TRANSIENT_RETRY', JSON.stringify({
+          status, attempt: attempt + 1,
+        }))
+        await expect(page.locator('[role="status"]')).toContainText(
+          '暂时无法完成认证', { timeout: 15_000 })
+        await page.waitForTimeout(2_500)
+        continue
+      }
+      expect(status, 'explicit login HTTP status').toBe(200)
+      break
+    }
     // S1 is a PRE-MOUNT account transaction: it must finish and replace
     // the document before the new auth state can be inspected reliably.
     await expect(page).not.toHaveURL(previousUrl, { timeout: 60_000 })
@@ -149,6 +170,8 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
     (process.env.GITHUB_RUN_ATTEMPT || '1')
   const password = 'E2E-' + crypto.randomUUID() + '-test'
   const contexts: BrowserContext[] = []
+  const m4Traces: string[][] = [[], [], []]
+  const profilePages: Page[] = []
   let userId: string | undefined
   try {
     const newAccount = await api('/api/auth/register', 'POST', {
@@ -161,7 +184,23 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
     for (let i = 0; i < 3; i++) {
       const ctx = await browser.newContext({ serviceWorkers: 'block' })
       contexts.push(ctx)
-      pages.push(await ctx.newPage())
+      const page = await ctx.newPage()
+      // Only consume our own count/status protocol. Never record browser
+      // messages, account credentials, user words, UUIDs or API payloads.
+      page.on('console', message => {
+        const line = message.text()
+        if (!line.startsWith('QWERTY_M4_TRACE ')) return
+        if (m4Traces[i].length >= 50) return
+        try {
+          const item = JSON.parse(line.slice('QWERTY_M4_TRACE '.length))
+          if (typeof item.phase === 'string' &&
+              /^[a-z]+$/.test(item.phase)) {
+            m4Traces[i].push(JSON.stringify(item).slice(0, 160))
+          }
+        } catch { /* No raw log capture */ }
+      })
+      pages.push(page)
+      profilePages.push(page)
     }
     // Production policy: signing in on B invalidates A; signing in on C
     // invalidates B. Each learns while OFFLINE with its own durable RecordDB.
@@ -214,6 +253,12 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
     }
     console.log('PASS: single-session three offline forks auto-merged after staged reauth')
   } finally {
+    const diagnostic = await Promise.all(profilePages.map(async (page, index) => {
+      const rows = await records(page).catch(() => [])
+      return { index, localRows: rows.length,
+        witnessPhases: m4Traces[index] }
+    }))
+    console.log('E2E_M4_THREE_DEVICE_COUNTS', JSON.stringify(diagnostic))
     await Promise.allSettled(contexts.map(ctx => ctx.close()))
     if (userId) {
       expect(username).toMatch(/^e2e_fork_\d+_\d+$/)
