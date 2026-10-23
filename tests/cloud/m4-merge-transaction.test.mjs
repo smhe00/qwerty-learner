@@ -234,8 +234,10 @@ test('a failed V4 verify retains recovery journal and reports component only', a
   const f = fixture()
   f.replica.capture = async () => {
     const snapshot = structuredClone(f.state.working)
-    snapshot.workspaceData.database.data.data
-      .find(t => t.tableName === 'reviewRecords').rows[0].index += 1
+    if (f.state.staged) {
+      snapshot.workspaceData.database.data.data
+        .find(t => t.tableName === 'reviewRecords').rows[0].index += 1
+    }
     return snapshot
   }
   await assert.rejects(run(f), /m4-merge-interrupted-recovery-required/)
