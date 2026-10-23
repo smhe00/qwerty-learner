@@ -1,5 +1,5 @@
 /**
- * Explicit opt-in ETESТ-only M3 append-only event publisher.
+ * Etest-host-scoped M3 append-only event publisher (no build env required).
  * Never restores/mutates learning data or V4 revision.
  * Called exclusively from an S1-mounted Learn tab holding its writer lease.
  */
@@ -17,8 +17,8 @@ let running: Promise<M3PublicationCycleResult> | null = null
 let timer: ReturnType<typeof setTimeout> | null = null
 
 export function etestM3PilotEnabled(): boolean {
-  return import.meta.env.VITE_QWERTY_M3_PILOT_AUTO === 'true' &&
-    typeof window !== 'undefined' &&
+  return typeof window !== 'undefined' &&
+    window.location.protocol === 'https:' &&
     window.location.hostname === 'etest.edgeone.dev'
 }
 
