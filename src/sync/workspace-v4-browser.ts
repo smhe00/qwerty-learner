@@ -103,12 +103,16 @@ async function verifyV4RoundTripInDisposableDatabase(
  */
 export async function materializeAuditedM4CandidateV4(
   candidate: WorkspaceSnapshotV4,
-  onStage?: (step: string, errorKind?: string) => void,
+  onStage?: (step: string, detail?: {
+    kind?: string; table?: string; field?: string; row?: number
+  }) => void,
 ): Promise<WorkspaceSnapshotV4> {
-  // Diagnostic observer reports only fixed workflow stages and error names,
-  // never keys, words, event contents or exception messages.
-  const stage = (step: string, errorKind?: string) => {
-    try { onStage?.(step, errorKind) } catch { /* observer is non-authoritative */ }
+  // Never record user data or raw exception text: only a known table,
+  // a syntactically sanitized FIELD NAME and an integer row ordinal.
+  const stage = (step: string, detail?: {
+    kind?: string; table?: string; field?: string; row?: number
+  }) => {
+    try { onStage?.(step, detail) } catch { /* observer is non-authoritative */ }
   }
   stage('validate')
   assertRestorableWorkspaceV4(candidate)
@@ -175,7 +179,21 @@ export async function materializeAuditedM4CandidateV4(
     return canonical
   } catch (error) {
     const name = error instanceof Error ? error.name : 'UnknownError'
-    stage(currentStage + '-failed', /^[A-Za-z]{1,40}$/.test(name) ? name : 'OtherError')
+    const message = error instanceof Error ? error.message : ''
+    const mismatch = /^Backup V4 source\/export row-payload mismatch: (wordRecords|chapterRecords|reviewRecords|reviewWordStates|achievementEvents|achievementStates) at row (\\d+), different fields: (.*)$/.exec(message)
+    const firstField = mismatch?.[3]?.split(',')[0] ?? ''
+    const normalizedField = firstField.toLowerCase().replace(/[^a-z0-9-]/g, '')
+    stage(currentStage + '-failed', {
+      kind: /^[A-Za-z]{1,40}$/.test(name) ? name.toLowerCase() : 'othererror',
+      ...(mismatch ? {
+        table: mismatch[1].toLowerCase(),
+        row: Number(mismatch[2]),
+        field: /^[a-z][a-z0-9-]{0,63}$/.test(normalizedField)
+          ? normalizedField : 'otherfield',
+      } : {
+        table: message.includes('row-count mismatch') ? 'rowcount' : 'other',
+      }),
+    })
     throw error
   } finally {
     shadow.close()
