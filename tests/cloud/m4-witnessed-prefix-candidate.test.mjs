@@ -40,7 +40,9 @@ function snapshot(words, opts = {}) {
     workspaceData: {
       database: { formatName: 'dexie', formatVersion: 1, data: {
         databaseName: 'RecordDB', databaseVersion: 6,
-        tables: names.map(name => ({ name, schema: '++id' })),
+        tables: names.map(name => ({ name, schema: '++id',
+          rowCount: name === 'wordRecords' ? words.length :
+            ['chapterRecords', 'reviewRecords', 'achievementEvents'].includes(name) ? 1 : 0 })),
         data: names.map(tableName => ({
           tableName, inbound: true, rows: tableName === 'wordRecords'
             ? words.map((r, i) => ({ id: i + 1, ...r })) :
@@ -77,6 +79,12 @@ test('monotonic M4 candidate retains six tables and adds independent UUID attemp
     [uuid(1), uuid(2), uuid(3)])
   assert.deepEqual(rows(result.candidate, 'wordRecords').map(x => x.id),
     [1, 2, 3])
+  const manifest = result.candidate.workspaceData.database.data.tables
+  assert.equal(manifest.find(x => x.name === 'wordRecords').rowCount, 3)
+  assert.equal(manifest.find(x => x.name === 'reviewWordStates').rowCount, 1)
+  assert.equal(manifest.find(x => x.name === 'reviewRecords').rowCount, 1)
+  assert.equal(local.workspaceData.database.data.tables
+    .find(x => x.name === 'wordRecords').rowCount, 1)
   for (const table of ['reviewRecords', 'chapterRecords',
     'achievementEvents', 'achievementStates']) {
     assert.deepEqual(rows(result.candidate, table), rows(local, table))
