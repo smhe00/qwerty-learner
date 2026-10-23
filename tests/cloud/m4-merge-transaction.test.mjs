@@ -21,7 +21,9 @@ await Promise.all([
 after(() => rmSync(dir, { recursive: true, force: true }))
 const { executeM4Merge: execute, recoverM4Merge: recover,
   validatePendingM4Merge: validate,
-  classifyM4ReadbackDifference: classify } = await import(pathToFileURL(mod).href)
+  classifyM4ReadbackDifference: classify,
+  classifyM4WordRecordDifference: classifyWords } =
+  await import(pathToFileURL(mod).href)
 const { workspaceFingerprintV4: fingerprint } = await import(pathToFileURL(workspace).href)
 
 const accountId = 'immutable-A'
@@ -243,4 +245,25 @@ test('a failed V4 verify retains recovery journal and reports component only', a
   await assert.rejects(run(f), /m4-merge-interrupted-recovery-required/)
   assert.equal(f.state.finalized.length, 0)
   assert.ok(f.state.pending)
+})
+
+
+test('wordRecords readback diagnostics are bounded schema codes, never word text', () => {
+  const cases = [
+    ['row-count', snapshot => { snapshot.workspaceData.database.data.data.find(
+      g => g.tableName === 'wordRecords').rows.pop() }],
+    ['field-word', snapshot => { snapshot.workspaceData.database.data.data.find(
+      g => g.tableName === 'wordRecords').rows[0].word = 'private-word' }],
+    ['typeson-only', snapshot => { snapshot.workspaceData.database.data.data.find(
+      g => g.tableName === 'wordRecords').rows[0].$types = { '': 'userObject' } }],
+  ]
+  for (const [expected, edit] of cases) {
+    const actual = structuredClone(candidate)
+    edit(actual)
+    const result = classifyWords(candidate, actual)
+    assert.equal(result, expected)
+    assert.doesNotMatch(result, /private-word|sessionId|account/)
+  }
+  assert.equal(classifyWords(candidate, structuredClone(candidate)),
+    'row-order-or-group-metadata')
 })
