@@ -72,7 +72,8 @@ export function classifyM4ReadbackDifference(
   const before = canonicalWorkspaceData(expected.workspaceData) as Record<string, unknown>
   const after = canonicalWorkspaceData(actual.workspaceData) as Record<string, unknown>
   const differs = (a: unknown, b: unknown) =>
-    stableWorkspaceJson(a) !== stableWorkspaceJson(b)
+    a === undefined || b === undefined ? a !== b :
+      stableWorkspaceJson(a) !== stableWorkspaceJson(b)
   if (differs(before.learnRuntime, after.learnRuntime)) return 'learnruntime'
   if (differs(before.settings, after.settings)) return 'settings'
   if (differs(before.navigation, after.navigation)) return 'navigation'
