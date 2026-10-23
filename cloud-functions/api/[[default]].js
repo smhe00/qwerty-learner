@@ -158,7 +158,7 @@ function makeStorage(env) {
   return createEdgeOneBlobStorage(store)
 }
 
-function makeService(env, storage, request) {
+function makeService(env, storage) {
   // Maker receives an internal function hostname even for etest.
   // Never use untrusted Origin, Host, forwarded host or Request.url to
   // infer deployment identity. Opt in ONLY via isolated Maker project env.
@@ -304,7 +304,7 @@ export async function onRequest(context) {
     }
 
     const storage = makeStorage(env)
-    const service = makeService(env, storage, request)
+    const service = makeService(env, storage)
     const bodyLimit =
       Math.ceil(numberEnv(env.MAX_SYNC_BYTES, 16 * 1024 * 1024) * 1.5) + 256 * 1024
 
