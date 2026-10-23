@@ -175,3 +175,63 @@ test('P4b: forged special-type metadata cannot hide a missing/changed metric', a
     /row-payload mismatch: wordRecords/,
   )
 })
+
+
+test('P4b Typeson # alias in a real Learn-style repeated-word session is audited without deleting evidence', async () => {
+  const snapshot = fixture()
+  const sharedWord = { name: 'identical', trans: ['meaning'], index: 3 }
+  const liveSession = {
+    id: 7, dict: 'school', sessionId: 'test-session',
+    index: 1, isFinished: false, words: [sharedWord, sharedWord],
+  }
+  const review = { tableName: 'reviewRecords', inbound: true, rows: [
+    structuredClone(liveSession),
+  ] }
+  snapshot.workspaceData.database.data.data.push(review)
+  const raw = Object.fromEntries(names.map(name => [
+    name, structuredClone(snapshot.workspaceData.database.data.data
+      .find(group => group.tableName === name)?.rows ?? []),
+  ]))
+  review.rows[0].words = [structuredClone(sharedWord), '#words.0']
+  review.rows[0].$types = {
+    '': 'userObject', words: 'arrayNonindexKeys', 'words.1': '#',
+  }
+
+  await assertV4SourceRowsMatchExport(snapshot, raw)
+  assert.equal(review.rows[0].words[1], '#words.0',
+    'comparison must not remove Typeson alias markers from the backup')
+  assert.equal(review.rows[0].$types['words.1'], '#')
+})
+
+test('P4b # alias cannot forge object identity or conceal a changed word', async () => {
+  const snapshot = fixture()
+  const shared = { name: 'identical', trans: ['meaning'] }
+  const exported = { id: 10, words: [structuredClone(shared), '#words.0'],
+    $types: { '': 'userObject', 'words.1': '#' } }
+  snapshot.workspaceData.database.data.data.push({
+    tableName: 'reviewRecords', inbound: true, rows: [exported],
+  })
+  const original = Object.fromEntries(names.map(name => [
+    name, structuredClone(snapshot.workspaceData.database.data.data
+      .find(group => group.tableName === name)?.rows ?? []),
+  ]))
+  const rawSession = { id: 10, words: [shared, shared] }
+  original.reviewRecords = [rawSession]
+  await assertV4SourceRowsMatchExport(snapshot, original)
+
+  // Equal-looking but independently allocated words are NOT a valid alias.
+  original.reviewRecords = [{
+    id: 10, words: [structuredClone(shared), structuredClone(shared)],
+  }]
+  await assert.rejects(() => assertV4SourceRowsMatchExport(snapshot, original),
+    /row-payload mismatch: reviewRecords/)
+
+  original.reviewRecords = [rawSession]
+  exported.words[0].name = 'modified'
+  await assert.rejects(() => assertV4SourceRowsMatchExport(snapshot, original),
+    /row-payload mismatch: reviewRecords/)
+  exported.words[0].name = 'identical'
+  exported.words[1] = '#words.999'
+  await assert.rejects(() => assertV4SourceRowsMatchExport(snapshot, original),
+    /row-payload mismatch: reviewRecords/)
+})
