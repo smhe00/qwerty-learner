@@ -13,7 +13,7 @@ import { workspaceRegistryPort } from './workspace-vault'
 export type AccountLoginV4Result =
   | { status: 'noop' | 'pushed'; detail: string; canContinue: true }
   | { status: 'pull-staged'; detail: string; canContinue: false }
-  | { status: 'pending'; detail: string; canContinue: true }
+  | { status: 'pending'; detail: string; canContinue: boolean }
 
 export async function checkAccountV4AfterAuthentication(): Promise<AccountLoginV4Result> {
   if (!learningEventSyncEnabled()) {
@@ -28,7 +28,7 @@ export async function checkAccountV4AfterAuthentication(): Promise<AccountLoginV
   if (registry.generation < 1 || registry.pending ||
       registry.active.kind !== 'account') {
     return { status: 'pending', canContinue: false,
-      detail: '账号工作区尚未准备好，云端完整 V4 检查已暂停以保护本机记录。' } as AccountLoginV4Result
+      detail: '账号工作区尚未准备好，云端完整 V4 检查已暂停以保护本机记录。' }
   }
   try {
     const outcome = await executePreMountManualSyncV2({
