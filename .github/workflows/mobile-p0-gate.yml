@@ -31,6 +31,7 @@ on:
       - 'src/components/Header/index.tsx'
       - '.github/workflows/mobile-p0-gate.yml'
   workflow_dispatch:
+  workflow_call:
 
 concurrency:
   group: mobile-p0-${{ github.ref }}

@@ -92,6 +92,7 @@ on:
       - 'package.json'
       - 'yarn.lock'
   workflow_dispatch:
+  workflow_call:
 
 concurrency:
   group: review-gate-${{ github.ref }}

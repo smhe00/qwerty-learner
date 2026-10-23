@@ -20,6 +20,7 @@ type Event = { id: number; attemptId: string; dict: string; word: string; timeSt
 async function records(page: Page): Promise<Event[]> {
   return page.evaluate(async () => {
     const request = indexedDB.open('RecordDB')
+    request.onupgradeneeded = () => request.transaction?.abort()
     const db = await new Promise<IDBDatabase>((ok, fail) => {
       request.onsuccess = () => ok(request.result)
       request.onerror = () => fail(request.error)
@@ -37,6 +38,7 @@ async function records(page: Page): Promise<Event[]> {
 async function journalEvidence(page: Page) {
   return page.evaluate(async () => {
     const req = indexedDB.open('QwertyPlusWorkspaceVaultV1')
+    req.onupgradeneeded = () => req.transaction?.abort()
     const vault = await new Promise<IDBDatabase>((ok, fail) => {
       req.onsuccess = () => ok(req.result)
       req.onerror = () => fail(req.error)

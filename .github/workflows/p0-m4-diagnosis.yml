@@ -15,6 +15,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  review:
+    uses: ./.github/workflows/review-gate.yml
+  mobile:
+    uses: ./.github/workflows/mobile-p0-gate.yml
   cloud-contracts:
     runs-on: ubuntu-22.04
     timeout-minutes: 15

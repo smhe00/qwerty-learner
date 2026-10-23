@@ -59,6 +59,16 @@ Local logs and synthetic traces remain in the isolated checkout's `.diagnostic/`
 
 ## Next action / release recommendation
 
+Integration checkpoint:
+
+- Root fix commit: `51868a7ef1a1414fa963db6f871aa39e613afb7e`, review draft https://github.com/smhe00/qwerty-learner/pull/29 .
+- Its Linux Cloud contracts/lint/build passed in https://github.com/smhe00/qwerty-learner/actions/runs/39941969050 ; full S1 was still running at this checkpoint.
+- The local startup-only diagnosis mounted the unchanged application after 8.3 seconds. The original S1 5-second assertion was NOT changed; Linux CI is the independent arbiter.
+- PC/mobile account browser coverage passed 28/28 on the root fix. Local Review was interrupted before integrating upstream and is not claimed PASS.
+- product/main advanced independently to `a501625f6e1928668c2f5df372ff852a583176ac` with two unrelated mobile ergonomics commits. These were merged **into the diagnosis branch only**, without conflicts, in `5f2f62e38d5f88a59d6c40d38708d668edb2818e`.
+- The diagnosis workflow now invokes the COMPLETE existing Review and Mobile P0 workflows through `workflow_call`, alongside Cloud and full S1. Their existing commands, assertions and deployment/release gates are unchanged. Verify the new final SHA's run before promotion; earlier mobile results cover the old upstream only.
+- Diagnostic IDB open operations abort database creation if a store is absent; evidence collection never repairs or manufactures a profile.
+
 1. Inspect the branch-only Linux safety workflow tied to the fix SHA. Resolve actual failures and finish local Review/account coverage.
 2. Follow the handoff's explicit promotion boundary: only propose product/main and edgeone-test promotion after safety passes. Existing same-SHA Pages + Cloud admission and all mandatory release checks must remain unchanged.
 3. On an authorized etest promotion, verify `https://t.smhe.cn/` source marker and single-session backend before creating disposable accounts. Run the strengthened hard three-device test; inspect independent cleanup-stage evidence if DELETE still fails, fix the actual cause and rerun the complete gate.
