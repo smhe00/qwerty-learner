@@ -48,32 +48,38 @@ broken session lineage, account mismatch or FSRS incompatibility must
 fail closed and preserve original local snapshots. No production master
 release may be inferred from a passed event-transport pilot.
 
-## EdgeOne Makers: isolated event-pilot activation (2026-10-23)
+## Event transport staging admission without environment flags (2026-10-23)
 
-**Confirmed live finding:** `Request.url.hostname` inside the etest Cloud
-Function was `pages-pro-26-cfa3.pages-scf-sg-pro.qcloudteo.com`, not
-`etest.edgeone.dev`. The public-domain fallback was therefore both
-nonfunctional and an unsafe authorization boundary. The runtime now requires
-an **explicit Maker project variable**:
+**Single active login remains a hard product invariant.** Signing into device B
+revokes A's token. Any offline attempts on A remain stored locally; the user
+may explicitly reauthenticate A to continue authorized upload. The project
+does NOT enable multi-session login.
 
-- Configure `MULTI_DEVICE_EVENT_PILOT_ENABLED=true` in the **dedicated
-  etest Maker project only**, under its Project Settings → Environment
-  Variables. Redeploy etest after changing the variable; existing deployments
-  may retain their prior environment.
-- Leave the variable **unset** on the production Maker project and all other
-  projects. There is no reason to enable independent-login
-  `MULTI_DEVICE_AUTH_ENABLED`: single-active-session stays enforced.
-- `GET /api/health` on etest must report
-  `authMode=single-active-session` and
-  `eventPilotMode=immutable-events-only`.
-  The runtime `pilotRequestHost` is **diagnostic only**.
-- The test `etest-m1m3-pilot-preflight.mjs` aborts before creating any account
-  if the backend variable has not propagated. Do not bypass this step.
-- Authentication, device-bound receipts and immutable storage checks still
-  apply to every individual event operation. Revoked sessions must return
-  401 and retain their local outbox.
+The authenticated immutable-event API is always available on deployments
+containing the new gateway code. This removes both
+`MULTI_DEVICE_EVENT_PILOT_ENABLED` (Maker project) and
+`VITE_QWERTY_M3_PILOT_AUTO` (frontend build) as rollout requirements.
+Nothing must be configured manually in Maker to run event-relay verification.
 
-**Not an authorization to release:** enabling the M3 event pilot does
-not enable V4 automatic merge/adoption. The hard three-real-browser,
-single-session offline-reconnect scenario must pass separately, including
-local durable six-table evidence, before master publication.
+The **browser publisher remains limited to the actual HTTPS
+`etest.edgeone.dev` hostname**; ordinary production and Pages frontends do
+not initiate M3 publishing. Backend endpoints remain available to valid bearer
+tokens but never grant V4 overwrite permission; account/device and immutable
+receipt checks are mandatory. Revoked tokens return 401.
+
+On isolated etest, `GET /api/health` must return:
+
+- `authMode=single-active-session`
+- `eventPilotMode=immutable-events-only`
+- capability `single-session-event-no-env-v1`
+
+The Maker runtime may present a different internal hostname in diagnostic
+`pilotRequestHost`; it is **never** an authorization boundary. Preflight
+checks those three API facts before test-account creation, not an environment
+variable. A static-only deployment is insufficient.
+
+**Not an authorization to release:** verified M3 receipts do not mean the
+full six-table V4 has been adopted in any other local database. The hard
+three-browser offline split/reconnect/reauth test must independently show the
+exact immutable union in active RecordDB, with rollback and no-loss proof,
+before promoting to `master`.
