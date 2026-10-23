@@ -1,7 +1,7 @@
 # QWERTY Plus — Beta
 
 > **版本：`0.2.0-beta.1`** · **产品：打字 & 背单词**  
-> 开发主线：`product/main` · Beta 验证站：[etest.edgeone.dev](https://etest.edgeone.dev/)  
+> 开发主线：`product/main` · Beta 验证站：[t.smhe.cn](https://t.smhe.cn/)  
 > **正式站：[q.smhe.cn](https://q.smhe.cn/)**（`master`；以正式站实际部署版本为准）
 
 QWERTY Plus 基于 [Qwerty Learner](https://github.com/RealKai42/qwerty-learner) 持续开发，在保留 Typing 打字练习的同时，增加 Learn 长期记忆学习、FSRS-6 复习调度、学习成就以及可选的云同步。产品面向持续积累词汇和练习英文拼写的用户。
@@ -64,7 +64,7 @@ yarn lint
 | 分支 | 用途 |
 | --- | --- |
 | `product/main` | 开发主线与版本集成 |
-| `edgeone-test` | etest 测试站，云存储与生产环境隔离 |
+| `edgeone-test` | EdgeOne Beta 验证站：[t.smhe.cn](https://t.smhe.cn/)；云存储与生产环境隔离 |
 | `master` | EdgeOne Maker 正式发布站：[q.smhe.cn](https://q.smhe.cn/) |
 
 EdgeOne Maker 构建次数有限，因此不能因普通开发提交持续更新 `master`。Beta 候选版本在测试站通过验收后，才将经过确认的版本发布到 `master`。
