@@ -121,9 +121,9 @@ async function verifyV4RoundTripInDisposableDatabase(
           // contents, array elements, or account/device identifiers.
           const originalFields = sourceRow as Record<string, unknown>
           const restoredFields = restoredByKey.get(key) as Record<string, unknown>
-          const fields = [...new Set([
+          const fields = Array.from(new Set([
             ...Object.keys(originalFields), ...Object.keys(restoredFields),
-          ])].sort()
+          ])).sort()
           const changed = fields.find(field =>
             !Object.prototype.hasOwnProperty.call(originalFields, field) ||
             !Object.prototype.hasOwnProperty.call(restoredFields, field) ||
@@ -141,7 +141,7 @@ async function verifyV4RoundTripInDisposableDatabase(
                 typeof right !== 'object') break
             const a = left as Record<string, unknown>
             const b = right as Record<string, unknown>
-            const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].sort()
+            const keys = Array.from(new Set([...Object.keys(a), ...Object.keys(b)])).sort()
             const delta = keys.find(k =>
               !Object.prototype.hasOwnProperty.call(a, k) ||
               !Object.prototype.hasOwnProperty.call(b, k) ||
