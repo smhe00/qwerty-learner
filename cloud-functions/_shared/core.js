@@ -1406,7 +1406,15 @@ export function createBackendService({
       throw new AppError(503, 'multi_device_merge_not_ready',
         'Binary format migration requires the same single-writer V4 safeguard')
     }
-    const latest = await storage.getLatestRevisionMeta(identity.userId)
+    let latest
+    try {
+      latest = await storage.getLatestRevisionMeta(identity.userId)
+    } catch {
+      // A storage read failure is an unknown cloud state, not permission to
+      // retry a write or to tell the client migration has already completed.
+      throw new AppError(503, 'v4_migration_metadata_unavailable',
+        'Cannot verify the latest migration revision; read cloud metadata again')
+    }
     const snapshot = latest?.snapshot
     if (!snapshot || snapshot.clientFormatVersion !== V4_FORMAT) {
       throw new AppError(409, 'unsupported_cloud_format',
@@ -1414,6 +1422,19 @@ export function createBackendService({
     }
     if (snapshot.payloadEncoding === 'binary' &&
         snapshot.chunkedPayload?.version === 3) {
+      // Idempotence requires evidence of THIS exact migration, not merely
+      // any newer binary snapshot. Otherwise a stale client can mistake an
+      // unrelated V4 revision for its own successfully completed migration.
+      if (!Number.isSafeInteger(expected.baseRevision) ||
+          expected.baseRevision + 1 !== latest.revision ||
+          expected.payloadSha256 !== snapshot.dataSha256 ||
+          expected.logicalFingerprint !== snapshot.logicalFingerprint ||
+          snapshot.deviceId !== 'qwerty-binary-storage-migration') {
+        throw new AppError(409, 'sync_conflict',
+          'Binary cloud revision does not match the pinned migration', {
+            current: metaFromSnapshot(snapshot),
+          })
+      }
       return { ...metaFromSnapshot(snapshot), migrated: false }
     }
     if (!Number.isSafeInteger(expected.baseRevision) ||
