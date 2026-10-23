@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { createHash } from 'node:crypto'
+import { gunzipSync } from 'node:zlib'
 
 const owner = { kind: 'account' as const, accountId: 's2-block-integration-owner' }
 
@@ -40,19 +41,29 @@ test('real S1 guarded Block handoff: disable exit until V4 upload and CAS comple
       deviceId: null, clientFormatVersion: null,
     } })
   })
-  await page.route('**/api/sync/v2', async route => {
-    expect(route.request().method()).toBe('PUT')
-    const body = route.request().postDataJSON()
-    expect(body.clientFormatVersion).toBe('qwerty-backup-v4')
-    expect(body.logicalFingerprint).toMatch(/^[0-9a-f]{64}$/)
-    const blob = Buffer.from(body.payloadBase64, 'base64')
+  await page.route('**/api/sync/v2/binary/direct', async route => {
+    const request = route.request()
+    expect(request.method()).toBe('POST')
+    const headers = request.headers()
+    expect(headers['x-qwerty-base-revision']).toBe('0')
+    expect(headers['x-qwerty-logical-fingerprint']).toMatch(/^[0-9a-f]{64}$/)
+    const blob = request.postDataBuffer()!
+    expect(blob.length).toBeGreaterThan(0)
+    expect(blob.length).toBeLessThanOrEqual(512 * 1024)
     const hash = createHash('sha256').update(blob).digest('hex')
+    expect(headers['x-qwerty-payload-sha256']).toBe(hash)
+    const snapshot = JSON.parse(gunzipSync(blob).toString('utf8'))
+    expect(snapshot.backupFormatVersion).toBe('qwerty-backup-v4')
+    expect(snapshot.metadata.source).toEqual(owner)
+    expect(snapshot.workspaceData.database.data.tables.map((table: any) => table.name).sort())
+      .toEqual(['achievementEvents', 'achievementStates', 'chapterRecords',
+        'reviewRecords', 'reviewWordStates', 'wordRecords'])
     uploaded++
     await route.fulfill({ json: {
       ok: true, hasData: true, revision: 1, updatedAt: new Date().toISOString(),
       sizeBytes: blob.length, dataSha256: hash, payloadSha256: hash,
-      logicalFingerprint: body.logicalFingerprint, deviceId: 'block-e2e',
-      clientFormatVersion: 'qwerty-backup-v4',
+      logicalFingerprint: headers['x-qwerty-logical-fingerprint'], deviceId: 'block-e2e',
+      clientFormatVersion: 'qwerty-backup-v4', storageEncoding: 'binary',
     } })
   })
   await seed(page)
