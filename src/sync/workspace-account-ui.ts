@@ -145,10 +145,23 @@ export function renderS1AccountManagement(
    * events before navigating, so a subsequent login cannot cancel the first
    * device's still-in-flight startup upload. Never block login on failure:
    * unfinished evidence stays in the crash-safe local outbox. */
-  const publishPendingAfterAuthentication = async () => {
+  const publishPendingAfterAuthentication = async (): Promise<string> => {
     markLoginSync('auth-start')
     sessionStorage.removeItem('qwerty.etest.m4.idleBlocked')
-    if (!learningEventSyncEnabled() || !navigator.onLine) return
+    // This document is still pre-mount and holds the S1 writer lease.
+    // An M3 receipt is not evidence that the pre-existing V4 cloud history
+    // was inspected. First perform the SAME-ACCOUNT six-table S2 preflight.
+    // Safe single-sided changes may be CAS uploaded or journal-staged for
+    // restore; a divergent historical workspace remains intact and PENDING.
+    const { checkAccountV4AfterAuthentication } =
+      await import('./account-login-v4-check')
+    const cloudV4 = await checkAccountV4AfterAuthentication()
+    markLoginSync(cloudV4.status === 'pending' ? 'auth-v4-pending' :
+      cloudV4.status === 'pull-staged' ? 'auth-v4-pull-staged' : 'auth-v4-checked')
+    if (!cloudV4.canContinue || !learningEventSyncEnabled() || !navigator.onLine) {
+      return cloudV4.detail
+    }
+    let summary = cloudV4.detail
     try {
       const { runEtestM3Publication } = await import('./m3-publication-browser')
       // One cycle publishes at most 2 x 32 attempts. A bounded second cycle
@@ -157,6 +170,9 @@ export function renderS1AccountManagement(
         const result = await runEtestM3Publication()
         markLoginSync(result.status === 'blocked' ? 'auth-m3-blocked' : 'auth-m3-complete')
         if (result.status === 'blocked') {
+          // Keep the reason in bounded diagnostics, but do not expose
+          // internal account/device/event identifiers in a user-facing toast.
+          summary += ' 学习事件发布尚未完成，现有记录仍安全保留。'
           console.warn('Etest login M3 outbox retained:', result.reason)
           break
         }
@@ -175,20 +191,25 @@ export function renderS1AccountManagement(
       markLoginSync(adopted.status === 'blocked' ? 'auth-m4-blocked' :
         adopted.status === 'adopted' ? 'auth-m4-adopted' : 'auth-m4-skipped')
       if (adopted.status === 'blocked') {
+        summary += ' 学习事件自动融合暂被安全检查阻止。'
         console.warn('Etest login witnessed M4 adoption deferred:', adopted.reason)
+      } else if (adopted.status === 'adopted') {
+        summary += ' 已融合云端可验证的学习事件；此结果不等于所有设备历史均已同步。'
       }
     } catch (error) {
       markLoginSync('auth-exception')
+      summary += ' 学习事件检查异常，尚未确认完整融合。'
       console.warn('Etest login M3 upload deferred; local outbox kept', error)
     }
+    return summary
   }
   const reauth = async () => {
     const signed = credential(await login(username.value.trim(), password.value, browserDeviceId()))
     await reauthenticateSameWorkspace(signed)
     setBusy(true, '正在保全本机待同步学习记录…')
-    await publishPendingAfterAuthentication()
+    const syncNote = await publishPendingAfterAuthentication()
     setBusy(true, '账户会话更新成功，工作区保持不变。')
-    navigate('重新登录成功，工作区身份与学习数据保持不变。')
+    navigate('重新登录成功，工作区身份与学习数据保持不变。' + syncNote)
   }
   const loginAction = async () => {
     if (!username.value.trim() || password.value.length < 4) {
@@ -200,8 +221,8 @@ export function renderS1AccountManagement(
         throw new Error('当前属于另一账户，必须先明确退出到匿名工作区')
       }
       await reauthenticateSameWorkspace(signed)
-      await publishPendingAfterAuthentication()
-      navigate('当前账户已重新认证，学习进度未改变。')
+      const syncNote = await publishPendingAfterAuthentication()
+      navigate('当前账户已重新认证，学习进度未改变。' + syncNote)
       return
     }
     if (!window.confirm('将从匿名工作区切换到“' + signed.user.username + '”。' + '匿名学习进度会独立保存，不合并到已有账户。确认继续？')) {
@@ -209,9 +230,9 @@ export function renderS1AccountManagement(
       return
     }
     await switchAuthenticatedWorkspace({ kind: 'account', accountId: signed.user.userId }, signed, phase)
-    await publishPendingAfterAuthentication()
+    const syncNote = await publishPendingAfterAuthentication()
     setBusy(true, '登录及本地隔离工作区切换完成。')
-    navigate('登录成功，已进入独立的账户学习工作区。')
+    navigate('登录成功，已进入独立的账户学习工作区。' + syncNote)
   }
   const registerAction = async () => {
     if (active.kind !== 'anonymous') throw new Error('注册仅允许从匿名工作区进行')
@@ -229,9 +250,9 @@ export function renderS1AccountManagement(
       await copyAnonymousWorkspaceForNewRegistration(signed.user.userId)
     }
     await switchAuthenticatedWorkspace({ kind: 'account', accountId: signed.user.userId }, signed, phase)
-    await publishPendingAfterAuthentication()
+    const syncNote = await publishPendingAfterAuthentication()
     setBusy(true, '注册成功，当前工作区已切换。')
-    navigate(copy ? '注册成功，匿名学习记录已复制，新旧工作区分别保留。' : '注册成功，已建立独立空白工作区。')
+    navigate((copy ? '注册成功，匿名学习记录已复制，新旧工作区分别保留。' : '注册成功，已建立独立空白工作区。') + syncNote)
   }
   const changePasswordAction = async (currentPassword: string, newPassword: string) => {
     const auth = loadAuth({ preserveExpired: true })
