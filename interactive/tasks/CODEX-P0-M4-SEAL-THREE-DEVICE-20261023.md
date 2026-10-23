@@ -1,12 +1,23 @@
 # Codex Handoff — P0 M4 transaction seal exception / offline three-device convergence
 
-**Status:** OPEN / root cause not yet proven  
+**Status:** COMPLETE / guarded witness seal root cause proven and fixed; exact-SHA real etest acceptance PASS
 **Created:** 2026-10-23  
 **Repo:** `smhe00/qwerty-learner`  
 **Codex task branch:** `codex/m4-seal-diagnosis-20261023`  
 **Base SHA (product/main and edgeone-test at audit):** `1a70bfe219af1fef187fcd4b71484332415a291f`  
 **Production master SHA at audit:** `6d7839b9a9fd7a31459a19aeca948227b1f7b3c2`  
 **Release authorization:** **NONE. NEVER push / merge / deploy master.**
+
+## Completion checkpoint — 2026-10-23
+
+- Root fix: `51868a7ef1a1414fa963db6f871aa39e613afb7e`.
+- Validated application, product/main and edgeone-test SHA: `01ed8574da7a231482bf6911038a1fe04e277392`.
+- Hard real three-device run https://github.com/smhe00/qwerty-learner/actions/runs/39958673863 : each A/B/C final RecordDB has exact 3/3 immutable attempts; M4 finalized, no pending journal; strict disposable-account DELETE 200 and `accountDeleted:true`.
+- Same-SHA Pages, real Blob/browser Cloud E2E and mandatory release-ready PASS: https://github.com/smhe00/qwerty-learner/actions/runs/39958673832 . This does not authorize production release.
+- Full evidence, historical failures, cleanup-500 limitation and production recommendation: `interactive/reports/CODEX-P0-M4-SEAL-THREE-DEVICE-20261023-report.md`.
+- This completion update is documentation only on the diagnosis branch; retain the validated application SHA on main/etest. master remains `6d7839b9a9fd7a31459a19aeca948227b1f7b3c2`.
+
+The original mission, incident and acceptance requirements below are retained for audit.
 
 ## Mission
 
