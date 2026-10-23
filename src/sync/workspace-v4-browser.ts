@@ -33,6 +33,33 @@ import { DEFAULT_DICTIONARY_ID } from '@/resources/defaultDictionary'
 import type { PerfFlow } from './perf-diagnostics'
 
 /**
+ * JSON hashes cannot distinguish +0 from -0, even though IndexedDB
+ * structured clone can. A fast row-payload audit may therefore pass
+ * despite a destructive ExportImport conversion. When ANY stored row
+ * contains negative zero, require the independent lossless IDB readback
+ * before claiming that the V4 archive is restorable.
+ *
+ * Only enumerable persisted properties are traversed; cyclic aliases are
+ * visited once. Excessive nesting or object count blocks, never approves.
+ */
+function sourceContainsNegativeZero(rows: Record<string, unknown[]>): boolean {
+  const seen = new WeakSet<object>()
+  let inspected = 0
+  const check = (value: unknown, depth: number): boolean => {
+    if (Object.is(value, -0)) return true
+    if (value === null || typeof value !== 'object') return false
+    if (seen.has(value)) return false
+    if (++inspected > 2_000_000 || depth > 100) {
+      throw new Error('Backup V4 source contains unbounded special-number graph')
+    }
+    seen.add(value)
+    return Object.keys(value).some(field =>
+      check((value as Record<string, unknown>)[field], depth + 1))
+  }
+  return Object.values(rows).some(value => check(value, 0))
+}
+
+/**
  * Last-resort independent lossless audit. Dexie Export/Import uses Typeson,
  * whose userObject/array/undefined/special type rules vary by library version.
  * Do NOT guess at or erase unknown $types markers to make a hash compare pass.
@@ -363,6 +390,12 @@ export async function captureWorkingWorkspaceV4(
   // FSRS interval); independently hash full live Dexie rows as well.
   const sourceRows = Object.fromEntries(entries) as
     Parameters<typeof assertV4SourceRowsMatchExport>[1]
+  // The ordinary audit is intentionally based on JSON-compatible hashes.
+  // It cannot prove that a negative zero survives Dexie/Typeson export.
+  // Detect that source-only condition independently and always force the
+  // lossless temporary-IDB roundtrip for such rows, even on fast audit PASS.
+  const needsSpecialNumberAudit = sourceContainsNegativeZero(sourceRows)
+  let needsFallback = needsSpecialNumberAudit
   try {
     await timed('source-rows-audit', () => assertV4SourceRowsMatchExport(snapshot, sourceRows))
   } catch (error) {
@@ -372,6 +405,9 @@ export async function captureWorkingWorkspaceV4(
         !error.message.startsWith('Backup V4 source/export row-payload mismatch:')) {
       throw error
     }
+    needsFallback = true
+  }
+  if (needsFallback) {
     await timed('fallback-roundtrip-audit', () =>
       verifyV4RoundTripInDisposableDatabase(snapshot, sourceRows))
   }
