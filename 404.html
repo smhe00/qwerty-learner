@@ -32,7 +32,7 @@
         // go to the root; no legacy /?/ or ~and~ query is propagated.
         var location = window.location
         var route = location.pathname.replace(/\/+$/, '') || '/'
-        var known = /^\/(?:typing|learn|analysis|gallery|achievements|error-book|friend-links|mobile(?:\/(?:study|account))?)$/.test(route)
+        var known = /^\/(?:typing|learn|analysis|gallery|achievements|error-book|friend-links|mobile(?:\/(?:study|account|library|settings))?)$/.test(route)
         if (known) {
           var cleanSearch = location.search[1] === '/' ? '' : location.search
           var returnPath = route + cleanSearch + location.hash

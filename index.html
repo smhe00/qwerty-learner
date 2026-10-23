@@ -25,7 +25,7 @@
             } catch (error) {
               restored = ''
             }
-            if (/^\/(?:typing|learn|analysis|gallery|achievements|error-book|friend-links|mobile(?:\/(?:study|account))?)(?:[?#]|$)/.test(restored)) {
+            if (/^\/(?:typing|learn|analysis|gallery|achievements|error-book|friend-links|mobile(?:\/(?:study|account|library|settings))?)(?:[?#]|$)/.test(restored)) {
               window.history.replaceState(window.history.state, null, restored)
             } else {
               window.history.replaceState(window.history.state, null, '/')
@@ -115,7 +115,7 @@
         document.documentElement.classList.toggle('dark', darkMode)
       })()
     </script>
-    <script type="module" crossorigin src="/qwerty-learner/assets/app-28d0b048.js"></script>
+    <script type="module" crossorigin src="/qwerty-learner/assets/app-b6632c3a.js"></script>
     <link rel="modulepreload" crossorigin href="/qwerty-learner/assets/modulepreload-polyfill-3cfb730f.js">
   </head>
   <body>
