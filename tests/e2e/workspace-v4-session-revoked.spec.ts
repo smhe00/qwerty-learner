@@ -114,6 +114,13 @@ test('revoked device can reauthenticate same account without losing offline reco
       const auth = localStorage.getItem('qwerty.cloudAuth.v1')
       return auth ? JSON.parse(auth).token : null
     }).catch(() => null), { timeout: 35_000 }).toBe(TOKEN_B)
+    // Token durability precedes asynchronous full-V4 admission and the
+    // account document's location.replace. Wait for the REAL app handoff
+    // before opening the readback harness, or that pending navigation can
+    // abort the observer's goto. Keep all durable-data assertions below.
+    await expect(pageA).toHaveURL(/\/$/, { timeout: 35_000 })
+    await expect(pageA.getByRole('button', { name: '打开设置对话框' }))
+      .toBeVisible({ timeout: 35_000 })
 
     await pageA.goto('/tests/e2e/backup-harness.html')
     const after = await pageA.evaluate(async () => {

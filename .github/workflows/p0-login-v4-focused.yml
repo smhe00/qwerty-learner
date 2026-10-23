@@ -1,0 +1,26 @@
+name: P0 Login V4 Focused Regression
+on:
+  push:
+    branches: [fix/p0-legacy-login-sync-audit-20261024]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: p0-v4-focused-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  browser:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
+      - name: Historical browser failures and new alias regression
+        run: >
+          npx playwright test --config=tests/e2e/workspace-v4.config.ts
+          --grep "real application loads unchanged legacy records|six-table, 832-row|legacy review row 38|unsupported negative zero"

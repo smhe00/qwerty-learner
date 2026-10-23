@@ -466,6 +466,11 @@ async function start(): Promise<void> {
     boot?.release()
     boot = undefined
     const message = error instanceof Error ? error.message : String(error)
+    if (message.includes('S2 Pull staged; reload required')) {
+      gateUI('正在恢复云端学习记录', '完整数据已校验，正在完成安全恢复事务…')
+      window.location.reload()
+      return
+    }
     if (message.includes('recovery completed; reload required')) {
       gateUI('恢复已完成', '正在重新加载已恢复的学习数据…')
       window.location.reload()

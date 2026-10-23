@@ -1,0 +1,50 @@
+name: P0 Login Full-V4 Safety
+
+# Isolated validation of the historical V4 + login sync patch.
+# Never deploys Pages, etest or master and never uses production credentials.
+on:
+  push:
+    branches: [fix/p0-legacy-login-sync-audit-20261024]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p0-login-full-v4-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    uses: ./.github/workflows/review-gate.yml
+  mobile:
+    uses: ./.github/workflows/mobile-p0-gate.yml
+  workspace-browser:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --config=tests/e2e/workspace-v4.config.ts
+  cloud-contracts:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn test:cloud
+      - run: git fetch --depth=1 origin a2dc907c9c0f6e8924f441fa360ebabd317233dd
+      - name: Reject new TypeScript diagnostics against production source baseline
+        run: node scripts/audit-login-sync-types.mjs
+      - run: npx playwright test --config=tests/e2e/etest-login-v4-history.config.ts --list
+      - run: yarn eslint src/sync --ext .ts,.tsx
+      - run: yarn build

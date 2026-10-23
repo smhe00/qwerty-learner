@@ -33,6 +33,33 @@ import { DEFAULT_DICTIONARY_ID } from '@/resources/defaultDictionary'
 import type { PerfFlow } from './perf-diagnostics'
 
 /**
+ * JSON hashes cannot distinguish +0 from -0, even though IndexedDB
+ * structured clone can. A fast row-payload audit may therefore pass
+ * despite a destructive ExportImport conversion. When ANY stored row
+ * contains negative zero, require the independent lossless IDB readback
+ * before claiming that the V4 archive is restorable.
+ *
+ * Only enumerable persisted properties are traversed; cyclic aliases are
+ * visited once. Excessive nesting or object count blocks, never approves.
+ */
+function sourceContainsNegativeZero(rows: Record<string, unknown[]>): boolean {
+  const seen = new WeakSet<object>()
+  let inspected = 0
+  const check = (value: unknown, depth: number): boolean => {
+    if (Object.is(value, -0)) return true
+    if (value === null || typeof value !== 'object') return false
+    if (seen.has(value)) return false
+    if (++inspected > 2_000_000 || depth > 100) {
+      throw new Error('Backup V4 source contains unbounded special-number graph')
+    }
+    seen.add(value)
+    return Object.keys(value).some(field =>
+      check((value as Record<string, unknown>)[field], depth + 1))
+  }
+  return Object.values(rows).some(value => check(value, 0))
+}
+
+/**
  * Last-resort independent lossless audit. Dexie Export/Import uses Typeson,
  * whose userObject/array/undefined/special type rules vary by library version.
  * Do NOT guess at or erase unknown $types markers to make a hash compare pass.
@@ -78,13 +105,84 @@ async function verifyV4RoundTripInDisposableDatabase(
       acceptChangedPrimaryKey: false,
       clearTablesBeforeImport: true,
     })
-    const roundTripped = structuredClone(snapshot)
-    const tables = (roundTripped.workspaceData.database as typeof original).data.data
-    for (const table of tables) {
-      if (!(table.tableName in sourceRows)) continue
-      table.rows = await shadow.table(table.tableName).toCollection().raw().toArray()
+    // The fast audit is deliberately JSON/canonical-payload based. It can
+    // reject an otherwise faithful Typeson export if a persisted ReviewRecord
+    // has shared Word[] objects or other losslessly cloneable IDB values.
+    // The fallback must compare the ACTUAL imported IDB rows, not pass those
+    // rows through the same JSON normalization that already failed.
+    //
+    // Pair rows by durable primary key: row order is not data evidence.
+    // A missing, duplicate or changed row blocks even if counts happen to
+    // match. This path never touches the real RecordDB or rewrites the export.
+    const keyOf = (row: unknown): string | null => {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) return null
+      const record = row as Record<string, unknown>
+      const key = record.id ?? record.eventId ?? record.achievementId
+      if ((typeof key !== 'string' || key.length === 0) &&
+          (typeof key !== 'number' || !Number.isSafeInteger(key))) return null
+      return typeof key + ':' + String(key)
     }
-    await assertV4SourceRowsMatchExport(roundTripped, sourceRows)
+    for (const name of Object.keys(sourceRows) as Array<keyof typeof sourceRows>) {
+      const originalRows = sourceRows[name]
+      const restoredRows = await shadow.table(name).toCollection().raw().toArray()
+      if (originalRows.length !== restoredRows.length) {
+        throw new Error('Backup V4 independent roundtrip row-count mismatch: ' + name)
+      }
+      const restoredByKey = new Map<string, unknown>()
+      for (const row of restoredRows) {
+        const key = keyOf(row)
+        if (key === null || restoredByKey.has(key)) {
+          throw new Error('Backup V4 independent roundtrip invalid key: ' + name)
+        }
+        restoredByKey.set(key, row)
+      }
+      const seen = new Set<string>()
+      for (const sourceRow of originalRows) {
+        const key = keyOf(sourceRow)
+        if (key === null || seen.has(key) || !restoredByKey.has(key)) {
+          throw new Error('Backup V4 independent roundtrip missing row: ' + name)
+        }
+        seen.add(key)
+        if (!sameLosslessIndexedDbValue(sourceRow, restoredByKey.get(key))) {
+          // Diagnostic field NAMES ONLY. Never include primary keys, word
+          // contents, array elements, or account/device identifiers.
+          const originalFields = sourceRow as Record<string, unknown>
+          const restoredFields = restoredByKey.get(key) as Record<string, unknown>
+          const fields = Array.from(new Set([
+            ...Object.keys(originalFields), ...Object.keys(restoredFields),
+          ])).sort()
+          const changed = fields.find(field =>
+            !Object.prototype.hasOwnProperty.call(originalFields, field) ||
+            !Object.prototype.hasOwnProperty.call(restoredFields, field) ||
+            !sameLosslessIndexedDbValue(originalFields[field], restoredFields[field]))
+          // Follow only validated FIELD NAMES (never values or row keys)
+          // to isolate an unsupported Typeson conversion. Depth is bounded.
+          const safeName = (input: string): string =>
+            /^[a-zA-Z][a-zA-Z0-9]{0,50}$/.test(input) ? input :
+              /^(0|[1-9][0-9]{0,3})$/.test(input) ? 'element' : 'field'
+          let left: unknown = changed ? originalFields[changed] : originalFields
+          let right: unknown = changed ? restoredFields[changed] : restoredFields
+          const parts = [safeName(changed ?? 'unknown')]
+          for (let depth = 0; depth < 5; depth++) {
+            if (!left || !right || typeof left !== 'object' ||
+                typeof right !== 'object') break
+            const a = left as Record<string, unknown>
+            const b = right as Record<string, unknown>
+            const keys = Array.from(new Set([...Object.keys(a), ...Object.keys(b)])).sort()
+            const delta = keys.find(k =>
+              !Object.prototype.hasOwnProperty.call(a, k) ||
+              !Object.prototype.hasOwnProperty.call(b, k) ||
+              !sameLosslessIndexedDbValue(a[k], b[k]))
+            if (delta === undefined) break
+            parts.push(safeName(delta))
+            left = a[delta]
+            right = b[delta]
+          }
+          throw new Error('Backup V4 independent roundtrip value mismatch: ' +
+            name + ' fields ' + parts.join('.'))
+        }
+      }
+    }
   } finally {
     shadow.close()
     await shadow.delete()
@@ -292,6 +390,12 @@ export async function captureWorkingWorkspaceV4(
   // FSRS interval); independently hash full live Dexie rows as well.
   const sourceRows = Object.fromEntries(entries) as
     Parameters<typeof assertV4SourceRowsMatchExport>[1]
+  // The ordinary audit is intentionally based on JSON-compatible hashes.
+  // It cannot prove that a negative zero survives Dexie/Typeson export.
+  // Detect that source-only condition independently and always force the
+  // lossless temporary-IDB roundtrip for such rows, even on fast audit PASS.
+  const needsSpecialNumberAudit = sourceContainsNegativeZero(sourceRows)
+  let needsFallback = needsSpecialNumberAudit
   try {
     await timed('source-rows-audit', () => assertV4SourceRowsMatchExport(snapshot, sourceRows))
   } catch (error) {
@@ -301,6 +405,9 @@ export async function captureWorkingWorkspaceV4(
         !error.message.startsWith('Backup V4 source/export row-payload mismatch:')) {
       throw error
     }
+    needsFallback = true
+  }
+  if (needsFallback) {
     await timed('fallback-roundtrip-audit', () =>
       verifyV4RoundTripInDisposableDatabase(snapshot, sourceRows))
   }

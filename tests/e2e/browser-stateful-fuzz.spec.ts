@@ -120,6 +120,11 @@ async function resetAndSeed(
   id: number,
 ) {
   await page.goto('/typing')
+  // A pristine S1 profile may initialize and replace its first document.
+  // Seed only after the REAL app has mounted, so that pending bootstrap
+  // cannot destroy the injected module or overwrite the fixture snapshot.
+  await expect(page.getByRole('button', { name: '打开设置对话框' }))
+    .toBeVisible({ timeout: 30_000 })
   const session = makeSession(id)
 
   // Playwright serializes page.evaluate callbacks into a browser function,

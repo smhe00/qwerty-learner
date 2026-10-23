@@ -19,7 +19,7 @@ import type { GuardedWorkspaceBoot } from './workspace-bootstrap'
 import { flushReviewRecordWrites } from '@/store/reviewInfoAtom'
 
 export async function executePreMountManualSyncV2(
-  boot: GuardedWorkspaceBoot,
+  boot: Pick<GuardedWorkspaceBoot, 'mode' | 'registry'>,
 ): Promise<S2ExecutionResult> {
   const owner = boot.registry.active
   if (boot.mode !== 'isolated' || boot.registry.pending ||

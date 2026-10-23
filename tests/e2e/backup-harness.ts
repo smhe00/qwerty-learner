@@ -17,6 +17,7 @@ import { executeM4Merge, recoverM4Merge } from '../../src/sync/m4-merge-transact
 import { assertWorkspaceMigrationWitness, installWorkspaceStorageWriterGuard, refreshWorkspaceMigrationWitness } from '../../src/sync/workspace-storage-witness'
 import { preparePortableV4Import, rebindPortableV4Import } from '../../src/sync/manual-v4-import-plan'
 import { executePreMountManualSyncV2 } from '../../src/sync/v2-browser-executor'
+import { sameLosslessIndexedDbValue } from '../../src/sync/m4-lossless-idb-compare'
 import { loadWorkspaceFromVault, saveWorkspaceToVault, workspaceRegistryPort, openWorkspaceVault } from '../../src/sync/workspace-vault'
 import { switchWorkspace, recoverWorkspace, ANONYMOUS } from '../../src/sync/workspace-transition'
 import { createLocalSnapshot, fingerprintRemoteUserActions, restoreLocalSnapshot } from '../../src/sync/snapshot'
@@ -316,6 +317,7 @@ async function inspectTableContract() {
   loadSyncBaseline,
   saveSyncBaseline,
   captureWorkingWorkspaceV4,
+  sameLosslessIndexedDbValue,
   materializeAuditedM4CandidateV4,
   analyzeV4SnapshotSize,
   resetWorkingWorkspaceToEmpty,
