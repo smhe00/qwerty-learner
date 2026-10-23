@@ -5,6 +5,8 @@ import { ErrorBook } from './pages/ErrorBook'
 import { FriendLinks } from './pages/FriendLinks'
 import MobilePage from './pages/Mobile'
 import MobileStudyPage from './pages/Mobile/MobileStudy'
+import MobileLibrary from './pages/Mobile/MobileLibrary'
+import MobileSettings from './pages/Mobile/MobileSettings'
 import TypingPage from './pages/Typing'
 import { isOpenDarkModeAtom, reviewModeInfoAtom } from '@/store'
 import 'animate.css'
@@ -144,6 +146,8 @@ function MobileAchievementsRoute() {
 function ResponsiveRoutes({ isMobile }: { isMobile: boolean }) {
   const location = useLocation()
   if (location.pathname === '/mobile/study') return <MobileStudyPage />
+  if (location.pathname === '/mobile/library') return <MobileLibrary />
+  if (location.pathname === '/mobile/settings') return <MobileSettings />
   return isMobile ? (
     <Routes>
       <Route path="/mobile" element={<MobilePage />} />

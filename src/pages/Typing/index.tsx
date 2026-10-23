@@ -24,6 +24,7 @@ import { TypingContext, TypingStateActionType, initialState, typingReducer } fro
 import { DonateCard } from '@/components/DonateCard'
 import LearnLiveStats from '@/pages/Learn/components/LearnLiveStats'
 import LearnResultScreen from '@/pages/Learn/components/LearnResultScreen'
+import MobileResult from '@/pages/Mobile/MobileResult'
 import Header from '@/components/Header'
 import Tooltip from '@/components/Tooltip'
 import { DEFAULT_DICTIONARY_ID } from '@/resources/defaultDictionary'
@@ -39,6 +40,7 @@ import {
 } from '@/store'
 import { flushLearnPersistence } from '@/learn/persistence'
 import { ArrowLeft, Pause, Play } from 'lucide-react'
+import { Dialog } from '@headlessui/react'
 import { getReviewWordStates } from '@/review/repository'
 import { db, useSaveChapterRecord } from '@/utils/db'
 import { getUTCUnixTimestamp } from '@/utils/time'
@@ -145,15 +147,27 @@ const App: React.FC<{ autoStart?: boolean; mobile?: boolean }> = ({ autoStart = 
     }
   }, [dispatch, mobile])
 
+  const [mobileLeaveError, setMobileLeaveError] = useState('')
+  const [mobileLeaving, setMobileLeaving] = useState(false)
+  const mobileLeavingRef = useRef(false)
   const leaveMobileLearn = useCallback(async () => {
+    if (mobileLeavingRef.current) return
+    mobileLeavingRef.current = true
+    setMobileLeaving(true)
     dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })
     try {
+      // A fresh snapshot also lets the serialized writer recover after a failed write.
+      setReviewModeInfo(old => ({ ...old }))
       await flushLearnPersistence()
+      navigate('/mobile')
     } catch (error) {
       console.error('failed to flush Learn persistence before returning to menu', error)
+      setMobileLeaveError('学习位置暂未完整保存，已暂停并保留此页。请重试后再返回菜单。')
+    } finally {
+      mobileLeavingRef.current = false
+      setMobileLeaving(false)
     }
-    navigate('/mobile')
-  }, [dispatch, navigate])
+  }, [dispatch, navigate, setReviewModeInfo])
 
   // 在组件挂载和currentDictId改变时，检查当前字典是否存在，如果不存在，则将其重置为默认值
   useEffect(() => {
@@ -322,29 +336,20 @@ const App: React.FC<{ autoStart?: boolean; mobile?: boolean }> = ({ autoStart = 
     return () => clearInterval(intervalId)
   }, [state.isTyping, dispatch])
 
-  useConfetti(state.isFinished)
+  useConfetti(!mobile && state.isFinished)
 
   const totalWords = state.chapterData.words.length
   const currentPosition = totalWords > 0 ? Math.min(state.chapterData.index + 1, totalWords) : 0
   const progressPercent = totalWords > 0 ? (currentPosition / totalWords) * 100 : 0
 
-  if (mobile && state.isFinished) {
-    return (
-      <TypingContext.Provider value={{ state, dispatch }}>
-        <main className="mobile-app mobile-study" data-mobile-complete>
-          <div className="mobile-study-inner">
-            <section className="mobile-today mobile-study-start-card">
-              <p className="mobile-eyebrow">SESSION COMPLETE</p>
-              <h1>本轮学习完成</h1>
-              <p className="mobile-today-summary">已完成本轮学习任务，学习记录已保存。</p>
-              <button type="button" className="mobile-start-link" onClick={() => void leaveMobileLearn()}>
-                返回手机菜单
-              </button>
-            </section>
-          </div>
-        </main>
-      </TypingContext.Provider>
-    )
+  if (mobile && state.isFinished && reviewModeInfo.reviewRecord) {
+    return <TypingContext.Provider value={{ state, dispatch }}>
+      <MobileResult input={{
+        record: reviewModeInfo.reviewRecord,
+        sourceRecordIds: [...state.chapterData.wordRecordIds],
+        activeSeconds: state.timerData.time,
+      }} />
+    </TypingContext.Provider>
   }
 
   return (
@@ -357,7 +362,7 @@ const App: React.FC<{ autoStart?: boolean; mobile?: boolean }> = ({ autoStart = 
         <div className="focus-mobile-learn-shell mobile-app mobile-study" data-mobile-learn-shell>
           <header className="focus-mobile-learn-header">
             <button type="button" className="focus-mobile-round-action"
-              onClick={() => void leaveMobileLearn()}
+              onClick={() => void leaveMobileLearn()} disabled={mobileLeaving}
               aria-label="返回主菜单" title="保存进度并返回主菜单">
               <ArrowLeft size={21} aria-hidden="true" />
             </button>
@@ -376,6 +381,16 @@ const App: React.FC<{ autoStart?: boolean; mobile?: boolean }> = ({ autoStart = 
               </p>
             </div>
           </header>
+          <Dialog open={Boolean(mobileLeaveError || mobileLeaving)} onClose={() => { if (!mobileLeaving) setMobileLeaveError('') }} className="mobile-app mobile-save-shield">
+            <Dialog.Panel className="mobile-save-dialog">
+              <Dialog.Title as="h2">{mobileLeaving ? '正在保存学习位置' : '暂时无法返回菜单'}</Dialog.Title>
+              <Dialog.Description>{mobileLeaving ? '请稍候，正在确认本机学习记录…' : mobileLeaveError}</Dialog.Description>
+              {!mobileLeaving && <>
+                <button type="button" className="mobile-start-link" autoFocus onClick={() => void leaveMobileLearn()}>重试保存并返回</button>
+                <button type="button" className="mobile-result-back" onClick={() => setMobileLeaveError('')}>留在此页</button>
+              </>}
+            </Dialog.Panel>
+          </Dialog>
           <main className="focus-mobile-learn-main">
             {isLoading ? (
               <div className="flex flex-1 items-center justify-center" role="status" aria-label="正在加载学习内容">

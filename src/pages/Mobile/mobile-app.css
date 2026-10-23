@@ -576,3 +576,53 @@
 [data-mobile-keyboard-practice] .desktop-tap-shortcuts { gap: 5px 10px; margin-top: 10px; }
 
 .mobile-account-entry { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-height: 44px; border-radius: 12px; }
+
+/* Local mobile learning loop: one column, readable cards and full-size controls. */
+.mobile-detail-header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; margin-bottom: 22px; }
+.mobile-detail-header h1 { margin: 0; font-size: 22px; font-weight: 650; }
+.mobile-page-description { font-size: 13px; line-height: 1.8; color: var(--mobile-muted); margin: 12px 0 18px; overflow-wrap: anywhere; }
+.mobile-dictionary-link { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; text-decoration: none; }
+.mobile-daily-grid, .mobile-round-grid { display: flex; flex-wrap: wrap; gap: 14px 20px; margin: 18px 0; }
+.mobile-daily-grid > div, .mobile-round-grid > div { flex: 1; min-width: 80px; }
+.mobile-daily-grid dt, .mobile-round-grid dt { font-size: 12px; color: var(--mobile-muted); margin-bottom: 6px; }
+.mobile-daily-grid dd, .mobile-round-grid dd { margin: 0; font-size: 23px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.mobile-daily-grid dd span { font-size: 13px; font-weight: 400; color: var(--mobile-muted); }
+.mobile-daily-bar { height: 5px; background: var(--mobile-line); border-radius: 5px; overflow: hidden; }
+.mobile-daily-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--mobile-accent); max-width: 100%; }
+.mobile-daily-caption, .mobile-daily-loading { margin: 10px 0 18px; font-size: 12px; line-height: 1.7; color: var(--mobile-muted); }
+.mobile-daily-loading button { display: block; min-height: 44px; color: var(--mobile-accent); text-decoration: underline; }
+.mobile-library-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.mobile-detail-page label { display: flex; flex-direction: column; gap: 9px; min-width: 0; font-size: 13px; }
+.mobile-detail-page input:not([type=checkbox]), .mobile-detail-page select { min-height: 46px; min-width: 0; width: 100%; padding: 10px 12px; border: 1px solid var(--mobile-line); border-radius: 10px; background: var(--mobile-surface); color: var(--mobile-text); font-size: 16px; }
+.mobile-detail-page input[type=range] { padding: 0; accent-color: var(--mobile-accent); }
+.mobile-detail-page input:focus-visible, .mobile-detail-page select:focus-visible, .mobile-app button:focus-visible { outline: 2px solid var(--mobile-accent); outline-offset: 3px; }
+.mobile-search-label { margin-top: 18px; }
+.mobile-library-list { padding: 0; margin: 16px 0; list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.mobile-library-list li { display: flex; align-items: center; gap: 12px; padding: 16px; border: 1px solid var(--mobile-line); border-radius: 14px; background: var(--mobile-surface); }
+.mobile-library-list li > div { flex: 1; min-width: 0; }
+.mobile-library-list h2 { font-size: 15px; font-weight: 650; line-height: 1.6; margin: 0; overflow-wrap: anywhere; }
+.mobile-library-list p { margin: 5px 0 0; color: var(--mobile-muted); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.mobile-library-list button { flex-shrink: 0; min-width: 64px; min-height: 44px; padding: 9px 10px; color: var(--mobile-accent); border: 1px solid var(--mobile-line); border-radius: 10px; }
+.mobile-library-list button:disabled { color: var(--mobile-muted); opacity: .7; }
+.mobile-empty-message { margin: 40px 0; font-size: 14px; text-align: center; color: var(--mobile-muted); }
+.mobile-settings-card { border: 1px solid var(--mobile-line); border-radius: 16px; background: var(--mobile-surface); padding: 20px; margin: 0 0 18px; }
+.mobile-settings-card h2, .mobile-result-card h2 { font-size: 16px; font-weight: 650; margin: 0 0 14px; }
+.mobile-settings-card p { font-size: 12px; line-height: 1.8; color: var(--mobile-muted); margin: 0 0 22px; }
+.mobile-settings-card label + label { margin-top: 20px; }
+.mobile-settings-card small { color: var(--mobile-muted); font-size: 11px; }
+.mobile-settings-saved { min-height: 40px; font-size: 12px; line-height: 1.8; color: var(--mobile-muted); margin: 10px 0 18px; text-align: center; }
+.mobile-detail-page .mobile-theme-setting { flex-direction: row; align-items: center; justify-content: space-between; min-height: 44px; }
+.mobile-theme-setting input { width: 24px; height: 24px; accent-color: var(--mobile-accent); }
+.mobile-local-error { padding: 15px; border: 1px solid var(--mobile-line); border-radius: 12px; font-size: 13px; line-height: 1.8; background: var(--focus-surface-muted); }
+.mobile-local-error p { margin: 0 0 12px; }
+.mobile-result-card { margin-top: 25px; }
+.mobile-result-card h1 { font-size: 24px; line-height: 1.5; margin: 0; font-weight: 650; }
+.mobile-result-card h2 { margin-top: 28px; }
+.mobile-result-back { width: 100%; min-height: 48px; padding: 10px; margin-top: 12px; color: var(--mobile-muted); font-size: 14px; text-align: center; }
+.mobile-result-back:disabled { opacity: .5; }
+.mobile-save-shield { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgb(15 23 42 / .35); }
+.mobile-save-dialog { width: 100%; max-width: 400px; padding: 24px; border-radius: 20px; background: var(--mobile-surface); box-shadow: var(--focus-shadow-panel); }
+.mobile-save-dialog h2 { margin: 0; font-size: 20px; font-weight: 650; }
+.mobile-save-dialog p { font-size: 14px; line-height: 1.8; margin: 16px 0 22px; color: var(--mobile-muted); }
+
+.mobile-app.mobile-save-shield { min-height: 0; width: auto; }

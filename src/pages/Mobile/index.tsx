@@ -6,6 +6,8 @@ import { BookOpen, ChevronRight, CircleUserRound, Cloud, LayoutGrid, Medal, Sett
 import { Link } from 'react-router-dom'
 import type { MouseEvent } from 'react'
 import { useMobileCheckpoint } from './useMobileCheckpoint'
+import MobileDailyProgress from './MobileDailyProgress'
+import { useMobileDailyProgress } from './useMobileDailyProgress'
 import './mobile-app.css'
 
 /** Mobile P0 is a separate menu-first app shell; not a scaled desktop Header.
@@ -13,6 +15,7 @@ import './mobile-app.css'
  */
 export default function MobilePage() {
   const { checkpoint } = useMobileCheckpoint()
+  const daily = useMobileDailyProgress()
   const dictionary = useAtomValue(currentDictInfoAtom)
   const auth = loadAuth({ preserveExpired: true })
   const accountHref = (REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : '') + '/mobile/account'
@@ -26,10 +29,10 @@ export default function MobilePage() {
   const expired = !!auth && auth.expiresAt * 1000 <= Date.now()
   const menus = [
     { title: '成就', subtitle: '移动端成就即将开放', icon: Medal },
-    { title: '词库', subtitle: '移动端选择即将开放', icon: BookOpen },
+    { title: '词库', subtitle: '选择词库 · 分别保留学习进度', icon: BookOpen, route: '/mobile/library' },
     { title: '学习记录', subtitle: '移动端统计即将开放', icon: LayoutGrid },
     { title: '账号与云同步', subtitle: auth ? (expired ? '登录已过期 · ' : '已登录 · ') + auth.user.username : '登录或注册 · 使用账号学习空间', icon: Cloud, href: accountHref },
-    { title: '设置', subtitle: '移动端设置即将开放', icon: Settings2 },
+    { title: '设置', subtitle: '每日目标 · 单词发音 · 显示', icon: Settings2, route: '/mobile/settings' },
   ]
   const resume = checkpoint ? Math.min(checkpoint.index + 1, checkpoint.words.length) : null
 
@@ -48,11 +51,12 @@ export default function MobilePage() {
 
       <section className="mobile-today" aria-labelledby="mobile-today-title">
         <p className="mobile-eyebrow">TODAY · LEARN</p>
-        <h2 id="mobile-today-title">继续积累，一词一词来。</h2>
-        <p className="mobile-today-dictionary">{dictionary.name}</p>
+        <h2 id="mobile-today-title">今天，继续积累。</h2>
+        <Link to="/mobile/library" className="mobile-today-dictionary mobile-dictionary-link">{dictionary.name}<ChevronRight size={15} aria-hidden="true" /></Link>
+        <MobileDailyProgress summary={daily} />
         <p className="mobile-today-summary" data-mobile-checkpoint-status>
-          {checkpoint ? '可恢复的学习位置 · 第 ' + resume + ' / ' + checkpoint.words.length + ' 词'
-            : '当前没有可恢复的 Learn 会话'}
+          {checkpoint ? '上次学到本轮第 ' + resume + ' / ' + checkpoint.words.length + ' 词'
+            : '从今天的复习和新词开始'}
         </p>
         <Link className="mobile-start-link" to="/mobile/study" aria-label={checkpoint ? "继续手机学习" : "开始手机学习"}>
           {checkpoint ? '继续学习' : '开始手机学习'} <ChevronRight size={19} aria-hidden="true"/>
@@ -62,7 +66,11 @@ export default function MobilePage() {
 
       <section className="mobile-home-menu" aria-label="功能菜单">
         <h2>更多功能</h2>
-        {menus.map(item => item.href ? <a className="mobile-menu-item" href={item.href} target="_self" onClick={openAccount} key={item.title}>
+        {menus.map(item => item.route ? <Link className="mobile-menu-item" to={item.route} key={item.title}>
+          <span className="mobile-menu-icon"><item.icon size={20} aria-hidden="true"/></span>
+          <span className="mobile-menu-text"><strong>{item.title}</strong><small>{item.subtitle}</small></span>
+          <ChevronRight size={18} aria-hidden="true" className="mobile-menu-chevron" />
+        </Link> : item.href ? <a className="mobile-menu-item" href={item.href} target="_self" onClick={openAccount} key={item.title}>
           <span className="mobile-menu-icon"><item.icon size={20} aria-hidden="true"/></span>
           <span className="mobile-menu-text"><strong>{item.title}</strong><small>{item.subtitle}</small></span>
           <ChevronRight size={18} aria-hidden="true" className="mobile-menu-chevron" />

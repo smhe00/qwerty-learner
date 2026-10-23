@@ -21,6 +21,7 @@ on:
       - 'src/learn/**'
       - 'tests/learn/mobile-review-commit-contract.test.mjs'
       - 'tests/e2e/mobile-p0.*'
+      - 'tests/e2e/mobile-learning-loop.spec.ts'
       - 'tests/e2e/mobile-account*'
       - 'tests/e2e/desktop-account*'
       - 'src/components/Header/index.tsx'

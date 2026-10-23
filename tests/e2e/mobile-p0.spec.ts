@@ -46,7 +46,7 @@ test('Mobile keeps the independent app menu without Typing controls', async ({ p
   await expect(menu.getByRole('link', { name: '开始手机学习' })).toBeVisible()
   await expect(menu.getByText('账号与云同步', { exact: true })).toBeVisible()
   await expect(menu.getByText('设置', { exact: true })).toBeVisible()
-  await expect(menu.getByText('即将开放', { exact: true })).toHaveCount(4)
+  await expect(menu.getByText('即将开放', { exact: true })).toHaveCount(2)
   await expect(menu.getByRole('link', { name: /账号与云同步/ })).toHaveAttribute('href', '/mobile/account')
   await expect(menu.locator('[data-mobile-account-entry]')).toHaveAttribute('href', '/mobile/account')
   await expect(page.locator('header nav.focus-header-nav')).toHaveCount(0)

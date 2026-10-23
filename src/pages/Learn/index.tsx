@@ -334,7 +334,7 @@ export default function LearnPage({ mobile = false }: { mobile?: boolean } = {})
 
   if (mobile) {
     return (
-      <main data-mobile-study-start className="mobile-app mobile-study">
+      <main ref={learnPageRootRef} data-mobile-study-start className="mobile-app mobile-study">
         <div className="mobile-study-inner">
           <header className="mobile-study-top">
             <button type="button" className="mobile-back" onClick={() => navigate('/mobile')} aria-label="返回主菜单">‹ 返回</button>
