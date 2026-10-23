@@ -30,6 +30,7 @@ export type WitnessedM4BootResult =
 
 export async function adoptWitnessedM3AtGuardedBoot(
   registry: Registry,
+  options: { preMountAccountManagement?: boolean } = {},
 ): Promise<WitnessedM4BootResult> {
   const skip = (reason: string): WitnessedM4BootResult =>
     ({ status: 'skipped', reason })
@@ -40,11 +41,18 @@ export async function adoptWitnessedM3AtGuardedBoot(
       !navigator.onLine) return skip('inactive-etest-account-or-offline')
   // Account management, imports and recovery must never be interrupted by a
   // background adoption or an unexpected in-between document reload.
-  if (!['/', '/learn', '/mobile', '/mobile/study'].includes(
-    window.location.pathname.replace(/\/$/, '') || '/')) {
+  const pathname = window.location.pathname.replace(/\/$/, '') || '/'
+  const accountManagement = options.preMountAccountManagement === true &&
+    ((pathname === '/' &&
+      new URLSearchParams(window.location.search).get('s1-account') === 'manage') ||
+     (pathname === '/mobile/account' && window.location.search === ''))
+  if (!accountManagement &&
+      !['/', '/learn', '/mobile', '/mobile/study'].includes(pathname)) {
     return skip('non-learn-route')
   }
-  if (window.location.search) return skip('account-or-tool-query')
+  if (window.location.search && !accountManagement) {
+    return skip('account-or-tool-query')
+  }
   const auth = loadAuth()
   const accountId = registry.active.accountId
   if (!auth?.token || auth.user.userId !== accountId ||

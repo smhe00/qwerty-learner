@@ -146,6 +146,18 @@ export function renderS1AccountManagement(
         }
         if (result.status === 'idle' || result.remaining === 0) break
       }
+      // The next device can revoke this bearer immediately after navigation.
+      // The account-management page is itself S1-pre-mount and writer-locked,
+      // so perform monotonic M4 local adoption BEFORE releasing that lease.
+      // A later normal boot will retry if a POP has not exposed the receipts.
+      const { adoptWitnessedM3AtGuardedBoot } =
+        await import('./m4-witnessed-prefix-browser')
+      const registry = await workspaceRegistryPort.read()
+      const adopted = await adoptWitnessedM3AtGuardedBoot(registry,
+        { preMountAccountManagement: true })
+      if (adopted.status === 'blocked') {
+        console.warn('Etest login witnessed M4 adoption deferred:', adopted.reason)
+      }
     } catch (error) {
       console.warn('Etest login M3 upload deferred; local outbox kept', error)
     }
