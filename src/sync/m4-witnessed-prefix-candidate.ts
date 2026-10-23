@@ -22,7 +22,7 @@ import type { WorkspaceSnapshotV4 } from './workspace-v4'
 
 type Row = Record<string, unknown>
 type Table = { tableName: string; rows: Row[] }
-type Database = { data: { data: Table[] } }
+type Database = { data: { data: Table[]; tables: { name: string; rowCount?: number }[] } }
 
 export type MonotonicM4Candidate =
   | { status: 'blocked'; reason: string; publishReady: false;
@@ -176,6 +176,21 @@ export async function previewMonotonicWitnessedM4(input: {
     }
     candidateWords.push(...additions.map((record, index) =>
       ({ ...structuredClone(record), id: lastWordId + index + 1 })))
+    // Dexie exports an explicit rowCount in each table's manifest. Keeping
+    // its OLD value after adding UUID rows causes the candidate V4 fingerprint
+    // to disagree with a fresh post-import db.export() and abort M4 readback.
+    // Only update the two mutated tables, retaining every other manifest byte.
+    const manifest = (candidate.workspaceData.database as Database).data.tables
+    for (const name of ['wordRecords', 'reviewWordStates']) {
+      const entry = manifest.find(item => item.name === name)
+      if (!entry) return fail('m4-prefix-missing-table-manifest:' + name)
+      if (entry.rowCount !== undefined) {
+        if (!Number.isSafeInteger(entry.rowCount) || entry.rowCount < 0) {
+          return fail('m4-prefix-invalid-table-row-count:' + name)
+        }
+        entry.rowCount = table(candidate, name).length
+      }
+    }
     // All six durable tables are present. No other table, session, setting or
     // navigation object is changed; every original WordRecord remains exact.
     assertRestorableWorkspaceV4(candidate)
