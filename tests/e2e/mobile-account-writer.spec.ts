@@ -63,7 +63,7 @@ for (const entry of ['avatar', 'menu']) {
     await page.getByRole('button', { name: '登录或注册', exact: true }).tap()
     await expect(page.locator('[data-mobile-account]')).toBeVisible()
     expect(context.pages()).toHaveLength(1)
-    expect(await page.evaluate(() => history.length)).toBe(historyLength + 1)
+    expect(await page.evaluate(() => history.length)).toBe(historyLength)
     expect(await page.evaluate(() => sessionStorage.getItem('account-click-handled'))).toBe('true')
   })
 }

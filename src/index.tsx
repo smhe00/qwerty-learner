@@ -7,6 +7,7 @@ import { loadAuth } from './sync/auth'
 import { presentSafetyDialog, showInformationDialog } from './sync/dialog-presentation'
 import { learningEventSyncEnabled } from './sync/learning-sync-policy'
 import { startPerfStage, timePerfStage } from './sync/perf-diagnostics'
+import { offerSecureLearningEntry } from './sync/secure-entry'
 import { prepareGuardedWorkspaceBoot } from './sync/workspace-bootstrap'
 import type { GuardedWorkspaceBoot, WorkspaceBootStage } from './sync/workspace-bootstrap'
 import type { Workspace } from './sync/workspace-transition'
@@ -197,6 +198,7 @@ async function start(): Promise<void> {
   if (starting || releasedForPageHide) return
   starting = true
   try {
+    await offerSecureLearningEntry(root)
     if (new URLSearchParams(window.location.search).get('learn-block') === '1') {
       const { renderLearnBlockSyncScreen } = await import('./sync/learn-block-sync-ui')
       renderLearnBlockSyncScreen(root, null)

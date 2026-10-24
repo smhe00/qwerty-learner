@@ -13,7 +13,9 @@ export default function AccountOverview() {
   const manage = () => {
     const base = REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner/' : '/'
     const mobile = pathname.startsWith('/mobile')
-    window.location.assign(base + (mobile ? 'mobile/account?' : '?s1-account=manage&') + 's1-reauth=1')
+    // Do not retain the mounted writer as a history/BFCache predecessor on mobile.
+    // The old document keeps its lease until destruction; never steal/release it early.
+    window.location.replace(base + (mobile ? 'mobile/account?' : '?s1-account=manage&') + 's1-reauth=1')
   }
   return (
     <Dialog open={open} onClose={() => closeAccountDialog()} className="fixed inset-0 z-50">

@@ -6,6 +6,7 @@ import logo from '@/assets/logo.svg'
 import { currentDictInfoAtom } from '@/store'
 import { openAccountDialog } from '@/sync/account-dialog-events'
 import { loadAuth } from '@/sync/auth'
+import { secureLearningEntry } from '@/sync/learning-sync-policy'
 import { useAtomValue } from 'jotai'
 import { BookOpen, ChevronRight, CircleUserRound, Cloud, LayoutGrid, Medal, Settings2 } from 'lucide-react'
 import type { MouseEvent } from 'react'
@@ -122,7 +123,9 @@ export default function MobilePage() {
             ),
           )}
         </section>
-        <footer className="mobile-home-footer">手机端独立界面 · 与桌面共享学习数据</footer>
+        <footer className="mobile-home-footer">
+          {secureLearningEntry(window.location.href) ? '当前仅在本机保存 · 请使用安全站点同步' : '手机端独立界面 · 与桌面共享学习数据'}
+        </footer>
       </div>
     </main>
   )

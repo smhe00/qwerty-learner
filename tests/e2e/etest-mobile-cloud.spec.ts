@@ -10,7 +10,15 @@ async function ready(page: Page, mobile = false) {
   if (await notice.isVisible()) await notice.getByRole('button', { name: '知道了', exact: true }).click()
 }
 async function login(page: Page, username: string, password: string, mobile = false) {
-  await page.goto(base + (mobile ? '/mobile/account' : '/?s1-account=manage'), { waitUntil: 'domcontentloaded' })
+  await page.goto(base + (mobile ? '/mobile' : '/?s1-account=manage'), { waitUntil: 'domcontentloaded' })
+  if (mobile) {
+    await ready(page, true)
+    const historyLength = await page.evaluate(() => history.length)
+    await page.getByRole('link', { name: '登录或注册', exact: true }).tap()
+    await page.getByRole('button', { name: '登录或注册', exact: true }).tap()
+    await expect(page.locator('[data-mobile-account]')).toBeVisible({ timeout: 60_000 })
+    expect(await page.evaluate(() => history.length)).toBe(historyLength)
+  }
   await expect(page.locator('[data-account]')).toBeVisible({ timeout: 60_000 })
   await page.getByLabel('用户名', { exact: true }).fill(username)
   await page.getByLabel('账户密码', { exact: true }).fill(password)

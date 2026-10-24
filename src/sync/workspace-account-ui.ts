@@ -100,6 +100,7 @@ export function renderS1AccountManagement(
               session_revoked: '登录状态已失效，请重新登录当前账号。',
               session_expired: '登录已过期，请重新登录当前账号。',
               invalid_token: '登录状态无效，请重新登录当前账号。',
+              https_required: '请打开 HTTPS 安全站点后登录和同步。',
               cloud_disabled: '此开发预览暂不提供登录和注册。',
             } as Record<string, string>
           )[error.code] || '暂时无法完成认证，请稍后重试。'
