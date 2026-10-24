@@ -101,7 +101,7 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
             onClick={inspectAccount}
             className="focus-surface flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"
             aria-label={auth ? '账号：' + auth.user.username : '账号：登录或注册'}
-            title={auth ? (accountExpired ? '会话已过期；点击重新登录' : '账户管理与安全退出') : '登录或注册'}
+            title={auth ? (accountExpired ? '会话已过期；点击重新登录' : '账户管理与安全退出') : '单设备使用无需登录'}
             data-account-entry
           >
             <UserCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
