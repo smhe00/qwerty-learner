@@ -429,6 +429,12 @@ async function start(): Promise<void> {
     const finishFirstFrame = startPerfStage('startup', 'entry-to-first-frame')
     await timePerfStage('startup', 'app-module-import', () => import('./app'))
     mounted = true
+    // Login, restore, writer acquisition and mounting have already completed.
+    // A failed/lost maintenance request never blocks this startup path.
+    void import('./sync/idle-maintenance-trigger').then(async ({ startIdleMaintenance }) => {
+      const { triggerIdleMaintenance } = await import('./sync/api')
+      startIdleMaintenance(triggerIdleMaintenance, loadAuth()?.token)
+    }).catch(() => { /* Cloud maintenance is independent of local learning. */ })
     requestAnimationFrame(() => finishFirstFrame())
     if (boot.mode === 'isolated') {
       const { startSessionRevocationMonitor } = await import('./sync/session-revocation')

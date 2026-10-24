@@ -1,6 +1,8 @@
 /* eslint-env node */
 import { isIsolatedEtestPilotOrigin } from '../_shared/etest-pilot-origin.js'
 import crypto from 'node:crypto'
+import { administratorCredentials } from '../_shared/administrator.js'
+import { createIdleAccounts, isAdministrator } from '../_shared/idle-accounts.js'
 import { getStore } from '@edgeone/pages-blob'
 import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
 import { circleAccountHasActivity, createCircleOpenGateway } from '../_shared/circle/open-gateway.js'
@@ -158,7 +160,7 @@ function makeStorage(env) {
   return createEdgeOneBlobStorage(store)
 }
 
-function makeService(env, storage) {
+function makeService(env, storage, idle) {
   // Append-only authenticated receipts need no Maker environment variable.
   // They cannot overwrite V4. Single-active-session remains enforced here.
   return createBackendService({
@@ -169,6 +171,9 @@ function makeService(env, storage) {
     // never authorize cloud mutation, even on isolated etest.
     multiSessionEnabled: false,
     eventPilotEnabled: true,
+    activityGuard: idle.touch,
+    registrationGuard: idle.beforeRegister,
+    credentials: administratorCredentials(env),
   })
 }
 
@@ -303,7 +308,42 @@ export async function onRequest(context) {
     }
 
     const storage = makeStorage(env)
-    const service = makeService(env, storage)
+    const idle = createIdleAccounts({
+      store: getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }),
+      adminUserId: env.ADMIN_USER_ID || '', startAt: env.IDLE_POLICY_START_AT,
+      execute: env.IDLE_CLEANUP_EXECUTE === 'true',
+    })
+    const service = makeService(env, storage, idle)
+    if (path === '/maintenance/idle' && request.method === 'POST') {
+      // Any live account may signal maintenance, but never chooses an account,
+      // cursor or deletion policy. This request is separate from login/sync.
+      await service.me(bearer(request))
+      try { return json({ ok: true, ...await idle.runDaily() }, 200, cors) }
+      catch { return json({ ok: true, status: 'unavailable' }, 200, cors) }
+    }
+    if (path === '/account-policy' && request.method === 'GET') {
+      return json({ ok: true, enabled: idle.configured, idleDays: 180 }, 200, cors)
+    }
+    if (path === '/admin/access' && request.method === 'GET') {
+      const { user } = await service.me(bearer(request))
+      return json({ ok: true, administrator: isAdministrator({ ...user,
+        normalizedUsername: user.username.toLowerCase(), status: 'active',
+      }, env.ADMIN_USER_ID), policyEnabled: idle.configured }, 200, cors)
+    }
+    if (path === '/admin/storage' && request.method === 'GET') {
+      const { user } = await service.me(bearer(request))
+      await idle.requireAdmin({ ...user, normalizedUsername: user.username.toLowerCase(), status: 'active' })
+      return json({ ok: true, ...await idle.usage() }, 200, cors)
+    }
+    if (path === '/admin/idle' && ['GET', 'POST'].includes(request.method)) {
+      const { user } = await service.me(bearer(request))
+      await idle.requireAdmin({ ...user, normalizedUsername: user.username.toLowerCase(), status: 'active' })
+      const body = request.method === 'POST' ? await readJson(request, 4096) : {}
+      const result = await idle.run({ dryRun: request.method === 'GET' || body.dryRun !== false,
+        cursor: request.method === 'GET' ? url.searchParams.get('cursor') || '' : body.cursor || '',
+        limit: 5 })
+      return json({ ok: true, ...result }, 200, cors)
+    }
     const bodyLimit =
       Math.ceil(numberEnv(env.MAX_SYNC_BYTES, 16 * 1024 * 1024) * 1.5) + 256 * 1024
 

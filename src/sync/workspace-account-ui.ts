@@ -3,7 +3,7 @@
  * tree must not exist while switching IndexedDB and per-workspace settings.
  * Only the active guarded entry may render this surface under the writer lease.
  */
-import { SyncApiError, changePassword, login, register } from './api'
+import { SyncApiError, changePassword, getIdleAccountPolicy, login, register } from './api'
 import { browserDeviceId, loadAuth } from './auth'
 import { presentAccount } from './mobile-account-view'
 import type { CloudAuthState } from './types'
@@ -99,6 +99,11 @@ export function renderS1AccountManagement(
               invalid_password: '密码需为 4–128 位。',
               session_revoked: '登录状态已失效，请重新登录当前账号。',
               session_expired: '登录已过期，请重新登录当前账号。',
+              account_cleanup_pending: '账号正在进行到期维护，已请求取消清理；请稍后重试。',
+              environment_password_managed: '管理员密码只能在服务器环境变量中修改。',
+              administrator_protected: '管理员账号不能删除。',
+              administrator_account_reserved: '管理员账号已保留，请使用现有账号登录。',
+              username_cleanup_pending: '该用户名正在完成到期清理，请24小时后重试注册。',
               invalid_token: '登录状态无效，请重新登录当前账号。',
               https_required: '请打开 HTTPS 安全站点后登录和同步。',
               cloud_disabled: '此开发预览暂不提供登录和注册。',
@@ -229,7 +234,11 @@ export function renderS1AccountManagement(
   // DOM event listeners receive PointerEvent; never stringify it as a toast.
   const back = button('取消并返回学习', () => navigate())
   controls.push(back)
-  main.append(heading, current, authState, guidance, actions, status)
+  const retention = node('p')
+  void getIdleAccountPolicy().then(policy => {
+    if (policy.enabled) retention.textContent = '云端账号连续180天未登录或有效访问云端，将连同云端数据清理。本机学习记录保留。当前没有邮件或短信通知。'
+  }).catch(() => { /* Unavailable policy/access must not grant admin privileges. */ })
+  main.append(heading, current, authState, guidance, retention, actions, status)
   overlay.append(main)
   root.replaceChildren(overlay)
   const accountView = presentAccount({

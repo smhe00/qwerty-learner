@@ -1,3 +1,4 @@
+import AdministratorPanel from './AdministratorPanel'
 import { closeAccountDialog, isAccountDialogOpen, subscribeAccountDialog } from './account-dialog-events'
 import { loadAuth } from './auth'
 import { Dialog } from '@headlessui/react'
@@ -31,7 +32,7 @@ export default function AccountOverview() {
         }}
         onKeyUp={(event) => event.stopPropagation()}
       >
-        <Dialog.Panel className="focus-overlay-panel w-full max-w-md rounded-2xl p-6" data-account-overview>
+        <Dialog.Panel className="focus-overlay-panel max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl p-6" data-account-overview>
           <div className="mb-5 flex items-center justify-between">
             <Dialog.Title className="text-xl font-semibold">我的账号</Dialog.Title>
             <button type="button" aria-label="关闭账号窗口" onClick={() => closeAccountDialog()} className="rounded-lg px-3 py-2">
@@ -48,6 +49,7 @@ export default function AccountOverview() {
           <button type="button" className="rounded-lg bg-indigo-600 px-4 py-2 text-white" onClick={manage}>
             {auth ? '登录与账号管理' : '登录或注册'}
           </button>
+          {open && <AdministratorPanel key={auth?.user.userId || "anonymous"} token={expired ? undefined : auth?.token} />}
         </Dialog.Panel>
       </div>
     </Dialog>

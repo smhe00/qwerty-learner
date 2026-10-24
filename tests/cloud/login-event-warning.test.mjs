@@ -11,7 +11,7 @@ const tmp = mkdtempSync(join(tmpdir(), 'qwerty-login-warning-'))
 after(() => rmSync(tmp, { recursive: true, force: true }))
 const mocks = {
   './api':
-    'export class SyncApiError extends Error {}; export const login=(...x)=>globalThis.__warning.login(...x); export const register=login; export const changePassword=login;',
+    'export class SyncApiError extends Error {}; export const login=(...x)=>globalThis.__warning.login(...x); export const register=login; export const changePassword=login; export const getIdleAccountPolicy=async()=>({enabled:false});',
   './auth':
     'export const browserDeviceId=()=>"synthetic-device"; export const loadAuth=()=>globalThis.__warning.auth; export const setIsolatedAuthRetention=()=>{};',
   './learning-sync-policy': 'export const learningEventSyncEnabled=()=>true;',

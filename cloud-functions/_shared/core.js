@@ -260,9 +260,10 @@ function sanitizeDeviceId(deviceId) {
     : null
 }
 
-function createSession(identity, authVersion, version, sessionTtlSeconds, deviceId) {
+function createSession(identity, authVersion, version, sessionTtlSeconds, deviceId, signToken) {
   const randomSecret = base64UrlEncode(crypto.randomBytes(SESSION_RANDOM_BYTES))
-  const token = `${SESSION_TOKEN_PREFIX}.${identity.usernameHash}.${randomSecret}`
+  const baseToken = `${SESSION_TOKEN_PREFIX}.${identity.usernameHash}.${randomSecret}`
+  const token = signToken ? signToken(baseToken, identity) : baseToken
   const issuedAt = unixSeconds()
   const expiresAt = issuedAt + sessionTtlSeconds
 
@@ -292,7 +293,8 @@ function parseSessionToken(token) {
 
   const parts = token.split('.')
   if (
-    parts.length !== 3 ||
+    (parts.length !== 3 && parts.length !== 4) ||
+    (parts.length === 4 && !/^[A-Za-z0-9_-]{43}$/.test(parts[3])) ||
     parts[0] !== SESSION_TOKEN_PREFIX ||
     !/^[a-f0-9]{64}$/.test(parts[1]) ||
     !/^[A-Za-z0-9_-]{40,64}$/.test(parts[2])
@@ -328,6 +330,9 @@ export function createBackendService({
   authHistoryRetention = DEFAULT_AUTH_HISTORY_RETENTION,
   multiSessionEnabled = false,
   eventPilotEnabled = false,
+  activityGuard = null,
+  registrationGuard = null,
+  credentials = null,
 }) {
   if (!storage) throw new Error('storage is required')
   if (!Number.isInteger(snapshotRetention) || snapshotRetention < 1) {
@@ -359,6 +364,7 @@ export function createBackendService({
   }
 
   async function getCurrentAuth(identity) {
+    if (credentials?.matches(identity)) return { version: 1, environmentManaged: true }
     const latest = await storage.getLatestAuth(identity.usernameHash)
     return latest || identity.initialAuth
   }
@@ -374,7 +380,7 @@ export function createBackendService({
     if (typeof storage.createIndependentSession !== 'function') {
       throw new Error('Independent session storage unavailable')
     }
-    const candidate = createSession(identity, authVersion, 1, sessionTtlSeconds, deviceId)
+    const candidate = createSession(identity, authVersion, 1, sessionTtlSeconds, deviceId, credentials?.sign)
     candidate.record.sessionId = randomHex(16)
     candidate.record.mode = 'independent'
     if (!(await storage.createIndependentSession(
@@ -400,6 +406,7 @@ export function createBackendService({
         nextVersion,
         sessionTtlSeconds,
         deviceId,
+        credentials?.sign,
       )
 
       const created = await storage.createSessionVersion(
@@ -436,6 +443,11 @@ export function createBackendService({
 
     if (!identity || identity.status !== 'active') {
       throw new AppError(401, 'invalid_token', 'Invalid session token')
+    }
+
+    if ((credentials && !credentials.accepts(token, identity)) ||
+        (!credentials && token.split('.').length !== 3)) {
+      throw new AppError(401, 'session_revoked', 'Session credentials have changed')
     }
 
     // Legacy latest-session records remain valid if and only if they were
@@ -482,6 +494,7 @@ export function createBackendService({
       throw new AppError(401, 'session_revoked', 'Session is no longer valid')
     }
 
+    if (activityGuard) await activityGuard(identity)
     return { identity, currentAuth, currentSession }
   }
 
@@ -498,6 +511,7 @@ export function createBackendService({
     validatePassword(password)
 
     const usernameHash = sha256Hex(normalizedUsername)
+    if (registrationGuard) await registrationGuard(usernameHash)
     const existingIdentity = await storage.getAccount(usernameHash)
     if (existingIdentity) {
       throw new AppError(409, 'username_taken', 'Username is already registered')
@@ -538,6 +552,7 @@ export function createBackendService({
       throw new AppError(409, 'username_taken', 'Username is already registered')
     }
 
+    if (activityGuard) await activityGuard(identity)
     return {
       user: publicUser(identity),
       token: initialSession.token,
@@ -556,10 +571,13 @@ export function createBackendService({
     }
 
     const currentAuth = await getCurrentAuth(identity)
-    if (!(await verifyPassword(password, currentAuth.password))) {
+    const passwordValid = currentAuth.environmentManaged
+      ? credentials.verify(password) : await verifyPassword(password, currentAuth.password)
+    if (!passwordValid) {
       throw new AppError(401, 'incorrect_password', 'Password is incorrect')
     }
 
+    if (activityGuard) await activityGuard(identity)
     const session = multiSessionEnabled
       ? await issueIndependentSession(identity, currentAuth.version, deviceId)
       : await issueNextSession(identity, currentAuth.version, deviceId)
@@ -582,6 +600,9 @@ export function createBackendService({
 
   async function changePassword(token, currentPassword, newPassword, deviceId) {
     const { identity, currentAuth } = await authenticate(token)
+    if (currentAuth.environmentManaged) {
+      throw new AppError(403, 'environment_password_managed', 'Change the administrator password in server environment variables')
+    }
     validatePassword(newPassword)
 
     if (!(await verifyPassword(currentPassword, currentAuth.password))) {
@@ -1118,6 +1139,9 @@ export function createBackendService({
 
   async function deleteAccount(token, currentPassword) {
     const { identity, currentAuth } = await authenticate(token)
+    if (credentials?.matches(identity)) {
+      throw new AppError(403, 'administrator_protected', 'Administrator account cannot be deleted')
+    }
 
     if (!(await verifyPassword(currentPassword, currentAuth.password))) {
       throw new AppError(401, 'invalid_credentials', 'Current password is incorrect')

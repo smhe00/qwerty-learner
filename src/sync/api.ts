@@ -1,3 +1,4 @@
+import { noteCloudActivity } from './idle-maintenance-trigger'
 import { secureLearningEntry } from './learning-sync-policy'
 
 /** M3.6 pilot only: these functions cannot be invoked from ordinary Sync UI.
@@ -137,7 +138,8 @@ async function request<T>(
     // The currently saved token was superseded by another device. Broadcast
     // only for the still-current local token: late responses from a previous
     // login must not force a newer session out of its workspace.
-    if (response.status === 401 && error.error === 'session_revoked' && token && typeof window !== 'undefined') {
+    if (response.status === 401 && error.error === 'session_revoked' && token &&
+        !path.startsWith('/api/maintenance/') && typeof window !== 'undefined') {
       try {
         const saved = JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null')
         if (saved?.token === token) {
@@ -155,6 +157,7 @@ async function request<T>(
     )
   }
 
+  if (token && !path.startsWith('/api/maintenance/') && path !== '/api/auth/logout') noteCloudActivity(token)
   return data as T
 }
 
@@ -780,4 +783,41 @@ export function declareChainedDeviceCheckout(
 export function readChainedDeviceCheckout(token: string, selector: DeviceCheckoutSelector) {
   const query = new URLSearchParams(selector)
   return request<VerifiedDeviceCheckoutReply>('/api/sync/events/v2/checkout?' + query, { token })
+}
+
+
+export type IdleCleanupRow = {
+  userId?: string
+  username?: string
+  action: string
+  lastActiveAt?: string
+  expiresAt?: string
+  deletedObjects?: number
+}
+export type IdleCleanupPage = {
+  ok: true
+  dryRun: boolean
+  executionEnabled: boolean
+  nextCursor: string | null
+  results: IdleCleanupRow[]
+}
+export function getAdministratorAccess(token: string) {
+  return request<{ administrator: boolean; policyEnabled: boolean }>('/api/admin/access', { token })
+}
+export function getCloudStorageUsage(token: string) {
+  return request<{ objects: number; accounts: number; reportedBytes: number; sizeComplete: boolean }>(
+    '/api/admin/storage', { token })
+}
+export function inspectIdleAccounts(token: string, cursor = '') {
+  return request<IdleCleanupPage>('/api/admin/idle?cursor=' + encodeURIComponent(cursor), { token })
+}
+export function cleanIdleAccounts(token: string, cursor = '') {
+  return request<IdleCleanupPage>('/api/admin/idle', { token, method: 'POST', body: { dryRun: false, cursor } })
+}
+export function getIdleAccountPolicy() {
+  return request<{ enabled: boolean; idleDays: number }>('/api/account-policy')
+}
+
+export function triggerIdleMaintenance(token: string) {
+  return request<{ status: string }>('/api/maintenance/idle', { token, method: 'POST' })
 }
