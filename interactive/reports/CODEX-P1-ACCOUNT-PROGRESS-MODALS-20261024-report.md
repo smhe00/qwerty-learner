@@ -1,10 +1,10 @@
 # Account, progress and dialog continuity
 
-Status: IN_PROGRESS. Base d2306803fd7ee78a53417b71d2655f3dd4e65039.
+Status: DONE (authorized application release verified; CI cleanup exceptions documented below). Base d2306803fd7ee78a53417b71d2655f3dd4e65039.
 
 Root causes: revoked entry does not carry reauth intent; account presentation tests expiry only and hides credentials. Learn sync UI hardcodes light colors. Daily completion requires clean independent eligible review, while the scheduler already reschedules failed eligible reviews; exhausted state still shows add-five. Mobile-to-desktop resize and account inspection use document navigation, reacquiring the unchanged writer lease.
 
-No customer data mutation. Implementation and focused validation completed; release gates in progress.
+No customer data mutation. Implementation, focused validation and authorized production release completed.
 
 
 ## Implementation and focused evidence
@@ -22,7 +22,7 @@ No customer data mutation. Implementation and focused validation completed; rele
 
 ## Release checkpoint
 
-Main commit, exact etest source/gates, focused live disposable-account test and production promotion pending. Required gates remain unchanged. No production regression accounts will be created by this task.
+Completed: main integration, exact-SHA etest qualification and master publication. Required gates remain unchanged. No production regression accounts were created by this task. Details and exceptions follow.
 
 - Existing Learn persisted-statistics/reload browser scenario1/1 PASS. Opening, registration tab policy and return path1/1 PASS after the actual ResizeObserver fix. Debug instrumentation removed.
 
@@ -38,4 +38,20 @@ A final Pages-only path review found the account overview inspected the raw `/qw
 
 Native-modal CI adaptation: 843cc887 Cloud browser4/4 passed; its transport upload/readback passed but test-account deletion returned HTTP500. The three-device test reached a restored application with an informational modal and could not query the inert settings button. The test now acknowledges only `dialog.safety-information-dialog` via its real Know button after proving the app DOM mounted; recovery, ownership, convergence and raw-row assertions remain unchanged. The historical helper uses the same interaction. Initial e4 historical run hit its10-minute timeout without a cleanup proof; do not claim that account was deleted. 53076425 M3 relay functional assertions passed but cleanup returned account_delete_unavailable; cleanup remains unverified. These staging-only cleanup limitations do not authorize any customer-account deletion.
 
-Final-source local P4b lost-commit-ack case PASS1/1 unchanged, after CI48/49 with a transient fingerprint mismatch; original failure retained. Source and full-V4 safety guards were not changed to pass the test.
+Final-source local P4b lost-commit-ack case PASS1/1 unchanged, after CI48/49 with a fingerprint mismatch not reproduced by the focused rerun; original failure retained. Source and full-V4 safety guards were not changed to pass the test.
+
+## Authorized release selection
+
+Release commit: 5307642581b30d7d30850410a0e2cbb344cbc50c. It was integrated into main, promoted to etest, then passed published Pages40088624064, real EdgeOne browser+Blob40088638539 and three-device offline convergence40088638558. Release Readiness job120857792257 records the exact SHA and those runs; all three Cloud/release-readiness jobs succeeded. Both Blob test accounts were verified deleted in the passing53076425 qualification run. Master advanced from05e5e8f0 to53076425 at2026-10-24T11:21:25Z under the owner's explicit release authorization. Production deployment verification40089576440 is read-only.
+
+Development e28e57372cd3762319c2a38b15e051553f12cf22 only adds modal-aware test steps and report text; the application source tree is byte-identical to the released53076425 (src treebc1c700b4ebc9c67c18d8d2a3d093118a0478ee6, no other runtime files differ). It is intentionally not a second production release. Its three-device run40089135406 passed. Its Blob negative-SHA probe received EdgeOne503 v4_direct_body_read_failed before the expected400, while both disposable accounts were cleaned. That failed run is retained, not counted as qualification; the release uses the earlier actually passing identical application. Its separate M3 relay passed event assertions but DELETE returned500 account_delete_unavailable, so that synthetic account's cleanup is unverified.
+
+No production account was created, logged into, modified or erased by this task. The production three-device workflow remains manual. Existing user-supplied records were only read/recounted; there was no migration, history rewrite, UUID repair, FSRS change, weakened lossless validation or bypass of genuine account-transition writer ownership. Automatic historical test cleanup without proof remains an explicitly recorded limitation, not a claim of deletion.
+
+## Production completion
+
+2026-10-24T11:23:54Z: read-only production run40089576440 PASS, q.smhe.cn marker5307642 matches full5307642581b30d7d30850410a0e2cbb344cbc50c, gateway qwerty-sync-gateway health200/apiVersion1. A fresh anonymous browser then opened /learn with all non-read requests blocked: footer `Version 5307642` visible,24 JavaScript assets actually loaded,0 blocked non-read requests, no authentication. Redacted proof is adjacent to this report.
+
+Published behavior: direct same-account revoked reauthentication; themed compact account/sync/information dialogs; completed daily formal review separated from independent recall/consolidation; ordinary account inspection/close and responsive page layout retain the document and writer lease. Actual login/logout/restore still uses guarded pre-mount ownership. Subsequent development commits contain only testing/report improvements, not a different application release.
+
+Remaining operational observations: historical comprehensive CI runs on earlier candidates timed out without a cleanup receipt; some independent staging test-account DELETE calls returned500. Do not claim these accounts were deleted. New modal-aware historical CI40089135292 is tracked separately and was still running during final report preparation. These are excluded from passing release evidence. No existing production user data was accessed or modified.
