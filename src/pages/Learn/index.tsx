@@ -1,4 +1,5 @@
 import FiveMoreButton from './components/FiveMoreButton'
+import DesktopStartGuide from '@/components/DesktopStartGuide'
 import Header from '@/components/Header'
 import Layout from '@/components/Layout'
 import ModeSwitcher from '@/components/ModeSwitcher'
@@ -392,6 +393,8 @@ export default function LearnPage({ mobile = false }: { mobile?: boolean } = {})
                 ? '按任意键开始 Learn；Enter 暂停或继续。'
                 : '正在加载词表…')}
         </span>
+
+        {!isStarting && wordList && !canLearnMoreToday && !statusText && <DesktopStartGuide />}
 
         {canLearnMoreToday && <FiveMoreButton disabled={isStarting || !wordList} onClick={() => startLearn(true)} />}
       </main>

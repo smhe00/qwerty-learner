@@ -1,3 +1,4 @@
+import { reviewWords } from './review-flow-harness'
 import { expect, test } from '@playwright/test'
 
 const snapshots = 'test-results/focus-ui'
@@ -194,5 +195,38 @@ for (const mode of ['typing', 'learn'] as const) {
     await page.setViewportSize({ width: 700, height: 900 })
     await expect(page).toHaveURL(/\/mobile$/, { timeout: 10_000 })
     await expect(page.locator('header nav.focus-header-nav')).toHaveCount(0)
+  })
+}
+
+for (const mode of ['typing', 'learn'] as const) {
+  test(mode + ': desktop start guide explains the site and hides after starting', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.route('**/dicts/**', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(reviewWords) }))
+    await page.goto('/' + mode)
+    const guide = page.locator('[data-desktop-start-guide]')
+    await expect(guide).toBeVisible({ timeout: 25_000 })
+    await expect(guide).toContainText('Typing 练打字')
+    await expect(guide).toContainText('Learn 记单词')
+    await expect(guide).toContainText('点词典名选词库')
+    await expect(guide).toContainText('右上调整发音与显示')
+    await expect(guide).toContainText('单设备使用无需登录')
+    await expect(guide).toContainText('多设备可登录同步')
+    await page.screenshot({ path: snapshots + '/' + mode + '-start-guide.png' })
+    await page.getByRole('button', { name: '开关深色模式' }).click()
+    await expect(page.locator('html')).toHaveClass(/dark/)
+    await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(16, 23, 34)')
+    await page.screenshot({ path: snapshots + '/' + mode + '-start-guide-dark.png' })
+    await page.setViewportSize({ width: 701, height: 800 })
+    await expect(guide).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.keyboard.press('a')
+    const word = page.locator('[data-typing-word]').first()
+    await expect(word).toHaveAttribute('data-typing-active', 'true', { timeout: 30_000 })
+    await expect(word).toHaveAttribute('data-typing-input', '')
+    await expect(guide).toHaveCount(0)
+    await page.keyboard.press('Enter')
+    await expect(word).toHaveAttribute('data-typing-active', 'false')
+    await expect(guide).toHaveCount(0)
   })
 }

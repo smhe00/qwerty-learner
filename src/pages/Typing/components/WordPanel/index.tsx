@@ -1,3 +1,4 @@
+import DesktopStartGuide from '@/components/DesktopStartGuide'
 import { shouldIgnoreTypingKeyEvent } from '@/utils'
 import { TypingContext, TypingStateActionType } from '../../store'
 import type { TypingState } from '../../store/type'
@@ -56,6 +57,10 @@ import { useHotkeys } from 'react-hotkeys-hook'
 export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
   // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
   const { state, dispatch } = useContext(TypingContext)!
+  const [hasSessionStarted, setHasSessionStarted] = useState(state.isTyping)
+  useEffect(() => {
+    if (state.isTyping) setHasSessionStarted(true)
+  }, [state.isTyping])
   const phoneticConfig = useAtomValue(phoneticConfigAtom)
   const currentDictId = useAtomValue(currentDictIdAtom)
   const isShowPrevAndNextWord = useAtomValue(isShowPrevAndNextWordAtom)
@@ -793,10 +798,14 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
           <div className="focus-word-layout relative flex w-full justify-center">
             {!state.isTyping && (
               <div className="absolute flex h-full w-full justify-center">
-                <div className="z-10 flex w-full items-center backdrop-blur-sm">
+                <div
+                  className="z-10 flex w-full flex-col items-center justify-center gap-8 backdrop-blur-sm"
+                  style={!mobile && !hasSessionStarted && !state.timerData.time ? { backgroundColor: 'var(--focus-canvas)' } : undefined}
+                >
                   <p className="w-full select-none text-center text-xl text-gray-600 dark:text-gray-50">
                     按任意键{state.timerData.time ? '继续' : '开始'}
                   </p>
+                  {!mobile && !hasSessionStarted && !state.timerData.time && <DesktopStartGuide />}
                 </div>
               </div>
             )}
