@@ -271,3 +271,94 @@ test('mixed legacy history does not obstruct verified event preview or weaken re
     assert.equal(refused.remoteAttemptCount, 0)
   }
 })
+
+test('unchanged long witnessed history uses fresh digest, zero batch downloads and no projection', async () => {
+  const chain = []
+  for (let n = 1; n <= 64; n++) chain.push(batch(1, n, 100 + n, [row(100 + n)], n > 1 ? receiptFrom(chain[n - 2]) : null))
+  const localRecords = chain.flatMap((x) => x.events).map((r, i) => ({ ...r, id: i + 1 }))
+  const original = structuredClone(localRecords)
+  const { port } = makePort(chain)
+  let verified = 0,
+    reads = 0
+  const verify = port.verifyHeads
+  port.verifyHeads = async (heads) => {
+    verified++
+    return verify(heads)
+  }
+  port.read = async () => {
+    reads++
+    throw Error('unchanged history downloaded again')
+  }
+  const result = await inspect({ accountId, heads: [receiptFrom(chain.at(-1))], localRecords, port, allowUnchanged: true })
+  assert.equal(result.status, 'unchanged')
+  assert.equal(result.remoteAttemptCount, 64)
+  assert.equal(verified, 1)
+  assert.equal(reads, 0)
+  assert.ok(!('projection' in result) && !('remoteEvents' in result))
+  assert.equal(result.publishReady, false)
+  assert.equal(result.convergenceComplete, false)
+  assert.deepEqual(localRecords, original)
+})
+
+test('same count and UUID with changed contents never take the no-change shortcut', async () => {
+  const a = batch(1, 1, 201, [row(201)])
+  const view = await inspect({
+    accountId,
+    heads: [receiptFrom(a)],
+    localRecords: [{ ...row(201), wrongCount: 7 }],
+    port: makePort([a]).port,
+    allowUnchanged: true,
+  })
+  assert.equal(view.status, 'blocked')
+  assert.match(view.reason, /identity-conflict/)
+})
+
+test('new remote attempts still download and undergo the full original projection', async () => {
+  const a = batch(1, 1, 211, [row(211), row(212)])
+  const { port } = makePort([a])
+  const read = port.read
+  let reads = 0
+  port.read = async (x) => {
+    reads++
+    return read(x)
+  }
+  const result = await inspect({ accountId, heads: [receiptFrom(a)], localRecords: [row(211)], port, allowUnchanged: true })
+  assert.equal(result.status, 'witnessed')
+  assert.equal(reads, 1)
+  assert.equal(result.projection.uniqueAttempts, 2)
+  assert.equal(result.projection.sharedAttempts, 1)
+})
+
+test('no-change proof still refuses revoked ownership, invalid digest and invalid local evidence', async () => {
+  const a = batch(1, 1, 221, [row(221)])
+  for (const options of [{ revokeAfter: 3 }, { fakeDigest: '0'.repeat(64) }]) {
+    const result = await inspect({
+      accountId,
+      heads: [receiptFrom(a)],
+      localRecords: [row(221)],
+      port: makePort([a], options).port,
+      allowUnchanged: true,
+    })
+    assert.equal(result.status, 'blocked')
+  }
+  for (const localRecords of [[{ ...row(221), timeStamp: NaN }], [row(221), { ...row(221), id: 2 }]]) {
+    const result = await inspect({ accountId, heads: [receiptFrom(a)], localRecords, port: makePort([a]).port, allowUnchanged: true })
+    assert.equal(result.status, 'blocked')
+  }
+})
+
+test('local superset only skips replay after the remote chain is fully verified', async () => {
+  const a = batch(1, 1, 231, [row(231)])
+  for (const fakeDigest of [undefined, '0'.repeat(64)]) {
+    const { port } = makePort([a], { fakeDigest })
+    const read = port.read
+    let reads = 0
+    port.read = async (x) => {
+      reads++
+      return read(x)
+    }
+    const result = await inspect({ accountId, heads: [receiptFrom(a)], localRecords: [row(231), row(232)], port, allowUnchanged: true })
+    assert.equal(result.status, fakeDigest ? 'blocked' : 'unchanged')
+    assert.equal(reads, 1)
+  }
+})

@@ -43,6 +43,13 @@ export type WitnessedReaderPort = {
   read(receipt: ChainedReceipt): Promise<WitnessedBatchReadback>
 }
 export type WitnessedReceiveResult =
+  | {
+      status: 'unchanged'
+      reason: 'verified-prefix-already-local'
+      publishReady: false
+      convergenceComplete: false
+      remoteAttemptCount: number
+    }
   | { status: 'blocked'; reason: string; publishReady: false; convergenceComplete: false; remoteAttemptCount: 0 }
   | {
       status: 'witnessed'
@@ -83,6 +90,9 @@ export async function inspectWitnessedDeviceConvergence(input: {
   heads: readonly ChainedReceipt[]
   localRecords: readonly IWordRecord[]
   port: WitnessedReaderPort
+  /** Pre-mount M4 may stop on exact fresh evidence equality. This result
+   * authorizes NO restore, projection, upload or whole-account claim. */
+  allowUnchanged?: boolean
 }): Promise<WitnessedReceiveResult> {
   const { accountId, heads, localRecords, port } = input
   if (!accountId || heads.length < 1 || heads.length > 4 || heads.some((head) => !validReceipt(head))) {
@@ -108,6 +118,32 @@ export async function inspectWitnessedDeviceConvergence(input: {
       !SHA.test(proof.evidenceSha256)
     ) {
       return blocked('witness-server-unverified')
+    }
+
+    const local = planOutboxRecovery(localRecords)
+    if (local.status !== 'ready') return blocked('witness-local-' + local.reason)
+    const unchanged = (): WitnessedReceiveResult => ({
+      status: 'unchanged',
+      reason: 'verified-prefix-already-local',
+      publishReady: false,
+      convergenceComplete: false,
+      remoteAttemptCount: proof.uniqueAttemptCount!,
+    })
+    if (
+      input.allowUnchanged &&
+      local.events.length === proof.uniqueAttemptCount &&
+      preflightAttemptIdentity({ local: localRecords, remote: local.events }).identityConflicts === 0
+    ) {
+      // The fresh authenticated server verifies the complete requested chains.
+      // Independently hash actual raw local immutable evidence, not UUID/count
+      // equality, a receipt listing, a cached result or a V4 fingerprint. Equal
+      // canonical set digests prove no incoming event is missing or different.
+      const entries = local.events
+        .map((row) => [row.attemptId!, stableWorkspaceJson(row)] as const)
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      const localDigest = await sha256Hex(new TextEncoder().encode(stableWorkspaceJson(entries)))
+      await port.assertOwner()
+      if (localDigest === proof.evidenceSha256) return unchanged()
     }
 
     for (const head of uniqueHeads) {
@@ -184,10 +220,13 @@ export async function inspectWitnessedDeviceConvergence(input: {
     // Historical rows stay in the complete V4 snapshot. This event-only
     // preview cannot reidentify them or certify a full scheduler rebuild.
     // Keep known UUID conflicts strict, including older rows without a mode.
-    const local = planOutboxRecovery(localRecords)
-    if (local.status !== 'ready') return blocked('witness-local-' + local.reason)
-    if (preflightAttemptIdentity({ local: localRecords, remote: Array.from(events.values()) }).identityConflicts) {
+    const attemptIdentity = preflightAttemptIdentity({ local: localRecords, remote: Array.from(events.values()) })
+    if (attemptIdentity.identityConflicts) {
       return blocked('witness-projection-identity-conflict')
+    }
+    if (input.allowUnchanged && attemptIdentity.remoteOnly === 0) {
+      await port.assertOwner()
+      return unchanged()
     }
     const projection = projectUuidLearningConvergence({
       local: local.events,

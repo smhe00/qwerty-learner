@@ -11,7 +11,10 @@ import type { ChainedReceipt } from './multi-device-outbox'
 import { workspaceRegistryPort } from './workspace-vault'
 import { db } from '@/utils/db/core'
 
-export async function inspectOwnedWitnessedHistory(heads: ChainedReceipt[]): Promise<WitnessedReceiveResult> {
+export async function inspectOwnedWitnessedHistory(
+  heads: ChainedReceipt[],
+  options: { allowUnchanged?: boolean } = {},
+): Promise<WitnessedReceiveResult> {
   const auth = loadAuth()
   if (!auth || auth.expiresAt * 1000 <= Date.now()) {
     throw new Error('witnessed-receiver-auth-required')
@@ -44,6 +47,7 @@ export async function inspectOwnedWitnessedHistory(heads: ChainedReceipt[]): Pro
     accountId,
     heads,
     localRecords: rows,
+    allowUnchanged: options.allowUnchanged,
     port: {
       assertOwner,
       verifyHeads: (requested) => verifyWitnessedChainedEventHeads(token, requested),

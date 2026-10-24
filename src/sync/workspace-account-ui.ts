@@ -5,8 +5,6 @@
  */
 import { SyncApiError, changePassword, login, register } from './api'
 import { browserDeviceId, loadAuth } from './auth'
-import { SYNC_PENDING_NOTICE, recordLearningSyncDiagnostic } from './learning-sync-diagnostics'
-import { learningEventSyncEnabled } from './learning-sync-policy'
 import { presentAccount } from './mobile-account-view'
 import type { CloudAuthState } from './types'
 import { reauthenticateSameWorkspace, switchAuthenticatedWorkspace } from './workspace-auth-transaction'
@@ -127,93 +125,18 @@ export function renderS1AccountManagement(
     if (message) sessionStorage.setItem('qwerty.s1.last-account-result', message)
     window.location.replace((REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : '') + (mobile ? '/mobile' : '/'))
   }
-  // Pre-M4 authentication checkpoints: production builds strip console calls.
-  // These bounded session flags contain no identity or learning contents.
-  const markLoginSync = (phase: string, reason?: string) => {
-    if (!learningEventSyncEnabled()) return
-    try {
-      const key = 'qwerty.etest.m4.stageTrace.v1'
-      const previous = sessionStorage.getItem(key)
-      const parsed: unknown = previous ? JSON.parse(previous) : []
-      const history = Array.isArray(parsed) ? parsed.slice(-47) : []
-      history.push({ phase, ...(reason ? { reason } : {}) })
-      sessionStorage.setItem(key, JSON.stringify(history))
-    } catch {
-      /* A diagnostic is never required for safe authentication */
-    }
-  }
-  /** Sign-in is the LAST moment this device is guaranteed to
-   * have the active account token before a fast handoff to another device.
-   * The pre-mount S1 page holds the exclusive writer lease. Drain durable M3
-   * events before navigating, so a subsequent login cannot cancel the first
-   * device's still-in-flight startup upload. Never block login on failure:
-   * unfinished evidence stays in the crash-safe local outbox. */
-  const publishPendingAfterAuthentication = async (): Promise<string> => {
-    markLoginSync('auth-start')
+  // Authentication switches the isolated workspace under this document's S1
+  // lease. The destination guarded boot is the SINGLE synchronization owner:
+  // full V4 first, then M3/M4, before any learning writer mounts. Running that
+  // pipeline here as well downloads/replays the same history twice.
+  const finishAuthentication = () => {
     sessionStorage.removeItem('qwerty.etest.m4.idleBlocked')
-    // This document is still pre-mount and holds the S1 writer lease.
-    // An M3 receipt is not evidence that the pre-existing V4 cloud history
-    // was inspected. First perform the SAME-ACCOUNT six-table S2 preflight.
-    // Safe single-sided changes may be CAS uploaded or journal-staged for
-    // restore; a divergent historical workspace remains intact and PENDING.
-    const { checkAccountV4AfterAuthentication } = await import('./account-login-v4-check')
-    setBusy(true, '正在检查云端完整学习记录…')
-    const cloudV4 = await checkAccountV4AfterAuthentication()
-    markLoginSync(
-      cloudV4.status === 'pending' ? 'auth-v4-pending' : cloudV4.status === 'pull-staged' ? 'auth-v4-pull-staged' : 'auth-v4-checked',
-    )
-    if (!cloudV4.canContinue || !learningEventSyncEnabled() || !navigator.onLine) {
-      return cloudV4.detail
-    }
-    let summary = cloudV4.detail
-    try {
-      const { runEtestM3Publication } = await import('./m3-publication-browser')
-      // One cycle publishes at most 2 x 32 attempts. A bounded second cycle
-      // is sufficient for the three-device relay while keeping sign-in finite.
-      for (let n = 0; n < 2; n++) {
-        const result = await runEtestM3Publication()
-        if (result.status === 'blocked') {
-          recordLearningSyncDiagnostic({ stage: 'm3-publication', status: 'blocked', code: result.reason })
-          markLoginSync('auth-m3-blocked')
-          console.warn('Etest login M3 outbox retained:', result.reason)
-          // M4 starts by publishing M3 again. Do not retry a retained failure
-          // here or report its downstream precondition as a second failure.
-          // V4's result stands independently; no event guard is bypassed.
-          return summary || SYNC_PENDING_NOTICE
-        }
-        markLoginSync('auth-m3-complete')
-        if (result.status === 'idle' || result.remaining === 0) break
-        if (n === 1) summary ||= SYNC_PENDING_NOTICE
-      }
-      // The next device can revoke this bearer immediately after navigation.
-      // The account-management page is itself S1-pre-mount and writer-locked,
-      // so perform monotonic M4 local adoption BEFORE releasing that lease.
-      // A later normal boot will retry if a POP has not exposed the receipts.
-      markLoginSync('auth-before-m4')
-      const { adoptWitnessedM3AtGuardedBoot } = await import('./m4-witnessed-prefix-browser')
-      const registry = await workspaceRegistryPort.read()
-      const adopted = await adoptWitnessedM3AtGuardedBoot(registry, { preMountAccountManagement: true })
-      markLoginSync(adopted.status === 'blocked' ? 'auth-m4-blocked' : adopted.status === 'adopted' ? 'auth-m4-adopted' : 'auth-m4-skipped')
-      if (adopted.status === 'blocked') {
-        summary ||= SYNC_PENDING_NOTICE
-        recordLearningSyncDiagnostic({ stage: 'm4-adoption', status: 'blocked', code: adopted.reason })
-        console.warn('Etest login witnessed M4 adoption deferred:', adopted.reason)
-      }
-    } catch (error) {
-      markLoginSync('auth-exception')
-      summary ||= SYNC_PENDING_NOTICE
-      recordLearningSyncDiagnostic({ stage: 'm3-publication', status: 'failed', code: 'unknown' })
-      console.warn('Etest login M3 upload deferred; local outbox kept', error)
-    }
-    return summary
+    navigate()
   }
   const reauth = async () => {
     const signed = credential(await login(username.value.trim(), password.value, browserDeviceId()))
     await reauthenticateSameWorkspace(signed)
-    setBusy(true, '正在保全本机待同步学习记录…')
-    const syncNote = await publishPendingAfterAuthentication()
-    setBusy(true, '账户会话更新成功，工作区保持不变。')
-    navigate(syncNote)
+    finishAuthentication()
   }
   const loginAction = async () => {
     if (!username.value.trim() || password.value.length < 4) {
@@ -225,8 +148,7 @@ export function renderS1AccountManagement(
         throw new Error('当前属于另一账户，必须先明确退出到匿名工作区')
       }
       await reauthenticateSameWorkspace(signed)
-      const syncNote = await publishPendingAfterAuthentication()
-      navigate(syncNote)
+      finishAuthentication()
       return
     }
     if (!window.confirm('将从匿名工作区切换到“' + signed.user.username + '”。' + '匿名学习进度会独立保存，不合并到已有账户。确认继续？')) {
@@ -234,9 +156,7 @@ export function renderS1AccountManagement(
       return
     }
     await switchAuthenticatedWorkspace({ kind: 'account', accountId: signed.user.userId }, signed, phase)
-    const syncNote = await publishPendingAfterAuthentication()
-    setBusy(true, '登录及本地隔离工作区切换完成。')
-    navigate(syncNote)
+    finishAuthentication()
   }
   const registerAction = async () => {
     if (active.kind !== 'anonymous') throw new Error('注册仅允许从匿名工作区进行')
@@ -254,9 +174,7 @@ export function renderS1AccountManagement(
       await copyAnonymousWorkspaceForNewRegistration(signed.user.userId)
     }
     await switchAuthenticatedWorkspace({ kind: 'account', accountId: signed.user.userId }, signed, phase)
-    const syncNote = await publishPendingAfterAuthentication()
-    setBusy(true, '注册成功，当前工作区已切换。')
-    navigate(syncNote)
+    finishAuthentication()
   }
   const changePasswordAction = async (currentPassword: string, newPassword: string) => {
     const auth = loadAuth({ preserveExpired: true })

@@ -63,6 +63,7 @@ const CODES = new Set([
   'm4-prefix-state-extension-needs-arbitration',
   'm4-prefix-export-live-payload-mismatch',
   'all-witnessed-attempts-already-local',
+  'verified-prefix-already-local',
   'no-complete-observed-prefix:no-observed-device-heads',
   'M3-witness-evidence-unverified',
 ])

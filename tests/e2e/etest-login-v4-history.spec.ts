@@ -377,8 +377,8 @@ test('historical six-table startup download and automatic divergent reauth conve
       const p = new URL(r.url()).pathname
       if (p.startsWith('/api/sync/')) bRequests.push(r.method() + ' ' + p)
     })
-    // Lose ONLY the login preflight. The fresh ordinary root startup must
-    // independently fetch/download the cloud V4 with the still-valid session.
+    // Fail the single startup preflight. Keep local data and do not silently
+    // retry an uncertain operation. A later ordinary entry checks cloud again.
     await pages[1].route(
       '**/api/sync/v2/meta',
       (route) =>
@@ -390,6 +390,13 @@ test('historical six-table startup download and automatic divergent reauth conve
       { times: 1 },
     )
     await login(pages[1], username, password)
+    expect(await pages[1].evaluate(() => sessionStorage.getItem('qwerty.s2.startup-check.v1'))).toBe('pending')
+    expect(bRequests.filter((x) => x === 'GET /api/sync/v2/meta')).toHaveLength(1)
+    expect(bRequests).not.toContain('GET /api/sync/v2/binary/manifest')
+    expect(await rawWords(pages[1])).toHaveLength(0)
+    await pages[1].goto(base + '/learn', { waitUntil: 'domcontentloaded' })
+    await acknowledgeInformationDialog(pages[1])
+    await expect(pages[1].getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 60_000 })
     expect(await pages[1].evaluate(() => sessionStorage.getItem('qwerty.s2.startup-check.v1'))).toBe('noop')
     proof.ordinaryStartupRecoveredFullV4 = true
     expect(bRequests).toContain('GET /api/sync/v2/meta')
@@ -560,7 +567,31 @@ test('historical six-table startup download and automatic divergent reauth conve
     expect(await pages[0].evaluate(() => localStorage.getItem('qwerty.cloudAuth.v1'))).toBeNull()
     expect(await rawWords(pages[0])).toHaveLength(0)
     proof.logoutRestoresEmptyAnonymousWorkspace = true
+    await pages[0].evaluate(() => {
+      sessionStorage.removeItem('qwerty.perf-diagnostics.v1')
+      sessionStorage.removeItem('qwerty.etest.m4.stageTrace.v1')
+    })
+    aRequests.length = 0
+    const loginStarted = Date.now()
     await login(pages[0], username, password)
+    const loginElapsedMs = Date.now() - loginStarted
+    const startupPerformance = await pages[0].evaluate(() => JSON.parse(sessionStorage.getItem('qwerty.perf-diagnostics.v1') || '[]'))
+    expect(startupPerformance.filter((s: any) => s.stage === 'account-sync')).toHaveLength(1)
+    expect(startupPerformance.filter((s: any) => s.stage === 'm3-publication')).toHaveLength(1)
+    expect(startupPerformance.filter((s: any) => s.stage === 'm4-witness')).toHaveLength(1)
+    expect(startupPerformance.filter((s: any) => s.stage === 'm4-capture' || s.stage === 'm4-transaction')).toHaveLength(0)
+    expect(aRequests.filter((x) => x === 'GET /api/sync/v2/meta')).toHaveLength(1)
+    expect(aRequests.filter((x) => x === 'GET /api/sync/events/v2')).toHaveLength(0)
+    expect((await syncDiagnostics(pages[0])).some((e) => e.code === 'verified-prefix-already-local')).toBe(true)
+    proof.unchangedLogin = {
+      elapsedMs: loginElapsedMs,
+      fullV4Checks: 1,
+      publications: 1,
+      witnessedChecks: 1,
+      repeatedEventDownloads: 0,
+      extraM4Captures: 0,
+      stages: startupPerformance.map(({ stage, elapsedMs, outcome }: any) => ({ stage, elapsedMs, outcome })),
+    }
     expect(await rawWords(pages[0])).toEqual(received)
     const notices = (await pages[0].getByRole('status').allTextContents()).join(' ')
     expect(notices).not.toMatch(/V4|事件发布|安全检查阻止|格式|暂未同步/)

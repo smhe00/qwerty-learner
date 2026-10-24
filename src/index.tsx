@@ -186,6 +186,8 @@ function onStage(stage: WorkspaceBootStage): void {
   }
   if (stage === 'locking') {
     gateUI('正在准备本地学习数据', '正在准备学习，请稍候…')
+  } else if (stage === 'syncing') {
+    gateUI('正在同步学习记录', '正在检查并合并云端记录，请稍候…')
   } else if (stage === 'recovering') {
     gateUI('正在恢复学习进度', '检测到上次未完成的工作区切换，正在安全恢复。')
   }

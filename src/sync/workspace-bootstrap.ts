@@ -5,28 +5,23 @@
  * The V1-compatible entry uses allowLegacy only for an uninitialized
  * registry. It never migrates or switches an account implicitly.
  */
+import { shouldCheckAccountV4AtStartup } from './account-startup-v4'
 import { loadAuth, setIsolatedAuthRetention } from './auth'
+import { SYNC_PENDING_NOTICE } from './learning-sync-diagnostics'
+import { learningEventSyncEnabled } from './learning-sync-policy'
 import { timePerfStage } from './perf-diagnostics'
-import { S1_MIGRATION_WITNESS_KEY } from './workspace-v4'
+import { acquireWorkspaceWriterLease } from './workspace-lock'
 import {
   assertWorkspaceMigrationWitness,
   installWorkspaceStorageWriterGuard,
   refreshWorkspaceMigrationWitness,
 } from './workspace-storage-witness'
-import { acquireWorkspaceWriterLease } from './workspace-lock'
 import { same } from './workspace-transition'
 import type { Registry, Workspace } from './workspace-transition'
+import { S1_MIGRATION_WITNESS_KEY } from './workspace-v4'
 import { workspaceRegistryPort } from './workspace-vault'
-import { learningEventSyncEnabled } from './learning-sync-policy'
-import { shouldCheckAccountV4AtStartup } from './account-startup-v4'
 
-export type WorkspaceBootStage =
-  | 'locking'
-  | 'recovering'
-  | 'restart-required'
-  | 'checking-identity'
-  | 'ready'
-  | 'blocked'
+export type WorkspaceBootStage = 'locking' | 'recovering' | 'restart-required' | 'checking-identity' | 'syncing' | 'ready' | 'blocked'
 
 export type GuardedWorkspaceBoot = {
   mode: 'legacy' | 'isolated'
@@ -35,11 +30,12 @@ export type GuardedWorkspaceBoot = {
   release(): void
 }
 
-function report(
-  onStage: ((stage: WorkspaceBootStage) => void) | undefined,
-  stage: WorkspaceBootStage,
-): void {
-  try { onStage?.(stage) } catch { /* Observers cannot bypass safety gates. */ }
+function report(onStage: ((stage: WorkspaceBootStage) => void) | undefined, stage: WorkspaceBootStage): void {
+  try {
+    onStage?.(stage)
+  } catch {
+    /* Observers cannot bypass safety gates. */
+  }
 }
 
 /**
@@ -53,32 +49,29 @@ export async function prepareGuardedWorkspaceBoot(
   options: { allowLegacy?: boolean; writerWaitMs?: number } = {},
 ): Promise<GuardedWorkspaceBoot> {
   report(onStage, 'locking')
-  const lease = await timePerfStage('startup', 'writer-lease', () =>
-    acquireWorkspaceWriterLease({ waitMs: options.writerWaitMs })).catch(error => {
-    report(onStage, 'blocked')
-    throw error
-  })
+  const lease = await timePerfStage('startup', 'writer-lease', () => acquireWorkspaceWriterLease({ waitMs: options.writerWaitMs })).catch(
+    (error) => {
+      report(onStage, 'blocked')
+      throw error
+    },
+  )
 
   let recovered = false
   try {
-    const before = await timePerfStage('startup', 'registry-read', () =>
-      workspaceRegistryPort.read())
+    const before = await timePerfStage('startup', 'registry-read', () => workspaceRegistryPort.read())
     // An S2 Pull may have partially restored shared settings. Its immutable
     // staged V4 snapshot is the recovery authority before app hydration.
     const { syncV2PullJournalPort } = await import('./v2-pull-journal')
     const { manualV4ImportJournalPort } = await import('./manual-v4-import-journal')
     const { m4MergeJournalPort } = await import('./m4-merge-journal')
-    const [pendingPull, pendingImport, pendingMerge] = await timePerfStage(
-      'startup', 'journal-check',
-      () => Promise.all([
-        syncV2PullJournalPort.read(),
-        manualV4ImportJournalPort.read(),
-        m4MergeJournalPort.read(),
-      ]),
+    const [pendingPull, pendingImport, pendingMerge] = await timePerfStage('startup', 'journal-check', () =>
+      Promise.all([syncV2PullJournalPort.read(), manualV4ImportJournalPort.read(), m4MergeJournalPort.read()]),
     )
-    if ((pendingPull && pendingImport) ||
-        (before.pending && (pendingPull || pendingImport || pendingMerge)) ||
-        (pendingMerge && (pendingPull || pendingImport))) {
+    if (
+      (pendingPull && pendingImport) ||
+      (before.pending && (pendingPull || pendingImport || pendingMerge)) ||
+      (pendingMerge && (pendingPull || pendingImport))
+    ) {
       throw new Error('Conflicting S1, S2, manual V4 or M4 recovery journals')
     }
     if (before.generation === 0) {
@@ -102,7 +95,9 @@ export async function prepareGuardedWorkspaceBoot(
     // cannot be reversed. Never silently hydrate an empty/mixed workspace.
     // The flag lives in THIS TAB's sessionStorage, outside stale-tab reach.
     if (sessionStorage.getItem('qwerty.s1.foreign-storage-clear-blocked') === '1') {
-      throw new Error('S1 detected an older tab clearing shared localStorage; automatic writes are blocked until data is manually recovered')
+      throw new Error(
+        'S1 detected an older tab clearing shared localStorage; automatic writes are blocked until data is manually recovered',
+      )
     }
 
     // A stale old-JS tab may erase localStorage even while the current
@@ -143,8 +138,7 @@ export async function prepareGuardedWorkspaceBoot(
     const { reconcileAuthTransition } = await import('./workspace-auth-transaction')
     // No domain writer is mounted yet. Handle both pre-journal rollback and
     // post-registry-CAS / pre-auth-write crashes from the previous page.
-    const reconciliation = await timePerfStage('startup', 'auth-reconcile', () =>
-      reconcileAuthTransition())
+    const reconciliation = await timePerfStage('startup', 'auth-reconcile', () => reconcileAuthTransition())
     if (reconciliation === 'completed') {
       // This recovery follows a validated durable S1 auth transition intent
       // whose target is already the committed registry owner.
@@ -157,9 +151,7 @@ export async function prepareGuardedWorkspaceBoot(
     const registry = before
     report(onStage, 'checking-identity')
     const auth = loadAuth({ preserveExpired: true })
-    const expected: Workspace = auth
-      ? { kind: 'account', accountId: auth.user.userId }
-      : { kind: 'anonymous' }
+    const expected: Workspace = auth ? { kind: 'account', accountId: auth.user.userId } : { kind: 'anonymous' }
     if (!same(registry.active, expected)) {
       throw new Error('Active workspace and authenticated account differ: writes blocked')
     }
@@ -167,10 +159,12 @@ export async function prepareGuardedWorkspaceBoot(
     if (pendingMerge) {
       // Under the exclusive pre-mount S1 writer lock, reapply the exact
       // staged target. No untrusted remote read or new merge happens here.
-      if (registry.pending ||
-          registry.generation !== pendingMerge.registryGeneration ||
-          registry.active.kind !== 'account' ||
-          registry.active.accountId !== pendingMerge.accountId) {
+      if (
+        registry.pending ||
+        registry.generation !== pendingMerge.registryGeneration ||
+        registry.active.kind !== 'account' ||
+        registry.active.accountId !== pendingMerge.accountId
+      ) {
         throw new Error('M4 recovery owner or S1 generation changed: writes blocked')
       }
       report(onStage, 'recovering')
@@ -178,8 +172,7 @@ export async function prepareGuardedWorkspaceBoot(
       if (!(await recoverPendingM4Merge('apply'))) {
         throw new Error('M4 recovery journal disappeared: writes blocked')
       }
-      sessionStorage.setItem('qwerty.s2.last-sync-result',
-        '本机学习数据事务已安全恢复；其他设备是否完成同步尚未确认。')
+      sessionStorage.setItem('qwerty.s2.last-sync-result', '本机学习数据事务已安全恢复；其他设备是否完成同步尚未确认。')
       recovered = true
       // Reload discards any pre-restore module-level storage caches.
       throw new Error('M4 merge recovery completed; reload required before mounting app')
@@ -191,8 +184,7 @@ export async function prepareGuardedWorkspaceBoot(
       await recoverPendingSyncV2Pull()
       // Success acknowledgement is emitted only after full durable replay,
       // witness reseal and atomic baseline finalization, never at staging.
-      sessionStorage.setItem('qwerty.s2.last-sync-result',
-        '已完成云端学习数据安全恢复。')
+      sessionStorage.setItem('qwerty.s2.last-sync-result', '已完成云端学习数据安全恢复。')
       recovered = true
       throw new Error('S2 Pull recovery completed; reload required before mounting app')
     }
@@ -231,6 +223,7 @@ export async function prepareGuardedWorkspaceBoot(
         online: navigator.onLine,
       })
     ) {
+      report(onStage, 'syncing')
       const { checkAccountV4AfterAuthentication } = await import('./account-login-v4-check')
       const result = await checkAccountV4AfterAuthentication()
       // Fixed status only: no identity, token, payload or private error.
@@ -250,8 +243,7 @@ export async function prepareGuardedWorkspaceBoot(
     // Blob listing as evidence of whole-account convergence.
     if (registry.active.kind === 'account' && learningEventSyncEnabled()) {
       try {
-        const { adoptWitnessedM3AtGuardedBoot } =
-          await import('./m4-witnessed-prefix-browser')
+        const { adoptWitnessedM3AtGuardedBoot } = await import('./m4-witnessed-prefix-browser')
         const adoption = await adoptWitnessedM3AtGuardedBoot(registry)
         if (adoption.status === 'adopted') {
           recovered = true
@@ -260,6 +252,7 @@ export async function prepareGuardedWorkspaceBoot(
           throw new Error('M4 merge recovery completed; reload required before mounting app')
         }
         if (adoption.status === 'blocked') {
+          sessionStorage.setItem('qwerty.s2.last-sync-result', SYNC_PENDING_NOTICE)
           console.warn('M4 witnessed prefix was NOT applied:', adoption.reason)
           if (window.location.search === '?m4-reconcile=1') {
             // Do not repeatedly disrupt an idle user on a deterministic
@@ -271,9 +264,11 @@ export async function prepareGuardedWorkspaceBoot(
           window.history.replaceState(null, '', '/')
         }
       } catch (error) {
-        if (error instanceof Error &&
-            (error.message.includes('M4 merge recovery completed; reload required') ||
-             error.message.includes('m4-merge-interrupted-recovery-required'))) {
+        if (
+          error instanceof Error &&
+          (error.message.includes('M4 merge recovery completed; reload required') ||
+            error.message.includes('m4-merge-interrupted-recovery-required'))
+        ) {
           recovered = true
           throw error
         }

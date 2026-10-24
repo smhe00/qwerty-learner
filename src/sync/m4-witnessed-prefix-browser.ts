@@ -19,6 +19,7 @@ import { inspectOwnedWitnessedHistory } from './m3-witnessed-browser'
 import { m4MergeJournalPort } from './m4-merge-journal'
 import { executeM4Merge } from './m4-merge-transaction'
 import { previewMonotonicWitnessedM4 } from './m4-witnessed-prefix-candidate'
+import { timePerfStage } from './perf-diagnostics'
 import { refreshWorkspaceMigrationWitness } from './workspace-storage-witness'
 import type { Registry } from './workspace-transition'
 import { workspaceFingerprintV4 } from './workspace-v4'
@@ -118,16 +119,21 @@ export async function adoptWitnessedM3AtGuardedBoot(
     await assertOwner()
     // Publish this device's outstanding offline attempts BEFORE inspecting
     // remote prefixes. Stale login tokens fail closed without any local loss.
-    const sent = await runEtestM3Publication()
-    await assertOwner()
-    trace('published', {
-      status: sent.status,
-      ...('reason' in sent ? { reason: sent.reason } : {}),
-      ...('remaining' in sent ? { remaining: sent.remaining } : {}),
-      ...('scanned' in sent ? { scanned: sent.scanned } : {}),
-    })
-    if (sent.status === 'blocked') return blocked('m3-publication:' + sent.reason)
-    const observation = await observeChainedLearningReceipts(token)
+    // One owner of publication per startup. Continue only when a confirmed
+    // cycle reports remaining work; never replay a blocked/ambiguous write.
+    for (let cycle = 0; cycle < 2; cycle++) {
+      const sent = await timePerfStage('sync', 'm3-publication', () => runEtestM3Publication())
+      await assertOwner()
+      trace('published', {
+        status: sent.status,
+        ...('reason' in sent ? { reason: sent.reason } : {}),
+        ...('remaining' in sent ? { remaining: sent.remaining } : {}),
+        ...('scanned' in sent ? { scanned: sent.scanned } : {}),
+      })
+      if (sent.status === 'blocked') return blocked('m3-publication:' + sent.reason)
+      if (sent.status === 'idle' || sent.remaining === 0) break
+    }
+    const observation = await timePerfStage('sync', 'm4-observe', () => observeChainedLearningReceipts(token))
     await assertOwner()
     const heads = selectObservedChainedHeads(observation)
     trace('observed', {
@@ -141,13 +147,21 @@ export async function adoptWitnessedM3AtGuardedBoot(
     }
     // This inspector independently verifies server account ownership, exact
     // chains, every raw immutable event and the canonical set digest.
-    const proof = await inspectOwnedWitnessedHistory(heads.heads)
+    const proof = await timePerfStage('sync', 'm4-witness', () => inspectOwnedWitnessedHistory(heads.heads, { allowUnchanged: true }))
     await assertOwner()
     trace('witnessed', {
       status: proof.status,
       reason: proof.reason,
-      ...(proof.status === 'witnessed' ? { verifiedAttempts: proof.remoteAttemptCount } : {}),
+      ...(proof.status !== 'blocked' ? { verifiedAttempts: proof.remoteAttemptCount } : {}),
     })
+    // Exact verified no-change evidence needs neither FSRS replay nor another
+    // full-V4 export. Every actual adoption still takes the complete audit and
+    // durable original/candidate journal path below.
+    if (proof.status === 'unchanged') {
+      return proof.reason === 'verified-prefix-already-local' && proof.publishReady === false && proof.convergenceComplete === false
+        ? skip(proof.reason)
+        : blocked('M3-witness-evidence-unverified')
+    }
     if (proof.status === 'blocked') recordLearningSyncDiagnostic({ stage: 'm3-witness', status: 'blocked', code: proof.reason })
     if (
       proof.status !== 'witnessed' ||
@@ -157,7 +171,7 @@ export async function adoptWitnessedM3AtGuardedBoot(
     ) {
       return blocked('M3-witness-evidence-unverified')
     }
-    const original = await captureWorkingWorkspaceV4({ kind: 'account', accountId })
+    const original = await timePerfStage('sync', 'm4-capture', () => captureWorkingWorkspaceV4({ kind: 'account', accountId }))
     await assertOwner()
     // captureWorkingWorkspaceV4 already audits its entire Dexie export
     // against independently read raw source data under this S1 lease.
@@ -165,12 +179,14 @@ export async function adoptWitnessedM3AtGuardedBoot(
     // for immutable attempt identity comparisons and FSRS replay.
     const liveWordRecords = await db.wordRecords.toCollection().raw().toArray()
     await assertOwner()
-    const projection = await previewMonotonicWitnessedM4({
-      accountId,
-      local: original,
-      liveWordRecords,
-      witnessedEvents: proof.remoteEvents,
-    })
+    const projection = await timePerfStage('sync', 'm4-candidate', () =>
+      previewMonotonicWitnessedM4({
+        accountId,
+        local: original,
+        liveWordRecords,
+        witnessedEvents: proof.remoteEvents,
+      }),
+    )
     await assertOwner()
     trace('candidate', {
       status: projection.status,
@@ -190,32 +206,37 @@ export async function adoptWitnessedM3AtGuardedBoot(
     // A scratch DB materializes the mixed M3/V4 candidate into a canonical
     // Dexie export and verifies all six source tables. Nothing is imported
     // into the real working DB until this independent audit passes.
-    const candidate = await materializeAuditedM4CandidateV4(projection.candidate, original, (step, detail) =>
-      trace('scratch', {
-        step,
-        ...(detail ?? {}),
-      }),
+    const candidate = await timePerfStage('sync', 'm4-materialize', () =>
+      materializeAuditedM4CandidateV4(projection.candidate, original, (step, detail) =>
+        trace('scratch', {
+          step,
+          ...(detail ?? {}),
+        }),
+      ),
     )
     await assertOwner()
     trace('materialized', { added: projection.newlyAdoptedAttempts })
     // Both V4 snapshots are archived atomically in the S1 vault BEFORE a
     // single working DB row or setting is overwritten.
-    await executeM4Merge(
-      m4MergeJournalPort,
-      {
-        capture: async (scope) => captureWorkingWorkspaceV4({ kind: 'account', accountId: scope }),
-        restore: (snapshot, scope) => restoreWorkingWorkspaceV4(snapshot, { kind: 'account', accountId: scope }),
-        seal: async () => {
-          refreshWorkspaceMigrationWitness()
+    const originalFingerprint = await workspaceFingerprintV4(original)
+    await timePerfStage('sync', 'm4-transaction', () =>
+      executeM4Merge(
+        m4MergeJournalPort,
+        {
+          capture: async (scope) => captureWorkingWorkspaceV4({ kind: 'account', accountId: scope }),
+          restore: (snapshot, scope) => restoreWorkingWorkspaceV4(snapshot, { kind: 'account', accountId: scope }),
+          seal: async () => {
+            refreshWorkspaceMigrationWitness()
+          },
         },
-      },
-      {
-        accountId,
-        registryGeneration: registry.generation,
-        expectedOriginalFingerprint: await workspaceFingerprintV4(original),
-        candidate,
-      },
-      (phase) => trace('transaction', { step: phase }),
+        {
+          accountId,
+          registryGeneration: registry.generation,
+          expectedOriginalFingerprint: originalFingerprint,
+          candidate,
+        },
+        (phase) => trace('transaction', { step: phase }),
+      ),
     )
     // executeM4Merge validates post-restore full V4 fingerprint and keeps a
     // rollback archive. A fresh document is required to discard stale module
