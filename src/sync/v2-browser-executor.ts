@@ -6,7 +6,7 @@
  * Deliberately not called by Cloud Sync V1 UI or mounted React handlers.
  */
 import { getSyncV2Meta, getSyncV2MetaWithBinaryMigration,
-  getSyncV2SnapshotBinary, putSyncV2Binary } from './api'
+  getSyncV2Snapshot, getSyncV2SnapshotBinary, putSyncV2Binary } from './api'
 import { loadAuth } from './auth'
 import { compareAndSwapSyncV2Baseline, loadSyncV2Baseline } from './v2-baseline'
 import { executeManualSyncV2 } from './v2-manual-executor'
@@ -63,10 +63,23 @@ export async function executePreMountManualSyncV2(
       await recheck()
       return getSyncV2MetaWithBinaryMigration(auth.token, pinned)
     },
-    getSnapshot: () => getSyncV2SnapshotBinary(auth.token),
+    getSnapshot: pinned => pinned?.storageEncoding === 'base64'
+      ? getSyncV2Snapshot(auth.token) : getSyncV2SnapshotBinary(auth.token),
     put: input => putSyncV2Binary(auth.token,
       { ...input, deviceId: 'qwerty-web-s2-manual' }),
     saveSource: snapshot => saveWorkspaceToVault(identity, snapshot),
     journal: syncV2PullJournalPort,
+    automaticMerge: {
+      build: async (local, remote) => {
+        const { mergeAccountV4Snapshots } = await import('./automatic-v4-browser')
+        await recheck()
+        return mergeAccountV4Snapshots(local, remote)
+      },
+      archive: async (local, remote, candidate) => {
+        const { archiveAutomaticV4Merge } = await import('./automatic-v4-archive')
+        await recheck()
+        await archiveAutomaticV4Merge(accountId, boot.registry.generation, local, remote, candidate)
+      },
+    },
   })
 }

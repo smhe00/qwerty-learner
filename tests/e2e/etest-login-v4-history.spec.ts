@@ -147,17 +147,34 @@ async function evidence(page: Page) {
     try {
       const result: Record<string, { count: number; digest: string }> = {}
       let alias = false
+      const facts: Record<string, string> = {}
+      const wordMap = new Map<number, string>()
       for (const name of names) {
         const rows = await new Promise<any[]>((ok, fail) => {
           const r = db.transaction(name, 'readonly').objectStore(name).getAll()
           r.onsuccess = () => ok(r.result)
           r.onerror = () => fail(r.error)
         })
-        if (name === 'reviewRecords') alias = rows[38]?.words[0] === rows[38]?.words[1]
+        if (name === 'wordRecords') rows.forEach((r: any) => wordMap.set(r.id, r.word))
+        if (name === 'reviewRecords') {
+          const r = rows.find((r: any) => r.createTime === 1_700_000_038)
+          alias = r?.words[0] === r?.words[1]
+        }
+        const logical = rows.map((source: any) => {
+          const r = structuredClone(source)
+          delete r.id
+          if (r.sourceRecordId !== undefined) {
+            if (!wordMap.has(r.sourceRecordId)) throw Error('Dangling restored history reference')
+            r.sourceRecordId = wordMap.get(r.sourceRecordId)
+          }
+          return stable(r)
+        }).sort()
+        const factHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stable(logical)))
+        facts[name] = Array.from(new Uint8Array(factHash), (b) => b.toString(16).padStart(2, '0')).join('')
         const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stable(rows)))
         result[name] = { count: rows.length, digest: Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('') }
       }
-      return { tables: result, alias }
+      return { tables: result, facts, wordNames: Array.from(wordMap.values()).sort(), alias }
     } finally {
       db.close()
     }
@@ -172,7 +189,7 @@ async function meta(page: Page) {
   })
 }
 
-test('historical six-table login push/pull and divergent reauth preserve both sides', async ({ browser }, info) => {
+test('historical six-table startup download and automatic divergent reauth converge both profiles', async ({ browser }, info) => {
   test.setTimeout(600_000)
   expect(process.env.GITHUB_REF_NAME).toBe('edgeone-test')
   expect(process.env.QWERTY_SYNC_BASE_URL).toBe(base + '/')
@@ -248,25 +265,69 @@ test('historical six-table login push/pull and divergent reauth preserve both si
     proof.sixTablePullExact = true
     proof.sharedReferencePreserved = true
     await seed(pages[0], 'left')
-    const left = await evidence(pages[0])
     await seed(pages[1], 'right')
     await login(pages[1], username, password)
     const second = await meta(pages[1])
     expect(second.revision).toBe(2)
-    const right = await evidence(pages[1])
     await account(pages[1])
     aRequests.length = 0
     await login(pages[0], username, password)
-    await expect(pages[0].getByRole('status').filter({ hasText: '历史记录存在分歧' }))
-      .toBeVisible({ timeout: 20_000 })
-    expect(await evidence(pages[0])).toEqual(left)
-    expect(await evidence(pages[1])).toEqual(right)
-    const unchanged = await meta(pages[0])
-    expect(unchanged.revision).toBe(second.revision)
-    expect(unchanged.logicalFingerprint).toBe(second.logicalFingerprint)
-    expect(aRequests.filter((x) => x.startsWith('POST '))).toEqual([])
-    proof.conflictPreservesBoth = true
-    proof.cloudRevisionUnchanged = true
+    const merged = await evidence(pages[0])
+    expect(merged.tables.wordRecords.count).toBe(5)
+    expect(merged.alias).toBe(true)
+    expect(merged.wordNames).toEqual([...original.wordNames, 'historical-left-101', 'historical-right-102'].sort())
+    for (const name of names.filter((name) => name !== 'wordRecords')) {
+      expect(merged.tables[name].count).toBe(original.tables[name].count)
+      expect(merged.facts[name]).toBe(original.facts[name])
+    }
+    const third = await meta(pages[0])
+    expect(third.revision).toBe(second.revision + 1)
+    expect(aRequests).toContain('GET /api/sync/v2/binary/manifest')
+    expect(aRequests).toContain('POST /api/sync/v2/binary/direct')
+    const archives = await pages[0].evaluate(async () => {
+      const open = indexedDB.open('QwertyPlusWorkspaceVaultV1')
+      const vault = await new Promise<IDBDatabase>((ok, fail) => {
+        open.onsuccess = () => ok(open.result)
+        open.onerror = () => fail(open.error)
+      })
+      try {
+        const saved = await new Promise<any[]>((ok, fail) => {
+          const request = vault.transaction('snapshots').objectStore('snapshots').getAll()
+          request.onsuccess = () => ok(request.result)
+          request.onerror = () => fail(request.error)
+        })
+        return saved
+          .filter((r) => r.key.startsWith('auto-v4-merge:'))
+          .map((r) => {
+            const tables = JSON.parse(r.json).workspaceData.database.data.data
+            return tables
+              .find((t: any) => t.tableName === 'wordRecords')
+              .rows.map((w: any) => w.word)
+              .sort()
+          })
+      } finally {
+        vault.close()
+      }
+    })
+    const leftWord = 'historical-left-101',
+      rightWord = 'historical-right-102'
+    expect(archives.some((words) => words.length === 4 && words.includes(leftWord) && !words.includes(rightWord))).toBe(true)
+    expect(archives.some((words) => words.length === 4 && words.includes(rightWord) && !words.includes(leftWord))).toBe(true)
+    expect(archives.some((words) => words.length === 5 && words.includes(leftWord) && words.includes(rightWord))).toBe(true)
+    proof.automaticForkMergedBoth = true
+    proof.originalForkArchivesPreserved = true
+    await account(pages[0])
+    await login(pages[1], username, password)
+    expect(await evidence(pages[1])).toEqual(merged)
+    proof.sixTableForkConvergence = true
+    bRequests.length = 0
+    await pages[1].goto(base + '/learn', { waitUntil: 'domcontentloaded' })
+    await expect(pages[1].getByRole('button', { name: '开始 Learn', exact: true })).toBeVisible({ timeout: 60_000 })
+    expect(await evidence(pages[1])).toEqual(merged)
+    expect((await meta(pages[1])).revision).toBe(third.revision)
+    expect(bRequests.filter((x) => x.startsWith('POST '))).toEqual([])
+    proof.repeatedStartupNoDuplicateWrite = true
+    proof.mergedWordRecords = merged.tables.wordRecords.count
     proof.counts = Object.fromEntries(Object.entries(original.tables).map(([k, v]) => [k, v.count]))
   } catch (e) {
     failures.push(e)

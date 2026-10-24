@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: '.',
-  testMatch: ['workspace-v4.spec.ts', 'workspace-v4-app.spec.ts', 'workspace-v4-boot.spec.ts', 'workspace-v4-s2-baseline.spec.ts', 'workspace-v4-s2-pull.spec.ts', 'workspace-v4-s2-live.spec.ts', 'workspace-v4-s2-multi-device.spec.ts', 'workspace-v4-s2-recovery.spec.ts', 'workspace-v4-manual-import.spec.ts', 'workspace-v4-m4-journal.spec.ts', 'workspace-v4-m2-ancestor.spec.ts', 'workspace-v4-import-copy-id.spec.ts', 'workspace-v4-session-revoked.spec.ts', 'workspace-app-entry.spec.ts', 'workspace-lock-compat.spec.ts'],
+  testMatch: ['automatic-v4-merge.spec.ts', 'workspace-v4.spec.ts', 'workspace-v4-app.spec.ts', 'workspace-v4-boot.spec.ts', 'workspace-v4-s2-baseline.spec.ts', 'workspace-v4-s2-pull.spec.ts', 'workspace-v4-s2-live.spec.ts', 'workspace-v4-s2-multi-device.spec.ts', 'workspace-v4-s2-recovery.spec.ts', 'workspace-v4-manual-import.spec.ts', 'workspace-v4-m4-journal.spec.ts', 'workspace-v4-m2-ancestor.spec.ts', 'workspace-v4-import-copy-id.spec.ts', 'workspace-v4-session-revoked.spec.ts', 'workspace-app-entry.spec.ts', 'workspace-lock-compat.spec.ts'],
   fullyParallel: false,
   retries: 0,
   workers: 1,

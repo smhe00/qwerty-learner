@@ -4,7 +4,7 @@ name: P0 Login Full-V4 Safety
 # Never deploys Pages, etest or master and never uses production credentials.
 on:
   push:
-    branches: [fix/p0-legacy-login-sync-audit-20261024]
+    branches: [fix/p0-legacy-login-sync-audit-20261024, fix/automatic-history-merge-20261024]
   workflow_dispatch:
 
 permissions:

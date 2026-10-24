@@ -24,7 +24,7 @@ import type { RemoteBinarySnapshot, RemoteSnapshot, RemoteSyncMeta } from './typ
 export type S2ExecutionResult =
   | { status: 'noop'; revision: number }
   | { status: 'pushed'; revision: number }
-  | { status: 'pull-reload-required'; revision: number }
+  | { status: 'pull-reload-required'; revision: number; automaticMerge?: true }
   | { status: 'blocked' | 'conflict'; reason: string }
 
 export type SyncV2ExecutionPort = {
@@ -39,7 +39,7 @@ export type SyncV2ExecutionPort = {
   getMeta(): Promise<RemoteSyncMeta>
   /** On-demand, pinned cloud-only legacy-to-binary layout conversion. */
   migrateBinary?(oldMeta: RemoteSyncMeta): Promise<RemoteSyncMeta>
-  getSnapshot(): Promise<RemoteSnapshot | RemoteBinarySnapshot>
+  getSnapshot(pinned?: RemoteSyncMeta): Promise<RemoteSnapshot | RemoteBinarySnapshot>
   put(input: {
     baseRevision: number
     payloadBytes: Uint8Array
@@ -49,6 +49,11 @@ export type SyncV2ExecutionPort = {
   /** Preserve pre-pull unsynced local state in isolated Vault before restore. */
   saveSource(snapshot: WorkspaceSnapshotV4): Promise<void>
   journal: PullJournalPort
+  /** Optional only for callers that provide audited full-snapshot arbitration. */
+  automaticMerge?: {
+    build(local: WorkspaceSnapshotV4, remote: WorkspaceSnapshotV4): Promise<WorkspaceSnapshotV4>
+    archive(local: WorkspaceSnapshotV4, remote: WorkspaceSnapshotV4, candidate: WorkspaceSnapshotV4): Promise<void>
+  }
 }
 
 function base(accountId: string, revision: number, hash: string): SyncV2Baseline {
@@ -107,6 +112,50 @@ export async function executeManualSyncV2(port: SyncV2ExecutionPort): Promise<S2
     ...remote, logicalFingerprint: remote.logicalFingerprint ?? null,
   }, baseline))
   const decision = preflight.decision
+  if (decision.action === 'conflict' && port.automaticMerge) {
+    if (await port.journal.read()) throw Error('Previous S2 journal requires recovery')
+    await port.assertQuiescentOwner()
+    const cloud = await port.getSnapshot(remote)
+    const other = await verifyDownloadedWorkspaceV4(port.accountId, remote, cloud)
+    const candidate = await port.automaticMerge.build(local, other)
+    assertRestorableWorkspaceV4(candidate)
+    if (candidate.metadata.source.kind !== 'account' || candidate.metadata.source.accountId !== port.accountId) {
+      throw Error('Automatic V4 merge candidate owner mismatch')
+    }
+    const fingerprint = await workspaceFingerprintV4(candidate)
+    await port.assertQuiescentOwner()
+    // A durable archive of BOTH originals and the full candidate is mandatory
+    // before any cloud write. Storage failures leave the original workspace live.
+    await port.automaticMerge.archive(local, other, candidate)
+    await port.saveSource(local)
+    await port.assertQuiescentOwner()
+    if (!sameRemote(remote, await port.getMeta())) throw Error('Cloud changed during automatic V4 merge')
+    let target = candidate
+    let revision = remote.revision
+    if (fingerprint !== remote.logicalFingerprint) {
+      const bytes = await payloadV4(candidate)
+      await port.assertQuiescentOwner()
+      // Exactly ONE CAS request. An ambiguous response is never replayed here.
+      const uploaded = await port.put({ baseRevision: remote.revision,
+        payloadBytes: bytes.bytes, logicalFingerprint: fingerprint,
+        clientFormatVersion: 'qwerty-backup-v4' })
+      if (!uploaded.hasData || uploaded.revision !== remote.revision + 1 ||
+          uploaded.clientFormatVersion !== 'qwerty-backup-v4' ||
+          uploaded.logicalFingerprint !== fingerprint || uploaded.payloadSha256 !== bytes.checksum) {
+        throw Error('Automatic V4 merge upload integrity or revision mismatch')
+      }
+      revision = uploaded.revision
+    } else {
+      // A prior lost response may already have committed this exact union.
+      // Restore the verified published bytes without uploading again.
+      target = other
+    }
+    await port.assertQuiescentOwner()
+    await port.journal.stage({ version: 1, accountId: port.accountId,
+      registryGeneration: port.registryGeneration, revision, fingerprint,
+      oldBaseline: baseline, snapshot: target })
+    return { status: 'pull-reload-required', revision, automaticMerge: true }
+  }
   if (decision.action === 'blocked' || decision.action === 'conflict') {
     return { status: decision.action, reason: decision.reason }
   }
@@ -168,7 +217,7 @@ export async function executeManualSyncV2(port: SyncV2ExecutionPort): Promise<S2
     return { status: 'pushed', revision: uploaded.revision }
   }
   // Pull never selects an arbitrary older cloud revision after discovery.
-  const cloud = await timePerfStage('sync', 'download-request', () => port.getSnapshot())
+  const cloud = await timePerfStage('sync', 'download-request', () => port.getSnapshot(activeRemote))
   const verified = await timePerfStage('sync', 'verify-downloaded', () =>
     verifyDownloadedWorkspaceV4(port.accountId, activeRemote, cloud))
   const confirmed = await timePerfStage('sync', 'remote-meta-recheck', () => port.getMeta())

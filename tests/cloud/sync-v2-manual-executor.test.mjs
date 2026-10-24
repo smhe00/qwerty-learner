@@ -250,3 +250,54 @@ test('S2 overlaps read-only remote metadata with snapshot capture, after writer 
   assert.equal(metadataWhileCapturePending, true)
   assert.equal(f.state.calls.includes('upload'), false)
 })
+
+
+test('automatic conflict archives both originals before one CAS upload and durable local staging', async () => {
+  const local = snap(1), remote = await cloud(snap(2), 5), candidate = snap(3)
+  const { state, port } = fixture(local, remote.meta)
+  state.cloud = remote.snapshot
+  port.automaticMerge = {
+    async build(a, b) { assert.deepEqual(a, local); assert.deepEqual(b, snap(2)); state.calls.push('merge'); return candidate },
+    async archive(a, b, c) { assert.deepEqual([a, b, c], [local, snap(2), candidate]); state.calls.push('archive') },
+  }
+  const result = await executeManualSyncV2(port)
+  assert.equal(result.automaticMerge, true)
+  assert.equal(result.revision, 6)
+  assert.equal(state.uploaded.baseRevision, 5)
+  assert.deepEqual(state.pending.snapshot, candidate)
+  assert.equal(state.baseline, null)
+  assert(state.calls.indexOf('archive') < state.calls.indexOf('upload'))
+  assert(state.calls.indexOf('upload') < state.calls.indexOf('stage'))
+  assert.equal(state.calls.filter(c => c === 'upload').length, 1)
+})
+
+test('automatic merge already published after lost response restores without a second write', async () => {
+  const remote = await cloud(snap(3), 6)
+  const { state, port } = fixture(snap(1), remote.meta)
+  state.cloud = remote.snapshot
+  port.automaticMerge = { async build() { return snap(3) }, async archive() { state.calls.push('archive') } }
+  const result = await executeManualSyncV2(port)
+  assert.equal(result.revision, 6)
+  assert.equal(state.calls.includes('upload'), false)
+  assert.deepEqual(state.pending.snapshot, snap(3))
+})
+
+for (const failure of ['build', 'archive', 'advance', 'upload', 'stage']) {
+  test('automatic merge preserves live state and never retries on ' + failure + ' failure', async () => {
+    const remote = await cloud(snap(2), 5)
+    const { state, port } = fixture(snap(1), remote.meta)
+    state.cloud = remote.snapshot
+    port.automaticMerge = {
+      async build() { if (failure === 'build') throw Error('audit rejected'); return snap(3) },
+      async archive() { state.calls.push('archive'); if (failure === 'archive') throw Error('quota exceeded') },
+    }
+    if (failure === 'advance') state.cloudMetaAfter = { ...remote.meta, revision: 6 }
+    if (failure === 'upload') port.put = async () => { state.calls.push('upload'); throw Error('ambiguous timeout') }
+    if (failure === 'stage') port.journal.stage = async () => { throw Error('crash after CAS') }
+    await assert.rejects(executeManualSyncV2(port))
+    assert.equal(state.baseline, null)
+    assert.equal(state.pending, null)
+    assert.equal(state.calls.includes('restore'), false)
+    assert.equal(state.calls.filter(c => c === 'upload').length, ['upload', 'stage'].includes(failure) ? 1 : 0)
+  })
+}

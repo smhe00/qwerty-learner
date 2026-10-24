@@ -39,9 +39,12 @@ export async function checkAccountV4AfterAuthentication(): Promise<AccountLoginV
       return { status: 'pushed', canContinue: true, detail: '云端完整 V4 已通过版本及指纹检查，单边更新已安全上传。' }
     }
     if (outcome.status === 'pull-reload-required') {
-      return { status: 'pull-staged', canContinue: false, detail: '云端完整 V4 已校验，正在通过持久化恢复事务恢复本机账号记录。' }
+      return { status: 'pull-staged', canContinue: false, detail: outcome.automaticMerge
+        ? '两端学习记录已自动融合并保存。'
+        : '云端完整 V4 已校验，正在通过持久化恢复事务恢复本机账号记录。' }
     }
-    // S2 refuses both-sides-changed or unbound populated local histories.
+    // Valid same-account forks use automatic full-snapshot reconciliation.
+    // Remaining blocked outcomes concern admission or unsupported evidence.
     // M3 can still prove/distribute valid immutable attempts independently,
     // but that must never be mistaken for COMPLETE cloud V4 convergence.
     return {
