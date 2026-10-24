@@ -1,131 +1,47 @@
-# Branch Strategy — Qwerty Plus
+# Branch Strategy — QWERTY Plus
 
-> Effective: 2026-10-05
+> 核对：2026-10-25。补齐此前两分支文档遗漏的 eTest 阶段；不改变现有发布授权或安全门禁。
 
-## Authoritative branches
+## 三条权威分支
 
-### `product/main` — development source of truth
+| 分支 | 职责 | 部署 |
+| --- | --- | --- |
+| `product/main` | 唯一集成开发主线，普通代码、测试及文档先进入此处。 | GitHub Pages；云能力禁用，不绑定 Maker 自动部署。 |
+| `edgeone-test` | 经批准推进的实网云验证候选，简称 eTest。 | `https://t.smhe.cn`；独立于生产的 Blob 空间。 |
+| `master` | 明确授权的公开发布版本。 | `https://q.smhe.cn`。 |
 
-`product/main` is the only active integrated development line.
+普通开发不能持续追平 eTest/master；二者推进都会触发相应 Maker 部署。仅文档更新无需推进这两条分支。
 
-All Qwerty Plus product development lands here first, including:
-
-- Typing / Learn product changes;
-- Review scheduler and state-machine changes;
-- backup / restore and cloud sync changes;
-- Formal / Simulation verification assets;
-- CI and release-preparation changes.
-
-Normal development pushes to `product/main` may run GitHub Actions such as lint,
-unit tests, TLA+, Simulation, Playwright, contract tests, and local `yarn build`.
-These GitHub Actions are **not** EdgeOne Maker deployments and do not consume the
-limited Maker build quota.
-
-No development commit should be made directly on `master`.
-
-### `master` — release / EdgeOne Maker branch
-
-`master` is the public release branch and the only branch bound to EdgeOne
-Maker production deployment.
-
-Updating `master` is therefore a release action:
+## 发布顺序
 
 ```text
-product/main
-    │
-    │ milestone accepted / release candidate approved
-    ▼
-master
-    │
-    ▼
-EdgeOne Maker production build
-    │
-    ▼
-production verification
+product/main 候选 SHA
+  -> published Pages 回归及对应源码安全验证
+  -> eTest 同一 SHA 的实际部署核验
+  -> 实网浏览器、Blob 传输、三设备及相关数据安全验证
+  -> release-ready
+  -> 用户明确授权后将同一候选 SHA 推进 master
+  -> 正式域名 source marker、网关及必要入口核验
 ```
 
-Because the Maker build quota is limited, `master` must **not** be continuously
-synchronized from `product/main`.
+不得以 Pages 模拟云测试替代 eTest 实网，不得把分支已更新写成网站已完成部署。一个发布授权只适用于相应发布，不是后续自动推送 master 的永久许可。
 
-Rules:
+相关范围验证、部署验收与实际生产健康必须分别记账。若复用祖先提交的定向验证，需保留源码等价差异说明；这不豁免部署准入要求的同一候选 SHA。
 
-1. ordinary development stays on `product/main`;
-2. only a meaningful milestone may be synchronized to `master`;
-3. each `master` update is expected to consume one EdgeOne Maker production build;
-4. automation must never push or fast-forward `master` during ordinary CI;
-5. production verification runs after the `master` release push;
-6. the release record must retain the source `product/main` checkpoint, the
-   resulting `master` SHA, and the EdgeOne deployment identity when available.
+## 小改动的验证
 
-## CI topology
+按行为风险选择定向用例和静态检查，不因一个文案或文档改动重新创建云账号或触发 Maker。涉及身份、记录引用、schema、恢复事务或云写入时，仍必须执行相应安全契约。不能为了缩短 CI 删除必要断言或跳过失败。
 
-### Development CI — `product/main`
+当前 `yarn test` 是占位，不是验证入口；专用命令、workflow 及 gate manifest 才描述实际测试。收敛重复 workflow 是待办，不是本次文档变更已完成的 CI 改造。
 
-Allowed automatic work:
+## 并发修改与历史分支
 
-- Review Gate;
-- TLA Gate;
-- Simulation / mutation / persistence-race tests;
-- Cloud backend contract tests;
-- local Playwright browser tests;
-- local `yarn build`;
-- cloud/API contract tests against local or mocked development services.
+写前记录主线 base，提交前重新读取远端；使用非 force 更新，不覆盖另一执行者的提交。历史功能分支需先核对合并关系、开放 PR 和回退价值再提删除建议；不默认删除分支、标签或研究分支。
 
-The real EdgeOne browser-sync test is intentionally **not** an automatic
-`product/main` gate. The development branch can legitimately contain frontend
-or protocol changes that are newer than the currently deployed production
-backend. Treating that version skew as a development failure would be incorrect.
+研究性 FSRS/延迟巩固方案不因整理仓库而并入正式学习策略。上游贡献继续使用独立窄范围分支，不将 master 改成上游跟踪线。
 
-These checks determine whether a development checkpoint is eligible to become a
-release candidate.
+## 回退与记录
 
-### Release CI — `master`
+发布记录保留候选 SHA、各门禁、部署结果、首次失败和复验。回退代码前先核对浏览器持久化与云数据兼容性；“切回旧提交”不等于安全回滚数据。无独立兼容验证，不得把旧前端与新数据直接组合使用。
 
-A `master` push means that an approved release candidate has been promoted.
-
-The EdgeOne production verification workflow must:
-
-- inspect the deployment for repo branch `master`;
-- require a successful Production deployment;
-- verify the production `/api/health` contract;
-- record the release SHA and EdgeOne deployment identity in the Actions log.
-
-After Production Verify succeeds, the EdgeOne Browser Sync Gate runs against
-that verified release and the newly deployed production backend. It may also be
-started manually with `workflow_dispatch` when an explicit live integration
-check is needed.
-
-No `product/main` push may wait for, promote, create, or automatically probe
-for a newer EdgeOne Maker deployment.
-
-## Historical branches
-
-Old branches such as `feature/edgeone-cloud-sync` and earlier Review feature
-branches are historical only. They are not product truth, release pointers, or
-deployment triggers.
-
-Historical documents or commit records may still mention the former EdgeOne
-production pointer. Those references describe the 2026-09-29 deployment process
-and must not be interpreted as the current branch policy.
-
-## Upstream contributions
-
-Upstream contributions remain independent of the Qwerty Plus product branch.
-Create narrowly scoped upstream-compatible branches when contributing to
-`RealKai42/qwerty-learner`; do not repurpose `master` for upstream tracking.
-
-## Invariants
-
-There is exactly one development source of truth:
-
-```text
-product/main
-```
-
-There is exactly one Maker release branch:
-
-```text
-master
-```
-
-The two branches are intentionally **not** kept continuously synchronized.
+当前参考：[发布报告](../interactive/reports/MOBILE-MENU-RELEASE-20261025-report.md) · [收尾清单](./release/BETA_CLOSEOUT_2026-10-25.md) · [AGENTS](../AGENTS.md)。

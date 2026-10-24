@@ -8,7 +8,7 @@ This file is the mandatory entry point for any coding agent working in this repo
 - **Staging:** `edgeone-test` (short: `etest`), promoted manually from `product/main` for real EdgeOne Cloud/Blob E2E only.
 - **Production:** `master`, publicly released only upon explicit authorization.
 - The owner completed the **first** manual `edgeone-test` deployment on 2026-10-14. This project auto-deploys future etest pushes; advance the branch only when real Cloud/Blob validation is required.
-- Maker staging site is `https://t.smhe.cn/`. The owner confirms staging and production use completely independent Blob namespaces. Staging Blob is activated automatically on its first write. Production Maker is `https://qwerty-plus.edgeone.dev/`. Never use Pages to certify cloud synchronization.
+- Maker staging site is `https://t.smhe.cn/`. The owner confirms staging and production use completely independent Blob namespaces. Staging Blob is activated automatically on its first write. Canonical production Maker is `https://q.smhe.cn/`; `https://qwerty-plus.edgeone.dev/` is a retained compatibility origin, not the canonical public entry. Never use Pages to certify cloud synchronization.
 - Before any master update the IDENTICAL SHA must pass published Pages regression, etest real-Cloud browser E2E and Blob transport, and the `release-ready` check. An explicit user release request remains mandatory.
 - Routine development and agent coordination happen on `product/main`; NEVER bind a Maker project to its pushes.
 

@@ -1,17 +1,17 @@
 ---
 protocol_version: '1.1'
-task_id: 'MOBILE-MENU-RELEASE-20261025'
-task_file: 'interactive/tasks/MOBILE-MENU-RELEASE-20261025.md'
-report_file: 'interactive/reports/MOBILE-MENU-RELEASE-20261025-report.md'
+task_id: 'BETA-CLOSEOUT-DOCS-20261025'
+task_file: 'interactive/tasks/BETA-CLOSEOUT-DOCS-20261025.md'
+report_file: 'interactive/reports/BETA-CLOSEOUT-DOCS-20261025-report.md'
 target_branch: 'product/main'
 status: 'DONE'
-executor: 'ChatGPT (single release executor)'
-claim_base_commit: 'c590c93a908e0d780c0d00c5303fe8b773e5132a'
-release_to_master: true
+executor: 'ChatGPT (documentation audit executor)'
+claim_base_commit: '35293b818d476628d553b1bf9e0d3a9707038031'
+release_to_master: false
 ---
 
-Owner requested 发布. Verified release ea4ede5380dfdc899a94371a5bc5289cb036004e completed main -> eTest -> master with guarded non-force updates. Same-SHA Pages40117142954, Cloud/admission40117142929, eTest browser/Blob/release-ready40117451472 attempt2, hard3-device40117451532 and historical six-table40117451522 attempt2 PASS. Full Mobile/Review and strict S1 (3 repeats plus128 tests) passed on unchanged application source.
+Owner asked whether the system is nearing completion, what needs cleanup and whether documentation should be updated. This task reviews source and retained release evidence, updates current documentation and records a bounded closeout backlog. It does not authorize a new release, runtime cleanup, cloud writes, branch deletion or dependency upgrades.
 
-Canonical production40118590795/job120945032430 PASS at2026-10-24T18:02:00Z: q.smhe.cn deployed ea4ede5, gateway healthy, /mobile, /mobile/history, /mobile/data and /mobile/achievements HTTP200 with application entries. Read-only, no production account or learning data access.
+Previous MOBILE-MENU-RELEASE-20261025 remains DONE at release ea4ede5380dfdc899a94371a5bc5289cb036004e; retain its report and all first-attempt exceptions. This documentation checkpoint must not be confused with a new deployed source SHA.
 
-Retain first-attempt registration HTTP500/uncertain second-account cleanup, historical revision1-vs2 failure with verified cleanup, and earlier obsolete UI assertion failures. Fresh independent same-SHA attempts passed; no claim the intermittent backend fault was fixed. Physical phone certification remains outside this release evidence. Final main checkpoint is documentation-only; master/eTest remain the verified release SHA. Authorization above is consumed by this release, not blanket permission for future master changes.
+Next implementation is not claimed or running. Proposed REL/MOB/ENG/CI/CODE/OPS items and acceptance criteria are in docs/release/BETA_CLOSEOUT_2026-10-25.md. Preserve single-active-session and all learning-data safety boundaries. No blanket future master authorization.
