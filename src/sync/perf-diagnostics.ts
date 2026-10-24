@@ -1,8 +1,8 @@
 import { isV4FailureCode, rememberV4Failure, v4FailureCode } from './v4-failure-diagnostics'
 /**
  * Privacy-safe, session-scoped startup and Sync V4 performance diagnostics.
- * Keeps ONLY fixed stage names, durations and byte counts; never data rows,
- * credentials, account identities, URLs, or learning content.
+ * Keeps ONLY stage names, outcomes, allowlisted error codes, durations and byte
+ * counts; never raw exceptions, credentials, identities, URLs or learning rows.
  *
  * The small bounded log survives full-page navigations in the same tab.
  * Diagnostics must never interfere with boot, sync or a crash-recovery path.

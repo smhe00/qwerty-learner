@@ -2,17 +2,17 @@ import { expect, test } from '@playwright/test'
 
 test('fresh anonymous workspace boots and retains startup metrics across navigation', async ({ page }) => {
   await page.goto('/')
-  await expect.poll(async () => page.evaluate(() => {
-    const entries = JSON.parse(sessionStorage.getItem('qwerty.perf-diagnostics.v1') ?? '[]')
-    return entries.some((entry: { stage?: string }) => entry.stage === 'guarded-bootstrap')
-  })).toBe(true)
-  await expect(page.locator('body')).not.toContainText('学习数据安全检查未通过')
   // The fresh anonymous S1 admission intentionally reloads the SAME route
   // after its registry CAS. Seeing the guarded-bootstrap timing entry does
   // not mean that reload has finished or that the app holds its new lease.
   // Wait for an actual mounted writer-capable app before navigating away.
   await expect(page.getByRole('button', { name: '打开设置对话框' }))
     .toBeVisible({ timeout: 15_000 })
+  await expect.poll(async () => page.evaluate(() => {
+    const entries = JSON.parse(sessionStorage.getItem('qwerty.perf-diagnostics.v1') ?? '[]')
+    return entries.some((entry: { stage?: string }) => entry.stage === 'guarded-bootstrap')
+  })).toBe(true)
+  await expect(page.locator('body')).not.toContainText('学习数据安全检查未通过')
   await page.goto('/?perf-report=view')
   await expect(page.getByRole('heading', {
     name: 'Qwerty Plus 启动与同步性能报告',
