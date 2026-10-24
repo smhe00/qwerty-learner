@@ -30,7 +30,7 @@ async function login(page: Page, username: string, password: string) {
   const reauth = page.getByRole('button', { name: '确认重新登录', exact: true })
   await ((await reauth.isVisible()) ? reauth : page.getByRole('button', { name: '登录', exact: true })).click()
   expect((await response).status()).toBe(200)
-  await expect(page).toHaveURL(base + '/', { timeout: 120_000 })
+  await expect(page).toHaveURL(/^https:\/\/t\.smhe\.cn\/(?:learn)?$/, { timeout: 120_000 })
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 60_000 })
 }
 async function seed(page: Page, branch: string, all = false) {
@@ -550,7 +550,11 @@ test('historical six-table startup download and automatic divergent reauth conve
     // Reproduce the owner's ordinary logout/login with no intervening study.
     await account(pages[0])
     await pages[0].getByRole('button', { name: '安全退出登录', exact: true }).click()
-    await expect(pages[0]).toHaveURL(base + '/', { timeout: 120_000 })
+    await expect(pages[0]).toHaveURL(/^https:\/\/t\.smhe\.cn\/(?:learn)?$/, { timeout: 120_000 })
+    await expect(pages[0].getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+    expect(await pages[0].evaluate(() => localStorage.getItem('qwerty.cloudAuth.v1'))).toBeNull()
+    expect(await rawWords(pages[0])).toHaveLength(0)
+    proof.logoutRestoresEmptyAnonymousWorkspace = true
     await login(pages[0], username, password)
     expect(await rawWords(pages[0])).toEqual(received)
     const notices = (await pages[0].getByRole('status').allTextContents()).join(' ')

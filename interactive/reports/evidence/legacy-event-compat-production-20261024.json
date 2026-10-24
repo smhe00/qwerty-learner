@@ -1,0 +1,12 @@
+{
+  "applicationCommit": "05e5e8f0d4b734e4463d71ad0577c38c165e1241",
+  "canonicalOrigin": "https://q.smhe.cn",
+  "workflowRun": 40082649297,
+  "result": "PASS",
+  "confirmedAt": "2026-10-24T09:39:28Z",
+  "deployedSource": "05e5e8f",
+  "gateway": "qwerty-sync-gateway",
+  "apiVersion": 1,
+  "verification": "read-only source and health GET requests",
+  "productionTestAccountsCreated": false
+}
