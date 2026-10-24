@@ -1,0 +1,193 @@
+{
+  "commit": "cfeaef6a1769bbaf94c9ed8ccd147727a058ad2f",
+  "workflowRun": 40094215012,
+  "successfulAttempt": 2,
+  "job": 120874282621,
+  "historicalFixture": true,
+  "source": "cfeaef6",
+  "unicodeHistoryBytes": 1472401,
+  "ordinaryStartupRecoveredFullV4": true,
+  "sixTablePullExact": true,
+  "sharedReferencePreserved": true,
+  "unicodeTranslationsExact": true,
+  "independentCompletedSessionsPreserved": true,
+  "sessionReferencesFollowOriginalUUID": true,
+  "automaticForkMergedBoth": true,
+  "originalForkArchivesPreserved": true,
+  "automaticMergeStageEvidence": true,
+  "failedMetadataStageRecorded": true,
+  "sixTableForkConvergence": true,
+  "repeatedStartupNoDuplicateWrite": true,
+  "mergedWordRecords": 5,
+  "counts": {
+    "wordRecords": 3,
+    "chapterRecords": 1,
+    "reviewRecords": 700,
+    "reviewWordStates": 1,
+    "achievementEvents": 1,
+    "achievementStates": 1
+  },
+  "mixedLegacyM3Publication": true,
+  "mixedLegacyM4Adoption": true,
+  "legacyRowsUnchanged": true,
+  "logoutRestoresEmptyAnonymousWorkspace": true,
+  "unchangedLogin": {
+    "elapsedMs": 7737,
+    "fullV4Checks": 1,
+    "publications": 1,
+    "witnessedChecks": 1,
+    "repeatedEventDownloads": 0,
+    "extraM4Captures": 0,
+    "stages": [
+      {
+        "stage": "writer-lease",
+        "elapsedMs": 123.8,
+        "outcome": "ok"
+      },
+      {
+        "stage": "registry-read",
+        "elapsedMs": 0.8,
+        "outcome": "ok"
+      },
+      {
+        "stage": "journal-check",
+        "elapsedMs": 1.4,
+        "outcome": "ok"
+      },
+      {
+        "stage": "auth-reconcile",
+        "elapsedMs": 0,
+        "outcome": "ok"
+      },
+      {
+        "stage": "guarded-bootstrap",
+        "elapsedMs": 134,
+        "outcome": "ok"
+      },
+      {
+        "stage": "writer-lease",
+        "elapsedMs": 123.5,
+        "outcome": "ok"
+      },
+      {
+        "stage": "registry-read",
+        "elapsedMs": 0.8,
+        "outcome": "ok"
+      },
+      {
+        "stage": "journal-check",
+        "elapsedMs": 1.4,
+        "outcome": "ok"
+      },
+      {
+        "stage": "auth-reconcile",
+        "elapsedMs": 0,
+        "outcome": "ok"
+      },
+      {
+        "stage": "flush-writers",
+        "elapsedMs": 0.1,
+        "outcome": "ok"
+      },
+      {
+        "stage": "baseline-read",
+        "elapsedMs": 4.9,
+        "outcome": "ok"
+      },
+      {
+        "stage": "dexie-export",
+        "elapsedMs": 77.4,
+        "outcome": "ok"
+      },
+      {
+        "stage": "source-rows-read",
+        "elapsedMs": 25.4,
+        "outcome": "ok"
+      },
+      {
+        "stage": "source-rows-audit",
+        "elapsedMs": 89.4,
+        "outcome": "failed"
+      },
+      {
+        "stage": "fallback-roundtrip-audit",
+        "elapsedMs": 493.3,
+        "outcome": "ok"
+      },
+      {
+        "stage": "snapshot-capture",
+        "elapsedMs": 698.7,
+        "outcome": "ok"
+      },
+      {
+        "stage": "remote-meta",
+        "elapsedMs": 1427.5,
+        "outcome": "ok"
+      },
+      {
+        "stage": "fingerprint-decision",
+        "elapsedMs": 36.3,
+        "outcome": "ok"
+      },
+      {
+        "stage": "account-sync",
+        "elapsedMs": 1468.7,
+        "outcome": "ok"
+      },
+      {
+        "stage": "m3-publication",
+        "elapsedMs": 11,
+        "outcome": "ok"
+      },
+      {
+        "stage": "m4-observe",
+        "elapsedMs": 997.3,
+        "outcome": "ok"
+      },
+      {
+        "stage": "m4-witness",
+        "elapsedMs": 1018.2,
+        "outcome": "ok"
+      },
+      {
+        "stage": "guarded-bootstrap",
+        "elapsedMs": 3667.3,
+        "outcome": "ok"
+      },
+      {
+        "stage": "app-module-import",
+        "elapsedMs": 100.8,
+        "outcome": "ok"
+      },
+      {
+        "stage": "entry-to-first-frame",
+        "elapsedMs": 101.7
+      },
+      {
+        "stage": "dictionary-fetch",
+        "elapsedMs": 10,
+        "outcome": "ok"
+      },
+      {
+        "stage": "dictionary-json-parse",
+        "elapsedMs": 33.8,
+        "outcome": "ok"
+      }
+    ]
+  },
+  "reloginWithoutLearningPreservesAllRows": true,
+  "noLegacyWarningInOrdinaryUI": true,
+  "diagnosticExportReadOnly": true,
+  "legacyCompatibilityCounts": {
+    "scanned": 6,
+    "eligible": 1,
+    "snapshotOnly": 5,
+    "rejected": 0,
+    "issues": {
+      "missing-attempt-id": 4,
+      "missing-source-mode": 4
+    }
+  },
+  "cleanupStatus": 200,
+  "cleanupVerified": true
+}
