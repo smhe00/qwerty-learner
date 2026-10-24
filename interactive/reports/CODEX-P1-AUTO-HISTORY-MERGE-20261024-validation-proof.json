@@ -1,0 +1,287 @@
+{
+  "schema": "qwerty-auto-v4-validation-proof-v1",
+  "implementationCommit": "90464c20f3dd97a107dea3bf4495364826916d78",
+  "applicationMergeCommit": "46047f53a3397b62950e45689b7d2d97fb5f5b2b",
+  "readinessTestCommit": "b97c309b64226ad15082105058a4da3a74a4d59c",
+  "targetCommit": "51d2124360b620d6d84742b5359d6991f1f60567",
+  "productSourcesUnchangedByReadinessPatch": true,
+  "productionCommitUnchanged": "a2dc907c9c0f6e8924f441fa360ebabd317233dd",
+  "local": {
+    "workspaceBrowser": {
+      "passed": 119,
+      "failed": 0
+    },
+    "cloudContracts": {
+      "passed": 583,
+      "failed": 0
+    },
+    "focusedMergeExecutor": {
+      "passed": 27,
+      "failed": 0
+    },
+    "typeDiagnostics": {
+      "baseline": 144,
+      "current": 144,
+      "introduced": 0
+    },
+    "lint": {
+      "errors": 0,
+      "warnings": 133
+    },
+    "build": "passed"
+  },
+  "safetyRuns": [
+    {
+      "run": 40054931858,
+      "status": "success"
+    },
+    {
+      "run": 40054956232,
+      "status": "success"
+    },
+    {
+      "run": 40054956424,
+      "status": "success"
+    }
+  ],
+  "mainAdmissionRuns": [
+    {
+      "run": 40056739893,
+      "status": "success"
+    },
+    {
+      "run": 40056739852,
+      "status": "success"
+    }
+  ],
+  "firstDeploymentM3": {
+    "run": 40056056927,
+    "job": 120759183655,
+    "conclusion": "success",
+    "singleActiveSessionRelayPassed": true,
+    "cleanupAssertionsPassed": true,
+    "logEvidence": [
+      "2026-10-24T02:56:42.6917010Z PASS etest single session: A->B->A relay, revoked tokens 401, unique immutable event union; full V4 auto adoption NOT asserted"
+    ]
+  },
+  "finalRuns": [
+    {
+      "id": 40056974474,
+      "name": "etest Single-Session M3 Device Relay",
+      "branch": "edgeone-test",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 40056974487,
+      "name": "etest Historical Login Full-V4 E2E",
+      "branch": "edgeone-test",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 40056974457,
+      "name": "etest Single-Session Three-Device Offline Relay E2E",
+      "branch": "edgeone-test",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 40056974483,
+      "name": "Branch EdgeOne Cloud E2E",
+      "branch": "edgeone-test",
+      "attempt": 2,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 40056739852,
+      "name": "Cloud Sync Gate",
+      "branch": "product/main",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 40056739851,
+      "name": "Pages Explorer Agent",
+      "branch": "product/main",
+      "attempt": 1,
+      "status": "in_progress",
+      "conclusion": null
+    },
+    {
+      "id": 40056739893,
+      "name": "Deployment to GitHub Pages",
+      "branch": "product/main",
+      "attempt": 1,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "unconfirmedCleanup": [
+    {
+      "run": 40056974483,
+      "job": 120761987952,
+      "attempt": 1,
+      "stage": "register-http-500-creation-unknown",
+      "scope": "etest-disposable-identity",
+      "newInThisTask": true,
+      "cloudSnapshotUploadStarted": false
+    },
+    {
+      "run": 40056056977,
+      "attempt": 1,
+      "stage": "login-http-500-delete-not-sent",
+      "scope": "etest-disposable-account",
+      "newInThisTask": true
+    },
+    {
+      "run": 40043194200,
+      "attempt": 1,
+      "stage": "cleanup-login-http-500",
+      "scope": "etest-disposable-account",
+      "newInThisTask": false
+    },
+    {
+      "run": 40044357407,
+      "attempt": 1,
+      "stage": "delete-http-500-outcome-unknown",
+      "scope": "etest-disposable-account",
+      "newInThisTask": false
+    }
+  ],
+  "noReplayOfUnknownCleanup": true,
+  "finalHistoryProof": {
+    "run": 40056974487,
+    "attempt": 1,
+    "job": 120761987833,
+    "sha": "51d2124360b620d6d84742b5359d6991f1f60567",
+    "historicalFixture": true,
+    "source": "51d2124",
+    "ordinaryStartupRecoveredFullV4": true,
+    "sixTablePullExact": true,
+    "sharedReferencePreserved": true,
+    "automaticForkMergedBoth": true,
+    "originalForkArchivesPreserved": true,
+    "sixTableForkConvergence": true,
+    "repeatedStartupNoDuplicateWrite": true,
+    "mergedWordRecords": 5,
+    "counts": {
+      "wordRecords": 3,
+      "chapterRecords": 1,
+      "reviewRecords": 64,
+      "reviewWordStates": 1,
+      "achievementEvents": 1,
+      "achievementStates": 1
+    },
+    "cleanupStatus": 200,
+    "cleanupVerified": true
+  },
+  "finalThreeDeviceProof": {
+    "run": 40056974457,
+    "attempt": 1,
+    "job": 120761987587,
+    "sha": "51d2124360b620d6d84742b5359d6991f1f60567",
+    "conclusion": "success",
+    "strictThreeDeviceFullUnionPassed": true,
+    "profiles": [
+      {
+        "index": 0,
+        "localRows": 3,
+        "authV4PullStaged": true,
+        "pendingJournal": false
+      },
+      {
+        "index": 1,
+        "localRows": 3,
+        "authV4PullStaged": true,
+        "pendingJournal": false
+      },
+      {
+        "index": 2,
+        "localRows": 3,
+        "authV4PullStaged": true,
+        "pendingJournal": false
+      }
+    ],
+    "cleanup": {
+      "status": 200,
+      "stage": "unspecified"
+    }
+  },
+  "finalM3Proof": {
+    "run": 40056974474,
+    "job": 120761987649,
+    "conclusion": "success",
+    "cleanupAssertionsPassed": true,
+    "evidence": [
+      "2026-10-24T03:10:12.1140718Z PASS etest single session: A->B->A relay, revoked tokens 401, unique immutable event union; full V4 auto adoption NOT asserted"
+    ]
+  },
+  "finalBrowserProof": {
+    "run": 40056974483,
+    "job": 120761987790,
+    "conclusion": "success",
+    "cleanupAssertionsPassed": true,
+    "verifiedDisposableDeletions": 2,
+    "evidence": [
+      "2026-10-24T03:11:45.2456397Z   4 passed (1.3m)"
+    ]
+  },
+  "finalTransportProof": {
+    "run": 40056974483,
+    "attempt": 2,
+    "job": 120763195279,
+    "conclusion": "success",
+    "evidence": [
+      "2026-10-24T03:12:52.8643418Z PASS: etest published frontend matches source 51d2124",
+      "2026-10-24T03:12:54.0248072Z V4 GA deployed backend capability: PASS",
+      "2026-10-24T03:12:54.9713854Z Anonymous V4 write rejection: PASS",
+      "2026-10-24T03:13:01.9046664Z Fresh V4 and stale revision protection: PASS",
+      "2026-10-24T03:13:05.7527637Z Second unlisted account independent V4 write: PASS",
+      "2026-10-24T03:13:12.3292527Z Existing V4 one-action binary migration, SHA and idempotence: PASS",
+      "2026-10-24T03:13:18.9298615Z V4 direct native fast-path write {\"compressedBytes\":263861,\"httpCommitMs\":2451,\"revision\":3,\"roundTripAndSha\":\"PASS\"}",
+      "2026-10-24T03:13:22.1419678Z Direct fast-path strict SHA and revision protection: PASS",
+      "2026-10-24T03:15:26.9477737Z V4 HTTP multipart large-payload endurance: PASS",
+      "2026-10-24T03:15:28.9620143Z Disposable account cleanup: PASS",
+      "2026-10-24T03:15:31.5300614Z Disposable account cleanup: PASS"
+    ],
+    "verifiedDisposableDeletions": 2
+  },
+  "finalReadinessProof": {
+    "run": 40056974483,
+    "attempt": 2,
+    "job": 120763813373,
+    "conclusion": "success",
+    "evidence": [
+      "2026-10-24T03:15:43.6495400Z {\"hardThreeDeviceE2ERun\":40056974457,\"hardThreeDeviceE2EStatus\":\"success\"}",
+      "2026-10-24T03:15:43.6497338Z {\"sameCommit\":\"51d2124360b620d6d84742b5359d6991f1f60567\",\"passedPagesRun\":40056739893,\"etestCloudJobsPassed\":true,\"releaseAuthorized\":false}"
+    ],
+    "verifiedDisposableDeletions": 0
+  },
+  "priorSameApplicationSafeSubsetProof": {
+    "run": 40056056961,
+    "job": 120759183904,
+    "conclusion": "success",
+    "cleanupAssertionsPassed": true,
+    "evidence": [
+      "2026-10-24T02:58:06.3992838Z PASS etest triple offline forks: distinct A/B/C WordRecord UUIDs, two stale CAS 409, two pinned six-table joins, chapter foreign keys, independent D exact Blob readback",
+      "2026-10-24T02:58:06.3995711Z PASS etest: real V4 Blob CAS, old revision 409, six-table safe subset; two SAME-word Good/Again attempts, stable chronological FSRS replay, real commit and independent-device readback"
+    ]
+  },
+  "deployedMarkers": {
+    "pages": "51d2124360b620d6d84742b5359d6991f1f60567",
+    "etest": "51d2124",
+    "production": "a2dc907"
+  },
+  "requiredChecksPassed": true,
+  "advisoryExplorer": {
+    "run": 40056739851,
+    "statusAtReport": "in_progress",
+    "countedAsPassed": false
+  }
+}

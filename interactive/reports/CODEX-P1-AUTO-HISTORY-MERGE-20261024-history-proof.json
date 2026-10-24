@@ -1,0 +1,66 @@
+{
+  "schema": "qwerty-auto-v4-history-proof-v1",
+  "implementationCommit": "90464c20f3dd97a107dea3bf4495364826916d78",
+  "firstQualifiedRun": {
+    "run": 40056056977,
+    "attempt": 2,
+    "job": 120760552814,
+    "sha": "46047f53a3397b62950e45689b7d2d97fb5f5b2b",
+    "historicalFixture": true,
+    "source": "46047f5",
+    "ordinaryStartupRecoveredFullV4": true,
+    "sixTablePullExact": true,
+    "sharedReferencePreserved": true,
+    "automaticForkMergedBoth": true,
+    "originalForkArchivesPreserved": true,
+    "sixTableForkConvergence": true,
+    "repeatedStartupNoDuplicateWrite": true,
+    "mergedWordRecords": 5,
+    "counts": {
+      "wordRecords": 3,
+      "chapterRecords": 1,
+      "reviewRecords": 64,
+      "reviewWordStates": 1,
+      "achievementEvents": 1,
+      "achievementStates": 1
+    },
+    "cleanupStatus": 200,
+    "cleanupVerified": true
+  },
+  "finalQualifiedRun": {
+    "run": 40056974487,
+    "attempt": 1,
+    "job": 120761987833,
+    "sha": "51d2124360b620d6d84742b5359d6991f1f60567",
+    "historicalFixture": true,
+    "source": "51d2124",
+    "ordinaryStartupRecoveredFullV4": true,
+    "sixTablePullExact": true,
+    "sharedReferencePreserved": true,
+    "automaticForkMergedBoth": true,
+    "originalForkArchivesPreserved": true,
+    "sixTableForkConvergence": true,
+    "repeatedStartupNoDuplicateWrite": true,
+    "mergedWordRecords": 5,
+    "counts": {
+      "wordRecords": 3,
+      "chapterRecords": 1,
+      "reviewRecords": 64,
+      "reviewWordStates": 1,
+      "achievementEvents": 1,
+      "achievementStates": 1
+    },
+    "cleanupStatus": 200,
+    "cleanupVerified": true
+  },
+  "failedAttempt": {
+    "run": 40056056977,
+    "attempt": 1,
+    "startupFullV4Passed": true,
+    "mergeAssertionsReached": false,
+    "failure": "login-http-500",
+    "cleanup": "login-http-500-delete-not-sent",
+    "cleanupVerified": false
+  },
+  "finalRunPending": false
+}
