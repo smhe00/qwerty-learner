@@ -8,6 +8,7 @@ on:
       - 'cloud-functions/**'
       - 'tests/cloud/**'
       - 'tests/e2e/etest-three-device-auto-fork.*'
+      - 'tests/e2e/etest-login-v4-history.*'
       - 'tests/e2e/edgeone-s1-cloud-accounts.*'
       - 'tests/e2e/workspace-v4-app.spec.ts'
       - 'tests/e2e/workspace-v4-session-revoked.spec.ts'

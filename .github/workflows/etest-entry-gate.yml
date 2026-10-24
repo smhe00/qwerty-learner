@@ -10,6 +10,7 @@ on:
       - 'scripts/emit-edgeone-spa-entries.mjs'
       - 'cloud-functions/**'
       - 'tests/cloud/**'
+      - 'tests/e2e/etest-login-v4-history.*'
       - '.github/workflows/etest-entry-gate.yml'
       - 'scripts/verify-etest-entry.mjs'
       - 'scripts/wait-pages-deployment.mjs'

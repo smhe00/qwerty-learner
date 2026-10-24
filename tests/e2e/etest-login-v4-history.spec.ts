@@ -257,7 +257,8 @@ test('historical six-table login push/pull and divergent reauth preserve both si
     await account(pages[1])
     aRequests.length = 0
     await login(pages[0], username, password)
-    await expect(pages[0].getByRole('status')).toContainText('历史记录存在分歧', { timeout: 20_000 })
+    await expect(pages[0].getByRole('status').filter({ hasText: '历史记录存在分歧' }))
+      .toBeVisible({ timeout: 20_000 })
     expect(await evidence(pages[0])).toEqual(left)
     expect(await evidence(pages[1])).toEqual(right)
     const unchanged = await meta(pages[0])
