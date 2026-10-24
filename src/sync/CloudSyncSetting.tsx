@@ -17,7 +17,10 @@ type WorkspaceState =
   | { mode: 'account'; accountId: string }
   | { mode: 'error'; message: string }
 
-export default function CloudSyncSetting() {
+export default function CloudSyncSetting({
+  navigateToTool = (path: string) => window.location.assign(path),
+  disabled = false,
+}: { navigateToTool?: (path: string) => void; disabled?: boolean } = {}) {
   const [workspace, setWorkspace] = useState<WorkspaceState>({ mode: 'loading' })
   const [remote, setRemote] = useState<RemoteSyncMeta | null>(null)
   const [status, setStatus] = useState('')
@@ -27,7 +30,7 @@ export default function CloudSyncSetting() {
   const loggedIn =
     workspace.mode === 'account' && auth?.user.userId === workspace.accountId
   const expired = !!auth && auth.expiresAt * 1000 <= Date.now()
-  const enabled = REACT_APP_DEPLOY_ENV !== 'pages' &&
+  const enabled = !disabled && import.meta.env.VITE_QWERTY_SYNC_DISABLED !== 'true' && REACT_APP_DEPLOY_ENV !== 'pages' &&
     (import.meta.env.DEV || import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true')
 
   useEffect(() => {
@@ -54,7 +57,7 @@ export default function CloudSyncSetting() {
   }, [])
 
   const checkCloud = () => {
-    if (!loggedIn || !auth || expired || checking) return
+    if (disabled || !loggedIn || !auth || expired || checking) return
     setChecking(true)
     setStatus('正在只读检查云端状态…')
     void getSyncV2Meta(auth.token)
@@ -79,20 +82,20 @@ export default function CloudSyncSetting() {
   return (
     <section className="space-y-3 text-left text-sm text-gray-600 dark:text-gray-300">
       <p>云同步仅传输当前账号的学习工作区，离线时继续保留本地进度。
-        登录、注册及安全退出已统一移动到网站右上角的账户入口。</p>
+        登录、注册及安全退出请使用账号入口。</p>
       {workspace.mode === 'loading' && <p role="status">正在确认本地工作区…</p>}
       {workspace.mode === 'error' && <p role="alert">{workspace.message}</p>}
       {workspace.mode === 'legacy' && (
         <div className="space-y-2">
           <p>本浏览器仍使用旧版工作区。请先完成一次 S1 安全隔离，之后才能使用新版同步。</p>
-          <button type="button" className="my-btn-primary"
-            onClick={() => window.location.assign('/?s1-migration=confirm')}>
+          <button type="button" className="my-btn-primary" disabled={disabled}
+            onClick={() => navigateToTool('/?s1-migration=confirm')}>
             安全升级本地工作区（需确认，不清空学习记录）
           </button>
         </div>
       )}
       {workspace.mode === 'anonymous' && (
-        <p>当前为匿名本地工作区。需要云同步时，请点击右上角「登录 / 注册」。</p>
+        <p>当前为匿名本地工作区。需要云同步时，请通过账号入口登录或注册。</p>
       )}
       {workspace.mode === 'account' && (
         <>
@@ -127,6 +130,7 @@ export default function CloudSyncSetting() {
                   </span>
                 </span>
               </label>
+              {!remote && <p>尚未检查云端状态；这不代表数据已经同步。</p>}
               {remote && <p>云端：{remote.hasData
                 ? `Revision ${remote.revision} · ${remote.clientFormatVersion || '未知格式'}`
                 : '尚无备份'}</p>}
@@ -134,35 +138,35 @@ export default function CloudSyncSetting() {
               <div className="flex flex-wrap gap-2">
                 <button type="button" className="my-btn-primary disabled:opacity-50"
                   disabled={!enabled || expired}
-                  onClick={() => window.location.assign('/?s2-sync=run')}>
+                  onClick={() => navigateToTool('/?s2-sync=run')}>
                   立即同步
                 </button>
                 <button type="button" className="my-btn-primary disabled:opacity-50"
-                  disabled={checking || expired}
+                  disabled={disabled || checking || expired || import.meta.env.VITE_QWERTY_SYNC_DISABLED === 'true'}
                   onClick={checkCloud}>
                   {checking ? '检查中…' : '刷新云端状态（只读）'}
                 </button>
                 <button type="button" className="my-btn-primary disabled:opacity-50"
                   disabled={!enabled || expired}
-                  onClick={() => window.location.assign('/?v4-cloud-backup=download')}>
+                  onClick={() => navigateToTool('/?v4-cloud-backup=download')}>
                   下载云端备份
                 </button>
                 <button type="button" className="text-sm underline disabled:opacity-50"
                   disabled={!enabled || expired}
-                  onClick={() => window.location.assign('/?s2-recovery=manage')}>
+                  onClick={() => navigateToTool('/?s2-recovery=manage')}>
                   处理同步冲突
                 </button>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 导入备份不会自动覆盖云端。如两端数据不同，
-                请先保存两端备份，再选择保留哪一份。
+                请先保存备份，再在安全恢复页核对；本页不会直接覆盖任何一端。
               </p>
             </>
           )}
         </>
       )}
-      <button type="button" className="text-xs underline"
-        onClick={() => window.location.assign('/?perf-report=view')}>
+      <button type="button" className="text-xs underline" disabled={disabled}
+        onClick={() => navigateToTool('/?perf-report=view')}>
         查看启动 / 同步性能报告（仅本机）
       </button>
     </section>

@@ -74,6 +74,8 @@ test('both phone menu entries open the guarded login surface and back keeps loca
   await page.getByRole('button', { name: '返回', exact: true }).tap()
   await expect(page.locator('[data-mobile-menu]')).toBeVisible()
   await page.getByRole('link', { name: /账号与云同步/ }).tap()
+  await expect(page.locator('[data-mobile-data]')).toBeVisible()
+  await page.getByRole('button', { name: '管理账号', exact: true }).tap()
   await expect(page.locator('[data-account-overview]')).toBeVisible()
   await page.getByRole('button', { name: '登录或注册', exact: true }).tap()
   await expect(account(page)).toBeVisible()
@@ -103,7 +105,7 @@ test('registration tabs, native validation and password visibility never send un
   expect(calls).toBe(0)
   expect(await page.getByLabel('注册密码确认').evaluate((el: HTMLInputElement) => el.validity.customError)).toBe(true)
   await page.getByRole('tab', { name: '登录', exact: true }).tap()
-  await expect(page.getByLabel('账户密码', { exact: true })).toHaveAttribute('autocomplete', 'current-password')
+  await expect(page.getByLabel('账户密码')).toHaveAttribute('autocomplete', 'current-password')
   await expect(page.getByLabel('注册密码确认')).toBeHidden()
 })
 

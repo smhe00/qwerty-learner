@@ -195,12 +195,23 @@ test('menu completion: cloud status is read-only and manual sync hands off to th
 
 test('menu completion: saved American voice changes the real exposure phonetic', async ({ page }) => {
   await page.addInitScript(() => { HTMLMediaElement.prototype.play = function () { return Promise.resolve() } })
-  await seedAcquisitionSession(page, [reviewWords[2]], 981024)
+  // The default fixture is an independent recall probe, where showing an
+  // answer phonetic would be wrong. Explicitly test the exposure stage.
+  await seedAcquisitionSession(page, [reviewWords[2]], 981024, 'exposure')
   await page.goto('/mobile/settings')
-  await page.getByLabel('发音', { exact: true }).selectOption('us')
-  await page.getByRole('button', { name: '保存设置' }).click()
-  await expect(page.getByRole('status')).toContainText('设置已保存在本机')
-  await page.goto('/mobile/study')
-  await expect(page.locator('[data-mobile-phonetic]')).toHaveAttribute('data-phonetic-voice', 'us', { timeout: 30_000 })
-  await expect(page.locator('[data-mobile-phonetic]')).toContainText('/numərəs/')
+  // Stay inside the router so init-script seeding cannot reset the voice
+  // between Settings and Practice and mask a real persistence problem.
+  for (const [voice, phonetic] of [['uk', '/njuːmərəs/'], ['us', '/numərəs/']]) {
+    await page.getByLabel('发音', { exact: true }).selectOption(voice)
+    await page.getByRole('button', { name: '保存设置' }).click()
+    await expect(page.getByRole('status')).toContainText('设置已保存在本机')
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pronunciation') || '{}').type)).toBe(voice)
+    await page.getByRole('link', { name: '返回首页' }).click()
+    await page.getByRole('link', { name: /^(开始手机学习|继续手机学习)$/ }).click()
+    await expect(page.locator('[data-mobile-word-practice]')).toHaveAttribute('data-mobile-task', 'exposure')
+    await expect(page.locator('[data-mobile-phonetic]')).toHaveAttribute('data-phonetic-voice', voice)
+    await expect(page.locator('[data-mobile-phonetic]')).toContainText(phonetic)
+    await page.getByRole('button', { name: '返回主菜单' }).click()
+    await page.getByRole('link', { name: /^设置/ }).click()
+  }
 })

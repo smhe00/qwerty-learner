@@ -7,7 +7,7 @@ permissions:
   contents: read
 concurrency:
   group: mobile-menu-completion-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   verify:
     runs-on: ubuntu-22.04
@@ -20,14 +20,6 @@ jobs:
         with:
           node-version: '20.18.0'
           cache: yarn
-      - name: Assemble isolated candidate
-        run: |
-          python3 interactive/patches/mobile-menu-completion.py
-          python3 interactive/patches/mobile-menu-fixture.py
-          git diff --check
-          mkdir -p candidate-source
-          git diff --binary > candidate-source/mobile-integration.patch
-          tar -czf candidate-source/tested-source.tar.gz src/app.tsx src/pages/Mobile src/pages/Typing/components/WordPanel/components/MobileWordPractice.tsx src/sync/CloudSyncSetting.tsx scripts/emit-edgeone-spa-entries.mjs tests/e2e/mobile-p0.spec.ts tests/e2e/mobile-p0.config.ts tests/e2e/mobile-menu-completion.spec.ts
       - run: yarn install --frozen-lockfile
       - name: Scoped TypeScript audit
         shell: bash
@@ -36,12 +28,20 @@ jobs:
           yarn tsc --noEmit > "$RUNNER_TEMP/mobile-menu-tsc.log" 2>&1
           result=$?
           set -e
-          if [ "$result" -ne 0 ] && grep -E '^src/(app[.]tsx|pages/Mobile/|pages/Typing/components/WordPanel/components/MobileWordPractice[.]tsx|sync/CloudSyncSetting[.]tsx)' "$RUNNER_TEMP/mobile-menu-tsc.log"; then
-            echo '::error::Mobile menu TypeScript diagnostics'
-            exit 1
+          if [ "$result" -ne 0 ]; then
+            if ! grep -q 'error TS' "$RUNNER_TEMP/mobile-menu-tsc.log"; then
+              cat "$RUNNER_TEMP/mobile-menu-tsc.log"
+              exit 1
+            fi
+            if grep -E '^src/(app[.]tsx|pages/Mobile/|pages/Typing/components/WordPanel/components/MobileWordPractice[.]tsx|sync/CloudSyncSetting[.]tsx)' "$RUNNER_TEMP/mobile-menu-tsc.log"; then
+              echo '::error::Mobile menu TypeScript diagnostics'
+              exit 1
+            fi
+            echo 'Existing non-mobile TypeScript diagnostics are outside this scoped UI check.'
           fi
       - name: Scoped lint and production build
         run: |
+          git diff --check
           yarn eslint src/pages/Mobile src/pages/Typing/components/WordPanel/components/MobileWordPractice.tsx src/sync/CloudSyncSetting.tsx src/app.tsx --ext .ts,.tsx
           yarn build
           test -f build/mobile/history/index.html
@@ -50,13 +50,11 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Mobile functional acceptance
         run: npx playwright test --config=tests/e2e/mobile-menu-completion.config.ts
-      - name: Retain source evidence and synthetic screenshots
+      - name: Retain synthetic screenshots and failure evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mobile-menu-evidence-${{ github.run_id }}
-          path: |
-            candidate-source/
-            test-results/
+          path: test-results/
           if-no-files-found: ignore
           retention-days: 5

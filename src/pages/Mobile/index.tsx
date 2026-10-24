@@ -12,9 +12,7 @@ import { BookOpen, ChevronRight, CircleUserRound, Cloud, LayoutGrid, Medal, Sett
 import type { MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 
-/** Mobile P0 is a separate menu-first app shell; not a scaled desktop Header.
- * Nonfunctional P2 entries are deliberately disabled rather than fake links.
- */
+/** Dedicated menu-first mobile shell. Every displayed entry has a real route. */
 export default function MobilePage() {
   const { checkpoint } = useMobileCheckpoint()
   const daily = useMobileDailyProgress()
@@ -31,14 +29,14 @@ export default function MobilePage() {
   }
   const expired = !!auth && auth.expiresAt * 1000 <= Date.now()
   const menus = [
-    { title: '成就', subtitle: '移动端成就即将开放', icon: Medal },
+    { title: '成就', subtitle: '成就雅集 · 查看解锁与收藏', icon: Medal, route: '/mobile/achievements' },
     { title: '词库', subtitle: '选择词库 · 分别保留学习进度', icon: BookOpen, route: '/mobile/library' },
-    { title: '学习记录', subtitle: '移动端统计即将开放', icon: LayoutGrid },
+    { title: '学习记录', subtitle: '按日期与词库查看已保存的练习', icon: LayoutGrid, route: '/mobile/history' },
     {
       title: '账号与云同步',
       subtitle: auth ? (expired ? '登录已过期 · ' : '已登录 · ') + auth.user.username : '登录或注册 · 使用账号学习空间',
       icon: Cloud,
-      href: accountHref,
+      route: '/mobile/data',
     },
     { title: '设置', subtitle: '每日目标 · 单词发音 · 显示', icon: Settings2, route: '/mobile/settings' },
   ]
@@ -86,42 +84,13 @@ export default function MobilePage() {
 
         <section className="mobile-home-menu" aria-label="功能菜单">
           <h2>更多功能</h2>
-          {menus.map((item) =>
-            item.route ? (
-              <Link className="mobile-menu-item" to={item.route} key={item.title}>
-                <span className="mobile-menu-icon">
-                  <item.icon size={20} aria-hidden="true" />
-                </span>
-                <span className="mobile-menu-text">
-                  <strong>{item.title}</strong>
-                  <small>{item.subtitle}</small>
-                </span>
-                <ChevronRight size={18} aria-hidden="true" className="mobile-menu-chevron" />
-              </Link>
-            ) : item.href ? (
-              <a className="mobile-menu-item" href={item.href} target="_self" onClick={openAccount} key={item.title}>
-                <span className="mobile-menu-icon">
-                  <item.icon size={20} aria-hidden="true" />
-                </span>
-                <span className="mobile-menu-text">
-                  <strong>{item.title}</strong>
-                  <small>{item.subtitle}</small>
-                </span>
-                <ChevronRight size={18} aria-hidden="true" className="mobile-menu-chevron" />
-              </a>
-            ) : (
-              <div className="mobile-menu-item mobile-menu-unavailable" key={item.title} aria-label={item.title + '，后续版本开放'}>
-                <span className="mobile-menu-icon">
-                  <item.icon size={20} aria-hidden="true" />
-                </span>
-                <span className="mobile-menu-text">
-                  <strong>{item.title}</strong>
-                  <small>{item.subtitle}</small>
-                </span>
-                <span className="mobile-soon">即将开放</span>
-              </div>
-            ),
-          )}
+          {menus.map((item) => (
+            <Link className="mobile-menu-item" to={item.route} key={item.title}>
+              <span className="mobile-menu-icon"><item.icon size={20} aria-hidden="true" /></span>
+              <span className="mobile-menu-text"><strong>{item.title}</strong><small>{item.subtitle}</small></span>
+              <ChevronRight size={18} aria-hidden="true" className="mobile-menu-chevron" />
+            </Link>
+          ))}
         </section>
         <footer className="mobile-home-footer">
           {secureLearningEntry(window.location.href) ? '当前仅在本机保存 · 请使用安全站点同步' : '手机端独立界面 · 与桌面共享学习数据'}
