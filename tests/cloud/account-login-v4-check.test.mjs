@@ -136,3 +136,23 @@ test('startup: ordinary signed-in learning entry checks full V4; account/tools/o
   for (const search of ['?s1-account=manage', '?s2-sync=run', '?m4-reconcile=1']) assert.equal(startup({ ...input, search }), false)
   for (const key of ['account', 'liveAuth', 'enabled', 'online']) assert.equal(startup({ ...input, [key]: false }), false)
 })
+
+
+test('startup failure displays only a source-defined diagnostic code, never raw payload or API details', async () => {
+  fixture()
+  const error = new Error('private user data and token')
+  error.code = 'v4_binary_part_sha_mismatch'
+  error.details = { token: 'secret', account: 'private' }
+  globalThis.__login.execute = async () => { throw error }
+  const result = await enabled()
+  assert.equal(result.status, 'pending')
+  assert.ok(result.detail.includes('account-sync / v4_binary_part_sha_mismatch'))
+  assert.ok(!result.detail.includes('private'))
+  assert.ok(!result.detail.includes('secret'))
+  const unknownError = new Error('private payload')
+  unknownError.code = 'private-user-code'
+  globalThis.__login.execute = async () => { throw unknownError }
+  const unknown = await enabled()
+  assert.ok(unknown.detail.includes('account-sync / unknown'))
+  assert.ok(!unknown.detail.includes('private'))
+})

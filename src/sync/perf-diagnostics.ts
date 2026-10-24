@@ -1,3 +1,4 @@
+import { isV4FailureCode, rememberV4Failure, v4FailureCode } from './v4-failure-diagnostics'
 /**
  * Privacy-safe, session-scoped startup and Sync V4 performance diagnostics.
  * Keeps ONLY fixed stage names, durations and byte counts; never data rows,
@@ -16,6 +17,7 @@ export type PerfSample = {
   partIndex?: number
   attempt?: number
   outcome?: 'ok' | 'failed'
+  failureCode?: string
   failureStage?: 'http_request' | 'blob_write' | 'blob_readback' |
     'part_lookup' | 'commit_core' | 'revision_chunk' |
     'revision_manifest' | 'receipt'
@@ -68,6 +70,7 @@ export function readPerfSamples(): PerfSample[] {
       (sample.attempt === undefined || (Number.isSafeInteger(sample.attempt) &&
         sample.attempt >= 1 && sample.attempt <= 6)) &&
       (sample.outcome === undefined || ['ok', 'failed'].includes(sample.outcome)) &&
+      (sample.failureCode === undefined || isV4FailureCode(sample.failureCode)) &&
       (sample.failureStage === undefined || ['http_request', 'blob_write',
         'blob_readback', 'part_lookup', 'commit_core',
         'revision_chunk', 'revision_manifest', 'receipt'].includes(sample.failureStage)) &&
@@ -109,16 +112,19 @@ function clock(): number {
   return typeof performance !== 'undefined' ? performance.now() : Date.now()
 }
 
-export function startPerfStage(flow: PerfFlow, stage: string): () => void {
+export function startPerfStage(flow: PerfFlow, stage: string): (outcome?: 'ok' | 'failed', failureCode?: string) => void {
   const started = clock()
   let stopped = false
-  return () => {
+  return (outcome, failureCode) => {
     if (stopped) return
     stopped = true
     const elapsed = clock() - started
     if (!Number.isFinite(elapsed) || elapsed < 0) return
     append({ at: new Date().toISOString(), flow, stage,
-      elapsedMs: Math.round(elapsed * 10) / 10 })
+      elapsedMs: Math.round(elapsed * 10) / 10,
+      ...(outcome ? { outcome } : {}),
+      ...(outcome === 'failed' && isV4FailureCode(failureCode) ? { failureCode } : {}),
+    })
   }
 }
 
@@ -126,7 +132,15 @@ export async function timePerfStage<T>(
   flow: PerfFlow, stage: string, task: () => Promise<T>,
 ): Promise<T> {
   const stop = startPerfStage(flow, stage)
-  try { return await task() } finally { stop() }
+  try {
+    const result = await task()
+    stop('ok')
+    return result
+  } catch (error) {
+    if (flow === 'sync') rememberV4Failure(error, stage)
+    stop('failed', v4FailureCode(error))
+    throw error
+  }
 }
 
 export function recordPerfSize(flow: PerfFlow, stage: string, bytes: number): void {

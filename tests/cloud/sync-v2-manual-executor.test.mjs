@@ -14,13 +14,13 @@ const tmp = mkdtempSync(join(tmpdir(), 'qwerty-s2-manual-'))
 const execFile = join(tmp, 'executor.mjs')
 const v4File = join(tmp, 'v4.mjs')
 await Promise.all([
-  build({ entryPoints: [resolve(root, 'src/sync/v2-manual-executor.ts')],
+  build({ stdin: { contents: "export { executeManualSyncV2 } from './src/sync/v2-manual-executor'; export { readPerfSamples } from './src/sync/perf-diagnostics'; export { v4FailureDetail } from './src/sync/v4-failure-diagnostics';", resolveDir: root, loader: 'ts' },
     outfile: execFile, bundle: true, platform: 'node', target: 'node20', format: 'esm' }),
   build({ entryPoints: [resolve(root, 'src/sync/workspace-v4.ts')],
     outfile: v4File, bundle: true, platform: 'node', target: 'node20', format: 'esm' }),
 ])
 after(() => rmSync(tmp, { recursive: true, force: true }))
-const { executeManualSyncV2 } = await import(pathToFileURL(execFile).href)
+const { executeManualSyncV2, readPerfSamples, v4FailureDetail } = await import(pathToFileURL(execFile).href)
 const { workspaceFingerprintV4 } = await import(pathToFileURL(v4File).href)
 
 const id = 's2-owner'
@@ -299,5 +299,54 @@ for (const failure of ['build', 'archive', 'advance', 'upload', 'stage']) {
     assert.equal(state.pending, null)
     assert.equal(state.calls.includes('restore'), false)
     assert.equal(state.calls.filter(c => c === 'upload').length, ['upload', 'stage'].includes(failure) ? 1 : 0)
+  })
+}
+
+
+test('HTTP-successful corrupt download is diagnosed before merge/archive/upload or local restore', async () => {
+  const m = new Map()
+  globalThis.sessionStorage = { getItem: k => m.get(k) ?? null, setItem: (k,v) => m.set(k,v) }
+  const remote = await cloud(snap(2), 4)
+  const { port, state } = fixture(snap(1), remote.meta)
+  state.cloud = { ...remote.snapshot, payloadBase64: Buffer.from('corrupt downloaded body').toString('base64') }
+  port.automaticMerge = { async build() { throw Error('must not merge') }, async archive() { throw Error('must not archive') } }
+  let thrown
+  await assert.rejects(executeManualSyncV2(port), e => { thrown=e; return /checksum or size mismatch/.test(e.message) })
+  const rows = readPerfSamples()
+  assert.equal(rows.find(r => r.stage === 'merge-download').outcome, 'ok')
+  assert.equal(rows.find(r => r.stage === 'merge-verify-cloud').failureCode, 'cloud-compressed-mismatch')
+  assert.ok(v4FailureDetail(thrown).includes('merge-verify-cloud / cloud-compressed-mismatch'))
+  assert.equal(state.uploaded, null)
+  assert.equal(state.pending, null)
+  assert.equal(state.restored, null)
+  assert.ok(!state.calls.includes('save-source'))
+  delete globalThis.sessionStorage
+})
+
+for (const phase of ['build', 'archive', 'upload']) {
+  test('automatic merge failure evidence preserves call ordering and never replays ' + phase, async () => {
+    const m = new Map()
+    globalThis.sessionStorage = { getItem: k => m.get(k) ?? null, setItem: (k,v) => m.set(k,v) }
+    const remote = await cloud(snap(2), 4)
+    const { port, state } = fixture(snap(1), remote.meta)
+    state.cloud = remote.snapshot
+    const original = new Error(phase === 'build' ? 'auto-merge-schema-mismatch' : 'private owner backup payload')
+    if (phase === 'archive') original.name = 'QuotaExceededError'
+    if (phase === 'upload') original.name = 'AbortError'
+    let calls = 0
+    port.automaticMerge = {
+      async build() { if (phase === 'build') { calls++; throw original } return snap(3) },
+      async archive() { state.calls.push('archive'); if (phase === 'archive') { calls++; throw original } },
+    }
+    if (phase === 'upload') port.put = async () => { state.calls.push('upload'); calls++; throw original }
+    await assert.rejects(executeManualSyncV2(port), e => e === original)
+    assert.equal(calls, 1)
+    assert.match(v4FailureDetail(original), new RegExp('merge-' + phase))
+    assert.ok(!JSON.stringify(readPerfSamples()).includes('private owner'))
+    assert.equal(state.pending, null)
+    assert.equal(state.baseline, null)
+    if (phase !== 'upload') assert.ok(!state.calls.includes('upload'))
+    else assert.ok(state.calls.indexOf('archive') < state.calls.indexOf('upload'))
+    delete globalThis.sessionStorage
   })
 }

@@ -84,3 +84,29 @@ test('V4 transport samples preserve fixed phase and attempt, strip secrets', () 
   assert.equal(JSON.stringify(rows).includes('secret-test-token'), false)
   assert.equal(JSON.stringify(rows).includes('private.invalid'), false)
 })
+
+
+test('stage outcomes preserve return values and original errors without private messages', async () => {
+  globalThis.sessionStorage = storage()
+  const sentinel = { value: 7 }
+  assert.equal(await timePerfStage('sync', 'merge-download', async () => sentinel), sentinel)
+  const err = new Error('private-account private-learning Bearer secret-token')
+  await assert.rejects(timePerfStage('sync', 'merge-build', async () => { throw err }), e => e === err)
+  const rows = readPerfSamples()
+  assert.deepEqual(rows.map(r => [r.stage, r.outcome, r.failureCode]), [
+    ['merge-download', 'ok', undefined], ['merge-build', 'failed', 'unknown'],
+  ])
+  assert.ok(!JSON.stringify(rows).includes('private-'))
+  assert.ok(!JSON.stringify(rows).includes('secret-token'))
+  const hostile = Object.create(null, { message: { get() { throw Error('private getter') } } })
+  await assert.rejects(timePerfStage('sync', 'merge-records', async () => { throw hostile }), e => e === hostile)
+  assert.equal(readPerfSamples().at(-1).failureCode, 'unknown')
+})
+
+test('full diagnostic storage does not retry or replace a failing sync error', async () => {
+  globalThis.sessionStorage = { getItem() { throw Error('unavailable') }, setItem() { throw Error('full') } }
+  const err = new Error('auto-merge-schema-mismatch')
+  let calls = 0
+  await assert.rejects(timePerfStage('sync', 'merge-build', async () => { calls++; throw err }), e => e === err)
+  assert.equal(calls, 1)
+})

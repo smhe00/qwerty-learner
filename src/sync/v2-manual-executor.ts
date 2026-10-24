@@ -99,7 +99,7 @@ export async function executeManualSyncV2(port: SyncV2ExecutionPort): Promise<S2
   // after download. Do not parallelize the writer flush or ownership guard.
   const [local, baseline, remote] = await Promise.all([
     timePerfStage('sync', 'snapshot-capture', () => port.capture()),
-    port.readBaseline(),
+    timePerfStage('sync', 'baseline-read', () => port.readBaseline()),
     timePerfStage('sync', 'remote-meta', () => port.getMeta()),
   ])
   assertRestorableWorkspaceV4(local)
@@ -112,33 +112,34 @@ export async function executeManualSyncV2(port: SyncV2ExecutionPort): Promise<S2
     ...remote, logicalFingerprint: remote.logicalFingerprint ?? null,
   }, baseline))
   const decision = preflight.decision
-  if (decision.action === 'conflict' && port.automaticMerge) {
-    if (await port.journal.read()) throw Error('Previous S2 journal requires recovery')
+  const automaticMerge = port.automaticMerge
+  if (decision.action === 'conflict' && automaticMerge) {
+    if (await timePerfStage('sync', 'merge-journal-read', () => port.journal.read())) throw Error('Previous S2 journal requires recovery')
     await port.assertQuiescentOwner()
-    const cloud = await port.getSnapshot(remote)
-    const other = await verifyDownloadedWorkspaceV4(port.accountId, remote, cloud)
-    const candidate = await port.automaticMerge.build(local, other)
+    const cloud = await timePerfStage('sync', 'merge-download', () => port.getSnapshot(remote))
+    const other = await timePerfStage('sync', 'merge-verify-cloud', () => verifyDownloadedWorkspaceV4(port.accountId, remote, cloud))
+    const candidate = await timePerfStage('sync', 'merge-build', () => automaticMerge.build(local, other))
     assertRestorableWorkspaceV4(candidate)
     if (candidate.metadata.source.kind !== 'account' || candidate.metadata.source.accountId !== port.accountId) {
       throw Error('Automatic V4 merge candidate owner mismatch')
     }
-    const fingerprint = await workspaceFingerprintV4(candidate)
+    const fingerprint = await timePerfStage('sync', 'merge-fingerprint', () => workspaceFingerprintV4(candidate))
     await port.assertQuiescentOwner()
     // A durable archive of BOTH originals and the full candidate is mandatory
     // before any cloud write. Storage failures leave the original workspace live.
-    await port.automaticMerge.archive(local, other, candidate)
-    await port.saveSource(local)
+    await timePerfStage('sync', 'merge-archive', () => automaticMerge.archive(local, other, candidate))
+    await timePerfStage('sync', 'merge-save-source', () => port.saveSource(local))
     await port.assertQuiescentOwner()
-    if (!sameRemote(remote, await port.getMeta())) throw Error('Cloud changed during automatic V4 merge')
+    if (!sameRemote(remote, await timePerfStage('sync', 'merge-meta-recheck', () => port.getMeta()))) throw Error('Cloud changed during automatic V4 merge')
     let target = candidate
     let revision = remote.revision
     if (fingerprint !== remote.logicalFingerprint) {
-      const bytes = await payloadV4(candidate)
+      const bytes = await timePerfStage('sync', 'merge-payload', () => payloadV4(candidate))
       await port.assertQuiescentOwner()
       // Exactly ONE CAS request. An ambiguous response is never replayed here.
-      const uploaded = await port.put({ baseRevision: remote.revision,
+      const uploaded = await timePerfStage('sync', 'merge-upload', () => port.put({ baseRevision: remote.revision,
         payloadBytes: bytes.bytes, logicalFingerprint: fingerprint,
-        clientFormatVersion: 'qwerty-backup-v4' })
+        clientFormatVersion: 'qwerty-backup-v4' }))
       if (!uploaded.hasData || uploaded.revision !== remote.revision + 1 ||
           uploaded.clientFormatVersion !== 'qwerty-backup-v4' ||
           uploaded.logicalFingerprint !== fingerprint || uploaded.payloadSha256 !== bytes.checksum) {
@@ -151,9 +152,9 @@ export async function executeManualSyncV2(port: SyncV2ExecutionPort): Promise<S2
       target = other
     }
     await port.assertQuiescentOwner()
-    await port.journal.stage({ version: 1, accountId: port.accountId,
+    await timePerfStage('sync', 'merge-stage-journal', () => port.journal.stage({ version: 1, accountId: port.accountId,
       registryGeneration: port.registryGeneration, revision, fingerprint,
-      oldBaseline: baseline, snapshot: target })
+      oldBaseline: baseline, snapshot: target }))
     return { status: 'pull-reload-required', revision, automaticMerge: true }
   }
   if (decision.action === 'blocked' || decision.action === 'conflict') {

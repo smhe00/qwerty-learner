@@ -37,7 +37,7 @@ export function renderPerfReportUI(root: HTMLElement | null): void {
     const samples = readPerfSamples()
     table.replaceChildren()
     const header = document.createElement('tr')
-    for (const heading of ['时间', '流程', '阶段', '分片/重试', '结果/失败阶段',
+    for (const heading of ['时间', '流程', '阶段', '分片/重试', '结果/失败阶段', '诊断码',
       '类别/HTTP', 'HTTP耗时(ms)', 'Blob写(ms)', 'Blob验证(ms)',
       '提交读取(ms)', '提交核心(ms)', 'Revision写(ms)', 'Revision验证(ms)',
       'Manifest(ms)', 'Revision分片数', '清理(ms)', '服务端总(ms)', '大小(KiB)']) {
@@ -54,6 +54,7 @@ export function renderPerfReportUI(root: HTMLElement | null): void {
         sample.partIndex === undefined ? '—' :
           String(sample.partIndex) + '/' + (sample.attempt ?? 1),
         [sample.outcome, sample.failureStage].filter(Boolean).join('/') || '—',
+        sample.failureCode ?? '—',
         [sample.failureCategory, sample.httpStatus].filter(value => value !== undefined).join('/') || '—',
         sample.elapsedMs ?? '—', sample.blobWriteMs ?? '—',
         sample.blobReadbackMs ?? '—', sample.partsReadMs ?? '—',
