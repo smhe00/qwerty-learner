@@ -1,14 +1,13 @@
 ---
 protocol_version: '1.1'
-task_id: 'MOBILE-MENU-COMPLETION-20261024'
-task_file: 'interactive/tasks/MOBILE-MENU-COMPLETION-20261024.md'
-report_file: 'interactive/reports/MOBILE-MENU-COMPLETION-20261024-report.md'
+task_id: 'MOBILE-MENU-RELEASE-20261025'
+task_file: 'interactive/tasks/MOBILE-MENU-RELEASE-20261025.md'
+report_file: 'interactive/reports/MOBILE-MENU-RELEASE-20261025-report.md'
 target_branch: 'product/main'
-status: 'DONE'
-executor: 'ChatGPT (single executor)'
-claim_base_commit: 'dcb11229e06665b7949021c2115112b199b78181'
-last_source_commit: '2cf88073a9df79a169ed845abe51153a4bdfb86b'
-release_to_master: false
+status: 'IN_PROGRESS'
+executor: 'ChatGPT (single release executor)'
+claim_base_commit: 'c590c93a908e0d780c0d00c5303fe8b773e5132a'
+release_to_master: true
 ---
 
-Owner: 执行 mobile menu completion. Implementation complete: achievements/history/data menus, read-only active-workspace history, existing sync/backup management, and UK/US phonetic display. Exact committed-source scoped acceptance 40111528629 PASS (12/12 plus types/lint/build). PR #40 integrates normally to product/main. No eTest/master release or real user data access. No cloud/auth/storage protocol changes. Prior Codex mobile HTTP/account task is DONE and its report remains intact. Read the current report for scope and validation limits.
+Owner explicitly requested 发布 after mobile menu completion PR #40. This grants the standard main -> eTest -> master release after same-SHA evidence. Preserve mobile implementation/source and existing data-safety gates. Initial Pages failure is an obsolete disabled-menu expectation, not permission to skip the gate. Correct to exercise real locked achievements and navigation, revalidate the exact candidate, then promote using expected-old-SHA/non-force ref updates only. No existing user data access. Previous task/report remain historical.

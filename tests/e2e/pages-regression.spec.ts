@@ -202,17 +202,37 @@ test('published Pages: Focus achievements default is accessible on desktop/mobil
   await expect(page.locator('.focus-achievements-detail')).toHaveCount(0)
   expect(errors).toEqual([])
 
-  // Mobile P0 has an independent menu and a REAL Learn session. Account,
-  // achievements and statistics are intentionally disabled until P2.
-  // Do not assert obsolete Alpha-preview copy or a fake non-persistent demo.
+  // PR #40 completes the formerly disabled mobile menus. Exercise the real
+  // published route and locked cards instead of requiring obsolete P0 copy.
+  // Keep the persistent Learn smoke and cloud-disabled guarantees intact.
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 } })
   const mobile = await mobileContext.newPage()
+  const mobileErrors: string[] = []
+  const cloudCalls: string[] = []
+  mobile.on('pageerror', error => mobileErrors.push(error.message))
+  mobile.on('request', req => {
+    if (/\/(?:api)\/(auth|sync)(?:\/|$)/.test(new URL(req.url()).pathname)) cloudCalls.push(req.method())
+  })
   try {
     await mobile.goto(site + 'mobile', { waitUntil: 'domcontentloaded' })
-    await expect(mobile.locator('[data-mobile-menu]')).toBeVisible({ timeout: 20_000 })
-    await expect(mobile.getByText('成就', { exact: true })).toBeVisible()
-    await expect(mobile.getByText('移动端成就即将开放')).toBeVisible()
-    await expect(mobile.locator('[data-mobile-menu] a[href$="/achievements"]')).toHaveCount(0)
+    const menu = mobile.locator('[data-mobile-menu]')
+    await expect(menu).toBeVisible({ timeout: 20_000 })
+    await expect(menu.locator('.mobile-home-menu a')).toHaveCount(5)
+    await expect(menu.getByText('即将开放', { exact: true })).toHaveCount(0)
+    await expect(menu.getByRole('link', { name: /^学习记录/ })).toHaveAttribute('href', '/qwerty-learner/mobile/history')
+    await expect(menu.getByRole('link', { name: /^账号与云同步/ })).toHaveAttribute('href', '/qwerty-learner/mobile/data')
+    await menu.getByRole('link', { name: /^成就/ }).click()
+    await expect(mobile).toHaveURL(/\/qwerty-learner\/mobile\/achievements\/?$/)
+    await expect(mobile.locator('[data-focus-achievement-gallery]').getByRole('heading', { name: '成就' })).toBeVisible()
+    await expect(mobile.locator('.focus-achievements-item')).toHaveCount(34)
+    await expect(mobile.locator('.focus-achievements-item:disabled')).toHaveCount(34)
+    await expect(mobile.locator('.focus-achievements-item:not([data-achievement-id])')).toHaveCount(5)
+    await expect(mobile.getByRole('button', { name: '开启宋韵雅藏' })).toHaveCount(0)
+    await expect(mobile.locator('[data-song-achievement-gallery]')).toHaveCount(0)
+    await mobile.locator('.focus-achievements-item:disabled').first().evaluate(el => el.click())
+    await expect(mobile.locator('.focus-achievements-detail')).toHaveCount(0)
+    await mobile.getByRole('button', { name: '返回手机首页', exact: true }).click()
+    await expect(menu).toBeVisible()
     await expect(mobile.getByRole('link', { name: /(?:开始|继续)手机学习/ })).toBeVisible()
     await mobile.getByRole('link', { name: /(?:开始|继续)手机学习/ }).click()
     await expect(mobile).toHaveURL(/\/mobile\/study\/?$/)
@@ -221,7 +241,9 @@ test('published Pages: Focus achievements default is accessible on desktop/mobil
     await expect.poll(() => mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true)
     await mobile.getByRole('button', { name: '返回主菜单' }).click()
     await expect(mobile).toHaveURL(/\/mobile\/?$/)
-    await expect(mobile.locator('[data-mobile-menu]')).toBeVisible()
+    await expect(menu).toBeVisible()
+    expect(mobileErrors).toEqual([])
+    expect(cloudCalls).toEqual([])
   } finally {
     await mobileContext.close()
   }

@@ -11,6 +11,7 @@ on:
       - 'cloud-functions/**'
       - 'tests/cloud/**'
       - 'tests/e2e/etest-login-v4-history.*'
+      - 'tests/e2e/pages-regression.spec.ts'
       - '.github/workflows/etest-entry-gate.yml'
       - 'scripts/verify-etest-entry.mjs'
       - 'scripts/wait-pages-deployment.mjs'
