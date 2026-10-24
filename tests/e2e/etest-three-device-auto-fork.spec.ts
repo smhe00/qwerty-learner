@@ -1,3 +1,4 @@
+import { acknowledgeInformationDialog } from './information-dialog'
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import { writeFile } from 'node:fs/promises'
 
@@ -155,6 +156,7 @@ async function openAccount(page: Page, username: string, password: string) {
     }).catch(() => null), { timeout: 60_000 }).toBe(username)
     // Full S2 Pull can replace the document twice: entering recovery is not
     // proof that the guarded restore and application mount have completed.
+    await acknowledgeInformationDialog(page)
     await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 60_000 })
     await expect(page.getByText('学习数据安全检查未通过')).toHaveCount(0)
   } catch (error) {
@@ -174,6 +176,7 @@ async function openAccount(page: Page, username: string, password: string) {
 }
 async function beginLearn(page: Page) {
   await page.goto(new URL('/learn', base).href, { waitUntil: 'domcontentloaded' })
+  await acknowledgeInformationDialog(page)
   const start = page.getByRole('button', { name: '开始 Learn', exact: true })
   await expect(start).toBeVisible({ timeout: 35_000 })
   await start.click()
