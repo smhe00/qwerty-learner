@@ -20,6 +20,14 @@ await build({
   tsconfig: resolve(root, 'tsconfig.json'),
 })
 after(() => rmSync(tmp, { recursive: true, force: true }))
+await build({
+  entryPoints: [resolve(root, 'src/achievement/session.ts')],
+  outfile: join(tmp, 'session.mjs'),
+  bundle: true,
+  platform: 'node',
+  format: 'esm',
+})
+const { getAchievementSessionId } = await import(pathToFileURL(join(tmp, 'session.mjs')).href)
 const { mergeDecodedV4Tables: merge, mergeValueKey: key } = await import(pathToFileURL(out).href)
 const empty = () => ({
   wordRecords: [],
@@ -259,4 +267,146 @@ test('lossless key distinguishes undefined, negative zero, sparse holes, Dates a
   assert.notEqual(key(new Uint8Array(buffer, 0, 4)), key(new Uint8Array(buffer, 4, 4)))
   const x = { a: 1 }
   assert.notEqual(key([x, x]), key([{ a: 1 }, { a: 1 }]))
+})
+
+function completedFork(n, modern = true) {
+  const data = empty()
+  const review = session(1, 1, { sessionId: modern ? uuid(50 + n) : undefined, isFinished: true, words: [], createTime: 1_800_000_000 + n })
+  const sessionId = getAchievementSessionId(review)
+  const eventId = `session:${sessionId}:completed`
+  data.wordRecords = [{ ...word(1, 'fork-' + n, true), attemptId: uuid(n) }]
+  data.reviewRecords = [review]
+  data.achievementEvents = [
+    {
+      eventId,
+      eventType: 'session_completed',
+      origin: 'live',
+      sessionId,
+      sourceRecordIds: [1],
+      occurredAt: review.createTime + 10,
+      dict: 'book',
+      metricValues: { completed: 1 },
+      unlockedAchievementIds: ['earned-' + n],
+    },
+    {
+      eventId: `continue:${sessionId}`,
+      eventType: 'continue_intent',
+      origin: 'live',
+      sessionId,
+      occurredAt: review.createTime + 11,
+      dict: 'book',
+      metricValues: { voluntary_continue_intent: 1 },
+      unlockedAchievementIds: [],
+    },
+    {
+      eventId: 'word:1',
+      eventType: 'word_attempt',
+      origin: 'live',
+      sessionId,
+      sourceRecordId: 1,
+      occurredAt: review.createTime,
+      dict: 'book',
+      word: 'fork-' + n,
+      metricValues: {},
+      unlockedAchievementIds: [],
+    },
+    {
+      eventId: 'queue',
+      eventType: 'unlock_queue',
+      origin: 'live',
+      dict: 'book',
+      occurredAt: review.createTime + 10,
+      metricValues: {},
+      unlockedAchievementIds: [],
+      pendingAwards: [
+        { achievementId: 'queued-' + n, firstTriggerEventId: eventId, sessionId, sourceRecordId: 1, triggeredAt: review.createTime + 10 },
+      ],
+    },
+  ]
+  data.achievementStates = [
+    { achievementId: 'earned-' + n, firstTriggerEventId: eventId, sessionId, sourceRecordId: 1, unlockedAt: review.createTime + 10 },
+  ]
+  return data
+}
+
+for (const modern of [true, false])
+  test(`independent completed sessions rebase every numeric reference (UUID=${modern})`, () => {
+    const a = completedFork(1, modern),
+      b = completedFork(2, modern)
+    const before = structuredClone([a, b])
+    assert.equal(a.achievementEvents[0].eventId, b.achievementEvents[0].eventId)
+    const m = merge(a, b)
+    assert.equal(m.reviewRecords.length, 2)
+    assert.equal(m.achievementEvents.length, 7)
+    const review = (ref) => m.reviewRecords.find((r) => getAchievementSessionId(r) === ref)
+    const assertReference = (row, n) => assert.equal(review(row.sessionId).createTime, 1_800_000_000 + n)
+    for (const event of m.achievementEvents) {
+      if (event.eventType === 'unlock_queue') {
+        for (const award of event.pendingAwards) {
+          assertReference(award, Number(award.achievementId.split('-')[1]))
+          assert.equal(award.firstTriggerEventId, `session:${award.sessionId}:completed`)
+        }
+      } else {
+        const n = Number(m.wordRecords.find((w) => w.id === (event.sourceRecordId ?? event.sourceRecordIds?.[0]))?.word.split('-')[1])
+        if (event.eventType !== 'continue_intent') assertReference(event, n)
+        if (event.eventType === 'session_completed') assert.equal(event.eventId, `session:${event.sessionId}:completed`)
+        if (event.eventType === 'continue_intent') {
+          assert.equal(event.eventId, `continue:${event.sessionId}`)
+          assert.equal(event.occurredAt, review(event.sessionId).createTime + 11)
+        }
+      }
+    }
+    for (const grant of m.achievementStates) {
+      assertReference(grant, Number(grant.achievementId.split('-')[1]))
+      assert.equal(grant.firstTriggerEventId, `session:${grant.sessionId}:completed`)
+    }
+    assert.deepEqual(merge(b, a), m)
+    assert.deepEqual(merge(m, a), m)
+    assert.deepEqual(merge(b, m), m)
+    assert.deepEqual(merge(m, m), m)
+    assert.deepEqual([a, b], before)
+  })
+
+test('pruned session triggers are rebased and missing referenced reviews fail closed', () => {
+  const a = completedFork(1),
+    b = completedFork(2)
+  b.achievementEvents = []
+  const m = merge(a, b)
+  const grant = m.achievementStates.find((s) => s.achievementId === 'earned-2')
+  const ref = getAchievementSessionId(m.reviewRecords.find((r) => r.sessionId === uuid(52)))
+  assert.equal(grant.sessionId, ref)
+  assert.equal(grant.firstTriggerEventId, `session:${ref}:completed`)
+  b.reviewRecords = []
+  assert.throws(() => merge(a, b), /dangling-session-reference/)
+})
+
+test('same UUID session completed on both devices reconciles summaries but not contradictory word events', () => {
+  const a = completedFork(1),
+    b = completedFork(2)
+  b.reviewRecords = structuredClone(a.reviewRecords)
+  const m = merge(a, b)
+  assert.equal(m.reviewRecords.length, 1)
+  const completed = m.achievementEvents.filter((e) => e.eventType === 'session_completed')
+  assert.equal(completed.length, 1)
+  assert.equal(completed[0].occurredAt, b.achievementEvents[0].occurredAt)
+  assert.equal(completed[0].sourceRecordIds.length, 2)
+  assert.equal(m.achievementEvents.filter((e) => e.eventType === 'continue_intent').length, 1)
+  assert.deepEqual(merge(b, a), m)
+  assert.deepEqual(merge(m, a), m)
+  const corrupted = structuredClone(a)
+  corrupted.achievementEvents.find((e) => e.eventType === 'word_attempt').occurredAt++
+  assert.throws(() => merge(a, corrupted), /achievement-identity-conflict/)
+  const wrongDict = structuredClone(a)
+  wrongDict.achievementEvents[0].dict = 'another-book'
+  assert.throws(() => merge(a, wrongDict), /achievement-identity-conflict/)
+})
+
+test('three completed-session forks converge without ID collisions or duplicate achievements', () => {
+  const [a, b, c] = [1, 2, 3].map((n) => completedFork(n))
+  const m = merge(merge(a, b), c)
+  assert.deepEqual(merge(a, merge(b, c)), m)
+  assert.deepEqual(merge(c, merge(b, a)), m)
+  assert.deepEqual(merge(m, a), m)
+  assert.equal(m.reviewRecords.length, 3)
+  assert.equal(m.achievementStates.length, 3)
 })

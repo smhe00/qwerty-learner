@@ -1,17 +1,17 @@
-import { timePerfStage } from './perf-diagnostics'
-/** Isolated decoding/re-export: never modify the live RecordDB while planning. */
-import { createDexieImportBlob } from '@/utils/db/dexie-import-blob'
-import { AUTO_MERGE_TABLES, mergeDecodedV4Tables, mergeValueKey } from './automatic-v4-records'
+import { AUTO_MERGE_TABLES, mergeDecodedV4WithReferences, mergeValueKey, remapReviewSessionReference } from './automatic-v4-records'
 import type { MergeRow, MergeTables } from './automatic-v4-records'
 import { sameLosslessIndexedDbValue } from './m4-lossless-idb-compare'
+import { timePerfStage } from './perf-diagnostics'
 import { secureRandomUuid } from './sha256-compat'
 import { assertRestorableWorkspaceV4 } from './workspace-v4'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
 import type { LearnDailySessionV1 } from '@/learn/daily-session'
 import { applyRecordClassMappings } from '@/utils/db/core'
+import { createDexieImportBlob } from '@/utils/db/dexie-import-blob'
 import Dexie from 'dexie'
 import 'dexie-export-import'
 
+/** Isolated decoding/re-export: never modify the live RecordDB while planning. */
 type Export = {
   formatName: string
   formatVersion: number
@@ -104,7 +104,9 @@ export async function mergeAccountV4Snapshots(local: WorkspaceSnapshotV4, remote
     const right = await timePerfStage('sync', 'merge-decode-cloud', () => openCopy(remote, copies))
     const leftRows = await raw(left),
       rightRows = await raw(right)
-    const merged = await timePerfStage('sync', 'merge-records', async () => mergeDecodedV4Tables(leftRows, rightRows))
+    const { tables: merged, reviewIdMaps } = await timePerfStage('sync', 'merge-records', async () =>
+      mergeDecodedV4WithReferences(leftRows, rightRows),
+    )
     // The source exports remain immutable; the temporary left DB becomes candidate.
     await left.transaction('rw', left.tables, async () => {
       for (const name of AUTO_MERGE_TABLES) {
@@ -129,7 +131,16 @@ export async function mergeAccountV4Snapshots(local: WorkspaceSnapshotV4, remote
         ...Object.keys(remote.workspaceData.learnRuntime.dailySessions),
       ]),
     )) {
-      daily[dict] = dailyChoice(local.workspaceData.learnRuntime.dailySessions[dict], remote.workspaceData.learnRuntime.dailySessions[dict])
+      const rebase = (session: LearnDailySessionV1 | undefined, side: number) => {
+        if (!session) return undefined
+        const next = structuredClone(session)
+        next.completedBlockIds = next.completedBlockIds.map((id) => remapReviewSessionReference(id, reviewIdMaps[side]))
+        return next
+      }
+      daily[dict] = dailyChoice(
+        rebase(local.workspaceData.learnRuntime.dailySessions[dict], 0),
+        rebase(remote.workspaceData.learnRuntime.dailySessions[dict], 1),
+      )
     }
     candidate.workspaceData.learnRuntime.dailySessions = daily
     assertRestorableWorkspaceV4(candidate)
