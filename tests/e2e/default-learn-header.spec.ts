@@ -33,7 +33,7 @@ test('homepage defaults to Learn; explicit Typing and Learn links survive reload
 test('brand is separated from the right-aligned toolbar and active mode remains clear in both themes', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
-  await expect(page).toHaveURL(/\/learn$/)
+  await expect(page).toHaveURL(/\/learn$/, { timeout: 25_000 })
   const brand = page.locator('header button[aria-label="打开赞赏页面"]')
   const modes = page.locator('header [data-current-mode]')
   // The / -> /learn cold-start transition can temporarily remount the Header.

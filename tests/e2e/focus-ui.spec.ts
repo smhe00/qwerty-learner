@@ -94,7 +94,7 @@ for (const mode of ['typing', 'learn'] as const) {
     let sawSingleRow = false
     let sawTwoRows = false
 
-    for (const width of [1920, 1600, 1536, 1440, 1366, 1280, 1100, 1024, 900, 768, 701]) {
+    for (const width of [1920, 1600, 1594, 1536, 1440, 1366, 1281, 1280, 1279, 1240, 1200, 1160, 1120, 1100, 1024, 900, 768, 701, 1024, 1280, 1594, 1920]) {
       await page.setViewportSize({ width, height: 900 })
       const nav = page.locator('header nav.focus-header-nav')
       await expect(nav.locator('[data-toolbar-row="primary"]')).toBeVisible()
@@ -112,12 +112,21 @@ for (const mode of ['typing', 'learn'] as const) {
         const leftInset = parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft)
         const rightInset = parseFloat(style.borderRightWidth) + parseFloat(style.paddingRight)
         const contentWidth = nav.width - leftInset - rightInset
+        const header = element.parentElement!
+        const headerGap = parseFloat(getComputedStyle(header).columnGap)
+        const siblings = Array.from(header.children).filter(child => child !== element)
+        const siblingBoxes = siblings.map(child => child.getBoundingClientRect())
+        const available = header.clientWidth - siblingBoxes.reduce((sum, box) => sum + box.width, 0) - siblings.length * headerGap
         const p = primary.getBoundingClientRect()
         const s = secondary.getBoundingClientRect()
         const a = pronunciation.getBoundingClientRect()
         const i = strip.getBoundingClientRect()
         return {
           contentWidth,
+          canStayBesideBrand: available >= Math.max(p.width, s.width) + leftInset + rightInset,
+          sharesBrandRow: nav.top < siblingBoxes[0].bottom && nav.bottom > siblingBoxes[0].top,
+          headerOverlaps: siblingBoxes.some(box => nav.left < box.right - 1 && nav.right > box.left + 1 &&
+            nav.top < box.bottom - 1 && nav.bottom > box.top + 1),
           navCenter: nav.left + leftInset + contentWidth / 2,
           primaryWidth: p.width, secondaryWidth: s.width,
           primaryCenterX: p.left + p.width / 2, secondaryCenterX: s.left + s.width / 2,
@@ -144,7 +153,7 @@ for (const mode of ['typing', 'learn'] as const) {
           viewportOverflow: document.documentElement.scrollWidth > innerWidth + 1,
         }
       })
-      if (width < 1280) {
+      if (Math.abs(layout.primaryCenterY - layout.secondaryCenterY) >= 8) {
         expect(Math.abs(layout.contentWidth - Math.max(layout.primaryWidth, layout.secondaryWidth))).toBeLessThanOrEqual(1)
       }
       if (width === 1024) await nav.screenshot({ path: snapshots + '/' + mode + '-compact-toolbar.png' })
@@ -156,6 +165,11 @@ for (const mode of ['typing', 'learn'] as const) {
       expect(layout.childrenOverflow).toBe(false)
       expect(layout.stripOverflow).toBe(false)
       expect(layout.viewportOverflow).toBe(false)
+      expect(layout.headerOverlaps).toBe(false)
+      expect(layout.sharesBrandRow).toBe(layout.canStayBesideBrand)
+      if (width === 1594 || width === 1279) {
+        await page.locator('header').screenshot({ path: snapshots + '/' + mode + '-header-' + width + '.png' })
+      }
       expect(layout.groupsAdjacent).toBe(true)
       expect(layout.pronunciationFirst).toBe(true)
       expect(layout.pronunciationRight).toBeLessThanOrEqual(layout.stripLeft)

@@ -88,9 +88,28 @@ body,
   color: var(--focus-text-secondary);
 }
 
+.focus-header-nav[data-toolbar-layout='single'] {
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+}
+
+.focus-header-nav[data-toolbar-layout='stacked'],
+.focus-header-nav[data-toolbar-layout='below'] {
+  grid-template-columns: max-content;
+}
+
+.focus-header-nav[data-toolbar-layout='below'] {
+  order: 3;
+}
+
+.focus-header-nav:not([data-toolbar-layout='below']) {
+  margin-inline-start: auto;
+  margin-inline-end: 0;
+}
+
 /* Keep the main learning controls together. Pronunciation leads the icon
-   group, so it moves with that group when the toolbar wraps. The nav centers
-   each flex line independently; neither group wraps into a third line. */
+   group, so it moves with that group when the toolbar stacks. The nav centers
+   each grid row independently; neither group wraps into a third line. */
 .focus-header-nav .focus-toolbar-primary-row,
 .focus-header-nav .focus-toolbar-icons-row {
   display: flex;

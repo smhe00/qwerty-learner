@@ -7,9 +7,43 @@ import { useSetAtom } from 'jotai'
 import { UserCircle2 } from 'lucide-react'
 import type { PropsWithChildren } from 'react'
 import type React from 'react'
-import { useCallback, useContext } from 'react'
+import { useCallback, useContext, useLayoutEffect, useRef, useState } from 'react'
 
 const Header: React.FC<PropsWithChildren> = ({ children }) => {
+  const layoutRef = useRef<HTMLDivElement>(null)
+  const navRef = useRef<HTMLElement>(null)
+  const [toolbarLayout, setToolbarLayout] = useState<'single' | 'stacked' | 'below'>('below')
+
+  useLayoutEffect(() => {
+    const header = layoutRef.current
+    const nav = navRef.current
+    if (!header || !nav) return
+    const rows = Array.from(nav.children) as HTMLElement[]
+    if (!rows.length) return
+    const siblings = Array.from(header.children).filter((child) => child !== nav) as HTMLElement[]
+    const measure = () => {
+      const style = getComputedStyle(nav)
+      const inset =
+        parseFloat(style.paddingLeft) +
+        parseFloat(style.paddingRight) +
+        parseFloat(style.borderLeftWidth) +
+        parseFloat(style.borderRightWidth)
+      const widths = rows.map((row) => row.getBoundingClientRect().width)
+      const gap = parseFloat(getComputedStyle(header).columnGap)
+      const available =
+        header.clientWidth - siblings.reduce((sum, item) => sum + item.getBoundingClientRect().width, 0) - siblings.length * gap
+      // Measure the intrinsic groups, not the flex box left over after wrapping.
+      // A compact two-row menu stays beside the brand until it truly cannot fit.
+      const singleWidth = widths.reduce((sum, width) => sum + width, 0) + (widths.length - 1) * parseFloat(style.columnGap) + inset
+      const stackedWidth = Math.max(...widths) + inset
+      setToolbarLayout(available >= singleWidth ? 'single' : available >= stackedWidth ? 'stacked' : 'below')
+    }
+    const observer = new ResizeObserver(measure)
+    ;[header, ...rows, ...siblings].forEach((element) => observer.observe(element))
+    measure()
+    return () => observer.disconnect()
+  }, [])
+
   const typing = useContext(TypingContext)
   const inspectAccount = (event: React.MouseEvent) => {
     // Do not let the opening click become an outside-click on the new dialog.
@@ -27,8 +61,8 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
   }, [setInfoPanelState])
 
   return (
-    <header className="container z-20 mx-auto w-full px-4 py-3 sm:px-6 lg:px-8 lg:py-4">
-      <div className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-3 xl:flex-nowrap xl:gap-x-12">
+    <header className="z-20 mx-auto w-full max-w-screen-2xl px-4 py-3 sm:px-6 lg:px-8 lg:py-4">
+      <div ref={layoutRef} className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-3 xl:gap-x-12">
         <button
           className="flex shrink-0 items-center rounded-xl no-underline hover:no-underline"
           type="button"
@@ -49,7 +83,11 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
             </span>
           </div>
         </button>
-        <nav className="focus-header-nav order-3 mx-auto grid w-fit min-w-0 grid-cols-[max-content] content-center items-center justify-items-center gap-x-2 gap-y-2 rounded-2xl px-2 py-2.5 transition-colors duration-200 xl:order-none xl:ml-auto xl:mr-0 xl:flex xl:w-auto xl:flex-wrap xl:justify-center">
+        <nav
+          ref={navRef}
+          data-toolbar-layout={toolbarLayout}
+          className="focus-header-nav mx-auto grid w-max max-w-full shrink-0 content-center items-center justify-items-center gap-x-2 gap-y-2 rounded-2xl px-2 py-2.5 transition-colors duration-200"
+        >
           {children}
         </nav>
         {canUseAccount && (
