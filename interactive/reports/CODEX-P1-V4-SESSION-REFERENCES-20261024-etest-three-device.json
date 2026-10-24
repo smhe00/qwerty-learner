@@ -1,0 +1,542 @@
+{
+  "source": "d218a8398fb80e70cdb96d38f70df4b92f807798",
+  "runId": 40067376882,
+  "applicationPassed": true,
+  "profiles": [
+    {
+      "index": 0,
+      "localRows": 3,
+      "witnessPhases": [
+        {
+          "phase": "published",
+          "status": "idle",
+          "scanned": 0
+        },
+        {
+          "phase": "observed",
+          "status": "blocked",
+          "reason": "no-observed-device-heads"
+        },
+        {
+          "phase": "skipped"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "skipped",
+          "reason": "account-or-tool-query"
+        },
+        {
+          "phase": "auth-start"
+        },
+        {
+          "phase": "auth-v4-checked"
+        },
+        {
+          "phase": "auth-m3-complete"
+        },
+        {
+          "phase": "auth-before-m4"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "idle",
+          "scanned": 1
+        },
+        {
+          "phase": "observed",
+          "status": "heads-observed-only"
+        },
+        {
+          "phase": "witnessed",
+          "status": "witnessed",
+          "reason": "verified-prefix-only"
+        },
+        {
+          "phase": "candidate",
+          "status": "candidate",
+          "added": 1
+        },
+        {
+          "phase": "scratch",
+          "step": "validate"
+        },
+        {
+          "phase": "scratch",
+          "step": "schema"
+        },
+        {
+          "phase": "scratch",
+          "step": "import"
+        },
+        {
+          "phase": "scratch",
+          "step": "readback"
+        },
+        {
+          "phase": "scratch",
+          "step": "audit-proposal"
+        },
+        {
+          "phase": "scratch",
+          "step": "export"
+        },
+        {
+          "phase": "scratch",
+          "step": "audit-normalized"
+        },
+        {
+          "phase": "scratch",
+          "step": "validated"
+        },
+        {
+          "phase": "materialized",
+          "added": 1
+        },
+        {
+          "phase": "transaction",
+          "step": "capture"
+        },
+        {
+          "phase": "transaction",
+          "step": "stage"
+        },
+        {
+          "phase": "transaction",
+          "step": "restore"
+        },
+        {
+          "phase": "transaction",
+          "step": "verify"
+        },
+        {
+          "phase": "transaction",
+          "step": "seal"
+        },
+        {
+          "phase": "transaction",
+          "step": "finalize"
+        },
+        {
+          "phase": "transaction",
+          "step": "complete"
+        },
+        {
+          "phase": "adopted",
+          "added": 1
+        },
+        {
+          "phase": "auth-m4-adopted"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "uploaded-events-only",
+          "remaining": 0,
+          "scanned": 2
+        },
+        {
+          "phase": "observed",
+          "status": "heads-observed-only"
+        },
+        {
+          "phase": "witnessed",
+          "status": "witnessed",
+          "reason": "verified-prefix-only"
+        },
+        {
+          "phase": "candidate",
+          "status": "unchanged"
+        },
+        {
+          "phase": "skipped",
+          "reason": "all-witnessed-attempts-already-local"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "skipped",
+          "reason": "account-or-tool-query"
+        },
+        {
+          "phase": "auth-start"
+        },
+        {
+          "phase": "auth-v4-pull-staged"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "uploaded-events-only",
+          "remaining": 0,
+          "scanned": 3
+        },
+        {
+          "phase": "observed",
+          "status": "heads-observed-only"
+        },
+        {
+          "phase": "witnessed",
+          "status": "witnessed",
+          "reason": "verified-prefix-only"
+        },
+        {
+          "phase": "candidate",
+          "status": "unchanged"
+        },
+        {
+          "phase": "skipped",
+          "reason": "all-witnessed-attempts-already-local"
+        }
+      ],
+      "journal": {
+        "pending": false
+      }
+    },
+    {
+      "index": 1,
+      "localRows": 3,
+      "witnessPhases": [
+        {
+          "phase": "auth-start"
+        },
+        {
+          "phase": "auth-v4-checked"
+        },
+        {
+          "phase": "auth-m3-complete"
+        },
+        {
+          "phase": "auth-before-m4"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "idle",
+          "scanned": 0
+        },
+        {
+          "phase": "observed",
+          "status": "blocked",
+          "reason": "no-observed-device-heads"
+        },
+        {
+          "phase": "skipped"
+        },
+        {
+          "phase": "auth-m4-skipped"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "idle",
+          "scanned": 0
+        },
+        {
+          "phase": "observed",
+          "status": "blocked",
+          "reason": "no-observed-device-heads"
+        },
+        {
+          "phase": "skipped"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "idle",
+          "scanned": 0
+        },
+        {
+          "phase": "observed",
+          "status": "blocked",
+          "reason": "no-observed-device-heads"
+        },
+        {
+          "phase": "skipped"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "skipped",
+          "reason": "account-or-tool-query"
+        },
+        {
+          "phase": "auth-start"
+        },
+        {
+          "phase": "auth-v4-pull-staged"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "uploaded-events-only",
+          "remaining": 0,
+          "scanned": 3
+        },
+        {
+          "phase": "observed",
+          "status": "heads-observed-only"
+        },
+        {
+          "phase": "witnessed",
+          "status": "witnessed",
+          "reason": "verified-prefix-only"
+        },
+        {
+          "phase": "candidate",
+          "status": "unchanged"
+        },
+        {
+          "phase": "skipped",
+          "reason": "all-witnessed-attempts-already-local"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "skipped",
+          "reason": "account-or-tool-query"
+        },
+        {
+          "phase": "auth-start"
+        },
+        {
+          "phase": "auth-v4-pull-staged"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "idle",
+          "scanned": 3
+        },
+        {
+          "phase": "observed",
+          "status": "heads-observed-only"
+        },
+        {
+          "phase": "witnessed",
+          "status": "witnessed",
+          "reason": "verified-prefix-only"
+        },
+        {
+          "phase": "candidate",
+          "status": "unchanged"
+        },
+        {
+          "phase": "skipped",
+          "reason": "all-witnessed-attempts-already-local"
+        }
+      ],
+      "journal": {
+        "pending": false
+      }
+    },
+    {
+      "index": 2,
+      "localRows": 3,
+      "witnessPhases": [
+        {
+          "phase": "auth-start"
+        },
+        {
+          "phase": "auth-v4-checked"
+        },
+        {
+          "phase": "auth-m3-complete"
+        },
+        {
+          "phase": "auth-before-m4"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "idle",
+          "scanned": 0
+        },
+        {
+          "phase": "observed",
+          "status": "blocked",
+          "reason": "no-observed-device-heads"
+        },
+        {
+          "phase": "skipped"
+        },
+        {
+          "phase": "auth-m4-skipped"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "idle",
+          "scanned": 0
+        },
+        {
+          "phase": "observed",
+          "status": "blocked",
+          "reason": "no-observed-device-heads"
+        },
+        {
+          "phase": "skipped"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "idle",
+          "scanned": 0
+        },
+        {
+          "phase": "observed",
+          "status": "blocked",
+          "reason": "no-observed-device-heads"
+        },
+        {
+          "phase": "skipped"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "skipped",
+          "reason": "account-or-tool-query"
+        },
+        {
+          "phase": "auth-start"
+        },
+        {
+          "phase": "auth-v4-pull-staged"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "uploaded-events-only",
+          "remaining": 0,
+          "scanned": 3
+        },
+        {
+          "phase": "observed",
+          "status": "heads-observed-only"
+        },
+        {
+          "phase": "witnessed",
+          "status": "witnessed",
+          "reason": "verified-prefix-only"
+        },
+        {
+          "phase": "candidate",
+          "status": "unchanged"
+        },
+        {
+          "phase": "skipped",
+          "reason": "all-witnessed-attempts-already-local"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "skipped",
+          "reason": "account-or-tool-query"
+        },
+        {
+          "phase": "auth-start"
+        },
+        {
+          "phase": "auth-v4-checked"
+        },
+        {
+          "phase": "auth-m3-complete"
+        },
+        {
+          "phase": "auth-before-m4"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "idle",
+          "scanned": 3
+        },
+        {
+          "phase": "observed",
+          "status": "heads-observed-only"
+        },
+        {
+          "phase": "witnessed",
+          "status": "witnessed",
+          "reason": "verified-prefix-only"
+        },
+        {
+          "phase": "candidate",
+          "status": "unchanged"
+        },
+        {
+          "phase": "skipped",
+          "reason": "all-witnessed-attempts-already-local"
+        },
+        {
+          "phase": "auth-m4-skipped"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "idle",
+          "scanned": 3
+        },
+        {
+          "phase": "observed",
+          "status": "heads-observed-only"
+        },
+        {
+          "phase": "witnessed",
+          "status": "witnessed",
+          "reason": "verified-prefix-only"
+        },
+        {
+          "phase": "candidate",
+          "status": "unchanged"
+        },
+        {
+          "phase": "skipped",
+          "reason": "all-witnessed-attempts-already-local"
+        }
+      ],
+      "journal": {
+        "pending": false
+      }
+    }
+  ],
+  "cleanup": {
+    "status": 200,
+    "stage": "unspecified"
+  }
+}

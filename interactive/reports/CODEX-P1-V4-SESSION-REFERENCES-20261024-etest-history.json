@@ -1,0 +1,28 @@
+{
+  "historicalFixture": true,
+  "source": "d218a83",
+  "unicodeHistoryBytes": 1472401,
+  "ordinaryStartupRecoveredFullV4": true,
+  "sixTablePullExact": true,
+  "sharedReferencePreserved": true,
+  "unicodeTranslationsExact": true,
+  "independentCompletedSessionsPreserved": true,
+  "sessionReferencesFollowOriginalUUID": true,
+  "automaticForkMergedBoth": true,
+  "originalForkArchivesPreserved": true,
+  "automaticMergeStageEvidence": true,
+  "failedMetadataStageRecorded": true,
+  "sixTableForkConvergence": true,
+  "repeatedStartupNoDuplicateWrite": true,
+  "mergedWordRecords": 5,
+  "counts": {
+    "wordRecords": 3,
+    "chapterRecords": 1,
+    "reviewRecords": 700,
+    "reviewWordStates": 1,
+    "achievementEvents": 1,
+    "achievementStates": 1
+  },
+  "cleanupStatus": 200,
+  "cleanupVerified": true
+}
