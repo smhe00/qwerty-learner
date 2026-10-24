@@ -1,0 +1,80 @@
+{
+  "source": "7ead6a7",
+  "physicalPhone": false,
+  "fullV4Exact": true,
+  "mobileDailyProgress": "1 / 2",
+  "selectedDictionaryRestored": true,
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/api/sync/v2/meta",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/sync/v2/binary/manifest",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/sync/v2/binary/part",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/sync/v2/meta",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/sync/v2/meta",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/sync/events/v2/observed",
+      "status": 200
+    }
+  ],
+  "mobileDiagnostics": {
+    "stages": [
+      {
+        "stage": "v4-check",
+        "status": "pull-reload-required",
+        "code": "none"
+      },
+      {
+        "stage": "v4-check",
+        "status": "noop",
+        "code": "none"
+      },
+      {
+        "stage": "m3-recovery",
+        "status": "ready",
+        "code": "none",
+        "audit": {
+          "scanned": 1,
+          "eligible": 0,
+          "snapshotOnly": 1,
+          "rejected": 0,
+          "issues": {
+            "missing-attempt-id": 1
+          }
+        }
+      },
+      {
+        "stage": "m3-publication",
+        "status": "idle",
+        "code": "none"
+      },
+      {
+        "stage": "m4-adoption",
+        "status": "skipped",
+        "code": "no-complete-observed-prefix:no-observed-device-heads"
+      }
+    ],
+    "startup": "noop"
+  },
+  "cleanupStatus": 200,
+  "cleanupVerified": true
+}

@@ -1,0 +1,189 @@
+{
+  "historicalFixture": true,
+  "source": "1d1237a",
+  "unicodeHistoryBytes": 1472401,
+  "ordinaryStartupRecoveredFullV4": true,
+  "sixTablePullExact": true,
+  "sharedReferencePreserved": true,
+  "unicodeTranslationsExact": true,
+  "independentCompletedSessionsPreserved": true,
+  "sessionReferencesFollowOriginalUUID": true,
+  "automaticForkMergedBoth": true,
+  "originalForkArchivesPreserved": true,
+  "automaticMergeStageEvidence": true,
+  "failedMetadataStageRecorded": true,
+  "sixTableForkConvergence": true,
+  "repeatedStartupNoDuplicateWrite": true,
+  "mergedWordRecords": 5,
+  "counts": {
+    "wordRecords": 3,
+    "chapterRecords": 1,
+    "reviewRecords": 700,
+    "reviewWordStates": 1,
+    "achievementEvents": 1,
+    "achievementStates": 1
+  },
+  "mixedLegacyM3Publication": true,
+  "mixedLegacyM4Adoption": true,
+  "legacyRowsUnchanged": true,
+  "logoutRestoresEmptyAnonymousWorkspace": true,
+  "unchangedLogin": {
+    "elapsedMs": 9592,
+    "fullV4Checks": 1,
+    "publications": 1,
+    "witnessedChecks": 1,
+    "repeatedEventDownloads": 0,
+    "extraM4Captures": 0,
+    "stages": [
+      {
+        "stage": "writer-lease",
+        "elapsedMs": 123.5,
+        "outcome": "ok"
+      },
+      {
+        "stage": "registry-read",
+        "elapsedMs": 0.8,
+        "outcome": "ok"
+      },
+      {
+        "stage": "journal-check",
+        "elapsedMs": 1.5,
+        "outcome": "ok"
+      },
+      {
+        "stage": "auth-reconcile",
+        "elapsedMs": 0,
+        "outcome": "ok"
+      },
+      {
+        "stage": "guarded-bootstrap",
+        "elapsedMs": 133.5,
+        "outcome": "ok"
+      },
+      {
+        "stage": "writer-lease",
+        "elapsedMs": 123.6,
+        "outcome": "ok"
+      },
+      {
+        "stage": "registry-read",
+        "elapsedMs": 1,
+        "outcome": "ok"
+      },
+      {
+        "stage": "journal-check",
+        "elapsedMs": 1.5,
+        "outcome": "ok"
+      },
+      {
+        "stage": "auth-reconcile",
+        "elapsedMs": 0,
+        "outcome": "ok"
+      },
+      {
+        "stage": "flush-writers",
+        "elapsedMs": 0,
+        "outcome": "ok"
+      },
+      {
+        "stage": "baseline-read",
+        "elapsedMs": 5.1,
+        "outcome": "ok"
+      },
+      {
+        "stage": "dexie-export",
+        "elapsedMs": 79.8,
+        "outcome": "ok"
+      },
+      {
+        "stage": "source-rows-read",
+        "elapsedMs": 25,
+        "outcome": "ok"
+      },
+      {
+        "stage": "source-rows-audit",
+        "elapsedMs": 88.1,
+        "outcome": "failed"
+      },
+      {
+        "stage": "fallback-roundtrip-audit",
+        "elapsedMs": 470.1,
+        "outcome": "ok"
+      },
+      {
+        "stage": "snapshot-capture",
+        "elapsedMs": 676.8,
+        "outcome": "ok"
+      },
+      {
+        "stage": "remote-meta",
+        "elapsedMs": 1532.8,
+        "outcome": "ok"
+      },
+      {
+        "stage": "fingerprint-decision",
+        "elapsedMs": 39.2,
+        "outcome": "ok"
+      },
+      {
+        "stage": "account-sync",
+        "elapsedMs": 1576.8,
+        "outcome": "ok"
+      },
+      {
+        "stage": "m3-publication",
+        "elapsedMs": 10.8,
+        "outcome": "ok"
+      },
+      {
+        "stage": "m4-observe",
+        "elapsedMs": 994.8,
+        "outcome": "ok"
+      },
+      {
+        "stage": "m4-witness",
+        "elapsedMs": 1086.6,
+        "outcome": "ok"
+      },
+      {
+        "stage": "guarded-bootstrap",
+        "elapsedMs": 3839.6,
+        "outcome": "ok"
+      },
+      {
+        "stage": "app-module-import",
+        "elapsedMs": 95.6,
+        "outcome": "ok"
+      },
+      {
+        "stage": "entry-to-first-frame",
+        "elapsedMs": 96.3
+      },
+      {
+        "stage": "dictionary-fetch",
+        "elapsedMs": 18.6,
+        "outcome": "ok"
+      },
+      {
+        "stage": "dictionary-json-parse",
+        "elapsedMs": 25.1,
+        "outcome": "ok"
+      }
+    ]
+  },
+  "reloginWithoutLearningPreservesAllRows": true,
+  "noLegacyWarningInOrdinaryUI": true,
+  "diagnosticExportReadOnly": true,
+  "legacyCompatibilityCounts": {
+    "scanned": 6,
+    "eligible": 1,
+    "snapshotOnly": 5,
+    "rejected": 0,
+    "issues": {
+      "missing-attempt-id": 4,
+      "missing-source-mode": 4
+    }
+  },
+  "cleanupStatus": 200,
+  "cleanupVerified": true
+}
