@@ -5,7 +5,7 @@ const baseURL = 'http://127.0.0.1:' + port
 
 export default defineConfig({
   testDir: '.',
-  testMatch: ['mobile-p0.spec.ts', 'mobile-learning-loop.spec.ts', 'mobile-stability.spec.ts', 'mobile-ergonomics.spec.ts'],
+  testMatch: ['mobile-p0.spec.ts', 'mobile-learning-loop.spec.ts', 'mobile-stability.spec.ts', 'mobile-ergonomics.spec.ts', 'mobile-menu-completion.spec.ts'],
   fullyParallel: false,
   timeout: 45_000,
   retries: 0,

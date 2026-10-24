@@ -1,4 +1,5 @@
 import MobilePracticeExample from './MobilePracticeExample'
+import MobilePhonetic from '@/pages/Mobile/MobilePhonetic'
 import type { WordFinishResult } from './Word'
 import { generateWordSoundSrc } from '@/hooks/usePronunciation'
 import { createLearnAcquisitionExercisePlanForState } from '@/learn/acquisition'
@@ -752,9 +753,7 @@ export default function MobileWordPractice({
                   {audioState === 'tap' ? '点按单词播放发音' : '发音暂不可用，可点按单词重试或继续学习'}
                 </p>
               )}
-              {(word.ukphone || word.usphone) && (
-                <p className="mobile-practice-phonetic">{word.ukphone ? '/' + word.ukphone + '/' : '/' + word.usphone + '/'}</p>
-              )}
+              <MobilePhonetic word={word} voice={pronunciation.type} />
             </>
           ) : task === 'recall' ? (
             revealedAttempt ? (

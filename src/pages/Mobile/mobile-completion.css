@@ -1,0 +1,43 @@
+/* Menu completion: shared mobile tokens, no changes to desktop or study geometry. */
+.mobile-history-filters { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:18px 0; }
+.mobile-history-filters label { display:flex; min-width:0; flex-direction:column; gap:8px; font-size:13px; color:var(--mobile-muted); }
+.mobile-history-filters select { min-width:0; width:100%; min-height:46px; border:1px solid var(--mobile-line); border-radius:11px; padding:9px; color:var(--mobile-text); background:var(--mobile-surface); }
+.mobile-history-summary { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:18px 0; }
+.mobile-history-summary>div { padding:17px; background:var(--mobile-surface); border:1px solid var(--mobile-line); border-radius:14px; }
+.mobile-history-summary dt { font-size:12px; color:var(--mobile-muted); }
+.mobile-history-summary dd { margin:7px 0 0; font-size:27px; font-weight:650; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.mobile-history-definition { font-size:11px; line-height:1.8; color:var(--mobile-muted); margin:12px 0 24px; }
+.mobile-history-list { display:flex; flex-direction:column; gap:12px; }
+.mobile-history-day { border:1px solid var(--mobile-line); border-radius:14px; background:var(--mobile-surface); overflow:hidden; }
+.mobile-history-day summary { display:flex; align-items:center; justify-content:space-between; cursor:pointer; min-height:72px; gap:10px; padding:15px; list-style:none; }
+.mobile-history-day summary::-webkit-details-marker { display:none; }
+.mobile-history-day summary::after { content:'＋'; color:var(--mobile-muted); }
+.mobile-history-day[open] summary::after { content:'−'; }
+.mobile-history-day summary>span:first-child { flex:1; min-width:0; }
+.mobile-history-day summary strong { display:block; font-size:15px; font-weight:600; }
+.mobile-history-day summary small { display:block; color:var(--mobile-muted); margin-top:6px; font-size:11px; }
+.mobile-history-day-count { font-size:12px; color:var(--mobile-muted); }
+.mobile-history-day-body { border-top:1px solid var(--mobile-line); padding:12px 15px; }
+.mobile-history-words { list-style:none; padding:0; margin:0; }
+.mobile-history-words li { display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid var(--mobile-line); font-size:12px; }
+.mobile-history-words li>span:first-child { flex:1; min-width:0; overflow-wrap:anywhere; }
+.mobile-history-words strong { display:block; font-size:14px; font-weight:550; }
+.mobile-history-words small { display:block; font-size:10px; color:var(--mobile-muted); margin-top:5px; }
+.mobile-history-words li>span:last-child { max-width:40%; color:var(--mobile-muted); text-align:right; }
+.mobile-secondary-action { display:inline-flex; align-items:center; justify-content:center; min-height:44px; border:1px solid var(--mobile-line); border-radius:10px; padding:10px 14px; font-size:13px; background:var(--mobile-surface); color:var(--mobile-text); line-height:1.5; }
+.mobile-secondary-action:disabled, .mobile-data-page button:disabled { opacity:.5; cursor:not-allowed; }
+.mobile-data-page .mobile-settings-card { margin-bottom:18px; min-width:0; }
+.mobile-data-card-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.mobile-data-card-heading h2 { margin:0; }
+.mobile-data-actions { display:grid; gap:10px; margin:18px 0; }
+.mobile-data-page .my-btn-primary { min-height:44px; white-space:normal; overflow-wrap:anywhere; }
+.mobile-data-page button { max-width:100%; }
+.mobile-data-message, .mobile-data-page p { overflow-wrap:anywhere; }
+.mobile-data-message { font-size:12px; line-height:1.8; margin:14px 0; }
+.mobile-data-restore { border-top:1px solid var(--mobile-line); margin-top:20px; padding-top:5px; }
+.mobile-data-restore summary { min-height:48px; display:flex; align-items:center; cursor:pointer; font-size:13px; color:var(--mobile-muted); }
+.mobile-data-restore summary::before { content:'＋'; margin-right:8px; }
+.mobile-data-restore[open] summary::before { content:'−'; }
+.mobile-data-restore p { font-size:12px; line-height:1.8; margin-bottom:15px; }
+.mobile-app button:focus-visible, .mobile-app summary:focus-visible, .mobile-history-filters select:focus-visible { outline:2px solid var(--mobile-accent); outline-offset:3px; }
+@media (max-width:340px) { .mobile-history-filters { grid-template-columns:1fr; } .mobile-history-day summary { padding:12px; gap:8px; } }

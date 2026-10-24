@@ -52,6 +52,8 @@ const AnalysisPage = lazy(() => loadRouteWithRefresh('analysis', loadAnalysisPag
 const GalleryPage = lazy(() => loadRouteWithRefresh('gallery', loadGalleryPage))
 const LearnPage = lazy(() => loadRouteWithRefresh('learn', loadLearnPage))
 const AchievementsPage = lazy(() => loadRouteWithRefresh('achievements', loadAchievementsPage))
+const MobileHistory = lazy(() => loadRouteWithRefresh('mobile-history', () => import('./pages/Mobile/MobileHistory')))
+const MobileData = lazy(() => loadRouteWithRefresh('mobile-data', () => import('./pages/Mobile/MobileData')))
 
 /** The homepage always enters Learn. Explicit /typing deep links stay Typing,
  * and /learn retains its existing durable-checkpoint recovery semantics. */
@@ -136,7 +138,7 @@ function MobileAchievementsRoute() {
           type="button"
           onClick={() => navigate('/mobile')}
           className="rounded-lg border border-[#b9ae9a] px-3 py-2 text-sm dark:border-[#71847b]"
-          aria-label="返回移动端说明"
+          aria-label="返回手机首页"
         >
           返回
         </button>
@@ -160,6 +162,10 @@ function ResponsiveRoutes({ isMobile }: { isMobile: boolean }) {
   if (location.pathname === '/mobile/study') return <MobileStudyPage />
   if (location.pathname === '/mobile/library') return <MobileLibrary />
   if (location.pathname === '/mobile/settings') return <MobileSettings />
+  const mobilePath = location.pathname.replace(/\/$/, '')
+  if (mobilePath === '/mobile/history') return <MobileHistory />
+  if (mobilePath === '/mobile/data') return <MobileData />
+  if (mobilePath === '/mobile/achievements') return <MobileAchievementsRoute />
   return isMobile ? (
     <Routes>
       <Route path="/mobile" element={<MobilePage />} />

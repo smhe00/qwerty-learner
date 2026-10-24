@@ -1,4 +1,6 @@
 import MobilePageFrame from './MobilePageFrame'
+import './mobile-completion.css'
+import { Link } from 'react-router-dom'
 import MobilePronunciationPreview from './MobilePronunciationPreview'
 import { MAX_LEARN_BLOCK_SIZE, MIN_LEARN_BLOCK_SIZE, normalizeLearnBlockSize } from '@/learn/block-size'
 import { LANG_PRON_MAP } from '@/resources/soundResource'
@@ -183,6 +185,14 @@ export default function MobileSettings() {
             }}
           />
         </label>
+      </section>
+      <section className="mobile-settings-card">
+        <h2>记录与备份</h2>
+        <p>查看学习历史，或核对同步状态、导出和校验备份。</p>
+        <div className="mobile-data-actions">
+          <Link className="mobile-secondary-action" to="/mobile/history" onClick={event => { if (dirty && !window.confirm('设置尚未保存，仍要离开吗？')) event.preventDefault() }}>查看学习记录</Link>
+          <Link className="mobile-secondary-action" to="/mobile/data" onClick={event => { if (dirty && !window.confirm('设置尚未保存，仍要离开吗？')) event.preventDefault() }}>同步与备份</Link>
+        </div>
       </section>
     </MobilePageFrame>
   )
