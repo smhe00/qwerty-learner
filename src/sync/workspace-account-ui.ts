@@ -24,6 +24,21 @@ function credential(result: { user: CloudAuthState['user']; token: string; expir
   return { user: result.user, token: result.token, expiresAt: result.expiresAt }
 }
 
+/** Fixed public descriptions only; raw transport errors may contain identities. */
+function eventPublicationNotice(reason: string): { code: string; detail: string } {
+  switch (reason) {
+    case 'outbox-recovery-legacy-or-corrupt-attempt':
+      return { code: 'record-format', detail: ' 已有记录缺少事件标识或不符合事件同步格式，事件级同步暂缓；现有记录保留。' }
+    case 'outbox-recovery-contradictory-attempt':
+    case 'outbox-contradictory-attempt':
+      return { code: 'record-conflict', detail: ' 同一事件标识的已有内容不一致，事件级同步暂缓；现有记录保留。' }
+    case 'outbox-recovery-unbounded-scan':
+      return { code: 'scan-limit', detail: ' 已有记录超出本次事件检查范围，事件级同步暂缓；现有记录保留。' }
+    default:
+      return { code: 'publication-deferred', detail: ' 学习事件同步暂未完成，现有记录仍安全保留。' }
+  }
+}
+
 /** No React, domain writer, or workspace IO is imported before S1 boot. */
 export function renderS1AccountManagement(
   root: HTMLElement | null,
@@ -128,14 +143,14 @@ export function renderS1AccountManagement(
   }
   // Pre-M4 authentication checkpoints: production builds strip console calls.
   // These bounded session flags contain no identity or learning contents.
-  const markLoginSync = (phase: string) => {
+  const markLoginSync = (phase: string, reason?: string) => {
     if (!learningEventSyncEnabled()) return
     try {
       const key = 'qwerty.etest.m4.stageTrace.v1'
       const previous = sessionStorage.getItem(key)
       const parsed: unknown = previous ? JSON.parse(previous) : []
       const history = Array.isArray(parsed) ? parsed.slice(-47) : []
-      history.push({ phase })
+      history.push({ phase, ...(reason ? { reason } : {}) })
       sessionStorage.setItem(key, JSON.stringify(history))
     } catch {
       /* A diagnostic is never required for safe authentication */
@@ -171,14 +186,16 @@ export function renderS1AccountManagement(
       // is sufficient for the three-device relay while keeping sign-in finite.
       for (let n = 0; n < 2; n++) {
         const result = await runEtestM3Publication()
-        markLoginSync(result.status === 'blocked' ? 'auth-m3-blocked' : 'auth-m3-complete')
         if (result.status === 'blocked') {
-          // Keep the reason in bounded diagnostics, but do not expose
-          // internal account/device/event identifiers in a user-facing toast.
-          summary += ' 学习事件发布尚未完成，现有记录仍安全保留。'
+          const notice = eventPublicationNotice(result.reason)
+          markLoginSync('auth-m3-blocked', notice.code)
           console.warn('Etest login M3 outbox retained:', result.reason)
-          break
+          // M4 starts by publishing M3 again. Do not retry a retained failure
+          // here or report its downstream precondition as a second failure.
+          // V4's result stands independently; no event guard is bypassed.
+          return summary + notice.detail
         }
+        markLoginSync('auth-m3-complete')
         if (result.status === 'idle' || result.remaining === 0) break
         if (n === 1) summary += ' 部分学习事件仍待发布，尚未确认完整同步。'
       }

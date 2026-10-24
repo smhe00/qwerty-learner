@@ -1,15 +1,15 @@
 ---
 protocol_version: "1.1"
-task_id: "CODEX-P2-STARTUP-UNLOAD-20261024"
-task_file: "interactive/tasks/CODEX-P2-STARTUP-UNLOAD-20261024.md"
-report_file: "interactive/reports/CODEX-P2-STARTUP-UNLOAD-20261024-report.md"
+task_id: "CODEX-P2-LOGIN-EVENT-WARNING-20261024"
+task_file: "interactive/tasks/CODEX-P2-LOGIN-EVENT-WARNING-20261024.md"
+report_file: "interactive/reports/CODEX-P2-LOGIN-EVENT-WARNING-20261024-report.md"
 target_branch: "product/main"
 status: "REVIEW"
 executor: "Codex (single executor)"
-claim_base_commit: "d218a8398fb80e70cdb96d38f70df4b92f807798"
+claim_base_commit: "bee3240ffcf1b120fab22bf43347e33698e29cc0"
 release_to_master: false
 ---
 
-Owner confirms cloud sync works. Investigate and remove the startup unload permissions-policy warning without weakening single-writer ownership. Owner explicitly requests proportionate validation for small maintenance: focused lease/browser checks and scoped lint, no repeated full Cloud/workspace regression. This maintenance task targets development; preserve production d218a839 and batch deployment into the next authorized release. Prior successful sync release report is retained on codex/v4-session-report-20261024 at 44cfa543.
+Investigate a successful V4 no-op followed by M3 and M4 warnings on logout/login with no new learning. Correct confirmed duplicate execution/messages and provide fixed, privacy-safe reason descriptions. Preserve every event validation and ownership guard. Owner-supplied stage trace confirms outbox-recovery-legacy-or-corrupt-attempt; the exact invalid or missing field remains unknown. Development only, focused tests; no user data or live-account writes. Previous unload maintenance is REVIEW at bee3240f.
 
-Implementation ready: unload listener removed; 7 focused lease/lifecycle checks and scoped lint pass. One existing full-app UI test times out on both unchanged release and patch and remains documented. No full regression or cloud-account testing was added. Existing CI configuration is unchanged. Maintenance is development-only and will ship with the next authorized release.
+Scoped fix ready: stop event continuation after M3 rejection and show one fixed reason-specific notice. 9 login-handler regressions plus 23 adjacent contracts pass; scoped lint and diff check pass. No record compatibility rules changed, and no real data was accessed. Event-format rejection remains in force; this is not a claim that old records now qualify for M3/M4. No etest/master promotion.

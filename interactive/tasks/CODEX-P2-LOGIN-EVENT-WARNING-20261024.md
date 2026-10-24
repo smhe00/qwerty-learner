@@ -1,0 +1,7 @@
+# Login event warning after unchanged logout/login
+
+The user reports successful complete V4 checking followed by both publication-incomplete and adoption-blocked messages, without new learning. Source confirms login rescans ALL historical word records; one legacy/malformed row can block publication independently of full V4 equality. More importantly, the login loop breaks after blocked publication but still calls M4, which invokes M3 again and repeats the same failure. The screenshot proves statuses, not the precise underlying account reason.
+
+Scope: stop the same login's M4 continuation after blocked M3; retain one accurate warning with fixed reason descriptions, no raw errors or identifiers. Do not change recovery planning, immutable identity rules, outbox evidence, full V4, ownership, user data, dependencies or server API. Do not infer that all blocked results are harmless or skip M3 solely because V4 is equal. Owner trace confirms outbox-recovery-legacy-or-corrupt-attempt. It does not identify the exact missing or invalid field. Preserve this uncertainty.
+
+Validation: actual login handler with injected IO and synthetic historical rows, no learning writes; show old duplicate behavior fails the new contract, patch passes. Cover successful idle/adoption and retained failure states. Run only adjacent recovery/publication/V4 checks and scoped lint; no broad repeated suites, cloud accounts or release builds. Target product/main only, no etest/master promotion.
