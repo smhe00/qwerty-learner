@@ -1,4 +1,5 @@
 /** Isolated decoding/re-export: never modify the live RecordDB while planning. */
+import { createDexieImportBlob } from '@/utils/db/dexie-import-blob'
 import { AUTO_MERGE_TABLES, mergeDecodedV4Tables, mergeValueKey } from './automatic-v4-records'
 import type { MergeRow, MergeTables } from './automatic-v4-records'
 import { sameLosslessIndexedDbValue } from './m4-lossless-idb-compare'
@@ -39,7 +40,7 @@ async function openCopy(snapshot: WorkspaceSnapshotV4, names: Dexie[]): Promise<
   copy.version(original.data.databaseVersion).stores(Object.fromEntries(original.data.tables.map((t) => [t.name, t.schema])))
   applyRecordClassMappings(copy)
   const encoded = { ...original, data: { ...original.data, databaseName: name } }
-  await copy.import(new Blob([JSON.stringify(encoded)], { type: 'application/json' }), {
+  await copy.import(createDexieImportBlob(JSON.stringify(encoded)), {
     acceptNameDiff: false,
     acceptVersionDiff: false,
     acceptMissingTables: false,

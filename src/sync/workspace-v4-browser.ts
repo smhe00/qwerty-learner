@@ -4,6 +4,7 @@
  * writers for capture, restore, and activation. A boot-time pending journal
  * MUST recover before the working DB is writable.
  */
+import { createDexieImportBlob } from '@/utils/db/dexie-import-blob'
 import {
   DAILY_SESSION_PREFIX,
   WORKSPACE_SETTING_KEYS,
@@ -96,9 +97,7 @@ async function verifyV4RoundTripInDisposableDatabase(
       ...original,
       data: { ...original.data, databaseName: name },
     }
-    await shadow.import(new Blob([JSON.stringify(isolatedExport)], {
-      type: 'application/json',
-    }), {
+    await shadow.import(createDexieImportBlob(JSON.stringify(isolatedExport)), {
       acceptNameDiff: false,
       acceptVersionDiff: true,
       acceptMissingTables: false,
@@ -250,9 +249,7 @@ export async function materializeAuditedM4CandidateV4(
       data: { ...original.data, databaseName: name } }
     currentStage = 'import'
     stage(currentStage)
-    await shadow.import(new Blob([JSON.stringify(shadowExport)], {
-      type: 'application/json',
-    }), {
+    await shadow.import(createDexieImportBlob(JSON.stringify(shadowExport)), {
       acceptNameDiff: false,
       acceptVersionDiff: true,
       acceptMissingTables: false,
@@ -452,9 +449,7 @@ export async function restoreWorkingWorkspaceV4(
 
   // Import V4's validated Dexie payload directly. No V3 envelope,
   // conversion or legacy partial-table recovery path is involved.
-  await db.import(new Blob([JSON.stringify(checked.workspaceData.database)], {
-    type: 'application/json',
-  }), {
+  await db.import(createDexieImportBlob(JSON.stringify(checked.workspaceData.database)), {
     acceptVersionDiff: true,
     acceptMissingTables: false,
     acceptNameDiff: false,

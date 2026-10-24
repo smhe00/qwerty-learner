@@ -68,8 +68,12 @@ async function seed(page: Page, branch: string, all = false) {
               correctCount: 3,
               wrongCount: 0,
             })
-            for (let i = 0; i < 64; i++) {
-              const shared = { name: 'historical-review-' + i, trans: ['synthetic history'] }
+            for (let i = 0; i < 700; i++) {
+              const shared = {
+                name: 'historical-review-' + i,
+                trans: ['中文🙂é'.repeat(160), 'synthetic history ' + i],
+                ...(i === 0 ? { 'audit.date': new Date('2026-10-24T00:00:00Z') } : {}),
+              }
               tx.objectStore('reviewRecords').add({
                 dict: 'cet4',
                 index: 0,
@@ -147,6 +151,8 @@ async function evidence(page: Page) {
     try {
       const result: Record<string, { count: number; digest: string }> = {}
       let alias = false
+      let unicodeExact = false
+      let historyBytes = 0
       const facts: Record<string, string> = {}
       const wordMap = new Map<number, string>()
       for (const name of names) {
@@ -159,22 +165,27 @@ async function evidence(page: Page) {
         if (name === 'reviewRecords') {
           const r = rows.find((r: any) => r.createTime === 1_700_000_038)
           alias = r?.words[0] === r?.words[1]
+          unicodeExact =
+            rows.length === 700 && rows.every((row: any) => row.words.every((word: any) => word.trans[0] === '中文🙂é'.repeat(160)))
+          historyBytes = new TextEncoder().encode(JSON.stringify(rows)).byteLength
         }
-        const logical = rows.map((source: any) => {
-          const r = structuredClone(source)
-          delete r.id
-          if (r.sourceRecordId !== undefined) {
-            if (!wordMap.has(r.sourceRecordId)) throw Error('Dangling restored history reference')
-            r.sourceRecordId = wordMap.get(r.sourceRecordId)
-          }
-          return stable(r)
-        }).sort()
+        const logical = rows
+          .map((source: any) => {
+            const r = structuredClone(source)
+            delete r.id
+            if (r.sourceRecordId !== undefined) {
+              if (!wordMap.has(r.sourceRecordId)) throw Error('Dangling restored history reference')
+              r.sourceRecordId = wordMap.get(r.sourceRecordId)
+            }
+            return stable(r)
+          })
+          .sort()
         const factHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stable(logical)))
         facts[name] = Array.from(new Uint8Array(factHash), (b) => b.toString(16).padStart(2, '0')).join('')
         const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stable(rows)))
         result[name] = { count: rows.length, digest: Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('') }
       }
-      return { tables: result, facts, wordNames: Array.from(wordMap.values()).sort(), alias }
+      return { tables: result, facts, wordNames: Array.from(wordMap.values()).sort(), alias, unicodeExact, historyBytes }
     } finally {
       db.close()
     }
@@ -219,7 +230,10 @@ test('historical six-table startup download and automatic divergent reauth conve
     await seed(pages[0], 'seed', true)
     const original = await evidence(pages[0])
     expect(original.alias).toBe(true)
-    expect(Object.values(original.tables).map((t) => t.count)).toEqual([3, 1, 64, 1, 1, 1])
+    expect(original.unicodeExact).toBe(true)
+    expect(original.historyBytes).toBeGreaterThan(1024 * 1024)
+    proof.unicodeHistoryBytes = original.historyBytes
+    expect(Object.values(original.tables).map((t) => t.count)).toEqual([3, 1, 700, 1, 1, 1])
     const aRequests: string[] = []
     pages[0].on('request', (r) => {
       const p = new URL(r.url()).pathname
@@ -275,6 +289,8 @@ test('historical six-table startup download and automatic divergent reauth conve
     const merged = await evidence(pages[0])
     expect(merged.tables.wordRecords.count).toBe(5)
     expect(merged.alias).toBe(true)
+    expect(merged.unicodeExact).toBe(true)
+    proof.unicodeTranslationsExact = true
     expect(merged.wordNames).toEqual([...original.wordNames, 'historical-left-101', 'historical-right-102'].sort())
     for (const name of names.filter((name) => name !== 'wordRecords')) {
       expect(merged.tables[name].count).toBe(original.tables[name].count)

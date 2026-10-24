@@ -1,3 +1,4 @@
+import { createDexieImportBlob } from './db/dexie-import-blob'
 import { clearAllLearnDailySessions } from '@/learn/daily-session'
 import { DEFAULT_DICTIONARY_ID } from '@/resources/defaultDictionary'
 import { db } from '@/utils/db'
@@ -194,7 +195,7 @@ export async function importBackupJson(
   } = {},
 ) {
   const decoded = decodeBackupJson(json, clientFormatVersion)
-  const databaseBlob = new Blob([decoded.databaseJson], { type: 'application/json' })
+  const databaseBlob = createDexieImportBlob(decoded.databaseJson)
   const importMeta = await peakImportFile(databaseBlob)
   const importedTableNames = new Set(
     importMeta.data.tables.map((table) => table.name),
