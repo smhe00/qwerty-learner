@@ -144,6 +144,10 @@ for (const mode of ['typing', 'learn'] as const) {
           viewportOverflow: document.documentElement.scrollWidth > innerWidth + 1,
         }
       })
+      if (width < 1280) {
+        expect(Math.abs(layout.contentWidth - Math.max(layout.primaryWidth, layout.secondaryWidth))).toBeLessThanOrEqual(1)
+      }
+      if (width === 1024) await nav.screenshot({ path: snapshots + '/' + mode + '-compact-toolbar.png' })
       expect(layout.primaryWidth).toBeLessThanOrEqual(layout.contentWidth + 1)
       expect(layout.secondaryWidth).toBeLessThanOrEqual(layout.contentWidth + 1)
       expect(layout.primaryWrap).toBe('nowrap')
