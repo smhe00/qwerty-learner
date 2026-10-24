@@ -31,6 +31,12 @@ for (const entry of ['avatar', 'menu']) {
       const base = document.createElement('base')
       base.target = '_blank'
       document.head.append(base)
+      // React handles the click at its root and may stop propagation there.
+      document.getElementById('root')!.addEventListener('click', (event) => {
+        if ((event.target as Element).closest('a[href$="/mobile/account"]')) {
+          sessionStorage.setItem('account-click-handled', String(event.defaultPrevented))
+        }
+      })
       // Model an embedder that opens ordinary link activations in another tab.
       document.addEventListener('click', (event) => {
         const link = (event.target as Element).closest('a[href$="/mobile/account"]') as HTMLAnchorElement | null
@@ -43,6 +49,7 @@ for (const entry of ['avatar', 'menu']) {
       })
     })
     const historyLength = await page.evaluate(() => history.length)
+    const timeOrigin = await page.evaluate(() => performance.timeOrigin)
     const link =
       entry === 'avatar' ? page.getByRole('link', { name: '登录或注册', exact: true }) : page.getByRole('link', { name: /账号与云同步/ })
     if (entry === 'avatar') await link.tap()
@@ -50,9 +57,13 @@ for (const entry of ['avatar', 'menu']) {
       await link.focus()
       await page.keyboard.press('Enter')
     }
+    await expect(page.locator('[data-account-overview]')).toBeVisible()
+    expect(await page.evaluate(() => performance.timeOrigin)).toBe(timeOrigin)
+    expect(await page.evaluate(() => history.length)).toBe(historyLength)
+    await page.getByRole('button', { name: '登录或注册', exact: true }).tap()
     await expect(page.locator('[data-mobile-account]')).toBeVisible()
     expect(context.pages()).toHaveLength(1)
-    expect(await page.evaluate(() => history.length)).toBe(historyLength)
+    expect(await page.evaluate(() => history.length)).toBe(historyLength + 1)
     expect(await page.evaluate(() => sessionStorage.getItem('account-click-handled'))).toBe('true')
   })
 }

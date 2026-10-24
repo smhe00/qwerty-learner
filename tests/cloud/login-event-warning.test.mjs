@@ -161,9 +161,8 @@ async function loginAgain({ rows = [], failure, v4Continue = true, adoption = 's
     clearTimeout(timeout)
   }
   assert.deepEqual(rows, original, 'login must never repair/reidentify the source rows')
-  const summary = session.get('qwerty.s1.last-account-result')
-  assert.ok(summary.startsWith('登录成功'))
-  assert.ok(summary.includes(fullV4))
+  // Successful authentication is quiet; only actionable sync notices open a dialog.
+  const summary = session.get('qwerty.s1.last-account-result') ?? ''
   const diagnostics = JSON.parse(session.get('qwerty.learning-sync-diagnostics.v1') || '[]')
   return { calls, summary, diagnostics }
 }
@@ -175,7 +174,7 @@ for (const legacy of [
   test('unchanged legacy history allows publication and reception without a compatibility warning', async () => {
     const { calls, summary } = await loginAgain({ rows: [legacy, { ...event, attemptId: '00000000-0000-4000-8000-000000000002' }] })
     assert.deepEqual(calls, ['login', 'switch', 'v4', 'm3', 'publish', 'm4', 'm3', 'publish'])
-    assert.equal(summary, '登录成功，已进入独立的账户学习工作区。')
+    assert.equal(summary, '')
   })
 }
 test('actually invalid historical fields block once, with details only in diagnostics', async () => {
@@ -210,7 +209,7 @@ test('genuine downstream M4 rejection remains visible', async () => {
 })
 test('verified subset adoption stays quiet instead of claiming all-device convergence', async () => {
   const { summary } = await loginAgain({ adoption: 'adopted' })
-  assert.equal(summary, '登录成功，已进入独立的账户学习工作区。')
+  assert.equal(summary, '')
 })
 test('staged V4 recovery does not enter event publication', async () => {
   const { calls } = await loginAgain({ v4Continue: false })

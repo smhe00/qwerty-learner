@@ -64,15 +64,15 @@
       "id": "daily-carry-over-vanishes",
       "category": "daily",
       "source": "src/learn/daily-session.ts",
-      "from": "const carryOverAcquisitionWords = uniqueNames(\n    [...firstIntroductions.keys()].filter(\n      (word) => !stateNames.has(word),\n    ),\n  )",
+      "from": "const carryOverAcquisitionWords = uniqueNames([...firstIntroductions.keys()].filter((word) => !stateNames.has(word)))",
       "to": "const carryOverAcquisitionWords = uniqueNames([])"
     },
     {
       "id": "daily-review-target-not-counted",
       "category": "daily",
       "source": "src/learn/daily-session.ts",
-      "from": "  const targetWords =\n    reviewTargets.length +\n    carryOverTargets.length +\n    session.plannedNewWords",
-      "to": "  const targetWords =\n    carryOverTargets.length +\n    session.plannedNewWords"
+      "from": "  const targetWords = reviewTargets.length + carryOverTargets.length + session.plannedNewWords",
+      "to": "  const targetWords = carryOverTargets.length + session.plannedNewWords"
     },
     {
       "id": "daily-date-key-forced-day-one",

@@ -28,8 +28,8 @@
       "id": "fsrs-initial-due-delayed-extra-day",
       "category": "fsrs",
       "source": "src/review/fsrs/active.ts",
-      "from": "? firstAdmission.timeStamp + DAY_SECONDS",
-      "to": "? firstAdmission.timeStamp + 2 * DAY_SECONDS"
+      "from": ": DAY_SECONDS)",
+      "to": ": 2 * DAY_SECONDS)"
     },
     {
       "id": "fsrs-clean-streak-double-increment",

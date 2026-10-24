@@ -1,7 +1,7 @@
 // Browser coverage for TASK-20261007-008.
 //
 // Learn and Typing share one spelling engine page. The live statistics strip
-// must switch with the surface: Learn shows five cumulative, pressure-free
+// must switch with the surface: Learn shows six cumulative, pressure-free
 // metrics while Typing keeps 时间 / 输入数 / WPM / 正确数 / 正确率 untouched.
 // Persisted Learn evidence also has to survive a reload without double
 // counting, which is why the fixtures are seeded through the real Dexie schema.
@@ -70,7 +70,7 @@ function reviewItemState(phase: string) {
   }
 }
 
-test('Learn shows exactly five pressure-free live metrics', async ({ page }) => {
+test('Learn separates completed review work from consolidation in six live metrics', async ({ page }) => {
   await seedLearnSession(page, {
     dict: 'cet4',
     session: {
@@ -83,12 +83,13 @@ test('Learn shows exactly five pressure-free live metrics', async ({ page }) => 
   await page.goto('/learn')
   const cells = await readLearnStrip(page)
 
-  expect(cells).toHaveLength(5)
+  expect(cells).toHaveLength(6)
   expect(cells[0]).toMatch(/^\d{2}:\d{2}学习时间$/)
   expect(cells[1]).toBe('0/2今日进度')
   expect(cells[2]).toBe('0/0今日新词')
   expect(cells[3]).toBe('0/2复习已完成')
   expect(cells[4]).toBe('2待完成')
+  expect(cells[5]).toBe('0复习需巩固')
 
   const stripText = await page.locator('[data-learn-live-stats]').textContent()
   for (const banned of [

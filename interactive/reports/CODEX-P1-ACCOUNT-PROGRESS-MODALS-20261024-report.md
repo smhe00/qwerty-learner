@@ -4,7 +4,7 @@ Status: IN_PROGRESS. Base d2306803fd7ee78a53417b71d2655f3dd4e65039.
 
 Root causes: revoked entry does not carry reauth intent; account presentation tests expiry only and hides credentials. Learn sync UI hardcodes light colors. Daily completion requires clean independent eligible review, while the scheduler already reschedules failed eligible reviews; exhausted state still shows add-five. Mobile-to-desktop resize and account inspection use document navigation, reacquiring the unchanged writer lease.
 
-No customer data mutation. Implementation and focused validation pending.
+No customer data mutation. Implementation and focused validation completed; release gates in progress.
 
 
 ## Implementation and focused evidence
@@ -25,3 +25,11 @@ No customer data mutation. Implementation and focused validation pending.
 Main commit, exact etest source/gates, focused live disposable-account test and production promotion pending. Required gates remain unchanged. No production regression accounts will be created by this task.
 
 - Existing Learn persisted-statistics/reload browser scenario1/1 PASS. Opening, registration tab policy and return path1/1 PASS after the actual ResizeObserver fix. Debug instrumentation removed.
+
+## Exact etest result and CI follow-up
+
+Main e4d51b71b1a67b1e1c25c7990deebbd2331139b5 was promoted to etest after main push. Published t.smhe.cn marker e4d51b7 confirmed. Dedicated live browser acceptance PASS 1/1: 2/2 formal review tasks, 1 independent pass / 1 consolidation, no-op account + resize same document, revoked same-owner reauth without logout, exact original rows retained, dark account dialog, disposable-account deletion verified.
+
+CI found outdated test expectations: login-event-warning required an unconditional login-success message despite quiet success; Learn strip required five instead of six cells. Assertions updated to explicit quiet success and six distinct labels; retained invalid history/uncertain write/M4 diagnostic and unchanged-row assertions. Frozen mutation locators drifted: two daily-session expressions changed only by formatting; the pre-existing initial-due locator predates the terminal-probe branch. Locator-only maintenance retains the identical missing-carryover, omitted-review-target and doubled ordinary initial delay faults, all original mutant IDs and detectors. No survivor, threshold, assertion or mutant was removed. Original e4 invalid results remain recorded rather than presented as passes. Published Dual-Site Explorer's old EdgeOne alias expects removed mobile explanatory text; that unrelated alias failure is not used as canonical production qualification.
+
+Follow-up local checks: login-event-warning 9/9 PASS with original history and M3/M4 safety assertions; six-metric browser1/1 PASS; phone explicit login/back1/1 PASS; avatar/menu single-tab policy2/2 PASS (the click observer now sits at React root, where propagation is intentionally stopped; overview keeps history/timeOrigin, explicit login adds one history entry). Both frozen mutation suites execute all16 mutants and reject all16, invalid0, with unchanged detectors. Existing CI additionally passed S1 Workspace Browser Gate, Learn Real Journey, P4b Recovery, Architecture, Toolbar, Achievement, M3 Relay and Safe V4 Merge Writeback. Initial e4 three-device fork failed on explicit login HTTP500; cleanup200. Original Branch Cloud test passed3/4 and Blob transport/cleanup but its phone entry still expected immediate full navigation; adjusted to verify overview then explicit login.

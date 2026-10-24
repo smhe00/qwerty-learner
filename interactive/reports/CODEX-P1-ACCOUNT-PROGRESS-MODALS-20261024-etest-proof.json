@@ -1,0 +1,14 @@
+{
+  "source": "e4d51b7",
+  "syntheticAccount": true,
+  "progress": {
+    "reviewCompleted": 2,
+    "independentPassed": 1,
+    "consolidation": 1
+  },
+  "noOpAccountAndResizeSameDocument": true,
+  "revokedReauthWithoutLogout": true,
+  "originalRowsUnchanged": true,
+  "darkAccountDialog": true,
+  "cleanupVerified": true
+}
