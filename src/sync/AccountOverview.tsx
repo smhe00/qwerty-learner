@@ -2,15 +2,17 @@ import { closeAccountDialog, isAccountDialogOpen, subscribeAccountDialog } from 
 import { loadAuth } from './auth'
 import { Dialog } from '@headlessui/react'
 import { useSyncExternalStore } from 'react'
+import { useLocation } from 'react-router-dom'
 
 /** Read-only inspection keeps the mounted app and its writer lease intact. */
 export default function AccountOverview() {
+  const { pathname } = useLocation()
   const open = useSyncExternalStore(subscribeAccountDialog, isAccountDialogOpen)
   const auth = open ? loadAuth({ preserveExpired: true }) : null
   const expired = !!auth && auth.expiresAt * 1000 <= Date.now()
   const manage = () => {
     const base = REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner/' : '/'
-    const mobile = window.location.pathname.startsWith('/mobile')
+    const mobile = pathname.startsWith('/mobile')
     window.location.assign(base + (mobile ? 'mobile/account?' : '?s1-account=manage&') + 's1-reauth=1')
   }
   return (
