@@ -1,3 +1,4 @@
+import { createDexieImportBlob } from '@/utils/db/dexie-import-blob'
 import { mergeAccountV4Snapshots } from '../../src/sync/automatic-v4-browser'
 import { archiveAutomaticV4Merge } from '../../src/sync/automatic-v4-archive'
 import { switchAuthenticatedWorkspace, reconcileAuthTransition, S1_AUTH_INTENT_KEY, reauthenticateSameWorkspace } from '../../src/sync/workspace-auth-transaction'
@@ -303,6 +304,7 @@ async function inspectTableContract() {
 }
 
 ;(window as any).__backupHarness = {
+  createDexieImportBlob,
   seed,
   mergeAccountV4Snapshots,
   archiveAutomaticV4Merge,
