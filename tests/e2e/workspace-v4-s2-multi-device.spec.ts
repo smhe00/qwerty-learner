@@ -482,6 +482,24 @@ test('P4b injection: cloud commits but acknowledgement is lost, no phantom basel
   const server = new SharedMockCloud()
   const A = await makeDevice(browser, server, 'postcommit', true)
   try {
+    // This legacy fixture has an unfinished ReviewRecord but no DailySession.
+    // The real Learn mount asynchronously anchors that block. Trace of the
+    // original failure proves the ONLY changed V4 field was dailySessions.cet4;
+    // all six tables stayed equal. Finish this legitimate local preparation
+    // BEFORE injecting a lost cloud response, rather than racing it against
+    // the post-sync fingerprint readback. No sync or recovery is mocked out.
+    const seeded = await inspect(A.page)
+    expect(seeded.workspaceData.learnRuntime.dailySessions).toEqual({})
+    await A.page.goto('/learn')
+    await expect.poll(() => A.page.evaluate(() => {
+      const raw = localStorage.getItem('qwerty.learn.dailySession.v1.cet4')
+      return raw ? JSON.parse(raw).dict : null
+    }), { timeout: 25_000 }).toBe('cet4')
+    const anchored = await inspect(A.page)
+    expect(anchored.workspaceData.database).toEqual(seeded.workspaceData.database)
+    expect(anchored.baseline).toBeNull()
+    expect(server.successfulWrites).toBe(0)
+
     server.loseNextCommitAck = true
     await A.page.goto('/?s2-sync=run')
     await expect(A.page.getByText(/同步未确认，将先执行安全恢复检查/)).toBeVisible({ timeout: 25_000 })
@@ -491,15 +509,16 @@ test('P4b injection: cloud commits but acknowledgement is lost, no phantom basel
     expect(local.count).toBe(1)
     expect(local.preservedFsrs).toBe(true)
     expect(local.baseline).toBeNull()
-    // The failure recovery mounted the app, which can add runtime state.
-    // A NEW sync may CAS-publish a canonical reconciliation, never duplicate
-    // the original learning fact. The next sync must then be metadata-only.
+    expect(local.workspaceData).toEqual(anchored.workspaceData)
+    // A NEW sync must confirm the durable remote state, never treat the
+    // original lost acknowledgement as success or duplicate a learning fact.
     await A.page.goto('/?s2-sync=run')
     await expect(A.page.getByText(/同步完成：本地和云端已经一致|已完成云端学习数据安全恢复/)).toBeVisible({ timeout: 25_000 })
     const recovered = await inspect(A.page)
     expect(recovered.count).toBe(1)
     expect(recovered.baseline.baseRevision).toBe(server.meta().revision)
     expect(recovered.fingerprint).toBe(server.meta().logicalFingerprint)
+    expect(recovered.workspaceData).toEqual(anchored.workspaceData)
     expect(server.successfulWrites).toBeLessThanOrEqual(2)
     const writes = server.successfulWrites
     await sync(A.page, '同步完成：本地和云端已经一致，没有传输完整数据。')
