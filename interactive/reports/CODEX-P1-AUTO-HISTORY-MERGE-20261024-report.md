@@ -11,6 +11,8 @@ release_to_master: false
 
 # 普通账号分叉由程序自动融合
 
+> 以下为生产发布前的验收记录。用户随后已明确授权将相同 eTest 成功提交发布 master；发布结果见同目录 CODEX-P1-AUTO-HISTORY-MERGE-20261024-master-release.md。
+
 用户要求普通用户无需处理分叉，并要求先合并 main、再同步 eTest。有效同账号完整 V4 分叉现已自动处理。主实现 PR #34，测试就绪修正 PR #35；main 与 eTest 均为 51d2124360b620d6d84742b5359d6991f1f60567。master 保持 a2dc907c9c0f6e8924f441fa360ebabd317233dd，未发布，未操作生产用户数据。
 
 最终版本的真实启动历史下载、两端分叉五条并集、完整六表一致、三台离线学习设备三条并集和 M3 单会话接力均已通过。最终 V4 传输 attempt2、Pages＋eTest release-readiness 亦通过，所有本任务硬门禁完成。认证端点曾出现500以及测试身份的未确认状态仍单独记录。

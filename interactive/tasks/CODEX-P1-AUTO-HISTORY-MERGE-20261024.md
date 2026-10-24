@@ -9,3 +9,7 @@ Policies: union immutable attempts by UUID; exact legacy logical payloads use ma
 Use isolated Dexie decoding and independently checked re-export for Typeson/shared references. Read/verify pinned full cloud snapshot, build/audit candidate, archive both originals, guarded revision-CAS upload, then durable pre-mount Pull recovery/readback. No in-call retry of ambiguous cloud writes. A following independent startup must reconcile metadata and avoid duplicate uploads.
 
 Validate unit invariants, repeated/reversed merge, legacy multiplicity, references, FSRS, sessions and failure injection; actual browser roundtrip and real eTest historical fork convergence. Merge product/main first, wait main gates, then fast-forward edgeone-test to identical SHA. master and production users remain outside scope. Record cleanup separately and preserve prior evidence.
+
+## User-authorized production release follow-up (2026-10-24)
+
+The owner explicitly requested publishing the successful etest commit directly to master without further regression testing. This overrides the earlier no-master scope for this release only. Publish the identical qualified SHA 51d2124360b620d6d84742b5359d6991f1f60567, fast-forward only; do not change the candidate or operate on existing production-user records. Confirm deployment propagation read-only. The owner separately authorized using the existing GitHub credential without output/storage to cancel automatic regression runs 40058028674 and 40058028449; retain deployment/version confirmation 40058028543.
