@@ -1,0 +1,26 @@
+{
+  "deploymentSHA": "1bce4bfa2afc4c712338bebc4bb6303293c8100d",
+  "workflowRun": 40044357407,
+  "attempt": 2,
+  "job": 120745192097,
+  "conclusion": "success",
+  "proof": {
+    "historicalFixture": true,
+    "source": "1bce4bf",
+    "ordinaryStartupRecoveredFullV4": true,
+    "sixTablePullExact": true,
+    "sharedReferencePreserved": true,
+    "conflictPreservesBoth": true,
+    "cloudRevisionUnchanged": true,
+    "counts": {
+      "wordRecords": 3,
+      "chapterRecords": 1,
+      "reviewRecords": 64,
+      "reviewWordStates": 1,
+      "achievementEvents": 1,
+      "achievementStates": 1
+    },
+    "cleanupStatus": 200,
+    "cleanupVerified": true
+  }
+}
