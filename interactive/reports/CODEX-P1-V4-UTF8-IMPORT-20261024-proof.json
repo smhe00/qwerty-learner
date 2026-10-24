@@ -129,6 +129,20 @@
     "reportedDetail": "Cloud complete V4 check or transfer failed; full convergence not completed",
     "classification": "Generic catch, not proof of a network failure or cloud download. Includes adapter ownership/session, capture, transport, merge and storage exceptions.",
     "existingUserDataAccessed": false,
-    "nextEvidence": "Local backup export result and fixed-field sync performance records from the existing tab; no backup or credentials requested."
+    "nextEvidence": "Existing tab Resource Timing: only /api/sync/v2 path, HTTP response status and duration. No new request, headers, query strings or snapshot content requested.",
+    "localBackupExport": "Owner confirmed success on deployed 9a25456; local lossless backup export no longer fails.",
+    "performanceEvidence": {
+      "newVersionAttempts": 2,
+      "localSnapshotCaptureResolved": true,
+      "metadataRequestResolved": true,
+      "fingerprintDecisionEntered": true,
+      "fingerprintDecisionSucceeded": "unknown: timer is recorded in finally",
+      "postDecisionStagesRecorded": false,
+      "fullSnapshotDownload": "not determined: automatic-merge download is uninstrumented",
+      "fullSnapshotMerge": "not confirmed",
+      "s2Upload": "no payload or transport samples in supplied records",
+      "remainingRootCause": "unknown",
+      "existingBrowserDataReadByAgent": false
+    }
   }
 }
