@@ -5,48 +5,56 @@ const owner = { kind: 'account' as const, accountId: 'm4-pilot-browser-test' }
 async function init(page: import('@playwright/test').Page) {
   await page.goto('/tests/e2e/backup-harness.html')
   await expect.poll(() => page.evaluate(() => Boolean((window as any).__backupHarness?.seed))).toBe(true)
-  await page.evaluate(async identity => {
+  await page.evaluate(async (identity) => {
     const h = (window as any).__backupHarness
     await h.seed()
     // Explicit migration requires the authenticated immutable account to
     // match the S1 destination before any V4 database ownership is assigned.
-    localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify({
-      token: 'm4-browser-fixture-only',
-      expiresAt: Math.floor(Date.now() / 1000) + 3600,
-      user: { userId: identity.accountId, username: 'm4-browser-test' },
-    }))
+    localStorage.setItem(
+      'qwerty.cloudAuth.v1',
+      JSON.stringify({
+        token: 'm4-browser-fixture-only',
+        expiresAt: Math.floor(Date.now() / 1000) + 3600,
+        user: { userId: identity.accountId, username: 'm4-browser-test' },
+      }),
+    )
     await h.initializeLegacyWorkspace(identity)
   }, owner)
 }
 
 async function stage(page: import('@playwright/test').Page, candidateChapter: number) {
-  return page.evaluate(async (input) => {
-    const h = (window as any).__backupHarness
-    const original = await h.captureWorkingWorkspaceV4(input.owner)
-    const candidate = structuredClone(original)
-    candidate.workspaceData.navigation.currentChapter = input.candidateChapter
-    const registry = await h.workspaceRegistryPort.read()
-    const pending = {
-      version: 1,
-      accountId: input.owner.accountId,
-      registryGeneration: registry.generation,
-      originalFingerprint: await h.workspaceFingerprintV4(original),
-      candidateFingerprint: await h.workspaceFingerprintV4(candidate),
-      original,
-      candidate,
-    }
-    await h.m4MergeJournalPort.stage(pending)
-    const observed = await h.m4MergeJournalPort.read()
-    return { originalFingerprint: pending.originalFingerprint,
-      candidateFingerprint: pending.candidateFingerprint,
-      staged: observed !== null,
-      registryGeneration: registry.generation }
-  }, { owner, candidateChapter })
+  return page.evaluate(
+    async (input) => {
+      const h = (window as any).__backupHarness
+      const original = await h.captureWorkingWorkspaceV4(input.owner)
+      const candidate = structuredClone(original)
+      candidate.workspaceData.navigation.currentChapter = input.candidateChapter
+      const registry = await h.workspaceRegistryPort.read()
+      const pending = {
+        version: 1,
+        accountId: input.owner.accountId,
+        registryGeneration: registry.generation,
+        originalFingerprint: await h.workspaceFingerprintV4(original),
+        candidateFingerprint: await h.workspaceFingerprintV4(candidate),
+        original,
+        candidate,
+      }
+      await h.m4MergeJournalPort.stage(pending)
+      const observed = await h.m4MergeJournalPort.read()
+      return {
+        originalFingerprint: pending.originalFingerprint,
+        candidateFingerprint: pending.candidateFingerprint,
+        staged: observed !== null,
+        registryGeneration: registry.generation,
+      }
+    },
+    { owner, candidateChapter },
+  )
 }
 
 test('M4 seal under installed S1 guard completes and still rejects direct witness writes', async ({ page }) => {
   await init(page)
-  const result = await page.evaluate(async identity => {
+  const result = await page.evaluate(async (identity) => {
     const h = (window as any).__backupHarness
     const lease = await h.acquireWorkspaceWriterLease()
     try {
@@ -57,39 +65,55 @@ test('M4 seal under installed S1 guard completes and still rejects direct witnes
       const phases: string[] = []
       let errorCategory = ''
       try {
-        await h.executeM4Merge(h.m4MergeJournalPort, {
-          capture: () => h.captureWorkingWorkspaceV4(identity),
-          restore: (snapshot: unknown) => h.restoreWorkingWorkspaceV4(snapshot, identity),
-          seal: async () => h.refreshWorkspaceMigrationWitness(),
-        }, {
-          accountId: identity.accountId,
-          registryGeneration: (await h.workspaceRegistryPort.read()).generation,
-          expectedOriginalFingerprint: await h.workspaceFingerprintV4(original), candidate,
-        }, (phase: string) => phases.push(phase))
+        await h.executeM4Merge(
+          h.m4MergeJournalPort,
+          {
+            capture: () => h.captureWorkingWorkspaceV4(identity),
+            restore: (snapshot: unknown) => h.restoreWorkingWorkspaceV4(snapshot, identity),
+            seal: async () => h.refreshWorkspaceMigrationWitness(),
+          },
+          {
+            accountId: identity.accountId,
+            registryGeneration: (await h.workspaceRegistryPort.read()).generation,
+            expectedOriginalFingerprint: await h.workspaceFingerprintV4(original),
+            candidate,
+          },
+          (phase: string) => phases.push(phase),
+        )
       } catch (error) {
         // Fixture-only exception; no account data or snapshots are emitted.
         const cause = (error as Error).cause as Error | undefined
-        errorCategory = cause?.message === 'S1 migration witness is managed by the guarded writer only'
-          ? 'guard-rejected-managed-seal' : 'other'
+        errorCategory =
+          cause?.message === 'S1 migration witness is managed by the guarded writer only' ? 'guard-rejected-managed-seal' : 'other'
       }
       const pending = await h.m4MergeJournalPort.read()
       const current = await h.captureWorkingWorkspaceV4(identity)
       const witnessKey = 'qwerty.s1.workspace-migrated.v1'
       const rejects = (action: () => void) => {
-        try { action(); return false } catch { return true }
+        try {
+          action()
+          return false
+        } catch {
+          return true
+        }
       }
-      return { errorCategory, phases, pending: pending !== null,
-        rollbackIntact: pending ?
-          await h.workspaceFingerprintV4(pending.original) === await h.workspaceFingerprintV4(original) : null,
-        candidateIntact: pending ?
-          await h.workspaceFingerprintV4(pending.candidate) === await h.workspaceFingerprintV4(candidate) : null,
-        exactCandidate: await h.workspaceFingerprintV4(current) === await h.workspaceFingerprintV4(candidate),
+      return {
+        errorCategory,
+        phases,
+        pending: pending !== null,
+        rollbackIntact: pending ? (await h.workspaceFingerprintV4(pending.original)) === (await h.workspaceFingerprintV4(original)) : null,
+        candidateIntact: pending
+          ? (await h.workspaceFingerprintV4(pending.candidate)) === (await h.workspaceFingerprintV4(candidate))
+          : null,
+        exactCandidate: (await h.workspaceFingerprintV4(current)) === (await h.workspaceFingerprintV4(candidate)),
         sealed: h.assertWorkspaceMigrationWitness(),
         rejectsSet: rejects(() => localStorage.setItem(witnessKey, 'forged')),
         rejectsRemove: rejects(() => localStorage.removeItem(witnessKey)),
         rejectsClear: rejects(() => localStorage.clear()),
       }
-    } finally { lease.release() }
+    } finally {
+      lease.release()
+    }
   }, owner)
   console.log('M4_GUARDED_SEAL', JSON.stringify(result))
   expect(result.errorCategory).toBe('')
@@ -111,21 +135,25 @@ test('real IndexedDB: crash after M4 staging keeps six-table rollback and restor
     localStorage.setItem('currentChapter', JSON.stringify(88))
   })
   await page.reload()
-  await expect.poll(() => page.evaluate(() =>
-    Boolean((window as any).__backupHarness?.m4MergeJournalPort?.read))).toBe(true)
+  await expect.poll(() => page.evaluate(() => Boolean((window as any).__backupHarness?.m4MergeJournalPort?.read))).toBe(true)
   const result = await page.evaluate(async () => {
     const h = (window as any).__backupHarness
     const pendingBefore = await h.m4MergeJournalPort.read()
     const emptyBefore = await h.db.wordRecords.count()
     const restored = await h.recoverPendingM4Merge('rollback')
     const snapshot = await h.captureWorkingWorkspaceV4({
-      kind: 'account', accountId: 'm4-pilot-browser-test',
+      kind: 'account',
+      accountId: 'm4-pilot-browser-test',
     })
-    return { hadPending: pendingBefore !== null, emptyBefore,
-      restored, after: await h.workspaceFingerprintV4(snapshot),
+    return {
+      hadPending: pendingBefore !== null,
+      emptyBefore,
+      restored,
+      after: await h.workspaceFingerprintV4(snapshot),
       pendingAfter: await h.m4MergeJournalPort.read(),
       count: await h.db.wordRecords.count(),
-      chapter: snapshot.workspaceData.navigation.currentChapter }
+      chapter: snapshot.workspaceData.navigation.currentChapter,
+    }
   })
   expect(result.hadPending).toBe(true)
   expect(result.emptyBefore).toBe(0)
@@ -140,53 +168,78 @@ for (const crash of ['restore', 'seal', 'finalize'] as const) {
   test(`guarded M4 crash at ${crash} preserves both full snapshots and boots idempotently`, async ({ page }) => {
     await init(page)
     const saved = await stage(page, 43)
-    const interrupted = await page.evaluate(async ({ identity, crash }) => {
-      const h = (window as any).__backupHarness
-      const lease = await h.acquireWorkspaceWriterLease()
-      try {
-        h.installWorkspaceStorageWriterGuard()
-        const pending = await h.m4MergeJournalPort.read()
-        const journal = { ...h.m4MergeJournalPort,
-          finalize: async (...args: unknown[]) => {
-            if (crash === 'finalize') throw new Error('fixture-crash')
-            await h.m4MergeJournalPort.finalize(...args)
-          } }
-        // Use the production recovery kernel with a single injected crash.
-        // Its stored snapshots remain the independent recovery authority.
+    const interrupted = await page.evaluate(
+      async ({ identity, crash }) => {
+        const h = (window as any).__backupHarness
+        const lease = await h.acquireWorkspaceWriterLease()
         try {
-          await h.recoverM4Merge(journal, {
-            capture: () => h.captureWorkingWorkspaceV4(identity),
-            restore: async (snapshot: unknown) => {
-              await h.restoreWorkingWorkspaceV4(snapshot, identity)
-              if (crash === 'restore') {
-                await h.db.wordRecords.clear()
-                throw new Error('fixture-crash')
-              }
+          h.installWorkspaceStorageWriterGuard()
+          const pending = await h.m4MergeJournalPort.read()
+          const journal = {
+            ...h.m4MergeJournalPort,
+            finalize: async (...args: unknown[]) => {
+              if (crash === 'finalize') throw new Error('fixture-crash')
+              await h.m4MergeJournalPort.finalize(...args)
             },
-            seal: async () => {
-              if (crash === 'seal') throw new Error('fixture-crash')
-              h.refreshWorkspaceMigrationWitness()
-            },
-          }, 'apply')
-        } catch { /* The next real boot must recover this staged transaction. */ }
-        const after = await h.m4MergeJournalPort.read()
-        return { retained: after !== null,
-          originalIntact: await h.workspaceFingerprintV4(after.original) === pending.originalFingerprint,
-          candidateIntact: await h.workspaceFingerprintV4(after.candidate) === pending.candidateFingerprint }
-      } finally { lease.release() }
-    }, { identity: owner, crash })
+          }
+          // Use the production recovery kernel with a single injected crash.
+          // Its stored snapshots remain the independent recovery authority.
+          try {
+            await h.recoverM4Merge(
+              journal,
+              {
+                capture: () => h.captureWorkingWorkspaceV4(identity),
+                restore: async (snapshot: unknown) => {
+                  await h.restoreWorkingWorkspaceV4(snapshot, identity)
+                  if (crash === 'restore') {
+                    await h.db.wordRecords.clear()
+                    throw new Error('fixture-crash')
+                  }
+                },
+                seal: async () => {
+                  if (crash === 'seal') throw new Error('fixture-crash')
+                  h.refreshWorkspaceMigrationWitness()
+                },
+              },
+              'apply',
+            )
+          } catch {
+            /* The next real boot must recover this staged transaction. */
+          }
+          const after = await h.m4MergeJournalPort.read()
+          return {
+            retained: after !== null,
+            originalIntact: (await h.workspaceFingerprintV4(after.original)) === pending.originalFingerprint,
+            candidateIntact: (await h.workspaceFingerprintV4(after.candidate)) === pending.candidateFingerprint,
+          }
+        } finally {
+          lease.release()
+        }
+      },
+      { identity: owner, crash },
+    )
     expect(interrupted).toEqual({ retained: true, originalIntact: true, candidateIntact: true })
     await page.reload()
     await expect.poll(() => page.evaluate(() => Boolean((window as any).__backupHarness))).toBe(true)
-    const recovered = await page.evaluate(async identity => {
+    const recovered = await page.evaluate(async (identity) => {
       const h = (window as any).__backupHarness
       let mounted = false
       let restart = false
-      try { await h.mountGuardedWorkspaceApp(() => { mounted = true }) }
-      catch (error) { restart = String(error).includes('M4 merge recovery completed; reload required') }
+      try {
+        await h.mountGuardedWorkspaceApp(() => {
+          mounted = true
+        })
+      } catch (error) {
+        restart = String(error).includes('M4 merge recovery completed; reload required')
+      }
       const snapshot = await h.captureWorkingWorkspaceV4(identity)
-      return { mounted, restart, fingerprint: await h.workspaceFingerprintV4(snapshot),
-        pending: await h.m4MergeJournalPort.read(), secondReplay: await h.recoverPendingM4Merge('apply') }
+      return {
+        mounted,
+        restart,
+        fingerprint: await h.workspaceFingerprintV4(snapshot),
+        pending: await h.m4MergeJournalPort.read(),
+        secondReplay: await h.recoverPendingM4Merge('apply'),
+      }
     }, owner)
     expect(recovered.mounted).toBe(false)
     expect(recovered.restart).toBe(true)
@@ -203,11 +256,15 @@ test('real IndexedDB: verified candidate apply clears journal only after full V4
     const h = (window as any).__backupHarness
     const applied = await h.recoverPendingM4Merge('apply')
     const snap = await h.captureWorkingWorkspaceV4({
-      kind: 'account', accountId: 'm4-pilot-browser-test',
+      kind: 'account',
+      accountId: 'm4-pilot-browser-test',
     })
-    return { applied, fingerprint: await h.workspaceFingerprintV4(snap),
+    return {
+      applied,
+      fingerprint: await h.workspaceFingerprintV4(snap),
       chapter: snap.workspaceData.navigation.currentChapter,
-      pending: await h.m4MergeJournalPort.read() }
+      pending: await h.m4MergeJournalPort.read(),
+    }
   })
   expect(result.applied).toBe(true)
   expect(result.fingerprint).toBe(expected.candidateFingerprint)
@@ -226,8 +283,11 @@ test('real IndexedDB: staging a manual V4 import is refused while M4 transaction
     let blocked = false
     try {
       await h.manualV4ImportJournalPort.stage({
-        owner, originalOwner: owner, registryGeneration: generation,
-        original, candidate: original,
+        owner,
+        originalOwner: owner,
+        registryGeneration: generation,
+        original,
+        candidate: original,
       })
     } catch (error) {
       blocked = String(error).includes('conflicts with another S1/S2 transaction')
@@ -248,18 +308,29 @@ test('S1 boot resumes a complete pending M4 journal before any writer mounts', a
     let reason = ''
     const phases: string[] = []
     try {
-      await h.mountGuardedWorkspaceApp(async () => { didMount = true },
-        (stage: string) => { phases.push(stage) })
+      await h.mountGuardedWorkspaceApp(
+        async () => {
+          didMount = true
+        },
+        (stage: string) => {
+          phases.push(stage)
+        },
+      )
     } catch (error) {
       reason = String(error)
     }
     const restored = await h.captureWorkingWorkspaceV4({
-      kind: 'account', accountId: 'm4-pilot-browser-test',
+      kind: 'account',
+      accountId: 'm4-pilot-browser-test',
     })
-    return { didMount, reason, phases,
+    return {
+      didMount,
+      reason,
+      phases,
       fingerprint: await h.workspaceFingerprintV4(restored),
       chapter: restored.workspaceData.navigation.currentChapter,
-      pending: await h.m4MergeJournalPort.read() }
+      pending: await h.m4MergeJournalPort.read(),
+    }
   })
   expect(result.didMount).toBe(false)
   expect(result.reason).toContain('M4 merge recovery completed; reload required')
@@ -281,14 +352,22 @@ test('S1 owner mismatch cannot consume or replay staged M4', async ({ page }) =>
     let didMount = false
     let reason = ''
     try {
-      await h.mountGuardedWorkspaceApp(async () => { didMount = true })
-    } catch (error) { reason = String(error) }
+      await h.mountGuardedWorkspaceApp(async () => {
+        didMount = true
+      })
+    } catch (error) {
+      reason = String(error)
+    }
     const state = await h.captureWorkingWorkspaceV4({
-      kind: 'account', accountId: 'm4-pilot-browser-test',
+      kind: 'account',
+      accountId: 'm4-pilot-browser-test',
     })
-    return { didMount, reason,
+    return {
+      didMount,
+      reason,
       pending: (await h.m4MergeJournalPort.read()) !== null,
-      chapter: state.workspaceData.navigation.currentChapter }
+      chapter: state.workspaceData.navigation.currentChapter,
+    }
   })
   expect(result.didMount).toBe(false)
   expect(result.reason).not.toContain('M4 merge recovery completed')
@@ -297,10 +376,9 @@ test('S1 owner mismatch cannot consume or replay staged M4', async ({ page }) =>
   expect(result.chapter).not.toBe(34)
 })
 
-
 test('real Dexie: scratch M4 class mappings preserve full six-table V4 fingerprint after restore', async ({ page }) => {
   await init(page)
-  const outcome = await page.evaluate(async identity => {
+  const outcome = await page.evaluate(async (identity) => {
     const h = (window as any).__backupHarness
     const original = await h.captureWorkingWorkspaceV4(identity)
     const candidate = structuredClone(original)
@@ -308,36 +386,41 @@ test('real Dexie: scratch M4 class mappings preserve full six-table V4 fingerpri
     const words = groups.find((group: any) => group.tableName === 'wordRecords')
     const raw = await h.db.wordRecords.toCollection().raw().toArray()
     const id = Math.max(...raw.map((record: any) => record.id)) + 1
-    const extra = { ...structuredClone(raw[0]), id,
-      word: 'm4-scratch-added-fixture', timeStamp: raw[0].timeStamp + 1,
-      attemptId: 'm4-scratch-synthetic-' + id }
+    const extra = {
+      ...structuredClone(raw[0]),
+      id,
+      word: 'm4-scratch-added-fixture',
+      timeStamp: raw[0].timeStamp + 1,
+      attemptId: 'm4-scratch-synthetic-' + id,
+    }
     words.rows.push(extra)
-    const manifest = candidate.workspaceData.database.data.tables.find(
-      (entry: any) => entry.name === 'wordRecords')
+    const manifest = candidate.workspaceData.database.data.tables.find((entry: any) => entry.name === 'wordRecords')
     if (manifest.rowCount !== undefined) manifest.rowCount = words.rows.length
     const materialized = await h.materializeAuditedM4CandidateV4(candidate, original)
     const before = await h.workspaceFingerprintV4(materialized)
     await h.restoreWorkingWorkspaceV4(materialized, identity)
     const readback = await h.captureWorkingWorkspaceV4(identity)
     const after = await h.workspaceFingerprintV4(readback)
-    const names = ['wordRecords', 'chapterRecords', 'reviewRecords',
-      'reviewWordStates', 'achievementEvents', 'achievementStates']
+    const names = ['wordRecords', 'chapterRecords', 'reviewRecords', 'reviewWordStates', 'achievementEvents', 'achievementStates']
     const tableRows = (snapshot: any, name: string) =>
-      snapshot.workspaceData.database.data.data.find(
-        (item: any) => item.tableName === name)?.rows ?? []
-    const sameTables = names.map(name => ({
-      name, before: JSON.stringify(tableRows(materialized, name)),
-      after: JSON.stringify(tableRows(readback, name)),
-    })).map(({ name, before, after }) => ({ name, equal: before === after }))
-    const rootType = (snapshot: any, name: string) =>
-      tableRows(snapshot, name)[0]?.$types?.[''] ?? null
-    return { before, after,
-      materializedTypes: ['wordRecords', 'reviewRecords'].map(
-        name => rootType(materialized, name)),
-      liveTypes: ['wordRecords', 'reviewRecords'].map(
-        name => rootType(readback, name)),
-      sameTables, count: await h.db.wordRecords.count(),
-      newWord: (await h.db.wordRecords.get(id))?.word }
+      snapshot.workspaceData.database.data.data.find((item: any) => item.tableName === name)?.rows ?? []
+    const sameTables = names
+      .map((name) => ({
+        name,
+        before: JSON.stringify(tableRows(materialized, name)),
+        after: JSON.stringify(tableRows(readback, name)),
+      }))
+      .map(({ name, before, after }) => ({ name, equal: before === after }))
+    const rootType = (snapshot: any, name: string) => tableRows(snapshot, name)[0]?.$types?.[''] ?? null
+    return {
+      before,
+      after,
+      materializedTypes: ['wordRecords', 'reviewRecords'].map((name) => rootType(materialized, name)),
+      liveTypes: ['wordRecords', 'reviewRecords'].map((name) => rootType(readback, name)),
+      sameTables,
+      count: await h.db.wordRecords.count(),
+      newWord: (await h.db.wordRecords.get(id))?.word,
+    }
   }, owner)
   expect(outcome.count).toBe(2)
   expect(outcome.newWord).toBe('m4-scratch-added-fixture')
@@ -345,4 +428,81 @@ test('real Dexie: scratch M4 class mappings preserve full six-table V4 fingerpri
   expect(outcome.materializedTypes).toEqual(['userObject', 'userObject'])
   expect(outcome.sameTables.every((x: any) => x.equal)).toBe(true)
   expect(outcome.before).toBe(outcome.after)
+})
+
+test('mixed legacy M4 survives real lossless materialization, journal restore and diagnostic export', async ({ page }) => {
+  await init(page)
+  const result = await page.evaluate(async (identity) => {
+    const h = (window as any).__backupHarness
+    const lease = await h.acquireWorkspaceWriterLease()
+    try {
+      h.installWorkspaceStorageWriterGuard()
+      const original = await h.captureWorkingWorkspaceV4(identity)
+      const raw = await h.db.wordRecords.toCollection().raw().toArray()
+      const { id: _id, fsrsShadow: _fsrs, ...remote } = raw[0]
+      remote.attemptId = '00000000-0000-4000-8000-000000000099'
+      remote.timeStamp += 86400
+      const proposal = await h.previewMonotonicWitnessedM4({
+        accountId: identity.accountId,
+        local: original,
+        liveWordRecords: raw,
+        witnessedEvents: [remote],
+      })
+      if (proposal.status !== 'candidate') throw Error('Mixed candidate rejected: ' + proposal.reason)
+      const audited = await h.materializeAuditedM4CandidateV4(proposal.candidate, original)
+      const phases: string[] = []
+      await h.executeM4Merge(
+        h.m4MergeJournalPort,
+        {
+          capture: () => h.captureWorkingWorkspaceV4(identity),
+          restore: (snapshot: unknown) => h.restoreWorkingWorkspaceV4(snapshot, identity),
+          seal: async () => h.refreshWorkspaceMigrationWitness(),
+        },
+        {
+          accountId: identity.accountId,
+          registryGeneration: (await h.workspaceRegistryPort.read()).generation,
+          expectedOriginalFingerprint: await h.workspaceFingerprintV4(original),
+          candidate: audited,
+        },
+        (phase: string) => phases.push(phase),
+      )
+      const after = await h.captureWorkingWorkspaceV4(identity)
+      const current = await h.db.wordRecords.toCollection().raw().toArray()
+      const tables = (snapshot: any) => snapshot.workspaceData.database.data.data
+      const unchanged = tables(original)
+        .filter((t: any) => t.tableName !== 'wordRecords')
+        .every((t: any) => h.sameLosslessIndexedDbValue(t.rows, tables(after).find((n: any) => n.tableName === t.tableName).rows))
+      const repeated = await h.previewMonotonicWitnessedM4({
+        accountId: identity.accountId,
+        local: after,
+        liveWordRecords: current,
+        witnessedEvents: [remote],
+      })
+      const beforeExport = await h.workspaceFingerprintV4(after)
+      const incident = await h.createDeveloperIncidentSnapshot()
+      const afterExport = await h.workspaceFingerprintV4(await h.captureWorkingWorkspaceV4(identity))
+      return {
+        phases,
+        pending: !!(await h.m4MergeJournalPort.read()),
+        exact: beforeExport === (await h.workspaceFingerprintV4(audited)),
+        originalRow: h.sameLosslessIndexedDbValue(raw[0], current[0]),
+        unchanged,
+        count: current.length,
+        missingIdPreserved: current[0].attemptId === undefined,
+        richerStatePreserved: proposal.retainedLegacyStates === 1,
+        repeated: repeated.status,
+        diagnostics: incident.synchronization.currentRecords,
+        exportReadOnly: beforeExport === afterExport,
+      }
+    } finally {
+      lease.release()
+    }
+  }, owner)
+  expect(result.phases).toEqual(['capture', 'stage', 'restore', 'verify', 'seal', 'finalize', 'complete'])
+  expect(result.pending).toBe(false)
+  expect(result.exact && result.originalRow && result.unchanged && result.missingIdPreserved && result.richerStatePreserved).toBe(true)
+  expect(result.count).toBe(2)
+  expect(result.repeated).toBe('unchanged')
+  expect(result.diagnostics).toEqual({ scanned: 2, eligible: 1, snapshotOnly: 1, rejected: 0, issues: { 'missing-attempt-id': 1 } })
+  expect(result.exportReadOnly).toBe(true)
 })

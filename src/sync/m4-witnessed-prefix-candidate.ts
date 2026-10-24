@@ -11,37 +11,42 @@
  * the S1 exclusive pre-mount writer lease and stage a durable M4 undo journal
  * before restoring these bytes. No event/blob listing alone authorizes writes.
  */
-import type { IWordRecord } from '@/utils/db/record'
-import type { IReviewWordState } from '@/review/types'
+import { classifyLocalLearningRecord } from './learning-event-compatibility'
 import { immutableAttempt } from './multi-device-outbox'
 import { projectUuidLearningConvergence } from './v4-event-convergence'
 import { normalizeTaggedExportRow } from './v4-table-audit'
-import {
-  assertRestorableWorkspaceV4, stableWorkspaceJson, workspaceFingerprintV4,
-} from './workspace-v4'
+import { assertRestorableWorkspaceV4, stableWorkspaceJson, workspaceFingerprintV4 } from './workspace-v4'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
+import { rebuildActiveFsrsStateFromWordRecords } from '@/review/fsrs/active'
+import type { IWordRecord } from '@/utils/db/record'
 
 type Row = Record<string, unknown>
 type Table = { tableName: string; rows: Row[] }
 type Database = { data: { data: Table[]; tables: { name: string; rowCount?: number }[] } }
 
 export type MonotonicM4Candidate =
-  | { status: 'blocked'; reason: string; publishReady: false;
-      convergenceComplete: false }
-  | { status: 'unchanged'; reason: 'all-witnessed-attempts-already-local';
-      publishReady: false; convergenceComplete: false }
-  | { status: 'candidate'; candidate: WorkspaceSnapshotV4;
-      candidateFingerprint: string; newlyAdoptedAttempts: number;
-      witnessedAttempts: number; publishReady: false;
-      convergenceComplete: false }
+  | { status: 'blocked'; reason: string; publishReady: false; convergenceComplete: false }
+  | { status: 'unchanged'; reason: 'all-witnessed-attempts-already-local'; publishReady: false; convergenceComplete: false }
+  | {
+      status: 'candidate'
+      candidate: WorkspaceSnapshotV4
+      candidateFingerprint: string
+      newlyAdoptedAttempts: number
+      witnessedAttempts: number
+      retainedLegacyStates: number
+      publishReady: false
+      convergenceComplete: false
+    }
 
 const fail = (reason: string): MonotonicM4Candidate => ({
-  status: 'blocked', reason, publishReady: false, convergenceComplete: false,
+  status: 'blocked',
+  reason,
+  publishReady: false,
+  convergenceComplete: false,
 })
 const wordKey = (dict: string, word: string) => JSON.stringify([dict, word])
 function table(snapshot: WorkspaceSnapshotV4, name: string): Row[] {
-  const matching = ((snapshot.workspaceData.database as Database)
-    .data.data).filter(item => item.tableName === name)
+  const matching = (snapshot.workspaceData.database as Database).data.data.filter((item) => item.tableName === name)
   if (matching.length !== 1 || !Array.isArray(matching[0].rows)) {
     throw new Error('m4-prefix-missing-table:' + name)
   }
@@ -63,9 +68,13 @@ export async function previewMonotonicWitnessedM4(input: {
 }): Promise<MonotonicM4Candidate> {
   try {
     const { accountId, local, witnessedEvents, liveWordRecords } = input
-    if (!accountId || local.metadata.source.kind !== 'account' ||
-        local.metadata.source.accountId !== accountId ||
-        !Array.isArray(witnessedEvents) || witnessedEvents.length > 4096) {
+    if (
+      !accountId ||
+      local.metadata.source.kind !== 'account' ||
+      local.metadata.source.accountId !== accountId ||
+      !Array.isArray(witnessedEvents) ||
+      witnessedEvents.length > 4096
+    ) {
       return fail('m4-prefix-invalid-owner-or-budget')
     }
     assertRestorableWorkspaceV4(local)
@@ -85,6 +94,7 @@ export async function previewMonotonicWitnessedM4(input: {
       }
     }
     const localIdentityRows: IWordRecord[] = []
+    const fullLocalRows: IWordRecord[] = []
     let lastWordId = 0
     for (const exported of originalWords) {
       if (!validId(exported.id) || existingIds.has(exported.id)) {
@@ -103,21 +113,20 @@ export async function previewMonotonicWitnessedM4(input: {
       // before ignoring it; a forged or contradictory marker fails closed.
       if (live) {
         const normalized = normalizeTaggedExportRow(exported, live)
-        const json = (value: unknown) =>
-          stableWorkspaceJson(JSON.parse(JSON.stringify(value)))
+        const json = (value: unknown) => stableWorkspaceJson(JSON.parse(JSON.stringify(value)))
         if (json(normalized) !== json(live)) {
           return fail('m4-prefix-export-live-payload-mismatch')
         }
       }
-      if (typeof source.attemptId !== 'string') {
-        return fail('m4-prefix-unanchored-legacy-attempt')
+      const admission = classifyLocalLearningRecord(source)
+      if (admission.kind === 'invalid') return fail('m4-prefix-invalid-local-attempt')
+      fullLocalRows.push(source)
+      if (source.attemptId) {
+        const { id: _id, fsrsShadow: _fsrs, reviewPolicyShadow: _shadow, ...core } = source
+        if (wordsByUuid.has(source.attemptId)) return fail('m4-prefix-duplicate-local-attempt')
+        wordsByUuid.set(source.attemptId, stableWorkspaceJson(JSON.parse(JSON.stringify(core))))
       }
-      const canonical = immutableAttempt(source)
-      if (wordsByUuid.has(canonical.attemptId!)) {
-        return fail('m4-prefix-duplicate-local-attempt')
-      }
-      localIdentityRows.push(source)
-      wordsByUuid.set(canonical.attemptId!, stableWorkspaceJson(canonical))
+      if (admission.kind === 'event') localIdentityRows.push(source)
     }
 
     const incoming = new Map<string, IWordRecord>()
@@ -128,8 +137,7 @@ export async function previewMonotonicWitnessedM4(input: {
       }
       const id = normalized.attemptId!
       const expected = stableWorkspaceJson(normalized)
-      if (incoming.has(id) &&
-          stableWorkspaceJson(incoming.get(id)) !== expected) {
+      if (incoming.has(id) && stableWorkspaceJson(incoming.get(id)) !== expected) {
         return fail('m4-prefix-conflicting-server-attempt')
       }
       const localEvidence = wordsByUuid.get(id)
@@ -138,14 +146,11 @@ export async function previewMonotonicWitnessedM4(input: {
       }
       incoming.set(id, normalized)
     }
-    const additions = [...incoming.values()].filter(event =>
-      !wordsByUuid.has(event.attemptId!))
-      .sort((a, b) => a.timeStamp - b.timeStamp ||
-        (a.attemptId! < b.attemptId! ? -1 : a.attemptId! > b.attemptId! ? 1 : 0))
+    const additions = [...incoming.values()]
+      .filter((event) => !wordsByUuid.has(event.attemptId!))
+      .sort((a, b) => a.timeStamp - b.timeStamp || (a.attemptId! < b.attemptId! ? -1 : a.attemptId! > b.attemptId! ? 1 : 0))
     if (!additions.length) {
-      return { status: 'unchanged',
-        reason: 'all-witnessed-attempts-already-local',
-        publishReady: false, convergenceComplete: false }
+      return { status: 'unchanged', reason: 'all-witnessed-attempts-already-local', publishReady: false, convergenceComplete: false }
     }
     if (!Number.isSafeInteger(lastWordId + additions.length)) {
       return fail('m4-prefix-primary-key-exhausted')
@@ -165,8 +170,7 @@ export async function previewMonotonicWitnessedM4(input: {
     const occupiedStates = new Set<number>()
     let nextStateId = 0
     for (const state of candidateStates) {
-      if (!validId(state.id) || occupiedStates.has(state.id) ||
-          typeof state.dict !== 'string' || typeof state.word !== 'string') {
+      if (!validId(state.id) || occupiedStates.has(state.id) || typeof state.dict !== 'string' || typeof state.word !== 'string') {
         return fail('m4-prefix-invalid-local-review-state')
       }
       occupiedStates.add(state.id)
@@ -175,20 +179,37 @@ export async function previewMonotonicWitnessedM4(input: {
       if (stateByWord.has(key)) return fail('m4-prefix-duplicate-review-state')
       stateByWord.set(key, state)
     }
-    const touched = new Set(additions.map(row => wordKey(row.dict, row.word)))
+    const addedRows = additions.map((record, index) => ({ ...structuredClone(record), id: lastWordId + index + 1 }))
+    const completeHistory = new Map<string, IWordRecord[]>()
+    for (const record of [...fullLocalRows, ...addedRows]) {
+      const key = wordKey(record.dict, record.word)
+      const history = completeHistory.get(key) ?? []
+      history.push(record)
+      completeHistory.set(key, history)
+    }
+    let retainedLegacyStates = 0
+    const touched = new Set(additions.map((row) => wordKey(row.dict, row.word)))
     for (const word of projected.words) {
       if (!touched.has(wordKey(word.dict, word.word))) continue
       const key = wordKey(word.dict, word.word)
       const existing = stateByWord.get(key)
-      if (existing && (existing.lifecycle === 'excluded' ||
-          existing.exclusion !== undefined)) {
+      if (existing && (existing.lifecycle === 'excluded' || existing.exclusion !== undefined)) {
         return fail('m4-prefix-manual-exclusion-needs-arbitration')
       }
-      if (word.fsrsState === null) {
-        if (existing) return fail('m4-prefix-existing-fsrs-unreplayable')
+      // Replay the complete local history, including pre-UUID review evidence.
+      // Sparse archives must not replace a richer persisted scheduler. This is
+      // the same conservative policy already used by full V4 reconciliation.
+      const replay = rebuildActiveFsrsStateFromWordRecords(word.dict, word.word, completeHistory.get(key)!)
+      if (
+        existing &&
+        (!replay ||
+          replay.reviewCount < Number(existing.reviewCount ?? 0) ||
+          Number(replay.lastReviewedAt ?? 0) < Number(existing.lastReviewedAt ?? 0))
+      ) {
+        retainedLegacyStates++
         continue
       }
-      const replay = word.fsrsState as IReviewWordState
+      if (!replay) continue
       if (replay.schedulerState.kind !== 'fsrs6') {
         return fail('m4-prefix-non-fsrs-replay')
       }
@@ -197,25 +218,24 @@ export async function previewMonotonicWitnessedM4(input: {
       const row = { ...replay, id: stateId } as Row
       if (existing) {
         // Preserve any unknown schema extension rather than silently erase it.
-        if (Object.keys(existing).some(k => !(k in row))) {
+        if (Object.keys(existing).some((k) => !(k in row))) {
           return fail('m4-prefix-state-extension-needs-arbitration')
         }
-        const index = candidateStates.findIndex(item => item.id === stateId)
+        const index = candidateStates.findIndex((item) => item.id === stateId)
         if (index < 0) return fail('m4-prefix-review-state-disappeared')
         candidateStates[index] = row
       } else {
         candidateStates.push(row)
       }
     }
-    candidateWords.push(...additions.map((record, index) =>
-      ({ ...structuredClone(record), id: lastWordId + index + 1 })))
+    candidateWords.push(...addedRows)
     // Dexie exports an explicit rowCount in each table's manifest. Keeping
     // its OLD value after adding UUID rows causes the candidate V4 fingerprint
     // to disagree with a fresh post-import db.export() and abort M4 readback.
     // Only update the two mutated tables, retaining every other manifest byte.
     const manifest = (candidate.workspaceData.database as Database).data.tables
     for (const name of ['wordRecords', 'reviewWordStates']) {
-      const entry = manifest.find(item => item.name === name)
+      const entry = manifest.find((item) => item.name === name)
       if (!entry) return fail('m4-prefix-missing-table-manifest:' + name)
       if (entry.rowCount !== undefined) {
         if (!Number.isSafeInteger(entry.rowCount) || entry.rowCount < 0) {
@@ -227,36 +247,36 @@ export async function previewMonotonicWitnessedM4(input: {
     // All six durable tables are present. No other table, session, setting or
     // navigation object is changed; every original WordRecord remains exact.
     assertRestorableWorkspaceV4(candidate)
-    for (const name of ['chapterRecords', 'reviewRecords',
-      'achievementEvents', 'achievementStates']) {
-      if (stableWorkspaceJson(table(local, name)) !==
-          stableWorkspaceJson(table(candidate, name))) {
+    for (const name of ['chapterRecords', 'reviewRecords', 'achievementEvents', 'achievementStates']) {
+      if (stableWorkspaceJson(table(local, name)) !== stableWorkspaceJson(table(candidate, name))) {
         return fail('m4-prefix-unrelated-table-mutated:' + name)
       }
     }
-    if (stableWorkspaceJson(candidateWords.slice(0, originalWords.length)) !==
-        stableWorkspaceJson(originalWords) ||
-        stableWorkspaceJson(candidate.workspaceData.settings) !==
-        stableWorkspaceJson(local.workspaceData.settings) ||
-        stableWorkspaceJson(candidate.workspaceData.learnRuntime) !==
-        stableWorkspaceJson(local.workspaceData.learnRuntime) ||
-        stableWorkspaceJson(candidate.workspaceData.navigation) !==
-        stableWorkspaceJson(local.workspaceData.navigation)) {
+    if (
+      stableWorkspaceJson(candidateWords.slice(0, originalWords.length)) !== stableWorkspaceJson(originalWords) ||
+      stableWorkspaceJson(candidate.workspaceData.settings) !== stableWorkspaceJson(local.workspaceData.settings) ||
+      stableWorkspaceJson(candidate.workspaceData.learnRuntime) !== stableWorkspaceJson(local.workspaceData.learnRuntime) ||
+      stableWorkspaceJson(candidate.workspaceData.navigation) !== stableWorkspaceJson(local.workspaceData.navigation)
+    ) {
       return fail('m4-prefix-original-workspace-mutated')
     }
-    if (candidateWords.length !== originalWords.length + additions.length ||
-        additions.some(event => candidateWords.filter(row =>
-          row.attemptId === event.attemptId).length !== 1)) {
+    if (
+      candidateWords.length !== originalWords.length + additions.length ||
+      additions.some((event) => candidateWords.filter((row) => row.attemptId === event.attemptId).length !== 1)
+    ) {
       return fail('m4-prefix-witnessed-attempt-loss')
     }
     return {
-      status: 'candidate', candidate,
+      status: 'candidate',
+      candidate,
       candidateFingerprint: await workspaceFingerprintV4(candidate),
-      newlyAdoptedAttempts: additions.length, witnessedAttempts: incoming.size,
-      publishReady: false, convergenceComplete: false,
+      newlyAdoptedAttempts: additions.length,
+      witnessedAttempts: incoming.size,
+      retainedLegacyStates,
+      publishReady: false,
+      convergenceComplete: false,
     }
   } catch (error) {
-    return fail('m4-prefix-candidate-invalid:' +
-      (error instanceof Error ? error.message : 'unknown'))
+    return fail('m4-prefix-candidate-invalid:' + (error instanceof Error ? error.message : 'unknown'))
   }
 }

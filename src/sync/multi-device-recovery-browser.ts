@@ -4,12 +4,13 @@
  * Two databases cannot participate in one IDB transaction, so repeated
  * scans compensate for crashes between WordRecord and Outbox commits.
  */
-import { db } from '@/utils/db/core'
 import { loadAuth } from './auth'
 import { browserDeviceId } from './device-id'
+import { recordLearningSyncDiagnostic } from './learning-sync-diagnostics'
 import { stageDurableAttempts } from './multi-device-outbox-idb'
 import { planOutboxRecovery } from './multi-device-recovery'
 import { workspaceRegistryPort } from './workspace-vault'
+import { db } from '@/utils/db/core'
 
 const CHUNK_SIZE = 64
 
@@ -31,13 +32,18 @@ export async function recoverOwnedLearningEvents(): Promise<{
   const accountId = auth.user.userId
   const token = auth.token
   const initial = await workspaceRegistryPort.read()
-  if (initial.pending || initial.active.kind !== 'account' ||
-      initial.active.accountId !== accountId) {
+  if (initial.pending || initial.active.kind !== 'account' || initial.active.accountId !== accountId) {
     throw new Error('outbox-recovery-workspace-owner-mismatch')
   }
   const deviceId = browserDeviceId()
-  const records = await db.wordRecords.toArray()
+  const records = await db.wordRecords.toCollection().raw().toArray()
   const plan = planOutboxRecovery(records)
+  recordLearningSyncDiagnostic({
+    stage: 'm3-recovery',
+    status: plan.status,
+    audit: plan.audit,
+    code: plan.status === 'blocked' ? plan.reason : 'none',
+  })
   if (plan.status !== 'ready') {
     throw new Error('outbox-recovery-' + plan.reason)
   }
@@ -45,18 +51,20 @@ export async function recoverOwnedLearningEvents(): Promise<{
   for (let index = 0; index < plan.events.length; index += CHUNK_SIZE) {
     const current = await workspaceRegistryPort.read()
     const still = loadAuth()
-    if (current.generation !== initial.generation || current.pending ||
-        current.active.kind !== 'account' ||
-        current.active.accountId !== accountId ||
-        !still || still.token !== token ||
-        still.expiresAt * 1000 <= Date.now()) {
+    if (
+      current.generation !== initial.generation ||
+      current.pending ||
+      current.active.kind !== 'account' ||
+      current.active.accountId !== accountId ||
+      !still ||
+      still.token !== token ||
+      still.expiresAt * 1000 <= Date.now()
+    ) {
       throw new Error('outbox-recovery-owner-changed')
     }
-    last = await stageDurableAttempts(
-      accountId, deviceId, plan.events.slice(index, index + CHUNK_SIZE))
+    last = await stageDurableAttempts(accountId, deviceId, plan.events.slice(index, index + CHUNK_SIZE))
   }
   // Caller must scan again after new Learn attempts: an in-progress working
   // DB transaction can commit after this read snapshot.
-  return { accountId, deviceId, scanned: plan.count,
-    pending: last?.pending.length ?? 0 }
+  return { accountId, deviceId, scanned: plan.count, pending: last?.pending.length ?? 0 }
 }

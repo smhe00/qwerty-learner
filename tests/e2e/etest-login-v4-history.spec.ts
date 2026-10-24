@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 
 // Synthetic historical records in NEW disposable browser profiles only.
 // Exercises the deployed account UI, never calls Sync/restore/merge directly.
@@ -49,6 +49,8 @@ async function seed(page: Page, branch: string, all = false) {
           const tx = db.transaction(names, 'readwrite')
           const words = tx.objectStore('wordRecords')
           const row = (i: number) => ({
+            ...(i === 1 ? { attemptId: '00000000-0000-4000-8000-000000000091' } : {}),
+            ...(i === 2 ? { sourceMode: 'typing' } : {}),
             word: 'historical-' + branch + '-' + i,
             dict: 'cet4',
             chapter: 0,
@@ -292,6 +294,35 @@ async function meta(page: Page) {
   })
 }
 
+async function rawWords(page: Page): Promise<Array<Record<string, any>>> {
+  return page.evaluate(async () => {
+    const request = indexedDB.open('RecordDB')
+    const db = await new Promise<IDBDatabase>((ok, fail) => {
+      request.onsuccess = () => ok(request.result)
+      request.onerror = () => fail(request.error)
+    })
+    try {
+      return await new Promise<Array<Record<string, any>>>((ok, fail) => {
+        const rows = db.transaction('wordRecords').objectStore('wordRecords').getAll()
+        rows.onsuccess = () => ok(rows.result)
+        rows.onerror = () => fail(rows.error)
+      })
+    } finally {
+      db.close()
+    }
+  })
+}
+async function syncDiagnostics(page: Page) {
+  return page.evaluate(
+    () =>
+      JSON.parse(sessionStorage.getItem('qwerty.learning-sync-diagnostics.v1') || '[]') as Array<{
+        stage: string
+        status: string
+        code?: string
+      }>,
+  )
+}
+
 test('historical six-table startup download and automatic divergent reauth converge both profiles', async ({ browser }, info) => {
   test.setTimeout(600_000)
   expect(process.env.GITHUB_REF_NAME).toBe('edgeone-test')
@@ -477,6 +508,74 @@ test('historical six-table startup download and automatic divergent reauth conve
     proof.repeatedStartupNoDuplicateWrite = true
     proof.mergedWordRecords = merged.tables.wordRecords.count
     proof.counts = Object.fromEntries(Object.entries(original.tables).map(([k, v]) => [k, v.count]))
+
+    // One real Learn attempt amidst five untouched historical rows. Only M3
+    // publishes it; unchanged V4 metadata proves the receiver must use M4.
+    const historicalRows = await rawWords(pages[1])
+    await pages[1].getByRole('button', { name: '开始 Learn', exact: true }).click()
+    const word = pages[1].locator('[data-typing-word]').first()
+    await expect(word).toBeVisible()
+    const spelling = await word.getAttribute('data-typing-word')
+    expect(spelling).toBeTruthy()
+    if (
+      await pages[1]
+        .getByText('按任意键开始')
+        .isVisible()
+        .catch(() => false)
+    )
+      await pages[1].keyboard.press('a')
+    await pages[1].keyboard.type(spelling!)
+    await expect.poll(async () => (await rawWords(pages[1])).length, { timeout: 50_000 }).toBe(6)
+    const modern = (await rawWords(pages[1])).find((r) => !String(r.word).startsWith('historical-'))!
+    expect(modern.attemptId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+    await expect
+      .poll(
+        async () => (await syncDiagnostics(pages[1])).some((e) => e.stage === 'm3-publication' && e.status === 'uploaded-events-only'),
+        { timeout: 60_000 },
+      )
+      .toBe(true)
+    expect(bRequests).toContain('POST /api/sync/events/v2')
+    expect(bRequests).not.toContain('POST /api/sync/v2/binary/direct')
+    expect((await meta(pages[1])).revision).toBe(third.revision)
+    proof.mixedLegacyM3Publication = true
+    await account(pages[1])
+    await login(pages[0], username, password)
+    const received = await rawWords(pages[0])
+    expect(received.filter((r) => r.attemptId === modern.attemptId)).toHaveLength(1)
+    expect(received.filter((r) => String(r.word).startsWith('historical-'))).toEqual(historicalRows)
+    expect((await syncDiagnostics(pages[0])).some((e) => e.stage === 'm4-adoption' && e.status === 'adopted')).toBe(true)
+    proof.mixedLegacyM4Adoption = true
+    proof.legacyRowsUnchanged = true
+
+    // Reproduce the owner's ordinary logout/login with no intervening study.
+    await account(pages[0])
+    await pages[0].getByRole('button', { name: '安全退出登录', exact: true }).click()
+    await expect(pages[0]).toHaveURL(base + '/', { timeout: 120_000 })
+    await login(pages[0], username, password)
+    expect(await rawWords(pages[0])).toEqual(received)
+    const notices = (await pages[0].getByRole('status').allTextContents()).join(' ')
+    expect(notices).not.toMatch(/V4|事件发布|安全检查阻止|格式|暂未同步/)
+    proof.reloginWithoutLearningPreservesAllRows = true
+    proof.noLegacyWarningInOrdinaryUI = true
+
+    // Export via the shipped settings UI; retain only counts in CI artifacts.
+    await pages[0].getByRole('button', { name: '打开设置对话框' }).click()
+    await pages[0].getByRole('tab', { name: '开发诊断' }).click()
+    const download = pages[0].waitForEvent('download')
+    await pages[0].getByRole('button', { name: '导出现场诊断包', exact: true }).click()
+    const downloaded = await download
+    const bundle = JSON.parse(await readFile((await downloaded.path())!, 'utf8'))
+    expect(bundle.synchronization.currentRecords).toEqual({
+      scanned: 6,
+      eligible: 1,
+      snapshotOnly: 5,
+      rejected: 0,
+      issues: { 'missing-attempt-id': 4, 'missing-source-mode': 4 },
+    })
+    expect(bundle.synchronization.recoveryStatus).toBe('ready')
+    expect(await rawWords(pages[0])).toEqual(received)
+    proof.diagnosticExportReadOnly = true
+    proof.legacyCompatibilityCounts = bundle.synchronization.currentRecords
   } catch (e) {
     failures.push(e)
     proof.applicationFailed = true

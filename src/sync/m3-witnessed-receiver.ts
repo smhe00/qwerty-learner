@@ -6,12 +6,14 @@
  * No downloaded row can overwrite Dexie, V4 vault, FSRS state or UI progress.
  * Every event and the server's canonical digest are independently rechecked.
  */
-import type { IWordRecord } from '@/utils/db/record'
-import { sha256Hex } from './sha256-compat'
 import { type ChainedReceipt, immutableAttempt } from './multi-device-outbox'
-import { stableWorkspaceJson } from './workspace-v4'
+import { planOutboxRecovery } from './multi-device-recovery'
+import { sha256Hex } from './sha256-compat'
 import { projectUuidLearningConvergence } from './v4-event-convergence'
 import type { EventConvergenceProjection } from './v4-event-convergence'
+import { preflightAttemptIdentity } from './v4-merge-preflight'
+import { stableWorkspaceJson } from './workspace-v4'
+import type { IWordRecord } from '@/utils/db/record'
 
 type WitnessedVerification = {
   verified: boolean
@@ -41,11 +43,16 @@ export type WitnessedReaderPort = {
   read(receipt: ChainedReceipt): Promise<WitnessedBatchReadback>
 }
 export type WitnessedReceiveResult =
-  | { status: 'blocked'; reason: string; publishReady: false;
-      convergenceComplete: false; remoteAttemptCount: 0 }
-  | { status: 'witnessed'; reason: 'verified-prefix-only'; publishReady: false;
-      convergenceComplete: false; remoteAttemptCount: number;
-      remoteEvents: IWordRecord[]; projection: EventConvergenceProjection }
+  | { status: 'blocked'; reason: string; publishReady: false; convergenceComplete: false; remoteAttemptCount: 0 }
+  | {
+      status: 'witnessed'
+      reason: 'verified-prefix-only'
+      publishReady: false
+      convergenceComplete: false
+      remoteAttemptCount: number
+      remoteEvents: IWordRecord[]
+      projection: EventConvergenceProjection
+    }
 
 const SHA = /^[0-9a-f]{64}$/
 const DEVICE = /^qwerty-web-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -53,13 +60,18 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{1
 const MAX_READS = 128
 
 function blocked(reason: string): WitnessedReceiveResult {
-  return { status: 'blocked', reason, publishReady: false,
-    convergenceComplete: false, remoteAttemptCount: 0 }
+  return { status: 'blocked', reason, publishReady: false, convergenceComplete: false, remoteAttemptCount: 0 }
 }
 function validReceipt(x: ChainedReceipt): boolean {
-  return Boolean(x && DEVICE.test(x.deviceId) && UUID.test(x.batchId) &&
-    SHA.test(x.sha256) && Number.isSafeInteger(x.sequence) &&
-    x.sequence >= 1 && x.sequence <= MAX_READS)
+  return Boolean(
+    x &&
+      DEVICE.test(x.deviceId) &&
+      UUID.test(x.batchId) &&
+      SHA.test(x.sha256) &&
+      Number.isSafeInteger(x.sequence) &&
+      x.sequence >= 1 &&
+      x.sequence <= MAX_READS,
+  )
 }
 function identity(x: ChainedReceipt): string {
   return [x.deviceId, x.sequence, x.batchId, x.sha256].join(':')
@@ -73,12 +85,11 @@ export async function inspectWitnessedDeviceConvergence(input: {
   port: WitnessedReaderPort
 }): Promise<WitnessedReceiveResult> {
   const { accountId, heads, localRecords, port } = input
-  if (!accountId || heads.length < 1 || heads.length > 4 ||
-      heads.some(head => !validReceipt(head))) {
+  if (!accountId || heads.length < 1 || heads.length > 4 || heads.some((head) => !validReceipt(head))) {
     return blocked('invalid-witness-set')
   }
 
-  const uniqueHeads = [...new Map(heads.map(head => [identity(head), head])).values()]
+  const uniqueHeads = [...new Map(heads.map((head) => [identity(head), head])).values()]
   const reported = new Map<string, string>()
   const batches = new Set<string>()
   const events = new Map<string, IWordRecord>()
@@ -87,11 +98,15 @@ export async function inspectWitnessedDeviceConvergence(input: {
     await port.assertOwner()
     const proof = await port.verifyHeads(uniqueHeads)
     await port.assertOwner()
-    if (proof.verified !== true || proof.publishReady !== false ||
-        proof.convergenceComplete !== false ||
-        proof.listingIsAuthoritative !== false ||
-        !Number.isSafeInteger(proof.uniqueAttemptCount) ||
-        !proof.evidenceSha256 || !SHA.test(proof.evidenceSha256)) {
+    if (
+      proof.verified !== true ||
+      proof.publishReady !== false ||
+      proof.convergenceComplete !== false ||
+      proof.listingIsAuthoritative !== false ||
+      !Number.isSafeInteger(proof.uniqueAttemptCount) ||
+      !proof.evidenceSha256 ||
+      !SHA.test(proof.evidenceSha256)
+    ) {
       return blocked('witness-server-unverified')
     }
 
@@ -105,18 +120,25 @@ export async function inspectWitnessedDeviceConvergence(input: {
         const reply = await port.read(receipt)
         await port.assertOwner()
         const batch = reply.batch
-        if (reply.ok !== true || batch.accountId !== accountId ||
-            batch.schemaVersion !== 2 || batch.deviceId !== receipt.deviceId ||
-            batch.sequence !== receipt.sequence ||
-            batch.batchId !== receipt.batchId ||
-            batch.sha256 !== receipt.sha256 ||
-            !Array.isArray(batch.events) || batch.events.length > 32 ||
-            batch.events.length === 0) {
+        if (
+          reply.ok !== true ||
+          batch.accountId !== accountId ||
+          batch.schemaVersion !== 2 ||
+          batch.deviceId !== receipt.deviceId ||
+          batch.sequence !== receipt.sequence ||
+          batch.batchId !== receipt.batchId ||
+          batch.sha256 !== receipt.sha256 ||
+          !Array.isArray(batch.events) ||
+          batch.events.length > 32 ||
+          batch.events.length === 0
+        ) {
           return blocked('witness-receipt-integrity')
         }
-        if (batch.sequence === 1 ? batch.previous !== null :
-            !batch.previous || !UUID.test(batch.previous.batchId) ||
-            !SHA.test(batch.previous.sha256)) {
+        if (
+          batch.sequence === 1
+            ? batch.previous !== null
+            : !batch.previous || !UUID.test(batch.previous.batchId) || !SHA.test(batch.previous.sha256)
+        ) {
           return blocked('witness-predecessor-integrity')
         }
         const sequenceKey = batch.deviceId + ':' + batch.sequence
@@ -140,25 +162,35 @@ export async function inspectWitnessedDeviceConvergence(input: {
           events.set(id, prior ?? normalized)
         }
         batches.add(key)
-        receipt = batch.sequence === 1 ? null : {
-          deviceId: batch.deviceId,
-          sequence: batch.sequence - 1,
-          batchId: batch.previous!.batchId,
-          sha256: batch.previous!.sha256,
-        }
+        receipt =
+          batch.sequence === 1
+            ? null
+            : {
+                deviceId: batch.deviceId,
+                sequence: batch.sequence - 1,
+                batchId: batch.previous!.batchId,
+                sha256: batch.previous!.sha256,
+              }
       }
     }
     await port.assertOwner()
-    const sortedSet = [...events].map(([uuid, row]) =>
-      [uuid, stableWorkspaceJson(row)] as const)
-      .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
+    const sortedSet = [...events]
+      .map(([uuid, row]) => [uuid, stableWorkspaceJson(row)] as const)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     const digest = await sha256Hex(new TextEncoder().encode(stableWorkspaceJson(sortedSet)))
-    if (digest !== proof.evidenceSha256 ||
-        events.size !== proof.uniqueAttemptCount) {
+    if (digest !== proof.evidenceSha256 || events.size !== proof.uniqueAttemptCount) {
       return blocked('witness-evidence-digest-mismatch')
     }
+    // Historical rows stay in the complete V4 snapshot. This event-only
+    // preview cannot reidentify them or certify a full scheduler rebuild.
+    // Keep known UUID conflicts strict, including older rows without a mode.
+    const local = planOutboxRecovery(localRecords)
+    if (local.status !== 'ready') return blocked('witness-local-' + local.reason)
+    if (preflightAttemptIdentity({ local: localRecords, remote: Array.from(events.values()) }).identityConflicts) {
+      return blocked('witness-projection-identity-conflict')
+    }
     const projection = projectUuidLearningConvergence({
-      local: localRecords,
+      local: local.events,
       remote: [...events.values()],
     })
     if (projection.status !== 'projected') {
@@ -166,17 +198,18 @@ export async function inspectWitnessedDeviceConvergence(input: {
     }
     await port.assertOwner()
     return {
-      status: 'witnessed', reason: 'verified-prefix-only',
-      publishReady: false, convergenceComplete: false,
+      status: 'witnessed',
+      reason: 'verified-prefix-only',
+      publishReady: false,
+      convergenceComplete: false,
       remoteAttemptCount: events.size,
-      remoteEvents: [...events.values()].sort((a, b) =>
-        a.timeStamp - b.timeStamp ||
-        (a.attemptId! < b.attemptId! ? -1 : a.attemptId! > b.attemptId! ? 1 : 0)),
+      remoteEvents: [...events.values()].sort(
+        (a, b) => a.timeStamp - b.timeStamp || (a.attemptId! < b.attemptId! ? -1 : a.attemptId! > b.attemptId! ? 1 : 0),
+      ),
       projection,
     }
   } catch (error) {
     // Even a network timeout or account switch cannot return a partial set.
-    return blocked('witness-read-failed:' +
-      (error instanceof Error ? error.message : 'unknown'))
+    return blocked('witness-read-failed:' + (error instanceof Error ? error.message : 'unknown'))
   }
 }

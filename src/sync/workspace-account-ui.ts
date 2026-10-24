@@ -5,6 +5,7 @@
  */
 import { SyncApiError, changePassword, login, register } from './api'
 import { browserDeviceId, loadAuth } from './auth'
+import { SYNC_PENDING_NOTICE, recordLearningSyncDiagnostic } from './learning-sync-diagnostics'
 import { learningEventSyncEnabled } from './learning-sync-policy'
 import { presentAccount } from './mobile-account-view'
 import type { CloudAuthState } from './types'
@@ -22,21 +23,6 @@ function node<K extends keyof HTMLElementTagNameMap>(tag: K, text = ''): HTMLEle
 
 function credential(result: { user: CloudAuthState['user']; token: string; expiresAt: number }): CloudAuthState {
   return { user: result.user, token: result.token, expiresAt: result.expiresAt }
-}
-
-/** Fixed public descriptions only; raw transport errors may contain identities. */
-function eventPublicationNotice(reason: string): { code: string; detail: string } {
-  switch (reason) {
-    case 'outbox-recovery-legacy-or-corrupt-attempt':
-      return { code: 'record-format', detail: ' 已有记录缺少事件标识或不符合事件同步格式，事件级同步暂缓；现有记录保留。' }
-    case 'outbox-recovery-contradictory-attempt':
-    case 'outbox-contradictory-attempt':
-      return { code: 'record-conflict', detail: ' 同一事件标识的已有内容不一致，事件级同步暂缓；现有记录保留。' }
-    case 'outbox-recovery-unbounded-scan':
-      return { code: 'scan-limit', detail: ' 已有记录超出本次事件检查范围，事件级同步暂缓；现有记录保留。' }
-    default:
-      return { code: 'publication-deferred', detail: ' 学习事件同步暂未完成，现有记录仍安全保留。' }
-  }
 }
 
 /** No React, domain writer, or workspace IO is imported before S1 boot. */
@@ -187,17 +173,17 @@ export function renderS1AccountManagement(
       for (let n = 0; n < 2; n++) {
         const result = await runEtestM3Publication()
         if (result.status === 'blocked') {
-          const notice = eventPublicationNotice(result.reason)
-          markLoginSync('auth-m3-blocked', notice.code)
+          recordLearningSyncDiagnostic({ stage: 'm3-publication', status: 'blocked', code: result.reason })
+          markLoginSync('auth-m3-blocked')
           console.warn('Etest login M3 outbox retained:', result.reason)
           // M4 starts by publishing M3 again. Do not retry a retained failure
           // here or report its downstream precondition as a second failure.
           // V4's result stands independently; no event guard is bypassed.
-          return summary + notice.detail
+          return summary || SYNC_PENDING_NOTICE
         }
         markLoginSync('auth-m3-complete')
         if (result.status === 'idle' || result.remaining === 0) break
-        if (n === 1) summary += ' 部分学习事件仍待发布，尚未确认完整同步。'
+        if (n === 1) summary ||= SYNC_PENDING_NOTICE
       }
       // The next device can revoke this bearer immediately after navigation.
       // The account-management page is itself S1-pre-mount and writer-locked,
@@ -209,14 +195,14 @@ export function renderS1AccountManagement(
       const adopted = await adoptWitnessedM3AtGuardedBoot(registry, { preMountAccountManagement: true })
       markLoginSync(adopted.status === 'blocked' ? 'auth-m4-blocked' : adopted.status === 'adopted' ? 'auth-m4-adopted' : 'auth-m4-skipped')
       if (adopted.status === 'blocked') {
-        summary += ' 学习事件自动融合暂被安全检查阻止。'
+        summary ||= SYNC_PENDING_NOTICE
+        recordLearningSyncDiagnostic({ stage: 'm4-adoption', status: 'blocked', code: adopted.reason })
         console.warn('Etest login witnessed M4 adoption deferred:', adopted.reason)
-      } else if (adopted.status === 'adopted') {
-        summary += ' 已融合云端可验证的学习事件；此结果不等于所有设备历史均已同步。'
       }
     } catch (error) {
       markLoginSync('auth-exception')
-      summary += ' 学习事件检查异常，尚未确认完整融合。'
+      summary ||= SYNC_PENDING_NOTICE
+      recordLearningSyncDiagnostic({ stage: 'm3-publication', status: 'failed', code: 'unknown' })
       console.warn('Etest login M3 upload deferred; local outbox kept', error)
     }
     return summary

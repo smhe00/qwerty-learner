@@ -1,43 +1,57 @@
-import { getAchievementSessionId } from '../../src/achievement/session'
 import { processLiveLearnSessionCompletion, recordVoluntaryContinueIntent } from '../../src/achievement/engine'
-import { createDexieImportBlob } from '@/utils/db/dexie-import-blob'
-import { mergeAccountV4Snapshots } from '../../src/sync/automatic-v4-browser'
+import { getAchievementSessionId } from '../../src/achievement/session'
+import { createDeveloperIncidentSnapshot } from '../../src/dev/incident-snapshot'
 import { archiveAutomaticV4Merge } from '../../src/sync/automatic-v4-archive'
-import { switchAuthenticatedWorkspace, reconcileAuthTransition, S1_AUTH_INTENT_KEY, reauthenticateSameWorkspace } from '../../src/sync/workspace-auth-transaction'
-import { assertLegacyAuthChangeAllowed, assertLegacyCloudMutationAllowed, assertLegacyLocalDestructiveOperationAllowed } from '../../src/sync/workspace-auth-guard'
+import { mergeAccountV4Snapshots } from '../../src/sync/automatic-v4-browser'
+import { loadPinnedLocalS2PullAncestor } from '../../src/sync/m2-pinned-s2-ancestor'
+import { sameLosslessIndexedDbValue } from '../../src/sync/m4-lossless-idb-compare'
+import { recoverPendingM4Merge } from '../../src/sync/m4-merge-browser-recovery'
+import { m4MergeJournalPort } from '../../src/sync/m4-merge-journal'
+import { executeM4Merge, recoverM4Merge } from '../../src/sync/m4-merge-transaction'
+import { previewMonotonicWitnessedM4 } from '../../src/sync/m4-witnessed-prefix-candidate'
+import { manualV4ImportJournalPort } from '../../src/sync/manual-v4-import-journal'
+import { preparePortableV4Import, rebindPortableV4Import } from '../../src/sync/manual-v4-import-plan'
+import { createLocalSnapshot, fingerprintRemoteUserActions, restoreLocalSnapshot } from '../../src/sync/snapshot'
+import { inspectLocalState } from '../../src/sync/snapshot'
+import { assessSyncState, canReconcileLegacySyncBaseline, loadSyncBaseline, saveSyncBaseline } from '../../src/sync/state'
+import { loadSyncV2Baseline, compareAndSwapSyncV2Baseline } from '../../src/sync/v2-baseline'
+import { executePreMountManualSyncV2 } from '../../src/sync/v2-browser-executor'
+import { syncV2PullJournalPort } from '../../src/sync/v2-pull-journal'
+import { recoverPendingSyncV2Pull } from '../../src/sync/v2-pull-recovery'
+import { analyzeV4SnapshotSize } from '../../src/sync/v4-size-audit'
+import {
+  assertLegacyAuthChangeAllowed,
+  assertLegacyCloudMutationAllowed,
+  assertLegacyLocalDestructiveOperationAllowed,
+} from '../../src/sync/workspace-auth-guard'
+import {
+  switchAuthenticatedWorkspace,
+  reconcileAuthTransition,
+  S1_AUTH_INTENT_KEY,
+  reauthenticateSameWorkspace,
+} from '../../src/sync/workspace-auth-transaction'
 import { mountGuardedWorkspaceApp } from '../../src/sync/workspace-bootstrap'
 import { initializeLegacyWorkspace, transitionWorkingWorkspace } from '../../src/sync/workspace-coordinator'
 import { acquireWorkspaceWriterLease } from '../../src/sync/workspace-lock'
-import { captureWorkingWorkspaceV4, materializeAuditedM4CandidateV4, resetWorkingWorkspaceToEmpty, restoreWorkingWorkspaceV4 } from '../../src/sync/workspace-v4-browser'
-import { createWorkspaceV4, workspaceFingerprintV4 } from '../../src/sync/workspace-v4'
-import { analyzeV4SnapshotSize } from '../../src/sync/v4-size-audit'
-import { loadSyncV2Baseline, compareAndSwapSyncV2Baseline } from '../../src/sync/v2-baseline'
-import { syncV2PullJournalPort } from '../../src/sync/v2-pull-journal'
-import { recoverPendingSyncV2Pull } from '../../src/sync/v2-pull-recovery'
-import { loadPinnedLocalS2PullAncestor } from '../../src/sync/m2-pinned-s2-ancestor'
-import { manualV4ImportJournalPort } from '../../src/sync/manual-v4-import-journal'
-import { m4MergeJournalPort } from '../../src/sync/m4-merge-journal'
-import { recoverPendingM4Merge } from '../../src/sync/m4-merge-browser-recovery'
-import { executeM4Merge, recoverM4Merge } from '../../src/sync/m4-merge-transaction'
-import { assertWorkspaceMigrationWitness, installWorkspaceStorageWriterGuard, refreshWorkspaceMigrationWitness } from '../../src/sync/workspace-storage-witness'
-import { preparePortableV4Import, rebindPortableV4Import } from '../../src/sync/manual-v4-import-plan'
-import { executePreMountManualSyncV2 } from '../../src/sync/v2-browser-executor'
-import { sameLosslessIndexedDbValue } from '../../src/sync/m4-lossless-idb-compare'
-import { loadWorkspaceFromVault, saveWorkspaceToVault, workspaceRegistryPort, openWorkspaceVault } from '../../src/sync/workspace-vault'
-import { switchWorkspace, recoverWorkspace, ANONYMOUS } from '../../src/sync/workspace-transition'
-import { createLocalSnapshot, fingerprintRemoteUserActions, restoreLocalSnapshot } from '../../src/sync/snapshot'
 import {
-  DURABLE_BACKUP_TABLE_NAMES,
-  exportBackupJson,
-  importBackupJson,
-} from '../../src/utils/backup'
+  assertWorkspaceMigrationWitness,
+  installWorkspaceStorageWriterGuard,
+  refreshWorkspaceMigrationWitness,
+} from '../../src/sync/workspace-storage-witness'
+import { switchWorkspace, recoverWorkspace, ANONYMOUS } from '../../src/sync/workspace-transition'
+import { createWorkspaceV4, workspaceFingerprintV4 } from '../../src/sync/workspace-v4'
+import {
+  captureWorkingWorkspaceV4,
+  materializeAuditedM4CandidateV4,
+  resetWorkingWorkspaceToEmpty,
+  restoreWorkingWorkspaceV4,
+} from '../../src/sync/workspace-v4-browser'
+import { loadWorkspaceFromVault, saveWorkspaceToVault, workspaceRegistryPort, openWorkspaceVault } from '../../src/sync/workspace-vault'
+import { DURABLE_BACKUP_TABLE_NAMES, exportBackupJson, importBackupJson } from '../../src/utils/backup'
 import { db } from '../../src/utils/db'
-import { inspectLocalState } from '../../src/sync/snapshot'
-import { assessSyncState, canReconcileLegacySyncBaseline, loadSyncBaseline, saveSyncBaseline } from '../../src/sync/state'
+import { createDexieImportBlob } from '@/utils/db/dexie-import-blob'
 
-const now = Math.floor(
-  new Date('2026-10-03T00:00:00.000Z').getTime() / 1000,
-)
+const now = Math.floor(new Date('2026-10-03T00:00:00.000Z').getTime() / 1000)
 const word = 'backup-fsrs-word'
 const dict = 'cet4'
 
@@ -254,19 +268,10 @@ async function poisonBeforeRestore() {
 
 async function inspect() {
   const wordRecord = await db.wordRecords.where('word').equals(word).first()
-  const reviewWordState = await db.reviewWordStates
-    .where('[dict+word]')
-    .equals([dict, word])
-    .first()
-  const reviewRecord = (
-    await db.reviewRecords.where('dict').equals(dict).toArray()
-  ).find((record) => !record.isFinished)
-  const achievementEvent = await db.achievementEvents.get(
-    'backup-achievement-event',
-  )
-  const achievementState = await db.achievementStates.get(
-    'ACH_BACKUP_ROUNDTRIP',
-  )
+  const reviewWordState = await db.reviewWordStates.where('[dict+word]').equals([dict, word]).first()
+  const reviewRecord = (await db.reviewRecords.where('dict').equals(dict).toArray()).find((record) => !record.isFinished)
+  const achievementEvent = await db.achievementEvents.get('backup-achievement-event')
+  const achievementState = await db.achievementStates.get('ACH_BACKUP_ROUNDTRIP')
 
   return {
     wordRecord,
@@ -275,12 +280,8 @@ async function inspect() {
     achievementEvent,
     achievementState,
     currentDict: JSON.parse(localStorage.getItem('currentDict') || 'null'),
-    currentChapter: JSON.parse(
-      localStorage.getItem('currentChapter') || 'null',
-    ),
-    reviewModeInfo: JSON.parse(
-      localStorage.getItem('reviewModeInfo') || 'null',
-    ),
+    currentChapter: JSON.parse(localStorage.getItem('currentChapter') || 'null'),
+    reviewModeInfo: JSON.parse(localStorage.getItem('reviewModeInfo') || 'null'),
   }
 }
 
@@ -306,6 +307,8 @@ async function inspectTableContract() {
 }
 
 ;(window as any).__backupHarness = {
+  previewMonotonicWitnessedM4,
+  createDeveloperIncidentSnapshot,
   createDexieImportBlob,
   getAchievementSessionId,
   processLiveLearnSessionCompletion,

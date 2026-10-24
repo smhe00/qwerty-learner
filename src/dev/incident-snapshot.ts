@@ -1,19 +1,12 @@
-import {
-  DEVELOPER_DIAGNOSTICS_CONFIG_KEY,
-  createDeveloperTraceEnvelope,
-} from './diagnostic-trace'
+import { DEVELOPER_DIAGNOSTICS_CONFIG_KEY, createDeveloperTraceEnvelope } from './diagnostic-trace'
+import { readLearningSyncDiagnostics } from '@/sync/learning-sync-diagnostics'
+import { planOutboxRecovery } from '@/sync/multi-device-recovery'
+import { readPerfSamples } from '@/sync/perf-diagnostics'
 import { db } from '@/utils/db'
 
-export const DEVELOPER_INCIDENT_SCHEMA =
-  'qwerty-developer-incident-v1' as const
+export const DEVELOPER_INCIDENT_SCHEMA = 'qwerty-developer-incident-v1' as const
 
-type SerializableValue =
-  | string
-  | number
-  | boolean
-  | null
-  | SerializableValue[]
-  | { [key: string]: SerializableValue }
+type SerializableValue = string | number | boolean | null | SerializableValue[] | { [key: string]: SerializableValue }
 
 function safeJson(raw: string | null): SerializableValue | undefined {
   if (raw === null) return undefined
@@ -29,23 +22,17 @@ function readStoredString(key: string): string | undefined {
   return typeof value === 'string' ? value : undefined
 }
 
-function collectAttributes(
-  element: Element | null,
-): Record<string, string> | undefined {
+function collectAttributes(element: Element | null): Record<string, string> | undefined {
   if (!element) return undefined
 
   const entries = [...element.attributes]
     .filter(
       (attribute) =>
-        attribute.name.startsWith('data-typing-') ||
-        attribute.name.startsWith('data-review-') ||
-        attribute.name.startsWith('data-learn-'),
+        attribute.name.startsWith('data-typing-') || attribute.name.startsWith('data-review-') || attribute.name.startsWith('data-learn-'),
     )
     .map((attribute) => [attribute.name, attribute.value])
 
-  return entries.length > 0
-    ? Object.fromEntries(entries)
-    : undefined
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined
 }
 
 function collectSafeLocalStorage() {
@@ -54,7 +41,7 @@ function collectSafeLocalStorage() {
     'currentChapter',
     'reviewModeInfo',
     'memoryConfig',
-    ...Object.keys(window.localStorage).filter(key => key.startsWith('qwerty.learn.dailySession.v1.')),
+    ...Object.keys(window.localStorage).filter((key) => key.startsWith('qwerty.learn.dailySession.v1.')),
     DEVELOPER_DIAGNOSTICS_CONFIG_KEY,
     'pronunciation',
     'loopWordConfig',
@@ -64,12 +51,7 @@ function collectSafeLocalStorage() {
     'randomConfig',
   ]
 
-  return Object.fromEntries(
-    keys.map((key) => [
-      key,
-      safeJson(window.localStorage.getItem(key)) ?? null,
-    ]),
-  )
+  return Object.fromEntries(keys.map((key) => [key, safeJson(window.localStorage.getItem(key)) ?? null]))
 }
 
 function collectSafeSessionStorage() {
@@ -87,14 +69,12 @@ function collectSafeSessionStorage() {
 }
 
 export async function createDeveloperIncidentSnapshot() {
-  const reviewModeInfo = safeJson(
-    window.localStorage.getItem('reviewModeInfo'),
-  ) as {
-    reviewRecord?: { dict?: string }
-  } | undefined
-  const dict =
-    reviewModeInfo?.reviewRecord?.dict ??
-    readStoredString('currentDict')
+  const reviewModeInfo = safeJson(window.localStorage.getItem('reviewModeInfo')) as
+    | {
+        reviewRecord?: { dict?: string }
+      }
+    | undefined
+  const dict = reviewModeInfo?.reviewRecord?.dict ?? readStoredString('currentDict')
 
   const database = await db.transaction(
     'r',
@@ -105,29 +85,12 @@ export async function createDeveloperIncidentSnapshot() {
     db.achievementEvents,
     db.achievementStates,
     async () => {
-      const [
-        wordRecords,
-        chapterRecords,
-        reviewRecords,
-        reviewWordStates,
-        achievementEvents,
-        achievementStates,
-      ] = await Promise.all([
-        dict
-          ? db.wordRecords.where('dict').equals(dict).toArray()
-          : db.wordRecords.toArray(),
-        dict
-          ? db.chapterRecords.where('dict').equals(dict).toArray()
-          : db.chapterRecords.toArray(),
-        dict
-          ? db.reviewRecords.where('dict').equals(dict).toArray()
-          : db.reviewRecords.toArray(),
-        dict
-          ? db.reviewWordStates.where('dict').equals(dict).toArray()
-          : db.reviewWordStates.toArray(),
-        dict
-          ? db.achievementEvents.where('dict').equals(dict).toArray()
-          : db.achievementEvents.toArray(),
+      const [wordRecords, chapterRecords, reviewRecords, reviewWordStates, achievementEvents, achievementStates] = await Promise.all([
+        dict ? db.wordRecords.where('dict').equals(dict).toArray() : db.wordRecords.toArray(),
+        dict ? db.chapterRecords.where('dict').equals(dict).toArray() : db.chapterRecords.toArray(),
+        dict ? db.reviewRecords.where('dict').equals(dict).toArray() : db.reviewRecords.toArray(),
+        dict ? db.reviewWordStates.where('dict').equals(dict).toArray() : db.reviewWordStates.toArray(),
+        dict ? db.achievementEvents.where('dict').equals(dict).toArray() : db.achievementEvents.toArray(),
         db.achievementStates.toArray(),
       ])
 
@@ -143,6 +106,16 @@ export async function createDeveloperIncidentSnapshot() {
     },
   )
 
+  // Read all dictionaries for compatibility counts, not just the visible course.
+  // Export only fixed issue names/counts here; the audit never repairs records.
+  const syncAudit = planOutboxRecovery(await db.wordRecords.toCollection().raw().toArray())
+  const synchronization = {
+    ...readLearningSyncDiagnostics(),
+    currentRecords: syncAudit.audit,
+    recoveryStatus: syncAudit.status,
+    recoveryReason: syncAudit.status === 'blocked' ? syncAudit.reason : 'none',
+    performance: readPerfSamples(),
+  }
   const activeElement = document.activeElement
 
   return {
@@ -170,19 +143,14 @@ export async function createDeveloperIncidentSnapshot() {
         : null,
     },
     dom: {
-      typingWord: collectAttributes(
-        document.querySelector('[data-typing-word]'),
-      ),
-      acquisition: collectAttributes(
-        document.querySelector('[data-learn-acquisition-phase]'),
-      ),
-      resultVisible: Boolean(
-        document.querySelector('[data-learn-result-screen]'),
-      ),
+      typingWord: collectAttributes(document.querySelector('[data-typing-word]')),
+      acquisition: collectAttributes(document.querySelector('[data-learn-acquisition-phase]')),
+      resultVisible: Boolean(document.querySelector('[data-learn-result-screen]')),
     },
     localStorage: collectSafeLocalStorage(),
     sessionStorage: collectSafeSessionStorage(),
     trace: createDeveloperTraceEnvelope(),
+    synchronization,
     database,
   }
 }
@@ -191,17 +159,11 @@ export async function exportDeveloperIncidentSnapshot(): Promise<void> {
   if (typeof document === 'undefined') return
 
   const snapshot = await createDeveloperIncidentSnapshot()
-  const blob = new Blob(
-    [JSON.stringify(snapshot, null, 2)],
-    { type: 'application/json' },
-  )
+  const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download =
-    'Qwerty-Plus-Incident-' +
-    new Date().toISOString().replace(/[:.]/g, '-') +
-    '.json'
+  anchor.download = 'Qwerty-Plus-Incident-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json'
   document.body.appendChild(anchor)
   anchor.click()
   anchor.remove()

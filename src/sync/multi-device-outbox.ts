@@ -4,8 +4,9 @@
  * A browser IDB adapter persists every transition atomically; absence of an
  * exact GET-verified receipt MUST retain an in-flight batch for identical retry.
  */
-import type { IWordRecord } from '@/utils/db/record'
+import { immutableAttemptIssues } from './learning-event-compatibility'
 import { stableWorkspaceJson } from './workspace-v4'
+import type { IWordRecord } from '@/utils/db/record'
 
 export type ChainedReceipt = {
   deviceId: string
@@ -47,8 +48,13 @@ function assertScope(state: EventOutboxState): void {
 }
 export function initialEventOutbox(accountId: string, deviceId: string): EventOutboxState {
   const result: EventOutboxState = {
-    version: 1, accountId, deviceId, pending: [],
-    confirmedEvidence: {}, inflight: null, confirmedHead: null,
+    version: 1,
+    accountId,
+    deviceId,
+    pending: [],
+    confirmedEvidence: {},
+    inflight: null,
+    confirmedHead: null,
   }
   assertScope(result)
   return result
@@ -59,19 +65,8 @@ export function initialEventOutbox(accountId: string, deviceId: string): EventOu
  * queue excludes local primary keys and derived scheduler state.
  */
 export function immutableAttempt(row: IWordRecord): IWordRecord {
-  const { id: _localId, fsrsShadow: _fsrs,
-    reviewPolicyShadow: _proposal, ...core } = row
-  if (!UUID.test(core.attemptId || '') ||
-      typeof core.dict !== 'string' || !core.dict || core.dict.length > 128 ||
-      typeof core.word !== 'string' || !core.word || core.word.length > 128 ||
-      !Number.isSafeInteger(core.timeStamp) ||
-      core.timeStamp < 0 || core.timeStamp > 86_400_000_000 ||
-      (core.sourceMode !== 'learn' && core.sourceMode !== 'typing') ||
-      (core.reviewBaseStateFingerprint !== undefined &&
-        (!/^[0-9a-f]{64}$/.test(core.reviewBaseStateFingerprint) ||
-          core.sourceMode !== 'learn' ||
-          core.chapter !== -1 ||
-          core.reviewRatingDecision?.eligible !== true))) {
+  const { id: _localId, fsrsShadow: _fsrs, reviewPolicyShadow: _proposal, ...core } = row
+  if (immutableAttemptIssues(core).length) {
     throw new Error('outbox-invalid-immutable-attempt')
   }
   // JSON round trip removes optional undefined fields and any mutable proxy
@@ -81,9 +76,7 @@ export function immutableAttempt(row: IWordRecord): IWordRecord {
   return plain
 }
 
-export function stageOutboxAttempts(
-  state: EventOutboxState, attempts: readonly IWordRecord[],
-): EventOutboxState {
+export function stageOutboxAttempts(state: EventOutboxState, attempts: readonly IWordRecord[]): EventOutboxState {
   assertScope(state)
   const evidence = new Map<string, string>(Object.entries(state.confirmedEvidence))
   // A damaged/stale IDB state must never let pending or in-flight rows
@@ -114,9 +107,7 @@ export function stageOutboxAttempts(
   return { ...state, pending }
 }
 
-export function reserveOutboxBatch(
-  state: EventOutboxState, batchId: string,
-): EventOutboxState {
+export function reserveOutboxBatch(state: EventOutboxState, batchId: string): EventOutboxState {
   assertScope(state)
   if (state.inflight || state.pending.length === 0) return state
   if (!UUID.test(batchId)) throw new Error('outbox-invalid-batch-id')
@@ -144,28 +135,33 @@ export function reserveOutboxBatch(
 }
 
 /** Called ONLY after both POST and exact-key GET evidence have been validated. */
-export function acknowledgeOutboxBatch(
-  state: EventOutboxState, receipt: ChainedReceipt,
-): EventOutboxState {
+export function acknowledgeOutboxBatch(state: EventOutboxState, receipt: ChainedReceipt): EventOutboxState {
   assertScope(state)
   const batch = state.inflight
-  if (!batch || !SHA.test(receipt.sha256) ||
-      batch.deviceId !== receipt.deviceId ||
-      batch.sequence !== receipt.sequence ||
-      batch.batchId !== receipt.batchId) {
+  if (
+    !batch ||
+    !SHA.test(receipt.sha256) ||
+    batch.deviceId !== receipt.deviceId ||
+    batch.sequence !== receipt.sequence ||
+    batch.batchId !== receipt.batchId
+  ) {
     throw new Error('outbox-receipt-does-not-match-inflight')
   }
-  if (state.confirmedHead &&
-      (state.confirmedHead.sequence + 1 !== receipt.sequence ||
-       batch.previous?.batchId !== state.confirmedHead.batchId ||
-       batch.previous?.sha256 !== state.confirmedHead.sha256)) {
+  if (
+    state.confirmedHead &&
+    (state.confirmedHead.sequence + 1 !== receipt.sequence ||
+      batch.previous?.batchId !== state.confirmedHead.batchId ||
+      batch.previous?.sha256 !== state.confirmedHead.sha256)
+  ) {
     throw new Error('outbox-broken-predecessor-chain')
   }
-  const committedIds = new Set(batch.events.map(row => row.attemptId))
-  if (committedIds.size !== batch.events.length ||
-      !batch.events.every(event =>
-        state.pending.some(pending => pending.attemptId === event.attemptId &&
-          stableWorkspaceJson(pending) === stableWorkspaceJson(event)))) {
+  const committedIds = new Set(batch.events.map((row) => row.attemptId))
+  if (
+    committedIds.size !== batch.events.length ||
+    !batch.events.every((event) =>
+      state.pending.some((pending) => pending.attemptId === event.attemptId && stableWorkspaceJson(pending) === stableWorkspaceJson(event)),
+    )
+  ) {
     throw new Error('outbox-pending-evidence-missing')
   }
   const confirmedEvidence = { ...state.confirmedEvidence }
@@ -179,8 +175,10 @@ export function acknowledgeOutboxBatch(
     confirmedEvidence[id] = immutable
   }
   return {
-    ...state, inflight: null, confirmedHead: { ...receipt },
+    ...state,
+    inflight: null,
+    confirmedHead: { ...receipt },
     confirmedEvidence,
-    pending: state.pending.filter(row => !committedIds.has(row.attemptId)),
+    pending: state.pending.filter((row) => !committedIds.has(row.attemptId)),
   }
 }

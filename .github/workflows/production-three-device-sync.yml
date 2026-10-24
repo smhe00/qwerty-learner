@@ -1,10 +1,9 @@
 name: Production Single-Session Three-Device Sync Acceptance
 
 # Deployment requires explicit owner release authorization and exact-SHA etest
-# gates BEFORE master advances. This lane validates the resulting real site.
+# gates BEFORE master advances. Run this extra account-writing lane only on
+# explicit request; routine releases retain the separate read-only version check.
 on:
-  push:
-    branches: [master]
   workflow_dispatch:
 
 permissions:

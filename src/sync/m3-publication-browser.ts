@@ -4,15 +4,16 @@
  * Called exclusively from an S1-mounted Learn tab holding its writer lease.
  */
 import { loadAuth } from './auth'
-import { inspectEventOutbox } from './multi-device-outbox-idb'
-import { tryDeclareCheckoutAfterPublication } from './m3-checkout-cycle'
 import { browserDeviceId } from './device-id'
+import { recordLearningSyncDiagnostic } from './learning-sync-diagnostics'
+import { learningEventSyncEnabled as etestM3PilotEnabled } from './learning-sync-policy'
+import { tryDeclareCheckoutAfterPublication } from './m3-checkout-cycle'
 import { runM3PublicationCycle } from './m3-publication-cycle'
 import type { M3PublicationCycleResult } from './m3-publication-cycle'
+import { inspectEventOutbox } from './multi-device-outbox-idb'
 import { flushOneWitnessedOutboxBatch } from './multi-device-outbox-transport'
 import { recoverOwnedLearningEvents } from './multi-device-recovery-browser'
 import { workspaceRegistryPort } from './workspace-vault'
-import { learningEventSyncEnabled as etestM3PilotEnabled } from './learning-sync-policy'
 
 // Keep historical adapter names; all entry points share the rollout policy.
 export { etestM3PilotEnabled }
@@ -31,20 +32,22 @@ export async function runEtestM3Publication(): Promise<M3PublicationCycleResult>
     const accountId = auth.user.userId
     const token = auth.token
     const owner = await workspaceRegistryPort.read()
-    if (owner.pending || owner.generation === 0 || owner.active.kind !== 'account' ||
-        owner.active.accountId !== accountId) {
+    if (owner.pending || owner.generation === 0 || owner.active.kind !== 'account' || owner.active.accountId !== accountId) {
       return { status: 'blocked', reason: 'pilot-account-not-mounted' }
     }
     const deviceId = browserDeviceId()
     const assertOwner = async () => {
-      const [current, authNow] = await Promise.all([
-        workspaceRegistryPort.read(), Promise.resolve(loadAuth()),
-      ])
-      if (current.generation !== owner.generation || current.pending ||
-          current.active.kind !== 'account' || current.active.accountId !== accountId ||
-          authNow?.user.userId !== accountId || authNow.token !== token ||
-          authNow.expiresAt * 1000 <= Date.now() ||
-          browserDeviceId() !== deviceId) {
+      const [current, authNow] = await Promise.all([workspaceRegistryPort.read(), Promise.resolve(loadAuth())])
+      if (
+        current.generation !== owner.generation ||
+        current.pending ||
+        current.active.kind !== 'account' ||
+        current.active.accountId !== accountId ||
+        authNow?.user.userId !== accountId ||
+        authNow.token !== token ||
+        authNow.expiresAt * 1000 <= Date.now() ||
+        browserDeviceId() !== deviceId
+      ) {
         throw new Error('pilot-owner-changed')
       }
     }
@@ -53,18 +56,24 @@ export async function runEtestM3Publication(): Promise<M3PublicationCycleResult>
       recover: () => recoverOwnedLearningEvents(),
       publish: () => flushOneWitnessedOutboxBatch({ accountId, deviceId, token }),
     })
+    recordLearningSyncDiagnostic({
+      stage: 'm3-publication',
+      status: published.status,
+      code: published.status === 'blocked' ? published.reason : 'none',
+    })
     // A verified immutable M3 upload may optionally issue a separate
     // etest-only checkout declaration. Neither a receipt nor a failed
     // declaration ever authorizes local V4 restore/cloud overwrite.
     const checkout = await tryDeclareCheckoutAfterPublication({
-      accountId, deviceId, published,
+      accountId,
+      deviceId,
+      published,
       port: {
         assertOwner,
         readOutbox: () => inspectEventOutbox(accountId, deviceId),
-        declare: async head => {
+        declare: async (head) => {
           // Lazy import avoids ordinary Learn startup or non-etest behavior.
-          const { declareOwnedEtestCheckout } =
-            await import('./m2-checkout-declaration-browser')
+          const { declareOwnedEtestCheckout } = await import('./m2-checkout-declaration-browser')
           return declareOwnedEtestCheckout(head)
         },
       },
@@ -74,7 +83,11 @@ export async function runEtestM3Publication(): Promise<M3PublicationCycleResult>
     }
     return published
   })()
-  try { return await running } finally { running = null }
+  try {
+    return await running
+  } finally {
+    running = null
+  }
 }
 
 /** Debounced after durable WordRecord. An interrupted upload remains queued. */
@@ -83,10 +96,12 @@ export function scheduleEtestM3Publication(): void {
   if (timer) clearTimeout(timer)
   timer = setTimeout(() => {
     timer = null
-    void runEtestM3Publication().then(result => {
-      if (result.status === 'blocked') {
-        console.warn('M3 etest event pilot retained local evidence:', result.reason)
-      }
-    }).catch(error => console.warn('M3 etest event pilot stopped:', error))
+    void runEtestM3Publication()
+      .then((result) => {
+        if (result.status === 'blocked') {
+          console.warn('M3 etest event pilot retained local evidence:', result.reason)
+        }
+      })
+      .catch((error) => console.warn('M3 etest event pilot stopped:', error))
   }, 12_000)
 }

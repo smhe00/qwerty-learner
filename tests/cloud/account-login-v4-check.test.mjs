@@ -56,6 +56,8 @@ const registry = { generation: 1, pending: null, active: { kind: 'account', acco
 function fixture(outcome = { status: 'noop', revision: 0 }) {
   globalThis.window = { location: { origin: 'https://q.smhe.cn' } }
   Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { onLine: true } })
+  const session = new Map()
+  globalThis.sessionStorage = { getItem: (key) => session.get(key) ?? null, setItem: (key, value) => session.set(key, value) }
   const calls = []
   globalThis.__login = {
     read: async () => {
@@ -83,7 +85,7 @@ test('login: unapproved origin and offline never execute S2', async () => {
   assert.match((await enabled()).detail, /未启用/)
   globalThis.window.location.origin = 'https://t.smhe.cn'
   globalThis.navigator.onLine = false
-  assert.match((await enabled()).detail, /检查尚未执行/)
+  assert.match((await enabled()).detail, /当前离线/)
   assert.deepEqual(calls, [])
 })
 test('login: pending account transition prevents S2 and M3 continuation', async () => {
@@ -102,10 +104,10 @@ for (const status of ['noop', 'pushed', 'pull-reload-required', 'conflict', 'blo
     if (status === 'pull-reload-required') {
       assert.equal(result.status, 'pull-staged')
       assert.equal(result.canContinue, false)
-      assert.match(result.detail, /持久化恢复事务/)
+      assert.match(result.detail, /正在恢复学习记录/)
     } else if (status === 'conflict' || status === 'blocked') {
       assert.equal(result.status, 'pending')
-      assert.match(result.detail, /尚未完成完整融合/)
+      assert.match(result.detail, /部分学习记录暂未同步/)
     } else assert.equal(result.status, status)
   })
 }
@@ -124,7 +126,7 @@ for (const error of [
     assert.equal(result.status, 'pending')
     assert.deepEqual(calls, ['registry', 's2'])
     assert.ok(!result.detail.includes('private-identity'))
-    assert.match(result.detail, /未通过|尚未完成完整融合/)
+    assert.match(result.detail, /部分学习记录暂未同步/)
   })
 }
 
@@ -137,22 +139,28 @@ test('startup: ordinary signed-in learning entry checks full V4; account/tools/o
   for (const key of ['account', 'liveAuth', 'enabled', 'online']) assert.equal(startup({ ...input, [key]: false }), false)
 })
 
-
 test('startup failure displays only a source-defined diagnostic code, never raw payload or API details', async () => {
   fixture()
   const error = new Error('private user data and token')
   error.code = 'v4_binary_part_sha_mismatch'
   error.details = { token: 'secret', account: 'private' }
-  globalThis.__login.execute = async () => { throw error }
+  globalThis.__login.execute = async () => {
+    throw error
+  }
   const result = await enabled()
   assert.equal(result.status, 'pending')
-  assert.ok(result.detail.includes('account-sync / v4_binary_part_sha_mismatch'))
+  assert.match(result.detail, /部分学习记录暂未同步/)
+  assert.ok(!/诊断|v4_binary/.test(result.detail))
+  assert.equal(JSON.parse(globalThis.sessionStorage.getItem('qwerty.learning-sync-diagnostics.v1')).at(-1).code, 'v4_binary_part_sha_mismatch')
   assert.ok(!result.detail.includes('private'))
   assert.ok(!result.detail.includes('secret'))
   const unknownError = new Error('private payload')
   unknownError.code = 'private-user-code'
-  globalThis.__login.execute = async () => { throw unknownError }
+  globalThis.__login.execute = async () => {
+    throw unknownError
+  }
   const unknown = await enabled()
-  assert.ok(unknown.detail.includes('account-sync / unknown'))
+  assert.match(unknown.detail, /部分学习记录暂未同步/)
+  assert.equal(JSON.parse(globalThis.sessionStorage.getItem('qwerty.learning-sync-diagnostics.v1')).at(-1).code, 'unknown')
   assert.ok(!unknown.detail.includes('private'))
 })
