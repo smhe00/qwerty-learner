@@ -1,38 +1,45 @@
 name: Mobile Menu Completion
-
 on:
   push:
     branches: [feat/mobile-menu-completion-20261024]
   workflow_dispatch:
-
 permissions:
   contents: read
-
 concurrency:
   group: mobile-menu-completion-${{ github.ref }}
   cancel-in-progress: false
-
 jobs:
-  integrate-and-verify:
-    if: github.repository == 'smhe00/qwerty-learner' && github.ref == 'refs/heads/feat/mobile-menu-completion-20261024'
+  verify:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
-    permissions:
-      contents: write
-      statuses: write
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '20.18.0'
           cache: yarn
-      - name: Apply exact reviewed presentation integration
+      - name: Assemble isolated candidate
         run: |
           python3 interactive/patches/mobile-menu-completion.py
+          python3 interactive/patches/mobile-menu-fixture.py
           git diff --check
+          mkdir -p candidate-source
+          git diff --binary > candidate-source/mobile-integration.patch
+          tar -czf candidate-source/tested-source.tar.gz src/app.tsx src/pages/Mobile src/pages/Typing/components/WordPanel/components/MobileWordPractice.tsx src/sync/CloudSyncSetting.tsx scripts/emit-edgeone-spa-entries.mjs tests/e2e/mobile-p0.spec.ts tests/e2e/mobile-p0.config.ts tests/e2e/mobile-menu-completion.spec.ts
       - run: yarn install --frozen-lockfile
+      - name: Scoped TypeScript audit
+        shell: bash
+        run: |
+          set +e
+          yarn tsc --noEmit > "$RUNNER_TEMP/mobile-menu-tsc.log" 2>&1
+          result=$?
+          set -e
+          if [ "$result" -ne 0 ] && grep -E '^src/(app[.]tsx|pages/Mobile/|pages/Typing/components/WordPanel/components/MobileWordPractice[.]tsx|sync/CloudSyncSetting[.]tsx)' "$RUNNER_TEMP/mobile-menu-tsc.log"; then
+            echo '::error::Mobile menu TypeScript diagnostics'
+            exit 1
+          fi
       - name: Scoped lint and production build
         run: |
           yarn eslint src/pages/Mobile src/pages/Typing/components/WordPanel/components/MobileWordPractice.tsx src/sync/CloudSyncSetting.tsx src/app.tsx --ext .ts,.tsx
@@ -41,34 +48,15 @@ jobs:
           test -f build/mobile/data/index.html
           test -f build/mobile/achievements/index.html
       - run: npx playwright install --with-deps chromium
-      - name: Functional mobile menu, backup and unchanged-workspace evidence
+      - name: Mobile functional acceptance
         run: npx playwright test --config=tests/e2e/mobile-menu-completion.config.ts
-      - name: Commit tested integration only to its isolated branch
-        id: result
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          test "$GITHUB_REF" = refs/heads/feat/mobile-menu-completion-20261024
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/app.tsx src/pages/Mobile/index.tsx src/pages/Mobile/MobileSettings.tsx src/pages/Typing/components/WordPanel/components/MobileWordPractice.tsx src/sync/CloudSyncSetting.tsx scripts/emit-edgeone-spa-entries.mjs tests/e2e/mobile-p0.spec.ts tests/e2e/mobile-p0.config.ts
-          if ! git diff --cached --quiet; then
-            git commit -m 'feat(mobile): connect menus, history, safe backup tools and accent-aware phonetics'
-            git push origin HEAD:refs/heads/feat/mobile-menu-completion-20261024
-          fi
-          SHA=$(git rev-parse HEAD)
-          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
-          export SHA
-          python3 - <<'PY' > /tmp/mobile-menu-status.json
-          import json, os
-          print(json.dumps({'state':'success','context':'mobile/menu-completion','description':'Scoped lint/build and mobile functional, read-only, backup/navigation tests PASS','target_url':os.environ['GITHUB_SERVER_URL']+'/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs/'+os.environ['GITHUB_RUN_ID']}))
-          PY
-          curl --fail --silent --show-error -X POST -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' -H 'Content-Type: application/json' --data-binary @/tmp/mobile-menu-status.json "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$SHA" >/dev/null
-      - name: Retain synthetic mobile screenshots and failure traces
+      - name: Retain source evidence and synthetic screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mobile-menu-completion-${{ github.run_id }}
-          path: test-results/
+          name: mobile-menu-evidence-${{ github.run_id }}
+          path: |
+            candidate-source/
+            test-results/
           if-no-files-found: ignore
           retention-days: 5
