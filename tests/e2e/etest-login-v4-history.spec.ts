@@ -69,7 +69,11 @@ async function seed(page: Page, branch: string, all = false) {
               wrongCount: 0,
             })
             for (let i = 0; i < 700; i++) {
-              const shared = { name: 'historical-review-' + i, trans: ['中文🙂é'.repeat(160), 'synthetic history ' + i] }
+              const shared = {
+                name: 'historical-review-' + i,
+                trans: ['中文🙂é'.repeat(160), 'synthetic history ' + i],
+                ...(i === 0 ? { 'audit.date': new Date('2026-10-24T00:00:00Z') } : {}),
+              }
               tx.objectStore('reviewRecords').add({
                 dict: 'cet4',
                 index: 0,
@@ -77,7 +81,6 @@ async function seed(page: Page, branch: string, all = false) {
                 isFinished: false,
                 words: i === 38 ? [shared, shared] : [shared],
                 sessionKind: 'review',
-                ...(i === 0 ? { 'audit.date': new Date('2026-10-24T00:00:00Z') } : {}),
               })
             }
             tx.objectStore('reviewWordStates').add({

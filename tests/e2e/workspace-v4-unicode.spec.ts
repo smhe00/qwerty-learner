@@ -9,12 +9,16 @@ test('large Unicode history survives independent audit, automatic merge and dura
     for (let pad = 0; pad < 3; pad++) {
       await h.clearAllTables()
       const rows = Array.from({ length: 700 }, (_, i) => {
-        const shared = { name: 'unicode-' + i, trans: ['中文🙂é'.repeat(160), 'line\nquote"slash\\'] }
+        const shared = {
+          name: 'unicode-' + i,
+          trans: ['中文🙂é'.repeat(160), 'line\nquote"slash\\'],
+          ...(i === 0 ? { 'audit.date': new Date('2026-10-24T00:00:00Z') } : {}),
+        }
         return { id: i + 1, dict: 'cet4', index: 0, createTime: i + 1, isFinished: false, words: [shared, shared] }
       })
       // An escaped Typeson key forces the independent-IDB audit without
       // adding invalid/unsupported data or weakening that audit.
-      Object.assign(rows[0], { 'audit.date': new Date('2026-10-24T00:00:00Z'), padding: 'x'.repeat(pad) })
+      Object.assign(rows[0], { padding: 'x'.repeat(pad) })
       await h.db.reviewRecords.bulkAdd(rows)
       const original = await h.db.reviewRecords.toCollection().raw().toArray()
       const rawBlob = await h.db.export()
@@ -22,7 +26,8 @@ test('large Unicode history survives independent audit, automatic merge and dura
       const sourceUnchanged = h.sameLosslessIndexedDbValue(original, await h.db.reviewRecords.toCollection().raw().toArray())
       await h.importBackupJson(await rawBlob.text())
       const legacyExact = h.sameLosslessIndexedDbValue(original, await h.db.reviewRecords.toCollection().raw().toArray())
-      await h.restoreWorkingWorkspaceV4(snapshot, { kind: 'account', accountId: 'unicode-synthetic' })
+      const audited = await h.materializeAuditedM4CandidateV4(snapshot, snapshot)
+      await h.restoreWorkingWorkspaceV4(audited, { kind: 'account', accountId: 'unicode-synthetic' })
       const restoreExact = h.sameLosslessIndexedDbValue(original, await h.db.reviewRecords.toCollection().raw().toArray())
       const candidate = await h.mergeAccountV4Snapshots(snapshot, snapshot)
       await h.restoreWorkingWorkspaceV4(candidate, { kind: 'account', accountId: 'unicode-synthetic' })

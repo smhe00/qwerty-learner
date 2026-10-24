@@ -22,3 +22,5 @@ The temporary import representation grows (Chinese typically 2x and supplementar
 - Lint-only equivalent regex spelling was followed by the exhaustive code-unit tests. Exact committed main CI will run the browser suite again.
 
 The staged live E2E now seeds 700 synthetic historical reviews (>1 MiB) with Chinese, accents and emoji and verifies exact translations, six-table startup download, automatic forks, archives and repeat-startup no-upload. Execution/release evidence pending main -> etest promotion.
+
+Final test-fixture refinement: the escaped Date tag is nested under words, so the same large synthetic histories exercise both S2 and the existing M4 unchanged-review proof. Targeted final Unicode browser tests: 3/3 passed (27.0 seconds), including full large-history M4 candidate checks. No application logic changed in this refinement.
