@@ -149,8 +149,27 @@ function referenced(id: unknown, map: Map<number, number>): number {
   if (!validId(id) || !map.has(id)) throw Error('auto-merge-dangling-word-reference')
   return map.get(id)!
 }
-function remapReferences(source: MergeRow, map: Map<number, number>): MergeRow {
+/** Review UUIDs stay unchanged; review:N is a device-local foreign key. */
+export function remapReviewSessionReference(reference: string, map: Map<number, number>): string {
+  const match = /^review:([1-9][0-9]*)$/.exec(reference)
+  if (!match) return reference
+  const id = Number(match[1])
+  if (!validId(id) || !map.has(id)) throw Error('auto-merge-dangling-session-reference')
+  return 'review:' + map.get(id)
+}
+function remapEventReference(reference: string, words: Map<number, number>, reviews: Map<number, number>): string {
+  const word = /^(word|mastery):([1-9][0-9]*)$/.exec(reference)
+  if (word) return word[1] + ':' + referenced(Number(word[2]), words)
+  const completed = /^session:(review:[1-9][0-9]*):completed$/.exec(reference)
+  if (completed) return 'session:' + remapReviewSessionReference(completed[1], reviews) + ':completed'
+  const continued = /^continue:(review:[1-9][0-9]*)$/.exec(reference)
+  if (continued) return 'continue:' + remapReviewSessionReference(continued[1], reviews)
+  return reference
+}
+function remapReferences(source: MergeRow, map: Map<number, number>, reviews: Map<number, number>): MergeRow {
   const row = structuredClone(source)
+  if (typeof row.sessionId === 'string') row.sessionId = remapReviewSessionReference(row.sessionId, reviews)
+  if (typeof row.firstTriggerEventId === 'string') row.firstTriggerEventId = remapEventReference(row.firstTriggerEventId, map, reviews)
   if (row.sourceRecordId !== undefined) row.sourceRecordId = referenced(row.sourceRecordId, map)
   if (row.sourceRecordIds !== undefined) {
     if (!Array.isArray(row.sourceRecordIds)) throw Error('auto-merge-invalid-references')
@@ -158,7 +177,7 @@ function remapReferences(source: MergeRow, map: Map<number, number>): MergeRow {
   }
   if (row.pendingAwards !== undefined) {
     if (!Array.isArray(row.pendingAwards)) throw Error('auto-merge-invalid-awards')
-    row.pendingAwards = row.pendingAwards.map((award: MergeRow) => remapReferences(award, map))
+    row.pendingAwards = row.pendingAwards.map((award: MergeRow) => remapReferences(award, map, reviews))
   }
   return row
 }
@@ -180,6 +199,16 @@ function statesByWord(rows: MergeRow[]): Map<string, MergeRow> {
 
 /** Pure candidate construction. Browser adapter owns account/schema/audit/archive gates. */
 export function mergeDecodedV4Tables(local: MergeTables, remote: MergeTables): MergeTables {
+  return mergeDecodedV4WithReferences(local, remote).tables
+}
+
+export function mergeDecodedV4WithReferences(
+  local: MergeTables,
+  remote: MergeTables,
+): {
+  tables: MergeTables
+  reviewIdMaps: NumericResult['maps']
+} {
   const words = numericUnion(
     [local.wordRecords, remote.wordRecords],
     (row) => exactIdentity(row, 'attemptId', true),
@@ -224,7 +253,7 @@ export function mergeDecodedV4Tables(local: MergeTables, remote: MergeTables): M
       // Choose an actual COMPLETE variant. Never splice item states or add cursors.
       return choose(a, b, (row) => [row.isFinished === true ? 1 : 0, row.index])
     },
-  ).rows
+  )
 
   const stateSides = [statesByWord(local.reviewWordStates), statesByWord(remote.reviewWordStates)]
   const wordGroups = new Map<string, MergeRow[]>()
@@ -267,31 +296,17 @@ export function mergeDecodedV4Tables(local: MergeTables, remote: MergeTables): M
   const remappedEvents = [local, remote].map((tables, side) =>
     tables.achievementEvents.map((source) => {
       if (typeof source.eventId !== 'string' || !source.eventId) throw Error('auto-merge-invalid-event-id')
-      const row = remapReferences(source, words.maps[side])
-      const match = /^(word|mastery):([1-9][0-9]*)$/.exec(row.eventId)
-      if (match) row.eventId = match[1] + ':' + referenced(Number(match[2]), words.maps[side])
+      const row = remapReferences(source, words.maps[side], reviews.maps[side])
+      row.eventId = remapEventReference(row.eventId, words.maps[side], reviews.maps[side])
       if (eventMaps[side].has(source.eventId)) throw Error('auto-merge-duplicate-achievement-event')
       eventMaps[side].set(source.eventId, row.eventId)
       return row
     }),
   )
-  const trigger = (row: MergeRow, side: number): MergeRow => {
-    const originalTrigger = row.firstTriggerEventId
-    if (typeof originalTrigger === 'string' && eventMaps[side].has(originalTrigger)) {
-      row.firstTriggerEventId = eventMaps[side].get(originalTrigger)
-    }
-    const legacyTrigger = typeof originalTrigger === 'string' ? /^(word|mastery):([1-9][0-9]*)$/.exec(originalTrigger) : null
-    // Even a pruned trigger event must not leave an origin-local numeric key
-    // pointing at an unrelated rebased learning record.
-    if (legacyTrigger && !eventMaps[side].has(originalTrigger)) {
-      row.firstTriggerEventId = legacyTrigger[1] + ':' + referenced(Number(legacyTrigger[2]), words.maps[side])
-    }
-    return row
-  }
   const achievementStates = new Map<string, MergeRow>()
   ;[local, remote].forEach((tables, side) => {
     for (const source of tables.achievementStates) {
-      const row = trigger(remapReferences(source, words.maps[side]), side)
+      const row = remapReferences(source, words.maps[side], reviews.maps[side])
       if (typeof row.achievementId !== 'string' || !row.achievementId) throw Error('auto-merge-invalid-achievement')
       const previous = achievementStates.get(row.achievementId)
       if (!previous) achievementStates.set(row.achievementId, row)
@@ -306,22 +321,30 @@ export function mergeDecodedV4Tables(local: MergeTables, remote: MergeTables): M
     }
   })
   const events = new Map<string, MergeRow>()
-  remappedEvents.forEach((rows, side) => {
+  remappedEvents.forEach((rows) => {
     for (const source of rows) {
       const row = structuredClone(source)
-      if (row.pendingAwards) row.pendingAwards = row.pendingAwards.map((award: MergeRow) => trigger(award, side))
       const previous = events.get(row.eventId)
       if (!previous) {
         events.set(row.eventId, row)
         continue
       }
+      // A completion/continue summary can be recorded independently on two
+      // devices for the same session. Keep deterministic existing evidence;
+      // immutable word-attempt events still require identical timestamps.
+      const sessionSummary =
+        typeof row.sessionId === 'string' &&
+        /^review:[1-9][0-9]*$/.test(row.sessionId) &&
+        previous.sessionId === row.sessionId &&
+        ((row.eventType === 'session_completed' && row.eventId === `session:${row.sessionId}:completed`) ||
+          (row.eventType === 'continue_intent' && row.eventId === `continue:${row.sessionId}`))
       if (
         previous.eventType !== row.eventType ||
         previous.origin !== row.origin ||
         (row.eventType !== 'unlock_queue' &&
           (previous.dict !== row.dict ||
             previous.word !== row.word ||
-            previous.occurredAt !== row.occurredAt ||
+            (!sessionSummary && previous.occurredAt !== row.occurredAt) ||
             previous.sourceRecordId !== row.sourceRecordId))
       ) {
         throw Error('auto-merge-achievement-identity-conflict')
@@ -352,11 +375,14 @@ export function mergeDecodedV4Tables(local: MergeTables, remote: MergeTables): M
     }
   })
   return {
-    wordRecords: words.rows,
-    chapterRecords: chapterRows,
-    reviewRecords: reviews,
-    reviewWordStates: stateRows,
-    achievementEvents: Array.from(events.values()).sort((a, b) => compare(a.eventId, b.eventId)),
-    achievementStates: Array.from(achievementStates.values()).sort((a, b) => compare(a.achievementId, b.achievementId)),
+    reviewIdMaps: reviews.maps,
+    tables: {
+      wordRecords: words.rows,
+      chapterRecords: chapterRows,
+      reviewRecords: reviews.rows,
+      reviewWordStates: stateRows,
+      achievementEvents: Array.from(events.values()).sort((a, b) => compare(a.eventId, b.eventId)),
+      achievementStates: Array.from(achievementStates.values()).sort((a, b) => compare(a.achievementId, b.achievementId)),
+    },
   }
 }

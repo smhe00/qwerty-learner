@@ -1,3 +1,5 @@
+import { getAchievementSessionId } from '../../src/achievement/session'
+import { processLiveLearnSessionCompletion, recordVoluntaryContinueIntent } from '../../src/achievement/engine'
 import { createDexieImportBlob } from '@/utils/db/dexie-import-blob'
 import { mergeAccountV4Snapshots } from '../../src/sync/automatic-v4-browser'
 import { archiveAutomaticV4Merge } from '../../src/sync/automatic-v4-archive'
@@ -305,6 +307,9 @@ async function inspectTableContract() {
 
 ;(window as any).__backupHarness = {
   createDexieImportBlob,
+  getAchievementSessionId,
+  processLiveLearnSessionCompletion,
+  recordVoluntaryContinueIntent,
   seed,
   mergeAccountV4Snapshots,
   archiveAutomaticV4Merge,

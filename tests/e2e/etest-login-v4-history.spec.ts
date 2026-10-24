@@ -57,8 +57,54 @@ async function seed(page: Page, branch: string, all = false) {
             wrongCount: 0,
             mistakes: {},
           })
-          if (!all) words.add(row(branch === 'left' ? 101 : 102))
-          else {
+          if (!all) {
+            const n = branch === 'left' ? 1 : 2
+            const added = words.add(row(100 + n))
+            // Both cloned profiles independently reuse review primary key 701.
+            // These are different real-session UUIDs, with the current producer's
+            // review:N / session:review:N:completed / continue:review:N keys.
+            const sessionId = 'review:701'
+            tx.objectStore('reviewRecords').add({
+              id: 701,
+              sessionId: `00000000-0000-4000-8000-00000000000${n}`,
+              dict: 'cet4',
+              createTime: 1_700_001_000 + n,
+              index: 1,
+              isFinished: true,
+              words: [],
+              sessionKind: 'review',
+            })
+            added.onsuccess = () => {
+              tx.objectStore('achievementEvents').add({
+                eventId: `session:${sessionId}:completed`,
+                eventType: 'session_completed',
+                origin: 'live',
+                sessionId,
+                sourceRecordIds: [added.result],
+                occurredAt: 1_700_001_010 + n,
+                dict: 'cet4',
+                metricValues: {},
+                unlockedAchievementIds: ['SYNTHETIC_SESSION_' + branch],
+              })
+              tx.objectStore('achievementEvents').add({
+                eventId: `continue:${sessionId}`,
+                eventType: 'continue_intent',
+                origin: 'live',
+                sessionId,
+                occurredAt: 1_700_001_011 + n,
+                dict: 'cet4',
+                metricValues: { voluntary_continue_intent: 1 },
+                unlockedAchievementIds: [],
+              })
+              tx.objectStore('achievementStates').add({
+                achievementId: 'SYNTHETIC_SESSION_' + branch,
+                unlockedAt: 1_700_001_010 + n,
+                firstTriggerEventId: `session:${sessionId}:completed`,
+                sourceRecordId: added.result,
+                sessionId,
+              })
+            }
+          } else {
             for (let i = 0; i < 3; i++) words.add(row(i))
             tx.objectStore('chapterRecords').add({
               dict: 'cet4',
@@ -154,7 +200,10 @@ async function evidence(page: Page) {
       let unicodeExact = false
       let historyBytes = 0
       const facts: Record<string, string> = {}
+      const originalFacts: Record<string, string> = {}
       const wordMap = new Map<number, string>()
+      const reviewMap = new Map<string, any>()
+      const sessionFacts: string[] = []
       for (const name of names) {
         const rows = await new Promise<any[]>((ok, fail) => {
           const r = db.transaction(name, 'readonly').objectStore(name).getAll()
@@ -163,29 +212,72 @@ async function evidence(page: Page) {
         })
         if (name === 'wordRecords') rows.forEach((r: any) => wordMap.set(r.id, r.word))
         if (name === 'reviewRecords') {
+          rows.forEach((r: any) => reviewMap.set('review:' + r.id, r))
           const r = rows.find((r: any) => r.createTime === 1_700_000_038)
           alias = r?.words[0] === r?.words[1]
           unicodeExact =
-            rows.length === 700 && rows.every((row: any) => row.words.every((word: any) => word.trans[0] === '中文🙂é'.repeat(160)))
+            rows.filter((r: any) => r.createTime >= 1_700_000_000 && r.createTime < 1_700_000_700).length === 700 &&
+            rows.every((row: any) => row.words.every((word: any) => word.trans[0] === '中文🙂é'.repeat(160)))
           historyBytes = new TextEncoder().encode(JSON.stringify(rows)).byteLength
         }
-        const logical = rows
-          .map((source: any) => {
-            const r = structuredClone(source)
-            delete r.id
-            if (r.sourceRecordId !== undefined) {
-              if (!wordMap.has(r.sourceRecordId)) throw Error('Dangling restored history reference')
-              r.sourceRecordId = wordMap.get(r.sourceRecordId)
+        if (name === 'achievementEvents') {
+          for (const event of rows.filter((e: any) => e.eventType === 'session_completed' || e.eventType === 'continue_intent')) {
+            const review = reviewMap.get(event.sessionId)
+            if (!review || !review.isFinished || review.dict !== event.dict) throw Error('Wrong restored session reference')
+            const completed = event.eventType === 'session_completed'
+            const expected = completed ? `session:${event.sessionId}:completed` : `continue:${event.sessionId}`
+            if (event.eventId !== expected || event.occurredAt !== review.createTime + (completed ? 10 : 11))
+              throw Error('Wrong restored session identity')
+            if (completed) {
+              const n = review.sessionId.endsWith('1') ? 1 : 2
+              const expectedWord = n === 1 ? 'historical-left-101' : 'historical-right-102'
+              if (event.sourceRecordIds.length !== 1 || wordMap.get(event.sourceRecordIds[0]) !== expectedWord)
+                throw Error('Wrong session learning facts')
             }
-            return stable(r)
-          })
-          .sort()
+            sessionFacts.push(event.eventType + ':' + review.sessionId)
+          }
+        }
+        if (name === 'achievementStates') {
+          for (const state of rows.filter((r: any) => r.achievementId.startsWith('SYNTHETIC_SESSION_'))) {
+            const review = reviewMap.get(state.sessionId)
+            if (!review || state.firstTriggerEventId !== `session:${state.sessionId}:completed`) throw Error('Wrong restored grant session')
+            const branch = review.sessionId.endsWith('1') ? 'left' : 'right'
+            if (state.achievementId !== 'SYNTHETIC_SESSION_' + branch) throw Error('Grant assigned to another session')
+          }
+        }
+        const logicalRow = (source: any) => {
+          const r = structuredClone(source)
+          delete r.id
+          if (r.sourceRecordId !== undefined) {
+            if (!wordMap.has(r.sourceRecordId)) throw Error('Dangling restored history reference')
+            r.sourceRecordId = wordMap.get(r.sourceRecordId)
+          }
+          return stable(r)
+        }
+        const logical = rows.map(logicalRow).sort()
+        const originalRows = rows.filter((r: any) => {
+          if (name === 'reviewRecords') return r.createTime >= 1_700_000_000 && r.createTime < 1_700_000_700
+          if (name === 'achievementEvents') return r.eventId === 'synthetic-history-event'
+          if (name === 'achievementStates') return r.achievementId === 'SYNTHETIC_HISTORY'
+          return true
+        })
+        const originalHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stable(originalRows.map(logicalRow).sort())))
+        originalFacts[name] = Array.from(new Uint8Array(originalHash), (b) => b.toString(16).padStart(2, '0')).join('')
         const factHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stable(logical)))
         facts[name] = Array.from(new Uint8Array(factHash), (b) => b.toString(16).padStart(2, '0')).join('')
         const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stable(rows)))
         result[name] = { count: rows.length, digest: Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('') }
       }
-      return { tables: result, facts, wordNames: Array.from(wordMap.values()).sort(), alias, unicodeExact, historyBytes }
+      return {
+        tables: result,
+        facts,
+        originalFacts,
+        wordNames: Array.from(wordMap.values()).sort(),
+        alias,
+        unicodeExact,
+        historyBytes,
+        sessionFacts: sessionFacts.sort(),
+      }
     } finally {
       db.close()
     }
@@ -292,10 +384,23 @@ test('historical six-table startup download and automatic divergent reauth conve
     expect(merged.unicodeExact).toBe(true)
     proof.unicodeTranslationsExact = true
     expect(merged.wordNames).toEqual([...original.wordNames, 'historical-left-101', 'historical-right-102'].sort())
-    for (const name of names.filter((name) => name !== 'wordRecords')) {
+    for (const name of ['chapterRecords', 'reviewWordStates']) {
       expect(merged.tables[name].count).toBe(original.tables[name].count)
       expect(merged.facts[name]).toBe(original.facts[name])
     }
+    for (const name of ['reviewRecords', 'achievementEvents', 'achievementStates']) {
+      expect(merged.originalFacts[name], 'original history preserved: ' + name).toBe(original.facts[name])
+    }
+    expect(merged.tables.reviewRecords.count).toBe(702)
+    expect(merged.tables.achievementEvents.count).toBe(5)
+    expect(merged.tables.achievementStates.count).toBe(3)
+    expect(merged.sessionFacts).toEqual(
+      [1, 2]
+        .flatMap((n) => ['continue_intent', 'session_completed'].map((type) => `${type}:00000000-0000-4000-8000-00000000000${n}`))
+        .sort(),
+    )
+    proof.independentCompletedSessionsPreserved = true
+    proof.sessionReferencesFollowOriginalUUID = true
     const third = await meta(pages[0])
     expect(third.revision).toBe(second.revision + 1)
     expect(aRequests).toContain('GET /api/sync/v2/binary/manifest')
@@ -332,18 +437,31 @@ test('historical six-table startup download and automatic divergent reauth conve
     expect(archives.some((words) => words.length === 5 && words.includes(leftWord) && words.includes(rightWord))).toBe(true)
     proof.automaticForkMergedBoth = true
     proof.originalForkArchivesPreserved = true
-    const diagnosticStages = await pages[0].evaluate(() =>
-      JSON.parse(sessionStorage.getItem('qwerty.perf-diagnostics.v1') || '[]') as Array<{ stage: string; outcome?: string }>,
+    const diagnosticStages = await pages[0].evaluate(
+      () => JSON.parse(sessionStorage.getItem('qwerty.perf-diagnostics.v1') || '[]') as Array<{ stage: string; outcome?: string }>,
     )
-    for (const stage of ['merge-download', 'merge-verify-cloud', 'merge-decode-local', 'merge-decode-cloud',
-      'merge-records', 'merge-decode-candidate', 'merge-build', 'merge-archive', 'merge-upload', 'merge-stage-journal']) {
-      expect(diagnosticStages.some(row => row.stage === stage && row.outcome === 'ok'), stage).toBe(true)
+    for (const stage of [
+      'merge-download',
+      'merge-verify-cloud',
+      'merge-decode-local',
+      'merge-decode-cloud',
+      'merge-records',
+      'merge-decode-candidate',
+      'merge-build',
+      'merge-archive',
+      'merge-upload',
+      'merge-stage-journal',
+    ]) {
+      expect(
+        diagnosticStages.some((row) => row.stage === stage && row.outcome === 'ok'),
+        stage,
+      ).toBe(true)
     }
     proof.automaticMergeStageEvidence = true
-    const priorFailures = await pages[1].evaluate(() =>
-      JSON.parse(sessionStorage.getItem('qwerty.perf-diagnostics.v1') || '[]') as Array<{ stage: string; outcome?: string }>,
+    const priorFailures = await pages[1].evaluate(
+      () => JSON.parse(sessionStorage.getItem('qwerty.perf-diagnostics.v1') || '[]') as Array<{ stage: string; outcome?: string }>,
     )
-    expect(priorFailures.some(row => row.stage === 'remote-meta' && row.outcome === 'failed')).toBe(true)
+    expect(priorFailures.some((row) => row.stage === 'remote-meta' && row.outcome === 'failed')).toBe(true)
     proof.failedMetadataStageRecorded = true
 
     await account(pages[0])

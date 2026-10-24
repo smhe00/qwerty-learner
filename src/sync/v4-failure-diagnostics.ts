@@ -7,6 +7,7 @@ const CODES = new Set<string>([
   'auto-merge-contradictory-immutable-identity',
   'auto-merge-cross-dictionary-reference',
   'auto-merge-dangling-word-reference',
+  'auto-merge-dangling-session-reference',
   'auto-merge-duplicate-achievement-event',
   'auto-merge-duplicate-stable-identity',
   'auto-merge-duplicate-word-state',
