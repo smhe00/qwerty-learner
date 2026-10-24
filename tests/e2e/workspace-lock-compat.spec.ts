@@ -252,3 +252,109 @@ test('P0: missing all persistent transactional storage still fails closed', asyn
   await expect(page.getByText(/IndexedDB unavailable: S1 writer ownership refused/)).toBeVisible()
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toHaveCount(0)
 })
+
+
+async function denyUnload(page: Page): Promise<void> {
+  await page.route('**/*', async (route) => {
+    if (route.request().resourceType() !== 'document') return route.continue()
+    const response = await route.fetch()
+    await route.fulfill({ response, headers: { ...response.headers(), 'permissions-policy': 'unload=()' } })
+  })
+}
+
+test('writer lifecycle: denied unload causes no startup warning across refresh', async ({ page, context }) => {
+  await denyUnload(page)
+  const log = await context.newCDPSession(page)
+  const violations: string[] = []
+  await log.send('Log.enable')
+  log.on('Log.entryAdded', ({ entry }) => {
+    if (/unload.*not allowed|permissions policy.*unload/i.test(entry.text)) violations.push(entry.text)
+  })
+  await harness(page)
+  const acquireAndRelease = () => page.evaluate(async () => {
+    const lease = await (window as any).__backupHarness.acquireWorkspaceWriterLease()
+    lease.release()
+  })
+  expect(await page.evaluate(() => (document as any).featurePolicy.allowsFeature('unload'))).toBe(false)
+  await acquireAndRelease()
+  await page.reload()
+  await expect.poll(() => page.evaluate(() => Boolean((window as any).__backupHarness))).toBe(true)
+  await acquireAndRelease()
+  expect(violations).toEqual([])
+})
+
+test('writer lifecycle: cached pagehide keeps ownership; closing native holder permits successor', async ({ page, context }) => {
+  await denyUnload(page)
+  await harness(page)
+  await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    ;(window as any).__lease = await h.acquireWorkspaceWriterLease()
+    window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }))
+  })
+  const second = await context.newPage()
+  await denyUnload(second)
+  await harness(second)
+  const acquire = () => second.evaluate(async () => {
+    try {
+      ;(window as any).__lease = await (window as any).__backupHarness.acquireWorkspaceWriterLease()
+      return true
+    } catch (error) {
+      if (!String(error).includes('Another tab owns')) throw error
+      return false
+    }
+  })
+  expect(await acquire()).toBe(false)
+  await page.close()
+  await expect.poll(acquire).toBe(true)
+  expect(await second.evaluate(() => (window as any).__backupHarness.db.wordRecords.count())).toBe(1)
+  await second.evaluate(() => (window as any).__lease.release())
+})
+
+test('writer lifecycle: native tab cannot steal closed fallback lease before actual expiry', async ({ page, context }) => {
+  await withoutWebLocks(page)
+  await denyUnload(page)
+  await harness(page)
+  await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    ;(window as any).__lease = await h.acquireWorkspaceWriterLease()
+  })
+  const second = await context.newPage()
+  await denyUnload(second)
+  await harness(second)
+  const acquire = () => second.evaluate(async () => {
+    try {
+      ;(window as any).__lease = await (window as any).__backupHarness.acquireWorkspaceWriterLease()
+      return true
+    } catch (error) {
+      if (!String(error).includes('Another tab owns')) throw error
+      return false
+    }
+  })
+  await page.close()
+  expect(await acquire()).toBe(false)
+  // Use the real lease expiry; do not change clocks or write the lease row.
+  await expect.poll(acquire, { timeout: 20_000, intervals: [500] }).toBe(true)
+  expect(await second.evaluate(() => (window as any).__backupHarness.db.wordRecords.count())).toBe(1)
+  await second.evaluate(() => (window as any).__lease.release())
+})
+
+
+test('writer lifecycle: same-tab fallback refresh reacquires without unload or explicit release', async ({ page }) => {
+  await withoutWebLocks(page)
+  await denyUnload(page)
+  await harness(page)
+  await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    await h.seed()
+    ;(window as any).__lease = await h.acquireWorkspaceWriterLease()
+  })
+  await page.reload()
+  await expect.poll(() => page.evaluate(() => Boolean((window as any).__backupHarness))).toBe(true)
+  await page.evaluate(async () => {
+    ;(window as any).__lease = await (window as any).__backupHarness.acquireWorkspaceWriterLease()
+  })
+  expect(await page.evaluate(() => (window as any).__backupHarness.db.wordRecords.count())).toBe(1)
+  await page.evaluate(() => (window as any).__lease.release())
+})

@@ -152,7 +152,6 @@ async function acquireIndexedDbWriterLease(kind: 'native' | 'fallback'): Promise
     released = true
     clearInterval(interval)
     presence?.close()
-    window.removeEventListener('unload', release)
     window.removeEventListener('focus', check)
     document.removeEventListener('visibilitychange', onVisibilityChange)
     void updateLease(db, owner, instance, 'release', kind).catch(() => {
@@ -165,7 +164,6 @@ async function acquireIndexedDbWriterLease(kind: 'native' | 'fallback'): Promise
     released = true
     clearInterval(interval)
     presence?.close()
-    window.removeEventListener('unload', release)
     window.removeEventListener('focus', check)
     document.removeEventListener('visibilitychange', onVisibilityChange)
     db.close()
@@ -184,8 +182,10 @@ async function acquireIndexedDbWriterLease(kind: 'native' | 'fallback'): Promise
   }
   const interval = window.setInterval(check, RENEW_MS)
   // Do not release on pagehide: a BFCache page can retain pending DB writers.
-  // Unload runs only for torn-down documents; TTL handles crashes and mobile.
-  window.addEventListener('unload', release)
+  // Do not register deprecated unload: browser policy can reject it. Native
+  // lifetime locks end with their document; the IDB sidecar is reclaimed by
+  // same-tab/native reacquisition or bounded expiry after a fallback closes.
+  // Explicit release still handles controlled handoffs and startup failures.
   window.addEventListener('focus', check)
   document.addEventListener('visibilitychange', onVisibilityChange)
   return { release }

@@ -129,3 +129,11 @@ Fetch the repository, checkout product/main, read AGENTS.md and
 interactive/CURRENT_TASK.md, execute the referenced task exactly,
 run required validation, update the report, commit and push.
 ```
+
+## 9. Proportionate validation (owner instruction, 2026-10-24)
+
+Choose validation by behavioral risk, not by habit or number of available suites. For small maintenance changes, run the narrow tests that exercise the changed behavior and its safety boundary, plus scoped static checks. Do not automatically repeat the full Cloud and workspace suites, or repeat an unchanged passing suite locally and in CI. Broaden only for a new failure, affected behavior, integration conflict or unresolved concrete risk.
+
+Changes to record identity/merge rules, schemas or migrations, authentication/ownership, durable recovery or cloud writes require the relevant data-safety contracts; a small diff is not evidence of low risk. A deprecated listener cleanup can use focused lifecycle/lease tests covering native and fallback owners, close/reload, cached-page ownership and unchanged learning rows.
+
+Do not promote etest/master or create cloud accounts solely to clear a harmless console warning. Batch small development maintenance into the next authorized release. Existing required deployment checks and user release authorization still apply when a release is requested. Do not weaken assertions, hide failures or use blanket CI skipping to make checks appear green.

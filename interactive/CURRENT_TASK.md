@@ -1,13 +1,15 @@
 ---
 protocol_version: "1.1"
-task_id: "CODEX-P1-V4-STAGE-DIAGNOSTICS-20261024"
-task_file: "interactive/tasks/CODEX-P1-V4-STAGE-DIAGNOSTICS-20261024.md"
-report_file: "interactive/reports/CODEX-P1-V4-STAGE-DIAGNOSTICS-20261024-report.md"
+task_id: "CODEX-P2-STARTUP-UNLOAD-20261024"
+task_file: "interactive/tasks/CODEX-P2-STARTUP-UNLOAD-20261024.md"
+report_file: "interactive/reports/CODEX-P2-STARTUP-UNLOAD-20261024-report.md"
 target_branch: "product/main"
-status: "IN_PROGRESS"
+status: "REVIEW"
 executor: "Codex (single executor)"
-claim_base_commit: "55cc1d52e2c283d2354addb59c5cc8b98d3b05e3"
-release_to_master: true
+claim_base_commit: "d218a8398fb80e70cdb96d38f70df4b92f807798"
+release_to_master: false
 ---
 
-Continue the existing authorized sync incident. Local Unicode backup succeeds; supplied HTTP evidence proves metadata/manifest/one part returned 200, not complete validation/merge. Diagnostics are merged on main. Direct source reproduction now proves numeric review-session references collide across completed-session forks. Repair reference rebasing and test full history convergence; keep guards and all existing user data intact. Prior exact-release report: codex/v4-utf8-report-20261024 at 4847651b.
+Owner confirms cloud sync works. Investigate and remove the startup unload permissions-policy warning without weakening single-writer ownership. Owner explicitly requests proportionate validation for small maintenance: focused lease/browser checks and scoped lint, no repeated full Cloud/workspace regression. This maintenance task targets development; preserve production d218a839 and batch deployment into the next authorized release. Prior successful sync release report is retained on codex/v4-session-report-20261024 at 44cfa543.
+
+Implementation ready: unload listener removed; 7 focused lease/lifecycle checks and scoped lint pass. One existing full-app UI test times out on both unchanged release and patch and remains documented. No full regression or cloud-account testing was added. Existing CI configuration is unchanged. Maintenance is development-only and will ship with the next authorized release.
