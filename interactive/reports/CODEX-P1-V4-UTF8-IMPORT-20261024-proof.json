@@ -1,0 +1,134 @@
+{
+  "sourceCommit": "9a254569cffe0af6bcf3f5e7732fc80a175289b0",
+  "fixPullRequest": "https://github.com/smhe00/qwerty-learner/pull/36",
+  "history": {
+    "run": 40062660188,
+    "job": 120780395130,
+    "attempt": 2,
+    "historicalFixture": true,
+    "source": "9a25456",
+    "unicodeHistoryBytes": 1472401,
+    "ordinaryStartupRecoveredFullV4": true,
+    "sixTablePullExact": true,
+    "sharedReferencePreserved": true,
+    "unicodeTranslationsExact": true,
+    "automaticForkMergedBoth": true,
+    "originalForkArchivesPreserved": true,
+    "sixTableForkConvergence": true,
+    "repeatedStartupNoDuplicateWrite": true,
+    "mergedWordRecords": 5,
+    "counts": {
+      "wordRecords": 3,
+      "chapterRecords": 1,
+      "reviewRecords": 700,
+      "reviewWordStates": 1,
+      "achievementEvents": 1,
+      "achievementStates": 1
+    },
+    "cleanupStatus": 200,
+    "cleanupVerified": true
+  },
+  "historyAttempt1": {
+    "run": 40062660188,
+    "attempt": 1,
+    "job": 120779290214,
+    "unicodeHistoryBytes": 1472401,
+    "applicationPassed": false,
+    "stage": "initial upload request sent; subsequent metadata revision 0; upload response not recorded",
+    "cleanupStatus": 200,
+    "cleanupVerified": true
+  },
+  "workspace": {
+    "run": 40061921714,
+    "job": 120777088229,
+    "passed": true
+  },
+  "cloud": {
+    "run": 40061921684,
+    "job": 120777088181,
+    "tests": 585,
+    "passed": true
+  },
+  "recovery": {
+    "run": 40061921675,
+    "attempt": 2,
+    "job": 120778418403,
+    "passed": true
+  },
+  "review": {
+    "run": 40061921690,
+    "job": 120777088237,
+    "passed": true
+  },
+  "staging": {
+    "threeDevice": {
+      "run": 40062660191,
+      "job": 120779290156,
+      "passed": true,
+      "cleanupStatus": 200
+    },
+    "branchCloud": {
+      "run": 40062660200,
+      "browserJob": 120779290385,
+      "browserTests": 4,
+      "browserAccountsDeleted": 2,
+      "transportJob": 120779290569,
+      "transportAccountsDeleted": 2,
+      "readinessJob": 120780341070,
+      "passed": true
+    },
+    "m3": {
+      "run": 40062660225,
+      "job": 120779290206,
+      "passed": true
+    },
+    "safeWriteback": {
+      "run": 40062660274,
+      "job": 120779290706,
+      "passed": true
+    }
+  },
+  "knownIssues": [
+    {
+      "run": 40061921675,
+      "attempt": 1,
+      "kind": "synthetic-recovery-test-race",
+      "detail": "Trace diff: only workspaceData.learnRuntime.dailySessions.cet4 added after app mount; database tables/settings unchanged. Same test passed in full same-SHA S1 CI and local 6/6 repeat; failed job rerun without changing assertions.",
+      "status": "passed-attempt-2"
+    },
+    {
+      "run": 40061921691,
+      "kind": "existing-production-mobile-explorer",
+      "detail": "11/12 passed; EdgeOne mobile shell hidden locator at published-dual-site-explorer.spec.ts:356 timed out after 5s. Production still serves prior 51d2124, not this candidate. Pages deployment/browser gate passed.",
+      "status": "not-counted-as-pass"
+    }
+  ],
+  "production": {
+    "promoted": true,
+    "deploymentConfirmed": true,
+    "previousCommit": "51d2124360b620d6d84742b5359d6991f1f60567",
+    "versionRun": 40063249178,
+    "automaticRegressionRun": 40063249142,
+    "automaticRegressionCancellation": "Owner explicitly authorized this run, conditional on test/account creation not started. Rechecked job already in test phase; cancellation condition no longer met. Preserved completion/cleanup. No cancellation claimed.",
+    "versionJob": 120781061590,
+    "versionAndHealthPassed": true,
+    "observedSource": "9a25456",
+    "userScreenshotFooter": "9a25456",
+    "automaticRegressionJob": 120781061605,
+    "automaticRegressionPassed": true,
+    "automaticRegressionCleanupStatus": 200,
+    "finalBranchHeads": {
+      "main": "9a254569cffe0af6bcf3f5e7732fc80a175289b0",
+      "etest": "9a254569cffe0af6bcf3f5e7732fc80a175289b0",
+      "master": "9a254569cffe0af6bcf3f5e7732fc80a175289b0"
+    }
+  },
+  "followup": {
+    "status": "unresolved-existing-account-startup-error",
+    "observedVersion": "9a25456",
+    "reportedDetail": "Cloud complete V4 check or transfer failed; full convergence not completed",
+    "classification": "Generic catch, not proof of a network failure or cloud download. Includes adapter ownership/session, capture, transport, merge and storage exceptions.",
+    "existingUserDataAccessed": false,
+    "nextEvidence": "Local backup export result and fixed-field sync performance records from the existing tab; no backup or credentials requested."
+  }
+}
