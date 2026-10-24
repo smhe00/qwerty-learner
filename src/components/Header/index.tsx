@@ -62,7 +62,12 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
 
   return (
     <header className="z-20 mx-auto w-full max-w-screen-2xl px-4 py-3 sm:px-6 lg:px-8 lg:py-4">
-      <div ref={layoutRef} className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-3 xl:gap-x-12">
+      <div
+        ref={layoutRef}
+        data-toolbar-layout={toolbarLayout}
+        data-has-account={canUseAccount}
+        className="focus-header-layout w-full items-center gap-x-3 gap-y-3 xl:gap-x-12"
+      >
         <button
           className="flex shrink-0 items-center rounded-xl no-underline hover:no-underline"
           type="button"

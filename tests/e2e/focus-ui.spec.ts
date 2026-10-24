@@ -94,7 +94,7 @@ for (const mode of ['typing', 'learn'] as const) {
     let sawSingleRow = false
     let sawTwoRows = false
 
-    for (const width of [1920, 1600, 1594, 1536, 1440, 1366, 1281, 1280, 1279, 1240, 1200, 1160, 1120, 1100, 1024, 900, 768, 701, 1024, 1280, 1594, 1920]) {
+    for (const width of [1920, 1600, 1594, 1536, 1440, 1366, 1281, 1280, 1279, 1240, 1231, 1230, 1229, 1200, 1160, 1120, 1100, 1024, 900, 768, 701, 1024, 1280, 1594, 1920]) {
       await page.setViewportSize({ width, height: 900 })
       const nav = page.locator('header nav.focus-header-nav')
       await expect(nav.locator('[data-toolbar-row="primary"]')).toBeVisible()
@@ -123,6 +123,9 @@ for (const mode of ['typing', 'learn'] as const) {
         const i = strip.getBoundingClientRect()
         return {
           contentWidth,
+          accountAfterMenu: siblingBoxes.length < 2 || nav.right <= siblingBoxes[1].left + 1,
+          accountAtRight: siblingBoxes.length < 2 || Math.abs(siblingBoxes[1].right - header.getBoundingClientRect().right) <= 1,
+          menuBelowBrand: nav.top >= Math.max(...siblingBoxes.map(box => box.bottom)) - 1,
           canStayBesideBrand: available >= Math.max(p.width, s.width) + leftInset + rightInset,
           sharesBrandRow: nav.top < siblingBoxes[0].bottom && nav.bottom > siblingBoxes[0].top,
           headerOverlaps: siblingBoxes.some(box => nav.left < box.right - 1 && nav.right > box.left + 1 &&
@@ -167,7 +170,10 @@ for (const mode of ['typing', 'learn'] as const) {
       expect(layout.viewportOverflow).toBe(false)
       expect(layout.headerOverlaps).toBe(false)
       expect(layout.sharesBrandRow).toBe(layout.canStayBesideBrand)
-      if (width === 1594 || width === 1279) {
+      expect(layout.accountAtRight).toBe(true)
+      if (layout.sharesBrandRow) expect(layout.accountAfterMenu).toBe(true)
+      else expect(layout.menuBelowBrand).toBe(true)
+      if (width === 1594 || width === 1279 || width === 1230) {
         await page.locator('header').screenshot({ path: snapshots + '/' + mode + '-header-' + width + '.png' })
       }
       expect(layout.groupsAdjacent).toBe(true)

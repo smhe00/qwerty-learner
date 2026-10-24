@@ -81,6 +81,39 @@ body,
   margin-inline: auto;
 }
 
+/* Keep the account in the trailing column even while the menu changes rows. */
+.focus-header-layout {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  grid-template-areas: 'brand menu account';
+}
+
+.focus-header-layout > button:first-child {
+  grid-area: brand;
+}
+
+.focus-header-layout > [data-account-entry] {
+  grid-area: account;
+  justify-self: end;
+}
+
+.focus-header-layout > .focus-header-nav {
+  grid-area: menu;
+}
+
+.focus-header-layout[data-toolbar-layout='below'] {
+  grid-template-areas: 'brand . account' 'menu menu menu';
+}
+
+.focus-header-layout[data-has-account='false'] {
+  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-areas: 'brand menu';
+}
+
+.focus-header-layout[data-has-account='false'][data-toolbar-layout='below'] {
+  grid-template-areas: 'brand .' 'menu menu';
+}
+
 .focus-header-nav {
   background: var(--focus-surface);
   border: 1px solid var(--focus-border);
@@ -96,10 +129,6 @@ body,
 .focus-header-nav[data-toolbar-layout='stacked'],
 .focus-header-nav[data-toolbar-layout='below'] {
   grid-template-columns: max-content;
-}
-
-.focus-header-nav[data-toolbar-layout='below'] {
-  order: 3;
 }
 
 .focus-header-nav:not([data-toolbar-layout='below']) {
