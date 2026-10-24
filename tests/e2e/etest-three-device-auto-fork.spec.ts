@@ -153,6 +153,9 @@ async function openAccount(page: Page, username: string, password: string) {
       const item = raw ? JSON.parse(raw) : null
       return item?.user?.username ?? null
     }).catch(() => null), { timeout: 60_000 }).toBe(username)
+    // Full S2 Pull can replace the document twice: entering recovery is not
+    // proof that the guarded restore and application mount have completed.
+    await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 60_000 })
     await expect(page.getByText('学习数据安全检查未通过')).toHaveCount(0)
   } catch (error) {
     // Redact credentials; keep only the public navigational failure
@@ -208,7 +211,14 @@ async function authStatus(page: Page) {
   })
 }
 async function assertDurable(page: Page, event: Event) {
-  const rows = (await records(page)).filter(x => x.attemptId === event.attemptId)
+  // Only retry READS across guarded S2/M4 navigation. The same exact UUID
+  // count and immutable fields must eventually be present; no writes replay.
+  let rows: Event[] = []
+  await expect.poll(async () => {
+    rows = (await records(page).catch(() => [])).filter(x => x.attemptId === event.attemptId)
+    return rows.length === 1 && rows[0].dict === event.dict &&
+      rows[0].word === event.word && rows[0].timeStamp === event.timeStamp
+  }, { timeout: 20_000, message: 'exact immutable attempt after pre-mount recovery' }).toBe(true)
   expect(rows.length, 'exactly one immutable attempt').toBe(1)
   expect(rows[0].dict === event.dict, 'immutable dictionary preserved').toBe(true)
   expect(rows[0].word === event.word, 'immutable word preserved').toBe(true)
@@ -294,7 +304,7 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
     // session. Revoked A/B MUST NOT upload or erase their local branches.
     await Promise.all(contexts.map(ctx => ctx.setOffline(false)))
     for (let i = 0; i < 2; i++) {
-      await expect.poll(async () => (await authStatus(pages[i])).error,
+      await expect.poll(async () => (await authStatus(pages[i]).catch(() => ({ error: 'read-unavailable' }))).error,
         { timeout: 25_000 }).toBe('session_revoked')
       await assertDurable(pages[i], branches[i])
     }
@@ -305,7 +315,7 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
     const expected = branches.map(r => r.attemptId).sort()
     for (const [handoff, i] of [0, 1, 2, 0, 1, 2].entries()) {
       await openAccount(pages[i], username, password)
-      await expect.poll(async () => (await authStatus(pages[i])).status,
+      await expect.poll(async () => (await authStatus(pages[i]).catch(() => ({ status: 0 }))).status,
         { timeout: 20_000 }).toBe(200)
       // The last relogin must see the complete preserved event union.
       if (handoff >= 2) {
