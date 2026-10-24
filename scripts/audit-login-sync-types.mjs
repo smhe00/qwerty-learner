@@ -13,6 +13,10 @@ for (const change of changes) {
   if (status === 'A') added.add(absolute)
   else before.set(absolute, execFileSync('git', ['show', baseline + ':' + file], { encoding: 'utf8' }))
 }
+// Newly created, not-yet-staged source must not leak into the baseline program.
+for (const file of git(['ls-files', '--others', '--exclude-standard', '--', 'src']).split('\n').filter(Boolean)) {
+  added.add(path.resolve(file))
+}
 const config = ts.readConfigFile('tsconfig.json', ts.sys.readFile)
 const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, process.cwd())
 function diagnostics(useBaseline) {

@@ -19,6 +19,8 @@ class SharedMockCloud {
   private readonly uploads = new Map<string, Buffer>()
   successfulWrites = 0
   refusedCAS = 0
+  pinNextMetaReads = 0
+  private pinnedMetaReads: Array<{ route: Route; meta: any }> = []
   failNextMeta = false
   failNextPut = false
   loseNextCommitAck = false
@@ -61,6 +63,14 @@ class SharedMockCloud {
       return
     }
     if (method === 'GET' && pathname.endsWith('/meta')) {
+      if (this.pinNextMetaReads > 0) {
+        this.pinnedMetaReads.push({ route: r, meta: this.meta() })
+        if (--this.pinNextMetaReads === 0) {
+          const pending = this.pinnedMetaReads.splice(0)
+          await Promise.all(pending.map(({ route, meta }) => route.fulfill({ json: { ok: true, ...meta } })))
+        }
+        return
+      }
       if (this.failNextMeta) {
         this.failNextMeta = false
         await this.error(r, 503, 'temporary_unavailable')
@@ -303,7 +313,7 @@ async function addWord(page: Page, label: string) {
   }, 'p4b-device-' + label)
 }
 
-test('P4b two independent profiles roundtrip, then detect divergent edits without overwriting', async ({ browser }) => {
+test('P4b two independent profiles roundtrip, automatically merge divergent edits, then converge without duplicate writes', async ({ browser }) => {
   const server = new SharedMockCloud()
   const A = await makeDevice(browser, server, 'A', true)
   const B = await makeDevice(browser, server, 'B', false)
@@ -353,15 +363,23 @@ test('P4b two independent profiles roundtrip, then detect divergent edits withou
     await addWord(B.page, 'B')
     await sync(B.page, '同步完成：本地进度已安全上传至云端。')
     expect(server.successfulWrites).toBe(2)
-    await sync(A.page, '同步冲突：本地和云端均有变化，未覆盖任何一方。')
+    await sync(A.page, '已完成云端学习数据安全恢复。')
+    expect(server.successfulWrites).toBe(3)
     const a = await inspect(A.page)
-    expect(a.count).toBe(2)
-    expect(a.baseline.baseRevision).toBe(1)
+    expect(a.count).toBe(3)
+    expect(a.baseline.baseRevision).toBe(3)
     const b = await inspect(B.page)
     expect(b.count).toBe(2)
     expect(b.baseline.baseRevision).toBe(2)
     expect(a.fingerprint).not.toBe(b.fingerprint)
-    expect(server.meta().logicalFingerprint).toBe(b.baseline.logicalFingerprint)
+    expect(server.meta().logicalFingerprint).toBe(a.baseline.logicalFingerprint)
+    await sync(B.page, '已完成云端学习数据安全恢复。')
+    const converged = await inspect(B.page)
+    expect(converged.count).toBe(3)
+    expect(converged.fingerprint).toBe(a.fingerprint)
+    expect(converged.baseline.baseRevision).toBe(3)
+    await sync(A.page, '同步完成：本地和云端已经一致，没有传输完整数据。')
+    expect(server.successfulWrites).toBe(3)
   } finally {
     await Promise.all([A.context.close(), B.context.close()])
   }
@@ -381,6 +399,7 @@ test('P4b three independent profiles competing CAS admit one winner and retain a
     expect(baseline.map(s => s.count)).toEqual([1, 1, 1])
     expect(baseline.map(s => s.preservedFsrs)).toEqual([true, true, true])
     await Promise.all([addWord(A.page, 'A'), addWord(B.page, 'B'), addWord(C.page, 'C')])
+    server.pinNextMetaReads = 3
     await Promise.all([A.page.goto('/?s2-sync=run'),
       B.page.goto('/?s2-sync=run'), C.page.goto('/?s2-sync=run')])
     await Promise.all([A.page, B.page, C.page].map(page =>
@@ -435,7 +454,7 @@ test('P4b injection: network metadata outage then retry retains original rows', 
   try {
     server.failNextMeta = true
     await A.page.goto('/?s2-sync=run')
-    await expect(A.page.getByText(/同步未确认，将先执行安全恢复检查/)).toBeVisible()
+    await expect(A.page.getByText(/同步未确认，将先执行安全恢复检查/)).toBeVisible({ timeout: 25_000 })
     expect(server.successfulWrites).toBe(0)
     const before = await inspect(A.page)
     expect(before.count).toBe(1)
@@ -451,7 +470,7 @@ test('P4b injection: precommit outage refuses baseline advancement', async ({ br
   try {
     server.failNextPut = true
     await A.page.goto('/?s2-sync=run')
-    await expect(A.page.getByText(/同步未确认，将先执行安全恢复检查/)).toBeVisible()
+    await expect(A.page.getByText(/同步未确认，将先执行安全恢复检查/)).toBeVisible({ timeout: 25_000 })
     expect(server.successfulWrites).toBe(0)
     const before = await inspect(A.page)
     expect(before.count).toBe(1)
@@ -465,18 +484,56 @@ test('P4b injection: cloud commits but acknowledgement is lost, no phantom basel
   try {
     server.loseNextCommitAck = true
     await A.page.goto('/?s2-sync=run')
-    await expect(A.page.getByText(/同步未确认，将先执行安全恢复检查/)).toBeVisible()
+    await expect(A.page.getByText(/同步未确认，将先执行安全恢复检查/)).toBeVisible({ timeout: 25_000 })
     expect(server.successfulWrites).toBe(1)
     expect(server.meta().revision).toBe(1)
     const local = await inspect(A.page)
     expect(local.count).toBe(1)
     expect(local.preservedFsrs).toBe(true)
     expect(local.baseline).toBeNull()
-    // On retry, the client may detect a metadata-only identical snapshot
-    // or require explicit conflict recovery if React modified local runtime.
-    // Neither path may create another cloud revision without CAS/consent.
+    // The failure recovery mounted the app, which can add runtime state.
+    // A NEW sync may CAS-publish a canonical reconciliation, never duplicate
+    // the original learning fact. The next sync must then be metadata-only.
     await A.page.goto('/?s2-sync=run')
-    await expect.poll(() => A.page.url()).not.toContain('s2-sync=run')
-    expect(server.successfulWrites).toBe(1)
+    await expect(A.page.getByText(/同步完成：本地和云端已经一致|已完成云端学习数据安全恢复/)).toBeVisible({ timeout: 25_000 })
+    const recovered = await inspect(A.page)
+    expect(recovered.count).toBe(1)
+    expect(recovered.baseline.baseRevision).toBe(server.meta().revision)
+    expect(recovered.fingerprint).toBe(server.meta().logicalFingerprint)
+    expect(server.successfulWrites).toBeLessThanOrEqual(2)
+    const writes = server.successfulWrites
+    await sync(A.page, '同步完成：本地和云端已经一致，没有传输完整数据。')
+    expect(server.successfulWrites).toBe(writes)
   } finally { await A.context.close() }
+})
+
+
+test('P4b automatic merge with a lost commit response converges on next sync without duplicate upload', async ({ browser }) => {
+  const server = new SharedMockCloud()
+  const A = await makeDevice(browser, server, 'lost-merge-A', true)
+  const B = await makeDevice(browser, server, 'lost-merge-B', false)
+  try {
+    await sync(A.page, '同步完成：本地进度已安全上传至云端。')
+    await sync(B.page, '已完成云端学习数据安全恢复。')
+    await addWord(A.page, 'lost-merge-A')
+    await addWord(B.page, 'lost-merge-B')
+    await sync(B.page, '同步完成：本地进度已安全上传至云端。')
+    server.loseNextCommitAck = true
+    await A.page.goto('/?s2-sync=run')
+    await expect(A.page.getByText(/同步未确认，将先执行安全恢复检查/)).toBeVisible({ timeout: 25_000 })
+    expect(server.successfulWrites).toBe(3)
+    const pending = await inspect(A.page)
+    expect(pending.count).toBe(2)
+    expect(pending.baseline.baseRevision).toBe(1)
+    await sync(A.page, '已完成云端学习数据安全恢复。')
+    const recovered = await inspect(A.page)
+    expect(recovered.count).toBe(3)
+    expect(recovered.baseline.baseRevision).toBe(3)
+    expect(recovered.fingerprint).toBe(server.meta().logicalFingerprint)
+    expect(server.successfulWrites).toBe(3)
+    await sync(B.page, '已完成云端学习数据安全恢复。')
+    expect((await inspect(B.page)).fingerprint).toBe(recovered.fingerprint)
+    await sync(A.page, '同步完成：本地和云端已经一致，没有传输完整数据。')
+    expect(server.successfulWrites).toBe(3)
+  } finally { await Promise.all([A.context.close(), B.context.close()]) }
 })

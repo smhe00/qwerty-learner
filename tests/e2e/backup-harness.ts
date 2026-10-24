@@ -1,3 +1,5 @@
+import { mergeAccountV4Snapshots } from '../../src/sync/automatic-v4-browser'
+import { archiveAutomaticV4Merge } from '../../src/sync/automatic-v4-archive'
 import { switchAuthenticatedWorkspace, reconcileAuthTransition, S1_AUTH_INTENT_KEY, reauthenticateSameWorkspace } from '../../src/sync/workspace-auth-transaction'
 import { assertLegacyAuthChangeAllowed, assertLegacyCloudMutationAllowed, assertLegacyLocalDestructiveOperationAllowed } from '../../src/sync/workspace-auth-guard'
 import { mountGuardedWorkspaceApp } from '../../src/sync/workspace-bootstrap'
@@ -302,6 +304,8 @@ async function inspectTableContract() {
 
 ;(window as any).__backupHarness = {
   seed,
+  mergeAccountV4Snapshots,
+  archiveAutomaticV4Merge,
   poisonBeforeRestore,
   inspect,
   inspectTableContract,
