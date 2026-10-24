@@ -1,13 +1,13 @@
 ---
 protocol_version: "1.1"
-task_id: "CODEX-P1-V4-UTF8-IMPORT-20261024"
-task_file: "interactive/tasks/CODEX-P1-V4-UTF8-IMPORT-20261024.md"
-report_file: "interactive/reports/CODEX-P1-V4-UTF8-IMPORT-20261024-report.md"
+task_id: "CODEX-P1-V4-STAGE-DIAGNOSTICS-20261024"
+task_file: "interactive/tasks/CODEX-P1-V4-STAGE-DIAGNOSTICS-20261024.md"
+report_file: "interactive/reports/CODEX-P1-V4-STAGE-DIAGNOSTICS-20261024-report.md"
 target_branch: "product/main"
 status: "IN_PROGRESS"
 executor: "Codex (single executor)"
-claim_base_commit: "51d2124360b620d6d84742b5359d6991f1f60567"
+claim_base_commit: "9a254569cffe0af6bcf3f5e7732fc80a175289b0"
 release_to_master: true
 ---
 
-Owner explicitly authorizes: fix Chinese chunk decoding, preserve lossless checks, merge main before etest, validate etest before publishing identical master. Do not operate on existing user data. Prior release/report remains on codex/auto-v4-merge-report-20261024 at 71110572.
+Continue the existing authorized sync incident. Local Unicode backup succeeds; supplied HTTP evidence proves metadata/manifest/one part returned 200, not complete validation/merge. Add bounded fixed diagnostics, keep guards and all user data intact. Prior exact-release report: codex/v4-utf8-report-20261024 at 4847651b.

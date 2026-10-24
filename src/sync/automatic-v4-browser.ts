@@ -1,3 +1,4 @@
+import { timePerfStage } from './perf-diagnostics'
 /** Isolated decoding/re-export: never modify the live RecordDB while planning. */
 import { createDexieImportBlob } from '@/utils/db/dexie-import-blob'
 import { AUTO_MERGE_TABLES, mergeDecodedV4Tables, mergeValueKey } from './automatic-v4-records'
@@ -99,11 +100,11 @@ export async function mergeAccountV4Snapshots(local: WorkspaceSnapshotV4, remote
   if (rest(local) !== rest(remote)) throw Error('auto-merge-unknown-runtime-conflict')
   const copies: Dexie[] = []
   try {
-    const left = await openCopy(local, copies)
-    const right = await openCopy(remote, copies)
+    const left = await timePerfStage('sync', 'merge-decode-local', () => openCopy(local, copies))
+    const right = await timePerfStage('sync', 'merge-decode-cloud', () => openCopy(remote, copies))
     const leftRows = await raw(left),
       rightRows = await raw(right)
-    const merged = mergeDecodedV4Tables(leftRows, rightRows)
+    const merged = await timePerfStage('sync', 'merge-records', async () => mergeDecodedV4Tables(leftRows, rightRows))
     // The source exports remain immutable; the temporary left DB becomes candidate.
     await left.transaction('rw', left.tables, async () => {
       for (const name of AUTO_MERGE_TABLES) {
@@ -134,7 +135,7 @@ export async function mergeAccountV4Snapshots(local: WorkspaceSnapshotV4, remote
     assertRestorableWorkspaceV4(candidate)
     // Independently IMPORT the generated export and compare raw structured-clone
     // values, not JSON hashes. This detects lost aliases and Typeson corruption.
-    const check = await openCopy(candidate, copies)
+    const check = await timePerfStage('sync', 'merge-decode-candidate', () => openCopy(candidate, copies))
     const decoded = await raw(check)
     for (const name of AUTO_MERGE_TABLES) {
       const key = (row: MergeRow) => row.id ?? row.eventId ?? row.achievementId

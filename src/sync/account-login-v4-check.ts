@@ -1,3 +1,5 @@
+import { timePerfStage } from './perf-diagnostics'
+import { v4FailureDetail } from './v4-failure-diagnostics'
 /**
  * Same-account login/startup synchronization admission. This runs only from the S1
  * pre-mount account document, while its exclusive writer lease is held.
@@ -28,10 +30,10 @@ export async function checkAccountV4AfterAuthentication(): Promise<AccountLoginV
   try {
     // Do not initialize RecordDB/store modules when cloud admission is disabled.
     const { executePreMountManualSyncV2 } = await import('./v2-browser-executor')
-    const outcome = await executePreMountManualSyncV2({
+    const outcome = await timePerfStage('sync', 'account-sync', () => executePreMountManualSyncV2({
       mode: 'isolated',
       registry,
-    })
+    }))
     if (outcome.status === 'noop') {
       return { status: 'noop', canContinue: true, detail: '云端完整 V4 已检查：本机与云端相同，或双方均无待同步学习记录。' }
     }
@@ -63,7 +65,7 @@ export async function checkAccountV4AfterAuthentication(): Promise<AccountLoginV
       canContinue: true,
       detail: localAuditFailed
         ? '本机完整 V4 无损校验未通过，已阻止云端历史覆盖；请保留浏览器数据以供安全恢复。'
-        : '云端完整 V4 检查或传输失败，尚未完成完整融合；本机学习记录不受此检查影响。',
+        : '云端完整 V4 检查或传输失败，尚未完成完整融合；本机学习记录不受此检查影响。' + v4FailureDetail(error),
     }
   }
 }

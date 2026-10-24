@@ -332,6 +332,20 @@ test('historical six-table startup download and automatic divergent reauth conve
     expect(archives.some((words) => words.length === 5 && words.includes(leftWord) && words.includes(rightWord))).toBe(true)
     proof.automaticForkMergedBoth = true
     proof.originalForkArchivesPreserved = true
+    const diagnosticStages = await pages[0].evaluate(() =>
+      JSON.parse(sessionStorage.getItem('qwerty.perf-diagnostics.v1') || '[]') as Array<{ stage: string; outcome?: string }>,
+    )
+    for (const stage of ['merge-download', 'merge-verify-cloud', 'merge-decode-local', 'merge-decode-cloud',
+      'merge-records', 'merge-decode-candidate', 'merge-build', 'merge-archive', 'merge-upload', 'merge-stage-journal']) {
+      expect(diagnosticStages.some(row => row.stage === stage && row.outcome === 'ok'), stage).toBe(true)
+    }
+    proof.automaticMergeStageEvidence = true
+    const priorFailures = await pages[1].evaluate(() =>
+      JSON.parse(sessionStorage.getItem('qwerty.perf-diagnostics.v1') || '[]') as Array<{ stage: string; outcome?: string }>,
+    )
+    expect(priorFailures.some(row => row.stage === 'remote-meta' && row.outcome === 'failed')).toBe(true)
+    proof.failedMetadataStageRecorded = true
+
     await account(pages[0])
     await login(pages[1], username, password)
     expect(await evidence(pages[1])).toEqual(merged)
