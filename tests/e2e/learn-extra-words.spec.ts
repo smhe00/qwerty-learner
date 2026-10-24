@@ -105,7 +105,9 @@ test(`five-more prioritizes unfinished recall and caps the complete round at fiv
   await page.goto('/learn')
   const extra = page.getByRole('button', { name: '多学五词', exact: true })
   await expect(extra).toBeVisible()
-  await expect(page.getByText(/未通过最终测试的单词已保留/)).toBeVisible()
+  // The landing copy now describes retained consolidation, not a failed
+  // final test. Keep every subsequent admission/queue/durable-row assertion.
+  await expect(page.getByRole('status').filter({ hasText: '本轮练习已结束，需要巩固的单词已保留，可再学五词。' })).toBeVisible()
   await expect(page.getByRole('button', { name: '开始 Learn', exact: true })).toHaveCount(0)
   await page.reload()
   await expect(extra).toBeVisible()

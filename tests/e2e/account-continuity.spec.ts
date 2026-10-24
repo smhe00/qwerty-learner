@@ -20,9 +20,15 @@ test('account inspection and responsive layout keep the document, writer lease a
   await page.setViewportSize({ width: 500, height: 800 })
   await expect(page).toHaveURL(/\/mobile$/)
   await page.getByRole('link', { name: /账号与云同步/ }).click()
+  await expect(page.locator('[data-mobile-data]')).toBeVisible()
+  await page.getByRole('button', { name: '管理账号', exact: true }).click()
   await expect(page.locator('[data-account-overview]')).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page.locator('[data-account-overview]')).toHaveCount(0)
+  // Explicit detail routes remain mobile through rotation; the home route
+  // still transitions to desktop Learn without replacing the document.
+  await page.getByRole('link', { name: '返回首页', exact: true }).click()
+  await expect(page).toHaveURL(/\/mobile$/)
   await page.setViewportSize({ width: 1280, height: 800 })
   await expect(page).toHaveURL(/\/learn$/)
   expect(await page.evaluate(() => performance.timeOrigin)).toBe(origin)

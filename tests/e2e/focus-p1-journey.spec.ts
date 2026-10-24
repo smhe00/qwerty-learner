@@ -31,7 +31,7 @@ test('P1 uses quiet wrong-word feedback without changing ESC or character eviden
   await expect(word).toHaveAttribute('data-review-hint-level', '3')
 })
 
-test('P1 Block milestone keeps exactly five existing metrics and Continue behavior', async ({ page }) => {
+test('P1 Block milestone separates six progress metrics and preserves Continue behavior', async ({ page }) => {
   test.setTimeout(90_000)
   await seedReviewSession(page, reviewWords, 901213)
   await page.goto('/learn')
@@ -48,8 +48,14 @@ test('P1 Block milestone keeps exactly five existing metrics and Continue behavi
   await expect(bar).toBeVisible()
   await expect(bar).toHaveAttribute('aria-valuemin', '0')
   await expect(bar).toHaveAttribute('aria-valuemax', '100')
-  await expect(result.locator('[data-focus-result-metrics] .focus-result-metric')).toHaveCount(5)
-  await expect(result.locator('.focus-result-metric').first()).toHaveAttribute('data-emphasis', 'primary')
+  // Completed review work and items needing consolidation are intentionally
+  // separate. Assert the six actual meanings, not the retired five-card UI.
+  const metrics = result.locator('[data-focus-result-metrics] .focus-result-metric')
+  await expect(metrics).toHaveCount(6)
+  for (const [index, label] of ['今日进度', '今日新词', '复习已完成', '复习需巩固', '待完成', '学习时间'].entries()) {
+    await expect(metrics.nth(index).getByText(label, { exact: true })).toBeVisible()
+  }
+  await expect(metrics.first()).toHaveAttribute('data-emphasis', 'primary')
   await expect(result.getByRole('button', { name: '按任意键继续' })).toBeVisible()
   await page.screenshot({
     path: 'test-results/focus-p1/milestone-light.png',

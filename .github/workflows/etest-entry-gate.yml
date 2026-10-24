@@ -12,6 +12,8 @@ on:
       - 'tests/cloud/**'
       - 'tests/e2e/etest-login-v4-history.*'
       - 'tests/e2e/pages-regression.spec.ts'
+      - 'tests/e2e/account-continuity.spec.ts'
+      - 'tests/e2e/mobile-account-writer.spec.ts'
       - '.github/workflows/etest-entry-gate.yml'
       - 'scripts/verify-etest-entry.mjs'
       - 'scripts/wait-pages-deployment.mjs'

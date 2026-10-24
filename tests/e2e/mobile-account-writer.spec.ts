@@ -31,15 +31,16 @@ for (const entry of ['avatar', 'menu']) {
       const base = document.createElement('base')
       base.target = '_blank'
       document.head.append(base)
-      // React handles the click at its root and may stop propagation there.
+      const selector = 'a[href$="/mobile/account"], a[href$="/mobile/data"]'
+      // React handles both account entry and in-document data navigation.
       document.getElementById('root')!.addEventListener('click', (event) => {
-        if ((event.target as Element).closest('a[href$="/mobile/account"]')) {
+        if ((event.target as Element).closest(selector)) {
           sessionStorage.setItem('account-click-handled', String(event.defaultPrevented))
         }
       })
       // Model an embedder that opens ordinary link activations in another tab.
       document.addEventListener('click', (event) => {
-        const link = (event.target as Element).closest('a[href$="/mobile/account"]') as HTMLAnchorElement | null
+        const link = (event.target as Element).closest(selector) as HTMLAnchorElement | null
         if (!link) return
         sessionStorage.setItem('account-click-handled', String(event.defaultPrevented))
         if (!event.defaultPrevented) {
@@ -56,14 +57,22 @@ for (const entry of ['avatar', 'menu']) {
     else {
       await link.focus()
       await page.keyboard.press('Enter')
+      await expect(page.locator('[data-mobile-data]')).toBeVisible()
+      await expect(page).toHaveURL(/\/mobile\/data$/)
+      expect(await page.evaluate(() => performance.timeOrigin)).toBe(timeOrigin)
+      expect(context.pages()).toHaveLength(1)
+      await page.getByRole('button', { name: '管理账号', exact: true }).tap()
     }
+    // The menu now has one legitimate SPA route in history. Opening the
+    // overview and entering pre-mount auth must not add a writer predecessor.
+    const expectedHistory = historyLength + (entry === 'menu' ? 1 : 0)
     await expect(page.locator('[data-account-overview]')).toBeVisible()
     expect(await page.evaluate(() => performance.timeOrigin)).toBe(timeOrigin)
-    expect(await page.evaluate(() => history.length)).toBe(historyLength)
+    expect(await page.evaluate(() => history.length)).toBe(expectedHistory)
     await page.getByRole('button', { name: '登录或注册', exact: true }).tap()
     await expect(page.locator('[data-mobile-account]')).toBeVisible()
     expect(context.pages()).toHaveLength(1)
-    expect(await page.evaluate(() => history.length)).toBe(historyLength)
+    expect(await page.evaluate(() => history.length)).toBe(expectedHistory)
     expect(await page.evaluate(() => sessionStorage.getItem('account-click-handled'))).toBe('true')
   })
 }
