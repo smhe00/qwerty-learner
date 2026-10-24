@@ -63,6 +63,7 @@ test(`P0: fresh etest anonymous Learn, account and clear (${missingWebLocks ? 'f
       const before = await recordCount()
       console.log('P0 staging checkpoint: opening account entry')
       await page.locator('[data-account-entry]').click()
+  await page.getByRole('button', { name: /^(登录或注册|登录与账号管理)$/ }).click()
       await expect(page.locator('[data-account]'))
         .toBeVisible({ timeout: 30_000 })
       await expect(page.getByText('S1 本机学习数据归属确认')).toHaveCount(0)

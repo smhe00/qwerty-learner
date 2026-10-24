@@ -1,4 +1,5 @@
 import { DEVELOPER_DIAGNOSTICS_CONFIG_KEY, createDeveloperTraceEnvelope } from './diagnostic-trace'
+import { deriveLearnDailyProgress, loadLearnDailySession } from '@/learn/daily-session'
 import { readLearningSyncDiagnostics } from '@/sync/learning-sync-diagnostics'
 import { planOutboxRecovery } from '@/sync/multi-device-recovery'
 import { readPerfSamples } from '@/sync/perf-diagnostics'
@@ -116,10 +117,23 @@ export async function createDeveloperIncidentSnapshot() {
     recoveryReason: syncAudit.status === 'blocked' ? syncAudit.reason : 'none',
     performance: readPerfSamples(),
   }
+  const daily = database.dict ? loadLearnDailySession(database.dict) : null
+  const progress = daily ? deriveLearnDailyProgress({ session: daily, wordRecords: database.wordRecords }) : null
+  const learningProgress = progress
+    ? {
+        reviewPlanned: progress.reviewTargetWords,
+        reviewCompleted: progress.completedReviewWords,
+        independentReviewPassed: progress.independentReviewWords,
+        reviewNeedsConsolidation: progress.reviewWordsToConsolidate,
+        remainingTasks: progress.remainingWords,
+        completedTasks: progress.completedWords,
+      }
+    : null
   const activeElement = document.activeElement
 
   return {
     schema: DEVELOPER_INCIDENT_SCHEMA,
+    learningProgress,
     capturedAt: Date.now(),
     build: {
       commit: LATEST_COMMIT_HASH,

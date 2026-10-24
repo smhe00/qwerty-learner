@@ -4,8 +4,8 @@ import {
   getLearnExtraRoundNames,
   loadLearnDailySession,
 } from '@/learn/daily-session'
-import { TypingContext } from '@/pages/Typing/store'
 import InfoBox from '@/pages/Typing/components/Speed/InfoBox'
+import { TypingContext } from '@/pages/Typing/store'
 import { reviewModeInfoAtom } from '@/store'
 import { db } from '@/utils/db'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -23,8 +23,8 @@ function formatClock(seconds: number): string {
  * Learn-only daily strip.
  *
  * Blocks are intentionally invisible here: the learner sees one daily plan
- * whose progress advances only when a logical word reaches its final required
- * independent-clean completion.
+ * whose progress counts completed formal reviews separately from independent
+ * clean recall. Acquisition completion keeps its original strict evidence.
  */
 export default function LearnLiveStats() {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -60,51 +60,23 @@ export default function LearnLiveStats() {
     })
   }, [daily, wordRecords])
 
-  const extraProgress = daily && getLearnExtraRoundNames(daily) ? deriveLearnExecutionProgress({ session: daily, wordRecords: wordRecords ?? [] }) : null
+  const extraProgress =
+    daily && getLearnExtraRoundNames(daily) ? deriveLearnExecutionProgress({ session: daily, wordRecords: wordRecords ?? [] }) : null
 
-  const dailySeconds =
-    (daily?.accumulatedActiveSeconds ?? 0) + state.timerData.time
+  const dailySeconds = (daily?.accumulatedActiveSeconds ?? 0) + state.timerData.time
 
   return (
-    <div
-      className="focus-stats-strip"
-      data-learn-live-stats
-      data-stat-count={extraProgress ? 6 : 5}
-    >
-      <InfoBox
-        info={formatClock(dailySeconds)}
-        description="学习时间"
-      />
+    <div className="focus-stats-strip" data-learn-live-stats data-stat-count={extraProgress ? 7 : 6}>
+      <InfoBox info={formatClock(dailySeconds)} description="学习时间" />
       {extraProgress ? <InfoBox info={`${extraProgress.completedWords}/${extraProgress.targetWords}`} description="本轮加学" /> : null}
-      <InfoBox
-        info={
-          progress
-            ? `${progress.completedWords}/${progress.targetWords}`
-            : '0/0'
-        }
-        description="今日进度"
-        prominent
-      />
-      <InfoBox
-        info={
-          daily && progress
-            ? `${progress.introducedNewWords}/${progress.newTargetWords}`
-            : '0/0'
-        }
-        description="今日新词"
-      />
-      <InfoBox
-        info={
-          progress
-            ? `${progress.completedReviewWords}/${progress.reviewTargetWords}`
-            : '0/0'
-        }
-        description="今日复习"
-      />
+      <InfoBox info={progress ? `${progress.completedWords}/${progress.targetWords}` : '0/0'} description="今日进度" prominent />
+      <InfoBox info={daily && progress ? `${progress.introducedNewWords}/${progress.newTargetWords}` : '0/0'} description="今日新词" />
+      <InfoBox info={progress ? `${progress.completedReviewWords}/${progress.reviewTargetWords}` : '0/0'} description="复习已完成" />
       <InfoBox
         info={String(extraProgress?.remainingWords ?? progress?.remainingWords ?? 0)}
         description={extraProgress ? '本轮待完成' : '待完成'}
       />
+      <InfoBox info={String(progress?.reviewWordsToConsolidate ?? 0)} description="复习需巩固" />
     </div>
   )
 }

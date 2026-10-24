@@ -4,15 +4,16 @@ import './index.css'
 import { ErrorBook } from './pages/ErrorBook'
 import { FriendLinks } from './pages/FriendLinks'
 import MobilePage from './pages/Mobile'
-import MobileStudyPage from './pages/Mobile/MobileStudy'
 import MobileLibrary from './pages/Mobile/MobileLibrary'
 import MobileSettings from './pages/Mobile/MobileSettings'
+import MobileStudyPage from './pages/Mobile/MobileStudy'
 import TypingPage from './pages/Typing'
+import AccountOverview from './sync/AccountOverview'
+import { isBrowserFuzzFaultEnabled } from '@/dev/browser-fuzz-hooks'
 import { isOpenDarkModeAtom, reviewModeInfoAtom } from '@/store'
 import 'animate.css'
 import { useAtom, useAtomValue } from 'jotai'
 import React, { Suspense, lazy, useEffect, useRef, useState } from 'react'
-import { isBrowserFuzzFaultEnabled } from '@/dev/browser-fuzz-hooks'
 import 'react-app-polyfill/stable'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
@@ -26,10 +27,7 @@ const loadGalleryPage = () => import('./pages/Gallery-N')
 const loadLearnPage = () => import('./pages/Learn')
 const loadAchievementsPage = () => import('./pages/Achievements')
 
-async function loadRouteWithRefresh<T>(
-  routeKey: string,
-  loader: () => Promise<T>,
-): Promise<T> {
+async function loadRouteWithRefresh<T>(routeKey: string, loader: () => Promise<T>): Promise<T> {
   const retryKey = `qwerty:lazy-route-reload:${routeKey}`
 
   try {
@@ -50,18 +48,10 @@ async function loadRouteWithRefresh<T>(
   }
 }
 
-const AnalysisPage = lazy(() =>
-  loadRouteWithRefresh('analysis', loadAnalysisPage),
-)
-const GalleryPage = lazy(() =>
-  loadRouteWithRefresh('gallery', loadGalleryPage),
-)
-const LearnPage = lazy(() =>
-  loadRouteWithRefresh('learn', loadLearnPage),
-)
-const AchievementsPage = lazy(() =>
-  loadRouteWithRefresh('achievements', loadAchievementsPage),
-)
+const AnalysisPage = lazy(() => loadRouteWithRefresh('analysis', loadAnalysisPage))
+const GalleryPage = lazy(() => loadRouteWithRefresh('gallery', loadGalleryPage))
+const LearnPage = lazy(() => loadRouteWithRefresh('learn', loadLearnPage))
+const AchievementsPage = lazy(() => loadRouteWithRefresh('achievements', loadAchievementsPage))
 
 /** The homepage always enters Learn. Explicit /typing deep links stay Typing,
  * and /learn retains its existing durable-checkpoint recovery semantics. */
@@ -86,11 +76,12 @@ function DesktopRoutes() {
   const location = useLocation()
   const isAuxiliary = AUXILIARY_PATHS.has(location.pathname)
   const background = getAuxiliaryBackground(location.pathname, location.search, location.state)
-  const persistedBackground = (location.state as {
-    backgroundLocation?: { pathname: string }
-  } | null)?.backgroundLocation
-  const hasLiveBackground = persistedBackground?.pathname === '/learn' ||
-    persistedBackground?.pathname === '/typing'
+  const persistedBackground = (
+    location.state as {
+      backgroundLocation?: { pathname: string }
+    } | null
+  )?.backgroundLocation
+  const hasLiveBackground = persistedBackground?.pathname === '/learn' || persistedBackground?.pathname === '/typing'
   return (
     <>
       <Routes location={isAuxiliary && hasLiveBackground && background ? background : location}>
@@ -106,19 +97,29 @@ function DesktopRoutes() {
         <Route path="/*" element={<Navigate to="/" />} />
       </Routes>
       {isAuxiliary && hasLiveBackground && location.pathname === '/gallery' && (
-        <NavigationOverlay title="选择词库" size="xl"><GalleryPage embedded /></NavigationOverlay>
+        <NavigationOverlay title="选择词库" size="xl">
+          <GalleryPage embedded />
+        </NavigationOverlay>
       )}
       {isAuxiliary && hasLiveBackground && location.pathname === '/analysis' && (
-        <NavigationOverlay title="数据统计" size="xl"><AnalysisPage embedded /></NavigationOverlay>
+        <NavigationOverlay title="数据统计" size="xl">
+          <AnalysisPage embedded />
+        </NavigationOverlay>
       )}
       {isAuxiliary && hasLiveBackground && location.pathname === '/achievements' && (
-        <NavigationOverlay title="成就" size="xl"><AchievementsPage embedded /></NavigationOverlay>
+        <NavigationOverlay title="成就" size="xl">
+          <AchievementsPage embedded />
+        </NavigationOverlay>
       )}
       {isAuxiliary && hasLiveBackground && location.pathname === '/error-book' && (
-        <NavigationOverlay title="错题本" size="lg"><ErrorBook embedded /></NavigationOverlay>
+        <NavigationOverlay title="错题本" size="lg">
+          <ErrorBook embedded />
+        </NavigationOverlay>
       )}
       {isAuxiliary && hasLiveBackground && location.pathname === '/friend-links' && (
-        <NavigationOverlay title="网站信息" size="md"><FriendLinks embedded /></NavigationOverlay>
+        <NavigationOverlay title="网站信息" size="md">
+          <FriendLinks embedded />
+        </NavigationOverlay>
       )}
     </>
   )
@@ -131,9 +132,12 @@ function MobileAchievementsRoute() {
     <div className="min-h-screen bg-[#f7f4ed] px-2 py-3 text-[#2c2a29] dark:bg-[#1d292c] dark:text-[#eee8dc]">
       <header className="mx-auto mb-3 flex w-full max-w-5xl items-center justify-between gap-3 px-2">
         <span className="text-sm font-semibold tracking-wide">QWERTY Plus · 成就雅集</span>
-        <button type="button" onClick={() => navigate('/mobile')}
+        <button
+          type="button"
+          onClick={() => navigate('/mobile')}
           className="rounded-lg border border-[#b9ae9a] px-3 py-2 text-sm dark:border-[#71847b]"
-          aria-label="返回移动端说明">
+          aria-label="返回移动端说明"
+        >
           返回
         </button>
       </header>
@@ -145,6 +149,14 @@ function MobileAchievementsRoute() {
 /** An explicit mobile study route stays mounted through tablet rotation. */
 function ResponsiveRoutes({ isMobile }: { isMobile: boolean }) {
   const location = useLocation()
+  const navigate = useNavigate()
+  const previousMobile = useRef(isMobile)
+  useEffect(() => {
+    if (previousMobile.current && !isMobile && location.pathname === '/mobile') {
+      navigate('/learn', { replace: true })
+    }
+    previousMobile.current = isMobile
+  }, [isMobile, location.pathname, navigate])
   if (location.pathname === '/mobile/study') return <MobileStudyPage />
   if (location.pathname === '/mobile/library') return <MobileLibrary />
   if (location.pathname === '/mobile/settings') return <MobileSettings />
@@ -154,7 +166,9 @@ function ResponsiveRoutes({ isMobile }: { isMobile: boolean }) {
       <Route path="/achievements" element={<MobileAchievementsRoute />} />
       <Route path="/*" element={<Navigate to="/mobile" replace />} />
     </Routes>
-  ) : <DesktopRoutes />
+  ) : (
+    <DesktopRoutes />
+  )
 }
 
 function Root() {
@@ -194,37 +208,16 @@ function Root() {
   }, [darkMode])
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= MOBILE_LAYOUT_BREAKPOINT)
-  const wasMobileRef = useRef(isMobile)
 
   useEffect(() => {
     const handleResize = () => {
       const nextIsMobile = window.innerWidth <= MOBILE_LAYOUT_BREAKPOINT
-      const wasMobile = wasMobileRef.current
-      wasMobileRef.current = nextIsMobile
       setIsMobile(nextIsMobile)
 
-      // Desktop resize is not navigation. The old handler forced every
-      // desktop resize (DevTools, side panel, window drag) through "/", which
-      // could remount Typing after a Learn terminal checkpoint and resurrect
-      // the final word. Only a real mobile -> desktop transition needs to
-      // leave the dedicated /mobile route.
-      if (
-        (
-          isBrowserFuzzFaultEnabled(
-            'desktop-resize-navigates-root',
-          ) &&
-          !nextIsMobile
-        ) ||
-        (
-          wasMobile &&
-          !nextIsMobile &&
-          window.location.pathname.endsWith('/mobile')
-        )
-      ) {
-        const rootPath =
-          REACT_APP_DEPLOY_ENV === 'pages'
-            ? '/qwerty-learner/'
-            : '/'
+      // Normal responsive transitions stay inside the router and retain the
+      // same document/writer lease. Keep the explicit simulator fault only.
+      if (isBrowserFuzzFaultEnabled('desktop-resize-navigates-root') && !nextIsMobile) {
+        const rootPath = REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner/' : '/'
         window.location.replace(rootPath)
       }
     }
@@ -239,6 +232,7 @@ function Root() {
         <Suspense fallback={<Loading />}>
           <ResponsiveRoutes isMobile={isMobile} />
         </Suspense>
+        <AccountOverview />
       </BrowserRouter>
     </React.StrictMode>
   )

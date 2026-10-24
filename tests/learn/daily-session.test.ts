@@ -491,3 +491,28 @@ test('five-more resumes unfinished reviews and carry-over before adding fresh wo
   assert.equal(progress.carryOverTargetWords, 1)
   assert.equal(progress.newTargetWords, 3)
 })
+
+
+test('formal failed review completes today task without claiming independent mastery or changing records', () => {
+  const session = { ...createLearnDailySession({ dict: 'daily-test', now: START, dailyNewTarget: 0,
+    dictionaryWords: ['forgot', 'clean', 'pending', 'practice'], wordRecords: [], wordStates: [] }),
+    plannedReviewWords: ['forgot', 'clean', 'pending', 'practice'], plannedNewWords: 0 }
+  const failed = independentCleanReview('forgot', START + 10)
+  failed.reviewEvidence = { ...failed.reviewEvidence!, memoryGrade: 'again', errorCause: 'recall' }
+  failed.reviewRatingDecision = { eligible: true, rating: 'again', confidence: 1, reasonCodes: ['cold-probe-surrendered'] }
+  const reinforcement = independentCleanReview('forgot', START + 20)
+  reinforcement.reviewRatingDecision = { eligible: false, rating: null, reason: 'non-cold-attempt', reasonCodes: ['non-cold-attempt'] }
+  const practice = { ...independentCleanReview('practice', START + 10), learnItemKind: 'practice' as const }
+  const records = [failed, reinforcement, independentCleanReview('clean', START + 10), practice, independentCleanReview('pending', START - 1)]
+  const before = JSON.stringify(records)
+  const result = deriveLearnDailyProgress({ session, wordRecords: records })
+  assert.equal(result.completedReviewWords, 2)
+  assert.equal(result.independentReviewWords, 1)
+  assert.equal(result.reviewWordsToConsolidate, 1)
+  assert.equal(result.remainingWords, 2)
+  assert.deepEqual(result.independentCompletedWords, ['clean'])
+  assert.equal(JSON.stringify(records), before)
+  const extra = deriveLearnExecutionProgress({ session: { ...session, extraRoundWordNames: ['forgot'], extraRoundStartedAt: START + 30 }, wordRecords: records })
+  assert.equal(extra.completedReviewWords, 0)
+  assert.equal(extra.complete, false)
+})

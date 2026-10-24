@@ -80,7 +80,7 @@ test('multi-word Review advances through every rendered word and finishes', asyn
     learnResult.getByText('今日进度', { exact: true }),
   ).toBeVisible()
   await expect(
-    learnResult.getByText('今日复习', { exact: true }),
+    learnResult.getByText('复习已完成', { exact: true }),
   ).toBeVisible()
   await expect(
     learnResult.getByText('今日新词', { exact: true }),

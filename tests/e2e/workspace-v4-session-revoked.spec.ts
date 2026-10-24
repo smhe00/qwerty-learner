@@ -106,7 +106,8 @@ test('revoked device can reauthenticate same account without losing offline reco
     }).catch(() => null)
     // In the pre-mount login realm, no React/RecordDB writer is present.
     expect(oldOwner).toBeNull()
-    await manage.getByRole('button', { name: '重新验证登录', exact: true }).click()
+    await expect(pageA.getByLabel('账户密码', { exact: true })).toBeVisible()
+    await expect(manage).toContainText('请验证密码')
     await pageA.getByLabel('用户名', { exact: true }).fill('revocation-test')
     await pageA.getByLabel('账户密码', { exact: true }).fill('testing')
     await manage.getByRole('button', { name: '确认重新登录', exact: true }).click()
@@ -118,7 +119,7 @@ test('revoked device can reauthenticate same account without losing offline reco
     // account document's location.replace. Wait for the REAL app handoff
     // before opening the readback harness, or that pending navigation can
     // abort the observer's goto. Keep all durable-data assertions below.
-    await expect(pageA).toHaveURL(/\/$/, { timeout: 35_000 })
+    await expect(pageA).toHaveURL(/\/(?:learn)?$/, { timeout: 35_000 })
     await expect(pageA.getByRole('button', { name: '打开设置对话框' }))
       .toBeVisible({ timeout: 35_000 })
 

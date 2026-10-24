@@ -48,8 +48,7 @@ html.dark {
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Roboto',
-    'Helvetica Neue', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Roboto', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--focus-canvas);
@@ -216,6 +215,9 @@ body,
    one row on wide screens, without silently dropping/overlapping a value. */
 .focus-stats-strip[data-stat-count='6'] {
   grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.focus-stats-strip[data-stat-count='7'] {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
 .focus-stat-cell {
@@ -439,17 +441,25 @@ body,
 }
 
 @media (max-width: 760px) {
-  .focus-result-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .focus-word-layout { min-height: 205px; }
+  .focus-result-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .focus-word-layout {
+    min-height: 205px;
+  }
 }
 
 @media (max-width: 450px) {
-  .focus-result-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .focus-result-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* Avoid 3D and scale motion for those who prefer still feedback. */
 @media (prefers-reduced-motion: reduce) {
-  .focus-result-progress-fill { transition: none; }
+  .focus-result-progress-fill {
+    transition: none;
+  }
 }
 
 .focus-overlay-panel {
@@ -566,8 +576,12 @@ a:focus-visible,
     grid-template-columns: repeat(3, minmax(0, 1fr));
     row-gap: 6px;
   }
-  .focus-stats-strip[data-stat-count='6'] {
+  .focus-stats-strip[data-stat-count='6'],
+  .focus-stats-strip[data-stat-count='7'] {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .focus-stats-strip[data-stat-count='7'] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .focus-stat-cell:nth-child(4) {
     border-left: 0;
@@ -579,7 +593,8 @@ a:focus-visible,
     grid-template-columns: repeat(2, minmax(0, 1fr));
     padding: 10px 8px;
   }
-  .focus-stats-strip[data-stat-count='6'] {
+  .focus-stats-strip[data-stat-count='6'],
+  .focus-stats-strip[data-stat-count='7'] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .focus-stat-cell:nth-child(odd) {
@@ -588,8 +603,12 @@ a:focus-visible,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html:focus-within { scroll-behavior: auto; }
-  *, *::before, *::after {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

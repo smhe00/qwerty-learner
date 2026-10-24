@@ -20,6 +20,7 @@ type AccountView = {
   auth: CloudAuthState | null
   cloudDisabled: boolean
   mobile?: boolean
+  reauthenticate?: boolean
   onChangePassword?: (currentPassword: string, newPassword: string) => void
 }
 
@@ -49,6 +50,7 @@ export function presentAccount(view: AccountView) {
     auth,
     cloudDisabled,
     mobile = true,
+    reauthenticate = false,
     onChangePassword,
   } = view
   const anonymous = active.kind === 'anonymous'
@@ -58,7 +60,7 @@ export function presentAccount(view: AccountView) {
   const fields = [username, password, ...(passwordConfirm ? [passwordConfirm] : [])]
   let mode: 'login' | 'register' = 'login'
   let busy = false
-  let credentialsVisible = anonymous || expired
+  let credentialsVisible = anonymous || expired || reauthenticate
   let dark = window.matchMedia('(prefers-color-scheme: dark)').matches
   try {
     const saved = JSON.parse(localStorage.getItem('isOpenDarkModeAtom') || 'null')
@@ -75,10 +77,11 @@ export function presentAccount(view: AccountView) {
   if (mobile) overlay.dataset.mobileAccount = ''
   else overlay.dataset.desktopAccount = ''
   overlay.dataset.theme = dark ? 'dark' : 'light'
-  overlay.setAttribute('role', 'main')
+  overlay.setAttribute('role', 'presentation')
   main.className = 'mobile-account-card'
-  main.setAttribute('role', 'region')
-  main.removeAttribute('aria-modal')
+  main.setAttribute('role', 'dialog')
+  main.setAttribute('aria-modal', 'true')
+  main.setAttribute('aria-labelledby', heading.id)
   const top = el('header', '', 'mobile-account-top')
   const mark = el('div', '', 'mobile-account-brand')
   const image = el('img')
@@ -92,13 +95,19 @@ export function presentAccount(view: AccountView) {
   goBack.addEventListener('click', () => back.click())
   controls.push(goBack)
   top.append(goBack, mark)
-  overlay.prepend(top)
+  main.prepend(top)
   const eyebrow = el('p', anonymous ? 'YOUR LEARNING SPACE' : 'MY ACCOUNT', 'mobile-account-eyebrow')
   heading.textContent = anonymous ? '登录 QWERTY Plus' : '我的账号'
   heading.tabIndex = -1
   current.textContent = anonymous ? '把每天的积累，留在自己的学习空间。' : auth?.user.username || '当前账号'
   current.className = 'mobile-account-description'
-  authState.textContent = anonymous ? '' : expired ? '登录已过期 · 本机学习记录仍保留' : '已登录 · 正在使用独立的账号学习空间'
+  authState.textContent = anonymous
+    ? ''
+    : reauthenticate
+    ? '请验证密码，重新连接当前账号'
+    : expired
+    ? '登录已过期 · 本机学习记录仍保留'
+    : '已登录 · 正在使用独立的账号学习空间'
   authState.className = 'mobile-account-state'
   authState.hidden = anonymous
   guidance.textContent = anonymous
@@ -320,7 +329,7 @@ export function presentAccount(view: AccountView) {
   back.textContent = anonymous ? '暂不登录，继续本机学习' : '返回学习'
   main.append(guidance, back)
   const foot = el('p', '练打字 · 记单词 · 云同步', 'mobile-account-footer')
-  overlay.append(foot)
+  main.append(foot)
   if (cloudDisabled) {
     const notice = el('p', '当前为开发预览，登录和注册暂不可用。你仍可继续本机学习。', 'mobile-account-preview')
     notice.setAttribute('role', 'note')

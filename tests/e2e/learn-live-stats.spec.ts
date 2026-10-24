@@ -87,7 +87,7 @@ test('Learn shows exactly five pressure-free live metrics', async ({ page }) => 
   expect(cells[0]).toMatch(/^\d{2}:\d{2}学习时间$/)
   expect(cells[1]).toBe('0/2今日进度')
   expect(cells[2]).toBe('0/0今日新词')
-  expect(cells[3]).toBe('0/2今日复习')
+  expect(cells[3]).toBe('0/2复习已完成')
   expect(cells[4]).toBe('2待完成')
 
   const stripText = await page.locator('[data-learn-live-stats]').textContent()
@@ -167,14 +167,14 @@ test('Learn reconstructs persisted evidence and survives reload without double c
   const beforeReload = await readLearnStrip(page)
   expect(beforeReload[1]).toBe('1/2今日进度')
   expect(beforeReload[2]).toBe('1/1今日新词')
-  expect(beforeReload[3]).toBe('1/1今日复习')
+  expect(beforeReload[3]).toBe('1/1复习已完成')
   expect(beforeReload[4]).toBe('1待完成')
 
   await page.reload()
   const afterReload = await readLearnStrip(page)
   expect(afterReload[1]).toBe('1/2今日进度')
   expect(afterReload[2]).toBe('1/1今日新词')
-  expect(afterReload[3]).toBe('1/1今日复习')
+  expect(afterReload[3]).toBe('1/1复习已完成')
   expect(afterReload[4]).toBe('1待完成')
 })
 
@@ -208,7 +208,7 @@ test('Learn 今日进度 ignores block cursor and advances only from valid indep
   await page.goto('/learn')
   const cells = await readLearnStrip(page)
   expect(cells[1]).toBe('1/2今日进度')
-  expect(cells[3]).toBe('1/2今日复习')
+  expect(cells[3]).toBe('1/2复习已完成')
   expect(cells[4]).toBe('1待完成')
 })
 

@@ -105,18 +105,18 @@ test('Focus P2 keeps every long-word letter inside the zoomed study viewport', a
   })
 })
 
-test('Focus P2 lets the sixth extra-round metric fit without pushing a whole orphan row', async ({ page }) => {
+test('Focus P2 lets the seventh extra-round metric fit without pushing a whole orphan row', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   await seedReviewSession(page, reviewWords, 902102)
   await page.goto('/learn')
   const stats = page.locator('[data-learn-live-stats]')
   await expect(stats).toBeVisible({ timeout: 20_000 })
-  await expect(stats).toHaveAttribute('data-stat-count', '5')
+  await expect(stats).toHaveAttribute('data-stat-count', '6')
 
   // Simulate the extra-round presentation state only. This checks the CSS
   // contract without mutating scheduled words or persisted session progress.
   await stats.evaluate(node => {
-    node.setAttribute('data-stat-count', '6')
+    node.setAttribute('data-stat-count', '7')
     const sample = node.lastElementChild!.cloneNode(true) as HTMLElement
     sample.querySelector('.focus-stat-label')!.textContent = '本轮待完成'
     node.appendChild(sample)
@@ -130,7 +130,7 @@ test('Focus P2 lets the sixth extra-round metric fit without pushing a whole orp
       overflow: cells.some(rect => rect.right > strip.right + 1 || rect.left < strip.left - 1),
     }
   })
-  expect(await geometry()).toEqual({ count: 6, rows: 1, overflow: false })
+  expect(await geometry()).toEqual({ count: 7, rows: 1, overflow: false })
 
   await page.setViewportSize({ width: 840, height: 800 })
   await expect.poll(async () => (await geometry()).rows).toBe(2)

@@ -1,20 +1,13 @@
+import { isAcquisitionIntroductionRecord, isCompletedAcquisitionRecord } from './admission'
 import { DEFAULT_LEARN_BLOCK_SIZE } from './block-size'
-import {
-  isAcquisitionIntroductionRecord,
-  isCompletedAcquisitionRecord,
-} from './admission'
 import { isUnverifiedLegacyMobilePositiveReview } from '@/review/legacy-mobile-evidence'
 import type { IReviewWordState } from '@/review/types'
 import type { IWordRecord } from '@/utils/db/record'
 
 export const LEARN_DAILY_SESSION_VERSION = 1 as const
-export const LEARN_DAILY_SESSION_STORAGE_PREFIX =
-  'qwerty.learn.dailySession.v1'
+export const LEARN_DAILY_SESSION_STORAGE_PREFIX = 'qwerty.learn.dailySession.v1'
 
-export type LearnDailySessionStatus =
-  | 'active'
-  | 'completed'
-  | 'abandoned'
+export type LearnDailySessionStatus = 'active' | 'completed' | 'abandoned'
 
 export type LearnDailySessionV1 = {
   version: typeof LEARN_DAILY_SESSION_VERSION
@@ -52,6 +45,9 @@ export type LearnDailyProgress = {
   percent: number
   reviewTargetWords: number
   completedReviewWords: number
+  /** Formal review tasks completed, separately from independent clean recall. */
+  independentReviewWords: number
+  reviewWordsToConsolidate: number
   carryOverTargetWords: number
   completedCarryOverWords: number
   newTargetWords: number
@@ -91,9 +87,7 @@ function storageKey(dict: string) {
   return `${LEARN_DAILY_SESSION_STORAGE_PREFIX}.${dict}`
 }
 
-export function loadLearnDailySession(
-  dict: string,
-): LearnDailySessionV1 | null {
+export function loadLearnDailySession(dict: string): LearnDailySessionV1 | null {
   if (typeof window === 'undefined') return null
 
   try {
@@ -118,14 +112,9 @@ export function loadLearnDailySession(
   }
 }
 
-export function saveLearnDailySession(
-  session: LearnDailySessionV1,
-): LearnDailySessionV1 {
+export function saveLearnDailySession(session: LearnDailySessionV1): LearnDailySessionV1 {
   if (typeof window !== 'undefined') {
-    window.localStorage.setItem(
-      storageKey(session.dict),
-      JSON.stringify(session),
-    )
+    window.localStorage.setItem(storageKey(session.dict), JSON.stringify(session))
   }
   return session
 }
@@ -142,19 +131,14 @@ export function clearAllLearnDailySessions(): void {
   const keys: string[] = []
   for (let index = 0; index < window.localStorage.length; index += 1) {
     const key = window.localStorage.key(index)
-    if (
-      key &&
-      key.startsWith(`${LEARN_DAILY_SESSION_STORAGE_PREFIX}.`)
-    ) {
+    if (key && key.startsWith(`${LEARN_DAILY_SESSION_STORAGE_PREFIX}.`)) {
       keys.push(key)
     }
   }
   for (const key of keys) window.localStorage.removeItem(key)
 }
 
-function firstAcquisitionIntroductionByWord(
-  wordRecords: IWordRecord[],
-): Map<string, IWordRecord> {
+function firstAcquisitionIntroductionByWord(wordRecords: IWordRecord[]): Map<string, IWordRecord> {
   const first = new Map<string, IWordRecord>()
 
   for (const record of wordRecords) {
@@ -163,8 +147,7 @@ function firstAcquisitionIntroductionByWord(
     if (
       !previous ||
       record.timeStamp < previous.timeStamp ||
-      (record.timeStamp === previous.timeStamp &&
-        (record.id ?? 0) < (previous.id ?? 0))
+      (record.timeStamp === previous.timeStamp && (record.id ?? 0) < (previous.id ?? 0))
     ) {
       first.set(record.word, record)
     }
@@ -181,41 +164,19 @@ export function createLearnDailySession(input: {
   wordRecords: IWordRecord[]
   wordStates: IReviewWordState[]
 }): LearnDailySessionV1 {
-  const dailyNewTarget = Math.max(
-    1,
-    Math.floor(input.dailyNewTarget),
-  )
-  const activeStates = input.wordStates.filter(
-    (state) => state.lifecycle !== 'excluded',
-  )
-  const plannedReviewWords = uniqueNames(
-    activeStates
-      .filter((state) => state.nextReviewAt <= input.now)
-      .map((state) => state.word),
-  )
+  const dailyNewTarget = Math.max(1, Math.floor(input.dailyNewTarget))
+  const activeStates = input.wordStates.filter((state) => state.lifecycle !== 'excluded')
+  const plannedReviewWords = uniqueNames(activeStates.filter((state) => state.nextReviewAt <= input.now).map((state) => state.word))
 
-  const firstIntroductions = firstAcquisitionIntroductionByWord(
-    input.wordRecords,
-  )
+  const firstIntroductions = firstAcquisitionIntroductionByWord(input.wordRecords)
   const stateNames = new Set(input.wordStates.map((state) => state.word))
-  const carryOverAcquisitionWords = uniqueNames(
-    [...firstIntroductions.keys()].filter(
-      (word) => !stateNames.has(word),
-    ),
-  )
+  const carryOverAcquisitionWords = uniqueNames([...firstIntroductions.keys()].filter((word) => !stateNames.has(word)))
 
-  const knownNames = new Set([
-    ...stateNames,
-    ...firstIntroductions.keys(),
-  ])
+  const knownNames = new Set([...stateNames, ...firstIntroductions.keys()])
   const uniqueDictionaryWords = uniqueNames(input.dictionaryWords)
-  const unseenCount = uniqueDictionaryWords.filter(
-    (word) => !knownNames.has(word),
-  ).length
+  const unseenCount = uniqueDictionaryWords.filter((word) => !knownNames.has(word)).length
   const plannedNewWords = Math.min(dailyNewTarget, unseenCount)
-  const plannedNewWordNames = uniqueDictionaryWords
-    .filter((word) => !knownNames.has(word))
-    .slice(0, plannedNewWords)
+  const plannedNewWordNames = uniqueDictionaryWords.filter((word) => !knownNames.has(word)).slice(0, plannedNewWords)
   const blockMilestones = planLearnBlockMilestones(
     plannedReviewWords.length + carryOverAcquisitionWords.length + plannedNewWordNames.length,
   )
@@ -266,11 +227,21 @@ export function ensureLearnDailySession(input: {
   return saveLearnDailySession(createLearnDailySession(input))
 }
 
+function isCompletedReview(record: IWordRecord): boolean {
+  return (
+    record.sourceMode === 'learn' &&
+    record.learnItemKind !== 'acquisition' &&
+    record.learnItemKind !== 'practice' &&
+    record.reviewRatingDecision?.eligible === true &&
+    !isUnverifiedLegacyMobilePositiveReview(record)
+  )
+}
+
 function isIndependentCleanReview(record: IWordRecord): boolean {
   return (
     record.sourceMode === 'learn' &&
     record.learnItemKind !== 'acquisition' &&
-      record.learnItemKind !== 'practice' &&
+    record.learnItemKind !== 'practice' &&
     record.reviewRatingDecision?.eligible === true &&
     !isUnverifiedLegacyMobilePositiveReview(record) &&
     record.reviewEvidence?.retrievalValidity === 'independent' &&
@@ -278,33 +249,16 @@ function isIndependentCleanReview(record: IWordRecord): boolean {
   )
 }
 
-function hasRecordAfter(
-  records: IWordRecord[],
-  word: string,
-  startedAt: number,
-  predicate: (record: IWordRecord) => boolean,
-): boolean {
-  return records.some(
-    (record) =>
-      record.word === word &&
-      record.timeStamp >= startedAt &&
-      predicate(record),
-  )
+function hasRecordAfter(records: IWordRecord[], word: string, startedAt: number, predicate: (record: IWordRecord) => boolean): boolean {
+  return records.some((record) => record.word === word && record.timeStamp >= startedAt && predicate(record))
 }
 
-export function deriveLearnDailyProgress(input: {
-  session: LearnDailySessionV1
-  wordRecords: IWordRecord[]
-}): LearnDailyProgress {
+export function deriveLearnDailyProgress(input: { session: LearnDailySessionV1; wordRecords: IWordRecord[] }): LearnDailyProgress {
   const { session } = input
-  const records = input.wordRecords.filter(
-    (record) => record.dict === session.dict,
-  )
+  const records = input.wordRecords.filter((record) => record.dict === session.dict)
 
   const reviewTargets = uniqueNames(session.plannedReviewWords)
-  const carryOverTargets = uniqueNames(
-    session.carryOverAcquisitionWords,
-  )
+  const carryOverTargets = uniqueNames(session.carryOverAcquisitionWords)
 
   const firstIntroductions = firstAcquisitionIntroductionByWord(records)
   const introducedNewWordNames = [...firstIntroductions.values()]
@@ -318,52 +272,27 @@ export function deriveLearnDailyProgress(input: {
     .filter((word) => !session.plannedNewWordNames || session.plannedNewWordNames.includes(word))
     .slice(0, session.plannedNewWords)
 
-  const completedReviewNames = reviewTargets.filter((word) =>
-    hasRecordAfter(
-      records,
-      word,
-      session.startedAt,
-      isIndependentCleanReview,
-    ),
-  )
+  const reviewStartedAt = session.startedAt
+  const completedReviewNames = reviewTargets.filter((word) => hasRecordAfter(records, word, reviewStartedAt, isCompletedReview))
+  const independentReviewNames = reviewTargets.filter((word) => hasRecordAfter(records, word, reviewStartedAt, isIndependentCleanReview))
 
   const completedCarryOverNames = carryOverTargets.filter((word) =>
-    hasRecordAfter(
-      records,
-      word,
-      session.startedAt,
-      isCompletedAcquisitionRecord,
-    ),
+    hasRecordAfter(records, word, session.startedAt, isCompletedAcquisitionRecord),
   )
 
   const completedNewNames = introducedNewWordNames.filter((word) =>
-    hasRecordAfter(
-      records,
-      word,
-      session.startedAt,
-      isCompletedAcquisitionRecord,
-    ),
+    hasRecordAfter(records, word, session.startedAt, isCompletedAcquisitionRecord),
   )
 
-  const independentCompletedWords = uniqueNames([
-    ...completedReviewNames,
-    ...completedCarryOverNames,
-    ...completedNewNames,
-  ])
+  const independentCompletedWords = uniqueNames([...independentReviewNames, ...completedCarryOverNames, ...completedNewNames])
 
-  const targetWords =
-    reviewTargets.length +
-    carryOverTargets.length +
-    session.plannedNewWords
+  const targetWords = reviewTargets.length + carryOverTargets.length + session.plannedNewWords
   const completedWords = Math.min(
     targetWords,
-    independentCompletedWords.length,
+    uniqueNames([...completedReviewNames, ...completedCarryOverNames, ...completedNewNames]).length,
   )
   const remainingWords = Math.max(0, targetWords - completedWords)
-  const percent =
-    targetWords === 0
-      ? 100
-      : Math.round((completedWords / targetWords) * 100)
+  const percent = targetWords === 0 ? 100 : Math.round((completedWords / targetWords) * 100)
 
   return {
     targetWords,
@@ -372,6 +301,8 @@ export function deriveLearnDailyProgress(input: {
     percent,
     reviewTargetWords: reviewTargets.length,
     completedReviewWords: completedReviewNames.length,
+    independentReviewWords: independentReviewNames.length,
+    reviewWordsToConsolidate: completedReviewNames.filter((word) => !independentReviewNames.includes(word)).length,
     carryOverTargetWords: carryOverTargets.length,
     completedCarryOverWords: completedCarryOverNames.length,
     newTargetWords: session.plannedNewWords,
@@ -394,21 +325,13 @@ export function recordLearnBlockCompletion(input: {
 
   return saveLearnDailySession({
     ...input.session,
-    accumulatedActiveSeconds:
-      input.session.accumulatedActiveSeconds +
-      Math.max(0, Math.floor(input.activeSeconds)),
-    completedBlockIds: [
-      ...input.session.completedBlockIds,
-      input.blockId,
-    ],
+    accumulatedActiveSeconds: input.session.accumulatedActiveSeconds + Math.max(0, Math.floor(input.activeSeconds)),
+    completedBlockIds: [...input.session.completedBlockIds, input.blockId],
     blockCount: input.session.blockCount + 1,
   })
 }
 
-export function completeLearnDailySession(
-  session: LearnDailySessionV1,
-  now: number,
-): LearnDailySessionV1 {
+export function completeLearnDailySession(session: LearnDailySessionV1, now: number): LearnDailySessionV1 {
   if (session.status === 'completed') return session
 
   return saveLearnDailySession({
@@ -427,22 +350,36 @@ export function addLearnDailyNewWords(input: {
   wordStates: IReviewWordState[]
 }): LearnDailySessionV1 {
   const { session } = input
-  if ((session.status !== 'completed' && !(session.status === 'active' && session.executionExhausted)) || session.dateKey !== learnLocalDateKey(input.now)) return session
+  if (
+    (session.status !== 'completed' && !(session.status === 'active' && session.executionExhausted)) ||
+    session.dateKey !== learnLocalDateKey(input.now)
+  )
+    return session
   const known = new Set([
     ...(session.plannedNewWordNames ?? []),
     ...session.plannedReviewWords,
     ...session.carryOverAcquisitionWords,
-    ...input.wordStates.map(state => state.word),
+    ...input.wordStates.map((state) => state.word),
     ...Array.from(firstAcquisitionIntroductionByWord(input.wordRecords).keys()),
   ])
   const completed = new Set(deriveLearnDailyProgress({ session, wordRecords: input.wordRecords }).independentCompletedWords)
   const dictionary = new Set(input.dictionaryWords)
-  const optionalPending = Array.from(firstAcquisitionIntroductionByWord(input.wordRecords).keys())
-    .filter(name => !input.wordStates.some(state => state.word === name) &&
-      !input.wordRecords.some(record => record.word === name && isCompletedAcquisitionRecord(record)))
-  const unfinished = uniqueNames([...session.plannedReviewWords, ...session.carryOverAcquisitionWords, ...(session.plannedNewWordNames ?? []), ...optionalPending])
-    .filter(name => dictionary.has(name) && !completed.has(name)).slice(0, 5)
-  const added = uniqueNames(input.dictionaryWords).filter(name => !known.has(name)).slice(0, 5 - unfinished.length)
+  const optionalPending = Array.from(firstAcquisitionIntroductionByWord(input.wordRecords).keys()).filter(
+    (name) =>
+      !input.wordStates.some((state) => state.word === name) &&
+      !input.wordRecords.some((record) => record.word === name && isCompletedAcquisitionRecord(record)),
+  )
+  const unfinished = uniqueNames([
+    ...session.plannedReviewWords,
+    ...session.carryOverAcquisitionWords,
+    ...(session.plannedNewWordNames ?? []),
+    ...optionalPending,
+  ])
+    .filter((name) => dictionary.has(name) && !completed.has(name))
+    .slice(0, 5)
+  const added = uniqueNames(input.dictionaryWords)
+    .filter((name) => !known.has(name))
+    .slice(0, 5 - unfinished.length)
   const round = [...unfinished, ...added]
   if (!round.length) return session
   const plannedNewWords = session.plannedNewWords + added.length
@@ -456,12 +393,17 @@ export function addLearnDailyNewWords(input: {
     extraNewWordCount: (session.extraNewWordCount ?? 0) + added.length,
     extraRoundWordNames: round,
     extraRoundStartedAt: input.now,
-    carryOverAcquisitionWords: uniqueNames([...session.carryOverAcquisitionWords, ...unfinished.filter(name => !session.plannedReviewWords.includes(name) && !(session.plannedNewWordNames ?? []).includes(name))]),
-    plannedNewWordNames: [...(session.plannedNewWordNames ?? deriveLearnDailyProgress({ session, wordRecords: input.wordRecords }).introducedNewWordNames), ...added],
+    carryOverAcquisitionWords: uniqueNames([
+      ...session.carryOverAcquisitionWords,
+      ...unfinished.filter((name) => !session.plannedReviewWords.includes(name) && !(session.plannedNewWordNames ?? []).includes(name)),
+    ]),
+    plannedNewWordNames: [
+      ...(session.plannedNewWordNames ?? deriveLearnDailyProgress({ session, wordRecords: input.wordRecords }).introducedNewWordNames),
+      ...added,
+    ],
     blockMilestones: [...(session.blockMilestones ?? []), previousTotal + added.length],
   })
 }
-
 
 /** Legacy add-five sessions recover the most recently appended five identities. */
 export function getLearnExtraRoundNames(session: LearnDailySessionV1 | null): string[] | undefined {
@@ -473,16 +415,34 @@ export function getLearnExtraRoundNames(session: LearnDailySessionV1 | null): st
 
 export function deriveLearnExecutionProgress(input: { session: LearnDailySessionV1; wordRecords: IWordRecord[] }): LearnDailyProgress {
   const names = getLearnExtraRoundNames(input.session)
-  return deriveLearnDailyProgress({ ...input, session: names ? {
-    ...input.session,
-    plannedNewWords: names.filter(name => !input.session.plannedReviewWords.includes(name) && !input.session.carryOverAcquisitionWords.includes(name)).length,
-    plannedNewWordNames: names.filter(name => !input.session.plannedReviewWords.includes(name) && !input.session.carryOverAcquisitionWords.includes(name)),
-    plannedReviewWords: input.session.plannedReviewWords.filter(name => names.includes(name)),
-    carryOverAcquisitionWords: input.session.carryOverAcquisitionWords.filter(name => names.includes(name)),
-  } : input.session })
+  return deriveLearnDailyProgress({
+    ...input,
+    wordRecords:
+      names && input.session.extraRoundStartedAt
+        ? input.wordRecords.filter(
+            (record) => record.learnItemKind === 'acquisition' || record.timeStamp >= input.session.extraRoundStartedAt!,
+          )
+        : input.wordRecords,
+    session: names
+      ? {
+          ...input.session,
+          plannedNewWords: names.filter(
+            (name) => !input.session.plannedReviewWords.includes(name) && !input.session.carryOverAcquisitionWords.includes(name),
+          ).length,
+          plannedNewWordNames: names.filter(
+            (name) => !input.session.plannedReviewWords.includes(name) && !input.session.carryOverAcquisitionWords.includes(name),
+          ),
+          plannedReviewWords: input.session.plannedReviewWords.filter((name) => names.includes(name)),
+          carryOverAcquisitionWords: input.session.carryOverAcquisitionWords.filter((name) => names.includes(name)),
+        }
+      : input.session,
+  })
 }
 
-export function isLearnSessionOutsideExtraRound(record: { words: Array<{ name: string }>; optionalNewWords?: Array<{ name: string }> }, session: LearnDailySessionV1 | null): boolean {
+export function isLearnSessionOutsideExtraRound(
+  record: { words: Array<{ name: string }>; optionalNewWords?: Array<{ name: string }> },
+  session: LearnDailySessionV1 | null,
+): boolean {
   const names = getLearnExtraRoundNames(session)
-  return !!names && (!!record.optionalNewWords?.length || record.words.some(word => !names.includes(word.name)))
+  return !!names && (!!record.optionalNewWords?.length || record.words.some((word) => !names.includes(word.name)))
 }

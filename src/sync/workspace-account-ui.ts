@@ -213,7 +213,7 @@ export function renderS1AccountManagement(
     setBusy(true, '正在保全本机待同步学习记录…')
     const syncNote = await publishPendingAfterAuthentication()
     setBusy(true, '账户会话更新成功，工作区保持不变。')
-    navigate('重新登录成功。' + syncNote)
+    navigate(syncNote)
   }
   const loginAction = async () => {
     if (!username.value.trim() || password.value.length < 4) {
@@ -226,7 +226,7 @@ export function renderS1AccountManagement(
       }
       await reauthenticateSameWorkspace(signed)
       const syncNote = await publishPendingAfterAuthentication()
-      navigate('当前账户已重新认证。' + syncNote)
+      navigate(syncNote)
       return
     }
     if (!window.confirm('将从匿名工作区切换到“' + signed.user.username + '”。' + '匿名学习进度会独立保存，不合并到已有账户。确认继续？')) {
@@ -236,7 +236,7 @@ export function renderS1AccountManagement(
     await switchAuthenticatedWorkspace({ kind: 'account', accountId: signed.user.userId }, signed, phase)
     const syncNote = await publishPendingAfterAuthentication()
     setBusy(true, '登录及本地隔离工作区切换完成。')
-    navigate('登录成功，已进入独立的账户学习工作区。' + syncNote)
+    navigate(syncNote)
   }
   const registerAction = async () => {
     if (active.kind !== 'anonymous') throw new Error('注册仅允许从匿名工作区进行')
@@ -256,7 +256,7 @@ export function renderS1AccountManagement(
     await switchAuthenticatedWorkspace({ kind: 'account', accountId: signed.user.userId }, signed, phase)
     const syncNote = await publishPendingAfterAuthentication()
     setBusy(true, '注册成功，当前工作区已切换。')
-    navigate((copy ? '注册成功，匿名学习记录已复制，新旧工作区分别保留。' : '注册成功，已建立独立空白工作区。') + syncNote)
+    navigate(syncNote)
   }
   const changePasswordAction = async (currentPassword: string, newPassword: string) => {
     const auth = loadAuth({ preserveExpired: true })
@@ -315,6 +315,7 @@ export function renderS1AccountManagement(
   root.replaceChildren(overlay)
   const accountView = presentAccount({
     mobile,
+    reauthenticate: new URLSearchParams(window.location.search).get('s1-reauth') === '1',
     overlay,
     main,
     heading,

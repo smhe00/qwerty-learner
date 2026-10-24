@@ -84,7 +84,7 @@ export async function adoptWitnessedM3AtGuardedBoot(
   const accountManagement =
     options.preMountAccountManagement === true &&
     ((pathname === '/' && new URLSearchParams(window.location.search).get('s1-account') === 'manage') ||
-      (pathname === '/mobile/account' && window.location.search === ''))
+      (pathname === '/mobile/account' && (window.location.search === '' || window.location.search === '?s1-reauth=1')))
   if (!accountManagement && !['/', '/learn', '/mobile', '/mobile/study'].includes(pathname)) {
     return skip('non-learn-route')
   }

@@ -1,37 +1,20 @@
-import { addLearnDailyNewWords, getLearnExtraRoundNames, loadLearnDailySession } from '@/learn/daily-session'
 import FiveMoreButton from './FiveMoreButton'
-import { db } from '@/utils/db/core'
-import { getReviewWordStates } from '@/review/repository'
-import { wordListFetcher } from '@/utils/wordListFetcher'
-import {
-  getUnseenAchievementStates,
-  markAchievementSeen,
-} from '@/achievement'
+import { getUnseenAchievementStates, markAchievementSeen } from '@/achievement'
 import { resolveAchievementCeremonyPresentation } from '@/achievement/presentation'
+import { addLearnDailyNewWords, getLearnExtraRoundNames, loadLearnDailySession } from '@/learn/daily-session'
 import { settleLearnBlockDurably } from '@/learn/settlement'
 import type { LearnBlockSettlement } from '@/learn/settlement'
-import {
-  TypingContext,
-  TypingStateActionType,
-} from '@/pages/Typing/store'
+import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import { getAchievementCulture } from '@/resources/achievementCulture'
+import { getReviewWordStates } from '@/review/repository'
 import { currentDictInfoAtom, reviewModeInfoAtom } from '@/store'
 import { loadAuth } from '@/sync/auth'
-import {
-  blockAutoSyncEnabled,
-  isVisibleLearnBlockBoundary,
-  stageLearnBlockSync,
-} from '@/sync/learn-block-sync'
+import { blockAutoSyncEnabled, isVisibleLearnBlockBoundary, stageLearnBlockSync } from '@/sync/learn-block-sync'
+import { db } from '@/utils/db/core'
+import { wordListFetcher } from '@/utils/wordListFetcher'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useAtomValue, useSetAtom } from 'jotai'
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate } from 'react-router-dom'
 import IconX from '~icons/tabler/x'
@@ -85,20 +68,12 @@ export default function LearnResultScreen() {
   const settlementPromiseRef = useRef<Promise<LearnBlockSettlement> | null>(null)
   const skippedInternalBlockRef = useRef(false)
 
-  const unseenAchievementStates = useLiveQuery(
-    () => getUnseenAchievementStates(),
-    [],
-    [],
-  )
+  const unseenAchievementStates = useLiveQuery(() => getUnseenAchievementStates(), [], [])
   const newAchievements = useMemo(
     () =>
       unseenAchievementStates.flatMap((achievementState) => {
-        const culture = getAchievementCulture(
-          achievementState.achievementId,
-        )
-        return culture
-          ? [{ state: achievementState, ...culture }]
-          : []
+        const culture = getAchievementCulture(achievementState.achievementId)
+        return culture ? [{ state: achievementState, ...culture }] : []
       }),
     [unseenAchievementStates],
   )
@@ -139,15 +114,19 @@ export default function LearnResultScreen() {
         // upload on an opted-in isolated account.
         const auth = loadAuth({ preserveExpired: true })
         const accountId = auth?.user.userId
-        const s2Enabled = REACT_APP_DEPLOY_ENV !== 'pages' &&
-          (import.meta.env.DEV || import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true')
-        const shouldHandoff = Boolean(s2Enabled && accountId &&
-          auth && auth.expiresAt * 1000 > Date.now() &&
-          (baseSettlement.progress.complete || blockAutoSyncEnabled(accountId)) &&
-          isVisibleLearnBlockBoundary({
-            dailyComplete: baseSettlement.progress.complete,
-            milestone: baseSettlement.milestoneReached,
-          }))
+        const s2Enabled =
+          REACT_APP_DEPLOY_ENV !== 'pages' && (import.meta.env.DEV || import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true')
+        const shouldHandoff = Boolean(
+          s2Enabled &&
+            accountId &&
+            auth &&
+            auth.expiresAt * 1000 > Date.now() &&
+            (baseSettlement.progress.complete || blockAutoSyncEnabled(accountId)) &&
+            isVisibleLearnBlockBoundary({
+              dailyComplete: baseSettlement.progress.complete,
+              milestone: baseSettlement.milestoneReached,
+            }),
+        )
         if (active && shouldHandoff && accountId && !blockSyncHandoffRef.current) {
           try {
             stageLearnBlockSync(accountId, {
@@ -160,9 +139,7 @@ export default function LearnResultScreen() {
             window.location.replace('/?s2-sync=run&learn-block=1')
           } catch (error) {
             setBlockSyncSetupError(
-              '无法启动 Block 自动同步：' +
-              (error instanceof Error ? error.message : String(error)) +
-              '。本地进度已保存，可稍后手动同步。',
+              '无法启动 Block 自动同步：' + (error instanceof Error ? error.message : String(error)) + '。本地进度已保存，可稍后手动同步。',
             )
           }
         }
@@ -172,9 +149,7 @@ export default function LearnResultScreen() {
       .catch((error) => {
         console.error('failed to settle Learn block', error)
         if (active) {
-          setSettlementError(
-            '阶段状态保存失败，请不要继续操作；刷新页面后系统会从最后一个已保存单词恢复。',
-          )
+          setSettlementError('阶段状态保存失败，请不要继续操作；刷新页面后系统会从最后一个已保存单词恢复。')
         }
       })
 
@@ -198,13 +173,7 @@ export default function LearnResultScreen() {
     dispatch({ type: TypingStateActionType.RESET_SESSION })
     keepLearnSelected()
     navigate('/learn', { state: { autoStart: true } })
-  }, [
-    blockSyncHandoff,
-    dispatch,
-    keepLearnSelected,
-    navigate,
-    settlement,
-  ])
+  }, [blockSyncHandoff, dispatch, keepLearnSelected, navigate, settlement])
 
   const learnFiveMore = useCallback(async () => {
     if (blockSyncHandoffRef.current || blockSyncHandoff || !settlement?.progress.complete || addingWordsRef.current) return
@@ -221,7 +190,13 @@ export default function LearnResultScreen() {
         setExtraWordsMessage('今日计划已变化，请重新进入 Learn。')
         return
       }
-      const extended = addLearnDailyNewWords({ session: current, now: Math.floor(Date.now() / 1000), dictionaryWords: words.map(word => word.name), wordRecords, wordStates })
+      const extended = addLearnDailyNewWords({
+        session: current,
+        now: Math.floor(Date.now() / 1000),
+        dictionaryWords: words.map((word) => word.name),
+        wordRecords,
+        wordStates,
+      })
       if (extended === current) {
         setExtraWordsMessage('当前没有可追加的新词。')
         return
@@ -241,10 +216,14 @@ export default function LearnResultScreen() {
   // An internal queue boundary is not a learning-stage achievement. Persist
   // it, then continue seamlessly until a frozen daily milestone is reached.
   useEffect(() => {
-    if (!settlement || settlement.progress.complete ||
-        !settlement.session.blockMilestones ||
-        settlement.milestoneReached !== undefined ||
-        skippedInternalBlockRef.current) return
+    if (
+      !settlement ||
+      settlement.progress.complete ||
+      !settlement.session.blockMilestones ||
+      settlement.milestoneReached !== undefined ||
+      skippedInternalBlockRef.current
+    )
+      return
     skippedInternalBlockRef.current = true
     continueLearn()
   }, [settlement, continueLearn])
@@ -255,27 +234,13 @@ export default function LearnResultScreen() {
     dispatch({ type: TypingStateActionType.RESET_SESSION })
     keepLearnSelected()
     navigate('/learn', { state: { idle: true } })
-  }, [
-    acknowledgeAchievements,
-    blockSyncHandoff,
-    dispatch,
-    keepLearnSelected,
-    navigate,
-    settlement,
-    settlementError,
-  ])
+  }, [acknowledgeAchievements, blockSyncHandoff, dispatch, keepLearnSelected, navigate, settlement, settlementError])
 
   useEffect(() => {
     if (!settlement || settlement.progress.complete || blockSyncHandoffRef.current || blockSyncHandoff) return
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.key === 'Escape' ||
-        event.key === 'Shift' ||
-        event.key === 'Control' ||
-        event.key === 'Alt' ||
-        event.key === 'Meta'
-      ) {
+      if (event.key === 'Escape' || event.key === 'Shift' || event.key === 'Control' || event.key === 'Alt' || event.key === 'Meta') {
         return
       }
 
@@ -287,22 +252,14 @@ export default function LearnResultScreen() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [blockSyncHandoff, continueLearn, settlement])
 
-  useHotkeys(
-    'esc',
-    () => closeResult(),
-    { preventDefault: true },
-    [closeResult],
-  )
+  useHotkeys('esc', () => closeResult(), { preventDefault: true }, [closeResult])
 
   const progress = settlement?.progress
-  const milestoneIndex = settlement?.milestoneReached === undefined
-    ? -1
-    : (settlement.session.blockMilestones ?? []).indexOf(settlement.milestoneReached)
+  const milestoneIndex =
+    settlement?.milestoneReached === undefined ? -1 : (settlement.session.blockMilestones ?? []).indexOf(settlement.milestoneReached)
   const isExtraRound = !!getLearnExtraRoundNames(settlement?.session ?? null)
   const isDailyComplete = progress?.complete === true
-  const totalActiveSeconds = settlement
-    ? settlement.session.accumulatedActiveSeconds
-    : state.timerData.time
+  const totalActiveSeconds = settlement ? settlement.session.accumulatedActiveSeconds : state.timerData.time
 
   return (
     <div
@@ -311,10 +268,12 @@ export default function LearnResultScreen() {
       data-learn-block-pause={!isDailyComplete || undefined}
       data-learn-daily-complete={isDailyComplete || undefined}
     >
-      <div className="absolute inset-0 backdrop-blur-[3px]" style={{ background: "var(--focus-backdrop)" }} />
+      <div className="absolute inset-0 backdrop-blur-[3px]" style={{ background: 'var(--focus-backdrop)' }} />
       <div className="relative flex min-h-screen items-center justify-center py-8">
-        <div className="focus-overlay-panel focus-result-panel relative flex w-[min(90vw,720px)] flex-col rounded-[22px] px-6 py-8 sm:px-10 sm:py-10"
-          data-milestone={settlement?.milestoneReached !== undefined || isDailyComplete ? 'true' : undefined}>
+        <div
+          className="focus-overlay-panel focus-result-panel relative flex w-[min(90vw,720px)] flex-col rounded-[22px] px-6 py-8 sm:px-10 sm:py-10"
+          data-milestone={settlement?.milestoneReached !== undefined || isDailyComplete ? 'true' : undefined}
+        >
           <button
             type="button"
             className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-lg transition-colors hover:bg-[var(--focus-surface-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 disabled:cursor-not-allowed disabled:opacity-30 sm:right-5 sm:top-4"
@@ -327,19 +286,21 @@ export default function LearnResultScreen() {
           </button>
 
           <div className="text-center">
-            <div className="focus-result-eyebrow text-xs font-medium">
-              {currentDictInfo.name} · Learn
-            </div>
+            <div className="focus-result-eyebrow text-xs font-medium">{currentDictInfo.name} · Learn</div>
             <h1 className="focus-result-heading mt-3 text-[27px] font-semibold tracking-tight">
-              {isDailyComplete ? getLearnExtraRoundNames(settlement?.session ?? null) ? '本次加学完成' : '今日学习完成' : milestoneIndex >= 0
+              {isDailyComplete
+                ? getLearnExtraRoundNames(settlement?.session ?? null)
+                  ? '本次加学完成'
+                  : '今日学习完成'
+                : milestoneIndex >= 0
                 ? `阶段 ${milestoneIndex + 1} 完成`
-                : settlement?.session.blockMilestones ? '继续学习' : '阶段完成'}
+                : settlement?.session.blockMilestones
+                ? '继续学习'
+                : '阶段完成'}
             </h1>
 
             {!settlement && !settlementError ? (
-              <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-                正在保存本阶段学习状态…
-              </p>
+              <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">正在保存本阶段学习状态…</p>
             ) : null}
 
             {settlementError ? (
@@ -348,8 +309,7 @@ export default function LearnResultScreen() {
               </p>
             ) : null}
             {blockSyncHandoff ? (
-              <p className="mt-3 text-sm text-indigo-500" role="status"
-                data-learn-block-sync-pending>
+              <p className="mt-3 text-sm text-indigo-500" role="status" data-learn-block-sync-pending>
                 正在进入安全同步；同步完成后才能继续或退出…
               </p>
             ) : null}
@@ -361,14 +321,15 @@ export default function LearnResultScreen() {
 
             {progress && !isDailyComplete ? (
               <p className="focus-result-description mt-3 text-sm">
-                今天已经完成 {progress.percent}%。
-                当前状态已保存，按任意键继续下一阶段。
+                今天已经完成 {progress.percent}%。 当前状态已保存，按任意键继续下一阶段。
               </p>
             ) : null}
 
             {progress && isDailyComplete ? (
               <p className="focus-result-description mt-3 text-sm">
-                {getLearnExtraRoundNames(settlement?.session ?? null) ? '本轮追加的新词已完成，其他未掌握词已保留。' : '今日计划中的复习和新词已经完成最终独立拼写。'}
+                {getLearnExtraRoundNames(settlement?.session ?? null)
+                  ? '本轮练习已完成，需巩固的词已保留。'
+                  : '今日练习已完成。需巩固的词已记下，系统会继续安排复习。'}
               </p>
             ) : null}
           </div>
@@ -383,10 +344,7 @@ export default function LearnResultScreen() {
                 aria-valuemax={100}
                 aria-valuenow={progress.percent}
               >
-                <div
-                  className="focus-result-progress-fill"
-                  style={{ width: `${progress.percent}%` }}
-                />
+                <div className="focus-result-progress-fill" style={{ width: `${progress.percent}%` }} />
               </div>
 
               <div className="focus-result-metrics mt-7" data-focus-result-metrics>
@@ -402,19 +360,13 @@ export default function LearnResultScreen() {
                   detail={`独立完成 ${progress.completedNewWords}`}
                 />
                 <SummaryMetric
-                  label={isExtraRound ? '本轮复习' : '今日复习'}
+                  label={isExtraRound ? '本轮复习完成' : '复习已完成'}
                   value={`${progress.completedReviewWords}/${progress.reviewTargetWords}`}
-                  detail="最终独立拼写"
+                  detail={`独立答对 ${progress.independentReviewWords} 词`}
                 />
-                <SummaryMetric
-                  label="待完成"
-                  value={progress.remainingWords}
-                  detail="词"
-                />
-                <SummaryMetric
-                  label="学习时间"
-                  value={formatTime(totalActiveSeconds)}
-                />
+                <SummaryMetric label="复习需巩固" value={progress.reviewWordsToConsolidate} detail="已记下，之后继续安排复习" />
+                <SummaryMetric label="待完成" value={progress.remainingWords} detail="词" />
+                <SummaryMetric label="学习时间" value={formatTime(totalActiveSeconds)} />
               </div>
             </>
           ) : null}
@@ -426,21 +378,14 @@ export default function LearnResultScreen() {
               data-achievement-settlement
             >
               <div className="text-center">
-                <div className="text-xs font-medium tracking-[0.18em] text-indigo-400">
-                  今日新成就
-                </div>
-                <div className="mt-1 text-sm text-gray-500 dark:text-gray-300">
-                  记录真正发生的能力变化，不奖励机械刷次数。
-                </div>
+                <div className="text-xs font-medium tracking-[0.18em] text-indigo-400">今日新成就</div>
+                <div className="mt-1 text-sm text-gray-500 dark:text-gray-300">记录真正发生的能力变化，不奖励机械刷次数。</div>
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {newAchievements.map(({ achievement, primary, state: achievementState }) => {
-                  const ceremony =
-                    resolveAchievementCeremonyPresentation(achievement)
-                  const emphasized =
-                    ceremony.layout === 'spotlight' ||
-                    ceremony.layout === 'ceremony'
+                  const ceremony = resolveAchievementCeremonyPresentation(achievement)
+                  const emphasized = ceremony.layout === 'spotlight' || ceremony.layout === 'ceremony'
 
                   return (
                     <article
@@ -449,16 +394,14 @@ export default function LearnResultScreen() {
                         ceremony.layout === 'compact'
                           ? 'px-4 py-3'
                           : ceremony.layout === 'standard'
-                            ? 'px-4 py-4'
-                            : ceremony.layout === 'spotlight'
-                              ? 'px-6 py-5 sm:col-span-2 ring-1 ring-indigo-200 dark:ring-indigo-500/30'
-                              : 'px-6 py-6 sm:col-span-2 ring-2 ring-indigo-300 dark:ring-indigo-400/40'
+                          ? 'px-4 py-4'
+                          : ceremony.layout === 'spotlight'
+                          ? 'px-6 py-5 ring-1 ring-indigo-200 dark:ring-indigo-500/30 sm:col-span-2'
+                          : 'px-6 py-6 ring-2 ring-indigo-300 dark:ring-indigo-400/40 sm:col-span-2'
                       }`}
                     >
                       {emphasized ? (
-                        <div className="mb-2 text-xs font-medium tracking-[0.16em] text-indigo-400">
-                          {ceremony.label}
-                        </div>
+                        <div className="mb-2 text-xs font-medium tracking-[0.16em] text-indigo-400">{ceremony.label}</div>
                       ) : null}
                       <div className="font-semibold text-gray-800 dark:text-gray-100">
                         <span className="mr-2" aria-hidden="true">
@@ -466,9 +409,7 @@ export default function LearnResultScreen() {
                         </span>
                         {achievement.title}
                       </div>
-                      <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        {achievement.copy.unlockMessage}
-                      </div>
+                      <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">{achievement.copy.unlockMessage}</div>
                       {ceremony.showCulture && primary ? (
                         <div className="mt-3 border-l-2 border-indigo-200 pl-3 text-sm text-gray-600 dark:border-indigo-500/40 dark:text-gray-300">
                           {primary.text}
@@ -482,19 +423,16 @@ export default function LearnResultScreen() {
           ) : null}
 
           {isDailyComplete ? (
-            <div className="mt-7 text-center text-xs text-gray-400">
-              本地进度已保存；如云端同步未执行，可在设置中手动同步。
-            </div>
+            <div className="mt-7 text-center text-xs text-gray-400">本地进度已保存；如云端同步未执行，可在设置中手动同步。</div>
           ) : null}
 
-          {extraWordsMessage ? <p className="mt-4 text-center text-sm text-gray-500" role="status">{extraWordsMessage}</p> : null}
+          {extraWordsMessage ? (
+            <p className="mt-4 text-center text-sm text-gray-500" role="status">
+              {extraWordsMessage}
+            </p>
+          ) : null}
           <div className="mt-7 flex justify-center gap-4">
-            {isDailyComplete ? (
-              <FiveMoreButton
-                disabled={addingWords || blockSyncHandoff}
-                onClick={() => void learnFiveMore()}
-              />
-            ) : null}
+            {isDailyComplete ? <FiveMoreButton disabled={addingWords || blockSyncHandoff} onClick={() => void learnFiveMore()} /> : null}
             {isDailyComplete ? (
               <button
                 className="my-btn-primary h-12 px-8 text-base font-bold disabled:opacity-40"

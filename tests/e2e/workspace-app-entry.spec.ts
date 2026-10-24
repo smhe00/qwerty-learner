@@ -150,6 +150,7 @@ test('S1 actual Settings login refuses legacy auth before any network request', 
   // hidden by the responsive transition/scroll container.
   await page.keyboard.press('Escape')
   await safeEntry.click()
+  await page.getByRole('button', { name: /^(登录或注册|登录与账号管理)$/ }).click()
   await expect(page.getByRole('heading', { name: '登录 QWERTY Plus' })).toBeVisible()
   await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible()
   expect(loginRequests).toBe(0)
@@ -632,6 +633,7 @@ test('S1 cancelling logout preserves immutable owner and never renders PointerEv
   const account = page.locator('[data-account-entry]')
   await expect(account).toContainText('cancel-account')
   await account.click()
+  await page.getByRole('button', { name: /^(登录或注册|登录与账号管理)$/ }).click()
   await expect(page.locator('[data-account]')).toBeVisible()
   const back = page.getByRole('button', { name: '返回学习', exact: true })
   let logoutConfirmShown = false
@@ -667,6 +669,7 @@ test('fresh EdgeOne origin opens S1 login without inventing nonexistent V1 migra
   let authCalls = 0
   await page.route('**/api/auth/**', route => { authCalls++; void route.abort() })
   await page.locator('[data-account-entry]').click()
+  await page.getByRole('button', { name: /^(登录或注册|登录与账号管理)$/ }).click()
   await expect(page.getByText('登录 QWERTY Plus')).toBeVisible()
   await expect(page.getByText('S1 V1 数据归属测试（仅限本地开发）')).toHaveCount(0)
   expect(authCalls).toBe(0)
@@ -739,6 +742,7 @@ test('P0: fresh browser studies a word anonymously then opens S1 login without V
     } finally { db.close() }
   })
   await page.locator('[data-account-entry]').click()
+  await page.getByRole('button', { name: /^(登录或注册|登录与账号管理)$/ }).click()
   await expect(page.locator('[data-account]')).toBeVisible()
   await expect(page.getByText(/V1.*数据归属/)).toHaveCount(0)
   await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible()
@@ -764,6 +768,7 @@ test('fresh anonymous Learn-mode preference is not mistaken for a V1 checkpoint'
     localStorage.setItem('reviewModeInfo', JSON.stringify({ isReviewMode: true }))
   })
   await page.locator('[data-account-entry]').click()
+  await page.getByRole('button', { name: /^(登录或注册|登录与账号管理)$/ }).click()
   await expect(page.getByText('登录 QWERTY Plus')).toBeVisible()
   await expect(page.getByText('S1 V1 数据归属测试（仅限本地开发）')).toHaveCount(0)
 })
@@ -773,6 +778,7 @@ test('old V1 study data still requires explicit S1 ownership consent before logi
   await page.evaluate(async () => (window as any).__backupHarness.seed())
   await page.goto('/')
   await page.locator('[data-account-entry]').click()
+  await page.getByRole('button', { name: /^(登录或注册|登录与账号管理)$/ }).click()
   await expect(page.getByText('S1 V1 数据归属测试（仅限本地开发）')).toBeVisible()
   await expect(page.getByRole('button', { name: '确认归属并建立隔离工作区' })).toBeDisabled()
   await page.getByRole('button', { name: '取消，保持 V1' }).click()
@@ -787,6 +793,7 @@ test('pre-existing V1 Learn checkpoint cannot be auto-initialized as fresh S1', 
   })
   await page.goto('/')
   await page.locator('[data-account-entry]').click()
+  await page.getByRole('button', { name: /^(登录或注册|登录与账号管理)$/ }).click()
   await expect(page.getByText('S1 V1 数据归属测试（仅限本地开发）')).toBeVisible()
   await expect(page.getByRole('button', { name: '确认归属并建立隔离工作区' })).toBeDisabled()
 })

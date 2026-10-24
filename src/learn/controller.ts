@@ -14,24 +14,11 @@ import type { LearnStatsSnapshot } from './stats'
 import { buildLearnStatsSnapshot } from './stats'
 import type { IReviewWordState } from '@/review/types'
 import type { Word } from '@/typings'
-import type {
-  IWordRecord,
-  ReviewRecord,
-} from '@/utils/db/record'
+import type { IWordRecord, ReviewRecord } from '@/utils/db/record'
 
-export type LearnPreparationSessionSource =
-  | 'restored'
-  | 'review'
-  | 'acquisition'
-  | 'mixed'
+export type LearnPreparationSessionSource = 'restored' | 'review' | 'acquisition' | 'mixed'
 
-export type LearnPreparationWaitReason =
-  | 'deferred'
-  | 'empty'
-  | 'review-due'
-  | 'workload-budget'
-  | 'quota'
-  | 'daily-complete'
+export type LearnPreparationWaitReason = 'deferred' | 'empty' | 'review-due' | 'workload-budget' | 'quota' | 'daily-complete'
 
 export type LearnPreparationDiagnostics = {
   now: number
@@ -59,39 +46,18 @@ export type LearnPreparationResult =
 export type LearnPreparationDependencies<ErrorEvidence> = {
   now: () => number
   bootstrap: (dictId: string, now: number) => Promise<void>
-  getLatestSession: (
-    dictId: string,
-  ) => Promise<ReviewRecord | undefined>
-  generateDueReview: (
-    dictId: string,
-    words: Word[],
-    errorEvidence: ErrorEvidence[],
-  ) => Promise<ReviewRecord | undefined>
+  getLatestSession: (dictId: string) => Promise<ReviewRecord | undefined>
+  generateDueReview: (dictId: string, words: Word[], errorEvidence: ErrorEvidence[]) => Promise<ReviewRecord | undefined>
   getWordRecords: (dictId: string) => Promise<IWordRecord[]>
   getWordStates: (dictId: string) => Promise<IReviewWordState[]>
-  generateAcquisition: (
-    dictId: string,
-    words: Word[],
-    freshLimit: number,
-  ) => Promise<ReviewRecord | undefined>
-  generateSession?: (
-    dictId: string,
-    words: Word[],
-    errorEvidence: ErrorEvidence[],
-    freshLimit: number,
-  ) => Promise<ReviewRecord | undefined>
-  getNextDeferredResumeAt: (
-    dictId: string,
-  ) => Promise<number | undefined>
+  generateAcquisition: (dictId: string, words: Word[], freshLimit: number) => Promise<ReviewRecord | undefined>
+  generateSession?: (dictId: string, words: Word[], errorEvidence: ErrorEvidence[], freshLimit: number) => Promise<ReviewRecord | undefined>
+  getNextDeferredResumeAt: (dictId: string) => Promise<number | undefined>
   decideQuota?: typeof decideDailyAcquisitionQuota
   buildDailyPlan?: typeof buildLearnDailyPlan
 }
 
-function wait(
-  reason: LearnPreparationWaitReason,
-  statusText: string,
-  diagnostics: LearnPreparationDiagnostics,
-): LearnPreparationResult {
+function wait(reason: LearnPreparationWaitReason, statusText: string, diagnostics: LearnPreparationDiagnostics): LearnPreparationResult {
   return {
     kind: 'waiting',
     reason,
@@ -120,10 +86,7 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
 
   const unfinished = await dependencies.getLatestSession(dictId)
   if (unfinished) {
-    const [wordRecords, wordStates] = await Promise.all([
-      dependencies.getWordRecords(dictId),
-      dependencies.getWordStates(dictId),
-    ])
+    const [wordRecords, wordStates] = await Promise.all([dependencies.getWordRecords(dictId), dependencies.getWordStates(dictId)])
     const dailySession = ensureLearnDailySession({
       dict: dictId,
       now,
@@ -144,10 +107,7 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
     }
   }
 
-  const [wordRecords, wordStates] = await Promise.all([
-    dependencies.getWordRecords(dictId),
-    dependencies.getWordStates(dictId),
-  ])
+  const [wordRecords, wordStates] = await Promise.all([dependencies.getWordRecords(dictId), dependencies.getWordStates(dictId)])
   const stats = buildLearnStatsSnapshot({
     now,
     dict: dictId,
@@ -167,10 +127,7 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
     session: dailySession,
     wordRecords,
   })
-  if (
-    dailySession.status === 'active' &&
-    recoveredDailyProgress.complete
-  ) {
+  if (dailySession.status === 'active' && recoveredDailyProgress.complete) {
     dailySession = deriveLearnDailyProgress({ session: dailySession, wordRecords }).complete
       ? completeLearnDailySession(dailySession, now)
       : saveLearnDailySession({ ...dailySession, executionExhausted: true })
@@ -181,45 +138,32 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
   }
 
   if (dailySession.status === 'completed') {
-    return wait(
-      'daily-complete',
-      '今日 Learn 目标已完成。',
-      {
-        now,
-        stats,
-        dailySession,
-        allowedNewWordsNow: 0,
-      },
-    )
+    return wait('daily-complete', '今日练习已完成，需要巩固的单词会继续安排复习。', {
+      now,
+      stats,
+      dailySession,
+      allowedNewWordsNow: 0,
+    })
   }
 
   const quota = (dependencies.decideQuota ?? decideDailyAcquisitionQuota)(
     stats,
     undefined,
-    dailySession.plannedNewWordNames && (getLearnExtraRoundNames(dailySession) !== undefined || (dailySession.optionalNewWordNames?.length ?? 0) > 0)
+    dailySession.plannedNewWordNames &&
+      (getLearnExtraRoundNames(dailySession) !== undefined || (dailySession.optionalNewWordNames?.length ?? 0) > 0)
       ? stats.today.introducedWords + Math.max(0, recoveredDailyProgress.newTargetWords - recoveredDailyProgress.introducedNewWords)
       : dailySession.dailyNewTarget,
   )
-  const dailyPlan =
-    (dependencies.buildDailyPlan ?? buildLearnDailyPlan)({
-      stats,
-      quota,
-    })
+  const dailyPlan = (dependencies.buildDailyPlan ?? buildLearnDailyPlan)({
+    stats,
+    quota,
+  })
 
   if (dependencies.generateSession) {
-    const session = await dependencies.generateSession(
-      dictId,
-      words,
-      errorEvidence,
-      dailyPlan.allowedNewWordsNow,
-    )
+    const session = await dependencies.generateSession(dictId, words, errorEvidence, dailyPlan.allowedNewWordsNow)
     if (session) {
       const source: LearnPreparationSessionSource =
-        session.sessionKind === 'mixed'
-          ? 'mixed'
-          : session.sessionKind === 'acquisition'
-            ? 'acquisition'
-            : 'review'
+        session.sessionKind === 'mixed' ? 'mixed' : session.sessionKind === 'acquisition' ? 'acquisition' : 'review'
       return {
         kind: 'session',
         source,
@@ -236,11 +180,7 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
   } else {
     // Compatibility path for non-product callers that have not adopted the
     // unified mixed-session generator yet.
-    const dueReview = await dependencies.generateDueReview(
-      dictId,
-      words,
-      errorEvidence,
-    )
+    const dueReview = await dependencies.generateDueReview(dictId, words, errorEvidence)
     if (dueReview) {
       return {
         kind: 'session',
@@ -261,11 +201,7 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
   // only controls first introductions inside the acquisition resolver.
   const acquisition = dependencies.generateSession
     ? undefined
-    : await dependencies.generateAcquisition(
-        dictId,
-        words,
-        dailyPlan.allowedNewWordsNow,
-      )
+    : await dependencies.generateAcquisition(dictId, words, dailyPlan.allowedNewWordsNow)
   if (acquisition) {
     return {
       kind: 'session',
@@ -281,8 +217,7 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
     }
   }
 
-  const nextResumeAt =
-    await dependencies.getNextDeferredResumeAt(dictId)
+  const nextResumeAt = await dependencies.getNextDeferredResumeAt(dictId)
   const diagnostics: LearnPreparationDiagnostics = {
     now,
     stats,
@@ -293,60 +228,32 @@ export async function prepareLearnSession<ErrorEvidence>(input: {
   }
 
   if (nextResumeAt !== undefined && nextResumeAt > now) {
-    const minutes = Math.max(
-      1,
-      Math.ceil((nextResumeAt - now) / 60),
-    )
-    return wait(
-      'deferred',
-      `还有新词需要稍后继续巩固，约 ${minutes} 分钟后可继续。`,
-      diagnostics,
-    )
-  }
-
-  if (dailySession.status === 'active' && recoveredDailyProgress.remainingWords > 0 &&
-      nextResumeAt === undefined &&
-      recoveredDailyProgress.introducedNewWords >= recoveredDailyProgress.newTargetWords) {
-    dailySession = saveLearnDailySession({ ...dailySession, executionExhausted: true })
-    diagnostics.dailySession = dailySession
-    return wait(
-      'deferred',
-      '本次可执行练习已经结束；未通过最终测试的单词已保留，下一学习日继续。',
-      diagnostics,
-    )
-  }
-
-  if (stats.lifecycle.unseen === 0) {
-    return wait(
-      'empty',
-      '当前词库没有需要学习的单词。',
-      diagnostics,
-    )
-  }
-
-  if (dailyPlan.action === 'review-due') {
-    return wait(
-      'review-due',
-      '还有到期复习需要处理，暂不新增单词。',
-      diagnostics,
-    )
+    const minutes = Math.max(1, Math.ceil((nextResumeAt - now) / 60))
+    return wait('deferred', `还有新词需要稍后继续巩固，约 ${minutes} 分钟后可继续。`, diagnostics)
   }
 
   if (
-    dailyPlan.reasonCodes.includes(
-      'daily-workload-budget-reached',
-    )
+    dailySession.status === 'active' &&
+    recoveredDailyProgress.remainingWords > 0 &&
+    nextResumeAt === undefined &&
+    recoveredDailyProgress.introducedNewWords >= recoveredDailyProgress.newTargetWords
   ) {
-    return wait(
-      'workload-budget',
-      `今日 Learn 工作量已完成（已投入约 ${dailyPlan.todayActiveMinutes} 分钟）。`,
-      diagnostics,
-    )
+    dailySession = saveLearnDailySession({ ...dailySession, executionExhausted: true })
+    diagnostics.dailySession = dailySession
+    return wait('deferred', '本轮练习已结束，需要巩固的单词已保留，之后会继续安排。', diagnostics)
   }
 
-  return wait(
-    'quota',
-    `今日新词额度已完成（已引入 ${stats.today.introducedWords}/${quota.targetDailyNewWords}）。`,
-    diagnostics,
-  )
+  if (stats.lifecycle.unseen === 0) {
+    return wait('empty', '当前词库没有需要学习的单词。', diagnostics)
+  }
+
+  if (dailyPlan.action === 'review-due') {
+    return wait('review-due', '还有到期复习需要处理，暂不新增单词。', diagnostics)
+  }
+
+  if (dailyPlan.reasonCodes.includes('daily-workload-budget-reached')) {
+    return wait('workload-budget', `今日 Learn 工作量已完成（已投入约 ${dailyPlan.todayActiveMinutes} 分钟）。`, diagnostics)
+  }
+
+  return wait('quota', `今日新词额度已完成（已引入 ${stats.today.introducedWords}/${quota.targetDailyNewWords}）。`, diagnostics)
 }

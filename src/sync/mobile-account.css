@@ -287,3 +287,23 @@ body.mobile-account-document {
   padding-top: 20px;
   border-top: 1px solid var(--account-line);
 }
+
+/* Account actions are a bounded dialog, even in the guarded pre-mount document. */
+.mobile-account-page[data-account] {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: linear-gradient(#121b2b66, #121b2b66), var(--account-bg);
+}
+.mobile-account-page[data-account] .mobile-account-card {
+  max-height: 88dvh;
+  overflow-y: auto;
+  margin: 0;
+  border-radius: 20px;
+}
+.mobile-account-page[data-account] .mobile-account-top {
+  margin: 0 0 18px;
+}

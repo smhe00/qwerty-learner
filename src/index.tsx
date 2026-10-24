@@ -4,12 +4,13 @@
  * Legacy users continue without automatic S1 migration.
  */
 import { loadAuth } from './sync/auth'
-import { startPerfStage, timePerfStage } from './sync/perf-diagnostics'
-import { DAILY_SESSION_PREFIX, WORKSPACE_SETTING_KEYS } from './sync/workspace-v4'
-import { prepareGuardedWorkspaceBoot } from './sync/workspace-bootstrap'
+import { presentSafetyDialog, showInformationDialog } from './sync/dialog-presentation'
 import { learningEventSyncEnabled } from './sync/learning-sync-policy'
-import type { Workspace } from './sync/workspace-transition'
+import { startPerfStage, timePerfStage } from './sync/perf-diagnostics'
+import { prepareGuardedWorkspaceBoot } from './sync/workspace-bootstrap'
 import type { GuardedWorkspaceBoot, WorkspaceBootStage } from './sync/workspace-bootstrap'
+import type { Workspace } from './sync/workspace-transition'
+import { DAILY_SESSION_PREFIX, WORKSPACE_SETTING_KEYS } from './sync/workspace-v4'
 
 const S1_STORAGE_FENCE = new Set<string>([
   ...WORKSPACE_SETTING_KEYS,
@@ -31,9 +32,7 @@ const S1_STORAGE_FENCE = new Set<string>([
  * owner can observe future writes by an old V5 tab.
  */
 function fenceForeignWorkspaceStorageWrites(event: StorageEvent): void {
-  if (boot?.mode !== 'isolated' ||
-      !event.isTrusted ||
-      event.storageArea !== localStorage) return
+  if (boot?.mode !== 'isolated' || !event.isTrusted || event.storageArea !== localStorage) return
 
   // localStorage.clear() generates a storage event with key = null.
   // It cannot be individually rolled back because the browser does not
@@ -47,8 +46,7 @@ function fenceForeignWorkspaceStorageWrites(event: StorageEvent): void {
     window.location.reload()
     return
   }
-  if (!S1_STORAGE_FENCE.has(event.key) &&
-      !event.key.startsWith(DAILY_SESSION_PREFIX)) return
+  if (!S1_STORAGE_FENCE.has(event.key) && !event.key.startsWith(DAILY_SESSION_PREFIX)) return
 
   // Another tab may have caused a later legitimate change; never overwrite
   // it with an earlier event's value.
@@ -79,7 +77,7 @@ function gateUI(title: string, detail: string, action?: string, onRetry: () => v
   const panel = document.createElement('section')
   panel.setAttribute('role', 'status')
   panel.setAttribute('aria-live', 'polite')
-  panel.style.cssText = 'max-width:560px;margin:12vh auto;padding:28px;font-family:system-ui,sans-serif;line-height:1.7;color:#334155'
+
   const heading = document.createElement('h1')
   heading.textContent = title
   heading.style.cssText = 'font-size:22px;font-weight:600;margin-bottom:12px'
@@ -94,7 +92,7 @@ function gateUI(title: string, detail: string, action?: string, onRetry: () => v
     retry.addEventListener('click', onRetry)
     panel.append(retry)
   }
-  root.append(panel)
+  presentSafetyDialog(root, panel)
 }
 
 /**
@@ -106,16 +104,13 @@ function gateUI(title: string, detail: string, action?: string, onRetry: () => v
 function showExplicitMigrationConsent(): void {
   if (!root || !boot || boot.mode !== 'legacy') return
   const auth = loadAuth({ preserveExpired: true })
-  const owner: Workspace = auth
-    ? { kind: 'account', accountId: auth.user.userId }
-    : { kind: 'anonymous' }
-  const ownerName = auth
-    ? '账号“' + auth.user.username + '”（不可变 ID：' + auth.user.userId + '）'
-    : '当前本机匿名工作区'
+  const owner: Workspace = auth ? { kind: 'account', accountId: auth.user.userId } : { kind: 'anonymous' }
+  const ownerName = auth ? '账号“' + auth.user.username + '”（不可变 ID：' + auth.user.userId + '）' : '当前本机匿名工作区'
   const isDev = import.meta.env.DEV
-  gateUI(isDev ? 'S1 V1 数据归属测试（仅限本地开发）' : 'S1 本机学习数据归属确认',
-    '您正在确认完整 V1 本地数据归属到' + ownerName +
-    '。迁移仅保存本机 V4 数据，不会合并或上传。请先关闭旧版本标签页。')
+  gateUI(
+    isDev ? 'S1 V1 数据归属测试（仅限本地开发）' : 'S1 本机学习数据归属确认',
+    '您正在确认完整 V1 本地数据归属到' + ownerName + '。迁移仅保存本机 V4 数据，不会合并或上传。请先关闭旧版本标签页。',
+  )
   const panel = root.querySelector('section')
   if (!panel) return
   const acknowledge = document.createElement('label')
@@ -123,16 +118,20 @@ function showExplicitMigrationConsent(): void {
   const checkbox = document.createElement('input')
   checkbox.type = 'checkbox'
   checkbox.setAttribute('aria-label', '已核对本机完整 V4 备份')
-  acknowledge.append(checkbox, document.createTextNode(
-    ' 我已通过「设置 → 数据管理 → 导出完整备份」保存并校验本机 Backup V4，' +
-    '且已关闭其他旧版 Qwerty Plus 标签页。迁移不会上传到云端。',
-  ))
+  acknowledge.append(
+    checkbox,
+    document.createTextNode(
+      ' 我已通过「设置 → 数据管理 → 导出完整备份」保存并校验本机 Backup V4，' + '且已关闭其他旧版 Qwerty Plus 标签页。迁移不会上传到云端。',
+    ),
+  )
   panel.append(acknowledge)
   const confirm = document.createElement('button')
   confirm.type = 'button'
   confirm.textContent = '确认归属并建立隔离工作区'
   confirm.disabled = true
-  checkbox.addEventListener('change', () => { confirm.disabled = !checkbox.checked })
+  checkbox.addEventListener('change', () => {
+    confirm.disabled = !checkbox.checked
+  })
   confirm.style.cssText = 'margin-top:20px;border:1px solid #64748b;border-radius:6px;padding:8px 16px'
   confirm.addEventListener('click', () => {
     confirm.disabled = true
@@ -145,9 +144,7 @@ function showExplicitMigrationConsent(): void {
         gateUI('数据归属已提交', '正在以全新的 JavaScript 上下文加载学习数据。')
         window.location.replace('/')
       } catch (error) {
-        gateUI('迁移受阻，原始本地数据保留',
-          error instanceof Error ? error.message : String(error),
-          '重新检查')
+        gateUI('迁移受阻，原始本地数据保留', error instanceof Error ? error.message : String(error), '重新检查')
       }
     })()
   })
@@ -162,24 +159,14 @@ function showExplicitMigrationConsent(): void {
   panel.append(confirm, cancel)
 }
 
-
 function showS1AccountResult(): void {
   const keys = ['qwerty.s2.last-sync-result', 'qwerty.s1.last-account-result']
-  const key = keys.find(item => sessionStorage.getItem(item) !== null)
+  const key = keys.find((item) => sessionStorage.getItem(item) !== null)
   if (!key) return
   const note = sessionStorage.getItem(key)
   if (!note) return
   sessionStorage.removeItem(key)
-  const toast = document.createElement('div')
-  toast.setAttribute('role', 'status')
-  toast.textContent = note
-  toast.style.cssText = 'position:fixed;z-index:9999;top:20px;left:50%;transform:translateX(-50%);' +
-    'max-width:85vw;padding:14px 22px;border-radius:8px;border:1px solid #64748b;' +
-    'background:#f8fafc;color:#1e293b;font-family:system-ui;box-shadow:0 4px 18px #0002'
-  document.body.appendChild(toast)
-  // Last-result messages are user-visible after the navigation and
-  // contain no credentials, tokens, or private learning data.
-  setTimeout(() => { toast.remove() }, 12000)
+  showInformationDialog(note)
 }
 
 function onStage(stage: WorkspaceBootStage): void {
@@ -188,16 +175,17 @@ function onStage(stage: WorkspaceBootStage): void {
   if (new URLSearchParams(window.location.search).get('learn-block') === '1') {
     const notice = root?.querySelector('[data-learn-block-sync] [role="status"]')
     if (notice) {
-      notice.textContent = stage === 'locking'
-        ? '正在锁定本地学习记录，准备安全同步…'
-        : stage === 'recovering'
+      notice.textContent =
+        stage === 'locking'
+          ? '正在锁定本地学习记录，准备安全同步…'
+          : stage === 'recovering'
           ? '正在恢复上一次未完成的安全事务…'
           : '正在同步学习进度…'
       return
     }
   }
   if (stage === 'locking') {
-    gateUI('正在准备本地学习数据', '正在取得本浏览器的独占学习数据写入权限…')
+    gateUI('正在准备本地学习数据', '正在准备学习，请稍候…')
   } else if (stage === 'recovering') {
     gateUI('正在恢复学习进度', '检测到上次未完成的工作区切换，正在安全恢复。')
   }
@@ -215,7 +203,8 @@ async function start(): Promise<void> {
       prepareGuardedWorkspaceBoot(onStage, {
         allowLegacy: true,
         writerWaitMs: /\/mobile\/account\/?$/.test(window.location.pathname) ? 3000 : 0,
-      }))
+      }),
+    )
     if (releasedForPageHide) {
       boot.release()
       return
@@ -244,9 +233,7 @@ async function start(): Promise<void> {
       }
     }
     if (
-      (import.meta.env.DEV ||
-        (REACT_APP_DEPLOY_ENV !== 'pages' &&
-          import.meta.env.VITE_S1_ENABLE_EXPLICIT_V4_MIGRATION === 'true')) &&
+      (import.meta.env.DEV || (REACT_APP_DEPLOY_ENV !== 'pages' && import.meta.env.VITE_S1_ENABLE_EXPLICIT_V4_MIGRATION === 'true')) &&
       new URLSearchParams(window.location.search).get('s1-migration') === 'confirm' &&
       boot.mode === 'legacy'
     ) {
@@ -269,39 +256,41 @@ async function start(): Promise<void> {
     // Return after an S2 Pull journal recovery without mounting React.  The
     // Block completion UI remains non-modal and still holds the writer lease.
     if (new URLSearchParams(window.location.search).get('learn-block-sync') === 'result') {
-      const { readLearnBlockSyncPending, readLearnBlockSyncOutcome } =
-        await import('./sync/learn-block-sync')
+      const { readLearnBlockSyncPending, readLearnBlockSyncOutcome } = await import('./sync/learn-block-sync')
       const { renderLearnBlockSyncScreen } = await import('./sync/learn-block-sync-ui')
       const accountId = boot.registry.active.kind === 'account' ? boot.registry.active.accountId : ''
       const context = readLearnBlockSyncPending(accountId)
       const screen = renderLearnBlockSyncScreen(root, context)
       const previous = context ? readLearnBlockSyncOutcome() : null
-      screen.settle(previous ?? {
-        kind: 'failed',
-        message: '无法确认当前账号上次 Block 的云同步结果，本地记录仍保留。',
-      })
+      screen.settle(
+        previous ?? {
+          kind: 'failed',
+          message: '无法确认当前账号上次 Block 的云同步结果，本地记录仍保留。',
+        },
+      )
       return
     }
     // S2 pilot: the ONLY ordinary Sync action navigates into a new,
     // pre-mount, S1 writer-locked realm; it never mutates RecordDB from
     // mounted React. Production remains disabled without explicit flag.
     if (new URLSearchParams(window.location.search).get('s2-sync') === 'run') {
-      if (boot.mode !== 'isolated' ||
-          !(import.meta.env.DEV ||
-            (REACT_APP_DEPLOY_ENV !== 'pages' &&
-              import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true'))) {
+      if (
+        boot.mode !== 'isolated' ||
+        !(import.meta.env.DEV || (REACT_APP_DEPLOY_ENV !== 'pages' && import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true'))
+      ) {
         throw new Error('S2 Sync 尚未在此部署启用。')
       }
       // The Learn Block variant uses the same guarded S2 executor, never
       // a mounted React writer.  Its status is shown within the Block card.
       const isLearnBlock = new URLSearchParams(window.location.search).get('learn-block') === '1'
-      let blockScreen: {
-        setStatus(message: string): void
-        settle(result: { kind: 'ok' | 'failed'; message: string }): void
-      } | undefined
+      let blockScreen:
+        | {
+            setStatus(message: string): void
+            settle(result: { kind: 'ok' | 'failed'; message: string }): void
+          }
+        | undefined
       if (isLearnBlock) {
-        const { readLearnBlockSyncPending, blockAutoSyncEnabled } =
-          await import('./sync/learn-block-sync')
+        const { readLearnBlockSyncPending, blockAutoSyncEnabled } = await import('./sync/learn-block-sync')
         const { renderLearnBlockSyncScreen } = await import('./sync/learn-block-sync-ui')
         const accountId = boot.registry.active.kind === 'account' ? boot.registry.active.accountId : ''
         const context = readLearnBlockSyncPending(accountId)
@@ -318,24 +307,24 @@ async function start(): Promise<void> {
         // Capture the validated boot lease locally. A module-scope mutable
         // variable loses its TypeScript narrowing inside async callbacks.
         const syncBoot: GuardedWorkspaceBoot = boot
-        const result = await timePerfStage('sync', 'sync-total', () =>
-          executePreMountManualSyncV2(syncBoot))
+        const result = await timePerfStage('sync', 'sync-total', () => executePreMountManualSyncV2(syncBoot))
         const status = result.status
-        const note = status === 'noop'
-          ? '同步完成：本地和云端已经一致，没有传输完整数据。'
-          : status === 'pushed'
+        const note =
+          status === 'noop'
+            ? '同步完成：本地和云端已经一致，没有传输完整数据。'
+            : status === 'pushed'
             ? '同步完成：本地进度已安全上传至云端。'
             : status === 'pull-reload-required'
-              ? '同步完成：已安全恢复云端进度。'
-              : status === 'conflict'
-                ? '同步冲突：本地和云端均有变化，未覆盖任何一方。'
-                : '同步被安全拦截：' + result.reason
+            ? '同步完成：已安全恢复云端进度。'
+            : status === 'conflict'
+            ? '同步冲突：本地和云端均有变化，未覆盖任何一方。'
+            : '同步被安全拦截：' + result.reason
         if (isLearnBlock) {
           const { saveLearnBlockSyncOutcome } = await import('./sync/learn-block-sync')
-          const outcome = status === 'noop' || status === 'pushed' ||
-            status === 'pull-reload-required'
-            ? { kind: 'ok' as const, message: note }
-            : { kind: 'failed' as const, message: note + ' 本机学习记录仍已保存。' }
+          const outcome =
+            status === 'noop' || status === 'pushed' || status === 'pull-reload-required'
+              ? { kind: 'ok' as const, message: note }
+              : { kind: 'failed' as const, message: note + ' 本机学习记录仍已保存。' }
           saveLearnBlockSyncOutcome(outcome)
           if (status === 'pull-reload-required') {
             // The next S1 boot must replay the staged Pull journal before
@@ -351,8 +340,7 @@ async function start(): Promise<void> {
           sessionStorage.setItem('qwerty.s2.last-sync-result', note)
         }
       } catch (error) {
-        const message = '同步未确认，将先执行安全恢复检查：' +
-          (error instanceof Error ? error.message : String(error))
+        const message = '同步未确认，将先执行安全恢复检查：' + (error instanceof Error ? error.message : String(error))
         if (isLearnBlock) {
           const { saveLearnBlockSyncOutcome } = await import('./sync/learn-block-sync')
           const outcome = { kind: 'failed' as const, message }
@@ -395,9 +383,7 @@ async function start(): Promise<void> {
       return
     }
     if (new URLSearchParams(window.location.search).get('s2-recovery') === 'manage') {
-      if (boot.mode !== 'isolated' ||
-          !(import.meta.env.DEV ||
-            import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true')) {
+      if (boot.mode !== 'isolated' || !(import.meta.env.DEV || import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true')) {
         throw new Error('S2 高级恢复尚未在此部署启用。')
       }
       const { renderS2RecoveryUI } = await import('./sync/v2-recovery-ui')
@@ -421,9 +407,7 @@ async function start(): Promise<void> {
         // explicit consent. An uninitialized registry is NOT proof of no data.
         // Old V1 users must establish isolated ownership once before logging
         // in/out through the new unified account dialog.
-        if (import.meta.env.DEV ||
-            (REACT_APP_DEPLOY_ENV !== 'pages' &&
-              import.meta.env.VITE_S1_ENABLE_EXPLICIT_V4_MIGRATION === 'true')) {
+        if (import.meta.env.DEV || (REACT_APP_DEPLOY_ENV !== 'pages' && import.meta.env.VITE_S1_ENABLE_EXPLICIT_V4_MIGRATION === 'true')) {
           showExplicitMigrationConsent()
           return
         }
@@ -450,8 +434,7 @@ async function start(): Promise<void> {
       // modifying any snapshot. The browser adapter rechecks ownership.
       if (boot.registry.active.kind === 'account' && learningEventSyncEnabled()) {
         try {
-          const { startEtestM3BackgroundMonitor } =
-            await import('./sync/m3-background-browser')
+          const { startEtestM3BackgroundMonitor } = await import('./sync/m3-background-browser')
           stopEtestM3BackgroundMonitor = startEtestM3BackgroundMonitor()
         } catch (error) {
           // Optional network/pilot module loading can fail offline. NEVER
@@ -478,9 +461,14 @@ async function start(): Promise<void> {
     }
     if (message.includes('Another tab owns')) {
       if (/\/mobile\/account\/?$/.test(window.location.pathname)) {
-        gateUI('学习数据暂时被占用',
+        gateUI(
+          '学习数据暂时被占用',
           '页面切换或其他页面仍在使用学习数据。请稍后在此重试；若仍无法进入，请关闭其他 Qwerty Plus 页面。本机学习记录会保留。',
-          '在此重试', () => { void start() })
+          '在此重试',
+          () => {
+            void start()
+          },
+        )
         const panel = root?.querySelector('section')
         if (panel) {
           const diagnose = document.createElement('button')
@@ -497,11 +485,13 @@ async function start(): Promise<void> {
               try {
                 const { inspectWorkspaceWriter } = await import('./sync/workspace-lock-diagnostics')
                 const first = await inspectWorkspaceWriter()
-                await new Promise<void>(resolve => window.setTimeout(resolve, 2500))
+                await new Promise<void>((resolve) => window.setTimeout(resolve, 2500))
                 const second = await inspectWorkspaceWriter()
-                const text = JSON.stringify({ version: LATEST_COMMIT_HASH,
-                  browser: navigator.userAgent, path: window.location.pathname,
-                  samples: [first, second] }, null, 2)
+                const text = JSON.stringify(
+                  { version: LATEST_COMMIT_HASH, browser: navigator.userAgent, path: window.location.pathname, samples: [first, second] },
+                  null,
+                  2,
+                )
                 if (!diagnose.isConnected) return
                 try {
                   await navigator.clipboard.writeText(text)
@@ -520,14 +510,21 @@ async function start(): Promise<void> {
               } catch {
                 if (note.isConnected) note.textContent = '暂时无法读取诊断信息，学习记录未修改。'
               } finally {
-                if (diagnose.isConnected) { diagnose.disabled = false; diagnose.textContent = '复制诊断信息' }
+                if (diagnose.isConnected) {
+                  diagnose.disabled = false
+                  diagnose.textContent = '复制诊断信息'
+                }
               }
             })()
           })
           panel.append(diagnose, note)
         }
       } else {
-        gateUI('另一个标签页正在使用学习数据', '为防止两个标签页同时写入而损坏学习进度，本页暂不启动。请关闭其他 Qwerty Plus 标签页，再重试。', '重试')
+        gateUI(
+          '另一个标签页正在使用学习数据',
+          '为防止两个标签页同时写入而损坏学习进度，本页暂不启动。请关闭其他 Qwerty Plus 标签页，再重试。',
+          '重试',
+        )
       }
     } else {
       gateUI('学习数据安全检查未通过', '已阻止本页写入，现有学习数据不会因此被清空。原因：' + message, '重新检查')
@@ -550,7 +547,7 @@ window.addEventListener('pagehide', () => {
   // The lease is retained until document destruction. Pre-mount account
   // transitions may still be writing even when React has not mounted.
 })
-window.addEventListener('pageshow', event => {
+window.addEventListener('pageshow', (event) => {
   if (event.persisted) window.location.reload()
 })
 

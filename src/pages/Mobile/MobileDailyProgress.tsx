@@ -28,7 +28,7 @@ export default function MobileDailyProgress({ summary }: { summary: MobileDailyS
           </dd>
         </div>
         <div>
-          <dt>今日复习</dt>
+          <dt>复习已完成</dt>
           <dd>
             {progress.completedReviewWords}
             <span> / {progress.reviewTargetWords}</span>
@@ -56,7 +56,10 @@ export default function MobileDailyProgress({ summary }: { summary: MobileDailyS
         <span style={{ width: progress.percent + '%' }} />
       </div>
       <p className="mobile-daily-caption">
-        {progress.complete ? '今日目标已完成' : `今日已达标 ${progress.completedWords} 词，还需 ${progress.remainingWords} 词`}
+        {progress.complete ? '今日练习已完成' : `今日已完成 ${progress.completedWords} 词，还需练习 ${progress.remainingWords} 词`}
+      </p>
+      <p className="mobile-daily-caption" data-review-mastery>
+        复习中独立答对 {progress.independentReviewWords} 词，需巩固 {progress.reviewWordsToConsolidate} 词。系统会继续安排复习。
       </p>
     </div>
   )
