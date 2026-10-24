@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: '20.19.3'
 
-      - name: Verify actual q.smhe.cn release SHA and gateway health
+      - name: Verify actual q.smhe.cn release SHA, gateway and mobile routes
         env:
           EXPECTED_RELEASE_SHA: ${{ github.sha }}
         run: |
@@ -62,9 +62,25 @@ jobs:
               assert.ok(Array.isArray(health.capabilities) &&
                 health.capabilities.includes('blob-transient-retry-v1'),
                 'Required blob gateway capability missing')
+              // Anonymous read-only route probes: no auth, storage or learning.
+              const routes = ['/mobile', '/mobile/history', '/mobile/data', '/mobile/achievements']
+              for (const path of routes) {
+                const target = new URL(path, production)
+                target.searchParams.set('release_probe', expected + '-' + Date.now())
+                const route = await fetch(target, {
+                  cache: 'no-store', signal: AbortSignal.timeout(15_000),
+                })
+                assert.equal(new URL(route.url).origin, production, 'Unexpected route origin')
+                assert.equal(new URL(route.url).pathname.replace(/\/$/, ''), path,
+                  'Mobile route redirected away from its entry')
+                assert.equal(route.status, 200, 'Mobile route HTTP ' + route.status + ': ' + path)
+                const html = await route.text()
+                assert.match(html, /id=["']root["']/, 'Missing application entry: ' + path)
+              }
               console.log(JSON.stringify({
                 result: 'PASS', production, expected, deployed: marker,
                 gateway: health.service, apiVersion: health.apiVersion,
+                mobileRouteEntries: routes, verificationMode: 'anonymous-read-only',
               }, null, 2))
               process.exit(0)
             } catch (error) {
