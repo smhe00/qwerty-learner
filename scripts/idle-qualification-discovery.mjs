@@ -5,6 +5,7 @@ import { appendFileSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { isCurrentStagingProject } from './idle-project-binding.mjs'
 
 const evidence = { check: 'idle-qualification-staging-discovery',
   blobWritesAttempted: false, configurationChanged: false, deploymentTriggered: false }
@@ -18,23 +19,18 @@ try {
   const makers = new Makers({ token })
   const matches = []
   let examined = 0
-  const hostname = value => {
-    if (value && typeof value === 'object') value = value.domain || value.domainName || value.name
-    if (typeof value !== 'string') return ''
-    try { return new URL(value.includes('://') ? value : 'https://' + value).hostname.toLowerCase() }
-    catch { return '' }
-  }
   phase = 'project-list'
   for await (const project of makers.projects.listAll()) {
     if (++examined > 50) throw Error('discovery-budget')
     if (['makers-yggquqwubqul', 'makers-cgemngjuuwle'].includes(project.projectId)) continue
     phase = 'project-detail'
-    const detail = await makers.projects.get({ projectId: project.projectId })
-    const domains = [project.presetDomain, detail.presetDomain,
-      ...(Array.isArray(detail.domains) ? detail.domains : []),
-      ...(Array.isArray(detail.customDomains) ? detail.customDomains : []),
-    ].map(hostname)
-    if (domains.includes('t.smhe.cn') || domains.includes('etest.edgeone.dev')) matches.push(project.projectId)
+    // SDK normalization discards custom-domain bindings. Inspect the same raw
+    // read action and require a passed exact current domain plus staging branch.
+    const response = await makers.request('DescribePagesProjects', {
+      Filters: [{ Name: 'ProjectId', Values: [project.projectId] }], Offset: 0, Limit: 1,
+    }, true)
+    const record = response.Projects?.find(row => row.ProjectId === project.projectId)
+    if (isCurrentStagingProject(record)) matches.push(project.projectId)
     phase = 'project-list'
   }
   evidence.projectsExamined = examined
@@ -43,7 +39,7 @@ try {
   if (matches.length !== 1 || !/^makers-[a-z0-9-]+$/.test(matches[0])) throw Error('staging-not-unique')
   appendFileSync(process.env.GITHUB_OUTPUT, `project_id=${matches[0]}\n`)
   evidence.verdict = 'PASS'
-  evidence.binding = 'exact-etest-domain'
+  evidence.binding = 'passed-exact-t-smhe-cn-and-staging-branch'
 } catch {
   evidence.verdict = 'FAIL'
   evidence.failureStage = phase

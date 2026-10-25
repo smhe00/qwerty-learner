@@ -262,3 +262,13 @@ correspondence is established. Added read-only booleans across all accessible
 projects, including formerly denied IDs for reads only. All deny-write guards
 remain unchanged. Temporary writes so far affected only the old preset
 project; execution=false is confirmed there. Production remains untouched.
+
+Correction before further writes: the first raw project audit used unsupported
+ProjectIds instead of Filters and selected the first returned record; catalog
+rows consequently repeated. Its domain/branch conclusions above are NOT
+established. Exact environment record checks use the correct ProjectId input
+and remain valid. Fixed project reads to use the SDK's exact documented
+Filters shape and assert the returned ProjectId matches before inspecting.
+Strengthened discovery to require passed t.smhe.cn binding and staging branch,
+never an old preset alone. Local binding/namespace guard contracts PASS9/9.
+Re-run the corrected read-only audit before concluding project mismatch.

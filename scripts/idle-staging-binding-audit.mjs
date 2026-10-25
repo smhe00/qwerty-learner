@@ -40,8 +40,15 @@ for (const region of ['china', 'global']) {
         return [key, safeEnumValue(value) || typeof value === 'boolean' || (Number.isInteger(value) && value >= 0 && value <= 10) ? value : typeof value]
       })),
     }))
-    const project = await makers.request('DescribePagesProjects', { ProjectIds: [projectId] }, true)
-    const record = project.Projects?.[0] || project.Project || {}
+    const readProject = async id => {
+      const response = await makers.request('DescribePagesProjects', {
+        Filters: [{ Name: 'ProjectId', Values: [id] }], Offset: 0, Limit: 1,
+      }, true)
+      const record = response.Projects?.find(row => row.ProjectId === id)
+      assert.ok(record, 'Exact requested record absent')
+      return record
+    }
+    const record = await readProject(projectId)
     item.projectRecordFields = fields(record)
     const serializedDomains = JSON.stringify(record.CustomDomains || [])
     item.binding = {
@@ -58,8 +65,7 @@ for (const region of ['china', 'global']) {
     item.projectCatalog = []
     for await (const candidate of makers.projects.listAll()) {
       if (item.projectCatalog.length >= 50) throw Error('Catalog budget exceeded')
-      const response = await makers.request('DescribePagesProjects', { ProjectIds: [candidate.projectId] }, true)
-      const row = response.Projects?.[0] || response.Project || {}
+      const row = await readProject(candidate.projectId)
       const domains = JSON.stringify(row.CustomDomains || [])
       item.projectCatalog.push({
         selectedByOldDiscovery: candidate.projectId === projectId,
