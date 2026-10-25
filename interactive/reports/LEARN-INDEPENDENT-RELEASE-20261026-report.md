@@ -33,3 +33,7 @@ New scope local gateway regressions:13/13 PASS (12 staging experiment contracts 
 ## Final scope based on owner-provided deployment variable
 
 Owner configured branch=master for production and branch=etest for test. Replace static candidate policy with exact server deployment binding. Missing/unknown values disable experiment; request Host/Origin/headers cannot enable it. runtime-environment adds only literal process.env.branch fallback, preserving all other configuration.18767e32 branch is superseded, never pushed to etest/master. Normal product/main/etest same-SHA gates retained unchanged. etest trial no longer needs interruption or restoration. Production preserves9620e33c UI/completion/cleanup.
+
+Final environment-aware local targeted contracts24/24 PASS. CI f3b999dd ran806 contracts:805 passed, exceptional handoff fixture lacked newly required branch=etest and correctly saw disabled health. Corrected only that synthetic server context, retained all barrier/disconnect assertions. No HTTP503 waiver used for this test failure. AGENTS.md and owner-requested cross-chat project memory now record the branch convention.
+
+Final local full backend806/806 PASS17.55s; real completion browser12/12 PASS72.45s on environment-aware source. Unknown branch is explicitly NOT Pages; owner agreed to preserve existing Pages build flags and normal production login/sync when the variable is absent.

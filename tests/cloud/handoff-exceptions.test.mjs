@@ -40,7 +40,7 @@ test('expanded handoff journey through actual gateway and real TCP client discon
           ...(bytes.length ? { body: bytes } : {}),
         })
         // Do not terminate server work when its client drops the response.
-        const response = await onRequest({ request, clientIp: '192.0.2.201', env: { AUTH_RATE_LIMIT_REQUESTS: '1000' } })
+        const response = await onRequest({ request, clientIp: '192.0.2.201', env: { branch: 'etest', AUTH_RATE_LIMIT_REQUESTS: '1000' } })
         if (!outgoing.destroyed) {
           outgoing.writeHead(response.status, Object.fromEntries(response.headers))
           outgoing.end(Buffer.from(await response.arrayBuffer()))
