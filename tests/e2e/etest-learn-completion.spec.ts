@@ -2,9 +2,10 @@ import { createLearnAcquisitionExercisePlanForState, resumeDeferredAsTerminalPro
 import { loadBodyPolicy } from './body-policy-loader'
 import { acknowledgeInformationDialog } from './information-dialog'
 import { startTyping } from './review-flow-harness'
-import { expect, test, type Page } from '@playwright/test'
-import { randomUUID } from 'node:crypto'
+import { type Page, expect, test } from '@playwright/test'
+import { createHash, randomUUID } from 'node:crypto'
 import { writeFile } from 'node:fs/promises'
+import { gunzipSync } from 'node:zlib'
 
 // Only the unfinished BEFORE state is a fixture. Login, final keyboard answer,
 // settlement, completion screen, S1/V4 upload, five-more and fresh-profile pull
@@ -45,7 +46,13 @@ async function login(page: Page, username: string, password: string) {
     },
     { timeout: 60_000 },
   )
+  const confirmation = page.waitForEvent('dialog', { timeout: 60_000 }).then(async (dialog) => {
+    expect(dialog.type()).toBe('confirm')
+    expect(dialog.message()).toBe('登录“' + username + '”后，将使用该账号的学习记录。本机未登录时的记录会保留，不会自动合并。继续登录？')
+    await dialog.accept()
+  })
   await page.getByRole('button', { name: '登录', exact: true }).click()
+  await confirmation
   expect((await response).status()).toBe(200)
   await expect(page).toHaveURL(/^https:\/\/t\.smhe\.cn\/(?:learn)?$/, { timeout: 120_000 })
   await acknowledgeInformationDialog(page)
@@ -58,6 +65,42 @@ async function meta(page: Page) {
     if (!r.ok) throw Error('metadata HTTP-' + r.status)
     return r.json()
   })
+}
+async function pinnedSnapshot(page: Page, revision: number, fingerprint: string, owner: string) {
+  // Read immutable cloud bytes before starting the extra round. This does not
+  // trigger a login/session transfer or any application write.
+  const { manifest, parts } = await page.evaluate(async () => {
+    const auth = JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null')
+    const headers = { Authorization: 'Bearer ' + auth.token }
+    const response = await fetch('/api/sync/v2/binary/manifest', { headers, cache: 'no-store' })
+    if (!response.ok) throw Error('manifest HTTP-' + response.status)
+    const manifest = await response.json()
+    if (!Number.isInteger(manifest.count) || manifest.count < 1 || manifest.count > 64) throw Error('invalid part count')
+    const parts: number[][] = []
+    for (let index = 0; index < manifest.count; index++) {
+      const params = new URLSearchParams({ revision: String(manifest.revision), sha: manifest.payloadSha256, index: String(index) })
+      const r = await fetch('/api/sync/v2/binary/part?' + params, { headers, cache: 'no-store' })
+      if (!r.ok) throw Error('part HTTP-' + r.status)
+      parts.push(Array.from(new Uint8Array(await r.arrayBuffer())))
+    }
+    return { manifest, parts }
+  })
+  expect(manifest.revision).toBe(revision)
+  expect(manifest.logicalFingerprint).toBe(fingerprint)
+  expect(manifest.payloadEncoding).toBe('binary')
+  const buffers = parts.map((part, index) => {
+    const bytes = Buffer.from(part)
+    expect(createHash('sha256').update(bytes).digest('hex')).toBe(manifest.partSha256s[index])
+    return bytes
+  })
+  const bytes = Buffer.concat(buffers)
+  expect(bytes.length).toBe(manifest.sizeBytes)
+  expect(createHash('sha256').update(bytes).digest('hex')).toBe(manifest.payloadSha256)
+  const snapshot = JSON.parse(gunzipSync(bytes).toString('utf8'))
+  expect(snapshot.backupFormatVersion).toBe('qwerty-backup-v4')
+  expect(snapshot.metadata.source.kind).toBe('account')
+  expect(snapshot.metadata.source.accountId === owner).toBe(true)
+  return snapshot.workspaceData
 }
 async function records(page: Page) {
   return page.evaluate(async (key) => {
@@ -209,11 +252,14 @@ for (const wrong of [true, false]) {
       networkMocked: false,
     }
     const failures: unknown[] = []
+    let stage = 'register'
     try {
       const created = await request('/api/auth/register', 'POST', { username, password, deviceId: 'qwerty-web-' + randomUUID() })
       expect(created.status).toBe(201)
       owner = created.body.user.userId
+      stage = 'first-login'
       await login(a, username, password)
+      stage = 'seed-unfinished-before-state'
       await seedUnfinishedLastWord(a)
       const before = await records(a)
       expect(before.words).toHaveLength(1)
@@ -224,6 +270,7 @@ for (const wrong of [true, false]) {
       a.on('response', (r) => {
         if (new URL(r.url()).pathname === '/api/sync/v2/binary/direct') committed.push(r.status())
       })
+      stage = 'last-word-entry'
       await a.goto(base + '/learn?block-resume=1', { waitUntil: 'domcontentloaded' })
       await startTyping(a)
       const word = a.locator('[data-typing-word="cancel"]')
@@ -234,6 +281,7 @@ for (const wrong of [true, false]) {
         await expect(word).toHaveAttribute('data-typing-wrong-count', '1')
         await expect(word).toHaveAttribute('data-typing-has-wrong', 'false')
       }
+      stage = 'last-answer-and-completion-sync'
       await a.keyboard.type('cancel', { delay: 40 })
       await expect(a.locator('[data-learn-block-sync]')).toBeVisible({ timeout: 60_000 })
       await expect(a.getByRole('heading', { name: wrong ? '本轮练习已结束' : '今日学习完成', exact: true })).toBeVisible()
@@ -254,6 +302,16 @@ for (const wrong of [true, false]) {
       expect(committed.filter((s) => s === 200)).toHaveLength(1)
       proof.committedUploads = 1
       proof.cloudRevision = uploaded.revision
+      stage = 'completion-blob-readback'
+      const cloud = await pinnedSnapshot(a, uploaded.revision, uploaded.logicalFingerprint, owner!)
+      const cloudWords = cloud.database.data.data.find((table: any) => table.tableName === 'wordRecords').rows
+      expect(cloudWords).toHaveLength(2)
+      expect(cloudWords[1].attemptId).toBe(final.words[1].attemptId)
+      expect(cloudWords[1].wrongCount).toBe(final.words[1].wrongCount)
+      expect(cloud.learnRuntime.dailySessions.cet4.status).toBe(final.daily.status)
+      expect(cloud.learnRuntime.dailySessions.cet4.executionExhausted).toBe(final.daily.executionExhausted)
+      proof.completionBlobHashVerified = true
+      stage = 'five-more-and-reload'
       await a.getByRole('button', { name: '再学五词', exact: true }).click()
       await expect(a.locator('[data-typing-word]')).toBeVisible({ timeout: 60_000 })
       const extra = (await records(a)).daily
@@ -263,12 +321,25 @@ for (const wrong of [true, false]) {
       expect(extra.blockCount).toBe(1)
       await a.reload({ waitUntil: 'domcontentloaded' })
       await expect(a.locator('[data-typing-word]')).toBeVisible({ timeout: 60_000 })
-      expect((await records(a)).daily.plannedNewWords).toBe(extra.plannedNewWords)
-      expect((await meta(a)).revision).toBe(uploaded.revision)
+      const afterReload = await records(a)
+      expect(afterReload.daily.plannedNewWords).toBe(extra.plannedNewWords)
+      expect(afterReload.daily.plannedNewWordNames).toEqual(extra.plannedNewWordNames)
+      expect(afterReload.daily.extraRoundWordNames).toEqual(extra.extraRoundWordNames)
+      expect(afterReload.daily.blockCount).toBe(1)
+      expect(afterReload.words).toEqual(final.words)
+      expect(afterReload.states).toEqual(final.states)
+      // Ordinary startup sync persists the new five-word runtime. It may
+      // advance the revision once, but must never append another answer.
+      const resumed = await meta(a)
+      expect(resumed.revision).toBe(uploaded.revision + 1)
+      expect(committed.filter((s) => s === 200)).toHaveLength(2)
+      proof.extraRoundStartupRevision = resumed.revision
+      proof.totalCommittedUploads = 2
       proof.extraWords = 5
       proof.reloadDidNotDuplicateExtension = true
       // Park A before B takes the sole login session. B must pull the actual
       // Blob from an empty profile, proving the final answer reached storage.
+      stage = 'fresh-profile-cloud-readback'
       await account(a)
       const downloads: string[] = []
       b.on('request', (r) => {
@@ -280,17 +351,21 @@ for (const wrong of [true, false]) {
       expect(downloads).toContain('GET /api/sync/v2/binary/manifest')
       expect(downloads).toContain('GET /api/sync/v2/binary/part')
       expect(restored.words).toEqual(final.words)
-      expect(restored.reviews).toEqual(final.reviews)
+      expect(restored.reviews).toEqual(afterReload.reviews)
       expect(restored.states).toEqual(final.states)
-      expect(restored.daily.status).toBe(final.daily.status)
-      expect(restored.daily.executionExhausted).toBe(final.daily.executionExhausted)
-      expect((await meta(b)).revision).toBe(uploaded.revision)
+      expect(restored.daily.status).toBe(afterReload.daily.status)
+      expect(restored.daily.executionExhausted).toBe(afterReload.daily.executionExhausted)
+      expect(restored.daily.extraRoundWordNames).toEqual(afterReload.daily.extraRoundWordNames)
+      expect(restored.daily.plannedNewWordNames).toEqual(afterReload.daily.plannedNewWordNames)
+      expect((await meta(b)).revision).toBe(resumed.revision)
       proof.freshProfileCloudReadbackExact = true
       proof.cloudWordRecords = restored.words.length
-      proof.finalAttemptPresentExactlyOnce = restored.words.filter((r) => r.attemptId === final.words[1].attemptId).length === 1
+      expect(restored.words.filter((r) => r.attemptId === final.words[1].attemptId)).toHaveLength(1)
+      proof.finalAttemptPresentExactlyOnce = true
     } catch (e) {
       failures.push(e)
       proof.applicationFailed = true
+      proof.failedStage = stage
     } finally {
       await Promise.allSettled(contexts.map((c) => c.close()))
       try {
@@ -312,7 +387,11 @@ for (const wrong of [true, false]) {
       console.log('COMPLETION_CLOUD_REDACTED', JSON.stringify(proof))
     }
     if (failures.length) {
-      const messages = failures.map((e) => String(e instanceof Error ? e.stack : e).split(password).join('[redacted-password]'))
+      const messages = failures.map((e) =>
+        String(e instanceof Error ? e.stack : e)
+          .split(password)
+          .join('[redacted-password]'),
+      )
       throw new Error(messages.join('\n'))
     }
   })

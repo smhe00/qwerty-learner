@@ -1,0 +1,48 @@
+{
+  "runner": "local Windows Chrome via Playwright",
+  "origin": "https://t.smhe.cn/",
+  "deployedSha": "4c20e2663d4aee75d6888fc99a89d3302d4a95d6",
+  "elapsedSeconds": 136.53,
+  "passed": 2,
+  "failed": 0,
+  "results": [
+    {
+      "source": "4c20e26",
+      "case": "unmastered",
+      "beforeStateFixture": true,
+      "networkMocked": false,
+      "completionPageVisible": true,
+      "committedUploads": 1,
+      "cloudRevision": 1,
+      "completionBlobHashVerified": true,
+      "extraRoundStartupRevision": 2,
+      "totalCommittedUploads": 2,
+      "extraWords": 5,
+      "reloadDidNotDuplicateExtension": true,
+      "freshProfileCloudReadbackExact": true,
+      "cloudWordRecords": 2,
+      "finalAttemptPresentExactlyOnce": true,
+      "cleanupStatus": 200,
+      "cleanupVerified": true
+    },
+    {
+      "source": "4c20e26",
+      "case": "complete",
+      "beforeStateFixture": true,
+      "networkMocked": false,
+      "completionPageVisible": true,
+      "committedUploads": 1,
+      "cloudRevision": 1,
+      "completionBlobHashVerified": true,
+      "extraRoundStartupRevision": 2,
+      "totalCommittedUploads": 2,
+      "extraWords": 5,
+      "reloadDidNotDuplicateExtension": true,
+      "freshProfileCloudReadbackExact": true,
+      "cloudWordRecords": 2,
+      "finalAttemptPresentExactlyOnce": true,
+      "cleanupStatus": 200,
+      "cleanupVerified": true
+    }
+  ]
+}
