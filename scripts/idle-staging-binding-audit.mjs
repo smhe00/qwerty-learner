@@ -83,6 +83,9 @@ for (const region of ['china', 'global']) {
     item.outcome = 'UNAVAILABLE'
     item.errorType = /^[A-Za-z]{1,60}$/.test(error?.name) ? error.name : 'unknown'
     item.errorCode = /^[A-Za-z][A-Za-z0-9_.]{0,80}$/.test(error?.code) ? error.code : 'unspecified'
+    item.httpStatus = Number.isInteger(error?.httpStatus) ? error.httpStatus : null
+    item.failureTransport = ['network-error', 'response'].includes(error?.cause?.type || error?.cause?.transport)
+      ? (error.cause.type || error.cause.transport) : 'unspecified'
   }
   report.regions.push(item)
 }

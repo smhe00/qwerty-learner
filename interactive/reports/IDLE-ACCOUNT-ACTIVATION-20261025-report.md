@@ -272,3 +272,23 @@ Filters shape and assert the returned ProjectId matches before inspecting.
 Strengthened discovery to require passed t.smhe.cn binding and staging branch,
 never an old preset alone. Local binding/namespace guard contracts PASS9/9.
 Re-run the corrected read-only audit before concluding project mismatch.
+
+Corrected exact-ID audit40166715518 SUCCESS confirms the accessible global
+catalog has2 projects, neither reports t.smhe.cn/q.smhe.cn custom bindings.
+This now uses Filters and finds the exact returned ProjectId. The formerly
+selected staging project has the old preset and valid date/false metadata;
+the other known ID does NOT have IDLE settings. Current-domain discovery
+40166671946 failed with0 matches; isolated-suite40166671952 passed scope9/9,
+then correctly refused discovery and SKIPPED all real Blob writes. This is
+an unresolved provider project/binding/access mismatch, not a claim the
+domains do not exist or that China access is definitively unauthorized.
+
+Actual t.smhe.cn now serves5fa7574. Read-only method-specific probe HTTP200
+reports context is a plain object, both context and Node date bindings are
+undefined, no map-shaped API, function region ap-hongkong. This rules out
+the generic handler/Map-vs-object hypothesis for this observed deployment.
+Production q.smhe.cn still reports enabled=false at5528f79c. Never start a
+new enabled runtime experiment until actual domain/project correspondence
+and configuration reachability are established. Added safe HTTP status and
+transport-type metadata to identify why the China API read is unavailable;
+no error messages/payloads or credential values are emitted.
