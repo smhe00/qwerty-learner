@@ -93,6 +93,13 @@ test('success notice requires explicit completion and stays account-scoped', asy
   assert.equal(api.takeQuickSyncNotice(id), null)
   assert.equal(api.getQuickSyncIntent(id), null)
 })
+test('confirmed noop/push success is visible only to its original account', async () => {
+  reset()
+  await api.startQuickSync('/typing')
+  assert.equal(api.finalizeQuickSync(id, { kind: 'ok', message: '本机云端一致。' }), '/typing?quick-sync-return=1')
+  assert.deepEqual(api.takeQuickSyncNotice(id), { kind: 'ok', message: '本机云端一致。' })
+  assert.equal(api.takeQuickSyncNotice(id), null)
+})
 test('a recovered Pull is success only after the precise durable replay receipt', async () => {
   reset()
   await api.startQuickSync('/mobile/study')

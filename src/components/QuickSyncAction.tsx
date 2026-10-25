@@ -39,6 +39,7 @@ export default function QuickSyncAction({
   return (
     <button
       type="button"
+      role={menu ? 'menuitem' : undefined}
       title={description}
       aria-label={description}
       data-quick-sync-entry

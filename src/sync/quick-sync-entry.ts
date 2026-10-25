@@ -27,7 +27,7 @@ function readIntent(): Intent | null {
     const value = parsed as Partial<Intent>
     if (typeof value.accountId !== 'string' || !value.accountId ||
         !allowedTarget(value.target) ||
-        !Number.isSafeInteger(value.createdAt) ||
+        typeof value.createdAt !== 'number' || !Number.isSafeInteger(value.createdAt) ||
         Math.abs(Date.now() - value.createdAt) > MAX_AGE ||
         (value.phase !== 'requested' && value.phase !== 'recovering')) return null
     return value as Intent
@@ -100,7 +100,7 @@ export function takeQuickSyncNotice(accountId: string | null): QuickSyncFeedback
     if (value.accountId !== accountId ||
         !['ok', 'failed', 'unknown'].includes(value.kind || '') ||
         typeof value.message !== 'string' || value.message.length > 220 ||
-        !Number.isSafeInteger(value.at) || Math.abs(Date.now() - value.at) > MAX_AGE) return null
+        typeof value.at !== 'number' || !Number.isSafeInteger(value.at) || Math.abs(Date.now() - value.at) > MAX_AGE) return null
     return { kind: value.kind as QuickSyncFeedback['kind'], message: value.message }
   } catch { return null }
 }
