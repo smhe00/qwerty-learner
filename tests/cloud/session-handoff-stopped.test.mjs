@@ -46,7 +46,7 @@ async function waitFor(predicate) {
   }
   assert.fail('Required pending/active state was not observed')
 }
-const scoped = operation => runHandoffScope({}, operation)
+const scoped = operation => runHandoffScope({ certifyStopped: true }, operation)
 
 test('failed before writing: preserve A error and admit B without successful resync', async () => {
   const { gate } = setup()
@@ -137,4 +137,19 @@ test('unverified terminal receipt is not mistaken for released ownership', async
   })), code('handoff_write_unverified'))
   await assert.rejects(gate.execute(account, 'handoff', () => assert.fail('receipt absent')),
     code('handoff_timeout'))
+})
+
+// Compatibility: a scope without an owning barrier must keep its original
+// error identity. It still drains and closes before the caller sees the error.
+test('standalone scope preserves original error and rejects detached writes', async () => {
+  const { data } = setup()
+  const failure = new Error('known stopped caller')
+  let oldStore
+  await assert.rejects(runHandoffScope({}, async () => {
+    oldStore = getStore({ name: 'data' })
+    await oldStore.setJSON('progress', { saved: true })
+    throw failure
+  }), error => error === failure)
+  assert.throws(() => oldStore.setJSON('progress', { saved: false }), code('handoff_request_closed'))
+  assert.deepEqual(await data.get('progress'), { saved: true })
 })

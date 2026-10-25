@@ -48,7 +48,7 @@ export function getStore(options) {
   })
 }
 
-export async function runHandoffScope({ holdMs = 0, markHeld }, operation) {
+export async function runHandoffScope({ holdMs = 0, markHeld, certifyStopped = false }, operation) {
   const scope = { mutationStarted: false, failed: false, pending: new Set(),
     closed: false, holdMs, markHeld }
   return scopes.run(scope, async () => {
@@ -67,7 +67,12 @@ export async function runHandoffScope({ holdMs = 0, markHeld }, operation) {
     // A rejected provider mutation MAY still land remotely; never certify it
     // as stopped just because its Promise rejected or the handler caught it.
     if (scope.failed) throw new HandoffError('handoff_operation_outcome_unknown', failure)
-    if (rejected) throw new StoppedOperationError(failure)
+    // Preserve the original scope-only error contract. Only an owning barrier
+    // caller opts into the internal stopped certificate and unwraps its cause.
+    if (rejected) {
+      if (certifyStopped) throw new StoppedOperationError(failure)
+      throw failure
+    }
     return output
   })
 }
