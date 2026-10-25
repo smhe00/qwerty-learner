@@ -11,6 +11,12 @@ release_to_master: false
 runtime_activation_authorized: true
 ---
 
+Next concrete step: temporary read-only method-specific function ABI probe,
+plus read-only SDK domain/branch binding audit. Node20 probe privacy/shape
+contracts PASS2/2, scoped lint PASS. No production changes. Deploy to staging
+with existing execution=false, then inspect booleans, not secret values. The
+compatibility resolver is a hypothesis, not an established live root cause.
+
 Owner authorized enabling idle cleanup, then explicitly instructed starting verification. Do not re-ask either permission. Production activation is not completed. Real isolated Blob lifecycle qualification now PASS8/8 at2543911e, CI40159814798,69 tracked fixture keys confirmed absent. Exact staging discovery and the CI credential work; do not confuse local credential absence with unavailable CI access. See retained redacted evidence in the activation report.
 
 Next verification is the actual staging browser/maintenance path. The config-only attempt40161125235 failed before registration: project env changes require redeployment. SDK deletion/empty-date rollback failed; recovery40162073663 succeeded by explicitly setting execute=false and retaining the owned date. No original absent-key equivalence is claimed. Current runtime remains unconfigured/off; future builds load retained date plus execute=false.

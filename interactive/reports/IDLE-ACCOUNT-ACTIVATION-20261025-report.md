@@ -238,3 +238,14 @@ date-parseability and disabled-flag booleans, never values/IDs/credentials.
 This audit mutates no configuration/storage or deployment. Its purpose is to
 resolve project-variable vs Cloud Function binding rather than guess another
 configuration write. Syntax/scoped lint/actionlint passed before execution.
+
+Read-only audits40165178329 and40165360908 both succeeded. Global control
+plane confirms both IDLE records cover Production and Preview, date is valid,
+execution=false. China endpoint unavailable. These are configuration metadata
+observations, not a live binding pass. Added a temporary method-specific GET
+probe to distinguish plain/map/Node binding, emitting types/booleans only and
+an allowlisted region. Privacy/shape contracts PASS2/2 on Node20, scoped lint
+and diff whitespace checks PASS. SDK audit also checks exact custom-domain
+and branch correspondence without emitting private domain lists or values.
+Staging promotion is necessary for this runtime ABI diagnosis. Production
+master remains5528f79c; no operator/real account used.

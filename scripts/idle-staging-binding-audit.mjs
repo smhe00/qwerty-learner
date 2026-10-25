@@ -41,7 +41,20 @@ for (const region of ['china', 'global']) {
       })),
     }))
     const project = await makers.request('DescribePagesProjects', { ProjectIds: [projectId] }, true)
-    item.projectRecordFields = fields(project.Projects?.[0] || project.Project)
+    const record = project.Projects?.[0] || project.Project || {}
+    item.projectRecordFields = fields(record)
+    const serializedDomains = JSON.stringify(record.CustomDomains || [])
+    item.binding = {
+      stagingCustomDomainPresent: serializedDomains.includes('t.smhe.cn'),
+      productionCustomDomainPresent: serializedDomains.includes('q.smhe.cn'),
+      expectedStagingBranch: record.RepoBranch === 'edgeone-test',
+      mainBranchUnexpected: record.RepoBranch === 'product/main',
+      presetDomainExpected: typeof record.PresetDomain === 'string' && record.PresetDomain.includes('etest.edgeone.dev'),
+      projectEnvShape: Array.isArray(record.EnvVars) ? 'array' : typeof record.EnvVars,
+      projectEnvHasIdleDate: JSON.stringify(record.EnvVars || {}).includes('IDLE_POLICY_START_AT'),
+      area: ['global', 'overseas', 'mainland', 'china'].includes(record.Area) ? record.Area : typeof record.Area,
+      regionFieldNames: fields(record.Regions),
+    }
     item.outcome = 'OBSERVED'
   } catch (error) {
     item.outcome = 'UNAVAILABLE'
