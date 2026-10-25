@@ -28,8 +28,8 @@ jobs:
           node-version: '22'
       - name: Require exact deployed source before creating any fixture
         run: node scripts/verify-edgeone-source.mjs
-      - name: Real account handoff with a held Blob manifest
-        run: node tests/cloud/session-handoff-live.mjs
+      - name: Verify source-selected handoff deployment scope
+        run: node tests/cloud/session-handoff-deployment-live.mjs
       - name: Retain only redacted qualification evidence
         if: always()
         uses: actions/upload-artifact@v4

@@ -16,10 +16,16 @@ Instrumented the same deployed account UI with redacted response status/error en
 
 Code confirms cloud-functions/api/[[default]].js catches an untyped request-body read failure and returns this503 BEFORE service.putSyncV4Binary. checkAccountV4AfterAuthentication catches the error and retains pending while permitting local learning. The test only required that POST was sent, then assumed revision1; sending is not successful persistence. The diagnostics whitelist omitted this error code, causing the older generic unknown to hide the cause. No merge/data-loss evidence appears in this reproduction, and this is covered by the owner's accepted503. The lower-level reason the runtime could not read the request stream is not established and is outside this release; older5-vs4 failures are not retroactively claimed solved.
 
-## Candidate isolation and verification plan
+## Original candidate (superseded; never published)
 
 Production base5528f79c. Cherry-picked only da343d41 into isolated release/learn-completion-20261026 (initial cherry-pickb9ad262c): runtime diff is EXACTLY five approved files, src/index.tsx, Learn page/result, learn-block-sync and its UI. All cloud-functions and unrelated UI match production. No session-handoff gateway and no new code-managed idle activation ship. Main remains independent.
 
 Release workflow support binds Pages to this explicitly named candidate branch instead of moving main. It keeps the same immutable commit across source ref, actual Pages artifact/deployed marker, etest, real browser/Blob and HARD three-device convergence. A new scope guard rejects ANY other runtime path/base/branch. Ordinary main branch verification remains its default. Etest trial9620e33c is retained in a separate backup ref; staging will be used temporarily for the independent candidate, then restored by a forward commit after publication. No force push.
 
 Local candidate checks so far: completion browser12/12 PASS82.43s including Yarn; authorization8/8 plus Pages deployment11/11 plus release-scope7/7, total26/26. Source ESLint0 errors/4 existing warnings. Script ESLint requires explicit module parser because the repository config does not cover scripts/*.mjs. Actual Pages/build/cloud qualification and production publication remain pending. No master change has occurred at this checkpoint.
+
+## Concurrent production update and revised approved scope
+
+Other executor released9620e33c under separate owner authority. This task did not perform that release. Owner now explicitly authorized preserving all new production features while removing only handoff from production. Abandoned old-base candidateb9ad262c remains local; not pushed. Replacement uses code-owned policy false before all experimental request processing; development/staging policy remains true. Final exact-SHA validation/publication pending.
+
+New scope local gateway regressions:13/13 PASS (12 staging experiment contracts plus1 production-off auth/V4/session/cleanup journey). Scoped ESLint0 errors. No application UI or cleanup implementation changed.

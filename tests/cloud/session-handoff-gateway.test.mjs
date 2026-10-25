@@ -16,6 +16,8 @@ before(async () => {
   await build({ entryPoints: ['cloud-functions/api/[[default]].js'], outfile,
     bundle: true, format: 'esm', platform: 'node', target: 'node22', logLevel: 'silent', plugins: [{
       name: 'synthetic-blob-only', setup(builder) {
+        builder.onResolve({ filter: /session-handoff-deployment-policy[.]js$/ }, () => ({ path: 'policy', namespace: 'test-policy' }))
+        builder.onLoad({ filter: /.*/, namespace: 'test-policy' }, () => ({ contents: 'export const HANDOFF_EXPERIMENT_ENABLED = true', loader: 'js' }))
         builder.onResolve({ filter: /^@edgeone\/pages-blob$/ }, () => ({ path: 'blob', namespace: 'test-io' }))
         builder.onLoad({ filter: /.*/, namespace: 'test-io' }, () => ({
           contents: 'export const getStore = options => globalThis.__handoffGatewayTestStore(options)',

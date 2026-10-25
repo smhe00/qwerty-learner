@@ -1,5 +1,6 @@
 /* eslint-env node */
 import { createHash } from 'node:crypto'
+import { HANDOFF_EXPERIMENT_ENABLED } from './session-handoff-deployment-policy.js'
 import { receiveHandoffAuthBody } from './session-handoff-auth-body.js'
 import { AppError, createBackendService, normalizeUsername } from './core.js'
 import { createEdgeOneBlobStorage } from './storage/edgeone-blob.js'
@@ -22,6 +23,9 @@ const response = (data, status = 200) => new Response(JSON.stringify(data), {
 })
 
 export async function withHandoffGateway(context, dispatch) {
+  // Production release exits before classification, request-body reads, Blob
+  // access, health augmentation or barrier admission, even for fixture names.
+  if (!HANDOFF_EXPERIMENT_ENABLED) return dispatch(context)
   const { request } = context
   const env = runtimeEnvironment(context.env)
   const path = new URL(request.url).pathname.replace(/^\/api(?=\/|$)/, '') || '/'
