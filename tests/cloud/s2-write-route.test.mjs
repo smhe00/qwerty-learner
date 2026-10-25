@@ -22,7 +22,7 @@ const result = await build({ entryPoints: [source], bundle: true, write: false,
         if (name === '@edgeone/pages-blob') return { contents: 'export const getStore = () => ({})', loader: 'js' }
         if (name.includes('administrator')) return { contents: 'export const loadAdministrator = async () => ({userId: "", credentials: undefined, isAdministrator: () => false})', loader: 'js' }
         if (name.includes('auth-rate-limit')) return { contents: 'export const checkAuthRateLimit = async () => ({ allowed: true })', loader: 'js' }
-        if (name.includes('edgeone-blob')) return { contents: 'export const createEdgeOneBlobStorage = () => ({})', loader: 'js' }
+        if (name.includes('edgeone-blob')) return { contents: 'export const withRetry = operation => operation(); export const createEdgeOneBlobStorage = () => ({})', loader: 'js' }
         return { contents: `export class AppError extends Error {
             constructor(statusCode, code, message) {
               super(message); this.statusCode=statusCode; this.code=code

@@ -447,3 +447,24 @@ test('persistent SMHE binding cannot be taken over by account recreation or conf
   store.objects.delete(`accounts/${hash}/identity.json`)
   await assert.rejects(changed.register('SMHE', '98765432'), { code: 'administrator_account_reserved' })
 })
+
+test('administrator metadata tolerates transient read failure and verifies a lost binding write receipt', async () => {
+  const store = new Store()
+  const get = store.get.bind(store)
+  let transientFailures = 2
+  store.get = async key => {
+    if (key === 'maintenance/administrator/v1.json' && transientFailures-- > 0) {
+      throw new Error('transient metadata read')
+    }
+    return get(key)
+  }
+  const administrator = await loadAdministrator({ store })
+  assert.equal(administrator.userId, '')
+  store.afterSet = async key => {
+    if (key === 'maintenance/administrator/v1.json') throw new Error('lost durable write response')
+  }
+  const backend = createBackendService({ storage: createEdgeOneBlobStorage(store), credentials: administrator.credentials })
+  const registered = await backend.register('SMHE', '98765432')
+  assert.equal(administrator.userId, registered.user.userId)
+  await backend.me(registered.token)
+})

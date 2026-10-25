@@ -3,7 +3,7 @@
  * tree must not exist while switching IndexedDB and per-workspace settings.
  * Only the active guarded entry may render this surface under the writer lease.
  */
-import { SyncApiError, changePassword, getIdleAccountPolicy, login, register } from './api'
+import { SyncApiError, changePassword, login, register } from './api'
 import { browserDeviceId, loadAuth } from './auth'
 import { presentAccount } from './mobile-account-view'
 import type { CloudAuthState } from './types'
@@ -235,10 +235,8 @@ export function renderS1AccountManagement(
   // DOM event listeners receive PointerEvent; never stringify it as a toast.
   const back = button('取消并返回学习', () => navigate())
   controls.push(back)
-  const retention = node('p')
-  void getIdleAccountPolicy().then(policy => {
-    if (policy.enabled) retention.textContent = '云端账号连续180天未登录或有效访问云端，将连同云端数据清理。本机学习记录保留。当前没有邮件或短信通知。'
-  }).catch(() => { /* Unavailable policy/access must not grant admin privileges. */ })
+  // Pre-login presentation must not start any cloud request.
+  const retention = node('p', '云端闲置清理启用后，连续180天未登录或有效访问云端的账号及云端数据会被清理。本机学习记录保留。')
   main.append(heading, current, authState, guidance, retention, actions, status)
   overlay.append(main)
   root.replaceChildren(overlay)

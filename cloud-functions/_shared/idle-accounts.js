@@ -1,5 +1,6 @@
 /* eslint-env node */
 import crypto from 'node:crypto'
+import { withRetry } from './storage/edgeone-blob.js'
 import { AppError } from './core.js'
 
 export const DAY_MS = 86400000
@@ -22,12 +23,12 @@ export function createIdleAccounts({ store, adminUserId = '', startAt, execute =
   const configured = Number.isFinite(start)
   let deadline = Infinity
   function checkBudget() { if (clock() >= deadline) throw new BudgetExceeded() }
-  const get = key => { checkBudget(); return store.get(key, { type: 'json', consistency: 'strong' }) }
-  const set = (key, value) => { checkBudget(); return store.setJSON(key, value) }
-  const remove = key => { checkBudget(); return store.delete(key) }
+  const get = key => { checkBudget(); return withRetry(() => store.get(key, { type: 'json', consistency: 'strong' })) }
+  const set = (key, value) => { checkBudget(); return withRetry(() => store.setJSON(key, value)) }
+  const remove = key => { checkBudget(); return withRetry(() => store.delete(key)) }
   const list = async prefix => {
     checkBudget()
-    const result = await store.list({ prefix, consistency: 'strong' })
+    const result = await withRetry(() => store.list({ prefix, consistency: 'strong' }))
     if (!Array.isArray(result?.blobs)) throw new Error('Incomplete Blob listing')
     if (result.blobs.some(blob => typeof blob.key !== 'string' || !blob.key.startsWith(prefix))) {
       throw new Error('Out-of-scope Blob listing')

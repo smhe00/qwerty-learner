@@ -1,21 +1,15 @@
 ---
 protocol_version: '1.1'
-task_id: 'IDLE-ACCOUNT-CLEANUP-20261024'
-task_file: 'interactive/tasks/IDLE-ACCOUNT-CLEANUP-20261024.md'
-report_file: 'interactive/reports/IDLE-ACCOUNT-CLEANUP-20261024-report.md'
+task_id: 'IDLE-ACCOUNT-RELEASE-20261025'
+task_file: 'interactive/tasks/IDLE-ACCOUNT-RELEASE-20261025.md'
+report_file: 'interactive/reports/IDLE-ACCOUNT-RELEASE-20261025-report.md'
 target_branch: 'product/main'
-status: 'REVIEW'
-executor: 'Codex (single executor)'
-claim_base_commit: '5cd49872e6f2a6389c0de6eebdf03725c9a7e115'
-release_to_master: false
+status: 'IN_PROGRESS'
+executor: 'Codex (single release executor)'
+claim_base_commit: '8da7e5fa1b3986d227de3d3c8804ae17efc89080'
+release_to_master: true
 ---
 
-Owner prioritizes independent 180-day idle account/cloud-data cleanup and designates existing SMHE as administrator. Circle frontend paused. Previous BETA-CLOSEOUT-DOCS task is DONE; retain its report. No production deletion/release authorization in this task.
+Owner authorized merging to production mainline after the feature was pushed to product/main. The 8da7e5fa candidate passed required staging gates but additional Mobile CI found a real pre-login policy query. The correcting commit becomes the frozen candidate for required same-SHA Pages, Cloud admission, etest browser/Blob/three-device and release-ready. No runtime enablement or real SMHE enrollment/deletion authorized. Implementation task IDLE-ACCOUNT-CLEANUP-20261024 is complete at REVIEW; retain its reports. The release pointer/report is committed together with the necessary runtime correction; further reporting waits until frozen-candidate release to avoid invalidating exact-SHA gates.
 
-Implementation and local qualification complete. Activity-triggered daily request, resumable deletion, server-only administrator password and policy UI implemented. No timer service, release or real deletion. Required configuration and storage consistency limitations: docs/operations/IDLE_ACCOUNT_CLEANUP.md. See execution report for exact checks, baseline TypeScript diagnostics and deployment qualification still outstanding.
-
-Owner amendment: missing/empty ADMIN_PASSWORD uses the explicitly supplied fixed bootstrap default; configured values disable it. No auto-created administrator. Implementation commit 3f0ce54e01bbe434881baece656b0e786457c822; follow-up default-password/report checkpoint follows. Final targeted suite 22/22 PASS. Production binding, deployed Blob qualification and enablement remain separate.
-
-Owner latest amendment: reserve SMHE without startup account creation; first successful administrator-password registration automatically binds its immutable identity, eliminating manual ID configuration. Existing SMHE enrolls on verified administrator-password login. Completed and locally qualified; final enrollment report section supersedes earlier manual binding instructions.
-
-Final enrollment qualification: 68/68 relevant backend/route/Blob tests, 14/14 account-entry tests, 3/3 real-browser tests, scoped lint and production build/route emission pass. 147 existing TypeScript diagnostics unchanged. Development publication only; actual registration/admin binding and deletion remain unperformed on live services.
+Correction locally qualified: original native/fallback zero-request writer cases2/2, relevant contracts80/80, scoped lint PASS. Preserve all failed run evidence. Owner queued PR17 inspection only after current fix/release.

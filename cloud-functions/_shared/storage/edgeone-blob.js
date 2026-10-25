@@ -27,7 +27,7 @@ function sleep(ms) {
   return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve()
 }
 
-async function withRetry(operation) {
+export async function withRetry(operation) {
   let lastError
 
   for (const delayMs of RETRY_DELAYS_MS) {

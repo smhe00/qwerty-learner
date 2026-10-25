@@ -1,6 +1,7 @@
 /* eslint-env node */
 import crypto from 'node:crypto'
 import { AppError } from './core.js'
+import { withRetry } from './storage/edgeone-blob.js'
 import { isAdministrator } from './idle-accounts.js'
 
 const USER_ID = /^[a-f0-9]{32}$/
@@ -53,7 +54,7 @@ export function administratorCredentials({ ADMIN_USER_ID = '', ADMIN_PASSWORD = 
  * The binding contains identity metadata only, never a password/verifier.
  */
 export async function loadAdministrator({ store, env = {} }) {
-  const get = key => store.get(key, { type: 'json', consistency: 'strong' })
+  const get = key => withRetry(() => store.get(key, { type: 'json', consistency: 'strong' }))
   const readBinding = async () => {
     const value = await get(BINDING_KEY)
     if (value !== null && (!USER_ID.test(value?.userId || '') || value.usernameHash !== SMHE_HASH)) {
@@ -83,7 +84,9 @@ export async function loadAdministrator({ store, env = {} }) {
         throw new AppError(403, 'administrator_identity_mismatch', 'Administrator identity is already bound')
       }
       if (!current) {
-        await store.setJSON(BINDING_KEY, { userId: identity.userId, usernameHash: SMHE_HASH }, { onlyIfNew: true })
+        try {
+          await store.setJSON(BINDING_KEY, { userId: identity.userId, usernameHash: SMHE_HASH }, { onlyIfNew: true })
+        } catch { /* A lost write response is resolved by canonical read-back below. */ }
       }
       const confirmed = await readBinding()
       if (confirmed?.userId !== identity.userId) {
