@@ -220,3 +220,21 @@ executionEnabled rather than the date-only flag, captures actual staging ref
 through GitHub's read token, and canonically verifies config write values
 before any promotion. Subsequent runtime-on browser test and rollback source
 proof remain outstanding, as does geographic coverage. No production change.
+
+Runtime fix697f284faae1b17be34bfb0217b87cc143f98a89 was fast-forwarded to
+staging with explicit execution=false. Actual marker697f284 and new health
+capability prove the new code arrived, but /account-policy still reports
+enabled=false/executionEnabled=false. Therefore the compatibility patch alone
+has NOT established binding of the retained valid project date; do not claim
+the root cause solved or start more registration tests yet. Main Cloud Sync
+Gate40164562698 SUCCESS; the automatic trigger workflow was intentionally
+SKIPPED, not a live pass. Production master unchanged.
+
+Added a read-only exact-project metadata audit via the same official SDK
+Describe actions used by public list/get methods, inspecting raw field names
+and safe scope enums that EnvVar normalization discards. Compare supported
+china/global control-plane reads; output only selected IDLE key presence,
+date-parseability and disabled-flag booleans, never values/IDs/credentials.
+This audit mutates no configuration/storage or deployment. Its purpose is to
+resolve project-variable vs Cloud Function binding rather than guess another
+configuration write. Syntax/scoped lint/actionlint passed before execution.
