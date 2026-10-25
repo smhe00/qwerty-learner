@@ -41,15 +41,12 @@ export default function AccountOverview() {
           </div>
           <p className="text-lg">{auth?.user.username ?? '尚未登录'}</p>
           <p className="my-3 text-sm opacity-75">
-            {auth ? (expired ? '登录已过期，本机学习记录仍保留。' : '正在使用这个账号的学习空间。') : '登录后可在不同设备间同步学习记录。'}
-          </p>
-          <p className="mb-5 text-sm opacity-75">
-            {auth ? '查看账号或关闭窗口不会退出，也不会重新加载学习页面。' : '本机已有的学习记录会保留。'}
+            {auth ? (expired ? '登录已过期，本机学习记录仍保留。' : '已登录。') : '登录后可在不同设备间同步学习记录。'}
           </p>
           <button type="button" className="rounded-lg bg-indigo-600 px-4 py-2 text-white" onClick={manage}>
             {auth ? '登录与账号管理' : '登录或注册'}
           </button>
-          {open && <AdministratorPanel key={auth?.user.userId || "anonymous"} token={expired ? undefined : auth?.token} />}
+          {open && <AdministratorPanel key={auth?.user.userId || 'anonymous'} token={expired ? undefined : auth?.token} />}
         </Dialog.Panel>
       </div>
     </Dialog>

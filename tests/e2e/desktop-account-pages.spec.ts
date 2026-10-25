@@ -13,7 +13,7 @@ test('Pages desktop shares account preview, disables cloud and returns to the PC
   await expect(page.getByRole('note')).toContainText('当前为开发预览')
   await expect(page.getByRole('button', { name: '登录', exact: true })).toBeDisabled()
   await page.getByRole('tab', { name: '注册', exact: true }).click()
-  await expect(page.getByRole('complementary', { name: '注册须知' })).toContainText('连续超过 6 个月')
+  await expect(page.getByRole('complementary', { name: '注册须知' })).toContainText('连续 180 天')
   await expect(page.getByRole('button', { name: '注册并登录' })).toBeDisabled()
   await expect(page.getByLabel('用户名', { exact: true })).toBeDisabled()
   expect(calls).toBe(0)

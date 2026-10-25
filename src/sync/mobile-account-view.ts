@@ -96,28 +96,21 @@ export function presentAccount(view: AccountView) {
   controls.push(goBack)
   top.append(goBack, mark)
   main.prepend(top)
-  const eyebrow = el('p', anonymous ? 'YOUR LEARNING SPACE' : 'MY ACCOUNT', 'mobile-account-eyebrow')
   heading.textContent = anonymous ? '登录 QWERTY Plus' : '我的账号'
   heading.tabIndex = -1
-  current.textContent = anonymous ? '把每天的积累，留在自己的学习空间。' : auth?.user.username || '当前账号'
+  current.textContent = anonymous ? '登录后同步学习进度。' : auth?.user.username || '当前账号'
   current.className = 'mobile-account-description'
-  authState.textContent = anonymous
-    ? ''
-    : reauthenticate
-    ? '请验证密码，重新连接当前账号'
-    : expired
-    ? '登录已过期 · 本机学习记录仍保留'
-    : '已登录 · 正在使用独立的账号学习空间'
+  authState.textContent = anonymous ? '' : reauthenticate ? '输入密码，重新登录。' : expired ? '登录已过期 · 本机学习记录仍保留' : '已登录'
   authState.className = 'mobile-account-state'
   authState.hidden = anonymous
   guidance.textContent = anonymous
     ? '本机匿名学习记录会单独保留，登录已有账号不会自动合并这些记录。'
     : '退出后，本机学习记录仍保存在这个账号的学习空间中。'
   guidance.className = 'mobile-account-guidance'
+  guidance.hidden = true
   status.className = 'mobile-account-status'
   status.setAttribute('aria-live', 'polite')
   status.textContent = ''
-  main.prepend(eyebrow)
   const form = el('form', '', 'mobile-account-form')
   const tabs = el('div', '', 'mobile-account-tabs')
   tabs.setAttribute('role', 'tablist')
@@ -156,7 +149,7 @@ export function presentAccount(view: AccountView) {
   username.setAttribute('autocorrect', 'off')
   username.value = anonymous ? '' : auth?.user.username || ''
   const passwordField = labelField(password, '密码', 'mobile-account-password')
-  password.placeholder = '输入密码（4–128 位）'
+  password.placeholder = '输入密码'
   password.minLength = 4
   password.maxLength = 128
   const passwordRow = el('div', '', 'mobile-account-password-row')
@@ -183,11 +176,10 @@ export function presentAccount(view: AccountView) {
   const registrationNotice = el('aside', '', 'mobile-account-registration-notice')
   registrationNotice.id = 'account-registration-notice'
   registrationNotice.setAttribute('aria-label', '注册须知')
-  registrationNotice.append(
-    el('strong', '注册须知'),
-    el('p', '暂不支持账号找回或密码重置，请妥善保存用户名和密码。登录后可在“我的账号”中修改密码。'),
-    el('p', '连续超过 6 个月未使用的账号将自动删除。'),
-  )
+  registrationNotice.append(el('strong', '注册须知'), el('p', '请保存用户名和密码，暂不支持账号找回。'))
+  const retention = el('details')
+  retention.append(el('summary', '账号保留规则'), el('p', '闲置清理启用后，连续 180 天未使用的账号及云端记录会被清理。本机记录保留。'))
+  registrationNotice.append(retention)
   form.append(inputs, registrationNotice, actions)
   for (const button of authButtons) {
     button.className = 'mobile-account-primary'
@@ -205,6 +197,10 @@ export function presentAccount(view: AccountView) {
   form.addEventListener('submit', (event) => event.preventDefault())
   const updateMode = () => {
     const registration = anonymous && mode === 'register'
+    if (anonymous) {
+      heading.textContent = registration ? '注册 QWERTY Plus' : '登录 QWERTY Plus'
+      current.textContent = registration ? '创建账号，保存学习进度。' : '登录后同步学习进度。'
+    }
     registrationNotice.hidden = !registration
     if (registration) form.setAttribute('aria-describedby', registrationNotice.id)
     else form.removeAttribute('aria-describedby')
@@ -219,6 +215,7 @@ export function presentAccount(view: AccountView) {
       passwordConfirm.required = registration
     }
     password.autocomplete = registration ? 'new-password' : 'current-password'
+    password.placeholder = registration ? '设置密码（4–128 位）' : '输入密码'
     authenticate.hidden = anonymous ? registration : !credentialsVisible
     authenticate.type = anonymous && registration ? 'button' : 'submit'
     authenticate.textContent = anonymous ? '登录' : '确认重新登录'
@@ -252,13 +249,16 @@ export function presentAccount(view: AccountView) {
   if (anonymous) main.insertBefore(tabs, status)
   main.insertBefore(form, status)
   // Move the original action buttons into their form without changing their S1 listeners.
+  let closePasswordEditor: (() => void) | undefined
+  let reauthToggle: HTMLButtonElement | undefined
   if (!anonymous) {
-    const reauthToggle = el('button', expired ? '重新登录' : '重新验证登录', 'mobile-account-secondary')
+    reauthToggle = el('button', expired ? '重新登录' : '重新验证登录', 'mobile-account-secondary')
     reauthToggle.type = 'button'
     reauthToggle.setAttribute('aria-expanded', String(credentialsVisible))
     reauthToggle.addEventListener('click', () => {
       credentialsVisible = !credentialsVisible
-      reauthToggle.setAttribute('aria-expanded', String(credentialsVisible))
+      reauthToggle?.setAttribute('aria-expanded', String(credentialsVisible))
+      closePasswordEditor?.()
       updateMode()
     })
     secondary.className = 'mobile-account-logout'
@@ -308,6 +308,13 @@ export function presentAccount(view: AccountView) {
       event.preventDefault()
       if (!busy && !cloudDisabled && !expired && passwordForm.reportValidity()) onChangePassword(currentPassword.value, newPassword.value)
     })
+    closePasswordEditor = () => {
+      passwordForm.hidden = true
+      passwordToggle.setAttribute('aria-expanded', 'false')
+      passwordForm.reset()
+      newPassword.setCustomValidity('')
+      confirmPassword.setCustomValidity('')
+    }
     passwordToggle.addEventListener('click', () => {
       passwordForm.hidden = !passwordForm.hidden
       passwordToggle.setAttribute('aria-expanded', String(!passwordForm.hidden))
@@ -315,7 +322,12 @@ export function presentAccount(view: AccountView) {
         passwordForm.reset()
         newPassword.setCustomValidity('')
         confirmPassword.setCustomValidity('')
-      } else if (!mobile) currentPassword.focus()
+      } else {
+        credentialsVisible = false
+        reauthToggle?.setAttribute('aria-expanded', 'false')
+        updateMode()
+        if (!mobile) currentPassword.focus()
+      }
     })
     if (expired) {
       passwordToggle.hidden = true
@@ -407,5 +419,6 @@ export function renderAccountPreview(root: HTMLElement | null, options: { mobile
   })
   overlay.setAttribute('data-account-readonly-preview', '')
   if (mobile) overlay.setAttribute('data-mobile-account-readonly-preview', '')
-  guidance.textContent = '此页仅供界面预览，本机原有学习记录和账号信息保持不变。'
+  guidance.hidden = false
+  guidance.textContent = '此页仅供预览，暂不能登录。'
 }

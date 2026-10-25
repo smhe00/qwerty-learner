@@ -29,7 +29,7 @@
 }
 .mobile-account-top {
   max-width: 440px;
-  margin: 0 auto 32px;
+  margin: 0 auto 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -67,7 +67,7 @@
   width: 100%;
   max-width: 440px;
   margin: 0 auto;
-  padding: 28px 24px;
+  padding: 24px 20px;
   background: var(--account-surface);
   border: 1px solid var(--account-line);
   border-radius: 20px;
@@ -92,7 +92,7 @@
 .mobile-account-guidance {
   font-size: 13px;
   line-height: 1.8;
-  margin: 0 0 22px;
+  margin: 0 0 16px;
   color: var(--account-muted);
   overflow-wrap: anywhere;
 }
@@ -102,7 +102,7 @@
 .mobile-account-tabs {
   display: flex;
   padding: 4px;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
   border-radius: 12px;
   background: var(--account-bg);
   gap: 4px;
@@ -120,13 +120,13 @@
   font-weight: 650;
 }
 .mobile-account-field {
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 .mobile-account-field label {
   display: block;
   font-size: 13px;
   font-weight: 600;
-  margin-bottom: 9px;
+  margin-bottom: 6px;
 }
 .mobile-account-field input {
   display: block;
@@ -204,7 +204,7 @@
   font-size: 12px;
 }
 .mobile-account-footer {
-  margin: 28px auto 0;
+  margin: 16px auto 0;
   text-align: center;
   color: var(--account-muted);
   font-size: 11px;
@@ -306,4 +306,11 @@ body.mobile-account-document {
 }
 .mobile-account-page[data-account] .mobile-account-top {
   margin: 0 0 18px;
+}
+
+.mobile-account-registration-notice details {
+  margin-top: 8px;
+}
+.mobile-account-registration-notice summary {
+  cursor: pointer;
 }

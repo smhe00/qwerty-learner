@@ -1,13 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
 
 const cloudButtons = [
-  '立即同步', '刷新云端状态（只读）', '下载云端备份',
-  '处理同步冲突',
+  '立即同步', '查看云端状态', '下载云端备份',
+  '恢复同步',
 ]
 
 async function showData(page: Page) {
   await page.getByRole('button', { name: '打开设置对话框' }).click()
-  await page.getByRole('tab', { name: '数据设置' }).click()
+  await page.getByRole('tab', { name: '数据与备份' }).click()
 }
 
 async function assertLocalOnly(page: Page) {
@@ -15,7 +15,7 @@ async function assertLocalOnly(page: Page) {
     await expect(page.getByRole('button', { name })).toHaveCount(0)
   }
   await expect(page.getByText('云端同步', { exact: true })).toHaveCount(0)
-  await expect(page.getByLabel('每个 Block 完成后自动同步')).toHaveCount(0)
+  await expect(page.getByLabel('每阶段结束后同步')).toHaveCount(0)
   for (const name of ['导出完整备份','校验备份文件',
     '分析备份容量','导入完整备份']) {
     await expect(page.getByRole('button', { name })).toBeVisible()
@@ -54,10 +54,11 @@ test('signed-in S1 owner sees cloud settings', async ({ page }) => {
   await seedAccount(page)
   await showData(page)
   await expect(page.getByText('云端同步', { exact: true })).toBeVisible()
+  await page.getByText('更多同步选项', { exact: true }).click()
   for (const name of cloudButtons) {
     await expect(page.getByRole('button', { name })).toBeVisible()
   }
-  await expect(page.getByLabel('每个 Block 完成后自动同步')).toBeVisible()
+  await expect(page.getByLabel('每阶段结束后同步')).toBeVisible()
 })
 
 test('cross-tab logout revokes visible cloud actions without removing local backup', async ({ page }) => {
