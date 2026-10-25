@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: etest-account-handoff-qualification
+  group: etest-account-handoff
   cancel-in-progress: false
 jobs:
   diagnose:
@@ -16,7 +16,6 @@ jobs:
     env:
       QWERTY_SYNC_BASE_URL: https://t.smhe.cn/
       EXPECTED_SHA: c9d30f23a46bae6b4022ea1dd4118585edf62144
-      EDGEONE_WAIT_MS: 60000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,8 +26,8 @@ jobs:
           mkdir -p test-results
           git archive --format=tar.gz -o test-results/handoff-source.tar.gz HEAD cloud-functions tests/cloud scripts experimental interactive AGENTS.md package.json .github
           git rev-parse HEAD > test-results/diagnostic-source-sha.txt
-      - name: Require exact existing deployed candidate
-        run: node scripts/verify-edgeone-source.mjs
+      - name: Require pinned deployed candidate and current staging ref
+        run: node scripts/handoff-diagnostic-source.mjs
       - name: Run unchanged real handoff assertions with redacted response evidence
         run: |
           node --input-type=module <<'NODE'
