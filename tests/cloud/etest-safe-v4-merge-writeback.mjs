@@ -1,3 +1,4 @@
+import { retrySafeBodyRequest } from '../../cloud-functions/_shared/safe-body-retry.js'
 /* eslint-env node */
 /**
  * etest-only REAL CLOUD V4 merge writeback PILOT.
@@ -47,6 +48,7 @@ async function api(path, token, method = 'GET', body, headers = {}) {
     (method === 'POST' && path === '/api/auth/login'))
   for (let attempt = 1; attempt <= (retryable ? 4 : 1); attempt++) {
     try {
+      const packet = await retrySafeBodyRequest(async () => {
       const req = await fetch(new URL(path, origin), {
         method, headers: {
           Accept: 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}),
@@ -59,6 +61,10 @@ async function api(path, token, method = 'GET', body, headers = {}) {
       const raw = await req.text()
       let response
       try { response = JSON.parse(raw) } catch { response = null }
+        return { request: req, status: req.status, body: response }
+      }, { path, method })
+      const req = packet.request
+      const response = packet.body
       if (!retryable || ![429, 500, 502, 503, 504].includes(req.status) ||
           attempt === 4) return { status: req.status, response }
       console.log('Transient etest read/login error; bounded retry', path,

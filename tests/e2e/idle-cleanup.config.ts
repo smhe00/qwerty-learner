@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: '.',
-  testMatch: ['idle-cleanup.spec.ts', 'account-continuity.spec.ts', 'mobile-account-writer.spec.ts'],
+  testMatch: ['idle-cleanup.spec.ts', 'account-continuity.spec.ts', 'mobile-account-writer.spec.ts', 'http-body-retry.spec.ts'],
   workers: 1,
   retries: 0,
   timeout: 60_000,

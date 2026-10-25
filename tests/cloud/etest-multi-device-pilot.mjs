@@ -1,3 +1,4 @@
+import { retrySafeBodyRequest } from '../../cloud-functions/_shared/safe-body-retry.js'
 /* eslint-env node */
 import assert from 'node:assert/strict'
 import { randomBytes, randomUUID } from 'node:crypto'
@@ -21,7 +22,8 @@ const deviceB = 'qwerty-web-' + randomUUID()
 async function call(method, path, token, input, status = 200) {
   const url = new URL(path, base)
   assert.equal(url.origin, 'https://t.smhe.cn')
-  const response = await fetch(url, {
+  const result = await retrySafeBodyRequest(async () => {
+    const response = await fetch(url, {
     method, cache: 'no-store', redirect: 'error',
     headers: { Accept: 'application/json',
       ...(input === undefined ? {} : { 'Content-Type': 'application/json' }),
@@ -29,7 +31,9 @@ async function call(method, path, token, input, status = 200) {
     body: input === undefined ? undefined : JSON.stringify(input),
     signal: AbortSignal.timeout(20000),
   })
-  const body = await response.json().catch(() => ({}))
+    return { response, status: response.status, body: await response.json().catch(() => ({})) }
+  }, { path, method })
+  const { response, body } = result
   assert.equal(response.status, status,
     method + ' ' + url.pathname + ': HTTP ' + response.status +
     ' error=' + body.error)

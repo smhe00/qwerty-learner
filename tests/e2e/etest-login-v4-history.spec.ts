@@ -1,3 +1,4 @@
+import { retrySafeBodyRequest, safeBodyReadFailure } from '../../cloud-functions/_shared/safe-body-retry.js'
 import { acknowledgeInformationDialog } from './information-dialog'
 import { expect, test, type Page } from '@playwright/test'
 import { readFile, writeFile } from 'node:fs/promises'
@@ -7,6 +8,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 const base = 'https://t.smhe.cn'
 const names = ['wordRecords', 'chapterRecords', 'reviewRecords', 'reviewWordStates', 'achievementEvents', 'achievementStates']
 async function request(path: string, method: string, body?: object, token?: string) {
+  return retrySafeBodyRequest(async () => {
   const r = await fetch(base + path, {
     method,
     redirect: 'error',
@@ -15,7 +17,8 @@ async function request(path: string, method: string, body?: object, token?: stri
     body: body ? JSON.stringify(body) : undefined,
     signal: AbortSignal.timeout(40_000),
   })
-  return { status: r.status, body: await r.json() }
+    return { status: r.status, body: await r.json() }
+  }, { path, method })
 }
 async function account(page: Page) {
   await page.goto(base + '/?s1-account=manage', { waitUntil: 'domcontentloaded' })
@@ -27,7 +30,12 @@ async function login(page: Page, username: string, password: string) {
   if (await toggle.isVisible()) await toggle.click()
   await page.getByLabel('用户名', { exact: true }).fill(username)
   await page.getByLabel('账户密码', { exact: true }).fill(password)
-  const response = page.waitForResponse((r) => new URL(r.url()).pathname === '/api/auth/login')
+  const response = page.waitForResponse(async r => {
+    if (new URL(r.url()).pathname !== '/api/auth/login') return false
+    if (r.status() !== 503) return true
+    const body = await r.json().catch(() => null)
+    return !safeBodyReadFailure('/api/auth/login', 'POST', r.status(), body)
+  })
   const reauth = page.getByRole('button', { name: '确认重新登录', exact: true })
   await ((await reauth.isVisible()) ? reauth : page.getByRole('button', { name: '登录', exact: true })).click()
   expect((await response).status()).toBe(200)

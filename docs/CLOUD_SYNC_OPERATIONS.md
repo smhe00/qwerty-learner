@@ -203,3 +203,5 @@ handled retention failure cannot falsely label a later request-body failure.
 The first diagnostic deployment intentionally does not change the body reader
 or classify an intermittent success as a root-cause fix. Required release gates
 remain mandatory before any master update.
+
+Confirmed one real auth body-receiver failure and qualified remediation are recorded in [HTTP500 investigation](./operations/HTTP500_INVESTIGATION_20261025.md). The initial diagnostic-only version kept the reader unchanged; the subsequent remedy uses native bytes and one retry only after typed proof that no account operation began. Unknown errors and commits remain non-replayable.

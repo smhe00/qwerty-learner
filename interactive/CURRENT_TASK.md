@@ -15,3 +15,5 @@ Owner authorized merging to production mainline after the feature was pushed to 
 Correction locally qualified: original native/fallback zero-request writer cases2/2, relevant contracts80/80, scoped lint PASS. Preserve all failed run evidence. Owner queued PR17 inspection only after current fix/release.
 
 Owner now requires systematic repeated-HTTP500 investigation before master. Add metadata-only phase/correlation diagnostics; do not call successful retries a remedy. Diagnostic staging may run concurrently with Pages/Cloud admission after local69-test qualification; all final production gates still apply. See latest release task/report sections.
+
+HTTP500 live evidence now confirms one auth request-body receiver failure (proof/report linked above). Native-byte receiver+strict pre-business retry remedy locally qualified80 contracts/2 Chromium tests, no new TypeScript diagnostics; proceed with fresh exact-SHA deployed qualification. Historical unrelated/unknown failures remain in report. Production is still unchanged; PR17 remains queued.

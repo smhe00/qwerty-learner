@@ -1,0 +1,14 @@
+{
+  "candidate": "24912ac9b9713c6fce57dcd22a8d455573ae70c8",
+  "workflowRun": 40147850618,
+  "job": 121032940738,
+  "logTimeUTC": "2026-10-25T00:48:57.655Z",
+  "method": "POST",
+  "path": "/api/auth/login",
+  "status": 500,
+  "failureStage": "request-body",
+  "requestId": "8672541933357853724",
+  "evidenceURL": "https://github.com/smhe00/qwerty-learner/actions/runs/40147850618/job/121032940738",
+  "scope": "synthetic staging account only; no credentials or account identity retained",
+  "conclusion": "Confirmed failure in readJson request-body receiver before credential/session business logic; does not attribute all historical 500s."
+}

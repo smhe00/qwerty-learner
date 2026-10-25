@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { build } from 'esbuild'
 import { fileURLToPath } from 'node:url'
+import { retrySafeBodyRequest } from '../../cloud-functions/_shared/safe-body-retry.js'
 
 // Actual EdgeOne route integration with mocked account service/storage.
 // Backend V4 content/ownership/CAS contracts are tested independently.
@@ -24,8 +25,8 @@ const result = await build({ entryPoints: [source], bundle: true, write: false,
         if (name.includes('auth-rate-limit')) return { contents: 'export const checkAuthRateLimit = async () => ({ allowed: true })', loader: 'js' }
         if (name.includes('edgeone-blob')) return { contents: 'export const withRetry = operation => operation(); export const createEdgeOneBlobStorage = () => ({})', loader: 'js' }
         return { contents: `export class AppError extends Error {
-            constructor(statusCode, code, message) {
-              super(message); this.statusCode=statusCode; this.code=code
+            constructor(statusCode, code, message, details) {
+              super(message); this.statusCode=statusCode; this.code=code; this.details=details
             }
           }
           export const createBackendService = () => ({
@@ -39,6 +40,8 @@ const result = await build({ entryPoints: [source], bundle: true, write: false,
               }
               return { user: { userId: token === 'token-a' ? 'id-a' : 'id-b' } }
             },
+            login: async () => { globalThis.__p4bCalls.push('login'); return { token: 'synthetic-token' } },
+            register: async () => { globalThis.__p4bCalls.push('register'); return { token: 'synthetic-token' } },
             putSyncV4: async () => { globalThis.__p4bCalls.push('v4'); return { revision: 1 } },
             putSyncV4Recovery: async () => { globalThis.__p4bCalls.push('recovery'); return { revision: 2 } },
             putSync: async () => { globalThis.__p4bCalls.push('v1'); return { revision: 3 } },
@@ -120,14 +123,55 @@ test('account deletion keeps an unavailable Circle safety check RED with only a 
 })
 
 
-test('unexpected auth body read failure reports only fixed phase and safe correlation ID', async () => {
+test('unreadable auth body is proven pre-business and exposes no private exception text', async () => {
   const request = new Request('https://qwerty-plus.edgeone.dev/api/auth/login', { method: 'POST', body: '{}' })
-  request.text = async () => { throw new Error('DO_NOT_EXPOSE_PASSWORD_OR_PRIVATE_KEY') }
+  calls.length = 0
+  request.arrayBuffer = async () => { throw new Error('DO_NOT_EXPOSE_PASSWORD_OR_PRIVATE_KEY') }
   const response = await onRequest({ request, uuid: 'eolog-synthetic-123', clientIp: '127.0.0.1' })
   const data = await response.json()
-  assert.equal(response.status, 500)
-  assert.equal(data.error, 'internal_error')
-  assert.deepEqual(data.details, { stage: 'request-body' })
+  assert.equal(response.status, 503)
+  assert.equal(data.error, 'request_body_unavailable')
+  assert.deepEqual(data.details, { stage: 'request-body', safeToRetry: true })
+  assert.deepEqual(calls, [])
   assert.equal(data.requestId, 'eolog-synthetic-123')
   assert.ok(!JSON.stringify(data).includes('DO_NOT_EXPOSE'))
+})
+
+
+test('auth accepts native bytes even when the platform text helper is broken', async () => {
+  calls.length = 0
+  const request = new Request('https://qwerty-plus.edgeone.dev/api/auth/login', { method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'learner', password: 'synthetic' }) })
+  request.text = async () => { throw new Error('broken compatibility text helper') }
+  const response = await onRequest({ request, clientIp: '127.0.0.1' })
+  assert.equal(response.status, 200)
+  assert.deepEqual(calls, ['login'])
+})
+
+for (const [label, body, headers, status] of [
+  ['malformed JSON', '{broken', {}, 400],
+  ['invalid UTF8', new Uint8Array([0xff, 0xfe]), {}, 400],
+  ['declared oversize', '{}', { 'Content-Length': '9999999' }, 413],
+  ['length mismatch', '{}', { 'Content-Length': '3' }, 400],
+]) test('auth rejects ' + label + ' before calling account business logic', async () => {
+  calls.length = 0
+  const response = await onRequest({ clientIp: '127.0.0.1', request: new Request('https://qwerty-plus.edgeone.dev/api/auth/register',
+    { method: 'POST', headers, body }) })
+  assert.equal(response.status, status)
+  assert.deepEqual(calls, [])
+})
+
+test('one pre-business body rejection plus one fresh transport request registers exactly once', async () => {
+  calls.length = 0
+  let sent = 0
+  const input = JSON.stringify({ username: 'synthetic-learner', password: 'synthetic-password' })
+  const result = await retrySafeBodyRequest(async () => {
+    const request = new Request('https://qwerty-plus.edgeone.dev/api/auth/register', { method: 'POST', body: input })
+    if (++sent === 1) request.arrayBuffer = async () => { throw new TypeError('receiver unavailable') }
+    const response = await onRequest({ request, clientIp: '127.0.0.1' })
+    return { status: response.status, body: await response.json() }
+  }, { path: '/api/auth/register', method: 'POST', pause: async () => undefined })
+  assert.equal(result.status, 201)
+  assert.equal(sent, 2)
+  assert.deepEqual(calls, ['register'])
 })

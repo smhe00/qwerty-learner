@@ -1,3 +1,4 @@
+import { retrySafeBodyRequest, safeBodyReadFailure } from '../../cloud-functions/_shared/safe-body-retry.js'
 import { acknowledgeInformationDialog } from './information-dialog'
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import { writeFile } from 'node:fs/promises'
@@ -89,6 +90,7 @@ async function journalEvidence(page: Page) {
   }).catch(() => ({ unavailable: true }))
 }
 async function api(path: string, method: string, input: object, token?: string) {
+  return retrySafeBodyRequest(async () => {
   const response = await fetch(new URL(path, base), {
     method, redirect: 'error', cache: 'no-store',
     headers: { 'Content-Type': 'application/json',
@@ -96,7 +98,8 @@ async function api(path: string, method: string, input: object, token?: string) 
     body: JSON.stringify(input),
     signal: AbortSignal.timeout(40_000),
   })
-  return { status: response.status, body: await response.json() }
+    return { status: response.status, body: await response.json() }
+  }, { path, method })
 }
 async function openAccount(page: Page, username: string, password: string) {
   await page.goto(new URL('/?s1-account=manage', base).href,
@@ -127,9 +130,11 @@ async function openAccount(page: Page, username: string, password: string) {
     // No retry for timeouts/unknown POST outcomes or a successful auth,
     // which could otherwise revoke a valid single-active session.
     for (let attempt = 0; attempt < 2; attempt++) {
-      const response = page.waitForResponse(r => {
-        try { return new URL(r.url()).pathname === '/api/auth/login' }
-        catch { return false }
+      const response = page.waitForResponse(async r => {
+        if (new URL(r.url()).pathname !== '/api/auth/login') return false
+        if (r.status() !== 503) return true
+        const body = await r.json().catch(() => null)
+        return !safeBodyReadFailure('/api/auth/login', 'POST', r.status(), body)
       }, { timeout: 45_000 })
       if (await reauth.isVisible().catch(() => false)) await reauth.click()
       else await signIn.click()

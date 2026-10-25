@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import test from 'node:test'
 import { build } from 'esbuild'
+import { retrySafeBodyRequest } from '../../cloud-functions/_shared/safe-body-retry.js'
 import { administratorCredentials, loadAdministrator } from '../../cloud-functions/_shared/administrator.js'
 import { createBackendService } from '../../cloud-functions/_shared/core.js'
 import { createEdgeOneBlobStorage } from '../../cloud-functions/_shared/storage/edgeone-blob.js'
@@ -248,6 +249,28 @@ test('real gateway requires live owner session, pinned SMHE and separate schedul
   assert.equal((await call('/account-policy')).data.enabled, true)
   await backend.login('SMHE', 'test-password') // revoke original administrator token
   assert.equal((await call('/admin/idle', token)).status, 401)
+  // A DELETE rejected while receiving its body cannot remove any account.
+  // Replaying only that typed rejection with a fresh request deletes it once.
+  let deleteRequests = 0
+  const removal = await retrySafeBodyRequest(async () => {
+    const request = new Request('https://example.test/api/auth/account', {
+      method: 'DELETE', headers: { Authorization: 'Bearer ' + normal.token },
+      body: JSON.stringify({ currentPassword: 'test-password' }),
+    })
+    if (++deleteRequests === 1) request.arrayBuffer = async () => { throw new TypeError('transient receiver failure') }
+    const response = await onRequest({ request, env, clientIp: '127.0.0.1' })
+    const body = await response.json()
+    if (deleteRequests === 1) {
+      assert.equal(response.status, 503)
+      assert.equal(body.details.safeToRetry, true)
+      const hash = createHash('sha256').update('normal').digest('hex')
+      assert.ok(store.objects.has(`accounts/${hash}/identity.json`))
+    }
+    return { status: response.status, body }
+  }, { path: '/api/auth/account', method: 'DELETE', pause: async () => undefined })
+  assert.equal(deleteRequests, 2)
+  assert.equal(removal.status, 200)
+  assert.equal(removal.body.deleted.accountDeleted, true)
   const fresh = new Store()
   globalThis.__idleRouteStore = fresh
   const bootstrapEnv = { ADMIN_USER_ID: '', ADMIN_PASSWORD: '' }

@@ -1,3 +1,4 @@
+import { retrySafeBodyRequest } from '../../cloud-functions/_shared/safe-body-retry.js'
 import { noteCloudActivity } from './idle-maintenance-trigger'
 import { secureLearningEntry } from './learning-sync-policy'
 
@@ -112,13 +113,18 @@ async function request<T>(
   let response: Response
   let text: string
   try {
-    response = await fetch(apiUrl(path), {
-      method,
-      headers,
-      body: binary === undefined ? (body === undefined ? undefined : JSON.stringify(body)) : new Uint8Array(binary),
-      signal: abort?.signal,
-    })
-    text = await response.text()
+    const transportBody = binary === undefined ? (body === undefined ? undefined : JSON.stringify(body)) : new Uint8Array(binary)
+    const answer = await retrySafeBodyRequest(async () => {
+      const received = await fetch(apiUrl(path), { method, headers, body: transportBody, signal: abort?.signal })
+      const receivedText = await received.text()
+      let rejection: unknown
+      if (received.status === 503) {
+        try { rejection = JSON.parse(receivedText) } catch { /* Unknown responses never authorize retry. */ }
+      }
+      return { status: received.status, body: rejection, response: received, text: receivedText }
+    }, { path, method })
+    response = answer.response
+    text = answer.text
   } finally {
     if (deadline !== null) clearTimeout(deadline)
   }

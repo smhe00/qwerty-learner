@@ -122,16 +122,30 @@ async function readLegacyV4Json(request, maxBytes) {
 }
 
 async function readJson(request, maxBytes) {
-  const text = await request.text()
-
-  if (Buffer.byteLength(text, 'utf8') > maxBytes) {
+  const declared = request.headers.get('content-length')
+  if (declared !== null && (!/^\d+$/.test(declared) || Number(declared) > maxBytes)) {
     throw new AppError(413, 'request_too_large', 'HTTP request body is too large')
   }
-
-  if (!text) return {}
-
+  let bytes
   try {
-    return JSON.parse(text)
+    // Maker's request.text() intermittently rejects before JSON parsing.
+    // Use the same native byte receiver as the verified binary/V4 paths.
+    bytes = await request.arrayBuffer()
+  } catch {
+    // No caller can execute its business operation before this await returns.
+    // Only this typed PRE-operation rejection can authorize one client retry.
+    throw new AppError(503, 'request_body_unavailable', 'Unable to receive request content; please retry',
+      { stage: 'request-body', safeToRetry: true })
+  }
+  if (bytes.byteLength > maxBytes) {
+    throw new AppError(413, 'request_too_large', 'HTTP request body is too large')
+  }
+  if (declared !== null && Number(declared) !== bytes.byteLength) {
+    throw new AppError(400, 'invalid_json', 'Request body length does not match its declaration')
+  }
+  if (!bytes.byteLength) return {}
+  try {
+    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
   } catch {
     throw new AppError(400, 'invalid_json', 'Request body must contain valid JSON')
   }
@@ -753,6 +767,7 @@ export async function onRequest(context) {
           error: error.code,
           message: error.message,
           details: error.details || undefined,
+          requestId: diagnostics.requestId,
         },
         error.statusCode,
         cors,

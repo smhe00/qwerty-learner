@@ -1,3 +1,4 @@
+import { retrySafeBodyRequest } from '../../cloud-functions/_shared/safe-body-retry.js'
 /* eslint-env node */
 // Post-deployment V4 GA smoke: disposable test users ONLY, no real accounts.
 // Never run against master until API health announces authenticated-write GA.
@@ -24,6 +25,7 @@ async function api(path, method = 'GET', body, token) {
   const headers = { Accept: 'application/json' }
   if (token) headers.Authorization = 'Bearer ' + token
   if (body !== undefined) headers['Content-Type'] = 'application/json'
+  const result = await retrySafeBodyRequest(async () => {
   const response = await fetch(new URL(path, base), {
     method, headers, body: body === undefined ? undefined :
       typeof body === 'string' ? body : JSON.stringify(body),
@@ -37,8 +39,12 @@ async function api(path, method = 'GET', body, token) {
   try { value = JSON.parse(text) } catch (error) {
     parseFailure = error instanceof Error ? error.name : 'parse_error'
   }
-  return { status: response.status, value, responseBytes: Buffer.byteLength(text),
+  return { status: response.status, body: value, value, responseBytes: Buffer.byteLength(text),
     declaredBytes: response.headers.get('content-length'), parseFailure }
+  }, { path, method })
+  const { body: ignoredBody, ...answer } = result
+  void ignoredBody
+  return answer
 }
 // EdgeOne may reject even a tiny legacy JSON/Base64 PUT before body parsing.
 // Legacy writes are tested solely to seed an old master-format V4 revision;
