@@ -68,7 +68,7 @@ test('one-click manual Sync: PC hovered account menu and mobile home', async ({ 
     await trigger.hover()
     const menu = page.locator('[data-account-menu]')
     await expect(menu).toBeVisible({ timeout: 10_000 })
-    await expect(menu.getByRole('button', { name: '账号管理' })).toBeVisible()
+    await expect(menu.getByRole('menuitem', { name: '账号管理' })).toBeVisible()
     await expect(menu.locator('[data-quick-sync-entry]')).toBeVisible()
     // No extra confirmation click: the entry starts the existing guarded sync.
     await menu.locator('[data-quick-sync-entry]').click()
