@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - product/main
+      - release/production-no-handoff-20261026
     paths:
       - 'cloud-functions/**'
       - 'tests/cloud/**'

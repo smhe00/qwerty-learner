@@ -1,0 +1,14 @@
+{
+  "sourceBranch": "release/production-no-handoff-20261026",
+  "productionBase": "9620e33c845f59d31cba107e14dd30754a8c0ca5",
+  "preservedStaging": "9620e33c845f59d31cba107e14dd30754a8c0ca5",
+  "developmentBase": "8780e262",
+  "ownerAuthorized": true,
+  "handoffEnabled": false,
+  "preserved": [
+    "completion fix",
+    "mobile UI",
+    "idle cleanup"
+  ],
+  "knownIssue": "Intermittent typed503 accepted by owner; retain original failures and never replay ambiguous writes."
+}
