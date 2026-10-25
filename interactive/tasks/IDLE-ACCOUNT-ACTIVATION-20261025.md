@@ -1,6 +1,6 @@
 ---
 task_id: IDLE-ACCOUNT-ACTIVATION-20261025
-status: BLOCKED
+status: IN_PROGRESS
 target_branch: product/main
 base_commit: c74a59b8f9c1972a2c159a082b8fc04519cfa2c8
 allow_parallel_executors: false
@@ -15,6 +15,12 @@ Owner instruction: “那现在可以启动吧，也没有什么其他需要验�
 This authorizes activation; do not ask for the same permission again. Explain
 the actual outstanding verification/access instead of promising it is complete.
 The previous application release remains complete at REVIEW.
+
+Owner explicitly instructed starting the verification. Implement and run an
+isolated SDK qualification through Actions' existing private credential binding;
+do not treat inability to list secret names as inability to use a configured
+workflow credential. Exact read-only staging discovery must precede any write.
+No Maker promotion or new public clock/test endpoint is authorized or needed.
 
 ## Blockers
 
