@@ -272,9 +272,10 @@ for (const wrong of [true, false]) {
       })
       stage = 'last-word-entry'
       await a.goto(base + '/learn?block-resume=1', { waitUntil: 'domcontentloaded' })
-      await startTyping(a)
+      await expect(a).toHaveURL(base + '/learn')
       const word = a.locator('[data-typing-word="cancel"]')
       await expect(word).toBeVisible()
+      await startTyping(a)
       expect(await a.evaluate(() => sessionStorage.getItem('qwerty.learn.block-sync.pending.v1'))).toBeNull()
       if (wrong) {
         await a.keyboard.type('x')

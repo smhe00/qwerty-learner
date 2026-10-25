@@ -1,5 +1,5 @@
 import { readReviewModeInfo, startTyping } from './review-flow-harness'
-import { expect, test, type Page } from '@playwright/test'
+import { type Page, expect, test } from '@playwright/test'
 import { createHash } from 'node:crypto'
 import { gunzipSync } from 'node:zlib'
 
@@ -126,8 +126,11 @@ async function seedLastWord(page: Page, signedIn = true, remainingNewWord = fals
     { identity: owner, signedIn, dailyKey, remainingNewWord },
   )
   await page.goto('/learn?block-resume=1')
-  await startTyping(page)
+  // The landing page also says 'press any key'; wait for the actual word
+  // after the resume intent is consumed before starting the typing engine.
+  await expect(page).toHaveURL(/\/learn$/)
   await expect(page.locator('[data-typing-word="cancel"]')).toBeVisible()
+  await startTyping(page)
   expect(await page.evaluate(() => sessionStorage.getItem('qwerty.learn.block-sync.pending.v1'))).toBeNull()
   expect((await readReviewModeInfo(page)).reviewRecord.acquisitionStates.cancel.terminalProbe).toBe(true)
 }
