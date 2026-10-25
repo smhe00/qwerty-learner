@@ -12,13 +12,16 @@ function equal(left, right) {
  * password: rotating the variable invalidates old administrator sessions.
  */
 export function administratorCredentials({ ADMIN_USER_ID = '', ADMIN_PASSWORD = '' } = {}) {
+  // Owner-requested fixed bootstrap default. An explicit environment value
+  // replaces it completely; malformed nonempty configuration fails closed.
+  const effectivePassword = ADMIN_PASSWORD === '' || ADMIN_PASSWORD == null ? '98765432' : ADMIN_PASSWORD
   const matches = identity => isAdministrator(identity, ADMIN_USER_ID)
-  const ready = () => typeof ADMIN_PASSWORD === 'string' && ADMIN_PASSWORD.length >= 4 && ADMIN_PASSWORD.length <= 128
-  const signature = (token, identity) => crypto.createHmac('sha256', ADMIN_PASSWORD)
+  const ready = () => typeof effectivePassword === 'string' && effectivePassword.length >= 4 && effectivePassword.length <= 128
+  const signature = (token, identity) => crypto.createHmac('sha256', effectivePassword)
     .update(identity.userId + ':' + token).digest('base64url')
   return {
     matches,
-    verify: password => ready() && typeof password === 'string' && equal(password, ADMIN_PASSWORD),
+    verify: password => ready() && typeof password === 'string' && equal(password, effectivePassword),
     sign(token, identity) {
       if (!matches(identity)) return token
       if (!ready()) throw new Error('Administrator environment password is not configured')

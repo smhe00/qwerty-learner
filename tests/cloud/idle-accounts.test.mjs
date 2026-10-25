@@ -343,3 +343,29 @@ test('a late Circle participation hold reopens the account before any destructiv
   await idle.touch(identity)
   assert.ok(store.objects.has(`accounts/${identity.usernameHash}/identity.json`))
 })
+
+test('missing/empty administrator environment password uses owner default, explicit value disables it', async () => {
+  const store = new Store()
+  const storage = createEdgeOneBlobStorage(store)
+  const ordinary = createBackendService({ storage })
+  const seeded = await ordinary.register('SMHE', 'old-database-password')
+  const env = { ADMIN_USER_ID: seeded.user.userId }
+  for (const configuration of [env, { ...env, ADMIN_PASSWORD: '' }]) {
+    const backend = createBackendService({ storage, credentials: administratorCredentials(configuration) })
+    const session = await backend.login('sMhE', '98765432')
+    await backend.me(session.token)
+    await assert.rejects(backend.login('SMHE', 'old-database-password'), { code: 'incorrect_password' })
+    const configured = createBackendService({ storage,
+      credentials: administratorCredentials({ ...env, ADMIN_PASSWORD: 'explicit-environment-password' }) })
+    await assert.rejects(configured.login('SMHE', '98765432'), { code: 'incorrect_password' })
+    await assert.rejects(configured.me(session.token), { code: 'session_revoked' })
+    const current = await configured.login('SMHE', 'explicit-environment-password')
+    await configured.me(current.token)
+    assert.ok(!JSON.stringify([...store.objects.values()]).includes('98765432'))
+    assert.ok(!JSON.stringify([...store.objects.values()]).includes('explicit-environment-password'))
+  }
+  const invalid = administratorCredentials({ ...env, ADMIN_PASSWORD: 'bad' })
+  assert.equal(invalid.verify('98765432'), false)
+  assert.equal(invalid.verify('bad'), false)
+  assert.equal(administratorCredentials({}).matches({ userId: seeded.user.userId, normalizedUsername: 'smhe', status: 'active' }), false)
+})
