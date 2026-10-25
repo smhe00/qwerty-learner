@@ -364,6 +364,9 @@ export function createBackendService({
   }
 
   async function getCurrentAuth(identity) {
+    if (credentials?.managedName?.(identity.normalizedUsername) && !credentials.matches(identity)) {
+      throw new AppError(403, 'administrator_identity_mismatch', 'Administrator identity does not match the binding')
+    }
     if (credentials?.matches(identity)) return { version: 1, environmentManaged: true }
     const latest = await storage.getLatestAuth(identity.usernameHash)
     return latest || identity.initialAuth
@@ -517,12 +520,6 @@ export function createBackendService({
       throw new AppError(409, 'username_taken', 'Username is already registered')
     }
 
-    const initialAuth = {
-      version: 1,
-      password: await createPasswordRecord(password),
-      createdAt: nowIso(),
-    }
-
     const identityBase = {
       schemaVersion: ACCOUNT_SCHEMA_VERSION,
       userId: randomHex(16),
@@ -533,12 +530,24 @@ export function createBackendService({
       createdAt: nowIso(),
     }
 
+    const managedRegistration = !!credentials?.managedName?.(normalizedUsername)
+    if (managedRegistration && !credentials.matches(identityBase)) {
+      throw new AppError(409, 'administrator_account_reserved', 'Administrator identity is already bound')
+    }
+    if (managedRegistration && !credentials.verify(password)) {
+      throw new AppError(401, 'incorrect_password', 'Enter the configured administrator password to register SMHE')
+    }
+    const initialAuth = managedRegistration
+      ? { version: 1, environmentManaged: true, createdAt: nowIso() }
+      : { version: 1, password: await createPasswordRecord(password), createdAt: nowIso() }
+
     const initialSession = createSession(
       identityBase,
       initialAuth.version,
       1,
       sessionTtlSeconds,
       deviceId,
+      credentials?.sign,
     )
 
     const identity = {
@@ -552,6 +561,7 @@ export function createBackendService({
       throw new AppError(409, 'username_taken', 'Username is already registered')
     }
 
+    if (managedRegistration && credentials.authorize) await credentials.authorize(identity)
     if (activityGuard) await activityGuard(identity)
     return {
       user: publicUser(identity),
@@ -577,6 +587,7 @@ export function createBackendService({
       throw new AppError(401, 'incorrect_password', 'Password is incorrect')
     }
 
+    if (currentAuth.environmentManaged && credentials.authorize) await credentials.authorize(identity)
     if (activityGuard) await activityGuard(identity)
     const session = multiSessionEnabled
       ? await issueIndependentSession(identity, currentAuth.version, deviceId)

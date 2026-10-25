@@ -13,13 +13,14 @@ const result = await build({ entryPoints: [source], bundle: true, write: false,
     name: 'mock-edgeone', setup(build) {
       const mocked = new Set([
         '@edgeone/pages-blob', '../_shared/core.js',
-        '../_shared/auth-rate-limit.js', '../_shared/storage/edgeone-blob.js',
+        '../_shared/auth-rate-limit.js', '../_shared/storage/edgeone-blob.js', '../_shared/administrator.js',
       ])
       build.onResolve({ filter: /.*/ }, args =>
         mocked.has(args.path) ? { path: args.path, namespace: 'p4b-mock' } : undefined)
       build.onLoad({ filter: /.*/, namespace: 'p4b-mock' }, args => {
         const name = args.path
         if (name === '@edgeone/pages-blob') return { contents: 'export const getStore = () => ({})', loader: 'js' }
+        if (name.includes('administrator')) return { contents: 'export const loadAdministrator = async () => ({userId: "", credentials: undefined, isAdministrator: () => false})', loader: 'js' }
         if (name.includes('auth-rate-limit')) return { contents: 'export const checkAuthRateLimit = async () => ({ allowed: true })', loader: 'js' }
         if (name.includes('edgeone-blob')) return { contents: 'export const createEdgeOneBlobStorage = () => ({})', loader: 'js' }
         return { contents: `export class AppError extends Error {

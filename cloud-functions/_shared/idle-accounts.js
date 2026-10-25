@@ -19,7 +19,7 @@ export function isAdministrator(identity, adminUserId) {
 export function createIdleAccounts({ store, adminUserId = '', startAt, execute = false,
   clock = Date.now } = {}) {
   const start = Date.parse(startAt || '')
-  const configured = Number.isFinite(start) && USER.test(adminUserId)
+  const configured = Number.isFinite(start)
   let deadline = Infinity
   function checkBudget() { if (clock() >= deadline) throw new BudgetExceeded() }
   const get = key => { checkBudget(); return store.get(key, { type: 'json', consistency: 'strong' }) }

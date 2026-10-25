@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import test from 'node:test'
 import { build } from 'esbuild'
-import { administratorCredentials } from '../../cloud-functions/_shared/administrator.js'
+import { administratorCredentials, loadAdministrator } from '../../cloud-functions/_shared/administrator.js'
 import { createBackendService } from '../../cloud-functions/_shared/core.js'
 import { createEdgeOneBlobStorage } from '../../cloud-functions/_shared/storage/edgeone-blob.js'
 import { DAY_MS, DRAIN_MS, createIdleAccounts, isAdministrator } from '../../cloud-functions/_shared/idle-accounts.js'
@@ -237,7 +237,7 @@ test('real gateway requires live owner session, pinned SMHE and separate schedul
   assert.equal((await call('/admin/idle')).status, 401)
   assert.equal((await call('/admin/idle', normal.token)).status, 403)
   assert.equal((await call('/admin/access', token)).data.administrator, true)
-  assert.equal((await call('/admin/access', token, 'GET', { ADMIN_USER_ID: normal.user.userId })).status, 401)
+  assert.equal((await call('/admin/access', token, 'GET', { ADMIN_USER_ID: normal.user.userId })).status, 503)
   assert.equal((await call('/admin/idle', token)).status, 200)
   assert.equal((await call('/admin/idle', token, 'POST')).status, 403)
   assert.equal((await call('/maintenance/idle', normal.token, 'POST')).data.status, 'disabled')
@@ -248,6 +248,19 @@ test('real gateway requires live owner session, pinned SMHE and separate schedul
   assert.equal((await call('/account-policy')).data.enabled, true)
   await backend.login('SMHE', 'test-password') // revoke original administrator token
   assert.equal((await call('/admin/idle', token)).status, 401)
+  const fresh = new Store()
+  globalThis.__idleRouteStore = fresh
+  const bootstrapEnv = { ADMIN_USER_ID: '', ADMIN_PASSWORD: '' }
+  assert.equal((await call('/auth/register', undefined, 'POST', bootstrapEnv,
+    JSON.stringify({ username: 'SMHE', password: 'wrong-bootstrap' }))).status, 401)
+  const registration = await call('/auth/register', undefined, 'POST', bootstrapEnv,
+    JSON.stringify({ username: 'sMhE', password: '98765432' }))
+  assert.equal(registration.status, 201)
+  assert.equal((await call('/admin/access', registration.data.token, 'GET', bootstrapEnv)).data.administrator, true)
+  assert.equal((await call('/admin/idle', registration.data.token, 'GET', bootstrapEnv)).status, 200)
+  assert.equal((await call('/auth/register', undefined, 'POST', bootstrapEnv,
+    JSON.stringify({ username: 'SMHE', password: '98765432' }))).status, 409)
+  assert.ok(!JSON.stringify([...fresh.objects.values()]).includes('98765432'))
   delete globalThis.__idleRouteStore
 })
 
@@ -368,4 +381,69 @@ test('missing/empty administrator environment password uses owner default, expli
   assert.equal(invalid.verify('98765432'), false)
   assert.equal(invalid.verify('bad'), false)
   assert.equal(administratorCredentials({}).matches({ userId: seeded.user.userId, normalizedUsername: 'smhe', status: 'active' }), false)
+})
+
+test('new site reserves SMHE until correct first registration, then automatically binds without storing credentials', async () => {
+  for (const env of [{}, { ADMIN_PASSWORD: 'configured-bootstrap-password' }]) {
+    const password = env.ADMIN_PASSWORD || '98765432'
+    const store = new Store()
+    const storage = createEdgeOneBlobStorage(store)
+    const administrator = await loadAdministrator({ store, env })
+    const backend = createBackendService({ storage, credentials: administrator.credentials })
+    assert.equal(administrator.userId, '')
+    assert.equal(store.objects.size, 0) // Loading a new site creates no account/binding.
+    await assert.rejects(backend.login('SMHE', password), { code: 'account_not_found' })
+    await assert.rejects(backend.register('SmHe', 'incorrect-bootstrap-password'), { code: 'incorrect_password' })
+    assert.equal(store.objects.size, 0)
+    const account = await backend.register('sMhE', password)
+    assert.equal(administrator.userId, account.user.userId)
+    assert.equal(administrator.isAdministrator({ ...account.user, normalizedUsername: 'smhe', status: 'active' }), true)
+    assert.equal(account.token.split('.').length, 4)
+    await backend.me(account.token)
+    const reopened = await loadAdministrator({ store, env })
+    assert.equal(reopened.userId, account.user.userId)
+    const live = createBackendService({ storage, credentials: reopened.credentials })
+    const signed = await live.login('SMHE', password)
+    await live.me(signed.token)
+    await assert.rejects(live.changePassword(signed.token, password, 'app-password'), { code: 'environment_password_managed' })
+    await assert.rejects(live.deleteAccount(signed.token, password), { code: 'administrator_protected' })
+    const identity = await storage.getAccount(createHash('sha256').update('smhe').digest('hex'))
+    assert.equal(identity.initialAuth.environmentManaged, true)
+    assert.equal('password' in identity.initialAuth, false)
+    assert.ok(!JSON.stringify([...store.objects.values()]).includes(password))
+  }
+})
+
+test('existing SMHE enrolls on administrator-password login, never on its old ordinary password/session', async () => {
+  const store = new Store()
+  const storage = createEdgeOneBlobStorage(store)
+  const original = createBackendService({ storage })
+  const existing = await original.register('SMHE', 'old-ordinary-password')
+  const admin = await loadAdministrator({ store, env: { ADMIN_PASSWORD: 'env-password' } })
+  const backend = createBackendService({ storage, credentials: admin.credentials })
+  await assert.rejects(backend.me(existing.token), { code: 'session_revoked' })
+  await assert.rejects(backend.login('SMHE', 'old-ordinary-password'), { code: 'incorrect_password' })
+  assert.equal(admin.userId, '')
+  const signed = await backend.login('smhe', 'env-password')
+  assert.equal(signed.user.userId, existing.user.userId)
+  assert.equal(admin.userId, existing.user.userId)
+})
+
+test('persistent SMHE binding cannot be taken over by account recreation or conflicting configured ID', async () => {
+  const store = new Store()
+  const storage = createEdgeOneBlobStorage(store)
+  const admin = await loadAdministrator({ store })
+  const backend = createBackendService({ storage, credentials: admin.credentials })
+  const initial = await backend.register('SMHE', '98765432')
+  await assert.rejects(loadAdministrator({ store, env: { ADMIN_USER_ID: 'e'.repeat(32) } }),
+    { code: 'administrator_binding_mismatch' })
+  const hash = createHash('sha256').update('smhe').digest('hex')
+  const canonical = await storage.getAccount(hash)
+  store.objects.set(`accounts/${hash}/identity.json`, { ...canonical, userId: 'e'.repeat(32) })
+  const reloaded = await loadAdministrator({ store })
+  assert.equal(reloaded.userId, initial.user.userId)
+  const changed = createBackendService({ storage, credentials: reloaded.credentials })
+  await assert.rejects(changed.login('SMHE', '98765432'), { code: 'administrator_identity_mismatch' })
+  store.objects.delete(`accounts/${hash}/identity.json`)
+  await assert.rejects(changed.register('SMHE', '98765432'), { code: 'administrator_account_reserved' })
 })

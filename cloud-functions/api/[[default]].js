@@ -1,8 +1,8 @@
 /* eslint-env node */
 import { isIsolatedEtestPilotOrigin } from '../_shared/etest-pilot-origin.js'
 import crypto from 'node:crypto'
-import { administratorCredentials } from '../_shared/administrator.js'
-import { createIdleAccounts, isAdministrator } from '../_shared/idle-accounts.js'
+import { loadAdministrator } from '../_shared/administrator.js'
+import { createIdleAccounts } from '../_shared/idle-accounts.js'
 import { getStore } from '@edgeone/pages-blob'
 import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
 import { circleAccountHasActivity, createCircleOpenGateway } from '../_shared/circle/open-gateway.js'
@@ -160,7 +160,7 @@ function makeStorage(env) {
   return createEdgeOneBlobStorage(store)
 }
 
-function makeService(env, storage, idle) {
+function makeService(env, storage, idle, administrator) {
   // Append-only authenticated receipts need no Maker environment variable.
   // They cannot overwrite V4. Single-active-session remains enforced here.
   return createBackendService({
@@ -173,7 +173,7 @@ function makeService(env, storage, idle) {
     eventPilotEnabled: true,
     activityGuard: idle.touch,
     registrationGuard: idle.beforeRegister,
-    credentials: administratorCredentials(env),
+    credentials: administrator.credentials,
   })
 }
 
@@ -308,12 +308,15 @@ export async function onRequest(context) {
     }
 
     const storage = makeStorage(env)
+    const administrator = await loadAdministrator({
+      store: getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }), env,
+    })
     const idle = createIdleAccounts({
       store: getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }),
-      adminUserId: env.ADMIN_USER_ID || '', startAt: env.IDLE_POLICY_START_AT,
+      adminUserId: administrator.userId, startAt: env.IDLE_POLICY_START_AT,
       execute: env.IDLE_CLEANUP_EXECUTE === 'true',
     })
-    const service = makeService(env, storage, idle)
+    const service = makeService(env, storage, idle, administrator)
     if (path === '/maintenance/idle' && request.method === 'POST') {
       // Any live account may signal maintenance, but never chooses an account,
       // cursor or deletion policy. This request is separate from login/sync.
@@ -326,9 +329,9 @@ export async function onRequest(context) {
     }
     if (path === '/admin/access' && request.method === 'GET') {
       const { user } = await service.me(bearer(request))
-      return json({ ok: true, administrator: isAdministrator({ ...user,
+      return json({ ok: true, administrator: administrator.isAdministrator({ ...user,
         normalizedUsername: user.username.toLowerCase(), status: 'active',
-      }, env.ADMIN_USER_ID), policyEnabled: idle.configured }, 200, cors)
+      }), policyEnabled: idle.configured }, 200, cors)
     }
     if (path === '/admin/storage' && request.method === 'GET') {
       const { user } = await service.me(bearer(request))

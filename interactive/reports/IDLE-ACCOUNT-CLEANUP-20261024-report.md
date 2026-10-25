@@ -54,6 +54,24 @@ The owner explicitly requested a fixed bootstrap default when ADMIN_PASSWORD is 
 
 `node --test tests/cloud/idle-accounts.test.mjs` after this amendment: 22/22 PASS; scoped administrator/test ESLint and whitespace checks PASS. Tests prove omitted and empty values use the default, configured values reject it, environment changes invalidate old default-signed sessions, database passwords do not become fallback credentials, malformed configuration fails closed, and no effective password is stored in the fake Blob. Only the changed backend module/tests were rechecked; frontend build/browser behavior was unchanged.
 
-New-site account creation is NOT automatic. Documented the ordering: owner registers ordinary SMHE while ADMIN_USER_ID is unset, obtains its real immutable ID, then binds that ID and applies administrator password configuration. An existing site binds the existing SMHE account. No real administrator was initialized or cloud configuration changed during development.
+**Superseded by the final enrollment amendment below:** New-site account creation was not automatic in the prior checkpoint. Its then-documented ordering was: owner registers ordinary SMHE while ADMIN_USER_ID is unset, obtains its real immutable ID, then binds that ID and applies administrator password configuration. An existing site binds the existing SMHE account. No real administrator was initialized or cloud configuration changed during development.
 
 Final pre-publication origin/product/main remains 5cd49872e6f2a6389c0de6eebdf03725c9a7e115; no divergence. Development publication only; release_to_master remains false.
+
+
+## Final automatic enrollment amendment — 2026-10-25
+
+Owner explicitly replaced manual new-site ID binding with first verified SMHE registration. No startup-created account and no separate initialization command. Final code reserves the name, validates ADMIN_PASSWORD or the owner-supplied fixed default before account creation, writes environmentManaged metadata instead of a password verifier, signs the first session, and persists the real immutable user ID. Subsequent requests load `maintenance/administrator/v1.json`; ADMIN_USER_ID is optional legacy/operator pinning, not a prerequisite for a new site. An existing ordinary SMHE identity enrolls on its first administrator-password login, preserving its existing ID and data; neither its old database password nor old unsigned session enrolls it.
+
+Persistent role binding is not replaced by a recreated username. Canonical identity and binding readbacks are verified; conflicting ID configuration fails closed. OnlyIfNew is defense in depth, not an assertion of provider atomicity. The cleanup policy now needs a fixed activation date and explicit execute switch but does not require an administrator to have registered; the reserved SMHE name remains excluded throughout.
+
+Final additional validation:
+
+- `node --test tests/cloud/idle-accounts.test.mjs tests/cloud/backend-core.test.mjs tests/cloud/multi-session-auth.test.mjs tests/cloud/s2-write-route.test.mjs tests/cloud/handler-cors.test.mjs tests/cloud/edgeone-blob-storage.test.mjs` — **68/68 PASS**. Includes the real bundled gateway's fresh-site registration/access flow, both configured/default enrollment passwords, wrong-password zero-account writes, no saved password/verifier, preserved existing ID, and no role transfer after username recreation. Updated the API route test's administrator dependency mock without weakening its existing auth/V4 assertions.
+- Entry/registration regression suites — **14/14 PASS**. Updated reserved-name guidance is compatible with existing account boot tests.
+- Real Chromium idle-cleanup/account-continuity browser suites — **3/3 PASS** after this change.
+- Scoped backend/UI/test ESLint — **zero errors**.
+- Production Vite build + physical SPA route emission — **PASS**. Existing bundle warnings retained.
+- TypeScript baseline comparison repeated: **147 diagnostic lines in both baseline and current**, identical ignoring line offsets and paths. Still not a passing full typecheck, no new diagnostics.
+
+No real accounts, real administrator binding, environment secrets or runtime switches were accessed/changed; no etest/master promotion. Final implementation remains a development delivery requiring deployed Blob concurrency/interruption qualification before enabling production deletion. Final pre-publication origin/product/main is 966bfe2f2d9a7014d348a359f87e8f1b0f1c97fb (the preceding implementation/default checkpoints); no divergence.

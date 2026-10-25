@@ -70,6 +70,7 @@ export function renderS1AccountManagement(
   if (active.kind === 'anonymous') {
     passwordConfirm = row('注册密码确认', 'password')
     passwordConfirm.autocomplete = 'new-password'
+    actions.append(node('p', 'SMHE 是管理员保留名称，首次注册需使用管理员密码。'))
   }
 
   const controls: HTMLButtonElement[] = []
