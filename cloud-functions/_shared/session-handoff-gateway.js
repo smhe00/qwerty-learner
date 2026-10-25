@@ -118,7 +118,7 @@ export async function withHandoffGateway(context, dispatch) {
       } catch (error) { throw new BeforeMutationError(error) }
       // All legacy gateway paths now use the tracked getStore. Multipart
       // staging, final publication, cleanup and activity writes share ownership.
-      const result = await runHandoffScope({ holdMs, markHeld: controls.markHeld }, async () => {
+      const result = await runHandoffScope({ holdMs, markHeld: controls.markHeld, certifyStopped: true }, async () => {
         if (request.method === 'POST' && path === '/auth/logout') {
           const bound = createEdgeOneBlobStorage(getStore({
             name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }))

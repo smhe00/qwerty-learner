@@ -1,38 +1,38 @@
 ---
 task_id: SESSION-HANDOFF-20261025
 status: IN_PROGRESS
-executor: ChatGPT (scoped handoff qualification)
-base_commit: 6064bb504c89100551836a0b2629220ee41ea35d
-upstream_inspected: a782fb0e46c361bff1eca5ffaef2aee15fe8d18a
-target_branch: fix/session-handoff-20261025
-report_file: interactive/reports/SESSION-HANDOFF-20261025-gateway-qualification.md
+executor: ChatGPT (scoped integration)
+base_commit: ba987ca9af7bece0683beb3870a8061013b624ad
+upstream_inspected: dd30e54ac77c7bb43228f0207365e92c98033d78
+target_branch: product/main
+report_file: interactive/reports/SESSION-HANDOFF-20261025-narrowed-merge.md
+staged_runtime: 34a3d15f35ede8dec073fa88deaa5f3125f2ee95
 release_to_master: false
 ---
 
-# Safe account/session handoff
+# Narrowed handoff acceptance (owner direction)
 
-Owner explicitly authorized continued implementation through Etest verification.
-Focus is stop old requests, drain admitted effects, then return new login success.
-No PostgreSQL selection, provisioning, migration, or production changes.
+Wait for old execution to STOP, not for every upload to succeed. Block new old-
+session work; drain admitted effects; close the old write scope; allow takeover
+on success OR proven stopped failure. Preserve the original failure and all
+client-owned local data/pending synchronization. Never mark a failed sync as
+successful merely to release ownership. Existing local merge remains unchanged.
 
-Scoped exception: preserve the independent idle-activation CURRENT_TASK and its
-executor. Work on the feature branch, merge current product/main without force,
-qualify the resulting code, then stage that feature SHA directly to edgeone-test
-for isolated real-Blob qualification. Do not overwrite upstream development or
-update master. Staging pushes auto-deploy; avoid redundant ones.
+Owner authorized continuing integration. Merge the qualified feature into
+product/main, preserving its independent CURRENT_TASK/idle executor and current
+UI/Learn changes. No master release, database provisioning or migration.
+Historical intermittent request-body failures are explicitly OUT OF SCOPE and
+are NOT a prerequisite to this scoped development merge. Retain their failed
+reports; do not weaken any production release gate or claim they were fixed.
 
-Candidate: actual HTTP gateway, complete request write tracking, immutable-ticket
-Blob coordinator, credential preflight and revalidation, durable single-session
-logout. Only NEW random accounts matching ^qh26[0-9a-f]{24}$; existing accounts
-are not enrolled. Strong globally complete get/list is a required assumption.
-Unknown write results block takeover, never force unlock. No receipt pruning.
+This increment handles thrown application/read failures after request scope
+closure and acknowledged drain. Rejected provider mutations, in-flight writes
+and unverified terminal receipts remain uncertain; Promise rejection alone is
+NOT proof of remote cancellation. No timeout unlock or forced cancellation.
 
-Local evidence: previous selected suite 107/107, plus hardened body-classification
-regression; final gateway suite 10/10. Repository workflow will run all 108 after
-applying the pinned reviewed source wiring and merging main. CI must finish and
-identify exact tested SHA before etest promotion. Live validation must observe
-held manifest and pending login, not merely rely on timers or no-error responses.
-
-Unresolved for general rollout: provider consistency contract, crash recovery,
-bounded history, social/maintenance writers, safe old-code cutover and user UX.
-A successful disposable pilot does NOT certify all real accounts.
+Six focused regression checks cover the new distinction. Reuse existing CI
+contracts once for integration; do not expand unrelated failure campaigns.
+The gateway account selector and existing fixture capacity are NOT changed by
+this merge. Code integration is not ordinary-account activation or deployment.
+Previous isolated live results remain valid for their exact older runtime SHA;
+the new stopped-failure behavior requires its own evidence before live claims.

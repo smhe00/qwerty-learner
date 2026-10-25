@@ -1,0 +1,64 @@
+name: Etest handoff disconnect and competing takeover qualification
+on:
+  push:
+    branches: [fix/session-handoff-20261025]
+    paths:
+      - 'tests/cloud/handoff-exceptions*'
+      - '.github/workflows/session-handoff-exceptions.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: etest-account-handoff
+  cancel-in-progress: false
+jobs:
+  exceptions:
+    if: github.ref_name == 'fix/session-handoff-20261025'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      QWERTY_SYNC_BASE_URL: https://t.smhe.cn/
+      EXPECTED_SHA: 34a3d15f35ede8dec073fa88deaa5f3125f2ee95
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated test bundler
+        run: |
+          npm install --prefix "$RUNNER_TEMP/handoff-test-deps" --ignore-scripts --no-audit --no-fund esbuild@0.17.19
+          ln -s "$RUNNER_TEMP/handoff-test-deps/node_modules" node_modules
+      - name: Qualify new script through actual HTTP gateway and TCP disconnect
+        run: |
+          set -euo pipefail
+          mkdir -p test-results
+          git diff --check
+          node --test tests/cloud/handoff-exceptions.test.mjs | tee test-results/exceptions-contract.tap
+      - name: Pin deployed runtime and reject source or target drift
+        run: |
+          git fetch --depth=1 origin "$EXPECTED_SHA"
+          git diff --exit-code "$EXPECTED_SHA" -- cloud-functions
+          node scripts/handoff-diagnostic-source.mjs
+      - name: Qualify real Blob with only a fresh disposable account
+        run: |
+          node --input-type=module <<'NODE'
+          import { writeFile } from 'node:fs/promises'
+          import { qualifyExceptionalHandoff } from './tests/cloud/handoff-exceptions.mjs'
+          const report = await qualifyExceptionalHandoff({ sourceSha: process.env.EXPECTED_SHA })
+          report.harnessSha = process.env.GITHUB_SHA
+          report.runId = process.env.GITHUB_RUN_ID
+          await writeFile('test-results/handoff-exceptions-redacted.json', JSON.stringify(report, null, 2))
+          console.log(JSON.stringify(report, null, 2))
+          if (!report.passed) process.exitCode = 1
+          NODE
+      - name: Reconfirm pinned runtime after the test
+        if: always()
+        run: node scripts/handoff-diagnostic-source.mjs
+      - name: Retain redacted evidence, including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: handoff-exceptions-${{ github.run_id }}
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 7
