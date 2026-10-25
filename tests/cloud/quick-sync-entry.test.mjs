@@ -55,7 +55,7 @@ function reset() {
   state.clear(); local.clear(); navigated.length = 0; sequence.length = 0
   globalThis.__quickAuth = { user: { userId: id, username: 'fake' }, token: 'synthetic', expiresAt: Math.floor(Date.now() / 1000) + 600 }
   globalThis.__quickFlush = async () => { sequence.push('flush') }
-  navigator.onLine = true
+  globalThis.navigator.onLine = true
 }
 test('entry flushes writes and navigates only to the guarded pre-mount S2 route', async () => {
   reset()
@@ -74,10 +74,10 @@ test('local persistence failure prevents navigation and does not issue a sync in
 })
 test('auth change or offline status prevents any cloud/navigation work', async () => {
   reset()
-  navigator.onLine = false
+  globalThis.navigator.onLine = false
   await assert.rejects(api.startQuickSync('/mobile'))
   assert.deepEqual(navigated, [])
-  navigator.onLine = true
+  globalThis.navigator.onLine = true
   globalThis.__quickFlush = async () => {
     globalThis.__quickAuth = { ...globalThis.__quickAuth, token: 'replacement' }
   }
