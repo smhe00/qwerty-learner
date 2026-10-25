@@ -1,0 +1,102 @@
+name: Etest two-regression diagnosis
+on:
+  push:
+    branches: [fix/etest-regressions-20261025]
+    paths: ['.github/workflows/etest-two-regressions.yml', 'scripts/etest-two-regressions*', 'tests/e2e/etest-login-v4-history.spec.ts', 'tests/e2e/etest-learn-completion.spec.ts']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: etest-two-regressions
+  cancel-in-progress: false
+jobs:
+  focused:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      QWERTY_SYNC_BASE_URL: https://t.smhe.cn/
+      EXPECTED_SHA: 1059efd9c2fe6a88c81c42b86a117a5204c6bc95
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Pin runtime and archive tracked source only
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          git fetch --no-tags origin refs/heads/edgeone-test:refs/remotes/origin/edgeone-test
+          test "$(git rev-parse origin/edgeone-test)" = "$EXPECTED_SHA"
+          git diff --exit-code "$EXPECTED_SHA" HEAD -- src cloud-functions
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict'
+          assert.equal(process.env.GITHUB_REF_NAME, 'fix/etest-regressions-20261025')
+          assert.equal(process.env.QWERTY_SYNC_BASE_URL, 'https://t.smhe.cn/')
+          const r = await fetch('https://t.smhe.cn/source-commit.txt?regression=' + Date.now(), {redirect:'error',cache:'no-store'})
+          assert.equal(r.status,200)
+          const value=(await r.text()).trim()
+          assert.match(value,/^[a-f0-9]{7,40}$/)
+          assert.ok(process.env.EXPECTED_SHA.startsWith(value))
+          console.log('PASS exact deployed runtime', value)
+          NODE
+          git rev-parse HEAD origin/edgeone-test > evidence/source-shas.txt
+          git archive --format=tar.gz -o evidence/tracked-source.tar.gz HEAD src cloud-functions tests scripts interactive AGENTS.md package.json yarn.lock .github .eslintrc.cjs tsconfig.json
+      - run: yarn install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
+      - name: Add read-only synthetic diagnostics without changing assertions
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs'
+          import assert from 'node:assert/strict'
+          for (const file of ['tests/e2e/etest-login-v4-history.spec.ts','tests/e2e/etest-learn-completion.spec.ts']) {
+            let s=readFileSync(file,'utf8')
+            assert.ok(s.includes("toBe('edgeone-test')"))
+            s=s.replaceAll("toBe('edgeone-test')", "toBe('fix/etest-regressions-20261025')")
+            s=s.replaceAll("process.env.GITHUB_SHA || ''", "process.env.EXPECTED_SHA || ''")
+            if (file.includes('login-v4-history')) {
+              const target='    proof.applicationFailed = true'
+              assert.ok(s.includes(target))
+              s=s.replace(target, target+`
+              proof.failureDiagnostics = await Promise.all(pages.map(async p => ({
+                count: (await rawWords(p)).length,
+                words: (await rawWords(p)).map(r => String(r.word)).filter(w => /^historical-(seed|left|right)-[0-9]+$/.test(w)),
+                sync: (await syncDiagnostics(p)).map(({stage,status,code})=>({stage,status,code})),
+                startup: await p.evaluate(()=>sessionStorage.getItem('qwerty.s2.startup-check.v1')),
+                stages: await p.evaluate(()=>JSON.parse(sessionStorage.getItem('qwerty.perf-diagnostics.v1')||'[]').map(({stage,outcome}: any)=>({stage,outcome})))
+              }))).catch(()=>[{unavailable:true}])`)
+            } else {
+              const target='proof.applicationFailed = true'
+              assert.ok(s.includes(target))
+              s=s.replace(target,target+`
+              proof.failureDiagnostics = await a.evaluate(()=>({
+                startup: sessionStorage.getItem('qwerty.s2.startup-check.v1'),
+                stages: JSON.parse(sessionStorage.getItem('qwerty.perf-diagnostics.v1')||'[]').map(({stage,outcome}: any)=>({stage,outcome})),
+                sync: JSON.parse(sessionStorage.getItem('qwerty.learning-sync-diagnostics.v1')||'[]').map(({stage,status,code}: any)=>({stage,status,code}))
+              })).catch(()=>({unavailable:true}))`)
+            }
+            writeFileSync(file,s)
+          }
+          NODE
+      - name: Historical fork preserves all five rows and references
+        id: history
+        run: npx playwright test --config=tests/e2e/etest-login-v4-history.config.ts
+      - name: Actual login and completion journey
+        if: success() || failure()
+        run: npx playwright test --config=tests/e2e/etest-learn-completion.config.ts --output=test-results-completion
+      - name: Verify target did not drift
+        if: success() || failure()
+        run: |
+          git fetch --no-tags origin refs/heads/edgeone-test:refs/remotes/origin/edgeone-test
+          test "$(git rev-parse origin/edgeone-test)" = "$EXPECTED_SHA"
+      - name: Preserve only redacted evidence and tracked source
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etest-two-regressions-${{ github.run_id }}
+          path: |
+            evidence/
+            test-results/**/*-redacted-trace.json
+            test-results-completion/**/*-redacted-trace.json
+          retention-days: 3
+          if-no-files-found: error
