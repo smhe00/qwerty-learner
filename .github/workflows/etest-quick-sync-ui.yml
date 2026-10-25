@@ -1,0 +1,43 @@
+name: Pinned Etest one-click Sync UI smoke
+
+on:
+  push:
+    branches: [qa/manual-sync-live-20261026]
+    paths:
+      - '.github/workflows/etest-quick-sync-ui.yml'
+      - 'tests/e2e/etest-quick-sync-ui.spec.ts'
+      - 'tests/e2e/etest-quick-sync-ui.config.ts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Refuse staging branch or source drift
+        run: |
+          set -euo pipefail
+          expected=b927b31ac2b4750774163b50ae8b961f36d33509
+          test "$GITHUB_REF_NAME" = qa/manual-sync-live-20261026
+          current=$(git ls-remote origin refs/heads/edgeone-test | cut -f1)
+          test "$current" = "$expected"
+          git fetch --no-tags origin "$expected"
+          git diff --exit-code "$expected" HEAD -- src cloud-functions
+      - run: yarn install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
+      - name: One disposable-account PC/menu + mobile Sync journey
+        run: npx playwright test --config=tests/e2e/etest-quick-sync-ui.config.ts
+      - name: Check staging ref again
+        if: success()
+        run: |
+          expected=b927b31ac2b4750774163b50ae8b961f36d33509
+          current=$(git ls-remote origin refs/heads/edgeone-test | cut -f1)
+          test "$current" = "$expected"
