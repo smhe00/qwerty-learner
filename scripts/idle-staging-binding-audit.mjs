@@ -55,6 +55,24 @@ for (const region of ['china', 'global']) {
       area: ['global', 'overseas', 'mainland', 'china'].includes(record.Area) ? record.Area : typeof record.Area,
       regionFieldNames: fields(record.Regions),
     }
+    item.projectCatalog = []
+    for await (const candidate of makers.projects.listAll()) {
+      if (item.projectCatalog.length >= 50) throw Error('Catalog budget exceeded')
+      const response = await makers.request('DescribePagesProjects', { ProjectIds: [candidate.projectId] }, true)
+      const row = response.Projects?.[0] || response.Project || {}
+      const domains = JSON.stringify(row.CustomDomains || [])
+      item.projectCatalog.push({
+        selectedByOldDiscovery: candidate.projectId === projectId,
+        knownProduction: candidate.projectId === 'makers-yggquqwubqul',
+        previouslyDeniedObsolete: candidate.projectId === 'makers-cgemngjuuwle',
+        stagingDomain: domains.includes('t.smhe.cn'), productionDomain: domains.includes('q.smhe.cn'),
+        customDomainShape: Array.isArray(row.CustomDomains) ? 'array' : typeof row.CustomDomains,
+        customDomainCount: Array.isArray(row.CustomDomains) ? row.CustomDomains.length : undefined,
+        stagingBranch: row.RepoBranch === 'edgeone-test', productionBranch: row.RepoBranch === 'master',
+        oldPreset: row.PresetDomain === 'etest.edgeone.dev',
+        projectHasIdleSettings: JSON.stringify(row.EnvVars || {}).includes('IDLE_POLICY_START_AT'),
+      })
+    }
     item.outcome = 'OBSERVED'
   } catch (error) {
     item.outcome = 'UNAVAILABLE'

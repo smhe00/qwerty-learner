@@ -249,3 +249,16 @@ and diff whitespace checks PASS. SDK audit also checks exact custom-domain
 and branch correspondence without emitting private domain lists or values.
 Staging promotion is necessary for this runtime ABI diagnosis. Production
 master remains5528f79c; no operator/real account used.
+
+Audit40166504186 establishes a concrete discovery defect: the selected
+project has the old etest.edgeone.dev preset and expected repository branch,
+but NO t.smhe.cn custom domain. Independently, the old preset servesb1962e2,
+while t.smhe.cn serves697f284. The SDK's normalized Project drops custom
+domains, and our discovery accepted the old preset as sufficient. Earlier
+“exact staging” claims are therefore not established for the current t.smhe.cn
+backend; the isolated random-store tests remain useful but do not certify
+that backend. No further configuration writes until raw catalog domain
+correspondence is established. Added read-only booleans across all accessible
+projects, including formerly denied IDs for reads only. All deny-write guards
+remain unchanged. Temporary writes so far affected only the old preset
+project; execution=false is confirmed there. Production remains untouched.
