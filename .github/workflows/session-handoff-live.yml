@@ -1,0 +1,40 @@
+name: Etest account handoff qualification
+on:
+  push:
+    branches: [edgeone-test]
+    paths:
+      - 'cloud-functions/**'
+      - 'tests/cloud/session-handoff-*'
+      - '.github/workflows/session-handoff-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: etest-account-handoff
+  cancel-in-progress: false
+jobs:
+  real-blob-handoff:
+    if: github.ref_name == 'edgeone-test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      QWERTY_SYNC_BASE_URL: https://t.smhe.cn/
+      EXPECTED_SHA: ${{ github.sha }}
+      EDGEONE_WAIT_MS: '600000'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Require exact deployed source before creating any fixture
+        run: node scripts/verify-edgeone-source.mjs
+      - name: Real account handoff with a held Blob manifest
+        run: node tests/cloud/session-handoff-live.mjs
+      - name: Retain only redacted qualification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-handoff-${{ github.run_id }}
+          path: test-results/handoff-live-redacted.json
+          if-no-files-found: ignore
+          retention-days: 7

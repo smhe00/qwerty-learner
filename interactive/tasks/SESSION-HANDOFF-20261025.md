@@ -1,36 +1,38 @@
 ---
 task_id: SESSION-HANDOFF-20261025
-status: PARTIAL
-executor: ChatGPT (scoped handoff prototype)
-base_commit: ad092c7348260407c0c91102073c5447fffeee07
-implementation_commit: 7f092dd7ae24220b007d508fefc77abc627cf8a9
+status: IN_PROGRESS
+executor: ChatGPT (scoped handoff qualification)
+base_commit: 6064bb504c89100551836a0b2629220ee41ea35d
+upstream_inspected: a782fb0e46c361bff1eca5ffaef2aee15fe8d18a
 target_branch: fix/session-handoff-20261025
-report_file: interactive/reports/SESSION-HANDOFF-20261025-report.md
+report_file: interactive/reports/SESSION-HANDOFF-20261025-gateway-qualification.md
 release_to_master: false
 ---
 
-# Safe single-active-session handoff
+# Safe account/session handoff
 
-Owner authorized starting implementation after the source audit. Desired
-invariant: once B receives successful login, A's previously admitted requests
-cannot subsequently change the authoritative cloud state.
+Owner explicitly authorized continued implementation through Etest verification.
+Focus is stop old requests, drain admitted effects, then return new login success.
+No PostgreSQL selection, provisioning, migration, or production changes.
 
-Scoped branch exception: product/main CURRENT_TASK is owned by the separate
-IDLE-ACCOUNT-ACTIVATION executor and is frozen for its staging verification.
-This task adds isolated files on a feature branch, does not replace that task,
-and does not update product/main, edgeone-test or master. No production writes,
-provider provisioning, paid database or credential changes are authorized here.
+Scoped exception: preserve the independent idle-activation CURRENT_TASK and its
+executor. Work on the feature branch, merge current product/main without force,
+qualify the resulting code, then stage that feature SHA directly to edgeone-test
+for isolated real-Blob qualification. Do not overwrite upstream development or
+update master. Staging pushes auto-deploy; avoid redundant ones.
 
-P0 implemented and qualified at 7f092dd7: 20/20 local protocol/adapter tests,
-50/50 CI actual-core/protocol/Blob regressions and 4/4 real PostgreSQL tests.
-CI run 40164517789, both jobs success, zero skipped. Baseline tests reproduce
-existing unsafe interleavings; that is NOT evidence of a production fix.
-Retain Blob learning payloads. PostgreSQL is a reference coordinator adapter,
-not a chosen provider or a migration of learning storage. Runtime is unchanged.
+Candidate: actual HTTP gateway, complete request write tracking, immutable-ticket
+Blob coordinator, credential preflight and revalidation, durable single-session
+logout. Only NEW random accounts matching ^qh26[0-9a-f]{24}$; existing accounts
+are not enrolled. Strong globally complete get/list is a required assumption.
+Unknown write results block takeover, never force unlock. No receipt pruning.
 
-P1, before integration/promotion: authenticate takeover BEFORE creating a pending
-barrier, reauthenticate under ownership, route all authority-changing operations
-through one common account namespace, qualify a real coordinator/deployment,
-add bounded persistent receipts and proven recovery, then real staging E2E.
-Never substitute a Blob flag, local Map, expiring lease, an extra token read or
-fixed sleep for a cross-instance barrier. Do not report P0 as a production fix.
+Local evidence: previous selected suite 107/107, plus hardened body-classification
+regression; final gateway suite 10/10. Repository workflow will run all 108 after
+applying the pinned reviewed source wiring and merging main. CI must finish and
+identify exact tested SHA before etest promotion. Live validation must observe
+held manifest and pending login, not merely rely on timers or no-error responses.
+
+Unresolved for general rollout: provider consistency contract, crash recovery,
+bounded history, social/maintenance writers, safe old-code cutover and user UX.
+A successful disposable pilot does NOT certify all real accounts.

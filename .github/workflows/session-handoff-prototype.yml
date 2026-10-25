@@ -1,57 +1,75 @@
-name: Session handoff prototype
+name: Session handoff qualification
 on:
   push:
     branches: ['fix/session-handoff-20261025']
     paths:
-      - 'cloud-functions/_shared/session-handoff-*.js'
+      - 'cloud-functions/**'
       - 'tests/cloud/session-handoff-*'
       - 'experimental/session-handoff/**'
       - '.github/workflows/session-handoff-prototype.yml'
-  pull_request:
-    branches: ['product/main']
-    paths:
-      - 'cloud-functions/_shared/session-handoff-*.js'
-      - 'tests/cloud/session-handoff-*'
-      - 'experimental/session-handoff/**'
-      - '.github/workflows/session-handoff-prototype.yml'
+  workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
+concurrency:
+  group: session-handoff-feature-qualification
+  cancel-in-progress: false
 jobs:
-  protocol-and-core:
+  protocol-and-gateway:
+    if: github.ref == 'refs/heads/fix/session-handoff-20261025'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: fix/session-handoff-20261025
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Exact backend regressions and handoff prototype
+      - name: Apply reviewed wiring and integrate upstream without overwriting it
         run: |
-          node --test tests/cloud/session-handoff-barrier.test.mjs tests/cloud/session-handoff-postgres.test.mjs tests/cloud/session-handoff-core.test.mjs tests/cloud/backend-core.test.mjs tests/cloud/edgeone-blob-storage.test.mjs
-  postgres-adapter:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_PASSWORD: isolated-ci-only
-          POSTGRES_DB: handoff_qualification
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin product/main fix/session-handoff-20261025
+          git merge --ff-only origin/fix/session-handoff-20261025
+          PATCH=experimental/session-handoff/gateway-wiring.patch
+          if git apply --reverse --check "$PATCH"; then
+            echo 'Reviewed gateway wiring is already applied'
+          else
+            test "$(git hash-object cloud-functions/_shared/core.js)" = 5ff10edfdd3859a8e3d6fc0e94531327c09cb387
+            test "$(git hash-object 'cloud-functions/api/[[default]].js')" = 3577a0acdfc75f1e8f1df858d6e6641acf0afb36
+            git apply --check "$PATCH"
+            git apply "$PATCH"
+            git add cloud-functions/_shared/core.js 'cloud-functions/api/[[default]].js'
+            git commit -m 'fix(auth): wire complete requests through fixture handoff gateway'
+          fi
+          git merge --no-edit origin/product/main
+          git rev-parse HEAD > "$RUNNER_TEMP/handoff-tested-sha.txt"
+      - name: Isolated test bundler only; no database or application dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/handoff-test-deps" --ignore-scripts --no-audit --no-fund esbuild@0.17.19
+          ln -s "$RUNNER_TEMP/handoff-test-deps/node_modules" node_modules
+      - name: Protocol, actual HTTP gateway, multi-process and finite interleaving tests
+        run: |
+          set -euo pipefail
+          node --test tests/cloud/session-handoff-service.test.mjs tests/cloud/session-handoff-barrier.test.mjs tests/cloud/session-handoff-core.test.mjs tests/cloud/session-handoff-blob.test.mjs tests/cloud/session-handoff-gateway.test.mjs tests/cloud/session-handoff-process.test.mjs tests/cloud/session-handoff-model.test.mjs tests/cloud/backend-core.test.mjs tests/cloud/edgeone-blob-storage.test.mjs tests/cloud/workspace-transition.test.mjs | tee "$RUNNER_TEMP/handoff-qualification.tap"
+      - name: Publish only the validated feature branch, never staging or production
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = fix/session-handoff-20261025
+          test "$(git rev-parse HEAD)" = "$(cat "$RUNNER_TEMP/handoff-tested-sha.txt")"
+          git diff --exit-code
+          git diff --cached --exit-code
+          git push origin HEAD:refs/heads/fix/session-handoff-20261025
+          echo "Tested feature SHA: $(cat "$RUNNER_TEMP/handoff-tested-sha.txt")" >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain exact test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          node-version: '22'
-      - name: Install isolated test driver (no application dependency changes)
-        run: npm install --prefix "$RUNNER_TEMP/handoff-deps" --ignore-scripts --no-audit --no-fund pg@8.16.3
-      - name: Real PostgreSQL qualification (not EdgeOne deployment)
-        env:
-          HANDOFF_TEST_DATABASE_URL: postgresql://postgres:isolated-ci-only@localhost:5432/handoff_qualification
-        run: |
-          HANDOFF_PG_DEPS="$RUNNER_TEMP/handoff-deps" node --test tests/cloud/session-handoff-postgres.integration.mjs
+          name: handoff-qualification-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/handoff-tested-sha.txt
+            ${{ runner.temp }}/handoff-qualification.tap
+          if-no-files-found: warn
+          retention-days: 7
