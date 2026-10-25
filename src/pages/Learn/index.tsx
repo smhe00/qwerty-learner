@@ -290,7 +290,7 @@ export default function LearnPage({ mobile = false }: { mobile?: boolean } = {})
     // the next due/new-word session automatically. Never mutate a restored
     // historical DailySession merely because today's date has advanced.
     const addFiveWords = query.get('block-extra') === '1'
-    const shouldAutoStart = mobile || routeState?.autoStart === true || query.get('block-resume') === '1' || addFiveWords
+    const shouldAutoStart = (mobile && query.get('quick-sync-return') !== '1') || routeState?.autoStart === true || query.get('block-resume') === '1' || addFiveWords
 
     if ((canLearnMoreToday && !addFiveWords) || !shouldAutoStart || autoStartConsumedRef.current || !wordList) {
       return
@@ -313,7 +313,7 @@ export default function LearnPage({ mobile = false }: { mobile?: boolean } = {})
   if (endSettlement) return <LearnResultScreen initialSettlement={endSettlement} />
 
   if (isSessionView) {
-    return <TypingPage autoStart={mobile || userStartRequestedRef.current} mobile={mobile} />
+    return <TypingPage autoStart={(mobile && new URLSearchParams(location.search).get('quick-sync-return') !== '1') || userStartRequestedRef.current} mobile={mobile} />
   }
 
   if (mobile) {

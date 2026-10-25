@@ -22,6 +22,7 @@ import {
 } from '@/learn/session'
 import { TypingContext, TypingStateActionType, initialState, typingReducer } from './store'
 import { DonateCard } from '@/components/DonateCard'
+import QuickSyncAction from '@/components/QuickSyncAction'
 import LearnLiveStats from '@/pages/Learn/components/LearnLiveStats'
 import LearnResultScreen from '@/pages/Learn/components/LearnResultScreen'
 import MobileResult from '@/pages/Mobile/MobileResult'
@@ -390,6 +391,10 @@ const App: React.FC<{ autoStart?: boolean; mobile?: boolean }> = ({ autoStart = 
                 {currentPosition} / {totalWords}
               </p>
             </div>
+            <QuickSyncAction target="/mobile/study" variant="study" beforeSave={() => {
+              dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })
+              setReviewModeInfo((old) => ({ ...old }))
+            }} />
           </header>
           <Dialog open={Boolean(mobileLeaveError || mobileLeaving)} onClose={() => { if (!mobileLeaving) setMobileLeaveError('') }} className="mobile-app mobile-save-shield">
             <Dialog.Panel className="mobile-save-dialog">
