@@ -1,7 +1,16 @@
 name: Mobile Menu Completion
 on:
   push:
-    branches: [feat/mobile-menu-completion-20261024]
+    branches: [product/main]
+    paths:
+      - 'src/app.tsx'
+      - 'src/pages/Achievements/**'
+      - 'src/pages/Mobile/**'
+      - 'src/pages/Typing/components/WordPanel/components/MobileWordPractice.tsx'
+      - 'src/sync/CloudSyncSetting.tsx'
+      - 'tests/e2e/mobile-menu-completion.*'
+      - 'tests/e2e/mobile-achievement-navigation.spec.ts'
+      - '.github/workflows/mobile-menu-completion.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -33,7 +42,7 @@ jobs:
               cat "$RUNNER_TEMP/mobile-menu-tsc.log"
               exit 1
             fi
-            if grep -E '^src/(app[.]tsx|pages/Mobile/|pages/Typing/components/WordPanel/components/MobileWordPractice[.]tsx|sync/CloudSyncSetting[.]tsx)' "$RUNNER_TEMP/mobile-menu-tsc.log"; then
+            if grep -E '^src/(app[.]tsx|pages/(Mobile|Achievements)/|pages/Typing/components/WordPanel/components/MobileWordPractice[.]tsx|sync/CloudSyncSetting[.]tsx)' "$RUNNER_TEMP/mobile-menu-tsc.log"; then
               echo '::error::Mobile menu TypeScript diagnostics'
               exit 1
             fi
@@ -42,7 +51,7 @@ jobs:
       - name: Scoped lint and production build
         run: |
           git diff --check
-          yarn eslint src/pages/Mobile src/pages/Typing/components/WordPanel/components/MobileWordPractice.tsx src/sync/CloudSyncSetting.tsx src/app.tsx --ext .ts,.tsx
+          yarn eslint src/pages/Mobile src/pages/Achievements/index.tsx src/pages/Achievements/FocusAchievements.tsx src/pages/Typing/components/WordPanel/components/MobileWordPractice.tsx src/sync/CloudSyncSetting.tsx src/app.tsx --ext .ts,.tsx
           yarn build
           test -f build/mobile/history/index.html
           test -f build/mobile/data/index.html

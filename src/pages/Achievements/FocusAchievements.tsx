@@ -12,6 +12,7 @@ type Props = {
   access: SongArtAccess
   masteredWords: number
   theme: 'light' | 'dark'
+  showBackButton?: boolean
   onClose: () => void
   onOpenSong: () => void
   onSeen: (id: string) => void
@@ -23,7 +24,7 @@ const day = (seconds: number): string => new Date(seconds * 1000).toLocaleDateSt
 
 /** Default no-distraction achievement view. No painted art is mounted here. */
 export function FocusAchievements({
-  achievements, states, access, masteredWords, theme, onClose, onOpenSong, onSeen,
+  achievements, states, access, masteredWords, theme, showBackButton = true, onClose, onOpenSong, onSeen,
 }: Props) {
   const [filter, setFilter] = useState<Filter>('all')
   const [selectedId, setSelectedId] = useState<string>()
@@ -40,8 +41,8 @@ export function FocusAchievements({
         <h1>成就</h1>
         <p className="focus-achievements-intro">持续学习，记录每一个值得记住的进步。</p>
       </div>
-      <button type="button" className="focus-achievements-back" onClick={onClose}
-        aria-label="返回 Learn"><ArrowLeft size={18} aria-hidden="true" /> 返回</button>
+      {showBackButton && <button type="button" className="focus-achievements-back" onClick={onClose}
+        aria-label="返回 Learn"><ArrowLeft size={18} aria-hidden="true" /> 返回</button>}
     </header>
 
     <section className="focus-achievements-overview" aria-label="成就进度">

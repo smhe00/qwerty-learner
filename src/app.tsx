@@ -143,7 +143,8 @@ function MobileAchievementsRoute() {
           返回
         </button>
       </header>
-      <AchievementsPage embedded />
+      {/* This shell owns page navigation in both collection views. */}
+      <AchievementsPage embedded showBackButton={false} />
     </div>
   )
 }
