@@ -17,6 +17,8 @@ const require = createRequire(resolve(process.env.IDLE_MAKERS_SDK_DIR, 'package.
 const { Makers } = await import(pathToFileURL(require.resolve('@edgeone/makers-sdk')).href)
 const fields = value => Object.keys(value || {}).filter(key => /^[A-Za-z][A-Za-z0-9_]{0,60}$/.test(key)).sort()
 const metaNames = ['Type', 'Env', 'Scope', 'Environment', 'Target', 'Environments', 'EnvType', 'Status', 'IsSecret', 'IsPublic']
+const safeEnumValue = value => typeof value === 'string' &&
+  /^(all|build|runtime|production|preview|cloud.?functions?|edge.?functions?)$/i.test(value)
 for (const region of ['china', 'global']) {
   const item = { region }
   try {
@@ -34,8 +36,8 @@ for (const region of ['china', 'global']) {
       executionValueFalse: row.Key === 'IDLE_CLEANUP_EXECUTE' ? row.Value === 'false' : undefined,
       metadata: Object.fromEntries(metaNames.filter(key => row[key] !== undefined).map(key => {
         const value = row[key]
-        const safeEnum = typeof value === 'string' && /^(all|build|runtime|production|preview|cloud.?functions?|edge.?functions?)$/i.test(value)
-        return [key, safeEnum || typeof value === 'boolean' || (Number.isInteger(value) && value >= 0 && value <= 10) ? value : typeof value]
+        if (Array.isArray(value)) return [key, value.slice(0, 8).map(item => safeEnumValue(item) ? item : typeof item)]
+        return [key, safeEnumValue(value) || typeof value === 'boolean' || (Number.isInteger(value) && value >= 0 && value <= 10) ? value : typeof value]
       })),
     }))
     const project = await makers.request('DescribePagesProjects', { ProjectIds: [projectId] }, true)
