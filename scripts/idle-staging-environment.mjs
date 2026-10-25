@@ -36,9 +36,16 @@ export async function applyStagingEnvironment(projects, snapshot) {
   assert.ok(Math.abs(Date.now() - Date.parse(snapshot.activationTime)) < 15 * 60_000, 'Activation snapshot is not fresh')
   const projectId = snapshot.projectId
   assert.ok(equal(await projects.listEnvs({ projectId }), snapshot.original), 'Staging settings changed since snapshot')
-  await projects.setEnvs({ projectId, envVars: [
+  const desired = [
     { key: keys[0], value: snapshot.activationTime }, { key: keys[1], value: 'true' },
-  ] })
+  ]
+  await projects.setEnvs({ projectId, envVars: desired })
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const observed = await projects.listEnvs({ projectId })
+    if (equal(observed, desired)) return
+    if (attempt === 4) assert.fail('Staging configuration acknowledgement was not confirmed')
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
 }
 export async function restoreStagingEnvironment(projects, snapshot) {
   validate(snapshot)

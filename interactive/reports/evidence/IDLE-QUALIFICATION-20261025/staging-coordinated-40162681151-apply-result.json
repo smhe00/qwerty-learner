@@ -1,0 +1,10 @@
+{
+  "check": "idle-staging-trigger-v1",
+  "productionChanged": false,
+  "deploymentTriggered": false,
+  "multiRegionQualified": false,
+  "verdict": "PASS",
+  "applicationSource": "5528f79",
+  "settingsApplied": true,
+  "awaitingStagingDeployment": true
+}

@@ -8,6 +8,7 @@ import { getStore } from '@edgeone/pages-blob'
 import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
 import { circleAccountHasActivity, createCircleOpenGateway } from '../_shared/circle/open-gateway.js'
 import { AppError, createBackendService } from '../_shared/core.js'
+import { runtimeEnvironment } from '../_shared/runtime-environment.js'
 import { isS2WriteEnabled } from '../_shared/s2-write-gate.js'
 import { createEdgeOneBlobStorage } from '../_shared/storage/edgeone-blob.js'
 import { commitV4Upload, receiveV4UploadPart } from '../_shared/v4-http-parts.js'
@@ -255,7 +256,8 @@ async function enforceAuthRateLimit(context, storage, env, cors) {
 }
 
 export async function onRequest(context) {
-  const { request, env = {} } = context
+  const { request } = context
+  const env = runtimeEnvironment(context.env)
   const diagnostics = createRequestDiagnostics(context)
   const readBody = maxBytes => diagnostics.run('request-body', () => readJson(request, maxBytes))
   const url = new URL(request.url)
@@ -313,6 +315,7 @@ export async function onRequest(context) {
             'v4-binary-direct-512k-v1',
             'backup-v3-explicit-migration-only',
             'account-delete-v1',
+            'idle-runtime-policy-v1',
             'duplicate-register-protection-v1',
             // Distinguishes a new backend runtime from a new static build.
             'etest-single-session-relay-v1',
@@ -346,7 +349,9 @@ export async function onRequest(context) {
       catch { return json({ ok: true, status: 'unavailable' }, 200, cors) }
     }
     if (path === '/account-policy' && request.method === 'GET') {
-      return json({ ok: true, enabled: idle.configured, idleDays: 180 }, 200, cors)
+      return json({ ok: true, enabled: idle.configured,
+        executionEnabled: idle.configured && env.IDLE_CLEANUP_EXECUTE === 'true',
+        idleDays: 180 }, 200, cors)
     }
     if (path === '/admin/access' && request.method === 'GET') {
       const { user } = await service.me(bearer(request))

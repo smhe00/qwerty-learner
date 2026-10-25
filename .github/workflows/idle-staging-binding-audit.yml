@@ -1,0 +1,40 @@
+name: Idle staging runtime binding read-only audit
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - '.github/workflows/idle-staging-binding-audit.yml'
+      - 'scripts/idle-staging-binding-audit.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  binding-metadata:
+    if: github.ref_name == 'product/main'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+      - name: Install pinned official SDK without lifecycle scripts
+        run: npm install --no-save --ignore-scripts --prefix "$RUNNER_TEMP/idle-makers-sdk" @edgeone/makers-sdk@0.1.0
+      - name: Inspect selected environment schema and regional metadata, never values
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          IDLE_MAKERS_SDK_DIR: ${{ runner.temp }}/idle-makers-sdk
+          # Historical project for READS ONLY, not proof of the current site.
+          # Audit also reads the raw catalog including all available projects.
+          IDLE_QUALIFICATION_PROJECT_ID: makers-mr6zjv0rh6xt
+          IDLE_BINDING_AUDIT_REPORT: ${{ runner.temp }}/idle-binding-audit-redacted.json
+        run: node scripts/idle-staging-binding-audit.mjs
+      - name: Preserve read-only schema evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: idle-binding-audit-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/idle-binding-audit-redacted.json
+          if-no-files-found: ignore
+          retention-days: 7

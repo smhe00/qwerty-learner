@@ -87,3 +87,10 @@ test('tampered snapshots cannot restore other environment variables or backdate 
   assert.equal(f.writes.length, 0)
   assert.equal(f.env.get('ADMIN_PASSWORD'), 'private-sentinel')
 })
+test('a successful ACK without the requested setting values cannot proceed to deployment', async () => {
+  const f = fixture()
+  const snapshot = await snapshotStagingEnvironment(f.projects, f.id)
+  f.projects.setEnvs = async () => {}
+  await assert.rejects(applyStagingEnvironment(f.projects, snapshot))
+  assert.equal(f.env.has('IDLE_CLEANUP_EXECUTE'), false)
+})

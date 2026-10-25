@@ -8,8 +8,10 @@ on:
     paths:
       - '.github/workflows/idle-blob-qualification.yml'
       - 'scripts/idle-qualification-discovery.mjs'
+      - 'scripts/idle-project-binding.mjs'
       - 'scripts/idle-blob-qualification*.mjs'
       - 'tests/cloud/idle-qualification-scope.test.mjs'
+      - 'tests/cloud/idle-project-binding.test.mjs'
   workflow_dispatch:
 
 permissions:
@@ -31,7 +33,7 @@ jobs:
           cache: yarn
       - run: yarn install --frozen-lockfile
       - name: Qualify namespace, cleanup and fault-injection runner without credentials
-        run: node --test tests/cloud/idle-qualification-scope.test.mjs
+        run: node --test tests/cloud/idle-qualification-scope.test.mjs tests/cloud/idle-project-binding.test.mjs
 
   discover-staging:
     needs: [scope-contract]

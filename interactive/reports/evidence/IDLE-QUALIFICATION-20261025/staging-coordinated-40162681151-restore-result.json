@@ -1,0 +1,12 @@
+{
+  "check": "idle-staging-trigger-v1",
+  "productionChanged": false,
+  "deploymentTriggered": false,
+  "multiRegionQualified": false,
+  "verdict": "PASS",
+  "rollback": {
+    "restored": true,
+    "mutationNeeded": false
+  },
+  "runtimeRestoreNeedsDeployment": true
+}
