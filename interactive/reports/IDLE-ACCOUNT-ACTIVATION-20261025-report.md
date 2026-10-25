@@ -132,3 +132,23 @@ both original invalid-context diagnostics, and both corrected qualification
 workflows pass. Original YAML parsing alone was insufficient. Node20 native
 Playwright/retry-policy imports and7/7 setting guards already passed. Requalify
 this actual staging path with the fixed workflow; do not relabel the failed run.
+
+Corrected workflowde64e6dc started real CI40161125235/job121072724078.
+Discovery and pre-write snapshot succeeded; original two IDLE keys were absent.
+Temporary apply was acknowledged, but runtime policy activation was not observed
+within the bounded read-only window. The main run failed at
+wait-runtime-policy-activation, with no disposable registration/browser journey
+started. Both automatic rollback checks reported restored=false; do NOT report
+the staging environment restored yet. Production was not changed.
+
+Repository deployment instructions state environment edits affect subsequent
+deployments and require redeploy. This explains why control-plane edits alone
+are not proof of runtime activation, but it does not explain the unconfirmed
+key rollback. Added a narrowly scoped recovery using the saved absent-key
+baseline: read selected known-key shapes/ownership, retry only known-key
+deletion with redacted SDK error class/code, verify exact absence, or explicitly
+fail closed to empty start date/false execute if provider deletion is unavailable.
+Never call that fallback exact absence restoration. No unrelated values, secret
+contents, production project or deployment is touched. Finish recovery before
+any further staging configuration/deployment experiment. The failed real
+trigger run remains a failure;8/8 isolated real-Blob result is separate.

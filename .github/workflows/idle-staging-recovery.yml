@@ -1,0 +1,56 @@
+name: Restore owned staging idle test settings
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - '.github/workflows/idle-staging-recovery.yml'
+      - 'scripts/idle-staging-recovery.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: reversible-staging-idle-runtime
+  cancel-in-progress: false
+jobs:
+  recover-staging:
+    if: github.ref_name == 'product/main'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+      - name: Install official SDK without lifecycle scripts
+        run: npm install --no-save --ignore-scripts --prefix "$RUNNER_TEMP/idle-makers-sdk" @edgeone/makers-sdk@0.1.0
+      - name: Read-only exact staging discovery
+        id: discover
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          IDLE_MAKERS_SDK_DIR: ${{ runner.temp }}/idle-makers-sdk
+          IDLE_DISCOVERY_REPORT: ${{ runner.temp }}/idle-recovery-discovery.json
+        run: node scripts/idle-qualification-discovery.mjs
+      - name: Obtain only the known failed test's nonsecret rollback snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download 40161125235 --name idle-staging-rollback-40161125235-1 --dir "$RUNNER_TEMP/idle-recovery-snapshot"
+      - name: Restore exact absence or explicitly fail closed, verify runtime disabled
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          IDLE_MAKERS_SDK_DIR: ${{ runner.temp }}/idle-makers-sdk
+          IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
+          IDLE_QUALIFICATION_PROJECT_VERIFIED: EXACT_ETEST_DOMAIN
+          IDLE_RECOVERY_SNAPSHOT: ${{ runner.temp }}/idle-recovery-snapshot/rollback-settings.json
+          IDLE_RECOVERY_REPORT: ${{ runner.temp }}/idle-staging-recovery-redacted.json
+        run: node scripts/idle-staging-recovery.mjs
+      - name: Preserve redacted recovery result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: idle-staging-recovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/idle-staging-recovery-redacted.json
+            ${{ runner.temp }}/idle-recovery-discovery.json
+          if-no-files-found: ignore
+          retention-days: 7
