@@ -1,6 +1,6 @@
 # Production release — 2026-10-26
 
-Status: MASTER PROMOTED; actual production deployment verification is pending at this checkpoint.
+Status: RELEASED / ACTUAL PRODUCTION DEPLOYMENT VERIFIED.
 Release executor: Chat. This is an independent release receipt; other executors' CURRENT_TASK and task history remain intact.
 
 ## Authorization and exact artifact
@@ -8,6 +8,7 @@ Release executor: Chat. This is an independent release receipt; other executors'
 Owner explicitly instructed: 排除偶发503，可以发布正式版了. Occasional transient HTTP503 is not, by itself, a release veto. This does not authorize deleting failed evidence, weakening data-preservation assertions, treating unknown commits as safe to replay, or claiming all historical failures have been repaired.
 
 - Released commit: **9620e33c845f59d31cba107e14dd30754a8c0ca5**.
+- Actual q.smhe.cn deployment marker: **9620e33**.
 - Previous production reference: **5528f79c700548e174fa153b96ff4599d7326aee**.
 - master was advanced without force, with an expected-old-SHA lease; the resulting ref was read back and confirmed.
 - edgeone-test remains at the identical released SHA. No staging ref or console setting was changed by this release task.
@@ -53,8 +54,31 @@ Its redacted proof confirms full-V4 ordinary-startup recovery, exact six-table p
 3. Earlier Learn completion1059efd evidence includes a successful completion upload followed by a503/pending extra-round startup upload. The known intermittent issue is accepted for this owner-authorized release, not declared eliminated. Never blindly replay an uncertain write.
 4. Whole-repository historical diagnostics/advisory jobs are not claimed universally green. Existing UI/browser evidence is Chromium-based, not physical Huawei/iOS certification. No new production data-write campaign was manually launched by this task.
 
-## Post-deployment check
+## Actual post-deployment verification — PASS
 
-Automatic **EdgeOne Production Verify run40241020114** started on the master push. It anonymously reads q.smhe.cn/source-commit.txt, gateway health/capability, and mobile/history/data/achievements application entries. It makes no authenticated data mutation. At this checkpoint it is still running, so a successful push is not yet being described as confirmed deployment.
+Automatic **EdgeOne Production Verify run40241020114 / job121312599755** completed successfully:
+https://github.com/smhe00/qwerty-learner/actions/runs/40241020114
 
-Local direct network access could not resolve the relevant hosts; native GitHub Actions evidence is used instead. Record the final verifier verdict before claiming the site is live. This receipt is documentation-only on product/main; do not push it to master merely to change the published version marker.
+The job first observed the previous5528f79 build during deployment propagation; it did not mistake the old site for the new release. At **2026-10-25T22:40:27.973Z** it printed the actual successful production proof:
+
+```json
+{
+  "result": "PASS",
+  "production": "https://q.smhe.cn",
+  "expected": "9620e33c845f59d31cba107e14dd30754a8c0ca5",
+  "deployed": "9620e33",
+  "gateway": "qwerty-sync-gateway",
+  "apiVersion": 1,
+  "mobileRouteEntries": [
+    "/mobile",
+    "/mobile/history",
+    "/mobile/data",
+    "/mobile/achievements"
+  ],
+  "verificationMode": "anonymous-read-only"
+}
+```
+
+Assertions included HTTP200 for the source marker and healthy identified gateway, required blob capability, and HTTP200/correct origin/correct route/application-root HTML for all four mobile entries. The complete job and all steps concluded success. This confirms actual deployment, not only a branch push. The probe made no authenticated data mutation and is not a new physical-phone or complete production cloud-write certification.
+
+Local direct network access could not resolve the relevant hosts; native GitHub Actions logs supplied the live proof. This receipt is documentation-only on product/main; master and edgeone-test stay pinned to the qualified9620e33c artifact. Initial release checkpoint was30e51851f72b423252b1de71c85701b377cfc60c. No unrelated current task, runtime policy or validation assertion was edited to finish this release.
