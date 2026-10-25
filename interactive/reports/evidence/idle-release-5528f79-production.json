@@ -1,0 +1,28 @@
+{
+  "expected": "5528f79c700548e174fa153b96ff4599d7326aee",
+  "production": "https://q.smhe.cn",
+  "verificationMode": "anonymous-read-only",
+  "observedAt": "2026-10-25T01:35:45.691360+00:00",
+  "deployed": "5528f79",
+  "gateway": {
+    "ok": true,
+    "service": "qwerty-sync-gateway",
+    "apiVersion": 1
+  },
+  "accountPolicy": {
+    "ok": true,
+    "enabled": false,
+    "idleDays": 180
+  },
+  "mobileRouteEntries": [
+    "/mobile",
+    "/mobile/history",
+    "/mobile/data",
+    "/mobile/achievements"
+  ],
+  "result": "PASS",
+  "customerAuthenticationPerformed": false,
+  "runtimeConfigurationChanged": false,
+  "customerAccountsDeleted": false,
+  "automaticProductionSmokeRun": 40151045369
+}

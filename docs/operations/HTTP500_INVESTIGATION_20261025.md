@@ -73,9 +73,36 @@ or used as evidence that a failure disappeared.
 
 ## Live verification and remaining limits
 
-The remedy still requires its own exact-SHA staging/browser/Blob/history checks
-before any production release. A successful retry or one green run cannot erase
-older failures or demonstrate continuous six-month retention reliability. No
+Remedy application source has been frozen since81e31cf1. Qualified candidate
+5528f79c700548e174fa153b96ff4599d7326aee passes exact-SHA Pages40149859162,
+Cloud40149859208, actual staging browser/Blob/readiness40149860582,
+hard three-device40149860571, relay40149860591 and safe writeback40149860573.
+The Blob run still observed native multipart receiver503s, recovered using its
+existing immutable-part/SHA contract; provider receiver failures are not claimed
+eliminated. The earlier366 transport timeout remains a failed run.
+
+Additional history40149860584 initially failed second revision expected2/actual1
+after verified exact history recovery, with verified account deletion. It did
+not record an HTTP500 and its cause remains unconfirmed. One isolated local run
+against deployed5528 executed every original history assertion plus redacted
+HTTP/sync metadata and passed in2.4minutes: only the intentional synthetic
+preflight503 occurred; both forks, Unicode/shared references, all six tables,
+M3/M4, read-only export and final account deletion passed. See
+[redacted receipt](../../interactive/reports/evidence/idle-http500-history-5528f79-local.json).
+The original failed run is retained. Its failed job alone received one CI retry
+with a new per-attempt disposable identity, without changing candidate source or
+assertions: attempt2/job121041597897 passed the full test in3.1minutes and
+verified account deletion. The attempt1 cause remains unconfirmed. A successful
+retry or one green run cannot erase older failures or
+demonstrate continuous six-month retention reliability. No
 customer data, production account, server clock or real SMHE enrollment was used
 for diagnosis. Additional storage/vendor failures, if observed, must be assigned
 their own stages; this finding is not a blanket explanation for all HTTP500s.
+
+Candidate5528f79c was released to master after these gates. Canonical production
+verification40151045351 and independent read-only source/health/mobile/policy
+checks passed; the180-day destructive policy remains disabled. Existing
+automatic production V4 smoke40151045369 also passed and verified both synthetic
+account deletions. No real-user account or SMHE enrollment was used. Full release
+evidence and retained caveats are in the
+[release report](../../interactive/reports/IDLE-ACCOUNT-RELEASE-20261025-report.md).

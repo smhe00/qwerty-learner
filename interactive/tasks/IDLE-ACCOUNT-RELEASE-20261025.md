@@ -1,6 +1,6 @@
 ---
 task_id: IDLE-ACCOUNT-RELEASE-20261025
-status: IN_PROGRESS
+status: REVIEW
 target_branch: product/main
 release_to_master: true
 ---
@@ -28,3 +28,5 @@ Diagnostic staging captured a live login500 at request-body with validated reque
 Qualify E2E loader changes using Node20.18.0, not just the workspace's Node24. Static ESM imports from CommonJS-emitted TS specs failed; native dynamic imports now list successfully on the actual target runtime. No application-source change is needed for this correction, but exact-SHA release gates still apply.
 
 Node20 correction follow-up: Playwright rewrites dynamic TS import at execution too. Use the test-only native loader; require body-policy-runtime.spec.ts to actually execute on Node20 before any further CI push. Listing alone is insufficient. The366 V4 timeout is retained; add redacted path/error metadata only, no timeout/assertion relaxation.
+
+Completed: exact application candidate5528f79c was qualified and fast-forwarded to master; canonical production read-only proof confirms marker5528f79, healthy gateway,180-day policy disabled and four mobile entries. Keep implementation/release evidence in the report, including historical failed and uncertain cleanup attempts. The closing main checkpoint also repairs an unrelated stale migration-readiness test fixture (populated synthetic legacy local IDB, instead of an empty profile) and canonical origin; no src/cloud-functions change or second production promotion. This is a report/test-only checkpoint rather than the originally anticipated report-only commit. The invalid old read-only run was canceled after corrected local production checks passed. No assertion was removed. PR17 was inspected after production verification; its status report is linked from the release report.
