@@ -1,4 +1,3 @@
-import { retrySafeBodyRequest, safeBodyReadFailure } from '../../cloud-functions/_shared/safe-body-retry.js'
 import { acknowledgeInformationDialog } from './information-dialog'
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import { writeFile } from 'node:fs/promises'
@@ -90,14 +89,16 @@ async function journalEvidence(page: Page) {
   }).catch(() => ({ unavailable: true }))
 }
 async function api(path: string, method: string, input: object, token?: string) {
+  // Playwright emits CommonJS on Node20; load the isomorphic ESM policy natively.
+  const { retrySafeBodyRequest } = await import('../../cloud-functions/_shared/safe-body-retry.js')
   return retrySafeBodyRequest(async () => {
-  const response = await fetch(new URL(path, base), {
-    method, redirect: 'error', cache: 'no-store',
-    headers: { 'Content-Type': 'application/json',
-      ...(token ? { Authorization: 'Bearer ' + token } : {}) },
-    body: JSON.stringify(input),
-    signal: AbortSignal.timeout(40_000),
-  })
+    const response = await fetch(new URL(path, base), {
+      method, redirect: 'error', cache: 'no-store',
+      headers: { 'Content-Type': 'application/json',
+        ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+      body: JSON.stringify(input),
+      signal: AbortSignal.timeout(40_000),
+    })
     return { status: response.status, body: await response.json() }
   }, { path, method })
 }
@@ -134,6 +135,7 @@ async function openAccount(page: Page, username: string, password: string) {
         if (new URL(r.url()).pathname !== '/api/auth/login') return false
         if (r.status() !== 503) return true
         const body = await r.json().catch(() => null)
+        const { safeBodyReadFailure } = await import('../../cloud-functions/_shared/safe-body-retry.js')
         return !safeBodyReadFailure('/api/auth/login', 'POST', r.status(), body)
       }, { timeout: 45_000 })
       if (await reauth.isVisible().catch(() => false)) await reauth.click()
