@@ -118,3 +118,16 @@ test('account deletion keeps an unavailable Circle safety check RED with only a 
   assert.deepEqual(actual.calls, ['auth'])
   assert.ok(!JSON.stringify(actual.data).includes('id-a'))
 })
+
+
+test('unexpected auth body read failure reports only fixed phase and safe correlation ID', async () => {
+  const request = new Request('https://qwerty-plus.edgeone.dev/api/auth/login', { method: 'POST', body: '{}' })
+  request.text = async () => { throw new Error('DO_NOT_EXPOSE_PASSWORD_OR_PRIVATE_KEY') }
+  const response = await onRequest({ request, uuid: 'eolog-synthetic-123', clientIp: '127.0.0.1' })
+  const data = await response.json()
+  assert.equal(response.status, 500)
+  assert.equal(data.error, 'internal_error')
+  assert.deepEqual(data.details, { stage: 'request-body' })
+  assert.equal(data.requestId, 'eolog-synthetic-123')
+  assert.ok(!JSON.stringify(data).includes('DO_NOT_EXPOSE'))
+})

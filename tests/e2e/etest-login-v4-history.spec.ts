@@ -624,10 +624,20 @@ test('historical six-table startup download and automatic divergent reauth conve
     try {
       if (owner) {
         const fresh = await request('/api/auth/login', 'POST', { username, password, deviceId: 'qwerty-web-' + crypto.randomUUID() })
+        if (fresh.status >= 500) {
+          const stage = fresh.body.failureStage || fresh.body.details?.stage
+          proof.cleanupAuthFailureStage = typeof stage === 'string' && /^[A-Za-z0-9-]{1,80}$/.test(stage) ? stage : 'unspecified'
+          proof.cleanupAuthRequestId = typeof fresh.body.requestId === 'string' && /^[A-Za-z0-9-]{1,128}$/.test(fresh.body.requestId) ? fresh.body.requestId : undefined
+        }
         expect(fresh.status).toBe(200)
         expect(fresh.body.user.userId === owner).toBe(true)
         const removed = await request('/api/auth/account', 'DELETE', { currentPassword: password }, fresh.body.token)
         proof.cleanupStatus = removed.status
+        if (removed.status >= 500) {
+          const stage = removed.body.failureStage || removed.body.details?.stage
+          proof.cleanupFailureStage = typeof stage === 'string' && /^[A-Za-z0-9-]{1,80}$/.test(stage) ? stage : 'unspecified'
+          proof.cleanupRequestId = typeof removed.body.requestId === 'string' && /^[A-Za-z0-9-]{1,128}$/.test(removed.body.requestId) ? removed.body.requestId : undefined
+        }
         expect(removed.status).toBe(200)
         expect(removed.body.deleted?.accountDeleted).toBe(true)
         proof.cleanupVerified = true

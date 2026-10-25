@@ -383,6 +383,12 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
       const fresh = await api('/api/auth/login', 'POST', {
         username, password, deviceId: 'qwerty-web-' + crypto.randomUUID(),
       })
+      if (fresh.status >= 500) {
+        const stage = fresh.body.failureStage || fresh.body.details?.stage
+        console.log('E2E_CLEANUP_AUTH_FAILURE', JSON.stringify({ status: fresh.status,
+          stage: typeof stage === 'string' && /^[A-Za-z0-9-]{1,80}$/.test(stage) ? stage : 'unspecified',
+          requestId: typeof fresh.body.requestId === 'string' && /^[A-Za-z0-9-]{1,128}$/.test(fresh.body.requestId) ? fresh.body.requestId : undefined }))
+      }
       expect(fresh.status).toBe(200)
       expect(fresh.body.user?.userId === userId, 'cleanup identity matches created account').toBe(true)
       const removed = await api('/api/auth/account', 'DELETE',

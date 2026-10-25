@@ -143,6 +143,8 @@ path
 status
 code
 errorName
+requestId (validated platform correlation ID, when available)
+failureStage (fixed operation label, no storage key/arguments)
 ```
 
 Retention failures contain only:
@@ -185,3 +187,19 @@ The existing local manual export remains the independent recovery path.
 Before choosing a destructive cloud restore when local data is dirty, the UI tells the user to export local data first.
 
 Current cloud snapshots are not client-side encrypted. Operational messaging must not claim E2EE; local export remains the independent recovery path.
+
+
+## HTTP 500 investigation (2026-10-25)
+
+Unknown failures retain their original HTTP status; a generic error may include
+`details.stage` and a validated platform `requestId`. Account-deletion responses
+retain the existing coarse `details.stage` and can add `failureStage`. These are
+source-defined labels only. No provider message, full stack, body, credential,
+username, user ID or Blob key is copied to a response or operational log.
+
+The per-request observer preserves original exceptions and synchronous return
+values. Error-to-stage association follows the actual escaping exception, so a
+handled retention failure cannot falsely label a later request-body failure.
+The first diagnostic deployment intentionally does not change the body reader
+or classify an intermittent success as a root-cause fix. Required release gates
+remain mandatory before any master update.

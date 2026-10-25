@@ -1,4 +1,5 @@
 /* eslint-env node */
+import { createRequestDiagnostics } from '../_shared/request-diagnostics.js'
 import { isIsolatedEtestPilotOrigin } from '../_shared/etest-pilot-origin.js'
 import crypto from 'node:crypto'
 import { loadAdministrator } from '../_shared/administrator.js'
@@ -136,9 +137,11 @@ async function readJson(request, maxBytes) {
   }
 }
 
-function logApiError(request, path, error) {
+function logApiError(request, path, error, diagnostics) {
   const fields = {
     event: 'cloud_api_error',
+    requestId: diagnostics?.requestId,
+    failureStage: diagnostics?.stageFor(error),
     method: request.method,
     path,
     status: error instanceof AppError ? error.statusCode : 500,
@@ -160,7 +163,7 @@ function makeStorage(env) {
   return createEdgeOneBlobStorage(store)
 }
 
-function makeService(env, storage, idle, administrator) {
+function makeService(env, storage, idle, administrator, diagnostics) {
   // Append-only authenticated receipts need no Maker environment variable.
   // They cannot overwrite V4. Single-active-session remains enforced here.
   return createBackendService({
@@ -171,9 +174,11 @@ function makeService(env, storage, idle, administrator) {
     // never authorize cloud mutation, even on isolated etest.
     multiSessionEnabled: false,
     eventPilotEnabled: true,
-    activityGuard: idle.touch,
-    registrationGuard: idle.beforeRegister,
-    credentials: administrator.credentials,
+    activityGuard: identity => diagnostics.run('idle-activity', () => idle.touch(identity)),
+    registrationGuard: hash => diagnostics.run('idle-reservation', () => idle.beforeRegister(hash)),
+    credentials: administrator.credentials ? { ...administrator.credentials,
+      authorize: identity => diagnostics.run('administrator-enrollment', () => administrator.credentials.authorize(identity)),
+    } : undefined,
   })
 }
 
@@ -237,6 +242,8 @@ async function enforceAuthRateLimit(context, storage, env, cors) {
 
 export async function onRequest(context) {
   const { request, env = {} } = context
+  const diagnostics = createRequestDiagnostics(context)
+  const readBody = maxBytes => diagnostics.run('request-body', () => readJson(request, maxBytes))
   const url = new URL(request.url)
   const path = url.pathname.replace(/^\/api(?=\/|$)/, '') || '/'
   const cors = corsHeaders(request, env.CORS_ORIGIN || 'same-origin')
@@ -307,16 +314,16 @@ export async function onRequest(context) {
       )
     }
 
-    const storage = makeStorage(env)
-    const administrator = await loadAdministrator({
+    const storage = diagnostics.storage(makeStorage(env))
+    const administrator = await diagnostics.run('administrator-binding', () => loadAdministrator({
       store: getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }), env,
-    })
+    }))
     const idle = createIdleAccounts({
       store: getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }),
       adminUserId: administrator.userId, startAt: env.IDLE_POLICY_START_AT,
       execute: env.IDLE_CLEANUP_EXECUTE === 'true',
     })
-    const service = makeService(env, storage, idle, administrator)
+    const service = makeService(env, storage, idle, administrator, diagnostics)
     if (path === '/maintenance/idle' && request.method === 'POST') {
       // Any live account may signal maintenance, but never chooses an account,
       // cursor or deletion policy. This request is separate from login/sync.
@@ -341,7 +348,7 @@ export async function onRequest(context) {
     if (path === '/admin/idle' && ['GET', 'POST'].includes(request.method)) {
       const { user } = await service.me(bearer(request))
       await idle.requireAdmin({ ...user, normalizedUsername: user.username.toLowerCase(), status: 'active' })
-      const body = request.method === 'POST' ? await readJson(request, 4096) : {}
+      const body = request.method === 'POST' ? await readBody(4096) : {}
       const result = await idle.run({ dryRun: request.method === 'GET' || body.dryRun !== false,
         cursor: request.method === 'GET' ? url.searchParams.get('cursor') || '' : body.cursor || '',
         limit: 5 })
@@ -363,16 +370,16 @@ export async function onRequest(context) {
       request.method === 'POST' &&
       (path === '/auth/register' || path === '/auth/login')
     ) {
-      const limited = await enforceAuthRateLimit(context, storage, env, cors)
+      const limited = await diagnostics.run('auth-rate-limit', () => enforceAuthRateLimit(context, storage, env, cors))
       if (limited) return limited
     }
 
     if (request.method === 'POST' && path === '/auth/register') {
-      const body = await readJson(request, 64 * 1024)
+      const body = await readBody(64 * 1024)
       return json(
         {
           ok: true,
-          ...(await service.register(body.username, body.password, body.deviceId)),
+          ...(await diagnostics.run('account-register', () => service.register(body.username, body.password, body.deviceId))),
         },
         201,
         cors,
@@ -380,11 +387,11 @@ export async function onRequest(context) {
     }
 
     if (request.method === 'POST' && path === '/auth/login') {
-      const body = await readJson(request, 64 * 1024)
+      const body = await readBody(64 * 1024)
       return json(
         {
           ok: true,
-          ...(await service.login(body.username, body.password, body.deviceId)),
+          ...(await diagnostics.run('account-login', () => service.login(body.username, body.password, body.deviceId))),
         },
         200,
         cors,
@@ -412,7 +419,7 @@ export async function onRequest(context) {
           'Circle data cleanup must complete before account deletion')
       }
       accountDeletionStage = 'request-body'
-      const body = await readJson(request, 64 * 1024)
+      const body = await readBody(64 * 1024)
       accountDeletionStage = 'content-delete'
       return json(
         {
@@ -425,7 +432,7 @@ export async function onRequest(context) {
     }
 
     if (request.method === 'POST' && path === '/auth/change-password') {
-      const body = await readJson(request, 64 * 1024)
+      const body = await readBody(64 * 1024)
       return json(
         {
           ok: true,
@@ -444,7 +451,7 @@ export async function onRequest(context) {
 
     // M3.2: chained per-device history. Does not authorize V4 restore/sync.
     if (request.method === 'POST' && path === '/sync/events/v2') {
-      const body = await readJson(request, 110 * 1024)
+      const body = await readBody(110 * 1024)
       return json({ ok: true,
         ...(await service.publishChainedLearningBatch(bearer(request), body)) },
         201, cors)
@@ -465,7 +472,7 @@ export async function onRequest(context) {
         ...(await service.observeChainedLearningReceipts(bearer(request))) }, 200, cors)
     }
     if (request.method === 'POST' && path === '/sync/events/v2/verify') {
-      const body = await readJson(request, 8 * 1024)
+      const body = await readBody(8 * 1024)
       return json({ ok: true,
         ...(await service.verifyChainedLearningHistory(bearer(request), body)) },
         200, cors)
@@ -474,7 +481,7 @@ export async function onRequest(context) {
     // M2.10 device-bound checkout declarations; always bearer-authenticated.
     // Both endpoints require a live account session. No automatic merge.
     if (request.method === 'POST' && path === '/sync/events/v2/checkout') {
-      const body = await readJson(request, 8 * 1024)
+      const body = await readBody(8 * 1024)
       return json({ ok: true,
         ...(await service.issueChainedCheckout(bearer(request), body)) },
       201, cors)
@@ -495,7 +502,7 @@ export async function onRequest(context) {
     // M3.5: cross-device witnessed prefixes only. Never claims discovery
     // completeness and never authorizes a V4 merge or publication.
     if (request.method === 'POST' && path === '/sync/events/v2/verify-set') {
-      const body = await readJson(request, 8 * 1024)
+      const body = await readBody(8 * 1024)
       return json({ ok: true,
         ...(await service.verifyWitnessedChainSet(bearer(request), body)) },
         200, cors)
@@ -504,7 +511,7 @@ export async function onRequest(context) {
     // Independent immutable event pilot: separate from old V4 revision writer.
     // There is deliberately no "list complete" or auto-restore endpoint yet.
     if (request.method === 'POST' && path === '/sync/events/v1') {
-      const body = await readJson(request, 110 * 1024)
+      const body = await readBody(110 * 1024)
       return json({ ok: true,
         ...(await service.publishLearningBatch(bearer(request), body)) }, 201, cors)
     }
@@ -605,7 +612,7 @@ export async function onRequest(context) {
           }
         } else if (contentType === 'application/json') {
           // Compatibility for open tabs using legacy 32-KiB Base64 JSON parts.
-          body = await readJson(request, 48 * 1024)
+          body = await readBody(48 * 1024)
         } else {
           throw new AppError(415, 'unsupported_v4_part_encoding',
             'V4 parts must use octet-stream or legacy JSON')
@@ -660,7 +667,7 @@ export async function onRequest(context) {
 
     if (request.method === 'PUT' && path === '/sync/v2/recovery') {
       const { token } = await requireS2WriteAccount(service, request, env)
-      const body = await readJson(request, bodyLimit)
+      const body = await readBody(bodyLimit)
       return json({ ok: true, ...(await service.putSyncV4Recovery(token, body)) }, 200, cors)
     }
 
@@ -699,7 +706,7 @@ export async function onRequest(context) {
     }
     if (request.method === 'POST' && path === '/sync/v2/binary/migrate') {
       const { token } = await requireS2WriteAccount(service, request, env)
-      const expected = await readJson(request, 4 * 1024)
+      const expected = await readBody(4 * 1024)
       return json({ ok: true,
         ...(await service.migrateSyncV4Binary(token, expected)) }, 200, cors)
     }
@@ -727,7 +734,7 @@ export async function onRequest(context) {
 
     throw new AppError(404, 'not_found', 'Not found')
   } catch (error) {
-    logApiError(request, path, error)
+    logApiError(request, path, error, diagnostics)
 
     if (request.method === 'DELETE' && path === '/auth/account' &&
         !(error instanceof AppError)) {
@@ -735,7 +742,8 @@ export async function onRequest(context) {
       // An unavailable check MUST keep deletion failed and retryable.
       return json({ ok: false, error: 'account_delete_unavailable',
         message: 'Account deletion could not be verified',
-        details: { stage: accountDeletionStage } }, 500, cors)
+        details: { stage: accountDeletionStage },
+        failureStage: diagnostics.stageFor(error), requestId: diagnostics.requestId }, 500, cors)
     }
 
     if (error instanceof AppError) {
@@ -756,6 +764,8 @@ export async function onRequest(context) {
         ok: false,
         error: 'internal_error',
         message: 'Internal server error',
+        details: { stage: diagnostics.stageFor(error) || 'request-routing' },
+        requestId: diagnostics.requestId,
       },
       500,
       cors,

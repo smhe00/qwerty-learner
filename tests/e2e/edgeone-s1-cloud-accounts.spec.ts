@@ -176,6 +176,7 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
     const currentUrl = page.url()
     const dialogs: string[] = []
     const authStatuses: string[] = []
+    const authFailures: Array<{ stage?: string; requestId?: string }> = []
     // Strictly redacted metadata: no URL query string, usernames, tokens,
     // request/response body or password may enter uploaded CI logs.
     const onAuthResponse = (response: import('@playwright/test').Response) => {
@@ -183,6 +184,13 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
         const path = new URL(response.url()).pathname
         if (path === '/api/auth/register' || path === '/api/auth/login') {
           authStatuses.push(path + ':HTTP-' + response.status())
+          if (response.status() >= 500) void response.json().then(body => {
+            const stage = body.failureStage || body.details?.stage
+            authFailures.push({
+              stage: typeof stage === 'string' && /^[A-Za-z0-9-]{1,80}$/.test(stage) ? stage : undefined,
+              requestId: typeof body.requestId === 'string' && /^[A-Za-z0-9-]{1,128}$/.test(body.requestId) ? body.requestId : undefined,
+            })
+          }).catch(() => { /* Keep only validated, redacted error metadata. */ })
         }
       } catch { /* Ignore navigation noise */ }
     }
@@ -208,6 +216,7 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
       console.error('S1 etest auth checkpoint', {
         kind: register ? 'registration' : 'login',
         api: authStatuses,
+        failures: authFailures,
         dialogCount: dialogs.length,
         pagePath: new URL(page.url()).pathname,
         status: (await page.locator('[role="status"]').allTextContents()
