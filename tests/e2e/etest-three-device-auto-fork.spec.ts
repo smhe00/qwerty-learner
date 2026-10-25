@@ -1,3 +1,4 @@
+import { loadBodyPolicy } from './body-policy-loader'
 import { acknowledgeInformationDialog } from './information-dialog'
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import { writeFile } from 'node:fs/promises'
@@ -89,8 +90,7 @@ async function journalEvidence(page: Page) {
   }).catch(() => ({ unavailable: true }))
 }
 async function api(path: string, method: string, input: object, token?: string) {
-  // Playwright emits CommonJS on Node20; load the isomorphic ESM policy natively.
-  const { retrySafeBodyRequest } = await import('../../cloud-functions/_shared/safe-body-retry.js')
+  const { retrySafeBodyRequest } = await loadBodyPolicy()
   return retrySafeBodyRequest(async () => {
     const response = await fetch(new URL(path, base), {
       method, redirect: 'error', cache: 'no-store',
@@ -135,7 +135,7 @@ async function openAccount(page: Page, username: string, password: string) {
         if (new URL(r.url()).pathname !== '/api/auth/login') return false
         if (r.status() !== 503) return true
         const body = await r.json().catch(() => null)
-        const { safeBodyReadFailure } = await import('../../cloud-functions/_shared/safe-body-retry.js')
+        const { safeBodyReadFailure } = await loadBodyPolicy()
         return !safeBodyReadFailure('/api/auth/login', 'POST', r.status(), body)
       }, { timeout: 45_000 })
       if (await reauth.isVisible().catch(() => false)) await reauth.click()

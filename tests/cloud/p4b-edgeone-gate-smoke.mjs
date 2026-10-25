@@ -26,6 +26,7 @@ async function api(path, method = 'GET', body, token) {
   if (token) headers.Authorization = 'Bearer ' + token
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   const result = await retrySafeBodyRequest(async () => {
+  try {
   const response = await fetch(new URL(path, base), {
     method, headers, body: body === undefined ? undefined :
       typeof body === 'string' ? body : JSON.stringify(body),
@@ -41,6 +42,11 @@ async function api(path, method = 'GET', body, token) {
   }
   return { status: response.status, body: value, value, responseBytes: Buffer.byteLength(text),
     declaredBytes: response.headers.get('content-length'), parseFailure }
+  } catch (error) {
+    console.error('V4_TRANSPORT_NETWORK_FAILURE', JSON.stringify({ method, path: new URL(path, base).pathname,
+      errorType: error instanceof Error ? error.name : 'network_error', timeoutMs: 20000 }))
+    throw error
+  }
   }, { path, method })
   const { body: ignoredBody, ...answer } = result
   void ignoredBody

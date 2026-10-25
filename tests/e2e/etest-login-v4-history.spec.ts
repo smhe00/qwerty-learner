@@ -1,3 +1,4 @@
+import { loadBodyPolicy } from './body-policy-loader'
 import { acknowledgeInformationDialog } from './information-dialog'
 import { expect, test, type Page } from '@playwright/test'
 import { readFile, writeFile } from 'node:fs/promises'
@@ -7,8 +8,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 const base = 'https://t.smhe.cn'
 const names = ['wordRecords', 'chapterRecords', 'reviewRecords', 'reviewWordStates', 'achievementEvents', 'achievementStates']
 async function request(path: string, method: string, body?: object, token?: string) {
-  // Playwright emits CommonJS on Node20; load the isomorphic ESM policy natively.
-  const { retrySafeBodyRequest } = await import('../../cloud-functions/_shared/safe-body-retry.js')
+  const { retrySafeBodyRequest } = await loadBodyPolicy()
   return retrySafeBodyRequest(async () => {
     const r = await fetch(base + path, {
       method,
@@ -35,7 +35,7 @@ async function login(page: Page, username: string, password: string) {
     if (new URL(r.url()).pathname !== '/api/auth/login') return false
     if (r.status() !== 503) return true
     const body = await r.json().catch(() => null)
-    const { safeBodyReadFailure } = await import('../../cloud-functions/_shared/safe-body-retry.js')
+    const { safeBodyReadFailure } = await loadBodyPolicy()
     return !safeBodyReadFailure('/api/auth/login', 'POST', r.status(), body)
   })
   const reauth = page.getByRole('button', { name: '确认重新登录', exact: true })
