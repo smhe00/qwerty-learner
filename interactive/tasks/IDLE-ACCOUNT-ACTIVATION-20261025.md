@@ -47,6 +47,10 @@ release-ready gates. This phase does not skip them.
    EDGEONE_CHINA_API_TOKEN. Historical international EDGEONE_API_TOKEN is kept
    separate. China-only CI40171181067 reproduced109, guards PASS12/12,
    Blob writes SKIPPED. A missing new credential must fail before discovery.
+   Latest dedicated-credential run40171408799 confirms the China secret is
+   unavailable to the runner: credential-check/ci-credential-missing. Guards
+   PASS12/12; real Blob/config/deployment operations never started. Configure
+   EDGEONE_CHINA_API_TOKEN privately via repository Actions Secrets first.
    Raw project reads MUST filter by ID and verify returned ID. SDK-normalized
    projects omit domain bindings; consult DescribePagesEnvironments as needed.
 2. Re-verify exact t.smhe.cn target before any new settings change. Current

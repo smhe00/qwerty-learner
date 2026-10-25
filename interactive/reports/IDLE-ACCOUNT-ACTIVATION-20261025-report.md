@@ -43,6 +43,17 @@ for the credential-name mapping. Operations guide now gives the concrete
 GitHub private-secret location and China console URL. New credential presence
 is not assumed merely because the workflow references it.
 
+Dedicated credential check40171408799 at43e388b7: scope contracts PASS12/12,
+discovery FAILED at credential-check with ci-credential-missing, before any
+control-plane request. Real Blob job SKIPPED. This confirms the new private
+China credential is not available to the runner, rather than guessing secret
+existence from the earlier403 metadata permission. No settings, Blob objects,
+Maker deployment or production changes occurred. Redacted receipt committed.
+Concrete blocker: configure repository Actions secret EDGEONE_CHINA_API_TOKEN
+with a valid China-console Makers API Token authorized for the actual sites.
+Never request the value in chat. Resume verification after private setup;
+no additional activation approval is required. Existing app/runtime unchanged.
+
 2026-10-25T05:55Z: production is NOT activated. q.smhe.cn remains5528f79c,
 policy.enabled=false. Staging is5fa7574, enabled=false/executionEnabled=false;
 method-specific runtime probe confirms neither context nor Node has the date

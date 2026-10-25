@@ -37,8 +37,9 @@ China-only CI40171181067 at8dc5e16c reproduced109 at project-list; scope
 contracts PASS12/12 and all Blob writes were SKIPPED. China workflows now use
 dedicated repository secret EDGEONE_CHINA_API_TOKEN (internal env name remains
 EDGEONE_API_TOKEN). Historical international credential/rollback is separate.
-If not configured, the next discovery must report ci-credential-missing and
-stop before touching either site. Obtain the credential through private GitHub
+Dedicated-credential CI40171408799 at43e388b7 now confirms
+ci-credential-missing at credential-check, before any API project read/write;
+scope contracts PASS12/12, real Blob job SKIPPED. Obtain the credential through private GitHub
 Secrets/connection, never chat. See operations doc for the concrete location.
 Resume execution base969077f2 includes independent mobile UI work; preserve it.
 No further region question is needed. Never solicit
