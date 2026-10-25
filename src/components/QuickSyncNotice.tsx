@@ -14,9 +14,9 @@ export default function QuickSyncNotice() {
     }
     window.addEventListener(QUICK_SYNC_NOTICE_EVENT, read)
     read()
-    if (window.location.search === '?quick-sync-return=1') {
-      window.history.replaceState(window.history.state, '', window.location.pathname)
-    }
+    // Do not clear the return marker here. QuickSyncNotice is mounted
+    // outside Suspense and may run before the lazy Learn page reads it.
+    // The Learn route clears the one-shot marker after consuming it.
     return () => window.removeEventListener(QUICK_SYNC_NOTICE_EVENT, read)
   }, [])
   useEffect(() => {
