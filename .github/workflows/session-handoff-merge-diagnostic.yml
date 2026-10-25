@@ -22,14 +22,18 @@ jobs:
           git rev-parse HEAD origin/product/main | tee "$RUNNER_TEMP/handoff-merge-diagnostic/inputs.txt"
           for ref in HEAD origin/product/main; do
             echo "SOURCE $ref"
-            git ls-tree -r "$ref" -- tests/cloud/idle-build-env.test.mjs .github/workflows/idle-staging-trigger-qualification.yml .github/workflows/perf-p0-p1-branch-gate.yml package.json
-            git show "$ref:package.json" | node -e 'let s="";process.stdin.on("data",x=>s+=x);process.stdin.on("end",()=>{const p=JSON.parse(s);console.log(JSON.stringify({scripts:p.scripts}))})'
+            git ls-tree -r "$ref" -- tests/cloud/session-handoff-scope.test.mjs tests/cloud/idle-build-env.test.mjs .github/workflows/idle-staging-trigger-qualification.yml .github/workflows/perf-p0-p1-branch-gate.yml package.json
           done
           set +e
           git merge-tree --write-tree HEAD origin/product/main > "$RUNNER_TEMP/handoff-merge-diagnostic/merge-tree.txt"
           result=$?
           set -e
           cat "$RUNNER_TEMP/handoff-merge-diagnostic/merge-tree.txt"
+          if [ "$result" = 0 ]; then
+            tree=$(head -n1 "$RUNNER_TEMP/handoff-merge-diagnostic/merge-tree.txt")
+            git ls-tree -r "$tree" -- tests/cloud/session-handoff-scope.test.mjs
+            git archive --format=tar.gz -o "$RUNNER_TEMP/handoff-merge-diagnostic/merged-tracked-source.tar.gz" "$tree" cloud-functions tests/cloud scripts package.json .github
+          fi
           exit "$result"
       - uses: actions/upload-artifact@v4
         if: always()
