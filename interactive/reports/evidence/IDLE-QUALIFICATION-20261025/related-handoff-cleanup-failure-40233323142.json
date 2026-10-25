@@ -1,0 +1,250 @@
+{
+  "scope": "new-disposable-account",
+  "capability": "account-handoff-blob-fixtures-v1",
+  "productionTouched": false,
+  "sourceSha": "9620e33c845f59d31cba107e14dd30754a8c0ca5",
+  "checks": [
+    {
+      "name": "matching deployed handoff capability",
+      "passed": true
+    },
+    {
+      "name": "cleanup policy protects newly created handoff fixtures",
+      "passed": true
+    },
+    {
+      "name": "new fixture account enters the guarded gateway",
+      "passed": true
+    },
+    {
+      "name": "server-issued fixture creation time is inside the180-day protected horizon",
+      "passed": true
+    },
+    {
+      "name": "B is pending while A still owns the manifest publication",
+      "passed": true
+    },
+    {
+      "name": "new old-session write is rejected rather than published",
+      "passed": true
+    },
+    {
+      "name": "A publication completed before B obtained the guarded login result",
+      "passed": true
+    },
+    {
+      "name": "B immediately sees A revision and exact payload",
+      "passed": true
+    },
+    {
+      "name": "late A cannot publish after B login",
+      "passed": true
+    },
+    {
+      "name": "B publishes the union as revision 2",
+      "passed": true
+    },
+    {
+      "name": "single-session explicit logout is durable",
+      "passed": true
+    },
+    {
+      "name": "logged-out token is refused",
+      "passed": true
+    },
+    {
+      "name": "next device can take over after confirmed logout",
+      "passed": true
+    },
+    {
+      "name": "next device preserves both learning records",
+      "passed": true
+    }
+  ],
+  "responses": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "status": 200,
+      "error": null,
+      "guarded": false
+    },
+    {
+      "method": "GET",
+      "path": "/account-policy",
+      "status": 200,
+      "error": null,
+      "guarded": false
+    },
+    {
+      "method": "POST",
+      "path": "/auth/register",
+      "status": 201,
+      "error": null,
+      "guarded": true
+    },
+    {
+      "method": "GET",
+      "path": "/auth/handoff/status",
+      "status": 200,
+      "error": null,
+      "guarded": false
+    },
+    {
+      "method": "POST",
+      "path": "/sync/v2/binary/direct",
+      "status": 503,
+      "error": "v4_direct_body_read_failed",
+      "guarded": true
+    },
+    {
+      "method": "GET",
+      "path": "/auth/handoff/status",
+      "status": 200,
+      "error": null,
+      "guarded": false
+    },
+    {
+      "method": "GET",
+      "path": "/auth/handoff/status",
+      "status": 200,
+      "error": null,
+      "guarded": false
+    },
+    {
+      "method": "GET",
+      "path": "/sync/v2/meta",
+      "status": 200,
+      "error": null,
+      "guarded": true
+    },
+    {
+      "method": "GET",
+      "path": "/auth/handoff/status",
+      "status": 200,
+      "error": null,
+      "guarded": false
+    },
+    {
+      "method": "GET",
+      "path": "/auth/handoff/status",
+      "status": 200,
+      "error": null,
+      "guarded": false
+    },
+    {
+      "method": "GET",
+      "path": "/auth/handoff/status",
+      "status": 200,
+      "error": null,
+      "guarded": false
+    },
+    {
+      "method": "GET",
+      "path": "/auth/handoff/status",
+      "status": 200,
+      "error": null,
+      "guarded": false
+    },
+    {
+      "method": "GET",
+      "path": "/auth/handoff/status",
+      "status": 200,
+      "error": null,
+      "guarded": false
+    },
+    {
+      "method": "GET",
+      "path": "/auth/handoff/status",
+      "status": 200,
+      "error": null,
+      "guarded": false
+    },
+    {
+      "method": "GET",
+      "path": "/auth/handoff/status",
+      "status": 200,
+      "error": null,
+      "guarded": false
+    },
+    {
+      "method": "POST",
+      "path": "/sync/v2/binary/direct",
+      "status": 409,
+      "error": "handoff_draining",
+      "guarded": false
+    },
+    {
+      "method": "POST",
+      "path": "/sync/v2/binary/direct",
+      "status": 200,
+      "error": null,
+      "guarded": true
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200,
+      "error": null,
+      "guarded": true
+    },
+    {
+      "method": "GET",
+      "path": "/sync/v2/meta",
+      "status": 200,
+      "error": null,
+      "guarded": true
+    },
+    {
+      "method": "POST",
+      "path": "/sync/v2/binary/direct",
+      "status": 401,
+      "error": "session_revoked",
+      "guarded": false
+    },
+    {
+      "method": "POST",
+      "path": "/sync/v2/binary/direct",
+      "status": 200,
+      "error": null,
+      "guarded": true
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200,
+      "error": null,
+      "guarded": true
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "status": 401,
+      "error": "session_revoked",
+      "guarded": false
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200,
+      "error": null,
+      "guarded": true
+    },
+    {
+      "method": "GET",
+      "path": "/sync/v2/meta",
+      "status": 200,
+      "error": null,
+      "guarded": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/auth/account",
+      "status": 503,
+      "error": "request_body_unavailable",
+      "guarded": true
+    }
+  ],
+  "cleanup": "refused",
+  "passed": true
+}

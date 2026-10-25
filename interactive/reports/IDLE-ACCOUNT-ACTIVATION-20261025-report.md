@@ -1,5 +1,5 @@
 ---
-status: IN_PROGRESS
+status: PARTIAL
 executor: Codex (single activation executor)
 base_commit: c74a59b8f9c1972a2c159a082b8fc04519cfa2c8
 runtime_activation_authorized: true
@@ -9,7 +9,54 @@ staging_test_metadata_restored: true
 
 # Production idle activation preflight
 
-## Current implementation — code-managed automatic activation
+## Current result — automatic code deployment qualified on staging
+
+Code implementation and actual staging activation are complete at9620e33c
+(implementation65e1064c, source-identical merge preserving the existing1059efd9
+staging integration history). Both refs advanced by normal fast-forward pushes,
+no force or history loss. No console/API Token/Secret/configuration mutation.
+
+Actual deployed t.smhe.cn serves9620e33 and policy
+{enabled:true,executionEnabled:true,idleDays:180}. The NEW credential-free
+workflow40233323105 SUCCESS proves real login completes while maintenance is
+held, learning creates a local record during that hold, released maintenance
+returns COMPLETE with no expired account, local/session state remains valid,
+and only the test's own synthetic account is deleted with confirmation.
+This is actual deployed-path evidence, not a unit-test prediction. Together
+with the canonical-confirmation code path and full boundary/recovery tests it
+qualifies normal automatic initialization; no public date/clock endpoint used.
+
+Exact-SHA Cloud gate40233322119, published Pages/regression40233322126,
+real browser + Blob + release-ready40233323095 and hard three-device40233323272
+all SUCCESS. Local actual Node20 backend PASS802/802/no skips, browser PASS2/2,
+build19.71s and lint/actionlint PASS. No unrelated full TypeScript-green claim.
+Committed redacted workflow/local-summary receipts under the evidence directory.
+
+Production q.smhe.cn/master remains5528f79c, policy disabled; no new real-user
+account deletion. The combined source also contains the independently owned
+SESSION-HANDOFF-20261025 pilot. Its task explicitly says “No master release,
+database provisioning or migration.” It is NOT approved for production by this
+cleanup request. Do not silently publish that unrelated pilot via a combined
+master push. Keep cleanup release authorization; remaining work is a separately
+qualified production candidate/release scope, not Tencent login or a token.
+
+Additional actual failures are preserved rather than folded into green gates:
+- Handoff pilot40233323142 completed all functional assertions, then account
+  DELETE returned503/request_body_unavailable. Overall CI FAILED; its original
+  artifact's passed=true is functional-only, cleanup=refused. Cleanup of that
+  separate synthetic account is NOT confirmed; no credentials are recoverable
+  from its redacted receipt. No broad privileged deletion/owner login attempted.
+- Historical login40233323110 expected startup revision1 but observed0; root
+  cause is not established here. Its synthetic account cleanup WAS confirmed.
+  These findings do not establish a cleanup-caused regression or erase old
+  failure evidence; investigate them before a combined production rollout.
+
+Owner should NOT be asked to obtain a Token, open GitHub Secrets, log into the
+console, change retention flags or approve cleanup again. The code-managed
+path is already operating on staging. Preserve current authorization and exact
+release gates; remove/qualify the unrelated pilot in a proper release scope.
+
+## Implementation and earlier validation
 
 Owner explicitly corrected the task: modify code so it runs, rather than
 requiring owner/agent console access. This supersedes the old manual-console

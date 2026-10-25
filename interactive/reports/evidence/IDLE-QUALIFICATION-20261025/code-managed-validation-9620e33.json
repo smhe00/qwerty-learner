@@ -1,0 +1,66 @@
+{
+  "testedSource": "9620e33c845f59d31cba107e14dd30754a8c0ca5",
+  "implementationCommit": "65e1064c0911537d527df1a2e0ff595e752b6466",
+  "controlPlaneCredentialRequired": false,
+  "local": {
+    "runtime": "Node20.18.0",
+    "backend": {
+      "tests": 802,
+      "passed": 802,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 16546
+    },
+    "browser": {
+      "tests": 2,
+      "passed": 2,
+      "durationSeconds": 5.7,
+      "runtime": "Chromium120"
+    },
+    "build": {
+      "passed": true,
+      "durationSeconds": 19.71
+    },
+    "cloudLint": true,
+    "workflowActionlint": true
+  },
+  "ci": {
+    "cloudSync": {
+      "run": 40233322119,
+      "conclusion": "success"
+    },
+    "publishedPages": {
+      "run": 40233322126,
+      "conclusion": "success"
+    },
+    "codeManagedMaintenance": {
+      "run": 40233323105,
+      "conclusion": "success"
+    },
+    "browserBlobReadiness": {
+      "run": 40233323095,
+      "conclusion": "success"
+    },
+    "threeDevice": {
+      "run": 40233323272,
+      "conclusion": "success"
+    }
+  },
+  "additionalFailuresRetained": [
+    {
+      "run": 40233323142,
+      "kind": "handoff pilot account cleanup returned typed pre-business503",
+      "functionalChecksPassed": true,
+      "testAccountCleanupConfirmed": false,
+      "overall": "failure"
+    },
+    {
+      "run": 40233323110,
+      "kind": "historical startup revision expected1 observed0; root cause not established",
+      "testAccountCleanupConfirmed": true,
+      "overall": "failure"
+    }
+  ],
+  "productionSourceUnchanged": "5528f79c700548e174fa153b96ff4599d7326aee",
+  "productionActivated": false
+}

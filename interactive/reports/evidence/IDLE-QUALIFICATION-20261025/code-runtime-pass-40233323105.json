@@ -1,0 +1,18 @@
+{
+  "check": "idle-staging-trigger-v1",
+  "productionChanged": false,
+  "deploymentTriggered": false,
+  "multiRegionQualified": false,
+  "verdict": "PASS",
+  "applicationSource": "9620e33",
+  "controlPlaneCredentialRequired": false,
+  "configurationManagedBy": "deployed-code",
+  "runtimeExecutionObserved": true,
+  "registrationAttempted": true,
+  "loginCompletedWhileMaintenanceHeld": true,
+  "learnedWhileMaintenanceHeld": true,
+  "maintenanceStatus": "complete",
+  "noExpiredAccountAtNewActivationFloor": true,
+  "localRowsAndSessionPreserved": true,
+  "testAccountCleanupVerified": true
+}

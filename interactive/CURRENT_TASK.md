@@ -4,79 +4,45 @@ task_id: 'IDLE-ACCOUNT-ACTIVATION-20261025'
 task_file: 'interactive/tasks/IDLE-ACCOUNT-ACTIVATION-20261025.md'
 report_file: 'interactive/reports/IDLE-ACCOUNT-ACTIVATION-20261025-report.md'
 target_branch: 'product/main'
-status: 'IN_PROGRESS'
+status: 'PARTIAL'
 executor: 'Codex (single activation executor)'
-claim_base_commit: 'c74a59b8f9c1972a2c159a082b8fc04519cfa2c8'
-release_to_master: true
+claim_base_commit: '839957b8a94cb5ca67b8e095571477340de12ee8'
+release_to_master: false
+cleanup_release_authorized: true
 runtime_activation_authorized: true
+deployed_staging_sha: '9620e33c845f59d31cba107e14dd30754a8c0ca5'
 ---
 
-Latest explicit instruction: modify CODE so cleanup runs after deployment;
-do not require owner console changes, API tokens or new secrets. This supersedes
-both prior SDK-only and manual-console plans, including our earlier assumption
-that activation must never be source-managed. Existing release authorization
-persists; source activation still requires same-SHA Pages/etest/release gates.
-Implementation base839957b8 preserves upstream handoff/learning changes.
-New release policy enables automatic mode; first executing maintenance saves
-per-project activation at maintenance/idle-policy/v1.json via existing Blob
-authorization and canonical confirmation. Preview/login do not bootstrap it;
-restarts/deployments reuse it. Legacy explicit env stop is honored, source
-enabled=false stops even if env=true. Core deletion/fences/admin protections
-unchanged. Actual code-only staged journey added, requiring no control-plane SDK.
-Next: finish focused/full relevant tests, build/static checks, update docs,
-commit/push and perform normal staged deployment/real journey; then exact-SHA
-release gates before master. No owner/real-account aging or public clock API.
+Owner explicitly said to MODIFY CODE so it runs; no owner console changes,
+new API Token or GitHub Secret. Implemented and actually running on staging.
+Do NOT return to the superseded SDK-only/manual-console plans or ask again.
 
-Historical checkpoint below is superseded as a workflow requirement:
+Nonsecret idle-deployment-policy.js enabled=true. First executing independent
+maintenance conditionally creates/canonically confirms maintenance/idle-policy/
+v1.json, fixed UTC startedAt, full180-day floor. Later deployments reuse it.
+Login/activity/public policy and read-only previews do NOT initialize it.
+Invalid/unconfirmed bootstrap stops deletion. Optional explicit env stop remains
+honored; source enabled=false stops even if old env=true. Identity-last/fences,
+admin/SMHE/Circle holds, budget/cursor and local-data guarantees remain.
 
-Latest owner preference: do NOT require a new API Token. Resume basef91a4ac6
-preserves independent session-handoff/mobile/learning work. The new control-
-plane token was an automation choice, not a runtime dependency. Gateway Blob
-access uses existing platform authorization. Prefer manual China-console
-configuration of the two IDLE settings plus ordinary app-route/browser
-verification. Operations doc now provides exact preparation/on/rollback steps.
-Status remains BLOCKED only pending that actual test configuration/verification,
-not pending a mandatory GitHub Secret. Do not ask the user to create one again.
-API read success does not establish the owner's historical console usage;
-both sites are China-console sites as the owner confirmed.
+Implementation65e1064c + source-identical merge9620e33c preserves staged1059
+integration ancestry. Normal pushes to main/etest, no force. Actual test site
+serves9620e33, enabled=true/executionEnabled=true/180days. Credential-free real
+journey40233323105 SUCCESS: login+learning while maintenance held, real response
+COMPLETE, local/session preserved, own disposable account deletion confirmed.
+Exact-SHA Cloud40233322119, Pages40233322126, browser/Blob/release-ready
+40233323095, hard3device40233323272 all SUCCESS. Local Node20 backend802/802,
+browser2/2, build19.71s, lint/actionlint passed. See committed redacted evidence.
 
-Historical SDK-path checkpoint (superseded as a required access method):
+Production/master STILL5528f79c/off. Combined candidate contains the independently
+owned SESSION-HANDOFF pilot; its task explicitly forbids master release. Do not
+publish it incidentally through this cleanup request. Cleanup authorization is
+already granted; remaining action is a properly isolated/qualified production
+release scope, NOT credentials or console setup. Preserve all release gates.
 
-Owner already authorized activation and verification. Do not ask again.
-Production NOT enabled: q.smhe.cn/master5528f79c, policy.enabled=false.
-Staging t.smhe.cn/edgeone-test5fa7574, policy disabled; read-only ABI probe
-confirms IDLE date absent in context and Node, region ap-hongkong.
-
-Isolated real Blob lifecycle40159814798 PASS8/8,69 keys gone; current-site
-project binding was NOT established by that run. Corrected exact-ID and
-DescribePagesEnvironments audit40167108988 sees2 global projects but neither
-current domain; China API returns109/authentication error with existing CI
-credential. Cloud workspace itself has no secrets. No more blind env writes.
-
-Original temporary metadata has been FULLY restored to original absence:
-40167226920 PASS at31285e80,2 exact owned records removed, remaining0.
-Scoped contracts4/4, binding/scope9/9, read-only probe2/2 passed. Frontend/ordinary
-staging browser and V4 transport passed; readiness40166505577 failed and
-actual enabled maintenance journey is still outstanding. No production change
-or real-account deletion. Historical reports and all failed runs retained.
-
-Next: identify correct site account/region/project/environment via supported
-private access. Owner has now CONFIRMED BOTH sites use the CHINA console.
-New verification clients pin region=china and stop on authentication failure;
-never auto-fallback to global. Existing CI token previously returned109.
-China-only CI40171181067 at8dc5e16c reproduced109 at project-list; scope
-contracts PASS12/12 and all Blob writes were SKIPPED. China workflows now use
-dedicated repository secret EDGEONE_CHINA_API_TOKEN (internal env name remains
-EDGEONE_API_TOKEN). Historical international credential/rollback is separate.
-Dedicated-credential CI40171408799 at43e388b7 now confirms
-ci-credential-missing at credential-check, before any API project read/write;
-scope contracts PASS12/12, real Blob job SKIPPED. Obtain the credential through private GitHub
-Secrets/connection, never chat. See operations doc for the concrete location.
-Resume execution base969077f2 includes independent mobile UI work; preserve it.
-No further region question is needed. Never solicit
-secrets in chat. SDK Project normalization omits custom domains; raw reads must
-use Filters and find the exact returned ProjectId. Inspect official environment
-records as needed, not only legacy Project.CustomDomains. Then run reversible
-staging enabled path/rollback before production settings and required gates.
-Read-only staging ABI route is temporary pending this diagnosis. Circle PR17
-remains postponed. Full chronological evidence and instructions in linked report.
+Additional failures retained: pilot40233323142 functional checks passed but
+DELETE got typed503, cleanup refused/unconfirmed and overall FAILED; artifact
+passed=true is NOT overall success. Historical40233323110 expected revision1
+observed0, cause unresolved; its cleanup confirmed. No new owner login, aged
+real account, private data read or public clock/mutation endpoint. Circle
+implementation remains postponed. Full report records scope and next actions.
