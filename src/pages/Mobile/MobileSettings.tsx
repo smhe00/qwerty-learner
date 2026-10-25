@@ -37,7 +37,6 @@ export default function MobileSettings() {
   }, [pronunciation.volume, pronunciation.rate, pronunciation.type])
   return (
     <MobilePageFrame title="学习设置">
-      <p className="mobile-page-description">学习计划和发音调整后需保存；下方显示设置立即生效。</p>
       <form
         className="mobile-settings-form"
         onChange={() => {
@@ -78,7 +77,6 @@ export default function MobileSettings() {
       >
         <section className="mobile-settings-card">
           <h2>学习计划</h2>
-          <p>每天少量积累。今日计划开始后保持不变，新目标从下一天生效；每阶段词数从下一阶段生效。</p>
           <label>
             每日新词目标
             <input
@@ -88,10 +86,11 @@ export default function MobileSettings() {
               step={1}
               required
               inputMode="numeric"
+              aria-describedby="mobile-daily-target-hint"
               value={daily}
               onChange={(event) => setDaily(event.target.value)}
             />
-            <small>1–200 词 / 天</small>
+            <small id="mobile-daily-target-hint">1–200 词 / 天；今日计划已开始时，次日生效。</small>
           </label>
           <label>
             每阶段词数
@@ -102,11 +101,12 @@ export default function MobileSettings() {
               step={1}
               required
               inputMode="numeric"
+              aria-describedby="mobile-block-size-hint"
               value={block}
               onChange={(event) => setBlock(event.target.value)}
             />
-            <small>
-              {MIN_LEARN_BLOCK_SIZE}–{MAX_LEARN_BLOCK_SIZE} 词 / 阶段
+            <small id="mobile-block-size-hint">
+              {MIN_LEARN_BLOCK_SIZE}–{MAX_LEARN_BLOCK_SIZE} 词 / 阶段；下一阶段生效。
             </small>
           </label>
         </section>
@@ -163,14 +163,13 @@ export default function MobileSettings() {
               {error}
             </p>
           )}
-          <p role="status" className="mobile-settings-saved">
-            {saved ? '设置已保存在本机。' : dirty ? '有未保存的设置，请点击保存。' : '设置保存在此浏览器，手机与桌面界面共用。'}
-          </p>
+          {(saved || dirty) && <p role="status" className="mobile-settings-saved">
+            {saved ? '设置已保存在本机。' : '有未保存的设置，请点击保存。'}
+          </p>}
         </div>
       </form>
       <section className="mobile-settings-card">
         <h2>显示</h2>
-        <p>立即生效，无需点击保存。</p>
         <label className="mobile-theme-setting">
           深色模式
           <input
@@ -188,7 +187,6 @@ export default function MobileSettings() {
       </section>
       <section className="mobile-settings-card">
         <h2>记录与备份</h2>
-        <p>查看学习历史，或核对同步状态、导出和校验备份。</p>
         <div className="mobile-data-actions">
           <Link className="mobile-secondary-action" to="/mobile/history" onClick={event => { if (dirty && !window.confirm('设置尚未保存，仍要离开吗？')) event.preventDefault() }}>查看学习记录</Link>
           <Link className="mobile-secondary-action" to="/mobile/data" onClick={event => { if (dirty && !window.confirm('设置尚未保存，仍要离开吗？')) event.preventDefault() }}>同步与备份</Link>

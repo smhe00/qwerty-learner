@@ -1,4 +1,5 @@
 import FiveMoreButton from './components/FiveMoreButton'
+import LearnResultScreen from './components/LearnResultScreen'
 import DesktopStartGuide from '@/components/DesktopStartGuide'
 import Header from '@/components/Header'
 import Layout from '@/components/Layout'
@@ -7,8 +8,9 @@ import SessionControl from '@/components/SessionControl'
 import { waitForBrowserFuzzGate } from '@/dev/browser-fuzz-hooks'
 import { createAsyncOwnershipGuard } from '@/learn/async-ownership'
 import { prepareLearnSession } from '@/learn/controller'
-import { addLearnDailyNewWords, learnLocalDateKey, loadLearnDailySession } from '@/learn/daily-session'
+import { addLearnDailyNewWords, deriveLearnExecutionProgress, learnLocalDateKey, loadLearnDailySession } from '@/learn/daily-session'
 import { flushLearnPersistence } from '@/learn/persistence'
+import type { LearnBlockSettlement } from '@/learn/settlement'
 import useErrorWordData from '@/pages/Gallery-N/hooks/useErrorWords'
 import TypingPage from '@/pages/Typing'
 import { DictChapterButton } from '@/pages/Typing/components/DictChapterButton'
@@ -55,6 +57,7 @@ export default function LearnPage({ mobile = false }: { mobile?: boolean } = {})
   )
   const [isStarting, setIsStarting] = useState(false)
   const [statusText, setStatusText] = useState('')
+  const [endSettlement, setEndSettlement] = useState<LearnBlockSettlement | null>(null)
   const dailySession = loadLearnDailySession(currentDictId)
   const completedToday = dailySession?.status === 'completed' && dailySession.dateKey === learnLocalDateKey(getUTCUnixTimestamp())
   const exhaustedToday =
@@ -109,8 +112,10 @@ export default function LearnPage({ mobile = false }: { mobile?: boolean } = {})
     const query = new URLSearchParams(location.search)
     const blockResume = query.get('block-resume') === '1'
     const blockIdle = query.get('block-idle') === '1'
+    const blockExtra = query.get('block-extra') === '1'
+    setEndSettlement(null)
 
-    if (routeState?.autoStart === true || blockResume) {
+    if (routeState?.autoStart === true || blockResume || blockExtra) {
       // Continue from the result screen without remounting or changing route.
       autoStartConsumedRef.current = false
       setIsSessionView(false)
@@ -236,6 +241,15 @@ export default function LearnPage({ mobile = false }: { mobile?: boolean } = {})
             return
           }
 
+          // Terminal preparation is an end boundary, not an idle landing.
+          // Read durable progress without settling/counting the last block twice.
+          const ended = result.diagnostics.dailySession
+          if (!mobile && ended && (ended.status === 'completed' || ended.executionExhausted)) {
+            await flushLearnPersistence()
+            const wordRecords = await db.wordRecords.where('dict').equals(dictId).toArray()
+            if (!isCurrent()) return
+            setEndSettlement({ session: ended, progress: deriveLearnExecutionProgress({ session: ended, wordRecords }) })
+          }
           setStatusText(result.statusText)
           setIsStarting(false)
 
@@ -275,14 +289,15 @@ export default function LearnPage({ mobile = false }: { mobile?: boolean } = {})
     // Mobile Learn is intentionally immersive: entering /mobile/study starts
     // the next due/new-word session automatically. Never mutate a restored
     // historical DailySession merely because today's date has advanced.
-    const shouldAutoStart = mobile || routeState?.autoStart === true || query.get('block-resume') === '1'
+    const addFiveWords = query.get('block-extra') === '1'
+    const shouldAutoStart = mobile || routeState?.autoStart === true || query.get('block-resume') === '1' || addFiveWords
 
-    if (canLearnMoreToday || !shouldAutoStart || autoStartConsumedRef.current || !wordList) {
+    if ((canLearnMoreToday && !addFiveWords) || !shouldAutoStart || autoStartConsumedRef.current || !wordList) {
       return
     }
 
     autoStartConsumedRef.current = true
-    startLearn()
+    startLearn(addFiveWords)
   }, [isSessionView, canLearnMoreToday, location.state, location.search, startLearn, wordList, mobile])
 
   const startFromKeyboard = useCallback(() => {
@@ -291,9 +306,11 @@ export default function LearnPage({ mobile = false }: { mobile?: boolean } = {})
   }, [startLearn])
   useSessionKeyboard({
     active: false,
-    disabled: mobile || isSessionView || isStarting || !wordList || canLearnMoreToday,
+    disabled: mobile || isSessionView || isStarting || !wordList || canLearnMoreToday || endSettlement !== null,
     onToggle: startFromKeyboard,
   })
+
+  if (endSettlement) return <LearnResultScreen initialSettlement={endSettlement} />
 
   if (isSessionView) {
     return <TypingPage autoStart={mobile || userStartRequestedRef.current} mobile={mobile} />

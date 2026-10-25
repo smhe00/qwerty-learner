@@ -22,12 +22,14 @@ export function renderLearnBlockSyncScreen(root: HTMLElement | null, context: Le
   caption.textContent = 'Qwerty Plus · Learn'
   caption.style.cssText = 'font-size:14px;color:var(--dialog-muted)'
   const title = document.createElement('h1')
-  title.textContent = context?.dailyComplete ? '今日学习完成' : 'Block 阶段完成'
+  title.textContent = context?.dailyComplete ? '今日学习完成' : context?.roundEnded ? '本轮练习已结束' : 'Block 阶段完成'
   title.style.cssText = 'font-size:26px;font-weight:650;margin:16px 0 10px'
   const detail = document.createElement('p')
   detail.textContent =
     context?.milestone !== null && context?.milestone !== undefined
       ? `今日已完成 ${context.milestone} 个目标词`
+      : context?.roundEnded
+      ? '本轮记录已保存在本机，需巩固的词仍然保留'
       : '当前阶段学习记录已保存在本机'
   detail.style.cssText = 'font-size:14px;color:var(--dialog-muted);margin-bottom:14px'
   const status = document.createElement('p')
@@ -64,7 +66,8 @@ export function renderLearnBlockSyncScreen(root: HTMLElement | null, context: Le
       status.textContent = result.message
       status.style.color = result.kind === 'ok' ? 'var(--dialog-success)' : 'var(--dialog-warning)'
       if (result.kind === 'ok') {
-        button('继续学习', '/learn?block-resume=1', true)
+        if (context?.dailyComplete || context?.roundEnded) button('再学五词', '/learn?block-extra=1', true)
+        else button('继续学习', '/learn?block-resume=1', true)
         button('结束并退出', '/learn?block-idle=1', false)
       } else {
         const retry = document.createElement('button')

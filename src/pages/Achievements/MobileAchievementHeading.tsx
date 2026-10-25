@@ -1,4 +1,4 @@
-import { ChevronLeft } from 'lucide-react'
+import MobileBackControl from '@/components/MobileBackControl'
 import './mobile-achievement-heading.css'
 
 type Props = {
@@ -13,10 +13,7 @@ export function MobileAchievementHeading({ title, description, onBack, progress 
   return (
     <header className="mobile-achievement-heading" data-mobile-achievement-header>
       <div className="mobile-achievement-heading-row">
-        <button type="button" className="mobile-achievement-back" onClick={onBack}
-          aria-label="返回手机首页" title="返回手机首页">
-          <ChevronLeft size={24} strokeWidth={1.8} aria-hidden="true" />
-        </button>
+        <MobileBackControl className="mobile-achievement-back" onBack={onBack} label="返回手机首页" />
         <h1>{title}</h1>
         {progress && <span className="mobile-achievement-heading-progress"
           aria-label={'已解锁 ' + progress.earned + '/' + progress.total}>

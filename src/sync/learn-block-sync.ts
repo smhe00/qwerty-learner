@@ -14,6 +14,8 @@ export type LearnBlockSyncHandoff = {
   accountId: string
   at: number
   dailyComplete: boolean
+  /** Executable work ended with retained unmastered words; not mastery. */
+  roundEnded?: boolean
   milestone: number | null
 }
 
@@ -22,8 +24,11 @@ const MAX_AGE_MS = 20 * 60 * 1000
 
 export function blockAutoSyncEnabled(accountId: string): boolean {
   if (!accountId) return false
-  try { return localStorage.getItem(PREF_PREFIX + accountId) === '1' }
-  catch { return false }
+  try {
+    return localStorage.getItem(PREF_PREFIX + accountId) === '1'
+  } catch {
+    return false
+  }
 }
 
 export function setBlockAutoSyncEnabled(accountId: string, enabled: boolean): void {
@@ -32,35 +37,42 @@ export function setBlockAutoSyncEnabled(accountId: string, enabled: boolean): vo
   else localStorage.removeItem(PREF_PREFIX + accountId)
 }
 
-export function isVisibleLearnBlockBoundary(input: {
-  dailyComplete: boolean
-  milestone?: number
-}): boolean {
-  return input.dailyComplete || input.milestone !== undefined
+export function isVisibleLearnBlockBoundary(input: { dailyComplete: boolean; roundEnded?: boolean; milestone?: number }): boolean {
+  return input.dailyComplete || input.roundEnded === true || input.milestone !== undefined
 }
 
 function valid(value: unknown): value is LearnBlockSyncHandoff {
   if (!value || typeof value !== 'object') return false
   const v = value as Partial<LearnBlockSyncHandoff>
-  return typeof v.accountId === 'string' && v.accountId.length > 0 &&
-    typeof v.at === 'number' && Number.isSafeInteger(v.at) &&
-    v.at <= Date.now() + 60000 && Date.now() - v.at <= MAX_AGE_MS &&
+  return (
+    typeof v.accountId === 'string' &&
+    v.accountId.length > 0 &&
+    typeof v.at === 'number' &&
+    Number.isSafeInteger(v.at) &&
+    v.at <= Date.now() + 60000 &&
+    Date.now() - v.at <= MAX_AGE_MS &&
     typeof v.dailyComplete === 'boolean' &&
-    (v.milestone === null || (typeof v.milestone === 'number' &&
-      Number.isSafeInteger(v.milestone) && v.milestone >= 0))
+    (v.roundEnded === undefined || typeof v.roundEnded === 'boolean') &&
+    (v.milestone === null || (typeof v.milestone === 'number' && Number.isSafeInteger(v.milestone) && v.milestone >= 0))
+  )
 }
 
-export function stageLearnBlockSync(accountId: string, input: {
-  dailyComplete: boolean
-  milestone?: number
-}): void {
-  if ((!input.dailyComplete && !blockAutoSyncEnabled(accountId)) || !isVisibleLearnBlockBoundary(input)) {
+export function stageLearnBlockSync(
+  accountId: string,
+  input: {
+    dailyComplete: boolean
+    roundEnded?: boolean
+    milestone?: number
+  },
+): void {
+  if ((!input.dailyComplete && input.roundEnded !== true && !blockAutoSyncEnabled(accountId)) || !isVisibleLearnBlockBoundary(input)) {
     throw new Error('Block auto-sync is not allowed for this milestone')
   }
   const pending: LearnBlockSyncHandoff = {
     accountId,
     at: Date.now(),
     dailyComplete: input.dailyComplete,
+    ...(input.roundEnded === true ? { roundEnded: true } : {}),
     milestone: input.milestone ?? null,
   }
   sessionStorage.removeItem(LEARN_BLOCK_RESULT_KEY)
@@ -73,12 +85,12 @@ export function readLearnBlockSyncPending(accountId: string): LearnBlockSyncHand
     if (!raw) return null
     const pending: unknown = JSON.parse(raw)
     return valid(pending) && pending.accountId === accountId ? pending : null
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
-export type LearnBlockSyncOutcome =
-  | { kind: 'ok'; message: string }
-  | { kind: 'failed'; message: string }
+export type LearnBlockSyncOutcome = { kind: 'ok'; message: string } | { kind: 'failed'; message: string }
 
 export function saveLearnBlockSyncOutcome(outcome: LearnBlockSyncOutcome): void {
   // Pending intent is retained only for explicit retry if result failed.
@@ -90,10 +102,12 @@ export function readLearnBlockSyncOutcome(): LearnBlockSyncOutcome | null {
     const raw = sessionStorage.getItem(LEARN_BLOCK_RESULT_KEY)
     if (!raw) return null
     const value = JSON.parse(raw) as Partial<LearnBlockSyncOutcome>
-    return (value?.kind === 'ok' || value?.kind === 'failed') &&
-      typeof value.message === 'string' && value.message.length <= 500
-      ? value as LearnBlockSyncOutcome : null
-  } catch { return null }
+    return (value?.kind === 'ok' || value?.kind === 'failed') && typeof value.message === 'string' && value.message.length <= 500
+      ? (value as LearnBlockSyncOutcome)
+      : null
+  } catch {
+    return null
+  }
 }
 
 export function clearLearnBlockSyncHandoff(): void {

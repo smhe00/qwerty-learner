@@ -78,3 +78,23 @@ test('Opt-in remains OFF when browser local storage is unavailable', () => {
   assert.equal(sync.blockAutoSyncEnabled('account-a'), false)
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: original })
 })
+
+test('Exhausted-round sync is distinct from mastery and does not enable interim sync', () => {
+  sync.setBlockAutoSyncEnabled('account-exhausted', false)
+  sync.stageLearnBlockSync('account-exhausted', { dailyComplete: false, roundEnded: true })
+  const pending = sync.readLearnBlockSyncPending('account-exhausted')
+  assert.equal(pending?.dailyComplete, false)
+  assert.equal(pending?.roundEnded, true)
+  assert.equal(pending?.milestone, null)
+  assert.equal(sync.readLearnBlockSyncPending('different-owner'), null)
+  sync.clearLearnBlockSyncHandoff()
+  assert.throws(() => sync.stageLearnBlockSync('account-exhausted', { dailyComplete: false, roundEnded: false, milestone: 20 }))
+})
+
+test('Malformed round-ended flag cannot authorize a completion handoff', () => {
+  sync.stageLearnBlockSync('account-exhausted', { dailyComplete: false, roundEnded: true })
+  const pending = JSON.parse(data.get(sync.LEARN_BLOCK_PENDING_KEY))
+  data.set(sync.LEARN_BLOCK_PENDING_KEY, JSON.stringify({ ...pending, roundEnded: 'true' }))
+  assert.equal(sync.readLearnBlockSyncPending('account-exhausted'), null)
+  sync.clearLearnBlockSyncHandoff()
+})

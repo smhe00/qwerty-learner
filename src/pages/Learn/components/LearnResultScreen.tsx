@@ -4,7 +4,7 @@ import { resolveAchievementCeremonyPresentation } from '@/achievement/presentati
 import { addLearnDailyNewWords, getLearnExtraRoundNames, loadLearnDailySession } from '@/learn/daily-session'
 import { settleLearnBlockDurably } from '@/learn/settlement'
 import type { LearnBlockSettlement } from '@/learn/settlement'
-import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
+import { TypingContext, TypingStateActionType, initialState } from '@/pages/Typing/store'
 import { getAchievementCulture } from '@/resources/achievementCulture'
 import { getReviewWordStates } from '@/review/repository'
 import { currentDictInfoAtom, reviewModeInfoAtom } from '@/store'
@@ -46,14 +46,17 @@ function SummaryMetric({
   )
 }
 
-export default function LearnResultScreen() {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const { state, dispatch } = useContext(TypingContext)!
+export default function LearnResultScreen({ initialSettlement }: { initialSettlement?: LearnBlockSettlement } = {}) {
+  // Exhaustion is detected between queues, after Typing unmounts. Reuse the
+  // end screen without fabricating or replaying a finished Typing block.
+  const typing = useContext(TypingContext)
+  const state = typing?.state ?? initialState
+  const dispatch = typing?.dispatch
   const currentDictInfo = useAtomValue(currentDictInfoAtom)
   const reviewModeInfo = useAtomValue(reviewModeInfoAtom)
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
   const navigate = useNavigate()
-  const record = reviewModeInfo.reviewRecord
+  const record = initialSettlement ? undefined : reviewModeInfo.reviewRecord
   const [settlement, setSettlement] = useState<LearnBlockSettlement | null>(null)
   const [settlementError, setSettlementError] = useState('')
   const [addingWords, setAddingWords] = useState(false)
@@ -87,19 +90,24 @@ export default function LearnResultScreen() {
   }, [newAchievements])
 
   useEffect(() => {
-    if (!record) return
+    if (!record && !initialSettlement) return
 
     let active = true
 
     if (!settlementPromiseRef.current) {
-      settlementPromiseRef.current = settleLearnBlockDurably({
-        record,
-        sourceRecordIds: [...state.chapterData.wordRecordIds],
-        activeSeconds: state.timerData.time,
-      })
+      settlementPromiseRef.current = initialSettlement
+        ? Promise.resolve(initialSettlement)
+        : record
+        ? settleLearnBlockDurably({
+            record,
+            sourceRecordIds: [...state.chapterData.wordRecordIds],
+            activeSeconds: state.timerData.time,
+          })
+        : null
     }
 
     const settlementPromise = settlementPromiseRef.current
+    if (!settlementPromise) return
 
     void settlementPromise
       .then((baseSettlement) => {
@@ -121,9 +129,10 @@ export default function LearnResultScreen() {
             accountId &&
             auth &&
             auth.expiresAt * 1000 > Date.now() &&
-            (baseSettlement.progress.complete || blockAutoSyncEnabled(accountId)) &&
+            (baseSettlement.progress.complete || baseSettlement.session.executionExhausted || blockAutoSyncEnabled(accountId)) &&
             isVisibleLearnBlockBoundary({
               dailyComplete: baseSettlement.progress.complete,
+              roundEnded: baseSettlement.session.executionExhausted === true,
               milestone: baseSettlement.milestoneReached,
             }),
         )
@@ -131,6 +140,7 @@ export default function LearnResultScreen() {
           try {
             stageLearnBlockSync(accountId, {
               dailyComplete: baseSettlement.progress.complete,
+              roundEnded: baseSettlement.session.executionExhausted === true,
               milestone: baseSettlement.milestoneReached,
             })
             blockSyncHandoffRef.current = true
@@ -158,7 +168,7 @@ export default function LearnResultScreen() {
       // intentionally survives StrictMode effect replay and route-state churn.
       active = false
     }
-  }, [record, state.chapterData.wordRecordIds, state.timerData.time])
+  }, [initialSettlement, record, state.chapterData.wordRecordIds, state.timerData.time])
 
   const keepLearnSelected = useCallback(() => {
     setReviewModeInfo((old) => ({
@@ -168,15 +178,29 @@ export default function LearnResultScreen() {
   }, [setReviewModeInfo])
 
   const continueLearn = useCallback(() => {
-    if (blockSyncHandoffRef.current || blockSyncHandoff || !settlement || settlement.progress.complete) return
+    if (
+      blockSyncHandoffRef.current ||
+      blockSyncHandoff ||
+      !settlement ||
+      settlement.progress.complete ||
+      settlement.session.executionExhausted
+    )
+      return
 
-    dispatch({ type: TypingStateActionType.RESET_SESSION })
+    dispatch?.({ type: TypingStateActionType.RESET_SESSION })
     keepLearnSelected()
     navigate('/learn', { state: { autoStart: true } })
   }, [blockSyncHandoff, dispatch, keepLearnSelected, navigate, settlement])
 
   const learnFiveMore = useCallback(async () => {
-    if (blockSyncHandoffRef.current || blockSyncHandoff || !settlement?.progress.complete || addingWordsRef.current) return
+    if (
+      blockSyncHandoffRef.current ||
+      blockSyncHandoff ||
+      !settlement ||
+      (!settlement.progress.complete && !settlement.session.executionExhausted) ||
+      addingWordsRef.current
+    )
+      return
     addingWordsRef.current = true
     setAddingWords(true)
     try {
@@ -202,7 +226,7 @@ export default function LearnResultScreen() {
         return
       }
       acknowledgeAchievements()
-      dispatch({ type: TypingStateActionType.RESET_SESSION })
+      dispatch?.({ type: TypingStateActionType.RESET_SESSION })
       keepLearnSelected()
       navigate('/learn', { state: { autoStart: true } })
     } catch {
@@ -219,6 +243,7 @@ export default function LearnResultScreen() {
     if (
       !settlement ||
       settlement.progress.complete ||
+      settlement.session.executionExhausted ||
       !settlement.session.blockMilestones ||
       settlement.milestoneReached !== undefined ||
       skippedInternalBlockRef.current
@@ -231,13 +256,20 @@ export default function LearnResultScreen() {
   const closeResult = useCallback(() => {
     if (blockSyncHandoffRef.current || blockSyncHandoff || !settlement || settlementError) return
     acknowledgeAchievements()
-    dispatch({ type: TypingStateActionType.RESET_SESSION })
+    dispatch?.({ type: TypingStateActionType.RESET_SESSION })
     keepLearnSelected()
     navigate('/learn', { state: { idle: true } })
   }, [acknowledgeAchievements, blockSyncHandoff, dispatch, keepLearnSelected, navigate, settlement, settlementError])
 
   useEffect(() => {
-    if (!settlement || settlement.progress.complete || blockSyncHandoffRef.current || blockSyncHandoff) return
+    if (
+      !settlement ||
+      settlement.progress.complete ||
+      settlement.session.executionExhausted ||
+      blockSyncHandoffRef.current ||
+      blockSyncHandoff
+    )
+      return
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' || event.key === 'Shift' || event.key === 'Control' || event.key === 'Alt' || event.key === 'Meta') {
@@ -259,13 +291,16 @@ export default function LearnResultScreen() {
     settlement?.milestoneReached === undefined ? -1 : (settlement.session.blockMilestones ?? []).indexOf(settlement.milestoneReached)
   const isExtraRound = !!getLearnExtraRoundNames(settlement?.session ?? null)
   const isDailyComplete = progress?.complete === true
+  const isRoundEnded = settlement?.session.executionExhausted === true
+  const isSessionEnd = isDailyComplete || isRoundEnded
   const totalActiveSeconds = settlement ? settlement.session.accumulatedActiveSeconds : state.timerData.time
 
   return (
     <div
       className="fixed inset-0 z-30 overflow-y-auto"
       data-learn-result-screen
-      data-learn-block-pause={!isDailyComplete || undefined}
+      data-learn-block-pause={!isSessionEnd || undefined}
+      data-learn-round-ended={isRoundEnded || undefined}
       data-learn-daily-complete={isDailyComplete || undefined}
     >
       <div className="absolute inset-0 backdrop-blur-[3px]" style={{ background: 'var(--focus-backdrop)' }} />
@@ -292,6 +327,8 @@ export default function LearnResultScreen() {
                 ? getLearnExtraRoundNames(settlement?.session ?? null)
                   ? '本次加学完成'
                   : '今日学习完成'
+                : isRoundEnded
+                ? '本轮练习已结束'
                 : milestoneIndex >= 0
                 ? `阶段 ${milestoneIndex + 1} 完成`
                 : settlement?.session.blockMilestones
@@ -319,15 +356,17 @@ export default function LearnResultScreen() {
               </p>
             ) : null}
 
-            {progress && !isDailyComplete ? (
+            {progress && !isSessionEnd ? (
               <p className="focus-result-description mt-3 text-sm">
                 今天已经完成 {progress.percent}%。 当前状态已保存，按任意键继续下一阶段。
               </p>
             ) : null}
 
-            {progress && isDailyComplete ? (
+            {progress && isSessionEnd ? (
               <p className="focus-result-description mt-3 text-sm">
-                {getLearnExtraRoundNames(settlement?.session ?? null)
+                {isRoundEnded && !isDailyComplete
+                  ? '本轮练习已结束。需巩固的词仍然保留，不会计为已掌握。'
+                  : getLearnExtraRoundNames(settlement?.session ?? null)
                   ? '本轮练习已完成，需巩固的词已保留。'
                   : '今日练习已完成。需巩固的词已记下，系统会继续安排复习。'}
               </p>
@@ -422,7 +461,7 @@ export default function LearnResultScreen() {
             </section>
           ) : null}
 
-          {isDailyComplete ? (
+          {isSessionEnd ? (
             <div className="mt-7 text-center text-xs text-gray-400">本地进度已保存；如云端同步未执行，可在设置中手动同步。</div>
           ) : null}
 
@@ -432,8 +471,8 @@ export default function LearnResultScreen() {
             </p>
           ) : null}
           <div className="mt-7 flex justify-center gap-4">
-            {isDailyComplete ? <FiveMoreButton disabled={addingWords || blockSyncHandoff} onClick={() => void learnFiveMore()} /> : null}
-            {isDailyComplete ? (
+            {isSessionEnd ? <FiveMoreButton disabled={addingWords || blockSyncHandoff} onClick={() => void learnFiveMore()} /> : null}
+            {isSessionEnd ? (
               <button
                 className="my-btn-primary h-12 px-8 text-base font-bold disabled:opacity-40"
                 type="button"

@@ -59,7 +59,7 @@ export default function MobileLibrary() {
   }
   return (
     <MobilePageFrame title="选择词库">
-      <p className="mobile-page-description">当前词库：{current.name}。切换后，各词库的学习进度分别保留。</p>
+      <p className="mobile-page-description">当前词库：{current.name}</p>
       <div className="mobile-library-filters">
         <label>
           词库范围
@@ -105,7 +105,7 @@ export default function MobileLibrary() {
           value={search}
           disabled={busy}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="搜索当前范围内的名称或标签"
+          placeholder="名称或标签"
         />
       </label>
       <p className="mobile-page-description" role="status">
