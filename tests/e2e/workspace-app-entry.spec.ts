@@ -631,7 +631,7 @@ test('S1 cancelling logout preserves immutable owner and never renders PointerEv
   })
   await page.goto('/')
   const account = page.locator('[data-account-entry]')
-  await expect(account).toContainText('cancel-account')
+  await expect(account).toContainText('cancel-account', { timeout: 15_000 })
   await account.click()
   await page.getByRole('button', { name: /^(登录或注册|登录与账号管理)$/ }).click()
   await expect(page.locator('[data-account]')).toBeVisible()
@@ -639,7 +639,7 @@ test('S1 cancelling logout preserves immutable owner and never renders PointerEv
   let logoutConfirmShown = false
   page.once('dialog', async dialog => {
     logoutConfirmShown = true
-    expect(dialog.message()).toContain('未同步学习进度')
+    expect(dialog.message()).toContain('未同步的记录仍只保存在这台设备上。')
     await dialog.dismiss()
   })
   await page.getByRole('button', { name: '安全退出登录' }).click()

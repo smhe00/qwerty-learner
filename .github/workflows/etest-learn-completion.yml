@@ -1,0 +1,40 @@
+name: etest Learn Completion Cloud Journey
+on:
+  push:
+    branches: [edgeone-test]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: etest-learn-completion
+  cancel-in-progress: false
+jobs:
+  completion-cloud:
+    if: github.ref_name == 'edgeone-test'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    env:
+      QWERTY_SYNC_BASE_URL: https://t.smhe.cn/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Require exact deployed staging SHA before disposable accounts
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          EDGEONE_WAIT_MS: '600000'
+        run: node scripts/verify-edgeone-source.mjs
+      - run: yarn install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
+      - name: Last word completion and real cloud readback in a fresh profile
+        run: npx playwright test --config=tests/e2e/etest-learn-completion.config.ts
+      - name: Redacted proof only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etest-learn-completion-${{ github.run_id }}
+          path: test-results/**/*-redacted-trace.json
+          if-no-files-found: ignore
+          retention-days: 7

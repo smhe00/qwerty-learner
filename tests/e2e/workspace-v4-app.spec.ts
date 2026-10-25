@@ -137,6 +137,7 @@ test('S1 signed-in account can download verified cloud Backup V4 with unchanged 
   await page.goto('/')
   await page.getByRole('button', { name: '打开设置对话框' }).click()
   await page.getByRole('tab', { name: '数据与备份' }).click()
+  await page.getByText('更多同步选项', { exact: true }).click()
   await page.getByRole('button', { name: '下载云端备份' }).click()
   await expect(page).toHaveURL(/v4-cloud-backup=download/)
   const save = page.getByRole('button', { name: '下载标准 V4 文件（.gz）' })

@@ -107,7 +107,7 @@ test('revoked device can reauthenticate same account without losing offline reco
     // In the pre-mount login realm, no React/RecordDB writer is present.
     expect(oldOwner).toBeNull()
     await expect(pageA.getByLabel('账户密码', { exact: true })).toBeVisible()
-    await expect(manage).toContainText('请验证密码')
+    await expect(manage).toContainText('输入密码，重新登录。')
     await pageA.getByLabel('用户名', { exact: true }).fill('revocation-test')
     await pageA.getByLabel('账户密码', { exact: true }).fill('testing')
     await manage.getByRole('button', { name: '确认重新登录', exact: true }).click()

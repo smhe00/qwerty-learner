@@ -343,19 +343,14 @@ for (const site of sites) {
       try {
         const page = await context.newPage()
         const observer = await inspect(page)
-        // Pages tracks product/main Mobile P0. Production EdgeOne deliberately
-        // remains on its older guarded information screen until release.
+        // Both canonical sites now ship the mobile menu. Keep the same
+        // visible entry and no-auto-start assertions across navigation/reload.
         const assertMobileShell = async () => {
           await expect(page).toHaveURL(/\/mobile\/?$/, { timeout: 20_000 })
-          if (site.name === 'pages') {
-            await expect(page.locator('[data-mobile-menu]')).toBeVisible()
-            await expect(page.getByRole('heading', { name: 'QWERTY Plus' })).toBeVisible()
-            await expect(page.getByRole('link',
-              { name: /^(开始|继续)手机学习$/ })).toBeVisible()
-          } else {
-            await expect(page.getByRole('heading', { name: '当前移动端说明' })).toBeVisible()
-            await expect(page.getByText(/移动端完整学习体验尚未开放/)).toBeVisible()
-          }
+          await expect(page.locator('[data-mobile-menu]')).toBeVisible()
+          await expect(page.getByRole('heading', { name: 'QWERTY Plus' })).toBeVisible()
+          await expect(page.getByRole('link',
+            { name: /^(开始|继续)手机学习$/ })).toBeVisible()
           await expect(page.locator('[data-typing-word]:visible')).toHaveCount(0)
         }
         await page.goto(site.base, { waitUntil: 'domcontentloaded' })

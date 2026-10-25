@@ -14,6 +14,8 @@ on:
       - 'tests/e2e/review-flow-harness.ts'
       - 'src/index.tsx'
       - 'tests/e2e/learn-completion-journey*'
+      - 'tests/e2e/etest-learn-completion*'
+      - '.github/workflows/etest-learn-completion.yml'
       - 'tests/e2e/learn-block-sync-*'
       - 'tests/cloud/learn-block-auto-sync.test.mjs'
       - '.github/workflows/learn-completion-journey.yml'
@@ -31,6 +33,8 @@ on:
       - 'tests/e2e/review-flow-harness.ts'
       - 'src/index.tsx'
       - 'tests/e2e/learn-completion-journey*'
+      - 'tests/e2e/etest-learn-completion*'
+      - '.github/workflows/etest-learn-completion.yml'
       - 'tests/e2e/learn-block-sync-*'
       - 'tests/cloud/learn-block-auto-sync.test.mjs'
       - '.github/workflows/learn-completion-journey.yml'
@@ -47,6 +51,8 @@ jobs:
           node-version: '20.18.0'
           cache: yarn
       - run: yarn install --frozen-lockfile
+      - name: Load staging journey without contacting the cloud
+        run: yarn playwright test --config=tests/e2e/etest-learn-completion.config.ts --list
       - name: Completion sync authorization contracts
         run: node --test tests/cloud/learn-block-auto-sync.test.mjs
       - name: Last real word through guarded V4 sync and five-more entry

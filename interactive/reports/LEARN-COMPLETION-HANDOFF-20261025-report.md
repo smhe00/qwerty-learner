@@ -42,3 +42,12 @@ The initial test setup required correction to wait for the actual start/input-fe
 ## Delivery
 
 Implementation commit: da343d41428537c46d65453b14376e94cf0f4a8f. Final upstream fetch still observed 279bd3bc1ff99c548ca515ebc373d3146db94f3b; no integration was needed. Push target is product/main only. Unrelated CURRENT_TASK remains unchanged. Published Pages, real EdgeOne/Blob and the user's original account are not claimed verified by these local results.
+
+
+## Authorized staging qualification follow-up (2026-10-25)
+
+Owner requested CI inspection, then etest and the real last-word/completion/sync/five-more journey. Execution base c594f89e; integrated independent mobile copy commit d256ca5b by fast-forward. Production remains 5528f79c. Staging contains independent session-handoff work (observed 34a3d15f); preserve it in a separate staging merge, do not import the experiment into product/main.
+
+At c594f89e, Learn Completion Journey, Cloud Sync, Learn Real Journey, Mobile P0, Achievement, Pages deployment and read-only admission passed. P4b and S1 exposed obsolete login/logout copy expectations and a cloud-backup button now under More sync options. Updated those interactions while retaining the original owner/record/hash assertions. Local focused checks: download and reauth 2/2; cancellation 1/1 after waiting up to 15 seconds for cold app readiness (same eventual-state assertion). Published dual-site Explorer still expected the obsolete mobile information screen on production; both canonical sites now have the mobile menu, so require the same menu/start-link/no-auto-start invariants. Review had executed all 118 Learn cases before a newer product/main push cancelled it; a fresh candidate run is required. The advisory Pages Explorer also got cancelled and already showed two failures; do not count it as a pass.
+
+Added etest Learn Completion Cloud Journey: two fresh disposable accounts, unfinished terminal-probe BEFORE fixture only, final answer through shipped keyboard UI, honest completed/unmastered result, real V4 revision increment, five-more and reload, fresh browser-profile Blob pull with exact final-record readback, and verified deletion of only those test accounts. No cloud route mocking, no forced merge, no relaxation of ambiguous-write retry rules, no credentials in artifacts. Workflow waits for the exact deployed source marker; product/main only loads the test, never creates accounts. Actual staging result pending.
