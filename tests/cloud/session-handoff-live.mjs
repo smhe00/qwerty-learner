@@ -13,7 +13,7 @@ assert.equal(new URL(base).pathname, '/')
 const username = 'qh26' + crypto.randomBytes(12).toString('hex')
 const password = crypto.randomBytes(24).toString('hex')
 const report = { scope: 'new-disposable-account', capability: 'account-handoff-blob-fixtures-v1',
-  productionTouched: false, sourceSha: process.env.EXPECTED_SHA || null, checks: [], cleanup: 'not-started' }
+  productionTouched: false, sourceSha: process.env.EXPECTED_SHA || null, checks: [], responses: [], cleanup: 'not-started' }
 let currentToken, accountId, safeToCleanup = true
 const inFlight = []
 const hash = data => crypto.createHash('sha256').update(data).digest('hex')
@@ -29,7 +29,13 @@ async function call(path, { method = 'GET', token, body, bytes, headers = {} } =
     signal: AbortSignal.timeout(90_000), cache: 'no-store' })
   let data
   try { data = await result.json() } catch { throw new Error(`HTTP ${result.status}: non-JSON response`) }
-  return { status: result.status, data, guarded: result.headers.get('x-qwerty-handoff') }
+  const guarded = result.headers.get('x-qwerty-handoff')
+  const safeCode = value => typeof value === 'string' && /^[a-z][a-z_-]{0,63}$/.test(value) ? value : null
+  const evidence = { method, path, status: result.status, error: safeCode(data?.error),
+    guarded: guarded === report.capability }
+  if (report.responses.length < 160) report.responses.push(evidence)
+  if (result.status >= 400) console.log(JSON.stringify({ check: 'redacted-http-response', ...evidence }))
+  return { status: result.status, data, guarded }
 }
 function input(words, revision) {
   const result = fixture(accountId, words, revision)

@@ -35,7 +35,8 @@ const wait = async predicate => {
   assert.fail('gateway state not observed')
 }
 let ipNumber = 0
-async function harness({ ordinary = false } = {}) {
+async function harness({ ordinary = false, unclonableAuth = false } = {}) {
+  const authReadCounts = []
   const stores = new Map()
   globalThis.__handoffGatewayTestStore = options => {
     const name = typeof options === 'string' ? options : options.name
@@ -49,6 +50,16 @@ async function harness({ ordinary = false } = {}) {
       headers: { ...(token ? { Authorization: 'Bearer ' + token } : {}),
         ...(body ? { 'Content-Type': 'application/json' } : {}), ...headers },
       ...(bytes ? { body: bytes } : body ? { body: JSON.stringify(body) } : {}) })
+    if (unclonableAuth && ['/auth/register', '/auth/login'].includes(path)) {
+      const receive = request.arrayBuffer.bind(request)
+      const count = { reads: 0 }
+      authReadCounts.push(count)
+      request.clone = () => { throw new Error('runtime clone unavailable') }
+      request.arrayBuffer = async () => {
+        if (++count.reads !== 1) throw new Error('body consumed twice')
+        return receive()
+      }
+    }
     const result = await onRequest({ request, clientIp, env: { AUTH_RATE_LIMIT_REQUESTS: '1000', ...env } })
     const data = (result.headers.get('content-type') || '').includes('json') ? await result.json() : null
     return { status: result.status, data, headers: result.headers }
@@ -62,7 +73,7 @@ async function harness({ ordinary = false } = {}) {
       'X-Qwerty-Logical-Fingerprint': input.logicalFingerprint,
       'X-Qwerty-Payload-Sha256': sha(input.payloadBytes),
       'X-Qwerty-Device-Id': input.deviceId, ...headers } })
-  return { stores, call, register, login, direct, username, password,
+  return { stores, call, register, login, direct, username, password, authReadCounts,
     blob: stores.get('qwerty-data'), first: register.data }
 }
 
@@ -187,10 +198,39 @@ test('actual HTTP gateway: an unreadable classification body cannot bypass the g
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username: h.username, password: h.password, deviceId: 'B' }),
   })
-  request.clone = () => ({ arrayBuffer: async () => { throw new Error('transient read failure') } })
+  let reads = 0
+  const nativeRead = request.arrayBuffer.bind(request)
+  request.arrayBuffer = async () => {
+    if (++reads === 1) throw new Error('transient read failure')
+    return nativeRead()
+  }
   const result = await onRequest({ request, clientIp: '192.0.2.200', env: {} })
   assert.equal(result.status, 503)
   assert.equal((await result.json()).error, 'handoff_auth_body_unavailable')
-  // The original body is readable, but must never reach the old login router.
+  assert.equal(reads, 1)
+  // A hypothetical second receive would succeed, but must never bypass the guard.
+  assert.equal((await h.call('/auth/me', { token: h.first.token })).status, 200)
+})
+
+
+test('actual gateway: unreadable clone is irrelevant and each auth body is received once', { timeout: 10000 }, async () => {
+  for (const ordinary of [false, true]) {
+    const h = await harness({ ordinary, unclonableAuth: true })
+    const second = await h.login()
+    assert.equal(second.status, 200, JSON.stringify(second.data))
+    assert.equal(h.register.headers.get('x-qwerty-handoff'), ordinary ? null : 'account-handoff-blob-fixtures-v1')
+    assert.deepEqual(h.authReadCounts.map(count => count.reads), [1, 1])
+    assert.equal((await h.call('/auth/me', { token: second.data.token })).status, 200)
+  }
+})
+
+test('actual gateway: auth length mismatch cannot enter admission or revoke A', { timeout: 10000 }, async () => {
+  const h = await harness()
+  const before = (await h.call('/auth/handoff/status', { token: h.first.token })).data.operations
+  const result = await h.call('/auth/login', { method: 'POST',
+    headers: { 'Content-Length': '1' }, body: { username: h.username, password: h.password } })
+  assert.equal(result.status, 400)
+  assert.equal(result.data.error, 'invalid_json')
+  assert.equal((await h.call('/auth/handoff/status', { token: h.first.token })).data.operations, before)
   assert.equal((await h.call('/auth/me', { token: h.first.token })).status, 200)
 })

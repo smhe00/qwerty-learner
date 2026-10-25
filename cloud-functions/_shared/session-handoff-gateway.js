@@ -1,5 +1,6 @@
 /* eslint-env node */
 import { createHash } from 'node:crypto'
+import { receiveHandoffAuthBody } from './session-handoff-auth-body.js'
 import { AppError, createBackendService, normalizeUsername } from './core.js'
 import { createEdgeOneBlobStorage } from './storage/edgeone-blob.js'
 import { checkAuthRateLimit } from './auth-rate-limit.js'
@@ -46,7 +47,7 @@ export async function withHandoffGateway(context, dispatch) {
         throw new AppError(413, 'request_too_large', 'Authentication request exceeds limit')
       }
       let bytes, body
-      try { bytes = await request.clone().arrayBuffer() }
+      try { bytes = await receiveHandoffAuthBody(request) }
       catch {
         // Unknown classification must NOT fall through to the unguarded login.
         // A second body read could succeed and otherwise bypass the barrier.
@@ -54,6 +55,9 @@ export async function withHandoffGateway(context, dispatch) {
       }
       if (bytes.byteLength > 64 * 1024) {
         throw new AppError(413, 'request_too_large', 'Authentication request exceeds limit')
+      }
+      if (length !== null && Number(length) !== bytes.byteLength) {
+        throw new AppError(400, 'invalid_json', 'Authentication request length mismatch')
       }
       try { body = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)) }
       catch { throw new AppError(400, 'invalid_json', 'Invalid authentication request') }
