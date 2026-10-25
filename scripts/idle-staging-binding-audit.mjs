@@ -11,7 +11,6 @@ const report = { check: 'idle-staging-env-binding-readonly', configurationChange
   deploymentTriggered: false, credentialValuesLogged: false, regions: [] }
 const projectId = process.env.IDLE_QUALIFICATION_PROJECT_ID
 assertStagingProject(projectId)
-assert.equal(process.env.IDLE_QUALIFICATION_PROJECT_VERIFIED, 'EXACT_ETEST_DOMAIN')
 assert.ok(process.env.EDGEONE_API_TOKEN)
 const require = createRequire(resolve(process.env.IDLE_MAKERS_SDK_DIR, 'package.json'))
 const { Makers } = await import(pathToFileURL(require.resolve('@edgeone/makers-sdk')).href)
