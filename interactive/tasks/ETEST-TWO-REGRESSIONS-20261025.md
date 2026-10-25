@@ -1,38 +1,39 @@
 ---
 task_id: ETEST-TWO-REGRESSIONS-20261025
-status: IN_PROGRESS
+status: PARTIAL
 executor: ChatGPT
 base_commit: f91a4ac6701e83f9d65657c0cc67d69898706794
-staging_inspected: 1059efd9c2fe6a88c81c42b86a117a5204c6bc95
+staged_runtime: 1059efd9c2fe6a88c81c42b86a117a5204c6bc95
+main_checkpoint: 839957b8a94cb5ca67b8e095571477340de12ee8
+report_file: interactive/reports/ETEST-TWO-REGRESSIONS-20261025-report.md
+live_run: 40197654012
+focused_live_passed: true
+historical_failure_root_cause_confirmed: false
 target_branch: product/main
 release_to_master: false
 ---
 
-Owner requested resolving two specific failures from staged4c20e26 and closing
-related PRs: divergent historical login observed4 instead of5 rows; completion
-journey stopped in account login navigation. No database migration, general
-handoff redesign or root-cause campaign for historic request-body faults.
+Owner requested the two specific regressions and related PR closure. The focused
+run has COMPLETED: historical five-row/six-table convergence1/1, completion both
+outcomes2/2, exact cloud readback and three verified account deletions. No active
+executor or background work is implied by this checkpoint. Detailed report and
+compact evidence are committed on product/main839957b8, not only in this chat.
 
-Preserve independent idle CURRENT_TASK and newer Learn work. Native git network
-is unavailable in the chat container; repository access uses GitHub connector.
-Work scoped on fix/etest-regressions-20261025 then integrate normally. Etest is
-authorized for these tests; master is not. Do not force-push or delete branches.
+Original completion login harness missed the native confirmation dialog;
+existing upstream confirmation and resume-word fixes were reused and verified.
+No product auth confirmation was removed. Historical4/5 failure did not recur;
+its old artifact lacks stage/error evidence, and application source is unchanged.
+Do NOT claim a confirmed merge-algorithm fix. PARTIAL preserves that uncertainty,
+not a requirement to widen this task into general network/fault recovery.
 
-At startup, upstream already includes corrected completion-dialog handling and
-resume-word waiting (f91a4ac). Etest1059efd has identical application code to
-4c20e26; differences are completion tests/reports only. Latest history live run
-40196696864 PASSED full five-row union, archives, six-table reference preservation
-and re-login. This does NOT identify the cause of the prior intermittent failure.
-Completion40196696841 now passes login and the entire unmastered path; complete
-path fails later with cloud revision1 instead of2 after extra-round reload.
-Do not label a successful login as completed cloud convergence when startup
-reports pending. Obtain redacted phase evidence before changing merge behavior.
+Diagnostic run40197654012 job121181882718 SUCCESS, artifact12599644968, SHA256
+8cd9c92650d19d7b5f683b9d793b660d003537388e38be4036eb7b16ede42ed8.
+Harness6d3fef85 and deployed1059efd9 verified src/cloud-functions identical and
+staging ref stable before/after. All original assertions retained; only safe
+failure phase/count/status added. No uncertain POST replay or new app writes.
 
-Focused diagnostic workflow40197654012 pins actual staging ref, deployed source
-and application source equality before new synthetic fixtures. It retains all
-existing assertions; diagnostics add counts/fixed enums only. Evidence must not
-include credentials, cloud tokens, raw backups or real-user data.
-
-PR41 and42 are already merged/closed. The only open PR at inspection is unrelated
-Circle17, postponed by the separate task; do not discard it as part of this fix.
-Close/merge any PRs created for this scoped follow-up after validation.
+No additional Maker build, staging ref change, master push, ordinary-account
+handoff enrollment, database change or historical body-read-root-cause work.
+Independent main Learn/IDLE changes and CURRENT_TASK remain untouched.
+PR41/42 already merged/closed; outcome appended to PR42 comment6398364199.
+Unrelated postponed Circle17 left intact. No new PR created by this task.
