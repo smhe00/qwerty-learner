@@ -41,4 +41,4 @@ The initial test setup required correction to wait for the actual start/input-fe
 
 ## Delivery
 
-Implementation commit and final upstream/push result are recorded below after committing. product/main only. Unrelated CURRENT_TASK remains unchanged. Published Pages, real EdgeOne/Blob and the user's original account are not claimed verified by these local results.
+Implementation commit: da343d41428537c46d65453b14376e94cf0f4a8f. Final upstream fetch still observed 279bd3bc1ff99c548ca515ebc373d3146db94f3b; no integration was needed. Push target is product/main only. Unrelated CURRENT_TASK remains unchanged. Published Pages, real EdgeOne/Blob and the user's original account are not claimed verified by these local results.
