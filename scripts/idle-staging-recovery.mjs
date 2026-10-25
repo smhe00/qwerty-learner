@@ -14,6 +14,8 @@ const metadata = error => ({
   type: /^[A-Za-z]{1,60}$/.test(error?.name) ? error.name : 'unknown',
   code: /^[A-Za-z][A-Za-z0-9_.]{0,80}$/.test(error?.code) ? error.code : 'unspecified',
   status: Number.isInteger(error?.status) && error.status >= 100 && error.status <= 599 ? error.status : undefined,
+  fieldHints: ['EnvVars', 'Id', 'Key', 'Value', 'empty', 'required', 'ID', 'Security'].filter(word =>
+    typeof error?.message === 'string' && error.message.toLowerCase().includes(word.toLowerCase())),
 })
 let phase = 'preflight'
 try {
@@ -43,23 +45,21 @@ try {
     const off = row.key === keys[0] ? '' : 'false'
     assert.ok(row.value === owned || row.value === off, 'Concurrent or unreadable values refused')
   }
-  if (rows.length) {
-    phase = 'delete-only-owned-keys'
-    try { await projects.deleteEnvs({ projectId, keys: rows.map(row => row.key) }) }
-    catch (error) { report.deleteFailure = metadata(error) }
-    rows = await selected()
-  }
+  // Prior recovery40161791374 already established that SDK key deletion is
+  // rejected with InvalidParameter. Do not replay that unchanged failure.
+  report.keyDeletionPreviouslyRejected = true
   report.exactBaselineRestored = rows.length === 0
   if (rows.length) {
     // Explicitly disable these two known test settings if provider key-deletion
     // is unavailable. Never call this exact absence restoration.
     phase = 'fail-closed-known-settings'
-    await projects.setEnvs({ projectId, envVars: [
-      { key: keys[0], value: '' }, { key: keys[1], value: 'false' },
-    ] })
+    // Keep the owned date: the previous empty-date update was rejected with
+    // InvalidParameter.Security. Disabling execution alone is sufficient to
+    // fail closed and avoids an unsupported empty-value update.
+    await projects.setEnvs({ projectId, envVars: [{ key: keys[1], value: 'false' }] })
     rows = await selected()
-    report.failClosedSettingsConfirmed = keys.every(key => rows.some(row =>
-      row.key === key && row.value === (key === keys[0] ? '' : 'false')))
+    report.failClosedSettingsConfirmed = rows.some(row => row.key === keys[1] && row.value === 'false')
+    report.activationDateRetained = rows.some(row => row.key === keys[0] && row.value === snapshot.activationTime)
   }
   phase = 'public-runtime-disabled'
   const response = await fetch('https://t.smhe.cn/api/account-policy?recovery=' + Date.now(), {
