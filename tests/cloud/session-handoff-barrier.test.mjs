@@ -3,7 +3,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import {
-  createSessionHandoffBarrier, transitionHandoff, BeforeMutationError,
+  BeforeMutationError, createSessionHandoffBarrier, transitionHandoff,
 } from '../../cloud-functions/_shared/session-handoff-barrier.js'
 import { AtomicTestStore, deferred } from './session-handoff-test-store.mjs'
 

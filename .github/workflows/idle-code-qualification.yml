@@ -1,0 +1,37 @@
+name: Deployed code automatic idle cleanup qualification
+on:
+  push:
+    branches: [edgeone-test]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: idle-deployed-code-qualification
+  cancel-in-progress: false
+jobs:
+  actual-automatic-maintenance:
+    if: github.ref_name == 'edgeone-test'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    env:
+      IDLE_STAGING_ACK: RUN_REVERSIBLE_STAGING_IDLE_TRIGGER
+      IDLE_STAGING_EXPECTED_SHA: ${{ github.sha }}
+      IDLE_STAGING_OUTPUT: /tmp/idle-code-qualification
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
+      - name: Verify actual independent maintenance through normal app APIs, no control-plane credential
+        run: node scripts/idle-staging-trigger-qualification.mjs code-run
+      - name: Preserve redacted runtime and test-account cleanup receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: idle-code-runtime-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/idle-code-qualification/code-run-result.json
+          if-no-files-found: ignore
+          retention-days: 7

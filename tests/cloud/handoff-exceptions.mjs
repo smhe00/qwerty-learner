@@ -1,4 +1,5 @@
 /* eslint-env node */
+import { fixtureCleanupPolicySafe, newlyCreatedFixtureProtected } from './handoff-cleanup-preflight.mjs'
 import assert from 'node:assert/strict'
 import crypto from 'node:crypto'
 import { fixture } from './session-handoff-fixtures.mjs'
@@ -105,10 +106,12 @@ export async function qualifyExceptionalHandoff({ fetchImpl = globalThis.fetch, 
     check('deployed fixture-only handoff capability', health.status === 200 &&
       health.data.capabilities?.includes(capability) && health.data.handoffProductionReady === false)
     const policy = await call('/account-policy')
-    check('executing global cleanup remains disabled', policy.status === 200 && policy.data.executionEnabled === false)
+    check('cleanup policy protects newly created handoff fixtures', policy.status === 200 && fixtureCleanupPolicySafe(health.data, policy.data))
     stage = 'register'
     const registered = await call('/auth/register', { method: 'POST', body: { username, password, deviceId: 'exception-A' } })
     check('new synthetic account registered under protection', registered.status === 201 && registered.guarded === capability)
+    check('server-issued fixture creation time is inside the180-day protected horizon',
+      newlyCreatedFixtureProtected(health.data, policy.data, registered.data.user))
     token = registered.data.token; accountId = registered.data.user.userId
     stage = 'incorrect-password'
     const before = await status(token)

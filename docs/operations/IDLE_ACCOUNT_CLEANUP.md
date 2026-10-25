@@ -10,7 +10,7 @@ Implementation: `cloud-functions/_shared/idle-accounts.js`,
   data. No extra 30-day grace period, email or SMS notification is promised.
   The policy is shown in registration/account views. Browser learning data,
   IndexedDB, writer leases, FSRS and local workspace ownership are untouched.
-- Existing accounts get a full 180 days from `IDLE_POLICY_START_AT`. A registered administrator is not required to activate the retention policy; the SMHE name is always protected.
+- Existing accounts get a full 180 days from the first automatic maintenance activation stored in Blob (or an explicitly configured legacy `IDLE_POLICY_START_AT`). A registered administrator is not required to activate the retention policy; the SMHE name is always protected.
   Creation time or a later authenticated activity day extends that deadline.
   Activity uses deterministic UTC day keys, conservatively rounded to the end
   of the day; concurrent writers cannot regress an activity timestamp. This
@@ -73,78 +73,54 @@ is not promised. A single slow storage call can exceed the soft budget.
 
 ## Server-only configuration
 
-### Console configuration without a new API Token (preferred)
+### Deploying the code activates maintenance
 
-No new Makers API Token or GitHub Secret is required by the deployed cleanup
-feature. The gateway constructs its ordinary Blob store using name/consistency;
-the platform supplies the existing Cloud Function storage authorization.
-The optional SDK workflows below need a token only to remotely inspect/edit
-console settings or run an external SDK sandbox. That automation choice is
-not a prerequisite for normal cleanup or console-managed activation.
+`cloud-functions/_shared/idle-deployment-policy.js` is the nonsecret release
+configuration. Its `enabled: true` makes the normal deployed gateway enable
+independent maintenance without a control-plane login, new API Token, GitHub
+Secret, console environment edit or external scheduler. Existing Cloud Function
+Blob authorization is reused, just as for account synchronization.
 
-The owner prefers no new token. Continue using the China console and public/
-ordinary authenticated app routes; do not require GitHub settings access:
+The first executing maintenance pass creates
+`maintenance/idle-policy/v1.json` with version1 and a fixed server UTC
+`startedAt`, using conditional creation and canonical read-back before scanning
+accounts. All preexisting accounts receive at least180 days from that floor.
+Later activity/creation can extend it. Later instances and code deployments
+read the same record instead of resetting the clock. The record contains no
+account/password/learning data and is separate for each project's existing Blob
+namespace. Do not remove/rewrite it during routine deployments.
 
-1. Open the actual project/environment bound to `t.smhe.cn`. Verify the domain
-   and its `edgeone-test` deployment branch in the console; never identify the
-   project solely by the old etest preset. Record the original values/absence
-   of only the two IDLE settings for exact rollback, keeping other secrets private.
-2. Configure `IDLE_POLICY_START_AT` to the fresh actual ISO UTC configuration
-   time and `IDLE_CLEANUP_EXECUTE=false`. Use the correct runtime environment
-   scope, then apply a normal deployment. Public `/api/account-policy` should
-   report `enabled=true`, `executionEnabled=false`, `idleDays=180`; an SDK ACK
-   is not needed and a successful console save alone is not runtime proof.
-3. Set `IDLE_CLEANUP_EXECUTE=true` on that test environment and redeploy for
-   the independent maintenance/browser verification. Exercise the existing
-   authenticated maintenance route with disposable ordinary test accounts,
-   preserve learning responsiveness/local records, and record exact source and
-   outcomes. Never age a real account or add a public clock override. Preserve
-   the existing deletion/recovery qualification requirements and coverage limits.
-4. Restore both original test settings (including absence where originally
-   absent), redeploy, and verify the effective runtime-off result. Only after
-   qualification and applicable release gates configure the actual production
-   project with a fresh fixed activation time and execution=true. Production
-   rollback retains its fixed start date and sets execution=false/redeploy.
+Login, public policy reads and administrator dry-run previews never initialize
+that record. Preview without a persisted floor conservatively retains all
+accounts and writes nothing. Initialization and account scanning run only in
+executing maintenance; failure/unconfirmed/corrupt metadata stops deletion and
+can be retried on later activity. Conditional creation is not claimed to be a
+global CAS lock; concurrent initial timestamps can conservatively extend
+retention but never precede the first activation attempt.
 
-This route needs an operator console session to save settings; lack of an API
-Token limits remote configuration automation, not the application's capability.
+To stop execution through code, change release `enabled` to false and deploy
+normally. The stored activation date is retained for a later re-enable. This
+code stop overrides even a legacy execution=true environment setting.
 
-### Optional China control-plane automation
+### Optional legacy overrides and administrator configuration
 
-The owner confirmed both `q.smhe.cn` and `t.smhe.cn` are managed in the
-EdgeOne China console: https://console.cloud.tencent.com/edgeone/makers .
-Verification clients MUST set Makers SDK `region: 'china'`; never use automatic
-fallback to the international endpoint to select current-site projects.
-An international project with the same repository/legacy preset is insufficient.
-
-If automated console management is chosen, the China verification workflows use dedicated repository secret
-`EDGEONE_CHINA_API_TOKEN`, containing a China-console Makers API Token with
-access to the actual target projects. Historical `EDGEONE_API_TOKEN` remains
-for historical international diagnostics/rollback. The previous China-only
-probe with that existing generic credential returned code109 (authentication
-rejected), while international reads succeeded. A China read must succeed
-before exact domain/environment discovery or writes.
-
-For this optional path, configure `EDGEONE_CHINA_API_TOKEN` using GitHub repository Settings → Secrets
-and variables → Actions, or an authorized private connection; never paste
-values into chat, logs or commits. The workflows bind it to their internal
-`EDGEONE_API_TOKEN` process variable; its value never leaves the runner.
-The agent cannot mint a China token from the existing international access.
-Changing the credential alone does not enable deletion.
-
-Historical SDK sandbox receipts and their explicit international rollback are
-kept as evidence. They do not qualify either current China-console site's
-configuration or deployed automatic cleanup behavior.
-
-Set these in EdgeOne Makers runtime environment variables, never `VITE_*`,
-frontend build settings, source control or the browser:
+No IDLE environment variables are required. Existing explicit overrides remain
+supported: an execution value other than exact `true` stops destructive work;
+an explicitly invalid/empty start date disables policy instead of silently
+falling back. Administrator password configuration remains server-only.
 
 | Variable | Value |
 | --- | --- |
-| `ADMIN_USER_ID` | Optional legacy/operator pin to the existing SMHE user ID; normally omit and let verified registration/login bind it |
-| `ADMIN_PASSWORD` | Administrator password, case-sensitive, 4–128 characters; missing/empty uses the owner-approved fixed bootstrap default; keep configured production values private |
-| `IDLE_POLICY_START_AT` | Fixed ISO UTC activation date; do not move it backwards to accelerate deletion |
-| `IDLE_CLEANUP_EXECUTE` | Default absent/false; set `true` only after deployment qualification |
+| `ADMIN_USER_ID` | Optional existing immutable SMHE ID pin; normally verified registration/login binds it |
+| `ADMIN_PASSWORD` | Case-sensitive administrator password,4–128 characters; missing/empty uses the owner-approved bootstrap default; keep configured values private |
+| `IDLE_POLICY_START_AT` | Optional legacy fixed ISO UTC floor; never backdate; omitted uses automatic persistent activation |
+| `IDLE_CLEANUP_EXECUTE` | Optional explicit stop/override; omitted follows release policy; only exact `true` permits work when present |
+
+Both sites are in the China console. Historical external SDK/token workflows
+are optional investigation tools, not a runtime or release requirement. Their
+old global-project sandbox evidence and China authentication failures remain
+in the task report; they do not establish the owner's international-site usage.
+No owner console work should be requested to enable this code-managed path.
 
 Node Cloud Functions read these four feature settings (the two ADMIN and two
 IDLE keys) from `process.env`, with explicitly supplied context values taking
@@ -153,14 +129,20 @@ access also supports provider function bundling. Existing storage, CORS and
 sync-suspension settings keep their previous source; this feature does not
 silently activate unrelated Node configuration.
 
-Project environment edits require a new deployment before runtime changes.
-An SDK write ACK or control-plane readback alone does not certify activation.
-`GET /api/account-policy` keeps `enabled` as the valid-start-date indicator and
-adds `executionEnabled` for effective destructive execution permission. Only
-the latter becoming true, together with the exact deployed source and real
-maintenance behavior, qualifies the running feature. No password or date value
-is returned. A rollback also requires redeployment; retain the fixed date and
-set execution=false, then verify the API and authenticated maintenance=disabled.
+Normal code deployment loads the release policy. Optional environment edits
+also require redeployment. `GET /api/account-policy` reports policy permission
+with `enabled` and effective destructive permission with `executionEnabled`;
+these booleans are not proof that a maintenance pass has completed. Health
+capability `idle-auto-policy-v1` identifies this code-managed implementation.
+Public reads never expose the stored start date or trigger initialization.
+
+The no-control-plane staging workflow `idle-code-qualification.yml` verifies
+an exact normally deployed SHA, real login/learning while maintenance is held,
+the independent real maintenance response, preserved local/session state and
+verified deletion of only its disposable test account. It consumes no Makers
+API Token and changes no console settings. Preserve same-SHA Pages/etest/
+release gates before production promotion and all interruption/deletion safety
+requirements. Do not age customer accounts to demonstrate cleanup.
 
 The isolated real SDK qualification (run40159814798) passed8/8 and confirmed
 all69 tracked fixture keys absent, with no production namespace touched.

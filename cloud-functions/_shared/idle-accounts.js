@@ -7,6 +7,7 @@ export const DAY_MS = 86400000
 export const IDLE_DAYS = 180
 // A fence outlives any Maker request. A later activity-triggered pass deletes.
 export const DRAIN_MS = DAY_MS
+export const IDLE_ACTIVATION_KEY = 'maintenance/idle-policy/v1.json'
 const HASH = /^[a-f0-9]{64}$/
 const USER = /^[a-f0-9]{32}$/
 class BudgetExceeded extends Error {}
@@ -17,10 +18,14 @@ export function isAdministrator(identity, adminUserId) {
     identity?.normalizedUsername === 'smhe' && identity?.status === 'active'
 }
 
-export function createIdleAccounts({ store, adminUserId = '', startAt, execute = false,
+export function createIdleAccounts({ store, adminUserId = '', startAt, automaticStart = false, execute = false,
   clock = Date.now } = {}) {
   const start = Date.parse(startAt || '')
-  const configured = Number.isFinite(start)
+  const automatic = automaticStart && startAt === undefined
+  const configured = automatic || Number.isFinite(start)
+  let activationChecked = false
+  let persistedStart = null
+  let previewStart = null
   let deadline = Infinity
   function checkBudget() { if (clock() >= deadline) throw new BudgetExceeded() }
   const get = key => { checkBudget(); return withRetry(() => store.get(key, { type: 'json', consistency: 'strong' })) }
@@ -34,6 +39,38 @@ export function createIdleAccounts({ store, adminUserId = '', startAt, execute =
       throw new Error('Out-of-scope Blob listing')
     }
     return result.blobs
+  }
+
+  function activationTime(record) {
+    const time = Date.parse(record?.startedAt || '')
+    if (record?.version !== 1 || typeof record.startedAt !== 'string' ||
+        !Number.isFinite(time) || time > clock() + DAY_MS) {
+      throw new Error('Invalid idle activation record')
+    }
+    return time
+  }
+  async function activationFloor(initialize = false) {
+    if (!automatic) return start
+    if (persistedStart !== null) return persistedStart
+    if (!activationChecked || initialize) {
+      const record = await get(IDLE_ACTIVATION_KEY)
+      activationChecked = true
+      if (record !== null) return (persistedStart = activationTime(record))
+    }
+    // Preview remains read-only. Initialization never runs in touch/login or
+    // account-policy: only an executing maintenance pass persists the floor.
+    if (!initialize) return (previewStart ??= clock())
+    const candidate = { version: 1, startedAt: new Date(clock()).toISOString() }
+    checkBudget()
+    try {
+      await withRetry(() => store.setJSON(IDLE_ACTIVATION_KEY, candidate, { onlyIfNew: true }))
+    } catch {
+      // Another initializer/lost ACK may have committed. Never erase or blindly
+      // replace an existing record; require a canonical read before scanning.
+    }
+    const confirmed = await get(IDLE_ACTIVATION_KEY)
+    if (confirmed === null) throw new Error('Idle activation write not confirmed')
+    return (persistedStart = activationTime(confirmed))
   }
   const root = id => `maintenance/idle/v1/${id}/`
   const identityKey = hash => `accounts/${hash}/identity.json`
@@ -49,7 +86,7 @@ export function createIdleAccounts({ store, adminUserId = '', startAt, execute =
 
   async function snapshot(identity) {
     validate(identity)
-    let last = Math.max(start, Date.parse(identity.createdAt))
+    let last = Math.max(await activationFloor(), Date.parse(identity.createdAt))
     if (!Number.isFinite(last)) throw new Error('Invalid account timestamp')
     for (const blob of await list(root(identity.userId) + 'days/')) {
       const match = /\/days\/(\d{4}-\d{2}-\d{2})\.json$/.exec(blob.key)
@@ -219,6 +256,7 @@ export function createIdleAccounts({ store, adminUserId = '', startAt, execute =
     const previousDeadline = deadline
     deadline = Math.min(deadline, clock() + budgetMs)
     try {
+      await activationFloor(!dryRun)
       const keys = (await list('accounts/')).filter(blob =>
         /^accounts\/[a-f0-9]{64}\/identity\.json$/.test(blob.key))
         .map(blob => blob.key.split('/')[1]).sort().filter(hash => hash > cursor)
@@ -285,5 +323,6 @@ export function createIdleAccounts({ store, adminUserId = '', startAt, execute =
     return { status, counts }
   }
 
-  return { touch, beforeRegister, requireAdmin, inspect, usage, run, runDaily, configured }
+  return { touch, beforeRegister, requireAdmin, inspect, usage, run, runDaily, configured,
+    executionEnabled: configured && execute }
 }

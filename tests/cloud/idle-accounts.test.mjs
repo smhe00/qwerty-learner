@@ -209,7 +209,7 @@ test('activity guard runs only after valid password/session and registration gua
   assert.equal(touched.length, 3)
 })
 
-test('real gateway requires live owner session, pinned SMHE and separate scheduler credential', async () => {
+test('real gateway requires live owner session, pinned SMHE and honors an explicit runtime stop', async () => {
   const store = new Store()
   globalThis.__idleRouteStore = store
   const backend = createBackendService({ storage: createEdgeOneBlobStorage(store) })
@@ -223,7 +223,7 @@ test('real gateway requires live owner session, pinned SMHE and separate schedul
     } }] })
   const { onRequest } = await import('data:text/javascript;base64,' + Buffer.from(built.outputFiles[0].text).toString('base64'))
   const env = { ADMIN_USER_ID: admin.user.userId, IDLE_POLICY_START_AT: new Date().toISOString(),
-    ADMIN_PASSWORD: 'environment-only-password' }
+    ADMIN_PASSWORD: 'environment-only-password', IDLE_CLEANUP_EXECUTE: 'false' }
   async function call(path, token, method = 'GET', extraEnv = {}, body = '{"dryRun":false}') {
     const headers = token ? { authorization: 'Bearer ' + token } : {}
     const response = await onRequest({ clientIp: '127.0.0.1', env: { ...env, ...extraEnv },

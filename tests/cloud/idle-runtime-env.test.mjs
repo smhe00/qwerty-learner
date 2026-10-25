@@ -34,6 +34,7 @@ function setup(t) {
     }
     delete globalThis.__idleEnvironmentStore
   })
+  return objects
 }
 async function call(env, path = '/account-policy', input) {
   const response = await onRequest({ clientIp: '127.0.0.1', ...(env === undefined ? {} : { env }),
@@ -64,10 +65,11 @@ test('context settings override Node, including explicit empty/false values', as
   assert.equal((await call({ IDLE_CLEANUP_EXECUTE: 'false' })).body.executionEnabled, false)
   assert.equal((await call({ IDLE_CLEANUP_EXECUTE: undefined })).body.executionEnabled, true)
 })
-test('public execution state remains off without valid date or exact true value', async t => {
+test('deployment enables automatic policy without console settings; explicit invalid overrides remain off', async t => {
   setup(t)
   process.env.IDLE_CLEANUP_EXECUTE = 'true'
-  assert.equal((await call({})).body.executionEnabled, false)
+  assert.equal((await call({})).body.executionEnabled, true)
+  assert.equal((await call({ IDLE_POLICY_START_AT: 'invalid' })).body.executionEnabled, false)
   process.env.IDLE_POLICY_START_AT = start
   for (const flag of ['false', 'TRUE', '1', '']) {
     process.env.IDLE_CLEANUP_EXECUTE = flag
@@ -82,6 +84,24 @@ test('SMHE enrollment uses the actual Node password and never returns its conten
   const signed = await call({}, '/auth/register', { username: 'SMHE', password: secret })
   assert.equal(signed.status, 201)
   assert.equal(JSON.stringify(signed).includes(secret), false)
+})
+test('deployed gateway self-initializes only in ordinary authenticated maintenance without any console configuration', async t => {
+  const objects = setup(t)
+  const policy = await call({})
+  assert.deepEqual(policy.body, { ok: true, enabled: true, executionEnabled: true, idleDays: 180 })
+  const activationKey = 'maintenance/idle-policy/v1.json'
+  assert.equal(objects.has(activationKey), false)
+  const signed = await call({}, '/auth/register', { username: 'automatic-fixture', password: 'synthetic-automatic-password' })
+  assert.equal(signed.status, 201)
+  assert.equal(objects.has(activationKey), false, 'Registration must not bootstrap project activation')
+  const response = await onRequest({ env: {}, clientIp: '127.0.0.1', request: new Request('https://example.test/api/maintenance/idle', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + signed.body.token },
+  }) })
+  assert.equal(response.status, 200)
+  const result = await response.json()
+  assert.equal(result.status, 'complete')
+  assert.equal(result.counts.deleted || 0, 0)
+  assert.ok(Number.isFinite(Date.parse(objects.get(activationKey).startedAt)))
 })
 test('environment resolution does not mutate either provider object', () => {
   const node = Object.freeze({ ADMIN_PASSWORD: secret, IDLE_CLEANUP_EXECUTE: 'true' })

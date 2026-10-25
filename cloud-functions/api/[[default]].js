@@ -11,6 +11,7 @@ import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
 import { circleAccountHasActivity, createCircleOpenGateway } from '../_shared/circle/open-gateway.js'
 import { AppError, createBackendService } from '../_shared/core.js'
 import { runtimeEnvironment } from '../_shared/runtime-environment.js'
+import { idleDeploymentOptions } from '../_shared/idle-deployment-policy.js'
 import { isS2WriteEnabled } from '../_shared/s2-write-gate.js'
 import { createEdgeOneBlobStorage } from '../_shared/storage/edgeone-blob.js'
 import { commitV4Upload, receiveV4UploadPart } from '../_shared/v4-http-parts.js'
@@ -323,6 +324,7 @@ async function onUncoordinatedRequest(context) {
             'backup-v3-explicit-migration-only',
             'account-delete-v1',
             'idle-runtime-policy-v1',
+            'idle-auto-policy-v1',
             'duplicate-register-protection-v1',
             // Distinguishes a new backend runtime from a new static build.
             'etest-single-session-relay-v1',
@@ -344,8 +346,7 @@ async function onUncoordinatedRequest(context) {
     }))
     const idle = createIdleAccounts({
       store: getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }),
-      adminUserId: administrator.userId, startAt: env.IDLE_POLICY_START_AT,
-      execute: env.IDLE_CLEANUP_EXECUTE === 'true',
+      adminUserId: administrator.userId, ...idleDeploymentOptions(env),
     })
     const service = makeService(env, storage, idle, administrator, diagnostics)
     if (path === '/maintenance/idle' && request.method === 'POST') {
@@ -357,7 +358,7 @@ async function onUncoordinatedRequest(context) {
     }
     if (path === '/account-policy' && request.method === 'GET') {
       return json({ ok: true, enabled: idle.configured,
-        executionEnabled: idle.configured && env.IDLE_CLEANUP_EXECUTE === 'true',
+        executionEnabled: idle.executionEnabled,
         idleDays: 180 }, 200, cors)
     }
     if (path === '/admin/access' && request.method === 'GET') {

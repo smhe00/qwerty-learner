@@ -1,5 +1,5 @@
 /* eslint-env node */
-import test, { before, after } from 'node:test'
+import test, { after, before } from 'node:test'
 import assert from 'node:assert/strict'
 import crypto from 'node:crypto'
 import { mkdtemp, rm } from 'node:fs/promises'
@@ -206,7 +206,9 @@ test('actual HTTP gateway: an unreadable classification body cannot bypass the g
   }
   const result = await onRequest({ request, clientIp: '192.0.2.200', env: {} })
   assert.equal(result.status, 503)
-  assert.equal((await result.json()).error, 'handoff_auth_body_unavailable')
+  const failure = await result.json()
+  assert.equal(failure.error, 'request_body_unavailable')
+  assert.deepEqual(failure.details, { stage: 'request-body', safeToRetry: true })
   assert.equal(reads, 1)
   // A hypothetical second receive would succeed, but must never bypass the guard.
   assert.equal((await h.call('/auth/me', { token: h.first.token })).status, 200)

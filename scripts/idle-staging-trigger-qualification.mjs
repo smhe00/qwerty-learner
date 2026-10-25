@@ -186,8 +186,23 @@ async function browserJourney() {
 
 const mode = process.argv[2]
 try {
-  assert.equal(process.env.GITHUB_REF_NAME, 'product/main')
+  assert.equal(process.env.GITHUB_REF_NAME, mode === 'code-run' ? 'edgeone-test' : 'product/main')
   assert.equal(process.env.IDLE_STAGING_ACK, 'RUN_REVERSIBLE_STAGING_IDLE_TRIGGER')
+  if (mode === 'code-run') {
+    // Normal staged code deployment owns activation. This path never loads a
+    // control-plane SDK, reads an API token or changes console settings.
+    phase = 'wait-code-managed-staging-deployment'
+    await waitSource(process.env.IDLE_STAGING_EXPECTED_SHA)
+    const health = await api('/api/health')
+    assert.equal(health.status, 200)
+    assert.ok(health.body.capabilities.includes('idle-auto-policy-v1'))
+    await waitExecution(true)
+    report.controlPlaneCredentialRequired = false
+    report.configurationManagedBy = 'deployed-code'
+    report.runtimeExecutionObserved = true
+    await browserJourney()
+    report.verdict = 'PASS'
+  } else {
   const projectId = process.env.IDLE_QUALIFICATION_PROJECT_ID
   assertStagingProject(projectId)
   assert.equal(process.env.IDLE_QUALIFICATION_PROJECT_VERIFIED, 'EXACT_ETEST_DOMAIN')
@@ -225,6 +240,7 @@ try {
       await disabledProbe()
     } else assert.equal(mode, 'restore')
     report.verdict = 'PASS'
+  }
   }
 } catch {
   report.verdict = 'FAIL'

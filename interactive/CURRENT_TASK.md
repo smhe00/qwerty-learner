@@ -4,12 +4,30 @@ task_id: 'IDLE-ACCOUNT-ACTIVATION-20261025'
 task_file: 'interactive/tasks/IDLE-ACCOUNT-ACTIVATION-20261025.md'
 report_file: 'interactive/reports/IDLE-ACCOUNT-ACTIVATION-20261025-report.md'
 target_branch: 'product/main'
-status: 'BLOCKED'
+status: 'IN_PROGRESS'
 executor: 'Codex (single activation executor)'
 claim_base_commit: 'c74a59b8f9c1972a2c159a082b8fc04519cfa2c8'
-release_to_master: false
+release_to_master: true
 runtime_activation_authorized: true
 ---
+
+Latest explicit instruction: modify CODE so cleanup runs after deployment;
+do not require owner console changes, API tokens or new secrets. This supersedes
+both prior SDK-only and manual-console plans, including our earlier assumption
+that activation must never be source-managed. Existing release authorization
+persists; source activation still requires same-SHA Pages/etest/release gates.
+Implementation base839957b8 preserves upstream handoff/learning changes.
+New release policy enables automatic mode; first executing maintenance saves
+per-project activation at maintenance/idle-policy/v1.json via existing Blob
+authorization and canonical confirmation. Preview/login do not bootstrap it;
+restarts/deployments reuse it. Legacy explicit env stop is honored, source
+enabled=false stops even if env=true. Core deletion/fences/admin protections
+unchanged. Actual code-only staged journey added, requiring no control-plane SDK.
+Next: finish focused/full relevant tests, build/static checks, update docs,
+commit/push and perform normal staged deployment/real journey; then exact-SHA
+release gates before master. No owner/real-account aging or public clock API.
+
+Historical checkpoint below is superseded as a workflow requirement:
 
 Latest owner preference: do NOT require a new API Token. Resume basef91a4ac6
 preserves independent session-handoff/mobile/learning work. The new control-

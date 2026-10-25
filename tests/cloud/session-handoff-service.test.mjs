@@ -5,7 +5,7 @@ import { createBackendService } from '../../cloud-functions/_shared/core.js'
 import { createGuardedBackendService } from '../../cloud-functions/_shared/session-handoff-service.js'
 import { createSessionHandoffBarrier } from '../../cloud-functions/_shared/session-handoff-barrier.js'
 import { AtomicTestStore, deferred } from './session-handoff-test-store.mjs'
-import { harness, fixture, PausableBlob } from './session-handoff-fixtures.mjs'
+import { PausableBlob, fixture, harness } from './session-handoff-fixtures.mjs'
 import { createEdgeOneBlobStorage } from '../../cloud-functions/_shared/storage/edgeone-blob.js'
 
 const code = value => error => error.code === value

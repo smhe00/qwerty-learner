@@ -7,7 +7,7 @@ import { checkAuthRateLimit } from './auth-rate-limit.js'
 import { runtimeEnvironment } from './runtime-environment.js'
 import { BeforeMutationError, HandoffError } from './session-handoff-barrier.js'
 import { createBlobHandoffBarrier } from './session-handoff-blob.js'
-import { getStore, rawHandoffStore, runHandoffScope, markHandoffRateLimited } from './session-handoff-context.js'
+import { getStore, markHandoffRateLimited, rawHandoffStore, runHandoffScope } from './session-handoff-context.js'
 
 // NEW disposable accounts only. No Origin/Host/env/header is an enable switch:
 // Maker rewrites Request.url and different domains may share one namespace.
@@ -51,7 +51,10 @@ export async function withHandoffGateway(context, dispatch) {
       catch {
         // Unknown classification must NOT fall through to the unguarded login.
         // A second body read could succeed and otherwise bypass the barrier.
-        throw new AppError(503, 'handoff_auth_body_unavailable', 'Unable to classify authentication request')
+        // Classification has not entered admission/account business. Preserve
+        // the existing, narrowly scoped one-fresh-request retry certificate.
+        throw new AppError(503, 'request_body_unavailable', 'Unable to receive request content; please retry',
+          { stage: 'request-body', safeToRetry: true })
       }
       if (bytes.byteLength > 64 * 1024) {
         throw new AppError(413, 'request_too_large', 'Authentication request exceeds limit')
@@ -138,6 +141,12 @@ export async function withHandoffGateway(context, dispatch) {
     // Never silently fall back to the old router after selection. Unknown
     // credentials/Blob outcome can only fail the request, not grant takeover.
     if (error instanceof AppError || error instanceof HandoffError) {
+      if (error.code === 'request_body_unavailable') {
+        const rawId = context.uuid
+        const requestId = typeof rawId === 'string' && /^[A-Za-z0-9-]{1,128}$/.test(rawId) ? rawId : undefined
+        return response({ ok: false, error: error.code, message: error.message,
+          details: { stage: 'request-body', safeToRetry: true }, requestId }, error.statusCode)
+      }
       return response({ ok: false, error: error.code, message: error.message }, error.statusCode)
     }
     return response({ ok: false, error: 'handoff_state_unavailable',

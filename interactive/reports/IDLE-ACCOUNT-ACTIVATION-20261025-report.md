@@ -1,5 +1,5 @@
 ---
-status: BLOCKED
+status: IN_PROGRESS
 executor: Codex (single activation executor)
 base_commit: c74a59b8f9c1972a2c159a082b8fc04519cfa2c8
 runtime_activation_authorized: true
@@ -8,6 +8,67 @@ staging_test_metadata_restored: true
 ---
 
 # Production idle activation preflight
+
+## Current implementation — code-managed automatic activation
+
+Owner explicitly corrected the task: modify code so it runs, rather than
+requiring owner/agent console access. This supersedes the old manual-console
+and SDK-secret plans below, including our self-imposed source-default restriction.
+Implementation base839957b8 preserves the independent handoff/Learn/mobile work.
+
+Added nonsecret idle-deployment-policy.js, default enabled. No IDLE environment
+variables, Makers SDK token, console login or scheduler is needed. First
+executing independent maintenance conditionally creates and canonically
+confirms maintenance/idle-policy/v1.json (version1/fixed UTC startedAt), giving
+old accounts the full180-day floor. Later processes/deployments reuse it.
+Login/activity and policy reads do not initialize it; previews stay read-only
+and conservatively retain accounts before initialization. Failed/corrupt or
+unconfirmed metadata holds deletion. Existing configured date/explicit stop
+overrides are honored; source enabled=false also stops when old env=true.
+Core fences, identity-last deletion, administrator/SMHE protection, Circle
+holds, budget/cursor/idempotence and local-data preservation remain in place.
+Removed the temporary env ABI diagnostic route and its diagnostic-only tests.
+
+Added a code-run staging verification mode and workflow with NO control-plane
+SDK/credential/configuration operations. It waits for the exact deployed code,
+checks idle-auto-policy-v1/effective permission, then exercises real login and
+learning while the independent maintenance request is held, actual maintenance
+response, preserved local/session state, and deletion of only its fresh fixture.
+
+Validation before normal staging promotion:
+- Actual Node20.18.0 backend contracts PASS802/802, no skips,16.55s.
+- Scoped/full cloud JS/MJS lint, workflow actionlint and diff whitespace PASS.
+- Frontend build PASS19.71s with existing chunk warnings; no TS source changed.
+- Relevant browser checks PASS2/2,5.7s with Chromium120. Initial attempt could
+  not launch missing Chrome; installed pinned Playwright Chromium in /tmp and
+  reran the SAME assertions, no retry/config weakening.
+- New activation contracts cover full180-day boundary,181st-day deletion,
+  restart/date persistence, read-only preview, bootstrap failure, lost ACK,
+  concurrent initialization, code/environment stop, SMHE and later activity.
+- Gateway contract proves no env/token setup, no policy bootstrap in signup,
+  followed by real-handler authenticated maintenance that initializes safely.
+
+Integration findings preserved: first full run had4 failures. Two pre-business
+auth-body failures were reproduced on isolated untouched base839957b8 (15/17);
+the fixture handoff classifier had replaced the previously qualified typed
+request_body_unavailable response. Restored that exact PRE-business certificate
+and sanitized request ID, without fallback reads/admission or unknown-result
+retries; the negative handoff test still proves the guard cannot be bypassed.
+The other2 handoff harnesses assumed cleanup always off. They now require
+exact180-day/code capability permission AND server-issued newly created fixture
+timestamps; old/unknown/missing proof still refuses qualification. Added the
+negative preflight contracts instead of skipping tests. Existing7 member-import
+sort diagnostics were corrected without changing behavior. Follow-up30 focused
+compatibility tests and the final802/802 full suite pass.
+
+Next: normal source push/staging promotion and actual credential-free runtime
+qualification, plus same-SHA Pages/etest/release checks. No actual live outcome
+or production activation is claimed yet. The separate SESSION-HANDOFF task
+explicitly says no master release for its pilot; inspect that scope before
+promoting a combined main candidate to production rather than silently shipping
+unapproved unrelated runtime changes. No renewed cleanup approval is needed.
+
+Historical investigations below are retained and superseded as current steps.
 
 ## Current checkpoint — blocked at live project configuration
 
