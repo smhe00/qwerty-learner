@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     env:
-      IDLE_MAKERS_SDK_DIR: ${{ runner.temp }}/idle-makers-sdk
-      IDLE_STAGING_OUTPUT: ${{ runner.temp }}/idle-staging-trigger
+      IDLE_MAKERS_SDK_DIR: /tmp/idle-makers-sdk
+      IDLE_STAGING_OUTPUT: /tmp/idle-staging-trigger
       IDLE_STAGING_ACK: RUN_REVERSIBLE_STAGING_IDLE_TRIGGER
       IDLE_STAGING_EXPECTED_SHA: 5528f79c700548e174fa153b96ff4599d7326aee
       IDLE_QUALIFICATION_PROJECT_VERIFIED: EXACT_ETEST_DOMAIN
@@ -52,7 +52,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: idle-staging-rollback-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/idle-staging-trigger/rollback-settings.json
+          path: ${{ env.IDLE_STAGING_OUTPUT }}/rollback-settings.json
           if-no-files-found: error
           retention-days: 7
       - name: Temporarily configure staging, verify the real browser trigger, restore
@@ -72,7 +72,7 @@ jobs:
         with:
           name: idle-staging-trigger-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            ${{ runner.temp }}/idle-staging-trigger/*result.json
+            ${{ env.IDLE_STAGING_OUTPUT }}/*result.json
             ${{ runner.temp }}/idle-staging-trigger-discovery.json
           if-no-files-found: ignore
           retention-days: 7

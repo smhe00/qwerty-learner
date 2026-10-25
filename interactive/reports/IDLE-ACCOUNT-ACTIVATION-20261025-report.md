@@ -122,3 +122,13 @@ No production changes, public test routes or Maker deployment. Settings/rollback
 guards locally PASS7/7: denied prod IDs, no unrelated or secret setting in
 snapshot, exact restore/absent-key deletion, lost ACK readback, concurrent-change
 refusal, tamper/backdate rejection. No source/application changes are needed.
+
+Staging-trigger candidate54cd45d8772756fa62e7d6eebd05e344807a40cc did not start:
+run40161005208 failed workflow validation with zero jobs. Job-level env does not
+permit runner.temp context. No staging settings or test accounts were touched.
+Corrected only temporary-directory declarations/artifact references. Installed
+official actionlint1.7.12 in /tmp after checksum verification; it reproduces
+both original invalid-context diagnostics, and both corrected qualification
+workflows pass. Original YAML parsing alone was insufficient. Node20 native
+Playwright/retry-policy imports and7/7 setting guards already passed. Requalify
+this actual staging path with the fixed workflow; do not relabel the failed run.
