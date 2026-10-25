@@ -11,6 +11,19 @@ release_to_master: false
 runtime_activation_authorized: true
 ---
 
+Latest owner preference: do NOT require a new API Token. Resume basef91a4ac6
+preserves independent session-handoff/mobile/learning work. The new control-
+plane token was an automation choice, not a runtime dependency. Gateway Blob
+access uses existing platform authorization. Prefer manual China-console
+configuration of the two IDLE settings plus ordinary app-route/browser
+verification. Operations doc now provides exact preparation/on/rollback steps.
+Status remains BLOCKED only pending that actual test configuration/verification,
+not pending a mandatory GitHub Secret. Do not ask the user to create one again.
+API read success does not establish the owner's historical console usage;
+both sites are China-console sites as the owner confirmed.
+
+Historical SDK-path checkpoint (superseded as a required access method):
+
 Owner already authorized activation and verification. Do not ask again.
 Production NOT enabled: q.smhe.cn/master5528f79c, policy.enabled=false.
 Staging t.smhe.cn/edgeone-test5fa7574, policy disabled; read-only ABI probe

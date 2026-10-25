@@ -11,6 +11,30 @@ staging_test_metadata_restored: true
 
 ## Current checkpoint — blocked at live project configuration
 
+Latest owner direction: use no new API Token. The previous responses incorrectly
+presented our chosen remote console/SDK automation as a feature prerequisite.
+Runtime source at resumed basef91a4ac6 confirms createIdleAccounts receives
+getStore({name,consistency}) and two IDLE settings; the handoff wrapper passes
+those options to the native Blob SDK, using existing platform authorization.
+No new control-plane token is read by the application's cleanup path. Existing
+global-endpoint API success does not prove the owner previously used that site.
+
+Documented the preferred no-token console route: identify actual t.smhe.cn
+project/environment, snapshot just two IDLE values, fresh UTC date/execute=false,
+normal deployment/runtime check, staging execution=true for ordinary app/browser
+verification, exact setting restoration/redeployment/runtime-off proof, then
+qualified production activation. No deletion/recovery or release gate waived.
+The existing SDK workflows remain optional automation; do not demand their
+credential as a prerequisite for the console route. No new public test API,
+administrator password read or customer record mutation is introduced.
+Only operational/task documentation changed in this continuation; no tests
+needed for these instructions. Scoped whitespace/source-reference review done.
+The configuration and actual enabled-path verification are still outstanding;
+no claim of completed no-token browser qualification or production activation.
+
+Historical SDK-only access investigation follows; its evidence is retained,
+but the credential requirement below is superseded as the sole path forward.
+
 Owner clarification: BOTH sites are managed in the EdgeOne CHINA console.
 Resumed execution base969077f2 includes independent mobile UI commits; safely
 fast-forwarded and preserved. New verification clients now explicitly pin

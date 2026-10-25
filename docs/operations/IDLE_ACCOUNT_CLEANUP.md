@@ -73,7 +73,43 @@ is not promised. A single slow storage call can exceed the soft budget.
 
 ## Server-only configuration
 
-### China control-plane access
+### Console configuration without a new API Token (preferred)
+
+No new Makers API Token or GitHub Secret is required by the deployed cleanup
+feature. The gateway constructs its ordinary Blob store using name/consistency;
+the platform supplies the existing Cloud Function storage authorization.
+The optional SDK workflows below need a token only to remotely inspect/edit
+console settings or run an external SDK sandbox. That automation choice is
+not a prerequisite for normal cleanup or console-managed activation.
+
+The owner prefers no new token. Continue using the China console and public/
+ordinary authenticated app routes; do not require GitHub settings access:
+
+1. Open the actual project/environment bound to `t.smhe.cn`. Verify the domain
+   and its `edgeone-test` deployment branch in the console; never identify the
+   project solely by the old etest preset. Record the original values/absence
+   of only the two IDLE settings for exact rollback, keeping other secrets private.
+2. Configure `IDLE_POLICY_START_AT` to the fresh actual ISO UTC configuration
+   time and `IDLE_CLEANUP_EXECUTE=false`. Use the correct runtime environment
+   scope, then apply a normal deployment. Public `/api/account-policy` should
+   report `enabled=true`, `executionEnabled=false`, `idleDays=180`; an SDK ACK
+   is not needed and a successful console save alone is not runtime proof.
+3. Set `IDLE_CLEANUP_EXECUTE=true` on that test environment and redeploy for
+   the independent maintenance/browser verification. Exercise the existing
+   authenticated maintenance route with disposable ordinary test accounts,
+   preserve learning responsiveness/local records, and record exact source and
+   outcomes. Never age a real account or add a public clock override. Preserve
+   the existing deletion/recovery qualification requirements and coverage limits.
+4. Restore both original test settings (including absence where originally
+   absent), redeploy, and verify the effective runtime-off result. Only after
+   qualification and applicable release gates configure the actual production
+   project with a fresh fixed activation time and execution=true. Production
+   rollback retains its fixed start date and sets execution=false/redeploy.
+
+This route needs an operator console session to save settings; lack of an API
+Token limits remote configuration automation, not the application's capability.
+
+### Optional China control-plane automation
 
 The owner confirmed both `q.smhe.cn` and `t.smhe.cn` are managed in the
 EdgeOne China console: https://console.cloud.tencent.com/edgeone/makers .
@@ -81,7 +117,7 @@ Verification clients MUST set Makers SDK `region: 'china'`; never use automatic
 fallback to the international endpoint to select current-site projects.
 An international project with the same repository/legacy preset is insufficient.
 
-The China verification workflows use dedicated repository secret
+If automated console management is chosen, the China verification workflows use dedicated repository secret
 `EDGEONE_CHINA_API_TOKEN`, containing a China-console Makers API Token with
 access to the actual target projects. Historical `EDGEONE_API_TOKEN` remains
 for historical international diagnostics/rollback. The previous China-only
@@ -89,7 +125,7 @@ probe with that existing generic credential returned code109 (authentication
 rejected), while international reads succeeded. A China read must succeed
 before exact domain/environment discovery or writes.
 
-Configure `EDGEONE_CHINA_API_TOKEN` using GitHub repository Settings → Secrets
+For this optional path, configure `EDGEONE_CHINA_API_TOKEN` using GitHub repository Settings → Secrets
 and variables → Actions, or an authorized private connection; never paste
 values into chat, logs or commits. The workflows bind it to their internal
 `EDGEONE_API_TOKEN` process variable; its value never leaves the runner.

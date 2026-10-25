@@ -36,40 +36,37 @@ release-ready gates. This phase does not skip them.
   ordinary staging browser/V4 jobs passing do not prove that path. Preserve
   release-readiness failure40166505577 and earlier failed attempts.
 
-## Resume steps
+## Resume steps — preferred without a new API Token
 
-1. Owner confirmed BOTH sites are on EdgeOne CHINA. Pin region=china for
-   verification and do not auto-fallback to global. Resolve actual project/
-   environment using a privately configured China-console credential; the
-   existing CI token returned109/authentication error. No renewed approval or
-   region question is needed; never request credential values in chat.
-   Dedicated China workflow credential: repository secret
-   EDGEONE_CHINA_API_TOKEN. Historical international EDGEONE_API_TOKEN is kept
-   separate. China-only CI40171181067 reproduced109, guards PASS12/12,
-   Blob writes SKIPPED. A missing new credential must fail before discovery.
-   Latest dedicated-credential run40171408799 confirms the China secret is
-   unavailable to the runner: credential-check/ci-credential-missing. Guards
-   PASS12/12; real Blob/config/deployment operations never started. Configure
-   EDGEONE_CHINA_API_TOKEN privately via repository Actions Secrets first.
-   Raw project reads MUST filter by ID and verify returned ID. SDK-normalized
-   projects omit domain bindings; consult DescribePagesEnvironments as needed.
-2. Re-verify exact t.smhe.cn target before any new settings change. Current
-   fail-closed discovery intentionally refuses old etest.edgeone.dev alone.
-   Support actual environment schema only after inspecting it, with guards.
-3. Snapshot exact settings/scopes; use fresh UTC activation floor/execute=true
-   only on proven staging. Rebuild normally. Test independent maintenance while
-   login/learning remain usable, no customer deletions. Restore exact settings
-   using confirmed CLI object deletion when originally absent; verify runtime
-   off after normal redeployment. Keep all failure evidence.
-4. Only after live qualification configure correct production runtime
-   IDLE_POLICY_START_AT=fixed actual UTC activation time and
-   IDLE_CLEANUP_EXECUTE=true. Never backdate. Existing accounts get the180-day
-   floor; later valid activity extends it. Administrator/SMHE remains protected;
-   no grace period/cron/local-data deletion. Verify effective execution state,
-   admin dry-run through authorized normal access, no currently eligible accounts
-   and login/learning isolation. No owner password guessing or session revocation.
-5. Record redacted results. Rollback is execution=false retaining activation
-   date. Remove temporary diagnostic route after diagnosis. Keep task resumable.
+Owner questioned the new token requirement and prefers avoiding it. The token
+is needed only by our optional remote console/SDK automation, not by cleanup
+runtime. Do not ask for a new GitHub Secret as a prerequisite. Both sites are
+on the China console; earlier global API observations do not establish the
+owner's historical use of the international site.
 
-See the report's current checkpoint first; chronological failed hypotheses and
-superseded access/configuration assumptions are retained there for audit.
+1. Use the owner's ordinary China console session to identify the actual
+   t.smhe.cn project/environment and deployment branch. Follow the concrete
+   console-only steps in docs/operations/IDLE_ACCOUNT_CLEANUP.md. Record original
+   values/absence of only the two IDLE settings; keep other secrets private.
+2. Prepare a fresh actual UTC activation floor with execute=false on staging,
+   normal redeployment, and anonymous source/policy checks. Then enable staging
+   execution for independent authenticated maintenance/browser qualification.
+   No new control-plane token, public clock API, aged customer fixture or owner
+   password request. Existing Blob access uses the platform's authorization.
+3. Test the actual deployed enabled path, responsiveness and recovery boundaries;
+   preserve all existing qualification requirements and coverage limitations.
+   Restore exact test settings including absence, redeploy, and prove runtime
+   off. Console/operator changes need no new permission; activation is authorized.
+4. After qualification and applicable same-SHA release gates, configure actual
+   production with fixed fresh UTC start and execution=true through the console.
+   Never backdate; preserve the180-day floor, SMHE/admin exemption, local data
+   and no-cron design. Verify effective state and normal administrator preview
+   through authorized access; never guess passwords or revoke owner sessions.
+5. Production rollback sets execution=false while retaining its fixed date,
+   followed by normal redeployment/runtime proof. Remove the temporary read-only
+   diagnostic when no longer needed. Retain all prior failure evidence.
+
+Optional SDK automation still pins region=china and refuses global fallback.
+Its missing credential blocks only that optional route. The next actual
+blocked step is manual test-project configuration/deployment, not creation of
+an API Token. No runtime settings changed in this documentation correction.
