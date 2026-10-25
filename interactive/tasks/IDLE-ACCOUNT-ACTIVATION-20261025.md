@@ -43,6 +43,10 @@ release-ready gates. This phase does not skip them.
    environment using a privately configured China-console credential; the
    existing CI token returned109/authentication error. No renewed approval or
    region question is needed; never request credential values in chat.
+   Dedicated China workflow credential: repository secret
+   EDGEONE_CHINA_API_TOKEN. Historical international EDGEONE_API_TOKEN is kept
+   separate. China-only CI40171181067 reproduced109, guards PASS12/12,
+   Blob writes SKIPPED. A missing new credential must fail before discovery.
    Raw project reads MUST filter by ID and verify returned ID. SDK-normalized
    projects omit domain bindings; consult DescribePagesEnvironments as needed.
 2. Re-verify exact t.smhe.cn target before any new settings change. Current

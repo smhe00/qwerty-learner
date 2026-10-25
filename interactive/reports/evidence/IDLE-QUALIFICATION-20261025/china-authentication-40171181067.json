@@ -1,0 +1,13 @@
+{
+  "check": "idle-qualification-staging-discovery",
+  "controlPlaneRegion": "china",
+  "globalFallbackAllowed": false,
+  "blobWritesAttempted": false,
+  "configurationChanged": false,
+  "deploymentTriggered": false,
+  "verdict": "FAIL",
+  "failureStage": "project-list",
+  "providerCode": "109",
+  "authenticationRejected": true,
+  "reason": "china-control-plane-authentication-rejected"
+}

@@ -41,7 +41,7 @@ jobs:
       - name: Read-only exact staging discovery
         id: discover
         env:
-          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_CHINA_API_TOKEN }}
           IDLE_DISCOVERY_REPORT: ${{ runner.temp }}/idle-staging-trigger-discovery.json
         run: node scripts/idle-qualification-discovery.mjs
       - name: Pin the actual staging branch before changing settings
@@ -61,7 +61,7 @@ jobs:
       - name: Snapshot only the two nonsecret staging idle settings before changes
         id: snapshot
         env:
-          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_CHINA_API_TOKEN }}
           IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
         run: node scripts/idle-staging-trigger-qualification.mjs snapshot
       - name: Preserve nonsecret rollback snapshot before any configuration write
@@ -74,20 +74,20 @@ jobs:
       - name: Apply temporary staging settings before coordinated deployment
         id: apply
         env:
-          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_CHINA_API_TOKEN }}
           IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
         run: node scripts/idle-staging-trigger-qualification.mjs apply
       - name: Await staging deployment, verify the real browser trigger, restore settings
         id: journey
         env:
-          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_CHINA_API_TOKEN }}
           IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
         run: node scripts/idle-staging-trigger-qualification.mjs run
       - name: Independently restore control-plane settings even after a failed test
         id: restore
         if: always() && steps.snapshot.outcome == 'success'
         env:
-          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_CHINA_API_TOKEN }}
           IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
         run: node scripts/idle-staging-trigger-qualification.mjs restore
       - name: Preserve browser result and rollback result before runtime confirmation
@@ -103,7 +103,7 @@ jobs:
       - name: Await restored deployment and verify execution disabled through the real API
         if: always() && steps.restore.outcome == 'success'
         env:
-          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_CHINA_API_TOKEN }}
           IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
           IDLE_STAGE_GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/idle-staging-trigger-qualification.mjs confirm

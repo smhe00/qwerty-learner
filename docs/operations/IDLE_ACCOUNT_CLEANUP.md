@@ -81,15 +81,20 @@ Verification clients MUST set Makers SDK `region: 'china'`; never use automatic
 fallback to the international endpoint to select current-site projects.
 An international project with the same repository/legacy preset is insufficient.
 
-The Actions credential is repository secret `EDGEONE_API_TOKEN`. It must be a
-China-console Makers API Token with access to the actual target projects.
-At the last verified checkpoint the configured credential returned China API
-code109 (authentication rejected), while international reads succeeded. A
-China read must succeed before exact domain/environment discovery or writes.
-Update that credential using GitHub repository Settings → Secrets and variables
-→ Actions, or an authorized private connection; never paste token values into
-chat, logs or commits. The agent cannot mint a China token from the existing
-international access. Changing the credential alone does not enable deletion.
+The China verification workflows use dedicated repository secret
+`EDGEONE_CHINA_API_TOKEN`, containing a China-console Makers API Token with
+access to the actual target projects. Historical `EDGEONE_API_TOKEN` remains
+for historical international diagnostics/rollback. The previous China-only
+probe with that existing generic credential returned code109 (authentication
+rejected), while international reads succeeded. A China read must succeed
+before exact domain/environment discovery or writes.
+
+Configure `EDGEONE_CHINA_API_TOKEN` using GitHub repository Settings → Secrets
+and variables → Actions, or an authorized private connection; never paste
+values into chat, logs or commits. The workflows bind it to their internal
+`EDGEONE_API_TOKEN` process variable; its value never leaves the runner.
+The agent cannot mint a China token from the existing international access.
+Changing the credential alone does not enable deletion.
 
 Historical SDK sandbox receipts and their explicit international rollback are
 kept as evidence. They do not qualify either current China-console site's

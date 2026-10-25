@@ -27,7 +27,7 @@ jobs:
       - name: Read-only exact staging discovery
         id: discover
         env:
-          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_CHINA_API_TOKEN }}
           IDLE_MAKERS_SDK_DIR: ${{ runner.temp }}/idle-makers-sdk
           IDLE_DISCOVERY_REPORT: ${{ runner.temp }}/idle-recovery-discovery.json
         run: node scripts/idle-qualification-discovery.mjs
@@ -37,7 +37,7 @@ jobs:
         run: gh run download 40161125235 --name idle-staging-rollback-40161125235-1 --dir "$RUNNER_TEMP/idle-recovery-snapshot"
       - name: Restore exact absence or explicitly fail closed, verify runtime disabled
         env:
-          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_CHINA_API_TOKEN }}
           IDLE_MAKERS_SDK_DIR: ${{ runner.temp }}/idle-makers-sdk
           IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
           IDLE_QUALIFICATION_PROJECT_VERIFIED: EXACT_ETEST_DOMAIN

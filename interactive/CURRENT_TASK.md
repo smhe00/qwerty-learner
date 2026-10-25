@@ -33,6 +33,13 @@ Next: identify correct site account/region/project/environment via supported
 private access. Owner has now CONFIRMED BOTH sites use the CHINA console.
 New verification clients pin region=china and stop on authentication failure;
 never auto-fallback to global. Existing CI token previously returned109.
+China-only CI40171181067 at8dc5e16c reproduced109 at project-list; scope
+contracts PASS12/12 and all Blob writes were SKIPPED. China workflows now use
+dedicated repository secret EDGEONE_CHINA_API_TOKEN (internal env name remains
+EDGEONE_API_TOKEN). Historical international credential/rollback is separate.
+If not configured, the next discovery must report ci-credential-missing and
+stop before touching either site. Obtain the credential through private GitHub
+Secrets/connection, never chat. See operations doc for the concrete location.
 Resume execution base969077f2 includes independent mobile UI work; preserve it.
 No further region question is needed. Never solicit
 secrets in chat. SDK Project normalization omits custom domains; raw reads must

@@ -25,6 +25,24 @@ Fresh anonymous production/staging policy probes both HTTP200 and disabled.
 Operations doc names the exact China console and existing private Actions
 secret to update if authorization still fails; no secret value requested.
 
+China-only live control-plane check40171181067 at8dc5e16c: namespace/binding/
+region/privacy guards PASS12/12. Project-list FAILED with provider109 and
+authenticationRejected=true, globalFallbackAllowed=false. Real Blob job
+SKIPPED; no config/storage/deployment mutation. Committed redacted receipt.
+This is a confirmed credential blocker even after explicitly selecting China.
+The ap-hongkong function runtime does not contradict China-console ownership.
+
+Prepared dedicated EDGEONE_CHINA_API_TOKEN repository-secret bindings for
+China discovery, isolated Blob qualification, staging journey and its recovery.
+Historical generic EDGEONE_API_TOKEN/explicit global rollback remains separate
+to avoid changing unrelated existing credential consumers. Internal process
+variable keeps its current name; secret values stay in Actions. Missing China
+credential must stop before project discovery, not fall back to a global key.
+All3 affected workflow files pass actionlint; no unchanged suite rerun needed
+for the credential-name mapping. Operations guide now gives the concrete
+GitHub private-secret location and China console URL. New credential presence
+is not assumed merely because the workflow references it.
+
 2026-10-25T05:55Z: production is NOT activated. q.smhe.cn remains5528f79c,
 policy.enabled=false. Staging is5fa7574, enabled=false/executionEnabled=false;
 method-specific runtime probe confirms neither context nor Node has the date
