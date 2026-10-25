@@ -78,3 +78,8 @@ Final local candidate ba12baa436faabc4184e28636fa60a0b2e13b3b1 (codex/learn-comp
 Owner was asked whether to preserve that independent pilot and qualify only this completion flow, or wait for the cloud executor. No answer had arrived at the checkpoint. Because the user explicitly conditioned etest push on passing CI, promotion was not executed. No new cloud account was created. Actual real-cloud completion journey is therefore NOT yet verified. Latest verified remote refs: edgeone-test34a3d15f35ede8dec073fa88deaa5f3125f2ee95; master5528f79c700548e174fa153b96ff4599d7326aee.
 
 Resume after the decision: fetch current refs; preserve any newer staging work in the isolated staging branch without force; recheck affected tests if cloud code changes; if authorized despite the existing pilot blocker, fast-forward edgeone-test to the candidate and watch etest Learn Completion Cloud Journey. That workflow first verifies the deployed source at t.smhe.cn, then uses two disposable accounts and fresh-profile Blob readback. Require both cases and cleanup to pass. Do not update master. Keep CURRENT_TASK and IDLE activation untouched.
+
+
+## Owner-approved scoped etest run
+
+Owner explicitly answered: preserve the existing experiment and validate the completion flow. This authorizes staging despite the two documented unchanged pilot contract failures; it does not certify them or authorize production. Resume fetch confirmed product/main dd30e54a, etest34a3d15f and master5528f79c unchanged. Merge only the documentation checkpoint into the already-tested ba12baa4 candidate, verify no application/cloud source difference, and push edgeone-test once.
