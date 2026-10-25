@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import crypto from 'node:crypto'
 import { writeFile, mkdir } from 'node:fs/promises'
 import { fixture } from './session-handoff-fixtures.mjs'
+import { guardedPrewriteRetry } from './session-handoff-safe-retry.mjs'
 import { verifyCompressedV4 } from '../../cloud-functions/_shared/sync-v4.js'
 
 // Explicit staging only. No user credentials, existing account or production
@@ -30,7 +31,7 @@ async function call(path, { method = 'GET', token, body, bytes, headers = {} } =
   let data
   try { data = await result.json() } catch { throw new Error(`HTTP ${result.status}: non-JSON response`) }
   const guarded = result.headers.get('x-qwerty-handoff')
-  const safeCode = value => typeof value === 'string' && /^[a-z][a-z_-]{0,63}$/.test(value) ? value : null
+  const safeCode = value => typeof value === 'string' && /^[a-z][a-z0-9_-]{0,63}$/.test(value) ? value : null
   const evidence = { method, path, status: result.status, error: safeCode(data?.error),
     guarded: guarded === report.capability }
   if (report.responses.length < 160) report.responses.push(evidence)
@@ -43,12 +44,25 @@ function input(words, revision) {
   return result
 }
 
-const direct = (token, payload, hold = 0) => call('/sync/v2/binary/direct', { method: 'POST', token,
-  bytes: payload.payloadBytes, headers: { 'Content-Type': 'application/octet-stream',
-    'X-Qwerty-Base-Revision': String(payload.baseRevision),
-    'X-Qwerty-Logical-Fingerprint': payload.logicalFingerprint,
-    'X-Qwerty-Payload-Sha256': hash(payload.payloadBytes),
-    ...(hold ? { 'X-Qwerty-Handoff-Hold-Ms': String(hold) } : {}) } })
+const direct = (token, payload, hold = 0, expectedRemoteSha = undefined) => {
+  const pinnedSha = payload.baseRevision === 0 ? null : expectedRemoteSha
+  // The exact payload object/bytes and metadata are closed over unchanged.
+  const send = () => call('/sync/v2/binary/direct', { method: 'POST', token,
+    bytes: payload.payloadBytes, headers: { 'Content-Type': 'application/octet-stream',
+      'X-Qwerty-Base-Revision': String(payload.baseRevision),
+      'X-Qwerty-Logical-Fingerprint': payload.logicalFingerprint,
+      'X-Qwerty-Payload-Sha256': hash(payload.payloadBytes),
+      ...(hold ? { 'X-Qwerty-Handoff-Hold-Ms': String(hold) } : {}) } })
+  return guardedPrewriteRetry({ send,
+    verifyUnchanged: async () => {
+      if (pinnedSha === undefined) return false
+      const observed = await call('/sync/v2/meta', { token })
+      return observed.status === 200 && observed.guarded === report.capability &&
+        observed.data.revision === payload.baseRevision && observed.data.dataSha256 === pinnedSha
+    },
+    onRetry: attempt => { console.log('Confirmed pre-write body rejection; exact cloud evidence unchanged; identical replay', attempt) },
+  })
+}
 async function waitStatus(token, predicate) {
   for (let i = 0; i < 25; i++) {
     const result = await call('/auth/handoff/status', { token })
@@ -89,7 +103,7 @@ try {
   const late = await direct(aToken, input(['late-old-A'], 1))
   check('late A cannot publish after B login', late.status === 401)
   const combined = input(['alpha', 'beta'], 1)
-  const bWrite = await direct(currentToken, combined)
+  const bWrite = await direct(currentToken, combined, 0, hash(alpha.payloadBytes))
   check('B publishes the union as revision 2', bWrite.status === 200 && bWrite.data.revision === 2)
   const bToken = currentToken
   const logout = await call('/auth/logout', { method: 'POST', token: bToken })

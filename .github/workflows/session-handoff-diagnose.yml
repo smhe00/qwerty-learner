@@ -21,14 +21,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Qualify bounded pre-write retries before network use
+        run: node --test tests/cloud/session-handoff-safe-retry.test.mjs
       - name: Archive only tracked qualification source
         run: |
           mkdir -p test-results
           git archive --format=tar.gz -o test-results/handoff-source.tar.gz HEAD cloud-functions tests/cloud scripts experimental interactive AGENTS.md package.json .github
           git rev-parse HEAD > test-results/diagnostic-source-sha.txt
-      - name: Require pinned deployed candidate and current staging ref
-        run: node scripts/handoff-diagnostic-source.mjs
-      - name: Run unchanged real handoff assertions with redacted response evidence
+      - name: Require pinned deployed candidate and identical runtime sources
+        run: |
+          git fetch --depth=1 origin "$EXPECTED_SHA"
+          git diff --exit-code "$EXPECTED_SHA" -- cloud-functions
+          node scripts/handoff-diagnostic-source.mjs
+      - name: Run real handoff assertions with redacted response evidence
         run: |
           node --input-type=module <<'NODE'
           import { writeFile } from 'node:fs/promises'
