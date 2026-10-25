@@ -1,6 +1,6 @@
 ---
 task_id: IDLE-ACCOUNT-ACTIVATION-20261025
-status: IN_PROGRESS
+status: BLOCKED
 target_branch: product/main
 base_commit: c74a59b8f9c1972a2c159a082b8fc04519cfa2c8
 allow_parallel_executors: false
@@ -9,84 +9,56 @@ runtime_activation_authorized: true
 report_file: interactive/reports/IDLE-ACCOUNT-ACTIVATION-20261025-report.md
 ---
 
-# Enable production idle cleanup after remaining qualification
+# Enable idle cleanup after actual deployed-path verification
 
-## Current qualification scope correction
+Owner authorized activation and then instructed “那你自己可以开始验证吧”.
+Authorization persists; do not ask again. Scope includes isolated synthetic
+Blob fixtures, necessary normal staging rebuilds/reversible settings and a
+read-only binding diagnostic route. No public clock/mutation test API, aged
+customer fixture, production branch bypass, owner password read or Circle work.
+Production advancement, if needed, retains existing same-SHA Pages/etest/
+release-ready gates. This phase does not skip them.
 
-The owner's live verification authorization covers a temporary read-only
-binding health route and normal staging promotion, needed after real runtime
-binding failed twice. The route reports only IDLE setting types/booleans and
-an allowlisted function region; it reads no password, account or storage.
-No public clock override, mutation or authentication bypass is introduced.
-Earlier assumptions below about no build/endpoint and unavailable CI access
-are historical and superseded by the observed CI credential and this scope.
+## Latest confirmed state
 
-Owner instruction: “那现在可以启动吧，也没有什么其他需要验证的了，对吧？”
-This authorizes activation; do not ask for the same permission again. Explain
-the actual outstanding verification/access instead of promising it is complete.
-The previous application release remains complete at REVIEW.
+- Production q.smhe.cn/master5528f79c, policy disabled; never activated here.
+- Staging t.smhe.cn/edgeone-test5fa7574, execution disabled; both context and
+  Node lack the date. Runtime diagnostic only emits booleans/types/known region.
+- Actual isolated Blob8/8 and69-key cleanup succeeded40159814798. This is an
+  accessible historical project, not qualified current-domain correspondence.
+- Exact-ID and official environment read audit40167108988 sees2 global
+  projects, neither reports current-domain bindings. China API109 rejects the
+  existing credential as authentication-related. No ready local secret binding.
+- All original temporary settings restored to original absence by40167226920,
+  exact owned2 records removed/0 remain; no production mutation or deployment.
+- New Node20 binding/scope9/9, probe2/2 and original metadata guards4/4 pass.
+  Actual enabled browser maintenance + runtime rollback remain outstanding;
+  ordinary staging browser/V4 jobs passing do not prove that path. Preserve
+  release-readiness failure40166505577 and earlier failed attempts.
 
-Owner explicitly instructed starting the verification. Implement and run an
-isolated SDK qualification through Actions' existing private credential binding;
-do not treat inability to list secret names as inability to use a configured
-workflow credential. Exact read-only staging discovery must precede any write.
-No Maker promotion or new public clock/test endpoint is authorized or needed.
+## Resume steps
 
-Provider qualification correction: project environment changes only affect a
-new deployment. Owner's explicit live-verification request authorizes the
-necessary normal staging promotions/rebuilds to apply test settings and restore
-execution-off, using application-identical commits and preserving all existing
-gates. This supersedes our initial assumption that no Maker build was needed;
-it does not authorize production activation before qualification. No new public
-test endpoint or production branch promotion in this phase. Freeze main at the
-forward candidate until the browser journey ends, then promote a report-only
-child after settings restoration. Observe both exact deployed source markers.
+1. Resolve site account/region/project/environment using authorized private
+   access. The user was asked which console, not for approval or credentials.
+   Raw project reads MUST filter by ID and verify returned ID. SDK-normalized
+   projects omit domain bindings; consult DescribePagesEnvironments as needed.
+2. Re-verify exact t.smhe.cn target before any new settings change. Current
+   fail-closed discovery intentionally refuses old etest.edgeone.dev alone.
+   Support actual environment schema only after inspecting it, with guards.
+3. Snapshot exact settings/scopes; use fresh UTC activation floor/execute=true
+   only on proven staging. Rebuild normally. Test independent maintenance while
+   login/learning remain usable, no customer deletions. Restore exact settings
+   using confirmed CLI object deletion when originally absent; verify runtime
+   off after normal redeployment. Keep all failure evidence.
+4. Only after live qualification configure correct production runtime
+   IDLE_POLICY_START_AT=fixed actual UTC activation time and
+   IDLE_CLEANUP_EXECUTE=true. Never backdate. Existing accounts get the180-day
+   floor; later valid activity extends it. Administrator/SMHE remains protected;
+   no grace period/cron/local-data deletion. Verify effective execution state,
+   admin dry-run through authorized normal access, no currently eligible accounts
+   and login/learning isolation. No owner password guessing or session revocation.
+5. Record redacted results. Rollback is execution=false retaining activation
+   date. Remove temporary diagnostic route after diagnosis. Keep task resumable.
 
-Verification continuation: real SDK lifecycle suite2543911e passed8/8 with all
-69 tracked keys confirmed absent. Next qualify the actual deployed staging
-login/learning/maintenance path with a reversible temporary configuration of
-only the two IDLE settings. Fresh UTC activation time gives every staging
-account a full180-day floor; no aged real account. Snapshot before mutation,
-keep unrelated/administrator values private and untouched, restore exact old
-values even after failure, and verify runtime policy disabled again. No
-production configuration change or Maker deployment in this phase. The user
-already authorized verification; do not add another confirmation step.
-
-## Blockers
-
-- Production https://q.smhe.cn; existing application5528f79c. No application
-  change, master push, Circle work or scheduler is required for activation.
-- No ready Tencent/EdgeOne control-plane credential or tool is available.
-  GitHub integration also returned403 for secret/variable name metadata;
-  that does not establish whether secrets exist. Do not extract credentials
-  or ask for passwords/API secrets in chat.
-- Local/fake-store cleanup tests passed previously. Operations instructions
-  still require actual isolated Blob interruption/convergence qualification
-  before enabling production deletion. Ordinary V4 deletion smoke does not
-  establish the automatic idle-deletion lifecycle.
-
-## Continue when controlled access is available
-
-1. Qualify the idle lifecycle on isolated nonproduction Blob with synthetic
-   identities and injected test clock:180-day boundary, drain/cancel,
-   interruption/retry, overlapping invocations/listing convergence, exact
-   namespace isolation, identity removed last, admin/SMHE/Circle holds. Keep
-   aged fixtures/clock overrides out of production; record regional coverage.
-2. Check administrator protection and a redacted read-only production preview
-   using the operator's normal session. Do not guess the bootstrap password
-   or revoke the owner's session for probing.
-3. Set production EdgeOne **runtime** IDLE_POLICY_START_AT to the actual fixed
-   UTC activation time; after qualification set IDLE_CLEANUP_EXECUTE=true.
-   No VITE settings, source-default changes or scheduler. Never backdate.
-   Existing accounts get a full180 days from activation; later activity extends it.
-4. Apply normal provider configuration activation. Verify canonical health,
-   public policy enabled=true/180 days, and administrator dry-run
-   executionEnabled=true with no currently eligible accounts under the new
-   floor. Verify independent maintenance leaves login/learning responsive.
-   Never force a customer account eligible to demonstrate deletion.
-5. Record redacted settings metadata/counts and daily trigger outcome. Rollback
-   is IDLE_CLEANUP_EXECUTE=false while retaining the fixed start date.
-
-The public policy boolean reports whether the start date is configured, not
-the destructive execution flag. Do not use it alone to certify activation.
-No runtime settings have been changed in this task.
+See the report's current checkpoint first; chronological failed hypotheses and
+superseded access/configuration assumptions are retained there for audit.

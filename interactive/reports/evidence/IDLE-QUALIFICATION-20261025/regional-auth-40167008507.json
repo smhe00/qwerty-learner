@@ -1,0 +1,132 @@
+{
+  "check": "idle-staging-env-binding-readonly",
+  "configurationChanged": false,
+  "deploymentTriggered": false,
+  "credentialValuesLogged": false,
+  "regions": [
+    {
+      "region": "china",
+      "outcome": "UNAVAILABLE",
+      "errorType": "MakersError",
+      "errorCode": "109",
+      "httpStatus": 200,
+      "failureTransport": "response",
+      "authenticationMentioned": true
+    },
+    {
+      "region": "global",
+      "responseFields": [
+        "EnvVars",
+        "RequestId"
+      ],
+      "settings": [
+        {
+          "key": "IDLE_POLICY_START_AT",
+          "fieldNames": [
+            "Comment",
+            "Env",
+            "Id",
+            "Key",
+            "Value"
+          ],
+          "hasRecordId": true,
+          "dateValueValid": true,
+          "metadata": {
+            "Env": [
+              "Production",
+              "Preview"
+            ]
+          }
+        },
+        {
+          "key": "IDLE_CLEANUP_EXECUTE",
+          "fieldNames": [
+            "Comment",
+            "Env",
+            "Id",
+            "Key",
+            "Value"
+          ],
+          "hasRecordId": true,
+          "executionValueFalse": true,
+          "metadata": {
+            "Env": [
+              "Production",
+              "Preview"
+            ]
+          }
+        }
+      ],
+      "projectRecordFields": [
+        "AgentFramework",
+        "Area",
+        "BuildCmd",
+        "CreatedOn",
+        "CustomDomains",
+        "Deployment",
+        "EnvVars",
+        "Framework",
+        "InstallCmd",
+        "IsAgent",
+        "IsTld",
+        "ModifiedOn",
+        "Name",
+        "NodejsVersion",
+        "OutputDir",
+        "PresetDomain",
+        "PresetDomainStatus",
+        "ProjectId",
+        "Provider",
+        "Regions",
+        "RepoBranch",
+        "RepoName",
+        "RepoOwner",
+        "RepoPreBranches",
+        "RepoUrl",
+        "RootDir",
+        "Status",
+        "ZoneId"
+      ],
+      "binding": {
+        "stagingCustomDomainPresent": false,
+        "productionCustomDomainPresent": false,
+        "expectedStagingBranch": true,
+        "mainBranchUnexpected": false,
+        "presetDomainExpected": true,
+        "projectEnvShape": "array",
+        "projectEnvHasIdleDate": true,
+        "area": "overseas",
+        "regionFieldNames": []
+      },
+      "projectCatalog": [
+        {
+          "selectedByOldDiscovery": true,
+          "knownProduction": false,
+          "previouslyDeniedObsolete": false,
+          "stagingDomain": false,
+          "productionDomain": false,
+          "customDomainShape": "array",
+          "customDomainCount": 0,
+          "stagingBranch": true,
+          "productionBranch": false,
+          "oldPreset": true,
+          "projectHasIdleSettings": true
+        },
+        {
+          "selectedByOldDiscovery": false,
+          "knownProduction": true,
+          "previouslyDeniedObsolete": false,
+          "stagingDomain": false,
+          "productionDomain": false,
+          "customDomainShape": "array",
+          "customDomainCount": 0,
+          "stagingBranch": false,
+          "productionBranch": false,
+          "oldPreset": false,
+          "projectHasIdleSettings": false
+        }
+      ],
+      "outcome": "OBSERVED"
+    }
+  ]
+}

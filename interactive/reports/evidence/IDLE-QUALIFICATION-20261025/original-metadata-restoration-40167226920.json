@@ -1,0 +1,9 @@
+{
+  "check": "original-idle-test-metadata-rollback",
+  "productionChanged": false,
+  "deploymentTriggered": false,
+  "restoredOriginalAbsence": true,
+  "attempted": 2,
+  "remainingOwnedSettings": 0,
+  "verdict": "PASS"
+}
