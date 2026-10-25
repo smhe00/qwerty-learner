@@ -56,3 +56,30 @@ Added etest Learn Completion Cloud Journey: two fresh disposable accounts, unfin
 Further CI evidence: at 8e5e41ac, Learn Completion Journey, Cloud Sync, S1 Workspace and P4b Recovery passed. Published dual-site Explorer passed at 8b9cf082. Parallel mobile copy changes required updating retired labels only: theme now asserts actual persistence across reload (local 1/1), progress still requires identical 1/1 and frozen 0/32 values under the new short labels.
 
 Local staging integration c1c30676 retained all cloud-functions bytes from 34a3d15f unchanged. Focused completion suite PASS12/12 (62.59s). Full local cloud contracts 778/780: two existing staging handoff failures in s2-write-route.test.mjs, expected request_body_unavailable but received handoff_auth_body_unavailable, so the established safe retry does not run. This is a real compatibility issue, not a test weakened for green. No auth/transport fix made here. Asked owner whether to proceed with completion-only etest qualification while preserving this separate pilot blocker, or wait for the cloud thread. No staging push at this checkpoint.
+
+
+## Final development CI / staging decision checkpoint
+
+Relevant checks are now successful; tested source additions are unchanged across the later test/report-only commits:
+
+- Completion Journey (12 browser cases plus 8 boundary contracts): https://github.com/smhe00/qwerty-learner/actions/runs/40191978798 at f53c0ec2.
+- Review Gate: https://github.com/smhe00/qwerty-learner/actions/runs/40191304465 at 8b9cf082; all earlier contracts/models and browser steps plus final Learn browser118/118 passed.
+- Mobile P0: https://github.com/smhe00/qwerty-learner/actions/runs/40191978775 at f53c0ec2; local-save contracts6/6, learning browser58/58, shared account31/31, static deep-link4/4.
+- S1 Workspace: https://github.com/smhe00/qwerty-learner/actions/runs/40191079555 at 8e5e41ac.
+- P4b Recovery: https://github.com/smhe00/qwerty-learner/actions/runs/40191079573 at 8e5e41ac.
+- Cloud Sync: https://github.com/smhe00/qwerty-learner/actions/runs/40191079545 at 8e5e41ac.
+- Published dual-site anonymous Explorer: https://github.com/smhe00/qwerty-learner/actions/runs/40191304469 at 8b9cf082.
+- Pages deployment: https://github.com/smhe00/qwerty-learner/actions/runs/40191978808 at f53c0ec2.
+
+The separate advisory Pages Explorer has historical obsolete settings selectors and was not qualified by this task; earlier failed/cancelled runs remain visible. This is not an identical-SHA production release certification.
+
+Final local candidate ba12baa436faabc4184e28636fa60a0b2e13b3b1 (codex/learn-completion-etest-20261025) merges current staging34a3d15f with developmentf53c0ec2. git diff c1c30676..ba12baa4 -- src cloud-functions is empty, so the recorded merged12/12 and cloud778/780 results apply unchanged. The two cloud failures come from unchanged staging code: handoff_auth_body_unavailable replaces request_body_unavailable before business writes, and the established safe-body retry recognizer consequently does not retry. No auth/transport code modified, failure assertion weakened, or unknown write replayed.
+
+Owner was asked whether to preserve that independent pilot and qualify only this completion flow, or wait for the cloud executor. No answer had arrived at the checkpoint. Because the user explicitly conditioned etest push on passing CI, promotion was not executed. No new cloud account was created. Actual real-cloud completion journey is therefore NOT yet verified. Latest verified remote refs: edgeone-test34a3d15f35ede8dec073fa88deaa5f3125f2ee95; master5528f79c700548e174fa153b96ff4599d7326aee.
+
+Resume after the decision: fetch current refs; preserve any newer staging work in the isolated staging branch without force; recheck affected tests if cloud code changes; if authorized despite the existing pilot blocker, fast-forward edgeone-test to the candidate and watch etest Learn Completion Cloud Journey. That workflow first verifies the deployed source at t.smhe.cn, then uses two disposable accounts and fresh-profile Blob readback. Require both cases and cleanup to pass. Do not update master. Keep CURRENT_TASK and IDLE activation untouched.
+
+
+## Owner-approved scoped etest run
+
+Owner explicitly answered: preserve the existing experiment and validate the completion flow. This authorizes staging despite the two documented unchanged pilot contract failures; it does not certify them or authorize production. Resume fetch confirmed product/main dd30e54a, etest34a3d15f and master5528f79c unchanged. Merge only the documentation checkpoint into the already-tested ba12baa4 candidate, verify no application/cloud source difference, and push edgeone-test once.
