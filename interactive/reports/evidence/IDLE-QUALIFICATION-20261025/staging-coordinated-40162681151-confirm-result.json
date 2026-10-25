@@ -1,0 +1,8 @@
+{
+  "check": "idle-staging-trigger-v1",
+  "productionChanged": false,
+  "deploymentTriggered": false,
+  "multiRegionQualified": false,
+  "verdict": "FAIL",
+  "failureStage": "wait-restored-staging-deployment"
+}

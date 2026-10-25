@@ -33,12 +33,14 @@ async function api(path, method = 'GET', body, token) {
     return { status: response.status, body: await response.json() }
   }, { path, method })
 }
-async function waitPolicy(enabled, timeout = 60_000) {
+async function waitExecution(enabled, timeout = 60_000) {
   const deadline = Date.now() + timeout
   do {
     try {
       const result = await api('/api/account-policy?qualification=' + Date.now())
-      if (result.status === 200 && result.body.enabled === enabled && result.body.idleDays === 180) return
+      const observed = result.body.executionEnabled === enabled ||
+        (!enabled && result.body.executionEnabled === undefined && result.body.enabled === false)
+      if (result.status === 200 && observed && result.body.idleDays === 180) return
     } catch { /* Bounded read-only propagation observation, never repeat a write. */ }
     await new Promise(resolve => setTimeout(resolve, 2000))
   } while (Date.now() < deadline)
@@ -195,7 +197,7 @@ try {
   if (mode === 'snapshot' || mode === 'apply') await sourceMatches(process.env.IDLE_STAGING_BASE_SHA)
   if (mode === 'snapshot') {
     phase = 'snapshot-before-mutation'
-    await waitPolicy(false, 0)
+    await waitExecution(false, 0)
     snapshot = await snapshotStagingEnvironment(projects, projectId)
     writeFileSync(snapshotPath, JSON.stringify(snapshot, null, 2) + '\n')
     report.snapshotPrepared = true
@@ -212,12 +214,13 @@ try {
       phase = 'wait-exact-staging-deployment'
       await waitSource(process.env.IDLE_STAGING_EXPECTED_SHA)
       phase = 'wait-runtime-policy-activation'
-      await waitPolicy(true)
-      report.runtimePolicyObserved = true
+      await waitExecution(true)
+      report.runtimeExecutionObserved = true
       await browserJourney()
     } else if (mode === 'confirm') {
       phase = 'wait-restored-staging-deployment'
       await waitRestoredDeployment()
+      await waitExecution(false)
       await disabledProbe()
     } else assert.equal(mode, 'restore')
     report.verdict = 'PASS'

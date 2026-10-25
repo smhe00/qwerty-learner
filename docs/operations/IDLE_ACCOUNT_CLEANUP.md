@@ -83,6 +83,28 @@ frontend build settings, source control or the browser:
 | `IDLE_POLICY_START_AT` | Fixed ISO UTC activation date; do not move it backwards to accelerate deletion |
 | `IDLE_CLEANUP_EXECUTE` | Default absent/false; set `true` only after deployment qualification |
 
+Node Cloud Functions read these four feature settings (the two ADMIN and two
+IDLE keys) from `process.env`, with explicitly supplied context values taking
+precedence. Undefined context entries do not hide Node bindings. Literal Node
+access also supports provider function bundling. Existing storage, CORS and
+sync-suspension settings keep their previous source; this feature does not
+silently activate unrelated Node configuration.
+
+Project environment edits require a new deployment before runtime changes.
+An SDK write ACK or control-plane readback alone does not certify activation.
+`GET /api/account-policy` keeps `enabled` as the valid-start-date indicator and
+adds `executionEnabled` for effective destructive execution permission. Only
+the latter becoming true, together with the exact deployed source and real
+maintenance behavior, qualifies the running feature. No password or date value
+is returned. A rollback also requires redeployment; retain the fixed date and
+set execution=false, then verify the API and authenticated maintenance=disabled.
+
+The isolated real SDK qualification (run40159814798) passed8/8 and confirmed
+all69 tracked fixture keys absent, with no production namespace touched.
+This is external SDK/two-client coverage, not a global physical-erasure or
+multi-region certificate. Its exact report is retained under
+`interactive/reports/evidence/IDLE-QUALIFICATION-20261025/`.
+
 SMHE usernames are case-insensitive. The name is reserved, but a username alone never grants access: first registration must verify the effective administrator password. After verified enrollment, privilege requires the persisted immutable ID AND normalized name `smhe`. No password should be sent in chat.
 
 ### A brand-new site or an existing unbound SMHE

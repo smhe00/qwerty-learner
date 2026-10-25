@@ -7,6 +7,7 @@ on:
       - 'scripts/idle-staging-environment.mjs'
       - 'scripts/idle-staging-trigger-qualification.mjs'
       - 'tests/cloud/idle-staging-environment.test.mjs'
+      - 'interactive/reports/IDLE-ACCOUNT-ACTIVATION-20261025-report.md'
   workflow_dispatch:
 permissions:
   contents: read
@@ -15,14 +16,13 @@ concurrency:
   cancel-in-progress: false
 jobs:
   staging-trigger:
-    if: github.ref_name == 'product/main'
+    if: github.ref_name == 'product/main' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[idle-live-qualification]'))
     runs-on: ubuntu-22.04
     timeout-minutes: 35
     env:
       IDLE_MAKERS_SDK_DIR: /tmp/idle-makers-sdk
       IDLE_STAGING_OUTPUT: /tmp/idle-staging-trigger
       IDLE_STAGING_ACK: RUN_REVERSIBLE_STAGING_IDLE_TRIGGER
-      IDLE_STAGING_BASE_SHA: 5528f79c700548e174fa153b96ff4599d7326aee
       IDLE_STAGING_EXPECTED_SHA: ${{ github.sha }}
       IDLE_QUALIFICATION_PROJECT_VERIFIED: EXACT_ETEST_DOMAIN
     steps:
@@ -43,6 +43,20 @@ jobs:
           EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
           IDLE_DISCOVERY_REPORT: ${{ runner.temp }}/idle-staging-trigger-discovery.json
         run: node scripts/idle-qualification-discovery.mjs
+      - name: Pin the actual staging branch before changing settings
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import os, re, subprocess
+          repo = os.environ['GITHUB_REPOSITORY']
+          assert re.fullmatch(r'[\w.-]+/[\w.-]+', repo)
+          sha = subprocess.check_output(['gh', 'api', 'repos/' + repo + '/git/ref/heads/edgeone-test', '--jq', '.object.sha'], text=True).strip()
+          assert re.fullmatch(r'[a-f0-9]{40}', sha)
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write('IDLE_STAGING_BASE_SHA=' + sha + '\n')
+          print('Pinned current staging branch for pre-write source validation')
+          PY
       - name: Snapshot only the two nonsecret staging idle settings before changes
         id: snapshot
         env:

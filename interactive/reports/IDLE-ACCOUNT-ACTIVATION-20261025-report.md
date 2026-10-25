@@ -173,3 +173,50 @@ and verifies execution-off using a fresh disposable real API probe (public
 enabled may remain true with a retained date, so it is insufficient). Original
 phase failures remain recorded. No new production deployment, source change,
 clock override or target account aging.
+
+Coordinated forward candidatead092c7348260407c0c91102073c5447fffeee07,
+CI40162681151/job121077341812: pre-write snapshot and separate apply step
+SUCCESS. Original snapshot now contains the retained valid date and explicit
+false execution flag, so exact restore uses supported nonempty upserts. Normal
+non-force staging promotion5528f79c ->ad092c73 succeeded after verifying actual
+remote refs and byte-identical src/cloud-functions/build inputs. Production
+master remains5528f79c. The runner waits for exactad092c73 deployment before
+asserting active policy or creating a browser test account. Next: observe the
+browser result and control-plane restore; then commit/promote a report-only
+child so the disabled setting reaches runtime. Do not leave it at the forward
+deployment or claim restoration merely from project metadata.
+
+## Runtime configuration defect found by actual deployment
+
+Forwardad092c73 did become the live frontend source. CI40162681151 nonetheless
+failed wait-runtime-policy-activation, before registration. Control-plane
+rollback then succeeded (exact current valid-date/false baseline); independent
+restore was a no-op confirmation. The final source-rollback wait timed out;
+that run is FAILED, never a browser/learning pass. No new test account from it.
+Preserve its intermediate/final receipts separately.
+
+Source inspection found onRequest destructured only context.env. The fix reads
+the four ADMIN/IDLE settings from Node process.env (also with literal accesses
+for provider injection), with explicit context overrides/undefined fallback.
+It intentionally does NOT activate unrelated Node Blob-name/CORS/sync settings
+or change Circle routing. Public policy retains enabled=date-configured and
+adds executionEnabled=effective automatic execution permission; health gains
+idle-runtime-policy-v1. No dates, passwords or account details are exposed.
+
+Local relevant backend/storage/auth/privacy contracts PASS94/94. Actual
+Node20.18.0 feature/rollback contracts PASS15/15; includes context-null/absent,
+explicit false/empty override, exact true/date gate, Node administrator password
+used instead of default, provider compile-time binding and unrelated-setting
+isolation. A bundler test initially inherited ES5 from frontend tsconfig;
+setting its actual Node20 target fixed the harness without removing assertions.
+Scoped lint/actionlint PASS. Frontend production build PASS15.85s with existing
+bundle warnings; yarn is absent locally, so equivalent npm-run build was used.
+No TypeScript source changed; do not claim a newly green full TypeScript check.
+
+Deploy the fix first with current execution=false; then initiate an explicit
+tagged report-only qualification child to avoid automatically applying live
+settings while the fix itself is still rolling out. Updated preflight checks
+executionEnabled rather than the date-only flag, captures actual staging ref
+through GitHub's read token, and canonically verifies config write values
+before any promotion. Subsequent runtime-on browser test and rollback source
+proof remain outstanding, as does geographic coverage. No production change.
