@@ -43,6 +43,15 @@ type LearnLocationState = {
 export default function LearnPage({ mobile = false }: { mobile?: boolean } = {}) {
   const navigate = useNavigate()
   const location = useLocation()
+  const returningFromSync = new URLSearchParams(location.search).get('quick-sync-return') === '1'
+  // Consume the one-shot suppression marker ONLY once the lazy Learn route is
+  // mounted and has captured it. A global toast effect may mount earlier and
+  // inadvertently re-enable mobile auto-start before this route renders.
+  useEffect(() => {
+    if (returningFromSync && window.location.search.includes('quick-sync-return=1')) {
+      window.history.replaceState(window.history.state, '', window.location.pathname)
+    }
+  }, [returningFromSync])
   const currentRouteRef = useRef(location.pathname)
   currentRouteRef.current = location.pathname
 
