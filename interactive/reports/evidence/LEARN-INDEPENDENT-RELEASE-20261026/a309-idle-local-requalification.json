@@ -1,0 +1,51 @@
+{
+  "check": "idle-staging-trigger-v1",
+  "productionChanged": false,
+  "deploymentTriggered": false,
+  "multiRegionQualified": false,
+  "verdict": "PASS",
+  "applicationSource": "a309862",
+  "http": [
+    {
+      "path": "/api/health",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/account-policy?qualification=1792970252550",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/register",
+      "method": "POST",
+      "status": 201
+    },
+    {
+      "path": "/api/auth/me",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/login",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/account",
+      "method": "DELETE",
+      "status": 200
+    }
+  ],
+  "controlPlaneCredentialRequired": false,
+  "configurationManagedBy": "deployed-code",
+  "runtimeExecutionObserved": true,
+  "registrationAttempted": true,
+  "loginCompletedWhileMaintenanceHeld": true,
+  "learnedWhileMaintenanceHeld": true,
+  "maintenanceStatus": "already_ran",
+  "noExpiredAccountAtNewActivationFloor": true,
+  "localRowsAndSessionPreserved": true,
+  "cleanupPhase": "delete",
+  "testAccountCleanupVerified": true
+}

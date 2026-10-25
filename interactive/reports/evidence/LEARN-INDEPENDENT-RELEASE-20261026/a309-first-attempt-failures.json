@@ -1,0 +1,364 @@
+{
+  "sha": "a30986221680c504e3401ea4a568d7bd628bb552",
+  "history": {
+    "run": 40243444319,
+    "attempt": 1,
+    "result": "FAILED retained",
+    "proof": {
+      "historicalFixture": true,
+      "source": "a309862",
+      "unicodeHistoryBytes": 1472401,
+      "localHistoryUnchangedBeforeVersionCheck": true,
+      "firstRevision": 0,
+      "initialUploadState": {
+        "startup": "pending",
+        "sync": [
+          {
+            "stage": "v4-check",
+            "status": "noop",
+            "code": "none"
+          },
+          {
+            "stage": "m3-recovery",
+            "status": "ready",
+            "code": "none",
+            "audit": {
+              "scanned": 0,
+              "eligible": 0,
+              "snapshotOnly": 0,
+              "rejected": 0,
+              "issues": {}
+            }
+          },
+          {
+            "stage": "m3-publication",
+            "status": "idle",
+            "code": "none"
+          },
+          {
+            "stage": "m4-adoption",
+            "status": "skipped",
+            "code": "no-complete-observed-prefix:no-observed-device-heads"
+          },
+          {
+            "stage": "m4-adoption",
+            "status": "skipped",
+            "code": "unknown"
+          },
+          {
+            "stage": "m4-adoption",
+            "status": "skipped",
+            "code": "unknown"
+          },
+          {
+            "stage": "v4-check",
+            "status": "failed",
+            "code": "unknown"
+          },
+          {
+            "stage": "m3-recovery",
+            "status": "ready",
+            "code": "none",
+            "audit": {
+              "scanned": 3,
+              "eligible": 0,
+              "snapshotOnly": 3,
+              "rejected": 0,
+              "issues": {
+                "missing-attempt-id": 2,
+                "missing-source-mode": 2
+              }
+            }
+          },
+          {
+            "stage": "m3-publication",
+            "status": "idle",
+            "code": "none"
+          },
+          {
+            "stage": "m4-adoption",
+            "status": "skipped",
+            "code": "no-complete-observed-prefix:no-observed-device-heads"
+          },
+          {
+            "stage": "m3-recovery",
+            "status": "ready",
+            "code": "none",
+            "audit": {
+              "scanned": 3,
+              "eligible": 0,
+              "snapshotOnly": 3,
+              "rejected": 0,
+              "issues": {
+                "missing-attempt-id": 2,
+                "missing-source-mode": 2
+              }
+            }
+          },
+          {
+            "stage": "m3-publication",
+            "status": "idle",
+            "code": "none"
+          }
+        ]
+      },
+      "initialUploadResponses": [
+        {
+          "profile": 0,
+          "phase": "initial-history-upload",
+          "path": "/api/auth/login",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "profile": 0,
+          "phase": "initial-history-upload",
+          "path": "/api/sync/v2/meta",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "profile": 0,
+          "phase": "initial-history-upload",
+          "path": "/api/sync/v2/binary/direct",
+          "method": "POST",
+          "status": 503,
+          "code": "v4_direct_body_read_failed"
+        },
+        {
+          "profile": 0,
+          "phase": "initial-history-upload",
+          "path": "/api/sync/events/v2/observed",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "profile": 0,
+          "phase": "initial-history-upload",
+          "path": "/api/sync/v2/meta",
+          "method": "GET",
+          "status": 200
+        }
+      ],
+      "applicationFailed": true,
+      "failedPhase": "initial-history-upload",
+      "http": [
+        {
+          "profile": 0,
+          "phase": "initial-login",
+          "path": "/api/auth/login",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "profile": 0,
+          "phase": "initial-login",
+          "path": "/api/sync/v2/meta",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "profile": 0,
+          "phase": "initial-login",
+          "path": "/api/sync/events/v2/observed",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "profile": 0,
+          "phase": "initial-history-upload",
+          "path": "/api/auth/login",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "profile": 0,
+          "phase": "initial-history-upload",
+          "path": "/api/sync/v2/meta",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "profile": 0,
+          "phase": "initial-history-upload",
+          "path": "/api/sync/v2/binary/direct",
+          "method": "POST",
+          "status": 503,
+          "code": "v4_direct_body_read_failed"
+        },
+        {
+          "profile": 0,
+          "phase": "initial-history-upload",
+          "path": "/api/sync/events/v2/observed",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "profile": 0,
+          "phase": "initial-history-upload",
+          "path": "/api/sync/v2/meta",
+          "method": "GET",
+          "status": 200
+        }
+      ],
+      "localAfterFailure": [
+        {
+          "count": 3,
+          "startup": "pending",
+          "sync": [
+            {
+              "stage": "v4-check",
+              "status": "noop",
+              "code": "none"
+            },
+            {
+              "stage": "m3-recovery",
+              "status": "ready",
+              "code": "none",
+              "audit": {
+                "scanned": 0,
+                "eligible": 0,
+                "snapshotOnly": 0,
+                "rejected": 0,
+                "issues": {}
+              }
+            },
+            {
+              "stage": "m3-publication",
+              "status": "idle",
+              "code": "none"
+            },
+            {
+              "stage": "m4-adoption",
+              "status": "skipped",
+              "code": "no-complete-observed-prefix:no-observed-device-heads"
+            },
+            {
+              "stage": "m4-adoption",
+              "status": "skipped",
+              "code": "unknown"
+            },
+            {
+              "stage": "m4-adoption",
+              "status": "skipped",
+              "code": "unknown"
+            },
+            {
+              "stage": "v4-check",
+              "status": "failed",
+              "code": "unknown"
+            },
+            {
+              "stage": "m3-recovery",
+              "status": "ready",
+              "code": "none",
+              "audit": {
+                "scanned": 3,
+                "eligible": 0,
+                "snapshotOnly": 3,
+                "rejected": 0,
+                "issues": {
+                  "missing-attempt-id": 2,
+                  "missing-source-mode": 2
+                }
+              }
+            },
+            {
+              "stage": "m3-publication",
+              "status": "idle",
+              "code": "none"
+            },
+            {
+              "stage": "m4-adoption",
+              "status": "skipped",
+              "code": "no-complete-observed-prefix:no-observed-device-heads"
+            },
+            {
+              "stage": "m3-recovery",
+              "status": "ready",
+              "code": "none",
+              "audit": {
+                "scanned": 3,
+                "eligible": 0,
+                "snapshotOnly": 3,
+                "rejected": 0,
+                "issues": {
+                  "missing-attempt-id": 2,
+                  "missing-source-mode": 2
+                }
+              }
+            },
+            {
+              "stage": "m3-publication",
+              "status": "idle",
+              "code": "none"
+            }
+          ]
+        },
+        {
+          "unavailable": true
+        }
+      ],
+      "cleanupStatus": 200,
+      "cleanupVerified": true
+    }
+  },
+  "idle": {
+    "run": 40243444346,
+    "attempt": 1,
+    "result": "FAILED cleanup unconfirmed; cause not established",
+    "proof": {
+      "check": "idle-staging-trigger-v1",
+      "productionChanged": false,
+      "deploymentTriggered": false,
+      "multiRegionQualified": false,
+      "verdict": "FAIL",
+      "applicationSource": "a309862",
+      "controlPlaneCredentialRequired": false,
+      "configurationManagedBy": "deployed-code",
+      "runtimeExecutionObserved": true,
+      "registrationAttempted": true,
+      "loginCompletedWhileMaintenanceHeld": true,
+      "learnedWhileMaintenanceHeld": true,
+      "maintenanceStatus": "already_ran",
+      "noExpiredAccountAtNewActivationFloor": true,
+      "localRowsAndSessionPreserved": true,
+      "testAccountCleanupVerified": false
+    }
+  },
+  "transport": {
+    "run": 40243444245,
+    "attempt": 1,
+    "job": 121319952502,
+    "status": 503,
+    "code": "request_body_unavailable",
+    "stage": "legacy V4 to binary migration"
+  },
+  "handoff": {
+    "run": 40243444497,
+    "attempt": 1,
+    "job": 121319952923,
+    "functionalChecks": "passed through revision2/logout/next device readback",
+    "cleanupStatus": 503,
+    "cleanupCode": "request_body_unavailable",
+    "cleanupConfirmed": false
+  },
+  "threeDevice": {
+    "run": 40243444312,
+    "attempt": 1,
+    "result": "FAILED post-login UI entry hidden",
+    "loginStatus": 200,
+    "localRows": [
+      2,
+      1,
+      1
+    ],
+    "pendingJournals": [
+      false,
+      false,
+      false
+    ],
+    "cleanupStatus": 200,
+    "cause": "not established; not classified as 503"
+  }
+}
