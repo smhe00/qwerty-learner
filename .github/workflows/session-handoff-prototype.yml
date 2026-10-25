@@ -1,0 +1,57 @@
+name: Session handoff prototype
+on:
+  push:
+    branches: ['fix/session-handoff-20261025']
+    paths:
+      - 'cloud-functions/_shared/session-handoff-*.js'
+      - 'tests/cloud/session-handoff-*'
+      - 'experimental/session-handoff/**'
+      - '.github/workflows/session-handoff-prototype.yml'
+  pull_request:
+    branches: ['product/main']
+    paths:
+      - 'cloud-functions/_shared/session-handoff-*.js'
+      - 'tests/cloud/session-handoff-*'
+      - 'experimental/session-handoff/**'
+      - '.github/workflows/session-handoff-prototype.yml'
+permissions:
+  contents: read
+jobs:
+  protocol-and-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Exact backend regressions and handoff prototype
+        run: |
+          node --test tests/cloud/session-handoff-barrier.test.mjs tests/cloud/session-handoff-postgres.test.mjs tests/cloud/session-handoff-core.test.mjs tests/cloud/backend-core.test.mjs tests/cloud/edgeone-blob-storage.test.mjs
+  postgres-adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: isolated-ci-only
+          POSTGRES_DB: handoff_qualification
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated test driver (no application dependency changes)
+        run: npm install --prefix "$RUNNER_TEMP/handoff-deps" --ignore-scripts --no-audit --no-fund pg@8.16.3
+      - name: Real PostgreSQL qualification (not EdgeOne deployment)
+        env:
+          HANDOFF_TEST_DATABASE_URL: postgresql://postgres:isolated-ci-only@localhost:5432/handoff_qualification
+        run: |
+          HANDOFF_PG_DEPS="$RUNNER_TEMP/handoff-deps" node --test tests/cloud/session-handoff-postgres.integration.mjs
