@@ -51,7 +51,7 @@ jobs:
       - name: Scoped lint and production build
         run: |
           git diff --check
-          yarn eslint src/pages/Mobile src/pages/Achievements/index.tsx src/pages/Achievements/FocusAchievements.tsx src/pages/Typing/components/WordPanel/components/MobileWordPractice.tsx src/sync/CloudSyncSetting.tsx src/app.tsx --ext .ts,.tsx
+          yarn eslint src/pages/Mobile src/pages/Achievements src/pages/Typing/components/WordPanel/components/MobileWordPractice.tsx src/sync/CloudSyncSetting.tsx src/app.tsx --ext .ts,.tsx
           yarn build
           test -f build/mobile/history/index.html
           test -f build/mobile/data/index.html

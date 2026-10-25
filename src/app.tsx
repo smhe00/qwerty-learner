@@ -127,26 +127,9 @@ function DesktopRoutes() {
   )
 }
 
-/** Mobile achievements remain a standalone page opened from the Mobile menu. */
+/** The collection owns one integrated mobile header, not a second brand bar. */
 function MobileAchievementsRoute() {
-  const navigate = useNavigate()
-  return (
-    <div className="min-h-screen bg-[#f7f4ed] px-2 py-3 text-[#2c2a29] dark:bg-[#1d292c] dark:text-[#eee8dc]">
-      <header className="mx-auto mb-3 flex w-full max-w-5xl items-center justify-between gap-3 px-2">
-        <span className="text-sm font-semibold tracking-wide">QWERTY Plus · 成就雅集</span>
-        <button
-          type="button"
-          onClick={() => navigate('/mobile')}
-          className="rounded-lg border border-[#b9ae9a] px-3 py-2 text-sm dark:border-[#71847b]"
-          aria-label="返回手机首页"
-        >
-          返回
-        </button>
-      </header>
-      {/* This shell owns page navigation in both collection views. */}
-      <AchievementsPage embedded showBackButton={false} />
-    </div>
-  )
+  return <AchievementsPage embedded mobile />
 }
 
 /** An explicit mobile study route stays mounted through tablet rotation. */
@@ -230,6 +213,7 @@ function Root() {
     }
 
     window.addEventListener('resize', handleResize)
+
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 

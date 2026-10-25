@@ -73,7 +73,8 @@ test('menu completion: achievements open from home and retain mobile navigation 
   await home(page)
   await page.getByRole('link', { name: /^成就/ }).click()
   await expect(page).toHaveURL(/\/mobile\/achievements$/)
-  await expect(page.getByText('QWERTY Plus · 成就雅集')).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByRole('heading', { name: '成就', level: 1, exact: true })).toBeVisible({ timeout: 30_000 })
+  await expect(page.locator('[data-mobile-achievement-header]')).toHaveCount(1)
   for (const width of [320, 900]) {
     await page.setViewportSize({ width, height: 844 })
     await expect(page.getByRole('button', { name: '返回手机首页' })).toBeVisible()

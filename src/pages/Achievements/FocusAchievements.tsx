@@ -3,6 +3,7 @@ import type { AchievementStateRecord } from '@/achievement/types'
 import type { SongArtAccess } from '@/achievement/song-art-access'
 import { useState } from 'react'
 import { ArrowLeft, Check, LockKeyhole, Sparkles, X } from 'lucide-react'
+import { MobileAchievementHeading } from './MobileAchievementHeading'
 import './focus-achievements.css'
 
 type Filter = 'all' | 'earned' | 'pending'
@@ -13,6 +14,7 @@ type Props = {
   masteredWords: number
   theme: 'light' | 'dark'
   showBackButton?: boolean
+  mobile?: boolean
   onClose: () => void
   onOpenSong: () => void
   onSeen: (id: string) => void
@@ -24,7 +26,7 @@ const day = (seconds: number): string => new Date(seconds * 1000).toLocaleDateSt
 
 /** Default no-distraction achievement view. No painted art is mounted here. */
 export function FocusAchievements({
-  achievements, states, access, masteredWords, theme, showBackButton = true, onClose, onOpenSong, onSeen,
+  achievements, states, access, masteredWords, theme, showBackButton = true, mobile = false, onClose, onOpenSong, onSeen,
 }: Props) {
   const [filter, setFilter] = useState<Filter>('all')
   const [selectedId, setSelectedId] = useState<string>()
@@ -34,16 +36,20 @@ export function FocusAchievements({
   )
   const selected = achievements.find(a => a.id === selectedId)
   const selectedState = selected && states.get(selected.id)
-  return <main className="focus-achievements" data-focus-achievement-gallery data-theme={theme}>
-    <header className="focus-achievements-header">
-      <div>
-        <p className="focus-achievements-eyebrow">QWERTY PLUS / PROGRESS</p>
-        <h1>成就</h1>
-        <p className="focus-achievements-intro">持续学习，记录每一个值得记住的进步。</p>
-      </div>
-      {showBackButton && <button type="button" className="focus-achievements-back" onClick={onClose}
-        aria-label="返回 Learn"><ArrowLeft size={18} aria-hidden="true" /> 返回</button>}
-    </header>
+  return <main className="focus-achievements" data-focus-achievement-gallery data-theme={theme}
+    data-mobile-achievement-page={mobile ? 'focus' : undefined}>
+    {mobile ? <MobileAchievementHeading title="成就" onBack={onClose}
+      description="持续学习，记录每一个值得记住的进步。" /> : (
+      <header className="focus-achievements-header">
+        <div>
+          <p className="focus-achievements-eyebrow">QWERTY PLUS / PROGRESS</p>
+          <h1>成就</h1>
+          <p className="focus-achievements-intro">持续学习，记录每一个值得记住的进步。</p>
+        </div>
+        {showBackButton && <button type="button" className="focus-achievements-back" onClick={onClose}
+          aria-label="返回 Learn"><ArrowLeft size={18} aria-hidden="true" /> 返回</button>}
+      </header>
+    )}
 
     <section className="focus-achievements-overview" aria-label="成就进度">
       <div className="focus-achievements-metric">

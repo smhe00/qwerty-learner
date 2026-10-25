@@ -1,0 +1,81 @@
+/* Explicit mobile routes keep their navigation through landscape/tablet rotation.
+   Native Focus/Song surfaces own the background; there is no nested brand shell. */
+.focus-achievements[data-mobile-achievement-page],
+.song-v2-collection[data-mobile-achievement-page] {
+  min-height:100vh;
+  min-height:100svh;
+  box-sizing:border-box;
+  padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right))
+    max(36px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+}
+.mobile-achievement-heading {
+  position:relative;
+  max-width:1100px;
+  margin:0 auto 24px;
+  color:inherit;
+  font-family:ui-sans-serif,system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+}
+.mobile-achievement-heading-row {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-height:44px;
+}
+.mobile-achievement-back {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 44px;
+  width:44px;
+  height:44px;
+  padding:0;
+  margin-left:-10px;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:inherit;
+  cursor:pointer;
+  touch-action:manipulation;
+}
+.mobile-achievement-back:hover,
+.mobile-achievement-back:active {
+  background:color-mix(in srgb,currentColor 7%,transparent);
+}
+.mobile-achievement-back:focus-visible {
+  outline:2px solid var(--fa-accent,var(--v2-celadon,#43877d));
+  outline-offset:2px;
+}
+.mobile-achievement-heading-row h1 {
+  flex:1;
+  min-width:0;
+  margin:0;
+  font-size:25px;
+  font-weight:650;
+  line-height:1.25;
+  letter-spacing:-.02em;
+}
+.mobile-achievement-heading-intro {
+  margin:8px 0 0;
+  color:var(--fa-muted,var(--v2-muted,#73808b));
+  font-size:13px;
+  line-height:1.7;
+}
+.mobile-achievement-heading-progress {
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  flex-shrink:0;
+  gap:2px;
+  color:var(--v2-muted,#817b70);
+  font-size:10px;
+}
+.mobile-achievement-heading-progress strong {
+  color:inherit;
+  font-size:16px;
+  font-weight:600;
+  font-variant-numeric:tabular-nums;
+}
+.mobile-achievement-heading-progress small {
+  font-size:12px;
+  font-weight:400;
+}

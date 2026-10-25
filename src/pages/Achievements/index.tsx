@@ -10,6 +10,7 @@ import { SongSharedOrnaments } from '@/achievement/visual-assets/SongSharedOrnam
 import { getSongLockedBackUrl } from '@/achievement/visual-assets/lockedBacks'
 import { assessSongArtAccess } from '@/achievement/song-art-access'
 import { FocusAchievements } from './FocusAchievements'
+import { MobileAchievementHeading } from './MobileAchievementHeading'
 import { usesOriginalSongFrameOverlay } from '@/achievement/visual-assets/thirdBatch'
 import { getFirstBatchAchievementArtUrl } from '@/achievement/visual-assets/firstBatch'
 import { getSecondBatchAchievementArtUrl } from '@/achievement/visual-assets/secondBatch'
@@ -195,10 +196,11 @@ function CollectionDetail({ achievement, unlockedAt, sample, theme, onClose }: {
   )
 }
 
-export default function AchievementsPage({ embedded = false, showBackButton = true }: {
+export default function AchievementsPage({ embedded = false, showBackButton = true, mobile = false }: {
   embedded?: boolean
-  /** A hosting mobile shell can provide the single page-level return action. */
+  /** Desktop embedding may provide its own exit. Mobile owns its integrated heading. */
   showBackButton?: boolean
+  mobile?: boolean
 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -246,6 +248,10 @@ export default function AchievementsPage({ embedded = false, showBackButton = tr
   const state = selected ? stateById.get(selected.id) : undefined
 
   const close = () => {
+    if (mobile) {
+      navigate('/mobile')
+      return
+    }
     const from = (location.state as { backgroundLocation?: { pathname: string } } | null)?.backgroundLocation
     if (from?.pathname === '/typing' || from?.pathname === '/learn') navigate(-1)
     else navigate(embedded ? '/mobile' : '/learn', { replace: true })
@@ -273,26 +279,31 @@ export default function AchievementsPage({ embedded = false, showBackButton = tr
     '--song-sprite-url': 'url("' + import.meta.env.BASE_URL + 'assets/achievements/song/gallery/sprite.webp")',
   } as CSSProperties
   const main = (
-    <main className="song-v2-collection" data-song-achievement-gallery data-song-theme={theme} style={spriteStyle}>
+    <main className="song-v2-collection" data-song-achievement-gallery data-song-theme={theme} style={spriteStyle}
+      data-mobile-achievement-page={mobile ? 'song' : undefined}>
       <SongPortalEntry theme={theme} />
-      {showBackButton && <button type="button" className="song-v2-close" aria-label="返回 Learn" onClick={close}>
+      {!mobile && showBackButton && <button type="button" className="song-v2-close" aria-label="返回 Learn" onClick={close}>
         <IconX className="h-6 w-6" />
       </button>}
-      <header className="song-v2-header">
-        <div className="song-v2-header-painting" aria-hidden="true" />
-        <div className="song-v2-header-group">
-          <div className="song-v2-progress-ring"
-            style={{ background: 'conic-gradient(#54877e ' + (achievements.length ? unlockedCount / achievements.length * 100 : 0) + '%,#d9d5cc 0)' }}
-            aria-label={'已解锁 ' + unlockedCount + '/' + achievements.length}>
-            <div><strong>{unlockedCount}</strong><span>/ {achievements.length}</span></div>
+      {mobile ? <MobileAchievementHeading title="成就雅集" onBack={close}
+        description="以指为笔，收集属于你的成长印记。"
+        progress={{ earned: unlockedCount, total: achievements.length }} /> : (
+        <header className="song-v2-header">
+          <div className="song-v2-header-painting" aria-hidden="true" />
+          <div className="song-v2-header-group">
+            <div className="song-v2-progress-ring"
+              style={{ background: 'conic-gradient(#54877e ' + (achievements.length ? unlockedCount / achievements.length * 100 : 0) + '%,#d9d5cc 0)' }}
+              aria-label={'已解锁 ' + unlockedCount + '/' + achievements.length}>
+              <div><strong>{unlockedCount}</strong><span>/ {achievements.length}</span></div>
+            </div>
+            <div className="song-v2-header-words">
+              <div className="song-v2-eyebrow">QWERTY PLUS · COLLECTION</div>
+              <h1>成就雅集</h1>
+              <p>以指为笔，收集属于你的成长印记。</p>
+            </div>
           </div>
-          <div className="song-v2-header-words">
-            <div className="song-v2-eyebrow">QWERTY PLUS · COLLECTION</div>
-            <h1>成就雅集</h1>
-            <p>以指为笔，收集属于你的成长印记。</p>
-          </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       <div className="song-v2-controls">
         <button type="button" className="song-v2-return-focus" onClick={() => {
@@ -364,6 +375,7 @@ export default function AchievementsPage({ embedded = false, showBackButton = tr
       masteredWords={visibleProgress.longTermMasteredWords}
       theme={theme}
       showBackButton={showBackButton}
+      mobile={mobile}
       onClose={close}
       onOpenSong={() => { closeDetail(); setCollectionView('song') }}
       onSeen={id => {
