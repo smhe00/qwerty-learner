@@ -1,0 +1,58 @@
+name: Learn Completion Journey
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - 'src/learn/**'
+      - 'src/pages/Learn/**'
+      - 'src/pages/Typing/components/WordPanel/**'
+      - 'src/store/reviewInfoAtom.ts'
+      - 'src/utils/db/**'
+      - 'src/sync/**'
+      - 'src/pages/Typing/index.tsx'
+      - 'src/pages/Typing/store/**'
+      - 'tests/e2e/review-flow-harness.ts'
+      - 'src/index.tsx'
+      - 'tests/e2e/learn-completion-journey*'
+      - 'tests/e2e/learn-block-sync-*'
+      - 'tests/cloud/learn-block-auto-sync.test.mjs'
+      - '.github/workflows/learn-completion-journey.yml'
+  pull_request:
+    branches: [product/main]
+    paths:
+      - 'src/learn/**'
+      - 'src/pages/Learn/**'
+      - 'src/pages/Typing/components/WordPanel/**'
+      - 'src/store/reviewInfoAtom.ts'
+      - 'src/utils/db/**'
+      - 'src/sync/**'
+      - 'src/pages/Typing/index.tsx'
+      - 'src/pages/Typing/store/**'
+      - 'tests/e2e/review-flow-harness.ts'
+      - 'src/index.tsx'
+      - 'tests/e2e/learn-completion-journey*'
+      - 'tests/e2e/learn-block-sync-*'
+      - 'tests/cloud/learn-block-auto-sync.test.mjs'
+      - '.github/workflows/learn-completion-journey.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Completion sync authorization contracts
+        run: node --test tests/cloud/learn-block-auto-sync.test.mjs
+      - name: Last real word through guarded V4 sync and five-more entry
+        run: yarn playwright test --config=tests/e2e/learn-completion-journey.config.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: learn-completion-traces
+          path: test-results/
