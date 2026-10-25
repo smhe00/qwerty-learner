@@ -26,23 +26,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Apply reviewed wiring and integrate upstream without overwriting it
+      - name: Apply pinned auth-body fix and integrate upstream without overwriting it
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git fetch origin product/main fix/session-handoff-20261025
           git merge --ff-only origin/fix/session-handoff-20261025
-          PATCH=experimental/session-handoff/gateway-wiring.patch
+          grep -Fq 'return withHandoffGateway(context, onUncoordinatedRequest)' 'cloud-functions/api/[[default]].js'
+          PATCH=experimental/session-handoff/auth-body.patch
           if git apply --reverse --check "$PATCH"; then
-            echo 'Reviewed gateway wiring is already applied'
+            echo 'Auth body receive-once fix is already applied'
           else
-            test "$(git hash-object cloud-functions/_shared/core.js)" = 5ff10edfdd3859a8e3d6fc0e94531327c09cb387
-            test "$(git hash-object 'cloud-functions/api/[[default]].js')" = 3577a0acdfc75f1e8f1df858d6e6641acf0afb36
+            test "$(git hash-object cloud-functions/_shared/session-handoff-gateway.js)" = efb5614a91dbcb0dc85250ce96e40d99f429f601
+            test "$(git hash-object 'cloud-functions/api/[[default]].js')" = 233a8a31421496df4ad1ab61a45b315578800b46
+            test "$(git hash-object tests/cloud/session-handoff-gateway.test.mjs)" = 2881ee2b33871ee4bc05d39e911a65732ac09393
+            test "$(git hash-object tests/cloud/session-handoff-live.mjs)" = da3a6f18b6bdc6faddcd467fb1b71d74ccb63515
             git apply --check "$PATCH"
             git apply "$PATCH"
-            git add cloud-functions/_shared/core.js 'cloud-functions/api/[[default]].js'
-            git commit -m 'fix(auth): wire complete requests through fixture handoff gateway'
+            git diff --check
+            git add cloud-functions/_shared/session-handoff-auth-body.js cloud-functions/_shared/session-handoff-gateway.js 'cloud-functions/api/[[default]].js' tests/cloud/session-handoff-gateway.test.mjs tests/cloud/session-handoff-live.mjs
+            git commit -m 'fix(auth): receive handoff auth body once without runtime clone'
           fi
           git merge --no-edit origin/product/main
           git rev-parse HEAD > "$RUNNER_TEMP/handoff-tested-sha.txt"
