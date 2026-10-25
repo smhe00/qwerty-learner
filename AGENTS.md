@@ -12,6 +12,17 @@ This file is the mandatory entry point for any coding agent working in this repo
 - Before any master update the IDENTICAL SHA must pass published Pages regression, etest real-Cloud browser E2E and Blob transport, and the `release-ready` check. An explicit user release request remains mandatory.
 - Routine development and agent coordination happen on `product/main`; NEVER bind a Maker project to its pushes.
 
+### Server deployment identity (owner convention, 2026-10-26)
+
+The owner configured the lower-case server environment variable `branch` in EdgeOne:
+
+| Server variable | Deployment | Canonical host | Git branch |
+| --- | --- | --- | --- |
+| `branch=master` | Production | `https://q.smhe.cn/` | `master` |
+| `branch=etest` | Staging / experiments | `https://t.smhe.cn/` | `edgeone-test` |
+
+Read trusted server bindings through `runtimeEnvironment(context.env)`, including literal `process.env.branch` for Node Cloud Functions. Do not infer deployment identity from Request.url, Host, Origin, query strings or client headers: Maker may rewrite the URL and these inputs cannot authorize experiments. For session handoff, ONLY exact `etest` enables the existing disposable-account pilot; `master`, missing, blank or unknown values disable it before request-body classification or barrier access. This does not enable handoff for ordinary accounts or grant release authority; explicit owner approval and identical-SHA gates still apply. Keep this convention available to all QWERTY executor chats.
+
 ## 2. Control architecture
 
 Qwerty Plus uses a replaceable-agent workflow:

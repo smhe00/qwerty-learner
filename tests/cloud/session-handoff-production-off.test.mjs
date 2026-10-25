@@ -13,9 +13,7 @@ before(async () => {
  directory=await mkdtemp(join(tmpdir(),'handoff-production-off-'))
  const outfile=join(directory,'gateway.mjs')
  await build({entryPoints:['cloud-functions/api/[[default]].js'],outfile,bundle:true,format:'esm',platform:'node',target:'node22',logLevel:'silent',plugins:[{
- name:'production-policy-fake-provider',setup(builder){
- builder.onResolve({filter:/session-handoff-deployment-policy[.]js$/},()=>({path:'policy',namespace:'off'}))
- builder.onLoad({filter:/.*/,namespace:'off'},()=>({contents:'export const HANDOFF_EXPERIMENT_ENABLED = false',loader:'js'}))
+ name:'fake-provider-only',setup(builder){
  builder.onResolve({filter:/^@edgeone\/pages-blob$/},()=>({path:'blob',namespace:'provider'}))
  builder.onLoad({filter:/.*/,namespace:'provider'},()=>({contents:'export const getStore = options => globalThis.__productionOffStore(options)',loader:'js'}))
  }}]})
@@ -34,7 +32,7 @@ test('production off: health and reserved-name login/V4 stay on ordinary single-
  const read=request.arrayBuffer.bind(request);let count=0
  request.arrayBuffer=()=>{assert.equal(++count,1);return read()}
  request.clone=()=>{throw Error('clone forbidden')}
- const response=await onRequest({request,clientIp:'192.0.2.9',env:{AUTH_RATE_LIMIT_REQUESTS:'1000',HANDOFF_EXPERIMENT_ENABLED:'true'}})
+ const response=await onRequest({request,clientIp:'192.0.2.9',env:{branch:'master',AUTH_RATE_LIMIT_REQUESTS:'1000',HANDOFF_EXPERIMENT_ENABLED:'true'}})
  reads.push({path,count})
  assert.equal(response.headers.get('x-qwerty-handoff'),null)
  return {status:response.status,data:await response.json()}

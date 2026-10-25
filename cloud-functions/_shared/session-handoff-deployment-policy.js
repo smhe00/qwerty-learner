@@ -1,3 +1,3 @@
-// Source-controlled deployment scope. Release candidates set this to false.
-// Never enable via request Host/Origin, headers or mutable runtime settings.
-export const HANDOFF_EXPERIMENT_ENABLED = true
+// Only the owner-configured SERVER deployment variable enables the etest pilot.
+// Missing/unknown values fail closed. Request Host, Origin and headers never select it.
+export const isHandoffExperimentEnabled = env => env?.branch === 'etest'

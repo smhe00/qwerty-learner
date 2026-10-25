@@ -2,7 +2,7 @@
 task_id: LEARN-INDEPENDENT-RELEASE-20261026
 status: IN_PROGRESS
 executor: Codex
-target_branch: release/production-no-handoff-20261026
+target_branch: product/main
 base_commit: 9620e33c845f59d31cba107e14dd30754a8c0ca5
 release_to_master: true
 ---
@@ -16,3 +16,7 @@ Diagnosis starts at maincd6ac70d with deployed etest9620e33c. Existing history f
 ## Owner scope correction after concurrent production update
 
 Production advanced to9620e33c during diagnosis. Owner explicitly selected: preserve newly released other functions, remove only the handoff experiment from production. Earlier5528-only candidate is superseded and MUST NOT be published. New independent candidate is a forward descendant of9620e33c; source-controlled handoff policy is false. This exits before classification/body reception, fixture-account reads, health augmentation and barrier admission. Source-enabled test branch remains on etest after candidate qualification. No host/header/env enablement or console changes. Keep idle activation, mobile UI and completion fix byte-identical to9620e33c. Source files for optional experimental services remain versioned for unit tests but are unreachable through the production gateway.
+
+## Current deployment plan (owner environment update)
+
+Owner added server variable branch=master on production and branch=etest on staging. Use ONLY this trusted deployment binding (context.env or literal process.env.branch); missing/unknown values disable handoff. Same SHA can now be tested and released through normal main/etest/master gates while etest retains pilot continuously. Independent18767e32 source-policy-off candidate is superseded and MUST NOT be promoted. No special release-branch gate support is needed. All newly released UI/cleanup/completion behavior is retained.

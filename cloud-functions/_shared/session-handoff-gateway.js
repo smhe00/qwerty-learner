@@ -1,6 +1,6 @@
 /* eslint-env node */
 import { createHash } from 'node:crypto'
-import { HANDOFF_EXPERIMENT_ENABLED } from './session-handoff-deployment-policy.js'
+import { isHandoffExperimentEnabled } from './session-handoff-deployment-policy.js'
 import { receiveHandoffAuthBody } from './session-handoff-auth-body.js'
 import { AppError, createBackendService, normalizeUsername } from './core.js'
 import { createEdgeOneBlobStorage } from './storage/edgeone-blob.js'
@@ -10,10 +10,9 @@ import { BeforeMutationError, HandoffError } from './session-handoff-barrier.js'
 import { createBlobHandoffBarrier } from './session-handoff-blob.js'
 import { getStore, markHandoffRateLimited, rawHandoffStore, runHandoffScope } from './session-handoff-context.js'
 
-// NEW disposable accounts only. No Origin/Host/env/header is an enable switch:
-// Maker rewrites Request.url and different domains may share one namespace.
-// This branch is staged ONLY to etest, never to production. A distinct fixed
-// prefix isolates the rollout from old unguarded instances and existing users.
+// NEW disposable accounts only, inside the explicitly configured etest deployment.
+// Maker rewrites Request.url: no caller-controlled Origin/Host/header selects it.
+// A distinct fixed prefix isolates the pilot from existing users.
 export const HANDOFF_FIXTURE_USERNAME = /^qh26[0-9a-f]{24}$/
 export const HANDOFF_CAPABILITY = 'account-handoff-blob-fixtures-v1'
 const digest = text => createHash('sha256').update(text).digest('hex')
@@ -25,9 +24,9 @@ const response = (data, status = 200) => new Response(JSON.stringify(data), {
 export async function withHandoffGateway(context, dispatch) {
   // Production release exits before classification, request-body reads, Blob
   // access, health augmentation or barrier admission, even for fixture names.
-  if (!HANDOFF_EXPERIMENT_ENABLED) return dispatch(context)
-  const { request } = context
   const env = runtimeEnvironment(context.env)
+  if (!isHandoffExperimentEnabled(env)) return dispatch(context)
+  const { request } = context
   const path = new URL(request.url).pathname.replace(/^\/api(?=\/|$)/, '') || '/'
   if (request.method === 'OPTIONS') return dispatch(context)
   if (request.method === 'GET' && ['/', '/health'].includes(path)) {

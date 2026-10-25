@@ -29,3 +29,7 @@ Local candidate checks so far: completion browser12/12 PASS82.43s including Yarn
 Other executor released9620e33c under separate owner authority. This task did not perform that release. Owner now explicitly authorized preserving all new production features while removing only handoff from production. Abandoned old-base candidateb9ad262c remains local; not pushed. Replacement uses code-owned policy false before all experimental request processing; development/staging policy remains true. Final exact-SHA validation/publication pending.
 
 New scope local gateway regressions:13/13 PASS (12 staging experiment contracts plus1 production-off auth/V4/session/cleanup journey). Scoped ESLint0 errors. No application UI or cleanup implementation changed.
+
+## Final scope based on owner-provided deployment variable
+
+Owner configured branch=master for production and branch=etest for test. Replace static candidate policy with exact server deployment binding. Missing/unknown values disable experiment; request Host/Origin/headers cannot enable it. runtime-environment adds only literal process.env.branch fallback, preserving all other configuration.18767e32 branch is superseded, never pushed to etest/master. Normal product/main/etest same-SHA gates retained unchanged. etest trial no longer needs interruption or restoration. Production preserves9620e33c UI/completion/cleanup.

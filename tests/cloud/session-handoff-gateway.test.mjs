@@ -16,8 +16,6 @@ before(async () => {
   await build({ entryPoints: ['cloud-functions/api/[[default]].js'], outfile,
     bundle: true, format: 'esm', platform: 'node', target: 'node22', logLevel: 'silent', plugins: [{
       name: 'synthetic-blob-only', setup(builder) {
-        builder.onResolve({ filter: /session-handoff-deployment-policy[.]js$/ }, () => ({ path: 'policy', namespace: 'test-policy' }))
-        builder.onLoad({ filter: /.*/, namespace: 'test-policy' }, () => ({ contents: 'export const HANDOFF_EXPERIMENT_ENABLED = true', loader: 'js' }))
         builder.onResolve({ filter: /^@edgeone\/pages-blob$/ }, () => ({ path: 'blob', namespace: 'test-io' }))
         builder.onLoad({ filter: /.*/, namespace: 'test-io' }, () => ({
           contents: 'export const getStore = options => globalThis.__handoffGatewayTestStore(options)',
@@ -62,7 +60,7 @@ async function harness({ ordinary = false, unclonableAuth = false } = {}) {
         return receive()
       }
     }
-    const result = await onRequest({ request, clientIp, env: { AUTH_RATE_LIMIT_REQUESTS: '1000', ...env } })
+    const result = await onRequest({ request, clientIp, env: { branch: 'etest', AUTH_RATE_LIMIT_REQUESTS: '1000', ...env } })
     const data = (result.headers.get('content-type') || '').includes('json') ? await result.json() : null
     return { status: result.status, data, headers: result.headers }
   }
@@ -113,7 +111,7 @@ test('actual HTTP gateway: invalid credentials never close admission', { timeout
 
 test('actual HTTP gateway: rate limiting is still applied to wrong fixture passwords', { timeout: 10000 }, async () => {
   const h = await harness()
-  const bad = await h.call('/auth/login', { method: 'POST', env: { AUTH_RATE_LIMIT_REQUESTS: '1' },
+  const bad = await h.call('/auth/login', { method: 'POST', env: { branch: 'etest', AUTH_RATE_LIMIT_REQUESTS: '1' },
     body: { username: h.username, password: 'wrong' } })
   assert.equal(bad.status, 429)
 })
@@ -185,7 +183,7 @@ test('live qualification script exercises the complete actual-handler journey lo
   const originalFetch = globalThis.fetch
   const originalExitCode = process.exitCode
   globalThis.fetch = async (input, options) => onRequest({
-    request: new Request(input, options), clientIp: '192.0.2.199', env: { AUTH_RATE_LIMIT_REQUESTS: '1000' },
+    request: new Request(input, options), clientIp: '192.0.2.199', env: { branch: 'etest', AUTH_RATE_LIMIT_REQUESTS: '1000' },
   })
   try {
     await import('./session-handoff-live.mjs?local-handler-qualification')
@@ -206,7 +204,7 @@ test('actual HTTP gateway: an unreadable classification body cannot bypass the g
     if (++reads === 1) throw new Error('transient read failure')
     return nativeRead()
   }
-  const result = await onRequest({ request, clientIp: '192.0.2.200', env: {} })
+  const result = await onRequest({ request, clientIp: '192.0.2.200', env: { branch: 'etest' } })
   assert.equal(result.status, 503)
   const failure = await result.json()
   assert.equal(failure.error, 'request_body_unavailable')
