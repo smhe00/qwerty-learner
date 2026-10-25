@@ -170,7 +170,7 @@ test('audio preview uses unsaved voice/volume/rate, stops on edit and navigation
   expect(await page.evaluate(() => localStorage.getItem('pronunciation'))).toBe(saved)
 })
 
-test('settings save stays reachable on scrolling and display explicitly applies immediately', async ({ page }) => {
+test('settings save stays reachable on scrolling and display persists without a second save', async ({ page }) => {
   await page.goto('/mobile/settings')
   await page.getByLabel('每日新词目标').fill('15')
   await page.getByLabel('每阶段词数').scrollIntoViewIfNeeded()
@@ -180,8 +180,10 @@ test('settings save stays reachable on scrolling and display explicitly applies 
   expect(save.y + save.height).toBeLessThanOrEqual(845)
   await page.getByRole('button', { name: '保存设置', exact: true }).tap()
   await expect(page.getByRole('status')).toContainText('设置已保存在本机')
-  await expect(page.getByText('立即生效，无需点击保存。', { exact: true })).toBeVisible()
   await page.getByLabel('深色模式').check()
+  await expect(page.locator('html')).toHaveClass(/dark/)
+  await page.reload()
+  await expect(page.getByLabel('深色模式')).toBeChecked()
   await expect(page.locator('html')).toHaveClass(/dark/)
 })
 
