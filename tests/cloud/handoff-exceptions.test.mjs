@@ -53,7 +53,7 @@ test('expanded handoff journey through actual gateway and real TCP client discon
     let nativeAborts = 0
     const report = await qualifyExceptionalHandoff({ fetchImpl: async (target, options) => {
       assert.equal(target.origin, 'https://t.smhe.cn')
-      const local = new URL(target.pathname, `http://127.0.0.1:${server.address().port}`)
+      const local = new URL(target.pathname + target.search, `http://127.0.0.1:${server.address().port}`)
       try { return await fetch(local, options) }
       catch (error) { if (error.name === 'AbortError') nativeAborts++; throw error }
     } })

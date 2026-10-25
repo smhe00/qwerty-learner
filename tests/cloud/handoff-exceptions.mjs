@@ -34,7 +34,7 @@ export async function qualifyExceptionalHandoff({ fetchImpl = globalThis.fetch, 
     assert.ok(condition, name)
     report.checks.push({ name, passed: true })
   }
-  async function call(path, { method = 'GET', bearer, body, bytes, headers = {}, signal } = {}) {
+  async function call(path, { method = 'GET', bearer, body, bytes, headers = {}, signal, binary = false } = {}) {
     const target = new URL('/api' + path, origin)
     const started = performance.now()
     const result = await fetchImpl(target, { method, cache: 'no-store', redirect: 'error',
@@ -43,9 +43,10 @@ export async function qualifyExceptionalHandoff({ fetchImpl = globalThis.fetch, 
       ...(bytes ? { body: bytes } : body ? { body: JSON.stringify(body) } : {}),
       signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(90_000)]) : AbortSignal.timeout(90_000) })
     let data
-    try { data = await result.json() } catch { throw new Error('non_json_response') }
+    try { data = binary && result.ok ? Buffer.from(await result.arrayBuffer()) : await result.json() }
+    catch { throw new Error('response_body_unavailable') }
     const guarded = result.headers.get('x-qwerty-handoff')
-    const evidence = { method, path, status: result.status, error: code(data?.error),
+    const evidence = { method, path: path.split('?')[0], status: result.status, error: code(data?.error),
       guarded: guarded === capability, durationMs: Math.round(performance.now() - started) }
     if (path === '/auth/handoff/status') evidence.counters = counters(data)
     if (report.responses.length < 180) report.responses.push(evidence)
@@ -170,12 +171,23 @@ export async function qualifyExceptionalHandoff({ fetchImpl = globalThis.fetch, 
     const old = token
     const out = await call('/auth/logout', { method: 'POST', bearer: token })
     check('logout completes under the guard', out.status === 200 && out.guarded === capability && out.data.revoked === true)
-    check('logged-out token cannot mutate or authenticate', (await call('/auth/me', { bearer: old })).status === 401)
+    check('logged-out token cannot authenticate', (await call('/auth/me', { bearer: old })).status === 401)
     token = null
     const next = await login('exception-G')
     check('relogin after confirmed logout succeeds', next.status === 200 && next.guarded === capability)
     token = next.data.token
     await exact(token, union, 2, 'final relogin retains both records')
+    stage = 'native-payload-readback'
+    const manifest = await call('/sync/v2/binary/manifest', { bearer: token })
+    check('final native manifest pins expected revision and bytes', manifest.status === 200 &&
+      manifest.guarded === capability && manifest.data.revision === 2 && manifest.data.count === 1 &&
+      manifest.data.dataSha256 === sha(union.payloadBytes))
+    const readback = await call(`/sync/v2/binary/part?revision=2&sha=${sha(union.payloadBytes)}&index=0`,
+      { bearer: token, binary: true })
+    check('full native payload is preserved, not only its metadata', readback.status === 200 &&
+      readback.guarded === capability && Buffer.isBuffer(readback.data) && readback.data.equals(union.payloadBytes))
+    verifyCompressedV4(readback.data, accountId, union.logicalFingerprint)
+    report.nativeReadbackVerified = true
     const settled = await status(token)
     check('all completed operations drained without force-unlock', settled.unresolved === 0 && settled.activeWriters === 0 && settled.pendingHandoffs === 0)
     check('lost-response upload was never resubmitted', report.abortedWriteReplays === 0 && report.intentionallyAbortedWrites === 1)
