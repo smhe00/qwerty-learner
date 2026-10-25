@@ -1,16 +1,22 @@
 ---
 task_id: MOBILE-PRODUCT-POLISH-20261025
-status: IN_PROGRESS
+status: PARTIAL
+ui_status: VERIFIED
+release_status: BLOCKED_STAGING_COORDINATION
 executor: Chat (independent UI and authorized release review)
 target_branch: product/main
 base_commit: c594f89ef01cdd3043fe704f078c40fb9c05226b
+validated_code: 8b9cf082726679aeb49c18050141824f80a61719
+report_file: interactive/reports/MOBILE-PRODUCT-POLISH-20261025-report.md
 release_to_master: true
 ---
 
-Owner requests mature commercial-quality mobile presentation, removal of low-value explanation, and master promotion as soon as verified. This does not authorize bypassing data-safety/release checks or enabling idle-account cleanup.
+Owner explicitly requested mature mobile presentation and master promotion as soon as verified. That release authorization is already granted; do not ask for it again. It does not waive same-SHA deployment checks or authorize experimental handoff rollout/idle-account activation.
 
-Scope: Home, Library, History, Data and Settings copy. Preserve actual progress, account/expiry state, form bounds, save/error feedback, activation timing, destructive restore disclosure, accessible names and guarded navigation. Existing shared chevron/achievement header improvements remain. No claims of stronger sync guarantees or a changed release-maturity tier from copy alone.
+Implementation is complete in main: Home, Library, History, Data, Settings and daily-progress presentation. Preserve genuine counts, checkpoint/account/expiry state, field timing, save/error feedback and destructive restore disclosure. Shared chevrons and achievement headings remain. No new branches or data/auth/sync/FSRS algorithm changes.
 
-Run the existing Mobile Menu Completion suite with three additional copy/operation/data-preservation cases and retained screenshot evidence. Preserve the blocked Codex idle activation CURRENT_TASK and separate session-handoff branch. Production authorization is explicit in this user request; release still needs identical-SHA published Pages, real staging Cloud/Blob and release-ready evidence.
+Exact-code Mobile Menu Completion40191304449 passed23/23 with zero retries, scoped static checks/build and real browser screenshots. See report for evidence and limitations. Subsequent upstream281ed710 only strengthens the separate immediate-theme-persistence test; retain it.
 
-At intake edgeone-test=34a3d15f35ede8dec073fa88deaa5f3125f2ee95 diverges from the execution base (main ahead5/behind14; common ancestor9824cc65). Do not force-reset staging or silently discard/ship the independent account-handoff work. Resolve coordination based on current source/evidence or leave a precise release blocker.
+Release blocked: staging34a3d15 has14 exclusive session-handoff pilot commits and is not a fast-forward target for this main candidate. The feature task expressly forbids production rollout and latest broader transport gate is not green. Concurrent Learn task8e5e41ac is actively preparing a separate staging merge preserving that pilot; do not override its target or import the experiment into main. No master/etest ref was advanced by this UI task.
+
+Next release executor: coordinate the shared staging candidate with the active Learn executor, preserve feature history and independent experiments without promoting unqualified auth code, qualify a single publishable SHA through published Pages plus real staging Cloud/Blob and release-ready, then update master without force. Do not count synthetic UI pass as cloud certification. Keep unrelated CURRENT_TASK/idle activation intact.
