@@ -16,7 +16,13 @@ export default function QuickSyncNotice() {
     read()
     // Do not clear the return marker here. QuickSyncNotice is mounted
     // outside Suspense and may run before the lazy Learn page reads it.
-    // The Learn route clears the one-shot marker after consuming it.
+    // The Learn route clears the marker itself after reading the paused
+    // resume intent. Mobile home and Typing never auto-start an unfinished
+    // Learn session, so their one-shot URL marker can be cleared here.
+    if (window.location.search === '?quick-sync-return=1' &&
+        (window.location.pathname === '/mobile' || window.location.pathname === '/typing')) {
+      window.history.replaceState(window.history.state, '', window.location.pathname)
+    }
     return () => window.removeEventListener(QUICK_SYNC_NOTICE_EVENT, read)
   }, [])
   useEffect(() => {
