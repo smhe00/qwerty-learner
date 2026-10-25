@@ -152,3 +152,24 @@ Never call that fallback exact absence restoration. No unrelated values, secret
 contents, production project or deployment is touched. Finish recovery before
 any further staging configuration/deployment experiment. The failed real
 trigger run remains a failure;8/8 isolated real-Blob result is separate.
+
+Recovery40161791374 FAIL: current two values matched the test-owned snapshot;
+SDK key deletion was rejected with InvalidParameter; an empty-date/false-flag
+upsert was rejected with InvalidParameter.Security. The next narrowly changed
+recovery40162073663 atf59bef72 SUCCESS: updated only execution=false (no empty
+date), canonically confirmed it, and public runtime policy remained disabled.
+Exact absent-key baseline was NOT restored: the test-owned valid date remains,
+execution is explicitly false. No production change/deployment. Keep both
+results and do not call the failed deletion/update operations passes.
+
+The next staging baseline intentionally snapshots these two valid settings;
+restoration uses supported nonempty upserts rather than rejected key deletion.
+Provider documentation requires new deployments for env changes; SDK deploy is
+Upload-project-only and cannot redeploy this GitHub project. Use the normal
+authorized staging branch promotions instead: after the separate apply step,
+promote the application-identical main candidate; after journey/settings
+rollback, promote a report-only child. The runner waits for both source markers
+and verifies execution-off using a fresh disposable real API probe (public
+enabled may remain true with a retained date, so it is insufficient). Original
+phase failures remain recorded. No new production deployment, source change,
+clock override or target account aging.

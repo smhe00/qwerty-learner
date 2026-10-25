@@ -44,8 +44,7 @@ async function waitPolicy(enabled, timeout = 60_000) {
   } while (Date.now() < deadline)
   throw Error('Runtime policy propagation not observed')
 }
-async function sourceMatches() {
-  const expected = process.env.IDLE_STAGING_EXPECTED_SHA
+async function sourceMatches(expected = process.env.IDLE_STAGING_EXPECTED_SHA) {
   assert.match(expected || '', /^[a-f0-9]{40}$/)
   const response = await fetch(base + '/source-commit.txt?qualification=' + Date.now(), { signal: AbortSignal.timeout(20_000) })
   assert.equal(response.status, 200)
@@ -53,6 +52,51 @@ async function sourceMatches() {
   assert.match(marker, /^[a-f0-9]{7,40}$/)
   assert.ok(expected.startsWith(marker))
   report.applicationSource = marker
+}
+async function waitSource(expected, timeout = 600_000) {
+  const until = Date.now() + timeout
+  do {
+    try { await sourceMatches(expected); return } catch { /* deployment propagation only */ }
+    await new Promise(resolve => setTimeout(resolve, 5000))
+  } while (Date.now() < until)
+  throw Error('Exact staging deployment not observed')
+}
+async function waitRestoredDeployment() {
+  const repo = process.env.GITHUB_REPOSITORY
+  assert.match(repo || '', /^[\w.-]+\/[\w.-]+$/)
+  assert.ok(process.env.IDLE_STAGE_GITHUB_TOKEN)
+  const until = Date.now() + 600_000
+  do {
+    try {
+      const ref = await fetch('https://api.github.com/repos/' + repo + '/git/ref/heads/edgeone-test', {
+        headers: { Authorization: 'Bearer ' + process.env.IDLE_STAGE_GITHUB_TOKEN },
+        signal: AbortSignal.timeout(15_000),
+      })
+      assert.equal(ref.status, 200)
+      const head = (await ref.json()).object?.sha
+      assert.match(head || '', /^[a-f0-9]{40}$/)
+      // A later report-only staging promotion reloads the restored settings.
+      assert.notEqual(head, process.env.IDLE_STAGING_EXPECTED_SHA)
+      await sourceMatches(head)
+      return
+    } catch { /* Await normal coordinated staging rollback deployment. */ }
+    await new Promise(resolve => setTimeout(resolve, 5000))
+  } while (Date.now() < until)
+  throw Error('Restored staging deployment not observed')
+}
+async function disabledProbe() {
+  phase = 'restore-runtime-execution-probe'
+  username = 'e2e_idle_restore_' + process.env.GITHUB_RUN_ID + '_' + process.env.GITHUB_RUN_ATTEMPT
+  password = 'Idle-restoration-' + crypto.randomUUID()
+  report.registrationAttempted = true
+  const created = await api('/api/auth/register', 'POST', { username, password, deviceId: 'qwerty-web-' + crypto.randomUUID() })
+  assert.equal(created.status, 201)
+  owner = created.body.user?.userId
+  assert.match(owner || '', /^[a-f0-9]{32}$/)
+  const result = await api('/api/maintenance/idle', 'POST', {}, created.body.token)
+  assert.equal(result.status, 200)
+  assert.equal(result.body.status, 'disabled')
+  report.runtimeExecutionDisabledObserved = true
 }
 async function localRecordCount(page) {
   return page.evaluate(async () => {
@@ -148,7 +192,7 @@ try {
   const { Makers } = await import(pathToFileURL(require.resolve('@edgeone/makers-sdk')).href)
   assert.ok(process.env.EDGEONE_API_TOKEN)
   projects = new Makers({ token: process.env.EDGEONE_API_TOKEN }).projects
-  if (mode !== 'restore') await sourceMatches()
+  if (mode === 'snapshot' || mode === 'apply') await sourceMatches(process.env.IDLE_STAGING_BASE_SHA)
   if (mode === 'snapshot') {
     phase = 'snapshot-before-mutation'
     await waitPolicy(false, 0)
@@ -159,13 +203,22 @@ try {
   } else {
     snapshot = JSON.parse(readFileSync(snapshotPath, 'utf8'))
     assert.equal(snapshot.projectId, projectId)
-    if (mode === 'run') {
+    if (mode === 'apply') {
       phase = 'apply-staging-only-settings'
       await applyStagingEnvironment(projects, snapshot)
+      report.settingsApplied = true
+      report.awaitingStagingDeployment = true
+    } else if (mode === 'run') {
+      phase = 'wait-exact-staging-deployment'
+      await waitSource(process.env.IDLE_STAGING_EXPECTED_SHA)
       phase = 'wait-runtime-policy-activation'
       await waitPolicy(true)
       report.runtimePolicyObserved = true
       await browserJourney()
+    } else if (mode === 'confirm') {
+      phase = 'wait-restored-staging-deployment'
+      await waitRestoredDeployment()
+      await disabledProbe()
     } else assert.equal(mode, 'restore')
     report.verdict = 'PASS'
   }
@@ -188,14 +241,13 @@ try {
       report.testAccountCleanupVerified = true
     } catch { report.testAccountCleanupVerified = false; report.verdict = 'FAIL' }
   }
-  if (snapshot && projects && mode !== 'snapshot') {
+  if (snapshot && projects && (mode === 'run' || mode === 'restore' || (mode === 'apply' && report.verdict === 'FAIL'))) {
     try {
       report.rollback = await restoreStagingEnvironment(projects, snapshot)
-      await waitPolicy(false)
-      report.runtimePolicyRestored = true
+      report.runtimeRestoreNeedsDeployment = true
     } catch { report.rollback = { restored: false }; report.verdict = 'FAIL' }
   }
-  const name = mode === 'restore' ? 'restore-result.json' : 'redacted-result.json'
+  const name = mode + '-result.json'
   writeFileSync(resolve(output, name), JSON.stringify(report, null, 2) + '\n')
   console.log('IDLE_STAGING_TRIGGER ' + JSON.stringify(report))
 }

@@ -17,12 +17,13 @@ jobs:
   staging-trigger:
     if: github.ref_name == 'product/main'
     runs-on: ubuntu-22.04
-    timeout-minutes: 15
+    timeout-minutes: 35
     env:
       IDLE_MAKERS_SDK_DIR: /tmp/idle-makers-sdk
       IDLE_STAGING_OUTPUT: /tmp/idle-staging-trigger
       IDLE_STAGING_ACK: RUN_REVERSIBLE_STAGING_IDLE_TRIGGER
-      IDLE_STAGING_EXPECTED_SHA: 5528f79c700548e174fa153b96ff4599d7326aee
+      IDLE_STAGING_BASE_SHA: 5528f79c700548e174fa153b96ff4599d7326aee
+      IDLE_STAGING_EXPECTED_SHA: ${{ github.sha }}
       IDLE_QUALIFICATION_PROJECT_VERIFIED: EXACT_ETEST_DOMAIN
     steps:
       - uses: actions/checkout@v4
@@ -55,17 +56,42 @@ jobs:
           path: ${{ env.IDLE_STAGING_OUTPUT }}/rollback-settings.json
           if-no-files-found: error
           retention-days: 7
-      - name: Temporarily configure staging, verify the real browser trigger, restore
+      - name: Apply temporary staging settings before coordinated deployment
+        id: apply
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
+        run: node scripts/idle-staging-trigger-qualification.mjs apply
+      - name: Await staging deployment, verify the real browser trigger, restore settings
+        id: journey
         env:
           EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
           IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
         run: node scripts/idle-staging-trigger-qualification.mjs run
-      - name: Independently confirm restoration even after a failed test
+      - name: Independently restore control-plane settings even after a failed test
+        id: restore
         if: always() && steps.snapshot.outcome == 'success'
         env:
           EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
           IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
         run: node scripts/idle-staging-trigger-qualification.mjs restore
+      - name: Preserve browser result and rollback result before runtime confirmation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: idle-staging-trigger-intermediate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.IDLE_STAGING_OUTPUT }}/run-result.json
+            ${{ env.IDLE_STAGING_OUTPUT }}/restore-result.json
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Await restored deployment and verify execution disabled through the real API
+        if: always() && steps.restore.outcome == 'success'
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
+          IDLE_STAGE_GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/idle-staging-trigger-qualification.mjs confirm
       - name: Retain fixed-phase verification results
         if: always()
         uses: actions/upload-artifact@v4

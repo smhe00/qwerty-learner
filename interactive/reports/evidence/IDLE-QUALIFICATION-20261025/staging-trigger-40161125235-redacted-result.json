@@ -1,0 +1,12 @@
+{
+  "check": "idle-staging-trigger-v1",
+  "productionChanged": false,
+  "deploymentTriggered": false,
+  "multiRegionQualified": false,
+  "verdict": "FAIL",
+  "applicationSource": "5528f79",
+  "failureStage": "wait-runtime-policy-activation",
+  "rollback": {
+    "restored": false
+  }
+}

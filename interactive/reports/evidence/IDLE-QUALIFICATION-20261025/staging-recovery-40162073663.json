@@ -1,0 +1,25 @@
+{
+  "check": "idle-staging-settings-recovery",
+  "productionChanged": false,
+  "deploymentTriggered": false,
+  "verdict": "PASS",
+  "before": [
+    {
+      "key": "IDLE_POLICY_START_AT",
+      "count": 1,
+      "valueIsOwned": true,
+      "valueIsDisabled": false
+    },
+    {
+      "key": "IDLE_CLEANUP_EXECUTE",
+      "count": 1,
+      "valueIsOwned": true,
+      "valueIsDisabled": false
+    }
+  ],
+  "keyDeletionPreviouslyRejected": true,
+  "exactBaselineRestored": false,
+  "failClosedSettingsConfirmed": true,
+  "activationDateRetained": true,
+  "runtimePolicyDisabled": true
+}

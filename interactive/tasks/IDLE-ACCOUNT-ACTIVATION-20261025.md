@@ -22,6 +22,16 @@ do not treat inability to list secret names as inability to use a configured
 workflow credential. Exact read-only staging discovery must precede any write.
 No Maker promotion or new public clock/test endpoint is authorized or needed.
 
+Provider qualification correction: project environment changes only affect a
+new deployment. Owner's explicit live-verification request authorizes the
+necessary normal staging promotions/rebuilds to apply test settings and restore
+execution-off, using application-identical commits and preserving all existing
+gates. This supersedes our initial assumption that no Maker build was needed;
+it does not authorize production activation before qualification. No new public
+test endpoint or production branch promotion in this phase. Freeze main at the
+forward candidate until the browser journey ends, then promote a report-only
+child after settings restoration. Observe both exact deployed source markers.
+
 Verification continuation: real SDK lifecycle suite2543911e passed8/8 with all
 69 tracked keys confirmed absent. Next qualify the actual deployed staging
 login/learning/maintenance path with a reversible temporary configuration of
