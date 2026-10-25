@@ -1,6 +1,6 @@
 ---
 task_id: MANUAL-SYNC-ENTRY-20261026
-status: IN_PROGRESS
+status: PARTIAL
 executor: ChatGPT (independent scoped UI work)
 base_commit: 9457db9572e9561cffb717a7f8d1fb733ba12b65
 target_branch: feat/manual-sync-entry-20261026
@@ -28,5 +28,5 @@ Requirements:
   Unknown/failure retains local records and reports accurately, no success pop.
 - No unrelated changes to M3/M4, session handoff, transport or master.
 - Existing independent IDLE-ACCOUNT-ACTIVATION CURRENT_TASK must not be changed.
-- Validation: compile/build, scoped contracts and a realistic UI smoke.
+- Validation: scoped guard and build, full existing browser UI and Learn Block E2E all green at fb20e941. Real deployed E-test manual-sync UI smoke still separate.
 - Feature branch first; preserve newer main changes and report final commit.
