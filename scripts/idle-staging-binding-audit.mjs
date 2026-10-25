@@ -82,10 +82,12 @@ for (const region of ['china', 'global']) {
   } catch (error) {
     item.outcome = 'UNAVAILABLE'
     item.errorType = /^[A-Za-z]{1,60}$/.test(error?.name) ? error.name : 'unknown'
-    item.errorCode = /^[A-Za-z][A-Za-z0-9_.]{0,80}$/.test(error?.code) ? error.code : 'unspecified'
+    item.errorCode = typeof error?.code === 'string' && /^-?[A-Za-z0-9][A-Za-z0-9_.]{0,80}$/.test(error.code)
+      ? error.code : 'unspecified'
     item.httpStatus = Number.isInteger(error?.httpStatus) ? error.httpStatus : null
     item.failureTransport = ['network-error', 'response'].includes(error?.cause?.type || error?.cause?.transport)
       ? (error.cause.type || error.cause.transport) : 'unspecified'
+    item.authenticationMentioned = /auth|token|登录|令牌|鉴权|认证/i.test(error?.message || '')
   }
   report.regions.push(item)
 }
