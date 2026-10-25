@@ -1,8 +1,9 @@
 ---
 task_id: SESSION-HANDOFF-20261025
-status: IN_PROGRESS
+status: PARTIAL
 executor: ChatGPT (scoped handoff prototype)
 base_commit: ad092c7348260407c0c91102073c5447fffeee07
+implementation_commit: 7f092dd7ae24220b007d508fefc77abc627cf8a9
 target_branch: fix/session-handoff-20261025
 report_file: interactive/reports/SESSION-HANDOFF-20261025-report.md
 release_to_master: false
@@ -20,10 +21,12 @@ This task adds isolated files on a feature branch, does not replace that task,
 and does not update product/main, edgeone-test or master. No production writes,
 provider provisioning, paid database or credential changes are authorized here.
 
-P0: deterministic reproductions against the unchanged backend and Blob adapter;
-durable drain state machine; fail closed on unknown outcomes; PostgreSQL
-reference coordinator adapter and isolated CI qualification. Retain Blob learning
-payloads. A reference adapter is not a decision to migrate learning storage.
+P0 implemented and qualified at 7f092dd7: 20/20 local protocol/adapter tests,
+50/50 CI actual-core/protocol/Blob regressions and 4/4 real PostgreSQL tests.
+CI run 40164517789, both jobs success, zero skipped. Baseline tests reproduce
+existing unsafe interleavings; that is NOT evidence of a production fix.
+Retain Blob learning payloads. PostgreSQL is a reference coordinator adapter,
+not a chosen provider or a migration of learning storage. Runtime is unchanged.
 
 P1, before integration/promotion: authenticate takeover BEFORE creating a pending
 barrier, reauthenticate under ownership, route all authority-changing operations
