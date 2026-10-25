@@ -21,14 +21,14 @@ export default function MobileDailyProgress({ summary }: { summary: MobileDailyS
     <div data-mobile-daily-progress>
       <dl className="mobile-daily-grid">
         <div>
-          <dt>新词达标</dt>
+          <dt>新词</dt>
           <dd>
             {progress.completedNewWords}
             <span> / {progress.newTargetWords}</span>
           </dd>
         </div>
         <div>
-          <dt>复习已完成</dt>
+          <dt>复习</dt>
           <dd>
             {progress.completedReviewWords}
             <span> / {progress.reviewTargetWords}</span>
@@ -58,9 +58,9 @@ export default function MobileDailyProgress({ summary }: { summary: MobileDailyS
       <p className="mobile-daily-caption">
         {progress.complete ? '今日练习已完成' : `今日已完成 ${progress.completedWords} 词，还需练习 ${progress.remainingWords} 词`}
       </p>
-      <p className="mobile-daily-caption" data-review-mastery>
-        复习中独立答对 {progress.independentReviewWords} 词，需巩固 {progress.reviewWordsToConsolidate} 词。系统会继续安排复习。
-      </p>
+      {progress.reviewWordsToConsolidate > 0 && <p className="mobile-daily-caption" data-review-mastery>
+        复习待巩固 {progress.reviewWordsToConsolidate} 词
+      </p>}
     </div>
   )
 }
