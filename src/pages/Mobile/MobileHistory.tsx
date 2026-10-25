@@ -80,7 +80,6 @@ export default function MobileHistory() {
   return (
     <MobilePageFrame title="学习记录">
       <div data-mobile-history>
-        <p className="mobile-page-description">查看你的学习记录。</p>
         <div className="mobile-history-filters">
           <label>
             时间范围
@@ -117,7 +116,7 @@ export default function MobileHistory() {
           </label>
         </div>
         {!result ? (
-          <p role="status">正在读取本机学习记录…</p>
+          <p role="status">正在读取学习记录…</p>
         ) : result.error ? (
           <div role="alert" className="mobile-local-error">
             暂时无法读取学习记录，原数据未修改。
@@ -159,7 +158,7 @@ export default function MobileHistory() {
             </details>
             {summary.days.length === 0 ? (
               <p className="mobile-empty-message" role="status">
-                所选范围暂无学习记录。完成学习后，已保存的记录会显示在这里。
+                所选范围暂无学习记录。
               </p>
             ) : (
               <section aria-label="每日学习明细" className="mobile-history-list">

@@ -55,7 +55,6 @@ export default function MobileData() {
         </section>
         <section className="mobile-settings-card" aria-label="手机本地备份">
           <h2>本地备份</h2>
-          <p>保存学习记录和设置，便于恢复。</p>
           <div className="mobile-data-actions">
             <button
               type="button"
@@ -110,7 +109,6 @@ export default function MobileData() {
             </button>
           </details>
         </section>
-        <p className="mobile-page-description">请妥善保存备份文件。</p>
       </div>
     </MobilePageFrame>
   )
