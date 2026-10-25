@@ -9,17 +9,20 @@ const base = 'https://t.smhe.cn'
 const names = ['wordRecords', 'chapterRecords', 'reviewRecords', 'reviewWordStates', 'achievementEvents', 'achievementStates']
 async function request(path: string, method: string, body?: object, token?: string) {
   const { retrySafeBodyRequest } = await loadBodyPolicy()
-  return retrySafeBodyRequest(async () => {
-    const r = await fetch(base + path, {
-      method,
-      redirect: 'error',
-      cache: 'no-store',
-      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
-      body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(40_000),
-    })
-    return { status: r.status, body: await r.json() }
-  }, { path, method })
+  return retrySafeBodyRequest(
+    async () => {
+      const r = await fetch(base + path, {
+        method,
+        redirect: 'error',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout(40_000),
+      })
+      return { status: r.status, body: await r.json() }
+    },
+    { path, method },
+  )
 }
 async function account(page: Page) {
   await page.goto(base + '/?s1-account=manage', { waitUntil: 'domcontentloaded' })
@@ -31,7 +34,7 @@ async function login(page: Page, username: string, password: string) {
   if (await toggle.isVisible()) await toggle.click()
   await page.getByLabel('用户名', { exact: true }).fill(username)
   await page.getByLabel('账户密码', { exact: true }).fill(password)
-  const response = page.waitForResponse(async r => {
+  const response = page.waitForResponse(async (r) => {
     if (new URL(r.url()).pathname !== '/api/auth/login') return false
     if (r.status() !== 503) return true
     const body = await r.json().catch(() => null)
@@ -357,11 +360,35 @@ test('historical six-table startup download and automatic divergent reauth conve
   let owner: string | undefined
   const failures: unknown[] = []
   const proof: Record<string, unknown> = { historicalFixture: true, source: deployed }
+  let phase = 'registration'
+  const http: Array<Record<string, unknown>> = []
+  const reads: Promise<void>[] = []
+  pages.forEach((page, profile) =>
+    page.on('response', (response) => {
+      const path = new URL(response.url()).pathname
+      if (!path.startsWith('/api/sync/') && path !== '/api/auth/login') return
+      const row: Record<string, unknown> = { profile, phase, path, method: response.request().method(), status: response.status() }
+      http.push(row)
+      if (response.status() >= 400)
+        reads.push(
+          (async () => {
+            const body = await response.json().catch(() => null)
+            const code = body?.error
+            if (typeof code === 'string' && /^[a-z0-9_-]{1,100}$/.test(code)) row.code = code
+            const stage = body?.failureStage || body?.details?.stage
+            if (typeof stage === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(stage)) row.stage = stage
+            if (typeof body?.details?.safeToRetry === 'boolean') row.safeToRetry = body.details.safeToRetry
+          })(),
+        )
+    }),
+  )
   try {
     const created = await request('/api/auth/register', 'POST', { username, password, deviceId: 'qwerty-web-' + crypto.randomUUID() })
     expect(created.status).toBe(201)
     owner = created.body.user.userId
+    phase = 'initial-login'
     await login(pages[0], username, password)
+    phase = 'seed-before-upload'
     await seed(pages[0], 'seed', true)
     const original = await evidence(pages[0])
     expect(original.alias).toBe(true)
@@ -374,12 +401,22 @@ test('historical six-table startup download and automatic divergent reauth conve
       const p = new URL(r.url()).pathname
       if (p.startsWith('/api/sync/')) aRequests.push(r.method() + ' ' + p)
     })
+    phase = 'initial-history-upload'
     await login(pages[0], username, password)
     expect(aRequests).toContain('GET /api/sync/v2/meta')
     expect(aRequests).toContain('POST /api/sync/v2/binary/direct')
     expect(await evidence(pages[0])).toEqual(original)
+    proof.localHistoryUnchangedBeforeVersionCheck = true
     const first = await meta(pages[0])
+    proof.firstRevision = first.revision
+    proof.initialUploadState = await pages[0].evaluate(() => ({
+      startup: sessionStorage.getItem('qwerty.s2.startup-check.v1'),
+      sync: JSON.parse(sessionStorage.getItem('qwerty.learning-sync-diagnostics.v1') || '[]'),
+    }))
+    await Promise.allSettled(reads)
+    proof.initialUploadResponses = http.filter((r) => r.phase === 'initial-history-upload')
     expect(first.revision).toBe(1)
+    phase = 'historical-cloud-download'
     expect(first.clientFormatVersion).toBe('qwerty-backup-v4')
     await account(pages[0])
     const bRequests: string[] = []
@@ -421,6 +458,7 @@ test('historical six-table startup download and automatic divergent reauth conve
     expect(await evidence(pages[1])).toEqual(original)
     proof.sixTablePullExact = true
     proof.sharedReferencePreserved = true
+    phase = 'divergent-history-merge'
     await seed(pages[0], 'left')
     await seed(pages[1], 'right')
     await login(pages[1], username, password)
@@ -519,6 +557,7 @@ test('historical six-table startup download and automatic divergent reauth conve
     await login(pages[1], username, password)
     expect(await evidence(pages[1])).toEqual(merged)
     proof.sixTableForkConvergence = true
+    phase = 'mixed-legacy-m3-m4'
     bRequests.length = 0
     await pages[1].goto(base + '/learn', { waitUntil: 'domcontentloaded' })
     await acknowledgeInformationDialog(pages[1])
@@ -629,6 +668,22 @@ test('historical six-table startup download and automatic divergent reauth conve
   } catch (e) {
     failures.push(e)
     proof.applicationFailed = true
+    proof.failedPhase = phase
+    await Promise.allSettled(reads)
+    proof.http = http
+    proof.localAfterFailure = await Promise.all(
+      pages.map(async (page) => {
+        try {
+          return {
+            count: (await rawWords(page)).length,
+            startup: await page.evaluate(() => sessionStorage.getItem('qwerty.s2.startup-check.v1')),
+            sync: await syncDiagnostics(page),
+          }
+        } catch {
+          return { unavailable: true }
+        }
+      }),
+    )
   } finally {
     await Promise.allSettled(contexts.map((c) => c.close()))
     try {
@@ -637,7 +692,10 @@ test('historical six-table startup download and automatic divergent reauth conve
         if (fresh.status >= 500) {
           const stage = fresh.body.failureStage || fresh.body.details?.stage
           proof.cleanupAuthFailureStage = typeof stage === 'string' && /^[A-Za-z0-9-]{1,80}$/.test(stage) ? stage : 'unspecified'
-          proof.cleanupAuthRequestId = typeof fresh.body.requestId === 'string' && /^[A-Za-z0-9-]{1,128}$/.test(fresh.body.requestId) ? fresh.body.requestId : undefined
+          proof.cleanupAuthRequestId =
+            typeof fresh.body.requestId === 'string' && /^[A-Za-z0-9-]{1,128}$/.test(fresh.body.requestId)
+              ? fresh.body.requestId
+              : undefined
         }
         expect(fresh.status).toBe(200)
         expect(fresh.body.user.userId === owner).toBe(true)
@@ -646,7 +704,10 @@ test('historical six-table startup download and automatic divergent reauth conve
         if (removed.status >= 500) {
           const stage = removed.body.failureStage || removed.body.details?.stage
           proof.cleanupFailureStage = typeof stage === 'string' && /^[A-Za-z0-9-]{1,80}$/.test(stage) ? stage : 'unspecified'
-          proof.cleanupRequestId = typeof removed.body.requestId === 'string' && /^[A-Za-z0-9-]{1,128}$/.test(removed.body.requestId) ? removed.body.requestId : undefined
+          proof.cleanupRequestId =
+            typeof removed.body.requestId === 'string' && /^[A-Za-z0-9-]{1,128}$/.test(removed.body.requestId)
+              ? removed.body.requestId
+              : undefined
         }
         expect(removed.status).toBe(200)
         expect(removed.body.deleted?.accountDeleted).toBe(true)

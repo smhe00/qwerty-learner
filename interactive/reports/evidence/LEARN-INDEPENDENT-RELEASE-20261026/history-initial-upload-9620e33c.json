@@ -1,0 +1,210 @@
+{
+  "runner": "local Windows Chrome via Playwright",
+  "deployedSha": "9620e33c845f59d31cba107e14dd30754a8c0ca5",
+  "localSixTableEqualityAssertionPassedBeforeFailure": true,
+  "result": "FAIL retained; classified as owner-accepted HTTP503",
+  "proof": {
+    "historicalFixture": true,
+    "source": "9620e33",
+    "unicodeHistoryBytes": 1472401,
+    "firstRevision": 0,
+    "initialUploadState": {
+      "startup": "pending",
+      "sync": [
+        {
+          "stage": "v4-check",
+          "status": "noop",
+          "code": "none"
+        },
+        {
+          "stage": "m3-recovery",
+          "status": "ready",
+          "code": "none",
+          "audit": {
+            "scanned": 0,
+            "eligible": 0,
+            "snapshotOnly": 0,
+            "rejected": 0,
+            "issues": {}
+          }
+        },
+        {
+          "stage": "m3-publication",
+          "status": "idle",
+          "code": "none"
+        },
+        {
+          "stage": "m4-adoption",
+          "status": "skipped",
+          "code": "no-complete-observed-prefix:no-observed-device-heads"
+        },
+        {
+          "stage": "m4-adoption",
+          "status": "skipped",
+          "code": "unknown"
+        },
+        {
+          "stage": "m4-adoption",
+          "status": "skipped",
+          "code": "unknown"
+        },
+        {
+          "stage": "v4-check",
+          "status": "failed",
+          "code": "unknown"
+        },
+        {
+          "stage": "m3-recovery",
+          "status": "ready",
+          "code": "none",
+          "audit": {
+            "scanned": 3,
+            "eligible": 0,
+            "snapshotOnly": 3,
+            "rejected": 0,
+            "issues": {
+              "missing-attempt-id": 2,
+              "missing-source-mode": 2
+            }
+          }
+        },
+        {
+          "stage": "m3-publication",
+          "status": "idle",
+          "code": "none"
+        },
+        {
+          "stage": "m4-adoption",
+          "status": "skipped",
+          "code": "no-complete-observed-prefix:no-observed-device-heads"
+        },
+        {
+          "stage": "m3-recovery",
+          "status": "ready",
+          "code": "none",
+          "audit": {
+            "scanned": 3,
+            "eligible": 0,
+            "snapshotOnly": 3,
+            "rejected": 0,
+            "issues": {
+              "missing-attempt-id": 2,
+              "missing-source-mode": 2
+            }
+          }
+        },
+        {
+          "stage": "m3-publication",
+          "status": "idle",
+          "code": "none"
+        }
+      ]
+    },
+    "initialUploadResponses": [
+      {
+        "profile": 0,
+        "phase": "initial-history-upload",
+        "path": "/api/auth/login",
+        "method": "POST",
+        "status": 200
+      },
+      {
+        "profile": 0,
+        "phase": "initial-history-upload",
+        "path": "/api/sync/v2/meta",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "profile": 0,
+        "phase": "initial-history-upload",
+        "path": "/api/sync/v2/binary/direct",
+        "method": "POST",
+        "status": 503,
+        "code": "v4_direct_body_read_failed"
+      },
+      {
+        "profile": 0,
+        "phase": "initial-history-upload",
+        "path": "/api/sync/events/v2/observed",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "profile": 0,
+        "phase": "initial-history-upload",
+        "path": "/api/sync/v2/meta",
+        "method": "GET",
+        "status": 200
+      }
+    ],
+    "applicationFailed": true,
+    "failedPhase": "initial-history-upload",
+    "http": [
+      {
+        "profile": 0,
+        "phase": "initial-login",
+        "path": "/api/auth/login",
+        "method": "POST",
+        "status": 200
+      },
+      {
+        "profile": 0,
+        "phase": "initial-login",
+        "path": "/api/sync/v2/meta",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "profile": 0,
+        "phase": "initial-login",
+        "path": "/api/sync/events/v2/observed",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "profile": 0,
+        "phase": "initial-history-upload",
+        "path": "/api/auth/login",
+        "method": "POST",
+        "status": 200
+      },
+      {
+        "profile": 0,
+        "phase": "initial-history-upload",
+        "path": "/api/sync/v2/meta",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "profile": 0,
+        "phase": "initial-history-upload",
+        "path": "/api/sync/v2/binary/direct",
+        "method": "POST",
+        "status": 503,
+        "code": "v4_direct_body_read_failed"
+      },
+      {
+        "profile": 0,
+        "phase": "initial-history-upload",
+        "path": "/api/sync/events/v2/observed",
+        "method": "GET",
+        "status": 200
+      },
+      {
+        "profile": 0,
+        "phase": "initial-history-upload",
+        "path": "/api/sync/v2/meta",
+        "method": "GET",
+        "status": 200
+      }
+    ],
+    "localAfterFailure": [
+      {
+        "unavailable": true
+      }
+    ],
+    "cleanupStatus": 200,
+    "cleanupVerified": true
+  }
+}
