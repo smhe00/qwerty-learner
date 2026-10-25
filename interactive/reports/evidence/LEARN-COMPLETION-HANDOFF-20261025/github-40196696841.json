@@ -1,0 +1,44 @@
+{
+  "runner": "GitHub Actions Chromium",
+  "runId": 40196696841,
+  "jobId": 121178949672,
+  "origin": "https://t.smhe.cn/",
+  "deployedSha": "1059efd9c2fe6a88c81c42b86a117a5204c6bc95",
+  "passed": 1,
+  "failed": 1,
+  "results": [
+    {
+      "source": "1059efd",
+      "case": "unmastered",
+      "beforeStateFixture": true,
+      "networkMocked": false,
+      "completionPageVisible": true,
+      "committedUploads": 1,
+      "cloudRevision": 1,
+      "completionBlobHashVerified": true,
+      "extraRoundStartupRevision": 2,
+      "totalCommittedUploads": 2,
+      "extraWords": 5,
+      "reloadDidNotDuplicateExtension": true,
+      "freshProfileCloudReadbackExact": true,
+      "cloudWordRecords": 2,
+      "finalAttemptPresentExactlyOnce": true,
+      "cleanupStatus": 200,
+      "cleanupVerified": true
+    },
+    {
+      "source": "1059efd",
+      "case": "complete",
+      "beforeStateFixture": true,
+      "networkMocked": false,
+      "completionPageVisible": true,
+      "committedUploads": 1,
+      "cloudRevision": 1,
+      "completionBlobHashVerified": true,
+      "applicationFailed": true,
+      "failedStage": "five-more-and-reload",
+      "cleanupStatus": 200,
+      "cleanupVerified": true
+    }
+  ]
+}

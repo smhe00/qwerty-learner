@@ -1,6 +1,6 @@
 ---
 task_id: LEARN-COMPLETION-HANDOFF-20261025
-status: IN_PROGRESS
+status: BLOCKED
 executor: Codex
 target_branch: product/main
 claim_base_commit: 279bd3bc1ff99c548ca515ebc373d3146db94f3b
@@ -16,3 +16,5 @@ Checkpoint: relevant development gates now pass. Etest promotion is waiting for 
 Owner response (2026-10-25): explicitly approved preserving the existing etest handoff experiment and its two known contract failures while qualifying only the completion flow. Proceed with the prepared tested candidate and isolated real-cloud journey. No further staging approval is required; master remains unauthorized.
 
 Live checkpoint: completion2/2 PASS from local Chrome on dbb3658 and concurrent replacement4c20e26. Exact Blob hash/size, final attempt once, five-more/reload and fresh-profile readback verified; all test accounts cleaned. Script fixed to accept the native login confirmation and distinguish valid extra-round startup sync. Test/report follow-up is based on merged main218dcd27; pending versioned CI completion.
+
+Final checkpoint: main completion CI12/12 +8/8 passed atf91a4ac6; etest1059efd deployed with experiment preserved. Both target completion paths observed, but the extended cloud job40196696841 is1/2, and bounded local diagnostic is1/2 with second-upload HTTP503/pending. All test accounts cleaned. Blocked on cloud-owned ordinary-startup upload classification/fix; no cloud implementation changes and no master push. See final report and redacted evidence.

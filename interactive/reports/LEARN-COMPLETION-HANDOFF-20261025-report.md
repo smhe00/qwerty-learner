@@ -1,6 +1,6 @@
 ---
 task_id: LEARN-COMPLETION-HANDOFF-20261025
-status: REVIEW
+status: PARTIAL
 executor: Codex
 target_branch: product/main
 claim_base_commit: 279bd3bc1ff99c548ca515ebc373d3146db94f3b
@@ -102,3 +102,18 @@ Scoped follow-up checks on merged main: completion authorization8/8 PASS; E2E te
 Latest-runtime repeat: local Chrome against exact deployed4c20e26 also PASS2/2 in136.53s, including both hash-pinned completion snapshots, revision1 then2, fresh-profile row/runtime readback and verified account cleanup. Sanitized proof for both runtimes is committed under evidence/LEARN-COMPLETION-HANDOFF-20261025/. Next: publish the test correction and run the versioned GitHub completion gate; no further runtime change is needed.
 
 CI33687431 run40195988261 passed8/8 contracts and11/12 browser cases, but the internal-boundary case raced before typing began. Downloaded artifact12600111543: its trace shows the shared helper briefly recognizing the Learn LANDING press-any-key prompt, the route entering preparing, then the real typing screen staying idle; no key was sent, blockCount0 and cursor0. Both completion harnesses now wait for the consumed /learn resume URL and actual cancel word before startTyping. No retries or behavioral assertions removed. Targeted repeated local regression PASS5/5 in38.6s (39.54s including Yarn); scoped TypeScript ESLint and whitespace checks pass. Failed CI evidence retained; new required run pending.
+
+Corrected main f91a4ac6 CI40196513745 PASS: 12/12 browser55.8s, 8/8 boundary contracts, live harness discovery2/2. Preserved the existing failed attempt40195988261. Etest1059efd9c2fe6a88c81c42b86a117a5204c6bc95 was then fast-forward pushed over4c20e266; src/ and cloud-functions/ are byte-identical to that already-qualified runtime. GitHub live journey must require source1059efd before creating accounts. No master update.
+
+
+## Final scoped result: target completion works; extended cloud gate remains red
+
+Published etest source1059efd was verified by workflow40196696841 before writes. GitHub run:1/2 PASS. The unmastered case passed the entire flow including exact fresh-profile readback and deletion. The complete case displayed the completion page, verified its real revision1 Blob, started five more and preserved local rows/word names after reload, but read revision1 where the extra-round startup assertion required2. Both accounts were deleted with HTTP200/accountDeleted=true. Do not mark this workflow green.
+
+A bounded local diagnostic rerun against the SAME1059efd runtime waited for the normalized /learn URL before reload and polled acknowledged uploads/metadata with reads only. Result1/2: complete path PASS; unmastered path had upload statuses[200,503] and startup status pending. The completion upload and pinned Blob had succeeded; the second ordinary-startup upload returned HTTP503. It did not become200 during the30s read-only wait. No uncertain upload was replayed. Both accounts were deleted and verified. Evidence: evidence/LEARN-COMPLETION-HANDOFF-20261025/local-chrome-1059efd9.json. The error response body was not captured, so the exact503 error code/root cause is NOT established; it must not be attributed to the known auth-body issue without evidence.
+
+The original last-word -> completion -> real sync -> five-more sequence is observed on both outcomes. The stronger full test, which also requires successful extra-round startup sync and fresh-profile recovery, is NOT completely accepted on the latest runtime. Earlier local2/2 passes remain valid historical observations, not proof that this intermittent503 is resolved. Preserve every assertion and the failing evidence. Another cloud executor owns that upload path; this UI task does not change transport, CAS, handoff implementation or safe-retry rules. No more staging push solely to reroll an intermittent cloud failure.
+
+Latest same-version side results: run40196696821 live-browser-cloud and real-v4-transport jobs PASS; release-ready FAILED. M3 relay40196696815, three-device relay40196696826 and historical-login V4 run40196696864 PASS. Earlier ancillary failures remain historical in this report; this does not certify all cloud paths. The safe-merge pilot was not newly qualified here. Production master remains5528f79c and was never pushed.
+
+Handoff: diagnose the ordinary-startup binary/direct503 with a redacted code and its server-side completion evidence. Preserve pending local data and fail closed; never replay an unknown write. After the cloud owner resolves or explicitly classifies that failure, rerun the existing exact-source two-case completion job and require2/2 plus account cleanup. The main test-only follow-up retains bounded read polling and explicit startup/upload-status diagnostics. Application/cloud source remains identical to the qualified4c20e266 runtime. Current completion work is PARTIAL only because this extended real-cloud gate is still red; do not publish master from this report.

@@ -314,6 +314,7 @@ for (const wrong of [true, false]) {
       proof.completionBlobHashVerified = true
       stage = 'five-more-and-reload'
       await a.getByRole('button', { name: '再学五词', exact: true }).click()
+      await expect(a).toHaveURL(base + '/learn')
       await expect(a.locator('[data-typing-word]')).toBeVisible({ timeout: 60_000 })
       const extra = (await records(a)).daily
       expect(extra.extraRoundWordNames).toHaveLength(5)
@@ -331,13 +332,20 @@ for (const wrong of [true, false]) {
       expect(afterReload.states).toEqual(final.states)
       // Ordinary startup sync persists the new five-word runtime. It may
       // advance the revision once, but must never append another answer.
+      proof.extraWords = 5
+      proof.reloadDidNotDuplicateExtension = true
+      stage = 'extra-round-startup-sync'
+      proof.reloadStartupStatus = await a.evaluate(() => sessionStorage.getItem('qwerty.s2.startup-check.v1'))
+      proof.observedUploadStatuses = [...committed]
+      await expect.poll(() => committed.filter((s) => s === 200).length, { timeout: 30_000 }).toBe(2)
+      // Metadata visibility can lag the acknowledged immutable commit. Poll
+      // reads only; never replay an uncertain upload to satisfy this check.
+      await expect.poll(async () => (await meta(a)).revision, { timeout: 30_000 }).toBe(uploaded.revision + 1)
       const resumed = await meta(a)
       expect(resumed.revision).toBe(uploaded.revision + 1)
       expect(committed.filter((s) => s === 200)).toHaveLength(2)
       proof.extraRoundStartupRevision = resumed.revision
       proof.totalCommittedUploads = 2
-      proof.extraWords = 5
-      proof.reloadDidNotDuplicateExtension = true
       // Park A before B takes the sole login session. B must pull the actual
       // Blob from an empty profile, proving the final answer reached storage.
       stage = 'fresh-profile-cloud-readback'
