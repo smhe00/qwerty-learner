@@ -1,0 +1,48 @@
+name: Remove only owned original idle qualification metadata
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - '.github/workflows/idle-legacy-settings-rollback.yml'
+      - 'scripts/idle-owned-settings-delete.mjs'
+      - 'scripts/idle-legacy-settings-rollback.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: reversible-staging-idle-runtime
+  cancel-in-progress: false
+jobs:
+  restore-original-absence:
+    if: github.ref_name == 'product/main'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+      - name: Verify exact ownership and concurrent-change refusal without credentials
+        run: node --test tests/cloud/idle-owned-settings-delete.test.mjs
+      - name: Install pinned official SDK
+        run: npm install --no-save --ignore-scripts --prefix "$RUNNER_TEMP/idle-makers-sdk" @edgeone/makers-sdk@0.1.0
+      - name: Obtain original immutable absent-key receipt
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download 40161125235 --name idle-staging-rollback-40161125235-1 --dir "$RUNNER_TEMP/idle-original-snapshot"
+      - name: Remove only the two original owned and disabled records
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          IDLE_MAKERS_SDK_DIR: ${{ runner.temp }}/idle-makers-sdk
+          IDLE_RECOVERY_SNAPSHOT: ${{ runner.temp }}/idle-original-snapshot/rollback-settings.json
+          IDLE_RECOVERY_REPORT: ${{ runner.temp }}/idle-original-restoration.json
+        run: node scripts/idle-legacy-settings-rollback.mjs
+      - name: Preserve redacted original-state receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: idle-original-restoration-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/idle-original-restoration.json
+          if-no-files-found: ignore
+          retention-days: 7

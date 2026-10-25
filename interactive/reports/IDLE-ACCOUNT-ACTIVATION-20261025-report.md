@@ -305,3 +305,21 @@ to exclude a current environment. No configuration writes pending that result.
 The CLI also establishes why SDK deleteEnvs failed: backend expects EnvVars
 objects (Id/Key/Value), while SDK sends key strings. This is now a concrete
 path to remove only our two historical temporary records if needed.
+
+Custom-environment audit40167108988 SUCCESS: both accessible global projects
+have only default Production/Preview environments; neither environment reports
+the current domains. The current staging branch is in the selected project's
+Production environment; the other project's Production lists master. Thus
+custom environment scope does not explain the missing current-domain mapping
+in this accessible catalog. China API code109/authentication failure remains.
+Do not infer actual China project identity without access or operator metadata.
+
+Prepared exact cleanup of our historical temporary configuration using the
+immutable original rollback receipt from40161125235, fixed original project,
+fixed activation timestamp, original=[] and exact disabled values/default
+scopes. Official CLI delete shape removes only matching Id/Key/Value records;
+reject changed values, custom scope, duplicates or different receipts before
+any deletion. Lost ACK requires canonical absence; repeated run is safe. Local
+Node20 ownership/foreign-project/concurrent-change/ACK contracts PASS4/4;
+scoped lint/actionlint/diff checks PASS. Runner never logs settings values,
+IDs or unrelated parameters. This restores original absence, not activation.
