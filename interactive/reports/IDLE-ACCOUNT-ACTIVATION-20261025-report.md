@@ -292,3 +292,16 @@ new enabled runtime experiment until actual domain/project correspondence
 and configuration reachability are established. Added safe HTTP status and
 transport-type metadata to identify why the China API read is unavailable;
 no error messages/payloads or credential values are emitted.
+
+Regional audit40167008507 confirms China API is reachable but returns
+provider code109/authentication error for the existing CI token, HTTP200;
+this is not a network timeout. Global reads succeed. Pinned SDK0.1.0 is the
+current npm version. Inspected official edgeone CLI1.6.46 source: it additionally
+uses DescribePagesEnvironments for custom environment slugs and domain/branch
+bindings, which the SDK's legacy Project normalization does not expose. Added
+that official read API to the audit before declaring the current projects
+inaccessible. A legacy project's missing CustomDomains alone is insufficient
+to exclude a current environment. No configuration writes pending that result.
+The CLI also establishes why SDK deleteEnvs failed: backend expects EnvVars
+objects (Id/Key/Value), while SDK sends key strings. This is now a concrete
+path to remove only our two historical temporary records if needed.
