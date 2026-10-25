@@ -1,4 +1,5 @@
 /* eslint-env node */
+import { chinaMakers } from './idle-china-control-plane.mjs'
 import assert from 'node:assert/strict'
 import crypto from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -193,7 +194,7 @@ try {
   const require = createRequire(resolve(process.env.IDLE_MAKERS_SDK_DIR, 'package.json'))
   const { Makers } = await import(pathToFileURL(require.resolve('@edgeone/makers-sdk')).href)
   assert.ok(process.env.EDGEONE_API_TOKEN)
-  projects = new Makers({ token: process.env.EDGEONE_API_TOKEN }).projects
+  projects = chinaMakers(Makers, process.env.EDGEONE_API_TOKEN).projects
   if (mode === 'snapshot' || mode === 'apply') await sourceMatches(process.env.IDLE_STAGING_BASE_SHA)
   if (mode === 'snapshot') {
     phase = 'snapshot-before-mutation'

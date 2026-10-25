@@ -195,7 +195,11 @@ function CollectionDetail({ achievement, unlockedAt, sample, theme, onClose }: {
   )
 }
 
-export default function AchievementsPage({ embedded = false }: { embedded?: boolean }) {
+export default function AchievementsPage({ embedded = false, showBackButton = true }: {
+  embedded?: boolean
+  /** A hosting mobile shell can provide the single page-level return action. */
+  showBackButton?: boolean
+}) {
   const navigate = useNavigate()
   const location = useLocation()
   const dark = useAtomValue(isOpenDarkModeAtom)
@@ -271,9 +275,9 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
   const main = (
     <main className="song-v2-collection" data-song-achievement-gallery data-song-theme={theme} style={spriteStyle}>
       <SongPortalEntry theme={theme} />
-      <button type="button" className="song-v2-close" aria-label="返回 Learn" onClick={close}>
+      {showBackButton && <button type="button" className="song-v2-close" aria-label="返回 Learn" onClick={close}>
         <IconX className="h-6 w-6" />
-      </button>
+      </button>}
       <header className="song-v2-header">
         <div className="song-v2-header-painting" aria-hidden="true" />
         <div className="song-v2-header-group">
@@ -359,6 +363,7 @@ export default function AchievementsPage({ embedded = false }: { embedded?: bool
       access={visibleProgress.songAccess}
       masteredWords={visibleProgress.longTermMasteredWords}
       theme={theme}
+      showBackButton={showBackButton}
       onClose={close}
       onOpenSong={() => { closeDetail(); setCollectionView('song') }}
       onSeen={id => {

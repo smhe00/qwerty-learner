@@ -1,12 +1,103 @@
 ---
-status: IN_PROGRESS
+status: BLOCKED
 executor: Codex (single activation executor)
 base_commit: c74a59b8f9c1972a2c159a082b8fc04519cfa2c8
 runtime_activation_authorized: true
-runtime_configuration_changed: false
+production_configuration_changed: false
+staging_test_metadata_restored: true
 ---
 
 # Production idle activation preflight
+
+## Current checkpoint — blocked at live project configuration
+
+Owner clarification: BOTH sites are managed in the EdgeOne CHINA console.
+Resumed execution base969077f2 includes independent mobile UI commits; safely
+fast-forwarded and preserved. New verification clients now explicitly pin
+region=china; no international fallback for discovery or staging controls.
+Numeric provider109 is reported as China authentication rejection, without
+error messages, payloads or credential values. Historical international
+rollback remains explicitly global and is already complete; do not replay it.
+Node20 China selection/no-fallback/privacy + existing binding guards PASS7/7.
+Scoped lint/actionlint/diff checks PASS after fixing two import sort findings.
+No frontend/backend retention behavior or runtime settings changed this turn.
+Fresh anonymous production/staging policy probes both HTTP200 and disabled.
+Operations doc names the exact China console and existing private Actions
+secret to update if authorization still fails; no secret value requested.
+
+China-only live control-plane check40171181067 at8dc5e16c: namespace/binding/
+region/privacy guards PASS12/12. Project-list FAILED with provider109 and
+authenticationRejected=true, globalFallbackAllowed=false. Real Blob job
+SKIPPED; no config/storage/deployment mutation. Committed redacted receipt.
+This is a confirmed credential blocker even after explicitly selecting China.
+The ap-hongkong function runtime does not contradict China-console ownership.
+
+Prepared dedicated EDGEONE_CHINA_API_TOKEN repository-secret bindings for
+China discovery, isolated Blob qualification, staging journey and its recovery.
+Historical generic EDGEONE_API_TOKEN/explicit global rollback remains separate
+to avoid changing unrelated existing credential consumers. Internal process
+variable keeps its current name; secret values stay in Actions. Missing China
+credential must stop before project discovery, not fall back to a global key.
+All3 affected workflow files pass actionlint; no unchanged suite rerun needed
+for the credential-name mapping. Operations guide now gives the concrete
+GitHub private-secret location and China console URL. New credential presence
+is not assumed merely because the workflow references it.
+
+Dedicated credential check40171408799 at43e388b7: scope contracts PASS12/12,
+discovery FAILED at credential-check with ci-credential-missing, before any
+control-plane request. Real Blob job SKIPPED. This confirms the new private
+China credential is not available to the runner, rather than guessing secret
+existence from the earlier403 metadata permission. No settings, Blob objects,
+Maker deployment or production changes occurred. Redacted receipt committed.
+Concrete blocker: configure repository Actions secret EDGEONE_CHINA_API_TOKEN
+with a valid China-console Makers API Token authorized for the actual sites.
+Never request the value in chat. Resume verification after private setup;
+no additional activation approval is required. Existing app/runtime unchanged.
+
+2026-10-25T05:55Z: production is NOT activated. q.smhe.cn remains5528f79c,
+policy.enabled=false. Staging is5fa7574, enabled=false/executionEnabled=false;
+method-specific runtime probe confirms neither context nor Node has the date
+binding. See committed redacted evidence/current-site-binding-observation.json
+under IDLE-QUALIFICATION-20261025 for the complete anonymous observations.
+
+Actual isolated Blob lifecycle PASS8/8 in CI40159814798,69 fixture keys absent.
+It used the accessible historical project, not a proven current-site binding.
+Node20 new binding/scope contracts PASS9/9; read-only probe contracts PASS2/2;
+owned metadata restore contracts PASS4/4, lint/actionlint PASS. Relevant gateway
+contracts94/94 and Node20 feature/rollback15/15 passed earlier. Staging5fa7574
+ordinary live browser and V4 transport jobs PASS in40166505577, but release
+readiness job FAILED: this run is not an overall release qualification and
+never exercised enabled cleanup. No new all-green TypeScript claim.
+The readiness failure was the expected SHA guard: main had advanced to
+bf1d0da3 while staging remained5fa7574 during diagnosis. Do not treat it as
+an application failure or bypass it; re-establish exact-SHA gates on release.
+
+Corrected exact-ID/official environment catalog audit40167108988 found neither
+current domain among2 accessible global projects or their default environments.
+China API is reachable but rejects the existing CI token with code109,
+authentication-related; this is not a network problem. Missing legacy
+CustomDomains alone was initially overinterpreted; that error and its corrected
+reads are retained below. Current backend project identity/configuration
+access remains unresolved; do not bypass it with source defaults or clock APIs.
+
+All temporary original IDLE metadata is now restored to original ABSENCE:
+CI40167226920 SUCCESS, attempted2 exact owned records, remaining0. This uses
+an immutable original receipt and the official CLI's object delete shape,
+not the SDK's rejected key-string shape. No deployment from this cleanup.
+No production config/master update, customer account deletion, owner login,
+password read, scheduler or Circle work occurred.
+
+Next: identify the account/region and actual project/environment for t.smhe.cn
+and q.smhe.cn through authorized private access; preserve credentials in the
+connector/CI, never chat. The user was asked China vs international console
+as missing information, not for renewed activation approval. Then qualify
+staging enabled independent maintenance plus exact runtime-off rollback and
+relevant same-SHA deployment gates. Only after that configure production at a
+fresh fixed UTC start date and execution=true; never backdate or age customers.
+Existing activation authorization persists. Temporary read-only staging ABI
+probe remains for diagnosis and should be removed after binding is resolved.
+
+## Historical initial checkpoint (superseded by the above)
 
 Owner authorized activation; do not re-ask that permission when resuming. It is
 not completed. This checkpoint changes coordination documents only, not
@@ -272,3 +363,63 @@ Filters shape and assert the returned ProjectId matches before inspecting.
 Strengthened discovery to require passed t.smhe.cn binding and staging branch,
 never an old preset alone. Local binding/namespace guard contracts PASS9/9.
 Re-run the corrected read-only audit before concluding project mismatch.
+
+Corrected exact-ID audit40166715518 SUCCESS confirms the accessible global
+catalog has2 projects, neither reports t.smhe.cn/q.smhe.cn custom bindings.
+This now uses Filters and finds the exact returned ProjectId. The formerly
+selected staging project has the old preset and valid date/false metadata;
+the other known ID does NOT have IDLE settings. Current-domain discovery
+40166671946 failed with0 matches; isolated-suite40166671952 passed scope9/9,
+then correctly refused discovery and SKIPPED all real Blob writes. This is
+an unresolved provider project/binding/access mismatch, not a claim the
+domains do not exist or that China access is definitively unauthorized.
+
+Actual t.smhe.cn now serves5fa7574. Read-only method-specific probe HTTP200
+reports context is a plain object, both context and Node date bindings are
+undefined, no map-shaped API, function region ap-hongkong. This rules out
+the generic handler/Map-vs-object hypothesis for this observed deployment.
+Production q.smhe.cn still reports enabled=false at5528f79c. Never start a
+new enabled runtime experiment until actual domain/project correspondence
+and configuration reachability are established. Added safe HTTP status and
+transport-type metadata to identify why the China API read is unavailable;
+no error messages/payloads or credential values are emitted.
+
+Regional audit40167008507 confirms China API is reachable but returns
+provider code109/authentication error for the existing CI token, HTTP200;
+this is not a network timeout. Global reads succeed. Pinned SDK0.1.0 is the
+current npm version. Inspected official edgeone CLI1.6.46 source: it additionally
+uses DescribePagesEnvironments for custom environment slugs and domain/branch
+bindings, which the SDK's legacy Project normalization does not expose. Added
+that official read API to the audit before declaring the current projects
+inaccessible. A legacy project's missing CustomDomains alone is insufficient
+to exclude a current environment. No configuration writes pending that result.
+The CLI also establishes why SDK deleteEnvs failed: backend expects EnvVars
+objects (Id/Key/Value), while SDK sends key strings. This is now a concrete
+path to remove only our two historical temporary records if needed.
+
+Custom-environment audit40167108988 SUCCESS: both accessible global projects
+have only default Production/Preview environments; neither environment reports
+the current domains. The current staging branch is in the selected project's
+Production environment; the other project's Production lists master. Thus
+custom environment scope does not explain the missing current-domain mapping
+in this accessible catalog. China API code109/authentication failure remains.
+Do not infer actual China project identity without access or operator metadata.
+
+Prepared exact cleanup of our historical temporary configuration using the
+immutable original rollback receipt from40161125235, fixed original project,
+fixed activation timestamp, original=[] and exact disabled values/default
+scopes. Official CLI delete shape removes only matching Id/Key/Value records;
+reject changed values, custom scope, duplicates or different receipts before
+any deletion. Lost ACK requires canonical absence; repeated run is safe. Local
+Node20 ownership/foreign-project/concurrent-change/ACK contracts PASS4/4;
+scoped lint/actionlint/diff checks PASS. Runner never logs settings values,
+IDs or unrelated parameters. This restores original absence, not activation.
+
+
+## Original metadata rollback completed
+
+CI40167226920 SUCCESS at31285e80: ownership guards PASS4/4 and actual deletion
+of only2 exact owned IDLE records succeeded. Canonical read confirms
+restoredOriginalAbsence=true, remainingOwnedSettings=0. All original config
+side effects have been undone, superseding earlier retained-date/false status.
+Redacted receipt committed. No current-site/prod promotion or real accounts.

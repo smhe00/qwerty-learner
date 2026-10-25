@@ -34,7 +34,7 @@ export default function MobilePage() {
     { title: '学习记录', subtitle: '按日期与词库查看已保存的练习', icon: LayoutGrid, route: '/mobile/history' },
     {
       title: '账号与云同步',
-      subtitle: auth ? (expired ? '登录已过期 · ' : '已登录 · ') + auth.user.username : '登录或注册 · 使用账号学习空间',
+      subtitle: auth ? (expired ? '登录已过期 · ' : '已登录 · ') + auth.user.username : '登录后同步学习进度',
       icon: Cloud,
       route: '/mobile/data',
     },
@@ -86,14 +86,19 @@ export default function MobilePage() {
           <h2>更多功能</h2>
           {menus.map((item) => (
             <Link className="mobile-menu-item" to={item.route} key={item.title}>
-              <span className="mobile-menu-icon"><item.icon size={20} aria-hidden="true" /></span>
-              <span className="mobile-menu-text"><strong>{item.title}</strong><small>{item.subtitle}</small></span>
+              <span className="mobile-menu-icon">
+                <item.icon size={20} aria-hidden="true" />
+              </span>
+              <span className="mobile-menu-text">
+                <strong>{item.title}</strong>
+                <small>{item.subtitle}</small>
+              </span>
               <ChevronRight size={18} aria-hidden="true" className="mobile-menu-chevron" />
             </Link>
           ))}
         </section>
         <footer className="mobile-home-footer">
-          {secureLearningEntry(window.location.href) ? '当前仅在本机保存 · 请使用安全站点同步' : '手机端独立界面 · 与桌面共享学习数据'}
+          {secureLearningEntry(window.location.href) ? '当前仅在本机保存 · 请使用安全站点同步' : '练打字 · 记单词 · 云同步'}
         </footer>
       </div>
     </main>

@@ -1,0 +1,57 @@
+{
+  "check": "current-site-runtime-binding",
+  "observedAt": "2026-10-25T05:55:11Z",
+  "configurationChanged": false,
+  "customerAccountsAccessed": false,
+  "staging": {
+    "/source-commit.txt": {
+      "status": 200,
+      "body": "5fa7574"
+    },
+    "/api/account-policy": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "enabled": false,
+        "executionEnabled": false,
+        "idleDays": 180
+      }
+    },
+    "/api/idle-runtime-health": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "probe": "idle-env-abi-v1",
+        "context": {
+          "kind": "object",
+          "dateKind": "undefined",
+          "dateValid": false,
+          "executionRequested": false,
+          "mapRead": "not-applicable",
+          "mappedDateValid": false,
+          "mappedExecutionRequested": false
+        },
+        "node": {
+          "dateKind": "undefined",
+          "dateValid": false,
+          "executionRequested": false
+        },
+        "functionRegion": "ap-hongkong"
+      }
+    }
+  },
+  "production": {
+    "/source-commit.txt": {
+      "status": 200,
+      "body": "5528f79"
+    },
+    "/api/account-policy": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "enabled": false,
+        "idleDays": 180
+      }
+    }
+  }
+}

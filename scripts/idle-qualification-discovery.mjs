@@ -6,8 +6,10 @@ import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { isCurrentStagingProject } from './idle-project-binding.mjs'
+import { chinaControlPlaneFailure, chinaMakers } from './idle-china-control-plane.mjs'
 
 const evidence = { check: 'idle-qualification-staging-discovery',
+  controlPlaneRegion: 'china', globalFallbackAllowed: false,
   blobWritesAttempted: false, configurationChanged: false, deploymentTriggered: false }
 let phase = 'credential-check'
 try {
@@ -16,7 +18,7 @@ try {
   phase = 'sdk-import'
   const require = createRequire(resolve(process.env.IDLE_MAKERS_SDK_DIR, 'package.json'))
   const { Makers } = await import(pathToFileURL(require.resolve('@edgeone/makers-sdk')).href)
-  const makers = new Makers({ token })
+  const makers = chinaMakers(Makers, token)
   const matches = []
   let examined = 0
   phase = 'project-list'
@@ -40,10 +42,11 @@ try {
   appendFileSync(process.env.GITHUB_OUTPUT, `project_id=${matches[0]}\n`)
   evidence.verdict = 'PASS'
   evidence.binding = 'passed-exact-t-smhe-cn-and-staging-branch'
-} catch {
+} catch (error) {
   evidence.verdict = 'FAIL'
   evidence.failureStage = phase
-  evidence.reason = process.env.EDGEONE_API_TOKEN ? 'staging-discovery-unavailable-or-not-unique' : 'ci-credential-missing'
+  Object.assign(evidence, chinaControlPlaneFailure(error))
+  if (!process.env.EDGEONE_API_TOKEN) evidence.reason = 'ci-credential-missing'
   process.exitCode = 1
 }
 writeFileSync(process.env.IDLE_DISCOVERY_REPORT || 'idle-discovery-redacted.json', JSON.stringify(evidence, null, 2) + '\n')

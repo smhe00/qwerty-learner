@@ -73,6 +73,33 @@ is not promised. A single slow storage call can exceed the soft budget.
 
 ## Server-only configuration
 
+### China control-plane access
+
+The owner confirmed both `q.smhe.cn` and `t.smhe.cn` are managed in the
+EdgeOne China console: https://console.cloud.tencent.com/edgeone/makers .
+Verification clients MUST set Makers SDK `region: 'china'`; never use automatic
+fallback to the international endpoint to select current-site projects.
+An international project with the same repository/legacy preset is insufficient.
+
+The China verification workflows use dedicated repository secret
+`EDGEONE_CHINA_API_TOKEN`, containing a China-console Makers API Token with
+access to the actual target projects. Historical `EDGEONE_API_TOKEN` remains
+for historical international diagnostics/rollback. The previous China-only
+probe with that existing generic credential returned code109 (authentication
+rejected), while international reads succeeded. A China read must succeed
+before exact domain/environment discovery or writes.
+
+Configure `EDGEONE_CHINA_API_TOKEN` using GitHub repository Settings → Secrets
+and variables → Actions, or an authorized private connection; never paste
+values into chat, logs or commits. The workflows bind it to their internal
+`EDGEONE_API_TOKEN` process variable; its value never leaves the runner.
+The agent cannot mint a China token from the existing international access.
+Changing the credential alone does not enable deletion.
+
+Historical SDK sandbox receipts and their explicit international rollback are
+kept as evidence. They do not qualify either current China-console site's
+configuration or deployed automatic cleanup behavior.
+
 Set these in EdgeOne Makers runtime environment variables, never `VITE_*`,
 frontend build settings, source control or the browser:
 

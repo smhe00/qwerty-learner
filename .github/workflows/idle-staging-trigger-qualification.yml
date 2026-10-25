@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/idle-staging-trigger-qualification.yml'
       - 'scripts/idle-staging-environment.mjs'
+      - 'scripts/idle-china-control-plane.mjs'
       - 'scripts/idle-staging-trigger-qualification.mjs'
       - 'tests/cloud/idle-staging-environment.test.mjs'
       - 'interactive/reports/IDLE-ACCOUNT-ACTIVATION-20261025-report.md'
@@ -33,14 +34,14 @@ jobs:
           cache: yarn
       - run: yarn install --frozen-lockfile
       - name: Qualify exact-setting rollback and production refusal before credential use
-        run: node --test tests/cloud/idle-staging-environment.test.mjs
+        run: node --test tests/cloud/idle-staging-environment.test.mjs tests/cloud/idle-china-control-plane.test.mjs
       - name: Install official control-plane SDK without lifecycle scripts
         run: npm install --no-save --ignore-scripts --prefix "$IDLE_MAKERS_SDK_DIR" @edgeone/makers-sdk@0.1.0
       - run: npx playwright install --with-deps chromium
       - name: Read-only exact staging discovery
         id: discover
         env:
-          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_CHINA_API_TOKEN }}
           IDLE_DISCOVERY_REPORT: ${{ runner.temp }}/idle-staging-trigger-discovery.json
         run: node scripts/idle-qualification-discovery.mjs
       - name: Pin the actual staging branch before changing settings
@@ -60,7 +61,7 @@ jobs:
       - name: Snapshot only the two nonsecret staging idle settings before changes
         id: snapshot
         env:
-          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_CHINA_API_TOKEN }}
           IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
         run: node scripts/idle-staging-trigger-qualification.mjs snapshot
       - name: Preserve nonsecret rollback snapshot before any configuration write
@@ -73,20 +74,20 @@ jobs:
       - name: Apply temporary staging settings before coordinated deployment
         id: apply
         env:
-          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_CHINA_API_TOKEN }}
           IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
         run: node scripts/idle-staging-trigger-qualification.mjs apply
       - name: Await staging deployment, verify the real browser trigger, restore settings
         id: journey
         env:
-          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_CHINA_API_TOKEN }}
           IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
         run: node scripts/idle-staging-trigger-qualification.mjs run
       - name: Independently restore control-plane settings even after a failed test
         id: restore
         if: always() && steps.snapshot.outcome == 'success'
         env:
-          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_CHINA_API_TOKEN }}
           IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
         run: node scripts/idle-staging-trigger-qualification.mjs restore
       - name: Preserve browser result and rollback result before runtime confirmation
@@ -102,7 +103,7 @@ jobs:
       - name: Await restored deployment and verify execution disabled through the real API
         if: always() && steps.restore.outcome == 'success'
         env:
-          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_CHINA_API_TOKEN }}
           IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
           IDLE_STAGE_GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/idle-staging-trigger-qualification.mjs confirm

@@ -1,0 +1,11 @@
+{
+  "check": "idle-qualification-staging-discovery",
+  "blobWritesAttempted": false,
+  "configurationChanged": false,
+  "deploymentTriggered": false,
+  "projectsExamined": 2,
+  "exactStagingMatches": 0,
+  "verdict": "FAIL",
+  "failureStage": "exact-domain-match",
+  "reason": "staging-discovery-unavailable-or-not-unique"
+}

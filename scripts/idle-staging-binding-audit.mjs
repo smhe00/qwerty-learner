@@ -66,6 +66,22 @@ for (const region of ['china', 'global']) {
       if (item.projectCatalog.length >= 50) throw Error('Catalog budget exceeded')
       const row = await readProject(candidate.projectId)
       const domains = JSON.stringify(row.CustomDomains || [])
+      let environments
+      try {
+        // Official edgeone CLI1.6.46 uses this read API: custom environments
+        // have their own slugs and domain/branch bindings outside project rows.
+        const response = await makers.request('DescribePagesEnvironments', { ProjectId: candidate.projectId }, true)
+        environments = { responseFields: fields(response), records: (response.Environments || []).map(env => ({
+          fieldNames: fields(env),
+          stagingDomain: JSON.stringify(env).includes('t.smhe.cn'),
+          productionDomain: JSON.stringify(env).includes('q.smhe.cn'),
+          stagingBranch: JSON.stringify(env).includes('edgeone-test'),
+          productionBranch: JSON.stringify(env).includes('master'),
+          scope: ['Production', 'Preview', 'production', 'preview'].includes(env.Slug) ? env.Slug : 'custom',
+        })) }
+      } catch (error) {
+        environments = { unavailable: true, errorType: /^[A-Za-z]{1,60}$/.test(error?.name) ? error.name : 'unknown' }
+      }
       item.projectCatalog.push({
         selectedByOldDiscovery: candidate.projectId === projectId,
         knownProduction: candidate.projectId === 'makers-yggquqwubqul',
@@ -76,13 +92,19 @@ for (const region of ['china', 'global']) {
         stagingBranch: row.RepoBranch === 'edgeone-test', productionBranch: row.RepoBranch === 'master',
         oldPreset: row.PresetDomain === 'etest.edgeone.dev',
         projectHasIdleSettings: JSON.stringify(row.EnvVars || {}).includes('IDLE_POLICY_START_AT'),
+        environments,
       })
     }
     item.outcome = 'OBSERVED'
   } catch (error) {
     item.outcome = 'UNAVAILABLE'
     item.errorType = /^[A-Za-z]{1,60}$/.test(error?.name) ? error.name : 'unknown'
-    item.errorCode = /^[A-Za-z][A-Za-z0-9_.]{0,80}$/.test(error?.code) ? error.code : 'unspecified'
+    item.errorCode = typeof error?.code === 'string' && /^-?[A-Za-z0-9][A-Za-z0-9_.]{0,80}$/.test(error.code)
+      ? error.code : 'unspecified'
+    item.httpStatus = Number.isInteger(error?.httpStatus) ? error.httpStatus : null
+    item.failureTransport = ['network-error', 'response'].includes(error?.cause?.type || error?.cause?.transport)
+      ? (error.cause.type || error.cause.transport) : 'unspecified'
+    item.authenticationMentioned = /auth|token|登录|令牌|鉴权|认证/i.test(error?.message || '')
   }
   report.regions.push(item)
 }

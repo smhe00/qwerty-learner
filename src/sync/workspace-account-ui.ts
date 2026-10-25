@@ -70,7 +70,6 @@ export function renderS1AccountManagement(
   if (active.kind === 'anonymous') {
     passwordConfirm = row('注册密码确认', 'password')
     passwordConfirm.autocomplete = 'new-password'
-    actions.append(node('p', 'SMHE 是管理员保留名称，首次注册需使用管理员密码。'))
   }
 
   const controls: HTMLButtonElement[] = []
@@ -101,9 +100,9 @@ export function renderS1AccountManagement(
               session_revoked: '登录状态已失效，请重新登录当前账号。',
               session_expired: '登录已过期，请重新登录当前账号。',
               account_cleanup_pending: '账号正在进行到期维护，已请求取消清理；请稍后重试。',
-              environment_password_managed: '管理员密码只能在服务器环境变量中修改。',
-              administrator_protected: '管理员账号不能删除。',
-              administrator_account_reserved: '管理员账号已保留，请使用现有账号登录。',
+              environment_password_managed: '此账号暂不支持在这里修改密码。',
+              administrator_protected: '此账号不支持删除。',
+              administrator_account_reserved: '该用户名不可注册，请更换用户名。',
               username_cleanup_pending: '该用户名正在完成到期清理，请24小时后重试注册。',
               invalid_token: '登录状态无效，请重新登录当前账号。',
               https_required: '请打开 HTTPS 安全站点后登录和同步。',
@@ -119,12 +118,12 @@ export function renderS1AccountManagement(
       true,
       (
         {
-          saving: '正在持久化当前完整学习记录…',
-          prepared: '正在准备账号学习空间…',
-          restoring: '正在恢复目标账户学习记录…',
-          recovering: '正在故障恢复…',
+          saving: '正在保存学习记录…',
+          prepared: '正在准备登录…',
+          restoring: '正在加载学习记录…',
+          recovering: '正在恢复学习记录…',
           complete: '已完成，正在返回学习…',
-          failed: '事务中断，需要验证恢复状态…',
+          failed: '操作未完成，正在检查…',
         } as Record<Phase, string>
       )[p],
     )
@@ -152,14 +151,16 @@ export function renderS1AccountManagement(
     const signed = credential(await login(username.value.trim(), password.value, browserDeviceId()))
     if (active.kind === 'account') {
       if (active.accountId !== signed.user.userId) {
-        throw new Error('当前属于另一账户，必须先明确退出到匿名工作区')
+        throw new Error('请先退出当前账号，再登录其他账号。')
       }
       await reauthenticateSameWorkspace(signed)
       finishAuthentication()
       return
     }
-    if (!window.confirm('将从匿名工作区切换到“' + signed.user.username + '”。' + '匿名学习进度会独立保存，不合并到已有账户。确认继续？')) {
-      setBusy(false, '用户已取消登录切换')
+    if (
+      !window.confirm('登录“' + signed.user.username + '”后，将使用该账号的学习记录。本机未登录时的记录会保留，不会自动合并。继续登录？')
+    ) {
+      setBusy(false, '已取消登录')
       return
     }
     await switchAuthenticatedWorkspace({ kind: 'account', accountId: signed.user.userId }, signed, phase)
@@ -177,7 +178,7 @@ export function renderS1AccountManagement(
     }
     const signed = credential(await register(username.value.trim(), password.value, browserDeviceId()))
     if (copy) {
-      setBusy(true, '新账户已注册，正在复制匿名学习数据…')
+      setBusy(true, '新账户已注册，正在复制本机学习记录…')
       await copyAnonymousWorkspaceForNewRegistration(signed.user.userId)
     }
     await switchAuthenticatedWorkspace({ kind: 'account', accountId: signed.user.userId }, signed, phase)
@@ -211,18 +212,18 @@ export function renderS1AccountManagement(
     // Logout is a local durability operation at S1, NOT a cloud preflight.
     // No fetch is permitted here: offline/stalled DNS/auth revocation must
     // never prevent the user from leaving a locally isolated account.
-    let warning = '将退出当前账户并切换到本机匿名工作区。完整本地学习记录会保留在原账户工作区。'
-    warning += '\n退出前的未同步学习进度仍只保存在本机。'
+    let warning = '退出账号后，已有学习记录仍会保留。'
+    warning += '\n未同步的记录仍只保存在这台设备上。'
     if (!auth || auth.expiresAt * 1000 <= Date.now()) {
-      warning += '\n云端会话已过期；离线退出仍可完成。'
+      warning += '\n登录已过期，仍可退出。'
     }
     if (!window.confirm(warning + '\n确定仍要安全退出？')) {
       setBusy(false, '用户已取消退出')
       return
     }
     await switchAuthenticatedWorkspace({ kind: 'anonymous' }, null, phase)
-    setBusy(true, '退出成功，已恢复匿名工作区。')
-    navigate('安全退出成功，原账户的本地学习进度已保存，当前为匿名工作区。')
+    setBusy(true, '已退出登录。')
+    navigate('已退出登录，学习记录已保留。')
   }
   if (active.kind === 'anonymous') {
     controls.push(button('登录已有账户', () => safeRun(loginAction)))
@@ -236,8 +237,7 @@ export function renderS1AccountManagement(
   const back = button('取消并返回学习', () => navigate())
   controls.push(back)
   // Pre-login presentation must not start any cloud request.
-  const retention = node('p', '云端闲置清理启用后，连续180天未登录或有效访问云端的账号及云端数据会被清理。本机学习记录保留。')
-  main.append(heading, current, authState, guidance, retention, actions, status)
+  main.append(heading, current, authState, guidance, actions, status)
   overlay.append(main)
   root.replaceChildren(overlay)
   const accountView = presentAccount({
