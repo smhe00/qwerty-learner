@@ -1,0 +1,78 @@
+name: Idle cleanup actual staging trigger qualification
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - '.github/workflows/idle-staging-trigger-qualification.yml'
+      - 'scripts/idle-staging-environment.mjs'
+      - 'scripts/idle-staging-trigger-qualification.mjs'
+      - 'tests/cloud/idle-staging-environment.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: reversible-staging-idle-runtime
+  cancel-in-progress: false
+jobs:
+  staging-trigger:
+    if: github.ref_name == 'product/main'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      IDLE_MAKERS_SDK_DIR: ${{ runner.temp }}/idle-makers-sdk
+      IDLE_STAGING_OUTPUT: ${{ runner.temp }}/idle-staging-trigger
+      IDLE_STAGING_ACK: RUN_REVERSIBLE_STAGING_IDLE_TRIGGER
+      IDLE_STAGING_EXPECTED_SHA: 5528f79c700548e174fa153b96ff4599d7326aee
+      IDLE_QUALIFICATION_PROJECT_VERIFIED: EXACT_ETEST_DOMAIN
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Qualify exact-setting rollback and production refusal before credential use
+        run: node --test tests/cloud/idle-staging-environment.test.mjs
+      - name: Install official control-plane SDK without lifecycle scripts
+        run: npm install --no-save --ignore-scripts --prefix "$IDLE_MAKERS_SDK_DIR" @edgeone/makers-sdk@0.1.0
+      - run: npx playwright install --with-deps chromium
+      - name: Read-only exact staging discovery
+        id: discover
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          IDLE_DISCOVERY_REPORT: ${{ runner.temp }}/idle-staging-trigger-discovery.json
+        run: node scripts/idle-qualification-discovery.mjs
+      - name: Snapshot only the two nonsecret staging idle settings before changes
+        id: snapshot
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
+        run: node scripts/idle-staging-trigger-qualification.mjs snapshot
+      - name: Preserve nonsecret rollback snapshot before any configuration write
+        uses: actions/upload-artifact@v4
+        with:
+          name: idle-staging-rollback-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/idle-staging-trigger/rollback-settings.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Temporarily configure staging, verify the real browser trigger, restore
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
+        run: node scripts/idle-staging-trigger-qualification.mjs run
+      - name: Independently confirm restoration even after a failed test
+        if: always() && steps.snapshot.outcome == 'success'
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          IDLE_QUALIFICATION_PROJECT_ID: ${{ steps.discover.outputs.project_id }}
+        run: node scripts/idle-staging-trigger-qualification.mjs restore
+      - name: Retain fixed-phase verification results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: idle-staging-trigger-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/idle-staging-trigger/*result.json
+            ${{ runner.temp }}/idle-staging-trigger-discovery.json
+          if-no-files-found: ignore
+          retention-days: 7

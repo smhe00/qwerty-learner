@@ -22,6 +22,16 @@ do not treat inability to list secret names as inability to use a configured
 workflow credential. Exact read-only staging discovery must precede any write.
 No Maker promotion or new public clock/test endpoint is authorized or needed.
 
+Verification continuation: real SDK lifecycle suite2543911e passed8/8 with all
+69 tracked keys confirmed absent. Next qualify the actual deployed staging
+login/learning/maintenance path with a reversible temporary configuration of
+only the two IDLE settings. Fresh UTC activation time gives every staging
+account a full180-day floor; no aged real account. Snapshot before mutation,
+keep unrelated/administrator values private and untouched, restore exact old
+values even after failure, and verify runtime policy disabled again. No
+production configuration change or Maker deployment in this phase. The user
+already authorized verification; do not add another confirmation step.
+
 ## Blockers
 
 - Production https://q.smhe.cn; existing application5528f79c. No application

@@ -1,0 +1,10 @@
+{
+  "check": "idle-qualification-staging-discovery",
+  "blobWritesAttempted": false,
+  "configurationChanged": false,
+  "deploymentTriggered": false,
+  "projectsExamined": 2,
+  "exactStagingMatches": 1,
+  "verdict": "PASS",
+  "binding": "exact-etest-domain"
+}

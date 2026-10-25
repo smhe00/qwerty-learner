@@ -1,0 +1,60 @@
+{
+  "check": "isolated-idle-blob-lifecycle-v1",
+  "transport": "edgeone-blob-sdk",
+  "realBlobTested": true,
+  "independentSdkClients": 2,
+  "multiRegionQualified": false,
+  "deployedFunctionTested": false,
+  "productionAccountNamespacesTouched": false,
+  "deploymentTriggered": false,
+  "clockOverrideInProduction": false,
+  "cases": [
+    {
+      "name": "activation-floor-and-180-day-boundary",
+      "passed": true,
+      "elapsedMs": 14805
+    },
+    {
+      "name": "drain-identity-last-and-repeated-delete",
+      "passed": true,
+      "elapsedMs": 31239
+    },
+    {
+      "name": "return-during-drain-cancels",
+      "passed": true,
+      "elapsedMs": 17517
+    },
+    {
+      "name": "ambiguous-delete-ack-and-new-worker-resume",
+      "passed": true,
+      "elapsedMs": 28877
+    },
+    {
+      "name": "time-budget-checkpoint-and-next-day-resume",
+      "passed": true,
+      "elapsedMs": 36554
+    },
+    {
+      "name": "active-admin-smhe-and-circle-exemptions",
+      "passed": true,
+      "elapsedMs": 16400
+    },
+    {
+      "name": "two-independent-workers-repeat-daily-trigger",
+      "passed": true,
+      "elapsedMs": 33094
+    },
+    {
+      "name": "foreign-provider-listing-fails-before-delete",
+      "passed": true,
+      "elapsedMs": 4296
+    }
+  ],
+  "cleanup": {
+    "confirmed": true,
+    "failures": 0,
+    "remaining": 0,
+    "trackedKeys": 69
+  },
+  "verdict": "PASS"
+}

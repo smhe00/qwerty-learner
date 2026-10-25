@@ -93,3 +93,32 @@ explicitly sets multiRegionQualified=false/deployedFunctionTested=false. Do not
 declare multi-region qualification from one Actions runner or turn production
 execution on solely because this limited live suite passes. Record concrete
 remaining coverage/access after observing the actual CI result.
+
+## Actual real-Blob result
+
+Qualified commit2543911efd236a5bf43d68e9aee8bd7228d92b40, workflow40159814798
+**SUCCESS**: scope job121068818324, exact staging discovery121068918426,
+real lifecycle121068979847. Discovery examined2 projects, matched exactly1
+etest binding and attempted no writes. CI's existing credential works; earlier
+local/no-control-plane access observations must not be presented as proof that
+all private execution paths are unavailable.
+
+All8 real-Blob scenarios PASS. Finally cleanup verified all69 tracked keys
+individually through the second SDK client and observed an empty run prefix:
+failures0, remaining0, confirmed=true. No actual account API or production store
+was used. Injected interruption/time are test-only; actual storage IO and the
+production cleanup engine were real. This remains one-runner external SDK
+coverage, not multi-region/deployed-function qualification. Keep the result's
+explicit false coverage flags intact.
+
+Next reachable verification uses the same private CI control-plane path on
+staging only: snapshot two nonsecret IDLE parameters BEFORE writes; temporarily
+activate with current UTC time (all existing accounts protected180 days); real
+Chromium login, hold the independent maintenance request, learn a word, release
+it to the real server, verify session/local rows and no eligible deletion;
+fresh disposable-account cleanup; restore original settings and observe public
+runtime policy disabled again. A separate always-run step verifies restoration.
+No production changes, public test routes or Maker deployment. Settings/rollback
+guards locally PASS7/7: denied prod IDs, no unrelated or secret setting in
+snapshot, exact restore/absent-key deletion, lost ACK readback, concurrent-change
+refusal, tamper/backdate rejection. No source/application changes are needed.
