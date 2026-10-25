@@ -311,6 +311,9 @@ for (const wrong of [true, false]) {
       await writeFile(info.outputPath('completion-redacted-trace.json'), JSON.stringify(proof, null, 2))
       console.log('COMPLETION_CLOUD_REDACTED', JSON.stringify(proof))
     }
-    if (failures.length) throw new AggregateError(failures, failures.map((e) => (e instanceof Error ? e.stack : String(e))).join('\n'))
+    if (failures.length) {
+      const messages = failures.map((e) => String(e instanceof Error ? e.stack : e).split(password).join('[redacted-password]'))
+      throw new Error(messages.join('\n'))
+    }
   })
 }
