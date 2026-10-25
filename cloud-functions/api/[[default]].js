@@ -4,7 +4,8 @@ import { isIsolatedEtestPilotOrigin } from '../_shared/etest-pilot-origin.js'
 import crypto from 'node:crypto'
 import { loadAdministrator } from '../_shared/administrator.js'
 import { createIdleAccounts } from '../_shared/idle-accounts.js'
-import { getStore } from '@edgeone/pages-blob'
+import { getStore, wasHandoffRateLimited } from '../_shared/session-handoff-context.js'
+import { withHandoffGateway } from '../_shared/session-handoff-gateway.js'
 import { checkAuthRateLimit } from '../_shared/auth-rate-limit.js'
 import { circleAccountHasActivity, createCircleOpenGateway } from '../_shared/circle/open-gateway.js'
 import { AppError, createBackendService } from '../_shared/core.js'
@@ -256,6 +257,10 @@ async function enforceAuthRateLimit(context, storage, env, cors) {
 }
 
 export async function onRequest(context) {
+  return withHandoffGateway(context, onUncoordinatedRequest)
+}
+
+async function onUncoordinatedRequest(context) {
   const { request } = context
   const env = runtimeEnvironment(context.env)
   const diagnostics = createRequestDiagnostics(context)
@@ -387,7 +392,8 @@ export async function onRequest(context) {
 
     if (
       request.method === 'POST' &&
-      (path === '/auth/register' || path === '/auth/login')
+      (path === '/auth/register' || path === '/auth/login') &&
+      !wasHandoffRateLimited(context)
     ) {
       const limited = await diagnostics.run('auth-rate-limit', () => enforceAuthRateLimit(context, storage, env, cors))
       if (limited) return limited

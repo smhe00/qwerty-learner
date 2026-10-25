@@ -1,6 +1,7 @@
 /* eslint-env node */
 import crypto from 'node:crypto'
 import { V4_FORMAT, verifyCompressedV4 } from './sync-v4.js'
+import { createGuardedBackendService } from './session-handoff-service.js'
 import {
   issueDeviceCheckoutDeclaration,
   readDeviceCheckoutDeclaration,
@@ -321,7 +322,19 @@ function secureHexEqual(left, right) {
   return crypto.timingSafeEqual(Buffer.from(left, 'hex'), Buffer.from(right, 'hex'))
 }
 
-export function createBackendService({
+export function createBackendService(options = {}) {
+  // Opt-in only: activation still requires an actually deployed coordinator and
+  // complete gateway/cutover qualification. Undefined preserves the old API;
+  // explicitly supplied null/invalid barriers must never fall back silently.
+  if (Object.hasOwn(options, 'handoffBarrier')) {
+    const { handoffBarrier, ...settings } = options
+    return createGuardedBackendService(createUncoordinatedBackendService,
+      settings, handoffBarrier)
+  }
+  return createUncoordinatedBackendService(options)
+}
+
+function createUncoordinatedBackendService({
   storage,
   sessionTtlSeconds = 7 * 24 * 60 * 60,
   maxSyncBytes = 16 * 1024 * 1024,
@@ -333,6 +346,7 @@ export function createBackendService({
   activityGuard = null,
   registrationGuard = null,
   credentials = null,
+  handoffPreflight = false,
 }) {
   if (!storage) throw new Error('storage is required')
   if (!Number.isInteger(snapshotRetention) || snapshotRetention < 1) {
@@ -571,7 +585,7 @@ export function createBackendService({
     }
   }
 
-  async function login(usernameInput, password, deviceId) {
+  async function validateLoginCredentials(usernameInput, password) {
     const { normalizedUsername } = normalizeUsername(usernameInput)
     const usernameHash = sha256Hex(normalizedUsername)
     const identity = await storage.getAccount(usernameHash)
@@ -587,6 +601,11 @@ export function createBackendService({
       throw new AppError(401, 'incorrect_password', 'Password is incorrect')
     }
 
+    return { identity, currentAuth }
+  }
+
+  async function login(usernameInput, password, deviceId) {
+    const { identity, currentAuth } = await validateLoginCredentials(usernameInput, password)
     if (currentAuth.environmentManaged && credentials.authorize) await credentials.authorize(identity)
     if (activityGuard) await activityGuard(identity)
     const session = multiSessionEnabled
@@ -1522,6 +1541,33 @@ export function createBackendService({
   }
 
   return {
+    // Server-only helpers; absent from the ordinary service and never routed as
+    // HTTP APIs. No password hash/session token is returned by preflight.
+    ...(handoffPreflight ? {
+      async preflightLogin(username, password) {
+        const { identity } = await validateLoginCredentials(username, password)
+        return { accountHash: identity.usernameHash, accountId: identity.userId }
+      },
+      async preflightToken(token) {
+        const { identity } = await authenticate(token)
+        return { accountHash: identity.usernameHash, accountId: identity.userId }
+      },
+      async preflightRegister(username, password) {
+        const { normalizedUsername } = normalizeUsername(username)
+        validatePassword(password)
+        const accountHash = sha256Hex(normalizedUsername)
+        if (await storage.getAccount(accountHash)) {
+          throw new AppError(409, 'username_taken', 'Username is already registered')
+        }
+        if (credentials?.managedName?.(normalizedUsername)) {
+          // Managed identities require enrollment outside this pilot; do not let
+          // unauthenticated registration requests drain an existing account.
+          throw new AppError(403, 'handoff_managed_registration_disabled',
+            'Managed account registration is unavailable in the handoff pilot')
+        }
+        return { accountHash, accountId: null }
+      },
+    } : {}),
     register,
     login,
     me,
