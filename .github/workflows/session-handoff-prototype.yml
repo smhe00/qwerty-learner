@@ -1,0 +1,51 @@
+name: Session handoff qualification
+on:
+  push:
+    branches: ['fix/session-handoff-20261025']
+    paths:
+      - 'cloud-functions/**'
+      - 'tests/cloud/session-handoff-*'
+      - 'experimental/session-handoff/**'
+      - '.github/workflows/session-handoff-prototype.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: session-handoff-feature-qualification
+  cancel-in-progress: false
+jobs:
+  protocol-and-gateway:
+    if: github.ref == 'refs/heads/fix/session-handoff-20261025'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify actual committed gateway, not a patch-only trigger
+        run: |
+          set -euo pipefail
+          git diff --check
+          grep -Fq 'return withHandoffGateway(context, onUncoordinatedRequest)' 'cloud-functions/api/[[default]].js'
+          grep -Fq 'receiveHandoffAuthBody(request)' cloud-functions/_shared/session-handoff-gateway.js
+          test -f cloud-functions/_shared/session-handoff-auth-body.js
+          git rev-parse HEAD > "$RUNNER_TEMP/handoff-tested-sha.txt"
+      - name: Isolated test bundler only; no database or application dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/handoff-test-deps" --ignore-scripts --no-audit --no-fund esbuild@0.17.19
+          ln -s "$RUNNER_TEMP/handoff-test-deps/node_modules" node_modules
+      - name: Protocol, actual HTTP gateway, multi-process and finite interleaving tests
+        run: |
+          set -euo pipefail
+          node --test tests/cloud/session-handoff-stopped.test.mjs tests/cloud/session-handoff-service.test.mjs tests/cloud/session-handoff-barrier.test.mjs tests/cloud/session-handoff-core.test.mjs tests/cloud/session-handoff-blob.test.mjs tests/cloud/session-handoff-gateway.test.mjs tests/cloud/session-handoff-process.test.mjs tests/cloud/session-handoff-model.test.mjs tests/cloud/session-handoff-safe-retry.test.mjs tests/cloud/backend-core.test.mjs tests/cloud/edgeone-blob-storage.test.mjs tests/cloud/workspace-transition.test.mjs | tee "$RUNNER_TEMP/handoff-qualification.tap"
+      - name: Retain exact test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: handoff-qualification-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/handoff-tested-sha.txt
+            ${{ runner.temp }}/handoff-qualification.tap
+          if-no-files-found: warn
+          retention-days: 7

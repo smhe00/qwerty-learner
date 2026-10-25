@@ -1,0 +1,39 @@
+name: Session handoff source
+on:
+  push:
+    branches: ['fix/session-handoff-20261025']
+    paths: ['.github/workflows/session-handoff-source.yml']
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Archive tracked implementation only (no credentials or runtime data)
+        run: |
+          git archive --format=tar.gz -o "$RUNNER_TEMP/handoff-source.tar.gz" HEAD cloud-functions src tests scripts interactive experimental .github package.json yarn.lock AGENTS.md .eslintrc.cjs .eslintignore tsconfig.json tsconfig.node.json vite.config.ts playwright.config.ts
+          git rev-parse HEAD > "$RUNNER_TEMP/source-sha.txt"
+      - name: Install isolated test-only dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/handoff-deps" --ignore-scripts --no-audit --no-fund esbuild@0.17.19 pg@8.16.3
+          tar -czf "$RUNNER_TEMP/handoff-deps.tar.gz" -C "$RUNNER_TEMP/handoff-deps" node_modules
+      - name: Read-only coordinator credential availability (booleans only)
+        env:
+          COORD_URL: ${{ secrets.HANDOFF_COORDINATOR_URL }}
+          COORD_TOKEN: ${{ secrets.HANDOFF_COORDINATOR_TOKEN }}
+          COORD_NAMESPACE: ${{ vars.HANDOFF_NAMESPACE }}
+        run: |
+          node -e 'console.log(JSON.stringify({check:"handoff-coordinator-ci-bindings",endpointConfigured:!!process.env.COORD_URL,tokenConfigured:!!process.env.COORD_TOKEN,namespaceConfigured:!!process.env.COORD_NAMESPACE,liveWritesAttempted:false}))'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: handoff-source
+          retention-days: 1
+          path: |
+            ${{ runner.temp }}/handoff-source.tar.gz
+            ${{ runner.temp }}/handoff-deps.tar.gz
+            ${{ runner.temp }}/source-sha.txt
