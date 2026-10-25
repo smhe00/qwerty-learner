@@ -1,0 +1,34 @@
+{
+  "runtimeSha": "1059efd9c2fe6a88c81c42b86a117a5204c6bc95",
+  "harnessSha": "6d3fef852a52df67e299762d7b2c10fe689fc118",
+  "runId": 40197654012,
+  "jobId": 121181882718,
+  "artifactId": 12599644968,
+  "artifactSha256": "8cd9c92650d19d7b5f683b9d793b660d003537388e38be4036eb7b16ede42ed8",
+  "conclusion": "success",
+  "runtimeSourceEqualityChecked": true,
+  "stagingRefCheckedBeforeAndAfter": true,
+  "history": {
+    "passed": true,
+    "mergedWordRecords": 5,
+    "sixTableForkConvergence": true,
+    "originalForkArchivesPreserved": true,
+    "independentCompletedSessionsPreserved": true,
+    "sessionReferencesFollowOriginalUUID": true,
+    "unicodeTranslationsExact": true,
+    "sharedReferencePreserved": true,
+    "reloginWithoutLearningPreservesAllRows": true,
+    "cleanupVerified": true,
+    "priorFailureRootCauseConfirmed": false,
+    "mergeAlgorithmChanged": false
+  },
+  "completion": [
+    {"case": "unmastered", "passed": true, "completionPageVisible": true, "cloudRevision": 1, "completionBlobHashVerified": true, "extraRoundStartupRevision": 2, "totalCommittedUploads": 2, "extraWords": 5, "reloadDidNotDuplicateExtension": true, "freshProfileCloudReadbackExact": true, "cloudWordRecords": 2, "finalAttemptPresentExactlyOnce": true, "cleanupVerified": true},
+    {"case": "complete", "passed": true, "completionPageVisible": true, "cloudRevision": 1, "completionBlobHashVerified": true, "extraRoundStartupRevision": 2, "totalCommittedUploads": 2, "extraWords": 5, "reloadDidNotDuplicateExtension": true, "freshProfileCloudReadbackExact": true, "cloudWordRecords": 2, "finalAttemptPresentExactlyOnce": true, "cleanupVerified": true}
+  ],
+  "relatedPullRequests": {"41": "merged-and-closed", "42": "merged-and-closed"},
+  "unrelatedCirclePr17Unchanged": true,
+  "applicationCodeChangedByThisVerification": false,
+  "productionTouched": false,
+  "allRootCausesResolved": false
+}
