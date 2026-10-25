@@ -1,0 +1,73 @@
+name: Etest handoff response diagnosis
+on:
+  push:
+    branches: [fix/session-handoff-20261025]
+    paths: ['.github/workflows/session-handoff-diagnose.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: etest-account-handoff-qualification
+  cancel-in-progress: false
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      QWERTY_SYNC_BASE_URL: https://t.smhe.cn/
+      EXPECTED_SHA: c9d30f23a46bae6b4022ea1dd4118585edf62144
+      EDGEONE_WAIT_MS: 60000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Archive only tracked qualification source
+        run: |
+          mkdir -p test-results
+          git archive --format=tar.gz -o test-results/handoff-source.tar.gz HEAD cloud-functions tests/cloud scripts experimental interactive AGENTS.md package.json .github
+          git rev-parse HEAD > test-results/diagnostic-source-sha.txt
+      - name: Require exact existing deployed candidate
+        run: node scripts/verify-edgeone-source.mjs
+      - name: Run unchanged real handoff assertions with redacted response evidence
+        run: |
+          node --input-type=module <<'NODE'
+          import { writeFile } from 'node:fs/promises'
+          const originalFetch = globalThis.fetch
+          const responses = []
+          const enumValue = value => typeof value === 'string' && /^[a-z][a-z_-]{0,63}$/.test(value) ? value : null
+          globalThis.fetch = async (url, options) => {
+            const target = new URL(url)
+            if (target.origin !== 'https://t.smhe.cn' || !target.pathname.startsWith('/api/')) {
+              throw new Error('Qualification target outside authorized staging API')
+            }
+            const started = performance.now()
+            const result = await originalFetch(url, options)
+            let data
+            try { data = await result.clone().json() } catch { data = null }
+            const entry = {
+              method: options?.method || 'GET', path: target.pathname,
+              status: result.status, durationMs: Math.round(performance.now() - started),
+              error: enumValue(data?.error), failureStage: enumValue(data?.details?.failureStage),
+              guarded: result.headers.get('x-qwerty-handoff') === 'account-handoff-blob-fixtures-v1',
+              isJson: data !== null,
+            }
+            if (responses.length < 160) responses.push(entry)
+            console.log(JSON.stringify({ check: 'redacted-http-response', ...entry }))
+            return result
+          }
+          try { await import('./tests/cloud/session-handoff-live.mjs') }
+          finally {
+            await writeFile('test-results/handoff-http-redacted.json', JSON.stringify({
+              deployedSha: process.env.EXPECTED_SHA, productionTouched: false, responses,
+            }, null, 2))
+          }
+          NODE
+      - name: Preserve source and redacted evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: handoff-response-diagnosis-${{ github.run_id }}
+          path: test-results/
+          if-no-files-found: error
+          retention-days: 3
