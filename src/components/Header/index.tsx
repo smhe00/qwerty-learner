@@ -1,18 +1,51 @@
 import logo from '@/assets/logoData'
+import QuickSyncAction from '@/components/QuickSyncAction'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import { infoPanelStateAtom } from '@/store'
 import { openAccountDialog } from '@/sync/account-dialog-events'
 import { loadAuth } from '@/sync/auth'
 import { useSetAtom } from 'jotai'
-import { UserCircle2 } from 'lucide-react'
+import { ChevronDown, Settings2, UserCircle2 } from 'lucide-react'
 import type { PropsWithChildren } from 'react'
 import type React from 'react'
-import { useCallback, useContext, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 const Header: React.FC<PropsWithChildren> = ({ children }) => {
   const layoutRef = useRef<HTMLDivElement>(null)
   const navRef = useRef<HTMLElement>(null)
   const [toolbarLayout, setToolbarLayout] = useState<'single' | 'stacked' | 'below'>('below')
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const accountMenuRef = useRef<HTMLDivElement>(null)
+  const opening = useRef<number | null>(null)
+  const closing = useRef<number | null>(null)
+  const clearMenuTimers = useCallback(() => {
+    if (opening.current !== null) window.clearTimeout(opening.current)
+    if (closing.current !== null) window.clearTimeout(closing.current)
+    opening.current = null
+    closing.current = null
+  }, [])
+  useEffect(() => () => clearMenuTimers(), [clearMenuTimers])
+  useEffect(() => {
+    if (!accountMenuOpen) return
+    const outside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !accountMenuRef.current?.contains(event.target)) {
+        clearMenuTimers()
+        setAccountMenuOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', outside)
+    return () => document.removeEventListener('pointerdown', outside)
+  }, [accountMenuOpen, clearMenuTimers])
+  const hoverAccount = (event: React.PointerEvent) => {
+    if (event.pointerType !== 'mouse') return
+    clearMenuTimers()
+    opening.current = window.setTimeout(() => setAccountMenuOpen(true), 170)
+  }
+  const leaveAccount = (event: React.PointerEvent) => {
+    if (event.pointerType !== 'mouse') return
+    clearMenuTimers()
+    closing.current = window.setTimeout(() => setAccountMenuOpen(false), 200)
+  }
 
   useLayoutEffect(() => {
     const header = layoutRef.current
@@ -95,20 +128,86 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
         >
           {children}
         </nav>
-        {canUseAccount && (
+        {canUseAccount && (auth ? (
+          <div
+            ref={accountMenuRef}
+            data-account-dropdown
+            className="relative z-30 shrink-0 justify-self-end"
+            onPointerEnter={hoverAccount}
+            onPointerLeave={leaveAccount}
+            onKeyDown={(event) => {
+              event.stopPropagation()
+              if (event.key === 'Escape') {
+                clearMenuTimers()
+                setAccountMenuOpen(false)
+              }
+            }}
+          >
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                event.currentTarget.blur()
+                clearMenuTimers()
+                setAccountMenuOpen((value) => !value)
+              }}
+              className="focus-surface flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:text-indigo-600"
+              aria-label={'账号：' + auth.user.username + '，展开操作菜单'}
+              aria-haspopup="menu"
+              aria-expanded={accountMenuOpen}
+              aria-controls="focus-account-menu"
+              title={accountExpired ? '会话已过期，展开账号操作' : '展开账号操作'}
+              data-account-entry
+            >
+              <UserCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
+              <span className="max-w-28 truncate">{auth.user.username}</span>
+              {accountExpired && <span className="text-xs text-amber-600 dark:text-amber-400">已过期</span>}
+              <ChevronDown className={'h-4 w-4 shrink-0 opacity-60 transition-transform ' + (accountMenuOpen ? 'rotate-180' : '')} aria-hidden="true" />
+            </button>
+            {accountMenuOpen && (
+              <div
+                id="focus-account-menu"
+                role="menu"
+                aria-label="账号操作"
+                data-account-menu
+                className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border p-1.5 shadow-xl"
+                style={{ background: 'var(--focus-surface)', borderColor: 'var(--focus-border)', boxShadow: 'var(--focus-shadow-overlay)' }}
+              >
+                <div role="none">
+                  <QuickSyncAction target={window.location.pathname === '/typing' ? '/typing' : '/learn'} variant="menu"
+                    beforeSave={() => typing?.dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })} />
+                </div>
+                <div className="my-1 border-t" style={{ borderColor: 'var(--focus-border)' }} />
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                  onClick={(event) => {
+                    clearMenuTimers()
+                    setAccountMenuOpen(false)
+                    event.currentTarget.blur()
+                    inspectAccount(event)
+                  }}
+                >
+                  <Settings2 className="h-[19px] w-[19px]" aria-hidden="true" />
+                  <span>账号管理</span>
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
           <button
             type="button"
             onClick={inspectAccount}
-            className="focus-surface flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"
-            aria-label={auth ? '账号：' + auth.user.username : '账号：登录或注册'}
-            title={auth ? (accountExpired ? '会话已过期；点击重新登录' : '账户管理与安全退出') : '单设备使用无需登录'}
+            className="focus-surface flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:text-indigo-600"
+            aria-label="账号：登录或注册"
+            title="登录后可以同步各设备学习记录"
             data-account-entry
           >
             <UserCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
-            <span className="max-w-28 truncate">{auth ? auth.user.username : '登录 / 注册'}</span>
-            {accountExpired && <span className="text-xs text-amber-600 dark:text-amber-400">已过期</span>}
+            <span className="max-w-28 truncate">登录 / 注册</span>
           </button>
-        )}
+        ))}
       </div>
     </header>
   )
