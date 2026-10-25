@@ -11,6 +11,20 @@ staging_test_metadata_restored: true
 
 ## Current checkpoint — blocked at live project configuration
 
+Owner clarification: BOTH sites are managed in the EdgeOne CHINA console.
+Resumed execution base969077f2 includes independent mobile UI commits; safely
+fast-forwarded and preserved. New verification clients now explicitly pin
+region=china; no international fallback for discovery or staging controls.
+Numeric provider109 is reported as China authentication rejection, without
+error messages, payloads or credential values. Historical international
+rollback remains explicitly global and is already complete; do not replay it.
+Node20 China selection/no-fallback/privacy + existing binding guards PASS7/7.
+Scoped lint/actionlint/diff checks PASS after fixing two import sort findings.
+No frontend/backend retention behavior or runtime settings changed this turn.
+Fresh anonymous production/staging policy probes both HTTP200 and disabled.
+Operations doc names the exact China console and existing private Actions
+secret to update if authorization still fails; no secret value requested.
+
 2026-10-25T05:55Z: production is NOT activated. q.smhe.cn remains5528f79c,
 policy.enabled=false. Staging is5fa7574, enabled=false/executionEnabled=false;
 method-specific runtime probe confirms neither context nor Node has the date

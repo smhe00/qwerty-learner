@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/idle-staging-trigger-qualification.yml'
       - 'scripts/idle-staging-environment.mjs'
+      - 'scripts/idle-china-control-plane.mjs'
       - 'scripts/idle-staging-trigger-qualification.mjs'
       - 'tests/cloud/idle-staging-environment.test.mjs'
       - 'interactive/reports/IDLE-ACCOUNT-ACTIVATION-20261025-report.md'
@@ -33,7 +34,7 @@ jobs:
           cache: yarn
       - run: yarn install --frozen-lockfile
       - name: Qualify exact-setting rollback and production refusal before credential use
-        run: node --test tests/cloud/idle-staging-environment.test.mjs
+        run: node --test tests/cloud/idle-staging-environment.test.mjs tests/cloud/idle-china-control-plane.test.mjs
       - name: Install official control-plane SDK without lifecycle scripts
         run: npm install --no-save --ignore-scripts --prefix "$IDLE_MAKERS_SDK_DIR" @edgeone/makers-sdk@0.1.0
       - run: npx playwright install --with-deps chromium

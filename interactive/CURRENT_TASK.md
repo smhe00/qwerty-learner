@@ -30,7 +30,11 @@ actual enabled maintenance journey is still outstanding. No production change
 or real-account deletion. Historical reports and all failed runs retained.
 
 Next: identify correct site account/region/project/environment via supported
-private access (user was asked China vs international console). Never solicit
+private access. Owner has now CONFIRMED BOTH sites use the CHINA console.
+New verification clients pin region=china and stop on authentication failure;
+never auto-fallback to global. Existing CI token previously returned109.
+Resume execution base969077f2 includes independent mobile UI work; preserve it.
+No further region question is needed. Never solicit
 secrets in chat. SDK Project normalization omits custom domains; raw reads must
 use Filters and find the exact returned ProjectId. Inspect official environment
 records as needed, not only legacy Project.CustomDomains. Then run reversible

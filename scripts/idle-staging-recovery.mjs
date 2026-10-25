@@ -6,6 +6,7 @@ import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { assertStagingProject } from './idle-staging-environment.mjs'
+import { chinaMakers } from './idle-china-control-plane.mjs'
 
 const keys = ['IDLE_POLICY_START_AT', 'IDLE_CLEANUP_EXECUTE']
 const report = { check: 'idle-staging-settings-recovery', productionChanged: false,
@@ -31,7 +32,7 @@ try {
   const require = createRequire(resolve(process.env.IDLE_MAKERS_SDK_DIR, 'package.json'))
   const { Makers } = await import(pathToFileURL(require.resolve('@edgeone/makers-sdk')).href)
   assert.ok(process.env.EDGEONE_API_TOKEN)
-  const projects = new Makers({ token: process.env.EDGEONE_API_TOKEN }).projects
+  const projects = chinaMakers(Makers, process.env.EDGEONE_API_TOKEN).projects
   const selected = async () => (await projects.listEnvs({ projectId })).filter(row => keys.includes(row.key))
   phase = 'read-current-owned-settings'
   let rows = await selected()

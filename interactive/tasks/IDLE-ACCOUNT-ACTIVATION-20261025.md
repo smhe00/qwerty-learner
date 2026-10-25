@@ -38,8 +38,11 @@ release-ready gates. This phase does not skip them.
 
 ## Resume steps
 
-1. Resolve site account/region/project/environment using authorized private
-   access. The user was asked which console, not for approval or credentials.
+1. Owner confirmed BOTH sites are on EdgeOne CHINA. Pin region=china for
+   verification and do not auto-fallback to global. Resolve actual project/
+   environment using a privately configured China-console credential; the
+   existing CI token returned109/authentication error. No renewed approval or
+   region question is needed; never request credential values in chat.
    Raw project reads MUST filter by ID and verify returned ID. SDK-normalized
    projects omit domain bindings; consult DescribePagesEnvironments as needed.
 2. Re-verify exact t.smhe.cn target before any new settings change. Current
