@@ -38,7 +38,7 @@ jobs:
       - name: Protocol, actual HTTP gateway, multi-process and finite interleaving tests
         run: |
           set -euo pipefail
-          node --test tests/cloud/session-handoff-service.test.mjs tests/cloud/session-handoff-barrier.test.mjs tests/cloud/session-handoff-core.test.mjs tests/cloud/session-handoff-blob.test.mjs tests/cloud/session-handoff-gateway.test.mjs tests/cloud/session-handoff-process.test.mjs tests/cloud/session-handoff-model.test.mjs tests/cloud/session-handoff-safe-retry.test.mjs tests/cloud/backend-core.test.mjs tests/cloud/edgeone-blob-storage.test.mjs tests/cloud/workspace-transition.test.mjs | tee "$RUNNER_TEMP/handoff-qualification.tap"
+          node --test tests/cloud/session-handoff-stopped.test.mjs tests/cloud/session-handoff-service.test.mjs tests/cloud/session-handoff-barrier.test.mjs tests/cloud/session-handoff-core.test.mjs tests/cloud/session-handoff-blob.test.mjs tests/cloud/session-handoff-gateway.test.mjs tests/cloud/session-handoff-process.test.mjs tests/cloud/session-handoff-model.test.mjs tests/cloud/session-handoff-safe-retry.test.mjs tests/cloud/backend-core.test.mjs tests/cloud/edgeone-blob-storage.test.mjs tests/cloud/workspace-transition.test.mjs | tee "$RUNNER_TEMP/handoff-qualification.tap"
       - name: Retain exact test evidence
         if: always()
         uses: actions/upload-artifact@v4

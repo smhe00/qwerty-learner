@@ -2,6 +2,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { getStore as nativeGetStore } from '@edgeone/pages-blob'
 import { HandoffError } from './session-handoff-barrier.js'
+import { StoppedOperationError } from './session-handoff-stopped.js'
 
 // Request-local instrumentation only. Mutual exclusion lives in Blob, never
 // this AsyncLocalStorage or an in-process Map. No client headers can bypass it.
@@ -51,14 +52,22 @@ export async function runHandoffScope({ holdMs = 0, markHeld }, operation) {
   const scope = { mutationStarted: false, failed: false, pending: new Set(),
     closed: false, holdMs, markHeld }
   return scopes.run(scope, async () => {
+    let output, failure, rejected = false
     try {
-      const output = await operation()
-      while (scope.pending.size) await Promise.allSettled([...scope.pending])
-      if (scope.failed) throw new HandoffError('handoff_operation_outcome_unknown')
-      return output
+      output = await operation()
+    } catch (error) {
+      rejected = true
+      failure = error
     } finally {
+      // Keep ownership until every dispatched mutation settles. Closing the
+      // scope then rejects detached continuations and retries before submission.
       while (scope.pending.size) await Promise.allSettled([...scope.pending])
-      scope.closed = true // future detached writes are rejected, never submitted
+      scope.closed = true
     }
+    // A rejected provider mutation MAY still land remotely; never certify it
+    // as stopped just because its Promise rejected or the handler caught it.
+    if (scope.failed) throw new HandoffError('handoff_operation_outcome_unknown', failure)
+    if (rejected) throw new StoppedOperationError(failure)
+    return output
   })
 }

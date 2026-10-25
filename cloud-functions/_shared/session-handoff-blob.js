@@ -1,6 +1,7 @@
 /* eslint-env node */
 import { randomUUID } from 'node:crypto'
 import { BeforeMutationError, HandoffError } from './session-handoff-barrier.js'
+import { StoppedOperationError } from './session-handoff-stopped.js'
 
 // Qualification implementation, not a lease or a Blob read/overwrite lock.
 // Each invocation owns distinct immutable keys (intent, ticket, entered, done).
@@ -150,6 +151,13 @@ export function createBlobHandoffBarrier({ store, namespace = 'qualification-v1'
         await put(key(hash, 'done-done', id), { id, status: 'done' })
         return output
       } catch (error) {
+        if (started && error instanceof StoppedOperationError) {
+          // done means execution stopped, not upload succeeded. The scope has
+          // drained acknowledged effects and refuses future writes. Keep the
+          // original error for A; never turn its failed sync into success.
+          await put(key(hash, 'done-done', id), { id, status: 'done' })
+          throw error.cause
+        }
         // No finally-unlock. Unknown in-flight mutations retain a durable
         // nonterminal participant, which prevents a later handoff entering.
         if (registered && (!started || error instanceof BeforeMutationError)) {
