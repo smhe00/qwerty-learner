@@ -103,7 +103,7 @@ test(`P0: fresh etest anonymous Learn, account and clear (${missingWebLocks ? 'f
 }
 
 test('two cloud identities in three isolated Chromium S1 profiles', async ({ browser }) => {
-  test.setTimeout(180_000)
+  test.setTimeout(300_000)
   if (!base || !userA || !userB || !password ||
       !/^e2e_mc_[0-9]+_[0-9]+_a$/.test(userA) ||
       !/^e2e_mc_[0-9]+_[0-9]+_b$/.test(userB)) {
@@ -258,6 +258,33 @@ test('two cloud identities in three isolated Chromium S1 profiles', async ({ bro
       JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || '{}').user?.userId)
     expect(bId).toBeTruthy()
     expect(bId).not.toBe(aId)
+
+    // Exercise the deployed implementation with a real disposable cloud account.
+    // Only passive visits: never submit/retry auth or any ambiguous write here.
+    for (const mobile of [false, true]) {
+      await b1.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1280, height: 800 })
+      await b1.goto(new URL(mobile ? '/mobile' : '/', base).href, { waitUntil: 'domcontentloaded' })
+      const entry = b1.locator(mobile ? '[data-mobile-account-entry]' : '[data-account-entry]')
+      await expect(entry).toBeVisible({ timeout: 70_000 })
+      const info = b1.locator('dialog.safety-information-dialog[open]')
+      if (await info.isVisible()) await info.getByRole('button', { name: '知道了' }).click()
+      await entry.click()
+      await expect(b1.locator('[data-account]')).toBeVisible({ timeout: 30_000 })
+      const requests: string[] = []
+      const observe = (request: import('@playwright/test').Request) => {
+        const path = new URL(request.url()).pathname
+        if (path.startsWith('/api/sync/')) requests.push(request.method() + ' ' + path)
+      }
+      b1.on('request', observe)
+      try {
+        await b1.getByRole('button', { name: '返回', exact: true }).click()
+        await expect(entry).toBeVisible({ timeout: 30_000 })
+        await b1.waitForTimeout(3000)
+        expect(requests, 'Passive return must not restart sync on the deployed site').toEqual([])
+        expect(await b1.evaluate(() => sessionStorage.getItem('qwerty.account-visit.v1'))).toBeNull()
+        console.log('ETEST_PASSIVE_ACCOUNT_RETURN', { mobile, syncRequests: requests.length })
+      } finally { b1.off('request', observe) }
+    }
 
     const a2 = await open(true)
     await signIn(a2, userA, false)

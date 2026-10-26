@@ -3,7 +3,7 @@ import { defineConfig } from '@playwright/test'
 const port = Number(process.env.QWERTY_TEST_PORT ?? 4198)
 export default defineConfig({
   testDir: '.',
-  testMatch: 'startup-sync-regression.spec.ts',
+  testMatch: ['startup-sync-regression.spec.ts', 'startup-sync-account-return.spec.ts'],
   workers: 1,
   retries: 0,
   timeout: 90_000,

@@ -130,3 +130,17 @@ test('pagehide during upload prevents future scheduling and detaches listeners',
   await new Promise(done => setImmediate(done))
   assert.equal(f.pending.size, 0)
 })
+
+
+test('passive account return resumes periodic cadence instead of a new immediate scan', async()=>{
+ const f=clock([{status:'idle',scanned:0}]);const stop=startM3ContinuousDrain(f.port,{passiveReturn:true})
+ assert.equal(f.nextDelay,45000)
+ await f.advance(2000);assert.equal(f.calls,0)
+ await f.advance(43000);assert.equal(f.calls,1)
+ stop()
+})
+for(const event of ['online','visible'])test('passive return still wakes pending work on '+event,async()=>{
+ const f=clock([{status:'idle',scanned:0}]);const stop=startM3ContinuousDrain(f.port,{passiveReturn:true})
+ f[event]();assert.equal(f.nextDelay,1000)
+ await f.advance(1000);assert.equal(f.calls,1);stop()
+})

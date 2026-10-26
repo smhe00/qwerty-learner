@@ -11,39 +11,40 @@ const clock=Date.now
 afterEach(()=>{Date.now=clock})
 const mocks={
  './auth':'export const loadAuth=()=>globalThis.__bootState.auth; export const setIsolatedAuthRetention=()=>{};',
- './workspace-vault':'export const workspaceRegistryPort={read:async()=>structuredClone(globalThis.__bootState.registry)};',
+ './workspace-vault':'export const workspaceRegistryPort={read:async()=>{globalThis.__bootState.afterRead?.();return structuredClone(globalThis.__bootState.registry)}};',
  './workspace-lock':'export const acquireWorkspaceWriterLease=async()=>({release(){globalThis.__bootState.releases++}});',
  './workspace-storage-witness':'export const assertWorkspaceMigrationWitness=()=>{if(globalThis.__bootState.badWitness)throw Error("bad witness")}; export const refreshWorkspaceMigrationWitness=()=>{}; export const installWorkspaceStorageWriterGuard=()=>{globalThis.__bootState.installed++};',
- './workspace-auth-transaction':'export const reconcileAuthTransition=async()=>"none";',
- './workspace-coordinator':'export const recoverPendingWorkspace=async()=>{throw Error("unexpected S1")};',
+ './workspace-auth-transaction':'export const reconcileAuthTransition=async()=>globalThis.__bootState.reconciliation;',
+ './workspace-coordinator':'export const recoverPendingWorkspace=async()=>{globalThis.__bootState.registry.pending=null;globalThis.__bootState.recoveries++};',
  './learning-sync-policy':'export const learningEventSyncEnabled=()=>true;',
  './v2-pull-journal':'export const syncV2PullJournalPort={read:async()=>globalThis.__bootState.pull};',
- './manual-v4-import-journal':'export const manualV4ImportJournalPort={read:async()=>null};',
+ './manual-v4-import-journal':'export const manualV4ImportJournalPort={read:async()=>globalThis.__bootState.manual};',
  './m4-merge-journal':'export const m4MergeJournalPort={read:async()=>globalThis.__bootState.merge};',
  './v2-pull-recovery':'export const recoverPendingSyncV2Pull=()=>globalThis.__bootState.recover();',
- './manual-v4-import-recovery':'export const recoverPendingManualV4Import=async()=>{throw Error("unexpected import")};',
+ './manual-v4-import-recovery':'export const recoverPendingManualV4Import=async()=>{globalThis.__bootState.manual=null;globalThis.__bootState.recoveries++};',
  './m4-merge-browser-recovery':'export const recoverPendingM4Merge=()=>globalThis.__bootState.recover();',
  './account-login-v4-check':'export const checkAccountV4AfterAuthentication=()=>globalThis.__bootState.v4();',
  './m4-witnessed-prefix-browser':'export const adoptWitnessedM3AtGuardedBoot=()=>globalThis.__bootState.m4();',
 }
 const file=join(dir,'boot.mjs')
-await build({entryPoints:[resolve('src/sync/workspace-bootstrap.ts')],outfile:file,bundle:true,
+await build({stdin:{contents: "export {prepareGuardedWorkspaceBoot} from './src/sync/workspace-bootstrap.ts'; export {beginAccountVisit,claimAccountVisit,finishPassiveAccountVisit,ACCOUNT_VISIT_KEY} from './src/sync/account-passive-return.ts'",resolveDir:process.cwd(),loader:'ts'},outfile:file,bundle:true,
  platform:'node',format:'esm',target:'node20',define:{'import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC':'"true"'},
  plugins:[{name:'boot-ports',setup(b){
   b.onResolve({filter:/^\.\//},x=>x.path in mocks?{path:x.path,namespace:'mock'}:undefined)
   b.onLoad({filter:/.*/,namespace:'mock'},x=>({contents:mocks[x.path]}))
  }}]})
-const {prepareGuardedWorkspaceBoot:boot}=await import(pathToFileURL(file).href)
+const {prepareGuardedWorkspaceBoot:boot,beginAccountVisit,claimAccountVisit,finishPassiveAccountVisit,ACCOUNT_VISIT_KEY}=await import(pathToFileURL(file).href)
 function setup(){
  const data=new Map()
  globalThis.sessionStorage={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)}
- globalThis.localStorage={getItem:k=>k==='qwerty.s1.workspace-migrated.v1'?'v2':null}
+ const stored=new Map([['qwerty.s1.workspace-migrated.v1','v2:0123456789abcdef']])
+ globalThis.localStorage={getItem:k=>stored.get(k)??null,setItem:(k,v)=>stored.set(k,v),removeItem:k=>stored.delete(k)}
  globalThis.window={location:{pathname:'/',search:''},history:{replaceState(){}}}
  Object.defineProperty(globalThis,'navigator',{configurable:true,value:{onLine:true}})
  const s=globalThis.__bootState={
   now:1_800_000_000_000,auth:{token:'synthetic',expiresAt:9e9,user:{userId:'synthetic'}},
   registry:{generation:4,pending:null,active:{kind:'account',accountId:'synthetic'}},
-  pull:null,merge:null,installed:0,releases:0,checks:0,adoptions:0,recoveries:0,
+  pull:null,merge:null,manual:null,reconciliation:"none",installed:0,releases:0,checks:0,adoptions:0,recoveries:0,
   async v4(){this.checks++;return {status:'noop',canContinue:true}},
   async m4(){this.adoptions++;return {status:'skipped'}},
   async recover(){this.recoveries++;this.pull=null;this.merge=null;return true},
@@ -108,4 +109,66 @@ test('trailing-slash Learn entry uses the same bounded boot policy', async () =>
   assert.equal(s.checks, 1)
   assert.equal(s.adoptions, 0)
   assert.equal(s.installed, 1)
+})
+
+async function passiveReturn(s, mobile=false) {
+ globalThis.window.location={pathname:mobile?'/mobile':'/',search:''}
+ const first=await boot();first.release()
+ beginAccountVisit(mobile)
+ globalThis.window.location={pathname:mobile?'/mobile/account':'/',search:mobile?'':'?s1-account=manage'}
+ const account=await boot();account.release()
+ const visit=claimAccountVisit(s.registry,mobile)
+ finishPassiveAccountVisit(visit,s.registry)
+ globalThis.window.location={pathname:mobile?'/mobile':'/',search:''}
+ s.checks=0;s.adoptions=0
+ return visit
+}
+for(const mobile of [false,true])test('passive '+(mobile?'phone':'PC')+' return skips network once, then reload resumes sync',async()=>{
+ const s=setup();assert(await passiveReturn(s,mobile))
+ const result=await boot();result.release()
+ assert.equal(result.passiveAccountReturn,true)
+ assert.equal(s.checks,0);assert.equal(s.adoptions,0)
+ assert.equal(sessionStorage.getItem(ACCOUNT_VISIT_KEY),null)
+ const again=await boot();again.release()
+ assert.equal(again.passiveAccountReturn,false)
+ assert.equal(s.checks,1);assert.equal(s.adoptions,1)
+})
+for(const pending of ['pull','merge','manual','switch'])test('passive ticket never suppresses '+pending+' journal recovery or subsequent sync',async()=>{
+ const s=setup();await passiveReturn(s)
+ if(pending==='switch')s.registry.pending={from:s.registry.active,to:s.registry.active,transactionId:4}
+ else s[pending]={accountId:'synthetic',registryGeneration:4}
+ await assert.rejects(boot(),/recovery completed/)
+ assert.equal(s.recoveries,1);assert.equal(s.checks,0)
+ assert.equal(sessionStorage.getItem(ACCOUNT_VISIT_KEY),null)
+ const resumed=await boot();resumed.release()
+ assert.equal(resumed.passiveAccountReturn,false);assert.equal(s.checks,1)
+})
+for(const change of ['expired','clock-back','generation','witness','quick-sync','auth-intent','malformed','wrong-route'])test('passive ticket rejected after '+change,async()=>{
+ const s=setup();await passiveReturn(s)
+ if(change==='expired')s.now+=300001
+ if(change==='clock-back')s.now--
+ if(change==='generation')s.registry.generation++
+ if(change==='witness')localStorage.setItem('qwerty.s1.workspace-migrated.v1','v2:fedcba9876543210')
+ if(change==='quick-sync')sessionStorage.setItem('qwerty.s2.quick-sync.intent.v1','{}')
+ if(change==='auth-intent'){localStorage.setItem('qwerty.s1.auth-transition.v1','{}');s.reconciliation='completed'}
+ if(change==='malformed')sessionStorage.setItem(ACCOUNT_VISIT_KEY,'{')
+ if(change==='wrong-route')globalThis.window.location.pathname='/learn'
+ const result=await boot();result.release()
+ assert.equal(result.passiveAccountReturn,false);assert.equal(s.checks,1)
+})
+test('unconfirmed startup cannot mint a passive visit that conceals the next recovery check',async()=>{
+ const s=setup();s.v4=async()=>{s.checks++;return {status:'pending',canContinue:true}}
+ assert.equal(await passiveReturn(s),null)
+ const result=await boot();result.release();assert.equal(s.checks,1)
+})
+test('passive return still rejects a new journal found in the final ownership check',async()=>{
+ const s=setup();await passiveReturn(s)
+ let reads=0;s.afterRead=()=>{if(++reads===2)s.merge={}}
+ await assert.rejects(boot(),/durable recovery remains pending/)
+ assert.equal(s.checks,0);assert.equal(s.adoptions,0)
+})
+test('passive return never bypasses missing writer integrity or wrong account',async()=>{
+ const s=setup();await passiveReturn(s);s.badWitness=true
+ await assert.rejects(boot(),/bad witness/)
+ assert.equal(s.checks,0)
 })

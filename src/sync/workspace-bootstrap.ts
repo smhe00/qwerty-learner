@@ -5,6 +5,7 @@
  * The V1-compatible entry uses allowLegacy only for an uninitialized
  * registry. It never migrates or switches an account implicitly.
  */
+import { matchesAccountVisit, setAccountVisitSource, takePassiveAccountReturn } from './account-passive-return'
 import { shouldCheckAccountV4AtStartup } from './account-startup-v4'
 import { loadAuth, setIsolatedAuthRetention } from './auth'
 import { SYNC_PENDING_NOTICE } from './learning-sync-diagnostics'
@@ -32,6 +33,7 @@ export type WorkspaceBootStage = 'locking' | 'recovering' | 'restart-required' |
 export type GuardedWorkspaceBoot = {
   mode: 'legacy' | 'isolated'
   registry: Registry
+  passiveAccountReturn?: boolean
   /** Only call after all mounted writers have stopped and flushed. */
   release(): void
 }
@@ -54,6 +56,8 @@ export async function prepareGuardedWorkspaceBoot(
   onStage?: (stage: WorkspaceBootStage) => void,
   options: { allowLegacy?: boolean; writerWaitMs?: number } = {},
 ): Promise<GuardedWorkspaceBoot> {
+  const returnTicket = takePassiveAccountReturn()
+  let networkSettled = true
   report(onStage, 'locking')
   const lease = await timePerfStage('startup', 'writer-lease', () => acquireWorkspaceWriterLease({ waitMs: options.writerWaitMs })).catch(
     (error) => {
@@ -226,10 +230,13 @@ export async function prepareGuardedWorkspaceBoot(
     if (localStorage.getItem(S1_MIGRATION_WITNESS_KEY) === 'v1') {
       refreshWorkspaceMigrationWitness()
     }
+    const passiveAccountReturn = !hasAuthIntent && reconciliation === 'none' && matchesAccountVisit(returnTicket, registry)
+    // All local recovery and integrity checks above still run for a passive return.
     // Inspect the FULL cloud account before event-prefix adoption. A clean
     // single-sided remote update is downloaded and durably journaled; a
     // divergent history remains pending and neither side is overwritten.
     if (
+      !passiveAccountReturn &&
       startupSyncTimeRemaining() &&
       shouldCheckAccountV4AtStartup({
         pathname: window.location.pathname,
@@ -243,6 +250,7 @@ export async function prepareGuardedWorkspaceBoot(
       report(onStage, 'syncing')
       const { checkAccountV4AfterAuthentication } = await import('./account-login-v4-check')
       const result = await checkAccountV4AfterAuthentication()
+      if (result.status === 'pending') networkSettled = false
       // Fixed status only: no identity, token, payload or private error.
       sessionStorage.setItem('qwerty.s2.startup-check.v1', result.status)
       if (result.status !== 'noop') {
@@ -259,7 +267,7 @@ export async function prepareGuardedWorkspaceBoot(
     // this device's immutable offline events, then optionally adopt a strictly
     // verified, monotonic remote PREFIX through an M4 undo journal. Never use
     // Blob listing as evidence of whole-account convergence.
-    if (registry.active.kind === 'account' && learningEventSyncEnabled() && startupSyncTimeRemaining()) {
+    if (!passiveAccountReturn && registry.active.kind === 'account' && learningEventSyncEnabled() && startupSyncTimeRemaining()) {
       try {
         const { adoptWitnessedM3AtGuardedBoot } = await import('./m4-witnessed-prefix-browser')
         const adoption = await adoptWitnessedM3AtGuardedBoot(registry)
@@ -271,6 +279,7 @@ export async function prepareGuardedWorkspaceBoot(
           throw new Error('M4 merge recovery completed; reload required before mounting app')
         }
         if (adoption.status === 'blocked') {
+          networkSettled = false
           sessionStorage.setItem('qwerty.s2.last-sync-result', SYNC_PENDING_NOTICE)
           console.warn('M4 witnessed prefix was NOT applied:', adoption.reason)
           if (window.location.search === '?m4-reconcile=1') {
@@ -293,10 +302,12 @@ export async function prepareGuardedWorkspaceBoot(
         }
         // Network/read failures leave the full local workspace and durable
         // outbox intact; offline etest users must still be able to learn.
+        networkSettled = false
         console.warn('M4 witnessed prefix adoption deferred:', error)
       }
     }
     if (!startupSyncTimeRemaining()) {
+      networkSettled = false
       sessionStorage.setItem('qwerty.s2.last-sync-result', SYNC_PENDING_NOTICE)
       if (window.location.search === '?m4-reconcile=1') {
         sessionStorage.setItem('qwerty.etest.m4.idleBlocked', '1')
@@ -325,8 +336,15 @@ export async function prepareGuardedWorkspaceBoot(
     assertWorkspaceMigrationWitness()
     installWorkspaceStorageWriterGuard()
     setIsolatedAuthRetention(true)
+    setAccountVisitSource(
+      registry,
+      auth,
+      networkSettled &&
+        window.location.search === '' &&
+        ['/', '/learn', '/typing', '/mobile', '/mobile/study'].includes(window.location.pathname.replace(/\/$/, '') || '/'),
+    )
     report(onStage, 'ready')
-    return { mode: 'isolated', registry, release: () => lease.release() }
+    return { mode: 'isolated', registry, passiveAccountReturn, release: () => lease.release() }
   } catch (error) {
     lease.release()
     report(onStage, recovered ? 'restart-required' : 'blocked')

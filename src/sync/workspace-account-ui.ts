@@ -3,6 +3,7 @@
  * tree must not exist while switching IndexedDB and per-workspace settings.
  * Only the active guarded entry may render this surface under the writer lease.
  */
+import { claimAccountVisit, finishPassiveAccountVisit } from './account-passive-return'
 import { SyncApiError, changePassword, login, register } from './api'
 import { browserDeviceId, loadAuth } from './auth'
 import { presentAccount } from './mobile-account-view'
@@ -27,10 +28,12 @@ function credential(result: { user: CloudAuthState['user']; token: string; expir
 export function renderS1AccountManagement(
   root: HTMLElement | null,
   active: Workspace,
-  options: { mobile?: boolean; cloudDisabled?: boolean } = {},
+  options: { mobile?: boolean; cloudDisabled?: boolean; registryGeneration?: number } = {},
 ): void {
   if (!root) throw new Error('Missing S1 account UI root')
   const mobile = options.mobile === true
+  const entryRegistry = { version: 1 as const, generation: options.registryGeneration ?? 0, active, pending: null }
+  let passiveVisit = claimAccountVisit(entryRegistry, mobile)
   // The live learning application cannot stay mounted while S1 switches
   // databases. Render the shared account document before mounting React
   // so account transitions cannot race ongoing IndexedDB writers.
@@ -84,6 +87,7 @@ export function renderS1AccountManagement(
   }
   const safeRun = (action: () => Promise<void>) => {
     if (isBusy) return
+    passiveVisit = null // Even failed/cancelled authentication may have an unknown server outcome.
     setBusy(true, '准备中…')
     void action().catch((error) => {
       let detail = error instanceof Error ? error.message : String(error)
@@ -234,7 +238,11 @@ export function renderS1AccountManagement(
     controls.push(logout)
   }
   // DOM event listeners receive PointerEvent; never stringify it as a toast.
-  const back = button('取消并返回学习', () => navigate())
+  const back = button('取消并返回学习', () => {
+    finishPassiveAccountVisit(passiveVisit, entryRegistry)
+    passiveVisit = null
+    navigate()
+  })
   controls.push(back)
   // Pre-login presentation must not start any cloud request.
   main.append(heading, current, authState, guidance, actions, status)

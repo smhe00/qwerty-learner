@@ -25,9 +25,7 @@ const FIRST_MS = 2_000
 const MAX_BACKOFF_MS = 120_000
 
 /** No overlapping cycles, bounded exponential retry, and stop on pagehide. */
-export function startM3ContinuousDrain(
-  port: M3DrainLoopPort,
-): () => void {
+export function startM3ContinuousDrain(port: M3DrainLoopPort, options: { passiveReturn?: boolean } = {}): () => void {
   let stopped = false
   let active = false
   let scheduled: unknown = null
@@ -59,14 +57,12 @@ export function startM3ContinuousDrain(
         failures = Math.min(failures + 1, 4)
         wait = Math.min(MAX_BACKOFF_MS, 7_500 * 2 ** (failures - 1))
         // M3 is opt-in, and retained outbox remains the recovery source.
-        if (outcome.reason !== 'pilot-auth-required' &&
-            outcome.reason !== 'pilot-account-not-mounted') {
+        if (outcome.reason !== 'pilot-auth-required' && outcome.reason !== 'pilot-account-not-mounted') {
           port.log(outcome.reason)
         }
       } else {
         failures = 0
-        if (outcome.status === 'uploaded-events-only' &&
-            outcome.remaining > 0) wait = BUSY_MS
+        if (outcome.status === 'uploaded-events-only' && outcome.remaining > 0) wait = BUSY_MS
       }
     } catch (error) {
       failures = Math.min(failures + 1, 4)
@@ -75,20 +71,27 @@ export function startM3ContinuousDrain(
     } finally {
       active = false
       if (!stopped) {
-        if (rerun) { rerun = false; arm(BUSY_MS) }
-        else arm(wait)
+        if (rerun) {
+          rerun = false
+          arm(BUSY_MS)
+        } else arm(wait)
       }
     }
   }
   const wake = () => {
     if (stopped) return
-    if (active) { rerun = true; return }
+    if (active) {
+      rerun = true
+      return
+    }
     failures = 0
     if (port.isOnline()) arm(BUSY_MS)
   }
   const detachOnline = port.onOnline(wake)
   const detachVisible = port.onVisible(wake)
-  arm(FIRST_MS)
+  // Passive account navigation resumes the ordinary periodic cadence.
+  // Online/visibility events still wake retained work immediately.
+  arm(options.passiveReturn ? IDLE_MS : FIRST_MS)
   return () => {
     if (stopped) return
     stopped = true

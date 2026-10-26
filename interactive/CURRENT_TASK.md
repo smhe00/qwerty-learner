@@ -1,12 +1,12 @@
 ---
 protocol_version: '1.1'
-task_id: UNIFIED-ACCOUNT-UI-RELEASE-20261026
-task_file: interactive/tasks/UNIFIED-ACCOUNT-UI-RELEASE-20261026.md
-report_file: interactive/reports/UNIFIED-ACCOUNT-UI-RELEASE-20261026-report.md
+task_id: ACCOUNT-PASSIVE-RETURN-20261026
+task_file: interactive/tasks/ACCOUNT-PASSIVE-RETURN-20261026.md
+report_file: interactive/reports/ACCOUNT-PASSIVE-RETURN-20261026-report.md
 target_branch: product/main
-status: REVIEW
+status: IN_PROGRESS
 executor: Codex
-claim_base_commit: 751bec7d5a69bc87000cd5ad6ff4882f897f76a0
+claim_base_commit: 95184f9f306fc0d04b726edc9ec53d3bca49bdef
 release_to_master: true
 ---
-用户最新明确：etest/master UI统一，发布仅快进到etest已验证的同一SHA。账号直达和新UI纳入本次统一版本。独立修复98697131已上线；禁止在发布步骤拆UI、挑提交或新建差异提交。测试能力只由可信branch=etest控制。
+用户授权：单纯查看账号后返回不触发同步；登录、重新认证和未完成事务仍同步/恢复。先etest，同SHA快进master；保留当前主线管理员工具及所有已上线UI。

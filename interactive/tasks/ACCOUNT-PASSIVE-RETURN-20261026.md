@@ -1,0 +1,7 @@
+# Account passive return
+
+Status: IN_PROGRESS. Executor: Codex. Base:95184f9f306fc0d04b726edc9ec53d3bca49bdef. Production/staging base:cbb20842. Release authorized explicitly by owner2026-10-26 after etest validation, identical-SHA fast-forward only.
+
+Differentiate passive account viewing from authentication and recovery. A one-use, short-lived tab-local navigation ticket may suppress optional startup network work only after the unchanged account/workspace and all existing local integrity/journal checks pass. It must never grant writer/auth authority, skip pending durable recovery, survive authentication actions, or become a permanent URL bypass. Preserve session revocation checks and ordinary background repair. Avoid restarting the immediate background scan on passive returns.
+
+Regression scope: PC/mobile passive return sends no startup sync, repeated reload cannot reuse ticket; login/reauth/password actions, changed identity/generation/witness, invalid/expired ticket, explicit Sync and pending S1/S2/manual/M4 journals retain original sync/recovery behavior. Preserve new administrator-only tools from PR45. Focused contracts, real Chromium, relevant data-safety suite, published same-SHA Pages/etest Cloud/Blob/three-device/release-ready before master. Preserve503 evidence and never replay unknown commits.
