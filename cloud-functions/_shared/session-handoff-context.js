@@ -1,4 +1,5 @@
 /* eslint-env node */
+import { profileCircleStore } from './circle/profile.js'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { getStore as nativeGetStore } from '@edgeone/pages-blob'
 import { HandoffError } from './session-handoff-barrier.js'
@@ -10,10 +11,10 @@ const scopes = new AsyncLocalStorage()
 const rateLimitedContexts = new WeakSet()
 export const markHandoffRateLimited = context => rateLimitedContexts.add(context)
 export const wasHandoffRateLimited = context => rateLimitedContexts.has(context)
-export const rawHandoffStore = options => nativeGetStore(options)
+export const rawHandoffStore = options => profileCircleStore(nativeGetStore(options))
 
 export function getStore(options) {
-  const raw = nativeGetStore(options)
+  const raw = profileCircleStore(nativeGetStore(options))
   const scope = scopes.getStore()
   if (!scope) return raw
   return new Proxy(raw, {
