@@ -1,0 +1,528 @@
+{
+  "target": "e2d7185252250495e4dac4d92fd134ac98e4c57b",
+  "origin": "https://t.smhe.cn",
+  "source": "e2d7185",
+  "startedAt": "2026-10-26T22:43:28.958Z",
+  "completedAt": "2026-10-26T22:51:04.506Z",
+  "complete": true,
+  "scope": "admin direct login and anonymous/account feedback lifecycle only; not full release readiness",
+  "steps": [
+    {
+      "step": "human-admin-direct-login",
+      "status": 200,
+      "at": "2026-10-26T22:43:51.494Z"
+    },
+    {
+      "step": "human-admin-direct-login",
+      "status": 200,
+      "at": "2026-10-26T22:44:03.585Z"
+    },
+    {
+      "step": "human-admin-direct-login",
+      "status": 200,
+      "at": "2026-10-26T22:44:38.920Z"
+    },
+    {
+      "step": "guest-submit",
+      "title": "反馈完整验收-guest-mvpuf2v2",
+      "status": 200,
+      "identity": "anonymous",
+      "visible": true
+    },
+    {
+      "step": "human-admin-direct-login",
+      "status": 200,
+      "at": "2026-10-26T22:44:52.767Z"
+    },
+    {
+      "step": "human-admin-direct-login",
+      "status": 400,
+      "at": "2026-10-26T22:45:09.974Z"
+    },
+    {
+      "step": "account-submit",
+      "title": "反馈完整验收-account-mvpuf2v2",
+      "status": 200,
+      "identity": "account",
+      "visible": true
+    },
+    {
+      "step": "human-admin-direct-login",
+      "status": 200,
+      "at": "2026-10-26T22:45:25.383Z"
+    },
+    {
+      "step": "human-admin-direct-login",
+      "status": 200,
+      "at": "2026-10-26T22:47:09.158Z"
+    },
+    {
+      "step": "accept-admin-workspace-confirmation",
+      "ok": true
+    },
+    {
+      "step": "administrator-sees-both",
+      "ok": true
+    },
+    {
+      "step": "administrator-guest-handling",
+      "status": 503
+    },
+    {
+      "step": "admin-guest-handling-safe-body-recovery",
+      "status": 200,
+      "ok": true,
+      "originalCode": "request_body_unavailable"
+    },
+    {
+      "step": "guest-sees-reply-after-refresh-handling",
+      "ok": true
+    },
+    {
+      "step": "administrator-guest-resolved",
+      "status": 200,
+      "visible": true
+    },
+    {
+      "step": "guest-sees-reply-after-refresh-resolved",
+      "ok": true
+    },
+    {
+      "step": "administrator-account-handling",
+      "status": 200,
+      "visible": true
+    },
+    {
+      "step": "account-sees-reply-after-refresh-handling",
+      "ok": true
+    },
+    {
+      "step": "administrator-account-resolved",
+      "status": 200,
+      "visible": true
+    },
+    {
+      "step": "account-sees-reply-after-refresh-resolved",
+      "ok": true
+    },
+    {
+      "step": "fresh-admin-readback-and-user-isolation",
+      "ok": true
+    },
+    {
+      "step": "guest-one-reply-after-final-readback",
+      "count": 1,
+      "ok": true
+    },
+    {
+      "step": "account-one-reply-after-final-readback",
+      "count": 1,
+      "ok": true
+    }
+  ],
+  "feedbackAndLoginRequests": [
+    {
+      "actor": "admin",
+      "phase": "setup",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "setup",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "setup",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "actor": "guest",
+      "phase": "guest-submit",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "guest",
+      "phase": "guest-submit",
+      "method": "POST",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "guest",
+      "phase": "guest-submit",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "guest-submit",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "phase": "account-submit",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "account-submit",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 400,
+      "code": "administrator_login_name"
+    },
+    {
+      "actor": "account",
+      "phase": "account-submit",
+      "method": "POST",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "phase": "account-submit",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "account-submit",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "account-submit",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "admin-view",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "admin-view",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "admin-guest-handling",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "admin-guest-handling",
+      "method": "POST",
+      "path": "/api/feedback/<thread>/messages",
+      "status": 503,
+      "code": "request_body_unavailable"
+    },
+    {
+      "actor": "guest",
+      "phase": "guest-read-after-rejected-body",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "admin-guest-safe-body-recovery",
+      "method": "POST",
+      "path": "/api/feedback/<thread>/messages",
+      "status": 200
+    },
+    {
+      "actor": "guest",
+      "phase": "guest-read-handling",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "guest-read-handling",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "guest",
+      "phase": "guest-read-handling",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "admin-guest-resolved",
+      "method": "POST",
+      "path": "/api/feedback/<thread>/messages",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "admin-guest-resolved",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "guest",
+      "phase": "guest-read-resolved",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "guest",
+      "phase": "guest-read-resolved",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "admin-account-handling",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "admin-account-handling",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "admin-account-handling",
+      "method": "POST",
+      "path": "/api/feedback/<thread>/messages",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "admin-account-handling",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "phase": "account-read-handling",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "phase": "account-read-handling",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "admin-account-resolved",
+      "method": "POST",
+      "path": "/api/feedback/<thread>/messages",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "admin-account-resolved",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "phase": "account-read-resolved",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "phase": "account-read-resolved",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "guest",
+      "phase": "final-persistence-isolation",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "phase": "final-persistence-isolation",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "final-persistence-isolation",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "final-persistence-isolation",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "final-persistence-isolation",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "final-persistence-isolation",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "final-persistence-isolation",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "admin",
+      "phase": "final-persistence-isolation",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "guest",
+      "phase": "final-persistence-isolation",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "phase": "final-persistence-isolation",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    }
+  ],
+  "ciSnapshot": [
+    {
+      "id": 40414535220,
+      "name": "Cloud Sync Gate",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/40414535220"
+    },
+    {
+      "id": 40414109697,
+      "name": "etest Single-Session Three-Device Offline Relay E2E",
+      "status": "in_progress",
+      "conclusion": null,
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/40414109697"
+    },
+    {
+      "id": 40414109707,
+      "name": "etest Learn Completion Cloud Journey",
+      "status": "in_progress",
+      "conclusion": null,
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/40414109707"
+    },
+    {
+      "id": 40414109638,
+      "name": "etest Single-Session M3 Device Relay",
+      "status": "completed",
+      "conclusion": "failure",
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/40414109638"
+    },
+    {
+      "id": 40414109613,
+      "name": "Deployed code automatic idle cleanup qualification",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/40414109613"
+    },
+    {
+      "id": 40414109616,
+      "name": "Branch EdgeOne Cloud E2E",
+      "status": "completed",
+      "conclusion": "failure",
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/40414109616"
+    },
+    {
+      "id": 40414109636,
+      "name": "etest Historical Login Full-V4 E2E",
+      "status": "completed",
+      "conclusion": "failure",
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/40414109636"
+    },
+    {
+      "id": 40414080497,
+      "name": "Deployment to GitHub Pages",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/40414080497"
+    },
+    {
+      "id": 40414080310,
+      "name": "Circle UI (isolated mocked browser)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/40414080310"
+    },
+    {
+      "id": 40414080309,
+      "name": "Published Dual-Site Explorer (Pages + EdgeOne)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/40414080309"
+    },
+    {
+      "id": 40414080334,
+      "name": "Pages Explorer Agent",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "url": "https://github.com/smhe00/qwerty-learner/actions/runs/40414080334"
+    }
+  ]
+}

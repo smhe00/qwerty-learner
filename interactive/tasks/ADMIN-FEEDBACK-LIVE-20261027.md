@@ -1,6 +1,7 @@
 # Admin and feedback real etest acceptance
-Status: IN_PROGRESS. Executor: Codex-admin-feedback-live.
-Owner now authorizes: check CI for ab10a9332f9e7b686f10c31a939488958bb71428, then fast-forward etest, verify admin direct login, resume both anonymous/account feedback submit, administrator reply/status and user readback. No master authority. This supersedes the prior local-only and paused-feedback boundary for this acceptance only.
-Preserve concurrent Circle task and branch updates. Use the same candidate SHA throughout; stop on deployment drift or unknown write, never replay blindly. Existing automatic-review denial of admin credential extraction still applies: human enters password in visible browser. Test fixtures are marked, no customer data edits.
-
-Concurrent development: Circle executor advanced both main and etest to 4b4228df3a5a0a258e660bcf8bb101a7d3e998fa before our promotion. Direct ls-remote and deployed source confirm it; original checkout fetch refspec only tracked product/main and its etest remote-tracking ref was stale. Explicitly refreshed all three refs. Current live acceptance targets 4b4228df only, including the admin ancestor. Old candidate CI is not substituted.
+Status: COMPLETE (requested admin/feedback scope only). Executor: Codex-admin-feedback-live.
+Owner authorized CI, etest, direct admin login, anonymous/account feedback submission, administrator replies/status and refreshed user readback. No master authority.
+Exact accepted etest candidate: e2d7185252250495e4dac4d92fd134ac98e4c57b. All requested feedback lifecycle checks passed using real storage and human-entered admin credentials. Current full CI is not all green: unrelated cloud/cleanup failures and pending workflows are retained in the report.
+Test-only mobile-menu repair: 1f82691c71f997aa1121676cf6a98290867e3c74, included in candidate. Preserved Circle development and its task files. User explicitly authorized temporary etest-push coordination, which ends after this acceptance.
+Report: interactive/reports/ADMIN-FEEDBACK-LIVE-20261027-report.md
+Evidence: interactive/reports/ADMIN-FEEDBACK-LIVE-20261027-evidence.json

@@ -8,3 +8,5 @@ Reuse existing immutable administrator identity and legacy storage keys; expose 
 Validate synthetic gateway login, permissions, wrong/missing configuration, legacy adoption, identity conflicts, lost receipts/concurrency, session rotation, read-only preflight, and repeated destructive idle runs with administrator data. Scoped lint and relevant Cloud contracts. Commit/push product/main only. No etest/master promotion; live feedback acceptance remains paused awaiting human admin setup/login.
 
 Application commit: 4dcadb8a9220b7ee3a550c46299aca62f649d0e6. Report: interactive/reports/ADMIN-DIRECT-LOGIN-20261027-report.md.
+
+Follow-up 2026-10-27: owner explicitly resumed etest/admin/feedback acceptance. Direct admin login and both feedback lifecycles PASS at e2d7185252250495e4dac4d92fd134ac98e4c57b. The former live-test pause is superseded only for this completed acceptance; see ADMIN-FEEDBACK-LIVE-20261027 report. Master is unchanged and no production qualification is claimed.
