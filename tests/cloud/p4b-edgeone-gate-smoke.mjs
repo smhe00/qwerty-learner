@@ -1,3 +1,4 @@
+import { reconcileUnknownV4Commit } from './v4-commit-outcome.mjs'
 import { retrySafeBodyRequest } from '../../cloud-functions/_shared/safe-body-retry.js'
 import { retryDirectPrewriteTest } from './direct-prewrite-test-retry.mjs'
 /* eslint-env node */
@@ -10,6 +11,9 @@ import { verifyCompressedV4 } from '../../cloud-functions/_shared/sync-v4.js'
 
 const base = new URL((process.env.QWERTY_SYNC_BASE_URL ||
   'https://qwerty-plus.edgeone.dev/').trim())
+const commitProbe = process.env.QWERTY_COMMIT_OUTCOME_PROBE || ''
+assert.ok(['', 'deadline', 'lost-ack'].includes(commitProbe), 'Unknown commit probe mode')
+let commitPosts = 0
 const users = []
 let failure
 const prefix = 'v4_ga_' + Date.now().toString(36) +
@@ -240,7 +244,29 @@ async function apiDirectBinaryV4(record, token, shaOverride = null) {
 // be checked by GET meta and never blindly overwritten.
 // Production native multipart Commit: metadata-only, with NO HTTP body.
 // It removes Maker's intermittent JSON body-read failure point.
+async function proveUnknownCommit(record, token, raw, transportStatus, transportError) {
+  const owner = users.find(user => user.token === token)?.userId
+  assert.ok(owner, 'Disposable account required for unknown-commit proof')
+  const expected = { baseRevision:record.baseRevision, logicalFingerprint:record.logicalFingerprint, payloadSha256:sha256(raw) }
+  const outcome = await reconcileUnknownV4Commit({ expected,
+    readMeta: async () => {
+      const reply=await api('/api/sync/v2/meta','GET',undefined,token)
+      expectCode(reply,200,null,'read-only unknown commit metadata')
+      return reply.value
+    },
+    verifyPinned: async meta => {
+      const bytes=await getBinaryV4(token,meta)
+      if (!bytes.equals(raw)) return false
+      return verifyCompressedV4(bytes,owner,expected.logicalFingerprint).logicalFingerprint === expected.logicalFingerprint
+    },
+  })
+  console.log('V4_COMMIT_OUTCOME',JSON.stringify({ transportStatus, transportError,
+    ...outcome, bytes:raw.length, writesReplayed:0 }))
+  return outcome
+}
+
 async function apiHeaderCommit(record, token, payloadSha256, partSha256s) {
+  commitPosts++
   const response = await fetch(new URL('/api/sync/v2/commit', base), {
     method: 'POST', headers: {
       Accept: 'application/json', Authorization: 'Bearer ' + token,
@@ -252,8 +278,12 @@ async function apiHeaderCommit(record, token, payloadSha256, partSha256s) {
       'X-Qwerty-Part-Sha256s': partSha256s.join(','),
       'X-Qwerty-Chunk-Bytes': String(512 * 1024),
       'X-Qwerty-Device-Id': record.deviceId || 'v4-ga-disposable',
-    }, redirect: 'error', signal: AbortSignal.timeout(20000),
+    }, redirect: 'error', signal: AbortSignal.timeout(commitProbe === 'deadline' ? 2000 : 20000),
   })
+  if (commitProbe === 'lost-ack' && response.status === 200) {
+    await response.arrayBuffer()
+    throw new DOMException('Injected response loss after server receipt', 'TimeoutError')
+  }
   const content = await response.text()
   let value = null
   try { value = JSON.parse(content) } catch { value = null }
@@ -358,6 +388,9 @@ async function uploadLargeV4(record, token, concurrency = 3) {
       commitFailureStage: reply.value?.details?.failureStage || null,
       commitServer: reply.value?.timings || reply.value?.details?.timings || null,
     }))
+    if (reply.status >= 500 || (reply.status === 200 && !reply.value)) {
+      reply.commitOutcome = await proveUnknownCommit(record, token, raw, reply.status, null)
+    }
     return reply
   } catch (error) {
     console.error('V4 commit attempt failed', JSON.stringify({
@@ -367,6 +400,8 @@ async function uploadLargeV4(record, token, concurrency = 3) {
       failureCategory: error?.name === 'TimeoutError' ||
         error?.name === 'AbortError' ? 'network_timeout' : 'network_failure',
     }))
+    const outcome = await proveUnknownCommit(record, token, raw, null, error?.name || 'Error')
+    if (outcome.status === 'committed') return {status:null, value:null, commitOutcome:outcome}
     throw error
   }
 }
@@ -383,6 +418,24 @@ try {
     'Native Blob persistence + download protocol not deployed; refuse real upload')
   console.log('V4 GA deployed backend capability: PASS')
 
+  if (commitProbe) {
+    assert.equal(base.origin, 'https://t.smhe.cn', 'Fault injection is staging-only')
+    assert.match(process.env.EXPECTED_SHA || '', /^[a-f0-9]{40}$/)
+    const marker = await fetch(new URL('/source-commit.txt?proof=' + Date.now(), base), { signal: AbortSignal.timeout(20000) })
+    const deployed = (await marker.text()).trim()
+    assert.ok(deployed === process.env.EXPECTED_SHA || deployed === process.env.EXPECTED_SHA.slice(0, 7), 'Exact staging candidate required')
+    const user = await register('probe')
+    const snapshot = JSON.parse(requireGzip(Buffer.from(v4Body(user, 0, 'lost-receipt').payloadBase64, 'base64')))
+    snapshot.workspaceData.database.data.data.find(t => t.tableName === 'wordRecords').rows[0]
+      .typingTelemetry = { synthetic: crypto.randomBytes(1536 * 1024).toString('base64') }
+    const body = v4BodyFromSnapshot(user, 0, snapshot)
+    const result = await uploadLargeV4(body, user.token)
+    assert.equal(result.status, null, 'The fault must remove the HTTP receipt')
+    assert.equal(result.commitOutcome?.status, 'committed', 'Must prove the lost receipt by full readback')
+    assert.equal(commitPosts, 1, 'Never replay an ambiguous commit')
+    console.log('V4_COMMIT_FAULT_PROOF', JSON.stringify({ fault: commitProbe, source: deployed,
+      revision: result.commitOutcome.revision, headerCommitPosts: commitPosts, fullReadback: true }))
+  } else {
   expectCode(await api('/api/sync/v2', 'PUT', '{}'), 401,
     'missing_token', 'anonymous V4 PUT')
   console.log('Anonymous V4 write rejection: PASS')
@@ -504,7 +557,8 @@ try {
       observedRevision: latest.value?.revision ?? null,
       observedFormat: latest.value?.clientFormatVersion ?? null }))
     assert.equal(latest.status, 200, 'read-only post-write verification')
-    assert.equal(sent.status, 200, 'multipart large V4 write HTTP result')
+    assert.ok(sent.status === 200 || sent.commitOutcome?.status === 'committed',
+      'multipart commit requires an HTTP receipt or full read-only commit proof')
     assert.equal(latest.value?.revision, baseRevision + 1)
     assert.equal(latest.value?.clientFormatVersion, 'qwerty-backup-v4')
     assert.equal(latest.value?.logicalFingerprint, largeBody.logicalFingerprint)
@@ -518,6 +572,7 @@ try {
       'binary V4 GET round-trip must be byte-exact')
   }
   console.log('V4 HTTP multipart large-payload endurance: PASS')
+  }
 } catch (error) {
   failure = error
 } finally {

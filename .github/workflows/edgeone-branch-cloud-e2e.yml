@@ -129,6 +129,11 @@ jobs:
         run: node scripts/verify-edgeone-source.mjs
       - name: Verify real V4 upload, readback, stale conflict and Blob size
         run: node tests/cloud/p4b-edgeone-gate-smoke.mjs
+      - name: Lost commit receipt must settle by full read-only proof without replay
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          QWERTY_COMMIT_OUTCOME_PROBE: lost-ack
+        run: node tests/cloud/p4b-edgeone-gate-smoke.mjs
 
   release-ready:
     name: Pages + etest Release Readiness (never deploys master)

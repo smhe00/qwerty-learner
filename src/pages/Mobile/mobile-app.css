@@ -25,7 +25,6 @@
 .mobile-brand-name h1 span{color:var(--focus-brand-warm,#c28a35);}
 .mobile-brand-name small{display:block;margin-top:5px;font-size:11px;color:var(--mobile-muted);}
 .mobile-user-status{color:var(--mobile-muted);flex-shrink:0;}
-.mobile-brand-actions{display:flex;align-items:center;gap:3px;flex-shrink:0;}
 .mobile-today{border:1px solid var(--mobile-line);background:var(--mobile-surface);padding:clamp(22px,6vw,30px);border-radius:21px;box-shadow:var(--focus-shadow-panel);margin-bottom:28px;}
 .mobile-eyebrow{font-weight:700;letter-spacing:.17em;font-size:10px;color:var(--mobile-accent);margin:0 0 15px;}
 .mobile-today h2{font-size:clamp(22px,6vw,28px);letter-spacing:-.035em;font-weight:650;line-height:1.4;margin:0;}
