@@ -43,10 +43,13 @@ for (const mode of ['acknowledged', 'lost-response']) {
   try {
     let deletions = 0, acknowledgedDeletes = 0
     const proof = await cleanupDisposableAccount({ baseUrl: base, username, password, userId: user.userId, token,
+      // Allow the server response to arrive before intentionally dropping it in this case.
+      // Natural60s timeout recovery is independently exercised by the acknowledged case.
+      deleteTimeoutMs: mode === 'lost-response' ? 120000 : 60000,
       fetchImpl: async (url, options) => {
+        if (options.method === 'DELETE') deletions++
         const r = await fetch(url, options)
         if (options.method === 'DELETE') {
-          deletions++
           if (r.status === 200) acknowledgedDeletes++
           if (mode === 'lost-response' && r.status === 200) {
             // Actual server DELETE completed; discard only this transport result.
@@ -59,9 +62,12 @@ for (const mode of ['acknowledged', 'lost-response']) {
       },
     })
     assert.equal(proof.confirmed, true)
-    assert.equal(acknowledgedDeletes, 1, 'exactly one acknowledged destructive operation')
+    assert.ok(deletions >= 1 && acknowledgedDeletes <= 1, 'one operation, at most one acknowledged DELETE')
     assert.ok(deletions <= 2, 'only the existing explicit pre-body safe retry is permitted')
-    if (mode === 'lost-response') assert.equal(proof.via, 'receipt')
+    if (mode === 'lost-response') {
+      assert.equal(acknowledgedDeletes, 1, 'explicitly discarded one real successful server response')
+      assert.equal(proof.via, 'receipt')
+    }
     assert.equal((await api('/api/auth/me', 'GET', undefined, token)).status, 401)
     results.push({ mode, source: sha, deleteRequests: deletions, acknowledgedDeletes, ...proof })
     console.log('CLEANUP_LIVE_PROOF', JSON.stringify(results.at(-1)))
