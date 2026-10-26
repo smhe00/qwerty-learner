@@ -89,7 +89,9 @@ jobs:
   real-v4-transport:
     if: github.ref_name == 'edgeone-test'
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
+    # Deployment propagation (up to 10m), full transport and lost-ACK cleanup.
+    # HTTP/application deadlines and all safety assertions stay unchanged.
+    timeout-minutes: 30
     env:
       QWERTY_SYNC_BASE_URL: https://t.smhe.cn/
     steps:
