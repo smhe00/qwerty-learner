@@ -465,6 +465,7 @@ async function start(): Promise<void> {
       renderS1AccountManagement(root, boot.registry.active, {
         mobile: mobileAccount,
         cloudDisabled,
+        registryGeneration: boot.registry.generation,
       })
       return
     }
@@ -493,12 +494,13 @@ async function start(): Promise<void> {
       if (boot.registry.active.kind === 'account' && learningEventSyncEnabled()) {
         try {
           const { startEtestM3BackgroundMonitor } = await import('./sync/m3-background-browser')
-          stopEtestM3BackgroundMonitor = startEtestM3BackgroundMonitor()
-          void import('./sync/m3-publication-browser')
-            .then(({ flushDeferredM3Checkout }) => flushDeferredM3Checkout())
-            .catch(() => {
-              /* Optional declaration cannot block or release the mounted writer. */
-            })
+          stopEtestM3BackgroundMonitor = startEtestM3BackgroundMonitor({ passiveReturn: boot.passiveAccountReturn === true })
+          if (!boot.passiveAccountReturn)
+            void import('./sync/m3-publication-browser')
+              .then(({ flushDeferredM3Checkout }) => flushDeferredM3Checkout())
+              .catch(() => {
+                /* Optional declaration cannot block or release the mounted writer. */
+              })
         } catch (error) {
           // Optional network/pilot module loading can fail offline. NEVER
           // propagate to the outer boot catch, which would release the

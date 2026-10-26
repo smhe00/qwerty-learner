@@ -177,7 +177,7 @@ test('committed upload with lost response mounts pending; reload reconciles with
 })
 
 for (const kind of ['pull', 'm4'] as const) {
-  test('expired network budget still completes real ' + kind + ' journal across reload before mount', async ({ page, baseURL }) => {
+  test('passive return ticket cannot skip real ' + kind + ' journal with expired budget across reload', async ({ page, baseURL }) => {
     await ready(page, baseURL!)
     const expected = await page.evaluate(
       async ({ identity, kind }) => {
@@ -187,6 +187,18 @@ for (const kind of ['pull', 'm4'] as const) {
         candidate.workspaceData.navigation.currentChapter = 11
         const fingerprint = await h.workspaceFingerprintV4(candidate)
         const generation = (await h.workspaceRegistryPort.read()).generation
+        sessionStorage.setItem(
+          'qwerty.account-visit.v1',
+          JSON.stringify({
+            version: 1,
+            phase: 'returning',
+            accountId: identity.accountId,
+            generation,
+            witness: localStorage.getItem('qwerty.s1.workspace-migrated.v1'),
+            createdAt: Date.now(),
+            target: '/',
+          }),
+        )
         if (kind === 'pull')
           await h.syncV2PullJournalPort.stage({
             version: 1,
@@ -221,6 +233,7 @@ for (const kind of ['pull', 'm4'] as const) {
     const recovering = await boot(page)
     expect(recovering.mounted).toBe(false)
     expect(recovering.error).toContain('recovery completed; reload required')
+    expect(await page.evaluate(() => sessionStorage.getItem('qwerty.account-visit.v1'))).toBeNull()
     expect(recovering.pending).toBe(false)
     expect(recovering.fingerprint).toBe(expected)
     await navigate(page)
