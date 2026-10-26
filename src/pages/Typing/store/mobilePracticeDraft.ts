@@ -1,4 +1,4 @@
-import type { WordFinishResult } from '../components/WordPanel/components/Word'
+import type { WordFinishResult } from '@/learn/word-completion'
 import type { LearnExerciseKind } from '@/learn/task-selector'
 import type { ExerciseConditionV1 } from '@/review/condition'
 import type { ReviewPolicyDecisionV1 } from '@/review/decision'

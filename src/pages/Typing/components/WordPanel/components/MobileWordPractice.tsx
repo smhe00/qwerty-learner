@@ -1,6 +1,6 @@
 import MobilePracticeExample from './MobilePracticeExample'
 import MobilePhonetic from '@/pages/Mobile/MobilePhonetic'
-import type { WordFinishResult } from './Word'
+import type { WordFinishResult } from '@/learn/word-completion'
 import { generateWordSoundSrc } from '@/hooks/usePronunciation'
 import { createLearnAcquisitionExercisePlanForState } from '@/learn/acquisition'
 import type { LearnAcquisitionState } from '@/learn/acquisition'
@@ -20,18 +20,15 @@ import type { ExerciseConditionV1 } from '@/review/condition'
 import { createCanonicalReviewProbePlan, createReviewPolicyDecision } from '@/review/decision'
 import type { ReviewExercisePlanV1, ReviewPolicyDecisionV1 } from '@/review/decision'
 import type { ReviewEvidenceV1 } from '@/review/evidence'
-import { scheduleLearnReviewCommit } from '@/review/learn-review-commit'
 import { decideReviewRating } from '@/review/state-machine'
 import type { RatingDecision, ReviewAttemptRole } from '@/review/state-machine'
 import type { ReviewOutcome } from '@/review/types'
 import { currentDictInfoAtom, pronunciationConfigAtom } from '@/store'
 import type { Word } from '@/typings'
-import { useSaveWordRecord } from '@/utils/db'
-import { requireDurableWordRecordId } from '@/learn/durable-word-record'
+import { useWordRecordCommit } from '@/hooks/useWordRecordCommit'
 import { db } from '@/utils/db/core'
-import type { IWordRecord, LearningContextV1 } from '@/utils/db/record'
+import type { LearningContextV1 } from '@/utils/db/record'
 import { getFirstValidDictionaryExample, maskDictionaryExample } from '@/utils/dictionaryExample'
-import { getUTCUnixTimestamp } from '@/utils/time'
 import { useAtom, useAtomValue } from 'jotai'
 import { Hand, Headphones, Keyboard, Volume2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -143,7 +140,7 @@ export default function MobileWordPractice({
   const keyboardControls = desktop || mobileInput.keyboardUsed
   const dict = useAtomValue(currentDictInfoAtom)
   const pronunciation = useAtomValue(pronunciationConfigAtom)
-  const saveWordRecord = useSaveWordRecord()
+  const commitRecord = useWordRecordCommit()
   const draft = useMobilePracticeDraft(resumeKey)
   const {
     revealedAttempt,
@@ -449,25 +446,9 @@ export default function MobileWordPractice({
         mistakes[firstDifferent] = [submittedChars[firstDifferent] ?? '∅']
       }
     }
-    const record: IWordRecord = {
-      word: word.name,
-      timeStamp: getUTCUnixTimestamp(),
-      dict: dict.id,
-      chapter: -1,
-      timing: [],
-      wrongCount: input.wrongCount,
-      mistakes,
-      learningContext: context,
-      exerciseCondition: condition,
-      reviewPolicyDecision: policyDecision,
-      reviewEvidence: evidence,
-      reviewRatingDecision,
-      sourceMode: 'learn',
-      learnItemKind: recordKind,
-    }
     try {
-      const id = await trackLearnPersistence(
-        saveWordRecord({
+      const commit = await trackLearnPersistence(
+        commitRecord({
           word: word.name,
           wrongCount: input.wrongCount,
           letterTimeArray: [],
@@ -481,17 +462,9 @@ export default function MobileWordPractice({
           learnItemKind: recordKind,
         }),
       )
-      requireDurableWordRecordId(id)
-      record.id = id
-      scheduleLearnReviewCommit({
-        dict: dict.id,
-        word: word.name,
-        itemKind: recordKind,
-        wordRecordId: id,
-        decision: reviewRatingDecision,
-      })
+      if (commit.status !== 'saved') throw new Error('学习记录保存失败，本词尚未推进。')
       setFeedback({
-        result: { record, wrongCount: input.wrongCount, classification, reviewRatingDecision, reviewEvidence: evidence },
+        result: { mode: 'learn', receipt: commit.receipt, record: commit.receipt.record, wrongCount: input.wrongCount, classification, reviewRatingDecision, reviewEvidence: evidence },
         autoAdvance: input.grade === 'good' && input.wrongCount === 0,
         title: input.title,
       })

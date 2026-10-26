@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 
+const port = Number(process.env.QWERTY_TEST_PORT ?? 4178)
 export default defineConfig({
   testDir: '.',
   testMatch: ['account-continuity.spec.ts', 'workspace-v4-unicode.spec.ts', 'automatic-v4-merge.spec.ts', 'workspace-v4.spec.ts', 'workspace-v4-app.spec.ts', 'workspace-v4-boot.spec.ts', 'workspace-v4-s2-baseline.spec.ts', 'workspace-v4-s2-pull.spec.ts', 'workspace-v4-s2-live.spec.ts', 'workspace-v4-s2-multi-device.spec.ts', 'workspace-v4-s2-recovery.spec.ts', 'workspace-v4-manual-import.spec.ts', 'workspace-v4-m4-journal.spec.ts', 'workspace-v4-m2-ancestor.spec.ts', 'workspace-v4-import-copy-id.spec.ts', 'workspace-v4-session-revoked.spec.ts', 'workspace-app-entry.spec.ts', 'workspace-lock-compat.spec.ts'],
@@ -10,12 +11,12 @@ export default defineConfig({
   timeout: 120_000,
   use: {
     ...devices['Desktop Chrome'],
-    baseURL: 'http://127.0.0.1:4178',
+    baseURL: `http://127.0.0.1:${port}`,
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: 'yarn dev --host 127.0.0.1 --port 4178',
-    url: 'http://127.0.0.1:4178/tests/e2e/backup-harness.html',
+    command: `yarn dev --host 127.0.0.1 --port ${port}`,
+    url: `http://127.0.0.1:${port}/tests/e2e/backup-harness.html`,
     reuseExistingServer: false,
     timeout: 120_000,
   },

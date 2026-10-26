@@ -16,7 +16,7 @@ import { assertWorkspaceMigrationWitness } from './workspace-storage-witness'
 import { captureWorkingWorkspaceV4 } from './workspace-v4-browser'
 import { saveWorkspaceToVault, workspaceRegistryPort } from './workspace-vault'
 import type { GuardedWorkspaceBoot } from './workspace-bootstrap'
-import { flushReviewRecordWrites } from '@/store/reviewInfoAtom'
+import { flushReviewRecordWrites } from '@/utils/db/review-record-writer'
 
 export async function executePreMountManualSyncV2(
   boot: Pick<GuardedWorkspaceBoot, 'mode' | 'registry'>,
