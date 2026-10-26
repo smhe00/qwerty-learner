@@ -43,3 +43,20 @@ Initial validation issues were diagnosed rather than bypassed: localhost request
 - Changed test files: account-continuity, desktop-account, mobile-account, mobile-account-writer, mobile-account-pages, edgeone-s1-cloud-accounts and etest-account-progress under tests/e2e.
 - Final build passed in 25.66 seconds; final scoped ESLint exited 0. Local build log is retained in ignored test-results/account-direct-build.log.
 - This report is a separate documentation commit after the implementation SHA. Push destination is origin product/main, with normal fast-forward protection.
+
+## 2026-10-26 follow-up: administrators only
+
+The owner answered the pending preference: only administrators should get the auxiliary popup, ordinary users should not. The old conservative default above is superseded.
+
+- Correction commit: b89d8a94b957d49705beb2c53a35ce77d897e7b4.
+- Both the optional entry and dialog require server GET /api/admin/access to return administrator === true. Loading, failures and malformed values default to hidden. Anonymous and expired credentials make no permission request.
+- Each opening mounts a fresh verification component: a prior successful check is not reused to display the next dialog. Programmatic/stale open events also undergo the permission check; denied requests close silently without mounting the visible panel or fetching the retention policy.
+- Permission results are bound to the current token and cancelled on cleanup. This only gates presentation; all existing server administrator checks, confirmation prompts, S1 guards and direct account navigation remain unchanged.
+- Focused browser test: NO_PROXY=127.0.0.1,localhost node node_modules/@playwright/test/cli.js test --config=tests/e2e/idle-cleanup.config.ts account-continuity.spec.ts --grep tools --output=test-results/admin-only: **7/7 passed**. Desktop/mobile admin access; ordinary, unavailable, malformed, expired and anonymous denial, including DOM mutation observation for popup flashes and continued direct account navigation.
+- Scoped ESLint and git diff --check passed. Pages-mode build passed in 24.84 seconds with existing dependency/chunk warnings. Log: ignored test-results/admin-only-build.log. No live Cloud/Blob, real account or production validation performed.
+
+### Delivery status
+
+Code and local validation complete; mainline integration deferred to preserve the active release candidate. During this follow-up, origin/product/main advanced to 98697131d09393a479f30da9eb9b117e8117a0e7, explicitly reversing the original UI commit because main/etest divergence had invalidated the other task's release gate. This follow-up does not counteract that release isolation on main.
+
+The complete corrected UI is preserved on codex/account-admin-tools-20261026: branch base 98697131, original direct-entry restoration 3452f2e8, administrator-only correction b89d8a94. Prepare a draft PR to product/main for integration after the independent release/restoration step; reconcile the other task's quick-sync/Header changes without restoring the intermediate login overview. No product/main, master or edgeone-test push from this follow-up.
