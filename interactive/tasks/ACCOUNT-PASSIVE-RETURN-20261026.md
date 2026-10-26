@@ -1,6 +1,6 @@
 # Account passive return
 
-Status: IN_PROGRESS. Executor: Codex. Base:95184f9f306fc0d04b726edc9ec53d3bca49bdef. Production/staging base:cbb20842. Release authorized explicitly by owner2026-10-26 after etest validation, identical-SHA fast-forward only.
+Status: REVIEW (implementation and authorized production release complete). Executor: Codex. Base:95184f9f306fc0d04b726edc9ec53d3bca49bdef. Production/staging base:cbb20842. Release authorized explicitly by owner2026-10-26 after etest validation, identical-SHA fast-forward only.
 
 Differentiate passive account viewing from authentication and recovery. A one-use, short-lived tab-local navigation ticket may suppress optional startup network work only after the unchanged account/workspace and all existing local integrity/journal checks pass. It must never grant writer/auth authority, skip pending durable recovery, survive authentication actions, or become a permanent URL bypass. Preserve session revocation checks and ordinary background repair. Avoid restarting the immediate background scan on passive returns.
 

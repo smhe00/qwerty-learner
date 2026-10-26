@@ -1,5 +1,25 @@
 # Account passive return report
 
+## Final outcome — completed 2026-10-26 (Asia/Shanghai)
+
+Application release: **15fffa2c762037d8b29d1e5b953c729001ad5f0e**. master and edgeone-test share this exact SHA after a normal fast-forward. q.smhe.cn actually serves15fffa2. Development remains ahead; PR47 and the new release-policy code stay on main for later staging.
+
+Root cause fixed: passive account document return was treated as a fresh startup and restarted V4/M3/M4 plus the initial background scan. One-use account-return intent suppresses only that redundant work; auth actions, expired/changed identity, pending S1/S2/manual/M4 transactions, writer ownership and witness guards still follow normal recovery.
+
+Required candidate evidence:
+- Source Cloud40284031256, published Pages40284031281, startup browser40284031236 PASS; S1 browser40284113546 PASS153 tests plus3 repeated lost-ACK.
+- Real etest browser121445545548 PASS4 cases, PC/mobile passive returns each0 sync requests. Disposable accounts explicitly deleted.
+- Completion cloud40284711780 PASS2/2 with independent exact readback and exactly-once final records.
+- Hard three-device40284711719 PASS: final3/3 on every device, no pending journals, cleanup200, longest login/recovery69.282s.
+- Real transport121453539905 PASS with full Blob readback, unknown Commit reconciliation, one-POST lost-ACK proof and all current-attempt cleanups confirmed.
+- Independent release-ready40289686444 /121461560923 PASS using policy a0754e72 and candidate15fffa2c. This replaces the obsolete equal-head refusal; main may lead without invalidating exact candidate evidence.
+- Production verify40290262601 /121463390371 PASS. Additional real Chrome anonymous PC/mobile checks: exact deployed candidate, direct account entry, Back to learning,0 API writes, production handoff capability absent. Signed-in zero-sync behavior was verified on etest, not by creating production accounts.
+
+Policy now recorded in AGENTS.md and executable gates: master -> etest -> product/main ancestry; historical exact-candidate Pages/source evidence remains valid after main advances; a changed etest SHA requires new qualification. Policy regression14/14 and policy Cloud/Pages CI PASS. No cross-thread messages sent.
+
+Retained limitations (not silently green):147 pre-existing whole-repo type diagnostics; safe-V4 optional503; historical login sender-readback misclassification and503 cleanup ambiguity; first transport runner cancellation left its final disposable cleanup unconfirmed. Detailed evidence below. Latest passing transport fixtures and browser/three-device/completion fixtures were cleaned; no claim that the earlier ambiguous fixtures were deleted. Follow up test request classification and housekeeping without weakening integrity readback or replaying unknown writes.
+
+
 Status: IN_PROGRESS. Isolated worktree qwerty-account-passive-return, base95184f9f. Previous unified release cbb20842 preserved; PR45 administrator UI kept. Root cause: account return uses location.replace to a normal learning route, so guarded boot reruns V4 and M3/M4 and the background pump starts a new2s initial scan. Implement one-shot guarded navigation intent, retain all safety recovery, avoid immediate background scan on this specific return. No cloud backend change planned.
 
 ## Implementation and local evidence
@@ -81,3 +101,11 @@ Transport attempt3 job121453539905 PASS, including final cleanup. Natural20s unk
 Policy regression14/14 PASS: advance main safely, keep fixed etest, allow equal refs after promotion, reject divergence/backward promotion/staging changes, reject incorrect Pages/Cloud SHA and failed transport, verify actual deployed etest. Actual CLI entrypoints execute against synthetic API fixtures; current moving Pages is prohibited in those fixtures. Explicit module-parser lint and node syntax checks PASS. Initial fixture incorrectly labeled a backwards compare as ahead; fixed fixture, not production assertion. Latest main integrated source completion12/12/save-failure7/7 passed but is NOT used to qualify15fffa2.
 
 GitHub default branch is master, so a newly introduced workflow filename on main cannot yet be manually dispatched (404). Use the EXISTING registered edgeone-branch-cloud-e2e workflow's new optional candidate inputs instead: a product/main dispatch runs only the read-only frozen-candidate qualification job; normal etest push/dispatch retains existing live jobs. Removed the redundant new workflow file. No master/default-branch change needed. YAML parse PASS; policy behavior/tests unchanged.
+
+## Production promotion under the new owner policy
+
+Independent frozen qualification40289686444 /121461560923 PASS. Policy commit a0754e72728d86e1f5b3a3c3973a16fb89e60581 qualified application15fffa2c using actual Cloud run40284711789, Pages40284031281, source Cloud40284031256 and hard three-device40284711719. Qualified branch snapshot: master cbb20842, etest15fffa2c, main a0754e72. Main ahead accepted; actual deployed etest marker verified.
+
+Pre-push check initially saw a stale local origin/edgeone-test because this checkout's default fetch follows only main. Explicitly fetched all three branch refspecs; remote etest remained15fffa2c. Both required ancestry checks passed. No remote race or branch rollback occurred.
+
+Owner-authorized master promotion completed by ordinary non-force push: cbb20842→15fffa2c. Remote master and edgeone-test are exactly15fffa2c762037d8b29d1e5b953c729001ad5f0e; main remains ahead at a0754e72. No application changes/cherry-pick/release-only commit during promotion. Waiting for q.smhe.cn actual deployment and anonymous PC/mobile/production-policy verification before completion.
