@@ -461,7 +461,7 @@ async function onUncoordinatedRequest(context, circleBody = null) {
     }
 
     if (request.method === 'DELETE' && path === '/auth/account') {
-      // Receive the small body before asynchronous storage lookups. The service
+      // Receive the small body before account-specific storage lookups. The service
       // still authenticates/password-checks before any business operation.
       accountDeletionStage = 'request-body'
       const body = await readBody(64 * 1024)

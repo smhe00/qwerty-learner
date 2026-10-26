@@ -1,3 +1,4 @@
+import { cleanupDisposableAccount } from './disposable-account-cleanup.mjs'
 import { retrySafeBodyRequest } from '../../cloud-functions/_shared/safe-body-retry.js'
 /* eslint-env node */
 /**
@@ -693,51 +694,8 @@ function checksumStable(snapshot) {
 async function disposeIsolatedMergeAccount() {
   assert.ok(user.username.startsWith('e2e_merge_'))
   assert.ok(userId, 'Cannot delete a disposable account without verified owner')
-  const authenticatedCleanup = async () => {
-    // First verify the ALREADY authenticated final observer token. This
-    // avoids avoidable login-rate 429 after multiple A/B/C handoffs.
-    if (user.cleanupToken) {
-      const me = await api('/api/auth/me', user.cleanupToken)
-      if (me.status === 200 && me.response?.user?.userId === userId &&
-          me.response?.user?.username === user.username) return user.cleanupToken
-      // An inconsistent authenticated identity is not safe to ignore.
-      if (me.status === 200) throw Error('Disposable cleanup bearer owner mismatch')
-    }
-    // Only when the final token is confirmed invalid, reauthenticate. A
-    // bounded 429 wait never authorizes deletion of any non-E2E account.
-    for (let attempt = 0; attempt < 4; attempt++) {
-      const response = await api('/api/auth/login', null, 'POST',
-        JSON.stringify({ username: user.username, password: user.password,
-          deviceId: user.firstDevice }),
-        { 'Content-Type': 'application/json' })
-      if (response.status === 200) {
-        if (response.response?.user?.userId !== userId ||
-            response.response?.user?.username !== user.username ||
-            !response.response?.token) {
-          throw Error('Disposable cleanup account ownership not reverified')
-        }
-        user.cleanupToken = response.response.token
-        return response.response.token
-      }
-      if (response.status !== 429 || attempt === 3) break
-      await sleep(6000 * (attempt + 1))
-    }
-    throw Error('Disposable cleanup account ownership not reverified')
-  }
-  let token = await authenticatedCleanup()
-  for (let attempt = 0; attempt < 4; attempt++) {
-    const deleted = await api('/api/auth/account', token, 'DELETE',
-      JSON.stringify({ currentPassword: user.password }),
-      { 'Content-Type': 'application/json' })
-    if (deleted.status === 200 && deleted.response?.deleted?.accountDeleted) {
-      return
-    }
-    // Do not infer successful deletion from a 5xx or revoked token.
-    if (deleted.status < 500 || attempt === 3) {
-      throw Error('Disposal failed: HTTP ' + deleted.status)
-    }
-    await sleep(1500 * (attempt + 1))
-    token = await authenticatedCleanup()
-  }
-  throw Error('Disposable cleanup outcome unverified')
+  const proof = await cleanupDisposableAccount({ baseUrl: origin, username: user.username,
+    password: user.password, userId, token: user.cleanupToken })
+  assert.equal(proof.confirmed, true)
+  console.log('MERGE_CLEANUP_PROOF', JSON.stringify(proof))
 }

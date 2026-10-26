@@ -28,10 +28,11 @@ assert.ok(health.body.capabilities.includes('account-delete-receipt-v1'))
 const results = []
 for (const mode of ['acknowledged', 'lost-response']) {
   await version()
-  const username = 'e2e_cleanup_' + process.env.GITHUB_RUN_ID + '_' + (process.env.GITHUB_RUN_ATTEMPT || '1') + '_' + mode.replace('-', '_')
+  const username = 'e2e_cl_' + process.env.GITHUB_RUN_ID + '_' + (process.env.GITHUB_RUN_ATTEMPT || '1') + '_' + (mode === 'acknowledged' ? 'a' : 'l')
+  assert.ok(username.length <= 32, 'disposable username satisfies real registration contract before network')
   const password = randomBytes(24).toString('base64url')
   const signed = await api('/api/auth/register', 'POST', { username, password, deviceId: 'qwerty-web-' + randomUUID() })
-  assert.equal(signed.status, 201, 'new disposable registration; unknown outcomes are not replayed')
+  assert.equal(signed.status, 201, 'new disposable registration; unknown outcomes are not replayed; error=' + String(signed.body?.error || 'none'))
   const { user, token } = signed.body
   const failures = []
   try {
