@@ -1,0 +1,4 @@
+# Circle subsecond investigation
+Status: IN_PROGRESS. Base ecaed1aff02fdc7926210ec0febf50fe532da2b8; prior staging e2d7185252250495e4dac4d92fd134ac98e4c57b.
+Initial inspection: public route loads administrator binding; etest handoff classification reads ordinary identity; IP/account limits each perform shared counter get/set. backend.me serially loads identity, latest session list/body, revocation, latest auth list/body and idle.touch. idle.touch currently serially reads deleting/fence/day/deleting/fence. Circle read authenticates initially and finally; checkin also checks just before write. All are suspected critical-path costs, not measured attribution yet.
+Plan: request-local safe timing at Blob SDK methods and auth/limiter stages, exact server branch=etest plus opt-in header only. No keys/arguments/body/IDs/credentials in trace. Same behavior and payload; bounded authenticated-success timing headers. Then measure and optimize only justified work.
