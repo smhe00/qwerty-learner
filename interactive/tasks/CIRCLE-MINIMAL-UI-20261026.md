@@ -12,3 +12,6 @@ Test focused request lifecycle and real browser interactions with isolated mocke
 
 ## Owner-authorized etest promotion
 On 2026-10-26 the owner explicitly requested deployment to etest. This supersedes the earlier no-etest scope for this promotion only. Repair the existing login-warning test mocks required by merged account deletion, verify focused contracts, push development and fast-forward edgeone-test to the same candidate. Check the published source marker and health. No master promotion.
+
+## Follow-up: creation failure and UI repair
+Owner reported creation failure and awkward UI on etest. Diagnose the real receiver with isolated synthetic data, fix Circle-only transport/UI issues, preserve creation identity on unknown writes, simplify empty/create layout using available container width. Verify real etest creation rather than only mocked UI; continue the already authorized etest delivery, never master. Workspace qwerty-circle-create-fix, base 33011a55.
