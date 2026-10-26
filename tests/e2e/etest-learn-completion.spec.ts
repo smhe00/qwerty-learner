@@ -252,6 +252,7 @@ for (const wrong of [true, false]) {
       networkMocked: false,
     }
     const failures: unknown[] = []
+    const diagnosticStartedAt = Date.now()
     const http: Array<Record<string, unknown>> = []
     for (const [profile, page] of [a, b].entries())
       page.on('response', async (response) => {
@@ -414,6 +415,27 @@ for (const wrong of [true, false]) {
             .catch(() => ({ profile, unavailable: true })),
         ),
       )
+      // Diagnostic only: retain the original failed assertion, then observe
+      // natural boot progress without clicks, reloads or request replays.
+      if (stage === 'fresh-profile-cloud-readback' && process.env.QWERTY_LOGIN_LATENCY_DIAGNOSTIC === 'true') {
+        const observations: Array<Record<string, unknown>> = []
+        for (let sample = 1; sample <= 9; sample++) {
+          await b.waitForTimeout(10000)
+          const state = await b
+            .evaluate(() => ({
+              bodyText: document.body.innerText.slice(0, 2400),
+              accountEntry: document.querySelectorAll('[data-account-entry]').length,
+              startup: sessionStorage.getItem('qwerty.s2.startup-check.v1'),
+              diagnostics: JSON.parse(sessionStorage.getItem('qwerty.learning-sync-diagnostics.v1') || '[]'),
+            }))
+            .catch(() => null)
+          observations.push({ elapsedMs: Date.now() - diagnosticStartedAt, ...state })
+          if (state?.accountEntry) break
+        }
+        proof.naturalBootAfterTimeout = JSON.parse(
+          JSON.stringify(observations).split(username).join('[fixture-account]').split(password).join('[redacted]'),
+        )
+      }
       proof.failedPageState = JSON.parse(
         JSON.stringify(proof.failedPageState).split(username).join('[fixture-account]').split(password).join('[redacted]'),
       )
