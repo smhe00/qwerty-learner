@@ -1,0 +1,4 @@
+# Circle UI and speed rewrite
+Status: IN_PROGRESS. Base c407dbbf27fa67a2cf9cde1c4ec931e651a53e3f.
+Findings: narrow md overlay plus stacked sidebar/header/invite/check-in/member/management creates long viewport; generic mutate always reloads full view after acknowledged action, with membership changes also reloading mine. Server getCircle legacy dispatch redundantly authenticates and reads metadata before the bounded path; initial identity duplicates immediately preceding limiter auth. Membership storage writes repeatedly write same durable social deletion marker and create repeats personal index.
+Plan: wider two-column desktop workspace with independent activity/invite/management sections and focused form; phone single-column. Remove avoidable serial phases and repeated post-write reads without weakening final auth/revocation checks. Baseline real etest warm GET median 5722ms; create9038/join6792 from previous exact candidate 1bd2c356.
