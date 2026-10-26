@@ -1,3 +1,4 @@
+import { retryMigrationPrewriteTest } from './migration-prewrite-test-retry.mjs'
 import { reconcileUnknownV4Commit } from './v4-commit-outcome.mjs'
 import { retrySafeBodyRequest } from '../../cloud-functions/_shared/safe-body-retry.js'
 import { retryDirectPrewriteTest } from './direct-prewrite-test-retry.mjs'
@@ -478,8 +479,9 @@ try {
     payloadSha256: oldSecond.value.payloadSha256,
     logicalFingerprint: oldSecond.value.logicalFingerprint,
   }
-  const migrated = await api('/api/sync/v2/binary/migrate', 'POST',
-    pinnedOld, second.token)
+  const migrated = await retryMigrationPrewriteTest(
+    () => api('/api/sync/v2/binary/migrate', 'POST', pinnedOld, second.token),
+    () => api('/api/sync/v2/meta', 'GET', undefined, second.token), oldSecond.value)
   expectCode(migrated, 200, null, 'legacy V4 to binary migration')
   assert.equal(migrated.value?.storageEncoding, 'binary')
   assert.equal(migrated.value?.revision, oldSecond.value.revision + 1)
@@ -489,8 +491,11 @@ try {
   assert.deepEqual(migratedBytes,
     Buffer.from(v4Body(second, 0, 'other-account').payloadBase64, 'base64'),
     'migration must preserve byte-exact V4 gzip')
-  const again = await api('/api/sync/v2/binary/migrate', 'POST',
-    pinnedOld, second.token)
+  const migrationMeta = await api('/api/sync/v2/meta', 'GET', undefined, second.token)
+  expectCode(migrationMeta, 200, null, 'pin completed migration before idempotence check')
+  const again = await retryMigrationPrewriteTest(
+    () => api('/api/sync/v2/binary/migrate', 'POST', pinnedOld, second.token),
+    () => api('/api/sync/v2/meta', 'GET', undefined, second.token), migrationMeta.value)
   expectCode(again, 200, null, 'idempotent second binary migration')
   assert.equal(again.value?.migrated, false)
   assert.equal(again.value?.revision, migrated.value.revision)
@@ -506,7 +511,9 @@ try {
     .find(table => table.tableName === 'wordRecords').rows[0]
     .typingTelemetry = { synthetic: crypto.randomBytes(256 * 1024).toString('base64') }
   const fastBody = v4BodyFromSnapshot(second, fastRevision, fastState)
-  const direct = await apiDirectBinaryV4(fastBody, second.token)
+  const direct = await retryDirectPrewriteTest(
+    () => apiDirectBinaryV4(fastBody, second.token),
+    () => api('/api/sync/v2/meta', 'GET', undefined, second.token), migrationMeta.value)
   expectCode(direct, 200, null, 'single-request native V4 fast commit')
   const directMeta = await api('/api/sync/v2/meta', 'GET', undefined, second.token)
   assert.equal(directMeta.value?.revision, fastRevision + 1)

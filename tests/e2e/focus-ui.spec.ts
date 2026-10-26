@@ -218,7 +218,8 @@ for (const mode of ['typing', 'learn'] as const) {
     await page.screenshot({ path: snapshots + '/' + mode + '-start-guide-dark.png' })
     await page.setViewportSize({ width: 701, height: 800 })
     await expect(guide).toBeVisible()
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    // ResizeObserver applies the responsive rows after the viewport event.
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await page.setViewportSize({ width: 1280, height: 800 })
     await page.keyboard.press('a')
     const word = page.locator('[data-typing-word]').first()

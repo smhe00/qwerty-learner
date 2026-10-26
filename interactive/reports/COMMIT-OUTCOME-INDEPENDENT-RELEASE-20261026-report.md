@@ -15,3 +15,19 @@
 - 全量云契约856/856通过。新测试保留未知结果、错误哈希、读回不一致、读回期间版本改变等反例。
 - 独立UI范围：7个已发布UI文件按9620e33c字节恢复；src/index.tsx移除新quick-sync入口但保留post-mount deferred checkout。新UI模块未接入运行入口，完整原始UI保存于d34ba238/4552a463。scripts/verify-independent-release-scope.mjs核验范围；发布后向前恢复UI。
 - 新实网smoke保留原20秒截止和失败证据。只有完整固定版本回读及二次元数据匹配才接受丢失回执后的已提交结果，不伪造HTTP200，不改变产品提交接口，不重发未知写入。
+
+## 第一候选 e4a4e4f93cc83876f72b1cfcd5f29bb62a702f90 的同版本结果
+
+- Pages 40267987879、Cloud Sync 40267987709、启动恢复40267987614、完成流程40267987623、准入40267987664均PASS。
+- etest三设备40268332976/job121395496135 PASS：9次登录恢复分别33072、27316、22026、70164、68279、73132、67929、67128、26469ms；最终三份完整3/3记录及清空恢复日志的断言通过，清理200；无180秒恢复超时。
+- etest真实完成流程40268332915 PASS，两设备六表安全写回40268332945 PASS，浏览器账号隔离121395496142 PASS。自动维护40268332983首轮登录阶段失败，未记录具体异常；本地增加脱敏诊断同版本PASS，CI第二轮121397322828 PASS。首轮不能事后归为503。
+- 当前候选2秒真实截止注入：第2次只读核验证明revision=1及完整1,580,119字节成功；Commit POST=1；清理PASS。
+- Cloud/Blob40268332953前三轮job121395495929、121397457297、121398339370均在binary/migrate收到明确request_body_unavailable 503，全部测试账号清理PASS；还没有完成完整大包测试，release-ready跳过，不能发布。
+- 历史登录40268332924第二轮已证明sixTablePullExact及sharedReferencePreserved，分歧合并在native direct 503处停止，本地保留4条；不是180秒恢复超时。M3专用40268332930两轮verify-set均503，保留原始证据。
+- 双站Explorer40267987670失败目标为尚未发布的旧正式站q.smhe.cn，不是候选etest；Pages侧通过。Review40267987635只在已有701px即时布局断言失败；本地6次重复5/6。同七份UI与9620e33c字节一致；修正测试等待ResizeObserver布局稳定，仍断言无横向溢出。
+
+## 第二候选准备（仅验收工具变更，产品运行代码与e4a4e4f9完全相同）
+
+- binary/migrate仅在服务端返回明确request-body/safeToRetry=true证书且revision、两哈希、storageEncoding完全未变时允许一次新请求；第二次仍503保持失败。未知5xx/超时/读证明失败/状态变化不重放。来源是gateway readJson在migrateSyncV4Binary调用前抛出的认证错误，不以元数据未变单独证明未写。
+- native direct正向探针复用已有typed-prewrite限定重试；未知提交核验逻辑及断言不变。
+- 全量云契约860/860 PASS；新增重试及未知提交正反例18/18 PASS。下一候选必须重新取得自己的Pages、etest和release-ready，不复用第一候选结果冒充同SHA。
