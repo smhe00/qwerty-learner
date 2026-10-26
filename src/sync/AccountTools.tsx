@@ -1,16 +1,27 @@
 import AdministratorPanel from './AdministratorPanel'
 import { closeAccountDialog, isAccountDialogOpen, subscribeAccountDialog } from './account-dialog-events'
 import { loadAuth } from './auth'
+import { useAdministratorAccess } from './use-administrator-access'
 import { Dialog } from '@headlessui/react'
-import { useSyncExternalStore } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 
 /** Read-only inspection keeps the mounted app and its writer lease intact. */
 export default function AccountTools() {
   const open = useSyncExternalStore(subscribeAccountDialog, isAccountDialogOpen)
-  const auth = open ? loadAuth({ preserveExpired: true }) : null
+  return open ? <AuthorizedAccountTools /> : null
+}
+
+/** Each opening verifies access afresh before mounting any visible dialog. */
+function AuthorizedAccountTools() {
+  const auth = loadAuth({ preserveExpired: true })
   const expired = !!auth && auth.expiresAt * 1000 <= Date.now()
+  const cloudEnabled = REACT_APP_DEPLOY_ENV !== 'pages' && import.meta.env.VITE_QWERTY_SYNC_DISABLED !== 'true'
+  const { administrator, checked } = useAdministratorAccess(cloudEnabled && !expired ? auth?.token : undefined)
+  useEffect(() => {
+    if (checked && !administrator) closeAccountDialog()
+  }, [checked, administrator])
   return (
-    <Dialog open={open} onClose={() => closeAccountDialog()} className="fixed inset-0 z-[60]">
+    <Dialog open={administrator} onClose={() => closeAccountDialog()} className="fixed inset-0 z-[60]">
       <div className="fixed inset-0 backdrop-blur-sm" style={{ background: 'var(--focus-backdrop)' }} aria-hidden="true" />
       <div
         className="fixed inset-0 flex items-center justify-center p-4"
@@ -31,7 +42,7 @@ export default function AccountTools() {
             </button>
           </div>
           <p className="text-lg">{auth?.user.username ?? '尚未登录'}</p>
-          {open && <AdministratorPanel key={auth?.user.userId || 'anonymous'} token={expired ? undefined : auth?.token} />}
+          {administrator && <AdministratorPanel key={auth?.user.userId || 'anonymous'} token={expired ? undefined : auth?.token} />}
         </Dialog.Panel>
       </div>
     </Dialog>

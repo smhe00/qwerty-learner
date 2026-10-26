@@ -43,3 +43,41 @@ Initial validation issues were diagnosed rather than bypassed: localhost request
 - Changed test files: account-continuity, desktop-account, mobile-account, mobile-account-writer, mobile-account-pages, edgeone-s1-cloud-accounts and etest-account-progress under tests/e2e.
 - Final build passed in 25.66 seconds; final scoped ESLint exited 0. Local build log is retained in ignored test-results/account-direct-build.log.
 - This report is a separate documentation commit after the implementation SHA. Push destination is origin product/main, with normal fast-forward protection.
+
+## 2026-10-26 follow-up: administrators only
+
+The owner answered the pending preference: only administrators should get the auxiliary popup, ordinary users should not. The old conservative default above is superseded.
+
+- Correction commit: b89d8a94b957d49705beb2c53a35ce77d897e7b4.
+- Both the optional entry and dialog require server GET /api/admin/access to return administrator === true. Loading, failures and malformed values default to hidden. Anonymous and expired credentials make no permission request.
+- Each opening mounts a fresh verification component: a prior successful check is not reused to display the next dialog. Programmatic/stale open events also undergo the permission check; denied requests close silently without mounting the visible panel or fetching the retention policy.
+- Permission results are bound to the current token and cancelled on cleanup. This only gates presentation; all existing server administrator checks, confirmation prompts, S1 guards and direct account navigation remain unchanged.
+- Focused browser test: NO_PROXY=127.0.0.1,localhost node node_modules/@playwright/test/cli.js test --config=tests/e2e/idle-cleanup.config.ts account-continuity.spec.ts --grep tools --output=test-results/admin-only: **7/7 passed**. Desktop/mobile admin access; ordinary, unavailable, malformed, expired and anonymous denial, including DOM mutation observation for popup flashes and continued direct account navigation.
+- Scoped ESLint and git diff --check passed. Pages-mode build passed in 24.84 seconds with existing dependency/chunk warnings. Log: ignored test-results/admin-only-build.log. No live Cloud/Blob, real account or production validation performed.
+
+### Delivery status
+
+Code and local validation complete; mainline integration deferred to preserve the active release candidate. During this follow-up, origin/product/main advanced to 98697131d09393a479f30da9eb9b117e8117a0e7, explicitly reversing the original UI commit because main/etest divergence had invalidated the other task's release gate. This follow-up does not counteract that release isolation on main.
+
+The complete corrected UI is preserved on codex/account-admin-tools-20261026: branch base 98697131, original direct-entry restoration 3452f2e8, administrator-only correction b89d8a94. Prepare a draft PR to product/main for integration after the independent release/restoration step; reconcile the other task's quick-sync/Header changes without restoring the intermediate login overview. No product/main, master or edgeone-test push from this follow-up.
+
+## Integration onto cbb20842 (supersedes old branch snapshot)
+
+Owner requested preserving cbb20842 and importing only the administrator-only restriction/tests after the current release finishes. Merged cbb20842a85c23c8a25ac02cebec79349b37e66c into the PR branch with a normal merge, without rewriting history. Resolved Header and app to exact mainline contents; kept the administrator-only AccountTools/CloudSyncSetting/hook; combined mainline account/sync-menu assertions with the negative permission tests. All release task pointers/reports and AGENTS changes from main are retained.
+
+Compared with cbb20842, runtime changes are ONLY src/sync/AccountTools.tsx, src/sync/CloudSyncSetting.tsx and new src/sync/use-administrator-access.ts. Test changes are only tests/e2e/account-continuity.spec.ts. The only other differences are this task's task/report files. app.tsx, Header, index.tsx/css, Learn, Typing, Mobile shell/css, account-navigation, S1 account transactions and writer-lock implementation match main. Backend unchanged. Exact comparison exit=0 for preserved paths.
+
+Scoped ESLint and diff checks passed. Combined Pages-mode build passed in 34.05 seconds (test-results/admin-main-build.log, ignored). Combined browser regression passed 20/20 in 1.3 minutes: mainline 15 continuity cases plus 5 denial cases. Command: NO_PROXY=127.0.0.1,localhost node node_modules/@playwright/test/cli.js test --config=tests/e2e/idle-cleanup.config.ts account-continuity.spec.ts --output=test-results/admin-main-integration. No Cloud/Blob or production validation is claimed.
+
+At preparation time UNIFIED-ACCOUNT-UI-RELEASE-20261026 remains IN_PROGRESS on main cbb20842. Update only PR #45's branch now. Defer mainline merge until the release is documented complete and deployment evidence is consistent, then fetch/reconcile any further development changes, preserve the narrow scope, satisfy applicable PR checks and merge to product/main only. No etest/master write. Pause the follow-up after successful merge and notify once; unchanged waiting states stay quiet.
+
+
+## Administrator dropdown entry (latest owner scope)
+
+The desktop account dropdown now adds Cloud account tools after Account management. The menu verifies administrator access only while open, with valid credentials and cloud enabled; pending, ordinary, failed, malformed, expired and anonymous access stays hidden. Clicking closes the menu, restores its toggle as the focus target and invokes the existing dialog event. The popup still independently rechecks authorization on every opening. The existing Cloud Sync settings entry remains. Account management still uses the same direct guarded document replacement; quick sync, mobile UI, backend, auth, writer ownership and cloud writes are unchanged.
+
+This supersedes the earlier statement that Header exactly matches cbb20842: only the administrator menu item, permission hook invocation and associated imports are now added there. This follow-up otherwise modifies only account-continuity tests and this task/report. Main remains cbb20842a85c23c8a25ac02cebec79349b37e66c after explicit fetch.
+
+Validation: scoped Header ESLint, Prettier formatting and git diff --check passed. Pages-mode build passed in 32.96 seconds with existing dependency/chunk-size warnings (ignored test-results/admin-dropdown-build.log). Full account-continuity browser suite passed 26/26 in 1.5 minutes (NO_PROXY=127.0.0.1,localhost node node_modules/@playwright/test/cli.js test --config=tests/e2e/idle-cleanup.config.ts account-continuity.spec.ts --output=test-results/admin-dropdown). Covers dropdown admin popup/close/focus, fresh permission validation and revoked permission rejection, mobile/desktop denial for five states, direct account navigation, unchanged quick-sync availability, native/fallback ownership and preserved records. Synthetic API fixtures only, no real Cloud/Blob or production claim.
+
+Push this follow-up to the existing draft PR #45 only. The unified release remains IN_PROGRESS; keep the previously authorized deferred product/main merge, updating its follow-up scope to retain the new Header menu entry. No edgeone-test/master push or release.

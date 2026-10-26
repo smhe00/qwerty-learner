@@ -147,8 +147,9 @@ test('responsive home and data navigation keep the document and learning history
   expect(await page.evaluate(() => (window as any).__backupHarness.db.wordRecords.toArray())).toEqual(before)
 })
 
-for (const mobile of [true, false]) {
-  test((mobile ? 'mobile' : 'desktop') + ' cloud tools remain an explicit secondary entry without account switching', async ({ page }) => {
+for (const surface of ['mobile', 'desktop', 'menu']) {
+  const mobile = surface === 'mobile'
+  test(surface + ' cloud tools remain an explicit secondary entry without account switching', async ({ page }) => {
     await harness(page)
     await page.evaluate(async () => {
       const h = (window as any).__backupHarness
@@ -164,25 +165,33 @@ for (const mobile of [true, false]) {
       await h.initializeLegacyWorkspace({ kind: 'account', accountId: 'tools-owner' })
     })
     let toolsRequests = 0
+    let accessRequests = 0
+    let allowed = true
     await page.route('**/api/**', (route) => {
       const path = new URL(route.request().url()).pathname
-      if (path.endsWith('/access') || path.endsWith('/account-policy')) toolsRequests++
+      if (path.endsWith('/account-policy')) toolsRequests++
+      if (path.endsWith('/access')) accessRequests++
       if (path === '/api/auth/me') return route.fulfill({ json: { ok: true, user: { userId: 'tools-owner', username: 'tools-user' } } })
       return route.fulfill({
-        json: new URL(route.request().url()).pathname.endsWith('/access') ? { administrator: true } : { enabled: true },
+        json: new URL(route.request().url()).pathname.endsWith('/access') ? { administrator: allowed } : { enabled: true },
       })
     })
     await page.goto(mobile ? '/mobile/data' : '/learn?account-tools-test=1')
-    if (!mobile) {
+    if (surface === 'desktop') {
       await page.getByRole('button', { name: '打开设置对话框' }).click()
       await page.getByRole('tab', { name: '数据与备份' }).click()
     }
-    await page.getByText('更多同步选项', { exact: true }).click()
-    await expect(page.getByRole('button', { name: '云端账号工具', exact: true })).toBeVisible()
+    if (surface === 'menu') await page.locator('[data-account-menu-toggle]').click()
+    else await page.getByText('更多同步选项', { exact: true }).click()
+    const toolsEntry = page.getByRole(surface === 'menu' ? 'menuitem' : 'button', { name: '云端账号工具', exact: true })
+    await expect(toolsEntry).toBeVisible()
     const origin = await page.evaluate(() => performance.timeOrigin)
     expect(toolsRequests).toBe(0)
-    await page.getByRole('button', { name: '云端账号工具', exact: true }).click()
+    const checkedBeforeOpening = accessRequests
+    await toolsEntry.click()
     await expect(page.locator('[data-account-tools]')).toBeVisible()
+    expect(accessRequests).toBeGreaterThan(checkedBeforeOpening)
+    if (surface === 'menu') await expect(page.locator('[data-account-menu]')).toBeHidden()
     await page.getByText('管理工具', { exact: true }).click()
     await page.getByRole('button', { name: '预览清理名单' }).focus()
     await expect(page.getByRole('button', { name: '预览清理名单' })).toBeFocused()
@@ -190,6 +199,88 @@ for (const mobile of [true, false]) {
     await expect(page.getByRole('button', { name: '登录与账号管理' })).toHaveCount(0)
     await page.getByRole('button', { name: '关闭账号工具', exact: true }).click()
     expect(await page.evaluate(() => performance.timeOrigin)).toBe(origin)
-    await expect(page.locator(mobile ? '[data-mobile-data]' : '.focus-settings-dialog')).toBeVisible()
+    await expect(
+      page.locator(mobile ? '[data-mobile-data]' : surface === 'menu' ? '[data-account-entry]' : '.focus-settings-dialog'),
+    ).toBeVisible()
+    if (surface === 'menu') {
+      await expect(page.locator('[data-account-menu-toggle]')).toBeFocused()
+      await page.keyboard.press('Enter')
+      await expect(toolsEntry).toBeVisible()
+      // The menu's positive check must not authorize a later revoked popup.
+      allowed = false
+      const beforeDeniedOpening = accessRequests
+      await toolsEntry.click()
+      await expect.poll(() => accessRequests).toBeGreaterThan(beforeDeniedOpening)
+      await expect(page.locator('[data-account-tools]')).toHaveCount(0)
+      await page.locator('[data-account-menu-toggle]').click()
+      await expect(toolsEntry).toHaveCount(0)
+      await page.getByRole('menuitem', { name: '账号管理', exact: true }).click()
+      await expect(page.locator('[data-desktop-account]')).toBeVisible()
+      await expect(page).toHaveURL(/\/\?s1-account=manage$/)
+      await expect(page.locator('[data-account-tools], [data-account-overview]')).toHaveCount(0)
+    }
   })
+}
+
+for (const mobile of [true, false]) {
+  for (const role of ['ordinary', 'failed', 'malformed', 'expired', 'anonymous']) {
+    test((mobile ? 'mobile ' : 'desktop ') + role + ' cannot see or open administrator tools', async ({ page }) => {
+      await harness(page)
+      await page.evaluate(async (role) => {
+        const h = (window as any).__backupHarness
+        await h.seed()
+        if (role !== 'anonymous')
+          localStorage.setItem(
+            'qwerty.cloudAuth.v1',
+            JSON.stringify({
+              token: 'ordinary-fixture',
+              expiresAt: Math.floor(Date.now() / 1000) + (role === 'expired' ? -60 : 3600),
+              user: { userId: 'ordinary-owner', username: 'ordinary-user' },
+            }),
+          )
+        await h.initializeLegacyWorkspace(role === 'anonymous' ? h.ANONYMOUS : { kind: 'account', accountId: 'ordinary-owner' })
+      }, role)
+      let policyRequests = 0
+      let accessRequests = 0
+      await page.route('**/api/**', (route) => {
+        const path = new URL(route.request().url()).pathname
+        if (path === '/api/admin/access') {
+          accessRequests++
+          if (role === 'failed') return route.fulfill({ status: 503, json: { error: 'unavailable' } })
+          return route.fulfill({ json: { administrator: role === 'malformed' ? 'true' : false } })
+        }
+        if (path === '/api/account-policy') policyRequests++
+        return route.fulfill({ json: { ok: true, user: { userId: 'ordinary-owner', username: 'ordinary-user' }, enabled: true } })
+      })
+      await page.goto(mobile ? '/mobile/data' : '/learn')
+      await expect(page.locator(mobile ? '[data-mobile-data]' : '[data-account-entry]')).toBeVisible()
+      if (mobile) await page.getByText('更多同步选项', { exact: true }).click()
+      else if (role !== 'anonymous') await page.locator('[data-account-menu-toggle]').click()
+      if (!['expired', 'anonymous'].includes(role)) await expect.poll(() => accessRequests).toBe(1)
+      await expect(page.getByText('云端账号工具', { exact: true })).toHaveCount(0)
+      // Even a stale/programmatic open event must not mount a normal-user dialog.
+      await page.addScriptTag({
+        type: 'module',
+        content: `
+      import { openAccountDialog, isAccountDialogOpen } from '/src/sync/account-dialog-events.ts';
+      window.__accountToolsOpen = isAccountDialogOpen;
+      window.__accountToolsFlashed = false;
+      new MutationObserver(() => { if (document.querySelector('[data-account-tools]')) window.__accountToolsFlashed = true }).observe(document.body, { childList: true, subtree: true });
+      openAccountDialog();
+    `,
+      })
+      await expect
+        .poll(() => page.evaluate(() => typeof (window as any).__accountToolsOpen === 'function' && !(window as any).__accountToolsOpen()))
+        .toBe(true)
+      await expect(page.locator('[data-account-tools]')).toHaveCount(0)
+      expect(await page.evaluate(() => (window as any).__accountToolsFlashed)).toBe(false)
+      expect(policyRequests).toBe(0)
+      if (['expired', 'anonymous'].includes(role)) expect(accessRequests).toBe(0)
+      if (mobile) await page.getByRole('button', { name: '管理账号', exact: true }).click()
+      else if (role === 'anonymous') await page.locator('[data-account-entry]').click()
+      else await page.getByRole('menuitem', { name: '账号管理', exact: true }).click()
+      await expect(page.locator(mobile ? '[data-mobile-account]' : '[data-desktop-account]')).toBeVisible()
+      await expect(page.locator('[data-account-tools], [data-account-overview]')).toHaveCount(0)
+    })
+  }
 }

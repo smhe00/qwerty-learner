@@ -2,10 +2,12 @@ import logo from '@/assets/logoData'
 import QuickSyncAction from '@/components/QuickSyncAction'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import { infoPanelStateAtom } from '@/store'
+import { openAccountDialog } from '@/sync/account-dialog-events'
 import { openAccountManagement } from '@/sync/account-navigation'
 import { loadAuth } from '@/sync/auth'
+import { useAdministratorAccess } from '@/sync/use-administrator-access'
 import { useSetAtom } from 'jotai'
-import { ChevronDown, Settings2, UserCircle2 } from 'lucide-react'
+import { ChevronDown, Settings2, ShieldCheck, UserCircle2 } from 'lucide-react'
 import type { PropsWithChildren } from 'react'
 import type React from 'react'
 import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
@@ -88,6 +90,9 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
   const auth = loadAuth({ preserveExpired: true })
   const canUseAccount = REACT_APP_DEPLOY_ENV !== 'pages'
   const accountExpired = !!auth && auth.expiresAt * 1000 <= Date.now()
+  const { administrator } = useAdministratorAccess(
+    accountMenuOpen && canUseAccount && import.meta.env.VITE_QWERTY_SYNC_DISABLED !== 'true' && !accountExpired ? auth?.token : undefined,
+  )
 
   const openAppreciation = useCallback(() => {
     setInfoPanelState((state) => ({ ...state, donate: true }))
@@ -213,6 +218,23 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
                     <Settings2 className="h-[19px] w-[19px]" aria-hidden="true" />
                     <span>账号管理</span>
                   </button>
+                  {administrator && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        clearMenuTimers()
+                        setAccountMenuOpen(false)
+                        accountMenuRef.current?.querySelector<HTMLButtonElement>('[data-account-menu-toggle]')?.focus()
+                        openAccountDialog()
+                      }}
+                    >
+                      <ShieldCheck className="h-[19px] w-[19px]" aria-hidden="true" />
+                      <span>云端账号工具</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>

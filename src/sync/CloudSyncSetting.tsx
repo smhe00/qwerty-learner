@@ -8,6 +8,7 @@ import { getSyncV2Meta } from './api'
 import { loadAuth } from './auth'
 import { blockAutoSyncEnabled, setBlockAutoSyncEnabled } from './learn-block-sync'
 import type { RemoteSyncMeta } from './types'
+import { useAdministratorAccess } from './use-administrator-access'
 import { v4FailureCode } from './v4-failure-diagnostics'
 import { workspaceRegistryPort } from './workspace-vault'
 import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
@@ -37,6 +38,8 @@ export default function CloudSyncSetting({
     import.meta.env.VITE_QWERTY_SYNC_DISABLED !== 'true' &&
     REACT_APP_DEPLOY_ENV !== 'pages' &&
     (import.meta.env.DEV || import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true')
+
+  const { administrator } = useAdministratorAccess(enabled && loggedIn && !expired ? auth?.token : undefined)
 
   useEffect(() => {
     let cancelled = false
@@ -168,17 +171,19 @@ export default function CloudSyncSetting({
               >
                 下载云端备份
               </button>
-              <button
-                type="button"
-                className="my-btn-primary disabled:opacity-50"
-                disabled={disabled || expired}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  openAccountDialog()
-                }}
-              >
-                云端账号工具
-              </button>
+              {administrator && (
+                <button
+                  type="button"
+                  className="my-btn-primary disabled:opacity-50"
+                  disabled={disabled || expired}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    openAccountDialog()
+                  }}
+                >
+                  云端账号工具
+                </button>
+              )}
               <button
                 type="button"
                 className="text-sm underline disabled:opacity-50"

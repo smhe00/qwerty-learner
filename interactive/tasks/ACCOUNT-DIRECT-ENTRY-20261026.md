@@ -12,3 +12,19 @@
 - Secondary functionality: retain the old administrator/retention tools as an explicit Cloud Sync > More options > Cloud account tools entry; no authentication action in that dialog. The user was asked asynchronously; after no preference was supplied, preserve existing functionality as the conservative default.
 - Integration base: 521240e4c15f7a8bab460de101ea4f76fd190ef7 (fast-forwarded during work; only unrelated release tests/report changed).
 - Report: interactive/reports/ACCOUNT-DIRECT-ENTRY-20261026-report.md.
+
+## Owner clarification and concurrent release isolation
+
+- Owner clarified: only administrators may see the auxiliary popup; ordinary users must never see it. This supersedes the earlier default of exposing its entry to every authenticated workspace.
+- Implementation b89d8a94b957d49705beb2c53a35ce77d897e7b4 gates both the entry and each popup opening on a strict server administrator=true result. Authenticated direct account navigation remains unchanged.
+- Main 98697131 temporarily reverted the original direct-entry change for a frozen independent release candidate. Do not undo that isolation while it is under qualification.
+- Delivery branch: codex/account-admin-tools-20261026, based on 98697131, with original direct entry restored in 3452f2e8 and the administrator restriction above. Merge after the independent release task permits restoring UI. No master/etest promotion authorized by this task.
+
+## Final integration scope (owner instruction)
+
+Preserve cbb20842 new UI, PC sync menu, mobile quick sync, synchronization return behavior and direct account navigation. PR #45 must add only administrator-only tools visibility and its tests, plus this task's report. Merge into product/main only AFTER the active unified release task finishes; no master/edgeone-test promotion. Scheduled follow-up is authorized by the owner's request to wait and merge later.
+
+
+## Administrator dropdown entry follow-up
+
+Owner additionally requested placing Cloud account tools in the desktop account dropdown, visible only to administrators and opening the existing popup. Keep the original Cloud Sync settings entry, direct account management, quick sync and all safety mechanisms unchanged. This extends the narrow PR scope to Header/index.tsx. Delivery remains PR #45 after the current unified release completes; no production/staging promotion.
