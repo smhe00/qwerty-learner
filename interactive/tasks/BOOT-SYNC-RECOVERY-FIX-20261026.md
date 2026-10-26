@@ -1,6 +1,6 @@
 ---
 task_id: BOOT-SYNC-RECOVERY-FIX-20261026
-status: IN_PROGRESS
+status: PARTIAL
 executor: Codex
 target_branch: product/main
 base_commit: db8f7b76e58cf79a275d1d75b9d2c8de02059bd5
