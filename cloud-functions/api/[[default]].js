@@ -1,3 +1,4 @@
+import { createFeedbackService } from '../_shared/feedback.js'
 /* eslint-env node */
 import { createRequestDiagnostics } from '../_shared/request-diagnostics.js'
 import { isIsolatedEtestPilotOrigin } from '../_shared/etest-pilot-origin.js'
@@ -278,7 +279,7 @@ async function onUncoordinatedRequest(context) {
       headers: {
         ...cors,
         'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-        'Access-Control-Allow-Headers': 'Authorization,Content-Type,X-Qwerty-Payload-Sha256,X-Qwerty-Part-Sha256,X-Qwerty-Part-Index,X-Qwerty-Part-Count,X-Qwerty-Base-Revision,X-Qwerty-Logical-Fingerprint,X-Qwerty-Device-Id',
+        'Access-Control-Allow-Headers': 'Authorization,Content-Type,X-Feedback-Key,X-Qwerty-Payload-Sha256,X-Qwerty-Part-Sha256,X-Qwerty-Part-Index,X-Qwerty-Part-Count,X-Qwerty-Base-Revision,X-Qwerty-Logical-Fingerprint,X-Qwerty-Device-Id',
         'Access-Control-Max-Age': '86400',
       },
     })
@@ -349,6 +350,13 @@ async function onUncoordinatedRequest(context) {
       adminUserId: administrator.userId, ...idleDeploymentOptions(env),
     })
     const service = makeService(env, storage, idle, administrator, diagnostics)
+    if (path === '/feedback' || path.startsWith('/feedback/')) {
+      const result = await createFeedbackService({
+        store: getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }),
+        backend: service, administrator, rateStorage: storage,
+      }).handle({ request, clientIp: context.clientIp, readBody })
+      return json({ ok: true, ...result }, 200, cors)
+    }
     if (path === '/maintenance/idle' && request.method === 'POST') {
       // Any live account may signal maintenance, but never chooses an account,
       // cursor or deletion policy. This request is separate from login/sync.

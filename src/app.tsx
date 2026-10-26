@@ -1,3 +1,4 @@
+import FeedbackCenter from './feedback/FeedbackCenter'
 import Loading from './components/Loading'
 import NavigationOverlay, { AUXILIARY_PATHS, getAuxiliaryBackground } from './components/NavigationOverlay'
 import QuickSyncNotice from './components/QuickSyncNotice'
@@ -226,6 +227,7 @@ function Root() {
         </Suspense>
         <AccountTools />
         <QuickSyncNotice />
+        <FeedbackCenter />
       </BrowserRouter>
     </React.StrictMode>
   )

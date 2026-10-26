@@ -1,0 +1,9 @@
+# Lightweight private feedback
+Status: REVIEW. Executor: Codex-lightweight-feedback.
+Base: 875c82a2c404b441dc582aa3a018288edeed1f9a.
+
+Owner approved a lightweight feedback center: submitters see their own feedback, administrators reply, anonymous users can continue through a browser-held private credential/recovery link. No public wall, attachments, notifications or learning-sync integration.
+
+Independent task: leave CURRENT_TASK and the Circle executor untouched. Reuse existing verified account/admin authorization and private Blob. PC account menu + settings; mobile menu; shared accessible dialog. Pages must not issue cloud requests. Preserve learning state on open/close.
+
+Acceptance: owner isolation, invalid/revoked credentials, administrator authorization, private guest recovery, bounded input/listing/rate limits, concurrent replies, lost-response idempotency across refresh, deletion scope, PC/mobile UI, no learning sync on feedback navigation. Run scoped checks and push product/main only. No etest/master promotion in this task.

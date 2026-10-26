@@ -1,3 +1,4 @@
+import { openFeedback } from '@/feedback/client'
 import logo from '@/assets/logoData'
 import QuickSyncAction from '@/components/QuickSyncAction'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
@@ -218,6 +219,12 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
                     <Settings2 className="h-[19px] w-[19px]" aria-hidden="true" />
                     <span>账号管理</span>
                   </button>
+                  <button type="button" role="menuitem" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => {
+                    clearMenuTimers(); setAccountMenuOpen(false)
+                    typing?.dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })
+                    accountMenuRef.current?.querySelector<HTMLButtonElement>('[data-account-menu-toggle]')?.focus()
+                    openFeedback()
+                  }}>反馈与建议</button>
                   {administrator && (
                     <button
                       type="button"

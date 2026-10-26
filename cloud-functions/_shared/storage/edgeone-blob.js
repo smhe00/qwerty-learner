@@ -811,6 +811,9 @@ export function createEdgeOneBlobStorage(store) {
       ])
       const pendingBinaryV4PartsDeleted =
         await deletePrefix(`users/${userId}/v4-http-parts/v3/`)
+      // Private feedback content belongs to the account and is erased before credentials.
+      await deletePrefix(`users/${userId}/feedback/`)
+      await deletePrefix(`feedback/v1/index/a-${userId}/`)
       // Session deletions are postponed until all user-owned records are
       // gone. Password auth is last, followed by account identity.
       const [sessionsDeleted, independentSessionsDeleted] =
