@@ -482,7 +482,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                 </p>
               )}
               {loaded && !items.length && <p className="circle-muted">创建自己的圈子，或输入朋友分享的口令。</p>}
-              <div className="circle-list">
+              <div className="circle-list" data-count={items.length}>
                 {items.map((item) => (
                   <button
                     key={item.circleId}

@@ -854,3 +854,29 @@
     flex-shrink: 0;
   }
 }
+@container (max-width:720px) {
+  .circle-list[data-count='1'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .circle-list[data-count='2'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .circle-list[data-count='1'] .circle-list-item {
+    min-height: 62px;
+    align-items: center;
+  }
+  .circle-list[data-count='1'] .circle-avatar {
+    display: grid;
+  }
+  .circle-ui .circle-checkin label {
+    flex-direction: row;
+    flex: 1;
+    max-width: none;
+    min-width: 0;
+    white-space: nowrap;
+    gap: 6px;
+  }
+  .circle-ui .circle-checkin input {
+    width: 54px;
+  }
+}
