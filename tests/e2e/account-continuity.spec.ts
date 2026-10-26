@@ -148,7 +148,7 @@ for (const mobile of [true, false]) {
     let toolsRequests = 0
     await page.route('**/api/**', (route) => {
       const path = new URL(route.request().url()).pathname
-      if (path.endsWith('/access') || path.endsWith('/account-policy')) toolsRequests++
+      if (path.endsWith('/account-policy')) toolsRequests++
       if (path === '/api/auth/me') return route.fulfill({ json: { ok: true, user: { userId: 'tools-owner', username: 'tools-user' } } })
       return route.fulfill({
         json: new URL(route.request().url()).pathname.endsWith('/access') ? { administrator: true } : { enabled: true },
@@ -173,5 +173,63 @@ for (const mobile of [true, false]) {
     await page.getByRole('button', { name: '关闭账号工具', exact: true }).click()
     expect(await page.evaluate(() => performance.timeOrigin)).toBe(origin)
     await expect(page.locator(mobile ? '[data-mobile-data]' : '.focus-settings-dialog')).toBeVisible()
+  })
+}
+
+for (const role of ['ordinary', 'failed', 'malformed', 'expired', 'anonymous']) {
+  test(role + ' cannot see or open administrator tools', async ({ page }) => {
+    await harness(page)
+    await page.evaluate(async (role) => {
+      const h = (window as any).__backupHarness
+      await h.seed()
+      if (role !== 'anonymous')
+        localStorage.setItem(
+          'qwerty.cloudAuth.v1',
+          JSON.stringify({
+            token: 'ordinary-fixture',
+            expiresAt: Math.floor(Date.now() / 1000) + (role === 'expired' ? -60 : 3600),
+            user: { userId: 'ordinary-owner', username: 'ordinary-user' },
+          }),
+        )
+      await h.initializeLegacyWorkspace(role === 'anonymous' ? h.ANONYMOUS : { kind: 'account', accountId: 'ordinary-owner' })
+    }, role)
+    let policyRequests = 0
+    let accessRequests = 0
+    await page.route('**/api/**', (route) => {
+      const path = new URL(route.request().url()).pathname
+      if (path === '/api/admin/access') {
+        accessRequests++
+        if (role === 'failed') return route.fulfill({ status: 503, json: { error: 'unavailable' } })
+        return route.fulfill({ json: { administrator: role === 'malformed' ? 'true' : false } })
+      }
+      if (path === '/api/account-policy') policyRequests++
+      return route.fulfill({ json: { ok: true, user: { userId: 'ordinary-owner', username: 'ordinary-user' }, enabled: true } })
+    })
+    await page.goto('/mobile/data')
+    await expect(page.locator('[data-mobile-data]')).toBeVisible()
+    await page.getByText('更多同步选项', { exact: true }).click()
+    if (!['expired', 'anonymous'].includes(role)) await expect.poll(() => accessRequests).toBe(1)
+    await expect(page.getByRole('button', { name: '云端账号工具', exact: true })).toHaveCount(0)
+    // Even a stale/programmatic open event must not mount a normal-user dialog.
+    await page.addScriptTag({
+      type: 'module',
+      content: `
+      import { openAccountDialog, isAccountDialogOpen } from '/src/sync/account-dialog-events.ts';
+      window.__accountToolsOpen = isAccountDialogOpen;
+      window.__accountToolsFlashed = false;
+      new MutationObserver(() => { if (document.querySelector('[data-account-tools]')) window.__accountToolsFlashed = true }).observe(document.body, { childList: true, subtree: true });
+      openAccountDialog();
+    `,
+    })
+    await expect
+      .poll(() => page.evaluate(() => typeof (window as any).__accountToolsOpen === 'function' && !(window as any).__accountToolsOpen()))
+      .toBe(true)
+    await expect(page.locator('[data-account-tools]')).toHaveCount(0)
+    expect(await page.evaluate(() => (window as any).__accountToolsFlashed)).toBe(false)
+    expect(policyRequests).toBe(0)
+    if (['expired', 'anonymous'].includes(role)) expect(accessRequests).toBe(0)
+    await page.getByRole('button', { name: '管理账号', exact: true }).click()
+    await expect(page.locator('[data-mobile-account]')).toBeVisible()
+    await expect(page.locator('[data-account-tools], [data-account-overview]')).toHaveCount(0)
   })
 }
