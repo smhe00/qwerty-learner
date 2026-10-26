@@ -3,6 +3,8 @@ import MobileDailyProgress from './MobileDailyProgress'
 import './mobile-app.css'
 import { useMobileCheckpoint } from './useMobileCheckpoint'
 import { useMobileDailyProgress } from './useMobileDailyProgress'
+import { circleUnavailable, currentCircleAuth } from '@/circle/client'
+import { useCircleAuth } from '@/circle/useCircleAuth'
 import logo from '@/assets/logo.svg'
 import QuickSyncAction from '@/components/QuickSyncAction'
 import { currentDictInfoAtom } from '@/store'
@@ -10,12 +12,15 @@ import { accountManagementHref, openAccountManagement } from '@/sync/account-nav
 import { loadAuth } from '@/sync/auth'
 import { secureLearningEntry } from '@/sync/learning-sync-policy'
 import { useAtomValue } from 'jotai'
-import { BookOpen, ChevronRight, CircleUserRound, Cloud, LayoutGrid, Medal, MessageSquare, Settings2 } from 'lucide-react'
+import { BookOpen, ChevronRight, CircleUserRound, Cloud, LayoutGrid, Medal, MessageSquare, Settings2, Users } from 'lucide-react'
 import type { MouseEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 /** Dedicated menu-first mobile shell. Every displayed entry has a real route. */
 export default function MobilePage() {
+  const navigate = useNavigate()
+  const circleAuth = useCircleAuth()
+  const circleDisabled = !circleAuth || !!circleUnavailable()
   const { checkpoint } = useMobileCheckpoint()
   const daily = useMobileDailyProgress()
   const dictionary = useAtomValue(currentDictInfoAtom)
@@ -88,6 +93,13 @@ export default function MobilePage() {
 
         <section className="mobile-home-menu" aria-label="功能菜单">
           <h2>更多功能</h2>
+          <button type="button" className="mobile-menu-item circle-mobile-entry" disabled={circleDisabled}
+            aria-label={circleDisabled ? "圈子（登录后可用）" : "打开圈子"}
+            onClick={() => { if (currentCircleAuth() && !circleUnavailable()) navigate("/mobile/circles") }}>
+            <span className="mobile-menu-icon"><Users size={20} aria-hidden="true" /></span>
+            <span className="mobile-menu-text"><strong>圈子</strong><small>{circleUnavailable() ? "当前版本暂不可用" : circleAuth ? "和同学一起坚持" : "登录后使用"}</small></span>
+            <ChevronRight size={18} aria-hidden="true" className="mobile-menu-chevron" />
+          </button>
           {menus.map((item) => (
             <Link className="mobile-menu-item" to={item.route} key={item.title}>
               <span className="mobile-menu-icon">

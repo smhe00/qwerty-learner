@@ -1,0 +1,73 @@
+name: Circle UI (isolated mocked browser)
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - 'src/circle/**'
+      - 'src/pages/Circle/**'
+      - 'src/components/CircleEntry.tsx'
+      - 'src/components/NavigationOverlay.tsx'
+      - 'src/pages/Typing/components/Switcher/index.tsx'
+      - 'src/pages/Mobile/index.tsx'
+      - 'src/pages/Mobile/mobile-app.css'
+      - 'src/app.tsx'
+      - 'scripts/emit-edgeone-spa-entries.mjs'
+      - 'tests/e2e/circle-ui*'
+      - '.github/workflows/circle-ui-gate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: circle-ui-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Scoped TypeScript audit (existing repository baseline remains visible)
+        shell: bash
+        run: |
+          set +e
+          yarn tsc --noEmit > "$RUNNER_TEMP/circle-ui-types.log" 2>&1
+          result=$?
+          set -e
+          if [ "$result" -ne 0 ]; then
+            if ! grep -q 'error TS' "$RUNNER_TEMP/circle-ui-types.log"; then
+              cat "$RUNNER_TEMP/circle-ui-types.log"
+              exit 1
+            fi
+            if grep -E '^src/(circle/|pages/Circle/|components/CircleEntry[.]tsx|components/NavigationOverlay[.]tsx|pages/Typing/components/Switcher/|pages/Mobile/index[.]tsx|app[.]tsx)' "$RUNNER_TEMP/circle-ui-types.log"; then
+              echo '::error::Circle UI TypeScript diagnostics'
+              exit 1
+            fi
+            echo 'Non-Circle repository TypeScript diagnostics remain outside this scoped check.'
+          fi
+      - name: Scoped lint and build
+        run: |
+          git diff --check
+          yarn eslint src/circle src/components/CircleEntry.tsx src/pages/Circle src/components/NavigationOverlay.tsx src/pages/Typing/components/Switcher/index.tsx src/pages/Mobile/index.tsx src/app.tsx --ext .ts,.tsx
+          yarn build
+          test -f build/circles/index.html
+          test -f build/mobile/circles/index.html
+      - run: npx playwright install --with-deps chromium
+      - name: PC and phone flows with isolated API fixtures
+        run: npx playwright test --config tests/e2e/circle-ui.config.ts
+      - name: Pages no-cloud boundary
+        run: npx playwright test --config tests/e2e/circle-ui-pages.config.ts
+      - name: Retain synthetic screenshots and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: circle-ui-evidence-${{ github.run_id }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 5

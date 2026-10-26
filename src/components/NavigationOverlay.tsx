@@ -13,7 +13,7 @@ export type NavigationOverlayState = {
 }
 
 export const AUXILIARY_PATHS = new Set([
-  '/gallery', '/analysis', '/achievements', '/error-book', '/friend-links',
+  '/gallery', '/analysis', '/achievements', '/error-book', '/friend-links', '/circles',
 ])
 
 export function getAuxiliaryBackground(

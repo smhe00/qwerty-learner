@@ -660,3 +660,6 @@
 .mobile-settings-actions { position: sticky; bottom: 0; padding: 10px 0 max(8px, env(safe-area-inset-bottom)); background: var(--mobile-background); z-index: 1; }
 .mobile-settings-actions .mobile-settings-saved { min-height: 0; margin: 8px 0 0; }
 .mobile-preview-action { display: flex; gap: 8px; width: 100%; margin-top: 18px; }
+
+.mobile-home-menu > .circle-mobile-entry { width: 100%; text-align: left; }
+.circle-mobile-entry:disabled { opacity: .55; cursor: not-allowed; }

@@ -8,6 +8,7 @@ import Setting from '../Setting'
 import SoundSwitcher from '../SoundSwitcher'
 import WordDictationSwitcher from '../WordDictationSwitcher'
 import Tooltip from '@/components/Tooltip'
+import CircleEntry from '@/components/CircleEntry'
 import { isOpenDarkModeAtom, typingTransVisibleAtom } from '@/store'
 import { CTRL } from '@/utils'
 import { useAtom } from 'jotai'
@@ -154,8 +155,8 @@ export default function Switcher({
         </button>
       </Tooltip>
 
-      <Tooltip content={learnMode ? 'Learn 模式暂不可用' : '错题本'}>
-        <ErrorBookButton disabled={learnMode} />
+      <Tooltip content={learnMode ? '圈子 · 登录后可用' : '错题本'}>
+        {learnMode ? <CircleEntry /> : <ErrorBookButton />}
       </Tooltip>
 
       <Tooltip className="h-9 w-9" content="查看数据统计">

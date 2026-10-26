@@ -54,6 +54,7 @@ const AnalysisPage = lazy(() => loadRouteWithRefresh('analysis', loadAnalysisPag
 const GalleryPage = lazy(() => loadRouteWithRefresh('gallery', loadGalleryPage))
 const LearnPage = lazy(() => loadRouteWithRefresh('learn', loadLearnPage))
 const AchievementsPage = lazy(() => loadRouteWithRefresh('achievements', loadAchievementsPage))
+const CirclePage = lazy(() => loadRouteWithRefresh('circles', () => import('./pages/Circle')))
 const MobileHistory = lazy(() => loadRouteWithRefresh('mobile-history', () => import('./pages/Mobile/MobileHistory')))
 const MobileData = lazy(() => loadRouteWithRefresh('mobile-data', () => import('./pages/Mobile/MobileData')))
 
@@ -98,6 +99,7 @@ function DesktopRoutes() {
         <Route path="/analysis" element={<AnalysisPage />} />
         <Route path="/error-book" element={<ErrorBook />} />
         <Route path="/friend-links" element={<FriendLinks />} />
+        <Route path="/circles" element={<CirclePage />} />
         <Route path="/*" element={<Navigate to="/" />} />
       </Routes>
       {isAuxiliary && hasLiveBackground && location.pathname === '/gallery' && (
@@ -118,6 +120,11 @@ function DesktopRoutes() {
       {isAuxiliary && hasLiveBackground && location.pathname === '/error-book' && (
         <NavigationOverlay title="错题本" size="lg">
           <ErrorBook embedded />
+        </NavigationOverlay>
+      )}
+      {isAuxiliary && hasLiveBackground && location.pathname === '/circles' && (
+        <NavigationOverlay title="圈子" size="lg">
+          <CirclePage embedded />
         </NavigationOverlay>
       )}
       {isAuxiliary && hasLiveBackground && location.pathname === '/friend-links' && (
@@ -150,6 +157,8 @@ function ResponsiveRoutes({ isMobile }: { isMobile: boolean }) {
   if (location.pathname === '/mobile/settings') return <MobileSettings />
   const mobilePath = location.pathname.replace(/\/$/, '')
   if (mobilePath === '/mobile/history') return <MobileHistory />
+  if (isMobile && mobilePath === '/circles') return <CirclePage mobile />
+  if (mobilePath === '/mobile/circles') return <CirclePage mobile />
   if (mobilePath === '/mobile/data') return <MobileData />
   if (mobilePath === '/mobile/achievements') return <MobileAchievementsRoute />
   return isMobile ? (

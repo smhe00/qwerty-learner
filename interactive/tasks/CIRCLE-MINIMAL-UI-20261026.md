@@ -1,8 +1,8 @@
 # Minimal PC and mobile Circle UI
-Status: IN_PROGRESS. Executor: Codex-circle-ui.
+Status: REVIEW. Executor: Codex-circle-ui.
 Base: a82f9d95b1fb4c3dc24d77a4951d234fd43d9955.
 
-User asks for simplest usable UI: replace a grey PC button; enable after login; design mobile UI. Use the disabled footer WeChat/community slot for PC Circle entry, and add a Circle menu row to the mobile home. Reuse desktop auxiliary overlay navigation so Learn/Typing remains mounted and paused. Mobile uses a single-column page and existing return navigation. Direct routes must work.
+User asks for simplest usable UI: replace a grey PC button; enable after login; design mobile UI. Owner correction: use the top-toolbar ErrorBook slot only in Learn mode for PC Circle entry; preserve ErrorBook in Typing and leave the footer WeChat/community button unchanged, and add a Circle menu row to the mobile home. Reuse desktop auxiliary overlay navigation so Learn/Typing remains mounted and paused. Mobile uses a single-column page and existing return navigation. Direct routes must work.
 
 MVP: create/join by code, list own circles, view members and seven days, explicit self-reported daily check-in, per-member clap, copy saved invitation, member leave and owner remove/close. No rankings, chat, monthly data or automatic publishing of learning records. Preserve backend contracts and V4/FSRS/local learning data.
 
