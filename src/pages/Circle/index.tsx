@@ -81,6 +81,10 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
   const listEpoch = useRef(0)
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
+  const activityLocks = useRef(new Set<string>())
+  const [pendingActivity, setPendingActivity] = useState<Set<string>>(new Set())
+  const selection = useRef('')
+  selection.current = selected
   const [pendingLabel, setPendingLabel] = useState('')
   const locked = useRef(false)
   const alive = useRef(true)
@@ -188,6 +192,23 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
     return () => controller.abort()
   }, [auth, selected, day, refresh, needsLogin])
 
+  async function submitActivity(action: () => Promise<string>, key: string) {
+    if (locked.current || activityLocks.current.has(key) || needsLogin) return
+    const circle = selected
+    activityLocks.current.add(key)
+    setPendingActivity(new Set(activityLocks.current))
+    setError('')
+    setNotice('')
+    try {
+      const message = await action()
+      if (alive.current && selection.current === circle) setNotice(message)
+    } catch (reason) {
+      if (selection.current === circle || (reason instanceof CircleError && reason.status === 401)) showError(reason)
+    } finally {
+      activityLocks.current.delete(key)
+      if (alive.current) setPendingActivity(new Set(activityLocks.current))
+    }
+  }
   async function mutate(action: () => Promise<string>, membershipChanged = false, reload = true, label = '正在处理…') {
     if (locked.current || needsLogin) return
     locked.current = true
@@ -714,7 +735,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                     className="circle-card circle-checkin"
                     onSubmit={(event) => {
                       event.preventDefault()
-                      void mutate(checkIn, false, false)
+                      void submitActivity(checkIn, selected + '/' + day + '/checkin')
                     }}
                   >
                     <div>
@@ -741,12 +762,13 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                       className="circle-primary"
                       disabled={
                         disabled ||
+                        pendingActivity.has(selected + '/' + day + '/checkin') ||
                         sentCheckins.has(selected + '/' + day) ||
                         daily.progress.some((p) => p.authorUserId === auth.user.userId && p.completed)
                       }
                     >
                       <Check size={17} aria-hidden="true" />{' '}
-                      {busy && pendingLabel === '正在提交打卡…'
+                      {pendingActivity.has(selected + '/' + day + '/checkin')
                         ? '正在提交…'
                         : sentCheckins.has(selected + '/' + day) ||
                           daily.progress.some((p) => p.authorUserId === auth.user.userId && p.completed)
@@ -766,6 +788,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                       const count = daily.reactionCounts.find((r) => r.authorUserId === member.userId)?.count || 0
                       const me = member.userId === auth.user.userId
                       const liked = sentLikes.has(selected + '/' + day + '/' + member.userId)
+                      const sending = pendingActivity.has(selected + '/' + day + '/like/' + member.userId)
                       const sent = me && sentCheckins.has(selected + '/' + day)
                       return (
                         <li key={member.userId}>
@@ -798,18 +821,24 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                               type="button"
                               className="circle-like"
                               aria-label={
-                                (liked ? '已点赞 ' : '鼓励 ') +
+                                (liked ? '已点赞 ' : sending ? '正在点赞 ' : '鼓励 ') +
                                 memberLabel(
                                   member.userId,
                                   auth.user.userId,
                                   member.nickname || (member.userId === auth.user.userId ? auth.user.username : undefined),
                                 )
                               }
-                              disabled={disabled || !progress || liked}
-                              onClick={() => void mutate(() => like(member.userId), false, false, '正在送出点赞…')}
+                              disabled={disabled || !progress || liked || sending}
+                              onClick={() =>
+                                void submitActivity(() => like(member.userId), selected + '/' + day + '/like/' + member.userId)
+                              }
                             >
-                              <ThumbsUp size={16} aria-hidden="true" />
-                              <span>{liked ? '已赞' : count || '点赞'}</span>
+                              {sending ? (
+                                <RefreshCw size={16} className="circle-spin" aria-hidden="true" />
+                              ) : (
+                                <ThumbsUp size={16} aria-hidden="true" />
+                              )}
+                              <span>{liked ? '已赞' : sending ? '发送中' : count || '点赞'}</span>
                             </button>
                           )}
                         </li>

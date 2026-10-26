@@ -117,3 +117,5 @@ roster.json is outside date partitions and is not deleted by the daily sweep. It
 
 ### Request latency follow-up (2026-10-27)
 The public gateway can pass its verified admission identity once to the v3 service within the same request; it never survives a request and every final authorization is fresh. Initial v3 context also handles read/activity legacy routing. Final storage checks precede a fresh session check. Create no longer rewrites the personal index that it already strongly confirmed before metadata. Each personal record still has the original preceding social-deletion hold and membership writes/deletes retain strong readback. Create/join receipts additionally return current name and role for immediate UI navigation.
+
+Clap validation reads the target's strong membership and daily progress directly; it does not fetch the entire nickname roster. Pre-write session and final caller membership/closure/session checks remain.

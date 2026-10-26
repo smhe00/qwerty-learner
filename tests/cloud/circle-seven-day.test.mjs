@@ -699,3 +699,18 @@ test('gateway reuses only initial admission identity; final read authentication 
   assert.equal((await read()).status,401,'admission identity never survives to another request')
   assert.equal(checks,1)
 })
+
+
+test('clap validates target directly without a roster and rejects revocation before the write', async () => {
+  const f=fixture({etags:true})
+  const c=await pair(f)
+  await publish(f,c.circleId)
+  f.calls.length=0
+  await f.service.reactProgress(OWNER,c.circleId,MEMBER,DAY)
+  assert.equal(f.calls.some(call=>call.op==='list'&&call.prefix.endsWith('/members/')),false)
+  assert.equal(f.calls.some(call=>call.key?.endsWith('/roster.json')),false)
+  f.calls.length=0
+  f.hooks.list=async options=>{if(options.prefix.includes('/days/'))f.revoked.add(OWNER)}
+  await assert.rejects(f.service.reactProgress(OWNER,c.circleId,MEMBER,DAY),code('session_revoked'))
+  assert.equal(f.calls.some(call=>call.op==='set'&&call.key.includes('/days/')),false)
+})

@@ -26,7 +26,7 @@ async function mockCircle(page: Page, initial = true) {
   const model = {
     ownNickname: '', exists: initial, joined: initial, owner: OWNER, name: '每天十分钟', friend: true,
     calls: [] as { path: string; method: string; body: any }[],
-    creates: [] as any[], unauthorized: false, loseCreate: false, delayLike: false, serverPhrase: false, rejectCreate: false, takenPhrase: false, inviteCode: CODE, inviteRevision: 'legacy',
+    creates: [] as any[], unauthorized: false, loseCreate: false, delayLike: false, likeDelayMs: 180, checkinDelayMs: 0, serverPhrase: false, rejectCreate: false, takenPhrase: false, inviteCode: CODE, inviteRevision: 'legacy',
     progress: new Map<string, any[]>([[days()[0], [{ authorUserId: FRIEND, day: days()[0], completed: true, newWords: 6 }]],
       [days()[1], [{ authorUserId: FRIEND, day: days()[1], completed: true, newWords: 2 }]]]),
     likes: new Map<string, number>(),
@@ -86,13 +86,14 @@ async function mockCircle(page: Page, initial = true) {
       await send({ circleId: ID, day, progress: model.progress.get(day) || [],
         reactionCounts: [{ authorUserId: FRIEND, day, count: model.likes.get(day) || 0 }] })
     } else if (path.includes('/progress/') && request.method() === 'POST') {
+      if(model.checkinDelayMs)await new Promise(resolve=>setTimeout(resolve,model.checkinDelayMs))
       const day = path.split('/').pop()!
       const previous = model.progress.get(day) || []
       model.progress.set(day, [...previous.filter((p) => p.authorUserId !== OWNER),
         { authorUserId: OWNER, day, completed: body.completed, newWords: body.newWords }])
       await send({ circleId: ID }, 202)
     } else if (path.endsWith('/claps')) {
-      if (model.delayLike) await new Promise((resolve) => setTimeout(resolve, 180))
+      if (model.delayLike) await new Promise((resolve) => setTimeout(resolve, model.likeDelayMs))
       model.likes.set(body.day, 1)
       await send({ circleId: ID }, 202)
     } else if (path.endsWith('/invite')) {
@@ -480,4 +481,41 @@ test('reopening starts the remembered circle read alongside a slow circle list, 
     await expect(page.getByText('正在加载圈子…',{exact:true})).toBeVisible()
   } finally { release() }
   await expect(page.locator('.circle-list-item')).toHaveCount(1)
+})
+
+
+test('a slow like and check-in have independent pending states and leave browsing available', async ({page}) => {
+  await seed(page)
+  const model=await mockCircle(page)
+  model.delayLike=true;model.likeDelayMs=2500;model.checkinDelayMs=1800;model.serverPhrase=true
+  await page.goto('/circles')
+  await expect(page.getByRole('heading',{name:model.name,exact:true})).toBeVisible({timeout:30000})
+  const before=model.calls.length
+  await page.getByRole('button',{name:'鼓励 同学 def456',exact:true}).click()
+  await expect(page.getByRole('button',{name:'正在点赞 同学 def456',exact:true})).toBeDisabled()
+  await expect(page.getByRole('button',{name:'提交打卡',exact:true})).toBeEnabled()
+  await page.getByRole('button',{name:'提交打卡',exact:true}).click()
+  await expect(page.getByRole('button',{name:'正在提交…',exact:true})).toBeDisabled()
+  await page.getByRole('tab',{name:'邀请同学',exact:true}).click()
+  await expect(page.getByLabel('分享口令',{exact:true})).toBeVisible()
+  await page.getByRole('tab',{name:'动态',exact:true}).click()
+  await expect(page.getByRole('button',{name:'已点赞 同学 def456',exact:true})).toBeDisabled()
+  await expect(page.getByRole('button',{name:'今日已打卡',exact:true})).toBeDisabled()
+  expect(model.calls.slice(before).map(c=>c.method)).toEqual(['POST','POST'])
+})
+
+test('an unconfirmed independent like is never displayed as sent or automatically replayed', async ({page}) => {
+  await seed(page)
+  const model=await mockCircle(page)
+  let likes=0
+  await page.route('**/api/circle/v2/'+ID+'/claps',async route=>{likes++;await route.abort('failed')})
+  await page.goto('/circles')
+  await expect(page.getByRole('button',{name:'鼓励 同学 def456',exact:true})).toBeEnabled({timeout:30000})
+  const readsBefore=model.calls.filter(c=>c.method==='GET').length
+  await page.getByRole('button',{name:'鼓励 同学 def456',exact:true}).click()
+  await expect(page.getByRole('alert')).toContainText('操作结果还未确认')
+  await expect(page.getByRole('button',{name:'已点赞 同学 def456',exact:true})).toHaveCount(0)
+  await expect(page.getByRole('button',{name:'鼓励 同学 def456',exact:true})).toBeEnabled()
+  expect(likes).toBe(1)
+  expect(model.calls.filter(c=>c.method==='GET')).toHaveLength(readsBefore)
 })

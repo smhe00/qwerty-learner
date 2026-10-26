@@ -311,10 +311,13 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
       userId(target)
       const initial = await context(token, id, false, false, false, true)
       if (!initial.info) return legacy.reactProgress(token, id, target, day)
-      const view = await dayView(token, id, day, initial)
-      const user = view.requester
-      if (user === target || !view.progress.some((p) => p.authorUserId === target)) fail(404, 'progress_not_found')
-      return writeActivity(token, id, day, 'clap', { targetUserId: target }, {user, info: view.info})
+      checkDay(day)
+      const [data, joined] = await Promise.all([daily.read(id, day), isMember(id, target)])
+      if (initial.user === target || !joined || !data.progress.some((p) => p.authorUserId === target)) fail(404, 'progress_not_found')
+      // A clap needs only its target's current membership/progress, not every
+      // member's nickname. writeActivity still checks live auth before writing
+      // and final membership/closure/session after writing.
+      return writeActivity(token, id, day, 'clap', { targetUserId: target }, initial)
     },
     async getReactions(token, id, target, day) {
       userId(target)
