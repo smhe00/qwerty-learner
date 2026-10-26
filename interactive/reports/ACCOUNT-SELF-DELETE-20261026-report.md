@@ -1,6 +1,6 @@
 # Ordinary-user self-service account deletion
 
-Status: implementation complete, final integration checks in progress.
+Status: REVIEW — implementation and development integration validation complete.
 Base: 651dd04be11157909bc325749b198de47145f0d0. Separate task from the active Circle UI; its CURRENT_TASK and implementation remain untouched.
 
 ## Cause and behavior
@@ -15,13 +15,24 @@ A token-free, immutable-account-scoped local operation record is written before 
 
 No backend, workspace schema, auth transaction, sync, lease or administrator policy change. The passive-return shortcut is invalidated when a deletion is actually submitted, while ordinary account visits remain passive.
 
-## Validation so far
+## Validation
 
 - New self-deletion suite 24/24 and existing password/login suite 6/6 PASS (30 total, 59.5 seconds). Synthetic APIs only. Includes PC/mobile, native/fallback locks, download and exact archived/anonymous data comparison, admin/failed/malformed/expired/anonymous visibility, cancel/password error, four ambiguous outcomes across reload, fresh admin promotion rejection, backup/journal/exit failures, and confirmed-exit recovery.
 - Existing account-continuity 26/26 PASS (1.7 minutes): direct navigation, settings/admin menu, original records, history, mobile/desktop and native/fallback ownership.
 - Relevant server contracts 3/3 PASS: password-required deletion, environment-managed admin rejection and reserved admin registration protection. Command: node --test --test-name-pattern='account deletion|administrator uses|SMHE.*registration|administrator.*register|registered.*administrator' tests/cloud/backend-core.test.mjs tests/cloud/idle-accounts.test.mjs.
 - Scoped runtime ESLint, formatting and diff checks PASS. Pages-mode build PASS in 51.02 seconds (ignored test-results/account-self-delete-build.log), with existing dependency/chunk warnings.
 - Full tsc reports 147 diagnostics in other files; none in account-self-delete.ts or workspace-account-ui.ts. This is not a globally clean typecheck claim; raw ignored log: test-results/account-self-delete-types.log.
-- Initial synthetic fixture performed a workspace switch and reseeded before entering the guarded page; initialization stalled before loading the new UI. Replaced with the established direct workspace initialization fixture and separately saved/distinct anonymous records. Production guards were not changed or bypassed; the real deletion exit still uses the actual workspace transaction and all ownership/data assertions remain.
+- Initial synthetic fixture performed a workspace switch and reseeded before entering the guarded page; the subsequent protected settings changes invalidated the migration witness and the boot guard correctly refused the fixture before loading the new UI. Replaced with the established direct workspace initialization fixture and separately saved/distinct anonymous records. The dark-theme fixture was similarly corrected to set its theme before sealing the workspace. Production guards were not changed or bypassed; the real deletion exit still uses the actual workspace transaction and all ownership/data assertions remain.
 
-Additional duplicate-submit, narrow/dark-layout, passive-return and integration checks are recorded below when complete. No real user/account deletion, Cloud/Blob validation or production/staging promotion.
+Additional validation and integration evidence is recorded below. No real user/account deletion, Cloud/Blob validation or production/staging promotion.
+
+
+## Final integration and delivery
+
+- Runtime implementation commit: 35130631. Normally merged concurrent main 6cd2c38c (feedback feature and its self-deletion cleanup) without conflicts or changing its files. Later main 45f8faec contains only unrelated feedback tests/report changes.
+- Extended successful deletion tests verify a second submit cannot issue another DELETE while the first response is held, and capture desktop/mobile controls. All four native/fallback desktop/mobile cases pass on the integrated application. Mobile fallback also passes at 320px in dark mode; screenshots visually inspected, no horizontal overflow.
+- Passive account return regression 4/4 PASS (1.4 minutes): desktop/mobile passive return does not restart sync; successful/failed reauthentication does not use the passive shortcut.
+- Built Pages preview 4/4 PASS (8.5 seconds): desktop/mobile preview and legacy records/credentials retain cloud-disabled behavior with no authentication requests or implicit migration.
+- Integrated Pages-mode build PASS in 28.23 seconds; ignored log test-results/account-self-delete-integrated-build.log. No runtime change after that build.
+- 64 distinct browser cases and 3 focused backend contracts passed across the recorded suites; the extended four successful cases are not counted twice. Scoped runtime ESLint and git diff checks pass. Full repository typecheck caveat above remains explicit.
+- Delivery: ordinary non-force development integration/push to product/main. No staging/master update, live account deletion, live Cloud/Blob validation or release. Preserve the other task's CURRENT_TASK pointer and all concurrent mainline changes.

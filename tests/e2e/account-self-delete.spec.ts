@@ -8,12 +8,13 @@ async function harness(page: Page) {
   await page.goto('/tests/e2e/backup-harness.html')
   await expect.poll(() => page.evaluate(() => Boolean((window as any).__backupHarness?.seed))).toBe(true)
 }
-async function seed(page: Page, role = 'ordinary') {
+async function seed(page: Page, role = 'ordinary', dark = false) {
   await harness(page)
   return page.evaluate(
-    async ({ role, account }) => {
+    async ({ role, account, dark }) => {
       const h = (window as any).__backupHarness
       await h.seed()
+      if (dark) localStorage.setItem('isOpenDarkModeAtom', 'true')
       const anonymous = await h.captureWorkingWorkspaceV4(h.ANONYMOUS)
       await h.saveWorkspaceToVault(h.ANONYMOUS, anonymous)
       if (role !== 'anonymous') {
@@ -34,7 +35,7 @@ async function seed(page: Page, role = 'ordinary') {
         auth: localStorage.getItem('qwerty.cloudAuth.v1'),
       }
     },
-    { role, account },
+    { role, account, dark },
   )
 }
 async function inspect(page: Page) {
@@ -70,10 +71,9 @@ for (const mobile of [false, true]) {
         async ({ page, context }, testInfo) => {
           if (fallback)
             await context.addInitScript(() => Object.defineProperty(navigator, 'locks', { configurable: true, value: undefined }))
-          const before = await seed(page)
+          const before = await seed(page, 'ordinary', mobile && fallback)
           if (mobile && fallback) {
             await page.setViewportSize({ width: 320, height: 740 })
-            await page.evaluate(() => localStorage.setItem('isOpenDarkModeAtom', 'true'))
           }
           let access = 0
           const calls: unknown[] = []
