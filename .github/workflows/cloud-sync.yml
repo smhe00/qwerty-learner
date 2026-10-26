@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - product/main
+      - release/production-no-handoff-20261026-v2
     paths:
       - 'cloud-functions/**'
       - 'tests/cloud/**'
@@ -62,6 +63,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Use Node.js 20
         uses: actions/setup-node@v4
@@ -148,6 +151,8 @@ jobs:
       CLOUD_GATE_JOB_PASSED: 'true'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Check live Pages regression and latest main SHA
         env:
           GH_TOKEN: ${{ github.token }}

@@ -30,3 +30,11 @@ Owner selected: preserve current etest; wait until the other thread finishes bef
 ## Resumed after UI completion
 
 Other thread completion verified from merged PR44 plus pinned real UI PASS40245980072. Waiting heartbeat is paused. E48 non503 fresh-profile failure is now classified: original60s test budget expired during successful synchronous immutable-evidence checks; without any replay or intervention the app mounted by the second10s observation sample. Fixed only the two live login wait budgets to180s, retaining all functional/data-safety assertions. Follow report for exact evidence and next same-SHA qualification; production and etest have not yet been replaced by this task.
+
+## Independent v2 candidate after concurrent manual-Sync UI completion
+
+Unless the owner explicitly expands production scope, retain the original instruction to change only production environment isolation. This isolated branch normally descends from db8f7b76, then excludes only PR43/44's unreleased manual-Sync UI. Production runtime differs from9620e33c in EXACTLY runtime-environment.js, session-handoff-deployment-policy.js and session-handoff-gateway.js, with immutable approved blob hashes. Source remains env-dependent: only trusted server branch=etest enables experiment.
+
+The exact named branch release/production-no-handoff-20261026-v2 is the approved source for this one independent qualification. This task overrides the usual main-only source selector, not any acceptance assertion: exact source/actual Pages/actual etest SHA, backend contracts, real browser/Blob, HARD3-device and release-ready still required. The existing main path remains supported. Production-base drift and all other runtime changes are rejected.
+
+Current etest db8f7b76 and its new UI must finish its in-progress checks before any temporary independent candidate deployment; do not mix those results with this candidate. After independent release, restore the complete saved main tree through a new forward commit that retains candidate ancestry; restore etest's UI/experiment and Pages without force pushes. No cross-thread messaging is authorized. Candidate is only locally prepared and NOT yet qualified/published.

@@ -24,6 +24,8 @@ jobs:
       QWERTY_SYNC_BASE_URL: https://t.smhe.cn/
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20.18.0'
@@ -141,8 +143,11 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Require same-SHA passing Pages and etest
         env:
           GH_TOKEN: ${{ github.token }}
           EXPECTED_SHA: ${{ github.sha }}
+          RELEASE_SOURCE_BRANCH: release/production-no-handoff-20261026-v2
         run: node scripts/release-readiness.mjs

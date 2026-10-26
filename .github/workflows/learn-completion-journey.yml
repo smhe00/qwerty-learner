@@ -1,7 +1,7 @@
 name: Learn Completion Journey
 on:
   push:
-    branches: [product/main]
+    branches: [product/main, release/production-no-handoff-20261026-v2]
     paths:
       - 'src/learn/**'
       - 'src/pages/Learn/**'
@@ -20,7 +20,7 @@ on:
       - 'tests/cloud/learn-block-auto-sync.test.mjs'
       - '.github/workflows/learn-completion-journey.yml'
   pull_request:
-    branches: [product/main]
+    branches: [product/main, release/production-no-handoff-20261026-v2]
     paths:
       - 'src/learn/**'
       - 'src/pages/Learn/**'

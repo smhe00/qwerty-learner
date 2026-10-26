@@ -1,0 +1,17 @@
+{
+  "sourceBranch": "release/production-no-handoff-20261026-v2",
+  "productionBase": "9620e33c845f59d31cba107e14dd30754a8c0ca5",
+  "preservedStaging": "db8f7b76e58cf79a275d1d75b9d2c8de02059bd5",
+  "developmentBase": "db8f7b76e58cf79a275d1d75b9d2c8de02059bd5",
+  "ownerAuthorized": true,
+  "deploymentPolicy": "only exact trusted server branch=etest enables handoff",
+  "preserved": [
+    "production completion fix",
+    "production mobile UI",
+    "production idle cleanup"
+  ],
+  "excludedFromProduction": [
+    "unreleased PR43/44 manual Sync UI"
+  ],
+  "knownIssue": "Typed intermittent503 accepted; retain evidence, never replay ambiguous writes. Measured full V4 boot can exceed60s; live tests allow180s with unchanged exact-data assertions."
+}
