@@ -1,12 +1,12 @@
 ---
 protocol_version: '1.1'
-task_id: CIRCLE-CUSTOM-PASSPHRASE-20261026
-task_file: interactive/tasks/CIRCLE-CUSTOM-PASSPHRASE-20261026.md
-report_file: interactive/reports/CIRCLE-CUSTOM-PASSPHRASE-20261026-report.md
+task_id: CIRCLE-OWNER-SPEED-20261027
+task_file: interactive/tasks/CIRCLE-OWNER-SPEED-20261027.md
+report_file: interactive/reports/CIRCLE-OWNER-SPEED-20261027-report.md
 target_branch: product/main
-status: REVIEW
-executor: Codex-circle-passphrase
-claim_base_commit: 495c77329a2e0a5c662d64b37c61e6c0d055d8f6
+status: IN_PROGRESS
+executor: Codex-circle-speed
+claim_base_commit: 3bb25b2ba77adb087332b2c56bd19226e0a75934
 release_to_master: false
 ---
 Owner requests owner-defined Chinese/English Circle passphrases. Continue existing etest delivery; never master.
