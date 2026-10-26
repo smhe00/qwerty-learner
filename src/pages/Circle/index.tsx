@@ -67,6 +67,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
   const [view, setView] = useState<CircleView | null>(null)
   const [daily, setDaily] = useState<CircleDay | null>(null)
   const [refresh, setRefresh] = useState(0)
+  const [listRefresh, setListRefresh] = useState(0)
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
   const locked = useRef(false)
@@ -86,12 +87,13 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
   const days = circleDays()
   const owner = view?.meta.ownerUserId === auth.user.userId
   const hints = readCircleHints(auth.user.userId)
-  const code =
+  const localCode =
     selected && (hints.inviteRevisions?.[selected] || 'legacy') === (view?.meta.inviteRevision || 'legacy')
       ? hints.invites[selected]
       : undefined
+  const code = owner && view?.ownerInviteCode ? view.ownerInviteCode : localCode
   const inviteInput = useRef<HTMLInputElement>(null)
-  const disabled = busy || needsLogin
+  const disabled = busy || needsLogin || loading
 
   useEffect(() => {
     alive.current = true
@@ -120,39 +122,38 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
         if (!controller.signal.aborted) showError(reason)
       })
     return () => controller.abort()
-  }, [auth, refresh, needsLogin])
+  }, [auth, listRefresh, needsLogin])
 
   useEffect(() => {
-    setView(null)
-    setDaily(null)
+    setView((current) => (current?.circleId === selected && current.day === day ? current : null))
+    setDaily((current) => (current?.circleId === selected && current.day === day ? current : null))
     if (!selected || needsLogin) {
       setLoading(false)
       return
     }
     const controller = new AbortController()
     setLoading(true)
-    Promise.all([
-      circleRequest<CircleView>(auth, '/' + selected, { signal: controller.signal }),
-      day === circleDays()[0]
-        ? Promise.resolve(null)
-        : circleRequest<CircleDay>(auth, '/' + selected + '/days/' + day, { signal: controller.signal }),
-    ])
-      .then(([next, history]) => {
+    circleRequest<CircleView>(auth, '/' + selected + (day === circleDays()[0] ? '' : '/days/' + day), { signal: controller.signal })
+      .then((next) => {
         if (controller.signal.aborted) return
         if (
           next.schemaVersion !== 3 ||
+          next.circleId !== selected ||
+          next.day !== day ||
           !Array.isArray(next.members) ||
           !Array.isArray(next.progress) ||
-          !Array.isArray(next.reactionCounts) ||
-          (history && (!Array.isArray(history.progress) || !Array.isArray(history.reactionCounts)))
-        ) {
+          !Array.isArray(next.reactionCounts)
+        )
           throw new CircleError('read_failed')
-        }
         setView(next)
-        setDaily(history || next)
+        setDaily(next)
       })
       .catch((reason) => {
-        if (!controller.signal.aborted) showError(reason)
+        if (!controller.signal.aborted) {
+          setView(null)
+          setDaily(null)
+          showError(reason)
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false)
@@ -160,7 +161,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
     return () => controller.abort()
   }, [auth, selected, day, refresh, needsLogin])
 
-  async function mutate(action: () => Promise<string>) {
+  async function mutate(action: () => Promise<string>, membershipChanged = false) {
     if (locked.current || needsLogin) return
     locked.current = true
     setBusy(true)
@@ -170,6 +171,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
       const message = await action()
       if (!alive.current) return
       setNotice(message)
+      if (membershipChanged) setListRefresh((n) => n + 1)
       setRefresh((n) => n + 1)
     } catch (reason) {
       showError(reason)
@@ -182,6 +184,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
     if (disabled) return
     setError('')
     if (!circleDays().includes(day)) setDay(circleDays()[0])
+    setListRefresh((n) => n + 1)
     setRefresh((n) => n + 1)
   }
   async function create() {
@@ -423,7 +426,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                   className="circle-form"
                   onSubmit={(event) => {
                     event.preventDefault()
-                    void mutate(form === 'create' ? create : join)
+                    void mutate(form === 'create' ? create : join, true)
                   }}
                 >
                   <label>
@@ -514,7 +517,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                 正在加载打卡…
               </div>
             )}
-            {view && daily && !loading && (
+            {view && daily && (
               <>
                 <section className="circle-card">
                   <div className="circle-section-heading">
@@ -526,6 +529,19 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                     </div>
                     <span className="circle-pill">近 7 天</span>
                   </div>
+                  {owner && (
+                    <div className="circle-form">
+                      <label>
+                        当前口令
+                        <input aria-label="当前口令" readOnly value={code || ''} placeholder="旧口令仅存在原浏览器，可在管理区重新保存" />
+                      </label>
+                      {code && (
+                        <button type="button" onClick={() => void copyInvite()}>
+                          复制当前口令
+                        </button>
+                      )}
+                    </div>
+                  )}
                   <details className="circle-invite">
                     <summary>
                       <Copy size={14} aria-hidden="true" /> 邀请同学
@@ -721,7 +737,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                           owner ? '关闭圈子后，所有成员都无法再进入，且不能恢复。确定关闭？' : '确定退出这个圈子？以后仍可用口令加入。',
                         )
                       )
-                        void mutate(leaveOrClose)
+                        void mutate(leaveOrClose, true)
                     }}
                   >
                     {owner ? '关闭圈子' : '退出圈子'}

@@ -69,6 +69,10 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
         !Number.isInteger(value.softMemberLimit) || value.softMemberLimit < 2 || value.softMemberLimit > 50) {
       fail(503, 'circle_control_uncertain')
     }
+    if (value.inviteText !== undefined && (value.inviteMode !== 'custom' ||
+        normalizeCirclePassphrase(value.inviteText) !== value.inviteText || phraseHash(value.inviteText) !== value.inviteHash)) {
+      fail(503, 'circle_control_uncertain')
+    }
     return value
   }
   async function isClosed(id) {
@@ -103,12 +107,13 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
       const id = key.slice(prefix.length, -5)
       const info = await meta(id)
       if (!info) return null
-      if (await isClosed(id)) {
+      const [closed, joined] = await Promise.all([isClosed(id), isMember(id, user)])
+      if (closed) {
         // A closed circle never reopens; unlike an in-flight join, this index is safe to prune.
         await storage.remove(key, user)
         return null
       }
-      if (!await isMember(id, user)) return null
+      if (!joined) return null
       return { circleId: id, name: info.name, role: info.ownerUserId === user ? 'owner' : 'member' }
     })
     // A dangling index is not membership. Do not delete during a read: a join may
@@ -117,11 +122,11 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
   }
   async function context(token, id, ownerOnly = false, allowClosed = false, allowAbsent = false) {
     const user = await actor(token)
-    const info = await meta(id)
+    const [info, closed, joined] = await Promise.all([meta(id), allowClosed ? false : isClosed(id), allowAbsent ? true : isMember(id, user)])
     if (!info) fail(404, 'circle_not_found')
     if (ownerOnly && info.ownerUserId !== user) fail(403, 'not_circle_owner')
-    if (!allowClosed && await isClosed(id)) fail(410, 'circle_closed')
-    if (!allowAbsent && !await isMember(id, user)) fail(403, 'not_circle_member')
+    if (closed) fail(410, 'circle_closed')
+    if (!joined) fail(403, 'not_circle_member')
     return { user, info }
   }
   const checkDay = (day) => {
@@ -148,12 +153,11 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
   async function dayView(token, id, day) {
     const { user, info } = await context(token, id)
     checkDay(day)
-    const data = await daily.read(id, day)
-    const current = await members(id, info.ownerUserId)
-    // Recheck session, membership and closure after potentially slow aggregation.
-    await context(token, id)
-    await recheck(token, user)
-    return { ...filterDailyView(data, current), members: current, info }
+    const [data, current] = await Promise.all([daily.read(id, day), members(id, info.ownerUserId)])
+    // Fresh context rechecks session, membership, closure and invitation after I/O.
+    const latest = await context(token, id)
+    if (latest.user !== user) fail(401, 'invalid_session')
+    return { ...filterDailyView(data, current), members: current, info: latest.info, requester: user }
   }
   async function writeActivity(token, id, day, type, payload) {
     const { user } = await context(token, id)
@@ -165,6 +169,20 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
     await recheck(token, user)
     return { circleId: id, day, schemaVersion: 3, consistency: 'eventual', final: false,
       operationKey: digest(record) }
+  }
+  async function fullView(token, id, day) {
+    const { info, members, ...data } = await dayView(token, id, day)
+    // dayView revalidates the caller; only its owner can retrieve stored invitation text.
+    // The identity is bound to the authenticated request, not a caller-supplied user ID.
+    const requester = data.requester
+    delete data.requester
+    return { schemaVersion: 3, circleId: id, consistency: 'eventual', membershipConsistency: 'strong',
+      final: false, day, retainedDays: windowDays(now()), meta: { name: info.name,
+        ownerUserId: info.ownerUserId, softMemberLimit: info.softMemberLimit,
+        inviteMode: info.inviteMode || 'legacy', inviteRevision: info.inviteRevision || 'legacy' },
+      ...(requester === info.ownerUserId && info.inviteText !== undefined ? { ownerInviteCode: info.inviteText } : {}),
+      members, ...publicDaily(data), capacity: { softMemberLimit: info.softMemberLimit,
+        memberCount: members.length, aboveSoftLimit: members.length > info.softMemberLimit, hardLimit: false } }
   }
   const service = {
     async createCircle(token, { name, operationId, softMemberLimit, passphrase } = {}) {
@@ -197,7 +215,7 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
       if (!previous) {
         if (custom !== undefined) await indexPhrase(value.inviteHash, id, user)
         await storage.put(root(id) + 'meta.json', { ...value, creationFingerprint: fingerprint,
-          ...(custom === undefined ? {} : { inviteRevision: operationId }) }, user)
+          ...(custom === undefined ? {} : { inviteRevision: operationId, inviteText: custom }) }, user)
       }
       const active = previous || value
       return { ...await attach(id, user, token), inviteRevision: active.inviteRevision || (custom === undefined ? 'legacy' : operationId),
@@ -237,7 +255,7 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
       await indexPhrase(hash, id, user)
       const revision = info.inviteMode === 'custom' && info.inviteHash === hash ? info.inviteRevision : crypto.randomUUID()
       const next = { ...info, creationFingerprint: info.creationFingerprint || digest(info),
-        inviteMode: 'custom', inviteHash: hash, inviteRevision: revision }
+        inviteMode: 'custom', inviteHash: hash, inviteRevision: revision, inviteText: text }
       await storage.put(root(id) + 'meta.json', next, user)
       if (info.inviteMode === 'custom' && info.inviteHash !== hash) await storage.remove(phraseKey(info.inviteHash, id), user)
       await context(token, id, true)
@@ -249,20 +267,8 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
       await recheck(token, user)
       return { circles: items, schemaVersion: 3, consistency: 'strong', legacyIncluded: false, softCircleLimit: 3, hardLimit: false }
     },
-    async getCircle(token, id) {
-      const day = windowDays(now())[0]
-      const { info, members, ...data } = await dayView(token, id, day)
-      return { schemaVersion: 3, circleId: id, consistency: 'eventual', membershipConsistency: 'strong',
-        final: false, day, retainedDays: windowDays(now()), meta: { name: info.name,
-          ownerUserId: info.ownerUserId, softMemberLimit: info.softMemberLimit, inviteMode: info.inviteMode || 'legacy', inviteRevision: info.inviteRevision || 'legacy' }, members, ...publicDaily(data),
-        capacity: { softMemberLimit: info.softMemberLimit, memberCount: members.length,
-          aboveSoftLimit: members.length > info.softMemberLimit, hardLimit: false } }
-    },
-    async getDay(token, id, day) {
-      const { info, members, ...data } = await dayView(token, id, day)
-      void info; void members
-      return { circleId: id, day, ...publicDaily(data) }
-    },
+    async getCircle(token, id) { return fullView(token, id, windowDays(now())[0]) },
+    async getDay(token, id, day) { return fullView(token, id, day) },
     async getProgress(token, id, day) { return (await dayView(token, id, day)).progress },
     async publishProgress(token, id, day, input) {
       if (!input || !/^[A-Za-z0-9_-]{8,128}$/.test(input.eventId || '') ||

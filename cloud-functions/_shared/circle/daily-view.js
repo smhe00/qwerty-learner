@@ -63,10 +63,9 @@ export function createDailyViews(storage) {
   return Object.freeze({
     async read(circleId, day) {
       if (!calendarDay(day)) fail(400, 'invalid_day')
-      const keys = await storage.keys(root(circleId) + 'days/' + day + '/')
-      const fingerprint = digest(['circle-daily-v1', keys])
       const key = root(circleId) + 'summaries/' + day + '/view.json'
-      const cached = await storage.get(key)
+      const [keys, cached] = await Promise.all([storage.keys(root(circleId) + 'days/' + day + '/'), storage.get(key)])
+      const fingerprint = digest(['circle-daily-v1', keys])
       if (cached !== null) {
         if (cached?.schemaVersion !== 3 || cached.circleId !== circleId || cached.day !== day ||
             !/^[a-f0-9]{64}$/.test(cached.sourceHash || '') || !Number.isInteger(cached.sourceCount) ||

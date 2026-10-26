@@ -515,7 +515,10 @@ test('custom Chinese/English passphrase joins directly, owner rotation invalidat
   assert.equal(c.inviteCode,'每天学 English')
   assert.equal((await f.service.joinCircle(MEMBER,'每天学 English')).circleId,c.circleId)
   const stored=f.data.get(root(c.circleId)+'meta.json')
-  assert.equal(JSON.stringify(stored).includes('每天学 English'),false)
+  assert.equal(stored.inviteText,'每天学 English')
+  assert.equal((await f.service.getCircle(OWNER,c.circleId)).ownerInviteCode,'每天学 English')
+  assert.equal((await f.service.getCircle(MEMBER,c.circleId)).ownerInviteCode,undefined)
+  assert.equal((await f.service.getDay(MEMBER,c.circleId,DAY)).ownerInviteCode,undefined)
   assert.ok(f.calls.some(x=>x.op==='list'&&x.prefix.startsWith('social/v3/passphrases/')&&x.consistency==='strong'))
   await assert.rejects(f.service.setPassphrase(MEMBER,c.circleId,{passphrase:'越权操作'}),code('not_circle_owner'))
   await f.service.setPassphrase(OWNER,c.circleId,{passphrase:'一起学中文 ABC'})
@@ -564,4 +567,43 @@ test('legacy invitation can be changed by its owner and original creation retry 
   const retry=await f.service.createCircle(OWNER,input)
   assert.equal(retry.inviteChanged,true)
   assert.equal((await f.service.joinCircle(OTHER,'新的 English')).circleId,c.circleId)
+})
+
+
+test('owner invitation is server-readable without hints; old hashed records remain compatible and corruption fails closed', async () => {
+  const f=fixture();const c=await f.create(OWNER,{passphrase:'原有口令 English'})
+  const key=root(c.circleId)+'meta.json'
+  const old=f.data.get(key);delete old.inviteText;f.data.set(key,old)
+  assert.equal((await f.service.getCircle(OWNER,c.circleId)).ownerInviteCode,undefined)
+  await f.service.setPassphrase(OWNER,c.circleId,{passphrase:'原有口令 English'})
+  assert.equal((await f.service.getDay(OWNER,c.circleId,DAY)).ownerInviteCode,'原有口令 English')
+  await f.service.joinCircle(MEMBER,'原有口令 English')
+  assert.equal(JSON.stringify(await f.service.getCircle(MEMBER,c.circleId)).includes('原有口令 English'),false)
+  f.data.set(key,{...f.data.get(key),inviteText:'已损坏的口令'})
+  await assert.rejects(f.service.getCircle(OWNER,c.circleId),code('circle_control_uncertain'))
+})
+
+test('parallel detail reads retain final session, membership and closure checks', async () => {
+  for(const change of ['revoke','remove','close']) {
+    const f=fixture();const c=await pair(f)
+    f.hooks.list=async ({prefix})=>{
+      if(prefix.includes('/days/')) {
+        if(change==='revoke')f.revoked.add(MEMBER)
+        if(change==='remove')f.data.delete(root(c.circleId)+'members/'+MEMBER+'.json')
+        if(change==='close')f.data.set(root(c.circleId)+'closed.json',{schemaVersion:3,circleId:c.circleId,closed:true})
+      }
+    }
+    await assert.rejects(f.service.getDay(MEMBER,c.circleId,DAY),code(change==='revoke'?'session_revoked':change==='remove'?'not_circle_member':'circle_closed'))
+  }
+})
+
+test('daily source listing and summary read start concurrently without losing cache validation', async () => {
+  let release
+  const waiting=new Promise(resolve=>{release=resolve})
+  const storage={
+    keys:async()=>{await waiting;return []},
+    get:async()=>{release();return null},
+  }
+  const result=await createDailyViews(storage).read('a'.repeat(24),DAY)
+  assert.deepEqual(result.progress,[])
 })

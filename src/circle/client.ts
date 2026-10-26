@@ -16,6 +16,7 @@ export type CircleDay = {
 }
 export type CircleView = CircleDay & {
   schemaVersion: 3
+  ownerInviteCode?: string
   meta: { name: string; ownerUserId: string; softMemberLimit: number; inviteMode?: string; inviteRevision?: string }
   members: CircleMember[]
 }
