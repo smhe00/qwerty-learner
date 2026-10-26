@@ -58,3 +58,7 @@
 正式版冻结98697131。后续正常向前恢复product/main及etest的新UI；不将恢复提交推送master。保留d34ba238的PC菜单/手机一键同步，以及3e869a2d、b98364ad的账号直达功能，组合验证见STAGING-UI-RESTORE-20261026-report.md。
 
 当前剩余交付：恢复提交的Pages及相关CI通过后推进edgeone-test，核验实际站点版本；不重复发布master。旧20秒超时个案因账号早已清理，不能追溯断言其成功。生产与修复版对照及新候选自然超时证据已经证明逻辑缺口和安全判定方法。
+
+## 用户最新范围变更
+
+98697131独立修复已完成上线。用户随后明确要求etest/master UI统一，并确认之后只允许将master快进到etest已验收的相同SHA；旧“新UI仅留etest”限制已被最新指令替代。账号简化及当前新UI的统一发布由UNIFIED-ACCOUNT-UI-RELEASE-20261026接续，不能把原独立版的旧UI当作最终目标。

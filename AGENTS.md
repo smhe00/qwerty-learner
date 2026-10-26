@@ -11,6 +11,7 @@ This file is the mandatory entry point for any coding agent working in this repo
 - Maker staging site is `https://t.smhe.cn/`. The owner confirms staging and production use completely independent Blob namespaces. Staging Blob is activated automatically on its first write. Canonical production Maker is `https://q.smhe.cn/`; `https://qwerty-plus.edgeone.dev/` is a retained compatibility origin, not the canonical public entry. Never use Pages to certify cloud synchronization.
 - Before any master update the IDENTICAL SHA must pass published Pages regression, etest real-Cloud browser E2E and Blob transport, and the `release-ready` check. An explicit user release request remains mandatory.
 - Routine development and agent coordination happen on `product/main`; NEVER bind a Maker project to its pushes.
+- **Owner promotion rule (2026-10-26):** master is promoted ONLY by fast-forward to the exact commit SHA already qualified on edgeone-test. Keep the same UI and application source between etest and master; do not strip features, cherry-pick a subset, make a release-only commit, or create a divergent release branch during promotion. If master is not an ancestor, integrate normally on product/main, requalify the resulting exact SHA on etest, then fast-forward master. Test/experimental behavior differs only through trusted server branch=etest policy; never by changing code during promotion.
 
 ### Server deployment identity (owner convention, 2026-10-26)
 
