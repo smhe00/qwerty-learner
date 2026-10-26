@@ -1,4 +1,6 @@
 # Circle UI rewrite and operation latency
-Status: IN_PROGRESS. Base c407dbbf27fa67a2cf9cde1c4ec931e651a53e3f.
+Status: REVIEW. Base c407dbbf27fa67a2cf9cde1c4ec931e651a53e3f.
 Owner rejects current UI and unacceptable waits; asks to lightly reference others. Use Duolingo official core-tabs redesign (2026) for concise activity hierarchy and Strava official club feed/member split. Build a wider desktop workspace, compact identifiable circle cards, day/activity focus, progressive invite/management and focused create/join panel; adapt to phone and dark mode. Preserve nickname/passphrase and recovery semantics.
 Reduce server serial work and redundant post-write whole-page reads while retaining live initial/final session/membership/closure checks, strong membership readback, private storage and deletion holds. No cross-request authorization cache. Fixture delayed-browser assertions plus targeted backend revocation/race tests and real disposable etest before/after timing. Continue etest delivery despite routine UI default because real storage latency changes require it; never master. One executor, no subagents.
+
+Final application candidate: e2d7185252250495e4dac4d92fd134ac98e4c57b. UI CI16/16 plus Pages PASS; live independent-activity acceptance and cleanup PASS. See report for paired timings and residual server latency. Keep etest pinned for authorized admin/feedback coordination; no further etest advancement in this task.
