@@ -467,3 +467,43 @@ test('maintenance drains a partition larger than read budget, even after interru
   assert.equal([...f.data.keys()].filter((key) => key.includes('/days/2026-10-19/')).length, 0)
   assert.ok(f.data.has(root(c.circleId) + 'meta.json'))
 })
+
+
+test('deployed Circle gateway uses the trusted native receiver once, before any storage mutation', async () => {
+  resetAuthRateLimitMemoryForTest()
+  const f = fixture()
+  const counters = new Map()
+  const rateStorage = {
+    async getAuthRateLimitCounter(k, w) { return counters.get(k + w) ?? null },
+    async setAuthRateLimitCounter(k, w, v) { counters.set(k + w, v) },
+    async pruneAuthRateLimitCounters() {},
+  }
+  const gateway = createCircleOpenGateway({ backend: f.backend, getStore: () => f.blob, rateStorage, now: f.now })
+  let reads = 0
+  const request = {
+    url: 'https://t.smhe.cn/api/circle/v2', method: 'POST',
+    headers: new Headers({ authorization: 'Bearer ' + OWNER, 'content-type': 'application/json' }),
+    // Maker's native body is not required to expose getReader().
+    get body() { throw new Error('Web stream receiver must not be touched') },
+  }
+  const call = async (body, reject = false, authenticated = true) => {
+    request.headers.set('authorization', authenticated ? 'Bearer ' + OWNER : '')
+    const response = await gateway.handle({ clientIp: '192.0.2.61', request,
+      readBody: async (limit) => { reads++; assert.equal(limit, 8192); if(reject) throw new AppError(503, 'request_body_unavailable', 'receiver'); return body },
+    })
+    return { status: response.status, value: await response.json() }
+  }
+  assert.equal((await call({ name: '', operationId: crypto.randomUUID() })).value.error, 'invalid_circle_input')
+  assert.equal(f.data.size, 0)
+  assert.equal((await call({ name: 'hh', operationId: crypto.randomUUID(), actor: OTHER })).value.error, 'unexpected_field')
+  assert.equal(f.data.size, 0)
+  assert.equal((await call({}, true)).value.error, 'request_body_unavailable')
+  assert.equal(f.data.size, 0)
+  const before = reads
+  assert.equal((await call({}, false, false)).status, 401)
+  assert.equal(reads, before)
+  const created = await call({ name: 'hh', operationId: crypto.randomUUID() })
+  assert.equal(created.status, 202)
+  assert.match(created.value.result.inviteCode, /^QC3-/)
+  assert.equal(reads, before + 1)
+})

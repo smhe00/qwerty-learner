@@ -396,7 +396,7 @@ async function onUncoordinatedRequest(context) {
     if (path === '/circle/v2' || path.startsWith('/circle/v2/')) {
       const result = await createCircleOpenGateway({
         backend: service, getStore, rateStorage: storage,
-      }).handle(context)
+      }).handle({ ...context, readBody })
       for (const [key, value] of Object.entries(cors)) result.headers.set(key, value)
       return result
     }

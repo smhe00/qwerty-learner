@@ -26,7 +26,7 @@ async function mockCircle(page: Page, initial = true) {
   const model = {
     exists: initial, joined: initial, owner: OWNER, name: '每天十分钟', friend: true,
     calls: [] as { path: string; method: string; body: any }[],
-    creates: [] as any[], unauthorized: false, loseCreate: false, delayLike: false,
+    creates: [] as any[], unauthorized: false, loseCreate: false, delayLike: false, rejectCreate: false,
     progress: new Map<string, any[]>([[days()[0], [{ authorUserId: FRIEND, day: days()[0], completed: true, newWords: 6 }]],
       [days()[1], [{ authorUserId: FRIEND, day: days()[1], completed: true, newWords: 2 }]]]),
     likes: new Map<string, number>(),
@@ -50,6 +50,12 @@ async function mockCircle(page: Page, initial = true) {
     if (path === '/mine') {
       await send({ circles: model.exists && model.joined ? [{ circleId: ID, name: model.name, role: model.owner === OWNER ? 'owner' : 'member' }] : [] })
     } else if (!path && request.method() === 'POST') {
+      if (model.rejectCreate) {
+        model.creates.push(body)
+        await new Promise(resolve => setTimeout(resolve, 300))
+        await route.fulfill({status: 500, contentType: 'application/json', body: '{"ok":false,"error":"circle_internal_error"}'})
+        return
+      }
       model.creates.push(body); model.exists = true; model.joined = true; model.name = body.name; model.owner = OWNER
       if (model.loseCreate) { model.loseCreate = false; await route.abort('failed'); return }
       await send({ circleId: ID, inviteCode: CODE, schemaVersion: 3 }, 202)
@@ -190,8 +196,7 @@ test('unknown creation is not auto-retried and reload reuses exact saved input; 
   await page.reload()
   await expect(page.getByRole('heading', { name: '原信息创建', exact: true })).toBeVisible()
   expect(model.creates).toHaveLength(1)
-  await page.getByRole('button', { name: '有一个待确认的创建，查看原信息', exact: true }).click()
-  await page.getByRole('button', { name: '用原信息重试', exact: true }).click()
+  await page.getByRole('button', { name: '继续创建', exact: true }).click()
   await expect(page.locator('.circle-notice')).toContainText('圈子已创建')
   expect(model.creates).toHaveLength(2)
   expect(model.creates[1]).toEqual(model.creates[0])
@@ -303,4 +308,33 @@ test('storage failure stops creation before sending and legacy invitations are e
   await page.getByRole('button', { name: '创建圈子', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('本机暂时无法保存')
   expect(model.creates).toHaveLength(0)
+})
+
+
+test('PC failed hh creation stays explicit, restores exact retry and fits a narrow dialog container', async ({page}, testInfo) => {
+  await page.setViewportSize({width: 1440, height: 1000})
+  await seed(page)
+  const model = await mockCircle(page, false)
+  model.rejectCreate = true
+  await page.goto('/learn')
+  await page.locator('[data-circle-entry]').click()
+  await expect(page.getByRole('heading', {name: '创建或加入圈子'})).toBeVisible()
+  await page.getByRole('button', {name: '创建', exact: true}).click()
+  await page.getByLabel('圈子名称', {exact:true}).fill('hh')
+  await page.getByRole('button', {name: '创建圈子', exact:true}).click()
+  await expect(page.getByRole('button', {name:'正在创建…', exact:true})).toBeDisabled()
+  await expect(page.locator('.circle-form [role=alert]')).toContainText('服务暂时出错')
+  expect(model.creates).toHaveLength(1)
+  expect(await page.locator('.circle-main').isVisible()).toBe(false)
+  await page.locator('.circle-ui').evaluate((el:HTMLElement)=>{el.style.width='420px'})
+  expect(await page.locator('.circle-ui').evaluate((el)=>el.scrollWidth<=el.clientWidth)).toBe(true)
+  await page.screenshot({path:testInfo.outputPath('circle-create-failure.png')})
+  const first = model.creates[0]
+  await page.reload()
+  await expect(page.getByLabel('圈子名称', {exact:true})).toHaveValue('hh')
+  await expect(page.getByText('上次创建尚未确认。继续创建会核对同一个圈子，不会重复创建。')).toBeVisible()
+  model.rejectCreate=false
+  await page.getByRole('button', {name:'继续创建',exact:true}).click()
+  await expect(page.getByRole('heading', {name:'hh',exact:true})).toBeVisible()
+  expect(model.creates[1]).toEqual(first)
 })
