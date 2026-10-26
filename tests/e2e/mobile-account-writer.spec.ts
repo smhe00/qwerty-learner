@@ -63,14 +63,12 @@ for (const entry of ['avatar', 'menu']) {
       expect(context.pages()).toHaveLength(1)
       await page.getByRole('button', { name: '管理账号', exact: true }).tap()
     }
-    // The menu now has one legitimate SPA route in history. Opening the
-    // overview and entering pre-mount auth must not add a writer predecessor.
+    // The data menu adds one SPA route. Direct pre-mount account entry
+    // replaces that document without adding a mounted writer predecessor.
     const expectedHistory = historyLength + (entry === 'menu' ? 1 : 0)
-    await expect(page.locator('[data-account-overview]')).toBeVisible()
-    expect(await page.evaluate(() => performance.timeOrigin)).toBe(timeOrigin)
-    expect(await page.evaluate(() => history.length)).toBe(expectedHistory)
-    await page.getByRole('button', { name: '登录或注册', exact: true }).tap()
     await expect(page.locator('[data-mobile-account]')).toBeVisible()
+    await expect(page.locator('[data-account-overview]')).toHaveCount(0)
+    expect(await page.evaluate(() => performance.timeOrigin)).not.toBe(timeOrigin)
     expect(context.pages()).toHaveLength(1)
     expect(await page.evaluate(() => history.length)).toBe(expectedHistory)
     expect(await page.evaluate(() => sessionStorage.getItem('account-click-handled'))).toBe('true')
