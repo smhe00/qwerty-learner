@@ -518,12 +518,22 @@ function createUncoordinatedBackendService({
   function publicUser(identity) {
     return {
       userId: identity.userId,
-      username: identity.username,
+      username: credentials?.publicUsername?.(identity) ?? identity.username,
       createdAt: identity.createdAt,
     }
   }
 
   async function register(usernameInput, password, deviceId) {
+    const { normalizedUsername } = normalizeUsername(usernameInput)
+    if (credentials?.reservedName?.(normalizedUsername)) {
+      throw new AppError(409, 'administrator_account_reserved', 'Administrator needs no registration; sign in as admin')
+    }
+    return registerAccount(usernameInput, password, deviceId)
+  }
+
+  // Private initializer shared with first administrator login. Never exposed as
+  // a route or called by read-only handoff preflight.
+  async function registerAccount(usernameInput, password, deviceId) {
     const { username, normalizedUsername } = normalizeUsername(usernameInput)
     validatePassword(password)
 
@@ -549,7 +559,7 @@ function createUncoordinatedBackendService({
       throw new AppError(409, 'administrator_account_reserved', 'Administrator identity is already bound')
     }
     if (managedRegistration && !credentials.verify(password)) {
-      throw new AppError(401, 'incorrect_password', 'Enter the configured administrator password to register SMHE')
+      throw new AppError(401, 'incorrect_password', 'Administrator password is incorrect')
     }
     const initialAuth = managedRegistration
       ? { version: 1, environmentManaged: true, createdAt: nowIso() }
@@ -585,11 +595,22 @@ function createUncoordinatedBackendService({
     }
   }
 
-  async function validateLoginCredentials(usernameInput, password) {
-    const { normalizedUsername } = normalizeUsername(usernameInput)
+  async function validateLoginCredentials(usernameInput, password, initialize = false) {
+    const { normalizedUsername: inputName } = normalizeUsername(usernameInput)
+    const normalizedUsername = credentials?.loginName?.(inputName, password) ?? inputName
+    if (normalizedUsername !== inputName && await storage.getAccount(sha256Hex(inputName))) {
+      // An old ordinary account with this name must never be overwritten or
+      // promoted. Resolve the collision explicitly before administrator login.
+      throw new AppError(409, 'administrator_name_conflict', 'Administrator login name conflicts with an existing account')
+    }
     const usernameHash = sha256Hex(normalizedUsername)
     const identity = await storage.getAccount(usernameHash)
-
+    if (!identity && initialize && credentials?.canInitialize?.(normalizedUsername)) {
+      return { identity: null, enrollmentName: normalizedUsername }
+    }
+    if (!identity && normalizedUsername !== inputName && initialize) {
+      throw new AppError(503, 'administrator_binding_unavailable', 'Bound administrator identity is unavailable')
+    }
     if (!identity || identity.status !== 'active') {
       throw new AppError(401, 'account_not_found', 'Account does not exist')
     }
@@ -605,7 +626,8 @@ function createUncoordinatedBackendService({
   }
 
   async function login(usernameInput, password, deviceId) {
-    const { identity, currentAuth } = await validateLoginCredentials(usernameInput, password)
+    const { identity, currentAuth, enrollmentName } = await validateLoginCredentials(usernameInput, password, true)
+    if (!identity) return registerAccount(enrollmentName, password, deviceId)
     if (currentAuth.environmentManaged && credentials.authorize) await credentials.authorize(identity)
     if (activityGuard) await activityGuard(identity)
     const session = multiSessionEnabled
@@ -1559,7 +1581,7 @@ function createUncoordinatedBackendService({
         if (await storage.getAccount(accountHash)) {
           throw new AppError(409, 'username_taken', 'Username is already registered')
         }
-        if (credentials?.managedName?.(normalizedUsername)) {
+        if (credentials?.reservedName?.(normalizedUsername)) {
           // Managed identities require enrollment outside this pilot; do not let
           // unauthenticated registration requests drain an existing account.
           throw new AppError(403, 'handoff_managed_registration_disabled',

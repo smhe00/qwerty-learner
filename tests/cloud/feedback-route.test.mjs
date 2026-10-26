@@ -33,8 +33,10 @@ test('real gateway enforces live sessions and server admin role for private feed
   try {
     const normal = await call('/auth/register', { body: { username: 'feedbacktest', password: 'synthetic-password' } })
     assert.equal(normal.status, 201)
-    const admin = await call('/auth/register', { body: { username: 'smhe', password: env.ADMIN_PASSWORD } })
-    assert.equal(admin.status, 201)
+    const admin = await call('/auth/login', { body: { username: 'admin', password: env.ADMIN_PASSWORD } })
+    assert.equal(admin.status, 200)
+    assert.equal(admin.data.user.username, 'admin')
+    assert.equal((await call('/admin/access', { token: admin.data.token })).data.administrator, true)
     const item = await call('/feedback', { token: normal.data.token, body: { operationId: '1'.repeat(32), title: '私密反馈', text: '问题描述' } })
     assert.equal(item.status, 200)
     const path = '/feedback/' + item.data.owner + '/' + item.data.id

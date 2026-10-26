@@ -15,7 +15,7 @@ class BudgetExceeded extends Error {}
 /** Server-only configuration. A display name can never grant privileges. */
 export function isAdministrator(identity, adminUserId) {
   return USER.test(adminUserId || '') && identity?.userId === adminUserId &&
-    identity?.normalizedUsername === 'smhe' && identity?.status === 'active'
+    ['admin', 'smhe'].includes(identity?.normalizedUsername) && identity?.status === 'active'
 }
 
 export function createIdleAccounts({ store, adminUserId = '', startAt, automaticStart = false, execute = false,
@@ -76,8 +76,10 @@ export function createIdleAccounts({ store, adminUserId = '', startAt, automatic
   const identityKey = hash => `accounts/${hash}/identity.json`
   const fenceKey = id => root(id) + 'fence.json'
   const deletingKey = id => root(id) + 'deleting.json'
+  // Cleanup exemption survives missing configuration and legacy name changes.
+  // It does not grant permissions; isAdministrator still requires the bound ID.
   const protectedAccount = identity => identity.userId === adminUserId ||
-    identity.normalizedUsername === 'smhe'
+    ['admin', 'smhe'].includes(identity.normalizedUsername)
   function validate(identity) {
     if (!HASH.test(identity?.usernameHash || '') || !USER.test(identity?.userId || '')) {
       throw new Error('Invalid account identity')
@@ -127,7 +129,7 @@ export function createIdleAccounts({ store, adminUserId = '', startAt, automatic
 
   async function beforeRegister(usernameHash) {
     if (!HASH.test(usernameHash)) throw new Error('Invalid registration selector')
-    if (USER.test(adminUserId) && usernameHash === crypto.createHash('sha256').update('smhe').digest('hex')) {
+    if (USER.test(adminUserId) && ['admin', 'smhe'].some(name => usernameHash === crypto.createHash('sha256').update(name).digest('hex'))) {
       throw new AppError(409, 'administrator_account_reserved', 'Administrator identity is reserved')
     }
     const retired = await get(`maintenance/idle-retired/v1/${usernameHash}.json`)

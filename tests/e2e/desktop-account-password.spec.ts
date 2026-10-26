@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { type Page, expect, test } from '@playwright/test'
 
 async function fixture(page: Page, mobile: boolean) {
   await page.goto('/tests/e2e/backup-harness.html')
@@ -46,6 +46,34 @@ for (const mobile of [false, true]) {
       await page.getByRole('button', { name: '登录', exact: true }).click()
       await expect(page.getByRole('status')).toContainText('密码不正确，请重新输入')
       await expect(page.getByRole('status')).not.toContainText('账号不存在')
+      expect(await page.evaluate(() => localStorage.getItem('qwerty.cloudAuth.v1'))).toBeNull()
+    })
+    test('administrator setup errors direct to login and preserve the anonymous workspace', async ({ page }) => {
+      page.on('dialog', (dialog) => dialog.accept())
+      let code = 'administrator_password_unconfigured'
+      await page.route('**/api/auth/login', (route) =>
+        route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: code }) }),
+      )
+      await page.route('**/api/auth/register', (route) =>
+        route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: 'administrator_account_reserved' }) }),
+      )
+      await page.goto(mobile ? '/mobile/account' : '/?s1-account=manage')
+      await page.getByLabel('用户名', { exact: true }).fill('admin')
+      await page.getByLabel('账户密码', { exact: true }).fill('synthetic-test-password')
+      for (const [error, hint] of [
+        ['administrator_password_unconfigured', '管理员登录尚未配置'],
+        ['administrator_name_conflict', '管理员用户名与已有账号冲突'],
+        ['administrator_binding_unavailable', '管理员身份暂时不可用'],
+        ['administrator_login_name', '管理员请使用 admin 登录'],
+      ]) {
+        code = error
+        await page.getByRole('button', { name: '登录', exact: true }).click()
+        await expect(page.getByRole('status')).toContainText(hint)
+      }
+      await page.getByRole('tab', { name: '注册', exact: true }).click()
+      await page.getByLabel('注册密码确认').fill('synthetic-test-password')
+      await page.getByRole('button', { name: '注册并登录' }).click()
+      await expect(page.getByRole('status')).toContainText('管理员账号无需注册，请使用 admin 登录')
       expect(await page.evaluate(() => localStorage.getItem('qwerty.cloudAuth.v1'))).toBeNull()
     })
     test('new token is committed to the same owner without changing learning records', async ({ page }, testInfo) => {

@@ -1,4 +1,4 @@
-# 180-day idle accounts and SMHE administration
+# 180-day idle accounts and admin direct login
 
 Implementation: `cloud-functions/_shared/idle-accounts.js`,
 `cloud-functions/_shared/administrator.js`, existing `/api` gateway,
@@ -10,7 +10,7 @@ Implementation: `cloud-functions/_shared/idle-accounts.js`,
   data. No extra 30-day grace period, email or SMS notification is promised.
   The policy is shown in registration/account views. Browser learning data,
   IndexedDB, writer leases, FSRS and local workspace ownership are untouched.
-- Existing accounts get a full 180 days from the first automatic maintenance activation stored in Blob (or an explicitly configured legacy `IDLE_POLICY_START_AT`). A registered administrator is not required to activate the retention policy; the SMHE name is always protected.
+- Existing accounts get a full 180 days from the first automatic maintenance activation stored in Blob (or an explicitly configured legacy `IDLE_POLICY_START_AT`). A registered administrator is not required to activate the retention policy; both admin and legacy SMHE names are always protected, even without an administrator password or ID binding.
   Creation time or a later authenticated activity day extends that deadline.
   Activity uses deterministic UTC day keys, conservatively rounded to the end
   of the day; concurrent writers cannot regress an activity timestamp. This
@@ -39,7 +39,7 @@ Implementation: `cloud-functions/_shared/idle-accounts.js`,
 ## Deletion safety and boundaries
 
 1. Re-read the immutable account identity and inactivity deadline. Exempt the
-   configured administrator ID and the reserved normalized SMHE name. Accounts
+   configured administrator ID and both reserved normalized names, admin and smhe. Accounts
    with a Circle participation marker are held pending a separate audited
    social-data cleanup. Circle frontend/scrubbing is outside this task.
 2. Write a draining fence. New authenticated cloud operations for that account
@@ -111,8 +111,8 @@ falling back. Administrator password configuration remains server-only.
 
 | Variable | Value |
 | --- | --- |
-| `ADMIN_USER_ID` | Optional existing immutable SMHE ID pin; normally verified registration/login binds it |
-| `ADMIN_PASSWORD` | Case-sensitive administrator password,4–128 characters; missing/empty uses the owner-approved bootstrap default; keep configured values private |
+| `ADMIN_USER_ID` | Optional existing immutable administrator ID pin; normally the first verified admin login binds it |
+| `ADMIN_PASSWORD` | Required case-sensitive administrator password,4–128 characters; missing/empty/invalid disables administrator login; keep it private |
 | `IDLE_POLICY_START_AT` | Optional legacy fixed ISO UTC floor; never backdate; omitted uses automatic persistent activation |
 | `IDLE_CLEANUP_EXECUTE` | Optional explicit stop/override; omitted follows release policy; only exact `true` permits work when present |
 
@@ -150,60 +150,48 @@ This is external SDK/two-client coverage, not a global physical-erasure or
 multi-region certificate. Its exact report is retained under
 `interactive/reports/evidence/IDLE-QUALIFICATION-20261025/`.
 
-SMHE usernames are case-insensitive. The name is reserved, but a username alone never grants access: first registration must verify the effective administrator password. After verified enrollment, privilege requires the persisted immutable ID AND normalized name `smhe`. No password should be sent in chat.
+### Administrator login, without registration
 
-### A brand-new site or an existing unbound SMHE
+Use the existing Login tab with username `admin` (case-insensitive) and the
+server-only `ADMIN_PASSWORD`. The variable name is uppercase and case-sensitive;
+`admin_password` is not read. Missing, empty or invalid configuration disables
+administrator login. There is no source-defined/default password. Redeploy the
+same code after changing EdgeOne environment settings. Never send passwords in chat.
 
-No account is created merely by starting the site or loading its configuration.
-Leave ADMIN_USER_ID unset in the normal flow. The name SMHE (any casing) is
-reserved for the administrator. When registering it, enter ADMIN_PASSWORD if
-configured, otherwise the owner-approved fixed default. The server rejects any
-other password BEFORE writing an account. On success it creates the ordinary
-account/workspace identity, but stores only `environmentManaged` auth metadata,
-not a password hash/verifier; it signs the first session and persists the
-administrator's immutable identity in `maintenance/administrator/v1.json`.
-The next request recognizes that identity without manual user-ID configuration.
+Leave ADMIN_USER_ID unset in the normal flow. Loading configuration creates no
+account. Only an actual successful admin login initializes an absent identity
+and persists its immutable ID in `maintenance/administrator/v1.json`. Registration
+of either `admin` or legacy `smhe` is rejected with a direct-login hint. Login as
+`smhe` directs the operator to `admin`; normal users use their existing names.
+Read-only authentication preflight cannot initialize or enroll an administrator.
 
-An existing ordinary SMHE identity is retained. Its first successful login with
-the effective administrator password binds that existing ID; its old database
-password and old unsigned sessions cannot enroll or access administrator APIs.
-Repeated login keeps the original ID. Once bound, deleting/recreating a username
-cannot transfer the role. A conflicting optional ADMIN_USER_ID fails closed.
-No separate initialization command or startup-created account is required.
+The public profile is `admin`, while the legacy SMHE account hash, immutable ID,
+workspace and session namespace remain unchanged internally. This avoids copying
+or losing existing learning/feedback data. An existing SMHE identity is adopted
+only after the environment password is verified; its old ordinary password and
+unsigned sessions cannot grant administrator access. Privilege requires the
+bound immutable ID, active identity and administrator name, never a name alone.
+If an ordinary account already occupies `admin`, login fails with an explicit
+conflict instead of overwriting or promoting that account. A missing/replaced
+bound identity or conflicting ADMIN_USER_ID also fails closed, without recreation.
 
-Binding writes use preflight/canonical identity checks, provider onlyIfNew and
-read-back verification; provider onlyIfNew is not treated as a globally atomic
-lock. Real nonproduction concurrent enrollment qualification is required before
-production release. Ambiguous enrollment writes can require retrying LOGIN with
-the administrator password if the account was already created.
+Only environment-managed metadata is stored for newly initialized accounts, not
+the password or a password verifier. Historical ordinary SMHE password records
+are retained but ignored. Sessions are signed using the current server password;
+rotating or removing it invalidates old administrator sessions. Application
+password-change and self-delete reject the administrator. Ordinary users keep
+their password/session behavior. Do not remove the persistent binding to reset
+a password: change ADMIN_PASSWORD privately and redeploy.
 
-The effective admin password is the nonempty environment value, or the owner-approved fixed default when absent/empty. An explicit value disables default-password login completely. Invalid nonempty values fail closed. The password is verified in memory, not persisted
-as a new database password or password verifier. Pre-existing ordinary SMHE
-password records are ignored while admin binding is active; this task does
-not erase historical credentials in existing account records. Its new random
-session token is signed with the current environment password, so changing
-that variable invalidates old administrator sessions without a stored password
-fingerprint. Ordinary users keep their existing password/session behavior.
-Application password-change and account-delete operations reject the admin.
-Keep the persisted identity binding (or optional ADMIN_USER_ID pin) stable. No password path falls back to the old database password. Configure ADMIN_PASSWORD privately before public deployment: the source-defined default is fixed and publicly discoverable, rather than a production secret. Switching from the default to an environment value invalidates default-signed sessions.
+Binding writes use canonical identity checks, provider onlyIfNew and read-back
+verification. Provider onlyIfNew is not treated as a globally atomic lock. A lost
+receipt is accepted only when confirmed; otherwise login fails without returning
+a token. A later explicit login can reuse the durable identity. Real nonproduction
+concurrent initialization qualification remains required before production release.
 
-Do not delete the persistent identity binding to reset a password. Password changes happen only through ADMIN_PASSWORD; removing a binding is an operator recovery/rollback decision, not a supported account replacement route.
-
-## Administrator workflow
-
-The ordinary account dialog discovers privileges from `/api/admin/access`.
-Only the verified administrator can read `/api/admin/storage`, preview
-`GET /api/admin/idle` or confirm `POST /api/admin/idle`. Preview is read-only
-with respect to target accounts; authenticating the administrator may record
-its own daily activity. Mutation rechecks identity and inactivity server-side.
-Manual execution deliberately permits operator retries, independently of the
-automatic daily gate. Ordinary users can only signal the fixed automatic
-policy; they cannot submit a target account, cursor or arbitrary deletion.
-
-Storage usage reports object/account counts and bytes only if the provider
-returns complete size metadata. Otherwise use the Tencent console for the
-actual quota; do not substitute compressed snapshot size for total Blob usage.
-
-Development delivery does not deploy Maker, configure these variables, enroll
-the real SMHE account or delete any real account. Release remains a separately
-authorized operation under `AGENTS.md`.
+Idle cleanup protects the bound ID and both reserved names independently of
+login configuration. More than 180 days of inactivity, repeated executing passes,
+or stale cleanup markers cannot make these identities deletion candidates.
+Protection includes their account/session, learning and feedback namespaces;
+this exemption never grants administrator permissions to an ordinary same-name
+account. Normal expired users still follow the drain-and-delete policy.

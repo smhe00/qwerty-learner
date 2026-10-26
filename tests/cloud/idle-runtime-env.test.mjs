@@ -76,13 +76,14 @@ test('deployment enables automatic policy without console settings; explicit inv
     assert.equal((await call({})).body.executionEnabled, false)
   }
 })
-test('SMHE enrollment uses the actual Node password and never returns its contents', async t => {
+test('Admin direct login uses the actual Node password and never returns its contents', async t => {
   setup(t)
   process.env.ADMIN_PASSWORD = secret
-  const wrong = await call({}, '/auth/register', { username: 'SMHE', password: '98765432' })
+  const wrong = await call({}, '/auth/login', { username: 'admin', password: 'synthetic-wrong-password' })
   assert.equal(wrong.status, 401)
-  const signed = await call({}, '/auth/register', { username: 'SMHE', password: secret })
-  assert.equal(signed.status, 201)
+  const signed = await call({}, '/auth/login', { username: 'admin', password: secret })
+  assert.equal(signed.status, 200)
+  assert.equal(signed.body.user.username, 'admin')
   assert.equal(JSON.stringify(signed).includes(secret), false)
 })
 test('deployed gateway self-initializes only in ordinary authenticated maintenance without any console configuration', async t => {

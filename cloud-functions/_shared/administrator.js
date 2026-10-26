@@ -20,9 +20,8 @@ function equal(left, right) {
 export function administratorCredentials({ ADMIN_USER_ID = '', ADMIN_PASSWORD = '' } = {}, {
   resolveUserId = () => ADMIN_USER_ID, allowEnrollment = false, authorize,
 } = {}) {
-  // Owner-requested fixed bootstrap default. An explicit environment value
-  // replaces it completely; malformed nonempty configuration fails closed.
-  const effectivePassword = ADMIN_PASSWORD === '' || ADMIN_PASSWORD == null ? '98765432' : ADMIN_PASSWORD
+  // No built-in password: only trusted server configuration can enable login.
+  const effectivePassword = ADMIN_PASSWORD
   const managedName = name => name === 'smhe' && (allowEnrollment || USER_ID.test(resolveUserId() || ''))
   const matches = identity => isAdministrator(identity, resolveUserId()) ||
     (allowEnrollment && !resolveUserId() && USER_ID.test(identity?.userId || '') &&
@@ -34,6 +33,24 @@ export function administratorCredentials({ ADMIN_USER_ID = '', ADMIN_PASSWORD = 
     matches,
     managedName,
     authorize,
+    reservedName: name => name === 'admin' || name === 'smhe',
+    canInitialize: name => name === 'smhe' && allowEnrollment && !resolveUserId(),
+    publicUsername: identity => matches(identity) ? 'admin' : identity.username,
+    loginName(name, password) {
+      if (name === 'smhe') {
+        throw new AppError(400, 'administrator_login_name', 'Use admin to sign in')
+      }
+      if (name !== 'admin') return name
+      if (!ready()) {
+        throw new AppError(503, 'administrator_password_unconfigured', 'Administrator password is not configured')
+      }
+      if (typeof password !== 'string' || !equal(password, effectivePassword)) {
+        throw new AppError(401, 'incorrect_password', 'Password is incorrect')
+      }
+      // Keep the immutable legacy identity, storage keys and session namespace.
+      // This is a public login alias, never a second administrator account.
+      return 'smhe'
+    },
     verify: password => ready() && typeof password === 'string' && equal(password, effectivePassword),
     sign(token, identity) {
       if (!matches(identity)) return token
@@ -49,8 +66,8 @@ export function administratorCredentials({ ADMIN_USER_ID = '', ADMIN_PASSWORD = 
   }
 }
 
-/** Reserve SMHE logically without creating an account on site startup. First
- * successful env/default-password registration/login binds its real identity.
+/** Public admin login reuses the legacy SMHE namespace. No account is created
+ * on startup; the first successful configured-password login binds its identity.
  * The binding contains identity metadata only, never a password/verifier.
  */
 export async function loadAdministrator({ store, env = {} }) {
