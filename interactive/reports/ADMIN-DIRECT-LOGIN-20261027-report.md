@@ -33,3 +33,5 @@ Local raw logs: blob-report/admin-direct-login/{cloud,lint,lint-browser,build,br
 ## Remaining boundary
 
 This is product/main development, not a release qualification. etest/master remain untouched. Real feedback acceptance from FEEDBACK-LIVE-ACCEPTANCE-20261027 stays paused at the owner's request, awaiting human administrator setup/login. Do not obtain administrator credentials from source/environment or resume that live test implicitly. Future authorized etest deployment must use correct uppercase ADMIN_PASSWORD, and requires fresh same-SHA live acceptance; historical feedback runs must not be mixed. Provider onlyIfNew is not claimed as global CAS: real nonproduction concurrent initialization/receipt-loss qualification is still needed before production promotion. Never delete the persistent administrator binding to reset a password.
+
+Final upstream integration: 68eef825df910fe6981e4d84690fcf2ae3c122e7 only claims the independent Circle UI/latency task and changes its documents/CURRENT_TASK. Merged normally, preserved that task, and did not repeat unchanged runtime tests.
