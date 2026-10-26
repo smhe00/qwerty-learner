@@ -30,7 +30,7 @@ import {
   S1_AUTH_INTENT_KEY,
   reauthenticateSameWorkspace,
 } from '../../src/sync/workspace-auth-transaction'
-import { mountGuardedWorkspaceApp } from '../../src/sync/workspace-bootstrap'
+import { mountGuardedWorkspaceApp } from './boot-outcome-fixture'
 import { initializeLegacyWorkspace, transitionWorkingWorkspace } from '../../src/sync/workspace-coordinator'
 import { acquireWorkspaceWriterLease } from '../../src/sync/workspace-lock'
 import {

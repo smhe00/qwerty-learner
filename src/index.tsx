@@ -16,7 +16,8 @@ import {
 } from './sync/quick-sync-entry'
 import { offerSecureLearningEntry } from './sync/secure-entry'
 import { prepareGuardedWorkspaceBoot } from './sync/workspace-bootstrap'
-import type { GuardedWorkspaceBoot, WorkspaceBootStage } from './sync/workspace-bootstrap'
+import { workspaceBootFailure } from './sync/workspace-boot-outcome'
+import type { GuardedWorkspaceBoot, WorkspaceBootStage, WorkspaceBootStopped } from './sync/workspace-boot-outcome'
 import type { Workspace } from './sync/workspace-transition'
 import { DAILY_SESSION_PREFIX, WORKSPACE_SETTING_KEYS } from './sync/workspace-v4'
 
@@ -210,6 +211,90 @@ function onStage(stage: WorkspaceBootStage): void {
   }
 }
 
+function showStoppedBoot(outcome: WorkspaceBootStopped): void {
+  const message = outcome.kind === 'reload-required' ? '' : outcome.error instanceof Error ? outcome.error.message : String(outcome.error)
+  if (outcome.kind === 'reload-required' && outcome.reason === 's2-pull-staged') {
+    gateUI('正在恢复云端学习记录', '完整数据已校验，正在完成安全恢复事务…')
+    window.location.reload()
+    return
+  }
+  if (outcome.kind === 'reload-required') {
+    gateUI('恢复已完成', '正在重新加载已恢复的学习数据…')
+    window.location.reload()
+    return
+  }
+  if (outcome.kind === 'occupied') {
+    if (/\/mobile\/account\/?$/.test(window.location.pathname)) {
+      gateUI(
+        '学习数据暂时被占用',
+        '页面切换或其他页面仍在使用学习数据。请稍后在此重试；若仍无法进入，请关闭其他 Qwerty Plus 页面。本机学习记录会保留。',
+        '在此重试',
+        () => {
+          void start()
+        },
+      )
+      const panel = root?.querySelector('section')
+      if (panel) {
+        const diagnose = document.createElement('button')
+        diagnose.type = 'button'
+        diagnose.textContent = '复制诊断信息'
+        diagnose.style.cssText = 'margin-left:12px;padding:8px 12px'
+        const note = document.createElement('p')
+        note.style.cssText = 'font-size:13px;color:#64748b'
+        note.textContent = '若只有一个页面仍无法进入，可复制占用信息用于排查。诊断不包含账号或学习内容。'
+        diagnose.addEventListener('click', () => {
+          diagnose.disabled = true
+          diagnose.textContent = '正在检查占用…'
+          void (async () => {
+            try {
+              const { inspectWorkspaceWriter } = await import('./sync/workspace-lock-diagnostics')
+              const first = await inspectWorkspaceWriter()
+              await new Promise<void>((resolve) => window.setTimeout(resolve, 2500))
+              const second = await inspectWorkspaceWriter()
+              const text = JSON.stringify(
+                { version: LATEST_COMMIT_HASH, browser: navigator.userAgent, path: window.location.pathname, samples: [first, second] },
+                null,
+                2,
+              )
+              if (!diagnose.isConnected) return
+              try {
+                await navigator.clipboard.writeText(text)
+                note.textContent = '已复制诊断信息，可以粘贴给开发者排查。'
+              } catch {
+                const output = document.createElement('textarea')
+                output.readOnly = true
+                output.value = text
+                output.setAttribute('aria-label', '占用诊断信息')
+                output.style.cssText = 'display:block;width:100%;height:180px;margin-top:12px'
+                panel.append(output)
+                output.focus()
+                output.select()
+                note.textContent = '请复制下方已选中的诊断信息。'
+              }
+            } catch {
+              if (note.isConnected) note.textContent = '暂时无法读取诊断信息，学习记录未修改。'
+            } finally {
+              if (diagnose.isConnected) {
+                diagnose.disabled = false
+                diagnose.textContent = '复制诊断信息'
+              }
+            }
+          })()
+        })
+        panel.append(diagnose, note)
+      }
+    } else {
+      gateUI(
+        '另一个标签页正在使用学习数据',
+        '为防止两个标签页同时写入而损坏学习进度，本页暂不启动。请关闭其他 Qwerty Plus 标签页，再重试。',
+        '重试',
+      )
+    }
+  } else {
+    gateUI('学习数据安全检查未通过', '已阻止本页写入，现有学习数据不会因此被清空。原因：' + message, '重新检查')
+  }
+}
+
 async function start(): Promise<void> {
   if (starting || releasedForPageHide) return
   starting = true
@@ -219,12 +304,17 @@ async function start(): Promise<void> {
       const { renderLearnBlockSyncScreen } = await import('./sync/learn-block-sync-ui')
       renderLearnBlockSyncScreen(root, null)
     }
-    boot = await timePerfStage('startup', 'guarded-bootstrap', () =>
+    const outcome = await timePerfStage('startup', 'guarded-bootstrap', () =>
       prepareGuardedWorkspaceBoot(onStage, {
         allowLegacy: true,
         writerWaitMs: /\/mobile\/account\/?$/.test(window.location.pathname) ? 3000 : 0,
       }),
     )
+    if (outcome.kind !== 'ready') {
+      showStoppedBoot(outcome)
+      return
+    }
+    boot = outcome.boot
     if (releasedForPageHide) {
       boot.release()
       return
@@ -513,87 +603,7 @@ async function start(): Promise<void> {
   } catch (error) {
     boot?.release()
     boot = undefined
-    const message = error instanceof Error ? error.message : String(error)
-    if (message.includes('S2 Pull staged; reload required')) {
-      gateUI('正在恢复云端学习记录', '完整数据已校验，正在完成安全恢复事务…')
-      window.location.reload()
-      return
-    }
-    if (message.includes('recovery completed; reload required')) {
-      gateUI('恢复已完成', '正在重新加载已恢复的学习数据…')
-      window.location.reload()
-      return
-    }
-    if (message.includes('Another tab owns')) {
-      if (/\/mobile\/account\/?$/.test(window.location.pathname)) {
-        gateUI(
-          '学习数据暂时被占用',
-          '页面切换或其他页面仍在使用学习数据。请稍后在此重试；若仍无法进入，请关闭其他 Qwerty Plus 页面。本机学习记录会保留。',
-          '在此重试',
-          () => {
-            void start()
-          },
-        )
-        const panel = root?.querySelector('section')
-        if (panel) {
-          const diagnose = document.createElement('button')
-          diagnose.type = 'button'
-          diagnose.textContent = '复制诊断信息'
-          diagnose.style.cssText = 'margin-left:12px;padding:8px 12px'
-          const note = document.createElement('p')
-          note.style.cssText = 'font-size:13px;color:#64748b'
-          note.textContent = '若只有一个页面仍无法进入，可复制占用信息用于排查。诊断不包含账号或学习内容。'
-          diagnose.addEventListener('click', () => {
-            diagnose.disabled = true
-            diagnose.textContent = '正在检查占用…'
-            void (async () => {
-              try {
-                const { inspectWorkspaceWriter } = await import('./sync/workspace-lock-diagnostics')
-                const first = await inspectWorkspaceWriter()
-                await new Promise<void>((resolve) => window.setTimeout(resolve, 2500))
-                const second = await inspectWorkspaceWriter()
-                const text = JSON.stringify(
-                  { version: LATEST_COMMIT_HASH, browser: navigator.userAgent, path: window.location.pathname, samples: [first, second] },
-                  null,
-                  2,
-                )
-                if (!diagnose.isConnected) return
-                try {
-                  await navigator.clipboard.writeText(text)
-                  note.textContent = '已复制诊断信息，可以粘贴给开发者排查。'
-                } catch {
-                  const output = document.createElement('textarea')
-                  output.readOnly = true
-                  output.value = text
-                  output.setAttribute('aria-label', '占用诊断信息')
-                  output.style.cssText = 'display:block;width:100%;height:180px;margin-top:12px'
-                  panel.append(output)
-                  output.focus()
-                  output.select()
-                  note.textContent = '请复制下方已选中的诊断信息。'
-                }
-              } catch {
-                if (note.isConnected) note.textContent = '暂时无法读取诊断信息，学习记录未修改。'
-              } finally {
-                if (diagnose.isConnected) {
-                  diagnose.disabled = false
-                  diagnose.textContent = '复制诊断信息'
-                }
-              }
-            })()
-          })
-          panel.append(diagnose, note)
-        }
-      } else {
-        gateUI(
-          '另一个标签页正在使用学习数据',
-          '为防止两个标签页同时写入而损坏学习进度，本页暂不启动。请关闭其他 Qwerty Plus 标签页，再重试。',
-          '重试',
-        )
-      }
-    } else {
-      gateUI('学习数据安全检查未通过', '已阻止本页写入，现有学习数据不会因此被清空。原因：' + message, '重新检查')
-    }
+    showStoppedBoot(workspaceBootFailure(error))
   } finally {
     starting = false
   }

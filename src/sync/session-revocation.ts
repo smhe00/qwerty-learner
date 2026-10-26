@@ -9,7 +9,7 @@
 import { SyncApiError, getMe } from './api'
 import { loadAuth } from './auth'
 import { applyDialogTheme } from './dialog-presentation'
-import type { GuardedWorkspaceBoot } from './workspace-bootstrap'
+import type { GuardedWorkspaceBoot } from './workspace-boot-outcome'
 import type { Registry } from './workspace-transition'
 
 const HANDOFF_KEY = 'qwerty.s1.revoked-logout-intent.v1'

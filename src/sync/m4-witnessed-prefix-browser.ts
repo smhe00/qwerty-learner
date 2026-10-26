@@ -1,3 +1,4 @@
+import { M4RecoveryRequiredError } from './workspace-errors'
 /**
  * Etest M4.1 pre-mount bridge. The caller MUST already own the exclusive S1
  * writer lease; no React/typing/ReviewRecord writer may be mounted.
@@ -266,7 +267,7 @@ export async function adoptWitnessedM3AtGuardedBoot(
     }
     // Never interpret an unknown failure as a successful merge. If M4 staging
     // started, the durable journal remains and must recover next boot.
-    if (error instanceof Error && error.message.includes('m4-merge-interrupted-recovery-required')) {
+    if (error instanceof M4RecoveryRequiredError) {
       throw error
     }
     return blocked(error instanceof Error ? error.message : 'unknown')

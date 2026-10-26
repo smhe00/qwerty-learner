@@ -15,7 +15,7 @@ import { captureWorkingWorkspaceV4 } from './workspace-v4-browser'
 import { assertRestorableWorkspaceV4, createWorkspaceV4 } from './workspace-v4'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
 import { workspaceRegistryPort } from './workspace-vault'
-import type { GuardedWorkspaceBoot } from './workspace-bootstrap'
+import type { GuardedWorkspaceBoot } from './workspace-boot-outcome'
 
 /**
  * Preserve all manifest schemas and personal preferences while clearing the

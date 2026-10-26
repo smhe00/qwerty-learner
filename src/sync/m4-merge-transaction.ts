@@ -1,3 +1,4 @@
+import { M4RecoveryRequiredError } from './workspace-errors'
 /**
  * M4 crash-safe full V4 merge transaction kernel. NOT wired to app boot or
  * network. Caller must independently verify authenticated common ancestor,
@@ -235,6 +236,6 @@ export async function executeM4Merge(
   } catch (cause) {
     // Never discard journal or rewrite original on failure; explicit recovery
     // under S1 writer lease chooses idempotent replay or rollback.
-    throw new Error('m4-merge-interrupted-recovery-required', { cause })
+    throw new M4RecoveryRequiredError(cause)
   }
 }

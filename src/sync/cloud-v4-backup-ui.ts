@@ -7,7 +7,7 @@ import { loadAuth } from './auth'
 import { samePinnedRemote, verifyPinnedCloudArchive } from './v2-recovery-archive'
 import { verifyDownloadedWorkspaceV4 } from './v2-verify-remote'
 import { workspaceRegistryPort } from './workspace-vault'
-import type { GuardedWorkspaceBoot } from './workspace-bootstrap'
+import type { GuardedWorkspaceBoot } from './workspace-boot-outcome'
 
 function elt<K extends keyof HTMLElementTagNameMap>(tag: K, value = ''): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag)

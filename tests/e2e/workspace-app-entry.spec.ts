@@ -30,7 +30,9 @@ test('real application loads unchanged legacy records after guarded boot', async
 
 test('second actual app tab is held outside React until writer tab closes', async ({ page, context }) => {
   await page.goto('/')
-  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  // Fresh initialization reloads once; wait for the owner app before testing
+  // contention, as in the guarded-boot readiness check above.
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 15_000 })
   const second = await context.newPage()
   await second.goto('/')
   await expect(second.getByText('另一个标签页正在使用学习数据')).toBeVisible()
@@ -38,6 +40,22 @@ test('second actual app tab is held outside React until writer tab closes', asyn
   await page.close()
   await second.getByRole('button', { name: '重试' }).click()
   await expect(second.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
+  await second.close()
+})
+
+test('mobile account contention retries in the same document after the owner closes', async ({ page, context }) => {
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 15_000 })
+  const second = await context.newPage()
+  await second.setViewportSize({ width: 390, height: 844 })
+  await second.goto('/mobile/account')
+  await expect(second.getByText('学习数据暂时被占用')).toBeVisible({ timeout: 10_000 })
+  await expect(second.getByRole('heading', { name: '登录 QWERTY Plus' })).toHaveCount(0)
+  await second.evaluate(() => { (window as any).__sameBootDocument = 'retained' })
+  await page.close()
+  await second.getByRole('button', { name: '在此重试' }).click()
+  await expect(second.getByRole('heading', { name: '登录 QWERTY Plus' })).toBeVisible()
+  expect(await second.evaluate(() => (window as any).__sameBootDocument)).toBe('retained')
   await second.close()
 })
 

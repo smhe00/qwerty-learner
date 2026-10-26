@@ -15,7 +15,7 @@ import { syncV2PullJournalPort } from './v2-pull-journal'
 import { assertWorkspaceMigrationWitness } from './workspace-storage-witness'
 import { captureWorkingWorkspaceV4 } from './workspace-v4-browser'
 import { saveWorkspaceToVault, workspaceRegistryPort } from './workspace-vault'
-import type { GuardedWorkspaceBoot } from './workspace-bootstrap'
+import type { GuardedWorkspaceBoot } from './workspace-boot-outcome'
 import { flushReviewRecordWrites } from '@/utils/db/review-record-writer'
 
 export async function executePreMountManualSyncV2(

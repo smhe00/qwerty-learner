@@ -1,5 +1,5 @@
 /** Dedicated writer-locked, pre-mount local learning reset UI. */
-import type { GuardedWorkspaceBoot } from './workspace-bootstrap'
+import type { GuardedWorkspaceBoot } from './workspace-boot-outcome'
 import { loadAuth } from './auth'
 import { workspaceRegistryPort } from './workspace-vault'
 import { assertWorkspaceMigrationWitness } from './workspace-storage-witness'

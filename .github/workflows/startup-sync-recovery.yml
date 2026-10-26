@@ -6,8 +6,36 @@ on:
       - 'src/sync/**'
       - 'src/index.tsx'
       - 'tests/e2e/startup-sync-*'
+      - 'tests/e2e/boot-outcome-fixture.ts'
+      - 'tests/e2e/backup-harness.ts'
+      - 'tests/e2e/workspace-app-entry.spec.ts'
       - 'tests/cloud/startup-*'
+      - 'tests/cloud/login-event-warning.test.mjs'
+      - 'tests/cloud/login-startup-m4.test.mjs'
+      - 'tests/cloud/m4-merge-transaction.test.mjs'
+      - 'tests/cloud/v4-disjoint-m4-admission.test.mjs'
       - 'tests/e2e/etest-three-device-auto-fork.*'
+      - '.github/workflows/startup-sync-recovery.yml'
+  pull_request:
+    branches: [product/main]
+    paths:
+      - 'src/sync/workspace-bootstrap.ts'
+      - 'src/sync/workspace-boot-outcome.ts'
+      - 'src/sync/workspace-errors.ts'
+      - 'src/sync/workspace-lock.ts'
+      - 'src/sync/m4-merge-transaction.ts'
+      - 'src/sync/m4-witnessed-prefix-browser.ts'
+      - 'src/sync/account-passive-return.ts'
+      - 'src/index.tsx'
+      - 'tests/e2e/startup-sync-*'
+      - 'tests/e2e/boot-outcome-fixture.ts'
+      - 'tests/e2e/backup-harness.ts'
+      - 'tests/e2e/workspace-app-entry.spec.ts'
+      - 'tests/cloud/startup-*'
+      - 'tests/cloud/login-event-warning.test.mjs'
+      - 'tests/cloud/login-startup-m4.test.mjs'
+      - 'tests/cloud/m4-merge-transaction.test.mjs'
+      - 'tests/cloud/v4-disjoint-m4-admission.test.mjs'
       - '.github/workflows/startup-sync-recovery.yml'
   workflow_dispatch:
 permissions:
@@ -27,5 +55,11 @@ jobs:
           cache: yarn
       - run: yarn install --frozen-lockfile
       - run: npx playwright install --with-deps chromium
+      - name: Explicit boot outcomes and durable M4 recovery contracts
+        run: node --test tests/cloud/startup-sync-boot.test.mjs tests/cloud/login-event-warning.test.mjs tests/cloud/login-startup-m4.test.mjs tests/cloud/m4-merge-transaction.test.mjs tests/cloud/v4-disjoint-m4-admission.test.mjs
       - name: Slow/offline/lost-ACK and cross-reload journal regression
         run: npx playwright test --config=tests/e2e/startup-sync-regression.config.ts
+      - name: Guarded mount, writer contention and real journal recovery
+        run: >
+          yarn playwright test --config=tests/e2e/workspace-v4.config.ts
+          --grep 'second actual app tab|mobile account contention|actual app replays pending S1|real app fails closed on corrupt|two Web-Locks-less tabs|copied tab identity|native Web Locks and fallback|crashed V4 Pull|damaged staged V4 fingerprint|S1 boot resumes a complete pending M4|S1 owner mismatch cannot consume'

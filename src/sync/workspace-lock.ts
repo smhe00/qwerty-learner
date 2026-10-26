@@ -1,3 +1,4 @@
+import { WorkspaceWriterOccupiedError } from './workspace-errors'
 /**
  * S1 single-writer ownership for the mounted working RecordDB.
  *
@@ -59,7 +60,7 @@ async function tabOwner(): Promise<string> {
       channel.postMessage({ kind: 'probe', owner: existing, challenge })
       window.setTimeout(() => complete(false), 120)
     })
-    if (active) throw new Error('Another tab owns the active workspace writer lease')
+    if (active) throw new WorkspaceWriterOccupiedError()
     return existing
   }
   return randomToken()
@@ -130,7 +131,7 @@ async function acquireIndexedDbWriterLease(kind: 'native' | 'fallback'): Promise
   }
   if (!acquired) {
     db.close()
-    throw new Error('Another tab owns the active workspace writer lease')
+    throw new WorkspaceWriterOccupiedError()
   }
 
   const presence = typeof BroadcastChannel === 'undefined'
@@ -203,7 +204,7 @@ function acquireNativeWebLock(): Promise<WorkingDbLease> {
       async lock => {
         if (!lock) {
           resolved = true
-          reject(new Error('Another tab owns the active workspace writer lease'))
+          reject(new WorkspaceWriterOccupiedError())
           return
         }
         let released = false
@@ -232,8 +233,7 @@ async function acquireWorkspaceWriterLeaseOnce(): Promise<WorkingDbLease> {
     try {
       nativeLease = await acquireNativeWebLock()
     } catch (error) {
-      if (error instanceof Error &&
-          error.message === 'Another tab owns the active workspace writer lease') {
+      if (error instanceof WorkspaceWriterOccupiedError) {
         throw error
       }
       // A browser policy can expose navigator.locks but reject request().
@@ -269,8 +269,7 @@ export async function acquireWorkspaceWriterLease(
       return await acquireWorkspaceWriterLeaseOnce()
     } catch (error) {
       const remaining = deadline - performance.now()
-      if (!(error instanceof Error) ||
-          error.message !== 'Another tab owns the active workspace writer lease' ||
+      if (!(error instanceof WorkspaceWriterOccupiedError) ||
           remaining <= 0) throw error
       await new Promise<void>(resolve => window.setTimeout(resolve, Math.min(150, remaining)))
     }

@@ -11,7 +11,7 @@ import { workspaceFingerprintV4 } from './workspace-v4'
 import { workspaceRegistryPort } from './workspace-vault'
 import { assertWorkspaceMigrationWitness } from './workspace-storage-witness'
 import { loadAuth } from './auth'
-import type { GuardedWorkspaceBoot } from './workspace-bootstrap'
+import type { GuardedWorkspaceBoot } from './workspace-boot-outcome'
 import type { WorkspaceIdentityV4 } from './workspace-v4'
 
 const MAX_GZIP_BYTES = 128 * 1024 * 1024

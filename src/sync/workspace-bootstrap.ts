@@ -6,6 +6,7 @@
  * registry. It never migrates or switches an account implicitly.
  */
 import { matchesAccountVisit, setAccountVisitSource, takePassiveAccountReturn } from './account-passive-return'
+import type { AccountVisit } from './account-passive-return'
 import { shouldCheckAccountV4AtStartup } from './account-startup-v4'
 import { loadAuth, setIsolatedAuthRetention } from './auth'
 import { SYNC_PENDING_NOTICE } from './learning-sync-diagnostics'
@@ -18,6 +19,10 @@ import {
   startupSyncTimeRemaining,
 } from './startup-sync-budget'
 import { acquireWorkspaceWriterLease } from './workspace-lock'
+import type { WorkingDbLease } from './workspace-lock'
+import { workspaceBootFailure } from './workspace-boot-outcome'
+import type { WorkspaceBootOutcome, WorkspaceBootStage, WorkspaceReloadReason } from './workspace-boot-outcome'
+import { M4RecoveryRequiredError } from './workspace-errors'
 import {
   assertWorkspaceMigrationWitness,
   installWorkspaceStorageWriterGuard,
@@ -27,16 +32,6 @@ import { same } from './workspace-transition'
 import type { Registry, Workspace } from './workspace-transition'
 import { S1_MIGRATION_WITNESS_KEY } from './workspace-v4'
 import { workspaceRegistryPort } from './workspace-vault'
-
-export type WorkspaceBootStage = 'locking' | 'recovering' | 'restart-required' | 'checking-identity' | 'syncing' | 'ready' | 'blocked'
-
-export type GuardedWorkspaceBoot = {
-  mode: 'legacy' | 'isolated'
-  registry: Registry
-  passiveAccountReturn?: boolean
-  /** Only call after all mounted writers have stopped and flushed. */
-  release(): void
-}
 
 function report(onStage: ((stage: WorkspaceBootStage) => void) | undefined, stage: WorkspaceBootStage): void {
   try {
@@ -55,18 +50,24 @@ function report(onStage: ((stage: WorkspaceBootStage) => void) | undefined, stag
 export async function prepareGuardedWorkspaceBoot(
   onStage?: (stage: WorkspaceBootStage) => void,
   options: { allowLegacy?: boolean; writerWaitMs?: number } = {},
-): Promise<GuardedWorkspaceBoot> {
-  const returnTicket = takePassiveAccountReturn()
+): Promise<WorkspaceBootOutcome> {
+  let returnTicket: AccountVisit | null
+  let lease: WorkingDbLease
   let networkSettled = true
-  report(onStage, 'locking')
-  const lease = await timePerfStage('startup', 'writer-lease', () => acquireWorkspaceWriterLease({ waitMs: options.writerWaitMs })).catch(
-    (error) => {
-      report(onStage, 'blocked')
-      throw error
-    },
-  )
+  try {
+    returnTicket = takePassiveAccountReturn()
+    report(onStage, 'locking')
+    lease = await timePerfStage('startup', 'writer-lease', () => acquireWorkspaceWriterLease({ waitMs: options.writerWaitMs }))
+  } catch (error) {
+    report(onStage, 'blocked')
+    return workspaceBootFailure(error)
+  }
 
-  let recovered = false
+  const reload = (reason: WorkspaceReloadReason): WorkspaceBootOutcome => {
+    lease.release()
+    report(onStage, 'restart-required')
+    return { kind: 'reload-required', reason }
+  }
   try {
     const before = await timePerfStage('startup', 'registry-read', () => workspaceRegistryPort.read())
     // An S2 Pull may have partially restored shared settings. Its immutable
@@ -98,7 +99,7 @@ export async function prepareGuardedWorkspaceBoot(
       // One-writer V1 compatibility: never assign ownership or migrate here.
       // Login/logout retains V1 behavior until the explicit S1 consent flow.
       report(onStage, 'ready')
-      return { mode: 'legacy', registry: before, release: () => lease.release() }
+      return { kind: 'ready', boot: { mode: 'legacy', registry: before, release: () => lease.release() } }
     }
 
     // A cross-tab localStorage.clear() has no old values in the event and
@@ -141,8 +142,7 @@ export async function prepareGuardedWorkspaceBoot(
       await reconcileAuthTransition()
       // The immutable vault is the recovery authority, not stale V5 storage.
       refreshWorkspaceMigrationWitness()
-      recovered = true
-      throw new Error('S1 recovery completed; reload required before mounting app')
+      return reload('s1-recovered')
     }
 
     const { reconcileAuthTransition } = await import('./workspace-auth-transaction')
@@ -191,10 +191,9 @@ export async function prepareGuardedWorkspaceBoot(
         throw new Error('M4 recovery journal disappeared: writes blocked')
       }
       sessionStorage.setItem('qwerty.s2.last-sync-result', '本机学习数据事务已安全恢复；其他设备是否完成同步尚未确认。')
-      recovered = true
       // Reload discards any pre-restore module-level storage caches.
       preserveStartupSyncBudgetForReload()
-      throw new Error('M4 merge recovery completed; reload required before mounting app')
+      return reload('m4-recovered')
     }
 
     if (pendingPull) {
@@ -204,16 +203,14 @@ export async function prepareGuardedWorkspaceBoot(
       // Success acknowledgement is emitted only after full durable replay,
       // witness reseal and atomic baseline finalization, never at staging.
       sessionStorage.setItem('qwerty.s2.last-sync-result', '已完成云端学习数据安全恢复。')
-      recovered = true
       preserveStartupSyncBudgetForReload()
-      throw new Error('S2 Pull recovery completed; reload required before mounting app')
+      return reload('s2-pull-recovered')
     }
     if (pendingImport) {
       report(onStage, 'recovering')
       const { recoverPendingManualV4Import } = await import('./manual-v4-import-recovery')
       await recoverPendingManualV4Import()
-      recovered = true
-      throw new Error('Manual V4 import recovery completed; reload required before mounting app')
+      return reload('manual-v4-recovered')
     }
 
     // Re-check after any awaited reconciliation; fail closed if stale JS
@@ -257,9 +254,8 @@ export async function prepareGuardedWorkspaceBoot(
         sessionStorage.setItem('qwerty.s2.last-sync-result', result.detail)
       }
       if (result.status === 'pull-staged') {
-        recovered = true
         preserveStartupSyncBudgetForReload()
-        throw new Error('S2 Pull staged; reload required before mounting app')
+        return reload('s2-pull-staged')
       }
       if (!result.canContinue) throw new Error('S2 startup workspace is not ready')
     }
@@ -272,11 +268,10 @@ export async function prepareGuardedWorkspaceBoot(
         const { adoptWitnessedM3AtGuardedBoot } = await import('./m4-witnessed-prefix-browser')
         const adoption = await adoptWitnessedM3AtGuardedBoot(registry)
         if (adoption.status === 'adopted') {
-          recovered = true
           // The restore initialized Dexie/atoms before the React mount. A
           // fresh JS realm avoids using stale in-memory state after recovery.
           preserveStartupSyncBudgetForReload()
-          throw new Error('M4 merge recovery completed; reload required before mounting app')
+          return reload('m4-recovered')
         }
         if (adoption.status === 'blocked') {
           networkSettled = false
@@ -292,14 +287,7 @@ export async function prepareGuardedWorkspaceBoot(
           window.history.replaceState(null, '', '/')
         }
       } catch (error) {
-        if (
-          error instanceof Error &&
-          (error.message.includes('M4 merge recovery completed; reload required') ||
-            error.message.includes('m4-merge-interrupted-recovery-required'))
-        ) {
-          recovered = true
-          throw error
-        }
+        if (error instanceof M4RecoveryRequiredError) throw error
         // Network/read failures leave the full local workspace and durable
         // outbox intact; offline etest users must still be able to learn.
         networkSettled = false
@@ -344,11 +332,11 @@ export async function prepareGuardedWorkspaceBoot(
         ['/', '/learn', '/typing', '/mobile', '/mobile/study'].includes(window.location.pathname.replace(/\/$/, '') || '/'),
     )
     report(onStage, 'ready')
-    return { mode: 'isolated', registry, passiveAccountReturn, release: () => lease.release() }
+    return { kind: 'ready', boot: { mode: 'isolated', registry, passiveAccountReturn, release: () => lease.release() } }
   } catch (error) {
     lease.release()
-    report(onStage, recovered ? 'restart-required' : 'blocked')
-    throw error
+    report(onStage, error instanceof M4RecoveryRequiredError ? 'restart-required' : 'blocked')
+    return workspaceBootFailure(error)
   } finally {
     finishStartupSyncBudget()
   }
@@ -358,13 +346,14 @@ export async function prepareGuardedWorkspaceBoot(
 export async function mountGuardedWorkspaceApp(
   mount: (registry: Registry) => void | Promise<void>,
   onStage?: (stage: WorkspaceBootStage) => void,
-): Promise<GuardedWorkspaceBoot> {
-  const boot = await prepareGuardedWorkspaceBoot(onStage)
+): Promise<WorkspaceBootOutcome> {
+  const outcome = await prepareGuardedWorkspaceBoot(onStage)
+  if (outcome.kind !== 'ready') return outcome
   try {
-    await mount(boot.registry)
-    return boot
+    await mount(outcome.boot.registry)
+    return outcome
   } catch (error) {
-    boot.release()
-    throw error
+    outcome.boot.release()
+    return workspaceBootFailure(error)
   }
 }

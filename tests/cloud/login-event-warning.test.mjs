@@ -184,10 +184,11 @@ async function loginAgain({ rows = [], failure, v4Continue = true, adoption = 's
     clearTimeout(timeout)
   }
   assert.deepEqual(calls, ['login', 'switch'], 'account UI must not run a duplicate sync pipeline')
-  try {
-    await boot()
-  } catch (error) {
-    assert.match(error.message, /S2 Pull staged; reload required|M4 merge recovery completed; reload required/)
+  const outcome = await boot()
+  if (outcome.kind === 'ready') outcome.boot.release()
+  else {
+    assert.equal(outcome.kind, 'reload-required')
+    assert.ok(['s2-pull-staged', 'm4-recovered'].includes(outcome.reason))
   }
   assert.deepEqual(rows, original, 'login must never repair/reidentify the source rows')
   // Successful authentication is quiet; only actionable sync notices open a dialog.

@@ -21,7 +21,7 @@ import { captureWorkingWorkspaceV4 } from './workspace-v4-browser'
 import { assertRestorableWorkspaceV4, workspaceFingerprintV4 } from './workspace-v4'
 import { saveWorkspaceToVault, workspaceRegistryPort } from './workspace-vault'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
-import type { GuardedWorkspaceBoot } from './workspace-bootstrap'
+import type { GuardedWorkspaceBoot } from './workspace-boot-outcome'
 import type { RemoteSyncMeta } from './types'
 import { flushReviewRecordWrites } from '@/utils/db/review-record-writer'
 
