@@ -302,6 +302,7 @@ function Conversation({ identity }: { identity: Identity }) {
           <label>
             {thread ? '继续交流' : '具体内容'}
             <textarea
+              aria-label={thread ? '继续交流' : '具体内容'}
               maxLength={2000}
               required={!thread || !administrator}
               rows={4}
