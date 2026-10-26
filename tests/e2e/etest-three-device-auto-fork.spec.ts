@@ -292,7 +292,11 @@ async function assertDurable(page: Page, event: Event) {
 }
 
 test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 adoption', async ({ browser }, testInfo) => {
-  test.setTimeout(700_000)
+  // Nine sequential logins each retain the 180s assertion and 60s product budget.
+  // Allow the full relay plus independent cloud reads/cleanup to finish on slow CI.
+  // 269ac6aa completed eight logins within 68.3s each; the old 700s suite cap
+  // killed login nine at 49s, before its own deadline.
+  test.setTimeout(900_000)
   expect(process.env.GITHUB_REF_NAME).toBe(productionAcceptance ? 'master' : 'edgeone-test')
   expect(new URL(base).origin).toBe(expectedOrigin)
   expect(process.env.GITHUB_RUN_ID).toMatch(/^\d+$/)
@@ -399,6 +403,7 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
         }).toBe(true)
       }
       await assertDurable(pages[i], branches[i])
+      console.log('E2E_HANDOFF_DURABLE', JSON.stringify({ handoff, index: i, localRows: (await records(pages[i])).length }))
     }
     // Every previously reauthenticated device must retain its own WordRecord.
     // Sync completion is only proven by the exact full union on the final
@@ -413,7 +418,7 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
     console.error('E2E_M4_APPLICATION_FAILED')
   } finally {
     const diagnostic = await Promise.all(profilePages.map(async (page, index) => {
-      const rows = await records(page).catch(() => [])
+      const rows = await records(page).catch(() => null)
       // Production build drops console calls. Read ONLY the explicitly
       // redacted etest session diagnostic; never read auth or learning data.
       const phases = await page.evaluate(() => {
@@ -434,7 +439,7 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
           return safe
         }).filter(Boolean)
       }).catch(() => [])
-      return { index, localRows: rows.length, witnessPhases: phases,
+      return { index, localRows: rows?.length ?? null, witnessPhases: phases,
         journal: await journalEvidence(page) }
     }))
     console.log('E2E_M4_THREE_DEVICE_COUNTS', JSON.stringify(diagnostic))

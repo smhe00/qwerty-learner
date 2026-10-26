@@ -7,6 +7,7 @@ on:
       - 'src/index.tsx'
       - 'tests/e2e/startup-sync-*'
       - 'tests/cloud/startup-*'
+      - 'tests/e2e/etest-three-device-auto-fork.*'
       - '.github/workflows/startup-sync-recovery.yml'
   workflow_dispatch:
 permissions:
