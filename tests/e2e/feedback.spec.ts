@@ -27,12 +27,13 @@ function cloud() {
   })
   let drop = false, malformed = false, reject = false, delay = 0
   async function attach(page: Page) {
-    const sync: string[] = [], api: string[] = []
+    const sync: string[] = [], api: string[] = [], feedback: { authorization?: string; guest?: string }[] = []
     await page.route('**/api/**', async route => {
       const request = route.request(), url = new URL(request.url()); api.push(url.pathname)
       if (url.pathname.includes('/sync')) sync.push(url.pathname)
       if (url.pathname === '/api/admin/access') return route.fulfill({ json: { ok: true, administrator: request.headers().authorization === 'Bearer ' + admin } })
       if (!url.pathname.startsWith('/api/feedback')) return route.fulfill({ status: 503, json: { ok: false } })
+      feedback.push({ authorization: request.headers().authorization, guest: request.headers()['x-feedback-key'] })
       if (reject && request.method() === 'POST') { reject = false; return route.fulfill({ status: 400, json: { ok: false, message: '请修改后重试。' } }) }
       if (delay) await new Promise(resolve => setTimeout(resolve, delay))
       try {
@@ -43,7 +44,7 @@ function cloud() {
         await route.fulfill({ json: { ok: true, ...value } })
       } catch (error: any) { await route.fulfill({ status: error.statusCode || 500, json: { ok: false, message: error.message } }) }
     })
-    return { sync, api }
+    return { sync, api, feedback }
   }
   let ip = 0
   return { attach, blobs, loseResponse: () => { drop = true }, malformedResponse: () => { malformed = true }, rejectWrite: () => { reject = true }, slow: () => { delay = 500 } }
@@ -57,9 +58,13 @@ async function open(page: Page) {
   await page.getByRole('button', { name: '反馈与建议', exact: true }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
 }
-async function create(page: Page, title: string) {
+async function create(page: Page, title: string, screenshot?: string) {
   await page.getByRole('button', { name: '写反馈', exact: true }).click()
+  await expect(page.getByRole('button', { name: /^(刷新|保存私密链接|查看匿名反馈|查看账号反馈)$/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '返回反馈列表', exact: true })).toHaveCount(1)
   await page.getByLabel('标题', { exact: true }).fill(title)
+  expect(await page.locator('.feedback-body').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+  if (screenshot) await page.locator('.feedback-panel').screenshot({ path: screenshot })
   await page.getByLabel('具体内容', { exact: true }).fill('希望按钮更清晰 <script>alert(1)</script>')
   await page.getByRole('button', { name: '提交反馈', exact: true }).click()
   await expect(page.getByRole('heading', { name: title })).toBeVisible()
@@ -72,10 +77,10 @@ async function become(page: Page, id: string) {
 test('anonymous feedback, private recovery, admin reply and follow-up; no sync', async ({ page, browser }) => {
   test.skip(!!process.env.FEEDBACK_PAGES)
   const backend = cloud(), requests = await backend.attach(page)
-  await home(page); await open(page); await create(page, '手机按钮建议')
+  await home(page); await open(page); await create(page, '手机按钮建议', 'blob-report/feedback/mobile-form.png')
   await page.getByRole('button', { name: '保存私密链接' }).click()
   const link = await page.getByLabel('匿名反馈私密链接', { exact: true }).inputValue()
-  await expect(page.getByText('希望按钮更清晰 <script>alert(1)</script>', { exact: true })).toBeVisible()
+  await expect(page.getByRole('article').getByText('希望按钮更清晰 <script>alert(1)</script>', { exact: true })).toBeVisible()
   const adminContext = await browser.newContext(), adminPage = await adminContext.newPage()
   await backend.attach(adminPage); await home(adminPage); await become(adminPage, admin); await open(adminPage)
   await adminPage.getByRole('button', { name: '管理全部反馈' }).click()
@@ -83,16 +88,16 @@ test('anonymous feedback, private recovery, admin reply and follow-up; no sync',
   await adminPage.getByLabel('继续交流', { exact: true }).fill('已经调整，谢谢反馈')
   await adminPage.getByLabel('处理状态', { exact: true }).selectOption('resolved')
   await adminPage.getByRole('button', { name: '发送', exact: true }).click()
-  await expect(adminPage.getByText('已经调整，谢谢反馈', { exact: true })).toBeVisible()
+  await expect(adminPage.getByRole('article').getByText('已经调整，谢谢反馈', { exact: true })).toBeVisible()
   const recoveryContext = await browser.newContext(), recovered = await recoveryContext.newPage()
   await backend.attach(recovered); await recovered.setViewportSize({ width: 320, height: 700 }); await recovered.goto(link)
   await expect(recovered.getByRole('dialog', { name: '反馈与建议' })).toBeVisible({ timeout: 60000 })
   await expect(recovered).not.toHaveURL(/feedback=/)
   await recovered.getByRole('button', { name: /手机按钮建议/ }).click()
-  await expect(recovered.getByText('已经调整，谢谢反馈', { exact: true })).toBeVisible()
+  await expect(recovered.getByRole('article').getByText('已经调整，谢谢反馈', { exact: true })).toBeVisible()
   await recovered.getByLabel('继续交流', { exact: true }).fill('现在好了')
   await recovered.getByRole('button', { name: '发送', exact: true }).click()
-  await expect(recovered.getByText('现在好了', { exact: true })).toBeVisible()
+  await expect(recovered.getByRole('article').getByText('现在好了', { exact: true })).toBeVisible()
   await recovered.screenshot({ path: 'blob-report/feedback/mobile.png' })
   expect(await recovered.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.getByRole('button', { name: '关闭反馈' }).click()
@@ -119,7 +124,7 @@ test('lost response survives refresh and retries original message once, includin
   await expect(page.getByRole('button', { name: '重试发送' })).toBeEnabled()
   await page.reload(); await expect(page.locator('[data-mobile-menu]')).toBeVisible(); await open(page)
   await page.getByRole('button', { name: '重试发送' }).click()
-  await expect(page.getByText('补充一次', { exact: true })).toBeVisible()
+  await expect(page.getByRole('article').getByText('补充一次', { exact: true })).toBeVisible()
   expect([...backend.blobs.keys()].filter(key => key.includes('/messages/'))).toHaveLength(1)
 })
 
@@ -143,7 +148,9 @@ test('PC account menu and anonymous settings use same dialog without learning na
   await page.getByRole('menuitem', { name: '反馈与建议' }).click()
   await expect(page.getByRole('dialog', { name: '反馈与建议' })).toBeVisible()
   await expect(page.getByRole('button', { name: /桌面建议/ })).toHaveCount(0)
-  await create(page, '账号建议')
+  await expect(page.getByRole('button', { name: /查看匿名反馈|查看账号反馈/ })).toHaveCount(0)
+  await page.locator('.feedback-panel').screenshot({ path: 'blob-report/feedback/desktop-empty.png' })
+  await create(page, '账号建议', 'blob-report/feedback/desktop-form.png')
   await page.screenshot({ path: 'blob-report/feedback/desktop.png' })
   await page.getByRole('button', { name: '关闭反馈' }).click()
   expect(new URL(page.url()).pathname).toBe('/typing'); expect(requests.sync).toEqual([])
@@ -171,6 +178,65 @@ test('explicit rejected submission keeps editable content and does not leave an 
   await expect(page.getByLabel('具体内容', { exact: true })).toHaveValue('被拒绝后可修改')
   await page.getByLabel('具体内容', { exact: true }).fill('修改后的反馈')
   await page.getByRole('button', { name: '提交反馈' }).click()
-  await expect(page.getByText('修改后的反馈', { exact: true })).toBeVisible()
+  await expect(page.getByRole('article').getByText('修改后的反馈', { exact: true })).toBeVisible()
   expect([...backend.blobs.keys()].filter(key => key.endsWith('/root.json'))).toHaveLength(1)
+})
+
+
+test('identity follows login only, including anonymous recovery links and logout', async ({ page }) => {
+  test.skip(!!process.env.FEEDBACK_PAGES)
+  const backend = cloud(), requests = await backend.attach(page)
+  await home(page); await open(page); await create(page, '原匿名反馈')
+  await page.getByRole('button', { name: '保存私密链接' }).click()
+  const link = await page.getByLabel('匿名反馈私密链接', { exact: true }).inputValue()
+  const originalKey = await page.evaluate(() => localStorage.getItem('qwerty.feedback.active.v1'))
+  await page.getByRole('button', { name: '关闭反馈' }).click()
+  await become(page, account)
+  requests.feedback.length = 0
+  // SPA link navigation isolates feedback identity from the learning-session bootstrap fixture.
+  await page.evaluate(link => { history.pushState({}, '', link); window.dispatchEvent(new PopStateEvent('popstate')) }, link)
+  const dialog = page.getByRole('dialog', { name: '反馈与建议' })
+  await expect(dialog).toBeVisible()
+  await expect(page).not.toHaveURL(/feedback=/)
+  await expect(page.getByRole('button', { name: '写反馈', exact: true })).toBeEnabled()
+  await expect(page.getByRole('button', { name: /原匿名反馈|查看匿名反馈|查看账号反馈|保存私密链接/ })).toHaveCount(0)
+  await expect(page.getByLabel('匿名入口')).toHaveCount(0)
+  await create(page, '当前账号反馈')
+  expect(requests.feedback.length).toBeGreaterThan(0)
+  expect(requests.feedback.every(request => request.authorization === 'Bearer ' + account && !request.guest)).toBe(true)
+  await page.getByRole('button', { name: '关闭反馈' }).click()
+  await page.evaluate(() => localStorage.removeItem('qwerty.cloudAuth.v1'))
+  requests.feedback.length = 0
+  await open(page)
+  await expect(page.getByRole('button', { name: /原匿名反馈/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /当前账号反馈/ })).toHaveCount(0)
+  expect(requests.feedback.every(request => request.guest === originalKey && !request.authorization)).toBe(true)
+  expect(requests.sync).toEqual([])
+})
+
+test('a changed or expired login never silently submits as anonymous', async ({ page }) => {
+  test.skip(!!process.env.FEEDBACK_PAGES)
+  const backend = cloud(), requests = await backend.attach(page)
+  await home(page); await open(page)
+  await page.getByRole('button', { name: '写反馈', exact: true }).click()
+  await page.getByLabel('标题', { exact: true }).fill('登录变更')
+  await page.getByLabel('具体内容', { exact: true }).fill('不应落入旧匿名身份')
+  await page.setViewportSize({ width: 320, height: 700 })
+  expect(await page.locator('.feedback-body').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+  await page.locator('.feedback-panel').screenshot({ path: 'blob-report/feedback/mobile-320-form.png' })
+  await become(page, account)
+  const before = requests.feedback.length
+  await page.getByRole('button', { name: '提交反馈', exact: true }).click()
+  await expect(page.getByRole('alert')).toHaveText('登录状态已改变，请关闭后重新打开反馈。')
+  expect(requests.feedback).toHaveLength(before)
+  expect([...backend.blobs.keys()].filter(key => key.endsWith('/root.json'))).toHaveLength(0)
+  await page.getByRole('button', { name: '关闭反馈' }).click()
+  await become(page, 'd'.repeat(32))
+  requests.feedback.length = 0
+  await open(page)
+  await expect(page.getByRole('alert')).toHaveText('登录已失效，请重新登录后查看或发送反馈。')
+  expect(requests.feedback.length).toBeGreaterThan(0)
+  expect(requests.feedback.every(request => request.authorization === 'Bearer ' + 'd'.repeat(32) && !request.guest)).toBe(true)
+  await expect(page.getByRole('button', { name: '保存私密链接' })).toHaveCount(0)
+  expect(requests.sync).toEqual([])
 })

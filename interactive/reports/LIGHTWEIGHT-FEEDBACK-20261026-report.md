@@ -49,3 +49,21 @@ CI at integration 6cd2c38c: Cloud Sync Gate 40315199218 PASS (backend/lint/build
 - Worktree: C:/Users/peter/Documents/Codex/2026-10-26/qwerty-lightweight-feedback. Local synthetic screenshots and validation logs are under ignored blob-report/feedback/.
 
 Remaining before production: promote an authorized frozen candidate to etest, verify actual Feedback Cloud/Blob across guest/account/admin contexts (including private-link recovery, lost response, deletion and namespace isolation), then perform exact-SHA release gates. Local/CI synthetic storage results do not certify real EdgeOne or Huawei hardware. This task made no staging/production branch changes.
+
+## Owner UI simplification and automatic identity follow-up
+Base: 33011a55335d123f3094c1ef2f1e11a3d38faa3c; integrated 0026e8ac (Circle task documentation only). Owner found the dialog cluttered and requested account identity when signed in, anonymous otherwise, with no switch.
+
+Removed account/guest switching and anonymous-key selectors. Lists now have one heading/refresh/write toolbar; composition has only back, fields and submit; detail keeps back/refresh in one row. Counts and submit align at opposite ends. Anonymous recovery is a secondary footer disclosure, absent while composing. No backend or learning-sync changes.
+
+Account identity takes precedence even for an anonymous recovery URL. Its guest credential is still saved for later signed-out access; guest/account content is not migrated or merged. Every feedback request verifies that its captured identity still matches current local login, blocking stale-identity sends before network access. Expired server credentials remain an account error and never silently fall back to anonymous. Pending bytes and existing guest credentials are preserved.
+
+Validation on final source:
+- Scoped ESLint: PASS, zero errors/warnings in src/feedback.
+- Local Chromium synthetic-cloud browser journeys: 6/6 PASS, 54.3 s. Covers guest/admin conversation and fresh-link recovery; slow reads and malformed/lost ACK across reload; desktop account/guest entries with no sync; rejected writes retaining editable content; account precedence over a recovery link then logout restoring anonymous inbox; changed/revoked login never sending as guest.
+- Pages boundary: 1/1 PASS, 17.0 s, no feedback API requests. Six cloud-mode skips in Pages and one Pages skip in cloud mode are intentional.
+- Earlier runs exposed text selectors matching both a displayed reply and the textarea during React updates, plus React StrictMode duplicate initial reads. Assertions now target rendered message articles and check every request identity rather than assuming one GET; no application behavior or safety assertion was relaxed.
+- PC empty/form and 390/320px mobile screenshots inspected. Form/body overflow assertions PASS. Evidence: ignored blob-report/feedback/{desktop-empty,desktop-form,mobile-form,mobile-320-form,mobile}.png.
+- Full typecheck retains 147 repository diagnostics (exit 2); no src/feedback diagnostics. This is not a clean full-repository typecheck.
+- git diff --check: PASS. Upstream integration touched only the other executor's task records and requires no repeated application tests.
+
+Delivery remains product/main only. No etest/master push or live Blob writes. CI result will be recorded after this development push. Existing release qualification boundaries remain unchanged.

@@ -3,7 +3,6 @@ import {
   currentAccount,
   feedbackEnabled,
   feedbackRequest,
-  guestKeys,
   randomKey,
   readPending,
   savePending,
@@ -123,75 +122,71 @@ function Conversation({ identity }: { identity: Identity }) {
   const frozen = busy || !!pending
   return (
     <>
-      <div className="feedback-actions">
+      <div className="feedback-toolbar">
+        {creating || thread ? (
+          <button
+            className="feedback-text-button"
+            aria-label="返回反馈列表"
+            disabled={frozen}
+            onClick={() => {
+              if (creating) setCreating(false)
+              else
+                void run(async () => {
+                  await listing()
+                  setThread(null)
+                  setText('')
+                })
+            }}
+          >
+            ‹ 返回
+          </button>
+        ) : (
+          <h3>{all ? '全部反馈' : '我的反馈'}</h3>
+        )}
+        <div className="feedback-actions">
+          {!creating && (
+            <button
+              className="feedback-text-button"
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  if (thread) await detail(thread)
+                  else await listing()
+                })
+              }
+            >
+              刷新
+            </button>
+          )}
+          {!thread && !creating && (
+            <button
+              className="feedback-primary"
+              disabled={frozen}
+              onClick={() => {
+                setCreating(true)
+                setPrivateLink('')
+                setText('')
+                setTitle('')
+              }}
+            >
+              写反馈
+            </button>
+          )}
+        </div>
+      </div>
+      {administrator && !thread && !creating && (
         <button
+          className="feedback-text-button"
           disabled={busy}
           onClick={() =>
             void run(async () => {
-              if (thread) await detail(thread)
-              else await listing()
+              await listing('', !all)
+              setAll(!all)
             })
           }
         >
-          刷新
+          {all ? '我的反馈' : '管理全部反馈'}
         </button>
-        {administrator && !thread && !creating && (
-          <button
-            disabled={busy}
-            onClick={() =>
-              void run(async () => {
-                await listing('', !all)
-                setAll(!all)
-              })
-            }
-          >
-            {all ? '我的反馈' : '管理全部反馈'}
-          </button>
-        )}
-        {!thread && !creating && (
-          <button
-            className="feedback-primary"
-            disabled={frozen}
-            onClick={() => {
-              setCreating(true)
-              setText('')
-              setTitle('')
-            }}
-          >
-            写反馈
-          </button>
-        )}
-        {'secret' in identity && (
-          <button
-            disabled={busy}
-            onClick={() => {
-              const url = new URL(window.location.href)
-              url.hash = 'feedback=' + identity.secret
-              setPrivateLink(url.toString())
-            }}
-          >
-            保存私密链接
-          </button>
-        )}
-      </div>
-      {privateLink && (
-        <div className="feedback-info">
-          <label>
-            匿名反馈私密链接
-            <input aria-label="匿名反馈私密链接" readOnly value={privateLink} onFocus={(e) => e.currentTarget.select()} />
-          </label>
-          <p>保存后可在其他设备查看和回复你的匿名反馈。请勿转发；清除浏览器数据且未保存链接将无法找回。</p>
-          <button
-            onClick={() =>
-              void run(async () => {
-                await navigator.clipboard.writeText(privateLink)
-                setNotice('链接已复制')
-              })
-            }
-          >
-            复制链接
-          </button>
-        </div>
       )}
       {error && (
         <p className="feedback-error" role="alert">
@@ -215,18 +210,6 @@ function Conversation({ identity }: { identity: Identity }) {
       {busy && <p role="status">正在处理…</p>}
       {thread ? (
         <>
-          <button
-            disabled={frozen}
-            onClick={() =>
-              void run(async () => {
-                await listing()
-                setThread(null)
-                setText('')
-              })
-            }
-          >
-            返回反馈列表
-          </button>
           <div className="feedback-thread">
             <h3>{thread.title}</h3>
             <p className="feedback-meta">
@@ -249,8 +232,9 @@ function Conversation({ identity }: { identity: Identity }) {
       ) : (
         !creating && (
           <section aria-label={all ? '全部反馈' : '我的反馈'}>
-            <h3>{all ? '全部反馈' : '我的反馈'}</h3>
-            {!busy && items.length === 0 && !error && <p className="feedback-meta">还没有反馈。欢迎告诉我们哪里可以改进。</p>}
+            {!busy && items.length === 0 && !error && (
+              <p className="feedback-empty feedback-meta">还没有反馈，欢迎告诉我们哪里可以改进。</p>
+            )}
             {items.map((item) => (
               <button className="feedback-list-item" disabled={frozen} key={item.id} onClick={() => void run(() => detail(item))}>
                 <strong>{item.title}</strong>
@@ -283,9 +267,6 @@ function Conversation({ identity }: { identity: Identity }) {
         >
           {creating && (
             <>
-              <button type="button" disabled={frozen} onClick={() => setCreating(false)}>
-                返回反馈列表
-              </button>
               <label>
                 标题
                 <input
@@ -324,7 +305,7 @@ function Conversation({ identity }: { identity: Identity }) {
               </select>
             </label>
           )}
-          <div className="feedback-actions">
+          <div className="feedback-form-footer">
             <span className="feedback-meta">{text.length}/2000</span>
             <button
               className="feedback-primary"
@@ -336,6 +317,41 @@ function Conversation({ identity }: { identity: Identity }) {
           </div>
         </form>
       )}
+      {'secret' in identity && !creating && (
+        <footer className="feedback-recovery">
+          <button
+            className="feedback-text-button"
+            aria-expanded={!!privateLink}
+            disabled={busy}
+            onClick={() => {
+              const url = new URL(window.location.href)
+              url.hash = 'feedback=' + identity.secret
+              setPrivateLink(privateLink ? '' : url.toString())
+            }}
+          >
+            保存私密链接
+          </button>
+          {privateLink && (
+            <div className="feedback-info">
+              <label>
+                匿名反馈私密链接
+                <input aria-label="匿名反馈私密链接" readOnly value={privateLink} onFocus={(e) => e.currentTarget.select()} />
+              </label>
+              <p>保存后可在未登录时查看和回复匿名反馈。请勿转发；清除浏览器数据且未保存链接将无法找回。</p>
+              <button
+                onClick={() =>
+                  void run(async () => {
+                    await navigator.clipboard.writeText(privateLink)
+                    setNotice('链接已复制')
+                  })
+                }
+              >
+                复制链接
+              </button>
+            </div>
+          )}
+        </footer>
+      )}
     </>
   )
 }
@@ -345,9 +361,7 @@ export default function FeedbackCenter() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [identity, setIdentity] = useState<Identity | null>(null)
-  const [account, setAccount] = useState<Identity | null>(null)
   const [error, setError] = useState('')
-  const [keys, setKeys] = useState<string[]>([])
   const [session, setSession] = useState(0)
   useEffect(() => {
     function show(secret?: string) {
@@ -357,9 +371,9 @@ export default function FeedbackCenter() {
       if (!feedbackEnabled) return
       try {
         const auth = currentAccount()
-        setAccount(auth)
-        setIdentity(secret || !auth ? { secret: selectGuest(secret) } : auth)
-        setKeys(guestKeys())
+        // A recovery link preserves the guest key, but never overrides a signed-in account.
+        if (secret && auth) selectGuest(secret)
+        setIdentity(auth || { secret: selectGuest(secret) })
         return true
       } catch {
         setIdentity(null)
@@ -397,47 +411,7 @@ export default function FeedbackCenter() {
             ) : (
               <>
                 {error && <p role="alert">{error}</p>}
-                {identity && (
-                  <>
-                    <div className="feedback-actions">
-                      <span className="feedback-meta">{'token' in identity ? '账号反馈' : '匿名反馈'}</span>
-                      {account && (
-                        <button
-                          onClick={() => {
-                            try {
-                              setIdentity('token' in identity ? { secret: selectGuest() } : account)
-                              setKeys(guestKeys())
-                              setSession((x) => x + 1)
-                            } catch {
-                              setError('无法保存匿名入口，请检查浏览器存储权限。')
-                            }
-                          }}
-                        >
-                          {'token' in identity ? '查看匿名反馈' : '查看账号反馈'}
-                        </button>
-                      )}
-                      {'secret' in identity && keys.length > 1 && (
-                        <label>
-                          匿名入口
-                          <select
-                            value={identity.secret}
-                            onChange={(e) => {
-                              setIdentity({ secret: selectGuest(e.target.value) })
-                              setSession((x) => x + 1)
-                            }}
-                          >
-                            {keys.map((key, index) => (
-                              <option value={key} key={key}>
-                                匿名入口 {index + 1}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      )}
-                    </div>
-                    <Conversation key={session} identity={identity} />
-                  </>
-                )}
+                {identity && <Conversation key={session} identity={identity} />}
               </>
             )}
           </div>

@@ -13,7 +13,7 @@ export type Status = 'waiting' | 'handling' | 'resolved'
 export type Thread = Item & { text: string; messages: Message[]; status: Status }
 export type Pending = { path: string; body: { operationId: string; text: string; title?: string; status?: Status } }
 export const statusText: Record<Status, string> = { waiting: '待回复', handling: '处理中', resolved: '已解决' }
-export function currentAccount(): Identity | null {
+export function currentAccount(): Extract<Identity, { token: string }> | null {
   const auth = loadAuth({ preserveExpired: true })
   // Preserve an expired account as an error instead of silently posting anonymously.
   return auth ? { token: auth.token, owner: auth.user.userId } : null
@@ -44,6 +44,10 @@ export function savePending(identity: Identity, value: Pending | null) {
 export class FeedbackRejectedError extends Error {}
 export async function feedbackRequest<T>(identity: Identity, path: string, body?: Pending['body']): Promise<T> {
   if (!feedbackEnabled) throw new Error('预览站不提供在线反馈，请前往正式站。')
+  const account = currentAccount()
+  if (account ? !('token' in identity) || account.token !== identity.token || account.owner !== identity.owner : 'token' in identity) {
+    throw new Error('登录状态已改变，请关闭后重新打开反馈。')
+  }
   const controller = new AbortController()
   const timer = window.setTimeout(() => controller.abort(), 20000)
   try {
@@ -60,7 +64,7 @@ export async function feedbackRequest<T>(identity: Identity, path: string, body?
     })
     const result = await response.json()
     if (!response.ok) {
-      if (response.status === 401) throw new Error('登录已失效，请重新登录后查看账号反馈；匿名反馈请使用私密链接。')
+      if (response.status === 401) throw new Error('登录已失效，请重新登录后查看或发送反馈。')
       const message = typeof result.message === 'string' ? result.message : '暂时无法读取反馈，请稍后重试。'
       if (response.status >= 400 && response.status < 500 && response.status !== 429 && result.ok === false)
         throw new FeedbackRejectedError(message)

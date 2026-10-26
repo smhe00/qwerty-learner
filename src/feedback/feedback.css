@@ -86,7 +86,7 @@
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
-  margin: 8px 0 16px;
+  margin: 0;
 }
 .feedback-dialog label {
   display: block;
@@ -163,4 +163,45 @@
 .feedback-heading > button {
   flex-shrink: 0;
   white-space: nowrap;
+}
+
+.feedback-toolbar,
+.feedback-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.feedback-toolbar {
+  margin-bottom: 12px;
+}
+.feedback-toolbar h3 {
+  margin: 0;
+}
+.feedback-toolbar > .feedback-actions {
+  flex-wrap: nowrap;
+}
+.feedback-toolbar button {
+  flex-shrink: 0;
+}
+.feedback-form-footer {
+  margin-top: 16px;
+}
+.feedback-dialog .feedback-text-button {
+  border-color: transparent;
+  color: var(--focus-text-secondary, #64748b);
+}
+.feedback-empty {
+  padding: 24px 0;
+  text-align: center;
+  line-height: 1.7;
+}
+.feedback-recovery {
+  margin-top: 16px;
+  border-top: 1px solid var(--focus-border, #e2e8f0);
+  padding-top: 8px;
+}
+.feedback-recovery > button {
+  padding-left: 0;
+  font-size: 13px;
 }
