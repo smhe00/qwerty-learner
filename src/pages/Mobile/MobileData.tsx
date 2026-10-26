@@ -3,7 +3,7 @@ import './mobile-completion.css'
 import { openMobileDataTool } from './mobile-data-navigation'
 import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import CloudSyncSetting from '@/sync/CloudSyncSetting'
-import { openAccountDialog } from '@/sync/account-dialog-events'
+import { openAccountManagement } from '@/sync/account-navigation'
 import { secureLearningEntry } from '@/sync/learning-sync-policy'
 import { downloadManualBackupV4, inspectManualBackupV4File } from '@/sync/manual-backup-v4'
 import { v4FailureCode } from '@/sync/v4-failure-diagnostics'
@@ -43,7 +43,14 @@ export default function MobileData() {
         <section className="mobile-settings-card" aria-label="账号与同步管理">
           <div className="mobile-data-card-heading">
             <h2>云同步</h2>
-            <button type="button" className="mobile-secondary-action" disabled={busy} onClick={() => openAccountDialog()}>
+            <button
+              type="button"
+              className="mobile-secondary-action"
+              disabled={busy}
+              onClick={() => {
+                if (!busyRef.current) openAccountManagement(true)
+              }}
+            >
               管理账号
             </button>
           </div>
