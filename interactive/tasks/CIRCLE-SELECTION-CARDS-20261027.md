@@ -1,0 +1,3 @@
+# Circle selection card hierarchy
+Status: IN_PROGRESS. Base e645a8e62d81c0daa82b4dfc7b455e2fcbbd9034.
+User reports missing visual boundaries when choosing among multiple circles. Add visible individual card borders, spacing, explicit selected state and role hierarchy, preserving behavior. Use isolated PC/mobile/dark previews and scoped lint/build; no new cloud accounts, backend change or broad Cloud suite. Continue the user-authorized Circle etest delivery for this follow-up visual correction; task explicitly allows one etest update despite the routine-UI default, with mocked-network visual checks and no live storage writes. Never master.
