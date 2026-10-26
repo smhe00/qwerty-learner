@@ -23,3 +23,8 @@
 ## Final integration scope (owner instruction)
 
 Preserve cbb20842 new UI, PC sync menu, mobile quick sync, synchronization return behavior and direct account navigation. PR #45 must add only administrator-only tools visibility and its tests, plus this task's report. Merge into product/main only AFTER the active unified release task finishes; no master/edgeone-test promotion. Scheduled follow-up is authorized by the owner's request to wait and merge later.
+
+
+## Administrator dropdown entry follow-up
+
+Owner additionally requested placing Cloud account tools in the desktop account dropdown, visible only to administrators and opening the existing popup. Keep the original Cloud Sync settings entry, direct account management, quick sync and all safety mechanisms unchanged. This extends the narrow PR scope to Header/index.tsx. Delivery remains PR #45 after the current unified release completes; no production/staging promotion.
