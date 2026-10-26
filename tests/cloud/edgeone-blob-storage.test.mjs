@@ -410,3 +410,41 @@ test('account cleanup removes private feedback and its index only for the erased
   for (const key of own) assert.equal(store.objects.has(key), false)
   for (const key of keep) assert.equal(store.objects.has(key), true)
 })
+
+
+test('account cleanup exhausts pages before mutation, verifies emptiness and preserves other owners', async () => {
+  const store = new FakeBlobStore(), hash = 'd'.repeat(64), userId = 'paged-owner'
+  const storage = createEdgeOneBlobStorage(store)
+  await storage.createAccount(hash, { userId, status: 'active' })
+  for (let i = 0; i < 7; i++) store.objects.set(`users/${userId}/revisions/${i}.json`, { i })
+  store.objects.set('users/another/revisions/keep.json', { keep: true })
+  store.list = async ({ prefix, cursor = '' }) => {
+    const keys = [...store.objects.keys()].filter(k => k.startsWith(prefix)).sort(), offset = Number(cursor || 0)
+    return { blobs: keys.slice(offset, offset + 2).map(key => ({ key })), cursor: offset + 2 < keys.length ? String(offset + 2) : '' }
+  }
+  const result = await storage.deleteUserData(hash, userId)
+  assert.equal(result.revisionsDeleted, 7)
+  assert.equal(store.objects.size, 1); assert.equal(store.objects.has('users/another/revisions/keep.json'), true)
+})
+
+test('acknowledged but incomplete content removal never deletes authentication or identity', async () => {
+  const store = new FakeBlobStore(), hash = 'e'.repeat(64), userId = 'incomplete-owner'
+  const storage = createEdgeOneBlobStorage(store)
+  await storage.createAccount(hash, { userId, status: 'active' })
+  await storage.createSessionVersion(hash, 1, { version: 1 })
+  await storage.createRevision(userId, 1, { revision: 1 })
+  store.delete = async () => {} // Provider accepted a call but readback still finds content.
+  await assert.rejects(storage.deleteUserData(hash, userId), { name: 'AccountDeletionStageError', stage: 'content-delete' })
+  assert.ok(await storage.getAccount(hash)); assert.ok(await storage.getLatestSession(hash))
+})
+
+test('foreign prefix from provider or mismatched owner cannot authorize any cleanup', async () => {
+  const store = new FakeBlobStore(), hash = 'f'.repeat(64), userId = 'actual-owner'
+  const storage = createEdgeOneBlobStorage(store)
+  await storage.createAccount(hash, { userId, status: 'active' })
+  await assert.rejects(storage.deleteUserData(hash, 'wrong-owner'), /owner mismatch/)
+  store.objects.set('users/stranger/secret', { keep: true })
+  store.list = async () => ({ blobs: [{ key: 'users/stranger/secret' }] })
+  await assert.rejects(storage.deleteUserData(hash, userId), { stage: 'content-delete' })
+  assert.equal(store.objects.size, 2)
+})

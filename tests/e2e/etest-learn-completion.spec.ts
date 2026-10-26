@@ -1,3 +1,4 @@
+import { cleanupAccount } from './account-cleanup-loader'
 import { createLearnAcquisitionExercisePlanForState, resumeDeferredAsTerminalProbe } from '../../src/learn/acquisition'
 import { loadBodyPolicy } from './body-policy-loader'
 import { acknowledgeInformationDialog } from './information-dialog'
@@ -447,13 +448,9 @@ for (const wrong of [true, false]) {
       await Promise.allSettled(contexts.map((c) => c.close()))
       try {
         if (owner) {
-          const fresh = await request('/api/auth/login', 'POST', { username, password, deviceId: 'qwerty-web-' + randomUUID() })
-          expect(fresh.status).toBe(200)
-          expect(fresh.body.user.userId === owner).toBe(true)
-          const removed = await request('/api/auth/account', 'DELETE', { currentPassword: password }, fresh.body.token)
-          proof.cleanupStatus = removed.status
-          expect(removed.status).toBe(200)
-          expect(removed.body.deleted?.accountDeleted).toBe(true)
+          const cleanup = await cleanupAccount({ baseUrl: base, username, password, userId: owner })
+          proof.cleanup = cleanup
+          expect(cleanup.confirmed).toBe(true)
           proof.cleanupVerified = true
         }
       } catch (e) {
