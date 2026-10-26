@@ -26,7 +26,7 @@ async function mockCircle(page: Page, initial = true) {
   const model = {
     exists: initial, joined: initial, owner: OWNER, name: '每天十分钟', friend: true,
     calls: [] as { path: string; method: string; body: any }[],
-    creates: [] as any[], unauthorized: false, loseCreate: false, delayLike: false, rejectCreate: false,
+    creates: [] as any[], unauthorized: false, loseCreate: false, delayLike: false, rejectCreate: false, takenPhrase: false, inviteCode: CODE, inviteRevision: 'legacy',
     progress: new Map<string, any[]>([[days()[0], [{ authorUserId: FRIEND, day: days()[0], completed: true, newWords: 6 }]],
       [days()[1], [{ authorUserId: FRIEND, day: days()[1], completed: true, newWords: 2 }]]]),
     likes: new Map<string, number>(),
@@ -50,25 +50,31 @@ async function mockCircle(page: Page, initial = true) {
     if (path === '/mine') {
       await send({ circles: model.exists && model.joined ? [{ circleId: ID, name: model.name, role: model.owner === OWNER ? 'owner' : 'member' }] : [] })
     } else if (!path && request.method() === 'POST') {
+      if (model.takenPhrase) {
+        await route.fulfill({status:409,contentType:'application/json',body:'{"ok":false,"error":"circle_passphrase_taken"}'});return
+      }
       if (model.rejectCreate) {
         model.creates.push(body)
         await new Promise(resolve => setTimeout(resolve, 300))
         await route.fulfill({status: 500, contentType: 'application/json', body: '{"ok":false,"error":"circle_internal_error"}'})
         return
       }
+      model.inviteCode = body.passphrase || CODE; model.inviteRevision = body.passphrase ? body.operationId : 'legacy'
       model.creates.push(body); model.exists = true; model.joined = true; model.name = body.name; model.owner = OWNER
       if (model.loseCreate) { model.loseCreate = false; await route.abort('failed'); return }
-      await send({ circleId: ID, inviteCode: CODE, schemaVersion: 3 }, 202)
+      await send({ circleId: ID, inviteCode: model.inviteCode, inviteRevision: model.inviteRevision, schemaVersion: 3 }, 202)
     } else if (path === '/join') {
-      expect(body.inviteCode).toBe(CODE)
+      if (body.inviteCode !== model.inviteCode) {
+        await route.fulfill({status:404,contentType:'application/json',body:'{"ok":false,"error":"invalid_invite"}'});return
+      }
       model.exists = true; model.joined = true; model.owner = FRIEND
-      await send({ circleId: ID }, 202)
+      await send({ circleId: ID, inviteRevision: model.inviteRevision }, 202)
     } else if (path === '/' + ID && request.method() === 'GET') {
       if (!model.exists || !model.joined) {
         await route.fulfill({ status: 403, contentType: 'application/json', body: '{"ok":false,"error":"not_circle_member"}' }); return
       }
       await send({ schemaVersion: 3, circleId: ID, day: days()[0],
-        meta: { name: model.name, ownerUserId: model.owner, softMemberLimit: 50 },
+        meta: { name: model.name, ownerUserId: model.owner, softMemberLimit: 50, inviteMode: model.inviteRevision === 'legacy' ? 'legacy' : 'custom', inviteRevision: model.inviteRevision },
         members: [{ userId: OWNER, role: model.owner === OWNER ? 'owner' : 'member' },
           ...(model.friend ? [{ userId: FRIEND, role: model.owner === FRIEND ? 'owner' : 'member' }] : [])],
         progress: model.progress.get(days()[0]) || [], reactionCounts: [{ authorUserId: FRIEND, day: days()[0], count: model.likes.get(days()[0]) || 0 }],
@@ -87,6 +93,9 @@ async function mockCircle(page: Page, initial = true) {
       if (model.delayLike) await new Promise((resolve) => setTimeout(resolve, 180))
       model.likes.set(body.day, 1)
       await send({ circleId: ID }, 202)
+    } else if (path.endsWith('/invite')) {
+      model.inviteCode = body.passphrase; model.inviteRevision = 'rotated-fixture'
+      await send({circleId: ID, inviteCode: model.inviteCode, inviteRevision: model.inviteRevision},202)
     } else if (path.endsWith('/remove')) {
       model.friend = false
       for (const [day, progress] of model.progress) model.progress.set(day, progress.filter((p) => p.authorUserId !== FRIEND))
@@ -159,14 +168,15 @@ test('phone menu, creation, saved invitation, check-in, 320px and dark mode', as
   await expect(page).toHaveURL(/\/mobile\/circles$/)
   await page.getByRole('button', { name: '创建', exact: true }).click()
   await page.getByLabel('圈子名称', { exact: true }).fill('晨间十分钟')
+  await page.getByLabel('入圈口令', {exact:true}).fill('每天学 English')
   await page.getByRole('button', { name: '创建圈子', exact: true }).click()
   await expect(page.getByRole('heading', { name: '晨间十分钟', exact: true })).toBeVisible()
   expect(model.creates).toHaveLength(1)
   await page.getByText('邀请同学', { exact: true }).click()
-  await expect(page.getByLabel('分享口令', { exact: true })).toHaveValue(CODE)
+  await expect(page.getByLabel('分享口令', { exact: true })).toHaveValue(model.inviteCode)
   await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => { (window as any).__copiedCircle = text } } }))
   await page.getByRole('button', { name: '复制口令', exact: true }).click()
-  expect(await page.evaluate(() => (window as any).__copiedCircle)).toBe(CODE)
+  expect(await page.evaluate(() => (window as any).__copiedCircle)).toBe(model.inviteCode)
   await page.getByLabel('今天新学词数', { exact: true }).fill('12')
   await page.getByRole('button', { name: '提交打卡', exact: true }).click()
   await expect(page.getByText('已打卡 · 新学 12 词', { exact: true })).toBeVisible()
@@ -174,7 +184,7 @@ test('phone menu, creation, saved invitation, check-in, 320px and dark mode', as
   await page.screenshot({ path: testInfo.outputPath('circle-mobile-light.png'), fullPage: true })
   await page.reload()
   await page.getByText('邀请同学', { exact: true }).click()
-  await expect(page.getByLabel('分享口令', { exact: true })).toHaveValue(CODE)
+  await expect(page.getByLabel('分享口令', { exact: true })).toHaveValue(model.inviteCode)
   await page.setViewportSize({ width: 320, height: 720 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320)
   await page.evaluate(() => document.documentElement.classList.add('dark'))
@@ -190,6 +200,7 @@ test('unknown creation is not auto-retried and reload reuses exact saved input; 
   await page.goto('/circles')
   await page.getByRole('button', { name: '创建', exact: true }).click()
   await page.getByLabel('圈子名称', { exact: true }).fill('原信息创建')
+  await page.getByLabel('入圈口令', {exact:true}).fill('每天学 English')
   await page.getByRole('button', { name: '创建圈子', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('操作结果还未确认')
   expect(model.creates).toHaveLength(1)
@@ -204,7 +215,7 @@ test('unknown creation is not auto-retried and reload reuses exact saved input; 
   model.exists = true; model.joined = false; model.owner = FRIEND
   await page.reload()
   await page.getByRole('button', { name: '口令加入', exact: true }).click()
-  await page.getByLabel('圈子口令', { exact: true }).fill(CODE)
+  await page.getByLabel('圈子口令', { exact: true }).fill(model.inviteCode)
   await page.getByRole('button', { name: '加入圈子', exact: true }).click()
   await expect(page.locator('.circle-notice')).toContainText('已加入圈子')
   await page.getByText('离开圈子', { exact: true }).click()
@@ -298,6 +309,7 @@ test('storage failure stops creation before sending and legacy invitations are e
   expect(model.calls.filter((c) => c.method === 'POST')).toHaveLength(0)
   await page.getByRole('button', { name: '创建', exact: true }).click()
   await page.getByLabel('圈子名称', { exact: true }).fill('存储不可用')
+  await page.getByLabel('入圈口令', {exact:true}).fill('每天学 English')
   await page.evaluate(() => {
     const original = Storage.prototype.setItem
     Storage.prototype.setItem = function (key, value) {
@@ -321,6 +333,7 @@ test('PC failed hh creation stays explicit, restores exact retry and fits a narr
   await expect(page.getByRole('heading', {name: '创建或加入圈子'})).toBeVisible()
   await page.getByRole('button', {name: '创建', exact: true}).click()
   await page.getByLabel('圈子名称', {exact:true}).fill('hh')
+  await page.getByLabel('入圈口令', {exact:true}).fill('每天学 English')
   await page.getByRole('button', {name: '创建圈子', exact:true}).click()
   await expect(page.getByRole('button', {name:'正在创建…', exact:true})).toBeDisabled()
   await expect(page.locator('.circle-form [role=alert]')).toContainText('服务暂时出错')
@@ -337,4 +350,42 @@ test('PC failed hh creation stays explicit, restores exact retry and fits a narr
   await page.getByRole('button', {name:'继续创建',exact:true}).click()
   await expect(page.getByRole('heading', {name:'hh',exact:true})).toBeVisible()
   expect(model.creates[1]).toEqual(first)
+})
+
+
+test('owner sets and changes Chinese/English passphrase, stale saved invitation disappears, and join uses phrase only', async ({page}) => {
+  await seed(page)
+  const model=await mockCircle(page,false)
+  model.takenPhrase=true
+  await page.goto('/circles')
+  await page.getByRole('button',{name:'创建',exact:true}).click()
+  await page.getByLabel('圈子名称',{exact:true}).fill('英文学习')
+  await page.getByLabel('入圈口令',{exact:true}).fill('Taken 已占用')
+  await page.getByRole('button',{name:'创建圈子',exact:true}).click()
+  await expect(page.getByRole('alert')).toContainText('已被其他圈子使用')
+  await expect(page.getByLabel('入圈口令',{exact:true})).toBeEditable()
+  model.takenPhrase=false
+  await page.getByLabel('入圈口令',{exact:true}).fill('每天学 English')
+  await page.getByRole('button',{name:'创建圈子',exact:true}).click()
+  await expect(page.getByRole('heading',{name:'英文学习',exact:true})).toBeVisible()
+  await page.getByText('圈子管理',{exact:true}).click()
+  await page.getByLabel('新入圈口令',{exact:true}).fill('共同学习 ABC')
+  page.once('dialog',d=>d.accept())
+  await page.getByRole('button',{name:'保存口令',exact:true}).click()
+  await expect(page.locator('.circle-notice')).toContainText('旧口令无法再加入')
+  await page.getByText('邀请同学',{exact:true}).click()
+  await expect(page.getByLabel('分享口令',{exact:true})).toHaveValue('共同学习 ABC')
+  model.inviteCode='另一个设备修改';model.inviteRevision='changed-elsewhere'
+  await page.getByRole('button',{name:'刷新圈子',exact:true}).click()
+  await expect(page.getByLabel('分享口令',{exact:true})).toHaveCount(0)
+  model.joined=false;model.owner=FRIEND
+  await page.reload()
+  await page.getByRole('button',{name:'口令加入',exact:true}).click()
+  await page.getByLabel('圈子口令',{exact:true}).fill('共同学习 ABC')
+  await page.getByRole('button',{name:'加入圈子',exact:true}).click()
+  await expect(page.getByRole('alert')).toContainText('口令不正确')
+  await page.getByLabel('圈子口令',{exact:true}).fill('另一个设备修改')
+  await page.getByRole('button',{name:'加入圈子',exact:true}).click()
+  await expect(page.locator('.circle-notice')).toContainText('已加入圈子')
+  await expect(page.getByLabel('新入圈口令',{exact:true})).toHaveCount(0)
 })

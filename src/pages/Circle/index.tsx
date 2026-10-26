@@ -5,7 +5,9 @@ import {
   circleErrorText,
   circleRequest,
   circleUnavailable,
+  isLegacyCircleInvite,
   memberLabel,
+  normalizeCirclePassphrase,
   readCircleHints,
   saveCircleHints,
 } from '@/circle/client'
@@ -75,13 +77,19 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
   const [form, setForm] = useState<'create' | 'join' | null>(() => (readCircleHints(auth.user.userId).pending ? 'create' : null))
   const [pending, setPending] = useState<CreateDraft | undefined>(() => readCircleHints(auth.user.userId).pending)
   const [name, setName] = useState(() => readCircleHints(auth.user.userId).pending?.name || '')
+  const [passphrase, setPassphrase] = useState(() => readCircleHints(auth.user.userId).pending?.passphrase || '')
+  const [replacement, setReplacement] = useState('')
   const [invite, setInvite] = useState('')
   const [newWords, setNewWords] = useState('')
   const [sentLikes, setSentLikes] = useState<Set<string>>(new Set())
   const [sentCheckins, setSentCheckins] = useState<Set<string>>(new Set())
   const days = circleDays()
   const owner = view?.meta.ownerUserId === auth.user.userId
-  const code = selected ? readCircleHints(auth.user.userId).invites[selected] : undefined
+  const hints = readCircleHints(auth.user.userId)
+  const code =
+    selected && (hints.inviteRevisions?.[selected] || 'legacy') === (view?.meta.inviteRevision || 'legacy')
+      ? hints.invites[selected]
+      : undefined
   const inviteInput = useRef<HTMLInputElement>(null)
   const disabled = busy || needsLogin
 
@@ -177,7 +185,10 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
     setRefresh((n) => n + 1)
   }
   async function create() {
-    const draft = pending || { name: name.trim().normalize('NFKC'), operationId: crypto.randomUUID() }
+    const normalized =
+      pending?.passphrase === undefined && pending ? undefined : normalizeCirclePassphrase(pending?.passphrase ?? passphrase)
+    if (normalized === null) throw new CircleError('invalid_circle_passphrase')
+    const draft = pending || { name: name.trim().normalize('NFKC'), operationId: crypto.randomUUID(), passphrase: normalized }
     if (
       !draft.name ||
       Array.from(draft.name).length > 32 ||
@@ -188,30 +199,61 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
     // Persist exact retry inputs before dispatch. No new UUID on an ambiguous retry.
     saveCircleHints(auth.user.userId, { ...readCircleHints(auth.user.userId), pending: draft })
     setPending(draft)
-    const result = await circleRequest<{ circleId: string; inviteCode: string }>(auth, '', { method: 'POST', body: draft })
-    if (!/^[a-f0-9]{24}$/.test(result.circleId) || !/^QC3-[a-f0-9]{24}-[a-f0-9]{32}$/.test(result.inviteCode)) {
+    let result: { circleId: string; inviteCode?: string; inviteRevision?: string; inviteChanged?: boolean }
+    try {
+      result = await circleRequest(auth, '', { method: 'POST', body: draft })
+    } catch (reason) {
+      if (reason instanceof CircleError && ['circle_passphrase_taken', 'invalid_circle_passphrase'].includes(reason.code)) {
+        // These responses precede creation writes; editing the rejected phrase is safe.
+        const saved = readCircleHints(auth.user.userId)
+        delete saved.pending
+        saveCircleHints(auth.user.userId, saved)
+        if (alive.current) setPending(undefined)
+      }
+      throw reason
+    }
+    if (
+      !/^[a-f0-9]{24}$/.test(result.circleId) ||
+      (!result.inviteChanged &&
+        (draft.passphrase === undefined ? !isLegacyCircleInvite(result.inviteCode) : result.inviteCode !== draft.passphrase))
+    ) {
       throw new CircleError('write_unknown')
     }
-    const hints = readCircleHints(auth.user.userId)
-    saveCircleHints(auth.user.userId, { invites: { ...hints.invites, [result.circleId]: result.inviteCode } })
+    const saved = readCircleHints(auth.user.userId)
+    delete saved.pending
+    if (result.inviteCode) {
+      saved.invites[result.circleId] = result.inviteCode
+      saved.inviteRevisions = { ...saved.inviteRevisions, [result.circleId]: result.inviteRevision || 'legacy' }
+    }
+    saveCircleHints(auth.user.userId, saved)
     if (alive.current) {
       setPending(undefined)
       setForm(null)
       setName('')
+      setPassphrase('')
       setSelected(result.circleId)
       setDay(circleDays()[0])
     }
     return '圈子已创建。展开“邀请同学”即可复制口令。'
   }
   async function join() {
-    const code = invite.trim()
-    if (code.startsWith('QC2-')) throw new CircleError('legacy_invite')
-    if (!/^QC3-[a-f0-9]{24}-[a-f0-9]{32}$/.test(code)) throw new CircleError('invalid_invite')
-    const result = await circleRequest<{ circleId: string }>(auth, '/join', { method: 'POST', body: { inviteCode: code } })
-    if (result.circleId !== code.slice(4, 28)) throw new CircleError('write_unknown')
+    const raw = invite.trim()
+    if (isLegacyCircleInvite(raw) && raw.startsWith('QC2-')) throw new CircleError('legacy_invite')
+    const code = isLegacyCircleInvite(raw) ? raw : normalizeCirclePassphrase(raw)
+    if (!code) throw new CircleError('invalid_circle_passphrase')
+    const result = await circleRequest<{ circleId: string; inviteRevision?: string }>(auth, '/join', {
+      method: 'POST',
+      body: { inviteCode: code },
+    })
+    if (!/^[a-f0-9]{24}$/.test(result.circleId) || (isLegacyCircleInvite(code) && result.circleId !== code.slice(4, 28)))
+      throw new CircleError('write_unknown')
     try {
       const hints = readCircleHints(auth.user.userId)
-      saveCircleHints(auth.user.userId, { ...hints, invites: { ...hints.invites, [result.circleId]: code } })
+      saveCircleHints(auth.user.userId, {
+        ...hints,
+        invites: { ...hints.invites, [result.circleId]: code },
+        inviteRevisions: { ...hints.inviteRevisions, [result.circleId]: result.inviteRevision || 'legacy' },
+      })
     } catch {
       /* The membership is confirmed; invitation storage is optional on join. */
     }
@@ -222,6 +264,23 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
       setDay(circleDays()[0])
     }
     return '已加入圈子，欢迎一起坚持。'
+  }
+  async function changePassphrase() {
+    const text = normalizeCirclePassphrase(replacement)
+    if (!text) throw new CircleError('invalid_circle_passphrase')
+    const result = await circleRequest<{ circleId: string; inviteCode: string; inviteRevision: string }>(auth, '/' + selected + '/invite', {
+      method: 'POST',
+      body: { passphrase: text },
+    })
+    if (result.circleId !== selected || result.inviteCode !== text) throw new CircleError('write_unknown')
+    const saved = readCircleHints(auth.user.userId)
+    saveCircleHints(auth.user.userId, {
+      ...saved,
+      invites: { ...saved.invites, [selected]: text },
+      inviteRevisions: { ...saved.inviteRevisions, [selected]: result.inviteRevision },
+    })
+    if (alive.current) setReplacement('')
+    return '口令已更新。旧口令无法再加入，现有成员不受影响。'
   }
   async function checkIn() {
     const count = newWords.trim() ? Number(newWords) : 0
@@ -329,6 +388,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                       setError('')
                       setNotice('')
                       setNewWords('')
+                      setReplacement('')
                     }}
                   >
                     <span className="circle-avatar">
@@ -377,10 +437,29 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                       value={form === 'create' ? pending?.name || name : invite}
                       readOnly={form === 'create' && !!pending}
                       disabled={disabled}
-                      placeholder={form === 'create' ? '例如：每天十分钟' : '粘贴朋友分享的完整口令'}
+                      placeholder={form === 'create' ? '例如：每天十分钟' : '输入圈主设置的口令'}
                       onChange={(event) => (form === 'create' ? setName(event.target.value) : setInvite(event.target.value))}
                     />
                   </label>
+                  {form === 'create' && (!pending || pending.passphrase !== undefined) && (
+                    <label>
+                      入圈口令
+                      <input
+                        required
+                        maxLength={64}
+                        autoComplete="off"
+                        spellCheck={false}
+                        aria-label="入圈口令"
+                        aria-describedby="circle-create-passphrase-hint"
+                        value={pending?.passphrase ?? passphrase}
+                        readOnly={!!pending}
+                        disabled={disabled}
+                        placeholder="例如：每天学 English"
+                        onChange={(event) => setPassphrase(event.target.value)}
+                      />
+                      <small id="circle-create-passphrase-hint">2–32 个字符，支持中英文，英文区分大小写。请勿使用账号密码。</small>
+                    </label>
+                  )}
                   <small>
                     {form === 'create'
                       ? pending
@@ -469,7 +548,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                         <small>拿到口令的人可以加入，请只分享给想邀请的同学。</small>
                       </div>
                     ) : (
-                      <p className="circle-muted">本机没有保存口令。请从创建或加入圈子的设备复制，也可以向同学索取。</p>
+                      <p className="circle-muted">本机没有保存当前口令，请向圈主索取。圈主也可在下方管理区设置新口令。</p>
                     )}
                   </details>
                   <div className="circle-days" role="group" aria-label="最近七天">
@@ -578,6 +657,33 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                 </section>
                 <details className="circle-card circle-manage">
                   <summary>{owner ? '圈子管理' : '离开圈子'}</summary>
+                  {owner && (
+                    <form
+                      className="circle-form"
+                      onSubmit={(event) => {
+                        event.preventDefault()
+                        if (window.confirm('更新口令后，旧口令将无法加入；现有成员不受影响。继续？')) void mutate(changePassphrase)
+                      }}
+                    >
+                      <label>
+                        新入圈口令
+                        <input
+                          required
+                          maxLength={64}
+                          autoComplete="off"
+                          spellCheck={false}
+                          value={replacement}
+                          disabled={disabled}
+                          placeholder="中文、英文或混合，2–32 个字符"
+                          onChange={(event) => setReplacement(event.target.value)}
+                        />
+                      </label>
+                      <small>仅圈主可修改。更新后请把新口令发给需要加入的同学。</small>
+                      <button className="circle-primary" type="submit" disabled={disabled}>
+                        {busy ? '正在保存…' : '保存口令'}
+                      </button>
+                    </form>
+                  )}
                   {owner && (
                     <div className="circle-management-list">
                       {view.members

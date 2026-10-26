@@ -1,6 +1,9 @@
+import { isLegacyCircleInvite, normalizeCirclePassphrase } from '../../cloud-functions/_shared/circle/passphrase.js'
 import { loadAuth } from '@/sync/auth'
 import { secureLearningEntry } from '@/sync/learning-sync-policy'
 import type { CloudAuthState } from '@/sync/types'
+
+export { normalizeCirclePassphrase, isLegacyCircleInvite }
 
 export type CircleItem = { circleId: string; name: string; role: 'owner' | 'member' }
 export type CircleMember = { userId: string; role: 'owner' | 'member'; status: string }
@@ -13,7 +16,7 @@ export type CircleDay = {
 }
 export type CircleView = CircleDay & {
   schemaVersion: 3
-  meta: { name: string; ownerUserId: string; softMemberLimit: number }
+  meta: { name: string; ownerUserId: string; softMemberLimit: number; inviteMode?: string; inviteRevision?: string }
   members: CircleMember[]
 }
 export class CircleError extends Error {
@@ -47,7 +50,7 @@ export async function circleRequest<T>(
   const abort = () => controller.abort()
   signal?.addEventListener('abort', abort, { once: true })
   if (signal?.aborted) controller.abort()
-  const timeout = window.setTimeout(abort, 20000)
+  const timeout = window.setTimeout(abort, method === 'GET' ? 20000 : 60000)
   try {
     // Deliberately same origin: never inherit a preview's cross-origin sync override.
     // There is exactly one request; ambiguous writes are never automatically replayed.
@@ -91,6 +94,10 @@ export function circleErrorText(error: unknown): string {
     if (error.status === 401) return '登录已失效，请重新登录后使用圈子。'
     if (error.status === 429) return '操作有些频繁，请稍等一会儿再试。'
     const messages: Record<string, string> = {
+      invalid_circle_passphrase: '口令请填写 2–32 个字符，支持中英文，不能包含控制字符。',
+      circle_passphrase_taken: '这个口令已被其他圈子使用，请换一个。',
+      circle_passphrase_conflict: '这个口令有冲突，请让圈主更换后再加入。',
+      circle_invite_changed: '圈主刚刚修改了口令，请刷新后使用新口令。',
       request_body_unavailable: '这次提交未能送达，请再试一次。',
       invalid_body: '这次提交未能送达，请稍后再试。',
       invalid_content_length: '这次提交未能完整送达，请稍后再试。',
@@ -125,8 +132,8 @@ export function memberLabel(id: string, ownId: string): string {
   return id === ownId ? '我' : '同学 ' + id.slice(-6)
 }
 
-export type CreateDraft = { name: string; operationId: string }
-type Hints = { pending?: CreateDraft; invites: Record<string, string> }
+export type CreateDraft = { name: string; operationId: string; passphrase?: string }
+type Hints = { pending?: CreateDraft; invites: Record<string, string>; inviteRevisions?: Record<string, string> }
 const hintsKey = (userId: string) => 'qwerty.circle-ui.v1.' + userId
 export function readCircleHints(userId: string): Hints {
   try {
@@ -136,18 +143,28 @@ export function readCircleHints(userId: string): Hints {
       if (
         /^[a-f0-9]{24}$/.test(id) &&
         typeof code === 'string' &&
-        code.startsWith('QC3-' + id + '-') &&
-        /^QC3-[a-f0-9]{24}-[a-f0-9]{32}$/.test(code)
+        ((isLegacyCircleInvite(code) && code.startsWith('QC3-' + id + '-')) || normalizeCirclePassphrase(code) === code)
       )
         invites[id] = code
     }
     const pending = value?.pending
     return {
       invites,
+      inviteRevisions: Object.fromEntries(
+        Object.entries(value?.inviteRevisions || {}).filter(
+          (entry): entry is [string, string] => /^[a-f0-9]{24}$/.test(entry[0]) && typeof entry[1] === 'string' && entry[1].length <= 80,
+        ),
+      ),
       ...(pending &&
       typeof pending.name === 'string' &&
       /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(pending.operationId)
-        ? { pending: { name: pending.name, operationId: pending.operationId } }
+        ? {
+            pending: {
+              name: pending.name,
+              operationId: pending.operationId,
+              ...(typeof pending.passphrase === 'string' ? { passphrase: pending.passphrase } : {}),
+            },
+          }
         : {}),
     }
   } catch {

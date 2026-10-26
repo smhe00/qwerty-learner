@@ -16,7 +16,7 @@ function route(request) {
   const rest = url.pathname === ROOT ? [] : url.pathname.slice(ROOT.length + 1).split('/')
   if (rest.some((s) => !s || /[%\\]/.test(s))) fail(404, 'not_found')
   let entry
-  if (!rest.length) entry = { method: 'POST', action: 'createCircle', fields: ['name', 'operationId', 'softMemberLimit'] }
+  if (!rest.length) entry = { method: 'POST', action: 'createCircle', fields: ['name', 'operationId', 'softMemberLimit', 'passphrase'] }
   else if (rest.length === 1 && rest[0] === 'mine') entry = { method: 'GET', action: 'listMyCircles' }
   else if (rest.length === 1 && rest[0] === 'join') entry = { method: 'POST', action: 'joinCircle', fields: ['inviteCode'] }
   else {
@@ -26,6 +26,7 @@ function route(request) {
     if (rest.length === 3 && area === 'days' && /^\d{4}-\d{2}-\d{2}$/.test(item)) entry = { method: 'GET', action: 'getDay' }
     if (rest.length === 2 && area === 'me') entry = { method: 'DELETE', action: 'leaveCircle', fields: [] }
     if (rest.length === 2 && area === 'remove') entry = { method: 'POST', action: 'removeMember', fields: ['memberUserId'] }
+    if (rest.length === 2 && area === 'invite') entry = { method: 'POST', action: 'setPassphrase', fields: ['passphrase'] }
     if (rest.length === 2 && area === 'close') entry = { method: 'POST', action: 'closeCircle', fields: [] }
     if (rest.length === 3 && area === 'progress' && /^\d{4}-\d{2}-\d{2}$/.test(item)) {
       entry = request.method === 'POST'
@@ -135,6 +136,7 @@ export function createCircleTransport({ service, rateLimit, maxResponseBytes = 6
       const body = r.fields ? await input(request, r.fields, readBody) : {}
       let result
       switch (r.action) {
+        case 'setPassphrase': result = await service.setPassphrase(token, r.circleId, body); break
         case 'listMyCircles': result = await service.listMyCircles(token); break
         case 'getDay': result = await service.getDay(token, r.circleId, r.item); break
         case 'createCircle': result = await service.createCircle(token, body); break

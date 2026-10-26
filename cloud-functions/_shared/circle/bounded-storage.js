@@ -23,11 +23,12 @@ const id = '[a-f0-9]{24}'
 const uid = '[A-Za-z0-9_-]{8,128}'
 const day = '\\d{4}-\\d{2}-\\d{2}'
 const base = 'social/v3/circles/' + id + '/'
-const controlKey = new RegExp('^(?:' + base + '(?:meta|closed|members/' + uid +
+const phraseEntry = 'social/v3/passphrases/[a-f0-9]{64}/' + id + '\\.json'
+const controlKey = new RegExp('^(?:' + phraseEntry + '|'  + base + '(?:meta|closed|members/' + uid +
   ')\\.json|social/v3/accounts/' + uid + '/circles/' + id + '\\.json)$')
 const activityKey = new RegExp('^' + base + 'days/' + day + '/' + uid + '/[a-f0-9]{64}\\.json$')
 const summaryKey = new RegExp('^' + base + 'summaries/' + day + '/view\\.json$')
-const validPrefix = new RegExp('^(?:' + base + '(?:members/|days/' + day +
+const validPrefix = new RegExp('^(?:social/v3/passphrases/[a-f0-9]{64}/|'  + base + '(?:members/|days/' + day +
   '/|summaries/' + day + '/)|social/v3/accounts/' + uid + '/circles/)$')
 export const isActivityKey = (key) => activityKey.test(key)
 export const isSummaryKey = (key) => summaryKey.test(key)
@@ -94,7 +95,7 @@ export function createCircleV3Storage(blob) {
     },
     async keys(prefix, { maxKeys = 10000 } = {}) {
       if (!validPrefix.test(prefix)) throw new TypeError('Circle v3 prefix out of scope')
-      const consistency = /\/(?:members|circles)\/$/.test(prefix) ? 'strong' : 'eventual'
+      const consistency = (/\/(?:members|circles)\/$/.test(prefix) || prefix.startsWith('social/v3/passphrases/')) ? 'strong' : 'eventual'
       const keys = new Set()
       const seen = new Set()
       let cursor

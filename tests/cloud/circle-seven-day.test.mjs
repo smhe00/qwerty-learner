@@ -507,3 +507,61 @@ test('deployed Circle gateway uses the trusted native receiver once, before any 
   assert.match(created.value.result.inviteCode, /^QC3-/)
   assert.equal(reads, before + 1)
 })
+
+
+test('custom Chinese/English passphrase joins directly, owner rotation invalidates the old phrase without removing members', async () => {
+  const f=fixture(); const input={name:'中文圈',operationId:crypto.randomUUID(),passphrase:'  每天学 English  '}
+  const c=await f.create(OWNER,input)
+  assert.equal(c.inviteCode,'每天学 English')
+  assert.equal((await f.service.joinCircle(MEMBER,'每天学 English')).circleId,c.circleId)
+  const stored=f.data.get(root(c.circleId)+'meta.json')
+  assert.equal(JSON.stringify(stored).includes('每天学 English'),false)
+  assert.ok(f.calls.some(x=>x.op==='list'&&x.prefix.startsWith('social/v3/passphrases/')&&x.consistency==='strong'))
+  await assert.rejects(f.service.setPassphrase(MEMBER,c.circleId,{passphrase:'越权操作'}),code('not_circle_owner'))
+  await f.service.setPassphrase(OWNER,c.circleId,{passphrase:'一起学中文 ABC'})
+  await assert.rejects(f.service.joinCircle(OTHER,'每天学 English'),code('invalid_invite'))
+  assert.equal((await f.service.joinCircle(OTHER,'一起学中文 ABC')).circleId,c.circleId)
+  assert.equal((await f.service.getCircle(MEMBER,c.circleId)).members.length,3)
+  const retry=await f.service.createCircle(OWNER,input)
+  assert.equal(retry.circleId,c.circleId);assert.equal(retry.inviteChanged,true);assert.equal(retry.inviteCode,undefined)
+  await assert.rejects(f.service.joinCircle(OTHER,'每天学 English'),code('invalid_invite'))
+})
+
+test('Unicode normalization, case distinction and passphrase length validation are deterministic', async () => {
+  const f=fixture()
+  for(const passphrase of ['', 'a', '中', 'a'.repeat(33), 'ab\ncd', 'ab\u200bcd']) {
+    await assert.rejects(f.create(OWNER,{passphrase}),code('invalid_circle_passphrase'))
+  }
+  assert.equal(f.data.size,0)
+  const c=await f.create(OWNER,{passphrase:'Café 中文'})
+  assert.equal((await f.service.joinCircle(MEMBER,'Cafe\u0301 中文')).circleId,c.circleId)
+  await assert.rejects(f.service.joinCircle(OTHER,'café 中文'),code('invalid_invite'))
+})
+
+test('occupied passphrases are rejected and closure releases the lookup entry', async () => {
+  const f=fixture();const c=await f.create(OWNER,{passphrase:'共同学习'})
+  await assert.rejects(f.create(OTHER,{passphrase:'共同学习'}),code('circle_passphrase_taken'))
+  assert.equal((await f.service.listMyCircles(OTHER)).circles.length,0)
+  await f.service.closeCircle(OWNER,c.circleId)
+  assert.equal([...f.data.keys()].filter(k=>k.startsWith('social/v3/passphrases/')).length,0)
+  const next=await f.create(OTHER,{passphrase:'共同学习'})
+  assert.equal((await f.service.joinCircle(MEMBER,'共同学习')).circleId,next.circleId)
+})
+
+test('simultaneous same-phrase creations never route a join to an arbitrary circle', async () => {
+  const f=fixture();let arrived=0;let release;const gate=new Promise(resolve=>{release=resolve})
+  f.hooks.beforeSet=async key=>{if(key.endsWith('/meta.json')){if(++arrived===2)release();await gate}}
+  await Promise.all([f.create(OWNER,{passphrase:'并发口令'}),f.create(OTHER,{passphrase:'并发口令'})])
+  await assert.rejects(f.service.joinCircle(MEMBER,'并发口令'),code('circle_passphrase_conflict'))
+  assert.equal((await f.service.listMyCircles(MEMBER)).circles.length,0)
+})
+
+test('legacy invitation can be changed by its owner and original creation retry never restores it', async () => {
+  const f=fixture();const input={name:'Old',operationId:crypto.randomUUID()};const c=await f.create(OWNER,input)
+  await f.service.joinCircle(MEMBER,c.inviteCode)
+  await f.service.setPassphrase(OWNER,c.circleId,{passphrase:'新的 English'})
+  await assert.rejects(f.service.joinCircle(OTHER,c.inviteCode),code('invalid_invite'))
+  const retry=await f.service.createCircle(OWNER,input)
+  assert.equal(retry.inviteChanged,true)
+  assert.equal((await f.service.joinCircle(OTHER,'新的 English')).circleId,c.circleId)
+})

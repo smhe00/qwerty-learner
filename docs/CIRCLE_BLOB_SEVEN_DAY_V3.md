@@ -1,6 +1,6 @@
 # Circle v3 — seven-day pure Blob design (2026-10-26)
 
-Development implementation; not an etest/production qualification or release. This is API/backend work, with no Circle UI. It supersedes the new-circle storage/product rules in the historical v1/v2 documents. Those documents and their tests still describe the compatibility path for existing QC2 circles. PR #17 was closed as superseded; its branch was retained.
+Development implementation; not an etest/production qualification or release. The minimal Circle UI and owner-defined passphrase extension are documented in CIRCLE_MINIMAL_UI_20261026.md. It supersedes the new-circle storage/product rules in the historical v1/v2 documents. Those documents and their tests still describe the compatibility path for existing QC2 circles. PR #17 was closed as superseded; its branch was retained.
 
 ## Product contract
 
@@ -22,6 +22,7 @@ All v3 objects are private and served only through authenticated functions.
 | circles/C/closed.json | Durable closure; strong reads |
 | circles/C/members/U.json | Current membership only; stable write/delete, strong reads and readback |
 | accounts/U/circles/C.json | Repairable personal-circle index; strong, never membership authority |
+| passphrases/HASH/C.json | Hashed passphrase discovery index; strong list/readback; metadata remains authoritative |
 | circles/C/days/YYYY-MM-DD/U/HASH.json | Immutable per-actor activity; ordinary write, eventual reads |
 | circles/C/summaries/YYYY-MM-DD/view.json | One replaceable daily summary, source fingerprint and content hash; eventual reads |
 
@@ -31,7 +32,7 @@ Before control/activity writes, the adapter preserves the existing conservative 
 
 ## Creation, membership and failure handling
 
-Creation uses a fresh cryptographically random UUIDv4 operationId. Keep it private and reuse the identical ID/input for retries. It deterministically derives the v3 circle ID and QC3 invitation; only an invitation hash is stored. Existing conflicting input is rejected. A retry of an already-existing QC2 creation continues through the old service.
+Creation uses a fresh cryptographically random UUIDv4 operationId. Keep it private and reuse the identical ID/input for retries. It deterministically derives the v3 circle ID. New UI callers supply passphrase; legacy callers omitting it still receive a deterministic QC3 invitation. Only an invitation hash is stored. The original creation fingerprint allows exact retries after an owner changes the invitation without restoring the old invitation. Existing conflicting input is rejected. A retry of an already-existing QC2 creation continues through the old service.
 
 For create/join, the personal index is written and confirmed before the membership object. A failed member write can leave an index without membership: personal-circle listing excludes it, and retrying the same join repairs it. Listing does not delete such an index because the join could still be in flight. Closed-circle indexes are safe to prune because closure is permanent.
 
@@ -57,7 +58,7 @@ Read guards: 10,000 activity keys/day, 500 observed membership keys, 1,000 perso
 
 The action prefix stays /api/circle/v2. Existing create/join/get/leave/remove/close/progress/claps/showcase URLs and body field names remain. No new client credential or deployment secret is required.
 
-- New creation returns a QC3 code and schemaVersion: 3. Membership mutation results carry consistency: strong, readbackConfirmed: true and final: false. final:false reflects possible later/concurrent changes. Activity writes remain eventual; operationKey is a stable content identity, replacing v2 physical append receipts.
+- New creation accepts optional passphrase and returns the normalized supplied phrase as inviteCode, inviteRevision and schemaVersion: 3; legacy calls without passphrase return QC3. A creation retry after invitation rotation returns inviteChanged:true instead of revealing or restoring the new/old invitation. Membership mutation results carry consistency: strong, readbackConfirmed: true and final: false. final:false reflects possible later/concurrent changes. Activity writes remain eventual; operationKey is a stable content identity, replacing v2 physical append receipts.
 - GET /api/circle/v2/mine returns active indexed **v3** circles, role, name, the advisory three-circle limit, and legacyIncluded:false.
 - GET /api/circle/v2/C returns current membership and **today's** activity, retainedDays and capacity. It does not return all historical days.
 - GET /api/circle/v2/C/days/YYYY-MM-DD returns that day's aggregate.
@@ -67,6 +68,16 @@ The action prefix stays /api/circle/v2. Existing create/join/get/leave/remove/cl
 - HTTP mutation status remains 202; GET remains 200. The envelope consistency follows the result when specified.
 
 QC2 invitations and existing v2 IDs route through the unchanged legacy event service; no data migration, conversion, expiration or deletion happens there. Legacy circles retain their old permanent-revocation/history behavior. Personal-circle discovery and the three-circle/50-member/seven-day rules apply to v3 only; legacy data has no personal index. Any future legacy migration needs a separate reviewed task. Legacy retry defaults are preserved.
+
+## Owner-defined passphrases
+
+POST /api/circle/v2 accepts passphrase with name and operationId. POST /api/circle/v2/C/invite accepts {passphrase} and requires the current owner. POST /api/circle/v2/join keeps {inviteCode}, now accepting a custom phrase or compatible QC3 code. QC2 remains on the unchanged historical path and cannot be converted with this route.
+
+Normalize with NFC, trim ends, require 2–32 Unicode codepoints, reject control/zero-width/bidi control characters; retain case and internal spaces. No plaintext is stored server-side. The private hash-prefix index resolves a phrase without scanning all circles; confirm each candidate against strong metadata and closure. Normal occupied phrases return circle_passphrase_taken. There is no atomic global reservation: simultaneous creates can collide, and joins then fail with circle_passphrase_conflict rather than choosing a circle. The owner can select a new phrase. The exact-prefix discovery budget is 100 keys; invalid or excessive listings fail closed.
+
+Changing the phrase writes a new index before metadata, then removes the old index. Closing a custom circle removes its current index. Old/stale index objects never authorize joins when metadata differs or the circle is closed. Interrupted changes can leave stale index objects; activity retention does not sweep these control objects. Concurrent owner changes are not transactional: serialize owner changes and refresh after an unknown outcome. A subsequent explicit set to the intended phrase repairs its index. A join overlapping a change may have written membership before reporting circle_invite_changed; existing membership is not removed. This follows the accepted no-lock membership model.
+
+Metadata exposes an opaque inviteRevision, never the invitation hash. Browsers save the phrase locally and only display it when its revision matches the fetched metadata. Other devices may need the owner to set a new phrase; there is no server plaintext-recovery API. Requests are authenticated and keep existing account/IP limits. Mutation timeout is 60 seconds to accommodate strong Blob I/O; one request only, no blind retries.
 
 ## Scheduled maintenance
 

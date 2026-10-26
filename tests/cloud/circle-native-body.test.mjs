@@ -21,9 +21,9 @@ test('real Circle handler receives native body before asynchronous account looku
   assert.equal(registration.status,201)
   const account=await registration.json()
   let reads=0
-  async function create(body, token=account.token) {
+  async function create(body, token=account.token, path='') {
     lookupStarted=false
-    const request=new Request('https://internal.invalid/api/circle/v2',{method:'POST',headers:{'content-type':'application/json',...(token?{authorization:'Bearer '+token}:{})},body:JSON.stringify(body)})
+    const request=new Request('https://internal.invalid/api/circle/v2'+path,{method:'POST',headers:{'content-type':'application/json',...(token?{authorization:'Bearer '+token}:{})},body:JSON.stringify(body)})
     const native=request.arrayBuffer.bind(request)
     request.arrayBuffer=()=>{reads++;assert.equal(lookupStarted,false,'body must be received before any asynchronous store lookup');return native()}
     request.clone=()=>{throw Error('clone must not be used')}
@@ -31,7 +31,7 @@ test('real Circle handler receives native body before asynchronous account looku
     const result=await onRequest({env,clientIp:'192.0.2.119',request})
     return {status:result.status,body:await result.json()}
   }
-  const payload={name:'hh',operationId:crypto.randomUUID()}
+  const payload={name:'hh',passphrase:'每天学 English',operationId:crypto.randomUUID()}
   const denied=await create(payload,null)
   assert.equal(denied.status,401)
   assert.equal([...blobs.keys()].some(k=>k.startsWith('social/')),false)
@@ -41,6 +41,16 @@ test('real Circle handler receives native body before asynchronous account looku
   const created=await create(payload)
   assert.equal(created.status,202)
   assert.equal(reads,3)
-  assert.match(created.body.result.inviteCode,/^QC3-/)
+  assert.equal(created.body.result.inviteCode,payload.passphrase)
+  const id=created.body.result.circleId
+  const changed=await create({passphrase:'共同学习 ABC'},account.token,'/'+id+'/invite')
+  assert.equal(changed.status,202)
+  assert.equal(changed.body.result.inviteCode,'共同学习 ABC')
+  const old=await create({inviteCode:payload.passphrase},account.token,'/join')
+  assert.equal(old.body.error,'invalid_invite')
+  const current=await create({inviteCode:'共同学习 ABC'},account.token,'/join')
+  assert.equal(current.status,202)
+  assert.equal(current.body.result.circleId,id)
+  assert.equal(reads,6)
   delete globalThis.__circleNativeStore
 })
