@@ -26,3 +26,9 @@ The first integration run found that the old menu toggle deliberately blurred it
 - Temporary dynamic-port continuity config initially used the config directory as cwd; it was corrected before browser execution. This was local harness setup, not an application failure.
 
 Actual staging promotion and production version evidence are recorded in COMMIT-OUTCOME-INDEPENDENT-RELEASE-20261026-report.md. Do not claim this UI candidate is the independent production release.
+
+## Shared legacy test-entry alignment
+
+8356b50d source passed Published Pages 40275127323, Cloud Sync 40275127293, etest admission 40275127304, Mobile P0 40275127351, Review 40275127334, toolbar/completion and recovery checks. While the full S1 suite was running, source inspection found ten obsolete second-click steps in four tests: workspace-app-entry (7), edgeone-s1-cloud-accounts (1), etest-mobile-cloud (1), secure-entry (1). They still waited for the removed intermediate overview button after the first click had already opened the guarded account document. Removed only these obsolete actions; all data/ownership/HTTP and recovery assertions remain.
+
+Local full workspace-app-entry: 42/42 PASS (1.9m). Local intercepted HTTP secure-entry: 2/2 PASS (19.1s), no production network. Runtime src and cloud-functions are unchanged from 8356b50d. The live etest tests will exercise the aligned entry when the restored UI deploys. A final test-only forward commit must obtain its own Pages/Cloud admission before etest restoration.

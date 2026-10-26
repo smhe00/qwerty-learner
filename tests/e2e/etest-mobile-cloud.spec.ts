@@ -15,7 +15,6 @@ async function login(page: Page, username: string, password: string, mobile = fa
     await ready(page, true)
     const historyLength = await page.evaluate(() => history.length)
     await page.getByRole('link', { name: '登录或注册', exact: true }).tap()
-    await page.getByRole('button', { name: '登录或注册', exact: true }).tap()
     await expect(page.locator('[data-mobile-account]')).toBeVisible({ timeout: 60_000 })
     expect(await page.evaluate(() => history.length)).toBe(historyLength)
   }

@@ -85,7 +85,6 @@ test('explicit HTTP local-only viewing never exposes the login form or enables c
   await expect(page.locator('[data-mobile-menu]')).toBeVisible({ timeout: 40_000 })
   await expect(page.locator('.mobile-home-footer')).toContainText('当前仅在本机保存')
   await page.getByRole('link', { name: '登录或注册', exact: true }).tap()
-  await page.getByRole('button', { name: '登录或注册', exact: true }).tap()
   await expect(page.locator('[data-secure-entry]')).toBeVisible()
   await expect(page.getByLabel('账户密码', { exact: true })).toHaveCount(0)
   expect(api).toBe(0)
