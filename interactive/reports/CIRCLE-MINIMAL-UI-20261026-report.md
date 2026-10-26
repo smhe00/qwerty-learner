@@ -4,7 +4,7 @@ Status: REVIEW. Executor: Codex-circle-ui.
 Initial base: a82f9d95b1fb4c3dc24d77a4951d234fd43d9955.
 Claim: 651dd04be11157909bc325749b198de47145f0d0.
 Integrated development base: 3f2e2791b5dd3ff6d195bf30eec82c0ca38d22fe.
-Implementation SHA: recorded in the follow-up evidence commit.
+Implementation SHA: 44b278d1c231983a37d3818e7d4722f325e98e83 (all integrated local validation above applies to this source).
 Workspace: C:/Users/peter/Documents/Codex/2026-10-26/qwerty-circle-ui-minimal.
 
 ## Delivered
