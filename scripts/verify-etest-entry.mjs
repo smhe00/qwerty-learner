@@ -1,6 +1,7 @@
 /* eslint-env node */
 // Read-only admission for experimental staging; never moves git refs.
 import assert from 'node:assert/strict'
+import { assertStagingCandidate } from './release-branch-policy.mjs'
 const repo = process.env.GITHUB_REPOSITORY
 const sha = process.env.GITHUB_SHA
 const token = process.env.GH_TOKEN
@@ -29,14 +30,13 @@ async function gate(file) {
 }
 let evidence = null
 for (let attempt = 0; attempt < 80; attempt += 1) {
-  const [main, cloud, pages] = await Promise.all([
-    gh('/branches/product%2Fmain'),
+  const [cloud, pages] = await Promise.all([
     process.env.CLOUD_GATE_JOB_PASSED === 'true'
       ? Promise.resolve({ conclusion: 'success', id: process.env.GITHUB_RUN_ID })
       : gate('cloud-sync.yml'),
     gate('deploy-pages.yml'),
   ])
-  assert.equal(main.commit.sha, sha, 'main advanced: revalidate new candidate')
+  await assertStagingCandidate(gh, sha)
   if (cloud && cloud.conclusion !== 'success')
     throw new Error('Cloud Sync Gate failed on candidate')
   if (pages && pages.conclusion !== 'success')
@@ -48,15 +48,10 @@ for (let attempt = 0; attempt < 80; attempt += 1) {
   if (attempt === 79) throw new Error('Pages/Cloud gate did not complete')
   await new Promise(resolve => setTimeout(resolve, 15000))
 }
-const live = await fetch(
-  'https://smhe00.github.io/qwerty-learner/source-commit.txt?pages_probe=' + sha + '-' + Date.now(),
-  { cache: 'no-store', signal: AbortSignal.timeout(15000) },
-)
-assert.equal(live.status, 200, 'Live Pages source marker missing')
-assert.equal((await live.text()).trim(), sha, 'Live Pages SHA mismatch')
-const main = await gh('/branches/product%2Fmain')
-assert.equal(main.commit.sha, sha, 'main changed while verifying Pages')
-const result = { stagingPilotEligible: true, sha, ...evidence,
+// A successful candidate Pages workflow already checked its deployed SHA and
+// browser regression. Do not compare against the moving current main preview.
+const qualifiedBranches = await assertStagingCandidate(gh, sha)
+const result = { stagingPilotEligible: true, sha, qualifiedBranches, ...evidence,
   etestPromoted: false, fullMultiDeviceGAReady: false,
   masterReleaseAuthorized: false }
 console.log(JSON.stringify(result, null, 2))

@@ -1,0 +1,32 @@
+name: Qualify Frozen etest Candidate
+# Release policy runs on main independently from candidate application code.
+# Read-only: never deploys, moves refs, creates accounts or replays cloud writes.
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Full SHA currently pinned on edgeone-test
+        required: true
+      cloud_run_id:
+        description: Candidate Branch EdgeOne Cloud E2E workflow run ID
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  release-ready:
+    name: Frozen etest Release Readiness
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+      - name: Qualify exact candidate, completed checks and branch ancestry
+        env:
+          EXPECTED_SHA: ${{ inputs.candidate_sha }}
+          QWERTY_CLOUD_RUN_ID: ${{ inputs.cloud_run_id }}
+          QWERTY_RELEASE_TARGET_BRANCH: edgeone-test
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/release-readiness.mjs

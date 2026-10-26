@@ -13,6 +13,8 @@ This file is the mandatory entry point for any coding agent working in this repo
 - Routine development and agent coordination happen on `product/main`; NEVER bind a Maker project to its pushes.
 - **Owner promotion rule (2026-10-26):** master is promoted ONLY by fast-forward to the exact commit SHA already qualified on edgeone-test. Keep the same UI and application source between etest and master; do not strip features, cherry-pick a subset, make a release-only commit, or create a divergent release branch during promotion. If master is not an ancestor, integrate normally on product/main, requalify the resulting exact SHA on etest, then fast-forward master. Test/experimental behavior differs only through trusted server branch=etest policy; never by changing code during promotion.
 
+- **Owner independent branch policy (2026-10-26):** product/main continuously develops and may be ahead of edgeone-test; etest independently pins a candidate for real network validation and may be ahead of master. Require ancestry master -> etest -> product/main (equality is valid immediately after promotion), not identical branch heads. Release master only by fast-forward to the exact qualified etest SHA. Advancing main or its Pages preview does not revoke historical passing Pages/source CI evidence for that candidate; every accepted run must still match the candidate SHA exactly. Changing etest invalidates its previous release qualification. Never freeze development, roll back main or substitute newer-SHA evidence merely to promote an older qualified candidate.
+
 ### Server deployment identity (owner convention, 2026-10-26)
 
 The owner configured the lower-case server environment variable `branch` in EdgeOne:

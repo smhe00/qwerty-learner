@@ -16,6 +16,7 @@ on:
       - 'tests/e2e/mobile-account-writer.spec.ts'
       - '.github/workflows/etest-entry-gate.yml'
       - 'scripts/verify-etest-entry.mjs'
+      - 'scripts/release-branch-policy.mjs'
       - 'scripts/wait-pages-deployment.mjs'
 
 permissions:
