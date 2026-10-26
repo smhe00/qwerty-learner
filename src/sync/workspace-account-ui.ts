@@ -4,6 +4,7 @@
  * Only the active guarded entry may render this surface under the writer lease.
  */
 import { claimAccountVisit, finishPassiveAccountVisit } from './account-passive-return'
+import { mountSelfDeleteControls } from './account-self-delete'
 import { SyncApiError, changePassword, login, register } from './api'
 import { browserDeviceId, loadAuth } from './auth'
 import { presentAccount } from './mobile-account-view'
@@ -84,6 +85,7 @@ export function renderS1AccountManagement(
       control.disabled = busy
     })
     accountView?.setBusy(busy)
+    selfDeleteView?.setBusy(busy)
   }
   const safeRun = (action: () => Promise<void>) => {
     if (isBusy) return
@@ -267,6 +269,21 @@ export function renderS1AccountManagement(
     auth: accountAuth,
     cloudDisabled: options.cloudDisabled === true,
     onChangePassword: (currentPassword, newPassword) => safeRun(() => changePasswordAction(currentPassword, newPassword)),
+  })
+  const selfDeleteView = mountSelfDeleteControls({
+    main,
+    status,
+    controls,
+    active,
+    generation: entryRegistry.generation,
+    cloudDisabled:
+      options.cloudDisabled === true || REACT_APP_DEPLOY_ENV === 'pages' || import.meta.env.VITE_QWERTY_SYNC_DISABLED === 'true',
+    run: safeRun,
+    setBusy,
+    navigate,
+    invalidatePassiveReturn: () => {
+      passiveVisit = null
+    },
   })
   // Keep focus inside the account surface rather than starting a typing
   // session in the background. Input focus does not send auth requests.

@@ -314,3 +314,20 @@ body.mobile-account-document {
 .mobile-account-registration-notice summary {
   cursor: pointer;
 }
+
+.mobile-account-self-delete {
+  margin-top: 16px;
+}
+.mobile-account-delete-consent {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 16px 0;
+  color: var(--account-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.mobile-account-delete-consent input {
+  flex: none;
+  margin-top: 4px;
+}
