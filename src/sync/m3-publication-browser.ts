@@ -13,10 +13,18 @@ import type { M3PublicationCycleResult } from './m3-publication-cycle'
 import { inspectEventOutbox } from './multi-device-outbox-idb'
 import { flushOneWitnessedOutboxBatch } from './multi-device-outbox-transport'
 import { recoverOwnedLearningEvents } from './multi-device-recovery-browser'
+import { startupSyncBudgetActive } from './startup-sync-budget'
 import { workspaceRegistryPort } from './workspace-vault'
 
 // Keep historical adapter names; all entry points share the rollout policy.
 export { etestM3PilotEnabled }
+
+let deferredCheckout: (() => Promise<void>) | undefined
+export async function flushDeferredM3Checkout(): Promise<void> {
+  const run = deferredCheckout
+  deferredCheckout = undefined
+  await run?.()
+}
 
 let running: Promise<M3PublicationCycleResult> | null = null
 let timer: ReturnType<typeof setTimeout> | null = null
@@ -64,23 +72,29 @@ export async function runEtestM3Publication(): Promise<M3PublicationCycleResult>
     // A verified immutable M3 upload may optionally issue a separate
     // etest-only checkout declaration. Neither a receipt nor a failed
     // declaration ever authorizes local V4 restore/cloud overwrite.
-    const checkout = await tryDeclareCheckoutAfterPublication({
-      accountId,
-      deviceId,
-      published,
-      port: {
-        assertOwner,
-        readOutbox: () => inspectEventOutbox(accountId, deviceId),
-        declare: async (head) => {
-          // Lazy import avoids ordinary Learn startup or non-etest behavior.
-          const { declareOwnedEtestCheckout } = await import('./m2-checkout-declaration-browser')
-          return declareOwnedEtestCheckout(head)
+    const followup = async () => {
+      const checkout = await tryDeclareCheckoutAfterPublication({
+        accountId,
+        deviceId,
+        published,
+        port: {
+          assertOwner,
+          readOutbox: () => inspectEventOutbox(accountId, deviceId),
+          declare: async (head) => {
+            // Lazy import avoids ordinary Learn startup or non-etest behavior.
+            const { declareOwnedEtestCheckout } = await import('./m2-checkout-declaration-browser')
+            return declareOwnedEtestCheckout(head)
+          },
         },
-      },
-    })
-    if (checkout.status === 'blocked') {
-      console.warn('M3 etest checkout retained uploaded evidence:', checkout.reason)
+      })
+      if (checkout.status === 'blocked') {
+        console.warn('M3 etest checkout retained uploaded evidence:', checkout.reason)
+      }
     }
+    // Optional evidence cannot delay the first frame. The closure rechecks
+    // original account/token/generation; a navigation may safely discard it.
+    if (startupSyncBudgetActive()) deferredCheckout = followup
+    else await followup()
     return published
   })()
   try {

@@ -62,6 +62,7 @@ const CODES = new Set<string>([
   'invalid-json',
   'type-error',
   'idb-error',
+  'startup-sync-budget-exhausted',
   'unknown',
 ])
 const MESSAGES: Record<string, string> = {

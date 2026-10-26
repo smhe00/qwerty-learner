@@ -1,0 +1,29 @@
+name: Startup Sync Recovery Gate
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - 'src/sync/**'
+      - 'src/index.tsx'
+      - 'tests/e2e/startup-sync-*'
+      - '.github/workflows/startup-sync-recovery.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: startup-sync-recovery-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  browser-recovery:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
+      - name: Slow/offline/lost-ACK and cross-reload journal regression
+        run: npx playwright test --config=tests/e2e/startup-sync-regression.config.ts

@@ -44,7 +44,7 @@ globalThis.localStorage = {
   setItem: (key, val) => local.set(key, String(val)),
   removeItem: key => local.delete(key),
 }
-globalThis.navigator = { onLine: true }
+Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { onLine: true } })
 globalThis.window = {
   location: { replace: p => { sequence.push('navigate'); navigated.push(p) } },
   requestAnimationFrame: () => undefined,

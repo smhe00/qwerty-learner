@@ -9,6 +9,7 @@ import { secureLearningEntry } from './learning-sync-policy'
 import type { ChainedBatch, ChainedReceipt } from './multi-device-outbox'
 import { type PerfSample, recordV4TransportSample } from './perf-diagnostics'
 import { sha256Hex } from './sha256-compat'
+import { startupSyncRequestTimeout } from './startup-sync-budget'
 import type { CloudUser, RemoteSnapshot, RemoteSyncMeta } from './types'
 import { V4_HTTP_PART_BYTES, planV4UploadParts } from './v4-http-part-plan'
 import { retryIdenticalV4Part, stageImmutableV4Parts } from './v4-http-part-retry'
@@ -109,20 +110,27 @@ async function request<T>(
   // a server CAS did not commit: the next attempt always rechecks metadata.
   const isEventsPilot = path.startsWith('/api/sync/events/v2')
   const abort = path.startsWith('/api/sync/v2') || isEventsPilot ? new AbortController() : null
-  const deadline = abort ? setTimeout(() => abort.abort(), isEventsPilot ? 30_000 : 90_000) : null
+  const deadline = abort ? setTimeout(() => abort.abort(), startupSyncRequestTimeout(isEventsPilot ? 30_000 : 90_000)) : null
   let response: Response
   let text: string
   try {
     const transportBody = binary === undefined ? (body === undefined ? undefined : JSON.stringify(body)) : new Uint8Array(binary)
-    const answer = await retrySafeBodyRequest(async () => {
-      const received = await fetch(apiUrl(path), { method, headers, body: transportBody, signal: abort?.signal })
-      const receivedText = await received.text()
-      let rejection: unknown
-      if (received.status === 503) {
-        try { rejection = JSON.parse(receivedText) } catch { /* Unknown responses never authorize retry. */ }
-      }
-      return { status: received.status, body: rejection, response: received, text: receivedText }
-    }, { path, method })
+    const answer = await retrySafeBodyRequest(
+      async () => {
+        const received = await fetch(apiUrl(path), { method, headers, body: transportBody, signal: abort?.signal })
+        const receivedText = await received.text()
+        let rejection: unknown
+        if (received.status === 503) {
+          try {
+            rejection = JSON.parse(receivedText)
+          } catch {
+            /* Unknown responses never authorize retry. */
+          }
+        }
+        return { status: received.status, body: rejection, response: received, text: receivedText }
+      },
+      { path, method },
+    )
     response = answer.response
     text = answer.text
   } finally {
@@ -144,8 +152,13 @@ async function request<T>(
     // The currently saved token was superseded by another device. Broadcast
     // only for the still-current local token: late responses from a previous
     // login must not force a newer session out of its workspace.
-    if (response.status === 401 && error.error === 'session_revoked' && token &&
-        !path.startsWith('/api/maintenance/') && typeof window !== 'undefined') {
+    if (
+      response.status === 401 &&
+      error.error === 'session_revoked' &&
+      token &&
+      !path.startsWith('/api/maintenance/') &&
+      typeof window !== 'undefined'
+    ) {
       try {
         const saved = JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null')
         if (saved?.token === token) {
@@ -571,7 +584,7 @@ export async function getSyncV2SnapshotBinary(token: string): Promise<
       index: String(index),
     })
     const abort = new AbortController()
-    const deadline = setTimeout(() => abort.abort(), 90_000)
+    const deadline = setTimeout(() => abort.abort(), startupSyncRequestTimeout(90_000))
     let response: Response
     let bytes: Uint8Array
     try {
@@ -791,7 +804,6 @@ export function readChainedDeviceCheckout(token: string, selector: DeviceCheckou
   return request<VerifiedDeviceCheckoutReply>('/api/sync/events/v2/checkout?' + query, { token })
 }
 
-
 export type IdleCleanupRow = {
   userId?: string
   username?: string
@@ -811,8 +823,7 @@ export function getAdministratorAccess(token: string) {
   return request<{ administrator: boolean; policyEnabled: boolean }>('/api/admin/access', { token })
 }
 export function getCloudStorageUsage(token: string) {
-  return request<{ objects: number; accounts: number; reportedBytes: number; sizeComplete: boolean }>(
-    '/api/admin/storage', { token })
+  return request<{ objects: number; accounts: number; reportedBytes: number; sizeComplete: boolean }>('/api/admin/storage', { token })
 }
 export function inspectIdleAccounts(token: string, cursor = '') {
   return request<IdleCleanupPage>('/api/admin/idle?cursor=' + encodeURIComponent(cursor), { token })

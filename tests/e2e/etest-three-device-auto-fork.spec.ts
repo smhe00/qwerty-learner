@@ -1,6 +1,6 @@
 import { loadBodyPolicy } from './body-policy-loader'
 import { acknowledgeInformationDialog } from './information-dialog'
-import { type BrowserContext, type Page, expect, test } from '@playwright/test'
+import { type BrowserContext, type Page, type Response, expect, test } from '@playwright/test'
 import { writeFile } from 'node:fs/promises'
 
 /**
@@ -116,8 +116,53 @@ async function openAccount(page: Page, username: string, password: string) {
   const signIn = page.getByRole('button', { name: '登录', exact: true })
   const previousUrl = page.url()
   const authStatuses: string[] = []
+  const bootStarted = Date.now()
+  const inflight = new Map<any, { path: string; at: number }>()
+  const http: Array<{ path: string; status: number; elapsedMs: number }> = []
+  let navigations = 0
+  const onNavigation = (frame: any) => { if (frame === page.mainFrame()) navigations++ }
+  const onRequest = (request: any) => {
+    const url = new URL(request.url())
+    if (url.origin === expectedOrigin && /^\/api\/(sync|auth)\//.test(url.pathname)) {
+      inflight.set(request, { path: url.pathname, at: Date.now() })
+    }
+  }
+  const onDone = (request: any) => { inflight.delete(request) }
+  const onHttp = (response: any) => {
+    const request = inflight.get(response.request())
+    if (request) http.push({ path: request.path, status: response.status(), elapsedMs: Date.now() - request.at })
+  }
+  const bootEvidence = async () => ({
+    elapsedMs: Date.now() - bootStarted, navigations,
+    pending: [...inflight.values()].map(x => ({ path: x.path, ageMs: Date.now() - x.at })),
+    http: http.slice(-48),
+    page: await page.evaluate(() => {
+      const read = (key: string) => {
+        try { const v = JSON.parse(sessionStorage.getItem(key) || '[]'); return Array.isArray(v) ? v : [] }
+        catch { return [] }
+      }
+      const attempts = new Map<string, number>()
+      const budgets = read('qwerty.startup-sync-trace.v1').slice(-12).map(x => {
+        const id = typeof x.attemptId === 'string' ? x.attemptId : ''
+        if (!attempts.has(id)) attempts.set(id, attempts.size + 1)
+        return { phase: ['begin','reload','finish'].includes(x.phase) ? x.phase : 'unknown',
+          attempt: attempts.get(id), elapsedMs: x.elapsedMs, remainingMs: x.remainingMs, reloads: x.reloads }
+      })
+      const perf = read('qwerty.perf-diagnostics.v1').slice(-32).map(x => ({
+        stage: /^[a-z0-9.-]{1,64}$/.test(x.stage) ? x.stage : 'unknown',
+        elapsedMs: x.elapsedMs, outcome: x.outcome === 'ok' ? 'ok' : 'failed',
+      }))
+      return { readyState: document.readyState, accountEntries: document.querySelectorAll('[data-account-entry]').length,
+        budgets, perf }
+    }).catch(() => ({ unavailable: true })),
+  })
+  page.on('framenavigated', onNavigation)
+  page.on('request', onRequest)
+  page.on('requestfinished', onDone)
+  page.on('requestfailed', onDone)
+  page.on('response', onHttp)
   // Status only: avoid exposing user identity, token or response bodies.
-  const onAuthResponse = (response: import('@playwright/test').Response) => {
+  const onAuthResponse = (response: Response) => {
     try {
       const path = new URL(response.url()).pathname
       if (path === '/api/auth/login' || path === '/api/auth/register') {
@@ -170,9 +215,11 @@ async function openAccount(page: Page, username: string, password: string) {
     await acknowledgeInformationDialog(page, 180_000)
     await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 60_000 })
     await expect(page.getByText('学习数据安全检查未通过')).toHaveCount(0)
+    console.log('E2E_BOOT_SETTLED', JSON.stringify(await bootEvidence()))
   } catch (error) {
     // Redact credentials; keep only the public navigational failure
     // evidence. Do not retry an uncertain S1 ownership transition.
+    console.error('E2E_BOOT_FAILED', JSON.stringify(await bootEvidence()))
     console.error('S1 relay login checkpoint failed', {
       path: new URL(page.url()).pathname,
       authStatuses,
@@ -183,6 +230,11 @@ async function openAccount(page: Page, username: string, password: string) {
     throw error
   } finally {
     page.off('response', onAuthResponse)
+    page.off('framenavigated', onNavigation)
+    page.off('request', onRequest)
+    page.off('requestfinished', onDone)
+    page.off('requestfailed', onDone)
+    page.off('response', onHttp)
   }
 }
 async function beginLearn(page: Page) {

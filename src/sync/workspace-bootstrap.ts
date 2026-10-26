@@ -10,6 +10,12 @@ import { loadAuth, setIsolatedAuthRetention } from './auth'
 import { SYNC_PENDING_NOTICE } from './learning-sync-diagnostics'
 import { learningEventSyncEnabled } from './learning-sync-policy'
 import { timePerfStage } from './perf-diagnostics'
+import {
+  beginStartupSyncBudget,
+  finishStartupSyncBudget,
+  preserveStartupSyncBudgetForReload,
+  startupSyncTimeRemaining,
+} from './startup-sync-budget'
 import { acquireWorkspaceWriterLease } from './workspace-lock'
 import {
   assertWorkspaceMigrationWitness,
@@ -156,6 +162,14 @@ export async function prepareGuardedWorkspaceBoot(
       throw new Error('Active workspace and authenticated account differ: writes blocked')
     }
 
+    // Recovery always runs, even with an expired inherited network budget.
+    const normalLearningEntry =
+      ['/', '/learn', '/mobile', '/mobile/study'].includes(window.location.pathname.replace(/\/$/, '') || '/') &&
+      (window.location.search === '' || window.location.search === '?m4-reconcile=1')
+    if (registry.active.kind === 'account' && normalLearningEntry && learningEventSyncEnabled()) {
+      beginStartupSyncBudget({ accountId: registry.active.accountId, generation: registry.generation })
+    }
+
     if (pendingMerge) {
       // Under the exclusive pre-mount S1 writer lock, reapply the exact
       // staged target. No untrusted remote read or new merge happens here.
@@ -175,6 +189,7 @@ export async function prepareGuardedWorkspaceBoot(
       sessionStorage.setItem('qwerty.s2.last-sync-result', '本机学习数据事务已安全恢复；其他设备是否完成同步尚未确认。')
       recovered = true
       // Reload discards any pre-restore module-level storage caches.
+      preserveStartupSyncBudgetForReload()
       throw new Error('M4 merge recovery completed; reload required before mounting app')
     }
 
@@ -186,6 +201,7 @@ export async function prepareGuardedWorkspaceBoot(
       // witness reseal and atomic baseline finalization, never at staging.
       sessionStorage.setItem('qwerty.s2.last-sync-result', '已完成云端学习数据安全恢复。')
       recovered = true
+      preserveStartupSyncBudgetForReload()
       throw new Error('S2 Pull recovery completed; reload required before mounting app')
     }
     if (pendingImport) {
@@ -214,6 +230,7 @@ export async function prepareGuardedWorkspaceBoot(
     // single-sided remote update is downloaded and durably journaled; a
     // divergent history remains pending and neither side is overwritten.
     if (
+      startupSyncTimeRemaining() &&
       shouldCheckAccountV4AtStartup({
         pathname: window.location.pathname,
         search: window.location.search,
@@ -233,6 +250,7 @@ export async function prepareGuardedWorkspaceBoot(
       }
       if (result.status === 'pull-staged') {
         recovered = true
+        preserveStartupSyncBudgetForReload()
         throw new Error('S2 Pull staged; reload required before mounting app')
       }
       if (!result.canContinue) throw new Error('S2 startup workspace is not ready')
@@ -241,7 +259,7 @@ export async function prepareGuardedWorkspaceBoot(
     // this device's immutable offline events, then optionally adopt a strictly
     // verified, monotonic remote PREFIX through an M4 undo journal. Never use
     // Blob listing as evidence of whole-account convergence.
-    if (registry.active.kind === 'account' && learningEventSyncEnabled()) {
+    if (registry.active.kind === 'account' && learningEventSyncEnabled() && startupSyncTimeRemaining()) {
       try {
         const { adoptWitnessedM3AtGuardedBoot } = await import('./m4-witnessed-prefix-browser')
         const adoption = await adoptWitnessedM3AtGuardedBoot(registry)
@@ -249,6 +267,7 @@ export async function prepareGuardedWorkspaceBoot(
           recovered = true
           // The restore initialized Dexie/atoms before the React mount. A
           // fresh JS realm avoids using stale in-memory state after recovery.
+          preserveStartupSyncBudgetForReload()
           throw new Error('M4 merge recovery completed; reload required before mounting app')
         }
         if (adoption.status === 'blocked') {
@@ -277,6 +296,33 @@ export async function prepareGuardedWorkspaceBoot(
         console.warn('M4 witnessed prefix adoption deferred:', error)
       }
     }
+    if (!startupSyncTimeRemaining()) {
+      sessionStorage.setItem('qwerty.s2.last-sync-result', SYNC_PENDING_NOTICE)
+      if (window.location.search === '?m4-reconcile=1') {
+        sessionStorage.setItem('qwerty.etest.m4.idleBlocked', '1')
+        window.history.replaceState(null, '', '/')
+      }
+    }
+    // Recheck after every async cloud path. A caught failure cannot authorize
+    // mounting over a staged transaction, changed owner or damaged witness.
+    const [finalRegistry, pull, manual, merge] = await Promise.all([
+      workspaceRegistryPort.read(),
+      syncV2PullJournalPort.read(),
+      manualV4ImportJournalPort.read(),
+      m4MergeJournalPort.read(),
+    ])
+    if (
+      finalRegistry.pending ||
+      pull ||
+      manual ||
+      merge ||
+      finalRegistry.generation !== registry.generation ||
+      !same(finalRegistry.active, registry.active) ||
+      loadAuth({ preserveExpired: true })?.token !== auth?.token
+    ) {
+      throw Error('Startup owner changed or durable recovery remains pending: writes blocked')
+    }
+    assertWorkspaceMigrationWitness()
     installWorkspaceStorageWriterGuard()
     setIsolatedAuthRetention(true)
     report(onStage, 'ready')
@@ -285,6 +331,8 @@ export async function prepareGuardedWorkspaceBoot(
     lease.release()
     report(onStage, recovered ? 'restart-required' : 'blocked')
     throw error
+  } finally {
+    finishStartupSyncBudget()
   }
 }
 

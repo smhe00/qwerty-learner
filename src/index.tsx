@@ -4,10 +4,16 @@
  * Legacy users continue without automatic S1 migration.
  */
 import { loadAuth } from './sync/auth'
-import { finalizeQuickSync, finishQuickSyncRecovery, getQuickSyncIntent, markQuickSyncPullStaged, quickSyncReturnPath } from './sync/quick-sync-entry'
 import { presentSafetyDialog, showInformationDialog } from './sync/dialog-presentation'
 import { learningEventSyncEnabled } from './sync/learning-sync-policy'
 import { startPerfStage, timePerfStage } from './sync/perf-diagnostics'
+import {
+  finalizeQuickSync,
+  finishQuickSyncRecovery,
+  getQuickSyncIntent,
+  markQuickSyncPullStaged,
+  quickSyncReturnPath,
+} from './sync/quick-sync-entry'
 import { offerSecureLearningEntry } from './sync/secure-entry'
 import { prepareGuardedWorkspaceBoot } from './sync/workspace-bootstrap'
 import type { GuardedWorkspaceBoot, WorkspaceBootStage } from './sync/workspace-bootstrap'
@@ -364,7 +370,8 @@ async function start(): Promise<void> {
           }
           const safe = status === 'noop' || status === 'pushed'
           const destination = finalizeQuickSync(quickAccountId, {
-            kind: safe ? 'ok' : 'failed', message: note,
+            kind: safe ? 'ok' : 'failed',
+            message: note,
           })
           window.location.replace(destination)
           return
@@ -468,10 +475,14 @@ async function start(): Promise<void> {
     mounted = true
     // Login, restore, writer acquisition and mounting have already completed.
     // A failed/lost maintenance request never blocks this startup path.
-    void import('./sync/idle-maintenance-trigger').then(async ({ startIdleMaintenance }) => {
-      const { triggerIdleMaintenance } = await import('./sync/api')
-      startIdleMaintenance(triggerIdleMaintenance, loadAuth()?.token)
-    }).catch(() => { /* Cloud maintenance is independent of local learning. */ })
+    void import('./sync/idle-maintenance-trigger')
+      .then(async ({ startIdleMaintenance }) => {
+        const { triggerIdleMaintenance } = await import('./sync/api')
+        startIdleMaintenance(triggerIdleMaintenance, loadAuth()?.token)
+      })
+      .catch(() => {
+        /* Cloud maintenance is independent of local learning. */
+      })
     requestAnimationFrame(() => finishFirstFrame())
     if (boot.mode === 'isolated') {
       const { startSessionRevocationMonitor } = await import('./sync/session-revocation')
@@ -483,6 +494,11 @@ async function start(): Promise<void> {
         try {
           const { startEtestM3BackgroundMonitor } = await import('./sync/m3-background-browser')
           stopEtestM3BackgroundMonitor = startEtestM3BackgroundMonitor()
+          void import('./sync/m3-publication-browser')
+            .then(({ flushDeferredM3Checkout }) => flushDeferredM3Checkout())
+            .catch(() => {
+              /* Optional declaration cannot block or release the mounted writer. */
+            })
         } catch (error) {
           // Optional network/pilot module loading can fail offline. NEVER
           // propagate to the outer boot catch, which would release the

@@ -11,15 +11,15 @@
  * A normal mounted React button must navigate to that adapter, never call
  * this function while the app is live and can write RecordDB.
  */
-import { preflightManualSyncV2 } from './v2-preflight'
 import { recordPerfSize, timePerfStage } from './perf-diagnostics'
 import { sha256Hex } from './sha256-compat'
+import type { RemoteBinarySnapshot, RemoteSnapshot, RemoteSyncMeta } from './types'
+import type { SyncV2Baseline } from './v2-policy'
+import { preflightManualSyncV2 } from './v2-preflight'
+import type { PullJournalPort } from './v2-pull-transaction'
 import { verifyDownloadedWorkspaceV4 } from './v2-verify-remote'
 import { assertRestorableWorkspaceV4, workspaceFingerprintV4 } from './workspace-v4'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
-import type { PullJournalPort } from './v2-pull-transaction'
-import type { SyncV2Baseline } from './v2-policy'
-import type { RemoteBinarySnapshot, RemoteSnapshot, RemoteSyncMeta } from './types'
 
 export type S2ExecutionResult =
   | { status: 'noop'; revision: number }
@@ -68,19 +68,20 @@ export async function payloadV4(snapshot: WorkspaceSnapshotV4): Promise<{
   const pako = await import('pako')
   const raw = new TextEncoder().encode(JSON.stringify(snapshot))
   recordPerfSize('sync', 'payload-raw', raw.byteLength)
-  const compressed = await timePerfStage('sync', 'gzip-compression', async () =>
-    pako.gzip(raw))
+  const compressed = await timePerfStage('sync', 'gzip-compression', async () => pako.gzip(raw))
   recordPerfSize('sync', 'payload-gzip', compressed.byteLength)
   const checksum = await sha256Hex(compressed)
   return { bytes: compressed, checksum }
 }
 
 function sameRemote(a: RemoteSyncMeta, b: RemoteSyncMeta): boolean {
-  return a.revision === b.revision &&
+  return (
+    a.revision === b.revision &&
     a.hasData === b.hasData &&
     a.logicalFingerprint === b.logicalFingerprint &&
     a.payloadSha256 === b.payloadSha256 &&
     a.clientFormatVersion === b.clientFormatVersion
+  )
 }
 
 /**
@@ -89,28 +90,41 @@ function sameRemote(a: RemoteSyncMeta, b: RemoteSyncMeta): boolean {
  */
 export async function executeManualSyncV2(port: SyncV2ExecutionPort): Promise<S2ExecutionResult> {
   await port.assertQuiescentOwner()
-  if (!port.accountId.trim() || !Number.isSafeInteger(port.registryGeneration) ||
-      port.registryGeneration < 1) {
+  if (!port.accountId.trim() || !Number.isSafeInteger(port.registryGeneration) || port.registryGeneration < 1) {
     throw new Error('S2 requires a valid isolated account workspace generation')
   }
   await timePerfStage('sync', 'flush-writers', () => port.flush())
   // Remote metadata is read-only; fetch it concurrently with the immutable
   // local snapshot. Push still uses revision CAS; Pull rechecks remote metadata
   // after download. Do not parallelize the writer flush or ownership guard.
-  const [local, baseline, remote] = await Promise.all([
+  const reads = await Promise.allSettled([
     timePerfStage('sync', 'snapshot-capture', () => port.capture()),
     timePerfStage('sync', 'baseline-read', () => port.readBaseline()),
     timePerfStage('sync', 'remote-meta', () => port.getMeta()),
   ])
+  // Drain local capture before falling back: no orphaned audit after a failed request.
+  const failed = reads.find((result) => result.status === 'rejected')
+  if (failed?.status === 'rejected') throw failed.reason
+  const [local, baseline, remote] = reads.map((result) => (result as PromiseFulfilledResult<unknown>).value) as [
+    WorkspaceSnapshotV4,
+    SyncV2Baseline | null,
+    RemoteSyncMeta,
+  ]
   assertRestorableWorkspaceV4(local)
-  if (local.metadata.source.kind !== 'account' ||
-      local.metadata.source.accountId !== port.accountId) {
+  if (local.metadata.source.kind !== 'account' || local.metadata.source.accountId !== port.accountId) {
     throw new Error('S2 working workspace immutable account mismatch')
   }
   const preflight = await timePerfStage('sync', 'fingerprint-decision', () =>
-    preflightManualSyncV2(local, port.accountId, {
-    ...remote, logicalFingerprint: remote.logicalFingerprint ?? null,
-  }, baseline))
+    preflightManualSyncV2(
+      local,
+      port.accountId,
+      {
+        ...remote,
+        logicalFingerprint: remote.logicalFingerprint ?? null,
+      },
+      baseline,
+    ),
+  )
   const decision = preflight.decision
   const automaticMerge = port.automaticMerge
   if (decision.action === 'conflict' && automaticMerge) {
@@ -130,19 +144,29 @@ export async function executeManualSyncV2(port: SyncV2ExecutionPort): Promise<S2
     await timePerfStage('sync', 'merge-archive', () => automaticMerge.archive(local, other, candidate))
     await timePerfStage('sync', 'merge-save-source', () => port.saveSource(local))
     await port.assertQuiescentOwner()
-    if (!sameRemote(remote, await timePerfStage('sync', 'merge-meta-recheck', () => port.getMeta()))) throw Error('Cloud changed during automatic V4 merge')
+    if (!sameRemote(remote, await timePerfStage('sync', 'merge-meta-recheck', () => port.getMeta())))
+      throw Error('Cloud changed during automatic V4 merge')
     let target = candidate
     let revision = remote.revision
     if (fingerprint !== remote.logicalFingerprint) {
       const bytes = await timePerfStage('sync', 'merge-payload', () => payloadV4(candidate))
       await port.assertQuiescentOwner()
       // Exactly ONE CAS request. An ambiguous response is never replayed here.
-      const uploaded = await timePerfStage('sync', 'merge-upload', () => port.put({ baseRevision: remote.revision,
-        payloadBytes: bytes.bytes, logicalFingerprint: fingerprint,
-        clientFormatVersion: 'qwerty-backup-v4' }))
-      if (!uploaded.hasData || uploaded.revision !== remote.revision + 1 ||
-          uploaded.clientFormatVersion !== 'qwerty-backup-v4' ||
-          uploaded.logicalFingerprint !== fingerprint || uploaded.payloadSha256 !== bytes.checksum) {
+      const uploaded = await timePerfStage('sync', 'merge-upload', () =>
+        port.put({
+          baseRevision: remote.revision,
+          payloadBytes: bytes.bytes,
+          logicalFingerprint: fingerprint,
+          clientFormatVersion: 'qwerty-backup-v4',
+        }),
+      )
+      if (
+        !uploaded.hasData ||
+        uploaded.revision !== remote.revision + 1 ||
+        uploaded.clientFormatVersion !== 'qwerty-backup-v4' ||
+        uploaded.logicalFingerprint !== fingerprint ||
+        uploaded.payloadSha256 !== bytes.checksum
+      ) {
         throw Error('Automatic V4 merge upload integrity or revision mismatch')
       }
       revision = uploaded.revision
@@ -152,9 +176,32 @@ export async function executeManualSyncV2(port: SyncV2ExecutionPort): Promise<S2
       target = other
     }
     await port.assertQuiescentOwner()
-    await timePerfStage('sync', 'merge-stage-journal', () => port.journal.stage({ version: 1, accountId: port.accountId,
-      registryGeneration: port.registryGeneration, revision, fingerprint,
-      oldBaseline: baseline, snapshot: target }))
+    if (fingerprint === preflight.localFingerprint) {
+      // Cloud-only catch-up: keep full archive/CAS/hash checks, but do not
+      // restore identical local content and force two needless reloads.
+      const current = await timePerfStage('sync', 'merge-local-recheck', () => port.capture())
+      if (
+        current.metadata.source.kind !== 'account' ||
+        current.metadata.source.accountId !== port.accountId ||
+        (await workspaceFingerprintV4(current)) !== fingerprint
+      ) {
+        throw Error('Automatic V4 merge local changed before baseline commit')
+      }
+      await port.assertQuiescentOwner()
+      await port.compareAndSwapBaseline(baseline, base(port.accountId, revision, fingerprint))
+      return { status: 'pushed', revision }
+    }
+    await timePerfStage('sync', 'merge-stage-journal', () =>
+      port.journal.stage({
+        version: 1,
+        accountId: port.accountId,
+        registryGeneration: port.registryGeneration,
+        revision,
+        fingerprint,
+        oldBaseline: baseline,
+        snapshot: target,
+      }),
+    )
     return { status: 'pull-reload-required', revision, automaticMerge: true }
   }
   if (decision.action === 'blocked' || decision.action === 'conflict') {
@@ -164,20 +211,20 @@ export async function executeManualSyncV2(port: SyncV2ExecutionPort): Promise<S2
   // a format-only revision increment must NEVER count as a concurrent edit.
   // Push writes binary directly; blocked/conflicted data is not migrated.
   let activeRemote = remote
-  if ((decision.action === 'noop' || decision.action === 'pull') &&
-      remote.hasData && remote.storageEncoding === 'base64') {
+  if ((decision.action === 'noop' || decision.action === 'pull') && remote.hasData && remote.storageEncoding === 'base64') {
     if (!port.migrateBinary) {
       throw new Error('Legacy binary migration requires authenticated guarded adapter')
     }
     await port.assertQuiescentOwner()
-    const moved = await timePerfStage('sync', 'binary-cloud-migration', () =>
-      port.migrateBinary!(remote))
-    if (moved.storageEncoding !== 'binary' ||
-        moved.revision !== remote.revision + 1 ||
-        moved.payloadSha256 !== remote.payloadSha256 ||
-        moved.logicalFingerprint !== remote.logicalFingerprint ||
-        moved.sizeBytes !== remote.sizeBytes ||
-        moved.clientFormatVersion !== remote.clientFormatVersion) {
+    const moved = await timePerfStage('sync', 'binary-cloud-migration', () => port.migrateBinary!(remote))
+    if (
+      moved.storageEncoding !== 'binary' ||
+      moved.revision !== remote.revision + 1 ||
+      moved.payloadSha256 !== remote.payloadSha256 ||
+      moved.logicalFingerprint !== remote.logicalFingerprint ||
+      moved.sizeBytes !== remote.sizeBytes ||
+      moved.clientFormatVersion !== remote.clientFormatVersion
+    ) {
       throw new Error('Binary migration changed immutable cloud content evidence')
     }
     activeRemote = moved
@@ -188,44 +235,46 @@ export async function executeManualSyncV2(port: SyncV2ExecutionPort): Promise<S2
     // canonical local and cloud fingerprints were proven equal.
     if (activeRemote.hasData) {
       await port.assertQuiescentOwner()
-      await port.compareAndSwapBaseline(baseline,
-        base(port.accountId, activeRemote.revision, preflight.localFingerprint))
+      await port.compareAndSwapBaseline(baseline, base(port.accountId, activeRemote.revision, preflight.localFingerprint))
     }
     return { status: 'noop', revision: activeRemote.revision }
   }
   if (decision.action === 'push') {
     const bytes = await timePerfStage('sync', 'payload-prepare', () => payloadV4(local))
     await port.assertQuiescentOwner()
-    const uploaded = await timePerfStage('sync', 'upload-request', () => port.put({
-      baseRevision: remote.revision,
-      payloadBytes: bytes.bytes,
-      logicalFingerprint: preflight.localFingerprint,
-      clientFormatVersion: 'qwerty-backup-v4',
-    }))
+    const uploaded = await timePerfStage('sync', 'upload-request', () =>
+      port.put({
+        baseRevision: remote.revision,
+        payloadBytes: bytes.bytes,
+        logicalFingerprint: preflight.localFingerprint,
+        clientFormatVersion: 'qwerty-backup-v4',
+      }),
+    )
     // Server upload may have committed even if a response was truncated.
     // Do not advance baseline without checking BOTH verified hashes;
     // next Sync will then converge via metadata-only noop.
-    if (!uploaded.hasData || uploaded.revision !== remote.revision + 1 ||
-        uploaded.clientFormatVersion !== 'qwerty-backup-v4' ||
-        uploaded.logicalFingerprint !== preflight.localFingerprint ||
-        !SHA256.test(uploaded.payloadSha256 || '') ||
-        uploaded.payloadSha256 !== bytes.checksum) {
+    if (
+      !uploaded.hasData ||
+      uploaded.revision !== remote.revision + 1 ||
+      uploaded.clientFormatVersion !== 'qwerty-backup-v4' ||
+      uploaded.logicalFingerprint !== preflight.localFingerprint ||
+      !SHA256.test(uploaded.payloadSha256 || '') ||
+      uploaded.payloadSha256 !== bytes.checksum
+    ) {
       throw new Error('S2 V4 Push response integrity or revision mismatch')
     }
     await port.assertQuiescentOwner()
-    await port.compareAndSwapBaseline(baseline,
-      base(port.accountId, uploaded.revision, preflight.localFingerprint))
+    await port.compareAndSwapBaseline(baseline, base(port.accountId, uploaded.revision, preflight.localFingerprint))
     return { status: 'pushed', revision: uploaded.revision }
   }
   // Pull never selects an arbitrary older cloud revision after discovery.
   const cloud = await timePerfStage('sync', 'download-request', () => port.getSnapshot(activeRemote))
-  const verified = await timePerfStage('sync', 'verify-downloaded', () =>
-    verifyDownloadedWorkspaceV4(port.accountId, activeRemote, cloud))
+  const verified = await timePerfStage('sync', 'verify-downloaded', () => verifyDownloadedWorkspaceV4(port.accountId, activeRemote, cloud))
   const confirmed = await timePerfStage('sync', 'remote-meta-recheck', () => port.getMeta())
   if (!sameRemote(activeRemote, confirmed)) {
     throw new Error('S2 remote revision changed before Pull staging')
   }
-  if (await workspaceFingerprintV4(verified) !== cloud.logicalFingerprint) {
+  if ((await workspaceFingerprintV4(verified)) !== cloud.logicalFingerprint) {
     throw new Error('S2 verified cloud snapshot changed unexpectedly')
   }
   await port.assertQuiescentOwner()
@@ -236,12 +285,16 @@ export async function executeManualSyncV2(port: SyncV2ExecutionPort): Promise<S2
   // Stage under the S1 owner lease, then force navigation. The existing S1
   // bootstrap will replay the durable snapshot BEFORE installing the
   // storage-writer guard and mounting any React/RecordDB writer.
-  await timePerfStage('sync', 'stage-pull-journal', () => port.journal.stage({
-    version: 1, accountId: port.accountId,
-    registryGeneration: port.registryGeneration,
-    revision: cloud.revision,
-    fingerprint: cloud.logicalFingerprint!,
-    oldBaseline: baseline, snapshot: verified,
-  }))
+  await timePerfStage('sync', 'stage-pull-journal', () =>
+    port.journal.stage({
+      version: 1,
+      accountId: port.accountId,
+      registryGeneration: port.registryGeneration,
+      revision: cloud.revision,
+      fingerprint: cloud.logicalFingerprint!,
+      oldBaseline: baseline,
+      snapshot: verified,
+    }),
+  )
   return { status: 'pull-reload-required', revision: cloud.revision }
 }

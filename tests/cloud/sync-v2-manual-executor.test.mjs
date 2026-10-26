@@ -350,3 +350,77 @@ for (const phase of ['build', 'archive', 'upload']) {
     delete globalThis.sessionStorage
   })
 }
+
+test('same-local automatic union confirms cloud and baseline without a Pull or restore', async () => {
+  const local = snap(2), remote = await cloud(snap(1), 5)
+  const { port, state } = fixture(local, remote.meta)
+  state.cloud = remote.snapshot
+  port.automaticMerge = { async build() { return structuredClone(local) },
+    async archive() { state.calls.push('archive') } }
+  assert.deepEqual(await executeManualSyncV2(port), { status: 'pushed', revision: 6 })
+  assert.equal(state.baseline.logicalFingerprint, await workspaceFingerprintV4(local))
+  assert.equal(state.baseline.baseRevision, 6)
+  assert.equal(state.pending, null)
+  assert.equal(state.restored, null)
+  assert.equal(state.calls.filter(x => x === 'upload').length, 1)
+  assert.equal(state.calls.filter(x => x === 'capture').length, 2)
+  assert(state.calls.indexOf('archive') < state.calls.indexOf('upload'))
+})
+
+test('same-local union with lost committed ACK rechecks metadata without replaying POST', async () => {
+  const local = snap(2), remote = await cloud(snap(1), 5)
+  const { port, state } = fixture(local, remote.meta)
+  state.cloud = remote.snapshot
+  port.automaticMerge = { async build() { return structuredClone(local) }, async archive() {} }
+  const put = port.put
+  let committed
+  port.put = async input => { committed = await put(input); throw Error('lost ACK after commit') }
+  await assert.rejects(executeManualSyncV2(port), /lost ACK/)
+  assert.equal(state.baseline, null)
+  assert.equal(state.pending, null)
+  port.getMeta = async () => structuredClone(committed)
+  assert.deepEqual(await executeManualSyncV2(port), { status: 'noop', revision: 6 })
+  assert.equal(state.calls.filter(x => x === 'upload').length, 1)
+  assert.equal(state.pending, null)
+})
+
+for (const failure of ['local-changed', 'owner-changed', 'baseline-quota']) {
+  test('same-local catch-up refuses unsafe baseline on ' + failure, async () => {
+    const local = snap(2), remote = await cloud(snap(1), 5)
+    const { port, state } = fixture(local, remote.meta)
+    state.cloud = remote.snapshot
+    port.automaticMerge = { async build() { return structuredClone(local) }, async archive() {} }
+    const capture = port.capture
+    let captures = 0
+    port.capture = async () => {
+      captures++
+      if (failure === 'local-changed' && captures === 2) return snap(9)
+      return capture()
+    }
+    const guard = port.assertQuiescentOwner
+    port.assertQuiescentOwner = async () => {
+      if (failure === 'owner-changed' && state.uploaded) throw Error('owner changed')
+      await guard()
+    }
+    if (failure === 'baseline-quota') port.compareAndSwapBaseline = async () => { throw Error('quota') }
+    await assert.rejects(executeManualSyncV2(port))
+    assert.equal(state.baseline, null)
+    assert.equal(state.pending, null)
+    assert.equal(state.calls.filter(x => x === 'upload').length, 1)
+  })
+}
+
+test('failed remote read drains pending local capture before returning failure', async () => {
+  const remote = await cloud(snap(1), 5)
+  const { port, state } = fixture(snap(2), remote.meta)
+  let finishCapture
+  port.capture = () => new Promise(resolve => { finishCapture = () => resolve(snap(2)) })
+  port.getMeta = async () => { throw Error('offline') }
+  let settled = false
+  const result = executeManualSyncV2(port).catch(e => { settled = true; return e })
+  await new Promise(resolve => setTimeout(resolve, 5))
+  assert.equal(settled, false)
+  finishCapture()
+  assert.match((await result).message, /offline/)
+  assert.equal(state.uploaded, null)
+})
