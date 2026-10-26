@@ -1,2 +1,7 @@
 # Circle selection cards
-Status: IN_PROGRESS. Base e645a8e62d81c0daa82b4dfc7b455e2fcbbd9034.
+Status: IN_PROGRESS; ready for etest visual confirmation.
+Base e645a8e62d81c0daa82b4dfc7b455e2fcbbd9034; claim 698e1096. Isolated worktree C:/Users/peter/Documents/Codex/2026-10-27/qwerty-circle-cards.
+Root cause: unselected buttons used transparent borders; selected border reused a faint generic separator color. Independent choices visually merged.
+Changes limited to src/pages/Circle/circle.css and index.tsx: visible individual borders, 12px gaps, stronger selected border/inset outline, check marker and 当前查看 text, explicit 我创建的/我加入的 roles, separator before create/join actions. Phone cards stack vertically with icons; dark-mode borders remain visible. No API, auth, data or learning changes.
+Validation: scoped ESLint PASS; production build PASS (30.41s, existing chunk/Browserslist warnings). Three-circle isolated browser preview verifies distinct computed borders, exactly one selected card after switching, correct detail, long-name wrap, and no horizontal overflow at 320px. PC and phone/dark screenshots visually inspected. No real accounts or storage writes; no new low-value test suite or full Cloud rerun.
+Preview driver: C:/Users/peter/Documents/Codex/2026-10-27/circle-cards-preview.cjs. Screenshot files circle-cards-desktop.png, circle-cards-mobile.png, circle-cards-dark-320.png beside it. All API requests fulfilled by synthetic local fixtures. Continued user-authorized Circle etest correction; no master promotion.

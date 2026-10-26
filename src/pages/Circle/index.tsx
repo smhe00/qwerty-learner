@@ -399,8 +399,16 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                     </span>
                     <span className="circle-list-name">
                       {item.name}
-                      <small>{item.role === 'owner' ? '我创建的' : '一起学习'}</small>
+                      <small>
+                        {item.role === 'owner' ? '我创建的' : '我加入的'}
+                        {selected === item.circleId ? ' · 当前查看' : ''}
+                      </small>
                     </span>
+                    {selected === item.circleId && (
+                      <span className="circle-selection-mark" aria-hidden="true">
+                        <Check size={13} />
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>

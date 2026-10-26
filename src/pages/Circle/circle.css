@@ -159,22 +159,42 @@
 }
 .circle-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 7px;
-  margin-bottom: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
 }
 .circle-list-item {
   width: 100%;
   display: flex;
   gap: 10px;
-  padding: 10px;
+  min-height: 82px;
+  padding: 12px;
   text-align: left;
-  border: 1px solid transparent;
+  border: 1px solid #cbd5e1;
+  background: var(--focus-surface, #fff);
   align-items: center;
+  position: relative;
 }
 .circle-list-item[aria-pressed='true'] {
   background: var(--focus-accent-soft, #eef2ff);
-  border-color: var(--focus-border, #e2e8f0);
+  border-color: #6366f1;
+  box-shadow: inset 0 0 0 1px #6366f1;
+  padding-right: 34px;
+}
+.circle-list-item:hover:not(:disabled) {
+  border-color: #818cf8;
+}
+.circle-selection-mark {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: #fff;
+  background: #6366f1;
 }
 .circle-avatar {
   display: grid;
@@ -187,6 +207,7 @@
   color: #7078cf;
 }
 .circle-list-name {
+  flex: 1;
   min-width: 0;
   font-weight: 600;
   overflow-wrap: anywhere;
@@ -197,6 +218,10 @@
   font-weight: 400;
   color: var(--focus-text-muted, #64748b);
   margin-top: 2px;
+}
+.circle-list:not(:empty) + .circle-entry-actions {
+  border-top: 1px solid var(--focus-border, #e2e8f0);
+  padding-top: 14px;
 }
 .circle-entry-actions {
   display: grid;
@@ -492,6 +517,13 @@
   background: #818cf81a;
   color: #b5bcff;
 }
+.dark .circle-list-item {
+  border-color: #536078;
+}
+.dark .circle-list-item[aria-pressed='true'] {
+  border-color: #a5b4fc;
+  box-shadow: inset 0 0 0 1px #a5b4fc;
+}
 .dark .circle-primary {
   background: #676fca;
 }
@@ -507,13 +539,10 @@
     gap: 14px;
   }
   .circle-list {
-    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
   .circle-list-item {
-    align-items: flex-start;
-  }
-  .circle-list-item .circle-avatar {
-    display: none;
+    min-height: 76px;
   }
   .circle-card {
     padding: 16px;
