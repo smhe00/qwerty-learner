@@ -27,6 +27,7 @@ import type { ReviewOutcome } from '@/review/types'
 import { currentDictInfoAtom, pronunciationConfigAtom } from '@/store'
 import type { Word } from '@/typings'
 import { useSaveWordRecord } from '@/utils/db'
+import { requireDurableWordRecordId } from '@/learn/durable-word-record'
 import { db } from '@/utils/db/core'
 import type { IWordRecord, LearningContextV1 } from '@/utils/db/record'
 import { getFirstValidDictionaryExample, maskDictionaryExample } from '@/utils/dictionaryExample'
@@ -480,7 +481,7 @@ export default function MobileWordPractice({
           learnItemKind: recordKind,
         }),
       )
-      if (id <= 0) throw new Error('学习记录保存失败，本词尚未推进。')
+      requireDurableWordRecordId(id)
       record.id = id
       scheduleLearnReviewCommit({
         dict: dict.id,

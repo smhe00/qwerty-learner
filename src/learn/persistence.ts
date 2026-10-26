@@ -6,7 +6,12 @@ export function trackLearnPersistence<T>(
   promise: Promise<T>,
 ): Promise<T> {
   pending.add(promise)
-  void promise.finally(() => pending.delete(promise))
+  // finally() creates another rejecting promise even if the caller handles
+  // the original failure. Consume both outcomes in the bookkeeping branch.
+  void promise.then(
+    () => pending.delete(promise),
+    () => pending.delete(promise),
+  )
   return promise
 }
 
