@@ -1,0 +1,18 @@
+{
+  "source": "e48f3d1",
+  "case": "complete",
+  "beforeStateFixture": true,
+  "networkMocked": false,
+  "completionPageVisible": true,
+  "applicationFailed": true,
+  "failedStage": "last-answer-and-completion-sync",
+  "failedPageState": {
+    "path": "blank",
+    "bodyText": "",
+    "accountEntry": 0,
+    "accountForm": 0,
+    "dialogs": []
+  },
+  "cleanupStatus": 200,
+  "cleanupVerified": true
+}

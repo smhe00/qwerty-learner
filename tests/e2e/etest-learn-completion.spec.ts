@@ -252,6 +252,24 @@ for (const wrong of [true, false]) {
       networkMocked: false,
     }
     const failures: unknown[] = []
+    const http: Array<Record<string, unknown>> = []
+    for (const [profile, page] of [a, b].entries())
+      page.on('response', async (response) => {
+        const path = new URL(response.url()).pathname
+        if (!path.startsWith('/api/')) return
+        const item: Record<string, unknown> = {
+          profile,
+          phase: stage,
+          path,
+          method: response.request().method(),
+          status: response.status(),
+        }
+        http.push(item)
+        if (response.status() >= 400) {
+          const body = await response.json().catch(() => null)
+          if (typeof body?.error === 'string' && /^[a-z0-9_-]{1,80}$/.test(body.error)) item.code = body.error
+        }
+      })
     let stage = 'register'
     try {
       const created = await request('/api/auth/register', 'POST', { username, password, deviceId: 'qwerty-web-' + randomUUID() })
@@ -375,6 +393,30 @@ for (const wrong of [true, false]) {
       failures.push(e)
       proof.applicationFailed = true
       proof.failedStage = stage
+      proof.http = http
+      proof.failedPageState = await Promise.all(
+        [a, b].map((page, profile) =>
+          page
+            .evaluate(() => ({
+              path: location.pathname,
+              rootChildren: document.querySelector('#root')?.childElementCount,
+              bodyText: document.body.innerText.slice(0, 2400),
+              accountEntry: document.querySelectorAll('[data-account-entry]').length,
+              accountForm: document.querySelectorAll('[data-account]').length,
+              dialogs: Array.from(document.querySelectorAll('dialog[open]')).map((x) => ({
+                label: x.getAttribute('aria-label'),
+                text: x.textContent?.slice(0, 300),
+              })),
+              startup: sessionStorage.getItem('qwerty.s2.startup-check.v1'),
+              diagnostics: JSON.parse(sessionStorage.getItem('qwerty.learning-sync-diagnostics.v1') || '[]'),
+            }))
+            .then((state) => ({ profile, ...state }))
+            .catch(() => ({ profile, unavailable: true })),
+        ),
+      )
+      proof.failedPageState = JSON.parse(
+        JSON.stringify(proof.failedPageState).split(username).join('[fixture-account]').split(password).join('[redacted]'),
+      )
     } finally {
       await Promise.allSettled(contexts.map((c) => c.close()))
       try {

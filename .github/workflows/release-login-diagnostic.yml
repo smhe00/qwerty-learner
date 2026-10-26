@@ -1,0 +1,41 @@
+name: Pinned release login recovery diagnostic
+on:
+  push:
+    branches: [codex/learn-release-diagnosis-20261026]
+    paths:
+      - tests/e2e/etest-learn-completion.spec.ts
+      - .github/workflows/release-login-diagnostic.yml
+permissions:
+  contents: read
+concurrency:
+  group: pinned-release-login-diagnostic
+  cancel-in-progress: false
+jobs:
+  diagnose:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      EXPECTED_DEPLOYED_SHA: e48f3d11e9dc0ec3b8e6c8e781c6691890dc41ac
+      QWERTY_SYNC_BASE_URL: https://t.smhe.cn/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Require unchanged deployed source before disposable account
+        env:
+          EXPECTED_SHA: e48f3d11e9dc0ec3b8e6c8e781c6691890dc41ac
+        run: node scripts/verify-edgeone-source.mjs
+      - run: yarn install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
+      - name: One diagnostic account, no network mocks or ambiguous replay
+        run: GITHUB_REF_NAME=edgeone-test GITHUB_SHA="$EXPECTED_DEPLOYED_SHA" npx playwright test --config=tests/e2e/etest-learn-completion.config.ts --grep '\(complete\)'
+      - name: Preserve redacted failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-login-diagnostic
+          path: test-results/**/*-redacted-trace.json
+          if-no-files-found: ignore
+          retention-days: 7
