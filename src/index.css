@@ -92,8 +92,7 @@ body,
   grid-area: brand;
 }
 
-.focus-header-layout > [data-account-entry],
-.focus-header-layout > [data-account-dropdown] {
+.focus-header-layout > [data-account-entry] {
   grid-area: account;
   justify-self: end;
 }

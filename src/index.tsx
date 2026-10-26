@@ -4,7 +4,6 @@
  * Legacy users continue without automatic S1 migration.
  */
 import { loadAuth } from './sync/auth'
-import { finalizeQuickSync, finishQuickSyncRecovery, getQuickSyncIntent, markQuickSyncPullStaged, quickSyncReturnPath } from './sync/quick-sync-entry'
 import { presentSafetyDialog, showInformationDialog } from './sync/dialog-presentation'
 import { learningEventSyncEnabled } from './sync/learning-sync-policy'
 import { startPerfStage, timePerfStage } from './sync/perf-diagnostics'
@@ -162,15 +161,6 @@ function showExplicitMigrationConsent(): void {
 }
 
 function showS1AccountResult(): void {
-  const accountId = boot?.mode === 'isolated' && boot.registry.active.kind === 'account' ? boot.registry.active.accountId : ''
-  if (accountId && getQuickSyncIntent(accountId)) {
-    // Pull success is displayed only AFTER guarded replay has completed.
-    // A stale/unconfirmed pending intent must never become a success toast.
-    const note = sessionStorage.getItem('qwerty.s2.last-sync-result')
-    sessionStorage.removeItem('qwerty.s2.last-sync-result')
-    finishQuickSyncRecovery(accountId, note)
-    return
-  }
   const keys = ['qwerty.s2.last-sync-result', 'qwerty.s1.last-account-result']
   const key = keys.find((item) => sessionStorage.getItem(item) !== null)
   if (!key) return
@@ -288,11 +278,6 @@ async function start(): Promise<void> {
     // pre-mount, S1 writer-locked realm; it never mutates RecordDB from
     // mounted React. Production remains disabled without explicit flag.
     if (new URLSearchParams(window.location.search).get('s2-sync') === 'run') {
-      const isQuickSync = new URLSearchParams(window.location.search).get('quick-sync') === '1'
-      const quickAccountId = boot.registry.active.kind === 'account' ? boot.registry.active.accountId : ''
-      if (isQuickSync && (!quickAccountId || !getQuickSyncIntent(quickAccountId))) {
-        throw new Error('手动同步上下文已失效；本机学习记录仍保留。')
-      }
       if (
         boot.mode !== 'isolated' ||
         !(import.meta.env.DEV || (REACT_APP_DEPLOY_ENV !== 'pages' && import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC === 'true'))
@@ -355,20 +340,6 @@ async function start(): Promise<void> {
           blockScreen!.settle(outcome)
           return
         }
-        if (isQuickSync) {
-          if (status === 'pull-reload-required') {
-            // Never claim success before the new S1 boot replays the journal.
-            markQuickSyncPullStaged(quickAccountId)
-            window.location.replace(quickSyncReturnPath(quickAccountId))
-            return
-          }
-          const safe = status === 'noop' || status === 'pushed'
-          const destination = finalizeQuickSync(quickAccountId, {
-            kind: safe ? 'ok' : 'failed', message: note,
-          })
-          window.location.replace(destination)
-          return
-        }
         if (status !== 'pull-reload-required') {
           sessionStorage.setItem('qwerty.s2.last-sync-result', note)
         }
@@ -379,14 +350,6 @@ async function start(): Promise<void> {
           const outcome = { kind: 'failed' as const, message }
           saveLearnBlockSyncOutcome(outcome)
           blockScreen!.settle(outcome)
-          return
-        }
-        if (isQuickSync) {
-          const destination = finalizeQuickSync(quickAccountId, {
-            kind: 'unknown',
-            message: '同步结果尚未确认，本机学习记录仍保留。可稍后检查后重试。',
-          })
-          window.location.replace(destination)
           return
         }
         // If a Pull was staged, the next boot MUST first replay its journal.
