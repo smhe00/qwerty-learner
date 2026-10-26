@@ -62,6 +62,17 @@ export function createCircleOpenGateway({ backend, getStore, rateStorage, now = 
             return store.list({ ...options, consistency: 'strong' })
           },
         })
+        // One-use initial identity from this request's limiter only. Later checks
+        // always hit the live backend; nothing survives a request or token change.
+        let admission
+        const authenticate = async token => {
+          if (admission?.token === token) {
+            const user = admission.user
+            admission = undefined
+            return user
+          }
+          return backend.me(token)
+        }
         const limiter = async ({ token }) => {
           const ipBudget = await checkAuthRateLimit({
             storage: rateStorage, clientIp: 'circle-ip:' + clientIp,
@@ -82,6 +93,7 @@ export function createCircleOpenGateway({ backend, getStore, rateStorage, now = 
             storage: rateStorage, clientIp: 'circle-account:' + userId,
             requestLimit: 60, windowSeconds: 60,
           })
+          if (accountBudget.allowed) admission = { token, user }
           return accountBudget.allowed
         }
         const assembly = createCircleEventualAssembly({
@@ -90,7 +102,7 @@ export function createCircleOpenGateway({ backend, getStore, rateStorage, now = 
         })
         if (legacyOnly) return await assembly.transport.handle(request, { readBody: context.readBody })
         const service = createCircleBoundedService({
-          storage: createCircleV3Storage(store), authenticate: (token) => backend.me(token), now,
+          storage: createCircleV3Storage(store), authenticate, now,
           legacy: assembly.service,
           hasLegacyCircle: async (id) => (await assembly.log.scan(id)).length > 0,
         })

@@ -128,14 +128,25 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
     // be between index and membership writes. Retrying that join repairs it.
     return items.filter(Boolean)
   }
-  async function context(token, id, ownerOnly = false, allowClosed = false, allowAbsent = false) {
+  async function context(token, id, ownerOnly = false, allowClosed = false, allowAbsent = false, routeLegacy = false) {
     const user = await actor(token)
     const [info, closed, joined] = await Promise.all([meta(id), allowClosed ? false : isClosed(id), allowAbsent ? true : isMember(id, user)])
+    if (!info && routeLegacy && legacy) return { user, info: null }
     if (!info) fail(404, 'circle_not_found')
     if (ownerOnly && info.ownerUserId !== user) fail(403, 'not_circle_owner')
     if (closed) fail(410, 'circle_closed')
     if (!joined) fail(403, 'not_circle_member')
     return { user, info }
+  }
+  async function finalContext(token, id, user) {
+    // Finish storage checks before the final fresh session check. This replaces
+    // a context+recheck pair, not the final revocation/membership boundary.
+    const [info, closed, joined] = await Promise.all([meta(id), isClosed(id), isMember(id, user)])
+    await recheck(token, user)
+    if (!info) fail(404, 'circle_not_found')
+    if (closed) fail(410, 'circle_closed')
+    if (!joined) fail(403, 'not_circle_member')
+    return {user, info}
   }
   const checkDay = (day) => {
     if (!calendarDay(day)) fail(400, 'invalid_day')
@@ -144,10 +155,10 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
   }
   const receipt = (circleId) => ({ circleId, schemaVersion: 3, consistency: 'strong',
     readbackConfirmed: true, final: false })
-  async function attach(id, user, token, nickname) {
+  async function attach(id, user, token, nickname, indexed = false) {
     await recheck(token, user)
     // The durable index precedes membership, so a committed membership remains discoverable.
-    await storage.put(indexKey(id, user), membership(id, user), user)
+    if (!indexed) await storage.put(indexKey(id, user), membership(id, user), user)
     await storage.put(memberKey(id, user), membership(id, user, nickname), user)
     if (await isClosed(id)) fail(410, 'circle_closed')
     await recheck(token, user)
@@ -158,28 +169,26 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
     await storage.remove(indexKey(id, target), actorId)
     return receipt(id)
   }
-  async function dayView(token, id, day) {
-    const { user, info } = await context(token, id)
+  async function dayView(token, id, day, initial) {
+    const { user, info } = initial || await context(token, id)
     checkDay(day)
     const [data, current] = await Promise.all([daily.read(id, day), members(id, info.ownerUserId, true)])
     // Fresh context rechecks session, membership, closure and invitation after I/O.
-    const latest = await context(token, id)
-    if (latest.user !== user) fail(401, 'invalid_session')
+    const latest = await finalContext(token, id, user)
     return { ...filterDailyView(data, current), members: current, info: latest.info, requester: user }
   }
-  async function writeActivity(token, id, day, type, payload) {
-    const { user } = await context(token, id)
+  async function writeActivity(token, id, day, type, payload, initial) {
+    const { user } = initial || await context(token, id)
     checkDay(day)
     const record = { schemaVersion: 3, circleId: id, day, actorUserId: user, type, payload }
     await recheck(token, user)
     await storage.put(activityKey(record), record, user)
-    await context(token, id)
-    await recheck(token, user)
+    await finalContext(token, id, user)
     return { circleId: id, day, schemaVersion: 3, consistency: 'eventual', final: false,
       operationKey: digest(record) }
   }
-  async function fullView(token, id, day) {
-    const { info, members, ...data } = await dayView(token, id, day)
+  async function fullView(token, id, day, initial) {
+    const { info, members, ...data } = await dayView(token, id, day, initial)
     // dayView revalidates the caller; only its owner can retrieve stored invitation text.
     // The identity is bound to the authenticated request, not a caller-supplied user ID.
     const requester = data.requester
@@ -229,7 +238,7 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
           ...(custom === undefined ? {} : { inviteRevision: operationId, inviteText: custom }) }, user)
       }
       const active = previous || value
-      return { ...await attach(id, user, token, existing?.nickname || displayName(nickname, profile)), inviteRevision: active.inviteRevision || (custom === undefined ? 'legacy' : operationId),
+      return { ...await attach(id, user, token, existing?.nickname || displayName(nickname, profile), true), name: active.name, role: 'owner', inviteRevision: active.inviteRevision || (custom === undefined ? 'legacy' : operationId),
         ...(active.inviteHash === value.inviteHash ? { inviteCode: custom ?? ('QC3-' + id + '-' + secret) } : { inviteChanged: true }) }
     },
     async joinCircle(token, inviteCode, { nickname } = {}) {
@@ -258,7 +267,7 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
       // Never acknowledge a different invitation after a concurrent owner change.
       const current = await meta(id)
       if (current.inviteHash !== hash) fail(409, 'circle_invite_changed')
-      return { ...result, inviteRevision: current.inviteRevision || 'legacy' }
+      return { ...result, name: current.name, role: current.ownerUserId === user ? 'owner' : 'member', inviteRevision: current.inviteRevision || 'legacy' }
     },
     async setPassphrase(token, id, input = {}) {
       const { user, info } = await context(token, id, true)
@@ -281,22 +290,31 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
       await recheck(token, user)
       return { circles: items, schemaVersion: 3, consistency: 'strong', legacyIncluded: false, softCircleLimit: 3, hardLimit: false }
     },
-    async getCircle(token, id) { return fullView(token, id, windowDays(now())[0]) },
+    async getCircle(token, id) {
+      // The same initial context also decides legacy routing. Do not repeat
+      // session + metadata reads solely to discover a v3 circle's version.
+      const initial = await context(token, id, false, false, false, true)
+      return initial.info ? fullView(token, id, windowDays(now())[0], initial) : legacy.getCircle(token, id)
+    },
     async getDay(token, id, day) { return fullView(token, id, day) },
     async getProgress(token, id, day) { return (await dayView(token, id, day)).progress },
     async publishProgress(token, id, day, input) {
       if (!input || !/^[A-Za-z0-9_-]{8,128}$/.test(input.eventId || '') ||
           typeof input.completed !== 'boolean' || !Number.isInteger(input.newWords) ||
           input.newWords < 0 || input.newWords > 256) fail(400, 'invalid_progress')
+      const initial = await context(token, id, false, false, false, true)
+      if (!initial.info) return legacy.publishProgress(token, id, day, input)
       return writeActivity(token, id, day, 'progress',
-        { eventId: input.eventId, completed: input.completed, newWords: input.newWords })
+        { eventId: input.eventId, completed: input.completed, newWords: input.newWords }, initial)
     },
     async reactProgress(token, id, target, day) {
       userId(target)
-      const user = await actor(token)
-      const view = await dayView(token, id, day)
+      const initial = await context(token, id, false, false, false, true)
+      if (!initial.info) return legacy.reactProgress(token, id, target, day)
+      const view = await dayView(token, id, day, initial)
+      const user = view.requester
       if (user === target || !view.progress.some((p) => p.authorUserId === target)) fail(404, 'progress_not_found')
-      return writeActivity(token, id, day, 'clap', { targetUserId: target })
+      return writeActivity(token, id, day, 'clap', { targetUserId: target }, {user, info: view.info})
     },
     async getReactions(token, id, target, day) {
       userId(target)
@@ -354,8 +372,8 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
   }
   // Read/write old circles through the unchanged v2 service. QC3 creates distinct IDs.
   if (legacy) {
-    for (const method of ['getCircle', 'leaveCircle', 'removeMember', 'closeCircle',
-      'publishProgress', 'getProgress', 'reactProgress', 'getReactions', 'shareAchievement', 'getShowcase']) {
+    for (const method of ['leaveCircle', 'removeMember', 'closeCircle',
+      'getProgress', 'getReactions', 'shareAchievement', 'getShowcase']) {
       const current = service[method]
       service[method] = async (token, id, ...args) => {
         await actor(token)

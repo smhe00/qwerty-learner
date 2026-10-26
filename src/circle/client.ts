@@ -136,7 +136,7 @@ export function memberLabel(id: string, ownId: string, nickname?: string): strin
 }
 
 export type CreateDraft = { name: string; operationId: string; passphrase?: string; nickname?: string }
-type Hints = { pending?: CreateDraft; invites: Record<string, string>; inviteRevisions?: Record<string, string> }
+type Hints = { lastSelected?: string; pending?: CreateDraft; invites: Record<string, string>; inviteRevisions?: Record<string, string> }
 const hintsKey = (userId: string) => 'qwerty.circle-ui.v1.' + userId
 export function readCircleHints(userId: string): Hints {
   try {
@@ -152,6 +152,7 @@ export function readCircleHints(userId: string): Hints {
     }
     const pending = value?.pending
     return {
+      ...(typeof value?.lastSelected === 'string' && /^[a-f0-9]{24}$/.test(value.lastSelected) ? { lastSelected: value.lastSelected } : {}),
       invites,
       inviteRevisions: Object.fromEntries(
         Object.entries(value?.inviteRevisions || {}).filter(

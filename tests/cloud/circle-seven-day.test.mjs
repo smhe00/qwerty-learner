@@ -677,3 +677,25 @@ test('roster cache never binds a changed GET body to an older listed ETag', asyn
   f.hooks.get=undefined
   assert.equal((await f.service.getCircle(OWNER,c.circleId)).members[0].nickname,'Old')
 })
+
+
+test('gateway reuses only initial admission identity; final read authentication remains fresh on every request', async () => {
+  resetAuthRateLimitMemoryForTest()
+  const f = fixture({etags:true})
+  const c = await pair(f)
+  let checks = 0
+  const backend = {async me(token) { checks++; return f.backend.me(token) }}
+  const rateStorage = {async getAuthRateLimitCounter(){return null},async setAuthRateLimitCounter(){}}
+  const gateway = createCircleOpenGateway({backend,getStore:()=>f.blob,rateStorage,now:f.now})
+  const read = () => gateway.handle({clientIp:'192.0.2.81',request:new Request('https://q.smhe.cn/api/circle/v2/'+c.circleId,{headers:{authorization:'Bearer '+MEMBER}})})
+  assert.equal((await read()).status,200)
+  assert.equal(checks,2,'one live admission and one live final session check')
+  checks=0
+  f.hooks.list=async options=>{if(options.prefix.includes('/days/'))f.revoked.add(MEMBER)}
+  assert.equal((await read()).status,401,'revoked while loading data must not receive a view')
+  assert.equal(checks,2)
+  f.hooks.list=undefined
+  checks=0
+  assert.equal((await read()).status,401,'admission identity never survives to another request')
+  assert.equal(checks,1)
+})

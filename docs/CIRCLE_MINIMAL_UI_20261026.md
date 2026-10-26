@@ -22,3 +22,6 @@ PC 入口位于 Learn 顶部图标栏，替换 Learn 原本禁用的错题本位
 - 普通打卡和点赞显示可能稍有延迟，页面提供手动刷新，不进行网络轮询。点赞和打卡只刷新圈子详情；历史日期只请求所选当天的数据。刷新时保留已有内容，完成权限检查后更新。
 
 实现及测试记录见 interactive/reports/CIRCLE-CUSTOM-PASSPHRASE-20261026-report.md。真实 etest 和本地模拟证据分别记录；模拟手机尺寸不代表实体手机验收。
+## 2026-10-27 UI replacement and wait reduction
+Circle now uses a wider desktop workspace, responsive circle navigation, a dedicated create/join form and local Activity/Invite/Manage tabs. The owner can still see/copy the current phrase directly. Phone selection uses up to three compact cards. Nicknames, pending-create recovery and existing permission confirmations are preserved.
+A confirmed create/join receipt supplies the name/role so the selector updates without another list fetch. Check-in/like/passphrase confirmations do not trigger a whole view request. Pending state is explicit and ambiguous writes remain unconfirmed. Date views may be shown from component memory while a live refresh runs; read errors clear that copy. Only lastSelected circle ID is stored as an optional account-scoped navigation hint, allowing list and detail requests to start together on reopen; it never grants access or stores a private view.

@@ -17,7 +17,7 @@ import { useCircleAuth } from '@/circle/useCircleAuth'
 import MobilePageFrame from '@/pages/Mobile/MobilePageFrame'
 import { openAccountManagement } from '@/sync/account-navigation'
 import type { CloudAuthState } from '@/sync/types'
-import { ArrowLeft, Check, Copy, KeyRound, Plus, RefreshCw, ThumbsUp, Users } from 'lucide-react'
+import { ArrowLeft, Check, Copy, KeyRound, Plus, RefreshCw, Settings, Sparkles, ThumbsUp, UserPlus, Users } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -32,8 +32,15 @@ export default function CirclePage({ mobile = false, embedded = false }: { mobil
             <ArrowLeft size={17} /> 返回学习
           </Link>
         )}
-        <h2>和同学一起坚持</h2>
-        <p>分享打卡，给同学一个赞。只保留最近 7 天。</p>
+        <div className="circle-intro-title">
+          <span className="circle-brand-icon">
+            <Users size={22} />
+          </span>
+          <div>
+            <h2>一起学，每天进步一点</h2>
+            <p>和熟悉的同学，分享最近 7 天的坚持。</p>
+          </div>
+        </div>
       </header>
       {unavailable || !auth ? (
         <section className="circle-card circle-empty">
@@ -61,16 +68,20 @@ export default function CirclePage({ mobile = false, embedded = false }: { mobil
 }
 
 function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean }) {
+  const [panel, setPanel] = useState<'activity' | 'invite' | 'manage'>('activity')
+  const snapshots = useRef(new Map<string, CircleView>())
   const [items, setItems] = useState<CircleItem[]>([])
   const [loaded, setLoaded] = useState(false)
-  const [selected, setSelected] = useState('')
+  const [selected, setSelected] = useState(() => readCircleHints(auth.user.userId).lastSelected || '')
   const [day, setDay] = useState(() => circleDays()[0])
   const [view, setView] = useState<CircleView | null>(null)
   const [daily, setDaily] = useState<CircleDay | null>(null)
   const [refresh, setRefresh] = useState(0)
   const [listRefresh, setListRefresh] = useState(0)
+  const listEpoch = useRef(0)
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [pendingLabel, setPendingLabel] = useState('')
   const locked = useRef(false)
   const alive = useRef(true)
   const [error, setError] = useState('')
@@ -104,6 +115,15 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
       alive.current = false
     }
   }, [])
+  useEffect(() => {
+    // Navigation hint only: detail and membership are still fetched live, in
+    // parallel with mine. Never persist private view data or authorization.
+    try {
+      saveCircleHints(auth.user.userId, { ...readCircleHints(auth.user.userId), lastSelected: selected || undefined })
+    } catch {
+      /* optional navigation preference */
+    }
+  }, [auth.user.userId, selected])
   function showError(reason: unknown) {
     if (!alive.current) return
     setError(circleErrorText(reason))
@@ -113,9 +133,10 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
   useEffect(() => {
     if (needsLogin) return
     const controller = new AbortController()
+    const epoch = listEpoch.current
     circleRequest<{ circles: CircleItem[] }>(auth, '/mine', { signal: controller.signal })
       .then((result) => {
-        if (controller.signal.aborted) return
+        if (controller.signal.aborted || epoch !== listEpoch.current) return
         if (!Array.isArray(result.circles)) throw new CircleError('read_failed')
         setItems(result.circles)
         setLoaded(true)
@@ -128,8 +149,9 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
   }, [auth, listRefresh, needsLogin])
 
   useEffect(() => {
-    setView((current) => (current?.circleId === selected && current.day === day ? current : null))
-    setDaily((current) => (current?.circleId === selected && current.day === day ? current : null))
+    const cached = snapshots.current.get(selected + '/' + day) || null
+    setView((current) => (current?.circleId === selected && current.day === day ? current : cached))
+    setDaily((current) => (current?.circleId === selected && current.day === day ? current : cached))
     if (!selected || needsLogin) {
       setLoading(false)
       return
@@ -148,11 +170,13 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
           !Array.isArray(next.reactionCounts)
         )
           throw new CircleError('read_failed')
+        snapshots.current.set(selected + '/' + day, next)
         setView(next)
         setDaily(next)
       })
       .catch((reason) => {
         if (!controller.signal.aborted) {
+          snapshots.current.delete(selected + '/' + day)
           setView(null)
           setDaily(null)
           showError(reason)
@@ -164,10 +188,21 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
     return () => controller.abort()
   }, [auth, selected, day, refresh, needsLogin])
 
-  async function mutate(action: () => Promise<string>, membershipChanged = false) {
+  async function mutate(action: () => Promise<string>, membershipChanged = false, reload = true, label = '正在处理…') {
     if (locked.current || needsLogin) return
     locked.current = true
     setBusy(true)
+    setPendingLabel(
+      action === create
+        ? '正在创建圈子…'
+        : action === join
+        ? '正在加入圈子…'
+        : action === checkIn
+        ? '正在提交打卡…'
+        : action === changePassphrase
+        ? '正在保存口令…'
+        : label,
+    )
     setError('')
     setNotice('')
     try {
@@ -175,7 +210,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
       if (!alive.current) return
       setNotice(message)
       if (membershipChanged) setListRefresh((n) => n + 1)
-      setRefresh((n) => n + 1)
+      if (reload) setRefresh((n) => n + 1)
     } catch (reason) {
       showError(reason)
     } finally {
@@ -243,15 +278,22 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
     }
     saveCircleHints(auth.user.userId, saved)
     if (alive.current) {
+      listEpoch.current++
+      setLoaded(true)
       setPending(undefined)
       setForm(null)
       setName('')
       setPassphrase('')
       setNickname('')
+      setItems((old) => [
+        ...old.filter((c) => c.circleId !== result.circleId),
+        { circleId: result.circleId, name: draft.name, role: 'owner' },
+      ])
+      setPanel('activity')
       setSelected(result.circleId)
       setDay(circleDays()[0])
     }
-    return '圈子已创建。展开“邀请同学”即可复制口令。'
+    return '圈子已创建，可以邀请同学加入了。'
   }
   async function join() {
     const raw = invite.trim()
@@ -260,10 +302,14 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
     if (!code) throw new CircleError('invalid_circle_passphrase')
     const normalizedNickname = normalizeCircleNickname(joinNickname)
     if (normalizedNickname === null) throw new CircleError('invalid_circle_nickname')
-    const result = await circleRequest<{ circleId: string; inviteRevision?: string }>(auth, '/join', {
-      method: 'POST',
-      body: { inviteCode: code, nickname: normalizedNickname },
-    })
+    const result = await circleRequest<{ circleId: string; name?: string; role?: 'owner' | 'member'; inviteRevision?: string }>(
+      auth,
+      '/join',
+      {
+        method: 'POST',
+        body: { inviteCode: code, nickname: normalizedNickname },
+      },
+    )
     if (!/^[a-f0-9]{24}$/.test(result.circleId) || (isLegacyCircleInvite(code) && result.circleId !== code.slice(4, 28)))
       throw new CircleError('write_unknown')
     try {
@@ -277,9 +323,16 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
       /* The membership is confirmed; invitation storage is optional on join. */
     }
     if (alive.current) {
+      listEpoch.current++
+      setLoaded(true)
       setForm(null)
       setInvite('')
       setJoinNickname('')
+      setItems((old) => [
+        ...old.filter((c) => c.circleId !== result.circleId),
+        { circleId: result.circleId, name: result.name || '已加入的圈子', role: result.role || 'member' },
+      ])
+      setPanel('activity')
       setSelected(result.circleId)
       setDay(circleDays()[0])
     }
@@ -299,7 +352,12 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
       invites: { ...saved.invites, [selected]: text },
       inviteRevisions: { ...saved.inviteRevisions, [selected]: result.inviteRevision },
     })
-    if (alive.current) setReplacement('')
+    if (alive.current) {
+      setReplacement('')
+      setView((current) =>
+        current ? { ...current, ownerInviteCode: text, meta: { ...current.meta, inviteRevision: result.inviteRevision } } : current,
+      )
+    }
     return '口令已更新。旧口令无法再加入，现有成员不受影响。'
   }
   async function checkIn() {
@@ -311,7 +369,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
       body: { eventId: crypto.randomUUID(), completed: true, newWords: count },
     })
     if (alive.current) setSentCheckins((old) => new Set([...Array.from(old), selected + '/' + day]))
-    return '打卡已送出，稍后会显示。学习记录不会因此改变。'
+    return '打卡已送出，今天又进步了一点。'
   }
   async function like(target: string) {
     const key = selected + '/' + day + '/' + target
@@ -333,6 +391,9 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
       /* Already confirmed remotely. */
     }
     if (alive.current) {
+      listEpoch.current++
+      snapshots.current.clear()
+      setItems((old) => old.filter((item) => item.circleId !== selected))
       setSelected('')
       setView(null)
       setDaily(null)
@@ -354,6 +415,12 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
   return (
     <>
       <div className="circle-notices" aria-live="polite">
+        {busy && (
+          <div className="circle-pending" role="status">
+            <RefreshCw size={14} className="circle-spin" />
+            {pendingLabel}
+          </div>
+        )}
         {error && (!form || needsLogin) && (
           <div className="circle-error" role="alert">
             {error}
@@ -373,7 +440,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
       {!needsLogin && (
         <div className="circle-layout">
           <aside className="circle-sidebar">
-            <section className="circle-card">
+            <section className="circle-card circle-switcher">
               <div className="circle-section-heading">
                 <h3>
                   {items.length ? '我的圈子' : '创建或加入圈子'} {items.length > 0 && <span>{items.length} / 3</span>}
@@ -401,8 +468,10 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                     type="button"
                     className="circle-list-item"
                     aria-pressed={selected === item.circleId}
-                    disabled={disabled}
+                    disabled={busy || needsLogin}
                     onClick={() => {
+                      setForm(null)
+                      setPanel('activity')
                       setSelected(item.circleId)
                       setDay(circleDays()[0])
                       setError('')
@@ -418,7 +487,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                       {item.name}
                       <small>
                         {item.role === 'owner' ? '我创建的' : '我加入的'}
-                        {selected === item.circleId ? ' · 当前查看' : ''}
+                        {selected === item.circleId && <span className="circle-current"> · 当前查看</span>}
                       </small>
                     </span>
                     {selected === item.circleId && (
@@ -446,105 +515,110 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                   上次创建未完成，继续创建
                 </button>
               )}
-              {form && (
-                <form
-                  className="circle-form"
-                  onSubmit={(event) => {
-                    event.preventDefault()
-                    void mutate(form === 'create' ? create : join, true)
-                  }}
-                >
-                  <label>
-                    {form === 'create' ? '圈子名称' : '圈子口令'}
-                    <input
-                      autoFocus
-                      required
-                      maxLength={form === 'create' ? 64 : 100}
-                      autoComplete="off"
-                      spellCheck={false}
-                      value={form === 'create' ? pending?.name || name : invite}
-                      readOnly={form === 'create' && !!pending}
-                      disabled={disabled}
-                      placeholder={form === 'create' ? '例如：每天十分钟' : '输入圈主设置的口令'}
-                      onChange={(event) => (form === 'create' ? setName(event.target.value) : setInvite(event.target.value))}
-                    />
-                  </label>
-                  {form === 'create' && (!pending || pending.passphrase !== undefined) && (
-                    <label>
-                      入圈口令
-                      <input
-                        required
-                        maxLength={64}
-                        autoComplete="off"
-                        spellCheck={false}
-                        aria-label="入圈口令"
-                        aria-describedby="circle-create-passphrase-hint"
-                        value={pending?.passphrase ?? passphrase}
-                        readOnly={!!pending}
-                        disabled={disabled}
-                        placeholder="例如：每天学 English"
-                        onChange={(event) => setPassphrase(event.target.value)}
-                      />
-                      <small id="circle-create-passphrase-hint">2–32 个字符，支持中英文，英文区分大小写。请勿使用账号密码。</small>
-                    </label>
-                  )}
-                  {(form === 'join' || !pending || pending.nickname !== undefined) && (
-                    <label>
-                      圈内昵称（选填）
-                      <input
-                        aria-label="圈内昵称"
-                        maxLength={64}
-                        autoComplete="off"
-                        value={form === 'create' ? pending?.nickname ?? nickname : joinNickname}
-                        readOnly={form === 'create' && !!pending}
-                        disabled={disabled}
-                        placeholder={'留空使用用户名：' + auth.user.username}
-                        onChange={(event) => (form === 'create' ? setNickname(event.target.value) : setJoinNickname(event.target.value))}
-                      />
-                    </label>
-                  )}
-                  <small>
-                    {form === 'create'
-                      ? pending
-                        ? '上次创建尚未确认。继续创建会核对同一个圈子，不会重复创建。'
-                        : '最多 50 人；创建后可复制口令邀请同学。'
-                      : '有口令即可加入，无需圈主审核。'}
-                  </small>
-                  {busy && (
-                    <p className="circle-muted" role="status">
-                      {form === 'create' ? '正在创建“' + name + '”，请稍候…' : '正在加入圈子，请稍候…'}
-                    </p>
-                  )}
-                  {error && (
-                    <div className="circle-error" role="alert">
-                      {error}
-                    </div>
-                  )}
-                  <div className="circle-form-actions">
-                    <button type="submit" className="circle-primary" disabled={disabled}>
-                      {busy
-                        ? form === 'create'
-                          ? '正在创建…'
-                          : '正在加入…'
-                        : form === 'create'
-                        ? pending
-                          ? '继续创建'
-                          : '创建圈子'
-                        : '加入圈子'}
-                    </button>
-                    <button type="button" disabled={disabled} onClick={() => setForm(null)}>
-                      收起
-                    </button>
-                  </div>
-                </form>
-              )}
             </section>
           </aside>
           <section className="circle-main" aria-label="圈子详情" aria-busy={loading}>
-            {!selected && items.length > 0 && (
+            {form && (
+              <form
+                className="circle-card circle-form circle-form-panel"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void mutate(form === 'create' ? create : join)
+                }}
+              >
+                <div className="circle-form-title">
+                  <span className="circle-brand-icon">{form === 'create' ? <Plus size={24} /> : <KeyRound size={24} />}</span>
+                  <h3>{form === 'create' ? '创建一个学习圈' : '和同学一起学'}</h3>
+                  <p>{form === 'create' ? '取个名字，邀请熟悉的同学。' : '输入朋友分享的口令，即可加入。'}</p>
+                </div>
+                <label>
+                  {form === 'create' ? '圈子名称' : '圈子口令'}
+                  <input
+                    autoFocus
+                    required
+                    maxLength={form === 'create' ? 64 : 100}
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={form === 'create' ? pending?.name || name : invite}
+                    readOnly={form === 'create' && !!pending}
+                    disabled={disabled}
+                    placeholder={form === 'create' ? '例如：每天十分钟' : '输入圈主设置的口令'}
+                    onChange={(event) => (form === 'create' ? setName(event.target.value) : setInvite(event.target.value))}
+                  />
+                </label>
+                {form === 'create' && (!pending || pending.passphrase !== undefined) && (
+                  <label>
+                    入圈口令
+                    <input
+                      required
+                      maxLength={64}
+                      autoComplete="off"
+                      spellCheck={false}
+                      aria-label="入圈口令"
+                      aria-describedby="circle-create-passphrase-hint"
+                      value={pending?.passphrase ?? passphrase}
+                      readOnly={!!pending}
+                      disabled={disabled}
+                      placeholder="例如：每天学 English"
+                      onChange={(event) => setPassphrase(event.target.value)}
+                    />
+                    <small id="circle-create-passphrase-hint">2–32 个字符，支持中英文，英文区分大小写。请勿使用账号密码。</small>
+                  </label>
+                )}
+                {(form === 'join' || !pending || pending.nickname !== undefined) && (
+                  <label>
+                    圈内昵称（选填）
+                    <input
+                      aria-label="圈内昵称"
+                      maxLength={64}
+                      autoComplete="off"
+                      value={form === 'create' ? pending?.nickname ?? nickname : joinNickname}
+                      readOnly={form === 'create' && !!pending}
+                      disabled={disabled}
+                      placeholder={'留空使用用户名：' + auth.user.username}
+                      onChange={(event) => (form === 'create' ? setNickname(event.target.value) : setJoinNickname(event.target.value))}
+                    />
+                  </label>
+                )}
+                <small>
+                  {form === 'create'
+                    ? pending
+                      ? '上次创建尚未确认。继续创建会核对同一个圈子，不会重复创建。'
+                      : '最多 50 人；创建后可复制口令邀请同学。'
+                    : '有口令即可加入，无需圈主审核。'}
+                </small>
+                {busy && (
+                  <p className="circle-muted" role="status">
+                    {form === 'create' ? '正在创建“' + name + '”，请稍候…' : '正在加入圈子，请稍候…'}
+                  </p>
+                )}
+                {error && (
+                  <div className="circle-error" role="alert">
+                    {error}
+                  </div>
+                )}
+                <div className="circle-form-actions">
+                  <button type="submit" className="circle-primary" disabled={disabled}>
+                    {busy
+                      ? form === 'create'
+                        ? '正在创建…'
+                        : '正在加入…'
+                      : form === 'create'
+                      ? pending
+                        ? '继续创建'
+                        : '创建圈子'
+                      : '加入圈子'}
+                  </button>
+                  <button type="button" disabled={disabled} onClick={() => setForm(null)}>
+                    收起
+                  </button>
+                </div>
+              </form>
+            )}
+            {!form && loaded && !selected && (
               <div className="circle-card circle-empty">
                 <Users size={40} aria-hidden="true" />
-                <h3>小小的圈子，多一点坚持</h3>
+                <h3>一个人学习，一群人坚持</h3>
                 <p>
                   创建一个圈子，或用朋友的口令加入。
                   <br />
@@ -552,12 +626,12 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                 </p>
               </div>
             )}
-            {selected && loading && (
-              <div className="circle-card circle-muted" role="status">
-                正在加载打卡…
+            {!form && selected && loading && (
+              <div className={'circle-loading ' + (view ? 'is-updating' : 'circle-card')} role="status">
+                <RefreshCw size={15} className="circle-spin" /> {view ? '正在更新…' : '正在加载打卡…'}
               </div>
             )}
-            {view && daily && (
+            {!form && view && daily && (
               <>
                 <section className="circle-card">
                   <div className="circle-section-heading">
@@ -569,44 +643,52 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                     </div>
                     <span className="circle-pill">近 7 天</span>
                   </div>
-                  {owner && (
-                    <div className="circle-form">
-                      <label>
-                        当前口令
-                        <input aria-label="当前口令" readOnly value={code || ''} placeholder="旧口令仅存在原浏览器，可在管理区重新保存" />
-                      </label>
-                      {code && (
-                        <button type="button" onClick={() => void copyInvite()}>
-                          复制当前口令
-                        </button>
-                      )}
+                  <div className="circle-overview">
+                    <span>
+                      <strong>{daily.progress.filter((p) => p.completed).length}</strong> 人已打卡
+                    </span>
+                    <span>
+                      <Sparkles size={15} /> 每天一点，一起坚持
+                    </span>
+                  </div>
+                  {owner && code && (
+                    <div className="circle-owner-key">
+                      <KeyRound size={14} />
+                      <input aria-label="当前口令" readOnly value={code} />
+                      <button type="button" onClick={() => void copyInvite()} aria-label="复制当前口令">
+                        <Copy size={14} />
+                      </button>
                     </div>
                   )}
-                  <details className="circle-invite">
-                    <summary>
-                      <Copy size={14} aria-hidden="true" /> 邀请同学
-                    </summary>
-                    {code ? (
-                      <div>
-                        <label className="circle-sr-only" htmlFor="circle-invite-code">
-                          分享口令
-                        </label>
-                        <input
-                          id="circle-invite-code"
-                          ref={inviteInput}
-                          readOnly
-                          value={code}
-                          onFocus={(event) => event.currentTarget.select()}
-                        />
-                        <button type="button" onClick={() => void copyInvite()}>
-                          复制口令
-                        </button>
-                        <small>拿到口令的人可以加入，请只分享给想邀请的同学。</small>
-                      </div>
-                    ) : (
-                      <p className="circle-muted">本机没有保存当前口令，请向圈主索取。圈主也可在下方管理区设置新口令。</p>
-                    )}
-                  </details>
+                  <div className="circle-tabs" role="tablist" aria-label="圈子内容">
+                    <button type="button" role="tab" aria-selected={panel === 'activity'} onClick={() => setPanel('activity')}>
+                      <Check size={15} /> 动态
+                    </button>
+                    <button type="button" role="tab" aria-selected={panel === 'invite'} onClick={() => setPanel('invite')}>
+                      <UserPlus size={15} /> 邀请同学
+                    </button>
+                    <button type="button" role="tab" aria-selected={panel === 'manage'} onClick={() => setPanel('manage')}>
+                      <Settings size={15} /> {owner ? '圈子管理' : '圈子设置'}
+                    </button>
+                  </div>
+                </section>
+                <section className="circle-card circle-invite" hidden={panel !== 'invite'}>
+                  <h3>邀请同学，一起坚持</h3>
+                  <p className="circle-muted">把口令发给熟悉的同学，对方输入后即可加入。</p>
+                  {code ? (
+                    <div className="circle-invite-content">
+                      <label htmlFor="circle-invite-code">分享口令</label>
+                      <input id="circle-invite-code" ref={inviteInput} readOnly value={code} onFocus={(e) => e.currentTarget.select()} />
+                      <button type="button" className="circle-primary" onClick={() => void copyInvite()}>
+                        <Copy size={16} /> 复制口令
+                      </button>
+                      <small>拿到口令的人可以加入，请只分享给想邀请的同学。</small>
+                    </div>
+                  ) : (
+                    <p className="circle-muted">本机没有保存当前口令，请向圈主索取。圈主可在管理中设置新口令。</p>
+                  )}
+                </section>
+                <section className="circle-card circle-activity-nav" hidden={panel !== 'activity'}>
                   <div className="circle-days" role="group" aria-label="最近七天">
                     {days.map((date, index) => (
                       <button
@@ -627,12 +709,12 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                     ))}
                   </div>
                 </section>
-                {day === days[0] && (
+                {panel === 'activity' && day === days[0] && (
                   <form
                     className="circle-card circle-checkin"
                     onSubmit={(event) => {
                       event.preventDefault()
-                      void mutate(checkIn)
+                      void mutate(checkIn, false, false)
                     }}
                   >
                     <div>
@@ -654,12 +736,26 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                         onChange={(event) => setNewWords(event.target.value)}
                       />
                     </label>
-                    <button type="submit" className="circle-primary" disabled={disabled}>
-                      <Check size={17} aria-hidden="true" /> {busy ? '正在提交…' : '提交打卡'}
+                    <button
+                      type="submit"
+                      className="circle-primary"
+                      disabled={
+                        disabled ||
+                        sentCheckins.has(selected + '/' + day) ||
+                        daily.progress.some((p) => p.authorUserId === auth.user.userId && p.completed)
+                      }
+                    >
+                      <Check size={17} aria-hidden="true" />{' '}
+                      {busy && pendingLabel === '正在提交打卡…'
+                        ? '正在提交…'
+                        : sentCheckins.has(selected + '/' + day) ||
+                          daily.progress.some((p) => p.authorUserId === auth.user.userId && p.completed)
+                        ? '今日已打卡'
+                        : '提交打卡'}
                     </button>
                   </form>
                 )}
-                <section className="circle-card">
+                <section className="circle-card" hidden={panel !== 'activity'}>
                   <div className="circle-section-heading">
                     <h3>{day === days[0] ? '今日打卡' : day.slice(5).replace('-', '/') + ' 的打卡'}</h3>
                     <span className="circle-muted">{daily.progress.filter((p) => p.completed).length} 人已打卡</span>
@@ -710,7 +806,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                                 )
                               }
                               disabled={disabled || !progress || liked}
-                              onClick={() => void mutate(() => like(member.userId))}
+                              onClick={() => void mutate(() => like(member.userId), false, false, '正在送出点赞…')}
                             >
                               <ThumbsUp size={16} aria-hidden="true" />
                               <span>{liked ? '已赞' : count || '点赞'}</span>
@@ -722,14 +818,15 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                   </ul>
                   <p className="circle-footnote">打卡由同学自行分享，更新可能稍有延迟。昵称只在本圈使用。</p>
                 </section>
-                <details className="circle-card circle-manage">
+                <details className="circle-card circle-manage" open={panel === 'manage'} hidden={panel !== 'manage'}>
                   <summary>{owner ? '圈子管理' : '离开圈子'}</summary>
                   {owner && (
                     <form
                       className="circle-form"
                       onSubmit={(event) => {
                         event.preventDefault()
-                        if (window.confirm('更新口令后，旧口令将无法加入；现有成员不受影响。继续？')) void mutate(changePassphrase)
+                        if (window.confirm('更新口令后，旧口令将无法加入；现有成员不受影响。继续？'))
+                          void mutate(changePassphrase, false, false)
                       }}
                     >
                       <label>
