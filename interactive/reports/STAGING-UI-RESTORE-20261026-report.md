@@ -1,6 +1,6 @@
 # Staging UI restoration after independent release
 
-Status: VALIDATED LOCALLY; independent production 98697131 is deployed and verified (40274648581). Ready for product/main CI/Pages, then authorized restoration to etest only.
+Status: REVIEW — delivered as unified release cbb20842 after the owner superseded staging-only scope. Both master and etest match; real PC/mobile direct-entry checks passed on both sites. See UNIFIED-ACCOUNT-UI-RELEASE-20261026-report.md.
 
 ## Sources preserved
 

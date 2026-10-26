@@ -1,6 +1,6 @@
 ---
 task_id: COMMIT-OUTCOME-INDEPENDENT-RELEASE-20261026
-status: IN_PROGRESS
+status: REVIEW
 executor: Codex
 target_branch: product/main
 base_commit: d34ba238e62bb89afc2447f81f2307bede259250

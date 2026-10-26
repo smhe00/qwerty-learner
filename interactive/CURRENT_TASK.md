@@ -4,7 +4,7 @@ task_id: UNIFIED-ACCOUNT-UI-RELEASE-20261026
 task_file: interactive/tasks/UNIFIED-ACCOUNT-UI-RELEASE-20261026.md
 report_file: interactive/reports/UNIFIED-ACCOUNT-UI-RELEASE-20261026-report.md
 target_branch: product/main
-status: IN_PROGRESS
+status: REVIEW
 executor: Codex
 claim_base_commit: 751bec7d5a69bc87000cd5ad6ff4882f897f76a0
 release_to_master: true
