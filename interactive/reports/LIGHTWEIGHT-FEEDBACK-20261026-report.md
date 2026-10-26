@@ -67,3 +67,8 @@ Validation on final source:
 - git diff --check: PASS. Upstream integration touched only the other executor's task records and requires no repeated application tests.
 
 Delivery remains product/main only. No etest/master push or live Blob writes. CI result will be recorded after this development push. Existing release qualification boundaries remain unchanged.
+
+### UI follow-up development delivery
+Fix commit: c6690cb1. Normal development integration: 7c81e1208b037067eb3a4b61651c8d9bcb4de7da, pushed product/main. A concurrent Circle fix ac6777a4 was preserved by merge; its changes are isolated to Circle routing/body transport/layout and task records, leaving feedback source and tests unchanged.
+Exact integration Private Feedback UI run https://github.com/smhe00/qwerty-learner/actions/runs/40322333923 — PASS (job 121570125963): scoped lint, 6 synthetic-cloud browser journeys, 1 Pages no-API journey and screenshot/trace artifact upload. This evidence is development UI qualification, not live EdgeOne Blob qualification.
+Final task checkout clean after this evidence commit. No staging/production branch was changed by this task. PC logged-out entry remains the Settings dialog footer; signed-in entry is also available in the account dropdown.
