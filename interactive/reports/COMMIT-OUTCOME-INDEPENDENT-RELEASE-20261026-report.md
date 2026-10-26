@@ -42,3 +42,19 @@
 - release-ready job121406447786 FAIL的唯一断言：main已经被另一开发任务推进到b98364ad，etest仍521240e4。未发布master，不能以核心通过冒充完整发布闸门通过。
 - 并发任务ACCOUNT-DIRECT-ENTRY已在报告声明development only、REVIEW完成、不可随本次独立版上线；提交3e869a2d、报告b98364ad。按用户独立发布范围暂时反向隔离这部分runtime/tests，完整保留Git历史和报告；发布后必须合并保留其直达账号行为及原quick-sync UI，不能盲目覆盖旧文件。
 - 第三候选从b98364ad正常向前提交；隔离后src/cloud-functions/tests/scripts/.github/workflows与521240e4完全一致。仍重新取得第三候选同SHA的Pages/etest/release-ready，不force push、不降低闸门。
+
+## 第三候选 98697131d09393a479f30da9eb9b117e8117a0e7
+
+- Published Pages 40272334652 PASS；Cloud Sync 40272334510 PASS；Startup Recovery 40272334615 PASS；Learn Completion Journey 40272334499 PASS；S1 Workspace、P4b恢复、Mobile P0、Mobile Menu、Pages Explorer均PASS。Review 40272334620首轮已有Typing导航时读取count的execution context销毁，第二轮job121409668598 PASS，保留首轮证据。
+- etest三设备40272569915/job121408357129 PASS：9次恢复19085、18055、18055、24880、67223、67530、69593、67797、60730ms；最终A/B/C均3条，journal.pending均false，清理200；无180秒超时。实网两次自动刷新沿用原60秒预算，未重置；60秒是网络预算，不是包含登录及本地恢复的端到端上限。
+- etest完成流程40272569919/job121408357598两场景PASS：完成页可见、每轮上传一次、完整Blob哈希核验、再学五词、刷新不重复扩展、全新profile完整回读及最后记录仅一次；清理200。账号隔离job121409958812 PASS，自动维护40272569951 PASS。
+- 保留503证据：Cloud/Blob首轮job121408357546迁移预写503，允许的一次证书重试后仍503，全部清理PASS；历史登录40272569933初次上传v4_direct_body_read_failed 503，firstRevision=0，清理true，不是180秒恢复超时；M3 40272569914事件POST request_body_unavailable 503；SafeV4 40272715893故意旧base的预写503触发测试辅助层revision不等保护，保留失败，不冒称通过。用户允许这些明确503不作独立阻塞。Published Dual-Site Explorer检查旧正式站失败，候选Pages侧通过。
+- Cloud/Blob 40272569912第2轮job121409956670 PASS，256/512/1024/1536/2048/2700KiB全覆盖。1536KiB Commit 20,002ms超时后只读确认revision6及1,580,156字节；2048KiB 20,000ms后revision7及2,106,643字节；2700KiB 20,001ms后revision8及2,777,102字节。均完整SHA/V4逻辑指纹/固定版本全字节回读及二次meta稳定，writesReplayed=0。额外lost-ack在18,054ms丢弃成功回执后确认revision1、1,580,102字节、headerCommitPosts=1。全部测试账号清理PASS。
+- release-ready job121414369159 PASS，记录sameCommit=98697131d09393a479f30da9eb9b117e8117a0e7、passedPagesRun=40272334652、hardThreeDeviceE2ERun=40272569915。执行前重新fetch：main/etest均98697131，master仍9620e33c且是候选祖先；8入口独立UI范围校验PASS。
+- 用户明确授权且同SHA门禁通过，2026-10-26 05:31 UTC正常快进master至98697131；未force push。正式部署核验40274648581/job121414703229 PASS；2026-10-26 05:35 UTC独立匿名读取q.smhe.cn source=9869713，health.ok=true，authMode=single-active-session，handoffCapabilities为空、handoffMode=null。正式站交接试验已关闭，页面路径核验PASS。
+
+## 新UI恢复隔离
+
+正式版冻结98697131。后续正常向前恢复product/main及etest的新UI；不将恢复提交推送master。保留d34ba238的PC菜单/手机一键同步，以及3e869a2d、b98364ad的账号直达功能，组合验证见STAGING-UI-RESTORE-20261026-report.md。
+
+当前剩余交付：恢复提交的Pages及相关CI通过后推进edgeone-test，核验实际站点版本；不重复发布master。旧20秒超时个案因账号早已清理，不能追溯断言其成功。生产与修复版对照及新候选自然超时证据已经证明逻辑缺口和安全判定方法。

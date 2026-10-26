@@ -3,8 +3,9 @@ import './mobile-app.css'
 import { useMobileCheckpoint } from './useMobileCheckpoint'
 import { useMobileDailyProgress } from './useMobileDailyProgress'
 import logo from '@/assets/logo.svg'
+import QuickSyncAction from '@/components/QuickSyncAction'
 import { currentDictInfoAtom } from '@/store'
-import { openAccountDialog } from '@/sync/account-dialog-events'
+import { accountManagementHref, openAccountManagement } from '@/sync/account-navigation'
 import { loadAuth } from '@/sync/auth'
 import { secureLearningEntry } from '@/sync/learning-sync-policy'
 import { useAtomValue } from 'jotai'
@@ -18,14 +19,14 @@ export default function MobilePage() {
   const daily = useMobileDailyProgress()
   const dictionary = useAtomValue(currentDictInfoAtom)
   const auth = loadAuth({ preserveExpired: true })
-  const accountHref = (REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : '') + '/mobile/account'
+  const accountHref = accountManagementHref(true)
   // Replace the home history entry so the account flow does not retain it.
   // Some mobile browsers otherwise apply a new-tab policy to ordinary links.
   const openAccount = (event: MouseEvent<HTMLAnchorElement>) => {
     if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
     event.preventDefault()
     event.stopPropagation()
-    openAccountDialog()
+    openAccountManagement(true)
   }
   const expired = !!auth && auth.expiresAt * 1000 <= Date.now()
   const menus = [
@@ -52,16 +53,19 @@ export default function MobilePage() {
               QWERTY <span>Plus</span>
             </h1>
           </div>
-          <a
-            href={accountHref}
-            target="_self"
-            onClick={openAccount}
-            className="mobile-user-status mobile-account-entry"
-            aria-label={auth ? '账号：' + auth.user.username + (expired ? '，登录已过期' : '') : '登录或注册'}
-            data-mobile-account-entry
-          >
-            <CircleUserRound size={24} aria-hidden="true" />
-          </a>
+          <div className="mobile-brand-actions">
+            <QuickSyncAction target="/mobile" variant="mobile" />
+            <a
+              href={accountHref}
+              target="_self"
+              onClick={openAccount}
+              className="mobile-user-status mobile-account-entry"
+              aria-label={auth ? '账号：' + auth.user.username + (expired ? '，登录已过期' : '') : '登录或注册'}
+              data-mobile-account-entry
+            >
+              <CircleUserRound size={24} aria-hidden="true" />
+            </a>
+          </div>
         </header>
 
         <section className="mobile-today" aria-labelledby="mobile-today-title">
@@ -71,9 +75,11 @@ export default function MobilePage() {
             <ChevronRight size={15} aria-hidden="true" />
           </Link>
           <MobileDailyProgress summary={daily} />
-          {checkpoint && <p className="mobile-today-summary" data-mobile-checkpoint-status>
-            {'上次学到本轮第 ' + resume + ' / ' + checkpoint.words.length + ' 词'}
-          </p>}
+          {checkpoint && (
+            <p className="mobile-today-summary" data-mobile-checkpoint-status>
+              {'上次学到本轮第 ' + resume + ' / ' + checkpoint.words.length + ' 词'}
+            </p>
+          )}
           <Link className="mobile-start-link" to="/mobile/study" aria-label={checkpoint ? '继续手机学习' : '开始手机学习'}>
             {checkpoint ? '继续学习' : '开始学习'} <ChevronRight size={19} aria-hidden="true" />
           </Link>
@@ -94,9 +100,11 @@ export default function MobilePage() {
             </Link>
           ))}
         </section>
-        {secureLearningEntry(window.location.href) && <footer className="mobile-home-footer" role="status">
-          当前仅在本机保存 · 请使用安全站点同步
-        </footer>}
+        {secureLearningEntry(window.location.href) && (
+          <footer className="mobile-home-footer" role="status">
+            当前仅在本机保存 · 请使用安全站点同步
+          </footer>
+        )}
       </div>
     </main>
   )
