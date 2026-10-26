@@ -1,7 +1,7 @@
 ---
 protocol_version: '1.1'
 task_id: ARCHITECTURE-REMEDIATION-20261026
-status: IN_PROGRESS
+status: REVIEW
 executor: Codex
 target_branch: codex/architecture-remediation-phase1-20261026
 base_commit: 98697131d09393a479f30da9eb9b117e8117a0e7
@@ -33,6 +33,8 @@ release_to_master: false
 | 5：发布候选验收 | 收敛剩余基线类型问题、复核 bundle 与完整回归、真实设备体验 | 未来另获发布授权后才运行同 SHA Pages、etest Cloud/Blob、release-ready 并给出发布建议 | 当前不发布、不推进测试站 |
 
 本批交付阶段 1 和 2a；2b–5 保留为有验收标准的后续任务，不把一个大重写混入紧急修复。
+
+本批状态：阶段 1、2a 已实现并完成本地验证，进入 REVIEW；后续阶段尚未实现。
 
 ## 本批必须验证
 

@@ -1,7 +1,7 @@
 ---
 protocol_version: '1.1'
 task_id: ARCHITECTURE-REMEDIATION-20261026
-status: IN_PROGRESS
+status: REVIEW
 executor: Codex
 target_branch: codex/architecture-remediation-phase1-20261026
 claim_base_commit: 98697131d09393a479f30da9eb9b117e8117a0e7
@@ -59,6 +59,32 @@ release_to_master: false
 
 - 阶段 1：`fd5b547`。
 - 推送前 fetch 发现上游从 98697131 前进到 8356b50（恢复测试站 UI 与直达账号入口）。没有重叠修改本批 WordPanel/db/learn 核心文件；在本任务分支正常 merge 后补集成验证，保留对方全部提交，不反向撤销或覆盖。
+
+## 最终集成验收与交付
+
+- 阶段 2a 提交 `09ad973`；合入 8356b50 的集成提交 `2c54bd4`。
+- 在该集成源码重新运行保存故障 6/6、完成流程 12/12、构建 PASS（4370 模块）。六个修改源码 ESLint 0 errors、1 个历史 warning。与上游 8356b50 对照类型诊断仍为 147/147，新增 0。
+- 最后 fetch 检出 751bec7：只改账号入口的其他测试及发布任务报告，未改运行代码。本分支正常合并为 `cf0716a434395fb5fa5a457a6a3c4dbcbcb3263c0a`；因此上述运行源码验证继续适用，不重复未受影响的套件。
+- 单独对 tests/e2e、tests/learn 与 scripts 的新增文件执行默认 ESLint 会报 5 个 parser 配置错误：现有配置仅覆盖 `test/**/*.ts`（单数）与指定 cloud 文件，未覆盖这些测试目录。没有调整全仓 lint 范围；新增 mjs 已通过 `node --check` 和实际执行，Playwright 已编译执行新 TS 测试。此项不能记成默认 lint 全绿。
+- `git diff --check origin/product/main` 通过；最终相对上游只有本批 15 个文件，没有带入其他任务文件的反向改动。CURRENT_TASK 与对方任务/报告保持上游版本。
+- 本任务没有对 master 或 edgeone-test 执行任何 push。观察到远程 master 被其他发布任务推进到 98697131，不能把它误记成本任务发布或声称全局 master 未变化。
+
+## 后续精确起点
+
+阶段 2b 从当前两个 `useSaveWordRecord` 调用者开始：先设计原始提交的结果类型/失败矩阵和可注入端口，再把记录构造与 React hook 绑定分离；明确 durable receipt 与派生任务错误的边界，然后迁移 WordFinishResult/ReviewRecord 写队列。桌面拼写、触屏自评和 acquisition/review 不得合并证据语义。
+
+后续每阶段独立 PR，保留本批故障测试。阶段 3 的 BootOutcome/云服务端口、阶段 4 的文档/manifest 对齐与冗余清理、阶段 5 的发布验收尚未完成。现有全仓类型诊断、manifest 历史失配及动态依赖问题仍需后续处理。本批进入 REVIEW，不宣称整个架构整改结束或已具备发布资格。
+
+本地复现（PowerShell，使用空闲测试端口）：
+
+```powershell
+$env:NO_PROXY='127.0.0.1,localhost'
+$env:QWERTY_TEST_PORT='53761'
+node --test tests/learn/persistence-boundary.test.mjs tests/learn/persistence-architecture.test.mjs tests/learn/mobile-review-commit-contract.test.mjs
+node scripts/validate-architecture-boundaries.mjs
+yarn playwright test --config=tests/e2e/learn-save-failure.config.ts
+yarn playwright test --config=tests/e2e/learn-completion-journey.config.ts
+```
 
 ## 安全约束
 
