@@ -1,0 +1,6 @@
+# Admin and feedback real etest acceptance
+Status: IN_PROGRESS. Executor: Codex-admin-feedback-live.
+Owner now authorizes: check CI for ab10a9332f9e7b686f10c31a939488958bb71428, then fast-forward etest, verify admin direct login, resume both anonymous/account feedback submit, administrator reply/status and user readback. No master authority. This supersedes the prior local-only and paused-feedback boundary for this acceptance only.
+Preserve concurrent Circle task and branch updates. Use the same candidate SHA throughout; stop on deployment drift or unknown write, never replay blindly. Existing automatic-review denial of admin credential extraction still applies: human enters password in visible browser. Test fixtures are marked, no customer data edits.
+
+Concurrent development: Circle executor advanced both main and etest to 4b4228df3a5a0a258e660bcf8bb101a7d3e998fa before our promotion. Direct ls-remote and deployed source confirm it; original checkout fetch refspec only tracked product/main and its etest remote-tracking ref was stale. Explicitly refreshed all three refs. Current live acceptance targets 4b4228df only, including the admin ancestor. Old candidate CI is not substituted.

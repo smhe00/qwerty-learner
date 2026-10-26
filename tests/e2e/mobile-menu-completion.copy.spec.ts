@@ -39,9 +39,12 @@ test('menu completion: home prioritizes actual progress and actions without repe
   const menu = page.locator('[data-mobile-menu]')
   await expect(menu.getByRole('heading', { name: '今日学习', exact: true })).toBeVisible()
   await expect(menu.getByRole('link', { name: '开始手机学习', exact: true })).toHaveText('开始学习')
-  await expect(menu.locator('.mobile-menu-item')).toHaveCount(6)
+  await expect(menu.locator('.mobile-menu-item .mobile-menu-text strong')).toHaveText([
+    '圈子', '成就', '词库', '学习记录', '账号与云同步', '设置', '反馈与建议',
+  ])
+  await expect(menu.getByRole('button', { name: '圈子（登录后可用）', exact: true })).toBeDisabled()
   await expect(menu.getByRole('button', { name: '反馈与建议', exact: true })).toBeVisible()
-  await expect(menu.locator('.mobile-menu-text small')).toHaveCount(1)
+  await expect(menu.locator('.mobile-menu-text small')).toHaveText(['登录后使用', '登录后同步学习进度'])
   await expect(menu.getByText('登录后同步学习进度', { exact: true })).toBeVisible()
   await expect(menu.getByRole('progressbar', { name: '今日目标进度' })).toHaveAttribute('aria-valuenow', '0')
   await expect(menu).not.toContainText(/Beta|即将开放|轻触学习为主|TODAY · LEARN|练打字 · 记单词/)
