@@ -17,11 +17,13 @@ function route(request) {
   if (rest.some((s) => !s || /[%\\]/.test(s))) fail(404, 'not_found')
   let entry
   if (!rest.length) entry = { method: 'POST', action: 'createCircle', fields: ['name', 'operationId', 'softMemberLimit'] }
+  else if (rest.length === 1 && rest[0] === 'mine') entry = { method: 'GET', action: 'listMyCircles' }
   else if (rest.length === 1 && rest[0] === 'join') entry = { method: 'POST', action: 'joinCircle', fields: ['inviteCode'] }
   else {
     const [circleId, area, item, day] = rest
     if (!/^[a-f0-9]{24}$/.test(circleId)) fail(404, 'not_found')
     if (rest.length === 1) entry = { method: 'GET', action: 'getCircle' }
+    if (rest.length === 3 && area === 'days' && /^\d{4}-\d{2}-\d{2}$/.test(item)) entry = { method: 'GET', action: 'getDay' }
     if (rest.length === 2 && area === 'me') entry = { method: 'DELETE', action: 'leaveCircle', fields: [] }
     if (rest.length === 2 && area === 'remove') entry = { method: 'POST', action: 'removeMember', fields: ['memberUserId'] }
     if (rest.length === 2 && area === 'close') entry = { method: 'POST', action: 'closeCircle', fields: [] }
@@ -95,8 +97,8 @@ async function input(request, fields) {
 }
 
 /**
- * Offline/server-only request dispatcher; not mounted anywhere.
- * Production http.js remains hard closed. Trusted rateLimit must authenticate
+ * Server-only dispatcher used by the authenticated gateway and legacy tests.
+ * Trusted rateLimit must authenticate
  * the account and use server-trusted source IP, never caller body/IP assertions.
  * No CORS, infrastructure, credentials, listener or environment activation.
  */
@@ -118,9 +120,12 @@ export function createCircleTransport({ service, rateLimit, maxResponseBytes = 6
       if (await rateLimit({ request, token, action: r.action, circleId: r.circleId }) !== true) {
         fail(429, 'circle_rate_limited')
       }
+      if (typeof service[r.action] !== 'function') fail(404, 'not_found')
       const body = r.fields ? await input(request, r.fields) : {}
       let result
       switch (r.action) {
+        case 'listMyCircles': result = await service.listMyCircles(token); break
+        case 'getDay': result = await service.getDay(token, r.circleId, r.item); break
         case 'createCircle': result = await service.createCircle(token, body); break
         case 'joinCircle': result = await service.joinCircle(token, body.inviteCode); break
         case 'getCircle': result = await service.getCircle(token, r.circleId); break
@@ -135,7 +140,7 @@ export function createCircleTransport({ service, rateLimit, maxResponseBytes = 6
         case 'getShowcase': result = await service.getShowcase(token, r.circleId, r.item, r.ids); break
         default: fail(404, 'not_found')
       }
-      const payload = { ok: true, consistency: 'eventual', result }
+      const payload = { ok: true, consistency: result?.consistency || 'eventual', result }
       if (Buffer.byteLength(JSON.stringify(payload)) > maxResponseBytes) fail(503, 'circle_response_too_large')
       return response(payload, r.method === 'GET' ? 200 : 202)
     } catch (error) {

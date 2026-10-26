@@ -2,6 +2,9 @@
 import { AppError } from '../core.js'
 import { checkAuthRateLimit } from '../auth-rate-limit.js'
 import { createCircleEventualAssembly } from './assembly.js'
+import { createCircleV3Storage } from './bounded-storage.js'
+import { createCircleBoundedService } from './bounded-service.js'
+import { createCircleTransport } from './transport.js'
 
 const SAFE_USER_ID = /^[A-Za-z0-9_-]{8,128}$/
 const KEY = /^social\/v2\/circles\/[a-f0-9]{24}\/events\/[a-f0-9]{32}\.json$/
@@ -21,7 +24,7 @@ function response(status, error) {
  * Store prevent touching V4 account, session or backup objects.
  * The server's V4 session check and trusted-IP/account limits remain mandatory.
  */
-export function createCircleOpenGateway({ backend, getStore, rateStorage } = {}) {
+export function createCircleOpenGateway({ backend, getStore, rateStorage, now = Date.now, legacyOnly = false } = {}) {
   if (typeof backend?.me !== 'function' || typeof getStore !== 'function' || !rateStorage) {
     throw new TypeError('Circle requires live V4 session, private Blob and limiter storage')
   }
@@ -33,7 +36,7 @@ export function createCircleOpenGateway({ backend, getStore, rateStorage } = {})
       const clientIp = typeof context.clientIp === 'string' ? context.clientIp.trim() : ''
       if (!clientIp || clientIp.length > 128) return response(503, 'circle_client_ip_unavailable')
       try {
-        // Existing private V4 store, strictly separate social/v2/ keys.
+        // Existing private store; v2 and v3 social keys remain isolated from V4.
         const store = getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' })
         const scopedBlob = Object.freeze({
           async setJSON(key, event) {
@@ -81,10 +84,17 @@ export function createCircleOpenGateway({ backend, getStore, rateStorage } = {})
           })
           return accountBudget.allowed
         }
-        return await createCircleEventualAssembly({
+        const assembly = createCircleEventualAssembly({
           backend, blobStore: scopedBlob, limit: limiter,
           maxEvents: 2000,
-        }).transport.handle(request)
+        })
+        if (legacyOnly) return await assembly.transport.handle(request)
+        const service = createCircleBoundedService({
+          storage: createCircleV3Storage(store), authenticate: (token) => backend.me(token), now,
+          legacy: assembly.service,
+          hasLegacyCircle: async (id) => (await assembly.log.scan(id)).length > 0,
+        })
+        return await createCircleTransport({ service, rateLimit: limiter }).handle(request)
       } catch {
         return response(503, 'circle_unavailable')
       }

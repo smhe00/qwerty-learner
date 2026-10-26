@@ -50,7 +50,7 @@ function fixture() {
     async setAuthRateLimitCounter(key, window, value) { counters.set(key + '/' + window, value) },
     async pruneAuthRateLimitCounters() {},
   }
-  const gateway = createCircleOpenGateway({ backend, getStore, rateStorage })
+  const gateway = createCircleOpenGateway({ backend, getStore, rateStorage, legacyOnly: true })
   const context = (request, clientIp = '192.0.2.1') =>
     ({ request, env: {}, clientIp })
   const call = async (path = '', { method = 'GET', token = owner, body, clientIp } = {}) => {
@@ -66,7 +66,7 @@ function fixture() {
   return { call, blobs, writes, getStore, stores }
 }
 
-test('public Circle API requires account session, not rollout flags or account allowlist', async () => {
+test('legacy public Circle API requires account session, not rollout flags or account allowlist', async () => {
   const f = fixture()
   assert.equal((await f.call('', { method: 'POST', token: null,
     body: { name: 'Classroom', operationId } })).status, 401)
@@ -78,7 +78,7 @@ test('public Circle API requires account session, not rollout flags or account a
   assert.ok(f.stores.every((x) => x.name === 'qwerty-data'))
 })
 
-test('public Circle can create, retry, join, publish, remove and close without environment setup', async () => {
+test('legacy public Circle can create, retry, join, publish, remove and close without environment setup', async () => {
   const f = fixture()
   const before = await circleAccountHasActivity({ getStore: f.getStore, userId: owner })
   assert.equal(before, false)

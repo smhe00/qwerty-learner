@@ -1,3 +1,5 @@
+> **2026-10-26 update:** New circles use [seven-day pure Blob v3](./CIRCLE_BLOB_SEVEN_DAY_V3.md): direct strong-confirmed membership, advisory 50 members / 3 circles, seven-day activity and one daily summary. This document is historical or applies to the preserved QC2 compatibility path. It is not the current v3 deployment or storage contract.
+
 # Circle API direct launch — 2026-10-17
 
 ## Scope
