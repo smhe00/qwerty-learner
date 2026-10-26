@@ -29,7 +29,7 @@ export default function CirclePage({ mobile = false, embedded = false }: { mobil
             <ArrowLeft size={17} /> 返回学习
           </Link>
         )}
-        <h2>一起坚持，每天一点</h2>
+        <h2>和同学一起坚持</h2>
         <p>分享打卡，给同学一个赞。只保留最近 7 天。</p>
       </header>
       {unavailable || !auth ? (
@@ -72,7 +72,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [needsLogin, setNeedsLogin] = useState(false)
-  const [form, setForm] = useState<'create' | 'join' | null>(null)
+  const [form, setForm] = useState<'create' | 'join' | null>(() => (readCircleHints(auth.user.userId).pending ? 'create' : null))
   const [pending, setPending] = useState<CreateDraft | undefined>(() => readCircleHints(auth.user.userId).pending)
   const [name, setName] = useState(() => readCircleHints(auth.user.userId).pending?.name || '')
   const [invite, setInvite] = useState('')
@@ -178,7 +178,11 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
   }
   async function create() {
     const draft = pending || { name: name.trim().normalize('NFKC'), operationId: crypto.randomUUID() }
-    if (!draft.name || Array.from(draft.name).length > 32 || Array.from(draft.name).some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)) {
+    if (
+      !draft.name ||
+      Array.from(draft.name).length > 32 ||
+      Array.from(draft.name).some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)
+    ) {
       throw new CircleError('invalid_circle_input')
     }
     // Persist exact retry inputs before dispatch. No new UUID on an ambiguous retry.
@@ -271,7 +275,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
   return (
     <>
       <div className="circle-notices" aria-live="polite">
-        {error && (
+        {error && (!form || needsLogin) && (
           <div className="circle-error" role="alert">
             {error}
           </div>
@@ -293,7 +297,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
             <section className="circle-card">
               <div className="circle-section-heading">
                 <h3>
-                  我的圈子 <span>{items.length} / 3</span>
+                  {items.length ? '我的圈子' : '创建或加入圈子'} {items.length > 0 && <span>{items.length} / 3</span>}
                 </h3>
                 <button
                   type="button"
@@ -310,7 +314,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                   正在加载圈子…
                 </p>
               )}
-              {loaded && !items.length && <p className="circle-muted">还没有加入圈子</p>}
+              {loaded && !items.length && <p className="circle-muted">创建自己的圈子，或输入朋友分享的口令。</p>}
               <div className="circle-list">
                 {items.map((item) => (
                   <button
@@ -351,7 +355,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
               </div>
               {pending && form !== 'create' && (
                 <button type="button" className="circle-text-button" disabled={disabled} onClick={() => setForm('create')}>
-                  有一个待确认的创建，查看原信息
+                  上次创建未完成，继续创建
                 </button>
               )}
               {form && (
@@ -380,13 +384,31 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                   <small>
                     {form === 'create'
                       ? pending
-                        ? '保留了上次创建信息，重试不会另建一个圈子。'
+                        ? '上次创建尚未确认。继续创建会核对同一个圈子，不会重复创建。'
                         : '最多 50 人；创建后可复制口令邀请同学。'
                       : '有口令即可加入，无需圈主审核。'}
                   </small>
+                  {busy && (
+                    <p className="circle-muted" role="status">
+                      {form === 'create' ? '正在创建“' + name + '”，请稍候…' : '正在加入圈子，请稍候…'}
+                    </p>
+                  )}
+                  {error && (
+                    <div className="circle-error" role="alert">
+                      {error}
+                    </div>
+                  )}
                   <div className="circle-form-actions">
                     <button type="submit" className="circle-primary" disabled={disabled}>
-                      {busy ? '正在提交…' : form === 'create' ? (pending ? '用原信息重试' : '创建圈子') : '加入圈子'}
+                      {busy
+                        ? form === 'create'
+                          ? '正在创建…'
+                          : '正在加入…'
+                        : form === 'create'
+                        ? pending
+                          ? '继续创建'
+                          : '创建圈子'
+                        : '加入圈子'}
                     </button>
                     <button type="button" disabled={disabled} onClick={() => setForm(null)}>
                       收起
@@ -397,7 +419,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
             </section>
           </aside>
           <section className="circle-main" aria-label="圈子详情" aria-busy={loading}>
-            {!selected && (
+            {!selected && items.length > 0 && (
               <div className="circle-card circle-empty">
                 <Users size={40} aria-hidden="true" />
                 <h3>小小的圈子，多一点坚持</h3>

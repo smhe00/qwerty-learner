@@ -123,7 +123,7 @@ function DesktopRoutes() {
         </NavigationOverlay>
       )}
       {isAuxiliary && hasLiveBackground && location.pathname === '/circles' && (
-        <NavigationOverlay title="圈子" size="lg">
+        <NavigationOverlay title="圈子" size="md">
           <CirclePage embedded />
         </NavigationOverlay>
       )}

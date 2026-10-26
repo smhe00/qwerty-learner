@@ -88,13 +88,13 @@ export function createCircleOpenGateway({ backend, getStore, rateStorage, now = 
           backend, blobStore: scopedBlob, limit: limiter,
           maxEvents: 2000,
         })
-        if (legacyOnly) return await assembly.transport.handle(request)
+        if (legacyOnly) return await assembly.transport.handle(request, { readBody: context.readBody })
         const service = createCircleBoundedService({
           storage: createCircleV3Storage(store), authenticate: (token) => backend.me(token), now,
           legacy: assembly.service,
           hasLegacyCircle: async (id) => (await assembly.log.scan(id)).length > 0,
         })
-        return await createCircleTransport({ service, rateLimit: limiter }).handle(request)
+        return await createCircleTransport({ service, rateLimit: limiter }).handle(request, { readBody: context.readBody })
       } catch {
         return response(503, 'circle_unavailable')
       }

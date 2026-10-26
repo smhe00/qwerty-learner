@@ -91,6 +91,11 @@ export function circleErrorText(error: unknown): string {
     if (error.status === 401) return '登录已失效，请重新登录后使用圈子。'
     if (error.status === 429) return '操作有些频繁，请稍等一会儿再试。'
     const messages: Record<string, string> = {
+      request_body_unavailable: '这次提交未能送达，请再试一次。',
+      invalid_body: '这次提交未能送达，请稍后再试。',
+      invalid_content_length: '这次提交未能完整送达，请稍后再试。',
+      circle_internal_error: '圈子服务暂时出错，创建还未确认。请稍后继续创建。',
+      circle_unavailable: '圈子服务暂时不可用，请稍后再试。',
       circle_account_limit: '每人最多加入 3 个圈子，请先退出一个。',
       circle_member_limit: '这个圈子已经满员了，请换一个圈子。',
       invalid_invite: '口令不正确，请确认已粘贴完整口令。',

@@ -56,12 +56,20 @@ function route(request) {
   return entry
 }
 
-async function input(request, fields) {
+async function input(request, fields, readBody) {
   const declared = request.headers.get('content-length')
   if (declared !== null && (!/^\d+$/.test(declared) || !Number.isSafeInteger(Number(declared)))) {
     fail(400, 'invalid_content_length')
   }
   if (declared !== null && Number(declared) > MAX_BODY) fail(413, 'circle_request_too_large')
+  // The deployed gateway owns the native receiver. Maker request.body need not
+  // implement Web ReadableStream; never clone or attempt a second body read.
+  if (typeof readBody === 'function') {
+    if (fields.length && !/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type') || '')) {
+      fail(415, 'unsupported_media_type')
+    }
+    return validateInput(await readBody(MAX_BODY), fields)
+  }
   const chunks = []
   let bytes = 0
   const reader = request.body?.getReader()
@@ -91,6 +99,9 @@ async function input(request, fields) {
   try {
     body = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks)))
   } catch { fail(400, 'invalid_json') }
+  return validateInput(body, fields)
+}
+function validateInput(body, fields) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) fail(400, 'invalid_json')
   if (Object.keys(body).some((key) => !fields.includes(key))) fail(400, 'unexpected_field')
   return body
@@ -111,7 +122,7 @@ export function createCircleTransport({ service, rateLimit, maxResponseBytes = 6
     throw new TypeError('Invalid Circle response budget')
   }
   const response = (value, status) => new Response(JSON.stringify(value), { status, headers })
-  async function handle(request) {
+  async function handle(request, { readBody } = {}) {
     try {
       const r = route(request)
       const auth = /^Bearer\s+(\S+)$/i.exec(request.headers.get('authorization') || '')
@@ -121,7 +132,7 @@ export function createCircleTransport({ service, rateLimit, maxResponseBytes = 6
         fail(429, 'circle_rate_limited')
       }
       if (typeof service[r.action] !== 'function') fail(404, 'not_found')
-      const body = r.fields ? await input(request, r.fields) : {}
+      const body = r.fields ? await input(request, r.fields, readBody) : {}
       let result
       switch (r.action) {
         case 'listMyCircles': result = await service.listMyCircles(token); break

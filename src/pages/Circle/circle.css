@@ -7,6 +7,10 @@
   color: var(--focus-text, #253047);
   font-size: 14px;
   line-height: 1.6;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  container-type: inline-size;
 }
 .circle-ui * {
   box-sizing: border-box;
@@ -17,7 +21,7 @@
   margin: 0;
 }
 .circle-ui h2 {
-  font-size: 22px;
+  font-size: 19px;
   font-weight: 650;
   letter-spacing: -0.03em;
 }
@@ -26,7 +30,7 @@
   font-weight: 650;
 }
 .circle-intro {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 .circle-intro p {
   color: var(--focus-text-muted, #64748b);
@@ -43,7 +47,7 @@
 }
 .circle-layout {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   align-items: start;
 }
@@ -58,7 +62,7 @@
 .circle-card {
   background: var(--focus-surface, #fff);
   border: 1px solid var(--focus-border, #e2e8f0);
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 18px;
   min-width: 0;
 }
@@ -155,6 +159,7 @@
 }
 .circle-list {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 7px;
   margin-bottom: 14px;
 }
@@ -558,5 +563,34 @@
   }
 }
 
-.mobile-detail-page .circle-checkin label { display: block; font-size: 11px; }
-.mobile-detail-page .circle-invite input { font-size: 12px; }
+.mobile-detail-page .circle-checkin label {
+  display: block;
+  font-size: 11px;
+}
+.mobile-detail-page .circle-invite input {
+  font-size: 12px;
+}
+
+.circle-main:empty {
+  display: none;
+}
+.circle-form {
+  max-width: 520px;
+}
+.circle-sidebar .circle-muted {
+  margin-bottom: 14px;
+}
+@container (max-width: 520px) {
+  .circle-card {
+    padding: 14px;
+  }
+  .circle-checkin {
+    gap: 12px;
+  }
+  .circle-checkin > div {
+    flex-basis: 100%;
+  }
+  .circle-checkin label {
+    flex: 1;
+  }
+}
