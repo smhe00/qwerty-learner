@@ -1,5 +1,5 @@
 # Seven-day pure-Blob Circle
-Status: IN_PROGRESS. Executor: Codex-circle-seven-day.
+Status: REVIEW. Executor: Codex-circle-seven-day.
 Base: 12c2069469c0c00d85f2e9c238eb4e2c2b955f01.
 
 ## Owner decisions
@@ -14,10 +14,13 @@ Base: 12c2069469c0c00d85f2e9c238eb4e2c2b955f01.
 - No implicit migration/destruction of v2 events. Legacy API remains supported without rewriting real data.
 
 ## Work and acceptance
-Implement scoped v3 Blob adapter, membership/index service, day-partitioned immutable activities and keyed daily view cache; preserve existing API action routes and add personal-circle/daily/maintenance reads as needed. Ensure failed/unknown writes remain explicit. Indexes are repairable, not membership authority; handle partial membership writes and deleted/closed index entries.
+Implement scoped v3 Blob adapter, membership/index service, day-partitioned immutable activities and source-validated daily view cache; preserve existing API action routes and add personal-circle/daily/maintenance reads as needed. Ensure failed/unknown writes remain explicit. Indexes are repairable, not membership authority; handle partial membership writes and deleted/closed index entries.
 Use bounded validated pagination and bounded parallel reads. Summaries identify their immutable source keys so late activity invalidates the view without shared increment counters. Maintenance must be resumable and scoped to expired v3 activity/summary partitions; never delete current records or durable control state. Provide an operator-triggered script (dry-run default) for inactive-circle maintenance; do not enable production schedules without release.
 Tests: membership/rejoin/remove/close, retries/readback failures, partial indexes, advisory limits/concurrency, auth and path scope, seven-day boundaries/late data, deterministic aggregation, cached I/O, paginated cleanup/restart, legacy routing, gateway limits, unchanged core/V4 data safety. Run scoped lint and relevant existing cloud regressions. Source review and tests are not live EdgeOne acceptance.
 Document schema/API differences, accepted races, maintenance operation and historical document supersession. Commit/push product/main only after validation and upstream integration. Never touch master/etest or user data.
 
 ## Related work
 PR17 was reviewed and closed at owner request as superseded. Its branch/commits remain for bounded I/O and live-test reference; do not merge its old rollout assumptions.
+
+## Implementation refinement
+Daily summaries use one replaceable view.json per day with a source-key fingerprint inside the object. A stale overwrite causes a cache miss/rebuild, not stale acceptance; this avoids accumulating a summary object for every small update. Public v3 views expose per-target reactionCounts rather than raw clap pairs so 50 members fit the existing response budget. Old QC2 response shapes remain unchanged.

@@ -1,3 +1,5 @@
+> **2026-10-26 update:** New circles use [seven-day pure Blob v3](./CIRCLE_BLOB_SEVEN_DAY_V3.md): direct strong-confirmed membership, advisory 50 members / 3 circles, seven-day activity and one daily summary. This document is historical or applies to the preserved QC2 compatibility path. It is not the current v3 deployment or storage contract.
+
 > **Current product scope (2026-10-13):** [Light social v1](./CIRCLE_LIGHT_SOCIAL_V1.md) supersedes earlier seat/capacity selection, official achievement evidence and whole-circle activity-conflict requirements. Capacity is advisory, shares are self-reported, and private-access safeguards remain.
 
 > **2026-10-13 implementation checkpoint:** [Circle event log v2](./CIRCLE_EVENT_LOG_V2.md) is implemented on the isolated feature branch. CAS kernel and HTTP enabling are disabled; historical code/tests are retained as disabled artifacts. The eventual-consistency decision below remains binding.

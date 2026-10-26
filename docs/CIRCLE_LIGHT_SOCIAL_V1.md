@@ -1,3 +1,5 @@
+> **2026-10-26 update:** New circles use [seven-day pure Blob v3](./CIRCLE_BLOB_SEVEN_DAY_V3.md): direct strong-confirmed membership, advisory 50 members / 3 circles, seven-day activity and one daily summary. This document is historical or applies to the preserved QC2 compatibility path. It is not the current v3 deployment or storage contract.
+
 > **API checkpoint:** [v2 request contract](./CIRCLE_LIGHT_API_V2.md) now has an offline-tested dispatcher (73 passing Circle tests). Production gate remains closed; no gateway/UI/store deployment occurred.
 
 # Circle light social v1 — simplified product decision
