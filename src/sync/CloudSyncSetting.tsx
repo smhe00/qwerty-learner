@@ -3,6 +3,7 @@
  * live behind the global top-right account button and the guarded pre-mount
  * S1 account dialog. Never execute legacy V1 auth/write operations here.
  */
+import { openAccountDialog } from './account-dialog-events'
 import { getSyncV2Meta } from './api'
 import { loadAuth } from './auth'
 import { blockAutoSyncEnabled, setBlockAutoSyncEnabled } from './learn-block-sync'
@@ -166,6 +167,17 @@ export default function CloudSyncSetting({
                 onClick={() => navigateToTool('/?v4-cloud-backup=download')}
               >
                 下载云端备份
+              </button>
+              <button
+                type="button"
+                className="my-btn-primary disabled:opacity-50"
+                disabled={disabled || expired}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  openAccountDialog()
+                }}
+              >
+                云端账号工具
               </button>
               <button
                 type="button"

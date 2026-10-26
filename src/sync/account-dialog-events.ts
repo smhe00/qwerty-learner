@@ -1,4 +1,5 @@
-/** Read-only dialog state survives route suspense; it never changes account ownership. */
+/** Optional cloud-account tools only; login/account entry uses account-navigation.
+ * Dialog state survives route suspense and never changes account ownership. */
 let open = false
 const listeners = new Set<() => void>()
 export const isAccountDialogOpen = () => open
