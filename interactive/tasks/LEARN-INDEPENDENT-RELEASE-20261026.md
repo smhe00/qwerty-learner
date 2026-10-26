@@ -26,3 +26,7 @@ Current checkpoint: candidatea3098622 has source CI/Pages PASS and required runt
 ## Owner decision: preserve current etest and wait (2026-10-26)
 
 Owner selected: preserve current etest; wait until the other thread finishes before continuing release. Do NOT message the other thread to stop, interrupt it, or replace its test deployment while it is working. Previous request for coordination authorization is resolved by this choice. Keep master unchanged until fixed-version qualification and the non503 fresh-profile login/mount failure are resolved. Once the other thread has actually completed, refresh branch/source evidence and resume the already authorized independent release, preserving unrelated work and the etest-only experiment. A quiet thread follow-up may check completion; no unchanged-status notifications.
+
+## Resumed after UI completion
+
+Other thread completion verified from merged PR44 plus pinned real UI PASS40245980072. Waiting heartbeat is paused. E48 non503 fresh-profile failure is now classified: original60s test budget expired during successful synchronous immutable-evidence checks; without any replay or intervention the app mounted by the second10s observation sample. Fixed only the two live login wait budgets to180s, retaining all functional/data-safety assertions. Follow report for exact evidence and next same-SHA qualification; production and etest have not yet been replaced by this task.

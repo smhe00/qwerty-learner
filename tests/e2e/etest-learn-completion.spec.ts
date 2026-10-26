@@ -55,7 +55,11 @@ async function login(page: Page, username: string, password: string) {
   await confirmation
   expect((await response).status()).toBe(200)
   await expect(page).toHaveURL(/^https:\/\/t\.smhe\.cn\/(?:learn)?$/, { timeout: 120_000 })
-  await acknowledgeInformationDialog(page)
+  // Pinned real-cloud diagnosis proved a successful full-V4 restore can
+  // still be publishing/verifying immutable evidence at 60s, then mount
+  // naturally around 80s. Preserve all exact readback/3-device assertions;
+  // only this live login phase gets a bounded network startup budget.
+  await acknowledgeInformationDialog(page, 180_000)
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 60_000 })
 }
 async function meta(page: Page) {

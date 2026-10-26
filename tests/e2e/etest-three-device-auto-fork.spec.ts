@@ -1,6 +1,6 @@
 import { loadBodyPolicy } from './body-policy-loader'
 import { acknowledgeInformationDialog } from './information-dialog'
-import { expect, test, type BrowserContext, type Page } from '@playwright/test'
+import { type BrowserContext, type Page, expect, test } from '@playwright/test'
 import { writeFile } from 'node:fs/promises'
 
 /**
@@ -163,7 +163,11 @@ async function openAccount(page: Page, username: string, password: string) {
     }).catch(() => null), { timeout: 60_000 }).toBe(username)
     // Full S2 Pull can replace the document twice: entering recovery is not
     // proof that the guarded restore and application mount have completed.
-    await acknowledgeInformationDialog(page)
+    // Pinned real-cloud diagnosis proved a successful full-V4 restore can
+    // still be publishing/verifying immutable evidence at 60s, then mount
+    // naturally around 80s. Preserve all exact readback/3-device assertions;
+    // only this live login phase gets a bounded network startup budget.
+    await acknowledgeInformationDialog(page, 180_000)
     await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 60_000 })
     await expect(page.getByText('学习数据安全检查未通过')).toHaveCount(0)
   } catch (error) {

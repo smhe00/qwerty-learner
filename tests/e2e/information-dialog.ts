@@ -1,10 +1,10 @@
-import { expect, type Page } from '@playwright/test'
+import { type Page, expect } from '@playwright/test'
 
 /** Acknowledge only the shipped informational modal, never a recovery/ownership guard. */
-export async function acknowledgeInformationDialog(page: Page) {
+export async function acknowledgeInformationDialog(page: Page, mountTimeoutMs = 60_000) {
   // An aria-modal native dialog makes the mounted application's roles inert.
   // Check its actual DOM entry before querying background accessible roles.
-  await expect(page.locator('[data-account-entry]')).toBeVisible({ timeout: 60_000 })
+  await expect(page.locator('[data-account-entry]')).toBeVisible({ timeout: mountTimeoutMs })
   const notice = page.locator('dialog.safety-information-dialog[open]')
   if (await notice.isVisible()) {
     await expect(notice).toHaveAttribute('aria-label', '提示')
