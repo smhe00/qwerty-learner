@@ -1,4 +1,5 @@
 import MobileDailyProgress from './MobileDailyProgress'
+import QuickSyncAction from '@/components/QuickSyncAction'
 import './mobile-app.css'
 import { useMobileCheckpoint } from './useMobileCheckpoint'
 import { useMobileDailyProgress } from './useMobileDailyProgress'
@@ -52,16 +53,19 @@ export default function MobilePage() {
               QWERTY <span>Plus</span>
             </h1>
           </div>
-          <a
-            href={accountHref}
-            target="_self"
-            onClick={openAccount}
-            className="mobile-user-status mobile-account-entry"
-            aria-label={auth ? '账号：' + auth.user.username + (expired ? '，登录已过期' : '') : '登录或注册'}
-            data-mobile-account-entry
-          >
-            <CircleUserRound size={24} aria-hidden="true" />
-          </a>
+          <div className="mobile-brand-actions">
+            <QuickSyncAction target="/mobile" variant="mobile" />
+            <a
+              href={accountHref}
+              target="_self"
+              onClick={openAccount}
+              className="mobile-user-status mobile-account-entry"
+              aria-label={auth ? '账号：' + auth.user.username + (expired ? '，登录已过期' : '') : '登录或注册'}
+              data-mobile-account-entry
+            >
+              <CircleUserRound size={24} aria-hidden="true" />
+            </a>
+          </div>
         </header>
 
         <section className="mobile-today" aria-labelledby="mobile-today-title">
