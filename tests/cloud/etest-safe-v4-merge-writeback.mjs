@@ -309,8 +309,7 @@ try {
   const serverRemote = await readPinned(user.firstToken, 2, remoteFingerprint)
 
   // Stale device A MUST NOT overwrite B's cloud revision.
-  const stale = await upload(user.firstToken, 1, local, localFingerprint)
-  assert.equal(stale.status, 409, 'stale device A must not overwrite B')
+  await proveStaleForkRejected(user.firstToken, 1, local, 2, remoteFingerprint)
   const current = await visibleRevision(user.firstToken, 2, remoteFingerprint)
   assert.equal(current.logicalFingerprint, remoteFingerprint)
 

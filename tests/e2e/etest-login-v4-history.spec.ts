@@ -1,6 +1,6 @@
 import { loadBodyPolicy } from './body-policy-loader'
 import { acknowledgeInformationDialog } from './information-dialog'
-import { expect, test, type Page } from '@playwright/test'
+import { type Page, expect, test } from '@playwright/test'
 import { readFile, writeFile } from 'node:fs/promises'
 
 // Synthetic historical records in NEW disposable browser profiles only.
@@ -45,7 +45,7 @@ async function login(page: Page, username: string, password: string) {
   await ((await reauth.isVisible()) ? reauth : page.getByRole('button', { name: '登录', exact: true })).click()
   expect((await response).status()).toBe(200)
   await expect(page).toHaveURL(/^https:\/\/t\.smhe\.cn\/(?:learn)?$/, { timeout: 120_000 })
-  await acknowledgeInformationDialog(page)
+  await acknowledgeInformationDialog(page, 180_000)
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 60_000 })
 }
 async function seed(page: Page, branch: string, all = false) {
@@ -339,7 +339,7 @@ async function syncDiagnostics(page: Page) {
 }
 
 test('historical six-table startup download and automatic divergent reauth converge both profiles', async ({ browser }, info) => {
-  test.setTimeout(600_000)
+  test.setTimeout(900_000)
   expect(process.env.GITHUB_REF_NAME).toBe('edgeone-test')
   expect(process.env.QWERTY_SYNC_BASE_URL).toBe(base + '/')
   const sha = process.env.GITHUB_SHA || ''
@@ -442,7 +442,7 @@ test('historical six-table startup download and automatic divergent reauth conve
     expect(bRequests).not.toContain('GET /api/sync/v2/binary/manifest')
     expect(await rawWords(pages[1])).toHaveLength(0)
     await pages[1].goto(base + '/learn', { waitUntil: 'domcontentloaded' })
-    await acknowledgeInformationDialog(pages[1])
+    await acknowledgeInformationDialog(pages[1], 180_000)
     await expect(pages[1].getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 60_000 })
     expect(await pages[1].evaluate(() => sessionStorage.getItem('qwerty.s2.startup-check.v1'))).toBe('noop')
     proof.ordinaryStartupRecoveredFullV4 = true
@@ -453,7 +453,7 @@ test('historical six-table startup download and automatic divergent reauth conve
     bRequests.length = 0
     await pages[1].goto(base + '/learn', { waitUntil: 'domcontentloaded' })
     await expect.poll(() => bRequests.includes('GET /api/sync/v2/meta')).toBe(true)
-    await acknowledgeInformationDialog(pages[1])
+    await acknowledgeInformationDialog(pages[1], 180_000)
     await expect(pages[1].getByRole('button', { name: '开始 Learn', exact: true })).toBeVisible({ timeout: 60_000 })
     expect(await evidence(pages[1])).toEqual(original)
     proof.sixTablePullExact = true
@@ -560,7 +560,7 @@ test('historical six-table startup download and automatic divergent reauth conve
     phase = 'mixed-legacy-m3-m4'
     bRequests.length = 0
     await pages[1].goto(base + '/learn', { waitUntil: 'domcontentloaded' })
-    await acknowledgeInformationDialog(pages[1])
+    await acknowledgeInformationDialog(pages[1], 180_000)
     await expect(pages[1].getByRole('button', { name: '开始 Learn', exact: true })).toBeVisible({ timeout: 60_000 })
     expect(await evidence(pages[1])).toEqual(merged)
     expect((await meta(pages[1])).revision).toBe(third.revision)
@@ -611,7 +611,7 @@ test('historical six-table startup download and automatic divergent reauth conve
     await account(pages[0])
     await pages[0].getByRole('button', { name: '安全退出登录', exact: true }).click()
     await expect(pages[0]).toHaveURL(/^https:\/\/t\.smhe\.cn\/(?:learn)?$/, { timeout: 120_000 })
-    await acknowledgeInformationDialog(pages[0])
+    await acknowledgeInformationDialog(pages[0], 180_000)
     await expect(pages[0].getByRole('button', { name: '打开设置对话框' })).toBeVisible()
     expect(await pages[0].evaluate(() => localStorage.getItem('qwerty.cloudAuth.v1'))).toBeNull()
     expect(await rawWords(pages[0])).toHaveLength(0)

@@ -1,0 +1,645 @@
+{
+  "sourceSha": "0ff54518784646a64ded96d18f691d76816f507f",
+  "productionChanged": false,
+  "source": {
+    "cloud": 40250884198,
+    "backendContracts": 821,
+    "pages": 40250884181,
+    "localCompletion": 40250884258,
+    "passed": true
+  },
+  "threeDevice": {
+    "run": 40251574218,
+    "passed": true,
+    "profiles": [
+      {
+        "index": 0,
+        "localRows": 3,
+        "witnessPhases": [
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "published",
+            "status": "idle",
+            "scanned": 0
+          },
+          {
+            "phase": "observed",
+            "status": "blocked",
+            "reason": "no-observed-device-heads"
+          },
+          {
+            "phase": "skipped"
+          },
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "published",
+            "status": "idle",
+            "scanned": 0
+          },
+          {
+            "phase": "observed",
+            "status": "blocked",
+            "reason": "no-observed-device-heads"
+          },
+          {
+            "phase": "skipped"
+          },
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "skipped",
+            "reason": "account-or-tool-query"
+          },
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "published",
+            "status": "uploaded-events-only",
+            "remaining": 0,
+            "scanned": 1
+          },
+          {
+            "phase": "observed",
+            "status": "heads-observed-only"
+          },
+          {
+            "phase": "witnessed",
+            "status": "witnessed",
+            "reason": "verified-prefix-only"
+          },
+          {
+            "phase": "candidate",
+            "status": "candidate",
+            "added": 1
+          },
+          {
+            "phase": "scratch",
+            "step": "validate"
+          },
+          {
+            "phase": "scratch",
+            "step": "schema"
+          },
+          {
+            "phase": "scratch",
+            "step": "import"
+          },
+          {
+            "phase": "scratch",
+            "step": "readback"
+          },
+          {
+            "phase": "scratch",
+            "step": "audit-proposal"
+          },
+          {
+            "phase": "scratch",
+            "step": "export"
+          },
+          {
+            "phase": "scratch",
+            "step": "audit-normalized"
+          },
+          {
+            "phase": "scratch",
+            "step": "validated"
+          },
+          {
+            "phase": "materialized",
+            "added": 1
+          },
+          {
+            "phase": "transaction",
+            "step": "capture"
+          },
+          {
+            "phase": "transaction",
+            "step": "stage"
+          },
+          {
+            "phase": "transaction",
+            "step": "restore"
+          },
+          {
+            "phase": "transaction",
+            "step": "verify"
+          },
+          {
+            "phase": "transaction",
+            "step": "seal"
+          },
+          {
+            "phase": "transaction",
+            "step": "finalize"
+          },
+          {
+            "phase": "transaction",
+            "step": "complete"
+          },
+          {
+            "phase": "adopted",
+            "added": 1
+          },
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "published",
+            "status": "uploaded-events-only",
+            "remaining": 0,
+            "scanned": 2
+          },
+          {
+            "phase": "observed",
+            "status": "heads-observed-only"
+          },
+          {
+            "phase": "witnessed",
+            "status": "unchanged",
+            "reason": "verified-prefix-already-local"
+          },
+          {
+            "phase": "skipped",
+            "reason": "verified-prefix-already-local"
+          },
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "skipped",
+            "reason": "account-or-tool-query"
+          },
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "published",
+            "status": "uploaded-events-only",
+            "remaining": 0,
+            "scanned": 3
+          },
+          {
+            "phase": "observed",
+            "status": "heads-observed-only"
+          },
+          {
+            "phase": "witnessed",
+            "status": "unchanged",
+            "reason": "verified-prefix-already-local"
+          },
+          {
+            "phase": "skipped",
+            "reason": "verified-prefix-already-local"
+          }
+        ],
+        "journal": {
+          "pending": false
+        }
+      },
+      {
+        "index": 1,
+        "localRows": 3,
+        "witnessPhases": [
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "published",
+            "status": "idle",
+            "scanned": 0
+          },
+          {
+            "phase": "observed",
+            "status": "blocked",
+            "reason": "no-observed-device-heads"
+          },
+          {
+            "phase": "skipped"
+          },
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "published",
+            "status": "idle",
+            "scanned": 0
+          },
+          {
+            "phase": "observed",
+            "status": "blocked",
+            "reason": "no-observed-device-heads"
+          },
+          {
+            "phase": "skipped"
+          },
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "skipped",
+            "reason": "account-or-tool-query"
+          },
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "published",
+            "status": "uploaded-events-only",
+            "remaining": 0,
+            "scanned": 3
+          },
+          {
+            "phase": "observed",
+            "status": "heads-observed-only"
+          },
+          {
+            "phase": "witnessed",
+            "status": "unchanged",
+            "reason": "verified-prefix-already-local"
+          },
+          {
+            "phase": "skipped",
+            "reason": "verified-prefix-already-local"
+          },
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "skipped",
+            "reason": "account-or-tool-query"
+          },
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "published",
+            "status": "idle",
+            "scanned": 3
+          },
+          {
+            "phase": "observed",
+            "status": "heads-observed-only"
+          },
+          {
+            "phase": "witnessed",
+            "status": "unchanged",
+            "reason": "verified-prefix-already-local"
+          },
+          {
+            "phase": "skipped",
+            "reason": "verified-prefix-already-local"
+          }
+        ],
+        "journal": {
+          "pending": false
+        }
+      },
+      {
+        "index": 2,
+        "localRows": 3,
+        "witnessPhases": [
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "published",
+            "status": "idle",
+            "scanned": 0
+          },
+          {
+            "phase": "observed",
+            "status": "blocked",
+            "reason": "no-observed-device-heads"
+          },
+          {
+            "phase": "skipped"
+          },
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "published",
+            "status": "idle",
+            "scanned": 0
+          },
+          {
+            "phase": "observed",
+            "status": "blocked",
+            "reason": "no-observed-device-heads"
+          },
+          {
+            "phase": "skipped"
+          },
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "skipped",
+            "reason": "account-or-tool-query"
+          },
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "published",
+            "status": "uploaded-events-only",
+            "remaining": 0,
+            "scanned": 3
+          },
+          {
+            "phase": "observed",
+            "status": "heads-observed-only"
+          },
+          {
+            "phase": "witnessed",
+            "status": "unchanged",
+            "reason": "verified-prefix-already-local"
+          },
+          {
+            "phase": "skipped",
+            "reason": "verified-prefix-already-local"
+          },
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "skipped",
+            "reason": "account-or-tool-query"
+          },
+          {
+            "phase": "entered"
+          },
+          {
+            "phase": "published",
+            "status": "idle",
+            "scanned": 3
+          },
+          {
+            "phase": "observed",
+            "status": "heads-observed-only"
+          },
+          {
+            "phase": "witnessed",
+            "status": "unchanged",
+            "reason": "verified-prefix-already-local"
+          },
+          {
+            "phase": "skipped",
+            "reason": "verified-prefix-already-local"
+          }
+        ],
+        "journal": {
+          "pending": false
+        }
+      }
+    ],
+    "cleanupStatus": 200
+  },
+  "idle": {
+    "run": 40251574243,
+    "passed": true
+  },
+  "completion": {
+    "run": 40251574229,
+    "overall": "failure",
+    "complete": {
+      "source": "0ff5451",
+      "case": "complete",
+      "beforeStateFixture": true,
+      "networkMocked": false,
+      "completionPageVisible": true,
+      "committedUploads": 1,
+      "cloudRevision": 1,
+      "completionBlobHashVerified": true,
+      "extraWords": 5,
+      "reloadDidNotDuplicateExtension": true,
+      "reloadStartupStatus": "pushed",
+      "observedUploadStatuses": [
+        200,
+        200
+      ],
+      "extraRoundStartupRevision": 2,
+      "totalCommittedUploads": 2,
+      "freshProfileCloudReadbackExact": true,
+      "cloudWordRecords": 2,
+      "finalAttemptPresentExactlyOnce": true,
+      "cleanupStatus": 200,
+      "cleanupVerified": true
+    },
+    "unmastered": {
+      "source": "0ff5451",
+      "case": "unmastered",
+      "beforeStateFixture": true,
+      "networkMocked": false,
+      "completionPageVisible": true,
+      "applicationFailed": true,
+      "failedStage": "last-answer-and-completion-sync",
+      "http": [
+        {
+          "profile": 0,
+          "phase": "first-login",
+          "path": "/api/auth/login",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "profile": 0,
+          "phase": "first-login",
+          "path": "/api/sync/v2/meta",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "profile": 0,
+          "phase": "first-login",
+          "path": "/api/sync/events/v2/observed",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "profile": 0,
+          "phase": "first-login",
+          "path": "/api/health",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "profile": 0,
+          "phase": "seed-unfinished-before-state",
+          "path": "/api/sync/v2/meta",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "profile": 0,
+          "phase": "last-word-entry",
+          "path": "/api/health",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "profile": 0,
+          "phase": "last-word-entry",
+          "path": "/api/health",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "profile": 0,
+          "phase": "last-word-entry",
+          "path": "/api/health",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "profile": 0,
+          "phase": "last-answer-and-completion-sync",
+          "path": "/api/sync/v2/meta",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "profile": 0,
+          "phase": "last-answer-and-completion-sync",
+          "path": "/api/sync/v2/binary/direct",
+          "method": "POST",
+          "status": 503,
+          "code": "v4_direct_body_read_failed"
+        }
+      ],
+      "failedPageState": [
+        {
+          "profile": 0,
+          "path": "/",
+          "rootChildren": 1,
+          "bodyText": "Qwerty Plus · Learn\n\n本轮练习已结束\n\n本轮记录已保存在本机，需巩固的词仍然保留\n\n同步未确认，将先执行安全恢复检查：Direct V4 request was not received; no commit was attempted\n\n重试同步\n保留本地进度，暂不同步",
+          "accountEntry": 0,
+          "accountForm": 0,
+          "dialogs": [],
+          "startup": "noop",
+          "diagnostics": [
+            {
+              "stage": "v4-check",
+              "status": "noop",
+              "code": "none"
+            },
+            {
+              "stage": "m3-recovery",
+              "status": "ready",
+              "code": "none",
+              "audit": {
+                "scanned": 0,
+                "eligible": 0,
+                "snapshotOnly": 0,
+                "rejected": 0,
+                "issues": {}
+              }
+            },
+            {
+              "stage": "m3-publication",
+              "status": "idle",
+              "code": "none"
+            },
+            {
+              "stage": "m4-adoption",
+              "status": "skipped",
+              "code": "no-complete-observed-prefix:no-observed-device-heads"
+            },
+            {
+              "stage": "m4-adoption",
+              "status": "skipped",
+              "code": "unknown"
+            },
+            {
+              "stage": "m4-adoption",
+              "status": "skipped",
+              "code": "unknown"
+            },
+            {
+              "stage": "m3-recovery",
+              "status": "ready",
+              "code": "none",
+              "audit": {
+                "scanned": 1,
+                "eligible": 0,
+                "snapshotOnly": 1,
+                "rejected": 0,
+                "issues": {
+                  "missing-attempt-id": 1
+                }
+              }
+            },
+            {
+              "stage": "m3-publication",
+              "status": "idle",
+              "code": "none"
+            },
+            {
+              "stage": "m4-adoption",
+              "status": "skipped",
+              "code": "unknown"
+            }
+          ]
+        },
+        {
+          "profile": 1,
+          "unavailable": true
+        }
+      ],
+      "cleanupStatus": 200,
+      "cleanupVerified": true
+    }
+  },
+  "history": {
+    "run": 40251574300,
+    "overall": "failure",
+    "failedPhase": "mixed-legacy-m3-m4",
+    "mountTimeoutMs": 60000,
+    "realHttpErrors": [],
+    "intentionalFixture503": true,
+    "firstRevision": 1,
+    "sixTablePullExact": true,
+    "sixTableForkConvergence": true,
+    "mixedLegacyM3Publication": true,
+    "localCounts": [
+      6,
+      6
+    ],
+    "cleanupStatus": 200,
+    "cleanupVerified": true
+  },
+  "transport": {
+    "run": 40251574310,
+    "attempts": 2,
+    "browser": "success",
+    "result": "failure",
+    "passed": [
+      "fresh/stale V4",
+      "second account isolation",
+      "migration and idempotence",
+      "native direct write/readback/SHA"
+    ],
+    "failed": "negative declared-SHA probe returned503/v4_direct_body_read_failed",
+    "cleanup": "both accounts confirmed in both attempts",
+    "releaseReady": "skipped"
+  },
+  "m3": {
+    "run": 40251574286,
+    "result": "failure",
+    "error": "503/request_body_unavailable",
+    "cleanup": "finally assertions completed; original application error preserved"
+  },
+  "safeMerge": {
+    "run": 40251574234,
+    "result": "failure",
+    "error": "explicit direct prewrite503 during intentionally stale revision1 probe after pinned remote revision2",
+    "detail": "normal-upload retry helper refused when read metadata differed from stale base; no replay at this failure",
+    "cleanup": "finally completed without CLEANUP FAILURE"
+  }
+}

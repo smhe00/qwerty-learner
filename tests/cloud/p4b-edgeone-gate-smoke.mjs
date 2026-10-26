@@ -1,4 +1,5 @@
 import { retrySafeBodyRequest } from '../../cloud-functions/_shared/safe-body-retry.js'
+import { retryDirectPrewriteTest } from './direct-prewrite-test-retry.mjs'
 /* eslint-env node */
 // Post-deployment V4 GA smoke: disposable test users ONLY, no real accounts.
 // Never run against master until API health announces authenticated-write GA.
@@ -469,8 +470,9 @@ try {
   }))
   // A corrupted declared SHA must fail before any revision mutation.
   const invalidFast = { ...fastBody, baseRevision: fastRevision + 1 }
-  const rejected = await apiDirectBinaryV4(
-    invalidFast, second.token, '0'.repeat(64))
+  const rejected = await retryDirectPrewriteTest(
+    () => apiDirectBinaryV4(invalidFast, second.token, '0'.repeat(64)),
+    () => api('/api/sync/v2/meta', 'GET', undefined, second.token), directMeta.value)
   expectCode(rejected, 400, 'v4_direct_payload_sha_mismatch',
     'direct fast path declared SHA mismatch')
   assert.equal((await api('/api/sync/v2/meta', 'GET', undefined, second.token))
