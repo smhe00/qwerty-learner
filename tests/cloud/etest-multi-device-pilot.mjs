@@ -1,3 +1,4 @@
+import { cleanupDisposableAccount } from './disposable-account-cleanup.mjs'
 import { retrySafeBodyRequest } from '../../cloud-functions/_shared/safe-body-retry.js'
 /* eslint-env node */
 import assert from 'node:assert/strict'
@@ -42,7 +43,8 @@ async function call(method, path, token, input, status = 200) {
 const health = await call('GET', '/api/health')
 assert.equal(health.authMode, 'single-active-session',
   'Single-session relay must not depend on M1 independent login')
-let token = '', registered = false
+let token = '', registered = false, userId
+const failures = []
 try {
   const account = await call('POST', '/api/auth/register', '', {
     username, password, deviceId: deviceA,
@@ -51,6 +53,7 @@ try {
   registered = true
   assert.ok(token && account.user?.userId)
   const id = account.user.userId
+  userId = id
   const shared = randomUUID()
   const evidence = (word, attemptId = randomUUID()) => ({
     attemptId, dict: 'm3-relay-test', word,
@@ -105,17 +108,19 @@ try {
   assert.equal(reversed.evidenceSha256, both.evidenceSha256)
   assert.equal(reversed.publishReady, false)
   console.log('PASS etest single session: A->B->A relay, revoked tokens 401, unique immutable event union; full V4 auto adoption NOT asserted')
+} catch (error) {
+  failures.push(error)
+  console.error('M3_APPLICATION_FAILED', error.message)
 } finally {
   if (registered) {
-    // Cleanup ONLY the verified disposable username, with a newly authenticated
-    // token if a prior step revoked the current bearer.
-    const fresh = await call('POST', '/api/auth/login', '', {
-      username, password, deviceId: deviceA,
-    })
-    assert.equal(fresh.user.username, username)
-    const deleted = await call('DELETE', '/api/auth/account', fresh.token, {
-      currentPassword: password,
-    })
-    assert.equal(deleted.deleted?.accountDeleted, true)
+    try {
+      const proof = await cleanupDisposableAccount({ baseUrl: base, username, password, userId, token })
+      console.log('M3_CLEANUP_PROOF', JSON.stringify(proof))
+    } catch (error) { failures.push(error); console.error('M3_CLEANUP_FAILED', error.message) }
   }
+}
+if (failures.length) {
+  const error = new AggregateError(failures, 'M3 application and cleanup results recorded independently')
+  error.stack = failures.map((e, index) => 'Failure ' + (index + 1) + ': ' + e.stack).join('\n')
+  throw error
 }

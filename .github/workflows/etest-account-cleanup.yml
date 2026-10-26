@@ -1,0 +1,29 @@
+name: etest Account Cleanup Outcome
+on:
+  push:
+    branches: [edgeone-test]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: etest-account-cleanup
+  cancel-in-progress: false
+jobs:
+  cleanup-outcome:
+    if: github.ref_name == 'edgeone-test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EXPECTED_SHA: ${{ github.sha }}
+      QWERTY_SYNC_BASE_URL: https://t.smhe.cn/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+      - name: Require exact deployed test source
+        env:
+          EDGEONE_WAIT_MS: '600000'
+        run: node scripts/verify-edgeone-source.mjs
+      - name: Real deletion and lost response read-only completion proof
+        run: node tests/cloud/etest-account-cleanup.mjs

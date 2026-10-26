@@ -1,3 +1,4 @@
+import { createAccountDeletionReceipts } from '../_shared/account-deletion-receipts.js'
 import { createFeedbackService } from '../_shared/feedback.js'
 /* eslint-env node */
 import { createRequestDiagnostics } from '../_shared/request-diagnostics.js'
@@ -332,6 +333,7 @@ async function onUncoordinatedRequest(context, circleBody = null) {
             'v4-binary-direct-512k-v1',
             'backup-v3-explicit-migration-only',
             'account-delete-v1',
+            'account-delete-receipt-v1',
             'idle-runtime-policy-v1',
             'idle-auto-policy-v1',
             'duplicate-register-protection-v1',
@@ -450,6 +452,13 @@ async function onUncoordinatedRequest(context, circleBody = null) {
       return json({ ok: true, ...(await service.revokeSession(bearer(request))) }, 200, cors)
     }
 
+    if (request.method === 'GET' && path === '/auth/account/deletion-status') {
+      const receipts = createAccountDeletionReceipts({ store: getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }) })
+      // Exact original bearer + operation capability remains useful after erasure.
+      // Never authenticate a new session, resume deletion or expose account lookup.
+      return json({ ok: true, ...await receipts.status(bearer(request), url.searchParams.get('operationId')) }, 200, cors)
+    }
+
     if (request.method === 'DELETE' && path === '/auth/account') {
       // The Circle API is available to authenticated accounts. An account
       // that has written Circle events must not be permanently deleted until
@@ -465,14 +474,17 @@ async function onUncoordinatedRequest(context, circleBody = null) {
       accountDeletionStage = 'request-body'
       const body = await readBody(64 * 1024)
       accountDeletionStage = 'content-delete'
-      return json(
-        {
-          ok: true,
-          ...(await service.deleteAccount(bearer(request), body.currentPassword)),
-        },
-        200,
-        cors,
-      )
+      const receipts = body.operationId === undefined ? null : createAccountDeletionReceipts({
+        store: getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }),
+      })
+      let receipt
+      const result = await service.deleteAccount(bearer(request), body.currentPassword, {
+        beforeDelete: receipts ? async identity => {
+          receipt = await receipts.begin(bearer(request), body.operationId, identity)
+        } : undefined,
+      })
+      if (receipts) await receipts.complete(receipt, result.deleted)
+      return json({ ok: true, ...result, ...(receipts ? { operationId: body.operationId } : {}) }, 200, cors)
     }
 
     if (request.method === 'POST' && path === '/auth/change-password') {
@@ -786,7 +798,9 @@ async function onUncoordinatedRequest(context, circleBody = null) {
       // An unavailable check MUST keep deletion failed and retryable.
       return json({ ok: false, error: 'account_delete_unavailable',
         message: 'Account deletion could not be verified',
-        details: { stage: accountDeletionStage },
+        details: { stage: error?.name === 'AccountDeletionStageError' &&
+          ['owner-check', 'content-delete', 'session-delete', 'auth-delete', 'identity-delete'].includes(error.stage)
+          ? error.stage : accountDeletionStage },
         failureStage: diagnostics.stageFor(error), requestId: diagnostics.requestId }, 500, cors)
     }
 

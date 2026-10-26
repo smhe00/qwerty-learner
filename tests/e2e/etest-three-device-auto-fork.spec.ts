@@ -1,3 +1,4 @@
+import { cleanupAccount } from './account-cleanup-loader'
 import { loadBodyPolicy } from './body-policy-loader'
 import { acknowledgeInformationDialog } from './information-dialog'
 import { type BrowserContext, type Page, type Response, expect, test } from '@playwright/test'
@@ -448,25 +449,9 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
     await Promise.allSettled(contexts.map(ctx => ctx.close()))
     try { if (userId) {
       expect(username).toMatch(/^e2e_fork_\d+_\d+$/)
-      const fresh = await api('/api/auth/login', 'POST', {
-        username, password, deviceId: 'qwerty-web-' + crypto.randomUUID(),
-      })
-      if (fresh.status >= 500) {
-        const stage = fresh.body.failureStage || fresh.body.details?.stage
-        console.log('E2E_CLEANUP_AUTH_FAILURE', JSON.stringify({ status: fresh.status,
-          stage: typeof stage === 'string' && /^[A-Za-z0-9-]{1,80}$/.test(stage) ? stage : 'unspecified',
-          requestId: typeof fresh.body.requestId === 'string' && /^[A-Za-z0-9-]{1,128}$/.test(fresh.body.requestId) ? fresh.body.requestId : undefined }))
-      }
-      expect(fresh.status).toBe(200)
-      expect(fresh.body.user?.userId === userId, 'cleanup identity matches created account').toBe(true)
-      const removed = await api('/api/auth/account', 'DELETE',
-        { currentPassword: password }, fresh.body.token)
-      // Fixed diagnostic codes only, never provider messages or account IDs.
-      console.log('E2E_ACCOUNT_CLEANUP', JSON.stringify({ status: removed.status,
-        stage: ['identity', 'circle-activity', 'request-body', 'content-delete'].includes(
-          removed.body.details?.stage) ? removed.body.details.stage : 'unspecified' }))
-      expect(removed.status).toBe(200)
-      expect(removed.body.deleted?.accountDeleted).toBe(true)
+      const cleanup = await cleanupAccount({ baseUrl: base, username, password, userId })
+      console.log('E2E_ACCOUNT_CLEANUP', JSON.stringify(cleanup))
+      expect(cleanup.confirmed).toBe(true)
     } } catch (error) {
       failures.push(error)
       console.error('E2E_ACCOUNT_CLEANUP_FAILED')

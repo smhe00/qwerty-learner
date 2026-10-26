@@ -1,3 +1,4 @@
+import { cleanupDisposableAccount } from './disposable-account-cleanup.mjs'
 import { retryMigrationPrewriteTest } from './migration-prewrite-test-retry.mjs'
 import { reconcileUnknownV4Commit } from './v4-commit-outcome.mjs'
 import { retrySafeBodyRequest } from '../../cloud-functions/_shared/safe-body-retry.js'
@@ -585,11 +586,9 @@ try {
 } finally {
   for (const user of users.reverse()) {
     try {
-      const deleted = await api('/api/auth/account', 'DELETE',
-        { currentPassword: user.password }, user.token)
-      expectCode(deleted, 200, null, 'disposable cleanup ' + user.username)
-      assert.equal(deleted.value?.deleted?.accountDeleted, true)
-      console.log('Disposable account cleanup: PASS')
+      const cleanup = await cleanupDisposableAccount({ baseUrl: base, ...user })
+      assert.equal(cleanup.confirmed, true)
+      console.log('DISPOSABLE_CLEANUP_PROOF', JSON.stringify(cleanup))
     } catch (error) {
       console.error('Disposable account cleanup FAILED (no credentials printed)')
       failure ||= error

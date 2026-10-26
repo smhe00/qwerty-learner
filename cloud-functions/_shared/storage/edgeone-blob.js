@@ -404,6 +404,40 @@ export function createEdgeOneBlobStorage(store) {
     return blobs.length
   }
 
+  async function deletionKeys(prefix) {
+    const keys = [], cursors = new Set()
+    let cursor
+    do {
+      const page = await withRetry(() => store.list({ prefix, cursor, limit: 1000,
+        paginate: false, consistency: 'strong' }))
+      if (!Array.isArray(page?.blobs) || page.blobs.length > 1000 ||
+          page.blobs.some(blob => typeof blob.key !== 'string' || !blob.key.startsWith(prefix)) ||
+          (page.cursor && (typeof page.cursor !== 'string' || cursors.has(page.cursor))))
+        throw new Error('Invalid account deletion listing')
+      keys.push(...page.blobs.map(blob => blob.key))
+      cursor = page.cursor
+      if (cursor) cursors.add(cursor)
+      if (keys.length > 100000) throw new Error('Account deletion requires bounded maintenance')
+    } while (cursor)
+    return [...new Set(keys)]
+  }
+
+  async function deleteOwnedPrefixes(prefixes) {
+    const lists = []
+    // Collect every page before deleting: removing keys can invalidate offsets.
+    // Three list requests / six delete requests maximum, including empty prefixes.
+    for (let index = 0; index < prefixes.length; index += 3)
+      lists.push(...await Promise.all(prefixes.slice(index, index + 3).map(deletionKeys)))
+    const keys = lists.flat()
+    for (let index = 0; index < keys.length; index += 6)
+      await Promise.all(keys.slice(index, index + 6).map(deleteKey))
+    for (let index = 0; index < prefixes.length; index += 3) {
+      const remaining = await Promise.all(prefixes.slice(index, index + 3).map(deletionKeys))
+      if (remaining.some(list => list.length)) throw new Error('Account content deletion unverified')
+    }
+    return lists.map(list => list.length)
+  }
+
   // One Maker request owns one storage adapter. Never persist trace in Blob.
   let lastV4RevisionTiming = null
   return {
@@ -792,40 +826,37 @@ export function createEdgeOneBlobStorage(store) {
     },
 
     async deleteUserData(usernameHash, userId) {
-      // EdgeOne's Blob does not provide atomic multi-key deletes, and a
-      // 10-way simultaneous strong-list/delete burst can produce HTTP 500.
-      // Bound load to 3 independent prefixes per stage. Keep auth and
-      // account identity UNTIL durable content cleanup is complete so a
-      // transient failure can be retried by an authenticated caller.
-      const [revisionsDeleted, revisionPartsDeleted,
-        eventBatchesDeleted] = await Promise.all([
-        deletePrefix(revisionPrefix(userId)),
-        deletePrefix(revisionPartsPrefix(userId)),
-        deletePrefix(eventBatchPrefix(userId)),
-      ])
-      const [chainedEventBatchesDeleted, deviceCheckoutsDeleted,
-        pendingV4PartsDeleted] = await Promise.all([
-        deletePrefix(chainedBatchPrefix(userId)),
-        deletePrefix(deviceCheckoutPrefix(userId)),
-        deletePrefix(uploadPrefix(userId)),
-      ])
-      const pendingBinaryV4PartsDeleted =
-        await deletePrefix(`users/${userId}/v4-http-parts/v3/`)
-      // Private feedback content belongs to the account and is erased before credentials.
-      await deletePrefix(`users/${userId}/feedback/`)
-      await deletePrefix(`feedback/v1/index/a-${userId}/`)
-      // Session deletions are postponed until all user-owned records are
-      // gone. Password auth is last, followed by account identity.
-      const [sessionsDeleted, independentSessionsDeleted] =
-        await Promise.all([
-          deletePrefix(sessionPrefix(usernameHash)),
-          deletePrefix(independentSessionPrefix(usernameHash)),
-        ])
-      const authDeleted = await deletePrefix(authPrefix(usernameHash))
-      const account = await strongJson(accountKey(usernameHash))
-      if (account !== null) await deleteKey(accountKey(usernameHash))
+      const startedAt = Date.now(), stages = []
+      const stage = async (name, action) => {
+        const started = Date.now()
+        try { const result = await action(); stages.push({ stage: name, elapsedMs: Date.now() - started }); return result }
+        catch { const error = new Error('Account deletion stage is unconfirmed'); error.name = 'AccountDeletionStageError';
+          error.stage = name; throw error }
+      }
+      const original = await stage('owner-check', () => strongJson(accountKey(usernameHash)))
+      if (original?.userId !== userId) throw new Error('Account deletion owner mismatch')
+      const [revisionsDeleted, revisionPartsDeleted, eventBatchesDeleted,
+        chainedEventBatchesDeleted, deviceCheckoutsDeleted, pendingV4PartsDeleted,
+        pendingBinaryV4PartsDeleted] = await stage('content-delete', () => deleteOwnedPrefixes([
+        revisionPrefix(userId), revisionPartsPrefix(userId), eventBatchPrefix(userId),
+        chainedBatchPrefix(userId), deviceCheckoutPrefix(userId), uploadPrefix(userId),
+        `users/${userId}/v4-http-parts/v3/`, `users/${userId}/feedback/`, `feedback/v1/index/a-${userId}/`,
+      ]))
+      // Preserve credentials until complete, strongly verified content removal.
+      const [sessionsDeleted, independentSessionsDeleted] = await stage('session-delete', () => deleteOwnedPrefixes([
+        sessionPrefix(usernameHash), independentSessionPrefix(usernameHash),
+      ]))
+      const [authDeleted] = await stage('auth-delete', () => deleteOwnedPrefixes([authPrefix(usernameHash)]))
+      const account = await stage('identity-delete', async () => {
+        const current = await strongJson(accountKey(usernameHash))
+        if (current?.userId !== userId) throw new Error('Account identity changed')
+        await deleteKey(accountKey(usernameHash))
+        if (await strongJson(accountKey(usernameHash)) !== null) throw new Error('Identity deletion unverified')
+        return current
+      })
       return {
         accountDeleted: account !== null,
+        elapsedMs: Date.now() - startedAt, stages,
         authDeleted,
         sessionsDeleted: sessionsDeleted + independentSessionsDeleted,
         independentSessionsDeleted,
