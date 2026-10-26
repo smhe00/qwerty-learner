@@ -1,3 +1,4 @@
+import { profileCircleRequest } from '../_shared/circle/profile.js'
 import { createFeedbackService } from '../_shared/feedback.js'
 /* eslint-env node */
 import { createRequestDiagnostics } from '../_shared/request-diagnostics.js'
@@ -269,7 +270,7 @@ export async function onRequest(context) {
   const circleBody = (path === '/circle/v2' || path.startsWith('/circle/v2/')) &&
     ['POST', 'DELETE'].includes(request.method) ? readJson(request, 8192) : null
   if (circleBody) void circleBody.catch(() => {}) // Preserve rejection until the authenticated dispatcher consumes it.
-  return withHandoffGateway(context, next => onUncoordinatedRequest(next, circleBody))
+  return profileCircleRequest(context, () => withHandoffGateway(context, next => onUncoordinatedRequest(next, circleBody)))
 }
 
 async function onUncoordinatedRequest(context, circleBody = null) {

@@ -53,5 +53,12 @@ test('real Circle handler receives native body before asynchronous account looku
   assert.equal(current.status,202)
   assert.equal(current.body.result.circleId,id)
   assert.equal(reads,6)
+  for (const branch of ['etest','master']) {
+    const profiled=await onRequest({env:{...env,branch},clientIp:'192.0.2.119',request:new Request('https://internal.invalid/api/circle/v2/'+id,{headers:{authorization:'Bearer '+account.token,'x-qwerty-circle-timing':'1'}})})
+    assert.equal(profiled.status,200)
+    const trace=profiled.headers.get('X-Qwerty-Circle-Timing')
+    assert.equal(Boolean(trace),branch==='etest')
+    if(trace){const decoded=JSON.parse(Buffer.from(trace,'base64url'));assert.ok(decoded.spans.some(s=>s.name==='authenticate'));assert.doesNotMatch(JSON.stringify(decoded),new RegExp(account.user.userId))}
+  }
   delete globalThis.__circleNativeStore
 })

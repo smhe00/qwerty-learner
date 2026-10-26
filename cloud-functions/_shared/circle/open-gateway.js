@@ -1,4 +1,5 @@
 /* eslint-env node */
+import { timeCircleStage } from './profile.js'
 import { AppError } from '../core.js'
 import { checkAuthRateLimit } from '../auth-rate-limit.js'
 import { createCircleEventualAssembly } from './assembly.js'
@@ -71,16 +72,16 @@ export function createCircleOpenGateway({ backend, getStore, rateStorage, now = 
             admission = undefined
             return user
           }
-          return backend.me(token)
+          return timeCircleStage('authenticate', () => backend.me(token))
         }
         const limiter = async ({ token }) => {
-          const ipBudget = await checkAuthRateLimit({
+          const ipBudget = await timeCircleStage('limiter_ip', () => checkAuthRateLimit({
             storage: rateStorage, clientIp: 'circle-ip:' + clientIp,
             requestLimit: 60, windowSeconds: 60,
-          })
+          }))
           if (!ipBudget.allowed) return false
           let user
-          try { user = await backend.me(token) }
+          try { user = await timeCircleStage('authenticate', () => backend.me(token)) }
           catch (error) {
             if (error instanceof AppError && error.statusCode === 401) throw error
             throw new AppError(503, 'circle_session_unavailable', 'Circle session unavailable')
@@ -89,10 +90,10 @@ export function createCircleOpenGateway({ backend, getStore, rateStorage, now = 
           if (!SAFE_USER_ID.test(userId || '')) {
             throw new AppError(401, 'invalid_session', 'Valid session required')
           }
-          const accountBudget = await checkAuthRateLimit({
+          const accountBudget = await timeCircleStage('limiter_account', () => checkAuthRateLimit({
             storage: rateStorage, clientIp: 'circle-account:' + userId,
             requestLimit: 60, windowSeconds: 60,
-          })
+          }))
           if (accountBudget.allowed) admission = { token, user }
           return accountBudget.allowed
         }
