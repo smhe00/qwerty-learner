@@ -1,5 +1,5 @@
 # Circle subsecond proposal requiring explicit approval
-Current baseline3711f7c4, ordinary disposable account. Read client3012/3051/3460ms; server2730.7/2796/3256.9ms. Checkin client3161/3162/3337ms; server2909.1/2954.9/3090.4ms. Health182/207/220ms. Two read authentications1428.2-1471.4ms; three checkin authentications1788.5-1962.3ms. Cleanup guard/day I/O is included within those authentication totals, not additive. Each read is roughly35 Blob calls. No instant-write claim.
+Current baseline3711f7c4, ordinary disposable account. Read client3012/3051/3460ms; server2730.7/2796/3256.9ms. Checkin client3161/3162/3337ms; server2909.1/2954.9/3090.4ms. Health182/207/220ms. Two read authentications1428.2-1471.4ms; three checkin authentications1788.5-1962.3ms. Cleanup guard/day I/O is included within those authentication totals, not additive. Each read is roughly37 Blob SDK calls. No instant-write claim.
 
 Safe independent repair: normalize only LIST ETags wrapped as XML &quot;...&quot; before comparing to GET HTTP ETags. Keep strong member listing and live caller checks. A derived nickname cache is never permission authority. This is independent of authentication/cleanup changes.
 
