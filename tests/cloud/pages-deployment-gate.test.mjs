@@ -74,21 +74,3 @@ test('pending deployment is awaited before propagation', async () => {
 test('cancelled deployment remains a hard failure', async () => {
   await assert.rejects(waitForPages(fixture({ conclusion: 'cancelled' }).options), /deployment failed \(cancelled\)/)
 })
-
-
-test('explicit isolated release binds its ref, artifact and live SHA without moving main',async()=>{
- const {options,calls}=fixture()
- options.sourceBranch='release/production-no-handoff-20261026-v2'
- const original=options.fetcher
- options.fetcher=url=>original(url.replace('/git/ref/heads/release/production-no-handoff-20261026-v2','/git/ref/heads/product/main'))
- await waitForPages(options)
- assert.ok(calls.some(url=>url.includes('head_sha='+artifact)))
-})
-test('isolated candidate cannot accept another ref or a superseded release SHA',async()=>{
- const {options}=fixture({advanced:true})
- options.sourceBranch='release/production-no-handoff-20261026-v2'
- const original=options.fetcher
- options.fetcher=url=>original(url.replace('/git/ref/heads/release/production-no-handoff-20261026-v2','/git/ref/heads/product/main'))
- await assert.rejects(waitForPages(options),/candidate superseded/)
- await assert.rejects(waitForPages({...options,sourceBranch:'master'}),/Unapproved Pages source/)
-})

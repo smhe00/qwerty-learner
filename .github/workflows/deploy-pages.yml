@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - product/main
-      - release/production-no-handoff-20261026-v2
 
 # Latest main SHA must supersede older Pages builds or long explorer runs.
 # Only the latest successfully published SHA can satisfy the etest gate.
@@ -19,7 +18,6 @@ permissions:
 env:
   REACT_APP_DEPLOY_ENV: pages
   VITE_QWERTY_SYNC_DISABLED: 'true'
-  PAGES_SOURCE_BRANCH: ${{ github.ref_name }}
 
 jobs:
   deploy:
@@ -29,11 +27,6 @@ jobs:
         node-version: [20.18.0]
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Verify independent release contains only approved runtime files
-        if: github.ref_name == 'release/production-no-handoff-20261026-v2'
-        run: node scripts/verify-completion-release-scope.mjs
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:

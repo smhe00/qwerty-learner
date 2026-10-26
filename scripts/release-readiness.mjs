@@ -1,10 +1,6 @@
 /* eslint-env node */
 import assert from 'node:assert/strict'
-import { RELEASE_BRANCH, verifyReleaseScope } from './verify-completion-release-scope.mjs'
 
-const sourceBranch = process.env.RELEASE_SOURCE_BRANCH || 'product/main'
-assert.ok(['product/main', RELEASE_BRANCH].includes(sourceBranch), 'Unapproved release source')
-const manifest = sourceBranch === RELEASE_BRANCH ? verifyReleaseScope() : null
 const sha = process.env.EXPECTED_SHA
 const repo = process.env.GITHUB_REPOSITORY
 const token = process.env.GH_TOKEN
@@ -25,21 +21,17 @@ async function gh(path) {
   return result.json()
 }
 const [main, etest] = await Promise.all([
-  gh('/branches/' + encodeURIComponent(sourceBranch)),
+  gh('/branches/product%2Fmain'),
   gh('/branches/edgeone-test'),
 ])
-if (manifest) {
-  const production = await gh('/branches/master')
-  assert.equal(production.commit.sha, manifest.productionBase, 'Production advanced during qualification; rebase release scope before publishing')
-}
 assert.equal(etest.commit.sha, sha, 'Staging branch changed during E2E')
-assert.equal(main.commit.sha, sha, 'selected source and etest must contain IDENTICAL commit SHA')
+assert.equal(main.commit.sha, sha, 'main and etest must contain IDENTICAL commit SHA')
 const params = new URLSearchParams({
-  branch: sourceBranch, head_sha: sha, per_page: '30',
+  branch: 'product/main', head_sha: sha, per_page: '30',
 })
 const history = await gh('/actions/workflows/deploy-pages.yml/runs?' + params)
 const pass = history.workflow_runs?.find(run =>
-  run.head_sha === sha && run.head_branch === sourceBranch &&
+  run.head_sha === sha && run.head_branch === 'product/main' &&
   run.status === 'completed' && run.conclusion === 'success')
 assert.ok(pass, 'Published Pages deployment/regression did NOT pass for this SHA')
 const deployed = await fetch('https://smhe00.github.io/qwerty-learner/source-commit.txt', {

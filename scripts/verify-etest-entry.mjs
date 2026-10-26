@@ -1,14 +1,10 @@
 /* eslint-env node */
 // Read-only admission for experimental staging; never moves git refs.
 import assert from 'node:assert/strict'
-import { RELEASE_BRANCH, verifyReleaseScope } from './verify-completion-release-scope.mjs'
-const sourceBranch = process.env.GITHUB_REF_NAME
-assert.ok(['product/main', RELEASE_BRANCH].includes(sourceBranch), 'Unapproved staging source branch')
-if (sourceBranch === RELEASE_BRANCH) verifyReleaseScope()
 const repo = process.env.GITHUB_REPOSITORY
 const sha = process.env.GITHUB_SHA
 const token = process.env.GH_TOKEN
-
+assert.equal(process.env.GITHUB_REF_NAME, 'product/main')
 assert.match(repo || '', /^[\w.-]+\/[\w.-]+$/)
 assert.match(sha || '', /^[a-f0-9]{40}$/)
 assert.ok(token, 'GitHub read token required')
@@ -24,17 +20,17 @@ async function gh(path) {
 }
 async function gate(file) {
   const params = new URLSearchParams({
-    branch: sourceBranch, head_sha: sha, per_page: '30',
+    branch: 'product/main', head_sha: sha, per_page: '30',
   })
   const result = await gh('/actions/workflows/' + file + '/runs?' + params)
   return result.workflow_runs?.find(r =>
-    r.head_sha === sha && r.head_branch === sourceBranch &&
+    r.head_sha === sha && r.head_branch === 'product/main' &&
     r.status === 'completed')
 }
 let evidence = null
 for (let attempt = 0; attempt < 80; attempt += 1) {
   const [main, cloud, pages] = await Promise.all([
-    gh('/branches/' + encodeURIComponent(sourceBranch)),
+    gh('/branches/product%2Fmain'),
     process.env.CLOUD_GATE_JOB_PASSED === 'true'
       ? Promise.resolve({ conclusion: 'success', id: process.env.GITHUB_RUN_ID })
       : gate('cloud-sync.yml'),
@@ -58,7 +54,7 @@ const live = await fetch(
 )
 assert.equal(live.status, 200, 'Live Pages source marker missing')
 assert.equal((await live.text()).trim(), sha, 'Live Pages SHA mismatch')
-const main = await gh('/branches/' + encodeURIComponent(sourceBranch))
+const main = await gh('/branches/product%2Fmain')
 assert.equal(main.commit.sha, sha, 'main changed while verifying Pages')
 const result = { stagingPilotEligible: true, sha, ...evidence,
   etestPromoted: false, fullMultiDeviceGAReady: false,

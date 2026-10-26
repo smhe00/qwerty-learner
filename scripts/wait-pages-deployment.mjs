@@ -3,7 +3,7 @@
 import { appendFileSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 
-export async function waitForPages({ repo, sha, token, phase = 'all', sourceBranch = 'product/main', fetcher = fetch,
+export async function waitForPages({ repo, sha, token, phase = 'all', fetcher = fetch,
   now = Date.now, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)),
   // GitHub-hosted Pages builds have been observed succeeding after ~13min.
   // Wait for the exact GitHub Pages deployment, never accept branch pushes
@@ -11,7 +11,6 @@ export async function waitForPages({ repo, sha, token, phase = 'all', sourceBran
   deploymentTimeout = 1_800_000, propagationTimeout = 180_000, log = console.log }) {
   if (!/^[\w.-]+\/[\w.-]+$/.test(repo || '') || !/^[a-f0-9]{40}$/.test(sha || '') || !token)
     throw new Error('Pages gate requires repository, full source SHA and read token')
-  if (!['product/main','release/production-no-handoff-20261026-v2'].includes(sourceBranch)) throw new Error('Unapproved Pages source branch')
   if (!['all', 'deployment', 'propagation'].includes(phase)) throw new Error('Invalid Pages gate phase')
   async function gh(path) {
     const response = await fetcher(`https://api.github.com/repos/${repo}${path}`, {
@@ -22,8 +21,8 @@ export async function waitForPages({ repo, sha, token, phase = 'all', sourceBran
     return response.json()
   }
   async function assertCandidate() {
-    const ref = await gh('/git/ref/heads/' + sourceBranch)
-    if (ref.object.sha !== sha) throw new Error('Pages candidate superseded: revalidate selected source branch')
+    const ref = await gh('/git/ref/heads/product/main')
+    if (ref.object.sha !== sha) throw new Error('Pages candidate superseded: revalidate latest product/main')
   }
   if (phase !== 'propagation') {
     const deadline = now() + deploymentTimeout
@@ -76,7 +75,7 @@ export async function waitForPages({ repo, sha, token, phase = 'all', sourceBran
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     await waitForPages({ repo: process.env.GITHUB_REPOSITORY, sha: process.env.PAGES_SOURCE_SHA,
-      token: process.env.GH_TOKEN, phase: process.argv[2] || 'all', sourceBranch: process.env.PAGES_SOURCE_BRANCH || 'product/main' })
+      token: process.env.GH_TOKEN, phase: process.argv[2] || 'all' })
   } catch (error) {
     console.error(`::error::${error.message}`)
     if (process.env.GITHUB_STEP_SUMMARY)
