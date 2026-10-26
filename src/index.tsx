@@ -3,6 +3,7 @@
  * may precede the exclusive writer lease and pending-journal check.
  * Legacy users continue without automatic S1 migration.
  */
+import { captureFeedbackRecoveryLink } from './feedback/recovery-link'
 import { loadAuth } from './sync/auth'
 import { presentSafetyDialog, showInformationDialog } from './sync/dialog-presentation'
 import { learningEventSyncEnabled } from './sync/learning-sync-policy'
@@ -215,6 +216,7 @@ async function start(): Promise<void> {
   starting = true
   try {
     await offerSecureLearningEntry(root)
+    captureFeedbackRecoveryLink()
     if (new URLSearchParams(window.location.search).get('learn-block') === '1') {
       const { renderLearnBlockSyncScreen } = await import('./sync/learn-block-sync-ui')
       renderLearnBlockSyncScreen(root, null)

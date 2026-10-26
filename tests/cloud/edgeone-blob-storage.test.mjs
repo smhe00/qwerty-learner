@@ -398,3 +398,15 @@ test('V4 partial Blob upload reports stage/index and never exposes new revision'
   )
   assert.equal(await storage.getLatestRevisionMeta('test-bounded-stage'), null)
 })
+
+test('account cleanup removes private feedback and its index only for the erased owner', async () => {
+  const store = new FakeBlobStore(), storage = createEdgeOneBlobStorage(store)
+  const hash = 'b'.repeat(64), userId = 'a'.repeat(32)
+  await storage.createAccount(hash, { userId, status: 'active' })
+  const own = [`users/${userId}/feedback/v1/thread/root.json`, `users/${userId}/feedback/v1/thread/messages/reply.json`, `feedback/v1/index/a-${userId}/thread.json`]
+  const keep = ['users/other/feedback/v1/thread/root.json', 'feedback/v1/guests/anonymous/thread/root.json']
+  for (const key of [...own, ...keep]) store.objects.set(key, { content: 'private' })
+  await storage.deleteUserData(hash, userId)
+  for (const key of own) assert.equal(store.objects.has(key), false)
+  for (const key of keep) assert.equal(store.objects.has(key), true)
+})

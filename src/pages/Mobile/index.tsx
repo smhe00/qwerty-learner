@@ -1,3 +1,4 @@
+import { openFeedback } from '@/feedback/client'
 import MobileDailyProgress from './MobileDailyProgress'
 import './mobile-app.css'
 import { useMobileCheckpoint } from './useMobileCheckpoint'
@@ -9,7 +10,7 @@ import { accountManagementHref, openAccountManagement } from '@/sync/account-nav
 import { loadAuth } from '@/sync/auth'
 import { secureLearningEntry } from '@/sync/learning-sync-policy'
 import { useAtomValue } from 'jotai'
-import { BookOpen, ChevronRight, CircleUserRound, Cloud, LayoutGrid, Medal, Settings2 } from 'lucide-react'
+import { BookOpen, ChevronRight, CircleUserRound, Cloud, LayoutGrid, Medal, MessageSquare, Settings2 } from 'lucide-react'
 import type { MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -99,6 +100,11 @@ export default function MobilePage() {
               <ChevronRight size={18} aria-hidden="true" className="mobile-menu-chevron" />
             </Link>
           ))}
+          <button type="button" className="mobile-menu-item w-full text-left" onClick={openFeedback}>
+            <span className="mobile-menu-icon"><MessageSquare size={20} aria-hidden="true" /></span>
+            <span className="mobile-menu-text"><strong>反馈与建议</strong></span>
+            <ChevronRight size={18} aria-hidden="true" className="mobile-menu-chevron" />
+          </button>
         </section>
         {secureLearningEntry(window.location.href) && (
           <footer className="mobile-home-footer" role="status">

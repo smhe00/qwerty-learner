@@ -216,7 +216,7 @@ export function createIdleAccounts({ store, adminUserId = '', startAt, automatic
     // Identity is deleted LAST. A failed pass can resume without credentials
     // or a recursive wildcard outside this immutable user's namespaces.
     let deletedObjects = 0
-    const prefixes = [`users/${identity.userId}/`, `accounts/${identity.usernameHash}/`]
+    const prefixes = [`users/${identity.userId}/`, `feedback/v1/index/a-${identity.userId}/`, `accounts/${identity.usernameHash}/`]
     for (const prefix of prefixes) {
       const entries = await list(prefix)
       for (const blob of entries) {

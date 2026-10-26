@@ -1,0 +1,49 @@
+name: Private Feedback UI
+on:
+  push:
+    branches: [product/main]
+    paths:
+      - 'src/feedback/**'
+      - 'src/components/Header/index.tsx'
+      - 'src/pages/Mobile/index.tsx'
+      - 'src/pages/Typing/components/Setting/index.tsx'
+      - 'src/app.tsx'
+      - 'src/index.tsx'
+      - 'cloud-functions/_shared/feedback.js'
+      - 'tests/e2e/feedback.*'
+      - '.github/workflows/feedback.yml'
+  pull_request:
+    paths:
+      - 'src/feedback/**'
+      - 'cloud-functions/_shared/feedback.js'
+      - 'tests/e2e/feedback.*'
+      - '.github/workflows/feedback.yml'
+permissions:
+  contents: read
+jobs:
+  feedback:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn playwright install --with-deps chromium
+      - run: yarn eslint src/feedback cloud-functions/_shared/feedback.js
+      - name: Private conversations and recovery in real UI, synthetic cloud storage
+        run: yarn playwright test --config tests/e2e/feedback.config.ts
+      - name: Pages makes no feedback API requests
+        run: yarn playwright test --config tests/e2e/feedback.config.ts
+        env:
+          FEEDBACK_PAGES: '1'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: feedback-browser-evidence
+          path: |
+            test-results/
+            blob-report/feedback/*.png
+          retention-days: 7

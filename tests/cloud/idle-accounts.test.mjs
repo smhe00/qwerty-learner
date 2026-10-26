@@ -491,3 +491,17 @@ test('administrator metadata tolerates transient read failure and verifies a los
   assert.equal(administrator.userId, registered.user.userId)
   await backend.me(registered.token)
 })
+
+test('idle cleanup erases feedback content and index after the normal drain', async () => {
+  const { idle, store, identity, advance } = fixture()
+  const content = `users/${identity.userId}/feedback/v1/thread/root.json`
+  const index = `feedback/v1/index/a-${identity.userId}/thread.json`
+  const guest = 'feedback/v1/guests/anonymous/thread/root.json'
+  for (const key of [content, index, guest]) store.objects.set(key, { text: 'private' })
+  await idle.run({ dryRun: false })
+  advance(DRAIN_MS + 1)
+  assert.equal((await idle.run({ dryRun: false })).results[0].action, 'deleted')
+  assert.equal(store.objects.has(content), false)
+  assert.equal(store.objects.has(index), false)
+  assert.equal(store.objects.has(guest), true)
+})
