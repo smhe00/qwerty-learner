@@ -7,6 +7,13 @@ on:
   push:
     branches: [edgeone-test]
   workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Optional fixed etest SHA to qualify from product/main (read-only)
+        required: false
+      cloud_run_id:
+        description: Candidate Branch EdgeOne Cloud E2E run ID
+        required: false
 
 permissions:
   contents: read
@@ -152,4 +159,25 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           EXPECTED_SHA: ${{ github.sha }}
+        run: node scripts/release-readiness.mjs
+
+  qualify-frozen-candidate:
+    name: Frozen etest Release Readiness
+    if: github.event_name == 'workflow_dispatch' && github.ref_name == 'product/main' && inputs.candidate_sha != ''
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+      - name: Qualify exact candidate independently of advancing main
+        env:
+          EXPECTED_SHA: ${{ inputs.candidate_sha }}
+          QWERTY_CLOUD_RUN_ID: ${{ inputs.cloud_run_id }}
+          QWERTY_RELEASE_TARGET_BRANCH: edgeone-test
+          GH_TOKEN: ${{ github.token }}
         run: node scripts/release-readiness.mjs
