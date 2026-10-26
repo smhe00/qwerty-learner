@@ -1,0 +1,1238 @@
+{
+  "runtimeSha": "1030f9cd809858e7b14ea9132ae3c2508ef51b04",
+  "harness": "tests/e2e/login-boot-live-diagnostic.spec.ts, independent diagnostic audit branch",
+  "qualification": false,
+  "changeFromOriginal": "read-only wait for C normal background M3 publication, then original UI reauth sequence; original 180s mount assertion retained; extra success/failure timing only",
+  "result": "PASS 1/1 (3.2m)",
+  "cleanup": {
+    "status": 200,
+    "stage": "unspecified"
+  },
+  "originalCI180sFailureReproduced": false,
+  "profileCounts": [
+    {
+      "index": 0,
+      "localRows": 3,
+      "journal": {
+        "pending": false
+      },
+      "adoptions": [
+        {
+          "phase": "adopted",
+          "added": 1
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "localRows": 3,
+      "journal": {
+        "pending": false
+      },
+      "adoptions": []
+    },
+    {
+      "index": 2,
+      "localRows": 3,
+      "journal": {
+        "pending": false
+      },
+      "adoptions": []
+    }
+  ],
+  "loginDurationsMs": [
+    5723,
+    5846,
+    5827,
+    34991,
+    25765,
+    24029,
+    20870,
+    14821,
+    5530
+  ],
+  "firstM4Reauthentication": {
+    "elapsedMs": 34991,
+    "navigation": [
+      {
+        "ms": 1554,
+        "path": "/"
+      },
+      {
+        "ms": 14580,
+        "path": "/"
+      },
+      {
+        "ms": 22836,
+        "path": "/"
+      },
+      {
+        "ms": 23260,
+        "path": "/"
+      },
+      {
+        "ms": 34695,
+        "path": "/"
+      },
+      {
+        "ms": 34699,
+        "path": "/learn"
+      }
+    ],
+    "http": [
+      {
+        "path": "/api/auth/login",
+        "method": "POST",
+        "ms": 1391,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/v2/meta",
+        "method": "GET",
+        "ms": 1851,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/v2/binary/direct",
+        "method": "POST",
+        "ms": 2638,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/events/v2",
+        "method": "POST",
+        "ms": 1618,
+        "status": 201
+      },
+      {
+        "path": "/api/sync/events/v2",
+        "method": "GET",
+        "ms": 1146,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/events/v2/observed",
+        "method": "GET",
+        "ms": 1715,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/events/v2/verify-set",
+        "method": "POST",
+        "ms": 1191,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/events/v2",
+        "method": "GET",
+        "ms": 1200,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/events/v2",
+        "method": "GET",
+        "ms": 1106,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/v2/meta",
+        "method": "GET",
+        "ms": 1223,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/v2/binary/manifest",
+        "method": "GET",
+        "ms": 1252,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/v2/binary/part",
+        "method": "GET",
+        "ms": 1635,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/v2/meta",
+        "method": "GET",
+        "ms": 1180,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/v2/binary/direct",
+        "method": "POST",
+        "ms": 2378,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/v2/meta",
+        "method": "GET",
+        "ms": 1642,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/events/v2",
+        "method": "POST",
+        "ms": 1404,
+        "status": 201
+      },
+      {
+        "path": "/api/sync/events/v2",
+        "method": "GET",
+        "ms": 1168,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/v2/meta",
+        "method": "GET",
+        "ms": 1191,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/events/v2/verify-set",
+        "method": "POST",
+        "ms": 1439,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/events/v2/checkout",
+        "method": "POST",
+        "ms": 1466,
+        "status": 201
+      },
+      {
+        "path": "/api/sync/events/v2/checkout",
+        "method": "GET",
+        "ms": 1245,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/events/v2/observed",
+        "method": "GET",
+        "ms": 1321,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/events/v2/verify-set",
+        "method": "POST",
+        "ms": 351,
+        "status": 503,
+        "code": "request_body_unavailable"
+      },
+      {
+        "path": "/api/health",
+        "method": "GET",
+        "ms": 208,
+        "status": 200
+      }
+    ],
+    "perf": [
+      {
+        "at": "2026-10-26T02:06:58.712Z",
+        "stage": "dexie-export",
+        "elapsedMs": 7.6,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:06:58.714Z",
+        "stage": "source-rows-read",
+        "elapsedMs": 0.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:06:58.716Z",
+        "stage": "source-rows-audit",
+        "elapsedMs": 2.3,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:06:58.717Z",
+        "stage": "snapshot-capture",
+        "elapsedMs": 12.4,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:00.556Z",
+        "stage": "remote-meta",
+        "elapsedMs": 1851.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:00.557Z",
+        "stage": "fingerprint-decision",
+        "elapsedMs": 1.1,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:00.653Z",
+        "stage": "payload-raw"
+      },
+      {
+        "at": "2026-10-26T02:07:00.662Z",
+        "stage": "gzip-compression",
+        "elapsedMs": 8.2,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:00.662Z",
+        "stage": "payload-gzip"
+      },
+      {
+        "at": "2026-10-26T02:07:00.662Z",
+        "stage": "payload-prepare",
+        "elapsedMs": 104.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:03.303Z",
+        "stage": "v4-commit",
+        "elapsedMs": 2639.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:03.304Z",
+        "stage": "upload-request",
+        "elapsedMs": 2640.4,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:03.305Z",
+        "stage": "account-sync",
+        "elapsedMs": 4601.9,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:06.173Z",
+        "stage": "m3-publication",
+        "elapsedMs": 2866.2,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:07.889Z",
+        "stage": "m4-observe",
+        "elapsedMs": 1714.9,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:11.400Z",
+        "stage": "m4-witness",
+        "elapsedMs": 3510.4,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:11.409Z",
+        "stage": "m4-capture",
+        "elapsedMs": 8.4,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:11.414Z",
+        "stage": "m4-candidate",
+        "elapsedMs": 3.6,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:11.456Z",
+        "stage": "m4-materialize",
+        "elapsedMs": 39.9,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:11.499Z",
+        "stage": "m4-transaction",
+        "elapsedMs": 41.2,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:11.500Z",
+        "stage": "guarded-bootstrap",
+        "elapsedMs": 12940,
+        "outcome": "failed"
+      },
+      {
+        "at": "2026-10-26T02:07:11.711Z",
+        "stage": "writer-lease",
+        "elapsedMs": 127,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:11.712Z",
+        "stage": "registry-read",
+        "elapsedMs": 0.6,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:11.714Z",
+        "stage": "journal-check",
+        "elapsedMs": 0.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:11.715Z",
+        "stage": "auth-reconcile",
+        "elapsedMs": 0,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:11.726Z",
+        "stage": "flush-writers",
+        "elapsedMs": 0,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:11.729Z",
+        "stage": "baseline-read",
+        "elapsedMs": 2.9,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:11.734Z",
+        "stage": "dexie-export",
+        "elapsedMs": 7.2,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:11.736Z",
+        "stage": "source-rows-read",
+        "elapsedMs": 0.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:11.738Z",
+        "stage": "source-rows-audit",
+        "elapsedMs": 2.1,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:11.738Z",
+        "stage": "snapshot-capture",
+        "elapsedMs": 12,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:12.951Z",
+        "stage": "remote-meta",
+        "elapsedMs": 1224.9,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:12.952Z",
+        "stage": "fingerprint-decision",
+        "elapsedMs": 1,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:12.954Z",
+        "stage": "merge-journal-read",
+        "elapsedMs": 1,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:15.842Z",
+        "stage": "merge-download",
+        "elapsedMs": 2887.3,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:15.844Z",
+        "stage": "merge-verify-cloud",
+        "elapsedMs": 2.1,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:15.960Z",
+        "stage": "merge-decode-local",
+        "elapsedMs": 14,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:15.973Z",
+        "stage": "merge-decode-cloud",
+        "elapsedMs": 12.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:15.978Z",
+        "stage": "merge-records",
+        "elapsedMs": 3,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:15.998Z",
+        "stage": "merge-decode-candidate",
+        "elapsedMs": 11.4,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:16.002Z",
+        "stage": "merge-build",
+        "elapsedMs": 157.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:16.003Z",
+        "stage": "merge-fingerprint",
+        "elapsedMs": 1,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:16.138Z",
+        "stage": "merge-archive",
+        "elapsedMs": 133.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:16.140Z",
+        "stage": "merge-save-source",
+        "elapsedMs": 1.9,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:17.321Z",
+        "stage": "merge-meta-recheck",
+        "elapsedMs": 1180.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:17.323Z",
+        "stage": "payload-raw"
+      },
+      {
+        "at": "2026-10-26T02:07:17.328Z",
+        "stage": "gzip-compression",
+        "elapsedMs": 5.4,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:17.328Z",
+        "stage": "payload-gzip"
+      },
+      {
+        "at": "2026-10-26T02:07:17.329Z",
+        "stage": "merge-payload",
+        "elapsedMs": 7,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:19.710Z",
+        "stage": "v4-commit",
+        "elapsedMs": 2380,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:19.710Z",
+        "stage": "merge-upload",
+        "elapsedMs": 2380.4,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:19.713Z",
+        "stage": "merge-stage-journal",
+        "elapsedMs": 2.2,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:19.713Z",
+        "stage": "account-sync",
+        "elapsedMs": 7990.9,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:19.714Z",
+        "stage": "guarded-bootstrap",
+        "elapsedMs": 8129.5,
+        "outcome": "failed"
+      },
+      {
+        "at": "2026-10-26T02:07:19.977Z",
+        "stage": "writer-lease",
+        "elapsedMs": 136.4,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:19.978Z",
+        "stage": "registry-read",
+        "elapsedMs": 0.4,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:19.983Z",
+        "stage": "journal-check",
+        "elapsedMs": 3.3,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:19.984Z",
+        "stage": "auth-reconcile",
+        "elapsedMs": 0,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:20.123Z",
+        "stage": "guarded-bootstrap",
+        "elapsedMs": 282.5,
+        "outcome": "failed"
+      },
+      {
+        "at": "2026-10-26T02:07:20.393Z",
+        "stage": "writer-lease",
+        "elapsedMs": 127.4,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:20.393Z",
+        "stage": "registry-read",
+        "elapsedMs": 0.4,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:20.396Z",
+        "stage": "journal-check",
+        "elapsedMs": 0.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:20.397Z",
+        "stage": "auth-reconcile",
+        "elapsedMs": 0,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:20.405Z",
+        "stage": "flush-writers",
+        "elapsedMs": 0,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:20.410Z",
+        "stage": "baseline-read",
+        "elapsedMs": 4.6,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:20.416Z",
+        "stage": "dexie-export",
+        "elapsedMs": 10.6,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:20.418Z",
+        "stage": "source-rows-read",
+        "elapsedMs": 0.9,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:20.420Z",
+        "stage": "source-rows-audit",
+        "elapsedMs": 2.3,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:20.421Z",
+        "stage": "snapshot-capture",
+        "elapsedMs": 15.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:22.048Z",
+        "stage": "remote-meta",
+        "elapsedMs": 1642.7,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:22.049Z",
+        "stage": "fingerprint-decision",
+        "elapsedMs": 1,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:22.050Z",
+        "stage": "account-sync",
+        "elapsedMs": 1646.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:29.988Z",
+        "stage": "m3-publication",
+        "elapsedMs": 7935.6,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:31.311Z",
+        "stage": "m4-observe",
+        "elapsedMs": 1322,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:31.668Z",
+        "stage": "m4-witness",
+        "elapsedMs": 355.2,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:31.669Z",
+        "stage": "guarded-bootstrap",
+        "elapsedMs": 11404.2,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:31.689Z",
+        "stage": "app-module-import",
+        "elapsedMs": 19.5,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:31.690Z",
+        "stage": "entry-to-first-frame",
+        "elapsedMs": 20.3
+      },
+      {
+        "at": "2026-10-26T02:07:31.722Z",
+        "stage": "dictionary-fetch",
+        "elapsedMs": 11.6,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:07:31.740Z",
+        "stage": "dictionary-json-parse",
+        "elapsedMs": 17.7,
+        "outcome": "ok"
+      }
+    ]
+  },
+  "finalLogin": {
+    "elapsedMs": 5530,
+    "navigation": [
+      {
+        "ms": 1484,
+        "path": "/"
+      },
+      {
+        "ms": 5393,
+        "path": "/"
+      },
+      {
+        "ms": 5397,
+        "path": "/learn"
+      }
+    ],
+    "http": [
+      {
+        "path": "/api/auth/login",
+        "method": "POST",
+        "ms": 1286,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/v2/meta",
+        "method": "GET",
+        "ms": 1188,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/events/v2/observed",
+        "method": "GET",
+        "ms": 1021,
+        "status": 200
+      },
+      {
+        "path": "/api/sync/events/v2/verify-set",
+        "method": "POST",
+        "ms": 1506,
+        "status": 200
+      }
+    ],
+    "perf": [
+      {
+        "at": "2026-10-26T02:08:05.352Z",
+        "stage": "baseline-read",
+        "elapsedMs": 2.9,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:05.359Z",
+        "stage": "dexie-export",
+        "elapsedMs": 9.3,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:05.361Z",
+        "stage": "source-rows-read",
+        "elapsedMs": 0.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:05.364Z",
+        "stage": "source-rows-audit",
+        "elapsedMs": 2.2,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:05.364Z",
+        "stage": "snapshot-capture",
+        "elapsedMs": 14.2,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:06.657Z",
+        "stage": "remote-meta",
+        "elapsedMs": 1307.3,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:06.659Z",
+        "stage": "fingerprint-decision",
+        "elapsedMs": 1.6,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:06.660Z",
+        "stage": "merge-journal-read",
+        "elapsedMs": 0.6,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:09.872Z",
+        "stage": "merge-download",
+        "elapsedMs": 3211.5,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:09.876Z",
+        "stage": "merge-verify-cloud",
+        "elapsedMs": 3.6,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:09.970Z",
+        "stage": "merge-decode-local",
+        "elapsedMs": 19,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:09.989Z",
+        "stage": "merge-decode-cloud",
+        "elapsedMs": 19.3,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:09.994Z",
+        "stage": "merge-records",
+        "elapsedMs": 2.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:10.031Z",
+        "stage": "merge-decode-candidate",
+        "elapsedMs": 21.1,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:10.039Z",
+        "stage": "merge-build",
+        "elapsedMs": 162.9,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:10.043Z",
+        "stage": "merge-fingerprint",
+        "elapsedMs": 3.9,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:10.142Z",
+        "stage": "merge-archive",
+        "elapsedMs": 98.1,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:10.145Z",
+        "stage": "merge-save-source",
+        "elapsedMs": 2.6,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:11.337Z",
+        "stage": "merge-meta-recheck",
+        "elapsedMs": 1190.5,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:11.418Z",
+        "stage": "payload-raw"
+      },
+      {
+        "at": "2026-10-26T02:08:11.433Z",
+        "stage": "gzip-compression",
+        "elapsedMs": 14.6,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:11.433Z",
+        "stage": "payload-gzip"
+      },
+      {
+        "at": "2026-10-26T02:08:11.433Z",
+        "stage": "merge-payload",
+        "elapsedMs": 96.6,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:13.990Z",
+        "stage": "v4-commit",
+        "elapsedMs": 2555.6,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:13.990Z",
+        "stage": "merge-upload",
+        "elapsedMs": 2556.2,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:13.995Z",
+        "stage": "merge-stage-journal",
+        "elapsedMs": 3.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:13.995Z",
+        "stage": "account-sync",
+        "elapsedMs": 8647.4,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:13.996Z",
+        "stage": "guarded-bootstrap",
+        "elapsedMs": 8792.9,
+        "outcome": "failed"
+      },
+      {
+        "at": "2026-10-26T02:08:14.217Z",
+        "stage": "writer-lease",
+        "elapsedMs": 130.7,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:14.218Z",
+        "stage": "registry-read",
+        "elapsedMs": 0.4,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:14.224Z",
+        "stage": "journal-check",
+        "elapsedMs": 5.1,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:14.225Z",
+        "stage": "auth-reconcile",
+        "elapsedMs": 0,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:14.469Z",
+        "stage": "guarded-bootstrap",
+        "elapsedMs": 383,
+        "outcome": "failed"
+      },
+      {
+        "at": "2026-10-26T02:08:14.713Z",
+        "stage": "writer-lease",
+        "elapsedMs": 127.1,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:14.714Z",
+        "stage": "registry-read",
+        "elapsedMs": 0.4,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:14.716Z",
+        "stage": "journal-check",
+        "elapsedMs": 0.5,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:14.717Z",
+        "stage": "auth-reconcile",
+        "elapsedMs": 0,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:14.727Z",
+        "stage": "flush-writers",
+        "elapsedMs": 0,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:14.731Z",
+        "stage": "baseline-read",
+        "elapsedMs": 3.4,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:14.741Z",
+        "stage": "dexie-export",
+        "elapsedMs": 12.9,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:14.743Z",
+        "stage": "source-rows-read",
+        "elapsedMs": 1.1,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:14.748Z",
+        "stage": "source-rows-audit",
+        "elapsedMs": 4.3,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:14.748Z",
+        "stage": "snapshot-capture",
+        "elapsedMs": 20.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:15.949Z",
+        "stage": "remote-meta",
+        "elapsedMs": 1221.3,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:15.951Z",
+        "stage": "fingerprint-decision",
+        "elapsedMs": 2.4,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:15.953Z",
+        "stage": "account-sync",
+        "elapsedMs": 1227.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:24.014Z",
+        "stage": "m3-publication",
+        "elapsedMs": 8058.7,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:25.164Z",
+        "stage": "m4-observe",
+        "elapsedMs": 1149.3,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:26.674Z",
+        "stage": "m4-witness",
+        "elapsedMs": 1508.7,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:26.674Z",
+        "stage": "guarded-bootstrap",
+        "elapsedMs": 12088.9,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:26.692Z",
+        "stage": "app-module-import",
+        "elapsedMs": 17.3,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:26.693Z",
+        "stage": "entry-to-first-frame",
+        "elapsedMs": 18.1
+      },
+      {
+        "at": "2026-10-26T02:08:26.721Z",
+        "stage": "dictionary-fetch",
+        "elapsedMs": 10,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:08:26.736Z",
+        "stage": "dictionary-json-parse",
+        "elapsedMs": 15.1,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:08.378Z",
+        "stage": "writer-lease",
+        "elapsedMs": 142.2,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:08.379Z",
+        "stage": "registry-read",
+        "elapsedMs": 0.5,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:08.381Z",
+        "stage": "journal-check",
+        "elapsedMs": 0.5,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:08.382Z",
+        "stage": "auth-reconcile",
+        "elapsedMs": 0,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:08.390Z",
+        "stage": "guarded-bootstrap",
+        "elapsedMs": 153.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:10.304Z",
+        "stage": "writer-lease",
+        "elapsedMs": 129.9,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:10.305Z",
+        "stage": "registry-read",
+        "elapsedMs": 1,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:10.307Z",
+        "stage": "journal-check",
+        "elapsedMs": 0.6,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:10.308Z",
+        "stage": "auth-reconcile",
+        "elapsedMs": 0,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:10.319Z",
+        "stage": "flush-writers",
+        "elapsedMs": 0,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:10.323Z",
+        "stage": "baseline-read",
+        "elapsedMs": 3.4,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:10.334Z",
+        "stage": "dexie-export",
+        "elapsedMs": 14.5,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:10.337Z",
+        "stage": "source-rows-read",
+        "elapsedMs": 1.1,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:10.343Z",
+        "stage": "source-rows-audit",
+        "elapsedMs": 5.7,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:10.343Z",
+        "stage": "snapshot-capture",
+        "elapsedMs": 23.8,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:11.508Z",
+        "stage": "remote-meta",
+        "elapsedMs": 1188.9,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:11.511Z",
+        "stage": "fingerprint-decision",
+        "elapsedMs": 2.4,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:11.512Z",
+        "stage": "account-sync",
+        "elapsedMs": 1195,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:11.520Z",
+        "stage": "m3-publication",
+        "elapsedMs": 5.9,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:12.543Z",
+        "stage": "m4-observe",
+        "elapsedMs": 1021.9,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:14.054Z",
+        "stage": "m4-witness",
+        "elapsedMs": 1510.3,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:14.055Z",
+        "stage": "guarded-bootstrap",
+        "elapsedMs": 3881.7,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:14.072Z",
+        "stage": "app-module-import",
+        "elapsedMs": 17,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:14.073Z",
+        "stage": "entry-to-first-frame",
+        "elapsedMs": 17.7
+      },
+      {
+        "at": "2026-10-26T02:09:14.104Z",
+        "stage": "dictionary-fetch",
+        "elapsedMs": 12.3,
+        "outcome": "ok"
+      },
+      {
+        "at": "2026-10-26T02:09:14.123Z",
+        "stage": "dictionary-json-parse",
+        "elapsedMs": 18.4,
+        "outcome": "ok"
+      }
+    ]
+  },
+  "httpFailures": [
+    {
+      "path": "/api/sync/events/v2/verify-set",
+      "method": "POST",
+      "ms": 351,
+      "status": 503,
+      "code": "request_body_unavailable"
+    }
+  ],
+  "caveats": [
+    "Real A hit M4 adoption, then S2 merge/stage/two reloads, then M3 and M4 checks.",
+    "The live trace does not expose fingerprints, so same-local-candidate equality is proven separately in the local real-Dexie kernel test, not inferred from row counts.",
+    "M4 A transaction was 41.2ms, subsequent S2 account-sync 7990.9ms and M3 publication 7935.6ms.",
+    "One verify-set POST received typed503/request_body_unavailable; no manual replay. Final six sequential reauth steps still completed.",
+    "This diagnostic pass does not erase CI40253418650 or qualify a release SHA."
+  ]
+}

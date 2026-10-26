@@ -42,3 +42,7 @@ Current etest db8f7b76 and its new UI must finish its in-progress checks before 
 ## Confirmed production scope and candidate harness follow-up
 
 Owner confirmed: independent production release; new UI remains on etest. Candidate0ff54518 hard3-device acceptance passed, but historical60s helper and typed prewrite503 rejection probes need the test-only corrections documented in the report. The live-runtime three approved blob hashes remain unchanged. Freeze and qualify the corrected candidate at one SHA, then publish only after required gates. Preserve both failed runs and successful individual paths; never claim the skipped release-ready check passed.
+
+## Formal audit checkpoint after repeated180s failure
+
+1030f9cd hard3-device run40253418650 again failed at post-login mount180s, counts2/3,3/3,3/3. Owner requested state-machine/network-condition analysis. Independent diagnostic branch codex/login-boot-formal-audit-20261026 proves a same-local-candidate redundant S2 recovery path and an all-success bounded timing counterexample. See interactive/tasks/LOGIN-BOOT-FORMAL-AUDIT-20261026.md and its report. Product runtime remains frozen and no publication is authorized by a diagnostic pass. Do not increase180s again or mix these different-harness results into release qualification.

@@ -1,0 +1,163 @@
+{
+  "sourceSha": "1030f9cd809858e7b14ea9132ae3c2508ef51b04",
+  "scope": "real Chromium Dexie and actual S2/M4/merge kernels; synthetic network and fault ports; not live release qualification",
+  "m4": {
+    "phases": [
+      "capture",
+      "stage",
+      "restore",
+      "verify",
+      "seal",
+      "finalize",
+      "complete"
+    ],
+    "baselineCleared": true,
+    "journalCleared": true,
+    "fullLocalEqualsCandidate": true
+  },
+  "sameLocalMerge": {
+    "candidateEqualsLocal": true,
+    "status": "pull-reload-required",
+    "stagedSnapshotEqualsLive": true,
+    "cloudEqualsLive": true,
+    "baselineStillNullAtStage": true,
+    "ioBeforeRecovery": [
+      "meta",
+      "download",
+      "meta",
+      "CAS-upload"
+    ],
+    "afterRecoveryStatus": "noop",
+    "recoveryPhases": [
+      "restoring",
+      "sealing",
+      "committing",
+      "complete"
+    ]
+  },
+  "faults": [
+    {
+      "fault": "none",
+      "status": "pull-reload-required",
+      "writes": 1,
+      "cloudRevision": 2,
+      "journalRetained": true,
+      "baselineAdvanced": false,
+      "safetyChecksPassed": true
+    },
+    {
+      "fault": "metadata-offline",
+      "status": "threw",
+      "writes": 0,
+      "cloudRevision": 1,
+      "journalRetained": false,
+      "baselineAdvanced": false,
+      "safetyChecksPassed": true
+    },
+    {
+      "fault": "download-timeout",
+      "status": "threw",
+      "writes": 0,
+      "cloudRevision": 1,
+      "journalRetained": false,
+      "baselineAdvanced": false,
+      "safetyChecksPassed": true
+    },
+    {
+      "fault": "download-corrupt",
+      "status": "threw",
+      "writes": 0,
+      "cloudRevision": 1,
+      "journalRetained": false,
+      "baselineAdvanced": false,
+      "safetyChecksPassed": true
+    },
+    {
+      "fault": "archive-quota",
+      "status": "threw",
+      "writes": 0,
+      "cloudRevision": 1,
+      "journalRetained": false,
+      "baselineAdvanced": false,
+      "safetyChecksPassed": true
+    },
+    {
+      "fault": "remote-advanced",
+      "status": "threw",
+      "writes": 0,
+      "cloudRevision": 1,
+      "journalRetained": false,
+      "baselineAdvanced": false,
+      "safetyChecksPassed": true
+    },
+    {
+      "fault": "precommit-503",
+      "status": "threw",
+      "writes": 1,
+      "cloudRevision": 1,
+      "journalRetained": false,
+      "baselineAdvanced": false,
+      "safetyChecksPassed": true
+    },
+    {
+      "fault": "commit-ack-lost",
+      "status": "threw",
+      "writes": 1,
+      "cloudRevision": 2,
+      "journalRetained": false,
+      "baselineAdvanced": false,
+      "safetyChecksPassed": true,
+      "nextStatus": "noop"
+    },
+    {
+      "fault": "commit-invalid-ack",
+      "status": "threw",
+      "writes": 1,
+      "cloudRevision": 2,
+      "journalRetained": false,
+      "baselineAdvanced": false,
+      "safetyChecksPassed": true,
+      "nextStatus": "noop"
+    },
+    {
+      "fault": "owner-lost-before-write",
+      "status": "threw",
+      "writes": 0,
+      "cloudRevision": 1,
+      "journalRetained": false,
+      "baselineAdvanced": false,
+      "safetyChecksPassed": true
+    },
+    {
+      "fault": "owner-lost-after-commit",
+      "status": "threw",
+      "writes": 1,
+      "cloudRevision": 2,
+      "journalRetained": false,
+      "baselineAdvanced": false,
+      "safetyChecksPassed": true
+    },
+    {
+      "fault": "stage-before-commit",
+      "status": "threw",
+      "writes": 1,
+      "cloudRevision": 2,
+      "journalRetained": false,
+      "baselineAdvanced": false,
+      "safetyChecksPassed": true
+    },
+    {
+      "fault": "stage-after-commit",
+      "status": "threw",
+      "writes": 1,
+      "cloudRevision": 2,
+      "journalRetained": true,
+      "baselineAdvanced": false,
+      "safetyChecksPassed": true
+    }
+  ],
+  "optionalCheckout": {
+    "publishedButPending": true,
+    "afterFailure": "blocked"
+  }
+}

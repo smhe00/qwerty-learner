@@ -1,0 +1,506 @@
+import { loadBodyPolicy } from './body-policy-loader'
+import { acknowledgeInformationDialog } from './information-dialog'
+import { type BrowserContext, type Page, type Response, expect, test } from '@playwright/test'
+import { writeFile } from 'node:fs/promises'
+
+/**
+ * HARD single-active-session E2E: three real browser profiles independently
+ * learn while offline, then reconnect together. Only the LAST valid token
+ * may use cloud until the other devices explicitly reauthenticate.
+ *
+ * Reauth is permissible; manual Sync, direct merge APIs, test writes to
+ * IndexedDB or forced page reloads to trigger sync are NOT.
+ *
+ * Fails until complete automatic full-V4 local adoption & writeback works.
+ */
+const base = process.env.QWERTY_SYNC_BASE_URL ?? ''
+// Production is permitted ONLY by its dedicated master release workflow.
+// An accidental base-URL override on staging can never create a prod account.
+const productionAcceptance = process.env.QWERTY_PRODUCTION_SYNC_ACCEPTANCE === 'true'
+const expectedOrigin = productionAcceptance ? 'https://q.smhe.cn' : 'https://t.smhe.cn'
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+type Event = { id: number; attemptId: string; dict: string; word: string; timeStamp: number }
+
+async function records(page: Page): Promise<Event[]> {
+  return page.evaluate(async () => {
+    const request = indexedDB.open('RecordDB')
+    request.onupgradeneeded = () => request.transaction?.abort()
+    const db = await new Promise<IDBDatabase>((ok, fail) => {
+      request.onsuccess = () => ok(request.result)
+      request.onerror = () => fail(request.error)
+    })
+    try {
+      const req = db.transaction('wordRecords', 'readonly')
+        .objectStore('wordRecords').getAll()
+      return await new Promise<Event[]>((ok, fail) => {
+        req.onsuccess = () => ok(req.result as Event[])
+        req.onerror = () => fail(req.error)
+      })
+    } finally { db.close() }
+  })
+}
+async function journalEvidence(page: Page) {
+  return page.evaluate(async () => {
+    const req = indexedDB.open('QwertyPlusWorkspaceVaultV1')
+    req.onupgradeneeded = () => req.transaction?.abort()
+    const vault = await new Promise<IDBDatabase>((ok, fail) => {
+      req.onsuccess = () => ok(req.result)
+      req.onerror = () => fail(req.error)
+    })
+    const read = (store: string, key: string) => new Promise<any>((ok, fail) => {
+      const req = vault.transaction(store, 'readonly').objectStore(store).get(key)
+      req.onsuccess = () => ok(req.result)
+      req.onerror = () => fail(req.error)
+    })
+    try {
+      const pending = await read('registry', 'sync-m4-merge-journal:v1')
+      if (!pending) return { pending: false }
+      const rollback = await read('snapshots', pending.rollbackKey)
+      const original = JSON.parse(rollback.json), candidate = JSON.parse(pending.candidateJson)
+      // Independent implementation of the V4 logical digest. Only boolean
+      // comparisons and per-table counts leave this browser; no IDs/digests.
+      const stable = (value: any): string => {
+        if (value === null || typeof value !== 'object') return JSON.stringify(value)
+        if (Array.isArray(value)) return '[' + value.map(stable).join(',') + ']'
+        return '{' + Object.keys(value).sort().filter(k => value[k] !== undefined)
+          .map(k => JSON.stringify(k) + ':' + stable(value[k])).join(',') + '}'
+      }
+      const sort = (values: any[], key: (v: any) => any) => values
+        .map(value => ({ value, key: stable(key(value)) }))
+        .sort((a, b) => a.key.localeCompare(b.key)).map(x => x.value)
+      const fingerprint = async (snapshot: any) => {
+        const data = snapshot.workspaceData, db = data.database.data
+        const logical = { database: {
+          tables: sort(db.tables, t => t.name),
+          data: sort(db.data.map((g: any) => ({ ...g, rows: sort(g.rows, x => x) })), g => g.tableName),
+        }, learnRuntime: data.learnRuntime, settings: data.settings, navigation: data.navigation }
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stable(logical)))
+        return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('')
+      }
+      const names = ['wordRecords', 'chapterRecords', 'reviewRecords',
+        'reviewWordStates', 'achievementEvents', 'achievementStates']
+      const counts = (snap: any) => Object.fromEntries(names.map(name => [name,
+        snap.workspaceData.database.data.data.find((g: any) => g.tableName === name)?.rows.length ?? -1]))
+      return { pending: true,
+        originalVerified: await fingerprint(original) === pending.originalFingerprint,
+        candidateVerified: await fingerprint(candidate) === pending.candidateFingerprint,
+        originalCounts: counts(original), candidateCounts: counts(candidate) }
+    } finally { vault.close() }
+  }).catch(() => ({ unavailable: true }))
+}
+async function api(path: string, method: string, input: object, token?: string) {
+  const { retrySafeBodyRequest } = await loadBodyPolicy()
+  return retrySafeBodyRequest(async () => {
+    const response = await fetch(new URL(path, base), {
+      method, redirect: 'error', cache: 'no-store',
+      headers: { 'Content-Type': 'application/json',
+        ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+      body: JSON.stringify(input),
+      signal: AbortSignal.timeout(40_000),
+    })
+    return { status: response.status, body: await response.json() }
+  }, { path, method })
+}
+async function openAccount(page: Page, username: string, password: string) {
+  await page.goto(new URL('/?s1-account=manage', base).href,
+    { waitUntil: 'domcontentloaded' })
+  const dialog = page.locator('[data-account]')
+  await expect(dialog).toBeVisible({ timeout: 55_000 })
+  const reauthToggle = page.getByRole('button', { name: '重新验证登录', exact: true })
+  if (await reauthToggle.isVisible().catch(() => false)) await reauthToggle.click()
+  await page.getByLabel('用户名', { exact: true }).fill(username)
+  await page.getByLabel('账户密码', { exact: true }).fill(password)
+  page.on('dialog', d => d.accept())
+  const reauth = page.getByRole('button', { name: '确认重新登录', exact: true })
+  const signIn = page.getByRole('button', { name: '登录', exact: true })
+  const previousUrl = page.url()
+  const authStatuses: string[] = []
+  // Status only: avoid exposing user identity, token or response bodies.
+  const onAuthResponse = (response: Response) => {
+    try {
+      const path = new URL(response.url()).pathname
+      if (path === '/api/auth/login' || path === '/api/auth/register') {
+        authStatuses.push(path + ':HTTP-' + response.status())
+      }
+    } catch { /* Ignore unrelated navigation */ }
+  }
+  const loginStartedAt = Date.now()
+  const navigation: Array<Record<string, unknown>> = []
+  const onNavigation = (frame: any) => {
+    if (frame === page.mainFrame()) navigation.push({ ms: Date.now() - loginStartedAt, path: new URL(frame.url()).pathname })
+  }
+  page.on('framenavigated', onNavigation)
+  const observedHttp: Array<Record<string, unknown>> = []
+  const inflight = new Map<any, { path: string, method: string, at: number }>()
+  const onRequest = (request: any) => {
+    const url = new URL(request.url())
+    if (url.origin === expectedOrigin && url.pathname.startsWith('/api/'))
+      inflight.set(request, { path: url.pathname, method: request.method(), at: Date.now() })
+  }
+  const onFinished = (request: any) => inflight.delete(request)
+  const onFailed = (request: any) => {
+    const item = inflight.get(request)
+    if (item) observedHttp.push({ path: item.path, method: item.method,
+      ms: Date.now() - item.at, failed: String(request.failure()?.errorText ?? '').slice(0,80) })
+    inflight.delete(request)
+  }
+  const onAllResponse = (response: any) => {
+    const item = inflight.get(response.request())
+    if (!item) return
+    const row: Record<string, unknown> = { path: item.path, method: item.method,
+      ms: Date.now() - item.at, status: response.status() }
+    observedHttp.push(row)
+    if (response.status() >= 400) void response.json().then((body: any) => {
+      if (/^[a-z][a-z0-9_-]{0,79}$/.test(body?.error ?? '')) row.code = body.error
+    }).catch(() => {})
+  }
+  page.on('request', onRequest)
+  page.on('requestfinished', onFinished)
+  page.on('requestfailed', onFailed)
+  page.on('response', onAllResponse)
+  page.on('response', onAuthResponse)
+  try {
+    // A staging-only disposable test account may retry ONE explicit HTTP 500.
+    // No retry for timeouts/unknown POST outcomes or a successful auth,
+    // which could otherwise revoke a valid single-active session.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = page.waitForResponse(async r => {
+        if (new URL(r.url()).pathname !== '/api/auth/login') return false
+        if (r.status() !== 503) return true
+        const body = await r.json().catch(() => null)
+        const { safeBodyReadFailure } = await loadBodyPolicy()
+        return !safeBodyReadFailure('/api/auth/login', 'POST', r.status(), body)
+      }, { timeout: 45_000 })
+      if (await reauth.isVisible().catch(() => false)) await reauth.click()
+      else await signIn.click()
+      const status = (await response).status()
+      if (status === 500 && attempt === 0 && page.url() === previousUrl) {
+        console.log('E2E_AUTH_TRANSIENT_RETRY', JSON.stringify({
+          status, attempt: attempt + 1,
+        }))
+        await expect(page.locator('[role="status"]')).toContainText(
+          '暂时无法完成认证', { timeout: 15_000 })
+        await page.waitForTimeout(2_500)
+        continue
+      }
+      expect(status, 'explicit login HTTP status').toBe(200)
+      break
+    }
+    // S1 is a PRE-MOUNT account transaction: it must finish and replace
+    // the document before the new auth state can be inspected reliably.
+    await expect(page).not.toHaveURL(previousUrl, { timeout: 60_000 })
+    await expect.poll(async () => page.evaluate(() => {
+      const raw = localStorage.getItem('qwerty.cloudAuth.v1')
+      const item = raw ? JSON.parse(raw) : null
+      return item?.user?.username ?? null
+    }).catch(() => null), { timeout: 60_000 }).toBe(username)
+    // Full S2 Pull can replace the document twice: entering recovery is not
+    // proof that the guarded restore and application mount have completed.
+    // Pinned real-cloud diagnosis proved a successful full-V4 restore can
+    // still be publishing/verifying immutable evidence at 60s, then mount
+    // naturally around 80s. Preserve all exact readback/3-device assertions;
+    // only this live login phase gets a bounded network startup budget.
+    await acknowledgeInformationDialog(page, 180_000)
+    await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByText('学习数据安全检查未通过')).toHaveCount(0)
+    console.log('THREE_BOOT_SUCCESS_REDACTED', JSON.stringify({
+      elapsedMs: Date.now() - loginStartedAt, navigation, http: observedHttp,
+      perf: await page.evaluate(() => {
+        try { return JSON.parse(sessionStorage.getItem('qwerty.perf-diagnostics.v1') || '[]')
+          .slice(-80).map((x: any) => ({ at: x.at, stage: x.stage, elapsedMs: x.elapsedMs, outcome: x.outcome })) }
+        catch { return [] }
+      }),
+    }))
+  } catch (error) {
+    // Redact credentials; keep only the public navigational failure
+    // evidence. Do not retry an uncertain S1 ownership transition.
+    console.error('S1 relay login checkpoint failed', {
+      path: new URL(page.url()).pathname,
+      authStatuses,
+      hasLoginDialog: await dialog.isVisible().catch(() => false),
+      status: (await page.locator('[role="status"]').allTextContents()
+        .catch(() => [])).slice(0, 3).map(x => x.slice(0, 120)),
+    })
+    const sample = async () => ({
+      page: await page.evaluate(() => ({
+        path: location.pathname,
+        body: document.body.innerText.slice(0,1600).replace(/e2e_fork_[0-9_]+/g,'[fixture-account]'),
+        accountEntry: document.querySelectorAll('[data-account-entry]').length,
+        startup: sessionStorage.getItem('qwerty.s2.startup-check.v1'),
+        perf: (() => {
+          try { return JSON.parse(sessionStorage.getItem('qwerty.perf-diagnostics.v1') || '[]')
+            .slice(-24).map((x: any) => ({ stage: x.stage, elapsedMs: x.elapsedMs, outcome: x.outcome })) }
+          catch { return [] }
+        })(),
+      })).catch(() => ({ unavailable: true })),
+      pending: [...inflight.values()].map(x => ({ path: x.path, method: x.method, ageMs: Date.now()-x.at })),
+      http: observedHttp.slice(-60),
+    })
+    console.log('THREE_BOOT_FAILURE_REDACTED', JSON.stringify(await sample()))
+    // Preserve the failure. Only observe natural boot; no reload, click or replay.
+    for (let elapsed = 10; elapsed <= 90; elapsed += 10) {
+      await page.waitForTimeout(10_000)
+      const state = await sample()
+      console.log('THREE_BOOT_NATURAL_REDACTED', JSON.stringify({ elapsed, ...state }))
+      if (await page.locator('[data-account-entry]').isVisible().catch(() => false)) break
+    }
+    throw error
+  } finally {
+    page.off('framenavigated', onNavigation)
+    page.off('request', onRequest)
+    page.off('requestfinished', onFinished)
+    page.off('requestfailed', onFailed)
+    page.off('response', onAllResponse)
+    page.off('response', onAuthResponse)
+  }
+}
+async function beginLearn(page: Page) {
+  await page.goto(new URL('/learn', base).href, { waitUntil: 'domcontentloaded' })
+  await acknowledgeInformationDialog(page)
+  const start = page.getByRole('button', { name: '开始 Learn', exact: true })
+  await expect(start).toBeVisible({ timeout: 35_000 })
+  await start.click()
+  const word = page.locator('[data-typing-word]').first()
+  await expect(word).toBeVisible({ timeout: 35_000 })
+  const spelling = await word.getAttribute('data-typing-word')
+  expect(spelling).toBeTruthy()
+  return spelling!
+}
+async function study(page: Page, spelling: string): Promise<Event> {
+  const seen = new Set((await records(page)).map(r => r.attemptId))
+  if (await page.getByText('按任意键开始').isVisible().catch(() => false)) {
+    await page.keyboard.press('a')
+  }
+  await page.keyboard.type(spelling)
+  let added: Event | undefined
+  await expect.poll(async () => {
+    added = (await records(page)).find(r => r.attemptId && !seen.has(r.attemptId))
+    return added?.attemptId ?? null
+  }, { timeout: 50_000 }).not.toBeNull()
+  expect(uuid.test(added?.attemptId ?? ''), 'new attempt has a UUID').toBe(true)
+  return added!
+}
+async function authStatus(page: Page) {
+  return page.evaluate(async () => {
+    const raw = localStorage.getItem('qwerty.cloudAuth.v1')
+    const token = raw ? JSON.parse(raw)?.token : null
+    if (!token) return { status: 0, error: 'no-token' }
+    const res = await fetch('/api/auth/me', {
+      headers: { Authorization: 'Bearer ' + token },
+      cache: 'no-store',
+    })
+    const body = await res.json()
+    return { status: res.status, error: body.error || null }
+  })
+}
+async function assertDurable(page: Page, event: Event) {
+  // Only retry READS across guarded S2/M4 navigation. The same exact UUID
+  // count and immutable fields must eventually be present; no writes replay.
+  let rows: Event[] = []
+  await expect.poll(async () => {
+    rows = (await records(page).catch(() => [])).filter(x => x.attemptId === event.attemptId)
+    return rows.length === 1 && rows[0].dict === event.dict &&
+      rows[0].word === event.word && rows[0].timeStamp === event.timeStamp
+  }, { timeout: 20_000, message: 'exact immutable attempt after pre-mount recovery' }).toBe(true)
+  expect(rows.length, 'exactly one immutable attempt').toBe(1)
+  expect(rows[0].dict === event.dict, 'immutable dictionary preserved').toBe(true)
+  expect(rows[0].word === event.word, 'immutable word preserved').toBe(true)
+  expect(rows[0].timeStamp === event.timeStamp, 'immutable timestamp preserved').toBe(true)
+}
+
+test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 adoption', async ({ browser }, testInfo) => {
+  test.setTimeout(1_000_000)
+  expect(process.env.GITHUB_REF_NAME).toBe(productionAcceptance ? 'master' : 'edgeone-test')
+  expect(new URL(base).origin).toBe(expectedOrigin)
+  expect(process.env.GITHUB_RUN_ID).toMatch(/^\d+$/)
+  const username = 'e2e_fork_' + process.env.GITHUB_RUN_ID + '_' +
+    (process.env.GITHUB_RUN_ATTEMPT || '1')
+  const password = 'E2E-' + crypto.randomUUID() + '-test'
+  const contexts: BrowserContext[] = []
+  const profilePages: Page[] = []
+  let userId: string | undefined
+  const failures: unknown[] = []
+  try {
+    // No account creation until the actual deployment and single-session
+    // gateway match this exact source SHA. Applies to staging AND production.
+    const expectedSha = process.env.GITHUB_SHA ?? ''
+    expect(expectedSha).toMatch(/^[a-f0-9]{40}$/)
+    const marker = await fetch(new URL('/source-commit.txt?sync_probe=' +
+      expectedSha + '-' + Date.now(), base), {
+      cache: 'no-store', signal: AbortSignal.timeout(15_000),
+    })
+    expect(marker.status).toBe(200)
+    const deployedSha = (await marker.text()).trim()
+    expect(deployedSha).toMatch(/^[a-f0-9]{7,40}$/)
+    expect(expectedSha.startsWith(deployedSha), 'actual deployment matches test SHA').toBe(true)
+    const health = await fetch(new URL('/api/health', base), {
+      cache: 'no-store', signal: AbortSignal.timeout(15_000),
+    })
+    expect(health.status).toBe(200)
+    const healthBody = await health.json()
+    expect(healthBody.authMode).toBe('single-active-session')
+    expect(healthBody.eventPilotMode).toBe('immutable-events-only')
+    expect(healthBody.capabilities).toContain('single-session-event-no-env-v1')
+    const pages: Page[] = []
+    for (let i = 0; i < 3; i++) {
+      const ctx = await browser.newContext({ serviceWorkers: 'block' })
+      contexts.push(ctx)
+      const page = await ctx.newPage()
+      pages.push(page)
+      profilePages.push(page)
+    }
+    if (productionAcceptance) {
+      const assetStatuses: number[] = []
+      pages[0].on('response', response => {
+        const url = new URL(response.url())
+        if (url.origin === expectedOrigin &&
+            /^\/assets\/[^/]+\.js$/.test(url.pathname)) assetStatuses.push(response.status())
+      })
+      await pages[0].goto(base, { waitUntil: 'domcontentloaded' })
+      const footer = pages[0].getByRole('link', { name: /^当前版本 [a-f0-9]+，查看对应 Git commit$/ })
+      await expect(footer).toBeVisible({ timeout: 60_000 })
+      const version = (await footer.getAttribute('href'))?.split('/').pop() ?? ''
+      expect(version).toMatch(/^[a-f0-9]{7,40}$/)
+      expect(expectedSha.startsWith(version), 'rendered production footer matches release').toBe(true)
+      expect(assetStatuses.length, 'real browser loaded production JavaScript').toBeGreaterThan(0)
+      expect(assetStatuses.every(status => status === 200), 'loaded production assets succeeded').toBe(true)
+      console.log('PRODUCTION_BROWSER_VERSION_VERIFIED', JSON.stringify({ loadedScripts: assetStatuses.length }))
+    }
+    const newAccount = await api('/api/auth/register', 'POST', {
+      username, password, deviceId: 'qwerty-web-' + crypto.randomUUID(),
+    })
+    expect(newAccount.status).toBe(201)
+    userId = newAccount.body.user?.userId
+    expect(userId).toBeTruthy()
+    // Production policy: signing in on B invalidates A; signing in on C
+    // invalidates B. Each learns while OFFLINE with its own durable RecordDB.
+    const branches: Event[] = []
+    for (let i = 0; i < pages.length; i++) {
+      await openAccount(pages[i], username, password)
+      const spelling = await beginLearn(pages[i])
+      await contexts[i].setOffline(true)
+      branches.push(await study(pages[i], spelling))
+      await assertDurable(pages[i], branches[i])
+    }
+    expect(new Set(branches.map(x => x.attemptId)).size).toBe(3)
+    // All three reconnect simultaneously, but only C has a valid cloud
+    // session. Revoked A/B MUST NOT upload or erase their local branches.
+    await Promise.all(contexts.map(ctx => ctx.setOffline(false)))
+    for (let i = 0; i < 2; i++) {
+      await expect.poll(async () => (await authStatus(pages[i]).catch(() => ({ error: 'read-unavailable' }))).error,
+        { timeout: 25_000 }).toBe('session_revoked')
+      await assertDurable(pages[i], branches[i])
+    }
+    expect((await authStatus(pages[2])).status).toBe(200)
+    // Diagnostic scheduling constraint: wait read-only for C's normal background
+    // event publication before handing its session away. No Sync click or replay.
+    await expect.poll(() => pages[2].evaluate(() => {
+      const entries = JSON.parse(sessionStorage.getItem('qwerty.learning-sync-diagnostics.v1') || '[]')
+      return entries.some((x: any) => x.stage === 'm3-publication' && x.status === 'uploaded-events-only')
+    }), { timeout: 60_000 }).toBe(true)
+    console.log('THREE_C_BACKGROUND_PUBLICATION_OBSERVED')
+
+    // From here onward the ONLY permitted user action is to reauthenticate
+    // the old session when it needs cloud access. No manual Sync is clicked.
+    const expected = branches.map(r => r.attemptId).sort()
+    for (const [handoff, i] of [0, 1, 2, 0, 1, 2].entries()) {
+      await openAccount(pages[i], username, password)
+      await expect.poll(async () => (await authStatus(pages[i]).catch(() => ({ status: 0 }))).status,
+        { timeout: 20_000 }).toBe(200)
+      // The last relogin must see the complete preserved event union.
+      if (handoff >= 2) {
+        await expect.poll(async () => {
+          // Background S1-preboot adoption deliberately replaces the document.
+          // A transient destroyed JS context is not a data result; retry
+          // the READ-ONLY poll after navigation, retaining the strict 3/3 gate.
+          const rows = await records(pages[i]).catch(() => [])
+          const found = rows.map(r => r.attemptId).sort()
+          return found.length === expected.length &&
+            found.every((id, index) => id === expected[index])
+        }, {
+          timeout: 150_000,
+          message: 'full-V4 automatic convergence after single-session handoff',
+        }).toBe(true)
+      }
+      await assertDurable(pages[i], branches[i])
+    }
+    // Every previously reauthenticated device must retain its own WordRecord.
+    // Sync completion is only proven by the exact full union on the final
+    // active client; a server M3 event witness alone cannot pass this test.
+    for (let i = 0; i < pages.length; i++) {
+      for (const branch of branches) await assertDurable(pages[i], branch)
+      expect((await records(pages[i])).length, 'exact three-attempt final union').toBe(3)
+    }
+    console.log('PASS: single-session three offline forks auto-merged after staged reauth')
+  } catch (error) {
+    failures.push(error)
+    console.error('E2E_M4_APPLICATION_FAILED')
+  } finally {
+    const diagnostic = await Promise.all(profilePages.map(async (page, index) => {
+      const rows = await records(page).catch(() => [])
+      // Production build drops console calls. Read ONLY the explicitly
+      // redacted etest session diagnostic; never read auth or learning data.
+      const phases = await page.evaluate(() => {
+        const raw = sessionStorage.getItem('qwerty.etest.m4.stageTrace.v1')
+        const entries: unknown = raw ? JSON.parse(raw) : []
+        if (!Array.isArray(entries)) return []
+        const allowed = /^[a-z][a-z0-9-]{0,63}$/
+        return entries.slice(-48).map(item => {
+          if (!item || typeof item !== 'object') return null
+          const safe: Record<string, string | number | boolean> = {}
+          for (const [name, value] of Object.entries(item)) {
+            if (!allowed.test(name)) continue
+            if (typeof value === 'string' && allowed.test(value)) safe[name] = value
+            else if (typeof value === 'number' && Number.isSafeInteger(value) &&
+              value >= 0 && value <= 100000) safe[name] = value
+            else if (typeof value === 'boolean') safe[name] = value
+          }
+          return safe
+        }).filter(Boolean)
+      }).catch(() => [])
+      return { index, localRows: rows.length, witnessPhases: phases,
+        journal: await journalEvidence(page) }
+    }))
+    console.log('E2E_M4_THREE_DEVICE_COUNTS', JSON.stringify(diagnostic))
+    await writeFile(testInfo.outputPath('m4-three-device-redacted-trace.json'),
+      JSON.stringify({ applicationFailed: failures.length > 0, profiles: diagnostic }, null, 2))
+    await Promise.allSettled(contexts.map(ctx => ctx.close()))
+    try { if (userId) {
+      expect(username).toMatch(/^e2e_fork_\d+_\d+$/)
+      const fresh = await api('/api/auth/login', 'POST', {
+        username, password, deviceId: 'qwerty-web-' + crypto.randomUUID(),
+      })
+      if (fresh.status >= 500) {
+        const stage = fresh.body.failureStage || fresh.body.details?.stage
+        console.log('E2E_CLEANUP_AUTH_FAILURE', JSON.stringify({ status: fresh.status,
+          stage: typeof stage === 'string' && /^[A-Za-z0-9-]{1,80}$/.test(stage) ? stage : 'unspecified',
+          requestId: typeof fresh.body.requestId === 'string' && /^[A-Za-z0-9-]{1,128}$/.test(fresh.body.requestId) ? fresh.body.requestId : undefined }))
+      }
+      expect(fresh.status).toBe(200)
+      expect(fresh.body.user?.userId === userId, 'cleanup identity matches created account').toBe(true)
+      const removed = await api('/api/auth/account', 'DELETE',
+        { currentPassword: password }, fresh.body.token)
+      // Fixed diagnostic codes only, never provider messages or account IDs.
+      console.log('E2E_ACCOUNT_CLEANUP', JSON.stringify({ status: removed.status,
+        stage: ['identity', 'circle-activity', 'request-body', 'content-delete'].includes(
+          removed.body.details?.stage) ? removed.body.details.stage : 'unspecified' }))
+      expect(removed.status).toBe(200)
+      expect(removed.body.deleted?.accountDeleted).toBe(true)
+    } } catch (error) {
+      failures.push(error)
+      console.error('E2E_ACCOUNT_CLEANUP_FAILED')
+    }
+  }
+  if (failures.length === 1) throw failures[0]
+  if (failures.length > 1) {
+    const combined = new AggregateError(failures,
+      'Application convergence and disposable-account cleanup failed independently')
+    // Playwright 1.40 serializes Error.stack, not AggregateError.errors.
+    // Preserve both assertion stacks so teardown cannot hide the first error.
+    combined.stack = [combined.message, ...failures.map((error, index) =>
+      (index === 0 ? 'APPLICATION: ' : 'CLEANUP: ') +
+      (error instanceof Error ? error.stack : 'non-error failure'))].join('\n')
+    throw combined
+  }
+})

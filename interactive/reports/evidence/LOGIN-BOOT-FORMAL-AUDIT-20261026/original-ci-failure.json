@@ -1,0 +1,485 @@
+{
+  "sourceSha": "1030f9cd809858e7b14ea9132ae3c2508ef51b04",
+  "ciRun": "https://github.com/smhe00/qwerty-learner/actions/runs/40253418650",
+  "failure": "180000ms account entry not visible after login HTTP200",
+  "causeNotProven": true,
+  "profiles": [
+    {
+      "index": 0,
+      "localRows": 2,
+      "witnessPhases": [
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "idle",
+          "scanned": 0
+        },
+        {
+          "phase": "observed",
+          "status": "blocked",
+          "reason": "no-observed-device-heads"
+        },
+        {
+          "phase": "skipped"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "idle",
+          "scanned": 0
+        },
+        {
+          "phase": "observed",
+          "status": "blocked",
+          "reason": "no-observed-device-heads"
+        },
+        {
+          "phase": "skipped"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "skipped",
+          "reason": "account-or-tool-query"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "uploaded-events-only",
+          "remaining": 0,
+          "scanned": 1
+        },
+        {
+          "phase": "observed",
+          "status": "heads-observed-only"
+        },
+        {
+          "phase": "witnessed",
+          "status": "witnessed",
+          "reason": "verified-prefix-only"
+        },
+        {
+          "phase": "candidate",
+          "status": "candidate",
+          "added": 1
+        },
+        {
+          "phase": "scratch",
+          "step": "validate"
+        },
+        {
+          "phase": "scratch",
+          "step": "schema"
+        },
+        {
+          "phase": "scratch",
+          "step": "import"
+        },
+        {
+          "phase": "scratch",
+          "step": "readback"
+        },
+        {
+          "phase": "scratch",
+          "step": "audit-proposal"
+        },
+        {
+          "phase": "scratch",
+          "step": "export"
+        },
+        {
+          "phase": "scratch",
+          "step": "audit-normalized"
+        },
+        {
+          "phase": "scratch",
+          "step": "validated"
+        },
+        {
+          "phase": "materialized",
+          "added": 1
+        },
+        {
+          "phase": "transaction",
+          "step": "capture"
+        },
+        {
+          "phase": "transaction",
+          "step": "stage"
+        },
+        {
+          "phase": "transaction",
+          "step": "restore"
+        },
+        {
+          "phase": "transaction",
+          "step": "verify"
+        },
+        {
+          "phase": "transaction",
+          "step": "seal"
+        },
+        {
+          "phase": "transaction",
+          "step": "finalize"
+        },
+        {
+          "phase": "transaction",
+          "step": "complete"
+        },
+        {
+          "phase": "adopted",
+          "added": 1
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "uploaded-events-only",
+          "remaining": 0,
+          "scanned": 2
+        },
+        {
+          "phase": "observed",
+          "status": "heads-observed-only"
+        },
+        {
+          "phase": "witnessed",
+          "status": "unchanged",
+          "reason": "verified-prefix-already-local"
+        },
+        {
+          "phase": "skipped",
+          "reason": "verified-prefix-already-local"
+        }
+      ],
+      "journal": {
+        "pending": false
+      }
+    },
+    {
+      "index": 1,
+      "localRows": 3,
+      "witnessPhases": [
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "idle",
+          "scanned": 0
+        },
+        {
+          "phase": "observed",
+          "status": "blocked",
+          "reason": "no-observed-device-heads"
+        },
+        {
+          "phase": "skipped"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "idle",
+          "scanned": 0
+        },
+        {
+          "phase": "observed",
+          "status": "blocked",
+          "reason": "no-observed-device-heads"
+        },
+        {
+          "phase": "skipped"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "skipped",
+          "reason": "account-or-tool-query"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "uploaded-events-only",
+          "remaining": 0,
+          "scanned": 1
+        },
+        {
+          "phase": "observed",
+          "status": "heads-observed-only"
+        },
+        {
+          "phase": "witnessed",
+          "status": "witnessed",
+          "reason": "verified-prefix-only"
+        },
+        {
+          "phase": "candidate",
+          "status": "candidate",
+          "added": 2
+        },
+        {
+          "phase": "scratch",
+          "step": "validate"
+        },
+        {
+          "phase": "scratch",
+          "step": "schema"
+        },
+        {
+          "phase": "scratch",
+          "step": "import"
+        },
+        {
+          "phase": "scratch",
+          "step": "readback"
+        },
+        {
+          "phase": "scratch",
+          "step": "audit-proposal"
+        },
+        {
+          "phase": "scratch",
+          "step": "export"
+        },
+        {
+          "phase": "scratch",
+          "step": "audit-normalized"
+        },
+        {
+          "phase": "scratch",
+          "step": "validated"
+        },
+        {
+          "phase": "materialized",
+          "added": 2
+        },
+        {
+          "phase": "transaction",
+          "step": "capture"
+        },
+        {
+          "phase": "transaction",
+          "step": "stage"
+        },
+        {
+          "phase": "transaction",
+          "step": "restore"
+        },
+        {
+          "phase": "transaction",
+          "step": "verify"
+        },
+        {
+          "phase": "transaction",
+          "step": "seal"
+        },
+        {
+          "phase": "transaction",
+          "step": "finalize"
+        },
+        {
+          "phase": "transaction",
+          "step": "complete"
+        },
+        {
+          "phase": "adopted",
+          "added": 2
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "uploaded-events-only",
+          "remaining": 0,
+          "scanned": 3
+        },
+        {
+          "phase": "observed",
+          "status": "heads-observed-only"
+        },
+        {
+          "phase": "witnessed",
+          "status": "unchanged",
+          "reason": "verified-prefix-already-local"
+        },
+        {
+          "phase": "skipped",
+          "reason": "verified-prefix-already-local"
+        }
+      ],
+      "journal": {
+        "pending": false
+      }
+    },
+    {
+      "index": 2,
+      "localRows": 3,
+      "witnessPhases": [
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "idle",
+          "scanned": 0
+        },
+        {
+          "phase": "observed",
+          "status": "blocked",
+          "reason": "no-observed-device-heads"
+        },
+        {
+          "phase": "skipped"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "idle",
+          "scanned": 0
+        },
+        {
+          "phase": "observed",
+          "status": "blocked",
+          "reason": "no-observed-device-heads"
+        },
+        {
+          "phase": "skipped"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "skipped",
+          "reason": "account-or-tool-query"
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "uploaded-events-only",
+          "remaining": 0,
+          "scanned": 2
+        },
+        {
+          "phase": "observed",
+          "status": "heads-observed-only"
+        },
+        {
+          "phase": "witnessed",
+          "status": "witnessed",
+          "reason": "verified-prefix-only"
+        },
+        {
+          "phase": "candidate",
+          "status": "candidate",
+          "added": 1
+        },
+        {
+          "phase": "scratch",
+          "step": "validate"
+        },
+        {
+          "phase": "scratch",
+          "step": "schema"
+        },
+        {
+          "phase": "scratch",
+          "step": "import"
+        },
+        {
+          "phase": "scratch",
+          "step": "readback"
+        },
+        {
+          "phase": "scratch",
+          "step": "audit-proposal"
+        },
+        {
+          "phase": "scratch",
+          "step": "export"
+        },
+        {
+          "phase": "scratch",
+          "step": "audit-normalized"
+        },
+        {
+          "phase": "scratch",
+          "step": "validated"
+        },
+        {
+          "phase": "materialized",
+          "added": 1
+        },
+        {
+          "phase": "transaction",
+          "step": "capture"
+        },
+        {
+          "phase": "transaction",
+          "step": "stage"
+        },
+        {
+          "phase": "transaction",
+          "step": "restore"
+        },
+        {
+          "phase": "transaction",
+          "step": "verify"
+        },
+        {
+          "phase": "transaction",
+          "step": "seal"
+        },
+        {
+          "phase": "transaction",
+          "step": "finalize"
+        },
+        {
+          "phase": "transaction",
+          "step": "complete"
+        },
+        {
+          "phase": "adopted",
+          "added": 1
+        },
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "published",
+          "status": "uploaded-events-only",
+          "remaining": 0,
+          "scanned": 3
+        }
+      ],
+      "journal": {
+        "pending": false
+      }
+    }
+  ],
+  "cleanup": {
+    "status": 200
+  },
+  "notes": [
+    "Original non503 blocker retained; counts are not successful transaction/UI qualification.",
+    "C trace ends after adopted1 and later published scanned3; no per-request timing in original artifact."
+  ]
+}

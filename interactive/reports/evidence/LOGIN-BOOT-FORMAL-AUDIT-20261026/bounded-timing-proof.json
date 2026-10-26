@@ -1,0 +1,99 @@
+{
+  "sourceSha": "1030f9cd809858e7b14ea9132ae3c2508ef51b04",
+  "method": "finite timed-path enumeration linked to an actual-kernel counterexample",
+  "limits": [
+    "One feasible post-M4 path, not exhaustive state-space or unbounded liveness proof.",
+    "Successful modeled requests; no HTTP503, no packet loss, no retries, no concurrent server writer.",
+    "Assumes one-part V4 and one new M3 event batch. M3 publication branch is conditional, not universal.",
+    "Omits all CPU/IDB/navigation time, optional checkout and final witness proof.",
+    "Schedule counts are combinatorial coverage, NOT observed likelihood.",
+    "Does not establish which delay or branch occurred in CI run 40253418650."
+  ],
+  "safetyFaultCases": 13,
+  "latencyDomainSeconds": [
+    1,
+    10,
+    22,
+    29
+  ],
+  "schedules": 262144,
+  "exceeds180BeforeWitness": 28565,
+  "maxLowerBoundSeconds": 261,
+  "counterexample": {
+    "allResponsesSuccessful": true,
+    "everyRequestBelowOwnDeadline": true,
+    "checkpointAt180": "m4-observe pending; application has not reached mount",
+    "minimumTraceDurationSeconds": 198,
+    "trace": [
+      {
+        "stage": "s2-meta",
+        "response": "success",
+        "requestDeadlineSeconds": 90,
+        "startsAtSeconds": 0,
+        "finishesAtSeconds": 22
+      },
+      {
+        "stage": "s2-download-manifest",
+        "response": "success",
+        "requestDeadlineSeconds": 90,
+        "startsAtSeconds": 22,
+        "finishesAtSeconds": 44
+      },
+      {
+        "stage": "s2-download-part",
+        "response": "success",
+        "requestDeadlineSeconds": 90,
+        "startsAtSeconds": 44,
+        "finishesAtSeconds": 66
+      },
+      {
+        "stage": "s2-meta-recheck",
+        "response": "success",
+        "requestDeadlineSeconds": 90,
+        "startsAtSeconds": 66,
+        "finishesAtSeconds": 88
+      },
+      {
+        "stage": "s2-CAS-ack-verified",
+        "response": "success",
+        "requestDeadlineSeconds": 90,
+        "startsAtSeconds": 88,
+        "finishesAtSeconds": 110
+      },
+      {
+        "stage": "s2-meta-after-two-extra-reloads",
+        "response": "success",
+        "requestDeadlineSeconds": 90,
+        "startsAtSeconds": 110,
+        "finishesAtSeconds": 132
+      },
+      {
+        "stage": "m3-publish",
+        "response": "success",
+        "requestDeadlineSeconds": 30,
+        "startsAtSeconds": 132,
+        "finishesAtSeconds": 154
+      },
+      {
+        "stage": "m3-exact-readback",
+        "response": "success",
+        "requestDeadlineSeconds": 30,
+        "startsAtSeconds": 154,
+        "finishesAtSeconds": 176
+      },
+      {
+        "stage": "m4-observe",
+        "response": "success",
+        "requestDeadlineSeconds": 30,
+        "startsAtSeconds": 176,
+        "finishesAtSeconds": 198
+      }
+    ]
+  },
+  "unnecessaryRestore": {
+    "localEqualsVerifiedCloud": true,
+    "durablePullStillStaged": true,
+    "additionalReloadsImpliedByBootstrap": 2,
+    "note": "Recovery succeeds in the real kernel test; no infinite reload loop proven."
+  }
+}
