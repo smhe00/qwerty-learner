@@ -8,7 +8,7 @@ import MobileLibrary from './pages/Mobile/MobileLibrary'
 import MobileSettings from './pages/Mobile/MobileSettings'
 import MobileStudyPage from './pages/Mobile/MobileStudy'
 import TypingPage from './pages/Typing'
-import AccountTools from './sync/AccountTools'
+import AccountOverview from './sync/AccountOverview'
 import { isBrowserFuzzFaultEnabled } from '@/dev/browser-fuzz-hooks'
 import { isOpenDarkModeAtom, reviewModeInfoAtom } from '@/store'
 import 'animate.css'
@@ -223,7 +223,7 @@ function Root() {
         <Suspense fallback={<Loading />}>
           <ResponsiveRoutes isMobile={isMobile} />
         </Suspense>
-        <AccountTools />
+        <AccountOverview />
       </BrowserRouter>
     </React.StrictMode>
   )

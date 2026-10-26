@@ -1,7 +1,7 @@
 import logo from '@/assets/logoData'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import { infoPanelStateAtom } from '@/store'
-import { openAccountManagement } from '@/sync/account-navigation'
+import { openAccountDialog } from '@/sync/account-dialog-events'
 import { loadAuth } from '@/sync/auth'
 import { useSetAtom } from 'jotai'
 import { UserCircle2 } from 'lucide-react'
@@ -45,11 +45,11 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
   }, [])
 
   const typing = useContext(TypingContext)
-  const manageAccount = (event: React.MouseEvent) => {
-    // Stop the learning interaction before entering the guarded account document.
+  const inspectAccount = (event: React.MouseEvent) => {
+    // Do not let the opening click become an outside-click on the new dialog.
     event.stopPropagation()
     typing?.dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })
-    openAccountManagement()
+    openAccountDialog()
   }
   const setInfoPanelState = useSetAtom(infoPanelStateAtom)
   const auth = loadAuth({ preserveExpired: true })
@@ -98,7 +98,7 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
         {canUseAccount && (
           <button
             type="button"
-            onClick={manageAccount}
+            onClick={inspectAccount}
             className="focus-surface flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"
             aria-label={auth ? '账号：' + auth.user.username : '账号：登录或注册'}
             title={auth ? (accountExpired ? '会话已过期；点击重新登录' : '账户管理与安全退出') : '单设备使用无需登录'}

@@ -4,7 +4,7 @@ import { useMobileCheckpoint } from './useMobileCheckpoint'
 import { useMobileDailyProgress } from './useMobileDailyProgress'
 import logo from '@/assets/logo.svg'
 import { currentDictInfoAtom } from '@/store'
-import { accountManagementHref, openAccountManagement } from '@/sync/account-navigation'
+import { openAccountDialog } from '@/sync/account-dialog-events'
 import { loadAuth } from '@/sync/auth'
 import { secureLearningEntry } from '@/sync/learning-sync-policy'
 import { useAtomValue } from 'jotai'
@@ -18,14 +18,14 @@ export default function MobilePage() {
   const daily = useMobileDailyProgress()
   const dictionary = useAtomValue(currentDictInfoAtom)
   const auth = loadAuth({ preserveExpired: true })
-  const accountHref = accountManagementHref(true)
+  const accountHref = (REACT_APP_DEPLOY_ENV === 'pages' ? '/qwerty-learner' : '') + '/mobile/account'
   // Replace the home history entry so the account flow does not retain it.
   // Some mobile browsers otherwise apply a new-tab policy to ordinary links.
   const openAccount = (event: MouseEvent<HTMLAnchorElement>) => {
     if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
     event.preventDefault()
     event.stopPropagation()
-    openAccountManagement(true)
+    openAccountDialog()
   }
   const expired = !!auth && auth.expiresAt * 1000 <= Date.now()
   const menus = [

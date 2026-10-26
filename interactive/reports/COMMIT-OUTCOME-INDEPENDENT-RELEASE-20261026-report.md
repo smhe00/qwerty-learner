@@ -31,3 +31,14 @@
 - binary/migrate仅在服务端返回明确request-body/safeToRetry=true证书且revision、两哈希、storageEncoding完全未变时允许一次新请求；第二次仍503保持失败。未知5xx/超时/读证明失败/状态变化不重放。来源是gateway readJson在migrateSyncV4Binary调用前抛出的认证错误，不以元数据未变单独证明未写。
 - native direct正向探针复用已有typed-prewrite限定重试；未知提交核验逻辑及断言不变。
 - 全量云契约860/860 PASS；新增重试及未知提交正反例18/18 PASS。下一候选必须重新取得自己的Pages、etest和release-ready，不复用第一候选结果冒充同SHA。
+
+## 第二候选 521240e4c15f7a8bab460de101ea4f76fd190ef7 — 核心实网已通过，主线并发推进使发布闸门拒绝
+
+- Pages 40269910189 PASS；Cloud Sync 40269910173（backend121400268925、准入121400620630）PASS；Startup故障恢复40269930108 PASS；同提交本地完成流程12/12 PASS；布局稳定后重复6/6 PASS。
+- 三设备40270146434/job121400992814 PASS：9次恢复21501、20067、18840、41228、67602、67718、47237、67586、51346ms。最终A/B/C各3条，三个journal.pending均false；清理200，无E2E_BOOT_FAILED。
+- Cloud/Blob40270146447第2轮job121402597887 PASS：256/512/1024/1536/2048/2700KiB全部完整回读。最关键：2048KiB Commit在20,000ms超时，随后只读确认revision7、2,106,628字节；2700KiB在20,001ms超时，随后确认revision8、2,777,124字节；均writesReplayed=0。明确复现了自然20秒截止下的“客户端超时、云端已提交”。额外丢回执故障通过，1,580,090字节、revision1、Commit POST仅1次。所有账号清理PASS。
+- 账号隔离job121402599107 PASS；真实完成流程40270146413 PASS；M3接力40270146451 PASS；自动维护40270146424 PASS。
+- 非核心/保留失败：本地传输在2MiB分片持续503，最终Commit未发送，清理PASS；CI传输首轮旧版本CAS遇到snapshot_body_read_failed 503，清理PASS。历史登录40270146455完整六表恢复/共享引用均PASS，mixed-legacy-m3-m4阶段native direct 503，保留6条，清理PASS。两设备专项40270146419两轮在故意旧revision的预写503后，辅助函数将observed当前新版本与旧baseRevision比较而拒绝；这是测试辅助层安全停止，不能宣称数据损坏或未知Commit已发生。用户已允许明确503不阻塞，全部原始失败保留。
+- release-ready job121406447786 FAIL的唯一断言：main已经被另一开发任务推进到b98364ad，etest仍521240e4。未发布master，不能以核心通过冒充完整发布闸门通过。
+- 并发任务ACCOUNT-DIRECT-ENTRY已在报告声明development only、REVIEW完成、不可随本次独立版上线；提交3e869a2d、报告b98364ad。按用户独立发布范围暂时反向隔离这部分runtime/tests，完整保留Git历史和报告；发布后必须合并保留其直达账号行为及原quick-sync UI，不能盲目覆盖旧文件。
+- 第三候选从b98364ad正常向前提交；隔离后src/cloud-functions/tests/scripts/.github/workflows与521240e4完全一致。仍重新取得第三候选同SHA的Pages/etest/release-ready，不force push、不降低闸门。
