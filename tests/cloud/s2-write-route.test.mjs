@@ -40,6 +40,13 @@ const result = await build({ entryPoints: [source], bundle: true, write: false,
               }
               return { user: { userId: token === 'token-a' ? 'id-a' : 'id-b' } }
             },
+            deleteAccount: async (token, password, { beforeDelete }) => {
+              globalThis.__p4bCalls.push('auth')
+              if (token !== 'token-a' && token !== 'token-b') throw new AppError(401, 'invalid_session', 'Invalid session')
+              await beforeDelete({ userId: token === 'token-a' ? 'id-a' : 'id-b' })
+              globalThis.__p4bCalls.push('delete')
+              return { deleted: { accountDeleted: true } }
+            },
             login: async () => { globalThis.__p4bCalls.push('login'); return { token: 'synthetic-token' } },
             register: async () => { globalThis.__p4bCalls.push('register'); return { token: 'synthetic-token' } },
             putSyncV4: async () => { globalThis.__p4bCalls.push('v4'); return { revision: 1 } },
