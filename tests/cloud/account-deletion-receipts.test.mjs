@@ -120,3 +120,16 @@ test('real gateway: in-flight and dropped DELETE response settle with original-b
     assert.equal((await call('/auth/account/deletion-status?operationId=' + '3'.repeat(32), 'GET', null, admin.body.token)).status, 404)
   } finally { delete globalThis.__deletionReceiptStore }
 })
+
+
+test('session revoked during slow deletion preparation cannot start destructive cleanup', async () => {
+  const f = fixture(), storage = createEdgeOneBlobStorage(f.store)
+  const service = createBackendService({ storage })
+  const first = await service.register('e2e_slow_delete_guard', 'synthetic-password', 'A')
+  const key = 'users/' + first.user.userId + '/feedback/v1/thread/root.json'
+  f.blobs.set(key, { text: 'must survive' })
+  await assert.rejects(service.deleteAccount(first.token, 'synthetic-password', {
+    beforeDelete: async () => { await service.login('e2e_slow_delete_guard', 'synthetic-password', 'B') },
+  }), { code: 'session_revoked' })
+  assert.equal(f.blobs.has(key), true)
+})

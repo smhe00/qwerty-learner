@@ -461,28 +461,26 @@ async function onUncoordinatedRequest(context, circleBody = null) {
     }
 
     if (request.method === 'DELETE' && path === '/auth/account') {
-      // The Circle API is available to authenticated accounts. An account
-      // that has written Circle events must not be permanently deleted until
-      // its social event references can be independently scrubbed.
-      const me = await service.me(bearer(request))
-      accountDeletionStage = 'circle-activity'
-      if (await circleAccountHasActivity({
-        getStore, env, userId: me.user?.userId,
-      })) {
-        throw new AppError(409, 'circle_deletion_requires_cleanup',
-          'Circle data cleanup must complete before account deletion')
-      }
+      // Receive the small body before asynchronous storage lookups. The service
+      // still authenticates/password-checks before any business operation.
       accountDeletionStage = 'request-body'
       const body = await readBody(64 * 1024)
-      accountDeletionStage = 'content-delete'
       const receipts = body.operationId === undefined ? null : createAccountDeletionReceipts({
         store: getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }),
       })
       let receipt
+      accountDeletionStage = 'identity'
       const result = await service.deleteAccount(bearer(request), body.currentPassword, {
-        beforeDelete: receipts ? async identity => {
-          receipt = await receipts.begin(bearer(request), body.operationId, identity)
-        } : undefined,
+        beforeDelete: async identity => {
+          // Social references must be independently scrubbed. No timing/profile
+          // option or deletion receipt may bypass this guard.
+          accountDeletionStage = 'circle-activity'
+          if (await circleAccountHasActivity({ getStore, env, userId: identity.userId }))
+            throw new AppError(409, 'circle_deletion_requires_cleanup',
+              'Circle data cleanup must complete before account deletion')
+          if (receipts) receipt = await receipts.begin(bearer(request), body.operationId, identity)
+          accountDeletionStage = 'content-delete'
+        },
       })
       if (receipts) await receipts.complete(receipt, result.deleted)
       return json({ ok: true, ...result, ...(receipts ? { operationId: body.operationId } : {}) }, 200, cors)

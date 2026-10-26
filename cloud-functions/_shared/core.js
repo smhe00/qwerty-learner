@@ -1200,7 +1200,14 @@ function createUncoordinatedBackendService({
     }
 
     // Trusted server hook runs only after current-session, administrator and password checks.
-    if (beforeDelete) await beforeDelete(identity)
+    if (beforeDelete) {
+      await beforeDelete(identity)
+      // External guards / durable receipt writes may be slow. Recheck the live
+      // session after them, before the first destructive storage operation.
+      const latest = await authenticate(token)
+      if (latest.identity.userId !== identity.userId || credentials?.matches(latest.identity))
+        throw new AppError(403, 'account_delete_forbidden', 'Account deletion is not authorized')
+    }
     const deleted = await storage.deleteUserData(identity.usernameHash, identity.userId)
     if (!deleted || deleted.accountDeleted !== true) {
       throw new AppError(500, 'account_delete_failed', 'Cloud account deletion did not complete')
