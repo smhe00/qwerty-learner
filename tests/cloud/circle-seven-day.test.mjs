@@ -714,3 +714,19 @@ test('clap validates target directly without a roster and rejects revocation bef
   await assert.rejects(f.service.reactProgress(OWNER,c.circleId,MEMBER,DAY),code('session_revoked'))
   assert.equal(f.calls.some(call=>call.op==='set'&&call.key.includes('/days/')),false)
 })
+
+
+test('XML-escaped SDK LIST ETags permit nickname-cache hits and still invalidate on same-key updates', async () => {
+  const f=fixture({etags:true})
+  const original=f.blob.list.bind(f.blob)
+  f.blob.list=async options=>{const page=await original(options);return {...page,blobs:page.blobs.map(b=>({...b,...(b.etag?{etag:'&quot;'+b.etag+'&quot;'}:{})}))}}
+  const c=await pair(f)
+  await f.service.getCircle(OWNER,c.circleId)
+  assert.ok(f.data.has(root(c.circleId)+'roster.json'))
+  f.calls.length=0
+  await f.service.getCircle(OWNER,c.circleId)
+  assert.equal(f.calls.some(call=>call.op==='get'&&call.key===root(c.circleId)+'members/'+MEMBER+'.json'),false)
+  await f.service.joinCircle(MEMBER,c.inviteCode,{nickname:'更新昵称'})
+  const current=await f.service.getCircle(OWNER,c.circleId)
+  assert.equal(current.members.find(m=>m.userId===MEMBER).nickname,'更新昵称')
+})

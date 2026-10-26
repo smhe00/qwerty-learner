@@ -118,7 +118,11 @@ export function createCircleV3Storage(blob) {
           const key = item?.key
           check(key)
           if (!key.startsWith(prefix)) fail(503, 'circle_listing_uncertain')
-          const etag = version(item.etag)
+          // SDK0.0.18 LIST retains XML-escaped outer quotes; GET headers
+          // already contain decoded quotes. Normalize only that LIST wrapper.
+          const listed = typeof item.etag === 'string' && /^(?:W\/)?&quot;.*&quot;$/.test(item.etag)
+            ? item.etag.replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&') : item.etag
+          const etag = version(listed)
           if (keys.has(key) && keys.get(key) !== etag) fail(503, 'circle_listing_uncertain')
           keys.set(key, etag)
         }

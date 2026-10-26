@@ -1,0 +1,82 @@
+{
+  "candidate": "3711f7c4aba8a1d8c15ca23a7bb66669df92bcdb",
+  "healthMs": [
+    220,
+    182,
+    207
+  ],
+  "rows": [
+    {
+      "label": "baseline-read",
+      "clientMs": 3460,
+      "serverMs": 3256.9,
+      "authMs": 1455.8,
+      "idleMs": 840.3000000000001,
+      "sdkCalls": 37,
+      "activityWriteMs": 0
+    },
+    {
+      "label": "baseline-read",
+      "clientMs": 3051,
+      "serverMs": 2796,
+      "authMs": 1471.4,
+      "idleMs": 840.5,
+      "sdkCalls": 37,
+      "activityWriteMs": 0
+    },
+    {
+      "label": "baseline-read",
+      "clientMs": 3012,
+      "serverMs": 2730.7,
+      "authMs": 1428.2,
+      "idleMs": 855.8,
+      "sdkCalls": 37,
+      "activityWriteMs": 0
+    },
+    {
+      "label": "baseline-checkin",
+      "clientMs": 3337,
+      "serverMs": 3090.4,
+      "authMs": 1962.3000000000002,
+      "idleMs": 1133.2,
+      "sdkCalls": 43,
+      "activityWriteMs": 73.3
+    },
+    {
+      "label": "baseline-checkin",
+      "clientMs": 3162,
+      "serverMs": 2909.1,
+      "authMs": 1788.5000000000002,
+      "idleMs": 1014.6999999999999,
+      "sdkCalls": 43,
+      "activityWriteMs": 69.7
+    },
+    {
+      "label": "baseline-checkin",
+      "clientMs": 3161,
+      "serverMs": 2954.9,
+      "authMs": 1816.1,
+      "idleMs": 1000.9000000000001,
+      "sdkCalls": 43,
+      "activityWriteMs": 69.3
+    }
+  ],
+  "medians": {
+    "baseline-read": {
+      "clientMs": 3051,
+      "serverMs": 2796,
+      "authMs": 1455.8,
+      "idleMs": 840.5,
+      "sdkCalls": 37,
+      "activityWriteMs": 0
+    },
+    "baseline-checkin": {
+      "clientMs": 3162,
+      "serverMs": 2954.9,
+      "authMs": 1816.1,
+      "idleMs": 1014.6999999999999,
+      "sdkCalls": 43,
+      "activityWriteMs": 69.7
+    }
+  }
+}

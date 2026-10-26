@@ -1,0 +1,13 @@
+# Circle subsecond proposal requiring explicit approval
+Current baseline3711f7c4, ordinary disposable account. Read client3012/3051/3460ms; server2730.7/2796/3256.9ms. Checkin client3161/3162/3337ms; server2909.1/2954.9/3090.4ms. Health182/207/220ms. Two read authentications1428.2-1471.4ms; three checkin authentications1788.5-1962.3ms. Cleanup guard/day I/O is included within those authentication totals, not additive. Each read is roughly35 Blob calls. No instant-write claim.
+
+Safe independent repair: normalize only LIST ETags wrapped as XML &quot;...&quot; before comparing to GET HTTP ETags. Keep strong member listing and live caller checks. A derived nickname cache is never permission authority. This is independent of authentication/cleanup changes.
+
+The automatic approval reviewer rejected a combined executable edit to auth parallelism, idle maintenance and SDK reuse because it could affect session revocation or cleanup safety and lacked explicit implementation authorization. That command did not execute; current authentication/idle code is unchanged.
+
+Requested approval covers this concrete implementation:
+1. Reuse the Blob SDK transport/client and its provider-issued temporary credentials, with credential/project/store/consistency isolation, bounded clients and SDK expiry refresh. Never cache account records, sessions, membership, auth decisions or request/handoff scopes. Every Blob get/list still requests current strong data where required.
+2. For Circle only, issue independent strong identity/latest-session/revocation/latest-auth reads concurrently per authentication, then validate all results in the original logical/error order. Final authentication still starts after Circle data reads. Wrong, replaced, revoked, expired or password-rotated tokens remain denied. Admin and non-Circle routes keep the existing auth path.
+3. Parallelize independent cleanup-marker reads. Within one Circle request only, remember a successfully observed/written daily activity marker; every authentication still reads current cleanup fences. Retain after-write fence checks. Never cache a fence or cleanup authorization across requests.
+4. Add explicit tests for revocation during I/O, cleanup fences during/after day writes, no request-scope leakage, changed credentials, store isolation, unknown write receipts and original error precedence. Run existing relevant auth/cleanup/S1 guards and native gateway tests; then exact-candidate CI and real etest timing. No production release.
+5. Confirmed API completion remains the metric. Measure client/server separately and cold/warm samples. Report a missed1s objective honestly; no weaker checks, false early receipts, database migration or permanent auth caching to manufacture a pass.
