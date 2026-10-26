@@ -186,6 +186,8 @@ export default function WordComponent({
   const successFastForwardRequestedRef = useRef(false)
   const successAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingFinishReleaseRef = useRef<(() => void) | null>(null)
+  const retrySaveRef = useRef<(() => Promise<void>) | null>(null)
+  const [saveError, setSaveError] = useState('')
 
   useLayoutEffect(() => {
     // Resolve the frozen presentation before paint / first input.
@@ -198,6 +200,8 @@ export default function WordComponent({
     successFeedbackStartedAtRef.current = 0
     successFastForwardRequestedRef.current = false
     pendingFinishReleaseRef.current = null
+    retrySaveRef.current = null
+    setSaveError('')
     if (successAdvanceTimerRef.current) {
       clearTimeout(successAdvanceTimerRef.current)
       successAdvanceTimerRef.current = null
@@ -1015,11 +1019,6 @@ export default function WordComponent({
   useEffect(() => {
     if (wordState.isFinished && !finishNotifiedRef.current) {
       finishNotifiedRef.current = true
-      dispatch({
-        type: TypingStateActionType.SET_IS_SAVING_RECORD,
-        payload: true,
-      })
-
       const telemetry = telemetryCollectorRef.current.snapshot()
       const lastWrongIndex = [...(telemetry?.attempts ?? [])]
         .reverse()
@@ -1115,10 +1114,62 @@ export default function WordComponent({
       }
 
       const persistResult = async () => {
-        let reviewProgressReleased = false
+        if (!active || saving || durable) return
+        saving = true
+        dispatch({ type: TypingStateActionType.SET_IS_SAVING_RECORD, payload: true })
+        let wordRecordId: number
 
         try {
-          const wordRecordId = await saveWordRecord({
+          wordRecordId = await saveWordRecord(saveInput)
+          if (isLearnAttempt && (!Number.isSafeInteger(wordRecordId) || wordRecordId <= 0)) {
+            throw new Error('学习记录保存失败，本词尚未推进。')
+          }
+        } catch (error) {
+          console.error('failed to persist word record', error)
+          if (active && isLearnAttempt) {
+            setSaveError('学习记录保存失败，本词尚未推进。请检查浏览器存储空间后重试，暂勿刷新或关闭页面。')
+          }
+          // Preserve legacy Typing behavior; Learn must retain this attempt.
+          if (active && !isLearnAttempt) notifyFinished()
+          return
+        } finally {
+          saving = false
+          if (active) dispatch({ type: TypingStateActionType.SET_IS_SAVING_RECORD, payload: false })
+        }
+
+        // Raw evidence is now durable. Never offer another raw write because
+        // a later projection or UI effect fails, even after unmount.
+        durable = true
+        if (!active) return
+        retrySaveRef.current = null
+        setSaveError('')
+        if (wordRecordId > 0) currentRecordForPolicy.id = wordRecordId
+        notifyFinished()
+        if (isLearnAttempt) {
+          appendDeveloperTrace({
+            scope: 'learn-terminal',
+            event: 'word-record-durable',
+            word: word.name,
+            index: state.chapterData.index,
+            queueLength: state.chapterData.words.length,
+            details: {
+              wordRecordId,
+              finalQueueItem: state.chapterData.index === state.chapterData.words.length - 1,
+            },
+          })
+          scheduleLearnReviewCommit({
+            dict: currentDictInfo.id,
+            word: word.name,
+            itemKind: learnItemKind,
+            wordRecordId,
+            decision: reviewRatingDecision,
+          })
+        }
+      }
+
+      // Freeze the completed observation once. Retrying storage must not
+      // re-grade the answer or incorporate time spent looking at feedback.
+      const saveInput: Parameters<typeof saveWordRecord>[0] = {
             word: word.name,
             wrongCount: wordState.wrongCount,
             letterTimeArray: wordState.letterTimeArray,
@@ -1135,66 +1186,16 @@ export default function WordComponent({
             learnItemKind: isLearnAttempt
               ? learnItemKind ?? 'review'
               : undefined,
-          })
-
-          if (isLearnAttempt) {
-            appendDeveloperTrace({
-              scope: 'learn-terminal',
-              event: 'word-record-durable',
-              word: word.name,
-              index: state.chapterData.index,
-              queueLength: state.chapterData.words.length,
-              details: {
-                wordRecordId,
-                finalQueueItem:
-                  state.chapterData.index ===
-                  state.chapterData.words.length - 1,
-              },
-            })
-            // Raw evidence is the SSOT. Once it is durably captured, UI
-            // progression must not wait for derived Learn-state persistence.
-            dispatch({
-              type: TypingStateActionType.SET_IS_SAVING_RECORD,
-              payload: false,
-            })
-            reviewProgressReleased = true
-            notifyFinished()
-
-            scheduleLearnReviewCommit({
-              dict: currentDictInfo.id,
-              word: word.name,
-              itemKind: learnItemKind,
-              wordRecordId,
-              decision: reviewRatingDecision,
-            })
-            return
-          }
-
-          // Typing is deliberately long-term-state neutral. Its WordRecord is
-          // retained as prior evidence; Learn may reactivate a state later
-          // during explicit Learn admission/bootstrap.
-        } catch (error) {
-          console.error('failed to persist review learning state', error)
-        } finally {
-          if (isLearnAttempt) {
-            if (!reviewProgressReleased) {
-              dispatch({
-                type: TypingStateActionType.SET_IS_SAVING_RECORD,
-                payload: false,
-              })
-              notifyFinished()
-            }
-          } else {
-            dispatch({
-              type: TypingStateActionType.SET_IS_SAVING_RECORD,
-              payload: false,
-            })
-            notifyFinished()
-          }
-        }
       }
-
+      let active = true
+      let saving = false
+      let durable = false
+      retrySaveRef.current = persistResult
       void persistResult()
+      return () => {
+        active = false
+        retrySaveRef.current = null
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wordState.isFinished])
@@ -1316,6 +1317,19 @@ export default function WordComponent({
           </div>
         </div>
         <ExampleCue word={word} revealed={wordState.isFinished} />
+        {saveError && (
+          <div role="alert" className="mt-3 max-w-md text-center text-sm">
+            <p>{saveError}</p>
+            <button
+              type="button"
+              className="mt-2 rounded border px-3 py-2 disabled:opacity-50"
+              disabled={state.isSavingRecord}
+              onClick={() => { void retrySaveRef.current?.() }}
+            >
+              重试保存
+            </button>
+          </div>
+        )}
         {isManagedReviewHintFlow() && (
           <div
             className="focus-hint-helper mt-3 text-center text-xs"

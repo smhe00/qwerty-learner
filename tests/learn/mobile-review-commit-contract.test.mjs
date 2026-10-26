@@ -12,7 +12,7 @@ test('Mobile and desktop write the same durable FSRS projection after WordRecord
   ])
   assert.match(mobile, /const id = await trackLearnPersistence\(\s*saveWordRecord\(/)
   assert.match(mobile, /record\.id = id\s+scheduleLearnReviewCommit\(/)
-  assert.match(desktop, /const wordRecordId = await saveWordRecord\(/)
+  assert.match(desktop, /wordRecordId = await saveWordRecord\(saveInput\)/)
   assert.match(desktop, /scheduleLearnReviewCommit\(/)
   assert.match(helper, /input\.itemKind !== 'review'/)
   assert.match(helper, /input\.decision\?\.eligible !== true/)

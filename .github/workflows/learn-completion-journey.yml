@@ -14,6 +14,7 @@ on:
       - 'tests/e2e/review-flow-harness.ts'
       - 'src/index.tsx'
       - 'tests/e2e/learn-completion-journey*'
+      - 'tests/e2e/learn-save-failure*'
       - 'tests/e2e/etest-learn-completion*'
       - '.github/workflows/etest-learn-completion.yml'
       - 'tests/e2e/learn-block-sync-*'
@@ -33,6 +34,7 @@ on:
       - 'tests/e2e/review-flow-harness.ts'
       - 'src/index.tsx'
       - 'tests/e2e/learn-completion-journey*'
+      - 'tests/e2e/learn-save-failure*'
       - 'tests/e2e/etest-learn-completion*'
       - '.github/workflows/etest-learn-completion.yml'
       - 'tests/e2e/learn-block-sync-*'
@@ -57,6 +59,8 @@ jobs:
         run: node --test tests/cloud/learn-block-auto-sync.test.mjs
       - name: Last real word through guarded V4 sync and five-more entry
         run: yarn playwright test --config=tests/e2e/learn-completion-journey.config.ts
+      - name: Failed raw record cannot advance Learn
+        run: yarn playwright test --config=tests/e2e/learn-save-failure.config.ts
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
