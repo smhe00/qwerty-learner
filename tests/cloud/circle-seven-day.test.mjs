@@ -19,7 +19,7 @@ const OTHER = 'other_0001'
 const NOW = Date.parse('2026-10-26T04:00:00Z')
 const DAY = '2026-10-26'
 const code = (expected) => (error) => error.code === expected
-function fixture({ pageSize = 1000 } = {}) {
+function fixture({ pageSize = 1000, etags = false, usernames = {} } = {}) {
   const data = new Map()
   const calls = []
   const hooks = {}
@@ -38,6 +38,10 @@ function fixture({ pageSize = 1000 } = {}) {
         }
         return structuredClone(data.get(key) ?? null)
       } finally { activeGets-- }
+    },
+    async getWithHeaders(key, options) {
+      const value=await this.get(key, options)
+      return value===null?null:{body:JSON.stringify(value),headers:etags?{etag:crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex')}: {}}
     },
     async setJSON(key, value) {
       calls.push({ op: 'set', key })
@@ -58,7 +62,7 @@ function fixture({ pageSize = 1000 } = {}) {
         if (override !== undefined) return override
       }
       const keys = [...data.keys()].filter((k) => k.startsWith(options.prefix)).sort()
-      let items = keys.map((key) => ({ key }))
+      let items = keys.map((key) => ({ key, ...(etags ? {etag: crypto.createHash('sha256').update(JSON.stringify(data.get(key))).digest('hex')} : {}) }))
       if (options.directories) {
         const dirs = new Set()
         items = keys.flatMap((key) => {
@@ -80,7 +84,7 @@ function fixture({ pageSize = 1000 } = {}) {
   const backend = {
     async me(token) {
       if (!token || revoked.has(token) || token === 'bad') throw new AppError(401, 'session_revoked', 'Revoked')
-      return { user: { userId: token } }
+      return { user: { userId: token, ...(usernames[token] ? {username:usernames[token]} : {}) } }
     },
   }
   const storage = createCircleV3Storage(blob)
@@ -606,4 +610,70 @@ test('daily source listing and summary read start concurrently without losing ca
   }
   const result=await createDailyViews(storage).read('a'.repeat(24),DAY)
   assert.deepEqual(result.progress,[])
+})
+
+
+test('nicknames are circle-scoped, blank defaults to authenticated username, and create retry keeps exact nickname', async () => {
+  const f=fixture({etags:true,usernames:{[OWNER]:'OwnerName',[MEMBER]:'小明'}})
+  const input={name:'昵称圈',operationId:crypto.randomUUID(),passphrase:'昵称口令',nickname:'  晨读者  '}
+  const c=await f.service.createCircle(OWNER,input)
+  await f.service.joinCircle(MEMBER,c.inviteCode,{nickname:'  '})
+  let view=await f.service.getCircle(OWNER,c.circleId)
+  assert.equal(view.members.find(m=>m.userId===OWNER).nickname,'晨读者')
+  assert.equal(view.members.find(m=>m.userId===MEMBER).nickname,'小明')
+  await f.service.createCircle(OWNER,input)
+  await assert.rejects(f.service.createCircle(OWNER,{...input,nickname:'改名'}),code('circle_operation_conflict'))
+  const other=await f.create(OWNER,{passphrase:'另一个口令'})
+  await f.service.joinCircle(MEMBER,other.inviteCode,{nickname:'English Buddy'})
+  assert.equal((await f.service.getCircle(OWNER,other.circleId)).members.find(m=>m.userId===OWNER).nickname,'OwnerName')
+  assert.equal((await f.service.getCircle(OWNER,other.circleId)).members.find(m=>m.userId===MEMBER).nickname,'English Buddy')
+  assert.equal((await f.service.getCircle(MEMBER,c.circleId)).members.find(m=>m.userId===MEMBER).nickname,'小明')
+  for(const nickname of ['x'.repeat(33),'x\ny','x\u200by',42,null]) await assert.rejects(f.service.joinCircle(OTHER,c.inviteCode,{nickname}),code('invalid_circle_nickname'))
+  assert.equal((await f.service.listMyCircles(OTHER)).circles.length,0)
+})
+
+test('roster cache avoids peer GETs at 50 members, invalidates on same-key nickname change and cannot admit a removed user', async () => {
+  const f=fixture({etags:true});const c=await f.create(OWNER,{nickname:'圈主'})
+  for(let i=0;i<49;i++){const uid='peer_'+String(i).padStart(4,'0');f.data.set(root(c.circleId)+'members/'+uid+'.json',{schemaVersion:3,circleId:c.circleId,userId:uid,nickname:'同学 '+i})}
+  assert.equal((await f.service.getCircle(OWNER,c.circleId)).members.length,50)
+  f.calls.length=0
+  await f.service.getCircle(OWNER,c.circleId)
+  assert.equal(f.calls.filter(c=>c.op==='get'&&c.key.includes('/members/peer_')).length,0)
+  const key=root(c.circleId)+'members/peer_0000.json';f.data.set(key,{...f.data.get(key),nickname:'新昵称'})
+  assert.equal((await f.service.getCircle(OWNER,c.circleId)).members.find(m=>m.userId==='peer_0000').nickname,'新昵称')
+  await f.service.removeMember(OWNER,c.circleId,'peer_0000')
+  await assert.rejects(f.service.getCircle('peer_0000',c.circleId),code('not_circle_member'))
+  assert.equal((await f.service.getCircle(OWNER,c.circleId)).members.length,49)
+})
+
+test('no-ETag provider never reuses stale nickname cache; old records and legacy callers stay compatible', async () => {
+  const f=fixture();const c=await pair(f)
+  assert.equal((await f.service.getCircle(OWNER,c.circleId)).members.find(m=>m.userId===MEMBER).nickname,undefined)
+  await f.service.joinCircle(MEMBER,c.inviteCode,{nickname:'A'})
+  assert.equal((await f.service.getCircle(OWNER,c.circleId)).members.find(m=>m.userId===MEMBER).nickname,'A')
+  await f.service.joinCircle(MEMBER,c.inviteCode)
+  assert.equal((await f.service.getCircle(OWNER,c.circleId)).members.find(m=>m.userId===MEMBER).nickname,'A')
+  await f.service.leaveCircle(MEMBER,c.circleId)
+  await f.service.joinCircle(MEMBER,c.inviteCode,{nickname:'B'})
+  assert.equal((await f.service.getCircle(OWNER,c.circleId)).members.find(m=>m.userId===MEMBER).nickname,'B')
+  assert.equal(f.data.has(root(c.circleId)+'roster.json'),false)
+})
+
+test('daily maintenance ignores the non-date roster cache', async () => {
+  const f=fixture({etags:true});const c=await f.create(OWNER,{nickname:'Owner'})
+  await f.service.getCircle(OWNER,c.circleId)
+  assert.ok(f.data.has(root(c.circleId)+'roster.json'))
+  let checkpoint=null,done=false
+  while(!done){const result=await sweepCircleV3(f.blob,{now:NOW,execute:true,checkpoint});done=result.complete;checkpoint=result.checkpoint}
+  assert.ok(f.data.has(root(c.circleId)+'roster.json'))
+})
+
+
+test('roster cache never binds a changed GET body to an older listed ETag', async () => {
+  const f=fixture({etags:true});const c=await f.create(OWNER,{nickname:'Old'})
+  f.hooks.get=async key=>key.endsWith('/members/'+OWNER+'.json')?{...f.data.get(key),nickname:'New'}:undefined
+  await f.service.getCircle(OWNER,c.circleId)
+  assert.equal(f.data.has(root(c.circleId)+'roster.json'),false)
+  f.hooks.get=undefined
+  assert.equal((await f.service.getCircle(OWNER,c.circleId)).members[0].nickname,'Old')
 })

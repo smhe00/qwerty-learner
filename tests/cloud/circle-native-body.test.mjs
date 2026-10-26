@@ -31,7 +31,7 @@ test('real Circle handler receives native body before asynchronous account looku
     const result=await onRequest({env,clientIp:'192.0.2.119',request})
     return {status:result.status,body:await result.json()}
   }
-  const payload={name:'hh',passphrase:'每天学 English',operationId:crypto.randomUUID()}
+  const payload={name:'hh',passphrase:'每天学 English',nickname:'原生昵称',operationId:crypto.randomUUID()}
   const denied=await create(payload,null)
   assert.equal(denied.status,401)
   assert.equal([...blobs.keys()].some(k=>k.startsWith('social/')),false)
@@ -43,6 +43,7 @@ test('real Circle handler receives native body before asynchronous account looku
   assert.equal(reads,3)
   assert.equal(created.body.result.inviteCode,payload.passphrase)
   const id=created.body.result.circleId
+  assert.equal(blobs.get('social/v3/circles/'+id+'/members/'+account.user.userId+'.json').nickname,'原生昵称')
   const changed=await create({passphrase:'共同学习 ABC'},account.token,'/'+id+'/invite')
   assert.equal(changed.status,202)
   assert.equal(changed.body.result.inviteCode,'共同学习 ABC')

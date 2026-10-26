@@ -1,3 +1,5 @@
+import { normalizeCircleNickname } from './nickname.js'
+import { createCircleRoster, membership, validateMembership } from './roster.js'
 import { normalizeCirclePassphrase } from './passphrase.js'
 /* eslint-env node */
 import crypto from 'node:crypto'
@@ -11,7 +13,6 @@ const userId = (id) => {
 }
 const memberKey = (id, user) => root(id) + 'members/' + userId(user) + '.json'
 const indexKey = (id, user) => 'social/v3/accounts/' + userId(user) + '/circles/' + id + '.json'
-const membership = (circleId, user) => ({ schemaVersion: 3, circleId, userId: user })
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i
 
 function publicDaily(data) {
@@ -52,12 +53,21 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
     await storage.put(phraseKey(hash, id), { schemaVersion: 3, circleId: id, inviteHash: hash }, user)
   }
   const daily = createDailyViews(storage)
-  const actor = async (token) => {
+  const roster = createCircleRoster(storage)
+  const identity = async (token) => {
     const auth = await authenticate(token)
     const id = auth?.user?.userId ?? auth?.userId
     if (!USER.test(id || '')) fail(401, 'invalid_session')
-    return id
+    return { userId: id, username: auth?.user?.username ?? auth?.username }
   }
+  const actor = async token => (await identity(token)).userId
+  const nicknameInput = value => {
+    if (value === undefined) return undefined
+    const text = normalizeCircleNickname(value)
+    if (text === null) fail(400, 'invalid_circle_nickname')
+    return text
+  }
+  const displayName = (value, profile) => value || normalizeCircleNickname(profile.username) || undefined
   async function recheck(token, id) {
     if (await actor(token) !== id) fail(401, 'invalid_session')
   }
@@ -83,21 +93,19 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
     }
     return true
   }
-  async function isMember(id, user) {
-    const value = await storage.get(memberKey(id, user))
-    if (value === null) return false
-    if (digest(value) !== digest(membership(id, user))) fail(503, 'circle_control_uncertain')
-    return true
+  async function memberRecord(id, user) {
+    return validateMembership(await storage.get(memberKey(id, user)), id, user)
   }
-  async function members(id, owner) {
+  async function isMember(id, user) { return (await memberRecord(id, user)) !== null }
+  async function members(id, owner, withNames = false) {
+    if (withNames) return (await roster(id)).map(({userId, nickname}) => ({userId,
+      role: userId === owner ? 'owner' : 'member', status: 'member', ...(nickname ? {nickname} : {})}))
     const prefix = root(id) + 'members/'
     const keys = await storage.keys(prefix, { maxKeys: 500 })
-    // Strong listing of server-owned stable membership keys is enough for the roster.
-    // Requester authorization still verifies its individual membership object.
-    return keys.map((key) => {
+    return keys.map(key => {
       const uid = key.slice(prefix.length, -5)
       if (!USER.test(uid)) fail(503, 'circle_membership_uncertain')
-      return { userId: uid, role: uid === owner ? 'owner' : 'member', status: 'member' }
+      return {userId:uid, role:uid === owner ? 'owner' : 'member', status:'member'}
     })
   }
   async function mine(user) {
@@ -136,11 +144,11 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
   }
   const receipt = (circleId) => ({ circleId, schemaVersion: 3, consistency: 'strong',
     readbackConfirmed: true, final: false })
-  async function attach(id, user, token) {
+  async function attach(id, user, token, nickname) {
     await recheck(token, user)
     // The durable index precedes membership, so a committed membership remains discoverable.
     await storage.put(indexKey(id, user), membership(id, user), user)
-    await storage.put(memberKey(id, user), membership(id, user), user)
+    await storage.put(memberKey(id, user), membership(id, user, nickname), user)
     if (await isClosed(id)) fail(410, 'circle_closed')
     await recheck(token, user)
     return { ...receipt(id), admission: 'member' }
@@ -153,7 +161,7 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
   async function dayView(token, id, day) {
     const { user, info } = await context(token, id)
     checkDay(day)
-    const [data, current] = await Promise.all([daily.read(id, day), members(id, info.ownerUserId)])
+    const [data, current] = await Promise.all([daily.read(id, day), members(id, info.ownerUserId, true)])
     // Fresh context rechecks session, membership, closure and invitation after I/O.
     const latest = await context(token, id)
     if (latest.user !== user) fail(401, 'invalid_session')
@@ -185,8 +193,10 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
         memberCount: members.length, aboveSoftLimit: members.length > info.softMemberLimit, hardLimit: false } }
   }
   const service = {
-    async createCircle(token, { name, operationId, softMemberLimit, passphrase } = {}) {
-      const user = await actor(token)
+    async createCircle(token, { name, operationId, softMemberLimit, passphrase, nickname } = {}) {
+      const profile = await identity(token)
+      const user = profile.userId
+      nickname = nicknameInput(nickname)
       if (typeof operationId !== 'string' || !UUID.test(operationId)) fail(400, 'circle_random_operation_id_required')
       // A retry of a legacy creation must not create a second Circle.
       if (legacy && hasLegacyCircle && await hasLegacyCircle(digest(['circle', user, operationId]).slice(0, 24))) {
@@ -203,11 +213,12 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
       const value = { schemaVersion: 3, circleId: id, ownerUserId: user,
         name: name.trim().normalize('NFKC'), softMemberLimit, inviteHash: custom === undefined ? digest(secret) : phraseHash(custom),
         ...(custom === undefined ? {} : { inviteMode: 'custom' }) }
-      const fingerprint = digest(value)
+      const fingerprint = digest({ ...value, ...(nickname === undefined ? {} : { creationNickname: nickname }) })
       const previous = await meta(id)
       if (previous && (previous.creationFingerprint || digest(previous)) !== fingerprint) fail(409, 'circle_operation_conflict')
       if (await isClosed(id)) fail(410, 'circle_closed')
-      if (!await isMember(id, user) && (await mine(user)).length >= 3) fail(409, 'circle_account_limit')
+      const existing = await memberRecord(id, user)
+      if (!existing && (await mine(user)).length >= 3) fail(409, 'circle_account_limit')
       if (!previous && custom !== undefined) await available(value.inviteHash, id)
       // Index before metadata also keeps partial creations discoverable for retry.
       await recheck(token, user)
@@ -218,11 +229,13 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
           ...(custom === undefined ? {} : { inviteRevision: operationId, inviteText: custom }) }, user)
       }
       const active = previous || value
-      return { ...await attach(id, user, token), inviteRevision: active.inviteRevision || (custom === undefined ? 'legacy' : operationId),
+      return { ...await attach(id, user, token, existing?.nickname || displayName(nickname, profile)), inviteRevision: active.inviteRevision || (custom === undefined ? 'legacy' : operationId),
         ...(active.inviteHash === value.inviteHash ? { inviteCode: custom ?? ('QC3-' + id + '-' + secret) } : { inviteChanged: true }) }
     },
-    async joinCircle(token, inviteCode) {
-      const user = await actor(token)
+    async joinCircle(token, inviteCode, { nickname } = {}) {
+      const profile = await identity(token)
+      const user = profile.userId
+      nickname = nicknameInput(nickname)
       if (typeof inviteCode === 'string' && /^QC2-[a-f0-9]{24}-[a-f0-9]{32}$/.test(inviteCode) && legacy) {
         return legacy.joinCircle(token, inviteCode)
       }
@@ -236,11 +249,12 @@ export function createCircleBoundedService({ storage, authenticate, now = Date.n
       const info = await meta(id)
       if (!info || info.inviteHash !== hash || (match && info.inviteMode === 'custom')) fail(404, 'invalid_invite')
       if (await isClosed(id)) fail(410, 'circle_closed')
-      if (!await isMember(id, user)) {
+      const existing = await memberRecord(id, user)
+      if (!existing) {
         if ((await mine(user)).length >= 3) fail(409, 'circle_account_limit')
         if ((await members(id, info.ownerUserId)).length >= info.softMemberLimit) fail(409, 'circle_member_limit')
       }
-      const result = await attach(id, user, token)
+      const result = await attach(id, user, token, nickname === undefined && existing?.nickname ? existing.nickname : displayName(nickname, profile))
       // Never acknowledge a different invitation after a concurrent owner change.
       const current = await meta(id)
       if (current.inviteHash !== hash) fail(409, 'circle_invite_changed')

@@ -1,12 +1,13 @@
+import { normalizeCircleNickname } from '../../cloud-functions/_shared/circle/nickname.js'
 import { isLegacyCircleInvite, normalizeCirclePassphrase } from '../../cloud-functions/_shared/circle/passphrase.js'
 import { loadAuth } from '@/sync/auth'
 import { secureLearningEntry } from '@/sync/learning-sync-policy'
 import type { CloudAuthState } from '@/sync/types'
 
-export { normalizeCirclePassphrase, isLegacyCircleInvite }
+export { normalizeCirclePassphrase, isLegacyCircleInvite, normalizeCircleNickname }
 
 export type CircleItem = { circleId: string; name: string; role: 'owner' | 'member' }
-export type CircleMember = { userId: string; role: 'owner' | 'member'; status: string }
+export type CircleMember = { userId: string; role: 'owner' | 'member'; status: string; nickname?: string }
 export type CircleProgress = { authorUserId: string; day: string; completed: boolean; newWords: number }
 export type CircleDay = {
   circleId: string
@@ -95,6 +96,7 @@ export function circleErrorText(error: unknown): string {
     if (error.status === 401) return '登录已失效，请重新登录后使用圈子。'
     if (error.status === 429) return '操作有些频繁，请稍等一会儿再试。'
     const messages: Record<string, string> = {
+      invalid_circle_nickname: '圈内昵称最多 32 个字，不能包含控制字符。',
       invalid_circle_passphrase: '口令请填写 2–32 个字符，支持中英文，不能包含控制字符。',
       circle_passphrase_taken: '这个口令已被其他圈子使用，请换一个。',
       circle_passphrase_conflict: '这个口令有冲突，请让圈主更换后再加入。',
@@ -129,11 +131,11 @@ export function circleDays(now = Date.now()): string[] {
   const today = new Date(now + 8 * 3600000).toISOString().slice(0, 10)
   return Array.from({ length: 7 }, (_, i) => new Date(Date.parse(today + 'T00:00:00Z') - i * 86400000).toISOString().slice(0, 10))
 }
-export function memberLabel(id: string, ownId: string): string {
-  return id === ownId ? '我' : '同学 ' + id.slice(-6)
+export function memberLabel(id: string, ownId: string, nickname?: string): string {
+  return nickname ? nickname + (id === ownId ? '（我）' : '') : id === ownId ? '我' : '同学 ' + id.slice(-6)
 }
 
-export type CreateDraft = { name: string; operationId: string; passphrase?: string }
+export type CreateDraft = { name: string; operationId: string; passphrase?: string; nickname?: string }
 type Hints = { pending?: CreateDraft; invites: Record<string, string>; inviteRevisions?: Record<string, string> }
 const hintsKey = (userId: string) => 'qwerty.circle-ui.v1.' + userId
 export function readCircleHints(userId: string): Hints {
@@ -164,6 +166,7 @@ export function readCircleHints(userId: string): Hints {
               name: pending.name,
               operationId: pending.operationId,
               ...(typeof pending.passphrase === 'string' ? { passphrase: pending.passphrase } : {}),
+              ...(typeof pending.nickname === 'string' ? { nickname: pending.nickname } : {}),
             },
           }
         : {}),

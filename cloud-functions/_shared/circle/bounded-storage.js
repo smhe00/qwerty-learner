@@ -27,11 +27,13 @@ const phraseEntry = 'social/v3/passphrases/[a-f0-9]{64}/' + id + '\\.json'
 const controlKey = new RegExp('^(?:' + phraseEntry + '|'  + base + '(?:meta|closed|members/' + uid +
   ')\\.json|social/v3/accounts/' + uid + '/circles/' + id + '\\.json)$')
 const activityKey = new RegExp('^' + base + 'days/' + day + '/' + uid + '/[a-f0-9]{64}\\.json$')
-const summaryKey = new RegExp('^' + base + 'summaries/' + day + '/view\\.json$')
+const summaryKey = new RegExp('^' + base + '(?:summaries/' + day + '/view|roster)\\.json$')
 const validPrefix = new RegExp('^(?:social/v3/passphrases/[a-f0-9]{64}/|'  + base + '(?:members/|days/' + day +
   '/|summaries/' + day + '/)|social/v3/accounts/' + uid + '/circles/)$')
 export const isActivityKey = (key) => activityKey.test(key)
 export const isSummaryKey = (key) => summaryKey.test(key)
+const version = value => typeof value === 'string' && value.length <= 200 && value.trim()
+  ? value.trim().replace(/^W\//, '').replace(/^"|"$/g, '') : null
 
 export async function mapBounded(items, fn, concurrency = 8) {
   const result = new Array(items.length)
@@ -69,6 +71,15 @@ export function createCircleV3Storage(blob) {
   }
   return Object.freeze({
     get,
+    async getVersioned(key) {
+      check(key)
+      if (!key.includes('/members/')) throw new TypeError('Versioned read is member-only')
+      if (typeof blob.getWithHeaders !== 'function') return {value: await get(key), etag: null}
+      const result = await blob.getWithHeaders(key, {consistency:'strong'})
+      if (result === null) return {value:null, etag:null}
+      try { return {value:JSON.parse(result.body), etag:version(result.headers?.etag || result.headers?.ETag)} }
+      catch { fail(503, 'circle_control_uncertain') }
+    },
     async put(key, value, actor) {
       check(key)
       if (Buffer.byteLength(canonical(value)) > (summaryKey.test(key) ? 2097152 : 8192)) {
@@ -93,10 +104,10 @@ export function createCircleV3Storage(blob) {
         if (controlKey.test(key) && await get(key) !== null) fail(503, 'circle_write_unknown')
       } catch { fail(503, 'circle_write_unknown') }
     },
-    async keys(prefix, { maxKeys = 10000 } = {}) {
+    async entries(prefix, { maxKeys = 10000 } = {}) {
       if (!validPrefix.test(prefix)) throw new TypeError('Circle v3 prefix out of scope')
       const consistency = (/\/(?:members|circles)\/$/.test(prefix) || prefix.startsWith('social/v3/passphrases/')) ? 'strong' : 'eventual'
-      const keys = new Set()
+      const keys = new Map()
       const seen = new Set()
       let cursor
       do {
@@ -107,7 +118,9 @@ export function createCircleV3Storage(blob) {
           const key = item?.key
           check(key)
           if (!key.startsWith(prefix)) fail(503, 'circle_listing_uncertain')
-          keys.add(key)
+          const etag = version(item.etag)
+          if (keys.has(key) && keys.get(key) !== etag) fail(503, 'circle_listing_uncertain')
+          keys.set(key, etag)
         }
         if (keys.size > maxKeys || seen.size >= 100) fail(503, 'circle_read_budget')
         cursor = page.cursor
@@ -115,7 +128,8 @@ export function createCircleV3Storage(blob) {
             (typeof cursor !== 'string' || seen.has(cursor))) fail(503, 'circle_listing_uncertain')
         if (cursor) seen.add(cursor)
       } while (cursor)
-      return [...keys].sort()
+      return [...keys].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([key, etag]) => ({ key, etag }))
     },
+    async keys(prefix, options) { return (await this.entries(prefix, options)).map(entry => entry.key) },
   })
 }

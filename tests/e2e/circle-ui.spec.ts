@@ -24,7 +24,7 @@ async function seed(page: Page, { expired = false } = {}) {
 }
 async function mockCircle(page: Page, initial = true) {
   const model = {
-    exists: initial, joined: initial, owner: OWNER, name: '每天十分钟', friend: true,
+    ownNickname: '', exists: initial, joined: initial, owner: OWNER, name: '每天十分钟', friend: true,
     calls: [] as { path: string; method: string; body: any }[],
     creates: [] as any[], unauthorized: false, loseCreate: false, delayLike: false, serverPhrase: false, rejectCreate: false, takenPhrase: false, inviteCode: CODE, inviteRevision: 'legacy',
     progress: new Map<string, any[]>([[days()[0], [{ authorUserId: FRIEND, day: days()[0], completed: true, newWords: 6 }]],
@@ -59,7 +59,7 @@ async function mockCircle(page: Page, initial = true) {
         await route.fulfill({status: 500, contentType: 'application/json', body: '{"ok":false,"error":"circle_internal_error"}'})
         return
       }
-      model.serverPhrase = Boolean(body.passphrase); model.inviteCode = body.passphrase || CODE; model.inviteRevision = body.passphrase ? body.operationId : 'legacy'
+      model.ownNickname = body.nickname?.trim() || '小禾'; model.serverPhrase = Boolean(body.passphrase); model.inviteCode = body.passphrase || CODE; model.inviteRevision = body.passphrase ? body.operationId : 'legacy'
       model.creates.push(body); model.exists = true; model.joined = true; model.name = body.name; model.owner = OWNER
       if (model.loseCreate) { model.loseCreate = false; await route.abort('failed'); return }
       await send({ circleId: ID, inviteCode: model.inviteCode, inviteRevision: model.inviteRevision, schemaVersion: 3 }, 202)
@@ -67,7 +67,7 @@ async function mockCircle(page: Page, initial = true) {
       if (body.inviteCode !== model.inviteCode) {
         await route.fulfill({status:404,contentType:'application/json',body:'{"ok":false,"error":"invalid_invite"}'});return
       }
-      model.exists = true; model.joined = true; model.owner = FRIEND
+      model.ownNickname = body.nickname?.trim() || '小禾'; model.exists = true; model.joined = true; model.owner = FRIEND
       await send({ circleId: ID, inviteRevision: model.inviteRevision }, 202)
     } else if ((path === '/' + ID || path.includes('/days/')) && request.method() === 'GET') {
       if (!model.exists || !model.joined) {
@@ -77,7 +77,7 @@ async function mockCircle(page: Page, initial = true) {
       await send({ schemaVersion: 3, circleId: ID, day: requestedDay,
         ...(model.owner===OWNER && model.serverPhrase?{ownerInviteCode:model.inviteCode}:{}),
         meta: { name: model.name, ownerUserId: model.owner, softMemberLimit: 50, inviteMode: model.inviteRevision === 'legacy' ? 'legacy' : 'custom', inviteRevision: model.inviteRevision },
-        members: [{ userId: OWNER, role: model.owner === OWNER ? 'owner' : 'member' },
+        members: [{ userId: OWNER, role: model.owner === OWNER ? 'owner' : 'member', nickname: model.ownNickname || undefined },
           ...(model.friend ? [{ userId: FRIEND, role: model.owner === FRIEND ? 'owner' : 'member' }] : [])],
         progress: model.progress.get(requestedDay) || [], reactionCounts: [{ authorUserId: FRIEND, day: requestedDay, count: model.likes.get(requestedDay) || 0 }],
       })
@@ -412,4 +412,27 @@ test('owner current phrase is immediately visible without local hints; switching
   await page.reload()
   await expect(page.getByRole('heading',{name:model.name,exact:true})).toBeVisible()
   await expect(page.getByLabel('当前口令',{exact:true})).toHaveCount(0)
+})
+
+
+test('create and join nickname fields are optional, preserve pending input, and display per-circle names', async ({page}) => {
+  await seed(page);const model=await mockCircle(page,false)
+  await page.goto('/circles');await page.getByRole('button',{name:'创建',exact:true}).click()
+  await page.getByLabel('圈子名称',{exact:true}).fill('昵称验证')
+  await page.getByLabel('入圈口令',{exact:true}).fill('中文 English')
+  await page.getByLabel('圈内昵称',{exact:true}).fill('晨读小禾')
+  model.loseCreate=true
+  await page.getByRole('button',{name:'创建圈子',exact:true}).click()
+  await expect(page.getByRole('alert')).toContainText('操作结果还未确认')
+  await page.reload();await expect(page.getByLabel('圈内昵称',{exact:true})).toHaveValue('晨读小禾')
+  await page.getByRole('button',{name:'继续创建',exact:true}).click()
+  await expect(page.locator('.circle-members')).toContainText('晨读小禾（我）')
+  expect(model.creates[1]).toEqual(model.creates[0])
+  model.joined=false;model.owner=FRIEND
+  await page.reload();await page.getByRole('button',{name:'口令加入',exact:true}).click()
+  await page.getByLabel('圈子口令',{exact:true}).fill(model.inviteCode)
+  await expect(page.getByLabel('圈内昵称',{exact:true})).toHaveAttribute('placeholder','留空使用用户名：小禾')
+  await page.getByRole('button',{name:'加入圈子',exact:true}).click()
+  await expect(page.locator('.circle-members')).toContainText('小禾（我）')
+  expect(model.calls.filter(c=>c.path==='/join').slice(-1)[0]?.body.nickname).toBe('')
 })

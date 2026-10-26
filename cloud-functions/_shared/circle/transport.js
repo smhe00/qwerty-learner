@@ -16,9 +16,9 @@ function route(request) {
   const rest = url.pathname === ROOT ? [] : url.pathname.slice(ROOT.length + 1).split('/')
   if (rest.some((s) => !s || /[%\\]/.test(s))) fail(404, 'not_found')
   let entry
-  if (!rest.length) entry = { method: 'POST', action: 'createCircle', fields: ['name', 'operationId', 'softMemberLimit', 'passphrase'] }
+  if (!rest.length) entry = { method: 'POST', action: 'createCircle', fields: ['name', 'operationId', 'softMemberLimit', 'passphrase', 'nickname'] }
   else if (rest.length === 1 && rest[0] === 'mine') entry = { method: 'GET', action: 'listMyCircles' }
-  else if (rest.length === 1 && rest[0] === 'join') entry = { method: 'POST', action: 'joinCircle', fields: ['inviteCode'] }
+  else if (rest.length === 1 && rest[0] === 'join') entry = { method: 'POST', action: 'joinCircle', fields: ['inviteCode', 'nickname'] }
   else {
     const [circleId, area, item, day] = rest
     if (!/^[a-f0-9]{24}$/.test(circleId)) fail(404, 'not_found')
@@ -140,7 +140,7 @@ export function createCircleTransport({ service, rateLimit, maxResponseBytes = 6
         case 'listMyCircles': result = await service.listMyCircles(token); break
         case 'getDay': result = await service.getDay(token, r.circleId, r.item); break
         case 'createCircle': result = await service.createCircle(token, body); break
-        case 'joinCircle': result = await service.joinCircle(token, body.inviteCode); break
+        case 'joinCircle': result = await service.joinCircle(token, body.inviteCode, { nickname: body.nickname }); break
         case 'getCircle': result = await service.getCircle(token, r.circleId); break
         case 'leaveCircle': result = await service.leaveCircle(token, r.circleId); break
         case 'removeMember': result = await service.removeMember(token, r.circleId, body.memberUserId); break

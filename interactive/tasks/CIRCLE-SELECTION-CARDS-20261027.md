@@ -1,3 +1,6 @@
 # Circle selection card hierarchy
 Status: IN_PROGRESS. Base e645a8e62d81c0daa82b4dfc7b455e2fcbbd9034.
 User reports missing visual boundaries when choosing among multiple circles. Add visible individual card borders, spacing, explicit selected state and role hierarchy, preserving behavior. Use isolated PC/mobile/dark previews and scoped lint/build; no new cloud accounts, backend change or broad Cloud suite. Continue the user-authorized Circle etest delivery for this follow-up visual correction; task explicitly allows one etest update despite the routine-UI default, with mocked-network visual checks and no live storage writes. Never master.
+
+## Added scope from owner
+Create/join forms allow optional per-circle nickname; blank defaults to server-authenticated username. Names can differ by circle. Display names never replace user IDs for membership/reactions. Keep old records compatible and preserve nickname in pending create retry. Avoid per-member GETs on every read by derived roster cache tied to strong listing ETags, with live authorization and membership checks retained. Test defaults/Chinese/custom names, isolation, retry/rejoin, cache invalidation and UI; real etest disposable data acceptance allowed for the new storage behavior.

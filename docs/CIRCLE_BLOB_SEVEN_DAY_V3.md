@@ -20,7 +20,8 @@ All v3 objects are private and served only through authenticated functions.
 | --- | --- |
 | circles/C/meta.json | Owner, normalized name, advisory cap, hashed invitation; strong reads |
 | circles/C/closed.json | Durable closure; strong reads |
-| circles/C/members/U.json | Current membership only; stable write/delete, strong reads and readback |
+| circles/C/members/U.json | Current membership and optional per-circle nickname; stable write/delete, strong reads and readback |
+| circles/C/roster.json | Derived display-name cache, strong source ETags and verified body versions; never admission authority |
 | accounts/U/circles/C.json | Repairable personal-circle index; strong, never membership authority |
 | passphrases/HASH/C.json | Hashed passphrase discovery index; strong list/readback; metadata remains authoritative |
 | circles/C/days/YYYY-MM-DD/U/HASH.json | Immutable per-actor activity; ordinary write, eventual reads |
@@ -104,3 +105,12 @@ No scheduler was installed and no live Blob objects were touched during developm
 ## Validation
 
 See interactive/reports/CIRCLE-BLOB-SEVEN-DAY-20261026-report.md for exact evidence. Focused tests include membership retry/rejoin, advisory concurrency, partial writes, session revocation, cache invalidation/stale overwrite, 50-member reaction response size, Beijing midnight, source integrity, cursor validation, legacy compatibility and restartable cleanup beyond the read budget.
+
+## Per-circle nicknames (2026-10-27)
+Create and join accept optional nickname. Trim ends and normalize NFC, allow up to 32 Unicode codepoints, reject control/bidi/zero-width controls; empty or omitted on new membership uses the authenticated account username. Client-supplied username/actor fields remain forbidden. Different circles may use different names; identity, reactions and permissions still use userId. Duplicate display names do not merge users. Create retries persist the exact nickname input and include it in creation identity; an existing creator nickname is preserved. Legacy clients omitting nickname do not erase an existing nickname; an explicit join/rejoin may choose a new one.
+
+Old member records without nickname remain readable. Existing unknown peers retain the numbered fallback until a new join supplies a name; the current user's UI can use their authenticated username immediately. No bulk account lookup or silent migration. New membership records extend schemaVersion 3 with nickname; older application binaries that enforce the old exact record shape cannot read these new records, so do not downgrade to a pre-nickname backend against this store.
+
+Names are stored in each stable member object, not a shared mutable roster. Strong LIST returns key/ETag pairs; the roster cache is reused only for an identical source fingerprint and valid content hash. On a miss, bounded parallel member GETs collect names; caching requires each GET's own response ETag to match its listed version. A concurrent change, missing ETag or unsupported versioned read disables cache reuse/build instead of assigning a new body to an old version. Cache reads do not replace initial/final session, closure or individual membership checks. Cache hits avoid per-peer GETs; first/new membership sets need bounded reads. Stale cache overwrites are detected on the next fingerprint comparison.
+
+roster.json is outside date partitions and is not deleted by the daily sweep. It is derived private social data covered by the existing deletion hold; it does not add a new account-erasure claim. No CAS or lock introduced.

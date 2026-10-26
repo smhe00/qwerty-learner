@@ -7,6 +7,7 @@ import {
   circleUnavailable,
   isLegacyCircleInvite,
   memberLabel,
+  normalizeCircleNickname,
   normalizeCirclePassphrase,
   readCircleHints,
   saveCircleHints,
@@ -79,6 +80,8 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
   const [pending, setPending] = useState<CreateDraft | undefined>(() => readCircleHints(auth.user.userId).pending)
   const [name, setName] = useState(() => readCircleHints(auth.user.userId).pending?.name || '')
   const [passphrase, setPassphrase] = useState(() => readCircleHints(auth.user.userId).pending?.passphrase || '')
+  const [nickname, setNickname] = useState(() => readCircleHints(auth.user.userId).pending?.nickname || '')
+  const [joinNickname, setJoinNickname] = useState('')
   const [replacement, setReplacement] = useState('')
   const [invite, setInvite] = useState('')
   const [newWords, setNewWords] = useState('')
@@ -191,7 +194,14 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
     const normalized =
       pending?.passphrase === undefined && pending ? undefined : normalizeCirclePassphrase(pending?.passphrase ?? passphrase)
     if (normalized === null) throw new CircleError('invalid_circle_passphrase')
-    const draft = pending || { name: name.trim().normalize('NFKC'), operationId: crypto.randomUUID(), passphrase: normalized }
+    const normalizedNickname = normalizeCircleNickname(nickname)
+    if (!pending && normalizedNickname === null) throw new CircleError('invalid_circle_nickname')
+    const draft = pending || {
+      name: name.trim().normalize('NFKC'),
+      operationId: crypto.randomUUID(),
+      passphrase: normalized,
+      nickname: normalizedNickname || '',
+    }
     if (
       !draft.name ||
       Array.from(draft.name).length > 32 ||
@@ -206,7 +216,10 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
     try {
       result = await circleRequest(auth, '', { method: 'POST', body: draft })
     } catch (reason) {
-      if (reason instanceof CircleError && ['circle_passphrase_taken', 'invalid_circle_passphrase'].includes(reason.code)) {
+      if (
+        reason instanceof CircleError &&
+        ['circle_passphrase_taken', 'invalid_circle_passphrase', 'invalid_circle_nickname'].includes(reason.code)
+      ) {
         // These responses precede creation writes; editing the rejected phrase is safe.
         const saved = readCircleHints(auth.user.userId)
         delete saved.pending
@@ -234,6 +247,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
       setForm(null)
       setName('')
       setPassphrase('')
+      setNickname('')
       setSelected(result.circleId)
       setDay(circleDays()[0])
     }
@@ -244,9 +258,11 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
     if (isLegacyCircleInvite(raw) && raw.startsWith('QC2-')) throw new CircleError('legacy_invite')
     const code = isLegacyCircleInvite(raw) ? raw : normalizeCirclePassphrase(raw)
     if (!code) throw new CircleError('invalid_circle_passphrase')
+    const normalizedNickname = normalizeCircleNickname(joinNickname)
+    if (normalizedNickname === null) throw new CircleError('invalid_circle_nickname')
     const result = await circleRequest<{ circleId: string; inviteRevision?: string }>(auth, '/join', {
       method: 'POST',
-      body: { inviteCode: code },
+      body: { inviteCode: code, nickname: normalizedNickname },
     })
     if (!/^[a-f0-9]{24}$/.test(result.circleId) || (isLegacyCircleInvite(code) && result.circleId !== code.slice(4, 28)))
       throw new CircleError('write_unknown')
@@ -263,6 +279,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
     if (alive.current) {
       setForm(null)
       setInvite('')
+      setJoinNickname('')
       setSelected(result.circleId)
       setDay(circleDays()[0])
     }
@@ -471,6 +488,21 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                       <small id="circle-create-passphrase-hint">2–32 个字符，支持中英文，英文区分大小写。请勿使用账号密码。</small>
                     </label>
                   )}
+                  {(form === 'join' || !pending || pending.nickname !== undefined) && (
+                    <label>
+                      圈内昵称（选填）
+                      <input
+                        aria-label="圈内昵称"
+                        maxLength={64}
+                        autoComplete="off"
+                        value={form === 'create' ? pending?.nickname ?? nickname : joinNickname}
+                        readOnly={form === 'create' && !!pending}
+                        disabled={disabled}
+                        placeholder={'留空使用用户名：' + auth.user.username}
+                        onChange={(event) => (form === 'create' ? setNickname(event.target.value) : setJoinNickname(event.target.value))}
+                      />
+                    </label>
+                  )}
                   <small>
                     {form === 'create'
                       ? pending
@@ -646,7 +678,11 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                           </span>
                           <div className="circle-member-info">
                             <strong>
-                              {memberLabel(member.userId, auth.user.userId)}{' '}
+                              {memberLabel(
+                                member.userId,
+                                auth.user.userId,
+                                member.nickname || (member.userId === auth.user.userId ? auth.user.username : undefined),
+                              )}{' '}
                               {member.role === 'owner' && <span className="circle-owner">圈主</span>}
                             </strong>
                             <small>
@@ -665,7 +701,14 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                             <button
                               type="button"
                               className="circle-like"
-                              aria-label={(liked ? '已点赞 ' : '鼓励 ') + memberLabel(member.userId, auth.user.userId)}
+                              aria-label={
+                                (liked ? '已点赞 ' : '鼓励 ') +
+                                memberLabel(
+                                  member.userId,
+                                  auth.user.userId,
+                                  member.nickname || (member.userId === auth.user.userId ? auth.user.username : undefined),
+                                )
+                              }
                               disabled={disabled || !progress || liked}
                               onClick={() => void mutate(() => like(member.userId))}
                             >
@@ -677,7 +720,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                       )
                     })}
                   </ul>
-                  <p className="circle-footnote">打卡由同学自行分享，更新可能稍有延迟。成员暂以编号区分。</p>
+                  <p className="circle-footnote">打卡由同学自行分享，更新可能稍有延迟。昵称只在本圈使用。</p>
                 </section>
                 <details className="circle-card circle-manage">
                   <summary>{owner ? '圈子管理' : '离开圈子'}</summary>
@@ -714,7 +757,13 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                         .filter((member) => member.userId !== auth.user.userId)
                         .map((member) => (
                           <div key={member.userId}>
-                            <span>{memberLabel(member.userId, auth.user.userId)}</span>
+                            <span>
+                              {memberLabel(
+                                member.userId,
+                                auth.user.userId,
+                                member.nickname || (member.userId === auth.user.userId ? auth.user.username : undefined),
+                              )}
+                            </span>
                             <button
                               type="button"
                               disabled={disabled}
