@@ -1,5 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
-import { createFeedbackService } from '../../cloud-functions/_shared/feedback.js'
+import { resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
+// Playwright transpiles this spec to CJS. Native dynamic import also supports
+// the Cloud Functions ESM package on CI's Node 20 (local Node 22 supports require).
+let createFeedbackService: any
+test.beforeAll(async () => {
+  const nativeImport = new Function('specifier', 'return import(specifier)')
+  ;({ createFeedbackService } = await nativeImport(pathToFileURL(resolve(process.cwd(), 'cloud-functions/_shared/feedback.js')).href))
+})
 
 const account = 'a'.repeat(32), admin = 'c'.repeat(32)
 function cloud() {

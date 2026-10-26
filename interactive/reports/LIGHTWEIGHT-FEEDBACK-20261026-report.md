@@ -32,3 +32,9 @@ product/main only. Existing Circle task/current-task record preserved. No etest/
 
 ## Fresh-browser recovery finding
 The fresh anonymous S1 bootstrap calls location.replace(location.href) after initialization. With a fragment this can become same-document navigation, leaving the initialization screen mounted. The feedback-only entry helper now captures a valid feedback fragment into sessionStorage and removes the fragment before guarded bootstrap. It has no auth/database imports, changes no learning storage, preserves other query/hash inputs, and survives the required reload. The UI consumes it only after preserving the anonymous key. A real fresh-browser journey and a separate pure helper regression cover this.
+
+## Integration and CI checkpoint
+Feature commit 42567bc0; accessibility follow-up bc37f2db. Integrated Circle backend and its newer UI task claim without changing that executor record. Pushed development integration 6cd2c38c9dd5d35e1b319d3548e174a5f41b1751. Local browser results now include the fourth rejection/editing journey, plus malformed ACK and lost ACK across refresh.
+First feedback CI run 40315199257 failed before test collection: Playwright CommonJS required the ESM Cloud Functions service on Node 20. Local Node 22 accepts that require. The test now uses native dynamic import; application code and assertions are unchanged. CI retry remains pending.
+
+CI at integration 6cd2c38c: Cloud Sync Gate 40315199218 PASS (backend/lint/build), Pages deployment 40315199236 PASS, toolbar and Learn completion/journey PASS. Mobile Menu Completion had 22 passing cases and one stale menu-size assertion (expected five, now six with the authorized feedback entry). Updated that assertion to six and explicitly required the feedback button; remaining assertions retained.
