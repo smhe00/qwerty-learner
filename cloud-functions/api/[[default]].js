@@ -261,14 +261,22 @@ async function enforceAuthRateLimit(context, storage, env, cors) {
 }
 
 export async function onRequest(context) {
-  return withHandoffGateway(context, onUncoordinatedRequest)
+  const { request } = context
+  const path = new URL(request.url).pathname.replace(/^\/api(?=\/|$)/, '')
+  // Maker may release the original body across asynchronous Blob lookups.
+  // Receive Circle writes immediately, exactly once, before handoff classification.
+  // Authentication/rate checks still precede every Circle business operation.
+  const circleBody = (path === '/circle/v2' || path.startsWith('/circle/v2/')) &&
+    ['POST', 'DELETE'].includes(request.method) ? readJson(request, 8192) : null
+  if (circleBody) void circleBody.catch(() => {}) // Preserve rejection until the authenticated dispatcher consumes it.
+  return withHandoffGateway(context, next => onUncoordinatedRequest(next, circleBody))
 }
 
-async function onUncoordinatedRequest(context) {
+async function onUncoordinatedRequest(context, circleBody = null) {
   const { request } = context
   const env = runtimeEnvironment(context.env)
   const diagnostics = createRequestDiagnostics(context)
-  const readBody = maxBytes => diagnostics.run('request-body', () => readJson(request, maxBytes))
+  const readBody = maxBytes => diagnostics.run('request-body', () => circleBody ?? readJson(request, maxBytes))
   const url = new URL(request.url)
   const path = url.pathname.replace(/^\/api(?=\/|$)/, '') || '/'
   const cors = corsHeaders(request, env.CORS_ORIGIN || 'same-origin')
