@@ -1,14 +1,12 @@
 ---
 protocol_version: '1.1'
-task_id: ACCOUNT-PASSIVE-RETURN-20261026
-task_file: interactive/tasks/ACCOUNT-PASSIVE-RETURN-20261026.md
-report_file: interactive/reports/ACCOUNT-PASSIVE-RETURN-20261026-report.md
+task_id: CIRCLE-BLOB-SEVEN-DAY-20261026
+task_file: interactive/tasks/CIRCLE-BLOB-SEVEN-DAY-20261026.md
+report_file: interactive/reports/CIRCLE-BLOB-SEVEN-DAY-20261026-report.md
 target_branch: product/main
-status: REVIEW
-executor: Codex
-claim_base_commit: 95184f9f306fc0d04b726edc9ec53d3bca49bdef
-release_to_master: true
+status: IN_PROGRESS
+executor: Codex-circle-seven-day
+claim_base_commit: 12c2069469c0c00d85f2e9c238eb4e2c2b955f01
+release_to_master: false
 ---
-用户授权：单纯查看账号后返回不触发同步；登录、重新认证和未完成事务仍同步/恢复。先etest，同SHA快进master；保留当前主线管理员工具及所有已上线UI。
-
-已完成：master/etest同SHA15fffa2c，正式站实测通过。主线持续开发，独立候选门禁及14项回归已落地；详见报告 Final outcome。
+Owner authorized implementation in this chat. Pure Blob; advisory 50 members / 3 circles; direct membership write/delete with strong readback; seven Beijing-calendar days of activities; stored daily views. No KV, monthly statistics, UI, live account/store changes or etest/master promotion. Previous completed task: ACCOUNT-PASSIVE-RETURN-20261026.
