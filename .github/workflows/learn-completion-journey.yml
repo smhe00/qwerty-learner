@@ -15,6 +15,9 @@ on:
       - 'src/index.tsx'
       - 'tests/e2e/learn-completion-journey*'
       - 'tests/e2e/learn-save-failure*'
+      - 'tests/learn/persistence-boundary.test.mjs'
+      - 'tests/learn/persistence-architecture.test.mjs'
+      - 'scripts/validate-architecture-boundaries.mjs'
       - 'tests/e2e/etest-learn-completion*'
       - '.github/workflows/etest-learn-completion.yml'
       - 'tests/e2e/learn-block-sync-*'
@@ -35,6 +38,9 @@ on:
       - 'src/index.tsx'
       - 'tests/e2e/learn-completion-journey*'
       - 'tests/e2e/learn-save-failure*'
+      - 'tests/learn/persistence-boundary.test.mjs'
+      - 'tests/learn/persistence-architecture.test.mjs'
+      - 'scripts/validate-architecture-boundaries.mjs'
       - 'tests/e2e/etest-learn-completion*'
       - '.github/workflows/etest-learn-completion.yml'
       - 'tests/e2e/learn-block-sync-*'
@@ -61,6 +67,8 @@ jobs:
         run: yarn playwright test --config=tests/e2e/learn-completion-journey.config.ts
       - name: Failed raw record cannot advance Learn
         run: yarn playwright test --config=tests/e2e/learn-save-failure.config.ts
+      - name: Durable ID and pending persistence contracts
+        run: node --test tests/learn/persistence-boundary.test.mjs tests/learn/persistence-architecture.test.mjs
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

@@ -45,7 +45,7 @@ import {
   getReviewWordStates,
 } from '@/review/repository'
 import type { Word } from '@/typings'
-import { getUTCUnixTimestamp } from '@/utils'
+import { getUTCUnixTimestamp } from '@/utils/time'
 import { useEffect, useState } from 'react'
 
 export function useGetLatestReviewRecord(dictID: string) {

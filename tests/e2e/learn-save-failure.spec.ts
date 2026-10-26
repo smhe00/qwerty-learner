@@ -92,3 +92,26 @@ test('leaving a pending save does not release the old completion callback', asyn
   expect((await readReviewModeInfo(page)).reviewRecord).toEqual(before.reviewRecord)
   await expect(page.locator('[data-learn-result-screen]')).toHaveCount(0)
 })
+
+test('derived FSRS failure retains raw evidence and still advances without unhandled rejection', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await prepare(page)
+  await page.evaluate(() => {
+    ;(window as any).__projectionFailures = 0
+    ;(window as any).__saveFailureDb.reviewWordStates.put = async () => {
+      ;(window as any).__projectionFailures++
+      throw new Error('injected derived projection failure')
+    }
+  })
+  await page.keyboard.type('cancel')
+  await waitForReviewIndex(page, 1)
+  await expect.poll(() => page.evaluate(() => (window as any).__projectionFailures)).toBeGreaterThan(0)
+  await page.addScriptTag({ type: 'module', content: "import { flushLearnPersistence } from '/src/learn/persistence.ts'; await flushLearnPersistence(); window.__projectionDrained = true" })
+  await expect.poll(() => page.evaluate(() => (window as any).__projectionDrained)).toBe(true)
+  const records = await readReviewWordRecords(page, ['cancel'])
+  expect(records).toHaveLength(1)
+  expect(records[0].reviewRatingDecision?.eligible).toBe(true)
+  await expect(page.getByRole('button', { name: '重试保存', exact: true })).toHaveCount(0)
+  expect(errors).toEqual([])
+})

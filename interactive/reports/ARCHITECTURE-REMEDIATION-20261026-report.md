@@ -34,7 +34,31 @@ release_to_master: false
 
 ## 尚未执行/剩余
 
-阶段 2a、完整本批静态检查/构建/成功流程回归和上游分歧核查待完成。真实 Cloud/Blob、发布门禁、物理手机测试未执行，本批也不宣称这些验证通过。
+真实 Cloud/Blob、发布门禁、物理手机测试未执行，本批也不宣称这些验证通过。阶段 2b–5 按计划后续独立推进。
+
+## 阶段 2a：接口与依赖
+
+- `learn/durable-word-record.ts` 为桌面和触屏提供同一持久化 ID 校验，拒绝负值、0、非有限值、非整数和不安全整数。仍是本地记录 ID，不是云端回执。
+- 原始 `add()` 已成功后，UI 通知或 M3 policy 读取异常不会覆盖成功结果，避免误提示失败而诱导重复写入；原有成就/M3 恢复职责保留。
+- `trackLearnPersistence` 改为双结果清理，不再让 `finally()` 生成未被消费的拒绝 promise；仍把原 promise 返回调用者，flush 继续等待后续派生写入。
+- ReviewRecord 的时间工具改为叶模块导入，切断 `review-record → utils → mixpanel → store → reviewInfoAtom → review-record`。边界检查增加此适配器的反向依赖约束；不宣称所有模块循环已清理。
+- 新增 6 个执行真实模块的持久化边界测试、2 个架构门禁正反例；不再只依靠正则检查源码字符串。
+
+## 阶段 2a 验证
+
+- 新增浏览器故障回归 6/6；包含真实事务 abort、重复失败及双击恢复、最后一词、离开页面、FSRS 派生失败无未处理拒绝。
+- `node --test tests/learn/persistence-boundary.test.mjs` 6/6；`persistence-architecture.test.mjs` 2/2；既有 mobile contract 6/6。
+- `yarn playwright test --config=tests/e2e/learn-completion-journey.config.ts` 12/12，包括 guarded V4 本地路由夹具；这不是实网云证明。
+- Review 定向 5/5：多词完成、Typing 不重开 Learn、桌面 Tap Recall 的纠错/暂停/按住键、触屏键盘连续提交、新词独立回忆准入。
+- 六个修改源码 ESLint：0 errors，1 个历史 warning（Word hook 依赖）。
+- `tsc --noEmit` 全仓仍失败。用 TypeScript 编译器对 98697131 的变更文件做虚拟回读对照，基线/当前均 147 项诊断，按文件/错误码/消息多重集比较新增 0；没有改 tsconfig 或屏蔽错误。修改文件内仍有 5 项原有诊断（ES5 Set/Map 迭代及其推导错误），不能声称全仓或全部修改文件类型检查干净。
+- `yarn build` PASS，4366 模块；保留既有大 chunk/use client/Browserslist 提示。`git diff --check` PASS。
+- 测试编写过程中首次存储适配器单测夹具遗漏 ReviewRecord.words，修正夹具为 words=[] 后 6/6；没有更改产品断言来通过测试。
+
+## Git 检查点
+
+- 阶段 1：`fd5b547`。
+- 推送前 fetch 发现上游从 98697131 前进到 8356b50（恢复测试站 UI 与直达账号入口）。没有重叠修改本批 WordPanel/db/learn 核心文件；在本任务分支正常 merge 后补集成验证，保留对方全部提交，不反向撤销或覆盖。
 
 ## 安全约束
 

@@ -173,8 +173,14 @@ export function useSaveWordRecord() {
       } catch (e) {
         console.error(e)
       }
-      if (dispatch) {
-        dbID > 0 && dispatch({ type: TypingStateActionType.ADD_WORD_RECORD_ID, payload: dbID })
+      if (dbID <= 0) return dbID
+
+      // Once add() resolves, errors in UI notification or sidecars must not
+      // look like a failed raw write and invite a duplicate retry.
+      try {
+        dispatch?.({ type: TypingStateActionType.ADD_WORD_RECORD_ID, payload: dbID })
+      } catch (error) {
+        console.error('failed to notify saved word record', error)
       }
 
       // Achievement is an additive sidecar. It only runs after raw Learn
@@ -196,10 +202,14 @@ export function useSaveWordRecord() {
       // the authoritative WordRecord is durably saved. Its own recovery scan
       // repairs a crash between this write and the separate IDB outbox.
       // Never treat an event receipt as a V4 account convergence verdict.
-      if (dbID > 0 && learningEventSyncEnabled()) {
-        void import('@/sync/m3-publication-browser')
-          .then(({ scheduleEtestM3Publication }) => scheduleEtestM3Publication())
-          .catch(error => console.warn('M3 pilot not scheduled; original WordRecord retained', error))
+      try {
+        if (learningEventSyncEnabled()) {
+          void import('@/sync/m3-publication-browser')
+            .then(({ scheduleEtestM3Publication }) => scheduleEtestM3Publication())
+            .catch(error => console.warn('M3 pilot not scheduled; original WordRecord retained', error))
+        }
+      } catch (error) {
+        console.warn('M3 policy unavailable; original WordRecord retained', error)
       }
 
       return dbID

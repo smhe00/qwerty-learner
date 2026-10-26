@@ -16,6 +16,7 @@ import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import useKeySounds from '@/hooks/useKeySounds'
 import { getUTCUnixTimestamp } from '@/utils/time'
 import type { LearnItemKind } from '@/learn/session'
+import { requireDurableWordRecordId } from '@/learn/durable-word-record'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import { classifyTypingError } from '@/review/classifier'
 import type { TypingErrorClassification } from '@/review/classifier'
@@ -1113,6 +1114,27 @@ export default function WordComponent({
         armSuccessFinishRelease(() => onFinish(result))
       }
 
+      // Freeze the completed observation once. Retrying storage must not
+      // re-grade the answer or incorporate time spent looking at feedback.
+      const saveInput: Parameters<typeof saveWordRecord>[0] = {
+        word: word.name,
+        wrongCount: wordState.wrongCount,
+        letterTimeArray: wordState.letterTimeArray,
+        letterMistake: wordState.letterMistake,
+        telemetry,
+        learningContext,
+        exerciseCondition: exerciseConditionRef.current,
+        reviewPolicyDecision: reviewPolicyDecisionRef.current,
+        reviewEvidence,
+        reviewRatingDecision,
+        reviewPolicyShadow: nextExerciseShadow ?? undefined,
+        reviewBaseStateFingerprint,
+        sourceMode: isLearnAttempt ? 'learn' : 'typing',
+        learnItemKind: isLearnAttempt ? learnItemKind ?? 'review' : undefined,
+      }
+      let active = true
+      let saving = false
+      let durable = false
       const persistResult = async () => {
         if (!active || saving || durable) return
         saving = true
@@ -1121,9 +1143,7 @@ export default function WordComponent({
 
         try {
           wordRecordId = await saveWordRecord(saveInput)
-          if (isLearnAttempt && (!Number.isSafeInteger(wordRecordId) || wordRecordId <= 0)) {
-            throw new Error('学习记录保存失败，本词尚未推进。')
-          }
+          if (isLearnAttempt) requireDurableWordRecordId(wordRecordId)
         } catch (error) {
           console.error('failed to persist word record', error)
           if (active && isLearnAttempt) {
@@ -1167,29 +1187,6 @@ export default function WordComponent({
         }
       }
 
-      // Freeze the completed observation once. Retrying storage must not
-      // re-grade the answer or incorporate time spent looking at feedback.
-      const saveInput: Parameters<typeof saveWordRecord>[0] = {
-            word: word.name,
-            wrongCount: wordState.wrongCount,
-            letterTimeArray: wordState.letterTimeArray,
-            letterMistake: wordState.letterMistake,
-            telemetry,
-            learningContext,
-            exerciseCondition: exerciseConditionRef.current,
-            reviewPolicyDecision: reviewPolicyDecisionRef.current,
-            reviewEvidence,
-            reviewRatingDecision,
-            reviewPolicyShadow: nextExerciseShadow ?? undefined,
-            reviewBaseStateFingerprint,
-            sourceMode: isLearnAttempt ? 'learn' : 'typing',
-            learnItemKind: isLearnAttempt
-              ? learnItemKind ?? 'review'
-              : undefined,
-      }
-      let active = true
-      let saving = false
-      let durable = false
       retrySaveRef.current = persistResult
       void persistResult()
       return () => {

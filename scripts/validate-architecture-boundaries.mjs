@@ -82,6 +82,17 @@ const lowLevelFiles = [
   'src/utils/time.ts',
 ]
 
+// This adapter still owns React hooks, but must not pull store initialization
+// back in through a utility barrel. That closes the former runtime cycle:
+// review-record -> utils -> mixpanel -> store -> reviewInfoAtom -> review-record.
+const reviewRecordAdapter = 'src/utils/db/review-record.ts'
+for (const specifier of importsOf(reviewRecordAdapter)) {
+  if (specifier === '@/utils' || specifier === '..' || specifier === '../index' ||
+      specifier === '@/store' || specifier.startsWith('@/store/')) {
+    forbid(reviewRecordAdapter, specifier, 'persistence adapter must use leaf utilities without store initialization')
+  }
+}
+
 for (const path of lowLevelFiles) {
   if (!existsSync(resolve(root, path))) {
     errors.push(`missing low-level architecture file: ${path}`)
@@ -113,5 +124,5 @@ if (errors.length > 0) {
 }
 
 console.log(
-  `Architecture boundaries OK: ${domainFiles.length} Learn/Review modules + ${lowLevelFiles.length} low-level files.`,
+  `Architecture boundaries OK: ${domainFiles.length} Learn/Review modules + ${lowLevelFiles.length} low-level files + ReviewRecord adapter.`,
 )
