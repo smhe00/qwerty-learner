@@ -42,12 +42,6 @@ const domainFiles = [
   ...sourceFiles('src/review'),
 ]
 
-const storeExceptions = new Set([
-  // Transitional persistence adapter. ReviewRecord queue ownership still lives
-  // in the store today; moving it behind a persistence port is tracked debt.
-  'src/learn/persistence.ts',
-])
-
 for (const path of domainFiles) {
   for (const specifier of importsOf(path)) {
     if (
@@ -68,8 +62,7 @@ for (const path of domainFiles) {
     }
 
     if (
-      (specifier === '@/store' || specifier.startsWith('@/store/')) &&
-      !storeExceptions.has(path)
+      (specifier === '@/store' || specifier.startsWith('@/store/'))
     ) {
       forbid(path, specifier, 'store is an adapter; domain policy must not depend on it')
     }
@@ -79,6 +72,8 @@ for (const path of domainFiles) {
 const lowLevelFiles = [
   'src/utils/db/core.ts',
   'src/utils/db/record.ts',
+  'src/utils/db/word-record-builder.ts',
+  'src/utils/db/review-record-writer.ts',
   'src/utils/time.ts',
 ]
 

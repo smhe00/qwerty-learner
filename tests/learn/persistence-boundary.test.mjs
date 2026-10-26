@@ -27,7 +27,7 @@ test('only valid persisted local IDs cross the Learn completion boundary', () =>
 test('handled persistence failure creates no unhandled rejection and registry still drains', async () => {
   let flushes = 0
   const { trackLearnPersistence, flushLearnPersistence } = load('src/learn/persistence.ts', {
-    '@/store/reviewInfoAtom': { flushReviewRecordWrites: async () => { flushes++ } },
+    '@/utils/db/review-record-writer': { flushReviewRecordWrites: async () => { flushes++ } },
   })
   const failure = new Error('raw transaction aborted')
   await assert.rejects(trackLearnPersistence(Promise.reject(failure)), (error) => error === failure)
@@ -47,7 +47,7 @@ test('handled persistence failure creates no unhandled rejection and registry st
 
 test('flush also waits for a derived write scheduled as an earlier write settles', async () => {
   const { trackLearnPersistence, flushLearnPersistence } = load('src/learn/persistence.ts', {
-    '@/store/reviewInfoAtom': { flushReviewRecordWrites: async () => {} },
+    '@/utils/db/review-record-writer': { flushReviewRecordWrites: async () => {} },
   })
   let releaseFirst, releaseSecond
   const first = new Promise((resolve) => { releaseFirst = resolve })
@@ -61,52 +61,4 @@ test('flush also waits for a derived write scheduled as an earlier write settles
   assert.equal(drained, false)
   releaseSecond()
   await draining
-})
-
-function storageAdapter(add, dispatch, policy, finished = false) {
-  return load('src/utils/db/index.ts', {
-    './record': { WordRecord: class { constructor(word) { this.word = word } } },
-    './attempt-identity': { newLearningAttemptId: () => 'test-stable-attempt-id' },
-    './word-record-retention': { compactTypingWordRecord: (record) => record },
-    './core': { db: { wordRecords: { add } } },
-    '@/achievement/session': { getAchievementSessionId: () => 'test-session' },
-    '@/dev/diagnostic-trace': { appendDeveloperTrace: () => {} },
-    '@/sync/learning-sync-policy': { learningEventSyncEnabled: policy },
-    '@/pages/Typing/store': { TypingContext: {}, TypingStateActionType: { ADD_WORD_RECORD_ID: 'add-id' } },
-    '@/store': { currentChapterAtom: 0, currentDictIdAtom: 'cet4', isReviewModeAtom: false, reviewModeInfoAtom: { reviewRecord: { isFinished: finished, words: [] } } },
-    jotai: { useAtomValue: (value) => value },
-    react: { useCallback: (callback) => callback, useContext: () => ({ dispatch }) },
-  }).useSaveWordRecord()
-}
-
-const input = { word: 'cancel', wrongCount: 0, letterTimeArray: [], letterMistake: {}, sourceMode: 'typing' }
-
-test('a committed record stays successful when UI or publication policy throws', async () => {
-  const rows = []
-  const save = storageAdapter(
-    async (row) => { rows.push(row); return 42 },
-    () => { throw new Error('UI notification failed') },
-    () => { throw new Error('publication policy unavailable') },
-  )
-  assert.equal(await save(input), 42)
-  assert.equal(rows.length, 1)
-  assert.equal(rows[0].attemptId, 'test-stable-attempt-id')
-})
-
-test('aborted raw write does not notify or run publication policy', async () => {
-  let effects = 0
-  const save = storageAdapter(
-    async () => { throw new Error('transaction aborted') },
-    () => { effects++ },
-    () => { effects++; return false },
-  )
-  assert.equal(await save(input), -1)
-  assert.equal(effects, 0)
-})
-
-test('terminal Learn session remains immutable', async () => {
-  let writes = 0
-  const save = storageAdapter(async () => { writes++; return 42 }, () => {}, () => false, true)
-  assert.equal(await save({ ...input, sourceMode: 'learn' }), -1)
-  assert.equal(writes, 0)
 })

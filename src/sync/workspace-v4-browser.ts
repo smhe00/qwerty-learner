@@ -24,7 +24,7 @@ import {
   restoreLearningState,
 } from '@/utils/backup'
 import { clearAllLearnDailySessions } from '@/learn/daily-session'
-import { flushReviewRecordWrites } from '@/store/reviewInfoAtom'
+import { flushReviewRecordWrites } from '@/utils/db/review-record-writer'
 import { applyRecordClassMappings, db } from '@/utils/db/core'
 import Dexie from 'dexie'
 import { timePerfStage } from './perf-diagnostics'

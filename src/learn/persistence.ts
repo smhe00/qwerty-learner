@@ -1,4 +1,4 @@
-import { flushReviewRecordWrites } from '@/store/reviewInfoAtom'
+import { flushReviewRecordWrites } from '@/utils/db/review-record-writer'
 
 const pending = new Set<Promise<unknown>>()
 

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { readReviewModeInfo, readReviewWordRecords, reviewWords, seedReviewSession, startTyping, waitForActiveLearnSession, waitForReviewIndex } from './review-flow-harness'
+import { readReviewModeInfo, readReviewWordRecords, reviewWords, seedAcquisitionSession, seedReviewSession, startTyping, waitForActiveLearnSession, waitForReviewIndex } from './review-flow-harness'
 
 async function prepare(page: Page, single = false) {
   await seedReviewSession(page, single ? reviewWords.slice(0, 1) : reviewWords, 910026)
@@ -114,4 +114,46 @@ test('derived FSRS failure retains raw evidence and still advances without unhan
   expect(records[0].reviewRatingDecision?.eligible).toBe(true)
   await expect(page.getByRole('button', { name: '重试保存', exact: true })).toHaveCount(0)
   expect(errors).toEqual([])
+})
+
+test('touch failure retries frozen self-report and a menu return keeps its receipt without another write', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await seedAcquisitionSession(page, reviewWords, 910027, 'independent', 4)
+  await page.goto('/mobile/study')
+  const card = page.locator('[data-mobile-word-practice]')
+  await expect(card).toBeVisible()
+  await expect(card.locator('[data-mobile-paused]')).toHaveCount(0)
+  await page.addScriptTag({ type: 'module', content: "import { db } from '/src/utils/db/core.ts'; window.__saveFailureDb = db" })
+  await expect.poll(() => page.evaluate(() => Boolean((window as any).__saveFailureDb))).toBe(true)
+  const before = await readReviewModeInfo(page)
+  await page.evaluate(() => {
+    const table = (window as any).__saveFailureDb.wordRecords
+    const add = table.add.bind(table)
+    ;(window as any).__touchSave = { fail: true, calls: 0 }
+    table.add = (record: unknown) => {
+      const fixture = (window as any).__touchSave
+      fixture.calls++
+      return fixture.fail ? Promise.reject(new Error('injected touch quota failure')) : add(record)
+    }
+  })
+  await card.locator('[data-mobile-grade="again"]').click()
+  await expect(page.getByRole('alert')).toContainText('本词尚未推进')
+  expect((await readReviewModeInfo(page)).reviewRecord).toEqual(before.reviewRecord)
+  expect(await readReviewWordRecords(page, ['cancel'])).toHaveLength(0)
+  await page.evaluate(() => { (window as any).__touchSave.fail = false })
+  await page.getByRole('button', { name: /保存失败.*重试/ }).click()
+  await expect(card.locator('[data-mobile-feedback]')).toBeVisible()
+  const records = await readReviewWordRecords(page, ['cancel'])
+  expect(records).toHaveLength(1)
+  expect(records[0].reviewEvidence.reasonCodes).toContain('self-report-not-spelling')
+  expect(records[0].attemptId).toBeTruthy()
+  await page.evaluate(() => { history.pushState({}, '', '/mobile'); window.dispatchEvent(new PopStateEvent('popstate')) })
+  await expect(card).toHaveCount(0)
+  await page.evaluate(() => { history.pushState({}, '', '/mobile/study'); window.dispatchEvent(new PopStateEvent('popstate')) })
+  await expect(card.locator('[data-mobile-feedback]')).toBeVisible()
+  if (await card.locator('[data-mobile-paused]').isVisible()) await page.keyboard.press('Enter')
+  await card.locator('[data-mobile-manual-next]').click()
+  await expect(card.locator('[data-mobile-feedback]')).toHaveCount(0)
+  expect(await readReviewWordRecords(page, ['cancel'])).toHaveLength(1)
+  expect(await page.evaluate(() => (window as any).__touchSave.calls)).toBe(2)
 })

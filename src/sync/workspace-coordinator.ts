@@ -24,7 +24,7 @@ import {
   saveWorkspaceToVault,
   workspaceRegistryPort,
 } from './workspace-vault'
-import { flushReviewRecordWrites } from '@/store/reviewInfoAtom'
+import { flushReviewRecordWrites } from '@/utils/db/review-record-writer'
 
 const replica: ReplicaPort = {
   flush: () => flushReviewRecordWrites(),

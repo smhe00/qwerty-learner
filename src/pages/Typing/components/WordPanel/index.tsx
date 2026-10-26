@@ -10,7 +10,8 @@ import Translation from './components/Translation'
 import WordComponent from './components/Word'
 import MobileWordPractice from './components/MobileWordPractice'
 import '@/pages/Mobile/mobile-app.css'
-import type { WordFinishResult } from './components/Word'
+import type { WordFinishResult } from '@/learn/word-completion'
+import { assertLearnCompletion } from '@/learn/word-completion'
 import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
 import {
@@ -193,14 +194,16 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
   )
 
   const onFinish = useCallback(
-    async ({
-      record,
-      wrongCount,
-      classification,
-      reviewRatingDecision,
-      lastWrongIndex,
-      nextExerciseShadow,
-    }: WordFinishResult) => {
+    async (result: WordFinishResult) => {
+      if (isReviewMode) assertLearnCompletion(result, currentDictId, currentWord?.name ?? '')
+      const {
+        record,
+        wrongCount,
+        classification,
+        reviewRatingDecision,
+        lastWrongIndex,
+        nextExerciseShadow,
+      } = result
       if (
         isReviewMode &&
         reviewModeInfo.reviewRecord?.isFinished === true

@@ -1,13 +1,8 @@
 import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
-import { createSerializedSnapshotWriter } from '@/review/persistence'
+import { queueReviewRecordWrite } from '@/utils/db/review-record-writer'
 import type { ReviewRecord } from '@/utils/db/record'
-import { putWordReviewRecord } from '@/utils/db/review-record'
 import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
-
-const reviewRecordWriter = createSerializedSnapshotWriter(
-  putWordReviewRecord,
-)
 
 function sameReviewSession(
   left: ReviewRecord | undefined,
@@ -21,17 +16,6 @@ function sameReviewSession(
     left.dict === right.dict &&
     left.createTime === right.createTime
   )
-}
-
-function queueReviewRecordWrite(record: ReviewRecord) {
-  // Persist an immutable snapshot in the same order as UI state transitions.
-  // Without serialization, an older unfinished checkpoint can complete after
-  // the final finished write and resurrect a stale Learn session on reload.
-  void reviewRecordWriter.enqueue(record)
-}
-
-export async function flushReviewRecordWrites(): Promise<void> {
-  await reviewRecordWriter.flush()
 }
 
 export type TReviewInfoAtomData = {
@@ -105,7 +89,7 @@ export function reviewInfoAtom(initialValue: TReviewInfoAtomData) {
             isFinished: newValue.reviewRecord.isFinished,
           },
         })
-        queueReviewRecordWrite(newValue.reviewRecord)
+        void queueReviewRecordWrite(newValue.reviewRecord)
       }
 
       try {

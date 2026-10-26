@@ -16,10 +16,8 @@ import { appendDeveloperTrace } from '@/dev/diagnostic-trace'
 import useKeySounds from '@/hooks/useKeySounds'
 import { getUTCUnixTimestamp } from '@/utils/time'
 import type { LearnItemKind } from '@/learn/session'
-import { requireDurableWordRecordId } from '@/learn/durable-word-record'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import { classifyTypingError } from '@/review/classifier'
-import type { TypingErrorClassification } from '@/review/classifier'
 import {
   createBaselineExerciseCondition,
   isLetterVisibleForExerciseCondition,
@@ -28,10 +26,8 @@ import type { ExerciseConditionV1 } from '@/review/condition'
 import type {
   ReviewExercisePlanV1,
   ReviewPolicyDecisionV1,
-  ReviewPolicyShadowV1,
 } from '@/review/decision'
 import { evaluateReviewEvidence } from '@/review/evidence'
-import type { ReviewEvidenceV1 } from '@/review/evidence'
 import type { WordHistorySummary } from '@/review/features'
 import {
   chooseNextExerciseShadow,
@@ -60,7 +56,6 @@ import {
   decideWordInput,
   shouldPlayAutomaticPronunciation,
 } from '@/review/machine'
-import { scheduleLearnReviewCommit } from '@/review/learn-review-commit'
 import { fingerprintReviewBaseState } from '@/review/fsrs/state-fingerprint'
 import { getReviewWordState } from '@/review/repository'
 import { decideReviewRating } from '@/review/state-machine'
@@ -80,7 +75,9 @@ import {
 } from '@/store'
 import type { Word } from '@/typings'
 import { CTRL, getUtcStringForMixpanel, shouldIgnoreTypingKeyEvent } from '@/utils'
-import { useSaveWordRecord } from '@/utils/db'
+import { useWordRecordCommit } from '@/hooks/useWordRecordCommit'
+import type { WordFinishResult } from '@/learn/word-completion'
+import type { DurableWordRecordReceipt, WordRecordCommitResult } from '@/learn/word-record-commit'
 import { getFirstValidDictionaryExample } from '@/utils/dictionaryExample'
 import type { IWordRecord, PronunciationCue } from '@/utils/db/record'
 import { useAtomValue } from 'jotai'
@@ -97,16 +94,6 @@ import { useImmer } from 'use-immer'
 
 const vowelLetters = ['A', 'E', 'I', 'O', 'U']
 const SUCCESS_FEEDBACK_MS = 600
-
-export type WordFinishResult = {
-  record: IWordRecord
-  wrongCount: number
-  classification: TypingErrorClassification
-  reviewRatingDecision?: RatingDecision
-  reviewEvidence: ReviewEvidenceV1
-  lastWrongIndex?: number
-  nextExerciseShadow?: ReviewPolicyShadowV1 | null
-}
 
 type WordComponentProps = {
   word: Word
@@ -151,7 +138,7 @@ export default function WordComponent({
   const isTextSelectable = useAtomValue(isTextSelectableAtom)
   const isIgnoreCase = useAtomValue(isIgnoreCaseAtom)
   const isShowAnswerOnHover = useAtomValue(isShowAnswerOnHoverAtom)
-  const saveWordRecord = useSaveWordRecord()
+  const commitRecord = useWordRecordCommit()
   // const wordLogUploader = useMixPanelWordLogUploader(state)
   const [playKeySound, playBeepSound, playHintSound] = useKeySounds()
   const pronunciationIsOpen = useAtomValue(pronunciationIsOpenAtom)
@@ -1101,9 +1088,14 @@ export default function WordComponent({
           reviewBaseStateFingerprint
       }
 
-      const notifyFinished = () => {
+      const notifyFinished = (receipt?: DurableWordRecordReceipt) => {
+        if (isLearnAttempt && !receipt) return
+        const completion = isLearnAttempt && receipt
+          ? { mode: 'learn' as const, receipt }
+          : { mode: 'typing' as const, receipt }
         const result: WordFinishResult = {
-          record: currentRecordForPolicy,
+          ...completion,
+          record: receipt?.record ?? currentRecordForPolicy,
           wrongCount: wordState.wrongCount,
           classification,
           reviewRatingDecision,
@@ -1116,7 +1108,7 @@ export default function WordComponent({
 
       // Freeze the completed observation once. Retrying storage must not
       // re-grade the answer or incorporate time spent looking at feedback.
-      const saveInput: Parameters<typeof saveWordRecord>[0] = {
+      const saveInput: Parameters<typeof commitRecord>[0] = {
         word: word.name,
         wrongCount: wordState.wrongCount,
         letterTimeArray: wordState.letterTimeArray,
@@ -1139,11 +1131,13 @@ export default function WordComponent({
         if (!active || saving || durable) return
         saving = true
         dispatch({ type: TypingStateActionType.SET_IS_SAVING_RECORD, payload: true })
-        let wordRecordId: number
+        let commit: WordRecordCommitResult
 
         try {
-          wordRecordId = await saveWordRecord(saveInput)
-          if (isLearnAttempt) requireDurableWordRecordId(wordRecordId)
+          commit = await commitRecord(saveInput)
+          if (commit.status !== 'saved') {
+            throw new Error('学习记录保存失败，本词尚未推进。')
+          }
         } catch (error) {
           console.error('failed to persist word record', error)
           if (active && isLearnAttempt) {
@@ -1163,8 +1157,7 @@ export default function WordComponent({
         if (!active) return
         retrySaveRef.current = null
         setSaveError('')
-        if (wordRecordId > 0) currentRecordForPolicy.id = wordRecordId
-        notifyFinished()
+        notifyFinished(commit.receipt)
         if (isLearnAttempt) {
           appendDeveloperTrace({
             scope: 'learn-terminal',
@@ -1173,16 +1166,9 @@ export default function WordComponent({
             index: state.chapterData.index,
             queueLength: state.chapterData.words.length,
             details: {
-              wordRecordId,
+              wordRecordId: commit.receipt.id,
               finalQueueItem: state.chapterData.index === state.chapterData.words.length - 1,
             },
-          })
-          scheduleLearnReviewCommit({
-            dict: currentDictInfo.id,
-            word: word.name,
-            itemKind: learnItemKind,
-            wordRecordId,
-            decision: reviewRatingDecision,
           })
         }
       }

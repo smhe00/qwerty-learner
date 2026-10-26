@@ -6,8 +6,8 @@ import { test } from 'node:test'
 import ts from 'typescript'
 
 // Mutation is in the validator's read port only; no workspace file is edited.
-function validate(extraImport = '') {
-  const adapter = resolve('src/utils/db/review-record.ts')
+function validate(extraImport = '', target = 'src/utils/db/review-record.ts') {
+  const adapter = resolve(target)
   const source = fs.readFileSync('scripts/validate-architecture-boundaries.mjs', 'utf8')
   const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText
   const nativeRequire = createRequire(import.meta.url)
@@ -25,4 +25,7 @@ test('reintroducing a utility barrel or store back-edge fails the architecture g
   for (const path of ['@/utils', '..', '../index', '@/store', '@/store/reviewInfoAtom']) {
     assert.throws(() => validate(`import { unsafe } from '${path}'`), /persistence adapter must use leaf utilities/)
   }
+})
+test('Learn persistence has no remaining store import exception', () => {
+  assert.throws(() => validate("import { flushReviewRecordWrites } from '@/store/reviewInfoAtom'", 'src/learn/persistence.ts'), /domain policy must not depend on it/)
 })

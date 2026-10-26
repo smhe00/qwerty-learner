@@ -4,6 +4,7 @@ on:
     branches: [product/main]
     paths:
       - 'src/learn/**'
+      - 'src/hooks/useWordRecordCommit.ts'
       - 'src/pages/Learn/**'
       - 'src/pages/Typing/components/WordPanel/**'
       - 'src/store/reviewInfoAtom.ts'
@@ -17,6 +18,9 @@ on:
       - 'tests/e2e/learn-save-failure*'
       - 'tests/learn/persistence-boundary.test.mjs'
       - 'tests/learn/persistence-architecture.test.mjs'
+      - 'tests/learn/word-*.test.mjs'
+      - 'tests/learn/review-record-writer.test.mjs'
+      - 'tests/learn/load-module.mjs'
       - 'scripts/validate-architecture-boundaries.mjs'
       - 'tests/e2e/etest-learn-completion*'
       - '.github/workflows/etest-learn-completion.yml'
@@ -27,6 +31,7 @@ on:
     branches: [product/main]
     paths:
       - 'src/learn/**'
+      - 'src/hooks/useWordRecordCommit.ts'
       - 'src/pages/Learn/**'
       - 'src/pages/Typing/components/WordPanel/**'
       - 'src/store/reviewInfoAtom.ts'
@@ -40,6 +45,9 @@ on:
       - 'tests/e2e/learn-save-failure*'
       - 'tests/learn/persistence-boundary.test.mjs'
       - 'tests/learn/persistence-architecture.test.mjs'
+      - 'tests/learn/word-*.test.mjs'
+      - 'tests/learn/review-record-writer.test.mjs'
+      - 'tests/learn/load-module.mjs'
       - 'scripts/validate-architecture-boundaries.mjs'
       - 'tests/e2e/etest-learn-completion*'
       - '.github/workflows/etest-learn-completion.yml'
@@ -68,7 +76,7 @@ jobs:
       - name: Failed raw record cannot advance Learn
         run: yarn playwright test --config=tests/e2e/learn-save-failure.config.ts
       - name: Durable ID and pending persistence contracts
-        run: node --test tests/learn/persistence-boundary.test.mjs tests/learn/persistence-architecture.test.mjs
+        run: node --test tests/learn/persistence-boundary.test.mjs tests/learn/persistence-architecture.test.mjs tests/learn/word-record-commit.test.mjs tests/learn/word-completion-types.test.mjs tests/learn/review-record-writer.test.mjs tests/learn/mobile-review-commit-contract.test.mjs
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

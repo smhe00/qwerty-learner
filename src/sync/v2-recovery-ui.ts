@@ -23,7 +23,7 @@ import { saveWorkspaceToVault, workspaceRegistryPort } from './workspace-vault'
 import type { WorkspaceSnapshotV4 } from './workspace-v4'
 import type { GuardedWorkspaceBoot } from './workspace-bootstrap'
 import type { RemoteSyncMeta } from './types'
-import { flushReviewRecordWrites } from '@/store/reviewInfoAtom'
+import { flushReviewRecordWrites } from '@/utils/db/review-record-writer'
 
 type Choice = 'keep-local' | 'keep-cloud'
 const HASH = /^[a-f0-9]{64}$/

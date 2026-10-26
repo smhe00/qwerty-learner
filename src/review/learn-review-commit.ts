@@ -19,14 +19,14 @@ export function scheduleLearnReviewCommit(input: {
   itemKind: LearnItemKind | undefined
   wordRecordId: number
   decision: RatingDecision | undefined
-}): void {
+}): Promise<void> {
   if (
     input.itemKind !== 'review' ||
     input.wordRecordId <= 0 ||
     input.decision?.eligible !== true
-  ) return
+  ) return Promise.resolve()
 
-  void trackLearnPersistence(
+  return trackLearnPersistence(
     applyReviewOutcome(
       input.dict,
       input.word,
@@ -34,9 +34,7 @@ export function scheduleLearnReviewCommit(input: {
       getUTCUnixTimestamp(),
       input.wordRecordId,
     ),
-  ).catch((error) => {
-    // Failure does not fabricate a successful projection; the raw event
-    // remains durable and can be replayed/reconciled.
-    console.error('failed to persist derived review scheduler state', error)
-  })
+  ).then(() => undefined)
+  // The application commit service reports rejection as a post-commit
+  // outcome. The raw event stays durable and remains available for rebuild.
 }
