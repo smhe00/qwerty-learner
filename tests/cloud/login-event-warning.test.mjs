@@ -10,6 +10,8 @@ const root = fileURLToPath(new URL('../../', import.meta.url))
 const tmp = mkdtempSync(join(tmpdir(), 'qwerty-login-warning-'))
 after(() => rmSync(tmp, { recursive: true, force: true }))
 const mocks = {
+  // Deletion has its own browser suite; this anonymous-login test must not load its browser DB graph.
+  './account-self-delete': 'export const mountSelfDeleteControls=({active})=>{if(active.kind!=="anonymous") throw Error("unexpected deletion controls"); return null;};',
   './api':
     'export class SyncApiError extends Error {}; export const login=(...x)=>globalThis.__warning.login(...x); export const register=login; export const changePassword=login; export const getIdleAccountPolicy=async()=>({enabled:false});',
   './auth':
@@ -43,7 +45,7 @@ async function compile(source, name) {
     platform: 'node',
     format: 'esm',
     target: 'node20',
-    define: { REACT_APP_DEPLOY_ENV: '"edgeone"', 'import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC': '"true"' },
+    define: { REACT_APP_DEPLOY_ENV: '"edgeone"', 'import.meta.env.VITE_QWERTY_SYNC_DISABLED': 'false', 'import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC': '"true"' },
     plugins: [
       {
         name: 'login-io',
