@@ -1,0 +1,219 @@
+{
+  "site": "https://t.smhe.cn",
+  "startedAt": "2026-10-26T20:49:06.041Z",
+  "steps": [
+    {
+      "step": "guest-submit",
+      "status": 200,
+      "ok": true,
+      "code": null
+    },
+    {
+      "step": "account-submit",
+      "status": 200,
+      "ok": true,
+      "code": null
+    }
+  ],
+  "requests": [
+    {
+      "actor": "guest",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "guest",
+      "method": "POST",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "guest",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/sync/v2/meta",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/sync/events/v2/observed",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "POST",
+      "path": "/api/maintenance/idle",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/sync/events/v2/observed",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "POST",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/sync/events/v2/observed",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/sync/events/v2/observed",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/sync/events/v2/observed",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/sync/events/v2/observed",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/sync/events/v2/observed",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/sync/events/v2/observed",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/sync/events/v2/observed",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/sync/events/v2/observed",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    }
+  ],
+  "source": "951f88b"
+}

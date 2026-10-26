@@ -1,0 +1,57 @@
+{
+  "site": "https://t.smhe.cn",
+  "source": "7f5dd39",
+  "startedAt": "2026-10-26T21:01:00.191Z",
+  "steps": [
+    {
+      "step": "guest-submit",
+      "status": 200,
+      "ok": true,
+      "code": null
+    },
+    {
+      "step": "account-submit",
+      "status": 200,
+      "ok": true,
+      "code": null
+    }
+  ],
+  "requests": [
+    {
+      "actor": "guest",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "guest",
+      "method": "POST",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "guest",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "POST",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/feedback/<thread>",
+      "status": 200
+    }
+  ]
+}

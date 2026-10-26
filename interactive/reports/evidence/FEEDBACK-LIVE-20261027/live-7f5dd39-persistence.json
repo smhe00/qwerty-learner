@@ -1,0 +1,66 @@
+{
+  "site": "https://t.smhe.cn",
+  "source": "7f5dd39",
+  "startedAt": "2026-10-26T20:58:58.082Z",
+  "scope": "Read-only persistence of fixtures created on 951f88b; not full acceptance",
+  "steps": [
+    {
+      "step": "prior-guest-record-persists-and-list-is-private",
+      "ok": true
+    },
+    {
+      "step": "prior-account-record-persists-and-list-is-private",
+      "ok": true
+    }
+  ],
+  "requests": [
+    {
+      "actor": "guest",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/sync/events/v2/observed",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/sync/v2/meta",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/sync/events/v2/observed",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "actor": "account",
+      "method": "GET",
+      "path": "/api/feedback",
+      "status": 200
+    }
+  ]
+}
