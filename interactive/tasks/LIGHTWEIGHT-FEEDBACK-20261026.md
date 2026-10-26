@@ -11,3 +11,6 @@ Acceptance: owner isolation, invalid/revoked credentials, administrator authoriz
 ## Owner UI follow-up, 2026-10-26
 Status: REVIEW. Base: 33011a55335d123f3094c1ef2f1e11a3d38faa3c. Local validation and development Private Feedback UI CI passed on 7c81e1208b037067eb3a4b61651c8d9bcb4de7da.
 Simplify the feedback dialog: one compact toolbar per view; no identity switching. Signed-in visitors always use their account, signed-out visitors use the browser anonymous identity, even when an anonymous recovery URL is opened while signed in. Preserve guest keys and pending sends; no migration. Guard sends against stale login state. Keep private-link recovery as secondary disclosure and remove unrelated controls from composition. Validate account precedence, anonymous recovery, retry/no-sync, PC/320px layout and Pages boundary; development push only.
+
+## PC menu icon alignment, 2026-10-26
+Status: REVIEW. Owner requested a missing feedback icon and alignment with preceding account menu items. Base db85edc7; preserved documentation-only main update 77dfe2a7. Added the existing MessageSquare icon at 19px and wrapped the feedback label to match account menu layout. Scoped lint and local browser geometry/click smoke passed; development only.

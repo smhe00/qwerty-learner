@@ -8,7 +8,7 @@ import { openAccountManagement } from '@/sync/account-navigation'
 import { loadAuth } from '@/sync/auth'
 import { useAdministratorAccess } from '@/sync/use-administrator-access'
 import { useSetAtom } from 'jotai'
-import { ChevronDown, Settings2, ShieldCheck, UserCircle2 } from 'lucide-react'
+import { ChevronDown, MessageSquare, Settings2, ShieldCheck, UserCircle2 } from 'lucide-react'
 import type { PropsWithChildren } from 'react'
 import type React from 'react'
 import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
@@ -219,12 +219,21 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
                     <Settings2 className="h-[19px] w-[19px]" aria-hidden="true" />
                     <span>账号管理</span>
                   </button>
-                  <button type="button" role="menuitem" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => {
-                    clearMenuTimers(); setAccountMenuOpen(false)
-                    typing?.dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })
-                    accountMenuRef.current?.querySelector<HTMLButtonElement>('[data-account-menu-toggle]')?.focus()
-                    openFeedback()
-                  }}>反馈与建议</button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                    onClick={() => {
+                      clearMenuTimers()
+                      setAccountMenuOpen(false)
+                      typing?.dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })
+                      accountMenuRef.current?.querySelector<HTMLButtonElement>('[data-account-menu-toggle]')?.focus()
+                      openFeedback()
+                    }}
+                  >
+                    <MessageSquare className="h-[19px] w-[19px] shrink-0" aria-hidden="true" />
+                    <span>反馈与建议</span>
+                  </button>
                   {administrator && (
                     <button
                       type="button"
