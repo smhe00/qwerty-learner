@@ -1,5 +1,5 @@
 # Circle custom passphrase report
-Status: IN_PROGRESS; implementation complete, etest validation next.
+Status: REVIEW; implementation and real etest Circle validation complete.
 Base: 495c77329a2e0a5c662d64b37c61e6c0d055d8f6. Claim: 9b0c8bb961238ce61f5f2b641c4f9297079c38ab.
 Workspace: C:/Users/peter/Documents/Codex/2026-10-26/qwerty-circle-passphrase.
 
@@ -20,5 +20,27 @@ Changed areas: bounded service and storage allowlist; shared passphrase normaliz
 ## Boundaries
 No atomic global reservation: normally duplicate phrases reject; simultaneous collisions fail joins instead of choosing a circle. Owner changes should be serialized. A join overlapping rotation can commit membership before its conflict response. Interrupted changes may retain stale hash-index objects (not membership authority); activity sweeps do not erase control objects. These no-lock limits are documented. Phrases are invitation secrets rather than account passwords. Synthetic social accounts retain the existing conservative deletion hold; close test circles after validation. No physical-device or production qualification claimed.
 
-## Next
-Commit/push product/main, pin its exact application SHA on edgeone-test, await source marker and run isolated real two-user custom-create/join/owner-change/old-rejection/new-rejoin. Master remains 15fffa2c762037d8b29d1e5b953c729001ad5f0e; previous etest is db85edc7dbe796584ec4b0b3e38920ac7515db70.
+## Deployed evidence
+Application SHA: **951f88ba2a9f6b6db81b45523b4ee1e998d503ab**. Normal development push and leased fast-forward of edgeone-test from db85edc7dbe796584ec4b0b3e38920ac7515db70. https://t.smhe.cn/source-commit.txt returned 951f88b before the real test. Report-only completion remains on product/main; etest stays pinned to this application SHA.
+
+Real browser + private Blob, two freshly registered synthetic accounts:
+- PC Learn toolbar -> create with Chinese/English phrase: 202, 5963 ms; named circle visible.
+- Second account UI phrase-only join: 202, 5715 ms; correct circle visible.
+- Nonowner POST /invite: 403 not_circle_owner.
+- Owner UI changes phrase: 202, 4960 ms; current phrase displayed for copying.
+- Existing member GET after rotation: 200; membership preserved.
+- Member leaves: 202; old phrase rejoin: 404 invalid_invite; new phrase rejoin: 202, correct circle.
+- Close synthetic circle: 202. Circle 654a098132bb0f2b03368893 closed. Synthetic accounts 2833432a2ceaabfe723d8c7a6afcdcf4 and 20ae8fa630469f565e4aea2cf570865d retained under the existing social-data deletion hold; no bypass, user account or learning data used. Credentials were process-only and not persisted.
+- Live evidence: C:/Users/peter/Documents/Codex/2026-10-26/circle-ui-preview/passphrase-live.log, passphrase-live-create-form.png, passphrase-live-owner.png; replay script live-circle-passphrase.cjs requires CIRCLE_EXPECT_SHA.
+
+Exact-SHA CI successes:
+- Circle UI + scoped TypeScript/lint/build + Pages no-cloud boundary: https://github.com/smhe00/qwerty-learner/actions/runs/40330059601
+- Circle Core Gate: https://github.com/smhe00/qwerty-learner/actions/runs/40330059578
+- Cloud Sync Gate: https://github.com/smhe00/qwerty-learner/actions/runs/40330059728
+- Pages deployment: https://github.com/smhe00/qwerty-learner/actions/runs/40330059756
+
+This is Circle-specific etest acceptance, not full-product release qualification. At reporting time existing broader etest automatic-maintenance (40330079162), safe-merge pilot (40330079168), and account-handoff scope (40330078894) workflows reported failures; other broad journeys were still running. Their root causes are not certified by this task, and no master promotion is authorized or attempted. Master remains 15fffa2c762037d8b29d1e5b953c729001ad5f0e.
+
+## Handoff
+Ready for user review at https://t.smhe.cn/. Existing pending legacy creates can finish with their saved operation and then set a custom phrase in management. No remaining Circle implementation work. Physical-device acceptance, a hard global uniqueness allocator, and broader production qualification are outside this task.
+
