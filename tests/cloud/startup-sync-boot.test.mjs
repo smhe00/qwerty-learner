@@ -3,7 +3,7 @@ import { after, afterEach, test } from 'node:test'
 import { build } from 'esbuild'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 const dir=mkdtempSync(join(tmpdir(),'qwerty-boot-state-'))
 after(()=>rmSync(dir,{recursive:true,force:true}))
@@ -128,7 +128,7 @@ for(const mobile of [false,true])test('passive '+(mobile?'phone':'PC')+' return 
  const result=await boot();result.release()
  assert.equal(result.passiveAccountReturn,true)
  assert.equal(s.checks,0);assert.equal(s.adoptions,0)
- assert.equal(sessionStorage.getItem(ACCOUNT_VISIT_KEY),null)
+ assert.equal(globalThis.sessionStorage.getItem(ACCOUNT_VISIT_KEY),null)
  const again=await boot();again.release()
  assert.equal(again.passiveAccountReturn,false)
  assert.equal(s.checks,1);assert.equal(s.adoptions,1)
@@ -139,7 +139,7 @@ for(const pending of ['pull','merge','manual','switch'])test('passive ticket nev
  else s[pending]={accountId:'synthetic',registryGeneration:4}
  await assert.rejects(boot(),/recovery completed/)
  assert.equal(s.recoveries,1);assert.equal(s.checks,0)
- assert.equal(sessionStorage.getItem(ACCOUNT_VISIT_KEY),null)
+ assert.equal(globalThis.sessionStorage.getItem(ACCOUNT_VISIT_KEY),null)
  const resumed=await boot();resumed.release()
  assert.equal(resumed.passiveAccountReturn,false);assert.equal(s.checks,1)
 })
@@ -148,10 +148,10 @@ for(const change of ['expired','clock-back','generation','witness','quick-sync',
  if(change==='expired')s.now+=300001
  if(change==='clock-back')s.now--
  if(change==='generation')s.registry.generation++
- if(change==='witness')localStorage.setItem('qwerty.s1.workspace-migrated.v1','v2:fedcba9876543210')
- if(change==='quick-sync')sessionStorage.setItem('qwerty.s2.quick-sync.intent.v1','{}')
- if(change==='auth-intent'){localStorage.setItem('qwerty.s1.auth-transition.v1','{}');s.reconciliation='completed'}
- if(change==='malformed')sessionStorage.setItem(ACCOUNT_VISIT_KEY,'{')
+ if(change==='witness')globalThis.localStorage.setItem('qwerty.s1.workspace-migrated.v1','v2:fedcba9876543210')
+ if(change==='quick-sync')globalThis.sessionStorage.setItem('qwerty.s2.quick-sync.intent.v1','{}')
+ if(change==='auth-intent'){globalThis.localStorage.setItem('qwerty.s1.auth-transition.v1','{}');s.reconciliation='completed'}
+ if(change==='malformed')globalThis.sessionStorage.setItem(ACCOUNT_VISIT_KEY,'{')
  if(change==='wrong-route')globalThis.window.location.pathname='/learn'
  const result=await boot();result.release()
  assert.equal(result.passiveAccountReturn,false);assert.equal(s.checks,1)

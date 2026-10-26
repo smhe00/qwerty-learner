@@ -16,3 +16,7 @@ Status: IN_PROGRESS. Isolated worktree qwerty-account-passive-return, base95184f
 ## Remaining release gates
 
 Commit/push product/main; require candidate source CI, published Pages, etest actual source SHA, real Cloud/Blob/browser (including passive return), hard three-device 3/3, and release-ready. Only then fast-forward master to the exact tested SHA. Verify q.smhe.cn source and production test-feature policy. No master or etest push has occurred in this task yet. Keep historical unrelated cleanup ambiguity in its prior report; never replay unknown writes.
+
+## CI correction before staging
+
+First candidate1fbf48a4: Cloud Sync contracts passed880/880 but test-file ESLint failed (unused resolve import and seven bare synthetic storage globals). Corrected the fixture to use globalThis and removed the unused import; exact cloud lint and focused startup contracts pass locally. No production source/behavior changed. No staging/master promotion occurred. Initial Etest admission failed downstream of that Cloud Gate; not a live-cloud failure. TypeScript compiler comparison against integrated parent a11362de confirms147 baseline /147 candidate diagnostics, added0.
