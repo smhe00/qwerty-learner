@@ -56,7 +56,7 @@ test('expired successful preflight does not begin another M4 network chain',asyn
  s.v4=async()=>{s.checks++;s.now+=60001;return {status:'noop',canContinue:true}}
  const result=await boot();result.release()
  assert.equal(s.checks,1);assert.equal(s.adoptions,0);assert.equal(s.installed,1)
- assert.match(sessionStorage.getItem('qwerty.s2.last-sync-result'),/已保存在本机/)
+ assert.match(globalThis.sessionStorage.getItem('qwerty.s2.last-sync-result'),/已保存在本机/)
 })
 test('S2 stage, real boot recovery branch and next boot share one expired budget',async()=>{
  const s=setup()
@@ -66,7 +66,7 @@ test('S2 stage, real boot recovery branch and next boot share one expired budget
  await assert.rejects(boot(),/S2 Pull recovery completed/)
  const result=await boot();result.release()
  assert.equal(s.checks,1);assert.equal(s.adoptions,0);assert.equal(s.recoveries,1);assert.equal(s.installed,1)
- const trace=JSON.parse(sessionStorage.getItem('qwerty.startup-sync-trace.v1'))
+ const trace=JSON.parse(globalThis.sessionStorage.getItem('qwerty.startup-sync-trace.v1'))
  assert.equal(new Set(trace.map(x=>x.attemptId)).size,1)
  assert.equal(trace.at(-1).remainingMs,0)
 })
@@ -102,7 +102,7 @@ test('failed recovery with expired deadline remains blocked and retains journal'
 
 test('trailing-slash Learn entry uses the same bounded boot policy', async () => {
   const s = setup()
-  window.location.pathname = '/learn/'
+  globalThis.window.location.pathname = '/learn/'
   s.v4 = async () => { s.checks++; s.now += 60001; return { status: 'noop', canContinue: true } }
   const result = await boot(); result.release()
   assert.equal(s.checks, 1)

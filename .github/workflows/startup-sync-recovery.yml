@@ -6,6 +6,7 @@ on:
       - 'src/sync/**'
       - 'src/index.tsx'
       - 'tests/e2e/startup-sync-*'
+      - 'tests/cloud/startup-*'
       - '.github/workflows/startup-sync-recovery.yml'
   workflow_dispatch:
 permissions:

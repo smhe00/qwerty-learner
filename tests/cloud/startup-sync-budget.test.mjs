@@ -66,7 +66,7 @@ function beginWithRemaining(ms){
   globalThis.sessionStorage=storage()
   globalThis.window={location:{href:'http://localhost/',hostname:'localhost'}}
   const now=Date.now()
-  sessionStorage.setItem(b.STARTUP_SYNC_BUDGET_KEY,JSON.stringify({...owner,version:1,
+  globalThis.sessionStorage.setItem(b.STARTUP_SYNC_BUDGET_KEY,JSON.stringify({...owner,version:1,
     attemptId:'00000000-0000-4000-8000-000000000001',startedAt:now-60000+ms,deadline:now+ms,reloads:2}))
   b.beginStartupSyncBudget(owner)
 }
