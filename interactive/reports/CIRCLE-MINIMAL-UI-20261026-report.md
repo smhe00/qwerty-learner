@@ -65,3 +65,11 @@ The ordinary etest request passes an asynchronous account lookup in withHandoffG
 
 Final receiver validation: full cloud contracts 926/926 PASS (14.66s); focused gateway lint PASS. Integrated unrelated feedback UI development through 6fef4400 without conflicts; no feedback files changed by this task.
 Integrated production build PASS (28.28s).
+
+### Final real creation acceptance: PASS
+Pinned etest candidate db85edc7dbe796584ec4b0b3e38920ac7515db70; t.smhe.cn marker db85edc verified. Cloud Sync Gate 40323761696 PASS.
+Fresh real Chromium PC browser (1280x900), no existing user profile: register a disposable ordinary account using the real account UI, open /learn, click Circle toolbar icon, fill hh, submit once. POST /api/circle/v2 returned 202 in 16282ms. Subsequent mine and detail GETs returned 200; hh was visible in both the circle list and detail heading. No request mocking, local auth injection, automatic retry or real user data. Screenshot: C:/Users/peter/Documents/Codex/2026-10-26/circle-ui-preview/circle-live-created.png.
+The synthetic Circle was then closed successfully (202). The synthetic account remains subject to the existing social-data deletion hold; no erasure bypass was attempted. Fixture account ID 32491b1c3842c49038ab84e98c2b41f4; closed Circle ID 234b118433a569e5f3c3db0b. Credentials were kept only in the browser test process, never logged or committed. Earlier diagnostic/failed-creation accounts were deleted successfully.
+The real creation acceptance supersedes the previous mock-only qualification for this specific creation/list/detail flow. It does not certify every social operation or physical devices, and does not remove the separate V4 production release qualification requirements. master remains 15fffa2c762037d8b29d1e5b953c729001ad5f0e.
+Owner recovery: refresh etest, retain browser storage and saved name/UUID, then use Continue creation once. No logout, data clearing or renamed duplicate creation is required.
+Task status REVIEW; development-only evidence commit follows the pinned etest candidate.
