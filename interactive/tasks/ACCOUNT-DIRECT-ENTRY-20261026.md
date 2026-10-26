@@ -19,3 +19,7 @@
 - Implementation b89d8a94b957d49705beb2c53a35ce77d897e7b4 gates both the entry and each popup opening on a strict server administrator=true result. Authenticated direct account navigation remains unchanged.
 - Main 98697131 temporarily reverted the original direct-entry change for a frozen independent release candidate. Do not undo that isolation while it is under qualification.
 - Delivery branch: codex/account-admin-tools-20261026, based on 98697131, with original direct entry restored in 3452f2e8 and the administrator restriction above. Merge after the independent release task permits restoring UI. No master/etest promotion authorized by this task.
+
+## Final integration scope (owner instruction)
+
+Preserve cbb20842 new UI, PC sync menu, mobile quick sync, synchronization return behavior and direct account navigation. PR #45 must add only administrator-only tools visibility and its tests, plus this task's report. Merge into product/main only AFTER the active unified release task finishes; no master/edgeone-test promotion. Scheduled follow-up is authorized by the owner's request to wait and merge later.

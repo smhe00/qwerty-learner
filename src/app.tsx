@@ -1,5 +1,6 @@
 import Loading from './components/Loading'
 import NavigationOverlay, { AUXILIARY_PATHS, getAuxiliaryBackground } from './components/NavigationOverlay'
+import QuickSyncNotice from './components/QuickSyncNotice'
 import './index.css'
 import { ErrorBook } from './pages/ErrorBook'
 import { FriendLinks } from './pages/FriendLinks'
@@ -224,6 +225,7 @@ function Root() {
           <ResponsiveRoutes isMobile={isMobile} />
         </Suspense>
         <AccountTools />
+        <QuickSyncNotice />
       </BrowserRouter>
     </React.StrictMode>
   )

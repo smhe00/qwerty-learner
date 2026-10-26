@@ -54,6 +54,24 @@ for (const mobile of [false, true]) {
           const entry = page.locator(mobile ? '[data-mobile-account-entry]' : '[data-account-entry]')
           await expect(entry).toBeVisible({ timeout: 30_000 })
           const previous = await page.evaluate(() => ({ origin: performance.timeOrigin, history: history.length }))
+          if (!mobile && authState !== 'anonymous') {
+            const menuToggle = page.locator('[data-account-menu-toggle]')
+            await menuToggle.focus()
+            await page.keyboard.press('Enter')
+            await expect(page.locator('[data-account-menu]')).toBeVisible()
+            const sync = page.locator('[data-account-menu] [data-quick-sync-entry]')
+            await expect(sync).toBeVisible()
+            if (authState === 'expired') await expect(sync).toBeDisabled()
+            else await expect(sync).toBeEnabled()
+            expect(await page.evaluate(() => performance.timeOrigin)).toBe(previous.origin)
+            await page.keyboard.press('Escape')
+            await expect(page.locator('[data-account-menu]')).toBeHidden()
+          }
+          if (mobile && authState !== 'anonymous') {
+            const sync = page.locator('.mobile-brand-actions [data-quick-sync-entry]')
+            await expect(sync).toBeVisible()
+            if (authState === 'expired') await expect(sync).toBeDisabled()
+          }
           await entry.focus()
           await page.keyboard.press('Enter')
           await expect(page.locator(mobile ? '[data-mobile-account]' : '[data-desktop-account]')).toBeVisible()
