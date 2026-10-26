@@ -18,13 +18,21 @@ release_to_master: false
 
 本次为静态风险评估，基线 `91b773b7f54ad77e7c2d09d9ab0f01e095df8c88`；不重新认证线上发布资格。没有修改运行时代码、部署配置、测试或 CI，没有访问真实云数据、创建账号或重试历史未知写入。文中的“端口”是代码接口，不是 TCP 端口或新增服务。
 
+## 后续用户决定：放弃 #48，停止云相关重构
+
+用户明确要求：如果 PR 涉及云相关修改就放弃，以保留目前刚稳定的云行为。重新核对 #48 的全部 25 个变更路径及实际差异后，确认它虽未修改 cloud-functions 或网络协议，但修改了 `src/sync/workspace-bootstrap.ts`、`workspace-lock.ts`、`m4-merge-transaction.ts`、`m4-witnessed-prefix-browser.ts` 等客户端同步启动/恢复关键路径；部分其他同步 UI 文件仅变更类型导入。不能把“服务端未改”解释为“与云无关”或“没有同步回归风险”。
+
+已按指示关闭 [PR #48](https://github.com/smhe00/qwerty-learner/pull/48)，GitHub 返回 `state=closed`、`merged=false`，head 仍为 `af98c482af46eee1c3a7a33ec812f5219ac1b853`。原分支、提交、测试及失败记录保留；未删除或回退已有成果，未推进 product/main、edgeone-test、master。取消决定已写入 #48 描述与 #49 文档草稿。
+
+本整改任务停止客户端同步启动/恢复及云服务拆分等运行时重构。下面的候选方案、准入矩阵和验证要求是保留的评估资料，**不构成继续实施授权**；重新开展这些改动需用户新的明确指示。无需撤销已合并 #46/#47，也不触碰其他任务或已部署版本。
+
 ## 已有成果保留清单
 
 | 成果 | 精确版本和状态 | 证据与限制 |
 | --- | --- | --- |
 | 阶段 1/2a：保存失败停止推进、pending 拒绝处理、依赖修正 | [PR #46](https://github.com/smhe00/qwerty-learner/pull/46) 已合并；head `c70ac66ab7e73c25aca81411a3a877e60529a1f1`；merge `a11362de0e93736e2cc68918f1f267f41e45da21` | [原执行报告](ARCHITECTURE-REMEDIATION-20261026-report.md)，不重写历史测试记录 |
 | 阶段 2b：构造、提交、浏览器适配与 UI 边界，durable receipt，单一 ReviewRecord writer | [PR #47](https://github.com/smhe00/qwerty-learner/pull/47) 经用户授权合并；head `8c287317307e1560f0e2a820e329cd887b09b9f3`；merge `78d1515a80eeb0848928ef13627139d46ac54457` | [阶段 2b 报告](ARCHITECTURE-PHASE2B-20261026-report.md)；本地原分支、提交及已合并历史保留 |
-| 阶段 3a：显式启动结果与错误类型 | [PR #48](https://github.com/smhe00/qwerty-learner/pull/48) OPEN、未合并；head `af98c482af46eee1c3a7a33ec812f5219ac1b853`；实现 `c6838281b598311bbfdd724e95a9533f6202a6eb` | [固定版本报告](https://github.com/smhe00/qwerty-learner/blob/af98c482af46eee1c3a7a33ec812f5219ac1b853/interactive/reports/ARCHITECTURE-PHASE3A-20261026-report.md)，本轮不 amend/rebase 或合并 |
+| 阶段 3a：显式启动结果与错误类型（已取消） | [PR #48](https://github.com/smhe00/qwerty-learner/pull/48) CLOSED、未合并；head `af98c482af46eee1c3a7a33ec812f5219ac1b853`；实现 `c6838281b598311bbfdd724e95a9533f6202a6eb` | [固定版本报告](https://github.com/smhe00/qwerty-learner/blob/af98c482af46eee1c3a7a33ec812f5219ac1b853/interactive/reports/ARCHITECTURE-PHASE3A-20261026-report.md) 作为取消前历史证据保留；不 amend/rebase 或合并 |
 
 PR #48 本轮检查的四项 CI 为 success：[Performance](https://github.com/smhe00/qwerty-learner/actions/runs/40288127917/job/121456551761)、[Learn Completion](https://github.com/smhe00/qwerty-learner/actions/runs/40288127714/job/121456551224)、[Startup Recovery](https://github.com/smhe00/qwerty-learner/actions/runs/40288127641/job/121456551178)、[Learn Block Sync](https://github.com/smhe00/qwerty-learner/actions/runs/40288127621/job/121456550539)。这不等于外部审查批准，也不等于真实 Cloud/Blob 或物理设备验收。
 
@@ -114,4 +122,6 @@ PR #48 本轮检查的四项 CI 为 success：[Performance](https://github.com/s
 
 保存提交 `bdfa6723eec634e8c991885129d6d12a3095101a` 已推送独立分支并建立 [草稿 PR #49](https://github.com/smhe00/qwerty-learner/pull/49)。随后交付检查发现主线为 `12c2069469c0c00d85f2e9c238eb4e2c2b955f01`，较已集成的 a0754e7 仅增加另一任务的状态/发布报告，不涉及本任务文件或运行时代码，无需为本次评估重复合并。PR #49 的三文件差异保持隔离；PR #48 远端 head 仍为 af98c482，本地前期分支和已合并历史均保留。远端已不再提供阶段 2b 分支，删除的仅是本 clone 中该失效 fetch 配置，不删除任何本地分支或提交。
 
-精确后续起点：保留 PR #48，后续依审查结果和用户授权决定合并；主线开发可与 etest 固定候选验收独立进行。优先进行阶段 4 的文档/契约映射，或为一个有证据的云维护痛点补边界矩阵；在满足本报告准入要求前，不开始云编排拆分。
+取消后的交付检查：origin/product/main 仍为 `12c2069469c0c00d85f2e9c238eb4e2c2b955f01`；#49 原 head 为 `e894dbad61cbddf71363bae36eb609925560d88b`，本次在同一独立文档分支补记取消决定。校验三份文档差异与 `git diff --check`；不运行应用/云测试，不修改 #48 代码。
+
+精确后续起点：#48 保持关闭，云相关运行时整改停止；#49 保持文档草稿。后续可做非云相关的文档审计，云启动/同步/恢复及服务拆分须待新的明确授权。主线其他开发与 etest 固定候选验收仍按独立分支规则进行。
