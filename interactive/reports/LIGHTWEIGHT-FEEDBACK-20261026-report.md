@@ -1,6 +1,6 @@
 # Lightweight private feedback — implementation report
 
-Status: implementation complete; local validation passed; CI and main integration pending. Independent of the Circle task.
+Status: REVIEW — implementation complete, development push and scoped CI passed. No release promotion. Independent of the Circle task.
 Base: 875c82a2c404b441dc582aa3a018288edeed1f9a.
 Task: interactive/tasks/LIGHTWEIGHT-FEEDBACK-20261026.md.
 
@@ -35,6 +35,17 @@ The fresh anonymous S1 bootstrap calls location.replace(location.href) after ini
 
 ## Integration and CI checkpoint
 Feature commit 42567bc0; accessibility follow-up bc37f2db. Integrated Circle backend and its newer UI task claim without changing that executor record. Pushed development integration 6cd2c38c9dd5d35e1b319d3548e174a5f41b1751. Local browser results now include the fourth rejection/editing journey, plus malformed ACK and lost ACK across refresh.
-First feedback CI run 40315199257 failed before test collection: Playwright CommonJS required the ESM Cloud Functions service on Node 20. Local Node 22 accepts that require. The test now uses native dynamic import; application code and assertions are unchanged. CI retry remains pending.
+First feedback CI run 40315199257 failed before test collection: Playwright CommonJS required the ESM Cloud Functions service on Node 20. Local Node 22 accepts that require. The test now uses native dynamic import; application code and assertions are unchanged. Corrected CI passed; details below.
 
 CI at integration 6cd2c38c: Cloud Sync Gate 40315199218 PASS (backend/lint/build), Pages deployment 40315199236 PASS, toolbar and Learn completion/journey PASS. Mobile Menu Completion had 22 passing cases and one stale menu-size assertion (expected five, now six with the authorized feedback entry). Updated that assertion to six and explicitly required the feedback button; remaining assertions retained.
+
+## Final development verification
+- Final test correction: 45f8faece80e549c3a84c208d97dfd648dabd766, pushed product/main. Application source is identical to integration 6cd2c38c (verified empty diff for src/ and cloud-functions/).
+- Private Feedback UI: https://github.com/smhe00/qwerty-learner/actions/runs/40315741945 — PASS, 4 EdgeOne-mode synthetic-cloud browser journeys + 1 Pages no-API journey. Includes fresh browser recovery, admin replies, malformed/lost ACK across reload, definitive rejection/editing and PC/mobile no-sync navigation.
+- Mobile Menu Completion: https://github.com/smhe00/qwerty-learner/actions/runs/40315741930 — PASS, 23/23.
+- Application integration Cloud Sync Gate: https://github.com/smhe00/qwerty-learner/actions/runs/40315199218 — PASS, 924/924 contracts, lint and production build.
+- Application integration Pages: https://github.com/smhe00/qwerty-learner/actions/runs/40315199236 — PASS.
+- Integration toolbar, Learn completion, Learn real journey, Circle, achievement, P4b recovery and published dual-site explorer also passed. Broad review/S1/mobile-P0/startup runs were still in progress when this scoped delivery was recorded; no blanket all-CI or production qualification claim.
+- Worktree: C:/Users/peter/Documents/Codex/2026-10-26/qwerty-lightweight-feedback. Local synthetic screenshots and validation logs are under ignored blob-report/feedback/.
+
+Remaining before production: promote an authorized frozen candidate to etest, verify actual Feedback Cloud/Blob across guest/account/admin contexts (including private-link recovery, lost response, deletion and namespace isolation), then perform exact-SHA release gates. Local/CI synthetic storage results do not certify real EdgeOne or Huawei hardware. This task made no staging/production branch changes.
