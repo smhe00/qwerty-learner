@@ -23,6 +23,7 @@ on:
       - 'tests/e2e/mobile-p0.*'
       - 'tests/e2e/mobile-learning-loop.spec.ts'
       - 'tests/e2e/mobile-stability.spec.ts'
+      - 'tests/e2e/tablet-touch.spec.ts'
       - 'tests/e2e/mobile-ergonomics.spec.ts'
       - 'src/pages/Typing/hooks/useMobileWordAudio.ts'
       - 'src/pages/Typing/store/mobilePracticeDraft.ts'

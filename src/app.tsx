@@ -1,7 +1,7 @@
-import FeedbackCenter from './feedback/FeedbackCenter'
 import Loading from './components/Loading'
 import NavigationOverlay, { AUXILIARY_PATHS, getAuxiliaryBackground } from './components/NavigationOverlay'
 import QuickSyncNotice from './components/QuickSyncNotice'
+import FeedbackCenter from './feedback/FeedbackCenter'
 import './index.css'
 import { ErrorBook } from './pages/ErrorBook'
 import { FriendLinks } from './pages/FriendLinks'
@@ -15,14 +15,25 @@ import { isBrowserFuzzFaultEnabled } from '@/dev/browser-fuzz-hooks'
 import { isOpenDarkModeAtom, reviewModeInfoAtom } from '@/store'
 import 'animate.css'
 import { useAtom, useAtomValue } from 'jotai'
-import React, { Suspense, lazy, useEffect, useRef, useState } from 'react'
+import React, { Suspense, lazy, useEffect, useState } from 'react'
 import 'react-app-polyfill/stable'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 // Below this width the keyboard-first Learn/Typing toolbar no longer has a
 // reliable two-row fit; use the dedicated narrow-screen layout instead.
 const MOBILE_LAYOUT_BREAKPOINT = 700
+
+// A wide tablet still needs touch controls. These describe the primary input,
+// not the UA or the mere presence of a touchscreen on a mouse-first laptop.
+const TOUCH_POINTER_QUERY = '(pointer: coarse)'
+const NO_HOVER_QUERY = '(hover: none)'
+function prefersTouchLayout() {
+  return (
+    window.innerWidth <= MOBILE_LAYOUT_BREAKPOINT ||
+    (typeof window.matchMedia === 'function' && window.matchMedia(TOUCH_POINTER_QUERY).matches && window.matchMedia(NO_HOVER_QUERY).matches)
+  )
+}
 
 const loadAnalysisPage = () => import('./pages/Analysis')
 const loadGalleryPage = () => import('./pages/Gallery-N')
@@ -144,14 +155,9 @@ function MobileAchievementsRoute() {
 /** An explicit mobile study route stays mounted through tablet rotation. */
 function ResponsiveRoutes({ isMobile }: { isMobile: boolean }) {
   const location = useLocation()
-  const navigate = useNavigate()
-  const previousMobile = useRef(isMobile)
-  useEffect(() => {
-    if (previousMobile.current && !isMobile && location.pathname === '/mobile') {
-      navigate('/learn', { replace: true })
-    }
-    previousMobile.current = isMobile
-  }, [isMobile, location.pathname, navigate])
+  // An explicit touch route is a user choice. Rotation, unfolding or attaching
+  // a pointer must not send its menu back to keyboard-first Learn.
+  if (location.pathname === '/mobile') return <MobilePage />
   if (location.pathname === '/mobile/study') return <MobileStudyPage />
   if (location.pathname === '/mobile/library') return <MobileLibrary />
   if (location.pathname === '/mobile/settings') return <MobileSettings />
@@ -208,11 +214,11 @@ function Root() {
     darkMode ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark')
   }, [darkMode])
 
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= MOBILE_LAYOUT_BREAKPOINT)
+  const [isMobile, setIsMobile] = useState(prefersTouchLayout)
 
   useEffect(() => {
     const handleResize = () => {
-      const nextIsMobile = window.innerWidth <= MOBILE_LAYOUT_BREAKPOINT
+      const nextIsMobile = prefersTouchLayout()
       setIsMobile(nextIsMobile)
 
       // Normal responsive transitions stay inside the router and retain the
@@ -224,8 +230,14 @@ function Root() {
     }
 
     window.addEventListener('resize', handleResize)
+    const inputQueries =
+      typeof window.matchMedia === 'function' ? [window.matchMedia(TOUCH_POINTER_QUERY), window.matchMedia(NO_HOVER_QUERY)] : []
+    inputQueries.forEach((query) => query.addEventListener('change', handleResize))
 
-    return () => window.removeEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      inputQueries.forEach((query) => query.removeEventListener('change', handleResize))
+    }
   }, [])
 
   return (
