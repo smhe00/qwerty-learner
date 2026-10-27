@@ -69,12 +69,12 @@ async function api(path, token, method = 'GET', body, headers = {}) {
       if (method === 'POST' && path === '/api/auth/login' && req.status >= 500) authOutcomeUnknown = true
       if (!retryable || ![429, 500, 502, 503, 504].includes(req.status) ||
           attempt === 4) return { status: req.status, response }
-      console.log('Transient etest read/login error; bounded retry', path,
+      console.log('Transient etest read error; bounded retry', path,
         'HTTP', req.status, attempt)
     } catch (error) {
       if (method === 'POST' && path === '/api/auth/login') authOutcomeUnknown = true
       if (!retryable || attempt === 4) throw error
-      console.log('Transient etest read/login network error; bounded retry',
+      console.log('Transient etest read network error; bounded retry',
         path, attempt)
     }
     await sleep(700 * attempt)
