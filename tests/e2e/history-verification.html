@@ -1,0 +1,42 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><title>History verification fixture</title><body><div role="status"></div><script type="module">
+import { historyCache } from '/src/sync/history-verification-cache.ts'
+import { createHistoryContinuation } from '/src/sync/history-verification-continuation.ts'
+import { inspectWitnessedDeviceConvergence } from '/src/sync/m3-witnessed-receiver.ts'
+import { historySyncNotice } from '/src/sync/history-sync-notice.ts'
+import { stableWorkspaceJson } from '/src/sync/workspace-v4.ts'
+import { sha256Hex } from '/src/sync/sha256-compat.ts'
+const id = n => '00000000-0000-4000-8000-' + String(n).padStart(12, '0')
+const deviceId = 'qwerty-web-' + id(1)
+const row = n => ({ attemptId: id(1000 + n), dict: 'test', word: 'word' + n, timeStamp: 1800000000 + n,
+ chapter: -1, timing: [], wrongCount: 0, mistakes: {}, sourceMode: 'learn', learnItemKind: 'acquisition' })
+const receipt = n => ({ deviceId, sequence: n, batchId: id(n), sha256: String(n).padStart(64, 'a') })
+const digest = async value => sha256Hex(new TextEncoder().encode(stableWorkspaceJson(value)))
+window.historyFixture = {
+ cache: historyCache,
+ async run({ count = 40, generation = 1, local = true, accountId = 'synthetic-history' } = {}) {
+  const rows = Array.from({ length: count }, (_, i) => row(i + 1)), heads = [receipt(count)]
+  let requests = 0, downloads = 0
+  const port = await createHistoryContinuation({ accountId, generation, heads, cache: historyCache,
+   assertOwner: async () => {}, canContinue: () => true,
+   verify: async cursor => {
+    requests++
+    const read = Math.min(count, Number(cursor?.slice(-5) ?? 0) + 8)
+    return { ok: true, verified: read === count, reason: read === count ? 'witnessed-heads-verified' : 'verification-in-progress',
+     cursor: String(read).padStart(64, '0'), receiptsRead: read, totalReceipts: count,
+     publishReady: false, convergenceComplete: false, listingIsAuthoritative: false,
+     ...(read === count ? { digestAlgorithm: 'attempt-sha256-v1', uniqueAttemptCount: count,
+      evidenceSha256: await digest(await Promise.all(rows.map(async r => [r.attemptId, await digest(r)]))) } : {}) }
+   },
+   read: async r => {
+    downloads++
+    return { ok: true, batch: { schemaVersion: 2, accountId, ...r,
+     previous: r.sequence === 1 ? null : { batchId: id(r.sequence - 1), sha256: receipt(r.sequence - 1).sha256 }, events: [row(r.sequence)] } }
+   },
+  })
+  const result = await inspectWitnessedDeviceConvergence({ accountId, heads, localRecords: local ? rows : [], port, allowUnchanged: true })
+  document.querySelector('[role=status]').textContent = result.status === 'pending'
+   ? historySyncNotice(true, { completed: result.verifiedReceipts, total: result.totalReceipts, reason: result.reason }) : result.reason
+  return { result, requests, downloads }
+ }
+}
+</script></body></html>

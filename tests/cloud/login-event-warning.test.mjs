@@ -211,20 +211,20 @@ for (const legacy of [
 test('actually invalid historical fields block once, with details only in diagnostics', async () => {
   const { calls, summary, diagnostics } = await loginAgain({ rows: [{ ...event, timeStamp: NaN }] })
   assert.deepEqual(calls, ['login', 'switch', 'v4', 'm4', 'm3'])
-  assert.match(summary, /部分学习记录暂未同步/)
+  assert.match(summary, /完整学习数据已同步。多设备历史验证尚未完成/)
   assert.ok(!/V4|事件|格式|诊断|outbox/.test(summary))
   assert.equal(diagnostics.at(-1).code, 'outbox-recovery-invalid-attempt')
 })
 test('contradictory immutable rows still block, retain history and explain the specific boundary', async () => {
   const { calls, summary } = await loginAgain({ rows: [event, { ...event, wrongCount: 1 }] })
   assert.ok(!calls.includes('publish'))
-  assert.match(summary, /部分学习记录暂未同步/)
+  assert.match(summary, /完整学习数据已同步。多设备历史验证尚未完成/)
 })
 test('transport uncertainty does not retry through M4 or leak the raw error', async () => {
   const { calls, summary, diagnostics } = await loginAgain({ failure: 'private-payload-token' })
   assert.equal(calls.filter((x) => x === 'publish').length, 1)
   assert.equal(calls.filter((x) => x === 'm4').length, 1)
-  assert.match(summary, /部分学习记录暂未同步/)
+  assert.match(summary, /完整学习数据已同步。多设备历史验证尚未完成/)
   assert.ok(!JSON.stringify(diagnostics).includes('private-payload-token'))
   assert.ok(!summary.includes('private-payload-token'))
 })
@@ -235,7 +235,7 @@ test('unchanged valid history still observes remote events instead of skipping M
 })
 test('genuine downstream M4 rejection remains visible', async () => {
   const { summary } = await loginAgain({ adoption: 'blocked' })
-  assert.match(summary, /部分学习记录暂未同步/)
+  assert.match(summary, /完整学习数据已同步。多设备历史验证尚未完成/)
   assert.ok(!summary.includes('M4'))
 })
 test('verified subset adoption stays quiet instead of claiming all-device convergence', async () => {
