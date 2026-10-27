@@ -13,6 +13,12 @@ async function open(
   phase: 'independent' | 'exposure' = 'independent',
   audio: 'stub' | 'pending' | 'real' = 'stub',
 ) {
+  // Pending/stub playback is controlled by this test, not an external audio
+  // host's preload/error events racing its synthetic playing callbacks.
+  if (audio !== 'real') {
+    const fixture = fs.readFileSync('public/sounds/key-sound/Alpacas.mp3')
+    await page.route('**/dictvoice?**', (route) => route.fulfill({ contentType: 'audio/mpeg', body: fixture }))
+  }
   if (audio === 'stub')
     await page.addInitScript(() => {
       HTMLMediaElement.prototype.play = function () {

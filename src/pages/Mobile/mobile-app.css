@@ -93,6 +93,10 @@
   flex: 1 1 0;
   overflow: hidden;
 }
+.focus-mobile-learn-header { display: flex; align-items: center; flex: 0 0 auto; gap: 8px; padding: max(8px, env(safe-area-inset-top)) 12px 8px; }
+.focus-mobile-round-action { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border: 1px solid var(--mobile-line); border-radius: 12px; background: var(--mobile-surface); color: var(--mobile-text); touch-action: manipulation; }
+.focus-mobile-progress-track { height: 3px; overflow: hidden; border-radius: 3px; background: var(--mobile-line); }
+.focus-mobile-progress-track > span { display: block; height: 100%; background: var(--mobile-accent); }
 .mobile-practice-host {
   display: flex;
   width: 100%;
@@ -330,10 +334,11 @@
 .mobile-practice-actions {
   display: flex;
   flex-direction: column;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   width: 100%;
   min-height: 118px;
-  justify-content: flex-end;
+  overflow-y: auto;
+  justify-content: flex-start;
   padding: 10px 0 max(40px, calc(env(safe-area-inset-bottom) + 26px));
   border-top: 1px solid var(--mobile-line);
   background: var(--mobile-surface);
@@ -354,6 +359,7 @@
   font-weight: 650;
   touch-action: manipulation;
 }
+.mobile-practice-audio-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .mobile-practice-choices { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; width: 100%; }
 .mobile-practice-choice {
   display: flex;
@@ -637,6 +643,7 @@
 .focus-mobile-learn-shell[data-mobile-compact=true] .mobile-practice-choice { min-height: 44px; padding: 9px; }
 .focus-mobile-learn-shell[data-mobile-compact=true] .mobile-practice-spelling-form input { min-height: 48px; padding: 8px 12px; }
 .focus-mobile-learn-shell[data-mobile-compact=true] .mobile-keyboard-hint,
+.focus-mobile-learn-shell[data-mobile-compact=true] .mobile-practice-input-row,
 .focus-mobile-learn-shell[data-mobile-compact=true] .desktop-tap-shortcuts { display: none; }
 .mobile-audio-hint { margin: 6px 0; color: var(--mobile-muted); font-size: 12px; line-height: 1.6; }
 
@@ -659,6 +666,30 @@
 .mobile-detail-page { overflow: visible; }
 .mobile-settings-actions { position: sticky; bottom: 0; padding: 10px 0 max(8px, env(safe-area-inset-bottom)); background: var(--mobile-background); z-index: 1; }
 .mobile-settings-actions .mobile-settings-saved { min-height: 0; margin: 8px 0 0; }
+
+/* Landscape touch tablets: reading on the left, a stable action rail on the
+   right. Keep the same card/controller mounted when rotating or unfolding. */
+@media (min-width: 900px) and (min-aspect-ratio: 4/3) {
+  .focus-mobile-learn-shell .focus-mobile-learn-header { width: 100%; max-width: 1160px; margin: 0 auto; padding-inline: 20px; }
+  .focus-mobile-learn-shell .focus-mobile-learn-main { padding: 4px 0 14px; }
+  .focus-mobile-learn-shell .mobile-practice-host { max-width: 1160px; margin: 0 auto; padding: 0 20px; }
+  .focus-mobile-learn-shell .mobile-practice-inner { width: 100%; min-width: 0; }
+  .focus-mobile-learn-shell .mobile-practice { display: grid; grid-template-columns: minmax(0, 1fr) clamp(240px, 28vw, 310px); grid-template-rows: auto minmax(0, 1fr); column-gap: 24px; max-width: none; }
+  .focus-mobile-learn-shell .mobile-practice-head { grid-column: 1; grid-row: 1; padding-inline: 8px; }
+  .focus-mobile-learn-shell .mobile-practice-reading { grid-column: 1; grid-row: 2; padding-inline: 8px; }
+  .focus-mobile-learn-shell .mobile-practice-word-slot { width: 100%; align-self: stretch; }
+  .focus-mobile-learn-shell.mobile-study .mobile-practice-actions { grid-column: 2; grid-row: 1 / 3; min-height: 0; padding: 18px; border: 1px solid var(--mobile-line); border-radius: 18px; background: var(--focus-surface-muted); justify-content: flex-start; justify-content: safe center; }
+  .focus-mobile-learn-shell .mobile-practice-grade-grid { grid-template-columns: 1fr; gap: 10px; }
+  .focus-mobile-learn-shell.mobile-study .mobile-practice-primary,
+  .focus-mobile-learn-shell.mobile-study .mobile-practice-grade,
+  .focus-mobile-learn-shell.mobile-study .mobile-practice-choice { min-height: 52px; padding: 10px; }
+  .focus-mobile-learn-shell .mobile-practice-grade,
+  .focus-mobile-learn-shell .mobile-practice-choice,
+  .focus-mobile-learn-shell .mobile-practice-secondary { background: var(--mobile-surface); }
+  .focus-mobile-learn-shell .mobile-practice-grade[data-mobile-grade="good"] { background: var(--mobile-accent); }
+  .focus-mobile-learn-shell .mobile-practice-audio-actions { grid-template-columns: 1fr; }
+  .focus-mobile-learn-shell .mobile-practice-recall-cue { margin-top: 0; }
+}
 .mobile-preview-action { display: flex; gap: 8px; width: 100%; margin-top: 18px; }
 
 .mobile-home-menu > .circle-mobile-entry { width: 100%; text-align: left; }

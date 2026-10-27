@@ -24,6 +24,8 @@ on:
       - 'tests/e2e/mobile-learning-loop.spec.ts'
       - 'tests/e2e/mobile-stability.spec.ts'
       - 'tests/e2e/tablet-touch.spec.ts'
+      - 'tests/e2e/tablet-refresh.spec.ts'
+      - 'tests/e2e/tablet-refresh-built.config.ts'
       - 'tests/e2e/mobile-ergonomics.spec.ts'
       - 'src/pages/Typing/hooks/useMobileWordAudio.ts'
       - 'src/pages/Typing/store/mobilePracticeDraft.ts'
@@ -73,6 +75,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Verify keyboard-free mobile learning and persisted task evidence
         run: npx playwright test --config=tests/e2e/mobile-p0.config.ts --project=chromium --retries=0
+      - name: Verify production tablet refresh and audio recovery
+        run: npx playwright test --config=tests/e2e/tablet-refresh-built.config.ts --project=chromium --retries=0
       - name: Verify shared PC/phone login and isolated account transitions
         run: npx playwright test --config=tests/e2e/mobile-account.config.ts --project=chrome --retries=0
       - name: Build cloud-disabled Pages login preview

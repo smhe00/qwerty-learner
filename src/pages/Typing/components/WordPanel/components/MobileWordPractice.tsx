@@ -783,7 +783,15 @@ export default function MobileWordPractice({
           ) : task === 'audio' ? (
             <>
               <p className="mobile-practice-cue">
-                {audioState === 'playing' ? '正在发音…' : audioPlayed ? '选出刚才听到的单词' : '正在准备发音…'}
+                {audioState === 'playing'
+                  ? '正在发音…'
+                  : audioPlayed
+                  ? '选出刚才听到的单词'
+                  : audioState === 'loading'
+                  ? '正在准备发音，也可先练词义'
+                  : audioState === 'error'
+                  ? '发音暂不可用，可重试或先练词义'
+                  : '点按播放声音，或先练词义'}
               </p>
               {audioPlayed && (
                 <button
@@ -1098,9 +1106,14 @@ export default function MobileWordPractice({
             无法播放 · 改练词义 {keyHint('Space')}
           </button>
         ) : audioRequiresTap ? (
-          <button type="button" className="mobile-practice-primary" {...shortcut('R')} onClick={playAgain} disabled={paused}>
-            <Headphones size={18} aria-hidden="true" /> {audioState === 'tap' ? '点按播放声音' : '正在加载发音…'} {keyHint('R')}
-          </button>
+          <div className="mobile-practice-audio-actions">
+            <button type="button" className="mobile-practice-primary" {...shortcut('R')} onClick={playAgain} disabled={paused}>
+              <Headphones size={18} aria-hidden="true" /> {audioState === 'loading' ? '重试播放声音' : '点按播放声音'} {keyHint('R')}
+            </button>
+            <button type="button" className="mobile-practice-secondary" onClick={() => setAudioFallback(true)} disabled={paused}>
+              先练词义
+            </button>
+          </div>
         ) : (
           <div className="mobile-practice-choices" aria-label="答案选项">
             {choices.map((candidate, index) => (

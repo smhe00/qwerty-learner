@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-type AudioState = 'idle' | 'playing' | 'played' | 'tap' | 'error'
+type AudioState = 'idle' | 'loading' | 'playing' | 'played' | 'tap' | 'error'
 /** One playback owner per request. Stopped requests can never update evidence. */
 export function useMobileWordAudio({
   source,
@@ -36,7 +36,10 @@ export function useMobileWordAudio({
   }, [])
   const playSound = useCallback(
     (requested = false) => {
-      if (pauseRef.current || document.hidden) return
+      if (pauseRef.current || document.hidden) {
+        if (!played.current) setAudioState('tap')
+        return
+      }
       stop()
       attempted.current = true
       if (!source) {
@@ -48,7 +51,7 @@ export function useMobileWordAudio({
       audio.preload = 'auto'
       audio.volume = volume
       audio.playbackRate = rate
-      setAudioState('idle')
+      setAudioState('loading')
       const current = () => owner.current === audio && !pauseRef.current && !document.hidden
       const fail = (reason?: unknown) => {
         if (!current()) return
@@ -89,13 +92,24 @@ export function useMobileWordAudio({
     }
     const hidden = () => {
       if (document.hidden) suspend()
+      else ready()
+    }
+    // Refresh may mount while the document is still hidden. In that case no
+    // playback owner/timer was created. Return to an explicit user gesture,
+    // rather than displaying an endless preparation state or autoplaying.
+    const ready = () => {
+      if (!document.hidden && !pauseRef.current && !owner.current && !played.current) setAudioState('tap')
     }
     window.addEventListener('pagehide', suspend)
     window.addEventListener('blur', suspend)
+    window.addEventListener('pageshow', ready)
+    window.addEventListener('focus', ready)
     document.addEventListener('visibilitychange', hidden)
     return () => {
       window.removeEventListener('pagehide', suspend)
       window.removeEventListener('blur', suspend)
+      window.removeEventListener('pageshow', ready)
+      window.removeEventListener('focus', ready)
       document.removeEventListener('visibilitychange', hidden)
       stop()
       attempted.current = false
