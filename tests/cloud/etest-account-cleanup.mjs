@@ -38,7 +38,7 @@ for (const mode of ['acknowledged', 'lost-response']) {
   try {
     const posted = await api('/api/feedback', 'POST', { operationId: randomBytes(16).toString('hex'),
       title: 'CI disposable cleanup', text: 'Synthetic receipt/readback proof; safe to erase with this test account.' }, token)
-    assert.equal(posted.status, 200, 'synthetic owned content setup')
+    assert.equal(posted.status, 200, 'synthetic owned content setup; error=' + String(posted.body?.error || 'none'))
   } catch (error) { failures.push(error) }
   try {
     let deletions = 0, acknowledgedDeletes = 0

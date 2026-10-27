@@ -270,15 +270,20 @@ export async function onRequest(context) {
   // Authentication/rate checks still precede every Circle business operation.
   const circleBody = (path === '/circle/v2' || path.startsWith('/circle/v2/')) &&
     ['POST', 'DELETE'].includes(request.method) ? readJson(request, 8192) : null
-  if (circleBody) void circleBody.catch(() => {}) // Preserve rejection until the authenticated dispatcher consumes it.
-  return profileCircleRequest(context, () => withHandoffGateway(context, next => onUncoordinatedRequest(next, circleBody)))
+  const feedbackBody = (path === '/feedback' || path.startsWith('/feedback/')) &&
+    request.method === 'POST' ? readJson(request, 16384) : null
+  // Receive bounded bytes now; authorization, ownership and rate checks still
+  // precede consuming the payload and every feedback business write.
+  const receivedBody = circleBody ?? feedbackBody
+  if (receivedBody) void receivedBody.catch(() => {}) // Preserve rejection for the authenticated dispatcher.
+  return profileCircleRequest(context, () => withHandoffGateway(context, next => onUncoordinatedRequest(next, receivedBody)))
 }
 
-async function onUncoordinatedRequest(context, circleBody = null) {
+async function onUncoordinatedRequest(context, receivedBody = null) {
   const { request } = context
   const env = runtimeEnvironment(context.env)
   const diagnostics = createRequestDiagnostics(context)
-  const readBody = maxBytes => diagnostics.run('request-body', () => circleBody ?? readJson(request, maxBytes))
+  const readBody = maxBytes => diagnostics.run('request-body', () => receivedBody ?? readJson(request, maxBytes))
   const url = new URL(request.url)
   const path = url.pathname.replace(/^\/api(?=\/|$)/, '') || '/'
   const cors = corsHeaders(request, env.CORS_ORIGIN || 'same-origin')
