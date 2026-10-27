@@ -42,11 +42,11 @@ const names = ['achievementEvents', 'achievementStates', 'chapterRecords',
 
 function sleep(ms) { return new Promise(done => setTimeout(done, ms)) }
 async function api(path, token, method = 'GET', body, headers = {}) {
-  // Login and immutable/metadata GET are safe to retry after a transient
-  // EdgeOne POP failure. POST V4, registration and DELETE are NOT replayable:
+  // Only immutable/metadata GET may retry unknown network outcomes.
+  // Login replaces the current session; it must not race a late first login.
+  // POST V4, registration and DELETE are also NOT replayable:
   // a 5xx/timeout may conceal a committed write or a partial account delete.
-  const retryable = (method === 'GET' ||
-    (method === 'POST' && path === '/api/auth/login'))
+  const retryable = method === 'GET'
   for (let attempt = 1; attempt <= (retryable ? 4 : 1); attempt++) {
     try {
       const packet = await retrySafeBodyRequest(async () => {
@@ -66,11 +66,13 @@ async function api(path, token, method = 'GET', body, headers = {}) {
       }, { path, method })
       const req = packet.request
       const response = packet.body
+      if (method === 'POST' && path === '/api/auth/login' && req.status >= 500) authOutcomeUnknown = true
       if (!retryable || ![429, 500, 502, 503, 504].includes(req.status) ||
           attempt === 4) return { status: req.status, response }
       console.log('Transient etest read/login error; bounded retry', path,
         'HTTP', req.status, attempt)
     } catch (error) {
+      if (method === 'POST' && path === '/api/auth/login') authOutcomeUnknown = true
       if (!retryable || attempt === 4) throw error
       console.log('Transient etest read/login network error; bounded retry',
         path, attempt)
@@ -229,7 +231,7 @@ async function proveStaleForkRejected(token, staleRevision, local, expectedRevis
   throw Error('Stale fork CAS not verified')
 }
 
-let user = null, userId = null, failure = null
+let user = null, userId = null, failure = null, authOutcomeUnknown = false
 try {
   await Promise.all([
     build({ entryPoints: [resolve(here, 'src/sync/v4-conservative-three-way.ts')],
@@ -655,12 +657,11 @@ try {
 } catch (error) { failure = error }
 finally {
   if (user) {
-    // Never operate on non-disposable identity. If a server 5xx means
-    // ambiguous deletion, reauthenticate before a bounded retry.
+    // No new session may race a login whose server outcome is still unknown.
     try {
       await disposeIsolatedMergeAccount()
     } catch (e) {
-      console.error('Disposable merge pilot account CLEANUP FAILURE')
+      console.error('Disposable merge pilot account CLEANUP FAILURE', JSON.stringify({reason:e.message,trace:e.trace||[]}))
       failure ||= e
     }
   }
@@ -692,6 +693,7 @@ function checksumStable(snapshot) {
 }
 
 async function disposeIsolatedMergeAccount() {
+  if (authOutcomeUnknown) throw Error('Cleanup deferred: prior login outcome unknown; no reauthentication or DELETE')
   assert.ok(user.username.startsWith('e2e_merge_'))
   assert.ok(userId, 'Cannot delete a disposable account without verified owner')
   const proof = await cleanupDisposableAccount({ baseUrl: origin, username: user.username,
