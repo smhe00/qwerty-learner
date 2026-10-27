@@ -188,13 +188,25 @@ async function getBinaryV4(token, expected) {
       revision: String(manifest.value.revision),
       sha: manifest.value.payloadSha256, index: String(index),
     })
-    const res = await fetch(new URL('/api/sync/v2/binary/part?' + selector, base), {
-      headers: { Authorization: 'Bearer ' + token },
-      signal: AbortSignal.timeout(20000),
-      redirect: 'error',
-    })
-    assert.equal(res.status, 200, 'binary GET part HTTP')
-    const part = Buffer.from(await res.arrayBuffer())
+    let res, part
+    const started = Date.now()
+    try {
+      res = await fetch(new URL('/api/sync/v2/binary/part?' + selector, base), {
+        headers: { Authorization: 'Bearer ' + token },
+        signal: AbortSignal.timeout(20000),
+        redirect: 'error',
+      })
+      assert.equal(res.status, 200, 'binary GET part HTTP')
+      part = Buffer.from(await res.arrayBuffer())
+    } catch (error) {
+      console.error('V4_BINARY_READ_FAILURE', JSON.stringify({
+        method: 'GET', path: '/api/sync/v2/binary/part', partIndex: index,
+        status: res?.status ?? null, phase: res ? 'response-body' : 'response-headers',
+        errorType: ['TimeoutError', 'AbortError', 'TypeError', 'AssertionError'].includes(error?.name)
+          ? error.name : 'Error', elapsedMs: Date.now() - started, timeoutMs: 20000,
+      }))
+      throw error
+    }
     assert.ok(part.length > 0 && part.length <= 512 * 1024)
     assert.equal(sha256(part), manifest.value.partSha256s[index],
       'binary GET immutable part SHA')

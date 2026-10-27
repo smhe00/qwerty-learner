@@ -133,3 +133,60 @@ test('session revoked during slow deletion preparation cannot start destructive 
   }), { code: 'session_revoked' })
   assert.equal(f.blobs.has(key), true)
 })
+
+test('receipt write failures retain fixed provider cause and phase without keys or credentials', async () => {
+  const f = fixture()
+  let writes = 0
+  f.store.setJSON = async () => {
+    writes++
+    throw Object.assign(new Error('private Blob path and secret token'), {
+      name: 'PagesBlobError', code: 'CREDENTIAL_ERROR',
+    })
+  }
+  const receipts = createAccountDeletionReceipts(f)
+  await assert.rejects(receipts.begin(token, operationId, identity), error => {
+    assert.equal(error.code, 'deletion_receipt_unverified')
+    assert.equal(error.details.stage, 'deletion-receipt')
+    assert.equal(error.details.receipt.phase, 'started')
+    assert.equal(error.details.receipt.write.status, 'error')
+    assert.equal(error.details.receipt.write.errorCode, 'CREDENTIAL_ERROR')
+    assert.equal(error.details.receipt.read.status, 'missing')
+    assert.doesNotMatch(JSON.stringify(error.details), /private|secret|synthetic-session|maintenance|operationId|userId/)
+    return true
+  })
+  assert.equal(writes, 1, 'unknown write is never repeated')
+})
+
+test('acknowledged but different receipt blocks; completion failure never reports deletion complete', async () => {
+  const f = fixture(), receipts = createAccountDeletionReceipts(f)
+  const begun = await receipts.begin(token, operationId, identity)
+  f.store.setJSON = async key => { f.blobs.set(key, { wrong: 'private-data' }) }
+  await assert.rejects(receipts.complete(begun, { accountDeleted: true }), error => {
+    assert.equal(error.code, 'deletion_receipt_unverified')
+    assert.equal(error.details.receipt.phase, 'completed')
+    assert.equal(error.details.receipt.write.status, 'acknowledged')
+    assert.equal(error.details.receipt.read.status, 'different')
+    assert.doesNotMatch(JSON.stringify(error.details), /private-data|wrong/)
+    return true
+  })
+  await assert.rejects(receipts.status(token, operationId), { code: 'deletion_receipt_invalid' })
+})
+
+test('unknown provider error properties are redacted; failed start never invokes destructive storage', async () => {
+  const f = fixture(), service = createBackendService({ storage: createEdgeOneBlobStorage(f.store) })
+  const signed = await service.register('e2e_receipt_failure', 'synthetic-password', 'test')
+  const key = 'users/' + signed.user.userId + '/feedback/v1/thread/root.json'
+  f.blobs.set(key, { text: 'retained' })
+  f.store.setJSON = async () => { throw { name: 'private-name', code: 'private-code', message: 'private-message' } }
+  const receipts = createAccountDeletionReceipts(f)
+  await assert.rejects(service.deleteAccount(signed.token, 'synthetic-password', {
+    beforeDelete: identity => receipts.begin(signed.token, operationId, identity),
+  }), error => {
+    assert.equal(error.code, 'deletion_receipt_unverified')
+    assert.equal(error.details.receipt.write.errorName, 'UnknownError')
+    assert.equal(error.details.receipt.write.errorCode, 'unknown')
+    assert.doesNotMatch(JSON.stringify(error.details), /private/)
+    return true
+  })
+  assert.deepEqual(f.blobs.get(key), { text: 'retained' })
+})

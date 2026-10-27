@@ -10,6 +10,18 @@ const hash = text => crypto.createHash('sha256').update(text).digest('hex')
 const canonical = value => Array.isArray(value) ? '[' + value.map(canonical).join(',') + ']' :
   value && typeof value === 'object' ? '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}' : JSON.stringify(value)
 const TTL = 24 * 60 * 60 * 1000
+// Fixed provider classifications only; never expose messages, Blob keys or tokens.
+const ERROR_NAMES = ['Error', 'TypeError', 'AbortError', 'TimeoutError', 'PagesBlobError']
+const ERROR_CODES = ['CREDENTIAL_ERROR', 'COS_ERROR', 'RATE_LIMITED', 'QUOTA_EXCEEDED',
+  'PRECONDITION_FAILED', 'MISSING_ENVIRONMENT', 'MISSING_PROJECT_ID', 'INVALID_KEY',
+  'INVALID_STORE_NAME', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'EAI_AGAIN',
+  'ENOTFOUND', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_BODY_TIMEOUT']
+function classify(error) {
+  const code = error?.code ?? error?.cause?.code
+  return { errorName: ERROR_NAMES.includes(error?.name) ? error.name : 'UnknownError',
+    errorCode: ERROR_CODES.includes(code) ? code : 'unknown' }
+}
+const elapsed = start => Math.max(0, Date.now() - start)
 
 // Read-only recovery capability: both the original bearer AND a random operation
 // ID are required. Account/session erasure must not erase its own acknowledgement.
@@ -21,11 +33,24 @@ export function createAccountDeletionReceipts({ store, now = Date.now }) {
       throw new AppError(400, 'invalid_deletion_operation', 'Invalid deletion operation')
     return 'maintenance/account-deletion/v1/' + hash(token) + '/' + operationId + '/'
   }
-  async function saveOnce(key, record) {
-    try { await store.setJSON(key, record, { onlyIfNew: true }) } catch { /* strong read resolves this one write */ }
+  async function saveOnce(key, record, phase) {
+    const writeStarted = Date.now()
+    let write
+    try {
+      await store.setJSON(key, record, { onlyIfNew: true })
+      write = { status: 'acknowledged', elapsedMs: elapsed(writeStarted) }
+    } catch (error) {
+      write = { status: 'error', elapsedMs: elapsed(writeStarted), ...classify(error) }
+    }
+    // Still exactly one application-level write, then the existing strong read.
+    // A lost acknowledgement can succeed only after exact independent readback.
+    const readStarted = Date.now()
     const found = await read(key)
     if (canonical(found) !== canonical(record))
-      throw new AppError(503, 'deletion_receipt_unverified', 'Deletion receipt is not confirmed')
+      throw new AppError(503, 'deletion_receipt_unverified', 'Deletion receipt is not confirmed', {
+        stage: 'deletion-receipt', receipt: { phase, write,
+          read: { status: found == null ? 'missing' : 'different', elapsedMs: elapsed(readStarted) } },
+      })
   }
   function valid(record, operationId) {
     if (!record || record.version !== 1 || record.operationId !== operationId ||
@@ -46,7 +71,7 @@ export function createAccountDeletionReceipts({ store, now = Date.now }) {
       const startedAt = now()
       const record = { version: 1, operationId, userId: identity.userId,
         usernameHash: identity.usernameHash, startedAt, expiresAt: startedAt + TTL }
-      await saveOnce(key + 'started.json', record)
+      await saveOnce(key + 'started.json', record, 'started')
       return { key, record }
     },
     async complete(receipt, deleted) {
@@ -57,7 +82,7 @@ export function createAccountDeletionReceipts({ store, now = Date.now }) {
         throw new AppError(503, 'deletion_receipt_changed', 'Deletion receipt changed')
       const completion = { version: 1, startedHash: hash(canonical(started)),
         completedAt: now(), deleted }
-      await saveOnce(receipt.key + 'completed.json', completion)
+      await saveOnce(receipt.key + 'completed.json', completion, 'completed')
     },
     async status(token, operationId) {
       const key = prefix(token, operationId)

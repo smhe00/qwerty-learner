@@ -218,6 +218,10 @@ function logApiError(request, path, error, diagnostics) {
     fields.failureStage = error.details.failureStage
     fields.receive = error.details.receive
   }
+  if (error?.code === 'deletion_receipt_unverified' && error?.details?.receipt) {
+    fields.failureStage = 'deletion-receipt'
+    fields.receipt = error.details.receipt
+  }
   const line = JSON.stringify(fields)
   if (fields.status >= 500) console.error(line)
   else console.warn(line)
@@ -573,11 +577,17 @@ async function onUncoordinatedRequest(context, receivedBody = null, nativeV4Body
           if (await circleAccountHasActivity({ getStore, env, userId: identity.userId }))
             throw new AppError(409, 'circle_deletion_requires_cleanup',
               'Circle data cleanup must complete before account deletion')
-          if (receipts) receipt = await receipts.begin(bearer(request), body.operationId, identity)
+          if (receipts) {
+            accountDeletionStage = 'receipt-started'
+            receipt = await receipts.begin(bearer(request), body.operationId, identity)
+          }
           accountDeletionStage = 'content-delete'
         },
       })
-      if (receipts) await receipts.complete(receipt, result.deleted)
+      if (receipts) {
+        accountDeletionStage = 'receipt-completed'
+        await receipts.complete(receipt, result.deleted)
+      }
       return json({ ok: true, ...result, ...(receipts ? { operationId: body.operationId } : {}) }, 200, cors)
     }
 

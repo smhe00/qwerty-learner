@@ -14,6 +14,26 @@ export async function cleanupDisposableAccount({ baseUrl, username, password, us
       typeof password !== 'string' || password.length < 4 ||
       (userId !== undefined && !/^[a-f0-9]{32}$/.test(userId)))
     throw new Error('Refusing cleanup without exact disposable identity')
+  // Only fixed classifications from this diagnostic are allowed into artifacts.
+  const receiptDetails = result => {
+    const receipt = result?.details?.receipt
+    if (result?.error !== 'deletion_receipt_unverified' ||
+      !['started', 'completed'].includes(receipt?.phase)) return {}
+    const write = receipt.write, read = receipt.read
+    const errorNames = ['Error', 'TypeError', 'AbortError', 'TimeoutError', 'PagesBlobError', 'UnknownError']
+    const errorCodes = ['CREDENTIAL_ERROR', 'COS_ERROR', 'RATE_LIMITED', 'QUOTA_EXCEEDED',
+      'PRECONDITION_FAILED', 'MISSING_ENVIRONMENT', 'MISSING_PROJECT_ID', 'INVALID_KEY',
+      'INVALID_STORE_NAME', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'EAI_AGAIN',
+      'ENOTFOUND', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_BODY_TIMEOUT', 'unknown']
+    const duration = value => Number.isSafeInteger(value) && value >= 0 ? value : null
+    return { receipt: { phase: receipt.phase,
+      write: { status: ['acknowledged', 'error'].includes(write?.status) ? write.status : 'unknown',
+        elapsedMs: duration(write?.elapsedMs),
+        ...(errorNames.includes(write?.errorName) ? { errorName: write.errorName } : {}),
+        ...(errorCodes.includes(write?.errorCode) ? { errorCode: write.errorCode } : {}) },
+      read: { status: ['missing', 'different'].includes(read?.status) ? read.status : 'unknown',
+        elapsedMs: duration(read?.elapsedMs) } } }
+  }
   const trace = [], start = now()
   function event(value) { const item = { ...value, elapsedMs: now() - start }; trace.push(item); onEvent(item) }
   const fail = message => Object.assign(new Error(message), { trace })
@@ -27,7 +47,9 @@ export async function cleanupDisposableAccount({ baseUrl, username, password, us
         ...(body ? { body: JSON.stringify(body) } : {}) })
       const result = await response.json().catch(() => null)
       event({ phase,
-        status: response.status, ...(typeof result?.error === 'string' ? { code: result.error } : {}) })
+        status: response.status, ...(typeof result?.error === 'string' ? { code: result.error } : {}),
+        ...(typeof result?.requestId === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(result.requestId)
+          ? { requestId: result.requestId } : {}), ...receiptDetails(result) })
       return { status: response.status, body: result }
     } catch (error) {
       event({ phase, errorType: error?.name || 'Error' })

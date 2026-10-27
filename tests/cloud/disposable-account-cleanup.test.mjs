@@ -62,3 +62,26 @@ for (const outcome of ['timeout', 'server-error', 'wrong-owner']) test('pre-dele
     })
   assert.deepEqual(calls,['POST /api/auth/login'])
 })
+
+test('cleanup retains bounded receipt cause and request ID without replaying its 503', async () => {
+  const f = fixture('missing'), original = f.options.fetchImpl
+  f.options.fetchImpl = async (url, options) => {
+    if (options.method !== 'DELETE') return original(url, options)
+    f.calls.push('DELETE /api/auth/account')
+    return { status: 503, json: async () => ({
+      error: 'deletion_receipt_unverified', requestId: 'receipt-test-123',
+      details: { receipt: { phase: 'started', write: { status: 'error', elapsedMs: 100,
+        errorName: 'PagesBlobError', errorCode: 'CREDENTIAL_ERROR', message: 'private' },
+      read: { status: 'missing', elapsedMs: 25 }, token: 'private' } },
+    }) }
+  }
+  await assert.rejects(cleanupDisposableAccount(f.options), error => {
+    const failure = error.trace.find(row => row.phase === 'delete')
+    assert.equal(failure.requestId, 'receipt-test-123')
+    assert.equal(failure.receipt.write.errorCode, 'CREDENTIAL_ERROR')
+    assert.equal(failure.receipt.read.status, 'missing')
+    assert.doesNotMatch(JSON.stringify(failure), /private|token|message/)
+    return true
+  })
+  assert.equal(f.calls.filter(x => x.startsWith('DELETE')).length, 1)
+})
