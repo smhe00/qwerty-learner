@@ -1,3 +1,5 @@
+import { safeWitnessFailure } from './history-verification-failures'
+
 /**
  * M2/M3 account-owned, READ-ONLY witnessed-chain receiver.
  *
@@ -15,7 +17,13 @@ import { preflightAttemptIdentity } from './v4-merge-preflight'
 import { stableWorkspaceJson } from './workspace-v4'
 import type { IWordRecord } from '@/utils/db/record'
 
-type WitnessedVerification = {
+export { safeWitnessFailure } from './history-verification-failures'
+
+export type WitnessedVerification = {
+  reason?: string
+  receiptsRead?: number
+  totalReceipts?: number
+  digestAlgorithm?: 'attempt-sha256-v1'
   verified: boolean
   publishReady: false
   convergenceComplete: false
@@ -23,7 +31,7 @@ type WitnessedVerification = {
   uniqueAttemptCount?: number
   evidenceSha256?: string
 }
-type WitnessedBatchReadback = {
+export type WitnessedBatchReadback = {
   ok: true
   batch: {
     schemaVersion: 2
@@ -43,6 +51,15 @@ export type WitnessedReaderPort = {
   read(receipt: ChainedReceipt): Promise<WitnessedBatchReadback>
 }
 export type WitnessedReceiveResult =
+  | {
+      status: 'pending'
+      reason: 'verification-in-progress' | 'verification-download-pending'
+      verifiedReceipts: number
+      totalReceipts: number
+      publishReady: false
+      convergenceComplete: false
+      remoteAttemptCount: 0
+    }
   | {
       status: 'unchanged'
       reason: 'verified-prefix-already-local'
@@ -64,7 +81,7 @@ export type WitnessedReceiveResult =
 const SHA = /^[0-9a-f]{64}$/
 const DEVICE = /^qwerty-web-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-const MAX_READS = 128
+const MAX_READS = 512
 
 function blocked(reason: string): WitnessedReceiveResult {
   return { status: 'blocked', reason, publishReady: false, convergenceComplete: false, remoteAttemptCount: 0 }
@@ -77,7 +94,7 @@ function validReceipt(x: ChainedReceipt): boolean {
       SHA.test(x.sha256) &&
       Number.isSafeInteger(x.sequence) &&
       x.sequence >= 1 &&
-      x.sequence <= MAX_READS,
+      x.sequence <= 128,
   )
 }
 function identity(x: ChainedReceipt): string {
@@ -99,7 +116,7 @@ export async function inspectWitnessedDeviceConvergence(input: {
     return blocked('invalid-witness-set')
   }
 
-  const uniqueHeads = [...new Map(heads.map((head) => [identity(head), head])).values()]
+  const uniqueHeads = Array.from(new Map(heads.map((head) => [identity(head), head])).values())
   const reported = new Map<string, string>()
   const batches = new Set<string>()
   const events = new Map<string, IWordRecord>()
@@ -109,15 +126,40 @@ export async function inspectWitnessedDeviceConvergence(input: {
     const proof = await port.verifyHeads(uniqueHeads)
     await port.assertOwner()
     if (
+      proof.verified === false &&
+      proof.reason === 'verification-in-progress' &&
+      proof.publishReady === false &&
+      proof.convergenceComplete === false &&
+      proof.listingIsAuthoritative === false &&
+      typeof proof.receiptsRead === 'number' &&
+      typeof proof.totalReceipts === 'number' &&
+      Number.isSafeInteger(proof.receiptsRead) &&
+      Number.isSafeInteger(proof.totalReceipts) &&
+      proof.receiptsRead >= 0 &&
+      proof.receiptsRead < proof.totalReceipts &&
+      proof.totalReceipts <= MAX_READS
+    ) {
+      return {
+        status: 'pending',
+        reason: 'verification-in-progress',
+        verifiedReceipts: proof.receiptsRead,
+        totalReceipts: proof.totalReceipts,
+        publishReady: false,
+        convergenceComplete: false,
+        remoteAttemptCount: 0,
+      }
+    }
+    if (
       proof.verified !== true ||
       proof.publishReady !== false ||
       proof.convergenceComplete !== false ||
       proof.listingIsAuthoritative !== false ||
       !Number.isSafeInteger(proof.uniqueAttemptCount) ||
       !proof.evidenceSha256 ||
-      !SHA.test(proof.evidenceSha256)
+      !SHA.test(proof.evidenceSha256) ||
+      (proof.digestAlgorithm !== undefined && proof.digestAlgorithm !== 'attempt-sha256-v1')
     ) {
-      return blocked('witness-server-unverified')
+      return blocked(safeWitnessFailure(proof.reason, 'witness-server-unverified'))
     }
 
     const local = planOutboxRecovery(localRecords)
@@ -141,7 +183,7 @@ export async function inspectWitnessedDeviceConvergence(input: {
       const entries = local.events
         .map((row) => [row.attemptId!, stableWorkspaceJson(row)] as const)
         .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-      const localDigest = await sha256Hex(new TextEncoder().encode(stableWorkspaceJson(entries)))
+      const localDigest = await evidenceDigest(entries, proof.digestAlgorithm)
       await port.assertOwner()
       if (localDigest === proof.evidenceSha256) return unchanged()
     }
@@ -153,9 +195,9 @@ export async function inspectWitnessedDeviceConvergence(input: {
         const key = identity(receipt)
         if (batches.has(key)) break // already checked this exact shared prefix
         await port.assertOwner()
-        const reply = await port.read(receipt)
+        const reply: WitnessedBatchReadback = await port.read(receipt)
         await port.assertOwner()
-        const batch = reply.batch
+        const batch: WitnessedBatchReadback['batch'] = reply.batch
         if (
           reply.ok !== true ||
           batch.accountId !== accountId ||
@@ -210,10 +252,10 @@ export async function inspectWitnessedDeviceConvergence(input: {
       }
     }
     await port.assertOwner()
-    const sortedSet = [...events]
+    const sortedSet = Array.from(events)
       .map(([uuid, row]) => [uuid, stableWorkspaceJson(row)] as const)
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    const digest = await sha256Hex(new TextEncoder().encode(stableWorkspaceJson(sortedSet)))
+    const digest = await evidenceDigest(sortedSet, proof.digestAlgorithm)
     if (digest !== proof.evidenceSha256 || events.size !== proof.uniqueAttemptCount) {
       return blocked('witness-evidence-digest-mismatch')
     }
@@ -230,7 +272,7 @@ export async function inspectWitnessedDeviceConvergence(input: {
     }
     const projection = projectUuidLearningConvergence({
       local: local.events,
-      remote: [...events.values()],
+      remote: Array.from(events.values()),
     })
     if (projection.status !== 'projected') {
       return blocked('witness-projection-' + projection.reason)
@@ -242,13 +284,36 @@ export async function inspectWitnessedDeviceConvergence(input: {
       publishReady: false,
       convergenceComplete: false,
       remoteAttemptCount: events.size,
-      remoteEvents: [...events.values()].sort(
+      remoteEvents: Array.from(events.values()).sort(
         (a, b) => a.timeStamp - b.timeStamp || (a.attemptId! < b.attemptId! ? -1 : a.attemptId! > b.attemptId! ? 1 : 0),
       ),
       projection,
     }
   } catch (error) {
     // Even a network timeout or account switch cannot return a partial set.
-    return blocked('witness-read-failed:' + (error instanceof Error ? error.message : 'unknown'))
+    if (error instanceof HistoryDownloadPending)
+      return {
+        status: 'pending',
+        reason: 'verification-download-pending',
+        verifiedReceipts: error.completed,
+        totalReceipts: error.total,
+        publishReady: false,
+        convergenceComplete: false,
+        remoteAttemptCount: 0,
+      }
+    return blocked(safeWitnessFailure(error instanceof Error ? error.message : undefined, 'witness-read-failed'))
   }
+}
+
+export class HistoryDownloadPending extends Error {
+  constructor(public completed: number, public total: number) {
+    super('verification-download-pending')
+  }
+}
+async function evidenceDigest(entries: readonly (readonly [string, string])[], algorithm?: 'attempt-sha256-v1'): Promise<string> {
+  const canonical =
+    algorithm === 'attempt-sha256-v1'
+      ? await Promise.all(entries.map(async ([id, row]) => [id, await sha256Hex(new TextEncoder().encode(row))]))
+      : entries
+  return sha256Hex(new TextEncoder().encode(stableWorkspaceJson(canonical)))
 }

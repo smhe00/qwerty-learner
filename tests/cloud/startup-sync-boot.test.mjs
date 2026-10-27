@@ -57,7 +57,7 @@ test('expired successful preflight does not begin another M4 network chain',asyn
  s.v4=async()=>{s.checks++;s.now+=60001;return {status:'noop',canContinue:true}}
  const result=await boot();result.release()
  assert.equal(s.checks,1);assert.equal(s.adoptions,0);assert.equal(s.installed,1)
- assert.match(globalThis.sessionStorage.getItem('qwerty.s2.last-sync-result'),/已保存在本机/)
+ assert.match(globalThis.sessionStorage.getItem('qwerty.s2.last-sync-result'),/完整学习数据已同步。多设备历史验证尚未完成/)
 })
 test('S2 stage, real boot recovery branch and next boot share one expired budget',async()=>{
  const s=setup()
@@ -171,4 +171,35 @@ test('passive return never bypasses missing writer integrity or wrong account',a
  const s=setup();await passiveReturn(s);s.badWitness=true
  await assert.rejects(boot(),/bad witness/)
  assert.equal(s.checks,0)
+})
+
+
+test('partial history reports its own progress after V4 success and cannot authorize adoption', async()=>{
+ const s=setup(), stages=[]
+ s.m4=async()=>{s.adoptions++;return {status:'pending',reason:'verification-in-progress',completed:16,total:40}}
+ const result=await boot(stage=>stages.push(stage));result.release()
+ assert.equal(s.installed,1);assert.equal(s.recoveries,0)
+ assert.ok(stages.includes('verifying-history'))
+ assert.match(sessionStorage.getItem('qwerty.s2.last-sync-result'),/完整学习数据已同步。历史验证已完成 16\/40 批/)
+})
+test('partial history cannot disguise an unconfirmed full snapshot as synchronized', async()=>{
+ const s=setup()
+ s.v4=async()=>({status:'pending',canContinue:true,detail:'pending'})
+ s.m4=async()=>({status:'pending',reason:'verification-download-pending',completed:16,total:40})
+ const result=await boot();result.release()
+ assert.match(sessionStorage.getItem('qwerty.s2.last-sync-result'),/完整学习数据同步尚未确认/)
+ assert.match(sessionStorage.getItem('qwerty.s2.last-sync-result'),/历史记录读取已完成 16\/40 批/)
+ assert.equal(s.recoveries,0)
+})
+
+
+test('completed exact history clears an interrupted old history notice but preserves unrelated recovery results', async()=>{
+ const s=setup()
+ s.m4=async()=>({status:'skipped',reason:'verified-prefix-already-local'})
+ sessionStorage.setItem('qwerty.s2.last-sync-result','完整学习数据已同步。历史验证已完成 16/40 批，下次同步将接着处理，可以继续学习。')
+ ;(await boot()).release()
+ assert.equal(sessionStorage.getItem('qwerty.s2.last-sync-result'),null)
+ sessionStorage.setItem('qwerty.s2.last-sync-result','已完成云端学习数据安全恢复。')
+ ;(await boot()).release()
+ assert.equal(sessionStorage.getItem('qwerty.s2.last-sync-result'),'已完成云端学习数据安全恢复。')
 })

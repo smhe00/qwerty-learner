@@ -1,5 +1,6 @@
 /* eslint-env node */
 import crypto from 'node:crypto'
+import { verifyHistoryPage } from './history-verification.js'
 import { V4_FORMAT, verifyCompressedV4 } from './sync-v4.js'
 import { createGuardedBackendService } from './session-handoff-service.js'
 import {
@@ -1038,6 +1039,19 @@ function createUncoordinatedBackendService({
       a.sequence - b.sequence ||
       a.batchId.localeCompare(b.batchId) ||
       a.sha256.localeCompare(b.sha256))
+    if (input.segmented === true) {
+      try {
+        return await verifyHistoryPage({ accountId: identity.userId, heads, cursor: input.cursor, storage,
+          read: current => verifiedChainReceipt(identity.userId, current),
+          assertOwner: async () => { await authenticate(token) },
+        })
+      } catch (error) {
+        if (['verification-checkpoint-invalid', 'verification-checkpoint-missing'].includes(error?.message)) {
+          throw new AppError(503, error.message, 'History checkpoint could not be verified')
+        }
+        throw error
+      }
+    }
     const witnessed = new Map()
     const attempts = new Map()
     const chainLengths = []

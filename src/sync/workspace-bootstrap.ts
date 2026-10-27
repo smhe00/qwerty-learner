@@ -8,7 +8,7 @@
 import { matchesAccountVisit, setAccountVisitSource, takePassiveAccountReturn } from './account-passive-return'
 import { shouldCheckAccountV4AtStartup } from './account-startup-v4'
 import { loadAuth, setIsolatedAuthRetention } from './auth'
-import { SYNC_PENDING_NOTICE } from './learning-sync-diagnostics'
+import { historySyncNotice } from './history-sync-notice'
 import { learningEventSyncEnabled } from './learning-sync-policy'
 import { timePerfStage } from './perf-diagnostics'
 import {
@@ -28,7 +28,15 @@ import type { Registry, Workspace } from './workspace-transition'
 import { S1_MIGRATION_WITNESS_KEY } from './workspace-v4'
 import { workspaceRegistryPort } from './workspace-vault'
 
-export type WorkspaceBootStage = 'locking' | 'recovering' | 'restart-required' | 'checking-identity' | 'syncing' | 'ready' | 'blocked'
+export type WorkspaceBootStage =
+  | 'locking'
+  | 'recovering'
+  | 'restart-required'
+  | 'checking-identity'
+  | 'syncing'
+  | 'verifying-history'
+  | 'ready'
+  | 'blocked'
 
 export type GuardedWorkspaceBoot = {
   mode: 'legacy' | 'isolated'
@@ -58,6 +66,8 @@ export async function prepareGuardedWorkspaceBoot(
 ): Promise<GuardedWorkspaceBoot> {
   const returnTicket = takePassiveAccountReturn()
   let networkSettled = true
+  let fullDataSynced = false
+  let historyProgress: { completed: number; total: number; reason: string } | undefined
   report(onStage, 'locking')
   const lease = await timePerfStage('startup', 'writer-lease', () => acquireWorkspaceWriterLease({ waitMs: options.writerWaitMs })).catch(
     (error) => {
@@ -250,6 +260,7 @@ export async function prepareGuardedWorkspaceBoot(
       report(onStage, 'syncing')
       const { checkAccountV4AfterAuthentication } = await import('./account-login-v4-check')
       const result = await checkAccountV4AfterAuthentication()
+      fullDataSynced = result.status === 'noop' || result.status === 'pushed'
       if (result.status === 'pending') networkSettled = false
       // Fixed status only: no identity, token, payload or private error.
       sessionStorage.setItem('qwerty.s2.startup-check.v1', result.status)
@@ -270,6 +281,7 @@ export async function prepareGuardedWorkspaceBoot(
     if (!passiveAccountReturn && registry.active.kind === 'account' && learningEventSyncEnabled() && startupSyncTimeRemaining()) {
       try {
         const { adoptWitnessedM3AtGuardedBoot } = await import('./m4-witnessed-prefix-browser')
+        report(onStage, 'verifying-history')
         const adoption = await adoptWitnessedM3AtGuardedBoot(registry)
         if (adoption.status === 'adopted') {
           recovered = true
@@ -278,9 +290,19 @@ export async function prepareGuardedWorkspaceBoot(
           preserveStartupSyncBudgetForReload()
           throw new Error('M4 merge recovery completed; reload required before mounting app')
         }
+        if (fullDataSynced && adoption.status === 'skipped' && adoption.reason === 'verified-prefix-already-local') {
+          const prior = sessionStorage.getItem('qwerty.s2.last-sync-result')
+          if (prior?.startsWith('完整学习数据') && prior.includes('历史')) sessionStorage.removeItem('qwerty.s2.last-sync-result')
+        }
+        if (adoption.status === 'pending') {
+          networkSettled = false
+          historyProgress = adoption
+          if (window.location.search === '?m4-reconcile=1') sessionStorage.setItem('qwerty.etest.m4.idleBlocked', '1')
+          sessionStorage.setItem('qwerty.s2.last-sync-result', historySyncNotice(fullDataSynced, historyProgress))
+        }
         if (adoption.status === 'blocked') {
           networkSettled = false
-          sessionStorage.setItem('qwerty.s2.last-sync-result', SYNC_PENDING_NOTICE)
+          sessionStorage.setItem('qwerty.s2.last-sync-result', historySyncNotice(fullDataSynced))
           console.warn('M4 witnessed prefix was NOT applied:', adoption.reason)
           if (window.location.search === '?m4-reconcile=1') {
             // Do not repeatedly disrupt an idle user on a deterministic
@@ -308,7 +330,7 @@ export async function prepareGuardedWorkspaceBoot(
     }
     if (!startupSyncTimeRemaining()) {
       networkSettled = false
-      sessionStorage.setItem('qwerty.s2.last-sync-result', SYNC_PENDING_NOTICE)
+      sessionStorage.setItem('qwerty.s2.last-sync-result', historySyncNotice(fullDataSynced, historyProgress))
       if (window.location.search === '?m4-reconcile=1') {
         sessionStorage.setItem('qwerty.etest.m4.idleBlocked', '1')
         window.history.replaceState(null, '', '/')

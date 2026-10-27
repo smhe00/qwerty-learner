@@ -270,7 +270,7 @@ test('all learning mutation entry points reject new work while B drains A', dead
   const writing = h.a.putSyncV4Binary(h.first.token, fixture(h.first.user.userId, 'alpha'))
   await pause.reached.promise
   const login = h.b.login(h.username, h.password, 'B')
-  const mutations = ['publishLearningBatch', 'publishChainedLearningBatch', 'issueChainedCheckout',
+  const mutations = ['publishLearningBatch', 'publishChainedLearningBatch', 'issueChainedCheckout', 'verifyWitnessedChainSet',
     'putSync', 'putSyncV4', 'putSyncV4Recovery', 'putSyncV4Binary',
     'putSyncV4BinaryRecovery', 'migrateSyncV4Binary']
   try {
@@ -308,7 +308,7 @@ test('old event and recovery calls cannot mutate storage after B receives login 
   const second = await h.b.login(h.username, h.password, 'B')
   assert.ok(second.token)
   const before = structuredClone([...h.blob.data])
-  for (const name of ['publishLearningBatch', 'publishChainedLearningBatch', 'issueChainedCheckout',
+  for (const name of ['publishLearningBatch', 'publishChainedLearningBatch', 'issueChainedCheckout', 'verifyWitnessedChainSet',
     'putSync', 'putSyncV4', 'putSyncV4Recovery', 'putSyncV4Binary',
     'putSyncV4BinaryRecovery', 'migrateSyncV4Binary', 'deleteAccount', 'changePassword']) {
     await assert.rejects(h.a[name](h.first.token, {}), code('session_revoked'), name)

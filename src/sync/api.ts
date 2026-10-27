@@ -739,6 +739,11 @@ export function readChainedEventBatch(token: string, receipt: ChainedReceipt) {
  */
 export type WitnessedSetReply = {
   ok: true
+  reason?: string
+  cursor?: string
+  receiptsRead?: number
+  totalReceipts?: number
+  digestAlgorithm?: 'attempt-sha256-v1'
   verified: boolean
   uniqueAttemptCount?: number
   evidenceSha256?: string
@@ -746,11 +751,11 @@ export type WitnessedSetReply = {
   convergenceComplete: false
   listingIsAuthoritative?: false
 }
-export function verifyWitnessedChainedEventHeads(token: string, heads: ChainedReceipt[]) {
+export function verifyWitnessedChainedEventHeads(token: string, heads: ChainedReceipt[], continuation?: { cursor?: string }) {
   return request<WitnessedSetReply>('/api/sync/events/v2/verify-set', {
     method: 'POST',
     token,
-    body: { heads },
+    body: { heads, ...(continuation ? { segmented: true, ...continuation } : {}) },
   })
 }
 

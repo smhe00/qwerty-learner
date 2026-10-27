@@ -29,11 +29,12 @@ import { db } from '@/utils/db/core'
 
 export type WitnessedM4BootResult =
   | { status: 'skipped' | 'blocked'; reason: string }
+  | { status: 'pending'; reason: string; completed: number; total: number }
   | { status: 'adopted'; newAttempts: number; scope: 'verified-prefix-only' }
 
 export async function adoptWitnessedM3AtGuardedBoot(
   registry: Registry,
-  options: { preMountAccountManagement?: boolean } = {},
+  options: { preMountAccountManagement?: boolean; onProgress?: (completed: number, total: number) => void } = {},
 ): Promise<WitnessedM4BootResult> {
   // Production Vite intentionally drops ALL console calls. Persist bounded,
   // anonymized diagnostics in this etest tab's sessionStorage instead.
@@ -147,7 +148,9 @@ export async function adoptWitnessedM3AtGuardedBoot(
     }
     // This inspector independently verifies server account ownership, exact
     // chains, every raw immutable event and the canonical set digest.
-    const proof = await timePerfStage('sync', 'm4-witness', () => inspectOwnedWitnessedHistory(heads.heads, { allowUnchanged: true }))
+    const proof = await timePerfStage('sync', 'm4-witness', () =>
+      inspectOwnedWitnessedHistory(heads.heads, { allowUnchanged: true, onProgress: options.onProgress }),
+    )
     await assertOwner()
     trace('witnessed', {
       status: proof.status,
@@ -157,6 +160,16 @@ export async function adoptWitnessedM3AtGuardedBoot(
     // Exact verified no-change evidence needs neither FSRS replay nor another
     // full-V4 export. Every actual adoption still takes the complete audit and
     // durable original/candidate journal path below.
+    if (proof.status === 'pending') {
+      recordLearningSyncDiagnostic({
+        stage: 'm3-witness',
+        status: 'pending',
+        code: proof.reason,
+        completed: proof.verifiedReceipts,
+        total: proof.totalReceipts,
+      })
+      return { status: 'pending', reason: proof.reason, completed: proof.verifiedReceipts, total: proof.totalReceipts }
+    }
     if (proof.status === 'unchanged') {
       return proof.reason === 'verified-prefix-already-local' && proof.publishReady === false && proof.convergenceComplete === false
         ? skip(proof.reason)
@@ -169,7 +182,7 @@ export async function adoptWitnessedM3AtGuardedBoot(
       proof.publishReady !== false ||
       proof.convergenceComplete !== false
     ) {
-      return blocked('M3-witness-evidence-unverified')
+      return blocked(proof.status === 'blocked' ? proof.reason : 'M3-witness-evidence-unverified')
     }
     const original = await timePerfStage('sync', 'm4-capture', () => captureWorkingWorkspaceV4({ kind: 'account', accountId }))
     await assertOwner()

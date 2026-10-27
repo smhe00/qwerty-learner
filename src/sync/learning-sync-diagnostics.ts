@@ -1,4 +1,5 @@
 /** Diagnostic-package data only. No credentials, row contents or identity fields. */
+import { safeWitnessFailure } from './history-verification-failures'
 import { EVENT_RECORD_ISSUES } from './learning-event-compatibility'
 import type { EventCompatibilityAudit } from './learning-event-compatibility'
 import { isV4FailureCode } from './v4-failure-diagnostics'
@@ -7,6 +8,7 @@ export const SYNC_PENDING_NOTICE = '部分学习记录暂未同步，已保存�
 const KEY = 'qwerty.learning-sync-diagnostics.v1'
 const STAGES = ['m3-recovery', 'm3-publication', 'm3-witness', 'm4-adoption', 'v4-check'] as const
 const STATUSES = [
+  'pending',
   'ready',
   'blocked',
   'idle',
@@ -29,6 +31,9 @@ const CODES = new Set([
   'witness-projection-identity-conflict',
   'witness-projection-invalid-event',
   'witness-projection-fsrs-replay-failed',
+  'verification-in-progress',
+  'verification-download-pending',
+  'witness-read-failed',
   'witness-server-unverified',
   'witness-receipt-integrity',
   'witness-predecessor-integrity',
@@ -72,13 +77,15 @@ type Entry = {
   status: (typeof STATUSES)[number]
   code?: string
   audit?: EventCompatibilityAudit
+  completed?: number
+  total?: number
   retainedLegacyStates?: number
 }
 const count = (n: unknown): n is number => Number.isSafeInteger(n) && Number(n) >= 0 && Number(n) <= 10_000_000
 function safeCode(code: unknown): string {
   if (typeof code !== 'string') return 'none'
   const unwrapped = code.replace(/^(m3-publication|M4-prefix-candidate):/, '')
-  if (CODES.has(code) || isV4FailureCode(code)) return code
+  if (CODES.has(code) || isV4FailureCode(code) || safeWitnessFailure(code, '') === code) return code
   return CODES.has(unwrapped) ? unwrapped : 'unknown'
 }
 function safeAudit(value: unknown): EventCompatibilityAudit | undefined {
@@ -96,6 +103,10 @@ function cleanEntry(value: unknown): Entry | undefined {
   const result: Entry = { stage: input.stage, status: input.status, code: safeCode(input.code) }
   const audit = safeAudit(input.audit)
   if (audit) result.audit = audit
+  if (count(input.completed) && count(input.total) && input.completed <= input.total && input.total <= 512) {
+    result.completed = input.completed
+    result.total = input.total
+  }
   if (count(input.retainedLegacyStates)) result.retainedLegacyStates = input.retainedLegacyStates
   return result
 }
