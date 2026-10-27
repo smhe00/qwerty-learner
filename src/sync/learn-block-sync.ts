@@ -7,6 +7,9 @@
  * A pending handoff is tab-local.  The guarded pre-mount S2 executor remains
  * the sole owner of Dexie capture/Cloud CAS (never mounted React).
  */
+import { readLearnResultSummary } from '../learn/result-summary'
+import type { LearnResultSummary } from '../learn/result-summary'
+
 export const LEARN_BLOCK_PENDING_KEY = 'qwerty.learn.block-sync.pending.v1'
 export const LEARN_BLOCK_RESULT_KEY = 'qwerty.learn.block-sync.result.v1'
 
@@ -17,6 +20,7 @@ export type LearnBlockSyncHandoff = {
   /** Executable work ended with retained unmastered words; not mastery. */
   roundEnded?: boolean
   milestone: number | null
+  summary?: LearnResultSummary
 }
 
 const PREF_PREFIX = 'qwerty.learn.block-sync.enabled.v1.'
@@ -63,6 +67,7 @@ export function stageLearnBlockSync(
     dailyComplete: boolean
     roundEnded?: boolean
     milestone?: number
+    summary?: LearnResultSummary
   },
 ): void {
   if ((!input.dailyComplete && input.roundEnded !== true && !blockAutoSyncEnabled(accountId)) || !isVisibleLearnBlockBoundary(input)) {
@@ -74,6 +79,7 @@ export function stageLearnBlockSync(
     dailyComplete: input.dailyComplete,
     ...(input.roundEnded === true ? { roundEnded: true } : {}),
     milestone: input.milestone ?? null,
+    summary: readLearnResultSummary(input.summary),
   }
   sessionStorage.removeItem(LEARN_BLOCK_RESULT_KEY)
   sessionStorage.setItem(LEARN_BLOCK_PENDING_KEY, JSON.stringify(pending))
@@ -84,7 +90,7 @@ export function readLearnBlockSyncPending(accountId: string): LearnBlockSyncHand
     const raw = sessionStorage.getItem(LEARN_BLOCK_PENDING_KEY)
     if (!raw) return null
     const pending: unknown = JSON.parse(raw)
-    return valid(pending) && pending.accountId === accountId ? pending : null
+    return valid(pending) && pending.accountId === accountId ? { ...pending, summary: readLearnResultSummary(pending.summary) } : null
   } catch {
     return null
   }

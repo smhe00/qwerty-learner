@@ -98,3 +98,27 @@ test('Malformed round-ended flag cannot authorize a completion handoff', () => {
   assert.equal(sync.readLearnBlockSyncPending('account-exhausted'), null)
   sync.clearLearnBlockSyncHandoff()
 })
+
+
+test('Optional completion summary is bounded, account-bound, expires, and never authorizes sync', () => {
+  const summary = {
+    dictionary: 'CET4', title: '今日学习完成', description: '本地已保存', percent: 100,
+    progressLabel: '今日学习完成进度',
+    metrics: Array.from({ length: 6 }, () => ({ label: '进度', value: '1/1', detail: '100%' })),
+  }
+  assert.throws(() => sync.stageLearnBlockSync('summary-owner', { dailyComplete: false, summary }))
+  sync.stageLearnBlockSync('summary-owner', { dailyComplete: true, summary })
+  assert.deepEqual(sync.readLearnBlockSyncPending('summary-owner').summary, summary)
+  assert.equal(sync.readLearnBlockSyncPending('other-owner'), null)
+  const raw = JSON.parse(data.get(sync.LEARN_BLOCK_PENDING_KEY))
+  for (const invalid of [null, { ...summary, percent: 101 }, { ...summary, metrics: [{}] },
+    { ...summary, title: 'x'.repeat(201) }, { ...summary, metrics: [null, ...summary.metrics.slice(1)] }]) {
+    data.set(sync.LEARN_BLOCK_PENDING_KEY, JSON.stringify({ ...raw, summary: invalid }))
+    const pending = sync.readLearnBlockSyncPending('summary-owner')
+    assert.equal(pending.dailyComplete, true)
+    assert.equal(pending.summary, undefined)
+  }
+  data.set(sync.LEARN_BLOCK_PENDING_KEY, JSON.stringify({ ...raw, at: Date.now() - 21 * 60 * 1000 }))
+  assert.equal(sync.readLearnBlockSyncPending('summary-owner'), null)
+  sync.clearLearnBlockSyncHandoff()
+})

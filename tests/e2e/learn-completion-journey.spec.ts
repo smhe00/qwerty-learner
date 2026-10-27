@@ -216,12 +216,34 @@ for (const wrong of [true, false]) {
     page,
   }) => {
     const net = await network(page)
+    await page.addInitScript(() => {
+      new MutationObserver(() => {
+        const card = document.querySelector('[data-learn-block-sync]')
+        if (!card) return
+        const entry = { title: card.querySelector('h1')?.textContent, metrics: card.querySelectorAll('.focus-result-metric').length }
+        const history = JSON.parse(sessionStorage.getItem('completion-ui-history') || '[]')
+        if (JSON.stringify(history.at(-1)) !== JSON.stringify(entry)) {
+          history.push(entry)
+          sessionStorage.setItem('completion-ui-history', JSON.stringify(history))
+        }
+      }).observe(document, { childList: true, subtree: true })
+    })
     await seedLastWord(page)
     await answerLastWord(page, wrong)
     await expect(page.locator('[data-learn-block-sync]')).toBeVisible()
     await expect(page.getByRole('heading', { name: wrong ? '本轮练习已结束' : '今日学习完成', exact: true })).toBeVisible()
     await expect(page.getByRole('button')).toHaveCount(0)
     expect(net.uploads).toHaveLength(0)
+    const metrics = page.locator('[data-focus-result-metrics] .focus-result-metric')
+    await expect(metrics).toHaveCount(6)
+    const summary = await metrics.allTextContents()
+    // Test a narrow completion viewport without changing the app's mobile routing.
+    if (!wrong) await page.setViewportSize({ width: 390, height: 844 })
+    await expect.poll(() => net.metaRequests()).toBeGreaterThan(0)
+    // The network gate is still held: progress must not vanish when boot advances.
+    await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', wrong ? '0' : '100')
+    expect(await page.getByRole('dialog').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+    await page.screenshot({ path: 'blob-report/completion-feedback-copy/' + (wrong ? 'desktop-syncing' : 'mobile-syncing') + '.png' })
     net.releaseMetadata()
     await expect(page.getByText('同步完成：本地进度已安全上传至云端。')).toBeVisible({ timeout: 30_000 })
     expect(net.uploads).toHaveLength(1)
@@ -234,6 +256,18 @@ for (const wrong of [true, false]) {
       expect(data.learnRuntime.dailySessions.cet4.executionExhausted).toBe(true)
       expect(data.database.data.data.find((x: any) => x.tableName === 'reviewWordStates').rows).toHaveLength(0)
     }
+    expect(await metrics.allTextContents()).toEqual(summary)
+    // Exercise the post-recovery return document with the real guarded boot.
+    // This is UI restoration evidence, not a simulated claim of a remote pull.
+    await page.goto('/?learn-block-sync=result')
+    await expect(page.getByRole('button', { name: '再学五词', exact: true })).toBeEnabled()
+    expect(await metrics.allTextContents()).toEqual(summary)
+    const history = await page.evaluate(() => JSON.parse(sessionStorage.getItem('completion-ui-history') || '[]'))
+    expect(history.length).toBeGreaterThan(0)
+    expect(history.every((entry: { title: string; metrics: number }) =>
+      entry.title === (wrong ? '本轮练习已结束' : '今日学习完成') && entry.metrics === 6)).toBe(true)
+    expect(net.uploads).toHaveLength(1)
+    await page.setViewportSize({ width: 1280, height: 900 })
     await page.getByRole('button', { name: '再学五词', exact: true }).click()
     await expect(page.locator('[data-typing-word]')).toBeVisible()
     const daily = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), dailyKey)
@@ -254,14 +288,19 @@ test('last failed word → sync failure → explicit retry retains exactly one f
   await seedLastWord(page)
   await answerLastWord(page, true)
   await expect(page.locator('[data-learn-block-sync]')).toBeVisible()
+  const metrics = page.locator('[data-focus-result-metrics] .focus-result-metric')
+  await expect(metrics).toHaveCount(6)
+  const summary = await metrics.allTextContents()
   net.releaseMetadata()
   await expect(page.getByRole('button', { name: '重试同步', exact: true })).toBeVisible({ timeout: 30_000 })
   await expect(page.getByRole('button', { name: '再学五词', exact: true })).toHaveCount(0)
   expect(net.uploads).toHaveLength(0)
+  expect(await metrics.allTextContents()).toEqual(summary)
   net.recover()
   await page.getByRole('button', { name: '重试同步', exact: true }).click()
   await expect(page.getByText('同步完成：本地进度已安全上传至云端。')).toBeVisible({ timeout: 30_000 })
   expect(net.uploads).toHaveLength(1)
+  expect(await metrics.allTextContents()).toEqual(summary)
   expect(net.uploads[0].workspaceData.database.data.data.find((x: any) => x.tableName === 'wordRecords').rows).toHaveLength(2)
 })
 

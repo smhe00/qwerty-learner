@@ -2,6 +2,7 @@ import FiveMoreButton from './FiveMoreButton'
 import { getUnseenAchievementStates, markAchievementSeen } from '@/achievement'
 import { resolveAchievementCeremonyPresentation } from '@/achievement/presentation'
 import { addLearnDailyNewWords, getLearnExtraRoundNames, loadLearnDailySession } from '@/learn/daily-session'
+import { learnResultSummary } from '@/learn/result-summary'
 import { settleLearnBlockDurably } from '@/learn/settlement'
 import type { LearnBlockSettlement } from '@/learn/settlement'
 import { TypingContext, TypingStateActionType, initialState } from '@/pages/Typing/store'
@@ -18,13 +19,6 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'r
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate } from 'react-router-dom'
 import IconX from '~icons/tabler/x'
-
-function formatTime(seconds: number): string {
-  const safe = Math.max(0, Math.floor(seconds))
-  const minutes = Math.floor(safe / 60)
-  const rest = safe % 60
-  return `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`
-}
 
 function SummaryMetric({
   label,
@@ -142,6 +136,7 @@ export default function LearnResultScreen({ initialSettlement }: { initialSettle
               dailyComplete: baseSettlement.progress.complete,
               roundEnded: baseSettlement.session.executionExhausted === true,
               milestone: baseSettlement.milestoneReached,
+              summary: learnResultSummary(baseSettlement, currentDictInfo.name, !!getLearnExtraRoundNames(baseSettlement.session)),
             })
             blockSyncHandoffRef.current = true
             setBlockSyncHandoff(true)
@@ -168,7 +163,7 @@ export default function LearnResultScreen({ initialSettlement }: { initialSettle
       // intentionally survives StrictMode effect replay and route-state churn.
       active = false
     }
-  }, [initialSettlement, record, state.chapterData.wordRecordIds, state.timerData.time])
+  }, [currentDictInfo.name, initialSettlement, record, state.chapterData.wordRecordIds, state.timerData.time])
 
   const keepLearnSelected = useCallback(() => {
     setReviewModeInfo((old) => ({
@@ -287,13 +282,10 @@ export default function LearnResultScreen({ initialSettlement }: { initialSettle
   useHotkeys('esc', () => closeResult(), { preventDefault: true }, [closeResult])
 
   const progress = settlement?.progress
-  const milestoneIndex =
-    settlement?.milestoneReached === undefined ? -1 : (settlement.session.blockMilestones ?? []).indexOf(settlement.milestoneReached)
-  const isExtraRound = !!getLearnExtraRoundNames(settlement?.session ?? null)
+  const summary = settlement ? learnResultSummary(settlement, currentDictInfo.name, !!getLearnExtraRoundNames(settlement.session)) : null
   const isDailyComplete = progress?.complete === true
   const isRoundEnded = settlement?.session.executionExhausted === true
   const isSessionEnd = isDailyComplete || isRoundEnded
-  const totalActiveSeconds = settlement ? settlement.session.accumulatedActiveSeconds : state.timerData.time
 
   return (
     <div
@@ -322,19 +314,7 @@ export default function LearnResultScreen({ initialSettlement }: { initialSettle
 
           <div className="text-center">
             <div className="focus-result-eyebrow text-xs font-medium">{currentDictInfo.name} · Learn</div>
-            <h1 className="focus-result-heading mt-3 text-[27px] font-semibold tracking-tight">
-              {isDailyComplete
-                ? getLearnExtraRoundNames(settlement?.session ?? null)
-                  ? '本次加学完成'
-                  : '今日学习完成'
-                : isRoundEnded
-                ? '本轮练习已结束'
-                : milestoneIndex >= 0
-                ? `阶段 ${milestoneIndex + 1} 完成`
-                : settlement?.session.blockMilestones
-                ? '继续学习'
-                : '阶段完成'}
-            </h1>
+            <h1 className="focus-result-heading mt-3 text-[27px] font-semibold tracking-tight">{summary?.title ?? '阶段完成'}</h1>
 
             {!settlement && !settlementError ? (
               <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">正在保存本阶段学习状态…</p>
@@ -356,56 +336,26 @@ export default function LearnResultScreen({ initialSettlement }: { initialSettle
               </p>
             ) : null}
 
-            {progress && !isSessionEnd ? (
-              <p className="focus-result-description mt-3 text-sm">
-                今天已经完成 {progress.percent}%。 当前状态已保存，按任意键继续下一阶段。
-              </p>
-            ) : null}
-
-            {progress && isSessionEnd ? (
-              <p className="focus-result-description mt-3 text-sm">
-                {isRoundEnded && !isDailyComplete
-                  ? '本轮练习已结束。需巩固的词仍然保留，不会计为已掌握。'
-                  : getLearnExtraRoundNames(settlement?.session ?? null)
-                  ? '本轮练习已完成，需巩固的词已保留。'
-                  : '今日练习已完成。需巩固的词已记下，系统会继续安排复习。'}
-              </p>
-            ) : null}
+            {summary ? <p className="focus-result-description mt-3 text-sm">{summary.description}</p> : null}
           </div>
 
-          {progress ? (
+          {summary ? (
             <>
               <div
                 className="focus-result-progress mx-auto mt-7 w-full max-w-xl"
                 role="progressbar"
-                aria-label={isExtraRound ? '本轮学习完成进度' : '今日学习完成进度'}
+                aria-label={summary.progressLabel}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuenow={progress.percent}
+                aria-valuenow={summary.percent}
               >
-                <div className="focus-result-progress-fill" style={{ width: `${progress.percent}%` }} />
+                <div className="focus-result-progress-fill" style={{ width: `${summary.percent}%` }} />
               </div>
 
               <div className="focus-result-metrics mt-7" data-focus-result-metrics>
-                <SummaryMetric
-                  label={isExtraRound ? '本轮进度' : '今日进度'}
-                  value={`${progress.completedWords}/${progress.targetWords}`}
-                  detail={`${progress.percent}%`}
-                  primary
-                />
-                <SummaryMetric
-                  label={isExtraRound ? '本轮新词' : '今日新词'}
-                  value={`${progress.introducedNewWords}/${progress.newTargetWords}`}
-                  detail={`独立完成 ${progress.completedNewWords}`}
-                />
-                <SummaryMetric
-                  label={isExtraRound ? '本轮复习完成' : '复习已完成'}
-                  value={`${progress.completedReviewWords}/${progress.reviewTargetWords}`}
-                  detail={`独立答对 ${progress.independentReviewWords} 词`}
-                />
-                <SummaryMetric label="复习需巩固" value={progress.reviewWordsToConsolidate} detail="已记下，之后继续安排复习" />
-                <SummaryMetric label="待完成" value={progress.remainingWords} detail="词" />
-                <SummaryMetric label="学习时间" value={formatTime(totalActiveSeconds)} />
+                {summary.metrics.map((metric, index) => (
+                  <SummaryMetric key={metric.label} {...metric} primary={index === 0} />
+                ))}
               </div>
             </>
           ) : null}

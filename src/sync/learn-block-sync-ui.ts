@@ -3,9 +3,11 @@
  * React app / RecordDB MUST NOT mount until guarded S2 Sync has finished and
  * the old document has been destroyed.
  */
+import '../index.css'
 import { presentSafetyDialog } from './dialog-presentation'
 import { clearLearnBlockSyncHandoff, readLearnBlockSyncPending } from './learn-block-sync'
 import type { LearnBlockSyncHandoff, LearnBlockSyncOutcome } from './learn-block-sync'
+import './learn-block-sync-ui.css'
 
 type BlockSyncScreen = {
   setStatus: (message: string) => void
@@ -16,21 +18,24 @@ export function renderLearnBlockSyncScreen(root: HTMLElement | null, context: Le
   if (!root) throw new Error('Cannot render Learn Block Sync without the application root')
   root.replaceChildren()
 
+  const summary = context?.summary
   const card = document.createElement('section')
   card.style.cssText = 'text-align:center'
   const caption = document.createElement('p')
-  caption.textContent = 'Qwerty Plus · Learn'
+  caption.textContent = (summary?.dictionary ?? 'Qwerty Plus') + ' · Learn'
   caption.style.cssText = 'font-size:14px;color:var(--dialog-muted)'
   const title = document.createElement('h1')
-  title.textContent = context?.dailyComplete ? '今日学习完成' : context?.roundEnded ? '本轮练习已结束' : 'Block 阶段完成'
+  title.textContent =
+    summary?.title ?? (context?.dailyComplete ? '今日学习完成' : context?.roundEnded ? '本轮练习已结束' : 'Block 阶段完成')
   title.style.cssText = 'font-size:26px;font-weight:650;margin:16px 0 10px'
   const detail = document.createElement('p')
   detail.textContent =
-    context?.milestone !== null && context?.milestone !== undefined
+    summary?.description ??
+    (context?.milestone !== null && context?.milestone !== undefined
       ? `今日已完成 ${context.milestone} 个目标词`
       : context?.roundEnded
       ? '本轮记录已保存在本机，需巩固的词仍然保留'
-      : '当前阶段学习记录已保存在本机'
+      : '当前阶段学习记录已保存在本机')
   detail.style.cssText = 'font-size:14px;color:var(--dialog-muted);margin-bottom:14px'
   const status = document.createElement('p')
   status.setAttribute('role', 'status')
@@ -39,7 +44,39 @@ export function renderLearnBlockSyncScreen(root: HTMLElement | null, context: Le
   status.style.cssText = 'font-size:15px;margin:22px 0;color:var(--dialog-accent)'
   const actions = document.createElement('div')
   actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:24px'
-  card.append(caption, title, detail, status, actions)
+  card.append(caption, title, detail)
+  if (summary) {
+    card.classList.add('learn-completion-sync')
+    card.setAttribute('data-learn-result-screen', '')
+    const progress = document.createElement('div')
+    progress.className = 'focus-result-progress'
+    progress.setAttribute('role', 'progressbar')
+    progress.setAttribute('aria-label', summary.progressLabel)
+    progress.setAttribute('aria-valuemin', '0')
+    progress.setAttribute('aria-valuemax', '100')
+    progress.setAttribute('aria-valuenow', String(summary.percent))
+    const fill = document.createElement('div')
+    fill.className = 'focus-result-progress-fill'
+    fill.style.width = summary.percent + '%'
+    progress.append(fill)
+    const metrics = document.createElement('div')
+    metrics.className = 'focus-result-metrics'
+    metrics.setAttribute('data-focus-result-metrics', '')
+    summary.metrics.forEach((metric, index) => {
+      const cell = document.createElement('div')
+      cell.className = 'focus-result-metric'
+      if (index === 0) cell.dataset.emphasis = 'primary'
+      for (const field of ['label', 'value', 'detail'] as const) {
+        const item = document.createElement('div')
+        item.className = 'focus-result-metric-' + field
+        item.textContent = metric[field]
+        cell.append(item)
+      }
+      metrics.append(cell)
+    })
+    card.append(progress, metrics)
+  }
+  card.append(status, actions)
   presentSafetyDialog(root, card)
   card.setAttribute('data-learn-block-sync', '')
 

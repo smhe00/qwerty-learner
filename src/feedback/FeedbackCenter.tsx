@@ -15,6 +15,7 @@ import { finishFeedbackRecovery, pendingFeedbackRecovery } from './recovery-link
 import { Dialog } from '@headlessui/react'
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import IconCopy from '~icons/tabler/copy'
 
 const date = (at: number) => new Date(at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 const errorText = (error: unknown) => (error instanceof Error ? error.message : '暂时无法完成，请稍后重试。')
@@ -211,7 +212,43 @@ function Conversation({ identity }: { identity: Identity }) {
       {thread ? (
         <>
           <div className="feedback-thread">
-            <h3>{thread.title}</h3>
+            <div className="feedback-thread-heading">
+              <h3>{thread.title}</h3>
+              <button
+                className="feedback-copy"
+                type="button"
+                disabled={busy}
+                onClick={() =>
+                  void run(async () => {
+                    const content = [
+                      thread.title,
+                      '处理状态：' + statusText[thread.status],
+                      '',
+                      '反馈内容',
+                      thread.text,
+                      ...thread.messages.flatMap((message) => [
+                        '',
+                        (message.role === 'admin' ? '管理员' : '反馈人') +
+                          ' · ' +
+                          date(message.createdAt) +
+                          ' · ' +
+                          statusText[message.status],
+                        message.text,
+                      ]),
+                    ].join('\n')
+                    try {
+                      await navigator.clipboard.writeText(content)
+                    } catch {
+                      throw new Error('无法访问剪贴板，请选中反馈文字后手动复制。')
+                    }
+                    if (alive.current) setNotice('反馈及回复已复制')
+                  })
+                }
+              >
+                <IconCopy aria-hidden="true" />
+                复制反馈
+              </button>
+            </div>
             <p className="feedback-meta">
               {date(thread.createdAt)} · {statusText[thread.status]}
             </p>

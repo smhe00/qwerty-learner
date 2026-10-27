@@ -1,0 +1,20 @@
+.safety-dialog-panel.learn-completion-sync {
+  --focus-text-muted: var(--dialog-muted);
+  --focus-text-secondary: var(--dialog-text);
+  --focus-surface: var(--dialog-surface);
+  --focus-surface-muted: var(--dialog-bg);
+  --focus-border: var(--dialog-line);
+  --focus-accent: var(--dialog-accent);
+  --focus-accent-soft: var(--dialog-bg);
+  max-width: 720px;
+  padding: 32px 24px;
+}
+.learn-completion-sync .focus-result-progress,
+.learn-completion-sync .focus-result-metrics {
+  margin-top: 28px;
+}
+@media (min-width: 640px) {
+  .safety-dialog-panel.learn-completion-sync {
+    padding: 40px;
+  }
+}

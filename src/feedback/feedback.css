@@ -205,3 +205,29 @@
   padding-left: 0;
   font-size: 13px;
 }
+
+.feedback-thread {
+  -webkit-user-select: text;
+  user-select: text;
+}
+.feedback-thread-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.feedback-thread-heading h3 {
+  min-width: 0;
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+.feedback-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.feedback-copy svg {
+  width: 16px;
+  height: 16px;
+}

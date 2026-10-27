@@ -187,10 +187,15 @@ function showS1AccountResult(): void {
   showInformationDialog(note)
 }
 
+function isLearnCompletionHandoff(): boolean {
+  const search = new URLSearchParams(window.location.search)
+  return search.get('learn-block') === '1' || search.get('learn-block-sync') === 'result'
+}
+
 function onStage(stage: WorkspaceBootStage): void {
   // Block sync is a full-page, writer-locked S2 handoff, but the user sees
   // only the familiar Block status panel throughout boot and cloud transfer.
-  if (new URLSearchParams(window.location.search).get('learn-block') === '1') {
+  if (isLearnCompletionHandoff()) {
     const notice = root?.querySelector('[data-learn-block-sync] [role="status"]')
     if (notice) {
       notice.textContent =
@@ -219,9 +224,12 @@ async function start(): Promise<void> {
   try {
     await offerSecureLearningEntry(root)
     captureFeedbackRecoveryLink()
-    if (new URLSearchParams(window.location.search).get('learn-block') === '1') {
+    if (isLearnCompletionHandoff()) {
       const { renderLearnBlockSyncScreen } = await import('./sync/learn-block-sync-ui')
-      renderLearnBlockSyncScreen(root, null)
+      const { readLearnBlockSyncPending } = await import('./sync/learn-block-sync')
+      // Display only. The writer lease, journal and identity are still checked below.
+      const accountId = loadAuth({ preserveExpired: true })?.user.userId
+      renderLearnBlockSyncScreen(root, accountId ? readLearnBlockSyncPending(accountId) : null)
     }
     boot = await timePerfStage('startup', 'guarded-bootstrap', () =>
       prepareGuardedWorkspaceBoot(onStage, {

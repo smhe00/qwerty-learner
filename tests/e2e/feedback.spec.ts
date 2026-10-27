@@ -74,21 +74,57 @@ async function become(page: Page, id: string) {
   await page.evaluate(id => localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify({ user: { userId: id, username: id.startsWith('c') ? 'smhe' : 'student' }, token: id, expiresAt: Date.now() / 1000 + 3600 })), id)
 }
 
+async function copyFeedback(page: Page, title: string) {
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.getByRole('button', { name: '复制反馈', exact: true }).click()
+  await expect(page.getByRole('status')).toHaveText('反馈及回复已复制')
+  // Windows native clipboard returns CRLF even when writeText receives LF.
+  const copied = (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, '\n')
+  expect(copied).toContain(title + '\n处理状态：')
+  expect(copied).toContain('反馈内容\n希望按钮更清晰 <script>alert(1)</script>')
+  expect(copied).not.toContain('feedback=')
+  expect(copied).not.toContain(account)
+  expect(copied).not.toContain(admin)
+  return copied
+}
+
 test('anonymous feedback, private recovery, admin reply and follow-up; no sync', async ({ page, browser }) => {
   test.skip(!!process.env.FEEDBACK_PAGES)
   const backend = cloud(), requests = await backend.attach(page)
   await home(page); await open(page); await create(page, '手机按钮建议', 'blob-report/feedback/mobile-form.png')
+  await copyFeedback(page, '手机按钮建议')
   await page.getByRole('button', { name: '保存私密链接' }).click()
   const link = await page.getByLabel('匿名反馈私密链接', { exact: true }).inputValue()
   await expect(page.getByRole('article').getByText('希望按钮更清晰 <script>alert(1)</script>', { exact: true })).toBeVisible()
   const adminContext = await browser.newContext(), adminPage = await adminContext.newPage()
-  await backend.attach(adminPage); await home(adminPage); await become(adminPage, admin); await open(adminPage)
+  const adminRequests = await backend.attach(adminPage); await home(adminPage); await become(adminPage, admin); await open(adminPage)
   await adminPage.getByRole('button', { name: '管理全部反馈' }).click()
   await adminPage.getByRole('button', { name: /手机按钮建议/ }).click()
   await adminPage.getByLabel('继续交流', { exact: true }).fill('已经调整，谢谢反馈')
   await adminPage.getByLabel('处理状态', { exact: true }).selectOption('resolved')
   await adminPage.getByRole('button', { name: '发送', exact: true }).click()
   await expect(adminPage.getByRole('article').getByText('已经调整，谢谢反馈', { exact: true })).toBeVisible()
+  const beforeCopy = adminRequests.api.length
+  const copied = await copyFeedback(adminPage, '手机按钮建议')
+  expect(copied).toContain('已经调整，谢谢反馈')
+  expect(copied).toContain('管理员')
+  expect(adminRequests.api).toHaveLength(beforeCopy)
+  // Native clipboard denial must leave selectable text and must not send anything.
+  await adminPage.evaluate(() => Object.defineProperty(navigator.clipboard, 'writeText', {
+    configurable: true, value: async () => { throw new DOMException('Denied', 'NotAllowedError') },
+  }))
+  await adminPage.getByRole('button', { name: '复制反馈', exact: true }).click()
+  await expect(adminPage.getByRole('alert')).toHaveText('无法访问剪贴板，请选中反馈文字后手动复制。')
+  const content = adminPage.locator('.feedback-text').first()
+  expect(await content.evaluate(el => getComputedStyle(el).userSelect)).toBe('text')
+  const selected = await content.evaluate(el => {
+    const range = document.createRange(); range.selectNodeContents(el)
+    const selection = window.getSelection()!; selection.removeAllRanges(); selection.addRange(range)
+    return selection.toString()
+  })
+  expect(selected).toBe('希望按钮更清晰 <script>alert(1)</script>')
+  expect(adminRequests.api).toHaveLength(beforeCopy)
+  await adminPage.locator('.feedback-panel').screenshot({ path: 'blob-report/completion-feedback-copy/admin-copy.png' })
   const recoveryContext = await browser.newContext(), recovered = await recoveryContext.newPage()
   await backend.attach(recovered); await recovered.setViewportSize({ width: 320, height: 700 }); await recovered.goto(link)
   await expect(recovered.getByRole('dialog', { name: '反馈与建议' })).toBeVisible({ timeout: 60000 })
@@ -151,6 +187,7 @@ test('PC account menu and anonymous settings use same dialog without learning na
   await expect(page.getByRole('button', { name: /查看匿名反馈|查看账号反馈/ })).toHaveCount(0)
   await page.locator('.feedback-panel').screenshot({ path: 'blob-report/feedback/desktop-empty.png' })
   await create(page, '账号建议', 'blob-report/feedback/desktop-form.png')
+  await copyFeedback(page, '账号建议')
   await page.screenshot({ path: 'blob-report/feedback/desktop.png' })
   await page.getByRole('button', { name: '关闭反馈' }).click()
   expect(new URL(page.url()).pathname).toBe('/typing'); expect(requests.sync).toEqual([])
