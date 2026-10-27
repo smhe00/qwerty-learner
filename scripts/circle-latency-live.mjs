@@ -16,8 +16,8 @@ let auth, circleId, failure
 async function request(route, body, method='GET', profile=false) {
   const start = performance.now()
   const response = await globalThis.fetch(origin+route,{method,headers:{...(auth?{Authorization:'Bearer '+auth.token}:{}),...(profile?{'X-Qwerty-Circle-Timing':'1'}:{}),...(body===undefined?{}:{'Content-Type':'application/json'})},...(body===undefined?{}:{body:JSON.stringify(body)}),signal:globalThis.AbortSignal.timeout(60000),redirect:'error'})
-  const clientMs=Math.round((performance.now()-start)*10)/10
   const data=await response.json()
+  const clientMs=Math.round((performance.now()-start)*10)/10
   if(!response.ok||data.ok!==true)throw Error('HTTP '+response.status+' '+String(data.error||'unconfirmed'))
   const encoded=response.headers.get('X-Qwerty-Circle-Timing')
   const timing=encoded?JSON.parse(Buffer.from(encoded,'base64url').toString('utf8')):null
