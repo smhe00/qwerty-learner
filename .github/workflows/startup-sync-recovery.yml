@@ -8,6 +8,7 @@ on:
       - 'tests/e2e/startup-sync-*'
       - 'tests/cloud/startup-*'
       - 'tests/e2e/etest-three-device-auto-fork.*'
+      - 'tests/e2e/information-dialog.ts'
       - '.github/workflows/startup-sync-recovery.yml'
   workflow_dispatch:
 permissions:

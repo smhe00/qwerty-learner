@@ -1,5 +1,6 @@
 import { type Page, type Request, expect, test } from '@playwright/test'
 import { createHash } from 'node:crypto'
+import { acknowledgeInformationDialog } from './information-dialog'
 
 const origin = 'https://t.smhe.cn'
 const owner = { kind: 'account' as const, accountId: 'passive-return-local-only' }
@@ -157,3 +158,37 @@ for (const fails of [false, true]) {
     expect(await page.evaluate(() => sessionStorage.getItem('qwerty.account-visit.v1'))).toBeNull()
   })
 }
+
+
+test('full network budget on Learn navigation still mounts preserved local data before the bounded UI deadline', async ({ page, baseURL }) => {
+  test.setTimeout(120_000) // Includes fixture setup, the real60s product budget, and final independent DB read.
+  const state = await setup(page, baseURL!)
+  await page.goto(origin + '/')
+  await learning(page, false)
+  let reads = 0, writes = 0
+  page.on('request', request => {
+    if (new URL(request.url()).pathname.startsWith('/api/') && request.method() !== 'GET') writes++
+  })
+  await page.route(origin + '/api/sync/v2/meta', async route => {
+    reads++
+    await new Promise(resolve => setTimeout(resolve, 65_000))
+    await route.fulfill({ json: emptyMeta }).catch(() => {})
+  })
+  const started = Date.now()
+  await page.goto(origin + '/learn', { waitUntil: 'domcontentloaded' })
+  // This same helper is used by the real three-device beginLearn flow.
+  // Its former60s default fails before the product finishes safe local startup.
+  await acknowledgeInformationDialog(page)
+  const mountedMs = Date.now() - started
+  const trace = await page.evaluate(() => JSON.parse(sessionStorage.getItem('qwerty.startup-sync-trace.v1') || '[]'))
+  expect(trace.at(-1).phase).toBe('finish')
+  expect(trace.at(-1).remainingMs).toBe(0)
+  expect(trace.at(-1).elapsedMs).toBeGreaterThanOrEqual(60_000)
+  expect(reads).toBe(1)
+  expect(writes).toBe(0)
+  expect(mountedMs).toBeLessThan(80_000)
+  await page.goto(origin + '/tests/e2e/startup-sync-regression.html')
+  await expect.poll(() => page.evaluate(() => Boolean((window as any).__backupHarness))).toBe(true)
+  expect(await page.evaluate(() => (window as any).__backupHarness.db.wordRecords.toArray())).toEqual(state.rows)
+  console.log('FULL_BUDGET_LEARN_NAVIGATION', JSON.stringify({ mountedMs, reads, writes, localRows: state.rows.length }))
+})
