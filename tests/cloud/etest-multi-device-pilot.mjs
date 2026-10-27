@@ -20,9 +20,11 @@ const username = 'e2e_m3_' + process.env.GITHUB_RUN_ID + '_' +
 const password = 'E2E-' + randomBytes(16).toString('hex')
 const deviceA = 'qwerty-web-' + randomUUID()
 const deviceB = 'qwerty-web-' + randomUUID()
+let authOutcomeUnknown = false
 async function call(method, path, token, input, status = 200) {
   const url = new URL(path, base)
   assert.equal(url.origin, 'https://t.smhe.cn')
+  if (method === 'POST' && path === '/api/auth/login') authOutcomeUnknown = true
   const result = await retrySafeBodyRequest(async () => {
     const response = await fetch(url, {
     method, cache: 'no-store', redirect: 'error',
@@ -38,6 +40,8 @@ async function call(method, path, token, input, status = 200) {
   assert.equal(response.status, status,
     method + ' ' + url.pathname + ': HTTP ' + response.status +
     ' error=' + body.error)
+  if (method === 'POST' && path === '/api/auth/login' && typeof body.token === 'string' &&
+      body.token.length >= 32 && body.user?.userId === userId) authOutcomeUnknown = false
   return body
 }
 const health = await call('GET', '/api/health')
@@ -112,7 +116,11 @@ try {
   failures.push(error)
   console.error('M3_APPLICATION_FAILED', error.message)
 } finally {
-  if (registered) {
+  if (registered && authOutcomeUnknown) {
+    const error = Error('Cleanup deferred: prior login outcome unknown; no reauthentication or DELETE')
+    failures.push(error)
+    console.error('M3_CLEANUP_FAILED', error.message)
+  } else if (registered) {
     try {
       const proof = await cleanupDisposableAccount({ baseUrl: base, username, password, userId, token })
       console.log('M3_CLEANUP_PROOF', JSON.stringify(proof))
