@@ -1,0 +1,31 @@
+name: etest Segmented History Resume
+on:
+  push:
+    branches: [edgeone-test]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: etest-history-resume
+  cancel-in-progress: false
+jobs:
+  real-history-resume:
+    if: github.ref_name == 'edgeone-test'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    env:
+      EXPECTED_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+          cache: yarn
+      - name: Require exact deployed source
+        env:
+          EDGEONE_WAIT_MS: '600000'
+        run: node scripts/verify-edgeone-source.mjs
+      - run: yarn install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
+      - name: Twenty real immutable batches, reload continuation and exact digest
+        run: node tests/cloud/etest-history-resume.mjs
