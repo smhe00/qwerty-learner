@@ -238,6 +238,14 @@ async function apiDirectBinaryV4(record, token, shaOverride = null) {
   const rawResponse = await response.text()
   let value = null
   try { value = JSON.parse(rawResponse) } catch { /* must fail closed */ }
+  if (response.status !== 200) {
+    console.log('V4 direct failure', JSON.stringify({
+      status: response.status, code: value?.error || null,
+      requestId: value?.requestId || null,
+      failureStage: value?.details?.failureStage || null,
+      receive: value?.details?.receive || null,
+    }))
+  }
   return { status: response.status, value,
     elapsedMs: Math.round(performance.now() - started) }
 }
@@ -340,6 +348,8 @@ async function uploadLargeV4(record, token, concurrency = 3) {
           partIndex: index, count, attempt: attempt + 1, elapsedMs,
           status: staged.status, code: staged.value?.error || null,
           failureStage: staged.value?.details?.failureStage || null,
+          requestId: staged.value?.requestId || null,
+          receive: staged.value?.details?.receive || null,
           serverTotalMs: server.serverTotalMs ?? null,
           blobWriteMs: server.blobWriteMs ?? null,
           blobReadbackMs: server.blobReadbackMs ?? null,

@@ -88,13 +88,38 @@ function corsHeaders(request, configuredOrigin) {
 // The Content-Length bound is checked before receiving when available.
 // This changes the body primitive, NOT the request timeout, part size,
 // revision CAS, immutable SHA evidence, or binary Blob layout.
-async function readBinaryPart(request, maxBytes) {
+async function readBinaryPart(request, maxBytes, failureCode) {
   const declaredLength = request.headers.get('content-length')
   if (declaredLength !== null && (!/^\d+$/.test(declaredLength) ||
       Number(declaredLength) > maxBytes)) {
     throw new AppError(413, 'request_too_large', 'V4 binary part exceeds limit')
   }
-  const arrayBuffer = await request.arrayBuffer()
+  const started = performance.now()
+  const bodyUsedBefore = request.bodyUsed === true
+  const abortedBefore = request.signal?.aborted === true
+  let arrayBuffer
+  try {
+    arrayBuffer = await request.arrayBuffer()
+  } catch (error) {
+    // Keep fixed receive diagnostics, never provider messages, URLs, headers,
+    // payloads or stack traces. Receiving has not staged or committed V4.
+    const names = ['Error', 'TypeError', 'RangeError', 'AbortError', 'TimeoutError']
+    const codes = ['ECONNRESET', 'ETIMEDOUT', 'EPIPE', 'ABORT_ERR',
+      'ERR_STREAM_PREMATURE_CLOSE', 'ERR_STREAM_DESTROYED', 'ERR_INVALID_STATE',
+      'UND_ERR_SOCKET', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_BODY_TIMEOUT']
+    const errorCode = [error?.code, error?.cause?.code].find(code => codes.includes(code))
+    throw new AppError(503, failureCode, 'Unable to receive V4 content; no V4 write was attempted', {
+      failureStage: 'request-body',
+      receive: {
+        errorName: names.includes(error?.name) ? error.name : 'UnknownError',
+        errorCode: errorCode ?? null,
+        declaredBytes: declaredLength === null ? null : Number(declaredLength),
+        elapsedMs: Math.round((performance.now() - started) * 10) / 10,
+        bodyUsedBefore, bodyUsedAfter: request.bodyUsed === true,
+        abortedBefore, abortedAfter: request.signal?.aborted === true,
+      },
+    })
+  }
   if (!arrayBuffer.byteLength || arrayBuffer.byteLength > maxBytes) {
     throw new AppError(413, 'request_too_large', 'V4 binary part outside limit')
   }
@@ -172,6 +197,11 @@ function logApiError(request, path, error, diagnostics) {
     errorName: error instanceof Error ? error.name : 'UnknownError',
   }
 
+  if (['v4_direct_body_read_failed', 'v4_upload_body_read_failed'].includes(error?.code) &&
+      error?.details?.receive) {
+    fields.failureStage = 'request-body'
+    fields.receive = error.details.receive
+  }
   const line = JSON.stringify(fields)
   if (fields.status >= 500) console.error(line)
   else console.warn(line)
@@ -211,7 +241,7 @@ function makeService(env, storage, idle, administrator, diagnostics, parallelAut
 // enforces immutable user ownership, payload validation and revision CAS.
 async function requireS2WriteAccount(service, request, env) {
   const token = bearer(request)
-  // Validate the live session before attempting to parse or stage a payload.
+  // Validate the live session before using captured bytes or staging a payload.
   // Also prevents a revoked/invalid token from reaching any write action.
   const session = await service.me(token)
   if (!session?.user?.userId || typeof session.user.userId !== 'string') {
@@ -277,12 +307,21 @@ export async function onRequest(context) {
   // Buffer once before asynchronous guards; all authorization remains before
   // business writes. Only Circle requests reuse the SDK transport.
   const receivedBody = circleBody ?? feedbackBody
+  // Begin native receive before ANY asynchronous handoff/account/idle lookup.
+  // This only captures bytes: auth, quotas, digests and revision checks still
+  // run before staging/commit. Never clone, read twice or replay a failed body.
+  const nativeV4Body = request.method === 'POST' &&
+    ['/sync/v2/parts', '/sync/v2/binary/direct'].includes(path) &&
+    request.headers.get('content-type')?.split(';')[0].trim().toLowerCase() === 'application/octet-stream'
+    ? readBinaryPart(request, 512 * 1024, path.endsWith('/direct')
+      ? 'v4_direct_body_read_failed' : 'v4_upload_body_read_failed') : null
+  if (nativeV4Body) void nativeV4Body.catch(() => {})
   if (receivedBody) void receivedBody.catch(() => {})
-  return withCircleBlobClients(request, () => profileCircleRequest(context, () => withHandoffGateway(context, next => onUncoordinatedRequest(next, receivedBody))))
+  return withCircleBlobClients(request, () => profileCircleRequest(context, () => withHandoffGateway(context, next => onUncoordinatedRequest(next, receivedBody, nativeV4Body))))
 
 }
 
-async function onUncoordinatedRequest(context, receivedBody = null) {
+async function onUncoordinatedRequest(context, receivedBody = null, nativeV4Body = null) {
   const { request } = context
   const env = runtimeEnvironment(context.env)
   const diagnostics = createRequestDiagnostics(context)
@@ -618,7 +657,7 @@ async function onUncoordinatedRequest(context, receivedBody = null) {
       }
       let payloadBytes
       try {
-        payloadBytes = await readBinaryPart(request, 512 * 1024)
+        payloadBytes = await nativeV4Body
       } catch (error) {
         if (error instanceof AppError) throw error
         // No write has started at this point. By contrast, failures after
@@ -663,7 +702,7 @@ async function onUncoordinatedRequest(context, receivedBody = null) {
             payloadSha256: request.headers.get('x-qwerty-payload-sha256'),
             partSha256: request.headers.get('x-qwerty-part-sha256'),
             index: Number(indexHeader), count: Number(countHeader),
-            wirePartBytes, data: await readBinaryPart(request, wirePartBytes),
+            wirePartBytes, data: await nativeV4Body,
           }
           // 192 parts was the old 32-KiB transport limit, not permission to
           // stage ~36 MiB when this account's max compressed gzip is 4 MiB.
