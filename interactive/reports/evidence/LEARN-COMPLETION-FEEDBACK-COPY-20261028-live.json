@@ -1,0 +1,198 @@
+{
+  "candidateSha": "0d82e3192b5f8be86506c677ab38498f77b59f57",
+  "stagingSourceMarker": "0d82e31",
+  "productionSourceMarkerUnchanged": "ad862b3",
+  "completion": {
+    "runId": 40598807165,
+    "result": "PASS",
+    "cases": [
+      {
+        "source": "0d82e31",
+        "case": "unmastered",
+        "beforeStateFixture": true,
+        "networkMocked": false,
+        "completionPageVisible": true,
+        "completionSummaryPersisted": true,
+        "completionDisplayHistory": [
+          {
+            "title": "本轮练习已结束",
+            "metrics": 6
+          }
+        ],
+        "committedUploads": 1,
+        "cloudRevision": 1,
+        "completionBlobHashVerified": true,
+        "extraWords": 5,
+        "reloadDidNotDuplicateExtension": true,
+        "reloadStartupStatus": "pushed",
+        "observedUploadStatuses": [
+          200,
+          200
+        ],
+        "extraRoundStartupRevision": 2,
+        "totalCommittedUploads": 2,
+        "freshProfileCloudReadbackExact": true,
+        "cloudWordRecords": 2,
+        "finalAttemptPresentExactlyOnce": true,
+        "lastStage": "fresh-profile-cloud-readback",
+        "cleanup": {
+          "confirmed": true,
+          "via": "delete-response",
+          "elapsedMs": 21011,
+          "trace": [
+            {
+              "phase": "owner-check",
+              "status": 200,
+              "elapsedMs": 5073
+            },
+            {
+              "phase": "delete",
+              "status": 200,
+              "elapsedMs": 21011
+            }
+          ],
+          "server": {
+            "elapsedMs": 6543,
+            "stages": [
+              {
+                "stage": "owner-check",
+                "elapsedMs": 330
+              },
+              {
+                "stage": "content-delete",
+                "elapsedMs": 3402
+              },
+              {
+                "stage": "session-delete",
+                "elapsedMs": 1084
+              },
+              {
+                "stage": "auth-delete",
+                "elapsedMs": 692
+              },
+              {
+                "stage": "identity-delete",
+                "elapsedMs": 1034
+              }
+            ]
+          }
+        },
+        "cleanupVerified": true
+      },
+      {
+        "source": "0d82e31",
+        "case": "complete",
+        "beforeStateFixture": true,
+        "networkMocked": false,
+        "completionPageVisible": true,
+        "completionSummaryPersisted": true,
+        "completionDisplayHistory": [
+          {
+            "title": "今日学习完成",
+            "metrics": 6
+          }
+        ],
+        "committedUploads": 1,
+        "cloudRevision": 1,
+        "completionBlobHashVerified": true,
+        "extraWords": 5,
+        "reloadDidNotDuplicateExtension": true,
+        "reloadStartupStatus": "pushed",
+        "observedUploadStatuses": [
+          200,
+          200
+        ],
+        "extraRoundStartupRevision": 2,
+        "totalCommittedUploads": 2,
+        "freshProfileCloudReadbackExact": true,
+        "cloudWordRecords": 2,
+        "finalAttemptPresentExactlyOnce": true,
+        "lastStage": "fresh-profile-cloud-readback",
+        "cleanup": {
+          "confirmed": true,
+          "via": "delete-response",
+          "elapsedMs": 24160,
+          "trace": [
+            {
+              "phase": "owner-check",
+              "status": 200,
+              "elapsedMs": 6759
+            },
+            {
+              "phase": "delete",
+              "status": 200,
+              "elapsedMs": 24160
+            }
+          ],
+          "server": {
+            "elapsedMs": 7247,
+            "stages": [
+              {
+                "stage": "owner-check",
+                "elapsedMs": 490
+              },
+              {
+                "stage": "content-delete",
+                "elapsedMs": 3784
+              },
+              {
+                "stage": "session-delete",
+                "elapsedMs": 1208
+              },
+              {
+                "stage": "auth-delete",
+                "elapsedMs": 735
+              },
+              {
+                "stage": "identity-delete",
+                "elapsedMs": 1029
+              }
+            ]
+          }
+        },
+        "cleanupVerified": true
+      }
+    ]
+  },
+  "threeDevices": {
+    "runId": 40598807055,
+    "result": "PASS",
+    "counts": [
+      {
+        "device": 0,
+        "localRows": 3
+      },
+      {
+        "device": 1,
+        "localRows": 3
+      },
+      {
+        "device": 2,
+        "localRows": 3
+      }
+    ]
+  },
+  "historicalLogin": {
+    "runId": 40598807216,
+    "result": "FAIL",
+    "phase": "unchanged-login-request-count",
+    "expectedEventReads": 0,
+    "actualEventReads": 1,
+    "endpoint": "GET /api/sync/events/v2",
+    "not503": true,
+    "affectedSourceAndTestUnchangedFromPriorStaging": true
+  },
+  "administratorBrowser": {
+    "result": "BLOCKED",
+    "reason": "Manual reauthentication required; session was revoked by another-device login",
+    "liveCopyVerified": false
+  },
+  "productionReleaseAuthorized": false,
+  "branchCloud": {
+    "runId": 40598807261,
+    "realV4Transport": "PASS",
+    "liveBrowserCloud": "PASS",
+    "releaseReadiness": "FAIL",
+    "reason": "No same-SHA passing Source Cloud Sync Gate"
+  }
+}

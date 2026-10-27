@@ -1,6 +1,6 @@
 # Learn completion continuity and feedback copy
 
-- Status: REVIEW
+- Status: PARTIAL
 - Executor: Codex, independent user-assigned task
 - Execution base: 37631f68be481635ab0f4987abae526f67260cfc (product/main)
 - Branch: codex/completion-feedback-copy-20261027
@@ -22,3 +22,6 @@ Run scoped formatting/lint and relevant safety contracts. Record local mocks sep
 
 ## Authorized follow-up 2026-10-28
 Fix all feedback-theme readability issues, pass CI, then fast-forward etest to that exact candidate and run real completion/admin-copy acceptance. Do not publish master. See report follow-up for current checkpoint.
+
+## 2026-10-28 handoff
+Candidate 0d82e319: source CI passed; etest promoted and completion live 2/2 passed. Admin copy/reply browser acceptance awaits manual reauthentication. Historical-login request-count failure remains separately recorded (not 503); no master release. Admin workbench redesign is the next planned phase, not implemented in this patch. See final report and redacted live evidence.
