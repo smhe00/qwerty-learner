@@ -1,3 +1,5 @@
+/* eslint-env node */
+import { performance } from 'node:perf_hooks'
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
@@ -13,7 +15,7 @@ const save = () => {fs.mkdirSync(path.dirname(output),{recursive:true});fs.write
 let auth, circleId, failure
 async function request(route, body, method='GET', profile=false) {
   const start = performance.now()
-  const response = await fetch(origin+route,{method,headers:{...(auth?{Authorization:'Bearer '+auth.token}:{}),...(profile?{'X-Qwerty-Circle-Timing':'1'}:{}),...(body===undefined?{}:{'Content-Type':'application/json'})},...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(60000),redirect:'error'})
+  const response = await globalThis.fetch(origin+route,{method,headers:{...(auth?{Authorization:'Bearer '+auth.token}:{}),...(profile?{'X-Qwerty-Circle-Timing':'1'}:{}),...(body===undefined?{}:{'Content-Type':'application/json'})},...(body===undefined?{}:{body:JSON.stringify(body)}),signal:globalThis.AbortSignal.timeout(60000),redirect:'error'})
   const clientMs=Math.round((performance.now()-start)*10)/10
   const data=await response.json()
   if(!response.ok||data.ok!==true)throw Error('HTTP '+response.status+' '+String(data.error||'unconfirmed'))
@@ -22,7 +24,7 @@ async function request(route, body, method='GET', profile=false) {
   return {data,clientMs,timing}
 }
 try {
-  const marker=await fetch(origin+'/source-commit.txt?probe='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(20000)})
+  const marker=await globalThis.fetch(origin+'/source-commit.txt?probe='+Date.now(),{cache:'no-store',signal:globalThis.AbortSignal.timeout(20000)})
   const source=(await marker.text()).trim()
   if(!marker.ok||source.length<7||!expected.startsWith(source))throw Error('Source mismatch '+source.slice(0,40))
   report.source=source;save()

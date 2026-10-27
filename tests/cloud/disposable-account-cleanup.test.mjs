@@ -46,3 +46,19 @@ test('cleanup refuses real/admin identity and refuses mismatched ordinary owner 
   await assert.rejects(cleanupDisposableAccount({ ...f.options, userId: 'b'.repeat(32) }), /owner mismatch/)
   assert.equal(f.calls.filter(x => x.startsWith('DELETE')).length, 0)
 })
+
+for (const outcome of ['timeout', 'server-error', 'wrong-owner']) test('pre-delete authentication ' + outcome + ' retains phase and never retries login or DELETE', async () => {
+  const calls = []
+  await assert.rejects(cleanupDisposableAccount({ baseUrl:'https://t.smhe.cn', username:user.username,
+    password:'synthetic-password', userId:user.userId, fetchImpl:async (url,options) => {
+      calls.push(options.method+' '+new URL(url).pathname)
+      if(outcome==='timeout') throw new DOMException('lost login response','TimeoutError')
+      return {status:outcome==='server-error'?503:200,json:async()=>({error:'synthetic_failure',user:{...user,userId:'b'.repeat(32)},token})}
+    } }),error=>{
+      assert.equal(error.trace.length,1)
+      assert.equal(error.trace[0].phase,'owner-check')
+      assert.doesNotMatch(JSON.stringify(error.trace),/synthetic-password|synthetic-session/)
+      return true
+    })
+  assert.deepEqual(calls,['POST /api/auth/login'])
+})

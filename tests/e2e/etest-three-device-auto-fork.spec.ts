@@ -103,7 +103,35 @@ async function api(path: string, method: string, input: object, token?: string) 
     return { status: response.status, body: await response.json() }
   }, { path, method })
 }
-async function openAccount(page: Page, username: string, password: string) {
+type AuthAttempt = { unknown: boolean }
+async function bootPageEvidence(page: Page) {
+  return page.evaluate(() => {
+    const read = (key: string) => {
+      try { const v = JSON.parse(sessionStorage.getItem(key) || '[]'); return Array.isArray(v) ? v : [] }
+      catch { return [] }
+    }
+    const attempts = new Map<string, number>()
+    const budgets = read('qwerty.startup-sync-trace.v1').slice(-12).map(x => {
+      const id = typeof x.attemptId === 'string' ? x.attemptId : ''
+      if (!attempts.has(id)) attempts.set(id, attempts.size + 1)
+      return { phase: ['begin','reload','finish'].includes(x.phase) ? x.phase : 'unknown',
+        attempt: attempts.get(id), elapsedMs: x.elapsedMs, remainingMs: x.remainingMs, reloads: x.reloads }
+    })
+    const perf = read('qwerty.perf-diagnostics.v1').slice(-32).map(x => ({
+      stage: /^[a-z0-9.-]{1,64}$/.test(x.stage) ? x.stage : 'unknown',
+      elapsedMs: x.elapsedMs, outcome: x.outcome === 'ok' ? 'ok' : 'failed',
+    }))
+    // Only classify shipped gate headings; never serialize arbitrary page text.
+    const heading = document.querySelector('#root h1')?.textContent
+    const gate = heading === '学习数据暂时被占用' ? 'writer-busy'
+      : heading === '学习数据安全检查未通过' ? 'safety-blocked'
+      : heading === '正在恢复云端学习记录' ? 'restoring'
+      : heading === '恢复已完成' ? 'restore-complete' : 'other'
+    return { readyState: document.readyState, accountEntries: document.querySelectorAll('[data-account-entry]').length,
+      gate, budgets, perf }
+  }).catch(() => ({ unavailable: true }))
+}
+async function openAccount(page: Page, username: string, password: string, authAttempt: AuthAttempt) {
   await page.goto(new URL('/?s1-account=manage', base).href,
     { waitUntil: 'domcontentloaded' })
   const dialog = page.locator('[data-account]')
@@ -137,25 +165,7 @@ async function openAccount(page: Page, username: string, password: string) {
     elapsedMs: Date.now() - bootStarted, navigations,
     pending: [...inflight.values()].map(x => ({ path: x.path, ageMs: Date.now() - x.at })),
     http: http.slice(-48),
-    page: await page.evaluate(() => {
-      const read = (key: string) => {
-        try { const v = JSON.parse(sessionStorage.getItem(key) || '[]'); return Array.isArray(v) ? v : [] }
-        catch { return [] }
-      }
-      const attempts = new Map<string, number>()
-      const budgets = read('qwerty.startup-sync-trace.v1').slice(-12).map(x => {
-        const id = typeof x.attemptId === 'string' ? x.attemptId : ''
-        if (!attempts.has(id)) attempts.set(id, attempts.size + 1)
-        return { phase: ['begin','reload','finish'].includes(x.phase) ? x.phase : 'unknown',
-          attempt: attempts.get(id), elapsedMs: x.elapsedMs, remainingMs: x.remainingMs, reloads: x.reloads }
-      })
-      const perf = read('qwerty.perf-diagnostics.v1').slice(-32).map(x => ({
-        stage: /^[a-z0-9.-]{1,64}$/.test(x.stage) ? x.stage : 'unknown',
-        elapsedMs: x.elapsedMs, outcome: x.outcome === 'ok' ? 'ok' : 'failed',
-      }))
-      return { readyState: document.readyState, accountEntries: document.querySelectorAll('[data-account-entry]').length,
-        budgets, perf }
-    }).catch(() => ({ unavailable: true })),
+    page: await bootPageEvidence(page),
   })
   page.on('framenavigated', onNavigation)
   page.on('request', onRequest)
@@ -173,32 +183,24 @@ async function openAccount(page: Page, username: string, password: string) {
   }
   page.on('response', onAuthResponse)
   try {
-    // A staging-only disposable test account may retry ONE explicit HTTP 500.
-    // No retry for timeouts/unknown POST outcomes or a successful auth,
-    // which could otherwise revoke a valid single-active session.
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const response = page.waitForResponse(async r => {
-        if (new URL(r.url()).pathname !== '/api/auth/login') return false
-        if (r.status() !== 503) return true
-        const body = await r.json().catch(() => null)
-        const { safeBodyReadFailure } = await loadBodyPolicy()
-        return !safeBodyReadFailure('/api/auth/login', 'POST', r.status(), body)
-      }, { timeout: 45_000 })
+    // The app already retries only certified pre-body rejection. An HTTP500,
+    // timeout or lost response may conceal a committed login; never click again
+    // or create a cleanup session while that outcome remains unknown.
+    const response = page.waitForResponse(async r => {
+      if (new URL(r.url()).pathname !== '/api/auth/login') return false
+      if (r.status() !== 503) return true
+      const body = await r.json().catch(() => null)
+      const { safeBodyReadFailure } = await loadBodyPolicy()
+      return !safeBodyReadFailure('/api/auth/login', 'POST', r.status(), body)
+    }, { timeout: 45_000 })
+    authAttempt.unknown = true
+    const submit = async () => {
       if (await reauth.isVisible().catch(() => false)) await reauth.click()
       else await signIn.click()
-      const status = (await response).status()
-      if (status === 500 && attempt === 0 && page.url() === previousUrl) {
-        console.log('E2E_AUTH_TRANSIENT_RETRY', JSON.stringify({
-          status, attempt: attempt + 1,
-        }))
-        await expect(page.locator('[role="status"]')).toContainText(
-          '暂时无法完成认证', { timeout: 15_000 })
-        await page.waitForTimeout(2_500)
-        continue
-      }
-      expect(status, 'explicit login HTTP status').toBe(200)
-      break
     }
+    const [reply] = await Promise.all([response, submit()])
+    expect(reply.status(), 'explicit login HTTP status').toBe(200)
+    authAttempt.unknown = false
     // S1 is a PRE-MOUNT account transaction: it must finish and replace
     // the document before the new auth state can be inspected reliably.
     await expect(page).not.toHaveURL(previousUrl, { timeout: 60_000 })
@@ -239,16 +241,50 @@ async function openAccount(page: Page, username: string, password: string) {
   }
 }
 async function beginLearn(page: Page) {
-  await page.goto(new URL('/learn', base).href, { waitUntil: 'domcontentloaded' })
-  await acknowledgeInformationDialog(page)
-  const start = page.getByRole('button', { name: '开始 Learn', exact: true })
-  await expect(start).toBeVisible({ timeout: 35_000 })
-  await start.click()
-  const word = page.locator('[data-typing-word]').first()
-  await expect(word).toBeVisible({ timeout: 35_000 })
-  const spelling = await word.getAttribute('data-typing-word')
-  expect(spelling).toBeTruthy()
-  return spelling!
+  const started = Date.now()
+  let phase = 'navigate'
+  const inflight = new Map<any, { path: string; at: number }>()
+  const http: Array<{ path: string; status: number; elapsedMs: number }> = []
+  const onRequest = (request: any) => {
+    const url = new URL(request.url())
+    if (url.origin === expectedOrigin && /^\/api\/(sync|auth)\//.test(url.pathname)) {
+      inflight.set(request, { path: url.pathname, at: Date.now() })
+    }
+  }
+  const onDone = (request: any) => { inflight.delete(request) }
+  const onHttp = (response: Response) => {
+    const request = inflight.get(response.request())
+    if (request) http.push({ path: request.path, status: response.status(), elapsedMs: Date.now() - request.at })
+  }
+  page.on('request', onRequest)
+  page.on('requestfinished', onDone)
+  page.on('requestfailed', onDone)
+  page.on('response', onHttp)
+  try {
+    await page.goto(new URL('/learn', base).href, { waitUntil: 'domcontentloaded' })
+    phase = 'guarded-mount'
+    await acknowledgeInformationDialog(page)
+    phase = 'start-learn'
+    const start = page.getByRole('button', { name: '开始 Learn', exact: true })
+    await expect(start).toBeVisible({ timeout: 35_000 })
+    await start.click()
+    phase = 'word-visible'
+    const word = page.locator('[data-typing-word]').first()
+    await expect(word).toBeVisible({ timeout: 35_000 })
+    const spelling = await word.getAttribute('data-typing-word')
+    expect(spelling).toBeTruthy()
+    return spelling!
+  } catch (error) {
+    console.error('E2E_BEGIN_LEARN_FAILED', JSON.stringify({ phase, elapsedMs: Date.now() - started,
+      pending: [...inflight.values()].map(x => ({ path: x.path, ageMs: Date.now() - x.at })),
+      http: http.slice(-48), page: await bootPageEvidence(page) }))
+    throw error
+  } finally {
+    page.off('request', onRequest)
+    page.off('requestfinished', onDone)
+    page.off('requestfailed', onDone)
+    page.off('response', onHttp)
+  }
 }
 async function study(page: Page, spelling: string): Promise<Event> {
   const seen = new Set((await records(page)).map(r => r.attemptId))
@@ -308,6 +344,7 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
   const profilePages: Page[] = []
   let userId: string | undefined
   const failures: unknown[] = []
+  const authAttempt: AuthAttempt = { unknown: false }
   try {
     // No account creation until the actual deployment and single-session
     // gateway match this exact source SHA. Applies to staging AND production.
@@ -364,7 +401,7 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
     // invalidates B. Each learns while OFFLINE with its own durable RecordDB.
     const branches: Event[] = []
     for (let i = 0; i < pages.length; i++) {
-      await openAccount(pages[i], username, password)
+      await openAccount(pages[i], username, password, authAttempt)
       const spelling = await beginLearn(pages[i])
       await contexts[i].setOffline(true)
       branches.push(await study(pages[i], spelling))
@@ -385,7 +422,7 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
     // the old session when it needs cloud access. No manual Sync is clicked.
     const expected = branches.map(r => r.attemptId).sort()
     for (const [handoff, i] of [0, 1, 2, 0, 1, 2].entries()) {
-      await openAccount(pages[i], username, password)
+      await openAccount(pages[i], username, password, authAttempt)
       await expect.poll(async () => (await authStatus(pages[i]).catch(() => ({ status: 0 }))).status,
         { timeout: 20_000 }).toBe(200)
       // The last relogin must see the complete preserved event union.
@@ -448,13 +485,15 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
       JSON.stringify({ applicationFailed: failures.length > 0, profiles: diagnostic }, null, 2))
     await Promise.allSettled(contexts.map(ctx => ctx.close()))
     try { if (userId) {
+      if (authAttempt.unknown) throw Error('Cleanup deferred: prior login outcome unknown; no reauthentication or DELETE')
       expect(username).toMatch(/^e2e_fork_\d+_\d+$/)
       const cleanup = await cleanupAccount({ baseUrl: base, username, password, userId })
       console.log('E2E_ACCOUNT_CLEANUP', JSON.stringify(cleanup))
       expect(cleanup.confirmed).toBe(true)
     } } catch (error) {
       failures.push(error)
-      console.error('E2E_ACCOUNT_CLEANUP_FAILED')
+      console.error('E2E_ACCOUNT_CLEANUP_FAILED', JSON.stringify({ authOutcomeUnknown: authAttempt.unknown,
+        trace: (error as { trace?: unknown })?.trace ?? [] }))
     }
   }
   if (failures.length === 1) throw failures[0]

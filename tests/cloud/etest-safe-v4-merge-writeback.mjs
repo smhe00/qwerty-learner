@@ -1,3 +1,4 @@
+import { cleanupDisposableAccount } from './disposable-account-cleanup.mjs'
 import { retrySafeBodyRequest } from '../../cloud-functions/_shared/safe-body-retry.js'
 /* eslint-env node */
 /**
@@ -41,11 +42,11 @@ const names = ['achievementEvents', 'achievementStates', 'chapterRecords',
 
 function sleep(ms) { return new Promise(done => setTimeout(done, ms)) }
 async function api(path, token, method = 'GET', body, headers = {}) {
-  // Login and immutable/metadata GET are safe to retry after a transient
-  // EdgeOne POP failure. POST V4, registration and DELETE are NOT replayable:
+  // Only immutable/metadata GET may retry unknown network outcomes.
+  // Login replaces the current session; it must not race a late first login.
+  // POST V4, registration and DELETE are also NOT replayable:
   // a 5xx/timeout may conceal a committed write or a partial account delete.
-  const retryable = (method === 'GET' ||
-    (method === 'POST' && path === '/api/auth/login'))
+  const retryable = method === 'GET'
   for (let attempt = 1; attempt <= (retryable ? 4 : 1); attempt++) {
     try {
       const packet = await retrySafeBodyRequest(async () => {
@@ -65,13 +66,15 @@ async function api(path, token, method = 'GET', body, headers = {}) {
       }, { path, method })
       const req = packet.request
       const response = packet.body
+      if (method === 'POST' && path === '/api/auth/login' && req.status >= 500) authOutcomeUnknown = true
       if (!retryable || ![429, 500, 502, 503, 504].includes(req.status) ||
           attempt === 4) return { status: req.status, response }
-      console.log('Transient etest read/login error; bounded retry', path,
+      console.log('Transient etest read error; bounded retry', path,
         'HTTP', req.status, attempt)
     } catch (error) {
+      if (method === 'POST' && path === '/api/auth/login') authOutcomeUnknown = true
       if (!retryable || attempt === 4) throw error
-      console.log('Transient etest read/login network error; bounded retry',
+      console.log('Transient etest read network error; bounded retry',
         path, attempt)
     }
     await sleep(700 * attempt)
@@ -228,7 +231,7 @@ async function proveStaleForkRejected(token, staleRevision, local, expectedRevis
   throw Error('Stale fork CAS not verified')
 }
 
-let user = null, userId = null, failure = null
+let user = null, userId = null, failure = null, authOutcomeUnknown = false
 try {
   await Promise.all([
     build({ entryPoints: [resolve(here, 'src/sync/v4-conservative-three-way.ts')],
@@ -654,12 +657,11 @@ try {
 } catch (error) { failure = error }
 finally {
   if (user) {
-    // Never operate on non-disposable identity. If a server 5xx means
-    // ambiguous deletion, reauthenticate before a bounded retry.
+    // No new session may race a login whose server outcome is still unknown.
     try {
       await disposeIsolatedMergeAccount()
     } catch (e) {
-      console.error('Disposable merge pilot account CLEANUP FAILURE')
+      console.error('Disposable merge pilot account CLEANUP FAILURE', JSON.stringify({reason:e.message,trace:e.trace||[]}))
       failure ||= e
     }
   }
@@ -691,53 +693,11 @@ function checksumStable(snapshot) {
 }
 
 async function disposeIsolatedMergeAccount() {
+  if (authOutcomeUnknown) throw Error('Cleanup deferred: prior login outcome unknown; no reauthentication or DELETE')
   assert.ok(user.username.startsWith('e2e_merge_'))
   assert.ok(userId, 'Cannot delete a disposable account without verified owner')
-  const authenticatedCleanup = async () => {
-    // First verify the ALREADY authenticated final observer token. This
-    // avoids avoidable login-rate 429 after multiple A/B/C handoffs.
-    if (user.cleanupToken) {
-      const me = await api('/api/auth/me', user.cleanupToken)
-      if (me.status === 200 && me.response?.user?.userId === userId &&
-          me.response?.user?.username === user.username) return user.cleanupToken
-      // An inconsistent authenticated identity is not safe to ignore.
-      if (me.status === 200) throw Error('Disposable cleanup bearer owner mismatch')
-    }
-    // Only when the final token is confirmed invalid, reauthenticate. A
-    // bounded 429 wait never authorizes deletion of any non-E2E account.
-    for (let attempt = 0; attempt < 4; attempt++) {
-      const response = await api('/api/auth/login', null, 'POST',
-        JSON.stringify({ username: user.username, password: user.password,
-          deviceId: user.firstDevice }),
-        { 'Content-Type': 'application/json' })
-      if (response.status === 200) {
-        if (response.response?.user?.userId !== userId ||
-            response.response?.user?.username !== user.username ||
-            !response.response?.token) {
-          throw Error('Disposable cleanup account ownership not reverified')
-        }
-        user.cleanupToken = response.response.token
-        return response.response.token
-      }
-      if (response.status !== 429 || attempt === 3) break
-      await sleep(6000 * (attempt + 1))
-    }
-    throw Error('Disposable cleanup account ownership not reverified')
-  }
-  let token = await authenticatedCleanup()
-  for (let attempt = 0; attempt < 4; attempt++) {
-    const deleted = await api('/api/auth/account', token, 'DELETE',
-      JSON.stringify({ currentPassword: user.password }),
-      { 'Content-Type': 'application/json' })
-    if (deleted.status === 200 && deleted.response?.deleted?.accountDeleted) {
-      return
-    }
-    // Do not infer successful deletion from a 5xx or revoked token.
-    if (deleted.status < 500 || attempt === 3) {
-      throw Error('Disposal failed: HTTP ' + deleted.status)
-    }
-    await sleep(1500 * (attempt + 1))
-    token = await authenticatedCleanup()
-  }
-  throw Error('Disposable cleanup outcome unverified')
+  const proof = await cleanupDisposableAccount({ baseUrl: origin, username: user.username,
+    password: user.password, userId, token: user.cleanupToken })
+  assert.equal(proof.confirmed, true)
+  console.log('MERGE_CLEANUP_PROOF', JSON.stringify(proof))
 }

@@ -548,6 +548,55 @@ export function createEdgeOneBlobStorage(store) {
     },
 
 
+    // Kept under the existing account-deletion checkout prefix; never listed
+    // as event receipts and never accepted as a device checkout declaration.
+    async getHistoryVerification(userId, checksum) {
+      if (!/^[a-f0-9]{64}$/.test(checksum)) throw new Error('Invalid verification checksum')
+      const prefix = deviceCheckoutPrefix(userId) + '_history/' + checksum + '/'
+      const manifest = await strongJson(prefix + 'manifest.json')
+      if (!manifest) return null
+      if (manifest.version !== 1 || !Number.isInteger(manifest.parts) || manifest.parts < 1 || manifest.parts > 24) {
+        throw new Error('verification-checkpoint-invalid')
+      }
+      const parts = []
+      for (let i = 0; i < manifest.parts; i++) {
+        const part = await strongJson(prefix + i + '.json')
+        if (!part || typeof part.data !== 'string' || part.data.length > 160 * 1024) throw new Error('verification-checkpoint-missing')
+        parts.push(part.data)
+      }
+      const json = parts.join('')
+      if (crypto.createHash('sha256').update(json).digest('hex') !== checksum) throw new Error('verification-checkpoint-invalid')
+      return JSON.parse(json)
+    },
+
+    async putHistoryVerification(userId, checksum, record) {
+      if (!/^[a-f0-9]{64}$/.test(checksum)) throw new Error('Invalid verification checksum')
+      const canonical = value => value === null || typeof value !== 'object' ? JSON.stringify(value)
+        : Array.isArray(value) ? '[' + value.map(canonical).join(',') + ']'
+          : '{' + Object.keys(value).sort().filter(k => value[k] !== undefined)
+            .map(k => JSON.stringify(k) + ':' + canonical(value[k])).join(',') + '}'
+      const json = canonical(record)
+      if (json.length > 24 * 160 * 1024 || crypto.createHash('sha256').update(json).digest('hex') !== checksum) {
+        throw new Error('verification-checkpoint-invalid')
+      }
+      const prefix = deviceCheckoutPrefix(userId) + '_history/' + checksum + '/'
+      const put = async (key, value) => {
+        const before = await strongJson(key)
+        if (before !== null) {
+          if (!jsonEquivalent(before, value)) throw new Error('verification-checkpoint-invalid')
+          return
+        }
+        try { await store.setJSON(key, value, { onlyIfNew: true }) }
+        catch (error) {
+          // One write only; exact readback may resolve a lost acknowledgment.
+          if (!jsonEquivalent(await strongJson(key), value)) throw error
+        }
+      }
+      const parts = Math.ceil(json.length / (160 * 1024))
+      for (let i = 0; i < parts; i++) await put(prefix + i + '.json', { data: json.slice(i * 160 * 1024, (i + 1) * 160 * 1024) })
+      await put(prefix + 'manifest.json', { version: 1, parts })
+    },
+
     async putImmutableDeviceCheckout(userId, deviceId, checkoutId, checksum, record) {
       return setJsonOnlyIfNew(
         deviceCheckoutKey(userId, deviceId, checkoutId, checksum), record)

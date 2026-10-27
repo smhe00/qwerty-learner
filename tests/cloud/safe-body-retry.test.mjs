@@ -25,6 +25,8 @@ test('unknown 500/503, malformed proof, invalid credentials and ambiguous commit
     ['/api/auth/register', 'POST', { status: 500, body: {} }],
     ['/api/auth/register', 'POST', { status: 503, body: { error: 'internal_error' } }],
     ['/api/auth/register', 'POST', { status: 503, body: { error: 'request_body_unavailable', details: { stage: 'request-body' } } }],
+    ['/api/auth/login', 'POST', { status: 500, body: { error: 'internal_error' } }],
+    ['/api/auth/login', 'POST', { status: 503, body: { error: 'internal_error' } }],
     ['/api/auth/login', 'POST', { status: 401, body: { error: 'incorrect_password' } }],
     ['/api/sync/v2', 'PUT', rejection],
     ['/api/sync/v2/commit', 'POST', rejection],

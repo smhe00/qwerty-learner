@@ -5,15 +5,19 @@
  */
 import { readChainedEventBatch, verifyWitnessedChainedEventHeads } from './api'
 import { loadAuth } from './auth'
+import { historyCache } from './history-verification-cache'
+import { createHistoryContinuation } from './history-verification-continuation'
+import { recordLearningSyncDiagnostic } from './learning-sync-diagnostics'
 import { inspectWitnessedDeviceConvergence } from './m3-witnessed-receiver'
 import type { WitnessedReceiveResult } from './m3-witnessed-receiver'
 import type { ChainedReceipt } from './multi-device-outbox'
+import { startupSyncTimeRemaining } from './startup-sync-budget'
 import { workspaceRegistryPort } from './workspace-vault'
 import { db } from '@/utils/db/core'
 
 export async function inspectOwnedWitnessedHistory(
   heads: ChainedReceipt[],
-  options: { allowUnchanged?: boolean } = {},
+  options: { allowUnchanged?: boolean; onProgress?: (completed: number, total: number) => void } = {},
 ): Promise<WitnessedReceiveResult> {
   const auth = loadAuth()
   if (!auth || auth.expiresAt * 1000 <= Date.now()) {
@@ -37,7 +41,7 @@ export async function inspectOwnedWitnessedHistory(
       current.token !== token ||
       current.expiresAt * 1000 <= Date.now()
     ) {
-      throw new Error('witnessed-receiver-account-changed')
+      throw new Error('verification-owner-changed')
     }
   }
   await assertOwner()
@@ -48,10 +52,25 @@ export async function inspectOwnedWitnessedHistory(
     heads,
     localRecords: rows,
     allowUnchanged: options.allowUnchanged,
-    port: {
+    port: await createHistoryContinuation({
+      accountId,
+      generation,
+      heads,
+      cache: historyCache,
       assertOwner,
-      verifyHeads: (requested) => verifyWitnessedChainedEventHeads(token, requested),
+      canContinue: startupSyncTimeRemaining,
+      verify: (cursor) => verifyWitnessedChainedEventHeads(token, heads, { cursor }),
       read: (requested) => readChainedEventBatch(token, requested),
-    },
+      progress: (completed, total) => {
+        recordLearningSyncDiagnostic({
+          stage: 'm3-witness',
+          status: completed < total ? 'pending' : 'ready',
+          code: completed < total ? 'verification-in-progress' : 'none',
+          completed,
+          total,
+        })
+        options.onProgress?.(completed, total)
+      },
+    }),
   })
 }

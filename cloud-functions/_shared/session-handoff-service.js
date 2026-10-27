@@ -7,11 +7,14 @@ import { BeforeMutationError, HandoffError } from './session-handoff-barrier.js'
 const READ_METHODS = new Set([
   'me', 'readLearningBatch', 'observeLearningBatchReceipts',
   'readChainedLearningBatch', 'readChainedCheckout',
-  'verifyChainedLearningHistory', 'verifyWitnessedChainSet',
+  'verifyChainedLearningHistory',
   'observeChainedLearningReceipts', 'syncMeta', 'getSync',
   'getSyncV4BinaryManifest', 'getSyncV4BinaryPart',
 ])
+// Segmented history verification writes disposable checkpoints and must drain
+// under the same barrier even when activity tracking is disabled.
 const WRITE_METHODS = new Set([
+  'verifyWitnessedChainSet',
   'changePassword', 'revokeSession', 'publishLearningBatch',
   'publishChainedLearningBatch', 'issueChainedCheckout', 'deleteAccount',
   'putSync', 'putSyncV4', 'putSyncV4Recovery', 'putSyncV4Binary',
@@ -21,7 +24,7 @@ const READ_STORAGE = new Set([
   'getAccount', 'getLatestAuth', 'getLatestSession', 'getIndependentSession',
   'getSessionRevocation', 'getImmutableEventBatch', 'observeImmutableEventBatches',
   'getImmutableChainedBatch', 'observeImmutableChainedBatches',
-  'getImmutableDeviceCheckout', 'getV4UploadPart', 'getLatestRevisionMeta',
+  'getHistoryVerification', 'getImmutableDeviceCheckout', 'getV4UploadPart', 'getLatestRevisionMeta',
   'getLatestRevision', 'getBinaryRevisionPart', 'getAuthRateLimitCounter',
   'getLastV4RevisionTiming',
 ])
