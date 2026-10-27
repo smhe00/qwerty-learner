@@ -277,3 +277,83 @@ test('a changed or expired login never silently submits as anonymous', async ({ 
   await expect(page.getByRole('button', { name: '保存私密链接' })).toHaveCount(0)
   expect(requests.sync).toEqual([])
 })
+
+
+async function readableFeedback(page: Page) {
+  // Check every rendered text node and placeholder against its painted background,
+  // including buttons, metadata, form labels, replies and disabled controls.
+  const failures = await page.locator('.feedback-panel').evaluate(panel => {
+    const rgb = (value: string) => {
+      const channels = (value.match(/[0-9.]+/g) || []).map(Number)
+      if (channels.length < 3 || channels.some(n => !Number.isFinite(n))) throw Error('Invalid computed color: ' + value)
+      return channels
+    }
+    const luminance = (channels: number[]) => channels.slice(0, 3).map(v => {
+      const n = v / 255
+      return n <= 0.04045 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4)
+    }).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0)
+    const background = (element: Element): number[] => {
+      const color = rgb(getComputedStyle(element).backgroundColor)
+      return color.length === 3 || color[3] === 1 ? color : element.parentElement ? background(element.parentElement) : [255, 255, 255]
+    }
+    const results: { text: string; ratio: number }[] = []
+    const check = (element: Element, text: string, pseudo?: string) => {
+      if (!element.getClientRects().length || !text.trim()) return
+      const style = getComputedStyle(element, pseudo)
+      const a = luminance(rgb(style.color)), b = luminance(background(element))
+      const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
+      if (!Number.isFinite(ratio) || ratio < 4.5) results.push({ text: text.slice(0, 45), ratio })
+    }
+    const walker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT)
+    while (walker.nextNode()) {
+      const node = walker.currentNode
+      if (node.parentElement) check(node.parentElement, node.textContent || '')
+    }
+    panel.querySelectorAll('input,textarea').forEach(element => {
+      const field = element as HTMLInputElement
+      check(element, field.value)
+      check(element, field.placeholder, '::placeholder')
+    })
+    return results
+  })
+  expect(failures).toEqual([])
+}
+
+for (const dark of [false, true]) {
+  test('all feedback text remains readable in ' + (dark ? 'dark' : 'light') + ' mode', async ({ page }) => {
+    test.skip(!!process.env.FEEDBACK_PAGES)
+    await page.addInitScript(value => localStorage.setItem('isOpenDarkModeAtom', JSON.stringify(value)), dark)
+    const backend = cloud(); await backend.attach(page); await home(page)
+    await become(page, admin); await open(page)
+    await readableFeedback(page)
+    // Prove this check detects unreadable text, rather than passing invalid color math.
+    await page.locator('.feedback-heading h2').evaluate(el => {
+      (el as HTMLElement).style.color = getComputedStyle(document.querySelector('.feedback-panel')!).backgroundColor
+    })
+    await expect(readableFeedback(page)).rejects.toThrow()
+    await page.locator('.feedback-heading h2').evaluate(el => { (el as HTMLElement).style.color = '' })
+    await readableFeedback(page)
+    await page.getByRole('button', { name: '关闭反馈' }).hover()
+    await readableFeedback(page)
+    await page.getByRole('button', { name: '写反馈', exact: true }).hover()
+    await readableFeedback(page)
+    await page.locator('.feedback-panel').screenshot({ path: 'blob-report/feedback/contrast-' + (dark ? 'dark' : 'light') + '-empty.png' })
+    await page.getByRole('button', { name: '写反馈', exact: true }).click()
+    await readableFeedback(page)
+    await page.getByLabel('标题', { exact: true }).fill('深浅色可读性')
+    await page.getByLabel('具体内容', { exact: true }).fill('检查标题、正文和提示文字')
+    backend.rejectWrite()
+    await page.getByRole('button', { name: '提交反馈', exact: true }).click()
+    await expect(page.getByRole('alert')).toBeVisible()
+    await readableFeedback(page)
+    await page.getByRole('button', { name: '提交反馈', exact: true }).click()
+    await expect(page.getByRole('heading', { name: '深浅色可读性' })).toBeVisible()
+    await page.getByLabel('继续交流', { exact: true }).fill('管理员回复同样清楚')
+    await page.getByLabel('处理状态', { exact: true }).selectOption('resolved')
+    await page.getByRole('button', { name: '发送', exact: true }).click()
+    await expect(page.getByRole('article').getByText('管理员回复同样清楚')).toBeVisible()
+    await page.getByRole('button', { name: '复制反馈', exact: true }).hover()
+    await readableFeedback(page)
+    await page.locator('.feedback-panel').screenshot({ path: 'blob-report/feedback/contrast-' + (dark ? 'dark' : 'light') + '-thread.png' })
+  })
+}

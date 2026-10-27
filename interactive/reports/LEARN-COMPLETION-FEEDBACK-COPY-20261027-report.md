@@ -68,3 +68,22 @@ Local artifacts (ignored, reproducible):
 - Existing achievement acknowledgement behavior is unchanged; this change preserves the completion summary and statistics, not a new achievement ceremony flow.
 - Changes await the normal next staging batch before production release. Branches etest/master were not pushed by this task.
 - Rechecked upstream product/main immediately before committing; still 37631f68. No integration conflict.
+
+
+## 2026-10-28 follow-up: contrast and staging authorization
+Owner explicitly requested: commit fixes, require passing CI, fast-forward etest, verify completion display during real sync and administrator copy; NEVER master.
+Base/upstream at resume: 9e8d5037c68009a5d1a462e6ebbfd9b6e445ae17. etest/master both ad862b392c6a935ca49514fc9df146932aa02ed2; neither changed in this checkpoint.
+Circle thread's latest completed turns are design-only with explicit no-development/no-push, so its old active-task lane note does not describe ongoing deployment work.
+
+Confirmed CI on 9e8d5037:
+- Learn Completion Journey 40533085172 PASS, Private Feedback UI 40533083574 PASS, Cloud Sync Gate 40533083781 PASS, Browser Recovery 40533083874 PASS, Pages deployment 40533083162 PASS.
+- Toolbar 40533083638 and Review 40533083759 both fail at the same outdated learn-shell-ui assertion: it searches for the old disabled error-book button, but Learn now renders CircleEntry. Fix checks the old entry is absent and the anonymous Circle entry is disabled; other disabled controls and navigation assertions remain.
+- Local corrected toolbar contract: 1/1 PASS (16.4s). Updated deployed journey loads both cases without contacting cloud.
+
+Contrast root cause: feedback used undefined --focus-text-primary and --focus-surface-hover, falling back to dark text/light hover colors in dark mode. Use existing --focus-text, --focus-surface-muted and accent/ink tokens. Explicit placeholder and disabled-state colors stay readable; dark error text is brighter. Includes title, body, replies, labels, status, copy/close controls and hover, not only the close button.
+Local final contrast tests: 2/2 PASS (23.7s), every rendered text/placeholder checked at ratio >=4.5 in both themes. A deliberately foreground=background heading MUST fail the checker, then normal styling is restored; invalid parsed color/NaN cannot silently pass. Earlier first draft color parser was corrected before this checkpoint.
+Screenshots manually reviewed: blob-report/feedback/contrast-{dark,light}-{empty,thread}.png. Scoped formatting and git diff --check PASS.
+
+Deployed completion test now observes every completion-card mutation from first paint through actual sync, requiring the correct title and six metrics throughout and identical summary after success; retains real Blob readback and fresh-profile assertions, no response mocking.
+Browser admin verification not yet complete: native Windows Computer Use was stopped because its current-URL policy could not determine the browser URL. Do not bypass that guard. Prefer an identifiable in-app browser tab; ask the user to log in there if needed after deployment.
+Status: source fix ready for fresh CI; etest promotion and exact-SHA live proof pending.

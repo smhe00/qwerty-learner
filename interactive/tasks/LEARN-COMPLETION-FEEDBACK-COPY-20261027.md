@@ -19,3 +19,6 @@ Do not change the Circle-owned CURRENT_TASK. Develop and push product/main only;
 ## Verification
 Focused last-word/slow-sync/failure/retry/recovery-return browser regressions, legacy handoff guards, malformed/stale/cross-account summary contracts; admin/anonymous/account copy and clipboard-denied selection checks.
 Run scoped formatting/lint and relevant safety contracts. Record local mocks separately from real Cloud/Blob evidence.
+
+## Authorized follow-up 2026-10-28
+Fix all feedback-theme readability issues, pass CI, then fast-forward etest to that exact candidate and run real completion/admin-copy acceptance. Do not publish master. See report follow-up for current checkpoint.

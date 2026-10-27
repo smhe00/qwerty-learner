@@ -423,12 +423,10 @@ test('Learn reuses Typing controls while preserving Typing-owned preferences', a
     exact: true,
   })
   await expect(analysisButton).toBeEnabled()
-  await expect(
-    page.getByRole('button', {
-      name: '错题本（Learn 模式禁用）',
-      exact: true,
-    }),
-  ).toBeDisabled()
+  // Learn's former error-book slot now contains Circle. Anonymous users
+  // still cannot activate it; Typing retains its own error-book entry.
+  await expect(page.getByRole('button', { name: /错题本/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '圈子（登录后可用）', exact: true })).toBeDisabled()
 
   const sessionBeforeAnalysis = await readReviewModeInfo(page)
   await analysisButton.click()

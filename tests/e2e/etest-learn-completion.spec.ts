@@ -312,12 +312,34 @@ for (const wrong of [true, false]) {
         await expect(word).toHaveAttribute('data-typing-wrong-count', '1')
         await expect(word).toHaveAttribute('data-typing-has-wrong', 'false')
       }
+      await a.addInitScript(() => {
+        new MutationObserver(() => {
+          const card = document.querySelector('[data-learn-block-sync]')
+          if (!card) return
+          const item = { title: card.querySelector('h1')?.textContent, metrics: card.querySelectorAll('.focus-result-metric').length }
+          const entries = JSON.parse(sessionStorage.getItem('completion-display-proof') || '[]')
+          if (JSON.stringify(entries.at(-1)) !== JSON.stringify(item)) {
+            entries.push(item)
+            sessionStorage.setItem('completion-display-proof', JSON.stringify(entries))
+          }
+        }).observe(document, { childList: true, subtree: true })
+      })
       checkpoint('last-answer-and-completion-sync')
       await a.keyboard.type('cancel', { delay: 40 })
       await expect(a.locator('[data-learn-block-sync]')).toBeVisible({ timeout: 60_000 })
       await expect(a.getByRole('heading', { name: wrong ? '本轮练习已结束' : '今日学习完成', exact: true })).toBeVisible()
       proof.completionPageVisible = true
+      const metrics = a.locator('[data-focus-result-metrics] .focus-result-metric')
+      await expect(metrics).toHaveCount(6)
+      const visibleSummary = await metrics.allTextContents()
       await expect(a.getByText('同步完成：本地进度已安全上传至云端。')).toBeVisible({ timeout: 120_000 })
+      expect(await metrics.allTextContents()).toEqual(visibleSummary)
+      const displayHistory = await a.evaluate(() => JSON.parse(sessionStorage.getItem('completion-display-proof') || '[]'))
+      expect(displayHistory.length).toBeGreaterThan(0)
+      expect(displayHistory.every((entry: { title: string; metrics: number }) =>
+        entry.title === (wrong ? '本轮练习已结束' : '今日学习完成') && entry.metrics === 6)).toBe(true)
+      proof.completionSummaryPersisted = true
+      proof.completionDisplayHistory = displayHistory
       const final = await records(a)
       expect(final.words).toHaveLength(2)
       expect(final.words[1].attemptId).toMatch(/^[a-f0-9-]{36}$/)
