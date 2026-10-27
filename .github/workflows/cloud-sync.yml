@@ -79,6 +79,7 @@ jobs:
       - name: Verify staging E2E scenario syntax without network or accounts
         run: |
           node --check tests/cloud/etest-safe-v4-merge-writeback.mjs
+          node --check tests/cloud/etest-history-resume.mjs
           node --check tests/cloud/etest-m1m3-pilot-preflight.mjs
           node --check tests/cloud/etest-multi-device-pilot.mjs
           node --check scripts/release-readiness.mjs
