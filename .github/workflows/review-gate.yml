@@ -52,6 +52,7 @@ on:
       - 'tests/e2e/review-flow-harness.ts'
       - 'tests/e2e/learn-extra-words.spec.ts'
       - 'tests/e2e/toolbar-icon-focus.spec.ts'
+      - 'tests/e2e/focus-ui.spec.ts'
       - 'tests/e2e/learn-block-size.spec.ts'
       - 'src/store/reviewInfoAtom.ts'
       - 'src/store/index.ts'

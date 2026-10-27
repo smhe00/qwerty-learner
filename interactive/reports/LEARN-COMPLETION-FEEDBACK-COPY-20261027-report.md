@@ -87,3 +87,52 @@ Screenshots manually reviewed: blob-report/feedback/contrast-{dark,light}-{empty
 Deployed completion test now observes every completion-card mutation from first paint through actual sync, requiring the correct title and six metrics throughout and identical summary after success; retains real Blob readback and fresh-profile assertions, no response mocking.
 Browser admin verification not yet complete: native Windows Computer Use was stopped because its current-URL policy could not determine the browser URL. Do not bypass that guard. Prefer an identifiable in-app browser tab; ask the user to log in there if needed after deployment.
 Status: source fix ready for fresh CI; etest promotion and exact-SHA live proof pending.
+
+## 2026-10-28 fixed-candidate CI follow-up
+Candidate a25eb51d3a21320a73a1bc502af95cf0fbcbfc81 passed Completion 40594508849,
+Feedback 40594509033, Toolbar 40594509038 and Pages deployment 40594509008.
+Main advanced to bcb7a38; cancelled main-ref Review and exploratory runs are NOT passes.
+A same-SHA branch-pinned Review run 40595390966 completed all contracts/build/navigation,
+then failed 1/118 final browser cases: focus-ui wrapped Learn toolbar geometry.
+Original test passed 6/6 local repeated cases. Injecting a temporary 150ms ResizeObserver
+delivery delay reproduced the same width assertion failure. Waiting up to two seconds
+for the complete unchanged geometry contract passed 2/2 with that injected delay.
+Removed injection before commit. Product layout unchanged; no relaxed tolerances or
+skipped assertions. Add this test to Review path filters; enable manual Feedback and
+Completion workflows so a candidate can be checked independently of moving main.
+Integrated bcb7a38 by fast-forward, preserving its landscape-tablet entry change.
+This supersedes a25 as the next candidate; new-SHA CI/live evidence remains required.
+Admin browser is blocked by an explicitly revoked session (another-device login);
+owner was asked to reauthenticate in the current t.smhe.cn tab without sharing passwords.
+Do not substitute local synthetic admin proof for real deployed verification.
+
+## Next design requested by owner: separate administrator workbench
+After this repair round, plan a dedicated /admin application and entry flow.
+The current src/index.tsx runs guarded learning bootstrap before its account route;
+administrator UI is nested in learning-facing components, so admin navigation inherits
+learning workspace/sync startup. This is an architectural observation, not a change in this release.
+
+First phase should deliver a light responsive shell with Feedback, Account maintenance,
+and an on-demand Overview. Move existing reply/status/copy and protected cleanup tools
+into these pages; reuse server authorization. Do not load dictionaries, Learn/Typing,
+RecordDB, writer lease, history reconciliation or cloud learning synchronization for
+an authenticated administrator-only route. Server-verified role chooses the destination;
+the literal username or client cache must never grant admin access. Keep mandatory
+session validity/revocation and password-rotation checks, and fail closed on network errors.
+
+Preserve the immutable legacy administrator identity and 180-day deletion exemption.
+Do not erase existing local/admin learning records or silently merge an ordinary user's
+workspace when changing role. Existing unfinished ordinary-user transactions must remain
+recoverable when the ordinary learning application is entered again. Plan the login/session
+storage boundary explicitly before coding; avoid automatically reusing ordinary learning
+handoffs for the admin console.
+
+Load counts/statistics only when requested, with pagination and freshness labels;
+do not add startup-wide Blob scans or invent unsupported figures. Defer rich charts,
+role management and broader statistics until their definitions and costs are agreed.
+Acceptance must prove direct login/refresh goes to admin, no learning sync or RecordDB
+writes/lease on admin startup, ordinary/anonymous accounts denied both UI/API access,
+revoked sessions and offline failures handled, protected cleanup still enforced, and
+feedback workflow/copy works in both themes on desktop/mobile. Measure actual startup
+latency and request counts before promising a time target. No implementation or master
+publication of this redesign is included in the current fix.

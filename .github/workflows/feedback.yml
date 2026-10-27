@@ -1,5 +1,6 @@
 name: Private Feedback UI
 on:
+  workflow_dispatch:
   push:
     branches: [product/main]
     paths:

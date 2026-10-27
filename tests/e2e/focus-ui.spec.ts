@@ -100,94 +100,99 @@ for (const mode of ['typing', 'learn'] as const) {
       const nav = page.locator('header nav.focus-header-nav')
       await expect(nav.locator('[data-toolbar-row="primary"]')).toBeVisible()
       await expect(nav.locator('[data-toolbar-row="icons"]')).toBeVisible()
-      const layout = await nav.evaluate((element) => {
-        const primary = element.querySelector<HTMLElement>('[data-toolbar-row="primary"]')!
-        const secondary = element.querySelector<HTMLElement>('[data-toolbar-row="icons"]')!
-        const strip = secondary.querySelector<HTMLElement>('.focus-toolbar-icons')!
-        const pronunciation = secondary.querySelector<HTMLElement>(
-          'button[aria-label^="发音口音"], button[aria-label^="发音及音标切换"]',
-        )!
-        if (!strip || !pronunciation) throw Error('Pronunciation must lead the secondary group')
-        const style = getComputedStyle(element)
-        const nav = element.getBoundingClientRect()
-        const leftInset = parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft)
-        const rightInset = parseFloat(style.borderRightWidth) + parseFloat(style.paddingRight)
-        const contentWidth = nav.width - leftInset - rightInset
-        const header = element.parentElement!
-        const headerGap = parseFloat(getComputedStyle(header).columnGap)
-        const siblings = Array.from(header.children).filter(child => child !== element)
-        const siblingBoxes = siblings.map(child => child.getBoundingClientRect())
-        const available = header.clientWidth - siblingBoxes.reduce((sum, box) => sum + box.width, 0) - siblings.length * headerGap
-        const p = primary.getBoundingClientRect()
-        const s = secondary.getBoundingClientRect()
-        const a = pronunciation.getBoundingClientRect()
-        const i = strip.getBoundingClientRect()
-        return {
-          contentWidth,
-          accountAfterMenu: siblingBoxes.length < 2 || nav.right <= siblingBoxes[1].left + 1,
-          accountAtRight: siblingBoxes.length < 2 || Math.abs(siblingBoxes[1].right - header.getBoundingClientRect().right) <= 1,
-          menuBelowBrand: nav.top >= Math.max(...siblingBoxes.map(box => box.bottom)) - 1,
-          canStayBesideBrand: available >= Math.max(p.width, s.width) + leftInset + rightInset,
-          sharesBrandRow: nav.top < siblingBoxes[0].bottom && nav.bottom > siblingBoxes[0].top,
-          headerOverlaps: siblingBoxes.some(box => nav.left < box.right - 1 && nav.right > box.left + 1 &&
-            nav.top < box.bottom - 1 && nav.bottom > box.top + 1),
-          navCenter: nav.left + leftInset + contentWidth / 2,
-          primaryWidth: p.width, secondaryWidth: s.width,
-          primaryCenterX: p.left + p.width / 2, secondaryCenterX: s.left + s.width / 2,
-          primaryCenterY: p.top + p.height / 2, secondaryCenterY: s.top + s.height / 2,
-          primaryBottom: p.bottom, secondaryTop: s.top,
-          primaryWrap: getComputedStyle(primary).flexWrap,
-          secondaryWrap: getComputedStyle(secondary).flexWrap,
-          stripWrap: getComputedStyle(strip).flexWrap,
-          pronunciationTop: a.top, pronunciationRight: a.right, stripLeft: i.left,
-          pronunciationFirst: secondary.firstElementChild?.contains(pronunciation),
-          groupsAdjacent: primary.nextElementSibling === secondary,
-          childrenOverflow: [primary, secondary].some(group => {
-            const box = group.getBoundingClientRect()
-            return Array.from(group.children).some(child => {
+      // ResizeObserver commits the responsive layout asynchronously after resize.
+      // Retry the complete geometry contract, with the original one-pixel
+      // tolerance, so an intermediate frame is not mistaken for the final UI.
+      await expect(async () => {
+        const layout = await nav.evaluate((element) => {
+          const primary = element.querySelector<HTMLElement>('[data-toolbar-row="primary"]')!
+          const secondary = element.querySelector<HTMLElement>('[data-toolbar-row="icons"]')!
+          const strip = secondary.querySelector<HTMLElement>('.focus-toolbar-icons')!
+          const pronunciation = secondary.querySelector<HTMLElement>(
+            'button[aria-label^="发音口音"], button[aria-label^="发音及音标切换"]',
+          )!
+          if (!strip || !pronunciation) throw Error('Pronunciation must lead the secondary group')
+          const style = getComputedStyle(element)
+          const nav = element.getBoundingClientRect()
+          const leftInset = parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft)
+          const rightInset = parseFloat(style.borderRightWidth) + parseFloat(style.paddingRight)
+          const contentWidth = nav.width - leftInset - rightInset
+          const header = element.parentElement!
+          const headerGap = parseFloat(getComputedStyle(header).columnGap)
+          const siblings = Array.from(header.children).filter(child => child !== element)
+          const siblingBoxes = siblings.map(child => child.getBoundingClientRect())
+          const available = header.clientWidth - siblingBoxes.reduce((sum, box) => sum + box.width, 0) - siblings.length * headerGap
+          const p = primary.getBoundingClientRect()
+          const s = secondary.getBoundingClientRect()
+          const a = pronunciation.getBoundingClientRect()
+          const i = strip.getBoundingClientRect()
+          return {
+            contentWidth,
+            accountAfterMenu: siblingBoxes.length < 2 || nav.right <= siblingBoxes[1].left + 1,
+            accountAtRight: siblingBoxes.length < 2 || Math.abs(siblingBoxes[1].right - header.getBoundingClientRect().right) <= 1,
+            menuBelowBrand: nav.top >= Math.max(...siblingBoxes.map(box => box.bottom)) - 1,
+            canStayBesideBrand: available >= Math.max(p.width, s.width) + leftInset + rightInset,
+            sharesBrandRow: nav.top < siblingBoxes[0].bottom && nav.bottom > siblingBoxes[0].top,
+            headerOverlaps: siblingBoxes.some(box => nav.left < box.right - 1 && nav.right > box.left + 1 &&
+              nav.top < box.bottom - 1 && nav.bottom > box.top + 1),
+            navCenter: nav.left + leftInset + contentWidth / 2,
+            primaryWidth: p.width, secondaryWidth: s.width,
+            primaryCenterX: p.left + p.width / 2, secondaryCenterX: s.left + s.width / 2,
+            primaryCenterY: p.top + p.height / 2, secondaryCenterY: s.top + s.height / 2,
+            primaryBottom: p.bottom, secondaryTop: s.top,
+            primaryWrap: getComputedStyle(primary).flexWrap,
+            secondaryWrap: getComputedStyle(secondary).flexWrap,
+            stripWrap: getComputedStyle(strip).flexWrap,
+            pronunciationTop: a.top, pronunciationRight: a.right, stripLeft: i.left,
+            pronunciationFirst: secondary.firstElementChild?.contains(pronunciation),
+            groupsAdjacent: primary.nextElementSibling === secondary,
+            childrenOverflow: [primary, secondary].some(group => {
+              const box = group.getBoundingClientRect()
+              return Array.from(group.children).some(child => {
+                const rect = child.getBoundingClientRect()
+                return rect.left < box.left - 1 || rect.right > box.right + 1 ||
+                  rect.top < box.top - 1 || rect.bottom > box.bottom + 1
+              })
+            }),
+            stripOverflow: Array.from(strip.children).some(child => {
               const rect = child.getBoundingClientRect()
-              return rect.left < box.left - 1 || rect.right > box.right + 1 ||
-                rect.top < box.top - 1 || rect.bottom > box.bottom + 1
-            })
-          }),
-          stripOverflow: Array.from(strip.children).some(child => {
-            const rect = child.getBoundingClientRect()
-            return rect.left < i.left - 1 || rect.right > i.right + 1
-          }),
-          viewportOverflow: document.documentElement.scrollWidth > innerWidth + 1,
+              return rect.left < i.left - 1 || rect.right > i.right + 1
+            }),
+            viewportOverflow: document.documentElement.scrollWidth > innerWidth + 1,
+          }
+        })
+        if (Math.abs(layout.primaryCenterY - layout.secondaryCenterY) >= 8) {
+          expect(Math.abs(layout.contentWidth - Math.max(layout.primaryWidth, layout.secondaryWidth))).toBeLessThanOrEqual(1)
         }
-      })
-      if (Math.abs(layout.primaryCenterY - layout.secondaryCenterY) >= 8) {
-        expect(Math.abs(layout.contentWidth - Math.max(layout.primaryWidth, layout.secondaryWidth))).toBeLessThanOrEqual(1)
-      }
+        expect(layout.primaryWidth).toBeLessThanOrEqual(layout.contentWidth + 1)
+        expect(layout.secondaryWidth).toBeLessThanOrEqual(layout.contentWidth + 1)
+        expect(layout.primaryWrap).toBe('nowrap')
+        expect(layout.secondaryWrap).toBe('nowrap')
+        expect(layout.stripWrap).toBe('nowrap')
+        expect(layout.childrenOverflow).toBe(false)
+        expect(layout.stripOverflow).toBe(false)
+        expect(layout.viewportOverflow).toBe(false)
+        expect(layout.headerOverlaps).toBe(false)
+        expect(layout.sharesBrandRow).toBe(layout.canStayBesideBrand)
+        expect(layout.accountAtRight).toBe(true)
+        if (layout.sharesBrandRow) expect(layout.accountAfterMenu).toBe(true)
+        else expect(layout.menuBelowBrand).toBe(true)
+        expect(layout.groupsAdjacent).toBe(true)
+        expect(layout.pronunciationFirst).toBe(true)
+        expect(layout.pronunciationRight).toBeLessThanOrEqual(layout.stripLeft)
+        if (Math.abs(layout.primaryCenterY - layout.secondaryCenterY) >= 8) {
+          sawTwoRows = true
+          expect(layout.secondaryTop).toBeGreaterThanOrEqual(layout.primaryBottom - 1)
+          expect(layout.pronunciationTop).toBeGreaterThanOrEqual(layout.primaryBottom - 1)
+          expect(Math.abs(layout.primaryCenterX - layout.navCenter)).toBeLessThanOrEqual(1)
+          expect(Math.abs(layout.secondaryCenterX - layout.navCenter)).toBeLessThanOrEqual(1)
+        } else {
+          sawSingleRow = true
+        }
+      }).toPass({ timeout: 2000, intervals: [50, 100, 200] })
       if (width === 1024) await nav.screenshot({ path: snapshots + '/' + mode + '-compact-toolbar.png' })
-      expect(layout.primaryWidth).toBeLessThanOrEqual(layout.contentWidth + 1)
-      expect(layout.secondaryWidth).toBeLessThanOrEqual(layout.contentWidth + 1)
-      expect(layout.primaryWrap).toBe('nowrap')
-      expect(layout.secondaryWrap).toBe('nowrap')
-      expect(layout.stripWrap).toBe('nowrap')
-      expect(layout.childrenOverflow).toBe(false)
-      expect(layout.stripOverflow).toBe(false)
-      expect(layout.viewportOverflow).toBe(false)
-      expect(layout.headerOverlaps).toBe(false)
-      expect(layout.sharesBrandRow).toBe(layout.canStayBesideBrand)
-      expect(layout.accountAtRight).toBe(true)
-      if (layout.sharesBrandRow) expect(layout.accountAfterMenu).toBe(true)
-      else expect(layout.menuBelowBrand).toBe(true)
       if (width === 1594 || width === 1279 || width === 1230) {
         await page.locator('header').screenshot({ path: snapshots + '/' + mode + '-header-' + width + '.png' })
-      }
-      expect(layout.groupsAdjacent).toBe(true)
-      expect(layout.pronunciationFirst).toBe(true)
-      expect(layout.pronunciationRight).toBeLessThanOrEqual(layout.stripLeft)
-      if (Math.abs(layout.primaryCenterY - layout.secondaryCenterY) >= 8) {
-        sawTwoRows = true
-        expect(layout.secondaryTop).toBeGreaterThanOrEqual(layout.primaryBottom - 1)
-        expect(layout.pronunciationTop).toBeGreaterThanOrEqual(layout.primaryBottom - 1)
-        expect(Math.abs(layout.primaryCenterX - layout.navCenter)).toBeLessThanOrEqual(1)
-        expect(Math.abs(layout.secondaryCenterX - layout.navCenter)).toBeLessThanOrEqual(1)
-      } else {
-        sawSingleRow = true
       }
     }
     expect(sawSingleRow).toBe(true)
