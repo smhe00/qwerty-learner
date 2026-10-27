@@ -20,7 +20,7 @@ UI distinguishes complete snapshot sync from pending history verification/readin
 - Existing startup/passive-account browser regression:10/10 PASS, including real pending recovery journals, budget expiry, offline, lost upload response without duplicate POST, and reauthentication.
 - Large synthetic checkpoint:2048 events across64 batches; chunked server cache and independent digest PASS. More than128 combined receipts across two devices completes with bounded calls. Appended learning reuses completed pages; forks and contradictory UUIDs block.
 - Scoped ESLint:0 errors,13 existing warnings in touched legacy code. New browser test files pass with the TypeScript parser (repository default lint parser does not cover tests/e2e).
-- Full tsc:143 existing diagnostics outside changed files; changed source has zero diagnostics. Four old map-iteration diagnostics in touched receiver were eliminated via Array.from. Not a globally clean typecheck.
+- Full tsc:143 existing diagnostics. One is the unchanged URLSearchParams iterator at src/sync/api.ts:70 (verified identical to base6427b669); the others are outside touched source files. No diagnostic is on the newly added/modified logic. Four old map-iteration diagnostics in the touched receiver were eliminated via Array.from. Not a globally clean typecheck.
 - Final integrated Pages-mode Vite build PASS (26.35s). Bundle-size warnings remain.
 - No real cloud account operations, staging deployment, production deployment or physical-device acceptance.
 
