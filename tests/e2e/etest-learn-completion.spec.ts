@@ -66,7 +66,7 @@ async function login(page: Page, username: string, password: string) {
 async function meta(page: Page) {
   return page.evaluate(async () => {
     const auth = JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null')
-    const r = await fetch('/api/sync/v2/meta', { cache: 'no-store', headers: { Authorization: 'Bearer ' + auth.token } })
+    const r = await fetch('/api/sync/v2/meta', { signal: AbortSignal.timeout(40000), cache: 'no-store', headers: { Authorization: 'Bearer ' + auth.token } })
     if (!r.ok) throw Error('metadata HTTP-' + r.status)
     return r.json()
   })
@@ -77,14 +77,14 @@ async function pinnedSnapshot(page: Page, revision: number, fingerprint: string,
   const { manifest, parts } = await page.evaluate(async () => {
     const auth = JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null')
     const headers = { Authorization: 'Bearer ' + auth.token }
-    const response = await fetch('/api/sync/v2/binary/manifest', { headers, cache: 'no-store' })
+    const response = await fetch('/api/sync/v2/binary/manifest', { headers, cache: 'no-store', signal: AbortSignal.timeout(40000) })
     if (!response.ok) throw Error('manifest HTTP-' + response.status)
     const manifest = await response.json()
     if (!Number.isInteger(manifest.count) || manifest.count < 1 || manifest.count > 64) throw Error('invalid part count')
     const parts: number[][] = []
     for (let index = 0; index < manifest.count; index++) {
       const params = new URLSearchParams({ revision: String(manifest.revision), sha: manifest.payloadSha256, index: String(index) })
-      const r = await fetch('/api/sync/v2/binary/part?' + params, { headers, cache: 'no-store' })
+      const r = await fetch('/api/sync/v2/binary/part?' + params, { headers, cache: 'no-store', signal: AbortSignal.timeout(40000) })
       if (!r.ok) throw Error('part HTTP-' + r.status)
       parts.push(Array.from(new Uint8Array(await r.arrayBuffer())))
     }
@@ -239,7 +239,8 @@ for (const wrong of [true, false]) {
     expect(process.env.QWERTY_SYNC_BASE_URL).toBe(base + '/')
     const sha = process.env.GITHUB_SHA || ''
     expect(sha).toMatch(/^[a-f0-9]{40}$/)
-    const source = await fetch(base + '/source-commit.txt?completion=' + sha + '-' + Date.now())
+    console.log('COMPLETION_PHASE', JSON.stringify({ case: wrong ? 'unmastered' : 'complete', stage: 'source-check' }))
+    const source = await fetch(base + '/source-commit.txt?completion=' + sha + '-' + Date.now(), { cache: 'no-store', signal: AbortSignal.timeout(20000) })
     expect(source.status).toBe(200)
     const deployed = (await source.text()).trim()
     expect(deployed).toMatch(/^[a-f0-9]{7,40}$/)
@@ -277,13 +278,18 @@ for (const wrong of [true, false]) {
         }
       })
     let stage = 'register'
+    const checkpoint = (next: string) => {
+      stage = next
+      console.log('COMPLETION_PHASE', JSON.stringify({ case: proof.case, stage, elapsedMs: Date.now() - diagnosticStartedAt }))
+    }
+    checkpoint(stage)
     try {
       const created = await request('/api/auth/register', 'POST', { username, password, deviceId: 'qwerty-web-' + randomUUID() })
       expect(created.status).toBe(201)
       owner = created.body.user.userId
-      stage = 'first-login'
+      checkpoint('first-login')
       await login(a, username, password)
-      stage = 'seed-unfinished-before-state'
+      checkpoint('seed-unfinished-before-state')
       await seedUnfinishedLastWord(a)
       const before = await records(a)
       expect(before.words).toHaveLength(1)
@@ -294,7 +300,7 @@ for (const wrong of [true, false]) {
       a.on('response', (r) => {
         if (new URL(r.url()).pathname === '/api/sync/v2/binary/direct') committed.push(r.status())
       })
-      stage = 'last-word-entry'
+      checkpoint('last-word-entry')
       await a.goto(base + '/learn?block-resume=1', { waitUntil: 'domcontentloaded' })
       await expect(a).toHaveURL(base + '/learn')
       const word = a.locator('[data-typing-word="cancel"]')
@@ -306,7 +312,7 @@ for (const wrong of [true, false]) {
         await expect(word).toHaveAttribute('data-typing-wrong-count', '1')
         await expect(word).toHaveAttribute('data-typing-has-wrong', 'false')
       }
-      stage = 'last-answer-and-completion-sync'
+      checkpoint('last-answer-and-completion-sync')
       await a.keyboard.type('cancel', { delay: 40 })
       await expect(a.locator('[data-learn-block-sync]')).toBeVisible({ timeout: 60_000 })
       await expect(a.getByRole('heading', { name: wrong ? '本轮练习已结束' : '今日学习完成', exact: true })).toBeVisible()
@@ -327,7 +333,7 @@ for (const wrong of [true, false]) {
       expect(committed.filter((s) => s === 200)).toHaveLength(1)
       proof.committedUploads = 1
       proof.cloudRevision = uploaded.revision
-      stage = 'completion-blob-readback'
+      checkpoint('completion-blob-readback')
       const cloud = await pinnedSnapshot(a, uploaded.revision, uploaded.logicalFingerprint, owner!)
       const cloudWords = cloud.database.data.data.find((table: any) => table.tableName === 'wordRecords').rows
       expect(cloudWords).toHaveLength(2)
@@ -336,7 +342,7 @@ for (const wrong of [true, false]) {
       expect(cloud.learnRuntime.dailySessions.cet4.status).toBe(final.daily.status)
       expect(cloud.learnRuntime.dailySessions.cet4.executionExhausted).toBe(final.daily.executionExhausted)
       proof.completionBlobHashVerified = true
-      stage = 'five-more-and-reload'
+      checkpoint('five-more-and-reload')
       await a.getByRole('button', { name: '再学五词', exact: true }).click()
       await expect(a).toHaveURL(base + '/learn')
       await expect(a.locator('[data-typing-word]')).toBeVisible({ timeout: 60_000 })
@@ -358,7 +364,7 @@ for (const wrong of [true, false]) {
       // advance the revision once, but must never append another answer.
       proof.extraWords = 5
       proof.reloadDidNotDuplicateExtension = true
-      stage = 'extra-round-startup-sync'
+      checkpoint('extra-round-startup-sync')
       proof.reloadStartupStatus = await a.evaluate(() => sessionStorage.getItem('qwerty.s2.startup-check.v1'))
       proof.observedUploadStatuses = [...committed]
       await expect.poll(() => committed.filter((s) => s === 200).length, { timeout: 30_000 }).toBe(2)
@@ -372,7 +378,7 @@ for (const wrong of [true, false]) {
       proof.totalCommittedUploads = 2
       // Park A before B takes the sole login session. B must pull the actual
       // Blob from an empty profile, proving the final answer reached storage.
-      stage = 'fresh-profile-cloud-readback'
+      checkpoint('fresh-profile-cloud-readback')
       await account(a)
       const downloads: string[] = []
       b.on('request', (r) => {
@@ -445,6 +451,11 @@ for (const wrong of [true, false]) {
         JSON.stringify(proof.failedPageState).split(username).join('[fixture-account]').split(password).join('[redacted]'),
       )
     } finally {
+      // Preserve the application result before teardown consumes any remaining test budget.
+      // This checkpoint is not a cleanup success and never hides the original failure.
+      proof.lastStage = stage
+      await writeFile(info.outputPath('completion-redacted-trace.json'), JSON.stringify(proof, null, 2))
+      checkpoint('cleanup')
       await Promise.allSettled(contexts.map((c) => c.close()))
       try {
         if (owner) {
