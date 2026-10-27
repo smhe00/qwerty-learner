@@ -26,10 +26,12 @@ async function call(path, method = 'GET', body, expected = 200) {
       signal: AbortSignal.timeout(90000), headers: { 'Content-Type': 'application/json',
         ...(account?.token ? { Authorization: 'Bearer ' + account.token } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}) })
-    return { status: response.status, body: await response.json() }
+    return { status: response.status, body: await response.json().catch(() => null) }
   }, { path, method })
   console.log('HISTORY_LIVE_HTTP', JSON.stringify({ path: path.split('?')[0], method,
-    status: reply.status, elapsedMs: Math.round(performance.now() - started), code: safeCode(reply.body?.error) }))
+    status: reply.status, elapsedMs: Math.round(performance.now() - started), code: safeCode(reply.body?.error),
+    requestId: reply.body?.requestId || null, receive: reply.body?.details?.receive || null,
+    nonJson: reply.body === null }))
   assert.equal(reply.status, expected, path.split('?')[0] + ' HTTP ' + reply.status + ' ' + safeCode(reply.body?.error))
   if (method !== 'GET') writeUnknown = false
   return reply.body

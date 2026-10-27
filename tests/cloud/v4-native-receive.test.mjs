@@ -39,13 +39,13 @@ async function fixture() {
   assert.equal(result.status, 201)
   const account = await result.json()
   const send = async ({ path = '/sync/v2/parts', branch = 'etest', data = Buffer.from('abc'), headers = {},
-    token = account.token, receiveError, allowLateRead = false, overrides = {} } = {}) => {
+    token = account.token, receiveError, allowLateRead = false, overrides = {}, method = 'POST', contentType = 'application/octet-stream' } = {}) => {
     lookupStarted = false
     let reads = 0
     const request = new Request('https://internal.invalid/api' + path, {
-      method: 'POST', headers: {
+      method, headers: {
         ...(token ? { authorization: 'Bearer ' + token } : {}),
-        'content-type': 'application/octet-stream', 'content-length': String(data.length),
+        'content-type': contentType, 'content-length': String(data.length),
         'x-qwerty-chunk-bytes': '524288', 'x-qwerty-part-index': '0', 'x-qwerty-part-count': '1',
         'x-qwerty-payload-sha256': hash(data), 'x-qwerty-part-sha256': hash(data),
         'x-qwerty-base-revision': '0', 'x-qwerty-logical-fingerprint': 'c'.repeat(64), ...headers,
@@ -151,4 +151,59 @@ test('receive errors retain bounded cause diagnostics in response and log withou
     }
     assert.equal([...f.objects.keys()].some(k => k.includes('/v4-http-parts/')), false)
   } finally { console.error = original }
+})
+
+test('remaining JSON routes capture once before Blob lookups while preserving parsing and auth rejection', async () => {
+  const f = await fixture()
+  const routes = [
+    ['PUT', '/sync/v2'], ['PUT', '/sync/v2/recovery'],
+    ['POST', '/sync/v2/commit'], ['POST', '/sync/v2/commit/recovery'],
+    ['POST', '/sync/v2/parts'], ['POST', '/sync/v2/binary/migrate'],
+    ['POST', '/sync/events/v2'], ['POST', '/sync/events/v1'],
+    ['POST', '/sync/events/v2/verify'], ['POST', '/sync/events/v2/verify-set'],
+    ['POST', '/sync/events/v2/checkout'],
+    ['POST', '/auth/change-password'], ['DELETE', '/auth/account'],
+  ]
+  for (const branch of ['etest', 'master']) for (const [method, path] of routes) {
+    const r = await f.send({ branch, method, path, contentType: 'application/json', data: Buffer.from('{broken') })
+    assert.equal(r.status, 400, branch + ' ' + method + ' ' + path + ' ' + JSON.stringify(r.body))
+    assert.equal(r.body.error, 'invalid_json')
+    assert.equal(r.reads, 1)
+  }
+  for (const path of ['/sync/v2', '/sync/v2/recovery']) {
+    const rejected = await f.send({ path, method: 'PUT', token: null,
+      contentType: 'application/json', data: Buffer.from('{broken') })
+    assert.equal(rejected.status, 401, 'early parse must not outrank authorization')
+  }
+  const quota = await f.send({ path: '/sync/events/v2', contentType: 'application/json',
+    headers: { 'content-length': String(110 * 1024 + 1) } })
+  assert.equal(quota.status, 413)
+  assert.equal(quota.reads, 0)
+})
+test('legacy V4 succeeds and CAS rejects stale writes after early receive; body errors retain their exact certificates', async () => {
+  const f = await fixture(), v4 = snapshot(f.account.user.userId)
+  const data = Buffer.from(JSON.stringify({ baseRevision: 0, clientFormatVersion: 'qwerty-backup-v4',
+    logicalFingerprint: v4.fingerprint, payloadBase64: v4.bytes.toString('base64'), deviceId: 'native-json' }))
+  const options = { path: '/sync/v2', method: 'PUT', contentType: 'application/json', data }
+  assert.equal((await f.send(options)).status, 200)
+  const stale = await f.send(options)
+  assert.equal(stale.status, 409)
+  assert.equal(stale.body.error, 'sync_conflict')
+  for (const [method, path, code] of [
+    ['PUT', '/sync/v2', 'snapshot_body_read_failed'],
+    ['POST', '/sync/v2/commit', 'v4_commit_body_read_failed'],
+    ['POST', '/sync/events/v2', 'request_body_unavailable'],
+    ['DELETE', '/auth/account', 'request_body_unavailable'],
+  ]) {
+    const r = await f.send({ method, path, contentType: 'application/json',
+      receiveError: new TypeError('PRIVATE_RESET', { cause: Object.assign(new Error(), { code: 'ECONNRESET' }) }) })
+    assert.equal(r.status, 503)
+    assert.equal(r.body.error, code)
+    assert.equal(r.body.details.receive.errorCode, 'ECONNRESET')
+    assert.ok(!JSON.stringify(r.body).includes('PRIVATE'))
+    if (code === 'request_body_unavailable') {
+      assert.equal(r.body.details.stage, 'request-body')
+      assert.equal(r.body.details.safeToRetry, true)
+    } else assert.equal(r.body.details.safeToRetry, undefined)
+  }
 })

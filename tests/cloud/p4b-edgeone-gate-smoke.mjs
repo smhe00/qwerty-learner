@@ -47,6 +47,13 @@ async function api(path, method = 'GET', body, token) {
   try { value = JSON.parse(text) } catch (error) {
     parseFailure = error instanceof Error ? error.name : 'parse_error'
   }
+  if (value?.details?.receive) {
+    console.log('V4 JSON receive failure', JSON.stringify({
+      method, path: new URL(path, base).pathname, status: response.status,
+      code: value.error, requestId: value.requestId || null,
+      failureStage: value.details.failureStage, receive: value.details.receive,
+    }))
+  }
   return { status: response.status, body: value, value, responseBytes: Buffer.byteLength(text),
     declaredBytes: response.headers.get('content-length'), parseFailure }
   } catch (error) {

@@ -88,36 +88,41 @@ function corsHeaders(request, configuredOrigin) {
 // The Content-Length bound is checked before receiving when available.
 // This changes the body primitive, NOT the request timeout, part size,
 // revision CAS, immutable SHA evidence, or binary Blob layout.
+function receiveTrace(request) {
+  const started = performance.now()
+  const bodyUsedBefore = request.bodyUsed === true
+  const abortedBefore = request.signal?.aborted === true
+  const declared = request.headers.get('content-length')
+  return error => {
+    // Fixed categories only; no provider messages, URLs, keys or payloads.
+    const names = ['Error', 'TypeError', 'RangeError', 'AbortError', 'TimeoutError']
+    const codes = ['ECONNRESET', 'ETIMEDOUT', 'EPIPE', 'ABORT_ERR',
+      'ERR_STREAM_PREMATURE_CLOSE', 'ERR_STREAM_DESTROYED', 'ERR_INVALID_STATE',
+      'UND_ERR_SOCKET', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_BODY_TIMEOUT']
+    return {
+      errorName: names.includes(error?.name) ? error.name : 'UnknownError',
+      errorCode: [error?.code, error?.cause?.code].find(code => codes.includes(code)) ?? null,
+      declaredBytes: declared === null ? null : Number(declared),
+      elapsedMs: Math.round((performance.now() - started) * 10) / 10,
+      bodyUsedBefore, bodyUsedAfter: request.bodyUsed === true,
+      abortedBefore, abortedAfter: request.signal?.aborted === true,
+    }
+  }
+}
+
 async function readBinaryPart(request, maxBytes, failureCode) {
   const declaredLength = request.headers.get('content-length')
   if (declaredLength !== null && (!/^\d+$/.test(declaredLength) ||
       Number(declaredLength) > maxBytes)) {
     throw new AppError(413, 'request_too_large', 'V4 binary part exceeds limit')
   }
-  const started = performance.now()
-  const bodyUsedBefore = request.bodyUsed === true
-  const abortedBefore = request.signal?.aborted === true
+  const trace = receiveTrace(request)
   let arrayBuffer
   try {
     arrayBuffer = await request.arrayBuffer()
   } catch (error) {
-    // Keep fixed receive diagnostics, never provider messages, URLs, headers,
-    // payloads or stack traces. Receiving has not staged or committed V4.
-    const names = ['Error', 'TypeError', 'RangeError', 'AbortError', 'TimeoutError']
-    const codes = ['ECONNRESET', 'ETIMEDOUT', 'EPIPE', 'ABORT_ERR',
-      'ERR_STREAM_PREMATURE_CLOSE', 'ERR_STREAM_DESTROYED', 'ERR_INVALID_STATE',
-      'UND_ERR_SOCKET', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_BODY_TIMEOUT']
-    const errorCode = [error?.code, error?.cause?.code].find(code => codes.includes(code))
     throw new AppError(503, failureCode, 'Unable to receive V4 content; no V4 write was attempted', {
-      failureStage: 'request-body',
-      receive: {
-        errorName: names.includes(error?.name) ? error.name : 'UnknownError',
-        errorCode: errorCode ?? null,
-        declaredBytes: declaredLength === null ? null : Number(declaredLength),
-        elapsedMs: Math.round((performance.now() - started) * 10) / 10,
-        bodyUsedBefore, bodyUsedAfter: request.bodyUsed === true,
-        abortedBefore, abortedAfter: request.signal?.aborted === true,
-      },
+      failureStage: 'request-body', receive: trace(error),
     })
   }
   if (!arrayBuffer.byteLength || arrayBuffer.byteLength > maxBytes) {
@@ -133,13 +138,21 @@ async function readBinaryPart(request, maxBytes, failureCode) {
 // EdgeOne's request.text() intermittently fails even for small valid bodies.
 // Receive bounded UTF-8 JSON through the same proven arrayBuffer primitive
 // used by native binary parts. This does NOT encode gzip as Base64 on S2.
-async function readLegacyV4Json(request, maxBytes) {
+async function readLegacyV4Json(request, maxBytes, failureCode = 'snapshot_body_read_failed') {
   const length = request.headers.get('content-length')
   if (length !== null &&
       (!/^\d+$/.test(length) || Number(length) > maxBytes)) {
     throw new AppError(413, 'request_too_large', 'Legacy V4 JSON body exceeds limit')
   }
-  const bytes = await request.arrayBuffer()
+  const trace = receiveTrace(request)
+  let bytes
+  try { bytes = await request.arrayBuffer() }
+  catch (error) {
+    throw new AppError(503, failureCode, 'Unable to receive V4 JSON; no V4 write was attempted', {
+      failureStage: failureCode === 'v4_commit_body_read_failed' ? 'commit_body' : 'request-body',
+      receive: trace(error),
+    })
+  }
   if (bytes.byteLength > maxBytes) {
     throw new AppError(413, 'request_too_large', 'Legacy V4 JSON body exceeds limit')
   }
@@ -154,22 +167,24 @@ async function readLegacyV4Json(request, maxBytes) {
   }
 }
 
-async function readJson(request, maxBytes) {
+async function readJson(request, maxBytes, traceReceive = false) {
   const declared = request.headers.get('content-length')
   if (declared !== null && (!/^\d+$/.test(declared) || Number(declared) > maxBytes)) {
     throw new AppError(413, 'request_too_large', 'HTTP request body is too large')
   }
+  const trace = traceReceive ? receiveTrace(request) : null
   let bytes
   try {
     // Authentication classification already received the original body once.
     // Reuse only its private request-keyed promise, including any rejection.
     // Other routes retain the native arrayBuffer receiver. No clone/second read.
     bytes = await (bufferedHandoffAuthBody(request) ?? request.arrayBuffer())
-  } catch {
+  } catch (error) {
     // No caller can execute its business operation before this await returns.
     // Only this typed PRE-operation rejection can authorize one client retry.
     throw new AppError(503, 'request_body_unavailable', 'Unable to receive request content; please retry',
-      { stage: 'request-body', safeToRetry: true })
+      { stage: 'request-body', safeToRetry: true,
+        ...(trace ? { failureStage: 'request-body', receive: trace(error) } : {}) })
   }
   if (bytes.byteLength > maxBytes) {
     throw new AppError(413, 'request_too_large', 'HTTP request body is too large')
@@ -197,9 +212,10 @@ function logApiError(request, path, error, diagnostics) {
     errorName: error instanceof Error ? error.name : 'UnknownError',
   }
 
-  if (['v4_direct_body_read_failed', 'v4_upload_body_read_failed'].includes(error?.code) &&
+  if (['v4_direct_body_read_failed', 'v4_upload_body_read_failed', 'request_body_unavailable',
+    'snapshot_body_read_failed', 'v4_commit_body_read_failed'].includes(error?.code) &&
       error?.details?.receive) {
-    fields.failureStage = 'request-body'
+    fields.failureStage = error.details.failureStage
     fields.receive = error.details.receive
   }
   const line = JSON.stringify(fields)
@@ -294,6 +310,37 @@ async function enforceAuthRateLimit(context, storage, env, cors) {
   )
 }
 
+// These bounded JSON bodies have no classification reader of their own.
+// Receive before handoff/admin/idle lookups; the router consumes the held result
+// only where it previously parsed, preserving authorization and error priority.
+// Login/register keep their existing shared handoff body and rate-limit path.
+function receiveRoutedJson(request, path, env) {
+  if (request.method === 'PUT' && ['/sync/v2', '/sync/v2/recovery'].includes(path)) {
+    const limit = Math.ceil(numberEnv(env.MAX_SYNC_BYTES, 16 * 1024 * 1024) * 1.5) + 256 * 1024
+    return path === '/sync/v2' ? readLegacyV4Json(request, limit) : readJson(request, limit, true)
+  }
+  if (request.method === 'DELETE' && path === '/auth/account') return readJson(request, 64 * 1024, true)
+  if (request.method !== 'POST') return null
+  if (['/sync/v2/commit', '/sync/v2/commit/recovery'].includes(path)) {
+    return hasV4CommitHeaders(request) ? null : readLegacyV4Json(request, 16 * 1024, 'v4_commit_body_read_failed')
+  }
+  if (path === '/sync/v2/parts') {
+    return request.headers.get('content-type')?.split(';')[0].trim().toLowerCase() === 'application/json'
+      ? readJson(request, 48 * 1024, true) : null
+  }
+  const limit = {
+    '/auth/change-password': 64 * 1024,
+    '/admin/idle': 4096,
+    '/sync/events/v1': 110 * 1024,
+    '/sync/events/v2': 110 * 1024,
+    '/sync/events/v2/verify': 8 * 1024,
+    '/sync/events/v2/verify-set': 8 * 1024,
+    '/sync/events/v2/checkout': 8 * 1024,
+    '/sync/v2/binary/migrate': 4 * 1024,
+  }[path]
+  return limit ? readJson(request, limit, true) : null
+}
+
 export async function onRequest(context) {
   const { request } = context
   const path = new URL(request.url).pathname.replace(/^\/api(?=\/|$)/, '')
@@ -306,7 +353,7 @@ export async function onRequest(context) {
     request.method === 'POST' ? readJson(request, 16384) : null
   // Buffer once before asynchronous guards; all authorization remains before
   // business writes. Only Circle requests reuse the SDK transport.
-  const receivedBody = circleBody ?? feedbackBody
+  const receivedBody = circleBody ?? feedbackBody ?? receiveRoutedJson(request, path, runtimeEnvironment(context.env))
   // Begin native receive before ANY asynchronous handoff/account/idle lookup.
   // This only captures bytes: auth, quotas, digests and revision checks still
   // run before staging/commit. Never clone, read twice or replay a failed body.
@@ -754,7 +801,7 @@ async function onUncoordinatedRequest(context, receivedBody = null, nativeV4Body
         body = readV4CommitHeaders(request)
       } else {
         try {
-          body = await readLegacyV4Json(request, 16 * 1024)
+          body = await (receivedBody ?? readLegacyV4Json(request, 16 * 1024, 'v4_commit_body_read_failed'))
         } catch (error) {
           if (error instanceof AppError) throw error
           throw new AppError(503, 'v4_commit_body_read_failed',
@@ -778,7 +825,7 @@ async function onUncoordinatedRequest(context, receivedBody = null, nativeV4Body
       const { token } = await requireS2WriteAccount(service, request, env)
       let body
       try {
-        body = await readLegacyV4Json(request, bodyLimit)
+        body = await (receivedBody ?? readLegacyV4Json(request, bodyLimit))
       } catch (error) {
         if (error instanceof AppError) throw error
         throw new AppError(503, 'snapshot_body_read_failed',
