@@ -5,6 +5,7 @@ import { runtimeEnvironment } from '../runtime-environment.js'
 
 const scopes = new AsyncLocalStorage()
 const methods = new Set(['get', 'getWithHeaders', 'list', 'set', 'setJSON', 'delete'])
+const regions = new Set(['ap-guangzhou','ap-shanghai','ap-nanjing','ap-beijing','ap-chengdu','ap-singapore','ap-hongkong','ap-bangkok','ap-jakarta','ap-seoul','ap-tokyo','eu-frankfurt','na-ashburn','na-siliconvalley'])
 const elapsed = start => Math.round((performance.now() - start) * 10) / 10
 function category(key) {
   if (typeof key !== 'string') return 'other'
@@ -42,7 +43,8 @@ export function profileCircleStore(store) {
     if (typeof value !== 'function') return value
     if (!methods.has(property)) return value.bind(target)
     if (!wrappers.has(property)) wrappers.set(property, (...args) => {
-      const end = startSpan(scope, 'blob', category(property === 'list' ? args[0]?.prefix : args[0]), property)
+      const complete = startSpan(scope, 'blob', category(property === 'list' ? args[0]?.prefix : args[0]), property)
+      const end = () => {complete();const region=target.cosClient?.region;if(regions.has(region))scope.storageRegions.add(region)}
       try {
         const result = Reflect.apply(value, target, args)
         if (result && typeof result.then === 'function') return result.then(v => {end();return v}, e => {end();throw e})
@@ -68,13 +70,14 @@ export function profileCircleRequest(context, operation) {
       !(/^\/circle\/v2(?:\/|$)/.test(path)) ||
       request.headers.get('x-qwerty-circle-timing') !== '1' ||
       !/^Bearer \S+$/i.test(request.headers.get('authorization') || '')) return operation()
-  const scope = {start:performance.now(),spans:[],truncated:false}
+  const scope = {start:performance.now(),spans:[],truncated:false,storageRegions:new Set()}
   return scopes.run(scope, async () => {
     const response = await operation()
     if (response.status >= 200 && response.status < 300) {
       const totalMs = elapsed(scope.start)
       response.headers.set('Server-Timing', 'circle;dur=' + totalMs)
-      const encode = () => Buffer.from(JSON.stringify({version:1,totalMs,spans:scope.spans,truncated:scope.truncated})).toString('base64url')
+      const functionRegion=process.env.TENCENTCLOUD_REGION || process.env.SCF_REGION
+      const encode = () => Buffer.from(JSON.stringify({version:1,totalMs,spans:scope.spans,truncated:scope.truncated,storageRegions:[...scope.storageRegions],...(regions.has(functionRegion)?{functionRegion}:{})})).toString('base64url')
       let encoded = encode()
       while (encoded.length > 6000 && scope.spans.length) {
         scope.truncated = true

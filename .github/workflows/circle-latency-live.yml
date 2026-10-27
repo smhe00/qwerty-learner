@@ -1,0 +1,32 @@
+name: Circle latency diagnostic (real etest)
+on:
+  workflow_dispatch:
+    inputs:
+      samples:
+        description: Samples per action (1-10)
+        default: '3'
+        required: true
+permissions:
+  contents: read
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
+      - name: Measure confirmed responses (not an under-one-second pass claim)
+        env:
+          CIRCLE_TARGET_SHA: ${{ github.sha }}
+          CIRCLE_SAMPLE_COUNT: ${{ inputs.samples }}
+          CIRCLE_TIMING_OUTPUT: ${{ runner.temp }}/circle-latency.json
+        run: node scripts/circle-latency-live.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: circle-latency-${{ github.run_id }}
+          path: ${{ runner.temp }}/circle-latency.json
+          if-no-files-found: ignore
+          retention-days: 5

@@ -342,6 +342,7 @@ function createUncoordinatedBackendService({
   sessionHistoryRetention = DEFAULT_SESSION_HISTORY_RETENTION,
   authHistoryRetention = DEFAULT_AUTH_HISTORY_RETENTION,
   multiSessionEnabled = false,
+  parallelAuthReads = false,
   eventPilotEnabled = false,
   activityGuard = null,
   registrationGuard = null,
@@ -377,12 +378,12 @@ function createUncoordinatedBackendService({
     }
   }
 
-  async function getCurrentAuth(identity) {
+  async function getCurrentAuth(identity, readLatest) {
     if (credentials?.managedName?.(identity.normalizedUsername) && !credentials.matches(identity)) {
       throw new AppError(403, 'administrator_identity_mismatch', 'Administrator identity does not match the binding')
     }
     if (credentials?.matches(identity)) return { version: 1, environmentManaged: true }
-    const latest = await storage.getLatestAuth(identity.usernameHash)
+    const latest = await (readLatest ? readLatest() : storage.getLatestAuth(identity.usernameHash))
     return latest || identity.initialAuth
   }
 
@@ -456,7 +457,17 @@ function createUncoordinatedBackendService({
 
   async function authenticate(token) {
     const parsed = parseSessionToken(token)
-    const identity = await storage.getAccount(parsed.usernameHash)
+    // Circle can issue independent strong reads together. No result survives
+    // this authentication call; validation/error precedence stays unchanged.
+    const reads = parallelAuthReads && !multiSessionEnabled && token.split('.').length === 3
+      ? await Promise.allSettled([
+        Promise.resolve().then(()=>storage.getAccount(parsed.usernameHash)),
+        Promise.resolve().then(()=>storage.getLatestSession(parsed.usernameHash)),
+        Promise.resolve().then(()=>storage.getSessionRevocation?.(parsed.usernameHash,parsed.tokenHash) ?? null),
+        Promise.resolve().then(()=>storage.getLatestAuth(parsed.usernameHash)),
+      ]) : null
+    const observed = index => {if(reads[index].status==='rejected')throw reads[index].reason;return reads[index].value}
+    const identity = reads ? observed(0) : await storage.getAccount(parsed.usernameHash)
 
     if (!identity || identity.status !== 'active') {
       throw new AppError(401, 'invalid_token', 'Invalid session token')
@@ -480,7 +491,7 @@ function createUncoordinatedBackendService({
       )
     }
     if (!currentSession) {
-      const legacySession = await getCurrentSession(identity)
+      const legacySession = reads ? observed(1) || identity.initialSession : await getCurrentSession(identity)
       if (legacySession &&
           secureHexEqual(legacySession.tokenHash, parsed.tokenHash)) {
         currentSession = legacySession
@@ -495,7 +506,7 @@ function createUncoordinatedBackendService({
     // A per-session tombstone is monotonic, never an overwritten active record.
     // Check even with the feature disabled to respect prior revocations on rollback.
     if (typeof storage.getSessionRevocation === 'function' &&
-        await storage.getSessionRevocation(identity.usernameHash, parsed.tokenHash)) {
+        (reads ? observed(2) : await storage.getSessionRevocation(identity.usernameHash, parsed.tokenHash))) {
       throw new AppError(401, 'session_revoked', 'Session was revoked')
     }
 
@@ -506,7 +517,7 @@ function createUncoordinatedBackendService({
       throw new AppError(401, 'session_expired', 'Session has expired')
     }
 
-    const currentAuth = await getCurrentAuth(identity)
+    const currentAuth = await getCurrentAuth(identity, reads ? () => observed(3) : undefined)
     if (!currentAuth || currentSession.authVersion !== currentAuth.version) {
       throw new AppError(401, 'session_revoked', 'Session is no longer valid')
     }

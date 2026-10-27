@@ -1,4 +1,5 @@
 /* eslint-env node */
+import { circleBlobClientsEnabled, createBlobClientFactory } from './blob-clients.js'
 import { profileCircleStore } from './circle/profile.js'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { getStore as nativeGetStore } from '@edgeone/pages-blob'
@@ -8,13 +9,15 @@ import { StoppedOperationError } from './session-handoff-stopped.js'
 // Request-local instrumentation only. Mutual exclusion lives in Blob, never
 // this AsyncLocalStorage or an in-process Map. No client headers can bypass it.
 const scopes = new AsyncLocalStorage()
+const reusableGetStore = createBlobClientFactory(nativeGetStore)
+const selectStore = options => circleBlobClientsEnabled() ? reusableGetStore(options) : nativeGetStore(options)
 const rateLimitedContexts = new WeakSet()
 export const markHandoffRateLimited = context => rateLimitedContexts.add(context)
 export const wasHandoffRateLimited = context => rateLimitedContexts.has(context)
-export const rawHandoffStore = options => profileCircleStore(nativeGetStore(options))
+export const rawHandoffStore = options => profileCircleStore(selectStore(options))
 
 export function getStore(options) {
-  const raw = profileCircleStore(nativeGetStore(options))
+  const raw = profileCircleStore(selectStore(options))
   const scope = scopes.getStore()
   if (!scope) return raw
   return new Proxy(raw, {

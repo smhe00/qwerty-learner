@@ -19,7 +19,7 @@ export function isAdministrator(identity, adminUserId) {
 }
 
 export function createIdleAccounts({ store, adminUserId = '', startAt, automaticStart = false, execute = false,
-  clock = Date.now } = {}) {
+  clock = Date.now, requestScopedActivity = false } = {}) {
   const start = Date.parse(startAt || '')
   const automatic = automaticStart && startAt === undefined
   const configured = automatic || Number.isFinite(start)
@@ -104,27 +104,31 @@ export function createIdleAccounts({ store, adminUserId = '', startAt, automatic
 
   // Called only AFTER password/session validation, BEFORE issuing access.
   // Deterministic daily keys cannot regress through out-of-order writers.
+  const verifiedActivityDays = new Set()
   async function touch(identity) {
     if (!configured) return
     validate(identity)
-    const deleting = await get(deletingKey(identity.userId))
-    const fence = await get(fenceKey(identity.userId))
+    const day = new Date(clock()).toISOString().slice(0, 10)
+    const key = root(identity.userId) + `days/${day}.json`
+    const knownDay = requestScopedActivity && verifiedActivityDays.has(key)
+    const [deleting,fence,record] = await Promise.all([get(deletingKey(identity.userId)),get(fenceKey(identity.userId)),
+      knownDay ? null : get(key)])
     if (deleting || fence) {
-      // A returning user during the drain window requests cancellation. Never
-      // claim login success until the maintenance worker has removed the fence.
       if (!deleting && fence?.phase === 'draining') {
         await set(root(identity.userId) + 'return.json', { requested: true })
       }
       throw new AppError(423, 'account_cleanup_pending',
         'Account maintenance is in progress; please retry after maintenance')
     }
-    const day = new Date(clock()).toISOString().slice(0, 10)
-    const key = root(identity.userId) + `days/${day}.json`
-    if (await get(key) === null) await set(key, { day })
-    // A concurrent fence must prevent this request from starting work.
-    if (await get(deletingKey(identity.userId)) || await get(fenceKey(identity.userId))) {
+    // Reuse only a positive daily observation in this request. Fences ALWAYS
+    // come from fresh reads; no I/O/write follows this shortcut's fence check.
+    if (knownDay) return
+    if (record === null) await set(key, { day })
+    const [latestDeleting,latestFence] = await Promise.all([get(deletingKey(identity.userId)),get(fenceKey(identity.userId))])
+    if (latestDeleting || latestFence) {
       throw new AppError(423, 'account_cleanup_pending', 'Account maintenance is in progress')
     }
+    if(requestScopedActivity)verifiedActivityDays.add(key)
   }
 
   async function beforeRegister(usernameHash) {

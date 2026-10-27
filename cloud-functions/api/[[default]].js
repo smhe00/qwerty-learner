@@ -1,4 +1,5 @@
 import { createAccountDeletionReceipts } from '../_shared/account-deletion-receipts.js'
+import { withCircleBlobClients } from '../_shared/blob-clients.js'
 import { profileCircleRequest } from '../_shared/circle/profile.js'
 import { createFeedbackService } from '../_shared/feedback.js'
 /* eslint-env node */
@@ -185,7 +186,7 @@ function makeStorage(env) {
   return createEdgeOneBlobStorage(store)
 }
 
-function makeService(env, storage, idle, administrator, diagnostics) {
+function makeService(env, storage, idle, administrator, diagnostics, parallelAuthReads = false) {
   // Append-only authenticated receipts need no Maker environment variable.
   // They cannot overwrite V4. Single-active-session remains enforced here.
   return createBackendService({
@@ -195,6 +196,7 @@ function makeService(env, storage, idle, administrator, diagnostics) {
     // Single-login is a product invariant. Expired/revoked sessions
     // never authorize cloud mutation, even on isolated etest.
     multiSessionEnabled: false,
+    parallelAuthReads,
     eventPilotEnabled: true,
     activityGuard: identity => diagnostics.run('idle-activity', () => idle.touch(identity)),
     registrationGuard: hash => diagnostics.run('idle-reservation', () => idle.beforeRegister(hash)),
@@ -271,7 +273,7 @@ export async function onRequest(context) {
   const circleBody = (path === '/circle/v2' || path.startsWith('/circle/v2/')) &&
     ['POST', 'DELETE'].includes(request.method) ? readJson(request, 8192) : null
   if (circleBody) void circleBody.catch(() => {}) // Preserve rejection until the authenticated dispatcher consumes it.
-  return profileCircleRequest(context, () => withHandoffGateway(context, next => onUncoordinatedRequest(next, circleBody)))
+  return withCircleBlobClients(request, () => profileCircleRequest(context, () => withHandoffGateway(context, next => onUncoordinatedRequest(next, circleBody))))
 }
 
 async function onUncoordinatedRequest(context, circleBody = null) {
@@ -359,8 +361,9 @@ async function onUncoordinatedRequest(context, circleBody = null) {
     const idle = createIdleAccounts({
       store: getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }),
       adminUserId: administrator.userId, ...idleDeploymentOptions(env),
+      requestScopedActivity: path === '/circle/v2' || path.startsWith('/circle/v2/'),
     })
-    const service = makeService(env, storage, idle, administrator, diagnostics)
+    const service = makeService(env, storage, idle, administrator, diagnostics, path === '/circle/v2' || path.startsWith('/circle/v2/'))
     if (path === '/feedback' || path.startsWith('/feedback/')) {
       const result = await createFeedbackService({
         store: getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }),

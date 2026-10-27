@@ -3,15 +3,17 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import crypto from 'node:crypto'
 import { build } from 'esbuild'
+import { createEdgeOneBlobStorage } from '../../cloud-functions/_shared/storage/edgeone-blob.js'
 
 test('real Circle handler receives native body before asynchronous account lookup, once, without bypassing authorization', async () => {
   const blobs = new Map()
   let lookupStarted = false
+  const hooks = {list:null}
   globalThis.__circleNativeStore = {
     async get(key) { lookupStarted = true; return structuredClone(blobs.get(key) ?? null) },
     async setJSON(key, value) { blobs.set(key, structuredClone(value)) },
     async delete(key) { blobs.delete(key) },
-    async list({prefix}) { return {blobs:[...blobs.keys()].filter(k=>k.startsWith(prefix)).map(key=>({key}))} },
+    async list({prefix}) { if(hooks.list)await hooks.list(prefix);return {blobs:[...blobs.keys()].filter(k=>k.startsWith(prefix)).map(key=>({key}))} },
   }
   const built = await build({entryPoints:['cloud-functions/api/[[default]].js'],bundle:true,platform:'node',target:'node20',format:'esm',write:false,
     plugins:[{name:'circle-native-store',setup(b){b.onResolve({filter:/^@edgeone\/pages-blob$/},()=>({path:'store',namespace:'circle-native'}));b.onLoad({filter:/.*/,namespace:'circle-native'},()=>({contents:'export const getStore = () => globalThis.__circleNativeStore'}))}}]})
@@ -59,6 +61,20 @@ test('real Circle handler receives native body before asynchronous account looku
     const trace=profiled.headers.get('X-Qwerty-Circle-Timing')
     assert.equal(Boolean(trace),branch==='etest')
     if(trace){const decoded=JSON.parse(Buffer.from(trace,'base64url'));assert.ok(decoded.spans.some(s=>s.name==='authenticate'));assert.doesNotMatch(JSON.stringify(decoded),new RegExp(account.user.userId))}
+  }
+  for (const change of ['fence','revocation']) {
+    let release,entered;const gate=new Promise(resolve=>{release=resolve}),arrival=new Promise(resolve=>{entered=resolve})
+    hooks.list=async prefix=>{if(prefix.startsWith('social/v3/circles/'+id+'/days/')){entered();await gate}}
+    const pending=onRequest({env,clientIp:'192.0.2.119',request:new Request('https://internal.invalid/api/circle/v2/'+id,{headers:{authorization:'Bearer '+account.token,'x-qwerty-circle-timing':'1'}})})
+    await arrival
+    const fence='maintenance/idle/v1/'+account.user.userId+'/fence.json'
+    if(change==='fence')blobs.set(fence,{phase:'draining',userId:account.user.userId,createdAt:Date.now()})
+    else await createEdgeOneBlobStorage(globalThis.__circleNativeStore).revokeSessionToken(account.token.split('.')[1],crypto.createHash('sha256').update(account.token).digest('hex'))
+    release();const denied=await pending;hooks.list=null
+    assert.equal(denied.status,change==='fence'?423:401)
+    assert.equal(denied.headers.has('X-Qwerty-Circle-Timing'),false)
+    assert.doesNotMatch(await denied.text(),/原生昵称/)
+    blobs.delete(fence)
   }
   delete globalThis.__circleNativeStore
 })
