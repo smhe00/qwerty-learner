@@ -1,6 +1,6 @@
 # Tablet controls, contrast and Shift mode shortcut
 
-Status: IN_PROGRESS (local implementation validated, source CI/deployment pending).
+Status: REVIEW (implemented, source CI validated, etest deployed).
 Executor: Codex-tablet-ui. Branch: product/main.
 Base and last observed upstream: 487303ba5721bbaf53d52c75ee1574e5976f337d.
 Task: interactive/tasks/TABLET-CONTROLS-CONTRAST-20261028.md.
@@ -55,7 +55,7 @@ No scheduler, record, cloud, account or global keyboard-intent timing changes.
 - Final production build: passed (existing chunk-size/upstream dependency warnings).
 - Production preview tablet-refresh suite: 9/9 passed, 11.4s.
 - Scoped ESLint: passed. git diff --check: passed.
-- Whole-project tsc: 143 existing diagnostics, zero in changed source paths.
+- Whole-project tsc: 143 diagnostics outside changed source paths, zero in changed source paths.
   This is a scoped type check, not a whole-project type-check pass.
 - Visually inspected wide 1180x400 layout and dark correction screenshots.
   Environment lacks CJK glyphs; geometry/color assertions are independent of that.
@@ -89,3 +89,49 @@ Focused final desktop geometry, cross-mode alignment and Shift ownership: 3/3
 passed (17.3s); scoped ESLint and whitespace check passed. No test was weakened.
 Await the corrected exact-SHA Review and Pages runs before etest. Earlier Mobile
 results are scoped evidence for unchanged mobile source, not new-SHA CI results.
+
+
+## Corrected source CI and staging promotion
+
+Corrected candidate: 23ae0cd00bce07a3968493559bbf9be4b9e47de3.
+Exact-SHA Review Gate 40645510881 passed, including 125/125 final Learn browser
+cases (6.5m), the repaired Learn/Typing alignment and all three new Shift cases.
+Earlier browser stages passed 22 lifecycle, 5 audio, 5 stats, 5 stateful fuzz and
+5 production-navigation cases; contract/model/lint/build steps passed too.
+Exact-SHA Pages deployment/regression 40645511105, Learn Real Journey 40645510875
+and Published Dual-Site Explorer 40645510919 passed. Pages Explorer 40645510931 is
+an explicitly advisory supplementary workflow and was still running at promotion;
+it is not claimed as passed. The unchanged mobile surface retains the prior
+Mobile P0 evidence above; corrected source Review additionally revalidated mobile
+keyboard behavior. No broad Mobile workflow rerun was triggered by desktop-only
+markup correction.
+
+At promotion, main was exactly the corrected candidate, etest bfe06722a11b940646bb7a63c05c7c5fb6975f75,
+and master ad862b392c6a935ca49514fc9df146932aa02ed2. GitHub compare confirmed etest
+was an ancestor (ahead 3, behind 0). edgeone-test advanced once using an exact
+expected-head lease and force=false. Live deployment verification is pending.
+Autostarted staging Cloud E2Es are release-qualification evidence only when they
+finish; this UI task does not claim those pending checks or authorize master.
+
+
+## Final handoff
+
+At 2026-10-28T07:00:58+00:00, a cache-busted HTTPS request to
+https://t.smhe.cn/source-commit.txt returned `23ae0cd`, matching the promoted
+candidate. Prior checks returned `bfe0672` until deployment completed. This is
+verified live deployment identity, not merely a successful branch push.
+
+Source commits: b0b95e613276d37c1d0ce5cd34dbbf4588664601 and corrected final
+23ae0cd00bce07a3968493559bbf9be4b9e47de3. A documentation-only main followup
+records these results; etest remains pinned to the corrected source candidate.
+The advisory Pages Explorer and automatically triggered staging Cloud workflows
+were still running at this handoff and are not claimed as passed. A subsequent
+main push may supersede the advisory explorer according to its normal concurrency
+policy. No release-ready qualification or master promotion was attempted.
+
+Acceptance: separate top tablet control; readable light/dark mobile controls;
+lone Shift switching on desktop/phone/tablet with chord/IME/editor guards; no
+answer record manufactured by switching; required source regressions and live
+etest identity verified. No blocking dependency. Actual Huawei/iPad hardware
+and native HarmonyOS integration were not tested; browser emulation and CI are
+the evidence for this UI change. The original Circle task remains unchanged.
