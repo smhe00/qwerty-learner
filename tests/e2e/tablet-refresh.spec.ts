@@ -1,6 +1,6 @@
 import { readReviewModeInfo, reviewWords, seedAcquisitionSession } from './review-flow-harness'
 import { expect, test } from '@playwright/test'
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 
 test.use({ hasTouch: true, isMobile: false, viewport: { width: 1024, height: 600 } })
@@ -23,6 +23,30 @@ async function attempts(page: Page) {
       db.close()
     }
   })
+}
+
+async function auditContrast(locator: Locator, minimum = 4.5) {
+  const ratios = await locator.evaluateAll((elements) => {
+    const rgb = (s: string) => (s.match(/[\d.]+/g) || []).map(Number)
+    const blend = (fg: number[], bg: number[]) => fg.slice(0, 3).map((c, i) => c * (fg[3] ?? 1) + bg[i] * (1 - (fg[3] ?? 1)))
+    const luminance = (c: number[]) => c.reduce((n, v, i) => {
+      const x = v / 255
+      return n + (x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4) * [.2126, .7152, .0722][i]
+    }, 0)
+    return elements.filter(el => el.getClientRects().length).map(el => {
+      const chain: Element[] = []
+      for (let node: Element | null = el; node; node = node.parentElement) chain.unshift(node)
+      let bg = [255, 255, 255]
+      for (const node of chain) bg = blend(rgb(getComputedStyle(node).backgroundColor), bg)
+      const style = getComputedStyle(el)
+      const fg = rgb(style.color)
+      fg[3] = (fg[3] ?? 1) * Number(style.opacity)
+      const a = luminance(blend(fg, bg)), b = luminance(bg)
+      return (Math.max(a, b) + .05) / (Math.min(a, b) + .05)
+    })
+  })
+  expect(ratios.length, locator.toString()).toBeGreaterThan(0)
+  for (const ratio of ratios) expect(ratio, locator.toString()).toBeGreaterThanOrEqual(minimum)
 }
 
 for (const phase of ['exposure', 'supported'] as const) {
@@ -177,35 +201,57 @@ for (const dark of [false, true]) {
     await page.evaluate((enabled) => document.documentElement.classList.toggle('dark', enabled), dark)
     await page.keyboard.press('ArrowRight')
     await expect(card.locator('[data-desktop-shortcuts]')).toBeVisible()
-    const audit = async (selector: string, pseudo?: string) => {
-      const ratios = await card.locator(selector).evaluateAll((elements, pseudo) => {
-        const rgb = (s: string) => (s.match(/[\d.]+/g) || []).map(Number)
-        const blend = (fg: number[], bg: number[]) => fg.slice(0, 3).map((c, i) => c * (fg[3] ?? 1) + bg[i] * (1 - (fg[3] ?? 1)))
-        const luminance = (c: number[]) => c.reduce((n, v, i) => {
-          const x = v / 255
-          return n + (x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4) * [.2126, .7152, .0722][i]
-        }, 0)
-        return elements.filter(el => el.getClientRects().length).map(el => {
-          const chain: Element[] = []
-          for (let node: Element | null = el; node; node = node.parentElement) chain.unshift(node)
-          let bg = [255, 255, 255]
-          for (const node of chain) bg = blend(rgb(getComputedStyle(node).backgroundColor), bg)
-          const style = getComputedStyle(el, pseudo)
-          const fg = rgb(style.color)
-          fg[3] = (fg[3] ?? 1) * Number(style.opacity)
-          const a = luminance(blend(fg, bg)), b = luminance(bg)
-          return (Math.max(a, b) + .05) / (Math.min(a, b) + .05)
-        })
-      }, pseudo)
-      expect(ratios.length, selector).toBeGreaterThan(0)
-      for (const ratio of ratios) expect(ratio, selector).toBeGreaterThanOrEqual(4.5)
-    }
+    const audit = (selector: string) => auditContrast(card.locator(selector))
     await audit('[data-input-mode], .mobile-practice-step, .mobile-practice-meaning, .mobile-keyboard-hint, .desktop-tap-key')
     await card.locator('[data-mobile-grade="good"]').tap()
     await card.locator('[data-mobile-reading]').tap()
     await expect(card.locator('[data-mobile-recall-correct]')).toBeVisible()
     await audit('[data-mobile-recall-correct], [data-mobile-recall-correct] .desktop-tap-key, .mobile-practice-recall-cue')
     await page.screenshot({ path: info.outputPath('tablet-contrast-' + (dark ? 'dark' : 'light') + '.png') })
+    expect(await attempts(page)).toHaveLength(0)
+  })
+}
+
+for (const dark of [false, true]) {
+  test(`tablet ${dark ? 'dark' : 'light'} continue controls use readable paired colors in study, pause and menu`, async ({ page }, info) => {
+    await page.addInitScript(() => {
+      HTMLMediaElement.prototype.play = () => Promise.reject(new DOMException('blocked', 'NotAllowedError'))
+    })
+    await page.emulateMedia({ colorScheme: dark ? 'dark' : 'light' })
+    await page.addInitScript((enabled) => localStorage.setItem('isOpenDarkModeAtom', JSON.stringify(enabled)), dark)
+    await seedAcquisitionSession(page, reviewWords, 982840 + Number(dark), 'exposure')
+    await page.goto('/mobile/study')
+    const card = page.locator('[data-mobile-word-practice]')
+    await expect(card).toBeVisible({ timeout: 30000 })
+    if (dark) await expect(page.locator('html')).toHaveClass(/dark/)
+    else await expect(page.locator('html')).not.toHaveClass(/dark/)
+    await page.keyboard.press('ArrowRight')
+    const primary = card.locator('[data-mobile-action-zone]').getByRole('button', { name: '继续学习', exact: true })
+    for (const viewport of [{ width: 1024, height: 600 }, { width: 1180, height: 400 }, { width: 1366, height: 768 }]) {
+      await page.setViewportSize(viewport)
+      await expect(primary).toBeInViewport({ ratio: 1 })
+      await auditContrast(primary, 7)
+      await auditContrast(primary.locator('kbd'), 7)
+      if (!dark) await expect(primary).not.toHaveCSS('color', 'rgb(255, 255, 255)')
+    }
+    await primary.hover()
+    await auditContrast(primary, 7)
+    await page.screenshot({ path: info.outputPath('tablet-continue-' + (dark ? 'dark' : 'light') + '.png') })
+    await page.getByRole('button', { name: '暂停学习', exact: true }).tap()
+    const resume = card.locator('[data-mobile-paused]').getByRole('button', { name: '继续学习', exact: true })
+    await auditContrast(resume, 7)
+    await auditContrast(resume.locator('kbd'), 7)
+    await resume.tap()
+    await expect(card.locator('[data-mobile-paused]')).toHaveCount(0)
+    expect(await attempts(page)).toHaveLength(0)
+    await page.goto('/mobile')
+    const menuResume = page.getByRole('link', { name: '继续手机学习', exact: true })
+    await expect(menuResume).toBeVisible()
+    if (dark) await expect(page.locator('html')).toHaveClass(/dark/)
+    else await expect(page.locator('html')).not.toHaveClass(/dark/)
+    await auditContrast(menuResume, 7)
+    await menuResume.hover()
+    await auditContrast(menuResume, 7)
     expect(await attempts(page)).toHaveLength(0)
   })
 }

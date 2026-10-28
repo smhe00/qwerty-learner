@@ -29,3 +29,10 @@ followup under the same CI-then-etest authorization. Inspect/lint/build and awai
 applicable source CI; no new redundant behavior tests or master promotion.
 Meaning-choice question is read-only: existing task precedes 3bd0a6c; that earlier
 tablet refresh fix introduced the 先练词义 entry during blocked/pending audio.
+
+Additional owner steering during CI: tablet 继续学习 text is white and hard to read.
+Base 2c9f6a130018ef44c35c25ca589ea3fbe28d450d (copy change not yet deployed).
+Use explicit paired text/surface colors for wide-tablet primary study/resume and
+home continue controls. Verify both themes, keycaps, hover and pause/resume at
+multiple landscape sizes, preserving the original refresh regression suite.
+Batch this with the copy deletion in one etest update after source CI.

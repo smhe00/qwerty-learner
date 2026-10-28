@@ -703,6 +703,9 @@
   .focus-mobile-learn-shell .mobile-practice-choice,
   .focus-mobile-learn-shell .mobile-practice-secondary { background: var(--mobile-surface); }
   .focus-mobile-learn-shell .mobile-practice-grade[data-mobile-grade="good"] { background: var(--mobile-accent); }
+  /* Pair tablet action ink and surface explicitly, including paused/menu resume. */
+  .mobile-app.mobile-study .mobile-practice-primary,
+  .mobile-app.mobile-home .mobile-start-link { background: var(--focus-accent-soft, #eaf0ff); color: var(--mobile-text); border: 1px solid var(--mobile-accent); }
   .focus-mobile-learn-shell .mobile-practice-audio-actions { grid-template-columns: 1fr; }
   .focus-mobile-learn-shell .mobile-practice-recall-cue { margin-top: 0; }
 }

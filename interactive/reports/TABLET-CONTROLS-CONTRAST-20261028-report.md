@@ -156,3 +156,29 @@ Repository is shallow; no unsupported claim of the original introduction date.
 
 Status: IN_PROGRESS pending source CI and etest identity verification for this
 copy followup. Existing source/deployment evidence above is historical only.
+
+## Tablet Continue readability steering
+
+Copy-only source 2c9f6a130018ef44c35c25ca589ea3fbe28d450d was pushed but not
+deployed before the owner's next report: white 继续学习 text is hard to read on Pad.
+The study primary and menu continue controls use accent ink (white in light mode).
+Chromium reproduced white on indigo (ratio 5.959), not a confirmed white-on-white
+rendering bug. Raise this control family's readability target to >=7:1 and use
+normal text ink on the theme's tinted surface, with an accent border, only in the
+existing wide-tablet media query. This covers exposure Continue, paused Resume,
+menu Continue, and other shared primary actions. Phone and desktop layouts retain
+their original palette. The single shared study controller is unchanged.
+
+Extracted the existing color audit for reuse and added two real-browser cases
+covering light/dark study, keyboard hint, hover, pause/resume and menu at 1024x600,
+1180x400 and 1366x768. Store the actual app theme across navigation to avoid a test
+DOM-class override racing app initialization. Baseline failed the new light-mode
+contrast threshold (5.959 < 7); final development suite passed 11/11 in 36.8s,
+including all prior refresh/geometry/correction cases. No answer records were
+created by pause/resume or navigation. Visually inspected both themed screenshots;
+CJK fonts are absent in this environment, so geometry and computed-color checks
+are the available local visual evidence. Native Huawei rendering is untested.
+
+Production build passed; production-preview tablet suite passed 11/11 in 13.8s.
+Whitespace checks passed. Next: push this batched candidate, wait relevant exact-SHA
+CI, update etest once, verify live SHA.
