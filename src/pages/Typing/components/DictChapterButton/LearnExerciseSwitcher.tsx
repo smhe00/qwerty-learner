@@ -23,7 +23,7 @@ export default function LearnExerciseSwitcher() {
       data-learn-exercise={exercise}
       data-input-mode={mode}
       aria-label={'学习方式：' + label}
-      title={'当前：' + label + '；点击切换到' + nextLabel + '；单独按 Shift 切换'}
+      title={'当前：' + label + '；点击切换到' + nextLabel}
       className="inline-flex h-9 w-20 shrink-0 flex-col items-center justify-center whitespace-nowrap rounded-lg border border-[var(--focus-border)] bg-[var(--focus-surface-muted)] px-2 text-base font-medium text-[var(--focus-text-secondary)] transition-colors hover:border-[var(--focus-accent)] hover:bg-[var(--focus-accent-soft)] hover:text-[var(--focus-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--focus-surface)]"
       onClick={(event) => {
         setMode(next)

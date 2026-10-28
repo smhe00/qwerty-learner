@@ -862,7 +862,7 @@ export default function MobileWordPractice({
             data-input-mode={inputMode}
             data-mobile-interaction-toggle={isCoreRecall || undefined}
             aria-label={'学习方式：' + learnInputModeLabels[inputMode]}
-            title={'当前：' + learnInputModeLabels[inputMode] + '；点击切换到' + learnInputModeLabels[nextLearnInputMode(inputMode)] + '；单独按 Shift 切换'}
+            title={'当前：' + learnInputModeLabels[inputMode] + '；点击切换到' + learnInputModeLabels[nextLearnInputMode(inputMode)]}
             aria-keyshortcuts="Shift"
             disabled={paused || isSaving}
             onClick={(event) => {
@@ -872,7 +872,7 @@ export default function MobileWordPractice({
             }}
           >
             {inputMode === 'auto' ? <Wand2 size={16} aria-hidden="true" /> : inputMode === 'keyboard' ? <Keyboard size={16} aria-hidden="true" /> : <Hand size={16} aria-hidden="true" />}
-            {learnInputModeLabels[inputMode] + ' · 切换为' + learnInputModeLabels[nextLearnInputMode(inputMode)] + '；单独按 Shift 切换'} {keyHint('Shift')}
+            {learnInputModeLabels[inputMode] + ' · 切换为' + learnInputModeLabels[nextLearnInputMode(inputMode)]} {keyHint('Shift')}
           </button>
         )}
       </div>

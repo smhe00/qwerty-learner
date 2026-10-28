@@ -135,3 +135,24 @@ answer record manufactured by switching; required source regressions and live
 etest identity verified. No blocking dependency. Actual Huawei/iPad hardware
 and native HarmonyOS integration were not tested; browser emulation and CI are
 the evidence for this UI change. The original Circle task remains unchanged.
+
+## Owner copy followup (2026-10-28)
+
+Base ebf21bd2bfc87cde7f5d7b86ab111bba05f69e67. Owner requested removal of the
+sentence 单独按 Shift 切换 and asked whether meaning-choice was new. Removed that
+suffix from the mobile visible mode label and both desktop/mobile titles. Retain
+Shift keycaps, aria-keyshortcuts and the shared shortcut hook unchanged. Exactly
+three text-expression deletions; no task selector, audio fallback or learning
+state changes. Scoped ESLint and git diff --check passed. Production build passed
+in 18.59s with existing chunk warnings. No new tests for this copy-only deletion;
+normal path-triggered CI will run before the authorized etest followup.
+
+History evidence: 3bd0a6c781ee3ff13152ec4e038dd99a3ac39896 (Oct 28) added the
+先练词义 entry while audio is pending/tap-required. Its parent already contains
+meaning-choice in src/learn/task-selector.ts and an audio-error meaning fallback.
+Thus the question type predates these tablet changes; this iteration introduced
+a reachable entry to the existing task when refreshing leaves audio unavailable.
+Repository is shallow; no unsupported claim of the original introduction date.
+
+Status: IN_PROGRESS pending source CI and etest identity verification for this
+copy followup. Existing source/deployment evidence above is historical only.
