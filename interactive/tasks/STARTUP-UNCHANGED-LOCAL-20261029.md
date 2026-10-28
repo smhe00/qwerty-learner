@@ -13,3 +13,5 @@ Validation: focused cache invalidation/integrity contracts; real IndexedDB/brows
 Delivery: commit/push product/main after validation. This implementation request does not itself authorize deploying this new candidate to etest/master; preserve pinned release candidates and branch ancestry. No force push, gate weakening, schema migration or edits to learning records merely to enable the optimization.
 
 Source commit: f97b625f32e6320dfa5d6dc05f0677c4946138c8. Source tree: 23fb77035283902897c1ed4c97865955d977fca1. Implementation and local validation complete; exact evidence and limits are in interactive/reports/STARTUP-UNCHANGED-LOCAL-20261029-report.md.
+
+Subsequent owner request “部署 Etest？” authorizes staging deployment of exact candidate 44ece41c32f5f1f61f0ad6a29c9b4cac5f2a229a. Candidate is now live at t.smhe.cn; see the report's deployment checkpoint. Master is unchanged. This documentation followup stays on product/main without another Maker build.
