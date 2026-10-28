@@ -54,6 +54,7 @@ export async function gotoReviewAppReady(
 export type ReviewWord = {
   name: string
   trans: string[]
+  shortMeaning?: string
   usphone: string
   ukphone: string
   example?: Array<{
@@ -67,18 +68,21 @@ export type ReviewWord = {
 export const reviewWords: ReviewWord[] = [
   {
     name: 'cancel',
+    shortMeaning: '取消',
     trans: ['取消'],
     usphone: 'kænsl',
     ukphone: 'kænsl',
   },
   {
     name: 'analyse',
+    shortMeaning: '分析',
     trans: ['分析'],
     usphone: 'ænəlaɪz',
     ukphone: 'ænəlaɪz',
   },
   {
     name: 'numerous',
+    shortMeaning: '众多的',
     trans: ['众多的'],
     usphone: 'numərəs',
     ukphone: 'njuːmərəs',
@@ -204,7 +208,7 @@ export async function seedAcquisitionSession(
   page: import('@playwright/test').Page,
   words: ReviewWord[],
   id: number,
-  phase: 'exposure' | 'supported' | 'independent' = 'independent',
+  phase: 'exposure' | 'guided' | 'supported' | 'independent' = 'independent',
   independentInterveningItems = 4,
   scaffoldStrainTier:
     | 'unknown'
@@ -213,7 +217,7 @@ export async function seedAcquisitionSession(
     | 'recovery' = 'unknown',
   phaseOverrides: Record<
     string,
-    'exposure' | 'supported' | 'independent'
+    'exposure' | 'guided' | 'supported' | 'independent'
   > = {},
 ) {
   await page.addInitScript(
@@ -226,10 +230,11 @@ export async function seedAcquisitionSession(
       seededPhaseOverrides,
     }) => {
       const phaseData = (
-        wordPhase: 'exposure' | 'supported' | 'independent',
+        wordPhase: 'exposure' | 'guided' | 'supported' | 'independent',
       ) => {
+        const isExposure = wordPhase === 'exposure' || wordPhase === 'guided'
         const condition =
-          wordPhase === 'exposure'
+          isExposure
             ? {
                 purpose: 'training',
                 audio: 'automatic',
@@ -244,7 +249,7 @@ export async function seedAcquisitionSession(
                 letters: { mode: 'all-hidden' },
               }
         const policyVersion =
-          wordPhase === 'exposure'
+          isExposure
             ? 'learn-acquisition-exposure-v1'
             : wordPhase === 'independent'
               ? 'learn-acquisition-independent-v1'

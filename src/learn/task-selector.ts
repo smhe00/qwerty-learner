@@ -43,6 +43,7 @@ export function selectLearnTask(input: {
   acquisitionPhase?: string
   hasContext: boolean
   choicesAvailable: boolean
+  meaningChoicesAvailable: boolean
   audioAvailable: boolean
   goal: LearnGoal
   preference: LearnExercisePreference
@@ -67,13 +68,13 @@ export function selectLearnTask(input: {
     if (input.acquisitionPhase === 'exposure') return choose('exposure', 'exposure')
     if (input.acquisitionPhase === 'guided') {
       return choose(
-        !input.choicesAvailable ? 'recall' :
-          input.hasContext ? 'context' : 'meaning-choice',
+        input.hasContext && input.choicesAvailable ? 'context' :
+          input.meaningChoicesAvailable ? 'meaning-choice' : 'recall',
         'guided',
       )
     }
     if (input.acquisitionPhase === 'supported') {
-      return choose(!input.choicesAvailable ? 'recall' :
+      return choose(!input.meaningChoicesAvailable ? 'recall' :
         input.audioAvailable ? 'audio' : 'meaning-choice', 'supported')
     }
   }

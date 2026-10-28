@@ -5,7 +5,7 @@ import { reviewWords, seedAcquisitionSession } from './review-flow-harness'
 
 test.setTimeout(60_000)
 test.use({ viewport: { width: 1440, height: 900 } })
-const words = [...reviewWords, { name: 'confirm', trans: ['确认'], usphone: 'kənfɜːm', ukphone: 'kənfɜːm' }]
+const words = [...reviewWords, { name: 'confirm', trans: ['确认'], shortMeaning: '确认', usphone: 'kənfɜːm', ukphone: 'kənfɜːm' }]
 const card = (page: Page) => page.locator('[data-desktop-tap-practice]')
 
 async function openTap(page: Page, id: number, phase: 'exposure' | 'supported' | 'independent' = 'independent') {
@@ -121,7 +121,7 @@ test('choice keys select the visibly labelled option and keep training evidence'
   const selectedWord = await practice.getAttribute('data-mobile-word')
   const labels = await options.evaluateAll(buttons => buttons.map(button =>
     Array.from(button.childNodes).filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent).join('').trim()))
-  const index = labels.indexOf(selectedWord!)
+  const index = labels.indexOf(words.find(word => word.name === selectedWord)!.shortMeaning!)
   expect(index).toBeGreaterThanOrEqual(0)
   await page.keyboard.press(['a', 's', 'd', 'f'][index])
   await expect.poll(async () => (await records(page)).length).toBe(1)

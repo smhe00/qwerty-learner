@@ -100,7 +100,7 @@ for (const phase of ['exposure', 'supported'] as const) {
         await expect(card).toHaveAttribute('data-mobile-task', 'meaning-choice')
         await expect(card).toHaveAttribute('data-mobile-word', word!)
         expect(await attempts(page)).toHaveLength(0)
-        await card.getByRole('button', { name: reviewWords.find((item) => item.name === word)!.trans[0], exact: true }).tap()
+        await card.getByRole('button', { name: reviewWords.find((item) => item.name === word)!.shortMeaning!, exact: true }).tap()
         await expect(card.locator('[data-mobile-feedback]')).toBeVisible()
         const saved = await attempts(page)
         expect(saved).toHaveLength(1)

@@ -6,6 +6,7 @@ import { createLearnAcquisitionExercisePlanForState } from '@/learn/acquisition'
 import type { LearnAcquisitionState } from '@/learn/acquisition'
 import { trackLearnPersistence } from '@/learn/persistence'
 import type { LearnItemKind } from '@/learn/session'
+import { buildContextChoices, buildShortMeaningChoices, getShortMeaning } from '@/learn/choices'
 import { selectLearnTask } from '@/learn/task-selector'
 import type { LearnExerciseKind, LearnExercisePreference, LearnTaskHistoryEvent } from '@/learn/task-selector'
 import { useLearnModeShortcut } from '@/pages/Typing/hooks/useLearnModeShortcut'
@@ -59,15 +60,6 @@ const RECALL_GRADES: Array<{ rating: ReviewOutcome; label: string }> = [
   { rating: 'good', label: '记得' },
 ]
 
-function stableKey(value: string): number {
-  let hash = 2166136261
-  for (let i = 0; i < value.length; i += 1) {
-    hash ^= value.charCodeAt(i)
-    hash = Math.imul(hash, 16777619)
-  }
-  return hash >>> 0
-}
-
 function classificationFor(cause: TypingErrorClassification['cause']): TypingErrorClassification {
   return {
     cause,
@@ -91,15 +83,15 @@ function conditionForTask(task: MobileTask, isCoreRecall: boolean, plan?: Review
     purpose: 'training',
     source: 'adaptive-policy',
     audio: task === 'audio' ? 'automatic' : 'none',
-    meaning: task === 'meaning-choice' || task === 'recall' || task === 'spelling' ? 'visible' : 'hidden',
+    meaning: task === 'audio' || task === 'meaning-choice' || task === 'recall' || task === 'spelling' ? 'visible' : 'hidden',
     phonetic: task === 'exposure' ? 'visible' : 'hidden',
-    letters: { mode: task === 'recall' || task === 'spelling' ? 'all-hidden' : 'all-visible' },
+    letters: { mode: task === 'audio' || task === 'recall' || task === 'spelling' ? 'all-hidden' : 'all-visible' },
     probeDimension: task === 'audio' ? 'audio' : task === 'recall' || task === 'spelling' ? 'none' : 'meaning',
   }
 }
 
 function learningContextForTask(task: MobileTask, hasExample: boolean, audioPlayed: boolean, manuallyPlayed: boolean): LearningContextV1 {
-  const hidden = task === 'recall' || task === 'spelling'
+  const hidden = task === 'audio' || task === 'recall' || task === 'spelling'
   return {
     version: 1,
     answerVisibilityAtStart: hidden ? 'hidden' : 'full',
@@ -108,7 +100,7 @@ function learningContextForTask(task: MobileTask, hasExample: boolean, audioPlay
     revealedBeforeFirstKey: false,
     revealCount: 0,
     exampleVisibleAtStart: hasExample && (task === 'exposure' || task === 'context' || task === 'recall' || task === 'spelling'),
-    meaningVisibleAtStart: task === 'exposure' || task === 'recall' || task === 'spelling' || task === 'meaning-choice',
+    meaningVisibleAtStart: task === 'audio' || task === 'exposure' || task === 'recall' || task === 'spelling' || task === 'meaning-choice',
     meaningRevealed: false,
     meaningRevealedBeforeFirstKey: false,
     meaningRevealCount: 0,
@@ -256,27 +248,16 @@ export default function MobileWordPractice({
         }}
       />
     )
-  const choices = useMemo(() => {
-    const seen = new Set<string>()
-    const targetMeaning = word.trans?.filter(Boolean).join('；')
-    const candidates = queue.filter((candidate) => {
-      if (!candidate.name || candidate.name === word.name || seen.has(candidate.name)) return false
-      seen.add(candidate.name)
-      return true
-    })
-    const differentMeanings = candidates.filter((candidate) => candidate.trans?.filter(Boolean).join('；') !== targetMeaning)
-    const distractors = (differentMeanings.length >= 3 ? differentMeanings : candidates)
-      .sort((a, b) => stableKey(a.name) - stableKey(b.name))
-      .slice(0, 3)
-    return [...distractors, word].sort((a, b) => stableKey(a.name) - stableKey(b.name))
-  }, [queue, word])
+  const contextChoices = useMemo(() => buildContextChoices(word, queue), [queue, word])
+  const meaningChoices = useMemo(() => buildShortMeaningChoices(word, queue), [queue, word])
 
   const phase = itemKind === 'acquisition' ? acquisitionState?.phase : undefined
   const selection = selectLearnTask({
     itemKind,
     acquisitionPhase: phase,
     hasContext: Boolean(maskedExample),
-    choicesAvailable: choices.length > 1,
+    choicesAvailable: contextChoices.length > 1,
+    meaningChoicesAvailable: meaningChoices.length > 1,
     audioAvailable: !audioFallback,
     goal: 'vocabulary-and-spelling',
     preference: manualExercise ?? (desktop ? exercisePreference : mobilePreference.current),
@@ -284,6 +265,7 @@ export default function MobileWordPractice({
     history: taskHistory,
   })
   const task: MobileTask = draft.frozenTask ?? selection.exercise
+  const choices = task === 'context' ? contextChoices : meaningChoices
 
   useEffect(() => {
     if (
@@ -618,7 +600,7 @@ export default function MobileWordPractice({
       : task === 'context'
       ? '语境选择'
       : task === 'audio'
-      ? '听音辨词'
+      ? '听音选义'
       : task === 'meaning-choice'
       ? '词义识别'
       : '主动回忆'
@@ -791,7 +773,7 @@ export default function MobileWordPractice({
                 {audioState === 'playing'
                   ? '正在发音…'
                   : audioPlayed
-                  ? '选出刚才听到的单词'
+                  ? '选出刚才听到的单词的意思'
                   : audioState === 'loading'
                   ? '正在准备发音，也可先练词义'
                   : audioState === 'error'
@@ -1135,7 +1117,7 @@ export default function MobileWordPractice({
                 onClick={() => choose(candidate.name)}
                 disabled={paused || isSaving}
               >
-                {task === 'meaning-choice' ? candidate.trans?.filter(Boolean).join('；') || '暂无释义' : candidate.name}
+                {task === 'context' ? candidate.name : getShortMeaning(candidate)}
                 {keyHint(['A', 'S', 'D', 'F'][index])}
               </button>
             ))}

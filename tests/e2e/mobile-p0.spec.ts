@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { reviewWords, seedAcquisitionSession } from './review-flow-harness'
 import { selectLearnTask } from '../../src/learn/task-selector'
+import { readFileSync } from 'node:fs'
 
 async function countWordRecords(page: Page): Promise<number> {
   return page.evaluate(async () => {
@@ -22,6 +23,10 @@ async function countWordRecords(page: Page): Promise<number> {
 }
 
 async function mockWordPronunciation(page: Page) {
+  // Mocked play() must not race a real external preload/error response.
+  await page.route('**/dictvoice?**', route => route.fulfill({
+    contentType: 'audio/mpeg', body: readFileSync('public/sounds/key-sound/Alpacas.mp3'),
+  }))
   await page.addInitScript(() => {
     const original = HTMLMediaElement.prototype.play
     ;(window as Window & { __mobileAudioAutoCalls?: number }).__mobileAudioAutoCalls = 0
@@ -298,11 +303,11 @@ test('Mobile never auto-advances after Hard or wrong; manual next preserves one 
       const choices = taskView.locator('[data-mobile-choice]')
       await expect(choices.first()).toBeEnabled({ timeout: 15_000 })
       const target = await taskView.getAttribute('data-mobile-word')
-      // On cloze/audio tasks, choose a definitely wrong English spelling.
-      // On meaning-choice tasks, any wrong answer is enough; if the first
+      // Cloze choices use English spellings; audio/meaning choices use glosses.
+      // On meaning choices, any wrong answer is enough; if the first
       // option happens to be right the loop proceeds to another task.
       const labels = await choices.allTextContents()
-      const wrongIndex = task === 'meaning-choice' ? 0 : labels.findIndex(label => label.trim() !== target)
+      const wrongIndex = task === 'context' ? labels.findIndex(label => label.trim() !== target) : 0
       await choices.nth(Math.max(0, wrongIndex)).click()
     }
 
@@ -387,7 +392,7 @@ test('Mobile self-report Good can be corrected to Again before saving', async ({
       await expect(choices.first()).toBeEnabled({ timeout: 15_000 })
       const target = await taskView.getAttribute('data-mobile-word')
       const labels = await choices.allTextContents()
-      const index = task === 'meaning-choice' ? 0 : labels.findIndex(label => label.trim() === target)
+      const index = task === 'context' ? labels.findIndex(label => label.trim() === target) : 0
       await choices.nth(Math.max(0, index)).click()
     }
     await expect(taskView.locator('[data-mobile-feedback]')).toBeVisible({ timeout: 15_000 })
@@ -551,6 +556,7 @@ test('Unified selector keeps cold memory eligibility while recommending spelling
     itemKind: 'review' as const,
     hasContext: true,
     choicesAvailable: true,
+    meaningChoicesAvailable: true,
     audioAvailable: true,
     goal: 'vocabulary-and-spelling' as const,
     preference: 'auto' as const,
@@ -573,8 +579,8 @@ test('Unified selector keeps cold memory eligibility while recommending spelling
   expect(selectLearnTask({ ...base, history: positive, hasTextInput: false }).exercise).toBe('recall')
   expect(selectLearnTask({ ...base, history: positive, itemKind: 'acquisition', acquisitionPhase: 'exposure' }).exercise).toBe('exposure')
   expect(selectLearnTask({ ...base, history: positive, itemKind: 'acquisition', acquisitionPhase: 'guided' }).exercise).toBe('context')
-  expect(selectLearnTask({ ...base, history: positive, itemKind: 'acquisition', acquisitionPhase: 'guided', choicesAvailable: false }).exercise).toBe('recall')
-  expect(selectLearnTask({ ...base, history: positive, itemKind: 'acquisition', acquisitionPhase: 'supported', choicesAvailable: false }).exercise).toBe('recall')
+  expect(selectLearnTask({ ...base, history: positive, itemKind: 'acquisition', acquisitionPhase: 'guided', choicesAvailable: false, meaningChoicesAvailable: false }).exercise).toBe('recall')
+  expect(selectLearnTask({ ...base, history: positive, itemKind: 'acquisition', acquisitionPhase: 'supported', meaningChoicesAvailable: false }).exercise).toBe('recall')
 
   const recognized = { timeStamp: 4, learnItemKind: 'acquisition',
     reviewRatingDecision: { eligible: false, rating: null },

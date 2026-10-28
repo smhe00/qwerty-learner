@@ -287,6 +287,7 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
               index,
               name: word.name,
               trans: [...word.trans],
+              ...(word.shortMeaning !== undefined ? { shortMeaning: word.shortMeaning } : {}),
               usphone: word.usphone,
               ukphone: word.ukphone,
               ...(word.notation !== undefined
