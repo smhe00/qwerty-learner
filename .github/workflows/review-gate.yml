@@ -19,6 +19,7 @@ on:
       - 'src/pages/Typing/components/DictChapterButton/LearnExerciseSwitcher.tsx'
       - 'tests/e2e/learn-exercise-switcher.spec.ts'
       - 'tests/e2e/learn-input-mode-harness.ts'
+      - 'tests/e2e/mobile-p0.spec.ts'
       - 'src/pages/Mobile/**'
       - 'src/pages/Typing/index.tsx'
       - 'src/pages/Typing/store/**'

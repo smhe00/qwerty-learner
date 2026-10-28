@@ -1,3 +1,4 @@
+import { chooseLearnInputMode } from './learn-input-mode-harness'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { reviewWords, seedAcquisitionSession } from './review-flow-harness'
@@ -493,7 +494,7 @@ test('Phone-only cold spelling validates correct orthography without a second FS
   const word = (await practice.getAttribute('data-mobile-word'))!
   await expect(practice).toHaveAttribute('data-mobile-task', 'recall')
   await expect(practice.locator('input')).toHaveCount(0)
-  await practice.locator('[data-mobile-interaction-toggle]').click()
+  await chooseLearnInputMode(page, 'keyboard')
   await expect(practice).toHaveAttribute('data-mobile-task', 'spelling')
   await expect(practice.locator('[data-mobile-answer-revealed]')).toHaveCount(0)
   await expect(practice.locator('.mobile-practice-word')).toHaveCount(0)
@@ -599,7 +600,7 @@ test('Phone spelling mismatch distinguishes remembered typo from recall failure 
   const practice = page.locator('[data-mobile-word-practice]')
   await expect(practice).toBeVisible({ timeout: 45_000 })
   const word = (await practice.getAttribute('data-mobile-word'))!
-  await practice.locator('[data-mobile-interaction-toggle]').click()
+  await chooseLearnInputMode(page, 'keyboard')
   await expect(practice).toHaveAttribute('data-mobile-task', 'spelling')
   const input = practice.getByRole('textbox', { name: '独立拼写单词' })
   await input.fill(word + 'x')
@@ -626,7 +627,7 @@ test('Phone spelling mismatch can be explicitly adjudicated as real memory failu
   const practice = page.locator('[data-mobile-word-practice]')
   await expect(practice).toBeVisible({ timeout: 45_000 })
   const word = (await practice.getAttribute('data-mobile-word'))!
-  await practice.locator('[data-mobile-interaction-toggle]').click()
+  await chooseLearnInputMode(page, 'keyboard')
   await practice.getByRole('textbox', { name: '独立拼写单词' }).fill(word + 'x')
   await practice.getByRole('button', { name: '确认拼写' }).click()
   await practice.locator('[data-mobile-spelling-cause="recall"]').click()

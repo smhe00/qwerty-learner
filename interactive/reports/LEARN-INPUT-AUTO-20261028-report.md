@@ -81,3 +81,21 @@ under the existing owner authorization for this tablet iteration, with a branch
 lease; verify t.smhe.cn/source-commit.txt. Do not advance master. Record deployment
 SHA and CI run evidence in the user handoff; this report intentionally does not
 claim future CI or live-device results.
+
+## CI follow-up on 2f38a0a990df92a7920118aa3093b9e16da3e13c
+
+Implementation commit: 2f38a0a990df92a7920118aa3093b9e16da3e13c.
+Mobile P0 run 40636682560: build, scoped types/lint and commit contracts passed;
+full mobile suite reported 67 passed / 3 failed. Three legacy mobile-p0 spelling
+tests used a raw one-click `[data-mobile-interaction-toggle]` transition; the new
+three-state cycle correctly stayed in Touch on its first click. Replaced those
+three setup clicks with the shared explicit Keyboard selector. All task, grading,
+FSRS and once-only record assertions are unchanged. Focused rerun: 3/3 passed
+(11.7s). No application source change in this follow-up. Added mobile-p0.spec.ts
+to Review Gate paths so changes to these shared behavior assertions trigger review.
+
+Other completed initial-SHA CI: Pages deployment, published dual-site explorer,
+Learn Real Journey, Learn Completion Journey, Mobile Menu Completion, Circle UI,
+and Private Feedback UI passed. Review and workspace gates were still running
+at this checkpoint; their results must not be assumed. The follow-up commit is
+now the candidate; wait for its own applicable exact-SHA checks before etest.
