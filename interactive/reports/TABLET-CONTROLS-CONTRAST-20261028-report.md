@@ -182,3 +182,48 @@ are the available local visual evidence. Native Huawei rendering is untested.
 Production build passed; production-preview tablet suite passed 11/11 in 13.8s.
 Whitespace checks passed. Next: push this batched candidate, wait relevant exact-SHA
 CI, update etest once, verify live SHA.
+
+## Batched copy + tablet primary-color source qualification
+
+Final source candidate cc8edf230baae7514625496bbb28388c38dbff30 includes copy commit
+2c9f6a130018ef44c35c25ca589ea3fbe28d450d. Copy-only staging was superseded before
+deployment so both owner corrections ship together.
+
+Exact-candidate CI passed:
+- Review Gate 40651046035: all contract/model/lint/build steps, 22 lifecycle,
+  5 audio, 5 stats, 5 stateful-fuzz, 5 production-navigation and 125 final Learn
+  browser cases (8.3m). Shift behavior is covered by that final suite.
+- Mobile P0 40651046085: 74 mobile cases (3.4m), 11 production tablet cases
+  (12.8s), 57 account cases and 4 Pages-preview cases. Both new light/dark
+  Continue contrast cases passed in development and production CI stages.
+- Pages deployment/regression 40651046059; Mobile Menu Completion 40651046066;
+  Circle UI 40651046031; Published Dual-Site Explorer 40651046025.
+- Pages Explorer 40651046030 is advisory and still running, not claimed passed.
+
+Before promotion, main matched the candidate, etest was
+23ae0cd00bce07a3968493559bbf9be4b9e47de3 and master remained
+ad862b392c6a935ca49514fc9df146932aa02ed2. Compare confirmed ahead 3 / behind 0.
+Advanced edgeone-test once to cc8edf230baae7514625496bbb28388c38dbff30 with an
+expected-head lease and force=false. Live source verification is pending.
+
+
+## Latest final handoff — copy removal and tablet Continue ink
+
+Status: REVIEW. At 2026-10-28T07:55:45+00:00, the cache-busted HTTPS request to
+https://t.smhe.cn/source-commit.txt returned `cc8edf2` after earlier probes returned
+`23ae0cd`. Both owner followups are live on etest at the exact qualified source
+cc8edf230baae7514625496bbb28388c38dbff30. A documentation-only main followup
+records this result; no second Maker build or master promotion is needed.
+
+The sentence 单独按 Shift 切换 is absent from the application source; Shift keycap
+and behavior remain. Tablet primary actions now use normal theme text on a tinted
+surface with an accent border. The question about meaning-choice was answered
+from history: existing task type; the earlier refresh fix added its reachable
+先练词义 entry while audio is unavailable. No task/learning evidence changes.
+
+All applicable source regression gates above passed for the candidate. Advisory
+Pages Explorer and automatically triggered staging Cloud qualification workflows
+were still running at handoff and are not claimed as passed. Main documentation
+may supersede the advisory explorer under its normal concurrency policy. This is
+UI staging delivery, not full production qualification. Huawei/iPad native browser
+rendering remains untested. No blocking dependency; original Circle task untouched.

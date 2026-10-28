@@ -22,7 +22,7 @@ See report for exact runs, corrected initial CI failure and remaining hardware l
 
 ## Owner copy followup
 
-Status: IN_PROGRESS. Base ebf21bd2bfc87cde7f5d7b86ab111bba05f69e67.
+Status: REVIEW. Base ebf21bd2bfc87cde7f5d7b86ab111bba05f69e67.
 Remove the sentence 单独按 Shift 切换 from visible mode button text and titles;
 keep the Shift keycap, aria-keyshortcuts and shortcut behavior. This is a copy-only
 followup under the same CI-then-etest authorization. Inspect/lint/build and await
@@ -36,3 +36,6 @@ Use explicit paired text/surface colors for wide-tablet primary study/resume and
 home continue controls. Verify both themes, keycaps, hover and pause/resume at
 multiple landscape sizes, preserving the original refresh regression suite.
 Batch this with the copy deletion in one etest update after source CI.
+
+Latest handoff: both followups deployed together as cc8edf230baae7514625496bbb28388c38dbff30.
+Relevant source CI passed; live etest source-commit.txt verified cc8edf2.
