@@ -653,7 +653,9 @@ export default function MobileWordPractice({
         )}
         <div className="mobile-practice-title-row">
           <h1>{title}</h1>
-          <span className="mobile-practice-step">{phase === 'independent' ? '独立回忆' : phase === 'supported' ? '巩固' : '学习中'}</span>
+          <span className="mobile-practice-step">
+            {task === 'exposure' && !feedback ? '看完后继续' : phase === 'independent' ? '独立回忆' : phase === 'supported' ? '巩固' : '学习中'}
+          </span>
         </div>
       </header>
 

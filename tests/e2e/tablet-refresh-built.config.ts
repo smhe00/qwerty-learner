@@ -5,7 +5,7 @@ const port = process.env.QWERTY_TEST_PORT || '4195'
 const baseURL = 'http://127.0.0.1:' + port
 export default defineConfig({
   ...base,
-  testMatch: ['tablet-refresh.spec.ts'],
+  testMatch: ['tablet-refresh.spec.ts', 'mobile-action-visibility.spec.ts'],
   use: { ...base.use, baseURL },
   webServer: {
     command: 'yarn vite preview --host 127.0.0.1 --port ' + port,

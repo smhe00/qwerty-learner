@@ -353,14 +353,16 @@
   border-top: 1px solid var(--mobile-line);
   background: var(--mobile-surface);
 }
-.mobile-practice-primary {
+/* Outrank the shipped Tailwind [type=button] reset even when its lazy CSS
+   loads later. A transparent surface makes light-theme white labels vanish. */
+button.mobile-practice-primary {
   display: inline-flex;
   width: 100%;
   min-height: 68px;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid transparent;
+  border: 1px solid var(--mobile-accent);
   border-radius: 14px;
   background: var(--mobile-accent);
   color: var(--focus-accent-ink,#fff);
