@@ -72,3 +72,20 @@ Next: commit/push intended files to product/main with expected-SHA lease; await
 matching Review/Mobile/Pages checks, fast-forward edgeone-test once, verify live
 https://t.smhe.cn/source-commit.txt, record exact SHA/run results in a docs followup.
 No live Cloud safety qualification or real Huawei/iPad hardware claim is made.
+
+## CI correction checkpoint
+
+Initial source b0b95e613276d37c1d0ce5cd34dbbf4588664601 was NOT deployed.
+Mobile P0 40643720937 passed (72 mobile + 9 production tablet + 57 account +
+4 Pages-preview cases). Pages 40643720849, mobile menu, Circle UI, completion,
+real journey and dual-site explorer also passed. Review 40643720847 failed exactly
+one of 125 final browser cases: learn-shell-ui header alignment, delta 25.53125px
+versus <=4px for the dictionary. All new Shift cases passed in that run.
+Cause: widening the desktop mode button from 80px to 112px shifted its centered
+header relative to Typing. Restore the original 80px width; stack the normal-size
+mode name/icon above a 10px Shift hint inside the original 36px height. Mobile
+source, hook logic and data behavior are unchanged by this correction.
+Focused final desktop geometry, cross-mode alignment and Shift ownership: 3/3
+passed (17.3s); scoped ESLint and whitespace check passed. No test was weakened.
+Await the corrected exact-SHA Review and Pages runs before etest. Earlier Mobile
+results are scoped evidence for unchanged mobile source, not new-SHA CI results.
