@@ -210,7 +210,7 @@ function onStage(stage: WorkspaceBootStage): void {
   if (stage === 'locking') {
     gateUI('正在准备本地学习数据', '正在准备学习，请稍候…')
   } else if (stage === 'syncing') {
-    gateUI('正在同步学习记录', '正在检查并合并云端记录，请稍候…')
+    gateUI('正在核对学习记录', '正在核对云端版本，记录有变化时才同步。')
   } else if (stage === 'verifying-history') {
     gateUI('正在验证多设备历史', '正在分批验证历史记录；中断后可继续。')
   } else if (stage === 'recovering') {

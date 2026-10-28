@@ -18,7 +18,7 @@ export type AccountLoginV4Result =
   | { status: 'pull-staged'; detail: string; canContinue: false }
   | { status: 'pending'; detail: string; canContinue: boolean }
 
-export async function checkAccountV4AfterAuthentication(): Promise<AccountLoginV4Result> {
+export async function checkAccountV4AfterAuthentication(options: { startup?: boolean } = {}): Promise<AccountLoginV4Result> {
   if (!learningEventSyncEnabled() || import.meta.env.VITE_S2_ENABLE_UNIFIED_SYNC !== 'true') {
     recordLearningSyncDiagnostic({ stage: 'v4-check', status: 'disabled' })
     return { status: 'pending', canContinue: true, detail: '此站点未启用云同步，学习记录保存在本机。' }
@@ -38,7 +38,7 @@ export async function checkAccountV4AfterAuthentication(): Promise<AccountLoginV
       executePreMountManualSyncV2({
         mode: 'isolated',
         registry,
-      }),
+      }, options),
     )
     recordLearningSyncDiagnostic({ stage: 'v4-check', status: outcome.status, code: 'reason' in outcome ? outcome.reason : 'none' })
     if (outcome.status === 'noop') {

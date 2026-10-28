@@ -259,7 +259,7 @@ export async function prepareGuardedWorkspaceBoot(
     ) {
       report(onStage, 'syncing')
       const { checkAccountV4AfterAuthentication } = await import('./account-login-v4-check')
-      const result = await checkAccountV4AfterAuthentication()
+      const result = await checkAccountV4AfterAuthentication({ startup: true })
       fullDataSynced = result.status === 'noop' || result.status === 'pushed'
       if (result.status === 'pending') networkSettled = false
       // Fixed status only: no identity, token, payload or private error.

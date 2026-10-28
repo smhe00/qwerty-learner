@@ -30,6 +30,16 @@ export async function verifyHistoryPage({ accountId, heads, cursor, storage, rea
       return fail('verification-checkpoint-invalid')
     }
     state = saved
+    if (state.headKey === headKey && state.pending.length === 0) {
+      // A fresh authenticated request already loaded and hash-validated this
+      // server-owned, complete checkpoint. Exact unchanged heads need no Blob
+      // rewrite or second readback. Never trust a client digest/progress flag.
+      await assertOwner()
+      return { ...flags, verified: true, reason: 'witnessed-heads-verified',
+        cursor, receiptsRead: state.receipts.length, totalReceipts: heads.reduce((n, h) => n + h.sequence, 0),
+        uniqueAttemptCount: state.attempts.length, digestAlgorithm: 'attempt-sha256-v1',
+        evidenceSha256: sha(canonical(state.attempts)) }
+    }
     if (state.headKey !== headKey) {
       // Only append-only extensions may reuse evidence. New links are verified
       // down to an exact prior receipt; a fork at any old sequence still blocks.

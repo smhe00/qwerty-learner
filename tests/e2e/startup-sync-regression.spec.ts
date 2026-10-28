@@ -341,3 +341,211 @@ test('real M4 followed by same-local six-table union catches cloud up without a 
   expect(result.fingerprint).toBe(remote.localFingerprint)
   expect(writes).toBe(1)
 })
+
+async function unchangedCloud(page: Page) {
+  const cloud = { meta: { ...emptyMeta } as any, payload: Buffer.alloc(0), calls: [] as string[], eventBatches: [] as string[], writes: 0, revoked: false }
+  await page.route(origin + '/api/**', async route => {
+    const request = route.request(), path = new URL(request.url()).pathname
+    cloud.calls.push(request.method() + ' ' + path)
+    if (cloud.revoked) return route.fulfill({ status: 401, json: { ok: false, error: { code: 'session_revoked', message: 'revoked' } } })
+    if (path === '/api/sync/v2/meta') return route.fulfill({ json: cloud.meta })
+    if (path === '/api/sync/v2/binary/direct') {
+      cloud.writes++
+      cloud.payload = request.postDataBuffer()!
+      cloud.meta = committedMeta(request)
+      return route.fulfill({ json: cloud.meta })
+    }
+    if (path === '/api/sync/events/v2/observed') return route.fulfill({ json: {
+      ok: true, observed: [], observedCount: 0, visibleForks: [], visibleGaps: [],
+      truncated: false, listingIsAuthoritative: false, convergenceComplete: false,
+    } })
+    if (path === '/api/sync/v2/binary/manifest') return route.fulfill({ json: {
+      ...cloud.meta, payloadEncoding: 'binary', count: 1, chunkBytes: 512 * 1024, partSha256s: [cloud.meta.payloadSha256],
+    } })
+    if (path === '/api/sync/v2/binary/part') return route.fulfill({ contentType: 'application/octet-stream', body: cloud.payload })
+    if (path === '/api/sync/events/v2' && request.method() === 'POST') cloud.eventBatches.push(request.postData()!)
+    return route.abort('failed')
+  })
+  return cloud
+}
+
+async function localProof(page: Page) {
+  return page.evaluate(identity => (window as any).__startupRegression.startupLocalProofCache.read(identity.accountId), owner)
+}
+async function clearPerf(page: Page) {
+  await page.evaluate(() => sessionStorage.removeItem('qwerty.perf-diagnostics.v1'))
+}
+async function usedLocalProof(page: Page) {
+  return page.evaluate(() => JSON.parse(sessionStorage.getItem('qwerty.perf-diagnostics.v1') || '[]')
+    .some((sample: any) => sample.stage === 'startup-local-current' && sample.outcome === 'ok'))
+}
+
+for (const width of [390, 1440]) test('unchanged reopened account at width ' + width + ' uses fresh metadata and local proof without exporting or transferring data', async ({ page, baseURL }) => {
+  await page.setViewportSize({ width, height: 844 })
+  await ready(page, baseURL!)
+  const cloud = await unchangedCloud(page)
+  const first = await boot(page)
+  expect(first.mounted).toBe(true); expect(cloud.writes).toBe(1)
+  expect(await localProof(page)).not.toBeNull()
+  await navigate(page)
+  await clearPerf(page)
+  cloud.calls.length = 0
+  await page.evaluate(() => {
+    const h = (window as any).__backupHarness, original = h.db.export.bind(h.db)
+    ;(window as any).__exportCalls = 0
+    h.db.export = (...args: any[]) => { (window as any).__exportCalls++; return original(...args) }
+  })
+  const second = await boot(page)
+  expect(second.mounted).toBe(true); expect(second.fingerprint).toBe(first.fingerprint)
+  expect(await usedLocalProof(page)).toBe(true)
+  // boot() independently exports once AFTER mounting to verify conservation.
+  expect(await page.evaluate(() => (window as any).__exportCalls)).toBe(1)
+  expect(cloud.calls).toEqual(['GET /api/sync/v2/meta', 'GET /api/sync/events/v2/observed'])
+  expect(cloud.writes).toBe(1); expect(second.pending).toBe(false)
+})
+
+test('native IDB same-count record edit invalidates cached startup and uploads the updated content once', async ({ page, baseURL }) => {
+  await ready(page, baseURL!)
+  const cloud = await unchangedCloud(page)
+  await boot(page)
+  const before = await localProof(page)
+  await navigate(page)
+  await page.evaluate(() => new Promise<void>((resolve, reject) => {
+    const open = indexedDB.open('RecordDB')
+    open.onerror = () => reject(open.error)
+    open.onsuccess = () => {
+      const db = open.result, tx = db.transaction('wordRecords', 'readwrite'), store = tx.objectStore('wordRecords')
+      const request = store.openCursor()
+      request.onsuccess = () => { const cursor = request.result!; cursor.update({ ...cursor.value, wrongCount: 7 }) }
+      tx.oncomplete = () => { db.close(); resolve() }
+      tx.onabort = () => { db.close(); reject(tx.error) }
+    }
+  }))
+  await clearPerf(page)
+  const result = await boot(page)
+  expect(result.mounted).toBe(true); expect(await usedLocalProof(page)).toBe(false)
+  expect(cloud.writes).toBe(2); expect(result.baseline.baseRevision).toBe(2)
+  expect((await localProof(page)).localDigest).not.toBe(before.localDigest)
+  expect(await page.evaluate(async () => {
+    const rows = await (window as any).__backupHarness.db.wordRecords.toCollection().raw().toArray()
+    return { count: rows.length, wrongCount: rows[0].wrongCount }
+  })).toEqual({ count: 1, wrongCount: 7 })
+})
+
+for (const kind of ['settings', 'daily-session']) test(kind + ' storage changes cannot hide behind unchanged record counts', async ({ page, baseURL }) => {
+  await ready(page, baseURL!)
+  const cloud = await unchangedCloud(page)
+  await boot(page)
+  const before = await localProof(page)
+  await page.evaluate(kind => {
+    if (kind === 'settings') localStorage.setItem('typingTransVisible', 'false')
+    else localStorage.setItem('qwerty.learn.dailySession.v1.cet4', JSON.stringify({
+      version: 1, sessionId: 'cet4:2026-10-29:1', dict: 'cet4', dateKey: '2026-10-29',
+      startedAt: 100, status: 'active', dailyNewTarget: 32, plannedNewWords: 4,
+      plannedReviewWords: ['backup-fsrs-word'], carryOverAcquisitionWords: [],
+      accumulatedActiveSeconds: 190, completedBlockIds: ['block-1'], blockCount: 1,
+    }))
+  }, kind)
+  await navigate(page)
+  await clearPerf(page)
+  const result = await boot(page)
+  expect(result.mounted).toBe(true); expect(await usedLocalProof(page)).toBe(false)
+  expect(cloud.writes).toBe(2); expect((await localProof(page)).localDigest).not.toBe(before.localDigest)
+})
+
+test('damaged proof falls back to full comparison without uploading identical records', async ({ page, baseURL }) => {
+  await ready(page, baseURL!)
+  const cloud = await unchangedCloud(page)
+  await boot(page)
+  await page.evaluate(async identity => {
+    const cache = (window as any).__startupRegression.startupLocalProofCache
+    const saved = await cache.read(identity.accountId)
+    await cache.save(identity.accountId, { ...saved, checksum: '0'.repeat(64) })
+  }, owner)
+  await navigate(page); await clearPerf(page)
+  expect((await boot(page)).mounted).toBe(true)
+  expect(await usedLocalProof(page)).toBe(false); expect(cloud.writes).toBe(1)
+  expect((await localProof(page)).checksum).not.toBe('0'.repeat(64))
+})
+
+test('new remote revision downloads through the existing journal and reopens with all data retained', async ({ page, baseURL }) => {
+  await ready(page, baseURL!)
+  const cloud = await unchangedCloud(page)
+  await boot(page)
+  const remote = await page.evaluate(async identity => {
+    const h = (window as any).__backupHarness, r = (window as any).__startupRegression
+    const snapshot = await h.captureWorkingWorkspaceV4(identity)
+    snapshot.workspaceData.navigation.currentChapter = 11
+    const payload = await r.payloadV4(snapshot)
+    return { fingerprint: await h.workspaceFingerprintV4(snapshot), bytes: Array.from(payload.bytes), sha: payload.checksum }
+  }, owner)
+  cloud.payload = Buffer.from(remote.bytes)
+  cloud.meta = { ...cloud.meta, revision: 2, logicalFingerprint: remote.fingerprint,
+    payloadSha256: remote.sha, sizeBytes: cloud.payload.length }
+  await navigate(page); await clearPerf(page)
+  cloud.calls.length = 0
+  const staged = await boot(page)
+  expect(staged.mounted).toBe(false); expect(staged.error).toContain('S2 Pull staged')
+  expect(staged.pending).toBe(true); expect(await usedLocalProof(page)).toBe(false)
+  expect(cloud.calls).toEqual(['GET /api/sync/v2/meta', 'GET /api/sync/v2/binary/manifest',
+    'GET /api/sync/v2/binary/part', 'GET /api/sync/v2/meta'])
+  await navigate(page)
+  expect((await boot(page)).error).toContain('S2 Pull recovery completed')
+  await navigate(page)
+  const resumed = await boot(page)
+  expect(resumed.mounted).toBe(true); expect(resumed.pending).toBe(false)
+  expect(resumed.fingerprint).toBe(remote.fingerprint); expect(resumed.baseline.baseRevision).toBe(2)
+  expect(cloud.writes).toBe(1)
+})
+
+test('fresh session rejection cannot be masked by a cached local proof', async ({ page, baseURL }) => {
+  await ready(page, baseURL!)
+  const cloud = await unchangedCloud(page)
+  const first = await boot(page)
+  await navigate(page); await clearPerf(page)
+  cloud.revoked = true
+  const rejected = await boot(page)
+  expect(await usedLocalProof(page)).toBe(false)
+  expect(await page.evaluate(() => sessionStorage.getItem('qwerty.s2.startup-check.v1'))).toBe('pending')
+  expect(rejected.note).toContain('尚未确认')
+  expect(rejected.fingerprint).toBe(first.fingerprint); expect(cloud.writes).toBe(1)
+})
+
+test('completed manual sync refreshes local proof so the next opening avoids a full export', async ({ page, baseURL }) => {
+  await ready(page, baseURL!)
+  const cloud = await unchangedCloud(page)
+  const manual = await page.evaluate(async () => {
+    const h = (window as any).__backupHarness, lease = await h.acquireWorkspaceWriterLease()
+    try {
+      return await h.executePreMountManualSyncV2({ mode: 'isolated', registry: await h.workspaceRegistryPort.read() })
+    } finally { lease.release() }
+  })
+  expect(manual.status).toBe('pushed'); expect(await localProof(page)).not.toBeNull()
+  await navigate(page); await clearPerf(page)
+  expect((await boot(page)).mounted).toBe(true)
+  expect(await usedLocalProof(page)).toBe(true); expect(cloud.writes).toBe(1)
+})
+
+test('current V4 proof retains and retries the identical outstanding immutable-event batch', async ({ page, baseURL }) => {
+  await ready(page, baseURL!)
+  const cloud = await unchangedCloud(page)
+  await page.evaluate(async () => {
+    await (window as any).__backupHarness.db.wordRecords.add({
+      attemptId: '00000000-0000-4000-8000-000000000099', word: 'pending', dict: 'cet4', chapter: -1,
+      sourceMode: 'learn', learnItemKind: 'review', timeStamp: 1800000000, timing: [], wrongCount: 0, mistakes: {},
+    })
+  })
+  const first = await boot(page)
+  expect(first.mounted).toBe(true); expect(await localProof(page)).not.toBeNull()
+  expect(cloud.calls).toContain('POST /api/sync/events/v2')
+  expect(cloud.writes).toBe(1)
+  cloud.calls.length = 0
+  await navigate(page); await clearPerf(page)
+  const second = await boot(page)
+  expect(second.mounted).toBe(true); expect(await usedLocalProof(page)).toBe(true)
+  expect(second.fingerprint).toBe(first.fingerprint)
+  expect(cloud.calls).toContain('POST /api/sync/events/v2')
+  expect(cloud.eventBatches).toHaveLength(2)
+  expect(cloud.eventBatches[1]).toBe(cloud.eventBatches[0])
+  expect(cloud.writes).toBe(1)
+})

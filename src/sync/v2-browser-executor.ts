@@ -9,8 +9,8 @@ import { getSyncV2Meta, getSyncV2MetaWithBinaryMigration,
   getSyncV2Snapshot, getSyncV2SnapshotBinary, putSyncV2Binary } from './api'
 import { loadAuth } from './auth'
 import { compareAndSwapSyncV2Baseline, loadSyncV2Baseline } from './v2-baseline'
-import { executeManualSyncV2 } from './v2-manual-executor'
 import type { S2ExecutionResult } from './v2-manual-executor'
+import type { SyncV2ExecutionPort } from './v2-manual-executor'
 import { syncV2PullJournalPort } from './v2-pull-journal'
 import { assertWorkspaceMigrationWitness } from './workspace-storage-witness'
 import { captureWorkingWorkspaceV4 } from './workspace-v4-browser'
@@ -20,6 +20,7 @@ import { flushReviewRecordWrites } from '@/utils/db/review-record-writer'
 
 export async function executePreMountManualSyncV2(
   boot: Pick<GuardedWorkspaceBoot, 'mode' | 'registry'>,
+  options: { startup?: boolean } = {},
 ): Promise<S2ExecutionResult> {
   const owner = boot.registry.active
   if (boot.mode !== 'isolated' || boot.registry.pending ||
@@ -47,7 +48,7 @@ export async function executePreMountManualSyncV2(
   }
   await recheck()
   const identity = { kind: 'account' as const, accountId }
-  return executeManualSyncV2({
+  const port: SyncV2ExecutionPort = {
     accountId,
     registryGeneration: boot.registry.generation,
     assertQuiescentOwner: recheck,
@@ -81,5 +82,14 @@ export async function executePreMountManualSyncV2(
         await archiveAutomaticV4Merge(accountId, boot.registry.generation, local, remote, candidate)
       },
     },
-  })
+  }
+  const { executeStartupSyncV2 } = await import('./startup-sync-v2')
+  const { readStartupLocalDigest, startupLocalProofCache } = await import('./startup-local-proof-browser')
+  // Manual/Block completion still performs the complete sync, then refreshes
+  // the proof so the next opening can use the records just synchronized.
+  return executeStartupSyncV2(port, {
+    readDigest: readStartupLocalDigest,
+    read: () => startupLocalProofCache.read(accountId),
+    save: proof => startupLocalProofCache.save(accountId, proof),
+  }, { allowReuse: options.startup === true })
 }

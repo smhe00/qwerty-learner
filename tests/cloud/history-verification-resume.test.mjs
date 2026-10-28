@@ -84,6 +84,39 @@ test('server pages and client reloads resume exactly, full digest permits unchan
   assert.equal(f.reads(), 20, 'fresh authenticated immutable checkpoint replaces full chain reads')
 })
 
+test('complete unchanged checkpoint performs one authenticated read and no Blob rewrite or batch reads', async () => {
+  const f = await fixture(3)
+  const first = await f.service.verifyWitnessedChainSet(f.account.token, { heads: f.heads, segmented: true })
+  assert.equal(first.verified, true)
+  const originalRead = f.storage.getHistoryVerification.bind(f.storage)
+  let checkpointReads = 0, writes = 0
+  f.storage.getHistoryVerification = (...args) => { checkpointReads++; return originalRead(...args) }
+  f.storage.putHistoryVerification = async () => { writes++; throw Error('unchanged checkpoint must not be rewritten') }
+  const before = f.reads()
+  const next = await f.service.verifyWitnessedChainSet(f.account.token, { heads: f.heads, segmented: true, cursor: first.cursor })
+  assert.deepEqual(next, first)
+  assert.equal(checkpointReads, 1); assert.equal(writes, 0); assert.equal(f.reads(), before)
+  await f.service.login('history_resume', 'Password123', device(1))
+  await assert.rejects(f.service.verifyWitnessedChainSet(f.account.token, { heads: f.heads, segmented: true, cursor: first.cursor }),
+    e => e.code === 'session_revoked')
+  assert.equal(checkpointReads, 1, 'revoked session cannot even access the completed checkpoint')
+})
+
+test('extending a complete checkpoint still verifies and persists the new chain prefix', async () => {
+  const f = await fixture(3)
+  const first = await f.service.verifyWitnessedChainSet(f.account.token, { heads: f.heads, segmented: true })
+  const previous = f.heads[0]
+  f.heads[0] = receipt(await f.service.publishChainedLearningBatch(f.account.token, { deviceId: device(1), batchId: id(4),
+    sequence: 4, previous: { batchId: previous.batchId, sha256: previous.sha256 }, events: [row(4)] }))
+  let writes = 0
+  const put = f.storage.putHistoryVerification.bind(f.storage)
+  f.storage.putHistoryVerification = (...args) => { writes++; return put(...args) }
+  const before = f.reads()
+  const next = await f.service.verifyWitnessedChainSet(f.account.token, { heads: f.heads, segmented: true, cursor: first.cursor })
+  assert.equal(next.verified, true); assert.equal(next.uniqueAttemptCount, 4)
+  assert.notEqual(next.cursor, first.cursor); assert.equal(writes, 1); assert.equal(f.reads() - before, 1)
+})
+
 test('downloads resume across documents, but cached corruption cannot pass the final independent digest', async () => {
   const f = await fixture(20), cache = memory()
   assert.equal((await (await client(f, cache)).run([])).status, 'pending')
