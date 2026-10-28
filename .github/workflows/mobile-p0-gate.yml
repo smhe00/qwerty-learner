@@ -9,6 +9,7 @@ on:
       - 'src/store/learnInputMode.ts'
       - 'src/pages/Typing/store/mobileLearnInput.ts'
       - 'tests/e2e/learn-input-mode-harness.ts'
+      - 'tests/e2e/account-continuity.spec.ts'
       - 'index.html'
       - 'public/404.html'
       - 'scripts/emit-edgeone-spa-entries.mjs'

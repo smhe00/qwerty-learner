@@ -99,3 +99,17 @@ Learn Real Journey, Learn Completion Journey, Mobile Menu Completion, Circle UI,
 and Private Feedback UI passed. Review and workspace gates were still running
 at this checkpoint; their results must not be assumed. The follow-up commit is
 now the candidate; wait for its own applicable exact-SHA checks before etest.
+
+## Workspace continuity follow-up
+
+Test-only spelling setup correction: 92fcffbac605da9f64580834015f14bba19e5310.
+Initial implementation-SHA S1 Workspace Browser Gate 40636682569 completed with
+152 passed / 1 failed: account-continuity expected /learn after expanding explicit
+/mobile home. That expectation predates the authorized tablet entry fix in
+bcb7a3805d6df096cebd17b97007f64eea991a6b, which deliberately retains /mobile.
+Updated only this route assertion to /mobile plus visible menu/account controls;
+kept unchanged document timeOrigin and exact learning-row equality assertions.
+Focused workspace browser rerun passed 1/1 (7.6s). No auth or data implementation
+changed. Account continuity test paths now trigger mobile/review gates as well as
+S1, so its responsive-shell contract is checked consistently on the same candidate.
+The next test/report-only commit is the final candidate for exact-SHA CI and etest.

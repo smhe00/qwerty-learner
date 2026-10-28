@@ -141,7 +141,11 @@ test('responsive home and data navigation keep the document and learning history
   await expect(page.locator('[data-mobile-data]')).toBeVisible()
   await page.getByRole('link', { name: '返回首页', exact: true }).click()
   await page.setViewportSize({ width: 1280, height: 800 })
-  await expect(page).toHaveURL(/\/learn$/)
+  // Explicit touch home remains mounted on rotation/unfolding; width alone
+  // must not send a keyboard-free tablet back to desktop Learn.
+  await expect(page).toHaveURL(/\/mobile$/)
+  await expect(page.locator('[data-mobile-menu]')).toBeVisible()
+  await expect(page.locator('[data-mobile-account-entry]')).toBeVisible()
   expect(await page.evaluate(() => performance.timeOrigin)).toBe(origin)
   await harness(page)
   expect(await page.evaluate(() => (window as any).__backupHarness.db.wordRecords.toArray())).toEqual(before)
