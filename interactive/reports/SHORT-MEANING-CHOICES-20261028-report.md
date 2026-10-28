@@ -49,3 +49,16 @@ The old mobile successful-play helper replaced HTMLMediaElement.play() but allow
 The pool filter detects literal normalized shared senses, not all semantic synonyms. It does not certify arbitrary distinct Chinese strings as mutually exclusive meanings. Future dictionary additions should continue semantic review. No new real Huawei/iPad/HarmonyOS device verification is claimed; responsive behavior was tested in Chromium emulation.
 
 Upstream was fetched after validation and remained at the execution base. Publish source plus this report through a single expected-SHA, force=false update of product/main. CI will run normally; local validation above is not a claim that remote CI has already passed. No staging/production release is part of this handoff.
+
+## Owner-authorized etest deployment — 2026-10-28
+
+The owner subsequently requested “部署etest”, authorizing this staging promotion.
+Promoted edgeone-test from cc8edf230baae7514625496bbb28388c38dbff30 to exact candidate d662b2b3203edfcdef3015db63bdede45fae8e50 with expected-SHA, force=false. Verified ancestry master -> previous etest -> candidate, with product/main at candidate. Master remains ad862b392c6a935ca49514fc9df146932aa02ed2.
+
+All 10 candidate product/main workflows completed successfully before promotion: Review Gate 40673964848, Mobile P0 Gate 40673964745, Mobile Menu Completion 40673964787, Architecture Gate 40673965071, Learn Real Journey Gate 40673964646, Explorer V3 Mutation Detection Audit 40673964674, Learn Completion Journey 40673964929, Pages Explorer Agent 40673964680, Deployment to GitHub Pages 40673965162, Published Dual-Site Explorer 40673964847. No cloud/auth/storage source changed in this candidate; Cloud Sync Gate was not path-triggered.
+
+At approximately 19:29 Asia/Shanghai, scripts/verify-edgeone-source.mjs passed against the cache-busted https://t.smhe.cn/source-commit.txt marker d662b2b. Branch EdgeOne Cloud E2E run 40679501629 independently passed its deployed-source check in both live-browser-cloud and real-v4-transport. Read-only homepage and /api/health requests returned HTTP 200.
+
+The live /dicts/ShanghaiZhongkao2027.json returned HTTP 200 and matched repository bytes exactly: 2872 entries, 2865 nonempty shortMeaning values, 7 deliberately empty values; SHA-256 14959d6b5f98b8e44377cfc8324d30fc6fc15a697f8dc14bf4249f7849b86464. The source and dictionary changes are deployed.
+
+Automatically triggered staging cloud journeys are still running at this delivery checkpoint; full Cloud/Blob release qualification is not claimed. No master promotion. This documentation-only followup is stored on product/main without another Maker deployment; etest stays pinned to d662b2b. Original Circle CURRENT_TASK remains untouched.
