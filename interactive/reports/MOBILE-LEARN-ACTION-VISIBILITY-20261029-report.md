@@ -31,3 +31,20 @@ Read the deployed etest app-5f9ab209.js dependencies: app-a7385d16.css contains 
 ## Limits / handoff
 
 Chromium touch emulation only; no physical phone, Huawei, HarmonyOS or Safari run. No cloud behavior changed or real account data used. No full Cloud suite required for CSS and status-copy changes. Etest remains the prior deployed 44ece41 candidate; this development fix requires a separate requested staging promotion. CURRENT_TASK and the Circle executor were left untouched. Source SHA above plus this report commit provide a resumable checkpoint.
+
+## Introduction audit requested by owner (2026-10-29)
+
+Verified both live source markers and remote refs: master ad862b392c6a935ca49514fc9df146932aa02ed2; etest 44ece41c32f5f1f61f0ad6a29c9b4cac5f2a229a. There are 26 intervening commits, including completion UI, tablet/input controls, short meanings and startup optimization. No yarn.lock, package.json or vite.config.ts change between these deployed versions.
+
+The introducing commit is **9017ac2f944760d94f64b878384f5e4d058b8e10**, authored 2026-10-27 23:37:47 +08:00, `fix(ui): preserve Learn completion during sync and copy feedback`. It adds `import '../index.css'` to `src/sync/learn-block-sync-ui.ts` to reuse completion presentation while the application is unmounted during sync. The additional import makes global CSS (including Tailwind reset) a shared lazy chunk, changing stylesheet order throughout the application; the button component need not change to regress.
+
+Live artifact evidence:
+- master app-62877a80.js loads app-63128139.css with reset offset 4616 and primary button offset 117172 in the same CSS file: button wins.
+- etest app-5f9ab209.js loads app-a7385d16.css containing primary styles and separate index-34cd7a14.css containing the competing reset: the later equal-specificity reset wins on phone buttons.
+
+Built the exact parent 37631f68be481635ab0f4987abae526f67260cfc and exact introducing commit in isolated detached worktrees using the same Tailwind 3.3.2 installation. Chromium 390x844 touch tests seeded the same anonymous exposure fixture, entered from mobile home, resumed the old paused state and measured the footer Continue button:
+- Parent: white text, opaque rgb(70,95,176) background, tap advances.
+- Introducing commit: white text, rgba(0,0,0,0) background, tap still advances.
+Both builds PASS (18.65s and 19.23s Vite); differential browser probe PASS with the expected before/after distinction. Initial probe needed correction for the old version's pause overlay (two Continue controls), with no product source modification.
+
+This predates the tablet work and the recent startup-sync optimization. The tablet-specific cc8edf2 palette later masked the issue only at tablet widths. Earlier functional visibility/click assertions did not check painted contrast; new production checks cover both opaque backgrounds and contrast. This audit changes documentation only; neither staging nor production refs moved.
