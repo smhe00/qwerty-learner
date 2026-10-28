@@ -1,3 +1,5 @@
+import fs from 'node:fs'
+import { chooseLearnInputMode } from './learn-input-mode-harness'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { reviewWords, seedAcquisitionSession } from './review-flow-harness'
@@ -8,6 +10,9 @@ const card = (page: Page) => page.locator('[data-mobile-word-practice]')
 const field = (page: Page) => card(page).getByRole('textbox', { name: '独立拼写单词' })
 
 async function openStudy(page: Page, id: number, phase: 'exposure' | 'independent' = 'independent') {
+  // Keep mocked playback independent of external preload/error responses.
+  const fixture = fs.readFileSync('public/sounds/key-sound/Alpacas.mp3')
+  await page.route('**/dictvoice?**', (route) => route.fulfill({ contentType: 'audio/mpeg', body: fixture }))
   await page.addInitScript(() => {
     HTMLMediaElement.prototype.play = function () {
       const win = window as Window & { __keyboardAudioCalls?: number }
@@ -46,6 +51,8 @@ test('first trusted letter enters spelling without losing or doubling it, then t
   await page.keyboard.press(first[0])
   await expect(field(page)).toBeFocused()
   await expect(field(page)).toHaveValue(first[0])
+  await expect(card(page).locator('[data-input-mode]')).toHaveAttribute('data-input-mode', 'auto')
+  expect(await page.evaluate(() => localStorage.getItem('learnInputMode'))).toBeNull()
   await expect(card(page).locator('[data-mobile-keyboard-hint]')).toContainText('键盘输入')
   await page.keyboard.type(first.slice(1))
   await page.keyboard.press('Enter')
@@ -61,15 +68,64 @@ test('first trusted letter enters spelling without losing or doubling it, then t
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('reviewModeInfo') || '{}').reviewRecord.id)).toBe(sessionId)
 })
 
+test('manual keyboard choice persists through refresh; returning to auto resets spelling but keeps keyboard cues', async ({ page }) => {
+  await openStudy(page, 950109)
+  const word = await card(page).getAttribute('data-mobile-word')
+  await chooseLearnInputMode(page, 'keyboard')
+  await page.reload()
+  await expect(card(page).locator('[data-input-mode]')).toHaveAttribute('data-input-mode', 'keyboard')
+  await expect(field(page)).toBeVisible()
+  await expect(card(page)).toHaveAttribute('data-mobile-word', word!)
+  // Stay in the editor; Tab from its last focus stop can enter browser chrome
+  // and correctly pause the study on window blur.
+  await field(page).focus()
+  await page.keyboard.press('ArrowRight')
+  await chooseLearnInputMode(page, 'auto')
+  await expect(card(page)).toHaveAttribute('data-mobile-task', 'recall')
+  await expect(card(page).locator('[data-desktop-shortcuts]')).toBeVisible()
+  await chooseLearnInputMode(page, 'touch')
+  await page.reload()
+  await expect(card(page).locator('[data-input-mode]')).toHaveAttribute('data-input-mode', 'touch')
+  await expect(field(page)).toHaveCount(0)
+  await expect(card(page).locator('[data-desktop-shortcuts]')).toHaveCount(0)
+  await page.keyboard.press('ArrowRight')
+  await expect(card(page).locator('[data-desktop-shortcuts]')).toBeVisible()
+  await expect(field(page)).toHaveCount(0)
+  expect(await records(page)).toHaveLength(0)
+})
+
+for (const viewport of [{ width: 390, height: 844 }, { width: 1024, height: 600 }]) {
+  test(`a key on the menu enables persistent cues in the ${viewport.width}px study layout without submitting`, async ({ page }) => {
+    await page.setViewportSize(viewport)
+    await seedAcquisitionSession(page, reviewWords, 950110 + viewport.width, 'independent', 4)
+    await page.goto('/mobile')
+    await expect(page.locator('[data-mobile-menu]')).toBeVisible()
+    await page.keyboard.press('Tab')
+    await page.getByRole('link', { name: /^(开始|继续)手机学习$/ }).tap()
+    await expect(card(page)).toHaveAttribute('data-keyboard-practice', 'true')
+    await expect(card(page).locator('[data-desktop-shortcuts]')).toBeVisible()
+    await expect(card(page).locator('[data-mobile-grade="hard"] kbd')).toHaveText('S')
+    await expect(field(page)).toHaveCount(0)
+    await chooseLearnInputMode(page, 'touch')
+    await page.setViewportSize({ width: 1024, height: 400 })
+    await expect(card(page).locator('[data-desktop-shortcuts]')).toBeVisible()
+    await expect(card(page)).toHaveAttribute('data-mobile-task', 'recall')
+    expect(await records(page)).toHaveLength(0)
+    await page.keyboard.press('s')
+    await expect.poll(async () => (await records(page)).length).toBe(1)
+    expect((await records(page))[0].reviewEvidence?.memoryGrade).toBe('hard')
+  })
+}
+
 test('touch default stays unfocused; explicit spelling and touch switch preserve the current word', async ({ page }) => {
   await openStudy(page, 950102)
   const word = await card(page).getAttribute('data-mobile-word')
   await expect(field(page)).toHaveCount(0)
   await expect(card(page).locator('[data-desktop-shortcuts]')).toHaveCount(0)
-  await card(page).getByRole('button', { name: '学习方式：轻触', exact: true }).tap()
+  await chooseLearnInputMode(page, 'keyboard')
   await expect(field(page)).toBeFocused()
   await field(page).fill('ca')
-  await card(page).getByRole('button', { name: '学习方式：拼写', exact: true }).tap()
+  await chooseLearnInputMode(page, 'touch')
   await expect(card(page)).toHaveAttribute('data-mobile-task', 'recall')
   await expect(field(page)).toHaveCount(0)
   await expect(card(page)).toHaveAttribute('data-mobile-word', word!)
@@ -109,8 +165,7 @@ test('exposure defers spelling and uses existing keyboard actions without manufa
 test('explicit touch preference wins; first key enables cues and second key rates normally', async ({ page }) => {
   await openStudy(page, 950105)
   const mode = card(page).locator('[data-mobile-input-preference]')
-  await mode.tap()
-  await mode.tap()
+  await chooseLearnInputMode(page, 'touch')
   await expect(mode).toHaveAttribute('data-mobile-input-preference', 'tap-recall')
   await page.keyboard.press('a')
   expect(await records(page)).toHaveLength(0)

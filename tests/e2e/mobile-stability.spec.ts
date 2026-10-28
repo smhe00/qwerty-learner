@@ -1,3 +1,4 @@
+import { chooseLearnInputMode } from './learn-input-mode-harness'
 import { readReviewModeInfo, reviewWords, seedAcquisitionSession } from './review-flow-harness'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
@@ -92,7 +93,7 @@ for (const grade of ['again', 'hard']) {
 
 test('browser back and menu preserve partial spelling in the same document', async ({ page }) => {
   await open(page, 970203)
-  await card(page).getByRole('button', { name: '学习方式：轻触', exact: true }).click()
+  await chooseLearnInputMode(page, 'keyboard')
   await input(page).fill('ca')
   const original = await readReviewModeInfo(page)
   await page.getByRole('button', { name: '返回主菜单' }).click()
@@ -159,7 +160,7 @@ test('a slow local write completes into the restored card, without duplicate sub
 
 test('pagehide without document destruction keeps input and feedback paused until explicit resume', async ({ page }) => {
   await open(page, 970207)
-  await card(page).getByRole('button', { name: '学习方式：轻触', exact: true }).click()
+  await chooseLearnInputMode(page, 'keyboard')
   await input(page).fill('ca')
   await page.evaluate(() => {
     dispatchEvent(new PageTransitionEvent('pagehide'))
@@ -240,7 +241,7 @@ test('soft keyboard viewport height and offset keep spelling controls visible wh
     Object.defineProperty(window, 'visualViewport', { configurable: true, value: viewport })
   })
   await open(page, 970210)
-  await card(page).getByRole('button', { name: '学习方式：轻触', exact: true }).click()
+  await chooseLearnInputMode(page, 'keyboard')
   await input(page).fill('ca')
   for (const [height, top] of [
     [400, 0],
@@ -275,7 +276,7 @@ test('soft keyboard viewport height and offset keep spelling controls visible wh
 
 test('IME Enter is not a spelling confirmation; the following deliberate Enter saves once', async ({ page }) => {
   await open(page, 970211)
-  await card(page).getByRole('button', { name: '学习方式：轻触', exact: true }).click()
+  await chooseLearnInputMode(page, 'keyboard')
   await input(page).fill((await card(page).getAttribute('data-mobile-word'))!)
   await input(page).dispatchEvent('compositionstart')
   await input(page).press('Enter')
@@ -342,7 +343,7 @@ test('the next word starts fresh and retains its own draft after returning to th
   await expect(card(page)).not.toHaveAttribute('data-mobile-word', first!)
   await expect(card(page).locator('[data-mobile-feedback]')).toHaveCount(0)
   const second = await card(page).getAttribute('data-mobile-word')
-  await card(page).getByRole('button', { name: '学习方式：轻触', exact: true }).click()
+  await chooseLearnInputMode(page, 'keyboard')
   await input(page).fill(second!.slice(0, 2))
   await menuAndResume(page)
   await expect(card(page)).toHaveAttribute('data-mobile-word', second!)

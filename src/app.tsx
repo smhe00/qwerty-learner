@@ -1,4 +1,5 @@
 import Loading from './components/Loading'
+import { useLearnKeyboardIntent } from '@/hooks/useLearnKeyboardIntent'
 import NavigationOverlay, { AUXILIARY_PATHS, getAuxiliaryBackground } from './components/NavigationOverlay'
 import QuickSyncNotice from './components/QuickSyncNotice'
 import FeedbackCenter from './feedback/FeedbackCenter'
@@ -179,6 +180,7 @@ function ResponsiveRoutes({ isMobile }: { isMobile: boolean }) {
 }
 
 function Root() {
+  useLearnKeyboardIntent()
   const darkMode = useAtomValue(isOpenDarkModeAtom)
 
   useEffect(() => {

@@ -1,3 +1,4 @@
+import { chooseLearnInputMode } from './learn-input-mode-harness'
 import { readReviewModeInfo, reviewWords, seedAcquisitionSession, seedReviewSession } from './review-flow-harness'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
@@ -19,7 +20,7 @@ async function openStudy(page: Page, id: number, review = false) {
 }
 
 async function finishReview(page: Page) {
-  await practice(page).getByRole('button', { name: '学习方式：轻触', exact: true }).click()
+  await chooseLearnInputMode(page, 'keyboard')
   const field = practice(page).getByRole('textbox', { name: '独立拼写单词' })
   const word = await practice(page).getAttribute('data-mobile-word')
   await field.fill(word!)
@@ -109,7 +110,7 @@ test('dictionary selection cancels safely and preserves the old checkpoint throu
 
 test('failed checkpoint write blocks exit, keeps spelling input and retries without losing the word', async ({ page }) => {
   await openStudy(page, 960202)
-  await practice(page).getByRole('button', { name: '学习方式：轻触', exact: true }).click()
+  await chooseLearnInputMode(page, 'keyboard')
   const field = practice(page).getByRole('textbox', { name: '独立拼写单词' })
   await field.fill('ca')
   const before = await readReviewModeInfo(page)

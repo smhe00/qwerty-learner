@@ -24,13 +24,14 @@ import { decideReviewRating } from '@/review/state-machine'
 import type { RatingDecision, ReviewAttemptRole } from '@/review/state-machine'
 import type { ReviewOutcome } from '@/review/types'
 import { currentDictInfoAtom, pronunciationConfigAtom } from '@/store'
+import { learnInputModeAtom, learnInputModeLabels, learnKeyboardIntentAtom, nextLearnInputMode } from '@/store/learnInputMode'
 import type { Word } from '@/typings'
 import { useWordRecordCommit } from '@/hooks/useWordRecordCommit'
 import { db } from '@/utils/db/core'
 import type { LearningContextV1 } from '@/utils/db/record'
 import { getFirstValidDictionaryExample, maskDictionaryExample } from '@/utils/dictionaryExample'
-import { useAtom, useAtomValue } from 'jotai'
-import { Hand, Headphones, Keyboard, Volume2 } from 'lucide-react'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { Hand, Headphones, Keyboard, Volume2, Wand2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 type MobileTask = LearnExerciseKind
@@ -136,7 +137,9 @@ export default function MobileWordPractice({
   onResume,
   onTogglePause,
 }: MobileWordPracticeProps) {
-  const [mobileInput, setMobileInput] = useAtom(mobileLearnInputAtom)
+  const mobileInput = useAtomValue(mobileLearnInputAtom)
+  const [inputMode, setInputMode] = useAtom(learnInputModeAtom)
+  const setKeyboardIntent = useSetAtom(learnKeyboardIntentAtom)
   const keyboardControls = desktop || mobileInput.keyboardUsed
   const dict = useAtomValue(currentDictInfoAtom)
   const pronunciation = useAtomValue(pronunciationConfigAtom)
@@ -294,19 +297,19 @@ export default function MobileWordPractice({
   useMobileKeyboardIntent(!desktop, (key) => {
     if (mobileInput.keyboardUsed && (key === 'Enter' || paused)) return false
     if (paused) {
-      setMobileInput((old) => ({ ...old, keyboardUsed: true }))
+      setKeyboardIntent((old) => ({ ...old, used: true }))
       onResume()
       return true
     }
     if (key === 'Enter') {
-      setMobileInput((old) => ({ ...old, keyboardUsed: true }))
+      setKeyboardIntent((old) => ({ ...old, used: true }))
       onTogglePause()
       return true
     }
     // An explicit touch preference wins over automatic spelling adoption.
     if (mobileInput.preference === 'tap-recall') {
       if (mobileInput.keyboardUsed) return false
-      setMobileInput((old) => ({ ...old, keyboardUsed: true }))
+      setKeyboardIntent((old) => ({ ...old, used: true }))
       return true
     }
     const canEnterSpelling =
@@ -317,7 +320,7 @@ export default function MobileWordPractice({
       !isSaving &&
       !submittingRef.current
     if (mobileInput.keyboardUsed && !canEnterSpelling) return false
-    setMobileInput({ preference: 'cold-spelling', keyboardUsed: true })
+    setKeyboardIntent({ used: true, spelling: true })
     if (canEnterSpelling) {
       setManualExercise('cold-spelling')
       setSpellingInput((old) => old + key)
@@ -338,7 +341,6 @@ export default function MobileWordPractice({
       : isCoreRecall
       ? createCanonicalReviewProbePlan()
       : undefined)
-  const mobileModeIsSpelling = isCoreRecall ? task === 'spelling' : mobileInput.preference === 'cold-spelling'
   const wantsAutomaticSound = task === 'audio' || task === 'exposure'
   const source = generateWordSoundSrc(word.name, pronunciation.type || 'uk')
 
@@ -853,19 +855,20 @@ export default function MobileWordPractice({
             type="button"
             className="mobile-input-preference mobile-practice-mode-toggle"
             data-mobile-input-preference={mobileInput.preference}
+            data-input-mode={inputMode}
             data-mobile-interaction-toggle={isCoreRecall || undefined}
-            aria-label={'学习方式：' + (mobileModeIsSpelling ? '拼写' : '轻触')}
+            aria-label={'学习方式：' + learnInputModeLabels[inputMode]}
+            title={'当前：' + learnInputModeLabels[inputMode] + '；点击切换到' + learnInputModeLabels[nextLearnInputMode(inputMode)]}
             {...(isCoreRecall ? shortcut('W') : {})}
             disabled={paused || isSaving}
             onClick={(event) => {
-              const preference = mobileModeIsSpelling ? 'tap-recall' : 'cold-spelling'
-              setManualExercise(isCoreRecall ? preference : null)
-              setMobileInput((old) => ({ ...old, preference }))
+              setManualExercise(null)
+              setInputMode(nextLearnInputMode(inputMode))
               if (event.detail > 0) event.currentTarget.blur()
             }}
           >
-            {mobileModeIsSpelling ? <Keyboard size={16} aria-hidden="true" /> : <Hand size={16} aria-hidden="true" />}
-            {mobileModeIsSpelling ? '拼写 · 切换为轻触' : '轻触 · 切换为拼写'} {keyHint('W')}
+            {inputMode === 'auto' ? <Wand2 size={16} aria-hidden="true" /> : inputMode === 'keyboard' ? <Keyboard size={16} aria-hidden="true" /> : <Hand size={16} aria-hidden="true" />}
+            {learnInputModeLabels[inputMode] + ' · 切换为' + learnInputModeLabels[nextLearnInputMode(inputMode)]} {keyHint('W')}
           </button>
         )}
         {desktop && !feedback && !revealedAttempt && !pendingSpelling && isCoreRecall && (task === 'recall' || task === 'spelling') && (

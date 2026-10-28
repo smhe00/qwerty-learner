@@ -1,12 +1,16 @@
+import { chooseLearnInputMode } from './learn-input-mode-harness'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { reviewWords, seedAcquisitionSession } from './review-flow-harness'
+import fs from 'node:fs'
 
 test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 test.setTimeout(60_000)
 const card = (page: Page) => page.locator('[data-mobile-word-practice]')
 const field = (page: Page) => card(page).getByRole('textbox', { name: '独立拼写单词' })
 async function audio(page: Page) {
+  const fixture = fs.readFileSync('public/sounds/key-sound/Alpacas.mp3')
+  await page.route('**/dictvoice?**', (route) => route.fulfill({ contentType: 'audio/mpeg', body: fixture }))
   await page.addInitScript(() => {
     ;(window as any).__audioPreviews = []
     ;(window as any).__audioStops = 0
@@ -102,11 +106,11 @@ test('one thumb-zone mode switch preserves half a spelling and stays available i
   await open(page, 980104)
   const mode = card(page).locator('[data-mobile-input-preference]')
   await expect(mode).toHaveCount(1)
-  await mode.tap()
+  await chooseLearnInputMode(page, 'keyboard')
   await field(page).fill('ca')
-  await mode.tap()
+  await chooseLearnInputMode(page, 'touch')
   await expect(field(page)).toHaveCount(0)
-  await mode.tap()
+  await chooseLearnInputMode(page, 'keyboard')
   await expect(field(page)).toHaveValue('ca')
   await page.setViewportSize({ width: 320, height: 460 })
   await expect(mode).toBeVisible()
@@ -210,8 +214,8 @@ test('the single mode switch labels an automatically requested spelling probe co
   await expect.poll(() => page.evaluate(() => Boolean((window as any).__probeHistoryReady))).toBe(true)
   await page.locator('[data-mobile-menu] .mobile-start-link').click()
   await expect(card(page)).toHaveAttribute('data-mobile-task', 'spelling')
-  await card(page).getByRole('button', { name: '学习方式：拼写', exact: true }).tap()
+  await chooseLearnInputMode(page, 'touch')
   await expect(card(page)).toHaveAttribute('data-mobile-task', 'recall')
-  await expect(card(page).getByRole('button', { name: '学习方式：轻触', exact: true })).toBeVisible()
+  await expect(card(page).getByRole('button', { name: '学习方式：触控', exact: true })).toBeVisible()
   expect(await records(page)).toHaveLength(3)
 })

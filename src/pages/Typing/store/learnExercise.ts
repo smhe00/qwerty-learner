@@ -1,5 +1,5 @@
 import { atom } from 'jotai'
+import { learnInputModeAtom } from '@/store/learnInputMode'
 
-// Presentation preference for this app instance only. It is not learning
-// evidence and must never enter the persisted workspace or cloud backup.
-export const desktopLearnExerciseAtom = atom<'spelling' | 'tap-recall'>('spelling')
+// The desktop shell defaults to keyboard; a manual touch choice overrides it.
+export const desktopLearnExerciseAtom = atom((get) => get(learnInputModeAtom) === 'touch' ? 'tap-recall' : 'spelling')

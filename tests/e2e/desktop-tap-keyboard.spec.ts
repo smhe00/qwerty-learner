@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { reviewWords, seedAcquisitionSession } from './review-flow-harness'
@@ -8,6 +9,9 @@ const words = [...reviewWords, { name: 'confirm', trans: ['确认'], usphone: 'k
 const card = (page: Page) => page.locator('[data-desktop-tap-practice]')
 
 async function openTap(page: Page, id: number, phase: 'exposure' | 'supported' | 'independent' = 'independent') {
+  // Keep mocked playback independent of external preload/error responses.
+  const fixture = fs.readFileSync('public/sounds/key-sound/Alpacas.mp3')
+  await page.route('**/dictvoice?**', (route) => route.fulfill({ contentType: 'audio/mpeg', body: fixture }))
   await page.addInitScript(() => {
     HTMLMediaElement.prototype.play = function () {
       const win = window as Window & { __desktopAudioCalls?: number }
@@ -18,7 +22,7 @@ async function openTap(page: Page, id: number, phase: 'exposure' | 'supported' |
   })
   await seedAcquisitionSession(page, words, id, phase, 4)
   await page.goto('/learn')
-  const toggle = page.getByRole('button', { name: '学习方式：拼写', exact: true })
+  const toggle = page.getByRole('button', { name: '学习方式：自动', exact: true })
   await expect(toggle).toBeVisible({ timeout: 30_000 })
   await toggle.click()
   await expect(card(page)).toBeVisible()
@@ -168,7 +172,7 @@ test('native Tab/Space, IME, modifiers, outside controls and dialogs keep keyboa
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', ctrlKey: true, bubbles: true }))
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', repeat: true, bubbles: true }))
   })
-  await page.getByRole('button', { name: '学习方式：轻触', exact: true }).focus()
+  await page.getByRole('button', { name: '学习方式：触控', exact: true }).focus()
   await page.keyboard.press('d')
   expect(await records(page)).toHaveLength(0)
   await page.getByRole('button', { name: '打开设置对话框' }).click()
