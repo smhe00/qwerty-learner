@@ -143,6 +143,12 @@ test('wide tablet touch layout separates reading and right-hand actions through 
     const reading = (await card.locator('[data-mobile-reading]').boundingBox())!
     const actions = (await card.locator('[data-mobile-action-zone]').boundingBox())!
     expect(reading.x + reading.width).toBeLessThanOrEqual(actions.x)
+    const mode = (await card.locator('[data-input-mode]').boundingBox())!
+    const firstAnswer = (await card.locator('[data-mobile-grade]').first().boundingBox())!
+    const cardBox = (await card.boundingBox())!
+    expect(mode.y - cardBox.y).toBeLessThanOrEqual(20)
+    expect(mode.y + mode.height).toBeLessThanOrEqual(actions.y - 16)
+    expect(firstAnswer.y - (mode.y + mode.height)).toBeGreaterThanOrEqual(24)
     for (const button of await card.locator('[data-mobile-grade], [data-mobile-input-preference]').all()) {
       await expect(button).toBeInViewport({ ratio: 1 })
       const bounds = (await button.boundingBox())!
@@ -160,3 +166,46 @@ test('wide tablet touch layout separates reading and right-hand actions through 
   expect(await originalCard!.evaluate((element) => element === document.querySelector('[data-mobile-word-practice]'))).toBe(true)
   expect(await readReviewModeInfo(page)).toEqual(before)
 })
+
+
+for (const dark of [false, true]) {
+  test(`tablet ${dark ? 'dark' : 'light'} text, keycaps and correction remain legible`, async ({ page }, info) => {
+    await seedAcquisitionSession(page, reviewWords, 982830 + Number(dark))
+    await page.goto('/mobile/study')
+    const card = page.locator('[data-mobile-word-practice]')
+    await expect(card).toBeVisible({ timeout: 30000 })
+    await page.evaluate((enabled) => document.documentElement.classList.toggle('dark', enabled), dark)
+    await page.keyboard.press('ArrowRight')
+    await expect(card.locator('[data-desktop-shortcuts]')).toBeVisible()
+    const audit = async (selector: string, pseudo?: string) => {
+      const ratios = await card.locator(selector).evaluateAll((elements, pseudo) => {
+        const rgb = (s: string) => (s.match(/[\d.]+/g) || []).map(Number)
+        const blend = (fg: number[], bg: number[]) => fg.slice(0, 3).map((c, i) => c * (fg[3] ?? 1) + bg[i] * (1 - (fg[3] ?? 1)))
+        const luminance = (c: number[]) => c.reduce((n, v, i) => {
+          const x = v / 255
+          return n + (x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4) * [.2126, .7152, .0722][i]
+        }, 0)
+        return elements.filter(el => el.getClientRects().length).map(el => {
+          const chain: Element[] = []
+          for (let node: Element | null = el; node; node = node.parentElement) chain.unshift(node)
+          let bg = [255, 255, 255]
+          for (const node of chain) bg = blend(rgb(getComputedStyle(node).backgroundColor), bg)
+          const style = getComputedStyle(el, pseudo)
+          const fg = rgb(style.color)
+          fg[3] = (fg[3] ?? 1) * Number(style.opacity)
+          const a = luminance(blend(fg, bg)), b = luminance(bg)
+          return (Math.max(a, b) + .05) / (Math.min(a, b) + .05)
+        })
+      }, pseudo)
+      expect(ratios.length, selector).toBeGreaterThan(0)
+      for (const ratio of ratios) expect(ratio, selector).toBeGreaterThanOrEqual(4.5)
+    }
+    await audit('[data-input-mode], .mobile-practice-step, .mobile-practice-meaning, .mobile-keyboard-hint, .desktop-tap-key')
+    await card.locator('[data-mobile-grade="good"]').tap()
+    await card.locator('[data-mobile-reading]').tap()
+    await expect(card.locator('[data-mobile-recall-correct]')).toBeVisible()
+    await audit('[data-mobile-recall-correct], [data-mobile-recall-correct] .desktop-tap-key, .mobile-practice-recall-cue')
+    await page.screenshot({ path: info.outputPath('tablet-contrast-' + (dark ? 'dark' : 'light') + '.png') })
+    expect(await attempts(page)).toHaveLength(0)
+  })
+}

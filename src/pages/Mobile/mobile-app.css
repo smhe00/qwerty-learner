@@ -3,7 +3,11 @@
   --mobile-surface: var(--focus-surface, #fff);
   --mobile-background: var(--focus-canvas, #f7f8fa);
   --mobile-text: var(--focus-text, #1e293b);
-  --mobile-muted: var(--focus-text-muted, #66758a);
+  --mobile-muted: var(--focus-text-secondary, #596779);
+  --mobile-correction-text: #8a4729;
+  --mobile-correction-surface: #fcf1e8;
+  --mobile-correction-line: #b58163;
+  --mobile-error: #b42318;
   --mobile-line: var(--focus-border, #e2e8f0);
   --mobile-accent: var(--focus-accent, #465fb0);
   background: var(--mobile-background);
@@ -14,6 +18,12 @@
   min-height: 100dvh;
   overflow-x: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+.dark .mobile-app {
+  --mobile-correction-text: #ffd3b0;
+  --mobile-correction-surface: #493226;
+  --mobile-correction-line: #b58a6b;
+  --mobile-error: #ffb4a9;
 }
 .mobile-app *, .mobile-app *::before, .mobile-app *::after {box-sizing:border-box;}
 .mobile-home {padding: max(20px, env(safe-area-inset-top)) 18px max(25px, env(safe-area-inset-bottom));}
@@ -268,10 +278,10 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: 1px solid #d5b199;
+  border: 1px solid var(--mobile-correction-line);
   border-radius: 50%;
-  background: #fcf6f0;
-  color: #aa6847;
+  background: var(--mobile-correction-surface);
+  color: var(--mobile-correction-text);
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -283,10 +293,10 @@
   background: currentColor;
 }
 .mobile-practice-recall-correction-dot:hover {
-  background: #f4e6d9;
+  background: var(--mobile-correction-surface);
 }
 .mobile-practice-recall-correction-dot:focus-visible {
-  outline: 2px solid #aa6847;
+  outline: 2px solid var(--mobile-correction-text);
   outline-offset: 3px;
 }
 
@@ -383,7 +393,7 @@
 .mobile-practice-grade { min-height: 68px; border: 1px solid var(--mobile-line); border-radius: 13px; color: var(--mobile-text); background: var(--focus-surface-muted,#f6f8fa); font-size: 16px; font-weight: 650; touch-action: manipulation; }
 .mobile-practice-grade[data-mobile-grade="good"] { background: var(--mobile-accent); border-color: var(--mobile-accent); color: var(--focus-accent-ink,#fff); }
 .mobile-practice-next-hint { display: flex; min-height: 60px; align-items: center; justify-content: center; color: var(--mobile-muted); margin: 0; font-size: 13px; }
-.mobile-practice-error { color: #af362c; margin: 0 0 9px; text-align: center; font-size: 12px; }
+.mobile-practice-error { color: var(--mobile-error); margin: 0 0 9px; text-align: center; font-size: 12px; }
 .mobile-practice-overlay { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; background: var(--mobile-background); padding: 22px; }
 .mobile-practice-overlay p { font-size: 19px; font-weight: 650; }
 .mobile-practice button:disabled { opacity: .56; cursor: not-allowed; }
@@ -486,6 +496,7 @@
   text-align: center;
   outline-offset: 2px;
 }
+.mobile-practice-spelling-form input::placeholder { color: var(--mobile-muted); opacity: 1; }
 .mobile-practice-spelling-form input:focus-visible {
   outline: 2px solid var(--mobile-accent);
 }
@@ -531,7 +542,7 @@
   font-size: 11px;
   font-weight: 500;
   line-height: 1;
-  opacity: .72;
+  opacity: 1;
 }
 [data-keyboard-practice] .mobile-practice-grade,
 [data-keyboard-practice] .mobile-practice-choice,
@@ -553,7 +564,7 @@
   padding: 0 10px;
   gap: 7px;
   border-radius: 8px;
-  color: var(--mobile-text);
+  color: var(--mobile-correction-text);
   font-size: 12px;
 }
 .desktop-tap-shortcuts {
@@ -571,6 +582,8 @@
 
 .mobile-practice-input-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 30px; }
 .mobile-practice-input-row .mobile-eyebrow { margin: 0; }
+.mobile-practice-mode-position { flex: 0 0 auto; width: 100%; }
+.mobile-practice-mode-position:empty { display: none; }
 .mobile-input-preference {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   min-width: 72px; min-height: 36px; padding: 5px 10px; margin-bottom: 5px;
@@ -674,11 +687,14 @@
   .focus-mobile-learn-shell .focus-mobile-learn-main { padding: 4px 0 14px; }
   .focus-mobile-learn-shell .mobile-practice-host { max-width: 1160px; margin: 0 auto; padding: 0 20px; }
   .focus-mobile-learn-shell .mobile-practice-inner { width: 100%; min-width: 0; }
-  .focus-mobile-learn-shell .mobile-practice { display: grid; grid-template-columns: minmax(0, 1fr) clamp(240px, 28vw, 310px); grid-template-rows: auto minmax(0, 1fr); column-gap: 24px; max-width: none; }
+  .focus-mobile-learn-shell .mobile-practice { display: grid; grid-template-columns: minmax(0, 1fr) clamp(240px, 28vw, 310px); grid-template-rows: auto minmax(0, 1fr); column-gap: 24px; row-gap: 16px; max-width: none; }
   .focus-mobile-learn-shell .mobile-practice-head { grid-column: 1; grid-row: 1; padding-inline: 8px; }
   .focus-mobile-learn-shell .mobile-practice-reading { grid-column: 1; grid-row: 2; padding-inline: 8px; }
   .focus-mobile-learn-shell .mobile-practice-word-slot { width: 100%; align-self: stretch; }
-  .focus-mobile-learn-shell.mobile-study .mobile-practice-actions { grid-column: 2; grid-row: 1 / 3; min-height: 0; padding: 18px; border: 1px solid var(--mobile-line); border-radius: 18px; background: var(--focus-surface-muted); justify-content: flex-start; justify-content: safe center; }
+  .focus-mobile-learn-shell.mobile-study .mobile-practice-actions { grid-column: 2; grid-row: 2; min-height: 0; padding: 18px; border: 1px solid var(--mobile-line); border-radius: 18px; background: var(--focus-surface-muted); justify-content: flex-start; justify-content: safe center; }
+  /* Separate the mode control from the independently scrolling answer panel. */
+  .focus-mobile-learn-shell .mobile-practice-mode-position { grid-column: 2; grid-row: 1; align-self: start; padding: 16px 18px 0; }
+  .focus-mobile-learn-shell .mobile-practice-mode-position > .mobile-input-preference { margin: 0; color: var(--mobile-text); background: var(--mobile-surface); border: 1px solid var(--mobile-line); }
   .focus-mobile-learn-shell .mobile-practice-grade-grid { grid-template-columns: 1fr; gap: 10px; }
   .focus-mobile-learn-shell.mobile-study .mobile-practice-primary,
   .focus-mobile-learn-shell.mobile-study .mobile-practice-grade,
@@ -694,3 +710,8 @@
 
 .mobile-home-menu > .circle-mobile-entry { width: 100%; text-align: left; }
 .circle-mobile-entry:disabled { opacity: .55; cursor: not-allowed; }
+
+@media (min-width: 900px) and (min-aspect-ratio: 4/3) and (max-height: 360px) {
+  .focus-mobile-learn-shell.mobile-study .mobile-practice-actions { padding: 4px 12px; }
+  .focus-mobile-learn-shell .mobile-practice-mode-position { padding: 8px 12px 0; }
+}

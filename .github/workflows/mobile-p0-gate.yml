@@ -6,6 +6,7 @@ on:
     paths:
       - 'src/app.tsx'
       - 'src/hooks/useLearnKeyboardIntent.ts'
+      - 'src/pages/Typing/hooks/useLearnModeShortcut.ts'
       - 'src/store/learnInputMode.ts'
       - 'src/pages/Typing/store/mobileLearnInput.ts'
       - 'tests/e2e/learn-input-mode-harness.ts'

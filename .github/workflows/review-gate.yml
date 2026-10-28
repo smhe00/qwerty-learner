@@ -15,6 +15,7 @@ on:
       - 'src/index.tsx'
       - 'src/app.tsx'
       - 'src/hooks/useLearnKeyboardIntent.ts'
+      - 'src/pages/Typing/hooks/useLearnModeShortcut.ts'
       - 'src/store/learnInputMode.ts'
       - 'src/pages/Typing/components/DictChapterButton/LearnExerciseSwitcher.tsx'
       - 'tests/e2e/learn-exercise-switcher.spec.ts'
@@ -147,6 +148,7 @@ jobs:
           src/pages/Typing/hooks/useSessionKeyboard.ts
           src/pages/Typing/hooks/useTapRecallKeyboard.ts
           src/pages/Typing/hooks/useMobileKeyboardIntent.ts
+          src/pages/Typing/hooks/useLearnModeShortcut.ts
           src/utils/index.ts
           src/utils/db
           src/achievement

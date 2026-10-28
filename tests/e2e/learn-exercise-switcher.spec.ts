@@ -140,3 +140,40 @@ test('desktop touch override survives refresh and auto restores keyboard present
   await page.reload()
   await expect(control(page)).toHaveAttribute('data-learn-exercise', 'spelling')
 })
+
+test('lone Shift cycles the desktop mode while chords, editors and overlays retain keyboard ownership', async ({ page }) => {
+  await gotoReviewAppReady(page, '/learn')
+  const before = await learningSnapshot(page)
+  await expect(control(page)).toHaveAttribute('aria-keyshortcuts', 'Shift')
+  for (const mode of ['touch', 'keyboard', 'auto']) {
+    await page.keyboard.press('Shift')
+    await expect(control(page)).toHaveAttribute('data-input-mode', mode)
+  }
+  await control(page).focus()
+  await page.keyboard.press('Shift+Tab')
+  await page.keyboard.press('Control+Shift')
+  await expect(control(page)).toHaveAttribute('data-input-mode', 'auto')
+  await page.evaluate(() => {
+    const input = document.createElement('input')
+    input.id = 'shortcut-test-editor'
+    document.body.append(input)
+    input.focus()
+  })
+  await page.keyboard.press('Shift+KeyA')
+  await expect(page.locator('#shortcut-test-editor')).toHaveValue('A')
+  await page.keyboard.press('Shift')
+  await expect(control(page)).toHaveAttribute('data-input-mode', 'auto')
+  await page.evaluate(() => {
+    document.querySelector('#shortcut-test-editor')!.remove()
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'dialog')
+    dialog.id = 'shortcut-test-dialog'
+    document.body.append(dialog)
+  })
+  await page.keyboard.press('Shift')
+  await expect(control(page)).toHaveAttribute('data-input-mode', 'auto')
+  await page.evaluate(() => document.querySelector('#shortcut-test-dialog')!.remove())
+  await page.keyboard.press('Shift')
+  await expect(control(page)).toHaveAttribute('data-input-mode', 'touch')
+  expect(await learningSnapshot(page)).toEqual(before)
+})

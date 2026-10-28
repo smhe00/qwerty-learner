@@ -8,6 +8,7 @@ import { trackLearnPersistence } from '@/learn/persistence'
 import type { LearnItemKind } from '@/learn/session'
 import { selectLearnTask } from '@/learn/task-selector'
 import type { LearnExerciseKind, LearnExercisePreference, LearnTaskHistoryEvent } from '@/learn/task-selector'
+import { useLearnModeShortcut } from '@/pages/Typing/hooks/useLearnModeShortcut'
 import { useMobileKeyboardIntent } from '@/pages/Typing/hooks/useMobileKeyboardIntent'
 import { useMobileWordAudio } from '@/pages/Typing/hooks/useMobileWordAudio'
 import { useSessionKeyboard } from '@/pages/Typing/hooks/useSessionKeyboard'
@@ -137,6 +138,8 @@ export default function MobileWordPractice({
   onResume,
   onTogglePause,
 }: MobileWordPracticeProps) {
+  const modeButtonRef = useRef<HTMLButtonElement>(null)
+  useLearnModeShortcut(modeButtonRef, !desktop)
   const mobileInput = useAtomValue(mobileLearnInputAtom)
   const [inputMode, setInputMode] = useAtom(learnInputModeAtom)
   const setKeyboardIntent = useSetAtom(learnKeyboardIntentAtom)
@@ -849,17 +852,18 @@ export default function MobileWordPractice({
         </div>
       </div>
 
-      <footer className="mobile-practice-actions" data-mobile-action-zone>
+      <div className="mobile-practice-mode-position">
         {!desktop && !feedback && !revealedAttempt && !pendingSpelling && (
           <button
             type="button"
             className="mobile-input-preference mobile-practice-mode-toggle"
+            ref={modeButtonRef}
             data-mobile-input-preference={mobileInput.preference}
             data-input-mode={inputMode}
             data-mobile-interaction-toggle={isCoreRecall || undefined}
             aria-label={'学习方式：' + learnInputModeLabels[inputMode]}
-            title={'当前：' + learnInputModeLabels[inputMode] + '；点击切换到' + learnInputModeLabels[nextLearnInputMode(inputMode)]}
-            {...(isCoreRecall ? shortcut('W') : {})}
+            title={'当前：' + learnInputModeLabels[inputMode] + '；点击切换到' + learnInputModeLabels[nextLearnInputMode(inputMode)] + '；单独按 Shift 切换'}
+            aria-keyshortcuts="Shift"
             disabled={paused || isSaving}
             onClick={(event) => {
               setManualExercise(null)
@@ -868,9 +872,11 @@ export default function MobileWordPractice({
             }}
           >
             {inputMode === 'auto' ? <Wand2 size={16} aria-hidden="true" /> : inputMode === 'keyboard' ? <Keyboard size={16} aria-hidden="true" /> : <Hand size={16} aria-hidden="true" />}
-            {learnInputModeLabels[inputMode] + ' · 切换为' + learnInputModeLabels[nextLearnInputMode(inputMode)]} {keyHint('W')}
+            {learnInputModeLabels[inputMode] + ' · 切换为' + learnInputModeLabels[nextLearnInputMode(inputMode)] + '；单独按 Shift 切换'} {keyHint('Shift')}
           </button>
         )}
+      </div>
+      <footer className="mobile-practice-actions" data-mobile-action-zone>
         {desktop && !feedback && !revealedAttempt && !pendingSpelling && isCoreRecall && (task === 'recall' || task === 'spelling') && (
           <button
             type="button"
