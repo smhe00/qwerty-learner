@@ -29,6 +29,8 @@ export type DictionaryExample = {
 export type Word = {
   name: string
   trans: string[]
+  // Curated concise meaning; missing/empty values have no usable short gloss.
+  shortMeaning?: string
   usphone: string
   ukphone: string
   notation?: string
