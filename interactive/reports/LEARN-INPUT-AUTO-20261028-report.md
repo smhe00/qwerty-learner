@@ -1,9 +1,9 @@
 # Learn input Auto/Touch/Keyboard and global keyboard cues
 
 Execution base: 3bd0a6c781ee3ff13152ec4e038dd99a3ac39896 (product/main).
-Status: source complete, local validation complete; exact-SHA CI and authorized
-etest deployment next. The implementation commit containing this report is the
-candidate; no master promotion is authorized by this task.
+Status: implemented, automated validation passed, authorized etest deployment verified.
+Deployed candidate: bfe06722a11b940646bb7a63c05c7c5fb6975f75. Implementation commit: 2f38a0a990df92a7920118aa3093b9e16da3e13c.
+No master promotion is authorized by this task.
 
 ## Result and scope
 
@@ -134,3 +134,40 @@ application tree is byte-identical to this workflow-only follow-up (and the
 original 2f38a0a implementation). Do not needlessly restart unchanged suites for
 this path-filter correction. This scoped staging evidence is not a claim that a
 future master release is qualified; master still requires all exact-SHA gates.
+
+
+## Completed staging handoff
+
+Final deployed candidate: **bfe06722a11b940646bb7a63c05c7c5fb6975f75**.
+`edgeone-test` advanced by fast-forward with expected-old-SHA lease from
+3bd0a6c781ee3ff13152ec4e038dd99a3ac39896 (four commits, no history rewrite).
+A nonce + no-cache request to https://t.smhe.cn/source-commit.txt returned
+**bfe0672**, confirming the actual published static version. Master was not changed.
+
+Passing evidence (not merely queued or running):
+
+- [Mobile P0 40637904738](https://github.com/smhe00/qwerty-learner/actions/runs/40637904738)
+  on 74c6c64: 70 mobile browser tests, 7 production tablet tests, 57 PC/phone account
+  transition tests, 4 Pages login tests and 6 shared commit contracts passed.
+- [Review Gate 40637904807](https://github.com/smhe00/qwerty-learner/actions/runs/40637904807)
+  on 74c6c64: all steps passed, including final 122-test Learn browser suite,
+  Typing lifecycle, stateful fuzz, pause and production navigation checks.
+- [S1 Workspace 40637904654](https://github.com/smhe00/qwerty-learner/actions/runs/40637904654)
+  on 74c6c64: 153 full workspace browser tests and 3 repeated lost-ack checks passed.
+- [Cloud Sync 40638796765](https://github.com/smhe00/qwerty-learner/actions/runs/40638796765)
+  on bfe0672: cloud-backend job and Exact-SHA Pages + Cloud Staging Admission passed;
+  commit status p4b/cloud-sync-gate is success.
+- [Pages 40638796731](https://github.com/smhe00/qwerty-learner/actions/runs/40638796731)
+  on bfe0672: deployment workflow passed.
+
+The final bfe0672 follow-up changes only cloud workflow path filters and this
+report. `git diff 74c6c64 bfe0672 -- src public cloud-functions` is empty, preserving
+all application bytes tested in the passing source/browser gates. The superseded
+74c6c64 standalone admission waited for its missing Cloud trigger; final bfe0672
+has passing exact-SHA admission instead. No false status or skip was introduced.
+This is scoped staging validation, not full identical-SHA master release approval.
+
+This completion note is a documentation-only follow-up on product/main. Keep
+etest pinned at bfe0672; do not deploy a new Maker build merely for this note.
+A real Huawei/iPad keyboard acceptance remains unperformed; all input claims refer
+to browser events, not hardware attach/detach enumeration.

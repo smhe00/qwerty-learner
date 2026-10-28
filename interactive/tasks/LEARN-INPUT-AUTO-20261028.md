@@ -1,6 +1,6 @@
 # Three-way Learn input preference and universal keyboard cues
 
-Status: REVIEW. Executor: Codex-tablet-input. Base: 3bd0a6c781ee3ff13152ec4e038dd99a3ac39896.
+Status: REVIEW (implemented, automated checks passed, etest bfe0672 verified). Executor: Codex-tablet-input. Base: 3bd0a6c781ee3ff13152ec4e038dd99a3ac39896.
 
 Owner requests adding Auto to the existing touch/keyboard button, and clarifies
 that any real key should enable keyboard operation and cues in every layout.
