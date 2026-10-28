@@ -113,3 +113,24 @@ Focused workspace browser rerun passed 1/1 (7.6s). No auth or data implementatio
 changed. Account continuity test paths now trigger mobile/review gates as well as
 S1, so its responsive-shell contract is checked consistently on the same candidate.
 The next test/report-only commit is the final candidate for exact-SHA CI and etest.
+
+
+## Staging admission trigger dependency
+
+Continuity correction commit: 74c6c64a5c06e0b1f8227444ef697bb3d5f951e3.
+Its Mobile P0 browser suite and production tablet check have passed; remaining
+job steps/Review/S1 were still running when this note was written.
+
+The existing read-only etest-entry workflow triggers on account-continuity and
+mobile-account-writer test changes, but its required cloud-sync workflow did not.
+That configuration leaves the admission verifier polling for a nonexistent run.
+Added these two missing paths to cloud-sync.yml. No test gate is weakened, no
+checks are bypassed, and no application/backend code changes. Cloud Sync Gate
+already has its own exact-SHA Pages + Cloud admission job, so this configuration
+follow-up must pass those checks before staging promotion.
+
+Preserve and inspect the running Mobile/Review/S1 results on 74c6c64: its entire
+application tree is byte-identical to this workflow-only follow-up (and the
+original 2f38a0a implementation). Do not needlessly restart unchanged suites for
+this path-filter correction. This scoped staging evidence is not a claim that a
+future master release is qualified; master still requires all exact-SHA gates.

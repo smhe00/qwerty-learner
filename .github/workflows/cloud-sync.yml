@@ -15,6 +15,9 @@ on:
       - 'tests/e2e/workspace-v4-session-revoked.spec.ts'
       - 'tests/e2e/workspace-v4-s2-multi-device.spec.ts'
       - 'tests/e2e/pages-regression.spec.ts'
+      # Keep dependency triggers aligned with the read-only etest admission gate.
+      - 'tests/e2e/account-continuity.spec.ts'
+      - 'tests/e2e/mobile-account-writer.spec.ts'
       - '.github/workflows/etest-three-device-auto-fork.yml'
       - 'src/sync/**'
       - 'src/index.tsx'
