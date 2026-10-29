@@ -1,6 +1,6 @@
 # CI 修复与远端事件重复上传修复
 
-执行基线：`6f5c9026d9949b219cf8bec0042341243b84f463`。当前阶段：本地验证完成，准备 main CI 和 etest 实网验证。独立于 Circle 性能任务，CURRENT_TASK 不变，master 不发布。
+执行基线：`6f5c9026d9949b219cf8bec0042341243b84f463`。修复提交：`d094a45ad4037ce18e8913b7fa8bc05ad1fecb1f`。当前阶段：REVIEW。原四项失败 CI 全部通过，etest 9 项实网回归全部通过。独立于 Circle 性能任务，CURRENT_TASK 不变，master 不发布。
 
 ## 已确认原因和修复
 
@@ -29,6 +29,36 @@
 - Pages 生产构建通过；TypeScript 基线 143 / 当前 143，无新增诊断。
 - 双站 Explorer 本地线上预检：首次缺少必需的 PAGES_SOURCE_SHA 参数，补充后遇到静态 JS 503；未修改产品代码或降低断言。原断言不变重试 1 通过；最终仍以本次精确提交 CI 为准。
 
-## 远端验证待办
+## 发布范围
 
-先等待本次提交的 Pages 发布/界面、Cloud Sync、Review、Mobile P0、双站 Explorer。满足 etest 准入后快进 edgeone-test 到该精确 SHA，等待 source-commit.txt 更新，再检查历史登录和其他自动云端回归。一次性测试账号只由既有 CI 创建并清理。不直接推进 master。
+Pages 发布/界面、Cloud Sync 和 etest 准入全部成功后，快进 edgeone-test 到同一修复 SHA。一次性测试账号由既有 CI 创建并清理。最终报告仅提交 product/main，不再次构建 etest，不推进 master。
+
+
+## 精确提交远端验证
+
+所有链接均对应修复提交 `d094a45ad4037ce18e8913b7fa8bc05ad1fecb1f`。
+
+- [Review Gate](https://github.com/smhe00/qwerty-learner/actions/runs/40810752581)：成功。
+- [Mobile P0 Gate](https://github.com/smhe00/qwerty-learner/actions/runs/40810752474)：成功。
+- [Published Dual-Site Explorer](https://github.com/smhe00/qwerty-learner/actions/runs/40810752506)：成功。
+- [Pages 发布与线上回归](https://github.com/smhe00/qwerty-learner/actions/runs/40810752509)：成功，含 Pages/EdgeOne 双构建界面门禁。
+- [Cloud Sync Gate](https://github.com/smhe00/qwerty-learner/actions/runs/40810752471)：成功。
+- [Etest 准入](https://github.com/smhe00/qwerty-learner/actions/runs/40810752491)：成功。
+
+edgeone-test 已由 `9ef113301f2a03b8f4528621e5eefda076672f24` 快进到修复提交。2026-10-29 11:22:50（北京时间）实站 source-commit.txt 已确认 `d094a45`。master 保持 `ad862b392c6a935ca49514fc9df146932aa02ed2`。
+
+Etest 原失败场景：[历史登录回归](https://github.com/smhe00/qwerty-learner/actions/runs/40811538832) 成功。无新增学习的重新登录事件 POST=0、GET=0，额外 M4 capture=0；六表精确恢复、分叉合并收敛、重新登录记录保留及临时账号清理均通过。
+
+Etest 自动回归 9/9 成功：历史登录、分段历史恢复、安全 V4 合并写回、账号清理结果、自动空闲清理、学习完成云端旅程、M3 设备接力、三设备离线接力、Branch EdgeOne Cloud E2E。精确运行编号及状态见 [证据快照](evidence/CI-REPAIR-20261029.json)。
+
+main 的 11 项已完成检查全部成功；独立 Pages Explorer Agent（40810752410）仍在运行，不将其记为通过，也不声称全部 CI 已结束。上述原四项故障已全部闭环。
+
+## 性能边界和剩余风险
+
+无变化重新登录本次仍耗时 31.346 秒。主要阶段 remote-meta 5.951 秒、M4 observe 5.573 秒、M4 witness 11.169 秒；guarded-bootstrap 合计 23.678 秒（包含子阶段，不应再与子阶段相加）。本次修复消除了重复事件传输，不代表完整登录已达到快速启动目标，后续需要单独测量、优化元数据和见证请求。proof 中 publications=1 表示发布阶段被调用一次，不是一次事件 POST。
+
+既有 source-rows 快速审计未通过后，fallback-roundtrip-audit 通过；保留回退与安全读回流程，不为缩短时间绕过验证。M4 与 outbox 跨 IDB 的崩溃窗口可能仍导致冗余传输，但不丢学习记录、不跳过恢复重载。实际 iOS/HarmonyOS 设备未在本次验证，不将 Chromium 证据解释为所有终端零缺陷。
+
+## 提交文件
+
+修复提交改动 12 个文件：Mobile P0 workflow；M4 browser、outbox reducer 和 IDB；outbox 单测；E2E backup harness、历史登录、learn-shell、双站 Explorer、M4 journal；本任务及报告。结项提交仅更新本任务、报告与脱敏证据。CURRENT_TASK 保持原 Circle 任务。

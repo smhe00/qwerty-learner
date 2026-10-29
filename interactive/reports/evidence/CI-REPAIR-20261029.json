@@ -1,0 +1,189 @@
+{
+  "sourceSha": "d094a45ad4037ce18e8913b7fa8bc05ad1fecb1f",
+  "historicalLoginRun": 40811538832,
+  "checks": {
+    "sixTablePullExact": true,
+    "automaticForkMergedBoth": true,
+    "sixTableForkConvergence": true,
+    "reloginWithoutLearningPreservesAllRows": true,
+    "cleanupVerified": true
+  },
+  "unchangedLogin": {
+    "elapsedMs": 31346,
+    "repeatedEventDownloads": 0,
+    "extraM4Captures": 0,
+    "eventPosts": 0,
+    "eventGets": 0,
+    "requestEvidence": "Passing unchanged-login test asserts no event POST and no event GET; historical-login job 123242757902."
+  },
+  "workflows": [
+    {
+      "id": 40811538806,
+      "name": "etest Segmented History Resume",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "edgeone-test",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40811538806"
+    },
+    {
+      "id": 40811538824,
+      "name": "etest Single-Session M3 Device Relay",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "edgeone-test",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40811538824"
+    },
+    {
+      "id": 40811538783,
+      "name": "Deployed code automatic idle cleanup qualification",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "edgeone-test",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40811538783"
+    },
+    {
+      "id": 40811538837,
+      "name": "etest Account Cleanup Outcome",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "edgeone-test",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40811538837"
+    },
+    {
+      "id": 40811538825,
+      "name": "etest Safe V4 Merge Writeback Pilot",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "edgeone-test",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40811538825"
+    },
+    {
+      "id": 40811538872,
+      "name": "etest Learn Completion Cloud Journey",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "edgeone-test",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40811538872"
+    },
+    {
+      "id": 40811538832,
+      "name": "etest Historical Login Full-V4 E2E",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "edgeone-test",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40811538832"
+    },
+    {
+      "id": 40811538831,
+      "name": "etest Single-Session Three-Device Offline Relay E2E",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "edgeone-test",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40811538831"
+    },
+    {
+      "id": 40811538844,
+      "name": "Branch EdgeOne Cloud E2E",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "edgeone-test",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40811538844"
+    },
+    {
+      "id": 40810752410,
+      "name": "Pages Explorer Agent",
+      "status": "in_progress",
+      "conclusion": null,
+      "head_branch": "product/main",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40810752410"
+    },
+    {
+      "id": 40810752461,
+      "name": "Learn Completion Journey",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "product/main",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40810752461"
+    },
+    {
+      "id": 40810752465,
+      "name": "Toolbar UI Gate",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "product/main",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40810752465"
+    },
+    {
+      "id": 40810752477,
+      "name": "P4b Browser Recovery Release Gate",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "product/main",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40810752477"
+    },
+    {
+      "id": 40810752539,
+      "name": "Startup Sync Recovery Gate",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "product/main",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40810752539"
+    },
+    {
+      "id": 40810752506,
+      "name": "Published Dual-Site Explorer (Pages + EdgeOne)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "product/main",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40810752506"
+    },
+    {
+      "id": 40810752456,
+      "name": "S1 Workspace Browser Gate",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "product/main",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40810752456"
+    },
+    {
+      "id": 40810752474,
+      "name": "Mobile P0 Gate",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "product/main",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40810752474"
+    },
+    {
+      "id": 40810752581,
+      "name": "Review Gate",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "product/main",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40810752581"
+    },
+    {
+      "id": 40810752471,
+      "name": "Cloud Sync Gate",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "product/main",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40810752471"
+    },
+    {
+      "id": 40810752491,
+      "name": "Etest Pilot Admission (read-only)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "product/main",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40810752491"
+    },
+    {
+      "id": 40810752509,
+      "name": "Deployment to GitHub Pages",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "product/main",
+      "html_url": "https://github.com/smhe00/qwerty-learner/actions/runs/40810752509"
+    }
+  ]
+}
