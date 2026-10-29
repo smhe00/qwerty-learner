@@ -445,7 +445,7 @@ test('historical six-table startup download and automatic divergent reauth conve
     await pages[1].goto(base + '/learn', { waitUntil: 'domcontentloaded' })
     await acknowledgeInformationDialog(pages[1], 180_000)
     await expect(pages[1].getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 60_000 })
-    expect(await pages[1].evaluate(() => sessionStorage.getItem('qwerty.s2.startup-check.v1'))).toBe('noop')
+    expect(await pages[1].evaluate(() => sessionStorage.getItem('qwerty.s2.startup-check.v1'))).toBe('upload-deferred')
     proof.ordinaryStartupRecoveredFullV4 = true
     expect(bRequests).toContain('GET /api/sync/v2/meta')
     expect(bRequests).toContain('GET /api/sync/v2/binary/manifest')
@@ -463,6 +463,14 @@ test('historical six-table startup download and automatic divergent reauth conve
     await seed(pages[0], 'left')
     await seed(pages[1], 'right')
     await login(pages[1], username, password)
+    expect((await meta(pages[1])).revision).toBe(first.revision)
+    expect(await pages[1].evaluate(() => sessionStorage.getItem('qwerty.s2.startup-check.v1'))).toBe('upload-deferred')
+    // A matching checkpoint intentionally retains the right branch. Seed the
+    // cloud change through the existing explicit sync; the left branch below
+    // must still automatically detect and merge the resulting real fork.
+    await pages[1].goto(base + '/?s2-sync=run', { waitUntil: 'domcontentloaded' })
+    await expect(pages[1]).toHaveURL(/^https:\/\/t\.smhe\.cn\/(?:learn)?$/, { timeout: 180_000 })
+    await expect(pages[1].getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 90_000 })
     const second = await meta(pages[1])
     expect(second.revision).toBe(2)
     await account(pages[1])
@@ -592,7 +600,7 @@ test('historical six-table startup download and automatic divergent reauth conve
     await expect
       .poll(
         async () => (await syncDiagnostics(pages[1])).some((e) => e.stage === 'm3-publication' && e.status === 'uploaded-events-only'),
-        { timeout: 60_000 },
+        { timeout: 150_000 },
       )
       .toBe(true)
     expect(bRequests).toContain('POST /api/sync/events/v2')
@@ -601,6 +609,10 @@ test('historical six-table startup download and automatic divergent reauth conve
     proof.mixedLegacyM3Publication = true
     await account(pages[1])
     await login(pages[0], username, password)
+    await expect.poll(async () => {
+      try { return (await rawWords(pages[0])).filter((r) => r.attemptId === modern.attemptId).length } catch { return 0 }
+    }, { timeout: 180_000, message: 'Deferred startup must still receive M3-only remote attempts through the existing idle cadence' }).toBe(1)
+    await expect(pages[0].getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 60_000 })
     const received = await rawWords(pages[0])
     expect(received.filter((r) => r.attemptId === modern.attemptId)).toHaveLength(1)
     expect(received.filter((r) => String(r.word).startsWith('historical-'))).toEqual(historicalRows)
@@ -627,18 +639,21 @@ test('historical six-table startup download and automatic divergent reauth conve
     const loginElapsedMs = Date.now() - loginStarted
     const startupPerformance = await pages[0].evaluate(() => JSON.parse(sessionStorage.getItem('qwerty.perf-diagnostics.v1') || '[]'))
     expect(startupPerformance.filter((s: any) => s.stage === 'account-sync')).toHaveLength(1)
-    expect(startupPerformance.filter((s: any) => s.stage === 'm3-publication')).toHaveLength(1)
-    expect(startupPerformance.filter((s: any) => s.stage === 'm4-witness')).toHaveLength(1)
+    expect(startupPerformance.filter((s: any) => s.stage === 'm3-publication')).toHaveLength(0)
+    expect(startupPerformance.filter((s: any) => s.stage === 'm4-witness')).toHaveLength(0)
+    expect(startupPerformance.filter((s: any) => s.stage === 'startup-upload-deferred')).toHaveLength(1)
+    expect(startupPerformance.filter((s: any) => ['local-state-check', 'snapshot-capture', 'm4-observe'].includes(s.stage))).toHaveLength(0)
     expect(startupPerformance.filter((s: any) => s.stage === 'm4-capture' || s.stage === 'm4-transaction')).toHaveLength(0)
     expect(aRequests.filter((x) => x === 'GET /api/sync/v2/meta')).toHaveLength(1)
     expect(aRequests.filter((x) => x === 'POST /api/sync/events/v2')).toHaveLength(0)
     expect(aRequests.filter((x) => x === 'GET /api/sync/events/v2')).toHaveLength(0)
-    expect((await syncDiagnostics(pages[0])).some((e) => e.code === 'verified-prefix-already-local')).toBe(true)
+    expect((await syncDiagnostics(pages[0])).some((e) => e.stage === 'v4-check' && e.status === 'upload-deferred')).toBe(true)
     proof.unchangedLogin = {
       elapsedMs: loginElapsedMs,
       fullV4Checks: 1,
-      publications: 1,
-      witnessedChecks: 1,
+      publications: 0,
+      witnessedChecks: 0,
+      uploadDeferred: true,
       repeatedEventDownloads: 0,
       extraM4Captures: 0,
       stages: startupPerformance.map(({ stage, elapsedMs, outcome }: any) => ({ stage, elapsedMs, outcome })),
@@ -652,7 +667,7 @@ test('historical six-table startup download and automatic divergent reauth conve
     // Measure ordinary repeat openings separately from logout/login (which
     // includes authentication and an S1 workspace switch). Keep real cloud
     // checks and verify that faster startup never hides a restore or upload.
-    const unchangedReloads: { elapsedMs: number; localProofReused: boolean; stages: unknown[] }[] = []
+    const unchangedReloads: { elapsedMs: number; uploadDeferred: boolean; stages: unknown[] }[] = []
     proof.unchangedReloads = unchangedReloads
     for (let sample = 0; sample < 3; sample++) {
       await pages[0].evaluate(() => sessionStorage.removeItem('qwerty.perf-diagnostics.v1'))
@@ -666,15 +681,42 @@ test('historical six-table startup download and automatic divergent reauth conve
       expect(aRequests.filter((x) => x === 'POST /api/sync/events/v2' || x === 'GET /api/sync/events/v2')).toHaveLength(0)
       expect(stages.filter((s: any) => s.stage === 'm4-capture' || s.stage === 'm4-transaction')).toHaveLength(0)
       expect(await rawWords(pages[0])).toEqual(received)
-      if (sample > 0) {
-        expect(stages.some((s: any) => s.stage === 'startup-local-current')).toBe(true)
-        expect(stages.filter((s: any) => s.stage === 'snapshot-capture')).toHaveLength(0)
-      }
+      expect(stages.some((s: any) => s.stage === 'startup-upload-deferred')).toBe(true)
+      expect(stages.filter((s: any) => ['local-state-check', 'snapshot-capture', 'm3-publication', 'm4-observe', 'm4-witness'].includes(s.stage))).toHaveLength(0)
+      expect(aRequests.filter((x) => x.startsWith('POST '))).toHaveLength(0)
       unchangedReloads.push({ elapsedMs,
-        localProofReused: stages.some((s: any) => s.stage === 'startup-local-current'),
+        uploadDeferred: stages.some((s: any) => s.stage === 'startup-upload-deferred'),
         stages: stages.map(({ stage, elapsedMs, outcome }: any) => ({ stage, elapsedMs, outcome })),
       })
     }
+
+    // A real local-only setting change must survive restart without a login
+    // upload or baseline advance. The existing explicit sync still owns upload.
+    phase = 'deferred-local-edit'
+    const beforeDeferred = await meta(pages[0])
+    await pages[0].evaluate(() => {
+      const old = localStorage.getItem('typingTransVisible')
+      localStorage.setItem('typingTransVisible', old === 'false' ? 'true' : 'false')
+      sessionStorage.removeItem('qwerty.perf-diagnostics.v1')
+    })
+    const setting = await pages[0].evaluate(() => localStorage.getItem('typingTransVisible'))
+    aRequests.length = 0
+    await pages[0].reload({ waitUntil: 'domcontentloaded' })
+    await expect(pages[0].getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 90_000 })
+    expect(await pages[0].evaluate(() => localStorage.getItem('typingTransVisible'))).toBe(setting)
+    expect(await rawWords(pages[0])).toEqual(received)
+    expect(aRequests.filter(x => x.startsWith('POST '))).toEqual([])
+    expect(await pages[0].evaluate(() => sessionStorage.getItem('qwerty.s2.startup-check.v1'))).toBe('upload-deferred')
+    const retainedCloud = await meta(pages[0])
+    expect(retainedCloud.revision).toBe(beforeDeferred.revision)
+    expect(retainedCloud.logicalFingerprint).toBe(beforeDeferred.logicalFingerprint)
+    phase = 'explicit-upload-after-deferral'
+    await pages[0].goto(base + '/?s2-sync=run', { waitUntil: 'domcontentloaded' })
+    await expect(pages[0]).toHaveURL(/^https:\/\/t\.smhe\.cn\/(?:learn)?$/, { timeout: 180_000 })
+    await expect(pages[0].getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 90_000 })
+    expect((await meta(pages[0])).revision).toBeGreaterThan(beforeDeferred.revision)
+    expect(await rawWords(pages[0])).toEqual(received)
+    proof.localEditDeferredUntilManualSync = true
 
     // Export via the shipped settings UI; retain only counts in CI artifacts.
     await pages[0].getByRole('button', { name: '打开设置对话框' }).click()

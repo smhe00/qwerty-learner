@@ -422,9 +422,19 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
     // the old session when it needs cloud access. No manual Sync is clicked.
     const expected = branches.map(r => r.attemptId).sort()
     for (const [handoff, i] of [0, 1, 2, 0, 1, 2].entries()) {
+      await pages[i].evaluate(() => sessionStorage.removeItem('qwerty.learning-sync-diagnostics.v1'))
       await openAccount(pages[i], username, password, authAttempt)
       await expect.poll(async () => (await authStatus(pages[i]).catch(() => ({ status: 0 }))).status,
         { timeout: 20_000 }).toBe(200)
+      // Baseline-matched login intentionally defers local publication. Allow
+      // the retained automatic idle cycle to publish before revoking this
+      // session with the next device login; no extra user action is introduced.
+      await expect.poll(async () => pages[i].evaluate(() => {
+        const diagnostics = JSON.parse(sessionStorage.getItem('qwerty.learning-sync-diagnostics.v1') || '[]')
+        return diagnostics.some((row: any) =>
+          (row.stage === 'm3-publication' && row.status === 'uploaded-events-only') ||
+          (row.stage === 'v4-check' && ['pushed', 'pull-reload-required'].includes(row.status)))
+      }).catch(() => false), { timeout: 150_000, message: 'automatic deferred publication before next single-session handoff' }).toBe(true)
       // The last relogin must see the complete preserved event union.
       if (handoff >= 2) {
         await expect.poll(async () => {

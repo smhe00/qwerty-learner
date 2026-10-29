@@ -13,7 +13,7 @@ export * from './src/sync/startup-sync-v2'; export * from './src/sync/workspace-
 export { payloadV4 } from './src/sync/v2-manual-executor';`, resolveDir: process.cwd(), loader: 'ts' },
   outfile: file, bundle: true, platform: 'node', format: 'esm', target: 'node20' })
 const { startupLocalDigest: digest, sealStartupLocalProof: seal, matchesStartupLocalProof: matches,
-  executeStartupSyncV2: run, workspaceFingerprintV4: fingerprint, payloadV4 } = await import(pathToFileURL(file).href)
+  executeStartupSyncV2: run, matchesStartupCloudBaseline: cloudMatches, workspaceFingerprintV4: fingerprint, payloadV4 } = await import(pathToFileURL(file).href)
 const clone = value => structuredClone(value)
 const accountId = 'synthetic-local-proof'
 const names = ['wordRecords', 'chapterRecords', 'reviewRecords', 'reviewWordStates', 'achievementEvents', 'achievementStates']
@@ -54,33 +54,36 @@ async function fixture() {
   return { state, port, cache }
 }
 
-test('first full audit seeds proof; repeated unchanged startup uses fresh metadata but zero capture/transfer/baseline writes', async () => {
+test('explicit audit seeds proof; unchanged startup uses metadata only with zero capture/transfer/baseline writes', async () => {
   const { state, port, cache } = await fixture()
-  assert.deepEqual(await run(port, cache), { status: 'noop', revision: 3 })
+  assert.deepEqual(await run(port, cache, { allowReuse: false }), { status: 'noop', revision: 3 })
   assert.equal(state.captures, 1); assert.ok(state.proof)
-  for (let i = 0; i < 3; i++) assert.equal((await run(port, cache)).status, 'noop')
+  for (let i = 0; i < 3; i++) assert.equal((await run(port, cache)).status, 'upload-deferred')
   assert.equal(state.gets, 4); assert.equal(state.captures, 1); assert.equal(state.puts, 0)
   assert.equal(state.writes, 1); assert.equal(state.stages, 0)
 })
 
 test('explicit/Block sync always audits, then refreshes the proof for the next startup', async () => {
   const { state, port, cache } = await fixture()
-  await run(port, cache)
+  await run(port, cache, { allowReuse: false })
   await run(port, cache, { allowReuse: false })
   assert.equal(state.captures, 2)
   state.local.workspaceData.navigation.currentChapter++
   assert.equal((await run(port, cache, { allowReuse: false })).status, 'pushed')
   assert.equal(state.captures, 3)
-  assert.equal((await run(port, cache)).status, 'noop')
+  assert.equal((await run(port, cache)).status, 'upload-deferred')
   assert.equal(state.captures, 3); assert.equal(state.puts, 1)
 })
 
 for (const tableName of names) test('same-count edit invalidates proof for ' + tableName, async () => {
   const { state, port, cache } = await fixture()
-  await run(port, cache)
+  await run(port, cache, { allowReuse: false })
   state.local.workspaceData.database.data.data.find(t => t.tableName === tableName).rows[0].value = 'changed'
-  assert.equal((await run(port, cache)).status, 'pushed')
-  assert.equal(state.captures, 2); assert.equal(state.puts, 1)
+  const baseline = clone(state.baseline), proof = clone(state.proof)
+  for (let i = 0; i < 2; i++) assert.equal((await run(port, cache)).status, 'upload-deferred')
+  assert.equal(state.captures, 1); assert.equal(state.puts, 0); assert.equal(state.stages, 0)
+  assert.deepEqual(state.baseline, baseline); assert.deepEqual(state.proof, proof)
+  assert.equal((await run(port, cache, { allowReuse: false })).status, 'pushed')
   assert.equal(state.baseline.baseRevision, 4)
   await run(port, cache)
   assert.equal(state.captures, 2); assert.equal(state.puts, 1)
@@ -88,20 +91,21 @@ for (const tableName of names) test('same-count edit invalidates proof for ' + t
 
 for (const field of ['navigation', 'settings', 'daily-session']) test('non-table local change invalidates proof: ' + field, async () => {
   const { state, port, cache } = await fixture()
-  await run(port, cache)
+  await run(port, cache, { allowReuse: false })
   if (field === 'navigation') state.local.workspaceData.navigation.currentChapter++
     if (field === 'settings') state.local.workspaceData.settings.values.typingTransVisible = false
   // A raw-storage digest change is sufficient even if a malformed session
   // will subsequently be rejected by the complete snapshot validator.
   if (field === 'daily-session') cache.readDigest = () => digest({ data: state.local.workspaceData, daily: 'changed' })
   const outcome = await run(port, cache)
-  assert.ok(['noop', 'pushed'].includes(outcome.status)); assert.equal(state.captures, 2)
+  assert.equal(outcome.status, 'upload-deferred'); assert.equal(state.captures, 1)
+  assert.equal(state.puts, 0); assert.equal(state.writes, 1)
 })
 
 for (const fault of ['absent', 'corrupt', 'checksum', 'account', 'generation', 'baseline', 'format', 'proof-read', 'digest-read', 'unsupported']) {
-  test('unusable proof falls back to complete audit: ' + fault, async () => {
+  test('unusable proof never implies equality; unchanged cloud may defer: ' + fault, async () => {
     const { state, port, cache } = await fixture()
-    await run(port, cache)
+    await run(port, cache, { allowReuse: false })
     if (fault === 'absent') state.proof = null
     if (fault === 'corrupt') state.proof = 'broken'
     if (fault === 'checksum') state.proof.checksum = '0'.repeat(64)
@@ -113,14 +117,15 @@ for (const fault of ['absent', 'corrupt', 'checksum', 'account', 'generation', '
     if (fault === 'digest-read') cache.readDigest = async () => { throw Error('IDB unavailable') }
     if (fault === 'unsupported') cache.readDigest = async () => null
     await run(port, cache)
-    assert.equal(state.captures, 2)
+    assert.equal(state.captures, ['baseline', 'format'].includes(fault) ? 2 : 1)
+    assert.equal(state.puts, 0); assert.equal(state.writes, fault === 'baseline' ? 2 : 1)
     assert.equal(state.gets, 2, 'fallback does not duplicate initial metadata request')
   })
 }
 
 test('remote new content follows verified download and meta recheck before staging; no cache writes', async () => {
   const { state, port, cache } = await fixture()
-  await run(port, cache)
+  await run(port, cache, { allowReuse: false })
   const saved = clone(state.proof), remote = clone(state.local)
   remote.workspaceData.navigation.currentChapter = 8
   const bytes = await payloadV4(remote)
@@ -133,7 +138,7 @@ test('remote new content follows verified download and meta recheck before stagi
 
 test('unchanged cloud with changed revision is re-audited before rebasing', async () => {
   const { state, port, cache } = await fixture()
-  await run(port, cache)
+  await run(port, cache, { allowReuse: false })
   state.meta.revision++
   await run(port, cache)
   assert.equal(state.captures, 2); assert.equal(state.baseline.baseRevision, 4)
@@ -142,7 +147,7 @@ test('unchanged cloud with changed revision is re-audited before rebasing', asyn
 test('remote disappearance/regression never reuses proof or overwrites cloud', async () => {
   for (const missing of [false, true]) {
     const { state, port, cache } = await fixture()
-    await run(port, cache)
+    await run(port, cache, { allowReuse: false })
     state.meta.revision = missing ? 0 : 2
     if (missing) Object.assign(state.meta, { hasData: false, logicalFingerprint: null })
     assert.equal((await run(port, cache)).status, 'blocked')
@@ -152,7 +157,7 @@ test('remote disappearance/regression never reuses proof or overwrites cloud', a
 
 test('authentication/network failure never treats a saved proof as current and does not replay a request', async () => {
   const { state, port, cache } = await fixture()
-  await run(port, cache)
+  await run(port, cache, { allowReuse: false })
   port.getMeta = async () => { state.gets++; throw Error('session_revoked') }
   await assert.rejects(run(port, cache), /session_revoked/)
   assert.equal(state.gets, 2); assert.equal(state.captures, 1); assert.equal(state.puts, 0)
@@ -160,7 +165,7 @@ test('authentication/network failure never treats a saved proof as current and d
 
 test('owner change during fresh metadata check prevents cached success', async () => {
   const { state, port, cache } = await fixture()
-  await run(port, cache)
+  await run(port, cache, { allowReuse: false })
   let changed = false
   port.getMeta = async () => { changed = true; return state.meta }
   port.assertQuiescentOwner = async () => { if (changed) throw Error('owner changed') }
@@ -171,12 +176,12 @@ test('owner change during fresh metadata check prevents cached success', async (
 test('cache persistence failure does not fail completed sync; content changing during full audit cannot seed cache', async () => {
   const first = await fixture()
   first.cache.save = async () => { throw Error('quota') }
-  assert.equal((await run(first.port, first.cache)).status, 'noop')
+  assert.equal((await run(first.port, first.cache, { allowReuse: false })).status, 'noop')
   assert.equal(first.state.proof, null)
   const second = await fixture()
   let reads = 0
   second.cache.readDigest = () => digest(++reads === 1 ? 'before' : 'after')
-  assert.equal((await run(second.port, second.cache)).status, 'noop')
+  assert.equal((await run(second.port, second.cache, { allowReuse: false })).status, 'noop')
   assert.equal(second.state.proof, null)
 })
 
@@ -218,4 +223,58 @@ test('shared review references have stable lossless digests; topology and aliase
   const cycle = { words: [] }; cycle.words.push(cycle)
   assert.equal(await digest(cycle), null)
   assert.equal(await digest({ a: new Date(0), b: new Date(0) }) === await digest({ a: shared.date, b: shared.date }), false)
+})
+
+
+
+test('startup without a proof retains edits and cannot mint a false clean baseline', async () => {
+  const { state, port, cache } = await fixture()
+  const baseline = clone(state.baseline)
+  state.local.workspaceData.navigation.currentChapter++
+  assert.deepEqual(await run(port, cache), { status: 'upload-deferred', revision: 3 })
+  assert.equal(state.captures, 0); assert.equal(state.puts, 0); assert.equal(state.stages, 0)
+  assert.equal(state.writes, 0); assert.equal(state.proof, null)
+  assert.deepEqual(state.baseline, baseline)
+  assert.equal((await run(port, cache, { allowReuse: false })).status, 'pushed')
+  assert.equal(state.puts, 1); assert.equal(state.baseline.baseRevision, 4)
+})
+
+test('cloud revision advancing after deferral still detects both-sided edits', async () => {
+  const { state, port, cache } = await fixture()
+  state.local.workspaceData.navigation.currentChapter++
+  assert.equal((await run(port, cache)).status, 'upload-deferred')
+  state.meta.revision++
+  state.meta.logicalFingerprint = 'b'.repeat(64)
+  const result = await run(port, cache)
+  assert.equal(result.status, 'conflict')
+  assert.equal(result.reason, 'concurrent-edits')
+  assert.equal(state.captures, 1); assert.equal(state.puts, 0); assert.equal(state.writes, 0)
+})
+
+
+test('startup deferral requires exact account, revision, fingerprint and valid cloud metadata', async () => {
+  const { state } = await fixture()
+  assert.equal(cloudMatches(accountId, state.baseline, state.meta), true)
+  for (const change of [
+    { revision: 2 }, { revision: 4 }, { logicalFingerprint: 'b'.repeat(64) },
+    { hasData: false }, { clientFormatVersion: 'qwerty-backup-v3' },
+    { storageEncoding: 'base64' }, { payloadSha256: null },
+  ]) assert.equal(cloudMatches(accountId, state.baseline, { ...state.meta, ...change }), false)
+  assert.equal(cloudMatches(accountId, null, state.meta), false)
+  assert.equal(cloudMatches('other-account', state.baseline, state.meta), false)
+  assert.equal(cloudMatches(accountId, { ...state.baseline, baseRevision: 0 }, state.meta), false)
+})
+
+for (const edited of [false, true]) test('matching cloud baseline never reads or waits for local rows: edited=' + edited, async () => {
+  const { state, port, cache } = await fixture()
+  if (edited) state.local.workspaceData.navigation.currentChapter++
+  let digestReads = 0, proofReads = 0
+  cache.readDigest = () => { digestReads++; return new Promise(() => {}) }
+  cache.read = () => { proofReads++; return new Promise(() => {}) }
+  const baseline = clone(state.baseline)
+  assert.deepEqual(await run(port, cache), { status: 'upload-deferred', revision: 3 })
+  assert.equal(digestReads, 0); assert.equal(proofReads, 0)
+  assert.equal(state.gets, 1); assert.equal(state.captures, 0); assert.equal(state.puts, 0)
+  assert.equal(state.writes, 0); assert.equal(state.stages, 0)
+  assert.deepEqual(state.baseline, baseline); assert.equal(state.proof, null)
 })

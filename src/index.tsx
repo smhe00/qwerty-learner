@@ -509,8 +509,11 @@ async function start(): Promise<void> {
       if (boot.registry.active.kind === 'account' && learningEventSyncEnabled()) {
         try {
           const { startEtestM3BackgroundMonitor } = await import('./sync/m3-background-browser')
-          stopEtestM3BackgroundMonitor = startEtestM3BackgroundMonitor({ passiveReturn: boot.passiveAccountReturn === true })
-          if (!boot.passiveAccountReturn)
+          // A cloud-baseline match retains local edits until normal sync triggers;
+          // do not turn the post-mount repair pump into a two-second login upload.
+          const deferStartupPublication = boot.passiveAccountReturn === true || boot.deferredStartupUpload === true
+          stopEtestM3BackgroundMonitor = startEtestM3BackgroundMonitor({ passiveReturn: deferStartupPublication })
+          if (!deferStartupPublication)
             void import('./sync/m3-publication-browser')
               .then(({ flushDeferredM3Checkout }) => flushDeferredM3Checkout())
               .catch(() => {

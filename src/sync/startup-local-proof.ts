@@ -17,6 +17,24 @@ export type StartupLocalProof = {
 }
 const SHA = /^[a-f0-9]{64}$/
 
+/** Startup may retain local edits when this account's cloud checkpoint has
+ * not moved. This does not prove local equality or authorize a baseline write. */
+export function matchesStartupCloudBaseline(
+  accountId: string,
+  baseline: SyncV2Baseline | null,
+  remote: RemoteSyncMeta,
+): boolean {
+  return Boolean(
+    baseline && baseline.accountId === accountId &&
+    Number.isSafeInteger(baseline.baseRevision) && baseline.baseRevision > 0 &&
+    baseline.baseRevision === remote.revision &&
+    SHA.test(baseline.logicalFingerprint) &&
+    baseline.logicalFingerprint === remote.logicalFingerprint &&
+    remote.hasData === true && remote.clientFormatVersion === 'qwerty-backup-v4' &&
+    remote.storageEncoding === 'binary' && SHA.test(remote.payloadSha256 ?? ''),
+  )
+}
+
 /** Type-tagged graph encoding. Shared acyclic references keep their identity;
  * unsupported types/cycles still bypass optimization. JSON alone loses aliases,
  * undefined, holes, -0, NaN and Date identity. IDs follow sorted-key traversal. */

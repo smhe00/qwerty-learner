@@ -56,9 +56,9 @@ async function expireAfter(page: Page, remaining: number) {
     { identity: owner, remaining },
   )
 }
-async function boot(page: Page) {
-  return page.evaluate(async (identity) => {
-    history.replaceState(null, '', '/')
+async function boot(page: Page, reconcile = false) {
+  return page.evaluate(async ({ identity, reconcile }) => {
+    history.replaceState(null, '', reconcile ? '/?m4-reconcile=1' : '/')
     const h = (window as any).__backupHarness
     let mounted = false,
       error = ''
@@ -79,7 +79,7 @@ async function boot(page: Page) {
       fingerprint: await h.workspaceFingerprintV4(await h.captureWorkingWorkspaceV4(identity)),
       trace: JSON.parse(sessionStorage.getItem('qwerty.startup-sync-trace.v1') || '[]'),
     }
-  }, owner)
+  }, { identity: owner, reconcile })
 }
 const emptyMeta = {
   ok: true,
@@ -369,18 +369,26 @@ async function unchangedCloud(page: Page) {
   return cloud
 }
 
+async function manualSync(page: Page) {
+  return page.evaluate(async () => {
+    const h = (window as any).__backupHarness, lease = await h.acquireWorkspaceWriterLease()
+    try {
+      return await h.executePreMountManualSyncV2({ mode: 'isolated', registry: await h.workspaceRegistryPort.read() })
+    } finally { lease.release() }
+  })
+}
 async function localProof(page: Page) {
   return page.evaluate(identity => (window as any).__startupRegression.startupLocalProofCache.read(identity.accountId), owner)
 }
 async function clearPerf(page: Page) {
   await page.evaluate(() => sessionStorage.removeItem('qwerty.perf-diagnostics.v1'))
 }
-async function usedLocalProof(page: Page) {
+async function deferredStartup(page: Page) {
   return page.evaluate(() => JSON.parse(sessionStorage.getItem('qwerty.perf-diagnostics.v1') || '[]')
-    .some((sample: any) => sample.stage === 'startup-local-current' && sample.outcome === 'ok'))
+    .some((sample: any) => sample.stage === 'startup-upload-deferred' && sample.outcome === 'ok'))
 }
 
-for (const width of [390, 1440]) test('unchanged reopened account at width ' + width + ' uses fresh metadata and local proof without exporting or transferring data', async ({ page, baseURL }) => {
+for (const width of [390, 1440]) test('unchanged reopened account at width ' + width + ' uses only fresh metadata without scanning or transferring data', async ({ page, baseURL }) => {
   await page.setViewportSize({ width, height: 844 })
   await ready(page, baseURL!)
   const cloud = await unchangedCloud(page)
@@ -397,14 +405,14 @@ for (const width of [390, 1440]) test('unchanged reopened account at width ' + w
   })
   const second = await boot(page)
   expect(second.mounted).toBe(true); expect(second.fingerprint).toBe(first.fingerprint)
-  expect(await usedLocalProof(page)).toBe(true)
+  expect(await deferredStartup(page)).toBe(true)
   // boot() independently exports once AFTER mounting to verify conservation.
   expect(await page.evaluate(() => (window as any).__exportCalls)).toBe(1)
-  expect(cloud.calls).toEqual(['GET /api/sync/v2/meta', 'GET /api/sync/events/v2/observed'])
+  expect(cloud.calls).toEqual(['GET /api/sync/v2/meta'])
   expect(cloud.writes).toBe(1); expect(second.pending).toBe(false)
 })
 
-test('native IDB same-count record edit invalidates cached startup and uploads the updated content once', async ({ page, baseURL }) => {
+test('native IDB same-count edit stays local on startup and explicit sync uploads it once', async ({ page, baseURL }) => {
   await ready(page, baseURL!)
   const cloud = await unchangedCloud(page)
   await boot(page)
@@ -423,9 +431,11 @@ test('native IDB same-count record edit invalidates cached startup and uploads t
   }))
   await clearPerf(page)
   const result = await boot(page)
-  expect(result.mounted).toBe(true); expect(await usedLocalProof(page)).toBe(false)
-  expect(cloud.writes).toBe(2); expect(result.baseline.baseRevision).toBe(2)
-  expect((await localProof(page)).localDigest).not.toBe(before.localDigest)
+  expect(result.mounted).toBe(true); expect(await deferredStartup(page)).toBe(true)
+  expect(cloud.writes).toBe(1); expect(result.baseline.baseRevision).toBe(1)
+  expect(await localProof(page)).toEqual(before)
+  expect((await manualSync(page)).status).toBe('pushed')
+  expect(cloud.writes).toBe(2); expect((await localProof(page)).localDigest).not.toBe(before.localDigest)
   expect(await page.evaluate(async () => {
     const rows = await (window as any).__backupHarness.db.wordRecords.toCollection().raw().toArray()
     return { count: rows.length, wrongCount: rows[0].wrongCount }
@@ -449,11 +459,13 @@ for (const kind of ['settings', 'daily-session']) test(kind + ' storage changes 
   await navigate(page)
   await clearPerf(page)
   const result = await boot(page)
-  expect(result.mounted).toBe(true); expect(await usedLocalProof(page)).toBe(false)
+  expect(result.mounted).toBe(true); expect(await deferredStartup(page)).toBe(true)
+  expect(cloud.writes).toBe(1); expect(await localProof(page)).toEqual(before)
+  expect((await manualSync(page)).status).toBe('pushed')
   expect(cloud.writes).toBe(2); expect((await localProof(page)).localDigest).not.toBe(before.localDigest)
 })
 
-test('damaged proof falls back to full comparison without uploading identical records', async ({ page, baseURL }) => {
+test('damaged disposable proof cannot force work or claim equality when cloud baseline matches', async ({ page, baseURL }) => {
   await ready(page, baseURL!)
   const cloud = await unchangedCloud(page)
   await boot(page)
@@ -464,7 +476,9 @@ test('damaged proof falls back to full comparison without uploading identical re
   }, owner)
   await navigate(page); await clearPerf(page)
   expect((await boot(page)).mounted).toBe(true)
-  expect(await usedLocalProof(page)).toBe(false); expect(cloud.writes).toBe(1)
+  expect(await deferredStartup(page)).toBe(true); expect(cloud.writes).toBe(1)
+  expect((await localProof(page)).checksum).toBe('0'.repeat(64))
+  expect((await manualSync(page)).status).toBe('noop')
   expect((await localProof(page)).checksum).not.toBe('0'.repeat(64))
 })
 
@@ -486,7 +500,7 @@ test('new remote revision downloads through the existing journal and reopens wit
   cloud.calls.length = 0
   const staged = await boot(page)
   expect(staged.mounted).toBe(false); expect(staged.error).toContain('S2 Pull staged')
-  expect(staged.pending).toBe(true); expect(await usedLocalProof(page)).toBe(false)
+  expect(staged.pending).toBe(true); expect(await deferredStartup(page)).toBe(false)
   expect(cloud.calls).toEqual(['GET /api/sync/v2/meta', 'GET /api/sync/v2/binary/manifest',
     'GET /api/sync/v2/binary/part', 'GET /api/sync/v2/meta'])
   await navigate(page)
@@ -505,7 +519,7 @@ test('fresh session rejection cannot be masked by a cached local proof', async (
   await navigate(page); await clearPerf(page)
   cloud.revoked = true
   const rejected = await boot(page)
-  expect(await usedLocalProof(page)).toBe(false)
+  expect(await deferredStartup(page)).toBe(false)
   expect(await page.evaluate(() => sessionStorage.getItem('qwerty.s2.startup-check.v1'))).toBe('pending')
   expect(rejected.note).toContain('尚未确认')
   expect(rejected.fingerprint).toBe(first.fingerprint); expect(cloud.writes).toBe(1)
@@ -523,10 +537,10 @@ test('completed manual sync refreshes local proof so the next opening avoids a f
   expect(manual.status).toBe('pushed'); expect(await localProof(page)).not.toBeNull()
   await navigate(page); await clearPerf(page)
   expect((await boot(page)).mounted).toBe(true)
-  expect(await usedLocalProof(page)).toBe(true); expect(cloud.writes).toBe(1)
+  expect(await deferredStartup(page)).toBe(true); expect(cloud.writes).toBe(1)
 })
 
-test('current V4 proof retains and retries the identical outstanding immutable-event batch', async ({ page, baseURL }) => {
+test('explicit reconciliation retains and retries the identical outstanding immutable-event batch', async ({ page, baseURL }) => {
   await ready(page, baseURL!)
   const cloud = await unchangedCloud(page)
   await page.evaluate(async () => {
@@ -535,23 +549,23 @@ test('current V4 proof retains and retries the identical outstanding immutable-e
       sourceMode: 'learn', learnItemKind: 'review', timeStamp: 1800000000, timing: [], wrongCount: 0, mistakes: {},
     })
   })
-  const first = await boot(page)
-  expect(first.mounted).toBe(true); expect(await localProof(page)).not.toBeNull()
+  const first = await boot(page, true)
+  expect(first.mounted).toBe(true)
   expect(cloud.calls).toContain('POST /api/sync/events/v2')
-  expect(cloud.writes).toBe(1)
+  expect(cloud.writes).toBe(0)
   cloud.calls.length = 0
   await navigate(page); await clearPerf(page)
-  const second = await boot(page)
-  expect(second.mounted).toBe(true); expect(await usedLocalProof(page)).toBe(true)
+  const second = await boot(page, true)
+  expect(second.mounted).toBe(true); expect(await deferredStartup(page)).toBe(false)
   expect(second.fingerprint).toBe(first.fingerprint)
   expect(cloud.calls).toContain('POST /api/sync/events/v2')
   expect(cloud.eventBatches).toHaveLength(2)
   expect(cloud.eventBatches[1]).toBe(cloud.eventBatches[0])
-  expect(cloud.writes).toBe(1)
+  expect(cloud.writes).toBe(0)
 })
 
 
-test('historical shared review objects survive IDB reload and reuse only an exact local proof', async ({ page, baseURL }) => {
+test('historical shared review objects and alias edits stay local until explicit audited sync', async ({ page, baseURL }) => {
   await ready(page, baseURL!)
   await page.evaluate(async () => {
     const h = (window as any).__backupHarness
@@ -568,15 +582,15 @@ test('historical shared review objects survive IDB reload and reuse only an exac
   const second = await boot(page)
   expect(second.mounted).toBe(true)
   expect(second.fingerprint).toBe(first.fingerprint)
-  expect(await usedLocalProof(page)).toBe(true)
+  expect(await deferredStartup(page)).toBe(true)
   expect(cloud.writes).toBe(1)
   expect(await page.evaluate(async () => {
     const rows = await (window as any).__backupHarness.db.reviewRecords.toCollection().raw().toArray()
     const row = rows.find((r: any) => r.words?.[0]?.name === 'historical-shared')
     return row.words[0] === row.words[1] && row.words[0]['audit.date'] instanceof Date
   })).toBe(true)
-  // Same number of rows, UUIDs and words; changing only alias topology must
-  // invalidate evidence and run the complete audit (not silently reuse it).
+  // Same-count alias edits stay local without being falsely declared synced;
+  // the explicit sync below still runs the complete audit.
   await page.evaluate(async () => {
     const db = (window as any).__backupHarness.db
     const rows = await db.reviewRecords.toCollection().raw().toArray()
@@ -587,5 +601,8 @@ test('historical shared review objects survive IDB reload and reuse only an exac
   await clearPerf(page)
   const changed = await boot(page)
   expect(changed.mounted).toBe(true)
-  expect(await usedLocalProof(page)).toBe(false)
+  expect(await deferredStartup(page)).toBe(true)
+  expect(cloud.writes).toBe(1)
+  expect((await manualSync(page)).status).toBe('pushed')
+  expect(cloud.writes).toBe(2)
 })

@@ -9,6 +9,7 @@ import { getSyncV2Meta, getSyncV2MetaWithBinaryMigration,
   getSyncV2Snapshot, getSyncV2SnapshotBinary, putSyncV2Binary } from './api'
 import { loadAuth } from './auth'
 import { compareAndSwapSyncV2Baseline, loadSyncV2Baseline } from './v2-baseline'
+import type { StartupSyncResult } from './startup-sync-v2'
 import type { S2ExecutionResult } from './v2-manual-executor'
 import type { SyncV2ExecutionPort } from './v2-manual-executor'
 import { syncV2PullJournalPort } from './v2-pull-journal'
@@ -18,10 +19,14 @@ import { saveWorkspaceToVault, workspaceRegistryPort } from './workspace-vault'
 import type { GuardedWorkspaceBoot } from './workspace-bootstrap'
 import { flushReviewRecordWrites } from '@/utils/db/review-record-writer'
 
+type SyncBoot = Pick<GuardedWorkspaceBoot, 'mode' | 'registry'>
+
+export function executePreMountManualSyncV2(boot: SyncBoot, options?: { startup?: false }): Promise<S2ExecutionResult>
+export function executePreMountManualSyncV2(boot: SyncBoot, options: { startup?: boolean }): Promise<StartupSyncResult>
 export async function executePreMountManualSyncV2(
-  boot: Pick<GuardedWorkspaceBoot, 'mode' | 'registry'>,
+  boot: SyncBoot,
   options: { startup?: boolean } = {},
-): Promise<S2ExecutionResult> {
+): Promise<StartupSyncResult> {
   const owner = boot.registry.active
   if (boot.mode !== 'isolated' || boot.registry.pending ||
       owner.kind !== 'account' || boot.registry.generation < 1) {

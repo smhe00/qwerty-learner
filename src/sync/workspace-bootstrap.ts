@@ -42,6 +42,8 @@ export type GuardedWorkspaceBoot = {
   mode: 'legacy' | 'isolated'
   registry: Registry
   passiveAccountReturn?: boolean
+  /** Resume the ordinary background cadence instead of a startup publication. */
+  deferredStartupUpload?: boolean
   /** Only call after all mounted writers have stopped and flushed. */
   release(): void
 }
@@ -67,6 +69,7 @@ export async function prepareGuardedWorkspaceBoot(
   const returnTicket = takePassiveAccountReturn()
   let networkSettled = true
   let fullDataSynced = false
+  let uploadDeferred = false
   let historyProgress: { completed: number; total: number; reason: string } | undefined
   report(onStage, 'locking')
   const lease = await timePerfStage('startup', 'writer-lease', () => acquireWorkspaceWriterLease({ waitMs: options.writerWaitMs })).catch(
@@ -261,6 +264,7 @@ export async function prepareGuardedWorkspaceBoot(
       const { checkAccountV4AfterAuthentication } = await import('./account-login-v4-check')
       const result = await checkAccountV4AfterAuthentication({ startup: true })
       fullDataSynced = result.status === 'noop' || result.status === 'pushed'
+      uploadDeferred = result.status === 'upload-deferred'
       if (result.status === 'pending') networkSettled = false
       // Fixed status only: no identity, token, payload or private error.
       sessionStorage.setItem('qwerty.s2.startup-check.v1', result.status)
@@ -278,7 +282,9 @@ export async function prepareGuardedWorkspaceBoot(
     // this device's immutable offline events, then optionally adopt a strictly
     // verified, monotonic remote PREFIX through an M4 undo journal. Never use
     // Blob listing as evidence of whole-account convergence.
-    if (!passiveAccountReturn && registry.active.kind === 'account' && learningEventSyncEnabled() && startupSyncTimeRemaining()) {
+    // Retaining local edits must not immediately publish them through M3's
+    // alternate startup path. Scheduled/background and explicit sync remain owners.
+    if (!passiveAccountReturn && !uploadDeferred && registry.active.kind === 'account' && learningEventSyncEnabled() && startupSyncTimeRemaining()) {
       try {
         const { adoptWitnessedM3AtGuardedBoot } = await import('./m4-witnessed-prefix-browser')
         report(onStage, 'verifying-history')
@@ -366,7 +372,7 @@ export async function prepareGuardedWorkspaceBoot(
         ['/', '/learn', '/typing', '/mobile', '/mobile/study'].includes(window.location.pathname.replace(/\/$/, '') || '/'),
     )
     report(onStage, 'ready')
-    return { mode: 'isolated', registry, passiveAccountReturn, release: () => lease.release() }
+    return { mode: 'isolated', registry, passiveAccountReturn, deferredStartupUpload: uploadDeferred, release: () => lease.release() }
   } catch (error) {
     lease.release()
     report(onStage, recovered ? 'restart-required' : 'blocked')

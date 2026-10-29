@@ -18,6 +18,7 @@ const STATUSES = [
   'candidate',
   'noop',
   'pushed',
+  'upload-deferred',
   'pull-reload-required',
   'conflict',
   'failed',

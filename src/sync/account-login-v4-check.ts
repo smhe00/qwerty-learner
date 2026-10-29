@@ -14,7 +14,7 @@ import { v4FailureCode } from './v4-failure-diagnostics'
 import { workspaceRegistryPort } from './workspace-vault'
 
 export type AccountLoginV4Result =
-  | { status: 'noop' | 'pushed'; detail: string; canContinue: true }
+  | { status: 'noop' | 'pushed' | 'upload-deferred'; detail: string; canContinue: true }
   | { status: 'pull-staged'; detail: string; canContinue: false }
   | { status: 'pending'; detail: string; canContinue: boolean }
 
@@ -41,6 +41,9 @@ export async function checkAccountV4AfterAuthentication(options: { startup?: boo
       }, options),
     )
     recordLearningSyncDiagnostic({ stage: 'v4-check', status: outcome.status, code: 'reason' in outcome ? outcome.reason : 'none' })
+    if (outcome.status === 'upload-deferred') {
+      return { status: 'upload-deferred', canContinue: true, detail: '' }
+    }
     if (outcome.status === 'noop') {
       return { status: 'noop', canContinue: true, detail: '' }
     }

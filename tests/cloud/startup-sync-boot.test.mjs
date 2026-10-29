@@ -203,3 +203,25 @@ test('completed exact history clears an interrupted old history notice but prese
  ;(await boot()).release()
  assert.equal(globalThis.sessionStorage.getItem('qwerty.s2.last-sync-result'),'已完成云端学习数据安全恢复。')
 })
+
+
+
+for (const mobile of [false, true]) test('unchanged cloud retains local edits without alternate startup publication: ' + mobile, async () => {
+  const s = setup()
+  globalThis.window.location.pathname = mobile ? '/mobile' : '/learn'
+  s.v4 = async () => { s.checks++; return { status: 'upload-deferred', canContinue: true, detail: '' } }
+  const stages = []
+  const result = await boot(stage => stages.push(stage)); result.release()
+  assert.equal(result.deferredStartupUpload, true)
+  assert.equal(s.checks, 1); assert.equal(s.adoptions, 0); assert.equal(s.installed, 1)
+  assert.equal(s.recoveries, 0); assert.equal(stages.includes('verifying-history'), false)
+  assert.equal(globalThis.sessionStorage.getItem('qwerty.s2.startup-check.v1'), 'upload-deferred')
+  assert.equal(globalThis.sessionStorage.getItem('qwerty.s2.last-sync-result'), '')
+})
+
+test('deferred upload does not bypass a newly staged recovery journal', async () => {
+  const s = setup()
+  s.v4 = async () => { s.pull = {}; return { status: 'upload-deferred', canContinue: true, detail: '' } }
+  await assert.rejects(boot(), /durable recovery remains pending/)
+  assert.equal(s.installed, 0); assert.equal(s.adoptions, 0)
+})
