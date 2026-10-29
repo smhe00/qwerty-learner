@@ -429,10 +429,12 @@ test('A/B/C sequential login, offline forks, reconnect, reauth and no-click V4 a
       // Baseline-matched login intentionally defers local publication. Allow
       // the retained automatic idle cycle to publish before revoking this
       // session with the next device login; no extra user action is introduced.
+      // Already confirmed/empty outboxes finish idle without a redundant upload;
+      // the strict event-union assertion below independently proves delivery.
       await expect.poll(async () => pages[i].evaluate(() => {
         const diagnostics = JSON.parse(sessionStorage.getItem('qwerty.learning-sync-diagnostics.v1') || '[]')
         return diagnostics.some((row: any) =>
-          (row.stage === 'm3-publication' && row.status === 'uploaded-events-only') ||
+          (row.stage === 'm3-publication' && ['uploaded-events-only', 'idle'].includes(row.status)) ||
           (row.stage === 'v4-check' && ['pushed', 'pull-reload-required'].includes(row.status)))
       }).catch(() => false), { timeout: 150_000, message: 'automatic deferred publication before next single-session handoff' }).toBe(true)
       // The last relogin must see the complete preserved event union.

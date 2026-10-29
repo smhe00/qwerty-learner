@@ -1,5 +1,5 @@
 # Startup metadata-only receive check
-Status: SOURCE_VALIDATED; etest deployment pending. Executor: Codex-startup-receive.
+Status: ETEST_PUSHED; real-cloud verification in progress. Executor: Codex-startup-receive.
 Base/source: `613e954a46847604dd64ffb1de5eb954f678b6df`; initial etest: `513b7d61d691f4edfdc47729ee4dd6d666e1746d`.
 
 ## Result
@@ -19,3 +19,8 @@ Historical E2E now asserts metadata-only unchanged startup with zero local scan/
 
 ## Limits and next action
 No real-cloud latency measured yet for this candidate. Fresh session validation and cloud metadata requests still dominate network time; 1 second is a target, not a guaranteed or measured outcome. The snapshot checkpoint does not encompass the independent immutable-event stream: when the snapshot baseline matches, that stream is handled by the retained idle/online/visibility triggers rather than blocking startup. Real-device iOS/HarmonyOS checks not performed. Push source to main, run its required CI, fast-forward authorized etest to the exact candidate, verify deployed source and relevant real-cloud E2E; record run IDs, measured stages and remaining failures. No master release.
+
+## Deployment checkpoint
+First candidate `507b635c84a0fc341e2081b960a8c6022cba8f6e` passed Cloud backend 1059/1059, Cloud + Pages admission, published Pages regression, both built UI matrices, Startup Sync Recovery and P4b. Promoted etest by fast-forward from `513b7d61d691f4edfdc47729ee4dd6d666e1746d`; nine real-cloud workflows started (historical run 40830252138, three-device 40830252136).
+
+Validation-only followup: the three-device test must accept a completed `idle` publication cycle when a device has already durably published its events. It must not require redundant upload on every relogin. Final exact 3/3 event union, per-device original-record durability and journal/archive checks remain unchanged. No runtime/application changes in this followup. Candidate deployment identity must still be checked against its own SHA.
