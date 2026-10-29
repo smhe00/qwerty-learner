@@ -34,7 +34,9 @@ export async function verifyHistoryPage({ accountId, heads, cursor, storage, rea
       // A fresh authenticated request already loaded and hash-validated this
       // server-owned, complete checkpoint. Exact unchanged heads need no Blob
       // rewrite or second readback. Never trust a client digest/progress flag.
-      await assertOwner()
+      // The post-read assertOwner above is the final live authorization.
+      // Only synchronous hash/shape checks follow it: repeating the same full
+      // authentication here adds I/O without guarding another storage action.
       return { ...flags, verified: true, reason: 'witnessed-heads-verified',
         cursor, receiptsRead: state.receipts.length, totalReceipts: heads.reduce((n, h) => n + h.sequence, 0),
         uniqueAttemptCount: state.attempts.length, digestAlgorithm: 'attempt-sha256-v1',

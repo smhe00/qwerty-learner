@@ -54,3 +54,18 @@ test('transport reuse is scoped to Circle routes and never inherited by non-Circ
   }),withCircleBlobClients(other,async()=>{await Promise.resolve();assert.equal(circleBlobClientsEnabled(),false)})])
   assert.equal(circleBlobClientsEnabled(),false)
 })
+
+test('startup read optimization is exact method/path scoped; learning writes and account operations stay unchanged', async () => {
+  const enabled = [['GET','/sync/v2/meta'],['GET','/sync/events/v2/observed'],['POST','/sync/events/v2/verify-set']]
+  const disabled = [['POST','/sync/v2/meta'],['GET','/sync/events/v2/verify-set'],['POST','/sync/events/v2'],
+    ['GET','/sync/events/v2'],['POST','/sync/v2/binary/direct'],['GET','/sync/v2/meta/'],['GET','/sync/v2/meta/extra'],
+    ['POST','/auth/login'],['GET','/auth/me'],['DELETE','/auth/account']]
+  for (const [method,path] of enabled) await withCircleBlobClients(new Request('https://fixture.invalid/api'+path,{method}), async () => {
+    assert.equal(circleBlobClientsEnabled(),true)
+    for (const [otherMethod,otherPath] of disabled) await withCircleBlobClients(new Request('https://fixture.invalid/api'+otherPath,{method:otherMethod}), async () => {
+      assert.equal(circleBlobClientsEnabled(),false)
+    })
+    assert.equal(circleBlobClientsEnabled(),true)
+  })
+  assert.equal(circleBlobClientsEnabled(),false)
+})

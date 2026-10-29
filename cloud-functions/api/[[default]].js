@@ -1,5 +1,5 @@
 import { createAccountDeletionReceipts } from '../_shared/account-deletion-receipts.js'
-import { withCircleBlobClients } from '../_shared/blob-clients.js'
+import { isStartupSyncRead, withCircleBlobClients } from '../_shared/blob-clients.js'
 import { profileCircleRequest } from '../_shared/circle/profile.js'
 import { createFeedbackService } from '../_shared/feedback.js'
 /* eslint-env node */
@@ -356,7 +356,7 @@ export async function onRequest(context) {
   const feedbackBody = (path === '/feedback' || path.startsWith('/feedback/')) &&
     request.method === 'POST' ? readJson(request, 16384) : null
   // Buffer once before asynchronous guards; all authorization remains before
-  // business writes. Only Circle requests reuse the SDK transport.
+  // business writes. Circle and exact startup verification routes reuse SDK transport.
   const receivedBody = circleBody ?? feedbackBody ?? receiveRoutedJson(request, path, runtimeEnvironment(context.env))
   // Begin native receive before ANY asynchronous handoff/account/idle lookup.
   // This only captures bytes: auth, quotas, digests and revision checks still
@@ -454,12 +454,15 @@ async function onUncoordinatedRequest(context, receivedBody = null, nativeV4Body
     const administrator = await diagnostics.run('administrator-binding', () => loadAdministrator({
       store: getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }), env,
     }))
+    // Transport reuse never caches Blob values; every authentication call still
+    // performs fresh strong reads. Positive activity evidence lives only here.
+    const fastRead = path === '/circle/v2' || path.startsWith('/circle/v2/') || isStartupSyncRead(request)
     const idle = createIdleAccounts({
       store: getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }),
       adminUserId: administrator.userId, ...idleDeploymentOptions(env),
-      requestScopedActivity: path === '/circle/v2' || path.startsWith('/circle/v2/'),
+      requestScopedActivity: fastRead,
     })
-    const service = makeService(env, storage, idle, administrator, diagnostics, path === '/circle/v2' || path.startsWith('/circle/v2/'))
+    const service = makeService(env, storage, idle, administrator, diagnostics, fastRead)
     if (path === '/feedback' || path.startsWith('/feedback/')) {
       const result = await createFeedbackService({
         store: getStore({ name: env.BLOB_STORE_NAME || 'qwerty-data', consistency: 'strong' }),

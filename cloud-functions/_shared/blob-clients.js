@@ -2,11 +2,19 @@
 import { createHash } from 'node:crypto'
 import { AsyncLocalStorage } from 'node:async_hooks'
 
+/** These reads never commit learning data. verify-set may persist only a
+ * disposable server-owned verification checkpoint. No prefix/path wildcard. */
+export function isStartupSyncRead(request) {
+  const path = new URL(request.url).pathname.replace(/^\/api(?=\/|$)/, '')
+  return (request.method === 'GET' && ['/sync/v2/meta', '/sync/events/v2/observed'].includes(path)) ||
+    (request.method === 'POST' && path === '/sync/events/v2/verify-set')
+}
+
 const scopes = new AsyncLocalStorage()
 export const circleBlobClientsEnabled = () => scopes.getStore() === true
 export function withCircleBlobClients(request, operation) {
   const path = new URL(request.url).pathname.replace(/^\/api(?=\/|$)/, '')
-  return scopes.run(/^\/circle\/v2(?:\/|$)/.test(path), operation)
+  return scopes.run(/^\/circle\/v2(?:\/|$)/.test(path) || isStartupSyncRead(request), operation)
 }
 
 /** Reuse SDK transport and expiring provider credentials, never Blob values,

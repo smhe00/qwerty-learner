@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url'
 import { build } from 'esbuild'
 import { PausableBlob, fixture } from './session-handoff-fixtures.mjs'
 
-let directory, onRequest
+let directory, gatewayUrl, onRequest
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'handoff-gateway-'))
   const outfile = join(directory, 'gateway.mjs')
@@ -23,7 +23,8 @@ before(async () => {
         }))
       },
     }] })
-  ;({ onRequest } = await import(pathToFileURL(outfile)))
+  gatewayUrl = pathToFileURL(outfile).href
+  ;({ onRequest } = await import(gatewayUrl))
 })
 after(async () => { delete globalThis.__handoffGatewayTestStore; await rm(directory, { recursive: true, force: true }) })
 const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex')
@@ -36,6 +37,9 @@ const wait = async predicate => {
 }
 let ipNumber = 0
 async function harness({ ordinary = false, unclonableAuth = false } = {}) {
+  // A new fake Blob service represents a fresh deployment. Reset module-scoped
+  // SDK transports as well; real stores do not change behind the same client.
+  onRequest = (await import(gatewayUrl + '?fixture=' + crypto.randomUUID())).onRequest
   const authReadCounts = []
   const stores = new Map()
   globalThis.__handoffGatewayTestStore = options => {
@@ -174,6 +178,7 @@ test('actual HTTP gateway: health is explicit about qualification-only coverage'
 
 
 test('live qualification script exercises the complete actual-handler journey locally', { timeout: 15000 }, async () => {
+  onRequest = (await import(gatewayUrl + '?fixture=' + crypto.randomUUID())).onRequest
   const stores = new Map()
   globalThis.__handoffGatewayTestStore = options => {
     const name = typeof options === 'string' ? options : options.name

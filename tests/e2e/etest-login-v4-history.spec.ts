@@ -649,6 +649,29 @@ test('historical six-table startup download and automatic divergent reauth conve
     proof.reloginWithoutLearningPreservesAllRows = true
     proof.noLegacyWarningInOrdinaryUI = true
 
+    // Measure ordinary repeat openings separately from logout/login (which
+    // includes authentication and an S1 workspace switch). Keep real cloud
+    // checks and verify that faster startup never hides a restore or upload.
+    const unchangedReloads: { elapsedMs: number; localProofReused: boolean; stages: unknown[] }[] = []
+    proof.unchangedReloads = unchangedReloads
+    for (let sample = 0; sample < 3; sample++) {
+      await pages[0].evaluate(() => sessionStorage.removeItem('qwerty.perf-diagnostics.v1'))
+      aRequests.length = 0
+      const started = Date.now()
+      await pages[0].reload({ waitUntil: 'domcontentloaded' })
+      await expect(pages[0].getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 90_000 })
+      const elapsedMs = Date.now() - started
+      const stages = await pages[0].evaluate(() => JSON.parse(sessionStorage.getItem('qwerty.perf-diagnostics.v1') || '[]'))
+      expect(aRequests.filter((x) => x === 'GET /api/sync/v2/meta')).toHaveLength(1)
+      expect(aRequests.filter((x) => x === 'POST /api/sync/events/v2' || x === 'GET /api/sync/events/v2')).toHaveLength(0)
+      expect(stages.filter((s: any) => s.stage === 'm4-capture' || s.stage === 'm4-transaction')).toHaveLength(0)
+      expect(await rawWords(pages[0])).toEqual(received)
+      unchangedReloads.push({ elapsedMs,
+        localProofReused: stages.some((s: any) => s.stage === 'startup-local-current'),
+        stages: stages.map(({ stage, elapsedMs, outcome }: any) => ({ stage, elapsedMs, outcome })),
+      })
+    }
+
     // Export via the shipped settings UI; retain only counts in CI artifacts.
     await pages[0].getByRole('button', { name: '打开设置对话框' }).click()
     await pages[0].getByRole('tab', { name: '开发诊断' }).click()
