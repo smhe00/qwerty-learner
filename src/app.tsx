@@ -1,9 +1,9 @@
 import Loading from './components/Loading'
+import InterfaceErrorBoundary from './components/InterfaceErrorBoundary'
 import { useLearnKeyboardIntent } from '@/hooks/useLearnKeyboardIntent'
 import NavigationOverlay, { AUXILIARY_PATHS, getAuxiliaryBackground } from './components/NavigationOverlay'
 import QuickSyncNotice from './components/QuickSyncNotice'
 import FeedbackCenter from './feedback/FeedbackCenter'
-import './index.css'
 import { ErrorBook } from './pages/ErrorBook'
 import { FriendLinks } from './pages/FriendLinks'
 import MobilePage from './pages/Mobile'
@@ -258,4 +258,4 @@ function Root() {
 
 const container = document.getElementById('root')
 
-container && createRoot(container).render(<Root />)
+container && createRoot(container).render(<InterfaceErrorBoundary><Root /></InterfaceErrorBoundary>)

@@ -69,8 +69,8 @@ export const errorColumns = (onDelete: (word: string) => Promise<void>): ColumnD
       return (
         <TooltipProvider>
           <Tooltip>
-            <TooltipTrigger>
-              <DeleteIcon className="cursor-pointer" onClick={() => onDelete(row.original.word)} />
+            <TooltipTrigger aria-label={'删除错词：' + row.original.word} onClick={() => onDelete(row.original.word)}>
+              <DeleteIcon className="cursor-pointer" />
             </TooltipTrigger>
             <TooltipContent>
               <p>Delete Records</p>

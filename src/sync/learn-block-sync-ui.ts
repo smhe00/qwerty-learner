@@ -3,7 +3,6 @@
  * React app / RecordDB MUST NOT mount until guarded S2 Sync has finished and
  * the old document has been destroyed.
  */
-import '../index.css'
 import { presentSafetyDialog } from './dialog-presentation'
 import { clearLearnBlockSyncHandoff, readLearnBlockSyncPending } from './learn-block-sync'
 import type { LearnBlockSyncHandoff, LearnBlockSyncOutcome } from './learn-block-sync'

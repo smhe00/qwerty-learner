@@ -50,7 +50,7 @@ export default function AdvancedSetting() {
             <span className={styles.sectionLabel}>章节乱序</span>
             <span className={styles.sectionDescription}>开启后，每次练习章节中单词会随机排序。下一章节生效</span>
             <div className={styles.switchBlock}>
-              <Switch checked={randomConfig.isOpen} onChange={onToggleRandom} className="switch-root">
+              <Switch aria-label="随机顺序" checked={randomConfig.isOpen} onChange={onToggleRandom} className="switch-root">
                 <span aria-hidden="true" className="switch-thumb" />
               </Switch>
               <span className="text-right text-xs font-normal leading-tight text-gray-600">{`随机已${
@@ -62,7 +62,7 @@ export default function AdvancedSetting() {
             <span className={styles.sectionLabel}>前后单词提示</span>
             <span className={styles.sectionDescription}>开启后，练习中会在上方展示上一个/下一个单词</span>
             <div className={styles.switchBlock}>
-              <Switch checked={isShowPrevAndNextWord} onChange={onToggleLastAndNextWord} className="switch-root">
+              <Switch aria-label="前后单词提示" checked={isShowPrevAndNextWord} onChange={onToggleLastAndNextWord} className="switch-root">
                 <span aria-hidden="true" className="switch-thumb" />
               </Switch>
               <span className="text-right text-xs font-normal leading-tight text-gray-600">{`展示单词已${
@@ -74,7 +74,7 @@ export default function AdvancedSetting() {
             <span className={styles.sectionLabel}>忽略大小写</span>
             <span className={styles.sectionDescription}>开启后，输入时不区分大小写，如输入“hello”和“Hello”都会被认为是正确的</span>
             <div className={styles.switchBlock}>
-              <Switch checked={isIgnoreCase} onChange={onToggleIgnoreCase} className="switch-root">
+              <Switch aria-label="忽略大小写" checked={isIgnoreCase} onChange={onToggleIgnoreCase} className="switch-root">
                 <span aria-hidden="true" className="switch-thumb" />
               </Switch>
               <span className="text-right text-xs font-normal leading-tight text-gray-600">{`忽略大小写已${
@@ -86,7 +86,7 @@ export default function AdvancedSetting() {
             <span className={styles.sectionLabel}>鼠标悬停显示答案</span>
             <span className={styles.sectionDescription}>仅在 Typing 默写练习中使用。鼠标悬停在单词上显示答案；Learn 提示流程不会因此改变。 </span>
             <div className={styles.switchBlock}>
-              <Switch checked={isShowAnswerOnHover} onChange={onToggleShowAnswerOnHover} className="switch-root">
+              <Switch aria-label="鼠标悬停显示答案" checked={isShowAnswerOnHover} onChange={onToggleShowAnswerOnHover} className="switch-root">
                 <span aria-hidden="true" className="switch-thumb" />
               </Switch>
               <span className="text-right text-xs font-normal leading-tight text-gray-600">{`显示提示已${

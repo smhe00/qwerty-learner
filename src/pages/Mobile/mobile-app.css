@@ -615,7 +615,7 @@ button.mobile-practice-primary {
 .mobile-daily-loading button { display: block; min-height: 44px; color: var(--mobile-accent); text-decoration: underline; }
 .mobile-library-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .mobile-detail-page label { display: flex; flex-direction: column; gap: 9px; min-width: 0; font-size: 13px; }
-.mobile-detail-page input:not([type=checkbox]), .mobile-detail-page select { min-height: 46px; min-width: 0; width: 100%; padding: 10px 12px; border: 1px solid var(--mobile-line); border-radius: 10px; background: var(--mobile-surface); color: var(--mobile-text); font-size: 16px; }
+.mobile-detail-page input:not([type=checkbox]):not([type=file]), .mobile-detail-page select { min-height: 46px; min-width: 0; width: 100%; padding: 10px 12px; border: 1px solid var(--mobile-line); border-radius: 10px; background: var(--mobile-surface); color: var(--mobile-text); font-size: 16px; }
 .mobile-detail-page input[type=range] { padding: 0; accent-color: var(--mobile-accent); }
 .mobile-detail-page input:focus-visible, .mobile-detail-page select:focus-visible, .mobile-app button:focus-visible { outline: 2px solid var(--mobile-accent); outline-offset: 3px; }
 .mobile-search-label { margin-top: 18px; }
@@ -679,7 +679,7 @@ button.mobile-practice-primary {
 .mobile-practice-reading[data-example-expanded=true] .mobile-practice-definition-scroll { overflow: visible; max-height: none; }
 .mobile-practice-reading[data-example-expanded=true] .mobile-practice-example-slot { overflow: visible; }
 .mobile-detail-page { overflow: visible; }
-.mobile-settings-actions { position: sticky; bottom: 0; padding: 10px 0 max(8px, env(safe-area-inset-bottom)); background: var(--mobile-background); z-index: 1; }
+.mobile-settings-actions { flex: 0 0 auto; padding: 10px 0 max(8px, env(safe-area-inset-bottom)); background: var(--mobile-background); z-index: 1; }
 .mobile-settings-actions .mobile-settings-saved { min-height: 0; margin: 8px 0 0; }
 
 /* Landscape touch tablets: reading on the left, a stable action rail on the

@@ -384,7 +384,8 @@ const App: React.FC<{ autoStart?: boolean; mobile?: boolean }> = ({ autoStart = 
               {state.isTyping ? <Pause size={19} aria-hidden="true" /> : <Play size={19} aria-hidden="true" />}
             </button>
             <div className="min-w-0 flex-1">
-              <div className="focus-mobile-progress-track" aria-label="学习进度">
+              <div className="focus-mobile-progress-track" role="progressbar" aria-label="学习进度"
+                aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPercent}>
                 <span style={{ width: progressPercent + '%' }} />
               </div>
               <p className="mt-1 text-right text-[11px]" style={{ color: 'var(--focus-text-muted)' }}>

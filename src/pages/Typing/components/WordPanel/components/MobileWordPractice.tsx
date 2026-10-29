@@ -1072,7 +1072,7 @@ export default function MobileWordPractice({
               </p>
             )
           ) : (
-            <div className="mobile-practice-grade-grid" aria-label="回忆程度（回答前判断）">
+            <div className="mobile-practice-grade-grid" role="group" aria-label="回忆程度（回答前判断）">
               {RECALL_GRADES.map(({ rating, label }, index) => (
                 <button
                   key={rating}
@@ -1108,7 +1108,7 @@ export default function MobileWordPractice({
             </button>
           </div>
         ) : (
-          <div className="mobile-practice-choices" aria-label="答案选项">
+          <div className="mobile-practice-choices" role="group" aria-label="答案选项">
             {choices.map((candidate, index) => (
               <button
                 key={candidate.name}
@@ -1126,7 +1126,7 @@ export default function MobileWordPractice({
           </div>
         )}
         {keyboardControls && (
-          <div className="desktop-tap-shortcuts" aria-label="键盘操作提示" data-desktop-shortcuts>
+          <div className="desktop-tap-shortcuts" role="group" aria-label="键盘操作提示" data-desktop-shortcuts>
             <span>
               {keyHint('Enter')}
               {!paused && task === 'spelling' && !pendingSpelling && !feedback ? '输入时确认拼写' : '暂停 / 继续'}

@@ -36,8 +36,22 @@ export default function MobileSettings() {
     setVoice(String(pronunciation.type))
   }, [pronunciation.volume, pronunciation.rate, pronunciation.type])
   return (
-    <MobilePageFrame title="学习设置">
-      <form
+    <MobilePageFrame title="学习设置" footer={
+        <div className="mobile-settings-actions">
+          <button form="mobile-learning-settings" type="submit" className="mobile-start-link">
+            保存设置
+          </button>
+          {error && (
+            <p role="alert" className="mobile-local-error">
+              {error}
+            </p>
+          )}
+          {(saved || dirty) && <p role="status" className="mobile-settings-saved">
+            {saved ? '设置已保存在本机。' : '有未保存的设置，请点击保存。'}
+          </p>}
+        </div>
+      }>
+      <form id="mobile-learning-settings"
         className="mobile-settings-form"
         onChange={() => {
           setSaved(false)
@@ -154,19 +168,6 @@ export default function MobileSettings() {
             rate={rate}
           />
         </section>
-        <div className="mobile-settings-actions">
-          <button type="submit" className="mobile-start-link">
-            保存设置
-          </button>
-          {error && (
-            <p role="alert" className="mobile-local-error">
-              {error}
-            </p>
-          )}
-          {(saved || dirty) && <p role="status" className="mobile-settings-saved">
-            {saved ? '设置已保存在本机。' : '有未保存的设置，请点击保存。'}
-          </p>}
-        </div>
       </form>
       <section className="mobile-settings-card">
         <h2>显示</h2>

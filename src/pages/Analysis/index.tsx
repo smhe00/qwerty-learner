@@ -42,12 +42,12 @@ function MetricCard({
 }) {
   return (
     <div className="rounded-lg bg-white p-5 shadow dark:bg-gray-700 dark:bg-opacity-50">
-      <div className="text-sm text-gray-500 dark:text-gray-400">{label}</div>
+      <div className="text-sm text-[var(--focus-text-secondary)]">{label}</div>
       <div className="mt-2 text-3xl font-semibold text-gray-700 dark:text-white">
         {value}
       </div>
       {detail ? (
-        <div className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+        <div className="mt-1 text-xs text-[var(--focus-text-secondary)]">
           {detail}
         </div>
       ) : null}
@@ -68,7 +68,7 @@ function LearnAnalysis() {
 
   if (loading) {
     return (
-      <div className="grid h-80 place-content-center text-gray-400">
+      <div className="grid h-80 place-content-center text-[var(--focus-text-secondary)]">
         正在汇总 Learn 数据…
       </div>
     )
@@ -77,7 +77,7 @@ function LearnAnalysis() {
   if (error || !stats) {
     return (
       <div
-        className="grid h-80 place-content-center text-gray-400"
+        className="grid h-80 place-content-center text-[var(--focus-text-secondary)]"
         role="alert"
       >
         Learn 统计数据加载失败，请重新打开数据统计。
@@ -133,7 +133,7 @@ function LearnAnalysis() {
         <h1 className="text-2xl font-semibold text-gray-700 dark:text-white">
           Learn 数据统计
         </h1>
-        <div className="mt-1 text-sm text-gray-400">
+        <div className="mt-1 text-sm text-[var(--focus-text-secondary)]">
           当前词库：{currentDictId}
         </div>
         {!wordListAvailable ? (
@@ -219,7 +219,7 @@ function LearnAnalysis() {
             detail={`今日已投入约 ${dailyPlan.todayActiveMinutes} 分钟`}
           />
         </div>
-        <div className="mt-3 text-xs text-gray-400">
+        <div className="mt-3 text-xs text-[var(--focus-text-secondary)]">
           P4 新词准入软预算为 {dailyPlan.acquisitionSoftBudgetMinutes} 分钟；
           到期 Review 不受预算截断。时间模型：Review{' '}
           {dailyPlan.timeModel.reviewSecondsPerWord}s/词（
@@ -242,9 +242,9 @@ function LearnAnalysis() {
           <div className="text-lg font-semibold text-gray-700 dark:text-white">
             FSRS-6 Active 分析
           </div>
-          <div className="text-sm text-gray-400">{fsrsReadiness}</div>
+          <div className="text-sm text-[var(--focus-text-secondary)]">{fsrsReadiness}</div>
         </div>
-        <div className="mt-1 text-xs text-gray-400">
+        <div className="mt-1 text-xs text-[var(--focus-text-secondary)]">
           {fsrsReadinessDetail}
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-3">
@@ -297,7 +297,7 @@ function LearnAnalysis() {
             detail="basic-v2 → FSRS；只比较每词下一次 due，不是递归 workload"
           />
         </div>
-        <div className="mt-3 text-xs text-gray-400">
+        <div className="mt-3 text-xs text-[var(--focus-text-secondary)]">
           当前由 FSRS-6 r0.84 独占 nextReviewAt。basic-v2 作为可重建的
           对照/回退基线保留；这里继续展示两者的间隔与校准差异。
         </div>
@@ -312,7 +312,7 @@ function LearnAnalysis() {
           <MetricCard label="Good" value={ratings.good} />
           <MetricCard label="Easy" value={ratings.easy} />
         </div>
-        <div className="mt-3 text-xs text-gray-400">
+        <div className="mt-3 text-xs text-[var(--focus-text-secondary)]">
           仅统计通过 Rating Gate 的 {stats.scheduler.ratedEvents30d} 次调度事件。
         </div>
       </div>
@@ -345,6 +345,9 @@ function LearnAnalysis() {
 
 function TypingAnalysis() {
   const {
+    loading,
+    error,
+    retry,
     isEmpty,
     exerciseRecord,
     wordRecord,
@@ -353,10 +356,15 @@ function TypingAnalysis() {
     wrongTimeRecord,
   } = useWordStats(dayjs().subtract(1, 'year').unix(), dayjs().unix())
 
+  if (loading) return <p role="status" className="p-8 text-[var(--focus-text-secondary)]">正在读取练习统计…</p>
+  if (error) return <div className="p-8 text-[var(--focus-text-secondary)]">
+    <p role="alert">{error}</p>
+    <button type="button" className="my-btn-primary mt-4 min-h-[44px]" onClick={retry}>重试读取统计</button>
+  </div>
   if (isEmpty) {
     return (
       <div className="align-items-center m-4 grid h-80 w-auto place-content-center overflow-hidden rounded-lg shadow-lg dark:bg-gray-600">
-        <div className="text-2xl text-gray-400">暂无练习数据</div>
+        <div className="text-2xl text-[var(--focus-text-secondary)]">暂无练习数据</div>
       </div>
     )
   }
@@ -428,15 +436,11 @@ const Analysis = ({ embedded = false }: { embedded?: boolean }) => {
 
   const content = (
       <div className={embedded ? 'flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden px-1 py-1 sm:px-3' : 'flex w-full flex-1 flex-col overflow-y-auto pl-20 pr-20 pt-20'}>
-        {!embedded && <IconX
-          className="absolute right-20 top-10 mr-2 h-7 w-7 cursor-pointer text-gray-400"
-          onClick={onBack}
-          role="button"
-          tabIndex={0}
-          aria-label="返回"
-        />}
+        {!embedded && <button type="button" className="absolute right-20 top-10 mr-2 p-2 text-[var(--focus-text-secondary)]" onClick={onBack} aria-label="返回">
+          <IconX className="h-7 w-7" />
+        </button>}
         <ScrollArea.Root className="min-h-0 flex-1 overflow-y-auto">
-          <ScrollArea.Viewport className={embedded ? "h-full w-full pb-6 [&>div]:!block" : "h-full w-auto pb-[20rem] [&>div]:!block"}>
+          <ScrollArea.Viewport tabIndex={0} role="region" aria-label="统计内容" className={embedded ? "h-full w-full pb-6 [&>div]:!block" : "h-full w-auto pb-[20rem] [&>div]:!block"}>
             {returnToLearn ? <LearnAnalysis /> : <TypingAnalysis />}
           </ScrollArea.Viewport>
           <ScrollArea.Scrollbar

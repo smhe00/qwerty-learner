@@ -18,12 +18,14 @@ html.dark {
   --focus-surface-muted: #f0f3f7;
   --focus-text: #1e293b;
   --focus-text-secondary: #596779;
-  --focus-text-muted: #66758a;
+  --focus-text-muted: #606f82;
   --focus-border: #e2e8f0;
   --focus-accent: #465fb0;
   --focus-accent-ink: #ffffff;
   --focus-accent-soft: #eaf0ff;
-  --focus-brand-warm: #c28a35;
+  --focus-brand-warm: #94651d;
+  --focus-danger: #b42318;
+  --focus-warning: #875900;
   --focus-backdrop: rgb(14 23 38 / 55%);
   --focus-shadow-panel: 0 1px 2px rgb(21 34 57 / 4%), 0 8px 24px rgb(21 34 57 / 4%);
   --focus-shadow-overlay: 0 20px 70px rgb(15 27 47 / 20%);
@@ -41,6 +43,8 @@ html.dark {
   --focus-accent-ink: #101722;
   --focus-accent-soft: #293a55;
   --focus-brand-warm: #e2b566;
+  --focus-danger: #ffb4a9;
+  --focus-warning: #efc278;
   --focus-backdrop: rgb(5 11 21 / 68%);
   --focus-shadow-panel: 0 1px 2px rgb(0 0 0 / 12%), 0 8px 24px rgb(0 0 0 / 13%);
   --focus-shadow-overlay: 0 24px 64px rgb(0 0 0 / 40%);
@@ -712,7 +716,9 @@ a:focus-visible,
   }
 
   .my-btn-primary {
-    @apply flex items-center justify-center rounded-lg bg-indigo-400 px-6 py-1 text-lg text-white hover:opacity-90 focus:outline-none dark:text-opacity-80;
+    @apply flex items-center justify-center rounded-lg px-6 py-1 text-lg;
+    background-color: var(--focus-accent);
+    color: var(--focus-accent-ink);
   }
 
   .my-btn-info-panel {
@@ -837,3 +843,12 @@ a:focus-visible,
     background-position: 0% 50%;
   }
 }
+
+/* Writer-locked data tools are real user interfaces before React mounts. */
+.guarded-data-page { width:100%; box-sizing:border-box; overflow-wrap:anywhere; }
+.guarded-data-page button, .guarded-data-page select, .guarded-data-page input:not([type=checkbox]) { min-height:44px; max-width:100%; }
+.guarded-data-page button { padding:8px 12px; border:1px solid var(--focus-border); border-radius:8px; background:var(--focus-surface-muted); color:var(--focus-text); }
+.guarded-data-page input:not([type=checkbox]), .guarded-data-page select { color:var(--focus-text); background:var(--focus-surface); }
+.guarded-data-page :focus-visible { outline:2px solid var(--focus-accent); outline-offset:3px; }
+.guarded-data-page label { display:flex; align-items:center; gap:8px; min-height:44px; }
+.guarded-data-page input[type=checkbox] { flex:none; width:20px; height:20px; }

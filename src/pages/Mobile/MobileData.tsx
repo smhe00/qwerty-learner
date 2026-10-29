@@ -85,7 +85,7 @@ export default function MobileData() {
             type="file"
             accept=".gz,application/gzip"
             aria-label="选择待校验的备份"
-            className="sr-only"
+            hidden
             tabIndex={-1}
             disabled={busy}
             onChange={(event) => {

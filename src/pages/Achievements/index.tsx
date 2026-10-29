@@ -1,3 +1,4 @@
+import { Dialog } from '@headlessui/react'
 import {
   buildAchievementVisibleProgress,
   getAchievementStates,
@@ -157,12 +158,12 @@ function CollectionDetail({ achievement, unlockedAt, sample, theme, onClose }: {
   const title = hiddenLocked ? '云中秘藏' : achievement.title
   const visual = getSongVisualGroup(achievement.id)
   return (
-    <div className="song-v2-detail-backdrop" role="presentation" onKeyDown={(event) => {
+    <Dialog open onClose={onClose} className="song-v2-detail-backdrop" style={{ '--song-sprite-url': 'url("' + import.meta.env.BASE_URL + 'assets/achievements/song/gallery/sprite.webp")' } as CSSProperties} aria-label={title + '，成就藏品'} onKeyDown={(event) => {
       if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onClose() }
     }} onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose()
     }}>
-      <article className="song-v2-detail" role="dialog" aria-modal="true" aria-label={title + '，成就藏品'}>
+      <Dialog.Panel as="article" className="song-v2-detail">
         <button type="button" className="song-v2-detail-close" onClick={onClose} autoFocus aria-label="关闭藏品"><IconX /></button>
         <div className="song-v2-detail-inner" key={replay} data-play={unlocked ? 'yes' : 'no'} data-theme={theme}>
           <span className="song-v2-scroll-axis left" aria-hidden="true" />
@@ -191,8 +192,8 @@ function CollectionDetail({ achievement, unlockedAt, sample, theme, onClose }: {
             <button type="button" className="song-v2-detail-primary" onClick={onClose}>收卷入藏</button>
           </div>
         </div>
-      </article>
-    </div>
+      </Dialog.Panel>
+    </Dialog>
   )
 }
 
@@ -291,7 +292,7 @@ export default function AchievementsPage({ embedded = false, showBackButton = tr
         <header className="song-v2-header">
           <div className="song-v2-header-painting" aria-hidden="true" />
           <div className="song-v2-header-group">
-            <div className="song-v2-progress-ring"
+            <div className="song-v2-progress-ring" role="progressbar" aria-valuemin={0} aria-valuemax={achievements.length} aria-valuenow={unlockedCount}
               style={{ background: 'conic-gradient(#54877e ' + (achievements.length ? unlockedCount / achievements.length * 100 : 0) + '%,#d9d5cc 0)' }}
               aria-label={'已解锁 ' + unlockedCount + '/' + achievements.length}>
               <div><strong>{unlockedCount}</strong><span>/ {achievements.length}</span></div>

@@ -86,18 +86,19 @@ export async function renderManualV4ImportUI(
   }
 
   const panel = elt('section')
-  panel.style.cssText = 'max-width:740px;margin:4vh auto;padding:24px;font:15px/1.7 system-ui;color:#334155'
+  panel.className = 'guarded-data-page'
+  panel.style.cssText = 'max-width:740px;margin:4vh auto;padding:24px;font:15px/1.7 system-ui;color:var(--focus-text,#334155)'
   const heading = elt('h1', '本地导入完整 Backup V4')
   heading.style.cssText = 'font-size:24px;font-weight:600'
   const intro = elt('p', '支持本机及云端下载的标准 V4 文件。可恢复旧账号备份到新账号，保留学习历史及设置；只替换当前本地工作区，不会找回旧账号登录权限，也不会自动覆盖云端。')
   const status = elt('p', '只读等待选择 V4 备份文件…')
-  status.style.cssText = 'white-space:pre-wrap;color:#475569'
+  status.style.cssText = 'white-space:pre-wrap;color:var(--focus-text-secondary,#475569)'
   status.setAttribute('role', 'status')
   // Keep the destination identity visible, selectable and copyable before
   // and after the backup is inspected. Anonymous workspaces have no numeric
   // account ID: LOCAL-ANONYMOUS is the exact confirmation token.
   const preview = elt('div')
-  preview.style.cssText = 'white-space:pre-wrap;padding:12px;background:#f1f5f9;border-radius:6px'
+  preview.style.cssText = 'white-space:pre-wrap;padding:12px;background:var(--focus-surface-muted,#f1f5f9);border-radius:6px'
   const sourcePreview = elt('div')
   const destinationRow = elt('div')
   destinationRow.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:8px'
@@ -107,7 +108,7 @@ export async function renderManualV4ImportUI(
   const copyDestination = elt('button', '复制')
   copyDestination.type = 'button'
   copyDestination.setAttribute('aria-label', '复制当前接收账号 ID')
-  copyDestination.style.cssText = 'padding:2px 10px;border:1px solid #64748b;border-radius:5px;cursor:pointer;background:#fff'
+  copyDestination.style.cssText = 'padding:2px 10px;border:1px solid #64748b;border-radius:5px;cursor:pointer;background:var(--focus-surface,#fff)'
   const copyFeedback = elt('span')
   copyFeedback.setAttribute('role', 'status')
   copyFeedback.setAttribute('aria-live', 'polite')

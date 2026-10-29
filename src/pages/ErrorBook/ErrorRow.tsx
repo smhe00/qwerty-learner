@@ -30,14 +30,14 @@ const ErrorRow: FC<IErrorRowProps> = ({ record, onDelete }) => {
       className="opacity-85 flex w-full cursor-pointer items-center justify-between rounded-lg bg-white px-6 py-3 text-black shadow-md dark:bg-gray-800 dark:text-white"
       onClick={onClick}
     >
-      <span className="basis-2/12 break-normal">{record.word}</span>
+      <button type="button" className="basis-2/12 break-normal text-left" aria-label={'查看错词：' + record.word}>{record.word}</button>
       <span className="basis-6/12 break-normal">
         {word ? word.trans.join('；') : <LoadingWordUI isLoading={isLoading} hasError={hasError} />}
       </span>
       <span className="basis-1/12 break-normal pl-8">{record.wrongCount}</span>
       <span className="basis-1/12 break-normal">{dictInfo?.name}</span>
-      <span
-        className="basis-1/12 break-normal"
+      <button type="button" aria-label={'删除错词：' + record.word}
+        className="basis-1/12 break-normal p-2"
         onClick={(e) => {
           e.stopPropagation()
           onDelete()
@@ -53,7 +53,7 @@ const ErrorRow: FC<IErrorRowProps> = ({ record, onDelete }) => {
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-      </span>
+      </button>
     </li>
   )
 }

@@ -1,7 +1,7 @@
 import { db } from '@/utils/db'
 import type { IWordRecord } from '@/utils/db/record'
 import dayjs from 'dayjs'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { Activity } from 'react-activity-calendar'
 
 interface IWordStats {
@@ -44,16 +44,23 @@ export function useWordStats(startTimeStamp: number, endTimeStamp: number) {
     wrongTimeRecord: [],
   })
 
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [revision, setRevision] = useState(0)
+  const retry = useCallback(() => setRevision(value => value + 1), [])
+
   useEffect(() => {
-    const fetchWordStats = async () => {
-      const stats = await getChapterStats(startTimeStamp, endTimeStamp)
-      setWordStats(stats)
-    }
+    let disposed = false
+    setLoading(true)
+    setError(null)
+    void getChapterStats(startTimeStamp, endTimeStamp)
+      .then(stats => { if (!disposed) setWordStats(stats) })
+      .catch(() => { if (!disposed) setError('统计数据暂时无法读取，请重试。') })
+      .finally(() => { if (!disposed) setLoading(false) })
+    return () => { disposed = true }
+  }, [startTimeStamp, endTimeStamp, revision])
 
-    fetchWordStats()
-  }, [startTimeStamp, endTimeStamp])
-
-  return wordStats
+  return { ...wordStats, loading, error, retry }
 }
 
 async function getChapterStats(startTimeStamp: number, endTimeStamp: number): Promise<IWordStats> {

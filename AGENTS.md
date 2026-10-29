@@ -151,3 +151,12 @@ Choose validation by behavioral risk, not by habit or number of available suites
 Changes to record identity/merge rules, schemas or migrations, authentication/ownership, durable recovery or cloud writes require the relevant data-safety contracts; a small diff is not evidence of low risk. A deprecated listener cleanup can use focused lifecycle/lease tests covering native and fallback owners, close/reload, cached-page ownership and unchanged learning rows.
 
 Do not promote etest/master or create cloud accounts solely to clear a harmless console warning. Batch small development maintenance into the next authorized release. Existing required deployment checks and user release authorization still apply when a release is requested. Do not weaken assertions, hide failures or use blanket CI skipping to make checks appear green.
+
+
+## 10. User-visible interface is a P0 boundary (owner instruction, 2026-10-29)
+
+- A control present in the DOM or passing `toBeVisible()` is not proof that a user can see, understand or tap it. Validate painted contrast, viewport/scroll placement, overlays, focus and a visible path to continue/back/retry.
+- Global Tailwind/reset CSS belongs only to document entry modules. Feature, sync and lazy modules must not import `src/index.css`. Run `yarn build && yarn verify:ui-css` with the locked dependencies; development CSS ordering is not release evidence.
+- `User-visible UI P0 Gate` is a required dependency of Pages deployment. It exercises the production bundle across phone/tablet/desktop and light/dark, including lazy navigation, errors and learning action states. Do not narrow this gate to `.css` paths: a TypeScript import caused the original regression.
+- New routes, dialogs and state exits must extend the visible-UI journeys as appropriate. Retain per-state audit artifacts and manually review uncertain contrast findings/screenshots. Test critical actions in short touch viewports and without a hardware keyboard. UI-only fixes must not alter learning records, auth or sync contracts.
+- Automated Chromium evidence does not replace real iOS/HarmonyOS/device checks. Record untested platforms and states honestly; do not describe a green matrix as proof of zero future UI defects. Do not weaken assertions or remove failing states to release.

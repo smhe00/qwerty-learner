@@ -65,6 +65,8 @@
     "build": "cross-env CI=false vite build && node scripts/emit-edgeone-spa-entries.mjs",
     "test": "echo \"No tests\"",
     "test:e2e": "playwright test",
+    "verify:ui-css": "node scripts/verify-ui-css-contract.mjs",
+    "test:ui-visible": "playwright test --config=tests/e2e/ui-visible.config.ts --retries=0",
     "lint": "eslint .",
     "prettier": "prettier --write .",
     "prepare": "husky install",
@@ -97,6 +99,7 @@
     ]
   },
   "devDependencies": {
+    "axe-core": "4.14.0",
     "@iconify/json": "^2.2.242",
     "@playwright/test": "^1.40.1",
     "@svgr/core": "^7.0.0",

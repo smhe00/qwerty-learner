@@ -38,7 +38,8 @@ export async function renderCloudV4BackupUI(
     }
   }
   const panel = elt('section')
-  panel.style.cssText = 'max-width:690px;margin:6vh auto;padding:24px;font:15px/1.7 system-ui;color:#334155'
+  panel.className = 'guarded-data-page'
+  panel.style.cssText = 'max-width:690px;margin:6vh auto;padding:24px;font:15px/1.7 system-ui;color:var(--focus-text,#334155)'
   const title = elt('h1', '导出云端完整 Backup V4')
   title.style.cssText = 'font-size:24px;font-weight:600'
   const info = elt('p', '下载的是当前登录账号的云端学习数据，不修改本机记录，也不会上传或覆盖云端。与「设置 → 本地备份 → 导入 V4」使用完全一致的文件格式。')

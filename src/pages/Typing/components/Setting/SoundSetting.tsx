@@ -126,7 +126,7 @@ export default function SoundSetting() {
           <div className={styles.section}>
             <span className={styles.sectionLabel}>单词发音</span>
             <div className={styles.switchBlock}>
-              <Switch checked={pronunciationConfig.isOpen} onChange={onTogglePronunciation} className="switch-root">
+              <Switch aria-label="单词发音" checked={pronunciationConfig.isOpen} onChange={onTogglePronunciation} className="switch-root">
                 <span aria-hidden="true" className="switch-thumb" />
               </Switch>
               <span className="text-right text-xs font-normal leading-tight text-gray-600">{`发音已${
@@ -147,7 +147,7 @@ export default function SoundSetting() {
                   <Slider.Track>
                     <Slider.Range />
                   </Slider.Track>
-                  <Slider.Thumb />
+                  <Slider.Thumb aria-label="单词发音音量" />
                 </Slider.Root>
                 <span className="ml-4 w-10 text-xs font-normal text-gray-600">{`${Math.floor(pronunciationConfig.volume * 100)}%`}</span>
               </div>
@@ -168,7 +168,7 @@ export default function SoundSetting() {
                   <Slider.Track>
                     <Slider.Range />
                   </Slider.Track>
-                  <Slider.Thumb />
+                  <Slider.Thumb aria-label="单词发音倍速" />
                 </Slider.Root>
                 <span className="ml-4 w-10 text-xs font-normal text-gray-600">{`${toFixedNumber(pronunciationConfig.rate, 2)}`}</span>
               </div>
@@ -178,7 +178,7 @@ export default function SoundSetting() {
             <div className={styles.section}>
               <span className={styles.sectionLabel}>释义发音</span>
               <div className={styles.switchBlock}>
-                <Switch checked={pronunciationConfig.isTransRead} onChange={onTogglePronunciationIsTransRead} className="switch-root">
+                <Switch aria-label="中文释义发音" checked={pronunciationConfig.isTransRead} onChange={onTogglePronunciationIsTransRead} className="switch-root">
                   <span aria-hidden="true" className="switch-thumb" />
                 </Switch>
                 <span className="text-right text-xs font-normal leading-tight text-gray-600">{`发音已${
@@ -198,7 +198,7 @@ export default function SoundSetting() {
                     <Slider.Track>
                       <Slider.Range />
                     </Slider.Track>
-                    <Slider.Thumb />
+                    <Slider.Thumb aria-label="释义发音音量" />
                   </Slider.Root>
                   <span className="ml-4 w-10 text-xs font-normal text-gray-600">{`${Math.floor(
                     pronunciationConfig.transVolume * 100,
@@ -211,7 +211,7 @@ export default function SoundSetting() {
           <div className={styles.section}>
             <span className={styles.sectionLabel}>按键音</span>
             <div className={styles.switchBlock}>
-              <Switch checked={keySoundsConfig.isOpen} onChange={onToggleKeySounds} className="switch-root">
+              <Switch aria-label="按键音" checked={keySoundsConfig.isOpen} onChange={onToggleKeySounds} className="switch-root">
                 <span aria-hidden="true" className="switch-thumb" />
               </Switch>
               <span className="text-right text-xs font-normal leading-tight text-gray-600">{`发音已${
@@ -233,7 +233,7 @@ export default function SoundSetting() {
                   <Slider.Track>
                     <Slider.Range />
                   </Slider.Track>
-                  <Slider.Thumb />
+                  <Slider.Thumb aria-label="按键音音量" />
                 </Slider.Root>
                 <span className="ml-4 w-10 text-xs font-normal text-gray-600">{`${Math.floor(keySoundsConfig.volume * 100)}%`}</span>
               </div>
@@ -283,7 +283,7 @@ export default function SoundSetting() {
           <div className={styles.section}>
             <span className={styles.sectionLabel}>效果音</span>
             <div className={styles.switchBlock}>
-              <Switch checked={hintSoundsConfig.isOpen} onChange={onToggleHintSounds} className="switch-root">
+              <Switch aria-label="提示音" checked={hintSoundsConfig.isOpen} onChange={onToggleHintSounds} className="switch-root">
                 <span aria-hidden="true" className="switch-thumb" />
               </Switch>
               <span className="text-right text-xs font-normal leading-tight text-gray-600">{`发音已${
@@ -305,7 +305,7 @@ export default function SoundSetting() {
                   <Slider.Track>
                     <Slider.Range />
                   </Slider.Track>
-                  <Slider.Thumb />
+                  <Slider.Thumb aria-label="提示音音量" />
                 </Slider.Root>
                 <span className="ml-4 w-10 text-xs font-normal text-gray-600">{`${Math.floor(hintSoundsConfig.volume * 100)}%`}</span>
               </div>

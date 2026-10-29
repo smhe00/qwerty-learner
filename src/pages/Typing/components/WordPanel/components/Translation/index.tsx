@@ -37,7 +37,7 @@ export default function Translation({ trans, showTrans = true, onMouseEnter, onM
       </span>
       {isShowTransRead && showTrans && (
         <Tooltip content="朗读释义" className="ml-3 h-5 w-5 cursor-pointer leading-7">
-          <SoundIcon animated={speaking} onClick={handleClickSoundIcon} className="h-5 w-5" />
+          <SoundIcon label="朗读释义" animated={speaking} onClick={handleClickSoundIcon} className="h-5 w-5" />
         </Tooltip>
       )}
     </div>

@@ -3,6 +3,9 @@
  * may precede the exclusive writer lease and pending-journal check.
  * Legacy users continue without automatic S1 migration.
  */
+// Global resets must load from the document entry, before any lazy UI styles.
+// Feature modules must never import index.css (see the CSS ownership gate).
+import './index.css'
 import { captureFeedbackRecoveryLink } from './feedback/recovery-link'
 import { loadAuth } from './sync/auth'
 import { presentSafetyDialog, showInformationDialog } from './sync/dialog-presentation'
@@ -553,7 +556,7 @@ async function start(): Promise<void> {
           diagnose.textContent = '复制诊断信息'
           diagnose.style.cssText = 'margin-left:12px;padding:8px 12px'
           const note = document.createElement('p')
-          note.style.cssText = 'font-size:13px;color:#64748b'
+          note.style.cssText = 'font-size:13px;color:var(--focus-text-secondary,#64748b)'
           note.textContent = '若只有一个页面仍无法进入，可复制占用信息用于排查。诊断不包含账号或学习内容。'
           diagnose.addEventListener('click', () => {
             diagnose.disabled = true

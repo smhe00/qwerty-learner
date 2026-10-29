@@ -15,6 +15,9 @@ interface HeatmapChartsProps {
 const HeatmapCharts: FC<HeatmapChartsProps> = ({ data, title }) => {
   const [isOpenDarkMode] = useAtom(isOpenDarkModeAtom)
 
+  // ActivityCalendar rejects an empty array. Also defend other future callers.
+  if (data.length === 0) return <p className="p-8 text-[var(--focus-text-secondary)]">暂无练习数据</p>
+
   return (
     <div className="flex flex-col items-center justify-center">
       <div className="text-center text-xl font-bold text-gray-600	dark:text-white">{title}</div>

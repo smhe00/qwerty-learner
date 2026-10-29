@@ -407,7 +407,7 @@ export default function LearnPage({ mobile = false }: { mobile?: boolean } = {})
       {renderHeader()}
 
       <main ref={learnPageRootRef} className="container mx-auto flex w-full flex-1 flex-col items-center justify-center gap-5">
-        <span className="text-sm text-gray-400 dark:text-gray-500" role="status">
+        <span className="text-sm text-[var(--focus-text-secondary)]" role="status">
           {isStarting
             ? '正在准备 Learn…'
             : statusText ||

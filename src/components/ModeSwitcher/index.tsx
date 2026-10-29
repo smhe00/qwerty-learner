@@ -53,7 +53,7 @@ export default function ModeSwitcher() {
         <span>Typing</span>
         <span className="text-xs font-medium">打字</span>
         {!isLearn && (
-          <span aria-hidden="true" className="rounded bg-white/20 px-1.5 py-0.5 text-[10px] leading-none dark:bg-slate-950/15">
+          <span aria-hidden="true" className="rounded bg-black/10 px-1.5 py-0.5 text-[10px] leading-none dark:bg-slate-950/15">
             当前
           </span>
         )}
@@ -70,7 +70,7 @@ export default function ModeSwitcher() {
         <span>Learn</span>
         <span className="text-xs font-medium">学习</span>
         {isLearn && (
-          <span aria-hidden="true" className="rounded bg-white/20 px-1.5 py-0.5 text-[10px] leading-none dark:bg-slate-950/15">
+          <span aria-hidden="true" className="rounded bg-black/10 px-1.5 py-0.5 text-[10px] leading-none dark:bg-slate-950/15">
             当前
           </span>
         )}

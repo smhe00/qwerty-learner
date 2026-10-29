@@ -39,7 +39,8 @@ export async function renderClearLocalLearningUI(
   }
   await verifyOwner()
   const panel = element('section')
-  panel.style.cssText = 'max-width:580px;margin:8vh auto;padding:24px;font:15px/1.7 system-ui;color:#334155'
+  panel.className = 'guarded-data-page'
+  panel.style.cssText = 'max-width:580px;margin:8vh auto;padding:24px;font:15px/1.7 system-ui;color:var(--focus-text,#334155)'
   const title = element('h1', '清除当前工作区的本地学习数据')
   title.style.cssText = 'font-size:22px;font-weight:600;margin-bottom:12px'
   const summary = element('p', owner.kind === 'anonymous'
@@ -49,19 +50,19 @@ export async function renderClearLocalLearningUI(
     '将清除本工作区的单词、章节、智能复习、成就记录及每日学习会话，并恢复默认词库。个人设置、其他账号的本地工作区及云端数据不会立即删除。')
   const caution = element('p',
     '此操作不可撤销；云端记录不会立即改变，但之后主动同步时可能将清空状态同步到云端。建议先下载完整 V4 备份。')
-  caution.style.cssText = 'color:#a16207;margin-top:12px'
+  caution.style.cssText = 'color:var(--focus-warning,#a16207);margin-top:12px'
   const actions = element('div')
   actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;margin:20px 0'
   const button = (text: string) => {
     const control = element('button', text)
     control.type = 'button'
-    control.style.cssText = 'border:1px solid #94a3b8;border-radius:8px;padding:10px 16px;background:white;cursor:pointer'
+    control.style.cssText = 'border:1px solid #94a3b8;border-radius:8px;padding:10px 16px;background:var(--focus-surface,#fff);cursor:pointer'
     return control
   }
   const backup = button('导出当前完整 V4 备份')
   const cancel = button('取消，返回学习')
   const erase = button('确认清除本地学习数据')
-  erase.style.cssText += ';border-color:#ef4444;color:#b91c1c'
+  erase.style.cssText += ';border-color:#ef4444;color:var(--focus-danger,#b91c1c)'
   erase.disabled = true
   const label = element('label')
   label.style.cssText = 'display:flex;gap:9px;align-items:flex-start;margin-top:16px'

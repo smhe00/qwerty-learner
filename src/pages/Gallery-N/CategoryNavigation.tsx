@@ -19,7 +19,7 @@ export default function CategoryNavigation({
             value={category.id}
             className={({ checked }) =>
               `cursor-pointer rounded-full px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-                checked ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-indigo-100 dark:bg-gray-800 dark:text-gray-200'
+                checked ? 'bg-[var(--focus-accent)] text-[var(--focus-accent-ink)]' : 'bg-gray-100 text-gray-700 hover:bg-indigo-100 dark:bg-gray-800 dark:text-gray-200'
               }`
             }
           >

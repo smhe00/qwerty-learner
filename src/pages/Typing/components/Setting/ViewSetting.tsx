@@ -55,7 +55,7 @@ export default function ViewSetting() {
                   <Slider.Track>
                     <Slider.Range />
                   </Slider.Track>
-                  <Slider.Thumb />
+                  <Slider.Thumb aria-label="外语字体大小" />
                 </Slider.Root>
                 <span className="ml-4 w-10 text-xs font-normal text-gray-600">{fontSizeConfig.foreignFont}px</span>
               </div>
@@ -75,7 +75,7 @@ export default function ViewSetting() {
                   <Slider.Track>
                     <Slider.Range />
                   </Slider.Track>
-                  <Slider.Thumb />
+                  <Slider.Thumb aria-label="中文字体大小" />
                 </Slider.Root>
                 <span className="ml-4 w-10 text-xs font-normal text-gray-600">{fontSizeConfig.translateFont}px</span>
               </div>

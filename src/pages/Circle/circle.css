@@ -435,7 +435,6 @@
 .circle-days small {
   display: block;
   font-size: 10px;
-  opacity: 0.65;
   margin-top: 3px;
 }
 .circle-days button[aria-pressed='true'] {
@@ -577,7 +576,7 @@
 }
 .circle-management-list button {
   padding: 5px 9px;
-  color: #bd5260;
+  color: var(--focus-danger, #b42318);
   font-size: 12px;
 }
 .circle-danger {
@@ -586,7 +585,7 @@
   margin-top: 22px;
   min-height: 41px;
   border: 1px solid #f4dadd;
-  color: #b64a58;
+  color: var(--focus-danger, #b42318);
   font-size: 12px;
   background: var(--focus-surface, #fff);
 }

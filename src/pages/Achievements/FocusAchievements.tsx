@@ -64,7 +64,7 @@ export function FocusAchievements({
         <small>有效学习日</small>
         <p><strong>{access.activeDays}</strong><span> 天</span></p>
       </div>
-      <div className="focus-achievements-progress" aria-label={'成就解锁率 ' + earned + '/' + achievements.length}>
+      <div className="focus-achievements-progress" role="progressbar" aria-valuemin={0} aria-valuemax={achievements.length} aria-valuenow={earned} aria-label={'成就解锁率 ' + earned + '/' + achievements.length}>
         <span style={{width:(achievements.length ? earned / achievements.length * 100 : 0) + '%'}} />
       </div>
     </section>

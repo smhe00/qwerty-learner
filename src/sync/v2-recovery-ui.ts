@@ -82,7 +82,8 @@ export async function renderS2RecoveryUI(
   }
 
   const frame = elt('section')
-  frame.style.cssText = 'max-width:660px;margin:5vh auto;padding:24px;font:15px/1.7 system-ui,sans-serif;color:#334155'
+  frame.className = 'guarded-data-page'
+  frame.style.cssText = 'max-width:660px;margin:5vh auto;padding:24px;font:15px/1.7 system-ui,sans-serif;color:var(--focus-text,#334155)'
   const heading = elt('h1', '云同步高级恢复（S2）')
   heading.style.cssText = 'font-size:24px;font-weight:600;margin-bottom:8px'
   const info = elt('p', '正常学习只需要一个同步按钮。只有 V4 双端冲突需要本页面；不会自动合并两边的学习记录。')
@@ -90,7 +91,7 @@ export async function renderS2RecoveryUI(
   status.setAttribute('role', 'status')
   status.style.cssText = 'margin:12px 0;white-space:pre-wrap'
   const details = elt('div')
-  details.style.cssText = 'white-space:pre-wrap;background:#f1f5f9;border-radius:8px;padding:12px'
+  details.style.cssText = 'white-space:pre-wrap;background:var(--focus-surface-muted,#f1f5f9);border-radius:8px;padding:12px'
   const actions = elt('div')
   actions.style.cssText = 'display:grid;gap:10px;margin-top:14px'
   const button = (title: string) => {
@@ -178,7 +179,7 @@ export async function renderS2RecoveryUI(
   let attemptFailed = false
   const checklist = elt('p')
   checklist.setAttribute('role', 'status')
-  checklist.style.cssText = 'margin:5px 0 0;white-space:pre-wrap;color:#334155;line-height:1.7'
+  checklist.style.cssText = 'margin:5px 0 0;white-space:pre-wrap;color:var(--focus-text,#334155);line-height:1.7'
   actions.append(checklist)
   const refreshEnabled = () => {
     const missing: string[] = []
@@ -327,7 +328,7 @@ export async function renderS2RecoveryUI(
       const errorMessage = error instanceof Error ? error.message : String(error)
       status.textContent = '已停止覆盖：' + errorMessage + '\n' + hint +
         '\n正在只读查询云端格式、Revision、SHA；原本的本地数据没有因本页报错被主动清空。'
-      status.style.cssText += ';color:#b91c1c;font-weight:600'
+      status.style.cssText += ';color:var(--focus-danger,#b91c1c);font-weight:600'
       refreshEnabled()
       status.scrollIntoView({ block: 'center', behavior: 'smooth' })
       // This secondary GET cannot authorize a new write and never modifies

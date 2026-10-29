@@ -1,7 +1,7 @@
 /* Focus UI: deliberately quiet and independent of Song art styles. */
 .focus-achievements {
-  --fa-text:#27343c;--fa-muted:#73808b;--fa-line:#dce4e8;
-  --fa-surface:#ffffff;--fa-background:#f6f8fa;--fa-accent:#43877d;
+  --fa-text:#27343c;--fa-muted:#596975;--fa-line:#dce4e8;
+  --fa-surface:#ffffff;--fa-background:#f6f8fa;--fa-accent:#326e65;
   position:relative;min-height:100%;width:100%;margin:0 auto;
   overflow:auto;padding:clamp(22px,3vw,40px);box-sizing:border-box;
   background:var(--fa-background);color:var(--fa-text);
@@ -30,7 +30,7 @@
 .focus-achievements-filters{display:flex;flex-wrap:wrap;gap:7px;}
 .focus-achievements-filter{display:flex;align-items:center;gap:9px;background:transparent;border:1px solid transparent;color:var(--fa-muted);border-radius:9px;padding:7px 11px;font-size:12px;}
 .focus-achievements-filter[aria-pressed="true"]{background:var(--fa-surface);border-color:var(--fa-line);color:var(--fa-text);font-weight:650;}
-.focus-achievements-filter>span{font-variant-numeric:tabular-nums;font-size:11px;opacity:.72;}
+.focus-achievements-filter>span{font-variant-numeric:tabular-nums;font-size:11px;}
 .focus-achievements-art-entry{color:var(--fa-accent);border-color:color-mix(in srgb,var(--fa-accent) 34%,var(--fa-line));}
 .focus-achievements-grid{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;}
 .focus-achievements-item{min-width:0;min-height:94px;display:flex;gap:13px;align-items:center;text-align:left;padding:16px;border-radius:12px;border:1px solid var(--fa-line);background:var(--fa-surface);color:var(--fa-text);transition:transform .15s,border-color .15s;}

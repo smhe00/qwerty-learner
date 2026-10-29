@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import { Dialog } from '@headlessui/react'
 import { LoadingWordUI } from '../LoadingWordUI'
 import useGetWord from '../hooks/useGetWord'
 import { currentRowDetailAtom } from '../store'
@@ -66,9 +67,9 @@ const RowDetail: React.FC<RowDetailProps> = ({ currentRowDetail, allRecords }) =
   )
 
   return (
-    <div className="absolute inset-0 flex  flex-col items-center  justify-center ">
-      <div className="my-card relative z-10 flex h-[32rem] min-w-[26rem] select-text flex-col items-center justify-around rounded-2xl bg-white px-3 py-10 dark:bg-gray-900">
-        <IconX className="absolute right-3 top-3  h-6 w-6 cursor-pointer text-gray-400" onClick={onClose} />
+    <Dialog open onClose={onClose} aria-label="错词详情" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-3">
+      <Dialog.Panel className="my-card relative flex max-h-[90dvh] w-[32rem] max-w-full select-text flex-col items-center gap-6 overflow-y-auto rounded-2xl bg-white px-3 py-14 dark:bg-gray-900">
+        <button type="button" aria-label="关闭错词详情" onClick={onClose} className="absolute right-2 top-2 p-3 text-[var(--focus-text-secondary)]"><IconX className="h-5 w-5" /></button>
         <div className="flex flex-col items-center justify-start">
           <div>
             {currentRowDetail.word.split('').map((t, index) => (
@@ -102,10 +103,9 @@ const RowDetail: React.FC<RowDetailProps> = ({ currentRowDetail, allRecords }) =
             <DataTag icon={XCircle} name="错误次数" data={rowDetailData.wrongCount} />
           </div>
         </div>
-        <RowPagination className="absolute bottom-6 mt-10" allRecords={allRecords} />
-      </div>
-      <div className="absolute inset-0 z-0  cursor-pointer bg-transparent" onClick={onClose}></div>
-    </div>
+        <RowPagination className="mt-2" allRecords={allRecords} />
+      </Dialog.Panel>
+    </Dialog>
   )
 }
 

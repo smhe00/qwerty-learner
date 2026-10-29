@@ -813,7 +813,7 @@ function CircleContent({ auth, mobile }: { auth: CloudAuthState; mobile: boolean
                             </small>
                           </div>
                           {me ? (
-                            <span className="circle-like-count" aria-label={'收到 ' + count + ' 个赞'}>
+                            <span className="circle-like-count" role="img" aria-label={'收到 ' + count + ' 个赞'}>
                               <ThumbsUp size={15} aria-hidden="true" /> {count}
                             </span>
                           ) : (

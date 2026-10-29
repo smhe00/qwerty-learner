@@ -40,26 +40,28 @@ export default function PrevAndNextWord({ type }: LastAndNextWordProps) {
     <>
       {word ? (
         <Tooltip content={`快捷键: ${shortCutKey}`}>
-          <div
+          <button
+            type="button"
+            aria-label={type === 'prev' ? '上一个单词' : '下一个单词'}
             onClick={onClickWord}
-            className="flex max-w-xs cursor-pointer select-none items-center text-gray-700 opacity-60 duration-200 ease-in-out hover:opacity-100 dark:text-gray-400"
+            className="flex max-w-xs cursor-pointer select-none items-center text-[var(--focus-text-secondary)] duration-200 ease-in-out hover:text-[var(--focus-text)]"
           >
             {type === 'prev' && <IconPrev className="mr-4 shrink-0 grow-0 text-2xl" />}
 
             <div className={`grow-1 flex w-full flex-col ${type === 'next' ? 'items-end text-right' : ''}`}>
               <p
-                className={`font-mono text-2xl font-normal text-gray-700 dark:text-gray-400 ${
+                className={`font-mono text-2xl font-normal text-[var(--focus-text-secondary)] ${
                   !wordDictationConfig.isOpen ? 'tracking-normal' : 'tracking-wider'
                 }`}
               >
                 {headWord}
               </p>
               {state.isTransVisible && (
-                <p className="line-clamp-1 max-w-full text-sm font-normal text-gray-600 dark:text-gray-500">{word.trans.join('；')}</p>
+                <p className="line-clamp-1 max-w-full text-sm font-normal text-[var(--focus-text-secondary)]">{word.trans.join('；')}</p>
               )}
             </div>
             {type === 'next' && <IconNext className="ml-4 shrink-0 grow-0 text-2xl" />}
-          </div>
+          </button>
         </Tooltip>
       ) : (
         <div />

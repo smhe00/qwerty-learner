@@ -98,8 +98,8 @@ export function ErrorBook({ embedded = false }: { embedded?: boolean }) {
     <>
       <div className={`relative flex ${embedded ? 'h-full min-h-0' : 'h-screen'} w-full flex-col items-center pb-4 ease-in ${currentRowDetail && 'blur-sm'}`}>
         <div className="mr-8 mt-4 flex w-auto items-center justify-center self-end">
-          <h1 className="font-lighter mr-4 w-auto self-end text-gray-500 opacity-70">Tip: 点击错误单词查看详细信息 </h1>
-          {!embedded && <IconX className="h-7 w-7 cursor-pointer text-gray-400" onClick={onBack} />}
+          <p className="mr-4 w-auto self-end text-[var(--focus-text-secondary)]">点击错误单词查看详细信息</p>
+          {!embedded && <button type="button" aria-label="返回学习" onClick={onBack} className="p-2 text-[var(--focus-text-secondary)]"><IconX className="h-7 w-7" /></button>}
         </div>
 
         <div className="flex w-full flex-1 select-text items-start justify-center overflow-hidden">
@@ -113,7 +113,7 @@ export function ErrorBook({ embedded = false }: { embedded?: boolean }) {
             </div>
             <ScrollArea.Root className="min-h-0 flex-1 overflow-y-auto pt-5">
               <ScrollArea.Viewport className="h-full  ">
-                <div className="flex flex-col gap-3">
+                <ul className="flex flex-col gap-3">
                   {renderRecords.map((record) => (
                     <ErrorRow
                       key={`${record.dict}-${record.word}`}
@@ -121,7 +121,7 @@ export function ErrorBook({ embedded = false }: { embedded?: boolean }) {
                       onDelete={() => handleDelete(record.word, record.dict)}
                     />
                   ))}
-                </div>
+                </ul>
               </ScrollArea.Viewport>
               <ScrollArea.Scrollbar className="flex touch-none select-none bg-transparent" orientation="vertical"></ScrollArea.Scrollbar>
             </ScrollArea.Root>

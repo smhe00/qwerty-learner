@@ -809,12 +809,17 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
                   <p className="w-full select-none text-center text-xl text-gray-600 dark:text-gray-50">
                     按任意键{state.timerData.time ? '继续' : '开始'}
                   </p>
+                  <button type="button" className="my-btn-primary min-h-[44px]" onClick={() => dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: true })}>
+                    {state.timerData.time ? '继续练习' : '开始练习'}
+                  </button>
                   {!mobile && !hasSessionStarted && !state.timerData.time && <DesktopStartGuide />}
                 </div>
               </div>
             )}
             <div
               className="focus-word-stack relative"
+              aria-hidden={!state.isTyping || undefined}
+              ref={node => { node?.toggleAttribute('inert', !state.isTyping) }}
               data-learn-acquisition-phase={
                 currentLearnItemKind === 'acquisition'
                   ? currentAcquisitionState?.phase

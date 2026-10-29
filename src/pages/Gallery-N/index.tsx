@@ -69,20 +69,20 @@ export default function GalleryPage({ embedded = false }: { embedded?: boolean }
               className="w-56 max-w-full rounded-lg border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
             />
           </label>
-          <p role="status" className="text-sm text-gray-500">
+          <p role="status" className="text-sm text-[var(--focus-text-secondary)]">
             {visibleDictionaries.length} 本词典
           </p>
         </div>
       </div>
       <ScrollArea.Root className="min-h-0 flex-1 overflow-y-auto">
         <ScrollArea.Viewport className="h-full w-full">
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-4 p-1" aria-label="词典列表">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-4 p-1" role="group" aria-label="词典列表">
             {visibleDictionaries.map((dict) => (
               <DictionaryComponent key={`${dict.id}:${dict.url}:${dict.category}`} dictionary={dict} />
             ))}
           </div>
-          {visibleDictionaries.length === 0 && <p className="py-10 text-center text-gray-500">没有匹配的词典，请尝试其他关键词。</p>}
-          <details className="mt-8 pb-4 text-xs text-gray-500">
+          {visibleDictionaries.length === 0 && <p className="py-10 text-center text-[var(--focus-text-secondary)]">没有匹配的词典，请尝试其他关键词。</p>}
+          <details className="mt-8 pb-4 text-xs text-[var(--focus-text-secondary)]">
             <summary className="cursor-pointer">词典来源与使用说明</summary>
             <p className="mt-3 leading-relaxed">
               本项目的词典数据来自多个开源项目以及社区贡献者的无偿提供。我们深感感激并尊重每一位贡献者的知识产权。

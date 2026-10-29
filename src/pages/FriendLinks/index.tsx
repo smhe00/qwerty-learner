@@ -8,7 +8,7 @@ export const FriendLinks: React.FC<{ embedded?: boolean }> = ({ embedded = false
           <div className="text-lg font-semibold text-gray-700 dark:text-gray-200">
             对外渠道暂未开放
           </div>
-          <p className="mt-3 text-sm leading-6 text-gray-400 dark:text-gray-500">
+          <p className="mt-3 text-sm leading-6 text-[var(--focus-text-secondary)]">
             Qwerty Plus Beta 测试期间，友情链接、公开邮箱和社区联系方式暂未开放。
           </p>
           <button

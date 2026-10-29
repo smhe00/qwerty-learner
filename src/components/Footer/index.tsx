@@ -183,7 +183,7 @@ const Footer: React.FC = () => {
         <span className="select-none text-gray-500 dark:text-gray-400">Qwerty Plus Beta</span>
         <button
           type="button"
-          className="text-slate-400 transition-colors hover:text-slate-600 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 dark:text-slate-500 dark:hover:text-slate-300"
+          className="text-[var(--focus-text-secondary)] transition-colors hover:text-[var(--focus-text)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"
           title="查看开源来源与许可"
           onClick={() => setShowLicenseInfo(true)}
         >

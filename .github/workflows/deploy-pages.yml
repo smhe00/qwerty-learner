@@ -20,7 +20,10 @@ env:
   VITE_QWERTY_SYNC_DISABLED: 'true'
 
 jobs:
+  visible-ui:
+    uses: ./.github/workflows/ui-visible-p0.yml
   deploy:
+    needs: visible-ui
     runs-on: ubuntu-22.04
     strategy:
       matrix:

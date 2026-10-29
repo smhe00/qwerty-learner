@@ -267,7 +267,7 @@ const ResultScreen = () => {
                 {!isReviewMode && (
                   <>
                     <ShareButton />
-                    <IexportWords fontSize={18} className="cursor-pointer text-gray-500" onClick={exportWords}></IexportWords>
+                    <button type="button" aria-label="导出本轮单词" onClick={exportWords} className="p-2 text-[var(--focus-text-secondary)]"><IexportWords fontSize={18} /></button>
                   </>
                 )}
                 <button
