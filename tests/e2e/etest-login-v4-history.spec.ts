@@ -620,6 +620,35 @@ test('historical six-table startup download and automatic divergent reauth conve
     proof.mixedLegacyM4Adoption = true
     proof.legacyRowsUnchanged = true
 
+    // M4 invalidates the old full-V4 baseline. Its first post-adoption
+    // full sync must audit; this is not a baseline-match case.
+    const hasBaselineAfterM4 = await pages[0].evaluate(async () => {
+      const auth = JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1')!)
+      const open = indexedDB.open('QwertyPlusWorkspaceVaultV1')
+      const vault = await new Promise<IDBDatabase>((ok, fail) => {
+        open.onsuccess = () => ok(open.result)
+        open.onerror = () => fail(open.error)
+      })
+      try {
+        return await new Promise<boolean>((ok, fail) => {
+          const read = vault.transaction('registry').objectStore('registry')
+            .get('sync-v2-baseline:' + encodeURIComponent(auth.user.userId))
+          read.onsuccess = () => ok(Boolean(read.result))
+          read.onerror = () => fail(read.error)
+        })
+      } finally { vault.close() }
+    })
+    expect(hasBaselineAfterM4).toBe(false)
+    proof.m4InvalidatesFullSnapshotBaseline = true
+    phase = 'establish-baseline-after-m4'
+    await pages[0].goto(base + '/?s2-sync=run', { waitUntil: 'domcontentloaded' })
+    await expect(pages[0]).toHaveURL(/^https:\/\/t\.smhe\.cn\/(?:learn)?$/, { timeout: 180_000 })
+    await expect(pages[0].getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 90_000 })
+    expect(await rawWords(pages[0])).toEqual(received)
+    expect(await pages[0].evaluate(() => sessionStorage.getItem('qwerty.s2.startup-check.v1'))).toBe('upload-deferred')
+    proof.explicitSyncReestablishesBaseline = true
+    phase = 'unchanged-login'
+
     // Reproduce the owner's ordinary logout/login with no intervening study.
     await account(pages[0])
     await pages[0].getByRole('button', { name: '安全退出登录', exact: true }).click()
