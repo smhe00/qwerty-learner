@@ -20,3 +20,5 @@ Product metadata becomes 1.0.0; current visible Beta wording is replaced while u
 ## Remaining boundaries
 
 Physical Huawei/HarmonyOS/iOS devices are unavailable in this environment; no physical-device certification is claimed. Existing 143 TypeScript baseline diagnostics and no measured subsecond startup remain documented. No user record schema, ownership rule, merge identity, storage format or logout trigger is changed in this release task.
+
+Release metadata follow-up: active HTML/social metadata, user guides and the existing branding contract now describe 1.0.0. Pages runs the branding contract before its build. Local branding contract and diff whitespace validation passed. Browser branding cases discover successfully; full painted production UI remains the Pages prerequisite. No external analytics was enabled.

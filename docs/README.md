@@ -1,6 +1,6 @@
 # QWERTY Plus 文档索引
 
-> 2026-10-25 整理；产品 `0.2.0-beta.1`，最近已验收运行基线 `ea4ede53`。文档提交与部署提交分开记录。
+> 2026-10-29 整理；产品 `1.0.0`。[当前发布记录](./release/V1_2026-10-29.md)分别记录版本、验收与部署。
 > 正式站：[q.smhe.cn](https://q.smhe.cn/)；测试站：[t.smhe.cn](https://t.smhe.cn/)。Pages 禁用云能力。
 
 ## 当前维护入口
@@ -8,11 +8,11 @@
 | 文档 | 面向谁 / 用途 |
 | --- | --- |
 | [项目 README](../README.md) | 功能、默认值、边界及开发入口。 |
-| [Beta 使用指南](./BETA_USER_GUIDE_ZH.md) | 桌面/手机学习、记录、账号和备份操作。 |
+| [使用指南](./BETA_USER_GUIDE_ZH.md) | 桌面/手机学习、记录、账号和备份操作。 |
 | [云同步用户指南](./CLOUD_SYNC_USER_GUIDE.md) | 自动合并、单一登录、手动替换与异常处理。 |
 | [当前云架构](./CLOUD_SYNC_ARCHITECTURE.md) | 完整 V4、M3/M4、身份与事务职责。 |
 | [分支策略](./BRANCH_STRATEGY.md) | main -> eTest -> master，版本与验收规则。 |
-| [当前收尾清单](./release/BETA_CLOSEOUT_2026-10-25.md) | 已完成范围、未闭环风险、建议验收标准。 |
+| [当前发布说明](./release/V1_2026-10-29.md) | 正式版范围、验证与已知边界。 |
 | [已发布证据](../interactive/reports/MOBILE-MENU-RELEASE-20261025-report.md) | 精确 SHA、运行编号、失败及复验记录。 |
 
 ## 工程专题：必须与当前源码交叉核对
@@ -23,7 +23,7 @@
 
 ## 实验范围
 
-[圈子 API 发布边界](./CIRCLE_PUBLIC_API_LAUNCH_20261017.md)：API-only，不代表完整用户前端和删除生命周期已经交付。FSRS 研究分支、延迟巩固和未来后端替换不自动纳入当前 Beta 收尾。
+[圈子 API 发布边界](./CIRCLE_PUBLIC_API_LAUNCH_20261017.md)：API-only，不代表完整用户前端和删除生命周期已经交付。FSRS 研究分支、延迟巩固和未来后端替换不自动纳入当前核心学习版本。
 
 ## 冻结的历史资料
 

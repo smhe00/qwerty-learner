@@ -37,6 +37,8 @@ jobs:
           cache: yarn
       - name: Install Packages
         run: yarn install --frozen-lockfile
+      - name: Verify formal product version and public branding
+        run: node scripts/check-beta-branding.mjs
       - name: Build page
         run: yarn build
       - name: Audit TypeScript in app navigation and achievement UI

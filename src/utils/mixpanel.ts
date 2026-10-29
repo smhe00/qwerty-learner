@@ -14,7 +14,7 @@ import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 
 const trackEvent = (_event: string, _properties?: unknown) => {
-  // Qwerty Plus Beta keeps inherited external analytics disabled.
+  // QWERTY Plus keeps inherited external analytics disabled.
   // Learning telemetry used by Learn remains in the local application database.
 }
 
