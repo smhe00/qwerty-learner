@@ -1,5 +1,5 @@
 # Startup metadata-only receive check
-Status: ETEST_PUSHED; real-cloud verification in progress. Executor: Codex-startup-receive.
+Status: ETEST_DEPLOYED; focused validation passed, extended real-cloud regression still running. Executor: Codex-startup-receive.
 Base/source: `613e954a46847604dd64ffb1de5eb954f678b6df`; initial etest: `513b7d61d691f4edfdc47729ee4dd6d666e1746d`.
 
 ## Result
@@ -24,3 +24,12 @@ No real-cloud latency measured yet for this candidate. Fresh session validation 
 First candidate `507b635c84a0fc341e2081b960a8c6022cba8f6e` passed Cloud backend 1059/1059, Cloud + Pages admission, published Pages regression, both built UI matrices, Startup Sync Recovery and P4b. Promoted etest by fast-forward from `513b7d61d691f4edfdc47729ee4dd6d666e1746d`; nine real-cloud workflows started (historical run 40830252138, three-device 40830252136).
 
 Validation-only followup: the three-device test must accept a completed `idle` publication cycle when a device has already durably published its events. It must not require redundant upload on every relogin. Final exact 3/3 event union, per-device original-record durability and journal/archive checks remain unchanged. No runtime/application changes in this followup. Candidate deployment identity must still be checked against its own SHA.
+
+## Current delivered candidate
+`454f69fcef098bcbd9eaa9d3aff50c78aa46e81a` is now both product/main and edgeone-test. Its `src/` and `cloud-functions/` trees are identical to `507b635c` (zero diff); only the three-device waiting assertion and this report changed. The live exact-source check passed in M3 relay job 123303803176, run 40830638355. Thus deployment to https://t.smhe.cn/ is confirmed, not merely a branch update.
+
+Exact-current-SHA checks passed: Pages deployment/regression 40830634639; Cloud Sync Gate 40830634699; Startup Sync Recovery 40830634618. Real current-SHA M3 device relay 40830638355, idle code qualification 40830638310 and account cleanup 40830638352 passed. Longer historical login, three-device offline relay and remaining extended staging workflows are running/queued behind their previous runs. Their completion, latency measurements and any failure analysis remain outstanding; this is not a master release qualification. Previous run IDs and the two candidate distinction are intentional, never substitute old-SHA results for current-SHA evidence.
+
+Core boundary verified: `v2-policy.ts`, `v2-manual-executor.ts`, automatic V4 merge code and cloud handlers are unchanged. This is startup admission/trigger orchestration. Full V4 sync uses the same executor when invoked; event-only background sync has separate acknowledgements and does not advance the V4 baseline. Noop full sync may refresh syncedAt while retaining revision/fingerprint; the startup-deferred path performs no baseline write.
+
+Next verification checkpoint: inspect current-SHA historical run 40830638426 and three-device run 40830638370 plus remaining etest workflows; verify startup metadata-only diagnostics, later explicit upload and eventual M3-only receipt adoption. Do not describe 1-second startup as measured: no candidate real-network latency result is available yet. Source implementation and requested etest push/deployment are delivered.
