@@ -1,0 +1,3400 @@
+{
+  "task": "UI-VISIBILITY-P0-20261029",
+  "baseCommit": "7c33c74ee113ea2cf0529ed9d92f2af88ff81995",
+  "build": "production Vite / Tailwind 3.3.2",
+  "testResults": {
+    "passed": 64,
+    "skipped": 8
+  },
+  "auditedStates": 360,
+  "violatingStates": 0,
+  "incompleteStateCounts": {
+    "aria-hidden-focus": 40,
+    "color-contrast": 58
+  },
+  "states": [
+    {
+      "project": "phone-light",
+      "state": "home",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "-mobile-library",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "home-after-library",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "-mobile-settings",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "settings-save",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "home-after-settings",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "-mobile-history",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "home-after-history",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "-mobile-data",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "data-expanded",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "home-after-data",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "-mobile-achievements",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "home-after-achievements",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "feedback-unavailable",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        },
+        {
+          "id": "color-contrast",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "project": "phone-light",
+      "state": "feedback-compose",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        },
+        {
+          "id": "color-contrast",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "phone-light",
+      "state": "feedback-send-error",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        },
+        {
+          "id": "color-contrast",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "project": "phone-light",
+      "state": "account-login",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "account-register",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "account-rules-expanded",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "project": "phone-light",
+      "state": "account-validation",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "learn-exposure",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "learn-paused-exposure",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 6
+        }
+      ]
+    },
+    {
+      "project": "phone-light",
+      "state": "learn-manual-next",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "learn-supported",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "learn-paused-supported",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "project": "phone-light",
+      "state": "learn-meaning-choices",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "learn-choice-feedback",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "learn-independent",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "learn-paused-independent",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "project": "phone-light",
+      "state": "learn-recall-feedback",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "learn-spelling",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "learn-spelling-judgment",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "v4-import",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "v4-import-cancel",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "s1-clear",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "s1-clear-cancel",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "circle-empty",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "circle-create",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "circle-create-error",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "circle-join",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "circle-动态",
+      "visibleControls": 15,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "circle-邀请同学",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "circle-圈子管理",
+      "visibleControls": 9,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "song-gallery",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "project": "phone-light",
+      "state": "song-theme-switch",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "project": "phone-light",
+      "state": "song-sorted",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "project": "phone-light",
+      "state": "song-detail",
+      "visibleControls": 1,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        },
+        {
+          "id": "color-contrast",
+          "count": 7
+        }
+      ]
+    },
+    {
+      "project": "phone-light",
+      "state": "history-populated",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "library-empty-search",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "settings-short-landscape-focus",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "settings-large-text",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "home-large-text",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "settlement-write-error",
+      "visibleControls": 1,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "settlement-complete",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-light",
+      "state": "render-failure-recovery",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "home",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "-mobile-library",
+      "visibleControls": 9,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "home-after-library",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "-mobile-settings",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "settings-save",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "home-after-settings",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "-mobile-history",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "home-after-history",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "-mobile-data",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "data-expanded",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "home-after-data",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "-mobile-achievements",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "home-after-achievements",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "feedback-unavailable",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "phone-dark",
+      "state": "feedback-compose",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        },
+        {
+          "id": "color-contrast",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "project": "phone-dark",
+      "state": "feedback-send-error",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        },
+        {
+          "id": "color-contrast",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "phone-dark",
+      "state": "account-login",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "account-register",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "account-rules-expanded",
+      "visibleControls": 9,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "account-validation",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "learn-exposure",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "learn-paused-exposure",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 6
+        }
+      ]
+    },
+    {
+      "project": "phone-dark",
+      "state": "learn-manual-next",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "learn-supported",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "learn-paused-supported",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "project": "phone-dark",
+      "state": "learn-meaning-choices",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "learn-choice-feedback",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "learn-independent",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "learn-paused-independent",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "project": "phone-dark",
+      "state": "learn-recall-feedback",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "learn-spelling",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "learn-spelling-judgment",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "v4-import",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "v4-import-cancel",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "s1-clear",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "s1-clear-cancel",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "circle-empty",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "circle-create",
+      "visibleControls": 9,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "circle-create-error",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "circle-join",
+      "visibleControls": 9,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "circle-动态",
+      "visibleControls": 20,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "circle-邀请同学",
+      "visibleControls": 12,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "circle-圈子管理",
+      "visibleControls": 13,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "song-gallery",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "project": "phone-dark",
+      "state": "song-theme-switch",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "project": "phone-dark",
+      "state": "song-sorted",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "project": "phone-dark",
+      "state": "song-detail",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        },
+        {
+          "id": "color-contrast",
+          "count": 8
+        }
+      ]
+    },
+    {
+      "project": "phone-dark",
+      "state": "history-populated",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "library-empty-search",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "settings-short-landscape-focus",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "settings-large-text",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "home-large-text",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "settlement-write-error",
+      "visibleControls": 1,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "settlement-complete",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "phone-dark",
+      "state": "render-failure-recovery",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "home",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "-mobile-library",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "home-after-library",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "-mobile-settings",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "settings-save",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "home-after-settings",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "-mobile-history",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "home-after-history",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "-mobile-data",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "data-expanded",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "home-after-data",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "-mobile-achievements",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "home-after-achievements",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "feedback-unavailable",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "tablet-light",
+      "state": "feedback-compose",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "tablet-light",
+      "state": "feedback-send-error",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "tablet-light",
+      "state": "account-login",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "account-register",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "account-rules-expanded",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "project": "tablet-light",
+      "state": "account-validation",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "learn-exposure",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "learn-paused-exposure",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 6
+        }
+      ]
+    },
+    {
+      "project": "tablet-light",
+      "state": "learn-manual-next",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "learn-supported",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "learn-paused-supported",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "project": "tablet-light",
+      "state": "learn-meaning-choices",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "learn-choice-feedback",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "learn-independent",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "learn-paused-independent",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "project": "tablet-light",
+      "state": "learn-recall-feedback",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "learn-spelling",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "learn-spelling-judgment",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "v4-import",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "v4-import-cancel",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "s1-clear",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "s1-clear-cancel",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "circle-empty",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "circle-create",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "circle-create-error",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "circle-join",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "circle-动态",
+      "visibleControls": 17,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "circle-邀请同学",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "circle-圈子管理",
+      "visibleControls": 11,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "song-gallery",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "project": "tablet-light",
+      "state": "song-theme-switch",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "project": "tablet-light",
+      "state": "song-sorted",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "project": "tablet-light",
+      "state": "song-detail",
+      "visibleControls": 1,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        },
+        {
+          "id": "color-contrast",
+          "count": 7
+        }
+      ]
+    },
+    {
+      "project": "tablet-light",
+      "state": "history-populated",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "library-empty-search",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "settlement-write-error",
+      "visibleControls": 1,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "settlement-complete",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-light",
+      "state": "render-failure-recovery",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "home",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "-mobile-library",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "home-after-library",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "-mobile-settings",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "settings-save",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "home-after-settings",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "-mobile-history",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "home-after-history",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "-mobile-data",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "data-expanded",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "home-after-data",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "-mobile-achievements",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "home-after-achievements",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "feedback-unavailable",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "tablet-dark",
+      "state": "feedback-compose",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "tablet-dark",
+      "state": "feedback-send-error",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "tablet-dark",
+      "state": "account-login",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "account-register",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "account-rules-expanded",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "project": "tablet-dark",
+      "state": "account-validation",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "learn-exposure",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "learn-paused-exposure",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 6
+        }
+      ]
+    },
+    {
+      "project": "tablet-dark",
+      "state": "learn-manual-next",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "learn-supported",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "learn-paused-supported",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "project": "tablet-dark",
+      "state": "learn-meaning-choices",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "learn-choice-feedback",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "learn-independent",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "learn-paused-independent",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "project": "tablet-dark",
+      "state": "learn-recall-feedback",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "learn-spelling",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "learn-spelling-judgment",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "v4-import",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "v4-import-cancel",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "s1-clear",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "s1-clear-cancel",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "circle-empty",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "circle-create",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "circle-create-error",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "circle-join",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "circle-动态",
+      "visibleControls": 17,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "circle-邀请同学",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "circle-圈子管理",
+      "visibleControls": 11,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "song-gallery",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "project": "tablet-dark",
+      "state": "song-theme-switch",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "project": "tablet-dark",
+      "state": "song-sorted",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "project": "tablet-dark",
+      "state": "song-detail",
+      "visibleControls": 1,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        },
+        {
+          "id": "color-contrast",
+          "count": 7
+        }
+      ]
+    },
+    {
+      "project": "tablet-dark",
+      "state": "history-populated",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "library-empty-search",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "settlement-write-error",
+      "visibleControls": 1,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "settlement-complete",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "tablet-dark",
+      "state": "render-failure-recovery",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "home",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "-mobile-library",
+      "visibleControls": 9,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "home-after-library",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "-mobile-settings",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "settings-save",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "home-after-settings",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "-mobile-history",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "home-after-history",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "-mobile-data",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "data-expanded",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "home-after-data",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "-mobile-achievements",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "home-after-achievements",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "feedback-unavailable",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "feedback-compose",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "feedback-send-error",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "account-login",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "account-register",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "account-rules-expanded",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "account-validation",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "learn-exposure",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "learn-paused-exposure",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 6
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "learn-manual-next",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "learn-supported",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "learn-paused-supported",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "learn-meaning-choices",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "learn-choice-feedback",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "learn-independent",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "learn-paused-independent",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "learn-recall-feedback",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "learn-spelling",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "learn-spelling-judgment",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-learn",
+      "visibleControls": 18,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-settings-声音与发音",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-settings-打字练习",
+      "visibleControls": 11,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-settings-学习计划",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        },
+        {
+          "id": "color-contrast",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-settings-外观显示",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-settings-数据与备份",
+      "visibleControls": 13,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-settings-开发诊断",
+      "visibleControls": 11,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        },
+        {
+          "id": "color-contrast",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-statistics-read-error",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-statistics-empty",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-typing",
+      "visibleControls": 24,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-typing-active",
+      "visibleControls": 25,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-word-list",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-gallery",
+      "visibleControls": 14,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-analysis",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-analysis-from=learn",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-error-book",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-friend-links",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-achievements",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "desktop-circles",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "v4-import",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "v4-import-cancel",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "s1-clear",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "s1-clear-cancel",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "circle-empty",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "circle-create",
+      "visibleControls": 9,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "circle-create-error",
+      "visibleControls": 9,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "circle-join",
+      "visibleControls": 9,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "circle-动态",
+      "visibleControls": 20,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "circle-邀请同学",
+      "visibleControls": 13,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "circle-圈子管理",
+      "visibleControls": 14,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "song-gallery",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "song-theme-switch",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "song-sorted",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "song-detail",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        },
+        {
+          "id": "color-contrast",
+          "count": 8
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "history-populated",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "error-word-detail",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "desktop-light",
+      "state": "error-book-populated",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "library-empty-search",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "settlement-write-error",
+      "visibleControls": 1,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "settlement-complete",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-light",
+      "state": "render-failure-recovery",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "home",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "-mobile-library",
+      "visibleControls": 9,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "home-after-library",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "-mobile-settings",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "settings-save",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "home-after-settings",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "-mobile-history",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "home-after-history",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "-mobile-data",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "data-expanded",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "home-after-data",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "-mobile-achievements",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "home-after-achievements",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "feedback-unavailable",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "feedback-compose",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "feedback-send-error",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "account-login",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "account-register",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "account-rules-expanded",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "account-validation",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "learn-exposure",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "learn-paused-exposure",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 6
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "learn-manual-next",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "learn-supported",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "learn-paused-supported",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "learn-meaning-choices",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "learn-choice-feedback",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "learn-independent",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "learn-paused-independent",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "learn-recall-feedback",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "learn-spelling",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "learn-spelling-judgment",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-learn",
+      "visibleControls": 18,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-settings-声音与发音",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-settings-打字练习",
+      "visibleControls": 11,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-settings-学习计划",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        },
+        {
+          "id": "color-contrast",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-settings-外观显示",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-settings-数据与备份",
+      "visibleControls": 13,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-settings-开发诊断",
+      "visibleControls": 11,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        },
+        {
+          "id": "color-contrast",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-statistics-read-error",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-statistics-empty",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-typing",
+      "visibleControls": 24,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-typing-active",
+      "visibleControls": 25,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-word-list",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-gallery",
+      "visibleControls": 14,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-analysis",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-analysis-from=learn",
+      "visibleControls": 5,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 39
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-error-book",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-friend-links",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-achievements",
+      "visibleControls": 8,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "desktop-circles",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "v4-import",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "v4-import-cancel",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "s1-clear",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "s1-clear-cancel",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "circle-empty",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "circle-create",
+      "visibleControls": 9,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "circle-create-error",
+      "visibleControls": 9,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "circle-join",
+      "visibleControls": 9,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "circle-动态",
+      "visibleControls": 20,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "circle-邀请同学",
+      "visibleControls": 13,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "circle-圈子管理",
+      "visibleControls": 14,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "song-gallery",
+      "visibleControls": 10,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "song-theme-switch",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "song-sorted",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "song-detail",
+      "visibleControls": 3,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        },
+        {
+          "id": "color-contrast",
+          "count": 8
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "history-populated",
+      "visibleControls": 7,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "error-word-detail",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": [
+        {
+          "id": "aria-hidden-focus",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "project": "desktop-dark",
+      "state": "error-book-populated",
+      "visibleControls": 6,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "library-empty-search",
+      "visibleControls": 4,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "settlement-write-error",
+      "visibleControls": 1,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "settlement-complete",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    },
+    {
+      "project": "desktop-dark",
+      "state": "render-failure-recovery",
+      "visibleControls": 2,
+      "violations": [],
+      "geometry": [],
+      "incomplete": []
+    }
+  ],
+  "validation": {
+    "productionTouch": {
+      "passed": 17
+    },
+    "menuNavigation": {
+      "passed": 23
+    },
+    "supportRegression": {
+      "passed": 19
+    },
+    "targetedScreenshotReview": {
+      "passed": 6
+    },
+    "sourceLint": {
+      "errors": 0,
+      "existingWarnings": 13
+    },
+    "typescript": {
+      "baseline": 143,
+      "current": 143,
+      "new": 0
+    },
+    "cssResetAsset": "index-209f0c77.css",
+    "illegalImportProbesRejected": 3,
+    "physicalDevices": "not-run",
+    "webkit": "not-run: missing system libraries"
+  },
+  "implementationCommit": "61ddaa4121e2eddae19ebfaa726de6f003de4a0f"
+}
