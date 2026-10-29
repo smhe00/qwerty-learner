@@ -1,9 +1,10 @@
 # QWERTY Plus 1.0.0 release
 
-Status: IN_PROGRESS. Executor: Codex-release. Base: 14b5a2b10ac0ca330e1c9545eb313aceda276d11.
+Status: PASS. Executor: Codex-release.
+Base: 14b5a2b10ac0ca330e1c9545eb313aceda276d11.
+Released candidate: f874b146875c507f6f30097059a47bb700c761bf.
+Owner explicitly authorized release: “按你的节奏来发布正式版”.
 
-The owner explicitly authorized completing validation and publishing the formal version to master/q.smhe.cn in this conversation on 2026-10-29: “按你的节奏来发布正式版”. This independent release task does not take over or change the Circle CURRENT_TASK. Preserve concurrent development and all existing runtime learning, ownership, sync, merge and storage rules.
+Required exact-SHA Pages, UI, Cloud, etest, hard three-device and release-ready gates passed. Master was fast-forwarded to the identical qualified etest SHA. Production verification 40903319543 confirmed q.smhe.cn marker f874b14, healthy gateway and four mobile route entries at 2026-10-29T15:40:00Z. Final evidence, retained first-attempt cleanup failure, advisory Explorer maintenance and physical-device limits: interactive/reports/FORMAL-RELEASE-20261029-report.md.
 
-Correct the remaining completion journey's obsolete expectation of an upload on baseline-matched reload: prove local extra-round preservation with zero startup upload, then explicit full sync, exactly one new commit and exact fresh-profile cloud readback. Retain the final-answer, backup hashes and no-duplicate assertions. Update product version/visible release wording; historical reports and third-party dictionary names remain historical.
-
-Qualify one exact main SHA through published Pages regression, production painted-UI matrix, source Cloud Sync, etest browser/Blob, release-ready, history login, three-device offline convergence and completion readback. Only then fast-forward master to that exact SHA with an expected-head lease; never alter code during promotion. Verify deployed production source and existing production policy probe. Record all evidence and remaining platform limits. Do not claim real Huawei/iOS checks or subsecond startup without evidence.
+Independent of Circle CURRENT_TASK; do not change that task or promote later main-only documentation to master without its own exact-SHA qualification.
