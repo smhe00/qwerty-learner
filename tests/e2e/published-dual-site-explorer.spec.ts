@@ -243,10 +243,24 @@ for (const site of sites) {
         await expect(page.locator('[data-account-entry]')).toHaveCount(1)
         await expect(page.getByRole('button', { name: '立即同步' })).toHaveCount(0)
       } else {
-        // Pages must never expose a cloud account entry or executable cloud
-        // sync control; this is security-relevant rather than visual.
+        // Pages shares the account entry but must never execute cloud operations.
         await expect(page.getByText('云端同步', { exact: true })).toHaveCount(0)
-        await expect(page.locator('[data-account-entry]')).toHaveCount(0)
+        await expect(page.locator('[data-account-entry]')).toHaveCount(1)
+        await page.getByRole('button', { name: '关闭设置', exact: true }).click()
+        const apiRequests: string[] = []
+        page.on('request', request => {
+          if (new URL(request.url()).pathname.includes('/api/')) apiRequests.push(request.method())
+        })
+        await page.getByRole('button', { name: '账号：登录或注册', exact: true }).click()
+        await expect(page.getByRole('note')).toContainText('当前为开发预览')
+        await page.getByLabel('用户名', { exact: true }).fill('ui-preview')
+        await page.getByLabel('账户密码', { exact: true }).fill('preview-only')
+        await page.getByRole('button', { name: '登录', exact: true }).click()
+        await expect(page.getByRole('status')).toContainText('此预览不会登录账号')
+        await expect.poll(() => page.evaluate(() => localStorage.getItem('qwerty.cloudAuth.v1'))).toBeNull()
+        await page.getByRole('button', { name: '返回', exact: true }).click()
+        await checkSite(page, site)
+        expect(apiRequests).toEqual([])
         await expect(page.getByRole('button', { name: '立即同步' })).toHaveCount(0)
       }
       observer.verify()

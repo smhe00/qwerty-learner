@@ -631,6 +631,7 @@ test('historical six-table startup download and automatic divergent reauth conve
     expect(startupPerformance.filter((s: any) => s.stage === 'm4-witness')).toHaveLength(1)
     expect(startupPerformance.filter((s: any) => s.stage === 'm4-capture' || s.stage === 'm4-transaction')).toHaveLength(0)
     expect(aRequests.filter((x) => x === 'GET /api/sync/v2/meta')).toHaveLength(1)
+    expect(aRequests.filter((x) => x === 'POST /api/sync/events/v2')).toHaveLength(0)
     expect(aRequests.filter((x) => x === 'GET /api/sync/events/v2')).toHaveLength(0)
     expect((await syncDiagnostics(pages[0])).some((e) => e.code === 'verified-prefix-already-local')).toBe(true)
     proof.unchangedLogin = {

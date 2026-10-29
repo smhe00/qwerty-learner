@@ -6,8 +6,8 @@
  */
 import type { IWordRecord } from '@/utils/db/record'
 import {
-  acknowledgeOutboxBatch, initialEventOutbox, reserveOutboxBatch,
-  stageOutboxAttempts,
+  acknowledgeOutboxBatch, initialEventOutbox, rememberVerifiedRemoteAttempts,
+  reserveOutboxBatch, stageOutboxAttempts,
 } from './multi-device-outbox'
 import type { ChainedReceipt, EventOutboxState } from './multi-device-outbox'
 
@@ -108,4 +108,12 @@ export function confirmDurableBatch(
   accountId: string, deviceId: string, receipt: ChainedReceipt,
 ): Promise<EventOutboxState> {
   return mutate(accountId, deviceId, state => acknowledgeOutboxBatch(state, receipt))
+}
+
+/** Caller supplies exact remote events only after authenticated M4 verification
+ * and durable adoption, under the pinned S1 account/device writer lease. */
+export function rememberDurableRemoteAttempts(
+  accountId: string, deviceId: string, attempts: readonly IWordRecord[],
+): Promise<EventOutboxState> {
+  return mutate(accountId, deviceId, state => rememberVerifiedRemoteAttempts(state, attempts))
 }

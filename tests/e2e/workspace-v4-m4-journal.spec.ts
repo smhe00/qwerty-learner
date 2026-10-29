@@ -506,3 +506,35 @@ test('mixed legacy M4 survives real lossless materialization, journal restore an
   expect(result.diagnostics).toEqual({ scanned: 2, eligible: 1, snapshotOnly: 1, rejected: 0, issues: { 'missing-attempt-id': 1 } })
   expect(result.exportReadOnly).toBe(true)
 })
+
+
+test('verified remote-event dedup survives reload and keeps account/device outboxes isolated', async ({ page }) => {
+  await init(page)
+  const fixture = {
+    accountId: owner.accountId,
+    device: 'qwerty-web-00000000-0000-4000-8000-000000000011',
+    row: { attemptId: '00000000-0000-4000-8000-000000000012', dict: 'school', word: 'example', timeStamp: 1800000000,
+      chapter: -1, sourceMode: 'learn', wrongCount: 0, timing: [], mistakes: {} },
+  }
+  await page.evaluate(async ({ accountId, device, row }) => {
+    const h = (window as any).__backupHarness
+    await h.rememberDurableRemoteAttempts(accountId, device, [row])
+  }, fixture)
+  await page.reload()
+  await expect.poll(() => page.evaluate(() => Boolean((window as any).__backupHarness?.seed))).toBe(true)
+  const result = await page.evaluate(async ({ accountId, device, row }) => {
+    const h = (window as any).__backupHarness
+    const own = await h.stageDurableAttempts(accountId, device, [row])
+    const other = await h.stageDurableAttempts('another-account', device, [row])
+    let rejected = false
+    try { await h.rememberDurableRemoteAttempts(accountId, device, [{ ...row, wrongCount: 3 }]) }
+    catch { rejected = true }
+    const after = await h.inspectEventOutbox(accountId, device)
+    return { own, other, rejected, after }
+  }, fixture)
+  expect(result.own.pending).toEqual([])
+  expect(result.own.confirmedHead).toBeNull()
+  expect(result.other.pending).toHaveLength(1)
+  expect(result.rejected).toBe(true)
+  expect(result.after).toEqual(result.own)
+})

@@ -93,7 +93,7 @@ jobs:
           VITE_QWERTY_SYNC_DISABLED: 'true'
         run: yarn build
       - name: Verify Pages login preview makes no cloud requests
-        run: npx playwright test --config=tests/e2e/mobile-account-pages.config.ts --project=chrome --retries=0
+        run: npx playwright test --config=tests/e2e/mobile-account-pages.config.ts --retries=0
       - name: Upload failure traces
         if: failure()
         uses: actions/upload-artifact@v4

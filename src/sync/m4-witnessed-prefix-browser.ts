@@ -1,3 +1,4 @@
+import { rememberDurableRemoteAttempts } from './multi-device-outbox-idb'
 /**
  * Etest M4.1 pre-mount bridge. The caller MUST already own the exclusive S1
  * writer lease; no React/typing/ReviewRecord writer may be mounted.
@@ -254,6 +255,19 @@ export async function adoptWitnessedM3AtGuardedBoot(
     // executeM4Merge validates post-restore full V4 fingerprint and keeps a
     // rollback archive. A fresh document is required to discard stale module
     // caches initialized during the unmounted restore.
+    // M4 has independently read/verified these exact remote events and committed
+    // the complete local candidate. Do not echo them into a new device chain on
+    // the following reload/login. No V4 imports or mere receipt listings qualify.
+    // Separate IDB stores cannot commit atomically: a failed/crashed dedup write
+    // may cause a redundant upload, but must never suppress the required reload
+    // after a successful M4 restore or lose the original/candidate archives.
+    try {
+      await assertOwner()
+      await rememberDurableRemoteAttempts(accountId, deviceId, proof.remoteEvents)
+      await assertOwner()
+    } catch {
+      trace('dedup-deferred', { reason: 'local-confirmation-unavailable' })
+    }
     trace('adopted', { added: projection.newlyAdoptedAttempts })
     recordLearningSyncDiagnostic({ stage: 'm4-adoption', status: 'adopted' })
     return { status: 'adopted', newAttempts: projection.newlyAdoptedAttempts, scope: 'verified-prefix-only' }

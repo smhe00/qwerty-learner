@@ -15,7 +15,7 @@ await build({ entryPoints: [resolve(root, 'src/sync/multi-device-outbox.ts')],
   target: 'node20', tsconfig: resolve(root, 'tsconfig.json') })
 test.after(() => rmSync(tmp, { recursive: true, force: true }))
 const { initialEventOutbox, stageOutboxAttempts, reserveOutboxBatch,
-  acknowledgeOutboxBatch } = await import(pathToFileURL(out).href)
+  acknowledgeOutboxBatch, rememberVerifiedRemoteAttempts } = await import(pathToFileURL(out).href)
 const uuid = i => '00000000-0000-4000-8000-' + String(i).padStart(12, '0')
 const device = i => 'qwerty-web-' + uuid(i)
 const record = i => ({ id: i, attemptId: uuid(i), dict: 'school',
@@ -123,4 +123,47 @@ test('outbox never allows damaged queued evidence to shadow acknowledged UUID', 
   assert.throws(() => stageOutboxAttempts(tampered, [record(2)]),
     /outbox-corrupt-confirmed-evidence/)
   assert.equal(state.pending.length, 0)
+})
+
+
+test('verified adopted events survive serialization without an echo upload or a forged local head', () => {
+  let state = rememberVerifiedRemoteAttempts(initialEventOutbox('A', device(1)), [record(2)])
+  state = stageOutboxAttempts(JSON.parse(JSON.stringify(state)), [record(2), record(2)])
+  assert.equal(state.pending.length, 0)
+  assert.equal(reserveOutboxBatch(state, uuid(100)).inflight, null)
+  assert.equal(state.confirmedHead, null)
+  // A new local event still forms the first genuine device publication.
+  state = reserveOutboxBatch(stageOutboxAttempts(state, [record(3)]), uuid(101))
+  assert.equal(state.inflight.sequence, 1)
+  assert.deepEqual(state.inflight.events.map(row => row.attemptId), [uuid(3)])
+})
+
+test('remote confirmation prunes only matching unreserved rows and never an ambiguous in-flight batch', () => {
+  let state = reserveOutboxBatch(stageOutboxAttempts(initialEventOutbox('A', device(1)), [record(1)]), uuid(102))
+  state = stageOutboxAttempts(state, [record(2), record(3)])
+  const bytes = JSON.stringify(state.inflight)
+  state = rememberVerifiedRemoteAttempts(state, [record(1), record(2)])
+  assert.equal(JSON.stringify(state.inflight), bytes)
+  assert.deepEqual(state.pending.map(row => row.attemptId), [uuid(1), uuid(3)])
+  assert.equal(state.confirmedHead, null)
+  // The original exact readback remains required and can finish normally.
+  state = acknowledgeOutboxBatch(state, receipt(state.inflight))
+  assert.deepEqual(state.pending.map(row => row.attemptId), [uuid(3)])
+  assert.equal(state.confirmedHead.sequence, 1)
+})
+
+test('conflicting remote evidence cannot partially prune or acknowledge a local queue', () => {
+  const original = stageOutboxAttempts(initialEventOutbox('A', device(1)), [record(1), record(2)])
+  const bytes = JSON.stringify(original)
+  assert.throws(() => rememberVerifiedRemoteAttempts(original, [record(1), { ...record(2), wrongCount: 8 }]), /contradictory/)
+  assert.equal(JSON.stringify(original), bytes)
+  assert.throws(() => rememberVerifiedRemoteAttempts(original, [{ ...record(3), attemptId: 'bad' }]), /invalid/)
+  assert.equal(JSON.stringify(original), bytes)
+})
+
+test('remote confirmation remains account/device scoped and rejects later changed raw evidence', () => {
+  const a = rememberVerifiedRemoteAttempts(initialEventOutbox('A', device(1)), [record(1)])
+  assert.throws(() => stageOutboxAttempts(a, [{ ...record(1), word: 'changed' }]), /contradictory/)
+  assert.equal(stageOutboxAttempts(initialEventOutbox('B', device(1)), [record(1)]).pending.length, 1)
+  assert.equal(stageOutboxAttempts(initialEventOutbox('A', device(2)), [record(1)]).pending.length, 1)
 })

@@ -28,7 +28,7 @@ export type EventOutboxState = {
   accountId: string
   deviceId: string
   pending: IWordRecord[]
-  /** Already confirmed UUID -> immutable canonical evidence. Prevents repeat uploads
+  /** Cloud-confirmed UUID -> immutable canonical evidence (own exact readback or fully verified adopted remote history). Prevents repeat uploads
    * during subsequent full-DB recovery scans; contradictory reuse blocks. */
   confirmedEvidence: Record<string, string>
   inflight: ChainedBatch | null
@@ -105,6 +105,32 @@ export function stageOutboxAttempts(state: EventOutboxState, attempts: readonly 
     }
   }
   return { ...state, pending }
+}
+
+/** Only complete authenticated remote-chain verification plus successful M4
+ * adoption may call this. A listing, cached head, or V4 import is insufficient.
+ * This deduplicates evidence, never advances our device's publication chain.
+ * Ambiguous in-flight bytes and their pending rows remain until exact readback.
+ */
+export function rememberVerifiedRemoteAttempts(state: EventOutboxState, attempts: readonly IWordRecord[]): EventOutboxState {
+  // Reuse the same identity/corruption checks as ordinary staging. Work on a
+  // new state so a contradictory record cannot partially acknowledge others.
+  stageOutboxAttempts(state, attempts)
+  const confirmedEvidence = { ...state.confirmedEvidence }
+  const verified = new Set<string>()
+  for (const row of attempts) {
+    const event = immutableAttempt(row)
+    const id = event.attemptId
+    if (!id) throw new Error('outbox-invalid-immutable-attempt')
+    confirmedEvidence[id] = stableWorkspaceJson(event)
+    verified.add(id)
+  }
+  const inflightIds = new Set(state.inflight?.events.map(row => row.attemptId) ?? [])
+  return {
+    ...state,
+    confirmedEvidence,
+    pending: state.pending.filter(row => !row.attemptId || !verified.has(row.attemptId) || inflightIds.has(row.attemptId)),
+  }
 }
 
 export function reserveOutboxBatch(state: EventOutboxState, batchId: string): EventOutboxState {

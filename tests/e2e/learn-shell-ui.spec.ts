@@ -23,7 +23,7 @@ test('Typing and Learn are explicit top-level modes', async ({ page }) => {
 
   await expect(typingMode).toHaveAttribute('aria-pressed', 'true')
   await expect(learnMode).toHaveAttribute('aria-pressed', 'false')
-  await expect(page.getByRole('button', { name: '开始' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '开始', exact: true })).toBeVisible()
 
   await learnMode.click()
   await expect(page).toHaveURL(/\/learn$/)

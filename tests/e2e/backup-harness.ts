@@ -1,3 +1,4 @@
+import { rememberDurableRemoteAttempts, stageDurableAttempts, inspectEventOutbox } from '../../src/sync/multi-device-outbox-idb'
 import { processLiveLearnSessionCompletion, recordVoluntaryContinueIntent } from '../../src/achievement/engine'
 import { getAchievementSessionId } from '../../src/achievement/session'
 import { createDeveloperIncidentSnapshot } from '../../src/dev/incident-snapshot'
@@ -307,6 +308,7 @@ async function inspectTableContract() {
 }
 
 ;(window as any).__backupHarness = {
+  rememberDurableRemoteAttempts, stageDurableAttempts, inspectEventOutbox,
   previewMonotonicWitnessedM4,
   createDeveloperIncidentSnapshot,
   createDexieImportBlob,
