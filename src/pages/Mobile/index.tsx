@@ -1,12 +1,12 @@
-import { openFeedback } from '@/feedback/client'
 import MobileDailyProgress from './MobileDailyProgress'
 import './mobile-app.css'
 import { useMobileCheckpoint } from './useMobileCheckpoint'
 import { useMobileDailyProgress } from './useMobileDailyProgress'
+import logo from '@/assets/logo.svg'
 import { circleUnavailable, currentCircleAuth } from '@/circle/client'
 import { useCircleAuth } from '@/circle/useCircleAuth'
-import logo from '@/assets/logo.svg'
 import QuickSyncAction from '@/components/QuickSyncAction'
+import { openFeedback } from '@/feedback/client'
 import { currentDictInfoAtom } from '@/store'
 import { accountManagementHref, openAccountManagement } from '@/sync/account-navigation'
 import { loadAuth } from '@/sync/auth'
@@ -24,7 +24,8 @@ export default function MobilePage() {
   const { checkpoint } = useMobileCheckpoint()
   const daily = useMobileDailyProgress()
   const dictionary = useAtomValue(currentDictInfoAtom)
-  const auth = loadAuth({ preserveExpired: true })
+  const auth =
+    REACT_APP_DEPLOY_ENV === 'pages' || import.meta.env.VITE_QWERTY_SYNC_DISABLED === 'true' ? null : loadAuth({ preserveExpired: true })
   const accountHref = accountManagementHref(true)
   // Replace the home history entry so the account flow does not retain it.
   // Some mobile browsers otherwise apply a new-tab policy to ordinary links.
@@ -93,11 +94,22 @@ export default function MobilePage() {
 
         <section className="mobile-home-menu" aria-label="功能菜单">
           <h2>更多功能</h2>
-          <button type="button" className="mobile-menu-item circle-mobile-entry" disabled={circleDisabled}
-            aria-label={circleDisabled ? "圈子（登录后可用）" : "打开圈子"}
-            onClick={() => { if (currentCircleAuth() && !circleUnavailable()) navigate("/mobile/circles") }}>
-            <span className="mobile-menu-icon"><Users size={20} aria-hidden="true" /></span>
-            <span className="mobile-menu-text"><strong>圈子</strong><small>{circleUnavailable() ? "当前版本暂不可用" : circleAuth ? "和同学一起坚持" : "登录后使用"}</small></span>
+          <button
+            type="button"
+            className="mobile-menu-item circle-mobile-entry"
+            disabled={circleDisabled}
+            aria-label={circleDisabled ? '圈子（登录后可用）' : '打开圈子'}
+            onClick={() => {
+              if (currentCircleAuth() && !circleUnavailable()) navigate('/mobile/circles')
+            }}
+          >
+            <span className="mobile-menu-icon">
+              <Users size={20} aria-hidden="true" />
+            </span>
+            <span className="mobile-menu-text">
+              <strong>圈子</strong>
+              <small>{circleUnavailable() ? '当前版本暂不可用' : circleAuth ? '和同学一起坚持' : '登录后使用'}</small>
+            </span>
             <ChevronRight size={18} aria-hidden="true" className="mobile-menu-chevron" />
           </button>
           {menus.map((item) => (
@@ -113,8 +125,12 @@ export default function MobilePage() {
             </Link>
           ))}
           <button type="button" className="mobile-menu-item w-full text-left" onClick={openFeedback}>
-            <span className="mobile-menu-icon"><MessageSquare size={20} aria-hidden="true" /></span>
-            <span className="mobile-menu-text"><strong>反馈与建议</strong></span>
+            <span className="mobile-menu-icon">
+              <MessageSquare size={20} aria-hidden="true" />
+            </span>
+            <span className="mobile-menu-text">
+              <strong>反馈与建议</strong>
+            </span>
             <ChevronRight size={18} aria-hidden="true" className="mobile-menu-chevron" />
           </button>
         </section>

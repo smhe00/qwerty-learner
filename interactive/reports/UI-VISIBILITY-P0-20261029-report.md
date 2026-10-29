@@ -98,3 +98,10 @@ axe 的 `incomplete` 保留在逐状态 JSON 中，不当作 PASS 删除。人�
 - 该源提交及本报告一起推进 product/main；报告提交是源提交的直接后继。
 - GitHub CI 状态以 Actions 为准，写报告时尚未获取远端最终通过结果。
 - 本次未推进 edgeone-test/master，未执行 Maker 或生产部署。下一步先审阅 Pages 前置 UI 门禁；真实 Huawei/HarmonyOS/iPad 验收需在相应设备执行。
+
+
+## 后续授权部署与 Pages 主验证（2026-10-29）
+
+用户随后明确要求先部署 etest：已快进 edgeone-test 至本报告候选 `9ef113301f2a03b8f4528621e5eefda076672f24`，实站版本为 `9ef1133`，master 未变。云端验证结果与真实触控补验（含首轮异常）见 `PAGES-UI-PREVIEW-20261029-report.md`。
+
+用户进一步指定 Pages 为非联网界面检查主力，补齐离线账号预览和实际 Pages 构建矩阵；该后续改动仅发布到 product/main/Pages，不重复构建 etest。

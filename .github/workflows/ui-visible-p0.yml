@@ -13,6 +13,13 @@ jobs:
   visible-ui:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        deployment: [pages, edgeone]
+    env:
+      REACT_APP_DEPLOY_ENV: ${{ matrix.deployment }}
+      VITE_QWERTY_SYNC_DISABLED: ${{ matrix.deployment == 'pages' && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,10 +38,13 @@ jobs:
         run: yarn test:ui-visible
       - name: Verify primary learning actions, refresh and audio recovery
         run: yarn playwright test --config=tests/e2e/tablet-refresh-built.config.ts --project=chromium --retries=0
+      - name: Verify Pages account UI and zero authentication requests
+        if: matrix.deployment == 'pages'
+        run: yarn playwright test --config=tests/e2e/mobile-account-pages.config.ts
       - name: Retain per-state audit reports, screenshots and failure traces
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: visible-ui-p0-${{ github.run_id }}
+          name: visible-ui-p0-${{ matrix.deployment }}-${{ github.run_id }}
           path: test-results/
           retention-days: 7

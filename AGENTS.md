@@ -160,3 +160,10 @@ Do not promote etest/master or create cloud accounts solely to clear a harmless 
 - `User-visible UI P0 Gate` is a required dependency of Pages deployment. It exercises the production bundle across phone/tablet/desktop and light/dark, including lazy navigation, errors and learning action states. Do not narrow this gate to `.css` paths: a TypeScript import caused the original regression.
 - New routes, dialogs and state exits must extend the visible-UI journeys as appropriate. Retain per-state audit artifacts and manually review uncertain contrast findings/screenshots. Test critical actions in short touch viewports and without a hardware keyboard. UI-only fixes must not alter learning records, auth or sync contracts.
 - Automated Chromium evidence does not replace real iOS/HarmonyOS/device checks. Record untested platforms and states honestly; do not describe a green matrix as proof of zero future UI defects. Do not weaken assertions or remove failing states to release.
+
+### Pages is the primary UI verification surface (owner instruction, 2026-10-29)
+
+- Use published Pages and its production build for routine user-visible interface checks. Keep account entry points and shared login/registration presentation aligned with EdgeOne; Pages may validate inputs and show explicit local preview feedback, but must never authenticate, create accounts, switch ownership, or sync.
+- The visible-UI gate runs an explicit Pages build (real `/qwerty-learner/` basename, cloud disabled) across phone/tablet/desktop and both themes. Keep the EdgeOne companion matrix for cloud-dependent surfaces and production-build parity; UI fixtures do not certify real networking.
+- Published Pages regression must exercise desktop and mobile account entry, local submission and return, and assert zero API requests. Preserve existing records and credentials during preview. Never enable network features to make a UI test pass.
+- Real authentication, synchronization and Blob behavior remain etest responsibilities. Do not rebuild etest for Pages-only UI verification.

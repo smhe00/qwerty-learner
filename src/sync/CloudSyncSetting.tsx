@@ -88,7 +88,7 @@ export default function CloudSyncSetting({
 
   if (REACT_APP_DEPLOY_ENV === 'pages') {
     return (
-      <div role="status" className="text-sm text-gray-500">
+      <div role="status" className="text-sm" style={{ color: 'var(--focus-text-muted)' }}>
         预览版暂不支持云同步，可使用本地备份。
       </div>
     )

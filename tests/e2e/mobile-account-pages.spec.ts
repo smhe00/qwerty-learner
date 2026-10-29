@@ -1,30 +1,54 @@
+import { auditVisibleUI, prepareVisibleUI } from './ui-visible-audit'
 import { expect, test } from '@playwright/test'
 
-test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
-test('Pages exposes phone account preview but keeps all cloud authentication disabled', async ({ page }) => {
+test('Pages exposes phone account preview but supports local form interactions without cloud authentication', async ({ page }, info) => {
+  await prepareVisibleUI(page, info.project.name.endsWith('dark'))
   let requests = 0
   page.on('request', (request) => {
     if (request.url().includes('/api/')) requests++
   })
   await page.goto('/qwerty-learner/mobile')
-  await page.getByRole('link', { name: '登录或注册', exact: true }).tap()
+  await page.getByRole('link', { name: '登录或注册', exact: true }).click()
   await expect(page.locator('[data-account-overview]')).toHaveCount(0)
   await expect(page).toHaveURL(/\/qwerty-learner\/mobile\/account$/)
   await expect(page.getByRole('heading', { name: '登录 QWERTY Plus' })).toBeVisible()
   await expect(page.getByRole('note')).toContainText('当前为开发预览')
-  await expect(page.getByRole('button', { name: '登录', exact: true })).toBeDisabled()
-  await page.getByRole('tab', { name: '注册', exact: true }).tap()
-  await expect(page.getByRole('button', { name: '注册并登录' })).toBeDisabled()
-  await expect(page.getByLabel('用户名', { exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: '登录', exact: true })).toBeEnabled()
+  await auditVisibleUI(page, info, 'pages-login')
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await expect(page.locator('input:invalid').first()).toBeVisible()
+  await page.getByLabel('用户名', { exact: true }).fill('ui-preview')
+  await page.getByLabel('账户密码', { exact: true }).fill('preview-only')
+  await page.getByRole('button', { name: '显示密码' }).click()
+  await expect(page.getByLabel('账户密码', { exact: true })).toHaveAttribute('type', 'text')
+  await page.getByRole('button', { name: '隐藏密码' }).click()
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await expect(page.getByRole('status')).toContainText('此预览不会登录账号')
+  await auditVisibleUI(page, info, 'pages-login-result')
+  await page.getByRole('tab', { name: '注册', exact: true }).click()
+  await expect(page.getByRole('button', { name: '注册并登录' })).toBeEnabled()
+  await expect(page.getByLabel('用户名', { exact: true })).toBeEnabled()
+  await page.getByLabel('账户密码', { exact: true }).fill('preview-only')
+  await page.getByLabel('注册密码确认', { exact: true }).fill('mismatch')
+  await page.getByRole('button', { name: '注册并登录' }).click()
+  await expect(page.locator('.mobile-account-status')).toHaveText('')
+  await expect(page.locator('#mobile-account-confirm:invalid')).toHaveCount(1)
+  await page.getByLabel('注册密码确认', { exact: true }).fill('preview-only')
+  await auditVisibleUI(page, info, 'pages-register')
+  await page.getByRole('button', { name: '注册并登录' }).click()
+  await expect(page.getByRole('status')).toContainText('此预览不会创建账号')
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('qwerty.cloudAuth.v1'))).toBe(null)
+  await auditVisibleUI(page, info, 'pages-register-result')
   expect(requests).toBe(0)
-  await page.getByRole('button', { name: '返回', exact: true }).tap()
+  await page.getByRole('button', { name: '返回', exact: true }).scrollIntoViewIfNeeded()
+  await page.getByRole('button', { name: '返回', exact: true }).click()
   await expect(page).toHaveURL(/\/qwerty-learner\/mobile$/)
   await expect(page.locator('[data-mobile-menu]')).toBeVisible()
 })
 
 for (const withOldAuth of [false, true]) {
   test(
-    'Pages legacy records' + (withOldAuth ? ' and credentials' : '') + ' open read-only login preview without migration',
+    'Pages legacy records' + (withOldAuth ? ' and credentials' : '') + ' open local login preview without migration',
     async ({ page }) => {
       let apiRequests = 0
       page.on('request', (request) => {
@@ -63,9 +87,14 @@ for (const withOldAuth of [false, true]) {
       await expect(page.getByRole('heading', { name: '登录 QWERTY Plus' })).toBeVisible()
       await expect(page.getByRole('note')).toContainText('当前为开发预览')
       await expect(page.getByText('学习数据安全检查未通过', { exact: true })).toHaveCount(0)
-      await expect(page.getByRole('button', { name: '登录', exact: true })).toBeDisabled()
-      await page.getByRole('tab', { name: '注册', exact: true }).tap()
-      await expect(page.getByRole('button', { name: '注册并登录' })).toBeDisabled()
+      await expect(page.getByRole('button', { name: '登录', exact: true })).toBeEnabled()
+      await page.getByRole('tab', { name: '注册', exact: true }).click()
+      await expect(page.getByRole('button', { name: '注册并登录' })).toBeEnabled()
+      await page.getByLabel('用户名', { exact: true }).fill('legacy-preview')
+      await page.getByLabel('账户密码', { exact: true }).fill('preview-only')
+      await page.getByLabel('注册密码确认', { exact: true }).fill('preview-only')
+      await page.getByRole('button', { name: '注册并登录' }).click()
+      await expect(page.getByRole('status')).toContainText('此预览不会创建账号')
       const after = await page.evaluate(async () => {
         const db = await new Promise<IDBDatabase>((resolve, reject) => {
           const r = indexedDB.open('RecordDB')

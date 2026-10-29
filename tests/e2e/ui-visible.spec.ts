@@ -1,3 +1,4 @@
+import { uiPath, pagesUI } from './ui-test-path'
 import { chooseLearnInputMode } from './learn-input-mode-harness'
 import { reviewWords, seedAcquisitionSession, seedReviewSession } from './review-flow-harness'
 import { auditVisibleUI, prepareVisibleUI } from './ui-visible-audit'
@@ -7,7 +8,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 test.beforeEach(async ({ page }, info) => prepareVisibleUI(page, info.project.name.endsWith('dark')))
 
 test('all mobile menu destinations and lazy return remain readable', async ({ page }, info) => {
-  await page.goto('/mobile')
+  await page.goto(uiPath('/mobile'))
   await expect(page.locator('[data-mobile-menu]')).toBeVisible()
   await auditVisibleUI(page, info, 'home')
   for (const [name, path, ready] of [
@@ -30,7 +31,7 @@ test('all mobile menu destinations and lazy return remain readable', async ({ pa
       await save.click()
       await expect(page.getByRole('status')).toContainText('设置已保存在本机')
     }
-    if (path === '/mobile/data') {
+    if (path === '/mobile/data' && !pagesUI) {
       await page.getByText('更多同步选项', { exact: true }).click()
       await page.getByText('从备份恢复', { exact: true }).click()
       await auditVisibleUI(page, info, 'data-expanded')
@@ -42,6 +43,12 @@ test('all mobile menu destinations and lazy return remain readable', async ({ pa
   await page.getByRole('button', { name: '反馈与建议', exact: true }).click()
   await expect(page.getByRole('dialog', { name: '反馈与建议' })).toBeVisible()
   await auditVisibleUI(page, info, 'feedback-unavailable')
+  if (pagesUI) {
+    await expect(page.getByRole('dialog', { name: '反馈与建议' })).toContainText('预览')
+    await page.getByRole('button', { name: '关闭反馈' }).click()
+    await expect(page.locator('[data-mobile-menu]')).toBeVisible()
+    return
+  }
   await page.getByRole('button', { name: '写反馈', exact: true }).click()
   await auditVisibleUI(page, info, 'feedback-compose')
   await page.getByLabel('标题', { exact: true }).fill('界面可见性检查')
@@ -54,7 +61,7 @@ test('all mobile menu destinations and lazy return remain readable', async ({ pa
 })
 
 test('login and register forms remain actionable after validation errors', async ({ page }, info) => {
-  await page.goto('/mobile/account')
+  await page.goto(uiPath('/mobile/account'))
   await expect(page.getByRole('heading', { name: '登录 QWERTY Plus' })).toBeVisible()
   await auditVisibleUI(page, info, 'account-login')
   await page.getByRole('tab', { name: '注册', exact: true }).click()
@@ -69,7 +76,7 @@ test('login and register forms remain actionable after validation errors', async
 for (const phase of ['exposure', 'supported', 'independent'] as const) {
   test('learning actions and exits: ' + phase, async ({ page }, info) => {
     await seedAcquisitionSession(page, reviewWords, 981001, phase)
-    await page.goto('/mobile/study')
+    await page.goto(uiPath('/mobile/study'))
     const card = page.locator('[data-mobile-word-practice]')
     await expect(card).toBeVisible()
     await auditVisibleUI(page, info, 'learn-' + phase)
@@ -108,7 +115,7 @@ for (const phase of ['exposure', 'supported', 'independent'] as const) {
 
 test('desktop settings tabs and auxiliary pages stay usable', async ({ page }, info) => {
   test.skip(!info.project.name.startsWith('desktop'), 'Desktop-only shell; mobile routes have their own full matrix.')
-  await page.goto('/learn')
+  await page.goto(uiPath('/learn'))
   await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible()
   await auditVisibleUI(page, info, 'desktop-learn')
   await page.getByRole('button', { name: '打开设置对话框' }).click()
@@ -120,7 +127,7 @@ test('desktop settings tabs and auxiliary pages stay usable', async ({ page }, i
     await auditVisibleUI(page, info, 'desktop-settings-' + name.trim())
   }
   await page.getByRole('button', { name: '关闭设置', exact: true }).click()
-  await page.evaluate(() => {
+  await page.evaluate((analysisPath) => {
     const originalGetAll = IDBIndex.prototype.getAll
     const originalCursor = IDBIndex.prototype.openCursor
     const blocked = (index: IDBIndex) => index.objectStore.name === 'wordRecords' && index.name === 'timeStamp'
@@ -136,9 +143,9 @@ test('desktop settings tabs and auxiliary pages stay usable', async ({ page }, i
       IDBIndex.prototype.getAll = originalGetAll
       IDBIndex.prototype.openCursor = originalCursor
     }
-    history.pushState(null, '', '/analysis')
+    history.pushState(null, '', analysisPath)
     dispatchEvent(new PopStateEvent('popstate'))
-  })
+  }, uiPath('/analysis'))
   await expect(page.getByRole('alert')).toContainText('统计数据暂时无法读取')
   await auditVisibleUI(page, info, 'desktop-statistics-read-error')
   await page.evaluate(() => (window as any).__restoreUIStatsRead())
@@ -155,7 +162,7 @@ test('desktop settings tabs and auxiliary pages stay usable', async ({ page }, i
     '/achievements',
     '/circles',
   ]) {
-    await page.goto(path)
+    await page.goto(uiPath(path))
     await expect(page.locator('#root')).not.toBeEmpty()
     await expect(page.getByText('正在准备本地学习数据', { exact: true })).toHaveCount(0)
     if (path === '/analysis') await expect(page.getByText('暂无练习数据', { exact: true }).or(page.locator('canvas').first())).toBeVisible()
@@ -173,13 +180,14 @@ test('desktop settings tabs and auxiliary pages stay usable', async ({ page }, i
 })
 
 test('guarded backup import and local reset are readable without performing destructive actions', async ({ page }, info) => {
-  await page.goto('/mobile')
+  test.skip(pagesUI, 'S1 isolated workspace tools require the EdgeOne build; retained in the companion matrix.')
+  await page.goto(uiPath('/mobile'))
   await expect(page.locator('[data-mobile-menu]')).toBeVisible()
   for (const [query, heading] of [
     ['v4-import=manage', '本地导入完整 Backup V4'],
     ['s1-clear=manage', '清除当前工作区的本地学习数据'],
   ]) {
-    await page.goto('/?' + query)
+    await page.goto(uiPath('/?' + query))
     await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
     await auditVisibleUI(page, info, query.split('=')[0])
     const cancel = page.getByRole('button', { name: /取消.*返回学习/ })
@@ -191,6 +199,7 @@ test('guarded backup import and local reset are readable without performing dest
 })
 
 test('circle empty, forms, errors and all detail tabs stay readable', async ({ page }, info) => {
+  test.skip(pagesUI, 'Circle requires authenticated cloud transport; retained with intercepted APIs in the companion matrix.')
   const owner = 'ui-audit-owner',
     circleId = 'a'.repeat(24)
   let exists = false
@@ -214,7 +223,7 @@ test('circle empty, forms, errors and all detail tabs stay readable', async ({ p
       })
     return route.fulfill({ status: 503, json: { ok: false, error: 'circle_internal_error' } })
   })
-  await page.goto('/mobile')
+  await page.goto(uiPath('/mobile'))
   await expect(page.locator('[data-mobile-menu]')).toBeVisible()
   // Synthetic credentials only after guarded boot; all APIs are intercepted.
   // Stay in the same SPA document, so no real account workspace is opened.
@@ -254,7 +263,7 @@ test('circle empty, forms, errors and all detail tabs stay readable', async ({ p
 })
 
 test('Song achievements, history and dictionary empty search remain readable', async ({ page }, info) => {
-  await page.goto('/mobile')
+  await page.goto(uiPath('/mobile'))
   await expect(page.locator('[data-mobile-menu]')).toBeVisible()
   await page.evaluate(async () => {
     const request = indexedDB.open('RecordDB')
@@ -311,21 +320,21 @@ test('Song achievements, history and dictionary empty search remain readable', a
   await page.getByRole('link', { name: /^学习记录/ }).click()
   await auditVisibleUI(page, info, 'history-populated')
   if (info.project.name.startsWith('desktop')) {
-    await page.goto('/error-book')
+    await page.goto(uiPath('/error-book'))
     await page.getByRole('button', { name: '查看错词：cancel', exact: true }).click()
     await expect(page.getByRole('dialog', { name: '错词详情', exact: true })).toBeVisible()
     await auditVisibleUI(page, info, 'error-word-detail')
     await page.getByRole('button', { name: '关闭错词详情', exact: true }).click()
     await auditVisibleUI(page, info, 'error-book-populated')
   }
-  await page.goto('/mobile/library')
+  await page.goto(uiPath('/mobile/library'))
   await page.getByRole('searchbox').fill('找不到的词库-UI-check')
   await auditVisibleUI(page, info, 'library-empty-search')
 })
 
 test('short landscape, enlarged text and keyboard focus retain explicit exits', async ({ page }, info) => {
   test.skip(!info.project.name.startsWith('phone'), 'Phone-specific rotation and text scaling.')
-  await page.goto('/mobile/settings')
+  await page.goto(uiPath('/mobile/settings'))
   await page.setViewportSize({ width: 844, height: 390 })
   await page.getByLabel('每日新词目标').fill('18')
   const save = page.getByRole('button', { name: '保存设置', exact: true })
@@ -348,7 +357,7 @@ test('short landscape, enlarged text and keyboard focus retain explicit exits', 
 
 test('settlement error offers a visible retry and completion offers a visible exit', async ({ page }, info) => {
   await seedReviewSession(page, reviewWords.slice(0, 1), 981002)
-  await page.goto('/mobile/study')
+  await page.goto(uiPath('/mobile/study'))
   const card = page.locator('[data-mobile-word-practice]')
   await expect(card).toBeVisible()
   await page.evaluate(() => {
@@ -380,7 +389,7 @@ test('settlement error offers a visible retry and completion offers a visible ex
 
 test('a route render crash presents recovery actions and preserves the learning checkpoint', async ({ page }, info) => {
   await seedAcquisitionSession(page, reviewWords, 981003, 'exposure')
-  await page.goto('/mobile/study')
+  await page.goto(uiPath('/mobile/study'))
   await expect(page.locator('[data-mobile-word-practice]')).toBeVisible()
   const checkpoint = await page.evaluate(() => localStorage.getItem('reviewModeInfo'))
   const chunk = readdirSync('build/assets').filter(
@@ -394,7 +403,7 @@ test('a route render crash presents recovery actions and preserves the learning 
       body: 'export default function BrokenHistory(){throw new Error(' + JSON.stringify(fault) + ')}',
     }),
   )
-  await page.goto('/mobile/history')
+  await page.goto(uiPath('/mobile/history'))
   await expect(page.getByRole('heading', { name: '页面暂时无法显示', exact: true })).toBeVisible()
   await auditVisibleUI(page, info, 'render-failure-recovery', fault)
   expect(await page.evaluate(() => localStorage.getItem('reviewModeInfo'))).toBe(checkpoint)

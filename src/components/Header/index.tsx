@@ -1,6 +1,6 @@
-import { openFeedback } from '@/feedback/client'
 import logo from '@/assets/logoData'
 import QuickSyncAction from '@/components/QuickSyncAction'
+import { openFeedback } from '@/feedback/client'
 import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import { infoPanelStateAtom } from '@/store'
 import { openAccountDialog } from '@/sync/account-dialog-events'
@@ -88,12 +88,10 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
     openAccountManagement()
   }
   const setInfoPanelState = useSetAtom(infoPanelStateAtom)
-  const auth = loadAuth({ preserveExpired: true })
-  const canUseAccount = REACT_APP_DEPLOY_ENV !== 'pages'
+  const cloudEnabled = REACT_APP_DEPLOY_ENV !== 'pages' && import.meta.env.VITE_QWERTY_SYNC_DISABLED !== 'true'
+  const auth = cloudEnabled ? loadAuth({ preserveExpired: true }) : null
   const accountExpired = !!auth && auth.expiresAt * 1000 <= Date.now()
-  const { administrator } = useAdministratorAccess(
-    accountMenuOpen && canUseAccount && import.meta.env.VITE_QWERTY_SYNC_DISABLED !== 'true' && !accountExpired ? auth?.token : undefined,
-  )
+  const { administrator } = useAdministratorAccess(accountMenuOpen && cloudEnabled && !accountExpired ? auth?.token : undefined)
 
   const openAppreciation = useCallback(() => {
     setInfoPanelState((state) => ({ ...state, donate: true }))
@@ -104,7 +102,7 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
       <div
         ref={layoutRef}
         data-toolbar-layout={toolbarLayout}
-        data-has-account={canUseAccount}
+        data-has-account={true}
         className="focus-header-layout w-full items-center gap-x-3 gap-y-3 xl:gap-x-12"
       >
         <button
@@ -134,139 +132,138 @@ const Header: React.FC<PropsWithChildren> = ({ children }) => {
         >
           {children}
         </nav>
-        {canUseAccount &&
-          (auth ? (
-            <div
-              ref={accountMenuRef}
-              data-account-dropdown
-              className="relative z-30 shrink-0 justify-self-end"
-              onPointerEnter={hoverAccount}
-              onPointerLeave={leaveAccount}
-              onKeyDown={(event) => {
-                event.stopPropagation()
-                if (event.key === 'Escape') {
+        {auth ? (
+          <div
+            ref={accountMenuRef}
+            data-account-dropdown
+            className="relative z-30 shrink-0 justify-self-end"
+            onPointerEnter={hoverAccount}
+            onPointerLeave={leaveAccount}
+            onKeyDown={(event) => {
+              event.stopPropagation()
+              if (event.key === 'Escape') {
+                clearMenuTimers()
+                setAccountMenuOpen(false)
+              }
+            }}
+          >
+            <div className="focus-surface flex items-center rounded-xl">
+              <button
+                type="button"
+                onClick={manageAccount}
+                className="flex h-11 items-center gap-2 rounded-l-xl px-3 text-sm font-medium transition-colors hover:text-indigo-600"
+                aria-label={'账号：' + auth.user.username}
+                title={accountExpired ? '会话已过期，点击重新登录' : '账户管理与安全退出'}
+                data-account-entry
+              >
+                <UserCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
+                <span className="max-w-28 truncate">{auth.user.username}</span>
+                {accountExpired && <span className="text-xs text-amber-600 dark:text-amber-400">已过期</span>}
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  // Keep focus on the toggle so Escape and Tab remain available.
                   clearMenuTimers()
-                  setAccountMenuOpen(false)
-                }
-              }}
-            >
-              <div className="focus-surface flex items-center rounded-xl">
-                <button
-                  type="button"
-                  onClick={manageAccount}
-                  className="flex h-11 items-center gap-2 rounded-l-xl px-3 text-sm font-medium transition-colors hover:text-indigo-600"
-                  aria-label={'账号：' + auth.user.username}
-                  title={accountExpired ? '会话已过期，点击重新登录' : '账户管理与安全退出'}
-                  data-account-entry
-                >
-                  <UserCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
-                  <span className="max-w-28 truncate">{auth.user.username}</span>
-                  {accountExpired && <span className="text-xs text-amber-600 dark:text-amber-400">已过期</span>}
-                </button>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    // Keep focus on the toggle so Escape and Tab remain available.
-                    clearMenuTimers()
-                    setAccountMenuOpen((value) => !value)
-                  }}
-                  className="flex h-11 w-11 items-center justify-center rounded-r-xl border-l border-slate-200/70 transition-colors hover:text-indigo-600 dark:border-slate-700"
-                  aria-label="展开账号操作菜单"
-                  aria-haspopup="menu"
-                  aria-expanded={accountMenuOpen}
-                  aria-controls="focus-account-menu"
-                  data-account-menu-toggle
-                >
-                  <ChevronDown
-                    className={'h-4 w-4 shrink-0 opacity-60 transition-transform ' + (accountMenuOpen ? 'rotate-180' : '')}
-                    aria-hidden="true"
+                  setAccountMenuOpen((value) => !value)
+                }}
+                className="flex h-11 w-11 items-center justify-center rounded-r-xl border-l border-slate-200/70 transition-colors hover:text-indigo-600 dark:border-slate-700"
+                aria-label="展开账号操作菜单"
+                aria-haspopup="menu"
+                aria-expanded={accountMenuOpen}
+                aria-controls="focus-account-menu"
+                data-account-menu-toggle
+              >
+                <ChevronDown
+                  className={'h-4 w-4 shrink-0 opacity-60 transition-transform ' + (accountMenuOpen ? 'rotate-180' : '')}
+                  aria-hidden="true"
+                />
+              </button>
+            </div>
+            {accountMenuOpen && (
+              <div
+                id="focus-account-menu"
+                role="menu"
+                aria-label="账号操作"
+                data-account-menu
+                className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border p-1.5 shadow-xl"
+                style={{
+                  background: 'var(--focus-surface)',
+                  borderColor: 'var(--focus-border)',
+                  boxShadow: 'var(--focus-shadow-overlay)',
+                }}
+              >
+                <div role="none">
+                  <QuickSyncAction
+                    target={window.location.pathname === '/typing' ? '/typing' : '/learn'}
+                    variant="menu"
+                    beforeSave={() => typing?.dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })}
                   />
-                </button>
-              </div>
-              {accountMenuOpen && (
-                <div
-                  id="focus-account-menu"
-                  role="menu"
-                  aria-label="账号操作"
-                  data-account-menu
-                  className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border p-1.5 shadow-xl"
-                  style={{
-                    background: 'var(--focus-surface)',
-                    borderColor: 'var(--focus-border)',
-                    boxShadow: 'var(--focus-shadow-overlay)',
+                </div>
+                <div className="my-1 border-t" style={{ borderColor: 'var(--focus-border)' }} />
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                  onClick={(event) => {
+                    clearMenuTimers()
+                    setAccountMenuOpen(false)
+                    event.currentTarget.blur()
+                    manageAccount(event)
                   }}
                 >
-                  <div role="none">
-                    <QuickSyncAction
-                      target={window.location.pathname === '/typing' ? '/typing' : '/learn'}
-                      variant="menu"
-                      beforeSave={() => typing?.dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })}
-                    />
-                  </div>
-                  <div className="my-1 border-t" style={{ borderColor: 'var(--focus-border)' }} />
+                  <Settings2 className="h-[19px] w-[19px]" aria-hidden="true" />
+                  <span>账号管理</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                  onClick={() => {
+                    clearMenuTimers()
+                    setAccountMenuOpen(false)
+                    typing?.dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })
+                    accountMenuRef.current?.querySelector<HTMLButtonElement>('[data-account-menu-toggle]')?.focus()
+                    openFeedback()
+                  }}
+                >
+                  <MessageSquare className="h-[19px] w-[19px] shrink-0" aria-hidden="true" />
+                  <span>反馈与建议</span>
+                </button>
+                {administrator && (
                   <button
                     type="button"
                     role="menuitem"
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
                     onClick={(event) => {
+                      event.stopPropagation()
                       clearMenuTimers()
                       setAccountMenuOpen(false)
-                      event.currentTarget.blur()
-                      manageAccount(event)
-                    }}
-                  >
-                    <Settings2 className="h-[19px] w-[19px]" aria-hidden="true" />
-                    <span>账号管理</span>
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
-                    onClick={() => {
-                      clearMenuTimers()
-                      setAccountMenuOpen(false)
-                      typing?.dispatch({ type: TypingStateActionType.SET_IS_TYPING, payload: false })
                       accountMenuRef.current?.querySelector<HTMLButtonElement>('[data-account-menu-toggle]')?.focus()
-                      openFeedback()
+                      openAccountDialog()
                     }}
                   >
-                    <MessageSquare className="h-[19px] w-[19px] shrink-0" aria-hidden="true" />
-                    <span>反馈与建议</span>
+                    <ShieldCheck className="h-[19px] w-[19px]" aria-hidden="true" />
+                    <span>云端账号工具</span>
                   </button>
-                  {administrator && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        clearMenuTimers()
-                        setAccountMenuOpen(false)
-                        accountMenuRef.current?.querySelector<HTMLButtonElement>('[data-account-menu-toggle]')?.focus()
-                        openAccountDialog()
-                      }}
-                    >
-                      <ShieldCheck className="h-[19px] w-[19px]" aria-hidden="true" />
-                      <span>云端账号工具</span>
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={manageAccount}
-              className="focus-surface flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:text-indigo-600"
-              aria-label="账号：登录或注册"
-              title="登录后可以同步各设备学习记录"
-              data-account-entry
-            >
-              <UserCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
-              <span className="max-w-28 truncate">登录 / 注册</span>
-            </button>
-          ))}
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={manageAccount}
+            className="focus-surface flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:text-indigo-600"
+            aria-label="账号：登录或注册"
+            title="登录后可以同步各设备学习记录"
+            data-account-entry
+          >
+            <UserCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
+            <span className="max-w-28 truncate">登录 / 注册</span>
+          </button>
+        )}
       </div>
     </header>
   )

@@ -20,6 +20,7 @@ type AccountView = {
   auth: CloudAuthState | null
   cloudDisabled: boolean
   mobile?: boolean
+  previewInteraction?: boolean
   reauthenticate?: boolean
   onChangePassword?: (currentPassword: string, newPassword: string) => void
 }
@@ -50,9 +51,12 @@ export function presentAccount(view: AccountView) {
     auth,
     cloudDisabled,
     mobile = true,
+    previewInteraction = false,
     reauthenticate = false,
     onChangePassword,
   } = view
+  // Only the listener-free preview opts into local form interactions.
+  const disabledCredentials = cloudDisabled && !previewInteraction
   const anonymous = active.kind === 'anonymous'
   const expired = !!auth && auth.expiresAt * 1000 <= Date.now()
   const [authenticate, secondary, back] = controls
@@ -211,7 +215,7 @@ export function presentAccount(view: AccountView) {
     if (anonymous) inputs.setAttribute('aria-labelledby', registration ? registerTab.id : loginTab.id)
     if (confirmField) confirmField.hidden = !registration
     if (passwordConfirm) {
-      passwordConfirm.disabled = !registration || busy || cloudDisabled
+      passwordConfirm.disabled = !registration || busy || disabledCredentials
       passwordConfirm.required = registration
     }
     password.autocomplete = registration ? 'new-password' : 'current-password'
@@ -343,7 +347,13 @@ export function presentAccount(view: AccountView) {
   const foot = el('p', '练打字 · 记单词 · 云同步', 'mobile-account-footer')
   main.append(foot)
   if (cloudDisabled) {
-    const notice = el('p', '当前为开发预览，登录和注册暂不可用。你仍可继续本机学习。', 'mobile-account-preview')
+    const notice = el(
+      'p',
+      previewInteraction
+        ? '当前为开发预览：可试用登录和注册界面，不会连接网络或创建账号。请勿输入真实密码。'
+        : '当前为开发预览，登录和注册暂不可用。你仍可继续本机学习。',
+      'mobile-account-preview',
+    )
     notice.setAttribute('role', 'note')
     main.insertBefore(notice, form)
   }
@@ -351,9 +361,9 @@ export function presentAccount(view: AccountView) {
   const setBusy = (next: boolean) => {
     busy = next
     form.setAttribute('aria-busy', String(next))
-    for (const field of fields) field.disabled = next || cloudDisabled
-    for (const button of authButtons) button.disabled = next || cloudDisabled
-    if (passwordConfirm) passwordConfirm.disabled = next || cloudDisabled || mode !== 'register'
+    for (const field of fields) field.disabled = next || disabledCredentials
+    for (const button of authButtons) button.disabled = next || disabledCredentials
+    if (passwordConfirm) passwordConfirm.disabled = next || disabledCredentials || mode !== 'register'
   }
   setBusy(false)
   if (!mobile && !form.hidden && !cloudDisabled) username.focus()
@@ -387,7 +397,7 @@ export function renderAccountPreview(root: HTMLElement | null, options: { mobile
   passwordConfirm.autocomplete = 'new-password'
   passwordConfirm.setAttribute('aria-label', '注册密码确认')
   // These controls intentionally have NO authentication or transition listeners.
-  // Removing a disabled attribute cannot turn a preview into a login operation.
+  // Form submission provides local feedback only; it never authorizes a session.
   const login = el('button', '登录')
   const register = el('button', '注册并登录')
   const back = el('button', '返回')
@@ -415,10 +425,22 @@ export function renderAccountPreview(root: HTMLElement | null, options: { mobile
     active: { kind: 'anonymous' },
     auth: null,
     cloudDisabled: true,
+    previewInteraction: true,
     mobile,
   })
+  for (const button of [login, register]) {
+    button.addEventListener('click', () => {
+      status.textContent =
+        button === login
+          ? '登录界面验证完成。此预览不会登录账号，可返回继续本机学习。'
+          : '注册界面验证完成。此预览不会创建账号，可返回继续本机学习。'
+      password.value = ''
+      passwordConfirm.value = ''
+      passwordConfirm.setCustomValidity('')
+    })
+  }
   overlay.setAttribute('data-account-readonly-preview', '')
   if (mobile) overlay.setAttribute('data-mobile-account-readonly-preview', '')
   guidance.hidden = false
-  guidance.textContent = '此页仅供预览，暂不能登录。'
+  guidance.textContent = '仅验证界面，本机学习记录保持不变。'
 }

@@ -1,3 +1,4 @@
+import { uiPath } from './ui-test-path'
 import { defineConfig } from '@playwright/test'
 import { resolve } from 'node:path'
 
@@ -20,7 +21,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     reducedMotion: 'reduce',
   },
-  webServer: { command: 'yarn vite preview --host 127.0.0.1 --port ' + port, url: baseURL, reuseExistingServer: false, timeout: 60_000 },
+  webServer: { command: 'yarn vite preview --host 127.0.0.1 --port ' + port, url: baseURL + uiPath('/'), reuseExistingServer: false, timeout: 60_000 },
   projects: [
     { name: 'phone-light', use: { viewport: { width: 320, height: 568 }, isMobile: true, hasTouch: true, colorScheme: 'light' } },
     { name: 'phone-dark', use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, colorScheme: 'dark' } },

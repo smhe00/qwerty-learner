@@ -1,3 +1,4 @@
+import { uiPath } from './ui-test-path'
 import { readReviewModeInfo, reviewWords, seedAcquisitionSession } from './review-flow-harness'
 import { expect, test } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
@@ -64,7 +65,7 @@ for (const phase of ['exposure', 'supported'] as const) {
         }
       }, audio)
       await seedAcquisitionSession(page, reviewWords, 982810 + (phase === 'exposure' ? 0 : 2) + (audio === 'blocked' ? 0 : 1), phase)
-      await page.goto('/mobile/study')
+      await page.goto(uiPath('/mobile/study'))
       const card = page.locator('[data-mobile-word-practice]')
       await expect(card).toBeVisible({ timeout: 30000 })
       const before = await readReviewModeInfo(page)
@@ -121,7 +122,7 @@ test('short landscape viewport keeps controls reachable after refresh', async ({
   })
   await seedAcquisitionSession(page, reviewWords, 982820, 'supported')
   await page.setViewportSize({ width: 1024, height: 220 })
-  await page.goto('/mobile/study')
+  await page.goto(uiPath('/mobile/study'))
   const card = page.locator('[data-mobile-word-practice]')
   await expect(card).toBeVisible({ timeout: 30000 })
   await page.reload()
@@ -141,7 +142,7 @@ test('refresh before the page becomes visible never strands audio without a play
     }
   })
   await seedAcquisitionSession(page, reviewWords, 982821, 'supported')
-  await page.goto('/mobile/study')
+  await page.goto(uiPath('/mobile/study'))
   const card = page.locator('[data-mobile-word-practice]')
   await expect(card).toBeVisible({ timeout: 30000 })
   await page.reload()
@@ -153,7 +154,7 @@ test('refresh before the page becomes visible never strands audio without a play
 
 test('wide tablet touch layout separates reading and right-hand actions through rotation', async ({ page }, info) => {
   await seedAcquisitionSession(page, reviewWords, 982822)
-  await page.goto('/mobile/study')
+  await page.goto(uiPath('/mobile/study'))
   const card = page.locator('[data-mobile-word-practice]')
   await expect(card).toBeVisible({ timeout: 30000 })
   const originalCard = await card.elementHandle()
@@ -195,7 +196,7 @@ test('wide tablet touch layout separates reading and right-hand actions through 
 for (const dark of [false, true]) {
   test(`tablet ${dark ? 'dark' : 'light'} text, keycaps and correction remain legible`, async ({ page }, info) => {
     await seedAcquisitionSession(page, reviewWords, 982830 + Number(dark))
-    await page.goto('/mobile/study')
+    await page.goto(uiPath('/mobile/study'))
     const card = page.locator('[data-mobile-word-practice]')
     await expect(card).toBeVisible({ timeout: 30000 })
     await page.evaluate((enabled) => document.documentElement.classList.toggle('dark', enabled), dark)
@@ -220,7 +221,7 @@ for (const dark of [false, true]) {
     await page.emulateMedia({ colorScheme: dark ? 'dark' : 'light' })
     await page.addInitScript((enabled) => localStorage.setItem('isOpenDarkModeAtom', JSON.stringify(enabled)), dark)
     await seedAcquisitionSession(page, reviewWords, 982840 + Number(dark), 'exposure')
-    await page.goto('/mobile/study')
+    await page.goto(uiPath('/mobile/study'))
     const card = page.locator('[data-mobile-word-practice]')
     await expect(card).toBeVisible({ timeout: 30000 })
     if (dark) await expect(page.locator('html')).toHaveClass(/dark/)
@@ -244,7 +245,7 @@ for (const dark of [false, true]) {
     await resume.tap()
     await expect(card.locator('[data-mobile-paused]')).toHaveCount(0)
     expect(await attempts(page)).toHaveLength(0)
-    await page.goto('/mobile')
+    await page.goto(uiPath('/mobile'))
     const menuResume = page.getByRole('link', { name: '继续手机学习', exact: true })
     await expect(menuResume).toBeVisible()
     if (dark) await expect(page.locator('html')).toHaveClass(/dark/)

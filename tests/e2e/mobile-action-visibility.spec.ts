@@ -1,3 +1,4 @@
+import { uiPath } from './ui-test-path'
 import { expect, test } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
 import { reviewWords, seedAcquisitionSession } from './review-flow-harness'
@@ -62,10 +63,10 @@ for (const [width, height, theme, audio, entry] of [
     }, { dark: theme === 'dark', behavior: audio })
     await seedAcquisitionSession(page, reviewWords, 980108, 'exposure')
     if (entry === 'home') {
-      await page.goto('/mobile')
+      await page.goto(uiPath('/mobile'))
       await page.locator('[data-mobile-menu] .mobile-start-link').tap()
     } else {
-      await page.goto('/mobile/study')
+      await page.goto(uiPath('/mobile/study'))
       await expect(page.locator('[data-mobile-word-practice]')).toBeVisible()
       await page.reload()
     }

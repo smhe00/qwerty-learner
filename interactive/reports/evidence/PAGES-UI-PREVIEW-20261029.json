@@ -1,0 +1,2499 @@
+{
+  "executionBase": "9ef113301f2a03b8f4528621e5eefda076672f24",
+  "environment": "Pages production build; cloud disabled",
+  "stats": {
+    "startTime": "2026-10-29T01:27:25.197Z",
+    "duration": 92001.768,
+    "expected": 52,
+    "skipped": 20,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "stateCount": 276,
+  "states": [
+    {
+      "project": "phone-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 3
+    },
+    {
+      "project": "phone-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-library.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "phone-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-library.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 7
+    },
+    {
+      "project": "phone-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-settings.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "phone-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "settings-save.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-settings.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "phone-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-history.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-history.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "phone-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-data.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "phone-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-data.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "phone-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-achievements.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-achievements.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "phone-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "feedback-unavailable.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 2,
+      "visibleControls": 1
+    },
+    {
+      "project": "phone-light",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-login.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "phone-light",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-register.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "phone-light",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-rules-expanded.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 6
+    },
+    {
+      "project": "phone-light",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-validation.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 5
+    },
+    {
+      "project": "phone-light",
+      "test": "learning actions and exits: exposure",
+      "state": "learn-exposure.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "phone-light",
+      "test": "learning actions and exits: exposure",
+      "state": "learn-paused-exposure.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 3
+    },
+    {
+      "project": "phone-light",
+      "test": "learning actions and exits: exposure",
+      "state": "learn-manual-next.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-light",
+      "test": "learning actions and exits: supported",
+      "state": "learn-supported.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "phone-light",
+      "test": "learning actions and exits: supported",
+      "state": "learn-paused-supported.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 3
+    },
+    {
+      "project": "phone-light",
+      "test": "learning actions and exits: supported",
+      "state": "learn-meaning-choices.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "phone-light",
+      "test": "learning actions and exits: supported",
+      "state": "learn-choice-feedback.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-light",
+      "test": "learning actions and exits: independent",
+      "state": "learn-independent.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "phone-light",
+      "test": "learning actions and exits: independent",
+      "state": "learn-paused-independent.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 3
+    },
+    {
+      "project": "phone-light",
+      "test": "learning actions and exits: independent",
+      "state": "learn-recall-feedback.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-light",
+      "test": "learning actions and exits: independent",
+      "state": "learn-spelling.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-light",
+      "test": "learning actions and exits: independent",
+      "state": "learn-spelling-judgment.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-gallery.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 10
+    },
+    {
+      "project": "phone-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-theme-switch.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 2
+    },
+    {
+      "project": "phone-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-sorted.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 2
+    },
+    {
+      "project": "phone-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-detail.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 2,
+      "visibleControls": 1
+    },
+    {
+      "project": "phone-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "history-populated.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "library-empty-search.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-light",
+      "test": "short landscape, enlarged text and keyboard focus retain explicit exits",
+      "state": "settings-short-landscape-focus.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-light",
+      "test": "short landscape, enlarged text and keyboard focus retain explicit exits",
+      "state": "settings-large-text.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "phone-light",
+      "test": "short landscape, enlarged text and keyboard focus retain explicit exits",
+      "state": "home-large-text.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 7
+    },
+    {
+      "project": "phone-light",
+      "test": "settlement error offers a visible retry and completion offers a visible exit",
+      "state": "settlement-write-error.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 1
+    },
+    {
+      "project": "phone-light",
+      "test": "settlement error offers a visible retry and completion offers a visible exit",
+      "state": "settlement-complete.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 2
+    },
+    {
+      "project": "phone-light",
+      "test": "a route render crash presents recovery actions and preserves the learning checkpoint",
+      "state": "render-failure-recovery.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 2
+    },
+    {
+      "project": "phone-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 7
+    },
+    {
+      "project": "phone-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-library.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 9
+    },
+    {
+      "project": "phone-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-library.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 7
+    },
+    {
+      "project": "phone-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-settings.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "phone-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "settings-save.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "phone-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-settings.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 7
+    },
+    {
+      "project": "phone-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-history.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-history.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 7
+    },
+    {
+      "project": "phone-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-data.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "phone-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-data.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 7
+    },
+    {
+      "project": "phone-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-achievements.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-achievements.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 7
+    },
+    {
+      "project": "phone-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "feedback-unavailable.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 2,
+      "visibleControls": 1
+    },
+    {
+      "project": "phone-dark",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-login.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "phone-dark",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-register.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 9
+    },
+    {
+      "project": "phone-dark",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-rules-expanded.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "phone-dark",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-validation.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "phone-dark",
+      "test": "learning actions and exits: exposure",
+      "state": "learn-exposure.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "phone-dark",
+      "test": "learning actions and exits: exposure",
+      "state": "learn-paused-exposure.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 3
+    },
+    {
+      "project": "phone-dark",
+      "test": "learning actions and exits: exposure",
+      "state": "learn-manual-next.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-dark",
+      "test": "learning actions and exits: supported",
+      "state": "learn-supported.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "phone-dark",
+      "test": "learning actions and exits: supported",
+      "state": "learn-paused-supported.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 3
+    },
+    {
+      "project": "phone-dark",
+      "test": "learning actions and exits: supported",
+      "state": "learn-meaning-choices.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "phone-dark",
+      "test": "learning actions and exits: supported",
+      "state": "learn-choice-feedback.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-dark",
+      "test": "learning actions and exits: independent",
+      "state": "learn-independent.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "phone-dark",
+      "test": "learning actions and exits: independent",
+      "state": "learn-paused-independent.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 3
+    },
+    {
+      "project": "phone-dark",
+      "test": "learning actions and exits: independent",
+      "state": "learn-recall-feedback.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-dark",
+      "test": "learning actions and exits: independent",
+      "state": "learn-spelling.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-dark",
+      "test": "learning actions and exits: independent",
+      "state": "learn-spelling-judgment.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-gallery.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 10
+    },
+    {
+      "project": "phone-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-theme-switch.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 2
+    },
+    {
+      "project": "phone-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-sorted.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 2
+    },
+    {
+      "project": "phone-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-detail.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 2,
+      "visibleControls": 3
+    },
+    {
+      "project": "phone-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "history-populated.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 7
+    },
+    {
+      "project": "phone-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "library-empty-search.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-dark",
+      "test": "short landscape, enlarged text and keyboard focus retain explicit exits",
+      "state": "settings-short-landscape-focus.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "phone-dark",
+      "test": "short landscape, enlarged text and keyboard focus retain explicit exits",
+      "state": "settings-large-text.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "phone-dark",
+      "test": "short landscape, enlarged text and keyboard focus retain explicit exits",
+      "state": "home-large-text.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 7
+    },
+    {
+      "project": "phone-dark",
+      "test": "settlement error offers a visible retry and completion offers a visible exit",
+      "state": "settlement-write-error.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 1
+    },
+    {
+      "project": "phone-dark",
+      "test": "settlement error offers a visible retry and completion offers a visible exit",
+      "state": "settlement-complete.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 2
+    },
+    {
+      "project": "phone-dark",
+      "test": "a route render crash presents recovery actions and preserves the learning checkpoint",
+      "state": "render-failure-recovery.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 2
+    },
+    {
+      "project": "tablet-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "tablet-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-library.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-library.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 7
+    },
+    {
+      "project": "tablet-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-settings.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "tablet-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "settings-save.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "tablet-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-settings.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-history.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "tablet-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-history.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-data.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "tablet-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-data.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-achievements.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "tablet-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-achievements.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "feedback-unavailable.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 1
+    },
+    {
+      "project": "tablet-light",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-login.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 7
+    },
+    {
+      "project": "tablet-light",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-register.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-light",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-rules-expanded.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-light",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-validation.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 7
+    },
+    {
+      "project": "tablet-light",
+      "test": "learning actions and exits: exposure",
+      "state": "learn-exposure.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "tablet-light",
+      "test": "learning actions and exits: exposure",
+      "state": "learn-paused-exposure.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 3
+    },
+    {
+      "project": "tablet-light",
+      "test": "learning actions and exits: exposure",
+      "state": "learn-manual-next.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "tablet-light",
+      "test": "learning actions and exits: supported",
+      "state": "learn-supported.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "tablet-light",
+      "test": "learning actions and exits: supported",
+      "state": "learn-paused-supported.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 3
+    },
+    {
+      "project": "tablet-light",
+      "test": "learning actions and exits: supported",
+      "state": "learn-meaning-choices.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-light",
+      "test": "learning actions and exits: supported",
+      "state": "learn-choice-feedback.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "tablet-light",
+      "test": "learning actions and exits: independent",
+      "state": "learn-independent.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-light",
+      "test": "learning actions and exits: independent",
+      "state": "learn-paused-independent.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 3
+    },
+    {
+      "project": "tablet-light",
+      "test": "learning actions and exits: independent",
+      "state": "learn-recall-feedback.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "tablet-light",
+      "test": "learning actions and exits: independent",
+      "state": "learn-spelling.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "tablet-light",
+      "test": "learning actions and exits: independent",
+      "state": "learn-spelling-judgment.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "tablet-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-gallery.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 10
+    },
+    {
+      "project": "tablet-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-theme-switch.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 2
+    },
+    {
+      "project": "tablet-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-sorted.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 2
+    },
+    {
+      "project": "tablet-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-detail.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 2,
+      "visibleControls": 1
+    },
+    {
+      "project": "tablet-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "history-populated.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "library-empty-search.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "tablet-light",
+      "test": "settlement error offers a visible retry and completion offers a visible exit",
+      "state": "settlement-write-error.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 1
+    },
+    {
+      "project": "tablet-light",
+      "test": "settlement error offers a visible retry and completion offers a visible exit",
+      "state": "settlement-complete.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 2
+    },
+    {
+      "project": "tablet-light",
+      "test": "a route render crash presents recovery actions and preserves the learning checkpoint",
+      "state": "render-failure-recovery.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 2
+    },
+    {
+      "project": "tablet-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "tablet-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-library.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-library.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 7
+    },
+    {
+      "project": "tablet-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-settings.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "tablet-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "settings-save.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "tablet-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-settings.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-history.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "tablet-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-history.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-data.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "tablet-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-data.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-achievements.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "tablet-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-achievements.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "feedback-unavailable.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 1
+    },
+    {
+      "project": "tablet-dark",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-login.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 7
+    },
+    {
+      "project": "tablet-dark",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-register.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-dark",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-rules-expanded.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-dark",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-validation.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 7
+    },
+    {
+      "project": "tablet-dark",
+      "test": "learning actions and exits: exposure",
+      "state": "learn-exposure.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "tablet-dark",
+      "test": "learning actions and exits: exposure",
+      "state": "learn-paused-exposure.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 3
+    },
+    {
+      "project": "tablet-dark",
+      "test": "learning actions and exits: exposure",
+      "state": "learn-manual-next.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "tablet-dark",
+      "test": "learning actions and exits: supported",
+      "state": "learn-supported.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "tablet-dark",
+      "test": "learning actions and exits: supported",
+      "state": "learn-paused-supported.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 3
+    },
+    {
+      "project": "tablet-dark",
+      "test": "learning actions and exits: supported",
+      "state": "learn-meaning-choices.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-dark",
+      "test": "learning actions and exits: supported",
+      "state": "learn-choice-feedback.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "tablet-dark",
+      "test": "learning actions and exits: independent",
+      "state": "learn-independent.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-dark",
+      "test": "learning actions and exits: independent",
+      "state": "learn-paused-independent.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 3
+    },
+    {
+      "project": "tablet-dark",
+      "test": "learning actions and exits: independent",
+      "state": "learn-recall-feedback.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "tablet-dark",
+      "test": "learning actions and exits: independent",
+      "state": "learn-spelling.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "tablet-dark",
+      "test": "learning actions and exits: independent",
+      "state": "learn-spelling-judgment.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "tablet-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-gallery.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 10
+    },
+    {
+      "project": "tablet-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-theme-switch.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 2
+    },
+    {
+      "project": "tablet-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-sorted.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 2
+    },
+    {
+      "project": "tablet-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-detail.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 2,
+      "visibleControls": 1
+    },
+    {
+      "project": "tablet-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "history-populated.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "tablet-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "library-empty-search.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "tablet-dark",
+      "test": "settlement error offers a visible retry and completion offers a visible exit",
+      "state": "settlement-write-error.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 1
+    },
+    {
+      "project": "tablet-dark",
+      "test": "settlement error offers a visible retry and completion offers a visible exit",
+      "state": "settlement-complete.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 2
+    },
+    {
+      "project": "tablet-dark",
+      "test": "a route render crash presents recovery actions and preserves the learning checkpoint",
+      "state": "render-failure-recovery.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 2
+    },
+    {
+      "project": "desktop-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-library.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 9
+    },
+    {
+      "project": "desktop-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-library.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-settings.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "settings-save.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-settings.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-history.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-history.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-data.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "desktop-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-data.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-achievements.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-achievements.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-light",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "feedback-unavailable.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 1
+    },
+    {
+      "project": "desktop-light",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-login.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-light",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-register.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 9
+    },
+    {
+      "project": "desktop-light",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-rules-expanded.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 9
+    },
+    {
+      "project": "desktop-light",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-validation.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-light",
+      "test": "learning actions and exits: exposure",
+      "state": "learn-exposure.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "desktop-light",
+      "test": "learning actions and exits: exposure",
+      "state": "learn-paused-exposure.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 3
+    },
+    {
+      "project": "desktop-light",
+      "test": "learning actions and exits: exposure",
+      "state": "learn-manual-next.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-light",
+      "test": "learning actions and exits: supported",
+      "state": "learn-supported.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "desktop-light",
+      "test": "learning actions and exits: supported",
+      "state": "learn-paused-supported.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 3
+    },
+    {
+      "project": "desktop-light",
+      "test": "learning actions and exits: supported",
+      "state": "learn-meaning-choices.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "desktop-light",
+      "test": "learning actions and exits: supported",
+      "state": "learn-choice-feedback.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-light",
+      "test": "learning actions and exits: independent",
+      "state": "learn-independent.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "desktop-light",
+      "test": "learning actions and exits: independent",
+      "state": "learn-paused-independent.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 3
+    },
+    {
+      "project": "desktop-light",
+      "test": "learning actions and exits: independent",
+      "state": "learn-recall-feedback.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-light",
+      "test": "learning actions and exits: independent",
+      "state": "learn-spelling.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-light",
+      "test": "learning actions and exits: independent",
+      "state": "learn-spelling-judgment.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-learn.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 18
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-settings-声音与发音.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 10
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-settings-打字练习.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 11
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-settings-学习计划.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 2,
+      "visibleControls": 10
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-settings-外观显示.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 10
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-settings-数据与备份.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 13
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-settings-开发诊断.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 2,
+      "visibleControls": 11
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-statistics-read-error.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-statistics-empty.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-typing.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 24
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-typing-active.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 25
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-word-list.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 7
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-gallery.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 14
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-analysis.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-analysis-from=learn.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 5
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-error-book.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-friend-links.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-achievements.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-light",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-circles.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 1
+    },
+    {
+      "project": "desktop-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-gallery.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 10
+    },
+    {
+      "project": "desktop-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-theme-switch.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 2
+    },
+    {
+      "project": "desktop-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-sorted.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 2
+    },
+    {
+      "project": "desktop-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-detail.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 2,
+      "visibleControls": 3
+    },
+    {
+      "project": "desktop-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "history-populated.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 7
+    },
+    {
+      "project": "desktop-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "error-word-detail.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "error-book-populated.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "desktop-light",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "library-empty-search.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-light",
+      "test": "settlement error offers a visible retry and completion offers a visible exit",
+      "state": "settlement-write-error.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 1
+    },
+    {
+      "project": "desktop-light",
+      "test": "settlement error offers a visible retry and completion offers a visible exit",
+      "state": "settlement-complete.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 2
+    },
+    {
+      "project": "desktop-light",
+      "test": "a route render crash presents recovery actions and preserves the learning checkpoint",
+      "state": "render-failure-recovery.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 2
+    },
+    {
+      "project": "desktop-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-library.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 9
+    },
+    {
+      "project": "desktop-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-library.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-settings.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "settings-save.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-settings.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-history.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-history.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-data.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "desktop-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-data.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "-mobile-achievements.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "home-after-achievements.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-dark",
+      "test": "all mobile menu destinations and lazy return remain readable",
+      "state": "feedback-unavailable.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 1
+    },
+    {
+      "project": "desktop-dark",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-login.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-dark",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-register.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 9
+    },
+    {
+      "project": "desktop-dark",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-rules-expanded.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 9
+    },
+    {
+      "project": "desktop-dark",
+      "test": "login and register forms remain actionable after validation errors",
+      "state": "account-validation.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-dark",
+      "test": "learning actions and exits: exposure",
+      "state": "learn-exposure.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "desktop-dark",
+      "test": "learning actions and exits: exposure",
+      "state": "learn-paused-exposure.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 3
+    },
+    {
+      "project": "desktop-dark",
+      "test": "learning actions and exits: exposure",
+      "state": "learn-manual-next.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-dark",
+      "test": "learning actions and exits: supported",
+      "state": "learn-supported.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "desktop-dark",
+      "test": "learning actions and exits: supported",
+      "state": "learn-paused-supported.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 3
+    },
+    {
+      "project": "desktop-dark",
+      "test": "learning actions and exits: supported",
+      "state": "learn-meaning-choices.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "desktop-dark",
+      "test": "learning actions and exits: supported",
+      "state": "learn-choice-feedback.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-dark",
+      "test": "learning actions and exits: independent",
+      "state": "learn-independent.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "desktop-dark",
+      "test": "learning actions and exits: independent",
+      "state": "learn-paused-independent.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 3
+    },
+    {
+      "project": "desktop-dark",
+      "test": "learning actions and exits: independent",
+      "state": "learn-recall-feedback.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-dark",
+      "test": "learning actions and exits: independent",
+      "state": "learn-spelling.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-dark",
+      "test": "learning actions and exits: independent",
+      "state": "learn-spelling-judgment.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-learn.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 18
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-settings-声音与发音.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 10
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-settings-打字练习.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 11
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-settings-学习计划.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 2,
+      "visibleControls": 10
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-settings-外观显示.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 10
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-settings-数据与备份.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 13
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-settings-开发诊断.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 2,
+      "visibleControls": 11
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-statistics-read-error.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-statistics-empty.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-typing.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 24
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-typing-active.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 25
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-word-list.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 7
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-gallery.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 14
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-analysis.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 5
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-analysis-from=learn.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 5
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-error-book.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-friend-links.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-achievements.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 8
+    },
+    {
+      "project": "desktop-dark",
+      "test": "desktop settings tabs and auxiliary pages stay usable",
+      "state": "desktop-circles.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 1
+    },
+    {
+      "project": "desktop-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-gallery.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 10
+    },
+    {
+      "project": "desktop-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-theme-switch.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 2
+    },
+    {
+      "project": "desktop-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-sorted.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 2
+    },
+    {
+      "project": "desktop-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "song-detail.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 2,
+      "visibleControls": 3
+    },
+    {
+      "project": "desktop-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "history-populated.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 7
+    },
+    {
+      "project": "desktop-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "error-word-detail.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 1,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "error-book-populated.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 6
+    },
+    {
+      "project": "desktop-dark",
+      "test": "Song achievements, history and dictionary empty search remain readable",
+      "state": "library-empty-search.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 4
+    },
+    {
+      "project": "desktop-dark",
+      "test": "settlement error offers a visible retry and completion offers a visible exit",
+      "state": "settlement-write-error.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 1
+    },
+    {
+      "project": "desktop-dark",
+      "test": "settlement error offers a visible retry and completion offers a visible exit",
+      "state": "settlement-complete.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 2
+    },
+    {
+      "project": "desktop-dark",
+      "test": "a route render crash presents recovery actions and preserves the learning checkpoint",
+      "state": "render-failure-recovery.json",
+      "violations": [],
+      "geometry": [],
+      "incompleteChecks": 0,
+      "visibleControls": 2
+    }
+  ]
+}

@@ -248,3 +248,22 @@ test('published Pages: Focus achievements default is accessible on desktop/mobil
     await mobileContext.close()
   }
 })
+
+test('published Pages: desktop and phone login entry share an interactive offline preview', async ({ page }) => {
+  const requests: string[] = []
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname.includes('/api/')) requests.push(request.url())
+  })
+  for (const mobile of [false, true]) {
+    await page.goto(site + (mobile ? 'mobile' : ''))
+    await page.getByRole(mobile ? 'link' : 'button', { name: mobile ? '登录或注册' : '账号：登录或注册', exact: true }).click()
+    await expect(page.getByRole('heading', { name: '登录 QWERTY Plus' })).toBeVisible()
+    await page.getByLabel('用户名', { exact: true }).fill('ui-preview')
+    await page.getByLabel('账户密码', { exact: true }).fill('preview-only')
+    await page.getByRole('button', { name: '登录', exact: true }).click()
+    await expect(page.getByRole('status')).toContainText('此预览不会登录账号')
+    await page.getByRole('button', { name: '返回', exact: true }).click()
+    await expect(page).toHaveURL(new RegExp(mobile ? '/mobile$' : '/qwerty-learner/$'))
+  }
+  expect(requests).toEqual([])
+})

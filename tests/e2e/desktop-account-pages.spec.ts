@@ -1,21 +1,46 @@
+import { auditVisibleUI, prepareVisibleUI } from './ui-visible-audit'
 import { expect, test } from '@playwright/test'
 
-test.use({ viewport: { width: 1440, height: 900 }, isMobile: false, hasTouch: false })
 
-test('Pages desktop shares account preview, disables cloud and returns to the PC basename', async ({ page }) => {
+test('Pages desktop shares account preview, disables cloud and returns to the PC basename', async ({ page }, info) => {
+  test.skip(!info.project.name.startsWith('desktop'), 'Touch devices open the mobile menu; its account entry is checked in all six profiles.')
+  await prepareVisibleUI(page, info.project.name.endsWith('dark'))
   let calls = 0
   page.on('request', (request) => {
     if (request.url().includes('/api/')) calls++
   })
-  await page.goto('/qwerty-learner/?s1-account=manage')
+  await page.goto('/qwerty-learner/')
+  await page.getByRole('button', { name: '账号：登录或注册', exact: true }).click()
   await expect(page.locator('[data-desktop-account]')).toBeVisible()
   await expect(page.getByRole('heading', { name: '登录 QWERTY Plus' })).toBeVisible()
   await expect(page.getByRole('note')).toContainText('当前为开发预览')
-  await expect(page.getByRole('button', { name: '登录', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: '登录', exact: true })).toBeEnabled()
+  await auditVisibleUI(page, info, 'pages-login')
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await expect(page.locator('input:invalid').first()).toBeVisible()
+  await page.getByLabel('用户名', { exact: true }).fill('ui-preview')
+  await page.getByLabel('账户密码', { exact: true }).fill('preview-only')
+  await page.getByRole('button', { name: '显示密码' }).click()
+  await expect(page.getByLabel('账户密码', { exact: true })).toHaveAttribute('type', 'text')
+  await page.getByRole('button', { name: '隐藏密码' }).click()
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await expect(page.getByRole('status')).toContainText('此预览不会登录账号')
+  await auditVisibleUI(page, info, 'pages-login-result')
   await page.getByRole('tab', { name: '注册', exact: true }).click()
   await expect(page.getByRole('complementary', { name: '注册须知' })).toContainText('连续 180 天')
-  await expect(page.getByRole('button', { name: '注册并登录' })).toBeDisabled()
-  await expect(page.getByLabel('用户名', { exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: '注册并登录' })).toBeEnabled()
+  await expect(page.getByLabel('用户名', { exact: true })).toBeEnabled()
+  await page.getByLabel('账户密码', { exact: true }).fill('preview-only')
+  await page.getByLabel('注册密码确认', { exact: true }).fill('mismatch')
+  await page.getByRole('button', { name: '注册并登录' }).click()
+  await expect(page.locator('.mobile-account-status')).toHaveText('')
+  await expect(page.locator('#mobile-account-confirm:invalid')).toHaveCount(1)
+  await page.getByLabel('注册密码确认', { exact: true }).fill('preview-only')
+  await auditVisibleUI(page, info, 'pages-register')
+  await page.getByRole('button', { name: '注册并登录' }).click()
+  await expect(page.getByRole('status')).toContainText('此预览不会创建账号')
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('qwerty.cloudAuth.v1'))).toBe(null)
+  await auditVisibleUI(page, info, 'pages-register-result')
   expect(calls).toBe(0)
   await page.getByRole('button', { name: '返回', exact: true }).click()
   await expect(page).toHaveURL(/\/qwerty-learner\/$/)
