@@ -1,5 +1,5 @@
 # Startup synchronization performance
-Status: IN_PROGRESS. Executor: Codex. Base: `c6bab4ebe6c82f665745fa7e9f70579ee05e3ada`.
+Status: REVIEW. Executor: Codex. Base: `c6bab4ebe6c82f665745fa7e9f70579ee05e3ada`.
 
 Owner requests careful analysis and optimization of startup sync. Independent of Circle task; leave CURRENT_TASK unchanged. Develop on product/main, qualify exact candidate and use etest for real cloud performance and integrity acceptance; no master release.
 
@@ -10,3 +10,5 @@ Scope: narrow existing transport reuse, independent strong authentication reads 
 Validation: deterministic route scoping and storage concurrency, native gateway revoked-token/cleanup-during-checkpoint cases; full Cloud safety suite and existing Pages/UI gates; etest historical unchanged login and ordinary cached reload timings, zero transfers, data/fork preservation. Report exact measurements and unmet targets in interactive/reports/STARTUP-SYNC-PERF-20261029-report.md.
 
 First candidate efd4445 passed historical login with 24.299 s (baseline 31.346 s); guarded bootstrap 15.540 s (baseline 23.678 s). Three repeat openings never reused local proof: legal shared references were rejected by the digest. Continue with alias-preserving graph digest; unsupported types/cycles still bypass optimization. New unit and real-IDB tests pass. Strengthen real reload assertions, qualify the next exact SHA before further etest promotion. Evidence/report records both iterations.
+
+Final qualified source: 513b7d61d691f4edfdc47729ee4dd6d666e1746d. Cloud 1051/1051, required Pages/UI, startup recovery, P4b and dual-site Explorer passed; all nine etest cloud workflows passed. Unchanged relogin 22.285 s vs 31.346 s baseline; guarded bootstrap 14.647 s vs 23.678 s. Repeat openings 13.451/13.188/16.135 s; last two reuse local proof with zero snapshot export and zero event transfers. Still not instant; fresh cloud reads dominate. Detailed report and redacted evidence retained. Master unchanged by this task.

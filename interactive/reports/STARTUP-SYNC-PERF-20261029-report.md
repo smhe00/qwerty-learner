@@ -1,6 +1,6 @@
 # 启动同步性能分析与优化
 
-状态：IN_PROGRESS。执行基线 `c6bab4ebe6c82f665745fa7e9f70579ee05e3ada`。独立于 Circle 性能任务，CURRENT_TASK 不变，不发布 master。
+状态：REVIEW。本轮两项优化已实施并完成实网验收。执行基线 `c6bab4ebe6c82f665745fa7e9f70579ee05e3ada`。独立于 Circle 性能任务，CURRENT_TASK 不变，不发布 master。
 
 ## 启动关键路径
 
@@ -55,3 +55,39 @@
 追加修复：确定性排序遍历为对象/数组/Date 编号，并编码重复引用；活动递归栈仍拒绝循环，未知类型仍完整审计。内容与共享拓扑都进入摘要，不能把同值但独立的两个对象误认为共享对象。不修改数据库或备份格式；旧摘要自然失配一次并经完整审计更新。30 项 startup proof 单测通过；新增真实 Chromium IDB 共享引用刷新/变更回归 1/1 通过，证明缓存命中且 Date/alias 保留，同条数只改变引用关系仍失效。修改源码 ESLint 和 diff check 通过。
 
 第二候选将沿用已通过的服务端优化，并在实网连续刷新中新增“后两次必须命中 proof、零 snapshot-capture”断言；不降低原安全断言。需要重新完成同 SHA Pages/Cloud 准入，再推进 etest；master 仍不发布。
+
+## 第二候选验证进度
+
+第二源提交 `513b7d61d691f4edfdc47729ee4dd6d666e1746d`。远端 Cloud 全套 **1051/1051** 通过；[Pages](https://github.com/smhe00/qwerty-learner/actions/runs/40823173816)、[Cloud](https://github.com/smhe00/qwerty-learner/actions/runs/40823173797)、[启动恢复](https://github.com/smhe00/qwerty-learner/actions/runs/40823173758)、[P4b](https://github.com/smhe00/qwerty-learner/actions/runs/40823173774)、[学习完成](https://github.com/smhe00/qwerty-learner/actions/runs/40823173825)、[双站 Explorer](https://github.com/smhe00/qwerty-learner/actions/runs/40823173762)、[etest 准入](https://github.com/smhe00/qwerty-learner/actions/runs/40823173754) 均成功。
+
+第一候选全部十项实网回归成功后，第二候选通过上述准入，edgeone-test 从 efd4445 快进到 513b7d6；实站 source-commit.txt 已确认 513b7d6。第二候选[历史登录性能回归](https://github.com/smhe00/qwerty-learner/actions/runs/40823958347) 成功，九项 etest 自动回归全部成功。master 仍为 ad862b392c6a935ca49514fc9df146932aa02ed2。
+
+## 第二轮性能实测
+
+历史登录回归 40823958347 成功，测试账号清理已核实，六表恢复、两端分叉收敛、记录保留全部通过。证据见 `evidence/STARTUP-SYNC-PERF-20261029-final.json`。
+
+| 指标 | 原 d094a45 | 最终 513b7d6 |
+| --- | ---: | ---: |
+| 无变化退出后重新登录至可操作 | 31.346 s | 22.285 s |
+| 登录后的 guarded bootstrap 主体 | 23.678 s | 14.647 s |
+| V4 实时元数据读取 | 5.951 s | 3.776 s |
+| 事件收据发现 | 5.573 s | 3.001 s |
+| 事件见证与验证 | 11.169 s | 6.938 s |
+
+重新登录本轮减少 28.9%，同步主体减少 38.1%。每个版本的重新登录只有一个完整 CI 场景样本，不能将全部差值严格归因于代码，也不能外推为所有网络的固定百分比。
+
+三次普通刷新为 **13.451 / 13.188 / 16.135 s**。第一次仍完整审计，后两次确实命中本机 proof，snapshot-capture=0；三次事件上传/下载均为零、M4 capture/transaction=0、学习记录逐项相等。严格断言生效，不是只在报告里记一个命中标志。第一轮三次都不命中，第二轮共享引用场景已修复。
+
+仍未达到秒开：第二、三次刷新即便本机 proof 命中，元数据 3.587/5.586 s、收据发现 3.784/3.429 s、见证 4.370/5.766 s，三个实时网络阶段仍主导等待。这是 CI Chromium 的实际环境，尚无真实华为/iOS设备或中国内地网络测速，不宣称手机上一定相同。未用缩短预算、跳过实时会话检查或提前挂载写入器制造快启动。
+
+后续最有价值的方向是测量这三个接口的服务端分段耗时和部署区域，再评估只读组合接口能否减少独立 HTTP/重复鉴权轮次；需要保留 fresh session/cleanup fencing 和 V4/事件两种不同完整性语义。跨账号/跨 generation 直接复用权限，或仅比较 V4 revision 后跳过事件发现，不是本次方案。
+
+## 改动文件与交接边界
+
+服务端：`cloud-functions/_shared/blob-clients.js`、`cloud-functions/_shared/history-verification.js`、`cloud-functions/api/[[default]].js`。客户端：`src/sync/startup-local-proof.ts`。契约/浏览器覆盖：`tests/cloud/blob-clients.test.mjs`、`tests/cloud/session-handoff-gateway.test.mjs`、`tests/cloud/startup-sync-native.test.mjs`、`tests/cloud/startup-local-proof.test.mjs`、`tests/e2e/etest-login-v4-history.spec.ts`、`tests/e2e/startup-sync-regression.spec.ts`。其余为本任务、报告及脱敏实测证据。
+
+最终结项仅追加文档到 product/main，etest 保留已验证源码 SHA，不触发第三次 Maker 部署。独立 Pages Explorer Agent 不作为本次通过依据；已通过的强制 Pages 可见 UI/线上回归、双站 Explorer 和数据安全门禁均对应最终源码 SHA。CURRENT_TASK 的 Circle 任务不变。
+
+## 最终验收
+
+最终源码 513b7d61d691f4edfdc47729ee4dd6d666e1746d 的九项 etest 自动回归全部成功，包括最终 Branch EdgeOne Cloud E2E 40823958354：真实备份传输、过期版本冲突、确认丢失后只读核实均通过。独立 Pages Explorer Agent 已取消，不计为成功；强制 Pages 门禁与双站 Explorer 已通过。性能仍非秒开，保留上文实测边界与后续方向。本轮验收完成，不发布 master。
