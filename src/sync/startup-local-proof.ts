@@ -17,10 +17,13 @@ export type StartupLocalProof = {
 }
 const SHA = /^[a-f0-9]{64}$/
 
-/** Type-tagged encoding. Unsupported graphs bypass the optimization entirely.
- * In particular JSON alone loses undefined, holes, -0, NaN and Date identity. */
+/** Type-tagged graph encoding. Shared acyclic references keep their identity;
+ * unsupported types/cycles still bypass optimization. JSON alone loses aliases,
+ * undefined, holes, -0, NaN and Date identity. IDs follow sorted-key traversal. */
 export async function startupLocalDigest(value: unknown): Promise<string | null> {
-  const seen = new WeakSet<object>()
+  const seen = new WeakMap<object, number>()
+  const active = new WeakSet<object>()
+  let nextReference = 0
   let visited = 0
   const encode = (item: unknown, depth: number): unknown => {
     if (++visited > 2_000_000 || depth > 100) throw Error('unsupported-local-proof')
@@ -28,22 +31,27 @@ export async function startupLocalDigest(value: unknown): Promise<string | null>
     if (item === undefined) return ['undefined']
     if (typeof item === 'string' || typeof item === 'boolean') return [typeof item, item]
     if (typeof item === 'number') return ['number', Object.is(item, -0) ? '-0' : String(item)]
-    if (typeof item !== 'object' || seen.has(item)) throw Error('unsupported-local-proof')
-    seen.add(item)
+    if (typeof item !== 'object' || active.has(item)) throw Error('unsupported-local-proof')
+    const previous = seen.get(item)
+    if (previous !== undefined) return ['reference', previous]
+    const reference = nextReference++
+    seen.set(item, reference)
     if (item instanceof Date) {
       if (Object.keys(item).length) throw Error('unsupported-local-proof')
-      return ['date', String(item.getTime())]
+      return ['date', reference, String(item.getTime())]
     }
     const array = Array.isArray(item)
     const prototype = Object.getPrototypeOf(item)
     if (!array && prototype !== Object.prototype && prototype !== null) throw Error('unsupported-local-proof')
     if (Object.getOwnPropertySymbols(item).length) throw Error('unsupported-local-proof')
+    active.add(item)
     const entries = Object.keys(item).sort().map(key => {
       const property = Object.getOwnPropertyDescriptor(item, key)
       if (!property || !('value' in property)) throw Error('unsupported-local-proof')
       return [key, encode(property.value, depth + 1)]
     })
-    return array ? ['array', item.length, entries] : ['object', prototype === null, entries]
+    active.delete(item)
+    return array ? ['array', reference, item.length, entries] : ['object', reference, prototype === null, entries]
   }
   try {
     return await sha256Hex(new TextEncoder().encode(JSON.stringify(encode(value, 0))))

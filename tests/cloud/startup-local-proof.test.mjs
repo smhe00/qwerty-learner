@@ -180,7 +180,7 @@ test('cache persistence failure does not fail completed sync; content changing d
   assert.equal(second.state.proof, null)
 })
 
-test('lossless digest distinguishes JSON collisions and rejects unsupported/shared graphs', async () => {
+test('lossless digest distinguishes JSON collisions and rejects unsupported types/cycles', async () => {
   for (const [a, b] of [[0, -0], [NaN, null], [Infinity, null], [{ a: undefined }, {}],
     [Array(1), [undefined]], [new Date(0), '1970-01-01T00:00:00.000Z'], [[1], { 0: 1 }]]) {
     assert.notEqual(await digest(a), await digest(b))
@@ -188,7 +188,8 @@ test('lossless digest distinguishes JSON collisions and rejects unsupported/shar
   }
   assert.equal(await digest({ b: 2, a: 1 }), await digest({ a: 1, b: 2 }))
   for (const value of [new Map(), new Set(), new Uint8Array(1), /x/, 1n]) assert.equal(await digest(value), null)
-  const shared = {}; assert.equal(await digest([shared, shared]), null)
+  const shared = {}; assert.ok(await digest([shared, shared]))
+  assert.notEqual(await digest([shared, shared]), await digest([{}, {}]))
   const cyclic = {}; cyclic.self = cyclic; assert.equal(await digest(cyclic), null)
 })
 
@@ -198,4 +199,23 @@ test('a checksum cannot make a mismatched revision or local state eligible', asy
     logicalFingerprint: state.meta.logicalFingerprint })
   assert.equal(await matches({ proof, accountId, generation: port.registryGeneration,
     localDigest: await cache.readDigest(), baseline: state.baseline, remote: state.meta }), false)
+})
+
+
+test('shared review references have stable lossless digests; topology and aliased values remain significant', async () => {
+  const shared = { name: 'historical', trans: ['中文'], date: new Date(0) }
+  const original = { words: [shared, shared], nested: { same: shared } }
+  const checksum = await digest(original)
+  assert.ok(checksum)
+  assert.equal(await digest(structuredClone(original)), checksum)
+  assert.equal(await digest({ nested: { same: shared }, words: [shared, shared] }), checksum)
+  const duplicated = structuredClone(original)
+  duplicated.words[1] = structuredClone(shared)
+  assert.notEqual(await digest(duplicated), checksum, 'equal JSON is not equal reference topology')
+  const changed = structuredClone(original)
+  changed.words[1].trans[0] = 'changed'
+  assert.notEqual(await digest(changed), checksum, 'same-count alias edit invalidates evidence')
+  const cycle = { words: [] }; cycle.words.push(cycle)
+  assert.equal(await digest(cycle), null)
+  assert.equal(await digest({ a: new Date(0), b: new Date(0) }) === await digest({ a: shared.date, b: shared.date }), false)
 })

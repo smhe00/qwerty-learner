@@ -666,6 +666,10 @@ test('historical six-table startup download and automatic divergent reauth conve
       expect(aRequests.filter((x) => x === 'POST /api/sync/events/v2' || x === 'GET /api/sync/events/v2')).toHaveLength(0)
       expect(stages.filter((s: any) => s.stage === 'm4-capture' || s.stage === 'm4-transaction')).toHaveLength(0)
       expect(await rawWords(pages[0])).toEqual(received)
+      if (sample > 0) {
+        expect(stages.some((s: any) => s.stage === 'startup-local-current')).toBe(true)
+        expect(stages.filter((s: any) => s.stage === 'snapshot-capture')).toHaveLength(0)
+      }
       unchangedReloads.push({ elapsedMs,
         localProofReused: stages.some((s: any) => s.stage === 'startup-local-current'),
         stages: stages.map(({ stage, elapsedMs, outcome }: any) => ({ stage, elapsedMs, outcome })),

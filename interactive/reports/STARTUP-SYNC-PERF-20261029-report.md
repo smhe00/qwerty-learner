@@ -37,3 +37,21 @@
 等待同一源 SHA 的 Cloud、Pages/可见 UI 和 etest 准入成功，再一次推进 etest；历史登录、三次普通刷新和现有九项云端回归均在真实站验证。实际收益尚未测得，不将单测 I/O 减少当作实网耗时。
 
 本次保持 V4→事件发布→发现→验证的顺序。V4 和 M4 可写本机，不能简单 Promise.all；提前观察也可能遗漏本次新发布的头。跨登录复用本机 proof/历史分页缓存涉及 generation 边界，本次保留原规则。没有用固定 TTL 跳过云检查，没有把恢复写入移到已挂载学习页面，没有缩短超时掩盖未完成同步。后续是否需要新的只读组合接口或启动后台化，应由本次实测和明确数据语义决定。
+
+## 精确候选与发布
+
+源提交 `efd4445e9932831d8a14c85d3c67cbc3c97c234a`。main 上 [Pages 双构建可见界面及线上回归](https://github.com/smhe00/qwerty-learner/actions/runs/40820727968)、[Cloud Sync](https://github.com/smhe00/qwerty-learner/actions/runs/40820727929)、[启动恢复](https://github.com/smhe00/qwerty-learner/actions/runs/40820727939)、[Circle Core](https://github.com/smhe00/qwerty-learner/actions/runs/40820728008)、[Etest 准入](https://github.com/smhe00/qwerty-learner/actions/runs/40820727917) 均成功。随后 edgeone-test 从 d094a45 非强制快进到该 SHA。因触及交接测试，此次还触发账号交接 qualification，实际共有十项 etest 自动回归。
+
+历史登录性能运行 [40821640672](https://github.com/smhe00/qwerty-learner/actions/runs/40821640672)。本机首次调用源标记脚本缺少其必需的 GITHUB_REF_NAME 参数而提前退出、未发送请求；补充实际目标分支参数后等待同一 SHA 部署。不将部署等待时间计入启动性能。
+
+## 第一轮实网结果与追加发现
+
+`efd4445` 历史登录 40821640672 成功，六表恢复、两端分叉收敛、无变化登录记录保留和账号清理全部通过。无变化重新登录 **24.299 秒**，较前次 31.346 秒减少 7.047 秒（22.5%）；guarded-bootstrap **15.540 秒**，较前次 23.678 秒减少 34.4%。元数据 3.904 秒、发现 3.434 秒、见证 7.209 秒。属于同一 CI 场景前后各一次实测，网络/运行位置会波动，不代表所有用户固定收益。
+
+三次普通刷新 16.606/13.309/14.591 秒，均保持零事件上传/下载、零 M4 应用和学习记录不变，但 **localProofReused 三次均 false**。证据见 `evidence/STARTUP-SYNC-PERF-20261029-first.json`。因此没有将第一轮当作全部完成。
+
+定位：`startupLocalDigest` 用 WeakSet 将共享引用与循环引用一起判为不支持。历史用例的 reviewRecords.words 中存在 `[shared, shared]`，这是已经被 V4 正确保存的合法数据；摘要返回 null，后续每次都重新导出、scratch roundtrip。此前普通无 alias fixture 的缓存测试覆盖不到。
+
+追加修复：确定性排序遍历为对象/数组/Date 编号，并编码重复引用；活动递归栈仍拒绝循环，未知类型仍完整审计。内容与共享拓扑都进入摘要，不能把同值但独立的两个对象误认为共享对象。不修改数据库或备份格式；旧摘要自然失配一次并经完整审计更新。30 项 startup proof 单测通过；新增真实 Chromium IDB 共享引用刷新/变更回归 1/1 通过，证明缓存命中且 Date/alias 保留，同条数只改变引用关系仍失效。修改源码 ESLint 和 diff check 通过。
+
+第二候选将沿用已通过的服务端优化，并在实网连续刷新中新增“后两次必须命中 proof、零 snapshot-capture”断言；不降低原安全断言。需要重新完成同 SHA Pages/Cloud 准入，再推进 etest；master 仍不发布。

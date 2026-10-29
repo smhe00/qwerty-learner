@@ -549,3 +549,43 @@ test('current V4 proof retains and retries the identical outstanding immutable-e
   expect(cloud.eventBatches[1]).toBe(cloud.eventBatches[0])
   expect(cloud.writes).toBe(1)
 })
+
+
+test('historical shared review objects survive IDB reload and reuse only an exact local proof', async ({ page, baseURL }) => {
+  await ready(page, baseURL!)
+  await page.evaluate(async () => {
+    const h = (window as any).__backupHarness
+    const shared = { name: 'historical-shared', trans: ['中文🙂'], 'audit.date': new Date('2026-10-24T00:00:00Z') }
+    await h.db.reviewRecords.add({ dict: 'cet4', index: 0, createTime: 1_700_000_000,
+      isFinished: false, words: [shared, shared], sessionKind: 'review' })
+  })
+  const cloud = await unchangedCloud(page)
+  const first = await boot(page)
+  expect(first.mounted).toBe(true)
+  expect(await localProof(page)).not.toBeNull()
+  await navigate(page)
+  await clearPerf(page)
+  const second = await boot(page)
+  expect(second.mounted).toBe(true)
+  expect(second.fingerprint).toBe(first.fingerprint)
+  expect(await usedLocalProof(page)).toBe(true)
+  expect(cloud.writes).toBe(1)
+  expect(await page.evaluate(async () => {
+    const rows = await (window as any).__backupHarness.db.reviewRecords.toCollection().raw().toArray()
+    const row = rows.find((r: any) => r.words?.[0]?.name === 'historical-shared')
+    return row.words[0] === row.words[1] && row.words[0]['audit.date'] instanceof Date
+  })).toBe(true)
+  // Same number of rows, UUIDs and words; changing only alias topology must
+  // invalidate evidence and run the complete audit (not silently reuse it).
+  await page.evaluate(async () => {
+    const db = (window as any).__backupHarness.db
+    const rows = await db.reviewRecords.toCollection().raw().toArray()
+    const row = rows.find((r: any) => r.words?.[0]?.name === 'historical-shared')
+    row.words[1] = structuredClone(row.words[0])
+    await db.reviewRecords.put(row)
+  })
+  await clearPerf(page)
+  const changed = await boot(page)
+  expect(changed.mounted).toBe(true)
+  expect(await usedLocalProof(page)).toBe(false)
+})
