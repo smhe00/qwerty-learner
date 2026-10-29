@@ -18,7 +18,7 @@ export const AuthorButton = () => {
           </button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Qwerty Plus Beta：对外联系渠道暂未开放</p>
+          <p>QWERTY Plus：对外联系渠道暂未开放</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

@@ -180,7 +180,7 @@ const Footer: React.FC = () => {
           <IconFlagChina fontSize={16} />
         </button>
 
-        <span className="select-none text-gray-500 dark:text-gray-400">Qwerty Plus Beta</span>
+        <span className="select-none text-gray-500 dark:text-gray-400">QWERTY Plus</span>
         <button
           type="button"
           className="text-[var(--focus-text-secondary)] transition-colors hover:text-[var(--focus-text)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"

@@ -1,5 +1,5 @@
-import { cleanupAccount } from './account-cleanup-loader'
 import { createLearnAcquisitionExercisePlanForState, resumeDeferredAsTerminalProbe } from '../../src/learn/acquisition'
+import { cleanupAccount } from './account-cleanup-loader'
 import { loadBodyPolicy } from './body-policy-loader'
 import { acknowledgeInformationDialog } from './information-dialog'
 import { startTyping } from './review-flow-harness'
@@ -66,7 +66,11 @@ async function login(page: Page, username: string, password: string) {
 async function meta(page: Page) {
   return page.evaluate(async () => {
     const auth = JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null')
-    const r = await fetch('/api/sync/v2/meta', { signal: AbortSignal.timeout(40000), cache: 'no-store', headers: { Authorization: 'Bearer ' + auth.token } })
+    const r = await fetch('/api/sync/v2/meta', {
+      signal: AbortSignal.timeout(40000),
+      cache: 'no-store',
+      headers: { Authorization: 'Bearer ' + auth.token },
+    })
     if (!r.ok) throw Error('metadata HTTP-' + r.status)
     return r.json()
   })
@@ -240,7 +244,10 @@ for (const wrong of [true, false]) {
     const sha = process.env.GITHUB_SHA || ''
     expect(sha).toMatch(/^[a-f0-9]{40}$/)
     console.log('COMPLETION_PHASE', JSON.stringify({ case: wrong ? 'unmastered' : 'complete', stage: 'source-check' }))
-    const source = await fetch(base + '/source-commit.txt?completion=' + sha + '-' + Date.now(), { cache: 'no-store', signal: AbortSignal.timeout(20000) })
+    const source = await fetch(base + '/source-commit.txt?completion=' + sha + '-' + Date.now(), {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(20000),
+    })
     expect(source.status).toBe(200)
     const deployed = (await source.text()).trim()
     expect(deployed).toMatch(/^[a-f0-9]{7,40}$/)
@@ -336,8 +343,11 @@ for (const wrong of [true, false]) {
       expect(await metrics.allTextContents()).toEqual(visibleSummary)
       const displayHistory = await a.evaluate(() => JSON.parse(sessionStorage.getItem('completion-display-proof') || '[]'))
       expect(displayHistory.length).toBeGreaterThan(0)
-      expect(displayHistory.every((entry: { title: string; metrics: number }) =>
-        entry.title === (wrong ? '本轮练习已结束' : '今日学习完成') && entry.metrics === 6)).toBe(true)
+      expect(
+        displayHistory.every(
+          (entry: { title: string; metrics: number }) => entry.title === (wrong ? '本轮练习已结束' : '今日学习完成') && entry.metrics === 6,
+        ),
+      ).toBe(true)
       proof.completionSummaryPersisted = true
       proof.completionDisplayHistory = displayHistory
       const final = await records(a)
@@ -382,13 +392,24 @@ for (const wrong of [true, false]) {
       expect(afterReload.daily.blockCount).toBe(1)
       expect(afterReload.words).toEqual(final.words)
       expect(afterReload.states).toEqual(final.states)
-      // Ordinary startup sync persists the new five-word runtime. It may
-      // advance the revision once, but must never append another answer.
+      // A matching cloud baseline defers local changes on ordinary startup.
+      // Explicit sync must still persist the extra round exactly once.
       proof.extraWords = 5
       proof.reloadDidNotDuplicateExtension = true
-      checkpoint('extra-round-startup-sync')
+      checkpoint('extra-round-startup-deferral')
       proof.reloadStartupStatus = await a.evaluate(() => sessionStorage.getItem('qwerty.s2.startup-check.v1'))
+      expect(proof.reloadStartupStatus).toBe('upload-deferred')
       proof.observedUploadStatuses = [...committed]
+      expect(committed.filter((s) => s === 200)).toHaveLength(1)
+      const deferred = await meta(a)
+      expect(deferred.revision).toBe(uploaded.revision)
+      expect(deferred.logicalFingerprint).toBe(uploaded.logicalFingerprint)
+      proof.reloadDeferredUpload = true
+      checkpoint('extra-round-explicit-sync')
+      await a.goto(base + '/?s2-sync=run', { waitUntil: 'domcontentloaded' })
+      await expect(a).toHaveURL(/^https:\/\/t\.smhe\.cn\/(?:learn)?$/, { timeout: 180_000 })
+      await expect(a.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 90_000 })
+      expect(await records(a)).toEqual(afterReload)
       await expect.poll(() => committed.filter((s) => s === 200).length, { timeout: 30_000 }).toBe(2)
       // Metadata visibility can lag the acknowledged immutable commit. Poll
       // reads only; never replay an uncertain upload to satisfy this check.
@@ -396,7 +417,7 @@ for (const wrong of [true, false]) {
       const resumed = await meta(a)
       expect(resumed.revision).toBe(uploaded.revision + 1)
       expect(committed.filter((s) => s === 200)).toHaveLength(2)
-      proof.extraRoundStartupRevision = resumed.revision
+      proof.extraRoundExplicitSyncRevision = resumed.revision
       proof.totalCommittedUploads = 2
       // Park A before B takes the sole login session. B must pull the actual
       // Blob from an empty profile, proving the final answer reached storage.

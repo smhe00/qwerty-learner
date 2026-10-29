@@ -1,12 +1,12 @@
-# QWERTY Plus — Beta
+# QWERTY Plus
 
-> 产品版本：`0.2.0-beta.1` · 文档核对：2026-10-25  
+> 产品版本：`1.0.0` · 文档核对：2026-10-29
 > 正式站：[q.smhe.cn](https://q.smhe.cn/) · [手机入口](https://q.smhe.cn/mobile)  
 > 开发主线：`product/main` · 云验证站：[t.smhe.cn](https://t.smhe.cn/)（`edgeone-test`）
 
 QWERTY Plus 基于 [Qwerty Learner](https://github.com/RealKai42/qwerty-learner)，保留 Typing 打字练习，并提供 Learn 长期记忆学习、FSRS-6 复习调度、手机触控学习、成就、学习记录和可选云同步。
 
-**当前定位：核心学习 Beta 已发布，进入稳定性与工程收尾阶段；不是所有扩展愿景已经完成。** 最近已验收发布基线为 `ea4ede5380dfdc899a94371a5bc5289cb036004e`，正式站发布探测于 `2026-10-24T18:02:00Z` 通过。后续纯文档提交不等于新的运行版本。[发布证据](./interactive/reports/MOBILE-MENU-RELEASE-20261025-report.md) · [当前收尾清单](./docs/release/BETA_CLOSEOUT_2026-10-25.md)。
+**当前范围：桌面打字与背词、手机记忆学习、复习、历史、成就、备份与单一有效登录下的多设备轮换同步。** 正式发布须由同一候选 SHA 完成 Pages 与 etest 验证后推进 master；版本号不代表已完成部署。当前发布记录及已知边界见[1.0.0 发布说明](./docs/release/V1_2026-10-29.md)。
 
 ## 核心功能
 
