@@ -4,6 +4,8 @@ on:
   push:
     branches: [product/main]
     paths:
+      - 'src/admin/**'
+      - 'tests/e2e/administrator-*.ts'
       - 'src/sync/**'
       - 'index.html'
       - 'public/404.html'
