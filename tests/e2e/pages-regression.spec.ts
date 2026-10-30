@@ -294,7 +294,9 @@ test('published Pages: user guide is anonymous, device-aware and read-only', asy
     await page.keyboard.press('a')
     expect(await readGuideLearningState(page)).toBe(before)
     if (mobile) await page.getByRole('button', { name: '返回首页', exact: true }).first().click()
-    else await page.getByRole('dialog', { name: '使用指南', exact: true }).getByRole('button', { name: '返回', exact: true }).click()
+    // Pages may rebuild route state through its 404 redirect on reload;
+    // the content return action works in both dialog and direct-page layouts.
+    else await page.locator('[data-user-guide]').getByRole('button', { name: '回到学习', exact: true }).click()
     await expect(entry).toBeVisible()
     expect(await readGuideLearningState(page)).toBe(before)
   }
