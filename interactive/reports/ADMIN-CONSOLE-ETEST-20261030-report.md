@@ -1,11 +1,11 @@
 ---
 protocol_version: '1.1'
 task_id: ADMIN-CONSOLE-20261030-ETEST
-status: IN_PROGRESS
+status: REVIEW
 executor: Codex-admin-console
 target_branch: edgeone-test
 base_commit: 4073b36d7264f923fedae656e983f39edfd3cf07
-candidate_commit: "Commit introducing this report (resolve with git log --diff-filter=A --format=%H -- interactive/reports/ADMIN-CONSOLE-ETEST-20261030-report.md)"
+candidate_commit: 81dcdd85bfa47a376eaa66927128d6e38d943df0
 release_to_master: false
 ---
 # Admin-only login and etest promotion
@@ -37,3 +37,19 @@ Remove the link from shared PC/mobile ordinary account presentation. Successful 
 5. A privileged administrator login/reply/maintenance validation requires the actual configured administrator session; do not guess its password or describe non-admin checks as that validation. Never run destructive maintenance for a smoke check.
 
 Evidence for subsequent deployment/results is attached to the exact candidate's GitHub checks. Local focused logs use /workspace/scratch/4c3b6e25c0cf/admin-etest-*. Main and staging promotion are owner-authorized; production is not.
+
+## Executed staging handoff
+
+- Fast-forwarded `edgeone-test` from `f874b146875c507f6f30097059a47bb700c761bf` to **`81dcdd85bfa47a376eaa66927128d6e38d943df0`** by expected-SHA, non-force update after same-SHA admission succeeded. No extra Maker build-only commit was introduced.
+- Exact-SHA source evidence: [Pages deployment + published regression](https://github.com/smhe00/qwerty-learner/actions/runs/40980052716), [Cloud Sync Gate](https://github.com/smhe00/qwerty-learner/actions/runs/40980052780), [staging admission](https://github.com/smhe00/qwerty-learner/actions/runs/40980052797), and [Mobile P0](https://github.com/smhe00/qwerty-learner/actions/runs/40980052629) all passed. Both full UI-visible matrices passed. Original login-clarity failures are resolved with unchanged assertions.
+- `https://t.smhe.cn/source-commit.txt` returned `81dcdd8`; source readiness check passed before creating a disposable account.
+- Actual deployed phone 320px `/mobile/admin` and PC 1440px `/admin` show the management login, no fictional preview button, zero learning IndexedDB opens and zero learning/sync requests.
+- Actual anonymous GETs to admin overview/storage/idle returned 401 with no-store responses.
+- A uniquely created disposable ordinary account received 403 for admin overview/storage/idle, all-feedback access and admin logout. Admin access returned false; denied admin logout preserved its ordinary session, and ordinary sync metadata remained accessible.
+- A real browser with that ordinary token and a forged local admin username/role was denied by the server-backed access check; its false management session was removed, ordinary credentials were unchanged and no learning database opened.
+- Disposable account deletion was positively confirmed by the existing monotonic deletion protocol (`via=delete-response`); its transient credential checkpoint was removed. No real-user learning data, real feedback, admin session or destructive maintenance was touched.
+- [Branch EdgeOne Cloud E2E](https://github.com/smhe00/qwerty-learner/actions/runs/40980908672) independently passed its three-profile live-browser cloud job at handoff. Real V4 Blob transport / lost-receipt qualification was still running; do not call the candidate release-ready until its exact-SHA release-ready job succeeds.
+- A real privileged administrator session, its actual statistics and administrator replies remain NOT_TESTED (the configured password was not available to this executor). Existing synthetic role/reply contracts passed; these must not be substituted for privileged live acceptance.
+- `master` remains `f874b146875c507f6f30097059a47bb700c761bf`. This documentation-only handoff commit may advance product/main while etest continues to pin the exact tested source candidate; it must not trigger another staging deployment.
+
+Next: review admin login with the configured administrator account on t.smhe.cn, then inspect the fixed candidate's remaining real-cloud checks. No production promotion is authorized by this request.
