@@ -1,7 +1,7 @@
 ---
 protocol_version: '1.1'
 task_id: FORMAL-RELEASE-20261030
-status: IN_PROGRESS
+status: REVIEW
 executor: Codex-release
 target_branch: master
 claim_base_commit: 0d4d336bb396b59158824d5190faaf1b0131b6ed
@@ -10,6 +10,8 @@ previous_master: f874b146875c507f6f30097059a47bb700c761bf
 release_to_master: true
 ---
 # Qualified etest promotion to production
+
+**Completed:** master and etest both point to 7eb3631f1614c8c78352a13bcbcae84ba165a290. Actual q.smhe.cn deployment marker, gateway and mobile-route verification PASS. Production confirmation was logged at 2026-10-30 15:21:46 Asia/Shanghai.
 
 Owner explicitly authorized publishing the current etest version to master. Frozen candidate: **7eb3631f1614c8c78352a13bcbcae84ba165a290**. No application source is modified for release. Newer main development is preserved; the responsive-desktop return change in 0d4d336b is outside this already-qualified etest candidate.
 
@@ -40,3 +42,13 @@ The execution environment is explicitly unavailable. No fresh local browser/buil
 Master has not yet moved at this checkpoint. No force-push, etest movement, user-data operation, CURRENT_TASK change or production configuration edit.
 
 Main advanced during report preparation from 0d4d336b to 983cce1b (responsive touch/mouse behavior). The first expected-SHA update was rejected; re-read confirmed master/etest unchanged. Rebased only these two new release documents on 983cce1b, preserving all incoming files without application edits. Frozen release source remains 7eb3631f.
+
+## Completed production release
+
+- Fast-forwarded master once from f874b146875c507f6f30097059a47bb700c761bf to exact qualified etest SHA 7eb3631f1614c8c78352a13bcbcae84ba165a290 using expected-head protection and force=false. No release-only source commit, partial cherry-pick, etest update or history rewrite.
+- [EdgeOne Production Verify](https://github.com/smhe00/qwerty-learner/actions/runs/41019156185) **PASS**, exact head_sha=7eb3631f1614c8c78352a13bcbcae84ba165a290. Job 123942256391 waited while production served f874b14, then logged result=PASS, deployed=7eb3631, gateway=qwerty-sync-gateway, apiVersion=1 and verificationMode=anonymous-read-only. Confirmed HTTP/app entry for /mobile, /mobile/history, /mobile/data and /mobile/achievements, after matching the actual new source marker. This is deployed-source/HTTP/gateway smoke, not a claim of privileged admin interaction or full physical-device browser QA.
+- [Maker V4 Migration Live Readiness](https://github.com/smhe00/qwerty-learner/actions/runs/41019156074) also **PASS**. Its disposable-browser read-only S1 admission check requires the backup checkbox/default-disabled action and preserves its synthetic local row; no production login/cloud write.
+- Final fresh refs: master=etest=7eb3631f1614c8c78352a13bcbcae84ba165a290; main=e4d7d36202907a08d79c50339083a55c533f472d before this final documentation update. Newer responsive touch/mouse development remains on main and is not included in this etest-to-master release.
+- The current execution environment stayed unavailable. No new local command, build or private-user test is represented as passing. Exact-source historical qualification and live production verification were inspected through GitHub.
+
+All acceptance criteria for this explicit promotion are complete. No further master move is authorized by this task. Keep prior master f874b146 as an incident reference; no automatic rollback is planned. Main may continue independently; CURRENT_TASK/Circle ownership is unchanged.

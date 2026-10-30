@@ -1,7 +1,7 @@
 ---
 protocol_version: '1.1'
 task_id: FORMAL-RELEASE-20261030
-status: IN_PROGRESS
+status: REVIEW
 executor: Codex-release
 target_branch: master
 claim_base_commit: 0d4d336bb396b59158824d5190faaf1b0131b6ed
@@ -9,6 +9,8 @@ source_commit: 7eb3631f1614c8c78352a13bcbcae84ba165a290
 previous_master: f874b146875c507f6f30097059a47bb700c761bf
 report_file: interactive/reports/FORMAL-RELEASE-20261030-report.md
 release_to_master: true
+production_verification_run: 41019156185
+production_source_verified: true
 ---
 # Publish the current qualified etest candidate
 
