@@ -49,6 +49,12 @@
   overscroll-behavior: contain;
 }
 
+/* Desktop touch cards also need the unused example lines for the disclosure.
+   Keep long examples clamped and the primary action in its existing rail. */
+.desktop-tap-learn-frame .mobile-practice-reading[data-dictionary-reading] .mobile-practice-example {
+  min-height: 0;
+}
+
 /* Short phones need the space occupied by an otherwise empty third example
    line. Keep the three-line clamp and the fixed primary action unchanged. */
 @media (max-width: 600px) and (max-height: 630px) {
