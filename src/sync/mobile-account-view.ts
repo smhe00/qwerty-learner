@@ -1,4 +1,3 @@
-import { administratorPath } from '../admin/session'
 import './mobile-account.css'
 import type { CloudAuthState } from './types'
 import type { Workspace } from './workspace-transition'
@@ -199,9 +198,6 @@ export function presentAccount(view: AccountView) {
       true,
     )
   }
-  const administratorEntry = el('a', '管理员入口', 'mobile-account-secondary')
-  administratorEntry.href = administratorPath()
-  form.append(administratorEntry)
   form.addEventListener('submit', (event) => event.preventDefault())
   const updateMode = () => {
     const registration = anonymous && mode === 'register'

@@ -1,4 +1,4 @@
-import { administratorHint, administratorPath, rememberAdministratorSession } from '../admin/session'
+import { administratorPath, rememberAdministratorSession } from '../admin/session'
 import { administrationRequest } from '../admin/client'
 /**
  * S1 account controls are deliberately PRE-MOUNT: the React/RecordDB writer
@@ -152,7 +152,7 @@ export function renderS1AccountManagement(
     navigate()
   }
   const enterAdministration = async (signed: CloudAuthState) => {
-    if (!administratorHint(signed)) return false
+    if (!/^admin$/i.test(signed.user.username)) return false
     const access = await administrationRequest<{ administrator: boolean }>('/api/admin/access', { token: signed.token, anonymous: true })
     if (access.administrator !== true) throw new Error('该账号未通过管理员权限核验。')
     rememberAdministratorSession(signed)

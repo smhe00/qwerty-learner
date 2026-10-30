@@ -20,6 +20,7 @@ export async function mountAdministratorApplication(root: HTMLElement | null) {
     try {
       const legacy = JSON.parse(localStorage.getItem('qwerty.cloudAuth.v1') || 'null') as CloudAuthState | null
       if (administratorHint(legacy) && legacy && legacy.expiresAt * 1000 > Date.now()) {
+        if (!/^admin$/i.test(legacy.user.username)) throw new Error('管理员请使用 admin 重新登录。')
         const access = await administrationRequest<{ administrator: boolean }>('/api/admin/access', {
           token: legacy.token,
           anonymous: true,

@@ -220,7 +220,7 @@ test('administrator privilege cannot be granted by a forged local role', async (
     (student) =>
       sessionStorage.setItem(
         'qwerty.administrator.session.v1',
-        JSON.stringify({ ...student, user: { ...student.user, role: 'administrator' } }),
+        JSON.stringify({ ...student, user: { ...student.user, username: 'admin', role: 'administrator' } }),
       ),
     student,
   )
@@ -232,4 +232,23 @@ test('administrator privilege cannot be granted by a forged local role', async (
   expect(await page.evaluate(() => sessionStorage.getItem('qwerty.administrator.session.v1'))).toBeNull()
   expect(network.calls.every((c) => c.path === '/api/admin/access')).toBe(true)
   await untouched(page, network.calls)
+})
+
+test('administrator legacy SMHE credentials require an explicit admin login', async ({ page }) => {
+  test.skip(pagesUI, 'Pages has no authenticated credential migration.')
+  await isolate(page)
+  await page.addInitScript(
+    (admin) =>
+      localStorage.setItem('qwerty.cloudAuth.v1', JSON.stringify({ ...admin, user: { ...admin.user, username: 'smhe', role: undefined } })),
+    admin,
+  )
+  const network = api(page)
+  await network.ready
+  await page.goto(uiPath('/mobile'))
+  await expect(page).toHaveURL(/\/mobile\/admin$/)
+  await expect(page.getByRole('heading', { name: '登录管理控制台' })).toBeVisible()
+  await expect(page.getByRole('alert')).toContainText('使用 admin 重新登录')
+  expect(network.calls).toEqual([])
+  expect(await page.evaluate(() => (window as any).__adminDatabaseOpens)).toEqual([])
+  expect(await page.evaluate(() => sessionStorage.getItem('qwerty.administrator.session.v1'))).toBeNull()
 })
