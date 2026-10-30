@@ -5,7 +5,8 @@ test('every small header icon has one 36px style and is skipped by keyboard tab 
   await gotoReviewAppReady(page, '/typing')
   const toolbar = page.locator('header .focus-toolbar-icons')
   const triggers = toolbar.locator('button[data-toolbar-trigger]')
-  await expect(triggers).toHaveCount(10)
+  await expect(triggers).toHaveCount(11)
+  await expect(toolbar.getByRole('button', { name: '使用指南', exact: true })).toHaveAttribute('data-guide-entry', 'toolbar')
 
   for (const trigger of await triggers.all()) {
     await expect(trigger).toHaveAttribute('tabindex', '-1')
