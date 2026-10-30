@@ -8,6 +8,50 @@ import { readFileSync, readdirSync } from 'node:fs'
 
 test.beforeEach(async ({ page }, info) => prepareVisibleUI(page, info.project.name.endsWith('dark')))
 
+test('responsive layout returns to desktop after automatic narrowing and retains explicit touch routes', async ({ page }, info) => {
+  const desktop = info.project.name.startsWith('desktop')
+  const apiCalls: string[] = []
+  if (pagesUI) page.on('request', request => { if (new URL(request.url()).pathname.startsWith('/api/')) apiCalls.push(request.url()) })
+  if (desktop) {
+    await page.goto(uiPath('/learn'))
+    await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 30_000 })
+    for (const path of ['/learn?layout=roundtrip#learn', '/typing?layout=roundtrip#typing']) {
+      await page.goto(uiPath(path))
+      await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 30_000 })
+      const before = await readGuideLearningState(page)
+      const documentState = await page.evaluate(() => ({ origin: performance.timeOrigin, history: history.length }))
+      for (const [narrow, wide] of [[700, 701], [390, 1440]]) {
+        await page.setViewportSize({ width: narrow, height: 900 })
+        await expect(page.locator('[data-mobile-menu]')).toBeVisible({ timeout: 30_000 })
+        await expect(page).toHaveURL(new RegExp('/mobile$'))
+        await auditVisibleUI(page, info, 'responsive-narrow-' + narrow)
+        await page.setViewportSize({ width: wide, height: 900 })
+        await expect(page).toHaveURL(new RegExp(path.replace('?', '\\?') + '$'))
+        await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 30_000 })
+      }
+      await auditVisibleUI(page, info, 'responsive-desktop-restored')
+      expect(await page.evaluate(() => ({ origin: performance.timeOrigin, history: history.length }))).toEqual(documentState)
+      expect(await readGuideLearningState(page)).toBe(before)
+    }
+  }
+  // Explicit mobile URLs remain intentional, including a mouse-first PC.
+  await page.goto(uiPath('/mobile'))
+  await expect(page.locator('[data-mobile-menu]')).toBeVisible({ timeout: 30_000 })
+  const origin = await page.evaluate(() => performance.timeOrigin)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await expect(page).toHaveURL(/\/mobile$/)
+  await expect(page.locator('[data-mobile-menu]')).toBeVisible({ timeout: 30_000 })
+  if (!desktop) {
+    // A wide primary touch device must still select the touch home itself.
+    await page.goto(uiPath('/'))
+    await expect(page.locator('[data-mobile-menu]')).toBeVisible({ timeout: 30_000 })
+    await expect(page).toHaveURL(/\/mobile$/)
+  } else expect(await page.evaluate(() => performance.timeOrigin)).toBe(origin)
+  await auditVisibleUI(page, info, 'responsive-explicit-touch')
+  expect(apiCalls).toEqual([])
+})
+
 test('all mobile menu destinations and lazy return remain readable', async ({ page }, info) => {
   await page.goto(uiPath('/mobile'))
   await expect(page.locator('[data-mobile-menu]')).toBeVisible()

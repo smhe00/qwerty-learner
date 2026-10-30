@@ -19,7 +19,7 @@ import { useAtom, useAtomValue } from 'jotai'
 import React, { Suspense, lazy, useEffect, useState } from 'react'
 import 'react-app-polyfill/stable'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, type Location, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 // Below this width the keyboard-first Learn/Typing toolbar no longer has a
 // reliable two-row fit; use the dedicated narrow-screen layout instead.
@@ -159,6 +159,12 @@ function MobileAchievementsRoute() {
 /** An explicit mobile study route stays mounted through tablet rotation. */
 function ResponsiveRoutes({ isMobile }: { isMobile: boolean }) {
   const location = useLocation()
+  const desktopLocation = (location.state as { responsiveDesktopLocation?: Location } | null)?.responsiveDesktopLocation
+  // Only an automatically selected home returns with the viewport. Explicit
+  // touch links omit this marker, so rotation cannot interrupt mobile study.
+  if (location.pathname === '/mobile' && !isMobile && desktopLocation) {
+    return <Navigate to={desktopLocation} state={desktopLocation.state} replace />
+  }
   // An explicit touch route is a user choice. Rotation, unfolding or attaching
   // a pointer must not send its menu back to keyboard-first Learn.
   if (location.pathname === '/mobile') return <MobilePage />
@@ -176,7 +182,7 @@ function ResponsiveRoutes({ isMobile }: { isMobile: boolean }) {
     <Routes>
       <Route path="/mobile" element={<MobilePage />} />
       <Route path="/achievements" element={<MobileAchievementsRoute />} />
-      <Route path="/*" element={<Navigate to="/mobile" replace />} />
+      <Route path="/*" element={<Navigate to="/mobile" state={{ responsiveDesktopLocation: location }} replace />} />
     </Routes>
   ) : (
     <DesktopRoutes />

@@ -5,6 +5,30 @@ const site = 'https://smhe00.github.io/qwerty-learner/'
 const targetSha = process.env.PAGES_SOURCE_SHA
 if (!targetSha || !/^[a-f0-9]{40}$/.test(targetSha)) throw new Error('Missing verified Pages source SHA')
 
+test('published Pages: narrowing a PC and restoring width returns to its original desktop route', async ({ page }) => {
+  const apiCalls: string[] = []
+  page.on('request', request => { if (new URL(request.url()).pathname.startsWith('/api/')) apiCalls.push(request.url()) })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(site)
+  await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 30_000 })
+  for (const path of ['learn?layout=roundtrip#learn', 'typing?layout=roundtrip#typing']) {
+    await page.goto(site + path)
+    await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 30_000 })
+    const before = await readGuideLearningState(page)
+    const documentState = await page.evaluate(() => ({ origin: performance.timeOrigin, history: history.length }))
+    for (const [narrow, wide] of [[700, 701], [390, 1440]]) {
+      await page.setViewportSize({ width: narrow, height: 900 })
+      await expect(page.locator('[data-mobile-menu]')).toBeVisible({ timeout: 30_000 })
+      await page.setViewportSize({ width: wide, height: 900 })
+      await expect(page).toHaveURL(site + path)
+      await expect(page.getByRole('button', { name: '打开设置对话框' })).toBeVisible({ timeout: 30_000 })
+    }
+    expect(await page.evaluate(() => ({ origin: performance.timeOrigin, history: history.length }))).toEqual(documentState)
+    expect(await readGuideLearningState(page)).toBe(before)
+  }
+  expect(apiCalls).toEqual([])
+})
+
 test('published Pages: matching SHA, cloud disabled, Learn route and reload durability', async ({ page, request }) => {
   test.setTimeout(120_000)
   await expect.poll(async () => {
