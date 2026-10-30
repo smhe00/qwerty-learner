@@ -892,6 +892,8 @@ export default function WordPanel({ mobile = false }: { mobile?: boolean }) {
               <Translation
                 trans={currentWord.trans.join('；')}
                 word={isReviewMode ? currentWord : undefined}
+                dictId={currentDictId}
+                showIllustration={isReviewMode && !isColdSemanticProbe && state.isTyping}
                 showDetails={isVisibleCopyAttempt || (currentReviewHintLevel !== null && currentReviewHintLevel >= 3)}
                 showTrans={effectiveTranslationVisible}
                 onMouseEnter={() => handleShowTranslation(true)}

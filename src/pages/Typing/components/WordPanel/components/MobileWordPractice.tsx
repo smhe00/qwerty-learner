@@ -1,4 +1,5 @@
 import { getDictionaryContent } from '@/utils/dictionaryContent'
+import DesktopStudyIllustration from '@/components/DesktopStudyIllustration'
 import DictionaryContent from '@/components/DictionaryContent'
 import MobilePracticeExample from './MobilePracticeExample'
 import MobilePhonetic from '@/pages/Mobile/MobilePhonetic'
@@ -637,6 +638,8 @@ export default function MobileWordPractice({
       data-mobile-recall-stage={task === 'recall' ? (feedback ? 'saved' : revealedAttempt ? 'verification' : 'unrevealed') : undefined}
       aria-label={desktop ? '轻触单词学习' : '手机单词学习'}
     >
+      {desktop && <DesktopStudyIllustration word={word} dictId={dict.id}
+        visible={!paused && (Boolean(feedback) || task === 'exposure' || (task === 'recall' && Boolean(revealedAttempt)))} />}
       <header className="mobile-practice-head">
         <div className="mobile-practice-input-row">
           <span className="mobile-eyebrow">LEARN</span>

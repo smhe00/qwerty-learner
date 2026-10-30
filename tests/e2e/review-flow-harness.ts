@@ -220,6 +220,7 @@ export async function seedAcquisitionSession(
     'exposure' | 'guided' | 'supported' | 'independent'
   > = {},
   oncePerTab = false,
+  dictionaryId = 'cet4',
 ) {
   await page.addInitScript(
     ({
@@ -230,6 +231,7 @@ export async function seedAcquisitionSession(
       seededScaffoldStrainTier,
       seededPhaseOverrides,
       seededOncePerTab,
+      seededDictionaryId,
     }) => {
       // Opt-in for journeys that must exercise the saved checkpoint on reload.
       const seedKey = 'qwerty:e2e:acquisition-session-seed:' + recordId
@@ -263,7 +265,7 @@ export async function seedAcquisitionSession(
         return { condition, policyVersion }
       }
 
-      localStorage.setItem('currentDict', JSON.stringify('cet4'))
+      localStorage.setItem('currentDict', JSON.stringify(seededDictionaryId))
       localStorage.setItem('currentChapter', JSON.stringify(-1))
       localStorage.setItem(
         'reviewModeInfo',
@@ -271,7 +273,7 @@ export async function seedAcquisitionSession(
           isReviewMode: true,
           reviewRecord: {
             id: recordId,
-            dict: 'cet4',
+            dict: seededDictionaryId,
             createTime: recordId,
             index: 0,
             isFinished: false,
@@ -346,11 +348,11 @@ export async function seedAcquisitionSession(
         String(date.getDate()).padStart(2, '0'),
       ].join('-')
       localStorage.setItem(
-        'qwerty.learn.dailySession.v1.cet4',
+        'qwerty.learn.dailySession.v1.' + seededDictionaryId,
         JSON.stringify({
           version: 1,
           sessionId: `e2e-acquisition:${recordId}:${dateKey}`,
-          dict: 'cet4',
+          dict: seededDictionaryId,
           dateKey,
           startedAt: now,
           status: 'active',
@@ -390,6 +392,7 @@ export async function seedAcquisitionSession(
       seededScaffoldStrainTier: scaffoldStrainTier,
       seededPhaseOverrides: phaseOverrides,
       seededOncePerTab: oncePerTab,
+      seededDictionaryId: dictionaryId,
     },
   )
 }

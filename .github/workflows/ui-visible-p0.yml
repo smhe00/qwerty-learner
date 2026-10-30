@@ -33,6 +33,8 @@ jobs:
           node scripts/structure-shanghai-dictionary.mjs
       - name: Lint dictionary presentation
         run: yarn eslint src/components/DictionaryContent src/utils/dictionaryContent.ts src/typings/index.ts src/pages/Typing/components/WordPanel/components/Translation/index.tsx src/pages/Typing/components/WordList/WordCard.tsx --ext .ts,.tsx
+      - name: Lint PC illustration presentation
+        run: yarn eslint src/components/DesktopStudyIllustration src/resources/studyIllustrations.ts --ext .ts,.tsx
       - name: Install Chromium and Chinese fonts
         run: |
           npx playwright install --with-deps chromium
@@ -42,6 +44,8 @@ jobs:
         run: yarn build && yarn verify:ui-css
       - name: Verify dictionary content, short-phone actions and cold masks
         run: yarn playwright test --config=tests/e2e/dictionary-content.config.ts --retries=0
+      - name: Verify PC study illustrations, cold boundaries and image failure
+        run: yarn playwright test --config=tests/e2e/desktop-study-illustration.config.ts --retries=0
       - name: Audit phone, tablet and desktop in both themes
         run: yarn test:ui-visible
       - name: Verify primary learning actions, refresh and audio recovery

@@ -1,0 +1,302 @@
+[
+  {
+    "word": "ability",
+    "sourceId": "ability",
+    "sourceMeaning": "n. 能力，才能，本领",
+    "sha256": "74ef13137a2fa23c12a18a9d356ae17356daec355d8d3ce76a2112deba1f957e"
+  },
+  {
+    "word": "able",
+    "sourceId": "able",
+    "sourceMeaning": "adj. 能够的；有能力的",
+    "sha256": "5feaecf5e9d9763df6ee9e56226f8a34f73abf368b257dfb9d17a8fb9da57b4f"
+  },
+  {
+    "word": "above",
+    "sourceId": "above",
+    "sourceMeaning": "prep. 在······上面",
+    "sha256": "c67c88ad13544c089e8bcfcc75f4f40bdc430a50de0398d7e39cefeb849b0fff"
+  },
+  {
+    "word": "abroad",
+    "sourceId": "abroad",
+    "sourceMeaning": "adv. 到（在）国外",
+    "sha256": "79de3ebaad21907aaa69ef104b1b9ca0bfc77bba22a161202b61b98f3bf6ec66"
+  },
+  {
+    "word": "accept",
+    "sourceId": "accept",
+    "sourceMeaning": "v. 接受， 同意",
+    "sha256": "e8137cdb9c899e9cda8a322d192d3e70f7c525a29e0f0ed3d6a74d6ed0418f66"
+  },
+  {
+    "word": "accident",
+    "sourceId": "accident",
+    "sourceMeaning": "n. 事故；意外；偶然的事",
+    "sha256": "14dc6e776845da7d343a4dd377810be704b159aff5aa6b6e1910de0e8846e391"
+  },
+  {
+    "word": "accurate",
+    "sourceId": "accurate",
+    "sourceMeaning": "adj. 准确的",
+    "sha256": "b56c835561881e2f02f14e0d6eb492016ed2068e470ba189ce4f4f8ef8770211"
+  },
+  {
+    "word": "ache",
+    "sourceId": "ache",
+    "sourceMeaning": "n. （身体某部位的）疼；痛",
+    "sha256": "88424df53029cc64398b8cfb168848a4344f5486096dea3ff81ba65396ed2e08"
+  },
+  {
+    "word": "achieve",
+    "sourceId": "achieve",
+    "sourceMeaning": "v. 达到，获得",
+    "sha256": "ff087cfd44d3728d22f4b26dad461e07fd33be17da225d4ade75ffface12f22b"
+  },
+  {
+    "word": "across",
+    "sourceId": "across",
+    "sourceMeaning": "prep. & adv.横过，穿过",
+    "sha256": "49ed1cc547a310d68f36732574568c7f6983dfbad8bb5dc95109aa6c72ae112d"
+  },
+  {
+    "word": "active",
+    "sourceId": "active",
+    "sourceMeaning": "adj. 积极的；活跃的；充满活力的",
+    "sha256": "5026713df113e123146c1879c0b4e96bb9cd1cb1ced9cb93fbbe25eb7468c8ef"
+  },
+  {
+    "word": "activity",
+    "sourceId": "activity",
+    "sourceMeaning": "n. 活动",
+    "sha256": "310af0a5a505a87b42d32fe735ddb3132d9f5392c444f0679071cf0a91e5195b"
+  },
+  {
+    "word": "actor",
+    "sourceId": "actor",
+    "sourceMeaning": "n. 男演员",
+    "sha256": "e81d15f0fa76e9c1d98e91734036767c2bf7fa31377b179f4fb061961c0b766b"
+  },
+  {
+    "word": "actress",
+    "sourceId": "actress",
+    "sourceMeaning": "n. 女演员",
+    "sha256": "6854be56e526bb339fbf703f9e6d1f3ccc700951200248a25e81672d6cb02a4c"
+  },
+  {
+    "word": "add",
+    "sourceId": "add",
+    "sourceMeaning": "v. 添加，增加",
+    "sha256": "30baf5d206fe4cc21376f29f0758ec26821a4904defbe9653b88156360bdf7a8"
+  },
+  {
+    "word": "addition",
+    "sourceId": "addition",
+    "sourceMeaning": "n. 增加",
+    "sha256": "8e4c831d627b3edb76e9599ba886ee8397f5f9d82057a9647581f518b31248e5"
+  },
+  {
+    "word": "address",
+    "sourceId": "address",
+    "sourceMeaning": "n. 地址",
+    "sha256": "28b837f868221fc27574ffbba4ebf2a41a6b7a0e26b25019e802ed033259ceca"
+  },
+  {
+    "word": "adult",
+    "sourceId": "adult",
+    "sourceMeaning": "n. 成年人",
+    "sha256": "c04f18f0bc5956d6f32b030e2d91fda6ef6d8db4d84dc64c7c63ccef9a70aacf"
+  },
+  {
+    "word": "advantage",
+    "sourceId": "advantage",
+    "sourceMeaning": "n. 有利条件；优势；优点",
+    "sha256": "41470e2c9a618ea1854065235878def8a178eb7105ca959957bee12d4dee7096"
+  },
+  {
+    "word": "adventure",
+    "sourceId": "adventure",
+    "sourceMeaning": "n. 冒险；冒险经历；冒险精神",
+    "sha256": "67941e0a429ea697bf0cb70202ada10fde95c52f783f074b2cd4597f045b8f73"
+  },
+  {
+    "word": "advertisement",
+    "sourceId": "advertisement",
+    "sourceMeaning": "n. 广告；启事",
+    "sha256": "9510df17fe1932385b1dc537d126ea285f3e3592b84288174b19a45931e73349"
+  },
+  {
+    "word": "advice",
+    "sourceId": "advice",
+    "sourceMeaning": "n. 忠告，劝告，建议，意见",
+    "sha256": "e57afc4ad0b2a0d1b3c2fd4df8c2f00ad0254fa81f3e14f0074f0981373afc76"
+  },
+  {
+    "word": "advise",
+    "sourceId": "advise",
+    "sourceMeaning": "v. 劝告， 忠告， 建议",
+    "sha256": "e5d1d223644e8e65759361c5f566c42b59f13a37dcf3ffdf28cae7e63eff04e2"
+  },
+  {
+    "word": "affect",
+    "sourceId": "affect",
+    "sourceMeaning": "v. 影响； 使感染",
+    "sha256": "a9a276647e176ad72fd462aad3ef37f372f983a11cd06e1601f4274ae9509caf"
+  },
+  {
+    "word": "afford",
+    "sourceId": "afford",
+    "sourceMeaning": "v. 负担得起； 承担得起； 抽得出（时间）做某事",
+    "sha256": "9cf15c298984776c690a6bb23236469a8b6f2460d66f8140c3564709d0c6414c"
+  },
+  {
+    "word": "afraid",
+    "sourceId": "afraid",
+    "sourceMeaning": "adj. 害怕的； 担心的； 畏惧的",
+    "sha256": "25a1bfe8cc6d7baa77912892f1bb92f347e6bb28948d93585ddd7c573236cd3a"
+  },
+  {
+    "word": "Africa",
+    "sourceId": "africa",
+    "sourceMeaning": "n. 非洲",
+    "sha256": "cc76050e39cfecd4c2fb2b50fb040efa17153ae3dd4152630d736726fd501ee9"
+  },
+  {
+    "word": "after",
+    "sourceId": "after",
+    "sourceMeaning": "prep. 在······之后； 在······后面",
+    "sha256": "7c62363ca2bdd27cbfdce51291b9a309afa3d6bd971e95b115e7e266836d0dd0"
+  },
+  {
+    "word": "afternoon",
+    "sourceId": "afternoon",
+    "sourceMeaning": "n. 下午",
+    "sha256": "83b51a69cc0be8921a1d085fdb614e3481f2eaab885ac6c1edbd56237d9988fc"
+  },
+  {
+    "word": "again",
+    "sourceId": "again",
+    "sourceMeaning": "adv. 再一次；再，又",
+    "sha256": "cb96924a90d791552a3cc79f44d2072ca46eaa2abd044a2c97f0f2237c808c30"
+  },
+  {
+    "word": "against",
+    "sourceId": "against",
+    "sourceMeaning": "prep. 对着； 反对； 与······对阵； 与······相反",
+    "sha256": "b6cc0a9a4e43988b6b12c76d48fc019a0ee9de538f370c2ead7551caf6b1426e"
+  },
+  {
+    "word": "age",
+    "sourceId": "age",
+    "sourceMeaning": "n. 年龄； 时代",
+    "sha256": "81980befa94dafac27794d9f690913dda1ddaaecacae1c081c6f81c62365bfda"
+  },
+  {
+    "word": "aged",
+    "sourceId": "aged",
+    "sourceMeaning": "adj. 有······年岁的； 上年纪的",
+    "sha256": "b8aa8e355ceb70233328a4a46738a674673bf04268a91bf10406ba8c6fe0aff3"
+  },
+  {
+    "word": "agree",
+    "sourceId": "agree",
+    "sourceMeaning": "v. 同意； 应允； 赞成",
+    "sha256": "0db817aedf677065cd290a0ca743d41c318fd557737f6ca7cf750aecfc34bd41"
+  },
+  {
+    "word": "ahead",
+    "sourceId": "ahead",
+    "sourceMeaning": "adv. 在前；向前",
+    "sha256": "233ea07c9ad833913067e3f25ac0973dd452a8b3f2f2c932daa1f990d2a72cf6"
+  },
+  {
+    "word": "aim",
+    "sourceId": "aim",
+    "sourceMeaning": "n. 目的；目标",
+    "sha256": "1cc5523bec6a287260dbe2999fb8b6bcfa6b7a4806a26393586d5243d75ab532"
+  },
+  {
+    "word": "air",
+    "sourceId": "air",
+    "sourceMeaning": "n. 空气；大气",
+    "sha256": "9dd6586cecdce6255c77f0a43a2f53b2193727b58afe919fa36a7f4238ecb4b8"
+  },
+  {
+    "word": "airline",
+    "sourceId": "airline",
+    "sourceMeaning": "n. 航空公司",
+    "sha256": "bb2d7ba7519f2abef71d8e5a9e211e8157481e2c86007bd2ba01ef7d2127cdeb"
+  },
+  {
+    "word": "airport",
+    "sourceId": "airport",
+    "sourceMeaning": "n. 机场",
+    "sha256": "d62d5512cac3057b14175824fbe07f5369f0e4dace64dd48690033d2ca0f2be3"
+  },
+  {
+    "word": "alarm",
+    "sourceId": "alarm",
+    "sourceMeaning": "n. 警报；警报器；闹铃；闹钟",
+    "sha256": "010df0a1e11e525f2bf0d27de5cd1ff7951939b27598b33d60196154220fd031"
+  },
+  {
+    "word": "alive",
+    "sourceId": "alive",
+    "sourceMeaning": "adj. 活着的；继续存在的",
+    "sha256": "5a610e8e818da89e9ed6cfc2395a9e406c10dd40a76bced45ff316b806f21648"
+  },
+  {
+    "word": "all",
+    "sourceId": "all",
+    "sourceMeaning": "adj. 全（部）； 总； 整",
+    "sha256": "2044189024526b4f57ae57325c1bf955716f14d3b0e955d3306d0e292365e209"
+  },
+  {
+    "word": "allow",
+    "sourceId": "allow",
+    "sourceMeaning": "v. 允许， 准许",
+    "sha256": "8b079280e5a6a30624c33bf87ffef0c6145b8bdb556f9aa7d23905f27c5eda13"
+  },
+  {
+    "word": "almost",
+    "sourceId": "almost",
+    "sourceMeaning": "adv. 几乎， 差不多",
+    "sha256": "7b2d863dc63c5179b59064a0df743c8e67ccc0bb24067931fd9161936a22033c"
+  },
+  {
+    "word": "library",
+    "sourceId": "library",
+    "sourceMeaning": "n. 图书馆， 图书室",
+    "sha256": "64ce6edf8a80fe8d61ec473f2f907dc1ef5cc757016071ae75755bb7621ed817"
+  },
+  {
+    "word": "remember",
+    "sourceId": "remember",
+    "sourceMeaning": "v. 记得； 想起",
+    "sha256": "2138cd0254ed78120c5fb6dc48ada95c1d802bf4c64cf329444666bc2b033ee5"
+  },
+  {
+    "word": "borrow",
+    "sourceId": "borrow",
+    "sourceMeaning": "v. （向别人）借用； 借",
+    "sha256": "7c41c07f4f85d1a19cbe941da97102be64333afe8e0c07ccf4585191e1206649"
+  },
+  {
+    "word": "apple",
+    "sourceId": "apple",
+    "sourceMeaning": "n. 苹果",
+    "sha256": "ffcb424a5170e5c1a6c07a82086d0733577f5d51eb54f067ab1b34b2561ef7d4"
+  },
+  {
+    "word": "banana",
+    "sourceId": "banana",
+    "sourceMeaning": "n. 香蕉",
+    "sha256": "ce1426e1abc63ac737d2fb8a08a3cbcda22eafe1554dd8cb8860aaf83cab4260"
+  },
+  {
+    "word": "cat",
+    "sourceId": "cat",
+    "sourceMeaning": "n. 猫",
+    "sha256": "0f0138e40d73d737af83558e3c6ed427c4cb27a2422bae6689f9dda786d49745"
+  }
+]
