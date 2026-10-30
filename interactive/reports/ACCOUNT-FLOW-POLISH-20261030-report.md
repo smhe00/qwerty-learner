@@ -4,6 +4,8 @@ status: REVIEW
 executor: Codex-account-flow
 claim_base_commit: 750e346b3ce58c638f0cf6177a04c58fa0839f7f
 integration_base: da0e02f6
+implementation_head: 88ce61d361fba8434bdbe9f3a8aa8f15372d98d6
+accepted_pages_source: 353117d306ed8fd55a56f6186971c0cd6aacd49a
 target_branch: product/main
 release_to_master: false
 ---
@@ -66,3 +68,35 @@ The real-cloud account test helper now expresses its existing empty-registration
 Follow-up production EdgeOne build PASS (34.95 s / 36.29 s), CSS ownership PASS; scoped source ESLint PASS. Navigation contract rerun PASS (five cases). Final combined administrator/account production matrix: **120 passed (4.4 minutes)** across all six profiles, zero failures/skips/retries, including all 48 formerly premature administrator recovery cases without editing their tests. Final revoked-session suite: **5 passed (1.0 minute)** including both original-route returns and all unchanged safety assertions, zero failures/skips/retries. The earlier independent nested cloud-tool baseline limitation remains unchanged.
 
 Deployed historical/three-device test helpers also enter explicit required-reauth mode and verify rather than edit an immutable username. Their syntax passes; they were not executed against real accounts locally. Final source diff confirms the bootstrap, account-startup V4, auth transaction, manual V2 executor/policy and M4 witnessed-prefix kernels remain byte-identical to integrated parent da0e02f6.
+
+
+## Final source CI and upstream integration
+
+Implementation commits: c74f8ff581742fd6d7233da0acd9df5f018e7d69 and 88ce61d361fba8434bdbe9f3a8aa8f15372d98d6. The latter is the final application source for this task.
+
+Exact-source 88ce61d3 CI results:
+
+- S1 Workspace Browser Gate 41035241510: PASS; 155 workspace cases (6.2 minutes), plus three prerequisite cases. This includes the nested cloud-tools case that failed in the unchanged local baseline; its assertions were not weakened. The earlier local failure is retained as local/environment evidence, not represented as a failing final CI gate.
+- P4b recovery 41035241622: PASS; 51 cases (2.1 minutes).
+- Startup Sync Recovery 41035241551: PASS; 22 cases (2.8 minutes).
+- Mobile P0 41035241577: PASS; 97 phone-learning cases, 17 learning/audio cases, all 58 shared account cases in one clean run, and 20 Pages account cases / four expected desktop-only skips.
+- Learn Completion Journey 41035241645: PASS.
+- Cloud backend job 123994343979: PASS. The enclosing exact-SHA Cloud admission did not qualify this candidate: its Pages run was cancelled when newer main arrived. This does not certify real Cloud/Blob networking or release-ready; no etest/master promotion was performed by this task.
+
+Concurrent upstream 353117d306ed8fd55a56f6186971c0cd6aacd49a changed only the separate ANONYMOUS-UV task/report. It preserves the entire application/test tree from 88ce61d3. Its latest-main Pages run 41035608934 replaces the cancelled 41035241619; no main rollback/freeze was used. Latest-main visible-UI results:
+
+- Pages job 123995973465 PASS: 84 production UI cases /126 expected cloud/admin skips (3.5 minutes); 17 learning/audio cases (28.1 s); 20 Pages account cases /four expected desktop-only skips (39.4 s). Pages keeps its real basename and cloud-disabled build; zero authentication/synchronization requests.
+- EdgeOne companion job 123995972975 PASS: 198 production UI cases /12 expected Pages-only skips (6.0 minutes); 17 learning/audio cases (29.2 s). Includes all administrator recovery cases and all twelve account-flow cases, with no retries. The fixture APIs are synthetic.
+
+Public Pages deployment and exact-version browser verification are recorded in the final publication checkpoint below. These are UI/development results; physical device keyboards, real credentials and real-network timing remain untested by this task.
+
+
+## Final publication checkpoint
+
+[Pages deployment 41035608934](https://github.com/smhe00/qwerty-learner/actions/runs/41035608934) PASS, including both required production UI matrices and deployment job 123999176832. The actual Pages publisher verified source **353117d306ed8fd55a56f6186971c0cd6aacd49a**, artifact **bcdb1eea32213b4a213ae1a564d2a4e1eee7d07d**, actual publisher run 41036841459; public source-marker propagation passed.
+
+The actual public-site Chromium regression then passed **all nine journeys (26.4 seconds), zero retries**: exact source marker, real Learn input/refresh durability, desktop width roundtrip, guide/storage preservation, desktop/mobile local account submission and return, explicit registration copy choice, and original Typing/mobile-data return with zero API requests. [Published preview](https://smhe00.github.io/qwerty-learner/).
+
+Implementation is ready for owner review. This checkpoint only adds this report; application/test source remains the qualified 88ce61d3/353117d3 tree. It is a documentation-only main update, not a new application candidate or an etest/master promotion. Subsequent Pages rebuilding of this report does not erase the historical exact-source acceptance above. This task leaves the independently owned CURRENT_TASK/Circle protocol and the concurrent administrator/visitor task/report intact.
+
+Remaining limits: real login/session takeover/synchronization and Blob networking were not certified on etest by this task; no user credentials were used. The UI fixtures and Pages acceptance do not constitute release-ready or a master release. Whole-repository TypeScript baseline and physical-device coverage limitations remain as recorded above.
