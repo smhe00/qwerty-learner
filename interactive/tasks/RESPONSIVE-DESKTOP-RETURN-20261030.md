@@ -1,6 +1,6 @@
 ---
 task_id: RESPONSIVE-DESKTOP-RETURN-20261030
-status: REVIEW
+status: PASS
 executor: Codex-responsive-return
 claim_base_commit: 7eb3631f1614c8c78352a13bcbcae84ba165a290
 target_branch: product/main
