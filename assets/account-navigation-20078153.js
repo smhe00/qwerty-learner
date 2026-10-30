@@ -1,0 +1,1 @@
+import{ag as t,s as c}from"./app-eb1438b2.js";globalThis.jotaiAtomCache=globalThis.jotaiAtomCache||{cache:new Map,get(a,e){return this.cache.has(a)?this.cache.get(a):(this.cache.set(a,e),e)}};function n(a=!1){return"/qwerty-learner/"+(a?"mobile/account":"?s1-account=manage")}function s(a=!1){t(a),c(a),window.location.replace(n(a))}export{n as a,s as o};
